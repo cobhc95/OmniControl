@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="OmniDial.Avalonia/OmniDial.Avalonia.csproj" />
+  <Project Path="OmniDial.Core/OmniDial.Core.csproj" />
+</Solution>

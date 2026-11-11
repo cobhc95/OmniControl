@@ -1,0 +1,29 @@
+## Visual Studio / .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+TestResults/
+*.trx
+*.log
+coverage*.xml
+artifacts/
+
+## Native / system
+*.dll
+.pdb
+OmniDial.Core/bin/
+OmniDial.Avalonia/bin/
+OmniDial.Avalonia/obj/
+OmniDial.Core/obj/
+
+## OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+*.slnx.user
+
+## Build output (keep binaries out of git)
+*.nupkg
+*.snupkg
