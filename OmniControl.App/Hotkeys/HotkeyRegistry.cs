@@ -1,5 +1,5 @@
 using System.Collections.ObjectModel;
-using System.Text.Json;
+using OmniControl.App.Services;
 using Avalonia.Threading;
 
 namespace OmniControl.App.Hotkeys;
@@ -10,8 +10,7 @@ namespace OmniControl.App.Hotkeys;
 /// </summary>
 public sealed class HotkeyRegistry : IDisposable
 {
-    private static readonly string FilePath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OmniControl", "hotkeys.json");
+    private const string FileName = "hotkeys.json";
 
     private readonly HotkeyService _service = new();
     private readonly Dictionary<string, StoredHotkey> _stored = Load();
@@ -55,21 +54,10 @@ public sealed class HotkeyRegistry : IDisposable
         _service.Apply(Actions.Where(a => a.Gesture.Length > 0)
             .Select(a => (a.Gesture, (Action)(() => Dispatcher.UIThread.Post(a.Run)))));
 
-    private static Dictionary<string, StoredHotkey> Load()
-    {
-        try { return JsonSerializer.Deserialize<Dictionary<string, StoredHotkey>>(File.ReadAllText(FilePath)) ?? new(); }
-        catch { return new(); }
-    }
+    private static Dictionary<string, StoredHotkey> Load() =>
+        AppDataStore.Load<Dictionary<string, StoredHotkey>>(FileName) ?? new();
 
-    private void Save()
-    {
-        try
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-            File.WriteAllText(FilePath, JsonSerializer.Serialize(_stored));
-        }
-        catch { /* settings are best effort */ }
-    }
+    private void Save() => AppDataStore.Save(FileName, _stored);
 
     public void Dispose() => _service.Dispose();
 }

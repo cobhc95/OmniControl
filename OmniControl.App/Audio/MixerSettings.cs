@@ -1,4 +1,4 @@
-using System.Text.Json;
+using OmniControl.App.Services;
 
 namespace OmniControl.App.Audio;
 
@@ -41,36 +41,27 @@ public sealed class MixerSettings
     public List<EqBand>? MasterEqBands { get; set; }
     public int[]? MasterEqGains { get; set; }
 
-    private static string FilePath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OmniControl", "mixer.json");
+    private const string FileName = "mixer.json";
 
     public static MixerSettings Load()
     {
-        try
+        var s = AppDataStore.Load<MixerSettings>(FileName) ?? new();
+        if (s.MasterFx.Count == 0 && ConvertLegacy(s.MasterEqBands, s.MasterEqGains) is { } master)
         {
-            if (File.Exists(FilePath))
-            {
-                var s = JsonSerializer.Deserialize<MixerSettings>(File.ReadAllText(FilePath)) ?? new();
-                if (s.MasterFx.Count == 0 && ConvertLegacy(s.MasterEqBands, s.MasterEqGains) is { } master)
-                {
-                    s.MasterFx.Add(master);
-                    s.MasterFxOn = s.MasterEqEnabled ?? false;
-                }
-                s.MasterEqBands = null; s.MasterEqGains = null; s.MasterEqEnabled = null;
-                foreach (var a in s.Apps)
-                {
-                    if (a.Fx.Count == 0 && ConvertLegacy(a.EqBands, a.EqGains) is { } slot)
-                    {
-                        a.Fx.Add(slot);
-                        a.FxOn = a.EqEnabled ?? false;
-                    }
-                    a.EqBands = null; a.EqGains = null; a.EqEnabled = null;
-                }
-                return s;
-            }
+            s.MasterFx.Add(master);
+            s.MasterFxOn = s.MasterEqEnabled ?? false;
         }
-        catch { /* corrupt file: defaults */ }
-        return new();
+        s.MasterEqBands = null; s.MasterEqGains = null; s.MasterEqEnabled = null;
+        foreach (var a in s.Apps)
+        {
+            if (a.Fx.Count == 0 && ConvertLegacy(a.EqBands, a.EqGains) is { } slot)
+            {
+                a.Fx.Add(slot);
+                a.FxOn = a.EqEnabled ?? false;
+            }
+            a.EqBands = null; a.EqGains = null; a.EqEnabled = null;
+        }
+        return s;
     }
 
     /// <summary>An equaliser slot from an old single-EQ file, or null when that EQ was never changed.</summary>
@@ -85,15 +76,7 @@ public sealed class MixerSettings
         return slot;
     }
 
-    public void Save()
-    {
-        try
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-            File.WriteAllText(FilePath, JsonSerializer.Serialize(this));
-        }
-        catch { /* best-effort */ }
-    }
+    public void Save() => AppDataStore.Save(FileName, this);
 }
 
 /// <summary>What OmniControl remembers about one recording device's FX chain.</summary>

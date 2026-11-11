@@ -42,4 +42,5 @@ Adding things: **page** = VM + view + one line in `ShellViewModel` + one DataTem
 - Per-app output device uses an undocumented interface (`CoreAudio.Routing.cs`).
 - Hiding Windows' OSD is best-effort.
 - Recent UI work (inputs group, meters, input FX, theme gallery, half cards, accent tint, icon) was built and launched but not confirmed on screen by the owner.
+- Code audit against rules 11-16 done: json storage unified, silent catches explained, duplicate percent maths moved to `VcpValue.Percent`. Remaining by design: `AppSettings.Current` and `AccentService` are shared singletons (read by `CardGroup`, FX window); inject them if more pages need them.
 - No automated tests exist; the owner tests by hand (rule 7).

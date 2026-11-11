@@ -17,7 +17,7 @@ public static class StartupRegistration
                 using var key = Registry.CurrentUser.OpenSubKey(RunKey);
                 return key?.GetValue(ValueName) is not null;
             }
-            catch { return false; }
+            catch { return false; /* registry key unreadable: treat as not registered */ }
         }
     }
 

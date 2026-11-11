@@ -1,4 +1,3 @@
-using System.Text.Json;
 
 namespace OmniControl.App.Services;
 
@@ -28,27 +27,9 @@ public sealed class AppSettings
     /// <summary>The settings in use by the running program (one shared instance).</summary>
     public static AppSettings Current { get; } = Load();
 
-    private static string FilePath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OmniControl", "settings.json");
+    private const string FileName = "settings.json";
 
-    public static AppSettings Load()
-    {
-        try
-        {
-            if (File.Exists(FilePath))
-                return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath)) ?? new();
-        }
-        catch { /* corrupt or unreadable file: fall back to defaults */ }
-        return new();
-    }
+    public static AppSettings Load() => AppDataStore.Load<AppSettings>(FileName) ?? new();
 
-    public void Save()
-    {
-        try
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-            File.WriteAllText(FilePath, JsonSerializer.Serialize(this));
-        }
-        catch { /* settings are best-effort */ }
-    }
+    public void Save() => AppDataStore.Save(FileName, this);
 }

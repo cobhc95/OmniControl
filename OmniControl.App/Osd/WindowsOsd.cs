@@ -101,13 +101,7 @@ public sealed class WindowsOsd : IDisposable
     private void Log(string line)
     {
         if (_logged++ > 100) return;
-        try
-        {
-            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OmniControl");
-            Directory.CreateDirectory(dir);
-            File.AppendAllText(Path.Combine(dir, "osd-log.txt"), $"{DateTime.Now:HH:mm:ss.fff} {line}{Environment.NewLine}");
-        }
-        catch { }
+        AppDataStore.AppendLog("osd-log.txt", line);
     }
 
     public void Dispose() => Hidden = false;

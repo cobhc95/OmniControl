@@ -28,7 +28,7 @@ public sealed class BrightnessWatcher : IDisposable
             };
             _watcher.Start();
         }
-        catch { _watcher = null; }
+        catch { _watcher = null; /* WMI brightness events unavailable: polling covers it */ }
 
         _poll = new Timer(_ => Poll(), null, 500, 400);
     }
@@ -58,6 +58,6 @@ public sealed class BrightnessWatcher : IDisposable
     public void Dispose()
     {
         _poll?.Dispose();
-        try { _watcher?.Stop(); _watcher?.Dispose(); } catch { }
+        try { _watcher?.Stop(); _watcher?.Dispose(); } catch { /* the watcher may already be gone at shutdown */ }
     }
 }

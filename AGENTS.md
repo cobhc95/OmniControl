@@ -21,3 +21,18 @@ Read this file, then `ARCHITECTURE.md` (where things live), then `HANDOVER.md` (
 - Cards: label left, control right; keyboard Up/Down moves between cards, Left/Right edits or walks parts of a row, Enter activates. Half-width cards (`Half = true` on a `ToggleItem`) pair two per row and Up/Down follows reading order.
 - Honest reporting: FX chains are stored settings only (no audio engine yet); say so rather than imply processing.
 - Windows icon cache may show the old icon until Explorer restarts.
+
+## Code quality rules
+
+11. **Understand before you change.** Read the files around your change, and the nearest existing example of the same kind of thing (another page, card, service or hotkey), before writing anything. Copy that pattern; do not invent a second way to do something the code already does. If the existing way is wrong, say so and fix it everywhere, or leave it. No one-off exceptions.
+12. **Keep code pieces loosely coupled.** A piece of code should know as little as possible about the others. Call another class only when your job truly needs its result.
+    - Ask "who owns this?" before each call. If another class owns the data or rule, ask that class. Do not reach into its internals, duplicate its logic, or copy its state.
+    - No chaining through objects (`a.B.C.D`), and no reading another class's private details through casts, reflection or shared statics.
+    - Prefer a small interface, a callback (`Action`) or an event over a direct reference to a concrete class (as `MixerItem` reports changes).
+    - No circular references. If two classes need each other, one is doing the other's job: move the shared piece to a third place.
+    - No global mutable state. A static is fine for constants and pure helpers only.
+    - Each method does one thing; a class has one reason to change.
+13. **Put each piece of logic in one place.** No copy-paste: if the same logic appears twice, move it to one helper. Rules, limits and defaults are defined once and referenced; never retype a number or string. Views do not make decisions: the view-model decides, the service acts, Core talks to Windows (rule 8).
+14. **Keep the design consistent.** Before adding anything, say in one sentence which layer it belongs to and why; if it does not fit cleanly, the design needs thought, not a workaround. Use the same word for the same idea everywhere. Prefer the simplest change that fits the existing design: no new abstraction, layer or dependency unless it removes real duplication or coupling today, and no features nobody asked for. Make things `private` or `internal` by default.
+15. **Write safe, readable code.** No empty `catch` that hides failures: catch the specific exception, handle or log it, and comment why when not obvious (Windows calls can fail; keep the app running). Release what you acquire (COM objects, handles, timers, event subscriptions). UI work stays on the UI thread; slow work stays off it. Leave no commented-out code, dead code, unused parameters or debug output. Comments explain why, not what.
+16. **Check your own work.** Before building, re-read your diff against these rules (coupling, duplication, hard-coding, wrong layer). Leave an area tidier than you found it within the current task; report bigger problems as open items in `HANDOVER.md` rather than fixing them silently. Update `ARCHITECTURE.md` and `HANDOVER.md` when files move or behaviour changes.

@@ -74,7 +74,7 @@ public sealed class DdcCiMonitor : IMonitor
                 Info.Capabilities = s;
                 return s;
             }
-            catch { return null; }
+            catch { return null; /* monitor does not answer DDC/CI */ }
             finally { if (pvct != IntPtr.Zero) Marshal.FreeCoTaskMem(pvct); }
         }
     }
@@ -100,7 +100,7 @@ public sealed class DdcCiMonitor : IMonitor
     {
         if (_disposed) return;
         _disposed = true;
-        try { Dxva2Native.DestroyPhysicalMonitors(1, new[] { _physical }); } catch { }
+        try { Dxva2Native.DestroyPhysicalMonitors(1, new[] { _physical }); } catch { /* handle already released by the driver */ }
         GC.SuppressFinalize(this);
     }
 }

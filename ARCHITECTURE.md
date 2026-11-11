@@ -12,7 +12,7 @@ OmniControl.App/Osd, Audio,       app services (state, timers, persistence, OSD,
 OmniControl.Core                  Windows access only (DDC/CI, Core Audio, WMI). No UI, no Avalonia, no settings files.
 ```
 
-- Core never references App. Services never reference Pages. Pages reference services, never each other.
+- Core never references App. Services never reference Pages. Pages reference services, never each other. Exception: `App/Fx` (the FX windows) is a feature module and reuses the shared card types from `Pages/`; nothing in `Pages` depends on it except through `FxWindowService`.
 - A view-model never calls Win32 or COM directly: it calls a service or Core.
 - Views (`.axaml`) hold layout only; logic goes in the view-model or a service. Code-behind is for wiring input events.
 
@@ -37,6 +37,7 @@ OmniControl.Core                  Windows access only (DDC/CI, Core Audio, WMI).
 | OSD pop-up | `App/Osd/OsdService.cs` (when to show), `OsdWindow.cs` (the window), `OsdView.cs` (drawing), `OsdSettings.cs` + `OsdOptions.cs` (settings and choices), `WindowsOsd.cs` (hide Windows' own), `BrightnessWatcher.cs`, `VolumeWatcher.cs` (outside changes) |
 | Hotkeys | `App/Hotkeys/HotkeyRegistry.cs` (all actions), `HotkeyAction.cs` (one action), `HotkeyService.cs` (Windows registration), `HotkeyCapture.cs` (key presses in a hotkey box) |
 | Program-wide services | `App/Services/`: `AppSettings` (settings.json), `AccentService` (the one accent colour), `AppLifecycle` (show/quit events), `StartupRegistration`, `TrayService` |
+| Reading/writing the json files in %APPDATA%OmniControl (one helper; every settings class uses it) | `App/Services/AppDataStore.cs` |
 | Intervals and grace periods (all of them) | `App/Services/Timing.cs` |
 | Window lifetime (tray, minimise, quit) | `App/Shell/WindowLifecycle.cs`; start-up in `App/App.axaml.cs` |
 | Shell: sidebar, search, footer | `App/Shell/ShellViewModel.cs`, `MainWindow.axaml(.cs)` |

@@ -78,7 +78,7 @@ public sealed class MonitorEnumerator : IMonitorEnumerator
                 }
             }
         }
-        catch { }
+        catch { /* registry description unreadable: caller falls back to a generic name */ }
         return string.Empty;
     }
 }

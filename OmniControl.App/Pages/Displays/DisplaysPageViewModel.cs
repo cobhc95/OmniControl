@@ -62,7 +62,7 @@ public sealed partial class DisplaysPageViewModel : PageViewModel
         foreach (var m in _engine.Monitors.Where(m => ids is null || ids.Contains(m.Info.InstanceId)))
             if (m.GetVcp(VcpCode.Contrast) is { Maximum: > 0 } v)
             {
-                var value = Math.Clamp((int)(v.Current * 100 / v.Maximum) + delta, 0, 100);
+                var value = Math.Clamp(v.Percent + delta, 0, 100);
                 m.SetContrast(value);
                 shown ??= value;
             }
@@ -91,7 +91,7 @@ public sealed partial class DisplaysPageViewModel : PageViewModel
         foreach (var m in _engine.Monitors.Where(m => ids is null || ids.Contains(m.Info.InstanceId)))
             if (m.GetVcp(VcpCode.Brightness) is { Maximum: > 0 } v)
             {
-                var value = Math.Clamp((int)(v.Current * 100 / v.Maximum) + delta, 0, 100);
+                var value = Math.Clamp(v.Percent + delta, 0, 100);
                 m.SetBrightness(value);
                 shown ??= value;
             }
@@ -139,6 +139,6 @@ public sealed partial class DisplaysPageViewModel : PageViewModel
         byte code, Func<int, OperationResult> set)
     {
         if (m.GetVcp(code) is { Maximum: > 0 } v)
-            list.Add(new SliderItem(label, (int)(v.Current * 100 / v.Maximum), set, _report));
+            list.Add(new SliderItem(label, v.Percent, set, _report));
     }
 }

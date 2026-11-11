@@ -17,7 +17,7 @@ public static partial class CoreAudio
             var iid = typeof(IAudioEndpointVolume).GUID;
             return dev.Activate(ref iid, ClsCtxAll, IntPtr.Zero, out var o) == 0 ? o as IAudioEndpointVolume : null;
         }
-        catch { return null; }
+        catch { return null; /* no playback device */ }
     }
 
     public static string DefaultDeviceName()

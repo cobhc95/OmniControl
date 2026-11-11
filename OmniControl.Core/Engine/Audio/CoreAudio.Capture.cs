@@ -31,7 +31,7 @@ public static partial class CoreAudio
             var iid = typeof(IAudioEndpointVolume).GUID;
             return dev.Activate(ref iid, ClsCtxAll, IntPtr.Zero, out var o) == 0 ? o as IAudioEndpointVolume : null;
         }
-        catch { return null; }
+        catch { return null; /* device vanished or has no volume interface */ }
     }
 
     public static bool GetDeviceVolume(string id, out int percent, out bool muted)

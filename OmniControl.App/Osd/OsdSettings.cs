@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using OmniControl.App.Services;
 
 namespace OmniControl.App.Osd;
 
@@ -33,29 +33,11 @@ public sealed class OsdSettings
     /// <summary>Suppress Windows' own volume/brightness pop-up.</summary>
     public bool HideWindowsOsd { get; set; }
 
-    private static string FilePath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OmniControl", "osd.json");
+    private const string FileName = "osd.json";
 
-    public static OsdSettings Load()
-    {
-        try
-        {
-            if (File.Exists(FilePath))
-                return JsonSerializer.Deserialize<OsdSettings>(File.ReadAllText(FilePath)) ?? new();
-        }
-        catch { /* corrupt file: defaults */ }
-        return new();
-    }
+    public static OsdSettings Load() => AppDataStore.Load<OsdSettings>(FileName) ?? new();
 
-    public void Save()
-    {
-        try
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-            File.WriteAllText(FilePath, JsonSerializer.Serialize(this));
-        }
-        catch { /* best-effort */ }
-    }
+    public void Save() => AppDataStore.Save(FileName, this);
 
     public static string Describe(OsdPosition p) => p switch
     {

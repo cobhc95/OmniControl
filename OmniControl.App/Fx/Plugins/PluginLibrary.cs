@@ -1,4 +1,4 @@
-using System.Text.Json;
+using OmniControl.App.Services;
 using OmniControl.App.Audio;
 
 namespace OmniControl.App.Fx.Plugins;
@@ -15,8 +15,7 @@ public sealed class PluginLibrary
         public List<PluginEntry> Loaded { get; set; } = new();
     }
 
-    private static string FilePath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OmniControl", "plugins.json");
+    private const string FileName = "plugins.json";
 
     private Stored _stored = Read();
 
@@ -55,20 +54,7 @@ public sealed class PluginLibrary
         return entry;
     }
 
-    private static Stored Read()
-    {
-        try { if (File.Exists(FilePath)) return JsonSerializer.Deserialize<Stored>(File.ReadAllText(FilePath)) ?? new(); }
-        catch (Exception) { /* a damaged list is rebuilt by the next scan */ }
-        return new();
-    }
+    private static Stored Read() => AppDataStore.Load<Stored>(FileName) ?? new();
 
-    private void Write()
-    {
-        try
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-            File.WriteAllText(FilePath, JsonSerializer.Serialize(_stored));
-        }
-        catch (Exception) { /* not saving is not worth stopping for */ }
-    }
+    private void Write() => AppDataStore.Save(FileName, _stored);
 }
