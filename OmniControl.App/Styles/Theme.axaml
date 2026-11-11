@@ -1,0 +1,89 @@
+﻿<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Color x:Key="ColorRail">#1C2230</Color>
+  <Color x:Key="ColorText">#E8ECF4</Color>
+  <Color x:Key="ColorAccentDark">#8FC3FF</Color>
+  <Color x:Key="ColorRailHover">#262E40</Color>
+  <Color x:Key="ColorLog">#2A2F3A</Color>
+  <Color x:Key="ColorDarkHover">#2B3447</Color>
+  <Color x:Key="ColorRailSelected">#2F4F8F</Color>
+  <Color x:Key="ColorBadgeGreenFg">#9FE8A6</Color>
+  <Color x:Key="ColorTextRow">#C6CDDB</Color>
+  <Color x:Key="ColorRailTrack">#3A4358</Color>
+  <Color x:Key="ColorAccent">#4D8DFF</Color>
+  <Color x:Key="ColorTextTile">#9AA4B8</Color>
+  <Color x:Key="ColorBadgeBg">#5A4A1E</Color>
+  <Color x:Key="ColorTextMuted">#9AA4B8</Color>
+  <Color x:Key="ColorWarnTextDark">#FFD27A</Color>
+  <Color x:Key="ColorRailSelectedBar">#8FC3FF</Color>
+  <Color x:Key="ColorWarnText">#FFD27A</Color>
+  <Color x:Key="ColorRailIcon">#9AA4B8</Color>
+  <Color x:Key="ColorDanger">#FF9B9B</Color>
+  <Color x:Key="ColorBorderStrong">#3A4358</Color>
+  <Color x:Key="ColorRailText">#C6CDDB</Color>
+  <Color x:Key="ColorToggleOff">#C9CED8</Color>
+  <Color x:Key="ColorKeyBorder">#C9D0DC</Color>
+  <Color x:Key="ColorBadgeBlueBg">#1E3A5F</Color>
+  <Color x:Key="ColorBorder">#2E364A</Color>
+  <Color x:Key="ColorBadgeGreenBg">#24402A</Color>
+  <Color x:Key="ColorDangerBorder">#5A2B3A</Color>
+  <Color x:Key="ColorDivider">#2E364A</Color>
+  <Color x:Key="ColorAccentSoft">#23314F</Color>
+  <Color x:Key="ColorBg">#141824</Color>
+  <Color x:Key="ColorKey">#11141B</Color>
+  <Color x:Key="ColorWarnBorder">#5A4A1E</Color>
+  <Color x:Key="ColorSurfaceAlt">#212A3E</Color>
+  <Color x:Key="ColorHoverSoft">#212A3E</Color>
+  <Color x:Key="ColorBadge">#F5D27A</Color>
+  <Color x:Key="ColorSurface">#11141B</Color>
+  <Color x:Key="ColorDangerPill">#3A1F28</Color>
+  <Color x:Key="ColorSwatchRed">#FF8A8A</Color>
+  <Color x:Key="ColorSwatchYellow">#FFD27A</Color>
+  <Color x:Key="ColorDangerBg">#3A1F28</Color>
+  <Color x:Key="ColorWarnBg">#2E2410</Color>
+  <Color x:Key="ColorWhite">#FFFFFF</Color>
+  <Color x:Key="ColorCard">#1B2030</Color>
+  <SolidColorBrush x:Key="BrushRail" Color="{DynamicResource ColorRail}"/>
+  <SolidColorBrush x:Key="BrushText" Color="{DynamicResource ColorText}"/>
+  <SolidColorBrush x:Key="BrushAccentDark" Color="{DynamicResource ColorAccentDark}"/>
+  <SolidColorBrush x:Key="BrushRailHover" Color="{DynamicResource ColorRailHover}"/>
+  <SolidColorBrush x:Key="BrushLog" Color="{DynamicResource ColorLog}"/>
+  <SolidColorBrush x:Key="BrushDarkHover" Color="{DynamicResource ColorDarkHover}"/>
+  <SolidColorBrush x:Key="BrushRailSelected" Color="{DynamicResource ColorRailSelected}"/>
+  <SolidColorBrush x:Key="BrushBadgeGreenFg" Color="{DynamicResource ColorBadgeGreenFg}"/>
+  <SolidColorBrush x:Key="BrushTextRow" Color="{DynamicResource ColorTextRow}"/>
+  <SolidColorBrush x:Key="BrushRailTrack" Color="{DynamicResource ColorRailTrack}"/>
+  <SolidColorBrush x:Key="BrushAccent" Color="{DynamicResource ColorAccent}"/>
+  <SolidColorBrush x:Key="BrushTextTile" Color="{DynamicResource ColorTextTile}"/>
+  <SolidColorBrush x:Key="BrushBadgeBg" Color="{DynamicResource ColorBadgeBg}"/>
+  <SolidColorBrush x:Key="BrushTextMuted" Color="{DynamicResource ColorTextMuted}"/>
+  <SolidColorBrush x:Key="BrushWarnTextDark" Color="{DynamicResource ColorWarnTextDark}"/>
+  <SolidColorBrush x:Key="BrushRailSelectedBar" Color="{DynamicResource ColorRailSelectedBar}"/>
+  <SolidColorBrush x:Key="BrushWarnText" Color="{DynamicResource ColorWarnText}"/>
+  <SolidColorBrush x:Key="BrushRailIcon" Color="{DynamicResource ColorRailIcon}"/>
+  <SolidColorBrush x:Key="BrushDanger" Color="{DynamicResource ColorDanger}"/>
+  <SolidColorBrush x:Key="BrushBorderStrong" Color="{DynamicResource ColorBorderStrong}"/>
+  <SolidColorBrush x:Key="BrushRailText" Color="{DynamicResource ColorRailText}"/>
+  <SolidColorBrush x:Key="BrushToggleOff" Color="{DynamicResource ColorToggleOff}"/>
+  <SolidColorBrush x:Key="BrushKeyBorder" Color="{DynamicResource ColorKeyBorder}"/>
+  <SolidColorBrush x:Key="BrushBadgeBlueBg" Color="{DynamicResource ColorBadgeBlueBg}"/>
+  <SolidColorBrush x:Key="BrushBorder" Color="{DynamicResource ColorBorder}"/>
+  <SolidColorBrush x:Key="BrushBadgeGreenBg" Color="{DynamicResource ColorBadgeGreenBg}"/>
+  <SolidColorBrush x:Key="BrushDangerBorder" Color="{DynamicResource ColorDangerBorder}"/>
+  <SolidColorBrush x:Key="BrushDivider" Color="{DynamicResource ColorDivider}"/>
+  <SolidColorBrush x:Key="BrushAccentSoft" Color="{DynamicResource ColorAccentSoft}"/>
+  <SolidColorBrush x:Key="BrushBg" Color="{DynamicResource ColorBg}"/>
+  <SolidColorBrush x:Key="BrushKey" Color="{DynamicResource ColorKey}"/>
+  <SolidColorBrush x:Key="BrushWarnBorder" Color="{DynamicResource ColorWarnBorder}"/>
+  <SolidColorBrush x:Key="BrushSurfaceAlt" Color="{DynamicResource ColorSurfaceAlt}"/>
+  <SolidColorBrush x:Key="BrushHoverSoft" Color="{DynamicResource ColorHoverSoft}"/>
+  <SolidColorBrush x:Key="BrushBadge" Color="{DynamicResource ColorBadge}"/>
+  <SolidColorBrush x:Key="BrushSurface" Color="{DynamicResource ColorSurface}"/>
+  <SolidColorBrush x:Key="BrushDangerPill" Color="{DynamicResource ColorDangerPill}"/>
+  <SolidColorBrush x:Key="BrushSwatchRed" Color="{DynamicResource ColorSwatchRed}"/>
+  <SolidColorBrush x:Key="BrushSwatchYellow" Color="{DynamicResource ColorSwatchYellow}"/>
+  <SolidColorBrush x:Key="BrushDangerBg" Color="{DynamicResource ColorDangerBg}"/>
+  <SolidColorBrush x:Key="BrushWarnBg" Color="{DynamicResource ColorWarnBg}"/>
+  <SolidColorBrush x:Key="BrushWhite" Color="{DynamicResource ColorWhite}"/>
+  <SolidColorBrush x:Key="BrushCard" Color="{DynamicResource ColorCard}"/>
+  <BoxShadows x:Key="ShadowRailSelectedBar">inset 3 0 0 0 #7EA6FF</BoxShadows>
+</ResourceDictionary>

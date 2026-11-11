@@ -1,0 +1,487 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.ViewModels" xmlns:views="using:OmniControl.App.Views"
+             x:Name="Root"
+             x:Class="OmniControl.App.Views.SearchView"
+             x:DataType="vm:SearchViewModel">
+  <UserControl.Styles>
+    <Style Selector="views|ValueSlider TextBox#ValueBox"><Setter Property="Width" Value="52"/></Style>
+    <Style Selector="Border.result"><Setter Property="Background" Value="{DynamicResource BrushSurface}"/><Setter Property="BorderBrush" Value="{DynamicResource BrushBorder}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="9"/><Setter Property="Padding" Value="12"/></Style>
+    <Style Selector="ListBox.scene ListBoxItem"><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0,0,0,6"/></Style>
+    <Style Selector="ListBox.scene ListBoxItem /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Padding" Value="10"/><Setter Property="CornerRadius" Value="8"/><Setter Property="BorderBrush" Value="{DynamicResource BrushBorder}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="Background" Value="{DynamicResource BrushBg}"/></Style>
+    <Style Selector="ListBox.scene ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushAccentSoft}"/><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}"/><Setter Property="BorderThickness" Value="1"/></Style>
+  </UserControl.Styles>
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Spacing="10">
+      <!-- Header (mockup: Results for "...") -->
+      <Border Classes="card" Padding="14">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="2">
+            <TextBlock Classes="h1" Text="{Binding Query, StringFormat='Results for “{0}”'}"/>
+            <TextBlock Classes="sub13" Text="{Binding MatchCount, StringFormat='Matches: {0} — live settings, not a menu. Changes apply immediately.'}"/>
+          </StackPanel>
+          <TextBlock Grid.Column="1" Classes="sub13" VerticalAlignment="Center" Text="Tab · ←→ · Esc back"/>
+        </Grid>
+      </Border>
+
+      <!-- Display: Brightness -->
+      <Border Classes="result" IsVisible="{Binding ShowBrightness}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="lbl" Text="{Binding Display.SelectedTitle, StringFormat='BRIGHTNESS · DISPLAY · {0}'}"/>
+            <Grid ColumnDefinitions="90,*" ColumnSpacing="10">
+              <TextBlock Classes="row" Text="Brightness"/>
+              <views:ValueSlider x:Name="BrightnessSlider" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Display.Brightness}" DefaultValue="50"/>
+            </Grid>
+          </StackPanel>
+          <Button Grid.Column="1" Classes="mock" Content="Open in Display" VerticalAlignment="Center" Command="{Binding GoToCommand}" CommandParameter="Display"/>
+        </Grid>
+      </Border>
+
+      <!-- Display: Laptop (WMI) brightness -->
+      <Border Classes="result" IsVisible="{Binding ShowLaptopBrightness}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="lbl" Text="LAPTOP PANEL · WMI"/>
+            <Grid ColumnDefinitions="110,*" ColumnSpacing="10">
+              <TextBlock Classes="row" Text="Laptop brightness"/>
+              <views:ValueSlider x:Name="LaptopBrightnessSlider" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Display.LaptopBrightness}" DefaultValue="50"/>
+            </Grid>
+          </StackPanel>
+          <Button Grid.Column="1" Classes="mock" Content="Open in Display" VerticalAlignment="Center" Command="{Binding GoToCommand}" CommandParameter="Display"/>
+        </Grid>
+      </Border>
+
+      <!-- Display: Monitors (select entry incl. laptop) -->
+      <Border Classes="result" IsVisible="{Binding ShowMonitors}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="lbl" Text="MONITORS · DISPLAY"/>
+            <ListBox x:Name="MonitorsList" Classes="mon" ItemsSource="{Binding Display.Monitors}" SelectedItem="{Binding Display.SelectedMonitor}" SelectionMode="Single">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:MonitorRow">
+                  <StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Classes="tt" Text="{Binding Title}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                      <Border Grid.Column="1" Classes="pill" Background="{Binding BadgeBg}" Margin="6,0,0,0">
+                        <TextBlock Text="{Binding Badge}" FontSize="10" FontWeight="Bold" Foreground="{Binding BadgeFg}"/>
+                      </Border>
+                    </Grid>
+                    <TextBlock Classes="tile" Text="{Binding Subtitle}" TextTrimming="CharacterEllipsis"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </StackPanel>
+          <Button Grid.Column="1" Classes="mock" Content="Open in Display" VerticalAlignment="Center" Command="{Binding GoToCommand}" CommandParameter="Display"/>
+        </Grid>
+      </Border>
+
+      <!-- Display: Contrast -->
+      <Border Classes="result" IsVisible="{Binding ShowContrast}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="lbl" Text="CONTRAST · DISPLAY"/>
+            <Grid ColumnDefinitions="90,*" ColumnSpacing="10">
+              <TextBlock Classes="row" Text="Contrast"/>
+              <views:ValueSlider x:Name="ContrastSlider" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Display.Contrast}" DefaultValue="50"/>
+            </Grid>
+          </StackPanel>
+          <Button Grid.Column="1" Classes="mock" Content="Open in Display" VerticalAlignment="Center" Command="{Binding GoToCommand}" CommandParameter="Display"/>
+        </Grid>
+      </Border>
+
+      <!-- Display: Monitor volume -->
+      <Border Classes="result" IsVisible="{Binding ShowMonitorVolume}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="lbl" Text="MONITOR VOLUME · DISPLAY"/>
+            <Grid ColumnDefinitions="110,*" ColumnSpacing="10">
+              <TextBlock Classes="row" Text="Monitor volume"/>
+              <views:ValueSlider x:Name="MonitorVolumeSlider" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Display.Volume}" DefaultValue="30"/>
+            </Grid>
+          </StackPanel>
+          <Button Grid.Column="1" Classes="mock" Content="Open in Display" VerticalAlignment="Center" Command="{Binding GoToCommand}" CommandParameter="Display"/>
+        </Grid>
+      </Border>
+
+      <!-- Display: Input source -->
+      <Border Classes="result" IsVisible="{Binding ShowInput}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="lbl" Text="INPUT SOURCE · DISPLAY"/>
+            <Border BorderBrush="{DynamicResource BrushBorderStrong}" BorderThickness="1" CornerRadius="7" ClipToBounds="True" HorizontalAlignment="Left">
+              <StackPanel Orientation="Horizontal">
+                <Button x:Name="InputSourceButton" Classes="seg" Classes.on="{Binding Display.IsHdmi1Selected}" Content="HDMI 1" Command="{Binding Display.SelectInputCommand}" CommandParameter="HDMI 1" Padding="10,7"/>
+                <Button Classes="seg" Classes.on="{Binding Display.IsHdmi2Selected}" Content="HDMI 2" BorderThickness="1,0,0,0" BorderBrush="{DynamicResource BrushBorderStrong}" Command="{Binding Display.SelectInputCommand}" CommandParameter="HDMI 2" Padding="10,7"/>
+                <Button Classes="seg" Classes.on="{Binding Display.IsDp1Selected}" Content="DP 1" BorderThickness="1,0,0,0" BorderBrush="{DynamicResource BrushBorderStrong}" Command="{Binding Display.SelectInputCommand}" CommandParameter="DP 1" Padding="10,7"/>
+                <Button Classes="seg" Classes.on="{Binding Display.IsUsbCSelected}" Content="USB-C" BorderThickness="1,0,0,0" BorderBrush="{DynamicResource BrushBorderStrong}" Command="{Binding Display.SelectInputCommand}" CommandParameter="USB-C" Padding="10,7"/>
+              </StackPanel>
+            </Border>
+            <TextBlock Classes="sub13" FontSize="11" Text="Arrows move · click applies now"/>
+          </StackPanel>
+          <Button Grid.Column="1" Classes="mock" Content="Open in Display" VerticalAlignment="Center" Command="{Binding GoToCommand}" CommandParameter="Display"/>
+        </Grid>
+      </Border>
+
+      <!-- Display: Power -->
+      <Border Classes="result" IsVisible="{Binding ShowPower}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="lbl" Text="POWER · DISPLAY"/>
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Button x:Name="PowerOnButton" Classes="mock" Content="Power on" Command="{Binding Display.PowerOnCommand}" Padding="10,7"/>
+              <Button Classes="mock" Content="Power off" Command="{Binding Display.PowerOffCommand}" Padding="10,7"/>
+              <Button Classes="mock danger" Content="Factory reset" Command="{Binding Display.FactoryResetCommand}" Padding="10,7"/>
+            </StackPanel>
+          </StackPanel>
+          <Button Grid.Column="1" Classes="mock" Content="Open in Display" VerticalAlignment="Center" Command="{Binding GoToCommand}" CommandParameter="Display"/>
+        </Grid>
+      </Border>
+
+      <!-- Display: Run command -->
+      <Border Classes="result" IsVisible="{Binding ShowCommand}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="lbl" Text="RUN COMMAND · DISPLAY"/>
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+              <TextBox x:Name="CommandBox" Classes="cmd" Text="{Binding Display.CommandText}" Watermark="PL2779Q b 36"/>
+              <Button Grid.Column="1" Classes="mock" Content="Read capabilities" Command="{Binding Display.ReadCapabilitiesCommand}"/>
+              <Button Grid.Column="2" Classes="dark" Content="Run" Command="{Binding Display.RunCommand}"/>
+            </Grid>
+          </StackPanel>
+          <Button Grid.Column="1" Classes="mock" Content="Open in Display" VerticalAlignment="Center" Command="{Binding GoToCommand}" CommandParameter="Display"/>
+        </Grid>
+      </Border>
+
+      <!-- Display: Refresh -->
+      <Border Classes="result" IsVisible="{Binding ShowRefresh}">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Classes="row" VerticalAlignment="Center" Text="Refresh monitors &amp; reload values"/>
+          <Button x:Name="RefreshButton" Grid.Column="1" Classes="mock" Content="Refresh" Command="{Binding Display.RefreshCommand}" VerticalAlignment="Center"/>
+        </Grid>
+      </Border>
+
+      <!-- Volume: Master -->
+      <Border Classes="result" IsVisible="{Binding ShowVolumeMaster}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="lbl" Text="VOLUME · MASTER (SYSTEM)"/>
+            <Grid ColumnDefinitions="110,*" ColumnSpacing="10">
+              <TextBlock Classes="row" Text="Volume"/>
+              <views:ValueSlider x:Name="MasterSlider" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Volume.MasterVolume}" DefaultValue="30"/>
+            </Grid>
+          </StackPanel>
+          <Button Grid.Column="1" Classes="mock" Content="Open in Volume" VerticalAlignment="Center" Command="{Binding GoToCommand}" CommandParameter="Volume"/>
+        </Grid>
+      </Border>
+
+      <!-- Volume: Spotify -->
+      <Border Classes="result" IsVisible="{Binding ShowSpotify}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="lbl" Text="SPOTIFY · VOLUME"/>
+            <Grid ColumnDefinitions="110,*" ColumnSpacing="10">
+              <TextBlock Classes="row" Text="Spotify"/>
+              <views:ValueSlider x:Name="SpotifySlider" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Volume.SpotifyVolume}" DefaultValue="60"/>
+            </Grid>
+          </StackPanel>
+          <Button Grid.Column="1" Classes="mock" Content="Open in Volume" VerticalAlignment="Center" Command="{Binding GoToCommand}" CommandParameter="Volume"/>
+        </Grid>
+      </Border>
+
+      <!-- Volume: Chrome -->
+      <Border Classes="result" IsVisible="{Binding ShowChrome}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="lbl" Text="CHROME · VOLUME"/>
+            <Grid ColumnDefinitions="110,*" ColumnSpacing="10">
+              <TextBlock Classes="row" Text="Chrome"/>
+              <views:ValueSlider x:Name="ChromeSlider" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Volume.ChromeVolume}" DefaultValue="45"/>
+            </Grid>
+          </StackPanel>
+          <Button Grid.Column="1" Classes="mock" Content="Open in Volume" VerticalAlignment="Center" Command="{Binding GoToCommand}" CommandParameter="Volume"/>
+        </Grid>
+      </Border>
+
+      <!-- Volume: Mute -->
+      <Border Classes="result" IsVisible="{Binding ShowMute}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="lbl" Text="MUTE · VOLUME"/>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button x:Name="MuteButton" Classes="mock" Content="{Binding Volume.MuteLabel}" Command="{Binding Volume.MuteCommand}"/>
+              <Button Classes="mock" Content="Unmute" Command="{Binding Volume.UnmuteCommand}"/>
+            </StackPanel>
+          </StackPanel>
+          <Button Grid.Column="1" Classes="mock" Content="Open in Volume" VerticalAlignment="Center" Command="{Binding GoToCommand}" CommandParameter="Volume"/>
+        </Grid>
+      </Border>
+
+      <!-- Volume: Key bindings (per-row Change) -->
+      <Border Classes="result" IsVisible="{Binding ShowKeyBindings}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="lbl" Text="KEY BINDINGS · VOLUME"/>
+            <ItemsControl x:Name="VolumeRowsList" ItemsSource="{Binding Volume.Rows}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:HotkeyRow">
+                  <Border Classes="rowline" Padding="0,9" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="0,0,0,1">
+                    <Grid ColumnDefinitions="130,140,90,Auto" ColumnSpacing="10">
+                      <TextBlock Text="{Binding Action}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                      <Border Grid.Column="1" Classes="key" VerticalAlignment="Center"><TextBlock Classes="mono" Foreground="{DynamicResource BrushText}" Text="{Binding KeyText}"/></Border>
+                      <TextBlock Grid.Column="2" Classes="row" Text="{Binding ScopeText}"/>
+                      <Button Grid.Column="3" Classes="mini" Content="Change" x:CompileBindings="False" Command="{Binding #Root.DataContext.Volume.ChangeCommand}" CommandParameter="{Binding}"/>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+          <Button Grid.Column="1" Classes="mock" Content="Open in Volume" VerticalAlignment="Center" Command="{Binding GoToCommand}" CommandParameter="Volume"/>
+        </Grid>
+      </Border>
+
+      <!-- Mouse: Sensitivity -->
+      <Border Classes="result" IsVisible="{Binding ShowSensitivity}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="lbl" Text="POINTER SPEED · MOUSE"/>
+            <Grid ColumnDefinitions="110,*" ColumnSpacing="10">
+              <TextBlock Classes="row" Text="Sensitivity"/>
+              <views:ValueSlider x:Name="SensitivitySlider" Grid.Column="1" Minimum="1" Maximum="11" Value="{Binding Mouse.Sensitivity}" DefaultValue="7"/>
+            </Grid>
+          </StackPanel>
+          <Button Grid.Column="1" Classes="mock" Content="Open in Mouse" VerticalAlignment="Center" Command="{Binding GoToCommand}" CommandParameter="Mouse"/>
+        </Grid>
+      </Border>
+
+      <!-- Mouse: Profiles -->
+      <Border Classes="result" IsVisible="{Binding ShowProfiles}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="lbl" Text="PROFILES · MOUSE"/>
+            <ListBox x:Name="ProfilesList" Classes="mon" ItemsSource="{Binding Mouse.Profiles}" SelectedItem="{Binding Mouse.SelectedProfile}" SelectionMode="Single">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:MouseProfile">
+                  <StackPanel>
+                    <TextBlock Classes="tt" Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Classes="tile" Text="{Binding Subtitle}" TextTrimming="CharacterEllipsis"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </StackPanel>
+          <Button Grid.Column="1" Classes="mock" Content="Open in Mouse" VerticalAlignment="Center" Command="{Binding GoToCommand}" CommandParameter="Mouse"/>
+        </Grid>
+      </Border>
+
+      <!-- Mouse: Button remap (per-row Change) -->
+      <Border Classes="result" IsVisible="{Binding ShowMouseButtons}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="lbl" Text="MOUSE BUTTONS · MOUSE"/>
+            <ItemsControl x:Name="MouseButtonsList" ItemsSource="{Binding Mouse.ButtonRows}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:MouseButtonRow">
+                  <Border Classes="rowline" Padding="0,9">
+                    <Grid ColumnDefinitions="140,*,Auto" ColumnSpacing="12">
+                      <TextBlock Classes="row" Text="{Binding ButtonName}"/>
+                      <TextBlock Grid.Column="1" Classes="sub13" Text="{Binding ActionText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                      <Button Grid.Column="2" Classes="mini" Content="Change" x:CompileBindings="False" Command="{Binding #Root.DataContext.Mouse.ChangeRowCommand}" CommandParameter="{Binding}"/>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+          <Button Grid.Column="1" Classes="mock" Content="Open in Mouse" VerticalAlignment="Center" Command="{Binding GoToCommand}" CommandParameter="Mouse"/>
+        </Grid>
+      </Border>
+
+      <!-- Hotkeys: New binding (global shortcut) -->
+      <Border Classes="result" IsVisible="{Binding ShowNewBinding}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="lbl" Text="GLOBAL HOTKEY"/>
+            <TextBlock Classes="sub13" TextWrapping="Wrap" Text="Record a global shortcut and a DDC/CI command that works even outside OmniControl."/>
+          </StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <Button x:Name="NewBindingButton" Classes="dark" Content="New binding" Command="{Binding Hotkeys.NewCommand}"/>
+            <Button Classes="mock" Content="Open in Hotkeys" Command="{Binding GoToCommand}" CommandParameter="Hotkeys"/>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- Hotkeys: rows (toggle + edit per row) -->
+      <Border Classes="result" IsVisible="{Binding ShowHotkeyRows}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="lbl" Text="BINDINGS · HOTKEYS"/>
+            <ItemsControl x:Name="HotkeysRowsList" ItemsSource="{Binding Hotkeys.Rows}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:HotkeyBindingRow">
+                  <Border Classes="rowline" Padding="0,9">
+                    <Grid ColumnDefinitions="52,150,*,Auto,Auto" ColumnSpacing="10">
+                      <Button Classes="toggleBtn" x:CompileBindings="False" Command="{Binding #Root.DataContext.Hotkeys.ToggleCommand}" CommandParameter="{Binding}" ToolTip.Tip="Toggle binding">
+                        <Border Classes="toggle" Classes.off="{Binding !IsOn}"><Ellipse/></Border>
+                      </Button>
+                      <Border Grid.Column="1" Classes="key" VerticalAlignment="Center"><TextBlock Classes="mono" Foreground="{DynamicResource BrushText}" Text="{Binding KeyText}"/></Border>
+                      <TextBlock Grid.Column="2" Classes="mono" VerticalAlignment="Center" Text="{Binding CommandText}" TextTrimming="CharacterEllipsis"/>
+                      <TextBlock Grid.Column="3" Classes="row" Text="{Binding ScopeText}" VerticalAlignment="Center"/>
+                      <Button Grid.Column="4" Classes="mini" Content="Edit" x:CompileBindings="False" Command="{Binding #Root.DataContext.Hotkeys.EditCommand}" CommandParameter="{Binding}"/>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+          <Button Grid.Column="1" Classes="mock" Content="Open in Hotkeys" VerticalAlignment="Center" Command="{Binding GoToCommand}" CommandParameter="Hotkeys"/>
+        </Grid>
+      </Border>
+
+      <!-- Keyboard: rebind (media + keyboard keys) -->
+      <Border Classes="result" IsVisible="{Binding ShowKeyboardRebind}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="lbl" Text="KEY REBIND · KEYBOARD"/>
+            <ItemsControl x:Name="KeyRebindList" ItemsSource="{Binding Keyboard.KeyRows}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:KeyRow">
+                  <Border Classes="rowline" Padding="0,9">
+                    <Grid ColumnDefinitions="160,*,Auto" ColumnSpacing="12">
+                      <TextBlock Classes="row" Text="{Binding KeyName}"/>
+                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                        <Border Classes="key" VerticalAlignment="Center">
+                          <TextBlock Classes="mono" Text="{Binding KeyText}"/>
+                        </Border>
+                        <Button Classes="key" VerticalAlignment="Center" Content="{Binding ActionText}" x:CompileBindings="False" Command="{Binding #Root.DataContext.Keyboard.ChangeRowCommand}" CommandParameter="{Binding}" ToolTip.Tip="Click to cycle this action"/>
+                      </StackPanel>
+                      <Button Grid.Column="2" Classes="mini" Content="Change" VerticalAlignment="Center" x:CompileBindings="False" Command="{Binding #Root.DataContext.Keyboard.StartRecCommand}" CommandParameter="{Binding}"/>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Classes="sub13" FontSize="11" Text="Change records the new key. Click an action chip to cycle what it does."/>
+          </StackPanel>
+          <Button Grid.Column="1" Classes="mock" Content="Open in Keyboard" VerticalAlignment="Center" Command="{Binding GoToCommand}" CommandParameter="Keyboard"/>
+        </Grid>
+      </Border>
+
+      <!-- Home: Scenes -->
+      <Border Classes="result" IsVisible="{Binding ShowScenes}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="lbl" Text="SCENES · HOME"/>
+            <ListBox x:Name="ScenesList" Classes="scene" ItemsSource="{Binding Home.Scenes}" SelectedItem="{Binding Home.SelectedScene}" SelectionMode="Single" Background="Transparent" BorderThickness="0">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:SceneRow">
+                  <StackPanel>
+                    <TextBlock Classes="tt" Text="{Binding Name}"/>
+                    <TextBlock Classes="tile" Text="{Binding Description}"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </StackPanel>
+          <Button Grid.Column="1" Classes="mock" Content="Open in Home" VerticalAlignment="Center" Command="{Binding GoToCommand}" CommandParameter="Home"/>
+        </Grid>
+      </Border>
+
+      <!-- Home: Bulb -->
+      <Border Classes="result" IsVisible="{Binding ShowBulb}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="lbl" Text="LIVING ROOM BULB · HOME"/>
+            <Grid ColumnDefinitions="110,*" ColumnSpacing="10">
+              <Button x:Name="BulbToggle" Classes="toggleBtn" HorizontalAlignment="Left" Command="{Binding Home.ToggleBulbCommand}" ToolTip.Tip="Living room bulb">
+                <Border Classes="toggle" Classes.off="{Binding !Home.BulbOn}"><Ellipse/></Border>
+              </Button>
+              <views:ValueSlider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Home.BulbBrightness}" DefaultValue="60" IsEnabled="{Binding Home.BulbOn}"/>
+            </Grid>
+          </StackPanel>
+          <Button Grid.Column="1" Classes="mock" Content="Open in Home" VerticalAlignment="Center" Command="{Binding GoToCommand}" CommandParameter="Home"/>
+        </Grid>
+      </Border>
+
+      <!-- Home: Desk lamp -->
+      <Border Classes="result" IsVisible="{Binding ShowDesk}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="lbl" Text="DESK LAMP · HOME"/>
+            <Grid ColumnDefinitions="110,*" ColumnSpacing="10">
+              <Button x:Name="DeskToggle" Classes="toggleBtn" HorizontalAlignment="Left" Command="{Binding Home.ToggleDeskCommand}" ToolTip.Tip="Desk lamp">
+                <Border Classes="toggle" Classes.off="{Binding !Home.DeskOn}"><Ellipse/></Border>
+              </Button>
+              <TextBlock Grid.Column="1" Classes="sub13" VerticalAlignment="Center" Text="Smart plug · 192.168.1.21"/>
+            </Grid>
+          </StackPanel>
+          <Button Grid.Column="1" Classes="mock" Content="Open in Home" VerticalAlignment="Center" Command="{Binding GoToCommand}" CommandParameter="Home"/>
+        </Grid>
+      </Border>
+
+      <!-- Home: Monitor light bar -->
+      <Border Classes="result" IsVisible="{Binding ShowLightBar}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="lbl" Text="MONITOR LIGHT BAR · HOME"/>
+            <Grid ColumnDefinitions="110,*" ColumnSpacing="10">
+              <Button x:Name="LightBarToggle" Classes="toggleBtn" HorizontalAlignment="Left" Command="{Binding Home.ToggleLightBarCommand}" ToolTip.Tip="Monitor light bar">
+                <Border Classes="toggle" Classes.off="{Binding !Home.LightBarOn}"><Ellipse/></Border>
+              </Button>
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <TextBlock FontSize="12" Foreground="{DynamicResource BrushTextRow}" Text="Colour" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                <Button Classes="swatch" Background="{DynamicResource BrushSwatchYellow}" Command="{Binding Home.SelectColorCommand}" CommandParameter="0" ToolTip.Tip="Warm"/>
+                <Button Classes="swatch" Background="{DynamicResource BrushWhite}" BorderBrush="{DynamicResource BrushBorderStrong}" Command="{Binding Home.SelectColorCommand}" CommandParameter="1" ToolTip.Tip="White"/>
+                <Button Classes="swatch" Background="{DynamicResource BrushRailSelectedBar}" BorderBrush="{DynamicResource BrushBorderStrong}" Command="{Binding Home.SelectColorCommand}" CommandParameter="2" ToolTip.Tip="Blue"/>
+                <Button Classes="swatch" Background="{DynamicResource BrushSwatchRed}" BorderBrush="{DynamicResource BrushBorderStrong}" Command="{Binding Home.SelectColorCommand}" CommandParameter="3" ToolTip.Tip="Red"/>
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+          <Button Grid.Column="1" Classes="mock" Content="Open in Home" VerticalAlignment="Center" Command="{Binding GoToCommand}" CommandParameter="Home"/>
+        </Grid>
+      </Border>
+
+      <!-- Home: Add device -->
+      <Border Classes="result" IsVisible="{Binding ShowAddDevice}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="2">
+            <TextBlock Classes="lbl" Text="DEVICES · HOME"/>
+            <TextBlock Classes="sub13" TextWrapping="Wrap" Text="Manually add a smart device (scene run + discovery log)"/>
+          </StackPanel>
+          <Button x:Name="AddDeviceButton" Grid.Column="1" Classes="mock" Content="Add device" Command="{Binding Home.AddDeviceCommand}" VerticalAlignment="Center"/>
+        </Grid>
+      </Border>
+
+      <!-- Home: Retry -->
+      <Border Classes="result" IsVisible="{Binding ShowRetry}">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Classes="row" VerticalAlignment="Center" Text="Bedroom plug is offline — retry the handshake"/>
+          <Button x:Name="RetryButton" Grid.Column="1" Classes="mock" Content="Retry connection" Command="{Binding Home.RetryCommand}" VerticalAlignment="Center"/>
+        </Grid>
+      </Border>
+
+      <!-- Empty state -->
+      <Border Classes="result" IsVisible="{Binding !HasResults}">
+        <TextBlock Classes="sub13" TextWrapping="Wrap" Text="No matches. Try: brightness, contrast, volume, power, input, sensitivity, scene, bulb, mute, command… Clear the search (Esc) to return to the tab."/>
+      </Border>
+
+      <!-- Live log -->
+      <Border Classes="card" Padding="14">
+        <StackPanel Spacing="8">
+          <TextBlock Classes="lbl" Text="LIVE LOG"/>
+          <ItemsControl ItemsSource="{Binding Display.LogLines}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Classes="mono" FontSize="11" Text="{Binding}" TextWrapping="Wrap"/>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <TextBlock Classes="sub13" FontSize="11" Text="Keyboard: Tab · ←→ · PgUp/PgDn · Enter · Esc"/>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

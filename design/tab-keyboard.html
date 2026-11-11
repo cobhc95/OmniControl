@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OmniControl · Keyboard (rebind)</title>
+<style>
+:root{--bg:#0F1219;--bar:#1C2230;--card:#1B2030;--card2:#212A3E;--line:#2E364A;--ink:#E8ECF4;--mut:#9AA4B8;--acc:#4D8DFF;--acc2:#8FC3FF;--ok:#4ADE80;--warn:#F5C542;--rad:8px}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.45 "Segoe UI",system-ui,-apple-system,Arial,sans-serif;display:flex;justify-content:center;padding:20px;min-height:100vh}
+.window{width:820px;max-width:96vw;height:560px;background:#141824;border:1px solid #2E364A;border-radius:12px;overflow:hidden;display:grid;grid-template-rows:30px 48px 1fr;box-shadow:0 18px 50px rgba(0,0,0,.45)}
+.titlebar{background:#11141B;color:#C6CDDB;display:flex;align-items:center;gap:10px;padding:0 12px;font-size:12px}
+.dot{width:10px;height:10px;border-radius:50%;background:#2E364A;display:inline-block}.dot.r{background:#FF6B6B}.dot.y{background:#F5C542}.dot.g{background:#30D158}
+.topbar{background:var(--bar);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 12px}
+.logo{width:26px;height:26px;border-radius:7px;background:var(--acc);color:#fff;font-weight:700;display:grid;place-items:center;font-size:14px}
+[role=tablist]{display:flex;gap:2px}
+[role=tab]{appearance:none;border:1px solid transparent;background:transparent;color:#C6CDDB;font:inherit;padding:7px 12px;border-radius:7px;cursor:pointer}
+[role=tab][aria-selected=true]{background:#2F4F8F;color:#fff;font-weight:600;box-shadow:inset 0 -3px 0 var(--acc2)}
+.searchwrap{margin-left:auto;position:relative}
+.searchwrap input{width:220px;background:#11141B;color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:7px 10px 7px 30px;font:inherit}
+.searchwrap input::placeholder{color:#7C879C}
+.searchicon{position:absolute;left:9px;top:50%;transform:translateY(-50%);opacity:.7}
+.hint{position:absolute;right:8px;top:50%;transform:translateY(-50%);font:11px Consolas,monospace;color:#7C879C;background:#1C2230;border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+.main{padding:14px;overflow:auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+h1{font-size:20px;margin:0 0 2px}
+.sub{color:var(--mut);font-size:12px}
+.head{display:flex;justify-content:space-between;align-items:start;gap:12px;margin-bottom:12px}
+.lbl{font-size:11px;letter-spacing:.06em;color:var(--mut);font-weight:700;margin:0 0 6px}
+.rowline{border-bottom:1px solid var(--line)}
+.rmap{display:grid;grid-template-columns:150px 1fr auto;gap:12px;align-items:center;padding:10px 0}
+.btn{appearance:none;background:#20283C;color:var(--ink);border:1px solid #3A4358;border-radius:7px;padding:7px 12px;cursor:pointer;font:inherit}
+.btn.primary{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+.btn:hover{filter:brightness(1.1)}
+.key{background:#11141B;border:1px solid #3A4358;border-radius:5px;padding:3px 7px;font:12px Consolas,monospace;color:var(--ink);display:inline-block}
+.rec{display:flex;gap:8px;align-items:center;background:#11141B;border:1px solid var(--line);border-radius:8px;padding:10px}
+.rec .big{flex:1;background:#fff;color:#11141B;border:2px solid var(--acc);border-radius:7px;padding:9px 12px;font:13px Consolas,monospace;min-height:36px;text-align:center}
+.note{color:var(--mut);font-size:12px;margin-top:10px}
+.log{background:#0D1017;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:11px/1.6 Consolas,monospace;color:#C6CDDB;margin-top:10px;white-space:pre-wrap}
+:focus-visible{outline:2px solid var(--acc2);outline-offset:2px;border-radius:6px}
+</style>
+</head>
+<body>
+<div class="window" role="application" aria-label="OmniControl Keyboard rebind tab">
+  <div class="titlebar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span>OmniControl — DDC/CI engine</span><span style="margin-left:auto">820 × 560</span></div>
+  <div class="topbar">
+    <div class="logo" aria-hidden="true">O</div>
+    <div role="tablist" aria-label="Sections">
+      <button role="tab" aria-selected="false">Display</button>
+      <button role="tab" aria-selected="false">Volume</button>
+      <button role="tab" aria-selected="false">Mouse</button>
+      <button role="tab" aria-selected="true">Keyboard</button>
+      <button role="tab" aria-selected="false">Hotkeys</button>
+      <button role="tab" aria-selected="false">Home</button>
+    </div>
+    <div class="searchwrap">
+      <span class="searchicon" aria-hidden="true">⌕</span>
+      <input type="search" aria-label="Search OmniControl" placeholder="Search — type anywhere or Ctrl+K" autocomplete="off">
+      <span class="hint" aria-hidden="true">⌃K</span>
+    </div>
+  </div>
+  <div class="main">
+    <div class="head">
+      <div>
+        <h1>Keyboard</h1>
+        <div class="sub">Rebind what keys and buttons do. Every row is a real button — click <b>Change</b>, then press the new key.</div>
+      </div>
+      <div style="display:flex;gap:8px"><button class="btn" id="reset">Reset to defaults</button><button class="btn primary" id="apply">Apply</button></div>
+    </div>
+    <div class="card">
+      <p class="lbl">KEYS &amp; BUTTONS</p>
+      <div id="rows"></div>
+      <div class="rec" style="margin-top:12px">
+        <div style="min-width:92px"><p class="lbl" style="margin:0">RECORDING</p><p class="sub" id="for">— click Change first —</p></div>
+        <div class="big" id="cap">Press the new key…</div>
+        <button class="btn" id="cancel">Cancel</button>
+        <button class="btn primary" id="save">Save</button>
+      </div>
+      <p class="note">Binds apply in-app immediately and survive restart. This does NOT install global hotkeys — for those, see the <b>Hotkeys</b> tab.</p>
+    </div>
+    <div class="log" id="log" aria-live="polite">[14:06:00] Keyboard rebind ready · 8 entries loaded.</div>
+  </div>
+</div>
+<script>
+const actions=["Default system action","Brightness up","Brightness down","Monitor volume up","Volume up","Volume down","Mute","Keyboard: F9 (unused)","Copy","Paste","Ctrl+click (new tab)","Not set"];
+const rows=[{n:"Left click",a:0},{n:"Right click",a:0},{n:"Middle click",a:10},{n:"Mouse 4 (X1)",a:1},{n:"Mouse 5 (X2)",a:6},{n:"Media: Next",a:4},{n:"Media: Prev",a:5},{n:"Fn lock behaviour",a:7}];
+const host=document.getElementById('rows'),log=document.getElementById('log'),cap=document.getElementById('cap'),capFor=document.getElementById('for');
+let cur=-1;
+function fmt(t){return '['+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})+'] '}
+function push(m){log.textContent+='\n'+fmt()+m;}
+function render(){
+  host.innerHTML='';
+  rows.forEach((r,i)=>{
+    const d=document.createElement('div');d.className='rmap rowline';
+    const l=document.createElement('div');l.innerHTML='<b></b><div class="sub"></div>';l.querySelector('b').textContent=r.n;
+    const act=document.createElement('span');const k=document.createElement('span');k.className='key';k.textContent=actions[r.a];act.appendChild(k);
+    const b=document.createElement('button');b.className='btn';b.textContent='Change';
+    b.onclick=()=>{cur=i;capFor.textContent='Recording for: '+r.n;cap.textContent='Press the new key… (Esc cancels)';cap.style.borderColor='var(--acc)';push('Recording → '+r.n);};
+    d.append(l,act,b);host.appendChild(d);
+  });
+}
+render();
+document.addEventListener('keydown',e=>{
+  if(cur<0)return;
+  e.preventDefault();
+  if(e.key==='Escape'){cur=-1;capFor.textContent='— click Change first —';cap.textContent='Press the new key…';push('Cancelled');return;}
+  const k=e.key.length===1?e.key.toUpperCase():e.key;
+  rows[cur].a=(rows[cur].a+1)%actions.length;
+  push(rows[cur].n+' → '+actions[rows[cur].a]+' ('+k+')');
+  cur=-1;capFor.textContent='— click Change first —';cap.textContent='Press the new key…';
+});
+document.getElementById('reset').onclick=()=>{rows.forEach(r=>r.a=0);render();push('Reset to defaults');};
+document.getElementById('apply').onclick=()=>push('Hook updated for active profile · Keyboard');
+document.getElementById('cancel').onclick=()=>{cur=-1;capFor.textContent='— click Change first —';cap.textContent='Press the new key…';push('Cancelled');};
+document.getElementById('save').onclick=()=>{if(cur>=0){push(rows[cur].n+' saved');cur=-1;capFor.textContent='— click Change first —';cap.textContent='Press the new key…';}else push('Nothing recording');};
+document.querySelectorAll('[role=tab]').forEach(t=>t.onclick=()=>{document.querySelectorAll('[role=tab]').forEach(x=>x.setAttribute('aria-selected','false'));t.setAttribute('aria-selected','true');});
+document.querySelectorAll('[role=tablist]').addEventListener?.('keydown',()=>{});
+</script>
+</body>
+</html>

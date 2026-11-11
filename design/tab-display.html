@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OmniControl · Display</title>
+<style>
+:root{--bg:#0F1219;--bar:#1C2230;--card:#1B2030;--card2:#212A3E;--line:#2E364A;--ink:#E8ECF4;--mut:#9AA4B8;--acc:#4D8DFF;--acc2:#8FC3FF;--ok:#4ADE80;--warn:#F5C542;--danger:#FF8A8A;--rad:8px}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.45 "Segoe UI",system-ui,-apple-system,Arial,sans-serif;display:flex;justify-content:center;padding:20px;min-height:100vh}
+.window{width:820px;max-width:96vw;height:560px;background:#141824;border:1px solid #2E364A;border-radius:12px;overflow:hidden;display:grid;grid-template-rows:30px 48px 1fr;box-shadow:0 18px 50px rgba(0,0,0,.45)}
+.titlebar{background:#11141B;color:#C6CDDB;display:flex;align-items:center;gap:10px;padding:0 12px;font-size:12px}
+.dot{width:10px;height:10px;border-radius:50%;background:#2E364A;display:inline-block}.dot.r{background:#FF6B6B}.dot.y{background:#F5C542}.dot.g{background:#30D158}
+.topbar{background:var(--bar);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 12px}
+.logo{width:26px;height:26px;border-radius:7px;background:var(--acc);color:#fff;font-weight:700;display:grid;place-items:center;font-size:14px}
+[role=tablist]{display:flex;gap:2px}
+[role=tab]{appearance:none;border:1px solid transparent;background:transparent;color:#C6CDDB;font:inherit;padding:7px 12px;border-radius:7px;cursor:pointer}
+[role=tab][aria-selected=true]{background:#2F4F8F;color:#fff;font-weight:600;box-shadow:inset 0 -2px 0 var(--acc2)}
+.searchwrap{margin-left:auto;position:relative}
+.searchwrap input{width:250px;background:#11141B;color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:7px 10px 7px 30px;font:inherit}
+.searchwrap input::placeholder{color:#7C879C}
+.searchicon{position:absolute;left:9px;top:50%;transform:translateY(-50%);opacity:.7}
+.hint{position:absolute;right:8px;top:50%;transform:translateY(-50%);font:11px Consolas,monospace;color:#7C879C;background:#1C2230;border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+.results{position:absolute;right:0;top:40px;width:420px;max-height:240px;overflow:auto;background:#1B2030;border:1px solid var(--line);border-radius:9px;box-shadow:0 12px 30px rgba(0,0,0,.5);padding:6px;display:none;z-index:20}
+.results.open{display:block}
+.results button{display:block;width:100%;text-align:left;background:transparent;color:var(--ink);border:0;border-radius:6px;padding:8px 10px;cursor:pointer;font:inherit}
+.results button small{display:block;color:var(--mut);font-size:11px}
+.results button.active{background:#2F4F8F}
+:focus-visible{outline:2px solid var(--acc2);outline-offset:2px;border-radius:6px}
+.main{display:grid;grid-template-columns:220px 1fr;gap:14px;padding:14px;overflow:auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+h1{font-size:20px;margin:0 0 2px}
+.sub{color:var(--mut);font-size:12px}
+.head{display:flex;justify-content:space-between;align-items:start;gap:12px;margin-bottom:12px}
+button{font:inherit}
+.btn{appearance:none;background:#20283C;color:var(--ink);border:1px solid #3A4358;border-radius:7px;padding:7px 12px;cursor:pointer}
+.btn.primary{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+.btn.danger{background:#3A1F28;color:#FF9B9B;border-color:#5A2B3A}
+.btn:hover{filter:brightness(1.08)}
+.lbl{font-size:11px;letter-spacing:.06em;color:var(--mut);font-weight:700;margin:0 0 6px}
+ul.mon{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+ul.mon button{width:100%;text-align:left;background:#141824;border:1px solid var(--line);border-radius:8px;padding:10px 11px;color:var(--ink);cursor:pointer}
+ul.mon button[aria-current=true]{background:#23314F;border-color:var(--acc)}
+ul.mon b{font-size:13px}
+ul.mon small{display:block;color:var(--mut)}
+.pill{display:inline-block;font-size:10px;font-weight:700;border-radius:4px;padding:2px 6px;margin-left:6px}
+.pill.ddc{background:#1E3A5F;color:#9CC3FF}.pill.wmi{background:#24402A;color:#9FE8A6}
+.sliderrow{display:grid;grid-template-columns:110px 1fr 64px;gap:10px;align-items:center;margin:10px 0}
+input[type=range]{width:100%;accent-color:var(--acc);height:24px;cursor:pointer}
+input[type=number]{width:64px;background:#11141B;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:6px;text-align:right}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.seg button{appearance:none;background:#141824;color:#C6CDDB;border:0;border-right:1px solid var(--line);padding:7px 12px;cursor:pointer}
+.seg button:last-child{border-right:0}
+.seg button[aria-checked=true]{background:var(--acc);color:#fff;font-weight:600}
+.div{height:1px;background:var(--line);margin:12px 0}
+.log{background:#0D1017;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:11px/1.6 Consolas,monospace;color:#C6CDDB;max-height:92px;overflow:auto;white-space:pre-wrap}
+.cmdrow{display:grid;grid-template-columns:1fr auto auto;gap:8px;margin-top:10px}
+.cmd{font:13px Consolas,monospace;background:#11141B;color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:8px 10px;min-width:0}
+.status{display:flex;justify-content:space-between;align-items:center;margin-top:10px;color:var(--mut);font-size:11px}
+.ok{color:var(--ok)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="window" role="application" aria-label="OmniControl Display tab">
+  <div class="titlebar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span>OmniControl — DDC/CI engine</span><span style="margin-left:auto">820 × 560</span></div>
+  <div class="topbar">
+    <div class="logo" aria-hidden="true">O</div>
+    <div role="tablist" aria-label="Sections">
+      <button role="tab" aria-selected="true" data-tab="display">Display</button>
+      <button role="tab" aria-selected="false" data-tab="volume">Volume</button>
+      <button role="tab" aria-selected="false" data-tab="mouse">Mouse</button>
+      <button role="tab" aria-selected="false" data-tab="hotkeys">Hotkeys</button>
+      <button role="tab" aria-selected="false" data-tab="home">Home</button>
+    </div>
+    <div class="searchwrap">
+      <span class="searchicon" aria-hidden="true">⌕</span>
+      <input id="search" type="search" aria-label="Search OmniControl" placeholder="Search — type anywhere or Ctrl+K" autocomplete="off">
+      <span class="hint" aria-hidden="true">⌃K</span>
+      <div class="results" id="results" role="listbox" aria-label="Search results"></div>
+    </div>
+  </div>
+  <div class="main">
+    <div>
+      <div class="card">
+        <p class="lbl">DETECTED</p>
+        <ul class="mon" id="monitors">
+          <li><button aria-current="true" data-title="PL2779Q" data-alias="PL2779Q"><b>PL2779Q</b><span class="pill ddc">DDC/CI</span><small>Philips · \\.\DISPLAY1 · selected alias</small></button></li>
+          <li><button aria-current="false" data-title="PB278" data-alias="PB278"><b>PB278</b><span class="pill ddc">DDC/CI</span><small>ASUS · \\.\DISPLAY2</small></button></li>
+          <li><button aria-current="false" data-title="LCD" data-alias="LCD"><b>LCD</b><span class="pill wmi">WMI</span><small>Laptop panel · \\.\DISPLAY0</small></button></li>
+        </ul>
+        <div class="div"></div>
+        <p class="sub" style="font-size:11px">GPU saturation: not available (vendor SDK needed). Laptop uses WMI, external panels use VCP 0x10…0xD6.</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="head">
+        <div><h1 id="selTitle">PL2779Q</h1><div class="sub">Selected · alias for command input · <span id="selAlias">PL2779Q</span></div></div>
+        <div style="display:flex;gap:8px"><button class="btn" id="refresh">Refresh</button><button class="btn primary" id="runTop">Run ▸</button></div>
+      </div>
+
+      <div class="sliderrow"><label for="bright">Brightness</label><input type="range" id="bright" min="0" max="100" value="36"><input type="number" id="brightN" min="0" max="100" value="36" aria-label="Brightness value"></div>
+      <div class="sliderrow"><label for="contrast">Contrast</label><input type="range" id="contrast" min="0" max="100" value="50"><input type="number" id="contrastN" min="0" max="100" value="50" aria-label="Contrast value"></div>
+      <div class="sliderrow"><label for="mvol">Monitor volume</label><input type="range" id="mvol" min="0" max="100" value="30"><input type="number" id="mvolN" min="0" max="100" value="30" aria-label="Monitor volume value"></div>
+
+      <div class="div"></div>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:16px;align-items:start">
+        <div>
+          <p class="lbl">INPUT SOURCE</p>
+          <div class="seg" role="radiogroup" aria-label="Input source">
+            <button role="radio" aria-checked="false">HDMI 1</button>
+            <button role="radio" aria-checked="false">HDMI 2</button>
+            <button role="radio" aria-checked="true">DP 1</button>
+            <button role="radio" aria-checked="false">USB-C</button>
+          </div>
+        </div>
+        <div>
+          <p class="lbl">POWER</p>
+          <div style="display:flex;gap:8px">
+            <button class="btn" id="pon">Power on</button>
+            <button class="btn" id="poff">Power off</button>
+            <button class="btn danger" id="reset">Factory reset</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="cmdrow">
+        <input class="cmd" id="cmd" aria-label="Command" value="PL2779Q b 36">
+        <button class="btn" id="caps">Read capabilities</button>
+        <button class="btn primary" id="run">Run</button>
+      </div>
+      <div class="log" id="log" aria-live="polite">[18:02:11] Engine ready. Monitors: 2. Laptop LCD: available.
+[18:02:12] → OK  •  PL2779Q b 36
+[18:02:14] Capabilities read · VCP 0x10, 0x12, 0x62…</div>
+      <div class="status"><span><span class="ok">●</span> Ready · sliders send <code>PL2779Q b 36</code> immediately</span><span>Keyboard: Tab · Arrow · PgUp/PgDn · Enter · Esc</span></div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+const tabs=[...document.querySelectorAll('[role=tab]')];
+const page={display:'tab-display.html',volume:'tab-volume.html',mouse:'tab-mouse.html',hotkeys:'tab-hotkeys.html',home:'tab-home.html'};
+tabs.forEach(t=>t.onclick=()=>location.href=page[t.dataset.tab]);
+document.querySelector('[role=tablist]').addEventListener('keydown',e=>{let i=tabs.indexOf(document.activeElement);if(i<0)return;if(e.key==='ArrowRight'){e.preventDefault();tabs[(i+1)%tabs.length].focus()}if(e.key==='ArrowLeft'){e.preventDefault();tabs[(i-1+tabs.length)%tabs.length].focus()}});
+function bind(r,n){if(!r||!n)return;r.oninput=()=>n.value=r.value;r.onchange=()=>log(r.id+' → '+r.value);r.onkeydown=e=>{if(e.key==='PageUp'){e.preventDefault();r.value=+r.value+10;n.value=r.value}if(e.key==='PageDown'){e.preventDefault();r.value=+r.value-10;n.value=r.value}};n.onchange=()=>{r.value=n.value;log(r.id+' → '+n.value)}}
+bind(document.getElementById('bright'),document.getElementById('brightN'));
+bind(document.getElementById('contrast'),document.getElementById('contrastN'));
+bind(document.getElementById('mvol'),document.getElementById('mvolN'));
+function log(m){const l=document.getElementById('log');l.textContent+='\n['+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})+'] '+m;l.scrollTop=l.scrollHeight;document.getElementById('cmd').value=document.getElementById('selAlias').textContent+' b '+document.getElementById('brightN').value}
+document.querySelectorAll('#monitors button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#monitors button').forEach(x=>x.setAttribute('aria-current','false'));b.setAttribute('aria-current','true');document.getElementById('selTitle').textContent=b.dataset.title;document.getElementById('selAlias').textContent=b.dataset.alias;log('Selected '+b.dataset.title)});
+document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.seg button').forEach(x=>x.setAttribute('aria-checked','false'));b.setAttribute('aria-checked','true');log('Input → '+b.textContent)});
+document.getElementById('pon').onclick=()=>log('Power on sent');
+document.getElementById('poff').onclick=()=>log('Power off sent');
+document.getElementById('reset').onclick=()=>{if(confirm('Factory reset?'))log('Factory reset sent')};
+document.getElementById('caps').onclick=()=>log('Capabilities: (monitor capabilities string)');
+document.getElementById('run').onclick=()=>log('→ OK  •  '+document.getElementById('cmd').value);
+document.getElementById('runTop').onclick=()=>document.getElementById('run').click();
+document.getElementById('refresh').onclick=()=>log('Found 2 DDC/CI monitor(s)');
+// search (shared pattern)
+const input=document.getElementById('search'),box=document.getElementById('results');
+const index=[{t:'Brightness slider',s:'Display · PL2779Q',go:()=>document.getElementById('bright').focus()},{t:'Contrast slider',s:'Display',go:()=>document.getElementById('contrast').focus()},{t:'Monitor volume',s:'Display',go:()=>document.getElementById('mvol').focus()},{t:'Input source HDMI / DP / USB-C',s:'Display',go:()=>document.querySelector('.seg button[aria-checked=true]')?.focus()},{t:'Power on / off / factory reset',s:'Display',go:()=>document.getElementById('pon').focus()},{t:'Run command (e.g. ALL b +5, LCD b 70, SYS v 30)',s:'Display',go:()=>document.getElementById('cmd').focus()},{t:'Read capabilities',s:'Display',go:()=>document.getElementById('caps').focus()},{t:'Volume — master, Spotify, Chrome',s:'Volume tab',go:()=>location.href='tab-volume.html'},{t:'Mouse profiles and button remap',s:'Mouse tab',go:()=>location.href='tab-mouse.html'},{t:'Hotkeys — new binding',s:'Hotkeys tab',go:()=>location.href='tab-hotkeys.html'},{t:'Home — movie night scene',s:'Home tab',go:()=>location.href='tab-home.html'},{t:'Refresh monitors',s:'Display',go:()=>document.getElementById('refresh').focus()}];
+let active=-1,open=false;
+function render(){const q=input.value.trim().toLowerCase();const hits=index.filter(x=>!q||x.t.toLowerCase().includes(q)||x.s.toLowerCase().includes(q)).slice(0,8);box.innerHTML='';active=hits.length?0:-1;hits.forEach((h,i)=>{const b=document.createElement('button');b.setAttribute('role','option');b.innerHTML='<b></b><small></small>';b.querySelector('b').textContent=h.t;b.querySelector('small').textContent=h.s;b.classList.toggle('active',i===active);b.onclick=()=>{closeSearch();if(h.go)h.go()};box.appendChild(b)});box.classList.toggle('open',open&&hits.length>0);box.style.display=open?'block':'none'}
+function openSearch(){open=true;box.style.display='block';input.focus();render()}
+function closeSearch(){open=false;box.style.display='none';active=-1}
+input.addEventListener('input',render);
+input.addEventListener('focus',()=>{open=true;render()});
+input.addEventListener('blur',()=>setTimeout(()=>{if(!box.contains(document.activeElement))closeSearch()},120));
+input.addEventListener('keydown',e=>{const opts=[...box.querySelectorAll('button')];if(e.key==='Escape'){closeSearch();e.preventDefault()}if(e.key==='ArrowDown'){e.preventDefault();active=Math.min(opts.length-1,active+1);opts.forEach((o,i)=>o.classList.toggle('active',i===active))}if(e.key==='ArrowUp'){e.preventDefault();active=Math.max(0,active-1);opts.forEach((o,i)=>o.classList.toggle('active',i===active))}if(e.key==='Enter'&&active>=0&&opts[active]){e.preventDefault();opts[active].click()}});
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openSearch();input.select();return}
+  if(e.key==='Escape'&&open){closeSearch();return}
+  if(!e.ctrlKey&&!e.metaKey&&!e.altKey&&e.key.length===1&&document.activeElement!==input){const a=document.activeElement;if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.isContentEditable))return;openSearch();input.value=e.key;render();}
+});
+</script>
+</body></html>

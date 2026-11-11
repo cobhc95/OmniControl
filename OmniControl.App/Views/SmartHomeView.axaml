@@ -1,0 +1,128 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.ViewModels" xmlns:views="using:OmniControl.App.Views"
+             x:Class="OmniControl.App.Views.SmartHomeView"
+             x:DataType="vm:SmartHomeViewModel">
+  <UserControl.Styles>
+    <Style Selector="views|ValueSlider TextBox#ValueBox"><Setter Property="Width" Value="52"/></Style>
+    <Style Selector="ListBox.scene ListBoxItem"><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0,0,0,8"/></Style>
+    <Style Selector="ListBox.scene ListBoxItem /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Padding" Value="11"/><Setter Property="CornerRadius" Value="8"/><Setter Property="BorderBrush" Value="{DynamicResource BrushBorder}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="Background" Value="{DynamicResource BrushBg}"/></Style>
+    <Style Selector="ListBox.scene ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushAccentSoft}"/><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}"/><Setter Property="BorderThickness" Value="1"/></Style>
+    <Style Selector="Button.swatch"><Setter Property="Width" Value="18"/><Setter Property="Height" Value="18"/><Setter Property="CornerRadius" Value="9"/><Setter Property="Padding" Value="0"/><Setter Property="BorderThickness" Value="2"/><Setter Property="BorderBrush" Value="{DynamicResource BrushText}"/></Style>
+    <Style Selector="Button.swatch.sel"><Setter Property="BorderThickness" Value="3"/><Setter Property="BorderBrush" Value="{DynamicResource BrushWhite}"/></Style>
+  </UserControl.Styles>
+  <Grid RowDefinitions="Auto,Auto,*" RowSpacing="12">
+    <Grid ColumnDefinitions="*,Auto">
+      <StackPanel Spacing="2">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <TextBlock Classes="h1" Text="Home" VerticalAlignment="Center" />
+          <Border Background="{DynamicResource BrushBadge}" CornerRadius="5" Padding="7,2" VerticalAlignment="Center">
+            <TextBlock FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushBadgeBg}" Text="BETA" />
+          </Border>
+        </StackPanel>
+        <TextBlock Classes="sub13" Text="Local-network control of smart devices (custom integration)." />
+      </StackPanel>
+      <Button Grid.Column="1" Classes="mock" Content="Add device" Command="{Binding AddDeviceCommand}" VerticalAlignment="Center" Padding="11,6" />
+    </Grid>
+
+    <Border Grid.Row="1" Background="{DynamicResource BrushWarnBg}" BorderBrush="{DynamicResource BrushWarnBorder}" BorderThickness="1" CornerRadius="8" Padding="12,9">
+      <TextBlock Foreground="{DynamicResource BrushWarnTextDark}" FontSize="12" TextWrapping="Wrap" Text="This tab is experimental. It talks to devices over an unofficial local interface, so features can stop working after a firmware or app update." />
+    </Border>
+
+    <Grid Grid.Row="2" ColumnDefinitions="230,*" ColumnSpacing="12">
+      <Border Classes="card" Padding="14">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Bottom" Classes="sub12" Margin="0,8,0,0" Text="Scenes can also run from a hotkey — search “movie night”." TextWrapping="Wrap" />
+          <StackPanel Spacing="8">
+            <TextBlock Classes="lbl" Text="SCENES" />
+            <ListBox x:Name="ScenesList" Classes="scene" ItemsSource="{Binding Scenes}" SelectedItem="{Binding SelectedScene}" SelectionMode="Single" Background="Transparent" BorderThickness="0">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:SceneRow">
+                  <StackPanel>
+                    <TextBlock Classes="tt" Text="{Binding Name}" />
+                    <TextBlock Classes="tile" Text="{Binding Description}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </StackPanel>
+        </DockPanel>
+      </Border>
+
+      <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*" RowSpacing="10">
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+          <Border Classes="card" Padding="12">
+            <StackPanel Spacing="8">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Classes="tt" Text="Living room bulb" VerticalAlignment="Center" />
+                <Button x:Name="BulbToggle" Grid.Column="1" Classes="toggleBtn" Command="{Binding ToggleBulbCommand}" ToolTip.Tip="Living room bulb">
+                  <Border Classes="toggle" Classes.off="{Binding !BulbOn}"><Ellipse /></Border>
+                </Button>
+              </Grid>
+              <TextBlock Classes="sub12" FontSize="11" Text="Bulb · 192.168.1.20 · online" />
+              <views:ValueSlider Label="Brightness" Minimum="0" Maximum="100" Value="{Binding BulbBrightness}" DefaultValue="60" IsEnabled="{Binding BulbOn}" />
+            </StackPanel>
+          </Border>
+          <Border Grid.Column="1" Classes="card" Padding="12">
+            <StackPanel Spacing="8">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Classes="tt" Text="Desk lamp" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Classes="toggleBtn" Command="{Binding ToggleDeskCommand}" ToolTip.Tip="Desk lamp">
+                  <Border Classes="toggle" Classes.off="{Binding !DeskOn}"><Ellipse /></Border>
+                </Button>
+              </Grid>
+              <TextBlock Classes="sub12" FontSize="11" Text="Smart plug · 192.168.1.21 · online" />
+              <TextBlock Classes="sub12" Text="Off · last changed 18:04" />
+            </StackPanel>
+          </Border>
+        </Grid>
+
+        <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="10">
+          <Border Classes="card" Padding="12">
+            <StackPanel Spacing="8">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Classes="tt" Text="Monitor light bar" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Classes="toggleBtn" Command="{Binding ToggleLightBarCommand}" ToolTip.Tip="Monitor light bar">
+                  <Border Classes="toggle" Classes.off="{Binding !LightBarOn}"><Ellipse /></Border>
+                </Button>
+              </Grid>
+              <TextBlock Classes="sub12" FontSize="11" Text="Light strip · 192.168.1.22 · online" />
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock FontSize="12" Foreground="{DynamicResource BrushTextRow}" Text="Colour" VerticalAlignment="Center" Margin="0,0,4,0" />
+                <Button Classes="swatch" Background="{DynamicResource BrushSwatchYellow}" Command="{Binding SelectColorCommand}" CommandParameter="0" ToolTip.Tip="Warm" />
+                <Button Classes="swatch" Background="{DynamicResource BrushWhite}" BorderBrush="{DynamicResource BrushBorderStrong}" Command="{Binding SelectColorCommand}" CommandParameter="1" ToolTip.Tip="White" />
+                <Button Classes="swatch" Background="{DynamicResource BrushRailSelectedBar}" BorderBrush="{DynamicResource BrushBorderStrong}" Command="{Binding SelectColorCommand}" CommandParameter="2" ToolTip.Tip="Blue" />
+                <Button Classes="swatch" Background="{DynamicResource BrushSwatchRed}" BorderBrush="{DynamicResource BrushBorderStrong}" Command="{Binding SelectColorCommand}" CommandParameter="3" ToolTip.Tip="Red" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+          <Border Grid.Column="1" Classes="card" Background="{DynamicResource BrushDangerBg}" BorderBrush="{DynamicResource BrushDangerBorder}" Padding="12">
+            <StackPanel Spacing="8">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Classes="tt" Text="Bedroom plug" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushDanger}" Text="OFFLINE" VerticalAlignment="Center" IsVisible="{Binding BedroomOffline}" />
+                <TextBlock Grid.Column="1" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushBadgeGreenFg}" Text="ONLINE" VerticalAlignment="Center" IsVisible="{Binding !BedroomOffline}" />
+              </Grid>
+              <TextBlock Classes="sub12" FontSize="11" Text="Smart plug · 192.168.1.24 · no response" IsVisible="{Binding BedroomOffline}" />
+              <TextBlock Classes="sub12" FontSize="11" Text="Smart plug · 192.168.1.24 · online" IsVisible="{Binding !BedroomOffline}" />
+              <Button x:Name="RetryButton" Classes="mock" Content="Retry connection" HorizontalAlignment="Left" Command="{Binding RetryCommand}" IsVisible="{Binding BedroomOffline}" Padding="11,6" />
+            </StackPanel>
+          </Border>
+        </Grid>
+
+        <Border Grid.Row="2" Classes="card" Padding="12">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="lbl" Text="DISCOVERY LOG" />
+            <ItemsControl ItemsSource="{Binding DiscoveryLog}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Classes="mono" FontSize="11" Text="{Binding}" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+      </Grid>
+    </Grid>
+  </Grid>
+</UserControl>

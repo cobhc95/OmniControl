@@ -1,0 +1,56 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>OmniControl · Mouse</title>
+<style>
+:root{--bg:#0F1219;--bar:#1C2230;--card:#1B2030;--line:#2E364A;--ink:#E8ECF4;--mut:#9AA4B8;--acc:#4D8DFF;--acc2:#8FC3FF}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.45 "Segoe UI",system-ui,-apple-system,Arial,sans-serif;display:flex;justify-content:center;padding:20px;min-height:100vh}
+.window{width:820px;max-width:96vw;height:560px;background:#141824;border:1px solid #2E364A;border-radius:12px;overflow:hidden;display:grid;grid-template-rows:30px 48px 1fr}
+.titlebar{background:#11141B;color:#C6CDDB;display:flex;align-items:center;gap:10px;padding:0 12px;font-size:12px}.dot{width:10px;height:10px;border-radius:50%;background:#2E364A;display:inline-block}.dot.r{background:#FF6B6B}.dot.y{background:#F5C542}.dot.g{background:#30D158}
+.topbar{background:var(--bar);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 12px}.logo{width:26px;height:26px;border-radius:7px;background:var(--acc);color:#fff;font-weight:700;display:grid;place-items:center}
+[role=tablist]{display:flex;gap:2px}[role=tab]{appearance:none;border:1px solid transparent;background:transparent;color:#C6CDDB;font:inherit;padding:7px 12px;border-radius:7px;cursor:pointer}[role=tab][aria-selected=true]{background:#2F4F8F;color:#fff;font-weight:600;box-shadow:inset 0 -2px 0 var(--acc2)}
+.searchwrap{margin-left:auto;position:relative}.searchwrap input{width:250px;background:#11141B;color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:7px 10px 7px 30px;font:inherit}.searchicon{position:absolute;left:9px;top:50%;transform:translateY(-50%);opacity:.7}.hint{position:absolute;right:8px;top:50%;transform:translateY(-50%);font:11px Consolas,monospace;color:#7C879C;background:#1C2230;border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+.results{position:absolute;right:0;top:40px;width:420px;max-height:240px;overflow:auto;background:#1B2030;border:1px solid var(--line);border-radius:9px;padding:6px;display:none;z-index:20}.results button{display:block;width:100%;text-align:left;background:transparent;color:var(--ink);border:0;border-radius:6px;padding:8px 10px;cursor:pointer;font:inherit}.results button small{display:block;color:var(--mut);font-size:11px}.results button.active{background:#2F4F8F}
+:focus-visible{outline:2px solid var(--acc2);outline-offset:2px;border-radius:6px}
+.main{display:grid;grid-template-columns:230px 1fr;gap:14px;padding:14px;overflow:auto}.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}h1{font-size:20px;margin:0 0 2px}.sub{color:var(--mut);font-size:12px}button{font:inherit}.btn{appearance:none;background:#20283C;color:var(--ink);border:1px solid #3A4358;border-radius:7px;padding:6px 11px;cursor:pointer}.btn.primary{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}.btn:hover{filter:brightness(1.08)}.lbl{font-size:11px;letter-spacing:.06em;color:var(--mut);font-weight:700;margin:0 0 6px}
+ul.prof{list-style:none;margin:0;padding:0;display:grid;gap:8px}ul.prof button{width:100%;text-align:left;background:#141824;border:1px solid var(--line);border-radius:8px;padding:10px 11px;color:var(--ink);cursor:pointer}ul.prof button[aria-current=true]{background:#23314F;border-color:var(--acc)}ul.prof small{display:block;color:var(--mut)}
+.rowline{display:grid;grid-template-columns:140px 1fr auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}.sliderrow{display:grid;grid-template-columns:110px 1fr 52px;gap:10px;align-items:center;margin-top:10px}input[type=range]{width:100%;accent-color:var(--acc);cursor:pointer}input[type=number]{width:52px;background:#11141B;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px;text-align:right}
+</style></head><body>
+<div class="window" role="application" aria-label="OmniControl Mouse tab">
+<div class="titlebar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span>OmniControl — button remap (low-level hook)</span><span style="margin-left:auto">820 × 560</span></div>
+<div class="topbar"><div class="logo" aria-hidden="true">O</div>
+<div role="tablist" aria-label="Sections"><button role="tab" aria-selected="false" data-tab="display">Display</button><button role="tab" aria-selected="false" data-tab="volume">Volume</button><button role="tab" aria-selected="true" data-tab="mouse">Mouse</button><button role="tab" aria-selected="false" data-tab="hotkeys">Hotkeys</button><button role="tab" aria-selected="false" data-tab="home">Home</button></div>
+<div class="searchwrap"><span class="searchicon" aria-hidden="true">⌕</span><input id="search" type="search" aria-label="Search OmniControl" placeholder="Search — type anywhere or Ctrl+K" autocomplete="off"><span class="hint" aria-hidden="true">⌃K</span><div class="results" id="results" role="listbox" aria-label="Search results"></div></div></div>
+<div class="main">
+<div class="card"><p class="lbl">PROFILES</p><ul class="prof" id="profs">
+<li><button aria-current="true" data-name="Default profile"><b>Default</b><small>Applies everywhere</small></button></li>
+<li><button aria-current="false" data-name="Chrome"><b>Chrome</b><small>chrome.exe</small></button></li>
+<li><button aria-current="false" data-name="Blender"><b>Blender</b><small>blender.exe</small></button></li></ul>
+<div style="margin-top:12px;display:flex;gap:8px"><button class="btn" id="add">Add profile</button><button class="btn" id="del">Delete</button></div>
+<p class="sub" style="margin-top:10px">Focus a profile with Tab, Enter to select. New profiles inherit button map.</p></div>
+<div class="card"><div style="display:flex;justify-content:space-between;align-items:start"><div><h1 id="profTitle">Default profile</h1><p class="sub">Click a button to change its action · every row is a real button.</p></div><button class="btn primary" id="apply">Apply</button></div>
+<div class="rowline"><span>Left click</span><span style="color:var(--mut)">Default system action</span><span>Unchanged</span></div>
+<div class="rowline"><span>Right click</span><span style="color:var(--mut)">Default system action</span><span>Unchanged</span></div>
+<div class="rowline"><span>Middle click</span><span style="font-weight:600">Ctrl + click (open link in new tab)</span><button class="btn" data-row="Middle click">Change</button></div>
+<div class="rowline"><span>Mouse 4 (X1)</span><span style="font-weight:600">Browser back</span><button class="btn" data-row="Mouse 4 (X1)">Change</button></div>
+<div class="rowline"><span>Mouse 5 (X2)</span><span style="color:var(--mut)">Not set</span><button class="btn" data-row="Mouse 5 (X2)">Change</button></div>
+<div class="rowline"><span>Wheel tilt left</span><span style="font-weight:600">Browser back</span><button class="btn" data-row="Wheel tilt left">Change</button></div>
+<p class="lbl" style="margin-top:14px">POINTER SPEED</p>
+<div class="sliderrow"><label for="sens">Sensitivity</label><input type="range" id="sens" min="1" max="11" value="7"><input type="number" id="sensN" min="1" max="11" value="7" aria-label="Sensitivity value"></div>
+<p class="sub" style="margin-top:10px">Remapping needs a low-level hook running in the background. Changes apply to the active profile only.</p>
+</div></div></div>
+<script>
+const page={display:'tab-display.html',volume:'tab-volume.html',mouse:'tab-mouse.html',hotkeys:'tab-hotkeys.html',home:'tab-home.html'};
+document.querySelectorAll('[role=tab]').forEach(t=>t.onclick=()=>location.href=page[t.dataset.tab]);
+document.querySelectorAll('#profs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#profs button').forEach(x=>x.setAttribute('aria-current','false'));b.setAttribute('aria-current','true');document.getElementById('profTitle').textContent=b.dataset.name});
+document.querySelectorAll('[data-row]').forEach(b=>b.onclick=()=>alert('Pick an action for '+b.dataset.row));
+document.getElementById('add').onclick=()=>alert('Add profile');
+document.getElementById('del').onclick=()=>alert('Delete profile');
+document.getElementById('apply').onclick=()=>alert('Hook updated for active profile');
+const r=document.getElementById('sens'),n=document.getElementById('sensN');r.oninput=()=>n.value=r.value;n.onchange=()=>r.value=n.value;
+const input=document.getElementById('search'),box=document.getElementById('results');
+const index=[{t:'Default profile buttons',s:'Mouse',go:()=>document.querySelector('[data-row]')?.focus()},{t:'Sensitivity slider',s:'Mouse',go:()=>r.focus()},{t:'Add profile',s:'Mouse',go:()=>document.getElementById('add').focus()},{t:'Apply remap',s:'Mouse',go:()=>document.getElementById('apply').focus()},{t:'Brightness',s:'Display tab',go:()=>location.href='tab-display.html'},{t:'Volume master',s:'Volume tab',go:()=>location.href='tab-volume.html'}];
+let active=-1,open=false;
+function render(){const q=input.value.trim().toLowerCase();const hits=index.filter(x=>!q||x.t.toLowerCase().includes(q)).slice(0,8);box.innerHTML='';active=hits.length?0:-1;hits.forEach((h,i)=>{const b=document.createElement('button');b.innerHTML='<b></b><small></small>';b.querySelector('b').textContent=h.t;b.querySelector('small').textContent=h.s;b.classList.toggle('active',i===active);b.onclick=()=>{closeSearch();h.go()};box.appendChild(b)});box.style.display=open?'block':'none'}
+function openSearch(){open=true;box.style.display='block';input.focus();render()}function closeSearch(){open=false;box.style.display='none'}
+input.oninput=render;input.onfocus=()=>{open=true;render()};input.onblur=()=>setTimeout(closeSearch,120);
+input.onkeydown=e=>{const o=[...box.querySelectorAll('button')];if(e.key==='Escape')closeSearch();if(e.key==='ArrowDown'){e.preventDefault();active=Math.min(o.length-1,active+1);o.forEach((x,i)=>x.classList.toggle('active',i===active))}if(e.key==='ArrowUp'){e.preventDefault();active=Math.max(0,active-1);o.forEach((x,i)=>x.classList.toggle('active',i===active))}if(e.key==='Enter'&&o[active]){e.preventDefault();o[active].click()}};
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openSearch();input.select();return}if(e.key==='Escape'&&open){closeSearch();return}if(!e.ctrlKey&&!e.metaKey&&!e.altKey&&e.key.length===1&&document.activeElement!==input){const a=document.activeElement;if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.isContentEditable))return;openSearch();input.value=e.key;render()}});
+</script></body></html>

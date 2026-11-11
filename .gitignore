@@ -27,3 +27,4 @@ Thumbs.db
 ## Build output (keep binaries out of git)
 *.nupkg
 *.snupkg
+publish/

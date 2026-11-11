@@ -1,0 +1,119 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.ViewModels"
+             xmlns:views="using:OmniControl.App.Views"
+             x:Class="OmniControl.App.Views.ShellView"
+             x:DataType="vm:ShellViewModel">
+    <UserControl.DataTemplates>
+        <DataTemplate DataType="vm:MainViewModel"><views:DisplayView /></DataTemplate>
+        <DataTemplate DataType="vm:VolumeViewModel"><views:VolumeView /></DataTemplate>
+        <DataTemplate DataType="vm:MouseViewModel"><views:MouseView /></DataTemplate>
+        <DataTemplate DataType="vm:KeyboardViewModel"><views:KeyboardView /></DataTemplate>
+        <DataTemplate DataType="vm:HotkeysViewModel"><views:HotkeysView /></DataTemplate>
+        <DataTemplate DataType="vm:SmartHomeViewModel"><views:SmartHomeView /></DataTemplate>
+        <DataTemplate DataType="vm:SearchViewModel"><views:SearchView /></DataTemplate>
+    </UserControl.DataTemplates>
+
+    <Grid RowDefinitions="48,*,22">
+        <!-- Top tab bar (Design B) -->
+        <Border Grid.Row="0" Background="{DynamicResource BrushRail}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="0,0,0,1" Padding="12,0">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+                <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+                    <Border Width="26" Height="26" CornerRadius="7" Background="{DynamicResource BrushAccent}" VerticalAlignment="Center">
+                        <TextBlock Text="O" Foreground="{DynamicResource BrushWhite}" FontSize="14" FontWeight="Bold"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ListBox x:Name="TabList" ItemsSource="{Binding NavItems}" SelectedItem="{Binding SelectedTab}"
+                             Background="Transparent" BorderThickness="0" Padding="0"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <!-- Mockup [role=tablist]{display:flex;gap:2px} + [role=tab]{padding:7px 12px;border-radius:7px}. Wider gap/padding here de-cramps it. -->
+                                <StackPanel Orientation="Horizontal" Spacing="4"/>
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.Styles>
+                            <!-- Real Border pill per item. Styling the theme ContentPresenter border does not render the filled selected pill. -->
+                            <Style Selector="ListBoxItem">
+                                <Setter Property="Padding" Value="0"/>
+                                <Setter Property="Margin" Value="0"/>
+                                <Setter Property="Foreground" Value="{DynamicResource BrushRailText}"/>
+                                <Setter Property="FontSize" Value="13"/>
+                                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                            </Style>
+                            <Style Selector="ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+                                <Setter Property="CornerRadius" Value="8"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="BorderBrush" Value="Transparent"/>
+                                <Setter Property="Padding" Value="0"/>
+                            </Style>
+                            <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                                <Setter Property="Background" Value="Transparent"/>
+                            </Style>
+                            <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="BorderBrush" Value="Transparent"/>
+                            </Style>
+                            <Style Selector="ListBoxItem:focus /template/ ContentPresenter#PART_ContentPresenter">
+                                <Setter Property="BorderBrush" Value="Transparent"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                            </Style>
+                            <Style Selector="ListBoxItem:pointerover Border#TabPill">
+                                <Setter Property="Background" Value="{DynamicResource BrushRailHover}"/>
+                            </Style>
+                            <!-- Keyboard focus outline (mockup :focus-visible). Before :selected so the selected pill wins when both apply. -->
+                            <Style Selector="ListBoxItem:focus-visible Border#TabPill">
+                                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
+                                <Setter Property="BorderThickness" Value="1"/>
+                            </Style>
+                            <Style Selector="ListBoxItem:selected Border#TabPill">
+                                <Setter Property="Background" Value="{DynamicResource BrushRailSelected}"/>
+                                <Setter Property="BorderBrush" Value="{DynamicResource BrushRailSelectedBar}"/>
+                                <Setter Property="BorderThickness" Value="0,0,0,3"/>
+                            </Style>
+                            <Style Selector="ListBoxItem:selected TextBlock">
+                                <Setter Property="Foreground" Value="{DynamicResource BrushWhite}"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Style>
+                        </ListBox.Styles>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:NavItem">
+                                <Border x:Name="TabPill" CornerRadius="7" Padding="12,8" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}" FontSize="13" VerticalAlignment="Center"/>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </StackPanel>
+
+                <Grid Grid.Column="2" VerticalAlignment="Center" Width="220" HorizontalAlignment="Right">
+                    <TextBox x:Name="SearchBox" Text="{Binding SearchText, Mode=TwoWay}"
+                             Watermark="Search — type anywhere"
+                             AcceptsReturn="False" TextWrapping="NoWrap"
+                             FontSize="13" Padding="10,7" CornerRadius="7"/>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1">
+            <Border Background="{DynamicResource BrushBg}" Padding="14">
+                <Border.Styles>
+                    <StyleInclude Source="MockStyles.axaml" />
+                </Border.Styles>
+                <ContentControl x:Name="PageHost" Content="{Binding CurrentView}" />
+            </Border>
+        </Grid>
+
+        <!-- Status bar -->
+        <Border Grid.Row="2" Background="{DynamicResource BrushRail}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="0,1,0,0" Padding="10,0">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                <TextBlock Text="{Binding Display.StatusText}" Foreground="{DynamicResource BrushRailIcon}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Grid.Column="1" Text="Tab · Arrow · PgUp/PgDn · Enter · Esc · Ctrl+K" Foreground="{DynamicResource BrushRailIcon}" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                <TextBlock Grid.Column="2" Text="Ready" Foreground="{DynamicResource BrushRailIcon}" FontSize="11" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,65 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.ViewModels"
+             x:Name="Root"
+             x:Class="OmniControl.App.Views.HotkeysView"
+             x:DataType="vm:HotkeysViewModel">
+  <Grid RowDefinitions="Auto,*" RowSpacing="14">
+    <Grid ColumnDefinitions="*,Auto">
+      <StackPanel Spacing="2">
+        <TextBlock Classes="h1" Text="Hotkeys" />
+        <TextBlock Classes="sub13" Text="Global key bindings that run OmniControl commands. Toggle, edit and conflict warnings are all keyboard reachable." TextWrapping="Wrap" />
+      </StackPanel>
+      <Button x:Name="NewBindingButton" Grid.Column="1" Classes="dark" Content="New binding" Command="{Binding NewCommand}" VerticalAlignment="Center" Padding="12,7" />
+    </Grid>
+
+    <Border Grid.Row="1" Classes="card" ClipToBounds="True">
+      <DockPanel>
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource BrushSurface}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="0,1,0,0" Padding="14">
+          <Grid ColumnDefinitions="Auto,*,240,Auto" ColumnSpacing="10">
+            <TextBlock Classes="row" Text="New binding" />
+            <Border Grid.Column="1" x:Name="Recorder" Focusable="True" Background="{DynamicResource BrushWhite}" BorderBrush="{DynamicResource BrushAccent}" BorderThickness="2" CornerRadius="7" Padding="12,9" VerticalAlignment="Center">
+              <TextBlock Foreground="{DynamicResource BrushAccentDark}" Text="{Binding RecorderText}" />
+            </Border>
+            <TextBox Grid.Column="2" Text="{Binding NewCommandText}" VerticalAlignment="Center" FontFamily="Consolas" FontSize="13" Padding="10,7" CornerRadius="7" />
+            <Button Grid.Column="3" Classes="dark" Content="Save" Command="{Binding SaveCommand}" VerticalAlignment="Center" />
+          </Grid>
+        </Border>
+
+        <Grid RowDefinitions="Auto,*">
+          <Border Background="{DynamicResource BrushSurfaceAlt}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="0,0,0,1" Padding="14,10">
+            <Grid ColumnDefinitions="52,180,*,150,80" ColumnSpacing="12">
+              <TextBlock Classes="lbl" Text="ON" />
+              <TextBlock Grid.Column="1" Classes="lbl" Text="KEYS" />
+              <TextBlock Grid.Column="2" Classes="lbl" Text="COMMAND" />
+              <TextBlock Grid.Column="3" Classes="lbl" Text="SCOPE" />
+              <TextBlock Grid.Column="4" Classes="lbl" Text="ACTIONS" TextAlignment="Right" />
+            </Grid>
+          </Border>
+          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Rows}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:HotkeyBindingRow">
+                  <Grid>
+                    <Border IsVisible="{Binding IsConflict}" Background="{DynamicResource BrushWarnBg}" />
+                    <Border Classes="rowline" Padding="14,10">
+                      <Grid ColumnDefinitions="52,180,*,150,80" ColumnSpacing="12">
+                        <Button Classes="toggleBtn" x:CompileBindings="False" Command="{Binding #Root.DataContext.ToggleCommand}" CommandParameter="{Binding}" ToolTip.Tip="Toggle binding">
+                          <Border Classes="toggle" Classes.off="{Binding !IsOn}"><Ellipse /></Border>
+                        </Button>
+                        <Border Grid.Column="1" Classes="key" VerticalAlignment="Center"><TextBlock Classes="mono" Foreground="{DynamicResource BrushText}" Text="{Binding KeyText}" /></Border>
+                        <TextBlock Grid.Column="2" Classes="mono" VerticalAlignment="Center" Text="{Binding CommandText}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Column="3" Classes="row" Text="{Binding ScopeText}" VerticalAlignment="Center" />
+                        <Button Grid.Column="4" Classes="mini" Content="Edit" HorizontalAlignment="Right" x:CompileBindings="False" Command="{Binding #Root.DataContext.EditCommand}" CommandParameter="{Binding}" />
+                      </Grid>
+                    </Border>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </Grid>
+      </DockPanel>
+    </Border>
+  </Grid>
+</UserControl>

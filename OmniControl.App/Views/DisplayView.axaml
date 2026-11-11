@@ -1,0 +1,99 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.ViewModels" xmlns:views="using:OmniControl.App.Views"
+             x:Class="OmniControl.App.Views.DisplayView"
+             x:DataType="vm:MainViewModel">
+  <UserControl.Styles>
+    <Style Selector="views|ValueSlider TextBox#ValueBox"><Setter Property="Width" Value="64"/></Style>
+  </UserControl.Styles>
+  <Grid ColumnDefinitions="220,*" ColumnSpacing="14">
+    <!-- Monitor list -->
+    <Border Classes="card" Padding="14">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Bottom" Spacing="10">
+          <Border Classes="div" />
+          <TextBlock Classes="sub12" FontSize="11" Text="GPU saturation: not available (vendor SDK needed). Laptop uses WMI, external panels use VCP 0x10…0xD6." TextWrapping="Wrap" />
+        </StackPanel>
+        <StackPanel Spacing="8">
+          <TextBlock Classes="lbl" Text="DETECTED" />
+          <ListBox Classes="mon" ItemsSource="{Binding Monitors}" SelectedItem="{Binding SelectedMonitor}" SelectionMode="Single">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:MonitorRow">
+                <StackPanel>
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Classes="tt" Text="{Binding Title}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    <Border Grid.Column="1" Classes="pill" Background="{Binding BadgeBg}" Margin="6,0,0,0">
+                      <TextBlock Text="{Binding Badge}" FontSize="10" FontWeight="Bold" Foreground="{Binding BadgeFg}" />
+                    </Border>
+                  </Grid>
+                  <TextBlock Classes="tile" Text="{Binding Subtitle}" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- Controls -->
+    <Border Grid.Column="1" Classes="card" Padding="14">
+      <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,*" RowSpacing="14">
+        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+          <StackPanel Spacing="2">
+            <TextBlock Classes="h1" Text="{Binding SelectedTitle}" />
+            <TextBlock Classes="sub13" FontSize="12" Text="{Binding SelectedAlias, StringFormat='Selected · alias for command input · {0}'}" />
+          </StackPanel>
+          <Button x:Name="RefreshButton" Grid.Column="1" Classes="mock" Content="Refresh" Command="{Binding RefreshCommand}" VerticalAlignment="Center" Padding="12,7" />
+          <Button Grid.Column="2" Classes="dark" Content="Run ▸" Command="{Binding RunCommand}" VerticalAlignment="Center" Padding="12,7" />
+        </Grid>
+
+        <Grid Grid.Row="1" ColumnDefinitions="110,*" ColumnSpacing="10">
+          <TextBlock Classes="row" Text="Brightness" />
+          <views:ValueSlider x:Name="BrightnessSlider" Grid.Column="1" Value="{Binding Brightness}" Minimum="0" Maximum="100" DefaultValue="50" />
+        </Grid>
+        <Grid Grid.Row="2" ColumnDefinitions="110,*" ColumnSpacing="10">
+          <TextBlock Classes="row" Text="Contrast" />
+          <views:ValueSlider x:Name="ContrastSlider" Grid.Column="1" IsEnabled="{Binding IsDdcSelected}" Value="{Binding Contrast}" Minimum="0" Maximum="100" DefaultValue="50" />
+        </Grid>
+        <Grid Grid.Row="3" ColumnDefinitions="110,*" ColumnSpacing="10">
+          <TextBlock Classes="row" Text="Monitor volume" />
+          <views:ValueSlider x:Name="MonitorVolumeSlider" Grid.Column="1" IsEnabled="{Binding IsDdcSelected}" Value="{Binding Volume}" Minimum="0" Maximum="100" DefaultValue="30" />
+        </Grid>
+
+        <Border Grid.Row="4" Classes="div" />
+
+        <Grid Grid.Row="5" ColumnDefinitions="*,Auto" ColumnSpacing="10">
+          <StackPanel Spacing="6">
+            <TextBlock Classes="lbl" Text="INPUT SOURCE" />
+            <Border BorderBrush="{DynamicResource BrushBorderStrong}" BorderThickness="1" CornerRadius="7" ClipToBounds="True" HorizontalAlignment="Left">
+              <StackPanel Orientation="Horizontal">
+                <Button x:Name="InputSourceButton" Classes="seg" Classes.on="{Binding IsHdmi1Selected}" Content="HDMI 1" Command="{Binding SelectInputCommand}" CommandParameter="HDMI 1" Padding="10,7" />
+                <Button Classes="seg" Classes.on="{Binding IsHdmi2Selected}" Content="HDMI 2" BorderThickness="1,0,0,0" BorderBrush="{DynamicResource BrushBorderStrong}" Command="{Binding SelectInputCommand}" CommandParameter="HDMI 2" Padding="10,7" />
+                <Button Classes="seg" Classes.on="{Binding IsDp1Selected}" Content="DP 1" BorderThickness="1,0,0,0" BorderBrush="{DynamicResource BrushBorderStrong}" Command="{Binding SelectInputCommand}" CommandParameter="DP 1" Padding="10,7" />
+                <Button Classes="seg" Classes.on="{Binding IsUsbCSelected}" Content="USB-C" BorderThickness="1,0,0,0" BorderBrush="{DynamicResource BrushBorderStrong}" Command="{Binding SelectInputCommand}" CommandParameter="USB-C" Padding="10,7" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+          <StackPanel Grid.Column="1" Spacing="6">
+            <TextBlock Classes="lbl" Text="POWER" />
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Button x:Name="PowerOnButton" Classes="mock" Content="Power on" Command="{Binding PowerOnCommand}" Padding="10,7" />
+              <Button x:Name="PowerOffButton" Classes="mock" Content="Power off" Command="{Binding PowerOffCommand}" Padding="10,7" />
+              <Button x:Name="FactoryResetButton" Classes="mock danger" Content="Factory reset" Command="{Binding FactoryResetCommand}" Padding="10,7" />
+            </StackPanel>
+          </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="6" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+          <TextBox x:Name="CommandBox" Classes="cmd" Text="{Binding CommandText}" Watermark="PL2779Q b 36"
+                   KeyDown="OnCommandKeyDown" />
+          <Button x:Name="ReadCapabilitiesButton" Grid.Column="1" Classes="mock" Content="Read capabilities" Command="{Binding ReadCapabilitiesCommand}" />
+          <Button Grid.Column="2" Classes="dark" Content="Run" Command="{Binding RunCommand}" />
+        </Grid>
+
+        <ListBox Grid.Row="7" Classes="log" ItemsSource="{Binding LogLines}"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto" />
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

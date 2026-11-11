@@ -1,0 +1,60 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>OmniControl · Volume</title>
+<style>
+:root{--bg:#0F1219;--bar:#1C2230;--card:#1B2030;--line:#2E364A;--ink:#E8ECF4;--mut:#9AA4B8;--acc:#4D8DFF;--acc2:#8FC3FF;--danger:#FF9B9B}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.45 "Segoe UI",system-ui,-apple-system,Arial,sans-serif;display:flex;justify-content:center;padding:20px;min-height:100vh}
+.window{width:820px;max-width:96vw;height:560px;background:#141824;border:1px solid #2E364A;border-radius:12px;overflow:hidden;display:grid;grid-template-rows:30px 48px 1fr}
+.titlebar{background:#11141B;color:#C6CDDB;display:flex;align-items:center;gap:10px;padding:0 12px;font-size:12px}.dot{width:10px;height:10px;border-radius:50%;background:#2E364A;display:inline-block}.dot.r{background:#FF6B6B}.dot.y{background:#F5C542}.dot.g{background:#30D158}
+.topbar{background:var(--bar);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 12px}.logo{width:26px;height:26px;border-radius:7px;background:var(--acc);color:#fff;font-weight:700;display:grid;place-items:center}
+[role=tablist]{display:flex;gap:2px}[role=tab]{appearance:none;border:1px solid transparent;background:transparent;color:#C6CDDB;font:inherit;padding:7px 12px;border-radius:7px;cursor:pointer}[role=tab][aria-selected=true]{background:#2F4F8F;color:#fff;font-weight:600;box-shadow:inset 0 -2px 0 var(--acc2)}
+.searchwrap{margin-left:auto;position:relative}.searchwrap input{width:250px;background:#11141B;color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:7px 10px 7px 30px;font:inherit}.searchicon{position:absolute;left:9px;top:50%;transform:translateY(-50%);opacity:.7}.hint{position:absolute;right:8px;top:50%;transform:translateY(-50%);font:11px Consolas,monospace;color:#7C879C;background:#1C2230;border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+.results{position:absolute;right:0;top:40px;width:420px;max-height:240px;overflow:auto;background:#1B2030;border:1px solid var(--line);border-radius:9px;padding:6px;display:none;z-index:20}.results button{display:block;width:100%;text-align:left;background:transparent;color:var(--ink);border:0;border-radius:6px;padding:8px 10px;cursor:pointer;font:inherit}.results button small{display:block;color:var(--mut);font-size:11px}.results button.active{background:#2F4F8F}
+:focus-visible{outline:2px solid var(--acc2);outline-offset:2px;border-radius:6px}
+.main{display:grid;grid-template-columns:300px 1fr;gap:14px;padding:14px;overflow:auto}.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}h1{font-size:20px;margin:0 0 2px}.sub{color:var(--mut);font-size:12px}button{font:inherit}.btn{appearance:none;background:#20283C;color:var(--ink);border:1px solid #3A4358;border-radius:7px;padding:6px 11px;cursor:pointer}.btn.primary{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}.btn:hover{filter:brightness(1.08)}.lbl{font-size:11px;letter-spacing:.06em;color:var(--mut);font-weight:700;margin:0 0 6px}
+.sliderrow{display:grid;grid-template-columns:64px 1fr 52px;gap:10px;align-items:center;margin:12px 0}input[type=range]{width:100%;accent-color:var(--acc);cursor:pointer}input[type=number]{width:52px;background:#11141B;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px;text-align:right}
+table{width:100%;border-collapse:collapse}th{text-align:left;font-size:11px;letter-spacing:.06em;color:var(--mut);padding:8px 6px}td{padding:9px 6px;border-top:1px solid var(--line);vertical-align:middle}.key{display:inline-block;background:#11141B;border:1px solid #3A4358;border-radius:5px;padding:3px 7px;font:12px Consolas,monospace}
+.rec{margin-top:12px;background:#11141B;border:1px solid var(--line);border-radius:8px;padding:12px;display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center}.rec .box{background:#E8ECF4;color:#1C2230;border-radius:7px;padding:9px 12px;border:2px solid var(--acc2)}
+.note{font-size:11px;color:var(--mut);margin-top:8px}
+</style></head><body>
+<div class="window" role="application" aria-label="OmniControl Volume tab">
+<div class="titlebar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span>OmniControl — system + app volume</span><span style="margin-left:auto">820 × 560</span></div>
+<div class="topbar"><div class="logo" aria-hidden="true">O</div>
+<div role="tablist" aria-label="Sections"><button role="tab" aria-selected="false" data-tab="display">Display</button><button role="tab" aria-selected="true" data-tab="volume">Volume</button><button role="tab" aria-selected="false" data-tab="mouse">Mouse</button><button role="tab" aria-selected="false" data-tab="hotkeys">Hotkeys</button><button role="tab" aria-selected="false" data-tab="home">Home</button></div>
+<div class="searchwrap"><span class="searchicon" aria-hidden="true">⌕</span><input id="search" type="search" aria-label="Search OmniControl" placeholder="Search — type anywhere or Ctrl+K" autocomplete="off"><span class="hint" aria-hidden="true">⌃K</span><div class="results" id="results" role="listbox" aria-label="Search results"></div></div></div>
+<div class="main">
+<div class="card"><p class="lbl">MASTER</p>
+<div class="sliderrow"><label for="vol">Volume</label><input type="range" id="vol" min="0" max="100" value="30"><input type="number" id="volN" min="0" max="100" value="30" aria-label="Volume value"></div>
+<div class="sliderrow"><label for="spot">Spotify</label><input type="range" id="spot" min="0" max="100" value="60"><input type="number" id="spotN" min="0" max="100" value="60" aria-label="Spotify value"></div>
+<div class="sliderrow"><label for="chr">Chrome</label><input type="range" id="chr" min="0" max="100" value="45"><input type="number" id="chrN" min="0" max="100" value="45" aria-label="Chrome value"></div>
+<p class="note">Arrow keys move 1 · Page Up/Down move 10 · Double-click resets to 30. All three sliders also accept typed numbers.</p>
+<div style="display:flex;gap:8px;margin-top:12px"><button class="btn" id="mute">Mute all</button><button class="btn" id="unmute">Unmute</button></div>
+</div>
+<div class="card"><h1>Volume</h1><p class="sub">Per-app levels + keyboard bindings for volume actions.</p>
+<table aria-label="Volume actions"><thead><tr><th>ACTION</th><th>KEY BINDING</th><th>SCOPE</th><th></th></tr></thead><tbody id="rows">
+<tr><td>Volume up</td><td><span class="key">Ctrl + Alt + Up</span></td><td>Global</td><td><button class="btn" data-act="Volume up">Change</button></td></tr>
+<tr><td>Volume down</td><td><span class="key">Ctrl + Alt + Down</span></td><td>Global</td><td><button class="btn" data-act="Volume down">Change</button></td></tr>
+<tr><td>Mute toggle</td><td><span class="key">Ctrl + Shift + M</span></td><td>Only in Chrome</td><td><button class="btn" data-act="Mute toggle">Change</button></td></tr>
+</tbody></table>
+<div class="rec" hidden id="recorder"><div class="box" id="recText">Press the keys you want to bind…</div><button class="btn" id="cancel">Cancel</button><button class="btn primary" id="save">Save</button></div>
+<p class="note" id="note">Press <b>Change</b> to record a new key, then <b>Save</b>. Tab to every control; Enter or Space activates.</p>
+</div>
+</div></div>
+<script>
+const page={display:'tab-display.html',volume:'tab-volume.html',mouse:'tab-mouse.html',hotkeys:'tab-hotkeys.html',home:'tab-home.html'};
+document.querySelectorAll('[role=tab]').forEach(t=>t.onclick=()=>location.href=page[t.dataset.tab]);
+function bind(r,n){r.oninput=()=>{n.value=r.value};n.onchange=()=>{r.value=n.value};r.ondblclick=()=>{r.value=30;n.value=30}}
+bind(document.getElementById('vol'),document.getElementById('volN'));bind(document.getElementById('spot'),document.getElementById('spotN'));bind(document.getElementById('chr'),document.getElementById('chrN'));
+document.getElementById('mute').onclick=e=>{e.target.textContent='Muted';document.getElementById('note').textContent='Muted'};
+document.getElementById('unmute').onclick=()=>{document.getElementById('mute').textContent='Mute all';document.getElementById('note').textContent='Unmuted'};
+document.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{document.getElementById('recorder').hidden=false;document.getElementById('recText').textContent='Recording for: '+b.dataset.act+' — press keys…';document.getElementById('save').focus()});
+document.getElementById('cancel').onclick=()=>document.getElementById('recorder').hidden=true;
+document.getElementById('save').onclick=()=>{document.getElementById('note').textContent='Saved.';document.getElementById('recorder').hidden=true};
+// search
+const input=document.getElementById('search'),box=document.getElementById('results');
+const index=[{t:'Volume slider',s:'Volume',go:()=>document.getElementById('vol').focus()},{t:'Spotify slider',s:'Volume',go:()=>document.getElementById('spot').focus()},{t:'Chrome slider',s:'Volume',go:()=>document.getElementById('chr').focus()},{t:'Mute all',s:'Volume',go:()=>document.getElementById('mute').focus()},{t:'Change key binding',s:'Volume',go:()=>document.querySelector('[data-act]')?.focus()},{t:'Brightness (Display)',s:'Display tab',go:()=>location.href='tab-display.html'},{t:'Mouse profiles',s:'Mouse tab',go:()=>location.href='tab-mouse.html'},{t:'New hotkey binding',s:'Hotkeys tab',go:()=>location.href='tab-hotkeys.html'}];
+let active=-1,open=false;
+function render(){const q=input.value.trim().toLowerCase();const hits=index.filter(x=>!q||x.t.toLowerCase().includes(q)).slice(0,8);box.innerHTML='';active=hits.length?0:-1;hits.forEach((h,i)=>{const b=document.createElement('button');b.innerHTML='<b></b><small></small>';b.querySelector('b').textContent=h.t;b.querySelector('small').textContent=h.s;b.classList.toggle('active',i===active);b.onclick=()=>{closeSearch();h.go()};box.appendChild(b)});box.style.display=open?'block':'none'}
+function openSearch(){open=true;box.style.display='block';input.focus();render()}function closeSearch(){open=false;box.style.display='none'}
+input.oninput=render;input.onfocus=()=>{open=true;render()};input.onblur=()=>setTimeout(closeSearch,120);
+input.onkeydown=e=>{const o=[...box.querySelectorAll('button')];if(e.key==='Escape')closeSearch();if(e.key==='ArrowDown'){e.preventDefault();active=Math.min(o.length-1,active+1);o.forEach((x,i)=>x.classList.toggle('active',i===active))}if(e.key==='ArrowUp'){e.preventDefault();active=Math.max(0,active-1);o.forEach((x,i)=>x.classList.toggle('active',i===active))}if(e.key==='Enter'&&o[active]){e.preventDefault();o[active].click()}};
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openSearch();input.select();return}if(e.key==='Escape'&&open){closeSearch();return}if(!e.ctrlKey&&!e.metaKey&&!e.altKey&&e.key.length===1&&document.activeElement!==input){const a=document.activeElement;if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.isContentEditable))return;openSearch();input.value=e.key;render()}});
+</script></body></html>

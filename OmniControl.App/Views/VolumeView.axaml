@@ -1,0 +1,83 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.ViewModels"
+             xmlns:views="using:OmniControl.App.Views"
+             x:Name="Root"
+             x:Class="OmniControl.App.Views.VolumeView"
+             x:DataType="vm:VolumeViewModel">
+  <UserControl.Styles>
+    <Style Selector="views|ValueSlider TextBox#ValueBox"><Setter Property="Width" Value="52"/></Style>
+  </UserControl.Styles>
+  <Grid ColumnDefinitions="300,*" ColumnSpacing="14">
+    <Border Classes="card" Padding="14">
+      <StackPanel Spacing="12">
+        <TextBlock Classes="lbl" Text="MASTER" />
+        <views:ValueSlider x:Name="MasterSlider" Label="Volume" Minimum="0" Maximum="100" Value="{Binding MasterVolume}" DefaultValue="30" />
+        <views:ValueSlider x:Name="SpotifySlider" Label="Spotify" Minimum="0" Maximum="100" Value="{Binding SpotifyVolume}" DefaultValue="60" />
+        <views:ValueSlider x:Name="ChromeSlider" Label="Chrome" Minimum="0" Maximum="100" Value="{Binding ChromeVolume}" DefaultValue="45" />
+        <TextBlock Classes="sub12" FontSize="11" TextWrapping="Wrap" Text="Arrow keys move 1 · Page Up/Down move 10 · Double-click resets to 30. All three sliders also accept typed numbers." />
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button Classes="mock" Content="{Binding MuteLabel}" Command="{Binding MuteCommand}" />
+          <Button Classes="mock" Content="Unmute" Command="{Binding UnmuteCommand}" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <Border Grid.Column="1" Classes="card" Padding="14">
+      <DockPanel>
+        <Border DockPanel.Dock="Bottom" IsVisible="{Binding IsRecording}" Margin="0,8,0,0" Padding="12"
+                Background="{DynamicResource BrushSurface}" BorderBrush="{DynamicResource BrushBorder}"
+                BorderThickness="1" CornerRadius="8">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="lbl" Text="{Binding RecordingFor, StringFormat='Recording for: {0}'}" />
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+              <Border x:Name="Recorder" Focusable="True" Background="{DynamicResource BrushWhite}"
+                      BorderBrush="{DynamicResource BrushAccent}" BorderThickness="2" CornerRadius="7" Padding="12,9">
+                <TextBlock Foreground="{DynamicResource BrushAccentDark}" Text="{Binding RecorderText}" />
+              </Border>
+              <Button Grid.Column="1" Classes="mock" Content="Cancel" Command="{Binding CancelCommand}" />
+              <Button Grid.Column="2" Classes="dark" Content="Save" Command="{Binding SaveCommand}" />
+            </Grid>
+            <TextBlock IsVisible="{Binding HasConflictMessage}" FontSize="11" Foreground="{DynamicResource BrushWarnText}" Text="{Binding ConflictMessage}" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+
+        <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8">
+          <StackPanel Spacing="2">
+            <TextBlock Classes="h1" Text="Volume" />
+            <TextBlock Classes="sub13" Text="Per-app levels + keyboard bindings for volume actions." />
+          </StackPanel>
+          <Grid Grid.Row="1" ColumnDefinitions="130,140,90,60" ColumnSpacing="10">
+            <TextBlock Classes="lbl" Text="ACTION" />
+            <TextBlock Grid.Column="1" Classes="lbl" Text="KEY BINDING" />
+            <TextBlock Grid.Column="2" Classes="lbl" Text="SCOPE" />
+          </Grid>
+          <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+              <ItemsControl ItemsSource="{Binding Rows}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:HotkeyRow">
+                    <Grid>
+                      <Border IsVisible="{Binding IsConflict}" Background="{DynamicResource BrushWarnBg}" />
+                      <Border Classes="rowline" Padding="0,9" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="0,0,0,1">
+                        <Grid ColumnDefinitions="130,140,90,60" ColumnSpacing="10">
+                          <TextBlock Text="{Binding Action}" VerticalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                          <Border Grid.Column="1" Classes="key" VerticalAlignment="Center"><TextBlock Classes="mono" Foreground="{DynamicResource BrushText}" Text="{Binding KeyText}" /></Border>
+                          <TextBlock Grid.Column="2" Classes="row" Text="{Binding ScopeText}" />
+                          <Button Grid.Column="3" Classes="mini" Content="Change"
+                                  x:CompileBindings="False"
+                                  Command="{Binding #Root.DataContext.ChangeCommand}" CommandParameter="{Binding}" />
+                        </Grid>
+                      </Border>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Margin="0,8,0,0" IsVisible="{Binding HasTableConflict}" FontSize="11" Foreground="{DynamicResource BrushWarnText}" Text="{Binding TableConflictNote}" TextWrapping="Wrap" />
+            </StackPanel>
+          </ScrollViewer>
+        </Grid>
+      </DockPanel>
+    </Border>
+  </Grid>
+</UserControl>

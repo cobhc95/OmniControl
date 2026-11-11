@@ -17,10 +17,12 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            var shell = new ShellViewModel();
             desktop.MainWindow = new MainWindow
             {
-                DataContext = new MainViewModel(),
+                DataContext = shell,
             };
+            desktop.Exit += (_, _) => shell.Volume.Dispose();
         }
 
         base.OnFrameworkInitializationCompleted();
