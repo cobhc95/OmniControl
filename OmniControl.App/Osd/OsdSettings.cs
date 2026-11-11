@@ -1,0 +1,79 @@
+﻿using System.Text.Json;
+
+namespace OmniControl.App.Osd;
+
+
+/// <summary>OSD preferences, stored as JSON in %APPDATA%\OmniControl\osd.json.</summary>
+public sealed class OsdSettings
+{
+    public bool Enabled { get; set; } = true;
+    public OsdPosition Position { get; set; } = OsdPosition.BottomCenter;
+    public OsdStyle Style { get; set; } = OsdStyle.Pill;
+    /// <summary>"Match program" (follow the program accent) or the name of an AccentService preset.</summary>
+    public string Accent { get; set; } = MatchProgram;
+
+    public const string MatchProgram = "Match program";
+
+    /// <summary>The accent colour to draw with: the program accent unless a preset was chosen.</summary>
+    public Avalonia.Media.Color ResolveAccent() => ResolveAccent(Accent);
+
+    public static Avalonia.Media.Color ResolveAccent(string name) =>
+        name == MatchProgram ? Services.AccentService.Current
+        : OsdPalette.ExtraAccents.FirstOrDefault(a => a.Name == name) is { Hex: not null } extra
+            ? Avalonia.Media.Color.Parse(extra.Hex)
+            : Services.AccentService.Resolve(name);
+    public string Background { get; set; } = "#202020";
+
+    /// <summary>How opaque the OSD is, 10-100 percent.</summary>
+    public int Opacity { get; set; } = 100;
+
+    /// <summary>Elements the user excluded from the OSD (everything else is shown).</summary>
+    public List<string> Excluded { get; set; } = new();
+
+    /// <summary>Suppress Windows' own volume/brightness pop-up.</summary>
+    public bool HideWindowsOsd { get; set; }
+
+    private static string FilePath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OmniControl", "osd.json");
+
+    public static OsdSettings Load()
+    {
+        try
+        {
+            if (File.Exists(FilePath))
+                return JsonSerializer.Deserialize<OsdSettings>(File.ReadAllText(FilePath)) ?? new();
+        }
+        catch { /* corrupt file: defaults */ }
+        return new();
+    }
+
+    public void Save()
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
+            File.WriteAllText(FilePath, JsonSerializer.Serialize(this));
+        }
+        catch { /* best-effort */ }
+    }
+
+    public static string Describe(OsdPosition p) => p switch
+    {
+        OsdPosition.TopLeft => "Top left",
+        OsdPosition.TopCenter => "Top center",
+        OsdPosition.TopRight => "Top right",
+        OsdPosition.Center => "Center",
+        OsdPosition.BottomLeft => "Bottom left",
+        OsdPosition.BottomCenter => "Bottom center",
+        _ => "Bottom right",
+    };
+
+    public static string Describe(OsdStyle s) => s switch
+    {
+        OsdStyle.Classic => "Classic",
+        OsdStyle.Pill => "Compact pill",
+        OsdStyle.BigNumber => "Big number",
+        OsdStyle.Ring => "Ring",
+        _ => "Vertical",
+    };
+}

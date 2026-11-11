@@ -1,0 +1,35 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Pages.Shortcuts"
+             xmlns:pages="using:OmniControl.App.Pages"
+             xmlns:hk="using:OmniControl.App.Hotkeys"
+             x:Class="OmniControl.App.Pages.Shortcuts.ShortcutsPage"
+             x:DataType="vm:ShortcutsPageViewModel">
+    <StackPanel Spacing="12">
+        <TextBlock Text="Hotkeys work anywhere in Windows while OmniControl is running." Classes="muted" TextWrapping="Wrap" />
+        <ItemsControl x:Name="GroupsHost" ItemsSource="{Binding Groups}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="vm:HotkeyGroup">
+                    <Border Classes="groupPanel">
+                        <StackPanel Spacing="8">
+                            <pages:GroupHeader />
+                            <ListBox Classes="rows compact" ItemsSource="{Binding Actions}" IsVisible="{Binding IsExpanded}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate DataType="hk:HotkeyAction">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                                       VerticalAlignment="Center" />
+                                            <ContentControl Grid.Column="1" Content="{Binding}" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock Classes="muted" TextWrapping="Wrap"
+                   Text="Up/Down move through the group headers and their actions, Left/Right choose the hotkey or the devices. On a header, Left collapses and Right expands the group (Enter or a click toggles it). Enter on the hotkey (or a double-click) listens for keys: Esc cancels, Delete clears. Enter on the devices opens the list: Up/Down move, Space ticks several, Enter picks and closes." />
+    </StackPanel>
+</UserControl>

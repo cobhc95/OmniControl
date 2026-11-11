@@ -1,0 +1,32 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Pages.Displays"
+             x:Class="OmniControl.App.Pages.Displays.DisplaysPage"
+             x:DataType="vm:DisplaysPageViewModel">
+    <StackPanel Spacing="12">
+        <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="{Binding Summary}" Classes="muted" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Content="Refresh (F5)" Command="{Binding ReloadCommand}" Focusable="False" />
+        </Grid>
+
+        <ListBox x:Name="DisplayList" Grid.IsSharedSizeScope="True" Classes="rows" ItemsSource="{Binding Displays}"
+                 SelectedItem="{Binding Selected}">
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="vm:DisplayItem">
+                    <Grid ColumnDefinitions="190,*">
+                        <StackPanel VerticalAlignment="Center" Spacing="2">
+                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="12" />
+                        </StackPanel>
+                        <ItemsControl Grid.Column="1" ItemsSource="{Binding Settings}" IsVisible="{Binding HasSettings}" />
+                        <TextBlock Grid.Column="1" Text="No adjustable settings. Turn on DDC/CI in the monitor's menu." TextWrapping="Wrap"
+                                   Classes="muted" VerticalAlignment="Center" IsVisible="{Binding HasNoSettings}" />
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                   Text="Up/Down choose a display, Left/Right change a slider directly. On a display with several settings, Left/Right choose one and Enter adjusts it (Left/Right change it, Enter or Esc finishes)." />
+    </StackPanel>
+</UserControl>

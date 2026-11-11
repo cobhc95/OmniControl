@@ -11,12 +11,6 @@ coverage*.xml
 artifacts/
 
 ## Native / system
-*.dll
-.pdb
-OmniControl.Core/bin/
-OmniControl.App/bin/
-OmniControl.App/obj/
-OmniControl.Core/obj/
 
 ## OS / editor
 .DS_Store

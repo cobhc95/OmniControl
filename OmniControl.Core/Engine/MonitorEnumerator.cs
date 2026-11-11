@@ -1,21 +1,13 @@
-﻿using OmniControl.Core.Interfaces;
+using OmniControl.Core.Interfaces;
 using OmniControl.Core.Models;
-#if WINDOWS
 using OmniControl.Core.Native;
-#endif
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>Enumerates DDC/CI monitors — EnumDisplayMonitors/dxva2 on Windows, /dev/i2c scan on Linux.</summary>
+/// <summary>Enumerates DDC/CI monitors — EnumDisplayMonitors + dxva2.</summary>
 public sealed class MonitorEnumerator : IMonitorEnumerator
 {
     public List<IMonitor> Enumerate()
-    {
-        return EnumerateWindows();
-    }
-
-#if WINDOWS
-    public List<IMonitor> EnumerateWindows()
     {
         var monitors = new List<IMonitor>();
         var list = new List<IntPtr>();
@@ -50,9 +42,7 @@ public sealed class MonitorEnumerator : IMonitorEnumerator
                 DeviceName = deviceName,
                 FriendlyName = string.IsNullOrWhiteSpace(friendly) ? desc : friendly,
                 InstanceId = deviceName,
-                Alias = string.Empty,
             };
-            mi.Alias = MakeAlias(mi.FriendlyName, index);
 
             monitors.Add(new DdcCiMonitor(mi, physical[0]));
             index++;
@@ -60,24 +50,7 @@ public sealed class MonitorEnumerator : IMonitorEnumerator
         GC.KeepAlive(proc);
         return monitors.Cast<IMonitor>().ToList();
     }
-#else
-    private static List<IMonitor> EnumerateLinux()
-    {
-        // TODO: enumerate /dev/i2c-N, read EDID from /sys/class/drm/*/edid, probe VCP 0x10.
-        // Keep stub empty so UI launches and shows "0 monitors" on Linux until implemented.
-        return new List<IMonitor>();
-    }
-#endif
 
-    internal static string MakeAlias(string friendly, int index)
-    {
-        var clean = new string(friendly.Where(c => char.IsLetterOrDigit(c)).ToArray());
-        if (string.IsNullOrWhiteSpace(clean)) return $"MON{index}";
-        if (clean.Length > 16) clean = clean[..16];
-        return clean.ToUpperInvariant();
-    }
-
-#if WINDOWS
     private static string TryGetFriendlyName(string deviceName)
     {
         try
@@ -108,7 +81,4 @@ public sealed class MonitorEnumerator : IMonitorEnumerator
         catch { }
         return string.Empty;
     }
-#else
-    private static string TryGetFriendlyName(string deviceName) => deviceName;
-#endif
 }

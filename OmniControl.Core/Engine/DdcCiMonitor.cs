@@ -1,19 +1,15 @@
-﻿using OmniControl.Core.Interfaces;
+using OmniControl.Core.Interfaces;
 using OmniControl.Core.Models;
-#if WINDOWS
 using OmniControl.Core.Native;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
-#endif
 
 namespace OmniControl.Core.Engine;
 
 /// <summary>Single physical DDC/CI monitor. Isolates all dxva2 calls; throttles rapid SetVCPFeature bursts.</summary>
 public sealed class DdcCiMonitor : IMonitor
 {
-#if WINDOWS
     private readonly Dxva2Native.PHYSICAL_MONITOR _physical;
-#endif
     private readonly object _gate = new();          // serialises VCP traffic
     private const int MinSetIntervalMs = 40;        // many EDIDs dislike &lt;30ms bursts
     private DateTime _lastSet = DateTime.MinValue;
@@ -21,21 +17,16 @@ public sealed class DdcCiMonitor : IMonitor
 
     public MonitorInfo Info { get; }
 
-#if WINDOWS
     internal DdcCiMonitor(MonitorInfo info, Dxva2Native.PHYSICAL_MONITOR physical)
     {
         Info = info;
         _physical = physical;
     }
-#else
-    internal DdcCiMonitor(MonitorInfo info) { Info = info; }
-#endif
 
     // ---------------------------------------------------------------- VCP
     public OperationResult TryGetVcp(byte code, out VcpValue value)
     {
         value = VcpValue.Unsupported;
-#if WINDOWS
         lock (_gate)
         {
             bool ok = Dxva2Native.GetVCPFeatureAndVCPFeatureReply(
@@ -45,10 +36,6 @@ public sealed class DdcCiMonitor : IMonitor
             value = new VcpValue(cur, max, type, type == 0);
             return OperationResult.Ok($"0x{code:X2} = {cur}/{max} type={type}");
         }
-#else
-        // Linux: open /dev/i2c-<n>, ioctl I2C_SLAVE + DDC/CI packet. Stubbed pending libddcutil port.
-        return OperationResult.Fail("DDC/CI on Linux: implement via /dev/i2c-* (libddcutil) — stub.");
-#endif
     }
 
     public VcpValue? GetVcp(byte code)
@@ -59,7 +46,6 @@ public sealed class DdcCiMonitor : IMonitor
 
     public OperationResult TrySetVcp(byte code, uint value)
     {
-#if WINDOWS
         lock (_gate)
         {
             var since = (DateTime.UtcNow - _lastSet).TotalMilliseconds;
@@ -72,14 +58,10 @@ public sealed class DdcCiMonitor : IMonitor
                     $"SetVCP 0x{code:X2}={value} failed: {new Win32Exception(Marshal.GetLastWin32Error()).Message}");
             return OperationResult.Ok($"Set 0x{code:X2} = {value}");
         }
-#else
-        return OperationResult.Fail("DDC/CI on Linux: /dev/i2c path not implemented yet.");
-#endif
     }
 
     public string? GetCapabilities()
     {
-#if WINDOWS
         lock (_gate)
         {
             IntPtr pvct = IntPtr.Zero;
@@ -95,9 +77,6 @@ public sealed class DdcCiMonitor : IMonitor
             catch { return null; }
             finally { if (pvct != IntPtr.Zero) Marshal.FreeCoTaskMem(pvct); }
         }
-#else
-        return null;
-#endif
     }
 
     // --------------------------------------------------------- typed helpers
@@ -121,9 +100,7 @@ public sealed class DdcCiMonitor : IMonitor
     {
         if (_disposed) return;
         _disposed = true;
-#if WINDOWS
         try { Dxva2Native.DestroyPhysicalMonitors(1, new[] { _physical }); } catch { }
-#endif
         GC.SuppressFinalize(this);
     }
 }

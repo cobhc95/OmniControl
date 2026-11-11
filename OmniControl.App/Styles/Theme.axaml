@@ -1,89 +1,384 @@
-﻿<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <Color x:Key="ColorRail">#1C2230</Color>
-  <Color x:Key="ColorText">#E8ECF4</Color>
-  <Color x:Key="ColorAccentDark">#8FC3FF</Color>
-  <Color x:Key="ColorRailHover">#262E40</Color>
-  <Color x:Key="ColorLog">#2A2F3A</Color>
-  <Color x:Key="ColorDarkHover">#2B3447</Color>
-  <Color x:Key="ColorRailSelected">#2F4F8F</Color>
-  <Color x:Key="ColorBadgeGreenFg">#9FE8A6</Color>
-  <Color x:Key="ColorTextRow">#C6CDDB</Color>
-  <Color x:Key="ColorRailTrack">#3A4358</Color>
-  <Color x:Key="ColorAccent">#4D8DFF</Color>
-  <Color x:Key="ColorTextTile">#9AA4B8</Color>
-  <Color x:Key="ColorBadgeBg">#5A4A1E</Color>
-  <Color x:Key="ColorTextMuted">#9AA4B8</Color>
-  <Color x:Key="ColorWarnTextDark">#FFD27A</Color>
-  <Color x:Key="ColorRailSelectedBar">#8FC3FF</Color>
-  <Color x:Key="ColorWarnText">#FFD27A</Color>
-  <Color x:Key="ColorRailIcon">#9AA4B8</Color>
-  <Color x:Key="ColorDanger">#FF9B9B</Color>
-  <Color x:Key="ColorBorderStrong">#3A4358</Color>
-  <Color x:Key="ColorRailText">#C6CDDB</Color>
-  <Color x:Key="ColorToggleOff">#C9CED8</Color>
-  <Color x:Key="ColorKeyBorder">#C9D0DC</Color>
-  <Color x:Key="ColorBadgeBlueBg">#1E3A5F</Color>
-  <Color x:Key="ColorBorder">#2E364A</Color>
-  <Color x:Key="ColorBadgeGreenBg">#24402A</Color>
-  <Color x:Key="ColorDangerBorder">#5A2B3A</Color>
-  <Color x:Key="ColorDivider">#2E364A</Color>
-  <Color x:Key="ColorAccentSoft">#23314F</Color>
-  <Color x:Key="ColorBg">#141824</Color>
-  <Color x:Key="ColorKey">#11141B</Color>
-  <Color x:Key="ColorWarnBorder">#5A4A1E</Color>
-  <Color x:Key="ColorSurfaceAlt">#212A3E</Color>
-  <Color x:Key="ColorHoverSoft">#212A3E</Color>
-  <Color x:Key="ColorBadge">#F5D27A</Color>
-  <Color x:Key="ColorSurface">#11141B</Color>
-  <Color x:Key="ColorDangerPill">#3A1F28</Color>
-  <Color x:Key="ColorSwatchRed">#FF8A8A</Color>
-  <Color x:Key="ColorSwatchYellow">#FFD27A</Color>
-  <Color x:Key="ColorDangerBg">#3A1F28</Color>
-  <Color x:Key="ColorWarnBg">#2E2410</Color>
-  <Color x:Key="ColorWhite">#FFFFFF</Color>
-  <Color x:Key="ColorCard">#1B2030</Color>
-  <SolidColorBrush x:Key="BrushRail" Color="{DynamicResource ColorRail}"/>
-  <SolidColorBrush x:Key="BrushText" Color="{DynamicResource ColorText}"/>
-  <SolidColorBrush x:Key="BrushAccentDark" Color="{DynamicResource ColorAccentDark}"/>
-  <SolidColorBrush x:Key="BrushRailHover" Color="{DynamicResource ColorRailHover}"/>
-  <SolidColorBrush x:Key="BrushLog" Color="{DynamicResource ColorLog}"/>
-  <SolidColorBrush x:Key="BrushDarkHover" Color="{DynamicResource ColorDarkHover}"/>
-  <SolidColorBrush x:Key="BrushRailSelected" Color="{DynamicResource ColorRailSelected}"/>
-  <SolidColorBrush x:Key="BrushBadgeGreenFg" Color="{DynamicResource ColorBadgeGreenFg}"/>
-  <SolidColorBrush x:Key="BrushTextRow" Color="{DynamicResource ColorTextRow}"/>
-  <SolidColorBrush x:Key="BrushRailTrack" Color="{DynamicResource ColorRailTrack}"/>
-  <SolidColorBrush x:Key="BrushAccent" Color="{DynamicResource ColorAccent}"/>
-  <SolidColorBrush x:Key="BrushTextTile" Color="{DynamicResource ColorTextTile}"/>
-  <SolidColorBrush x:Key="BrushBadgeBg" Color="{DynamicResource ColorBadgeBg}"/>
-  <SolidColorBrush x:Key="BrushTextMuted" Color="{DynamicResource ColorTextMuted}"/>
-  <SolidColorBrush x:Key="BrushWarnTextDark" Color="{DynamicResource ColorWarnTextDark}"/>
-  <SolidColorBrush x:Key="BrushRailSelectedBar" Color="{DynamicResource ColorRailSelectedBar}"/>
-  <SolidColorBrush x:Key="BrushWarnText" Color="{DynamicResource ColorWarnText}"/>
-  <SolidColorBrush x:Key="BrushRailIcon" Color="{DynamicResource ColorRailIcon}"/>
-  <SolidColorBrush x:Key="BrushDanger" Color="{DynamicResource ColorDanger}"/>
-  <SolidColorBrush x:Key="BrushBorderStrong" Color="{DynamicResource ColorBorderStrong}"/>
-  <SolidColorBrush x:Key="BrushRailText" Color="{DynamicResource ColorRailText}"/>
-  <SolidColorBrush x:Key="BrushToggleOff" Color="{DynamicResource ColorToggleOff}"/>
-  <SolidColorBrush x:Key="BrushKeyBorder" Color="{DynamicResource ColorKeyBorder}"/>
-  <SolidColorBrush x:Key="BrushBadgeBlueBg" Color="{DynamicResource ColorBadgeBlueBg}"/>
-  <SolidColorBrush x:Key="BrushBorder" Color="{DynamicResource ColorBorder}"/>
-  <SolidColorBrush x:Key="BrushBadgeGreenBg" Color="{DynamicResource ColorBadgeGreenBg}"/>
-  <SolidColorBrush x:Key="BrushDangerBorder" Color="{DynamicResource ColorDangerBorder}"/>
-  <SolidColorBrush x:Key="BrushDivider" Color="{DynamicResource ColorDivider}"/>
-  <SolidColorBrush x:Key="BrushAccentSoft" Color="{DynamicResource ColorAccentSoft}"/>
-  <SolidColorBrush x:Key="BrushBg" Color="{DynamicResource ColorBg}"/>
-  <SolidColorBrush x:Key="BrushKey" Color="{DynamicResource ColorKey}"/>
-  <SolidColorBrush x:Key="BrushWarnBorder" Color="{DynamicResource ColorWarnBorder}"/>
-  <SolidColorBrush x:Key="BrushSurfaceAlt" Color="{DynamicResource ColorSurfaceAlt}"/>
-  <SolidColorBrush x:Key="BrushHoverSoft" Color="{DynamicResource ColorHoverSoft}"/>
-  <SolidColorBrush x:Key="BrushBadge" Color="{DynamicResource ColorBadge}"/>
-  <SolidColorBrush x:Key="BrushSurface" Color="{DynamicResource ColorSurface}"/>
-  <SolidColorBrush x:Key="BrushDangerPill" Color="{DynamicResource ColorDangerPill}"/>
-  <SolidColorBrush x:Key="BrushSwatchRed" Color="{DynamicResource ColorSwatchRed}"/>
-  <SolidColorBrush x:Key="BrushSwatchYellow" Color="{DynamicResource ColorSwatchYellow}"/>
-  <SolidColorBrush x:Key="BrushDangerBg" Color="{DynamicResource ColorDangerBg}"/>
-  <SolidColorBrush x:Key="BrushWarnBg" Color="{DynamicResource ColorWarnBg}"/>
-  <SolidColorBrush x:Key="BrushWhite" Color="{DynamicResource ColorWhite}"/>
-  <SolidColorBrush x:Key="BrushCard" Color="{DynamicResource ColorCard}"/>
-  <BoxShadows x:Key="ShadowRailSelectedBar">inset 3 0 0 0 #7EA6FF</BoxShadows>
-</ResourceDictionary>
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Styles.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="BrushBackground" Color="#161616" />
+                    <SolidColorBrush x:Key="BrushSidebar" Color="#1C1C1C" />
+                    <SolidColorBrush x:Key="BrushDivider" Color="#2E2E2E" />
+                    <SolidColorBrush x:Key="BrushMuted" Color="#8A8A8A" />
+                    <SolidColorBrush x:Key="BrushHover" Color="#2F2F2F" />
+                    <SolidColorBrush x:Key="BrushHoverEdge" Color="#707070" />
+                    <SolidColorBrush x:Key="BrushHoverStrong" Color="#454545" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="BrushBackground" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="BrushSidebar" Color="#F3F3F3" />
+                    <SolidColorBrush x:Key="BrushDivider" Color="#DDDDDD" />
+                    <SolidColorBrush x:Key="BrushMuted" Color="#6B6B6B" />
+                    <SolidColorBrush x:Key="BrushHover" Color="#EAEAEA" />
+                    <SolidColorBrush x:Key="BrushHoverEdge" Color="#B5B5B5" />
+                    <SolidColorBrush x:Key="BrushHoverStrong" Color="#D2D2D2" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Styles.Resources>
+
+    <!-- Focus is shown with the accent colour, not the default white outline -->
+    <Style Selector="ToggleSwitch, ToggleSwitch:focus, ToggleSwitch:focus-visible, Button, ToggleButton, ListBoxItem, ComboBoxItem, ComboBox, TextBox, CheckBox, Button:focus-visible, ToggleButton:focus-visible, ListBoxItem:focus-visible, ComboBoxItem:focus-visible, ComboBox:focus-visible, TextBox:focus-visible, CheckBox:focus-visible, Button:focus, ToggleButton:focus">
+        <Setter Property="FocusAdorner" Value="{x:Null}" />
+    </Style>
+
+    <!-- Being inside a card (an editor has focus): accent border and a darker field -->
+    <Style Selector="TextBox:focus /template/ Border#PART_BorderElement, TextBox:focus:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="Background" Value="{DynamicResource BrushBackground}" />
+    </Style>
+    <Style Selector="ComboBox:focus /template/ Border#Background, ComboBox:focus:pointerover /template/ Border#Background">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="BorderThickness" Value="2" />
+    </Style>
+    <Style Selector="Button.scope:focus-visible /template/ ContentPresenter#PART_ContentPresenter, Button.scope:focus-visible:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="Background" Value="{DynamicResource BrushBackground}" />
+    </Style>
+    <Style Selector="ToggleSwitch:focus /template/ Border#OuterBorder">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="BorderThickness" Value="2" />
+    </Style>
+    <Style Selector="ToggleSwitch:pointerover /template/ Border#OuterBorder">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" />
+    </Style>
+    <Style Selector="Slider:focus /template/ Thumb">
+        <Setter Property="Background" Value="{DynamicResource BrushAccent}" />
+    </Style>
+    <Style Selector="Slider.active /template/ Thumb">
+        <Setter Property="Background" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="RenderTransform" Value="scale(1.4)" />
+    </Style>
+
+    <!-- Gallery cards (style, colours): focus = accent border, hover = edge, arrow buttons are flat -->
+    <Style Selector="Border.gallery">
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="6" />
+    </Style>
+    <Style Selector="Border.gallery:pointerover">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" />
+    </Style>
+    <Style Selector="Border.gallery:focus">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="Background" Value="{DynamicResource BrushBackground}" />
+    </Style>
+    <Style Selector="Button.step">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="8,12" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.step:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
+    </Style>
+
+    <!-- Shortcut groups: one panel per feature with a clickable header that collapses it -->
+    <Style Selector="Border.groupPanel">
+        <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="10,8,10,4" />
+        <Setter Property="Margin" Value="0,0,0,12" />
+    </Style>
+    <Style Selector="Button.groupHeader">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="8,6" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="Button.groupHeader:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushHover}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.groupHeader:focus /template/ ContentPresenter#PART_ContentPresenter, Button.groupHeader:focus:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
+    </Style>
+    <Style Selector="PathIcon.chev">
+        <Setter Property="Foreground" Value="{DynamicResource BrushMuted}" />
+        <Setter Property="Transitions">
+            <Transitions><TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" /></Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="PathIcon.chev.collapsed">
+        <Setter Property="RenderTransform" Value="rotate(-90deg)" />
+    </Style>
+
+    <!-- Hover feedback for the mouse (keyboard focus uses the accent border) -->
+    <Style Selector="ListBox.nav ListBoxItem:pointerover:not(:selected) /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushHover}" />
+    </Style>
+    <Style Selector="ListBox.nav ListBoxItem:selected:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
+    </Style>
+    <Style Selector="ListBox.rows ListBoxItem:pointerover:not(:focus-within) /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushHover}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" />
+    </Style>
+    <Style Selector="ListBox.rows ListBoxItem:focus-within:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
+    </Style>
+    <Style Selector="Button.scope:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+    </Style>
+    <Style Selector="ToggleButton.chip:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushHover}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" />
+    </Style>
+    <Style Selector="ToggleButton.chip:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+    </Style>
+    <Style Selector="ComboBox:pointerover /template/ Border#Background, TextBox:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" />
+    </Style>
+
+    <!-- Text roles -->
+    <Style Selector="TextBlock.title"><Setter Property="FontSize" Value="26" /><Setter Property="FontWeight" Value="SemiBold" /></Style>
+    <Style Selector="TextBlock.section"><Setter Property="FontSize" Value="15" /><Setter Property="FontWeight" Value="SemiBold" /><Setter Property="Margin" Value="0,20,0,6" /></Style>
+    <Style Selector="TextBlock.muted"><Setter Property="Foreground" Value="{DynamicResource BrushMuted}" /></Style>
+
+    <!-- Sidebar navigation items -->
+    <Style Selector="ListBox.nav"><Setter Property="Background" Value="Transparent" /></Style>
+    <Style Selector="ListBox.nav ListBoxItem">
+        <Setter Property="Padding" Value="24,10" />
+        <Setter Property="Margin" Value="0,0,0,2" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox.nav ListBoxItem:selected /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+    </Style>
+    <Style Selector="ListBox.nav ListBoxItem:selected PathIcon"><Setter Property="Foreground" Value="{DynamicResource BrushAccent}" /></Style>
+
+    <!-- Tighter rows (shortcut cards) -->
+    <Style Selector="ListBox.rows.compact ListBoxItem">
+        <Setter Property="Padding" Value="14,6" />
+        <Setter Property="Margin" Value="0,0,0,6" />
+        <Setter Property="CornerRadius" Value="8" />
+    </Style>
+
+    <!-- Device picker button (hotkey scope) -->
+    <Style Selector="Button.scope">
+        <Setter Property="Padding" Value="8,4" />
+        <Setter Property="MinHeight" Value="28" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="Button.scope /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Button.scope:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="BorderThickness" Value="2" />
+    </Style>
+
+    <!-- Mixer row: mute lights in the accent, the FX power button lights green when the chain is on -->
+    <!-- FX window buttons (Add / Remove / Forget): clear accent hover and a deeper press -->
+    <Style Selector="Button.scope.fxbtn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+    </Style>
+    <Style Selector="Button.scope.fxbtn:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
+    </Style>
+    <Style Selector="Button.scope.mute.on /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+    </Style>
+    <Style Selector="Button.fxpower Path"><Setter Property="Stroke" Value="{DynamicResource BrushMuted}" /></Style>
+    <Style Selector="Button.fxpower.on Path"><Setter Property="Stroke" Value="#3FB950" /></Style>
+    <Style Selector="Button.scope.fxpower.on /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="BorderBrush" Value="#3FB950" /></Style>
+
+    <!-- Equaliser band strip: compact buttons, the selected band outlined in the accent -->
+    <Style Selector="Button.scope.band"><Setter Property="Padding" Value="0,3" /><Setter Property="MinWidth" Value="0" /></Style>
+    <Style Selector="Button.scope.band.on /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
+    </Style>
+
+    <!-- Device picker menu: full-width flat rows, each with its own hover -->
+    <Style Selector="FlyoutPresenter.scopemenu">
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="MinWidth" Value="190" />
+    </Style>
+    <Style Selector="ToggleButton.menuitem">
+        <Setter Property="Padding" Value="12,8" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+    </Style>
+    <Style Selector="ToggleButton.menuitem /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <Style Selector="ToggleButton.menuitem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushHover}" />
+    </Style>
+    <Style Selector="ToggleButton.menuitem:checked /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
+    </Style>
+    <Style Selector="ToggleButton.menuitem:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.menuitem:focus /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
+    </Style>
+
+    <!-- Choice chips (hotkey scope) -->
+    <Style Selector="ToggleButton.chip">
+        <Setter Property="Padding" Value="8,3" />
+        <Setter Property="Margin" Value="0,0,4,4" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="FontSize" Value="12" />
+    </Style>
+    <Style Selector="ToggleButton.chip /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="ToggleButton.chip:checked /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.chip:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+    </Style>
+    <Style Selector="ToggleButton.chip:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="BorderThickness" Value="2" />
+    </Style>
+
+    <!-- Hotkey box while it waits for keys: accent border and a slow flash -->
+    <Style Selector="TextBox.listening /template/ Border#PART_BorderElement, TextBox.listening:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
+        <Style.Animations>
+            <Animation Duration="0:0:0.8" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="SineEaseInOut">
+                <KeyFrame Cue="0%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+                <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.35" /></KeyFrame>
+            </Animation>
+        </Style.Animations>
+    </Style>
+
+    <!-- Primary button -->
+    <Style Selector="Button.primary"><Setter Property="Background" Value="{DynamicResource BrushAccent}" /><Setter Property="Foreground" Value="White" /></Style>
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushAccent}" /><Setter Property="Foreground" Value="White" /><Setter Property="Opacity" Value="0.88" /></Style>
+
+    <!-- Display rows (keyboard friendly) -->
+    <Style Selector="ListBox.rows"><Setter Property="Background" Value="Transparent" /></Style>
+    <Style Selector="ListBox.rows ListBoxItem">
+        <Setter Property="Padding" Value="16,12" />
+        <Setter Property="Margin" Value="0,0,0,8" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
+    </Style>
+    <Style Selector="ListBox.rows ListBoxItem:selected /template/ ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushSidebar}" /></Style>
+    <Style Selector="ListBox.rows ListBoxItem:focus-within /template/ ContentPresenter"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /><Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" /></Style>
+
+    <Style Selector="Slider"><Setter Property="TickFrequency" Value="1" /><Setter Property="IsSnapToTickEnabled" Value="True" /></Style>
+    <!-- FX chain list (TabForge style): flat rows inside a bordered box, the selected effect filled with the accent -->
+    <Style Selector="ListBox.fxlist"><Setter Property="Background" Value="Transparent" /></Style>
+    <Style Selector="ListBox.fxlist ListBoxItem">
+        <Setter Property="Padding" Value="8,5" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <Style Selector="ListBox.fxlist ListBoxItem:pointerover:not(:selected) /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushHover}" />
+    </Style>
+    <Style Selector="ListBox.fxlist ListBoxItem:selected /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
+    </Style>
+    <Style Selector="ListBox.fxlist ListBoxItem:selected:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
+    </Style>
+
+    <!-- FX split button on the Volume rows: one frame, two flat halves (label | power) -->
+    <Style Selector="Border.fxsplit">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
+        <Setter Property="Background" Value="{DynamicResource BrushBackground}" />
+    </Style>
+    <Style Selector="Border.fxsplit.on"><Setter Property="BorderBrush" Value="#3FB950" /></Style>
+    <Style Selector="Border.fxdivider"><Setter Property="Background" Value="{DynamicResource BrushDivider}" /></Style>
+    <Style Selector="Border.fxsplit.on Border.fxdivider"><Setter Property="Background" Value="#3FB950" /></Style>
+    <Style Selector="Button.fxflat">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="Button.fxflat /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Button.fxflat:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
+    </Style>
+    <Style Selector="Button.fxflat:focus-visible /template/ ContentPresenter#PART_ContentPresenter, Button.fxflat:focus-visible:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="BorderThickness" Value="2" />
+    </Style>
+
+    <!-- Hover for the individual elements inside cards (sliders, switches, check boxes, plain buttons), listed last so they win.
+         Rule 5 in AGENTS.md: every clickable element needs its own hover; add new element types here. -->
+    <Style Selector="Slider:pointerover /template/ Thumb">
+        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
+        <Setter Property="RenderTransform" Value="scale(1.2)" />
+    </Style>
+    <Style Selector="Slider.active:pointerover /template/ Thumb">
+        <Setter Property="Background" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="RenderTransform" Value="scale(1.4)" />
+    </Style>
+    <Style Selector="CheckBox:pointerover /template/ Border#NormalRectangle">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="Background" Value="{DynamicResource BrushHover}" />
+    </Style>
+    <Style Selector="ToggleSwitch:pointerover /template/ Border#OuterBorder">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="BorderThickness" Value="2" />
+    </Style>
+    <Style Selector="Button:not(.scope):not(.groupHeader):not(.step):not(.primary):pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+    </Style>
+    <!-- Lit (on) buttons keep their lit look but still react to the mouse -->
+    <Style Selector="Button.scope.mute.on:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.scope.band.on:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+    </Style>
+    <Style Selector="Button.scope.fxpower.on:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
+        <Setter Property="BorderBrush" Value="#6BE07A" />
+    </Style>
+    <Style Selector="Button.fxpower:pointerover Path"><Setter Property="Stroke" Value="{DynamicResource BrushAccent}" /></Style>
+    <Style Selector="Button.fxpower.on:pointerover Path"><Setter Property="Stroke" Value="#6BE07A" /></Style>
+</Styles>

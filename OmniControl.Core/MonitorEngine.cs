@@ -1,21 +1,14 @@
-﻿using OmniControl.Core.Command;
 using OmniControl.Core.Engine;
 using OmniControl.Core.Interfaces;
-using OmniControl.Core.Models;
 
 namespace OmniControl.Core;
 
-/// <summary>
-/// Facade that owns all peripheral controllers. GUI / hotkeys / timers / rules all
-/// funnel through here (and ultimately through CommandLanguage).
-/// </summary>
+/// <summary>Facade that owns the monitor, laptop backlight and system volume controllers.</summary>
 public sealed class MonitorEngine : IMonitorEngine
 {
     public List<IMonitor> Monitors { get; private set; } = new();
     public ILaptopBrightness Laptop { get; }
     public ISystemVolume System { get; }
-    public IGpuSaturation Gpu { get; }
-    public CommandLanguage Commands { get; private set; } = null!;
 
     private readonly IMonitorEnumerator _enumerator;
     private bool _disposed;
@@ -23,13 +16,11 @@ public sealed class MonitorEngine : IMonitorEngine
     public MonitorEngine(
         IMonitorEnumerator? enumerator = null,
         ILaptopBrightness? laptop = null,
-        ISystemVolume? system = null,
-        IGpuSaturation? gpu = null)
+        ISystemVolume? system = null)
     {
         _enumerator = enumerator ?? new MonitorEnumerator();
         Laptop = laptop ?? new LaptopBrightnessController();
         System = system ?? new SystemVolumeController();
-        Gpu = gpu ?? GpuSaturationFactory.Create();
         RefreshMonitors();
     }
 
@@ -37,11 +28,7 @@ public sealed class MonitorEngine : IMonitorEngine
     {
         foreach (var m in Monitors) m.Dispose();
         Monitors = _enumerator.Enumerate();
-        Commands = new CommandLanguage(Monitors, Laptop, System, Gpu);
     }
-
-    public OperationResult ExecuteCommand(string command, Action<string>? log = null)
-        => Commands.Execute(command, log);
 
     public void Dispose()
     {

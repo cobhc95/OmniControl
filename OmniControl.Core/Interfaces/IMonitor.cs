@@ -1,8 +1,8 @@
-﻿using OmniControl.Core.Models;
+using OmniControl.Core.Models;
 
 namespace OmniControl.Core.Interfaces;
 
-/// <summary>Portable monitor abstraction — implemented per-OS (dxva2 on Windows, I2C on Linux).</summary>
+/// <summary>A DDC/CI monitor (dxva2).</summary>
 public interface IMonitor : IDisposable
 {
     MonitorInfo Info { get; }
@@ -40,6 +40,8 @@ public interface ISystemVolume
 {
     OperationResult GetVolume(out int percent);
     OperationResult SetVolume(int percent);
+    OperationResult SetMute(bool mute);
+    OperationResult GetMute(out bool muted);
 }
 
 public interface IMonitorEngine : IDisposable
@@ -47,7 +49,5 @@ public interface IMonitorEngine : IDisposable
     List<IMonitor> Monitors { get; }
     ILaptopBrightness Laptop { get; }
     ISystemVolume System { get; }
-    OmniControl.Core.Engine.IGpuSaturation Gpu { get; }
     void RefreshMonitors();
-    OperationResult ExecuteCommand(string command, Action<string>? log = null);
 }

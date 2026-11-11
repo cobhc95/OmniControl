@@ -1,0 +1,33 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Pages.Osd"
+             xmlns:pages="using:OmniControl.App.Pages"
+             x:Class="OmniControl.App.Pages.Osd.OsdPage"
+             x:DataType="vm:OsdPageViewModel">
+    <StackPanel Spacing="12">
+        <TextBlock Classes="muted" TextWrapping="Wrap"
+                   Text="The on-screen display appears when a hotkey changes a value. Choose where it sits, how it looks and which elements it shows." />
+        <StackPanel x:Name="CardsHost" Grid.IsSharedSizeScope="True">
+            <ListBox Classes="rows compact" ItemsSource="{Binding Primary}">
+                <ListBox.ItemsPanel><ItemsPanelTemplate><pages:HalfPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
+            </ListBox>
+
+            <Border Classes="groupPanel" x:DataType="pages:ItemGroup" DataContext="{Binding Customize}">
+                <StackPanel Spacing="8">
+                    <pages:GroupHeader />
+                    <ListBox Classes="rows compact" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}" />
+                </StackPanel>
+            </Border>
+
+            <Border Classes="groupPanel" x:DataType="pages:ItemGroup" DataContext="{Binding Elements}">
+                <StackPanel Spacing="8">
+                    <pages:GroupHeader />
+                    <ListBox Classes="rows compact" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}" />
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+        <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                   Text="Up/Down move through the settings. Left/Right switch a toggle, or browse styles and colours; on a group header Left collapses and Right expands it. Enter on Position opens the list. Hiding Windows' own OSD is best-effort: Windows has no setting for it." />
+    </StackPanel>
+</UserControl>

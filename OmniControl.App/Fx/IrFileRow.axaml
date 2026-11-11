@@ -1,0 +1,13 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Fx"
+             x:Class="OmniControl.App.Fx.IrFileRow"
+             x:DataType="vm:IrFileItem">
+    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" Margin="0,4">
+        <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="1" Text="{Binding FileName}" Classes="muted" TextTrimming="CharacterEllipsis"
+                   ToolTip.Tip="{Binding Path}" VerticalAlignment="Center" />
+        <Button Grid.Column="2" Tag="scope" Classes="scope" Content="Choose…" HorizontalContentAlignment="Center"
+                VerticalAlignment="Center" Click="OnChooseClick" />
+    </Grid>
+</UserControl>

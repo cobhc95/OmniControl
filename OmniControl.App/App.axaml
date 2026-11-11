@@ -1,29 +1,37 @@
 ﻿<Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pages="using:OmniControl.App.Pages"
+             xmlns:hotkeys="using:OmniControl.App.Hotkeys"
+             xmlns:displays="using:OmniControl.App.Pages.Displays"
+             xmlns:shortcuts="using:OmniControl.App.Pages.Shortcuts"
+             xmlns:osd="using:OmniControl.App.Pages.Osd"
+             xmlns:volume="using:OmniControl.App.Pages.Volume"
+             xmlns:fx="using:OmniControl.App.Fx"
+             xmlns:appsettings="using:OmniControl.App.Pages.AppSettingsPage"
              x:Class="OmniControl.App.App"
-             xmlns:local="using:OmniControl.App"
              RequestedThemeVariant="Dark">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
+    <!-- Each page view-model maps to its view here. Adding a page = one line. -->
     <Application.DataTemplates>
-        <local:ViewLocator />
+        <DataTemplate DataType="displays:DisplaysPageViewModel"><displays:DisplaysPage /></DataTemplate>
+        <DataTemplate DataType="shortcuts:ShortcutsPageViewModel"><shortcuts:ShortcutsPage /></DataTemplate>
+        <DataTemplate DataType="osd:OsdPageViewModel"><osd:OsdPage /></DataTemplate>
+        <DataTemplate DataType="appsettings:AppSettingsPageViewModel"><appsettings:AppSettingsPage /></DataTemplate>
+        <DataTemplate DataType="volume:VolumePageViewModel"><volume:VolumePage /></DataTemplate>
+        <DataTemplate DataType="volume:MixerItem"><volume:MixerRow /></DataTemplate>
+        <DataTemplate DataType="fx:EqPanelItem"><fx:EqPanelRow /></DataTemplate>
+        <DataTemplate DataType="fx:IrFileItem"><fx:IrFileRow /></DataTemplate>
+        <DataTemplate DataType="volume:InputItem"><volume:InputRow /></DataTemplate>
+        <DataTemplate DataType="volume:AddProgramItem"><volume:AddProgramRow /></DataTemplate>
+        <DataTemplate DataType="pages:SliderItem"><pages:SliderRow /></DataTemplate>
+        <DataTemplate DataType="pages:ChoiceItem"><pages:ChoiceRow /></DataTemplate>
+        <DataTemplate DataType="pages:ToggleItem"><pages:ToggleRow /></DataTemplate>
+        <DataTemplate DataType="pages:GalleryItem"><pages:GalleryRow /></DataTemplate>
+        <DataTemplate DataType="hotkeys:HotkeyAction"><hotkeys:HotkeyRow /></DataTemplate>
     </Application.DataTemplates>
-
-    <Application.Resources>
-        <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <ResourceInclude Source="/Styles/Theme.axaml" />
-            </ResourceDictionary.MergedDictionaries>
-        </ResourceDictionary>
-    </Application.Resources>
 
     <Application.Styles>
         <FluentTheme />
-        <Style Selector="Button:focus /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}"/><Setter Property="BorderThickness" Value="2"/></Style>
-        <Style Selector="ToggleButton:focus /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}"/><Setter Property="BorderThickness" Value="2"/></Style>
-        <Style Selector="ListBoxItem:focus /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}"/><Setter Property="BorderThickness" Value="2"/></Style>
-        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}"/><Setter Property="BorderThickness" Value="2"/></Style>
-        <Style Selector="Slider:focus"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}"/><Setter Property="BorderThickness" Value="2"/></Style>
-        <Style Selector="Slider"><Setter Property="TickFrequency" Value="1"/><Setter Property="SmallChange" Value="1"/><Setter Property="LargeChange" Value="10"/><Setter Property="IsSnapToTickEnabled" Value="True"/></Style>
+        <StyleInclude Source="/Styles/Theme.axaml" />
     </Application.Styles>
 </Application>

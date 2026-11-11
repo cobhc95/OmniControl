@@ -1,0 +1,14 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pages="using:OmniControl.App.Pages"
+             x:Class="OmniControl.App.Pages.GroupHeader"
+             x:DataType="pages:CardGroup">
+    <Button Classes="groupHeader" Tag="grouphdr" Click="OnClick">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+            <PathIcon Classes="chev" Classes.collapsed="{Binding !IsExpanded}" Data="M5,9 L12,16 L19,9 Z"
+                      Width="12" Height="12" Margin="0,0,10,0" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="2" Text="{Binding Summary}" Classes="muted" FontSize="12" VerticalAlignment="Center" />
+        </Grid>
+    </Button>
+</UserControl>

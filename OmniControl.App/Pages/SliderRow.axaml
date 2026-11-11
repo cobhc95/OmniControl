@@ -1,0 +1,17 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pages="using:OmniControl.App.Pages"
+             x:Class="OmniControl.App.Pages.SliderRow"
+             x:DataType="pages:SliderItem">
+    <Grid Margin="0,3">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" MinWidth="48" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,24,0" />
+        <Slider Grid.Column="1" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Value}" />
+        <TextBlock Grid.Column="2" Text="{Binding ValueText}" Classes="muted" Margin="8,0,0,0"
+                   HorizontalAlignment="Right" VerticalAlignment="Center" />
+    </Grid>
+</UserControl>

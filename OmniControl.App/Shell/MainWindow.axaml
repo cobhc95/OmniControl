@@ -1,0 +1,94 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="using:OmniControl.App.Shell"
+        xmlns:pages="using:OmniControl.App.Pages"
+        x:Class="OmniControl.App.Shell.MainWindow"
+        x:DataType="shell:ShellViewModel"
+        Icon="avares://OmniControl/Assets/OmniControl.ico" Title="OmniControl" Width="900" Height="620" MinWidth="720" MinHeight="460"
+        Background="{DynamicResource BrushBackground}"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.Resources>
+        <DataTemplate x:Key="NavItemTemplate">
+            <StackPanel Orientation="Horizontal" Spacing="14">
+                <PathIcon Data="{Binding Icon}" Width="18" Height="18" />
+                <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+            </StackPanel>
+        </DataTemplate>
+    </Window.Resources>
+
+    <DockPanel>
+        <!-- Footer -->
+        <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,1,0,0" Padding="24,14">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <TextBlock Text="{Binding Version}" Classes="muted" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{Binding Status}" Classes="muted"
+                           HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,16,0" />
+                <Button Grid.Column="2" Content="Close" Classes="primary" Width="96"
+                        HorizontalContentAlignment="Center" Click="OnCloseClick" />
+            </Grid>
+        </Border>
+
+        <!-- Sidebar -->
+        <Border x:Name="Sidebar" DockPanel.Dock="Left" Width="220" Background="{DynamicResource BrushSidebar}"
+                BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,0,1,0">
+            <DockPanel Margin="0,24,0,12">
+                <StackPanel DockPanel.Dock="Top" Margin="24,0,0,16" Spacing="4">
+                    <TextBlock Text="OmniControl" Classes="title" />
+                    <TextBlock Text="Browse by category" Classes="muted" />
+                </StackPanel>
+
+                <!-- App-level pages, pinned to the bottom -->
+                <ListBox x:Name="FooterNav" DockPanel.Dock="Bottom" Classes="nav" ItemsSource="{Binding FooterPages}"
+                         SelectedItem="{Binding SelectedFooterPage}"
+                         ItemTemplate="{StaticResource NavItemTemplate}" />
+
+                <ListBox x:Name="MainNav" Classes="nav" ItemsSource="{Binding Pages}" SelectedItem="{Binding SelectedMainPage}"
+                         ItemTemplate="{StaticResource NavItemTemplate}" />
+            </DockPanel>
+        </Border>
+
+        <!-- Page content -->
+        <DockPanel>
+            <!-- Top bar: global search on the right -->
+            <Border DockPanel.Dock="Top" Padding="32,20,32,0">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <TextBox x:Name="SearchBox" Text="{Binding SearchText}" Watermark="Search settings...  (Ctrl+F)" Height="36"
+                             Background="{DynamicResource BrushSidebar}"
+                             BorderBrush="{DynamicResource BrushDivider}" />
+                    <ComboBox Grid.Column="1" ItemsSource="{Binding Categories}"
+                              SelectedItem="{Binding SelectedCategory}" Width="200" Height="36"
+                              Background="{DynamicResource BrushSidebar}"
+                              BorderBrush="{DynamicResource BrushDivider}" />
+                </Grid>
+            </Border>
+            <ScrollViewer x:Name="ContentHost">
+                <StackPanel Margin="32,16,32,28">
+                    <StackPanel IsVisible="{Binding !IsSearching}">
+                        <TextBlock Text="{Binding CurrentPage.Title}" Classes="title" Margin="0,0,0,12" />
+                        <ContentControl Content="{Binding CurrentPage}" />
+                    </StackPanel>
+
+                    <StackPanel IsVisible="{Binding IsSearching}" Spacing="12">
+                        <TextBlock Text="Search results" Classes="title" />
+                        <TextBlock Text="No settings match. Try another word." Classes="muted"
+                                   IsVisible="{Binding !SearchResults.Count}" />
+                        <ListBox x:Name="ResultList" Grid.IsSharedSizeScope="True" Classes="rows" ItemsSource="{Binding SearchResults}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="pages:SearchEntry">
+                                    <Grid ColumnDefinitions="100,*">
+                                        <StackPanel VerticalAlignment="Center" Spacing="2">
+                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Category}" Classes="muted" FontSize="12" />
+                                        </StackPanel>
+                                        <ContentControl Grid.Column="1" Content="{Binding Editor}" VerticalAlignment="Center" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
+    </DockPanel>
+</Window>

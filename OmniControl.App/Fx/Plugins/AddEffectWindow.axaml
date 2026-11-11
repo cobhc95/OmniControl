@@ -1,0 +1,46 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:p="using:OmniControl.App.Fx.Plugins"
+        x:Class="OmniControl.App.Fx.Plugins.AddEffectWindow"
+        x:DataType="p:AddEffectViewModel"
+        Title="Add effect" Width="580" Height="520" MinWidth="440" MinHeight="360" FontSize="12"
+        Background="{DynamicResource BrushBackground}" WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+    <Grid RowDefinitions="Auto,*,Auto,Auto" RowSpacing="8" Margin="12" Grid.IsSharedSizeScope="True">
+
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <TextBox x:Name="SearchBox" Text="{Binding Query}" Watermark="Search effects and plug-ins" VerticalContentAlignment="Center" />
+            <ComboBox Grid.Column="1" ItemsSource="{Binding Kinds}" SelectedItem="{Binding Kind}" Width="120" VerticalAlignment="Center" />
+        </Grid>
+
+        <Border Grid.Row="1" BorderBrush="{DynamicResource BrushDivider}" BorderThickness="1" CornerRadius="6" Background="{DynamicResource BrushSidebar}">
+            <Grid>
+                <ListBox x:Name="ResultList" Classes="fxlist" ItemsSource="{Binding Results}" SelectedItem="{Binding Selected}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="p:PluginEntry">
+                            <Grid ColumnSpacing="10" VerticalAlignment="Center">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="Fmt" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{Binding Format}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Border>
+
+        <TextBlock Grid.Row="2" Text="{Binding Status}" Classes="muted" TextWrapping="Wrap" MinHeight="16" />
+
+        <Grid Grid.Row="3" ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="6">
+            <Button x:Name="ScanButton" Tag="scope" Classes="scope" Content="{Binding ScanText}" Command="{Binding ScanCommand}" HorizontalContentAlignment="Center" />
+            <Button Grid.Column="1" x:Name="LoadButton" Tag="scope" Classes="scope" Content="Load VST file…" Click="OnLoadClick" HorizontalContentAlignment="Center" />
+            <Button Grid.Column="3" x:Name="AddButton" Tag="scope" Classes="scope" Content="Add" Click="OnAddClick" IsEnabled="{Binding CanAdd}" HorizontalContentAlignment="Center" />
+            <Button Grid.Column="4" Tag="scope" Classes="scope" Content="Cancel" Click="OnCancelClick" HorizontalContentAlignment="Center" />
+        </Grid>
+    </Grid>
+</Window>

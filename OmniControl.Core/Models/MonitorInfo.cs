@@ -10,16 +10,6 @@ public sealed class MonitorInfo
     public required int    Index       { get; init; }
     public string? Capabilities { get; set; }           // raw MCCS capabilities string (lazy)
 
-    /// <summary>Alias used by the command language, e.g. "PL2779Q". Defaults to friendly name without spaces.</summary>
-    public string Alias { get; set; } = string.Empty;
-
-    public bool IsLaptopLcd => InstanceId.StartsWith("DISPLAY\\", StringComparison.OrdinalIgnoreCase)
-                               || DeviceName.Contains("Laptop", StringComparison.OrdinalIgnoreCase);
-
-    public override string ToString() =>
-        string.IsNullOrWhiteSpace(Alias)
-            ? $"{Index}: {FriendlyName} [{DeviceName}]"
-            : $"{Alias} ({FriendlyName}) [{DeviceName}]";
 }
 
 /// <summary>Structured result of a VCP read.</summary>

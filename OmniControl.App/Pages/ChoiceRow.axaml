@@ -1,0 +1,15 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pages="using:OmniControl.App.Pages"
+             x:Class="OmniControl.App.Pages.ChoiceRow"
+             x:DataType="pages:ChoiceItem">
+    <Grid Margin="0,3">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
+            <ColumnDefinition Width="220" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,24,0" />
+        <ComboBox Grid.Column="1" ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}"
+                  HorizontalAlignment="Stretch" />
+    </Grid>
+</UserControl>

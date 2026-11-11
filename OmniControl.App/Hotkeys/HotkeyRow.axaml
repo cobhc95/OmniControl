@@ -1,0 +1,33 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:hk="using:OmniControl.App.Hotkeys"
+             x:Class="OmniControl.App.Hotkeys.HotkeyRow"
+             x:DataType="hk:HotkeyAction">
+    <Grid ColumnDefinitions="150,190" ColumnSpacing="12">
+        <TextBox IsReadOnly="True" Text="{Binding Gesture}" Watermark="{Binding HotkeyHint}"
+                 Classes.listening="{Binding IsListening}"
+                 MinHeight="28" Padding="8,4" FontSize="12" VerticalAlignment="Center"
+                 DoubleTapped="OnHotkeyDoubleTapped" LostFocus="OnHotkeyLostFocus" />
+
+        <Button Grid.Column="1" Tag="scope" Classes="scope" IsVisible="{Binding HasDevices}">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="{Binding ScopeSummary}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                <PathIcon Grid.Column="1" Data="M6,9 L12,16 L18,9 Z" Width="10" Height="10" Margin="8,0,0,0" />
+            </Grid>
+            <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedLeft" Opened="OnFlyoutOpened" Closed="OnFlyoutClosed" FlyoutPresenterClasses="scopemenu">
+                    <StackPanel x:DataType="hk:HotkeyAction">
+                        <ItemsControl ItemsSource="{Binding Chips}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="hk:ScopeChip">
+                                    <ToggleButton Classes="menuitem" Content="{Binding Name}" IsChecked="{Binding IsOn}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="No devices detected." Classes="muted" Margin="12,8" IsVisible="{Binding ShowEmptyNote}" />
+                    </StackPanel>
+                </Flyout>
+            </Button.Flyout>
+        </Button>
+    </Grid>
+</UserControl>

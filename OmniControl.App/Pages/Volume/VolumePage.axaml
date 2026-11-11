@@ -1,0 +1,28 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Pages.Volume"
+             xmlns:pages="using:OmniControl.App.Pages"
+             x:Class="OmniControl.App.Pages.Volume.VolumePage"
+             x:DataType="vm:VolumePageViewModel">
+    <StackPanel Spacing="12">
+        <TextBlock Classes="muted" TextWrapping="Wrap"
+                   Text="Outputs: the master and every program that plays sound. Inputs: your microphones and other recording devices. Volume and pan follow Windows live; programs are remembered after they close, and their settings return when they open again." />
+        <StackPanel x:Name="CardsHost" Grid.IsSharedSizeScope="True">
+            <Border Classes="groupPanel" x:DataType="vm:VolumeGroup" DataContext="{Binding Outputs}">
+                <StackPanel Spacing="8">
+                    <pages:GroupHeader />
+                    <ListBox Classes="rows compact" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}" />
+                </StackPanel>
+            </Border>
+
+            <Border Classes="groupPanel" x:DataType="vm:VolumeGroup" DataContext="{Binding Inputs}">
+                <StackPanel Spacing="8">
+                    <pages:GroupHeader />
+                    <ListBox Classes="rows compact" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+        <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                   Text="Up/Down move between group headers and rows; on a header Left collapses and Right expands it. In a row, Left/Right choose a part (volume, pan, mute, FX, power) and Enter adjusts a slider (Left/Right change it, Enter or Esc finishes). The small meter shows the live level (left and right, with a peak mark); it only runs while a group is open. The FX button opens that row's effect chain; the power button switches it on (green) or off. Effect chains are saved, but this version doesn't process sound yet. Pan needs Windows to allow per-channel levels for the program. Choose a program's output device in its FX window." />
+    </StackPanel>
+</UserControl>
