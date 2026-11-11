@@ -11,12 +11,7 @@ public sealed class MonitorEnumerator : IMonitorEnumerator
 {
     public List<IMonitor> Enumerate()
     {
-#if WINDOWS
         return EnumerateWindows();
-#else
-        // Linux: scan /dev/i2c-* + /sys/class/drm/card*/device/vendor for EDID, probe DDC/CI.
-        return EnumerateLinux();
-#endif
     }
 
 #if WINDOWS
