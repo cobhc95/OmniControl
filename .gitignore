@@ -1,4 +1,4 @@
-## Visual Studio / .NET
+﻿## Visual Studio / .NET
 bin/
 obj/
 *.user
@@ -13,10 +13,10 @@ artifacts/
 ## Native / system
 *.dll
 .pdb
-OmniDial.Core/bin/
-OmniDial.Avalonia/bin/
-OmniDial.Avalonia/obj/
-OmniDial.Core/obj/
+OmniControl.Core/bin/
+OmniControl.App/bin/
+OmniControl.App/obj/
+OmniControl.Core/obj/
 
 ## OS / editor
 .DS_Store

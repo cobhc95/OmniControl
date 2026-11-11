@@ -1,0 +1,4 @@
+﻿<Solution>
+  <Project Path="OmniControl.App/OmniControl.App.csproj" />
+  <Project Path="OmniControl.Core/OmniControl.Core.csproj" />
+</Solution>

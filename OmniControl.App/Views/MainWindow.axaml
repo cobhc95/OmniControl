@@ -1,0 +1,50 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:OmniControl.App.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="860" d:DesignHeight="620"
+        x:Class="OmniControl.App.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="OmniControl — DDC/CI engine test (Avalonia)"
+        Width="860" Height="620" MinWidth="640" MinHeight="480">
+
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*,Auto" Margin="12" ColumnDefinitions="Auto,*,Auto">
+        <TextBlock Text="Monitors (DDC/CI)" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"
+                   Grid.Row="0" Grid.Column="0" />
+        <Button Content="Refresh" Command="{Binding RefreshCommand}" Grid.Row="0" Grid.Column="2" Padding="16,6" />
+
+        <ListBox ItemsSource="{Binding Monitors}" SelectedItem="{Binding SelectedMonitor}"
+                 SelectionMode="Single" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3"
+                 Margin="0,8" MinHeight="72" MaxHeight="72" />
+
+        <TextBlock Text="Brightness" VerticalAlignment="Center" Grid.Row="2" Grid.Column="0" Margin="0,8,8,0" />
+        <Slider Value="{Binding Brightness}" Minimum="0" Maximum="100" TickFrequency="1" Grid.Row="2" Grid.Column="1" />
+        <TextBlock Text="{Binding Brightness}" VerticalAlignment="Center" Grid.Row="2" Grid.Column="2" Margin="8,8,0,0" MinWidth="32" />
+
+        <TextBlock Text="Contrast" VerticalAlignment="Center" Grid.Row="3" Grid.Column="0" Margin="0,8,8,0" />
+        <Slider Value="{Binding Contrast}" Minimum="0" Maximum="100" TickFrequency="1" Grid.Row="3" Grid.Column="1" />
+        <TextBlock Text="{Binding Contrast}" VerticalAlignment="Center" Grid.Row="3" Grid.Column="2" Margin="8,8,0,0" MinWidth="32" />
+
+        <TextBlock Text="Monitor volume" VerticalAlignment="Center" Grid.Row="4" Grid.Column="0" Margin="0,8,8,0" />
+        <Slider Value="{Binding Volume}" Minimum="0" Maximum="100" TickFrequency="1" Grid.Row="4" Grid.Column="1" />
+        <TextBlock Text="{Binding Volume}" VerticalAlignment="Center" Grid.Row="4" Grid.Column="2" Margin="8,8,0,0" MinWidth="32" />
+
+        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,10,0,4" Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="3">
+            <Button Content="Power ON" Command="{Binding PowerOnCommand}" Padding="12,6" />
+            <Button Content="Power OFF" Command="{Binding PowerOffCommand}" Padding="12,6" />
+            <Button Content="Factory reset" Command="{Binding FactoryResetCommand}" Padding="12,6" />
+            <Button Content="Read capabilities" Command="{Binding ReadCapabilitiesCommand}" Padding="12,6" />
+        </StackPanel>
+
+        <ListBox ItemsSource="{Binding LogLines}" Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="3"
+                 Margin="0,4" FontFamily="Consolas" FontSize="12" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" />
+
+        <TextBox Text="{Binding CommandText}" Watermark="e.g. PL2779Q b 36  or  ALL b +5  or  LCD b 70  or  SYS v 30"
+                 Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,8,0" FontFamily="Consolas"
+                 KeyDown="OnCommandKeyDown" />
+        <Button Content="Run" Command="{Binding RunCommand}" Grid.Row="7" Grid.Column="2" Padding="16,6" />
+    </Grid>
+
+</Window>
