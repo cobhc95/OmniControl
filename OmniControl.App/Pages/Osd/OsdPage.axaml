@@ -4,7 +4,7 @@
              xmlns:pages="using:OmniControl.App.Pages"
              x:Class="OmniControl.App.Pages.Osd.OsdPage"
              x:DataType="vm:OsdPageViewModel">
-    <StackPanel Spacing="12">
+    <StackPanel Spacing="6">
         <TextBlock Classes="muted" TextWrapping="Wrap"
                    Text="The on-screen display appears when a hotkey changes a value. Choose where it sits, how it looks and which elements it shows." />
         <StackPanel x:Name="CardsHost" Grid.IsSharedSizeScope="True">
@@ -13,21 +13,23 @@
             </ListBox>
 
             <Border Classes="groupPanel" x:DataType="pages:ItemGroup" DataContext="{Binding Customize}">
-                <StackPanel Spacing="8">
+                <StackPanel Spacing="6">
                     <pages:GroupHeader />
                     <ListBox Classes="rows compact" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}" />
                 </StackPanel>
             </Border>
 
             <Border Classes="groupPanel" x:DataType="pages:ItemGroup" DataContext="{Binding Elements}">
-                <StackPanel Spacing="8">
+                <StackPanel Spacing="6">
                     <pages:GroupHeader />
-                    <ListBox Classes="rows compact" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}" />
+                    <ListBox Classes="rows compact" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}">
+                        <ListBox.ItemsPanel><ItemsPanelTemplate><pages:HalfPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
+                    </ListBox>
                 </StackPanel>
             </Border>
 
         </StackPanel>
-        <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+        <TextBlock Classes="hint"
                    Text="Up/Down move through the settings. Left/Right switch a toggle, or browse styles and colours; on a group header Left collapses and Right expands it. Enter on Position opens the list. Hiding Windows' own OSD is best-effort: Windows has no setting for it." />
     </StackPanel>
 </UserControl>

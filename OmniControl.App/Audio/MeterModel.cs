@@ -7,7 +7,7 @@ namespace OmniControl.App.Audio;
 public sealed class MeterModel
 {
     public const double FloorDb = -60, WarmDb = -12;
-    private const double HoldMs = 1200, FallDbPerSecond = 28, ClipMs = 2500;
+    private const double HoldMs = 1200, FallDbPerSecond = 28, ClipMs = 2500, MaxFrameMs = 250, MsPerSecond = 1000;
 
     private double _lastMs;
     private double _holdLeftAt, _holdRightAt, _clipAt;
@@ -29,7 +29,7 @@ public sealed class MeterModel
     /// <summary>Takes the newest peak values (0 to 1; both 0 when there is no sound or no reading).</summary>
     public void Feed(float left, float right, double nowMs)
     {
-        var dt = _lastMs == 0 ? 0 : Math.Min(250, nowMs - _lastMs) / 1000;
+        var dt = _lastMs == 0 ? 0 : Math.Min(MaxFrameMs, nowMs - _lastMs) / MsPerSecond;
         _lastMs = nowMs;
         var changed = false;
         changed |= Move(ToDb(left), dt, nowMs, ref _holdLeftAt, v => LeftDb = v, LeftDb, v => HoldLeftDb = v, HoldLeftDb);

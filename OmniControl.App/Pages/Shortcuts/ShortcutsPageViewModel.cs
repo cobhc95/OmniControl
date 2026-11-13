@@ -12,19 +12,13 @@ public sealed class ShortcutsPageViewModel : PageViewModel
     public override string Icon => "M4,5 H20 A2,2 0 0 1 22,7 V17 A2,2 0 0 1 20,19 H4 A2,2 0 0 1 2,17 V7 A2,2 0 0 1 4,5 Z M4,7 V17 H20 V7 Z M5,9 H7 V11 H5 Z M9,9 H11 V11 H9 Z M13,9 H15 V11 H13 Z M17,9 H19 V11 H17 Z M7,14 H17 V16 H7 Z";
     public override string Keywords => "keyboard keys hotkeys hotkey keybinding bind shortcut";
 
-    public ObservableCollection<HotkeyAction> Actions => _registry.Actions;
+    private ObservableCollection<HotkeyAction> Actions => _registry.Actions;
 
-    /// <summary>The actions grouped by feature, in the order features registered them.</summary>
+    /// <summary>The actions grouped by heading (feature, then its group and subgroup), in the order features registered them.</summary>
     public ObservableCollection<HotkeyGroup> Groups { get; } = new();
 
     public override IEnumerable<SearchEntry> SearchEntries =>
-        Actions.Select(a => new SearchEntry
-        {
-            Title = a.Title + " hotkey",
-            Category = Title,
-            Editor = a,
-            Keywords = $"{a.Category} {a.Keywords} keyboard shortcut keybinding",
-        });
+        Actions.Select(a => Entry(a, a.Title + " hotkey", $"{a.Keywords} keyboard shortcut keybinding", a.Heading));
 
     public ShortcutsPageViewModel(HotkeyRegistry registry)
     {
@@ -36,7 +30,7 @@ public sealed class ShortcutsPageViewModel : PageViewModel
     private void Rebuild()
     {
         Groups.Clear();
-        foreach (var g in Actions.GroupBy(a => a.Category))
+        foreach (var g in Actions.GroupBy(a => a.Heading))
             Groups.Add(new HotkeyGroup(g.Key, g.ToList()));
     }
 

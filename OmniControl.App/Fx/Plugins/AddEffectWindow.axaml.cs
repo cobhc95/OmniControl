@@ -46,9 +46,9 @@ public partial class AddEffectWindow : Window
         if (DataContext is not AddEffectViewModel vm) return;
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Load a VST3 plug-in",
+            Title = "Load a plug-in",
             AllowMultiple = false,
-            FileTypeFilter = new[] { new FilePickerFileType("VST3 plug-ins") { Patterns = new[] { "*.vst3" } } },
+            FileTypeFilter = new[] { new FilePickerFileType("VST plug-ins") { Patterns = vm.FilePatterns } },
         });
         if (files.Count > 0 && files[0].TryGetLocalPath() is { } path) vm.LoadFile(path);
     }

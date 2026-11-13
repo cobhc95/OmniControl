@@ -1,0 +1,67 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:g="using:OmniControl.App.Pages.Gestures"
+        xmlns:pages="using:OmniControl.App.Pages"
+        x:Class="OmniControl.App.Pages.Gestures.RuleEditorWindow"
+        x:DataType="g:RuleEditorViewModel"
+        Title="{Binding Title}" Icon="avares://OmniControl/Assets/OmniControl.ico" Width="640" MinWidth="460" SizeToContent="Height"
+        Background="{DynamicResource BrushBackground}" WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+    <!-- A custom rule: its name, the sentence of blocks (Styles/Blocks.axaml), the Layer and Rate limit cards, what is worth knowing,
+         and Test / Copy details / Delete rule / Close. Everything applies at once. -->
+    <StackPanel Margin="12" Spacing="10">
+        <TextBlock Classes="section" Text="{Binding Title}" Margin="0" />
+        <TextBox x:Name="NameBox" Classes="field" Text="{Binding Name, UpdateSourceTrigger=LostFocus}" Watermark="Name (optional)" />
+
+        <Border Classes="groupPanel" Padding="8,8,8,2">
+            <ItemsControl x:Name="SentenceHost" ItemsSource="{Binding Sentence}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.DataTemplates>
+                    <DataTemplate DataType="g:SentenceWord">
+                        <TextBlock Classes="blockword" Text="{Binding Text}" />
+                    </DataTemplate>
+                    <DataTemplate DataType="g:SentenceBlock">
+                        <Button Classes="block" Click="OnBlockClick" ToolTip.Tip="Change it (Enter); Delete removes it">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding Text}" />
+                                <Button Classes="blockx" Content="×" Click="OnRemoveClick" ToolTip.Tip="Remove" />
+                            </StackPanel>
+                        </Button>
+                    </DataTemplate>
+                    <DataTemplate DataType="g:SentenceJoin">
+                        <Button Classes="blockjoin" Content="{Binding Text}" Click="OnJoinClick"
+                                ToolTip.Tip="and: every condition must hold. or: any one is enough. Applies to all conditions of this rule." />
+                    </DataTemplate>
+                    <DataTemplate DataType="g:SentenceAdd">
+                        <Button Classes="blockadd" Content="{Binding Text}" Click="OnAddClick" />
+                    </DataTemplate>
+                </ItemsControl.DataTemplates>
+            </ItemsControl>
+        </Border>
+
+        <ListBox x:Name="SettingsList" Classes="rows compact" ItemsSource="{Binding Settings}">
+            <ListBox.ItemsPanel><ItemsPanelTemplate><pages:HalfPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
+        </ListBox>
+
+        <ItemsControl ItemsSource="{Binding Notes}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="g:RuleTag">
+                    <Border Classes="tag" Classes.caution="{Binding IsCaution}" Classes.risk="{Binding IsRisk}" HorizontalAlignment="Left" Margin="0,0,0,4">
+                        <TextBlock Text="{Binding Detail}" />
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <TextBlock Classes="hint small"
+                   Text="Left/Right move through the sentence; Enter changes a block or adds one; Delete removes a block; Tab goes on to the settings and buttons. The first rule in the list that matches wins, ahead of the gestures and the mouse and trackpad mappings. Rules never run while OmniControl's window is active or under the pointer. Test runs the actions once now, where the pointer is." />
+
+        <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="8">
+            <Button Classes="pill" Content="Test" IsEnabled="{Binding CanTest}" Click="OnTestClick" ToolTip.Tip="Run its actions once now" />
+            <Button Grid.Column="1" Classes="pill" Content="Copy details" IsVisible="{Binding HasFailure}" Click="OnCopyClick" />
+            <Button Grid.Column="2" Classes="pill" Content="Delete rule" Click="OnDeleteClick" />
+            <Button Grid.Column="4" Classes="primary" Content="Close" Click="OnCloseClick" />
+        </Grid>
+    </StackPanel>
+</Window>

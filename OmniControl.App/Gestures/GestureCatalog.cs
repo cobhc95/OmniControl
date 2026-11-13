@@ -1,0 +1,83 @@
+using OmniControl.App.Hotkeys;
+using OmniControl.App.Mouse;
+using OmniControl.Core.Engine.Mouse;
+
+namespace OmniControl.App.Gestures;
+
+/// <summary>
+/// One gesture's trigger: scrolling while the pointer is over a screen area (<see cref="Area"/>) or while a set of keys is held
+/// (<see cref="Keys"/>), or, with <see cref="MiddleClick"/>, pressing the middle button over a screen area.
+/// <see cref="DefaultAction"/> is the action a new gesture starts with: a step action for the wheel, a mouse button action for a middle click.
+/// </summary>
+public sealed record GestureTrigger(string Id, string Group, string Label, string DefaultAction,
+    PointerAreaKind Area = PointerAreaKind.Elsewhere, Modifiers Keys = Modifiers.None, bool MiddleClick = false);
+
+/// <summary>
+/// Every gesture trigger, and the "step" actions a wheel can drive (wheel up goes one way, wheel down the other).
+/// The level steps (volume, brightness...) are not listed here: every level an OmniControl action declares
+/// (<see cref="HotkeyAction.ForLevel"/>) is offered, so they behave and show the OSD exactly as the hotkeys do. Only the steps that are
+/// not OmniControl actions are listed below. Middle-click gestures use the Mouse and Trackpad page's action list instead (<see cref="ClickChoices"/>),
+/// run by <see cref="MouseService"/>.
+/// </summary>
+public static class GestureCatalog
+{
+    public const string AreaGroup = "Scroll over a screen area", KeyGroup = "Scroll while holding a key", MiddleGroup = "Middle click over a screen area";
+    public const string Opacity = "opacity";
+
+    // The master list of gesture triggers (read by the Gestures page, GestureService and the margin drawing). A wheel trigger's
+    // default action is a level id declared by a page (HotkeyLevel.Id: "volume", "brightness") or a step listed below.
+    public static readonly IReadOnlyList<GestureTrigger> Triggers = new GestureTrigger[]
+    {
+        new("area.taskbar", AreaGroup, "Taskbar", "volume", PointerAreaKind.Taskbar),
+        new("area.top", AreaGroup, "Top edge", "brightness", PointerAreaKind.TopEdge),
+        new("area.left", AreaGroup, "Left edge", "volume", PointerAreaKind.LeftEdge),
+        new("area.right", AreaGroup, "Right edge", "volume", PointerAreaKind.RightEdge),
+        new("area.titlebar", AreaGroup, "Window title bar", Opacity, PointerAreaKind.TitleBar),
+        new("area.desktop", AreaGroup, "Desktop", "volume", PointerAreaKind.Desktop),
+
+        new("middle.taskbar", MiddleGroup, "Taskbar", "desktop.taskview", PointerAreaKind.Taskbar, MiddleClick: true),
+        new("middle.titlebar", MiddleGroup, "Window title bar", "window.minimize", PointerAreaKind.TitleBar, MiddleClick: true),
+        new("middle.desktop", MiddleGroup, "Desktop", "desktop.show", PointerAreaKind.Desktop, MiddleClick: true),
+
+        new("key.ctrl+alt", KeyGroup, "Ctrl + Alt", "volume", Keys: Modifiers.Ctrl | Modifiers.Alt),
+        new("key.ctrl+shift", KeyGroup, "Ctrl + Shift", "brightness", Keys: Modifiers.Ctrl | Modifiers.Shift),
+        new("key.alt", KeyGroup, "Alt", "volume", Keys: Modifiers.Alt),
+        new("key.win", KeyGroup, "Win", "volume", Keys: Modifiers.Win),
+    };
+
+    /// <summary>The name of a screen area, as its scroll gesture's card shows it.</summary>
+    public static string AreaName(PointerAreaKind area) => Triggers.First(t => t.Group == AreaGroup && t.Area == area).Label;
+
+    /// <summary>A step that is not an OmniControl level: a keystroke per wheel direction, or neither (the runner handles it by id).</summary>
+    private sealed record Step(string Id, string Category, string Name, IReadOnlyList<ActionOption> Options, string? UpKeys = null, string? DownKeys = null);
+
+    private static readonly IReadOnlyList<ActionOption> Stepped = new[] { GestureOptions.Steps, GestureOptions.Reverse };
+    private static readonly IReadOnlyList<ActionOption> LevelOptions = new[] { GestureOptions.Amount, GestureOptions.Reverse };
+
+    private static readonly Step[] Steps =
+    {
+        new(Opacity, "Windows", "Window opacity", new[] { GestureOptions.OpacityStep, GestureOptions.Reverse }),
+        new("desktop", "Windows", "Switch virtual desktop", Stepped, UpKeys: "Win+Ctrl+Left", DownKeys: "Win+Ctrl+Right"),
+    };
+
+    /// <summary>
+    /// The action list shown in the picker window for a wheel gesture: every level the master list's actions declare (in the order
+    /// registered, under the heading of the action that declares it), then the other steps.
+    /// </summary>
+    public static List<PickChoice> Choices(IEnumerable<HotkeyAction> omniActions) =>
+        omniActions.Where(a => a.Level is not null).GroupBy(a => a.Level!.Id).Select(g => g.First())
+            .Select(a => new PickChoice(a.Level!.Id, a.Heading, a.Level.Name, Keywords: a.Keywords, Options: LevelOptions))
+            .Concat(Steps.Select(s => new PickChoice(s.Id, s.Category, s.Name, Options: s.Options)))
+            .ToList();
+
+    /// <summary>
+    /// The action list for a middle-click gesture: the Mouse and Trackpad page's buttons' list without "Default behaviour", which would only mean
+    /// the gesture is off.
+    /// </summary>
+    public static List<PickChoice> ClickChoices(IEnumerable<HotkeyAction> omniActions) =>
+        MouseActionCatalog.Choices(omniActions).Where(c => c.Spec != MouseActionCatalog.Default).ToList();
+
+    /// <summary>The keystroke a listed step sends for one wheel direction; null for a level or a step the runner handles by id.</summary>
+    public static string? KeysOf(string stepId, bool up) =>
+        Steps.FirstOrDefault(s => s.Id == stepId) is { } step ? up ? step.UpKeys : step.DownKeys : null;
+}

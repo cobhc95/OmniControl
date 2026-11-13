@@ -1,0 +1,40 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- MASTER sliders (AGENTS.md "Master design elements"): every slider steps in whole positions (the view-model says what a
+         position is worth); Slider.compact and the vertical Slider.vband. Their focus and hover come from Theme.axaml, like every
+         other control's; this file only sets their shape. Included after Theme.axaml. -->
+    <Style Selector="Slider"><Setter Property="TickFrequency" Value="1" /><Setter Property="IsSnapToTickEnabled" Value="True" /></Style>
+    <!-- Compact slider (the Volume rows' pan and level): 13 px knob, 3 px track, as tall as the row's buttons. The track's own
+         see-through margin (FocusTarget in the Fluent template) keeps the hit area taller than the drawn track. The length comes from the view. -->
+    <Style Selector="Slider.compact">
+        <Setter Property="MinWidth" Value="28" />
+        <Setter Property="MinHeight" Value="26" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Slider.compact /template/ Grid#HorizontalTemplate"><Setter Property="MinHeight" Value="26" /></Style>
+    <Style Selector="Slider.compact /template/ Thumb">
+        <Setter Property="Width" Value="13" />
+        <Setter Property="Height" Value="13" />
+    </Style>
+    <Style Selector="Slider.compact /template/ RepeatButton /template/ Border#TrackBackground"><Setter Property="Height" Value="3" /></Style>
+    <!-- Vertical band slider (the graphic equalisers): the master vertical slider. It fills its column and the row's height (the view
+         gives both); a 12 px wide knob in a 16 px column (it grows to 14 on hover, so it never reaches the neighbours), 3 px track;
+         .large (few bands) a 20 px knob, 5 px track, 28 px column. The knob's height is VBandThumbHeight (App.axaml), which the dB scale
+         beside the sliders uses to line its marks up with the knob's travel. -->
+    <Style Selector="Slider.vband">
+        <Setter Property="Orientation" Value="Vertical" />
+        <Setter Property="MinWidth" Value="16" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="Slider.vband /template/ Grid#VerticalTemplate"><Setter Property="MinWidth" Value="16" /></Style>
+    <Style Selector="Slider.vband /template/ Thumb">
+        <Setter Property="Width" Value="12" />
+        <Setter Property="Height" Value="{DynamicResource VBandThumbHeight}" />
+    </Style>
+    <Style Selector="Slider.vband /template/ RepeatButton /template/ Border#TrackBackground"><Setter Property="Width" Value="3" /></Style>
+    <Style Selector="Slider.vband.large"><Setter Property="MinWidth" Value="28" /></Style>
+    <Style Selector="Slider.vband.large /template/ Grid#VerticalTemplate"><Setter Property="MinWidth" Value="28" /></Style>
+    <Style Selector="Slider.vband.large /template/ Thumb"><Setter Property="Width" Value="20" /></Style>
+    <Style Selector="Slider.vband.large /template/ RepeatButton /template/ Border#TrackBackground"><Setter Property="Width" Value="5" /></Style>
+</Styles>

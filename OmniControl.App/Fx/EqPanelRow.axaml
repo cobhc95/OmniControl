@@ -1,52 +1,57 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:OmniControl.App.Fx"
              x:Class="OmniControl.App.Fx.EqPanelRow"
              x:DataType="vm:EqPanelItem">
-    <StackPanel Spacing="10" Margin="0,4">
+    <!-- ReaEQ-style equaliser: graph, band tabs, the selected band's controls, band buttons and view switches -->
+    <StackPanel Spacing="8" Margin="0,4">
         <vm:EqGraph Height="230" />
 
-        <ItemsControl ItemsSource="{Binding Bands}">
+        <ItemsControl ItemsSource="{Binding Bands}" IsVisible="{Binding ShowTabs}">
             <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate>
+                <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="vm:EqBandItem">
                     <Button Classes="scope band" Classes.on="{Binding IsSelected}" Command="{Binding SelectCommand}"
-                            Focusable="False" Margin="2,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
+                            Focusable="False" Margin="0,0,4,4" HorizontalContentAlignment="Center" ToolTip.Tip="{Binding TypeName}">
                         <StackPanel>
                             <TextBlock Text="{Binding Number}" FontSize="11" HorizontalAlignment="Center" Classes="muted" />
-                            <TextBlock Text="{Binding GainText}" FontSize="11" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding TabText}" FontSize="11" HorizontalAlignment="Center" />
                         </StackPanel>
                     </Button>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <Grid DataContext="{Binding Selected}" x:DataType="vm:EqBandItem" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" MinWidth="72" />
-            </Grid.ColumnDefinitions>
+        <TextBlock Classes="hint" Text="No bands: the sound passes unchanged. Use Add band to start." IsVisible="{Binding !HasBands}" />
 
-            <TextBlock Text="Type" VerticalAlignment="Center" Margin="0,0,24,0" />
-            <ComboBox Grid.Column="1" ItemsSource="{x:Static vm:EqBandItem.TypeNames}" SelectedItem="{Binding TypeName}" Width="180" HorizontalAlignment="Left" />
+        <!-- The selected band's controls -->
+        <StackPanel IsVisible="{Binding HasBands}">
+            <vm:EqBandRow DataContext="{Binding Selected}" />
+        </StackPanel>
 
-            <TextBlock Grid.Row="1" Text="Frequency" VerticalAlignment="Center" Margin="0,0,24,0" />
-            <Slider Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="1000" Value="{Binding FreqPos}" />
-            <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding FreqText}" Classes="muted" TextAlignment="Right" Margin="8,0,0,0" VerticalAlignment="Center" />
+        <WrapPanel Orientation="Horizontal">
+            <Button Classes="pill" Tag="scope" Content="Add band" Command="{Binding AddBandCommand}" Margin="0,0,6,4" VerticalAlignment="Center" />
+            <Button Classes="pill" Tag="scope" Content="Remove band" Command="{Binding RemoveBandCommand}" Margin="0,0,6,4" VerticalAlignment="Center"
+                    ToolTip.Tip="Removes the selected band" />
+            <Button Classes="pill" Tag="scope" Content="Reset defaults" Command="{Binding ResetDefaultsCommand}" Margin="0,0,16,4" VerticalAlignment="Center"
+                    ToolTip.Tip="Back to four flat bands" />
+            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,12,4">
+                <TextBlock Text="Show tabs" VerticalAlignment="Center" />
+                <ToggleSwitch IsChecked="{Binding ShowTabs}" OnContent="On" OffContent="Off" VerticalAlignment="Center" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,12,4">
+                <TextBlock Text="Show grid" VerticalAlignment="Center" />
+                <ToggleSwitch IsChecked="{Binding ShowGrid}" OnContent="On" OffContent="Off" VerticalAlignment="Center" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,12,4">
+                <TextBlock Text="Show phase" VerticalAlignment="Center" />
+                <ToggleSwitch IsChecked="{Binding ShowPhase}" OnContent="On" OffContent="Off" VerticalAlignment="Center" />
+            </StackPanel>
+        </WrapPanel>
 
-            <TextBlock Grid.Row="2" Text="Gain" VerticalAlignment="Center" Margin="0,0,24,0" />
-            <Slider Grid.Row="2" Grid.Column="1" Minimum="-24" Maximum="24" Value="{Binding GainSteps}" />
-            <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding GainTextDb}" Classes="muted" TextAlignment="Right" Margin="8,0,0,0" VerticalAlignment="Center" />
-
-            <TextBlock Grid.Row="3" Text="Q (width)" VerticalAlignment="Center" Margin="0,0,24,0" />
-            <Slider Grid.Row="3" Grid.Column="1" Minimum="0" Maximum="1000" Value="{Binding QPos}" />
-            <TextBlock Grid.Row="3" Grid.Column="2" Text="{Binding QText}" Classes="muted" TextAlignment="Right" Margin="8,0,0,0" VerticalAlignment="Center" />
-        </Grid>
-
-        <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
-                   Text="Left/Right pick a band; Up/Down move between Type, Frequency, Gain and Q; Enter on a slider adjusts it with Left/Right (Enter or Esc finishes). With the mouse, drag a node on the graph or scroll over it to change Q." />
+        <TextBlock Classes="hint"
+                   Text="Left/Right pick a band; Up/Down move between the controls; Enter on a slider adjusts it with Left/Right. Drag a point on the graph; the wheel over a point changes its bandwidth; double-click a value to type it." />
     </StackPanel>
 </UserControl>

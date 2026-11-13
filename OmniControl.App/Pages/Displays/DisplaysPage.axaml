@@ -1,32 +1,46 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:OmniControl.App.Pages.Displays"
+             xmlns:pages="using:OmniControl.App.Pages"
              x:Class="OmniControl.App.Pages.Displays.DisplaysPage"
              x:DataType="vm:DisplaysPageViewModel">
-    <StackPanel Spacing="12">
-        <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Text="{Binding Summary}" Classes="muted" VerticalAlignment="Center" />
-            <Button Grid.Column="1" Content="Refresh (F5)" Command="{Binding ReloadCommand}" Focusable="False" />
-        </Grid>
-
-        <ListBox x:Name="DisplayList" Grid.IsSharedSizeScope="True" Classes="rows" ItemsSource="{Binding Displays}"
-                 SelectedItem="{Binding Selected}">
-            <ListBox.ItemTemplate>
-                <DataTemplate DataType="vm:DisplayItem">
-                    <Grid ColumnDefinitions="190,*">
-                        <StackPanel VerticalAlignment="Center" Spacing="2">
-                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                            <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="12" />
-                        </StackPanel>
-                        <ItemsControl Grid.Column="1" ItemsSource="{Binding Settings}" IsVisible="{Binding HasSettings}" />
-                        <TextBlock Grid.Column="1" Text="No adjustable settings. Turn on DDC/CI in the monitor's menu." TextWrapping="Wrap"
-                                   Classes="muted" VerticalAlignment="Center" IsVisible="{Binding HasNoSettings}" />
+    <StackPanel Spacing="6">
+        <StackPanel x:Name="CardsHost" Grid.IsSharedSizeScope="True">
+            <!-- Hardware: what each monitor itself can do. The count follows the title; Refresh sits at the right end of the same line (a header tool, like the Mouse layer picker). -->
+            <Border Classes="groupPanel">
+                <StackPanel Spacing="6">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <pages:GroupHeader x:DataType="pages:ParentGroup" DataContext="{Binding Hardware}" />
+                        <Button Grid.Column="1" Classes="pill" Tag="grouptool" Content="Refresh (F5)" VerticalAlignment="Center" Margin="6,0,8,0"
+                                Click="OnRefresh" ToolTip.Tip="Look at the monitors again and ask each what it supports" />
                     </Grid>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
+                    <ItemsControl ItemsSource="{Binding Hardware.Subgroups}" IsVisible="{Binding Hardware.IsExpanded}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="pages:ItemGroup"><pages:SubgroupPanel /></DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
 
-        <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
-                   Text="Up/Down choose a display, Left/Right change a slider directly. On a display with several settings, Left/Right choose one and Enter adjusts it (Left/Right change it, Enter or Esc finishes)." />
+            <!-- Software: what OmniControl does to the picture itself, on any display -->
+            <Border Classes="groupPanel">
+                <StackPanel Spacing="6">
+                    <pages:GroupHeader x:DataType="pages:ParentGroup" DataContext="{Binding Software}" />
+                    <StackPanel Spacing="4" IsVisible="{Binding Software.IsExpanded}">
+                        <ListBox Classes="rows compact" ItemsSource="{Binding Software.Items}">
+                            <ListBox.ItemsPanel><ItemsPanelTemplate><pages:HalfPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
+                        </ListBox>
+                        <ItemsControl ItemsSource="{Binding Software.Subgroups}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="pages:ItemGroup"><pages:SubgroupPanel /></DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <TextBlock Classes="hint"
+                   Text="Up/Down move between group headers and cards; on a header Left collapses and Right expands it. Hardware controls talk to the monitor (DDC/CI): ones a monitor does not report are greyed out, and DDC/CI must be on in the monitor's own menu. Software controls are applied by OmniControl on any display and are put back when it closes. Colour temperature: minus is warmer, plus is cooler. Saturation applies to all displays. Turn screen off sends the monitor to sleep; wake it with a button on the monitor or by using its input, as the monitor allows." />
     </StackPanel>
 </UserControl>

@@ -1,0 +1,89 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Pages.Volume"
+             x:Class="OmniControl.App.Pages.Volume.WiringRowView"
+             x:DataType="vm:WiringRow">
+    <!-- One Wiring table row: Source | Plays on (or Records from) | Cable | remove. The columns are shared with the table's titles
+         (WiringSource, WiringCable, WiringRemove), so every row lines up. The cell shows chips (a click takes one away), a dashed
+         "+ add", or one drop-down-like choice; both open the cell's small menu, as does a click on the cell's empty part. Mouse first
+         (AGENTS.md rule 5): the keyboard reaches "+ add" or the choice (Left/Right) and Enter opens the menu; Esc closes it. -->
+    <Grid ColumnSpacing="{StaticResource WiringColumnGap}" Opacity="{Binding Source.RowOpacity}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" SharedSizeGroup="WiringSource" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="WiringCable" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="WiringRemove" />
+        </Grid.ColumnDefinitions>
+
+        <vm:SourceName DataContext="{Binding Source}" />
+
+        <Border x:Name="Cell" Grid.Column="1" Background="Transparent" VerticalAlignment="Center" Tapped="OnCellTapped">
+            <FlyoutBase.AttachedFlyout>
+                <Flyout Placement="BottomEdgeAlignedLeft" PlacementConstraintAdjustment="SlideX, FlipY, ResizeY"
+                        VerticalOffset="{StaticResource MenuOffset}" FlyoutPresenterClasses="listmenu" Opened="OnMenuOpened">
+                    <StackPanel x:DataType="vm:WiringRow" KeyDown="OnMenuKeyDown">
+                        <TextBlock Classes="menutext" Text="{Binding MenuTitle}" />
+                        <ItemsControl ItemsSource="{Binding Choices}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:WiringChoice">
+                                    <Button Classes="menurow" Command="{Binding ChooseCommand}" Click="OnMenuChoiceClick" IsEnabled="{Binding IsEnabled}"
+                                            ToolTip.Tip="{Binding DisabledReason}" ToolTip.ShowOnDisabled="True">
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource MenuGap}">
+                                            <TextBlock Text="{Binding Label}" TextWrapping="Wrap" />
+                                            <Border Grid.Column="1" Classes="tag" IsVisible="{Binding HasTag}" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Tag}" />
+                                            </Border>
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Classes="menutext" Text="Every device is already chosen." IsVisible="{Binding HasNoChoices}" />
+                        <!-- Why this mode takes one device here, and the one Switch -->
+                        <StackPanel IsVisible="{Binding !MenuGate.IsAvailable}">
+                            <Border Classes="hrule" />
+                            <TextBlock Classes="menutext" Text="{Binding MenuGate.Note}" />
+                            <Button Classes="menurow" IsVisible="{Binding MenuGate.CanSwitch}" Command="{Binding MenuGate.SwitchCommand}" Click="OnMenuChoiceClick">
+                                <TextBlock Text="{Binding MenuGate.SwitchLabel}" />
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+                </Flyout>
+            </FlyoutBase.AttachedFlyout>
+            <ItemsControl ItemsSource="{Binding Cell}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><WrapPanel ItemSpacing="{StaticResource ChipSpacing}" LineSpacing="{StaticResource ChipSpacing}" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.DataTemplates>
+                    <DataTemplate DataType="vm:WiringChip">
+                        <Button Classes="chipx" Command="{Binding RemoveCommand}" ToolTip.Tip="{Binding Tip}">
+                            <StackPanel>
+                                <TextBlock Text="{Binding Label}" />
+                                <Path Classes="glyph" Data="M6,6 L18,18 M18,6 L6,18" IsVisible="{Binding CanRemove}" />
+                            </StackPanel>
+                        </Button>
+                    </DataTemplate>
+                    <DataTemplate DataType="vm:WiringNote">
+                        <TextBlock Classes="muted small" Text="{Binding Text}" VerticalAlignment="Center" />
+                    </DataTemplate>
+                    <DataTemplate DataType="vm:WiringAdd">
+                        <Button Classes="blockadd small" Tag="scope" Content="+ add" Click="OnOpenMenuClick" ToolTip.Tip="Add a device" />
+                    </DataTemplate>
+                    <DataTemplate DataType="vm:WiringSingle">
+                        <Button Classes="scope" Tag="scope" HorizontalAlignment="Left" Click="OnOpenMenuClick" ToolTip.Tip="Choose the device">
+                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource MenuGap}">
+                                <TextBlock Text="{Binding Text}" TextTrimming="CharacterEllipsis" MaxWidth="{StaticResource SentenceLinkMaxWidth}" VerticalAlignment="Center" />
+                                <PathIcon Data="{DynamicResource ChevronDownIcon}" Width="{StaticResource ChevronSize}" Height="{StaticResource ChevronSize}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.DataTemplates>
+            </ItemsControl>
+        </Border>
+
+        <vm:CableView Grid.Column="2" DataContext="{Binding Cable}" />
+
+        <Button Grid.Column="3" Tag="scope" Classes="pill glyph" Content="×" Command="{Binding Source.RemoveCommand}" IsVisible="{Binding Source.CanForget}"
+                ToolTip.Tip="Remove this row (its settings are forgotten)" VerticalAlignment="Center" />
+    </Grid>
+</UserControl>

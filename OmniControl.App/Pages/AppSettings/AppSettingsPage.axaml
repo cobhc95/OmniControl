@@ -4,12 +4,13 @@
              xmlns:pages="using:OmniControl.App.Pages"
              x:Class="OmniControl.App.Pages.AppSettingsPage.AppSettingsPage"
              x:DataType="vm:AppSettingsPageViewModel">
-    <StackPanel Spacing="12">
-        <TextBlock Text="Appearance, startup and window" Classes="section" Margin="0,0,0,0" />
+    <StackPanel Spacing="6">
+        <TextBlock Text="Appearance, startup, window and plug-ins" Classes="section" Margin="0,0,0,0" />
         <ListBox x:Name="SettingsList" Grid.IsSharedSizeScope="True" Classes="rows compact" ItemsSource="{Binding Items}">
             <ListBox.ItemsPanel><ItemsPanelTemplate><pages:HalfPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
         </ListBox>
-        <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+        <TextBlock Classes="hint" Text="{Binding StartupNote}" IsVisible="{Binding StartupNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
+        <TextBlock Classes="hint"
                    Text="Up/Down choose a setting, Left/Right change it. The accent colour is used everywhere in the program; the OSD can match it or use its own." />
     </StackPanel>
 </UserControl>

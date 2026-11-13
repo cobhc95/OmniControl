@@ -62,7 +62,8 @@ public partial class HotkeyRow : UserControl
         switch (e.Key)
         {
             case Key.Up or Key.Down:
-                chips[Math.Clamp(i + (e.Key == Key.Down ? 1 : -1), 0, chips.Count - 1)].Focus(NavigationMethod.Directional);
+                var from = i < 0 && e.Key == Key.Up ? 0 : i; // nothing focused yet: Down lands on the first, Up on the last
+                if (chips.Count > 0) chips[Services.Wrap.Index(from + Services.Wrap.Direction(e.Key), chips.Count)].Focus(NavigationMethod.Directional);
                 e.Handled = true;
                 break;
 

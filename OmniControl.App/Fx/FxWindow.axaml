@@ -2,8 +2,88 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:fx="using:OmniControl.App.Fx"
         x:Class="OmniControl.App.Fx.FxWindow"
-        x:DataType="fx:FxChainViewModel"
+        x:DataType="fx:FxWindowViewModel"
         Title="{Binding Title}" Topmost="{Binding KeepOnTop}" Width="860" Height="540" MinWidth="560" MinHeight="380"
-        Background="{DynamicResource BrushBackground}" WindowStartupLocation="CenterScreen">
-    <fx:FxChainView x:Name="FxView" />
+        Background="{DynamicResource BrushBackground}" WindowStartupLocation="CenterScreen" FontSize="12">
+    <Window.Styles>
+        <Style Selector="MenuItem"><Setter Property="FontSize" Value="12" /></Style>
+    </Window.Styles>
+    <!-- TabForge-style FX chain window around one chain panel: menu bar, the row's effects switch, output and engine line, the chain
+         list on the left and the selected effect on the right, shortcut bar -->
+    <Grid RowDefinitions="Auto,Auto,*,Auto">
+        <Border Background="{DynamicResource BrushSidebar}" BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,0,0,1">
+            <Menu FontSize="12">
+                <MenuItem Header="_FX">
+                    <MenuItem Header="Add effect..." Click="OnAddClick" InputGesture="Ctrl+N" />
+                    <MenuItem Header="Remove" Command="{Binding Chain.RemoveCommand}" InputGesture="Delete" />
+                    <MenuItem Header="Copy" Command="{Binding Chain.CopyCommand}" InputGesture="Ctrl+C" />
+                    <MenuItem Header="Paste" Command="{Binding Chain.PasteCommand}" InputGesture="Ctrl+V" />
+                    <MenuItem Header="Move up" Command="{Binding Chain.MoveUpCommand}" InputGesture="Alt+Up" />
+                    <MenuItem Header="Move down" Command="{Binding Chain.MoveDownCommand}" InputGesture="Alt+Down" />
+                    <Separator />
+                    <MenuItem Header="Pop out effect window" Command="{Binding Chain.PopOutCommand}" IsEnabled="{Binding Chain.CanPopOut}" />
+                    <MenuItem Header="Put effect window back" Command="{Binding Chain.PutBackCommand}" IsEnabled="{Binding Chain.CanPutBack}" />
+                    <Separator />
+                    <MenuItem Header="Parameters (plain list)" ToggleType="CheckBox" IsChecked="{Binding Chain.Selected.ShowsParameters}"
+                              IsEnabled="{Binding Chain.Selected.CanShowParameters, FallbackValue=False}" />
+                    <MenuItem Header="Smaller editor" Command="{Binding Chain.Selected.ScaleDownCommand}" InputGesture="Ctrl+OemMinus"
+                              IsEnabled="{Binding Chain.Selected.CanScale, FallbackValue=False}" />
+                    <MenuItem Header="Larger editor" Command="{Binding Chain.Selected.ScaleUpCommand}" InputGesture="Ctrl+OemPlus"
+                              IsEnabled="{Binding Chain.Selected.CanScale, FallbackValue=False}" />
+                    <MenuItem Header="Editor at 100 %" Command="{Binding Chain.Selected.ScaleResetCommand}" InputGesture="Ctrl+D0"
+                              IsEnabled="{Binding Chain.Selected.CanScale, FallbackValue=False}" />
+                    <Separator />
+                    <MenuItem Header="Close" Command="{Binding CloseWindowCommand}" InputGesture="Escape" />
+                </MenuItem>
+                <MenuItem Header="_Options">
+                    <MenuItem Header="Chain on" ToggleType="CheckBox" IsChecked="{Binding FxOn}" />
+                    <MenuItem Header="Keep on top" ToggleType="CheckBox" IsChecked="{Binding KeepOnTop}" ToolTip.Tip="Also above other programs" />
+                </MenuItem>
+            </Menu>
+        </Border>
+
+        <!-- The row's effects on/off, the program's output, the chain's total response and live numbers (right end; DockPanel gives the
+             analysis the width left after the switch, so it can fold its numbers before the Output picker gets too narrow), and what the
+             effects engine does with this chain right now (the same line and Fast-mode caution as the Volume row: running, waiting, not
+             installed, failed and why) -->
+        <StackPanel Grid.Row="1" Margin="12,10,12,0" Spacing="6">
+            <DockPanel>
+                <ToggleSwitch DockPanel.Dock="Left" IsChecked="{Binding FxOn}" OnContent="Effects on" OffContent="Effects off" VerticalAlignment="Center"
+                              ToolTip.Tip="Switches this row's whole chain on or off; the Volume row says &quot;off&quot; when it is" />
+                <fx:FxAnalysisBar x:Name="Analysis" DockPanel.Dock="Right" DataContext="{Binding Analysis}" Margin="{DynamicResource FxHeaderGap}"
+                                  Classes.besideoutput="{Binding #OutputHost.IsVisible}" VerticalAlignment="Center" />
+                <ContentControl x:Name="OutputHost" Content="{Binding Output}" IsVisible="{Binding IsProgram}" Margin="{DynamicResource FxHeaderGap}" />
+            </DockPanel>
+            <WrapPanel Classes="toolbar">
+                <TextBlock Text="{Binding EngineText}" Classes="hint" TextWrapping="Wrap" />
+                <Border Classes="tag caution" IsVisible="{Binding HasCaptureCaution}"
+                        ToolTip.Tip="Fast mode runs a program's effects by recording it. On the Volume page this program's row has Test (checks again) and Switch to Full control, which works without recording.">
+                    <TextBlock Text="{Binding CaptureCaution}" TextWrapping="Wrap" />
+                </Border>
+            </WrapPanel>
+        </StackPanel>
+
+        <fx:FxChainPanel x:Name="FxView" Grid.Row="2" Margin="12,10,12,8" DataContext="{Binding Chain}">
+            <fx:FxChainPanel.ListTools>
+                <Button x:Name="ForgetButton" Tag="scope" Classes="scope fxbtn" Content="Forget program" Command="{Binding ForgetCommand}"
+                        IsVisible="{Binding CanForget}" HorizontalContentAlignment="Center" Margin="0,0,6,0" />
+            </fx:FxChainPanel.ListTools>
+        </fx:FxChainPanel>
+
+        <!-- Shortcut bar -->
+        <Border Grid.Row="3" Background="{DynamicResource BrushSidebar}" BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,1,0,0" Padding="12,6">
+            <WrapPanel Orientation="Horizontal">
+                <TextBlock Text="{Binding Chain.EffectCount}" Classes="muted" FontSize="11" Margin="0,0,16,0" />
+                <TextBlock Text="Tab switch list / editor, Shift+Tab also the graph" Classes="muted" FontSize="11" Margin="0,0,16,0" />
+                <TextBlock Text="Up/Down choose · Shift+arrows, Ctrl+click, Ctrl+A or a box drawn below the list select several" Classes="muted" FontSize="11" Margin="0,0,16,0" />
+                <TextBlock Text="Enter edit" Classes="muted" FontSize="11" Margin="0,0,16,0" />
+                <TextBlock Text="Double-click own window, again back" Classes="muted" FontSize="11" Margin="0,0,16,0" />
+                <TextBlock Text="Ctrl+- / Ctrl+= scale" Classes="muted" FontSize="11" Margin="0,0,16,0" />
+                <TextBlock Text="Space on/off" Classes="muted" FontSize="11" Margin="0,0,16,0" />
+                <TextBlock Text="Drag or Alt+Up/Down move" Classes="muted" FontSize="11" Margin="0,0,16,0" />
+                <TextBlock Text="Ctrl+C/V copy, paste" Classes="muted" FontSize="11" Margin="0,0,16,0" />
+                <TextBlock Text="Esc one selected, then close" Classes="muted" FontSize="11" />
+            </WrapPanel>
+        </Border>
+    </Grid>
 </Window>

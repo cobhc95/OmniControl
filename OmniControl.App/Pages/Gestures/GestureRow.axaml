@@ -1,0 +1,20 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:gestures="using:OmniControl.App.Pages.Gestures"
+             x:Class="OmniControl.App.Pages.Gestures.GestureRow"
+             x:DataType="gestures:GestureItem">
+    <!-- Half-width card, one line: the switch, the trigger's name (muted while off), a pill with the action (opens the action window)
+         and a cogwheel for the action's settings (opens the window on them). As on the mouse button card, the pill takes the space left
+         after the name, so a long action name wraps inside the pill instead of squeezing the name. -->
+    <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="8" Margin="0,1">
+        <ToggleSwitch IsChecked="{Binding IsOn}" OnContent="" OffContent="" MinWidth="0" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="1" Classes="cardlabel" Classes.muted="{Binding !IsOn}" Text="{Binding Label}" />
+        <Button x:Name="Picker" Grid.Column="2" Classes="pill" Classes.custom="{Binding IsOn}" Tag="scope" Click="OnPickerClick">
+            <TextBlock Text="{Binding Summary}" VerticalAlignment="Center" />
+        </Button>
+        <Button x:Name="Cog" Grid.Column="3" Classes="pill cog" Tag="scope" IsVisible="{Binding HasOptions}" Click="OnCogClick"
+                ToolTip.Tip="Settings for this action">
+            <PathIcon Data="{DynamicResource CogIcon}" Width="12" Height="12" />
+        </Button>
+    </Grid>
+</UserControl>

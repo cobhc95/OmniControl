@@ -8,9 +8,7 @@ public static class AppLifecycle
 {
     public static event Action? ShowRequested;
     public static event Action? QuitRequested;
-    public static event Action<bool>? TrayEnabledChanged;
 
     public static void RequestShow() => ShowRequested?.Invoke();
     public static void RequestQuit() => QuitRequested?.Invoke();
-    public static void SetTrayEnabled(bool on) => TrayEnabledChanged?.Invoke(on);
 }

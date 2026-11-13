@@ -5,8 +5,9 @@ using Avalonia.Threading;
 namespace OmniControl.App.Hotkeys;
 
 /// <summary>
-/// Every bindable hotkey in the app. A feature calls <see cref="Register"/> once per action;
-/// it then shows up on the Shortcuts page (and in search) and is saved and registered automatically.
+/// The master list of everything OmniControl itself can do. A feature calls <see cref="Register"/> once per action; it then shows up
+/// on the Shortcuts page (and in search), in the mouse button and middle-click pickers, and (for a level action) in the wheel gesture
+/// picker, and is saved and registered as a hotkey automatically. Consumers read <see cref="Actions"/> and follow its changes.
 /// </summary>
 public sealed class HotkeyRegistry : IDisposable
 {
@@ -34,10 +35,46 @@ public sealed class HotkeyRegistry : IDisposable
         if (_stored.TryGetValue(action.Id, out var saved)) action.Restore(saved);
         action.Changed += OnChanged;
         Actions.Add(action);
-        for (var i = 0; i < Actions.Count; i++)
-            Actions[i].ShowGroupHeader = i == 0 || Actions[i - 1].Category != Actions[i].Category;
         Rebind();
     }
+
+    /// <summary>Registers several actions at once (one rebinding of the hotkeys).</summary>
+    public void Register(IEnumerable<HotkeyAction> actions)
+    {
+        foreach (var action in actions)
+        {
+            if (_stored.TryGetValue(action.Id, out var saved)) action.Restore(saved);
+            action.Changed += OnChanged;
+            Actions.Add(action);
+        }
+        Rebind();
+    }
+
+    /// <summary>Runs an action by id (for example from a mouse button). False when no such action is registered.</summary>
+    public bool Run(string id)
+    {
+        var action = Actions.FirstOrDefault(a => a.Id == id);
+        if (action is null) return false;
+        RunSoon(action);
+        return true;
+    }
+
+    /// <summary>
+    /// Moves the level with this <see cref="HotkeyLevel.Id"/> up or down by <paramref name="percent"/> (for a mouse wheel gesture set to
+    /// change it by that much), through the registered action that moves it that way. False when no such action is registered.
+    /// </summary>
+    public bool RunLevel(string levelId, bool up, int percent)
+    {
+        var action = Actions.FirstOrDefault(a => a.Level?.Id == levelId && a.LevelDirection > 0 == up);
+        if (action is null) return false;
+        Dispatcher.UIThread.Post(() => action.RunBy(percent), DispatcherPriority.Send);
+        return true;
+    }
+
+    // Ahead of everything else queued (input, rendering, layout), so a pop-up or a volume step answers the key or wheel at once
+    // even while a page is busy redrawing.
+    private static void RunSoon(HotkeyAction action) =>
+        Dispatcher.UIThread.Post(action.Run, DispatcherPriority.Send);
 
     private void OnChanged(HotkeyAction changed)
     {
@@ -52,7 +89,7 @@ public sealed class HotkeyRegistry : IDisposable
 
     private void Rebind() =>
         _service.Apply(Actions.Where(a => a.Gesture.Length > 0)
-            .Select(a => (a.Gesture, (Action)(() => Dispatcher.UIThread.Post(a.Run)))));
+            .Select(a => (a.Gesture, (Action)(() => RunSoon(a)))));
 
     private static Dictionary<string, StoredHotkey> Load() =>
         AppDataStore.Load<Dictionary<string, StoredHotkey>>(FileName) ?? new();

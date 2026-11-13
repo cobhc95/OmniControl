@@ -1,206 +1,245 @@
-using System.Collections.ObjectModel;
-using System.Windows.Input;
+﻿using System.Collections.ObjectModel;
+using System.ComponentModel;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OmniControl.App.Audio;
 using OmniControl.App.Fx.Plugins;
-using OmniControl.App.Pages;
-using OmniControl.App.Services;
+using OmniControl.Core.Engine;
 
 namespace OmniControl.App.Fx;
 
 /// <summary>
-/// The FX chain window for the master (key null) or one program: the ordered effects, the selected effect's editor,
-/// and the program's output device. Edits go straight into <see cref="MixerService"/> settings.
+/// One effect chain as <see cref="FxChainPanel"/> in the FX window edits it: the effects in the order the sound passes them, the
+/// selection and what acts on it (FxChainViewModel.Edits.cs), and the selected
+/// effect's editor: OmniControl's own cards (the equaliser, sliders, a plain settings list) or a plug-in's own editor, shown inside
+/// the panel or popped out into its own window (any effect).
+/// Edits go straight into <see cref="MixerService"/> settings and reach a running engine at once. Dispose when the panel goes:
+/// it closes the plug-in editors it opened.
 /// </summary>
 public sealed partial class FxChainViewModel : ObservableObject, IDisposable
 {
     private readonly MixerService _mixer;
     private readonly string? _key;
     private readonly List<FxSlot> _chain;
+    private readonly IEffectEditors _editors;
+    private readonly FxClipboard _clipboard;
 
-    public FxChainViewModel(MixerService mixer, string? key)
+    /// <param name="key">The program key, an input key, or null for the master.</param>
+    /// <param name="editors">Where this chain's effect editors show; disposed with this view-model.</param>
+    /// <param name="library">What the Add effect window lists (the program's one library).</param>
+    public FxChainViewModel(MixerService mixer, string? key, IEffectEditors editors, FxClipboard clipboard, PluginLibrary library)
     {
         _mixer = mixer;
+        Library = library;
         _key = key;
+        _editors = editors;
+        _clipboard = clipboard;
         _chain = mixer.FxChain(key);
-
-        var entry = key is null ? null : mixer.Find(key);
-        Title = "FX: " + (key is null ? "Master" : MixerService.IsInput(key) ? mixer.InputName(key) : entry?.Name ?? "Program");
-        foreach (var s in _chain) Slots.Add(new FxSlotViewModel(s, mixer.Save));
+        foreach (var s in _chain) Slots.Add(Track(new FxSlotViewModel(s, SaveChain)));
+        Renumber();
+        editors.Changed += RefreshEditor;
         Selected = Slots.FirstOrDefault();
-        if (entry is not null) Output = BuildOutput(entry);
-
-        mixer.Updated += OnMixerUpdated;
     }
 
-    public string Title { get; }
-    public bool IsProgram => _key is not null && !MixerService.IsInput(_key);
     public ObservableCollection<FxSlotViewModel> Slots { get; } = new();
 
-    /// <summary>What the Add effect window lists (built-in effects and VST3 plug-ins).</summary>
-    public PluginLibrary Library { get; } = new();
+    /// <summary>What the Add effect window lists (built-in effects and plug-ins).</summary>
+    public PluginLibrary Library { get; }
 
-    /// <summary>The program's output device picker (null for the master).</summary>
-    public ChoiceItem? Output { get; }
-
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasSelection), nameof(Editor))] private FxSlotViewModel? _selected;
+    /// <summary>The effect whose editor shows (the first of a multi-selection).</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasSelection))] private FxSlotViewModel? _selected;
 
     public bool HasSelection => Selected is not null;
     public bool IsEmpty => Slots.Count == 0;
-    public IReadOnlyList<object>? Editor => Selected?.EditorItems;
+    public string EffectCount => Slots.Count == 1 ? "1 effect" : $"{Slots.Count} effects";
 
-    /// <summary>The sentence shown in the editor area when there are no cards to show.</summary>
-    public string Hint => Selected is null ? "Select or add an effect to edit it." : Selected.Hint;
+    /// <summary>The selected plug-in's own editor, shown inside the panel (null: none, see <see cref="Hint"/>).</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowsPluginEditor))] private IPluginEditor? _pluginEditor;
+
+    public bool ShowsPluginEditor => PluginEditor is not null;
+
+    /// <summary>OmniControl's own cards show inside the panel: a built-in effect's editor, or a plug-in's open settings list.</summary>
+    public bool ShowsCards => Selected is { } s && !_loadingEditor && !_editors.IsPoppedOut(s.Slot)
+                              && (!s.IsPlugin || (s.ShowsParameters && s.PluginParameters is not null));
+
+    public bool CanPopOut => Selected is { } s && !_editors.IsPoppedOut(s.Slot);
+    public bool CanPutBack => Selected is { } s && _editors.IsPoppedOut(s.Slot);
+
+    private string _editorNotice = string.Empty;
+
+    /// <summary>The sentence shown in the editor area when there is nothing to edit there (no selection, popped out, no editor, won't load).</summary>
+    public string Hint => Selected is null ? "Select or add an effect to edit it." : _loadingEditor ? "Loading the plug-in…" : _editorNotice;
     public bool HasHint => Hint.Length > 0;
+
+    private bool _loadingEditor, _disposed;
+
+    /// <summary>The effect whose plug-in settings list the panel shows (its list is let go when another effect is shown).</summary>
+    private FxSlotViewModel? _listedOn;
 
     partial void OnSelectedChanged(FxSlotViewModel? value)
     {
+        if (_reordering) return; // a reorder briefly clears the list's selection; the editor stays open through it
+        if (value is { IsPlugin: true } && !_editors.IsPoppedOut(value.Slot)) LoadEditorLater();
+        else RefreshEditor();
+    }
+
+    /// <summary>
+    /// Loading a plug-in and making its editor takes from a moment to seconds and must happen on the UI thread (the plug-in's editor
+    /// belongs to the thread that made it). The window and the chain list show first, with "Loading the plug-in…" where the editor goes.
+    /// </summary>
+    private void LoadEditorLater()
+    {
+        _loadingEditor = true;
+        PluginEditor = _editors.Embed(null, out _); // the previous editor closes now
+        ReleaseList(null);
+        NotifyEditorPlace();
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (!_disposed && _loadingEditor) RefreshEditor();
+        }, DispatcherPriority.Background);
+    }
+
+    /// <summary>
+    /// Shows the selected effect's editor where it belongs: a plug-in's own editor or settings list inside the panel, a built-in
+    /// effect's cards (the view shows them), or a note that it is in its own window.
+    /// </summary>
+    private void RefreshEditor()
+    {
+        _loadingEditor = false;
+        var s = Selected;
+        if (s is { IsPlugin: true, ShowsParameters: true } && !_editors.IsPoppedOut(s.Slot))
+        {
+            PluginEditor = null;
+            ReleaseList(s);
+            s.PluginParameters = _editors.EmbedParameters(s.Slot, out _editorNotice);
+            _listedOn = s;
+        }
+        else
+        {
+            PluginEditor = _editors.Embed(s?.Slot, out _editorNotice);
+            ReleaseList(null);
+        }
+        NotifyEditorPlace();
+    }
+
+    /// <summary>The settings list shown for an effect other than <paramref name="keep"/> was closed by the editors: that effect lets it go.</summary>
+    private void ReleaseList(FxSlotViewModel? keep)
+    {
+        if (_listedOn is { } listed && !ReferenceEquals(listed, keep) && !_editors.IsPoppedOut(listed.Slot)) listed.PluginParameters = null;
+        if (!ReferenceEquals(_listedOn, keep)) _listedOn = null;
+    }
+
+    private void NotifyEditorPlace()
+    {
         OnPropertyChanged(nameof(Hint));
         OnPropertyChanged(nameof(HasHint));
+        OnPropertyChanged(nameof(ShowsCards));
+        OnPropertyChanged(nameof(CanPopOut));
+        OnPropertyChanged(nameof(CanPutBack));
     }
 
-    /// <summary>The whole chain is switched on (the green power button on the Volume list).</summary>
-    public bool FxOn
+    [RelayCommand]
+    private void PopOut()
     {
-        get => _mixer.IsFxOn(_key);
-        set { if (_mixer.IsFxOn(_key) != value) _mixer.SetFxOn(_key, value); }
+        if (Selected is { } s) _editors.PopOut(s);
     }
 
-    /// <summary>A remembered program that isn't running can be forgotten from here.</summary>
-    public bool CanForget => IsProgram && !_mixer.Running.Any(r => r.Key == _key && r.IsOpen);
-
-    public string EffectCount => Slots.Count == 1 ? "1 effect" : $"{Slots.Count} effects";
-
-    /// <summary>Option: FX windows stay above other windows. Applies to every FX window as it opens.</summary>
-    public bool KeepOnTop
+    [RelayCommand]
+    private void PutBack()
     {
-        get => AppSettings.Current.FxKeepOnTop;
-        set { AppSettings.Current.FxKeepOnTop = value; AppSettings.Current.Save(); OnPropertyChanged(); }
+        if (Selected is { } s) _editors.PutBack(s.Slot);
     }
 
-    public event Action? CloseRequested;
-
-    [RelayCommand] private void CloseWindow() => CloseRequested?.Invoke();
-
-    private void OnMixerUpdated()
+    /// <summary>A double-click on an effect's row (TabForge's FX loader): its editor goes into its own window, or back from it.</summary>
+    public void TogglePopOut(FxSlotViewModel slot)
     {
-        OnPropertyChanged(nameof(FxOn));
-        OnPropertyChanged(nameof(CanForget));
+        if (_editors.IsPoppedOut(slot.Slot)) _editors.PutBack(slot.Slot);
+        else _editors.PopOut(slot);
     }
 
-    private ChoiceItem BuildOutput(AppAudioEntry entry)
+    /// <summary>
+    /// Parameters was pressed for an effect: a popped-out plug-in's window is made again in the new form (its own editor and its
+    /// settings list are different windows); the selected effect's editor is shown again in the panel. OmniControl's own views follow by binding.
+    /// </summary>
+    private void ParametersChanged(FxSlotViewModel slot)
     {
-        const string def = "Default device";
-        var options = new List<string> { def };
-        options.AddRange(_mixer.Devices.Select(d => d.Name));
-        var current = def;
-        if (entry.DeviceId.Length > 0)
+        if (slot.IsPlugin && _editors.IsPoppedOut(slot.Slot))
         {
-            current = _mixer.Devices.FirstOrDefault(d => d.Id == entry.DeviceId)?.Name ?? $"{entry.DeviceName} (unavailable)";
-            if (!options.Contains(current)) options.Add(current);
+            _editors.PutBack(slot.Slot);
+            _editors.PopOut(slot);
         }
-        return new ChoiceItem("Output", options, current, name =>
+        else if (ReferenceEquals(slot, Selected))
         {
-            if (string.IsNullOrEmpty(name)) return;
-            if (name == def) _mixer.SetDevice(_key!, string.Empty, string.Empty);
-            else if (_mixer.Devices.FirstOrDefault(d => d.Name == name) is { } d) _mixer.SetDevice(_key!, d.Id, d.Name);
-            // choosing the "(unavailable)" entry keeps the remembered device
-        });
+            if (slot.IsPlugin) LoadEditorLater();
+            else NotifyEditorPlace();
+        }
     }
 
     /// <summary>Puts the effect chosen in the Add effect window at the end of the chain and selects it.</summary>
     public void AddEntry(PluginEntry entry)
     {
-        var slot = entry.IsBuiltIn ? FxCatalog.Create(entry.Path) : FxCatalog.CreatePlugin(entry.Name, entry.Path);
+        var slot = entry.IsBuiltIn ? FxCatalog.Create(entry.Path)
+            : entry.Type is { } type ? FxCatalog.CreatePlugin(type, entry.Name, entry.Path)
+            : null;
+        if (slot is null) return; // a plugins.json entry of a format this version does not know
         _chain.Add(slot);
-        var vm = new FxSlotViewModel(slot, _mixer.Save);
+        var vm = Track(new FxSlotViewModel(slot, SaveChain));
         Slots.Add(vm);
         Selected = vm;
+        ReselectRequested?.Invoke(new[] { vm });
         Changed();
     }
 
-    private List<FxSlotViewModel> _picked = new();
+    /// <summary>The effects in the order the sound passes them (the stored chain itself; read only).</summary>
+    public IReadOnlyList<FxSlot> Effects => _chain;
 
-    /// <summary>Raised when the view should select these effects again (after a move rebuilt the selection).</summary>
-    public event Action<IReadOnlyList<FxSlotViewModel>>? ReselectRequested;
+    /// <summary>Any effect, its settings or the chain's order changed (after it was saved): the window's total response follows.</summary>
+    public event Action? Edited;
 
-    /// <summary>The effects highlighted in the list (Ctrl+click, Shift+click or arrows, Ctrl+A). The editor shows the first.</summary>
-    public void SetPicked(IEnumerable<FxSlotViewModel> picked) => _picked = picked.ToList();
-
-    private List<FxSlotViewModel> Targets() => _picked.Count > 0 ? _picked.ToList() : Selected is { } s ? new() { s } : new();
-
-    /// <summary>Space: the highlighted effects go on or off together (all off if the first is on).</summary>
-    public void ToggleEnabled()
+    /// <summary>An effect changed: save, and the running engine takes the change at once.</summary>
+    private void SaveChain()
     {
-        var t = Targets();
-        if (t.Count == 0) return;
-        var to = !t[0].Enabled;
-        foreach (var s in t) s.Enabled = to;
+        _mixer.SaveFx(_key);
+        Edited?.Invoke();
     }
 
-    [RelayCommand]
-    private void Remove()
-    {
-        var targets = Targets();
-        if (targets.Count == 0) return;
-        var at = targets.Min(t => Slots.IndexOf(t));
-        foreach (var s in targets) { _chain.Remove(s.Slot); Slots.Remove(s); }
-        _picked.Clear();
-        Selected = Slots.Count == 0 ? null : Slots[Math.Min(at, Slots.Count - 1)];
-        Changed();
-    }
-
-    [RelayCommand] private void MoveUp() => Move(-1);
-    [RelayCommand] private void MoveDown() => Move(1);
-
-    /// <summary>Moves the highlighted effects one place up or down, keeping their order; effects at the edge stay put.</summary>
-    private void Move(int delta)
-    {
-        var targets = Targets();
-        if (targets.Count == 0) return;
-        var order = delta < 0 ? targets.OrderBy(Slots.IndexOf) : targets.OrderByDescending(Slots.IndexOf);
-        foreach (var s in order)
-        {
-            var from = Slots.IndexOf(s);
-            var to = from + delta;
-            if (to < 0 || to >= Slots.Count || targets.Contains(Slots[to])) continue;
-            _chain.RemoveAt(from);
-            _chain.Insert(to, s.Slot);
-            Slots.Move(from, to);
-        }
-        Changed();
-        ReselectRequested?.Invoke(targets);
-    }
-
-    /// <summary>Moves the effect at <paramref name="from"/> to position <paramref name="to"/> (drag and drop, Alt+Up/Down).</summary>
-    public void MoveTo(int from, int to)
-    {
-        if (from == to || from < 0 || to < 0 || from >= Slots.Count || to >= Slots.Count) return;
-        var selected = Selected;
-        var slot = _chain[from];
-        _chain.RemoveAt(from);
-        _chain.Insert(to, slot);
-        Slots.Move(from, to);
-        Selected = selected;
-        Changed();
-    }
-
-    [RelayCommand]
-    private void Forget()
-    {
-        if (_key is null) return;
-        _mixer.Forget(_key);
-        CloseRequested?.Invoke();
-    }
-
+    /// <summary>The chain's order or length changed: numbers, save, and the effect count on the Volume list.</summary>
     private void Changed()
     {
-        _mixer.Save();
+        Renumber();
+        SaveChain();
         OnPropertyChanged(nameof(IsEmpty));
         OnPropertyChanged(nameof(EffectCount));
         _mixer.SetFxOn(_key, _mixer.IsFxOn(_key)); // refreshes the effect count on the Volume list
     }
 
-    public void Dispose() => _mixer.Updated -= OnMixerUpdated;
+    private void Renumber()
+    {
+        for (var i = 0; i < Slots.Count; i++) Slots[i].Number = i + 1;
+    }
+
+    private FxSlotViewModel Track(FxSlotViewModel slot)
+    {
+        slot.PropertyChanged += OnSlotChanged;
+        return slot;
+    }
+
+    private void Untrack(FxSlotViewModel slot) => slot.PropertyChanged -= OnSlotChanged;
+
+    private void OnSlotChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (sender is not FxSlotViewModel slot) return;
+        if (e.PropertyName == nameof(FxSlotViewModel.Enabled)) EnabledChanged(slot);
+        else if (e.PropertyName == nameof(FxSlotViewModel.ShowsParameters)) ParametersChanged(slot);
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        _editors.Changed -= RefreshEditor;
+        foreach (var s in Slots) Untrack(s);
+        _editors.Dispose(); // the plug-in editors close while their host window still exists
+        foreach (var s in Slots) s.PluginParameters = null;
+    }
 }

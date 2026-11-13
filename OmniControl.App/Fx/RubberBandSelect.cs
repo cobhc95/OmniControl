@@ -10,24 +10,24 @@ namespace OmniControl.App.Fx;
 
 /// <summary>
 /// Mouse only: press on the empty part of a multi-select ListBox and drag to draw a selection rectangle; every row it touches is selected.
-/// Hold Ctrl to add to the current selection. A plain click on the empty part clears the selection.
+/// Hold Ctrl to add to the current selection. A plain click on the empty part clears the selection; Esc (<see cref="Band.Cancel"/>)
+/// while drawing puts back the selection from before the press (as TabForge's FX list does).
 /// The rectangle is drawn by <c>band</c>, a Border that sits over the list (not hit-testable) and is moved and sized here.
 /// </summary>
 public static class RubberBandSelect
 {
-    private const double StartDistance = 3;
+    public static Band Attach(ListBox list, Border band) => new(list, band);
 
-    public static void Attach(ListBox list, Border band) => _ = new Session(list, band);
-
-    private sealed class Session
+    public sealed class Band
     {
         private readonly ListBox _list;
         private readonly Border _band;
         private Point _start;
         private bool _pressed, _drawing, _additive;
-        private List<object> _before = new();
+        private List<object> _before = new(), _original = new();
+        private IPointer? _pointer;
 
-        public Session(ListBox list, Border band)
+        internal Band(ListBox list, Border band)
         {
             _list = list;
             _band = band;
@@ -51,9 +51,27 @@ public static class RubberBandSelect
             _pressed = true;
             _additive = (e.KeyModifiers & KeyModifiers.Control) != 0;
             _start = e.GetPosition(_list);
-            _before = _additive ? _list.SelectedItems?.Cast<object>().ToList() ?? new() : new();
+            _original = _list.SelectedItems?.Cast<object>().ToList() ?? new();
+            _before = _additive ? _original.ToList() : new();
             if (!_additive) _list.SelectedItems?.Clear();
+            _pointer = e.Pointer;
             e.Pointer.Capture(_list);
+        }
+
+        /// <summary>Esc: ends the rectangle and puts the selection back as it was before the press. False when none was being drawn.</summary>
+        public bool Cancel()
+        {
+            if (!_pressed) return false;
+            var original = _original;
+            var pointer = _pointer;
+            Stop();
+            pointer?.Capture(null);
+            if (_list.SelectedItems is { } selected)
+            {
+                selected.Clear();
+                foreach (var item in original) selected.Add(item);
+            }
+            return true;
         }
 
         private void OnMove(object? sender, PointerEventArgs e)
@@ -62,7 +80,7 @@ public static class RubberBandSelect
             var at = e.GetPosition(_list);
             if (!_drawing)
             {
-                if (Math.Abs(at.X - _start.X) < StartDistance && Math.Abs(at.Y - _start.Y) < StartDistance) return;
+                if (Math.Abs(at.X - _start.X) < ListDragReorder.StartDistance && Math.Abs(at.Y - _start.Y) < ListDragReorder.StartDistance) return;
                 _drawing = true;
                 _band.IsVisible = true;
             }
@@ -100,6 +118,7 @@ public static class RubberBandSelect
         private void Stop()
         {
             _pressed = _drawing = false;
+            _pointer = null;
             _band.IsVisible = false;
         }
     }

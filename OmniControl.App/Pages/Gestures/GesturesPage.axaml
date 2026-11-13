@@ -1,0 +1,64 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Pages.Gestures"
+             xmlns:pages="using:OmniControl.App.Pages"
+             x:Class="OmniControl.App.Pages.Gestures.GesturesPage"
+             x:DataType="vm:GesturesPageViewModel">
+    <StackPanel Spacing="6">
+        <StackPanel x:Name="CardsHost" Grid.IsSharedSizeScope="True">
+            <!-- The title line: the page's name, with the on/off switch as a half-width card beside it -->
+            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,6">
+                <TextBlock Text="{Binding Title}" Classes="title" VerticalAlignment="Center" />
+                <ListBox Grid.Column="1" Classes="rows compact" ItemsSource="{Binding Primary}" MinWidth="280" VerticalAlignment="Center" />
+            </Grid>
+
+            <Border Classes="groupPanel" x:DataType="pages:ItemGroup" DataContext="{Binding Areas}">
+                <StackPanel Spacing="6">
+                    <pages:GroupHeader />
+                    <ListBox Classes="rows compact" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}">
+                        <ListBox.ItemsPanel><ItemsPanelTemplate><pages:HalfPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
+                    </ListBox>
+                </StackPanel>
+            </Border>
+
+            <Border Classes="groupPanel" x:DataType="pages:ItemGroup" DataContext="{Binding Middle}">
+                <StackPanel Spacing="6">
+                    <pages:GroupHeader />
+                    <ListBox Classes="rows compact" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}">
+                        <ListBox.ItemsPanel><ItemsPanelTemplate><pages:HalfPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
+                    </ListBox>
+                </StackPanel>
+            </Border>
+
+            <Border Classes="groupPanel" x:DataType="pages:ItemGroup" DataContext="{Binding Keys}">
+                <StackPanel Spacing="6">
+                    <pages:GroupHeader />
+                    <ListBox Classes="rows compact" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}">
+                        <ListBox.ItemsPanel><ItemsPanelTemplate><pages:HalfPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
+                    </ListBox>
+                </StackPanel>
+            </Border>
+
+            <Border Classes="groupPanel" x:DataType="pages:ItemGroup" DataContext="{Binding Edge}">
+                <StackPanel Spacing="6">
+                    <pages:GroupHeader />
+                    <ListBox Classes="rows compact" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}" />
+                </StackPanel>
+            </Border>
+
+            <!-- Custom rules: one line per rule; "Add rule" sits at the right end of the header line (a header tool, like Displays' Refresh) -->
+            <Border Classes="groupPanel">
+                <StackPanel Spacing="6">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <pages:GroupHeader x:DataType="vm:RulesGroup" DataContext="{Binding Rules}" />
+                        <Button Grid.Column="1" Classes="pill" Tag="grouptool" Content="Add rule" VerticalAlignment="Center" Margin="6,0,8,0"
+                                Click="OnAddRule" ToolTip.Tip="A new rule: If something happens (where, with which keys), then do one or more things" />
+                    </Grid>
+                    <ListBox Classes="rows compact" ItemsSource="{Binding Rules.Rules}" IsVisible="{Binding Rules.IsExpanded}" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+        <TextBlock Classes="hint"
+                   Text="Turn a gesture on, then scroll the wheel over that area (or while holding those keys): wheel up and wheel down do the action's two directions. A gesture that is on takes the scroll, so the window under the pointer does not also scroll. Over the taskbar, a screen edge or a title bar the wheel does nothing else while its gesture is on. A middle-click gesture runs its action (any action a mouse button can have) when the middle button is pressed over that area, instead of the area's own middle click and of the middle button's own mapping. Keys held count exactly: Ctrl + Alt does not trigger Ctrl + Alt + Shift. Custom rules: Add rule builds one as a sentence (If a trigger, where and with which keys, then one or more actions in order); Space flips a rule's switch, Enter on Edit opens it; a rule wins over the gestures above and the mouse and trackpad mappings, and never runs while OmniControl's window is active or under the pointer. Windows does not pass mouse input to programs running as administrator, so those windows are not affected unless OmniControl runs as administrator too. Up/Down move through the cards; Left/Right move between the switch and the action, and across a pair; Space flips a switch; Enter on the action opens the choices. Show margins draws every area on the screen (whether its gesture is on or not) while this page is open; on that card Left/Right move between the slider and the switch, and Enter on the slider lets Left/Right change it." />
+    </StackPanel>
+</UserControl>

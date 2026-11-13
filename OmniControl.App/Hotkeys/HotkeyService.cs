@@ -27,7 +27,8 @@ public sealed class HotkeyService : IDisposable
     public HotkeyService()
     {
         var ready = new ManualResetEventSlim();
-        new Thread(() => Loop(ready)) { IsBackground = true, Name = "Hotkeys" }.Start();
+        // Highest priority: the thread sleeps until a key is pressed and then must hand it on at once, whatever else is busy.
+        new Thread(() => Loop(ready)) { IsBackground = true, Name = "Hotkeys", Priority = ThreadPriority.Highest }.Start();
         ready.Wait();
     }
 
@@ -75,12 +76,24 @@ public sealed class HotkeyService : IDisposable
     /// <summary>Raised (on the hotkey thread) when a gesture could not be registered, usually because another app owns it.</summary>
     public event Action<string>? Failed;
 
+    private const uint ModAlt = 1, ModCtrl = 2, ModShift = 4, ModWin = 8, VkF1 = 0x70, VkF24 = 0x87;
+
+    /// <summary>
+    /// Why a typed shortcut ("Ctrl+Alt+K") can't be registered, or null when it can: it must be readable and, like the Shortcuts
+    /// page's boxes, hold Ctrl, Alt or Win unless it is an F key (a plain letter would break typing everywhere).
+    /// </summary>
+    public static string? ProblemWith(string gesture)
+    {
+        if (!TryParse(gesture.Trim(), out var mod, out var vk)) return "Couldn't read that shortcut. Use names like Ctrl+Alt+K or Win+F5.";
+        return (mod & (ModAlt | ModCtrl | ModWin)) == 0 && vk is < VkF1 or > VkF24 ? "A shortcut needs Ctrl, Alt or Win, or an F key." : null;
+    }
+
     private static bool TryParse(string gesture, out uint mod, out uint vk)
     {
         mod = 0; vk = 0;
         var parts = gesture.Split('+');
         foreach (var p in parts[..^1])
-            mod |= p switch { "Alt" => 1u, "Ctrl" => 2u, "Shift" => 4u, "Win" => 8u, _ => 0u };
+            mod |= p switch { "Alt" => ModAlt, "Ctrl" => ModCtrl, "Shift" => ModShift, "Win" => ModWin, _ => 0u };
         if (!Enum.TryParse<Key>(parts[^1], out var key)) return false;
         vk = (uint)KeyInterop.VirtualKeyFromKey(key);
         return vk != 0;

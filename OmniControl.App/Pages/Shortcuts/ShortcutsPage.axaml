@@ -5,13 +5,13 @@
              xmlns:hk="using:OmniControl.App.Hotkeys"
              x:Class="OmniControl.App.Pages.Shortcuts.ShortcutsPage"
              x:DataType="vm:ShortcutsPageViewModel">
-    <StackPanel Spacing="12">
+    <StackPanel Spacing="6">
         <TextBlock Text="Hotkeys work anywhere in Windows while OmniControl is running." Classes="muted" TextWrapping="Wrap" />
         <ItemsControl x:Name="GroupsHost" ItemsSource="{Binding Groups}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="vm:HotkeyGroup">
                     <Border Classes="groupPanel">
-                        <StackPanel Spacing="8">
+                        <StackPanel Spacing="6">
                             <pages:GroupHeader />
                             <ListBox Classes="rows compact" ItemsSource="{Binding Actions}" IsVisible="{Binding IsExpanded}">
                                 <ListBox.ItemTemplate>

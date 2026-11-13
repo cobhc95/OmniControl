@@ -2,14 +2,27 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:pages="using:OmniControl.App.Pages"
              x:Class="OmniControl.App.Pages.ChoiceRow"
-             x:DataType="pages:ChoiceItem">
-    <Grid Margin="0,3">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
-            <ColumnDefinition Width="220" />
-        </Grid.ColumnDefinitions>
-        <TextBlock Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,24,0" />
-        <ComboBox Grid.Column="1" ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}"
-                  HorizontalAlignment="Stretch" />
-    </Grid>
+             x:DataType="pages:ChoiceItem"
+             Classes="card" IsEnabled="{Binding Availability.IsAvailable}"
+             ToolTip.Tip="{Binding Availability.Reason}" ToolTip.ShowOnDisabled="True">
+    <Panel>
+        <Grid Margin="0,1" IsVisible="{Binding !Half}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,24,0" />
+            <ComboBox Classes="choice" ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}" />
+        </Grid>
+
+        <!-- Half-width card: the label (wraps to two lines) and a drop-down that fills the rest -->
+        <Grid Margin="0,1" ColumnSpacing="8" IsVisible="{Binding Half}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="56" />
+                <ColumnDefinition Width="1.6*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Classes="cardlabel" Text="{Binding Label}" />
+            <ComboBox Grid.Column="1" Classes="choice half" ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}" />
+        </Grid>
+    </Panel>
 </UserControl>

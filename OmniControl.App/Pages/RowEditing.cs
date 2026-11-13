@@ -1,6 +1,7 @@
 ﻿using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
 using Avalonia.VisualTree;
 using OmniControl.App.Hotkeys;
 
@@ -10,6 +11,7 @@ namespace OmniControl.App.Pages;
 /// Keyboard model for a ListBox of cards, each holding editable parts (hotkey box, device picker, sliders...):
 /// Up/Down move between cards, Left/Right move between the parts of the selected card,
 /// Enter works on the highlighted part (start listening, open the list, adjust the slider), Esc backs out of that.
+/// A vertical slider (a graphic equaliser's band) keeps Up/Down for its value; Esc on it gives the keyboard back to its card.
 /// </summary>
 public static class RowEditing
 {
@@ -18,10 +20,14 @@ public static class RowEditing
     public static void Attach(ListBox list) =>
         list.AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
 
-    /// <summary>True while a part is being edited (listening, adjusting a slider, a list open), so Esc belongs to it.</summary>
+    /// <summary>
+    /// True while a part is being edited (listening, adjusting a slider, typing a value, a list open, on a vertical slider, whose
+    /// Up/Down change it), so Esc and Up/Down belong to it.
+    /// </summary>
     public static bool IsEditing(object? focused) =>
         HotkeyCapture.IsListening(focused)
-        || (focused is Slider s && s == _activeSlider)
+        || (focused is Slider s && (s == _activeSlider || IsVertical(s)))
+        || NumberText.IsTypingIn(focused)
         || focused is ComboBox { IsDropDownOpen: true };
 
     /// <summary>
@@ -39,7 +45,7 @@ public static class RowEditing
         }
         if (e.Key is not (Key.Up or Key.Down)) return false;
         var parts = Parts(card);
-        var to = parts.IndexOf(src) + (e.Key == Key.Down ? 1 : -1);
+        var to = parts.IndexOf(src) + Services.Wrap.Direction(e.Key);
         if (parts.IndexOf(src) < 0 || to < 0 || to >= parts.Count) return false; // at an end: move to the next card
         parts[to].Focus(NavigationMethod.Directional);
         return true;
@@ -52,13 +58,54 @@ public static class RowEditing
         c is Slider or ComboBox or ToggleSwitch
         || c is Border { Tag: "gallery" }
         || c is Button { Tag: "scope" }
-        || HotkeyCapture.IsHotkeyBox(c);
+        || HotkeyCapture.IsHotkeyBox(c)
+        || c is TextBox { IsReadOnly: false };
 
+    // A disabled part cannot take focus, so it is not a stop (a card with no stops is focused as a whole).
     private static List<Control> Parts(ListBoxItem card) =>
-        card.GetVisualDescendants().OfType<Control>().Where(c => IsPart(c) && c.IsEffectivelyVisible).ToList();
+        card.GetVisualDescendants().OfType<Control>()
+            .Where(c => IsPart(c) && c.IsEffectivelyVisible && c.IsEffectivelyEnabled).ToList();
 
-    /// <summary>Arrow-key step: 5 on a 0-100 slider, 1 on a short range such as an EQ band.</summary>
-    private static double StepFor(Slider s) => s.Maximum - s.Minimum > 50 ? 5 : 1;
+    private static bool IsVertical(Slider s) => s.Orientation == Orientation.Vertical;
+
+    /// <summary>
+    /// Keys of a vertical slider: Up/Down one step (its SmallChange), with Shift or as PageUp/PageDown a large step (LargeChange),
+    /// with Ctrl one tick; Home or 0 = its reset value (<see cref="SliderReset"/>); Esc = back to the card, from which Up/Down move
+    /// between cards again. False for any other key (Left/Right walk the card's parts as usual).
+    /// </summary>
+    private static bool StepVertical(Slider s, ListBoxItem card, KeyEventArgs e)
+    {
+        var mods = e.KeyModifiers;
+        double? by = e.Key switch
+        {
+            Key.Up or Key.Down when mods == KeyModifiers.None => s.SmallChange,
+            Key.Up or Key.Down when mods == KeyModifiers.Shift => s.LargeChange,
+            Key.Up or Key.Down when mods == KeyModifiers.Control => s.TickFrequency,
+            Key.PageUp or Key.PageDown when mods == KeyModifiers.None => s.LargeChange,
+            _ => null,
+        };
+        if (by is { } amount)
+        {
+            s.Value = Math.Clamp(s.Value + (e.Key is Key.Up or Key.PageUp ? amount : -amount), s.Minimum, s.Maximum);
+            return true;
+        }
+        if (mods != KeyModifiers.None) return false;
+        if (e.Key is Key.Home or Key.D0 or Key.NumPad0 && SliderReset.GetValue(s) is { } reset)
+        {
+            s.Value = reset;
+            return true;
+        }
+        if (e.Key != Key.Escape) return false;
+        card.Focus(NavigationMethod.Directional);
+        return true;
+    }
+
+    /// <summary>Left/Right on a slider: 5 on a 0-100 slider, 1 on a short range (50 or less), 1 with Shift held.</summary>
+    private static void StepSlider(Slider s, KeyEventArgs e)
+    {
+        var step = e.KeyModifiers == KeyModifiers.Shift || s.Maximum - s.Minimum <= 50 ? 1 : 5;
+        s.Value = Math.Clamp(s.Value + (e.Key == Key.Right ? step : -step), s.Minimum, s.Maximum);
+    }
 
     private static void Activate(Slider slider)
     {
@@ -77,6 +124,19 @@ public static class RowEditing
 
     private static void OnSliderLostFocus(object? sender, RoutedEventArgs e) => Deactivate();
 
+    /// <summary>
+    /// Left/Right past the first or last part of a half-width card goes to the neighbouring half-width card (right: its first part,
+    /// left: its last), so a row of two cards can be walked sideways. Full-width cards stay put.
+    /// </summary>
+    private static void HopToNeighbour(ListBox list, ListBoxItem card, int step)
+    {
+        if (card.DataContext is not IHalfWidth { Half: true }) return;
+        var to = list.IndexFromContainer(card) + step;
+        if (to < 0 || to >= list.ItemCount || list.ContainerFromIndex(to) is not ListBoxItem neighbour || neighbour.DataContext is not IHalfWidth { Half: true }) return;
+        list.SelectedIndex = to;
+        (step > 0 ? CardTarget(neighbour) : Parts(neighbour).LastOrDefault() ?? neighbour).Focus(NavigationMethod.Directional);
+    }
+
     /// <summary>For pages that host several card lists and route keys themselves.</summary>
     public static void Handle(ListBox list, KeyEventArgs e) => OnKeyDown(list, e);
 
@@ -88,6 +148,9 @@ public static class RowEditing
         var card = src as ListBoxItem ?? src.FindAncestorOfType<ListBoxItem>();
         if (card is null) return;
 
+        // A text box keeps Left/Right/Home/End/Enter for typing; only Up/Down and Tab leave it.
+        if (src is TextBox { IsReadOnly: false } && e.Key is not (Key.Up or Key.Down)) return;
+
         // 1. Hotkey box: keys are the new binding while listening.
         if (src is TextBox { IsReadOnly: true, DataContext: HotkeyAction hotkey } && HotkeyCapture.TryHandle(e, hotkey))
         {
@@ -95,14 +158,21 @@ public static class RowEditing
             return;
         }
 
-        // 2. A slider being adjusted: Left/Right change it, Enter/Esc finish.
+        // 2. Ctrl+Enter on a slider types its value in (the same as a double-click on the value).
+        if (src is Slider typed && e.Key == Key.Enter && e.KeyModifiers == KeyModifiers.Control && NumberText.TryBeginBeside(typed))
+        {
+            Deactivate();
+            e.Handled = true;
+            return;
+        }
+
+        // 3. A slider being adjusted: Left/Right change it, Enter/Esc finish.
         if (src is Slider active && active == _activeSlider)
         {
-            var step = e.KeyModifiers == KeyModifiers.Shift ? 1 : StepFor(active);
             switch (e.Key)
             {
                 case Key.Left or Key.Right:
-                    active.Value = Math.Clamp(active.Value + (e.Key == Key.Right ? step : -step), active.Minimum, active.Maximum);
+                    StepSlider(active, e);
                     break;
                 case Key.Enter or Key.Escape: Deactivate(); break;
                 case Key.Up or Key.Down: break; // stay on the slider
@@ -114,6 +184,9 @@ public static class RowEditing
 
         if (src is ComboBox { IsDropDownOpen: true }) return;
 
+        // 4. A vertical slider: its value keys and Esc.
+        if (src is Slider vertical && IsVertical(vertical) && StepVertical(vertical, card, e)) { e.Handled = true; return; }
+
         if (TryNavigateInside(card, src, e)) { e.Handled = true; return; }
 
         var parts = Parts(card);
@@ -122,8 +195,7 @@ public static class RowEditing
         {
             // A card whose only part is a slider needs no Enter: Left/Right change it directly.
             case Key.Left or Key.Right when src is Slider only && parts.Count == 1:
-                var stepSize = e.KeyModifiers == KeyModifiers.Shift ? 1 : StepFor(only);
-                only.Value = Math.Clamp(only.Value + (e.Key == Key.Right ? stepSize : -stepSize), only.Minimum, only.Maximum);
+                StepSlider(only, e);
                 e.Handled = true;
                 break;
 
@@ -149,7 +221,7 @@ public static class RowEditing
                 e.Handled = true;
                 break;
 
-            case Key.Enter when src is Slider slider && parts.Count > 1:
+            case Key.Enter when src is Slider slider && !IsVertical(slider) && parts.Count > 1:
                 Activate(slider);
                 e.Handled = true;
                 break;
@@ -162,15 +234,16 @@ public static class RowEditing
             // Left/Right: previous or next part of this card.
             case Key.Left or Key.Right when parts.Count > 0 && src != card:
                 var i = parts.IndexOf(src);
-                if (i >= 0) parts[Math.Clamp(i + (e.Key == Key.Right ? 1 : -1), 0, parts.Count - 1)].Focus(NavigationMethod.Directional);
+                var step = e.Key == Key.Right ? 1 : -1;
+                if (i >= 0 && i + step >= 0 && i + step < parts.Count) parts[i + step].Focus(NavigationMethod.Directional);
+                else if (i >= 0) HopToNeighbour(list, card, step);
                 e.Handled = true;
                 break;
 
             // Up/Down: previous or next card, landing on its first part.
             case Key.Up or Key.Down when e.KeyModifiers == KeyModifiers.None:
-                var count = list.ItemCount;
-                var next = count == 0 ? -1 : (list.IndexFromContainer(card) + (e.Key == Key.Down ? 1 : -1) + count) % count; // wraps round at either end
-                if (next >= 0 && next < list.ItemCount && list.ContainerFromIndex(next) is ListBoxItem target)
+                var next = list.ItemCount == 0 ? -1 : Services.Wrap.Index(list.IndexFromContainer(card) + Services.Wrap.Direction(e.Key), list.ItemCount);
+                if (next >= 0 && list.ContainerFromIndex(next) is ListBoxItem target)
                 {
                     list.SelectedIndex = next;
                     CardTarget(target).Focus(NavigationMethod.Directional);

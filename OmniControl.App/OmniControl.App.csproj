@@ -2,15 +2,27 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <RootNamespace>OmniControl.App</RootNamespace>
     <AssemblyName>OmniControl</AssemblyName>
+    <Version>0.1.0</Version>
     <ApplicationIcon>Assets\OmniControl.ico</ApplicationIcon>
+    <!-- No profile-guided tier: it re-compiles hot code (the pop-up, the hooks) a second time, with slower instrumented code in
+         between, during the first minutes of use. Plain tiering stays: quick start-up, optimised after 30 calls. -->
+    <TieredPGO>false</TieredPGO>
   </PropertyGroup>
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
+    <!-- The one credits list (also shown in the About window) and the licence ship inside the app and next to it. -->
+    <AvaloniaResource Include="..\NOTICE.txt" Link="Assets\NOTICE.txt" />
+    <None Include="..\NOTICE.txt;..\LICENSE" CopyToOutputDirectory="PreserveNewest" Link="%(Filename)%(Extension)" />
+    <!-- Built by native/EqualizerAPO/build.ps1 (OmniControl APO and its two DLLs) and placed by the owner (the unmodified VB-CABLE
+         package, the unmodified Equalizer APO installer); all optional, copied next to the app when present. -->
+    <None Include="apo\*.dll" CopyToOutputDirectory="PreserveNewest" Link="apo\%(Filename)%(Extension)" />
+    <None Include="..\third_party\vbcable\**" Exclude="..\third_party\vbcable\README.md" CopyToOutputDirectory="PreserveNewest" Link="third_party\vbcable\%(RecursiveDir)%(Filename)%(Extension)" />
+    <None Include="..\third_party\equalizerapo\**" Exclude="..\third_party\equalizerapo\README.md" CopyToOutputDirectory="PreserveNewest" Link="third_party\equalizerapo\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

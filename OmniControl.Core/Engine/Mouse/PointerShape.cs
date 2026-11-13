@@ -1,0 +1,48 @@
+using System.Runtime.InteropServices;
+using OmniControl.Core.Engine.Pointer;
+
+namespace OmniControl.Core.Engine.Mouse;
+
+/// <summary>
+/// Shows a chosen system pointer everywhere while a mouse mode runs, then puts the user's own pointers back. Windows has no
+/// per-moment pointer for other programs' windows, so the pointers a program usually shows under a still mouse are replaced
+/// (SetSystemCursor). Putting back is one call that reloads the user's cursor scheme from their settings, so there is no saved
+/// copy that could be lost; <see cref="Reset"/> is also safe to call at any time (start-up and exit do), which clears a pointer
+/// left behind by a crash.
+/// </summary>
+public static class PointerShape
+{
+    [DllImport("user32.dll")] private static extern IntPtr LoadCursor(IntPtr instance, IntPtr name);
+    [DllImport("user32.dll")] private static extern IntPtr CopyIcon(IntPtr icon);
+    [DllImport("user32.dll")] private static extern bool SetSystemCursor(IntPtr cursor, uint id);
+
+    /// <summary>The system pointers a shape can be (Windows' own ids): four arrows, up/down, left/right, hand, crosshair.</summary>
+    public enum Shape : uint { FourArrows = 32646, UpDown = 32645, LeftRight = 32644, Hand = 32649, Crosshair = 32515 }
+
+    // The pointers a program usually shows under a still mouse: arrow, text beam, link hand, busy arrow.
+    private static readonly uint[] Replaced = { 32512, 32513, 32649, 32650 };
+
+    /// <summary>Shows <paramref name="shape"/> in place of the usual pointers. False when Windows refused (the pointers are reset then).</summary>
+    public static bool Show(Shape shape)
+    {
+        var source = LoadCursor(IntPtr.Zero, (IntPtr)(uint)shape);
+        if (source == IntPtr.Zero) return false;
+
+        var ok = true;
+        foreach (var id in Replaced)
+        {
+            // SetSystemCursor takes ownership of the handle it is given, so each pointer gets its own copy.
+            var copy = CopyIcon(source);
+            if (copy == IntPtr.Zero || !SetSystemCursor(copy, id))
+            {
+                if (copy != IntPtr.Zero) SpiNative.DestroyCursor(copy);
+                ok = false;
+            }
+        }
+        if (!ok) Reset();
+        return ok;
+    }
+
+    /// <summary>Puts the user's own pointers back by reloading their cursor scheme.</summary>
+    public static void Reset() => SpiNative.Set(SpiNative.SetCursors, 0, IntPtr.Zero, 0);
+}

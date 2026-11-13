@@ -1,62 +1,43 @@
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using OmniControl.App.Audio;
 
 namespace OmniControl.App.Pages.Volume;
 
-/// <summary>One row of the Inputs group: a recording device (microphone, line in...) with its level, mute, FX button and a live meter.</summary>
-public sealed partial class InputItem : ObservableObject, IEditorItem
+/// <summary>
+/// A Microphones row: one recording device (its Windows level and mute; its effects run in Equalizer APO on that microphone in Fast
+/// mode, through its own cable in Full control).
+/// </summary>
+public sealed class InputItem : VolumeRow
 {
-    private bool _syncing;
+    /// <summary>The microphone outline shared by microphone rows.</summary>
+    internal const string MicGlyph = "M12,3 A3,3 0 0 1 15,6 V12 A3,3 0 0 1 9,12 V6 A3,3 0 0 1 12,3 Z M6,11 A6,6 0 0 0 18,11 M12,17 V21";
 
-    public InputItem(string id, string fxKey) { Id = id; FxKey = fxKey; }
+    public InputItem(string id, Func<ModeGate> newGate) : base(MixerService.InputPrefix + id, newGate) => Id = id;
 
-    string IEditorItem.Label => Name;
-
+    /// <summary>The device's endpoint id.</summary>
     public string Id { get; }
 
-    /// <summary>The key this device's FX chain is stored and opened under.</summary>
-    public string FxKey { get; }
-    public MeterModel Meter { get; } = new();
+    public override string? Glyph => MicGlyph;
+    public override string VolumeTip => "Input level";
+    protected override bool SwitchNeedsEffects => true;
+}
 
-    public Action<int>? VolumeChanged { get; init; }
-    public Action<bool>? MuteChanged { get; init; }
-    public Action? FxOpenRequested { get; init; }
-    public Action<bool>? FxToggled { get; init; }
+/// <summary>
+/// A combined device's row (Full control): combined speakers in Outputs ("→" its members; no level of its own, no effects),
+/// a combined microphone in Microphones ("←" its members, with its own level, mute and effects).
+/// </summary>
+public sealed class ComboItem : VolumeRow
+{
+    private const string SpeakersGlyph = "M3,9 H7 L12,4 V20 L7,15 H3 Z M16,8 V16 M20,6 V18";
 
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(Initial))] private string _name = string.Empty;
-    [ObservableProperty] private string _detail = string.Empty;
-    [ObservableProperty] private int _volume;
-    [ObservableProperty] private bool _muted;
-    [ObservableProperty] private bool _fxOn;
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(FxText))] private int _fxCount;
-
-    public string Initial => Name.Length > 0 ? Name[..1].ToUpperInvariant() : "?";
-    public string FxText => FxCount > 0 ? $"FX {FxCount}" : "FX";
-
-    partial void OnVolumeChanged(int value) { if (!_syncing) VolumeChanged?.Invoke(value); }
-    partial void OnMutedChanged(bool value) { if (!_syncing) MuteChanged?.Invoke(value); }
-    partial void OnFxOnChanged(bool value) { if (!_syncing) FxToggled?.Invoke(value); }
-
-    [RelayCommand] private void ToggleMute() => Muted = !Muted;
-    [RelayCommand] private void OpenFx() => FxOpenRequested?.Invoke();
-    [RelayCommand] private void ToggleFx() => FxOn = !FxOn;
-
-    /// <summary>Updates the row from the system without sending the values back.</summary>
-    public void Sync(string detail, int volume, bool muted)
+    public ComboItem(CombinedDevice device, Func<ModeGate> newGate) : base(device.Key, newGate)
     {
-        _syncing = true;
-        Detail = detail;
-        Volume = volume;
-        Muted = muted;
-        _syncing = false;
+        IsMicrophone = device.Kind == CombinedKind.Microphones;
+        CanForget = true;
     }
 
-    public void SyncFx(bool on, int count)
-    {
-        _syncing = true;
-        FxOn = on;
-        FxCount = count;
-        _syncing = false;
-    }
+    public bool IsMicrophone { get; }
+    public override string? Glyph => IsMicrophone ? InputItem.MicGlyph : SpeakersGlyph;
+    public override string RouteArrow => IsMicrophone ? RecordsFromArrow : PlaysOnArrow;
+    public override bool HasVolume => IsMicrophone;
+    public override bool HasEffects => IsMicrophone;
 }

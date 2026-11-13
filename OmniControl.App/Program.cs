@@ -1,12 +1,19 @@
 ﻿using Avalonia;
+using OmniControl.App.Audio.Engine;
+using OmniControl.Core.Engine;
 
 namespace OmniControl.App;
 
 internal static class Program
 {
     [STAThread]
-    public static void Main(string[] args) =>
-        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    public static int Main(string[] args)
+    {
+        // The elevated setup mode (OmniControl APO install/remove) runs and exits before anything of the app starts.
+        if (EngineSetupCommand.TryRun(args) is { } exitCode) return exitCode;
+        ProcessPower.StayResponsive();
+        return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    }
 
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<App>()

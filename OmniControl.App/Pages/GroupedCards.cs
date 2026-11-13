@@ -16,11 +16,21 @@ public static class GroupedCards
 {
     /// <param name="root">The page (receives the key events).</param>
     /// <param name="host">The panel holding the lists and group panels, in on-screen order.</param>
-    public static void Attach(Control root, Control host) =>
+    public static void Attach(Control root, Control host)
+    {
         root.AddHandler(InputElement.KeyDownEvent, (_, e) => OnKeyDown(root, host, e), RoutingStrategies.Tunnel);
+    }
 
     private static List<Control> Stops(Control host) => host.GetVisualDescendants().OfType<Control>()
-        .Where(c => c is Button { Tag: "grouphdr" } || (c is ListBoxItem && c.IsEffectivelyVisible)).ToList();
+        .Where(c => IsHeaderStop(c) || (c is ListBoxItem && c.IsEffectivelyVisible)).ToList();
+
+    /// <summary>
+    /// A visible group header, or a drop-down or button placed on a header's line (the mouse layer, Refresh, a page's open tab): one stop
+    /// each, in on-screen order. One that cannot take focus (a tab that is not open, a dimmed button) is not a stop, as a header inside
+    /// a collapsed group is not.
+    /// </summary>
+    private static bool IsHeaderStop(Control c) =>
+        (c is Button { Tag: "grouphdr" or "grouptool" } || c is ComboBox { Tag: "grouptool" }) && c.IsEffectivelyVisible && c.IsEffectivelyEnabled && c.Focusable;
 
     private static void OnKeyDown(Control root, Control host, KeyEventArgs e)
     {
@@ -47,11 +57,11 @@ public static class GroupedCards
             && src is not ComboBoxItem && src.FindAncestorOfType<ComboBoxItem>() is null)
         {
             var stops = Stops(host);
-            Control? current = src is Button { Tag: "grouphdr" } ? src : src as ListBoxItem ?? src.FindAncestorOfType<ListBoxItem>();
+            Control? current = IsHeaderStop(src) ? src : src as ListBoxItem ?? src.FindAncestorOfType<ListBoxItem>();
             var at = current is null ? -1 : stops.IndexOf(current);
             if (at >= 0)
             {
-                var next = (at + (e.Key == Key.Down ? 1 : -1) + stops.Count) % stops.Count; // wraps round at either end
+                var next = Services.Wrap.Index(at + Services.Wrap.Direction(e.Key), stops.Count);
                 if (next != at) MoveTo(stops[next], stops);
                 e.Handled = true;
                 return;
@@ -59,6 +69,18 @@ public static class GroupedCards
         }
 
         if (src.FindAncestorOfType<ListBox>() is { } list) RowEditing.Handle(list, e);
+    }
+
+    /// <summary>
+    /// Moves the keyboard to the card that shows <paramref name="item"/> (as Up/Down would) and scrolls it into view; false when no
+    /// visible card shows it (its page or group is hidden).
+    /// </summary>
+    public static bool Reveal(Control host, object item)
+    {
+        var stops = Stops(host);
+        if (stops.OfType<ListBoxItem>().FirstOrDefault(i => ReferenceEquals(i.DataContext, item)) is not { } card) return false;
+        MoveTo(card, stops);
+        return true;
     }
 
     private static void MoveTo(Control stop, List<Control> stops)

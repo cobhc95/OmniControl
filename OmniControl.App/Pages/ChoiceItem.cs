@@ -3,14 +3,24 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace OmniControl.App.Pages;
 
 /// <summary>A pick-one setting (theme, input source...). Calls the apply action when changed.</summary>
-public sealed partial class ChoiceItem : ObservableObject, IEditorItem
+public sealed partial class ChoiceItem : ObservableObject, IEditorItem, IHalfWidth
 {
     private readonly Action<string> _apply;
 
     public string Label { get; }
-    public IReadOnlyList<string> Options { get; }
+
+    /// <summary>True: the card takes half the width and may share a row with the next half-width card.</summary>
+    public bool Half { get; init; }
+
+    /// <summary>The entries to choose from; may be replaced while the card is shown (the Mouse and Trackpad page's layer list).</summary>
+    [ObservableProperty] private IReadOnlyList<string> _options;
 
     [ObservableProperty] private string _selected;
+
+    /// <summary>Greyed out, with a reason, while the choice cannot be made (a monitor that does not list its inputs).</summary>
+    public Availability Availability { get; } = new();
+
+    private bool _loading;
 
     public ChoiceItem(string label, IReadOnlyList<string> options, string selected, Action<string> apply)
     {
@@ -20,5 +30,17 @@ public sealed partial class ChoiceItem : ObservableObject, IEditorItem
         _apply = apply;
     }
 
-    partial void OnSelectedChanged(string value) => _apply(value);
+    /// <summary>Shows a list and choice read from elsewhere without applying it.</summary>
+    public void Load(IReadOnlyList<string> options, string selected)
+    {
+        _loading = true;
+        Options = options;
+        Selected = selected;
+        _loading = false;
+    }
+
+    partial void OnSelectedChanged(string value)
+    {
+        if (!_loading) _apply(value);
+    }
 }

@@ -1,0 +1,76 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:picker="using:OmniControl.App.Picker"
+             x:Class="OmniControl.App.Picker.PickerMenu"
+             x:DataType="picker:PickerModel">
+    <!-- Keyboard focus stays in the search box (or, on the settings page, the focus holder); the lists only show the highlight, which the model moves. -->
+    <Grid RowDefinitions="Auto,*,Auto">
+        <TextBox x:Name="Search" Classes="field" Text="{Binding Query}" Watermark="{Binding SearchHint}" Margin="8"
+                 IsVisible="{Binding !IsEditingOptions}" />
+
+        <!-- Page 1: pick an entry -->
+        <Grid Grid.Row="1" ColumnDefinitions="Auto,*" IsVisible="{Binding !IsEditingOptions}">
+            <ListBox x:Name="CategoryList" Classes="pick" Classes.active="{Binding InCategories}" Width="190" Focusable="False"
+                     ItemsSource="{Binding Categories}" SelectedIndex="{Binding CategoryIndex}" IsVisible="{Binding !IsSearching}" />
+            <ListBox x:Name="ActionList" Grid.Column="1" Classes="pick" Classes.active="{Binding !InCategories}" Focusable="False"
+                     ItemsSource="{Binding Actions}" SelectedIndex="{Binding ActionIndex}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="picker:PickerRow">
+                        <!-- A greyed entry (Grid.unavailable) says why under its name and can't be picked -->
+                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8" Background="Transparent"
+                              Classes.unavailable="{Binding !IsAvailable}" ToolTip.Tip="{Binding Unavailable}">
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Classes="hint small" Text="{Binding Unavailable}" IsVisible="{Binding !IsAvailable}" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="{Binding Hint}" Classes="muted small" VerticalAlignment="Center" />
+                            <Button Grid.Column="2" Classes="pill cog" Classes.active="{Binding IsCogActive}" Focusable="False"
+                                    IsVisible="{Binding HasOptions}" Click="OnRowCogClick" ToolTip.Tip="Settings for this entry">
+                                <PathIcon Data="{DynamicResource CogIcon}" Width="12" Height="12" />
+                            </Button>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
+
+        <!-- Page 2: the chosen entry's settings (and the text it takes) -->
+        <Grid Grid.Row="1" RowDefinitions="Auto,*" IsVisible="{Binding IsEditingOptions}">
+            <Border x:Name="OptionsFocus" Width="1" Height="1" Focusable="True" HorizontalAlignment="Left" Opacity="0" />
+            <TextBlock Text="{Binding OptionsTitle}" FontWeight="SemiBold" Margin="14,10,14,6" HorizontalAlignment="Left" />
+            <ListBox x:Name="OptionList" Grid.Row="1" Classes="pick active" Focusable="False"
+                     ItemsSource="{Binding OptionItems}" SelectedIndex="{Binding OptionIndex}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="picker:OptionItem">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" MinHeight="30">
+                            <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" IsVisible="{Binding IsStepper}">
+                                <Button Classes="pill glyph" Content="‹" Tag="-1" Focusable="False" Click="OnOptionStepClick" />
+                                <Panel MinWidth="120" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Display}" TextAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !IsTyping}"
+                                               DoubleTapped="OnNumberDoubleTapped" />
+                                    <TextBox Classes="field" Text="{Binding Typed}" TextAlignment="Center" Width="100" HorizontalAlignment="Center"
+                                             IsVisible="{Binding IsTyping}" LostFocus="OnNumberLostFocus" />
+                                </Panel>
+                                <Button Classes="pill glyph" Content="›" Tag="1" Focusable="False" Click="OnOptionStepClick" />
+                            </StackPanel>
+                            <ToggleSwitch Grid.Column="1" IsChecked="{Binding IsOn}" OnContent="On" OffContent="Off" Focusable="False"
+                                          IsVisible="{Binding IsToggle}" VerticalAlignment="Center" />
+                            <TextBox Classes="field" Grid.Column="1" Text="{Binding Value, UpdateSourceTrigger=LostFocus}" Watermark="{Binding Hint}" Width="260"
+                                     IsVisible="{Binding IsText}" VerticalAlignment="Center" />
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
+
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="12,6" ColumnSpacing="12">
+            <TextBlock Classes="hint small" IsVisible="{Binding !IsEditingOptions}"
+                       Text="Type to search. Up/Down choose. Left/Right switch between categories, entries and an entry's cogwheel. Enter picks (on a cogwheel: opens its settings). Tab opens the highlighted entry's settings. Greyed entries can't be picked here; the reason is under the name. Esc closes." />
+            <TextBlock Classes="hint small" IsVisible="{Binding IsEditingOptions}"
+                       Text="Up/Down choose a setting. Left/Right change it (Space flips a switch). Enter on a text setting edits it; Ctrl+Enter (or a double-click) types a number in. Enter anywhere else uses it with these settings. Changes apply at once. Esc goes back." />
+            <Button Grid.Column="1" Classes="scope usebtn" Classes.picked="{Binding OnUseButton}" Tag="scope" Content="{Binding UseText}" IsVisible="{Binding IsEditingOptions}"
+                    HorizontalAlignment="Right" Focusable="False" Click="OnUseClick" />
+        </Grid>
+    </Grid>
+</UserControl>

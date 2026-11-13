@@ -5,17 +5,17 @@
              x:DataType="pages:ToggleItem">
     <Panel>
         <!-- Full-width card: label column shared with the other cards so the switches line up -->
-        <Grid Margin="0,3" IsVisible="{Binding !Half}">
+        <Grid Margin="0,1" IsVisible="{Binding !Half}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
-                <ColumnDefinition Width="220" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <TextBlock Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,24,0" />
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding IsOn}" OnContent="On" OffContent="Off" />
         </Grid>
 
         <!-- Half-width card: the label takes what is left (and wraps), the switch sits at the right -->
-        <Grid Margin="0,3" ColumnDefinitions="*,Auto" ColumnSpacing="12" IsVisible="{Binding Half}">
+        <Grid Margin="0,1" ColumnDefinitions="*,Auto" ColumnSpacing="12" IsVisible="{Binding Half}">
             <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextWrapping="Wrap" />
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding IsOn}" OnContent="On" OffContent="Off" VerticalAlignment="Center" />
         </Grid>

@@ -1,0 +1,20 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="OmniControl.App.Shell.CloseChoiceWindow"
+        Title="Close OmniControl" Icon="avares://OmniControl/Assets/OmniControl.ico" Width="460" MinWidth="360" SizeToContent="Height"
+        CanResize="False" Background="{DynamicResource BrushBackground}" WindowStartupLocation="CenterOwner">
+    <!-- Asked when the main window's X is pressed and the setting is "Ask each time". Esc or the window's X = do nothing. -->
+    <StackPanel Margin="12" Spacing="10">
+        <TextBlock Classes="title" Text="Close OmniControl?" TextWrapping="Wrap" />
+        <TextBlock TextWrapping="Wrap"
+                   Text="Hotkeys, the mouse remapping and the pop-ups keep working while it sits in the tray." />
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <TextBlock Text="Remember my choice" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <ToggleSwitch x:Name="RememberSwitch" Grid.Column="1" OnContent="On" OffContent="Off" VerticalAlignment="Center" />
+        </Grid>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button x:Name="ExitButton" Classes="usebtn scope" Tag="scope" Click="OnExitClick" />
+            <Button x:Name="TrayButton" Classes="primary" Click="OnTrayClick" />
+        </StackPanel>
+    </StackPanel>
+</Window>

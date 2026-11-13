@@ -32,7 +32,7 @@ public sealed partial class GalleryItem : ObservableObject, IEditorItem
     }
 
     /// <summary>Moves to the next (+1) or previous (-1) option, wrapping around.</summary>
-    public void Step(int direction) => Index = (Index + direction + Options.Count) % Options.Count;
+    public void Step(int direction) => Index = Services.Wrap.Index(Index + direction, Options.Count);
 
     /// <summary>Redraws the preview after something else it depends on changed.</summary>
     public void Refresh() => OnPropertyChanged(nameof(Preview));

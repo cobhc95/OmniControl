@@ -1,7 +1,7 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
     <RootNamespace>OmniControl.Core</RootNamespace>
     <AssemblyName>OmniControl.Core</AssemblyName>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -10,7 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="NAudio.Vst3" Version="3.3.0" />
+    <PackageReference Include="NAudio.Wasapi" Version="3.3.0" />
     <PackageReference Include="System.Management" Version="8.0.0" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="9.0.0" />
   </ItemGroup>
 
 </Project>

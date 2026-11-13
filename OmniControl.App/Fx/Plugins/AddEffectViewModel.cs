@@ -1,13 +1,17 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using OmniControl.App.Audio;
 
 namespace OmniControl.App.Fx.Plugins;
 
-/// <summary>The Add effect window: a searchable list of built-in effects and VST3 plug-ins, with a scan of the common plug-in folders and loading a file by hand.</summary>
+/// <summary>
+/// The Add effect window: a searchable list of built-in effects and plug-ins (every type of <see cref="FxCatalog.PluginTypes"/>, each
+/// with its tag), with a scan of the plug-in folders and loading a file by hand.
+/// </summary>
 public sealed partial class AddEffectViewModel : ObservableObject
 {
-    public const string AllKinds = "All";
+    private const string AllKinds = "All";
 
     private readonly PluginLibrary _library;
     private CancellationTokenSource? _scan;
@@ -16,11 +20,16 @@ public sealed partial class AddEffectViewModel : ObservableObject
     {
         _library = library;
         Refresh();
-        Status = _library.HasScanned ? string.Empty : "Scan the common folders, or load a VST3 file, to add plug-ins to this list.";
+        Status = _library.HasScanned ? string.Empty : $"Scan the plug-in folders, or load a {Tags} file, to add plug-ins to this list. {OtherPlaces}";
     }
 
+    /// <summary>Where the user is sent for plug-ins installed elsewhere.</summary>
+    private const string OtherPlaces = "Use App settings > Plug-in folders for other places.";
+
+    private static string Tags => string.Join(" or ", FxCatalog.PluginTypes.Select(t => t.Tag));
+
     public ObservableCollection<PluginEntry> Results { get; } = new();
-    public IReadOnlyList<string> Kinds { get; } = new[] { AllKinds, PluginEntry.BuiltIn, PluginEntry.Vst3 };
+    public IReadOnlyList<string> Kinds { get; } = new[] { AllKinds, PluginEntry.BuiltIn }.Concat(FxCatalog.PluginTypes.Select(t => t.Tag)).ToList();
 
     [ObservableProperty] private string _query = string.Empty;
     [ObservableProperty] private string _kind = AllKinds;
@@ -29,7 +38,10 @@ public sealed partial class AddEffectViewModel : ObservableObject
     [ObservableProperty, NotifyPropertyChangedFor(nameof(ScanText))] private bool _scanning;
 
     public bool CanAdd => Selected is not null;
-    public string ScanText => Scanning ? "Stop scanning" : "Scan common folders";
+    public string ScanText => Scanning ? "Stop scanning" : "Scan plug-in folders";
+
+    /// <summary>The file types the Load VST file… picker accepts ("*.vst3", "*.dll").</summary>
+    public IReadOnlyList<string> FilePatterns { get; } = FxCatalog.PluginTypes.Select(t => "*" + t.Extension).ToList();
 
     partial void OnQueryChanged(string value) => Refresh();
     partial void OnKindChanged(string value) => Refresh();
@@ -51,12 +63,14 @@ public sealed partial class AddEffectViewModel : ObservableObject
         try
         {
             var progress = new Progress<int>(n => Status = $"Scanning… {n} found");
-            var count = await _library.ScanCommonAsync(progress, _scan.Token);
-            Status = count == 0 ? "No VST3 plug-ins found in the common folders. Use Load VST file… for ones installed elsewhere." : $"Found {count} VST3 plug-in{(count == 1 ? "" : "s")}.";
+            await _library.ScanAsync(progress, _scan.Token);
+            Status = $"{_library.FoundText()} {OtherPlaces}";
         }
         catch (OperationCanceledException) { Status = "Scan stopped."; }
         finally
         {
+            _scan.Dispose();
+            _scan = null;
             Scanning = false;
             Refresh();
         }
@@ -65,8 +79,8 @@ public sealed partial class AddEffectViewModel : ObservableObject
     /// <summary>A plug-in file the user picked by hand: remembers it, shows it and selects it.</summary>
     public void LoadFile(string path)
     {
-        var entry = _library.AddFile(path);
-        if (entry is null) { Status = "That isn't a VST3 plug-in (a file or folder ending in .vst3)."; return; }
+        var entry = _library.AddFile(path, out var problem);
+        if (entry is null) { Status = problem ?? string.Empty; return; }
         Query = string.Empty;
         Kind = AllKinds;
         Refresh();

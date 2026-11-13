@@ -1,6 +1,9 @@
+using OmniControl.App.Pages;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
+using OmniControl.Core.Engine;
 using OmniControl.App.Services;
 using OmniControl.App.Shell;
 
@@ -15,14 +18,19 @@ public partial class App : Application
     {
         var settings = AppSettings.Current;
         AccentService.Initialize(settings.Accent);
+        ValueWheel.Register();
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var shell = new ShellViewModel();
             var window = new MainWindow { DataContext = shell };
             desktop.MainWindow = window;
-            WindowLifecycle.Attach(this, desktop, window, shell, settings);
+            WindowLifecycle.Attach(this, desktop, window, shell, settings, StartupRegistration.IsBackgroundStart(desktop.Args ?? Array.Empty<string>()));
+            StartupRegistration.RepairIfMoved();
         }
+        // Once start-up has built the pages and drawn the pop-up (its warm-up spans several frames, so "idle" can come too early),
+        // keep that memory resident so an idle spell can't page it out.
+        DispatcherTimer.RunOnce(ProcessPower.KeepResident, Timing.KeepResidentAfterStart);
         base.OnFrameworkInitializationCompleted();
     }
 }

@@ -1,8 +1,9 @@
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+using System.Text;
 using OmniControl.Core.Interfaces;
 using OmniControl.Core.Models;
 using OmniControl.Core.Native;
-using System.ComponentModel;
-using System.Runtime.InteropServices;
 
 namespace OmniControl.Core.Engine;
 
@@ -11,24 +12,24 @@ public sealed class DdcCiMonitor : IMonitor
 {
     private readonly Dxva2Native.PHYSICAL_MONITOR _physical;
     private readonly object _gate = new();          // serialises VCP traffic
-    private const int MinSetIntervalMs = 40;        // many EDIDs dislike &lt;30ms bursts
     private DateTime _lastSet = DateTime.MinValue;
+    private MonitorCapabilities? _capabilities;
     private bool _disposed;
 
-    public MonitorInfo Info { get; }
+    public DisplayInfo Info { get; }
 
-    internal DdcCiMonitor(MonitorInfo info, Dxva2Native.PHYSICAL_MONITOR physical)
+    internal DdcCiMonitor(DisplayInfo info, Dxva2Native.PHYSICAL_MONITOR physical)
     {
         Info = info;
         _physical = physical;
     }
 
-    // ---------------------------------------------------------------- VCP
     public OperationResult TryGetVcp(byte code, out VcpValue value)
     {
         value = VcpValue.Unsupported;
         lock (_gate)
         {
+            if (_disposed) return OperationResult.Fail("The monitor is no longer attached.");
             bool ok = Dxva2Native.GetVCPFeatureAndVCPFeatureReply(
                 _physical.hPhysicalMonitor, code, out uint type, out uint cur, out uint max);
             if (!ok)
@@ -48,9 +49,10 @@ public sealed class DdcCiMonitor : IMonitor
     {
         lock (_gate)
         {
+            if (_disposed) return OperationResult.Fail("The monitor is no longer attached.");
             var since = (DateTime.UtcNow - _lastSet).TotalMilliseconds;
-            if (since < MinSetIntervalMs)
-                Thread.Sleep((int)(MinSetIntervalMs - since));
+            if (since < CoreTiming.DdcMinSetIntervalMs)
+                Thread.Sleep((int)(CoreTiming.DdcMinSetIntervalMs - since));
             bool ok = Dxva2Native.SetVCPFeature(_physical.hPhysicalMonitor, code, value);
             _lastSet = DateTime.UtcNow;
             if (!ok)
@@ -60,47 +62,28 @@ public sealed class DdcCiMonitor : IMonitor
         }
     }
 
-    public string? GetCapabilities()
+    public MonitorCapabilities Probe()
     {
-        lock (_gate)
-        {
-            IntPtr pvct = IntPtr.Zero;
-            try
-            {
-                bool ok = Dxva2Native.CapabilitiesRequestAndCapabilitiesReply(
-                    "(vcp(10) vcp(12) vcp(60) vcp(8C) vcp(8E) vcp(90) vcp(CC))", 255, out pvct, out uint len);
-                if (!ok || pvct == IntPtr.Zero) return null;
-                string s = Marshal.PtrToStringUni(pvct, (int)len) ?? string.Empty;
-                Info.Capabilities = s;
-                return s;
-            }
-            catch { return null; /* monitor does not answer DDC/CI */ }
-            finally { if (pvct != IntPtr.Zero) Marshal.FreeCoTaskMem(pvct); }
-        }
+        lock (_gate) return _capabilities ??= MonitorProbe.Run(GetVcp, ReadCapabilitiesString);
     }
 
-    // --------------------------------------------------------- typed helpers
-    public OperationResult SetBrightness(int v) => TrySetVcp(VcpCode.Brightness, (uint)v);
-    public OperationResult SetContrast(int v)   => TrySetVcp(VcpCode.Contrast, (uint)v);
-    public OperationResult SetSharpness(int v)  => TrySetVcp(VcpCode.Sharpness, (uint)v);
-    public OperationResult SetRedGain(int v)    => TrySetVcp(VcpCode.RedGain, (uint)v);
-    public OperationResult SetGreenGain(int v)  => TrySetVcp(VcpCode.GreenGain, (uint)v);
-    public OperationResult SetBlueGain(int v)   => TrySetVcp(VcpCode.BlueGain, (uint)v);
-    public OperationResult SetColorTemperature(int kelvin)
+    /// <summary>The monitor's MCCS capabilities string, or null when it does not answer (many monitors do not, or answer after seconds).</summary>
+    private string? ReadCapabilitiesString()
     {
-        return TrySetVcp(VcpCode.ColorTemperature, kelvin >= 1000 ? 0x0Bu : 0x0Au);
+        if (!Dxva2Native.GetCapabilitiesStringLength(_physical.hPhysicalMonitor, out var length) || length == 0) return null;
+        var buffer = new byte[length];
+        if (!Dxva2Native.CapabilitiesRequestAndCapabilitiesReply(_physical.hPhysicalMonitor, buffer, length)) return null;
+        return Encoding.ASCII.GetString(buffer).TrimEnd('\0');
     }
-    public OperationResult SetInputSource(uint src) => TrySetVcp(VcpCode.InputSource, src);
-    public OperationResult SetVolume(int v)    => TrySetVcp(VcpCode.Volume, (uint)v);
-    public OperationResult SetPower(bool on)   => TrySetVcp(VcpCode.Power, on ? VcpCode.PowerMode.On : VcpCode.PowerMode.Off);
-    public OperationResult FactoryReset()      => TrySetVcp(VcpCode.FactoryReset, 0x01);
-    public OperationResult SetMute(bool mute)  => TrySetVcp(VcpCode.Mute, mute ? 1u : 0u);
 
     public void Dispose()
     {
-        if (_disposed) return;
-        _disposed = true;
-        try { Dxva2Native.DestroyPhysicalMonitors(1, new[] { _physical }); } catch { /* handle already released by the driver */ }
+        lock (_gate) // waits for a call in progress; later calls then fail instead of touching a released handle
+        {
+            if (_disposed) return;
+            _disposed = true;
+            Dxva2Native.DestroyPhysicalMonitors(1, new[] { _physical });
+        }
         GC.SuppressFinalize(this);
     }
 }

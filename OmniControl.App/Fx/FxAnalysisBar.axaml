@@ -1,0 +1,28 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fx="using:OmniControl.App.Fx"
+             x:Class="OmniControl.App.Fx.FxAnalysisBar"
+             x:DataType="fx:FxAnalysisViewModel">
+    <!-- The FX window header's analysis (owner-approved "Design A"): the three live numbers, then the total response thumbnail at the
+         right end. When the header is narrow the numbers are left out (FoldingRow) and the larger graph shows them. The larger graph
+         is a pop-up under the thumbnail's right edge, over the panes, so nothing underneath moves. -->
+    <Panel>
+        <fx:FoldingRow Spacing="{DynamicResource FxAnalysisGap}" VerticalAlignment="Center">
+            <fx:FxAnalysisNumbers VerticalAlignment="Center" />
+            <Button x:Name="Thumb" Classes="graphthumb" AutomationProperties.Name="Total response of the chain">
+                <fx:ResponseThumb />
+            </Button>
+        </fx:FoldingRow>
+        <Popup x:Name="Enlarged" PlacementTarget="{Binding #Thumb}" Placement="BottomEdgeAlignedRight"
+               VerticalOffset="{DynamicResource MenuOffset}" IsLightDismissEnabled="False">
+            <FlyoutPresenter x:Name="EnlargedPanel" Classes="graphmenu">
+                <StackPanel Spacing="{DynamicResource FxGraphPanelSpacing}">
+                    <fx:ResponseGraph Height="{DynamicResource FxGraphHeight}" />
+                    <fx:FxAnalysisNumbers ShowsPeakFrequency="True" Margin="{DynamicResource MenuTextInset}" />
+                    <TextBlock Classes="menutext" Text="{x:Static fx:FxAnalysisViewModel.NoteText}" IsVisible="{Binding HasNote}"
+                               ToolTip.Tip="{Binding NoteTip}" />
+                </StackPanel>
+            </FlyoutPresenter>
+        </Popup>
+    </Panel>
+</UserControl>

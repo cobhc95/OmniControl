@@ -80,7 +80,8 @@ public partial class MainWindow : Window
     private bool StepBetweenNavLists(ListBoxItem item, bool down)
     {
         var list = item.FindAncestorOfType<ListBox>();
-        if (list is null) return false;
+        // Only the two sidebar lists hand over to each other; a card list on a page loops inside its own page (Tab leaves it).
+        if (list != MainNav && list != FooterNav) return false;
         ListBox? other = null;
         var at = list.IndexFromContainer(item);
         if (down && at == list.ItemCount - 1) other = list == MainNav ? FooterNav : MainNav; // past the last item: on to the next list, and round to the top

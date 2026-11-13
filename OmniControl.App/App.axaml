@@ -1,4 +1,4 @@
-﻿<Application xmlns="https://github.com/avaloniaui"
+<Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:pages="using:OmniControl.App.Pages"
              xmlns:hotkeys="using:OmniControl.App.Hotkeys"
@@ -6,6 +6,8 @@
              xmlns:shortcuts="using:OmniControl.App.Pages.Shortcuts"
              xmlns:osd="using:OmniControl.App.Pages.Osd"
              xmlns:volume="using:OmniControl.App.Pages.Volume"
+             xmlns:mouse="using:OmniControl.App.Pages.Mouse"
+             xmlns:gestures="using:OmniControl.App.Pages.Gestures"
              xmlns:fx="using:OmniControl.App.Fx"
              xmlns:appsettings="using:OmniControl.App.Pages.AppSettingsPage"
              x:Class="OmniControl.App.App"
@@ -18,20 +20,122 @@
         <DataTemplate DataType="osd:OsdPageViewModel"><osd:OsdPage /></DataTemplate>
         <DataTemplate DataType="appsettings:AppSettingsPageViewModel"><appsettings:AppSettingsPage /></DataTemplate>
         <DataTemplate DataType="volume:VolumePageViewModel"><volume:VolumePage /></DataTemplate>
-        <DataTemplate DataType="volume:MixerItem"><volume:MixerRow /></DataTemplate>
+        <DataTemplate DataType="mouse:MousePageViewModel"><mouse:MousePage /></DataTemplate>
+        <DataTemplate DataType="mouse:MouseButtonItem"><mouse:MouseButtonRow /></DataTemplate>
+        <DataTemplate DataType="gestures:GesturesPageViewModel"><gestures:GesturesPage /></DataTemplate>
+        <DataTemplate DataType="gestures:GestureItem"><gestures:GestureRow /></DataTemplate>
+        <DataTemplate DataType="gestures:RuleItem"><gestures:RuleRow /></DataTemplate>
+        <DataTemplate DataType="volume:VolumeRow"><volume:VolumeRowView /></DataTemplate>
+        <DataTemplate DataType="volume:WiringRow"><volume:WiringRowView /></DataTemplate>
+        <DataTemplate DataType="volume:CombinedCard"><volume:CombinedCardView /></DataTemplate>
         <DataTemplate DataType="fx:EqPanelItem"><fx:EqPanelRow /></DataTemplate>
+        <DataTemplate DataType="fx:EqBandItem"><fx:EqBandRow /></DataTemplate>
+        <DataTemplate DataType="fx:GraphicEqItem"><fx:GraphicEqRow /></DataTemplate>
+        <DataTemplate DataType="fx:GraphicBandItem"><fx:GraphicBandRow /></DataTemplate>
+        <DataTemplate DataType="fx:PluginParamGroup"><fx:PluginParamGroupRow /></DataTemplate>
         <DataTemplate DataType="fx:IrFileItem"><fx:IrFileRow /></DataTemplate>
-        <DataTemplate DataType="volume:InputItem"><volume:InputRow /></DataTemplate>
         <DataTemplate DataType="volume:AddProgramItem"><volume:AddProgramRow /></DataTemplate>
         <DataTemplate DataType="pages:SliderItem"><pages:SliderRow /></DataTemplate>
         <DataTemplate DataType="pages:ChoiceItem"><pages:ChoiceRow /></DataTemplate>
         <DataTemplate DataType="pages:ToggleItem"><pages:ToggleRow /></DataTemplate>
+        <DataTemplate DataType="pages:ButtonItem"><pages:ButtonRow /></DataTemplate>
+        <DataTemplate DataType="pages:FileItem"><pages:FileRow /></DataTemplate>
         <DataTemplate DataType="pages:GalleryItem"><pages:GalleryRow /></DataTemplate>
         <DataTemplate DataType="hotkeys:HotkeyAction"><hotkeys:HotkeyRow /></DataTemplate>
     </Application.DataTemplates>
 
+    <!-- The app's base text size (Fluent's default is 14); windows and controls take it from here -->
+    <Application.Resources>
+        <x:Double x:Key="ControlContentThemeFontSize">11.5</x:Double>
+        <x:Double x:Key="TextControlThemeMinHeight">26</x:Double>
+        <!-- Least width of the editor column in the search results; the title column gets the rest -->
+        <x:Double x:Key="SearchEditorMinWidth">300</x:Double>
+        <x:Double x:Key="OptionMenuWidth">400</x:Double>
+        <!-- Width of the FX window's effect list (FxChainPanel): fixed, so the editor beside it grows one for one with the window; at the
+             window's first size it is the share the list had before the rework (0.85 : 2) -->
+        <x:Double x:Key="FxChainListWidth">246</x:Double>
+        <!-- The FX window header's analysis (Fx/FxAnalysisBar, owner-approved "Design A"): the response thumbnail, the gap between the
+             numbers and it, the gap between the header's parts (switch, Output picker, analysis), the room a program's Output picker keeps before the numbers fold away, the larger graph's pop-up
+             (FlyoutPresenter.graphmenu: 440 wide = 1 + 9 + 420 graph + 9 + 1), its graph's height and the gap between its parts -->
+        <x:Double x:Key="FxThumbWidth">150</x:Double>
+        <x:Double x:Key="FxThumbHeight">34</x:Double>
+        <x:Double x:Key="FxAnalysisGap">12</x:Double>
+        <Thickness x:Key="FxHeaderGap">12,0,0,0</Thickness>
+        <x:Double x:Key="FxOutputMinWidth">240</x:Double>
+        <x:Double x:Key="FxGraphPanelWidth">440</x:Double>
+        <Thickness x:Key="FxGraphPanelPadding">9</Thickness>
+        <x:Double x:Key="FxGraphHeight">170</x:Double>
+        <x:Double x:Key="FxGraphPanelSpacing">4</x:Double>
+        <!-- A plug-in's plain settings list: the widest a setting's name gets before it wraps, and its value text before it ends in "..." -->
+        <x:Double x:Key="ParamLabelMaxWidth">170</x:Double>
+        <x:Double x:Key="ParamValueMaxWidth">110</x:Double>
+        <!-- A graphic equaliser (Fx/GraphicEqRow): the height of the response curve above the sliders and of the sliders, and the
+             height of a band slider's knob (Slider.vband), which the dB scale beside the sliders reads to line its marks up -->
+        <GridLength x:Key="GraphicEqCurveHeight">96</GridLength>
+        <GridLength x:Key="GraphicEqSliderHeight">170</GridLength>
+        <x:Double x:Key="VBandThumbHeight">12</x:Double>
+        <!-- The longest a word-control in a row's sentence ("Speakers + Headphones") gets before it ends in "..." -->
+        <x:Double x:Key="SentenceLinkMaxWidth">220</x:Double>
+        <!-- The tallest an option list (Controls/OptionList) grows before it scrolls -->
+        <x:Double x:Key="OptionListMaxHeight">320</x:Double>
+        <!-- The longest a chip's words get before they end in "..." -->
+        <x:Double x:Key="ChipMaxWidth">150</x:Double>
+        <!-- The narrow list pop-down (FlyoutPresenter.listmenu) sizes to its content between these -->
+        <x:Double x:Key="ListMenuMinWidth">260</x:Double>
+        <x:Double x:Key="ListMenuMaxWidth">300</x:Double>
+        <!-- Menu-like pop-downs (Styles/Menus.axaml): the pop-down's inner padding, its rows (Controls/OptionList's list and
+             Button.menurow) and their inset, the gap between a row's mark or glyph and its words, the glyph, the small text (base - 1) -->
+        <Thickness x:Key="MenuPadding">6</Thickness>
+        <x:Double x:Key="MenuRowHeight">26</x:Double>
+        <Thickness x:Key="MenuRowPadding">8,0</Thickness>
+        <CornerRadius x:Key="MenuRowCornerRadius">4</CornerRadius>
+        <Thickness x:Key="MenuTextInset">8,2</Thickness>
+        <x:Double x:Key="MenuGap">8</x:Double>
+        <x:Double x:Key="MenuGlyphSize">12</x:Double>
+        <x:Double x:Key="MenuSmallFontSize">10.5</x:Double>
+        <!-- An option list's tick: a 14 px box, its check 9 px (14 - 2 x 2.5) -->
+        <x:Double x:Key="TickBoxSize">14</x:Double>
+        <CornerRadius x:Key="TickBoxCornerRadius">3</CornerRadius>
+        <Thickness x:Key="TickMargin">2.5</Thickness>
+        <!-- A chip (Button.chipx): 22 px pill, its x 8 px in a 14 px slot (8 + 2 x 3), 2 px after the words; 8 px visible space on
+             both sides (the right padding is 5 because the x's slot adds 3) -->
+        <x:Double x:Key="ChipHeight">22</x:Double>
+        <Thickness x:Key="ChipPadding">8,0,5,0</Thickness>
+        <CornerRadius x:Key="ChipCornerRadius">11</CornerRadius>
+        <x:Double x:Key="ChipGlyphSize">8</x:Double>
+        <Thickness x:Key="ChipGlyphMargin">3</Thickness>
+        <x:Double x:Key="ChipGap">2</x:Double>
+        <!-- The dashed "+ add" chip (Button.blockadd.small): the chip's 8 px on both sides; the gap between the chips of a row -->
+        <Thickness x:Key="ChipAddPadding">8,0</Thickness>
+        <x:Double x:Key="ChipSpacing">4</x:Double>
+        <!-- A Volume row's program picture inside its 24 px icon tile (Border.rowicon) -->
+        <x:Double x:Key="RowPictureSize">18</x:Double>
+        <!-- The gap between a control and the menu pop-down it opens -->
+        <x:Double x:Key="MenuOffset">2</x:Double>
+        <!-- A small drop-down arrow beside words (the Sound mode button, a Wiring row's one-device choice) -->
+        <x:Double x:Key="ChevronSize">8</x:Double>
+        <!-- A page's tabs (Button.tab, Pages/PageTabsView): the words' inset, the rounded top of the hover wash, the line under the open
+             tab, the gap between tabs -->
+        <Thickness x:Key="TabPadding">10,4</Thickness>
+        <CornerRadius x:Key="TabCornerRadius">6,6,0,0</CornerRadius>
+        <x:Double x:Key="TabUnderlineHeight">2</x:Double>
+        <x:Double x:Key="TabGap">4</x:Double>
+        <!-- The Volume Wiring tables: the widest a source's name gets (then "..."), the widest the Cable column's words get (then they
+             wrap), the gap between the columns, and the column titles' inset (a compact row's padding 10 plus its 1 px border) -->
+        <x:Double x:Key="WiringSourceMaxWidth">150</x:Double>
+        <x:Double x:Key="WiringCableMaxWidth">120</x:Double>
+        <x:Double x:Key="WiringColumnGap">10</x:Double>
+        <Thickness x:Key="WiringHeaderInset">11,0,11,0</Thickness>
+    </Application.Resources>
+
     <Application.Styles>
         <FluentTheme />
+        <StyleInclude Source="/Styles/Brushes.axaml" />
         <StyleInclude Source="/Styles/Theme.axaml" />
+        <StyleInclude Source="/Styles/Sliders.axaml" />
+        <StyleInclude Source="/Styles/Blocks.axaml" />
+        <StyleInclude Source="/Styles/Graphs.axaml" />
+        <StyleInclude Source="/Styles/Menus.axaml" />
+        <StyleInclude Source="/Styles/ScrollBars.axaml" />
     </Application.Styles>
 </Application>

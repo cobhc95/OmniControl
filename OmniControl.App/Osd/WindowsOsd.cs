@@ -16,6 +16,15 @@ public sealed class WindowsOsd : IDisposable
 {
     private const string HostClass = "XamlExplorerHostIslandWindow";
 
+    /// <summary>How many times the pop-up is shown to make Windows create its window before giving up (a gap of <see cref="Timing.WindowsOsdRetry"/> between tries).</summary>
+    private const int MaxCreateTries = 5;
+
+    /// <summary>Tries given back by <see cref="Trigger"/>, in case Windows recreated its window.</summary>
+    private const int TriggerTries = 2;
+
+    /// <summary>Lines written to osd-log.txt per run, so a stuck loop cannot grow the file.</summary>
+    private const int MaxLogLines = 100;
+
     private readonly DispatcherTimer _timer = new() { Interval = Timing.WindowsOsdPoll };
     private DateTime _lastCreate = DateTime.MinValue;
     private int _creates;
@@ -35,7 +44,7 @@ public sealed class WindowsOsd : IDisposable
     }
 
     /// <summary>Call when Windows is about to show its pop-up (brightness change); lets the window be found again if it was recreated.</summary>
-    public void Trigger() => _creates = Math.Min(_creates, 3);
+    public void Trigger() => _creates = Math.Min(_creates, MaxCreateTries - TriggerTries);
 
     private void Tick()
     {
@@ -43,7 +52,7 @@ public sealed class WindowsOsd : IDisposable
         if (hosts.Count == 0)
         {
             // Windows creates the window lazily: show the pop-up once (mute toggled twice = unchanged) so it can be found.
-            if (_creates < 5 && DateTime.UtcNow - _lastCreate > Timing.WindowsOsdRetry)
+            if (_creates < MaxCreateTries && !Grace.Within(_lastCreate, Timing.WindowsOsdRetry))
             {
                 _lastCreate = DateTime.UtcNow;
                 _creates++;
@@ -100,7 +109,7 @@ public sealed class WindowsOsd : IDisposable
 
     private void Log(string line)
     {
-        if (_logged++ > 100) return;
+        if (_logged++ > MaxLogLines) return;
         AppDataStore.AppendLog("osd-log.txt", line);
     }
 

@@ -1,7 +1,8 @@
+using Avalonia.Media;
+using OmniControl.Core.Models;
 using OmniControl.App.Services;
 
 namespace OmniControl.App.Osd;
-
 
 /// <summary>OSD preferences, stored as JSON in %APPDATA%\OmniControl\osd.json.</summary>
 public sealed class OsdSettings
@@ -15,17 +16,25 @@ public sealed class OsdSettings
     public const string MatchProgram = "Match program";
 
     /// <summary>The accent colour to draw with: the program accent unless a preset was chosen.</summary>
-    public Avalonia.Media.Color ResolveAccent() => ResolveAccent(Accent);
+    public Color ResolveAccent() => ResolveAccent(Accent);
 
-    public static Avalonia.Media.Color ResolveAccent(string name) =>
-        name == MatchProgram ? Services.AccentService.Current
-        : OsdPalette.ExtraAccents.FirstOrDefault(a => a.Name == name) is { Hex: not null } extra
-            ? Avalonia.Media.Color.Parse(extra.Hex)
-            : Services.AccentService.Resolve(name);
-    public string Background { get; set; } = "#202020";
+    /// <summary>The colour of an accent choice. Asked on every pop-up step, so it is a plain loop that allocates nothing.</summary>
+    public static Color ResolveAccent(string name)
+    {
+        if (name == MatchProgram) return AccentService.Current;
+        for (var i = 0; i < OsdPalette.ExtraAccents.Count; i++)
+            if (OsdPalette.ExtraAccents[i].Name == name) return OsdPalette.ExtraAccents[i].Color;
+        return AccentService.Resolve(name);
+    }
+
+    public string Background { get; set; } = Palette.CharcoalHex;
 
     /// <summary>How opaque the OSD is, 10-100 percent.</summary>
-    public int Opacity { get; set; } = 100;
+    public int Opacity { get; set; } = Percent.Max;
+
+    public const int MinOpacity = 10;
+
+    public static int ClampOpacity(int percent) => Math.Clamp(percent, MinOpacity, Percent.Max);
 
     /// <summary>Elements the user excluded from the OSD (everything else is shown).</summary>
     public List<string> Excluded { get; set; } = new();

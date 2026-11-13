@@ -9,16 +9,18 @@ public partial class DisplaysPage : UserControl
     public DisplaysPage()
     {
         InitializeComponent();
-        RowEditing.Attach(DisplayList);
-        DisplayList.AddHandler(KeyDownEvent, OnListKeyDown, RoutingStrategies.Tunnel);
+        GroupedCards.Attach(this, CardsHost);
+        AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
     }
 
-    private void OnListKeyDown(object? sender, KeyEventArgs e)
+    private void OnKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key == Key.F5 || (e.Key == Key.R && e.Source is ListBoxItem))
-        {
-            (DataContext as DisplaysPageViewModel)?.ReloadCommand.Execute(null);
-            e.Handled = true;
-        }
+        if (e.Key != Key.F5) return;
+        Refresh();
+        e.Handled = true;
     }
+
+    private void OnRefresh(object? sender, RoutedEventArgs e) => Refresh();
+
+    private void Refresh() => (DataContext as DisplaysPageViewModel)?.ReloadCommand.Execute(null);
 }

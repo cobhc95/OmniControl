@@ -1,35 +1,34 @@
-using Microsoft.Win32;
+using OmniControl.Core.Engine;
 
 namespace OmniControl.App.Services;
 
-/// <summary>"Start with Windows": a value under the current user's Run key. The registry is the source of truth.</summary>
+/// <summary>
+/// "Start with Windows": what OmniControl puts in the user's start-up list (name and command line defined here, the registry
+/// work is <see cref="StartupEntry"/>). Windows is the source of truth; nothing is kept in settings.
+/// </summary>
 public static class StartupRegistration
 {
-    private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private const string ValueName = "OmniControl";
+    private const string EntryName = "OmniControl";
 
-    public static bool IsEnabled
+    /// <summary>The argument the start-up entry passes: start with the window hidden, everything else running.</summary>
+    private const string BackgroundArgument = "--background";
+
+    public static StartupState State => StartupEntry.StateOf(EntryName);
+
+    /// <summary>True when the program was started by its start-up entry.</summary>
+    public static bool IsBackgroundStart(IEnumerable<string> args) =>
+        args.Any(a => string.Equals(a, BackgroundArgument, StringComparison.OrdinalIgnoreCase));
+
+    /// <returns>False when Windows refused the change.</returns>
+    public static bool Set(bool on) => StartupEntry.Set(EntryName, on ? CurrentCommand() : null);
+
+    /// <summary>At start-up: an entry that points at an old location (the program was moved) is rewritten to this one.</summary>
+    public static void RepairIfMoved()
     {
-        get
-        {
-            try
-            {
-                using var key = Registry.CurrentUser.OpenSubKey(RunKey);
-                return key?.GetValue(ValueName) is not null;
-            }
-            catch { return false; /* registry key unreadable: treat as not registered */ }
-        }
+        if (StartupEntry.Command(EntryName) is { } stored && CurrentCommand() is { } current && stored != current)
+            StartupEntry.Set(EntryName, current, clearDisabled: false);
     }
 
-    public static void Set(bool on)
-    {
-        try
-        {
-            using var key = Registry.CurrentUser.OpenSubKey(RunKey, writable: true);
-            if (key is null) return;
-            if (on && Environment.ProcessPath is { } path) key.SetValue(ValueName, $"\"{path}\"");
-            else key.DeleteValue(ValueName, throwOnMissingValue: false);
-        }
-        catch { /* best-effort */ }
-    }
+    private static string? CurrentCommand() =>
+        Environment.ProcessPath is { } path ? $"\"{path}\" {BackgroundArgument}" : null;
 }

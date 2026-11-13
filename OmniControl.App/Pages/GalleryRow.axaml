@@ -3,20 +3,20 @@
              xmlns:pages="using:OmniControl.App.Pages"
              x:Class="OmniControl.App.Pages.GalleryRow"
              x:DataType="pages:GalleryItem">
-    <Grid Margin="0,3">
+    <Grid Margin="0,1">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
         <TextBlock Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,24,0" />
-        <Border Grid.Column="1" Classes="gallery" Tag="gallery" Focusable="True" HorizontalAlignment="Left" MinWidth="300">
+        <Border Classes="gallery" Tag="gallery" Focusable="True" PointerPressed="OnPressed" PointerWheelChanged="OnWheel">
             <Grid ColumnDefinitions="Auto,*,Auto">
                 <Button Classes="step" Focusable="False" Click="OnPrevious">
                     <PathIcon Data="M15,5 L8,12 L15,19 Z" Width="10" Height="10" />
                 </Button>
-                <StackPanel Grid.Column="1" Spacing="8" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center" HorizontalAlignment="Center">
                     <ContentControl Content="{Binding Preview}" HorizontalAlignment="Center" />
-                    <TextBlock Text="{Binding Name}" Classes="muted" FontSize="12" HorizontalAlignment="Center" />
+                    <TextBlock Text="{Binding Name}" Classes="muted" FontSize="11" HorizontalAlignment="Center" />
                 </StackPanel>
                 <Button Grid.Column="2" Classes="step" Focusable="False" Click="OnNext">
                     <PathIcon Data="M9,5 L16,12 L9,19 Z" Width="10" Height="10" />

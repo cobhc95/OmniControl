@@ -2,7 +2,6 @@ using OmniControl.App.Services;
 using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -12,98 +11,138 @@ using Avalonia.VisualTree;
 namespace OmniControl.App.Fx;
 
 /// <summary>
-/// Drag a row of a ListBox up or down to reorder it. Nothing is laid out while dragging: the lifted row follows the pointer and the rows it passes
-/// slide aside with a render transform (GPU only, no layout), so it stays smooth. The list is changed once, on release, through <c>moved(from, to)</c>.
-/// Esc, or losing the pointer, puts everything back. Rows are expected to be one height.
+/// Drag rows of a ListBox up or down to reorder them. A press on a selected row of a multi-selection drags the whole selection
+/// together (a plain click on it, without dragging, then selects that row alone, as in Windows Explorer and TabForge); a press on
+/// any other row drags that row. Nothing is laid out while dragging: the lifted rows follow the pointer as one block and the rows
+/// they pass slide aside with a render transform (GPU only, no layout), so it stays smooth. The list is changed once, on release,
+/// through <c>moved(rows, insertAt)</c>: the dragged rows (ascending) go, in their order, in front of the <c>insertAt</c>-th of the rows
+/// that stay (their count: the end). Esc (<see cref="Drag.Cancel"/>) or losing the pointer puts everything back. Rows are one height.
 /// </summary>
 public static class ListDragReorder
 {
-    private const double StartDistance = 4;
-    private static readonly TimeSpan Slide = Timing.DragSlide;
+    /// <summary>How far (DIPs) the pointer must move before a press becomes a drag (also the rubber band's start, <see cref="RubberBandSelect"/>).</summary>
+    public const double StartDistance = 4;
 
-    public static void Attach(ListBox list, Action<int, int> moved) => _ = new Session(list, moved);
+    /// <summary>Lifted rows are drawn over the others.</summary>
+    private const int LiftedZ = 10;
 
-    private sealed class Session
+    public static Drag Attach(ListBox list, Action<IReadOnlyList<int>, int> moved) => new(list, moved);
+
+    public sealed class Drag
     {
         private readonly ListBox _list;
-        private readonly Action<int, int> _moved;
+        private readonly Action<IReadOnlyList<int>, int> _moved;
         private Point _press;
-        private int _from = -1, _target;
-        private bool _dragging;
+        private int _pressRow = -1, _target;
+        private List<int> _moving = new();
+        private double _pitch;
+        private bool _dragging, _selectAloneOnRelease;
         private IPointer? _pointer;
 
-        public Session(ListBox list, Action<int, int> moved)
+        internal Drag(ListBox list, Action<IReadOnlyList<int>, int> moved)
         {
             _list = list;
             _moved = moved;
             list.AddHandler(InputElement.PointerPressedEvent, OnDown, RoutingStrategies.Tunnel);
             list.AddHandler(InputElement.PointerMovedEvent, OnMove, RoutingStrategies.Tunnel);
             list.AddHandler(InputElement.PointerReleasedEvent, OnUp, RoutingStrategies.Tunnel);
-            list.AddHandler(InputElement.KeyDownEvent, OnKey, RoutingStrategies.Tunnel);
             list.PointerCaptureLost += (_, _) => Reset();
+        }
+
+        /// <summary>Esc: ends a drag without moving anything. False when no drag was going on.</summary>
+        public bool Cancel()
+        {
+            if (!_dragging) return false;
+            Reset();
+            return true;
         }
 
         private void OnDown(object? sender, PointerPressedEventArgs e)
         {
-            _from = -1;
+            _pressRow = -1;
+            _selectAloneOnRelease = false;
             if (!e.GetCurrentPoint(_list).Properties.IsLeftButtonPressed) return;
             if (e.Source is Visual v && v.FindAncestorOfType<Button>(true) is not null) return; // clicks on a button or the like are not drags
             if (e.Source is Visual c && (c is CheckBox || c.FindAncestorOfType<CheckBox>(true) is not null)) return;
-            var item = (e.Source as Visual)?.FindAncestorOfType<ListBoxItem>(true);
-            if (item is null) return;
-            _from = _list.IndexFromContainer(item);
+            if ((e.Source as Visual)?.FindAncestorOfType<ListBoxItem>(true) is not { } item) return;
+            _pressRow = _list.IndexFromContainer(item);
             _press = e.GetPosition(_list);
             _pointer = e.Pointer;
+            // A plain press on a row of a multi-selection keeps the selection, so all of it can be dragged; the list would select the row alone.
+            if (e.KeyModifiers == KeyModifiers.None && item.IsSelected && (_list.SelectedItems?.Count ?? 0) > 1)
+            {
+                _selectAloneOnRelease = true;
+                item.Focus();
+                e.Handled = true;
+            }
         }
 
         private void OnMove(object? sender, PointerEventArgs e)
         {
-            if (_from < 0) return;
+            if (_pressRow < 0) return;
             var y = e.GetPosition(_list).Y;
             if (!_dragging)
             {
-                if (Math.Abs(y - _press.Y) < StartDistance || _list.ItemCount < 2) return;
-                _dragging = true;
-                _pointer?.Capture(_list);
-                if (_list.ContainerFromIndex(_from) is { } lifted) lifted.ZIndex = 10;
-                for (var i = 0; i < _list.ItemCount; i++)
-                    if (i != _from && _list.ContainerFromIndex(i) is Control other)
-                        other.Transitions = new Transitions { new TransformOperationsTransition { Property = Visual.RenderTransformProperty, Duration = Slide } };
+                if (Math.Abs(y - _press.Y) < StartDistance || !Begin()) return;
             }
             Update(y - _press.Y);
             e.Handled = true;
         }
 
-        private void Update(double dy)
+        /// <summary>Lifts the selection (when the pressed row is part of it) or the pressed row alone.</summary>
+        private bool Begin()
         {
-            if (_list.ContainerFromIndex(_from) is not { } lifted) return;
-            var h = lifted.Bounds.Height;
-            if (h <= 0) return;
-            dy = Math.Clamp(dy, -_from * h, (_list.ItemCount - 1 - _from) * h);
-            lifted.RenderTransform = Shift(dy);
-            _target = Math.Clamp((int)Math.Round(_from + dy / h), 0, _list.ItemCount - 1);
-
+            var selected = Enumerable.Range(0, _list.ItemCount).Where(i => _list.ContainerFromIndex(i) is ListBoxItem { IsSelected: true }).ToList();
+            _moving = selected.Contains(_pressRow) ? selected : new List<int> { _pressRow };
+            _pitch = Pitch();
+            if (_moving.Count >= _list.ItemCount || _pitch <= 0) { _pressRow = -1; return false; } // nothing could change place
+            _dragging = true;
+            _selectAloneOnRelease = false;
+            _pointer?.Capture(_list);
             for (var i = 0; i < _list.ItemCount; i++)
             {
-                if (i == _from || _list.ContainerFromIndex(i) is not { } row) continue;
-                var offset = _from < _target && i > _from && i <= _target ? -h
-                           : _target < _from && i >= _target && i < _from ? h
-                           : 0;
-                row.RenderTransform = Shift(offset);
+                if (_list.ContainerFromIndex(i) is not Control row) continue;
+                if (_moving.Contains(i)) row.ZIndex = LiftedZ;
+                else row.Transitions = new Transitions { new TransformOperationsTransition { Property = Visual.RenderTransformProperty, Duration = Timing.DragSlide } };
+            }
+            return true;
+        }
+
+        /// <summary>The distance from one row to the next (row height and any gap).</summary>
+        private double Pitch()
+        {
+            if (_list.ContainerFromIndex(0) is not Control first) return 0;
+            return _list.ContainerFromIndex(1) is Control second ? second.Bounds.Top - first.Bounds.Top : first.Bounds.Height;
+        }
+
+        private void Update(double dy)
+        {
+            var rest = _list.ItemCount - _moving.Count;
+            // The lifted block's top, counted from the first row's top, as if the lifted rows had left the list.
+            var blockTop = Math.Clamp((_pressRow - _moving.IndexOf(_pressRow)) * _pitch + dy, 0, rest * _pitch);
+            _target = Math.Clamp((int)Math.Round(blockTop / _pitch), 0, rest);
+            for (var i = 0; i < _list.ItemCount; i++)
+            {
+                if (_list.ContainerFromIndex(i) is not { } row) continue;
+                var lifted = _moving.IndexOf(i);
+                if (lifted >= 0) { row.RenderTransform = Shift(blockTop + lifted * _pitch - i * _pitch); continue; }
+                var place = i - _moving.Count(m => m < i); // its place among the rows that stay
+                var shown = place < _target ? place : place + _moving.Count;
+                row.RenderTransform = Shift((shown - i) * _pitch);
             }
         }
 
         private void OnUp(object? sender, PointerReleasedEventArgs e)
         {
-            var drop = _dragging && _from >= 0 && _target != _from;
-            var (from, to) = (_from, _target);
+            var drop = _dragging;
+            var (rows, at, pressed, alone) = (_moving, _target, _pressRow, _selectAloneOnRelease);
             Reset();
-            if (drop) _moved(from, to);
-        }
-
-        private void OnKey(object? sender, KeyEventArgs e)
-        {
-            if (e.Key == Key.Escape && _dragging) { Reset(); e.Handled = true; }
+            if (drop) _moved(rows, at);
+            else if (alone && pressed >= 0)
+            {
+                _list.Selection.Clear();
+                _list.Selection.Select(pressed);
+            }
         }
 
         private void Reset()
@@ -117,7 +156,9 @@ public static class ListDragReorder
                 }
             if (_dragging) _pointer?.Capture(null);
             _dragging = false;
-            _from = -1;
+            _selectAloneOnRelease = false;
+            _pressRow = -1;
+            _moving = new List<int>();
             _pointer = null;
         }
 

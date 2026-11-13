@@ -21,5 +21,18 @@ public sealed partial class ToggleItem : ObservableObject, IEditorItem, IHalfWid
         _apply = apply;
     }
 
-    partial void OnIsOnChanged(bool value) => _apply(value);
+    private bool _loading;
+
+    /// <summary>Shows a state read from elsewhere (what Windows has now) without applying it.</summary>
+    public void Load(bool isOn)
+    {
+        _loading = true;
+        IsOn = isOn;
+        _loading = false;
+    }
+
+    partial void OnIsOnChanged(bool value)
+    {
+        if (!_loading) _apply(value);
+    }
 }

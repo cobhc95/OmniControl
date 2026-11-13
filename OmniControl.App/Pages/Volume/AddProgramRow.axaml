@@ -3,7 +3,7 @@
              xmlns:vm="using:OmniControl.App.Pages.Volume"
              x:Class="OmniControl.App.Pages.Volume.AddProgramRow"
              x:DataType="vm:AddProgramItem">
-    <Grid ColumnDefinitions="*,Auto" Margin="0,4">
+    <Grid ColumnDefinitions="*,Auto">
         <TextBlock Text="A program that isn't playing yet? Add it to keep its settings." Classes="muted"
                    TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,12,0" />
         <Button Grid.Column="1" x:Name="AddButton" Tag="scope" Classes="scope" Content="Add program…" HorizontalContentAlignment="Center"

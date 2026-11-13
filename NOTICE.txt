@@ -1,0 +1,122 @@
+OmniControl
+Copyright (C) 2026 the OmniControl authors
+
+OmniControl is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
+version (SPDX: GPL-3.0-or-later). It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the file LICENSE for
+the full licence text.
+
+VST is a registered trademark of Steinberg Media Technologies GmbH.
+
+Every release must ship this file and LICENSE, and offer the exact source code of every binary it contains (the
+OmniControl APO DLL and its helper included). Upstream copyright notices and licence files are kept unchanged next
+to the code they belong to (see native/EqualizerAPO).
+
+The list below is the one list of open source and third-party projects OmniControl uses or offers. The app's
+"About and credits" window is built from it: each entry starts with a "Name:" line and ends at a blank line.
+
+Name: Equalizer APO
+Version: 1.4.2 (source commit bbfcc3e5024cbb9d61ba75fc88d78605cc4c9687)
+Licence: GPL-2.0-or-later
+Copyright: Copyright (C) 2012-2025 Jonas Thedering and contributors
+Website: https://sourceforge.net/projects/equalizerapo/
+Used for: The master effects run in the user's own Equalizer APO (OmniControl adds its chain through its config language); its official installer may be shipped unmodified beside the app (source: the website above). The optional OmniControl APO is a fork of its audio processing object and filters.
+
+Name: FFTW
+Version: 3.3.5
+Licence: GPL-2.0-or-later
+Copyright: Copyright (c) 2003, 2007-11 Matteo Frigo, Massachusetts Institute of Technology
+Website: https://www.fftw.org
+Used for: Fast Fourier transforms for convolution in the OmniControl APO.
+
+Name: libsndfile
+Version: 1.2.2
+Licence: LGPL-2.1-or-later
+Copyright: Copyright (C) Erik de Castro Lopo and the libsndfile team
+Website: https://libsndfile.github.io/libsndfile/
+Used for: Reading impulse response files in the OmniControl APO.
+
+Name: libHybridConv
+Version: 0.1.1
+Licence: LGPL-2.0-or-later
+Copyright: Copyright (C) 2009 Christian Borss
+Website: https://sourceforge.net/projects/equalizerapo/
+Used for: Partitioned convolution in the OmniControl APO (bundled with Equalizer APO).
+
+Name: muparserx
+Version: 3.0.1
+Licence: BSD-2-Clause
+Copyright: Copyright (C) Ingo Berg
+Website: https://github.com/beltoforion/muparserx
+Used for: Expressions in the OmniControl APO's config language.
+
+Name: VeSTige aeffectx.h
+Version: from Equalizer APO 1.4.2
+Licence: GPL-2.0-or-later
+Copyright: Copyright (c) 2006 Javier Serrano Polo (LMMS)
+Website: https://lmms.io
+Used for: Kept unchanged in the Equalizer APO fork's sources (VST2 header of the fork's VST2 host). OmniControl's own VST2 host does not use it (its definitions come from TabForge, below).
+
+Name: NAudio (NAudio.Core, NAudio.Wasapi, NAudio.Vst3, NAudio.Midi)
+Version: 3.3.0
+Licence: MIT
+Copyright: Copyright 2008-2026 Mark Heath and contributors
+Website: https://github.com/naudio/NAudio
+Used for: Recording a program's sound (process loopback), playing the processed sound, hosting VST3 plug-ins.
+
+Name: Steinberg VST3 SDK
+Version: 3.8.1 (through NAudio.Vst3)
+Licence: MIT
+Copyright: Copyright (c) 2026 Steinberg Media Technologies GmbH
+Website: https://github.com/steinbergmedia/vst3sdk
+Used for: The VST3 plug-in interfaces. VST is a registered trademark of Steinberg Media Technologies GmbH.
+
+Name: Microsoft ApplicationLoopback sample
+Version: Windows-classic-samples commit 434f6002bdf9cf9829406c3ff2b33387982d6168
+Licence: MIT
+Copyright: Copyright (c) Microsoft Corporation
+Website: https://github.com/microsoft/Windows-classic-samples
+Used for: Reference for process loopback capture (no code copied; credited as the design source).
+
+Name: Avalonia
+Version: 11.3.6
+Licence: MIT
+Copyright: Copyright (c) AvaloniaUI OU and contributors
+Website: https://avaloniaui.net
+Used for: The user interface.
+
+Name: CommunityToolkit.Mvvm
+Version: 8.4.2
+Licence: MIT
+Copyright: Copyright (c) .NET Foundation and Contributors
+Website: https://github.com/CommunityToolkit/dotnet
+Used for: View-model helpers.
+
+Name: .NET libraries (System.Drawing.Common, System.Management, System.ServiceProcess.ServiceController)
+Version: 8.0.10, 8.0.0, 9.0.0
+Licence: MIT
+Copyright: Copyright (c) .NET Foundation and Contributors
+Website: https://github.com/dotnet/runtime
+Used for: Program icons, Windows Management Instrumentation (laptop brightness, USB events) and the audio service restart.
+
+Name: TabForge
+Version: built-in effect parameter lists; FX loader ideas and code, VST2 hosting and PE export reading from commit 9bb7236 (12 Nov 2026)
+Licence: MIT (compatible with OmniControl's GPL-3.0-or-later)
+Copyright: Copyright (c) 2026 TabForge contributors (same author as OmniControl)
+Website: https://github.com/cobhc95/TabForge
+Used for: Names, ranges and defaults of the built-in effects; the level meter design; the FX chain window's plug-in editor fitting (PluginEditorFitMath and FxEditorArea, adapted as EditorFit and PluginEditorArea), the docked / floating editor model (FxEditorController, FloatingEditors, adapted as PluginEditorDock) and the selection rules of the FX chain list (ChainSelection, FxChainList: keep a multi-selection on press so it can be dragged, Esc reduces it, power and delete act on all of it); the VST2 plug-in host (Vst2Plugin, Vst2Plugin.HostCallback, Vst2Plugin.Parameters, Vst2Plugin.ParameterState, adapted as Vst2Effect, Vst2Editor and Vst2Abi): its own definitions of the VST 2.4 C interface (the AEffect, ERect and VstTimeInfo layouts, opcode and flag numbers; written for TabForge after the public clean-room descriptions of the interface, no Steinberg SDK file), the load and process sequence, the host callback's answers and the never-unload rule; and reading a DLL's exports without loading it (PeImage and PeExports, adapted as PeFile). MIT code may be used in a GPL-3.0-or-later program as long as its copyright and permission notice travel with it.
+
+Name: VB-CABLE Virtual Audio Device
+Version: standard single cable (not bundled in the source; optional separate installer)
+Licence: Proprietary donationware by VB-Audio Software (distribution "as is" allowed with an application)
+Copyright: Copyright (c) VB-Audio Software, Vincent Burel
+Website: https://www.vb-cable.com
+Used for: Optional virtual sound device for the "Full control" sound mode. VB-CABLE is a donationware, all participations are welcome.
+
+Name: ReaEQ (design reference only)
+Version: -
+Licence: Proprietary (Cockos Incorporated); no code, image or file of it is used
+Copyright: Copyright (c) Cockos Incorporated
+Website: https://www.reaper.fm
+Used for: The equaliser editor's layout (graph with numbered points, band tabs, type list) follows the way ReaEQ presents an equaliser. ReaEQ and REAPER are trademarks of Cockos Incorporated.

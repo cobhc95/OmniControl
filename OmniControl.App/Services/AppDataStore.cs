@@ -40,6 +40,16 @@ public static class AppDataStore
         }
     }
 
+    /// <summary>Removes a file; a missing or locked file is not a problem.</summary>
+    public static void Delete(string fileName)
+    {
+        try { File.Delete(PathOf(fileName)); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Left behind: it is read again, harmlessly, at the next start.
+        }
+    }
+
     /// <summary>Appends a line to a diagnostics file; never throws.</summary>
     public static void AppendLog(string fileName, string line)
     {

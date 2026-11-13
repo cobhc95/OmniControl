@@ -1,0 +1,36 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pages="using:OmniControl.App.Pages"
+             xmlns:vm="using:OmniControl.App.Fx"
+             x:Class="OmniControl.App.Fx.PluginParamGroupRow"
+             x:DataType="vm:PluginParamGroup">
+    <!-- One card of a plug-in's plain settings list: the plug-in's group name, then one row per setting: name, slider, the plug-in's
+         own value text (double-click to type a value in the setting's units). Labels share the editor label column. -->
+    <StackPanel Spacing="2" Margin="0,2">
+        <TextBlock Text="{Binding Name}" IsVisible="{Binding HasName}" FontWeight="SemiBold" TextWrapping="Wrap" />
+        <ItemsControl ItemsSource="{Binding Items}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="vm:PluginParamItem">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" MinWidth="64" SharedSizeGroup="ParamValue" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding Title}" VerticalAlignment="Center" Margin="0,0,24,0" TextWrapping="Wrap"
+                                   MaxWidth="{StaticResource ParamLabelMaxWidth}" ToolTip.Tip="{Binding Title}" />
+                        <Slider Grid.Column="1" Minimum="0" Maximum="{Binding Maximum}" Value="{Binding Position}"
+                                pages:SliderReset.Value="{Binding ResetPosition}" />
+                        <pages:NumberText Grid.Column="2" Value="{Binding Plain}" Minimum="{x:Static vm:PluginParamItem.TypedMin}"
+                                          Maximum="{x:Static vm:PluginParamItem.TypedMax}" Decimals="{x:Static vm:PluginParamItem.TypedDecimals}"
+                                          Margin="8,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                          ToolTip.Tip="Double-click to type a value in the setting's own units">
+                            <TextBlock Text="{Binding ValueText}" Classes="muted" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                       MaxWidth="{StaticResource ParamValueMaxWidth}" TextTrimming="CharacterEllipsis" />
+                        </pages:NumberText>
+                    </Grid>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>

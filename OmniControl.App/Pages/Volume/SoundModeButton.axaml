@@ -1,0 +1,85 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Pages.Volume"
+             xmlns:audio="using:OmniControl.App.Audio"
+             x:Class="OmniControl.App.Pages.Volume.SoundModeButton"
+             x:DataType="vm:SoundModeChoice" VerticalAlignment="Center">
+    <!-- "Sound mode: Fast v" and its panel: one card per mode with its plain status on this PC and its setup buttons.
+         The panel hangs on this control, not on the pill, so the pill's text styles do not reach the cards. -->
+    <FlyoutBase.AttachedFlyout>
+        <Flyout Placement="BottomEdgeAlignedLeft" FlyoutPresenterClasses="optionmenu" Opened="OnOpened" Closed="OnClosed">
+            <StackPanel x:DataType="vm:SoundModeChoice" Spacing="6">
+                <TextBlock Text="Sound mode" FontWeight="SemiBold" />
+                <ItemsControl ItemsSource="{Binding Cards}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><StackPanel Spacing="4" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:SoundModeCard">
+                            <Button Classes="optioncard" Classes.selected="{Binding IsSelected}" Command="{Binding PickCommand}" ToolTip.Tip="{Binding Details}">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                    <StackPanel Spacing="3">
+                                        <WrapPanel>
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                            <Border Classes="tag selected" IsVisible="{Binding IsSelected}">
+                                                <TextBlock Text="Selected" />
+                                            </Border>
+                                        </WrapPanel>
+                                        <TextBlock Classes="hint small" Text="{Binding Description}" />
+                                        <TextBlock Classes="hint small" Text="{Binding MethodSummary}" />
+                                        <ItemsControl ItemsSource="{Binding Statuses}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="audio:ModeStatus">
+                                                    <Border Classes="tag" Classes.good="{Binding IsGood}" Classes.caution="{Binding IsCaution}"
+                                                            Margin="0,0,4,3" ToolTip.Tip="{Binding Tip}">
+                                                        <TextBlock Text="{Binding Text}" />
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <TextBlock Classes="accenttext small" Text="{Binding Note}" IsVisible="{Binding HasNote}" TextWrapping="Wrap" />
+                                        <ItemsControl ItemsSource="{Binding Tags}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="audio:ModeTag">
+                                                    <Border Classes="tag" Classes.good="{Binding IsGood}" Classes.caution="{Binding IsCaution}"
+                                                            Margin="0,0,4,3" ToolTip.Tip="{Binding Tip}">
+                                                        <TextBlock Text="{Binding Text}" />
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                    <ItemsControl Grid.Column="1" ItemsSource="{Binding Actions}" VerticalAlignment="Center">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate><StackPanel Spacing="4" /></ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="vm:ModeCardAction">
+                                                <Button Classes="pill cardaction" Classes.main="{Binding Main}" Content="{Binding Label}" Command="{Binding Command}"
+                                                        ToolTip.Tip="{Binding Tip}" HorizontalAlignment="Stretch" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Grid>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Classes="hint small" Text="{Binding Footnote}" />
+            </StackPanel>
+        </Flyout>
+    </FlyoutBase.AttachedFlyout>
+
+    <Button x:Name="ModeButton" Tag="grouptool" Classes="pill" Classes.custom="{Binding IsOpen}" ToolTip.Tip="{Binding Tip}" Click="OnClick">
+        <StackPanel Orientation="Horizontal" Spacing="4">
+            <TextBlock Text="{Binding ButtonText}" />
+            <PathIcon Data="{DynamicResource ChevronDownIcon}" Width="{StaticResource ChevronSize}" Height="{StaticResource ChevronSize}" VerticalAlignment="Center" />
+        </StackPanel>
+    </Button>
+</UserControl>

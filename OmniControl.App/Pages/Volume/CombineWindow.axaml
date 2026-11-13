@@ -1,0 +1,30 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:OmniControl.App.Pages.Volume"
+        xmlns:c="using:OmniControl.App.Controls"
+        x:Class="OmniControl.App.Pages.Volume.CombineWindow"
+        x:DataType="vm:CombineDeviceViewModel"
+        Title="{Binding Heading}" Icon="avares://OmniControl/Assets/OmniControl.ico" Width="460" MinWidth="360" SizeToContent="Height"
+        CanResize="False" Background="{DynamicResource BrushBackground}" WindowStartupLocation="CenterOwner">
+    <!-- Name, kind (only for a new device), member devices, the cable it gets or uses (with the step that gets one), Cancel / Create or
+         Save. Esc = Cancel. -->
+    <StackPanel Margin="12" Spacing="10">
+        <TextBlock Classes="title" Text="{Binding Heading}" />
+        <TextBox x:Name="NameBox" Classes="field" Watermark="Name (for example: Living room)" Text="{Binding Name}" />
+        <WrapPanel IsVisible="{Binding !IsEditing}">
+            <ToggleButton Classes="chip" Content="Speakers" IsChecked="{Binding IsSpeakers, Mode=OneWay}" Command="{Binding ChooseSpeakersCommand}" />
+            <ToggleButton Classes="chip" Content="Microphones" IsChecked="{Binding IsMicrophones, Mode=OneWay}" Command="{Binding ChooseMicrophonesCommand}" />
+        </WrapPanel>
+        <TextBlock Classes="hint" Text="Tick at least two devices. Speakers play the same sound together; microphones are mixed into one that apps can pick." />
+        <c:OptionList x:Name="MemberList" DataContext="{Binding Members}" />
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <TextBlock Text="{Binding CableStatus}" TextWrapping="Wrap" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Classes="pill cardaction" Classes.main="{Binding CableSetup.Main}" Content="{Binding CableSetup.Label}"
+                    Command="{Binding CableSetup.Command}" ToolTip.Tip="{Binding CableSetup.Tip}" IsVisible="{Binding HasCableSetup}" />
+        </Grid>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Classes="usebtn scope" Tag="scope" Content="{Binding ConfirmText}" IsEnabled="{Binding CanCreate}" Click="OnCreateClick" />
+            <Button Classes="primary" Content="Cancel" Click="OnCancelClick" />
+        </StackPanel>
+    </StackPanel>
+</Window>

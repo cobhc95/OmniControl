@@ -1,28 +1,76 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:OmniControl.App.Pages.Volume"
              xmlns:pages="using:OmniControl.App.Pages"
              x:Class="OmniControl.App.Pages.Volume.VolumePage"
              x:DataType="vm:VolumePageViewModel">
-    <StackPanel Spacing="12">
-        <TextBlock Classes="muted" TextWrapping="Wrap"
-                   Text="Outputs: the master and every program that plays sound. Inputs: your microphones and other recording devices. Volume and pan follow Windows live; programs are remembered after they close, and their settings return when they open again." />
-        <StackPanel x:Name="CardsHost" Grid.IsSharedSizeScope="True">
-            <Border Classes="groupPanel" x:DataType="vm:VolumeGroup" DataContext="{Binding Outputs}">
-                <StackPanel Spacing="8">
-                    <pages:GroupHeader />
-                    <ListBox Classes="rows compact" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}" />
-                </StackPanel>
-            </Border>
+    <StackPanel Spacing="6">
+        <StackPanel x:Name="CardsHost" Grid.IsSharedSizeScope="True" Spacing="6">
+            <!-- The tabs; on the Mixer tab, the quiet mode words at the right (they open Wiring, where the mode is chosen) -->
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource WiringColumnGap}">
+                <pages:PageTabsView DataContext="{Binding Tabs}" />
+                <Button Grid.Column="1" Tag="grouptool" Classes="link small" IsVisible="{Binding ShowsMixer}" Command="{Binding ShowSoundModeCommand}"
+                        ToolTip.Tip="The sound mode every row uses (choose it in Wiring)">
+                    <TextBlock Text="{Binding ModeIndicator}" />
+                </Button>
+            </Grid>
 
-            <Border Classes="groupPanel" x:DataType="vm:VolumeGroup" DataContext="{Binding Inputs}">
-                <StackPanel Spacing="8">
-                    <pages:GroupHeader />
-                    <ListBox Classes="rows compact" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}" />
-                </StackPanel>
-            </Border>
+            <!-- MIXER: levels, mutes, meters and effects; where each row plays is read only here -->
+            <StackPanel Spacing="6" IsVisible="{Binding ShowsMixer}">
+                <Border Classes="groupPanel" x:DataType="vm:VolumeGroup" DataContext="{Binding Outputs}">
+                    <StackPanel Spacing="6">
+                        <pages:GroupHeader />
+                        <ListBox Classes="rows compact" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}" />
+                    </StackPanel>
+                </Border>
+
+                <Border Classes="groupPanel" x:DataType="vm:VolumeGroup" DataContext="{Binding Inputs}">
+                    <StackPanel Spacing="6">
+                        <pages:GroupHeader />
+                        <ListBox Classes="rows compact" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}" />
+                    </StackPanel>
+                </Border>
+                <TextBlock Classes="hint"
+                           Text="Each row says where it plays (→) or records from (←): those words open Wiring, where that is changed. The effects words and FX open the row's FX window. Up/Down move between rows; Left/Right choose a part (the underlined words, pan, volume, mute, FX); Enter opens or adjusts it. Ctrl+Tab switches tabs. Programs are remembered after they close; × forgets one." />
+            </StackPanel>
+
+            <!-- WIRING: the sound mode, the cable status and combining on top; where each source plays and the cable it uses; combined devices -->
+            <StackPanel Spacing="6" IsVisible="{Binding ShowsWiring}">
+                <WrapPanel Classes="toolbar">
+                    <vm:SoundModeButton DataContext="{Binding SoundMode}" />
+                    <Border Classes="tag" Classes.good="{Binding CableStatus.IsGood}" Classes.caution="{Binding CableStatus.IsCaution}"
+                            IsVisible="{Binding HasCableStatus}" ToolTip.Tip="{Binding CableStatus.Tip}">
+                        <TextBlock Text="{Binding CableStatus.Text}" />
+                    </Border>
+                    <Button Tag="grouptool" Classes="pill" Content="{Binding CableSetup.Label}" Command="{Binding CableSetup.Command}"
+                            ToolTip.Tip="{Binding CableSetup.Tip}" IsVisible="{Binding HasCableSetup}" />
+                    <Button Tag="grouptool" Classes="pill" Content="+ Combine devices" Command="{Binding CombineCommand}"
+                            IsEnabled="{Binding CombineGate.IsAvailable}" ToolTip.Tip="{Binding CombineGate.Reason}" ToolTip.ShowOnDisabled="True" />
+                </WrapPanel>
+
+                <vm:WiringTable DataContext="{Binding WiringOutputs}" />
+                <vm:WiringTable DataContext="{Binding WiringInputs}" />
+
+                <Border Classes="groupPanel">
+                    <StackPanel Spacing="6">
+                        <pages:GroupHeader DataContext="{Binding CombinedDevices}" />
+                        <StackPanel IsVisible="{Binding CombinedDevices.IsExpanded}" Spacing="6">
+                            <!-- Fast mode can't run combined devices: one calm sentence and the one Switch -->
+                            <WrapPanel Classes="toolbar" IsVisible="{Binding !CombineGate.IsAvailable}" Margin="{StaticResource WiringHeaderInset}">
+                                <TextBlock Classes="hint" Text="{Binding CombineGate.Note}" />
+                                <Button Tag="grouptool" Classes="link small" IsVisible="{Binding CombineGate.CanSwitch}" Command="{Binding CombineGate.SwitchCommand}">
+                                    <TextBlock Text="{Binding CombineGate.SwitchLabel}" />
+                                </Button>
+                            </WrapPanel>
+                            <TextBlock Classes="hint" Margin="{StaticResource WiringHeaderInset}" IsVisible="{Binding !CombinedDevices.Items.Count}"
+                                       Text="None yet. + Combine devices joins speakers that play together, or microphones mixed into one." />
+                            <ListBox Classes="rows compact" ItemsSource="{Binding CombinedDevices.Items}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+                <TextBlock Classes="hint"
+                           Text="Changes apply at once. A chip's × takes a device away; + add adds one. The sound mode applies to every row: Fast keeps the delay lowest, Full control routes through a virtual cable so any device can be combined or processed. Dimmed choices need the other mode; Switch changes to it. Up/Down move between rows; Enter opens a row's menu." />
+            </StackPanel>
         </StackPanel>
-        <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
-                   Text="Up/Down move between group headers and rows; on a header Left collapses and Right expands it. In a row, Left/Right choose a part (volume, pan, mute, FX, power) and Enter adjusts a slider (Left/Right change it, Enter or Esc finishes). The small meter shows the live level (left and right, with a peak mark); it only runs while a group is open. The FX button opens that row's effect chain; the power button switches it on (green) or off. Effect chains are saved, but this version doesn't process sound yet. Pan needs Windows to allow per-channel levels for the program. Choose a program's output device in its FX window." />
     </StackPanel>
 </UserControl>

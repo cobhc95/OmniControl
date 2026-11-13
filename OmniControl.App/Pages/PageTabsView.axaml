@@ -1,0 +1,22 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pages="using:OmniControl.App.Pages"
+             x:Class="OmniControl.App.Pages.PageTabsView"
+             x:DataType="pages:PageTabs">
+    <!-- A page's tab strip (Button.tab, the master in Theme.axaml) on a thin line. Only the open tab takes focus, so the strip is one
+         Up/Down stop (Tag grouptool); Left/Right move between the tabs. -->
+    <StackPanel>
+        <ItemsControl ItemsSource="{Binding Items}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="{StaticResource TabGap}" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="pages:PageTab">
+                    <Button Classes="tab" Classes.selected="{Binding IsSelected}" Tag="grouptool" Focusable="{Binding IsSelected}"
+                            Content="{Binding Name}" Command="{Binding SelectCommand}" />
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Border Classes="hrule" />
+    </StackPanel>
+</UserControl>

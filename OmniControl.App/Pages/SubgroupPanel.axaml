@@ -1,0 +1,15 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pages="using:OmniControl.App.Pages"
+             x:Class="OmniControl.App.Pages.SubgroupPanel"
+             x:DataType="pages:ItemGroup">
+    <!-- A group inside a group: its own header (chevron, name, count) and cards, collapsed like any other group -->
+    <Border Classes="subgroupPanel">
+        <StackPanel Spacing="4">
+            <pages:GroupHeader />
+            <ListBox Classes="rows compact" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}">
+                <ListBox.ItemsPanel><ItemsPanelTemplate><pages:HalfPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
+            </ListBox>
+        </StackPanel>
+    </Border>
+</UserControl>

@@ -1,3 +1,4 @@
+using OmniControl.Core.Models;
 using System.Runtime.InteropServices;
 
 namespace OmniControl.Core.Engine;
@@ -39,13 +40,13 @@ public static partial class CoreAudio
         percent = 0; muted = false;
         var v = EndpointVolume(id);
         if (v is null || v.GetMasterVolumeLevelScalar(out var level) != 0) return false;
-        percent = (int)Math.Round(level * 100);
+        percent = Percent.FromScalar(level);
         if (v.GetMute(out var m) == 0) muted = m;
         return true;
     }
 
     public static bool SetDeviceVolume(string id, int percent) =>
-        EndpointVolume(id) is { } v && v.SetMasterVolumeLevelScalar(Math.Clamp(percent, 0, 100) / 100f, ref _ctx) == 0;
+        EndpointVolume(id) is { } v && v.SetMasterVolumeLevelScalar(Percent.ToScalar(percent), ref _ctx) == 0;
 
     public static bool SetDeviceMute(string id, bool mute) => EndpointVolume(id) is { } v && v.SetMute(mute, ref _ctx) == 0;
 }

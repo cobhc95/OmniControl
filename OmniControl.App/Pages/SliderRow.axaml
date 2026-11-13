@@ -2,16 +2,61 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:pages="using:OmniControl.App.Pages"
              x:Class="OmniControl.App.Pages.SliderRow"
-             x:DataType="pages:SliderItem">
-    <Grid Margin="0,3">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" MinWidth="48" />
-        </Grid.ColumnDefinitions>
-        <TextBlock Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,24,0" />
-        <Slider Grid.Column="1" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Value}" />
-        <TextBlock Grid.Column="2" Text="{Binding ValueText}" Classes="muted" Margin="8,0,0,0"
-                   HorizontalAlignment="Right" VerticalAlignment="Center" />
-    </Grid>
+             x:DataType="pages:SliderItem"
+             Classes="card" IsEnabled="{Binding Availability.IsAvailable}"
+             ToolTip.Tip="{Binding Availability.Reason}" ToolTip.ShowOnDisabled="True">
+    <Panel>
+        <!-- Slider alone: label, slider, value -->
+        <Grid Margin="0,1" IsVisible="{Binding IsPlain}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" MinWidth="48" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,24,0" />
+            <Slider Grid.Column="1" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Value}" pages:SliderReset.Value="{Binding ResetValue}" />
+            <pages:NumberText Grid.Column="2" Value="{Binding Value}" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Margin="8,0,0,0"
+                              HorizontalAlignment="Right" VerticalAlignment="Center">
+                <TextBlock Text="{Binding ValueText}" Classes="muted" HorizontalAlignment="Right" VerticalAlignment="Center" />
+            </pages:NumberText>
+        </Grid>
+
+        <!-- Slider with a companion switch on the same line: label, slider, value | switch name, switch.
+             The switch name shares the room left with the slider and wraps (then trims) when the card is narrow; the switch never shrinks. -->
+        <Grid Margin="0,1" IsVisible="{Binding HasCompanionLine}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
+                <ColumnDefinition Width="3*" />
+                <ColumnDefinition Width="Auto" MinWidth="48" />
+                <ColumnDefinition Width="2*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,24,0" />
+            <Slider Grid.Column="1" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Value}" pages:SliderReset.Value="{Binding ResetValue}" />
+            <pages:NumberText Grid.Column="2" Value="{Binding Value}" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Margin="8,0,0,0"
+                              HorizontalAlignment="Right" VerticalAlignment="Center">
+                <TextBlock Text="{Binding ValueText}" Classes="muted" HorizontalAlignment="Right" VerticalAlignment="Center" />
+            </pages:NumberText>
+            <Grid Grid.Column="3" ColumnDefinitions="Auto,*" HorizontalAlignment="Right">
+                <Border Classes="divider" Margin="12,4" />
+                <TextBlock Grid.Column="1" Classes="cardlabel" Text="{Binding Companion.Label}" />
+            </Grid>
+            <ToggleSwitch Grid.Column="4" IsChecked="{Binding Companion.IsOn}" OnContent="On" OffContent="Off" Margin="8,0,0,0" VerticalAlignment="Center" />
+        </Grid>
+
+        <!-- Half-width card: the label (wraps to two lines at the card's height) takes a share, the slider the larger share (never below its least width), the value sits at the right -->
+        <Grid Margin="0,1" ColumnSpacing="8" IsVisible="{Binding Half}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="56" />
+                <ColumnDefinition Width="1.6*" MinWidth="64" />
+                <ColumnDefinition Width="Auto" MinWidth="32" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Classes="cardlabel" Text="{Binding Label}" />
+            <Slider Grid.Column="1" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Value}" pages:SliderReset.Value="{Binding ResetValue}" />
+            <pages:NumberText Grid.Column="2" Value="{Binding Value}" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}"
+                              HorizontalAlignment="Right" VerticalAlignment="Center">
+                <TextBlock Text="{Binding ValueText}" Classes="muted" HorizontalAlignment="Right" VerticalAlignment="Center" />
+            </pages:NumberText>
+        </Grid>
+    </Panel>
 </UserControl>

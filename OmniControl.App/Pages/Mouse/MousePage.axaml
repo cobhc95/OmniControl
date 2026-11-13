@@ -1,0 +1,67 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Pages.Mouse"
+             xmlns:pages="using:OmniControl.App.Pages"
+             x:Class="OmniControl.App.Pages.Mouse.MousePage"
+             x:DataType="vm:MousePageViewModel">
+    <StackPanel Spacing="6">
+        <StackPanel x:Name="CardsHost" Grid.IsSharedSizeScope="True">
+            <!-- The title line: the page's name, with the on/off switch as a half-width card beside it -->
+            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,6">
+                <TextBlock Text="{Binding Title}" Classes="title" VerticalAlignment="Center" />
+                <ListBox Grid.Column="1" Classes="rows compact" ItemsSource="{Binding Primary}" MinWidth="280" VerticalAlignment="Center" />
+            </Grid>
+
+            <!-- Mouse Buttons group: the layer picker sits on the title line, hidden with the rest while the group is collapsed -->
+            <Border Classes="groupPanel">
+                <StackPanel Spacing="6">
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <pages:GroupHeader x:DataType="pages:ItemGroup" DataContext="{Binding ButtonsGroup}" />
+                        <ComboBox Grid.Column="1" Classes="tool" Tag="grouptool" ItemsSource="{Binding Layer.Options}" SelectedItem="{Binding Layer.Selected}"
+                                  IsVisible="{Binding ButtonsGroup.IsExpanded}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                        <Button Grid.Column="2" Classes="pill cog" Tag="scope" IsVisible="{Binding ButtonsGroup.IsExpanded}" VerticalAlignment="Center"
+                                Margin="6,0,0,0" Click="OnManageLayers" ToolTip.Tip="Manage layers: rename, switch to, clear">
+                            <PathIcon Data="{DynamicResource CogIcon}" Width="12" Height="12" />
+                        </Button>
+                    </Grid>
+                    <ListBox Classes="rows compact" ItemsSource="{Binding ButtonsGroup.Items}" IsVisible="{Binding ButtonsGroup.IsExpanded}">
+                        <ListBox.ItemsPanel><ItemsPanelTemplate><pages:HalfPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
+                    </ListBox>
+                </StackPanel>
+            </Border>
+
+            <!-- Trackpad group: the switch, Windows' touchpad settings, and one card per gesture; the layer drop-down above edits these too -->
+            <Border Classes="groupPanel" x:DataType="pages:ItemGroup" DataContext="{Binding TrackpadGroup}">
+                <StackPanel Spacing="6">
+                    <pages:GroupHeader />
+                    <ListBox Classes="rows compact" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}">
+                        <ListBox.ItemsPanel><ItemsPanelTemplate><pages:HalfPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
+                    </ListBox>
+                </StackPanel>
+            </Border>
+
+            <!-- Pointer settings: Windows' own mouse settings, changed live; the pointers of the scheme as an inner group; reset and restore last -->
+            <Border Classes="groupPanel">
+                <StackPanel Spacing="6">
+                    <pages:GroupHeader x:DataType="pages:ParentGroup" DataContext="{Binding PointerGroup}" />
+                    <StackPanel Spacing="4" IsVisible="{Binding PointerGroup.IsExpanded}">
+                        <ListBox Classes="rows compact" ItemsSource="{Binding PointerGroup.Items}">
+                            <ListBox.ItemsPanel><ItemsPanelTemplate><pages:HalfPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
+                        </ListBox>
+                        <ItemsControl ItemsSource="{Binding PointerGroup.Subgroups}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="pages:ItemGroup"><pages:SubgroupPanel /></DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <ListBox Classes="rows compact" ItemsSource="{Binding PointerFooter}">
+                            <ListBox.ItemsPanel><ItemsPanelTemplate><pages:HalfPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
+                        </ListBox>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+        <TextBlock Classes="hint"
+                   Text="Up/Down move through the settings (a pair of buttons reads left, then right); Left/Right move between the parts of a card and across a pair. On a group header Left collapses and Right expands it. A button left at &quot;Default&quot; behaves as Windows normally does. The Layer drop-down shows the layer in force and changes it: pick one to switch to it, or hold a button set to &quot;Hold for layer N&quot; to use layer N while held. Over OmniControl's own window the left and right buttons are never remapped, so a wrong mapping can always be fixed. Windows does not pass mouse input to programs running as administrator, so those windows are not remapped unless OmniControl runs as administrator too. Trackpad: swipe with three or four fingers or pinch with two on a precision touchpad; the Layer drop-down applies to these cards too, and a gesture left at &quot;Default&quot; lets Windows do what it normally does. OmniControl can't stop Windows' own swipes or pinch to zoom: if both happen, turn Windows' gesture off in its touchpad settings. Two-finger scrolling arrives as Wheel and Tilt above. Pointer settings are Windows' own mouse settings: they change at once, stay after a restart, and show what Windows has now. Before OmniControl first changes one, your values are kept, so &quot;Restore my original values&quot; can put them all back. Swapping the buttons asks to be kept and goes back by itself if you don't." />
+    </StackPanel>
+</UserControl>

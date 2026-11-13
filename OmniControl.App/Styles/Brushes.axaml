@@ -1,0 +1,64 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:svc="using:OmniControl.App.Services">
+    <!-- The theme colours and shared icons (both theme dictionaries; risk colours come from Services/Palette.cs, accent colours from
+         AccentService). Split out of Theme.axaml, which holds the master control designs; included before it in App.axaml. -->
+    <Styles.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="BrushBackground" Color="{x:Static svc:Palette.DarkBackground}" />
+                    <SolidColorBrush x:Key="BrushSidebar" Color="#1C1C1C" />
+                    <SolidColorBrush x:Key="BrushDivider" Color="#2E2E2E" />
+                    <SolidColorBrush x:Key="BrushMuted" Color="#8A8A8A" />
+                    <SolidColorBrush x:Key="BrushHover" Color="#2F2F2F" />
+                    <SolidColorBrush x:Key="BrushHoverEdge" Color="#707070" />
+                    <SolidColorBrush x:Key="BrushHoverStrong" Color="#454545" />
+                    <!-- Scroll bars (Styles/ScrollBars.axaml): a track that reads as a track, a thumb that stands out from it -->
+                    <SolidColorBrush x:Key="BrushScrollTrack" Color="#2A2A2A" />
+                    <SolidColorBrush x:Key="BrushScrollThumb" Color="#7A7A7A" />
+                    <!-- "On" green (an FX chain that is switched on), and its brighter hover -->
+                    <SolidColorBrush x:Key="BrushOn" Color="{x:Static svc:Palette.On}" />
+                    <SolidColorBrush x:Key="BrushOnHover" Color="#6BE07A" />
+                    <!-- Risk colours (tags, warnings): green = BrushOn, caution yellow, danger red; each with a see-through wash -->
+                    <SolidColorBrush x:Key="BrushCaution" Color="{x:Static svc:Palette.Caution}" />
+                    <SolidColorBrush x:Key="BrushDanger" Color="{x:Static svc:Palette.Danger}" />
+                    <SolidColorBrush x:Key="BrushCautionSoft" Color="{x:Static svc:Palette.Caution}" Opacity="{x:Static svc:Palette.WashOpacity}" />
+                    <!-- Tags only: the same colours, fainter (edge and wash), so a tag is read at a glance without shouting -->
+                    <SolidColorBrush x:Key="BrushTagGood" Color="{x:Static svc:Palette.On}" Opacity="{x:Static svc:Palette.TagEdgeOpacity}" />
+                    <SolidColorBrush x:Key="BrushTagCaution" Color="{x:Static svc:Palette.Caution}" Opacity="{x:Static svc:Palette.TagEdgeOpacity}" />
+                    <SolidColorBrush x:Key="BrushTagRisk" Color="{x:Static svc:Palette.Danger}" Opacity="{x:Static svc:Palette.TagEdgeOpacity}" />
+                    <SolidColorBrush x:Key="BrushTagGoodSoft" Color="{x:Static svc:Palette.On}" Opacity="{x:Static svc:Palette.TagWashOpacity}" />
+                    <SolidColorBrush x:Key="BrushTagCautionSoft" Color="{x:Static svc:Palette.Caution}" Opacity="{x:Static svc:Palette.TagWashOpacity}" />
+                    <SolidColorBrush x:Key="BrushTagRiskSoft" Color="{x:Static svc:Palette.Danger}" Opacity="{x:Static svc:Palette.TagWashOpacity}" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="BrushBackground" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="BrushSidebar" Color="#F3F3F3" />
+                    <SolidColorBrush x:Key="BrushDivider" Color="#DDDDDD" />
+                    <SolidColorBrush x:Key="BrushMuted" Color="#6B6B6B" />
+                    <SolidColorBrush x:Key="BrushHover" Color="#EAEAEA" />
+                    <SolidColorBrush x:Key="BrushHoverEdge" Color="#B5B5B5" />
+                    <SolidColorBrush x:Key="BrushHoverStrong" Color="#D2D2D2" />
+                    <SolidColorBrush x:Key="BrushScrollTrack" Color="#E6E6E6" />
+                    <SolidColorBrush x:Key="BrushScrollThumb" Color="#8F8F8F" />
+                    <SolidColorBrush x:Key="BrushOn" Color="{x:Static svc:Palette.On}" />
+                    <SolidColorBrush x:Key="BrushOnHover" Color="#6BE07A" />
+                    <SolidColorBrush x:Key="BrushCaution" Color="{x:Static svc:Palette.CautionInk}" />
+                    <SolidColorBrush x:Key="BrushDanger" Color="{x:Static svc:Palette.Danger}" />
+                    <SolidColorBrush x:Key="BrushCautionSoft" Color="{x:Static svc:Palette.Caution}" Opacity="{x:Static svc:Palette.WashOpacity}" />
+                    <SolidColorBrush x:Key="BrushTagGood" Color="{x:Static svc:Palette.On}" Opacity="{x:Static svc:Palette.TagEdgeOpacity}" />
+                    <SolidColorBrush x:Key="BrushTagCaution" Color="{x:Static svc:Palette.CautionInk}" Opacity="{x:Static svc:Palette.TagEdgeOpacity}" />
+                    <SolidColorBrush x:Key="BrushTagRisk" Color="{x:Static svc:Palette.Danger}" Opacity="{x:Static svc:Palette.TagEdgeOpacity}" />
+                    <SolidColorBrush x:Key="BrushTagGoodSoft" Color="{x:Static svc:Palette.On}" Opacity="{x:Static svc:Palette.TagWashOpacity}" />
+                    <SolidColorBrush x:Key="BrushTagCautionSoft" Color="{x:Static svc:Palette.Caution}" Opacity="{x:Static svc:Palette.TagWashOpacity}" />
+                    <SolidColorBrush x:Key="BrushTagRiskSoft" Color="{x:Static svc:Palette.Danger}" Opacity="{x:Static svc:Palette.TagWashOpacity}" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+            <!-- The small down arrow of a button that opens a list or pop-down -->
+            <StreamGeometry x:Key="ChevronDownIcon">M6,9 L12,16 L18,9 Z</StreamGeometry>
+            <!-- The cogwheel icon used beside actions that have settings -->
+            <StreamGeometry x:Key="CogIcon">M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8 Z M10.5,2 H13.5 L14,4.6 L16,5.6 L18.2,4.1 L20.3,6.2 L18.8,8.4 L19.7,10.5 L22,11 V14 L19.7,14.5 L18.8,16.6 L20.3,18.8 L18.2,20.9 L16,19.4 L14,20.4 L13.5,22 H10.5 L10,20.4 L8,19.4 L5.8,20.9 L3.7,18.8 L5.2,16.6 L4.3,14.5 L2,14 V11 L4.3,10.5 L5.2,8.4 L3.7,6.2 L5.8,4.1 L8,5.6 L10,4.6 Z</StreamGeometry>
+        </ResourceDictionary>
+    </Styles.Resources>
+</Styles>

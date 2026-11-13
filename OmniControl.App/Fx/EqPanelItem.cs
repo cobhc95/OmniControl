@@ -1,124 +1,125 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OmniControl.App.Audio;
 using OmniControl.App.Pages;
+using OmniControl.App.Services;
 
 namespace OmniControl.App.Fx;
 
-/// <summary>One band of the equaliser as the page edits it. Setting a value tells the panel, which redraws and saves.</summary>
-public sealed partial class EqBandItem : ObservableObject
+/// <summary>
+/// The Parametric equaliser's editor (laid out after REAPER's ReaEQ): the response graph, one tab per band, the selected band's controls,
+/// Add band / Remove band / Reset defaults and the view switches. One card in the FX window's editor list.
+/// </summary>
+public sealed partial class EqPanelItem : ObservableObject, IEditorItem, ISideNavigable, IEqEditor, IRedrawSource
 {
-    public static readonly IReadOnlyList<string> TypeNames = new[] { "Low shelf", "Peak", "High shelf" };
-
-    private readonly Action<EqBandItem> _edited;
-    private readonly Action<EqBandItem> _select;
-    private double _freq, _gain, _q;
-    private EqType _type;
-    private bool _silent;
-
-    public EqBandItem(int index, Action<EqBandItem> edited, Action<EqBandItem> select)
-    {
-        Index = index;
-        _edited = edited;
-        _select = select;
-    }
-
-    public int Index { get; }
-    public string Number => (Index + 1).ToString();
-    [ObservableProperty] private bool _isSelected;
-
-    public double Freq { get => _freq; set => Set(ref _freq, Math.Clamp(value, Eq.MinFreq, Eq.MaxFreq)); }
-    public double Gain { get => _gain; set => Set(ref _gain, Math.Clamp(Math.Round(value, 1), Eq.MinGain, Eq.MaxGain)); }
-    public double Q { get => _q; set => Set(ref _q, Math.Clamp(value, Eq.MinQ, Eq.MaxQ)); }
-    public EqType Type { get => _type; set { if (_type == value) return; _type = value; Changed(); } }
-
-    // Slider views of the values (frequency and Q move on a log scale, gain in half-dB steps).
-    public double FreqPos
-    {
-        get => Math.Round(1000 * Math.Log(Freq / Eq.MinFreq) / Math.Log(Eq.MaxFreq / Eq.MinFreq));
-        set { if (Math.Round(value) != FreqPos) Freq = Eq.MinFreq * Math.Pow(Eq.MaxFreq / Eq.MinFreq, value / 1000); }
-    }
-    public double GainSteps
-    {
-        get => Math.Round(Gain * 2);
-        set { if (Math.Round(value) != GainSteps) Gain = value / 2; }
-    }
-    public double QPos
-    {
-        get => Math.Round(1000 * Math.Log(Q / Eq.MinQ) / Math.Log(Eq.MaxQ / Eq.MinQ));
-        set { if (Math.Round(value) != QPos) Q = Eq.MinQ * Math.Pow(Eq.MaxQ / Eq.MinQ, value / 1000); }
-    }
-    public string TypeName
-    {
-        get => TypeNames[(int)Type];
-        set { var i = TypeNames.ToList().IndexOf(value); if (i >= 0) Type = (EqType)i; }
-    }
-
-    public string FreqText => Freq >= 1000 ? $"{Freq / 1000:0.##} kHz" : $"{Freq:0} Hz";
-    public string GainText => Gain > 0 ? $"+{Gain:0.0}" : $"{Gain:0.0}";
-    public string GainTextDb => $"{GainText} dB";
-    public string QText => Q.ToString("0.00");
-
-    [RelayCommand] private void Select() => _select(this);
-
-    private void Set(ref double field, double value, [System.Runtime.CompilerServices.CallerMemberName] string? name = null)
-    {
-        if (field == value) return;
-        field = value;
-        Changed();
-    }
-
-    private void Changed()
-    {
-        foreach (var n in new[] { nameof(Freq), nameof(Gain), nameof(Q), nameof(Type), nameof(FreqPos), nameof(GainSteps), nameof(QPos),
-                     nameof(TypeName), nameof(FreqText), nameof(GainText), nameof(GainTextDb), nameof(QText) })
-            OnPropertyChanged(n);
-        if (!_silent) _edited(this);
-    }
-
-    /// <summary>Takes values from saved settings without counting as an edit.</summary>
-    public void Load(EqBand band)
-    {
-        _silent = true;
-        _freq = band.Freq; _gain = band.Gain; _q = band.Q; _type = band.Type;
-        Changed();
-        _silent = false;
-    }
-
-    public EqBand ToBand() => new() { Freq = Freq, Gain = Gain, Q = Q, Type = Type };
-}
-
-/// <summary>The graph, the band strip and the selected band's controls: one card in the Equaliser group.</summary>
-public sealed partial class EqPanelItem : ObservableObject, IEditorItem, ISideNavigable
-{
-    /// <summary>Left/Right on the card pick the previous or next band.</summary>
-    public void Step(int direction) => SelectedIndex = Math.Clamp(SelectedIndex + direction, 0, Eq.Bands - 1);
-
     private bool _loading;
 
-    public EqPanelItem()
-    {
-        Bands = Enumerable.Range(0, Eq.Bands).Select(i => new EqBandItem(i, OnEdited, b => SelectedIndex = b.Index)).ToArray();
-        Load(Eq.Flat());
-        SelectedIndex = 3;
-    }
+    public EqPanelItem() => Load(Eq.Default());
 
     public string Label => "Equaliser graph";
-    public EqBandItem[] Bands { get; }
+    public ObservableCollection<EqBandItem> Bands { get; } = new();
+    IReadOnlyList<object> IEqEditor.BandCards => Bands;
 
     [ObservableProperty, NotifyPropertyChangedFor(nameof(Selected))] private int _selectedIndex = -1;
-    public EqBandItem Selected => Bands[Math.Clamp(SelectedIndex, 0, Eq.Bands - 1)];
+    public EqBandItem? Selected => SelectedIndex >= 0 && SelectedIndex < Bands.Count ? Bands[SelectedIndex] : null;
+    public bool HasBands => Bands.Count > 0;
 
-    /// <summary>A band was changed by the user: save it.</summary>
+    /// <summary>The equaliser's overall gain (its own card), drawn into the curve.</summary>
+    public double OverallGainDb
+    {
+        get => _overallGainDb;
+        set { _overallGainDb = value; Redraw?.Invoke(); }
+    }
+    private double _overallGainDb;
+
+    /// <summary>A band was changed, added or removed by the user: save it.</summary>
     public event Action? Edited;
 
     /// <summary>Anything the graph shows changed.</summary>
     public event Action? Redraw;
 
+    /// <summary>Left/Right on the card pick the previous or next band.</summary>
+    public void Step(int direction)
+    {
+        if (HasBands) SelectedIndex = Math.Clamp(SelectedIndex + direction, 0, Bands.Count - 1);
+    }
+
     partial void OnSelectedIndexChanged(int value)
     {
         foreach (var b in Bands) b.IsSelected = b.Index == value;
         Redraw?.Invoke();
+    }
+
+    // ---- view switches (shared by every equaliser, kept in settings.json) ----
+
+    public bool ShowTabs { get => AppSettings.Current.EqShowTabs; set => SetView(v => v.EqShowTabs = value); }
+    public bool ShowGrid { get => AppSettings.Current.EqShowGrid; set => SetView(v => v.EqShowGrid = value); }
+    public bool ShowPhase { get => AppSettings.Current.EqShowPhase; set => SetView(v => v.EqShowPhase = value); }
+
+    private void SetView(Action<AppSettings> set)
+    {
+        set(AppSettings.Current);
+        AppSettings.Current.Save();
+        OnPropertyChanged(nameof(ShowTabs));
+        OnPropertyChanged(nameof(ShowGrid));
+        OnPropertyChanged(nameof(ShowPhase));
+        Redraw?.Invoke();
+    }
+
+    // ---- band list ----
+
+    [RelayCommand(CanExecute = nameof(CanAddBand))]
+    private void AddBand()
+    {
+        var band = Eq.NewBand(Export());
+        Bands.Add(Item(Bands.Count, band));
+        SelectedIndex = Bands.Count - 1;
+        CountChanged();
+        ListChanged();
+    }
+
+    private bool CanAddBand() => Bands.Count < Eq.MaxBands;
+
+    [RelayCommand(CanExecute = nameof(HasBands))]
+    private void RemoveBand()
+    {
+        if (Selected is not { } band) return;
+        var at = SelectedIndex;
+        Bands.Remove(band);
+        for (var i = at; i < Bands.Count; i++) Bands[i].Index = i;
+        SelectedIndex = -1;
+        SelectedIndex = Math.Min(at, Bands.Count - 1);
+        CountChanged();
+        ListChanged();
+    }
+
+    [RelayCommand]
+    private void ResetDefaults()
+    {
+        Load(Eq.Default());
+        ListChanged();
+    }
+
+    private void ListChanged()
+    {
+        Edited?.Invoke();
+        Redraw?.Invoke();
+    }
+
+    /// <summary>The band count changed: what depends on it follows.</summary>
+    private void CountChanged()
+    {
+        OnPropertyChanged(nameof(HasBands));
+        AddBandCommand.NotifyCanExecuteChanged();
+        RemoveBandCommand.NotifyCanExecuteChanged();
+    }
+
+    private EqBandItem Item(int index, EqBand band)
+    {
+        var item = new EqBandItem(index, OnEdited, b => SelectedIndex = b.Index);
+        item.Load(band);
+        return item;
     }
 
     private void OnEdited(EqBandItem band)
@@ -127,21 +128,19 @@ public sealed partial class EqPanelItem : ObservableObject, IEditorItem, ISideNa
         Redraw?.Invoke();
     }
 
+    /// <summary>Shows saved bands without counting as an edit; the selection stays on the same place where it can.</summary>
     public void Load(IReadOnlyList<EqBand> bands)
     {
         _loading = true;
-        for (var i = 0; i < Eq.Bands; i++) Bands[i].Load(i < bands.Count ? bands[i] : Eq.DefaultBand(i));
+        var keep = SelectedIndex;
+        Bands.Clear();
+        for (var i = 0; i < bands.Count; i++) Bands.Add(Item(i, bands[i]));
+        SelectedIndex = -1;
+        SelectedIndex = Bands.Count == 0 ? -1 : Math.Clamp(keep, 0, Bands.Count - 1);
         _loading = false;
+        CountChanged();
         Redraw?.Invoke();
     }
 
     public List<EqBand> Export() => Bands.Select(b => b.ToBand()).ToList();
-
-    /// <summary>Puts the selected band back to its default frequency, gain, Q and type.</summary>
-    public void ResetSelected()
-    {
-        var d = Eq.DefaultBand(Selected.Index);
-        var b = Selected;
-        b.Type = d.Type; b.Freq = d.Freq; b.Q = d.Q; b.Gain = d.Gain;
-    }
 }

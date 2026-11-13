@@ -1,22 +1,27 @@
-﻿namespace OmniControl.Core.Engine;
+using OmniControl.Core.Models;
+namespace OmniControl.Core.Engine;
 
 /// <summary>Left/right balance maths shared by sessions and the master. Pan runs from -100 (left) to +100 (right).</summary>
 public static class PanMath
 {
+    public const int Range = 100;
+
+    public static int Clamp(int pan) => Math.Clamp(pan, -Range, Range);
+
     /// <summary>Channel levels (0-1) for a pan value: the opposite side is turned down, the near side stays at full.</summary>
     public static void ToLevels(int pan, out float left, out float right)
     {
-        pan = Math.Clamp(pan, -100, 100);
-        left = pan > 0 ? 1 - pan / 100f : 1;
-        right = pan < 0 ? 1 + pan / 100f : 1;
+        pan = Clamp(pan);
+        left = pan > 0 ? 1 - pan / (float)Range : 1;
+        right = pan < 0 ? 1 + pan / (float)Range : 1;
     }
 
     /// <summary>The pan value that the given channel levels amount to (0 when they are equal).</summary>
     public static int FromLevels(float left, float right)
     {
         if (left <= 0 && right <= 0) return 0;
-        if (left < right) return -(int)Math.Round((1 - left / right) * 100);
-        if (right < left) return (int)Math.Round((1 - right / left) * 100);
+        if (left < right) return -(int)Math.Round((1 - left / right) * Range);
+        if (right < left) return (int)Math.Round((1 - right / left) * Range);
         return 0;
     }
 }
@@ -42,9 +47,9 @@ public sealed class AudioSession
 
     private static Guid _ctx = Guid.NewGuid();
 
-    public int Volume => _volume.GetMasterVolume(out var v) == 0 ? (int)Math.Round(v * 100) : 100;
+    public int Volume => _volume.GetMasterVolume(out var v) == 0 ? Percent.FromScalar(v) : Percent.Max;
     public bool Muted => _volume.GetMute(out var m) == 0 && m;
-    public void SetVolume(int percent) => _volume.SetMasterVolume(Math.Clamp(percent, 0, 100) / 100f, ref _ctx);
+    public void SetVolume(int percent) => _volume.SetMasterVolume(Percent.ToScalar(percent), ref _ctx);
     public void SetMuted(bool muted) => _volume.SetMute(muted, ref _ctx);
 
     /// <summary>The current peak level (0 to 1) of the left and right channels of this program's sound.</summary>

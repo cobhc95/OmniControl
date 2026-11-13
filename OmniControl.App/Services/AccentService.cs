@@ -25,16 +25,16 @@ public static class AccentService
     public static readonly IReadOnlyList<(string Name, string Hex)> Presets = new[]
     {
         ("Orange", "#F28C48"), ("Blue", "#4C9BE8"), ("Green", "#5DBE7A"), ("Pink", "#E86FA6"),
-        ("Purple", "#9B7BE8"), ("Red", "#E5534B"), ("Yellow", "#E8C547"), ("Teal", "#3FB8B0"),
+        ("Purple", "#9B7BE8"), ("Red", Palette.DangerHex), ("Yellow", "#E8C547"), ("Teal", "#3FB8B0"),
     };
 
     public static IReadOnlyList<string> Names { get; } = Presets.Select(p => p.Name).ToList();
 
     // The two theme backgrounds the soft/hover tints are blended into (the page background of each theme).
-    private static readonly Color DarkBackground = Color.Parse("#161616");
+    private static readonly Color DarkBackground = Palette.DarkBackground;
     private static readonly Color LightBackground = Colors.White;
 
-    private static readonly Dictionary<(ThemeVariant, string), SolidColorBrush> Brushes = new();
+    private static readonly Dictionary<(ThemeVariant, string), SolidColorBrush> AccentBrushes = new();
 
     public static string Name { get; private set; } = Presets[0].Name;
 
@@ -73,6 +73,7 @@ public static class AccentService
         Set(app, variant, "BrushAccent", accent);
         Set(app, variant, "BrushAccentSoft", ColorMath.Mix(background, accent, soft));
         Set(app, variant, "BrushAccentHover", ColorMath.Mix(background, accent, hover));
+        Set(app, variant, "BrushAccentEdge", ColorMath.Mix(background, accent, Palette.AccentEdgeStrength));
 
         foreach (var part in new[] { "Fill", "Stroke" })
         {
@@ -84,10 +85,10 @@ public static class AccentService
 
     private static void Set(Application app, ThemeVariant variant, string key, Color color)
     {
-        if (Brushes.TryGetValue((variant, key), out var brush)) { brush.Color = color; return; }
+        if (AccentBrushes.TryGetValue((variant, key), out var brush)) { brush.Color = color; return; }
 
         brush = new SolidColorBrush(color);
-        Brushes[(variant, key)] = brush;
+        AccentBrushes[(variant, key)] = brush;
         if (!app.Resources.ThemeDictionaries.TryGetValue(variant, out var provider) || provider is not ResourceDictionary dict)
             app.Resources.ThemeDictionaries[variant] = dict = new ResourceDictionary();
         dict[key] = brush;

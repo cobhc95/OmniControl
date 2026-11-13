@@ -1,3 +1,4 @@
+using OmniControl.App.Services;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
@@ -14,10 +15,10 @@ public sealed class LevelMeter : Control
 {
     public static readonly StyledProperty<MeterModel?> ModelProperty = AvaloniaProperty.Register<LevelMeter, MeterModel?>(nameof(Model));
 
-    private const double BarWidth = 5, Gap = 2, Radius = 1.5, HoldHeight = 1.5, ClipMark = 3;
-    private static readonly IBrush Green = new SolidColorBrush(Color.Parse("#3FB36B"));
-    private static readonly IBrush Amber = new SolidColorBrush(Color.Parse("#E8B04A"));
-    private static readonly IBrush Red = new SolidColorBrush(Color.Parse("#E5534B"));
+    private const double BarWidth = 5, Gap = 2, Radius = 1.5, HoldHeight = 1.5, ClipMark = 3, MeterHeight = 28;
+    private static readonly IBrush Green = new SolidColorBrush(Palette.MeterGreen);
+    private static readonly IBrush Amber = new SolidColorBrush(Palette.MeterAmber);
+    private static readonly IBrush Red = new SolidColorBrush(Palette.Danger);
     private MeterModel? _watching;
 
     static LevelMeter()
@@ -29,7 +30,7 @@ public sealed class LevelMeter : Control
     public LevelMeter()
     {
         Width = BarWidth * 2 + Gap;
-        Height = 36;
+        Height = MeterHeight;
         IsHitTestVisible = false;
     }
 

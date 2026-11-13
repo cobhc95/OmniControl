@@ -31,7 +31,7 @@ public sealed class LaptopBrightnessController : ILaptopBrightness
         using var searcher = new ManagementObjectSearcher(WmiScope, $"SELECT * FROM {MethodsClass}");
         foreach (ManagementObject obj in searcher.Get())
         {
-            obj.InvokeMethod("WmiSetBrightness", new object[] { (ushort)1, (byte)Math.Clamp(level, 0, 100) });
+            obj.InvokeMethod("WmiSetBrightness", new object[] { (ushort)1, (byte)Percent.Clamp(level) });
             return OperationResult.Ok($"LCD set {level}");
         }
         return OperationResult.Fail("WmiMonitorBrightnessMethods not found.");
