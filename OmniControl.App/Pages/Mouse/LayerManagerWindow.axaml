@@ -3,14 +3,14 @@
         xmlns:mouse="using:OmniControl.App.Pages.Mouse"
         x:Class="OmniControl.App.Pages.Mouse.LayerManagerWindow"
         x:DataType="mouse:LayerManagerModel"
-        Title="Manage mouse layers" Width="520" Height="560" MinWidth="420" MinHeight="320"
+        Title="{Binding Title}" Width="520" Height="560" MinWidth="420" MinHeight="320"
         Background="{DynamicResource BrushBackground}" WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
     <DockPanel>
         <!-- Footer: the switch that trims the layer list, and Done -->
         <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,1,0,0" Padding="16,8">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                <ToggleSwitch IsChecked="{Binding OnlyUsed}" OnContent="Only list layers that are named or in use"
-                              OffContent="Only list layers that are named or in use" VerticalAlignment="Center" />
+                <ToggleSwitch IsChecked="{Binding OnlyUsed}" OnContent="Only named or used layers"
+                              OffContent="Only named or used layers" VerticalAlignment="Center" />
                 <Button Grid.Column="1" Content="Done" Classes="primary" Width="84" HorizontalContentAlignment="Center" Click="OnDoneClick" />
             </Grid>
         </Border>
@@ -18,7 +18,7 @@
         <ScrollViewer>
             <StackPanel Margin="16,12" Spacing="6">
                 <TextBlock Classes="muted" TextWrapping="Wrap"
-                           Text="Name a layer so it is easy to recognise. The layer in force is marked; switch to any layer here, or clear the mappings of one." />
+                           Text="Name a layer, switch to it, or clear its mappings. The layer in force is marked." />
                 <ItemsControl ItemsSource="{Binding Rows}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="mouse:LayerRow">

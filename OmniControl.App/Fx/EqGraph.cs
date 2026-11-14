@@ -15,7 +15,11 @@ public sealed class EqGraph : ItemDrawing<EqPanelItem>
 {
     private const double Left = ResponsePlot.AxisLeft, Top = ResponsePlot.AxisTop, Bottom = ResponsePlot.AxisBottom;
     private const double RightPlain = ResponsePlot.AxisRight, RightPhase = 40;
-    private const double LabelSize = DrawKit.LabelSize, InfoSize = DrawKit.InfoSize, PointRadius = 6, SelectedRadius = 9, HoverGrow = 2, HitRadius = 16;
+    private const double LabelSize = DrawKit.LabelSize, InfoSize = DrawKit.InfoSize + 1, HoverGrow = 2, HitRadius = 16;
+
+    /// <summary>A band's circle: the normal radius, the smaller one once there are more than <see cref="CrowdedBands"/> bands, and how much the selected one grows.</summary>
+    private const double PointRadius = 11, CrowdedRadius = 8, SelectedGrow = 3;
+    private const int CrowdedBands = 10;
     private const int CurvePoints = 240;
     private static readonly double[] CurveFreqs = EqMath.LogGrid(CurvePoints + 1, Eq.MinFreq, Eq.MaxFreq);
     private const double PhaseRange = 180, DragGainStep = 0.5;
@@ -58,8 +62,8 @@ public sealed class EqGraph : ItemDrawing<EqPanelItem>
         if (Item is null) return;
 
         var bands = Item.Export();
-        if (Item.ShowPhase) DrawPhase(ctx, bands, muted);
         if (Item.Selected is { } selected) DrawOwnShare(ctx, bands[selected.Index], Brush("BrushAccentSoft"));
+        if (Item.ShowPhase) DrawPhase(ctx, bands, muted); // over the shading, so the shade never hides the phase line
         DrawCurve(ctx, bands, accent);
         DrawPoints(ctx, accent, muted, card);
 
@@ -99,14 +103,18 @@ public sealed class EqGraph : ItemDrawing<EqPanelItem>
     private void DrawPoints(DrawingContext ctx, IBrush accent, IBrush muted, IBrush card)
     {
         if (Item is null) return;
+        var crowded = Item.Bands.Count > CrowdedBands;
         foreach (var b in Item.Bands)
         {
             var on = b.Index == Item.SelectedIndex;
-            var ink = b.Enabled ? accent : muted;
-            var radius = (on ? SelectedRadius : PointRadius) + (b.Index == _hover || b.Index == _drag ? HoverGrow : 0);
+            var ink = EqBandColors.Of(this, b.Index);
+            var radius = (crowded ? CrowdedRadius : PointRadius) + (on ? SelectedGrow : 0) + (b.Index == _hover || b.Index == _drag ? HoverGrow : 0);
             var c = PointOf(b);
-            ctx.DrawEllipse(on ? ink : card, new Pen(ink, 2), c, radius, radius);
-            var n = Text(b.Number, on ? LabelSize : LabelSize - 2, on ? card : ink);
+            if (on) ctx.DrawEllipse(null, new Pen(accent, 2), c, radius + 3, radius + 3);
+            var edge = b.Enabled ? new Pen(ink, 2) : new Pen(ink, 2, dashStyle: DashStyle.Dash);
+            ctx.DrawEllipse(b.Enabled ? ink : card, edge, c, radius, radius);
+            if (crowded && !on) continue; // too small to hold the number
+            var n = Text(b.Number, on ? LabelSize : LabelSize - 2, b.Enabled ? card : ink);
             ctx.DrawText(n, new Point(c.X - n.Width / 2, c.Y - n.Height / 2));
         }
     }
@@ -134,9 +142,14 @@ public sealed class EqGraph : ItemDrawing<EqPanelItem>
         var hit = PointAt(e.GetPosition(this));
         if (hit < 0 || Item is null) return;
         Item.SelectedIndex = hit;
+        e.Handled = true;
+        if (e.ClickCount == 2) // a double-click turns the band on or off and must not move it
+        {
+            Item.Bands[hit].ToggleEnabled();
+            return;
+        }
         _drag = hit;
         e.Pointer.Capture(this);
-        e.Handled = true;
     }
 
     protected override void OnPointerMoved(PointerEventArgs e)

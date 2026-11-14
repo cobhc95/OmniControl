@@ -42,7 +42,8 @@
                         <TextBlock Text="Switch" />
                     </Button>
                     <TextBlock Text=" · " IsVisible="{Binding ShowsStatus}" />
-                    <TextBlock Classes="status" Text="{Binding Status}" IsVisible="{Binding ShowsStatus}" ToolTip.Tip="{Binding ModeLine}" />
+                    <TextBlock Classes="status" Text="{Binding Status}" IsVisible="{Binding ShowsStatus}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                               ToolTip.Tip="{Binding ModeLine}" />
                     <!-- The one step that fixes what the status says is missing (a microphone in Fast mode: Choose devices) -->
                     <Button Tag="scope" Classes="link small" Margin="4,0,0,0" IsVisible="{Binding HasFix}" Command="{Binding Fix.Command}"
                             ToolTip.Tip="{Binding Fix.Tip}">
@@ -53,15 +54,20 @@
                             ToolTip.Tip="Fast mode records the program to run its effects. Test checks again.">
                         <TextBlock Text="{Binding CaptureGate.Reason}" TextWrapping="Wrap" />
                     </Border>
-                    <Button Tag="scope" Classes="link small" Margin="4,0,0,0" IsVisible="{Binding ShowsCaptureCaution}"
+                    <Button Tag="scope" Classes="link small" Margin="4,0,0,0" IsVisible="{Binding ShowsCaptureSwitch}"
                             Command="{Binding CaptureGate.SwitchCommand}" ToolTip.Tip="Runs the effects through the virtual cable instead">
                         <TextBlock Text="Switch to Full control" />
                     </Button>
                     <Button Tag="scope" Classes="link small" Margin="4,0,0,0" Command="{Binding RunTestCommand}" IsVisible="{Binding ShowsTest}"
-                            ToolTip.Tip="Plays a few seconds through the effects, checks the original can be muted, measures the delay">
+                            IsEnabled="{Binding CanRunTest}" ToolTip.Tip="{Binding TestButtonTip}" ToolTip.ShowOnDisabled="True">
                         <TextBlock Text="Test" />
                     </Button>
-                    <TextBlock Text="{Binding TestNote}" Margin="4,0,0,0" TextWrapping="Wrap" IsVisible="{Binding HasTestNote}" />
+                    <!-- A program's effects method (Full control): cable or recording; the engine's status above says which one runs -->
+                    <Panel IsVisible="{Binding ShowsRouteChoice}" Margin="4,0,0,0">
+                        <vm:RouteButton DataContext="{Binding RouteChoice}" />
+                    </Panel>
+                    <TextBlock Text="{Binding TestNote}" Margin="4,0,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" IsVisible="{Binding HasTestNote}"
+                               ToolTip.Tip="{Binding TestTip}" />
                 </WrapPanel>
             </StackPanel>
         </Grid>
@@ -79,7 +85,7 @@
         <vm:LevelMeter Grid.Column="4" Model="{Binding Meter}" VerticalAlignment="Center" ToolTip.Tip="Level" />
 
         <Button Grid.Column="5" Tag="scope" Classes="pill" Content="FX" Command="{Binding OpenWindowCommand}" IsVisible="{Binding HasEffects}"
-                IsEnabled="{Binding EffectsGate.IsAvailable}" ToolTip.Tip="Opens this row's FX window" VerticalAlignment="Center" />
+                IsEnabled="{Binding EffectsGate.IsAvailable}" ToolTip.Tip="{Binding FxTip}" ToolTip.ShowOnDisabled="True" VerticalAlignment="Center" />
 
         <Button Grid.Column="6" Tag="scope" Classes="pill glyph" Content="×" Command="{Binding RemoveCommand}" IsVisible="{Binding CanForget}"
                 ToolTip.Tip="Remove (forgets its settings)" VerticalAlignment="Center" />

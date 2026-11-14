@@ -62,6 +62,8 @@ public static partial class CoreAudio
         [PreserveSig] int GetAudioSessionControl(IntPtr groupingParam, int streamFlags, out IntPtr control);
         [PreserveSig] int GetSimpleAudioVolume(IntPtr groupingParam, int streamFlags, out IntPtr volume);
         [PreserveSig] int GetSessionEnumerator(out IAudioSessionEnumerator sessions);
+        [PreserveSig] int RegisterSessionNotification(IntPtr client);
+        [PreserveSig] int UnregisterSessionNotification(IntPtr client);
     }
 
     [ComImport, Guid("E2F5BB11-0570-40CA-ACDD-3AA01277DEE8"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
@@ -78,7 +80,7 @@ public static partial class CoreAudio
     }
 
     [ComImport, Guid("BFB7FF88-7239-4FC9-8FA2-07C950BE9C6D"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IAudioSessionControl2
+    internal interface IAudioSessionControl2
     {
         [PreserveSig] int GetState(out int state);
         [PreserveSig] int GetDisplayName([MarshalAs(UnmanagedType.LPWStr)] out string name);
@@ -138,6 +140,28 @@ public static partial class CoreAudio
         [PreserveSig] int GetChannelVolumeLevelScalar(uint channel, out float level);
         [PreserveSig] int SetMute([MarshalAs(UnmanagedType.Bool)] bool mute, ref Guid ctx);
         [PreserveSig] int GetMute([MarshalAs(UnmanagedType.Bool)] out bool mute);
+    }
+
+    /// <summary>The PROPERTYKEY Windows passes to <see cref="IDeviceNotify.OnPropertyValueChanged"/> (not used, but it sets the call's layout).</summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public struct NotifyKey { public Guid Format; public uint Id; }
+
+    /// <summary>IMMNotificationClient (the watchers' device events). Public only because Windows can only call interfaces that are visible to COM.</summary>
+    [ComVisible(true), Guid("7991EEC9-7E89-4D85-8390-6C703CEC60C0"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public interface IDeviceNotify
+    {
+        [PreserveSig] int OnDeviceStateChanged([MarshalAs(UnmanagedType.LPWStr)] string id, int state);
+        [PreserveSig] int OnDeviceAdded([MarshalAs(UnmanagedType.LPWStr)] string id);
+        [PreserveSig] int OnDeviceRemoved([MarshalAs(UnmanagedType.LPWStr)] string id);
+        [PreserveSig] int OnDefaultDeviceChanged(int flow, int role, [MarshalAs(UnmanagedType.LPWStr)] string? id);
+        [PreserveSig] int OnPropertyValueChanged([MarshalAs(UnmanagedType.LPWStr)] string id, NotifyKey key);
+    }
+
+    /// <summary>IAudioSessionNotification (a program opened a new session). Public only because Windows can only call interfaces that are visible to COM.</summary>
+    [ComVisible(true), Guid("641DD20B-4D41-49CC-ABA3-174B9477BB08"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public interface ISessionNotify
+    {
+        [PreserveSig] int OnSessionCreated(IntPtr session);
     }
 
     /// <summary>

@@ -19,7 +19,7 @@
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="vm:FxSlotViewModel">
                                 <Grid ColumnSpacing="8" VerticalAlignment="Center"
-                                      ToolTip.Tip="Double-click: own window · drag: reorder">
+                                      ToolTip.Tip="{Binding Name, StringFormat='{}{0}: double-click for its own window, drag to reorder'}">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" SharedSizeGroup="FxSlotNumber" />
                                         <ColumnDefinition Width="Auto" />

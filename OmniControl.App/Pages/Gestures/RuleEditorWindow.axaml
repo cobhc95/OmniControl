@@ -55,9 +55,9 @@
         </ItemsControl>
 
         <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="8">
-            <Button Classes="pill" Content="Test" IsEnabled="{Binding CanTest}" Click="OnTestClick" ToolTip.Tip="Run it once now, at the pointer" />
-            <Button Grid.Column="1" Classes="pill" Content="Copy details" IsVisible="{Binding HasFailure}" Click="OnCopyClick" />
-            <Button Grid.Column="2" Classes="pill" Content="Delete rule" Click="OnDeleteClick" />
+            <Button Classes="pill cardaction" Content="Test" IsEnabled="{Binding CanTest}" Click="OnTestClick" ToolTip.Tip="Run it once now, at the pointer" />
+            <Button Grid.Column="1" Classes="pill cardaction" Content="Copy details" IsVisible="{Binding HasFailure}" Click="OnCopyClick" />
+            <Button Grid.Column="2" Classes="pill cardaction" Content="Delete rule" Click="OnDeleteClick" />
             <Button Grid.Column="4" Classes="primary" Content="Close" Click="OnCloseClick" />
         </Grid>
     </StackPanel>

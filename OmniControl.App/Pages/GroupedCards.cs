@@ -25,12 +25,12 @@ public static class GroupedCards
         .Where(c => IsHeaderStop(c) || (c is ListBoxItem && c.IsEffectivelyVisible)).ToList();
 
     /// <summary>
-    /// A visible group header, or a drop-down or button placed on a header's line (the mouse layer, Refresh, a page's open tab): one stop
+    /// A visible group header, or a drop-down or button placed on a header's line (the mouse layer, Refresh, a page's open tab, a switch): one stop
     /// each, in on-screen order. One that cannot take focus (a tab that is not open, a dimmed button) is not a stop, as a header inside
     /// a collapsed group is not.
     /// </summary>
     private static bool IsHeaderStop(Control c) =>
-        (c is Button { Tag: "grouphdr" or "grouptool" } || c is ComboBox { Tag: "grouptool" }) && c.IsEffectivelyVisible && c.IsEffectivelyEnabled && c.Focusable;
+        (c is Button { Tag: "grouphdr" or "grouptool" } || c is ComboBox { Tag: "grouptool" } || c is ToggleSwitch { Tag: "grouptool" }) && c.IsEffectivelyVisible && c.IsEffectivelyEnabled && c.Focusable;
 
     private static void OnKeyDown(Control root, Control host, KeyEventArgs e)
     {

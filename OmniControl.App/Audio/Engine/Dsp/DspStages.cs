@@ -18,6 +18,9 @@ internal interface IDspStage
 
     /// <summary>How many frames late this stage's output is (only plug-ins delay the sound; it is added to the delay the row shows).</summary>
     int LatencyFrames => 0;
+
+    /// <summary>The stage's live meters (the dynamics effects); null for the others. Read on the UI thread.</summary>
+    IDynamicsReadout? Readout => null;
 }
 
 /// <summary>A value that moves to its target in a straight line over <see cref="PipeFormat.GlideFrames"/>, one step per frame (audio thread).</summary>
@@ -141,6 +144,7 @@ internal sealed class WetStage : IDspStage
     }
 
     public int LatencyFrames => _inner.LatencyFrames;
+    public IDynamicsReadout? Readout => _inner.Readout;
 
     public void Process(Span<float> samples, int channels)
     {

@@ -11,9 +11,13 @@ public partial class MousePage : UserControl
         GroupedCards.Attach(this, CardsHost);
     }
 
-    private async void OnManageLayers(object? sender, RoutedEventArgs e)
+    private void OnManageMouseLayers(object? sender, RoutedEventArgs e) => ShowLayerManager(page => page.CreateMouseLayerManager());
+
+    private void OnManageTrackpadLayers(object? sender, RoutedEventArgs e) => ShowLayerManager(page => page.CreateTrackpadLayerManager());
+
+    private async void ShowLayerManager(Func<MousePageViewModel, LayerManagerModel> create)
     {
         if (DataContext is MousePageViewModel page && TopLevel.GetTopLevel(this) is Window owner)
-            await LayerManagerWindow.ShowAsync(owner, page.CreateLayerManager());
+            await LayerManagerWindow.ShowAsync(owner, create(page));
     }
 }

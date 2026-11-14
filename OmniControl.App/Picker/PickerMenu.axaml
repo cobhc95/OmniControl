@@ -66,6 +66,8 @@
 
         <!-- The settings page's confirm; the picker's keys are in the Keyboard shortcuts of the pages that open it (PickerModel.KeyHelp) -->
         <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="12,6" IsVisible="{Binding IsEditingOptions}">
+            <Button Classes="pill" Content="Back" HorizontalAlignment="Left" Focusable="False" IsVisible="{Binding CanGoBack}"
+                    Click="OnBackClick" ToolTip.Tip="Back to the list without choosing (Esc, Alt+Left)" />
             <Button Grid.Column="1" Classes="scope usebtn" Classes.picked="{Binding OnUseButton}" Tag="scope" Content="{Binding UseText}" IsVisible="{Binding IsEditingOptions}"
                     HorizontalAlignment="Right" Focusable="False" Click="OnUseClick" />
         </Grid>

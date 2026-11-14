@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.Input;
+﻿using CommunityToolkit.Mvvm.Input;
 
 namespace OmniControl.App.Fx;
 
@@ -131,7 +131,7 @@ public sealed partial class FxChainViewModel
         foreach (var slot in _clipboard.Paste())
         {
             _chain.Insert(at, slot);
-            var vm = Track(new FxSlotViewModel(slot, SaveChain));
+            var vm = Track(new FxSlotViewModel(slot, SaveChain, _readings, this));
             Slots.Insert(at++, vm);
             added.Add(vm);
         }

@@ -32,7 +32,7 @@ public static class ValueWheel
     private static void OnComboWheel(ComboBox combo, PointerWheelEventArgs e)
     {
         if (combo.IsDropDownOpen || combo.ItemCount == 0) return;
-        combo.SelectedIndex = Math.Clamp(Math.Max(0, combo.SelectedIndex) + (e.Delta.Y > 0 ? -1 : 1), 0, combo.ItemCount - 1);
+        ComboKeys.Step(combo, e.Delta.Y > 0 ? -1 : 1);
         e.Handled = true;
     }
 }

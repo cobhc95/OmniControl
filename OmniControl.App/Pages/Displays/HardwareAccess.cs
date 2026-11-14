@@ -57,7 +57,7 @@ internal sealed class LaptopAccess : IHardwareAccess
     {
         if (!_laptop.GetBrightness(out var level, out var max).Success || max <= 0) return MonitorCapabilities.None;
         var features = new Dictionary<byte, VcpValue> { [VcpCode.Brightness] = new((uint)level, (uint)max, 2, false) };
-        return new MonitorCapabilities(features, Array.Empty<VcpChoice>(), Array.Empty<VcpChoice>());
+        return new MonitorCapabilities(features, new Dictionary<byte, IReadOnlyList<VcpChoice>>());
     }
 
     public int? ReadPercent(byte code) =>

@@ -70,6 +70,7 @@ public sealed partial class VolumePageViewModel
             rows.Add(row);
         }
         RemoveMissing(_combos, seen);
+        SyncHotkeyAvailability();
         return rows;
     }
 
@@ -94,7 +95,10 @@ public sealed partial class VolumePageViewModel
     private async Task ForgetComboAsync(string key)
     {
         if (_mixer.CombinedOf(key) is not { } c) return;
-        if (!await _ask(new EngineMessage($"Remove {c.Name}?", "Programs on it go back to the master; apps using its cable hear nothing.", "Remove"))) return;
+        var line = c.Kind == CombinedKind.Microphones
+            ? $"Apps using {RecordingNameFor(c) ?? "its cable"} hear nothing."
+            : "Programs on it go back to the master; apps using its cable hear nothing.";
+        if (!await _ask(new EngineMessage($"Remove {c.Name}?", line, "Remove"))) return;
         _mixer.RemoveCombined(key);
         _report($"Removed {c.Name}");
     }

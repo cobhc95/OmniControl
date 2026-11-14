@@ -2,28 +2,81 @@ using Avalonia.Controls;
 using CommunityToolkit.Mvvm.Input;
 using OmniControl.App.Audio;
 using OmniControl.App.Audio.Engine;
+using OmniControl.App.Services;
 using OmniControl.Core.Engine.Apo;
 
 namespace OmniControl.App.Pages.Volume;
 
 /// <summary>
-/// The global sound mode: storing a pick, the panel's cards with each mode's status on this PC, the install and fix buttons that used
-/// to sit on the per-row mode cards (Equalizer APO's installer and Device Selector, OmniControl APO's advanced install, VB-CABLE), the
-/// search card and Fast mode's per-program Test.
+/// The global sound mode and the numbered setups: storing a pick (Full control restores its remembered setup, leaving it remembers the
+/// live one), the setup table and the badge, the panel's cards with each mode's status on this PC, the install and fix buttons that
+/// used to sit on the per-row mode cards (Equalizer APO's installer and Device Selector, OmniControl APO's advanced install, VB-CABLE),
+/// the master's Equalizer APO fix, the search card and Fast mode's per-program Test.
 /// </summary>
 public sealed partial class VolumePageViewModel
 {
+    /// <summary>
+    /// A mode was picked (the panel, the search card, the hotkey, a Switch link). Choosing Full control restores the remembered Full
+    /// control setup, or setup 1 with one line saying why when it can't run here; leaving it remembers the live setup.
+    /// </summary>
     private void SetSoundMode(SoundMode mode)
     {
-        _mixer.SetSoundMode(mode);
+        if (ModeWhy(mode) is { } why)
+        {
+            _report(why); // a mode that can't work here is never switched to (its card, the search card, the hotkey and every Switch link agree)
+            SyncSoundMode();
+            return;
+        }
+        var from = _mixer.SoundMode;
+        if (mode == SoundModes.Full && from != SoundModes.Full)
+        {
+            var (number, note) = SoundModes.RestoreSetup(_mixer.FullSetup, _engine.Help);
+            _mixer.ApplySetup(number, FoundCables);
+            if (note is not null) _report(note);
+        }
+        else if (mode != SoundModes.Full && from == SoundModes.Full)
+        {
+            _mixer.RememberFullSetup(SoundModes.SetupToRemember(SoundModes.SetupNumber(_engine.Help), _mixer.CablesKeptFree));
+            _mixer.ApplySetup(SoundModes.FastSetup, FoundCables);
+        }
+        else _mixer.SetSoundMode(mode);
         SyncModes();
+    }
+
+    /// <summary>A row of the setup table: the setup is applied in one step (Fast mode through the mode switch, so the Full control setup is remembered).</summary>
+    private void ChooseSetup(int number)
+    {
+        if (number == SoundModes.FastSetup)
+        {
+            SetSoundMode(SoundModes.Fast);
+            return;
+        }
+        _mixer.ApplySetup(number, FoundCables);
+        SyncModes();
+    }
+
+    private IReadOnlyList<Core.Engine.FoundCable> FoundCables => _modes.Current?.Found ?? Array.Empty<Core.Engine.FoundCable>();
+
+    /// <summary>The setup table, kept in step with the engine.</summary>
+    private void ShowSetupTable()
+    {
+        _setupTable.Sync(_engine.Help);
+        _showTable(_setupTable);
     }
 
     private void SyncSoundMode()
     {
-        SoundMode.Sync(_mixer.SoundMode, _modes.StatusOf, ActionsFor);
+        SoundMode.Sync(_mixer.SoundMode, _modes.StatusOf, ActionsFor, ModeWhy);
+        SyncSetup();
         if (_soundModeCard.Index != IndexOf(_mixer.SoundMode)) _soundModeCard.Index = IndexOf(_mixer.SoundMode);
         _soundModeCard.Refresh();
+    }
+
+    /// <summary>The badge and the table follow the live setup (<see cref="SoundModes.SetupNumber"/>).</summary>
+    private void SyncSetup()
+    {
+        SoundMode.SyncSetup(SoundModes.SetupNumber(_engine.Help));
+        _setupTable.Sync(_engine.Help);
     }
 
     /// <summary>The search card's preview: the current mode's first status line.</summary>
@@ -41,18 +94,26 @@ public sealed partial class VolumePageViewModel
         _ => CableActions(),
     };
 
+    /// <summary>Full control's card: install or more cables, remove, and Help (the setup table).</summary>
     private IReadOnlyList<ModeCardAction> CableActions()
     {
-        if (_modes.Current is not { } support) return Array.Empty<ModeCardAction>();
-        return support.Cables.Count == 0
-            ? new[] { CableSetupAction() }
+        if (_modes.Current is not { } support) return new[] { HelpAction };
+        return !SoundModes.CableInstalled(support)
+            ? new[] { CableSetupAction(), HelpAction }
             : new[]
             {
                 MoreCablesAction(),
                 new ModeCardAction("Remove VB-CABLE", "Opens VB-CABLE's own setup (Remove Driver) or tells where to remove it",
                     new AsyncRelayCommand(() => RunSetupAsync(SoundModes.Full, null, _installer.RemoveCableAsync()))),
+                HelpAction,
             };
     }
+
+    /// <summary>Help on the Full control card: the table of setups (the same as the badge).</summary>
+    private ModeCardAction HelpAction => _help ??= new ModeCardAction("Help", "The ways to set up the master and the cables, and which one runs now",
+        new RelayCommand(ShowSetupTable));
+
+    private ModeCardAction? _help;
 
     /// <summary>
     /// Fast mode's Equalizer APO buttons: Choose devices whenever Equalizer APO is installed (its Device Selector registers it, turns the
@@ -70,10 +131,7 @@ public sealed partial class VolumePageViewModel
                 ChooseDevicesCommand, Main: missing));
         var none = !apo.UpstreamInstalled && !apo.AnyInstalled;
         if (missing && (none || apo.UpstreamInstalled && apo.UpstreamConfigFolder is null))
-            actions.Add(new("Install Equalizer APO", EngineInstaller.EqualizerApoSetup is null
-                    ? "Opens Equalizer APO's download page"
-                    : "Runs Equalizer APO's own installer (administrator)",
-                new AsyncRelayCommand(InstallEqualizerApoAsync), Main: true));
+            actions.Add(InstallApoAction);
         if (none && EngineInstaller.ForkBuilt)
         {
             actions.Add(new("Advanced install", "Installs OmniControl APO (administrator)", new AsyncRelayCommand(InstallForkAsync)));
@@ -90,6 +148,30 @@ public sealed partial class VolumePageViewModel
 
     private IAsyncRelayCommand? _chooseDevices;
     private ModeCardAction? _micDevices;
+    private ModeCardAction? _speakerDevices;
+    private ModeCardAction? _cableDevices;
+    private ModeCardAction? _installApo;
+
+    /// <summary>Install Equalizer APO: its own installer when it was placed next to the app, else its download page.</summary>
+    private ModeCardAction InstallApoAction => _installApo ??= new("Install Equalizer APO", EngineInstaller.EqualizerApoSetup is null
+            ? "Opens Equalizer APO's download page"
+            : "Runs Equalizer APO's own installer (administrator)",
+        new AsyncRelayCommand(InstallEqualizerApoAsync), Main: true);
+
+    /// <summary>
+    /// The master's step when Equalizer APO can't run it on the speakers in Full control: Choose devices when its Device Selector fixes
+    /// it (tick the speakers on its Playback tab), Install when it is not installed; null when nothing is missing or nothing here fixes it.
+    /// </summary>
+    private ModeCardAction? MasterApoFix()
+    {
+        if (_mixer.SoundMode != SoundModes.Full || _engine.MasterFacts.ApoWhy is null) return null;
+        var apo = _modes.Current?.Apo ?? ApoState.None;
+        if (SoundModes.DeviceSelectorFixes(apo))
+            return _speakerDevices ??= new ModeCardAction("Choose devices",
+                "Opens Equalizer APO's Device Selector: tick your speakers on its Playback tab (administrator). A restart may be needed.",
+                ChooseDevicesCommand);
+        return apo.UpstreamInstalled ? null : InstallApoAction;
+    }
 
     /// <summary>
     /// A microphone row's step when Equalizer APO can't run its effects in Fast mode: Choose devices when its Device Selector fixes it
@@ -104,13 +186,16 @@ public sealed partial class VolumePageViewModel
             ChooseDevicesCommand);
     }
 
-    /// <summary>Fast mode's Test on a playing program: records it, mutes the original both ways, measures the delay; always restores.</summary>
+    /// <summary>The Test on a playing program (either mode): records it, silences the original each way in turn, measures the delay; always restores.</summary>
     private async Task TestCaptureAsync(VolumeRow row)
     {
-        row.TestNote = "Testing… keep the program playing";
+        var running = SoundModes.TestRunning();
+        row.TestNote = running.Brief;
+        row.TestTip = running.Full;
         var result = await _engine.TestAsync(row.Key);
-        row.TestNote = result;
-        _report(result);
+        row.TestNote = result.Brief;
+        row.TestTip = result.Full;
+        _report(StatusMessage.Compose(result.Brief, result.Full));
     }
 
     /// <summary>
@@ -172,6 +257,11 @@ public sealed partial class VolumePageViewModel
     private void NextSoundMode()
     {
         var next = SoundModes.Next(_mixer.SoundMode);
+        if (ModeWhy(next) is { } why)
+        {
+            _report(why);
+            return;
+        }
         SetSoundMode(next);
         var caution = _modes.StatusOf(next).FirstOrDefault(s => s.IsCaution);
         _report(caution is null ? $"Sound mode: {next.Name}" : $"Sound mode: {next.Name} ({caution.Text})");

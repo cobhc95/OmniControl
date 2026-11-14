@@ -13,7 +13,11 @@ public partial class CombineWindow : Window
         InitializeComponent();
         AddHandler(KeyDownEvent, (_, e) => { if (e.Key == Key.Escape) { Close(false); e.Handled = true; } }, RoutingStrategies.Tunnel);
         MemberList.CloseRequested += () => Close(false);
-        Opened += (_, _) => NameBox.Focus();
+        Opened += (_, _) =>
+        {
+            NameBox.Focus();
+            NameBox.SelectAll(); // a suggested name ("Combined microphone") is replaced by typing
+        };
     }
 
     /// <summary>Shows the window over the main window and waits for the answer.</summary>

@@ -20,7 +20,7 @@
                         <TextBlock Text="{Binding Title}" VerticalAlignment="Center" Margin="0,0,24,0" TextWrapping="Wrap"
                                    MaxWidth="{StaticResource ParamLabelMaxWidth}" ToolTip.Tip="{Binding Title}" />
                         <Slider Grid.Column="1" Minimum="0" Maximum="{Binding Maximum}" Value="{Binding Position}"
-                                pages:SliderReset.Value="{Binding ResetPosition}" />
+                                pages:SliderReset.Value="{Binding ResetPosition}" Classes="thick" />
                         <pages:NumberText Grid.Column="2" Value="{Binding Plain}" Minimum="{x:Static vm:PluginParamItem.TypedMin}"
                                           Maximum="{x:Static vm:PluginParamItem.TypedMax}" Decimals="{x:Static vm:PluginParamItem.TypedDecimals}"
                                           Margin="8,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Center"

@@ -4,11 +4,23 @@
              xmlns:pages="using:OmniControl.App.Pages"
              x:Class="OmniControl.App.Pages.Volume.WiringTable"
              x:DataType="vm:VolumeGroup">
-    <!-- One Wiring table (Outputs or Microphones): the group's header, the column titles (Source | Plays on or Records from | Cable, in
-         the rows' shared columns, set in by a compact row's padding and border), then the rows (WiringRowView) -->
+    <!-- One Wiring table (Outputs or Microphones): the group's header with its action at the right (Microphones: "+ Combine
+         microphones", Button.pill.cardaction.main; dimmed with its reason while it can't work), the column titles (Source | Plays on or Records from | Cable, in the rows' shared
+         columns, set in by a compact row's padding and border), then the rows (WiringRowView) -->
     <Border Classes="groupPanel">
         <StackPanel Spacing="6">
-            <pages:GroupHeader />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource WiringColumnGap}">
+                <pages:GroupHeader />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource MenuGap}" VerticalAlignment="Center" IsVisible="{Binding HasTool}">
+                    <!-- Dimmed (with the reason as its tooltip) while a new combined device can't work now; the Switch link names the mode that allows it -->
+                    <Button Tag="scope" Classes="link small" IsVisible="{Binding ToolGate.CanSwitch}" Command="{Binding ToolGate.SwitchCommand}"
+                            ToolTip.Tip="{Binding ToolGate.Reason}">
+                        <TextBlock Text="{Binding ToolGate.SwitchLabel}" />
+                    </Button>
+                    <Button Tag="grouptool" Classes="pill cardaction main" IsEnabled="{Binding ToolGate.IsAvailable}"
+                            Content="{Binding Tool.Label}" Command="{Binding Tool.Command}" ToolTip.Tip="{Binding ToolTipText}" ToolTip.ShowOnDisabled="True" />
+                </StackPanel>
+            </Grid>
             <Grid ColumnSpacing="{StaticResource WiringColumnGap}" Margin="{StaticResource WiringHeaderInset}" IsVisible="{Binding IsExpanded}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" SharedSizeGroup="WiringSource" />

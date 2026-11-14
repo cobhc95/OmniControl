@@ -1,0 +1,33 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:OmniControl.App.Pages.Displays"
+        x:Class="OmniControl.App.Pages.Displays.DisplayPresetsWindow"
+        x:DataType="vm:DisplayPresetsModel"
+        Title="Display presets" Icon="avares://OmniControl/Assets/OmniControl.ico" Width="420" MinWidth="340" SizeToContent="Height" MaxHeight="520"
+        CanResize="False" Background="{DynamicResource BrushBackground}" WindowStartupLocation="CenterOwner">
+    <!-- A name box with Save current (or Rename), one line of note under it, the saved presets (Apply, Rename, Delete), Close. Esc closes. -->
+    <StackPanel Margin="12" Spacing="8">
+        <TextBlock Classes="title" Text="Display presets" />
+        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+            <TextBox x:Name="NameBox" Classes="field" Watermark="Name (e.g. Evening)" Text="{Binding Name}" MaxLength="64" />
+            <Button Grid.Column="1" Classes="pill" Tag="scope" Content="{Binding SaveText}" Command="{Binding SaveCommand}" VerticalAlignment="Center"
+                    ToolTip.Tip="Keeps every digital picture setting of every display, and the desktop's saturation and invert, under this name" />
+            <Button Grid.Column="2" Classes="pill" Tag="scope" Content="Cancel" Command="{Binding CancelRenameCommand}" IsVisible="{Binding IsRenaming}" VerticalAlignment="Center" />
+        </Grid>
+        <TextBlock Classes="statusline" Text="{Binding Note}" IsVisible="{Binding HasNote}" TextWrapping="Wrap" />
+        <TextBlock Classes="hint" Text="No presets saved yet." IsVisible="{Binding HasNone}" />
+        <ListBox Classes="rows" ItemsSource="{Binding Rows}" MaxHeight="300">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:DisplayPresetRow">
+                    <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="6">
+                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}" />
+                        <Button Grid.Column="1" Classes="pill" Tag="scope" Content="Apply" Command="{Binding ApplyCommand}" />
+                        <Button Grid.Column="2" Classes="pill" Tag="scope" Content="Rename" Command="{Binding RenameCommand}" />
+                        <Button Grid.Column="3" Classes="pill" Tag="scope" Content="Delete" Command="{Binding DeleteCommand}" />
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+        <Button Classes="primary" Content="Close" HorizontalAlignment="Right" Click="OnCloseClick" />
+    </StackPanel>
+</Window>

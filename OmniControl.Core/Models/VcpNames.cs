@@ -19,6 +19,25 @@ public static class VcpNames
         [0x0B] = "User 1", [0x0C] = "User 2", [0x0D] = "User 3",
     };
 
+    // Display mode (0xDC) and speaker mute (0x8D), MCCS 2.2a; a monitor's own list decides which of them it offers.
+    private static readonly Dictionary<uint, string> Modes = new()
+    {
+        [0x00] = "Standard", [0x01] = "Productivity", [0x02] = "Mixed", [0x03] = "Movie", [0x04] = "User defined",
+        [0x05] = "Games", [0x06] = "Sports", [0x07] = "Professional", [0x08] = "Standard (low power)",
+    };
+
+    private static readonly Dictionary<uint, string> Mutes = new() { [0x01] = "Muted", [0x02] = "Not muted" };
+
+    /// <summary>The name of one value of a choice feature (<see cref="VcpKind.Choice"/>), by its VCP code.</summary>
+    public static string Of(byte code, uint value) => code switch
+    {
+        VcpCode.InputSource => Input(value),
+        VcpCode.ColorPreset => Preset(value),
+        0xDC => Modes.TryGetValue(value, out var mode) ? mode : $"Mode 0x{value:X2}",
+        0x8D => Mutes.TryGetValue(value, out var mute) ? mute : $"Value 0x{value:X2}",
+        _ => $"Value 0x{value:X2}",
+    };
+
     public static string Input(uint value) => Inputs.TryGetValue(value, out var name) ? name : $"Input 0x{value:X2}";
 
     public static string Preset(uint value) => Presets.TryGetValue(value, out var name) ? name : $"Preset 0x{value:X2}";

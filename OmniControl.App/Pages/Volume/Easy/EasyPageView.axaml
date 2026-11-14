@@ -1,0 +1,69 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pages="using:OmniControl.App.Pages"
+             xmlns:vm="using:OmniControl.App.Pages.Volume"
+             xmlns:easy="using:OmniControl.App.Pages.Volume.Easy"
+             x:Class="OmniControl.App.Pages.Volume.Easy.EasyPageView"
+             x:DataType="easy:EasyViewModel">
+    <!-- The Easy page (docs/mockups/easy-mode.html section 5): the "Everything" card (big master level, Mute, Sound drawer), one card with the
+         apps and microphones and "Add program", and the footer (what is set up, Set up again, Fix it). No cables, methods or wiring here. -->
+    <StackPanel Spacing="6" Grid.IsSharedSizeScope="True">
+        <Border Classes="groupPanel">
+            <StackPanel Spacing="6" Margin="0,4">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <TextBlock Text="Everything" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="all your apps and speakers" Classes="hint small" VerticalAlignment="Center" />
+                </Grid>
+                <Grid ColumnSpacing="8" DataContext="{Binding Master}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="EasyMute" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="EasySound" />
+                    </Grid.ColumnDefinitions>
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" DataContext="{Binding Row}" VerticalAlignment="Center">
+                        <Slider Classes="thick" Minimum="0" Maximum="100" Value="{Binding Volume}" pages:SliderReset.Value="100" ToolTip.Tip="{Binding VolumeTip}" />
+                        <pages:NumberText Grid.Column="1" Value="{Binding Volume}" Minimum="0" Maximum="100" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Volume}" Classes="muted" MinWidth="28" TextAlignment="Right" VerticalAlignment="Center" />
+                        </pages:NumberText>
+                    </Grid>
+                    <Button Grid.Column="1" Tag="grouptool" Classes="scope mute" Classes.on="{Binding Row.Muted}" Content="M" Command="{Binding Row.ToggleMuteCommand}"
+                            ToolTip.Tip="Mute" VerticalAlignment="Center" />
+                    <Button Grid.Column="2" Tag="grouptool" Classes="pill" Classes.custom="{Binding Sound.IsOpen}" Command="{Binding Sound.ToggleCommand}"
+                            Content="Sound ▾" ToolTip.Tip="Presets and five sliders for everything" VerticalAlignment="Center" />
+                </Grid>
+                <Panel IsVisible="{Binding Master.Sound.IsOpen}"><easy:EasyDrawerView DataContext="{Binding Master}" /></Panel>
+            </StackPanel>
+        </Border>
+
+        <Border Classes="groupPanel">
+            <StackPanel Spacing="6" Margin="0,4">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <TextBlock Text="Apps and microphones" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <vm:AddProgramButton Grid.Column="1" DataContext="{Binding AddProgram}" />
+                </Grid>
+                <TextBlock Classes="hint" Text="Nothing is playing. Apps appear here when they do." IsVisible="{Binding !HasApps}" TextWrapping="Wrap" />
+                <ItemsControl ItemsSource="{Binding Apps}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><StackPanel Spacing="6" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="easy:EasyRow">
+                            <easy:EasyRowView />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
+        <!-- The footer: what is set up on the left; Set up again and Fix it on the right (it wraps when the window is narrow) -->
+        <WrapPanel Classes="toolbar">
+            <Border Classes="tag good" IsVisible="{Binding IsSetUp}" VerticalAlignment="Center"><TextBlock Text="Set up" /></Border>
+            <Border Classes="tag" IsVisible="{Binding !IsSetUp}" VerticalAlignment="Center"><TextBlock Text="Not set up yet" /></Border>
+            <TextBlock Text="{Binding SetUpText}" Classes="muted small" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <Button Tag="grouptool" Classes="pill" Content="Set up again" Command="{Binding SetUpAgainCommand}" />
+            <Button Tag="grouptool" Classes="pill" Content="Something not working? Fix it" Command="{Binding FixItCommand}"
+                    ToolTip.Tip="Checks the rows above and starts the step that is missing, or says what to do" />
+        </WrapPanel>
+        <TextBlock Classes="hint small" Text="{Binding FixNote}" IsVisible="{Binding HasFixNote}" TextWrapping="Wrap" />
+    </StackPanel>
+</UserControl>

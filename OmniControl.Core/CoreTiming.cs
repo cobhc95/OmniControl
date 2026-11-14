@@ -52,13 +52,41 @@ public static class CoreTiming
     public const double PipeDriftShiftPerMs = 0.0002, PipeDriftMaxShift = 0.005, PipeDriftSmoothing = 0.05;
 
     /// <summary>
+    /// The queue a capture of a pipe aims to keep (each capture runs on its own clock and is read through the same drift correction
+    /// as an extra device): the prefill, so a capture waits no longer than it did before drift correction.
+    /// </summary>
+    public const int PipeCaptureDriftTargetMs = PipePrefillMs;
+
+    /// <summary>
     /// A touchpad frame arriving this long after the previous one starts a new touch: a lost "fingers lifted" report never leaves a
     /// gesture waiting (a precision touchpad reports at least every 10-20 ms while fingers are down).
     /// </summary>
     public const int TrackpadTouchGapMs = 250;
 
+    /// <summary>
+    /// A tap on the touchpad: every finger lifts within <see cref="TrackpadTapMaxMs"/> of the first touching, the fingers of one tap land
+    /// within <see cref="TrackpadTapLandMs"/> of each other, and a second tap of the same finger count within
+    /// <see cref="TrackpadDoubleTapMs"/> of the first is a double tap.
+    /// </summary>
+    public const int TrackpadTapMaxMs = 250, TrackpadTapLandMs = 80, TrackpadDoubleTapMs = 400;
+
     /// <summary>How long stopping the touchpad watcher waits for its thread to unregister and close (it calls nothing slow).</summary>
     public const int TrackpadStopWaitMs = 1000;
+
+    /// <summary>
+    /// The takeover's safety net (<c>ShellSurfaceGuard</c>): after a gesture whose Windows action is supposed to be off, a panel that
+    /// Windows' action opens and that comes to the front within <see cref="TrackpadSurfaceWatchMs"/> is closed with Esc; at most
+    /// <see cref="TrackpadSurfaceDismissLimit"/> are closed per minute, so a mistake can never turn into a stream of key presses.
+    /// </summary>
+    public const int TrackpadSurfaceWatchMs = 700, TrackpadSurfaceDismissLimit = 20;
+
+    /// <summary>
+    /// While OmniControl keeps a Windows touchpad gesture off, it turns it off again every time something turns it back on, never giving
+    /// up, but at most once per <see cref="TrackpadTakeoverReapplyGapMs"/> (a program that keeps writing it back cannot start a tight
+    /// loop; the next look turns it off again). The log keeps at most <see cref="TrackpadTakeoverReapplyLogLimit"/> of those lines per
+    /// gesture within <see cref="TrackpadTakeoverReapplyLogWindowMs"/>.
+    /// </summary>
+    public const int TrackpadTakeoverReapplyGapMs = 1000, TrackpadTakeoverReapplyLogLimit = 5, TrackpadTakeoverReapplyLogWindowMs = 60_000;
 
     /// <summary>How long an elevated helper (the APO installer) may run before OmniControl stops waiting for it.</summary>
     public const int ElevatedHelperTimeoutMs = 120_000;

@@ -32,7 +32,7 @@ public static partial class CoreAudio
                         c2.GetProcessId(out var pid);
                         c2.GetState(out var state);
                         if (pid == 0 || state == 2) continue;
-                        result.Add(new AudioSession((int)pid, deviceId, state, vol, ctl as IChannelAudioVolume, ctl as IAudioMeterInformation));
+                        result.Add(new AudioSession((int)pid, deviceId, state, c2, vol, ctl as IChannelAudioVolume, ctl as IAudioMeterInformation));
                     }
                 }
                 catch { /* skip a device that misbehaves */ }

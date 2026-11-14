@@ -1,32 +1,98 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mouse="using:OmniControl.App.Pages.Mouse"
+             xmlns:ctl="using:OmniControl.App.Controls"
              x:Class="OmniControl.App.Pages.Mouse.MouseButtonRow"
              x:DataType="mouse:MouseButtonItem"
              Classes="card" IsEnabled="{Binding Availability.IsAvailable}"
              ToolTip.Tip="{Binding Availability.Reason}" ToolTip.ShowOnDisabled="True">
-    <!-- Half-width card, one line: the input's name, and at the right a pill showing its action (quiet "Default", or accent when remapped)
-         with a cogwheel when the action has settings. The pill opens the action window; the cogwheel opens it on the settings page.
-         The shortcut or program box appears underneath only when the chosen action needs one; a trackpad gesture with an action that
-         Windows also runs shows one plain tag underneath. Greyed out with the reason when the input can't be seen (no precision touchpad). -->
+    <!-- Half-width card (docs/mockups/multiple-actions-a.html): the input's name, then its actions as chips in running order (numbered
+         when there are two or more; a click opens that action's settings with Back to the list, its x takes it away, a drag moves it),
+         a dashed "+ add action" chip, and the first action's cogwheel. At Default the quiet "Default" pill alone. The chips wrap onto at
+         most two lines (ChipFoldPanel); the rest fold into the accent "+N more" chip, which opens the list of every action (mouse first,
+         AGENTS.md rule 5: number, name, cogwheel, up/down, x). The shortcut or program box of the first action appears underneath only
+         when it needs one; a trackpad gesture with an action shows one plain tag underneath when its settings keep Windows' own gesture
+         running, or a caution tag when turning Windows' one off failed. Greyed out with the reason when the input can't be seen. -->
     <Border Classes="flash" Classes.lit="{Binding IsFlashing}" CornerRadius="8" BorderThickness="1" Padding="0">
     <Grid RowDefinitions="Auto,Auto" RowSpacing="4" Margin="0,1">
         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6">
-            <TextBlock Classes="cardlabel" Text="{Binding Label}" FontSize="11.5" LineHeight="12" Margin="0,0,4,0" />
-            <Button x:Name="Picker" Grid.Column="1" Classes="pill" Classes.custom="{Binding IsCustom}" Tag="scope" Click="OnPickerClick">
-                <TextBlock Text="{Binding Summary}" VerticalAlignment="Center" />
+            <TextBlock Classes="cardlabel" Text="{Binding Label}" FontSize="11.5" LineHeight="12" Margin="0,0,4,0" VerticalAlignment="Top" />
+            <Button x:Name="Picker" Grid.Column="1" Classes="pill" Tag="scope" Click="OnPickerClick" IsVisible="{Binding !IsCustom}">
+                <TextBlock Text="{x:Static mouse:MouseButtonItem.Summary}" VerticalAlignment="Center" />
             </Button>
-            <Button x:Name="Cog" Grid.Column="2" Classes="pill cog" Tag="scope" IsVisible="{Binding HasOptions}" Click="OnCogClick"
-                    ToolTip.Tip="Settings for this action">
+            <Panel x:Name="ChipHolder" Grid.Column="1" IsVisible="{Binding IsCustom}">
+                <FlyoutBase.AttachedFlyout>
+                    <Flyout Placement="BottomEdgeAlignedLeft" PlacementConstraintAdjustment="SlideX, FlipY, ResizeY"
+                            VerticalOffset="{StaticResource MenuOffset}" FlyoutPresenterClasses="listmenu">
+                        <StackPanel x:DataType="mouse:MouseButtonItem" KeyDown="OnListKeyDown">
+                            <TextBlock Classes="menutext" Text="Actions, in the order they run" />
+                            <ScrollViewer MaxHeight="{StaticResource OptionListMaxHeight}">
+                                <ItemsControl ItemsSource="{Binding Slots}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="mouse:ActionSlot">
+                                            <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" ColumnSpacing="{StaticResource ChipSpacing}">
+                                                <Button Classes="menurow" Click="OnListRowClick" ToolTip.Tip="Choose another action for this place">
+                                                    <StackPanel>
+                                                        <TextBlock Classes="chipnum" Text="{Binding Number}" />
+                                                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                                    </StackPanel>
+                                                </Button>
+                                                <Button Grid.Column="1" Classes="pill cog" IsVisible="{Binding HasOptions}" Click="OnListCogClick" ToolTip.Tip="Settings for this action">
+                                                    <PathIcon Data="{DynamicResource CogIcon}" Width="12" Height="12" />
+                                                </Button>
+                                                <Button Grid.Column="2" Classes="pill glyph" Content="↑" Command="{Binding MoveUpCommand}" IsEnabled="{Binding CanMoveUp}" ToolTip.Tip="Run earlier" />
+                                                <Button Grid.Column="3" Classes="pill glyph" Content="↓" Command="{Binding MoveDownCommand}" IsEnabled="{Binding CanMoveDown}" ToolTip.Tip="Run later" />
+                                                <Button Grid.Column="4" Classes="pill glyph" Content="×" Click="OnListRemoveClick" ToolTip.Tip="Remove this action" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </StackPanel>
+                    </Flyout>
+                </FlyoutBase.AttachedFlyout>
+                <ItemsControl x:Name="ChipRow" ItemsSource="{Binding Chips}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <ctl:ChipFoldPanel MaxLines="2" TailCount="2" ItemSpacing="{StaticResource ChipSpacing}" LineSpacing="{StaticResource ChipSpacing}" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.DataTemplates>
+                        <DataTemplate DataType="mouse:ActionSlot">
+                            <Button Classes="chipx walk" Tag="scope" Click="OnChipClick" ToolTip.Tip="{Binding Name}">
+                                <StackPanel>
+                                    <TextBlock Classes="chipnum" Text="{Binding Number}" IsVisible="{Binding ShowsNumber}" />
+                                    <TextBlock Text="{Binding Name}" />
+                                    <TextBlock Classes="chipdetail" Text="{Binding Parameter}" IsVisible="{Binding HasDetail}" />
+                                    <Border Tag="chipremove" Background="Transparent" ToolTip.Tip="Remove this action">
+                                        <Path Classes="glyph" Data="M6,6 L18,18 M18,6 L6,18" />
+                                    </Border>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                        <DataTemplate DataType="mouse:FoldChip">
+                            <Button Classes="chipx walk more" Tag="scope" Content="{Binding Text}" Click="OnMoreClick" ToolTip.Tip="Every action of this input" />
+                        </DataTemplate>
+                        <DataTemplate DataType="mouse:AddChip">
+                            <Button Classes="blockadd small" Tag="scope" Content="{x:Static mouse:AddChip.Text}" IsVisible="{Binding CanAdd}"
+                                    Click="OnAddClick" ToolTip.Tip="{Binding Tip}" />
+                        </DataTemplate>
+                    </ItemsControl.DataTemplates>
+                </ItemsControl>
+            </Panel>
+            <Button x:Name="Cog" Grid.Column="2" Classes="pill cog" Tag="scope" IsVisible="{Binding HasOptions}" Click="OnCogClick" VerticalAlignment="Top"
+                    ToolTip.Tip="Settings for the first action">
                 <PathIcon Data="{DynamicResource CogIcon}" Width="12" Height="12" />
             </Button>
         </Grid>
         <StackPanel Grid.Row="1" Spacing="4">
             <TextBox x:Name="ParameterBox" Classes="field" Text="{Binding Parameter, UpdateSourceTrigger=LostFocus}"
                      Watermark="{Binding Hint}" IsVisible="{Binding NeedsParameter}" />
-            <Border Classes="tag" HorizontalAlignment="Left" IsVisible="{Binding ShowsWindowsAlso}"
-                    ToolTip.Tip="{x:Static mouse:MouseButtonItem.WindowsAlsoDetail}">
+            <Border Classes="tag" HorizontalAlignment="Left" IsVisible="{Binding ShowsWindowsAlso}" ToolTip.Tip="{Binding WindowsDetail}">
                 <TextBlock Text="{x:Static mouse:MouseButtonItem.WindowsAlsoText}" />
+            </Border>
+            <Border Classes="tag caution" HorizontalAlignment="Left" IsVisible="{Binding ShowsWindowsProblem}" ToolTip.Tip="{Binding WindowsDetail}">
+                <TextBlock Text="{x:Static mouse:MouseButtonItem.WindowsProblemText}" />
             </Border>
         </StackPanel>
     </Grid>

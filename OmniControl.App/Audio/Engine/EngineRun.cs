@@ -13,6 +13,7 @@ namespace OmniControl.App.Audio.Engine;
 internal abstract class EngineRun : IDisposable
 {
     private DspChain _chain = DspChain.Empty;
+    private readonly StableDelay _delay = new();
     private bool _stopped;
 
     protected EngineRun(RunSpec spec, string name, MixerService mixer, EngineJournal journal, ChainProcessor processor)
@@ -35,7 +36,7 @@ internal abstract class EngineRun : IDisposable
     protected AudioPipe? Pipe { get; private set; }
     protected bool IsStopped => _stopped;
 
-    public EngineStatus Status { get; private set; } = new(EngineState.Waiting, "Starting effects…");
+    public EngineStatus Status { get; private set; } = new(EngineState.Waiting, "Starting effects…", Kind: StatusKind.Starting);
 
     /// <summary>The status changed (UI thread).</summary>
     public event Action<EngineRun>? Changed;
@@ -78,16 +79,25 @@ internal abstract class EngineRun : IDisposable
         StopPipe();
     }
 
-    /// <summary>Something went wrong: the original sound comes back at once and the row says why.</summary>
-    protected void Fail(string reason)
+    /// <summary>Something went wrong: the original sound comes back at once and the row says why (<paramref name="detail"/>: Windows' answer, tooltip only).</summary>
+    protected void Fail(string reason, string? detail = null, StatusKind kind = StatusKind.Stopped)
     {
         Stop();
-        SetStatus(EngineState.Failed, $"Effects stopped: {reason}. Playing without effects.");
+        SetStatus(EngineState.Failed, $"Effects stopped: {reason}. Playing without effects.", detail, kind);
     }
 
-    protected void SetStatus(EngineState state, string text)
+    /// <summary>How this run's effects run, as its row's short status names it.</summary>
+    protected RunMethod Method => Spec.Kind switch
     {
-        Status = new EngineStatus(state, text);
+        RunKind.Capture => RunMethod.Recording,
+        RunKind.Bus => RunMethod.Bus,
+        RunKind.ApoCable => RunMethod.ApoCable,
+        _ => RunMethod.Cable,
+    };
+
+    protected void SetStatus(EngineState state, string text, string? detail = null, StatusKind kind = StatusKind.Other, int? delayMs = null)
+    {
+        Status = new EngineStatus(state, text, detail, kind, Method, delayMs);
         Changed?.Invoke(this);
     }
 
@@ -97,18 +107,32 @@ internal abstract class EngineRun : IDisposable
     /// <summary>The estimated delay of the processed sound: the pipe's own plus what the plug-ins add (OmniControl does not compensate their latency).</summary>
     public int DelayMs => (Pipe?.DelayMs ?? 0) + PluginDelayMs;
 
+    /// <summary>The delay a row shows: <see cref="DelayMs"/> rounded and held steady (<see cref="StableDelay"/>); the raw figure until a first measurement exists.</summary>
+    public int SteadyDelayMs => _delay.Shown ?? StableDelay.Round(DelayMs);
+
+    /// <summary>The live meters of the effect built from <paramref name="slot"/> in the running chain (null: it has none or does not run here).</summary>
+    public DynamicsReading? ReadingOf(FxSlot slot) => Status.IsRunning && _chain.ReadoutOf(slot) is { } r ? new DynamicsReading(r.ReductionDb, r.LevelDb) : null;
+
+    /// <summary>The running chain has at least one effect that runs (an empty chain only passes the sound on).</summary>
+    protected bool HasEffects => _chain.StageCount > 0;
+
     /// <summary>The running status: <see cref="RunningText"/> with the delay.</summary>
     protected void ShowRunning()
     {
-        var text = $"{RunningText} · about {DelayMs} ms delay{EngineStatus.SkippedNote(_chain.Skipped)}";
+        var shown = _delay.Feed(DelayMs);
+        var text = $"{RunningText} · {(shown is { } ms ? $"about {ms} ms delay" : "delay not measured yet")}{EngineStatus.SkippedNote(_chain.Skipped)}";
         if (Status.IsRunning && Status.Text == text) return;
-        SetStatus(EngineState.Running, text);
+        SetStatus(EngineState.Running, text, null, StatusKind.Running, shown);
     }
 
     /// <summary>What the run does, in a few words, before its delay ("Effects running", "Playing on 2 devices").</summary>
     protected virtual string RunningText => "Effects running";
 
-    protected void ShowWaiting(string text) => SetStatus(EngineState.Waiting, text);
+    protected void ShowWaiting(string text, StatusKind kind)
+    {
+        if (Status.State == EngineState.Waiting && Status.Text == text) return; // called every tick by some runs
+        SetStatus(EngineState.Waiting, text, null, kind);
+    }
 
     /// <summary>Starts the pipe off the UI thread (Windows calls are slow), playing on the spec's outputs, and calls <paramref name="started"/> back on it.</summary>
     protected async void StartPipe(IReadOnlyList<PipeSource> sources, Action started)

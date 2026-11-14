@@ -12,8 +12,9 @@
         <Setter Property="Padding" Value="{DynamicResource ToolRowPadding}" />
         <Setter Property="TextElement.FontSize" Value="{DynamicResource ToolFontSize}" />
     </Style>
-    <!-- Fluent's switch is drawn 32 px high around its 20 px knob; the inset lets it take the toolbar's control height with the knob centred -->
-    <Style Selector="Border.toolrow ToggleSwitch">
+    <!-- Fluent's switch is drawn 32 px high around its 20 px knob; the inset lets it take the toolbar's control height with the knob centred.
+         ToggleSwitch.tool = the same small switch outside a toolbar (a group header's "Show closed") -->
+    <Style Selector="Border.toolrow ToggleSwitch, ToggleSwitch.tool">
         <Setter Property="MinWidth" Value="0" />
         <Setter Property="FontSize" Value="{DynamicResource ToolFontSize}" />
         <Setter Property="Margin" Value="{DynamicResource ToolSwitchInset}" />

@@ -4,9 +4,10 @@ using OmniControl.Core.Engine;
 namespace OmniControl.App.Audio.Engine;
 
 /// <summary>
-/// A processed or combined microphone (Full control): its recording devices are recorded and mixed, the chain runs (and, for a
-/// combined microphone, its own level and mute) and the result plays into its cable, whose recording side apps use as their
-/// microphone. The microphones themselves are not changed, so there is nothing to undo.
+/// A processed microphone (Full control) or a combined microphone (either mode): its recording devices are recorded and mixed (a
+/// combined microphone's members each at their own level and mute), the chain runs (and, for a combined microphone, its own level and
+/// mute) and the result plays into its cable, whose recording side apps use as their microphone. The microphones themselves are not
+/// changed, so there is nothing to undo.
 /// </summary>
 internal sealed class MicRun : EngineRun
 {
@@ -17,14 +18,18 @@ internal sealed class MicRun : EngineRun
         : base(spec, name, mixer, journal, new ChainProcessor(level, gateOpen: true))
     {
         _level = level;
-        RunningText = $"Apps hear it on {cableName}";
+        RunningText = SoundModes.AppsRecordFrom(cableName);
     }
 
     public override void Start()
     {
         ApplyLevel();
-        ShowWaiting("Starting");
-        StartPipe(Spec.Sources.Select(PipeSource.Recording).ToList(), ShowRunning);
+        ShowWaiting("Starting", StatusKind.Starting);
+        StartPipe(Spec.Sources.Select(PipeSource.Recording).ToList(), () =>
+        {
+            ApplyLevel(); // the members' gains need the pipe
+            ShowRunning();
+        });
     }
 
     protected override string RunningText { get; }
@@ -33,7 +38,9 @@ internal sealed class MicRun : EngineRun
 
     private void ApplyLevel()
     {
-        if (Mixer.CombinedOf(Key) is { } combo) _level?.Set(combo.Volume, 0, combo.Muted);
+        if (Mixer.CombinedOf(Key) is not { } combo) return;
+        _level?.Set(combo.Volume, 0, combo.Muted);
+        for (var i = 0; i < Spec.Sources.Count; i++) Pipe?.SetSourceGain(i, combo.GainOf(Spec.Sources[i]));
     }
 
     protected override void Undo() { }

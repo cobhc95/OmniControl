@@ -76,7 +76,7 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
     });
 
     /// <summary>The mode, how it runs this chain and what the effects engine really does with it (the line the Volume row shows as its status's tooltip).</summary>
-    public string EngineText => _engine.StatusOf(_key).LineFor(_mixer.SoundMode, _key);
+    public string EngineText => _engine.StatusOf(_key).LineFor(_mixer.SoundMode, _engine.MethodFor(_key));
 
     /// <summary>A program in Fast mode whose sound can't be recorded on this PC: the reason, as on its Volume row (null: none).</summary>
     public string? CaptureCaution => IsProgram ? _modes.ProgramCaptureCaution : null;
@@ -119,7 +119,7 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>The chain as the engine that runs this row in the current sound mode plays it, with the row's on/off.</summary>
-    private void ShowChain() => Analysis.Show(Chain.Effects, _mixer.SoundMode.MethodFor(_key).Engine, FxOn);
+    private void ShowChain() => Analysis.Show(Chain.Effects, _engine.MethodFor(_key).Engine, FxOn);
 
     private void OnMixerUpdated()
     {

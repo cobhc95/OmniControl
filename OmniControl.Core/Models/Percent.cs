@@ -7,6 +7,14 @@ public static class Percent
 
     public static int Clamp(int value) => Math.Clamp(value, Min, Max);
 
+    /// <summary>The top of a level that may boost (a combined microphone's member: 0-200 %, 100 = as recorded).</summary>
+    public const int BoostMax = 200;
+
+    public static int ClampBoost(int value) => Math.Clamp(value, Min, BoostMax);
+
+    /// <summary>A percent (clamped to 0-<see cref="BoostMax"/>) as a gain factor: 100 = 1.</summary>
+    public static float ToGain(int percent) => ClampBoost(percent) / (float)Max;
+
     /// <summary>A raw value as a whole 0-100 share of its maximum (0 when the maximum is unknown); rounds down.</summary>
     public static int Of(long current, long maximum) => maximum <= 0 ? 0 : (int)(current * Max / maximum);
 

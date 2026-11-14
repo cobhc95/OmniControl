@@ -2,16 +2,24 @@ using OmniControl.App.Hotkeys;
 
 namespace OmniControl.App.Mouse;
 
+/// <summary>How a layer action moves its family's layer.</summary>
+public enum LayerMove { Next, Previous, Reset, Switch, Hold }
+
+/// <summary>A layer action read from its id: whose layer it moves (mouse or trackpad), how, and to which layer (Switch and Hold).</summary>
+public sealed record LayerAction(InputFamily Family, LayerMove Move, int Layer = 0);
+
 /// <summary>
 /// Every action a mouse button can be given, in one table. An action is stored as text: "id", or "id:parameter" for
 /// "keys:Ctrl+Shift+T", "run:C:\app.exe", "folder:C:\Docs" and "omni:&lt;hotkey id&gt;" (any OmniControl hotkey action).
+/// Layer actions are "layer.next", "layer.previous", "layer.reset", "layer.set.N" and "layer.hold.N" for the mouse's layers, and the same
+/// with "trackpad." in front for the trackpad's.
 /// </summary>
 public static class MouseActionCatalog
 {
     public const string Default = "default", Disabled = "disabled", Keys = "keys", Run = "run", Folder = "folder", Omni = "omni";
-    public const string NextLayer = "layer.next", PreviousLayer = "layer.previous", ResetLayer = "layer.reset";
     public const string CycleCursor = "cursor.cycle", WebSearch = "edit.websearch", Magnifier = "desktop.magnifier";
-    private const string HoldLayer = "layer.hold.", SetLayer = "layer.set.";
+    private const string LayerPrefix = "layer.", TrackpadPrefix = "trackpad.";
+    private const string NextMove = "next", PreviousMove = "previous", ResetMove = "reset", SwitchMove = "set.", HoldMove = "hold.";
 
     // Actions that change how the mouse behaves while a button is held or until it is pressed again (see MouseModes).
     public const string SlowHold = "cursor.slow", SlowToggle = "cursor.slowtoggle", MoveAsScroll = "scroll.movement";
@@ -20,7 +28,7 @@ public static class MouseActionCatalog
 
     private const string Basic = "Basic", Clicks = "Clicks and wheel", Drag = "Click and drag", Cursor = "Cursor and scrolling", Edit = "Edit and keys",
         Desktop = "Windows and desktop", WindowControl = "Window control", Media = "Media and volume", Browser = "Browser",
-        Launch = "Launch", Layers = "Layers", Power = "Power and display", Custom = "Custom";
+        Launch = "Launch", Layers = "Layers", TrackpadLayers = "Trackpad layers", Power = "Power and display", Custom = "Custom";
 
     // A search word that finds every OmniControl action (they are listed under their own features' headings).
     private const string OmniControl = "OmniControl";
@@ -106,8 +114,6 @@ public static class MouseActionCatalog
         new("launch.control", Launch, "Control Panel", RunText: "control.exe"), new("launch.calculator", Launch, "Calculator", RunText: "calc.exe"),
         new("launch.rundialog", Launch, "Run dialog", "Win+R", Keywords: "open run command"),
 
-        new(NextLayer, Layers, "Next layer"), new(PreviousLayer, Layers, "Previous layer"), new(ResetLayer, Layers, "Back to layer 1", Keywords: "layer modifier revert"),
-
         new("power.monitoroff", Power, "Turn monitors off", Keywords: "monitor power saving display sleep"), new("power.screensaver", Power, "Start screensaver"),
     };
 
@@ -140,8 +146,6 @@ public static class MouseActionCatalog
                     MouseOptions.ScrollDistance, MouseOptions.ScrollAmount, MouseOptions.ScrollDirection,
                     MouseOptions.ReverseVertical, MouseOptions.ReverseSideways, MouseOptions.ScrollSticky, MouseOptions.ScrollPointer,
                 };
-            case NextLayer or PreviousLayer: return new[] { MouseOptions.Wrap };
-            case ResetLayer: return null;
             case WebSearch: return new[] { MouseOptions.Engine, MouseOptions.CustomAddress };
             case "scrollwin.up" or "scrollwin.down" or "scrollwin.left" or "scrollwin.right": return MouseOptions.Common.Append(MouseOptions.ByPages).ToList();
         }
@@ -153,12 +157,18 @@ public static class MouseActionCatalog
         return repeatable ? MouseOptions.Common : null;
     }
 
-    /// <summary>The action's own settings plus the "also send" extras, except where they make no sense (do nothing, default, layers).</summary>
-    private static IReadOnlyList<ActionOption>? WithAlongside(string id, IReadOnlyList<ActionOption>? own)
+    /// <summary>
+    /// The action's own settings plus the "also send" extras, except where they make no sense (do nothing, default, and for a button the
+    /// layer actions). A trackpad gesture also gets "also let Windows do its own gesture" on a layer action: it decides whether Windows'
+    /// gesture is turned off.
+    /// </summary>
+    private static IReadOnlyList<ActionOption>? WithAlongside(string id, IReadOnlyList<ActionOption>? own, bool gesture)
     {
-        if (id is Default or Disabled || IsLayerAction(id)) return own;
+        if (id is Default or Disabled) return own;
+        var original = MouseOptions.OriginalFor(gesture);
+        if (IsLayerAction(id)) return gesture ? (own ?? Array.Empty<ActionOption>()).Append(original).ToList() : own;
         // "Send a shortcut" is already a shortcut: a second one to send alongside it would only be a longer shortcut.
-        var extras = id.StartsWith(Keys, StringComparison.Ordinal) ? new[] { MouseOptions.KeepOriginal } : MouseOptions.Alongside;
+        var extras = id.StartsWith(Keys, StringComparison.Ordinal) ? new[] { original } : new[] { original, MouseOptions.AlsoSend };
         return own is null ? extras : own.Concat(extras).ToList();
     }
 
@@ -170,19 +180,41 @@ public static class MouseActionCatalog
     /// False for an input that only fires (wheel, tilt, a trackpad gesture): the actions that last while a button is held are then
     /// greyed with the reason (<see cref="IsWhileHeld"/>), since nothing would ever end them.
     /// </param>
-    public static List<PickChoice> Choices(IEnumerable<HotkeyAction> omniActions, bool hasRelease = true)
+    /// <param name="gesture">
+    /// True for a trackpad gesture: its "also keep the original" setting says Windows' own gesture, not a click, and its layer actions move
+    /// the trackpad's layers. A mouse input's layer actions move the mouse's layers, plus "Hold for trackpad layer N" (a gesture can't be
+    /// held, so a held button is how a trackpad layer is held).
+    /// </param>
+    public static List<PickChoice> Choices(IEnumerable<HotkeyAction> omniActions, bool hasRelease = true, bool gesture = false)
     {
         string? HeldOnly(string id) => !hasRelease && IsWhileHeld(id) ? NeedsHeldButton : null;
-        var list = Fixed.Select(d => new PickChoice(d.Id, d.Category, d.Name, Keywords: d.Keywords, Options: WithAlongside(d.Id, OptionsOf(d.Id, d.Category)),
-            Unavailable: HeldOnly(d.Id))).ToList();
-        for (var layer = 2; layer <= MouseSettings.Layers; layer++)
-        {
-            list.Add(new PickChoice(SetLayer + layer, Layers, $"Switch to layer {layer}", Keywords: $"layer {layer}"));
-            list.Add(new PickChoice(HoldLayer + layer, Layers, $"Hold for layer {layer}", Keywords: $"layer {layer} modifier", Unavailable: HeldOnly(HoldLayer + layer)));
-        }
-        list.AddRange(Parameterised.Select(c => c with { Options = WithAlongside(c.Spec, c.Options) }));
+        return Build(omniActions, gesture, HeldOnly);
+    }
+
+    /// <summary>
+    /// The list for an input's second or later action (<see cref="MouseSettings.ExtraActions"/>): the same entries without Default and
+    /// Disabled, the "while held" ones greyed with the reason (only the first action can last while a button is held), and each entry's
+    /// settings trimmed to what a one-shot action keeps (<see cref="MouseOptions.OneShot"/>).
+    /// </summary>
+    public static List<PickChoice> ExtraChoices(IEnumerable<HotkeyAction> omniActions, bool gesture = false) =>
+        Build(omniActions, gesture, id => IsWhileHeld(id) ? OnlyFirstLasts : null)
+            .Where(c => c.Spec is not (Default or Disabled))
+            .Select(c => c with { Options = MouseOptions.OneShot(c.Options) })
+            .ToList();
+
+    private static List<PickChoice> Build(IEnumerable<HotkeyAction> omniActions, bool gesture, Func<string, string?> unavailable)
+    {
+        var list = Fixed.Select(d => new PickChoice(d.Id, d.Category, d.Name, Keywords: d.Keywords, Options: WithAlongside(d.Id, OptionsOf(d.Id, d.Category), gesture),
+            Unavailable: unavailable(d.Id))).ToList();
+        var layerChoices = gesture
+            ? LayerChoices(InputFamily.Trackpad, withHold: false)
+            : LayerChoices(InputFamily.Mouse, withHold: true).Concat(LayerChoices(InputFamily.Trackpad, withHold: true).Where(c => LayerActionOf(c.Spec)?.Move == LayerMove.Hold));
+        // The layer actions keep their place in the list, just before "Power and display".
+        list.InsertRange(list.FindIndex(c => c.Category == Power),
+            layerChoices.Select(c => c with { Options = WithAlongside(c.Spec, c.Options, gesture), Unavailable = unavailable(c.Spec) }));
+        list.AddRange(Parameterised.Select(c => c with { Options = WithAlongside(c.Spec, c.Options, gesture) }));
         list.AddRange(omniActions.Select(a => new PickChoice($"{Omni}:{a.Id}", a.Heading, a.Title, Keywords: $"{OmniControl} {a.Keywords}",
-            Options: WithAlongside(Omni, MouseOptions.Common))));
+            Options: WithAlongside(Omni, MouseOptions.Common, gesture))));
         return list;
     }
 
@@ -196,34 +228,99 @@ public static class MouseActionCatalog
     /// <summary>The keystroke a built-in action sends, or null when it is not a plain keystroke.</summary>
     public static string? KeyTextOf(string id) => Fixed.FirstOrDefault(d => d.Id == id)?.KeyText;
 
+    /// <summary>The keystroke an action sends: a built-in one's, or a "keys:" action's own; null when it sends none.</summary>
+    public static string? KeystrokeOf(MouseAction action) => action.Id == Keys ? action.Param : KeyTextOf(action.Id);
+
     /// <summary>The program or folder a built-in action opens, or null when it does not open one.</summary>
     public static string? RunTextOf(string id) => Fixed.FirstOrDefault(d => d.Id == id)?.RunText;
 
     /// <summary>True for the built-in actions that open a program or folder window, whether by a keystroke (Win+E) or by running it.</summary>
     public static bool OpensWindow(string id) => Fixed.FirstOrDefault(d => d.Id == id)?.Category == Launch;
 
-    /// <summary>The layer a "hold for layer N" action switches to while held, or null for any other action.</summary>
-    public static int? HeldLayer(string id) => LayerOf(id, HoldLayer);
+    /// <summary>The id of a layer action of <paramref name="family"/> ("layer.next", "trackpad.layer.set.3").</summary>
+    public static string LayerActionId(InputFamily family, LayerMove move, int layer = 0)
+    {
+        var own = (family == InputFamily.Trackpad ? TrackpadPrefix : string.Empty) + LayerPrefix;
+        return own + move switch
+        {
+            LayerMove.Next => NextMove,
+            LayerMove.Previous => PreviousMove,
+            LayerMove.Reset => ResetMove,
+            LayerMove.Switch => SwitchMove + layer,
+            _ => HoldMove + layer,
+        };
+    }
 
-    /// <summary>The layer a "switch to layer N" action jumps to, or null for any other action.</summary>
-    public static int? SwitchedLayer(string id) => LayerOf(id, SetLayer);
+    /// <summary>The layer action an id names, or null for any other action.</summary>
+    public static LayerAction? LayerActionOf(string id)
+    {
+        var family = id.StartsWith(TrackpadPrefix + LayerPrefix, StringComparison.Ordinal) ? InputFamily.Trackpad : InputFamily.Mouse;
+        var rest = family == InputFamily.Trackpad ? id[TrackpadPrefix.Length..] : id;
+        if (!rest.StartsWith(LayerPrefix, StringComparison.Ordinal)) return null;
+        rest = rest[LayerPrefix.Length..];
+        return rest switch
+        {
+            NextMove => new(family, LayerMove.Next),
+            PreviousMove => new(family, LayerMove.Previous),
+            ResetMove => new(family, LayerMove.Reset),
+            _ when Number(rest, SwitchMove) is { } n => new(family, LayerMove.Switch, n),
+            _ when Number(rest, HoldMove) is { } n => new(family, LayerMove.Hold, n),
+            _ => null,
+        };
+    }
 
-    /// <summary>True for the actions that change the mouse layer (handled by <see cref="MouseService"/> itself, not the runner).</summary>
-    public static bool IsLayerAction(string id) =>
-        HeldLayer(id) is not null || SwitchedLayer(id) is not null || id is NextLayer or PreviousLayer or ResetLayer;
+    /// <summary>A stored action, with a layer action of the other family turned into the same action for <paramref name="family"/> (options kept); any other action as it is.</summary>
+    public static string MoveLayerActionTo(InputFamily family, string spec)
+    {
+        var (id, rest) = SplitId(spec);
+        return LayerActionOf(id) is { } layer && layer.Family != family ? LayerActionId(family, layer.Move, layer.Layer) + rest : spec;
+    }
 
-    private static int? LayerOf(string id, string prefix) =>
-        id.StartsWith(prefix, StringComparison.Ordinal) && int.TryParse(id[prefix.Length..], out var n) ? n : null;
+    /// <summary>True for the actions that change a layer (handled by <see cref="MouseService"/> itself, not the runner).</summary>
+    public static bool IsLayerAction(string id) => LayerActionOf(id) is not null;
+
+    /// <summary>One family's layer actions for a picker: next, previous, back to 1, then "switch to" and (with <paramref name="withHold"/>) "hold for" per layer.</summary>
+    private static IEnumerable<PickChoice> LayerChoices(InputFamily family, bool withHold)
+    {
+        var category = family == InputFamily.Trackpad ? TrackpadLayers : Layers;
+        var noun = family == InputFamily.Trackpad ? $"{family.Noun()} layer" : "layer";
+        var wrap = new[] { MouseOptions.Wrap };
+        yield return new PickChoice(LayerActionId(family, LayerMove.Next), category, $"Next {noun}", Keywords: $"{family.Noun()} layer", Options: wrap);
+        yield return new PickChoice(LayerActionId(family, LayerMove.Previous), category, $"Previous {noun}", Keywords: $"{family.Noun()} layer", Options: wrap);
+        yield return new PickChoice(LayerActionId(family, LayerMove.Reset), category, $"Back to {noun} 1", Keywords: $"{family.Noun()} layer modifier revert");
+        for (var layer = 2; layer <= MouseSettings.Layers; layer++)
+        {
+            yield return new PickChoice(LayerActionId(family, LayerMove.Switch, layer), category, $"Switch to {noun} {layer}", Keywords: $"{family.Noun()} layer {layer}");
+            if (withHold)
+                yield return new PickChoice(LayerActionId(family, LayerMove.Hold, layer), category, $"Hold for {noun} {layer}", Keywords: $"{family.Noun()} layer {layer} modifier");
+        }
+    }
+
+    // The id and whatever follows it (":parameter", "|options"), split without parsing the options.
+    private static (string Id, string After) SplitId(string spec)
+    {
+        var end = spec.IndexOfAny(new[] { ':', '|' });
+        return end < 0 ? (spec, string.Empty) : (spec[..end], spec[end..]);
+    }
+
+    private static int? Number(string text, string prefix) =>
+        text.StartsWith(prefix, StringComparison.Ordinal) && int.TryParse(text[prefix.Length..], out var n) ? n : null;
 
     /// <summary>Why a lasting action can't be picked for an input that only fires (wheel, tilt, a trackpad gesture).</summary>
     public const string NeedsHeldButton = "Needs a button that is held down and let go";
+
+    /// <summary>True for an action that can be an input's second or later action: one that runs once (not Default, Disabled or a "while held" one).</summary>
+    public static bool CanRunLater(string id) => id is not (Default or Disabled) && !IsWhileHeld(id);
+
+    /// <summary>Why a lasting action can't be an input's second or later action: those run once, one after another.</summary>
+    public const string OnlyFirstLasts = "Only the first action can last while the button is held";
 
     /// <summary>
     /// True for the actions that last while the button is held and end on its release (they also offer a "pointer while held"
     /// setting): an input without a release must never start one.
     /// </summary>
     public static bool IsWhileHeld(string id) =>
-        id is MoveAsScroll or SlowHold or AxisXHold or AxisYHold or WindowMove or WindowSize or Reveal or DoubleDrag || HeldLayer(id) is not null;
+        id is MoveAsScroll or SlowHold or AxisXHold or AxisYHold or WindowMove or WindowSize or Reveal or DoubleDrag || LayerActionOf(id)?.Move == LayerMove.Hold;
 
     /// <summary>True for actions that change how the mouse behaves while held or until pressed again (handled by <see cref="MouseModes"/>).</summary>
     public static bool IsMode(string id) =>

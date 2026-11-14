@@ -7,9 +7,6 @@ namespace OmniControl.App.Audio;
 /// </summary>
 public sealed class EqLayout
 {
-    /// <summary>The name shown when the bands match no preset.</summary>
-    public const string CustomName = "Custom";
-
     private readonly Func<List<EqBand>> _default;
     private readonly Func<List<EqBand>?, List<EqBand>> _upgrade;
     private readonly IReadOnlyList<(string Name, Func<List<EqBand>> Bands)> _presets;
@@ -29,17 +26,10 @@ public sealed class EqLayout
 
     public GraphicBands? Graphic { get; }
 
-    /// <summary>The preset drop-down's entries: every preset, then <see cref="CustomName"/>.</summary>
-    public IReadOnlyList<string> PresetNames => _presets.Select(p => p.Name).Append(CustomName).ToList();
+    /// <summary>The names of the built-in presets, the first being the default (the user's own presets are in <see cref="UserPresetStore"/>).</summary>
+    public IReadOnlyList<string> BuiltInNames => _presets.Select(p => p.Name).ToList();
 
     public List<EqBand> Default() => _default();
     public List<EqBand> Upgrade(List<EqBand>? bands) => _upgrade(bands);
     public List<EqBand> FromPreset(string name) => _presets.First(p => p.Name == name).Bands();
-
-    /// <summary>The preset these bands match exactly (ids aside), or <see cref="CustomName"/>.</summary>
-    public string PresetNameFor(IReadOnlyList<EqBand> bands) => _presets.FirstOrDefault(p => SameSound(p.Bands(), bands)).Name ?? CustomName;
-
-    private static bool SameSound(IReadOnlyList<EqBand> a, IReadOnlyList<EqBand> b) =>
-        a.Count == b.Count && a.Zip(b).All(x => x.First.Type == x.Second.Type && x.First.Freq == x.Second.Freq && x.First.Q == x.Second.Q
-            && x.First.Gain == x.Second.Gain && x.First.Enabled == x.Second.Enabled);
 }

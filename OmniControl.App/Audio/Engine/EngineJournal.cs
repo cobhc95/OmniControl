@@ -88,8 +88,8 @@ public sealed class EngineJournal
                     s.SetPan(entry.Pan);
                 }
             }
-            var routedBack = !entry.Routed || group.Select(s => s.ProcessId).Distinct()
-                .All(pid => CoreAudio.TrySetAppDevice(pid, entry.DeviceId.Length > 0 ? entry.DeviceId : null, out _));
+            var routedBack = !entry.Routed
+                || CoreAudio.TrySetProgramDevice(group.Select(s => s.ProcessId), entry.DeviceId.Length > 0 ? entry.DeviceId : null, out _);
             if (routedBack) done.Add(group.Key); // a refused move stays journalled and is tried again on the next call
         }
         foreach (var key in done)

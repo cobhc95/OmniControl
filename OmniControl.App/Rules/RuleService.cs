@@ -48,7 +48,7 @@ public sealed class RuleService : IDisposable
         _report = report;
         var actions = new MouseActionRunner(hotkeys.Run, message => Dispatcher.UIThread.Post(() => report(message)), Log);
         _runner = new RuleRunner(actions, IsApproved, Log);
-        _engine = new RuleEngine(hook, () => mouse.Layer, Start);
+        _engine = new RuleEngine(hook, mouse.LayerOf, Start);
         _shortcuts.Failed += shortcut => Dispatcher.UIThread.Post(() =>
             report($"Couldn't use {shortcut} for a rule: another program or an OmniControl shortcut already uses it."));
         gestures.Applied += Load;
@@ -103,10 +103,13 @@ public sealed class RuleService : IDisposable
     /// <summary>What went wrong the last time the rule ran (since OmniControl started), or null.</summary>
     public string? ProblemOf(Rule rule) => _problems.GetValueOrDefault(rule.Id);
 
-    /// <summary>The layer drop-down: "Any layer", then every layer by name, in order (index = layer number).</summary>
-    public IReadOnlyList<string> LayerNames()
+    /// <summary>
+    /// The layer drop-down: "Any layer", then every layer by name, in order (index = layer number); the trackpad's layers for a rule with a
+    /// trackpad trigger, the mouse's for any other (<see cref="RuleTrigger.Family"/>).
+    /// </summary>
+    public IReadOnlyList<string> LayerNames(Rule rule)
     {
-        var labels = _mouse.Settings.LayerLabels();
+        var labels = _mouse.Settings.LayersOf(RuleTriggers.FamilyOf(rule.Trigger)).Labels();
         return new[] { AnyLayerName }.Concat(Enumerable.Range(1, MouseSettings.Layers).Select(n => labels[n])).ToList();
     }
 

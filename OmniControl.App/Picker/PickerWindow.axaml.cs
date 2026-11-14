@@ -40,9 +40,13 @@ public partial class PickerWindow : Window
     /// the choice, and every live change to the current action's settings, go to the card. Focus then returns to
     /// <paramref name="returnFocusTo"/>, or to <paramref name="picker"/> when that is gone (the new action has no settings).
     /// </summary>
-    public static async Task ChooseForAsync(Control row, bool startInSettings, Control returnFocusTo, Control picker)
+    public static Task ChooseForAsync(Control row, bool startInSettings, Control returnFocusTo, Control picker) =>
+        row.DataContext is IPickerCard card ? ChooseForAsync(row, card, startInSettings, returnFocusTo, picker) : Task.CompletedTask;
+
+    /// <summary>The same for <paramref name="card"/>, opened over the window <paramref name="at"/> is in (a control of a pop-down's owner, since a pop-down is not a window).</summary>
+    public static async Task ChooseForAsync(Control at, IPickerCard card, bool startInSettings, Control returnFocusTo, Control picker)
     {
-        if (row.DataContext is not IPickerCard card || TopLevel.GetTopLevel(row) is not Window owner) return;
+        if (TopLevel.GetTopLevel(at) is not Window owner) return;
         var model = card.MenuFor(startInSettings);
         model.Live += card.Pick;
         if (await ChooseAsync(owner, $"Choose an action for {card.Label}", model) is { } picked) card.Pick(picked);

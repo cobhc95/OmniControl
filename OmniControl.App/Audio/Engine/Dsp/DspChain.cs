@@ -40,6 +40,14 @@ internal sealed class DspChain
         foreach (var stage in _stages) stage.Process(samples, channels);
     }
 
+    /// <summary>What the stage built from <paramref name="source"/> (its slot) reports for its meters; null when it has none or is not in this chain.</summary>
+    public IDynamicsReadout? ReadoutOf(object source)
+    {
+        for (var i = 0; i < _stages.Length; i++)
+            if (ReferenceEquals(_sources[i], source)) return _stages[i].Readout;
+        return null;
+    }
+
     /// <summary>
     /// Audio thread: each stage carries on from the stage built from the same slot in the chain this one replaces (when they are the
     /// same kind), so moving or adding an effect does not hand one effect's state to another.

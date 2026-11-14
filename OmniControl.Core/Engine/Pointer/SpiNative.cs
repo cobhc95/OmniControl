@@ -3,8 +3,9 @@ using System.Runtime.InteropServices;
 namespace OmniControl.Core.Engine.Pointer;
 
 /// <summary>
-/// The one declaration of SystemParametersInfo and the mouse-related Windows calls around it, with the action codes OmniControl uses.
-/// Each overload matches how the documentation says that action passes its value: in uiParam, in pvParam itself, or through a pointer.
+/// The one declaration of SystemParametersInfo and the mouse-related Windows calls around it, with the action codes OmniControl uses
+/// (the touchpad's settings too, <c>Trackpad/TouchpadSettingsStore</c>). Each overload matches how the documentation says that action
+/// passes its value: in uiParam, in pvParam itself, or through a pointer (a structure as bytes).
 /// </summary>
 internal static class SpiNative
 {
@@ -16,6 +17,9 @@ internal static class SpiNative
 
     [DllImport("user32.dll", EntryPoint = "SystemParametersInfoW", SetLastError = true)]
     public static extern bool Array(uint action, uint uiParam, [In, Out] int[] values, uint flags);
+
+    [DllImport("user32.dll", EntryPoint = "SystemParametersInfoW", SetLastError = true)]
+    public static extern bool Bytes(uint action, uint uiParam, [In, Out] byte[] buffer, uint flags);
 
     [DllImport("user32.dll")] public static extern int GetSystemMetrics(int index);
     [DllImport("user32.dll")] public static extern uint GetDoubleClickTime();
@@ -47,6 +51,7 @@ internal static class SpiNative
     public const uint GetMouseSonar = 0x101C, SetMouseSonar = 0x101D;
     public const uint GetMouseClickLock = 0x101E, SetMouseClickLock = 0x101F;
     public const uint GetMouseVanish = 0x1020, SetMouseVanish = 0x1021;
+    public const uint GetTouchpadParameters = 0x00AE, SetTouchpadParameters = 0x00AF;
 
     public const int SmSwapButton = 23;
 

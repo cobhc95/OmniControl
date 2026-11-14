@@ -3,6 +3,9 @@ namespace OmniControl.App.Services;
 
 public enum ThemeChoice { System, Light, Dark }
 
+/// <summary>Which view of the Volume page the user left open: Easy or Advanced (the Mixer and Wiring tabs). Undecided only until the first start decides it (<see cref="FirstRun"/>).</summary>
+public enum VolumeView { Undecided, Easy, Advanced }
+
 /// <summary>User preferences for the app itself, stored as JSON in %APPDATA%\OmniControl.</summary>
 public sealed class AppSettings
 {
@@ -21,9 +24,17 @@ public sealed class AppSettings
     public bool FxKeepOnTop { get; set; }
 
     /// <summary>What the equaliser editor shows (the same for every equaliser): its band tabs, the graph's grid, the phase curve.</summary>
-    public bool EqShowTabs { get; set; } = true;
     public bool EqShowGrid { get; set; } = true;
     public bool EqShowPhase { get; set; }
+
+    /// <summary>The Volume Mixer lists remembered programs that are not open (off hides them; they keep their settings and return when opened).</summary>
+    public bool MixerShowClosed { get; set; } = true;
+
+    /// <summary>The Volume page's view, kept between tabs and runs; the first start decides it (a new install starts in Easy, anyone with settings in Advanced).</summary>
+    public VolumeView VolumeView { get; set; } = VolumeView.Undecided;
+
+    /// <summary>The Easy page's welcome (the goal cards) was answered or skipped; it comes back only through "Set up again".</summary>
+    public bool EasyWelcomeDone { get; set; }
 
     /// <summary>How each kind of effect's editor is shown in the FX window (by effect type: a built-in kind, or a plug-in's file).</summary>
     public Dictionary<string, EffectEditorPref> EffectEditors { get; set; } = new();
@@ -38,11 +49,23 @@ public sealed class AppSettings
     public List<string> CollapsedGroups { get; set; } = new();
 
     /// <summary>The settings in use by the running program (one shared instance).</summary>
-    public static AppSettings Current { get; } = Load();
+    public static AppSettings Current => Shared.Value;
+
+    /// <summary>Read (and the first start decided) on first use, so merely making an <see cref="AppSettings"/> touches no file.</summary>
+    private static readonly Lazy<AppSettings> Shared = new(LoadDecided);
 
     private const string FileName = "settings.json";
 
     public static AppSettings Load() => AppDataStore.Load<AppSettings>(FileName) ?? new();
+
+    /// <summary>Loads the settings and, on the first start of this version, records which Volume view to open (saved at once, so a later start cannot see a newer mixer.json and decide again).</summary>
+    private static AppSettings LoadDecided()
+    {
+        var hadFiles = AppDataStore.HasSavedFiles();
+        var settings = Load();
+        if (FirstRun.Decide(settings, hadFiles)) settings.Save();
+        return settings;
+    }
 
     public void Save() => AppDataStore.Save(FileName, this);
 }

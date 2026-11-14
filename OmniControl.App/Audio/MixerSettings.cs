@@ -15,6 +15,9 @@ public sealed class AppAudioEntry
     public int Pan { get; set; }
     public bool Muted { get; set; }
 
+    /// <summary>The user added this program by hand ("Add program"): its row stays until they remove it, even with nothing set.</summary>
+    public bool Added { get; set; }
+
     /// <summary>
     /// Where the program plays: endpoint ids and combined devices (<see cref="CombinedDevice.KeyPrefix"/>); empty = it follows the
     /// master (Windows' default device, or the master bus in Full control).
@@ -24,6 +27,12 @@ public sealed class AppAudioEntry
     /// <summary>The effects are switched on.</summary>
     public bool FxOn { get; set; }
     public List<FxSlot> Fx { get; set; } = new();
+
+    /// <summary>
+    /// How the effects run in Full control (<see cref="SoundModes.ProgramRoutes"/> id): empty = Automatic (a free cable, else recording;
+    /// files written before the choice existed load as Automatic), "cable" or "capture".
+    /// </summary>
+    public string FxRoute { get; set; } = string.Empty;
 
     // Read only to convert older files (MixerMigration); written back empty.
     public string? DeviceId { get; set; }
@@ -41,9 +50,12 @@ public sealed class AppAudioEntry
     /// <summary>The identity of a program: its lower-case .exe path, without the version folder of a Store app so an update stays the same program.</summary>
     public static string KeyFor(string path) => PackageVersion.Replace(path.ToLowerInvariant(), "$1$2");
 
+    /// <summary>True when the program is worth a row while it is closed: the user added it, or set something on it (effects, route, level, balance, mute).</summary>
+    internal bool KeepsRow => Added || Customisation > 0;
+
     /// <summary>How much the user has set on this program; decides which of two duplicates is kept.</summary>
-    internal int Customisation => Fx.Count + (Pan != 0 ? 1 : 0) + (Volume != 100 ? 1 : 0) + (Muted ? 1 : 0) + PlaysOn.Count
-        + (string.IsNullOrEmpty(DeviceId) ? 0 : 1) + (string.IsNullOrEmpty(FxMode) ? 0 : 1);
+    internal int Customisation => Fx.Count + (Added ? 1 : 0) + (Pan != 0 ? 1 : 0) + (Volume != 100 ? 1 : 0) + (Muted ? 1 : 0) + PlaysOn.Count
+        + (string.IsNullOrEmpty(DeviceId) ? 0 : 1) + (string.IsNullOrEmpty(FxMode) ? 0 : 1) + (FxRoute.Length > 0 ? 1 : 0);
 }
 
 /// <summary>Mixer preferences, stored as JSON in %APPDATA%\OmniControl\mixer.json.</summary>
@@ -58,6 +70,34 @@ public sealed class MixerSettings
 
     /// <summary>The master's devices when it plays on more than one (Full control); otherwise it plays on Windows' default device.</summary>
     public List<string> MasterPlaysOn { get; set; } = new();
+
+    /// <summary>
+    /// The real playback device (endpoint id) the master plays on in Full control, where Windows' default device is the master bus's
+    /// cable; it is the one Windows' default was when Full control started, or the one chosen since. Empty = none remembered yet.
+    /// </summary>
+    public string RealMasterDevice { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The virtual cable (endpoint id) OmniControl made Windows' default playback device for the master bus, to be put back to
+    /// <see cref="RealMasterDevice"/> when Full control ends; empty = OmniControl changed nothing. Kept in the file so a crash is
+    /// repaired at the next start.
+    /// </summary>
+    public string BusCable { get; set; } = string.Empty;
+
+    /// <summary>
+    /// How the master runs in Full control (<see cref="SoundModes.MasterRoutes"/> id): empty = Automatic (files written before the choice
+    /// existed load as Automatic), "bus" = the cable bus, "apo" = Equalizer APO on the speakers. Fast mode always uses Equalizer APO.
+    /// </summary>
+    public string MasterMethod { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The Full control setup (a numbered row of the help table, <see cref="SoundModes.HelpCombinations"/>) to restore when Full control
+    /// is chosen again; 0 = none yet (<see cref="SoundModes.DefaultFullSetup"/>). Files without it load as 0.
+    /// </summary>
+    public int FullSetup { get; set; }
+
+    /// <summary>Cables (<see cref="Core.Engine.FoundCable.Id"/>) that setup 5 switched off to keep them free; choosing another setup switches them on again. Also in <see cref="ForbiddenCables"/>.</summary>
+    public List<string> FreedCables { get; set; } = new();
 
     /// <summary>Last known names of devices by endpoint id, so a "plays on" list can name a device that is unplugged now.</summary>
     public Dictionary<string, string> DeviceNames { get; set; } = new();
@@ -76,6 +116,12 @@ public sealed class MixerSettings
 
     /// <summary>FX chains of recording devices (keyed by endpoint id), kept even while the device is unplugged.</summary>
     public List<InputFxEntry> Inputs { get; set; } = new();
+
+    /// <summary>Virtual cables the user switched off (<see cref="Core.Engine.FoundCable.Id"/>): OmniControl never gives them out. Empty = every cable allowed.</summary>
+    public List<string> ForbiddenCables { get; set; } = new();
+
+    /// <summary>Device pairs the user marked as cables (Wiring > Virtual cables > "This device is a cable..."); files without it load as none.</summary>
+    public List<Core.Engine.CableMark> MarkedCables { get; set; } = new();
 
     // Legacy (see AppAudioEntry).
     public bool? MasterEqEnabled { get; set; }

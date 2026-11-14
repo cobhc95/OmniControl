@@ -13,6 +13,13 @@ public static class AppDataStore
 
     public static string PathOf(string fileName) => Path.Combine(Folder, fileName);
 
+    /// <summary>Whether any settings file (settings, mixer, hotkeys...) was saved by an earlier run: false only on a new install.</summary>
+    public static bool HasSavedFiles()
+    {
+        try { return Directory.Exists(Folder) && Directory.EnumerateFiles(Folder, "*.json").Any(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return false; } // unreadable folder: treated as new, nothing is lost by opening in Easy
+    }
+
     /// <summary>The saved value, or null when the file is missing, unreadable or damaged.</summary>
     public static T? Load<T>(string fileName) where T : class
     {

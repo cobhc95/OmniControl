@@ -1,5 +1,6 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using OmniControl.App.Audio;
+using OmniControl.App.Audio.Engine;
 using OmniControl.App.Pages;
 using OmniControl.Core.Models;
 
@@ -13,12 +14,19 @@ public sealed partial class FxSlotViewModel : ObservableObject
 {
     private readonly FxSlot _slot;
     private readonly Action _save;
+    private readonly Func<FxSlot, DynamicsReading?> _readings;
+    private readonly IPresetHost _presetHost;
+    private PresetPicker? _presets;
     private int _number;
 
-    public FxSlotViewModel(FxSlot slot, Action save)
+    /// <param name="readings">What the effects engine measures for a dynamics effect of this chain now (null: nothing), for the compressor's and the limiter's meters.</param>
+    /// <param name="presets">Where the preset pull-down finds the user's presets and opens the manager.</param>
+    internal FxSlotViewModel(FxSlot slot, Action save, Func<FxSlot, DynamicsReading?> readings, IPresetHost presets)
     {
+        _presetHost = presets;
         _slot = slot;
         _save = save;
+        _readings = readings;
     }
 
     public FxSlot Slot => _slot;
@@ -92,6 +100,7 @@ public sealed partial class FxSlotViewModel : ObservableObject
         return _slot.Kind switch
         {
             FxCatalog.IrKind => BuildParams().Prepend(new IrFileItem(_slot.Path, p => { _slot.Path = p; _save(); })).ToList(),
+            FxCatalog.CompKind or FxCatalog.LimiterKind => BuildDynamics(),
             _ => BuildParams(),
         };
     }
@@ -107,37 +116,42 @@ public sealed partial class FxSlotViewModel : ObservableObject
         editor.Load(bands);
         editor.OverallGainDb = FxCatalog.EqGainOf(_slot);
 
-        var loading = false;
-        ChoiceItem preset = null!;
-        preset = new ChoiceItem("Preset", layout.PresetNames, layout.PresetNameFor(bands), name =>
-        {
-            if (loading || name == EqLayout.CustomName) return;
-            loading = true;
-            editor.Load(layout.FromPreset(name));
-            _slot.Bands = editor.Export();
-            loading = false;
-            _save();
-        });
+        _presets = new PresetPicker(new PresetSource(FxCatalog.KindOf(_slot)!, () => new PresetContent { Bands = editor.Export() },
+            content => { editor.Load(content.Bands!); _slot.Bands = editor.Export(); }, () => _slot.Custom, custom => _slot.Custom = custom),
+            _presetHost, _save);
         editor.Edited += () =>
         {
             _slot.Bands = editor.Export();
-            loading = true;
-            preset.Selected = layout.PresetNameFor(_slot.Bands);
-            loading = false;
+            _presets.Edited();
             _save();
         };
-        _presetChoice = preset;
+        _presetChoice = _presets.Choice;
         _eqSettings = BuildParams(() => editor.OverallGainDb = FxCatalog.EqGainOf(_slot));
+        // The Parametric editor carries the overall gain as its own vertical slider; the graphic ones keep the card under them.
+        if (editor is EqPanelItem panel)
+        {
+            panel.OverallGain = _eqSettings.OfType<SliderItem>().FirstOrDefault();
+            return new List<object> { editor };
+        }
         return _eqSettings.Prepend(editor).ToList();
     }
 
-    /// <param name="changed">Called after a parameter changed (the equaliser redraws its curve with the overall gain).</param>
+    /// <summary>Lets go of what the preset pull-down subscribed to (the effect leaves the chain, or the window closes).</summary>
+    public void ReleasePresets() => _presets?.Dispose();
+
+    /// <summary>One card per setting of the effect's catalog entry, in its order: a slider, or a switch for an on/off setting. Also kept in <see cref="_paramCards"/> so a preset can show its values.</summary>
+    /// <param name="changed">Called after a parameter changed (the equaliser and the dynamics cards redraw their curves).</param>
     private List<object> BuildParams(Action? changed = null)
     {
+        FxCatalog.Complete(_slot);
         var kind = FxCatalog.Find(_slot.Kind);
-        while (_slot.Values.Count < kind.Params.Count) _slot.Values.Add(kind.Params[_slot.Values.Count].Default);
-        return kind.Params.Select((p, i) => (object)new SliderItem(p.Name, (int)Math.Round(_slot.Values[i]),
-            v => { _slot.Values[i] = v; _save(); changed?.Invoke(); return OperationResult.Ok("FX"); }, _ => { },
-            (int)p.Min, (int)p.Max, p.Unit, (int)Math.Round(p.Default))).ToList();
+        _paramCards = kind.Params.Select((p, i) => p.IsSwitch
+            ? (object)new ToggleItem(p.Name, CompressorParams.IsOn(_slot.Values[i]), on => { _slot.Values[i] = on ? 1 : 0; _save(); changed?.Invoke(); }) { Half = true }
+            : new SliderItem(p.Name, (int)Math.Round(_slot.Values[i]),
+                v => { _slot.Values[i] = v; _save(); changed?.Invoke(); return OperationResult.Ok("FX"); }, _ => { },
+                (int)p.Min, (int)p.Max, p.Unit, (int)Math.Round(p.Default)) { Thick = true }).ToList();
+        return _paramCards;
     }
+
+    private List<object> _paramCards = new();
 }

@@ -40,6 +40,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     private readonly SoundModeService _soundModes;
     private readonly PluginChainHost _plugins;
     private readonly PluginLibrary _library = new();
+    private readonly UserPresetStore _presets = new();
     private readonly EffectsEngine _effects;
     private readonly EngineInstaller _installer;
     private readonly FxWindowService _fxWindows;
@@ -76,6 +77,9 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     [ObservableProperty] private string _searchText = string.Empty;
     [ObservableProperty] private string _status = string.Empty;
 
+    /// <summary>The footer's tooltip: the full text of the message whose short line <see cref="Status"/> shows.</summary>
+    [ObservableProperty] private string _statusTip = string.Empty;
+
     /// <summary>The footer line naming the mouse layer in force.</summary>
     [ObservableProperty] private string _activeLayer = string.Empty;
 
@@ -85,8 +89,10 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _soundModes = new SoundModeService(new AudioEffectsProbe(), _mixer);
         _plugins = new PluginChainHost(_mixer.Save);
         _effects = new EffectsEngine(_mixer, _soundModes, _journal, _plugins, Report);
+        _osd.WatchVolumeOf(() => _mixer.MasterDeviceId); // the pop-up for outside volume changes follows the master's real device
+        _mixer.MasterDeviceChanged += _osd.RetargetVolume;
         _installer = new EngineInstaller(_soundModes);
-        _fxWindows = new FxWindowService(_mixer, _effects, _soundModes, _plugins, _library, Report);
+        _fxWindows = new FxWindowService(_mixer, _effects, _soundModes, _plugins, _library, _presets, Report);
         _about = new AboutWindowService(Version, Report);
         // Gestures are asked first, so a scroll or middle click they take never reaches the button mappings: the wheel gestures have
         // their own hook handler ahead of the mouse service's, and the mouse service asks for a middle-click gesture before its mapping.
@@ -97,7 +103,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         // Trackpad gestures are handed to the same hook, so rules and mappings treat them like button presses.
         _trackpad = new TrackpadService(_mouseHook, _mouse);
         _margins = new MarginOverlay(_gestures.Settings);
-        _mouse.LayerChanged += _ => UpdateActiveLayer();
+        _mouse.LayerChanged += (_, _) => UpdateActiveLayer();
         _mouse.LayersChanged += UpdateActiveLayer;
         UpdateActiveLayer();
         _mouseHook.Log = line => AppDataStore.AppendLog("mouse-log.txt", line);
@@ -109,7 +115,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         {
             new DisplaysPageViewModel(_engine, _hotkeys, _osd, _softwareDisplays, Report),
             new VolumePageViewModel(_mixer, _soundModes, _effects, _installer, _hotkeys, _osd, Report, _fxWindows.Open,
-                _fxWindows.AskAsync, CombineWindow.AskAsync),
+                _fxWindows.AskAsync, CombineWindow.AskAsync, SetupTableWindow.Opener()),
             new OsdPageViewModel(_osd, _hotkeys),
             new MousePageViewModel(_mouse, _trackpad, _pointer, _hotkeys, _osd, _fxWindows.AskAsync, Report),
             new GesturesPageViewModel(_gestures, _rules, _margins, _hotkeys, _fxWindows.AskAsync),
@@ -217,7 +223,11 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
 
     [ObservableProperty] private bool _isSearching;
 
-    private void Report(string message) => Status = message;
+    private void Report(string message)
+    {
+        Status = StatusMessage.BriefOf(message);
+        StatusTip = StatusMessage.FullOf(message);
+    }
 
     /// <summary>The main window's own keys (MainWindow.axaml.cs), for the Keyboard shortcuts window.</summary>
     private const string ShellKeys =
@@ -235,7 +245,8 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _ = _fxWindows.AskAsync(new EngineMessage("Keyboard shortcuts", string.Join(Environment.NewLine + Environment.NewLine, sections)));
     }
 
-    private void UpdateActiveLayer() => ActiveLayer = $"Active layer: {_mouse.Settings.LayerLabels()[_mouse.Layer]}";
+    // The trackpad's layer in force is shown by its own drop-down on the same page; the footer keeps one short fact.
+    private void UpdateActiveLayer() => ActiveLayer = $"Mouse layer: {_mouse.Settings.LayersOf(InputFamily.Mouse).Labels()[_mouse.LayerOf(InputFamily.Mouse)]}";
 
     public void Dispose()
     {
@@ -248,6 +259,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _mouse.Dispose();
         _mouseHook.Dispose();
         _hotkeys.Dispose();
+        _mixer.MasterDeviceChanged -= _osd.RetargetVolume;
         _osd.Dispose();
         _fxWindows.CloseAll(); // plug-in editors close (and save) before the plug-ins are unloaded
         _effects.Dispose(); // every program's own sound is put back, the APO gets an empty chain, plug-in settings are saved

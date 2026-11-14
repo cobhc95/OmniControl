@@ -4,6 +4,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OmniControl.App.Audio;
+using OmniControl.App.Audio.Engine;
 using OmniControl.App.Fx.Plugins;
 using OmniControl.Core.Engine;
 
@@ -17,32 +18,45 @@ namespace OmniControl.App.Fx;
 /// Edits go straight into <see cref="MixerService"/> settings and reach a running engine at once. Dispose when the panel goes:
 /// it closes the plug-in editors it opened.
 /// </summary>
-public sealed partial class FxChainViewModel : ObservableObject, IDisposable
+public sealed partial class FxChainViewModel : ObservableObject, IDisposable, IPresetHost
 {
     private readonly MixerService _mixer;
     private readonly string? _key;
     private readonly List<FxSlot> _chain;
     private readonly IEffectEditors _editors;
     private readonly FxClipboard _clipboard;
+    private readonly Func<FxSlot, DynamicsReading?> _readings;
 
+    /// <param name="presets">The user's own presets, shared by every effect window.</param>
     /// <param name="key">The program key, an input key, or null for the master.</param>
     /// <param name="editors">Where this chain's effect editors show; disposed with this view-model.</param>
     /// <param name="library">What the Add effect window lists (the program's one library).</param>
-    public FxChainViewModel(MixerService mixer, string? key, IEffectEditors editors, FxClipboard clipboard, PluginLibrary library)
+    /// <param name="readings">What the effects engine measures for one of this chain's dynamics effects now (<see cref="EffectsEngine.ReadingOf"/>).</param>
+    public FxChainViewModel(MixerService mixer, string? key, IEffectEditors editors, FxClipboard clipboard, PluginLibrary library,
+        Func<FxSlot, DynamicsReading?> readings, UserPresetStore presets)
     {
+        Store = presets;
+        _readings = readings;
         _mixer = mixer;
         Library = library;
         _key = key;
         _editors = editors;
         _clipboard = clipboard;
         _chain = mixer.FxChain(key);
-        foreach (var s in _chain) Slots.Add(Track(new FxSlotViewModel(s, SaveChain)));
+        foreach (var s in _chain) Slots.Add(Track(new FxSlotViewModel(s, SaveChain, _readings, this)));
         Renumber();
         editors.Changed += RefreshEditor;
         Selected = Slots.FirstOrDefault();
     }
 
     public ObservableCollection<FxSlotViewModel> Slots { get; } = new();
+
+    public UserPresetStore Store { get; }
+
+    /// <summary>Opens the preset manager (set by the panel that shows this chain; null while none does, then nothing opens).</summary>
+    public Func<PresetManagerRequest, Task>? PresetManagerOpener { get; set; }
+
+    Task IPresetHost.ManagePresetsAsync(PresetManagerRequest request) => PresetManagerOpener?.Invoke(request) ?? Task.CompletedTask;
 
     /// <summary>What the Add effect window lists (built-in effects and plug-ins).</summary>
     public PluginLibrary Library { get; }
@@ -198,7 +212,7 @@ public sealed partial class FxChainViewModel : ObservableObject, IDisposable
             : null;
         if (slot is null) return; // a plugins.json entry of a format this version does not know
         _chain.Add(slot);
-        var vm = Track(new FxSlotViewModel(slot, SaveChain));
+        var vm = Track(new FxSlotViewModel(slot, SaveChain, _readings, this));
         Slots.Add(vm);
         Selected = vm;
         ReselectRequested?.Invoke(new[] { vm });
@@ -238,7 +252,11 @@ public sealed partial class FxChainViewModel : ObservableObject, IDisposable
         return slot;
     }
 
-    private void Untrack(FxSlotViewModel slot) => slot.PropertyChanged -= OnSlotChanged;
+    private void Untrack(FxSlotViewModel slot)
+    {
+        slot.PropertyChanged -= OnSlotChanged;
+        slot.ReleasePresets();
+    }
 
     private void OnSlotChanged(object? sender, PropertyChangedEventArgs e)
     {

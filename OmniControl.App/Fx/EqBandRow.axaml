@@ -5,9 +5,10 @@
              x:Class="OmniControl.App.Fx.EqBandRow"
              x:DataType="vm:EqBandItem">
     <!-- One equaliser band's controls: title, Type and On; Frequency (Hz and note); Gain; Bandwidth (octaves and Q). Shown for the
-         selected band under the graph (EqPanelRow) and as one card per band in the equaliser's plain settings list. Every row is its
+         selected band under the graph (EqPanelRow; the vertical slider beside the graph is the equaliser's overall gain) and as one card per band in the
+         equaliser's plain settings list. Every row is its
          own grid (so Ctrl+Enter on a slider types the value beside it) on shared columns. -->
-    <StackPanel Spacing="4">
+    <StackPanel Spacing="4" TextElement.FontSize="{StaticResource EqFontSize}">
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
@@ -16,10 +17,10 @@
                 <ColumnDefinition Width="Auto" MinWidth="48" SharedSizeGroup="EqExtra" />
             </Grid.ColumnDefinitions>
             <TextBlock Text="{Binding Title}" VerticalAlignment="Center" Margin="0,0,24,0" />
-            <ComboBox Grid.Column="1" Classes="choice" ItemsSource="{x:Static vm:EqBandItem.TypeNames}" SelectedItem="{Binding TypeName}"
-                      ToolTip.Tip="Filter type" />
-            <ToggleSwitch Grid.Column="3" IsChecked="{Binding Enabled}" OnContent="On" OffContent="Off" HorizontalAlignment="Right"
-                          Margin="8,0,0,0" ToolTip.Tip="Band on or bypassed" />
+            <ComboBox Grid.Column="1" Classes="choice" FontSize="{StaticResource EqFontSize}" ItemsSource="{x:Static vm:EqBandItem.TypeNames}" SelectedItem="{Binding TypeName}"
+                      />
+            <ToggleSwitch Grid.Column="3" FontSize="{StaticResource EqFontSize}" IsChecked="{Binding Enabled}" OnContent="On" OffContent="Off" HorizontalAlignment="Right"
+                          Margin="8,0,0,0" />
         </Grid>
         <Grid>
             <Grid.ColumnDefinitions>
@@ -30,14 +31,14 @@
             </Grid.ColumnDefinitions>
             <TextBlock Text="Frequency" VerticalAlignment="Center" Margin="0,0,24,0" />
             <Slider Grid.Column="1" Minimum="0" Maximum="{x:Static vm:EqBandItem.LogSteps}" Value="{Binding FreqPos}"
-                    pages:SliderReset.Value="{Binding DefaultFreqPos}" />
+                    pages:SliderReset.Value="{Binding DefaultFreqPos}" Classes="thick" />
             <pages:NumberText Grid.Column="2" Value="{Binding Freq}" Minimum="{x:Static vm:EqBandItem.MinFreq}"
                               Maximum="{x:Static vm:EqBandItem.MaxFreq}" Decimals="1" Margin="8,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Center"
-                              ToolTip.Tip="Double-click to type the frequency in Hz">
+                             >
                 <TextBlock Text="{Binding FreqText}" Classes="muted" HorizontalAlignment="Right" VerticalAlignment="Center" />
             </pages:NumberText>
             <TextBlock Grid.Column="3" Text="{Binding NoteText}" Classes="muted" Margin="8,0,0,0" HorizontalAlignment="Right"
-                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="Nearest note" />
+                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
         </Grid>
         <Grid>
             <Grid.ColumnDefinitions>
@@ -49,7 +50,7 @@
             <TextBlock Text="Gain" VerticalAlignment="Center" Margin="0,0,24,0" />
             <Slider Grid.Column="1" Minimum="{x:Static vm:EqBandItem.MinGainSteps}" Maximum="{x:Static vm:EqBandItem.MaxGainSteps}"
                     Value="{Binding GainSteps}" pages:SliderReset.Value="{Binding DefaultGainSteps}" IsEnabled="{Binding UsesGain}"
-                    ToolTip.Tip="This type has no gain" ToolTip.IsEnabled="{Binding !UsesGain}" ToolTip.ShowOnDisabled="True" />
+                    Classes="thick" />
             <pages:NumberText Grid.Column="2" Value="{Binding Gain}" Minimum="{x:Static vm:EqBandItem.MinGain}"
                               Maximum="{x:Static vm:EqBandItem.MaxGain}" Decimals="1" Margin="8,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Center"
                               IsEnabled="{Binding UsesGain}">
@@ -65,15 +66,15 @@
             </Grid.ColumnDefinitions>
             <TextBlock Text="Bandwidth" VerticalAlignment="Center" Margin="0,0,24,0" />
             <Slider Grid.Column="1" Minimum="0" Maximum="{x:Static vm:EqBandItem.LogSteps}" Value="{Binding WidthPos}"
-                    pages:SliderReset.Value="{Binding DefaultWidthPos}" />
+                    pages:SliderReset.Value="{Binding DefaultWidthPos}" Classes="thick" />
             <pages:NumberText Grid.Column="2" Value="{Binding Bandwidth}" Minimum="{x:Static vm:EqBandItem.MinBandwidth}"
                               Maximum="{x:Static vm:EqBandItem.MaxBandwidth}" Decimals="2" Margin="8,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Center"
-                              ToolTip.Tip="Double-click to type the bandwidth in octaves">
+                             >
                 <TextBlock Text="{Binding BandwidthText}" Classes="muted" HorizontalAlignment="Right" VerticalAlignment="Center" />
             </pages:NumberText>
             <pages:NumberText Grid.Column="3" Value="{Binding Q}" Minimum="{x:Static vm:EqBandItem.MinQ}"
                               Maximum="{x:Static vm:EqBandItem.MaxQ}" Decimals="2" Margin="8,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Center"
-                              ToolTip.Tip="The same width as Q; double-click to type it">
+                             >
                 <TextBlock Text="{Binding QText}" Classes="muted" HorizontalAlignment="Right" VerticalAlignment="Center" />
             </pages:NumberText>
         </Grid>

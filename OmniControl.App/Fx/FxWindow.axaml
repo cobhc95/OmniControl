@@ -69,7 +69,7 @@
                               ToolTip.Tip="The whole chain on or off" />
                 <ComboBox ItemsSource="{Binding Chain.Selected.PresetChoice.Options}" SelectedItem="{Binding Chain.Selected.PresetChoice.Selected}"
                           IsVisible="{Binding Chain.Selected.HasPresets, FallbackValue=False}" Width="{DynamicResource FxToolPresetWidth}"
-                          ToolTip.Tip="Preset of the selected equaliser" />
+                          ToolTip.Tip="Preset of the selected effect" />
                 <StackPanel Orientation="Horizontal" Spacing="{DynamicResource ToolRowInnerGap}" IsVisible="{Binding Chain.HasSelection}"
                             ToolTip.Tip="Wet mix: how much processed sound is heard">
                     <TextBlock Text="Wet" Classes="muted" VerticalAlignment="Center" />

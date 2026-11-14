@@ -1,3 +1,4 @@
+using OmniControl.Core.Models;
 using OmniControl.App.Hotkeys;
 
 namespace OmniControl.App.Pages.Displays;
@@ -6,7 +7,8 @@ namespace OmniControl.App.Pages.Displays;
 /// The page's entries in the master list of actions: ONE action per control (not per display), each with the "all displays / pick
 /// displays" chooser of the Shortcuts page. A control is applied to every chosen display that has it; the others are skipped silently.
 /// The same functions are what the page's cards use, through the displays' own items. The displays that come and go are only listed by
-/// the chooser (<see cref="RefreshActionDevices"/>); nothing is registered or removed when a display appears or goes.
+/// the chooser (<see cref="RefreshActionDevices"/>); nothing is registered or removed when a display appears or goes. The list of
+/// controls is <see cref="DisplayControls"/>: adding one there adds its card and actions here.
 /// </summary>
 public sealed partial class DisplaysPageViewModel
 {
@@ -25,23 +27,28 @@ public sealed partial class DisplaysPageViewModel
                 (ids, delta) => StepHardware(captured, ids, delta), HardwareDevices));
         }
 
-        // One generic "next" for presets and inputs: the choices differ from monitor to monitor, so a named input would only fit some.
-        actions.Add(DisplayActions.Once("displays.preset.next", "Next colour preset", "colour color preset temperature srgb", Title, hardware,
-            ids => EachHardware(ids, h => h.NextPreset()), HardwareDevices));
-        actions.Add(DisplayActions.Once("displays.input.next", "Next input source", "input source switch hdmi displayport dvi vga kvm", Title, hardware,
-            ids => EachHardware(ids, h => h.NextInput()), HardwareDevices));
-        actions.Add(DisplayActions.Once("displays.power.off", "Turn screen off", "power off sleep standby turn screen off", Title, hardware,
+        // One generic "next" per choice: the values differ from monitor to monitor, so a named input would only fit some.
+        foreach (var choice in DisplayControls.HardwareChoices)
+        {
+            var captured = choice;
+            actions.Add(DisplayActions.Once($"displays.{choice.Feature.Key}.next", choice.ActionTitle, choice.Feature.Keywords, Title, hardware, choice.Feature.Section,
+                ids => EachHardware(ids, h => h.NextChoice(captured)), HardwareDevices));
+        }
+        actions.Add(DisplayActions.Once("displays.power.off", "Turn screen off", "power off sleep standby turn screen off", Title, hardware, VcpSections.PowerMode,
             ids => EachHardware(ids, h => h.TurnOff()), HardwareDevices));
 
-        foreach (var spec in new[] { DisplayControls.SoftwareBrightness, DisplayControls.SoftwareContrast, DisplayControls.SoftwareWarmth })
+        foreach (var level in DisplayControls.Software)
         {
-            var captured = spec;
+            var spec = level.Spec;
             actions.AddRange(DisplayActions.Level(spec, DisplayControls.SoftwareKey(spec), Title, software,
-                (ids, delta) => StepSoftware(captured, ids, delta), SoftwareDevices));
+                (ids, delta) => StepSoftware(spec, ids, delta), SoftwareDevices));
         }
+        actions.Add(DisplayActions.Once("displays.sw.preset.next", "Next display preset", "digital software preset picture saved profile", Title, software, VcpSections.Presets,
+            _ => NextPreset(), devices: null));
 
         _scopedActions.AddRange(actions);
         actions.AddRange(_global.Actions);
+        actions.AddRange(_warm.Actions);
         _hotkeys.Register(actions);
     }
 

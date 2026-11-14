@@ -23,8 +23,9 @@ public sealed partial class RuleEditorViewModel : ObservableObject
     private readonly Action _changed;
     private readonly Action _delete;
     private readonly Action _closed;
-    private readonly IReadOnlyList<string> _layerNames;
+    private readonly ChoiceItem _layer;
     private readonly IReadOnlyList<string> _rateNames;
+    private IReadOnlyList<string> _layerNames;
 
     public Rule Rule { get; }
     public string Title { get; }
@@ -61,12 +62,12 @@ public sealed partial class RuleEditorViewModel : ObservableObject
         _closed = closed;
         _name = rule.Name;
 
-        _layerNames = rules.LayerNames();
+        _layerNames = rules.LayerNames(rule);
         _rateNames = Services.Timing.RuleRateLimits.Select(t => $"Once per {t.TotalSeconds:0.##} s").ToList();
-        var layer = new ChoiceItem("Layer", _layerNames, _layerNames[Math.Clamp(rule.Layer, 0, _layerNames.Count - 1)], OnLayerPicked) { Half = true };
+        _layer = new ChoiceItem("Layer", _layerNames, SelectedLayerName(), OnLayerPicked) { Half = true };
         var rate = new ChoiceItem("Rate limit", _rateNames, _rateNames[Services.Timing.RuleRateLimits.ToList().IndexOf(rule.ClampedRateLimit())],
             OnRatePicked) { Half = true };
-        Settings = new object[] { layer, rate };
+        Settings = new object[] { _layer, rate };
         Rebuild();
         rules.ProblemsChanged += Rebuild;
     }
@@ -90,6 +91,17 @@ public sealed partial class RuleEditorViewModel : ObservableObject
         if (index < 0) return;
         Rule.Layer = index; // index 0 is "Any layer" (Rule.AnyLayer), then layer 1, 2...
         Save();
+    }
+
+    private string SelectedLayerName() => _layerNames[Math.Clamp(Rule.Layer, 0, _layerNames.Count - 1)];
+
+    /// <summary>The trigger decides whose layers the Layer drop-down names (mouse or trackpad): shown again after each change, keeping the number.</summary>
+    private void ShowLayerNames()
+    {
+        var names = _rules.LayerNames(Rule);
+        if (names.SequenceEqual(_layerNames)) return;
+        _layerNames = names;
+        _layer.Load(_layerNames, SelectedLayerName());
     }
 
     private void OnRatePicked(string name)
@@ -124,6 +136,7 @@ public sealed partial class RuleEditorViewModel : ObservableObject
         }
         Sentence.Add(new SentenceAdd(Rule.Steps.Count == 0 ? "+ action" : "+ then", new RuleSlot(RuleSlotKind.Step, -1)));
 
+        ShowLayerNames();
         Notes = RuleTag.Of(Rule, _rules);
         HasFailure = _rules.ProblemOf(Rule) is not null;
         CanTest = Rule.Steps.Count > 0;

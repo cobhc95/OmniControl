@@ -4,14 +4,14 @@
              x:Class="OmniControl.App.Pages.GroupHeader"
              x:DataType="pages:CardGroup">
     <Button Classes="groupHeader" Tag="grouphdr" Click="OnClick" ToolTip.Tip="{Binding Tip}">
-        <Grid ColumnDefinitions="Auto,Auto,Auto,*">
+        <Grid ColumnDefinitions="Auto,Auto,*">
             <PathIcon Classes="chev" Classes.collapsed="{Binding !IsExpanded}" Data="M5,9 L12,16 L19,9 Z"
                       Width="12" Height="12" Margin="0,0,10,0" VerticalAlignment="Center" />
             <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" />
             <!-- The summary either follows the name (a group that wants it beside the title) or sits at the right edge -->
             <TextBlock Grid.Column="2" Text="{Binding Summary}" Classes="muted" FontSize="12" Margin="12,0,0,0" VerticalAlignment="Center"
-                       IsVisible="{Binding SummaryBesideName}" />
-            <TextBlock Grid.Column="3" Text="{Binding Summary}" Classes="muted" FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis" IsVisible="{Binding SummaryBesideName}" />
+            <TextBlock Grid.Column="2" Text="{Binding Summary}" Classes="muted" FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center"
                        IsVisible="{Binding !SummaryBesideName}" />
         </Grid>
     </Button>

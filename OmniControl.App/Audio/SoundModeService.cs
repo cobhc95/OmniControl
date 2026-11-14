@@ -17,6 +17,10 @@ public sealed class SoundModeService : IDisposable
     private readonly ThrottledRun _check;
     /// <summary>The playback and recording devices (and which are default) at the last look, so a change asks for a fresh look.</summary>
     private string _devicesSeen = string.Empty;
+    /// <summary>The user's marked cable pairs as of the last request (a copy: the look-up runs off the UI thread).</summary>
+    private IReadOnlyList<CableMark> _marks;
+    /// <summary>The last look-up as found, every cable pair in it; <see cref="Current"/> is this without the cables switched off.</summary>
+    private AudioEffectsSupport? _found;
 
     /// <summary>Raised on the UI thread when what is available changed.</summary>
     public event Action? Changed;
@@ -25,9 +29,19 @@ public sealed class SoundModeService : IDisposable
     {
         _support = support;
         _mixer = mixer;
+        _marks = mixer.MarkedCables.ToList();
         _check = new ThrottledRun(Timing.SoundModeRecheckGap, Check);
         _check.Request();
         mixer.Updated += OnMixerUpdated;
+        mixer.CablesChanged += OnCablesChanged;
+    }
+
+    /// <summary>A cable switched on or off applies at once; a marked pair added or removed needs a fresh look at the devices.</summary>
+    private void OnCablesChanged()
+    {
+        _marks = _mixer.MarkedCables.ToList();
+        Publish(_found);
+        _check.Request();
     }
 
     /// <summary>
@@ -42,13 +56,13 @@ public sealed class SoundModeService : IDisposable
         _check.Request();
     }
 
-    /// <summary>The last answer (null until the first look-up finished).</summary>
+    /// <summary>The last answer (null until the first look-up finished): its <see cref="AudioEffectsSupport.Cables"/> are the ALLOWED cables only.</summary>
     public AudioEffectsSupport? Current { get; private set; }
 
     /// <summary>What the modes need to know, or null before the first answer (until then nothing is greyed out or reported missing).</summary>
     public SoundFacts? Facts => Current is { } support
         ? new SoundFacts(support, support.ProcessLoopback && CaptureTestResult.MethodFor(_mixer.Settings.CaptureSilence) is not null,
-            _mixer.Settings.CaptureSilence != CaptureTestResult.Untested)
+            CaptureTestResult.IsTested(_mixer.Settings.CaptureSilence))
         : null;
 
     /// <summary>Asks for a fresh look (the Volume page or the Sound mode panel opened, an install ended); at most once per <see cref="Timing.SoundModeRecheckGap"/>.</summary>
@@ -71,18 +85,28 @@ public sealed class SoundModeService : IDisposable
 
     private void Check()
     {
-        var found = _support.Check();
+        var found = _support.Check(_marks);
         Dispatcher.UIThread.Post(() =>
         {
-            if (found.Equals(Current)) return;
-            Current = found;
-            Changed?.Invoke();
+            _found = found;
+            Publish(found);
         });
+    }
+
+    /// <summary>What the look-up found, without the cables the user switched off; raises <see cref="Changed"/> when that differs.</summary>
+    private void Publish(AudioEffectsSupport? found)
+    {
+        if (found is null) return;
+        var allowed = found with { Cables = VirtualCables.Usable(found.Found, _mixer.ForbiddenCables) };
+        if (allowed.Equals(Current)) return;
+        Current = allowed;
+        Changed?.Invoke();
     }
 
     public void Dispose()
     {
         _mixer.Updated -= OnMixerUpdated;
+        _mixer.CablesChanged -= OnCablesChanged;
         _check.Dispose();
     }
 }

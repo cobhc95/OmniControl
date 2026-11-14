@@ -38,6 +38,18 @@ public sealed record ApoState(
 {
     public static readonly ApoState None = new(false, false, null, false, false, null, null, null, Array.Empty<ApoEndpoint>());
 
+    /// <summary>
+    /// Every playback device's slots, virtual cables included, in Windows' order: where Equalizer APO runs on a device that is not the
+    /// default (the real speakers while a cable is the default, a cable a program's chain is written for). Empty when not read.
+    /// </summary>
+    public IReadOnlyList<ApoEndpoint> Playback { get; init; } = Array.Empty<ApoEndpoint>();
+
+    /// <summary>The slots of the playback device <paramref name="endpointId"/>: from <see cref="Playback"/>, else <see cref="Output"/> when it is that device; null when not looked at.</summary>
+    public ApoEndpoint? PlaybackOf(string? endpointId) =>
+        endpointId is null ? null
+        : Playback.FirstOrDefault(p => string.Equals(p.EndpointId, endpointId, StringComparison.OrdinalIgnoreCase))
+          ?? (string.Equals(Output?.EndpointId, endpointId, StringComparison.OrdinalIgnoreCase) ? Output : null);
+
     /// <summary>OmniControl APO sits on the default playback device.</summary>
     public bool OnDevice => Output?.OursOn == true;
 
@@ -87,7 +99,7 @@ public sealed record ApoState(
         other is not null && Registered == other.Registered && ProtectedAudioDisabled == other.ProtectedAudioDisabled
         && ConfigFolder == other.ConfigFolder && UpstreamInstalled == other.UpstreamInstalled && UpstreamRegistered == other.UpstreamRegistered
         && UpstreamConfigFolder == other.UpstreamConfigFolder && UpstreamDeviceSelector == other.UpstreamDeviceSelector
-        && Output == other.Output && Microphones.SequenceEqual(other.Microphones);
+        && Output == other.Output && Microphones.SequenceEqual(other.Microphones) && Playback.SequenceEqual(other.Playback);
 
     public override int GetHashCode() => HashCode.Combine(Registered, ProtectedAudioDisabled, ConfigFolder, UpstreamInstalled, Output, Microphones.Count);
 }
@@ -96,8 +108,9 @@ public sealed record ApoState(
 public static class ApoStatus
 {
     /// <param name="defaultEndpointId">The default playback device's endpoint id, or null when there is none.</param>
+    /// <param name="playbackIds">The endpoint ids of every playback device (cables included) whose slots are wanted.</param>
     /// <param name="microphoneIds">The endpoint ids of the recording devices whose slots are wanted.</param>
-    public static ApoState Read(string? defaultEndpointId, IEnumerable<string> microphoneIds)
+    public static ApoState Read(string? defaultEndpointId, IEnumerable<string> playbackIds, IEnumerable<string> microphoneIds)
     {
         try
         {
@@ -117,7 +130,10 @@ public static class ApoStatus
                 installFolder is not null, IsRegistered(machine, ApoIds.UpstreamPreMixClsid, ApoIds.UpstreamPostMixClsid),
                 upstreamConfig, selector,
                 defaultEndpointId is null ? null : EndpointOf(machine, defaultEndpointId),
-                microphoneIds.Select(id => EndpointOf(machine, id)).ToList());
+                microphoneIds.Select(id => EndpointOf(machine, id)).ToList())
+            {
+                Playback = playbackIds.Select(id => EndpointOf(machine, id)).ToList(),
+            };
         }
         catch (Exception ex) when (ex is SecurityException or UnauthorizedAccessException or IOException)
         {

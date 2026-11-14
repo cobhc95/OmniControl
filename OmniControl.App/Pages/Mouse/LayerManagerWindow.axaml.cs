@@ -4,7 +4,7 @@ using Avalonia.Interactivity;
 
 namespace OmniControl.App.Pages.Mouse;
 
-/// <summary>The window behind the cogwheel beside the Layer drop-down: rename, switch to and clear layers. Wiring only; the state is in <see cref="LayerManagerModel"/>.</summary>
+/// <summary>The window behind the cogwheel beside a layer drop-down (mouse or trackpad): rename, switch to and clear layers. Wiring only; the state is in <see cref="LayerManagerModel"/>.</summary>
 public partial class LayerManagerWindow : Window
 {
     public LayerManagerWindow()

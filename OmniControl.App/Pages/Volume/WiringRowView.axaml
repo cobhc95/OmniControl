@@ -4,9 +4,10 @@
              x:Class="OmniControl.App.Pages.Volume.WiringRowView"
              x:DataType="vm:WiringRow">
     <!-- One Wiring table row: Source | Plays on (or Records from) | Cable | remove. The columns are shared with the table's titles
-         (WiringSource, WiringCable, WiringRemove), so every row lines up. The cell shows chips (a click takes one away), a dashed
-         "+ add", or one drop-down-like choice; both open the cell's small menu, as does a click on the cell's empty part. Mouse first
-         (AGENTS.md rule 5): the keyboard reaches "+ add" or the choice (Left/Right) and Enter opens the menu; Esc closes it. -->
+         (WiringSource, WiringCable, WiringRemove), so every row lines up. The cell shows chips (a click takes one away; a combined
+         microphone's member chip opens its level instead, its x takes it away), a dashed "+ add" / "Combine with...", or one
+         drop-down-like choice; both open the cell's small menu, as does a click on the cell's empty part. Mouse first (AGENTS.md
+         rule 5): the keyboard reaches the dashed chip or the choice (Left/Right) and Enter opens the menu; Esc closes it. -->
     <Grid ColumnSpacing="{StaticResource WiringColumnGap}" Opacity="{Binding Source.RowOpacity}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" SharedSizeGroup="WiringSource" />
@@ -27,10 +28,10 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:WiringChoice">
                                     <Button Classes="menurow" Command="{Binding ChooseCommand}" Click="OnMenuChoiceClick" IsEnabled="{Binding IsEnabled}"
-                                            ToolTip.Tip="{Binding DisabledReason}" ToolTip.ShowOnDisabled="True">
+                                            ToolTip.Tip="{Binding Tip}" ToolTip.ShowOnDisabled="True">
                                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource MenuGap}">
                                             <TextBlock Text="{Binding Label}" TextWrapping="Wrap" />
-                                            <Border Grid.Column="1" Classes="tag" IsVisible="{Binding HasTag}" VerticalAlignment="Center">
+                                            <Border Grid.Column="1" Classes="tag" Classes.caution="{Binding IsCaution}" IsVisible="{Binding HasTag}" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding Tag}" />
                                             </Border>
                                         </Grid>
@@ -38,7 +39,7 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <TextBlock Classes="menutext" Text="Every device is already chosen." IsVisible="{Binding HasNoChoices}" />
+                        <TextBlock Classes="menutext" Text="All devices are chosen." IsVisible="{Binding HasNoChoices}" />
                         <!-- Why this mode takes one device here, and the one Switch -->
                         <StackPanel IsVisible="{Binding !MenuGate.IsAvailable}">
                             <Border Classes="hrule" />
@@ -63,11 +64,31 @@
                             </StackPanel>
                         </Button>
                     </DataTemplate>
+                    <!-- A combined microphone's member: the words open its level and mute pop-down, the x (its own hit area) takes it
+                         away. The pop-down hangs on the Panel, not on the chip, so the chip's styles do not reach into it. -->
+                    <DataTemplate DataType="vm:WiringMember">
+                        <Panel>
+                            <FlyoutBase.AttachedFlyout>
+                                <Flyout Placement="BottomEdgeAlignedLeft" PlacementConstraintAdjustment="SlideX, FlipY, ResizeY"
+                                        VerticalOffset="{StaticResource MenuOffset}" FlyoutPresenterClasses="listmenu" Opened="OnMemberMenuOpened">
+                                    <vm:MemberLevelView />
+                                </Flyout>
+                            </FlyoutBase.AttachedFlyout>
+                            <Button Classes="chipx" Click="OnMemberClick" ToolTip.Tip="{Binding Tip}">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Label}" />
+                                    <Border Tag="chipremove" Background="Transparent" IsVisible="{Binding CanRemove}">
+                                        <Path Classes="glyph" Data="M6,6 L18,18 M18,6 L6,18" />
+                                    </Border>
+                                </StackPanel>
+                            </Button>
+                        </Panel>
+                    </DataTemplate>
                     <DataTemplate DataType="vm:WiringNote">
                         <TextBlock Classes="muted small" Text="{Binding Text}" VerticalAlignment="Center" />
                     </DataTemplate>
                     <DataTemplate DataType="vm:WiringAdd">
-                        <Button Classes="blockadd small" Tag="scope" Content="+ add" Click="OnOpenMenuClick" ToolTip.Tip="Add a device" />
+                        <Button Classes="blockadd small" Tag="scope" Content="{Binding Label}" Click="OnOpenMenuClick" ToolTip.Tip="{Binding Tip}" />
                     </DataTemplate>
                     <DataTemplate DataType="vm:WiringSingle">
                         <Button Classes="scope" Tag="scope" HorizontalAlignment="Left" Click="OnOpenMenuClick" ToolTip.Tip="Choose the device">
@@ -81,7 +102,18 @@
             </ItemsControl>
         </Border>
 
-        <vm:CableView Grid.Column="2" DataContext="{Binding Cable}" />
+        <!-- The cable, and while a microphone waits for one: Switch to Fast (the master bus holds it) and the step that gets one -->
+        <StackPanel Grid.Column="2" Spacing="{StaticResource ChipSpacing}" VerticalAlignment="Center" MaxWidth="{StaticResource WiringCableMaxWidth}">
+            <vm:CableView DataContext="{Binding Cable}" />
+            <WrapPanel ItemSpacing="{StaticResource ChipSpacing}" LineSpacing="{StaticResource ChipSpacing}">
+                <Button Tag="scope" Classes="link small" IsVisible="{Binding CableSwitch.CanSwitch}" Command="{Binding CableSwitch.SwitchCommand}"
+                        ToolTip.Tip="{Binding CableSwitch.Reason}">
+                    <TextBlock Text="{Binding CableSwitch.SwitchLabel}" />
+                </Button>
+                <Button Tag="scope" Classes="pill cardaction" Classes.main="{Binding CableAction.Main}" Content="{Binding CableAction.Label}"
+                        Command="{Binding CableAction.Command}" ToolTip.Tip="{Binding CableAction.Tip}" IsVisible="{Binding HasCableAction}" />
+            </WrapPanel>
+        </StackPanel>
 
         <Button Grid.Column="3" Tag="scope" Classes="pill glyph" Content="×" Command="{Binding Source.RemoveCommand}" IsVisible="{Binding Source.CanForget}"
                 ToolTip.Tip="Remove (forgets its settings)" VerticalAlignment="Center" />

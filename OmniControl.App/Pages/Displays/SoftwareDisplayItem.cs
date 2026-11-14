@@ -1,16 +1,19 @@
 using OmniControl.App.Display;
+using OmniControl.Core.Engine;
 using OmniControl.Core.Models;
 
 namespace OmniControl.App.Pages.Displays;
 
 /// <summary>
-/// One display's picture changes made in software (a gamma ramp): digital brightness, digital contrast and colour temperature. They work on any display, with or without DDC/CI. The values start neutral on every run and are put back when the program ends
-/// (<see cref="SoftwareDisplayService"/>). Used on the UI thread.
+/// One display's picture changes made in software (a gamma ramp): digital brightness, contrast, colour temperature, gamma, channel
+/// gains and black and white level (<see cref="DisplayControls.Software"/>). They work on any display, with or without DDC/CI. The
+/// values start neutral on every run and are put back when the program ends (<see cref="SoftwareDisplayService"/>). When the display's
+/// driver takes no ramps from programs its cards are greyed out. Used on the UI thread.
 /// </summary>
 internal sealed class SoftwareDisplayItem
 {
     private readonly SoftwareDisplayService _service;
-    private readonly SliderItem _brightness, _contrast, _warmth;
+    private readonly Dictionary<SoftwareLevel, SliderItem> _sliders = new();
 
     /// <summary>Windows' name for the display ("\.\DISPLAY1"): what the ramp is set on and the id of its hotkey device.</summary>
     public string Id { get; }
@@ -22,20 +25,52 @@ internal sealed class SoftwareDisplayItem
     {
         (Id, Name, _service) = (display.DeviceName, display.Name, service);
 
-        _brightness = Slider(DisplayControls.SoftwareBrightness, report);
-        _contrast = Slider(DisplayControls.SoftwareContrast, report);
-        _warmth = Slider(DisplayControls.SoftwareWarmth, report);
-
-        Cards = new IEditorItem[] { _brightness, _contrast, _warmth };
+        foreach (var level in DisplayControls.Software)
+        {
+            var spec = level.Spec;
+            _sliders[level] = new SliderItem(spec.Label, spec.Default, _ => Apply(), report, spec.Min, spec.Max, defaultValue: spec.Default) { Half = true };
+        }
+        Cards = DisplayControls.Software.Select(level => (IEditorItem)_sliders[level]).ToList();
         Group = new ItemGroup($"Displays/Software/{Id}", Name, Cards.Cast<object>().ToList());
+        service.Track(Id);
+        ShowRefusal();
     }
 
-    private SliderItem Slider(LevelSpec spec, Action<string> report) =>
-        new(spec.Label, spec.Default, _ => Apply(), report, spec.Min, spec.Max, defaultValue: spec.Default) { Half = true };
+    /// <summary>The slider positions now (what a preset keeps).</summary>
+    public PictureValues Values
+    {
+        get
+        {
+            var values = new PictureValues();
+            foreach (var (level, slider) in _sliders) level.Set(values, slider.Value);
+            return values;
+        }
+    }
 
-    /// <summary>The picture the three sliders describe.</summary>
-    private OperationResult Apply() =>
-        _service.Set(Id, new SoftwareColor(_brightness.Value, _contrast.Value, SoftwareColor.KelvinOfWarmth(_warmth.Value)));
+    /// <summary>The picture the sliders describe, applied.</summary>
+    private OperationResult Apply()
+    {
+        var result = _service.Set(Id, Values.ToColor());
+        ShowRefusal();
+        return result;
+    }
+
+    /// <summary>Greys the cards out, with the reason, when the display's driver takes no ramps from programs; back to normal after a Refresh.</summary>
+    public void ShowRefusal()
+    {
+        foreach (var slider in _sliders.Values)
+        {
+            if (_service.IsRefused(Id)) slider.Availability.MakeUnavailable(GammaDisplay.DriverRefusal);
+            else if (!slider.Availability.IsAvailable) slider.Availability.MakeAvailable();
+        }
+    }
+
+    /// <summary>Puts the sliders at these positions and applies the picture once (a preset).</summary>
+    public void Show(PictureValues values)
+    {
+        foreach (var (level, slider) in _sliders) slider.Load(Math.Clamp(level.Get(values), level.Spec.Min, level.Spec.Max));
+        Apply();
+    }
 
     /// <summary>
     /// Moves the slider of this control by <paramref name="delta"/> (within its range), which applies it, and returns the new value as the
@@ -43,7 +78,7 @@ internal sealed class SoftwareDisplayItem
     /// </summary>
     public int Step(LevelSpec spec, int delta)
     {
-        var slider = spec == DisplayControls.SoftwareBrightness ? _brightness : spec == DisplayControls.SoftwareContrast ? _contrast : _warmth;
+        var slider = _sliders.First(s => s.Key.Spec == spec).Value;
         slider.Value = Math.Clamp(slider.Value + delta, spec.Min, spec.Max);
         return spec.OsdPercent(slider.Value);
     }
@@ -51,9 +86,7 @@ internal sealed class SoftwareDisplayItem
     /// <summary>Sliders back to neutral and the display's own picture back.</summary>
     public void Reset()
     {
-        _brightness.Load(DisplayControls.SoftwareBrightness.Default);
-        _contrast.Load(DisplayControls.SoftwareContrast.Default);
-        _warmth.Load(DisplayControls.SoftwareWarmth.Default);
+        foreach (var (level, slider) in _sliders) slider.Load(level.Spec.Default);
         _service.Reset(Id);
     }
 

@@ -1,0 +1,48 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pages="using:OmniControl.App.Pages"
+             xmlns:fx="using:OmniControl.App.Fx"
+             xmlns:easy="using:OmniControl.App.Pages.Volume.Easy"
+             x:Class="OmniControl.App.Pages.Volume.Easy.EasySoundView"
+             x:DataType="easy:EasySound">
+    <!-- The sound controls of one row: preset chips, the small live response curve (the FX window's own drawing) and five friendly sliders.
+         Greyed as a whole while the sound cannot be applied (the drawer above it says why). Sliders: double-click resets to 0 dB, the value
+         can be typed, the wheel and keys work as on every slider. -->
+    <StackPanel Spacing="6" IsEnabled="{Binding Availability.IsAvailable}" Grid.IsSharedSizeScope="True">
+        <ItemsControl ItemsSource="{Binding Chips}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="easy:EasyChip">
+                    <Button Tag="grouptool" Classes="pill" Classes.custom="{Binding IsSelected}" Content="{Binding Name}" Command="{Binding PickCommand}"
+                            Margin="0,0,4,4" HorizontalAlignment="Left" />
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Button Tag="grouptool" Classes="graphthumb" Width="NaN" Height="56" HorizontalAlignment="Stretch" Command="{Binding OpenFullCommand}"
+                IsVisible="{Binding IsOpen}" ToolTip.Tip="The sound as it will be heard. Click for the full effects window.">
+            <fx:ResponseThumb DataContext="{Binding Curve}" />
+        </Button>
+        <ItemsControl ItemsSource="{Binding Bands}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="easy:EasyBandItem">
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="EasyBandName" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="EasyBandValue" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                        <Slider Grid.Column="1" Classes="thick" Minimum="{Binding Floor}" Maximum="{Binding Reach}" Value="{Binding Value}"
+                                pages:SliderReset.Value="0" />
+                        <pages:NumberText Grid.Column="2" Value="{Binding Value}" Minimum="{Binding Floor}" Maximum="{Binding Reach}" VerticalAlignment="Center"
+                                          ToolTip.Tip="Double-click to type a number of dB">
+                            <TextBlock Text="{Binding Text}" Classes="muted" MinWidth="48" TextAlignment="Right" VerticalAlignment="Center" />
+                        </pages:NumberText>
+                    </Grid>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>

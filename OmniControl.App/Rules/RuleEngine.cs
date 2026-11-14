@@ -1,3 +1,4 @@
+using OmniControl.App.Mouse;
 using OmniControl.App.Services;
 using OmniControl.Core.Engine.Mouse;
 
@@ -28,7 +29,7 @@ internal sealed class RuleEngine : IDisposable
     private static readonly int ButtonCount = Enum.GetValues<MouseButton>().Length;
     private static readonly CompiledRule[][] NoRules = Enumerable.Range(0, ButtonCount).Select(_ => Array.Empty<CompiledRule>()).ToArray();
 
-    private readonly Func<int> _layer;
+    private readonly Func<InputFamily, int> _layer;
     private readonly Action<CompiledRule, MouseEvent> _run;
     private readonly ProgramNames _names = new();
     private readonly bool[] _swallowed = new bool[ButtonCount];        // hook thread only: presses whose release is taken too
@@ -40,9 +41,9 @@ internal sealed class RuleEngine : IDisposable
     private int _lastLeftX, _lastLeftY;
 
     /// <param name="hook">The shared mouse hook; the engine's handler is put ahead of every other.</param>
-    /// <param name="layer">The mouse layer in force now.</param>
+    /// <param name="layer">The layer of a family (mouse or trackpad) in force now.</param>
     /// <param name="run">Starts a matching rule's steps (called on the hook or hotkey thread; it must hand the work to a worker).</param>
-    public RuleEngine(MouseHook hook, Func<int> layer, Action<CompiledRule, MouseEvent> run)
+    public RuleEngine(MouseHook hook, Func<InputFamily, int> layer, Action<CompiledRule, MouseEvent> run)
     {
         _layer = layer;
         _run = run;
@@ -53,7 +54,7 @@ internal sealed class RuleEngine : IDisposable
     public void Load(IEnumerable<CompiledRule> rules, bool enabled, int edgeStrip)
     {
         var byButton = Enumerable.Range(0, ButtonCount)
-            .Select(b => rules.Where(r => r.Trigger.Kind != TriggerKind.Shortcut && (int)r.Trigger.Button == b).ToArray()).ToArray();
+            .Select(b => rules.Where(r => r.Trigger.Kind != TriggerKind.Shortcut && r.Trigger.Buttons.Any(t => (int)t == b)).ToArray()).ToArray();
         var (ms, width, height) = SystemCommands.DoubleClick();
         _snapshot = new Snapshot(enabled, edgeStrip, byButton, ms, width, height);
     }

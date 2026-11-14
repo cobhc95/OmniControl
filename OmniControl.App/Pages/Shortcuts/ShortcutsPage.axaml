@@ -5,6 +5,20 @@
              xmlns:hk="using:OmniControl.App.Hotkeys"
              x:Class="OmniControl.App.Pages.Shortcuts.ShortcutsPage"
              x:DataType="vm:ShortcutsPageViewModel">
+    <UserControl.Resources>
+        <!-- One shortcut card: used by a panel's own actions and by its subgroups -->
+        <DataTemplate x:Key="ActionCard" DataType="hk:HotkeyAction">
+            <Grid ColumnDefinitions="*,Auto">
+                <!-- An action that does nothing now is dimmed and says why under its name (Volume's own availability) -->
+                <StackPanel Classes.unavailable="{Binding IsUnavailable}" VerticalAlignment="Center" MinWidth="0">
+                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Classes="muted small" Text="{Binding UnavailableReason}" IsVisible="{Binding IsUnavailable}"
+                               TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding UnavailableReason}" />
+                </StackPanel>
+                <ContentControl Grid.Column="1" Content="{Binding}" VerticalAlignment="Center" />
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
     <StackPanel Spacing="6">
         <ItemsControl x:Name="GroupsHost" ItemsSource="{Binding Groups}">
             <ItemsControl.ItemTemplate>
@@ -12,17 +26,24 @@
                     <Border Classes="groupPanel">
                         <StackPanel Spacing="6">
                             <pages:GroupHeader />
-                            <ListBox Classes="rows compact" ItemsSource="{Binding Actions}" IsVisible="{Binding IsExpanded}">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate DataType="hk:HotkeyAction">
-                                        <Grid ColumnDefinitions="*,Auto">
-                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
-                                                       VerticalAlignment="Center" />
-                                            <ContentControl Grid.Column="1" Content="{Binding}" VerticalAlignment="Center" />
-                                        </Grid>
+                            <StackPanel Spacing="6" IsVisible="{Binding IsExpanded}">
+                            <ListBox Classes="rows compact" ItemsSource="{Binding Actions}" IsVisible="{Binding HasActions}"
+                                     ItemTemplate="{StaticResource ActionCard}" />
+                            <ItemsControl ItemsSource="{Binding Subgroups}">
+                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:HotkeySubgroup">
+                                        <Border Classes="subgroupPanel">
+                                            <StackPanel Spacing="4">
+                                                <pages:GroupHeader />
+                                                <ListBox Classes="rows compact" ItemsSource="{Binding Actions}" IsVisible="{Binding IsExpanded}"
+                                                         ItemTemplate="{StaticResource ActionCard}" />
+                                            </StackPanel>
+                                        </Border>
                                     </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            </StackPanel>
                         </StackPanel>
                     </Border>
                 </DataTemplate>

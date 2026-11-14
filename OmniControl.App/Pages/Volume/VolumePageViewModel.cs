@@ -13,12 +13,12 @@ namespace OmniControl.App.Pages.Volume;
 /// <summary>
 /// The Volume page, two tabs. Mixer: Outputs (the master, one row per program, open or remembered, and combined speakers) and
 /// Microphones (every recording device and combined microphone); each row says where it plays (read only: its words jump to Wiring)
-/// and what effects it has, which open in the row's FX window. Wiring: the sound mode, the cable status and "Combine devices", a table
+/// and what effects it has, which open in the row's FX window. Wiring: the sound mode and the cable status, a table
 /// of where each source plays or records from and the cable it uses, and the combined devices. Both tabs read the same routing model.
 /// Sound state lives in <see cref="MixerService"/>; what can run in <see cref="SoundModeService"/>; what runs in
 /// <see cref="EffectsEngine"/>. This class turns those into rows and keeps them up to date. Partial files: rows (.Rows), microphones
-/// and combined devices (.Inputs), the routing model, sentences and gates (.Routing), the Wiring tab (.Wiring), the sound mode panel
-/// (.SoundMode), combining (.Combine), hotkeys and meters (.Hotkeys).
+/// and combined devices (.Inputs), the routing model, sentences and gates (.Routing), the Wiring tab (.Wiring), its Virtual cables
+/// group (.Cables), the sound mode panel (.SoundMode), combining (.Combine), hotkeys and meters (.Hotkeys).
 /// </summary>
 public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
 {
@@ -28,7 +28,11 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
     private readonly EngineInstaller _installer;
     private readonly Func<EngineMessage, Task<bool>> _ask;
     private readonly Func<CombineDeviceViewModel, Task<bool>> _combine;
+    private readonly Action<SetupTable> _showTable;
+    /// <summary>The setup table (the Sound mode panel's Help and the badge), kept in step with the engine while the page lives.</summary>
+    private readonly SetupTable _setupTable;
     private readonly OsdService _osd;
+    private readonly ProgramDiscovery _discovery = new();
     private readonly Action<string> _report;
     private readonly Action<string?> _openFx;
     private readonly Stopwatch _clock = Stopwatch.StartNew();
@@ -50,11 +54,12 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
     public bool ShowsMixer => Tabs.Current == MixerTab;
     public bool ShowsWiring => Tabs.Current == WiringTab;
 
-    /// <summary>Outputs: the master, programs, combined speakers, then the "Add program" row. Open unless the user closed it.</summary>
+    /// <summary>Outputs: the master, programs and combined speakers; "Show closed" and "Add program" at the right of its header. Open unless the user closed it.</summary>
     public VolumeGroup Outputs { get; } = new("Volume/Outputs", "Outputs")
     {
         ExpandedByDefault = true,
-        Tip = "The → and ← words open Wiring; the effects words and FX open the row's FX window. Programs are remembered after they close; × forgets one.",
+        SummaryBesideName = true,
+        Tip = "The → and ← words open Wiring; the effects words and FX open the row's FX window. Programs with settings are remembered after they close; × forgets one.",
     };
 
     /// <summary>Microphones: recording devices and combined microphones. Open unless the user closed it (key kept from "Inputs").</summary>
@@ -63,11 +68,11 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
     /// <summary>The Wiring tab's "Sound mode" button and panel.</summary>
     public SoundModeChoice SoundMode { get; }
 
-    /// <summary>"Combine devices" (the Wiring tab's button, its combined devices): dimmed in Fast mode, with the reason and a Switch link.</summary>
-    public ModeGate CombineGate { get; }
+    /// <summary>Whether new combined speakers can be created and run now (not in Fast mode, no cable or none free): the "+ Combine speakers" pill and the window's choice.</summary>
+    public ModeGate CombineSpeakersGate { get; }
 
-    /// <summary>The Mixer's quiet mode words ("Fast mode"), which open Wiring.</summary>
-    [ObservableProperty] private string _modeIndicator = string.Empty;
+    /// <summary>The same for a new combined microphone (needs a free cable apps can record from, in either mode).</summary>
+    public ModeGate CombineMicrophonesGate { get; }
 
     /// <summary>The Wiring tab's cable chip: Full control's own first status line ("Ready · 1 virtual cable", "Needs VB-CABLE"); null before the first look.</summary>
     [ObservableProperty, NotifyPropertyChangedFor(nameof(HasCableStatus))] private ModeStatus? _cableStatus;
@@ -85,19 +90,20 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
         new SearchEntry[]
         {
             Entry(_soundModeCard, "Sound mode", "fast full control mode apo equalizer virtual cable vb-cable delay microphone mic capture device selector", WiringTab),
-            Entry(_combineCard, "Combine devices", "combine merge speakers microphones mic several devices together cable", WiringTab),
+            Entry(_combineCard, "Combine devices", "combine merge speakers microphones mic mics mix several devices together cable stereo mix", WiringTab),
         }
-        .Concat(AllRows().Select(r => Entry(r, Title, "sound audio mixer app program pan fx effects output device microphone", MixerTab)))
-        .Concat(WiringRows().Select(w => Entry(w, (w.Source is InputItem ? WiringInputs : WiringOutputs).RouteColumn,
-            "wiring route plays on records from output device speakers headphones microphone several cable", WiringTab)))
-        .Concat(_cards.Values.Select(c => Entry(c, "Combined device", "combine combined speakers microphones members cable edit", WiringTab)));
+        .Concat(AllRows().Select(r => Entry(r, Title, "sound audio mixer app program pan fx effects method cable capture replay recording output device microphone", MixerTab)))
+        .Concat(WiringRows().Select(w => Entry(w, (WiringInputs.Items.Contains(w) ? WiringInputs : WiringOutputs).RouteColumn,
+            "wiring route plays on records from output device speakers headphones microphone combine combined mix mics several cable", WiringTab)))
+        .Concat(CableEntries());
 
     /// <param name="openFx">Opens the FX window for a chain key (null = master).</param>
     /// <param name="ask">Shows a setup message window; true when the user confirmed.</param>
     /// <param name="combine">Shows the Combine devices window; true when the user pressed Create.</param>
+    /// <param name="showTable">Shows the setup table window.</param>
     public VolumePageViewModel(MixerService mixer, SoundModeService modes, EffectsEngine engine, EngineInstaller installer, HotkeyRegistry hotkeys,
         OsdService osd, Action<string> report, Action<string?> openFx,
-        Func<EngineMessage, Task<bool>> ask, Func<CombineDeviceViewModel, Task<bool>> combine)
+        Func<EngineMessage, Task<bool>> ask, Func<CombineDeviceViewModel, Task<bool>> combine, Action<SetupTable> showTable)
     {
         _mixer = mixer;
         _modes = modes;
@@ -105,19 +111,27 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
         _installer = installer;
         _ask = ask;
         _combine = combine;
+        _showTable = showTable;
+        _setupTable = new SetupTable(ChooseSetup);
         _osd = osd;
         _report = report;
         _openFx = openFx;
         mixer.Report = report;
 
-        SoundMode = new SoundModeChoice(SetSoundMode, modes.Refresh);
-        CombineGate = Gate();
+        SoundMode = new SoundModeChoice(SetSoundMode, modes.Refresh, ShowSetupTable);
+        CombineSpeakersGate = Gate();
+        CombineMicrophonesGate = Gate();
+        WiringOutputs = NewWiringOutputs();
+        WiringInputs = NewWiringInputs();
+        WiringCables = NewWiringCables();
         _soundModeCard = new GalleryItem("Sound mode", SoundModes.All.Select(m => m.Name).ToList(), IndexOf(mixer.SoundMode),
             SoundModePreview, i => SetSoundMode(SoundModes.All[i]));
-        _combineCard = new ButtonItem("Combine devices", "Combine…", "Joins speakers or microphones (Full control)",
-            () => _ = CombineAsync());
+        _combineCard = new ButtonItem("Combine devices", "Combine…", "Joins speakers (Full control) or microphones into one",
+            () => _ = CombineAsync(null, Array.Empty<string>()));
         _master = NewMaster();
-        _add = new AddProgramItem { Add = path => { var key = mixer.AddProgram(path); report($"Added {mixer.Find(key)?.Name}"); } };
+        var addMenu = new AddProgramMenuViewModel(mixer, _discovery, AddProgram);
+        Outputs.ProgramTools = new ProgramListTools(addMenu, Rebuild);
+        _discovery.Refresh();
 
         Rebuild();
         RefreshInputs();
@@ -126,8 +140,11 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
         mixer.Updated += Merge;
         modes.Changed += SyncModes;
         engine.StatusChanged += OnEngineStatus;
+        mixer.MasterDeviceChanged += OnMasterDeviceChanged;
+        engine.PlanChanged += OnPlanChanged;
         _meterTimer.Tick += (_, _) => FeedMeters();
         RegisterHotkeys(hotkeys);
+        CreateEasy(hotkeys);
     }
 
     public override void OnShown()
@@ -139,7 +156,11 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
         SyncModes();
     }
 
-    private ModeGate Gate() => new(SetSoundMode);
+    private ModeGate Gate() => new(SetSoundMode, ModeWhy);
+
+    /// <summary>Why a mode can't be chosen on this PC now (<see cref="SoundModes.ModeUnavailable"/>) as one sentence; null = it can.</summary>
+    private string? ModeWhy(SoundMode mode) =>
+        SoundModes.ModeUnavailable(mode, _modes.Current) is { } reason ? SoundModes.ModeNotAvailable(mode, reason) : null;
 
     private void OnTabChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
@@ -148,20 +169,17 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
         OnPropertyChanged(nameof(ShowsWiring));
     }
 
-    /// <summary>The Mixer's mode words: open Wiring, where the mode is chosen.</summary>
-    [RelayCommand] private void ShowSoundMode() => ShowWiring(null);
-
     private static int IndexOf(SoundMode mode) => SoundModes.All.ToList().IndexOf(mode);
 
     /// <summary>Every Mixer row, in list order.</summary>
-    private IEnumerable<VolumeRow> AllRows() => Outputs.Items.OfType<VolumeRow>().Concat(Inputs.Items.OfType<VolumeRow>());
+    private IEnumerable<VolumeRow> AllRows() => Outputs.Items.OfType<VolumeRow>().Concat(_items.Values).Distinct().Concat(Inputs.Items.OfType<VolumeRow>());
 
     /// <summary>Every Wiring table row, in list order.</summary>
     private IEnumerable<WiringRow> WiringRows() => WiringOutputs.Items.OfType<WiringRow>().Concat(WiringInputs.Items.OfType<WiringRow>());
 
     private void UpdateSummaries()
     {
-        Outputs.Summary = $"Master + {CountOf(_items.Count, "program")}";
+        Outputs.Summary = $"Master + {CountOf(_listed.Count, "program")}";
         Inputs.Summary = CountOf(Inputs.Items.OfType<VolumeRow>().Count(), "device");
     }
 
@@ -176,10 +194,15 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
 
     public void Dispose()
     {
+        Outputs.ProgramTools?.Add.Dispose();
+        _discovery.Dispose();
         Tabs.PropertyChanged -= OnTabChanged;
         _mixer.Updated -= Merge;
         _modes.Changed -= SyncModes;
         _engine.StatusChanged -= OnEngineStatus;
+        _mixer.MasterDeviceChanged -= OnMasterDeviceChanged;
+        _engine.PlanChanged -= OnPlanChanged;
+        Easy.Dispose();
         _meterTimer.Stop();
     }
 }

@@ -13,12 +13,29 @@ public static class MouseOptions
     public static readonly ActionOption Times = ActionOption.Number("times", "Times each time", 1, 1, 20).ShownWhen(Trigger, OnPress, OnRelease, Repeatedly);
     public static readonly ActionOption RepeatDelay = ActionOption.Number("delay", "Wait before repeating", 500, 100, 2000, 50, " ms").ShownWhen(Trigger, Repeatedly);
     public static readonly ActionOption RepeatEvery = ActionOption.Number("every", "Repeat every", 100, 20, 1000, 10, " ms").ShownWhen(Trigger, Repeatedly);
-    // Opt-in extras for almost every action: let the button's own click through, and/or send a shortcut with it.
+    // Opt-in extras for almost every action: let the input's own action through (a button's click, Windows' own gesture), and/or send a shortcut with it.
+    // One setting ("original"), worded by the kind of input: a trackpad gesture is never swallowed, so for it this means "do not turn Windows' gesture off".
     public static readonly ActionOption KeepOriginal = ActionOption.Toggle("original", "Also send the button's normal click");
+    public static readonly ActionOption KeepWindowsGesture = KeepOriginal with { Label = "Also let Windows do its own gesture" };
     public static readonly ActionOption AlsoSend = ActionOption.Text("also", "Also send this shortcut", "", "Ctrl+C");
-    public static readonly IReadOnlyList<ActionOption> Alongside = new[] { KeepOriginal, AlsoSend };
+
+    /// <summary>The "also keep the original" setting as it reads for this kind of input.</summary>
+    public static ActionOption OriginalFor(bool trackpadGesture) => trackpadGesture ? KeepWindowsGesture : KeepOriginal;
 
     public static readonly IReadOnlyList<ActionOption> Common = new[] { Trigger, Times, RepeatDelay, RepeatEvery };
+
+    // What only the first of an input's actions decides: when it runs (pressed, released, repeated, keys held) and whether the input
+    // itself is let through. The second and later actions run once, in order, each time the input fires.
+    private static readonly HashSet<string> FirstActionOnly = new() { Trigger.Key, RepeatDelay.Key, RepeatEvery.Key, KeepOriginal.Key };
+
+    /// <summary>
+    /// The settings an action keeps as an input's second or later action: its own, without <see cref="FirstActionOnly"/>; "times" is
+    /// then always shown (it no longer depends on the trigger). Null when nothing is left.
+    /// </summary>
+    public static IReadOnlyList<ActionOption>? OneShot(IReadOnlyList<ActionOption>? options) =>
+        options?.Where(o => !FirstActionOnly.Contains(o.Key))
+            .Select(o => o.ShowKey is { } key && FirstActionOnly.Contains(key) ? o with { ShowKey = null, ShowValues = null } : o)
+            .ToList() is { Count: > 0 } left ? left : null;
 
     // Window actions.
     private const string UnderPointer = "Window under the pointer";

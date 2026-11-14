@@ -41,7 +41,7 @@ public sealed partial class PickerModel : ObservableObject
     public const string KeyHelp =
         "Type to search; Up/Down choose; Left/Right switch between categories, entries and an entry's cogwheel; Enter picks (on a cogwheel: opens its settings); "
         + "Tab opens the highlighted entry's settings; Esc closes. On the settings page: Up/Down choose a setting, Left/Right change it (Space flips a switch); "
-        + "Enter on a text setting edits it; Ctrl+Enter or a double-click types a number; Enter anywhere else uses the action with these settings; Esc goes back.";
+        + "Enter on a text setting edits it; Ctrl+Enter or a double-click types a number; Enter anywhere else uses the action with these settings; Esc, Alt+Left or the Back button goes back to the list.";
 
     private static readonly IReadOnlyDictionary<string, string> NoValues = new Dictionary<string, string>();
 
@@ -81,6 +81,9 @@ public sealed partial class PickerModel : ObservableObject
 
     // The settings page.
     [ObservableProperty] private bool _isEditingOptions;
+
+    /// <summary>True when the settings page was reached from the list (a cogwheel, or an entry that asks for settings first), so "Back" has a list to return to; false when the window opened straight on the settings.</summary>
+    [ObservableProperty] private bool _canGoBack;
     [ObservableProperty] private int _optionIndex;
 
     /// <summary>True when the keyboard is on the "Use this ..." button (Enter uses the entry).</summary>
@@ -107,8 +110,10 @@ public sealed partial class PickerModel : ObservableObject
     /// <param name="currentParameter">The text the current entry takes (its shortcut, program or folder).</param>
     /// <param name="offerApplyToAll">Add the switch that copies the settings to every other gesture using the same action (on by default).</param>
     /// <param name="startInOptions">Open straight on the settings of <paramref name="current"/> (from the card's cogwheel).</param>
+    /// <param name="backToList">With <paramref name="startInOptions"/>: keep the Back button, so another entry can be chosen from the list (an action chip).</param>
     public PickerModel(IReadOnlyList<PickGroup> groups, PickChoice? current,
-        IReadOnlyDictionary<string, string> currentValues, bool startInOptions = false, string currentParameter = "", bool offerApplyToAll = false)
+        IReadOnlyDictionary<string, string> currentValues, bool startInOptions = false, string currentParameter = "", bool offerApplyToAll = false,
+        bool backToList = false)
     {
         _groups = groups;
         _current = current;
@@ -119,7 +124,11 @@ public sealed partial class PickerModel : ObservableObject
         _categoryIndex = current is null ? 0 : Math.Max(0, Categories.ToList().IndexOf(current.Category));
         Actions = Build();
         _actionIndex = Math.Max(0, Actions.ToList().FindIndex(a => a.Choice == current));
-        if (startInOptions && current is { HasOptions: true }) OpenOptionsFor(current);
+        if (startInOptions && current is { HasOptions: true })
+        {
+            OpenOptionsFor(current);
+            CanGoBack = backToList;
+        }
     }
 
     partial void OnCategoryIndexChanged(int value)
@@ -198,9 +207,11 @@ public sealed partial class PickerModel : ObservableObject
         OptionIndex = 0;
         OnUseButton = false;
         OptionsTitle = $"{choice.Name}: settings";
+        CanGoBack = true;
         IsEditingOptions = true;
     }
 
+    /// <summary>Back to the list with nothing chosen: the search text, highlighted entry and category are untouched, and settings already changed stay applied (they take effect live).</summary>
     public void CloseOptions()
     {
         IsEditingOptions = false;

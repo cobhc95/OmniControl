@@ -21,3 +21,10 @@ public readonly record struct RowLoad(LoadPlace Place, int DelayMs, int PluginDe
     public static RowLoad None => default;
     public static RowLoad InApo => new(LoadPlace.Apo, 0, 0);
 }
+
+/// <summary>
+/// What a running compressor or limiter measures now (<see cref="EffectsEngine.ReadingOf"/>): how far it turns the sound down
+/// (<paramref name="ReductionDb"/>, 0 or more) and the level its meter shows (<paramref name="LevelDb"/> in dBFS: the compressor's
+/// input, the limiter's output). Both fall slowly, so a short peak can still be read.
+/// </summary>
+public readonly record struct DynamicsReading(double ReductionDb, double LevelDb);

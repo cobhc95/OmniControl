@@ -27,7 +27,8 @@ internal struct RuleProbe
         _layer = null;
     }
 
-    public int Layer(Func<int> current) => _layer ??= current();
+    /// <summary>The layer of <paramref name="family"/> in force (every rule asked about one input has the same family).</summary>
+    public int Layer(Func<InputFamily, int> current, InputFamily family) => _layer ??= current(family);
 
     public Modifiers Held => _held ??= KeyboardState.Held();
 
@@ -50,6 +51,7 @@ internal sealed class CompiledRule
     public required int HoldMs { get; init; }
     public required IReadOnlyList<string> Steps { get; init; }
     private int Layer { get; init; }
+    private InputFamily Family { get; init; }
     private bool AnyOf { get; init; }
     private long RateLimitMs { get; init; }
     private PointerAreaKind[] Areas { get; init; } = Array.Empty<PointerAreaKind>();
@@ -81,6 +83,7 @@ internal sealed class CompiledRule
             HoldMs = parsed.Options.Int(RuleTriggers.HoldTime),
             Steps = rule.Steps.ToArray(),
             Layer = rule.Layer,
+            Family = trigger.Family,
             AnyOf = rule.AnyOf,
             RateLimitMs = (long)rule.ClampedRateLimit().TotalMilliseconds,
             Areas = areas,
@@ -93,9 +96,9 @@ internal sealed class CompiledRule
     /// True when the rule applies to this input: its layer, then its conditions (all, or any one). A rule without a "keys held"
     /// condition does not apply while a modifier key is held (as for gestures), except to a shortcut, whose keys are its own.
     /// </summary>
-    public bool Applies(ref RuleProbe probe, Func<int> layer, int edgeStrip, ProgramNames names)
+    public bool Applies(ref RuleProbe probe, Func<InputFamily, int> layer, int edgeStrip, ProgramNames names)
     {
-        if (Layer != Rule.AnyLayer && Layer != probe.Layer(layer)) return false;
+        if (Layer != Rule.AnyLayer && Layer != probe.Layer(layer, Family)) return false;
         if (Trigger.Kind != TriggerKind.Shortcut && Keys.Length == 0 && probe.Held != Modifiers.None) return false;
         if (Keys.Length + Programs.Length + Areas.Length == 0) return true;
 

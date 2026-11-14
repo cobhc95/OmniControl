@@ -18,7 +18,7 @@ public sealed class ShortcutsPageViewModel : PageViewModel
 
     private ObservableCollection<HotkeyAction> Actions => _registry.Actions;
 
-    /// <summary>The actions grouped by heading (feature, then its group and subgroup), in the order features registered them.</summary>
+    /// <summary>The actions grouped by panel (feature and group; subgroups fold inside), in the order features registered them.</summary>
     public ObservableCollection<HotkeyGroup> Groups { get; } = new();
 
     public override IEnumerable<SearchEntry> SearchEntries =>
@@ -34,7 +34,7 @@ public sealed class ShortcutsPageViewModel : PageViewModel
     private void Rebuild()
     {
         Groups.Clear();
-        foreach (var g in Actions.GroupBy(a => a.Heading))
+        foreach (var g in Actions.GroupBy(a => a.Panel))
             Groups.Add(new HotkeyGroup(g.Key, g.ToList()));
     }
 

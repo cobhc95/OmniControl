@@ -15,8 +15,9 @@ public interface IAudioBlockProcessor
 
 /// <summary>
 /// Capture, effects, playback: records one or more sources (<see cref="PipeSource"/>) on their own threads, mixes them on the
-/// playback thread of the first output device, runs the <see cref="IAudioBlockProcessor"/> and plays the result on that device and
-/// on every further one (<see cref="ExtraOutput"/>: each keeps step with the first through drift correction). Nothing here touches
+/// playback thread of the first output device (each capture read through a <see cref="DriftReader"/> at its own gain,
+/// <see cref="SetSourceGain"/>), runs the <see cref="IAudioBlockProcessor"/> and plays the result on that device and on every further
+/// one (<see cref="ExtraOutput"/>: each keeps step with the first through the same drift correction). Nothing here touches
 /// the original program's sound: silencing or routing it is the caller's job. Dispose stops everything.
 /// </summary>
 public sealed class AudioPipe : IDisposable
@@ -90,6 +91,16 @@ public sealed class AudioPipe : IDisposable
         return peak;
     }
 
+    /// <summary>
+    /// The gain the mix gives source <paramref name="index"/> (in the order the sources were given; 1 = as recorded, 0 = muted).
+    /// Any thread; the playback thread picks it up with the next block.
+    /// </summary>
+    /// <param name="rawCeiling">
+    /// A block of this source whose recorded samples (before the gain) go above this is left out of the mix: a large make-up gain on a
+    /// source that should arrive turned down (<c>Quiet</c> silencing) must never amplify full-level sound.
+    /// </param>
+    public void SetSourceGain(int index, float gain, float rawCeiling = float.PositiveInfinity) => _output.SetGain(index, gain, rawCeiling);
+
     /// <summary>How many capture packets have arrived in total.</summary>
     public long CapturedPackets => _captures.Sum(c => c.Packets);
 
@@ -106,6 +117,20 @@ public sealed class AudioPipe : IDisposable
                 playback = Math.Max(playback, _output.Extras[i].QueuedMs + _players[i + 1].LatencyMilliseconds);
             return CoreTiming.PipeCaptureBufferMs + _output.QueuedMs + playback;
         }
+    }
+
+    /// <summary>
+    /// Adds one source's block to the mix at <paramref name="gain"/>; false (nothing added) when the gain is 0 or a recorded sample goes
+    /// above <paramref name="rawCeiling"/>. Playback thread: no allocation.
+    /// </summary>
+    internal static bool MixInto(Span<float> mix, ReadOnlySpan<float> part, float gain, float rawCeiling)
+    {
+        if (gain == 0f) return false;
+        if (!float.IsPositiveInfinity(rawCeiling))
+            foreach (var s in part)
+                if (Math.Abs(s) > rawCeiling) return false;
+        for (var k = 0; k < part.Length; k++) mix[k] += part[k] * gain;
+        return true;
     }
 
     private void Fail(string reason)
@@ -126,29 +151,40 @@ public sealed class AudioPipe : IDisposable
     /// <summary>The first device's playback side: its playback thread pulls blocks from here and hands a copy to every extra device.</summary>
     private sealed class PipeOutput : IWaveProvider
     {
-        private readonly IReadOnlyList<AudioRing> _rings;
+        private readonly DriftReader[] _sources;
+        private readonly float[] _gains;
+        private readonly float[] _ceilings;
         private readonly IAudioBlockProcessor _processor;
-        private readonly bool[] _primed;
         private readonly float[] _block = new float[CoreTiming.PipeMaxBlockFrames * CoreTiming.PipeChannels];
+        private readonly float[] _part = new float[CoreTiming.PipeMaxBlockFrames * CoreTiming.PipeChannels];
         private int _processorBroken;
-
-        private const int SamplesPerMs = CoreTiming.PipeSamplesPerMs;
 
         public event Action<string>? Failed;
 
         public PipeOutput(IReadOnlyList<AudioRing> rings, IReadOnlyList<ExtraOutput> extras, IAudioBlockProcessor processor)
         {
-            _rings = rings;
+            // Each capture runs on its own clock: read through drift correction so the mix never trims or runs dry as the clocks part.
+            _sources = rings.Select(r => new DriftReader(r, CoreTiming.PipeCaptureDriftTargetMs)).ToArray();
+            _gains = Enumerable.Repeat(1f, rings.Count).ToArray();
+            _ceilings = Enumerable.Repeat(float.PositiveInfinity, rings.Count).ToArray();
             Extras = extras;
             _processor = processor;
-            _primed = new bool[rings.Count];
         }
 
         public IReadOnlyList<ExtraOutput> Extras { get; }
 
         public WaveFormat WaveFormat { get; } = WaveFormat.CreateIeeeFloatWaveFormat(CoreTiming.PipeSampleRate, CoreTiming.PipeChannels);
 
-        public int QueuedMs => _rings.Count == 0 ? 0 : _rings.Max(r => r.Count) / SamplesPerMs;
+        public int QueuedMs => _sources.Length == 0 ? 0 : _sources.Max(s => s.QueuedMs);
+
+        public void SetGain(int index, float gain, float rawCeiling)
+        {
+            if (index < 0 || index >= _gains.Length) return;
+            // The playback thread reads both without a lock: through 0 first, so it never pairs a large gain with no ceiling.
+            Volatile.Write(ref _gains[index], 0f);
+            Volatile.Write(ref _ceilings[index], rawCeiling);
+            Volatile.Write(ref _gains[index], gain);
+        }
 
         public int Read(Span<byte> buffer)
         {
@@ -167,16 +203,15 @@ public sealed class AudioPipe : IDisposable
             return done * sizeof(float);
         }
 
-        /// <summary>Mixes what each capture has queued; a capture waits until it has the prefill, and a queue that grew too long is trimmed.</summary>
+        /// <summary>Mixes what each capture has queued, each at its own gain (see <see cref="DriftReader"/> for priming and trimming).</summary>
         private void Fill(Span<float> block)
         {
             block.Clear();
-            for (var i = 0; i < _rings.Count; i++)
+            var part = _part.AsSpan(0, block.Length);
+            for (var i = 0; i < _sources.Length; i++)
             {
-                var ring = _rings[i];
-                if (ring.Count > CoreTiming.PipeMaxQueueMs * SamplesPerMs) ring.DropTo(CoreTiming.PipePrefillMs * SamplesPerMs);
-                if (!_primed[i] && ring.Count < CoreTiming.PipePrefillMs * SamplesPerMs) continue;
-                _primed[i] = ring.MixInto(block) == block.Length; // ran dry: gather the prefill again before playing on
+                _sources[i].Read(part); // always read, also while muted, so the queue keeps its pace
+                MixInto(block, part, Volatile.Read(ref _gains[i]), Volatile.Read(ref _ceilings[i]));
             }
         }
 

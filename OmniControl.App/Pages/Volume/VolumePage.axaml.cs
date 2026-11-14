@@ -4,7 +4,7 @@ using Avalonia.Threading;
 namespace OmniControl.App.Pages.Volume;
 
 /// <summary>
-/// Wiring only: the page's keyboard (groups and cards, Ctrl+Tab between tabs), the level meters while the page is on screen, and a jump
+/// Wiring only: the page's keyboard (groups and cards of Advanced, the buttons of Easy, Ctrl+Tab between tabs), the level meters while the page is on screen, and a jump
 /// from a Mixer row to its Wiring row (the keyboard moves there and the page scrolls it into view once the tab has been laid out).
 /// </summary>
 public partial class VolumePage : UserControl
@@ -16,6 +16,7 @@ public partial class VolumePage : UserControl
     {
         InitializeComponent();
         GroupedCards.Attach(this, CardsHost);
+        GroupedCards.Attach(this, EasyHost);
         PageTabsView.Attach(this);
         // The level meters only run while this page is on screen. The view-model may arrive before or after the page is attached.
         AttachedToVisualTree += (_, _) => { _attached = true; Sync(); };

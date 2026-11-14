@@ -1,4 +1,7 @@
-﻿<Solution>
+<Solution>
+  <Folder Name="/tests/">
+    <Project Path="tests/OmniControl.Tests/OmniControl.Tests.csproj" />
+  </Folder>
   <Project Path="OmniControl.App/OmniControl.App.csproj" />
   <Project Path="OmniControl.Core/OmniControl.Core.csproj" />
 </Solution>

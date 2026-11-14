@@ -44,6 +44,7 @@ public sealed partial class MixerService : IDisposable
         foreach (var key in Settings.Apps.Select(a => a.Key).Where(IgnoredPrograms.Contains).ToList()) Remove(key); // remembered by an older version
         Scan();
         _timer.Start();
+        StartWatching();
     }
 
     public AppAudioEntry? Find(string key) => Settings.Apps.FirstOrDefault(a => a.Key == key);
@@ -51,18 +52,6 @@ public sealed partial class MixerService : IDisposable
     /// <summary>True when the user moved this program's controls a moment ago, so a scan must not overwrite them.</summary>
     public bool RecentlyChanged(string key) =>
         _userChange.TryGetValue(key, out var t) && Grace.Within(t, Timing.MixerUserChangeGrace);
-
-    private static string NameOf(string path)
-    {
-        try
-        {
-            var d = FileVersionInfo.GetVersionInfo(path).FileDescription;
-            if (!string.IsNullOrWhiteSpace(d)) return d.Trim();
-        }
-        catch { /* fall through */ }
-        var n = Path.GetFileNameWithoutExtension(path);
-        return n.Length == 0 ? path : char.ToUpperInvariant(n[0]) + n[1..];
-    }
 
     private string? PathOf(int pid)
     {
@@ -74,7 +63,7 @@ public sealed partial class MixerService : IDisposable
     public bool Peaks(string? key, out float left, out float right)
     {
         left = right = 0;
-        if (key is null) return CoreAudio.DevicePeaks(null, false, out left, out right);
+        if (key is null) return CoreAudio.DevicePeaks(MasterDeviceId, false, out left, out right);
         if (!_sessions.TryGetValue(key, out var list)) return false;
         foreach (var s in list)
             if (s.Peaks(out var l, out var r)) { left = Math.Max(left, l); right = Math.Max(right, r); }
@@ -115,7 +104,7 @@ public sealed partial class MixerService : IDisposable
                     var path = PathOf(list[0].ProcessId)!;
                     entry = new AppAudioEntry
                     {
-                        Key = key, ExePath = path, Name = NameOf(path),
+                        Key = key, ExePath = path, Name = ProgramFile.NameOf(path),
                         Volume = list[0].Volume, Pan = list[0].Pan, Muted = list[0].Muted,
                     };
                     Settings.Apps.Add(entry);
@@ -263,15 +252,13 @@ public sealed partial class MixerService : IDisposable
     /// <summary>The user changed a program's volume, pan, mute or output device (the engine applies them while it holds the program).</summary>
     public event Action<string>? ProgramChanged;
 
-    /// <summary>Adds a program the user picked (it needn't be running). Returns its key.</summary>
+    /// <summary>Adds a program the user picked (it needn't be running); its row stays until the user removes it. Returns its key.</summary>
     public string AddProgram(string path)
     {
         var key = AppAudioEntry.KeyFor(path);
-        if (Find(key) is null)
-        {
-            Settings.Apps.Add(new AppAudioEntry { Key = key, ExePath = path, Name = NameOf(path) });
-            Settings.Save();
-        }
+        if (Find(key) is { } known) known.Added = true;
+        else Settings.Apps.Add(new AppAudioEntry { Key = key, ExePath = path, Name = ProgramFile.NameOf(path), Added = true });
+        Settings.Save();
         Scan();
         return key;
     }
@@ -292,5 +279,9 @@ public sealed partial class MixerService : IDisposable
         Settings.Save();
     }
 
-    public void Dispose() => _timer.Stop();
+    public void Dispose()
+    {
+        _timer.Stop();
+        StopWatching();
+    }
 }

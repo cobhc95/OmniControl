@@ -16,7 +16,13 @@ public sealed partial class SliderItem : ObservableObject, IEditorItem, IHalfWid
     public string Unit { get; }
 
     /// <summary>Where a double-click on the slider puts it: the given default, else 0 for a signed range, else the top.</summary>
-    public int ResetValue { get; }
+    /// <remarks>It may change while the card is shown: a monitor control whose standard gives no default returns to the value the monitor had when it was read.</remarks>
+    [ObservableProperty] private int _resetValue;
+
+    /// <summary>True: drawn with the master thick slider (Slider.thick); the FX editors set it.</summary>
+    public bool Thick { get; init; }
+
+    /// <summary>A range that crosses zero: the thick slider draws no fill from the left end (its middle is the rest point).</summary>
 
     /// <summary>Greyed out, with a reason, while the control cannot be used (a monitor that does not report it).</summary>
     public Availability Availability { get; } = new();

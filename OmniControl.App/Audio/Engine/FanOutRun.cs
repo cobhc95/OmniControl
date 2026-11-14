@@ -14,7 +14,7 @@ internal sealed class FanOutRun : EngineRun
 
     public override void Start()
     {
-        ShowWaiting("Starting");
+        ShowWaiting("Starting", StatusKind.Starting);
         StartPipe(new[] { PipeSource.Playback(Spec.Cable!) }, ShowRunning);
     }
 

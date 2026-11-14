@@ -3,7 +3,7 @@ using OmniControl.Core.Native;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>The arithmetic of a gamma ramp (pure, no Windows calls): brightness, contrast and colour temperature as three 256-entry curves.</summary>
+/// <summary>The arithmetic of a gamma ramp (pure, no Windows calls): the picture settings of <see cref="SoftwareColor"/> as three 256-entry curves.</summary>
 internal static class RampMath
 {
     private const int Steps = 256, Last = Steps - 1;
@@ -38,23 +38,36 @@ internal static class RampMath
         return true;
     }
 
-    /// <summary>The ramp for <paramref name="color"/>, laid over <paramref name="original"/> so a calibration the display already has is kept.</summary>
+    /// <summary>
+    /// The ONE computation of a display's ramp, laid over <paramref name="original"/> so a calibration the display already has is kept.
+    /// Each colour of the picture goes through these steps in this order, so no two settings fight: contrast about mid-grey, gamma,
+    /// black and white level (lift and limit), brightness, then per channel the colour temperature and the channel's gain, and last
+    /// the display's own curve. Every neutral value leaves its step out of the way, so the neutral picture is the original ramp.
+    /// </summary>
     public static ushort[] Build(SoftwareColor color, ushort[] original)
     {
         color = color.Clamped();
         var contrast = color.Contrast / 100.0;
         var brightness = color.Brightness / 100.0;
+        var exponent = 1 / GammaOf(color.Gamma);
+        double black = color.Black / 100.0, white = color.White / 100.0;
         var tint = Tint(color.Temperature);
+        double[] gain = { color.Red / 100.0, color.Green / 100.0, color.Blue / 100.0 };
 
         var ramp = new ushort[GammaNative.RampLength];
         for (var i = 0; i < Steps; i++)
         {
-            var level = Math.Clamp((i / (double)Last - 0.5) * contrast + 0.5, 0, 1) * brightness;
+            var level = Math.Clamp((i / (double)Last - 0.5) * contrast + 0.5, 0, 1);
+            level = Math.Pow(level, exponent);
+            level = (black + level * (white - black)) * brightness;
             for (var channel = 0; channel < 3; channel++)
-                ramp[channel * Steps + i] = Lookup(original, channel, level * tint[channel]);
+                ramp[channel * Steps + i] = Lookup(original, channel, level * tint[channel] * gain[channel]);
         }
         return ramp;
     }
+
+    /// <summary>The curve exponent of a gamma step (see <see cref="SoftwareColor.GammaMin"/>): 1 is neutral.</summary>
+    public static double GammaOf(int step) => 1 + step / 100.0;
 
     /// <summary>The original curve at a fractional position (0-1), by linear interpolation.</summary>
     private static ushort Lookup(ushort[] original, int channel, double position)

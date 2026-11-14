@@ -5,17 +5,37 @@ using OmniControl.Core.Native;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>
-/// Software brightness, contrast and colour temperature for one display, by setting its gamma ramp. Before the first change the
-/// display's own ramp is captured (<see cref="Capture"/>) so <see cref="Restore"/> can put exactly that back; a caller that must
-/// survive a crash saves <see cref="Original"/> first and writes it back with <see cref="Write"/> at the next start.
-/// </summary>
-public sealed class GammaDisplay
+/// <summary>One display's gamma ramp as the software picture needs it; <see cref="GammaDisplay"/> is the Windows one, a test has its own.</summary>
+public interface IGammaDisplay
 {
+    /// <summary>The display's ramp as it was before OmniControl changed it; null until captured.</summary>
+    ushort[]? Original { get; }
+
+    /// <summary>True once the driver has shown it does not give or take ramps from programs (its own ramp could not be read, or the last good one written again was refused too).</summary>
+    bool DriverRefuses { get; }
+
+    OperationResult Capture();
+    OperationResult Apply(SoftwareColor color);
+}
+
+/// <summary>
+/// The software picture of one display (brightness, contrast, gamma, black and white level, channel gains, colour temperature) by
+/// setting its gamma ramp. Before the first change the display's own ramp is captured (<see cref="Capture"/>) so a neutral
+/// <see cref="Apply"/> can put exactly that back; a caller that must survive a crash saves <see cref="Original"/> first and writes it back with
+/// <see cref="Write"/> at the next start.
+/// </summary>
+public sealed class GammaDisplay : IGammaDisplay
+{
+    /// <summary>What a driver that takes no ramps from programs is called, in a card's tooltip.</summary>
+    public const string DriverRefusal = "Not supported by this display's driver";
+
+    private ushort[]? _lastGood;
+
     public string DeviceName { get; }
 
-    /// <summary>The display's ramp as it was before OmniControl changed it; null until captured.</summary>
     public ushort[]? Original { get; private set; }
+
+    public bool DriverRefuses { get; private set; }
 
     public GammaDisplay(string deviceName) => DeviceName = deviceName;
 
@@ -24,27 +44,37 @@ public sealed class GammaDisplay
     {
         if (Original is not null) return OperationResult.Ok();
         var ramp = Read(DeviceName);
-        if (ramp is null) return OperationResult.Fail("Windows would not let OmniControl read this display's colour curve.");
+        if (ramp is null)
+        {
+            DriverRefuses = true;
+            return OperationResult.Fail("Windows would not let OmniControl read this display's colour curve.");
+        }
+        DriverRefuses = false;
         Original = RampMath.IsSane(ramp) ? ramp : RampMath.Identity(); // a driver answering with zeros must not become "normal"
+        _lastGood = Original;
         return OperationResult.Ok();
     }
 
-    /// <summary>Applies <paramref name="color"/> (its values limited to the safe ranges). Capture first; neutral puts the original back.</summary>
+    /// <summary>
+    /// Applies <paramref name="color"/> (its values limited to the safe ranges). Capture first; neutral puts the original back. When
+    /// Windows refuses a ramp, the ramp that worked last is written again: if even that is refused the driver takes no ramps at all
+    /// (<see cref="DriverRefuses"/>), otherwise only this value was too far from normal.
+    /// </summary>
     public OperationResult Apply(SoftwareColor color)
     {
         if (Original is null) return OperationResult.Fail("The display's own colour curve was not captured.");
-        if (color.IsNeutral) return Write(DeviceName, Original);
-        var result = Write(DeviceName, RampMath.Build(color, Original));
-        return result.Success ? result : OperationResult.Fail("Windows refused this setting for this display. Try a value closer to normal.");
-    }
+        var ramp = color.IsNeutral ? Original : RampMath.Build(color, Original);
+        var result = Write(DeviceName, ramp);
+        if (result.Success)
+        {
+            DriverRefuses = false;
+            _lastGood = ramp;
+            return result;
+        }
+        if (color.IsNeutral) return result;
 
-    /// <summary>Puts the display's own ramp back and forgets it.</summary>
-    public OperationResult Restore()
-    {
-        if (Original is null) return OperationResult.Ok();
-        var result = Write(DeviceName, Original);
-        Original = null;
-        return result;
+        DriverRefuses = !Write(DeviceName, _lastGood!).Success;
+        return OperationResult.Fail(DriverRefuses ? DriverRefusal : "Windows refused this setting for this display. Try a value closer to normal.");
     }
 
     /// <summary>Sets a ramp on a display by its device name.</summary>

@@ -37,8 +37,17 @@ internal static class ChainBuilder
         return slot.Kind switch
         {
             FxCatalog.GainKind => new GainStage(slot.Values.FirstOrDefault()),
+            FxCatalog.CompKind => new CompressorStage(Completed(slot), PipeFormat.SampleRate),
+            FxCatalog.LimiterKind => new LimiterStage(Completed(slot), PipeFormat.SampleRate),
             _ => null,
         };
+    }
+
+    /// <summary>The slot's values with every setting present (a chain saved before a setting existed takes its default).</summary>
+    private static IReadOnlyList<double> Completed(FxSlot slot)
+    {
+        FxCatalog.Complete(slot);
+        return slot.Values;
     }
 
     private static IDspStage? PluginStage(FxSlot slot, Func<FxSlot, (IPluginEffect? Effect, string? Error)> plugin, List<string> skipped)

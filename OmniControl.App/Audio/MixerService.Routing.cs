@@ -39,7 +39,29 @@ public sealed partial class MixerService
         ProgramChanged?.Invoke(key);
     }
 
-    /// <summary>The master's devices when it plays on several (Full control); empty = Windows' default device alone.</summary>
+    /// <summary>How the program's effects run in Full control (<see cref="SoundModes.ProgramRoutes"/>).</summary>
+    public EffectsRoute FxRouteOf(string key) => SoundModes.RouteOf(Find(key)?.FxRoute);
+
+    public void SetFxRoute(string key, EffectsRoute route)
+    {
+        if (Find(key) is not { } e || e.FxRoute == route.Id) return;
+        e.FxRoute = route.Id;
+        Changed();
+        ProgramChanged?.Invoke(key);
+    }
+
+    /// <summary>How the master runs in Full control (<see cref="SoundModes.MasterRoutes"/>).</summary>
+    public EffectsRoute MasterMethod => SoundModes.MasterRouteOf(Settings.MasterMethod);
+
+    /// <summary>The master's method: applies at once (the engine plans again on <see cref="RoutingChanged"/>).</summary>
+    public void SetMasterMethod(EffectsRoute route)
+    {
+        if (Settings.MasterMethod == route.Id) return;
+        Settings.MasterMethod = route.Id;
+        Changed();
+    }
+
+    /// <summary>The master's chosen devices (Full control: several, or a combined device); empty = one real device alone (<see cref="MasterDeviceId"/>).</summary>
     public IReadOnlyList<string> MasterPlaysOn => Settings.MasterPlaysOn;
 
     public void SetMasterPlaysOn(IEnumerable<string> targets)
@@ -88,7 +110,32 @@ public sealed partial class MixerService
         if (CombinedOf(key) is not { } c) return;
         c.Name = name;
         c.Members = members.Distinct().ToList();
+        c.DropStaleMemberSettings();
         Changed();
+    }
+
+    /// <summary>A member added to or taken away from a combined device (the Wiring row's chips, "+ add" and "Add to ..."); the last one stays.</summary>
+    public void ToggleMember(string key, string member)
+    {
+        if (CombinedOf(key) is not { } c) return;
+        var members = c.Members.ToList();
+        if (!members.Remove(member)) members.Add(member);
+        if (members.Count == 0) return;
+        EditCombined(key, c.Name, members);
+    }
+
+    /// <summary>A combined microphone member's level (0-200 %) or mute changed (its engine run applies them; no restart).</summary>
+    public void SetMemberLevel(string key, string member, int level, bool muted)
+    {
+        if (CombinedOf(key) is not { } c || !c.Members.Contains(member)) return;
+        level = Core.Models.Percent.ClampBoost(level);
+        if (c.LevelOf(member) == level && c.IsMuted(member) == muted) return;
+        if (level == CombinedDevice.DefaultMemberLevel) c.MemberLevel.Remove(member);
+        else c.MemberLevel[member] = level;
+        if (muted) c.MemberMuted.Add(member);
+        else c.MemberMuted.Remove(member);
+        Settings.Save();
+        ProgramChanged?.Invoke(key);
     }
 
     /// <summary>A combined microphone's level or mute changed (its engine run applies them).</summary>
@@ -135,19 +182,19 @@ public sealed partial class MixerService
         if (had && old == deviceId || !had && deviceId is null) return;
         _direct[key] = deviceId;
         if (IsRoutingHeld(key) || !_sessions.TryGetValue(key, out var list)) return;
-        foreach (var pid in list.Select(s => s.ProcessId).Distinct()) Route(key, pid, deviceId);
+        Route(key, list.Select(s => s.ProcessId), deviceId);
     }
 
     /// <summary>A program just opened: send it to its own device, if it has one.</summary>
     private void ApplyDirect(string key, int pid)
     {
-        if (_direct.GetValueOrDefault(key) is { } device) Route(key, pid, device);
+        if (_direct.GetValueOrDefault(key) is { } device) Route(key, new[] { pid }, device);
     }
 
-    private void Route(string key, int pid, string? deviceId)
+    private void Route(string key, IEnumerable<int> processIds, string? deviceId)
     {
-        if (!CoreAudio.TrySetAppDevice(pid, deviceId, out var error))
-            Report?.Invoke($"Couldn't change the device for {Find(key)?.Name}: {error}");
+        if (!CoreAudio.TrySetProgramDevice(processIds, deviceId, out var error))
+            Report?.Invoke($"Couldn't change the device for {Find(key)?.Name}: {error}.");
     }
 
     private void Changed()

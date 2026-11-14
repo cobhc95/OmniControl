@@ -31,6 +31,13 @@
                     <SolidColorBrush x:Key="BrushTagGoodSoft" Color="{x:Static svc:Palette.On}" Opacity="{x:Static svc:Palette.TagWashOpacity}" />
                     <SolidColorBrush x:Key="BrushTagCautionSoft" Color="{x:Static svc:Palette.Caution}" Opacity="{x:Static svc:Palette.TagWashOpacity}" />
                     <SolidColorBrush x:Key="BrushTagRiskSoft" Color="{x:Static svc:Palette.Danger}" Opacity="{x:Static svc:Palette.TagWashOpacity}" />
+                    <!-- The parametric equaliser's band colours (Fx/EqBandColors.cs cycles through them by band number) -->
+                    <SolidColorBrush x:Key="BrushBand1" Color="#E8873A" />
+                    <SolidColorBrush x:Key="BrushBand2" Color="#4FA3D9" />
+                    <SolidColorBrush x:Key="BrushBand3" Color="#6BBF7A" />
+                    <SolidColorBrush x:Key="BrushBand4" Color="#C77DD6" />
+                    <SolidColorBrush x:Key="BrushBand5" Color="#D9B84F" />
+                    <SolidColorBrush x:Key="BrushBand6" Color="#E06C75" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
                     <SolidColorBrush x:Key="BrushBackground" Color="#FFFFFF" />
@@ -53,6 +60,12 @@
                     <SolidColorBrush x:Key="BrushTagGoodSoft" Color="{x:Static svc:Palette.On}" Opacity="{x:Static svc:Palette.TagWashOpacity}" />
                     <SolidColorBrush x:Key="BrushTagCautionSoft" Color="{x:Static svc:Palette.Caution}" Opacity="{x:Static svc:Palette.TagWashOpacity}" />
                     <SolidColorBrush x:Key="BrushTagRiskSoft" Color="{x:Static svc:Palette.Danger}" Opacity="{x:Static svc:Palette.TagWashOpacity}" />
+                    <SolidColorBrush x:Key="BrushBand1" Color="#C96A1F" />
+                    <SolidColorBrush x:Key="BrushBand2" Color="#2A7FB8" />
+                    <SolidColorBrush x:Key="BrushBand3" Color="#3C9A4E" />
+                    <SolidColorBrush x:Key="BrushBand4" Color="#A455B5" />
+                    <SolidColorBrush x:Key="BrushBand5" Color="#A88620" />
+                    <SolidColorBrush x:Key="BrushBand6" Color="#C94B57" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
             <!-- The small down arrow of a button that opens a list or pop-down -->

@@ -3,17 +3,22 @@ using OmniControl.Core.Engine.Mouse;
 namespace OmniControl.Core.Engine.Trackpad;
 
 /// <summary>How the fingers move in a trackpad gesture.</summary>
-public enum GestureMotion { Up, Down, Left, Right, PinchIn, PinchOut }
+public enum GestureMotion { Up, Down, Left, Right, PinchIn, PinchOut, Tap, DoubleTap }
 
-/// <summary>Windows' own touchpad settings that also act on a gesture (Settings > Bluetooth &amp; devices > Touchpad).</summary>
-public enum WindowsGesture { ThreeFingerSwipes, FourFingerSwipes, PinchToZoom }
+/// <summary>
+/// Windows' own touchpad settings that also act on a gesture (Settings > Bluetooth &amp; devices > Touchpad); each one's details are in
+/// <see cref="WindowsGestureSettings"/>. The names are the keys of <c>trackpad-settings-original.json</c>: never rename them.
+/// </summary>
+public enum WindowsGesture { ThreeFingerSwipes, FourFingerSwipes, PinchToZoom, OneFingerTap, TwoFingerTap, ThreeFingerTap }
 
 /// <summary>
 /// One trackpad gesture: the input value it arrives as (<see cref="Button"/>, also its stored key), a stable <see cref="Id"/> (rule
 /// triggers store it), the card's <see cref="Name"/>, how it reads in a rule's sentence (<see cref="Phrase"/>), what the fingers do,
-/// and which Windows setting also acts on it.
+/// which Windows setting also acts on it, and which of Windows' own panels Windows' action on it opens (<see cref="Opens"/>, for the
+/// safety net that closes one Windows opened although its gesture is off: <see cref="ShellSurfaceGuard"/>).
 /// </summary>
-public sealed record TrackpadGesture(MouseButton Button, string Id, string Name, string Phrase, int Fingers, GestureMotion Motion, WindowsGesture AlsoWindows);
+public sealed record TrackpadGesture(MouseButton Button, string Id, string Name, string Phrase, int Fingers, GestureMotion Motion, WindowsGesture AlsoWindows,
+    ShellSurface Opens = ShellSurface.None);
 
 /// <summary>
 /// The master list of trackpad gestures: one registration per gesture, read by the recogniser, the Mouse and Trackpad page (one card
@@ -24,16 +29,24 @@ public static class TrackpadGestures
 {
     public static readonly IReadOnlyList<TrackpadGesture> All = new TrackpadGesture[]
     {
-        new(MouseButton.ThreeFingerUp, "three.up", "Three fingers up", "swipe three fingers up", 3, GestureMotion.Up, WindowsGesture.ThreeFingerSwipes),
+        new(MouseButton.ThreeFingerUp, "three.up", "Three fingers up", "swipe three fingers up", 3, GestureMotion.Up, WindowsGesture.ThreeFingerSwipes, ShellSurface.TaskView),
         new(MouseButton.ThreeFingerDown, "three.down", "Three fingers down", "swipe three fingers down", 3, GestureMotion.Down, WindowsGesture.ThreeFingerSwipes),
         new(MouseButton.ThreeFingerLeft, "three.left", "Three fingers left", "swipe three fingers left", 3, GestureMotion.Left, WindowsGesture.ThreeFingerSwipes),
         new(MouseButton.ThreeFingerRight, "three.right", "Three fingers right", "swipe three fingers right", 3, GestureMotion.Right, WindowsGesture.ThreeFingerSwipes),
-        new(MouseButton.FourFingerUp, "four.up", "Four fingers up", "swipe four fingers up", 4, GestureMotion.Up, WindowsGesture.FourFingerSwipes),
+        new(MouseButton.FourFingerUp, "four.up", "Four fingers up", "swipe four fingers up", 4, GestureMotion.Up, WindowsGesture.FourFingerSwipes, ShellSurface.TaskView),
         new(MouseButton.FourFingerDown, "four.down", "Four fingers down", "swipe four fingers down", 4, GestureMotion.Down, WindowsGesture.FourFingerSwipes),
         new(MouseButton.FourFingerLeft, "four.left", "Four fingers left", "swipe four fingers left", 4, GestureMotion.Left, WindowsGesture.FourFingerSwipes),
         new(MouseButton.FourFingerRight, "four.right", "Four fingers right", "swipe four fingers right", 4, GestureMotion.Right, WindowsGesture.FourFingerSwipes),
         new(MouseButton.PinchIn, "pinch.in", "Pinch in", "pinch in", 2, GestureMotion.PinchIn, WindowsGesture.PinchToZoom),
         new(MouseButton.PinchOut, "pinch.out", "Pinch out", "pinch out", 2, GestureMotion.PinchOut, WindowsGesture.PinchToZoom),
+        new(MouseButton.OneFingerTap, "tap.one", "One-finger tap", "tap with one finger", 1, GestureMotion.Tap, WindowsGesture.OneFingerTap),
+        new(MouseButton.TwoFingerTap, "tap.two", "Two-finger tap", "tap with two fingers", 2, GestureMotion.Tap, WindowsGesture.TwoFingerTap),
+        new(MouseButton.ThreeFingerTap, "tap.three", "Three-finger tap", "tap with three fingers", 3, GestureMotion.Tap, WindowsGesture.ThreeFingerTap,
+            ShellSurface.Search | ShellSurface.NotificationCentre),
+        new(MouseButton.OneFingerDoubleTap, "doubletap.one", "One-finger double tap", "double-tap with one finger", 1, GestureMotion.DoubleTap, WindowsGesture.OneFingerTap),
+        new(MouseButton.TwoFingerDoubleTap, "doubletap.two", "Two-finger double tap", "double-tap with two fingers", 2, GestureMotion.DoubleTap, WindowsGesture.TwoFingerTap),
+        new(MouseButton.ThreeFingerDoubleTap, "doubletap.three", "Three-finger double tap", "double-tap with three fingers", 3, GestureMotion.DoubleTap, WindowsGesture.ThreeFingerTap,
+            ShellSurface.Search | ShellSurface.NotificationCentre),
     };
 
     /// <summary>The gesture made with this many fingers and this motion, or null (the recogniser asks; a loop, so nothing is allocated).</summary>
@@ -41,6 +54,14 @@ public static class TrackpadGestures
     {
         for (var i = 0; i < All.Count; i++)
             if (All[i].Fingers == fingers && All[i].Motion == motion) return All[i];
+        return null;
+    }
+
+    /// <summary>The gesture that arrives as <paramref name="button"/>, or null for a mouse input.</summary>
+    public static TrackpadGesture? Of(MouseButton button)
+    {
+        for (var i = 0; i < All.Count; i++)
+            if (All[i].Button == button) return All[i];
         return null;
     }
 }

@@ -55,7 +55,7 @@ public sealed partial class MousePageViewModel
         var shapes = new ItemGroup("Mouse/Pointer/Shapes", "Pointers", _pointerFiles.Select(f => (object)f.Card).ToList());
 
         _restoreCard = new ButtonItem("Restore my original values", "Restore",
-            "Back to how they were before OmniControl changed them.", RestorePointerOriginal) { Half = true };
+            "Back to before OmniControl changed them.", RestorePointerOriginal) { Half = true };
         PointerFooter = new object[]
         {
             new ButtonItem("Reset to Windows defaults", "Reset", "Back to how Windows starts.", ResetPointerDefaults) { Half = true },

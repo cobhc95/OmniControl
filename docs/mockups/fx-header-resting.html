@@ -1,0 +1,26 @@
+<!-- Owner-approved Design A: FX window header with the total-output response graph and live analysis numbers beside the effects switch.
+     Sizes here are CSS px = Avalonia layout units. Colours map: --text-accent = BrushAccent, --border-strong = BrushDivider-ish hairline, --surface-1 = card surface. -->
+<style>
+.win{background:#1c1c1c;border:0.5px solid #444;border-radius:10px;overflow:hidden;color:#ddd;font-family:Segoe UI,sans-serif;width:680px}
+.bar{display:flex;gap:16px;padding:6px 12px;font-size:12px;border-bottom:0.5px solid #333}
+.hdr{display:flex;align-items:center;gap:12px;padding:8px 12px}            /* one row: switch, label, spacer, numbers, graph */
+.sw{width:34px;height:18px;border-radius:9px;background:#f28c3c;position:relative;flex:none}   /* the existing Effects switch */
+.sw i{position:absolute;right:3px;top:3px;width:12px;height:12px;border-radius:50%;background:#1c1c1c}
+.lbl{font-size:13px}
+.st{display:flex;gap:10px;font-size:11px;color:#aaa;white-space:nowrap}      /* four numbers: label muted, value primary weight 500 */
+.st b{font-weight:500;color:#eee}
+.mini{flex:none;border:0.5px solid #3a3a3a;border-radius:6px;background:#242424}   /* graph 150x34, right end of the row */
+</style>
+<div class="win">
+  <div class="bar"><span><u>F</u>X</span><span><u>O</u>ptions</span></div>
+  <div class="hdr">
+    <span class="sw"><i></i></span><span class="lbl">Effects on</span><span style="flex:1"></span>
+    <span class="st"><span>Peak <b>-0.3 dB</b></span><span>Latency <b>0.0 ms</b></span><span>CPU <b>0.2 %</b></span></span>
+    <svg class="mini" width="150" height="34" viewBox="0 0 150 34">
+      <line x1="0" y1="14" x2="150" y2="14" stroke="#555" stroke-width="0.5"/>   <!-- 0 dB line; the curve is drawn log-frequency 20 Hz-20 kHz, gain scale fixed -->
+      <polyline fill="none" stroke="#f28c3c" stroke-width="1.5" points="2,14 60,14 76,18 86,25 100,19 116,21 132,17 148,17"/>
+    </svg>
+  </div>
+  <!-- below: the existing two panes (effects list, editor); the header row keeps its current height, nothing else moves.
+       At the narrowest window the four numbers fold into one tooltip on the graph; only the graph stays. -->
+</div>

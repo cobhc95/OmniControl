@@ -38,4 +38,9 @@
     <ProjectReference Include="..\OmniControl.Core\OmniControl.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The headless tests (tests/OmniControl.Tests) check the route planner and the effects chain, which are internal. -->
+    <InternalsVisibleTo Include="OmniControl.Tests" />
+  </ItemGroup>
+
 </Project>

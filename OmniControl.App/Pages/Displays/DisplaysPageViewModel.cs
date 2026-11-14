@@ -33,6 +33,10 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
     private readonly LevelStepper _levels = new();
     private readonly ThrottledRun _rescan;
     private readonly SoftwareGlobalItem _global;
+    private readonly WarmLightItem _warm;
+    private readonly WarmLightScheduler _scheduler;
+    private readonly DisplaySettingsStore _store;
+    private readonly ButtonItem _presetsCard;
     private readonly List<HardwareDisplayItem> _hardware = new();
     private readonly List<SoftwareDisplayItem> _softwareItems = new();
     private IReadOnlyList<IMonitor> _shownMonitors = Array.Empty<IMonitor>();
@@ -56,9 +60,13 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
     /// <summary>What OmniControl does to the picture itself: the whole-desktop controls, then one inner group per display.</summary>
     public ParentGroup Software { get; }
 
+    /// <summary>The page asks the window layer to show the picture presets (wiring: the view opens the window).</summary>
+    public event Action<DisplayPresetsModel>? PresetsRequested;
+
+    /// <summary>Only the controls a monitor has are searched for; the ones it does not report are not offered.</summary>
     public override IEnumerable<SearchEntry> SearchEntries =>
-        _hardware.SelectMany(h => h.Cards.Select(c => Entry(c, $"{c.Label} ({h.Name})", $"monitor display screen ddc {h.Name}", DisplayControls.HardwareGroup)))
-            .Concat(_global.Cards.Select(c => Entry(c, c.Label, "monitor display screen digital software", DisplayControls.SoftwareGroup)))
+        _hardware.SelectMany(h => h.AvailableCards.Select(c => Entry(c, $"{c.Label} ({h.Name})", $"monitor display screen ddc {h.Name}", DisplayControls.HardwareGroup)))
+            .Concat(SoftwareWholeCards.Select(c => Entry(c, c.Label, "monitor display screen digital software", DisplayControls.SoftwareGroup)))
             .Concat(_softwareItems.SelectMany(s => s.Cards.Select(c =>
                 Entry(c, $"{c.Label} ({s.Name})", $"monitor display screen digital software {s.Name}", DisplayControls.SoftwareGroup))));
 
@@ -71,15 +79,61 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
 
         foreach (var spec in DisplayControls.All) osd.Declare(spec.Osd, icon: spec.Icon);
 
+        _store = DisplaySettingsStore.OnDisk();
+        _scheduler = new WarmLightScheduler(software, _store);
         _global = new SoftwareGlobalItem(software, osd, Title, report, ResetAllSoftware);
-        Software = new ParentGroup("Displays/Software", DisplayControls.SoftwareGroup, string.Empty, _global.Cards.Cast<object>().ToList())
+        _warm = new WarmLightItem(_scheduler, _store, Title, report);
+        _presetsCard = new ButtonItem("Display presets", "Presets...", "Save and restore picture settings", OpenPresets) { Half = true };
+        Software = new ParentGroup("Displays/Software", DisplayControls.SoftwareGroup, string.Empty, SoftwareWholeCards.Cast<object>().ToList())
         {
             ExpandedByDefault = true,
-            Tip = "Applied by OmniControl on any display and put back when it closes. Colour temperature: minus is warmer, plus is cooler. Saturation applies to all displays.",
+            Tip = "Applied by OmniControl on any display and put back when it closes (the saved presets and the warm-light schedule are kept). "
+                  + "Colour temperature: minus is warmer, plus is cooler. Saturation, grayscale and invert apply to all displays. "
+                  + "A display whose driver does not accept colour changes from programs is greyed out.",
         };
         UpdateSoftwareSummary();
         RegisterActions();
+        _scheduler.Changed += ShowRefusals;
+        _scheduler.Start();
         Task.Run(RefreshNow);
+    }
+
+    /// <summary>The software cards that belong to every display: the desktop's colour effect, the warm-light schedule and the presets.</summary>
+    private IEnumerable<IEditorItem> SoftwareWholeCards => _global.Cards.Concat(_warm.Cards).Append(_presetsCard);
+
+    // ---------------------------------------------------------------- picture presets
+
+    private void OpenPresets() => PresetsRequested?.Invoke(new DisplayPresetsModel(_store, CapturePicture, ApplyPicture));
+
+    /// <summary>The software picture every display and the desktop show now.</summary>
+    private DisplayPreset CapturePicture()
+    {
+        var preset = new DisplayPreset { Saturation = _global.Saturation, Invert = _global.Invert };
+        foreach (var item in _softwareItems) preset.Displays[item.Id] = item.Values;
+        preset.Any = _softwareItems.FirstOrDefault()?.Values ?? new PictureValues();
+        return preset;
+    }
+
+    private void ApplyPicture(DisplayPreset preset)
+    {
+        foreach (var item in _softwareItems) item.Show(preset.For(item.Id));
+        _global.Show(preset.Saturation, preset.Invert);
+    }
+
+    /// <summary>The "next display preset" action: the saved preset after the one applied last (the first one at the start).</summary>
+    private void NextPreset()
+    {
+        if (_store.Presets.Count == 0) return;
+        _lastPreset = (_lastPreset + 1) % _store.Presets.Count;
+        ApplyPicture(_store.Presets[_lastPreset]);
+    }
+
+    private int _lastPreset = -1;
+
+    /// <summary>A change (the schedule's, or a slider's) may have shown that a display's driver takes no colour changes: grey its cards out.</summary>
+    private void ShowRefusals()
+    {
+        foreach (var item in _softwareItems) item.ShowRefusal();
     }
 
     // ---------------------------------------------------------------- looking at the displays again
@@ -95,6 +149,11 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
     private void Reload() => Task.Run(() =>
     {
         _engine.RefreshMonitors();
+        Dispatcher.UIThread.Post(() =>
+        {
+            _software.ClearRefusals(); // a driver that refused may accept now: try again
+            ShowRefusals();
+        });
         RefreshNow();
     });
 
@@ -162,16 +221,23 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
         Hardware.Subgroups.Clear();
         _shownMonitors = monitors;
 
-        if (snapshot.HasLaptop) Add(new HardwareDisplayItem(LaptopId, "Built-in display", new LaptopAccess(_engine.Laptop), _levels, _osd, _report));
+        if (snapshot.HasLaptop) Add(new HardwareDisplayItem(LaptopId, "Built-in display", new LaptopAccess(_engine.Laptop), _levels, _osd, _report, ShowHardwareGroups));
         foreach (var monitor in monitors)
-            Add(new HardwareDisplayItem(monitor.Info.DeviceName, monitor.Info.Name, new MonitorAccess(monitor), _levels, _osd, _report));
+            Add(new HardwareDisplayItem(monitor.Info.DeviceName, monitor.Info.Name, new MonitorAccess(monitor), _levels, _osd, _report, ShowHardwareGroups));
     }
 
     private void Add(HardwareDisplayItem display)
     {
         _hardware.Add(display);
-        Hardware.Subgroups.Add(display.Group);
+        ShowHardwareGroups();
         display.Start();
+    }
+
+    /// <summary>Lists every display's groups in order (a display's change after it was read replaces its groups).</summary>
+    private void ShowHardwareGroups()
+    {
+        Hardware.Subgroups.Clear();
+        foreach (var group in _hardware.SelectMany(h => h.Groups)) Hardware.Subgroups.Add(group);
     }
 
     /// <summary>Software groups follow the attached displays: new ones appear, gone ones are forgotten, the others keep their values.</summary>
@@ -203,7 +269,7 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
 
     private void UpdateSoftwareSummary()
     {
-        var count = _global.Cards.Count + _softwareItems.Sum(s => s.Cards.Count);
+        var count = SoftwareWholeCards.Count() + _softwareItems.Sum(s => s.Cards.Count);
         Software.Summary = count == 1 ? "1 setting" : $"{count} settings";
     }
 
@@ -217,6 +283,9 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
 
     public void Dispose()
     {
+        _scheduler.Changed -= ShowRefusals;
+        _warm.Dispose();
+        _scheduler.Dispose();
         _rescan.Dispose();
         foreach (var display in _hardware) display.Dispose();
     }

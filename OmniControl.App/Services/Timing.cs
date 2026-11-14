@@ -1,16 +1,31 @@
-namespace OmniControl.App.Services;
+﻿namespace OmniControl.App.Services;
 
 /// <summary>Every interval and grace period the app uses, in one place, so a timing change never means a hunt through the code.</summary>
 public static class Timing
 {
-    /// <summary>How often the mixer re-reads programs and devices from Windows.</summary>
+    /// <summary>
+    /// How often the mixer re-reads programs and devices from Windows (the backstop: a program opening a new session is seen at once
+    /// through Windows' session event, and one starting or stopping its sound through <see cref="ProgramSoundPoll"/>).
+    /// </summary>
     public static readonly TimeSpan MixerRefresh = TimeSpan.FromSeconds(2);
+
+    /// <summary>
+    /// How often the mixer asks Windows whether the sessions of programs with effects started or stopped playing (one cheap call per
+    /// session); a change starts a full scan at once, so a run that waits for sound (a cable) starts within this time.
+    /// </summary>
+    public static readonly TimeSpan ProgramSoundPoll = TimeSpan.FromMilliseconds(150);
 
     /// <summary>After the user changes a program's volume or device, ignore what Windows reports for this long.</summary>
     public static readonly TimeSpan MixerUserChangeGrace = TimeSpan.FromSeconds(3);
 
+    /// <summary>A volume notification that matches a level the cable mirror wrote this recently is its own echo and is not copied back.</summary>
+    public static readonly TimeSpan MirrorEchoGrace = TimeSpan.FromSeconds(2);
+
     /// <summary>After the user moves a master or input slider, don't overwrite it with the system value for this long.</summary>
     public static readonly TimeSpan SliderEchoGrace = TimeSpan.FromSeconds(2);
+
+    /// <summary>How long a pause ends the letters typed to jump to an entry of an open drop-down list.</summary>
+    public static readonly TimeSpan TypeAheadReset = TimeSpan.FromSeconds(1);
 
     /// <summary>Refresh rate of the Volume page's level meters (25 per second).</summary>
     public static readonly TimeSpan MeterFrame = TimeSpan.FromMilliseconds(40);
@@ -54,6 +69,12 @@ public static class Timing
     /// <summary>The web search action sends Ctrl+C, then waits this long for the program to put the selection on the clipboard.</summary>
     public static readonly TimeSpan MouseCopyWait = TimeSpan.FromMilliseconds(150);
 
+    /// <summary>
+    /// The pause between one action and the next when a button or gesture has several, so a program has taken the first keystroke
+    /// or window change before the next one arrives.
+    /// </summary>
+    public static readonly TimeSpan MouseActionGap = TimeSpan.FromMilliseconds(40);
+
     /// <summary>A display level OmniControl set or read this recently is trusted for the next step instead of asking the display again (DDC/CI reads take 40 ms or more).</summary>
     public static readonly TimeSpan DisplayLevelTrust = TimeSpan.FromSeconds(10);
 
@@ -66,11 +87,23 @@ public static class Timing
     /// <summary>After Windows reports a display change, wait this long for it to settle before looking at the displays.</summary>
     public static readonly TimeSpan DisplayChangeSettle = TimeSpan.FromMilliseconds(1500);
 
+    /// <summary>How often the warm-light schedule looks at the clock; its ease in and out is 30 minutes, so every look moves the picture by a small step.</summary>
+    public static readonly TimeSpan WarmLightTick = TimeSpan.FromSeconds(30);
+
     /// <summary>What the PC offers for the sound modes (Windows version, virtual cables, Equalizer APO) is looked at again at most this often.</summary>
     public static readonly TimeSpan SoundModeRecheckGap = TimeSpan.FromSeconds(3);
 
     /// <summary>How often the effects engine looks at its running programs (sound arriving, silence checks, delay shown).</summary>
     public static readonly TimeSpan EngineTick = TimeSpan.FromMilliseconds(100);
+
+    /// <summary>The master bus hears nothing while sound is playing into its cable for this long: it is given up and Windows' default goes back to the real device.</summary>
+    public static readonly TimeSpan BusDeafLimit = TimeSpan.FromSeconds(3);
+
+    /// <summary>
+    /// A program held on its own cable is still heard on another device for this long: Windows has not moved its stream, so its row
+    /// stops saying the effects run and asks for the program to be paused and played (moving a stream takes a moment).
+    /// </summary>
+    public static readonly TimeSpan CableMoveLimit = TimeSpan.FromSeconds(3);
 
     /// <summary>
     /// A chain edit (an EQ drag sends one per pixel) reaches the running engine at once, then at most once per this gap; the last
@@ -84,14 +117,25 @@ public static class Timing
     /// <summary>After the safety limiter turned a peak down, the level comes back with this time constant.</summary>
     public static readonly TimeSpan LimiterRelease = TimeSpan.FromMilliseconds(150);
 
-    /// <summary>After muting the original, the first part of the check is skipped (the mute takes a moment to reach the capture).</summary>
+    /// <summary>"Test effects on this program": after silencing the original, the first part of the check is skipped (the change takes a moment to reach the recording).</summary>
     public static readonly TimeSpan CaptureSilenceSettle = TimeSpan.FromMilliseconds(300);
 
     /// <summary>
-    /// After muting the original, the capture must deliver sound within this time, or muting is taken to have silenced the capture
-    /// too: the original is unmuted at once and plays without effects.
+    /// A recorded program whose original is held silent (and the Test after silencing): once Windows' meter shows it playing, the recording must deliver sound that
+    /// passes (<see cref="Audio.QuietLevel.KeepsSound"/>) within this time, or silencing is taken to have silenced the recording too
+    /// (or not to reach it): the original is put back at once and plays without effects.
     /// </summary>
     public static readonly TimeSpan CaptureSilenceProbe = TimeSpan.FromMilliseconds(1500);
+
+    /// <summary>A recorded program's row says "Effects running" while sound passes and "Effects ready" after this long without any.</summary>
+    public static readonly TimeSpan EngineIdleAfter = TimeSpan.FromSeconds(2);
+
+    /// <summary>
+    /// The delay a row shows is rounded to the nearest <see cref="DelayStepMs"/> and changes only after the same new figure was read
+    /// <see cref="DelayStableReadings"/> engine ticks in a row, so it never flickers.
+    /// </summary>
+    public const int DelayStepMs = 5;
+    public const int DelayStableReadings = 5;
 
     /// <summary>"Test effects on this program": how long it listens before muting, and how long it plays the processed sound.</summary>
     public static readonly TimeSpan CaptureTestListen = TimeSpan.FromMilliseconds(700);
@@ -135,6 +179,22 @@ public static class Timing
     public static readonly TimeSpan TrackpadGestureCooldown = TimeSpan.FromMilliseconds(300);
 
     /// <summary>
+    /// The backstop look at Windows' touchpad settings (a few reads, no writes unless something turned a gesture OmniControl keeps off back
+    /// on); a write to the settings key is seen at once without waiting for it.
+    /// </summary>
+    public static readonly TimeSpan TrackpadTakeoverCheck = TimeSpan.FromSeconds(3);
+
+    /// <summary>
+    /// While the takeover's safety net watches for a panel Windows opened after a gesture (for <c>CoreTiming.TrackpadSurfaceWatchMs</c>),
+    /// it looks at the window in front this often: short enough that a panel is closed before it has finished opening.
+    /// </summary>
+    public static readonly TimeSpan TrackpadSurfaceLook = TimeSpan.FromMilliseconds(20);
+
+    /// <summary>At most this many recognised-gesture lines go to the trackpad log per window (takeover lines are never limited).</summary>
+    public static readonly TimeSpan TrackpadLogGestureWindow = TimeSpan.FromMinutes(1);
+    public const int TrackpadLogGestureLimit = 30;
+
+    /// <summary>
     /// After OmniControl swaps the primary and secondary mouse buttons, the swap is put back unless "Keep" is chosen within this time,
     /// so a swap the user can't work with (or didn't mean) never stays.
     /// </summary>
@@ -162,4 +222,13 @@ public static class Timing
 
     /// <summary>A rule's "Wait" step waits this long unless set otherwise.</summary>
     public static readonly TimeSpan RuleWait = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>The list of installed programs behind the Mixer's "Add program" menu is read again at most this often (reading the Start menu is slow).</summary>
+    public static readonly TimeSpan InstalledProgramsCache = TimeSpan.FromMinutes(5);
+
+    /// <summary>How long the preset manager offers "Undo" after presets were deleted.</summary>
+    public static readonly TimeSpan PresetUndo = TimeSpan.FromSeconds(8);
+
+    /// <summary>How long the Easy page's confirmation line ("Your sound is on: Bass boost") stays before it fades away.</summary>
+    public static readonly TimeSpan EasyConfirmation = TimeSpan.FromSeconds(6);
 }

@@ -28,7 +28,7 @@ public static class RowEditing
         HotkeyCapture.IsListening(focused)
         || (focused is Slider s && (s == _activeSlider || IsVertical(s)))
         || NumberText.IsTypingIn(focused)
-        || focused is ComboBox { IsDropDownOpen: true };
+        || focused is ComboBox { IsDropDownOpen: true } or ComboBoxItem;
 
     /// <summary>
     /// A card whose view-model is <see cref="ISideNavigable"/> (the equaliser) uses Left/Right for its own sideways navigation
@@ -61,10 +61,11 @@ public static class RowEditing
         || HotkeyCapture.IsHotkeyBox(c)
         || c is TextBox { IsReadOnly: false };
 
-    // A disabled part cannot take focus, so it is not a stop (a card with no stops is focused as a whole).
+    // A disabled part cannot take focus, so it is not a stop (a card with no stops is focused as a whole); nor is a part a folding
+    // panel left out (given no room: a chip folded into "+N more", a toolbar control of a FoldingRow).
     private static List<Control> Parts(ListBoxItem card) =>
         card.GetVisualDescendants().OfType<Control>()
-            .Where(c => IsPart(c) && c.IsEffectivelyVisible && c.IsEffectivelyEnabled).ToList();
+            .Where(c => IsPart(c) && c.IsEffectivelyVisible && c.IsEffectivelyEnabled && c.Bounds.Width > 0).ToList();
 
     private static bool IsVertical(Slider s) => s.Orientation == Orientation.Vertical;
 
@@ -196,6 +197,12 @@ public static class RowEditing
             // A card whose only part is a slider needs no Enter: Left/Right change it directly.
             case Key.Left or Key.Right when src is Slider only && parts.Count == 1:
                 StepSlider(only, e);
+                e.Handled = true;
+                break;
+
+            // A lone drop-down: Left/Right change the value as the wheel does.
+            case Key.Left or Key.Right when src is ComboBox lone && parts.Count == 1:
+                ComboKeys.Step(lone, e.Key == Key.Right ? 1 : -1);
                 e.Handled = true;
                 break;
 

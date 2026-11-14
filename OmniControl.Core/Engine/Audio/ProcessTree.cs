@@ -45,10 +45,27 @@ public static class ProcessTree
         return map;
     }
 
-    /// <summary>True while the process is still running.</summary>
-    public static bool IsRunning(int processId) => CoreAudio.ProcessPath(processId) is not null;
+    /// <summary>
+    /// True while the process is still running. A process that has ended can still be opened while someone holds a handle to it (the
+    /// audio service does for its sessions), so its exit code is asked, not only whether it opens.
+    /// </summary>
+    public static bool IsRunning(int processId)
+    {
+        var handle = OpenProcess(QueryLimitedInformation, false, processId);
+        if (handle == IntPtr.Zero) return false;
+        try
+        {
+            return GetExitCodeProcess(handle, out var code) && code == StillActive;
+        }
+        finally
+        {
+            CloseHandle(handle);
+        }
+    }
 
     private const uint SnapProcess = 0x2;
+    private const int QueryLimitedInformation = 0x1000;
+    private const uint StillActive = 259;
     private static readonly IntPtr InvalidHandle = new(-1);
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -66,4 +83,6 @@ public static class ProcessTree
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] private static extern bool Process32FirstW(IntPtr snapshot, ref ProcessEntry entry);
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] private static extern bool Process32NextW(IntPtr snapshot, ref ProcessEntry entry);
     [DllImport("kernel32.dll")] private static extern bool CloseHandle(IntPtr handle);
+    [DllImport("kernel32.dll")] private static extern IntPtr OpenProcess(int access, bool inherit, int processId);
+    [DllImport("kernel32.dll")] private static extern bool GetExitCodeProcess(IntPtr process, out uint exitCode);
 }

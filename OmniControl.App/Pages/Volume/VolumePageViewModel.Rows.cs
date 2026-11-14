@@ -4,11 +4,12 @@ using OmniControl.Core.Engine;
 
 namespace OmniControl.App.Pages.Volume;
 
-/// <summary>The Outputs list: the master, the programs (open ones first, then remembered ones), combined speakers, "Add program".</summary>
+/// <summary>The Outputs list: the master, the programs (open ones first, then remembered ones when "Show closed" is on) and combined speakers.</summary>
 public sealed partial class VolumePageViewModel
 {
     private readonly Dictionary<string, MixerItem> _items = new();
-    private readonly AddProgramItem _add;
+    /// <summary>The keys of the programs that are rows now (every program has an item; a closed one that is not listed keeps it, so its effects and status carry on).</summary>
+    private HashSet<string> _listed = new();
     private readonly MixerItem _master;
     private DateTime _masterChange;
 
@@ -16,21 +17,33 @@ public sealed partial class VolumePageViewModel
         new(MixerService.MasterKey, true, Gate)
         {
             Name = "Master",
-            VolumeChanged = v => { _masterChange = DateTime.UtcNow; _steps.Remember(MixerService.MasterKey, v); CoreAudio.SetMasterVolume(v); },
-            PanChanged = p => { _masterChange = DateTime.UtcNow; CoreAudio.SetMasterPan(p); },
-            MuteChanged = m => { _masterChange = DateTime.UtcNow; CoreAudio.SetMasterMute(m); },
+            VolumeChanged = v => { _masterChange = DateTime.UtcNow; _steps.Remember(MixerService.MasterKey, v); CoreAudio.SetMasterVolume(v, _mixer.MasterDeviceId); },
+            PanChanged = p => { _masterChange = DateTime.UtcNow; CoreAudio.SetMasterPan(p, _mixer.MasterDeviceId); },
+            MuteChanged = m => { _masterChange = DateTime.UtcNow; CoreAudio.SetMasterMute(m, _mixer.MasterDeviceId); },
             FxToggled = on => _mixer.SetFxOn(null, on),
             OpenWindowRequested = () => _openFx(null),
             WiringRequested = () => ShowWiring(MixerService.MasterKey),
+            RouteChoice = RouteChoice.ForMaster(route => { _mixer.SetMasterMethod(route); SyncRow(_master); }, () => SyncRow(_master)),
         };
 
     private void SyncMaster()
     {
-        CoreAudio.GetMaster(out var v, out var muted);
+        CoreAudio.GetMaster(out var v, out var muted, _mixer.MasterDeviceId);
         _steps.Remember(MixerService.MasterKey, v);
-        CoreAudio.GetMasterPan(out var pan);
+        CoreAudio.GetMasterPan(out var pan, _mixer.MasterDeviceId);
         _master.Sync(true, v, pan, muted, _mixer.IsFxOn(null), _mixer.FxChain(null).Count);
         SyncRow(_master);
+    }
+
+    private bool IsListed(RunningApp r, AppAudioEntry e) =>
+        ProgramListing.IsListed(r.IsOpen, e.KeepsRow, Outputs.ProgramTools?.ShowClosed ?? true);
+
+    /// <summary>The "Add program" menu's choice: remembers the program as a row; a closed one needs "Show closed" to be seen, so it is switched on.</summary>
+    private void AddProgram(string path)
+    {
+        var key = _mixer.AddProgram(path);
+        if (Outputs.ProgramTools is { ShowClosed: false } tools && _mixer.Running.FirstOrDefault(r => r.Key == key) is { IsOpen: false }) tools.ShowClosed = true;
+        _report($"Added {_mixer.Find(key)?.Name}");
     }
 
     private MixerItem Create(AppAudioEntry entry)
@@ -49,6 +62,7 @@ public sealed partial class VolumePageViewModel
             WiringRequested = () => ShowWiring(key),
             Forget = () => _mixer.Forget(key),
             Test = () => TestCaptureAsync(row!),
+            RouteChoice = RouteChoice.ForProgram(route => { _mixer.SetFxRoute(key, route); SyncRow(row!); }, () => SyncRow(row!)),
         };
         return row;
     }
@@ -62,13 +76,14 @@ public sealed partial class VolumePageViewModel
         var pan = useSystem ? r.Pan : item.Pan;
         item.Name = e.Name;
         item.Sync(r.IsOpen, volume, pan, muted, e.FxOn, e.Fx.Count);
+        item.TestWhy = SoundModes.TestUnavailable(e.Name, r.IsPlaying);
         item.Lead = !r.IsOpen ? "Not open" : string.Empty;
         SyncRow(item);
     }
 
     /// <summary>
-    /// Puts the Outputs list in order: master, programs that are open, remembered ones (each alphabetical), combined speakers, then
-    /// "Add program". Rows that already exist are kept; rows of programs that are gone go.
+    /// Puts the Outputs list in order: master, programs that are open, remembered ones when "Show closed" is on (each alphabetical), combined speakers.
+    /// Programs not listed (closed, and "Show closed" off or nothing worth remembering) keep their item but have no row. Rows that already exist are kept; rows of programs that are gone go.
     /// </summary>
     private void Rebuild()
     {
@@ -82,15 +97,15 @@ public sealed partial class VolumePageViewModel
             seen.Add(r.Key);
             if (!_items.TryGetValue(r.Key, out var item)) _items[r.Key] = item = Create(e!);
             Fill(item, r, e!);
-            ordered.Add(item);
+            if (IsListed(r, e!)) ordered.Add(item);
         }
+        _listed = ordered.Select(i => i.Key).ToHashSet();
         RemoveMissing(_items, seen);
         var combos = SyncCombos();
 
         var rows = new List<object> { _master };
         rows.AddRange(ordered);
         rows.AddRange(combos.Where(c => !c.IsMicrophone));
-        rows.Add(_add);
         if (!rows.SequenceEqual(Outputs.Items))
         {
             Outputs.Items.Clear();
@@ -105,7 +120,8 @@ public sealed partial class VolumePageViewModel
     private void Merge()
     {
         var running = _mixer.Running.Where(r => _mixer.Find(r.Key) is not null).ToList();
-        if (running.Count != _items.Count || running.Any(r => !_items.ContainsKey(r.Key)) || _mixer.Combined.Count != _combos.Count)
+        if (running.Count != _items.Count || running.Any(r => !_items.ContainsKey(r.Key) || IsListed(r, _mixer.Find(r.Key)!) != _listed.Contains(r.Key))
+            || _mixer.Combined.Count != _combos.Count)
             Rebuild();
         else
         {

@@ -3,15 +3,35 @@ using OmniControl.Core.Engine.Apo;
 namespace OmniControl.App.Audio.Engine;
 
 /// <summary>
-/// One row whose chain should run in Equalizer APO (Fast mode: the master, a microphone): its key, the name for the section's comment,
-/// its chain, the device it runs on (null when there is none), why the APO can't run there (null = it can) and what the row then does
-/// ("Playing without effects.").
+/// One row whose chain should run in Equalizer APO (the master, a microphone, a program on a cable with Equalizer APO on it): its key,
+/// the name for the section's comment, its chain, the device it runs on (null when there is none), why the APO can't run there (null =
+/// it can), what the row then does ("Playing without effects.") and the fact its status names then.
 /// </summary>
-internal sealed record ApoRow(string Key, string Title, IReadOnlyList<FxSlot> Chain, ApoEndpoint? Endpoint, string? Missing, string Without);
+internal sealed record ApoRow(string Key, string Title, IReadOnlyList<FxSlot> Chain, ApoEndpoint? Endpoint, string? Missing, string Without,
+    StatusKind MissingKind = StatusKind.NeedsApo);
+
+/// <summary>Where OmniControl's Equalizer APO text goes: the real config folders (<see cref="ApoConfigFiles"/>), or a fake in the tests.</summary>
+internal interface IApoConfigStore
+{
+    /// <summary>Puts OmniControl's file and include line in <paramref name="folder"/>; the error sentence, or null when done.</summary>
+    string? Apply(string folder, string text);
+
+    /// <summary>Takes OmniControl's file and include line out of <paramref name="folder"/>; the error sentence, or null when done.</summary>
+    string? Remove(string folder);
+}
+
+/// <summary>The real config folders.</summary>
+internal sealed class ApoConfigFolders : IApoConfigStore
+{
+    public static readonly ApoConfigFolders Instance = new();
+
+    public string? Apply(string folder, string text) => ApoConfigFiles.Apply(folder, text);
+    public string? Remove(string folder) => ApoConfigFiles.Remove(folder);
+}
 
 /// <summary>
-/// Fast mode's chains in Equalizer APO (or OmniControl APO): puts each row's section into OmniControl.txt of the config folder whose
-/// APO runs on that row's device (<see cref="ApoChainWriter"/>, <see cref="ApoConfigFiles"/>), takes OmniControl's line and file out of
+/// The chains that run in Equalizer APO (or OmniControl APO): puts each row's section into OmniControl.txt of the config folder whose
+/// APO runs on that row's device (<see cref="ApoChainWriter"/>, <see cref="IApoConfigStore"/>), takes OmniControl's line and file out of
 /// every other folder, touches files only when the wanted text changes, and says per row what is true: the chain was sent (not that
 /// Windows applied it), the APO is missing there and why, or a write failed. The first call after start-up always writes (or cleans),
 /// so a crashed run's lines are taken out. UI thread.
@@ -21,6 +41,7 @@ internal sealed class ApoChains
     private static readonly IReadOnlyDictionary<string, string> Nothing = new Dictionary<string, string>();
 
     private readonly Action<string> _report;
+    private readonly IApoConfigStore _store;
 
     /// <summary>What was last put in place: config folder -> OmniControl.txt text (empty = OmniControl's line taken out everywhere).</summary>
     private IReadOnlyDictionary<string, string> _applied = Nothing;
@@ -28,7 +49,45 @@ internal sealed class ApoChains
     private string? _reported;
 
     /// <param name="report">The footer line: a failed clean-up of a folder no row writes to is said there once (nothing else shows it).</param>
-    public ApoChains(Action<string> report) => _report = report;
+    /// <param name="store">Where the text goes (the real folders unless a test gives a fake).</param>
+    public ApoChains(Action<string> report, IApoConfigStore? store = null)
+    {
+        _report = report;
+        _store = store ?? ApoConfigFolders.Instance;
+    }
+
+    /// <summary>
+    /// The rows a plan sends to Equalizer APO (<see cref="RoutePlan.ToApo"/>), each on its own device: the master on Windows' default
+    /// device (Fast mode) or on the real speakers (<see cref="RoutePlan.MasterApoDevice"/>, Full control); a microphone on itself; a
+    /// program on the cable its run uses (<see cref="RunKind.ApoCable"/>). Pure: the chains and names come from the callers.
+    /// </summary>
+    /// <param name="chainOf">A row's chain (null key = the master).</param>
+    /// <param name="nameOf">A row's name for the section's comment.</param>
+    public static IReadOnlyList<ApoRow> RowsFor(RoutePlan plan, ApoState apo, Func<string?, IReadOnlyList<FxSlot>> chainOf, Func<string, string> nameOf)
+    {
+        const string Silent = "Playing without effects.";
+        var rows = new List<ApoRow>();
+        foreach (var key in plan.ToApo)
+        {
+            if (key == MixerService.MasterKey)
+            {
+                var speakers = plan.MasterApoDevice is { } id ? apo.PlaybackOf(id) : apo.Output;
+                rows.Add(new ApoRow(key, nameOf(key), chainOf(null), speakers, SoundModes.ApoMissingOn(apo, speakers), Silent,
+                    plan.Master.Full ? StatusKind.ApoNotApplied : StatusKind.NeedsApo));
+            }
+            else if (MixerService.IsInput(key))
+            {
+                var id = MixerService.InputIdOf(key);
+                rows.Add(new ApoRow(key, $"Microphone: {nameOf(key)}", chainOf(key), apo.MicrophoneOf(id), SoundModes.MicApoMissing(apo, id), "Recording without effects."));
+            }
+            else if (plan.Runs.GetValueOrDefault(key)?.Cable is { } cable)
+            {
+                var onCable = apo.PlaybackOf(cable);
+                rows.Add(new ApoRow(key, $"Program: {nameOf(key)}", chainOf(key), onCable, SoundModes.ApoMissingOn(apo, onCable), Silent));
+            }
+        }
+        return rows;
+    }
 
     /// <summary>Brings the config folders in line with <paramref name="rows"/>; returns each row's status.</summary>
     public IReadOnlyDictionary<string, EngineStatus> Apply(IReadOnlyList<ApoRow> rows, ApoState apo)
@@ -41,7 +100,7 @@ internal sealed class ApoChains
             var folder = row.Endpoint is { } endpoint ? apo.FolderFor(endpoint) : null;
             if (row.Missing is not null || folder is null || row.Endpoint is null)
             {
-                statuses[row.Key] = new EngineStatus(EngineState.Unavailable, $"{row.Missing ?? "Equalizer APO is not on this device"}. {row.Without}");
+                statuses[row.Key] = new EngineStatus(EngineState.Unavailable, $"{row.Missing ?? "Equalizer APO is not on this device"}. {row.Without}", null, row.MissingKind, RunMethod.Apo);
                 continue;
             }
             var section = ApoChainWriter.Section(row.Title, row.Chain, ApoIds.DeviceKeyOf(row.Endpoint.EndpointId));
@@ -67,8 +126,8 @@ internal sealed class ApoChains
 
         foreach (var (key, folder, section) in placed)
             statuses[key] = errors.TryGetValue(folder, out var error)
-                ? new EngineStatus(EngineState.Failed, error)
-                : new EngineStatus(EngineState.Running, $"{SoundModes.ApoSent(apo, folder)} · {PluginNote(section)}{EngineStatus.SkippedNote(section.Skipped)}");
+                ? new EngineStatus(EngineState.Failed, error, null, StatusKind.ApoFailed, RunMethod.Apo)
+                : new EngineStatus(EngineState.Running, $"{SoundModes.ApoSent(apo, folder)} · {PluginNote(section)}{EngineStatus.SkippedNote(section.Skipped)}", null, StatusKind.Running, RunMethod.Apo);
         return statuses;
     }
 
@@ -84,16 +143,16 @@ internal sealed class ApoChains
     }
 
     /// <summary>Takes OmniControl's line and file out of every config folder (exit: effects run only while OmniControl runs).</summary>
-    public static void Clear(ApoState apo) => PutInPlace(apo, Nothing);
+    public void Clear(ApoState apo) => PutInPlace(apo, Nothing);
 
     /// <summary>Removes OmniControl's line from every folder not wanted, then writes each wanted file; the errors by folder.</summary>
-    private static Dictionary<string, string> PutInPlace(ApoState apo, IReadOnlyDictionary<string, string> wanted)
+    private Dictionary<string, string> PutInPlace(ApoState apo, IReadOnlyDictionary<string, string> wanted)
     {
         var errors = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var folder in apo.ConfigFolders.Where(f => !wanted.ContainsKey(f)))
-            if (ApoConfigFiles.Remove(folder) is { } error) errors[folder] = error;
+            if (_store.Remove(folder) is { } error) errors[folder] = error;
         foreach (var (folder, text) in wanted)
-            if (ApoConfigFiles.Apply(folder, text) is { } error) errors[folder] = error;
+            if (_store.Apply(folder, text) is { } error) errors[folder] = error;
         return errors;
     }
 

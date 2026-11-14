@@ -1,0 +1,73 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:OmniControl.App.Pages.Volume"
+        x:Class="OmniControl.App.Pages.Volume.SetupTableWindow"
+        x:DataType="vm:SetupTable"
+        Title="Sound setups" Icon="avares://OmniControl/Assets/OmniControl.ico"
+        Width="{StaticResource SetupTableWidth}" MinWidth="560" SizeToContent="Height" MaxHeight="{StaticResource SetupTableMaxHeight}"
+        Background="{DynamicResource BrushBackground}" WindowStartupLocation="CenterOwner">
+    <!-- The help card (approved mock-up docs/mockups/help-card-table.html): JUST the table of setups. Columns: # | Master runs on |
+         The cable is used for | Programs with effects | Master effects | Works. Group header bands; each setup is a clickable row
+         (Button.tablerow): a row that works switches to it, a greyed row's tag and tooltip say why; the live setup is highlighted
+         (.current) with its number filled in the accent. The columns are shared by every row (stars, plus shared Auto columns for the
+         number and the tag). Esc closes. -->
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="12" Grid.IsSharedSizeScope="True">
+            <Border Padding="{StaticResource TableCellPadding}" BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,0,0,1">
+                <Grid ColumnSpacing="{StaticResource TableColumnGap}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="SetupNumber" />
+                        <ColumnDefinition Width="5*" />
+                        <ColumnDefinition Width="7*" />
+                        <ColumnDefinition Width="7*" />
+                        <ColumnDefinition Width="5*" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="SetupWorks" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="1" Classes="muted small" Text="Master runs on" TextWrapping="Wrap" />
+                    <TextBlock Grid.Column="2" Classes="muted small" Text="The cable is used for" TextWrapping="Wrap" />
+                    <TextBlock Grid.Column="3" Classes="muted small" Text="Programs with effects" TextWrapping="Wrap" />
+                    <TextBlock Grid.Column="4" Classes="muted small" Text="Master effects" TextWrapping="Wrap" />
+                    <TextBlock Grid.Column="5" Classes="muted small" Text="Works" />
+                </Grid>
+            </Border>
+            <ItemsControl ItemsSource="{Binding Items}">
+                <ItemsControl.DataTemplates>
+                    <DataTemplate DataType="vm:SetupGroupRow">
+                        <Border Classes="tablegroup">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                <TextBlock Classes="hint small" Text="{Binding Note}" IsVisible="{Binding HasNote}" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                    <DataTemplate DataType="vm:SetupRow">
+                        <Button Classes="tablerow" Classes.current="{Binding IsCurrent}" Command="{Binding ChooseCommand}" IsEnabled="{Binding CanChoose}"
+                                ToolTip.Tip="{Binding Tip}" ToolTip.ShowOnDisabled="True">
+                            <Grid ColumnSpacing="{StaticResource TableColumnGap}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="SetupNumber" />
+                                    <ColumnDefinition Width="5*" />
+                                    <ColumnDefinition Width="7*" />
+                                    <ColumnDefinition Width="7*" />
+                                    <ColumnDefinition Width="5*" />
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="SetupWorks" />
+                                </Grid.ColumnDefinitions>
+                                <Border Classes="badge" Classes.quiet="{Binding !IsCurrent}" VerticalAlignment="Top">
+                                    <TextBlock Text="{Binding Number}" />
+                                </Border>
+                                <TextBlock Grid.Column="1" Text="{Binding MasterRunsOn}" TextWrapping="Wrap" />
+                                <TextBlock Grid.Column="2" Text="{Binding CableUsedFor}" TextWrapping="Wrap" />
+                                <TextBlock Grid.Column="3" Text="{Binding Programs}" TextWrapping="Wrap" />
+                                <TextBlock Grid.Column="4" Classes.cautiontext="{Binding MasterLimited}" Text="{Binding MasterEffects}" TextWrapping="Wrap" />
+                                <Border Grid.Column="5" Classes="tag" Classes.good="{Binding IsAvailable}" Classes.caution="{Binding !IsAvailable}" VerticalAlignment="Top"
+                                        MaxWidth="{StaticResource TableTagMaxWidth}">
+                                    <TextBlock Text="{Binding Works}" />
+                                </Border>
+                            </Grid>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.DataTemplates>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
+</Window>

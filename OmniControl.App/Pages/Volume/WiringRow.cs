@@ -6,9 +6,10 @@ namespace OmniControl.App.Pages.Volume;
 
 /// <summary>
 /// One row of a Wiring table: a source (the master, a program, a microphone: the same <see cref="VolumeRow"/> the Mixer shows, so its
-/// name, icon, dimming and remove button are that row's), the devices it plays on or records from, and the cable it uses. The cell is
-/// one of: chips with "+ add" (several devices), one drop-down-like choice (one device), or plain words (nothing to choose). The page
-/// fills it from the routing model on every sync and decides what a choice does; this class keeps no routing of its own.
+/// name, icon, dimming and remove button are that row's), the devices it plays on or records from, and the cable it uses (with the
+/// step that gets one while a microphone waits). The cell is one of: chips with "+ add" (several devices; a combined microphone's
+/// members), one drop-down-like choice (one device), or words with a dashed chip ("This microphone", "Combine with..."). The page fills
+/// it from the routing model on every sync and decides what a choice does; this class keeps no routing of its own.
 /// </summary>
 public sealed partial class WiringRow : ObservableObject, IEditorItem
 {
@@ -17,10 +18,11 @@ public sealed partial class WiringRow : ObservableObject, IEditorItem
     private readonly WiringSingle _single;
 
     /// <param name="opening">The cell's menu is opening: the page fills <see cref="Choices"/> from what is plugged in now.</param>
-    public WiringRow(VolumeRow source, ModeGate menuGate, Action<WiringRow> opening)
+    public WiringRow(VolumeRow source, ModeGate menuGate, ModeGate cableSwitch, Action<WiringRow> opening)
     {
         Source = source;
         MenuGate = menuGate;
+        CableSwitch = cableSwitch;
         _opening = opening;
         _add = new WiringAdd(this);
         _single = new WiringSingle(this);
@@ -38,6 +40,14 @@ public sealed partial class WiringRow : ObservableObject, IEditorItem
 
     [ObservableProperty] private CableState _cable = CableState.None;
 
+    /// <summary>Install VB-CABLE or More cables beside the Cable column while a microphone waits for a cable; null = nothing to get.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasCableAction))] private ModeCardAction? _cableAction;
+
+    public bool HasCableAction => CableAction is not null;
+
+    /// <summary>"Switch to Fast" beside the Cable column while the master bus holds the cable a microphone needs (closed = not shown).</summary>
+    public ModeGate CableSwitch { get; }
+
     /// <summary>Why the cell can't take several devices in this mode (its menu says so, with Switch); open = it can.</summary>
     public ModeGate MenuGate { get; }
 
@@ -49,35 +59,34 @@ public sealed partial class WiringRow : ObservableObject, IEditorItem
     /// <summary>The menu's title ("Add a device", "Choose a device").</summary>
     [ObservableProperty] private string _menuTitle = string.Empty;
 
-    /// <summary>False when the cell only shows words (a microphone records from itself): no menu.</summary>
-    [ObservableProperty] private bool _hasMenu;
-
     /// <summary>The cell's menu is opening.</summary>
     public void OpenMenu() => _opening(this);
 
-    /// <summary>Several devices: their chips, the words shown when there are none ("Follows the master"), then "+ add".</summary>
-    public void ShowChips(IEnumerable<WiringChip> chips, string? emptyNote)
+    /// <summary>
+    /// Several devices: their chips (<see cref="WiringChip"/>, or <see cref="WiringMember"/> for a combined microphone's members), the
+    /// words shown when there are none ("Follows the master"), then "+ add" (its words and tooltip).
+    /// </summary>
+    public void ShowChips(IEnumerable<object> chips, string? emptyNote, string addLabel = WiringAdd.AddLabel, string addTip = WiringAdd.AddTip)
     {
-        var items = chips.Cast<object>().ToList();
+        var items = chips.ToList();
         if (items.Count == 0 && emptyNote is not null) items.Add(new WiringNote(emptyNote));
+        _add.Set(addLabel, addTip);
         items.Add(_add);
-        HasMenu = true;
         Show(items);
+    }
+
+    /// <summary>Plain words and a dashed chip that opens the menu ("This microphone" and "Combine with...").</summary>
+    public void ShowFixed(string text, string addLabel, string addTip)
+    {
+        _add.Set(addLabel, addTip);
+        Show(new object[] { new WiringNote(text), _add });
     }
 
     /// <summary>One device: one choice that opens the menu.</summary>
     public void ShowSingle(string text)
     {
         _single.Text = text;
-        HasMenu = true;
         Show(new object[] { _single });
-    }
-
-    /// <summary>Nothing to choose: plain words.</summary>
-    public void ShowFixed(string text)
-    {
-        HasMenu = false;
-        Show(new object[] { new WiringNote(text) });
     }
 
     /// <summary>
@@ -106,6 +115,7 @@ public sealed partial class WiringRow : ObservableObject, IEditorItem
         public new bool Equals(object? a, object? b) => (a, b) switch
         {
             (WiringChip x, WiringChip y) => x.Id == y.Id && x.Label == y.Label && x.CanRemove == y.CanRemove,
+            (WiringMember x, WiringMember y) => x.Id == y.Id && x.Label == y.Label && x.CanRemove == y.CanRemove && x.Tip == y.Tip,
             (WiringNote x, WiringNote y) => x.Text == y.Text,
             _ => ReferenceEquals(a, b),
         };
@@ -113,10 +123,41 @@ public sealed partial class WiringRow : ObservableObject, IEditorItem
         public int GetHashCode(object obj) => obj switch
         {
             WiringChip c => c.Id.GetHashCode(),
+            WiringMember m => m.Id.GetHashCode(),
             WiringNote n => n.Text.GetHashCode(),
             _ => obj.GetHashCode(),
         };
     }
+}
+
+/// <summary>
+/// A combined microphone's member in its Wiring cell: its words open a small pop-down with the member's level and mute
+/// (<see cref="Menu"/>); its x takes it away (unless it is the last one).
+/// </summary>
+public sealed partial class WiringMember
+{
+    private readonly Action _remove;
+
+    public WiringMember(string id, string label, string tip, bool canRemove, MemberLevelMenu menu, Action remove)
+    {
+        Id = id;
+        Label = label;
+        Tip = tip;
+        CanRemove = canRemove;
+        Menu = menu;
+        _remove = remove;
+    }
+
+    public string Id { get; }
+    public string Label { get; }
+
+    /// <summary>What a click does, and the facts that matter (its own effects are not in the mix; Stereo Mix records the PC's sound).</summary>
+    public string Tip { get; }
+
+    public bool CanRemove { get; }
+    public MemberLevelMenu Menu { get; }
+
+    [RelayCommand] private void Remove() { if (CanRemove) _remove(); }
 }
 
 /// <summary>A chosen device in a Wiring cell: its words; a click takes it away (unless it is the last one that must stay).</summary>
@@ -143,12 +184,23 @@ public sealed partial class WiringChip
 /// <summary>Words in a Wiring cell that are not a choice ("Follows the master", "This microphone").</summary>
 public sealed record WiringNote(string Text);
 
-/// <summary>The dashed "+ add" chip at the end of a cell; it opens the cell's menu.</summary>
-public sealed class WiringAdd
+/// <summary>The dashed chip at the end of a cell ("+ add", "Combine with..."); it opens the cell's menu.</summary>
+public sealed partial class WiringAdd : ObservableObject
 {
+    public const string AddLabel = "+ add", AddTip = "Add a device";
+
     public WiringAdd(WiringRow row) => Row = row;
 
     public WiringRow Row { get; }
+
+    [ObservableProperty] private string _label = AddLabel;
+    [ObservableProperty] private string _tip = AddTip;
+
+    public void Set(string label, string tip)
+    {
+        Label = label;
+        Tip = tip;
+    }
 }
 
 /// <summary>A cell that takes one device: the device's name as a drop-down-like choice that opens the cell's menu.</summary>
@@ -166,21 +218,27 @@ public sealed partial class WiringChoice
 {
     private readonly Action _choose;
 
-    public WiringChoice(string label, string? tag, string? disabledReason, Action choose)
+    /// <param name="caution">The tag is a fact to keep in mind (yellow), such as "Records the PC's sound".</param>
+    /// <param name="tip">The tooltip of an entry that can be chosen (a dimmed one shows its reason).</param>
+    public WiringChoice(string label, string? tag, string? disabledReason, Action choose, bool caution = false, string? tip = null)
     {
         Label = label;
         Tag = tag;
         DisabledReason = disabledReason;
+        IsCaution = caution;
+        Tip = disabledReason ?? tip;
         _choose = choose;
     }
 
     public string Label { get; }
 
-    /// <summary>A small fact at the right ("Full control" on a device this mode can't use, "Cable"); null = none.</summary>
+    /// <summary>A small fact at the right ("Full control" on a device this mode can't use, "Cable", "Combined"); null = none.</summary>
     public string? Tag { get; }
     public bool HasTag => Tag is not null;
+    public bool IsCaution { get; }
 
     public string? DisabledReason { get; }
+    public string? Tip { get; }
     public bool IsEnabled => DisabledReason is null;
 
     [RelayCommand] private void Choose() { if (IsEnabled) _choose(); }

@@ -12,15 +12,15 @@
                 <ListBox Grid.Column="1" Classes="rows compact" ItemsSource="{Binding Primary}" MinWidth="280" VerticalAlignment="Center" />
             </Grid>
 
-            <!-- Mouse Buttons group: the layer picker sits on the title line, hidden with the rest while the group is collapsed -->
+            <!-- Mouse Buttons group: the mouse layer picker sits on the title line, hidden with the rest while the group is collapsed -->
             <Border Classes="groupPanel">
                 <StackPanel Spacing="6">
                     <Grid ColumnDefinitions="*,Auto,Auto">
                         <pages:GroupHeader x:DataType="pages:ItemGroup" DataContext="{Binding ButtonsGroup}" />
-                        <ComboBox Grid.Column="1" Classes="tool" Tag="grouptool" ItemsSource="{Binding Layer.Options}" SelectedItem="{Binding Layer.Selected}"
+                        <ComboBox Grid.Column="1" Classes="tool" Tag="grouptool" ItemsSource="{Binding MouseLayer.Options}" SelectedItem="{Binding MouseLayer.Selected}"
                                   IsVisible="{Binding ButtonsGroup.IsExpanded}" VerticalAlignment="Center" Margin="8,0,0,0" />
                         <Button Grid.Column="2" Classes="pill cog" Tag="scope" IsVisible="{Binding ButtonsGroup.IsExpanded}" VerticalAlignment="Center"
-                                Margin="6,0,0,0" Click="OnManageLayers" ToolTip.Tip="Manage layers: rename, switch to, clear">
+                                Margin="6,0,0,0" Click="OnManageMouseLayers" ToolTip.Tip="Manage mouse layers: rename, switch to, clear">
                             <PathIcon Data="{DynamicResource CogIcon}" Width="12" Height="12" />
                         </Button>
                     </Grid>
@@ -30,11 +30,20 @@
                 </StackPanel>
             </Border>
 
-            <!-- Trackpad group: the switch, Windows' touchpad settings, and one card per gesture; the layer drop-down above edits these too -->
-            <Border Classes="groupPanel" x:DataType="pages:ItemGroup" DataContext="{Binding TrackpadGroup}">
+            <!-- Trackpad group: the trackpad's own layer picker on the title line (same markup as Mouse Buttons), then the takeover switch,
+                 Windows' touchpad settings and one card per gesture -->
+            <Border Classes="groupPanel">
                 <StackPanel Spacing="6">
-                    <pages:GroupHeader />
-                    <ListBox Classes="rows compact" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}">
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <pages:GroupHeader x:DataType="pages:ItemGroup" DataContext="{Binding TrackpadGroup}" />
+                        <ComboBox Grid.Column="1" Classes="tool" Tag="grouptool" ItemsSource="{Binding TrackpadLayer.Options}" SelectedItem="{Binding TrackpadLayer.Selected}"
+                                  IsVisible="{Binding TrackpadGroup.IsExpanded}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                        <Button Grid.Column="2" Classes="pill cog" Tag="scope" IsVisible="{Binding TrackpadGroup.IsExpanded}" VerticalAlignment="Center"
+                                Margin="6,0,0,0" Click="OnManageTrackpadLayers" ToolTip.Tip="Manage trackpad layers: rename, switch to, clear">
+                            <PathIcon Data="{DynamicResource CogIcon}" Width="12" Height="12" />
+                        </Button>
+                    </Grid>
+                    <ListBox Classes="rows compact" ItemsSource="{Binding TrackpadGroup.Items}" IsVisible="{Binding TrackpadGroup.IsExpanded}">
                         <ListBox.ItemsPanel><ItemsPanelTemplate><pages:HalfPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
                     </ListBox>
                 </StackPanel>

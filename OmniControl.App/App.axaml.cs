@@ -19,6 +19,7 @@ public partial class App : Application
         var settings = AppSettings.Current;
         AccentService.Initialize(settings.Accent);
         ValueWheel.Register();
+        ComboKeys.Register();
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

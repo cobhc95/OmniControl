@@ -20,6 +20,8 @@ public sealed partial class VolumePageViewModel
         var rowKey = key ?? MixerService.MasterKey;
         if (RowOf(rowKey) is { } row) SyncRow(row);
         SyncWiringOf(rowKey);
+        SyncCables(); // which cable a run uses may have changed
+        SyncSetup(); // and with it the live setup
     }
 
     private VolumeRow? RowOf(string key) =>
@@ -31,15 +33,34 @@ public sealed partial class VolumePageViewModel
     private void SyncModes()
     {
         SyncSoundMode();
-        CombineGate.Sync(_modes.Check(SoundFeature.CombineDevices));
-        if (CombineGate.Reason is { } reason) _combineCard.Availability.MakeUnavailable(reason);
-        else _combineCard.Availability.MakeAvailable();
-        ModeIndicator = $"{_mixer.SoundMode.Name} mode";
+        SyncAvailability();
         CableStatus = _modes.StatusOf(SoundModes.Full).FirstOrDefault();
-        var setup = _modes.Current?.Cables.Count == 0 ? CableSetupAction() : null;
+        var setup = _modes.Current is { } support && !SoundModes.CableInstalled(support) ? CableSetupAction() : null;
         if (setup?.Label != CableSetup?.Label) CableSetup = setup;
         foreach (var row in AllRows()) SyncRow(row);
         SyncWiring();
+        SyncCables();
+    }
+
+    /// <summary>
+    /// What the plan offers changed (a cable freed or taken, the master's method...): every gate, menu and table that reads it follows at
+    /// once, so a choice that became possible is selectable without a refresh.
+    /// </summary>
+    private void OnPlanChanged()
+    {
+        SyncAvailability();
+        foreach (var row in AllRows()) SyncRow(row);
+        SyncWiring();
+        SyncCables();
+        SyncSetup();
+    }
+
+    /// <summary>The gates that depend on the mode and on what is free: the two "+ Combine" pills and the hotkeys that need something.</summary>
+    private void SyncAvailability()
+    {
+        CombineSpeakersGate.Sync(CreateGateFor(false));
+        CombineMicrophonesGate.Sync(CreateGateFor(true));
+        SyncHotkeyAvailability();
     }
 
     /// <summary>A Mixer row's sentence, gates, status and mode line.</summary>
@@ -47,17 +68,38 @@ public sealed partial class VolumePageViewModel
     {
         var status = _engine.StatusOf(row.Key == MixerService.MasterKey ? null : row.Key);
         var mode = _mixer.SoundMode;
-        row.Status = status.State == Audio.Engine.EngineState.Off ? string.Empty : status.Text;
-        row.ModeLine = status.LineFor(mode, row.ChainKey);
+        // A row whose effects are off says nothing, unless the state carries a fact (the master playing straight on the speakers).
+        row.Status = status.State == Audio.Engine.EngineState.Off && status.Kind == StatusKind.Other ? string.Empty : status.Brief;
+        row.ModeLine = status.TipFor(mode, _engine.MethodFor(row.ChainKey));
         row.RouteText = RouteTextOf(row);
         switch (row)
         {
             case MixerItem { IsMaster: true } master:
                 var targets = MasterTargets();
-                master.VolumeTipText = targets.Count > 1 ? $"Volume of {NameOf(targets[0])}; the other devices keep their own level" : "Volume";
+                master.VolumeTipText = targets.Count > 1 && (_mixer.MasterDeviceId ?? _mixer.DefaultDeviceId) is { } volumeDevice
+                    ? $"Volume of {NameOf(volumeDevice)}; the other devices keep their own level" : "Volume";
+                // The master's method (Full control only: Fast always runs it in Equalizer APO, which its status says); the cable's use in the tooltip.
+                var fix = MasterApoFix();
+                master.ShowsRouteChoice = mode == SoundModes.Full;
+                master.RouteChoice?.Sync(_mixer.MasterMethod, r => SoundModes.MasterOfferOf(r, _engine.MasterFacts, _engine.MasterMethod), fix);
+                // A master set to the cable bus whose cable is gone is never left silently without effects: the row says so and offers Equalizer APO.
+                master.Fix = status.Kind == StatusKind.ApoNotApplied ? fix
+                    : _mixer.MasterMethod == SoundModes.MasterBus && SoundModes.IsCableMissing(status.Kind) && master.RouteChoice is { ApoAvailable: true } choose
+                        ? choose.UseApo
+                        : null;
+                if (mode == SoundModes.Full) master.ModeLine += Environment.NewLine + SoundModes.MasterCableLine(_engine.MasterMethod, _engine.CableUses);
                 break;
             case MixerItem program:
-                program.CanTest = mode == SoundModes.Fast && program.IsOpen && _modes.Current?.ProcessLoopback != false;
+                // Test checks recording a program: Fast mode always records; Full control records unless the program is set to its cable.
+                program.CanTest = (mode == SoundModes.Fast || _mixer.FxRouteOf(program.Key) != SoundModes.RouteCable)
+                    && program.IsOpen && _modes.Current?.ProcessLoopback != false;
+                var route = _mixer.FxRouteOf(program.Key);
+                var facts = RouteFactsOf(program.Key);
+                program.RouteChoice?.SyncProgram(route, facts, ProgramMethodFix(facts));
+                program.ShowsRouteChoice = mode == SoundModes.Full && program.FxCount > 0;
+                // A program set to Virtual cable that has no cable is never left silently without effects: the row says so and offers Recording.
+                program.Fix = program.ShowsRouteChoice && route == SoundModes.RouteCable && SoundModes.IsCableMissing(status.Kind) && program.RouteChoice is { RecordingAvailable: true } choice
+                    ? choice.UseRecording : null;
                 program.CaptureGate.Sync(_modes.ProgramCaptureCaution is { } cannotRecord ? new Audio.Gate(cannotRecord, SoundModes.Full) : Audio.Gate.Open);
                 break;
             case InputItem input:
@@ -65,9 +107,28 @@ public sealed partial class VolumePageViewModel
                 input.Fix = status.State == Audio.Engine.EngineState.Unavailable && mode == SoundModes.Fast ? MicApoFix(input.Id) : null;
                 break;
             case ComboItem combo:
-                combo.EffectsGate.Sync(_modes.Check(SoundFeature.CombineDevices));
+                combo.EffectsGate.Sync(_modes.Check(combo.IsMicrophone ? SoundFeature.CombineMicrophones : SoundFeature.CombineSpeakers));
                 break;
         }
+    }
+
+    /// <summary>What a program's Method menu needs: the cables the engine has, why recording can't be used here (if so) and how its effects run now.</summary>
+    private RouteFacts RouteFactsOf(string key) =>
+        new(_engine.CablesFor(key), _modes.Facts is { } facts ? SoundModes.CaptureMissing(facts) : null, _engine.MethodOf(key), _engine.ApoCableWhyFor(key));
+
+    /// <summary>
+    /// The one step under a program's Method cards that fixes what a greyed card lacks: install VB-CABLE when none is installed, Choose
+    /// devices when Equalizer APO is not ticked on a cable; null when nothing here fixes it.
+    /// </summary>
+    private ModeCardAction? ProgramMethodFix(RouteFacts facts)
+    {
+        if (facts.Cables.Pairs == 0 && facts.Cables.NoCable == StatusKind.NeedsCable) return CableSetupAction();
+        var apo = _modes.Current?.Apo ?? Core.Engine.Apo.ApoState.None;
+        return facts.ApoCableWhy == SoundModes.ApoNotOnCable && SoundModes.DeviceSelectorFixes(apo)
+            ? _cableDevices ??= new ModeCardAction("Choose devices",
+                "Opens Equalizer APO's Device Selector: tick the virtual cable on its Playback tab (administrator). A restart may be needed.",
+                ChooseDevicesCommand)
+            : null;
     }
 
     // ---- the routing model ----
@@ -96,12 +157,23 @@ public sealed partial class VolumePageViewModel
 
     private string NamesOf(IReadOnlyList<string> targets) => targets.Count == 0 ? "nothing" : string.Join(NameJoin, targets.Select(NameOf));
 
-    private string? DefaultDeviceId => _mixer.Devices.FirstOrDefault(d => d.IsDefault)?.Id;
-
-    /// <summary>Where the master plays: its several devices (Full control), else Windows' default device.</summary>
+    /// <summary>
+    /// Where the master plays: the devices chosen for it while it runs on the cable bus (Full control), else its one real device
+    /// (<see cref="MixerService.MasterDeviceId"/>, or Windows' default).
+    /// </summary>
     private IReadOnlyList<string> MasterTargets() =>
-        _mixer.SoundMode == SoundModes.Full && _mixer.MasterPlaysOn.Count > 1 ? _mixer.MasterPlaysOn
-        : DefaultDeviceId is { } id ? new[] { id } : Array.Empty<string>();
+        MasterOnBus && _mixer.MasterPlaysOn.Count > 0 ? _mixer.MasterPlaysOn
+        : (_mixer.MasterDeviceId ?? _mixer.DefaultDeviceId) is { } id ? new[] { id } : Array.Empty<string>();
+
+    /// <summary>The master runs on the cable bus (Full control and its method): only then can it play on several devices.</summary>
+    private bool MasterOnBus => _mixer.SoundMode == SoundModes.Full && _engine.MasterMethod == RunMethod.Bus;
+
+    /// <summary>The master's devices changed (the real device behind the master bus): its level, tip and Wiring row follow.</summary>
+    private void OnMasterDeviceChanged()
+    {
+        SyncMaster();
+        SyncWiringOf(MixerService.MasterKey);
+    }
 
     // ---- what a choice does ----
 
@@ -116,8 +188,9 @@ public sealed partial class VolumePageViewModel
     }
 
     /// <summary>
-    /// The master's choice: one device = Windows' default device; several (Full control) = the master bus plays on all of them, with the
-    /// first plugged-in device as the default. The last device can't be taken away.
+    /// The master's choice: one device = the master's real device (Windows' default device in Fast mode; in Full control the master
+    /// bus plays on it and its cable stays the default); several, or a combined device (Full control) = the master bus plays on all of
+    /// them, with the first real device as the master's real device. The last device can't be taken away.
     /// </summary>
     private void ChooseMasterTarget(string target, bool several)
     {
@@ -125,15 +198,22 @@ public sealed partial class VolumePageViewModel
         if (!several) list = new List<string> { target };
         else if (!list.Remove(target)) list.Add(target);
         if (list.Count == 0) return;
-        if (list.Count == 1)
+        if (list.Count == 1 && !(MasterOnBus && CombinedDevice.IsKey(list[0])))
         {
             _mixer.SetMasterPlaysOn(Array.Empty<string>());
-            MakeDefault(list[0]);
+            MakeMasterDevice(list[0]);
             return;
         }
         _mixer.SetMasterPlaysOn(list);
-        if (DefaultDeviceId is not { } current || !list.Contains(current))
-            if (list.FirstOrDefault(t => !CombinedDevice.IsKey(t)) is { } first) MakeDefault(first);
+        if ((_mixer.MasterDeviceId ?? _mixer.DefaultDeviceId) is not { } current || !list.Contains(current))
+            if (list.FirstOrDefault(t => !CombinedDevice.IsKey(t)) is { } first) MakeMasterDevice(first);
+    }
+
+    /// <summary>The master's real device becomes this device: the bus's output while it owns Windows' default, else Windows' default itself.</summary>
+    private void MakeMasterDevice(string target)
+    {
+        if (_mixer.MasterBusOwnsDefault && !CombinedDevice.IsKey(target)) _mixer.SetRealMasterDevice(target);
+        else MakeDefault(target);
     }
 
     /// <summary>Windows' default device becomes this device, or a combined device's cable (everything sent there plays on its members).</summary>

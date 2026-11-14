@@ -1,0 +1,89 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:presets="using:OmniControl.App.Fx.Presets"
+        x:Class="OmniControl.App.Fx.Presets.PresetManagerWindow"
+        x:DataType="presets:PresetManagerViewModel"
+        Title="Manage presets" Width="760" Height="500" MinWidth="520" MinHeight="320"
+        Background="{DynamicResource BrushBackground}" WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+    <!-- After TabForge's preset manager: the effects with their preset counts at the left, the chosen effect's presets at the right
+         (built-in ones greyed and tagged), one toolbar above them, a search across every effect, and one thin line at the foot for
+         messages and the Undo after a delete. A modal window over the FX window (TabForge's is a single non-modal window). -->
+    <DockPanel>
+        <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,1,0,0" Padding="16,8">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <TextBlock Classes="statusline" Text="{Binding Message}" IsVisible="{Binding HasMessage}" TextWrapping="Wrap" />
+                    <TextBlock Classes="statusline" Text="{Binding UndoText}" IsVisible="{Binding HasUndo}" VerticalAlignment="Center" />
+                    <Button Classes="link small" Content="Undo" Command="{Binding UndoCommand}" IsVisible="{Binding HasUndo}" />
+                </StackPanel>
+                <Button Grid.Column="1" Content="Done" Classes="primary" Width="84" HorizontalContentAlignment="Center" Click="OnDoneClick" />
+            </Grid>
+        </Border>
+
+        <Border DockPanel.Dock="Top" Padding="16,10,16,4">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <WrapPanel>
+                    <Button Classes="pill" Tag="scope" Content="Save current" Click="OnSaveCurrentClick" IsEnabled="{Binding CanSaveCurrent}" Margin="0,0,6,6"
+                            ToolTip.Tip="Keep the settings of the effect you came from as a preset of your own" ToolTip.ShowOnDisabled="True" />
+                    <Button Classes="pill" Tag="scope" Content="Rename" Command="{Binding BeginRenameCommand}" IsEnabled="{Binding CanRename}" Margin="0,0,6,6"
+                            ToolTip.Tip="Rename the selected preset of your own (F2)" ToolTip.ShowOnDisabled="True" />
+                    <Button Classes="pill" Tag="scope" Content="Duplicate" Command="{Binding DuplicateCommand}" IsEnabled="{Binding CanDuplicate}" Margin="0,0,6,6"
+                            ToolTip.Tip="Make a copy of the selected presets (a built-in one too)" ToolTip.ShowOnDisabled="True" />
+                    <Button Classes="pill" Tag="scope" Content="Move up" Command="{Binding MoveUpCommand}" IsEnabled="{Binding CanMoveUp}" Margin="0,0,6,6"
+                            ToolTip.Tip="Move the selected presets of your own up (Alt+Up)" ToolTip.ShowOnDisabled="True" />
+                    <Button Classes="pill" Tag="scope" Content="Move down" Command="{Binding MoveDownCommand}" IsEnabled="{Binding CanMoveDown}" Margin="0,0,6,6"
+                            ToolTip.Tip="Move the selected presets of your own down (Alt+Down)" ToolTip.ShowOnDisabled="True" />
+                    <Button Classes="pill" Tag="scope" Content="Delete" Command="{Binding DeleteCommand}" IsEnabled="{Binding CanDelete}" Margin="0,0,6,6"
+                            ToolTip.Tip="Delete the selected presets of your own; Undo is offered for a few seconds" ToolTip.ShowOnDisabled="True" />
+                    <Button Classes="pill" Tag="scope" Content="Import…" Click="OnImportClick" IsEnabled="{Binding CanImport}" Margin="0,0,6,6"
+                            ToolTip.Tip="Add presets from files to the effect that is shown" ToolTip.ShowOnDisabled="True" />
+                    <Button Classes="pill" Tag="scope" Content="Export…" Click="OnExportClick" IsEnabled="{Binding CanExport}" Margin="0,0,6,6"
+                            ToolTip.Tip="Write the selected preset to a file" ToolTip.ShowOnDisabled="True" />
+                    <Button Classes="pill" Tag="scope" Content="Show in list" Command="{Binding ShowInListCommand}" IsVisible="{Binding CanShowInList}" Margin="0,0,6,6"
+                            ToolTip.Tip="Go to the place of the selected preset (Enter)" />
+                </WrapPanel>
+                <TextBox x:Name="SearchBox" Grid.Column="1" Classes="field" Width="200" VerticalAlignment="Top" Watermark="Search all presets"
+                         Text="{Binding Search}" ToolTip.Tip="Search every effect's presets by name (Esc clears)" />
+            </Grid>
+        </Border>
+
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Margin="16,4,16,12">
+            <ListBox Classes="rows" ItemsSource="{Binding Kinds}" SelectedItem="{Binding Node}" MinWidth="170" MaxWidth="260">
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="presets:PresetKindItem">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="{Binding Count}" Classes="muted" VerticalAlignment="Center" />
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <DockPanel Grid.Column="1">
+                <TextBlock DockPanel.Dock="Top" Text="{Binding Heading}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="8,2,0,6" />
+                <TextBlock DockPanel.Dock="Top" Text="{Binding EmptyText}" IsVisible="{Binding IsEmpty}" Classes="muted" TextWrapping="Wrap" Margin="8,4" />
+                <ListBox x:Name="RowList" Classes="rows" ItemsSource="{Binding Rows}" SelectionMode="Multiple" Grid.IsSharedSizeScope="True">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="presets:PresetRowItem">
+                            <Grid ColumnSpacing="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="PresetTag" />
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="PresetWhere" />
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="PresetDate" />
+                                </Grid.ColumnDefinitions>
+                                <Panel VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" Classes.muted="{Binding BuiltIn}"
+                                               IsVisible="{Binding !IsEditing}" ToolTip.Tip="{Binding NameTip}" />
+                                    <TextBox Classes="field" Text="{Binding EditText}" IsVisible="{Binding IsEditing}" MaxLength="64" />
+                                </Panel>
+                                <Border Grid.Column="1" Classes="tag" IsVisible="{Binding BuiltIn}" VerticalAlignment="Center"><TextBlock Text="built-in" /></Border>
+                                <TextBlock Grid.Column="2" Text="{Binding Where}" Classes="muted" IsVisible="{Binding ShowWhere}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="3" Text="{Binding DateText}" Classes="muted" VerticalAlignment="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Grid>
+    </DockPanel>
+</Window>

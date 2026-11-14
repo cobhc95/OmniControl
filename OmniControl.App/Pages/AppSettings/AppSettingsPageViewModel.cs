@@ -74,7 +74,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
             _settings.Save();
         });
 
-        _about = new ButtonItem("About and credits", "Open", "Version, licence and open source credits", openAbout);
+        _about = new ButtonItem("About and credits", "Open", "Version, licence, credits", openAbout);
 
         foreach (var item in new object[] { Theme, Accent, _startWithWindows, _startMinimised, _whenClosing }) Items.Add(item);
         _addFolder = new FileItem("Plug-in folders", FileKind.OfFolder("Choose a folder with plug-ins"), AddFolder) { EmptyText = "Add a folder to scan" };
@@ -114,7 +114,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
         _startWithWindows.IsOn = state == StartupState.On;
         _readingStartup = false;
         StartupNote = state == StartupState.DisabledByUser
-            ? "Switched off in Task Manager (Startup apps); turning this on switches it back on."
+            ? "Switched off in Task Manager > Startup apps; turning this on re-enables it."
             : string.Empty;
     }
 

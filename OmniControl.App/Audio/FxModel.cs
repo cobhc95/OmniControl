@@ -7,6 +7,10 @@ public sealed class FxSlot
     public string Kind { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public bool Enabled { get; set; } = true;
+
+    /// <summary>Whether a row's chain has something to run: its effects are switched on and at least one effect in it is enabled.</summary>
+    public static bool AnyRuns(bool on, IEnumerable<FxSlot> chain) => on && chain.Any(s => s.Enabled);
+
     /// <summary>A new effect is fully wet.</summary>
     public const int DefaultWet = Core.Models.Percent.Max;
 
@@ -20,12 +24,17 @@ public sealed class FxSlot
     public string Path { get; set; } = string.Empty;
     /// <summary>A plug-in's own settings (base64 of its saved state); empty until the plug-in has run or been edited.</summary>
     public string State { get; set; } = string.Empty;
+    /// <summary>
+    /// What the user had tuned by hand (an equaliser's bands, the compressor's values) before choosing a preset over it, so "Custom" in the
+    /// preset list brings it back. Null until a preset first replaced a hand-tuned sound; older files have none.
+    /// </summary>
+    public PresetContent? Custom { get; set; }
 
     /// <summary>An independent copy (copy and paste in the FX window): a new slot, so the engine and the plug-in host treat it as a new effect.</summary>
     public FxSlot Copy() => new()
     {
         Kind = Kind, Name = Name, Enabled = Enabled, Wet = Wet, Values = new List<double>(Values),
-        Bands = Bands?.Select(b => b.Copy()).ToList(), Path = Path, State = State,
+        Bands = Bands?.Select(b => b.Copy()).ToList(), Path = Path, State = State, Custom = Custom?.Copy(),
     };
 }
 
@@ -40,7 +49,11 @@ public enum FxEngines
     Apo = 2,
 }
 
-public sealed record FxParam(string Name, double Default, double Min, double Max, string Unit);
+/// <param name="IsSwitch">An on/off setting, stored as 0 or 1 (shown as a switch card, not a slider).</param>
+public sealed record FxParam(string Name, double Default, double Min, double Max, string Unit, bool IsSwitch = false);
+
+/// <summary>A factory preset of a built-in effect: values for the whole <see cref="FxKind.Params"/> list, in its order.</summary>
+public sealed record FxPreset(string Name, IReadOnlyList<double> Values);
 
 /// <summary>A plug-in format OmniControl can put in a chain (an entry of <see cref="FxCatalog.PluginTypes"/>).</summary>
 /// <param name="Kind">The stored id (<see cref="FxSlot.Kind"/>); never renamed.</param>
@@ -59,7 +72,7 @@ public sealed record PluginType(string Kind, string Tag, string Extension, Core.
 /// <param name="Engines">The engines that process this effect; elsewhere it is kept in the chain but passes the sound unchanged.</param>
 /// <param name="Eq">For an equaliser, how it makes and loads its bands (its slot holds <see cref="FxSlot.Bands"/>); null for the other effects.</param>
 public sealed record FxKind(string Kind, string Name, string Description, IReadOnlyList<FxParam> Params, FxEngines Engines = FxEngines.None,
-    EqLayout? Eq = null);
+    EqLayout? Eq = null, IReadOnlyList<FxPreset>? Presets = null);
 
 /// <summary>
 /// The built-in effects the Add effect window offers. The parameter lists follow TabForge's built-ins (same names, ranges and defaults);
@@ -94,6 +107,8 @@ public static class FxCatalog
 
     public const string IrKind = "ir";
     public const string GainKind = "gain";
+    public const string CompKind = "comp";
+    public const string LimiterKind = "limiter";
 
     /// <summary>The Parametric equaliser (the one equaliser of older versions, so old files convert to it).</summary>
     public const string EqKind = "eq";
@@ -128,15 +143,24 @@ public static class FxCatalog
             new[] { EqGain }, FxEngines.Program | FxEngines.Apo, GraphicEq.ThirtyTwo),
         new("geq16", "Equaliser - 16 Bands", "Graphic equaliser: 16 large sliders two thirds of an octave apart, 20 Hz to 20 kHz, response curve",
             new[] { EqGain }, FxEngines.Program | FxEngines.Apo, GraphicEq.Sixteen),
-        new("comp", "Compressor", "Dynamics compressor with soft knee and makeup gain", new FxParam[]
+        new(CompKind, "Compressor", "Dynamics compressor with soft knee and makeup gain", new FxParam[]
         {
-            new("Threshold", -18, -60, 0, " dB"), new("Ratio", 4, 1, 20, " : 1"), new("Attack", 10, 1, 200, " ms"),
-            new("Release", 120, 5, 2000, " ms"), new("Makeup", 0, 0, 24, " dB"), new("Knee", 6, 0, 24, " dB"),
+            new("Threshold", -18, CompressorParams.MinThreshold, 0, " dB"), new("Ratio", 4, 1, CompressorParams.MaxRatio, " : 1"),
+            new("Attack", 10, 1, 200, " ms"), new("Release", 120, 5, 2000, " ms"),
+            new("Makeup gain", 0, 0, CompressorParams.MaxMakeup, " dB"), new("Knee", 6, 0, CompressorParams.MaxKnee, " dB"),
+            new("Auto makeup", 0, 0, 1, "", IsSwitch: true),
+        }, FxEngines.Program, Presets: new FxPreset[]
+        {
+            // TabForge's factory presets (Bass, Vocal, Guitar), in the order of the parameters above
+            new("Bass", new double[] { -22, 4, 25, 120, 3, 6, 0 }),
+            new("Vocal", new double[] { -20, 3, 6, 90, 0, 9, 1 }),
+            new("Guitar", new double[] { -24, 3, 15, 140, 2, 6, 0 }),
         }),
-        new("limiter", "Limiter", "Look-ahead limiter that stops peaks going over a ceiling", new FxParam[]
+        new(LimiterKind, "Limiter", "Look-ahead limiter that stops peaks going over a ceiling", new FxParam[]
         {
             new("Ceiling", -1, -12, 0, " dB"), new("Release", 100, 1, 1000, " ms"), new("Input gain", 0, -12, 24, " dB"),
-        }),
+            new("Auto release", 0, 0, 1, "", IsSwitch: true),
+        }, FxEngines.Program),
         new("delay", "Delay", "Stereo delay with feedback and filters on the repeats", new FxParam[]
         {
             new("Time", 350, 1, 2000, " ms"), Percent("Feedback", 35, 95), Percent("Mix", 30),
@@ -156,6 +180,16 @@ public static class FxCatalog
     };
 
     public static FxKind Find(string kind) => All.First(k => k.Kind == kind);
+
+    /// <summary>
+    /// Gives a built-in slot a value for every setting its entry lists now: a chain saved before a setting was added keeps its values
+    /// and takes the new setting's default. Does nothing for a plug-in or a kind this version does not know.
+    /// </summary>
+    public static void Complete(FxSlot slot)
+    {
+        if (KindOf(slot) is not { } kind) return;
+        while (slot.Values.Count < kind.Params.Count) slot.Values.Add(kind.Params[slot.Values.Count].Default);
+    }
 
     public static FxSlot Create(string kind)
     {

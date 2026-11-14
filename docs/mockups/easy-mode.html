@@ -1,0 +1,53 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Volume Easy mode: first launch design A, six goal cards, setup steps, Easy page (approved 2026-11-14)</title>
+<!--
+APPROVED DESIGN (owner picked 'Design A' for first launch; the rest approved in the conversation). Everything below is the SPEC for the Easy mode of the Volume page.
+HARD RULE (owner, verbatim): "no changes at all to advanced mode please." The Easy mode work must leave Advanced mode (today's Volume Mixer and Wiring tabs, the Sound mode panel, every row, menu and
+control in it) EXACTLY as it is: same layout, behaviour, wording, files' behaviour. The only addition anywhere near it is the 'Easy | Advanced' switch beside the page title, and the Advanced view
+shown through that switch must be the unchanged existing page. Easy mode is a NEW view (new view-model, new views, new files) that reads and writes the same settings through the existing services
+and never edits Advanced's views or view-models except for hosting them behind the switch; shared behaviour that Easy needs is added beside, not inside, Advanced's code.
+
+0. THE SWITCH: 'Easy | Advanced' segmented switch right of the 'Volume' title (the title row of the Volume page). Advanced = today's Mixer/Wiring page, unchanged. The choice is
+   persisted. A fresh install (no previous settings: first launch ever) starts in Easy. Existing users (any saved mixer/settings) stay in Advanced; the switch is there to try.
+1. FIRST LAUNCH (design A): the Volume page opens in Easy on the SIX GOAL CARDS: 'Welcome. What do you want to do?' with the 6 cards, and a 'Skip, just show my volume' link under them. Choosing a card
+   starts that card's setup; Skip opens the Easy page. After a goal or Skip the cards never come back by themselves; the Easy page footer has 'Set up again' which reopens the six cards starting from
+   what is already set (goals already on show '✓ on'). The rest of the app is not blocked and nothing changes until the setup's last button.
+2. THE SIX CARDS (3 columns x 2 rows, each card: title, a tiny flow picture, one muted fact line):
+   - Make everything sound better  (All apps -> One EQ [green = Equalizer APO] -> Speakers; 'No delay')
+   - A different sound per app     (Spotify -> own EQ [orange = OmniControl] -> Speakers; 'About 70 ms')
+   - Improve my microphone         (Mic -> cleanup [green] -> Call app; 'Every app hears it')
+   - Join two microphones          (Mic 1, Mic 2 -> cable [blue]; 'Needs a free cable')
+   - Play on two speakers          (All -> cable [blue] -> 2 speakers; 'Needs a cable')
+   - Just the volume               (Apps -> Speakers; 'No setup')
+   Goals are not exclusive: the user can run several setups one after another; each adds to what is set.
+3. SETUP FOR CARD 1 'Make everything sound better' (a progress strip 'Goal · Sound · Setup · Done', ticks as it goes):
+   Screen 'Sound': 'How should it sound?' preset chips Normal / Bass boost / Vocal / Night / Loud (the shared Eq.PresetShapes, master list), a small live curve, FIVE friendly sliders
+     (Bass, Low mid, Mid, High mid, Treble) that map onto the master equaliser bands; live preview; nothing saved until the end; Back / Next.
+   Screen 'Setting it up': a CHECKLIST that fills by itself: '✓ Equalizer APO is installed' (else 'Install it' = the official installer action), '! Your speakers are not selected yet' with the button
+     'Choose my speakers' (opens Device Selector with the right device) turning to ✓ by itself once true, then 'Apply your sound'. A step that cannot be done says why and offers the next best way
+     ('Use another way': OmniControl's own engine through a virtual cable, 30-80 ms, only with the user's OK because it switches to Full control). Steps already true are ticked from the start.
+   Screen 'All set': 'Everything you play now sounds like <preset>. Change it any time from the Everything row on the Volume page.' Buttons: 'Set up something else' and 'Go to Volume'.
+4. SETUP FOR THE OTHER CARDS follow the same pattern (Goal · questions · Setup checklist · Done), each with its own questions: card 2 'Which apps?' (tick list of apps, playing one marked, '+ Add another
+   app'; picture per app; method chosen automatically: recording, no cable); card 3 mic cleanup (microphone effects through Equalizer APO on the microphone, checklist as card 1 for the mic device);
+   card 4 'Which microphones?' (two ticked, name, checklist: free virtual cable, Fast mode OK); card 5 'Which speakers?' (checklist: Full control + cable, asks before switching); card 6 goes straight to the Easy page.
+5. THE EASY PAGE ('Go to Volume'): title row with the switch; a short confirmation under it ('Your sound is on: <preset>', fades); card 'Everything' = big master volume slider, Mute, a 'Sound ▾' button opening
+   the drawer (preset chips + 5 sliders + 'More controls...' = the full effects window; open on first visit); a card with the apps and the microphone: one row each (icon, name, state 'playing' / 'not open',
+   volume slider, value, Mute, a 'Sound' button with the same drawer for that app's effects), '+ Add an app' (the searchable Add program list); footer: '<Set up> Normal sound on all your speakers'
+   left, 'Set up again' and 'Something not working? Fix it' right. 'Fix it' runs the checks and fixes or says plainly what to do.
+   Easy shows NO cables, methods, wiring, tabs, combining devices, sound-mode panel: the app chooses the mode and method from the goal; Advanced shows everything and the numbered setup badge.
+Colours and sizes below are placeholders for theme brushes and master styles.
+-->
+<style>
+body{font:13px sans-serif;background:#1e1e1e;color:#ddd;margin:16px}
+.win{max-width:700px;background:#262626;border-radius:14px;padding:14px 16px;margin:0 0 16px}
+.top{display:flex;align-items:center;gap:14px;margin:0 0 10px}.title{font-size:22px;font-weight:600}
+.seg{display:inline-flex;border:1px solid #555;border-radius:16px;overflow:hidden;font-size:12px}.seg span{padding:4px 14px;color:#aaa}.seg .on{background:#E8873A;color:#fff}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.c{border:1px solid #555;border-radius:12px;background:#303030;padding:8px 10px;font-size:12px}.c b{display:block;font-weight:600}.c small{color:#888}
+.skip{display:block;text-align:center;margin-top:12px;color:#aaa;text-decoration:underline}
+</style>
+<div class="win"><div class="top"><span class="title">Volume</span><span class="seg"><span class="on">Easy</span><span>Advanced</span></span></div>
+<p><b>Welcome. What do you want to do?</b></p>
+<div class="cards"><div class="c"><b>Make everything sound better</b>All apps -> One EQ -> Speakers<br><small>No delay</small></div><div class="c"><b>A different sound per app</b>Spotify -> own EQ -> Speakers<br><small>About 70 ms</small></div><div class="c"><b>Improve my microphone</b>Mic -> cleanup -> Call app<br><small>Every app hears it</small></div><div class="c"><b>Join two microphones</b>Mic 1 + Mic 2 -> cable<br><small>Needs a free cable</small></div><div class="c"><b>Play on two speakers</b>All -> cable -> 2 speakers<br><small>Needs a cable</small></div><div class="c"><b>Just the volume</b>Apps -> Speakers<br><small>No setup</small></div></div>
+<span class="skip">Skip, just show my volume</span></div>

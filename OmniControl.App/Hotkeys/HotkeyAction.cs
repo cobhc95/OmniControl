@@ -43,7 +43,13 @@ public sealed partial class HotkeyAction : ObservableObject, Pages.IEditorItem
     /// <summary>Optional part of the feature ("Hardware", "Software").</summary>
     public string? Group { get; }
 
-    /// <summary>Category and group as one line ("Displays - Hardware"): what every list shows as the action's category.</summary>
+    /// <summary>Optional part of the group ("Colour (RGB and gamma)"): the Shortcuts page folds it into its own panel under the group.</summary>
+    public string? Subgroup { get; }
+
+    /// <summary>Category and group as one line ("Displays - Hardware"): the panel the Shortcuts page puts the action in.</summary>
+    public string Panel { get; }
+
+    /// <summary>Category, group and subgroup as one line ("Displays - Hardware - Presets"): what every list shows as the action's category.</summary>
     public string Heading { get; }
 
     public string Keywords { get; }
@@ -63,6 +69,14 @@ public sealed partial class HotkeyAction : ObservableObject, Pages.IEditorItem
     [ObservableProperty] private string _gesture = string.Empty;
 
     [ObservableProperty] private bool _useSelected;
+
+    /// <summary>
+    /// Why the action does nothing right now (a mode or device it needs is missing), set and cleared live by the feature that owns it;
+    /// null = it works. The Shortcuts page shows it on the action; the key can still be bound.
+    /// </summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsUnavailable))] private string? _unavailableReason;
+
+    public bool IsUnavailable => UnavailableReason is not null;
 
     /// <summary>True while the hotkey box waits for the user to press the new key combination.</summary>
     [ObservableProperty]
@@ -95,16 +109,19 @@ public sealed partial class HotkeyAction : ObservableObject, Pages.IEditorItem
 
     /// <param name="deviceNoun">Plural noun for the scope chips, e.g. "displays". Null when the action has no devices.</param>
     /// <param name="group">Part of the feature the action belongs to ("Hardware", "Software"); null when the feature has no parts.</param>
+    /// <param name="subgroup">Part of the group ("Presets"); null when the group is short enough not to need one.</param>
     public HotkeyAction(string id, string title, string category, string keywords,
         Action<IReadOnlyList<string>?> run, string? deviceNoun = null,
         Func<IReadOnlyList<HotkeyDevice>>? devices = null, Action<IReadOnlyList<string>?, int>? stepBy = null,
-        string? group = null)
+        string? group = null, string? subgroup = null)
     {
         Id = id;
         Title = title;
         Category = category;
         Group = group;
-        Heading = Services.Heading.Join(category, group);
+        Subgroup = subgroup;
+        Panel = Services.Heading.Join(category, group);
+        Heading = Services.Heading.Join(category, group, subgroup);
         Keywords = keywords;
         _run = run;
         _stepBy = stepBy;
@@ -121,9 +138,9 @@ public sealed partial class HotkeyAction : ObservableObject, Pages.IEditorItem
     /// </summary>
     public static HotkeyAction ForLevel(string id, string title, string category, string keywords, HotkeyLevel level, int direction,
         Action<IReadOnlyList<string>?, int> step, string? deviceNoun = null, Func<IReadOnlyList<HotkeyDevice>>? devices = null,
-        string? group = null) =>
+        string? group = null, string? subgroup = null) =>
         new(id, title, category, keywords, ids => step(ids, direction * DefaultStep), deviceNoun, devices,
-            (ids, percent) => step(ids, direction * percent), group)
+            (ids, percent) => step(ids, direction * percent), group, subgroup)
         {
             Level = level,
             LevelDirection = direction,

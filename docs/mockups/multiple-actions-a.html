@@ -1,0 +1,35 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Multiple actions per button, option A (approved 2026-11-14)</title>
+<!--
+APPROVED MOCK-UP for the Mouse and Trackpad page: every card of BOTH groups (Mouse Buttons and Trackpad: buttons, wheel, tilt, swipes, pinch, taps) can have SEVERAL actions.
+ - The card's right part shows the actions as chips (Button.chipx style: a quiet chip, 22 px, words + small x), numbered when there are two or more
+   (a muted small number inside the chip), then a dashed '+ add action' chip (Button.blockadd.small, same look as the Volume Wiring tab's '+ add'),
+   then the cogwheel at the far right as today (it opens the settings of the FIRST/selected action; see below).
+ - A card with ONE action looks like today plus the dashed add chip: the action's name is the chip (click = open that action's settings window with its Back button;
+   the x = back to Default).
+ - Chips wrap onto a second line at the same chip size; at most TWO lines of chips; beyond that the rest fold into an accent-outlined '+N more' chip that opens a
+   pop-down list (FlyoutPresenter.listmenu, rows with number, action name, a cogwheel (settings), an x (remove) and a drag/reorder handle or up/down). The list scrolls.
+ - Actions run one after another in the numbered order when the input fires. Only one-shot actions are offered in the 2nd and later slots (not 'while held' ones);
+   the picker says so. The first action keeps its current options. Each chip opens ITS OWN settings window (the cogwheel window with Back).
+ - Dragging a chip (mouse) or the list's reorder control changes the order. Everything stored in the existing action spec text: a card's stored value becomes a list
+   (old single-action files load unchanged).
+ - The card grows only by the extra chip line(s); the label column stays; keyboard: Enter on the card still opens the picker for the first action; Right/Left walk the chips.
+Colours are placeholders for theme brushes.
+-->
+<style>
+body{font:13px sans-serif;background:#1e1e1e;color:#ddd;margin:16px}
+.card{max-width:640px;border:1px solid #E8873A;border-radius:12px;background:#262626;padding:8px 10px;display:grid;grid-template-columns:150px 1fr auto;gap:10px;align-items:start;margin:0 0 10px}
+.chips{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.chip{display:inline-flex;gap:5px;background:#1e1e1e;border:1px solid #3a3a3a;border-radius:12px;padding:2px 8px;font-size:12px;white-space:nowrap}
+.chip i{font-style:normal;color:#888;font-size:10px}
+.add{border:1px dashed #666;border-radius:12px;padding:2px 9px;color:#aaa;font-size:12px}
+.more{border:1px solid #E8873A;color:#E8873A;border-radius:12px;padding:2px 9px;font-size:12px}
+.cog{width:26px;height:26px;border:1px solid #666;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.pop{border:1px solid #555;border-radius:10px;background:#2b2b2b;padding:6px;max-width:300px;margin:0 0 14px}
+.pop div{display:flex;justify-content:space-between;padding:4px 8px;border-radius:6px}.pop div:nth-child(1){background:#363636}.m{color:#888}
+</style>
+<div class="card"><div>Three-finger tap</div><div class="chips"><span class="chip">Switch window <i>Alt+Tab</i> x</span><span class="add">+ add action</span></div><span class="cog">*</span></div>
+<div class="card"><div>Three-finger tap</div><div class="chips"><span class="chip"><i>1</i> Mute x</span><span class="chip"><i>2</i> Volume down x</span><span class="chip"><i>3</i> Open Spotify x</span><span class="chip"><i>4</i> Brightness up x</span><span class="chip"><i>5</i> Show desktop x</span><span class="add">+ add action</span></div><span class="cog">*</span></div>
+<div class="card"><div>Three-finger tap</div><div class="chips"><span class="chip"><i>1</i> Mute x</span><span class="chip"><i>2</i> Volume down x</span><span class="chip"><i>3</i> Open Spotify x</span><span class="chip"><i>4</i> Brightness up x</span><span class="chip"><i>5</i> Show desktop x</span><span class="more">+4 more</span><span class="add">+ add action</span></div><span class="cog">*</span></div>
+<div class="pop"><div><span>1 Mute</span><span class="m">* x ↕</span></div><div><span>2 Volume down</span><span class="m">* x ↕</span></div><div><span>3 Open Spotify</span><span class="m">* x ↕</span></div><div><span class="m">... more, scrolls</span><span></span></div></div>

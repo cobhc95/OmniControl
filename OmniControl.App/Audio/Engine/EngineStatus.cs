@@ -15,10 +15,30 @@ public enum EngineState
     Failed,
 }
 
-/// <summary>A row's effects status: the state and the short sentence the row and the FX window show.</summary>
-public sealed record EngineStatus(EngineState State, string Text)
+/// <summary>
+/// A row's effects status: the state and the sentence the FX window shows; <paramref name="Detail"/> = what Windows answered, kept out
+/// of the sentence and shown only in the full line (<see cref="LineFor"/>, the tooltips). The Mixer row and the Wiring tab show
+/// <see cref="Brief"/> instead, built from <paramref name="Kind"/>, <paramref name="Method"/> and the (steady) <paramref name="DelayMs"/>.
+/// </summary>
+public sealed record EngineStatus(EngineState State, string Text, string? Detail = null, StatusKind Kind = StatusKind.Other,
+    RunMethod Method = RunMethod.None, int? DelayMs = null)
 {
     public static readonly EngineStatus Off = new(EngineState.Off, string.Empty);
+
+    /// <summary>The one short line of a Mixer row ("Recording · 70 ms"); empty when the effects are off.</summary>
+    public string Brief => Kind != StatusKind.Other ? SoundModes.Brief(Kind, Method, DelayMs)
+        : State switch
+        {
+            EngineState.Waiting => SoundModes.Brief(StatusKind.Starting),
+            EngineState.Running => SoundModes.Brief(StatusKind.Running, Method, DelayMs),
+            EngineState.Unavailable => SoundModes.NotAvailable,
+            EngineState.Failed => SoundModes.Brief(StatusKind.Stopped),
+            _ => string.Empty,
+        };
+
+    /// <summary>The tooltip of <see cref="Brief"/>: the full line (<see cref="LineFor"/>) and, where there is one, what the method means or what to do next.</summary>
+    public string TipFor(SoundMode mode, ModeMethod method) =>
+        SoundModes.Advice(Kind, Method) is { } advice ? $"{LineFor(mode, method)}{Environment.NewLine}{advice}" : LineFor(mode, method);
 
     public bool IsRunning => State == EngineState.Running;
     public bool IsProblem => State is EngineState.Failed or EngineState.Unavailable;
@@ -27,14 +47,14 @@ public sealed record EngineStatus(EngineState State, string Text)
     /// The one line a row and the FX window show: the mode, how the mode runs this row's effects, and what is really happening. A
     /// problem is said first and alone (nothing is implied to run); with effects off the method is only what would happen.
     /// </summary>
-    /// <param name="key">The row: null = the master, an input key = a microphone, else a program or combined device.</param>
-    public string LineFor(SoundMode mode, string? key)
+    /// <param name="method">How the row's effects run in this mode (<see cref="EffectsEngine.MethodFor"/>).</param>
+    public string LineFor(SoundMode mode, ModeMethod method)
     {
-        var method = mode.MethodFor(key);
         return State switch
         {
+            EngineState.Off when Text.Length > 0 => $"{mode.Name} mode · {Text}",
             EngineState.Off => $"{mode.Name} mode · effects off · when on: {method.How}, {method.Delay}",
-            EngineState.Failed or EngineState.Unavailable => $"{mode.Name} mode · {Text}",
+            EngineState.Failed or EngineState.Unavailable => Detail is null ? $"{mode.Name} mode · {Text}" : $"{mode.Name} mode · {Text} · {Detail}",
             _ => $"{mode.Name} mode · effects {method.How} · {Text}",
         };
     }

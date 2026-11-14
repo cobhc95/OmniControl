@@ -12,11 +12,11 @@ namespace OmniControl.App.Fx;
 public sealed partial class EqBandItem : ObservableObject
 {
     /// <summary>The Type drop-down, in the order it lists them (lows, bell, highs, then the special types).</summary>
-    private static readonly IReadOnlyList<(EqType Type, string Name, string Short)> Types = new[]
+    private static readonly IReadOnlyList<(EqType Type, string Name)> Types = new[]
     {
-        (EqType.LowShelf, "Low shelf", "LS"), (EqType.HighShelf, "High shelf", "HS"), (EqType.Peak, "Band", "Band"),
-        (EqType.LowPass, "Low pass", "LP"), (EqType.HighPass, "High pass", "HP"), (EqType.AllPass, "All pass", "AP"),
-        (EqType.Notch, "Notch", "Notch"), (EqType.BandPass, "Band pass", "BP"),
+        (EqType.LowShelf, "Low shelf"), (EqType.HighShelf, "High shelf"), (EqType.Peak, "Band"),
+        (EqType.LowPass, "Low pass"), (EqType.HighPass, "High pass"), (EqType.AllPass, "All pass"),
+        (EqType.Notch, "Notch"), (EqType.BandPass, "Band pass"),
     };
 
     public static IReadOnlyList<string> TypeNames { get; } = Types.Select(t => t.Name).ToList();
@@ -139,10 +139,15 @@ public sealed partial class EqBandItem : ObservableObject
         }
     }
 
-    /// <summary>The second line of the band's tab: its gain, its type when gain does not apply, or "Off".</summary>
-    public string TabText => !Enabled ? "Off" : UsesGain ? GainText : Types.First(t => t.Type == Type).Short;
+    /// <summary>The frequency as the band list shows it ("80", "2.5k").</summary>
+    public string ListFreq => DrawKit.ShortFreq(Freq);
+
+    public bool IsBypassed => !Enabled;
 
     [RelayCommand] private void Select() => _select(this);
+
+    /// <summary>Turns the band on or bypasses it (double-click on its circle, Space on its row).</summary>
+    public void ToggleEnabled() => Enabled = !Enabled;
 
     private void Set(ref double field, double value)
     {
@@ -155,7 +160,7 @@ public sealed partial class EqBandItem : ObservableObject
     {
         nameof(Enabled), nameof(Freq), nameof(Gain), nameof(Q), nameof(Bandwidth), nameof(Type), nameof(UsesGain), nameof(FreqPos),
         nameof(GainSteps), nameof(WidthPos), nameof(TypeName), nameof(FreqText), nameof(GainTextDb), nameof(BandwidthText),
-        nameof(QText), nameof(NoteText), nameof(TabText),
+        nameof(QText), nameof(NoteText), nameof(ListFreq), nameof(IsBypassed),
     };
 
     private void Changed()

@@ -37,9 +37,3 @@ public sealed partial class MixerItem : VolumeRow
         Sync(volume, muted, fxOn, fxCount);
     }
 }
-
-/// <summary>The last row of the program list: pick a program that isn't playing yet.</summary>
-public sealed class AddProgramItem
-{
-    public required Action<string> Add { get; init; }
-}

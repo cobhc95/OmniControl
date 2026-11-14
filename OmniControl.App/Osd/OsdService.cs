@@ -100,6 +100,18 @@ public sealed class OsdService : IDisposable
 
     private void OnAccentChanged() => SettingsChanged?.Invoke();
 
+    /// <summary>
+    /// The volume pop-up for changes made outside OmniControl watches the device <paramref name="device"/> names (null = Windows' default
+    /// playback device); <see cref="RetargetVolume"/> looks again when the answer changes.
+    /// </summary>
+    public void WatchVolumeOf(Func<string?> device)
+    {
+        _volume.Device = device;
+        RetargetVolume();
+    }
+
+    public void RetargetVolume() => _volume.Retarget();
+
     private void OnMedia(MediaChange change)
     {
         var details = string.Join(" - ", new[] { change.Title, change.Artist }.Where(t => t.Length > 0));

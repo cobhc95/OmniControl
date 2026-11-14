@@ -23,7 +23,11 @@ public abstract partial class VolumeRow : ObservableObject, IEditorItem
         CaptureGate = newGate();
         // The gate lives as long as the row, so this subscription needs no undoing.
         CaptureGate.PropertyChanged += (_, _) => OnCaptureChanged();
-        EffectsGate.PropertyChanged += (_, _) => OnPropertyChanged(nameof(ShowsEffectsSwitch));
+        EffectsGate.PropertyChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(ShowsEffectsSwitch));
+            OnPropertyChanged(nameof(FxTip));
+        };
     }
 
     string IEditorItem.Label => Name;
@@ -50,7 +54,7 @@ public abstract partial class VolumeRow : ObservableObject, IEditorItem
     /// <summary>Removes the row (a remembered program, a combined device); null = it can't be removed.</summary>
     public Action? Forget { get; init; }
 
-    /// <summary>Runs Fast mode's Test on this program (null = not a program).</summary>
+    /// <summary>Runs the recording Test on this program (null = not a program).</summary>
     public Func<Task>? Test { get; init; }
 
     // ---- identity ----
@@ -66,9 +70,16 @@ public abstract partial class VolumeRow : ObservableObject, IEditorItem
     public bool HasGlyph => Glyph is not null;
     public bool ShowsInitial => Picture is null && Glyph is null;
 
+    /// <summary>A small tag after the name in the Wiring Source column ("Combined"); null = none.</summary>
+    public virtual string? SourceTag => null;
+    public bool HasSourceTag => SourceTag is not null;
+
     /// <summary>Remembered programs that are not open are drawn quieter.</summary>
     [ObservableProperty, NotifyPropertyChangedFor(nameof(RowOpacity))] private bool _isQuiet;
-    public double RowOpacity => IsQuiet ? 0.7 : 1;
+    public double RowOpacity => IsQuiet ? QuietOpacity : 1;
+
+    /// <summary>How much a quiet row (a closed program, a virtual cable that is not used) is dimmed.</summary>
+    public const double QuietOpacity = 0.7;
 
     // ---- level ----
 
@@ -104,27 +115,30 @@ public abstract partial class VolumeRow : ObservableObject, IEditorItem
     public virtual bool HasEffects => true;
     public ModeGate EffectsGate { get; }
 
+    /// <summary>The FX button's tooltip: why the effects can't be edited now (it is dimmed), else what it does.</summary>
+    public string FxTip => EffectsGate.Reason ?? "Opens this row's FX window";
+
     /// <summary>True: the effects' Switch link is offered only when the row has a chain to run (a microphone with no effects needs nothing).</summary>
     protected virtual bool SwitchNeedsEffects => false;
 
     /// <summary>The Switch link next to the effects text.</summary>
     public bool ShowsEffectsSwitch => EffectsGate.CanSwitch && (!SwitchNeedsEffects || FxCount > 0);
     [ObservableProperty, NotifyPropertyChangedFor(nameof(EffectsText))] private bool _fxOn;
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(EffectsText), nameof(ShowsCaptureCaution), nameof(ShowsStatus), nameof(ShowsTest), nameof(ShowsEffectsSwitch))] private int _fxCount;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(EffectsText), nameof(ShowsCaptureCaution), nameof(ShowsCaptureSwitch), nameof(ShowsStatus), nameof(ShowsTest), nameof(ShowsEffectsSwitch))] private int _fxCount;
 
     public string EffectsText => (FxCount == 0 ? "no effects" : FxCount == 1 ? "1 effect" : $"{FxCount} effects") + (FxOn || FxCount == 0 ? string.Empty : ", off");
 
     /// <summary>What the engine says about this row (empty when nothing runs or waits), after the sentence.</summary>
     [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowsStatus))] private string _status = string.Empty;
 
-    /// <summary>The one step that fixes what the status says is missing (a microphone in Fast mode: Choose devices); null = none.</summary>
+    /// <summary>The one step that fixes what the status says is missing (a microphone in Fast mode: Choose devices; a program set to Virtual cable with no cable: Use Recording); null = none.</summary>
     [ObservableProperty, NotifyPropertyChangedFor(nameof(HasFix))] private ModeCardAction? _fix;
     public bool HasFix => Fix is not null;
 
     /// <summary>The status is shown unless the caution tag already says why nothing runs.</summary>
     public bool ShowsStatus => Status.Length > 0 && !ShowsCaptureCaution;
 
-    /// <summary>The status's tooltip, as in the FX window: the mode, how it runs the effects and what really happens ("Fast mode · effects by recording · Effects running · about 40 ms delay").</summary>
+    /// <summary>The status's tooltip, with the FX window's longer line: the mode, how it runs the effects and what really happens ("Fast mode · effects by recording · Effects running · about 40 ms delay"), then what to do next.</summary>
     [ObservableProperty] private string _modeLine = string.Empty;
 
     /// <summary>A program in Fast mode whose sound can't be recorded on this PC: the reason, as a caution tag, and a Switch link to Full control.</summary>
@@ -133,13 +147,31 @@ public abstract partial class VolumeRow : ObservableObject, IEditorItem
     /// <summary>The caution shows only on a row that has effects, where it matters (one tag per fact, not on every program).</summary>
     public bool ShowsCaptureCaution => !CaptureGate.IsAvailable && FxCount > 0;
 
+    /// <summary>The caution's Switch link: only when the mode it names can be chosen on this PC.</summary>
+    public bool ShowsCaptureSwitch => ShowsCaptureCaution && CaptureGate.CanSwitch;
+
+    /// <summary>The "Method" choice of a program or the master (how its effects run in Full control); null on every other row.</summary>
+    public RouteChoice? RouteChoice { get; init; }
+
+    /// <summary>The Method button shows in Full control, the only place the choice applies: on the master, and on a program with effects.</summary>
+    [ObservableProperty] private bool _showsRouteChoice;
+
     [ObservableProperty] private bool _canForget;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowsTest))] private bool _canTest;
 
-    /// <summary>Fast mode's Test, on a playing program that has effects.</summary>
+    /// <summary>The recording Test, on an open program that has effects; dimmed with the reason while it is not playing (<see cref="TestWhy"/>).</summary>
     public bool ShowsTest => CanTest && FxCount > 0;
 
+    /// <summary>Why the Test can't run now (the program must be playing); null = it can.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(CanRunTest), nameof(TestButtonTip))] private string? _testWhy;
+
+    public bool CanRunTest => TestWhy is null;
+    public string TestButtonTip => TestWhy ?? TestDefaultTip;
+    private const string TestDefaultTip = "Plays a few seconds through the effects, checks the program can be recorded while its own sound is silenced, measures the delay";
+
+    /// <summary>The Test's result as one short line, and its full explanation for the tooltip.</summary>
     [ObservableProperty, NotifyPropertyChangedFor(nameof(HasTestNote))] private string _testNote = string.Empty;
+    [ObservableProperty] private string _testTip = string.Empty;
     public bool HasTestNote => TestNote.Length > 0;
 
     partial void OnVolumeChanged(int value) { if (!_syncing) VolumeChanged?.Invoke(value); }
@@ -150,6 +182,7 @@ public abstract partial class VolumeRow : ObservableObject, IEditorItem
     private void OnCaptureChanged()
     {
         OnPropertyChanged(nameof(ShowsCaptureCaution));
+        OnPropertyChanged(nameof(ShowsCaptureSwitch));
         OnPropertyChanged(nameof(ShowsStatus));
     }
 

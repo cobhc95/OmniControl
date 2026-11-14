@@ -19,15 +19,18 @@ public sealed class FxWindowService
     private readonly PluginChainHost _plugins;
     private readonly FxClipboard _clipboard;
     private readonly PluginLibrary _library;
+    private readonly UserPresetStore _presets;
     private readonly Dictionary<string, FxWindow> _open = new();
     private readonly Action<string> _report;
 
     /// <param name="report">Shows a message in the status bar when a window or a plug-in editor can't be opened.</param>
+    /// <param name="presets">The user's own presets (the preset pull-down and manager of every FX window).</param>
     /// <param name="library">The plug-ins the Add effect window offers (shared with the App settings page's scan).</param>
-    public FxWindowService(MixerService mixer, EffectsEngine engine, SoundModeService modes, PluginChainHost plugins, PluginLibrary library,
+    public FxWindowService(MixerService mixer, EffectsEngine engine, SoundModeService modes, PluginChainHost plugins, PluginLibrary library, UserPresetStore presets,
         Action<string> report)
     {
         _library = library;
+        _presets = presets;
         _mixer = mixer;
         _engine = engine;
         _modes = modes;
@@ -38,7 +41,7 @@ public sealed class FxWindowService
 
     /// <summary>The view-model of one chain; its popped-out effect editors stay above <paramref name="owner"/>, the FX window.</summary>
     private FxChainViewModel CreateChain(string? key, Func<Window?> owner) =>
-        new(_mixer, key, new EffectEditorDock(_plugins, owner, _report), _clipboard, _library);
+        new(_mixer, key, new EffectEditorDock(_plugins, owner, _report), _clipboard, _library, slot => _engine.ReadingOf(key, slot), _presets);
 
     /// <param name="key">The chain's key (a program, an input or a combined device), or null for the master.</param>
     public void Open(string? key)

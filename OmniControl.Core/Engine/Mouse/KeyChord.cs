@@ -32,6 +32,13 @@ public static class KeyChord
         return keys.Length > 0;
     }
 
+    /// <summary>
+    /// True when the shortcut can open one of Windows' own panels: it holds the Windows key (Win+S, Win+N, Win+Tab...) or is Alt+Tab
+    /// (the window switcher, shown in the same kind of window as Task view).
+    /// </summary>
+    public static bool OpensWindowsPanel(string text) =>
+        TryParse(text, out var keys) && (keys.Contains(Names["Win"]) || keys.Contains(Names["Alt"]) && keys.Contains(Names["Tab"]));
+
     /// <summary>Navigation, Windows and browser keys need the "extended" flag or Windows reads them as the number pad.</summary>
     internal static bool IsExtended(ushort vk) => vk is >= 0x21 and <= 0x2E or 0x5B or 0x5C || vk is >= 0xA6 and <= 0xB4;
 }

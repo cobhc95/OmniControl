@@ -3,11 +3,10 @@
              xmlns:g="using:OmniControl.App.Pages.Gestures"
              x:Class="OmniControl.App.Pages.Gestures.RuleRow"
              x:DataType="g:RuleItem">
-    <!-- One rule, one line: the switch (greyed until the rule has a trigger and an action), the rule as a sentence (muted while off;
+    <!-- One rule, one line: the switch (an incomplete rule can be switched on but does nothing; its tags say what is missing), the rule as a sentence (muted while off;
          two lines at most, then "..."), its facts as tags (the full sentence in each tooltip), and the Edit pill that opens the editor. -->
     <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" Margin="0,1">
-        <ToggleSwitch IsChecked="{Binding IsOn}" IsEnabled="{Binding CanTurnOn}" OnContent="" OffContent="" MinWidth="0" VerticalAlignment="Center"
-                      ToolTip.Tip="Choose a trigger and what it does first" ToolTip.ShowOnDisabled="True" ToolTip.IsEnabled="{Binding !CanTurnOn}" />
+        <ToggleSwitch IsChecked="{Binding IsOn}" OnContent="" OffContent="" MinWidth="0" VerticalAlignment="Center" />
         <TextBlock Grid.Column="1" Classes="cardlabel" Classes.muted="{Binding !IsOn}" Text="{Binding Line}" />
         <ItemsControl Grid.Column="2" ItemsSource="{Binding Tags}" VerticalAlignment="Center">
             <ItemsControl.ItemsPanel>

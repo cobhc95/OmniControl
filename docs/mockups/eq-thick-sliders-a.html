@@ -1,0 +1,28 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Thicker sliders, option A (approved 2026-11-14)</title>
+<!--
+APPROVED MOCK-UP: thicker horizontal sliders for the FX window's editors (first the equaliser: Frequency, Bandwidth rows in EqBandRow and the
+Overall gain card; then every slider card of the FX editors if that is simple).
+  - Track: 8 px thick (was about 2 px), fully rounded, colour = the master track brush.
+  - Fill: the part of the track from the minimum (or from 0 for a centred slider such as gain) to the knob is filled with the ACCENT brush.
+  - Knob: 20 px circle (was about 16 px), accent colour, with a 2 px ring in the card's surface colour so it reads against the fill.
+  - Value readout stays in its own column to the right (unchanged); label column left (unchanged).
+  - Hover/focus/drag: only the knob changes (grows 2 px or lighter accent), the track NEVER changes thickness or position (the scrollbar lesson).
+  - Row height grows by at most 4 px; keep one master class (e.g. Slider.thick) in Styles/Sliders.axaml; colours from theme brushes, the
+    #E8873A below is a placeholder for BrushAccent.
+-->
+<style>
+body{font:13px sans-serif;background:#1e1e1e;color:#ddd;margin:16px}
+.d{background:#262626;border-radius:12px;padding:12px 14px;max-width:720px}
+.r{display:grid;grid-template-columns:90px 1fr 70px 56px;align-items:center;gap:10px;margin:0 0 10px}
+.r span:nth-child(3),.r span:nth-child(4){color:#888;text-align:right}
+.t{position:relative;height:8px;background:#555;border-radius:8px}
+.f{position:absolute;left:0;top:0;bottom:0;border-radius:8px;background:#E8873A}
+.k{position:absolute;top:50%;width:20px;height:20px;border-radius:50%;transform:translate(-50%,-50%);background:#E8873A;border:2px solid #303030;box-sizing:border-box}
+</style>
+<div class="d">
+<div class="r"><span>Frequency</span><div class="t"><div class="f" style="width:68%"></div><div class="k" style="left:68%"></div></div><span>2.49 kHz</span><span>D#7 +2 ct</span></div>
+<div class="r"><span>Bandwidth</span><div class="t"><div class="f" style="width:72%"></div><div class="k" style="left:72%"></div></div><span>1.39 oct</span><span>Q 1.00</span></div>
+<div class="r"><span>Overall gain</span><div class="t"><div class="f" style="left:50%;width:0"></div><div class="k" style="left:50%"></div></div><span>0 dB</span><span></span></div>
+</div>

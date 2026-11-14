@@ -32,18 +32,22 @@ public sealed class AudioSession
     private readonly CoreAudio.ISimpleAudioVolume _volume;
     private readonly CoreAudio.IChannelAudioVolume? _channels;
     private readonly CoreAudio.IAudioMeterInformation? _meter;
+    private readonly CoreAudio.IAudioSessionControl2 _control;
 
-    internal AudioSession(int pid, string deviceId, int state, CoreAudio.ISimpleAudioVolume volume, CoreAudio.IChannelAudioVolume? channels,
-        CoreAudio.IAudioMeterInformation? meter)
+    internal AudioSession(int pid, string deviceId, int state, CoreAudio.IAudioSessionControl2 control, CoreAudio.ISimpleAudioVolume volume,
+        CoreAudio.IChannelAudioVolume? channels, CoreAudio.IAudioMeterInformation? meter)
     {
-        ProcessId = pid; DeviceId = deviceId; State = state; _volume = volume; _channels = channels; _meter = meter;
+        ProcessId = pid; DeviceId = deviceId; State = state; _control = control; _volume = volume; _channels = channels; _meter = meter;
     }
 
     public int ProcessId { get; }
     public string DeviceId { get; }
-    /// <summary>0 = open but silent, 1 = playing.</summary>
+    /// <summary>0 = open but silent, 1 = playing, as it was when the session was read.</summary>
     public int State { get; }
     public bool IsPlaying => State == 1;
+
+    /// <summary>Whether the session is playing right now (asked of Windows again; one cheap call, for a quick look between scans).</summary>
+    public bool IsPlayingNow => _control.GetState(out var state) == 0 ? state == 1 : IsPlaying;
 
     private static Guid _ctx = Guid.NewGuid();
 
@@ -51,6 +55,13 @@ public sealed class AudioSession
     public bool Muted => _volume.GetMute(out var m) == 0 && m;
     public void SetVolume(int percent) => _volume.SetMasterVolume(Percent.ToScalar(percent), ref _ctx);
     public void SetMuted(bool muted) => _volume.SetMute(muted, ref _ctx);
+
+    /// <summary>
+    /// The session's volume as Windows holds it (0 to 1, finer than a whole percent). It scales the program's sound linearly (measured:
+    /// 1e-4 = exactly -80 dB in the endpoint and in process loopback); used to hold a program near silence while it is recorded.
+    /// </summary>
+    public float Scalar => _volume.GetMasterVolume(out var v) == 0 ? v : 1f;
+    public void SetScalar(float scalar) => _volume.SetMasterVolume(Math.Clamp(scalar, 0f, 1f), ref _ctx);
 
     /// <summary>The current peak level (0 to 1) of the left and right channels of this program's sound.</summary>
     public bool Peaks(out float left, out float right)

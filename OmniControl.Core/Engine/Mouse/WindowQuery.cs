@@ -49,16 +49,12 @@ public static class WindowQuery
     }
 
     /// <summary>The id of the process that owns the active window, or 0 when there is none. Cheap enough for the mouse hook.</summary>
-    public static int ActiveProcessId()
-    {
-        var hwnd = ActiveWindow();
-        return hwnd != IntPtr.Zero && GetWindowThreadProcessId(hwnd, out var pid) != 0 ? (int)pid : 0;
-    }
+    public static int ActiveProcessId() => ProcessOf(ActiveWindow()) ?? 0;
 
     /// <summary>The id of the process that owns the window under the point, or 0 when there is none. Cheap enough for the mouse hook.</summary>
-    public static int ProcessIdAt(int x, int y)
-    {
-        var hwnd = WindowAt(x, y);
-        return hwnd != IntPtr.Zero && GetWindowThreadProcessId(hwnd, out var pid) != 0 ? (int)pid : 0;
-    }
+    public static int ProcessIdAt(int x, int y) => ProcessOf(WindowAt(x, y)) ?? 0;
+
+    /// <summary>The id of the process that owns the window, or null when there is no such window.</summary>
+    internal static int? ProcessOf(IntPtr hwnd) =>
+        hwnd != IntPtr.Zero && GetWindowThreadProcessId(hwnd, out var pid) != 0 ? (int)pid : null;
 }

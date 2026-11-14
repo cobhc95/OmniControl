@@ -1,0 +1,34 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:easy="using:OmniControl.App.Pages.Volume.Easy"
+             x:Class="OmniControl.App.Pages.Volume.Easy.EasyWelcomeView"
+             x:DataType="easy:EasyViewModel">
+    <!-- First launch (design A, docs/mockups/easy-mode.html) and "Set up again": the six goal cards, 3 columns by 2 rows, from the one list of
+         goals (EasyGoals.All); each card: title, a tiny flow picture, one muted fact line. "Skip, just show my volume" under them. -->
+    <StackPanel Spacing="8">
+        <TextBlock Text="What do you want to do?" FontWeight="SemiBold" />
+        <ItemsControl ItemsSource="{Binding Goals}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><UniformGrid Columns="3" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="easy:GoalCard">
+                    <Button Tag="grouptool" Classes="optioncard" Classes.selected="{Binding IsOn}" Command="{Binding ChooseCommand}"
+                            VerticalAlignment="Stretch" Margin="0,0,6,6">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="{Binding Goal.Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            <easy:EasyPictureView DataContext="{Binding Steps}" />
+                            <WrapPanel>
+                                <TextBlock Text="{Binding Goal.Fact}" Classes="hint small" Margin="0,0,6,0" />
+                                <TextBlock Text="✓ on" Classes="accenttext small" IsVisible="{Binding IsOn}" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </Button>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Button Tag="grouptool" Classes="link" HorizontalAlignment="Center" Command="{Binding SkipCommand}">
+            <TextBlock Text="Skip, just show my volume" />
+        </Button>
+    </StackPanel>
+</UserControl>

@@ -42,10 +42,11 @@ public static class RuleConflicts
     {
         if (!mouse.Enabled) return null;
         var layers = rule.Layer == Rule.AnyLayer ? Enumerable.Range(1, MouseSettings.Layers) : new[] { rule.Layer };
-        var names = mouse.LayerLabels();
+        var names = mouse.LayersOf(trigger.Family).Labels();
         foreach (var layer in layers)
-            if (mouse.Get(layer, trigger.Button) is { } spec && spec != MouseActionCatalog.Default)
-                return new RuleConflict("Overrides a mouse mapping", $"Your mouse and trackpad mappings give this input an action on {names[layer]}. Where both apply, the rule wins.");
+            if (trigger.Buttons.Any(button => mouse.Get(layer, button) is { } spec && spec != MouseActionCatalog.Default))
+                return new RuleConflict("Overrides a mouse mapping",
+                    $"Your {trigger.Family.Noun()} mappings give this input an action on the {trigger.Family.Noun()} layer \"{names[layer]}\". Where both apply, the rule wins.");
         return null;
     }
 }

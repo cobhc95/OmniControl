@@ -13,7 +13,16 @@ namespace OmniControl.App.Rules;
 public enum TriggerKind { Press, DoublePress, Hold, Shortcut }
 
 /// <summary>One trigger a rule can start with: its stored id, picker category and name, how it reads in the rule's sentence, and what the engine watches.</summary>
-public sealed record RuleTrigger(string Id, string Category, string Name, string Phrase, TriggerKind Kind, MouseButton Button = MouseButton.Left, string Keywords = "");
+/// <param name="Also">A second input that starts the same trigger (the plain "Scroll" trigger: up or down).</param>
+public sealed record RuleTrigger(string Id, string Category, string Name, string Phrase, TriggerKind Kind, MouseButton Button = MouseButton.Left, string Keywords = "",
+    MouseButton? Also = null)
+{
+    /// <summary>Every input that starts this trigger.</summary>
+    public IEnumerable<MouseButton> Buttons => Also is { } also ? new[] { Button, also } : new[] { Button };
+
+    /// <summary>Whose layers the rule's Layer setting names: the trackpad's for a gesture trigger, the mouse's for every other (a shortcut too).</summary>
+    public InputFamily Family => Kind == TriggerKind.Shortcut ? InputFamily.Mouse : Button.FamilyOf();
+}
 
 /// <summary>
 /// The master list of rule triggers: one registration per trigger, read by the rule editor's picker, the rule's sentence, the engine
@@ -38,6 +47,7 @@ public static class RuleTriggers
         new("click.forward", Clicks, "Forward button (5)", "Forward button", TriggerKind.Press, MouseButton.Forward, "side button 5"),
         new("click.double", Clicks, "Double click", "double click", TriggerKind.DoublePress, MouseButton.Left, "left twice"),
 
+        new("wheel.any", Wheel, "Scroll", "scroll", TriggerKind.Press, MouseButton.WheelUp, "mouse wheel up or down either direction", MouseButton.WheelDown),
         new("wheel.up", Wheel, "Scroll up", "scroll up", TriggerKind.Press, MouseButton.WheelUp, "mouse wheel"),
         new("wheel.down", Wheel, "Scroll down", "scroll down", TriggerKind.Press, MouseButton.WheelDown, "mouse wheel"),
         new("tilt.left", Wheel, "Tilt left", "tilt left", TriggerKind.Press, MouseButton.TiltLeft, "wheel sideways"),
@@ -64,6 +74,9 @@ public static class RuleTriggers
 
     /// <summary>The trigger a stored text names, or null (empty, or from a newer or edited file).</summary>
     public static RuleTrigger? Of(string stored) => stored.Length == 0 ? null : All.FirstOrDefault(t => t.Id == MouseAction.Parse(stored).Id);
+
+    /// <summary>Whose layers a rule with this stored trigger works on (the mouse's while it has no trigger).</summary>
+    public static InputFamily FamilyOf(string stored) => Of(stored)?.Family ?? InputFamily.Mouse;
 
     /// <summary>How the stored trigger reads in the rule's sentence ("right click", "press Ctrl+Alt+K").</summary>
     public static string PhraseOf(string stored)

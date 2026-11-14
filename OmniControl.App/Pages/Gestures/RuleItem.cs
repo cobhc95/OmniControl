@@ -35,9 +35,6 @@ public sealed partial class RuleItem : ObservableObject, IEditorItem
 
     [ObservableProperty] private IReadOnlyList<RuleTag> _tags = Array.Empty<RuleTag>();
 
-    /// <summary>A rule can only be switched on once it has a trigger that works and something to do.</summary>
-    [ObservableProperty] private bool _canTurnOn;
-
     /// <summary>What search shows and matches: the name, or the sentence.</summary>
     public string Label => Rule.Name.Trim() is { Length: > 0 } name ? name : Line;
 
@@ -60,7 +57,6 @@ public sealed partial class RuleItem : ObservableObject, IEditorItem
         var sentence = _rules.SentenceOf(Rule);
         Line = Rule.Name.Trim() is { Length: > 0 } name ? $"{name}: {sentence}" : sentence;
         Tags = RuleTag.Of(Rule, _rules);
-        CanTurnOn = Rule.IsComplete && RuleTriggers.ProblemOf(Rule.Trigger) is null;
         IsOn = Rule.On;
         _loading = false;
         OnPropertyChanged(nameof(Label));

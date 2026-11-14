@@ -146,6 +146,9 @@ public partial class PickerMenu : UserControl
                 else if (model.SelectedOption is { IsNumber: true } number && e.KeyModifiers == KeyModifiers.Control) BeginTyping(number); // Enter itself applies
                 else UseSettings(model);
                 return true;
+            case Key.Left when e.KeyModifiers == KeyModifiers.Alt && model.CanGoBack:
+                model.CloseOptions();
+                return true;
             case Key.Escape:
                 if (inText)
                 {
@@ -189,6 +192,8 @@ public partial class PickerMenu : UserControl
     {
         if (_model is not null) UseSettings(_model);
     }
+
+    private void OnBackClick(object? sender, RoutedEventArgs e) => _model?.CloseOptions();
 
     private void OnActionTapped(object? sender, TappedEventArgs e)
     {

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Avalonia.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OmniControl.App.Audio;
@@ -15,7 +16,8 @@ public sealed partial class EqPanelItem : ObservableObject, IEditorItem, ISideNa
 {
     /// <summary>The editor's keys, listed in the FX window's Keyboard shortcuts (handled by the shared card keys and <see cref="ISideNavigable"/>).</summary>
     public const string KeyHelp = "Left/Right pick a band; Up/Down move between the controls; Enter on a slider adjusts it with Left/Right. "
-        + "With the mouse: drag a point on the graph; the wheel over a point changes its bandwidth; double-click a value to type it.";
+        + "In the band list: Up/Down pick a band, Space turns it on or off, Delete removes it. "
+        + "With the mouse: drag a point on the graph; double-click a point to turn its band on or off; the wheel over a point changes its bandwidth; double-click a value to type it.";
 
     private bool _loading;
 
@@ -37,6 +39,9 @@ public sealed partial class EqPanelItem : ObservableObject, IEditorItem, ISideNa
     }
     private double _overallGainDb;
 
+    /// <summary>The equaliser's overall gain setting (the effect's own gain parameter), edited by the vertical slider beside the graph.</summary>
+    public SliderItem? OverallGain { get; set; }
+
     /// <summary>A band was changed, added or removed by the user: save it.</summary>
     public event Action? Edited;
 
@@ -49,6 +54,26 @@ public sealed partial class EqPanelItem : ObservableObject, IEditorItem, ISideNa
         if (HasBands) SelectedIndex = Math.Clamp(SelectedIndex + direction, 0, Bands.Count - 1);
     }
 
+    /// <summary>The band list's keys: Up/Down pick a band (wrapping), Space or Enter turn it on or off, Delete removes it. False when the key is not one of them.</summary>
+    public bool ListKey(Key key)
+    {
+        if (!HasBands) return false;
+        switch (key)
+        {
+            case Key.Up or Key.Down:
+                SelectedIndex = Wrap.Index(SelectedIndex + Wrap.Direction(key), Bands.Count);
+                return true;
+            case Key.Space or Key.Enter:
+                Selected?.ToggleEnabled();
+                return true;
+            case Key.Delete:
+                RemoveBand();
+                return true;
+            default:
+                return false;
+        }
+    }
+
     partial void OnSelectedIndexChanged(int value)
     {
         foreach (var b in Bands) b.IsSelected = b.Index == value;
@@ -57,7 +82,6 @@ public sealed partial class EqPanelItem : ObservableObject, IEditorItem, ISideNa
 
     // ---- view switches (shared by every equaliser, kept in settings.json) ----
 
-    public bool ShowTabs { get => AppSettings.Current.EqShowTabs; set => SetView(v => v.EqShowTabs = value); }
     public bool ShowGrid { get => AppSettings.Current.EqShowGrid; set => SetView(v => v.EqShowGrid = value); }
     public bool ShowPhase { get => AppSettings.Current.EqShowPhase; set => SetView(v => v.EqShowPhase = value); }
 
@@ -65,7 +89,6 @@ public sealed partial class EqPanelItem : ObservableObject, IEditorItem, ISideNa
     {
         set(AppSettings.Current);
         AppSettings.Current.Save();
-        OnPropertyChanged(nameof(ShowTabs));
         OnPropertyChanged(nameof(ShowGrid));
         OnPropertyChanged(nameof(ShowPhase));
         Redraw?.Invoke();

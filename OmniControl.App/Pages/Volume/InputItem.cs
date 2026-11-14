@@ -22,11 +22,14 @@ public sealed class InputItem : VolumeRow
 }
 
 /// <summary>
-/// A combined device's row (Full control): combined speakers in Outputs ("→" its members; no level of its own, no effects),
-/// a combined microphone in Microphones ("←" its members, with its own level, mute and effects).
+/// A combined device's row: combined speakers in Outputs (Full control for the engine; "→" its members; no level of its own, no effects), a combined
+/// microphone in Microphones (either mode; "←" its members, with its own level, mute and effects).
 /// </summary>
 public sealed class ComboItem : VolumeRow
 {
+    /// <summary>The one word for a combined device in a tag (the Wiring Source column, the menus' entries).</summary>
+    public const string CombinedTag = "Combined";
+
     private const string SpeakersGlyph = "M3,9 H7 L12,4 V20 L7,15 H3 Z M16,8 V16 M20,6 V18";
 
     public ComboItem(CombinedDevice device, Func<ModeGate> newGate) : base(device.Key, newGate)
@@ -40,4 +43,7 @@ public sealed class ComboItem : VolumeRow
     public override string RouteArrow => IsMicrophone ? RecordsFromArrow : PlaysOnArrow;
     public override bool HasVolume => IsMicrophone;
     public override bool HasEffects => IsMicrophone;
+
+    /// <summary>A combined device sits among the real ones in its Wiring table, so it says what it is.</summary>
+    public override string? SourceTag => CombinedTag;
 }

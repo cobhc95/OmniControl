@@ -23,6 +23,12 @@ public static partial class CoreAudio
 
         public event Action<int, bool>? Changed;
 
+        /// <summary>Which device to watch (null result = the default playback device); asked at every attach, on a worker thread.</summary>
+        public Func<string?>? Device { get; set; }
+
+        /// <summary>Looks again at which device to watch (the answer of <see cref="Device"/> changed); a level that differs is not reported.</summary>
+        public void Retarget() => ThreadPool.QueueUserWorkItem(_ => Attach(report: false));
+
         public MasterWatcher()
         {
             _volumeCallback = new VolumeCallback(Notify);
@@ -61,7 +67,9 @@ public static partial class CoreAudio
                 Detach();
                 try
                 {
-                    if (_enumerator.GetDefaultAudioEndpoint(Render, Multimedia, out var device) != 0) return; // no playback device now
+                    IMMDevice device;
+                    if (Device?.Invoke() is { } id) { if (_enumerator.GetDevice(id, out device) != 0) return; } // unplugged now
+                    else if (_enumerator.GetDefaultAudioEndpoint(Render, Multimedia, out device) != 0) return; // no playback device now
                     var iid = typeof(IAudioEndpointVolume).GUID;
                     var activated = device.Activate(ref iid, ClsCtxAll, IntPtr.Zero, out var o);
                     Marshal.ReleaseComObject(device);
@@ -139,21 +147,6 @@ public static partial class CoreAudio
         public interface IVolumeNotify
         {
             [PreserveSig] int OnNotify(IntPtr data);
-        }
-
-        /// <summary>The PROPERTYKEY Windows passes to <see cref="IDeviceNotify.OnPropertyValueChanged"/> (not used, but it sets the call's layout).</summary>
-        [StructLayout(LayoutKind.Sequential)]
-        public struct NotifyKey { public Guid Format; public uint Id; }
-
-        /// <summary>IMMNotificationClient. Public only because Windows can only call interfaces that are visible to COM.</summary>
-        [ComVisible(true), Guid("7991EEC9-7E89-4D85-8390-6C703CEC60C0"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-        public interface IDeviceNotify
-        {
-            [PreserveSig] int OnDeviceStateChanged([MarshalAs(UnmanagedType.LPWStr)] string id, int state);
-            [PreserveSig] int OnDeviceAdded([MarshalAs(UnmanagedType.LPWStr)] string id);
-            [PreserveSig] int OnDeviceRemoved([MarshalAs(UnmanagedType.LPWStr)] string id);
-            [PreserveSig] int OnDefaultDeviceChanged(int flow, int role, [MarshalAs(UnmanagedType.LPWStr)] string? id);
-            [PreserveSig] int OnPropertyValueChanged([MarshalAs(UnmanagedType.LPWStr)] string id, NotifyKey key);
         }
 
         private sealed class VolumeCallback : IVolumeNotify

@@ -6,38 +6,50 @@ using OmniControl.Core.Models;
 namespace OmniControl.App.Pages.Displays;
 
 /// <summary>
-/// One display's own controls (DDC/CI, or a laptop's panel) as a group of cards, and the operations the page's shared hotkey actions run on it.
+/// One display's own controls (DDC/CI, or a laptop's panel) as groups of cards, and the operations the page's shared hotkey actions run on it.
 /// The cards exist at once, greyed out; <see cref="Start"/> asks the display what it supports on a worker thread, and the answer fills in
-/// the values and enables the cards it has. The display is only asked
-/// once: the answer stays with it until the display is reopened (Refresh, or a change of the attached displays).
+/// the values and enables the cards it has. The display is only asked once: the answer stays with it until the display is reopened
+/// (Refresh, or a change of the attached displays). After the answer the page shows the cards the display has; the ones it does not
+/// report wait, greyed and with the reason, in a second group that is collapsed.
 /// </summary>
 internal sealed class HardwareDisplayItem
 {
     private const string Checking = "Reading the monitor...";
     private const string NotAnswering = "No DDC/CI answer. Turn it on in the monitor's menu, then Refresh.";
     private const string NotListed = "Values not reported";
+    private const string NoRange = "Reported, but without a range to set";
     private const string Waiting = "...";
+    private const string UnavailableName = "Not available on ";
 
     private readonly IHardwareAccess _access;
     private readonly LevelStepper _levels;
     private readonly OsdService _osd;
     private readonly Action<string> _report;
+    private readonly Action _groupsChanged;
     private readonly Dictionary<HardwareLevel, SliderItem> _sliders = new();
-    private readonly ChoiceItem _preset, _input;
+    private readonly Dictionary<HardwareChoice, ChoiceItem> _choices = new();
+    private readonly Dictionary<HardwareChoice, IReadOnlyList<VcpChoice>> _values = new();
     private readonly ButtonItem _power;
-    private IReadOnlyList<VcpChoice> _presets = Array.Empty<VcpChoice>(), _inputs = Array.Empty<VcpChoice>();
     private bool _disposed;
 
     /// <summary>"laptop" for the built-in panel, otherwise Windows' name for the display: the id of its hotkey device.</summary>
     public string Id { get; }
     public string Name { get; }
     public bool IsLaptopPanel => _access.IsLaptopPanel;
-    public ItemGroup Group { get; }
+
+    /// <summary>What the page shows for this display: its group, and after the probe a collapsed group of what it does not report.</summary>
+    public IReadOnlyList<ItemGroup> Groups { get; private set; }
+
+    /// <summary>Every card this display could have, whether it reports the control or not.</summary>
     public IReadOnlyList<IEditorItem> Cards { get; }
 
-    public HardwareDisplayItem(string id, string name, IHardwareAccess access, LevelStepper levels, OsdService osd, Action<string> report)
+    /// <summary>The cards the display has (none until it has been read).</summary>
+    public IEnumerable<IEditorItem> AvailableCards => Cards.Where(c => AvailabilityOf(c).IsAvailable);
+
+    /// <param name="groupsChanged">Called on the UI thread when <see cref="Groups"/> was replaced (after the display was read).</param>
+    public HardwareDisplayItem(string id, string name, IHardwareAccess access, LevelStepper levels, OsdService osd, Action<string> report, Action groupsChanged)
     {
-        (Id, Name, _access, _levels, _osd, _report) = (id, name, access, levels, osd, report);
+        (Id, Name, _access, _levels, _osd, _report, _groupsChanged) = (id, name, access, levels, osd, report, groupsChanged);
 
         var cards = new List<IEditorItem>();
         foreach (var level in DisplayControls.Hardware)
@@ -47,16 +59,22 @@ internal sealed class HardwareDisplayItem
             _sliders[level] = slider;
             cards.Add(slider);
         }
-        _preset = new ChoiceItem("Colour preset", new[] { Waiting }, Waiting, PickPreset) { Half = true };
-        _input = new ChoiceItem("Input source", new[] { Waiting }, Waiting, PickInput) { Half = true };
+        foreach (var choice in DisplayControls.HardwareChoices)
+        {
+            var card = new ChoiceItem(choice.Feature.Label, new[] { Waiting }, Waiting, picked => Pick(choice, picked)) { Half = true };
+            _choices[choice] = card;
+            cards.Add(card);
+        }
         _power = new ButtonItem("Screen power", "Turn off",
             "Wake it with its button or input", PowerOff) { Half = true };
-        cards.AddRange(new IEditorItem[] { _preset, _input, _power });
+        cards.Add(_power);
         Cards = cards;
 
         foreach (var card in Cards) AvailabilityOf(card).MakeUnavailable(Checking);
-        Group = new ItemGroup($"Displays/Hardware/{id}", name, Cards.Cast<object>().ToList());
+        Groups = new[] { new ItemGroup(GroupKey, name, Cards.Cast<object>().ToList()) { Summary = Waiting } };
     }
+
+    private string GroupKey => $"Displays/Hardware/{Id}";
 
     private static Availability AvailabilityOf(IEditorItem card) => card switch
     {
@@ -86,20 +104,34 @@ internal sealed class HardwareDisplayItem
             if (capabilities.Level(level.Code) is { } value)
             {
                 slider.Load(value.Percent);
+                if (level.ResetToReading) slider.ResetValue = value.Percent;
                 _levels.Remember(KeyOf(level), value.Percent);
                 slider.Availability.MakeAvailable();
             }
-            else slider.Availability.MakeUnavailable(reason);
+            else slider.Availability.MakeUnavailable(capabilities.Has(level.Code) ? NoRange : reason);
         }
 
-        _presets = capabilities.Presets;
-        _inputs = capabilities.Inputs;
-        ShowChoice(_preset, capabilities, VcpCode.ColorPreset, _presets, reason);
-        ShowChoice(_input, capabilities, VcpCode.InputSource, _inputs, reason);
+        foreach (var (choice, card) in _choices)
+        {
+            _values[choice] = capabilities.ChoicesOf(choice.Feature.Code);
+            ShowChoice(card, capabilities, choice.Feature.Code, _values[choice], reason);
+        }
         if (capabilities.Has(VcpCode.PowerMode)) _power.Availability.MakeAvailable();
         else _power.Availability.MakeUnavailable(reason);
 
-        Group.Summary = $"{Cards.Count(c => AvailabilityOf(c).IsAvailable)} of {Cards.Count} available";
+        ShowGroups();
+    }
+
+    /// <summary>The cards the display has go in its group; the others go, greyed, in a collapsed group of their own.</summary>
+    private void ShowGroups()
+    {
+        var shown = AvailableCards.Cast<object>().ToList();
+        var hidden = Cards.Where(c => !AvailabilityOf(c).IsAvailable).Cast<object>().ToList();
+        var groups = new List<ItemGroup> { new(GroupKey, Name, shown) { Summary = $"{shown.Count} available" } };
+        if (hidden.Count > 0)
+            groups.Add(new ItemGroup($"{GroupKey}/unavailable", UnavailableName + Name, hidden) { Summary = $"{hidden.Count} not reported" });
+        Groups = groups;
+        _groupsChanged();
     }
 
     private static void ShowChoice(ChoiceItem card, MonitorCapabilities capabilities, byte code, IReadOnlyList<VcpChoice> choices, string reason)
@@ -140,14 +172,9 @@ internal sealed class HardwareDisplayItem
 
     private void WriteRaw(byte code, uint value) => Task.Run(() => Fail(_access.WriteRaw(code, value)));
 
-    private void PickPreset(string name)
+    private void Pick(HardwareChoice choice, string name)
     {
-        if (_presets.FirstOrDefault(p => p.Name == name) is { } preset) WriteRaw(VcpCode.ColorPreset, preset.Value);
-    }
-
-    private void PickInput(string name)
-    {
-        if (_inputs.FirstOrDefault(i => i.Name == name) is { } input) WriteRaw(VcpCode.InputSource, input.Value);
+        if (_values.GetValueOrDefault(choice)?.FirstOrDefault(v => v.Name == name) is { } value) WriteRaw(choice.Feature.Code, value.Value);
     }
 
     private void PowerOff() => WriteRaw(VcpCode.PowerMode, VcpCode.Power.Off);
@@ -168,11 +195,8 @@ internal sealed class HardwareDisplayItem
     /// <summary>True once the display has said it has this level; the hotkey actions skip a display that has not.</summary>
     public bool Supports(HardwareLevel level) => _sliders[level].Availability.IsAvailable;
 
-    /// <summary>Selects the next colour preset; nothing when the display lists none.</summary>
-    public void NextPreset() => SelectNext(_preset);
-
-    /// <summary>Switches to the next input source; nothing when the display lists none.</summary>
-    public void NextInput() => SelectNext(_input);
+    /// <summary>Selects the next value of a choice (the next colour preset or input source...); nothing when the display lists none.</summary>
+    public void NextChoice(HardwareChoice choice) => SelectNext(_choices[choice]);
 
     /// <summary>Turns the screen off; nothing when the display has no power control.</summary>
     public void TurnOff()
