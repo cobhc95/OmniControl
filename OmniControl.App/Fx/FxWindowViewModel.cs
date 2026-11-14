@@ -8,9 +8,10 @@ using OmniControl.App.Services;
 namespace OmniControl.App.Fx;
 
 /// <summary>
-/// The FX window around one chain: its title, the row's effects on/off, the program's output device, the chain's total response and
-/// live numbers (<see cref="Analysis"/>, fed from here), what the effects engine does with the chain (the same line and Fast-mode
-/// caution as the Volume row) and the window options. The chain itself is <see cref="Chain"/>.
+/// The FX window around one chain: its title, the row's effects on/off, the program's output device (Options > Plays on), the
+/// chain's total response and live numbers (<see cref="Analysis"/>, fed from here), what the effects engine does with the chain (the
+/// same line and Fast-mode caution as the Volume row, in the status strip), the window options and its keyboard shortcuts. The chain
+/// itself is <see cref="Chain"/>.
 /// </summary>
 public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
 {
@@ -30,7 +31,7 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
         var entry = key is null ? null : mixer.Find(key);
         Title = "FX: " + (key is null ? "Master" : MixerService.IsInput(key) ? mixer.InputName(key) : mixer.CombinedOf(key)?.Name ?? entry?.Name ?? "Program");
         IsProgram = entry is not null;
-        if (entry is not null) Output = BuildOutput(entry);
+        RefreshOutput();
         Analysis = new FxAnalysisViewModel(() => engine.LoadOf(key));
         ShowChain();
         chain.Edited += ShowChain;
@@ -41,14 +42,38 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
 
     public FxChainViewModel Chain { get; }
 
-    /// <summary>The header's total response graph and its live numbers.</summary>
+    /// <summary>The toolbar's total response graph and its live numbers.</summary>
     public FxAnalysisViewModel Analysis { get; }
     public string Title { get; }
     /// <summary>The chain is a program's (not the master's, a recording device's or a combined device's).</summary>
     public bool IsProgram { get; }
 
-    /// <summary>The program's output device picker, one device (null for the master and inputs; the Volume row offers several).</summary>
-    public ChoiceItem? Output { get; }
+    /// <summary>The program's output device as Options > Plays on offers it, one device (empty for the master and inputs; the Volume page offers several).</summary>
+    [ObservableProperty] private IReadOnlyList<OutputChoice> _outputChoices = Array.Empty<OutputChoice>();
+
+    /// <summary>The window's keyboard shortcuts, for Options > Keyboard shortcuts (the keys themselves are handled by the window and the chain panel).</summary>
+    public static string KeyHelp { get; } = string.Join(Environment.NewLine, new[]
+    {
+        "Effects list",
+        "Up/Down choose an effect; Shift+arrows, Ctrl+click, Ctrl+A or a box drawn on the empty part of the list select several.",
+        "Enter gives the editor the keyboard; Tab or F6 switch between the list and the editor; Shift+Tab from the list goes to the response graph.",
+        "Space switches the selected effects on or off; Delete removes them; Alt+Up / Alt+Down (or drag) move them; Ctrl+C / Ctrl+V copy and paste.",
+        "Ctrl+N adds an effect. A double-click on a row puts its editor in its own window, and back.",
+        "Ctrl+- / Ctrl+= make the editor smaller or larger, Ctrl+0 puts it back to 100 %.",
+        "Esc first leaves one effect selected, then closes the window.",
+        "",
+        "Response graph",
+        "Enter pins the larger graph open or closes it; Esc closes it.",
+        "",
+        "Editor cards",
+        PageViewModel.CardKeys,
+        "",
+        "Parametric equaliser",
+        EqPanelItem.KeyHelp,
+        "",
+        "Graphic equalisers",
+        GraphicEqItem.KeyHelp,
+    });
 
     /// <summary>The mode, how it runs this chain and what the effects engine really does with it (the line the Volume row shows as its status's tooltip).</summary>
     public string EngineText => _engine.StatusOf(_key).LineFor(_mixer.SoundMode, _key);
@@ -57,7 +82,7 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
     public string? CaptureCaution => IsProgram ? _modes.ProgramCaptureCaution : null;
     public bool HasCaptureCaution => CaptureCaution is not null;
 
-    /// <summary>The row's effects are switched on (the header's switch and Options > Chain on; the Volume row says "N effects, off" when not).</summary>
+    /// <summary>The row's effects are switched on (the toolbar's switch and Options > Chain on; the Volume row says "N effects, off" when not).</summary>
     public bool FxOn
     {
         get => _mixer.IsFxOn(_key);
@@ -100,6 +125,7 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
     {
         OnPropertyChanged(nameof(FxOn));
         OnPropertyChanged(nameof(CanForget));
+        RefreshOutput();
         OnModesChanged(); // the sound mode is stored by the mixer
     }
 
@@ -111,25 +137,31 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(HasCaptureCaution));
     }
 
-    private ChoiceItem BuildOutput(AppAudioEntry entry)
+    /// <summary>The Plays on entries: the default device, every device, and a "several devices" entry when the Volume page set more than one; rebuilt only when they change, so an open menu stays.</summary>
+    private void RefreshOutput()
     {
-        const string def = "Master (the default device)";
-        var options = new List<string> { def };
-        options.AddRange(_mixer.Devices.Select(d => d.Name));
+        if (_key is null || _mixer.Find(_key) is not { } entry) return;
         var current = entry.PlaysOn.Count switch
         {
-            0 => def,
+            0 => DefaultOutput,
             1 => _mixer.DeviceNameOf(entry.PlaysOn[0]),
-            _ => "Several devices (see the Volume page)",
+            _ => SeveralOutputs,
         };
-        if (!options.Contains(current)) options.Add(current);
-        return new ChoiceItem("Output", options, current, name =>
-        {
-            if (string.IsNullOrEmpty(name)) return;
-            if (name == def) _mixer.SetPlaysOn(_key!, Array.Empty<string>());
-            else if (_mixer.Devices.FirstOrDefault(d => d.Name == name) is { } d) _mixer.SetPlaysOn(_key!, new[] { d.Id });
-            // choosing the current entry that is not a plugged-in device keeps what is stored
-        });
+        var names = new List<string> { DefaultOutput };
+        names.AddRange(_mixer.Devices.Select(d => d.Name));
+        if (!names.Contains(current)) names.Add(current);
+        if (OutputChoices.Select(c => (c.Name, c.IsChosen)).SequenceEqual(names.Select(n => (n, n == current)))) return;
+        OutputChoices = names.Select(n => new OutputChoice(n, n == current, new RelayCommand(() => ChooseOutput(n)))).ToList();
+    }
+
+    private const string DefaultOutput = "Master (the default device)";
+    private const string SeveralOutputs = "Several devices (see the Volume page)";
+
+    private void ChooseOutput(string name)
+    {
+        if (name == DefaultOutput) _mixer.SetPlaysOn(_key!, Array.Empty<string>());
+        else if (_mixer.Devices.FirstOrDefault(d => d.Name == name) is { } d) _mixer.SetPlaysOn(_key!, new[] { d.Id });
+        // choosing the current entry that is not a plugged-in device keeps what is stored
     }
 
     public void Dispose()
@@ -142,3 +174,6 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
         Chain.Dispose();
     }
 }
+
+/// <summary>One entry of the FX window's Options > Plays on: a device, whether the program plays on it now, and choosing it.</summary>
+public sealed record OutputChoice(string Name, bool IsChosen, IRelayCommand Choose);

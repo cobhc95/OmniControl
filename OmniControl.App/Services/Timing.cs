@@ -116,7 +116,7 @@ public static class Timing
     /// </summary>
     public static readonly TimeSpan PluginEditorIdle = TimeSpan.FromMilliseconds(33);
 
-    /// <summary>How often the FX window reads its row's live numbers (latency, CPU); each CPU reading is the share over this period.</summary>
+    /// <summary>How often the FX window reads its row's live Latency (a plug-in may change its latency while it runs).</summary>
     public static readonly TimeSpan FxAnalysisRefresh = TimeSpan.FromMilliseconds(500);
 
     /// <summary>The pointer rests on the FX window's response thumbnail this long before the larger graph opens.</summary>

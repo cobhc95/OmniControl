@@ -66,7 +66,7 @@ public sealed partial class VolumePageViewModel
         var apo = _modes.Current?.Apo ?? ApoState.None;
         var missing = _modes.Current is not null && SoundModes.ApoMissing(apo) is not null;
         if (SoundModes.DeviceSelectorFixes(apo))
-            actions.Add(new("Choose devices", "Opens Equalizer APO's Device Selector: tick the playback device, and microphones on its Capture tab (administrator)",
+            actions.Add(new("Choose devices", "Opens Equalizer APO's Device Selector (administrator)",
                 ChooseDevicesCommand, Main: missing));
         var none = !apo.UpstreamInstalled && !apo.AnyInstalled;
         if (missing && (none || apo.UpstreamInstalled && apo.UpstreamConfigFolder is null))
@@ -76,11 +76,11 @@ public sealed partial class VolumePageViewModel
                 new AsyncRelayCommand(InstallEqualizerApoAsync), Main: true));
         if (none && EngineInstaller.ForkBuilt)
         {
-            actions.Add(new("Advanced install", "Installs OmniControl APO, OmniControl's own build of Equalizer APO (administrator)", new AsyncRelayCommand(InstallForkAsync)));
-            actions.Add(new("Preview changes", "Lists every change the advanced install would make; changes nothing", new AsyncRelayCommand(PreviewForkAsync)));
+            actions.Add(new("Advanced install", "Installs OmniControl APO (administrator)", new AsyncRelayCommand(InstallForkAsync)));
+            actions.Add(new("Preview changes", "Lists the install's changes; changes nothing", new AsyncRelayCommand(PreviewForkAsync)));
         }
         if (apo.AnyInstalled)
-            actions.Add(new("Remove", "Removes OmniControl APO and puts the original audio settings back (administrator)", new AsyncRelayCommand(RemoveForkAsync)));
+            actions.Add(new("Remove", "Removes OmniControl APO and restores the audio settings (administrator)", new AsyncRelayCommand(RemoveForkAsync)));
         return actions;
     }
 
@@ -100,7 +100,7 @@ public sealed partial class VolumePageViewModel
         var apo = _modes.Current?.Apo ?? ApoState.None;
         if (SoundModes.MicApoMissing(apo, endpointId) is null || !SoundModes.DeviceSelectorFixes(apo)) return null;
         return _micDevices ??= new ModeCardAction("Choose devices",
-            "Opens Equalizer APO's Device Selector: tick this microphone on its Capture tab, then OK (administrator). A restart may be needed. Your own Equalizer APO settings also apply to it unless a Device line limits them.",
+            "Opens Equalizer APO's Device Selector: tick this microphone on its Capture tab (administrator). A restart may be needed.",
             ChooseDevicesCommand);
     }
 
@@ -139,7 +139,7 @@ public sealed partial class VolumePageViewModel
     private async Task PreviewForkAsync()
     {
         var preview = await _installer.PreviewForkInstallAsync();
-        await _ask(new EngineMessage("Preview: install OmniControl APO", "Nothing has been changed. Install would make these changes:",
+        await _ask(new EngineMessage("Preview: install OmniControl APO", "Nothing changed yet. The install would:",
             Details: preview.Text, ShowDetails: true));
     }
 
@@ -153,7 +153,7 @@ public sealed partial class VolumePageViewModel
             return;
         }
         if (!await _ask(new EngineMessage("Install OmniControl APO?", EngineInstaller.ForkConfirm, "Install", Details: preview.Text))) return;
-        await RunSetupAsync(SoundModes.Fast, "Installing… sound pauses for a few seconds", _installer.InstallForkAsync());
+        await RunSetupAsync(SoundModes.Fast, "Installing… sound pauses briefly", _installer.InstallForkAsync());
     }
 
     private async Task RemoveForkAsync()
@@ -165,7 +165,7 @@ public sealed partial class VolumePageViewModel
             return;
         }
         if (!await _ask(new EngineMessage("Remove OmniControl APO?", EngineInstaller.ForkRemoveConfirm, "Remove", Details: preview.Text))) return;
-        await RunSetupAsync(SoundModes.Fast, "Removing… sound pauses for a few seconds", _installer.RemoveForkAsync());
+        await RunSetupAsync(SoundModes.Fast, "Removing… sound pauses briefly", _installer.RemoveForkAsync());
     }
 
     /// <summary>Hotkey: the next sound mode, wrapping round; the footer says which and what it still needs.</summary>

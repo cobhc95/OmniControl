@@ -10,7 +10,7 @@
                   ToolTip.Tip="Double-click: back into the FX window">
                 <TextBlock x:Name="NameText" Classes="muted" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                 <Button Grid.Column="1" Classes="pill" Content="Put back" Click="OnPutBack" VerticalAlignment="Center"
-                        ToolTip.Tip="Closes this window and shows the effect in the FX window again (or double-click this bar, or the effect in the FX window's list)" />
+                        ToolTip.Tip="Back into the FX window (or double-click this bar)" />
             </Grid>
         </Border>
         <ContentControl x:Name="Body" />

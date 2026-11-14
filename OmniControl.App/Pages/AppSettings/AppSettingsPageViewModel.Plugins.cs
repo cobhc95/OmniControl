@@ -8,7 +8,7 @@ namespace OmniControl.App.Pages.AppSettingsPage;
 public sealed partial class AppSettingsPageViewModel
 {
     private const string FoldersGroup = "Plug-in folders";
-    private const string ScanIdleText = "Searches the standard VST3 and VST2 folders and the folders above, with their subfolders.";
+    private const string ScanIdleText = "Searches the standard folders and yours, with subfolders.";
 
     private readonly FileItem _addFolder;
     private readonly ButtonItem _scan;
@@ -43,7 +43,7 @@ public sealed partial class AppSettingsPageViewModel
         _settings.PluginFolders.Add(full);
         _settings.Save();
         Items.Insert(Items.IndexOf(_scan), FolderRow(full));
-        _scan.Description = "Scan now to find the plug-ins in the folder you added.";
+        _scan.Description = "Scan now to find its plug-ins.";
     }
 
     private void RemoveFolder(ButtonItem row, string folder)
@@ -51,7 +51,7 @@ public sealed partial class AppSettingsPageViewModel
         _settings.PluginFolders.RemoveAll(f => string.Equals(f, folder, StringComparison.OrdinalIgnoreCase));
         _settings.Save();
         Items.Remove(row);
-        _scan.Description = "Scan now to take that folder's plug-ins off the Add effect list.";
+        _scan.Description = "Scan now to drop its plug-ins from the list.";
     }
 
     /// <summary>Scan now (and its hotkey): one scan at a time; the card's line says how far it got, then what it found.</summary>

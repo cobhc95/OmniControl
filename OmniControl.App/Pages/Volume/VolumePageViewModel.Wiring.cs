@@ -11,11 +11,16 @@ namespace OmniControl.App.Pages.Volume;
 public sealed partial class VolumePageViewModel
 {
     private const string ThisMicrophone = "This microphone", FollowsMasterNote = "Follows the master";
-    private const string FollowMasterChoice = "Master (follows the default device)";
+    private const string FollowMasterChoice = "Master (default device)";
     private const string CombinedTag = "Combined", CableTag = "Cable";
     private const string AddTitle = "Add a device", ChooseTitle = "Choose a device";
 
-    public VolumeGroup WiringOutputs { get; } = new("Volume/Wiring/Outputs", "Outputs") { ExpandedByDefault = true, RouteColumn = "Plays on" };
+    public VolumeGroup WiringOutputs { get; } = new("Volume/Wiring/Outputs", "Outputs")
+    {
+        ExpandedByDefault = true,
+        RouteColumn = "Plays on",
+        Tip = "A chip's × removes a device, + add adds one. Dimmed choices need the other sound mode.",
+    };
     public VolumeGroup WiringInputs { get; } = new("Volume/Wiring/Microphones", "Microphones") { ExpandedByDefault = true, RouteColumn = "Records from" };
     public VolumeGroup CombinedDevices { get; } = new("Volume/Wiring/Combined", "Combined devices") { ExpandedByDefault = true };
 
@@ -178,15 +183,15 @@ public sealed partial class VolumePageViewModel
     {
         var status = _engine.StatusOf(key);
         if (SoundModes.IsCableMissing(status.Text))
-            return new CableState(status.Text, "It plays without OmniControl's engine until a virtual cable is free", IsCaution: true);
+            return new CableState(status.Text, "Plays without effects until a cable is free", IsCaution: true);
         var id = _engine.CableOf(key) ?? (_mixer.SoundMode == SoundModes.Full && remembered is { Length: > 0 } ? remembered : null);
         if (id is null) return CableState.None;
         var cable = _modes.Current?.Cables.FirstOrDefault(c => c.PlaybackId == id);
         var name = cable?.Name ?? _mixer.DeviceNameOf(id);
         var tip = MixerService.IsInput(key) || _mixer.CombinedOf(key)?.Kind == CombinedKind.Microphones
                 ? $"Apps record from {cable?.RecordingName ?? name}"
-            : CombinedDevice.IsKey(key) ? $"Whatever plays on {name} plays on every member"
-            : $"The sound goes through {name} to OmniControl's engine";
+            : CombinedDevice.IsKey(key) ? $"Plays on every member of {name}"
+            : $"Sound goes through {name} to the engine";
         return new CableState(name, tip, IsCaution: false);
     }
 

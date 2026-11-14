@@ -723,6 +723,8 @@ VB-CABLE is installed (Virtual sound device), check the row's delay includes a p
 
 ## FX window rework: one chain panel, embedded plug-in editors, multi-select and drag, owned windows (13 Nov) - compiled only (throwaway build); nothing run, seen or heard
 
+> Superseded in part on 15 Nov ("FX window tidy, keyboard instructions off screen", the last sections): the keyboard footer strip, the CPU number, the Output picker in the header and the controls under and above the editor are gone; the toolbar row, the status strip and Options > Plays on / Keyboard shortcuts replace them.
+
 Brief: embedded plug-in editors with pop out / put back, serial order made explicit, smooth drag of the selection, rubber-band and
 Windows selection keys, the FX window buried under the main window, TabForge's FX loader as the model. Mid-job design change from the
 owner (Volume page "Design D": a row expands to show its chain): the chain is now ONE reusable control with no window knowledge, and
@@ -1290,6 +1292,8 @@ Built to the plan above (file map in `ARCHITECTURE.md`: "Pointer settings" and "
 
 ## Effects back in their own FX window; FX window look restored (13 Nov) - compiled only (throwaway build, 0 warnings, 0 errors); nothing run, seen or clicked
 
+> Superseded in part on 15 Nov ("FX window tidy, keyboard instructions off screen", the last sections): the keyboard footer strip, the CPU number, the Output picker in the header and the controls under and above the editor are gone; the toolbar row, the status strip and Options > Plays on / Keyboard shortcuts replace them.
+
 **Owner decision:** a row's effects open in a separate FX window again; the Design D in-row expansion is removed. The rest of the
 Volume page (one list, Sound mode, "plays on", Combine devices) is unchanged.
 
@@ -1633,13 +1637,15 @@ The owner's own `config.txt` lines apply to a ticked microphone (see research); 
 
 ## FX editors for small screens: master scroll bar, pop out any effect, Parameters list, Scale (14 Nov) - compiled only (throwaway build, 0 warnings, 0 errors); nothing run, seen, heard, or tried with a real plug-in
 
+> Superseded in part on 15 Nov ("FX window tidy, keyboard instructions off screen", the last sections): the keyboard footer strip, the CPU number, the Output picker in the header and the controls under and above the editor are gone; the toolbar row, the status strip and Options > Plays on / Keyboard shortcuts replace them.
+
 Owner: "Very difficult to operate the plug-in e.g. EQ in small window." Four requests, built as below.
 
 **1. One master scroll bar** (`Styles/ScrollBars.axaml`, included last in `App.axaml`). Every `ScrollViewer` and `ScrollBar` in the
 app: `AllowAutoHide = False`, so Fluent's own template puts the content beside the bars instead of under them (that overlap is why the
 EQ card's rounded accent frame ran under the thin bar); `ScrollBarSize` (Fluent's resource) = 14, so the bar, arrows and thumb follow;
 a visible track (`BrushScrollTrack`, both themes in `Brushes.axaml`), a clear thumb (`BrushScrollThumb`, the accent under the pointer
-or while dragged) inset 3 px that fills the bar while the pointer is over it (wider on hover with nothing moving). It applies to the
+or while dragged) inset 3 px that only changes colour while the pointer is over it (its size never changes, so the bar does not wobble). It applies to the
 main page scroll viewer, the FX editor, pop-down lists, menus and text boxes alike (bars only show when something overflows). The plug-in
 editor area's own bars now take the master style and read their thickness from it (`EditorFit.Scroll(..., bar)`; `EditorFit.BarThickness`
 is gone). Look change everywhere: a scroll bar now takes 14 px beside the content instead of floating over it.
@@ -1718,7 +1724,7 @@ session only. The EQ preset choice is not in a popped-out EQ window. Windows' ow
 
 **Owner test steps.**
 1. Main window and FX window, both themes: a page or editor that scrolls shows a 14 px bar with a visible track and a grey thumb that
-   turns orange and widens under the pointer; the EQ card's accent frame is no longer under the bar.
+   turns orange under the pointer without changing size; the EQ card's accent frame is no longer under the bar.
 2. FX window of a microphone with an Equaliser, made small: Scale 70 % (or Ctrl+-): the whole editor shrinks, text included; the bar
    stays its size; dragging points still hits them. Reopen the window: still 70 %. Ctrl+0: back to 100 %.
 3. Parameters on the Equaliser: one card per band with On, Type, Frequency, Gain, Bandwidth/Q, then Overall gain; wheel, typing
@@ -1883,6 +1889,8 @@ limit; it is fixed and only its gain changes.
 
 ## FX window header: total response graph and live numbers (14 Nov) - plan, written before coding (as-built notes in the next section)
 
+> Superseded in part on 15 Nov ("FX window tidy, keyboard instructions off screen", the last sections): the keyboard footer strip, the CPU number, the Output picker in the header and the controls under and above the editor are gone; the toolbar row, the status strip and Options > Plays on / Keyboard shortcuts replace them.
+
 Owner-approved (spec and mockup "Design A"): one header row, same height as today: Effects switch left (and a program's Output
 picker), then the three live numbers Peak, Latency, CPU, then a 150 x 34 graph of the chain's TOTAL response at the right end.
 
@@ -1921,6 +1929,8 @@ Keys: Enter or a click on the thumbnail pins the panel open or closes it, Esc cl
 FX window's Tab cycle (Shift+Tab from the list).
 
 ## FX window header: total response graph and live numbers (14 Nov) - as built; compiled only (throwaway builds, 0 warnings, 0 errors); nothing run, seen, heard or clicked
+
+> Superseded in part on 15 Nov ("FX window tidy, keyboard instructions off screen", the last sections): the keyboard footer strip, the CPU number, the Output picker in the header and the controls under and above the editor are gone; the toolbar row, the status strip and Options > Plays on / Keyboard shortcuts replace them.
 
 **What it is now.** The FX window's first header line is a DockPanel: the Effects switch on the left, a program's Output picker in
 the middle, and at the right end the analysis (`Fx/FxAnalysisBar`): Peak, Latency, CPU (11 px, muted label and Medium value, 10 px
@@ -2172,3 +2182,186 @@ makes the scan slow (off the UI thread; it can be stopped in the Add effect wind
    names and values); the sound changes (Equalizer APO runs it). The row says "plug-ins run inside Windows with the settings saved
    here, their delay not known"; the FX header Latency "not known". Wet 90 %: the line goes, the row lists it as not run here.
 6. Load VST file… with a 32-bit VST2 or a non-plug-in DLL: one sentence says why; a VST2 instrument: "This is an instrument, not an effect."
+
+## FX window tidy, keyboard instructions off screen (15 Nov) - plan, written before coding (as-built notes in the next section)
+
+Owner-approved layout (with a visual) and the new design principles 12 (no keyboard instructions on screen) and 13 (fit more,
+clutter less).
+
+**FX window, top to bottom.** Title bar and menu (FX, Options) as before; Options gains "Plays on" (a program's output device, see
+below) and "Keyboard shortcuts…". Then ONE toolbar row (`Border.toolrow`, a new master in `Styles/Bars.axaml`: about 30 px high,
+11 px type, 22 px controls) holding, left to right: the Effects switch with its on/off words; the selected effect's preset drop-down
+(equalisers only), Wet label + compact slider + value, On check box, Parameters pill, Scale drop-down, one Pop out / Put back pill
+(these come up from under and above the editor, same bindings, tooltips and remembered settings; hidden while nothing is selected);
+a "…" pill (only when folded); a flexible gap; then two tiny stacked lines "Peak …" / "Latency …" (10 px, muted label + value, the
+caution Peak kept) and the response thumbnail (now 120 x 24) with its ±N label, hover graph and pin unchanged. Below it the two panes:
+the effects list (narrower: 170 px) with small Add / Remove pills at its foot, and the editor area with ALL the remaining height
+(nothing under it). At the very bottom ONE thin status strip (`Border.statusstrip`, 10 px muted, one line, trimmed, tooltip = full
+text): Fast mode's recording caution (caution colour, only when it applies), the engine status line, and the selected effect's
+"Runs in …" note at the right end only if it fits.
+
+**Folding (narrowest FX window 560 px).** `Fx/FoldingRow` is extended instead of adding a second piece: children may carry
+`FoldingRow.FoldLevel` (1, 2 …: folded in that order while the row is too wide), `FoldingRow.ShowsWhenFolded` (N: shown only while
+level N is folded: the "…" pill) and `FoldingRow.Fill` (takes the width left over: the gap in the toolbar, the engine text in the status
+strip, which then trims). Level 1 = Peak/Latency (they stay in the hover graph); level 2 = Parameters, Scale, Pop out, which then live
+in the "…" pill's `MenuFlyout` (mouse first, the master menu look; the same items as the FX menu). The old `Reserve` and the
+`besideoutput` rule go (no Output picker in the header any more).
+
+**Output picker.** The approved row has no room for a program's Output drop-down, so it moves to Options > "Plays on" (radio items:
+Master (the default device) and each device; several devices shows as on the Volume page). Decision the owner can overrule.
+
+**Removed.** The FX window's keyboard footer strip and its strings; the effect count that sat in it (the list numbers the rows);
+the Output picker in the header; CPU everywhere: the header and panel number, `FxAnalysisViewModel.CpuText/CpuTip` and smoothing,
+`Dsp/CpuMeter.cs`, `ChainProcessor`'s block timing, `EngineRun.Cpu`, `RowLoad.Cpu` / `CpuSample`; the "Add... Ctrl+N" / "Remove Del"
+key captions on the list buttons (the tooltips name the keys).
+
+**Keyboard instructions app-wide (principle 12).** Every long hint paragraph at the bottom of a page or window goes: Volume (both
+tabs), Mouse and Trackpad, Gestures, Displays, OSD, Shortcuts, App settings, the Parametric and graphic equaliser editors, the rule
+editor, the master picker (both pages). Facts that are not about keys move to tooltips: a new `CardGroup.Tip` shown on the shared
+group header (one place, every group can carry its facts), a `Tip` on `ToggleItem` / `GalleryItem` (OSD's "best-effort", the accent
+note), the equaliser graphs' mouse gestures on the graphs, Test's "where the pointer is". Short captions that carry state stay
+(App settings' start-up note, the Combine window's "Tick at least two devices", the Shortcuts page's one-line caption, the OSD page's
+intro; the wording pass that follows this job may trim them).
+
+**Where the shortcuts live.** Each page owns its text: `PageViewModel.KeyHelp` (virtual); the keys every card list shares are one
+constant (`PageViewModel.CardKeys`), the shell's own keys one constant in `ShellViewModel`; shared windows keep theirs beside their
+model (`PickerModel.KeyHelp`, `RuleEditorViewModel.KeyHelp`) and the pages that open them add them. The main window's footer gets a
+"Keyboard shortcuts" pill (and F1) that opens the existing small `MessageWindow` with the open page's text, the card keys and the
+shell's. The FX window's Options > "Keyboard shortcuts…" opens the same window (owned by the FX window) with the chain's keys and the
+equaliser editors' keys (`EqPanelItem.KeyHelp`, `GraphicEqItem.KeyHelp`). All key handling and tooltips stay. The search index never
+held the hint texts (search lists editors only), so it does not change.
+
+**Light density pass (principle 13).** Only cheap, clearly better changes in the files touched; further ideas go to open items.
+
+## FX window tidy, keyboard instructions off screen (15 Nov) - as built; compiled only (throwaway builds, 0 warnings, 0 errors); nothing run, seen or clicked
+
+The plan above held; differences are listed under each part.
+
+**FX window (`Fx/FxWindow.axaml`).** Rows: menu, toolbar (`Border.toolrow`), panes, status strip (`Border.statusstrip`).
+- Toolbar, left to right, in one `FoldingRow` (gap `ToolRowGap` 6): Effects switch ("Effects on/off" words, Fluent's 154 px minimum
+  width overridden to 0 for this switch only, a -5 px vertical inset fits its 32 px template into 22 px); preset drop-down (equalisers,
+  `FxToolPresetWidth` 96); "Wet" + `Slider.compact` (`FxToolWetWidth` 56, double-click = 100 %) + value; "On" check box; Parameters
+  pill (`.custom` while on); Scale drop-down (no "Scale" word any more: its tooltip says Scale and names Ctrl+- / Ctrl+= / Ctrl+0); one
+  Pop out / Put back pill (`FxChainViewModel.PopText` / `TogglePopOutSelectedCommand`); "…" pill; fill; Peak / Latency as two 10 px
+  lines (`FxAnalysisNumbers.stacked`, tooltips unchanged, caution Peak kept); the thumbnail, now 120 x 24 (`FxThumbWidth/Height`),
+  with its ±N label, hover graph, pin, Esc and Tab stop unchanged. The selected effect's controls are hidden while nothing is selected
+  (the preset also when the effect has none). All bindings, remembered settings (scale, Parameters per effect type) and tooltips are
+  the ones the controls had under and above the editor.
+- Folding: level 1 = Peak / Latency (they stay in the hover graph), level 2 = Parameters, Scale, Pop out; the "…" pill shows only while
+  level 2 is folded and opens a `MenuFlyout` (the master menu look, mouse first) with Parameters (plain list), Smaller editor, Larger
+  editor, Editor at 100 %, Pop out / Put back. Widths estimated at the default 860 px: everything shows for an equaliser (about 830 px
+  needed); at 560 px both levels fold (about 536 px needed of 544). A plug-in (no preset) has about 100 px more.
+- Panes: the effects list is 170 px (`FxChainListWidth`, was 246); Add… / Remove / Forget are small `Button.pill`s at its foot
+  (tooltips name Ctrl+N and Delete; "Forget program" is now "Forget", its tooltip says what goes). The editor takes all the panel's
+  height; only the "Select or add an effect" / "Loading" notice with its Put back pill is left inside it. Pane margin `FxPanesMargin`.
+- Status strip (10 px, muted, one line, `StatusStripPadding` 8,2): Fast mode's recording caution as caution-coloured words (trimmed
+  at `StatusCautionMaxWidth`, the old tag's tooltip), the engine line (fill: trims with "…", full text as tooltip), and the selected
+  effect's "Runs in …" note at the right end only when the whole line fits (`FoldLevel` 1; its detail tooltip kept). Difference from
+  the plan: the caution is coloured words, not a `Border.tag` (a tag would make the strip taller than one thin line).
+- Options menu: Chain on, **Plays on** (a program's output device as radio items, rebuilt only when the devices or the choice change;
+  "Several devices (see the Volume page)" shows checked when the Volume page set more than one), Keep on top, **Keyboard shortcuts…**
+  (the window's keys, `FxWindowViewModel.KeyHelp`, in a `MessageWindow` owned by the FX window).
+- Removed: the keyboard footer strip and its strings, the effect count in it (`FxChainViewModel.EffectCount`), the header's Output
+  `ChoiceItem`, the old DockPanel/WrapPanel header, `Button.scope.fxbtn` (Theme.axaml), `FxHeaderGap`, `FxOutputMinWidth`,
+  `FxAnalysisGap`, `FoldingRow.Reserve` and the `besideoutput` style, the "Ctrl+N" / "Del" captions on the list buttons.
+- CPU removed everywhere: the number and its tooltip (header and hover graph), `FxAnalysisViewModel` smoothing and `CpuText/CpuTip`,
+  `Audio/Engine/Dsp/CpuMeter.cs` (deleted), `ChainProcessor`'s per-block `Stopwatch` timing, `EngineRun.Cpu`, `CpuSample` and
+  `RowLoad.Cpu`. `RowLoad` keeps the place and the delay; Latency still refreshes every `Timing.FxAnalysisRefresh`.
+
+**Keyboard instructions off every page and window (principle 12).** Removed: the hint paragraphs at the foot of Volume (both tabs),
+Mouse and Trackpad, Gestures, Displays, OSD, Shortcuts and App settings; the Parametric and graphic equalisers' hint lines; the rule
+editor's hint; both hint lines of the master picker (its footer row now shows only on the settings page, for "Use this …"); Displays'
+"Refresh (F5)" is "Refresh" (F5 in its tooltip). The facts in them that are not about keys moved to tooltips: `CardGroup.Tip` on the
+shared group header (Displays Hardware and Software, Volume Outputs and Wiring Outputs, Mouse Buttons, Trackpad, Pointer settings,
+the four Gestures groups and Custom rules), `ToggleItem.Tip` (OSD "Hide Windows' own OSD": best-effort), `GalleryItem.Tip` (App settings
+accent: used everywhere, the OSD can match it), the rule editor's Test ("where the pointer is"); the equalisers' mouse gestures went into
+their entries of the FX window's Keyboard shortcuts (a tooltip over a graph would cover the points being dragged). Kept on screen
+(state or a limit, not keys): App settings' start-up note, Volume Wiring's "None yet" and the combine gate note, the Combine window's
+"Tick at least two devices", the Shortcuts page caption, the OSD page intro, the Sound mode panel's footnote.
+
+**Where the shortcuts live.** `PageViewModel.KeyHelp` (each page's own keys; Displays, Volume, OSD, Mouse and Trackpad, Gestures,
+Shortcuts have one; App settings needs none beyond the card keys), `PageViewModel.CardKeys` (the keys every card list shares, once),
+`ShellViewModel.ShellKeys`; `PickerModel.KeyHelp` and `RuleEditorViewModel.KeyHelp` are added by the pages that open them;
+`EqPanelItem.KeyHelp` / `GraphicEqItem.KeyHelp` by the FX window. The main window's footer has a "Keyboard shortcuts" pill after the
+version (and F1, not while a hotkey box is listening); it opens the small `MessageWindow` with the open page's keys (not while the
+search results show), the card keys and the window's. `MessageWindow.AskAsync(owner)` gained the optional owner. The footer's status
+text now trims (tooltip = full text) so the pill never pushes it over the Close button. The search index never held the hint texts.
+
+**Light density pass (principle 13).** Done: the FX window above. Not changed (left for the next pass, see open items): pages already
+use half cards where a card is small (Displays, Mouse, Gestures areas, OSD switches, App settings start-up pair).
+
+**Mouse-first choices (rule 5; the owner can overrule).** The "…" menu and Options > Plays on are menus (keyboard reachable through
+the menu bar's Alt keys for Plays on; the folded controls through the FX menu's identical items and Ctrl+- / Ctrl+= / Ctrl+0). The
+toolbar's controls are not in the window's Tab cycle (Tab still switches list and editor, as before, when the same controls sat under
+the editor).
+
+**Not verified.** Nothing was run or seen. (1) The toolbar's real widths: the fold points were estimated from text sizes; if the
+Fluent switch ignores the minimum-width override (the template may read it as a fixed value), the switch is 154 px wide and level 2
+folds earlier (about 900 px). (2) The switch's -5 px inset assumes Fluent's 32 px switch template. (3) The `MenuItem` container theme
+(`BasedOn` Fluent's MenuItem theme) and the radio marks of Plays on. (4) The status strip's height (about 17 px expected). (5) That the
+"…" flyout and the hover graph still close and open as before; both themes; the Parametric EQ's editor height at Scale 100 % (about
+540 - 22 menu - 30 toolbar - 17 strip - 8 margins = 460 px for the panel, was about 390).
+
+**Open items (for the wording and space pass that follows; file: what).**
+- `Pages/Osd/OsdPage.axaml`: the intro caption ("The on-screen display appears when …") could become the page's tooltip or go.
+- `Pages/Shortcuts/ShortcutsPage.axaml`: the caption "Hotkeys work anywhere in Windows while OmniControl is running." could be a tooltip.
+- `Pages/Volume/SoundModeButton.axaml`: each mode card has a description, a method summary and a footnote (three grey lines).
+- `Pages/Volume/VolumePage.axaml`: "None yet. + Combine devices joins …" is a sentence; a short "None yet" with the detail as tooltip would do.
+- `Pages/Volume/CombineWindow.axaml`: "Tick at least two devices. Speakers play …" could be one short line plus tooltip.
+- `Fx/FxSlotViewModel.cs` `RunsNote`: the notes are long ("Runs in OmniControl's engine (not in Equalizer APO, which …)"), so in the
+  status strip they fold away often; shorter notes with the detail in `RunsDetail` would show more often.
+- `Fx/FxAnalysisViewModel.cs` tooltips (Peak, Latency) and the engine status texts (`Audio/Engine/EngineStatus.cs`) are long sentences.
+- `Pages/AppSettings/AppSettingsPage.axaml`: the "Appearance, startup, window and plug-ins" section title repeats the card names.
+- `Pages/Osd/OsdPageViewModel.cs` Customize group: five full-width cards (position, style, accent, background, opacity); position and
+  opacity could pair as half cards if the galleries keep their width.
+- `Pages/Gestures/GesturesPage.axaml` Edge group: one full-width card in its own group; it could join the Areas group.
+- `Fx/EqPanelRow.axaml`: the view switches (tabs, grid, phase) take a row under the band controls; they could move into the "…" menu
+  or a small toolbar in the editor.
+- `Pages/Displays/DisplaysPage.axaml`, `Pages/Gestures/GesturesPage.axaml`: header tools (Refresh, Add rule) and the group-header
+  tooltips now carry facts that used to be on screen; check that the owner finds them (a small (i) mark on headers with a tip is an option).
+- No keyboard shortcuts entry yet for the popped-out effect window, the Add effect window, Manage mouse layers and the About window
+  (they have no strips; their keys are the obvious ones).
+
+**Owner test steps.**
+1. Open a program's FX window with "Equaliser - Parametric" at the default size: one toolbar row under the menu: Effects switch,
+   "Custom ▾", Wet slider and number, On, Parameters, a Scale drop-down, Pop out, then two tiny lines "Peak …" / "Latency …" and the
+   small graph at the right. No text strip of keys at the bottom; one thin grey line with the engine status (hover it: the full text).
+2. Scale 100 %: the EQ editor now takes the whole height between the toolbar and the status line; nothing under it.
+3. Click Pop out: the editor opens in its own window and the pill reads Put back; click it: back. Parameters and Scale act as before.
+4. Drag the window to its narrowest (560 px): the row never wraps; Peak/Latency go (hover the graph: they are in the larger graph),
+   then Parameters, Scale and Pop out go and a "…" pill appears; its menu has them. Widen again: they come back.
+5. Options > Plays on (program window): the devices with a mark at the current one; pick another; the Volume page follows.
+   Options > Keyboard shortcuts…: a small window lists the FX window's keys; Esc closes it.
+6. Fast mode, a program whose sound can't be recorded: the caution shows in amber at the left of the status line.
+7. Every page (Displays, Volume Mixer and Wiring, OSD, Mouse and Trackpad, Gestures, Shortcuts, App settings): no paragraph of key
+   instructions at the bottom; hover a group header (Hardware, Software, Outputs, Mouse Buttons, Trackpad, Pointer settings, the
+   Gestures groups, Custom rules): its facts show as a tooltip. Hover OSD's "Hide Windows' own OSD" and App settings' Accent color.
+8. The footer's "Keyboard shortcuts" (or F1) on each page: the page's own keys, then the card keys, then the window's. In the rule
+   editor and the action picker no hint lines; the Gestures and Mouse pages' shortcuts list their keys.
+9. Both themes; the narrowest main window (720 px): the footer's pill, status and Close fit on one line.
+
+## Wording and space pass (first, light round)
+
+Done: removed the OSD and Shortcuts intro captions and App settings' "Appearance, startup, window and plug-ins" title; the Sound mode
+cards lost their method line (it is the first line of the card's tooltip now, `SoundModeCard.Tip`) and the footnote is one short
+sentence; Wiring's "None yet" and the Combine window's "Tick at least two devices" keep the detail in a tooltip; `RunsNote` texts are
+short ("Runs in OmniControl's engine only", "Runs in Equalizer APO only", "Saved only: not processed yet"). Shared: group panel padding
+8,4,8,2 -> 8,3,8,2 and margin 0,0,0,6 -> 0,0,0,4 (`Theme.axaml`); main content margin 32,16,32,28 -> 32,12,32,24 and page title gap
+12 -> 8 (`MainWindow.axaml`). Not verified: nothing run or seen; compile-checked only.
+Skipped (open): long `EngineStatus` / `FxAnalysisViewModel` tooltips, Gestures Edge group into Areas, OSD Customize half cards,
+the EQ view switches row, other pages' card labels and search subtitles (not scanned in depth).
+
+## Wording and space pass, round 2
+
+Per page (all texts only; ids, keywords, stored values unchanged):
+1. Displays: monitor status texts ("Reading the monitor...", "No DDC/CI answer...", "Values not reported"), Screen power and Reset all tooltips.
+2. Mouse and Trackpad: pointer labels (Swap buttons, Pointer precision, Characters per tilt notch, Hide while typing, Locate pointer on Ctrl), unavailable reasons, button tooltips, two action titles. Cards were already half cards. Skipped: the 17 cursor-role names (Windows' own names).
+3. Gestures: the "Edge size" group is merged into the Areas group (strip card is the last full-width card there; its tooltip text joined the Areas tip; the stored group key "Gestures/Edge" is no longer used); group tips, rule editor tooltips and the "Allow this command?" and delete texts shortened.
+4. OSD: Customize group uses half cards (Position and Opacity pair at the end; Style, Accent, Background stay full width: galleries are not half cards).
+5. Volume: sound mode cards lost the "Selected" tag (the card's own selected style says it); mode, tag and status tooltips, setup button tooltips, Wiring and group tips, cable sentences, row tooltips, "Not playing yet?" next to Add program.
+6. FX window: toolbar, status strip, chain panel, popped-out window tooltips; `EngineStatus.HeadroomNote`, `FxAnalysisViewModel` Peak and Latency tips (two short sentences); equaliser switches "Tabs / Grid / Phase". Skipped: moving the view switches into a menu (layout change, owner to decide).
+7. App settings: "When closing" label, accent tip, startup note, plug-in folder texts.
+8. Shortcuts: three wordy action titles shortened (ids unchanged).
+9. Dialogs: Equalizer APO and OmniControl APO confirmations, swap-trial text, close choice text.
+10. Main window: "No settings match." Footer and search subtitles unchanged (already one line).
+No shared style or resource values changed in round 2. Not verified: nothing run or seen; compile-checked only.

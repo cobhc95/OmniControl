@@ -36,7 +36,7 @@ public sealed partial class SoundModeChoice : ObservableObject
     public string Tip => Current.Description;
 
     /// <summary>One line under the cards: the switch applies to every row, effects run only while OmniControl is open.</summary>
-    public string Footnote => "Applies to every row at once. Effects run only while OmniControl is open; without them the sound plays unprocessed.";
+    public string Footnote => "Applies to every row. Effects run only while OmniControl is open.";
 
     partial void OnIsOpenChanged(bool value) { if (value) _opened?.Invoke(); }
 
@@ -68,8 +68,8 @@ public sealed partial class SoundModeCard : ObservableObject
     public SoundMode Mode { get; }
     public string Name => Mode.Name;
     public string Description => Mode.Description;
-    public string Details => Mode.Details;
-    public string MethodSummary => Mode.MethodSummary;
+    /// <summary>The card's tooltip: how effects run in this mode, then the technical details.</summary>
+    public string Tip => $"{Mode.MethodSummary}\n{Mode.Details}";
     public IReadOnlyList<ModeTag> Tags => Mode.Tags;
 
     [ObservableProperty] private bool _isSelected;

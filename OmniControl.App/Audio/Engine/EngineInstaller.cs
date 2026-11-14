@@ -38,16 +38,16 @@ public sealed class EngineInstaller
 
     /// <summary>The confirmations: what changes in one sentence, the administrator prompt, and how to undo it.</summary>
     public const string EqualizerApoConfirm =
-        "Runs Equalizer APO's own installer. Some protected apps may not play while it is installed.\n" +
-        "Windows will ask for administrator approval, and a restart may be needed. Uninstall it any time from Windows' Installed apps.";
+        "Runs Equalizer APO's own installer. Some protected apps may not play.\n" +
+        "Needs administrator approval; a restart may be needed. Uninstall any time from Windows' Installed apps.";
 
     public const string ForkConfirm =
-        "Installs OmniControl APO on the default playback device. Some protected apps may not play while it is installed.\n" +
-        "Windows will ask for administrator approval, and sound pauses for a few seconds. Remove undoes it.";
+        "Installs OmniControl APO on the default playback device. Some protected apps may not play.\n" +
+        "Needs administrator approval; sound pauses briefly. Remove undoes it.";
 
     public const string ForkRemoveConfirm =
-        "Removes OmniControl APO and puts the original audio settings back.\n" +
-        "Windows will ask for administrator approval, and sound pauses for a few seconds.";
+        "Removes OmniControl APO and restores the audio settings.\n" +
+        "Needs administrator approval; sound pauses briefly.";
 
     private static string AppFolder => AppContext.BaseDirectory;
     private static string ApoSource => Path.Combine(AppFolder, ApoIds.AppFolderName);

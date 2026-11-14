@@ -64,11 +64,8 @@
             </ListBox>
         </Grid>
 
-        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="12,6" ColumnSpacing="12">
-            <TextBlock Classes="hint small" IsVisible="{Binding !IsEditingOptions}"
-                       Text="Type to search. Up/Down choose. Left/Right switch between categories, entries and an entry's cogwheel. Enter picks (on a cogwheel: opens its settings). Tab opens the highlighted entry's settings. Greyed entries can't be picked here; the reason is under the name. Esc closes." />
-            <TextBlock Classes="hint small" IsVisible="{Binding IsEditingOptions}"
-                       Text="Up/Down choose a setting. Left/Right change it (Space flips a switch). Enter on a text setting edits it; Ctrl+Enter (or a double-click) types a number in. Enter anywhere else uses it with these settings. Changes apply at once. Esc goes back." />
+        <!-- The settings page's confirm; the picker's keys are in the Keyboard shortcuts of the pages that open it (PickerModel.KeyHelp) -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="12,6" IsVisible="{Binding IsEditingOptions}">
             <Button Grid.Column="1" Classes="scope usebtn" Classes.picked="{Binding OnUseButton}" Tag="scope" Content="{Binding UseText}" IsVisible="{Binding IsEditingOptions}"
                     HorizontalAlignment="Right" Focusable="False" Click="OnUseClick" />
         </Grid>

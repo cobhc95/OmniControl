@@ -16,17 +16,11 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="vm:SoundModeCard">
-                            <Button Classes="optioncard" Classes.selected="{Binding IsSelected}" Command="{Binding PickCommand}" ToolTip.Tip="{Binding Details}">
+                            <Button Classes="optioncard" Classes.selected="{Binding IsSelected}" Command="{Binding PickCommand}" ToolTip.Tip="{Binding Tip}">
                                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                                     <StackPanel Spacing="3">
-                                        <WrapPanel>
-                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0" />
-                                            <Border Classes="tag selected" IsVisible="{Binding IsSelected}">
-                                                <TextBlock Text="Selected" />
-                                            </Border>
-                                        </WrapPanel>
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
                                         <TextBlock Classes="hint small" Text="{Binding Description}" />
-                                        <TextBlock Classes="hint small" Text="{Binding MethodSummary}" />
                                         <ItemsControl ItemsSource="{Binding Statuses}">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>

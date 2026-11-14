@@ -12,6 +12,10 @@ namespace OmniControl.App.Fx;
 /// </summary>
 public sealed partial class GraphicEqItem : ObservableObject, IEditorItem, IEqEditor, IRedrawSource
 {
+    /// <summary>The editor's keys, listed in the FX window's Keyboard shortcuts (handled by the shared vertical-slider keys in RowEditing).</summary>
+    public const string KeyHelp = "Left/Right move between bands; Up/Down change a band (Shift or PageUp/PageDown: large steps, Ctrl: fine); Home or 0 sets it to 0 dB; Esc, then Up/Down, goes to the next card. "
+        + "With the mouse: drag across the sliders to draw a curve; double-click a slider for 0 dB; Parameters lets you type values.";
+
     /// <summary>An equaliser with this many bands or fewer gets the large sliders (the 16-band one: easiest to operate).</summary>
     private const int LargeUpTo = 16;
 

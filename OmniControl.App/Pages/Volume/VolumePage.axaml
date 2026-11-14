@@ -30,8 +30,6 @@
                         <ListBox Classes="rows compact" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}" />
                     </StackPanel>
                 </Border>
-                <TextBlock Classes="hint"
-                           Text="Each row says where it plays (→) or records from (←): those words open Wiring, where that is changed. The effects words and FX open the row's FX window. Up/Down move between rows; Left/Right choose a part (the underlined words, pan, volume, mute, FX); Enter opens or adjusts it. Ctrl+Tab switches tabs. Programs are remembered after they close; × forgets one." />
             </StackPanel>
 
             <!-- WIRING: the sound mode, the cable status and combining on top; where each source plays and the cable it uses; combined devices -->
@@ -63,13 +61,11 @@
                                 </Button>
                             </WrapPanel>
                             <TextBlock Classes="hint" Margin="{StaticResource WiringHeaderInset}" IsVisible="{Binding !CombinedDevices.Items.Count}"
-                                       Text="None yet. + Combine devices joins speakers that play together, or microphones mixed into one." />
+                                       Text="None yet" ToolTip.Tip="+ Combine devices joins speakers or microphones." />
                             <ListBox Classes="rows compact" ItemsSource="{Binding CombinedDevices.Items}" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
-                <TextBlock Classes="hint"
-                           Text="Changes apply at once. A chip's × takes a device away; + add adds one. The sound mode applies to every row: Fast keeps the delay lowest, Full control routes through a virtual cable so any device can be combined or processed. Dimmed choices need the other mode; Switch changes to it. Up/Down move between rows; Enter opens a row's menu." />
             </StackPanel>
         </StackPanel>
     </StackPanel>

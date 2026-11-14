@@ -20,12 +20,15 @@
     <DockPanel>
         <!-- Footer -->
         <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,1,0,0" Padding="24,8">
-            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
                 <TextBlock Text="{Binding Version}" Classes="muted" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="1" Text="{Binding Status}" Classes="muted"
-                           HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,16,0" />
-                <TextBlock Grid.Column="2" Text="{Binding ActiveLayer}" Classes="muted" VerticalAlignment="Center" Margin="0,0,14,0" IsVisible="{Binding ShowsActiveLayer}" />
-                <Button Grid.Column="3" Content="Close" Classes="primary" Width="96"
+                <!-- The one place the main window's keyboard shortcuts are listed (principle 12: no key instructions on the pages) -->
+                <Button Grid.Column="1" Classes="pill" Content="Keyboard shortcuts" Command="{Binding ShowKeyboardShortcutsCommand}"
+                        VerticalAlignment="Center" Margin="14,0,0,0" ToolTip.Tip="The keys of the open page and of the whole window (F1)" />
+                <TextBlock Grid.Column="2" Text="{Binding Status}" Classes="muted" TextTrimming="CharacterEllipsis"
+                           HorizontalAlignment="Right" VerticalAlignment="Center" Margin="12,0,16,0" ToolTip.Tip="{Binding Status}" />
+                <TextBlock Grid.Column="3" Text="{Binding ActiveLayer}" Classes="muted" VerticalAlignment="Center" Margin="0,0,14,0" IsVisible="{Binding ShowsActiveLayer}" />
+                <Button Grid.Column="4" Content="Close" Classes="primary" Width="96"
                         HorizontalContentAlignment="Center" Click="OnCloseClick" />
             </Grid>
         </Border>
@@ -60,16 +63,16 @@
                 </Grid>
             </Border>
             <ScrollViewer x:Name="ContentHost">
-                <StackPanel Margin="32,16,32,28">
+                <StackPanel Margin="32,12,32,24">
                     <StackPanel IsVisible="{Binding !IsSearching}">
-                        <TextBlock Text="{Binding CurrentPage.Title}" Classes="title" Margin="0,0,0,12"
+                        <TextBlock Text="{Binding CurrentPage.Title}" Classes="title" Margin="0,0,0,8"
                                    IsVisible="{Binding !CurrentPage.ShowsOwnHeader}" />
                         <ContentControl Content="{Binding CurrentPage}" />
                     </StackPanel>
 
                     <StackPanel IsVisible="{Binding IsSearching}" Spacing="12">
                         <TextBlock Text="Search results" Classes="title" />
-                        <TextBlock Text="No settings match. Try another word." Classes="muted"
+                        <TextBlock Text="No settings match." Classes="muted"
                                    IsVisible="{Binding !SearchResults.Count}" />
                         <ListBox x:Name="ResultList" Grid.IsSharedSizeScope="True" Classes="rows results" ItemsSource="{Binding SearchResults}">
                             <ListBox.ItemTemplate>

@@ -97,9 +97,6 @@ internal abstract class EngineRun : IDisposable
     /// <summary>The estimated delay of the processed sound: the pipe's own plus what the plug-ins add (OmniControl does not compensate their latency).</summary>
     public int DelayMs => (Pipe?.DelayMs ?? 0) + PluginDelayMs;
 
-    /// <summary>The processing time of this run so far.</summary>
-    public CpuSample Cpu => Processor.Cpu.Read();
-
     /// <summary>The running status: <see cref="RunningText"/> with the delay.</summary>
     protected void ShowRunning()
     {

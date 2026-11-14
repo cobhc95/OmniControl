@@ -51,17 +51,38 @@
         <!-- Least width of the editor column in the search results; the title column gets the rest -->
         <x:Double x:Key="SearchEditorMinWidth">300</x:Double>
         <x:Double x:Key="OptionMenuWidth">400</x:Double>
-        <!-- Width of the FX window's effect list (FxChainPanel): fixed, so the editor beside it grows one for one with the window; at the
-             window's first size it is the share the list had before the rework (0.85 : 2) -->
-        <x:Double x:Key="FxChainListWidth">246</x:Double>
-        <!-- The FX window header's analysis (Fx/FxAnalysisBar, owner-approved "Design A"): the response thumbnail, the gap between the
-             numbers and it, the gap between the header's parts (switch, Output picker, analysis), the room a program's Output picker keeps before the numbers fold away, the larger graph's pop-up
-             (FlyoutPresenter.graphmenu: 440 wide = 1 + 9 + 420 graph + 9 + 1), its graph's height and the gap between its parts -->
-        <x:Double x:Key="FxThumbWidth">150</x:Double>
-        <x:Double x:Key="FxThumbHeight">34</x:Double>
-        <x:Double x:Key="FxAnalysisGap">12</x:Double>
-        <Thickness x:Key="FxHeaderGap">12,0,0,0</Thickness>
-        <x:Double x:Key="FxOutputMinWidth">240</x:Double>
+        <!-- Width of the FX window's effect list (FxChainPanel): fixed and narrow, so the editor beside it gets the rest of the window -->
+        <x:Double x:Key="FxChainListWidth">170</x:Double>
+        <!-- The FX window's panes inside the window (between the toolbar and the status strip) -->
+        <Thickness x:Key="FxPanesMargin">8,2,8,6</Thickness>
+        <!-- A window's toolbar row (Styles/Bars.axaml, Border.toolrow): its height and inset, its type, its controls' height, the gap
+             between its controls and inside a control group (label, slider, value), a pill's and a drop-down's inset, and the inset
+             that fits Fluent's 32 px switch into the control height (32 - 2 x 5 = 22) -->
+        <x:Double x:Key="ToolRowHeight">30</x:Double>
+        <Thickness x:Key="ToolRowPadding">8,4</Thickness>
+        <x:Double x:Key="ToolFontSize">11</x:Double>
+        <x:Double x:Key="ToolControlHeight">22</x:Double>
+        <x:Double x:Key="ToolRowGap">6</x:Double>
+        <x:Double x:Key="ToolRowInnerGap">4</x:Double>
+        <Thickness x:Key="ToolPillPadding">9,0</Thickness>
+        <Thickness x:Key="ToolComboPadding">8,0</Thickness>
+        <Thickness x:Key="ToolSwitchInset">0,-5</Thickness>
+        <!-- A window's status strip (Border.statusstrip): its inset, type, the gap between its parts, and the widest the caution gets -->
+        <Thickness x:Key="StatusStripPadding">8,2</Thickness>
+        <x:Double x:Key="StatusFontSize">10</x:Double>
+        <x:Double x:Key="StatusStripGap">12</x:Double>
+        <x:Double x:Key="StatusCautionMaxWidth">260</x:Double>
+        <!-- The FX window toolbar's controls for the selected effect: the preset drop-down, the Wet slider and its value -->
+        <x:Double x:Key="FxToolPresetWidth">96</x:Double>
+        <x:Double x:Key="FxToolWetWidth">56</x:Double>
+        <x:Double x:Key="FxToolValueWidth">22</x:Double>
+        <!-- The FX window toolbar's analysis (Fx/FxAnalysisBar, owner-approved "Design A"): the response thumbnail, the tiny stacked Peak
+             and Latency beside it, the larger graph's pop-up (FlyoutPresenter.graphmenu: 440 wide = 1 + 9 + 420 graph + 9 + 1), its
+             graph's height and the gap between its parts -->
+        <x:Double x:Key="FxThumbWidth">120</x:Double>
+        <x:Double x:Key="FxThumbHeight">24</x:Double>
+        <x:Double x:Key="FxStatsSmallFontSize">10</x:Double>
+        <x:Double x:Key="FxStatsSmallLineHeight">12</x:Double>
         <x:Double x:Key="FxGraphPanelWidth">440</x:Double>
         <Thickness x:Key="FxGraphPanelPadding">9</Thickness>
         <x:Double x:Key="FxGraphHeight">170</x:Double>
@@ -135,6 +156,7 @@
         <StyleInclude Source="/Styles/Sliders.axaml" />
         <StyleInclude Source="/Styles/Blocks.axaml" />
         <StyleInclude Source="/Styles/Graphs.axaml" />
+        <StyleInclude Source="/Styles/Bars.axaml" />
         <StyleInclude Source="/Styles/Menus.axaml" />
         <StyleInclude Source="/Styles/ScrollBars.axaml" />
     </Application.Styles>

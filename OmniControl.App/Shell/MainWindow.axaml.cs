@@ -30,7 +30,7 @@ public partial class MainWindow : Window
             action.IsListening = false;
     }
 
-    /// <summary>Tab swaps between sidebar and page; Ctrl+F jumps to search; Down/Enter in search enters results.</summary>
+    /// <summary>F1 lists the keyboard shortcuts; Tab swaps between sidebar and page; Ctrl+F jumps to search; Down/Enter in search enters results.</summary>
     private void OnKeyDownTunnel(object? sender, KeyEventArgs e)
     {
         var focused = FocusManager?.GetFocusedElement();
@@ -39,7 +39,12 @@ public partial class MainWindow : Window
         if (HotkeyCapture.IsListening(focused)
             && (e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Alt | KeyModifiers.Meta)) != 0) return;
 
-        if (e.Key == Key.F && e.KeyModifiers == KeyModifiers.Control)
+        if (e.Key == Key.F1 && e.KeyModifiers == KeyModifiers.None && !HotkeyCapture.IsListening(focused))
+        {
+            (DataContext as ShellViewModel)?.ShowKeyboardShortcutsCommand.Execute(null);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.F && e.KeyModifiers == KeyModifiers.Control)
         {
             if (!SearchBox.IsFocused) _returnFocus = focused as InputElement;
             SearchBox.Focus();

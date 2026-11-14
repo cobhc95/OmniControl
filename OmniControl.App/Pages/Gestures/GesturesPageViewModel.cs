@@ -11,6 +11,15 @@ namespace OmniControl.App.Pages.Gestures;
 public sealed class GesturesPageViewModel : PageViewModel
 {
     public override string Title => "Gestures";
+
+    private const string AdminNote = "Programs running as administrator are not affected unless OmniControl runs as administrator too.";
+
+    public override string KeyHelp => string.Join(Environment.NewLine,
+        "Left/Right move between a gesture's switch and its action, and across a pair; Space flips a switch; Enter on the action opens the action picker.",
+        "Edge strip width: Left/Right move between the slider and the Show margins switch; Enter on the slider lets Left/Right change it.",
+        "Custom rules: Space flips a rule's switch; Enter on Edit opens it.",
+        "Rule editor: " + RuleEditorViewModel.KeyHelp,
+        "Action picker: " + PickerModel.KeyHelp);
     public override bool ShowsOwnHeader => true; // the on/off switch sits on the title line
     public override string Icon => "M12,2 L17,8 H13 V11 H11 V8 H7 Z M12,22 L7,16 H11 V13 H13 V16 H17 Z";
     public override string Keywords => "gestures mouse wheel scroll middle click taskbar edge title bar desktop hold key volume brightness opacity zoom";
@@ -23,7 +32,6 @@ public sealed class GesturesPageViewModel : PageViewModel
     public ItemGroup Areas { get; }
     public ItemGroup Middle { get; }
     public ItemGroup Keys { get; }
-    public ItemGroup Edge { get; }
 
     /// <summary>The custom rules, last on the page.</summary>
     public RulesGroup Rules { get; } = new() { ExpandedByDefault = true };
@@ -83,11 +91,22 @@ public sealed class GesturesPageViewModel : PageViewModel
             { Companion = _showMargins };
 
         Primary = new object[] { _enabled };
-        Areas = new ItemGroup("Gestures/Areas", GestureCatalog.AreaGroup, CardsFor(GestureCatalog.AreaGroup, () => steps));
-        Middle = new ItemGroup("Gestures/Middle", GestureCatalog.MiddleGroup, CardsFor(GestureCatalog.MiddleGroup, () => clicks));
-        Keys = new ItemGroup("Gestures/Keys", GestureCatalog.KeyGroup, CardsFor(GestureCatalog.KeyGroup, () => steps));
-        Edge = new ItemGroup("Gestures/Edge", "Edge size", new object[] { strip });
-        _groups = new[] { Areas, Middle, Keys, Edge };
+        var areaCards = CardsFor(GestureCatalog.AreaGroup, () => steps);
+        areaCards.Add(strip);
+        Areas = new ItemGroup("Gestures/Areas", GestureCatalog.AreaGroup, areaCards)
+        {
+            Tip = "Wheel up and down over the area do the action's two directions; a gesture that is on takes the scroll there. "
+                  + "Show margins draws every area on screen while this page is open. " + AdminNote,
+        };
+        Middle = new ItemGroup("Gestures/Middle", GestureCatalog.MiddleGroup, CardsFor(GestureCatalog.MiddleGroup, () => clicks))
+        {
+            Tip = "A middle click over the area runs the action instead of the area's own middle click and the button's mapping.",
+        };
+        Keys = new ItemGroup("Gestures/Keys", GestureCatalog.KeyGroup, CardsFor(GestureCatalog.KeyGroup, () => steps))
+        {
+            Tip = "Keys held count exactly: Ctrl + Alt does not trigger Ctrl + Alt + Shift.",
+        };
+        _groups = new[] { Areas, Middle, Keys };
 
         foreach (var rule in rules.Settings.Rules) AddItem(rule);
         rules.ProblemsChanged += RefreshRules;

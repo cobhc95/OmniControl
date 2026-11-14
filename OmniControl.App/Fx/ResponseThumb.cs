@@ -5,7 +5,7 @@ using OmniControl.App.Audio;
 namespace OmniControl.App.Fx;
 
 /// <summary>
-/// The FX window header's small graph of the chain's total response (<see cref="FxAnalysisViewModel"/>, its DataContext): 20 Hz to
+/// The FX window toolbar's small graph of the chain's total response (<see cref="FxAnalysisViewModel"/>, its DataContext): 20 Hz to
 /// 20 kHz across, the 0 dB line in the middle, the curve in the accent (muted while effects are off), the scale top right, and the
 /// peak marked in the caution colour when it is above the default scale. The frame around it is its button's (Button.graphthumb).
 /// </summary>

@@ -20,11 +20,11 @@ public sealed partial class AddEffectViewModel : ObservableObject
     {
         _library = library;
         Refresh();
-        Status = _library.HasScanned ? string.Empty : $"Scan the plug-in folders, or load a {Tags} file, to add plug-ins to this list. {OtherPlaces}";
+        Status = _library.HasScanned ? string.Empty : $"Scan the plug-in folders or load a {Tags} file. {OtherPlaces}";
     }
 
     /// <summary>Where the user is sent for plug-ins installed elsewhere.</summary>
-    private const string OtherPlaces = "Use App settings > Plug-in folders for other places.";
+    private const string OtherPlaces = "Other places: App settings > Plug-in folders.";
 
     private static string Tags => string.Join(" or ", FxCatalog.PluginTypes.Select(t => t.Tag));
 

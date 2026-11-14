@@ -1,16 +1,14 @@
 ﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:OmniControl.App.Fx"
-             xmlns:pages="using:OmniControl.App.Pages"
              x:Class="OmniControl.App.Fx.FxChainPanel"
              x:DataType="vm:FxChainViewModel" FontSize="12">
     <UserControl.Styles>
         <Style Selector="CheckBox"><Setter Property="FontSize" Value="12" /></Style>
         <Style Selector="CheckBox /template/ ContentPresenter"><Setter Property="FontSize" Value="12" /></Style>
-        <Style Selector="Button.scope"><Setter Property="FontSize" Value="12" /></Style>
         <Style Selector="Border.pane"><Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" /></Style>
     </UserControl.Styles>
-    <!-- The FX window's two panes (TabForge style): the chain on the left, the selected effect on the right -->
+    <!-- The FX window's two panes (TabForge style): the chain on the left, the selected effect's editor on the right -->
     <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" Grid.IsSharedSizeScope="True">
 
         <!-- Left: the chain in signal order -->
@@ -21,7 +19,7 @@
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="vm:FxSlotViewModel">
                                 <Grid ColumnSpacing="8" VerticalAlignment="Center"
-                                      ToolTip.Tip="Double-click: the effect in its own window (again: back here) · drag: reorder · Ctrl or Shift+click: select several">
+                                      ToolTip.Tip="Double-click: own window · drag: reorder">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" SharedSizeGroup="FxSlotNumber" />
                                         <ColumnDefinition Width="Auto" />
@@ -29,7 +27,7 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="{Binding Number}" Classes="muted" TextAlignment="Right" VerticalAlignment="Center"
-                                               ToolTip.Tip="Its place in the chain: the sound passes the effects in order, top to bottom" />
+                                               ToolTip.Tip="Order in the chain, top to bottom" />
                                     <CheckBox Grid.Column="1" IsChecked="{Binding Enabled}" ToolTip.Tip="On or bypassed" MinWidth="0" />
                                     <TextBlock Grid.Column="2" Text="{Binding Tag}" Classes="muted" FontSize="11" VerticalAlignment="Center" ToolTip.Tip="{Binding KindText}" />
                                     <TextBlock Grid.Column="3" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
@@ -40,69 +38,34 @@
                     <Border x:Name="SelectionBand" BorderBrush="{DynamicResource BrushAccent}" BorderThickness="1">
                         <Border Background="{DynamicResource BrushAccent}" Opacity="0.15" />
                     </Border>
-                    <TextBlock Text="Empty chain. Use Add... to load an effect." Classes="muted" TextWrapping="Wrap"
+                    <TextBlock Text="Empty chain." Classes="muted" TextWrapping="Wrap"
                                IsVisible="{Binding IsEmpty}" Margin="10" VerticalAlignment="Top" />
                 </Grid>
             </Border>
 
-            <WrapPanel Grid.Row="1" Orientation="Horizontal" MinHeight="30">
-                <Button x:Name="AddButton" Tag="scope" Classes="scope fxbtn" Click="OnAddClick" HorizontalContentAlignment="Center" Margin="0,0,6,0">
-                    <StackPanel Orientation="Horizontal" Spacing="8"><TextBlock Text="Add..." /><TextBlock Text="Ctrl+N" Classes="muted" FontSize="10" VerticalAlignment="Center" /></StackPanel>
-                </Button>
-                <Button Tag="scope" Classes="scope fxbtn" Command="{Binding RemoveCommand}" HorizontalContentAlignment="Center" Margin="0,0,6,0">
-                    <StackPanel Orientation="Horizontal" Spacing="8"><TextBlock Text="Remove" /><TextBlock Text="Del" Classes="muted" FontSize="10" VerticalAlignment="Center" /></StackPanel>
-                </Button>
-                <!-- The host's own buttons on the same line (the FX window's Forget program) -->
+            <!-- Add and Remove, then the host's own buttons on the same line (the FX window's Forget program) -->
+            <WrapPanel Grid.Row="1" Classes="toolbar">
+                <Button x:Name="AddButton" Classes="pill" Content="Add…" Click="OnAddClick" ToolTip.Tip="Add an effect to the end of the chain (Ctrl+N)" />
+                <Button Classes="pill" Content="Remove" Command="{Binding RemoveCommand}" ToolTip.Tip="Remove the selected effects (Delete)" />
                 <ContentPresenter x:Name="ToolsHost" />
             </WrapPanel>
         </Grid>
 
-        <!-- Right: how the selected effect's editor shows (Parameters, Scale), the editor (cards, the equaliser, a plug-in's settings
-             list or its own window), then preset / wet / on -->
-        <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto" RowSpacing="8">
-            <WrapPanel Orientation="Horizontal" IsVisible="{Binding HasSelection}">
-                <Button Classes="pill" Classes.custom="{Binding Selected.ShowsParameters}" Content="Parameters"
-                        Command="{Binding Selected.ToggleParametersCommand}" IsEnabled="{Binding Selected.CanShowParameters}"
-                        ToolTip.Tip="{Binding Selected.ParametersTip}" ToolTip.ShowOnDisabled="True" VerticalAlignment="Center" Margin="0,0,14,0" />
-                <StackPanel Orientation="Horizontal" Spacing="8" ToolTip.Tip="{Binding Selected.ScaleTip}" ToolTip.ShowOnDisabled="True">
-                    <TextBlock Text="Scale" Classes="muted" VerticalAlignment="Center" />
-                    <ComboBox Classes="tool" ItemsSource="{x:Static vm:EditorScale.Texts}" SelectedItem="{Binding Selected.ScaleText}"
-                              IsEnabled="{Binding Selected.CanScale}" VerticalAlignment="Center" />
+        <!-- Right: the selected effect's editor (cards, the equaliser, a plug-in's settings list or its own window) with all the
+             height; its controls (preset, wet, on, Parameters, Scale, Pop out) are in the FX window's toolbar -->
+        <Border Grid.Column="1" Classes="pane" BorderThickness="1" CornerRadius="6" Background="{DynamicResource BrushSidebar}" Padding="6">
+            <Grid>
+                <Panel IsVisible="{Binding ShowsCards}">
+                    <vm:EffectEditorView x:Name="EditorView" DataContext="{Binding Selected}" />
+                </Panel>
+                <vm:PluginEditorArea x:Name="PluginArea" Editor="{Binding PluginEditor}" IsVisible="{Binding ShowsPluginEditor}"
+                                     UserScale="{Binding Selected.ScaleFactor, FallbackValue=1}" />
+                <StackPanel IsVisible="{Binding HasHint}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" MaxWidth="360">
+                    <TextBlock Text="{Binding Hint}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" />
+                    <Button Classes="pill" Content="Put back" Command="{Binding PutBackCommand}" IsVisible="{Binding CanPutBack}"
+                            HorizontalAlignment="Center" ToolTip.Tip="Closes the effect's own window and shows its editor here" />
                 </StackPanel>
-            </WrapPanel>
-
-            <Border Grid.Row="1" Classes="pane" BorderThickness="1" CornerRadius="6" Background="{DynamicResource BrushSidebar}" Padding="6">
-                <Grid>
-                    <Panel IsVisible="{Binding ShowsCards}">
-                        <vm:EffectEditorView x:Name="EditorView" DataContext="{Binding Selected}" />
-                    </Panel>
-                    <vm:PluginEditorArea x:Name="PluginArea" Editor="{Binding PluginEditor}" IsVisible="{Binding ShowsPluginEditor}"
-                                         UserScale="{Binding Selected.ScaleFactor, FallbackValue=1}" />
-                    <StackPanel IsVisible="{Binding HasHint}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" MaxWidth="360">
-                        <TextBlock Text="{Binding Hint}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" />
-                        <Button Classes="pill" Content="Put back" Command="{Binding PutBackCommand}" IsVisible="{Binding CanPutBack}"
-                                HorizontalAlignment="Center" ToolTip.Tip="Closes the effect's own window and shows its editor here" />
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <Grid Grid.Row="2" MinHeight="30">
-                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center" IsVisible="{Binding HasSelection}">
-                    <ComboBox ItemsSource="{Binding Selected.PresetChoice.Options}" SelectedItem="{Binding Selected.PresetChoice.Selected}"
-                              IsVisible="{Binding Selected.HasPresets}" Width="170" Margin="0,0,14,0" VerticalAlignment="Center" />
-                    <TextBlock Text="Wet" VerticalAlignment="Center" Margin="0,0,8,0" Classes="muted" />
-                    <Slider Minimum="0" Maximum="100" Value="{Binding Selected.Wet}" pages:SliderReset.Value="{Binding Selected.DefaultWet}"
-                            Width="130" VerticalAlignment="Center" />
-                    <TextBlock Text="{Binding Selected.Wet}" Classes="muted" MinWidth="30" TextAlignment="Right" VerticalAlignment="Center" Margin="6,0,14,0" />
-                    <CheckBox Content="On" IsChecked="{Binding Selected.Enabled}" VerticalAlignment="Center" Margin="0,0,14,0" />
-                    <Button Classes="pill" Tag="scope" Content="Pop out" Command="{Binding PopOutCommand}" IsVisible="{Binding CanPopOut}"
-                            VerticalAlignment="Center" ToolTip.Tip="Moves the effect's editor into its own window (or double-click its row)" Margin="0,0,14,0" />
-                    <Button Classes="pill" Tag="scope" Content="Put back" Command="{Binding PutBackCommand}" IsVisible="{Binding CanPutBack}"
-                            VerticalAlignment="Center" ToolTip.Tip="Closes the effect's own window and shows its editor here (or double-click its row)" Margin="0,0,14,0" />
-                    <TextBlock Text="{Binding Selected.RunsNote}" Classes="muted" VerticalAlignment="Center" TextWrapping="Wrap"
-                               ToolTip.Tip="{Binding Selected.RunsDetail}" />
-                </WrapPanel>
             </Grid>
-        </Grid>
+        </Border>
     </Grid>
 </UserControl>

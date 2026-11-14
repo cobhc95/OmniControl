@@ -52,7 +52,6 @@ public sealed partial class FxChainViewModel : ObservableObject, IDisposable
 
     public bool HasSelection => Selected is not null;
     public bool IsEmpty => Slots.Count == 0;
-    public string EffectCount => Slots.Count == 1 ? "1 effect" : $"{Slots.Count} effects";
 
     /// <summary>The selected plug-in's own editor, shown inside the panel (null: none, see <see cref="Hint"/>).</summary>
     [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowsPluginEditor))] private IPluginEditor? _pluginEditor;
@@ -65,6 +64,12 @@ public sealed partial class FxChainViewModel : ObservableObject, IDisposable
 
     public bool CanPopOut => Selected is { } s && !_editors.IsPoppedOut(s.Slot);
     public bool CanPutBack => Selected is { } s && _editors.IsPoppedOut(s.Slot);
+
+    /// <summary>The toolbar's one Pop out / Put back control: what it does now, and its tooltip.</summary>
+    public string PopText => CanPutBack ? "Put back" : "Pop out";
+    public string PopTip => CanPutBack
+        ? "Back into the FX window (or double-click its row)"
+        : "Own window (or double-click its row)";
 
     private string _editorNotice = string.Empty;
 
@@ -137,6 +142,8 @@ public sealed partial class FxChainViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(ShowsCards));
         OnPropertyChanged(nameof(CanPopOut));
         OnPropertyChanged(nameof(CanPutBack));
+        OnPropertyChanged(nameof(PopText));
+        OnPropertyChanged(nameof(PopTip));
     }
 
     [RelayCommand]
@@ -149,6 +156,13 @@ public sealed partial class FxChainViewModel : ObservableObject, IDisposable
     private void PutBack()
     {
         if (Selected is { } s) _editors.PutBack(s.Slot);
+    }
+
+    /// <summary>The toolbar's Pop out / Put back: the selected effect's editor into its own window, or back.</summary>
+    [RelayCommand]
+    private void TogglePopOutSelected()
+    {
+        if (Selected is { } s) TogglePopOut(s);
     }
 
     /// <summary>A double-click on an effect's row (TabForge's FX loader): its editor goes into its own window, or back from it.</summary>
@@ -210,7 +224,6 @@ public sealed partial class FxChainViewModel : ObservableObject, IDisposable
         Renumber();
         SaveChain();
         OnPropertyChanged(nameof(IsEmpty));
-        OnPropertyChanged(nameof(EffectCount));
         _mixer.SetFxOn(_key, _mixer.IsFxOn(_key)); // refreshes the effect count on the Volume list
     }
 

@@ -1,5 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using OmniControl.App.Hotkeys;
 using OmniControl.App.Pages;
 using OmniControl.App.Pages.AppSettingsPage;
@@ -217,6 +218,22 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool _isSearching;
 
     private void Report(string message) => Status = message;
+
+    /// <summary>The main window's own keys (MainWindow.axaml.cs), for the Keyboard shortcuts window.</summary>
+    private const string ShellKeys =
+        "Tab moves between the sidebar and the page; Up/Down move through the sidebar (round at the ends). "
+        + "Ctrl+F searches: Down or Enter goes to the results, Esc goes back. F1 shows this list.";
+
+    /// <summary>The footer's Keyboard shortcuts (and F1): the open page's own keys, the keys every card list shares and the main window's, in the small message window.</summary>
+    [RelayCommand]
+    private void ShowKeyboardShortcuts()
+    {
+        var sections = new List<string>();
+        if (!IsSearching && CurrentPage is { KeyHelp.Length: > 0 } page) sections.Add(page.Title + Environment.NewLine + page.KeyHelp);
+        sections.Add("Cards" + Environment.NewLine + PageViewModel.CardKeys);
+        sections.Add("Everywhere" + Environment.NewLine + ShellKeys);
+        _ = _fxWindows.AskAsync(new EngineMessage("Keyboard shortcuts", string.Join(Environment.NewLine + Environment.NewLine, sections)));
+    }
 
     private void UpdateActiveLayer() => ActiveLayer = $"Active layer: {_mouse.Settings.LayerLabels()[_mouse.Layer]}";
 

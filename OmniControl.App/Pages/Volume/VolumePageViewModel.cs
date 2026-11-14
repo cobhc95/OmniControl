@@ -35,6 +35,11 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
     private readonly DispatcherTimer _meterTimer = new() { Interval = Timing.MeterFrame };
 
     public override string Title => "Volume";
+
+    public override string KeyHelp => string.Join(Environment.NewLine,
+        "Ctrl+Tab / Ctrl+Shift+Tab switch between Mixer and Wiring.",
+        "Mixer: Left/Right choose a part of a row (the underlined words, pan, volume, mute, FX); Enter opens or adjusts it.",
+        "Wiring: Enter opens a row's menu; Esc closes it.");
     public override string Icon => "M3,9 H7 L12,4 V20 L7,15 H3 Z M15,8.5 A5,5 0 0 1 15,15.5 L16.2,17 A7,7 0 0 0 16.2,7 Z";
     public override string Keywords => "volume sound audio mixer wiring master apps programs pan balance mute fx effects chain equaliser eq compressor plays on output device microphone combine sound mode cable";
 
@@ -46,7 +51,11 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
     public bool ShowsWiring => Tabs.Current == WiringTab;
 
     /// <summary>Outputs: the master, programs, combined speakers, then the "Add program" row. Open unless the user closed it.</summary>
-    public VolumeGroup Outputs { get; } = new("Volume/Outputs", "Outputs") { ExpandedByDefault = true };
+    public VolumeGroup Outputs { get; } = new("Volume/Outputs", "Outputs")
+    {
+        ExpandedByDefault = true,
+        Tip = "The → and ← words open Wiring; the effects words and FX open the row's FX window. Programs are remembered after they close; × forgets one.",
+    };
 
     /// <summary>Microphones: recording devices and combined microphones. Open unless the user closed it (key kept from "Inputs").</summary>
     public VolumeGroup Inputs { get; } = new("Volume/Inputs", "Microphones") { ExpandedByDefault = true };
@@ -105,7 +114,7 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
         CombineGate = Gate();
         _soundModeCard = new GalleryItem("Sound mode", SoundModes.All.Select(m => m.Name).ToList(), IndexOf(mixer.SoundMode),
             SoundModePreview, i => SetSoundMode(SoundModes.All[i]));
-        _combineCard = new ButtonItem("Combine devices", "Combine…", "Joins speakers or microphones into one device (Full control)",
+        _combineCard = new ButtonItem("Combine devices", "Combine…", "Joins speakers or microphones (Full control)",
             () => _ = CombineAsync());
         _master = NewMaster();
         _add = new AddProgramItem { Add = path => { var key = mixer.AddProgram(path); report($"Added {mixer.Find(key)?.Name}"); } };

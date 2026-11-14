@@ -52,8 +52,5 @@
                               ToolTip.Tip="How far the sliders reach; no gain changes when you switch" />
             </StackPanel>
         </WrapPanel>
-
-        <TextBlock Classes="hint"
-                   Text="Left/Right move between bands; Up/Down change a band (Shift or PageUp/PageDown: large steps, Ctrl: fine); Home or 0 sets it to 0 dB; Esc, then Up/Down, goes to the next card. Drag across the sliders to draw a curve; double-click a slider for 0 dB; Parameters lets you type values." />
     </StackPanel>
 </UserControl>

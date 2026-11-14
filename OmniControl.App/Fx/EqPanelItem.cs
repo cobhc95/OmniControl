@@ -13,6 +13,10 @@ namespace OmniControl.App.Fx;
 /// </summary>
 public sealed partial class EqPanelItem : ObservableObject, IEditorItem, ISideNavigable, IEqEditor, IRedrawSource
 {
+    /// <summary>The editor's keys, listed in the FX window's Keyboard shortcuts (handled by the shared card keys and <see cref="ISideNavigable"/>).</summary>
+    public const string KeyHelp = "Left/Right pick a band; Up/Down move between the controls; Enter on a slider adjusts it with Left/Right. "
+        + "With the mouse: drag a point on the graph; the wheel over a point changes its bandwidth; double-click a value to type it.";
+
     private bool _loading;
 
     public EqPanelItem() => Load(Eq.Default());

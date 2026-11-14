@@ -3,7 +3,7 @@
              xmlns:pages="using:OmniControl.App.Pages"
              x:Class="OmniControl.App.Pages.ToggleRow"
              x:DataType="pages:ToggleItem">
-    <Panel>
+    <Panel ToolTip.Tip="{Binding Tip}">
         <!-- Full-width card: label column shared with the other cards so the switches line up -->
         <Grid Margin="0,1" IsVisible="{Binding !Half}">
             <Grid.ColumnDefinitions>

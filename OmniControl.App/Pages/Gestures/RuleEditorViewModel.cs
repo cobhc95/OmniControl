@@ -14,6 +14,10 @@ namespace OmniControl.App.Pages.Gestures;
 /// </summary>
 public sealed partial class RuleEditorViewModel : ObservableObject
 {
+    /// <summary>The rule editor's keys (handled by RuleEditorWindow), listed in the Gestures page's Keyboard shortcuts.</summary>
+    public const string KeyHelp =
+        "Left/Right move through the sentence; Enter changes a block or adds one; Delete removes a block; Tab goes on to the settings and buttons; Esc closes.";
+
     private readonly RuleService _rules;
     private readonly Func<EngineMessage, Task<bool>> _ask;
     private readonly Action _changed;
@@ -171,7 +175,7 @@ public sealed partial class RuleEditorViewModel : ObservableObject
         if (slot.Kind == RuleSlotKind.Step && RuleSteps.NeedsApproval(stored) && !_rules.IsApproved(stored))
         {
             var allowed = await _ask(new EngineMessage("Allow this command?",
-                "This rule runs the command below each time it is triggered (and when you press Test). If you change it later, OmniControl asks again.",
+                "The rule runs this command each time it triggers. Changing it later asks again.",
                 "Allow", RuleSteps.Describe(stored), ShowDetails: true));
             if (!allowed) return;
             _rules.Approve(stored);
@@ -218,7 +222,7 @@ public sealed partial class RuleEditorViewModel : ObservableObject
     public async Task<bool> DeleteAsync()
     {
         var name = Rule.Name.Length > 0 ? $"\"{Rule.Name}\"" : "This rule";
-        if (!await _ask(new EngineMessage("Delete this rule?", $"{name} will be removed. This can't be undone.", "Delete"))) return false;
+        if (!await _ask(new EngineMessage("Delete this rule?", $"{name} will be removed for good.", "Delete"))) return false;
         _delete();
         return true;
     }

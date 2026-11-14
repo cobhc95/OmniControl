@@ -125,12 +125,12 @@ public static class SoundModes
 
     public static readonly SoundMode Fast = new(
         "fast", "Fast",
-        "Lowest delay. Master and microphone effects in Windows' audio engine, programs recorded and replayed.",
+        "Lowest delay: master and microphone effects in Windows, programs recorded and replayed.",
         $"Master and microphone effects run inside Windows' audio engine through your Equalizer APO (an APO), with no added delay of its own: the master on the default playback device, a microphone when Equalizer APO is on it (ticked on the Capture tab of its Device Selector). Equalizer APO runs the equaliser, gain, IR loader and VST2 plug-ins (with their settings saved in OmniControl); VST3 plug-ins are kept but not run there. A program's effects record the program (Windows' process loopback capture), mute the original and play the processed copy, about {ReplayDelay} later. The master plays on one device; combining devices needs Full control.",
         new[]
         {
             new ModeTag("Lowest delay", "Master effects add no noticeable delay.", TagTone.Good),
-            new ModeTag("Some protected apps may not play", "Equalizer APO needs Windows' protected audio path switched off (its installer does this), so a few copy-protected players may not play.", TagTone.Caution),
+            new ModeTag("Some protected apps may not play", "Equalizer APO switches off Windows' protected audio path.", TagTone.Caution),
         },
         InWindows(),
         InWindows(),
@@ -140,12 +140,12 @@ public static class SoundModes
 
     public static readonly SoundMode Full = new(
         "full", "Full control",
-        "Everything goes through a virtual cable and OmniControl's own engine: any routing, combining and effects.",
+        "Everything through a virtual cable and OmniControl's engine: any routing, combining and effects.",
         $"Sound is sent to a virtual sound device (VB-CABLE) and OmniControl's engine processes it and plays it where you choose: several devices at once, combined speakers or microphones, effects on the master, programs and microphones. Each of those needs its own cable. Adds a little delay (about {ReplayDelay}). Windows' own system sounds keep playing on the default device directly.",
         new[]
         {
-            new ModeTag($"{ReplayDelay} delay", "Adds a little delay: fine for music, noticeable in games and calls.", TagTone.Info),
-            new ModeTag("Uses VB-CABLE", "Needs the free VB-CABLE driver (donationware by VB-Audio, www.vb-cable.com); one cable per combined device, processed microphone or processed program.", TagTone.Info),
+            new ModeTag($"{ReplayDelay} delay", "Fine for music, noticeable in games and calls.", TagTone.Info),
+            new ModeTag("Uses VB-CABLE", "Needs the free VB-CABLE driver (vb-cable.com); one cable per combined device, processed microphone or program.", TagTone.Info),
         },
         ThroughCable(),
         ThroughCable(),
@@ -200,7 +200,7 @@ public static class SoundModes
     /// <summary>Why Fast mode can't run program effects here, or null when it can (or nobody has tested yet).</summary>
     public static string? CaptureMissing(SoundFacts facts) =>
         !facts.Support.ProcessLoopback ? "Needs Windows 10 version 2004 or later"
-        : !facts.CaptureWorks ? "Recording a program stops when it is muted on this PC"
+        : !facts.CaptureWorks ? "Recording stops when the program is muted here"
         : null;
 
     /// <summary>
@@ -261,12 +261,12 @@ public static class SoundModes
         var apo = facts.Support.Apo;
         var master = ApoInUse(apo) is { } inUse
             ? new ModeStatus($"Master: {inUse}", TagTone.Good, "Master effects run in Equalizer APO on the default playback device.")
-            : new ModeStatus($"Master: {ApoMissing(apo)}", TagTone.Caution, "Master effects in Fast mode need Equalizer APO on the default playback device.");
+            : new ModeStatus($"Master: {ApoMissing(apo)}", TagTone.Caution, "Needs Equalizer APO on the default playback device.");
         var programs = CaptureMissing(facts) is { } missing
-            ? new ModeStatus($"Programs: {missing}", TagTone.Caution, "Programs' effects in Fast mode record the program and mute the original. Full control works without that.")
+            ? new ModeStatus($"Programs: {missing}", TagTone.Caution, "Fast mode records a program and mutes the original.")
             : facts.CaptureTested
                 ? new ModeStatus("Programs: ready", TagTone.Good, "The last Test found that a program can be recorded while it is muted.")
-                : new ModeStatus("Programs: not tested yet", TagTone.Info, "Give a playing program an effect and press Test on its Volume row to check that recording works on this PC.");
+                : new ModeStatus("Programs: not tested yet", TagTone.Info, "Press Test on a playing program's row to check.");
         return new[] { master, programs, MicrophonesStatus(apo) };
     }
 
@@ -279,8 +279,8 @@ public static class SoundModes
                 "Microphone effects run in Equalizer APO on the microphones ticked on the Capture tab of its Device Selector.");
         return apo.UpstreamInstalled
             ? new ModeStatus("Microphones: Equalizer APO is on none", TagTone.Info,
-                "To process a microphone in Fast mode, tick it on the Capture tab of Equalizer APO's Device Selector (Choose devices).")
-            : new ModeStatus("Microphones: need Equalizer APO", TagTone.Info, "Microphone effects in Fast mode run in Equalizer APO; Full control works without it.");
+                "Tick it on the Capture tab of Equalizer APO's Device Selector.")
+            : new ModeStatus("Microphones: need Equalizer APO", TagTone.Info, "Fast mode runs microphone effects in Equalizer APO.");
     }
 
     private static IReadOnlyList<ModeStatus> FullStatus(SoundFacts facts)
@@ -289,7 +289,7 @@ public static class SoundModes
         return new[]
         {
             CablesMissing(facts.Support) is { } missing
-                ? new ModeStatus(missing, TagTone.Caution, "Full control sends sound through a virtual cable; install VB-CABLE first.")
+                ? new ModeStatus(missing, TagTone.Caution, "Install VB-CABLE first.")
                 : new ModeStatus(cables.Count == 1 ? "Ready · 1 virtual cable" : $"Ready · {cables.Count} virtual cables", TagTone.Good,
                     "Found: " + string.Join(", ", cables.Select(c => c.Name)) + ". Each combined device, processed microphone or processed program uses one."),
         };

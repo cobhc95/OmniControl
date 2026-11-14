@@ -3,7 +3,7 @@
              xmlns:pages="using:OmniControl.App.Pages"
              x:Class="OmniControl.App.Pages.GroupHeader"
              x:DataType="pages:CardGroup">
-    <Button Classes="groupHeader" Tag="grouphdr" Click="OnClick">
+    <Button Classes="groupHeader" Tag="grouphdr" Click="OnClick" ToolTip.Tip="{Binding Tip}">
         <Grid ColumnDefinitions="Auto,Auto,Auto,*">
             <PathIcon Classes="chev" Classes.collapsed="{Binding !IsExpanded}" Data="M5,9 L12,16 L19,9 Z"
                       Width="12" Height="12" Margin="0,0,10,0" VerticalAlignment="Center" />

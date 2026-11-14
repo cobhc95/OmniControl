@@ -84,6 +84,6 @@
         <vm:CableView Grid.Column="2" DataContext="{Binding Cable}" />
 
         <Button Grid.Column="3" Tag="scope" Classes="pill glyph" Content="×" Command="{Binding Source.RemoveCommand}" IsVisible="{Binding Source.CanForget}"
-                ToolTip.Tip="Remove this row (its settings are forgotten)" VerticalAlignment="Center" />
+                ToolTip.Tip="Remove (forgets its settings)" VerticalAlignment="Center" />
     </Grid>
 </UserControl>

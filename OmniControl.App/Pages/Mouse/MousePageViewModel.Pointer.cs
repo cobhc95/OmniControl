@@ -43,10 +43,10 @@ public sealed partial class MousePageViewModel
         foreach (var control in PointerControls.All) _pointerSearch.Add((CardFor(control), control.Keywords));
         var cards = _pointerSearch.Select(e => e.Card).ToList();
         cards.Add(new ButtonItem("Pointer size and colour", WindowsPageButton,
-            "Windows sets the pointer's size and colour itself, in its Accessibility settings.",
+            "Set in Windows' Accessibility settings.",
             () => OpenWindowsPage(PointerSettings.WindowsPointerLookPage)) { Half = true });
         cards.Add(new ButtonItem("Scroll inactive windows", WindowsPageButton,
-            "Whether the wheel scrolls the window under the pointer is set in Windows' mouse settings.",
+            "Set in Windows' mouse settings.",
             () => OpenWindowsPage(PointerSettings.WindowsMousePage)) { Half = true });
 
         foreach (var role in CursorRoles.All)
@@ -55,17 +55,21 @@ public sealed partial class MousePageViewModel
         var shapes = new ItemGroup("Mouse/Pointer/Shapes", "Pointers", _pointerFiles.Select(f => (object)f.Card).ToList());
 
         _restoreCard = new ButtonItem("Restore my original values", "Restore",
-            "Puts every pointer setting and pointer back as it was before OmniControl first changed one.", RestorePointerOriginal) { Half = true };
+            "Back to how they were before OmniControl changed them.", RestorePointerOriginal) { Half = true };
         PointerFooter = new object[]
         {
-            new ButtonItem("Reset to Windows defaults", "Reset", "Every pointer setting and pointer back to how Windows starts.", ResetPointerDefaults) { Half = true },
+            new ButtonItem("Reset to Windows defaults", "Reset", "Back to how Windows starts.", ResetPointerDefaults) { Half = true },
             _restoreCard,
         };
 
         _pointerSearch.AddRange(cards.Skip(PointerControls.All.Count).Concat(_pointerFiles.Select(f => (object)f.Card)).Concat(PointerFooter)
             .Select(card => (card, "pointer shape scheme file size colour color scroll inactive windows reset restore defaults")));
 
-        PointerGroup = new ParentGroup("Mouse/Pointer", PointerControls.GroupName, $"{cards.Count} settings", cards);
+        PointerGroup = new ParentGroup("Mouse/Pointer", PointerControls.GroupName, $"{cards.Count} settings", cards)
+        {
+            Tip = "Windows' own mouse settings: they change at once, stay after a restart and show what Windows has now. Your values from before OmniControl's "
+                  + "first change are kept, so Restore can put them all back. Swapping the buttons asks to be kept and goes back by itself if you don't.",
+        };
         PointerGroup.Subgroups.Add(shapes);
 
         _pointer.WriteFailed += OnPointerWriteFailed;
@@ -107,7 +111,7 @@ public sealed partial class MousePageViewModel
             if (_pointerSliders.TryGetValue(value, out var slider))
             {
                 if (now is { } n) { slider.Load(n); slider.Availability.MakeAvailable(); }
-                else slider.Availability.MakeUnavailable("Windows didn't say what this is set to.");
+                else slider.Availability.MakeUnavailable("Windows didn't say.");
             }
             else if (now is { } on) _pointerSwitches[value].Load(on == 1);
         }
@@ -147,7 +151,7 @@ public sealed partial class MousePageViewModel
     private void UpdateRestoreCard()
     {
         if (_pointer.HasOriginal) _restoreCard.Availability.MakeAvailable();
-        else _restoreCard.Availability.MakeUnavailable("OmniControl hasn't changed a pointer setting yet, so there is nothing to restore.");
+        else _restoreCard.Availability.MakeUnavailable("Nothing changed yet.");
     }
 
     private OperationResult SetPointerValue(PointerControl control, int value)

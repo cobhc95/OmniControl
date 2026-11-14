@@ -2,6 +2,7 @@ using Avalonia.Threading;
 using OmniControl.App.Audio.Engine;
 using OmniControl.App.Hotkeys;
 using OmniControl.App.Mouse;
+using OmniControl.App.Picker;
 using OmniControl.App.Osd;
 using OmniControl.Core.Engine.Mouse;
 using OmniControl.Core.Engine.Trackpad;
@@ -16,6 +17,10 @@ namespace OmniControl.App.Pages.Mouse;
 public sealed partial class MousePageViewModel : PageViewModel
 {
     public override string Title => "Mouse and Trackpad";
+
+    public override string KeyHelp => string.Join(Environment.NewLine,
+        "A pair of half-width cards reads left, then right. Enter on an action (or its cogwheel) opens the action picker.",
+        "Action picker: " + PickerModel.KeyHelp);
     public override bool ShowsOwnHeader => true; // the on/off switch sits on the title line
     public override string Icon => "M12,2 C8.13,2 5,5.13 5,9 V15 C5,18.87 8.13,22 12,22 C15.87,22 19,18.87 19,15 V9 C19,5.13 15.87,2 12,2 Z M11,5 H13 V10 H11 Z M5,11.5 H19 V13 H5 Z";
     public override string Keywords => "mouse buttons remap layer wheel tilt x-mouse button control side button middle click " + TrackpadKeywords + " " + PointerKeywords;
@@ -88,7 +93,12 @@ public sealed partial class MousePageViewModel : PageViewModel
 
         Primary = new object[] { _enabled };
         // The key stays "Mouse/Buttons" so a group the user opened before the rename stays open.
-        ButtonsGroup = new ItemGroup("Mouse/Buttons", "Mouse Buttons", buttonCards.Cast<object>().ToList());
+        ButtonsGroup = new ItemGroup("Mouse/Buttons", "Mouse Buttons", buttonCards.Cast<object>().ToList())
+        {
+            Tip = "A button left at Default works as Windows normally does. The Layer drop-down shows the layer in force and changes it; a button set to "
+                  + "\"Hold for layer N\" uses layer N while held. Over OmniControl's own window the left and right buttons are never remapped. Windows does "
+                  + "not pass mouse input to programs running as administrator unless OmniControl runs as administrator too.",
+        };
         TrackpadGroup = BuildTrackpadGroup(gestureCards, report);
         BuildPointerGroup();
 
@@ -111,7 +121,7 @@ public sealed partial class MousePageViewModel : PageViewModel
             _ => _enabled.IsOn = !_enabled.IsOn));
         hotkeys.Register(new HotkeyAction("mouse.layer.next", "Next mouse layer", Title, "mouse layer switch next",
             _ => mouse.StepLayer()));
-        hotkeys.Register(new HotkeyAction("mouse.trackpad.toggle", "Toggle OmniControl trackpad gestures", Title, "trackpad touchpad gestures swipe pinch on off",
+        hotkeys.Register(new HotkeyAction("mouse.trackpad.toggle", "Toggle trackpad gestures", Title, "trackpad touchpad gestures swipe pinch on off",
             _ => _trackpadOn.IsOn = !_trackpadOn.IsOn));
         RegisterPointerActions(hotkeys);
     }

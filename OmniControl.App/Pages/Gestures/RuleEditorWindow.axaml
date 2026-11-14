@@ -31,7 +31,7 @@
                     </DataTemplate>
                     <DataTemplate DataType="g:SentenceJoin">
                         <Button Classes="blockjoin" Content="{Binding Text}" Click="OnJoinClick"
-                                ToolTip.Tip="and: every condition must hold. or: any one is enough. Applies to all conditions of this rule." />
+                                ToolTip.Tip="and: all must hold. or: any one is enough." />
                     </DataTemplate>
                     <DataTemplate DataType="g:SentenceAdd">
                         <Button Classes="blockadd" Content="{Binding Text}" Click="OnAddClick" />
@@ -54,11 +54,8 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <TextBlock Classes="hint small"
-                   Text="Left/Right move through the sentence; Enter changes a block or adds one; Delete removes a block; Tab goes on to the settings and buttons. The first rule in the list that matches wins, ahead of the gestures and the mouse and trackpad mappings. Rules never run while OmniControl's window is active or under the pointer. Test runs the actions once now, where the pointer is." />
-
         <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="8">
-            <Button Classes="pill" Content="Test" IsEnabled="{Binding CanTest}" Click="OnTestClick" ToolTip.Tip="Run its actions once now" />
+            <Button Classes="pill" Content="Test" IsEnabled="{Binding CanTest}" Click="OnTestClick" ToolTip.Tip="Run it once now, at the pointer" />
             <Button Grid.Column="1" Classes="pill" Content="Copy details" IsVisible="{Binding HasFailure}" Click="OnCopyClick" />
             <Button Grid.Column="2" Classes="pill" Content="Delete rule" Click="OnDeleteClick" />
             <Button Grid.Column="4" Classes="primary" Content="Close" Click="OnCloseClick" />

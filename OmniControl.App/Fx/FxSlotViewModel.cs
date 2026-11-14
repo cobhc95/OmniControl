@@ -43,16 +43,16 @@ public sealed partial class FxSlotViewModel : ObservableObject
     /// <summary>Which engines change the sound with this effect (from the catalog's <see cref="FxKind.Engines"/>), said plainly.</summary>
     public string RunsNote => FxCatalog.EnginesOf(_slot) switch
     {
-        FxEngines.None => "Saved only: this effect doesn't process sound yet",
-        FxEngines.Program => "Runs in OmniControl's engine (not in Equalizer APO, which runs the master and microphones in Fast mode)",
-        FxEngines.Apo => "Runs only in Equalizer APO (the master and microphones in Fast mode)",
-        _ when IsPlugin => "Runs in both sound modes; in Equalizer APO with the settings saved here",
+        FxEngines.None => "Saved only: not processed yet",
+        FxEngines.Program => "Runs in OmniControl's engine only",
+        FxEngines.Apo => "Runs in Equalizer APO only",
+        _ when IsPlugin => "Runs in both sound modes",
         _ => "Runs in both sound modes",
     };
 
     /// <summary>The detail behind <see cref="RunsNote"/> (its tooltip) for a plug-in Equalizer APO also runs; null otherwise.</summary>
     public string? RunsDetail => IsPlugin && FxCatalog.EnginesOf(_slot).HasFlag(FxEngines.Apo)
-        ? "In Fast mode Equalizer APO runs this plug-in for the master and microphones inside Windows' audio engine, without its window, with the settings saved in OmniControl: changes made in its window reach Windows when the window closes. Only at a wet mix of 100 %. A plug-in that misbehaves there can interrupt Windows audio."
+        ? "Fast mode: Equalizer APO runs it inside Windows, without its window, with the settings saved here; changes reach Windows when its window closes. Only at a wet mix of 100 %."
         : null;
 
     public bool Enabled

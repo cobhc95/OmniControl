@@ -94,7 +94,7 @@ public sealed partial class VolumePageViewModel
     private async Task ForgetComboAsync(string key)
     {
         if (_mixer.CombinedOf(key) is not { } c) return;
-        if (!await _ask(new EngineMessage($"Remove {c.Name}?", "Programs that play on it go back to the master; apps that use its cable keep the cable but hear nothing from it.", "Remove"))) return;
+        if (!await _ask(new EngineMessage($"Remove {c.Name}?", "Programs on it go back to the master; apps using its cable hear nothing.", "Remove"))) return;
         _mixer.RemoveCombined(key);
         _report($"Removed {c.Name}");
     }

@@ -13,9 +13,9 @@ namespace OmniControl.App.Pages.Displays;
 /// </summary>
 internal sealed class HardwareDisplayItem
 {
-    private const string Checking = "Reading what this monitor supports...";
-    private const string NotAnswering = "This monitor isn't answering DDC/CI. Turn DDC/CI on in its own menu, then press Refresh.";
-    private const string NotListed = "This monitor doesn't say which values it accepts";
+    private const string Checking = "Reading the monitor...";
+    private const string NotAnswering = "No DDC/CI answer. Turn it on in the monitor's menu, then Refresh.";
+    private const string NotListed = "Values not reported";
     private const string Waiting = "...";
 
     private readonly IHardwareAccess _access;
@@ -50,7 +50,7 @@ internal sealed class HardwareDisplayItem
         _preset = new ChoiceItem("Colour preset", new[] { Waiting }, Waiting, PickPreset) { Half = true };
         _input = new ChoiceItem("Input source", new[] { Waiting }, Waiting, PickInput) { Half = true };
         _power = new ButtonItem("Screen power", "Turn off",
-            "Wake it with a button on the monitor, or by using its input, as the monitor allows", PowerOff) { Half = true };
+            "Wake it with its button or input", PowerOff) { Half = true };
         cards.AddRange(new IEditorItem[] { _preset, _input, _power });
         Cards = cards;
 

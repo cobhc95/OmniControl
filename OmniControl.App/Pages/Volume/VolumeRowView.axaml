@@ -50,15 +50,15 @@
                     </Button>
                     <!-- Fast mode can't record a program on this PC: the reason, Switch to Full control, and the Test that checks again -->
                     <Border Classes="tag caution" Margin="6,0,0,0" IsVisible="{Binding ShowsCaptureCaution}"
-                            ToolTip.Tip="Fast mode runs a program's effects by recording it. Test checks again; Full control works without recording.">
+                            ToolTip.Tip="Fast mode records the program to run its effects. Test checks again.">
                         <TextBlock Text="{Binding CaptureGate.Reason}" TextWrapping="Wrap" />
                     </Border>
                     <Button Tag="scope" Classes="link small" Margin="4,0,0,0" IsVisible="{Binding ShowsCaptureCaution}"
-                            Command="{Binding CaptureGate.SwitchCommand}" ToolTip.Tip="Full control runs the effects through the virtual cable instead">
+                            Command="{Binding CaptureGate.SwitchCommand}" ToolTip.Tip="Runs the effects through the virtual cable instead">
                         <TextBlock Text="Switch to Full control" />
                     </Button>
                     <Button Tag="scope" Classes="link small" Margin="4,0,0,0" Command="{Binding RunTestCommand}" IsVisible="{Binding ShowsTest}"
-                            ToolTip.Tip="Plays a few seconds of this program through its effects, checks the original can be muted, and measures the delay">
+                            ToolTip.Tip="Plays a few seconds through the effects, checks the original can be muted, measures the delay">
                         <TextBlock Text="Test" />
                     </Button>
                     <TextBlock Text="{Binding TestNote}" Margin="4,0,0,0" TextWrapping="Wrap" IsVisible="{Binding HasTestNote}" />
@@ -82,6 +82,6 @@
                 IsEnabled="{Binding EffectsGate.IsAvailable}" ToolTip.Tip="Opens this row's FX window" VerticalAlignment="Center" />
 
         <Button Grid.Column="6" Tag="scope" Classes="pill glyph" Content="×" Command="{Binding RemoveCommand}" IsVisible="{Binding CanForget}"
-                ToolTip.Tip="Remove this row (its settings are forgotten)" VerticalAlignment="Center" />
+                ToolTip.Tip="Remove (forgets its settings)" VerticalAlignment="Center" />
     </Grid>
 </UserControl>

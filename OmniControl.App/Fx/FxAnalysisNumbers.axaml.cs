@@ -3,7 +3,7 @@ using Avalonia.Controls;
 
 namespace OmniControl.App.Fx;
 
-/// <summary>Layout only: the three live numbers of an <see cref="FxAnalysisViewModel"/>; the larger graph also says where the peak is.</summary>
+/// <summary>Layout only: the live numbers (Peak, Latency) of an <see cref="FxAnalysisViewModel"/>; the larger graph also says where the peak is.</summary>
 public partial class FxAnalysisNumbers : UserControl
 {
     /// <summary>The Peak also names its frequency ("+24.0 dB at 1.00 kHz").</summary>

@@ -92,7 +92,7 @@
            optioncard     a selectable card in a pop-down (FlyoutPresenter.optionmenu; the sound modes): name, description, tags; .selected = the current choice
            pill cog       round cogwheel beside a pill or on a group header
            pill cardaction  an action inside a pop-down card (Install, Remove, Preview changes, Test); .main = the accent-outlined action that does the job (Install)
-           scope          field-like picker or action button (device picker, Add program, Choose...); .mute / .band / .fxbtn / .usebtn are its mixer, equaliser, FX-window and confirm variants
+           scope          field-like picker or action button (device picker, Add program, Choose...); .mute / .band / .usebtn are its mixer, equaliser and confirm variants
            step           flat arrow beside a gallery
            groupHeader    the clickable header of a group panel
            graphthumb     a drawn graph that opens a larger one (the FX window's response thumbnail; Styles/Graphs.axaml)
@@ -126,8 +126,8 @@
         <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="12" />
-        <Setter Property="Padding" Value="8,4,8,2" />
-        <Setter Property="Margin" Value="0,0,0,6" />
+        <Setter Property="Padding" Value="8,3,8,2" />
+        <Setter Property="Margin" Value="0,0,0,4" />
     </Style>
     <Style Selector="Button.groupHeader">
         <Setter Property="Background" Value="Transparent" />
@@ -191,7 +191,7 @@
     <Style Selector="TextBlock.title"><Setter Property="FontSize" Value="22" /><Setter Property="FontWeight" Value="SemiBold" /></Style>
     <Style Selector="TextBlock.section"><Setter Property="FontSize" Value="13" /><Setter Property="FontWeight" Value="SemiBold" /><Setter Property="Margin" Value="0,12,0,4" /></Style>
     <Style Selector="TextBlock.muted"><Setter Property="Foreground" Value="{DynamicResource BrushMuted}" /></Style>
-    <!-- The grey help paragraph under a page or panel -->
+    <!-- A grey caption that carries state or a limit (a start-up note, "None yet"); never keyboard instructions (AGENTS.md principle 12) -->
     <Style Selector="TextBlock.hint">
         <Setter Property="Foreground" Value="{DynamicResource BrushMuted}" />
         <Setter Property="FontSize" Value="12" />
@@ -320,14 +320,6 @@
     </Style>
 
     <!-- Mixer row: mute lights in the accent, the FX power button lights green when the chain is on -->
-    <!-- FX window buttons (Add / Remove / Forget): clear accent hover and a deeper press -->
-    <Style Selector="Button.scope.fxbtn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-    </Style>
-    <Style Selector="Button.scope.fxbtn:pressed /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
-    </Style>
     <Style Selector="Button.scope.mute.on /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />

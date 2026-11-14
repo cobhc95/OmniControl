@@ -24,7 +24,7 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <TextBlock Classes="hint" Text="No bands: the sound passes unchanged. Use Add band to start." IsVisible="{Binding !HasBands}" />
+        <TextBlock Classes="hint" Text="No bands: the sound passes unchanged." IsVisible="{Binding !HasBands}" />
 
         <!-- The selected band's controls -->
         <StackPanel IsVisible="{Binding HasBands}">
@@ -38,20 +38,17 @@
             <Button Classes="pill" Tag="scope" Content="Reset defaults" Command="{Binding ResetDefaultsCommand}" Margin="0,0,16,4" VerticalAlignment="Center"
                     ToolTip.Tip="Back to four flat bands" />
             <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,12,4">
-                <TextBlock Text="Show tabs" VerticalAlignment="Center" />
+                <TextBlock Text="Tabs" VerticalAlignment="Center" />
                 <ToggleSwitch IsChecked="{Binding ShowTabs}" OnContent="On" OffContent="Off" VerticalAlignment="Center" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,12,4">
-                <TextBlock Text="Show grid" VerticalAlignment="Center" />
+                <TextBlock Text="Grid" VerticalAlignment="Center" />
                 <ToggleSwitch IsChecked="{Binding ShowGrid}" OnContent="On" OffContent="Off" VerticalAlignment="Center" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,12,4">
-                <TextBlock Text="Show phase" VerticalAlignment="Center" />
+                <TextBlock Text="Phase" VerticalAlignment="Center" />
                 <ToggleSwitch IsChecked="{Binding ShowPhase}" OnContent="On" OffContent="Off" VerticalAlignment="Center" />
             </StackPanel>
         </WrapPanel>
-
-        <TextBlock Classes="hint"
-                   Text="Left/Right pick a band; Up/Down move between the controls; Enter on a slider adjusts it with Left/Right. Drag a point on the graph; the wheel over a point changes its bandwidth; double-click a value to type it." />
     </StackPanel>
 </UserControl>

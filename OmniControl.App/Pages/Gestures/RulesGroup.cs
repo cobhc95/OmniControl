@@ -9,6 +9,7 @@ public sealed class RulesGroup : CardGroup
 
     public RulesGroup() : base("Gestures/Rules", "Custom rules", CountText(0))
     {
+        Tip = "The first matching rule wins, ahead of gestures and mappings. Rules don't run over OmniControl's own window.";
         Rules.CollectionChanged += (_, _) => Summary = CountText(Rules.Count);
     }
 

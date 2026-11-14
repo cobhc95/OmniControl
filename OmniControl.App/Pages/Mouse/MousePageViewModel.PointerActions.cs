@@ -45,9 +45,9 @@ public sealed partial class MousePageViewModel
                     break;
             }
         }
-        actions.Add(new HotkeyAction("pointer.reset", "Reset pointer settings to Windows defaults", Title, PointerKeywords + " reset defaults",
+        actions.Add(new HotkeyAction("pointer.reset", "Reset pointer settings", Title, PointerKeywords + " reset defaults",
             _ => ResetPointerDefaults(), group: group));
-        actions.Add(new HotkeyAction("pointer.restore", "Restore my original pointer settings", Title, PointerKeywords + " restore original undo",
+        actions.Add(new HotkeyAction("pointer.restore", "Restore original pointer settings", Title, PointerKeywords + " restore original undo",
             _ => RestorePointerOriginal(), group: group));
         hotkeys.Register(actions);
     }
@@ -97,9 +97,9 @@ public sealed partial class MousePageViewModel
         }
         UpdateRestoreCard();
         var seconds = (int)Timing.PointerSwapKeep.TotalSeconds;
-        var now = swapped ? "The mouse buttons are swapped: the right button now clicks." : "The mouse buttons are back to normal: the left button now clicks.";
+        var now = swapped ? "The right button now clicks." : "The left button now clicks.";
         var keep = await _ask(new EngineMessage("Keep this button swap?",
-            $"{now} Press Enter or click Keep to keep it; otherwise it goes back in {seconds} seconds.", "Keep", Dismiss: trial));
+            $"{now} It goes back in {seconds} seconds unless you keep it.", "Keep", Dismiss: trial));
         if (keep) _pointer.KeepSwap();
         else _pointer.PutBackSwap();
     }

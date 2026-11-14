@@ -15,6 +15,9 @@ public sealed partial class GalleryItem : ObservableObject, IEditorItem
     public string Label { get; }
     public IReadOnlyList<string> Options { get; }
 
+    /// <summary>A fact about the setting the label does not say, shown as the card's tooltip; null: none.</summary>
+    public string? Tip { get; init; }
+
     [ObservableProperty] private int _index;
 
     public string Name => Options[Index];

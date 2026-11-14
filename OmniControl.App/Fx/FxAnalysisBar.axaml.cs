@@ -4,7 +4,7 @@ using Avalonia.Controls;
 namespace OmniControl.App.Fx;
 
 /// <summary>
-/// Wiring only, for the FX window header's analysis: the pointer over the thumbnail and over the larger graph, a click (or Enter) on
+/// Wiring only, for the FX window toolbar's analysis: the pointer over the thumbnail and over the larger graph, a click (or Enter) on
 /// the thumbnail, and the pop-up closing are passed to the <see cref="FxAnalysisViewModel"/>, which decides when the graph opens and
 /// closes; the pop-up follows its <see cref="FxAnalysisViewModel.IsPanelOpen"/>. The window asks it to close the graph on Esc and
 /// moves the keyboard to the thumbnail (its place in the window's Tab cycle).

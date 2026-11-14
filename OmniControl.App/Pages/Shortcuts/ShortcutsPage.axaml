@@ -6,7 +6,6 @@
              x:Class="OmniControl.App.Pages.Shortcuts.ShortcutsPage"
              x:DataType="vm:ShortcutsPageViewModel">
     <StackPanel Spacing="6">
-        <TextBlock Text="Hotkeys work anywhere in Windows while OmniControl is running." Classes="muted" TextWrapping="Wrap" />
         <ItemsControl x:Name="GroupsHost" ItemsSource="{Binding Groups}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="vm:HotkeyGroup">
@@ -29,7 +28,5 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
-        <TextBlock Classes="muted" TextWrapping="Wrap"
-                   Text="Up/Down move through the group headers and their actions, Left/Right choose the hotkey or the devices. On a header, Left collapses and Right expands the group (Enter or a click toggles it). Enter on the hotkey (or a double-click) listens for keys: Esc cancels, Delete clears. Enter on the devices opens the list: Up/Down move, Space ticks several, Enter picks and closes." />
     </StackPanel>
 </UserControl>

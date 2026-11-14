@@ -7,10 +7,10 @@ using OmniControl.App.Services;
 namespace OmniControl.App.Fx;
 
 /// <summary>
-/// The FX window header's analysis of one chain: its total response (<see cref="ChainResponse"/>, recomputed on every edit through
-/// <see cref="Show"/>), the scale it is drawn at, its peak, and the live Latency and CPU of the row (read every
+/// The FX window toolbar's analysis of one chain: its total response (<see cref="ChainResponse"/>, recomputed on every edit through
+/// <see cref="Show"/>), the scale it is drawn at, its peak, and the live Latency of the row (read every
 /// <see cref="Timing.FxAnalysisRefresh"/> through the reader it is given). Every number says only what is really known: "-" while
-/// nothing runs, "none added" / "not measured here" when Equalizer APO processes the row. The larger graph's open and pinned state
+/// nothing runs, "none added" when Equalizer APO processes the row. The larger graph's open and pinned state
 /// is in FxAnalysisViewModel.Panel.cs. Dispose when the window closes.
 /// </summary>
 public sealed partial class FxAnalysisViewModel : ObservableObject, IRedrawSource, IDisposable
@@ -24,12 +24,6 @@ public sealed partial class FxAnalysisViewModel : ObservableObject, IRedrawSourc
     /// <summary>A peak up to this is no boost (float noise around 0 dB).</summary>
     private const double BoostFromDb = 0.05;
 
-    /// <summary>How much of a new CPU reading goes into the shown value (the rest is the previous value), so it does not jump.</summary>
-    private const double CpuSmoothing = 0.5;
-
-    /// <summary>Below this many percent of a core the CPU is shown with one decimal.</summary>
-    private const double CpuDecimalsBelow = 10;
-
     private const int CurvePoints = 400;
 
     /// <summary>Where the total response is worked out and drawn: 20 Hz to 20 kHz, evenly on a log scale.</summary>
@@ -42,10 +36,8 @@ public sealed partial class FxAnalysisViewModel : ObservableObject, IRedrawSourc
     private ChainCurve _curve = new(new double[Freqs.Length], 0, Eq.MinFreq, Array.Empty<string>(), false);
     private FxEngines _engine = FxEngines.Program;
     private RowLoad _load;
-    private CpuSample? _lastCpu;
-    private double? _cpuShare;
 
-    /// <param name="readLoad">Where the row's effects run now and what they cost (<see cref="EffectsEngine.LoadOf"/>).</param>
+    /// <param name="readLoad">Where the row's effects run now and their delay (<see cref="EffectsEngine.LoadOf"/>).</param>
     public FxAnalysisViewModel(Func<RowLoad> readLoad)
     {
         _readLoad = readLoad;
@@ -78,9 +70,9 @@ public sealed partial class FxAnalysisViewModel : ObservableObject, IRedrawSourc
     public string PeakAtText => IsOn ? $"at {DrawKit.ReadoutFreq(PeakHz)}" : string.Empty;
 
     public string PeakTip =>
-        !IsOn ? "Effects are off: the graph shows what the chain would do; nothing is applied now."
+        !IsOn ? "Effects are off: the graph shows what the chain would do."
         : HasBoost ? $"Boost of {DrawKit.ReadoutDb(PeakDb)} at about {DrawKit.ReadoutFreq(PeakHz)}. {EngineStatus.HeadroomNote(_engine)}"
-        : "No boost: the highest point of the curve is at or below 0 dB.";
+        : "No boost: the curve stays at or below 0 dB.";
 
     public string LatencyText => _load.Place switch
     {
@@ -91,28 +83,14 @@ public sealed partial class FxAnalysisViewModel : ObservableObject, IRedrawSourc
 
     public string LatencyTip => _load.Place switch
     {
-        LoadPlace.Own => $"About {_load.DelayMs} ms in all (an estimate): recording, waiting and playing again {_load.DelayMs - _load.PluginDelayMs} ms"
-                         + (_load.PluginDelayMs > 0 ? $", plug-ins {_load.PluginDelayMs} ms as they report it." : ", no plug-in latency."),
-        LoadPlace.Apo => "Equalizer APO processes the sound inside Windows' audio engine and adds no delay of its own"
-                         + (_curve.RunsPlugins ? "; a plug-in it runs may add some, which it reports only to Equalizer APO." : "."),
+        LoadPlace.Own => $"About {_load.DelayMs} ms (estimate): recording and playing {_load.DelayMs - _load.PluginDelayMs} ms"
+                         + (_load.PluginDelayMs > 0 ? $", plug-ins {_load.PluginDelayMs} ms." : ", no plug-in delay."),
+        LoadPlace.Apo => "Equalizer APO adds no delay of its own"
+                         + (_curve.RunsPlugins ? "; its plug-ins may add some." : "."),
         _ => NotRunningTip,
     };
 
-    public string CpuText => _load.Place switch
-    {
-        LoadPlace.Own when _cpuShare is { } share => share * 100 < CpuDecimalsBelow ? $"{share * 100:0.0} %" : $"{share * 100:0} %",
-        LoadPlace.Apo => "not measured here",
-        _ => "-",
-    };
-
-    public string CpuTip => _load.Place switch
-    {
-        LoadPlace.Own => $"The share of one CPU core OmniControl's engine spends on this row (effects, level and limiter), measured every {Timing.FxAnalysisRefresh.TotalSeconds:0.#} s.",
-        LoadPlace.Apo => "Equalizer APO runs inside Windows' audio engine, where OmniControl can't measure it.",
-        _ => NotRunningTip,
-    };
-
-    private string NotRunningTip => IsOn ? "The effects are not running now (the line under the switch says why)." : "Effects are off.";
+    private string NotRunningTip => IsOn ? "Not running now (see the status line)." : "Effects are off.";
 
     public bool HasNote => _curve.NotDrawn.Count > 0;
     public string NoteTip => "Not in the curve: " + string.Join(", ", _curve.NotDrawn) + ".";
@@ -125,7 +103,7 @@ public sealed partial class FxAnalysisViewModel : ObservableObject, IRedrawSourc
         _curve = ChainResponse.Of(chain, engine, Freqs);
         ScaleDb = ScaleFor(_curve.Db);
         Notify(nameof(IsOn), nameof(ScaleDb), nameof(ScaleText), nameof(PeakDb), nameof(PeakHz), nameof(HasBoost), nameof(PeakIsHigh),
-            nameof(PeakText), nameof(PeakAtText), nameof(PeakTip), nameof(HasNote), nameof(NoteTip), nameof(LatencyText), nameof(LatencyTip), nameof(CpuTip));
+            nameof(PeakText), nameof(PeakAtText), nameof(PeakTip), nameof(HasNote), nameof(NoteTip), nameof(LatencyText), nameof(LatencyTip));
         Redraw?.Invoke();
     }
 
@@ -146,33 +124,14 @@ public sealed partial class FxAnalysisViewModel : ObservableObject, IRedrawSourc
         return Curve[i] + (Curve[i + 1] - Curve[i]) * share;
     }
 
-    /// <summary>The engine's status for this row changed, or the reading period ended: read where it runs and what it costs.</summary>
+    /// <summary>The engine's status for this row changed, or the reading period ended: read where it runs and its delay.</summary>
     public void RefreshLoad()
     {
         _load = _readLoad();
-        if (_load.Place != LoadPlace.Own)
-        {
-            _lastCpu = null;
-            _cpuShare = null;
-        }
-        else if (_lastCpu is not { } last || _load.Cpu.AudioTicks < last.AudioTicks)
-        {
-            _lastCpu = _load.Cpu; // a new run counts from zero: start again from its first reading
-            _cpuShare = null;
-        }
-        Notify(nameof(LatencyText), nameof(LatencyTip), nameof(CpuText), nameof(CpuTip));
+        Notify(nameof(LatencyText), nameof(LatencyTip));
     }
 
-    private void OnRefresh(object? sender, EventArgs e)
-    {
-        var previous = _lastCpu;
-        RefreshLoad();
-        if (_load.Place != LoadPlace.Own || previous is not { } last || _load.Cpu.AudioTicks < last.AudioTicks) return;
-        var share = _load.Cpu.ShareSince(last); // null: no sound went through in this period, so there is nothing to show
-        _cpuShare = share is { } now && _cpuShare is { } shown ? shown + (now - shown) * CpuSmoothing : share;
-        _lastCpu = _load.Cpu;
-        Notify(nameof(CpuText));
-    }
+    private void OnRefresh(object? sender, EventArgs e) => RefreshLoad();
 
     private void Notify(params string[] names)
     {

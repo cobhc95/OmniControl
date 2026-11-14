@@ -150,7 +150,7 @@ public sealed partial class FxSlotViewModel
     public bool CanScale => !(IsPlugin && !ShowsParameters && _scaleRefused);
 
     public string ScaleTip => CanScale
-        ? "Makes the whole editor smaller or larger"
+        ? "Scale: makes the whole editor smaller or larger (Ctrl+- / Ctrl+=, Ctrl+0 for 100 %)"
         : "This plug-in did not change its window's size when asked, so OmniControl can't scale it. Its own settings may offer a size; Parameters shows a list that scales.";
 
     /// <summary>The plug-in's own window ignored the scale (see <c>IPluginEditor.TryScale</c>): it stays at 100 % and the drop-down is greyed out.</summary>

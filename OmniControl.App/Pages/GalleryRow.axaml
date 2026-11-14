@@ -3,7 +3,7 @@
              xmlns:pages="using:OmniControl.App.Pages"
              x:Class="OmniControl.App.Pages.GalleryRow"
              x:DataType="pages:GalleryItem">
-    <Grid Margin="0,1">
+    <Grid Margin="0,1" ToolTip.Tip="{Binding Tip}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
             <ColumnDefinition Width="*" />

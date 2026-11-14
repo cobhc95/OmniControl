@@ -37,12 +37,12 @@ public partial class MessageWindow : Window
         }
     }
 
-    /// <summary>Shows the window and waits until it closes.</summary>
-    public Task<bool> AskAsync()
+    /// <summary>Shows the window (kept above <paramref name="owner"/>, the main window when null) and waits until it closes.</summary>
+    public Task<bool> AskAsync(Window? owner = null)
     {
         var done = new TaskCompletionSource<bool>();
         Closed += (_, _) => done.TrySetResult(_confirmed);
-        OwnedWindow.Show(this);
+        OwnedWindow.Show(this, owner);
         return done.Task;
     }
 

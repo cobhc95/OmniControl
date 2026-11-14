@@ -4,11 +4,12 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using OmniControl.App.Audio.Engine;
 using OmniControl.App.Pages;
 
 namespace OmniControl.App.Fx;
 
-/// <summary>Wiring only: the FX window hosts the chain's <see cref="FxChainPanel"/> and passes it every key; Esc it does not use closes the window.</summary>
+/// <summary>Wiring only: the FX window hosts the chain's <see cref="FxChainPanel"/> and passes it every key; Esc it does not use closes the window; Options > Keyboard shortcuts opens the list of keys.</summary>
 public partial class FxWindow : Window
 {
     public FxWindow()
@@ -41,13 +42,13 @@ public partial class FxWindow : Window
         FxView.HandleKey(e);
         if (e.Handled || e.Key != Key.Escape) return;
         if (RowEditing.IsEditing(FocusManager?.GetFocusedElement())) return;
-        if (FxView.GetVisualDescendants().OfType<Button>().Any(b => b.Flyout?.IsOpen == true)) return;
+        if (this.GetVisualDescendants().OfType<Button>().Any(b => b.Flyout?.IsOpen == true)) return;
         Close();
         e.Handled = true;
     }
 
     /// <summary>
-    /// The header's response graph in the panel's Tab cycle: Shift+Tab from the chain list goes to it, Tab from it to the list and
+    /// The toolbar's response graph in the panel's Tab cycle: Shift+Tab from the chain list goes to it, Tab from it to the list and
     /// Shift+Tab from it to the editor (the panel's own Tab still switches between its two panes). True when the key was used.
     /// </summary>
     private bool TabToGraph(KeyEventArgs e)
@@ -67,10 +68,14 @@ public partial class FxWindow : Window
 
     private void OnAddClick(object? sender, RoutedEventArgs e) => FxView.AddEffect();
 
+    /// <summary>Options > Keyboard shortcuts: the window's keys in the small message window, kept above this window.</summary>
+    private void OnShortcutsClick(object? sender, RoutedEventArgs e) =>
+        _ = new MessageWindow(new EngineMessage("Keyboard shortcuts", FxWindowViewModel.KeyHelp)).AskAsync(this);
+
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
-        // The button sits in the chain panel's button row, whose data is the chain; it belongs to the window.
+        // The Forget button sits in the chain panel's button row, whose data is the chain; it belongs to the window.
         ForgetButton.DataContext = DataContext;
         if (DataContext is FxWindowViewModel vm) vm.CloseRequested += Close;
     }

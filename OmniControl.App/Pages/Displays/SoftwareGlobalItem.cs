@@ -23,7 +23,7 @@ internal sealed class SoftwareGlobalItem
         _osd = osd;
         var spec = DisplayControls.SoftwareSaturation;
         _saturation = new SliderItem(spec.Label, spec.Default, v => service.SetSaturation(v), report, spec.Min, spec.Max, defaultValue: spec.Default) { Half = true };
-        var reset = new ButtonItem("Reset everything", "Reset all", "Puts every display's picture, and the saturation, back to normal", resetAll) { Half = true };
+        var reset = new ButtonItem("Reset everything", "Reset all", "Puts every picture and the saturation back to normal", resetAll) { Half = true };
         Cards = new IEditorItem[] { _saturation, reset };
 
         var actions = DisplayActions.Level(spec, DisplayControls.SoftwareKey(spec), category, DisplayControls.SoftwareGroup, (_, delta) => Step(spec, delta), devices: null).ToList();

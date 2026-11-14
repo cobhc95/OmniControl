@@ -16,6 +16,9 @@ public class CardGroup : ObservableObject
     public string Key { get; }
     public string Name { get; }
 
+    /// <summary>Facts about the whole group that are not on its cards (what it talks to, its limits), shown as the header's tooltip; null: none.</summary>
+    public string? Tip { get; init; }
+
     /// <summary>True: the summary follows the name on the same line (grey) instead of sitting at the right edge.</summary>
     public bool SummaryBesideName { get; init; }
 

@@ -11,8 +11,8 @@
                 <StackPanel Spacing="6">
                     <Grid ColumnDefinitions="*,Auto">
                         <pages:GroupHeader x:DataType="pages:ParentGroup" DataContext="{Binding Hardware}" />
-                        <Button Grid.Column="1" Classes="pill" Tag="grouptool" Content="Refresh (F5)" VerticalAlignment="Center" Margin="6,0,8,0"
-                                Click="OnRefresh" ToolTip.Tip="Look at the monitors again and ask each what it supports" />
+                        <Button Grid.Column="1" Classes="pill" Tag="grouptool" Content="Refresh" VerticalAlignment="Center" Margin="6,0,8,0"
+                                Click="OnRefresh" ToolTip.Tip="Look at the monitors again and ask each what it supports (F5)" />
                     </Grid>
                     <ItemsControl ItemsSource="{Binding Hardware.Subgroups}" IsVisible="{Binding Hardware.IsExpanded}">
                         <ItemsControl.ItemTemplate>
@@ -39,8 +39,5 @@
                 </StackPanel>
             </Border>
         </StackPanel>
-
-        <TextBlock Classes="hint"
-                   Text="Up/Down move between group headers and cards; on a header Left collapses and Right expands it. Hardware controls talk to the monitor (DDC/CI): ones a monitor does not report are greyed out, and DDC/CI must be on in the monitor's own menu. Software controls are applied by OmniControl on any display and are put back when it closes. Colour temperature: minus is warmer, plus is cooler. Saturation applies to all displays. Turn screen off sends the monitor to sleep; wake it with a button on the monitor or by using its input, as the monitor allows." />
     </StackPanel>
 </UserControl>

@@ -26,7 +26,7 @@
                     ToolTip.Tip="{Binding CableAction.Tip}" IsVisible="{Binding HasCableAction}" />
             <Button Tag="scope" Classes="pill" Content="Edit" Command="{Binding EditCommand}" ToolTip.Tip="Change its name and devices" />
             <Button Tag="scope" Classes="pill glyph" Content="×" Command="{Binding Source.RemoveCommand}"
-                    ToolTip.Tip="Remove this combined device (asks first)" />
+                    ToolTip.Tip="Remove (asks first)" />
         </StackPanel>
     </Grid>
 </UserControl>

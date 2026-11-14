@@ -66,7 +66,7 @@ public sealed class FxWindowService
         }
     }
 
-    /// <summary>A message window for effects setup; true when the user confirmed.</summary>
+    /// <summary>A small message window (effects setup, a question, the main window's Keyboard shortcuts) above the main window; true when the user confirmed.</summary>
     public Task<bool> AskAsync(EngineMessage message) => new MessageWindow(message).AskAsync();
 
     /// <summary>Closes every FX window (and with them their plug-in editors) before the plug-ins are unloaded at exit.</summary>

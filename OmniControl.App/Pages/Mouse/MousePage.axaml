@@ -61,7 +61,5 @@
             </Border>
 
         </StackPanel>
-        <TextBlock Classes="hint"
-                   Text="Up/Down move through the settings (a pair of buttons reads left, then right); Left/Right move between the parts of a card and across a pair. On a group header Left collapses and Right expands it. A button left at &quot;Default&quot; behaves as Windows normally does. The Layer drop-down shows the layer in force and changes it: pick one to switch to it, or hold a button set to &quot;Hold for layer N&quot; to use layer N while held. Over OmniControl's own window the left and right buttons are never remapped, so a wrong mapping can always be fixed. Windows does not pass mouse input to programs running as administrator, so those windows are not remapped unless OmniControl runs as administrator too. Trackpad: swipe with three or four fingers or pinch with two on a precision touchpad; the Layer drop-down applies to these cards too, and a gesture left at &quot;Default&quot; lets Windows do what it normally does. OmniControl can't stop Windows' own swipes or pinch to zoom: if both happen, turn Windows' gesture off in its touchpad settings. Two-finger scrolling arrives as Wheel and Tilt above. Pointer settings are Windows' own mouse settings: they change at once, stay after a restart, and show what Windows has now. Before OmniControl first changes one, your values are kept, so &quot;Restore my original values&quot; can put them all back. Swapping the buttons asks to be kept and goes back by itself if you don't." />
     </StackPanel>
 </UserControl>

@@ -37,6 +37,12 @@ public sealed partial class PickerRow : ObservableObject
 /// </summary>
 public sealed partial class PickerModel : ObservableObject
 {
+    /// <summary>The picker's keys (handled by PickerMenu), listed in the Keyboard shortcuts window of the pages that open it.</summary>
+    public const string KeyHelp =
+        "Type to search; Up/Down choose; Left/Right switch between categories, entries and an entry's cogwheel; Enter picks (on a cogwheel: opens its settings); "
+        + "Tab opens the highlighted entry's settings; Esc closes. On the settings page: Up/Down choose a setting, Left/Right change it (Space flips a switch); "
+        + "Enter on a text setting edits it; Ctrl+Enter or a double-click types a number; Enter anywhere else uses the action with these settings; Esc goes back.";
+
     private static readonly IReadOnlyDictionary<string, string> NoValues = new Dictionary<string, string>();
 
     private readonly IReadOnlyList<PickGroup> _groups;

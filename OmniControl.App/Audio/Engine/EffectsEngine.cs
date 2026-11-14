@@ -68,14 +68,14 @@ public sealed class EffectsEngine : IDisposable
     public string? CableOf(string? key) => _runs.GetValueOrDefault(key ?? MixerService.MasterKey)?.Spec.Cable;
 
     /// <summary>
-    /// Where the row's effects are processed now and what that costs (the FX window's Latency and CPU); key null = the master. Only a
+    /// Where the row's effects are processed now and the delay they add (the FX window's Latency); key null = the master. Only a
     /// running status counts: its own run, or the chain sent to Equalizer APO.
     /// </summary>
     public RowLoad LoadOf(string? key)
     {
         var id = key ?? MixerService.MasterKey;
         if (!StatusOf(key).IsRunning) return RowLoad.None;
-        if (_runs.TryGetValue(id, out var run)) return new RowLoad(LoadPlace.Own, run.DelayMs, run.PluginDelayMs, run.Cpu);
+        if (_runs.TryGetValue(id, out var run)) return new RowLoad(LoadPlace.Own, run.DelayMs, run.PluginDelayMs);
         return _sentToApo.Contains(id) ? RowLoad.InApo : RowLoad.None;
     }
 

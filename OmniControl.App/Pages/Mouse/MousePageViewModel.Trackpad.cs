@@ -24,7 +24,7 @@ public sealed partial class MousePageViewModel
     {
         _trackpadOn = new ToggleItem("OmniControl trackpad gestures", _trackpad.IsEnabled, _trackpad.SetEnabled) { Half = true };
         var windowsSettings = new ButtonItem("Windows touchpad settings", "Open",
-            "Turn off Windows' own three- and four-finger swipes or pinch to zoom there, so only OmniControl's action runs.",
+            "Turn off Windows' own swipes and pinch there, so only OmniControl's action runs.",
             () => { if (WebPage.Open(WindowsTouchpad.SettingsPage) is { } problem) report(problem); }) { Half = true };
 
         _gestureCards = cards.Zip(TrackpadGestures.All).ToList();
@@ -32,7 +32,13 @@ public sealed partial class MousePageViewModel
         ShowTrackpadState();
 
         var items = new object[] { _trackpadOn, windowsSettings }.Concat(cards).ToList();
-        return new ItemGroup("Mouse/Trackpad", "Trackpad", items) { ExpandedByDefault = true };
+        return new ItemGroup("Mouse/Trackpad", "Trackpad", items)
+        {
+            ExpandedByDefault = true,
+            Tip = "Three- or four-finger swipes and pinches on a precision touchpad; the Layer drop-down applies here too, and Default lets Windows do what it normally does. "
+                  + "OmniControl can't stop Windows' own swipes or pinch to zoom: if both happen, turn Windows' gesture off in its touchpad settings. "
+                  + "Two-finger scrolling arrives as Wheel and Tilt.",
+        };
     }
 
     private void ShowTrackpadState()

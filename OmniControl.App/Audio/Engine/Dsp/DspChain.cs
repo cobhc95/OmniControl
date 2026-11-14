@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using OmniControl.Core;
 using OmniControl.Core.Engine;
 
@@ -61,7 +60,7 @@ internal sealed class DspChain
 /// What an <see cref="AudioPipe"/> calls for every block: a closed gate gives silence (before the original program is silenced),
 /// then the current chain, then the user's own volume, pan and mute for the row (when the original's session is muted, the row's
 /// sliders act here instead), then the <see cref="PeakLimiter"/> so boosts never clip in the device. Changes from the UI thread are
-/// swapped in whole: the audio thread only reads references. Each block's processing time is counted (<see cref="Cpu"/>).
+/// swapped in whole: the audio thread only reads references.
 /// </summary>
 internal sealed class ChainProcessor : IAudioBlockProcessor
 {
@@ -87,17 +86,7 @@ internal sealed class ChainProcessor : IAudioBlockProcessor
         set => _gateOpen = value;
     }
 
-    /// <summary>The processing time of this row so far (read by the FX window's CPU number).</summary>
-    public CpuMeter Cpu { get; } = new();
-
     public void Process(Span<float> samples, int channels, int sampleRate)
-    {
-        var start = Stopwatch.GetTimestamp();
-        ProcessBlock(samples, channels);
-        Cpu.Add(Stopwatch.GetTimestamp() - start, samples.Length / channels, sampleRate);
-    }
-
-    private void ProcessBlock(Span<float> samples, int channels)
     {
         var chain = Volatile.Read(ref _chain);
         if (!ReferenceEquals(chain, _running))

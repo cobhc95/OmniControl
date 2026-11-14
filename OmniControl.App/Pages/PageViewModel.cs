@@ -16,6 +16,15 @@ public abstract class PageViewModel : ObservableObject
     /// <summary>True when the page draws its own title row (to put a control beside the title); the shell then skips its title.</summary>
     public virtual bool ShowsOwnHeader => false;
 
+    /// <summary>The keys every card list shares (Pages/RowEditing, GroupedCards, ValueWheel, NumberText, SliderReset), listed once in the Keyboard shortcuts window.</summary>
+    public const string CardKeys =
+        "Up/Down move between cards and group headers (round at the ends); Left/Right change a value, or move between the parts of a card and across a pair. "
+        + "On a group header Left collapses and Right expands it. Enter opens or adjusts the control; Space flips a switch. "
+        + "Ctrl+Enter or a double-click on a value types a number (Enter or Tab applies, Esc cancels); a double-click on a slider resets it.";
+
+    /// <summary>This page's own keys beyond <see cref="CardKeys"/>, for the Keyboard shortcuts window (empty: none).</summary>
+    public virtual string KeyHelp => string.Empty;
+
     /// <summary>Extra words the sidebar search matches besides the title.</summary>
     public virtual string Keywords => string.Empty;
 

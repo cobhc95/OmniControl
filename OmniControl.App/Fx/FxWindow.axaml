@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:fx="using:OmniControl.App.Fx"
+        xmlns:pages="using:OmniControl.App.Pages"
         x:Class="OmniControl.App.Fx.FxWindow"
         x:DataType="fx:FxWindowViewModel"
         Title="{Binding Title}" Topmost="{Binding KeepOnTop}" Width="860" Height="540" MinWidth="560" MinHeight="380"
@@ -8,8 +9,10 @@
     <Window.Styles>
         <Style Selector="MenuItem"><Setter Property="FontSize" Value="12" /></Style>
     </Window.Styles>
-    <!-- TabForge-style FX chain window around one chain panel: menu bar, the row's effects switch, output and engine line, the chain
-         list on the left and the selected effect on the right, shortcut bar -->
+    <!-- TabForge-style FX chain window (owner-approved layout): menu bar; ONE toolbar row (the row's effects switch, the selected
+         effect's preset, wet, on, Parameters, Scale and Pop out, then Peak / Latency and the response thumbnail at the right end; the
+         less used controls fold into "…" and the numbers drop out when narrow); the chain list and the selected effect's editor with
+         all the remaining height; ONE thin status strip with what the effects engine does with this chain -->
     <Grid RowDefinitions="Auto,Auto,*,Auto">
         <Border Background="{DynamicResource BrushSidebar}" BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,0,0,1">
             <Menu FontSize="12">
@@ -37,53 +40,95 @@
                 </MenuItem>
                 <MenuItem Header="_Options">
                     <MenuItem Header="Chain on" ToggleType="CheckBox" IsChecked="{Binding FxOn}" />
+                    <!-- A program's output device: one radio entry per device (the Volume page's Wiring tab offers several) -->
+                    <MenuItem Header="Plays on" IsVisible="{Binding IsProgram}" ItemsSource="{Binding OutputChoices}">
+                        <MenuItem.ItemTemplate>
+                            <DataTemplate x:DataType="fx:OutputChoice"><TextBlock Text="{Binding Name}" /></DataTemplate>
+                        </MenuItem.ItemTemplate>
+                        <MenuItem.ItemContainerTheme>
+                            <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+                                <Setter Property="ToggleType" Value="Radio" />
+                                <Setter Property="IsChecked" Value="{Binding IsChosen, Mode=OneWay}" />
+                                <Setter Property="Command" Value="{Binding Choose}" />
+                            </ControlTheme>
+                        </MenuItem.ItemContainerTheme>
+                    </MenuItem>
                     <MenuItem Header="Keep on top" ToggleType="CheckBox" IsChecked="{Binding KeepOnTop}" ToolTip.Tip="Also above other programs" />
+                    <Separator />
+                    <MenuItem Header="Keyboard shortcuts…" Click="OnShortcutsClick" />
                 </MenuItem>
             </Menu>
         </Border>
 
-        <!-- The row's effects on/off, the program's output, the chain's total response and live numbers (right end; DockPanel gives the
-             analysis the width left after the switch, so it can fold its numbers before the Output picker gets too narrow), and what the
-             effects engine does with this chain right now (the same line and Fast-mode caution as the Volume row: running, waiting, not
-             installed, failed and why) -->
-        <StackPanel Grid.Row="1" Margin="12,10,12,0" Spacing="6">
-            <DockPanel>
-                <ToggleSwitch DockPanel.Dock="Left" IsChecked="{Binding FxOn}" OnContent="Effects on" OffContent="Effects off" VerticalAlignment="Center"
-                              ToolTip.Tip="Switches this row's whole chain on or off; the Volume row says &quot;off&quot; when it is" />
-                <fx:FxAnalysisBar x:Name="Analysis" DockPanel.Dock="Right" DataContext="{Binding Analysis}" Margin="{DynamicResource FxHeaderGap}"
-                                  Classes.besideoutput="{Binding #OutputHost.IsVisible}" VerticalAlignment="Center" />
-                <ContentControl x:Name="OutputHost" Content="{Binding Output}" IsVisible="{Binding IsProgram}" Margin="{DynamicResource FxHeaderGap}" />
-            </DockPanel>
-            <WrapPanel Classes="toolbar">
-                <TextBlock Text="{Binding EngineText}" Classes="hint" TextWrapping="Wrap" />
-                <Border Classes="tag caution" IsVisible="{Binding HasCaptureCaution}"
-                        ToolTip.Tip="Fast mode runs a program's effects by recording it. On the Volume page this program's row has Test (checks again) and Switch to Full control, which works without recording.">
-                    <TextBlock Text="{Binding CaptureCaution}" TextWrapping="Wrap" />
-                </Border>
-            </WrapPanel>
-        </StackPanel>
+        <!-- The toolbar: the selected effect's controls are hidden while nothing is selected -->
+        <Border Grid.Row="1" Classes="toolrow">
+            <!-- Fluent sizes its switch to at least 154 px wide; in the toolbar it takes only the knob and its words -->
+            <Border.Resources><x:Double x:Key="ToggleSwitchThemeMinWidth">0</x:Double></Border.Resources>
+            <fx:FoldingRow Spacing="{DynamicResource ToolRowGap}">
+                <ToggleSwitch IsChecked="{Binding FxOn}" OnContent="Effects on" OffContent="Effects off"
+                              ToolTip.Tip="The whole chain on or off" />
+                <ComboBox ItemsSource="{Binding Chain.Selected.PresetChoice.Options}" SelectedItem="{Binding Chain.Selected.PresetChoice.Selected}"
+                          IsVisible="{Binding Chain.Selected.HasPresets, FallbackValue=False}" Width="{DynamicResource FxToolPresetWidth}"
+                          ToolTip.Tip="Preset of the selected equaliser" />
+                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource ToolRowInnerGap}" IsVisible="{Binding Chain.HasSelection}"
+                            ToolTip.Tip="Wet mix: how much processed sound is heard">
+                    <TextBlock Text="Wet" Classes="muted" VerticalAlignment="Center" />
+                    <Slider Classes="compact" Minimum="0" Maximum="100" Value="{Binding Chain.Selected.Wet}"
+                            pages:SliderReset.Value="{Binding Chain.Selected.DefaultWet}" Width="{DynamicResource FxToolWetWidth}" />
+                    <TextBlock Text="{Binding Chain.Selected.Wet}" MinWidth="{DynamicResource FxToolValueWidth}" TextAlignment="Right" VerticalAlignment="Center" />
+                </StackPanel>
+                <CheckBox Content="On" IsChecked="{Binding Chain.Selected.Enabled}" IsVisible="{Binding Chain.HasSelection}"
+                          ToolTip.Tip="The selected effect on, or bypassed (Space in the list)" />
+                <Button Classes="pill" Classes.custom="{Binding Chain.Selected.ShowsParameters}" Content="Parameters" fx:FoldingRow.FoldLevel="2"
+                        Command="{Binding Chain.Selected.ToggleParametersCommand}" IsEnabled="{Binding Chain.Selected.CanShowParameters}"
+                        IsVisible="{Binding Chain.HasSelection}" ToolTip.Tip="{Binding Chain.Selected.ParametersTip}" ToolTip.ShowOnDisabled="True" />
+                <ComboBox Classes="tool" ItemsSource="{x:Static fx:EditorScale.Texts}" SelectedItem="{Binding Chain.Selected.ScaleText}" fx:FoldingRow.FoldLevel="2"
+                          IsEnabled="{Binding Chain.Selected.CanScale}" IsVisible="{Binding Chain.HasSelection}"
+                          ToolTip.Tip="{Binding Chain.Selected.ScaleTip}" ToolTip.ShowOnDisabled="True" />
+                <Button Classes="pill" Content="{Binding Chain.PopText}" Command="{Binding Chain.TogglePopOutSelectedCommand}" fx:FoldingRow.FoldLevel="2"
+                        IsVisible="{Binding Chain.HasSelection}" ToolTip.Tip="{Binding Chain.PopTip}" />
+                <!-- What folded at the narrowest width: Parameters, Scale and Pop out as a menu (mouse first, the master menu look) -->
+                <Button Classes="pill" Content="…" fx:FoldingRow.ShowsWhenFolded="2" IsVisible="{Binding Chain.HasSelection}"
+                        ToolTip.Tip="Parameters, Scale, Pop out">
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                            <MenuItem Header="Parameters (plain list)" ToggleType="CheckBox" IsChecked="{Binding Chain.Selected.ShowsParameters}"
+                                      IsEnabled="{Binding Chain.Selected.CanShowParameters, FallbackValue=False}" />
+                            <MenuItem Header="Smaller editor" Command="{Binding Chain.Selected.ScaleDownCommand}" InputGesture="Ctrl+OemMinus"
+                                      IsEnabled="{Binding Chain.Selected.CanScale, FallbackValue=False}" />
+                            <MenuItem Header="Larger editor" Command="{Binding Chain.Selected.ScaleUpCommand}" InputGesture="Ctrl+OemPlus"
+                                      IsEnabled="{Binding Chain.Selected.CanScale, FallbackValue=False}" />
+                            <MenuItem Header="Editor at 100 %" Command="{Binding Chain.Selected.ScaleResetCommand}" InputGesture="Ctrl+D0"
+                                      IsEnabled="{Binding Chain.Selected.CanScale, FallbackValue=False}" />
+                            <Separator />
+                            <MenuItem Header="{Binding Chain.PopText}" Command="{Binding Chain.TogglePopOutSelectedCommand}" />
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+                <Panel fx:FoldingRow.Fill="True" />
+                <fx:FxAnalysisNumbers Classes="stacked" DataContext="{Binding Analysis}" fx:FoldingRow.FoldLevel="1" VerticalAlignment="Center" />
+                <fx:FxAnalysisBar x:Name="Analysis" DataContext="{Binding Analysis}" VerticalAlignment="Center" />
+            </fx:FoldingRow>
+        </Border>
 
-        <fx:FxChainPanel x:Name="FxView" Grid.Row="2" Margin="12,10,12,8" DataContext="{Binding Chain}">
+        <fx:FxChainPanel x:Name="FxView" Grid.Row="2" Margin="{DynamicResource FxPanesMargin}" DataContext="{Binding Chain}">
             <fx:FxChainPanel.ListTools>
-                <Button x:Name="ForgetButton" Tag="scope" Classes="scope fxbtn" Content="Forget program" Command="{Binding ForgetCommand}"
-                        IsVisible="{Binding CanForget}" HorizontalContentAlignment="Center" Margin="0,0,6,0" />
+                <Button x:Name="ForgetButton" Classes="pill" Content="Forget" Command="{Binding ForgetCommand}" IsVisible="{Binding CanForget}"
+                        ToolTip.Tip="Forget this program (row, effects and settings)" />
             </fx:FxChainPanel.ListTools>
         </fx:FxChainPanel>
 
-        <!-- Shortcut bar -->
-        <Border Grid.Row="3" Background="{DynamicResource BrushSidebar}" BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,1,0,0" Padding="12,6">
-            <WrapPanel Orientation="Horizontal">
-                <TextBlock Text="{Binding Chain.EffectCount}" Classes="muted" FontSize="11" Margin="0,0,16,0" />
-                <TextBlock Text="Tab switch list / editor, Shift+Tab also the graph" Classes="muted" FontSize="11" Margin="0,0,16,0" />
-                <TextBlock Text="Up/Down choose · Shift+arrows, Ctrl+click, Ctrl+A or a box drawn below the list select several" Classes="muted" FontSize="11" Margin="0,0,16,0" />
-                <TextBlock Text="Enter edit" Classes="muted" FontSize="11" Margin="0,0,16,0" />
-                <TextBlock Text="Double-click own window, again back" Classes="muted" FontSize="11" Margin="0,0,16,0" />
-                <TextBlock Text="Ctrl+- / Ctrl+= scale" Classes="muted" FontSize="11" Margin="0,0,16,0" />
-                <TextBlock Text="Space on/off" Classes="muted" FontSize="11" Margin="0,0,16,0" />
-                <TextBlock Text="Drag or Alt+Up/Down move" Classes="muted" FontSize="11" Margin="0,0,16,0" />
-                <TextBlock Text="Ctrl+C/V copy, paste" Classes="muted" FontSize="11" Margin="0,0,16,0" />
-                <TextBlock Text="Esc one selected, then close" Classes="muted" FontSize="11" />
-            </WrapPanel>
+        <!-- The status strip: Fast mode's recording caution, the engine line (the same line a Volume row shows as its status's
+             tooltip: running, waiting, not installed, failed and why), and the selected effect's "Runs in ..." note when it fits -->
+        <Border Grid.Row="3" Classes="statusstrip">
+            <fx:FoldingRow Spacing="{DynamicResource StatusStripGap}">
+                <TextBlock Classes="statusline caution" Text="{Binding CaptureCaution}" IsVisible="{Binding HasCaptureCaution}"
+                           MaxWidth="{DynamicResource StatusCautionMaxWidth}"
+                           ToolTip.Tip="Fast mode records the program to run its effects. Test and Switch to Full control are on its Volume row." />
+                <TextBlock Classes="statusline" Text="{Binding EngineText}" ToolTip.Tip="{Binding EngineText}" fx:FoldingRow.Fill="True" />
+                <TextBlock Classes="statusline" Text="{Binding Chain.Selected.RunsNote}" IsVisible="{Binding Chain.HasSelection}" fx:FoldingRow.FoldLevel="1"
+                           ToolTip.Tip="{Binding Chain.Selected.RunsDetail}" />
+            </fx:FoldingRow>
         </Border>
     </Grid>
 </Window>

@@ -7,7 +7,7 @@
     <StackPanel Margin="12" Spacing="10">
         <TextBlock Classes="title" Text="Close OmniControl?" TextWrapping="Wrap" />
         <TextBlock TextWrapping="Wrap"
-                   Text="Hotkeys, the mouse remapping and the pop-ups keep working while it sits in the tray." />
+                   Text="Hotkeys, mouse remapping and pop-ups keep working in the tray." />
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
             <TextBlock Text="Remember my choice" VerticalAlignment="Center" TextWrapping="Wrap" />
             <ToggleSwitch x:Name="RememberSwitch" Grid.Column="1" OnContent="On" OffContent="Off" VerticalAlignment="Center" />

@@ -59,22 +59,25 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
                 AccentService.Set(names[i]);
                 _settings.Accent = names[i];
                 _settings.Save();
-            });
+            })
+        {
+            Tip = "Used everywhere; the OSD can match it.",
+        };
         AccentService.Changed += Accent.Refresh;
 
         _startWithWindows = new ToggleItem("Start with Windows", StartupRegistration.State == StartupState.On, OnStartWithWindowsChosen) { Half = true };
         _startMinimised = new ToggleItem("Start minimised", _settings.StartMinimised, on => { _settings.StartMinimised = on; _settings.Save(); }) { Half = true };
         var labels = CloseBehaviors.All.Select(e => e.Label).ToList();
-        _whenClosing = new ChoiceItem("When I close the window", labels, CloseBehaviors.LabelOf(_settings.CloseBehavior), label =>
+        _whenClosing = new ChoiceItem("When closing", labels, CloseBehaviors.LabelOf(_settings.CloseBehavior), label =>
         {
             _settings.CloseBehavior = CloseBehaviors.Find(label);
             _settings.Save();
         });
 
-        _about = new ButtonItem("About and credits", "Open", "Version, licence (GPL-3.0-or-later) and the open source projects OmniControl uses", openAbout);
+        _about = new ButtonItem("About and credits", "Open", "Version, licence and open source credits", openAbout);
 
         foreach (var item in new object[] { Theme, Accent, _startWithWindows, _startMinimised, _whenClosing }) Items.Add(item);
-        _addFolder = new FileItem("Plug-in folders", FileKind.OfFolder("Choose a folder with plug-ins"), AddFolder) { EmptyText = "Add a folder the plug-in scan also searches" };
+        _addFolder = new FileItem("Plug-in folders", FileKind.OfFolder("Choose a folder with plug-ins"), AddFolder) { EmptyText = "Add a folder to scan" };
         _scan = new ButtonItem("Plug-in scan", "Scan now", ScanIdleText, StartScan);
         _scanPlugins = scanPlugins;
         _scanResult = scanResult;
@@ -100,7 +103,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
         if (_readingStartup) return;
         var allowed = StartupRegistration.Set(on);
         ReadStartup();
-        if (!allowed) StartupNote = "Windows did not allow that change.";
+        if (!allowed) StartupNote = "Windows refused that change.";
     }
 
     /// <summary>Shows what Windows really has: on, off, or an entry the user switched off in Task Manager.</summary>
@@ -111,7 +114,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
         _startWithWindows.IsOn = state == StartupState.On;
         _readingStartup = false;
         StartupNote = state == StartupState.DisabledByUser
-            ? "Windows has OmniControl switched off in Task Manager (Startup apps). Turning this on switches it back on."
+            ? "Switched off in Task Manager (Startup apps); turning this on switches it back on."
             : string.Empty;
     }
 

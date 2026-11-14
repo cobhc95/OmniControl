@@ -45,8 +45,8 @@ public sealed record EngineStatus(EngineState State, string Text)
     /// their highest boost (<see cref="ApoChainWriter"/>), and there is no limiter.
     /// </summary>
     public static string HeadroomNote(FxEngines engine) => engine == FxEngines.Apo
-        ? "In Equalizer APO each equaliser's bands get a level cut as large as their highest boost, so the bands cannot clip; an overall gain above 0 dB and Gain effects are not cut, and Equalizer APO has no limiter."
-        : $"OmniControl does not lower the level for it: its safety limiter turns loud peaks down so the output stays below {Dsp.PeakLimiter.CeilingDb:0} dB and cannot clip.";
+        ? "Equalizer APO lowers each equaliser by its highest boost. Overall gain above 0 dB and Gain effects are not lowered, and there is no limiter."
+        : $"OmniControl lowers nothing in advance; its limiter keeps the output below {Dsp.PeakLimiter.CeilingDb:0} dB.";
 
     /// <summary>The note about effects in the chain that this engine does not run (kept in the chain, saved only), added to a running status.</summary>
     public static string SkippedNote(IReadOnlyList<string> skipped) =>
