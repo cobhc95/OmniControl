@@ -159,7 +159,7 @@ public static class RowEditing
         if (src is TextBox { IsReadOnly: false } && e.Key is not (Key.Up or Key.Down)) return;
 
         // 1. Hotkey box: keys are the new binding while listening.
-        if (src is TextBox { IsReadOnly: true, DataContext: HotkeyAction hotkey } && HotkeyCapture.TryHandle(e, hotkey))
+        if (src is TextBox { IsReadOnly: true, DataContext: HotkeyTarget hotkey } && HotkeyCapture.TryHandle(e, hotkey))
         {
             e.Handled = true;
             return;

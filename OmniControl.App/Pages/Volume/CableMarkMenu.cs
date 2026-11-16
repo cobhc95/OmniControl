@@ -57,9 +57,7 @@ public sealed partial class CableMarkMenu : ObservableObject
     private void SuggestName()
     {
         if (Name.Length > 0 && Name != _suggested) return;
-        var device = Playback.Selected;
-        var at = device.IndexOf(" (", StringComparison.Ordinal);
-        Name = _suggested = at > 0 ? device[..at] : device;
+        Name = _suggested = Services.DeviceNames.Short(Playback.Selected);
         AddCommand.NotifyCanExecuteChanged();
     }
 

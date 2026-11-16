@@ -50,6 +50,22 @@
                     <TextBlock Text="{Binding VersionText}" Classes="muted" />
                 </StackPanel>
 
+                <!-- Entries pinned to the bottom under a thin divider that open a window, not a page (Actions and hotkeys); the same item look
+                     as the list above; a click or Enter opens the window (MainWindow.axaml.cs) -->
+                <StackPanel DockPanel.Dock="Bottom">
+                    <Border Classes="hrule" Margin="14,6,14,6" />
+                    <c:NavList x:Name="PinnedNav" Classes="nav" ItemsSource="{Binding PinnedEntries}">
+                        <c:NavList.DataTemplates>
+                            <DataTemplate DataType="shell:NavLauncher">
+                                <StackPanel Orientation="Horizontal" Spacing="14">
+                                    <PathIcon Data="{Binding Icon}" Width="18" Height="18" />
+                                    <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </c:NavList.DataTemplates>
+                    </c:NavList>
+                </StackPanel>
+
                 <!-- Pages and the group headings above them (NavList: a heading cannot be clicked, focused or stepped onto) -->
                 <c:NavList x:Name="MainNav" Classes="nav" ItemsSource="{Binding NavItems}" SelectedItem="{Binding SelectedMainPage}">
                     <c:NavList.DataTemplates>

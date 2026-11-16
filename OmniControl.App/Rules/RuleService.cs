@@ -52,7 +52,15 @@ public sealed class RuleService : IDisposable
         _shortcuts.Failed += shortcut => Dispatcher.UIThread.Post(() =>
             report($"Couldn't use {shortcut} for a rule: another program or an OmniControl shortcut already uses it."));
         gestures.Applied += Load;
+        hotkeys.Moved += FollowMoved;
         Load();
+    }
+
+    /// <summary>A rule step whose action's id moved (a merged smart device's actions) now names the new id.</summary>
+    private void FollowMoved(IReadOnlyDictionary<string, string> moved)
+    {
+        var changed = Settings.Rules.Aggregate(false, (any, rule) => MovedActions.RewriteAll(rule.Steps, moved) | any);
+        if (changed) Apply();
     }
 
     /// <summary>Call after any change to a rule: saves, and hands the hook and Windows a fresh copy.</summary>
@@ -187,6 +195,7 @@ public sealed class RuleService : IDisposable
     public void Dispose()
     {
         _gestures.Applied -= Load;
+        _hotkeys.Moved -= FollowMoved;
         _shortcuts.Dispose();
         _engine.Dispose();
     }

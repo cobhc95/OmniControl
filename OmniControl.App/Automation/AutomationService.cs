@@ -3,6 +3,7 @@ using OmniControl.App.Hotkeys;
 using OmniControl.App.Mouse;
 using OmniControl.App.Rules;
 using OmniControl.App.Services;
+using OmniControl.App.States;
 using OmniControl.Core.Engine;
 using OmniControl.Core.Engine.Mouse;
 
@@ -53,10 +54,13 @@ public sealed partial class AutomationService : IActionGate, IDisposable
     /// <param name="remembered">Programs the Volume page remembers (paths), offered with the running ones.</param>
     /// <param name="startedByWindows">OmniControl was started by its start-up entry: the "At log in" trigger fires.</param>
     /// <param name="report">Shows one plain sentence in the status line.</param>
-    public AutomationService(HotkeyRegistry hotkeys, Func<string, string, TimeSpan, Task<bool>> countdown,
+    /// <param name="states">The master list of states: the "When a state changes" triggers watch it, and the power states are registered in it.</param>
+    public AutomationService(HotkeyRegistry hotkeys, StateRegistry states, Func<string, string, TimeSpan, Task<bool>> countdown,
         Func<IEnumerable<string>> remembered, bool startedByWindows, Action<string> report)
     {
         _hotkeys = hotkeys;
+        _states = states;
+        _sources = new Sources(hotkeys, states);
         _remembered = remembered;
         _report = message => Dispatcher.UIThread.Post(() => report(message));
         SessionOff = KeyboardState.Held().HasFlag(Modifiers.Shift);
@@ -74,6 +78,7 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         _emergency.Failed += gesture => _report($"Couldn't register {gesture}, the key that pauses all rules: another program uses it.");
         _emergency.Apply(new[] { (ReservedKeys.Emergency, (Action)(() => Dispatcher.UIThread.Post(TogglePause))) });
 
+        StartLive();
         StartTriggers(startedByWindows);
     }
 
@@ -90,8 +95,16 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         }
         _report(Paused ? "All rules are paused." : "Rules are on again.");
         UpdateWake();
+        _states.Notify(PausedId);
         Changed?.Invoke();
     }
+
+    private const string PausedId = "automation.paused";
+
+    /// <summary>"All rules paused" in the master list of states (the tray menu ticks its Pause item from it); setting it pauses or resumes.</summary>
+    private StateEntry PausedState() =>
+        new(PausedId, "All rules paused", Category, StateKind.OnOff, () => StateValue.Of(Paused), "Paused here, by its action or by the emergency key.",
+            Keywords: "pause resume stop automation rules", Set: value => { if (Paused != (value.Number is { } on && on != 0)) TogglePause(); });
 
     /// <summary>Ends the safe-start state at once: rules and blocks work from now on, with no restart.</summary>
     public void TurnRulesOn()
@@ -192,8 +205,6 @@ public sealed partial class AutomationService : IActionGate, IDisposable
 
     public HotkeyAction? ActionOf(AutomationRule rule) => _hotkeys.Find(rule.ActionId);
 
-    public IReadOnlyList<PickChoice> TriggerChoices() => AutomationTriggers.Choices(ProgramNames.Known(_remembered()));
-
     public IReadOnlyList<PickChoice> ConditionChoices(AutomationRule rule, string? editing) =>
         AutomationConditions.Choices(rule, ProgramNames.Known(_remembered()), editing);
 
@@ -278,12 +289,17 @@ public sealed partial class AutomationService : IActionGate, IDisposable
     /// <summary>The rule's own action was run (its shortcut, a mouse button, a gesture): it runs its steps if it is on and its conditions hold.</summary>
     private void RunByAction(AutomationRule rule)
     {
-        if (!rule.On) _report($"\"{rule.Name}\" is switched off.");
-        else if (!TryStart(rule)) _report($"\"{rule.Name}\" did not start: rules are paused, its conditions don't hold, or it just ran.");
+        var chain = _hotkeys.Chain; // set when another rule's run (through an "action runs" trigger) runs this rule's own action
+        if (!RunChain.MayStart(chain, rule.Id, Timing.AutomationChainMax)) Log($"rule \"{rule.Name}\" not started by its own action: it is already in this chain of rules");
+        else if (!rule.On) _report($"\"{rule.Name}\" is switched off.");
+        else if (!TryStart(rule, RunChain.After(chain, rule.Id))) _report($"\"{rule.Name}\" did not start: rules are paused, its conditions don't hold, or it just ran.");
     }
 
-    /// <summary>Starts the rule's steps on a worker unless a safety stops it. False when it did not start.</summary>
-    private bool TryStart(AutomationRule rule)
+    /// <summary>
+    /// Starts the rule's steps on a worker unless a safety stops it. False when it did not start. <paramref name="chain"/> is the chain of
+    /// rules this run belongs to (this rule last); every action its steps run carries it, so triggers it causes know where they came from.
+    /// </summary>
+    private bool TryStart(AutomationRule rule, RunChain? chain = null)
     {
         if (!rule.On || !rule.IsComplete || rule.Kind != AutomationKind.Do || Paused || SessionOff || _pausedWhy.ContainsKey(rule.Id)) return false;
         var context = NewContext();
@@ -316,8 +332,10 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         var name = rule.Name;
         var id = rule.Id;
         var stop = _stopRuns.Token;
+        var runChain = chain ?? RunChain.Start(id);
         Task.Run(async () =>
         {
+            _hotkeys.RunWithin(runChain);
             var problem = await _runner.RunAsync(name, steps, new MouseEvent(MouseButton.Left, true, 0, 0), i => waits[i], stop);
             Dispatcher.UIThread.Post(() => Finished(id, problem, name));
         });
@@ -350,6 +368,7 @@ public sealed partial class AutomationService : IActionGate, IDisposable
     public void Dispose()
     {
         _hotkeys.Gate = null;
+        StopLive();
         _stopRuns.Cancel();
         _stopRuns.Dispose();
         StopTriggers();

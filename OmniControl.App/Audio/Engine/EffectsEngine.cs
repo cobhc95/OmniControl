@@ -202,7 +202,7 @@ public sealed class EffectsEngine : IDisposable
     /// <summary>Plans again and brings every run, every program's own device and the master's APO line in line with the plan.</summary>
     private void Reconcile()
     {
-        if (_disposed) return;
+        if (_disposed || StartupMode.Inert) return; // a screenshot export never starts a run or writes an Equalizer APO file
         _journal.RestoreRunning();
         if (_support.Facts is not { } facts) return; // nothing starts before the first look at what this PC offers (it reconciles then)
         var playing = _mixer.Settings.Apps.Select(a => a.Key).Where(k => _mixer.OpenStreams(k).Count > 0).ToHashSet();

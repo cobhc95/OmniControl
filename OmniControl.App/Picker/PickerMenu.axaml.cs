@@ -1,10 +1,11 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using OmniControl.App.Hotkeys;
 
 namespace OmniControl.App.Picker;
 
@@ -34,6 +35,9 @@ public partial class PickerMenu : UserControl
         SectionList.AddHandler(TappedEvent, OnSectionTapped);
     }
 
+    /// <summary>The search box (the window holds the keys from Windows while it has them, so a pressed key is searched for).</summary>
+    internal TextBox SearchBox => Search;
+
     /// <summary>Starts a fresh pick: shows the model and puts the cursor where typing or the arrow keys belong.</summary>
     public void Show(PickerModel model)
     {
@@ -53,6 +57,7 @@ public partial class PickerMenu : UserControl
     /// <summary>Lets go of the model when the window closes.</summary>
     public void Release()
     {
+        _model?.Release();
         if (_model is not null) _model.PropertyChanged -= OnModelChanged;
         _model = null;
     }
@@ -78,6 +83,18 @@ public partial class PickerMenu : UserControl
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
         if (_model is not { } model) return;
+        var focused = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement();
+        if (e.Key == Key.F && e.KeyModifiers == KeyModifiers.Control && !HotkeyCapture.IsListening(focused))
+        {
+            FocusSearch(model);
+            e.Handled = true;
+            return;
+        }
+        if (focused is Visual inHotkeys && HotkeyPart.IsVisualAncestorOf(inHotkeys))
+        {
+            if (OnHotkeyPartKey(model, focused, e)) e.Handled = true;
+            return;
+        }
         // A click into a settings box puts the keys there too.
         var inSettings = model.InSettings || TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() is TextBox box && box != Search;
         var handled = inSettings ? OnSettingsKey(model, e) : OnListKey(model, e);
@@ -88,6 +105,11 @@ public partial class PickerMenu : UserControl
     private void UseHighlighted(PickerModel model)
     {
         // A text being typed is taken first (a text setting commits when its box loses focus).
+        if (model.IsManaging && model.ActiveChoice is { Command: null })
+        {
+            HotkeyStops().FirstOrDefault()?.Focus(NavigationMethod.Tab); // nothing is picked here: Enter goes to the keys of the entry
+            return;
+        }
         SettingsFocus.Focus(NavigationMethod.Directional);
         if (model.ActiveChoice is { Command: not null } command) _ = model.RunCommandAsync(command, this);
         else if (model.Use() is { } pick) Picked?.Invoke(pick);
@@ -98,6 +120,12 @@ public partial class PickerMenu : UserControl
     private bool OnListKey(PickerModel model, KeyEventArgs e)
     {
         var typing = model.Query.Length > 0; // with text in the box, Left/Right belong to the caret
+        if (model.HasKeys && HotkeyCapture.SearchChordOf(e) is { } chord)
+        {
+            model.Query = chord; // the actions on that key
+            Search.CaretIndex = chord.Length;
+            return true;
+        }
 
         switch (e.Key)
         {
@@ -111,7 +139,8 @@ public partial class PickerMenu : UserControl
                 UseHighlighted(model);
                 return true;
             case Key.Tab:
-                model.EnterSettings(); // the only stop is the search box, so Tab is free to move into the settings
+                if (model.HasHotkeys) HotkeyStops().FirstOrDefault()?.Focus(NavigationMethod.Tab);
+                else model.EnterSettings(); // the only stop is the search box, so Tab is free to move into the settings
                 return true;
             case Key.Escape:
                 if (typing) model.Query = string.Empty;
@@ -157,6 +186,43 @@ public partial class PickerMenu : UserControl
                     SettingsFocus.Focus(NavigationMethod.Directional);
                 }
                 else model.InSettings = false;
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>Ctrl+F: the keys go back to the search box, its text selected so typing replaces it.</summary>
+    private void FocusSearch(PickerModel model)
+    {
+        model.InSettings = false;
+        Search.Focus(NavigationMethod.Directional);
+        Search.SelectAll();
+    }
+
+    /// <summary>The controls of the hotkey part the keys stop on (its boxes, crosses and pills), in reading order.</summary>
+    private List<InputElement> HotkeyStops() =>
+        HotkeyPart.GetVisualDescendants().OfType<InputElement>()
+            .Where(c => c is TextBox or Button && c.Focusable && c.IsEffectivelyVisible && c.IsEffectivelyEnabled).ToList();
+
+    /// <summary>
+    /// Keys while they are in the hotkey part: a hotkey box takes its own (Enter listens, Backspace removes, Esc cancels listening); the arrows
+    /// walk the boxes and pills (wrapping), Down from the last goes on to the settings; Tab or Esc go back to the list. Enter on a pill presses it.
+    /// </summary>
+    private bool OnHotkeyPartKey(PickerModel model, object? focused, KeyEventArgs e)
+    {
+        if (focused is TextBox { DataContext: HotkeyTarget target } && HotkeyCapture.TryHandle(e, target)) return true;
+        var stops = HotkeyStops();
+        var at = stops.IndexOf(focused as InputElement ?? Search);
+        switch (e.Key)
+        {
+            case Key.Up or Key.Down or Key.Left or Key.Right when stops.Count > 0:
+                var step = e.Key is Key.Down or Key.Right ? 1 : -1;
+                if (e.Key == Key.Down && at == stops.Count - 1 && model.EnterSettings()) return true;
+                stops[Services.Wrap.Index(at + step, stops.Count)].Focus(NavigationMethod.Directional);
+                return true;
+            case Key.Tab or Key.Escape:
+                model.InSettings = false;
+                Search.Focus(NavigationMethod.Directional);
                 return true;
         }
         return false;
@@ -210,6 +276,7 @@ public partial class PickerMenu : UserControl
     /// <summary>A click anywhere but in the number box being typed in takes the typed number, like Enter would.</summary>
     private void OnAnyPress(object? sender, PointerPressedEventArgs e)
     {
+        HotkeyCapture.CancelOnPressElsewhere(TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement(), e.Source);
         if (_model?.OptionItems.FirstOrDefault(i => i.IsTyping) is not { } typing) return;
         if (e.Source is Visual source && source.FindAncestorOfType<TextBox>() is not null) return;
         typing.CommitTyping();

@@ -1,0 +1,128 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:OmniControl.App.Controls"
+        xmlns:shot="using:OmniControl.App.Screenshot"
+        x:Class="OmniControl.App.Screenshot.CaptureOverlay"
+        x:DataType="shot:CaptureOverlayViewModel"
+        Title="Screenshot" SystemDecorations="None" ShowInTaskbar="False" CanResize="False" Topmost="True">
+    <!-- The area capture overlay of one monitor (docs/mockups/screenshot-tool.html). Mouse first (AGENTS rule 5): drag to select, handles
+         resize, drag inside moves; the bars are clicked. Keys: Esc, Ctrl+C/S/P, Ctrl+Z/Y, Ctrl+Shift+. and , (size), arrows nudge (CaptureOverlayViewModel.HandleKey).
+         Looks: Border.floatbar, Button.toolicon (.selected), Button.swatch and shot|CaptureCanvas in Styles/Bars.axaml; icons Shot* in Brushes.axaml. -->
+    <Panel>
+        <shot:CaptureCanvas x:Name="Picture" />
+        <Canvas x:Name="Layer">
+            <Border x:Name="SizeLabel" Classes="floatbar label" IsVisible="{Binding HasSelection}">
+                <TextBlock Text="{Binding SizeText}" />
+            </Border>
+
+            <!-- The drawing toolbar: right of the selection (left or inside when there is no room) -->
+            <Border x:Name="ToolBar" Classes="floatbar" IsVisible="{Binding ShowBars}">
+                <StackPanel>
+                    <Button Classes="toolicon" Classes.selected="{Binding IsPen}" Command="{Binding PickToolCommand}" CommandParameter="{x:Static shot:DrawTool.Pen}" ToolTip.Tip="Pen">
+                        <Path Classes="glyph" Data="{StaticResource ShotPenIcon}" />
+                    </Button>
+                    <Button Classes="toolicon" Classes.selected="{Binding IsLine}" Command="{Binding PickToolCommand}" CommandParameter="{x:Static shot:DrawTool.Line}" ToolTip.Tip="Line">
+                        <Path Classes="glyph" Data="{StaticResource ShotLineIcon}" />
+                    </Button>
+                    <Button Classes="toolicon" Classes.selected="{Binding IsArrow}" Command="{Binding PickToolCommand}" CommandParameter="{x:Static shot:DrawTool.Arrow}" ToolTip.Tip="Arrow">
+                        <Path Classes="glyph" Data="{StaticResource ShotArrowIcon}" />
+                    </Button>
+                    <Button Classes="toolicon" Classes.selected="{Binding IsBox}" Command="{Binding PickToolCommand}" CommandParameter="{x:Static shot:DrawTool.Box}" ToolTip.Tip="Rectangle">
+                        <Path Classes="glyph" Data="{StaticResource ShotBoxIcon}" />
+                    </Button>
+                    <Button Classes="toolicon" Classes.selected="{Binding IsMarker}" Command="{Binding PickToolCommand}" CommandParameter="{x:Static shot:DrawTool.Marker}" ToolTip.Tip="Marker">
+                        <Path Classes="glyph" Data="{StaticResource ShotMarkerIcon}" />
+                    </Button>
+                    <Button Classes="toolicon" Classes.selected="{Binding IsText}" Command="{Binding PickToolCommand}" CommandParameter="{x:Static shot:DrawTool.Text}" ToolTip.Tip="Text">
+                        <Path Classes="glyph" Data="{StaticResource ShotTextIcon}" />
+                    </Button>
+                    <Button Classes="toolicon" Classes.selected="{Binding IsBlur}" Command="{Binding PickToolCommand}" CommandParameter="{x:Static shot:DrawTool.Blur}" ToolTip.Tip="Blur">
+                        <Path Classes="glyph" Data="{StaticResource ShotBlurIcon}" />
+                    </Button>
+                    <Border Classes="floatsep across" />
+                    <Button x:Name="ColourButton" Classes="toolicon" ToolTip.Tip="Colour (the wheel here changes the size)">
+                        <Ellipse Classes="swatch" Fill="{Binding CurrentBrush}" />
+                        <Button.Flyout>
+                            <c:ListMenuFlyout Placement="LeftEdgeAlignedTop">
+                                <ItemsControl ItemsSource="{Binding Colours}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="shot:SwatchItem">
+                                            <Button Classes="swatch" Command="{Binding Pick}" Click="OnSwatchPicked">
+                                                <Ellipse Classes="swatch" Fill="{Binding Brush}" />
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </c:ListMenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                    <!-- the tool's size (line width or text size), shown while a tool with a size is in use -->
+                    <Button Classes="toolicon" Command="{Binding BiggerCommand}" IsVisible="{Binding HasSize}" ToolTip.Tip="Bigger (Ctrl+Shift+.)">
+                        <Path Classes="glyph" Data="{StaticResource ShotBiggerIcon}" />
+                    </Button>
+                    <Button Classes="toolicon" Command="{Binding SmallerCommand}" IsVisible="{Binding HasSize}" ToolTip.Tip="Smaller (Ctrl+Shift+,)">
+                        <Path Classes="glyph" Data="{StaticResource ShotSmallerIcon}" />
+                    </Button>
+                    <Button Classes="toolicon" Command="{Binding UndoCommand}" ToolTip.Tip="Undo (Ctrl+Z); redo: Ctrl+Y">
+                        <Path Classes="glyph" Data="{StaticResource ShotUndoIcon}" />
+                    </Button>
+                </StackPanel>
+            </Border>
+
+            <!-- The action bar: under the selection (above or inside when there is no room) -->
+            <Border x:Name="ActionBar" Classes="floatbar" IsVisible="{Binding ShowBars}">
+                <StackPanel Orientation="Horizontal">
+                    <Button Classes="toolicon" Command="{Binding CopyCommand}" ToolTip.Tip="Copy (Ctrl+C)">
+                        <Path Classes="glyph" Data="{StaticResource ShotCopyIcon}" />
+                    </Button>
+                    <Button Classes="toolicon" Command="{Binding SaveCommand}" ToolTip.Tip="Save (Ctrl+S)">
+                        <Path Classes="glyph" Data="{StaticResource ShotSaveIcon}" />
+                    </Button>
+                    <Button Classes="toolicon danger" Command="{Binding RecordCommand}" ToolTip.Tip="Record video">
+                        <Path Classes="glyph" Data="{StaticResource ShotRecordIcon}" />
+                    </Button>
+                    <Border Classes="floatsep along" />
+                    <Button Classes="toolicon" Command="{Binding SearchCommand}" ToolTip.Tip="Search image online: copies the picture and opens Google Lens in your browser, where you paste it">
+                        <Path Classes="glyph" Data="{StaticResource ShotSearchIcon}" />
+                    </Button>
+                    <Button Classes="toolicon" Command="{Binding ReadQrCommand}" ToolTip.Tip="Read QR code (on this PC, nothing is sent)">
+                        <Path Classes="glyph" Data="{StaticResource ShotQrIcon}" />
+                        <Button.Flyout>
+                            <c:ListMenuFlyout Placement="TopEdgeAlignedLeft">
+                                <StackPanel>
+                                    <TextBlock Classes="menutext" Text="{Binding QrNote}" IsVisible="{Binding QrNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                    <ItemsControl ItemsSource="{Binding QrCodes}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="shot:QrItem">
+                                                <StackPanel Classes="qrcode">
+                                                    <TextBlock Classes="menutext" Text="{Binding Text}" TextWrapping="Wrap" />
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Button Classes="pill cardaction" Content="Copy" Command="{Binding Copy}" />
+                                                        <Button Classes="pill cardaction" Content="Open in browser" Command="{Binding Open}" IsVisible="{Binding IsLink}" />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </c:ListMenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                    <Button Classes="toolicon" Command="{Binding PrintCommand}" ToolTip.Tip="Print (Ctrl+P)">
+                        <Path Classes="glyph" Data="{StaticResource ShotPrintIcon}" />
+                    </Button>
+                    <Border Classes="floatsep along" />
+                    <Button Classes="toolicon" Command="{Binding CloseCommand}" ToolTip.Tip="Close (Esc)">
+                        <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+                    </Button>
+                </StackPanel>
+            </Border>
+
+            <!-- The text tool's box, opened where the selection was clicked; Enter or clicking away keeps the words, Esc drops them -->
+            <TextBox x:Name="TextEntry" Classes="shottext" IsVisible="False" FontSize="{Binding TextSize}" Foreground="{Binding CurrentBrush}" />
+        </Canvas>
+    </Panel>
+</Window>

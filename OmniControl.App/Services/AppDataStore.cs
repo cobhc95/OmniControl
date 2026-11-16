@@ -8,8 +8,11 @@ namespace OmniControl.App.Services;
 /// </summary>
 public static class AppDataStore
 {
-    public static string Folder { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OmniControl");
+    public static string Folder { get; } =
+#if DEBUG
+        Environment.GetEnvironmentVariable(Showcase.ShowcaseOptions.DataFolderVariable) ??
+#endif
+        AppDataLocation.Default;
 
     public static string PathOf(string fileName) => Path.Combine(Folder, fileName);
 

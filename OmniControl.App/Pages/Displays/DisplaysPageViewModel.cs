@@ -7,6 +7,7 @@ using OmniControl.App.Hotkeys;
 using OmniControl.App.Osd;
 using OmniControl.App.Presets;
 using OmniControl.App.Services;
+using OmniControl.App.States;
 using OmniControl.Core;
 using OmniControl.Core.Interfaces;
 using OmniControl.Core.Models;
@@ -29,6 +30,7 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
 
     private readonly MonitorEngine _engine;
     private readonly HotkeyRegistry _hotkeys;
+    private readonly StateRegistry _states;
     private readonly OsdService _osd;
     private readonly SoftwareDisplayService _software;
     private readonly Action<string> _report;
@@ -85,10 +87,11 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
 
     /// <param name="presets">The master list of preset groups: the page registers its two.</param>
     /// <param name="openPresets">Opens the preset manager at a section and group (the header cogwheels).</param>
+    /// <param name="states">The master list of states: each display's levels are registered there while it is attached.</param>
     public DisplaysPageViewModel(MonitorEngine engine, HotkeyRegistry hotkeys, OsdService osd, SoftwareDisplayService software, Action<string> report,
-        PresetGroups presets, Action<string?, string?> openPresets)
+        PresetGroups presets, Action<string?, string?> openPresets, StateRegistry states)
     {
-        (_engine, _hotkeys, _osd, _software, _report, _openPresets) = (engine, hotkeys, osd, software, report, openPresets);
+        (_engine, _hotkeys, _osd, _software, _report, _openPresets, _states) = (engine, hotkeys, osd, software, report, openPresets, states);
         _rescan = new ThrottledRun(Timing.DisplayRescanGap, RescanNow);
 
         foreach (var spec in DisplayControls.All) osd.Declare(spec.Osd, icon: spec.Icon);
@@ -121,8 +124,9 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
         presets.Register(new PresetGroup(HardwarePresetsId, Title, DisplayControls.HardwareGroup, monitorGroup));
         presets.Register(new PresetGroup(SoftwarePresetsId, Title, DisplayControls.SoftwareGroup, pictureGroup));
         _scheduler.Changed += ShowRefusals;
-        _scheduler.Start();
-        Task.Run(RefreshNow);
+        RegisterPageStates();
+        if (!StartupMode.Inert) _scheduler.Start(); // a screenshot export never warms the screen
+        if (StartupMode.MayRead) Task.Run(RefreshNow); // reading the monitors is allowed to a read-only export, writing to them is not
     }
 
     private void RefreshPictureChoice() => _presets.Refresh();
@@ -249,6 +253,7 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
         foreach (var old in _hardware)
         {
             old.Dispose();
+            ForgetStates(old);
         }
         _hardware.Clear();
         Hardware.Subgroups.Clear();
@@ -257,11 +262,11 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
         if (snapshot.HasLaptop)
         {
             var panel = snapshot.Displays.FirstOrDefault(d => d.IsInternal)?.DeviceName;
-            Add(new HardwareDisplayItem(LaptopId, BuiltIn, new LaptopAccess(_engine.Laptop), Orientation(panel, BuiltIn), _levels, _osd, _report, ShowHardwareGroups, _monitorPresets.Refresh));
+            Add(new HardwareDisplayItem(LaptopId, BuiltIn, new LaptopAccess(_engine.Laptop), Orientation(panel, BuiltIn), _levels, _osd, _report, ShowHardwareGroups, OnDisplayValues));
         }
         foreach (var monitor in monitors)
             Add(new HardwareDisplayItem(monitor.Info.DeviceName, monitor.Info.Name, new MonitorAccess(monitor), Orientation(monitor.Info.DeviceName, monitor.Info.Name),
-                _levels, _osd, _report, ShowHardwareGroups, _monitorPresets.Refresh));
+                _levels, _osd, _report, ShowHardwareGroups, OnDisplayValues));
     }
 
     private DisplayOrientationCard Orientation(string? deviceName, string name) => new(deviceName, name, _engine.Rotation, _report);
@@ -269,6 +274,7 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
     private void Add(HardwareDisplayItem display)
     {
         _hardware.Add(display);
+        RegisterStates(display);
         ShowHardwareGroups();
         display.Start();
     }
@@ -278,7 +284,7 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
     {
         Hardware.Subgroups.Clear();
         foreach (var group in _hardware.SelectMany(h => h.Groups)) Hardware.Subgroups.Add(group);
-        _monitorPresets.Refresh(); // a monitor that was read, came or went changes what a monitor preset shows and whether one can be saved
+        OnDisplayValues(); // a monitor that was read, came or went changes what a monitor preset shows and whether one can be saved
     }
 
     /// <summary>Software groups follow the attached displays: new ones appear, gone ones are forgotten, the others keep their values.</summary>
@@ -321,12 +327,17 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
     public void Dispose()
     {
         _scheduler.Changed -= ShowRefusals;
+        ForgetPageStates();
         _warm.Dispose();
         _presets.Dispose();
         _monitorPresets.Dispose();
         _monitorBook.Dispose();
         _scheduler.Dispose();
         _rescan.Dispose();
-        foreach (var display in _hardware) display.Dispose();
+        foreach (var display in _hardware)
+        {
+            display.Dispose();
+            ForgetStates(display);
+        }
     }
 }

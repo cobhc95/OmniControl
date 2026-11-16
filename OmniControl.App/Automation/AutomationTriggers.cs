@@ -5,10 +5,13 @@ using OmniControl.App.Rules;
 namespace OmniControl.App.Automation;
 
 /// <summary>
-/// The master list of what starts a "Do" rule. One registration per trigger: the picker, the sentence, the scheduler and the next-run
-/// text all read it. Stored as "login", "time|h=7;m=30", "timer|min=10", "program.start:chrome", "hotkey"...
+/// The master list of what starts a "Do" rule. The fixed triggers are ONE table (<see cref="Table"/>: id, section, name, keywords, the
+/// phrase it reads as, its settings); the picker, the sentence, the scheduler and the next-run text all read it. The live families come
+/// from other master lists, read each time (<c>AutomationTriggers.Live.cs</c>): every state of <c>StateRegistry</c> and every action of
+/// <see cref="HotkeyRegistry"/>. Stored as "login", "time|h=7;m=30", "timer|min=10", "program.start:chrome", "state:id|when=turns on",
+/// "action.runs:id", "hotkey"...
 /// </summary>
-public static class AutomationTriggers
+public static partial class AutomationTriggers
 {
     private const string Startup = "Start up", Clock = "Time and idle", Power = "Power", Programs = "Programs", Devices = "Devices", Keys = "Keyboard";
     public const string Login = "login", Start = "start", Time = "time", Timer = "timer", Idle = "idle", Resume = "resume",
@@ -25,57 +28,56 @@ public static class AutomationTriggers
     private const string ProgramLabel = "Program name, as Task Manager shows it";
     private const string DeviceLabel = "Part of the device's name (empty: any device)";
 
-    /// <summary>The picker's list. <paramref name="programs"/> are the names to offer for "a program starts or closes".</summary>
-    public static IReadOnlyList<PickChoice> Choices(IReadOnlyList<string> programs)
+    /// <summary>
+    /// One fixed trigger. <see cref="ParamHint"/>: it takes a typed text (a program, a device). <see cref="PerProgram"/>: the picker also
+    /// lists it once per known program, named by this.
+    /// </summary>
+    private sealed record Fixed(string Id, string Section, string Name, string Keywords, Func<MouseAction, string> Phrase,
+        IReadOnlyList<ActionOption>? Options = null, string? ParamHint = null, string ParamLabel = "", Func<string, string>? PerProgram = null);
+
+    /// <summary>THE table of fixed triggers, in picker order.</summary>
+    private static readonly Fixed[] Table =
     {
-        var list = new List<PickChoice>
+        new(Login, Startup, "At log in", "startup sign in boot windows start with windows", _ => "at log in"),
+        new(Start, Startup, "When OmniControl starts", "launch open app start", _ => "when OmniControl starts"),
+        new(Time, Clock, "At a time of day", "schedule scheduler task clock alarm days weekly daily wake",
+            t => $"at {t.Options.Int(Hour):00}:{t.Options.Int(Minute):00} {AutomationDays.PhraseOf(t.Options)}",
+            new[] { Hour, Minute }.Concat(AutomationDays.Options).Append(Wake).ToList()),
+        new(Timer, Clock, "After a timer", "schedule scheduler task countdown delay every minutes",
+            t => t.Options.Bool(Repeat) ? $"every {t.Options.Int(Minutes)} min" : $"{t.Options.Int(Minutes)} min after it starts", new[] { Minutes, Repeat }),
+        new(Idle, Clock, "When I have been idle", "away inactive no input screen saver", t => $"when idle for {t.Options.Int(IdleMinutes)} min", new[] { IdleMinutes }),
+        new(Resume, Power, "When the PC wakes from sleep", "resume wake hibernate", _ => "when the PC wakes from sleep"),
+        new(OnBattery, Power, "When it starts running on battery", "unplugged laptop", _ => "when it starts running on battery"),
+        new(PluggedIn, Power, "When it is plugged in", "charging mains ac laptop", _ => "when it is plugged in"),
+        new(ProgramStart, Programs, "Another program starts", "app program open launch type name", t => $"when {ProgramNames.Normalize(t.Param)} starts",
+            ParamHint: "notepad", ParamLabel: ProgramLabel, PerProgram: p => $"{p} starts"),
+        new(ProgramClose, Programs, "Another program closes", "app program quit exit type name", t => $"when {ProgramNames.Normalize(t.Param)} closes",
+            ParamHint: "notepad", ParamLabel: ProgramLabel, PerProgram: p => $"{p} closes"),
+        new(DeviceConnect, Devices, "A USB device connects", "plug usb headset keyboard drive", t => $"when {DeviceName(t.Param)} connects",
+            ParamHint: "(any device)", ParamLabel: DeviceLabel),
+        new(DeviceDisconnect, Devices, "A USB device disconnects", "unplug usb headset keyboard drive", t => $"when {DeviceName(t.Param)} disconnects",
+            ParamHint: "(any device)", ParamLabel: DeviceLabel),
+        new(Hotkey, Keys, "I press a hotkey", "shortcut keys keyboard", _ => "when I press a hotkey"),
+    };
+
+    /// <summary>The fixed part of the picker's list. <paramref name="programs"/> are the names to offer for "a program starts or closes".</summary>
+    private static IEnumerable<PickChoice> FixedChoices(IReadOnlyList<string> programs)
+    {
+        var perProgram = Table.Where(t => t.PerProgram is not null).ToList();
+        foreach (var t in Table)
         {
-            new(Login, Startup, "At log in", Keywords: "startup sign in boot windows start with windows"),
-            new(Start, Startup, "When OmniControl starts", Keywords: "launch open app start"),
-            new(Time, Clock, "At a time of day", Keywords: "schedule scheduler task clock alarm days weekly daily wake",
-                Options: new[] { Hour, Minute }.Concat(AutomationDays.Options).Append(Wake).ToList(), AskFirst: true),
-            new(Timer, Clock, "After a timer", Keywords: "schedule scheduler task countdown delay every minutes", Options: new[] { Minutes, Repeat }, AskFirst: true),
-            new(Idle, Clock, "When I have been idle", Keywords: "away inactive no input screen saver", Options: new[] { IdleMinutes }, AskFirst: true),
-            new(Resume, Power, "When the PC wakes from sleep", Keywords: "resume wake hibernate"),
-            new(OnBattery, Power, "When it starts running on battery", Keywords: "unplugged laptop"),
-            new(PluggedIn, Power, "When it is plugged in", Keywords: "charging mains ac laptop"),
-        };
-        foreach (var p in programs)
-        {
-            list.Add(new PickChoice($"{ProgramStart}:{p}", Programs, $"{p} starts", Keywords: "app program open launch"));
-            list.Add(new PickChoice($"{ProgramClose}:{p}", Programs, $"{p} closes", Keywords: "app program quit exit"));
+            if (t == perProgram.FirstOrDefault()) // the known programs come first in their section, each with its start and close
+                foreach (var p in programs)
+                foreach (var each in perProgram)
+                    yield return new PickChoice($"{each.Id}:{p}", each.Section, each.PerProgram!(p), Keywords: each.Keywords);
+            yield return t.ParamHint is null
+                ? new PickChoice(t.Id, t.Section, t.Name, Keywords: t.Keywords, Options: t.Options, AskFirst: t.Options is { Count: > 0 })
+                : new PickChoice($"{t.Id}:", t.Section, t.Name, t.ParamHint, t.Keywords, ParamLabel: t.ParamLabel);
         }
-        list.Add(new PickChoice($"{ProgramStart}:", Programs, "Another program starts", "notepad", "app program open launch type name", ParamLabel: ProgramLabel));
-        list.Add(new PickChoice($"{ProgramClose}:", Programs, "Another program closes", "notepad", "app program quit exit type name", ParamLabel: ProgramLabel));
-        list.Add(new PickChoice($"{DeviceConnect}:", Devices, "A USB device connects", "(any device)", "plug usb headset keyboard drive", ParamLabel: DeviceLabel));
-        list.Add(new PickChoice($"{DeviceDisconnect}:", Devices, "A USB device disconnects", "(any device)", "unplug usb headset keyboard drive", ParamLabel: DeviceLabel));
-        list.Add(new PickChoice(Hotkey, Keys, "I press a hotkey", Keywords: "shortcut keys keyboard"));
-        return list;
     }
 
-    /// <summary>How a stored trigger reads in the sentence. <paramref name="hotkey"/> is the shortcut of the rule's own action (empty: none yet).</summary>
-    public static string PhraseOf(string stored)
-    {
-        var trigger = MouseAction.Parse(stored);
-        var o = trigger.Options;
-        return trigger.Id switch
-        {
-            Login => "at log in",
-            Start => "when OmniControl starts",
-            Time => $"at {o.Int(Hour):00}:{o.Int(Minute):00} {AutomationDays.PhraseOf(o)}",
-            Timer => o.Bool(Repeat) ? $"every {o.Int(Minutes)} min" : $"{o.Int(Minutes)} min after it starts",
-            Idle => $"when idle for {o.Int(IdleMinutes)} min",
-            Resume => "when the PC wakes from sleep",
-            OnBattery => "when it starts running on battery",
-            PluggedIn => "when it is plugged in",
-            ProgramStart => $"when {ProgramNames.Normalize(trigger.Param)} starts",
-            ProgramClose => $"when {ProgramNames.Normalize(trigger.Param)} closes",
-            DeviceConnect => $"when {DeviceName(trigger.Param)} connects",
-            DeviceDisconnect => $"when {DeviceName(trigger.Param)} disconnects",
-            Hotkey => "when I press a hotkey",
-            _ => "(unknown trigger)",
-        };
-    }
+    /// <summary>How a fixed trigger reads in the sentence; null when the stored text is not one.</summary>
+    private static string? FixedPhraseOf(MouseAction trigger) => Table.FirstOrDefault(t => t.Id == trigger.Id)?.Phrase(trigger);
 
     /// <summary>True for the entries whose text may stay empty (any device).</summary>
     public static bool AllowsEmptyText(string spec) => spec == DeviceConnect + ":" || spec == DeviceDisconnect + ":";

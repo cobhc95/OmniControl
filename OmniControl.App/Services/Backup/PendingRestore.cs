@@ -56,7 +56,7 @@ public static class PendingRestore
             var plan = JsonSerializer.Deserialize<Plan>(File.ReadAllText(planPath));
             File.Delete(planPath); // first, so a restore (above all a wipe) is never carried out twice, even if the folder can't be removed
             if (plan is null) return "a staged restore had no plan; nothing was changed";
-            if (plan.Mode != RestoreMode.Merge) DeleteStores(folder);
+            if (plan.Mode != RestoreMode.Merge) DeleteStores(folder, staging);
             if (plan.Mode != RestoreMode.Wipe)
                 foreach (var store in DataStores.BackedUp)
                     Apply(folder, staging, store, plan.Mode);
@@ -72,10 +72,13 @@ public static class PendingRestore
         }
     }
 
-    /// <summary>Deletes every saved store and undo copy (wipe, or before a full replace); safety journals stay.</summary>
-    private static void DeleteStores(string folder)
+    /// <summary>
+    /// Deletes every saved store and undo copy (wipe, or before a full replace); safety journals stay. A store the backup holds is left for
+    /// <see cref="Apply"/> to overwrite, so it can still read what this store keeps of its own (the approvals).
+    /// </summary>
+    private static void DeleteStores(string folder, string staging)
     {
-        foreach (var store in DataStores.All.Where(s => s.Kind != StoreKind.Safety))
+        foreach (var store in DataStores.All.Where(s => s.Kind != StoreKind.Safety && !File.Exists(Path.Combine(staging, s.FileName))))
             foreach (var file in Directory.EnumerateFiles(folder, store.FileName))
                 File.Delete(file);
     }

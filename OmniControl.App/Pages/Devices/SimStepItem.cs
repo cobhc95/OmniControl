@@ -53,7 +53,7 @@ public sealed partial class SimStepItem : ObservableObject
     public IReadOnlyList<StepFieldItem> Fields { get; }
     public bool HasFields => Fields.Count > 0;
 
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(NumberText))] private int _number;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(NumberText), nameof(Note), nameof(HasNote), nameof(IsIncomplete), nameof(ShowsCaution))] private int _number;
 
     /// <summary>Why the last run stopped here.</summary>
     [ObservableProperty, NotifyPropertyChangedFor(nameof(Failure), nameof(IsFailed), nameof(Note), nameof(HasNote))] private string _runFailure = string.Empty;
@@ -68,13 +68,20 @@ public sealed partial class SimStepItem : ObservableObject
     public string Failure => RunFailure.Length > 0 ? RunFailure : TestFailure;
     public bool IsFailed => Failure.Length > 0;
 
-    /// <summary>The words under the row: the failure, else what the step still needs, else nothing.</summary>
-    public string Note => IsFailed ? Failure : SimSteps.Missing(Step) is { } missing ? $"Needs: {missing}" : string.Empty;
+    /// <summary>The step cannot run yet (nothing picked, no app, ...).</summary>
+    public bool IsIncomplete => SimSteps.Missing(Step) is not null;
+
+    /// <summary>The note is a failure or something missing: shown in caution words.</summary>
+    public bool ShowsCaution => IsFailed || IsIncomplete;
+
+    /// <summary>The words under the row: the failure, else one sentence on what the step needs, else nothing.</summary>
+    public string Note => IsFailed ? Failure : SimSteps.Fix(Step, Number) ?? string.Empty;
     public bool HasNote => Note.Length > 0;
 
     public string Lead => SimSteps.Words(Step).Lead;
     public string Target => SimSteps.Words(Step).Target;
     public string Tail => SimSteps.Words(Step).Tail;
+    public string TargetTip => SimSteps.Detail(Step);
     public bool HasTarget => Target.Length > 0;
     public bool HasTail => Tail.Length > 0;
 
@@ -84,7 +91,7 @@ public sealed partial class SimStepItem : ObservableObject
     public string RePickText => IsPicking ? "Tap it in the emulator..." : "Re-pick";
 
     public string RePickTip => Step.Kind == SimStepKind.Check
-        ? "Then tap, in the emulator, the words that show while the device is on."
+        ? "Then tap, in the emulator, the words the screen must show."
         : "Then tap the element in the emulator; it replaces this step's element.";
 
     /// <summary>Anything about the step changed: its words and note are read again and the owner saves.</summary>

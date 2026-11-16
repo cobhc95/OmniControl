@@ -12,8 +12,5 @@ public static class HotkeyDefaults
     /// <summary>The same actions with nothing bound.</summary>
     public static Dictionary<string, StoredHotkey> Of(IReadOnlyDictionary<string, StoredHotkey> all) => all.Keys.ToDictionary(id => id, _ => Cleared);
 
-    /// <summary>The actions that carry a suggested key (pure).</summary>
-    public static IEnumerable<HotkeyAction> WithSuggestion(IEnumerable<HotkeyAction> actions) => actions.Where(a => a.SuggestedKey is not null);
-
-    private static bool IsCleared(StoredHotkey s) => s.Gesture.Length == 0 && !s.UseSelected;
+    private static bool IsCleared(StoredHotkey s) => !s.Keys.Any() && !s.UseSelected;
 }

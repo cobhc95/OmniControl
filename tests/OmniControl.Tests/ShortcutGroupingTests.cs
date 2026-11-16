@@ -1,10 +1,9 @@
-﻿using OmniControl.App.Hotkeys;
-using OmniControl.App.Pages.Shortcuts;
+using OmniControl.App.Hotkeys;
 using OmniControl.Core.Models;
 
 namespace OmniControl.Tests;
 
-/// <summary>The grouping data on the master entries: every monitor feature has a section, and folding actions into panels loses none.</summary>
+/// <summary>The grouping data on the master entries: every monitor feature has a section, and a subgroup extends the heading.</summary>
 public class ShortcutGroupingTests
 {
     [Fact]
@@ -21,30 +20,37 @@ public class ShortcutGroupingTests
         new(id, id, "Displays", "", _ => { }, group: "Hardware", subgroup: subgroup);
 
     [Fact]
-    public void ASubgroup_ChangesTheHeading_NotThePanel()
+    public void ASubgroup_ExtendsTheHeading()
     {
         var plain = Action("a", null);
         var sub = Action("b", "Presets");
-        Assert.Equal("Displays - Hardware", plain.Panel);
-        Assert.Equal("Displays - Hardware", sub.Panel);
         Assert.Equal("Displays - Hardware - Presets", sub.Heading);
         Assert.Equal("Displays - Hardware", plain.Heading);
     }
 
     [Fact]
-    public void FoldingIntoCards_KeepsEveryAction_InThreeLevels()
+    public void AnOldBinding_ReadsAsOneKey_AndKeysStayUnique()
     {
-        var all = new[] { Action("a", null), Action("b", "Colour"), Action("c", "Colour"), Action("d", "Presets"),
-            new HotkeyAction("e", "e", "Displays", "", _ => { }), new HotkeyAction("f", "f", "Displays", "", _ => { }, group: "Software") };
-        var group = new HotkeyGroup("Displays", all, _ => { });
+        var old = new StoredHotkey("Ctrl+Alt+K", false, new List<string>()); // a file from before several keys: no More
+        Assert.Equal(new[] { "Ctrl+Alt+K" }, old.Keys);
 
-        Assert.Equal(new[] { "e" }, group.Actions.Select(a => a.Id));
-        Assert.Equal(new[] { "Hardware", "Software" }, group.Subgroups.Select(s => s.Name));
-        var hardware = group.Subgroups[0];
-        Assert.Equal(new[] { "a" }, hardware.Actions.Select(a => a.Id));
-        Assert.Equal(new[] { "Colour", "Presets" }, hardware.Parts.Select(p => p.Name));
-        Assert.Equal(new[] { "b", "c" }, hardware.Parts[0].Actions.Select(a => a.Id));
-        Assert.Equal("6 shortcuts", group.Summary);
-        Assert.Equal("4 shortcuts", hardware.Summary);
+        var all = HotkeyRegistry.Unique(new Dictionary<string, StoredHotkey>
+        {
+            ["a"] = old,
+            ["b"] = new("Ctrl+Alt+K", false, new List<string>(), new List<string> { "Ctrl+Alt+J" }), // a merged backup gave it the same key
+        });
+        Assert.Equal(new[] { "Ctrl+Alt+K" }, all["a"].Keys);
+        Assert.Equal(new[] { "Ctrl+Alt+J" }, all["b"].Keys);
+    }
+
+    [Fact]
+    public void AnAction_KeepsSeveralKeys_ThroughExportAndRestore()
+    {
+        var action = Action("a", null);
+        action.SetKeys(new[] { "Ctrl+Alt+1", "Ctrl+Alt+2", "Ctrl+Alt+1" });
+        Assert.Equal(new[] { "Ctrl+Alt+1", "Ctrl+Alt+2" }, action.Keys);
+        var copy = Action("b", null);
+        copy.Restore(action.Export());
+        Assert.Equal(action.Keys, copy.Keys);
     }
 }

@@ -1,10 +1,29 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using OmniControl.Core.Native;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>An Android emulator OmniControl knows: how to find it on this PC, where its official download page is, and the address adb reaches it at.</summary>
-public sealed record EmulatorInfo(string Id, string Name, string DownloadPage, string DefaultAddress, string[] Programs, string AdbNote);
+/// <summary>How much setup an emulator needs before OmniControl can use it.</summary>
+public enum EmulatorEase { Easy, Hard }
+
+/// <summary>
+/// An Android emulator OmniControl knows: how to find it on this PC (candidate program paths, else its Uninstall entry's install folder plus a
+/// relative program path), where its official download page is, the address adb reaches it at and the programs it runs as. UsesGb is the memory it
+/// holds while running, PcGb the memory the PC should have (sources in HANDOVER.md).
+/// </summary>
+public sealed record EmulatorInfo(string Id, string Name, string DownloadPage, string DefaultAddress, string[] Programs, string[] Processes, string AdbNote, EmulatorEase Ease, int UsesGb, int PcGb, string Summary,
+    string[] RegistryNames, string[] RegistryPrograms, string? RegistryAdb)
+{
+    /// <summary>Only Android Studio's emulator can be started without its window (<c>-no-window</c>); the others always show theirs.</summary>
+    public bool CanHide => Id == Emulators.AndroidStudio;
+
+    /// <summary>Memory the emulator holds while running, as the menu shows it.</summary>
+    public string UsesText => $"~{UsesGb} GB";
+
+    /// <summary>Memory the PC should have, as the menu shows it.</summary>
+    public string PcText => $"PC {PcGb} GB+";
+}
 
 /// <summary>
 /// The master list of known emulators (the Devices page's emulator menu reads it) and the lookups on it. Nothing is ever downloaded:
@@ -12,31 +31,69 @@ public sealed record EmulatorInfo(string Id, string Name, string DownloadPage, s
 /// </summary>
 public static class Emulators
 {
-    public const string AndroidStudio = "studio", BlueStacks = "bluestacks", LdPlayer = "ldplayer";
+    public const string AndroidStudio = "studio", BlueStacks = "bluestacks", LdPlayer = "ldplayer", MuMu = "mumu", MEmu = "memu";
 
     public const string PlatformToolsPage = "https://developer.android.com/tools/releases/platform-tools";
 
     public static readonly IReadOnlyList<EmulatorInfo> All = new[]
     {
         new EmulatorInfo(BlueStacks, "BlueStacks", "https://www.bluestacks.com/download.html", "127.0.0.1:5555",
-            new[] { @"%ProgramFiles%\BlueStacks_nxt\HD-Player.exe", @"%ProgramFiles%\BlueStacks\HD-Player.exe" },
-            "In BlueStacks' settings (Advanced), switch on Android Debug Bridge (ADB)."),
+            new[] { @"%ProgramFiles%\BlueStacks_nxt\HD-Player.exe", @"%ProgramFiles%\BlueStacks\HD-Player.exe", @"%ProgramFiles(x86)%\BlueStacks_nxt\HD-Player.exe" },
+            new[] { "HD-Player" },
+            "In BlueStacks' settings (Advanced), switch on Android Debug Bridge (ADB).",
+            EmulatorEase.Easy, 3, 8, "Easiest, has ads.",
+            new[] { "BlueStacks" }, new[] { "HD-Player.exe" }, "HD-Adb.exe"),
         new EmulatorInfo(AndroidStudio, "Android Studio", "https://developer.android.com/studio", "emulator-5554",
             new[] { @"%LOCALAPPDATA%\Android\Sdk\emulator\emulator.exe" },
-            "Create a virtual device in Android Studio's Device Manager first."),
+            new[] { "qemu-system-x86_64", "qemu-system-aarch64" },
+            "Create a virtual device in Android Studio's Device Manager first.",
+            EmulatorEase.Hard, 3, 8, "Official, no ads. Needs a virtual device.",
+            Array.Empty<string>(), Array.Empty<string>(), null),
         new EmulatorInfo(LdPlayer, "LDPlayer", "https://www.ldplayer.net/", "127.0.0.1:5555",
-            new[] { @"C:\LDPlayer\LDPlayer9\dnplayer.exe", @"C:\LDPlayer\LDPlayer4.0\dnplayer.exe", @"%ProgramFiles%\LDPlayer\LDPlayer9\dnplayer.exe" },
-            "In LDPlayer's settings (Others), set ADB debugging to local connection."),
+            new[] { @"C:\LDPlayer\LDPlayer9\dnplayer.exe", @"C:\LDPlayer\LDPlayer4.0\dnplayer.exe", @"%ProgramFiles%\LDPlayer\LDPlayer9\dnplayer.exe", @"%ProgramFiles(x86)%\LDPlayer\LDPlayer9\dnplayer.exe" },
+            new[] { "dnplayer", "LdVBoxHeadless" },
+            "In LDPlayer's settings (Others), set ADB debugging to local connection.",
+            EmulatorEase.Easy, 2, 4, "Light, bundled extras.",
+            new[] { "LDPlayer" }, new[] { "dnplayer.exe" }, "adb.exe"),
+        new EmulatorInfo(MuMu, "MuMu Player", "https://www.mumuplayer.com/", "127.0.0.1:16384",
+            new[]
+            {
+                @"%ProgramFiles%\Netease\MuMuPlayer\nx_main\MuMuNxMain.exe", @"%ProgramFiles(x86)%\Netease\MuMuPlayer\nx_main\MuMuNxMain.exe",
+                @"%ProgramFiles%\Netease\MuMuPlayer-12.0\shell\MuMuPlayer.exe", @"%ProgramFiles%\Netease\MuMuPlayerGlobal-12.0\shell\MuMuPlayer.exe",
+            },
+            new[] { "MuMuNxMain", "MuMuNxDevice", "MuMuPlayer", "MuMuVMMHeadless" },
+            "ADB is built in; MuMu answers at 127.0.0.1:16384.",
+            EmulatorEase.Easy, 2, 4, "Play Store and adb built in.",
+            new[] { "MuMuPlayer", "MuMu Player" }, new[] { @"nx_main\MuMuNxMain.exe", @"shell\MuMuPlayer.exe" }, @"nx_main\adb.exe"),
+        new EmulatorInfo(MEmu, "MEmu", "https://www.memuplay.com/", "127.0.0.1:21503",
+            new[] { @"%ProgramFiles%\Microvirt\MEmu\MEmu.exe", @"%ProgramFiles(x86)%\Microvirt\MEmu\MEmu.exe" },
+            new[] { "MEmu", "MEmuHeadless" },
+            "ADB is built in; MEmu's first instance answers at 127.0.0.1:21503.",
+            EmulatorEase.Easy, 2, 4, "Light, installer bundles offers.",
+            new[] { "MEmu" }, new[] { @"MEmu\MEmu.exe", "MEmu.exe" }, "adb.exe"),
     };
 
     public static EmulatorInfo? Of(string id) => All.FirstOrDefault(e => e.Id == id);
 
-    /// <summary>The program that starts the emulator, or null when it is not installed.</summary>
+    /// <summary>The program that starts the emulator (a candidate path, else its Uninstall entry's install folder), or null when it is not installed.</summary>
     public static string? Find(EmulatorInfo emulator) =>
-        emulator.Programs.Select(Environment.ExpandEnvironmentVariables).FirstOrDefault(File.Exists);
+        emulator.Programs.Select(Environment.ExpandEnvironmentVariables).FirstOrDefault(IsFile) ?? InRegistryFolders(emulator, emulator.RegistryPrograms);
+
+    private static string? InRegistryFolders(EmulatorInfo emulator, IEnumerable<string> relative) =>
+        emulator.RegistryNames.Length == 0
+            ? null
+            : UninstallRegistry.InstallLocations(emulator.RegistryNames).SelectMany(folder => relative.Select(r => Path.Combine(folder, r))).FirstOrDefault(IsFile);
+
+    /// <summary>The adb an installed emulator ships with (MuMu's nx_main\adb.exe and the like); null when it is not installed or ships none.</summary>
+    public static string? FindBundledAdb(EmulatorInfo emulator) =>
+        emulator.RegistryAdb is { } adb && Find(emulator) is not null ? InRegistryFolders(emulator, new[] { adb }) : null;
+
+    /// <summary>adb from the Android SDK, else the bundled adb of the chosen emulator, else of any installed one; null when there is none.</summary>
+    public static string? FindAdb(EmulatorInfo? chosen = null) =>
+        FindSdkAdb() ?? (chosen is null ? null : FindBundledAdb(chosen)) ?? All.Select(FindBundledAdb).FirstOrDefault(a => a is not null);
 
     /// <summary>adb from the Android SDK's platform-tools (the SDK folder variables, Android Studio's folder, then the PATH); null when it is not installed.</summary>
-    public static string? FindAdb()
+    private static string? FindSdkAdb()
     {
         var folders = new List<string?>
         {
@@ -62,16 +119,25 @@ public static class Emulators
         }
     }
 
-    /// <summary>Starts the emulator (Android Studio's with its first virtual device) as the normal user; null when it started, otherwise one plain sentence.</summary>
-    public static string? Open(EmulatorInfo emulator)
+    /// <summary>
+    /// Starts the emulator (Android Studio's with its first virtual device) as the normal user; null when it started, otherwise one plain sentence.
+    /// <paramref name="show"/> false starts Android Studio's without its window; <paramref name="quickBoot"/> lets it load its saved snapshot.
+    /// </summary>
+    public static string? Open(EmulatorInfo emulator, bool show = true, bool quickBoot = false)
     {
         if (Find(emulator) is not { } program) return $"{emulator.Name} isn't installed.";
-        var start = new ProcessStartInfo(program) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(program) ?? string.Empty };
+        var start = new ProcessStartInfo(program) { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = Path.GetDirectoryName(program) ?? string.Empty };
         if (emulator.Id == AndroidStudio)
         {
             if (VirtualDevices().FirstOrDefault() is not { } device) return "Android Studio has no virtual device yet. Create one in its Device Manager.";
             start.ArgumentList.Add("-avd");
             start.ArgumentList.Add(device);
+            // A broken quick-boot snapshot leaves a black screen ("error while loading state"), so the snapshot is loaded only after one good cold boot.
+            // 2 GB is enough for a home app and keeps the emulator usable on PCs with less memory than Android Studio suggests.
+            if (!quickBoot) start.ArgumentList.Add("-no-snapshot-load");
+            start.ArgumentList.Add("-memory");
+            start.ArgumentList.Add("2048");
+            if (!show) start.ArgumentList.Add("-no-window");
         }
         try
         {
@@ -81,6 +147,53 @@ public static class Emulators
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
         {
             return $"{emulator.Name} wouldn't start: {ex.Message}";
+        }
+    }
+
+    /// <summary>Brings the emulator's main window to the front (restoring it when minimised); false when it has no window (running hidden, or not running).</summary>
+    public static bool BringToFront(EmulatorInfo emulator)
+    {
+        foreach (var process in Running(emulator))
+        {
+            using (process)
+            {
+                try
+                {
+                    var window = process.MainWindowHandle;
+                    if (window == IntPtr.Zero) continue;
+                    if (ForegroundNative.IsIconic(window)) ForegroundNative.ShowWindow(window, ForegroundNative.SwRestore);
+                    return ForegroundNative.SetForegroundWindow(window);
+                }
+                catch (InvalidOperationException) { /* it ended just now */ }
+            }
+        }
+        return false;
+    }
+
+    /// <summary>The memory the emulator's programs hold now, in bytes; 0 when none is running.</summary>
+    public static long MemoryUsed(EmulatorInfo emulator) => Running(emulator).Sum(Measure);
+
+    /// <summary>Stops the emulator's programs hard (only after a clean shutdown did not work).</summary>
+    public static void Kill(EmulatorInfo emulator)
+    {
+        foreach (var process in Running(emulator))
+        {
+            using (process)
+            {
+                try { process.Kill(entireProcessTree: true); }
+                catch (Exception ex) when (ex is Win32Exception or InvalidOperationException) { /* it ended just now, or Windows refused */ }
+            }
+        }
+    }
+
+    private static List<Process> Running(EmulatorInfo emulator) => emulator.Processes.SelectMany(Process.GetProcessesByName).ToList();
+
+    private static long Measure(Process process)
+    {
+        using (process)
+        {
+            try { return process.WorkingSet64; }
+            catch (Exception ex) when (ex is Win32Exception or InvalidOperationException) { return 0; } // it ended just now
         }
     }
 

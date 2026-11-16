@@ -1,30 +1,39 @@
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
+using OmniControl.App.Controls;
 
 namespace OmniControl.App.Pages.Devices;
 
-/// <summary>Wiring only: the checklist's Router guide pill opens the guide pop-down, which is given the device when it opens (a pop-down's content does not inherit the data context).</summary>
+/// <summary>Wiring only: the Method, Template and Auto-check menus are given its rows when it opens (a pop-down's content does not inherit the data context) and closes after a pick; Copy details copies the last command's masked log lines.</summary>
 public partial class DeviceDetail : UserControl
 {
-    private Flyout? _methodMenu;
+    private Flyout? _methodMenu, _autoCheckMenu, _templateMenu;
 
     public DeviceDetail()
     {
         InitializeComponent();
         MethodRows.Picked += (_, _) => _methodMenu?.Hide();
+        TemplateRows.Picked += (_, _) => _templateMenu?.Hide();
+        AutoCheckRows.Picked += (_, _) => _autoCheckMenu?.Hide();
+    }
+
+    private void OnAutoCheckMenuOpened(object? sender, Flyout flyout)
+    {
+        _autoCheckMenu = flyout;
+        AutoCheckRows.ItemsSource = (DataContext as DeviceItem)?.AutoCheckOptions;
+    }
+
+    private void OnTemplateMenuOpened(object? sender, Flyout flyout)
+    {
+        _templateMenu = flyout;
+        TemplateRows.ItemsSource = (DataContext as DeviceItem)?.Editing?.ProfileOptions;
     }
 
     private void OnMethodMenuOpened(object? sender, Flyout flyout)
     {
         _methodMenu = flyout;
-        MethodRows.ItemsSource = (DataContext as DeviceItem)?.MethodOptions;
+        MethodRows.ItemsSource = (DataContext as DeviceItem)?.Editing?.MethodOptions;
     }
 
-    private void OnGuideClick(object? sender, RoutedEventArgs e) => FlyoutBase.GetAttachedFlyout(this)?.ShowAt((Control)sender!);
-
-    private void OnGuideOpened(object? sender, EventArgs e)
-    {
-        if (sender is Flyout { Content: Control panel }) panel.DataContext = DataContext;
-    }
+    private async void OnCopyDetails(object? sender, RoutedEventArgs e) => await CopyDetails.ToClipboardAsync(this, (DataContext as DeviceItem)?.Details);
 }

@@ -1,8 +1,8 @@
-﻿using System.Runtime.InteropServices;
-using Avalonia.Controls;
+﻿using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using OmniControl.App.Picker;
+using OmniControl.App.Controls;
 
 namespace OmniControl.App.Pages.Gestures;
 
@@ -101,16 +101,5 @@ public partial class RuleEditorWindow : Window
 
     private void OnCloseClick(object? sender, RoutedEventArgs e) => Close();
 
-    private async void OnCopyClick(object? sender, RoutedEventArgs e)
-    {
-        if (Model is not { } model || Clipboard is not { } clipboard) return;
-        try
-        {
-            await clipboard.SetTextAsync(model.Details);
-        }
-        catch (Exception ex) when (ex is TimeoutException or ExternalException)
-        {
-            // Another program holds the clipboard: the details are still in the rules log, whose path the status line names.
-        }
-    }
+    private async void OnCopyClick(object? sender, RoutedEventArgs e) => await CopyDetails.ToClipboardAsync(this, Model?.Details);
 }

@@ -4,33 +4,31 @@
              xmlns:pages="using:OmniControl.App.Pages"
              x:Class="OmniControl.App.Pages.Devices.SimulationSteps"
              x:DataType="vm:SimulationViewModel">
-    <!-- The recorded steps (docs/mockups/devices-simulation.html section 2) as an editable sentence list: grip, number, "Wait for" [block] "- tap it",
-         then the reason it failed or what is missing, Re-pick, Test and a remove cross in the block. Click a block to edit it; Delete removes it; drag the
-         grip to reorder. "+ add step" lists the step kinds. A failed step is outlined red (Border.steprow.failed). -->
-    <Border Classes="groupPanel">
-        <StackPanel Spacing="6">
-            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
-                <TextBlock Classes="strong" Text="Steps" VerticalAlignment="Center" />
+    <!-- The set-up's stage 3 "Steps" (docs/mockups/devices-simulation.html section 2, inside smart-devices-setup-vs-ready.html): Start recording,
+         then the steps as an editable sentence list: grip, number, "Wait for" [block] "- tap it" (wrapping), Re-pick, Test and a remove cross;
+         the reason a step failed or what it still needs on a line under it. Click a block to edit it; Delete or the cross removes it,
+         right-click opens Copy, Cut, Paste below, Duplicate and Delete; drag the grip to reorder. "+ add step" lists the step kinds. A failed
+         step is outlined red (Border.steprow.failed). The last Tap is the device's switch. -->
+    <StackPanel Spacing="6">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <TextBlock Classes="hint small" TextWrapping="Wrap" Text="{Binding Help}" IsVisible="{Binding HasHelp}" VerticalAlignment="Center" />
                 <Button Grid.Column="1" Classes="pill" Content="{Binding RecordLabel}" Command="{Binding RecordCommand}" ToolTip.ShowOnDisabled="True"
-                        ToolTip.Tip="Record: open the device app in the emulator, press Record, tap through it and switch the device on, then press Stop. This replaces the steps." />
-                <Button Grid.Column="2" Classes="pill" Content="Test all" Command="{Binding TestAllCommand}" ToolTip.ShowOnDisabled="True"
-                        ToolTip.Tip="Switches the device off, then on again with these steps." />
+                        ToolTip.Tip="{Binding RecordTip}" />
             </Grid>
-            <TextBlock Classes="hint small" TextWrapping="Wrap" Text="{Binding Help}" IsVisible="{Binding HasHelp}" />
 
-            <ListBox x:Name="StepList" Classes="rows compact" ItemsSource="{Binding Rows}" IsVisible="{Binding HasSteps}" KeyDown="OnStepKeyDown">
+            <ListBox x:Name="StepList" Classes="rows compact" SelectionMode="Multiple" ItemsSource="{Binding Rows}" IsVisible="{Binding HasSteps}" KeyDown="OnStepKeyDown">
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:SimStepItem">
                         <Border Classes="steprow" Classes.failed="{Binding IsFailed}">
-                            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto" ColumnSpacing="8">
+                            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8">
                                 <PathIcon Classes="grip" Data="{DynamicResource GripIcon}" VerticalAlignment="Center" ToolTip.Tip="Drag to reorder" />
                                 <TextBlock Grid.Column="1" Classes="muted" Text="{Binding NumberText}" VerticalAlignment="Center" />
-                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                <WrapPanel Grid.Column="2" ItemSpacing="6" LineSpacing="4" VerticalAlignment="Center">
                                     <TextBlock Classes="blockword" Text="{Binding Lead}" VerticalAlignment="Center" />
-                                    <Button Classes="block" ToolTip.Tip="Change it; Delete removes the step">
+                                    <Button Classes="block" ToolTip.Tip="Change it. Right-click for more; Delete removes the step.">
                                         <Button.Flyout>
                                             <Flyout Placement="BottomEdgeAlignedLeft" FlyoutPresenterClasses="optionmenu">
-                                                <StackPanel x:DataType="vm:SimStepItem" Spacing="6" MinWidth="260" MaxWidth="360">
+                                                <StackPanel x:DataType="vm:SimStepItem" Spacing="6">
                                                     <ItemsControl ItemsSource="{Binding Fields}">
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate x:DataType="vm:StepFieldItem">
@@ -45,31 +43,31 @@
                                                 </StackPanel>
                                             </Flyout>
                                         </Button.Flyout>
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="{Binding Target}" />
-                                            <Button Classes="blockx" Command="{Binding RemoveCommand}" ToolTip.Tip="Remove this step">
-                                                <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
-                                            </Button>
-                                        </StackPanel>
+                                        <TextBlock Text="{Binding Target}" TextWrapping="Wrap" ToolTip.Tip="{Binding TargetTip}" />
                                     </Button>
                                     <TextBlock Classes="muted" Text="{Binding Tail}" IsVisible="{Binding HasTail}" VerticalAlignment="Center" />
-                                </StackPanel>
-                                <TextBlock Grid.Column="3" Classes="hint small" Classes.cautiontext="{Binding IsFailed}" Text="{Binding Note}" IsVisible="{Binding HasNote}"
-                                           TextTrimming="CharacterEllipsis" HorizontalAlignment="Right" VerticalAlignment="Center" ToolTip.Tip="{Binding Note}" />
-                                <Button Grid.Column="4" Classes="link small" Command="{Binding RePickCommand}" IsVisible="{Binding CanRePick}" ToolTip.Tip="{Binding RePickTip}">
+                                </WrapPanel>
+                                <TextBlock Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="4" Classes="hint small" Classes.cautiontext="{Binding ShowsCaution}" Text="{Binding Note}"
+                                           IsVisible="{Binding HasNote}" TextWrapping="Wrap" />
+                                <Button Grid.Column="3" Classes="link small" Command="{Binding RePickCommand}" IsVisible="{Binding CanRePick}" ToolTip.Tip="{Binding RePickTip}">
                                     <TextBlock Text="{Binding RePickText}" />
                                 </Button>
-                                <Button Grid.Column="5" Classes="link small" Command="{Binding TestCommand}" ToolTip.Tip="Runs only this step on the emulator.">
+                                <Button Grid.Column="4" Classes="link small" Command="{Binding TestCommand}" ToolTip.Tip="Runs only this step on the emulator.">
                                     <TextBlock Text="Test" />
+                                </Button>
+                                <Button Grid.Column="5" Classes="blockx" Command="{Binding RemoveCommand}" Margin="0" ToolTip.Tip="Remove this step">
+                                    <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
                                 </Button>
                             </Grid>
                         </Border>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
-            <pages:EmptyListRow IsVisible="{Binding !HasSteps}" Text="No steps yet. Press Record, then use the device app in the emulator." LinkText="Record" Command="{Binding RecordCommand}" />
+            <pages:EmptyListRow IsVisible="{Binding !HasSteps}" Text="No steps yet." LinkText="Start recording" Command="{Binding RecordCommand}" />
 
             <Button x:Name="AddButton" Classes="blockadd small" Content="+ add step" HorizontalAlignment="Left" Click="OnAddClick" />
-        </StackPanel>
-    </Border>
+            <Border Classes="statusstrip" IsVisible="{Binding IsRecording}">
+                <TextBlock Classes="statusline" Text="{x:Static vm:SimulationViewModel.RecordingLine}" />
+            </Border>
+    </StackPanel>
 </UserControl>

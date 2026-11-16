@@ -58,6 +58,7 @@ public sealed class TrackpadService : IDisposable
         // A write to the key may have changed what the cards say even when no takeover changed, so the cards are told then too.
         _settingsWatcher.Changed += written => Enqueue(() => _takeover.Check() | written);
         _mouse.Applied += SyncTakeover;
+        if (StartupMode.Inert) return; // a screenshot export neither reads touchpad input nor changes Windows' gesture settings
         // Always on, like the mouse hook: rules with a trackpad trigger need it whether or not any gesture is mapped.
         StartWatcher();
         SyncTakeover(); // a crashed run's takeover that is no longer wanted is given back here
@@ -108,6 +109,7 @@ public sealed class TrackpadService : IDisposable
     /// <summary>UI thread: makes Windows' settings follow the mappings and switches, on the worker.</summary>
     private void SyncTakeover()
     {
+        if (StartupMode.Inert) return; // a screenshot export never turns a Windows touchpad gesture off or on
         var wanted = Wanted();
         Enqueue(() =>
         {

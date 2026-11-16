@@ -10,6 +10,9 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+#if DEBUG
+        Showcase.ShowcaseOptions.UseThrowAwayData(args); // the screenshot export runs on empty data, before anything reads a setting
+#endif
         // The elevated setup mode (OmniControl APO install/remove) runs and exits before anything of the app starts.
         if (EngineSetupCommand.TryRun(args) is { } exitCode) return exitCode;
         ProcessPower.StayResponsive();

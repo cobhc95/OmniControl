@@ -157,7 +157,7 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
         {
             if (place > 0) Sentence.Add(new SentenceWord("or"));
             var slot = new RuleSlot(RuleSlotKind.Trigger, place++);
-            Sentence.Add(AutomationTriggers.IsHotkey(trigger) ? HotkeyBlock(slot) : new SentenceBlock(AutomationTriggers.PhraseOf(trigger), slot));
+            Sentence.Add(AutomationTriggers.IsHotkey(trigger) ? HotkeyBlock(slot) : new SentenceBlock(_service.TriggerPhrase(trigger), slot));
         }
         Sentence.Add(new SentenceAdd("+ or", new RuleSlot(RuleSlotKind.Trigger, -1)));
     }
@@ -238,6 +238,9 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
         if (!IsBlock && Rule.AllTriggers.Any(AutomationTriggers.IsHotkey) && _action is { Gesture.Length: 0 })
             tags.Add(new TagItem("Needs a hotkey", Tip: "Click \"set keys\" and press the keys that start it."));
         if (Rule.Actions.Count == 0) tags.Add(new TagItem("Needs an action", Tip: IsBlock ? "Choose what it blocks." : "Choose what it does."));
+        var (missingTrigger, missingAction) = _service.MissingOf(Rule);
+        if (missingTrigger) tags.Add(new TagItem("Trigger missing", TagTone.Caution, "A state or action it starts from is gone (a device was removed?), so it never starts from that. Choose another."));
+        if (missingAction) tags.Add(new TagItem("Action missing", TagTone.Caution, IsBlock ? "An action it blocks is gone." : "An action it does is gone, so that step is skipped. Choose another."));
         if (Rule.AllTriggers.Any(t => t.StartsWith(AutomationTriggers.Login, StringComparison.Ordinal)) && StartupRegistration.State != StartupState.On)
             tags.Add(new TagItem("Needs Start with Windows", TagTone.Caution, "\"At log in\" runs when Windows starts OmniControl. Turn on Start with Windows in App settings."));
         if (Rule.On && Rule.LastRan is { } ran) tags.Add(new TagItem($"Ran {ran:ddd HH:mm}", Tip: $"It last started on {ran:f}."));
@@ -262,7 +265,7 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
         {
             RuleSlotKind.Trigger => (TriggerChoicesFor(slot), "trigger"),
             RuleSlotKind.Condition => (_service.ConditionChoices(Rule, slot.IsNew ? null : stored), "condition"),
-            _ => (_service.StepChoices(Rule), "action"),
+            _ => (_service.StepChoices(Rule), PickerModel.ActionNoun),
         };
         var (action, values) = MouseAction.Split(stored);
         var current = stored.Length == 0 ? null : choices.FirstOrDefault(c => c.Matches(action));
@@ -270,6 +273,9 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
         {
             Noun = noun,
         };
+        // The trigger list is read from the live master lists of states and actions: it follows them while the window is open.
+        if (slot.Kind == RuleSlotKind.Trigger)
+            model.Follow(new LiveList(() => TriggerChoicesFor(slot), h => _service.TriggersChanged += h, h => _service.TriggersChanged -= h));
         return ($"Choose {(slot.IsNew ? "a" : "the")} {noun}", model);
     }
 

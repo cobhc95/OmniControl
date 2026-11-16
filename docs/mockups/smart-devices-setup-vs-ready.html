@@ -1,0 +1,48 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Smart Devices: Ready vs Setup, teach on/off, emulator menu v3 (approved)</title>
+<!-- Approved by the owner 16 Nov 2026: "Approve, all ... matching the visuals mockup, no deviation". Supersedes the layout parts of devices-tab.html,
+     devices-simulation.html, emulator-menu.html (v2) and emulator-keep-running.html where they conflict. Colours from the app theme.
+     PART 1 READY: device list rows = name + ToggleSwitch.plain at the right (live state, click switches the device; disabled while busy);
+       a device not yet set up shows Border.tag.caution "set-up" instead of a switch. Detail: name, tag.good "ready", tag.good/plain "on · read HH:mm"
+       (state last read), pills On / Off / Toggle at the right. One muted line: method · emulator · runs hidden · keep-running choice.
+       Pills "Edit setup…" and "Show emulator". Actions from the page, list switches, hotkeys and rules run the emulator HIDDEN (no window).
+     PART 2 SETUP (new device, or Edit setup…): emulator always shown. Numbered stages, one expanded at a time (others one line with tag + summary):
+       1 Emulator and connection (emulator menu, keep running, adb address, connect) · 2 App ready (Mark done) · 3 Steps (recording + step list editor)
+       4 Teach on and off: muted sentence; pills "It's on now" / "It's off now" (tick when captured). OmniControl stores both screen snapshots of the
+         step's target card/area (uiautomator texts, checked/selected/enabled attributes, and the target's pixel colour from adb screencap) and derives
+         the distinguishing signals. State read = compare current screen to the two snapshots; unknown when neither matches.
+       5 Test: On, Off, Toggle each verified against the taught state.
+       Footer: Cancel | Finish setup (Button.primary-like accent outline). Finish only enabled when 1-5 done; switches the device to READY.
+     STATE RULES: On taps only when read state is off; Off only when on; Toggle always taps; after a tap, re-read and report success only if the state changed.
+       If state unknown: do not tap for On/Off; one plain sentence asking to re-teach.
+     PART 3 EMULATOR MENU v3: never trim names. Sections "Installed" / "Not installed". Row = tick + full name; second line tags: ease (good/caution),
+       "uses ~N GB", "PC N GB+"; third line muted note. Not installed rows dimmed, "Get it ↗" at the right, one muted line "~N GB · PC N GB+ · note". -->
+<style>body{font-family:Segoe UI,sans-serif;background:#1b1b1b;color:#eee;padding:20px;font-size:13px;max-width:860px}
+.p{border:1px solid #666;border-radius:11px;padding:1px 9px;font-size:12px}.t{font-size:11px;border:1px solid #666;border-radius:8px;padding:0 6px}.g{border-color:#4a4;color:#6c6}.w{border-color:#a83;color:#db6}
+.mu{font-size:11px;color:#999}.sw{width:30px;height:16px;border-radius:8px;display:inline-block;position:relative}.sw i{position:absolute;top:2px;width:12px;height:12px;border-radius:6px;background:#fff}
+.card{border:1px solid #444;border-radius:12px;padding:10px;background:#232323;margin-bottom:12px}</style></head><body>
+<div class="card"><div class="mu">1 · Ready</div><div style="display:flex;border:1px solid #444;border-radius:8px">
+<div style="width:190px;border-right:1px solid #444;padding:6px">
+<div style="display:flex;gap:6px;padding:5px 6px;outline:1px solid #E8833A;border-radius:6px">L530 bulb<span class="sw" style="margin-left:auto;background:#4a4"><i style="right:2px"></i></span></div>
+<div style="display:flex;gap:6px;padding:5px 6px">Orbit 11<span class="sw" style="margin-left:auto;background:#666"><i style="left:2px"></i></span></div>
+<div style="display:flex;gap:6px;padding:5px 6px">Desk plug<span class="t w" style="margin-left:auto">set-up</span></div>
+<div class="p" style="display:inline-block;margin-top:6px;border-style:dashed">+ Add device</div></div>
+<div style="flex:1;padding:8px 10px"><div style="display:flex;gap:6px;align-items:center"><b>L530 bulb</b><span class="t g">ready</span><span class="t g">on · read 14:52</span><span style="margin-left:auto" class="p">On</span><span class="p">Off</span><span class="p">Toggle</span></div>
+<div class="mu" style="margin-top:8px">Simulation · Android Studio · runs hidden · keep running until idle 30 min</div>
+<div style="margin-top:8px;display:flex;gap:6px"><span class="p">Edit setup…</span><span class="p">Show emulator</span></div></div></div></div>
+<div class="card"><div class="mu">2 · Setup</div>
+<div><span class="t g">1</span> Emulator and connection ✓ <span class="mu">Android Studio · connected</span></div>
+<div><span class="t g">2</span> App ready ✓ <span class="mu">Tapo</span></div>
+<div><span class="t g">3</span> Steps ✓ <span class="mu">Open Tapo · Tap Tapo L530's power button</span></div>
+<div style="border:1px solid #E8833A;border-radius:8px;padding:8px;margin:4px 0"><span class="t w">4</span> Teach on and off
+<div class="mu" style="margin:4px 0 6px">Turn the device on in the emulator, then press "It's on now". Then off, and "It's off now".</div><span class="p">It's on now ✓</span> <span class="p">It's off now</span></div>
+<div><span class="t">5</span> Test <span class="mu">On, Off, Toggle each checked against the taught state</span></div>
+<div style="display:flex;gap:6px;margin-top:6px"><span style="margin-left:auto" class="p">Cancel</span><span class="p" style="border-color:#E8833A;color:#E8833A">Finish setup</span></div></div>
+<div class="card"><div class="mu">3 · Emulator menu v3</div><div style="width:330px;border:1px solid #666;border-radius:8px;padding:6px;background:#262626">
+<div class="mu" style="padding:2px 8px">Installed</div>
+<div style="padding:5px 8px;outline:1px solid #E8833A;border-radius:6px">✓ Android Studio<div style="display:flex;gap:4px;margin-top:3px"><span class="t w">hard</span><span class="t">uses ~3 GB</span><span class="t">PC 8 GB+</span></div><div class="mu">Official, no ads. Needs a virtual device.</div></div>
+<div style="padding:5px 8px">MuMu Player<div style="display:flex;gap:4px;margin-top:3px"><span class="t g">easy</span><span class="t">uses ~2 GB</span><span class="t">PC 4 GB+</span></div><div class="mu">Play Store and adb built in.</div></div>
+<div style="border-top:1px solid #444;margin:4px 0"></div><div class="mu" style="padding:2px 8px">Not installed</div>
+<div style="padding:5px 8px;opacity:.6">BlueStacks <span style="color:#E8833A;font-size:11px;float:right">Get it ↗</span><div class="mu">~3 GB · PC 8 GB+ · easiest, has ads</div></div>
+<div style="padding:5px 8px;opacity:.6">LDPlayer <span style="color:#E8833A;font-size:11px;float:right">Get it ↗</span><div class="mu">~2 GB · PC 4 GB+ · light, bundled extras</div></div></div></div>
+</body></html>

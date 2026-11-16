@@ -2,29 +2,48 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:OmniControl.App.Pages.Devices"
              xmlns:c="using:OmniControl.App.Controls"
+             xmlns:pages="using:OmniControl.App.Pages"
              x:Class="OmniControl.App.Pages.Devices.SimulationFields"
              x:DataType="vm:SimulationViewModel">
-    <!-- The simulation method's two rows (docs/mockups/devices-simulation.html section 1): the emulator (the shared ChipMenu: the installed ones to
-         pick, the others with a "Get it" tag that opens their official page) with the Open emulator pill, and the adb address with Connect. -->
+    <!-- The set-up's stage 1 "Emulator and connection" (docs/mockups/smart-devices-setup-vs-ready.html): the emulator (the shared ChipMenu with
+         the emulator menu v3: Installed / Not installed, names never trimmed), the Keep running chip, the state tag, Show and Close now (one row
+         that wraps), then the adb address (the field stretches) with Connect. -->
     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="6">
         <TextBlock Classes="muted" Text="Emulator" VerticalAlignment="Center" />
-        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
-            <c:ChipMenu x:Name="EmulatorChip" Text="{Binding EmulatorText}" ChipToolTip="{Binding EmulatorTip}" MenuOpened="OnMenuOpened">
+        <WrapPanel Grid.Column="1" Orientation="Horizontal" ItemSpacing="8" LineSpacing="6">
+            <c:ChipMenu Text="{Binding EmulatorText}" ChipToolTip="{Binding EmulatorTip}" MenuOpened="OnMenuOpened">
                 <c:ChipMenu.Menu>
                     <c:MenuRowList x:Name="EmulatorRows" />
                 </c:ChipMenu.Menu>
             </c:ChipMenu>
-            <Button Classes="pill" Content="Open emulator" Command="{Binding OpenEmulatorCommand}" IsEnabled="{Binding CanOpenEmulator}" VerticalAlignment="Center"
-                    ToolTip.Tip="Opens the emulator: install the device app there (for example Tapo from its store) and sign in inside it. OmniControl never sees that password."
+            <c:ChipMenu Text="{Binding KeepText}" ChipToolTip="{Binding KeepTip}" MenuOpened="OnKeepOpened">
+                <c:ChipMenu.Menu>
+                    <StackPanel>
+                        <c:MenuRowList x:Name="KeepRows" Title="Keep running" />
+                        <Grid x:Name="IdleRow" ColumnDefinitions="*,Auto" Margin="0,2">
+                            <TextBlock Classes="menutext" Text="Idle minutes (double-click to type)" VerticalAlignment="Center" />
+                            <pages:NumberText Grid.Column="1" Value="{Binding IdleMinutes}" Minimum="1" Maximum="1440" VerticalAlignment="Center" Margin="6,0">
+                                <TextBlock Text="{Binding IdleMinutes}" />
+                            </pages:NumberText>
+                        </Grid>
+                        <Border Classes="hrule" Margin="0,4" />
+                        <c:MenuRowList x:Name="KeepSwitches" />
+                    </StackPanel>
+                </c:ChipMenu.Menu>
+            </c:ChipMenu>
+            <Border Classes="tag" Classes.good="{Binding IsConnected}" VerticalAlignment="Center"><TextBlock Text="{Binding StateText}" /></Border>
+            <Button Classes="pill" Content="Show" Command="{Binding ShowCommand}" IsEnabled="{Binding CanShow}" VerticalAlignment="Center"
+                    ToolTip.Tip="Shows the emulator's window (opens it, or restarts it with its window when it runs hidden). Install the device app there (for example Tapo from its store) and sign in inside it. OmniControl never sees that password."
                     ToolTip.ShowOnDisabled="True" />
-        </StackPanel>
+            <Button Classes="pill" Content="Close now" Command="{Binding CloseNowCommand}" IsEnabled="{Binding CanClose}" VerticalAlignment="Center"
+                    ToolTip.Tip="Shuts the emulator down cleanly so it starts quickly next time." ToolTip.ShowOnDisabled="True" />
+        </WrapPanel>
 
         <TextBlock Grid.Row="1" Classes="muted" Text="ADB address" VerticalAlignment="Center" />
-        <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="10">
-            <TextBox Classes="field" Text="{Binding AdbAddress, UpdateSourceTrigger=LostFocus}" Watermark="{Binding AddressWatermark}" MinWidth="220"
+        <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <TextBox Classes="field" Text="{Binding AdbAddress, UpdateSourceTrigger=LostFocus}" Watermark="{Binding AddressWatermark}" MinWidth="0"
                      ToolTip.Tip="Where adb reaches the emulator. It is found for you; type another address only if the emulator uses one." />
-            <Button Classes="pill" Content="Connect" Command="{Binding ConnectCommand}" IsEnabled="{Binding CanConnect}" VerticalAlignment="Center" />
-            <Border Classes="tag good" IsVisible="{Binding IsConnected}" VerticalAlignment="Center"><TextBlock Text="connected" /></Border>
-        </StackPanel>
+            <Button Grid.Column="1" Classes="pill" Content="Connect" Command="{Binding ConnectCommand}" IsEnabled="{Binding CanConnect}" VerticalAlignment="Center" />
+        </Grid>
     </Grid>
 </UserControl>

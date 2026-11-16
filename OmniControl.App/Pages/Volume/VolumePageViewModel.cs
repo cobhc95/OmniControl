@@ -9,6 +9,7 @@ using OmniControl.App.Hotkeys;
 using OmniControl.App.Osd;
 using PresetGroups = OmniControl.App.Presets.PresetGroups;
 using OmniControl.App.Services;
+using OmniControl.App.States;
 
 namespace OmniControl.App.Pages.Volume;
 
@@ -26,6 +27,7 @@ namespace OmniControl.App.Pages.Volume;
 public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
 {
     private readonly MixerService _mixer;
+    private readonly StateRegistry _states;
     private readonly EffectsSupportService _support;
     private readonly EffectsEngine _engine;
     private readonly EngineInstaller _installer;
@@ -105,6 +107,7 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
     /// <param name="combine">Shows the Combine devices window; true when the user pressed Create.</param>
     /// <param name="presetGroups">The master list of preset groups (the Volume presets register there).</param>
     /// <param name="openPresets">Opens the preset manager at a section and group (the cogwheel).</param>
+    /// <param name="states">The master list of states: the master's volume and mute and the default speaker are registered there.</param>
     /// <remarks>
     /// Creation order (an earlier start-up crash came from a piece used before it was made): first the services and callbacks handed in;
     /// then the gates and the Wiring groups (they
@@ -116,9 +119,10 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
     public VolumePageViewModel(MixerService mixer, EffectsSupportService support, EffectsEngine engine, EngineInstaller installer, HotkeyRegistry hotkeys,
         OsdService osd, Action<string> report, Action<string?> openFx, Action<string?> toggleFx,
         Func<DialogMessage, Task<bool>> ask, Func<CombineDeviceViewModel, Task<bool>> combine, VolumePresets presets,
-        PresetGroups presetGroups, Action<string?, string?> openPresets)
+        PresetGroups presetGroups, Action<string?, string?> openPresets, StateRegistry states)
     {
         _mixer = mixer;
+        _states = states;
         _support = support;
         _engine = engine;
         _installer = installer;
@@ -157,6 +161,7 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
         RegisterHotkeys(hotkeys);
         RegisterPresets(presetGroups);
         CreateEasy(hotkeys);
+        RegisterStates();
     }
 
     public override void OnShown()
@@ -208,6 +213,7 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
         _engine.PlanChanged -= OnPlanChanged;
         _presetChoice?.Dispose();
         Easy.Dispose();
+        ForgetStates();
         _meterTimer.Stop();
     }
 }

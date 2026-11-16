@@ -10,7 +10,7 @@ namespace OmniControl.App.Mouse;
 /// Remaps the mouse: owns the hook, picks the layer for each input and runs the mapped action with its options.
 /// The hook thread only reads an immutable snapshot, so editing settings on the UI thread never blocks or races it.
 /// </summary>
-public sealed class MouseService : ILayerControl, IDisposable
+public sealed partial class MouseService : ILayerControl, IDisposable
 {
     /// <summary>The settings as the hook reads them: the first action per key, the others in order, and the apps scope of each limited button.</summary>
     private sealed record Snapshot(Dictionary<string, MouseAction> Actions, Dictionary<string, MouseAction[]> Extras, Dictionary<MouseButton, AppScopeSetting> Scopes)
@@ -58,7 +58,9 @@ public sealed class MouseService : ILayerControl, IDisposable
     /// click over a screen area), or null.
     /// </param>
     /// <param name="scopes">Says whether a button's mapping works in the app the user is in (the Apps chip of the Mouse Buttons group and its cards).</param>
-    public MouseService(MouseHook hook, Func<string, RunSettings?, bool> runOmniAction, Action<string> report, Func<MouseEvent, MouseAction?> gestureAt, AppScopeGate scopes)
+    /// <param name="states">The master list of states: the mouse's and the trackpad's layer in force are registered there.</param>
+    public MouseService(MouseHook hook, Func<string, RunSettings?, bool> runOmniAction, Action<string> report, Func<MouseEvent, MouseAction?> gestureAt, AppScopeGate scopes,
+        States.StateRegistry states)
     {
         _scopes = scopes;
         _report = report;
@@ -68,6 +70,8 @@ public sealed class MouseService : ILayerControl, IDisposable
         _modes = new MouseModes(hook);
         _snapshot = TakeSnapshot();
         hook.AddHandler(Handle);
+        _states = states;
+        RegisterStates();
     }
 
     /// <summary>Raised on the UI thread after <see cref="Apply"/>: a mapping or a switch may have changed.</summary>
@@ -348,5 +352,6 @@ public sealed class MouseService : ILayerControl, IDisposable
         lock (_gate) pending = _undoOnRelease.Values.ToList();
         foreach (var undo in pending) undo(); // let go of whatever a held button was doing
         _modes.Dispose();
+        ForgetStates();
     }
 }

@@ -1,15 +1,26 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using OmniControl.App.Hotkeys;
 
 namespace OmniControl.App.Picker;
 
 /// <summary>
 /// The one picker window: a card's action, or a rule's trigger, condition or step, with its settings. Wiring only: it hosts
 /// <see cref="PickerMenu"/> and closes with the chosen <see cref="PickResult"/>, or null when cancelled (Esc, or the close button).
+/// Opened by <see cref="Manage"/> it is the Actions and hotkeys window instead: no "Use this ...", and a top bar. In both modes it shows the
+/// keys of the entries (<see cref="ManageMode"/>, read from the live master list, so the callers that pick never hand it over) and holds the
+/// other keys from Windows while a key may be pressed into it (<see cref="HotkeyRegistry.Hold"/>).
 /// </summary>
 public partial class PickerWindow : Window
 {
     private PickerModel? _model;
+
+    // Set once at start-up by the shell (UseKeys): the one live keys part every picker window shows. A set-once static, not changing state,
+    // because the windows are opened from many pickers that must not be handed the master list (HANDOVER.md, 16 Nov).
+    private static ManageMode? _keys;
+
+    /// <summary>Gives every picker window the keys part (once, at start-up).</summary>
+    internal static void UseKeys(ManageMode keys) => _keys ??= keys;
 
     public PickerWindow()
     {
@@ -28,9 +39,45 @@ public partial class PickerWindow : Window
 
     }
 
+    /// <summary>The Actions and hotkeys window (non-modal; <see cref="ActionsWindowService"/> shows it): <paramref name="model"/> in manage mode.</summary>
+    internal static PickerWindow Manage(string title, PickerModel model, ActionsWindowService bar)
+    {
+        var window = new PickerWindow { Title = title, _model = model, ShowInTaskbar = true };
+        window.ManageBar.DataContext = bar;
+        window.ManageBar.IsVisible = true;
+        window.WireKeys();
+        return window;
+    }
+
     /// <summary>Opens the window over <paramref name="owner"/> and returns the chosen entry and settings, or null when cancelled.</summary>
-    public static Task<PickResult?> ChooseAsync(Window owner, string title, PickerModel model) =>
-        new PickerWindow { Title = title, _model = model }.ShowDialog<PickResult?>(owner);
+    public static Task<PickResult?> ChooseAsync(Window owner, string title, PickerModel model)
+    {
+        var window = new PickerWindow { Title = title, _model = model };
+        window.WireKeys();
+        return window.ShowDialog<PickResult?>(owner);
+    }
+
+    /// <summary>
+    /// The keys part: the model shows the keys, the keycaps follow every save of the bindings, and the other keys are held from Windows
+    /// while this window is in front and its search box or a hotkey box has the keys, so a pressed key reaches it.
+    /// </summary>
+    private void WireKeys()
+    {
+        if (_keys is not { } keys || _model is not { } model) return;
+        model.UseKeys(keys);
+        var registry = keys.Registry;
+        void Update(object? sender, EventArgs e) =>
+            registry.Hold(IsActive && FocusManager?.GetFocusedElement() is TextBox box && (box == Menu.SearchBox || HotkeyCapture.IsHotkeyBox(box)));
+        AddHandler(GotFocusEvent, Update);
+        Activated += Update;
+        Deactivated += Update;
+        registry.BindingsSaved += model.RefreshKeys;
+        Closed += (_, _) =>
+        {
+            registry.BindingsSaved -= model.RefreshKeys;
+            registry.Hold(false);
+        };
+    }
 
     /// <summary>
     /// What a card's pill (<paramref name="startInSettings"/> false) or cogwheel (true) does: opens the window over the card's window;

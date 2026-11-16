@@ -2,21 +2,41 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:c="using:OmniControl.App.Controls"
              x:Class="OmniControl.App.Controls.MenuRowList">
-    <!-- The content of a small menu pop-down (the content of a ChipMenu): a column of Button.menurow rows, a tick at the one that is on now and
-         an optional tag at the right ("Get it"). Mouse first (AGENTS.md rule 5). Used by the Devices page's Method and emulator menus. -->
-    <ItemsControl x:Name="Rows">
-        <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="c:MenuRowItem">
-                <Button Classes="menurow" Command="{Binding Command}" Click="OnRowClick" ToolTip.Tip="{Binding Tip}">
-                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource MenuGap}">
-                        <Panel Width="{StaticResource MenuGlyphSize}">
-                            <Path Classes="glyph" Data="{StaticResource TickIcon}" IsVisible="{Binding IsOn}" />
-                        </Panel>
-                        <TextBlock Grid.Column="1" Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
-                        <Border Grid.Column="2" Classes="tag" IsVisible="{Binding HasNote}"><TextBlock Text="{Binding Note}" /></Border>
-                    </Grid>
-                </Button>
-            </DataTemplate>
-        </ItemsControl.ItemTemplate>
-    </ItemsControl>
+    <!-- The content of a small menu pop-down (the content of a ChipMenu; docs/mockups/smart-devices-setup-vs-ready.html part 3 and
+         method-menu-briefs.html): a column of Button.menurow rows. A row: a tick at the one that is on now, its full name (it wraps,
+         never trimmed), its tags after the name or on their own line under it, an optional "Get it" link at the right and a muted line
+         under it. A header row is a muted section title with an optional thin line above. Mouse first (AGENTS.md rule 5). -->
+    <StackPanel>
+        <TextBlock Classes="menutext" Text="{Binding Title, RelativeSource={RelativeSource AncestorType=UserControl}}" IsVisible="{Binding Title, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+        <ItemsControl x:Name="Rows">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="c:MenuRowItem">
+                    <StackPanel>
+                        <Border Classes="hrule" Margin="0,4" IsVisible="{Binding RuleAbove}" />
+                        <TextBlock Classes="menutext" Text="{Binding Text}" IsVisible="{Binding IsHeader}" />
+                        <Button Classes="menurow" Command="{Binding Command}" Click="OnRowClick" ToolTip.Tip="{Binding Tip}" IsVisible="{Binding IsRow}" Opacity="{Binding RowOpacity}">
+                            <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="{StaticResource MenuGap}" Margin="{StaticResource MenuRowInset}">
+                                <Panel Width="{StaticResource MenuGlyphSize}" VerticalAlignment="Top" Height="{StaticResource MenuRowLine}">
+                                    <Path Classes="glyph" Data="{StaticResource TickIcon}" IsVisible="{Binding IsOn}" />
+                                </Panel>
+                                <WrapPanel Grid.Column="1" ItemSpacing="{StaticResource MenuTagGap}" LineSpacing="{StaticResource MenuTagGap}" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                    <ItemsControl ItemsSource="{Binding InlineTags}" VerticalAlignment="Center">
+                                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="{StaticResource MenuTagGap}" LineSpacing="{StaticResource MenuTagGap}" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate><DataTemplate><c:TagView /></DataTemplate></ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </WrapPanel>
+                                <Button Grid.Column="2" Classes="link" Content="{Binding Link}" IsVisible="{Binding HasLink}" IsHitTestVisible="False" Focusable="False" VerticalAlignment="Top" />
+                                <ItemsControl Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" ItemsSource="{Binding OwnLineTags}" IsVisible="{Binding HasOwnLineTags}" Margin="{StaticResource MenuTagLineMargin}">
+                                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="{StaticResource MenuTagGap}" LineSpacing="{StaticResource MenuTagGap}" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate><DataTemplate><c:TagView /></DataTemplate></ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Classes="menutext" Margin="0" Text="{Binding Detail}" IsVisible="{Binding HasDetail}" />
+                            </Grid>
+                        </Button>
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
 </UserControl>

@@ -1,0 +1,39 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shot="using:OmniControl.App.Screenshot"
+        x:Class="OmniControl.App.Screenshot.RecordingBar"
+        x:DataType="shot:RecordingViewModel"
+        Title="Recording" SystemDecorations="None" ShowInTaskbar="False" CanResize="False" Topmost="True" SizeToContent="WidthAndHeight"
+        Background="Transparent" TransparencyLevelHint="Transparent">
+    <!-- The recording bar under the recorded area (docs/mockups/area-video-recording.html): red dot and timer | Pause/Resume, Stop |
+         Microphone, System sound (MP4 only). The same floating bar as the screenshot overlay's (Border.floatbar, Button.toolicon; .danger =
+         red, .selected = a sound switch that is on); the dot and timer are Ellipse.recdot and TextBlock.rectimer in Styles/Bars.axaml.
+         Mouse first like the overlay's bars; Esc on the bar stops. Left out of every capture. -->
+    <Border Classes="floatbar">
+        <StackPanel Orientation="Horizontal">
+            <StackPanel Classes="recclock" Orientation="Horizontal" VerticalAlignment="Center">
+                <Ellipse Classes="recdot" />
+                <TextBlock Classes="rectimer" Text="{Binding Time}" />
+            </StackPanel>
+            <Border Classes="floatsep along" />
+            <Button Classes="toolicon" Command="{Binding TogglePauseCommand}" ToolTip.Tip="{Binding PauseTip}">
+                <Panel>
+                    <Path Classes="glyph" Data="{StaticResource ShotPauseIcon}" IsVisible="{Binding !IsPaused}" />
+                    <Path Classes="glyph" Data="{StaticResource ShotResumeIcon}" IsVisible="{Binding IsPaused}" />
+                </Panel>
+            </Button>
+            <Button Classes="toolicon danger" Command="{Binding StopCommand}" ToolTip.Tip="Stop and save (Esc)">
+                <Path Classes="glyph" Data="{StaticResource ShotStopIcon}" />
+            </Button>
+            <Border Classes="floatsep along" IsVisible="{Binding TakesSound}" />
+            <Button Classes="toolicon" Classes.selected="{Binding Microphone}" Command="{Binding ToggleMicrophoneCommand}"
+                    ToolTip.Tip="{Binding MicrophoneTip}" IsVisible="{Binding TakesSound}">
+                <Path Classes="glyph" Data="{StaticResource ShotMicIcon}" />
+            </Button>
+            <Button Classes="toolicon" Classes.selected="{Binding SystemSound}" Command="{Binding ToggleSystemSoundCommand}"
+                    ToolTip.Tip="{Binding SystemSoundTip}" IsVisible="{Binding TakesSound}">
+                <Path Classes="glyph" Data="{StaticResource ShotSoundIcon}" />
+            </Button>
+        </StackPanel>
+    </Border>
+</Window>

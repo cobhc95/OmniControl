@@ -24,7 +24,7 @@ using OmniControl.App.Devices;
 using OmniControl.Core.Interfaces;
 using OmniControl.Core.Engine;
 using OmniControl.Core.Engine.Mouse;
-using OmniControl.App.Pages.Shortcuts;
+using OmniControl.App.Picker;
 using OmniControl.App.Pages.Volume;
 using OmniControl.App.Audio;
 using OmniControl.App.Audio.Engine;
@@ -43,6 +43,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     private readonly MonitorEngine _engine = new();
     private readonly SoftwareDisplayService _softwareDisplays = new();
     private readonly HotkeyRegistry _hotkeys = new();
+    private readonly States.StateRegistry _states; // the master list of states, made before the services and pages that register theirs
     private readonly AppActions _appActions;
     private readonly PresetGroups _presetGroups = new(); // made before the pages, which register their preset groups in it
     private readonly OsdService _osd = new();
@@ -64,6 +65,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     private readonly AboutWindowService _about;
     private readonly AppListStore _appLists = new(AppListSettings.Load()); // the master list of app lists, made before the services and pages that limit things to apps
     private readonly AppListManagerService _appListManager;
+    private readonly ActionsWindowService _actionsWindow;
     private readonly AppScopes _appScopes;
     private readonly MouseHook _mouseHook = new(); // one system-wide hook shared by the mouse buttons and the gestures
     private readonly GestureService _gestures;
@@ -85,6 +87,9 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
 
     /// <summary>Pages pinned to the bottom of the sidebar (app-level, not features).</summary>
     public ObservableCollection<PageViewModel> FooterPages { get; } = new();
+
+    /// <summary>The entries at the bottom of the sidebar under a divider that open a window, not a page (Actions and hotkeys).</summary>
+    public IReadOnlyList<NavLauncher> PinnedEntries { get; }
     private readonly IReadOnlyList<PageViewModel> _allFooter;
 
     public string VersionText => AppInfo.VersionText;
@@ -110,11 +115,14 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     public ShellViewModel()
     {
         _hotkeys.Report = Report;
+        _states = new States.StateRegistry(chainNow: () => _hotkeys.Chain);
         // Presets, in this order: the master list of groups (a field, empty), the preset shortcuts (they follow the list and register a
         // preset's action in _hotkeys when its group arrives), then the one opener of the preset manager. All three come before the FX
         // windows and the pages, which are given the opener and register their groups; the manager's sections are given after the pages.
         _presetShortcuts = new PresetShortcuts(_hotkeys, _presetGroups, Report);
         _presetManager = new PresetManagerService(_presetGroups, _presetShortcuts, Report);
+        _actionsWindow = new ActionsWindowService(_hotkeys, _presetGroups, _presetManager.Open, _dialogs.AskAsync, OpenPage, Report);
+        PinnedEntries = new[] { new NavLauncher(ActionsWindowService.Title, ActionsWindowService.Icon, () => _actionsWindow.Open()) };
         _effectsSupport = new EffectsSupportService(new AudioEffectsProbe(), _mixer);
         _volumePresets = new VolumePresets(_mixer);
         _plugins = new PluginChainHost(_mixer.Save);
@@ -125,19 +133,21 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _fxWindows = new FxWindowService(_mixer, _effects, _effectsSupport, _plugins, _library, _presets, Report, _presetManager.Open);
         _about = new AboutWindowService(Report);
         _appActions = new AppActions(new AppLauncher(Report), _hotkeys);
+        Screenshot.ScreenshotActions.Register(_hotkeys, _osd, Report);
         _appListManager = new AppListManagerService(_appLists, () => _appActions.InstalledPrograms(), _dialogs.AskAsync, Report);
         _appScopes = new AppScopes(_appLists, _appListManager.Open);
         var appScopeGate = new AppScopeGate(_appLists);
         // Gestures are asked first, so a scroll or middle click they take never reaches the button mappings: the wheel gestures have
         // their own hook handler ahead of the mouse service's, and the mouse service asks for a middle-click gesture before its mapping.
         _gestures = new GestureService(_mouseHook, _hotkeys.RunLevel, Report, appScopeGate);
-        _mouse = new MouseService(_mouseHook, _hotkeys.Run, Report, _gestures.MiddleClickAt, appScopeGate);
+        _mouse = new MouseService(_mouseHook, _hotkeys.Run, Report, _gestures.MiddleClickAt, appScopeGate, _states);
+        _hotkeys.Moved += _mouse.FollowMoved;
+        _hotkeys.Moved += _gestures.FollowMoved;
         // Custom rules are asked before both (their handler goes first on the hook), so a rule that matches wins.
         _rules = new RuleService(_mouseHook, _gestures, _mouse, _hotkeys, () => _mixer.Settings.Apps.Select(a => a.ExePath), Report);
         // The automation rules: they register their own actions in the master list and are the one gate every action passes.
-        _automation = new AutomationService(_hotkeys, CountdownWindow.ConfirmAsync, () => _mixer.Settings.Apps.Select(a => a.ExePath),
+        _automation = new AutomationService(_hotkeys, _states, CountdownWindow.ConfirmAsync, () => _mixer.Settings.Apps.Select(a => a.ExePath),
             StartupRegistration.IsBackgroundStart(Environment.GetCommandLineArgs().Skip(1)), Report);
-        _automation.Changed += OnAutomationChanged;
         // Trackpad gestures are handed to the same hook, so rules and mappings treat them like button presses.
         _trackpad = new TrackpadService(_mouseHook, _mouse);
         _margins = new MarginOverlay(_gestures.Settings);
@@ -145,25 +155,25 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _mouse.LayersChanged += UpdateActiveLayer;
         UpdateActiveLayer();
         _mouseHook.Log = line => AppDataStore.AppendLog("mouse-log.txt", line);
-        if (!_mouseHook.Start()) Report("Couldn't start mouse remapping and gestures: Windows refused the mouse hook.");
+        if (!StartupMode.Inert && !_mouseHook.Start()) Report("Couldn't start mouse remapping and gestures: Windows refused the mouse hook.");
 
-        // Register new feature pages here, in sidebar order (a page's NavGroup decides its heading; keep the pages of a group together). Pages that list actions (Shortcuts, Mouse, Gestures) follow the master
+        // Register new feature pages here, in sidebar order (a page's NavGroup decides its heading; keep the pages of a group together). Pages that list actions (Mouse, Gestures) follow the master
         // list's changes, so the order does not decide which actions they offer.
         _allPages = new PageViewModel[]
         {
-            new DisplaysPageViewModel(_engine, _hotkeys, _osd, _softwareDisplays, Report, _presetGroups, _presetManager.Open),
+            new DisplaysPageViewModel(_engine, _hotkeys, _osd, _softwareDisplays, Report, _presetGroups, _presetManager.Open, _states),
             new VolumePageViewModel(_mixer, _effectsSupport, _effects, _installer, _hotkeys, _osd, Report, _fxWindows.Open, _fxWindows.Toggle,
-                _dialogs.AskAsync, CombineWindow.AskAsync, _volumePresets, _presetGroups, _presetManager.Open),
-            new DevicesPageViewModel(new DeviceService(_hotkeys, new WindowsCredentialStore(), Report), _dialogs.AskAsync, Report),
+                _dialogs.AskAsync, CombineWindow.AskAsync, _volumePresets, _presetGroups, _presetManager.Open, _states),
+            new DevicesPageViewModel(new DeviceService(_hotkeys, _states, StartupMode.Inert ? new NoCredentialStore() : new WindowsCredentialStore(), Report), _dialogs.AskAsync, Report),
             new MousePageViewModel(_mouse, _trackpad, _pointer, _hotkeys, _osd, _dialogs.AskAsync, Report, _presetGroups, _presetManager.Open, _appScopes),
             new GesturesPageViewModel(_gestures, _rules, _margins, _hotkeys, _dialogs.AskAsync, _appScopes),
             new AutomationPageViewModel(_automation, _dialogs.AskAsync),
-            new ShortcutsPageViewModel(_hotkeys, _presetGroups, _presetManager.Open, _dialogs.AskAsync),
             new OsdPageViewModel(_osd, _hotkeys),
         };
         // The effects' preset groups belong to the Volume page; they are made by the FX windows, which know how a preset reaches an effect.
         _presetGroups.Register(_fxWindows.PresetGroupsFor(_allPages.OfType<VolumePageViewModel>().Single().Title));
-        _presetManager.UseSections(_allPages.Select(p => new PresetSection(p.Title, p.Icon)).ToList());
+        _presetManager.UseSections(_allPages.Select(p => new PresetSection(p.Title, p.Icon))
+            .Append(new PresetSection(ActionsWindowService.Title, ActionsWindowService.Icon)).ToList());
         _allFooter = new PageViewModel[]
         {
             new AppSettingsPageViewModel(_hotkeys, _about.Open, _library.ScanAsync, _library.FoundText, () => _presetManager.Open(null, null),
@@ -173,23 +183,13 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _hotkeys.UseSections(_allPages.Concat(_allFooter).Select((p, i) => new ActionSection(p.Title, p.Icon, i + 1)).ToList());
 
         WireRestore();
+        TrayFlyout = MakeTray();
 
         Categories = new[] { AllCategories }.Concat(_allPages.Concat(_allFooter).Select(p => p.Title)).ToArray();
         _selectedCategory = AllCategories;
 
         ApplyFilter();
     }
-
-    /// <summary>All automation rules are paused (the tray item says Resume then).</summary>
-    public bool RulesPaused => _automation.Paused;
-
-    /// <summary>Raised when the rules were paused or resumed (or anything a rule shows changed).</summary>
-    public event Action? RulesChanged;
-
-    /// <summary>The tray's Pause all rules item.</summary>
-    public void ToggleRulesPause() => _automation.TogglePause();
-
-    private void OnAutomationChanged() => RulesChanged?.Invoke();
 
     private const string AllCategories = "All categories";
 
@@ -209,6 +209,13 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         SelectedFooterPage = null;
         _syncing = false;
         Show(value);
+    }
+
+    /// <summary>Opens the sidebar page with this title (a page hidden by the search filter stays closed).</summary>
+    private void OpenPage(string title)
+    {
+        if (Pages.FirstOrDefault(p => p.Title == title) is { } page) SelectedMainPage = page;
+        else if (FooterPages.FirstOrDefault(p => p.Title == title) is { } footer) SelectedFooterPage = footer;
     }
 
     partial void OnSelectedFooterPageChanged(PageViewModel? value)
@@ -231,7 +238,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         if (CurrentPage is not null) CurrentPage.IsOpen = false;
         CurrentPage = page;
         page.IsOpen = true;
-        page.OnShown();
+        if (StartupMode.MayRead) page.OnShown(); // a page's look at the system is for a screenshot export only when it is read-only (a page that acts on devices gates itself)
         page.Restorer?.Refresh();
         if (_windowShown) page.OnOnScreenChanged(true);
     }
@@ -290,7 +297,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         // Live results: the actual controls, so they can be edited right in the list.
         SearchResults.Clear();
         if (q.Length > 0)
-            foreach (var e in _allPages.Concat(_allFooter).SelectMany(p => p.SearchEntries)
+            foreach (var e in _allPages.Concat(_allFooter).SelectMany(p => p.SearchEntries).Concat(_actionsWindow.SearchEntries)
                          .Where(e => (SelectedCategory == AllCategories || e.Category == SelectedCategory) && e.Matches(q)))
                 SearchResults.Add(e);
         IsSearching = q.Length > 0;
@@ -329,8 +336,10 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         DisposeRestore();
+        TrayFlyout.Dispose();
         _presetManager.Close();
         _appListManager.Close();
+        _actionsWindow.Dispose();
         _presetShortcuts.Dispose();
         _presetGroups.Dispose();
         foreach (var page in _allPages.OfType<IDisposable>()) page.Dispose();
@@ -338,9 +347,10 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _margins.Dispose();
         _trackpad.Dispose();
         _pointer.Dispose(); // a button swap that was never kept goes back
-        _automation.Changed -= OnAutomationChanged;
         _automation.Dispose();
         _rules.Dispose();
+        _hotkeys.Moved -= _mouse.FollowMoved;
+        _hotkeys.Moved -= _gestures.FollowMoved;
         _mouse.Dispose();
         _mouseHook.Dispose();
         _hotkeys.Dispose();

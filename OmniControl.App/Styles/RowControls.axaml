@@ -10,7 +10,9 @@
          .method          the Method chip's colour, one class per method: .apo (Equalizer APO, green), .cable (a cable or the cable bus,
                           blue BrushCable), .recording (the accent), none = direct (muted words, a plain edge).
          Button.pill.glow the FX button while effects run: accent words, accent edge, accent wash and a soft accent glow (AccentGlow,
-                          made from the accent by AccentService). -->
+                          made from the accent by AccentService).
+         Button.reveal    the eye inside a password field's right edge (Controls/PasswordField): flat, muted glyph, hover wash; accent wash and
+                          accent glyph on keyboard focus or while held (no border change, nothing moves). -->
     <Style Selector="Button.selector">
         <Setter Property="MinHeight" Value="0" />
         <Setter Property="Height" Value="{DynamicResource ChipHeight}" />
@@ -90,4 +92,29 @@
         <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
     </Style>
+    <Style Selector="Button.reveal">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="4" />
+        <Setter Property="Margin" Value="0,0,4,0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="CornerRadius" Value="4" />
+    </Style>
+    <Style Selector="Button.reveal > Path.glyph">
+        <Setter Property="Width" Value="{DynamicResource MenuGlyphSize}" />
+        <Setter Property="Height" Value="{DynamicResource MenuGlyphSize}" />
+        <Setter Property="StrokeThickness" Value="1.5" />
+        <Setter Property="Stroke" Value="{DynamicResource BrushMuted}" />
+    </Style>
+    <Style Selector="Button.reveal:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushHover}" />
+    </Style>
+    <Style Selector="Button.reveal:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
+    </Style>
+    <Style Selector="Button.reveal:focus-visible > Path.glyph, Button.reveal:pressed > Path.glyph"><Setter Property="Stroke" Value="{DynamicResource BrushAccent}" /></Style>
 </Styles>

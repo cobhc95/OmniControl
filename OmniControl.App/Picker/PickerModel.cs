@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using OmniControl.App.Hotkeys;
 using CommunityToolkit.Mvvm.ComponentModel;
 using OmniControl.App.Mouse;
@@ -30,14 +30,26 @@ public sealed class PickerRow
     public bool IsCommand => Choice?.Command is not null;
     public bool IsEntry => Choice is { Command: null };
 
-    public PickerRow(PickChoice choice, string text, string? hint)
+    /// <summary>The entry's keys as keycaps, one row of parts per key (the Actions and hotkeys window); empty when it has none.</summary>
+    public IReadOnlyList<IReadOnlyList<KeycapPart>> Keycaps { get; }
+
+    /// <summary>The entry can have keys but has none: the row says "no key".</summary>
+    public bool ShowsNoKey { get; }
+
+    public PickerRow(PickChoice choice, string text, string? hint, IReadOnlyList<string>? keys = null)
     {
         Choice = choice;
         Text = text;
         Hint = hint;
+        Keycaps = (keys ?? Array.Empty<string>()).Select(k => Hotkeys.Keycaps.From(k, string.Empty)).ToList();
+        ShowsNoKey = keys is { Count: 0 };
     }
 
-    private PickerRow(string heading) => Text = heading;
+    private PickerRow(string heading)
+    {
+        Text = heading;
+        Keycaps = Array.Empty<IReadOnlyList<KeycapPart>>();
+    }
 
     public static PickerRow HeadingOf(string heading) => new(heading);
 }
@@ -68,7 +80,7 @@ public sealed partial class PickerModel : ObservableObject
     private static readonly IReadOnlyDictionary<string, string> NoValues = new Dictionary<string, string>();
 
     private List<PickGroup> _groups;
-    private readonly PickChoice? _current;
+    private PickChoice? _current; // taken again from a list read anew (Follow), so it stays the same entry
     private IReadOnlyDictionary<string, string> _currentValues;
     private string _currentParameter;
     private readonly bool _offerApplyToAll;
@@ -80,16 +92,28 @@ public sealed partial class PickerModel : ObservableObject
     private bool _syncingEditor; // the settings are being shown again from what the entry stored; those are not edits
 
     /// <summary>What one entry is called ("action", "trigger", "condition"): the search box and the "Use this ..." button say it.</summary>
-    public string Noun { get; init; } = "action";
+    public string Noun { get; init; } = ActionNoun;
 
-    public string SearchHint => $"Search {Noun}s";
+    /// <summary>The <see cref="Noun"/> of a list of actions: only such a list has Recent and the "Only with a hotkey" filter.</summary>
+    public const string ActionNoun = "action";
+
+    /// <summary>True when the list is of actions (not triggers, conditions...): the "Only with a hotkey" filter and Recent belong to it only.</summary>
+    public bool ListsActions => Noun == ActionNoun;
+
+    /// <summary>The "Only with a hotkey" filter is shown: an action list in a window that shows the keys.</summary>
+    public bool ShowsKeyFilter => HasKeys && ListsActions;
+
+    public string SearchHint => !HasKeys ? $"Search {Noun}s" : $"Search {Noun}s and keys";
+
+    /// <summary>The search box's tooltip (how to find an action by its key); none until the window gives the keys.</summary>
+    public string? SearchTip => !HasKeys ? null : "Type a name or a key such as ctrl+o, or press the key combination (Ctrl+F)";
     public string UseText => $"Use this {Noun}";
 
     /// <summary>The sections in pane 1: the list's own, then Recent when an action list has entries used before.</summary>
     public IReadOnlyList<SectionRow> Sections => _sections ??= BuildSections();
 
     // Read on first use, when Noun has been set (Recent is for action lists only).
-    private List<PickChoice> RecentChoices => _recentChoices ??= Noun == "action" ? Recents.Matching(_groups.SelectMany(g => g.Choices)) : new();
+    private List<PickChoice> RecentChoices => _recentChoices ??= ListsActions ? Recents.Matching(_groups.SelectMany(g => g.Choices)) : new();
 
     /// <summary>True while the Recent section is open.</summary>
     private bool InRecent => !IsSearching && SectionIndex >= _groups.Count && RecentChoices.Count > 0;
@@ -156,11 +180,15 @@ public sealed partial class PickerModel : ObservableObject
     /// <param name="current">The entry the card or slot has now (highlighted when the window opens); null for an empty slot.</param>
     /// <param name="currentValues">The values of its settings.</param>
     /// <param name="currentParameter">The text the current entry takes (its shortcut, program or folder).</param>
+    /// <param name="manage">Set for the Actions and hotkeys window opened to manage actions and their keys (no "Use this ..."); null to pick one.</param>
     /// <param name="offerApplyToAll">Add the switch that copies the settings to every other gesture using the same action (on by default).</param>
     /// <param name="startInSettings">Open with the keyboard in the settings of <paramref name="current"/> (from the card's cogwheel).</param>
     public PickerModel(IReadOnlyList<PickGroup> groups, PickChoice? current,
-        IReadOnlyDictionary<string, string> currentValues, bool startInSettings = false, string currentParameter = "", bool offerApplyToAll = false)
+        IReadOnlyDictionary<string, string> currentValues, bool startInSettings = false, string currentParameter = "", bool offerApplyToAll = false,
+        ManageMode? manage = null)
     {
+        _manage = manage;
+        _picking = manage is null;
         _groups = groups.Select(g => new PickGroup(g.Name, g.Choices.ToList(), g.Place)).ToList();
         foreach (var opened in groups.SelectMany(g => g.Choices).Select(c => c.Opened).OfType<Action>().Distinct()) opened();
         _current = current;
@@ -184,18 +212,21 @@ public sealed partial class PickerModel : ObservableObject
 
     partial void OnSectionIndexChanged(int value)
     {
-        if (value < 0) return; // the list reports "nothing selected" while it is reloading
+        if (value < 0 || _replacing) return; // the list reports "nothing selected" while it is reloading
         if (IsSearching) Query = string.Empty; // a click on a section leaves the search: its entries show again
         else Reload();
     }
 
     partial void OnQueryChanged(string value) => Reload();
 
-    partial void OnActionIndexChanged(int value) => SyncSettings();
+    partial void OnActionIndexChanged(int value)
+    {
+        if (!_replacing) SyncSettings();
+    }
 
     partial void OnActionsChanged(IReadOnlyList<PickerRow> value)
     {
-        if (!_suppressSync) SyncSettings();
+        if (!_suppressSync && !_replacing) SyncSettings();
     }
 
     private void Reload()
@@ -303,6 +334,7 @@ public sealed partial class PickerModel : ObservableObject
     {
         foreach (var old in _allOptions) old.PropertyChanged -= OnOptionValueChanged;
         _editing = null;
+        SyncHotkeys();
         _allOptions = new List<OptionItem>();
         OptionItems.Clear();
         OptionIndex = -1;
@@ -339,7 +371,7 @@ public sealed partial class PickerModel : ObservableObject
         foreach (var item in _allOptions) item.PropertyChanged += OnOptionValueChanged;
         SyncVisibleOptions();
         OptionIndex = OptionItems.Count > 0 ? 0 : -1;
-        Note = OptionItems.Count == 0 && !HasFootButton ? "Nothing to set here." : string.Empty;
+        Note = OptionItems.Count == 0 && !HasFootButton && Hotkeys is null ? "Nothing to set here." : string.Empty;
         RaiseSettingsChanged();
     }
 
@@ -392,7 +424,7 @@ public sealed partial class PickerModel : ObservableObject
         var renamed = choice with { Name = title, Renaming = renaming ?? choice.Renaming };
         _groups = _groups.Select(g => g with { Choices = g.Choices.Select(c => c == choice ? renamed : c).ToList() }).ToList();
         SettingsTitle = renamed.Name;
-        var rows = Actions.Select(r => r.Choice == choice ? new PickerRow(renamed, renamed.Name, r.Hint) : r).ToList();
+        var rows = Actions.Select(r => r.Choice == choice ? Row(renamed, r.Hint) : r).ToList();
         _suppressSync = true;
         Actions = rows;
         _suppressSync = false;
@@ -450,28 +482,28 @@ public sealed partial class PickerModel : ObservableObject
         {
             var words = Query.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             return _groups.SelectMany(g => g.Choices)
-                .Where(c => IsShown(c) && words.All(w => Matches(c, w)))
-                .Select(c => new PickerRow(c, c.Name, c.Category)).ToList();
+                .Where(c => IsShown(c) && words.All(w => Matches(c, w) || KeyMatches(c, w)))
+                .Select(c => Row(c, c.Category)).ToList();
         }
-        if (InRecent) return RecentChoices.Select(c => new PickerRow(c, c.Name, c.Category)).ToList();
+        if (InRecent) return RecentChoices.Select(c => Row(c, c.Category)).ToList();
         if (SectionIndex >= _groups.Count) return new List<PickerRow>();
         return InGroups(_groups[SectionIndex].Choices.Where(IsShown));
     }
 
     /// <summary>The entries of one section, those without a group heading first, then each group together under its heading row.</summary>
-    private static List<PickerRow> InGroups(IEnumerable<PickChoice> choices)
+    private List<PickerRow> InGroups(IEnumerable<PickChoice> choices)
     {
         var rows = new List<PickerRow>();
         var all = choices.ToList();
         foreach (var heading in all.Select(c => c.Heading).Distinct().OrderBy(h => h is null ? 0 : 1))
         {
             if (heading is not null) rows.Add(PickerRow.HeadingOf(heading));
-            rows.AddRange(all.Where(c => c.Heading == heading).Select(c => new PickerRow(c, c.Name, null)));
+            rows.AddRange(all.Where(c => c.Heading == heading).Select(c => Row(c, null)));
         }
         return rows;
     }
 
-    private static bool IsShown(PickChoice choice) => choice.IsListed?.Invoke() ?? true;
+    private bool IsShown(PickChoice choice) => (choice.IsListed?.Invoke() ?? true) && PassesKeyFilter(choice);
 
     /// <summary>A search word matches an entry's name, its section, its group heading, or its extra keywords (the shortcut, other names for it).</summary>
     private static bool Matches(PickChoice choice, string word) =>

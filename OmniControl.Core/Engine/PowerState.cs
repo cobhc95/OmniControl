@@ -19,13 +19,20 @@ public static class PowerState
     [DllImport("user32.dll")] private static extern bool GetLastInputInfo(ref LastInput info);
     [DllImport("kernel32.dll")] private static extern uint GetTickCount();
 
-    private const byte OnBatteryLine = 0, PluggedLine = 1;
+    private const byte OnBatteryLine = 0, PluggedLine = 1, NoBattery = 128;
 
     /// <summary>True on battery, false when plugged in, null when Windows can't say (a desktop PC reports plugged in).</summary>
     public static bool? IsOnBattery()
     {
         if (!GetSystemPowerStatus(out var status)) return null;
         return status.AcLineStatus switch { OnBatteryLine => true, PluggedLine => false, _ => null };
+    }
+
+    /// <summary>The battery's charge in percent, or null when there is no battery or Windows can't say.</summary>
+    public static int? BatteryPercent()
+    {
+        if (!GetSystemPowerStatus(out var status) || status.BatteryLifePercent > 100 || (status.BatteryFlag & NoBattery) != 0) return null;
+        return status.BatteryLifePercent;
     }
 
     /// <summary>How long it is since the last key press or mouse input (any program), or zero when Windows can't say.</summary>

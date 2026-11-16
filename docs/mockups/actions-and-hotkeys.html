@@ -1,0 +1,28 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Actions and hotkeys window (approved)</title>
+<!-- Approved by the owner 16 Nov 2026. ONE window replaces the Shortcuts page AND the "All actions" page; built FROM the existing three-pane
+     Choose-the-action window (App/Picker, action-picker-three-pane.html) — one window, two uses:
+       - Manage mode (opened from the sidebar entry "Actions and hotkeys", pinned at the sidebar bottom where All actions is now; the old pages are removed):
+         top bar: title, "Shortcut set" PresetPicker chip, Clear all, Restore defaults (all from today's Shortcuts page, unchanged behaviour), suggested keys kept.
+       - Pick mode (opened from a mouse button, gesture, rule...): same window plus footer "Use this action".
+     Search box at the top: focused on open and by Ctrl+F (selects its text, ready to type). Finds by name/keywords AND by hotkey: typed text like "ctrl+o"
+       matches key names; PRESSING a key chord while the search box is focused (with a modifier, or F-keys/PrtScn) fills it with that chord and shows the
+       actions bound to it.
+     Left pane: sections (ListBox.nav) + "Only with a hotkey" filter at its foot.
+     Middle pane: entries; each row shows its hotkey(s) as small keycaps (Border.keycap / KeycapRow) right-aligned beside the name, or muted "no key".
+     Right pane: "Hotkey" row first: one shared HotkeyBox per key; an action may have SEVERAL hotkeys ("+ add key" Button.blockadd.small adds another).
+       Capture: double-click (or Enter) on a hotkey box starts capture; the box flashes/pulses (existing capturebox pulse) while listening; pressing a chord
+       sets it; Esc or clicking away cancels and keeps the old key. Clear (remove cross) per key; "Suggest" pill.
+       Conflict: if the chord is already used by another action (in the active set), the box shows Border.tag.caution "Also on: <action>" with
+       Button.link "Move here" (takes it from the other) and "Keep both" is NOT allowed — keys are unique; reserved keys (ReservedKeys) refuse with one sentence.
+       Then: Run now, Show on its page, then the action's own settings (live) as today.
+     Everything reads the master HotkeyRegistry; no second list. Audit first: everything the Shortcuts page showed must exist as a registry entry. -->
+<style>body{font-family:Segoe UI,sans-serif;background:#1b1b1b;color:#eee;padding:20px;font-size:12px}.k{border:1px solid #666;border-bottom-width:2px;border-radius:4px;padding:0 5px;font-size:11px}.p{border:1px solid #666;border-radius:11px;padding:1px 9px}.f{border:1px solid #555;border-radius:4px;padding:3px 8px}.c{font-size:11px;border:1px solid #a83;color:#db6;border-radius:8px;padding:0 6px}</style></head><body>
+<div style="border:1px solid #333;border-radius:8px;max-width:760px">
+<div style="display:flex;gap:8px;padding:6px 10px;border-bottom:1px solid #333"><b>Actions and hotkeys</b><span style="margin-left:auto" class="p">Default ▾</span><span class="p">Clear all</span><span class="p">Restore defaults</span></div>
+<div style="padding:8px 10px;border-bottom:1px solid #333"><div class="f" style="border-color:#E8833A">Search actions and keys… (Ctrl+F)</div></div>
+<div style="display:flex;min-height:260px"><div style="width:150px;border-right:1px solid #333;padding:6px 10px">Displays<br>Volume<br>…<br><b style="color:#E8833A">Screenshot</b><br>Custom actions<br><br>☐ Only with a hotkey</div>
+<div style="width:250px;border-right:1px solid #333;padding:6px 10px;line-height:24px">Screenshot: area (edit) <span class="k">PrtScn</span><br>Screenshot: active window <span class="k">Alt</span><span class="k">PrtScn</span><br>Screenshot: full screen <span style="color:#888">no key</span></div>
+<div style="flex:1;padding:8px 12px;line-height:26px"><b>Screenshot: area (edit)</b><br>Hotkey <span class="f"><span class="k">PrtScn</span></span> × &nbsp; <span class="f" style="border-color:#E8833A">press keys… (flashing)</span> <span class="c">Also on: Snipping Tool</span> <u>Move here</u><br>
+<span class="p" style="border-style:dashed">+ add key</span> <span class="p">Suggest</span><br><span class="p">Run now</span> <span class="p">Show on its page</span><br><span style="color:#888">Action settings…</span></div></div></div>
+</body></html>

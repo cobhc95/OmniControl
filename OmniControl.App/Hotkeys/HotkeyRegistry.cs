@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using OmniControl.App.Services;
 using Avalonia.Threading;
 
@@ -6,7 +6,7 @@ namespace OmniControl.App.Hotkeys;
 
 /// <summary>
 /// The master list of everything OmniControl itself can do. A feature calls <see cref="Register"/> once per action; it then shows up
-/// on the Shortcuts page (and in search), in the mouse button and middle-click pickers, and (for a level action) in the wheel gesture
+/// in the Actions and hotkeys window (and in search), in the mouse button and middle-click pickers, and (for a level action) in the wheel gesture
 /// picker, and is saved and registered as a hotkey automatically. Consumers read <see cref="Actions"/> and follow its changes.
 /// </summary>
 public sealed class HotkeyRegistry : IActionRegistry, IDisposable
@@ -23,7 +23,7 @@ public sealed class HotkeyRegistry : IActionRegistry, IDisposable
 
     private readonly List<HotkeyAction> _pickerCommands = new();
 
-    /// <summary>What the action pickers list: every action, then the buttons of their lists (<see cref="HotkeyAction.Command"/>), which are not actions and never reach Shortcuts or a shortcut key.</summary>
+    /// <summary>What the action pickers list: every action, then the buttons of their lists (<see cref="HotkeyAction.Command"/>), which are not actions and never get a shortcut key.</summary>
     public IEnumerable<HotkeyAction> PickerActions => Actions.Concat(_pickerCommands);
 
     /// <summary>Adds a button to a picker list (see <see cref="PickerActions"/>).</summary>
@@ -50,6 +50,12 @@ public sealed class HotkeyRegistry : IActionRegistry, IDisposable
 
     private ActionSection? PlaceOf(string section) => _pages.FirstOrDefault(p => p.Name == section) ?? ActionSections.Find(section);
 
+    /// <summary>The section (name, icon, place) of a page or an extra section; null when there is none by that name.</summary>
+    public ActionSection? SectionOf(string section) => PlaceOf(section);
+
+    /// <summary>Every section in order: the sidebar pages, then the extra ones (their icons are what the tray flyout's tiles may show).</summary>
+    public IReadOnlyList<ActionSection> Sections => _pages.Concat(ActionSections.Extras).ToList();
+
     /// <summary>Asked before every action runs (see <see cref="IActionGate"/>); null = nothing is ever refused.</summary>
     public IActionGate? Gate { get; set; }
 
@@ -60,7 +66,7 @@ public sealed class HotkeyRegistry : IActionRegistry, IDisposable
     {
         _service.Failed += gesture => Dispatcher.UIThread.Post(() =>
         {
-            var names = string.Join(", ", Actions.Where(a => a.Gesture == gesture).Select(a => a.Title));
+            var names = string.Join(", ", Actions.Where(a => a.Keys.Contains(gesture)).Select(a => a.Title));
             Report?.Invoke($"Couldn't register {gesture} for {names}: another app is probably using it. Try another combination.");
         });
     }
@@ -98,7 +104,7 @@ public sealed class HotkeyRegistry : IActionRegistry, IDisposable
     public HotkeyAction? Find(string id) => Actions.FirstOrDefault(a => a.Id == RenamedActions.Id(id));
 
     public IReadOnlyList<string> SavedWithShortcut(string prefix) =>
-        _stored.Where(p => p.Key.StartsWith(prefix, StringComparison.Ordinal) && p.Value.Gesture.Length > 0).Select(p => p.Key).ToList();
+        _stored.Where(p => p.Key.StartsWith(prefix, StringComparison.Ordinal) && p.Value.Keys.Any()).Select(p => p.Key).ToList();
 
     public string? ProblemWith(string gesture, string id) => ConflictOf(gesture, id, Actions);
 
@@ -109,22 +115,17 @@ public sealed class HotkeyRegistry : IActionRegistry, IDisposable
     public static string? ConflictOf(string gesture, string id, IEnumerable<HotkeyAction> actions) =>
         HotkeyService.ProblemWith(gesture)
         ?? ReservedKeys.ProblemWith(gesture)
-        ?? (actions.FirstOrDefault(a => a.Id != id && a.Gesture == gesture) is { } other ? $"{gesture} is already the shortcut of \"{other.Title}\"." : null);
+        ?? (OwnerOf(gesture, id, actions) is { } other ? $"{gesture} is already the shortcut of \"{other.Title}\"." : null);
 
-    /// <summary>
-    /// Binds the suggested key of each of these actions that has one and no key yet. A key another action already has is not taken from it:
-    /// that action is skipped. Returns the titles of the skipped actions.
-    /// </summary>
-    public IReadOnlyList<string> UseSuggested(IEnumerable<HotkeyAction> actions)
-    {
-        var skipped = new List<string>();
-        foreach (var action in HotkeyDefaults.WithSuggestion(actions).Where(a => a.Gesture.Length == 0).ToList())
-        {
-            if (ConflictOf(action.SuggestedKey!, action.Id, Actions) is not null) skipped.Add(action.Title);
-            else action.Gesture = action.SuggestedKey!;
-        }
-        return skipped;
-    }
+    /// <summary>The action other than <paramref name="exceptId"/> that has this key, or null.</summary>
+    public static HotkeyAction? OwnerOf(string gesture, string exceptId, IEnumerable<HotkeyAction> actions) =>
+        actions.FirstOrDefault(a => a.Id != exceptId && a.Keys.Contains(gesture));
+
+    /// <summary>The action other than <paramref name="exceptId"/> that has this key in the set in use, or null.</summary>
+    public HotkeyAction? OwnerOf(string gesture, string exceptId) => OwnerOf(gesture, exceptId, Actions);
+
+    /// <summary>Takes this key from whichever action has it and gives it to <paramref name="to"/> as one more key (keys stay unique).</summary>
+    public void MoveKey(string gesture, HotkeyAction to) => to.SetKeys(to.Keys.Append(gesture)); // OnChanged takes it from the other
 
     /// <summary>Runs an action by id (for example from a mouse button). False when no such action is registered.</summary>
     public bool Run(string id)
@@ -141,10 +142,11 @@ public sealed class HotkeyRegistry : IActionRegistry, IDisposable
         var action = Find(id);
         if (action is null) return false;
         if (settings is null) RunSoon(action);
-        else Dispatcher.UIThread.Post(() =>
+        else
         {
-            if (Permitted(action)) action.RunWith(settings);
-        }, DispatcherPriority.Send);
+            var chain = _chain.Value;
+            Dispatcher.UIThread.Post(() => RunNow(action, chain, a => a.RunWith(settings)), DispatcherPriority.Send);
+        }
         return true;
     }
 
@@ -156,20 +158,59 @@ public sealed class HotkeyRegistry : IActionRegistry, IDisposable
     {
         var action = Actions.FirstOrDefault(a => a.Level?.Id == levelId && a.LevelDirection > 0 == up);
         if (action is null) return false;
-        Dispatcher.UIThread.Post(() =>
-        {
-            if (Permitted(action)) action.RunBy(percent);
-        }, DispatcherPriority.Send);
+        var chain = _chain.Value;
+        Dispatcher.UIThread.Post(() => RunNow(action, chain, a => a.RunBy(percent)), DispatcherPriority.Send);
         return true;
     }
 
     // Ahead of everything else queued (input, rendering, layout), so a pop-up or a volume step answers the key or wheel at once
     // even while a page is busy redrawing.
-    private void RunSoon(HotkeyAction action) =>
-        Dispatcher.UIThread.Post(() =>
+    private void RunSoon(HotkeyAction action)
+    {
+        var chain = _chain.Value; // read on the calling thread: a rule's worker carries its chain here
+        Dispatcher.UIThread.Post(() => RunNow(action, chain, a => a.Run()), DispatcherPriority.Send);
+    }
+
+    /// <summary>
+    /// THE run path: every action that runs (a key, a mouse button, a gesture, a rule, Run now) passes here on the UI thread. It asks the
+    /// gate, runs the action with the chain of rules that caused it in force (so what the action does, and the state changes it makes,
+    /// carry it on), then raises <see cref="Ran"/>.
+    /// </summary>
+    private void RunNow(HotkeyAction action, RunChain? chain, Action<HotkeyAction> run)
+    {
+        if (!Permitted(action)) return;
+        var outer = _chain.Value;
+        _chain.Value = chain;
+        try
         {
-            if (Permitted(action)) action.Run();
-        }, DispatcherPriority.Send);
+            run(action);
+        }
+        finally
+        {
+            _chain.Value = outer;
+        }
+        Ran?.Invoke(action, chain);
+    }
+
+    private readonly AsyncLocal<RunChain?> _chain = new();
+
+    /// <summary>The chain of rules whose run is going on in the calling code (null: a person or Windows started it).</summary>
+    public RunChain? Chain => _chain.Value;
+
+    /// <summary>Puts <paramref name="chain"/> in force for the rest of the calling async flow (a rule's worker, before it runs its steps).</summary>
+    public void RunWithin(RunChain chain) => _chain.Value = chain;
+
+    /// <summary>Raised on the UI thread after an action ran, with the chain of rules that caused it (null: none).</summary>
+    public event Action<HotkeyAction, RunChain?>? Ran;
+
+    /// <summary>Actions whose ids changed (old id to new id): whoever stored an old id (a button, a gesture, a rule) moves to the new one.</summary>
+    public event Action<IReadOnlyDictionary<string, string>>? Moved;
+
+    /// <summary>Says that the actions with these old ids are now the ones with the new ids (a merged smart device's actions).</summary>
+    public void Move(IReadOnlyDictionary<string, string> moved)
+    {
+        if (moved.Count > 0) Moved?.Invoke(moved);
+    }
 
     /// <summary>The one gate every run passes: false (and one line in the status) when a block rule forbids the action now.</summary>
     private bool Permitted(HotkeyAction action)
@@ -206,7 +247,7 @@ public sealed class HotkeyRegistry : IActionRegistry, IDisposable
     public void ImportStored(IReadOnlyDictionary<string, StoredHotkey> all)
     {
         _stored.Clear();
-        foreach (var (id, saved) in all) _stored[id] = saved;
+        foreach (var (id, saved) in Unique(new Dictionary<string, StoredHotkey>(all))) _stored[id] = saved;
         foreach (var action in Actions)
         {
             action.Restore(_stored.GetValueOrDefault(action.Id) ?? HotkeyDefaults.Cleared);
@@ -218,27 +259,55 @@ public sealed class HotkeyRegistry : IActionRegistry, IDisposable
 
     private void OnChanged(HotkeyAction changed)
     {
-        if (ReservedKeys.ProblemWith(changed.Gesture) is { } reserved)
+        if (changed.Keys.Select(ReservedKeys.ProblemWith).FirstOrDefault(p => p is not null) is { } reserved)
         {
             Report?.Invoke(reserved);
-            changed.Gesture = string.Empty; // raises Changed again, which saves and rebinds
+            changed.SetKeys(changed.Keys.Where(k => ReservedKeys.ProblemWith(k) is null)); // raises Changed again, which saves and rebinds
             return;
         }
         // A key combination can only belong to one action.
-        if (changed.Gesture.Length > 0)
-            foreach (var other in Actions.Where(a => a != changed && a.Gesture == changed.Gesture).ToList())
-                other.Gesture = string.Empty;
+        foreach (var other in Actions.Where(a => a != changed && a.Keys.Intersect(changed.Keys).Any()).ToList())
+            other.SetKeys(other.Keys.Except(changed.Keys));
         foreach (var a in Actions) _stored[a.Id] = a.Export();
         Save();
         Rebind();
     }
 
+    private bool _held;
+
+    /// <summary>
+    /// While held, only the keys of the actions that must always work (<see cref="HotkeyAction.NeverBlock"/>) stay registered with Windows,
+    /// so any other key combination reaches the window that asked (the Choose-the-action window's search box and hotkey boxes, where a pressed
+    /// key is searched for or captured) instead of running its action. The emergency key has its own registration and is never held. Letting go registers them again.
+    /// </summary>
+    public void Hold(bool held)
+    {
+        if (held == _held) return;
+        _held = held;
+        Rebind();
+    }
+
     private void Rebind() =>
-        _service.Apply(Actions.Where(a => a.Gesture.Length > 0 && ReservedKeys.ProblemWith(a.Gesture) is null)
-            .Select(a => (a.Gesture, (Action)(() => RunSoon(a)))));
+        _service.Apply(Actions.Where(a => !_held || a.NeverBlock).SelectMany(a => a.Keys.Where(k => ReservedKeys.ProblemWith(k) is null).Select(k => (k, (Action)(() => RunSoon(a))))));
 
     private static Dictionary<string, StoredHotkey> Load() =>
-        RenamedActions.Migrate(AppDataStore.Load<Dictionary<string, StoredHotkey>>(Store) ?? new());
+        Unique(RenamedActions.Migrate(AppDataStore.Load<Dictionary<string, StoredHotkey>>(Store) ?? new()));
+
+    /// <summary>
+    /// The bindings with every key on one action only (the first action that has it keeps it): a merged backup or a file from before an
+    /// action could have several keys may hold the same key twice.
+    /// </summary>
+    internal static Dictionary<string, StoredHotkey> Unique(Dictionary<string, StoredHotkey> all)
+    {
+        var taken = new HashSet<string>();
+        var result = new Dictionary<string, StoredHotkey>();
+        foreach (var (id, saved) in all)
+        {
+            var keys = saved.Keys.Where(taken.Add).ToList();
+            result[id] = saved with { Gesture = keys.FirstOrDefault() ?? string.Empty, More = keys.Count > 1 ? keys.Skip(1).ToList() : null };
+        }
+        return result;
+    }
 
     private void Save()
     {

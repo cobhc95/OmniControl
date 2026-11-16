@@ -24,6 +24,7 @@ public sealed partial class AutomationService
 
     private void StartTriggers(bool startedByWindows)
     {
+        if (StartupMode.Inert) return; // a screenshot export runs no rule and watches nothing
         if (SessionOff)
         {
             _report(SafeStartWords);
@@ -80,6 +81,7 @@ public sealed partial class AutomationService
         var now = DateTime.Now;
         var from = _lastLook;
         _lastLook = now;
+        NotifyPowerStates();
         if (Paused) return;
 
         var events = new List<AutomationEvent>(_startEvents);

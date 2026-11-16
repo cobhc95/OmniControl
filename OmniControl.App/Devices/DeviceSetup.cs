@@ -35,20 +35,36 @@ public sealed class DeviceSetup
     /// <summary>Raised when what was found or the installing state changed.</summary>
     public event Action? Changed;
 
-    /// <summary>Looks again at Python, python-kasa and the router's address.</summary>
+    /// <summary>
+    /// Looks again at Python, python-kasa and the router's address. The <c>py</c> launcher or the Store alias is followed to the real
+    /// python.exe, Python is asked where its programs go, and kasa.exe is looked for there (and in the usual folders); when kasa is installed
+    /// but its program is nowhere, <c>python -m kasa.cli</c> is used once it is seen to work.
+    /// </summary>
     public async Task RefreshAsync()
     {
         _gateway = NetworkGateway.FindDefault();
         PythonPath = await Task.Run(PythonLocator.Find);
+        if (PythonPath is { } found && KasaCommand.IsLauncher(found) && (await AskPythonAsync(found, KasaCommand.ExecutableQuery)).FirstOrDefault() is { } real && File.Exists(real))
+            PythonPath = real;
         Kasa = null;
         if (PythonPath is { } python)
         {
-            if (KasaCommand.FindExe(python) is { } exe) Kasa = (exe, Array.Empty<string>());
-            else if (await ScriptRunner.RunAsync(python, new[] { "-c", "import kasa" }, hidden: true, Timing.DeviceProbeTimeout) is null)
-                Kasa = (python, new[] { "-m", "kasa" }); // installed, but its program is not in a place we know
+            var folders = await AskPythonAsync(python, KasaCommand.ScriptsQuery);
+            if (KasaCommand.FindExe(python, folders) is { } exe) Kasa = (exe, Array.Empty<string>());
+            else if (await ScriptRunner.RunAsync(python, KasaCommand.ModuleLead.Append("--help").ToList(), hidden: true, Timing.DeviceProbeTimeout) is null)
+                Kasa = (python, KasaCommand.ModuleLead.ToArray());
         }
         KasaInstalled = Kasa is not null;
+        _log(Kasa is { } kasa ? $"kasa: {kasa.File} {string.Join(' ', kasa.Lead)} (Python {PythonPath})" : $"kasa not found (Python {PythonPath ?? "not found"})");
         Changed?.Invoke();
+    }
+
+    /// <summary>The lines Python prints for <paramref name="code"/>; empty when it could not run.</summary>
+    private static async Task<IReadOnlyList<string>> AskPythonAsync(string python, string code)
+    {
+        var printed = string.Empty;
+        var problem = await ScriptRunner.RunAsync(python, new[] { "-c", code }, hidden: true, Timing.DeviceProbeTimeout, output: text => printed = text);
+        return problem is null ? printed.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) : Array.Empty<string>();
     }
 
     /// <summary>Installs python-kasa for the user (pip); null when it worked, otherwise one plain sentence. Its output goes to the devices log.</summary>

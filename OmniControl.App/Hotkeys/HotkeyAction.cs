@@ -1,10 +1,16 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace OmniControl.App.Hotkeys;
 
 /// <summary>What gets saved for one hotkey.</summary>
-public sealed record StoredHotkey(string Gesture, bool UseSelected, List<string> DeviceIds);
+/// <summary>What gets saved for one hotkey: its first key, the device choice, and its further keys (<see cref="More"/>; absent in files written
+/// before an action could have several keys, which is how those read as one key).</summary>
+public sealed record StoredHotkey(string Gesture, bool UseSelected, List<string> DeviceIds, List<string>? More = null)
+{
+    /// <summary>Every key, the first one first.</summary>
+    public IEnumerable<string> Keys => (More ?? new List<string>()).Prepend(Gesture).Where(k => k.Length > 0);
+}
 
 /// <summary>A name the user may change in the pickers: what it is now, and what to do with the new one (returns the action's new title, or null when nothing changed).</summary>
 public sealed record Renaming(string Current, Func<string, string?> Apply);
@@ -17,11 +23,11 @@ public sealed record HotkeyLevel(string Id, string Name);
 
 /// <summary>
 /// A bindable hotkey, and the master entry for everything OmniControl itself can do. Every feature registers its actions through
-/// <see cref="HotkeyRegistry"/>; the Shortcuts page, search, the mouse button and gesture pickers all read them from there.
+/// <see cref="HotkeyRegistry"/>; the Actions and hotkeys window, search, the mouse button and gesture pickers all read them from there.
 /// Pass a device source when the action targets variable devices (monitors...): the user can then
 /// choose all devices or a hand-picked subset.
 /// </summary>
-public sealed partial class HotkeyAction : ObservableObject, Pages.IEditorItem
+public sealed partial class HotkeyAction : HotkeyTarget, Pages.IEditorItem
 {
     string Pages.IEditorItem.Label => Title;
 
@@ -40,17 +46,19 @@ public sealed partial class HotkeyAction : ObservableObject, Pages.IEditorItem
     public string Id { get; }
     public string Title { get; }
 
+    /// <summary>A shorter name for tight places (the tray flyout's tiles), set on the master entry; the <see cref="Title"/> when not given.</summary>
+    public string? Short { get; init; }
+
+    public string ShortName => Short ?? Title;
+
     /// <summary>The feature the action belongs to: the title of the page that registers it.</summary>
     public string Category { get; }
 
     /// <summary>Optional part of the feature ("Hardware", "Software").</summary>
     public string? Group { get; }
 
-    /// <summary>Optional part of the group ("Colour (RGB and gamma)"): the Shortcuts page folds it into its own panel under the group.</summary>
+    /// <summary>Optional part of the group ("Colour (RGB and gamma)"): the pickers show it in the group heading.</summary>
     public string? Subgroup { get; }
-
-    /// <summary>Category and group as one line ("Displays - Hardware"): the panel the Shortcuts page puts the action in.</summary>
-    public string Panel { get; }
 
     /// <summary>Category, group and subgroup as one line ("Displays - Hardware - Presets"): what every list shows as the action's category.</summary>
     public string Heading { get; }
@@ -58,8 +66,8 @@ public sealed partial class HotkeyAction : ObservableObject, Pages.IEditorItem
     public string Keywords { get; }
 
     /// <summary>
-    /// A key combination the feature suggests for this action ("Ctrl+Alt+Up"), or null. It is never bound by itself: the Shortcuts page's
-    /// "Use suggested keys" binds it on request (<see cref="HotkeyRegistry.UseSuggested"/>).
+    /// A key combination the feature suggests for this action ("Ctrl+Alt+Up"), or null. It is never bound by itself: the Actions and hotkeys window's
+    /// "Suggest" binds it on request.
     /// </summary>
     public string? SuggestedKey { get; init; }
 
@@ -129,51 +137,32 @@ public sealed partial class HotkeyAction : ObservableObject, Pages.IEditorItem
     /// <summary>"All displays" first, then one chip per device.</summary>
     public ObservableCollection<ScopeChip> Chips { get; } = new();
 
-    /// <summary>Like "Ctrl+Alt+Up". Empty means not bound.</summary>
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(DisplayText))] private string _gesture = string.Empty;
+    /// <summary>The action's further keys after <see cref="HotkeyTarget.Gesture"/> (its first); an action may have several, each unique in the set.</summary>
+    [ObservableProperty] private IReadOnlyList<string> _moreKeys = Array.Empty<string>();
+
+    /// <summary>Every key of the action, the first one first; empty when it has none.</summary>
+    public IReadOnlyList<string> Keys => Gesture.Length == 0 ? MoreKeys : MoreKeys.Prepend(Gesture).ToList();
+
+    /// <summary>Gives the action exactly these keys (empty ones dropped, no key twice), with one save.</summary>
+    public void SetKeys(IEnumerable<string> keys)
+    {
+        var all = keys.Where(k => k.Length > 0).Distinct().ToList();
+        _loading = true;
+        Gesture = all.FirstOrDefault() ?? string.Empty;
+        MoreKeys = all.Skip(1).ToList();
+        _loading = false;
+        Raise();
+    }
 
     [ObservableProperty] private bool _useSelected;
 
     /// <summary>
     /// Why the action does nothing right now (a device it needs is missing), set and cleared live by the feature that owns it;
-    /// null = it works. The Shortcuts page shows it on the action; the key can still be bound.
+    /// null = it works. The Actions and hotkeys window shows it on the action; the key can still be bound.
     /// </summary>
     [ObservableProperty, NotifyPropertyChangedFor(nameof(IsUnavailable))] private string? _unavailableReason;
 
     public bool IsUnavailable => UnavailableReason is not null;
-
-    /// <summary>True while the hotkey box waits for the user to press the new key combination.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HotkeyHint))]
-    [NotifyPropertyChangedFor(nameof(DisplayText))]
-    private bool _isListening;
-
-    /// <summary>The keys held right now while listening ("Ctrl + Alt + ..."), shown in the box before the shortcut is saved.</summary>
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(DisplayText))] private string _preview = string.Empty;
-
-    /// <summary>The combination waiting for its main key to be released (it is saved then); null while none is held.</summary>
-    internal string? PendingGesture { get; set; }
-
-    /// <summary>The main key (a key code) the pending combination waits on.</summary>
-    internal int? PendingKey { get; set; }
-
-    /// <summary>What the hotkey box shows: the live preview while listening, the saved shortcut otherwise.</summary>
-    public string DisplayText => IsListening ? Preview : Gesture;
-
-    /// <summary>The last key press had no Ctrl, Alt or Win, so it was refused.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HotkeyHint))]
-    private bool _rejectedNote;
-
-    public string HotkeyHint => IsListening ? (RejectedNote ? "Add Ctrl or Alt" : "Press keys…") : "Click to set";
-
-    partial void OnIsListeningChanged(bool value)
-    {
-        RejectedNote = false;
-        Preview = string.Empty;
-        PendingGesture = null;
-        PendingKey = null;
-    }
 
     public bool ShowEmptyNote => HasDevices && Chips.Count <= 1;
 
@@ -203,7 +192,6 @@ public sealed partial class HotkeyAction : ObservableObject, Pages.IEditorItem
         Category = category;
         Group = group;
         Subgroup = subgroup;
-        Panel = Services.Heading.Join(category, group);
         Heading = Services.Heading.Join(category, group, subgroup);
         Keywords = keywords;
         _run = run;
@@ -261,12 +249,14 @@ public sealed partial class HotkeyAction : ObservableObject, Pages.IEditorItem
         OnPropertyChanged(nameof(ScopeSummary));
     }
 
-    public StoredHotkey Export() => new(Gesture, UseSelected, _selectedIds.ToList());
+    public StoredHotkey Export() => new(Gesture, UseSelected, _selectedIds.ToList(), MoreKeys.Count > 0 ? MoreKeys.ToList() : null);
 
     public void Restore(StoredHotkey s)
     {
         _loading = true;
-        Gesture = s.Gesture;
+        var keys = s.Keys.Distinct().ToList();
+        Gesture = keys.FirstOrDefault() ?? string.Empty;
+        MoreKeys = keys.Skip(1).ToList();
         _selectedIds.Clear();
         foreach (var id in s.DeviceIds) _selectedIds.Add(id);
         UseSelected = s.UseSelected && HasDevices;
@@ -314,7 +304,17 @@ public sealed partial class HotkeyAction : ObservableObject, Pages.IEditorItem
         Raise();
     }
 
-    partial void OnGestureChanged(string value) => Raise();
+    protected override void GestureSet()
+    {
+        OnPropertyChanged(nameof(Keys));
+        Raise();
+    }
+
+    partial void OnMoreKeysChanged(IReadOnlyList<string> value)
+    {
+        OnPropertyChanged(nameof(Keys));
+        Raise();
+    }
 
     private void Raise()
     {

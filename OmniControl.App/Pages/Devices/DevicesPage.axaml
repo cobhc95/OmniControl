@@ -4,22 +4,36 @@
              xmlns:pages="using:OmniControl.App.Pages"
              x:Class="OmniControl.App.Pages.Devices.DevicesPage"
              x:DataType="vm:DevicesPageViewModel">
-    <!-- The Devices page (docs/mockups/devices-tab.html): the devices on the left (ListBox.nav) with a dashed "+ Add device" under them, the chosen
-         device on the right (DeviceDetail, template in App.axaml). With no device, one dashed row says so. -->
+    <!-- The Smart Devices page (docs/mockups/smart-devices-setup-vs-ready.html part 1, device-icons.html): one boxed pane (Border.pane.edged)
+         with the devices on the left (ListBox.nav in a side panel with its divider edge) and a dashed "+ Add device" under them, the chosen
+         device on the right (DeviceDetail, template in App.axaml). A list row: the device's icon (lit while it reads on), its name (wraps to
+         two lines, then trims), and a plain switch showing the last known state that switches the device, or a "set-up" tag when the device
+         is not set up. With no device, one dashed row says so. Several rows can be chosen (Ctrl, Shift, Ctrl+A); a right-click opens Copy, Cut,
+         Paste, Duplicate, Merge into… and Delete for them (docs/mockups/device-multiple-methods.html), and the keys Ctrl+C, X, V, D and Delete do the same. -->
     <StackPanel Spacing="6">
-        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" IsVisible="{Binding !NoDevices}">
-            <StackPanel Spacing="8" MinWidth="120" MaxWidth="200">
-                <ListBox Classes="nav" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate x:DataType="vm:DeviceItem">
-                            <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Label}" />
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-                <Button Classes="blockadd small" Content="+ Add device" Command="{Binding AddDeviceCommand}" HorizontalAlignment="Left" />
-            </StackPanel>
-            <ContentControl Grid.Column="1" Content="{Binding Selected}" IsVisible="{Binding HasSelected}" />
-        </Grid>
-        <pages:EmptyListRow IsVisible="{Binding NoDevices}" Text="No devices yet. A device is a smart plug OmniControl can switch on and off." LinkText="Add device" Command="{Binding AddDeviceCommand}" />
+        <Border Classes="pane edged" IsVisible="{Binding !NoDevices}">
+            <Grid ColumnDefinitions="Auto,*">
+                <Border Classes="sidebarpanel" BorderThickness="0,0,1,0" Padding="{StaticResource DeviceListPadding}">
+                    <StackPanel Spacing="8" MinWidth="{StaticResource DeviceListMinWidth}" MaxWidth="{StaticResource DeviceListMaxWidth}">
+                        <ListBox x:Name="DeviceList" Classes="nav compact" SelectionMode="Multiple" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}" KeyDown="OnListKeyDown">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:DeviceItem">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6">
+                                        <vm:DeviceIconView />
+                                        <TextBlock Grid.Column="1" Text="{Binding Name}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}" VerticalAlignment="Center" />
+                                        <ToggleSwitch Grid.Column="2" Classes="plain" IsChecked="{Binding ListOn}" IsEnabled="{Binding CanSwitch}" IsVisible="{Binding IsReady}"
+                                                      ToolTip.Tip="{Binding SwitchTip}" ToolTip.ShowOnDisabled="True" VerticalAlignment="Center" />
+                                        <Border Grid.Column="2" Classes="tag caution" IsVisible="{Binding !IsReady}" VerticalAlignment="Center"><TextBlock Text="set-up" /></Border>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <Button Classes="blockadd small" Content="+ Add device" Command="{Binding AddDeviceCommand}" HorizontalAlignment="Left" />
+                    </StackPanel>
+                </Border>
+                <ContentControl Grid.Column="1" Content="{Binding Selected}" IsVisible="{Binding HasSelected}" Margin="{StaticResource DeviceDetailPadding}" />
+            </Grid>
+        </Border>
+        <pages:EmptyListRow IsVisible="{Binding NoDevices}" Text="No devices yet. A device is a smart plug or bulb OmniControl can switch on and off." LinkText="Add device" Command="{Binding AddDeviceCommand}" />
     </StackPanel>
 </UserControl>

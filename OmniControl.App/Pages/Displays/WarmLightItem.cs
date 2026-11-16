@@ -50,7 +50,10 @@ internal sealed class WarmLightItem
     /// <summary>Stops listening to the schedule.</summary>
     public void Dispose() => _scheduler.Changed -= Refresh;
 
-    private void Toggle() => SetEnabled(!_store.WarmLight.Enabled);
+    private void Toggle() => SetEnabled(!IsOn);
+
+    /// <summary>The schedule is on (the page's state reads it).</summary>
+    public bool IsOn => _store.WarmLight.Enabled;
 
     /// <summary>Turns the schedule on or off (the button, its action and "Restore defaults").</summary>
     public void SetEnabled(bool on)

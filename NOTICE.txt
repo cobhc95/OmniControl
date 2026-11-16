@@ -63,7 +63,7 @@ Version: 3.3.0
 Licence: MIT
 Copyright: Copyright 2008-2026 Mark Heath and contributors
 Website: https://github.com/naudio/NAudio
-Used for: Recording a program's sound (process loopback), playing the processed sound, hosting VST3 plug-ins.
+Used for: Recording a program's sound (process loopback), playing the processed sound, hosting VST3 plug-ins, recording the speakers and the microphone for screen recordings (and the Media Foundation GUIDs it publishes). Video is encoded by Windows' own Media Foundation; nothing else is bundled.
 
 Name: Steinberg VST3 SDK
 Version: 3.8.1 (through NAudio.Vst3)
@@ -92,6 +92,20 @@ Licence: MIT
 Copyright: Copyright (c) .NET Foundation and Contributors
 Website: https://github.com/CommunityToolkit/dotnet
 Used for: View-model helpers.
+
+Name: SkiaSharp
+Version: 2.88.9
+Licence: MIT
+Copyright: Copyright (c) 2015-2016 Xamarin, Inc.; Copyright (c) 2017-2018 Microsoft Corporation
+Website: https://github.com/mono/SkiaSharp
+Used for: Saving screenshots as PNG, JPG and WebP (also the drawing engine Avalonia uses).
+
+Name: ZXing.Net
+Version: 0.16.9
+Licence: Apache-2.0
+Copyright: Copyright (c) Michael Jahn and the ZXing.Net contributors (a port of ZXing, Copyright (c) ZXing authors)
+Website: https://github.com/micjahn/ZXing.Net
+Used for: Reading QR codes in a screenshot selection, on the PC only.
 
 Name: .NET libraries (System.Drawing.Common, System.Management, System.ServiceProcess.ServiceController)
 Version: 8.0.10, 8.0.0, 9.0.0

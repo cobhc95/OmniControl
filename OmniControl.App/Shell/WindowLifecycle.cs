@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
 using OmniControl.App.Services;
+using OmniControl.App.Tray;
 
 namespace OmniControl.App.Shell;
 
@@ -18,7 +19,7 @@ public static class WindowLifecycle
     {
         var quitting = false;
         var asking = false;
-        // The one exit path: the tray's Exit, the footer button, the X button's "Exit" and the close dialog all end here,
+        // The one exit path: the tray's Quit (the app.quit action), the footer button, the X button's "Exit" and the close dialog all end here,
         // and desktop.Exit below disposes the shell (engine, journal, display ramps).
         void Exit() { quitting = true; desktop.Shutdown(); }
         void Show()
@@ -52,9 +53,7 @@ public static class WindowLifecycle
             finally { asking = false; }
         }
 
-        var tray = new TrayService(app, Show, Exit, shell.ToggleRulesPause);
-        void ShowPause() => tray.ShowPaused(shell.RulesPaused);
-        shell.RulesChanged += ShowPause;
+        var tray = new TrayService(app, Show, shell.TrayFlyout, shell.RunAction);
 
         // X does what the setting says (a real exit, from any path, is not intercepted).
         window.Closing += (_, e) =>
@@ -88,6 +87,6 @@ public static class WindowLifecycle
             AppRestart.StartNext();
             Exit();
         };
-        desktop.Exit += (_, _) => { shell.RulesChanged -= ShowPause; tray.Dispose(); shell.Dispose(); };
+        desktop.Exit += (_, _) => { tray.Dispose(); shell.Dispose(); };
     }
 }

@@ -265,6 +265,12 @@ public static class Timing
     public static readonly TimeSpan AutomationBurstWindow = TimeSpan.FromMinutes(1);
     public const int AutomationBurstMax = 5;
 
+    /// <summary>
+    /// The most rules one chain may hold: a rule that runs an action (or changes a state) that starts another rule, and so on. The rule
+    /// that would make the chain longer is not started, and a rule never starts from its own chain (no loops).
+    /// </summary>
+    public const int AutomationChainMax = 3;
+
     /// <summary>The longest "then wait" between two actions of an automation, in seconds, and what a new one starts at.</summary>
     public const int AutomationMaxWaitSeconds = 600, AutomationDefaultWaitSeconds = 5;
 
@@ -293,12 +299,60 @@ public static class Timing
     public static readonly TimeSpan DeviceSimElementWait = TimeSpan.FromSeconds(10), DeviceSimPoll = TimeSpan.FromMilliseconds(700),
         DeviceSimSettle = TimeSpan.FromMilliseconds(600), DeviceSimRunTimeout = TimeSpan.FromMinutes(2);
 
+    /// <summary>How often the Smart Devices page looks again for a newly installed emulator or adb while either is still missing.</summary>
+    public static readonly TimeSpan DeviceSimRecheck = TimeSpan.FromSeconds(5);
+
+    /// <summary>How often adb is asked which emulators are up, so the set-up checklist follows an emulator opening or closing; and how long a tap on a home screen waits for the app to open.</summary>
+    public static readonly TimeSpan DeviceSimLive = TimeSpan.FromSeconds(3), DeviceSimLaunchWait = TimeSpan.FromSeconds(1.5);
+
+    /// <summary>"Keep running: until idle" closes the emulator after this many minutes without an action (the default; the user types another).</summary>
+    public const int EmulatorIdleMinutes = 30;
+
+    /// <summary>A woken emulator is waited for this long to finish starting (a cold boot); a quick boot from a snapshot gets the shorter time before one cold boot is tried; adb is asked every poll.</summary>
+    public static readonly TimeSpan EmulatorBootTimeout = TimeSpan.FromMinutes(3), EmulatorQuickBootTimeout = TimeSpan.FromSeconds(75), EmulatorBootPoll = TimeSpan.FromSeconds(2);
+
+    /// <summary>Two reports of a tap closer than this in time and <see cref="DeviceSimSameTouchPixels"/> in place are one tap.</summary>
+    public static readonly TimeSpan DeviceSimSameTouch = TimeSpan.FromMilliseconds(400);
+
+    public const int DeviceSimSameTouchPixels = 24;
+
+    /// <summary>How many times a step that waits for an element scrolls the page to find it, before it gives up.</summary>
+    public const int DeviceSimScrollTries = 4;
+
     /// <summary>While steps are being recorded the screen is read again this often, so a tap is matched with the screen it was made on.</summary>
     public static readonly TimeSpan DeviceSimRecordGap = TimeSpan.FromMilliseconds(900);
+
+    /// <summary>Teaching on and off: each "It's on now" / "It's off now" takes this many looks at the device's card, this far apart.</summary>
+    public const int DeviceSimTeachLooks = 3;
+
+    public static readonly TimeSpan DeviceSimTeachGap = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>A device's name typed in its box is saved this long after the last key (the list and its actions follow every key at once).</summary>
+    public static readonly TimeSpan DeviceNameSaveDelay = TimeSpan.FromMilliseconds(600);
+
+    /// <summary>How often a device with "Every 5 min" / "Every 15 min" reads its real state.</summary>
+    public static readonly TimeSpan DeviceAutoCheck5 = TimeSpan.FromMinutes(5), DeviceAutoCheck15 = TimeSpan.FromMinutes(15);
 
     /// <summary>After a USB announcement the automations wait this long before comparing the device list.</summary>
     public static readonly TimeSpan AutomationUsbSettle = TimeSpan.FromSeconds(2);
 
     /// <summary>How long a restarted OmniControl waits for the run before it to end (it saves its settings as it closes) before it carries out a staged import or wipe.</summary>
     public static readonly TimeSpan RestartWait = TimeSpan.FromSeconds(15);
+
+    /// <summary>While the screenshot overlay is open in its strong "Stay on top" mode it puts itself back on top (and takes the foreground back) this often.</summary>
+    public static readonly TimeSpan ScreenshotOnTopRefresh = TimeSpan.FromMilliseconds(250);
+
+    /// <summary>The recording bar's timer is updated this often.</summary>
+    public static readonly TimeSpan RecordingTimerTick = TimeSpan.FromMilliseconds(250);
+
+    /// <summary>A screen recording stops by itself at this length (an MP4, a GIF), at this file size (an MP4, a GIF), or when the disk has less than this free.</summary>
+    public static readonly TimeSpan VideoMaxLength = TimeSpan.FromHours(4), GifMaxLength = TimeSpan.FromMinutes(2);
+
+    public const long VideoMaxBytes = 16L << 30, GifMaxBytes = 500L << 20, VideoMinFreeBytes = 1L << 30;
+
+    /// <summary>
+    /// A click on the tray icon this soon after the flyout hid itself (it hides as the press on the icon takes the focus away) only closed it:
+    /// the click does not open it again, so the icon opens and closes the flyout like Windows' own tray flyouts.
+    /// </summary>
+    public static readonly TimeSpan TrayReopenGrace = TimeSpan.FromMilliseconds(400);
 }

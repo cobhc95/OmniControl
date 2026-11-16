@@ -50,6 +50,19 @@ public sealed class GestureService
         Applied?.Invoke();
     }
 
+    /// <summary>A gesture whose action's id moved (a merged smart device's actions, <c>HotkeyRegistry.Moved</c>) now names the new id.</summary>
+    public void FollowMoved(IReadOnlyDictionary<string, string> moved)
+    {
+        var changed = false;
+        foreach (var rule in Settings.Rules.Values)
+        {
+            var now = MovedActions.RewriteAction(rule.Action, moved);
+            changed |= now != rule.Action;
+            rule.Action = now;
+        }
+        if (changed) Apply();
+    }
+
     private Snapshot TakeSnapshot()
     {
         var on = GestureCatalog.Triggers.Where(t => Settings.RuleFor(t).On).ToList();

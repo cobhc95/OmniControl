@@ -43,6 +43,7 @@ public sealed partial class MixerService : IDisposable
         _timer.Tick += (_, _) => Scan();
         foreach (var key in Settings.Apps.Select(a => a.Key).Where(IgnoredPrograms.Contains).ToList()) Remove(key); // remembered by an older version
         Scan();
+        if (StartupMode.Inert) return; // a screenshot export keeps the first look and watches nothing
         _timer.Start();
         StartWatching();
     }
@@ -120,19 +121,22 @@ public sealed partial class MixerService : IDisposable
                     changed = true;
                 }
 
-                foreach (var s in list.Where(s => _applied.Add(s.ProcessId)))
+                if (!StartupMode.Inert) // a screenshot export only looks: it puts no saved volume, mute or device back on a program
                 {
-                    // A program just opened (or OmniControl just started): put its saved settings back.
-                    if (!IsSilenced(key))
+                    foreach (var s in list.Where(s => _applied.Add(s.ProcessId)))
                     {
-                        s.SetVolume(entry.Volume);
-                        s.SetMuted(entry.Muted);
-                        if (entry.Pan != 0) s.SetPan(entry.Pan);
+                        // A program just opened (or OmniControl just started): put its saved settings back.
+                        if (!IsSilenced(key))
+                        {
+                            s.SetVolume(entry.Volume);
+                            s.SetMuted(entry.Muted);
+                            if (entry.Pan != 0) s.SetPan(entry.Pan);
+                        }
+                        if (IsRoutingHeld(key)) KeepRouted(key, s.ProcessId);
+                        else ApplyDirect(key, s.ProcessId);
                     }
-                    if (IsRoutingHeld(key)) KeepRouted(key, s.ProcessId);
-                    else ApplyDirect(key, s.ProcessId);
+                    KeepSilenced(key, list);
                 }
-                KeepSilenced(key, list);
 
                 if (!RecentlyChanged(key) && !IsSilenced(key))
                 {

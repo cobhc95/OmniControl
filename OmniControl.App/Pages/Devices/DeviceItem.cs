@@ -1,4 +1,4 @@
-using System.Net;
+using System.Collections.ObjectModel;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -9,69 +9,85 @@ using OmniControl.App.Dialogs;
 namespace OmniControl.App.Pages.Devices;
 
 /// <summary>
-/// One device on the Devices page: its fields (each saved as it is left), its state tag, the On and Off pills, its set-up checklist and the one
-/// thin line saying how its last command went. What it is told and how is <see cref="DeviceService"/>'s; this only shows and edits it.
+/// One device on the Smart Devices page (docs/mockups/smart-devices-setup-vs-ready.html, device-icons.html, device-multiple-methods.html):
+/// its list row (icon, name, a switch showing the last known state, or "set-up"), the Ready view (name, state, On / Off / Toggle, its
+/// methods in the order they are tried, the last command) and, while a method's set-up is open, that method's stages
+/// (<c>DeviceItem.Setup.cs</c>, <see cref="MethodItem"/>). The icon is <c>DeviceItem.Icon.cs</c>, the state reading <c>DeviceItem.Check.cs</c>.
+/// What the device is told and how is <see cref="DeviceService"/>'s; this only shows and edits it.
 /// </summary>
 public sealed partial class DeviceItem : ObservableObject, IDisposable
 {
     private readonly DeviceService _service;
     private readonly DeviceRuntime _runtime;
     private readonly Action<string> _report;
+    private readonly Func<DialogMessage, Task<bool>> _ask;
     private readonly Func<DeviceItem, Task> _delete;
 
     public DeviceRecord Record { get; }
 
+    /// <summary>The device's name, shared by the name box and the list: every key renames it at once (and its actions); the file is saved shortly after.</summary>
     [ObservableProperty] private string _name;
-    [ObservableProperty] private string _address;
-    [ObservableProperty] private string _email;
-    [ObservableProperty] private bool _reserved;
 
-    private readonly IReadOnlyList<SetupStepItem> _scriptSteps;
-    private readonly IReadOnlyList<SetupStepItem> _simulationSteps;
+    /// <summary>The device's methods, in the order they are tried.</summary>
+    public ObservableCollection<MethodItem> Methods { get; } = new();
 
-    /// <summary>The simulation method's emulator, adb address and recorded steps.</summary>
-    public SimulationViewModel Simulation { get; }
+    /// <summary>The "+ add method" menu: every built method of the master list.</summary>
+    public IReadOnlyList<MenuRowItem> AddMethodOptions =>
+        DeviceMethods.All.Select(m => new MenuRowItem(m.Name, string.Empty, false, m.Tip, new RelayCommand(() => AddMethod(m.Name)), m.Tags, m.Brief)).ToList();
 
-    /// <summary>The set-up checklist of the device's method.</summary>
-    public IReadOnlyList<SetupStepItem> Checklist => IsSimulation ? _simulationSteps : _scriptSteps;
+    public bool IsReady => Record.IsReady;
 
-    public string Label => Record.Name;
-
-    public bool IsSimulation => Record.Method == DeviceMethods.Simulation;
-    public bool IsScripts => !IsSimulation;
-
-    public string MethodLabel => $"Method: {Record.Method}";
-
-    public string MethodTip => DeviceMethods.Tip(Record.Method);
-
-    /// <summary>The Method menu: every method of the master list, a tick on the device's.</summary>
-    public IReadOnlyList<MenuRowItem> MethodOptions =>
-        DeviceMethods.All.Select(m => new MenuRowItem(m, string.Empty, m == Record.Method, DeviceMethods.Tip(m), new RelayCommand(() => PickMethod(m)))).ToList();
-
-    /// <summary>The set-up checklist is shown until the device has passed its test once (with its method).</summary>
-    public bool ShowsChecklist => IsSimulation ? !Record.SimVerified : !Record.Verified;
-
-    public bool HasPassword => _service.HasPassword(Record);
-
-    public string PasswordWatermark => HasPassword ? "Password saved in Windows (type to replace)" : "Password";
+    public bool CanCheck => _service.MissingFor(Record) is null && !_runtime.Busy;
 
     public bool CanSwitch => _service.MissingFor(Record) is null && !_runtime.Busy;
 
-    public string SwitchTip => _service.MissingFor(Record) is { } missing ? $"Not ready: {missing}." : "Switch the plug now.";
+    public string SwitchTip => _service.MissingFor(Record) is { } missing ? $"Not ready: {missing}." : "Switch it now (the methods are tried in order).";
 
-    public string StateText => _runtime.Busy ? "working" : _service.MissingFor(Record) is not null ? "set-up needed" : _runtime.IsOn switch { true => "on", false => "off", _ => "ready" };
+    /// <summary>The list row's switch: the last known state; turning it switches the device (the switch then follows what was read).</summary>
+    public bool ListOn
+    {
+        get => _runtime.IsOn == true;
+        set
+        {
+            if (value == ListOn || !CanSwitch) { OnPropertyChanged(); return; }
+            _ = Switch(value ? DevicePower.On : DevicePower.Off);
+        }
+    }
 
-    public bool StateIsCaution => !_runtime.Busy && _service.MissingFor(Record) is not null;
-    public bool StateIsGood => !_runtime.Busy && _service.MissingFor(Record) is null;
+    /// <summary>The state tag: "on · read 14:52" (read back from the device), "on · set 14:52" (only told), "unknown · read ...", "working…" while busy; empty when nothing is known yet.</summary>
+    public string StateTagText
+    {
+        get
+        {
+            if (_runtime.Busy) return _runtime.Checking ? "checking…" : "working…";
+            if (_runtime.KnownAt is not { } at) return string.Empty;
+            var state = _runtime.IsOn switch { true => "on", false => "off", _ => "unknown" };
+            return $"{state} · {(_runtime.Confirmed || _runtime.Unsure ? "read" : "set")} {at:HH:mm}";
+        }
+    }
+
+    public bool HasStateTag => StateTagText.Length > 0;
+    public bool StateTagGood => !_runtime.Busy && _runtime.IsOn == true;
+    public bool StateTagCaution => !_runtime.Busy && _runtime.KnownAt is not null && _runtime.IsOn is null;
+
+    /// <summary>The first simulation method (its emulator is the one Show emulator shows); null when there is none.</summary>
+    public MethodItem? FirstSimulation => Methods.FirstOrDefault(m => m.IsSimulation);
+    public bool HasSimulation => FirstSimulation is not null;
+
+    /// <summary>Show emulator on the Ready view: the first simulation method's emulator.</summary>
+    [RelayCommand]
+    private Task ShowEmulator() => FirstSimulation?.Simulation.ShowCommand.ExecuteAsync(null) ?? Task.CompletedTask;
+
+    /// <summary>A simulation method whose recent readings were unsure: its sentence and Re-teach.</summary>
+    private MethodItem? Drifting => Methods.FirstOrDefault(m => m.HasDrift);
+    public bool HasDrift => Drifting is not null;
+    public string DriftText => Drifting is { } method ? (Methods.Count > 1 ? $"{Record.NameOf(method.Record)}: {method.DriftText}" : method.DriftText) : string.Empty;
 
     public string LastLine => _runtime.LastLine;
     public bool HasLastLine => _runtime.LastLine.Length > 0;
     public bool LastFailed => _runtime.LastFailed;
-
-    public string RouterLinkText => _service.Setup.RouterPage is { } page ? $"Open {page}" : "Open your router's page";
-
-    /// <summary>The password being typed; saved to Windows when the box is left, then cleared (it is never kept here).</summary>
-    [ObservableProperty] private string _password = string.Empty;
+    public string Details => _runtime.Details;
+    public bool HasDetails => _runtime.LastFailed && _runtime.Details.Length > 0;
 
     public DeviceItem(DeviceRecord record, DeviceService service, Action<string> report, Func<DialogMessage, Task<bool>> ask, Func<DeviceItem, Task> delete)
     {
@@ -79,55 +95,55 @@ public sealed partial class DeviceItem : ObservableObject, IDisposable
         _service = service;
         _runtime = service.RuntimeOf(record);
         _report = report;
+        _ask = ask;
         _delete = delete;
         _name = record.Name;
-        _address = record.Address;
-        _email = record.Email;
-        _reserved = record.Reserved;
-        Simulation = new SimulationViewModel(record, service, report, ask, Refresh);
-        _simulationSteps = MakeSimulationChecklist();
-        _scriptSteps = new[]
-        {
-            new SetupStepItem(() => _service.Setup.PythonPath is not null, () => _service.Setup.PythonPath is not null ? "Python found" : "Python not found")
-            {
-                ActionCommand = new RelayCommand(OpenPythonPage),
-                ActionTip = "Open the page where Python can be downloaded. Install it, then come back.",
-            },
-            new SetupStepItem(() => _service.Setup.KasaInstalled, () => "python-kasa installed") { ActionCommand = InstallCommand, ActionTip = "Install python-kasa for you with pip (no administrator needed). The output goes to the devices log." },
-            new SetupStepItem(() => Record.Reserved, () => "Address reserved in the router") { OpensGuide = true, ActionTip = "Steps to give the plug a fixed address." },
-            new SetupStepItem(() => Record.Email.Trim().Length > 0 && HasPassword, () => "Signed in (Tapo account and password below)"),
-            new SetupStepItem(() => Record.Verified, () => "Tested") { ActionCommand = TestCommand, ActionTip = "Turns the plug off, then on again." },
-        };
+        SyncMethods();
+        if (!record.IsReady) OpenSetup(Methods.FirstOrDefault(m => !m.IsReady) ?? Methods[0]);
         _service.Setup.Changed += OnOutsideChange;
         _service.Simulation.Changed += OnOutsideChange;
         _runtime.Changed += OnOutsideChange;
         Refresh();
+        StartAutoCheck();
     }
 
     public void Dispose()
     {
+        StopAutoCheck();
         _service.Setup.Changed -= OnOutsideChange;
         _service.Simulation.Changed -= OnOutsideChange;
         _runtime.Changed -= OnOutsideChange;
-        Simulation.Dispose();
+        _runtime.InSetup = false;
+        foreach (var method in Methods) method.Dispose();
+        IconBitmap?.Dispose();
     }
 
-    private static void RefreshChecklist(IReadOnlyList<SetupStepItem> steps)
+    /// <summary>Makes the method rows follow the record's methods (their order, added, removed), keeping the rows that stay.</summary>
+    private void SyncMethods()
     {
-        var earlierOpen = false;
-        foreach (var step in steps)
-        {
-            step.Refresh(earlierOpen);
-            earlierOpen |= !step.Done;
-        }
+        var kept = Methods.ToDictionary(m => m.Record);
+        foreach (var gone in Methods.Where(m => !Record.Methods.Contains(m.Record)).ToList()) gone.Dispose();
+        Methods.Clear();
+        foreach (var record in Record.Methods)
+            Methods.Add(kept.TryGetValue(record, out var item) ? item : new MethodItem(Record, record, _service, _report, _ask, Refresh, EditSetup));
+        for (var i = 0; i < Methods.Count; i++) Methods[i].Number = i + 1;
+        if (Editing is { } editing && !Methods.Contains(editing)) Editing = null;
+        OnPropertyChanged(nameof(FirstSimulation));
+        OnPropertyChanged(nameof(HasSimulation));
     }
 
-    private void PickMethod(string method)
+    /// <summary>A drag in the method list: the order On, Off, Toggle and Check try them changes.</summary>
+    public void MoveMethods(IReadOnlyList<int> moved, int insertAt)
     {
-        if (Record.Method == method) return;
-        Record.Method = method;
-        _service.Edited();
-        if (IsSimulation) _ = _service.Simulation.RefreshAsync();
+        _service.MoveMethods(Record, moved, insertAt);
+        SyncMethods();
+        Refresh();
+    }
+
+    /// <summary>Other devices were merged into this one (or the list was restored): the method rows are read again.</summary>
+    public void Reload()
+    {
+        SyncMethods();
         Refresh();
     }
 
@@ -137,21 +153,19 @@ public sealed partial class DeviceItem : ObservableObject, IDisposable
     /// <summary>Reads everything this item shows from the device and the set-up again.</summary>
     public void Refresh()
     {
-        RefreshChecklist(_scriptSteps);
-        _scriptSteps[0].ActionLabel = _service.Setup.PythonPath is null ? "Get Python" : string.Empty;
-        _scriptSteps[1].ActionLabel = _service.Setup.KasaInstalled ? string.Empty : _service.Setup.Installing ? "Installing..." : "Install";
-        _scriptSteps[1].ActionEnabled = _service.Setup.PythonPath is not null && !_service.Setup.Installing;
-        _scriptSteps[2].ActionLabel = "Router guide";
-        _scriptSteps[4].ActionLabel = Record.Verified ? string.Empty : "Test";
-        _scriptSteps[4].ActionEnabled = CanSwitch;
-        RefreshSimulationChecklist();
-        Simulation.Refresh();
+        foreach (var method in Methods) method.Refresh();
+        RefreshIcon();
         OnCommand.NotifyCanExecuteChanged();
         OffCommand.NotifyCanExecuteChanged();
+        ToggleCommand.NotifyCanExecuteChanged();
+        FinishCommand.NotifyCanExecuteChanged();
+        CheckNowCommand.NotifyCanExecuteChanged();
         foreach (var property in new[]
                  {
-                     nameof(ShowsChecklist), nameof(Checklist), nameof(MethodLabel), nameof(MethodTip), nameof(MethodOptions), nameof(IsSimulation), nameof(IsScripts), nameof(HasPassword), nameof(PasswordWatermark), nameof(CanSwitch), nameof(SwitchTip), nameof(StateText),
-                     nameof(StateIsCaution), nameof(StateIsGood), nameof(LastLine), nameof(HasLastLine), nameof(LastFailed), nameof(RouterLinkText), nameof(AddressLooksWrong),
+                     nameof(IsReady), nameof(CanSwitch), nameof(CanCheck), nameof(SwitchTip), nameof(AutoCheckLabel), nameof(AutoCheckTip), nameof(FirstSimulation), nameof(HasSimulation),
+                     nameof(ListOn), nameof(StateTagText), nameof(HasStateTag), nameof(StateTagGood), nameof(StateTagCaution), nameof(HasDrift), nameof(DriftText),
+                     nameof(LastLine), nameof(HasLastLine), nameof(LastFailed), nameof(Details), nameof(HasDetails), nameof(CanFinish), nameof(ShowsReadyTags), nameof(ShowsStateTag),
+                     nameof(ShowsTemplateChip), nameof(RemoveTip),
                  })
             OnPropertyChanged(property);
     }
@@ -160,40 +174,7 @@ public sealed partial class DeviceItem : ObservableObject, IDisposable
     {
         if (value.Trim().Length == 0) return; // a blank name is not kept
         _service.Rename(Record, value.Trim());
-        OnPropertyChanged(nameof(Label));
     }
-
-    partial void OnAddressChanged(string value)
-    {
-        Record.Address = value.Trim();
-        _service.Edited();
-        Refresh();
-    }
-
-    partial void OnEmailChanged(string value)
-    {
-        Record.Email = value.Trim();
-        _service.Edited();
-        Refresh();
-    }
-
-    partial void OnReservedChanged(bool value)
-    {
-        Record.Reserved = value;
-        _service.Edited();
-        Refresh();
-    }
-
-    partial void OnPasswordChanged(string value)
-    {
-        if (value.Length == 0) return;
-        if (!_service.SavePassword(Record, value)) _report("Windows wouldn't keep the password. Try again.");
-        Password = string.Empty; // the box empties at once; the password is only in Windows from here on
-        Refresh();
-    }
-
-    /// <summary>True when the address box holds something that is not an IP address, so the view can say so.</summary>
-    public bool AddressLooksWrong => Address.Trim().Length > 0 && !IPAddress.TryParse(Address.Trim(), out _);
 
     [RelayCommand(CanExecute = nameof(CanSwitch))]
     private Task On() => Switch(DevicePower.On);
@@ -201,31 +182,12 @@ public sealed partial class DeviceItem : ObservableObject, IDisposable
     [RelayCommand(CanExecute = nameof(CanSwitch))]
     private Task Off() => Switch(DevicePower.Off);
 
-    private async Task Switch(DevicePower power) => await _service.RunAsync(Record, power);
+    [RelayCommand(CanExecute = nameof(CanSwitch))]
+    private Task Toggle() => Switch(DevicePower.Toggle);
 
-    [RelayCommand]
-    private async Task Test()
+    private async Task Switch(DevicePower power)
     {
-        if (await _service.TestAsync(Record) is null) Refresh();
-    }
-
-    [RelayCommand]
-    private async Task Install()
-    {
-        if (await _service.Setup.InstallAsync() is { } problem) _report($"{problem} Details are in {DeviceService.LogFile}.");
-    }
-
-    [RelayCommand]
-    private Task Delete() => _delete(this);
-
-    [RelayCommand]
-    private void OpenRouter()
-    {
-        if (_service.Setup.OpenRouterPage() is { } problem) _report(problem);
-    }
-
-    private void OpenPythonPage()
-    {
-        if (_service.Setup.OpenPythonPage() is { } problem) _report(problem);
+        await _service.RunAsync(Record, power);
+        Refresh();
     }
 }

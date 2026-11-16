@@ -15,14 +15,22 @@ public static class HotkeyCapture
 
     /// <summary>True while a hotkey box waits for a key combination, so Esc and Ctrl+F belong to it.</summary>
     public static bool IsListening(object? focused) =>
-        focused is TextBox { DataContext: HotkeyAction { IsListening: true } };
+        focused is TextBox { DataContext: HotkeyTarget { IsListening: true } };
 
     /// <summary>True for the read-only box that shows a hotkey.</summary>
     public static bool IsHotkeyBox(object? control) =>
-        control is TextBox { IsReadOnly: true, DataContext: HotkeyAction };
+        control is TextBox { IsReadOnly: true, DataContext: HotkeyTarget };
+
+    /// <summary>A press anywhere but in the hotkey box that is listening cancels listening (the old key stays).</summary>
+    public static void CancelOnPressElsewhere(object? focused, object? pressed)
+    {
+        if (focused is TextBox { DataContext: HotkeyTarget { IsListening: true } target } box
+            && !(pressed is Avalonia.Visual v && (v == box || Avalonia.VisualTree.VisualExtensions.IsVisualAncestorOf(box, v))))
+            target.IsListening = false;
+    }
 
     /// <summary>Handles one key press in a hotkey box. Returns true when the key was used.</summary>
-    public static bool TryHandle(KeyEventArgs e, HotkeyAction action)
+    public static bool TryHandle(KeyEventArgs e, HotkeyTarget action)
     {
         var m = e.KeyModifiers;
         if (e.Key is Key.Back or Key.Delete && m == KeyModifiers.None)
@@ -62,7 +70,7 @@ public static class HotkeyCapture
     }
 
     /// <summary>Handles one key release in a hotkey box: the main key saves the shortcut, a modifier updates the preview. True when used.</summary>
-    public static bool TryHandleUp(KeyEventArgs e, HotkeyAction action)
+    public static bool TryHandleUp(KeyEventArgs e, HotkeyTarget action)
     {
         if (!action.IsListening) return false;
         if (ModifierOf(e.Key) is var released and not KeyModifiers.None)
@@ -71,9 +79,27 @@ public static class HotkeyCapture
             return true;
         }
         if (action.PendingKey != (int)e.Key || action.PendingGesture is not { } gesture) return false;
-        action.Gesture = gesture;
         action.IsListening = false;
+        action.Capture(gesture);
         return true;
+    }
+
+    // Chords a text box uses itself (select all, copy, paste, undo, move by word...), so the search box keeps them as editing keys.
+    private static readonly Key[] EditingKeys = { Key.A, Key.C, Key.V, Key.X, Key.Z, Key.Y, Key.Left, Key.Right, Key.Back, Key.Delete, Key.Home, Key.End };
+
+    /// <summary>
+    /// The combination a key press in a search box stands for ("Ctrl+O"), written as a binding is, so the actions on it can be found: a key
+    /// with Ctrl, Alt or Win, or an F key or Print Screen alone. Null for typing, a modifier on its own, Ctrl+F and the text box's editing keys.
+    /// </summary>
+    public static string? SearchChordOf(KeyEventArgs e)
+    {
+        var m = e.KeyModifiers;
+        if (ModifierOf(e.Key) != KeyModifiers.None) return null;
+        var withModifier = (m & (KeyModifiers.Control | KeyModifiers.Alt | KeyModifiers.Meta)) != 0;
+        if (!withModifier && e.Key is not (>= Key.F1 and <= Key.F24 or Key.Snapshot)) return null;
+        if (m == KeyModifiers.Control && (e.Key == Key.F || EditingKeys.Contains(e.Key))) return null;
+        if (m == (KeyModifiers.Control | KeyModifiers.Shift) && EditingKeys.Contains(e.Key)) return null;
+        return string.Join("+", Parts(m, e.Key.ToString()));
     }
 
     private static KeyModifiers ModifierOf(Key key) => key switch

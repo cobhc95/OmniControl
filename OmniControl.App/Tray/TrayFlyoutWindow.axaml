@@ -1,0 +1,118 @@
+<Window Classes="trayflyout" xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:OmniControl.App.Controls"
+        xmlns:t="using:OmniControl.App.Tray"
+        x:Class="OmniControl.App.Tray.TrayFlyoutWindow"
+        x:DataType="t:TrayFlyoutModel"
+        Title="OmniControl">
+    <!-- The tray flyout (docs/mockups/tray-flyout.html, part 1 and 2). Layout only; the model is Tray/TrayFlyoutModel.
+         1 In use: slider rows (icon, name or a choice chip, slider, value; the name column is shared so the sliders line up), then a 4-column
+           wrap of tiles ending in the dashed "+ Add" tile, then the foot: "Open OmniControl" at the left, "Edit" at the right.
+         2 Edit: the sliders and the tiles as two lists (grip to drag, icon, name, a tag when it is not there now, remove cross; a tile's
+           right-click menu changes its icon or removes it), each with a dashed "+ slider" / "+ tile" under it; the foot says "Done". -->
+    <Border Classes="flyoutpanel">
+        <StackPanel Spacing="{StaticResource TrayPartGap}">
+            <ItemsControl ItemsSource="{Binding Sliders}" IsVisible="{Binding IsShowing}" Grid.IsSharedSizeScope="True">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="t:TraySliderItem">
+                        <Grid Classes="trayslider" ColumnSpacing="8" ToolTip.Tip="{Binding Tip}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="TrayName" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <PathIcon Data="{Binding Icon}" IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                            <TextBlock Grid.Column="1" Classes="trayname" Text="{Binding Name}" IsVisible="{Binding HasName}" />
+                            <c:ChipMenu Grid.Column="1" Text="{Binding ChoiceText}" ChipToolTip="{Binding Tip}" IsVisible="{Binding HasChoice}"
+                                        MenuOpened="OnChoiceMenuOpened" VerticalAlignment="Center">
+                                <c:ChipMenu.Menu>
+                                    <c:MenuRowList />
+                                </c:ChipMenu.Menu>
+                            </c:ChipMenu>
+                            <Slider Grid.Column="2" Classes="compact" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Value}"
+                                    IsEnabled="{Binding CanSet}" />
+                            <TextBlock Grid.Column="3" Classes="trayvalue" Text="{Binding ValueText}" />
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <ItemsControl ItemsSource="{Binding Tiles}" IsVisible="{Binding IsShowing}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><WrapPanel ItemSpacing="{StaticResource TrayTileGap}" LineSpacing="{StaticResource TrayTileGap}" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.DataTemplates>
+                    <DataTemplate DataType="t:TrayTileItem">
+                        <Button Classes="tile" Classes.on="{Binding IsOn}" Command="{Binding RunCommand}" ToolTip.Tip="{Binding Tip}">
+                            <StackPanel>
+                                <PathIcon Data="{Binding Icon}" IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                <TextBlock Text="{Binding Name}" />
+                            </StackPanel>
+                        </Button>
+                    </DataTemplate>
+                    <DataTemplate DataType="t:TrayAddTile">
+                        <Button Classes="blockadd tile" Click="OnAddTileClick" ToolTip.Tip="{Binding Tip}">
+                            <TextBlock Text="{Binding Text}" />
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.DataTemplates>
+            </ItemsControl>
+
+            <StackPanel Spacing="4" IsVisible="{Binding IsEditing}">
+                <TextBlock Classes="menutext" Text="Sliders" />
+                <ListBox x:Name="SliderRows" Classes="rows compact" ItemsSource="{Binding EditSliders}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="t:TrayEditRow">
+                            <Grid Classes="trayedit" ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="6">
+                                <PathIcon Classes="grip" Data="{DynamicResource GripIcon}" VerticalAlignment="Center" ToolTip.Tip="Drag to change the order" />
+                                <PathIcon Grid.Column="1" Classes="trayglyph" Data="{Binding Icon}" IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                <TextBlock Grid.Column="2" Classes="trayname" Text="{Binding Name}" ToolTip.Tip="{Binding Name}" />
+                                <Border Grid.Column="3" Classes="tag caution" IsVisible="{Binding IsMissing}" ToolTip.Tip="{Binding MissingTip}" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding MissingText}" />
+                                </Border>
+                                <Button Grid.Column="4" Classes="pill glyph" Command="{Binding RemoveCommand}" ToolTip.Tip="{Binding RemoveTip}" VerticalAlignment="Center">
+                                    <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+                                </Button>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <Button Classes="blockadd small" Content="+ slider" HorizontalAlignment="Left" Click="OnAddSliderClick"
+                        ToolTip.Tip="Adds a slider: any level OmniControl knows and can change." />
+
+                <TextBlock Classes="menutext" Text="Tiles" />
+                <ListBox x:Name="TileRows" Classes="rows compact" ItemsSource="{Binding EditTiles}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="t:TrayEditRow">
+                            <Grid Classes="trayedit" ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="6" Background="Transparent"
+                                  ToolTip.Tip="Right-click to change its icon or remove it.">
+                                <Grid.ContextFlyout>
+                                    <c:ListMenuFlyout Placement="Pointer" Opened="OnTileMenuOpened">
+                                        <c:MenuRowList />
+                                    </c:ListMenuFlyout>
+                                </Grid.ContextFlyout>
+                                <PathIcon Classes="grip" Data="{DynamicResource GripIcon}" VerticalAlignment="Center" ToolTip.Tip="Drag to change the order" />
+                                <PathIcon Grid.Column="1" Classes="trayglyph" Data="{Binding Icon}" IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                <TextBlock Grid.Column="2" Classes="trayname" Text="{Binding Name}" />
+                                <Border Grid.Column="3" Classes="tag caution" IsVisible="{Binding IsMissing}" ToolTip.Tip="{Binding MissingTip}" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding MissingText}" />
+                                </Border>
+                                <Button Grid.Column="4" Classes="pill glyph" Command="{Binding RemoveCommand}" ToolTip.Tip="{Binding RemoveTip}" VerticalAlignment="Center">
+                                    <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+                                </Button>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <Button Classes="blockadd small" Content="+ tile" HorizontalAlignment="Left" Click="OnAddTileClick"
+                        ToolTip.Tip="Adds a tile: any action, or anything that is on or off." />
+            </StackPanel>
+
+            <Grid ColumnDefinitions="*,Auto">
+                <Button Classes="link" Command="{Binding OpenAppCommand}" HorizontalAlignment="Left"><TextBlock Text="Open OmniControl" /></Button>
+                <Button Grid.Column="1" Classes="link" Command="{Binding ToggleEditCommand}"><TextBlock Text="{Binding EditText}" /></Button>
+            </Grid>
+        </StackPanel>
+    </Border>
+</Window>

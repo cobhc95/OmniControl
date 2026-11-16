@@ -1,0 +1,18 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Screenshot toolbars, option A (approved)</title>
+<!-- Approved by the owner 16 Nov 2026. Same placement as today (vertical tool bar right of the selection, action bar under it), cleaned up:
+     both bars: one rounded panel (10 px radius), 4 px inner padding, 30x30 buttons with 6 px radius, 2 px gap, glyphs ~17 px; hover = soft wash; the
+     active tool = accent wash + accent glyph. Thin 1 px separators split groups.
+     Tool bar: Pen, Line, Arrow, Rectangle, Marker, Text, Blur | Colour (round swatch), Undo.
+     Action bar: Copy, Save | Search image online, Read QR code, Print | Close.
+     Tooltips name each button with its shortcut. Bars keep a 6 px gap from the selection and flip as today. Sizes are resources (App.axaml), styles shared.
+     Added 16 Nov 2026 (owner): the colour applies to whatever is being edited (the text being typed, live in its box) and to every new item.
+     Size: Ctrl+Shift+. / Ctrl+Shift+, (also > and <), the A+ / A- buttons that show in the colour group while a tool with a size is in use
+     (Text: text size; Pen, Line, Arrow, Rectangle, Marker: line width), and the wheel over the colour swatch. Sizes step through one list per
+     tool (MarkLook in Screenshot/Marks.cs) and are remembered per tool. The text box is quiet: see-through, a 1 px accent edge in every
+     state, selected words on the theme's selection wash (BrushAccentSoft) in the text's own colour.
+     Area video recording (docs/mockups/area-video-recording.html) adds a red Record button after Save. -->
+<style>body{background:#2b2f36;padding:30px;font-family:Segoe UI}.bar{display:inline-flex;gap:2px;background:#232323;border:1px solid #3a3a3a;border-radius:10px;padding:4px;color:#ddd}.v{flex-direction:column}.b{width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:12px}.on{background:#3a2a1c;color:#E8833A}.s{width:1px;background:#3a3a3a;margin:4px 3px}.v .s{width:auto;height:1px;margin:3px 4px}</style></head><body>
+<div class="bar v"><span class="b on">pen</span><span class="b">line</span><span class="b">arr</span><span class="b">box</span><span class="b">mrk</span><span class="b">T</span><span class="b">blur</span><span class="s"></span><span class="b">●</span><span class="b">A+</span><span class="b">A−</span><span class="b">undo</span></div>
+<div style="margin-top:20px" class="bar"><span class="b">copy</span><span class="b">save</span><span class="b" style="color:#e5484d">●</span><span class="s"></span><span class="b">srch</span><span class="b">QR</span><span class="b">prnt</span><span class="s"></span><span class="b">×</span></div>
+</body></html>

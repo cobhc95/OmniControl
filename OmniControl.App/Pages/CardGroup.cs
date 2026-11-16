@@ -67,6 +67,9 @@ public class CardGroup : ObservableObject
     }
 
     public void Toggle() => IsExpanded = !IsExpanded;
+
+    /// <summary>Opens the group for a picture without remembering it (the screenshot export shows every group open and must not save that).</summary>
+    public void OpenWithoutSaving() => SetProperty(ref _isExpanded, true, nameof(IsExpanded));
 }
 
 /// <summary>A group holding editor items (toggles, choices, galleries...) as cards.</summary>

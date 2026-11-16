@@ -1,0 +1,19 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Emulator picker menu v2 (approved)</title>
+<!-- Approved by the owner 16 Nov 2026 (supersedes v1). FlyoutPresenter.listmenu. Two sections with muted headers "Installed" / "Not installed" split by Border.hrule;
+     header row also labels the columns: Uses (memory while running) | PC (memory the PC should have) | Setup. Columns aligned with SharedSizeGroup.
+     Row: tick | name | Uses | PC | ease tag (Border.tag.good easy / .caution hard) — not-installed rows dimmed and the last column is a "Get it ↗" link instead of the tag.
+     Second line: one muted sentence. Foot under hrule: "Uses = memory while running · PC = memory the PC should have. On 4 GB PCs use Method: Scripts."
+     All numbers/sentences are fields on Core Emulators.All; numbers taken from each maker's published requirements (approximate, mark source in HANDOVER.md). -->
+<style>body{font-family:Segoe UI,sans-serif;background:#1b1b1b;color:#eee;padding:20px;font-size:13px}
+.m{width:470px;border:1px solid #666;border-radius:8px;padding:6px;background:#262626}.r{display:grid;grid-template-columns:18px 1fr 64px 56px 64px;gap:6px;align-items:center;padding:5px 8px}
+.n{font-size:11px;color:#999;grid-column:2/6}.t{font-size:11px;border:1px solid #666;border-radius:8px;padding:0 6px;text-align:center}.g{border-color:#4a4;color:#6c6}.w{border-color:#a83;color:#db6}.h{font-size:11px;color:#888}.d{opacity:.6}.l{font-size:11px;color:#E8833A}.hr{border-top:1px solid #444;margin:4px 0}</style></head><body>
+<div class="m"><div class="r h"><span></span><span>Installed</span><span>Uses</span><span>PC</span><span>Setup</span></div>
+<div class="r"><span>✓</span><span>MuMu Player</span><span>~2 GB</span><span>4 GB+</span><span class="t g">easy</span><span class="n">Play Store and adb built in. Light and fast.</span></div>
+<div class="r"><span></span><span>Android Studio</span><span>~3 GB</span><span>8 GB+</span><span class="t w">hard</span><span class="n">Official, no ads. Needs a virtual device and Platform-Tools.</span></div>
+<div class="hr"></div><div class="r h"><span></span><span>Not installed</span></div>
+<div class="r d"><span></span><span>LDPlayer</span><span>~2 GB</span><span>4 GB+</span><span class="l">Get it ↗</span><span class="n">Light. adb on by default. Bundled extras.</span></div>
+<div class="r d"><span></span><span>MEmu</span><span>~2 GB</span><span>4 GB+</span><span class="l">Get it ↗</span><span class="n">Light. Installer bundles offers.</span></div>
+<div class="r d"><span></span><span>BlueStacks</span><span>~3 GB</span><span>8 GB+</span><span class="l">Get it ↗</span><span class="n">Easiest. Turn on adb in its settings. Has ads.</span></div>
+<div class="hr"></div><div class="h" style="padding:4px 8px">Uses = memory while running · PC = memory the PC should have. On 4 GB PCs use Method: Scripts.</div></div>
+</body></html>

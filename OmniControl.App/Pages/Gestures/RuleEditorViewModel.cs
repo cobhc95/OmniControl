@@ -159,7 +159,7 @@ public sealed partial class RuleEditorViewModel : ObservableObject
         {
             RuleSlotKind.Trigger => (_rules.TriggerChoices(), "trigger"),
             RuleSlotKind.Condition => (_rules.ConditionChoices(Rule, slot.IsNew ? null : stored), "condition"),
-            _ => (_rules.StepChoices(), "action"),
+            _ => (_rules.StepChoices(), PickerModel.ActionNoun),
         };
         var (action, values) = MouseAction.Split(stored);
         var current = stored.Length == 0 ? null : choices.FirstOrDefault(c => c.Matches(action));

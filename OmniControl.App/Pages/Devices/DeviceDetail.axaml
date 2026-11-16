@@ -4,94 +4,82 @@
              xmlns:c="using:OmniControl.App.Controls"
              x:Class="OmniControl.App.Pages.Devices.DeviceDetail"
              x:DataType="vm:DeviceItem">
-    <!-- One device (docs/mockups/devices-tab.html): the header line (name, Method chip, state tag, On, Off, delete), the Address, Sign-in and
-         Actions rows, the set-up checklist while the plug has not passed its test, and the one thin status line with the last command.
-         Each field is saved when it is left. The Method chip is the shared ChipMenu (Scripts / Simulation); the rows and the steps of the simulation
-         method are SimulationFields and SimulationSteps (docs/mockups/devices-simulation.html). -->
-    <FlyoutBase.AttachedFlyout>
-        <Flyout Placement="BottomEdgeAlignedLeft" FlyoutPresenterClasses="optionmenu" Opened="OnGuideOpened">
-            <StackPanel x:DataType="vm:DeviceItem" Spacing="6" MaxWidth="320">
-                <TextBlock Classes="strong" Text="Give the plug a fixed address" />
-                <TextBlock Classes="hint small" TextWrapping="Wrap"
-                           Text="1. Open your router's page and sign in.&#10;2. Find DHCP, LAN or Address reservation.&#10;3. Pick the plug (it shows as Tapo or by its name) and reserve its current address.&#10;4. Save, then type that address in the Address box and switch Reserved on." />
-                <Button Classes="link small" Command="{Binding OpenRouterCommand}" HorizontalAlignment="Left">
-                    <TextBlock Text="{Binding RouterLinkText}" />
-                </Button>
-            </StackPanel>
-        </Flyout>
-    </FlyoutBase.AttachedFlyout>
-
+    <!-- One device (docs/mockups/smart-devices-setup-vs-ready.html, device-icons.html, script-templates.html, device-multiple-methods.html;
+         template in App.axaml).
+         Header, both modes: icon (click: icon pop-down), the name (every key renames the device and its list row) and the remove cross (Ready:
+         delete the device; Setup: remove that method, or the device when it has one). Under it one wrapping line: in a set-up the method's
+         Method chip (docs/mockups/method-menu-briefs.html) and, for scripts, its Template chip; in the Ready view the "ready" and state tags,
+         Check now and Auto-check. The line takes the whole width and wraps, so nothing clips at the narrowest window.
+         READY: On / Off / Toggle (the methods in order) and Show emulator; the methods (MethodList); the drift sentence with Re-teach.
+         SETUP: the method's numbered stages (SetupView), then Cancel | Finish setup.
+         Both: the foot line with the last command and Copy details. -->
     <StackPanel Spacing="8">
-        <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8">
-            <TextBox Classes="field" Text="{Binding Name, UpdateSourceTrigger=LostFocus}" Watermark="Name" MinWidth="100" />
-            <c:ChipMenu Grid.Column="1" Text="{Binding MethodLabel}" ChipToolTip="{Binding MethodTip}" MenuOpened="OnMethodMenuOpened" VerticalAlignment="Center">
-                <c:ChipMenu.Menu>
-                    <c:MenuRowList x:Name="MethodRows" />
-                </c:ChipMenu.Menu>
-            </c:ChipMenu>
-            <Border Grid.Column="2" Classes="tag" Classes.good="{Binding StateIsGood}" Classes.caution="{Binding StateIsCaution}" VerticalAlignment="Center"
-                    ToolTip.Tip="{Binding SwitchTip}">
-                <TextBlock Text="{Binding StateText}" />
-            </Border>
-            <Button Grid.Column="3" Classes="pill" Content="On" Command="{Binding OnCommand}" ToolTip.Tip="{Binding SwitchTip}" ToolTip.ShowOnDisabled="True" />
-            <Button Grid.Column="4" Classes="pill" Content="Off" Command="{Binding OffCommand}" ToolTip.Tip="{Binding SwitchTip}" ToolTip.ShowOnDisabled="True" />
-            <Button Grid.Column="5" Classes="pill glyph" Command="{Binding DeleteCommand}" ToolTip.Tip="Delete this device">
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+            <vm:DeviceIconView Pickable="True" VerticalAlignment="Center" />
+            <TextBox Grid.Column="1" Classes="field" Text="{Binding Name}" Watermark="Name" MinWidth="0" VerticalAlignment="Center" />
+            <Button Grid.Column="2" Classes="pill glyph" Command="{Binding RemoveCommand}" ToolTip.Tip="{Binding RemoveTip}" VerticalAlignment="Center">
                 <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
             </Button>
         </Grid>
+        <WrapPanel ItemSpacing="6" LineSpacing="4">
+            <c:ChipMenu Text="{Binding Editing.MethodLabel}" ChipToolTip="{Binding Editing.MethodTip}" MenuOpened="OnMethodMenuOpened" IsVisible="{Binding InSetup}" VerticalAlignment="Center">
+                <c:ChipMenu.Menu>
+                    <c:MenuRowList x:Name="MethodRows" Title="Method" />
+                </c:ChipMenu.Menu>
+            </c:ChipMenu>
+            <c:ChipMenu Text="{Binding Editing.TemplateChipText}" ChipToolTip="How OmniControl talks to this kind of device." MenuOpened="OnTemplateMenuOpened" IsVisible="{Binding ShowsTemplateChip}" VerticalAlignment="Center">
+                <c:ChipMenu.Menu>
+                    <c:MenuRowList x:Name="TemplateRows" Title="Template" />
+                </c:ChipMenu.Menu>
+            </c:ChipMenu>
+            <Border Classes="tag good" IsVisible="{Binding ShowsReadyTags}" VerticalAlignment="Center"><TextBlock Text="ready" /></Border>
+            <Border Classes="tag" Classes.good="{Binding StateTagGood}" Classes.caution="{Binding StateTagCaution}" IsVisible="{Binding ShowsStateTag}" VerticalAlignment="Center">
+                <TextBlock Text="{Binding StateTagText}" />
+            </Border>
+            <Button Classes="pill" Command="{Binding CheckNowCommand}" IsVisible="{Binding ShowsReadyTags}" ToolTip.ShowOnDisabled="True" VerticalAlignment="Center"
+                    ToolTip.Tip="Reads the device's real state now and updates the tag, the list switch and the icon.">
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                    <Path Classes="glyph" Data="{StaticResource RefreshIcon}" />
+                    <TextBlock Text="Check now" />
+                </StackPanel>
+            </Button>
+            <c:ChipMenu Text="{Binding AutoCheckLabel}" ChipToolTip="{Binding AutoCheckTip}" MenuOpened="OnAutoCheckMenuOpened" IsVisible="{Binding ShowsReadyTags}" VerticalAlignment="Center">
+                <c:ChipMenu.Menu>
+                    <c:MenuRowList x:Name="AutoCheckRows" Title="Auto-check" />
+                </c:ChipMenu.Menu>
+            </c:ChipMenu>
+        </WrapPanel>
 
-        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="10" RowSpacing="6" IsVisible="{Binding IsScripts}">
-            <TextBlock Classes="muted" Text="Address" VerticalAlignment="Center" />
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
-                <TextBox Classes="field" Text="{Binding Address, UpdateSourceTrigger=LostFocus}" Watermark="IP address of the plug" MinWidth="160"
-                         ToolTip.Tip="The plug's IP address on your home network (find it in your router's list of devices or in the Tapo app)." />
-                <ToggleSwitch Classes="plain" IsChecked="{Binding Reserved}" OnContent="Reserved in my router" OffContent="Reserved in my router" VerticalAlignment="Center"
-                              ToolTip.Tip="Switch on once the address is reserved in your router, so it never changes." />
-                <TextBlock Classes="cautiontext" Text="Not an IP address" IsVisible="{Binding AddressLooksWrong}" VerticalAlignment="Center" />
-            </StackPanel>
-
-            <TextBlock Grid.Row="1" Classes="muted" Text="Sign-in" VerticalAlignment="Center" />
-            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="10">
-                <TextBox Classes="field" Text="{Binding Email, UpdateSourceTrigger=LostFocus}" Watermark="Tapo account email" MinWidth="200" />
-                <TextBox Classes="field" Text="{Binding Password, UpdateSourceTrigger=LostFocus}" PasswordChar="*" Watermark="{Binding PasswordWatermark}" MinWidth="200"
-                         ToolTip.Tip="Kept in the Windows Credential Manager on this PC, never in OmniControl's files, a backup or a log." />
-                <Border Classes="tag good" IsVisible="{Binding HasPassword}" VerticalAlignment="Center"><TextBlock Text="saved in Windows" /></Border>
-            </StackPanel>
-
-            <TextBlock Grid.Row="2" Classes="muted" Text="Actions" VerticalAlignment="Center" />
-            <TextBlock Grid.Row="2" Grid.Column="1" Classes="hint small" TextWrapping="Wrap" VerticalAlignment="Center"
-                       Text="On, Off and Toggle are in Shortcuts, Rules, the mouse and gestures." />
-        </Grid>
-
-        <StackPanel IsVisible="{Binding IsSimulation}" Spacing="8">
-            <vm:SimulationFields DataContext="{Binding Simulation}" />
+        <StackPanel Spacing="8" IsVisible="{Binding !InSetup}">
+            <WrapPanel ItemSpacing="6" LineSpacing="4">
+                <Button Classes="pill" Content="On" Command="{Binding OnCommand}" ToolTip.Tip="{Binding SwitchTip}" ToolTip.ShowOnDisabled="True" />
+                <Button Classes="pill" Content="Off" Command="{Binding OffCommand}" ToolTip.Tip="{Binding SwitchTip}" ToolTip.ShowOnDisabled="True" />
+                <Button Classes="pill" Content="Toggle" Command="{Binding ToggleCommand}" ToolTip.Tip="{Binding SwitchTip}" ToolTip.ShowOnDisabled="True" />
+                <Button Classes="pill" Content="Show emulator" Command="{Binding ShowEmulatorCommand}" IsVisible="{Binding HasSimulation}"
+                        ToolTip.Tip="Shows the emulator's window. Actions from the page, shortcuts and rules run it hidden." />
+            </WrapPanel>
+            <vm:MethodList />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" IsVisible="{Binding HasDrift}">
+                <TextBlock Classes="cautiontext" Text="{Binding DriftText}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Classes="pill" Content="Re-teach" Command="{Binding ReTeachCommand}" VerticalAlignment="Center" />
+            </Grid>
         </StackPanel>
 
-        <Border Classes="groupPanel" IsVisible="{Binding ShowsChecklist}">
-            <ItemsControl ItemsSource="{Binding Checklist}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:SetupStepItem">
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="0,2">
-                            <Border Classes="tag" Classes.good="{Binding IsDone}" Classes.caution="{Binding IsNext}" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding TagText}" />
-                            </Border>
-                            <TextBlock Grid.Column="1" Text="{Binding Text}" TextWrapping="Wrap" VerticalAlignment="Center" />
-                            <Button Grid.Column="2" Classes="pill" Content="{Binding ActionLabel}" Command="{Binding ActionCommand}" IsEnabled="{Binding ActionEnabled}"
-                                    IsVisible="{Binding HasAction}" ToolTip.Tip="{Binding ActionTip}" ToolTip.ShowOnDisabled="True" />
-                            <Button Grid.Column="2" Classes="pill" Content="{Binding ActionLabel}" IsVisible="{Binding HasGuide}" ToolTip.Tip="{Binding ActionTip}"
-                                    Click="OnGuideClick" />
-                        </Grid>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </Border>
-
-        <StackPanel IsVisible="{Binding IsSimulation}">
-            <vm:SimulationSteps DataContext="{Binding Simulation}" />
+        <StackPanel Spacing="8" IsVisible="{Binding InSetup}">
+            <vm:SetupView DataContext="{Binding Editing}" />
+            <WrapPanel ItemSpacing="6" LineSpacing="4" HorizontalAlignment="Right">
+                <Button Classes="pill" Content="Cancel" Command="{Binding CancelCommand}" ToolTip.Tip="Puts the device back as it was (a device that was never set up is removed)." />
+                <Button Classes="pill cardaction main" Content="Finish setup" Command="{Binding FinishCommand}" ToolTip.ShowOnDisabled="True"
+                        ToolTip.Tip="Every stage must be done. The method is then ready." />
+            </WrapPanel>
         </StackPanel>
 
         <Border Classes="statusstrip" IsVisible="{Binding HasLastLine}">
-            <TextBlock Classes="statusline" Classes.caution="{Binding LastFailed}" Text="{Binding LastLine}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding LastLine}" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <TextBlock Classes="statusline" Classes.failed="{Binding LastFailed}" Text="{Binding LastLine}" ToolTip.Tip="{Binding LastLine}" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Classes="pill" Content="Copy details" IsVisible="{Binding HasDetails}" Click="OnCopyDetails" VerticalAlignment="Center"
+                        ToolTip.Tip="Copies the last command's log lines (email and password masked)." />
+            </Grid>
         </Border>
     </StackPanel>
 </UserControl>

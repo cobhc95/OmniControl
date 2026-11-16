@@ -212,6 +212,7 @@ public static class OsdView
         OsdIcon.Play => Play,
         OsdIcon.Pause => Pause,
         OsdIcon.Track => Note,
+        OsdIcon.Screenshot => Hotkeys.ActionSections.ScreenshotIcon,
         _ => Plug,
     };
 

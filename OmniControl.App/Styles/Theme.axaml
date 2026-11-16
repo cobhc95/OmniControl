@@ -2,7 +2,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:svc="using:OmniControl.App.Services"
         xmlns:pages="using:OmniControl.App.Pages"
-        xmlns:hk="using:OmniControl.App.Hotkeys"
         xmlns:vol="using:OmniControl.App.Pages.Volume">
 
 
@@ -93,7 +92,7 @@
         <Setter Property="HorizontalAlignment" Value="Right" />
     </Style>
     <Style Selector="ListBox.results ComboBox.choice.half"><Setter Property="HorizontalAlignment" Value="Stretch" /></Style>
-    <Style Selector="ListBox.results pages|ToggleRow, ListBox.results hk|HotkeyRow">
+    <Style Selector="ListBox.results pages|ToggleRow">
         <Setter Property="HorizontalAlignment" Value="Right" />
     </Style>
     <!-- Colour dots in a gallery card can be clicked: the one under the pointer grows a little -->
@@ -290,11 +289,14 @@
     <Style Selector="ListBox.nav"><Setter Property="Background" Value="Transparent" /></Style>
     <Style Selector="ListBox.nav > ListBoxItem">
         <Setter Property="Padding" Value="24,7,16,7" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="Margin" Value="0,0,0,2" />
         <Setter Property="CornerRadius" Value="0" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="BorderBrush" Value="Transparent" />
     </Style>
+    <!-- ListBox.nav.compact = the same list inside a page's pane (the Smart Devices list): tighter rows, no sidebar indent -->
+    <Style Selector="ListBox.nav.compact > ListBoxItem"><Setter Property="Padding" Value="{DynamicResource NavCompactPadding}" /></Style>
     <!-- A sidebar group heading (NavHeading): small, muted capitals; its container is neither clickable nor focusable, so no hover or focus look applies -->
     <Style Selector="ListBox.nav > ListBoxItem.navheading">
         <Setter Property="Padding" Value="24,10,16,2" />

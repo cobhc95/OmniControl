@@ -1,9 +1,7 @@
 ﻿<Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:pages="using:OmniControl.App.Pages"
-             xmlns:hotkeys="using:OmniControl.App.Hotkeys"
              xmlns:displays="using:OmniControl.App.Pages.Displays"
-             xmlns:shortcuts="using:OmniControl.App.Pages.Shortcuts"
              xmlns:osd="using:OmniControl.App.Pages.Osd"
              xmlns:volume="using:OmniControl.App.Pages.Volume"
              xmlns:mouse="using:OmniControl.App.Pages.Mouse"
@@ -18,7 +16,6 @@
     <!-- Each page view-model maps to its view here. Adding a page = one line. -->
     <Application.DataTemplates>
         <DataTemplate DataType="displays:DisplaysPageViewModel"><displays:DisplaysPage /></DataTemplate>
-        <DataTemplate DataType="shortcuts:ShortcutsPageViewModel"><shortcuts:ShortcutsPage /></DataTemplate>
         <DataTemplate DataType="osd:OsdPageViewModel"><osd:OsdPage /></DataTemplate>
         <DataTemplate DataType="appsettings:AppSettingsPageViewModel"><appsettings:AppSettingsPage /></DataTemplate>
         <DataTemplate DataType="volume:VolumePageViewModel"><volume:VolumePage /></DataTemplate>
@@ -48,7 +45,6 @@
         <DataTemplate DataType="pages:ButtonItem"><pages:ButtonRow /></DataTemplate>
         <DataTemplate DataType="pages:FileItem"><pages:FileRow /></DataTemplate>
         <DataTemplate DataType="pages:GalleryItem"><pages:GalleryRow /></DataTemplate>
-        <DataTemplate DataType="hotkeys:HotkeyAction"><hotkeys:HotkeyRow /></DataTemplate>
     </Application.DataTemplates>
 
     <!-- The app's base text size (Fluent's default is 14); windows and controls take it from here -->
@@ -57,11 +53,18 @@
         <x:Double x:Key="TextControlThemeMinHeight">26</x:Double>
         <!-- Least width of the editor column in the search results; the title column gets the rest -->
         <x:Double x:Key="SearchEditorMinWidth">300</x:Double>
-        <!-- The hotkey capture box (Hotkeys/HotkeyBox): the Shortcuts page's rows and the preset manager's shortcut column -->
+        <!-- The hotkey capture box (Hotkeys/HotkeyBox): the Actions and hotkeys window's keys and the preset manager's shortcut column -->
         <x:Double x:Key="HotkeyBoxWidth">150</x:Double>
         <!-- The master path field (Controls/PathField) where it sits in a pop-down's settings page: text box and Browse -->
         <x:Double x:Key="PathFieldWidth">340</x:Double>
         <x:Double x:Key="OptionMenuWidth">400</x:Double>
+        <!-- The Choose-the-action / Actions and hotkeys window: its size, and the least width of each pane (the window's minimum is their sum plus the dividers) -->
+        <x:Double x:Key="PickerWindowWidth">1000</x:Double>
+        <x:Double x:Key="PickerWindowHeight">680</x:Double>
+        <x:Double x:Key="PickerWindowMinWidth">760</x:Double>
+        <x:Double x:Key="PickerSectionsMinWidth">170</x:Double>
+        <x:Double x:Key="PickerEntriesMinWidth">260</x:Double>
+        <x:Double x:Key="PickerSettingsMinWidth">300</x:Double>
         <!-- Width of the FX window's effect list (FxChainPanel): fixed and narrow, so the editor beside it gets the rest of the window -->
         <x:Double x:Key="FxChainListWidth">170</x:Double>
         <!-- The FX window's panes inside the window (between the toolbar and the status strip) -->
@@ -87,6 +90,28 @@
         <Thickness x:Key="ToolPillPadding">9,0</Thickness>
         <Thickness x:Key="ToolComboPadding">8,0</Thickness>
         <Thickness x:Key="ToolSwitchInset">0,-5</Thickness>
+        <!-- The screenshot overlay (Styles/Bars.axaml): a floating bar's rounding and inset, its square icon buttons and their glyphs, a colour
+             swatch and its inset, the selection's handles and how close a press grabs one, the gap between the selection and its bars, the text box's least width -->
+        <CornerRadius x:Key="FloatBarRadius">10</CornerRadius>
+        <Thickness x:Key="FloatBarPadding">4</Thickness>
+        <x:Double x:Key="ToolIconSize">30</x:Double>
+        <x:Double x:Key="ToolIconGlyph">17</x:Double>
+        <CornerRadius x:Key="ToolIconRadius">6</CornerRadius>
+        <x:Double x:Key="FloatBarGap">2</x:Double>
+        <Thickness x:Key="FloatSepAcross">4,3</Thickness>
+        <Thickness x:Key="FloatSepAlong">3,4</Thickness>
+        <x:Double x:Key="SwatchSize">18</x:Double>
+        <Thickness x:Key="SwatchPadding">4</Thickness>
+        <x:Double x:Key="CaptureHandleSize">8</x:Double>
+        <x:Double x:Key="CaptureHandleReach">8</x:Double>
+        <x:Double x:Key="CaptureBarGap">6</x:Double>
+        <x:Double x:Key="CaptureTextMinWidth">120</x:Double>
+        <!-- Screen recording: a red glyph's size (Record, Stop), the bar's red dot, the gap around the dot and timer, the dashed frame's line -->
+        <x:Double x:Key="ToolIconDangerGlyph">13</x:Double>
+        <x:Double x:Key="RecordDotSize">8</x:Double>
+        <Thickness x:Key="RecordClockInset">6,0</Thickness>
+        <x:Double x:Key="RecordClockGap">6</x:Double>
+        <x:Double x:Key="RecordFrameThickness">2</x:Double>
         <!-- A window's status strip (Border.statusstrip): its inset, type, the gap between its parts, and the widest the caution gets -->
         <Thickness x:Key="StatusStripPadding">8,2</Thickness>
         <!-- A window's foot (Border.footer) and the one width of its Close button (Button.primary.close) -->
@@ -136,6 +161,23 @@
         <x:Double x:Key="MenuRowHeight">26</x:Double>
         <Thickness x:Key="MenuRowPadding">8,0</Thickness>
         <CornerRadius x:Key="MenuRowCornerRadius">4</CornerRadius>
+        <!-- A Controls/MenuRowList row: its inset above and below (rows of two or three lines), the height of its first line (the tick sits
+             there), the gap between its tags and the space above a line of tags -->
+        <Thickness x:Key="MenuRowInset">0,4</Thickness>
+        <!-- A set-up stage's inner space (Border.stage); a device's icon square (Pages/Devices/DeviceIconView) and its glyph -->
+        <Thickness x:Key="StagePadding">4,2</Thickness>
+        <!-- The Smart Devices page's pane: the device list's width range and inner space, the detail's inner space -->
+        <x:Double x:Key="DeviceListMinWidth">140</x:Double>
+        <x:Double x:Key="DeviceListMaxWidth">190</x:Double>
+        <Thickness x:Key="DeviceListPadding">6</Thickness>
+        <Thickness x:Key="NavCompactPadding">6,5</Thickness>
+        <Thickness x:Key="DeviceDetailPadding">10,8</Thickness>
+        <x:Double x:Key="DeviceIconSize">26</x:Double>
+        <x:Double x:Key="DeviceIconGlyph">15</x:Double>
+        <CornerRadius x:Key="DeviceIconCorner">6</CornerRadius>
+        <x:Double x:Key="MenuRowLine">18</x:Double>
+        <x:Double x:Key="MenuTagGap">4</x:Double>
+        <Thickness x:Key="MenuTagLineMargin">0,3,0,0</Thickness>
         <Thickness x:Key="MenuTextInset">8,2</Thickness>
         <x:Double x:Key="MenuGap">8</x:Double>
         <x:Double x:Key="MenuGlyphSize">12</x:Double>
@@ -185,6 +227,20 @@
         <Thickness x:Key="SelectorPadding">8,0,6,0</Thickness>
         <!-- The Mixer rows' columns (Pages/Volume/VolumeRowView, MixerHeadings): the gap between them -->
         <x:Double x:Key="MixerColumnGap">6</x:Double>
+        <!-- The tray flyout (Tray/TrayFlyoutWindow, Styles/Tray.axaml, docs/mockups/tray-flyout.html): its panel's width, rounding and inset,
+             its gap to the screen's working area, a slider row's name column and value column, the tiles' size, rounding and gap, their
+             glyph, and the gap between the flyout's parts -->
+        <x:Double x:Key="TrayFlyoutWidth">300</x:Double>
+        <CornerRadius x:Key="TrayFlyoutCornerRadius">10</CornerRadius>
+        <Thickness x:Key="TrayFlyoutPadding">10</Thickness>
+        <x:Double x:Key="TrayFlyoutGap">12</x:Double>
+        <x:Double x:Key="TrayNameMaxWidth">96</x:Double>
+        <x:Double x:Key="TrayValueWidth">26</x:Double>
+        <x:Double x:Key="TrayTileSize">62</x:Double>
+        <CornerRadius x:Key="TrayTileCornerRadius">8</CornerRadius>
+        <x:Double x:Key="TrayTileGap">8</x:Double>
+        <x:Double x:Key="TrayGlyphSize">16</x:Double>
+        <x:Double x:Key="TrayPartGap">10</x:Double>
     </Application.Resources>
 
     <Application.Styles>
@@ -200,5 +256,6 @@
         <StyleInclude Source="/Styles/Knobs.axaml" />
         <StyleInclude Source="/Styles/RowControls.axaml" />
         <StyleInclude Source="/Styles/ScrollBars.axaml" />
+        <StyleInclude Source="/Styles/Tray.axaml" />
     </Application.Styles>
 </Application>

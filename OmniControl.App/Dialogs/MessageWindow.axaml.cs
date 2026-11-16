@@ -1,10 +1,10 @@
-using System.Runtime.InteropServices;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using OmniControl.App.Audio.Engine;
 using OmniControl.App.Services;
+using OmniControl.App.Controls;
 
 namespace OmniControl.App.Dialogs;
 
@@ -47,18 +47,7 @@ public partial class MessageWindow : Window
         return done.Task;
     }
 
-    private async void OnCopyClick(object? sender, RoutedEventArgs e)
-    {
-        if (_details is null || Clipboard is not { } clipboard) return;
-        try
-        {
-            await clipboard.SetTextAsync(_details);
-        }
-        catch (Exception ex) when (ex is TimeoutException or ExternalException)
-        {
-            // Another program holds the clipboard: the details are still in the setup log, whose path the message names.
-        }
-    }
+    private async void OnCopyClick(object? sender, RoutedEventArgs e) => await CopyDetails.ToClipboardAsync(this, _details);
 
     private void OnConfirmClick(object? sender, RoutedEventArgs e)
     {

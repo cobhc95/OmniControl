@@ -66,9 +66,10 @@ public sealed class OsdService : IDisposable
         Declare(TrackElement, isLevel: false);
         _hide.Tick += (_, _) => { _hide.Stop(); _window?.Fade(); };
         _keepWarm.Tick += (_, _) => _window?.KeepWarm();
+        AccentService.Changed += OnAccentChanged;
+        if (StartupMode.Inert) return; // a screenshot export hides no Windows pop-up and watches no brightness, volume, USB or media change
         _windowsOsd.Hidden = Settings.HideWindowsOsd;
         if (!Settings.HideWindowsOsd) _windowsOsd.Restore(); // undo a hide left over from an earlier run
-        AccentService.Changed += OnAccentChanged;
 
         // Brightness changed outside OmniControl (the laptop's brightness keys, Windows settings): show it here too.
         _brightness.Changed += value =>
@@ -220,8 +221,8 @@ public sealed class OsdService : IDisposable
     /// <summary>Shows a sample so a changed position can be judged; ignores the element switches.</summary>
     public void Preview() => Display("Preview", OsdLevelIcon.Sun, OsdView.SampleValue);
 
-    /// <summary>Shows a text pop-up for <paramref name="element"/> unless the OSD or that element is switched off.</summary>
-    private void ShowMessage(string element, OsdMessage message)
+    /// <summary>Shows a text pop-up for <paramref name="element"/> (a text element its feature declared) unless the OSD or that element is switched off. UI thread.</summary>
+    public void ShowMessage(string element, OsdMessage message)
     {
         if (!Settings.Enabled || !IsShown(element)) return;
         Window.RenderMessage(Settings, message);

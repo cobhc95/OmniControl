@@ -1,4 +1,4 @@
-﻿using OmniControl.App.Hotkeys;
+using OmniControl.App.Hotkeys;
 using OmniControl.App.Presets;
 using OmniControl.App.Services;
 
@@ -221,20 +221,30 @@ public static class MouseActionCatalog
         list.InsertRange(list.FindIndex(c => c.Category != ActionSections.Mouse),
             layerChoices.Select(c => c with { Options = WithAlongside(c.Spec, c.Options, gesture), Unavailable = unavailable(c.Spec) }));
         list.AddRange(Parameterised.Select(c => c with { Options = WithAlongside(c.Spec, c.Options, gesture), Place = ActionSections.Find(c.Category) }));
-        list.AddRange(omniActions.Where(a => !a.CoveredByMousePicker).Select(a => OmniChoice(a, gesture)));
+        list.AddRange(omniActions.Where(a => !a.CoveredByMousePicker).Select(a => OmniChoice(a, b => WithAlongside(Omni, OmniOptions(b), gesture))));
         // The Power section lists OmniControl's own power actions first; the two built-in screen actions follow them.
         return list.OrderBy(c => c.Category == Screen.Section && c.Heading == Screen.Heading ? 1 : 0).ToList();
     }
 
-    /// <summary>The picker entry of one master action (or of a picker list's button, <see cref="HotkeyAction.Command"/>).</summary>
-    private static PickChoice OmniChoice(HotkeyAction a, bool gesture) =>
-        OmniEntry(a, a.Command is not null ? null : a.Editor is { } editor ? editor.Options : WithAlongside(Omni, OmniOptions(a), gesture)) with
+    /// <summary>
+    /// The entries of the Actions and hotkeys window: every master action (and the buttons of its lists) with only what a key keeps of its
+    /// own (a custom action's editor, remove, rename) and why it does nothing now, since a key runs an action without the settings an input chooses.
+    /// </summary>
+    public static List<PickChoice> ManageChoices(IEnumerable<HotkeyAction> omniActions) =>
+        omniActions.Select(a => OmniChoice(a, _ => null) with { Unavailable = a.UnavailableReason }).ToList();
+
+    /// <summary>The master action's id in an entry made by <see cref="OmniEntry"/>; null for any other entry.</summary>
+    public static string? OmniIdOf(string spec) => Split(spec) is (Omni, var id) ? id : null;
+
+    /// <summary>The picker entry of one master action (or of a picker list's button, <see cref="HotkeyAction.Command"/>); <paramref name="optionsOf"/> gives the settings an action without an editor offers.</summary>
+    private static PickChoice OmniChoice(HotkeyAction a, Func<HotkeyAction, IReadOnlyList<ActionOption>?> optionsOf) =>
+        OmniEntry(a, a.Command is not null ? null : a.Editor is { } editor ? editor.Options : optionsOf(a)) with
         {
             Remove = a.Remove,
             Editor = a.Editor,
-            Create = a.Editor?.Create is { } create ? values => OmniChoice(create(values), gesture) : null,
+            Create = a.Editor?.Create is { } create ? values => OmniChoice(create(values), optionsOf) : null,
             Opened = a.PickerOpened,
-            Command = a.Command is null ? null : async from => (await a.Command(from)).Select(made => OmniChoice(made, gesture)).ToList(),
+            Command = a.Command is null ? null : async from => (await a.Command(from)).Select(made => OmniChoice(made, optionsOf)).ToList(),
         };
 
     /// <summary>

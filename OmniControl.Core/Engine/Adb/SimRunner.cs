@@ -3,68 +3,40 @@ using System.Diagnostics;
 namespace OmniControl.Core.Engine;
 
 /// <summary>How long a step waits for what it needs (given by the app, so the values live in one place).</summary>
-public sealed record SimTiming(TimeSpan ElementWait, TimeSpan Poll, TimeSpan Settle);
+public sealed record SimTiming(TimeSpan ElementWait, TimeSpan Poll, TimeSpan Settle, int ScrollTries = 0);
 
 /// <summary>What a run is for: a state to reach, or a toggle (which always taps).</summary>
 public enum SimGoal { On, Off, Toggle }
 
-/// <summary>How a run ended: <see cref="FailedIndex"/> is the step that stopped it (-1 = none), <see cref="Problem"/> a short phrase, <see cref="IsOn"/> the state the Check step showed, when there was one, and <see cref="Skipped"/> that the screen already showed the wanted state, so nothing was tapped.</summary>
-public sealed record SimResult(int FailedIndex, string? Problem, bool? IsOn, bool Skipped = false)
+/// <summary>
+/// How a run ended: <see cref="FailedIndex"/> is the step that stopped it (-1 = none), <see cref="Problem"/> a short phrase, <see cref="IsOn"/> the
+/// state read at the end, <see cref="Skipped"/> that the device already was in the wanted state so nothing was tapped, <see cref="Unsure"/> that
+/// its state could not be read (so On and Off tapped nothing), and <see cref="Confidence"/> how sure the readings were (0-1).
+/// </summary>
+public sealed record SimResult(int FailedIndex, string? Problem, bool? IsOn, bool Skipped = false, bool Unsure = false, double Confidence = 0)
 {
     public bool Ok => Problem is null;
 }
 
 /// <summary>
 /// Plays the recorded steps on an Android screen. A step runs only after the one before it worked; the first that fails stops the run.
-/// When the steps end with a Check ("screen shows On") and have a Tap before it, that Tap is the switch: the state is read on the screen
-/// that holds the switch, On or Off skips the tap when the screen already shows that state, Toggle always taps, and the Check afterwards
-/// must show the new state.
+/// The last Tap is the device's switch (<see cref="SwitchIndex"/>): the steps before it lead to the device's card, then the taught
+/// <see cref="StateModel"/> reads the state there. On and Off tap only when the state is the other one, Toggle always taps; after the tap the
+/// state is read again and the run counts as working only when it changed. A state that cannot be read means On and Off tap nothing.
 /// </summary>
-public static class SimRunner
+public static partial class SimRunner
 {
-    public static async Task<SimResult> RunAsync(IAdbScreen adb, IReadOnlyList<SimStep> steps, SimGoal goal, SimTiming timing, CancellationToken stop = default)
+    /// <summary>The step that is the device's switch: the last Tap; -1 when the steps have none.</summary>
+    public static int SwitchIndex(IReadOnlyList<SimStep> steps)
     {
-        var check = steps.Count > 0 && steps[^1].Kind == SimStepKind.Check ? steps.Count - 1 : -1;
-        var tap = check < 0 ? -1 : LastTapBefore(steps, check);
-        if (tap < 0) return await RunPlainAsync(adb, steps, timing, stop);
-
-        for (var i = 0; i < tap; i++)
-            if (await StepAsync(adb, steps[i], i, timing, stop) is { } failed) return failed;
-
-        var (screen, problem) = await WaitForAsync(adb, steps[tap], timing, stop);
-        if (screen is null) return Failed(tap, problem);
-        var showsOn = screen.Shows(CheckWords(steps[check]));
-        var wantOn = goal switch { SimGoal.On => true, SimGoal.Off => false, _ => !showsOn };
-        if (showsOn == wantOn) return new SimResult(-1, null, showsOn, Skipped: true);
-
-        for (var i = tap; i < check; i++)
-            if (await StepAsync(adb, steps[i], i, timing, stop) is { } failed) return failed;
-
-        var after = await WaitStateAsync(adb, steps[check], wantOn, timing, stop);
-        return after is null
-            ? Failed(check, $"the screen didn't {(wantOn ? "show" : "stop showing")} \"{CheckWords(steps[check])}\" afterwards")
-            : new SimResult(-1, null, wantOn);
+        for (var i = steps.Count - 1; i >= 0; i--)
+            if (steps[i].Kind == SimStepKind.Tap) return i;
+        return -1;
     }
 
     /// <summary>Runs one step on its own (the step editor's Test step); a Check needs its text on the screen.</summary>
     public static async Task<SimResult> TestStepAsync(IAdbScreen adb, SimStep step, int index, SimTiming timing, CancellationToken stop = default) =>
         await StepAsync(adb, step, index, timing, stop) ?? new SimResult(-1, null, null);
-
-    private static async Task<SimResult> RunPlainAsync(IAdbScreen adb, IReadOnlyList<SimStep> steps, SimTiming timing, CancellationToken stop)
-    {
-        for (var i = 0; i < steps.Count; i++)
-            if (await StepAsync(adb, steps[i], i, timing, stop) is { } failed) return failed;
-        return new SimResult(-1, null, null);
-    }
-
-    private static int LastTapBefore(IReadOnlyList<SimStep> steps, int end)
-    {
-        for (var i = end - 1; i >= 0; i--)
-            if (steps[i].Kind == SimStepKind.Tap) return i;
-        return -1;
-    }
-
-    private static string CheckWords(SimStep check) => check.Text.Length > 0 ? check.Text : check.Description;
 
     private static SimResult Failed(int index, string? problem) => new(index, problem ?? "it failed", null);
 
@@ -107,7 +79,7 @@ public static class SimRunner
                 if (!result.Ok) return Failed(index, "adb couldn't press Back");
                 break;
             default:
-                return await WaitStateAsync(adb, step, true, timing, stop) is null ? Failed(index, $"the screen doesn't show \"{CheckWords(step)}\"") : null;
+                return await WaitShowsAsync(adb, step, timing, stop) ? null : Failed(index, $"the screen doesn't show \"{(step.Text.Length > 0 ? step.Text : step.Description)}\"");
         }
         await Task.Delay(timing.Settle, stop);
         return null;
@@ -134,23 +106,31 @@ public static class SimRunner
             else problem = $"{Words(step)} wasn't found on the screen";
             await Task.Delay(timing.Poll, stop);
         } while (clock.Elapsed < timing.ElementWait);
+
+        // Not there yet: the page may be longer than the screen, so scroll it a few times and look again.
+        for (var i = 0; i < timing.ScrollTries; i++)
+        {
+            stop.ThrowIfCancellationRequested();
+            if (!(await SwipeAsync(adb, "up")).Ok) break;
+            await Task.Delay(timing.Settle, stop);
+            if (await ReadAsync(adb) is { } screen && screen.Find(step) is not null) return (screen, null);
+        }
         return (null, problem);
     }
 
     private static string Words(SimStep step) => SimSteps.Words(step).Target is { Length: > 0 } target ? target : "the element";
 
-    /// <summary>Waits until the check text is on the screen (<paramref name="shown"/>) or off it; null when that did not happen in time.</summary>
-    private static async Task<SimScreen?> WaitStateAsync(IAdbScreen adb, SimStep check, bool shown, SimTiming timing, CancellationToken stop)
+    /// <summary>Waits until a Check's words are on the screen; false when they did not show in time.</summary>
+    private static async Task<bool> WaitShowsAsync(IAdbScreen adb, SimStep check, SimTiming timing, CancellationToken stop)
     {
         var clock = Stopwatch.StartNew();
         do
         {
             stop.ThrowIfCancellationRequested();
-            var screen = await ReadAsync(adb);
-            if (screen is not null && screen.Shows(CheckWords(check)) == shown) return screen;
+            if (await ReadAsync(adb) is { } screen && screen.Shows(check.Text.Length > 0 ? check.Text : check.Description)) return true;
             await Task.Delay(timing.Poll, stop);
         } while (clock.Elapsed < timing.ElementWait);
-        return null;
+        return false;
     }
 
     private static async Task<SimScreen?> ReadAsync(IAdbScreen adb)

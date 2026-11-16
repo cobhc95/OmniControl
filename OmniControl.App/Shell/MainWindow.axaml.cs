@@ -19,15 +19,30 @@ public partial class MainWindow : Window
         RowEditing.Attach(ResultList);
         AddHandler(KeyDownEvent, OnKeyDownTunnel, RoutingStrategies.Tunnel);
         AddHandler(PointerPressedEvent, OnPointerPressedTunnel, RoutingStrategies.Tunnel);
+        PinnedNav.AddHandler(TappedEvent, (_, _) => OpenPinned());
+        PinnedNav.AddHandler(KeyDownEvent, OnPinnedKeyDown);
         Opened += (_, _) => Dispatcher.UIThread.Post(() => FocusSidebar()?.Focus(NavigationMethod.Tab), DispatcherPriority.Loaded);
     }
 
     /// <summary>A click anywhere except the hotkey box that is listening cancels listening.</summary>
     private void OnPointerPressedTunnel(object? sender, PointerPressedEventArgs e)
     {
-        if (FocusManager?.GetFocusedElement() is TextBox { DataContext: HotkeyAction { IsListening: true } action } box
-            && !(e.Source is Visual v && (v == box || box.IsVisualAncestorOf(v))))
-            action.IsListening = false;
+        HotkeyCapture.CancelOnPressElsewhere(FocusManager?.GetFocusedElement(), e.Source);
+    }
+
+    /// <summary>The highlighted pinned entry opens its window; the entry does not stay selected, as it is not a page.</summary>
+    private void OpenPinned()
+    {
+        if (PinnedNav.SelectedItem is not NavLauncher entry) return;
+        PinnedNav.SelectedItem = null;
+        entry.Open();
+    }
+
+    private void OnPinnedKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key is not (Key.Enter or Key.Space) || e.KeyModifiers != KeyModifiers.None) return;
+        OpenPinned();
+        e.Handled = true;
     }
 
     /// <summary>F1 lists the keyboard shortcuts; Tab swaps between sidebar and page; Ctrl+F jumps to search; Down/Enter in search enters results.</summary>
@@ -93,10 +108,17 @@ public partial class MainWindow : Window
             if (pageRows.Count == 0) return false;
             return Select(down ? pageRows[0] : pageRows[^1]);
         }
-        // Only the category list hands over; a card list on a page loops inside its own page (Tab leaves it).
-        if (item is not ListBoxItem row || row.FindAncestorOfType<ListBox>() != MainNav) return false;
+        // Only the sidebar lists hand over; a card list on a page loops inside its own page (Tab leaves it).
+        if (item is not ListBoxItem row || row.FindAncestorOfType<ListBox>() is not { } list || (list != MainNav && list != PinnedNav)) return false;
         var rows = NavPageRows();
-        if (row != (down ? rows.LastOrDefault() : rows.FirstOrDefault())) return false;
+        var at = rows.IndexOf(row);
+        if (at >= 0 && at != (down ? rows.Count - 1 : 0))
+        {
+            // Inside one list the list steps itself; from the end of the main list to the pinned one (and back) it is done here.
+            var next = rows[at + (down ? 1 : -1)];
+            return next.FindAncestorOfType<ListBox>() != list && Select(next);
+        }
+        if (at < 0) return false;
         if (footer[0].DataContext is PageViewModel page) (DataContext as ShellViewModel)?.OpenFooterPageCommand.Execute(page);
         footer[0].Focus(NavigationMethod.Directional);
         return true;
@@ -110,8 +132,9 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>The sidebar's page rows in order (the group headings are not among them).</summary>
-    private List<ListBoxItem> NavPageRows() => MainNav.GetVisualDescendants().OfType<ListBoxItem>().Where(i => i.Focusable).ToList();
+    /// <summary>The sidebar's page rows in order: the grouped pages, then the pinned ones (the group headings are not among them).</summary>
+    private List<ListBoxItem> NavPageRows() => MainNav.GetVisualDescendants().Concat(PinnedNav.GetVisualDescendants())
+        .OfType<ListBoxItem>().Where(i => i.Focusable).ToList();
 
     private List<Button> FooterButtons() => FooterNav.GetVisualDescendants().OfType<Button>().Where(b => b.Tag is "footernav").ToList();
 

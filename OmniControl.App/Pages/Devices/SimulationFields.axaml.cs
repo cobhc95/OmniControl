@@ -6,16 +6,29 @@ namespace OmniControl.App.Pages.Devices;
 public partial class SimulationFields : UserControl
 {
     private Flyout? _menu;
+    private Flyout? _keep;
 
     public SimulationFields()
     {
         InitializeComponent();
         EmulatorRows.Picked += (_, _) => _menu?.Hide();
+        KeepRows.Picked += (_, _) => _keep?.Hide();
+        KeepSwitches.Picked += (_, _) => _keep?.Hide();
+    }
+
+    private void OnKeepOpened(object? sender, Flyout flyout)
+    {
+        _keep = flyout;
+        if (DataContext is not SimulationViewModel model) return;
+        IdleRow.DataContext = model;
+        KeepRows.ItemsSource = model.KeepOptions;
+        KeepSwitches.ItemsSource = model.KeepSwitches;
     }
 
     private void OnMenuOpened(object? sender, Flyout flyout)
     {
         _menu = flyout;
-        EmulatorRows.ItemsSource = (DataContext as SimulationViewModel)?.EmulatorOptions;
+        if (DataContext is not SimulationViewModel model) return;
+        EmulatorRows.ItemsSource = model.EmulatorOptions;
     }
 }

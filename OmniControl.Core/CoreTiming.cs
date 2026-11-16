@@ -96,4 +96,38 @@ public static class CoreTiming
 
     /// <summary>A touch that moves less than this many pixels (of the screen) is a tap, not a swipe, when a recording reads the screen's touches.</summary>
     public const int AdbTapSlopPx = 24;
+
+    /// <summary>
+    /// Reading a simulated device's state (<c>Engine/Adb/StateModel</c>): a reading whose weighted vote (0-1) reaches the threshold is On or Off,
+    /// below it Unknown; recent readings are smoothed by the factor and, below the warning level, the device is said to want teaching again.
+    /// </summary>
+    public const double StateReadThreshold = 0.5, StateDriftWarn = 0.65, StateDriftSmoothing = 0.3;
+
+    /// <summary>How much each family of signals counts in a reading (attributes, words, icons, colour, shape).</summary>
+    public const double StateWeightAttributes = 1.0, StateWeightWords = 0.9, StateWeightViews = 0.6, StateWeightColour = 0.9, StateWeightShape = 0.6;
+
+    /// <summary>
+    /// How far apart on and off must be for a measure to count: on the hue-saturation disc (0-2), as a share of coloured pixels (0-1), and as
+    /// the share of the shape's 64 bits that differ.
+    /// </summary>
+    public const double StateMinColourSeparation = 0.12, StateMinShareSeparation = 0.1, StateMinShapeSeparation = 0.12;
+
+    /// <summary>
+    /// Colour measures: the most points sampled per region; below this saturation or brightness a pixel counts as grey; the least share of
+    /// coloured pixels whose hue counts as the region's dominant colour.
+    /// </summary>
+    public const int StateSampleBudget = 4096;
+    public const double StateGreySaturation = 0.2, StateDarkValue = 0.15, StateDominantMinShare = 0.1;
+
+    /// <summary>How far (a share of the screen's width) a found switch may sit from where it was taught relative to its card's name.</summary>
+    public const double StateAnchorSlack = 0.15;
+
+    /// <summary>
+    /// Screen recording sound: each capture's buffer; the sound is written this far behind the picture's clock (so a capture packet has
+    /// arrived before its time is written); when more than the max waits, only the lag's worth is kept, so the sound never drifts.
+    /// </summary>
+    public const int RecordSoundBufferMs = 2000, RecordSoundLagMs = 100, RecordSoundMaxQueueMs = 300;
+
+    /// <summary>Screen recording: sound is written in pieces of at least this length; the size, length and disk-space limits are checked this often.</summary>
+    public const int RecordSoundChunkMs = 20, RecordLimitCheckMs = 1000;
 }

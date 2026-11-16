@@ -1,0 +1,218 @@
+using OmniControl.App.Screenshot;
+using OmniControl.Core.Engine.Screenshot;
+using SkiaSharp;
+
+namespace OmniControl.Tests;
+
+/// <summary>
+/// The screen recorder's pure parts: even frame sizes, the bitrate, the frame grid and the recording clock, a GIF's delays, palette and
+/// file (read back with SkiaSharp), the drawing tools' size steps and the recording bar's timer. Nothing is captured, encoded to MP4 or shown.
+/// </summary>
+public class VideoRecordingTests
+{
+    private const long Second = VideoMath.TicksPerSecond;
+
+    // ---- Even sizes ----
+
+    [Theory]
+    [InlineData(101, 100)]
+    [InlineData(100, 100)]
+    [InlineData(1, 2)]
+    [InlineData(0, 2)]
+    public void Even_RoundsDownToEvenAtLeastTwo(int side, int even) => Assert.Equal(even, VideoMath.Even(side));
+
+    [Fact]
+    public void FrameArea_Mp4IsEvenGifIsAsDrawn()
+    {
+        var area = new ScreenRect(10, 20, 301, 199);
+        Assert.Equal(new ScreenRect(10, 20, 300, 198), VideoMath.FrameArea(area, VideoFormat.Mp4H264));
+        Assert.Equal(new ScreenRect(10, 20, 300, 198), VideoMath.FrameArea(area, VideoFormat.Mp4Hevc));
+        Assert.Equal(area, VideoMath.FrameArea(area, VideoFormat.Gif));
+    }
+
+    // ---- Bitrate ----
+
+    [Fact]
+    public void Bitrate_IsPixelsPerSecondTimesQuality() =>
+        Assert.Equal(4_976_640, VideoMath.Bitrate(1920, 1080, 30, VideoQuality.Medium, VideoFormat.Mp4H264));
+
+    [Fact]
+    public void Bitrate_HevcNeedsLess() =>
+        Assert.True(VideoMath.Bitrate(1920, 1080, 30, VideoQuality.High, VideoFormat.Mp4Hevc) < VideoMath.Bitrate(1920, 1080, 30, VideoQuality.High, VideoFormat.Mp4H264));
+
+    [Fact]
+    public void Bitrate_GrowsWithQuality()
+    {
+        var low = VideoMath.Bitrate(1280, 720, 30, VideoQuality.Low, VideoFormat.Mp4H264);
+        var medium = VideoMath.Bitrate(1280, 720, 30, VideoQuality.Medium, VideoFormat.Mp4H264);
+        var high = VideoMath.Bitrate(1280, 720, 30, VideoQuality.High, VideoFormat.Mp4H264);
+        Assert.True(low < medium && medium < high);
+    }
+
+    [Fact]
+    public void Bitrate_IsHeldToTheLimits()
+    {
+        Assert.Equal(VideoMath.MinBitrate, VideoMath.Bitrate(16, 16, 15, VideoQuality.Low, VideoFormat.Mp4H264));
+        Assert.Equal(VideoMath.MaxBitrate, VideoMath.Bitrate(7680, 4320, 60, VideoQuality.High, VideoFormat.Mp4H264));
+    }
+
+    // ---- Frame timing ----
+
+    [Fact]
+    public void FrameGrid_StartsAndIndexesAgree()
+    {
+        for (var frame = 0L; frame < 100; frame++)
+        {
+            Assert.Equal(frame, VideoMath.FrameAt(VideoMath.FrameStart(frame, 30), 30));
+            Assert.Equal(frame, VideoMath.FrameAt(VideoMath.FrameStart(frame + 1, 30) - 1, 30));
+        }
+    }
+
+    [Fact]
+    public void GifFrameRate_IsCapped()
+    {
+        Assert.Equal(VideoMath.GifMaxFrameRate, VideoMath.FrameRateFor(VideoFormat.Gif, 60));
+        Assert.Equal(60, VideoMath.FrameRateFor(VideoFormat.Mp4H264, 60));
+        Assert.Equal(15, VideoMath.FrameRateFor(VideoFormat.Gif, 15));
+    }
+
+    [Fact]
+    public void GifDelays_AddUpWithoutDrift()
+    {
+        var total = 0;
+        for (var frame = 0; frame < 300; frame++)
+        {
+            var delay = VideoMath.GifDelay(VideoMath.FrameStart(frame, 30), VideoMath.FrameStart(frame + 1, 30));
+            Assert.InRange(delay, 3, 4);
+            total += delay;
+        }
+        Assert.Equal(1000, total); // 300 frames at 30 per second = 10 s
+    }
+
+    [Fact]
+    public void GifDelay_IsNeverUnderTwo() => Assert.Equal(2, VideoMath.GifDelay(0, Second / 1000));
+
+    [Fact]
+    public void Clock_PausesAndGoesOn()
+    {
+        var now = 0L;
+        var clock = new RecordingClock(() => now);
+        now = 5 * Second;
+        clock.Pause();
+        now = 9 * Second;
+        Assert.Equal(5 * Second, clock.Ticks);
+        clock.Resume();
+        now = 10 * Second;
+        Assert.Equal(6 * Second, clock.Ticks);
+    }
+
+    [Theory]
+    [InlineData(0, "00:00")]
+    [InlineData(75, "01:15")]
+    [InlineData(3725, "1:02:05")]
+    public void Clock_Words(int seconds, string text) => Assert.Equal(text, VideoMath.Clock(TimeSpan.FromSeconds(seconds)));
+
+    // ---- GIF palette ----
+
+    private static byte[] Pixels(int width, int height, Func<int, int, (byte R, byte G, byte B)> colour)
+    {
+        var pixels = new byte[width * height * 4];
+        for (var y = 0; y < height; y++)
+        for (var x = 0; x < width; x++)
+        {
+            var (r, g, b) = colour(x, y);
+            var at = (y * width + x) * 4;
+            pixels[at] = b;
+            pixels[at + 1] = g;
+            pixels[at + 2] = r;
+            pixels[at + 3] = 255;
+        }
+        return pixels;
+    }
+
+    [Fact]
+    public void Palette_KeepsFewColoursExactly()
+    {
+        var colours = new (byte, byte, byte)[] { (255, 0, 0), (0, 128, 0), (0, 0, 255), (240, 240, 240) };
+        var pixels = Pixels(8, 4, (x, y) => colours[(x + y) % 4]);
+        var palette = new GifPalette();
+        var indices = new byte[32];
+        palette.Build(pixels, 8, 4, 32, 256, indices);
+        Assert.Equal(2, palette.Bits);
+        for (var i = 0; i < 32; i++)
+        {
+            var (r, g, b) = colours[(i % 8 + i / 8) % 4];
+            var at = indices[i] * 3;
+            Assert.Equal((r, g, b), (palette.Colours[at], palette.Colours[at + 1], palette.Colours[at + 2]));
+        }
+    }
+
+    [Fact]
+    public void Palette_HoldsToTheColourCount()
+    {
+        var pixels = Pixels(64, 64, (x, y) => ((byte)(x * 4), (byte)(y * 4), (byte)((x + y) * 2)));
+        var palette = new GifPalette();
+        var indices = new byte[64 * 64];
+        palette.Build(pixels, 64, 64, 64 * 4, VideoMath.GifColourCount(VideoQuality.Low), indices);
+        Assert.Equal(6, palette.Bits);
+        Assert.All(indices, i => Assert.True(i < 64));
+    }
+
+    [Fact]
+    public void Gif_ReadsBackWithItsFramesColoursAndDelays()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"omnicontrol-test-{Guid.NewGuid():N}.gif");
+        try
+        {
+            var red = Pixels(20, 10, (_, _) => (255, 0, 0));
+            var split = Pixels(20, 10, (x, _) => x < 10 ? ((byte)0, (byte)0, (byte)255) : ((byte)255, (byte)255, (byte)255));
+            using (var gif = new GifWriter(path, 20, 10, VideoQuality.High))
+            {
+                gif.WriteFrame(red, 80, 0);
+                gif.WriteFrame(red, 80, Second / 10); // the same picture: the first frame lasts longer
+                gif.WriteFrame(split, 80, Second / 5);
+                gif.Finish(Second / 2);
+            }
+            using var codec = SKCodec.Create(path);
+            Assert.Equal(2, codec.FrameCount);
+            Assert.Equal(200, codec.FrameInfo[0].Duration);
+            Assert.Equal(300, codec.FrameInfo[1].Duration);
+            var info = new SKImageInfo(20, 10, SKColorType.Bgra8888, SKAlphaType.Premul);
+            using var bitmap = new SKBitmap(info);
+            Assert.Equal(SKCodecResult.Success, codec.GetPixels(info, bitmap.GetPixels(), new SKCodecOptions(1)));
+            Assert.Equal(new SKColor(0, 0, 255), bitmap.GetPixel(2, 5));
+            Assert.Equal(new SKColor(255, 255, 255), bitmap.GetPixel(15, 5));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    // ---- Drawing sizes ----
+
+    [Fact]
+    public void ToolSizes_StepThroughTheListAndRemember()
+    {
+        var store = new Dictionary<string, double>();
+        var saves = 0;
+        var sizes = new ToolSizes(store, () => saves++);
+        Assert.Equal(MarkLook.TextSize, sizes.Of(DrawTool.Text));
+        Assert.True(sizes.Step(DrawTool.Text, 1));
+        Assert.Equal(24, sizes.Of(DrawTool.Text));
+        Assert.Equal(MarkLook.Stroke, sizes.Of(DrawTool.Pen)); // per tool
+        Assert.Equal(1, saves);
+        Assert.Equal(24, new ToolSizes(store, () => { }).Of(DrawTool.Text));
+    }
+
+    [Fact]
+    public void ToolSizes_HoldAtTheEnds()
+    {
+        var sizes = new ToolSizes(new Dictionary<string, double>(), () => { });
+        while (sizes.Step(DrawTool.Line, -1)) { }
+        Assert.Equal(MarkLook.StrokeSizes[0], sizes.Of(DrawTool.Line));
+        Assert.False(sizes.Step(DrawTool.Line, -1));
+        Assert.False(sizes.Step(DrawTool.Blur, 1));
+        Assert.False(ToolSizes.Has(DrawTool.Blur));
+    }
+}

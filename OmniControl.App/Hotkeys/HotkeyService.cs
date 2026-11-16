@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using Avalonia.Input;
 using Avalonia.Win32.Input;
+using OmniControl.App.Services;
 
 namespace OmniControl.App.Hotkeys;
 
@@ -26,6 +27,7 @@ public sealed class HotkeyService : IDisposable
 
     public HotkeyService()
     {
+        if (StartupMode.Inert) return; // no thread and no system hotkey in a screenshot export
         var ready = new ManualResetEventSlim();
         // Highest priority: the thread sleeps until a key is pressed and then must hand it on at once, whatever else is busy.
         new Thread(() => Loop(ready)) { IsBackground = true, Name = "Hotkeys", Priority = ThreadPriority.Highest }.Start();
@@ -35,6 +37,7 @@ public sealed class HotkeyService : IDisposable
     /// <summary>Replaces all registered hotkeys.</summary>
     public void Apply(IEnumerable<(string Gesture, Action Run)> bindings)
     {
+        if (StartupMode.Inert) return;
         lock (_lock) _pending = bindings.ToList();
         PostThreadMessage(_threadId, WmApp, UIntPtr.Zero, IntPtr.Zero);
     }

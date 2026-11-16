@@ -30,6 +30,11 @@ public sealed partial class OptionItem : ObservableObject
     /// <summary>A text that is a path: shown with the shared path field and its Browse button.</summary>
     public bool IsPath => Option.Kind == OptionKind.Text && Option.Browse is not null;
     public PathKind PathKind => Option.Browse ?? PathKind.File;
+
+    /// <summary>A group's heading (no value), with its note under it when it has one.</summary>
+    public bool IsHeading => Option.Kind == OptionKind.Heading;
+    public bool IsLabel => !IsHeading;
+    public bool HasHeadingNote => IsHeading && Option.Hint.Length > 0;
     public string PickerTitle => $"Choose: {Option.Label}";
     public string Hint => Option.Hint;
 

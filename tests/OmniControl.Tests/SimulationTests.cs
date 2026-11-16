@@ -5,7 +5,7 @@ using Xunit;
 
 namespace OmniControl.Tests;
 
-/// <summary>The simulation method: step words and checks, reading a uiautomator dump, adb's text answers, touches, and the runner on a made-up phone (no adb, no emulator).</summary>
+/// <summary>The simulation method: step words and checks, reading a uiautomator dump, adb's text answers, touches, and single steps on a made-up phone (no adb, no emulator). Reading the state and the On / Off run are in <see cref="StateDetectionTests"/>.</summary>
 public sealed class SimulationTests
 {
     private static string Dump(bool on) =>
@@ -37,6 +37,7 @@ public sealed class SimulationTests
         public Task<AdbResult> BackAsync() => Ok();
         public Task<AdbResult> OpenAppAsync(string package) => Ok();
         public Task<AdbResult> SizeAsync() => Task.FromResult(new AdbResult(true, "Physical size: 1080x1920"));
+        public Task<byte[]?> ScreenshotAsync() => Task.FromResult<byte[]?>(null);
         private static Task<AdbResult> Ok() => Task.FromResult(new AdbResult(true, string.Empty));
     }
 
@@ -66,17 +67,15 @@ public sealed class SimulationTests
     }
 
     [Fact]
-    public void A_tap_becomes_a_step_on_the_element_under_it_and_a_blank_spot_keeps_its_position()
+    public void A_tap_becomes_a_step_on_the_element_under_it_and_a_blank_spot_is_no_step()
     {
         var screen = SimScreen.Parse(Dump(false))!;
-        var step = screen.TapAt(300, 250);
+        var step = screen.TapAt(300, 250)!;
         Assert.Equal("Desk plug", step.Text);
         Assert.Equal("app:id/name", step.ResourceId);
-        var icon = screen.TapAt(500, 1100);
+        var icon = screen.TapAt(500, 1100)!;
         Assert.Equal("Power", icon.Description);
-        var blank = screen.TapAt(10, 1800);
-        Assert.False(blank.HasIdentity);
-        Assert.Equal((10, 1800), (blank.X, blank.Y));
+        Assert.Null(screen.TapAt(10, 1800)); // the page itself, nothing to tap
     }
 
     [Fact]
@@ -128,43 +127,17 @@ public sealed class SimulationTests
     }
 
     [Fact]
-    public async Task Toggle_taps_and_On_or_Off_leave_a_device_that_is_already_there_alone()
-    {
-        var phone = new FakePhone();
-        var steps = Recording();
-
-        var turnedOn = await SimRunner.RunAsync(phone, steps, SimGoal.On, Quick);
-        Assert.True(turnedOn.Ok);
-        Assert.True(phone.On);
-        Assert.Equal(true, turnedOn.IsOn);
-        var taps = phone.Taps;
-
-        var again = await SimRunner.RunAsync(phone, steps, SimGoal.On, Quick);
-        Assert.True(again.Ok);
-        Assert.True(again.Skipped);
-        Assert.True(phone.On);
-        Assert.Equal(taps + 1, phone.Taps); // only the tap that opens the device: the switch was left alone
-
-        var toggled = await SimRunner.RunAsync(phone, steps, SimGoal.Toggle, Quick);
-        Assert.False(phone.On);
-        Assert.Equal(false, toggled.IsOn);
-        Assert.Equal(taps + 3, phone.Taps); // Desk plug, then Desk plug and Power
-
-        var off = await SimRunner.RunAsync(phone, steps, SimGoal.Off, Quick);
-        Assert.True(off.Skipped);
-    }
-
-    [Fact]
     public async Task A_failing_step_stops_the_run_and_says_which_one_and_why()
     {
         var phone = new FakePhone();
         var steps = Recording();
         steps[1].Text = "Fan";
-        var result = await SimRunner.RunAsync(phone, steps, SimGoal.On, Quick);
-        Assert.False(result.Ok);
-        Assert.Equal(1, result.FailedIndex);
-        Assert.Contains("\"Fan\"", result.Problem);
+        var result = await SimRunner.RunAsync(phone, steps, new StateModel(), SimGoal.On, Quick);
+        Assert.False(result.Ok); // not taught yet: nothing runs
         Assert.Equal(0, phone.Taps);
+        var failed = await SimRunner.TestStepAsync(phone, steps[1], 1, Quick);
+        Assert.Equal(1, failed.FailedIndex);
+        Assert.Contains("\"Fan\"", failed.Problem);
 
         var unfinished = await SimRunner.TestStepAsync(phone, SimSteps.Blank(SimStepKind.Tap), 4, Quick);
         Assert.Equal(4, unfinished.FailedIndex);
@@ -175,12 +148,42 @@ public sealed class SimulationTests
     [Fact]
     public void Recorded_steps_are_saved_with_their_kind_as_a_word_and_come_back()
     {
-        var json = JsonSerializer.Serialize(new DeviceSettings { Devices = { new DeviceRecord { Name = "Desk plug", Method = DeviceMethods.Simulation, Steps = Recording() } } });
+        var json = JsonSerializer.Serialize(new DeviceSettings { Devices = { new DeviceRecord { Name = "Desk plug", Methods = { new MethodRecord { Kind = DeviceMethods.Simulation, Steps = Recording() } } } } });
         Assert.Contains("\"Tap\"", json);
         Assert.DoesNotContain("assword", json);
-        var back = JsonSerializer.Deserialize<DeviceSettings>(json)!.Devices[0];
+        var back = JsonSerializer.Deserialize<DeviceSettings>(json)!.Devices[0].Methods[0];
         Assert.Equal(SimStepKind.Check, back.Steps[^1].Kind);
         Assert.Equal("Power", back.Steps[2].Description);
+    }
+
+    [Fact]
+    public void An_old_recordings_closing_switch_check_is_dropped_and_the_last_tap_is_the_switch()
+    {
+        var device = new MethodRecord { Steps = Recording() };
+        device.Steps.Add(new SimStep { Kind = SimStepKind.Check, ResourceId = "app:id/power" });
+        Assert.True(device.DropOldStateCheck());
+        Assert.False(device.DropOldStateCheck()); // "Check screen shows On" has words: it stays
+        Assert.Equal(2, SimRunner.SwitchIndex(device.Steps));
+        Assert.Equal(-1, SimRunner.SwitchIndex(new[] { new SimStep { Kind = SimStepKind.OpenApp } }));
+    }
+
+    [Fact]
+    public void An_apps_name_is_its_label_or_the_makers_part_of_the_package()
+    {
+        Assert.Equal("Tapo", AdbClient.AppLabelOf("  application-label:'Tapo'\n", "com.tplink.iot"));
+        Assert.Equal("Tplink", AdbClient.AppLabelOf("nonLocalizedLabel=null", "com.tplink.iot"));
+        Assert.Equal("Tplink", AdbClient.LabelFallback("com.tplink.iot"));
+    }
+
+    [Fact]
+    public void A_command_template_fills_the_address_and_never_carries_the_password()
+    {
+        Assert.Equal(new[] { "kasa", "--host", "10.0.0.7", "--type", "smart", "on" }, KasaCommand.Fill("kasa --host {ip} --type smart on", "10.0.0.7", "a@b.c"));
+        Assert.Equal(new[] { "kasa", "--host", "10.0.0.7", "--username", "a@b.c", "off" }, KasaCommand.Fill("kasa --host {ip} --username {email} --password {password} off", "10.0.0.7", "a@b.c"));
+        Assert.Equal(new[] { "my tool", "x" }, KasaCommand.Split("\"my tool\" x"));
+        Assert.Equal(true, KasaCommand.StateOf("== Bulb ==\nDevice state: True\n"));
+        Assert.Equal(false, KasaCommand.StateOf("State: OFF"));
+        Assert.Null(KasaCommand.StateOf("nothing"));
     }
 
     [Fact]

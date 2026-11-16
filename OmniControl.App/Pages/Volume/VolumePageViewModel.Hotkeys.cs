@@ -129,6 +129,7 @@ public sealed partial class VolumePageViewModel
             Dispatcher.UIThread.Post(() =>
             {
                 if (_inputs.TryGetValue(def.Id, out var item)) item.Sync(v, muted, item.FxOn, item.FxCount);
+                _states.Notify(MicMutedId);
             });
         }
     });

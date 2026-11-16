@@ -15,6 +15,9 @@
     </Styles.Resources>
 
     <Style Selector="ScrollViewer"><Setter Property="AllowAutoHide" Value="False" /></Style>
+    <!-- A ListBox's own scroll viewer is made inside its template and does not take the style above (the bar then sat over the row ends:
+         a right-aligned word was cut at the bar), so the list sets the attached value for it -->
+    <Style Selector="ListBox"><Setter Property="(ScrollViewer.AllowAutoHide)" Value="False" /></Style>
     <Style Selector="ScrollBar">
         <Setter Property="AllowAutoHide" Value="False" />
         <Setter Property="Background" Value="{DynamicResource BrushScrollTrack}" />

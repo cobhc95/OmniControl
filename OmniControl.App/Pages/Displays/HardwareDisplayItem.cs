@@ -85,6 +85,15 @@ internal sealed partial class HardwareDisplayItem
 
     private string GroupKey => $"Displays/Hardware/{Id}";
 
+    /// <summary>The level as its card shows it, or null while the display has not reported it (the page's states read this).</summary>
+    public int? LevelOf(HardwareLevel level) => _sliders.TryGetValue(level, out var slider) && slider.Availability.IsAvailable ? slider.Value : null;
+
+    /// <summary>Moves the level's card to this value, which writes it to the monitor as a move of the card does (the page's states set it); nothing while the display has not reported it.</summary>
+    public void SetLevel(HardwareLevel level, int value)
+    {
+        if (_sliders.TryGetValue(level, out var slider) && slider.Availability.IsAvailable) slider.Value = Math.Clamp(value, slider.Minimum, slider.Maximum);
+    }
+
     private static Availability AvailabilityOf(IEditorItem card) => card switch
     {
         SliderItem s => s.Availability,

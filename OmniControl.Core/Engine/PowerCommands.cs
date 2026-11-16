@@ -17,6 +17,7 @@ public static class PowerCommands
     [DllImport("powrprof.dll")] private static extern bool SetSuspendState(bool hibernate, bool forceCritical, bool disableWakeEvent);
     [DllImport("user32.dll")] private static extern bool LockWorkStation();
     [DllImport("powrprof.dll")] private static extern uint PowerSetActiveOverlayScheme(in Guid overlay);
+    [DllImport("powrprof.dll")] private static extern uint PowerGetEffectiveOverlayScheme(out Guid overlay);
 
     // Windows' fixed identifiers of the three power mode overlays (balanced is the empty one).
     private static readonly Guid EfficiencyOverlay = new("961cc777-2547-4f9d-8174-7d86181b8a7a");
@@ -39,6 +40,23 @@ public static class PowerCommands
     {
         var overlay = mode switch { PowerMode.BestEfficiency => EfficiencyOverlay, PowerMode.BestPerformance => PerformanceOverlay, _ => Guid.Empty };
         return PowerSetActiveOverlayScheme(overlay) == 0;
+    }
+
+    /// <summary>The power mode in force now, or null when Windows can't say (an older Windows, or a mode set by the maker).</summary>
+    public static PowerMode? CurrentMode()
+    {
+        Guid overlay;
+        try
+        {
+            if (PowerGetEffectiveOverlayScheme(out overlay) != 0) return null;
+        }
+        catch (EntryPointNotFoundException)
+        {
+            return null; // a Windows before power modes: there is no mode to read
+        }
+        if (overlay == EfficiencyOverlay) return PowerMode.BestEfficiency;
+        if (overlay == PerformanceOverlay) return PowerMode.BestPerformance;
+        return overlay == Guid.Empty ? PowerMode.Balanced : null;
     }
 
     // shutdown.exe is Windows' own tool for this and works for the signed-in user without elevation; /f (only when asked) closes programs that object.

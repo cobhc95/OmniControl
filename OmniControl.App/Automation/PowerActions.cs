@@ -11,8 +11,18 @@ namespace OmniControl.App.Automation;
 /// </summary>
 public static class PowerActions
 {
-    private const string Power = "Power", Mode = "Power mode", Control = "Control";
+    /// <summary>The Choose-the-action section (and the states' heading) of the power actions.</summary>
+    public const string Power = "Power";
+    private const string Mode = "Power mode", Control = "Control";
     private const string Words = "automation schedule";
+
+    /// <summary>THE list of power modes: each one's action id, its name, and extra search words (the actions and the power mode state read it).</summary>
+    public static readonly IReadOnlyList<(PowerMode Mode, string Id, string Name, string Keywords)> Modes = new[]
+    {
+        (PowerMode.BestEfficiency, "automation.power.efficiency", "Efficiency", "best efficiency battery saver eco"),
+        (PowerMode.Balanced, "automation.power.balanced", "Balanced", "normal default"),
+        (PowerMode.BestPerformance, "automation.power.performance", "Performance", "best performance fast turbo"),
+    };
 
     public static IEnumerable<HotkeyAction> Make(PowerGuard guard, Action togglePause)
     {
@@ -33,9 +43,7 @@ public static class PowerActions
         yield return Guarded("automation.power.restart", "Restart", "reboot", PowerCommands.Restart, Closes);
         yield return Guarded("automation.power.signout", "Sign out", "log off logoff", PowerCommands.SignOut, Closes);
         yield return Make("automation.power.lock", "Lock", Power, Power, "lock screen workstation win+l", () => PowerCommands.Lock(), neverBlock: true);
-        yield return Make("automation.power.efficiency", "Efficiency mode", Mode, Power, "best efficiency battery saver eco", () => PowerCommands.SetMode(PowerMode.BestEfficiency));
-        yield return Make("automation.power.balanced", "Balanced mode", Mode, Power, "normal default", () => PowerCommands.SetMode(PowerMode.Balanced));
-        yield return Make("automation.power.performance", "Performance mode", Mode, Power, "best performance fast turbo", () => PowerCommands.SetMode(PowerMode.BestPerformance));
+        foreach (var (mode, id, name, keywords) in Modes) yield return Make(id, $"{name} mode", Mode, Power, keywords, () => PowerCommands.SetMode(mode));
         yield return Make("automation.pause", "Pause all rules", Control, null, "resume stop disable automation emergency", togglePause, neverBlock: true);
     }
 

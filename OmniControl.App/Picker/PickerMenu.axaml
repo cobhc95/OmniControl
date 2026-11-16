@@ -1,18 +1,23 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:picker="using:OmniControl.App.Picker"
              xmlns:ctl="using:OmniControl.App.Controls"
+             xmlns:hk="using:OmniControl.App.Hotkeys"
              x:Class="OmniControl.App.Picker.PickerMenu"
              x:DataType="picker:PickerModel">
     <!-- Three panes (docs/mockups/action-picker-three-pane.html): sections | entries | settings of the highlighted entry (always shown, live).
          Keyboard focus stays in the search box, or in the focus holder while the keys are in the settings; the lists only show the highlight, which the model moves. -->
     <Grid RowDefinitions="Auto,*,Auto">
-        <TextBox x:Name="Search" Classes="field" Text="{Binding Query}" Watermark="{Binding SearchHint}" Margin="8" />
+        <TextBox x:Name="Search" Classes="field" Text="{Binding Query}" Watermark="{Binding SearchHint}" Margin="8" ToolTip.Tip="{Binding SearchTip}" />
 
         <Grid Grid.Row="1" ColumnDefinitions="Auto,*,1.3*">
             <!-- Pane 1: the sections (the main window's sidebar look) -->
-            <Border Classes="sidebarpanel" BorderThickness="0,1,1,0">
-                <ListBox x:Name="SectionList" Classes="nav" Focusable="False" Margin="0,8,0,8"
+            <!-- "Only with a hotkey" sits at the foot of the sections of a list of actions (never of triggers, conditions...) -->
+            <Border Classes="sidebarpanel" BorderThickness="0,1,1,0" MinWidth="{DynamicResource PickerSectionsMinWidth}">
+                <DockPanel>
+                <CheckBox DockPanel.Dock="Bottom" Content="Only with a hotkey" IsChecked="{Binding OnlyWithKey}" IsVisible="{Binding ShowsKeyFilter}"
+                          Focusable="False" Margin="14,4,14,8" />
+                <ListBox x:Name="SectionList" Classes="nav" Focusable="False" Margin="0,8,4,8" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                          ItemsSource="{Binding Sections}" SelectedIndex="{Binding SectionHighlight}">
                     <ListBox.ItemTemplate>
                         <DataTemplate DataType="picker:SectionRow">
@@ -23,11 +28,12 @@
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
+                </DockPanel>
             </Border>
 
             <!-- Pane 2: the entries of the section (or the matches of the search), a small heading above each group -->
-            <Border Grid.Column="1" MinWidth="220" BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,1,1,0">
-                <ListBox x:Name="ActionList" Classes="pick active" Focusable="False" ItemsSource="{Binding Actions}" SelectedIndex="{Binding ActionIndex}">
+            <Border Grid.Column="1" MinWidth="{DynamicResource PickerEntriesMinWidth}" BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,1,1,0">
+                <ListBox x:Name="ActionList" Classes="pick active" Focusable="False" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ItemsSource="{Binding Actions}" SelectedIndex="{Binding ActionIndex}">
                     <!-- A group heading is its own row: no hover, no highlight, no click -->
                     <ListBox.Styles>
                         <Style Selector="ListBoxItem">
@@ -40,7 +46,7 @@
                             <StackPanel Background="Transparent" ToolTip.Tip="{Binding Unavailable}">
                                 <TextBlock Classes="hint small" Text="{Binding Text}" IsVisible="{Binding IsHeading}" Margin="0,4,0,2" />
                                 <!-- A greyed entry (Grid.unavailable) says why under its name and cannot be picked -->
-                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Classes.unavailable="{Binding !IsAvailable}">
+                                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8" Classes.unavailable="{Binding !IsAvailable}">
                                     <StackPanel VerticalAlignment="Center" IsVisible="{Binding IsEntry}">
                                         <TextBlock Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
                                         <TextBlock Classes="hint small" Text="{Binding Unavailable}" IsVisible="{Binding !IsAvailable}" TextWrapping="Wrap" />
@@ -48,6 +54,16 @@
                                     <Button Classes="blockadd small" Content="{Binding Text}" HorizontalAlignment="Left" Focusable="False"
                                             IsVisible="{Binding IsCommand}" Click="OnRowCommandClick" />
                                     <TextBlock Grid.Column="1" Text="{Binding Hint}" Classes="muted small" VerticalAlignment="Center" />
+                                    <!-- The entry's keys as keycaps, right-aligned beside its name, or a muted "no key" (the Actions and hotkeys window) -->
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <ItemsControl ItemsSource="{Binding Keycaps}">
+                                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate><hk:KeycapRow Parts="{Binding}" /></DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <TextBlock Classes="muted small" Text="no key" IsVisible="{Binding ShowsNoKey}" />
+                                    </StackPanel>
                                 </Grid>
                             </StackPanel>
                         </DataTemplate>
@@ -56,12 +72,14 @@
             </Border>
 
             <!-- Pane 3: the highlighted entry's settings -->
-            <Border Grid.Column="2" MinWidth="260" BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,1,0,0">
+            <Border Grid.Column="2" MinWidth="{DynamicResource PickerSettingsMinWidth}" BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,1,0,0">
                 <Grid RowDefinitions="Auto,*" Margin="0,10,0,0">
                     <Border x:Name="SettingsFocus" Width="1" Height="1" Focusable="True" HorizontalAlignment="Left" Opacity="0" />
                     <TextBlock Classes="strong" Text="{Binding SettingsTitle}" Margin="14,0,14,6" HorizontalAlignment="Left" TextWrapping="Wrap" />
                     <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel>
+                            <!-- The Actions and hotkeys window: the action's keys first, then Run now and Show on its page, then its settings -->
+                            <picker:ActionHotkeysView x:Name="HotkeyPart" DataContext="{Binding Hotkeys}" />
                             <ListBox x:Name="OptionList" Classes="pick" Classes.active="{Binding InSettings}" Focusable="False"
                                      ItemsSource="{Binding OptionItems}" SelectedIndex="{Binding OptionIndex}">
                                 <ListBox.ItemTemplate>
@@ -89,7 +107,10 @@
                                         <picker:OptionTemplateSelector.Block>
                                             <DataTemplate DataType="picker:OptionItem">
                                             <StackPanel Spacing="4" Margin="0,2">
-                                                <TextBlock Text="{Binding Label}" TextWrapping="Wrap" />
+                                                <TextBlock Text="{Binding Label}" TextWrapping="Wrap" IsVisible="{Binding IsLabel}" />
+                                                <!-- a group's heading (ActionOption.Heading), as the entries' group headings; its note a muted line under it -->
+                                                <TextBlock Classes="hint small strong" Text="{Binding Label}" IsVisible="{Binding IsHeading}" Margin="0,6,0,0" />
+                                                <TextBlock Classes="hint small" Text="{Binding Hint}" IsVisible="{Binding HasHeadingNote}" />
                                                 <TextBox Classes="field" Text="{Binding Value, UpdateSourceTrigger=LostFocus}" Watermark="{Binding Hint}"
                                                          IsVisible="{Binding IsText}" />
                                                 <ctl:PathField Text="{Binding Value}" Kind="{Binding PathKind}" Hint="{Binding Hint}" PickerTitle="{Binding PickerTitle}"
@@ -110,7 +131,7 @@
         </Grid>
 
         <!-- The only confirm; the picker's keys are in the Keyboard shortcuts of the pages that open it (PickerModel.KeyHelp) -->
-        <Border Grid.Row="2" Classes="footer">
+        <Border Grid.Row="2" Classes="footer" IsVisible="{Binding IsPicking}">
             <Button Classes="scope usebtn" Tag="scope" Content="{Binding UseText}" IsEnabled="{Binding CanUse}" HorizontalAlignment="Right" Focusable="False" Click="OnUseClick" />
         </Border>
     </Grid>

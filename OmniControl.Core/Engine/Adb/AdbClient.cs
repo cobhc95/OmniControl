@@ -21,6 +21,9 @@ public interface IAdbScreen
 
     /// <summary>The screen's size in pixels (<see cref="AdbResult.Text"/> is <c>1080x1920</c>).</summary>
     Task<AdbResult> SizeAsync();
+
+    /// <summary>A screenshot as PNG bytes (<c>screencap -p</c>); null when adb could not take one.</summary>
+    Task<byte[]?> ScreenshotAsync();
 }
 
 /// <summary>
@@ -51,6 +54,41 @@ public sealed class AdbClient : IAdbScreen
         return result with { Ok = result.Ok && result.Text.Contains("connected to", StringComparison.OrdinalIgnoreCase) && !result.Text.Contains("cannot", StringComparison.OrdinalIgnoreCase) };
     }
 
+    /// <summary>The serials adb lists as ready (<c>adb devices</c>); empty when adb could not be asked.</summary>
+    public static async Task<IReadOnlySet<string>> OnlineSerialsAsync(string adbPath)
+    {
+        var result = await RunAsync(adbPath, new[] { "devices" });
+        if (!result.Ok) return new HashSet<string>();
+        return result.Text.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(l => l.Split('\t', StringSplitOptions.TrimEntries))
+            .Where(p => p.Length == 2 && p[1] == "device").Select(p => p[0]).ToHashSet();
+    }
+
+    /// <summary>
+    /// Waits until the device is up and Android says it finished starting (<c>sys.boot_completed</c>), looking again every <paramref name="poll"/>;
+    /// false when <paramref name="timeout"/> passed or <paramref name="cancel"/> was raised first.
+    /// </summary>
+    public static async Task<bool> WaitForBootAsync(string adbPath, string serial, TimeSpan timeout, TimeSpan poll, CancellationToken cancel)
+    {
+        var until = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < until && !cancel.IsCancellationRequested)
+        {
+            var booted = await RunAsync(adbPath, new[] { "-s", serial, "shell", "getprop", "sys.boot_completed" });
+            if (booted.Ok && booted.Text.Trim() == "1") return true;
+            try { await Task.Delay(poll, cancel); }
+            catch (OperationCanceledException) { return false; }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Shuts the emulator down cleanly so Android saves its state: <c>adb emu kill</c> (Android Studio's), else Android's own power off.
+    /// </summary>
+    public static async Task<AdbResult> ShutDownAsync(string adbPath, string serial)
+    {
+        var killed = await RunAsync(adbPath, new[] { "-s", serial, "emu", "kill" });
+        return killed.Ok ? killed : await RunAsync(adbPath, new[] { "-s", serial, "shell", "reboot", "-p" });
+    }
+
     public Task<AdbResult> DumpAsync() => DumpToFileAsync();
 
     private async Task<AdbResult> DumpToFileAsync()
@@ -72,11 +110,42 @@ public sealed class AdbClient : IAdbScreen
 
     public Task<AdbResult> SizeAsync() => ShellAsync("wm size");
 
+    public async Task<byte[]?> ScreenshotAsync()
+    {
+        var (ok, output, _) = await RunRawAsync(_adb, new[] { "-s", _serial, "exec-out", "screencap", "-p" });
+        return ok && output.Length > 0 ? output : null;
+    }
+
     /// <summary>The app that has the screen now (<c>dumpsys window</c>); empty when it cannot be told.</summary>
     public async Task<string> CurrentPackageAsync()
     {
         var result = await ShellAsync("dumpsys window");
         return result.Ok ? CurrentPackageOf(result.Text) : string.Empty;
+    }
+
+    /// <summary>
+    /// The name the app shows under its icon, as Android's package dump states it (<c>application-label</c> or <c>nonLocalizedLabel</c>);
+    /// else the maker's part of the package made readable (<see cref="LabelFallback"/>). The recorder prefers the words under the icon tapped.
+    /// </summary>
+    public async Task<string> AppLabelAsync(string package)
+    {
+        if (!SimSteps.IsPackage(package)) return package;
+        var result = await ShellAsync($"dumpsys package {package}");
+        return result.Ok ? AppLabelOf(result.Text, package) : LabelFallback(package);
+    }
+
+    public static string AppLabelOf(string dumpsys, string package)
+    {
+        var m = Regex.Match(dumpsys, @"application-label(?:-[\w-]+)?:'([^']+)'|nonLocalizedLabel=([^\r\n]+)");
+        var label = m.Success ? (m.Groups[1].Success ? m.Groups[1].Value : m.Groups[2].Value).Trim() : string.Empty;
+        return label.Length > 0 && label != "null" ? label : LabelFallback(package);
+    }
+
+    /// <summary>A readable name when the app's own is not known: the package's second part ("com.tplink.iot" = "Tplink"), not its last word, which is often generic.</summary>
+    public static string LabelFallback(string package)
+    {
+        var parts = package.Split('.', StringSplitOptions.RemoveEmptyEntries);
+        return SimSteps.Humanise(parts.Length >= 2 ? parts[1] : package);
     }
 
     /// <summary>The package in <c>mCurrentFocus=Window{... u0 com.example/com.example.Main}</c>; empty when there is none.</summary>
@@ -90,11 +159,19 @@ public sealed class AdbClient : IAdbScreen
     }
 
     /// <summary>Text for <c>input text</c>: spaces become %s and anything the device's shell would read is escaped, inside single quotes.</summary>
-    public static string EscapeForInput(string text) => text.Replace("'", "'\''").Replace(" ", "%s");
+    public static string EscapeForInput(string text) => text.Replace("'", "'\\''").Replace(" ", "%s");
 
     private Task<AdbResult> ShellAsync(string command) => RunAsync(_adb, new[] { "-s", _serial, "shell", command });
 
     internal static async Task<AdbResult> RunAsync(string adb, IReadOnlyList<string> arguments)
+    {
+        var (ok, output, problem) = await RunRawAsync(adb, arguments);
+        var text = Encoding.UTF8.GetString(output);
+        return new AdbResult(ok, ok || problem.Length == 0 ? text : problem);
+    }
+
+    /// <summary>Runs adb and gives what it printed as bytes (a screenshot is binary), its error text, and whether it exited with 0.</summary>
+    private static async Task<(bool Ok, byte[] Output, string Problem)> RunRawAsync(string adb, IReadOnlyList<string> arguments)
     {
         var start = new ProcessStartInfo(adb)
         {
@@ -102,7 +179,6 @@ public sealed class AdbClient : IAdbScreen
             CreateNoWindow = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-            StandardOutputEncoding = Encoding.UTF8,
         };
         foreach (var argument in arguments) start.ArgumentList.Add(argument);
         Process process;
@@ -112,25 +188,26 @@ public sealed class AdbClient : IAdbScreen
         }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
         {
-            return new AdbResult(false, $"couldn't start adb: {ex.Message}");
+            return (false, Array.Empty<byte>(), $"couldn't start adb: {ex.Message}");
         }
         using (process)
         {
-            var output = process.StandardOutput.ReadToEndAsync();
+            using var buffer = new MemoryStream();
+            var output = process.StandardOutput.BaseStream.CopyToAsync(buffer);
             var errors = process.StandardError.ReadToEndAsync();
             using var limit = new CancellationTokenSource(CoreTiming.AdbCommandTimeoutMs);
             try
             {
                 await process.WaitForExitAsync(limit.Token);
-                var text = await output;
-                var problem = await errors;
-                return new AdbResult(process.ExitCode == 0, process.ExitCode == 0 || problem.Length == 0 ? text : problem.Trim());
+                await output;
+                var problem = (await errors).Trim();
+                return (process.ExitCode == 0, buffer.ToArray(), problem);
             }
             catch (OperationCanceledException)
             {
                 try { process.Kill(entireProcessTree: true); }
                 catch (Exception ex) when (ex is Win32Exception or InvalidOperationException) { /* it ended just now */ }
-                return new AdbResult(false, $"adb didn't answer within {CoreTiming.AdbCommandTimeoutMs / 1000} s");
+                return (false, Array.Empty<byte>(), $"adb didn't answer within {CoreTiming.AdbCommandTimeoutMs / 1000} s");
             }
         }
     }

@@ -94,7 +94,7 @@
                                                         </StackPanel>
                                                     </Grid>
                                                     <hk:HotkeyBox Grid.Column="2" DataContext="{Binding Shortcut}"
-                                                                  ToolTip.Tip="The shortcut that applies this preset from anywhere: click, then press the keys; Backspace removes it" />
+                                                                  ToolTip.Tip="The shortcut that applies this preset from anywhere: double-click, then press the keys; Backspace removes it" />
                                                     <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                                                         <Button Classes="pill" Tag="scope" Content="{Binding ApplyText}" Command="{Binding ApplyCommand}" IsVisible="{Binding CanApply}" />
                                                         <Button Classes="pill" Tag="scope" Content="Rename" Command="{Binding BeginRenameCommand}" IsVisible="{Binding CanRename}" />

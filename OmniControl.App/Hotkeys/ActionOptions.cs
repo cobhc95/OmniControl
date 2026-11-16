@@ -2,7 +2,7 @@ using OmniControl.App.Services;
 
 namespace OmniControl.App.Hotkeys;
 
-public enum OptionKind { Number, Choice, Toggle, Text }
+public enum OptionKind { Number, Choice, Toggle, Text, Heading }
 
 /// <summary>
 /// One setting an action offers (how many times, which direction, which search engine...). Values are stored as text next to the action;
@@ -33,6 +33,10 @@ public sealed record ActionOption(string Key, string Label, OptionKind Kind, str
     /// <summary>A text that is a file, program or folder path: its row has the shared Browse button (<see cref="Controls.PathField"/>).</summary>
     public static ActionOption Path(string key, string label, PathKind kind, string hint = "") =>
         new(key, label, OptionKind.Text, "", Hint: hint, Browse: kind);
+
+    /// <summary>A group's heading among the settings (holds no value); <paramref name="note"/> is a muted line under it when there is a fact to tell.</summary>
+    public static ActionOption Heading(string key, string label, string note = "") =>
+        new(key, label, OptionKind.Heading, "", Hint: note);
 }
 
 /// <summary>The values chosen for an action's options; anything not chosen reads as the option's default.</summary>

@@ -33,6 +33,15 @@ public sealed partial class ShellViewModel
                     devices => { _ = restorer.RestoreAsync(); }));
             parts.Add(part);
         }
+        // The Actions and hotkeys window is not a page; its "Restore defaults" is wired the same way.
+        var keys = _actionsWindow.Restorable;
+        var keysRestorer = new PageRestore(new RestoreRunner(keys.Key, keys.Name, new[] { keys }, false, Confirm, store));
+        _actionsWindow.Restorer = keysRestorer;
+        // Filed under App settings (its "Restore all" lives there): the window is not a section of its own in the pickers.
+        var home = _allFooter.OfType<AppSettingsPageViewModel>().First().Title;
+        _hotkeys.Register(new HotkeyAction($"{keys.Key}.restore", $"Restore {keys.Name} defaults", home, "reset default restore shortcuts keys",
+            devices => { _ = keysRestorer.RestoreAsync(); }));
+        parts.Add(keys);
         _restoreAll = new PageRestore(new RestoreRunner("all", "All", parts, true, Confirm, store), all: true);
         _allFooter.OfType<AppSettingsPageViewModel>().FirstOrDefault()?.ShowRestoreAll(_restoreAll);
         _restoreCheck.Tick += (_, _) => RefreshRestore();
@@ -51,6 +60,7 @@ public sealed partial class ShellViewModel
     {
         _restoreCheck.Stop();
         foreach (var page in _allPages.Concat(_allFooter)) page.Restorer?.Dispose();
+        _actionsWindow.Restorer?.Dispose();
         _restoreAll?.Dispose();
     }
 }

@@ -9,24 +9,24 @@ public partial class HotkeyBox : UserControl
 {
     public HotkeyBox() => InitializeComponent();
 
-    /// <summary>A click is the same as pressing Enter on the box: start listening for keys.</summary>
-    private void OnHotkeyTapped(object? sender, TappedEventArgs e)
+    /// <summary>A double-click is the same as pressing Enter on the box: start listening for keys.</summary>
+    private void OnHotkeyDoubleTapped(object? sender, TappedEventArgs e)
     {
-        if (sender is not TextBox { DataContext: HotkeyAction action } box) return;
+        if (sender is not TextBox { DataContext: HotkeyTarget target } box) return;
         box.Focus(NavigationMethod.Directional);
-        action.IsListening = true;
+        target.IsListening = true;
         e.Handled = true;
     }
 
-    /// <summary>Releasing the main key saves the shortcut (see <see cref="HotkeyCapture.TryHandleUp"/>).</summary>
+    /// <summary>Releasing the main key takes the shortcut (see <see cref="HotkeyCapture.TryHandleUp"/>).</summary>
     private void OnHotkeyKeyUp(object? sender, KeyEventArgs e)
     {
-        if (sender is Control { DataContext: HotkeyAction action } && HotkeyCapture.TryHandleUp(e, action)) e.Handled = true;
+        if (sender is Control { DataContext: HotkeyTarget target } && HotkeyCapture.TryHandleUp(e, target)) e.Handled = true;
     }
 
     /// <summary>Leaving the box (Tab, clicking elsewhere) cancels listening.</summary>
     private void OnHotkeyLostFocus(object? sender, RoutedEventArgs e)
     {
-        if (sender is Control { DataContext: HotkeyAction action }) action.IsListening = false;
+        if (sender is Control { DataContext: HotkeyTarget target }) target.IsListening = false;
     }
 }

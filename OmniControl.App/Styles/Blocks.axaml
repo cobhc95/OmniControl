@@ -166,6 +166,65 @@
     </Style>
     <Style Selector="Border.steprow.failed"><Setter Property="BorderBrush" Value="{DynamicResource BrushDanger}" /></Style>
 
+    <!-- One numbered stage of a device's set-up (Pages/Devices/SetupStage): folded = a plain line; .open = outlined in the accent. The 1 px
+         edge and the padding are always there, so opening a stage never moves its header. Path.glyph.tickmark = a small drawn tick after a
+         done stage's title or on a pill whose job is done ("It's on now"). -->
+    <Style Selector="Border.stage">
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="{DynamicResource StagePadding}" />
+    </Style>
+    <Style Selector="Border.stage.open"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
+
+    <!-- A smart device's icon square (Pages/Devices/DeviceIconView, docs/mockups/device-icons.html): Border.devicon = the neutral square
+         (its lit colour wash is a second square the view lays over it), Path.glyph.devglyph = its drawn glyph (muted; the lit glyph takes
+         the device's colour). Button.devicon = a square that can be clicked (the header's, the icon pop-down's grid): no wash of its own,
+         a dashed accent edge (Rectangle.iconedge) on hover and keyboard focus, a solid one when .selected. Nothing moves. -->
+    <Style Selector="Border.devicon">
+        <Setter Property="Width" Value="{DynamicResource DeviceIconSize}" />
+        <Setter Property="Height" Value="{DynamicResource DeviceIconSize}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource DeviceIconCorner}" />
+        <Setter Property="Background" Value="{DynamicResource BrushHover}" />
+        <Setter Property="ClipToBounds" Value="True" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Path.glyph.devglyph">
+        <Setter Property="Width" Value="{DynamicResource DeviceIconGlyph}" />
+        <Setter Property="Height" Value="{DynamicResource DeviceIconGlyph}" />
+        <Setter Property="StrokeThickness" Value="1.6" />
+        <Setter Property="Stroke" Value="{DynamicResource BrushMuted}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.devicon">
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="{DynamicResource DeviceIconCorner}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.devicon:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.devicon:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Rectangle.iconedge">
+        <Setter Property="Stroke" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="StrokeThickness" Value="1" />
+        <Setter Property="StrokeDashArray" Value="3,2" />
+        <Setter Property="RadiusX" Value="6" />
+        <Setter Property="RadiusY" Value="6" />
+        <Setter Property="Opacity" Value="0" />
+    </Style>
+    <Style Selector="Button.devicon:pointerover Rectangle.iconedge, Button.devicon:focus-visible Rectangle.iconedge"><Setter Property="Opacity" Value="1" /></Style>
+    <Style Selector="Button.devicon.selected Rectangle.iconedge"><Setter Property="Opacity" Value="1" /><Setter Property="StrokeDashArray" Value="{x:Null}" /></Style>
+    <Style Selector="Path.glyph.tickmark">
+        <Setter Property="Width" Value="{DynamicResource MenuGlyphSize}" />
+        <Setter Property="Height" Value="{DynamicResource MenuGlyphSize}" />
+        <Setter Property="StrokeThickness" Value="1.75" />
+    </Style>
+
     <!-- The plain words of the sentence ("If", "then") -->
     <Style Selector="TextBlock.blockword">
         <Setter Property="Foreground" Value="{DynamicResource BrushMuted}" />
