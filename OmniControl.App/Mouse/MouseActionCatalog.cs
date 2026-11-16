@@ -1,4 +1,4 @@
-using OmniControl.App.Hotkeys;
+﻿using OmniControl.App.Hotkeys;
 using OmniControl.App.Presets;
 using OmniControl.App.Services;
 
@@ -139,6 +139,9 @@ public static class MouseActionCatalog
     // Desktop actions that make sense to repeat while the button is held (switching, zooming), unlike lock or show desktop.
     private static readonly string[] RepeatableDesktop = { "desktop.switch", "desktop.next", "desktop.previous", "desktop.left", "desktop.right", "desktop.zoomin", "desktop.zoomout" };
 
+    /// <summary>True for the action whose button press is held back while apps' autoscroll is blocked: "movement to scroll" that does not keep scrolling until pressed again.</summary>
+    public static bool HoldsClickBack(MouseAction action) => action.Id == MoveAsScroll && !action.Options.Bool(MouseOptions.ScrollSticky);
+
     /// <summary>The settings an action offers: its own, or the common "times / repeat" ones for actions that happen once per press.</summary>
     private static IReadOnlyList<ActionOption>? OptionsOf(string id, Home where)
     {
@@ -177,6 +180,7 @@ public static class MouseActionCatalog
         if (IsLayerAction(id)) return gesture ? (own ?? Array.Empty<ActionOption>()).Append(original).ToList() : own;
         // "Send a shortcut" is already a shortcut: a second one to send alongside it would only be a longer shortcut.
         var extras = id.StartsWith(Keys, StringComparison.Ordinal) ? new[] { original } : new[] { original, MouseOptions.AlsoSend };
+        if (id == MoveAsScroll && !gesture) extras = new[] { original, MouseOptions.AllowAutoscroll, MouseOptions.AlsoSend };
         return own is null ? extras : own.Concat(extras).ToList();
     }
 
@@ -253,7 +257,7 @@ public static class MouseActionCatalog
     /// </summary>
     public static PickChoice OmniEntry(HotkeyAction a, IReadOnlyList<ActionOption>? options = null, string? unavailable = null) =>
         new($"{Omni}:{a.Id}", a.Section, a.Title, Keywords: $"{OmniControl} {a.Keywords}", Options: options, Unavailable: unavailable, Heading: a.PickerHeading,
-            Place: a.SectionPlace, RemoveText: a.RemoveText, Renaming: a.Renaming, IsListed: a.IsListed, Icon: a.Icon);
+            Place: a.SectionPlace, RemoveText: a.RemoveText, Renaming: a.Renaming, IsListed: a.IsListed, Icon: a.ShownIcon);
 
     /// <summary>The settings of an OmniControl action: what it takes of its own (a program, how far a level moves, a power countdown), then the common "times / repeat" ones where repeating makes sense.</summary>
     private static IReadOnlyList<ActionOption> OmniOptions(HotkeyAction a)

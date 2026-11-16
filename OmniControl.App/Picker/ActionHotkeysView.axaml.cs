@@ -21,6 +21,11 @@ public partial class ActionHotkeysView : UserControl
         DetachedFromVisualTree += (_, _) => Follow(null);
     }
 
+    private async void OnChangeIconClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (_shown is { } pane) await pane.ChangeIconAsync(this);
+    }
+
     private void OnDataContextChanged(object? sender, EventArgs e) => Follow(DataContext as ActionHotkeys);
 
     private void Follow(ActionHotkeys? pane)

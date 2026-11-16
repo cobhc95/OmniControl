@@ -13,7 +13,7 @@ public sealed class DeviceRecord
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Name { get; set; } = string.Empty;
 
-    /// <summary>The icon (a <see cref="DeviceIcons"/> id; empty = the first method's template's, or the plug), its colour while on, and the user's own image (a file in <see cref="DeviceIcons.ImageFolder"/>; empty = none).</summary>
+    /// <summary>The icon (a library id or a user icon, <see cref="Icons.IconLibrary"/>; empty = the first method's template's, or the plug), its colour while on, and the user's own image (a file in <see cref="DeviceIcons.ImageFolder"/>; empty = none).</summary>
     public string Icon { get; set; } = string.Empty;
     public string IconColour { get; set; } = string.Empty;
     public string IconImage { get; set; } = string.Empty;

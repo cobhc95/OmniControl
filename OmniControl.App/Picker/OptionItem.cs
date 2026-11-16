@@ -1,4 +1,4 @@
-using OmniControl.App.Hotkeys;
+﻿using OmniControl.App.Hotkeys;
 using CommunityToolkit.Mvvm.ComponentModel;
 using OmniControl.App.Mouse;
 using OmniControl.App.Pages;
@@ -37,6 +37,14 @@ public sealed partial class OptionItem : ObservableObject
     public bool HasHeadingNote => IsHeading && Option.Hint.Length > 0;
     public string PickerTitle => $"Choose: {Option.Label}";
     public string Hint => Option.Hint;
+
+    /// <summary>False while the setting this row needs is off: the row is dimmed and its tooltip says why.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Opacity), nameof(Tip))]
+    private bool _available = true;
+
+    public double Opacity => Available ? 1 : 0.45;
+    public string? Tip => Available ? null : Option.NeedsReason;
 
     /// <summary>True while a number is being typed in instead of stepped (Enter or a double-click on it).</summary>
     [ObservableProperty] private bool _isTyping;

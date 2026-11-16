@@ -1,4 +1,4 @@
-using OmniControl.App.AppLists;
+﻿using OmniControl.App.AppLists;
 using OmniControl.App.Hotkeys;
 using System.Collections.ObjectModel;
 using OmniControl.App.Picker;
@@ -26,6 +26,7 @@ public sealed partial class MouseButtonItem : ObservableObject, IEditorItem, IHa
     private readonly Func<IReadOnlyList<string>> _read;
     private readonly Action<IReadOnlyList<string>> _write;
     private readonly ActionSlot.Callbacks _callbacks;
+    private readonly ISharedOptions? _shared;
 
     public MouseButton Button { get; }
 
@@ -129,8 +130,9 @@ public sealed partial class MouseButtonItem : ObservableObject, IEditorItem, IHa
     /// <param name="write">Stores the actions in order.</param>
     /// <param name="scope">The card's apps scope, or null when the card has none.</param>
     public MouseButtonItem(MouseButton button, string label, Func<IReadOnlyList<PickChoice>> firstChoices, Func<IReadOnlyList<PickChoice>> laterChoices,
-        Func<IReadOnlyList<string>> read, Action<IReadOnlyList<string>> write, AppScopeModel? scope = null)
+        Func<IReadOnlyList<string>> read, Action<IReadOnlyList<string>> write, AppScopeModel? scope = null, ISharedOptions? shared = null)
     {
+        _shared = shared;
         Scope = scope;
         if (scope is not null) scope.PropertyChanged += (_, _) =>
         {
@@ -224,8 +226,8 @@ public sealed partial class MouseButtonItem : ObservableObject, IEditorItem, IHa
     /// <summary>The card's own picker (the Default pill, Enter on the card, the cogwheel): the first action's, as before several actions existed.</summary>
     public PickerModel MenuFor(bool startInSettings) =>
         First is null
-            ? new PickerModel(PickChoice.Group(_first), _first[0], new Dictionary<string, string>(), startInSettings)
-            : new PickerModel(PickChoice.Group(_first), First.Choice, First.Values, startInSettings, First.Parameter);
+            ? new PickerModel(PickChoice.Group(_first), _first[0], new Dictionary<string, string>(), startInSettings, shared: _shared)
+            : new PickerModel(PickChoice.Group(_first), First.Choice, First.Values, startInSettings, First.Parameter, shared: _shared);
 
     public void Pick(PickResult pick) => PickSlot(0, pick);
 
@@ -233,12 +235,12 @@ public sealed partial class MouseButtonItem : ObservableObject, IEditorItem, IHa
     private PickerModel SlotMenu(int index, bool startInSettings)
     {
         var slot = Slots[index];
-        return new PickerModel(PickChoice.Group(ListFor(index)), slot.Choice, slot.Values, startInSettings, slot.Parameter);
+        return new PickerModel(PickChoice.Group(ListFor(index)), slot.Choice, slot.Values, startInSettings, slot.Parameter, shared: _shared);
     }
 
     /// <summary>The add chip's picker: the one-shot list (or the full list while the input has no action), asking for an action's text first.</summary>
     private PickerModel NewMenu() =>
-        new(PickChoice.Group(ListFor(Slots.Count)), null, new Dictionary<string, string>());
+        new(PickChoice.Group(ListFor(Slots.Count)), null, new Dictionary<string, string>(), shared: _shared);
 
     /// <summary>Takes a pick for the action at <paramref name="index"/> (a new last one when it is the count). Default as the first action clears the card.</summary>
     private void PickSlot(int index, PickResult pick)

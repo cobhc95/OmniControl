@@ -1,30 +1,37 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OmniControl.App.Controls;
+using OmniControl.App.Icons;
 using OmniControl.App.Picker;
-using OmniControl.App.Services;
 
 namespace OmniControl.App.Tray;
 
-// Edit mode (the foot's Edit): the sliders and tiles stay where they are, each with a remove cross; "+ slider" and "+ Add" go through the
-// Choose-the-action window over the live master lists. A right-click menu on any slider or tile (edit mode or not) removes it, changes
-// its icon and moves it. Every change is saved at once; the first change copies the defaults into tray.json.
+// Editing the panel: the foot's Edit shows a remove cross on every slider and tile and "+ slider"; "+ slider" and "+ Add" go through the
+// Choose-the-action window over the live master lists. Every slider and tile (edit mode or not) can be dragged to another place unless the
+// layout is locked, and has a right-click menu: Remove from panel, Change action…, Change icon…, Lock layout, Show in OmniControl. Every
+// change is saved at once; the first change copies the defaults into tray.json. An item of a pattern ("every smart device") is spelt out
+// before it is edited alone (TrayOrder).
 public sealed partial class TrayFlyoutModel
 {
-    private const string IconTitle = "Icon", OwnIcon = "Its own", RemoveWords = "Remove from panel", ChangeIconWords = "Change icon…";
+    private const string RemoveWords = "Remove from panel", ChangeActionWords = "Change action…", ChangeIconWords = "Change icon…",
+        LockWords = "Lock layout", ShowWords = "Show in OmniControl";
 
     [ObservableProperty, NotifyPropertyChangedFor(nameof(EditText))] private bool _isEditing;
 
     [RelayCommand]
     private void ToggleEdit() => IsEditing = !IsEditing;
 
+    /// <summary>"Lock layout": nothing can be dragged while it is on (panel-wide, saved).</summary>
+    public bool IsLocked => _settings.LockLayout;
+
     private List<TrayElement> SliderList => _settings.Sliders ??= TrayDefaults.Sliders.ToList();
     private List<TrayElement> TileList => _settings.Tiles ??= TrayDefaults.Tiles.ToList();
 
-    private List<TrayElement> ListOf(ITrayPanelItem item) => item.IsSlider ? SliderList : TileList;
-
     /// <summary>A cross, or the menu's Remove: the slider or tile goes out of the panel.</summary>
-    public void Remove(ITrayPanelItem item) => Edit(() => ListOf(item).Remove(item.Element));
+    public void Remove(ITrayPanelItem item) => EditList(item.IsSlider, (list, shown) => TrayOrder.Remove(list, shown, IndexOf(item)));
+
+    /// <summary>A drag ended: the slider or tile at <paramref name="from"/> now stands at <paramref name="to"/>.</summary>
+    public void Move(bool slider, int from, int to) => EditList(slider, (list, shown) => TrayOrder.Move(list, shown, from, to));
 
     /// <summary>"+ slider": the picker's title and list (every level state, live).</summary>
     public (string Title, PickerModel Model) SliderPicker() =>
@@ -33,6 +40,14 @@ public sealed partial class TrayFlyoutModel
     /// <summary>"+ tile" and the "+ Add" tile: every master action and every on/off state, live.</summary>
     public (string Title, PickerModel Model) TilePicker() =>
         TrayPicks.ForTile(_states.States, _hotkeys.Actions, _hotkeys.SectionOf, new TrayPanelMembership(() => TileList, e => Edit(() => TileList.Remove(e))));
+
+    /// <summary>"Change action…": the same picker as "+ slider" or "+ Add", at the item's own entry.</summary>
+    public (string Title, PickerModel Model) ChangePicker(ITrayPanelItem item)
+    {
+        var (title, model) = item.IsSlider ? SliderPicker() : TilePicker();
+        model.ShowEntry(TrayPicks.SpecOf(item.Target));
+        return (title, model);
+    }
 
     /// <summary>The picker's answer for "+ slider": a level state is added at the end.</summary>
     public void AddSlider(PickResult pick)
@@ -46,49 +61,61 @@ public sealed partial class TrayFlyoutModel
         if (TrayPicks.ElementOf(pick) is { } element) Edit(() => TileList.Add(element));
     }
 
-    /// <summary>The right-click menu of a slider or tile: Remove from panel, Change icon…, and a move one place each way where there is room.</summary>
-    /// <param name="showIcons">Shows the icon choices (a second menu), for "Change icon…".</param>
-    public IReadOnlyList<MenuRowItem> ItemMenu(ITrayPanelItem item, Action<IReadOnlyList<MenuRowItem>> showIcons)
+    /// <summary>The picker's answer for "Change action…": the new entry takes the item's place (and keeps an icon the user gave it).</summary>
+    public void Replace(ITrayPanelItem item, PickResult pick)
     {
-        var list = ListOf(item);
-        var at = list.IndexOf(item.Element);
-        var (back, forward) = item.IsSlider ? ("Move up", "Move down") : ("Move left", "Move right");
-        var rows = new List<MenuRowItem>
-        {
-            new(RemoveWords, string.Empty, false, string.Empty, new RelayCommand(() => Remove(item))),
-            new(ChangeIconWords, string.Empty, false, string.Empty, new RelayCommand(() => showIcons(IconMenu(item.Element)))),
-        };
-        if (at > 0) rows.Add(new MenuRowItem(back, string.Empty, false, string.Empty, new RelayCommand(() => Move(item, -1))));
-        if (at >= 0 && at < list.Count - 1) rows.Add(new MenuRowItem(forward, string.Empty, false, string.Empty, new RelayCommand(() => Move(item, 1))));
-        return rows;
+        if (TrayPicks.ElementOf(pick) is not { } element || (item.IsSlider && element.State is null)) return;
+        EditList(item.IsSlider, (list, shown) => TrayOrder.Replace(list, shown, IndexOf(item), element));
     }
 
-    /// <summary>One place earlier (-1) or later (1) in its list.</summary>
-    private void Move(ITrayPanelItem item, int step)
+    /// <summary>What "Change icon…" asks the icon picker: the item's name, its chosen icon and its entry's suggestions.</summary>
+    public IconRequest IconRequestFor(ITrayPanelItem item)
     {
-        var list = ListOf(item);
-        var at = list.IndexOf(item.Element);
-        if (at < 0 || at + step < 0 || at + step >= list.Count) return;
-        Edit(() =>
-        {
-            var moved = Reorder.Moved(list, new[] { at }, step > 0 ? at + 1 : at - 1);
-            list.Clear();
-            list.AddRange(moved);
-        });
+        var target = item.Target;
+        var suggested = target.Action?.SuggestedIcons ?? target.State?.SuggestedIcons;
+        var own = target.Action?.ShownIcon ?? target.State?.ShownIcon;
+        var chosen = Services.IconResources.Find(target.Element.Icon) is not null ? target.Element.Icon : null; // a section name saved before the library is no choice of an icon
+        return new IconRequest(target.Name, chosen ?? own, IconLibrary.Suggestions(suggested, own, target.Action?.Title ?? target.State?.Name));
     }
 
-    /// <summary>An element's icon choices: its own section's, or any section's.</summary>
-    private IReadOnlyList<MenuRowItem> IconMenu(TrayElement element)
+    /// <summary>"Change icon…": the shared icon picker over the window holding <paramref name="from"/>; null when cancelled.</summary>
+    public Task<IconPick?> ChooseIconAsync(Avalonia.Visual from, ITrayPanelItem item) => _icons.ChooseAsync(from, IconRequestFor(item));
+
+    /// <summary>The icon picker's answer: the item shows that icon (null: its own again).</summary>
+    public void SetIcon(ITrayPanelItem item, IconPick pick) => EditList(item.IsSlider, (list, shown) => TrayOrder.WithIcon(list, shown, IndexOf(item), pick.Value));
+
+    /// <summary>The right-click menu of a slider or tile; the window shows the pickers (they need it as their owner).</summary>
+    public IReadOnlyList<MenuRowItem> ItemMenu(ITrayPanelItem item, Action<ITrayPanelItem> changeAction, Action<ITrayPanelItem> changeIcon) => new[]
     {
-        var rows = new List<MenuRowItem>
-        {
-            MenuRowItem.Header(IconTitle),
-            new(OwnIcon, string.Empty, element.Icon is null, string.Empty, new RelayCommand(() => Edit(() => element.Icon = null))),
-        };
-        rows.AddRange(_hotkeys.Sections.Where(s => s.Icon is not null).Select(section =>
-            new MenuRowItem(section.Name, string.Empty, element.Icon == section.Name, string.Empty, new RelayCommand(() => Edit(() => element.Icon = section.Name)))));
-        return rows;
+        Row(RemoveWords, false, () => Remove(item)),
+        Row(ChangeActionWords, false, () => changeAction(item)),
+        Row(ChangeIconWords, false, () => changeIcon(item)),
+        Row(LockWords, IsLocked, ToggleLock),
+        Row(ShowWords, false, () => _showInApp(item.Target)),
+    };
+
+    private static MenuRowItem Row(string text, bool ticked, Action run) => new(text, string.Empty, ticked, string.Empty, new RelayCommand(run));
+
+    private void ToggleLock()
+    {
+        _settings.LockLayout = !_settings.LockLayout;
+        _settings.Save();
+        OnPropertyChanged(nameof(IsLocked));
     }
+
+    /// <summary>The item's place among the shown sliders or tiles (what <see cref="TrayOrder"/> counts in).</summary>
+    private int IndexOf(ITrayPanelItem item) =>
+        item.IsSlider ? Sliders.IndexOf((TraySliderItem)item) : Tiles.OfType<TrayTileItem>().ToList().IndexOf((TrayTileItem)item);
+
+    /// <summary>An edit of the slider or tile list, given the stored list and what it shows now.</summary>
+    private void EditList(bool slider, Func<IReadOnlyList<TrayElement>, IReadOnlyList<TrayTarget>, List<TrayElement>> change) => Edit(() =>
+    {
+        var list = slider ? SliderList : TileList;
+        var shown = slider ? Sliders.Select(s => s.Target).ToList() : Tiles.OfType<TrayTileItem>().Select(t => t.Target).ToList();
+        var changed = change(list, shown);
+        list.Clear();
+        list.AddRange(changed);
+    });
 
     /// <summary>One edit: made, saved at once, and shown.</summary>
     private void Edit(Action change)

@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using Avalonia.Controls;
 using Avalonia.Input;
 using OmniControl.App.Hotkeys;
+using OmniControl.App.Services;
 
 namespace OmniControl.App.Picker;
 
@@ -21,6 +23,9 @@ public partial class PickerWindow : Window
 
     /// <summary>Gives every picker window the keys part (once, at start-up).</summary>
     internal static void UseKeys(ManageMode keys) => _keys ??= keys;
+
+    /// <summary>Makes the window's panes once, unseen, after start-up, so the first opening does not wait for their layout code to load.</summary>
+    internal static void Warm() => _ = new PickerMenu();
 
     public PickerWindow()
     {
@@ -50,9 +55,11 @@ public partial class PickerWindow : Window
     }
 
     /// <summary>Opens the window over <paramref name="owner"/> and returns the chosen entry and settings, or null when cancelled.</summary>
-    public static Task<PickResult?> ChooseAsync(Window owner, string title, PickerModel model)
+    /// <param name="clock">Started at the click that opens it (the timing log); started here when null.</param>
+    public static Task<PickResult?> ChooseAsync(Window owner, string title, PickerModel model, Stopwatch? clock = null)
     {
         var window = new PickerWindow { Title = title, _model = model };
+        UiTiming.WhenOpened(window, "Choose", clock ?? Stopwatch.StartNew());
         window.WireKeys();
         // Over a topmost owner (the tray panel) it must be topmost too, or it sits behind it, looks inactive and cannot be dragged.
         window.Topmost = owner.Topmost;
@@ -94,9 +101,10 @@ public partial class PickerWindow : Window
     public static async Task ChooseForAsync(Control at, IPickerCard card, bool startInSettings, Control returnFocusTo, Control picker)
     {
         if (TopLevel.GetTopLevel(at) is not Window owner) return;
+        var clock = Stopwatch.StartNew();
         var model = card.MenuFor(startInSettings);
         model.Live += card.Pick;
-        if (await ChooseAsync(owner, $"Choose an action for {card.Label}", model) is { } picked) card.Pick(picked);
+        if (await ChooseAsync(owner, $"Choose an action for {card.Label}", model, clock) is { } picked) card.Pick(picked);
         model.Live -= card.Pick;
         (returnFocusTo.IsEffectivelyVisible ? returnFocusTo : picker).Focus(NavigationMethod.Directional);
     }

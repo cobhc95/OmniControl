@@ -43,6 +43,13 @@ public static class PointerShape
         return ok;
     }
 
+    /// <summary>True when the pointer showing now is Windows' hand (what browsers and most programs show over a link).</summary>
+    public static bool IsHandShown()
+    {
+        var info = new Native.VideoNative.CursorInfo { Size = Marshal.SizeOf<Native.VideoNative.CursorInfo>() };
+        return Native.VideoNative.GetCursorInfo(ref info) && info.Cursor != IntPtr.Zero && info.Cursor == LoadCursor(IntPtr.Zero, (IntPtr)(uint)Shape.Hand);
+    }
+
     /// <summary>Puts the user's own pointers back by reloading their cursor scheme.</summary>
     public static void Reset() => SpiNative.Set(SpiNative.SetCursors, 0, IntPtr.Zero, 0);
 }

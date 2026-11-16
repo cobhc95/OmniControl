@@ -1,4 +1,4 @@
-using OmniControl.App.Dialogs;
+﻿using OmniControl.App.Dialogs;
 using Avalonia.Threading;
 using OmniControl.App.AppLists;
 using OmniControl.App.Audio.Engine;
@@ -125,7 +125,7 @@ public sealed partial class MousePageViewModel : PageViewModel
             {
                 Settings.SetCardScope(button, scope);
                 _mouse.Apply();
-            }) : null);
+            }) : null, _mouse);
 
         var buttonCards = Buttons.Select(b => CardFor(b.Button, b.Label, scoped: true)).ToList();
         var gestureCards = TrackpadGestures.All.Select(g => CardFor(g.Button, g.Name, scoped: false)).ToList();
@@ -156,6 +156,8 @@ public sealed partial class MousePageViewModel : PageViewModel
             _ => mouse.StepLayer(InputFamily.Mouse)) { CoveredByMousePicker = true });
         hotkeys.Register(new HotkeyAction("mouse.trackpad.layer.next", "Next trackpad layer", Title, "trackpad touchpad gestures layer preset switch next",
             _ => mouse.StepLayer(InputFamily.Trackpad)) { CoveredByMousePicker = true });
+        hotkeys.Register(new HotkeyAction(MouseService.AutoscrollId, "Toggle app autoscroll", Title, "middle click autoscroll scroll browser block apps",
+            _ => _mouse.ToggleBlockAutoscroll()));
         RegisterPointerActions(hotkeys);
         // Last: a preset group's card is named after the page group it belongs to, and a layer with a saved shortcut gets its action
         // after the page's own actions.

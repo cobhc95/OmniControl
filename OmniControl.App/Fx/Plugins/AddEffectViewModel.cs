@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OmniControl.App.Audio;
+using OmniControl.App.Services;
 
 namespace OmniControl.App.Fx.Plugins;
 
@@ -90,15 +91,9 @@ public sealed partial class AddEffectViewModel : ObservableObject
 
     private void Refresh()
     {
-        var words = Query.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var keep = Selected;
-        Results.Clear();
-        foreach (var e in _library.All())
-        {
-            if (Kind != AllKinds && e.Format != Kind) continue;
-            var haystack = $"{e.Name} {e.Format} {e.Vendor} {e.Description}";
-            if (words.All(w => haystack.Contains(w, StringComparison.OrdinalIgnoreCase))) Results.Add(e);
-        }
+        var found = _library.All().Where(e => (Kind == AllKinds || e.Format == Kind) && TextMatch.Any(Query, e.Name, e.Format, e.Vendor, e.Description)).ToList();
+        ListDiff.Apply(Results, found, e => e);
         Selected = keep is not null && Results.Contains(keep) ? keep : Results.FirstOrDefault();
     }
 }

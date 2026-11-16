@@ -80,10 +80,12 @@ public sealed class FxWindowService
 
         FxWindow? window = null;
         FxWindowViewModel? vm = null;
+        var clock = System.Diagnostics.Stopwatch.StartNew();
         try
         {
             vm = new FxWindowViewModel(_mixer, _engine, _support, key, CreateChain(key, () => window));
             window = new FxWindow { DataContext = vm };
+            UiTiming.WhenOpened(window, "FX", clock);
             // Plug-in editors are taken out while the window still exists (both plug-in formats ask for that), so this is Closing, not Closed.
             window.Closing += (_, _) => vm.Dispose();
             window.Activated += (_, _) => _lastActive = id;

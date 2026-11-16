@@ -1,4 +1,4 @@
-using OmniControl.App.Hotkeys;
+﻿using OmniControl.App.Hotkeys;
 using OmniControl.App.Services;
 using OmniControl.Core.Engine.Mouse;
 
@@ -18,6 +18,10 @@ public static class MouseOptions
     // Opt-in extras for almost every action: let the input's own action through (a button's click, Windows' own gesture), and/or send a shortcut with it.
     // One setting ("original"), worded by the kind of input: a trackpad gesture is never swallowed, so for it this means "do not turn Windows' gesture off".
     public static readonly ActionOption KeepOriginal = ActionOption.Toggle("original", "Also send the button's normal click");
+    // The one switch of "Block apps' middle-click autoscroll" as an action's row (ON = let the app's autoscroll start = not blocked). It is a
+    // global setting kept once in MouseSettings (MouseService is its ISharedOptions), so every button using the action shows the same value.
+    public static readonly ActionOption AllowAutoscroll = ActionOption.Toggle("autoscroll", "Let the app's own autoscroll start").SharedSetting()
+        .NeedsOn(KeepOriginal, "Only matters while the button's normal click is also sent.");
     public static readonly ActionOption KeepWindowsGesture = KeepOriginal with { Label = "Also let Windows do its own gesture" };
     public static readonly ActionOption AlsoSend = ActionOption.Text("also", "Also send this shortcut", "", "Ctrl+C");
 

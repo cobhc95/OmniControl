@@ -56,9 +56,6 @@ public sealed partial class PickerModel
     private bool PassesKeyFilter(PickChoice choice) =>
         (!OnlyWithKey || !ListsActions || KeysOf(choice) is { Count: > 0 }) && (!OnlyInPanel || IsInPanel(choice));
 
-    /// <summary>A search word matches one of the entry's keys ("ctrl+o", or the chord pressed in the search box).</summary>
-    private bool KeyMatches(PickChoice choice, string word) => KeysOf(choice) is { } keys && keys.Any(k => TextMatch.Any(word, k));
-
     private void SyncHotkeys()
     {
         Hotkeys?.Dispose();
@@ -69,12 +66,10 @@ public sealed partial class PickerModel
     public void RefreshKeys()
     {
         var keep = ActiveChoice;
-        _suppressSync = true;
-        Actions = Build();
-        _suppressSync = false;
-        var at = keep is null ? -1 : Actions.ToList().FindIndex(r => r.Choice?.Spec == keep.Spec);
-        if (at >= 0 && at == ActionIndex) return;
-        ActionIndex = at >= 0 ? at : FirstEntry();
+        _index = null; // the keys are searched too
+        var rows = Build();
+        var at = keep is null ? -1 : IndexIn(rows, keep.Spec);
+        ShowRows(rows, () => at >= 0 ? at : FirstEntry(), sync: at < 0); // the same entry keeps its settings pane (a key may be being typed there)
     }
 
     /// <summary>Opens the entry with this <see cref="PickChoice.Spec"/>: its section, the entry highlighted (the search and the filter left).</summary>
@@ -85,13 +80,14 @@ public sealed partial class PickerModel
         OnlyWithKey = false;
         Query = string.Empty;
         SectionIndex = section;
-        var at = Actions.ToList().FindIndex(r => r.Choice?.Spec == spec);
+        var at = IndexIn(Actions, spec);
         if (at >= 0) ActionIndex = at;
     }
 
     /// <summary>Lets go of the hotkey pane and of the list it follows (the window closes).</summary>
     public void Release()
     {
+        _search.Cancel();
         Hotkeys?.Dispose();
         if (_panel is not null) _panel.Changed -= OnPanelChanged;
         StopFollowing();

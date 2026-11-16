@@ -16,8 +16,9 @@ public sealed partial class DeviceService
         var runtime = RuntimeOf(device);
         _states.Register(new StateEntry(StateId(device), DisplayName(device), Category, StateKind.OnOff,
             () => runtime.IsOn is { } on ? StateValue.Of(on, runtime.KnownAt) : null, HowKnown,
-            Keywords: $"smart device plug bulb power {device.Name}", Icon: IconOf(device).Resource,
-            Set: value => _ = RunAsync(device, value.Number is { } on && on != 0 ? DevicePower.On : DevicePower.Off)));
+            Keywords: $"smart device plug bulb power {device.Name}", Icon: IconOf(device),
+            Set: value => _ = RunAsync(device, value.Number is { } on && on != 0 ? DevicePower.On : DevicePower.Off),
+            Recheck: new StateRecheck(() => CanCheckByScript(device), () => CheckStateAsync(device, scriptsOnly: true))));
     }
 
     private void ForgetState(DeviceRecord device) => _states.Unregister(StateId(device));

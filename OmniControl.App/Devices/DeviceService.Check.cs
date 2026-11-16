@@ -8,13 +8,17 @@ namespace OmniControl.App.Devices;
 // emulator hidden and reads the taught state off the app's screen. Nothing is tapped or switched.
 public sealed partial class DeviceService
 {
-    /// <summary>Reads the state now and updates what is known; the result is also in <see cref="DeviceRuntime"/> and the log. Null when it worked, otherwise one plain sentence.</summary>
-    public async Task<string?> CheckStateAsync(DeviceRecord device)
+    /// <summary>
+    /// Reads the state now and updates what is known; the result is also in <see cref="DeviceRuntime"/> and the log. Null when it worked,
+    /// otherwise one plain sentence. <paramref name="scriptsOnly"/>: only the Scripts methods are asked (the tray panel's live state never
+    /// wakes an emulator).
+    /// </summary>
+    public async Task<string?> CheckStateAsync(DeviceRecord device, bool scriptsOnly = false)
     {
         var runtime = RuntimeOf(device);
         var name = DisplayName(device);
         if (runtime.Busy) return null; // a command is running and will say the state itself
-        var methods = ReadyMethods(device);
+        var methods = ReadyMethods(device).Where(m => !scriptsOnly || !m.IsSimulation).ToList();
         if (methods.Count == 0) return CheckFailed(runtime, name, "no method is set up yet.");
         runtime.Checking = true;
         runtime.Busy = true;
@@ -51,6 +55,9 @@ public sealed partial class DeviceService
             runtime.Busy = false;
         }
     }
+
+    /// <summary>A Scripts method is ready, so the state can be read quickly without waking an emulator.</summary>
+    public bool CanCheckByScript(DeviceRecord device) => ReadyMethods(device).Any(m => !m.IsSimulation);
 
     private async Task<Attempt> CheckScriptAsync(MethodRecord method)
     {

@@ -104,6 +104,7 @@ public partial class PickerMenu : UserControl
     /// <summary>Uses the highlighted entry (a list's button runs instead). Nothing happens when it can't be used.</summary>
     private void UseHighlighted(PickerModel model)
     {
+        model.Settle();
         // A text being typed is taken first (a text setting commits when its box loses focus).
         if (model.IsManaging && model.ActiveChoice is { Command: null })
         {
@@ -139,6 +140,7 @@ public partial class PickerMenu : UserControl
                 UseHighlighted(model);
                 return true;
             case Key.Tab:
+                model.Settle();
                 if (model.HasHotkeys) HotkeyStops().FirstOrDefault()?.Focus(NavigationMethod.Tab);
                 else model.EnterSettings(); // the only stop is the search box, so Tab is free to move into the settings
                 return true;

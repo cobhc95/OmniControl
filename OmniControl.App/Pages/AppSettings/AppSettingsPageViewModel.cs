@@ -100,8 +100,8 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
         Items.Add(_scan);
         Items.Add(_about);
         ReadStartup();
-        hotkeys.Register(new HotkeyAction("app.show", "Open OmniControl", Title, "show window open tray restore", _ => AppLifecycle.RequestShow()) { NeverBlock = true });
-        hotkeys.Register(new HotkeyAction("app.quit", "Quit OmniControl", Title, "exit quit close stop tray", _ => AppLifecycle.RequestQuit()));
+        hotkeys.Register(new HotkeyAction("app.show", "Open OmniControl", Title, "show window open tray restore", _ => AppLifecycle.RequestShow()) { NeverBlock = true, SuggestedIcons = new[] { "app", "home" } });
+        hotkeys.Register(new HotkeyAction("app.quit", "Quit OmniControl", Title, "exit quit close stop tray", _ => AppLifecycle.RequestQuit()) { SuggestedIcons = new[] { "power", "lock" } });
         hotkeys.Register(new HotkeyAction("app.plugins.scan", "Scan for plug-ins", Title, "plug-in plugin vst vst2 vst3 scan search folders",
             _ => StartScan()));
     }

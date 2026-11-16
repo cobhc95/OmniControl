@@ -76,7 +76,7 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
     });
 
     /// <summary>How the effects engine runs this chain and what it really does with it (the line the Volume row shows as its Method chip's tooltip).</summary>
-    public string EngineText => _engine.StatusOf(_key).LineFor(_engine.MethodFor(_key));
+    public string EngineText => _engine.StatusOf(_key).LineFor(_engine.MethodFor(_key), FxOn);
 
     /// <summary>The row's effects are switched on (the toolbar's switch and Options > Chain on; the Volume row says "N effects, off" when not).</summary>
     public bool FxOn

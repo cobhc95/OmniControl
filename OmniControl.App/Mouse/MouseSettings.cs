@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using OmniControl.App.AppLists;
 using OmniControl.App.Services;
 using OmniControl.Core.Engine.Mouse;
@@ -52,6 +52,12 @@ public sealed class MouseSettings
 
     /// <summary>A button's own apps scope, by the button's name ("Back"); a button without an entry follows <see cref="ButtonsScope"/>.</summary>
     public Dictionary<string, AppScopeSetting> CardScopes { get; set; } = new();
+
+    /// <summary>
+    /// True: a middle press no action uses is swallowed unless it is over a link, tab, button or menu item, so an app's own middle-click
+    /// autoscroll never starts; and "Change movement to scroll" holds its button back (see <c>MouseService</c>). One setting for every button.
+    /// </summary>
+    public bool BlockAutoscroll { get; set; } = true;
 
     /// <summary>Only read from files saved while the program still had profiles; <see cref="Upgrade"/> keeps the default profile's mappings and drops the rest.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -122,6 +128,7 @@ public sealed class MouseSettings
         Profiles = other.Profiles;
         ButtonsScope = other.ButtonsScope;
         CardScopes = other.CardScopes;
+        BlockAutoscroll = other.BlockAutoscroll;
     }
 
     /// <summary>The apps scope in force for a mouse button: its own, else its group's; null when it works in every app.</summary>

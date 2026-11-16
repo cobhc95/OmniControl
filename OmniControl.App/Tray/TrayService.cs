@@ -20,7 +20,6 @@ public sealed class TrayService : IDisposable
     private readonly Func<string, bool> _run;
     private readonly Action _open;
     private readonly TrayClicks _clicks = new();
-    private readonly TrayLog _log = new();
     private TrayFlyoutWindow? _window;
     private PixelPoint _click;
 
@@ -70,8 +69,7 @@ public sealed class TrayService : IDisposable
     private void ShowFlyout(Stopwatch timer)
     {
         Window().ShowAt(_click);
-        var shown = timer.ElapsedMilliseconds;
-        Dispatcher.UIThread.Post(() => _log.Write($"Click to shown {shown} ms, to first frame {timer.ElapsedMilliseconds} ms"), DispatcherPriority.Loaded);
+        UiTiming.Shown("Tray panel", timer);
     }
 
     /// <summary>The menu again from the master list: one group after another with a thin line between, a toggle with its tick.</summary>

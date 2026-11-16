@@ -4,30 +4,17 @@
              xmlns:c="using:OmniControl.App.Controls"
              x:Class="OmniControl.App.Pages.Devices.DeviceIconView"
              x:DataType="vm:DeviceItem">
-    <!-- A device's icon square (docs/mockups/device-icons.html): its drawn glyph or own picture, lit in its colour while the device reads on.
-         With Pickable (the detail header) a click opens the icon pop-down: the master list's glyphs, the colour dots (Pages/Swatches) and
-         "Own image…" (PathPicker). Mouse first (AGENTS.md rule 5); the square itself is reachable and opens the pop-down with Enter or Space. -->
+    <!-- A device's icon square (docs/mockups/device-icons.html): its icon (Controls/IconGlyph, from the icon library or the user's own) or a
+         picture picked before the library, lit in its colour while the device reads on. With Pickable (the detail header) a click opens the
+         pop-down: the colour dots (Pages/Swatches) and "Change icon…", which opens the shared icon picker (docs/mockups/icon-library.html).
+         Mouse first (AGENTS.md rule 5); the square itself is reachable and opens the pop-down with Enter or Space. -->
     <FlyoutBase.AttachedFlyout>
         <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft" Opened="OnMenuOpened">
             <StackPanel x:Name="Menu" x:DataType="vm:DeviceItem" Spacing="6">
-                <TextBlock Classes="menutext" Text="Icon" />
-                <ItemsControl ItemsSource="{Binding IconChoices}">
-                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="8" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:IconChoice">
-                            <Button Classes="devicon" Classes.selected="{Binding IsSelected}" Command="{Binding PickCommand}" Click="OnIconPicked" ToolTip.Tip="{Binding Name}" Margin="2">
-                                <Grid>
-                                    <Border Classes="devicon"><Path Classes="glyph devglyph" Data="{Binding Data}" /></Border>
-                                    <Rectangle Classes="iconedge" />
-                                </Grid>
-                            </Button>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
                 <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
                     <TextBlock Classes="menutext" Text="Colour" VerticalAlignment="Center" />
                     <ContentControl x:Name="Dots" Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Center" />
-                    <Button Grid.Column="2" Classes="pill" Content="Own image…" Click="OnOwnImage" ToolTip.Tip="Use a picture of your own; it is copied into OmniControl's data." />
+                    <Button Grid.Column="2" Classes="pill" Content="Change icon…" Click="OnChangeIcon" ToolTip.Tip="Pick an icon from the library, or one of your own" />
                 </Grid>
             </StackPanel>
         </c:ListMenuFlyout>
@@ -37,8 +24,8 @@
             <Border Classes="devicon">
                 <Panel>
                     <Border Background="{Binding IconWash}" IsVisible="{Binding IsLit}" />
-                    <Path Classes="glyph devglyph" Data="{Binding IconData}" IsVisible="{Binding ShowsGlyph}" />
-                    <Path Classes="glyph devglyph" Data="{Binding IconData}" Stroke="{Binding IconInk}" IsVisible="{Binding IsLitGlyph}" />
+                    <c:IconGlyph Classes="devglyph" Source="{Binding IconShape}" IsVisible="{Binding ShowsGlyph}" />
+                    <c:IconGlyph Classes="devglyph" Source="{Binding IconShape}" Foreground="{Binding IconInk}" IsVisible="{Binding IsLitGlyph}" />
                     <Image Source="{Binding IconBitmap}" Stretch="UniformToFill" IsVisible="{Binding HasImage}" />
                 </Panel>
             </Border>

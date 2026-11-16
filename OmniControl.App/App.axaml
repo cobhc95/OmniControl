@@ -176,6 +176,13 @@
         <x:Double x:Key="DeviceIconSize">26</x:Double>
         <x:Double x:Key="DeviceIconGlyph">15</x:Double>
         <CornerRadius x:Key="DeviceIconCorner">6</CornerRadius>
+        <!-- The icon library (Controls/IconGlyph, Icons/IconPickerWindow, docs/mockups/icon-library.html): a glyph's size where nothing sets it,
+             the picker window, its 34 px cells and the glyph in them -->
+        <x:Double x:Key="IconGlyphSize">16</x:Double>
+        <x:Double x:Key="IconPickerWidth">384</x:Double>
+        <x:Double x:Key="IconPickerHeight">520</x:Double>
+        <x:Double x:Key="IconCellSize">34</x:Double>
+        <x:Double x:Key="IconCellGlyph">20</x:Double>
         <x:Double x:Key="MenuRowLine">18</x:Double>
         <x:Double x:Key="MenuTagGap">4</x:Double>
         <Thickness x:Key="MenuTagLineMargin">0,3,0,0</Thickness>
@@ -243,11 +250,15 @@
         <x:Double x:Key="TrayGlyphSize">16</x:Double>
         <Thickness x:Key="TrayTileCross">0,-6,-6,0</Thickness>
         <x:Double x:Key="TrayPartGap">10</x:Double>
+        <x:Double x:Key="TrayFadedOpacity">0.5</x:Double>
+        <x:Double x:Key="TrayCheckDot">6</x:Double>
+        <Thickness x:Key="TrayCheckDotMargin">6</Thickness>
     </Application.Resources>
 
     <Application.Styles>
         <FluentTheme />
         <StyleInclude Source="/Styles/Brushes.axaml" />
+        <StyleInclude Source="/Styles/Icons.axaml" />
         <StyleInclude Source="/Styles/Theme.axaml" />
         <StyleInclude Source="/Styles/Sliders.axaml" />
         <StyleInclude Source="/Styles/Blocks.axaml" />

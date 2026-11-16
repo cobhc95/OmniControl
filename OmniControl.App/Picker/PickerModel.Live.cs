@@ -36,6 +36,7 @@ public sealed partial class PickerModel
         var keepSpec = ActiveChoice?.Spec;
         var groups = PickChoice.Group(live.Read());
         _groups = groups.Select(g => new PickGroup(g.Name, g.Choices.ToList(), g.Place)).ToList();
+        _index = null;
         if (_current is { } current) _current = _groups.SelectMany(g => g.Choices).FirstOrDefault(c => c.Spec == current.Spec) ?? current;
         _sections = null;
         _recentChoices = null;
@@ -44,9 +45,9 @@ public sealed partial class PickerModel
         _replacing = true;
         var section = keepSection is null ? -1 : _groups.FindIndex(g => g.Name == keepSection);
         if (section >= 0) SectionIndex = section;
-        Actions = Build();
-        var at = keepSpec is null ? -1 : Actions.ToList().FindIndex(r => r.Choice?.Spec == keepSpec);
-        ActionIndex = at >= 0 ? at : FirstEntry();
+        var rows = Build();
+        var at = keepSpec is null ? -1 : IndexIn(rows, keepSpec);
+        ShowRows(rows, () => at >= 0 ? at : FirstEntry(), sync: false);
         _replacing = false;
         OnPropertyChanged(nameof(SectionHighlight)); // the sections list was read anew: its selection is shown again
 

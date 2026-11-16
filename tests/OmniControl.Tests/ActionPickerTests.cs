@@ -86,6 +86,7 @@ public class ActionPickerTests
         var model = new PickerModel(PickChoice.Group(choices), null, new Dictionary<string, string>()) { Noun = "trigger" };
 
         model.Query = "up";
+        model.Settle(); // the search runs off the UI thread; a key that acts on the list takes its result at once
 
         Assert.Equal(new[] { "Brightness up", "Volume up" }, model.Actions.Select(a => a.Text));
         Assert.Equal(new[] { "Displays", "Volume" }, model.Actions.Select(a => a.Hint));

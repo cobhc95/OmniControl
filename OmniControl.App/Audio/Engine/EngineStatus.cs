@@ -52,9 +52,11 @@ public sealed record EngineStatus(EngineState State, string Text, string? Detail
     /// first and alone (nothing is implied to run); with effects off the method is only what would happen.
     /// </summary>
     /// <param name="method">How the row's effects run (<see cref="EffectsEngine.MethodFor"/>).</param>
-    public string LineFor(ModeMethod method) => State switch
+    /// <param name="fxOn">The row's effects switch is on: an idle engine then says nothing is running yet, never "off".</param>
+    public string LineFor(ModeMethod method, bool fxOn = false) => State switch
     {
         EngineState.Off when Text.Length > 0 => Text,
+        EngineState.Off when fxOn => $"Effects on · nothing running yet: {method.How}, {method.Delay}",
         EngineState.Off => $"Effects off · when on: {method.How}, {method.Delay}",
         EngineState.Failed or EngineState.Unavailable => Detail is null ? Text : $"{Text} · {Detail}",
         _ => $"Effects {method.How} · {Text}",

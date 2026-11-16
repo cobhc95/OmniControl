@@ -1,5 +1,6 @@
 using Avalonia.Threading;
 using OmniControl.App.Hotkeys;
+using OmniControl.App.Icons;
 using OmniControl.App.Osd;
 using OmniControl.Core.Engine.Screenshot;
 
@@ -39,8 +40,8 @@ public static class ScreenshotActions
 
     private static readonly Dictionary<ShotKind, string> Icons = new()
     {
-        [ShotKind.Area] = "ShotAreaIcon", [ShotKind.Window] = "ShotWindowIcon", [ShotKind.Screen] = "ShotScreenIcon",
-        [ShotKind.AllScreens] = "ShotAllScreensIcon", [ShotKind.Record] = "VideoCameraIcon",
+        [ShotKind.Area] = IconLibrary.Area, [ShotKind.Window] = IconLibrary.Window, [ShotKind.Screen] = IconLibrary.Screen,
+        [ShotKind.AllScreens] = IconLibrary.Desktop, [ShotKind.Record] = IconLibrary.Video,
     };
 
     private static HotkeyAction Make(string id, string title, ShotKind kind, string keywords, ScreenshotService service, ScreenshotSettings settings, bool hevc) =>

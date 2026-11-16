@@ -134,3 +134,10 @@ Licence: Proprietary (Cockos Incorporated); no code, image or file of it is used
 Copyright: Copyright (c) Cockos Incorporated
 Website: https://www.reaper.fm
 Used for: The equaliser editor's layout (graph with numbered points, band tabs, type list) follows the way ReaEQ presents an equaliser. ReaEQ and REAPER are trademarks of Cockos Incorporated.
+
+Name: Tabler Icons
+Version: 3.19.0
+Licence: MIT
+Copyright: Copyright (c) 2020-2024 Paweł Kuna
+Website: https://tabler.io/icons
+Used for: The 100 built-in icons of the icon library (tray tiles, smart devices, actions); their outline path data is converted into Styles/Icons.axaml. Its MIT licence text is kept unchanged in third_party/tabler-icons/LICENSE.

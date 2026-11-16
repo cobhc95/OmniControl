@@ -1,4 +1,3 @@
-using OmniControl.App.Services;
 namespace OmniControl.App.Pages;
 
 /// <summary>One editable setting shown in the global search results. Pages make them with <see cref="PageViewModel"/>'s Entry.</summary>
@@ -21,6 +20,6 @@ public sealed class SearchEntry
     public string Label => (Editor as IEditorItem)?.Label ?? string.Empty;
     public string Keywords { get; init; } = string.Empty;
 
-    public bool Matches(string query) =>
-        TextMatch.Any(query, Title, Heading, Label, Keywords);
+    /// <summary>What the search matches (<see cref="TextMatch"/>).</summary>
+    public IEnumerable<string?> SearchFields => new[] { Title, Heading, Label, Keywords };
 }

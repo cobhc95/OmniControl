@@ -355,4 +355,13 @@ public static class Timing
     /// the click does not open it again, so the icon opens and closes the flyout like Windows' own tray flyouts.
     /// </summary>
     public static readonly TimeSpan TrayReopenGrace = TimeSpan.FromMilliseconds(400);
+
+    /// <summary>While the tray panel is open, a smart device that a Scripts method can read is read again this often (Tray/TrayFlyoutModel.Rechecks).</summary>
+    public static readonly TimeSpan TrayRecheckEvery = TimeSpan.FromSeconds(15);
+
+    /// <summary>A tile's state is never read again sooner than this after the last read was asked for (a quick re-open of the panel asks nothing).</summary>
+    public static readonly TimeSpan TrayRecheckMinGap = TimeSpan.FromSeconds(10);
+
+    /// <summary>A key typed into a search box this soon after another waits this long before its search runs (the first letter is searched at once; <see cref="SearchRunner{T}"/>).</summary>
+    public static readonly TimeSpan SearchDebounce = TimeSpan.FromMilliseconds(60);
 }

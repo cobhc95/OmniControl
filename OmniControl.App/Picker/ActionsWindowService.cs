@@ -31,6 +31,7 @@ public sealed class ActionsWindowService : IDisposable
     private readonly Action<string?, string?> _openPresets;
     private readonly Func<DialogMessage, Task<bool>> _ask;
     private readonly Action<string> _showPage;
+    private readonly Func<Avalonia.Visual, HotkeyAction, Task> _changeIcon;
     private readonly SingleWindow<PickerWindow> _window;
     private PickerModel? _model;
 
@@ -38,11 +39,12 @@ public sealed class ActionsWindowService : IDisposable
     /// <param name="openPresets">Opens the preset manager at a section and group ("Manage presets...").</param>
     /// <param name="ask">Shows a short message with a confirm button; true when confirmed.</param>
     /// <param name="showPage">Opens the sidebar page with this title ("Show on its page").</param>
+    /// <param name="changeIcon">The shared icon picker for an action ("Change icon…" in its settings).</param>
     /// <param name="report">Says on the footer when the window cannot be opened.</param>
     public ActionsWindowService(HotkeyRegistry registry, PresetGroups presets, Action<string?, string?> openPresets,
-        Func<DialogMessage, Task<bool>> ask, Action<string> showPage, Action<string> report)
+        Func<DialogMessage, Task<bool>> ask, Action<string> showPage, Func<Avalonia.Visual, HotkeyAction, Task> changeIcon, Action<string> report)
     {
-        (_registry, _openPresets, _ask, _showPage) = (registry, openPresets, ask, showPage);
+        (_registry, _openPresets, _ask, _showPage, _changeIcon) = (registry, openPresets, ask, showPage, changeIcon);
         _window = new SingleWindow<PickerWindow>(report);
         _sets = new HotkeySets(registry);
         var setPresets = new HotkeySetPresets(_sets);
@@ -56,6 +58,7 @@ public sealed class ActionsWindowService : IDisposable
         ClearAllCommand = new AsyncRelayCommand(ClearAllAsync);
         registry.BindingsSaved += OnBindingsSaved;
         PickerWindow.UseKeys(Keys);
+        if (!StartupMode.Inert) DrawFirst.ThenWire(PickerWindow.Warm);
     }
 
     /// <summary>What "Restore defaults" puts back (every key removed, every action on all its devices); the shell wires it like a page's.</summary>
@@ -83,11 +86,12 @@ public sealed class ActionsWindowService : IDisposable
     public void Open(string? actionId = null)
     {
         if (_window.Current is null)
-        {
-            _model = new PickerModel(PickChoice.Group(MouseActionCatalog.ManageChoices(_registry.PickerActions)), null, new Dictionary<string, string>(),
-                manage: Keys);
-            _window.Show(() => PickerWindow.Manage(Title, _model, this), _ => Closed(), $"Couldn't open {Title}");
-        }
+            _window.Show(() =>
+            {
+                _model = new PickerModel(PickChoice.Group(MouseActionCatalog.ManageChoices(_registry.PickerActions)), null, new Dictionary<string, string>(),
+                    manage: Keys);
+                return PickerWindow.Manage(Title, _model, this);
+            }, _ => Closed(), $"Couldn't open {Title}");
         else _window.Current.Activate();
         if (actionId is not null) _model?.ShowEntry($"{MouseActionCatalog.Omni}:{actionId}");
     }
@@ -101,7 +105,7 @@ public sealed class ActionsWindowService : IDisposable
 
     private IReadOnlyList<string>? KeysOf(PickChoice choice) => ActionOf(choice)?.Keys;
 
-    private ActionHotkeys? PaneFor(PickChoice choice) => ActionOf(choice) is { } action ? new ActionHotkeys(action, _registry, _showPage) : null;
+    private ActionHotkeys? PaneFor(PickChoice choice) => ActionOf(choice) is { } action ? new ActionHotkeys(action, _registry, _showPage, _changeIcon) : null;
 
     private void OnBindingsSaved() => Restorer?.Refresh();
 

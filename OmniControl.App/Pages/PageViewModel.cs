@@ -69,6 +69,9 @@ public abstract class PageViewModel : ObservableObject
     /// </summary>
     public virtual void OnWindowShownChanged(bool shown) { }
 
+    /// <summary>"Show in OmniControl" (the tray panel) opened this page for one of its states: the page selects or brings forward what owns it (a smart device); nothing by default.</summary>
+    public virtual void Reveal(string stateId) { }
+
     /// <summary>Called on every page when Windows reports that the displays changed (one plugged in or removed, a resolution change).</summary>
     public virtual void OnDisplaysChanged() { }
 }

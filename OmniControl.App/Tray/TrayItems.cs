@@ -1,4 +1,3 @@
-using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OmniControl.App.Controls;
@@ -7,10 +6,10 @@ using OmniControl.App.States;
 
 namespace OmniControl.App.Tray;
 
-/// <summary>A slider or tile of the flyout and the stored element it comes from (what edit mode removes, moves and gives another icon).</summary>
+/// <summary>A slider or tile of the flyout and what it shows: the stored element it comes from and the action and state found for it (what its menu removes, moves, replaces and gives another icon).</summary>
 public interface ITrayPanelItem
 {
-    TrayElement Element { get; }
+    TrayTarget Target { get; }
     bool IsSlider { get; }
 }
 
@@ -24,9 +23,9 @@ public sealed partial class TraySliderItem : ObservableObject, ITrayPanelItem
     private readonly StateEntry? _choice;
     private bool _syncing;
 
-    public TraySliderItem(TrayTarget target, Geometry? icon, Func<string, StateValue?> now)
+    public TraySliderItem(TrayTarget target, IconImage? icon, Func<string, StateValue?> now)
     {
-        Element = target.Element;
+        Target = target;
         _state = target.State!;
         _choice = target.Choice;
         Name = target.Name;
@@ -34,11 +33,11 @@ public sealed partial class TraySliderItem : ObservableObject, ITrayPanelItem
         Read(now);
     }
 
-    public TrayElement Element { get; }
+    public TrayTarget Target { get; }
     public bool IsSlider => true;
     public string Id => _state.Id;
     public string Name { get; }
-    public Geometry? Icon { get; }
+    public IconImage? Icon { get; }
     /// <summary>The state's name, and the full device name when the chip shows its short one.</summary>
     public string Tip => HasChoice && FullChoice.Length > 0 ? $"{_state.Name} - {FullChoice}" : _state.Name;
     public int Minimum => _state.Min;
@@ -97,7 +96,7 @@ public sealed partial class TrayTileItem : ObservableObject, ITrayPanelItem
     private readonly TrayTarget _target;
     private readonly Action<string> _runAction;
 
-    public TrayTileItem(TrayTarget target, Geometry? icon, Func<string, StateValue?> now, Action<string> runAction)
+    public TrayTileItem(TrayTarget target, IconImage? icon, Func<string, StateValue?> now, Action<string> runAction)
     {
         _target = target;
         _runAction = runAction;
@@ -106,17 +105,30 @@ public sealed partial class TrayTileItem : ObservableObject, ITrayPanelItem
         Read(now);
     }
 
-    public TrayElement Element => _target.Element;
+    public TrayTarget Target => _target;
     public bool IsSlider => false;
     public string Name { get; }
-    public Geometry? Icon { get; }
+    public IconImage? Icon { get; }
 
     /// <summary>The full name (a tile's words are short and may be trimmed).</summary>
     public string Tip => _target.Action?.Title ?? _target.State?.Name ?? Name;
 
     [ObservableProperty] private bool _isOn;
 
-    public void Read(Func<string, StateValue?> now) => IsOn = _target.State is { } state && now(state.Id)?.Number is { } number && number != 0;
+    /// <summary>Its state is being read again now (the corner dot).</summary>
+    [ObservableProperty] private bool _isChecking;
+
+    /// <summary>Its state is only the last one known and nothing cheap can read it again (a device run by simulation only): drawn faded.</summary>
+    [ObservableProperty] private bool _isFaded;
+
+    /// <summary>How its state can be read again on request; null when it needs none.</summary>
+    public StateRecheck? Recheck => _target.State?.Recheck;
+
+    public void Read(Func<string, StateValue?> now)
+    {
+        IsOn = _target.State is { } state && now(state.Id)?.Number is { } number && number != 0;
+        IsFaded = Recheck is { } recheck && !recheck.CanCheck();
+    }
 
     public bool Shows(string stateId) => _target.State?.Id == stateId;
 

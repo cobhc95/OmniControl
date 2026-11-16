@@ -34,6 +34,10 @@ internal static class TrayPicks
         : MouseActionCatalog.OmniIdOf(spec) is { } id ? TrayElement.OfAction(id)
         : null;
 
+    /// <summary>The picker entry a shown slider or tile stands for (where "Change action…" opens the list).</summary>
+    public static string SpecOf(TrayTarget target) =>
+        target.Action is { } action ? $"{MouseActionCatalog.Omni}:{action.Id}" : $"{StatePrefix}{target.State?.Id}";
+
     /// <summary>True when a stored element is the one an entry stands for (the choice and tick state of a stored one do not matter).</summary>
     public static bool Same(TrayElement stored, TrayElement picked) =>
         picked.Action is { } action ? stored.Action == action : stored.Action is null && stored.State == picked.State;
@@ -44,5 +48,5 @@ internal static class TrayPicks
     /// <param name="needsSet">A slider must be able to change its level; a tile may only show a state.</param>
     private static PickChoice StateChoice(StateEntry state, Func<string, ActionSection?> sectionOf, bool needsSet) =>
         new($"{StatePrefix}{state.Id}", state.Group, state.Name, Keywords: $"state {state.Keywords}", Heading: state.Heading ?? StatesHeading,
-            Place: sectionOf(state.Group), Unavailable: needsSet && state.Set is null ? ReadOnlyWords : null, Icon: state.Icon);
+            Place: sectionOf(state.Group), Unavailable: needsSet && state.Set is null ? ReadOnlyWords : null, Icon: state.ShownIcon);
 }

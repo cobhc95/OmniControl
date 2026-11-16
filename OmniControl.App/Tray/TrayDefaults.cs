@@ -29,8 +29,7 @@ public static class TrayDefaults
     public static IReadOnlyList<IReadOnlyList<TrayElement>> Menu { get; } = new[]
     {
         new[] { TrayElement.OfAction("app.show"), TrayElement.OfAction("app.actions.open") },
-        new[] { TrayElement.OfAction("screenshot.area"), TrayElement.OfAction("screenshot.record") },
-        new[] { TrayElement.OfAction("automation.pause", state: "automation.paused"), TrayElement.OfAction("volume.fx", state: "volume.master.fx") },
+        new[] { TrayElement.OfAction("automation.pause", state: "automation.paused") },
         new[] { TrayElement.OfAction("app.settings.open"), TrayElement.OfAction("app.quit") },
     };
 }

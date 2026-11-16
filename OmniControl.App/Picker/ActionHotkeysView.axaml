@@ -7,7 +7,7 @@
              IsVisible="{Binding Converter={x:Static ObjectConverters.IsNotNull}}">
     <!-- The top of the settings pane in the Actions and hotkeys window (docs/mockups/actions-and-hotkeys.html): "Hotkey" and one shared
          HotkeyBox per key, each with its remove cross and, when the key pressed is another action's, the caution tag "Also on: ..." with
-         "Move here"; then "+ add key", "Suggest" and the action's devices; the one sentence of a refused key; then Run now and Show on its page. -->
+         "Move here"; then "+ add key", "Suggest" and the action's devices; the one sentence of a refused key; then Run now, Show on its page and Change icon…. -->
     <StackPanel Spacing="6" Margin="14,0,14,8">
         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
             <TextBlock Text="Hotkey" VerticalAlignment="Top" Margin="0,6,0,0" />
@@ -39,7 +39,8 @@
         <TextBlock Classes="cautiontext" Text="{Binding Refusal}" IsVisible="{Binding HasRefusal}" TextWrapping="Wrap" />
         <WrapPanel>
             <Button Classes="pill" Content="Run now" Command="{Binding RunCommand}" Margin="0,0,6,0" ToolTip.Tip="Run this action now" />
-            <Button Classes="pill" Content="Show on its page" Command="{Binding ShowCommand}" />
+            <Button Classes="pill" Content="Show on its page" Command="{Binding ShowCommand}" Margin="0,0,6,0" />
+            <Button Classes="pill" Content="Change icon…" Click="OnChangeIconClick" ToolTip.Tip="Pick the icon this action shows (the tray panel, the lists)" />
         </WrapPanel>
     </StackPanel>
 </UserControl>

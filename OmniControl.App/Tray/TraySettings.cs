@@ -19,7 +19,8 @@ public sealed class TrayElement
     /// <summary>A slider's choice state shown as a pick list in place of its name ("Speakers ▾": the default playback device).</summary>
     public string? Choice { get; set; }
 
-    /// <summary>The section (a page or an extra section) whose icon the element shows; null: the icon of its own action's or state's section.</summary>
+    /// <summary>The icon the user chose for it (a library id or a user icon, <see cref="Icons.IconLibrary"/>; a section's name saved before the library
+    /// still shows that section's icon); null: its own action's or state's icon.</summary>
     public string? Icon { get; set; }
 
     public static TrayElement OfAction(string id, string? state = null) => new() { Action = id, State = state };
@@ -34,6 +35,9 @@ public sealed class TraySettings
 {
     public List<TrayElement>? Sliders { get; set; }
     public List<TrayElement>? Tiles { get; set; }
+
+    /// <summary>"Lock layout" (the tiles' and sliders' right-click menu): while on, nothing can be dragged to another place.</summary>
+    public bool LockLayout { get; set; }
 
     private static readonly DataStore Store = DataStores.Tray;
 

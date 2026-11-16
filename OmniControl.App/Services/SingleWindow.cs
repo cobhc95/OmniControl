@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Avalonia.Controls;
 
 namespace OmniControl.App.Services;
@@ -25,9 +26,11 @@ public sealed class SingleWindow<T> where T : Window
             open.Activate();
             return;
         }
+        var clock = Stopwatch.StartNew();
         try
         {
             var window = create();
+            UiTiming.WhenOpened(window, typeof(T).Name, clock);
             window.Closed += (_, _) =>
             {
                 Current = null;

@@ -54,6 +54,7 @@ public static class DataStores
     public static readonly DataStore Devices = new("devices.json", "Smart devices (never their passwords)", StoreKind.Saved, Mergeable: true);
     public static readonly DataStore Screenshots = new("screenshots.json", "Screenshot settings", StoreKind.Saved);
     public static readonly DataStore Tray = new("tray.json", "Tray flyout", StoreKind.Saved);
+    public static readonly DataStore Icons = new("icons.json", "Your icons and chosen icons", StoreKind.Saved);
 
     public static readonly DataStore MixerBeforeRestore = new("mixer-before-restore.json", "Mixer before restore", StoreKind.Undo);
     public static readonly DataStore BeforeRestore = new("*-before-restore.json", "Settings before restore", StoreKind.Undo);
@@ -67,7 +68,7 @@ public static class DataStores
     public static IReadOnlyList<DataStore> All { get; } = new[]
     {
         App, Mixer, EffectPresets, VolumePresets, Plugins, Automation, GestureRules, Gestures, Hotkeys, HotkeySets, Mouse, Displays, Osd,
-        AppLists, AppActions, RecentActions, Devices, Screenshots, Tray, MixerBeforeRestore, BeforeRestore, EngineJournal, SoftwareDisplay, PointerOriginal,
+        AppLists, AppActions, RecentActions, Devices, Screenshots, Tray, Icons, MixerBeforeRestore, BeforeRestore, EngineJournal, SoftwareDisplay, PointerOriginal,
         PointerSwapTrial, TrackpadOriginal,
     };
 

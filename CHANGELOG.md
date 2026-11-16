@@ -5,6 +5,20 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+## 0.1.4 (16 Nov 2026)
+
+- Effects window: the status line no longer says "Effects off" while the switch is on and nothing is playing yet; it reads "Effects on · nothing running yet".
+
+- Faster searches and windows: every search box (Search settings, Choose-an-action and Actions and hotkeys, triggers, presets, Add effect) uses one search pipeline: the text is prepared once, matching runs in the background, a newer key cancels the older search, and fast typing waits 60 ms (the first letter is searched at once). Every search now matches when each typed word is found (Search settings used to need the words side by side). The Choose-an-action list only builds the rows on screen again, without the old ghost row; Search settings shows the first screenful of results at once and adds the rest in the background. Pages are drawn as soon as they are clicked and read their devices just after. Timings go to `timing-log.txt` in the data folder (the tray panel's line moved there from `tray-log.txt`).
+
+- Tray right-click menu: Area, Record and Toggle master FX removed (they stay on the panel and in Actions and hotkeys).
+
+- Icon library: 100 built-in icons (from Tabler Icons, MIT; credited in About) and your own SVG or PNG icons (kept in the data folder and in backups; renameable, removable). One icon picker for every "Change icon…" (tray tiles and sliders, a smart device's icon, an action in Actions and hotkeys): search, suggestions for the item, Your icons, all icons, Default / Own image… / + Add your own… / Use. Effects show a sliders icon and bulbs an outline bulb; icons chosen before keep working.
+
+- Tray panel: smart devices with a Scripts method read their real state in the background when the panel opens and every 15 s while it is open (a small dot while reading); devices run only by simulation show their last known state, faded. Tiles and sliders can be dragged to a new place (others slide aside; Esc cancels). Their right-click menu is now Remove from panel, Change action…, Change icon…, Lock layout and Show in OmniControl; "Change icon…" works again.
+
+- Mouse: "Block apps' middle-click autoscroll" (on by default, one setting for every button, state and action "Toggle app autoscroll"): a middle press no action uses is swallowed unless it is over a link, tab, button or menu item (or the pointer is the hand), so browsers never start their own autoscroll; it does nothing in apps the middle button's Apps scope leaves out. "Change movement to scroll" gets the row "Let the app's own autoscroll start" (off): the press is held back and the normal click is sent on release when the mouse did not move.
+
 ## 0.1.3 (16 Nov 2026)
 
 - Tray panel: in edit mode every slider and tile has a remove cross, and a right-click menu on any of them (or the menu key) removes it, changes its icon or moves it; removal is saved at once. The Choose-the-action window opened from the panel marks what is already in it ("In panel", a "Remove from panel" button, "Add again", an "In panel only" filter). Screenshot Record button is now an outline video camera.

@@ -20,7 +20,7 @@ public sealed partial class VolumePageViewModel
     private const string MicrophoneElement = OsdService.MicrophoneElement;
 
     /// <summary>The own glyphs (Styles/Brushes.axaml) of the microphone and effects actions and states.</summary>
-    private const string MicIcon = "MicIcon", FxIcon = "FxIcon";
+    private const string MicIcon = Icons.IconLibrary.Mic, FxIcon = Icons.IconLibrary.Sliders;
 
     private void RefreshInputs()
     {

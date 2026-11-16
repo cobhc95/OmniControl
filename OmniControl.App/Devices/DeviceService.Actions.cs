@@ -24,7 +24,7 @@ public sealed partial class DeviceService
         UnregisterActions(device);
         var name = DisplayName(device);
         var keywords = $"smart device plug bulb socket outlet switch power tapo kasa {device.Name}";
-        var icon = IconOf(device).Resource;
+        var icon = IconOf(device);
         var actions = Enum.GetValues<DevicePower>()
             .Select(power => new HotkeyAction(ActionId(device, power), $"{name}: {power}", Category, keywords, ids => _ = RunAsync(device, power), group: ActionGroup) { Icon = icon })
             .Concat(device.Methods.SelectMany(method => Enum.GetValues<DevicePower>().Select(power =>
@@ -36,9 +36,11 @@ public sealed partial class DeviceService
         RegisterState(device);
     }
 
-    /// <summary>The glyph the device shows: the one picked for it, else its first real method's template's, else the plug.</summary>
-    public DeviceIcon IconOf(DeviceRecord device) =>
-        DeviceIcons.Of(device.Icon) ?? DeviceIcons.Of(device.Methods.FirstOrDefault() is { IsSimulation: false } first ? ProfileOf(first).Icon : DeviceIcons.Plug)!;
+    /// <summary>The icon the device shows (a library id or a user icon): the one picked for it, else its first real method's template's, else the plug.</summary>
+    public string IconOf(DeviceRecord device) =>
+        device.Icon.Length > 0 ? Icons.IconLibrary.Current(device.Icon)!
+        : device.Methods.FirstOrDefault() is { IsSimulation: false } first && Icons.IconLibrary.Find(ProfileOf(first).Icon) is { } own ? own.Id
+        : Icons.IconLibrary.Plug;
 
     /// <summary>The icon changed: the device's actions and state carry the new glyph.</summary>
     public void IconChanged(DeviceRecord device) => RegisterActions(device);

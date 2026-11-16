@@ -103,11 +103,7 @@ public sealed partial class PresetCardViewModel : ObservableObject, IPresetRowOw
             row.Update(x.Entry, x.Shortcut);
             return row;
         }).ToList();
-        if (!rows.SequenceEqual(Rows))
-        {
-            Rows.Clear();
-            foreach (var row in rows) Rows.Add(row);
-        }
+        ListDiff.Apply(Rows, rows, r => r);
         foreach (var name in new[] { nameof(IsEmpty), nameof(IsFiltering), nameof(AddTip), nameof(CanAdd), nameof(SwitchOn) }) OnPropertyChanged(name);
     }
 

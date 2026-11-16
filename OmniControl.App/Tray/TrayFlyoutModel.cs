@@ -1,11 +1,12 @@
-using Avalonia.Media;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OmniControl.App.Hotkeys;
+using OmniControl.App.Icons;
 using OmniControl.App.Services;
 using OmniControl.App.States;
+using Avalonia.Threading;
 
 namespace OmniControl.App.Tray;
 
@@ -20,14 +21,21 @@ public sealed partial class TrayFlyoutModel : ObservableObject, IDisposable
     private readonly HotkeyRegistry _hotkeys;
     private readonly StateRegistry _states;
     private readonly Action _openApp;
+    private readonly Action<TrayTarget> _showInApp;
+    private readonly IconPicker _icons;
     private readonly TraySettings _settings = TraySettings.Load();
     private bool _shown;
     private bool _stale = true; // the lists differ from the master lists: made again when next shown
 
+    /// <param name="icons">The shared icon picker ("Change icon…"); its changes (a user icon renamed or removed) redraw the panel.</param>
     /// <param name="openApp">Shows the main window (the foot's "Open OmniControl").</param>
-    public TrayFlyoutModel(HotkeyRegistry hotkeys, StateRegistry states, Action openApp)
+    /// <param name="showInApp">"Show in OmniControl": the main window at the page that owns the item, or the Actions and hotkeys window at its action.</param>
+    public TrayFlyoutModel(HotkeyRegistry hotkeys, StateRegistry states, IconPicker icons, Action openApp, Action<TrayTarget> showInApp)
     {
-        (_hotkeys, _states, _openApp) = (hotkeys, states, openApp);
+        (_hotkeys, _states, _icons, _openApp, _showInApp) = (hotkeys, states, icons, openApp, showInApp);
+        _rechecks = new DispatcherTimer { Interval = Timing.TrayRecheckEvery };
+        _rechecks.Tick += OnRecheckTick;
+        _icons.Changed += OnListsChanged;
         _hotkeys.Actions.CollectionChanged += OnActionsChanged;
         _states.ListChanged += OnListChanged;
         _states.ValueChanged += OnValueChanged;
@@ -50,6 +58,7 @@ public sealed partial class TrayFlyoutModel : ObservableObject, IDisposable
         _shown = true;
         if (_stale) Rebuild();
         else Refresh();
+        StartRechecks();
     }
 
     /// <summary>The flyout was hidden: it stops following and leaves edit mode.</summary>
@@ -57,6 +66,7 @@ public sealed partial class TrayFlyoutModel : ObservableObject, IDisposable
     {
         _shown = false;
         IsEditing = false;
+        _rechecks.Stop();
     }
 
     /// <summary>Runs a master action by id, through the one run path (so the gate of block rules applies).</summary>
@@ -71,7 +81,8 @@ public sealed partial class TrayFlyoutModel : ObservableObject, IDisposable
     /// <summary>The foot's edit link: its words follow the mode.</summary>
     public string EditText => IsEditing ? "Done" : "Edit";
 
-    private Geometry? IconOf(TrayTarget target) => IconResources.Of(target.OwnIcon, _hotkeys.SectionOf(target.Section)?.Icon);
+    /// <summary>The icon the user gave it, else its entry's own, else its section's (a section name saved before the icon library is read as that section).</summary>
+    private IconImage? IconOf(TrayTarget target) => IconResources.Find(target.Element.Icon) ?? IconResources.Of(target.OwnIcon, _hotkeys.SectionOf(target.Section)?.Icon);
 
     private void Rebuild()
     {
@@ -124,5 +135,8 @@ public sealed partial class TrayFlyoutModel : ObservableObject, IDisposable
         _hotkeys.Actions.CollectionChanged -= OnActionsChanged;
         _states.ListChanged -= OnListChanged;
         _states.ValueChanged -= OnValueChanged;
+        _icons.Changed -= OnListsChanged;
+        _rechecks.Stop();
+        _rechecks.Tick -= OnRecheckTick;
     }
 }

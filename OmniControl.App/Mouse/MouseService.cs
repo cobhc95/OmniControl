@@ -1,4 +1,4 @@
-using Avalonia.Threading;
+﻿using Avalonia.Threading;
 using OmniControl.App.AppLists;
 using OmniControl.App.Hotkeys;
 using OmniControl.App.Services;
@@ -10,10 +10,10 @@ namespace OmniControl.App.Mouse;
 /// Remaps the mouse: owns the hook, picks the layer for each input and runs the mapped action with its options.
 /// The hook thread only reads an immutable snapshot, so editing settings on the UI thread never blocks or races it.
 /// </summary>
-public sealed partial class MouseService : ILayerControl, IDisposable
+public sealed partial class MouseService : ILayerControl, ISharedOptions, IDisposable
 {
     /// <summary>The settings as the hook reads them: the first action per key, the others in order, and the apps scope of each limited button.</summary>
-    private sealed record Snapshot(Dictionary<string, MouseAction> Actions, Dictionary<string, MouseAction[]> Extras, Dictionary<MouseButton, AppScopeSetting> Scopes)
+    private sealed record Snapshot(Dictionary<string, MouseAction> Actions, Dictionary<string, MouseAction[]> Extras, Dictionary<MouseButton, AppScopeSetting> Scopes, bool BlockAutoscroll)
     {
         public MouseAction[] ExtrasOf(string key) => Extras.TryGetValue(key, out var extras) ? extras : NoExtras;
     }
@@ -147,7 +147,8 @@ public sealed partial class MouseService : ILayerControl, IDisposable
         new(Settings.Bindings.ToDictionary(b => b.Key, b => MouseAction.Parse(b.Value)),
             Settings.ExtraActions.ToDictionary(e => e.Key, e => e.Value.Take(MouseSettings.MaxActions - 1).Select(MouseAction.Parse).ToArray()),
             Enum.GetValues<MouseButton>().Where(b => b.FamilyOf() == InputFamily.Mouse && Settings.ScopeOf(b) is not null)
-                .ToDictionary(b => b, b => Settings.ScopeOf(b)!));
+                .ToDictionary(b => b, b => Settings.ScopeOf(b)!),
+            Settings.BlockAutoscroll);
 
     private void NotifyLayer(InputFamily family)
     {
@@ -173,7 +174,7 @@ public sealed partial class MouseService : ILayerControl, IDisposable
         var key = MouseSettings.KeyOf(layer, ev.Button);
         var action = gesture;
         if (action is null && (!snapshot.Actions.TryGetValue(key, out action) || action.Id == MouseActionCatalog.Default))
-            return PassThrough(ev, layer, NotMapped);
+            return BlocksAutoscroll(ev, snapshot) || PassThrough(ev, layer, NotMapped);
         // Outside the apps its mapping works in, the input behaves as if it had none.
         if (gesture is null && snapshot.Scopes.TryGetValue(ev.Button, out var scope) && !_scopes.Allows(scope))
             return PassThrough(ev, layer, OutsideApps);
@@ -185,18 +186,22 @@ public sealed partial class MouseService : ILayerControl, IDisposable
         var isPressable = ev.Button.HasRelease();
         // "Also send the button's normal click": the original input goes through and is not swallowed on release either.
         // (A trackpad gesture is only copied from raw input and never swallowed; there the same setting keeps Windows' own gesture turned on, see TrackpadService.)
-        var swallow = !action.Options.Bool(MouseOptions.KeepOriginal);
+        var keepOriginal = action.Options.Bool(MouseOptions.KeepOriginal);
+        // Movement as scroll with its click also sent: an app would start its own autoscroll on the press, so the press is held back and
+        // the click is sent on release when the mouse did not move (MouseModes).
+        var heldBack = keepOriginal && isPressable && snapshot.BlockAutoscroll && MouseActionCatalog.HoldsClickBack(action);
+        var swallow = !keepOriginal || heldBack;
         if (isPressable && swallow) lock (_gate) _swallowed.Add(ev.Button);
 
         if (action.Id == MouseActionCatalog.Disabled) return true;
-        return StartFirst(action, ev, isPressable, extras) || swallow;
+        return StartFirst(action, ev, isPressable, extras, heldBack) || swallow;
     }
 
     /// <summary>
     /// Starts the input's first action (it may last while the input is held, or run on release or repeatedly), then its other actions
     /// in order. True when the input must be swallowed whatever the action's settings (a layer action).
     /// </summary>
-    private bool StartFirst(MouseAction action, MouseEvent ev, bool isPressable, MouseAction[] extras)
+    private bool StartFirst(MouseAction action, MouseEvent ev, bool isPressable, MouseAction[] extras, bool heldBack)
     {
         var id = action.Id;
         // An input without a release (wheel, tilt, a trackpad gesture) would never end a "while held" action (held keys, a held layer,
@@ -223,13 +228,28 @@ public sealed partial class MouseService : ILayerControl, IDisposable
 
         if (MouseActionCatalog.IsMode(id))
         {
-            if (_modes.Start(action, ev) is { } undo) lock (_gate) _undoOnRelease[ev.Button] = undo;
+            if (_modes.Start(action, ev, heldBack) is { } undo) lock (_gate) _undoOnRelease[ev.Button] = undo;
             RunInOrder(ev, null, extras);
             return false;
         }
 
         RunWithTrigger(action, ev, isPressable, extras);
         return false;
+    }
+
+    /// <summary>
+    /// "Block apps' middle-click autoscroll": a middle press nothing is mapped to is swallowed (press and release) unless it is over a link, tab,
+    /// button or menu item, so the app never starts its autoscroll. Not in the apps the button's scope leaves out; when the lookup cannot say in
+    /// time the press passes through. Nothing is sent on a swallowed press, so nothing can be left held.
+    /// </summary>
+    private bool BlocksAutoscroll(MouseEvent ev, Snapshot snapshot)
+    {
+        if (ev.Button != MouseButton.Middle || !snapshot.BlockAutoscroll) return false;
+        if (snapshot.Scopes.TryGetValue(ev.Button, out var scope) && !_scopes.Allows(scope)) return false;
+        if (MiddleClickPolicy.DecideAt(ev.X, ev.Y) != ClickVerdict.Swallow) return false;
+        _log("Middle press swallowed: not over a link, tab or button (apps' autoscroll blocked)");
+        lock (_gate) _swallowed.Add(ev.Button);
+        return true;
     }
 
     private const string NotMapped = "not mapped", OutsideApps = "not for this app";
@@ -348,6 +368,7 @@ public sealed partial class MouseService : ILayerControl, IDisposable
 
     public void Dispose()
     {
+        _modes.BeginClose();
         List<Action> pending;
         lock (_gate) pending = _undoOnRelease.Values.ToList();
         foreach (var undo in pending) undo(); // let go of whatever a held button was doing

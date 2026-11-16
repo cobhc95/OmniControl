@@ -86,19 +86,6 @@
             <StreamGeometry x:Key="CrossIcon">M6,6 L18,18 M18,6 L6,18</StreamGeometry>
             <!-- An eye: hold to show a password (Controls/PasswordField) -->
             <StreamGeometry x:Key="EyeIcon">M2,12 C5,6.5 19,6.5 22,12 C19,17.5 5,17.5 2,12 Z M12,9.2 A2.8,2.8 0 1 1 12,14.8 A2.8,2.8 0 1 1 12,9.2 Z</StreamGeometry>
-            <!-- A smart device's icon (Devices/DeviceIcons is their master list): stroked glyphs on a 24 px grid -->
-            <StreamGeometry x:Key="DeviceBulbIcon">M9,18 H15 M10,21 H14 M12,3 A6,6 0 0 0 8,13.5 C9,14.5 9,15.5 9,16 H15 C15,15.5 15,14.5 16,13.5 A6,6 0 0 0 12,3 Z</StreamGeometry>
-            <StreamGeometry x:Key="DevicePlugIcon">M9,3 V8 M15,3 V8 M6,8 H18 V12 A6,6 0 0 1 6,12 Z M12,18 V22</StreamGeometry>
-            <StreamGeometry x:Key="DeviceLampIcon">M8,3 H16 L19,11 H5 Z M12,11 V20 M8,21 H16</StreamGeometry>
-            <StreamGeometry x:Key="DeviceFanIcon">M12,10.5 A1.5,1.5 0 1 1 12,13.5 A1.5,1.5 0 1 1 12,10.5 Z M12,10.5 C10,6 12,3 15,4 C16,6 14,9 12,10.5 M13.3,12.8 C18,13 20,16 18,18.5 C16,18.5 14,16 13.3,12.8 M10.7,12.8 C7,15 4,14 4,11 C6,10 9,10.5 10.7,12.8</StreamGeometry>
-            <StreamGeometry x:Key="DeviceTvIcon">M3,7 H21 V18 H3 Z M8,3 L12,7 L16,3</StreamGeometry>
-            <StreamGeometry x:Key="DeviceDesktopIcon">M3,4 H21 V15 H3 Z M10,15 L9,20 H15 L14,15</StreamGeometry>
-            <StreamGeometry x:Key="DeviceCoffeeIcon">M5,9 H16 V14 A5,5 0 0 1 11,19 H10 A5,5 0 0 1 5,14 Z M16,10 H18 A2,2 0 0 1 18,14 H16 M8,3 V6 M12,3 V6</StreamGeometry>
-            <StreamGeometry x:Key="DeviceThermometerIcon">M10,4 A2,2 0 0 1 14,4 V14 A4,4 0 1 1 10,14 Z M12,9 V16</StreamGeometry>
-            <StreamGeometry x:Key="DeviceSpeakerIcon">M6,3 H18 V21 H6 Z M12,6 A1,1 0 1 1 12,8 A1,1 0 1 1 12,6 Z M12,12 A3,3 0 1 1 12,18 A3,3 0 1 1 12,12 Z</StreamGeometry>
-            <StreamGeometry x:Key="DeviceStripIcon">M3,9 H21 V15 H3 Z M7,11 V13 M11,11 V13 M15,11 V13</StreamGeometry>
-            <StreamGeometry x:Key="DeviceHeaterIcon">M3,6 H21 M3,18 H21 M6,6 V18 M10,6 V18 M14,6 V18 M18,6 V18</StreamGeometry>
-            <StreamGeometry x:Key="DeviceSwitchIcon">M7,3 H17 V21 H7 Z M10,8 H14 V13 H10 Z</StreamGeometry>
             <!-- The six dots of a row that can be dragged to a new place (the preset manager's rows) -->
             <StreamGeometry x:Key="GripIcon">M8,4 h3 v3 h-3 Z M13,4 h3 v3 h-3 Z M8,10.5 h3 v3 h-3 Z M13,10.5 h3 v3 h-3 Z M8,17 h3 v3 h-3 Z M13,17 h3 v3 h-3 Z</StreamGeometry>
             <!-- The screenshot overlay (Screenshot/CaptureOverlay): its drawing tools and its action bar, stroked glyphs on a 24 px grid (OmniControl's own drawings) -->
@@ -124,15 +111,6 @@
             <StreamGeometry x:Key="ShotResumeIcon">M7,5 L19,12 L7,19 Z</StreamGeometry>
             <StreamGeometry x:Key="ShotMicIcon">M12,3 A3,3 0 0 1 15,6 V11 A3,3 0 0 1 9,11 V6 A3,3 0 0 1 12,3 Z M5.5,11 A6.5,6.5 0 0 0 18.5,11 M12,17.5 V21 M8.5,21 H15.5</StreamGeometry>
             <StreamGeometry x:Key="ShotSoundIcon">M3,9 H7 L12,5 V19 L7,15 H3 Z M15.5,9 A4,4 0 0 1 15.5,15 M18,6 A8,8 0 0 1 18,18</StreamGeometry>
-            <!-- Entry icons (an action's or a state's own glyph: IconResources; filled shapes, drawn by PathIcon in the tray flyout and the pickers) -->
-            <StreamGeometry x:Key="MicIcon">M12,3 A3,3 0 0 1 15,6 V12 A3,3 0 0 1 9,12 V6 A3,3 0 0 1 12,3 Z M6,11 H8 A4,4 0 0 0 16,11 H18 A6,6 0 0 1 13,16.9 V20 H11 V16.9 A6,6 0 0 1 6,11 Z</StreamGeometry>
-            <StreamGeometry x:Key="MoonIcon">M20,14.5 A8.5,8.5 0 1 1 9.5,4 A7,7 0 0 0 20,14.5 Z</StreamGeometry>
-            <StreamGeometry x:Key="RotateIcon">M12,4 A8,8 0 0 1 20,12 H23 L18.5,17 L14,12 H17 A5,5 0 0 0 12,7 Z M12,20 A8,8 0 0 1 4,12 H1 L5.5,7 L10,12 H7 A5,5 0 0 0 12,17 Z</StreamGeometry>
-            <StreamGeometry x:Key="FxIcon">M12,2 L14.4,9.6 L22,12 L14.4,14.4 L12,22 L9.6,14.4 L2,12 L9.6,9.6 Z</StreamGeometry>
-            <StreamGeometry x:Key="ShotAreaIcon">M3,3 H9 V5 H5 V9 H3 Z M15,3 H21 V9 H19 V5 H15 Z M3,15 H5 V19 H9 V21 H3 Z M19,15 H21 V21 H15 V19 H19 Z</StreamGeometry>
-            <StreamGeometry x:Key="ShotWindowIcon">M3,5 H21 V19 H3 Z M5,9 V17 H19 V9 Z</StreamGeometry>
-            <StreamGeometry x:Key="ShotScreenIcon">M3,4 H21 V17 H3 Z M5,6 V15 H19 V6 Z M9,19 H15 V21 H9 Z</StreamGeometry>
-            <StreamGeometry x:Key="ShotAllScreensIcon">M2,5 H15 V15 H2 Z M4,7 V13 H13 V7 Z M17,8 H22 V19 H9 V17 H20 V10 H17 Z</StreamGeometry>
             <!-- The wash over the frozen screen outside the selection: the same in both themes, the picture under it is the user's screen -->
             <SolidColorBrush x:Key="BrushCaptureDim" Color="Black" Opacity="0.45" />
             <!-- The cogwheel icon used beside actions that have settings -->

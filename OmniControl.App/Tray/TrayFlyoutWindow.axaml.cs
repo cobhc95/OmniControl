@@ -12,7 +12,8 @@ namespace OmniControl.App.Tray;
 /// Layout and wiring only: the tray flyout's window. It opens beside the tray at the click (<see cref="TrayPlacement"/>, on the screen and
 /// at the DPI of the click, placed again whenever its size or scaling changes), hides when it loses the focus (a click anywhere else) or on
 /// Esc, and is hidden rather than closed until the app ends. Tab and Shift+Tab go round its controls. The pickers it opens are its own
-/// windows, so it stays open while one is up. Mouse first in edit mode (the crosses, the right-click menu; AGENTS.md rule 5).
+/// windows, so it stays open while one is up. Sliders and tiles are dragged to another place by the shared <see cref="PanelDragReorder"/>
+/// (Esc ends a drag before it hides the panel). Mouse first for the crosses, the drag and the right-click menu (AGENTS.md rule 5).
 /// </summary>
 public partial class TrayFlyoutWindow : Window
 {
@@ -20,6 +21,7 @@ public partial class TrayFlyoutWindow : Window
     private bool _picking;
     private bool _closing;
     private Flyout? _openMenu;
+    private readonly PanelDragReorder _sliderDrag, _tileDrag;
 
     public TrayFlyoutWindow()
     {
@@ -28,7 +30,11 @@ public partial class TrayFlyoutWindow : Window
         Deactivated += OnDeactivated;
         SizeChanged += (_, _) => Place();
         ScalingChanged += (_, _) => Place();
+        _sliderDrag = new PanelDragReorder(SliderItems, vertical: true, CanDrag, item => item is TraySliderItem, (from, to) => Model?.Move(true, from, to));
+        _tileDrag = new PanelDragReorder(TileItems, vertical: false, CanDrag, item => item is TrayTileItem, (from, to) => Model?.Move(false, from, to));
     }
+
+    private bool CanDrag() => Model is { IsLocked: false };
 
     private TrayFlyoutModel? Model => DataContext as TrayFlyoutModel;
 
@@ -100,7 +106,7 @@ public partial class TrayFlyoutWindow : Window
     {
         base.OnKeyDown(e);
         if (e.Handled || e.Key != Key.Escape) return;
-        HideNow();
+        if (!_sliderDrag.Cancel() && !_tileDrag.Cancel()) HideNow();
         e.Handled = true;
     }
 
@@ -120,17 +126,27 @@ public partial class TrayFlyoutWindow : Window
         OpenMenu(menu, rows, item.ChoiceRows);
     }
 
-    private void OnItemMenuOpened(object? sender, EventArgs e)
+    // Filled before it opens, so it never shows empty for a frame.
+    private void OnItemMenuOpening(object? sender, EventArgs e)
     {
         if (sender is not Flyout { Content: MenuRowList rows } menu || Model is not { } model) return;
         if (menu.Target?.DataContext is not ITrayPanelItem item) return;
-        var target = menu.Target;
-        OpenMenu(menu, rows, model.ItemMenu(item, icons => Dispatcher.UIThread.Post(() =>
-        {
-            OpenMenu(menu, rows, icons);
-            menu.ShowAt(target);
-        })));
+        OpenMenu(menu, rows, model.ItemMenu(item, ChangeAction, ChangeIcon));
     }
+
+    // The menu closes first (its row was clicked), then the picker opens over the panel.
+    private void ChangeAction(ITrayPanelItem item) => Dispatcher.UIThread.Post(async () =>
+    {
+        if (Model is not { } model) return;
+        var (title, picker) = model.ChangePicker(item);
+        if (await PickAsync(title, picker) is { } pick) model.Replace(item, pick);
+    });
+
+    private void ChangeIcon(ITrayPanelItem item) => Dispatcher.UIThread.Post(async () =>
+    {
+        if (Model is not { } model) return;
+        if (await WhilePicking(() => model.ChooseIconAsync(this, item)) is { } pick) model.SetIcon(item, pick);
+    });
 
     private void OnRemoveClick(object? sender, RoutedEventArgs e)
     {
@@ -164,12 +180,15 @@ public partial class TrayFlyoutWindow : Window
     }
 
     /// <summary>The Choose-the-action window over the flyout, which stays open meanwhile and has the keyboard again after it.</summary>
-    private async Task<PickResult?> PickAsync(string title, PickerModel picker)
+    private Task<PickResult?> PickAsync(string title, PickerModel picker) => WhilePicking(() => PickerWindow.ChooseAsync(this, title, picker));
+
+    /// <summary>A picker window over the flyout (it stays open meanwhile and has the keyboard again after it).</summary>
+    private async Task<T?> WhilePicking<T>(Func<Task<T?>> pick) where T : class
     {
         _picking = true;
         try
         {
-            return await PickerWindow.ChooseAsync(this, title, picker);
+            return await pick();
         }
         finally
         {

@@ -16,7 +16,7 @@ public sealed partial class DisplaysPageViewModel
         _states.Register(DisplayControls.Hardware.Select(level => new StateEntry(StateId(display, level), $"{level.Spec.Label} ({display.Name})", Title,
             StateKind.Level, () => display.LevelOf(level) is { } value ? StateValue.Of(value) : null, LevelWords,
             Heading: Services.Heading.Join(Title, display.Name), Min: level.Spec.Min, Max: level.Spec.Max, Unit: "%", Keywords: $"monitor display screen {level.Spec.Keywords}",
-            Set: value => { if (value.Number is { } number) display.SetLevel(level, (int)Math.Round(number)); }, Short: display.Name)));
+            Set: value => { if (value.Number is { } number) display.SetLevel(level, (int)Math.Round(number)); }, Short: display.Name, SuggestedIcons: new[] { "sun", "sun-low", "brightness" })));
 
     private void ForgetStates(HardwareDisplayItem display) => _states.Unregister(DisplayControls.Hardware.Select(level => StateId(display, level)));
 
@@ -25,7 +25,7 @@ public sealed partial class DisplaysPageViewModel
     {
         _states.Register(new StateEntry(WarmLightId, "Warm light at night", Title, StateKind.OnOff, () => StateValue.Of(_warm.IsOn), WarmWords,
             Keywords: "warm light night schedule evening blue light filter", Set: value => _warm.SetEnabled(value.Number is { } on && on != 0),
-            Short: "Night light", Icon: "MoonIcon"));
+            Short: "Night light", Icon: Icons.IconLibrary.Moon, SuggestedIcons: new[] { Icons.IconLibrary.Moon, "sun-moon", "eye" }));
         _scheduler.Changed += NotifyWarmLight;
     }
 

@@ -104,11 +104,7 @@ public sealed partial class PresetManagerViewModel : ObservableObject, IPresetCa
         var shown = query.Length > 0
             ? _allCards.Where(c => !c.IsEmpty).ToList()
             : _allCards.Where(c => c.Section == SelectedSection?.Title).ToList();
-        if (!shown.SequenceEqual(Cards))
-        {
-            Cards.Clear();
-            foreach (var card in shown) Cards.Add(card);
-        }
+        ListDiff.Apply(Cards, shown, c => c);
         var found = shown.Sum(c => c.Rows.Count);
         Heading = query.Length > 0 ? $"{found} {(found == 1 ? "preset" : "presets")} found" : SelectedSection?.Title ?? string.Empty;
         OnPropertyChanged(nameof(NothingFound));

@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:picker="using:OmniControl.App.Picker"
              xmlns:ctl="using:OmniControl.App.Controls"
@@ -36,9 +36,9 @@
             <!-- Pane 2: the entries of the section (or the matches of the search), a small heading above each group -->
             <Border Grid.Column="1" MinWidth="{DynamicResource PickerEntriesMinWidth}" BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,1,1,0">
                 <ListBox x:Name="ActionList" Classes="pick active" Focusable="False" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ItemsSource="{Binding Actions}" SelectedIndex="{Binding ActionIndex}">
-                    <!-- The list is rebuilt on every search, so its rows are made one per entry and never recycled: a recycled row kept the
-                         previous list's entry drawn under the new one -->
-                    <ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
+                    <!-- Virtualised: only the rows on screen are made. The model keeps one collection and changes it row by row (ListDiff),
+                         never swapping it, so a recycled row always draws the entry it holds now (a swapped list left a ghost row) -->
+                    <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
                     <!-- A group heading is its own row: no hover, no highlight, no click -->
                     <ListBox.Styles>
                         <Style Selector="ListBoxItem">
@@ -53,7 +53,7 @@
                                 <!-- A greyed entry (Grid.unavailable) says why under its name and cannot be picked -->
                                 <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" IsVisible="{Binding !IsHeading}" Classes.unavailable="{Binding !IsAvailable}">
                                     <!-- The entry's own glyph, else its section's icon -->
-                                    <PathIcon Data="{Binding Icon}" Width="16" Height="16" VerticalAlignment="Center" IsVisible="{Binding HasIcon}" />
+                                    <ctl:IconGlyph Source="{Binding Icon}" IsVisible="{Binding HasIcon}" />
                                     <!-- The name takes its room first: the hint and the keycaps follow it on the line, or drop to a second line when it is short of room -->
                                     <WrapPanel Grid.Column="1" ItemSpacing="8" LineSpacing="2" VerticalAlignment="Center">
                                         <StackPanel VerticalAlignment="Center" IsVisible="{Binding IsEntry}">
@@ -98,7 +98,7 @@
                                     <picker:OptionTemplateSelector>
                                         <picker:OptionTemplateSelector.Inline>
                                             <DataTemplate DataType="picker:OptionItem">
-                                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" MinHeight="30">
+                                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" MinHeight="30" Opacity="{Binding Opacity}" ToolTip.Tip="{Binding Tip}">
                                                 <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextWrapping="Wrap" />
                                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" IsVisible="{Binding IsStepper}">
                                                     <Button Classes="pill glyph" Tag="-1" Focusable="False" Click="OnOptionStepClick"><Path Classes="glyph" Data="{StaticResource ChevronLeftIcon}" /></Button>
@@ -111,7 +111,7 @@
                                                     <Button Classes="pill glyph" Tag="1" Focusable="False" Click="OnOptionStepClick"><Path Classes="glyph" Data="{StaticResource ChevronRightIcon}" /></Button>
                                                 </StackPanel>
                                                 <ToggleSwitch Grid.Column="1" IsChecked="{Binding IsOn}" OnContent="On" OffContent="Off" Focusable="False"
-                                                              IsVisible="{Binding IsToggle}" VerticalAlignment="Center" />
+                                                              IsVisible="{Binding IsToggle}" IsEnabled="{Binding Available}" VerticalAlignment="Center" />
                                             </Grid>
                                             </DataTemplate>
                                         </picker:OptionTemplateSelector.Inline>

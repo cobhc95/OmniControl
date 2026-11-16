@@ -43,6 +43,8 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     private readonly MonitorEngine _engine = new();
     private readonly SoftwareDisplayService _softwareDisplays = new();
     private readonly HotkeyRegistry _hotkeys = new();
+    private readonly Icons.IconStore _icons; // the user's icons and the chosen icons of actions, made right after the master list it follows
+    private readonly Icons.IconPicker _iconPicker;
     private readonly States.StateRegistry _states; // the master list of states, made before the services and pages that register theirs
     private readonly AppActions _appActions;
     private readonly PresetGroups _presetGroups = new(); // made before the pages, which register their preset groups in it
@@ -78,6 +80,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     private readonly IReadOnlyList<PageViewModel> _allPages;
     private bool _syncing;
     private bool _windowShown; // the main window is showing and not minimised
+    private PageViewModel? _wired; // the open page once it has been wired (DrawFirst); null until then
 
     /// <summary>Feature pages in the sidebar (after search filtering).</summary>
     public ObservableCollection<PageViewModel> Pages { get; } = new();
@@ -116,12 +119,14 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     {
         _hotkeys.Report = Report;
         _states = new States.StateRegistry(chainNow: () => _hotkeys.Chain);
+        _icons = new Icons.IconStore(_hotkeys);
+        _iconPicker = new Icons.IconPicker(_icons);
         // Presets, in this order: the master list of groups (a field, empty), the preset shortcuts (they follow the list and register a
         // preset's action in _hotkeys when its group arrives), then the one opener of the preset manager. All three come before the FX
         // windows and the pages, which are given the opener and register their groups; the manager's sections are given after the pages.
         _presetShortcuts = new PresetShortcuts(_hotkeys, _presetGroups, Report);
         _presetManager = new PresetManagerService(_presetGroups, _presetShortcuts, Report);
-        _actionsWindow = new ActionsWindowService(_hotkeys, _presetGroups, _presetManager.Open, _dialogs.AskAsync, OpenPage, Report);
+        _actionsWindow = new ActionsWindowService(_hotkeys, _presetGroups, _presetManager.Open, _dialogs.AskAsync, OpenPage, _iconPicker.ChooseForActionAsync, Report);
         PinnedEntries = new[] { new NavLauncher(ActionsWindowService.Title, ActionsWindowService.Icon, () => _actionsWindow.Open()) };
         _effectsSupport = new EffectsSupportService(new AudioEffectsProbe(), _mixer);
         _volumePresets = new VolumePresets(_mixer);
@@ -164,7 +169,8 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
             new DisplaysPageViewModel(_engine, _hotkeys, _osd, _softwareDisplays, Report, _presetGroups, _presetManager.Open, _states),
             new VolumePageViewModel(_mixer, _effectsSupport, _effects, _installer, _hotkeys, _osd, Report, _fxWindows.Open, _fxWindows.Toggle,
                 _dialogs.AskAsync, CombineWindow.AskAsync, _volumePresets, _presetGroups, _presetManager.Open, _states),
-            new DevicesPageViewModel(new DeviceService(_hotkeys, _states, StartupMode.Inert ? new NoCredentialStore() : new WindowsCredentialStore(), Report), _dialogs.AskAsync, Report),
+            new DevicesPageViewModel(new DeviceService(_hotkeys, _states, StartupMode.Inert ? new NoCredentialStore() : new WindowsCredentialStore(), Report), _dialogs.AskAsync, Report,
+                _iconPicker.ChooseAsync),
             new MousePageViewModel(_mouse, _trackpad, _pointer, _hotkeys, _osd, _dialogs.AskAsync, Report, _presetGroups, _presetManager.Open, _appScopes),
             new GesturesPageViewModel(_gestures, _rules, _margins, _hotkeys, _dialogs.AskAsync, _appScopes),
             new AutomationPageViewModel(_automation, _dialogs.AskAsync),
@@ -231,16 +237,28 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void OpenFooterPage(PageViewModel? page) => SelectedFooterPage = page;
 
+    // Draw first, wire later (DrawFirst): the page is drawn at once from what it holds, then it reads the machine and comes on screen.
     private void Show(PageViewModel page)
     {
         if (page == CurrentPage) return;
-        if (_windowShown) CurrentPage?.OnOnScreenChanged(false);
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        if (_windowShown) _wired?.OnOnScreenChanged(false);
+        _wired = null;
         if (CurrentPage is not null) CurrentPage.IsOpen = false;
         CurrentPage = page;
         page.IsOpen = true;
+        UiTiming.Shown($"Page {page.Title}", clock);
+        DrawFirst.ThenWire(() => Wire(page, clock));
+    }
+
+    private void Wire(PageViewModel page, System.Diagnostics.Stopwatch clock)
+    {
+        if (page != CurrentPage) return; // another page was opened before this one was wired
+        _wired = page;
         if (StartupMode.MayRead) page.OnShown(); // a page's look at the system is for a screenshot export only when it is read-only (a page that acts on devices gates itself)
         page.Restorer?.Refresh();
         if (_windowShown) page.OnOnScreenChanged(true);
+        UiTiming.Write($"Page {page.Title}: wired {clock.ElapsedMilliseconds} ms");
     }
 
     /// <summary>The main window was shown, hidden, minimised or restored: the open page comes on or goes off screen with it.</summary>
@@ -249,7 +267,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         if (shown == _windowShown) return;
         _windowShown = shown;
         if (shown) _appActions.Refresh();
-        CurrentPage?.OnOnScreenChanged(shown);
+        _wired?.OnOnScreenChanged(shown); // a page not wired yet comes on screen when it is
         foreach (var page in _allPages) page.OnWindowShownChanged(shown);
     }
 
@@ -258,55 +276,6 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     {
         foreach (var page in _allPages) page.OnDisplaysChanged();
     }
-
-    // A page also matches through the actions it registered (their category is the page's title), so a new action makes its page
-    // findable by its own words without anyone adding them to the page's keywords.
-    private bool Matches(PageViewModel p, string q) =>
-        (SelectedCategory == AllCategories || p.Title == SelectedCategory)
-        && (q.Length == 0 || TextMatch.Any(q, p.Title, p.Keywords)
-            || _hotkeys.Actions.Any(a => a.Category == p.Title && TextMatch.Any(q, a.Title, a.Heading, a.Keywords)));
-
-    private void ApplyFilter()
-    {
-        var q = SearchText.Trim();
-
-        Pages.Clear();
-        foreach (var p in _allPages.Where(p => Matches(p, q))) Pages.Add(p);
-        NavItems.Clear();
-        string? group = null;
-        foreach (var p in Pages)
-        {
-            if (p.NavGroup is { } g && g != group) NavItems.Add(new NavHeading(g));
-            group = p.NavGroup;
-            NavItems.Add(p);
-        }
-        FooterPages.Clear();
-        foreach (var p in _allFooter.Where(p => Matches(p, q))) FooterPages.Add(p);
-
-        // Keep the open page selected if it still matches, otherwise jump to the first match.
-        var target = CurrentPage is not null && (Pages.Contains(CurrentPage) || FooterPages.Contains(CurrentPage))
-            ? CurrentPage
-            : Pages.FirstOrDefault() ?? FooterPages.FirstOrDefault();
-
-        _syncing = true;
-        SelectedMainPage = target is not null && Pages.Contains(target) ? target : null;
-        SelectedFooterPage = target is not null && FooterPages.Contains(target) ? target : null;
-        _syncing = false;
-        if (target is not null) Show(target);
-
-        // Live results: the actual controls, so they can be edited right in the list.
-        SearchResults.Clear();
-        if (q.Length > 0)
-            foreach (var e in _allPages.Concat(_allFooter).SelectMany(p => p.SearchEntries).Concat(_actionsWindow.SearchEntries)
-                         .Where(e => (SelectedCategory == AllCategories || e.Category == SelectedCategory) && e.Matches(q)))
-                SearchResults.Add(e);
-        IsSearching = q.Length > 0;
-    }
-
-    /// <summary>Editable settings matching the search text.</summary>
-    public ObservableCollection<SearchEntry> SearchResults { get; } = new();
-
-    [ObservableProperty] private bool _isSearching;
 
     private void Report(string message)
     {
@@ -335,6 +304,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        _search?.Dispose();
         DisposeRestore();
         TrayFlyout.Dispose();
         _presetManager.Close();
@@ -353,6 +323,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _hotkeys.Moved -= _gestures.FollowMoved;
         _mouse.Dispose();
         _mouseHook.Dispose();
+        _icons.Dispose();
         _hotkeys.Dispose();
         _mixer.MasterDeviceChanged -= _osd.RetargetVolume;
         _osd.Dispose();

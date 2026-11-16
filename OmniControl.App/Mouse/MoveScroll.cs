@@ -1,4 +1,4 @@
-using OmniControl.App.Hotkeys;
+﻿using OmniControl.App.Hotkeys;
 using OmniControl.Core.Engine.Mouse;
 
 namespace OmniControl.App.Mouse;
@@ -28,6 +28,7 @@ internal sealed class MoveScroll
         public readonly int X = x, Y = y;
         public readonly Style Style = style;
         public int MovedX, MovedY;   // added by the hook thread, taken by the queue thread
+        public int NetX, NetY;       // all movement since the press, signed, to tell a click from a drag
         public int RestX, RestY;     // queue thread only: movement not yet worth a whole step
     }
 
@@ -61,6 +62,14 @@ internal sealed class MoveScroll
         return true;
     }
 
+    /// <summary>Ends it and says whether the pointer stayed within a scroll step since the press (the press was a click, not a drag); false when it was not running.</summary>
+    public bool StopWasClick()
+    {
+        var session = Volatile.Read(ref _session);
+        if (!Stop() || session is null) return false;
+        return !ClickOrDrag.IsDrag(Volatile.Read(ref session.NetX), Volatile.Read(ref session.NetY), session.Style.Distance);
+    }
+
     /// <summary>
     /// Runs inside the mouse hook. Returns true to swallow the movement while scrolling: a swallowed movement leaves the pointer where it
     /// was, so the position Windows reports minus the held position is exactly how far the mouse moved, with no need to move it back.
@@ -71,6 +80,8 @@ internal sealed class MoveScroll
         if (session is null) return false;
         if (x == session.X && y == session.Y) return true;
 
+        Interlocked.Add(ref session.NetX, x - session.X);
+        Interlocked.Add(ref session.NetY, y - session.Y);
         Interlocked.Add(ref session.MovedX, x - session.X);
         Interlocked.Add(ref session.MovedY, y - session.Y);
         // One flush queued at a time: a burst of movements becomes one batch of notches instead of a flood of tiny ones.

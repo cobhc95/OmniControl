@@ -50,11 +50,11 @@ public sealed partial class VolumePageViewModel
 
         hotkeys.Register(HotkeyAction.ForLevel("volume.up", "Volume up", Title, "sound audio master louder", volume, +1, (_, delta) => StepMaster(delta)));
         hotkeys.Register(HotkeyAction.ForLevel("volume.down", "Volume down", Title, "sound audio master quieter", volume, -1, (_, delta) => StepMaster(delta)));
-        hotkeys.Register(new HotkeyAction("volume.mute", "Toggle mute", Title, "sound audio master mute silence", _ => ToggleMasterMute()));
+        hotkeys.Register(new HotkeyAction("volume.mute", "Toggle mute", Title, "sound audio master mute silence", _ => ToggleMasterMute()) { SuggestedIcons = new[] { "mute", "volume" } });
         hotkeys.Register(new HotkeyAction("volume.closed.toggle", "Show or hide closed programs", Title, "sound audio mixer programs apps closed not open remembered list show hide",
             _ => OnUi(() => { if (Outputs.ProgramTools is { } tools) tools.ShowClosed = !tools.ShowClosed; })));
         hotkeys.Register(new HotkeyAction("volume.fx", "Toggle master FX", Title, "sound audio master fx effects chain equaliser",
-            _ => _mixer.SetFxByUser(null, !_mixer.IsFxOn(null))) { Icon = FxIcon });
+            _ => _mixer.SetFxByUser(null, !_mixer.IsFxOn(null))) { Icon = FxIcon, SuggestedIcons = new[] { FxIcon, "eq", "wave" } });
         SyncHotkeyAvailability();
     }
 

@@ -8,15 +8,17 @@
     <!-- The tray flyout (docs/mockups/tray-flyout.html, docs/mockups/tray-remove-tiles.html). Layout only; the model is Tray/TrayFlyoutModel.
          Slider rows (icon, name or a choice chip, slider, value; the name column is shared so the sliders line up), then a 4-column wrap of
          tiles ending in the dashed "+ Add" tile, then the foot: "Open OmniControl" at the left, "Edit"/"Done" at the right. In edit mode every
-         slider and tile shows a remove cross and "+ slider" appears; a right-click menu on any of them removes, re-icons and moves it. -->
+         slider and tile shows a remove cross and "+ slider" appears. Any slider or tile can be dragged to another place (Controls/PanelDragReorder)
+         unless the layout is locked, and has a right-click menu: Remove from panel, Change action…, Change icon…, Lock layout, Show in OmniControl.
+         A tile whose state is being read again shows a small dot (Ellipse.checkdot); one that shows only a last known state is faded. -->
     <Border Classes="flyoutpanel">
         <StackPanel Spacing="{StaticResource TrayPartGap}">
-            <ItemsControl ItemsSource="{Binding Sliders}" Grid.IsSharedSizeScope="True">
+            <ItemsControl x:Name="SliderItems" ItemsSource="{Binding Sliders}" Grid.IsSharedSizeScope="True">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="t:TraySliderItem">
                         <Grid Classes="trayslider" ColumnSpacing="8" ToolTip.Tip="{Binding Tip}" Background="Transparent">
                             <Grid.ContextFlyout>
-                                <c:ListMenuFlyout Placement="Pointer" Opened="OnItemMenuOpened">
+                                <c:ListMenuFlyout Placement="Pointer" Opening="OnItemMenuOpening">
                                     <c:MenuRowList />
                                 </c:ListMenuFlyout>
                             </Grid.ContextFlyout>
@@ -27,7 +29,7 @@
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <PathIcon Data="{Binding Icon}" IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                            <c:IconGlyph Source="{Binding Icon}" IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNotNull}}" />
                             <TextBlock Grid.Column="1" Classes="trayname" Text="{Binding Name}" IsVisible="{Binding HasName}" />
                             <c:ChipMenu Grid.Column="1" Text="{Binding ChoiceText}" ChipToolTip="{Binding Tip}" IsVisible="{Binding HasChoice}"
                                         MenuOpened="OnChoiceMenuOpened" VerticalAlignment="Center">
@@ -50,24 +52,25 @@
             <Button Classes="blockadd small" Content="+ slider" HorizontalAlignment="Left" Click="OnAddSliderClick" IsVisible="{Binding IsEditing}"
                     ToolTip.Tip="Adds a slider: any level OmniControl knows and can change." />
 
-            <ItemsControl ItemsSource="{Binding Tiles}">
+            <ItemsControl x:Name="TileItems" ItemsSource="{Binding Tiles}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate><WrapPanel ItemSpacing="{StaticResource TrayTileGap}" LineSpacing="{StaticResource TrayTileGap}" /></ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.DataTemplates>
                     <DataTemplate DataType="t:TrayTileItem">
                         <Panel>
-                            <Button Classes="tile" Classes.on="{Binding IsOn}" Command="{Binding RunCommand}" ToolTip.Tip="{Binding Tip}">
+                            <Button Classes="tile" Classes.on="{Binding IsOn}" Classes.faded="{Binding IsFaded}" Command="{Binding RunCommand}" ToolTip.Tip="{Binding Tip}">
                                 <Button.ContextFlyout>
-                                    <c:ListMenuFlyout Placement="Pointer" Opened="OnItemMenuOpened">
+                                    <c:ListMenuFlyout Placement="Pointer" Opening="OnItemMenuOpening">
                                         <c:MenuRowList />
                                     </c:ListMenuFlyout>
                                 </Button.ContextFlyout>
                                 <StackPanel>
-                                    <PathIcon Data="{Binding Icon}" IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                    <c:IconGlyph Source="{Binding Icon}" IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNotNull}}" />
                                     <TextBlock Text="{Binding Name}" />
                                 </StackPanel>
                             </Button>
+                            <Ellipse Classes="checkdot" IsVisible="{Binding IsChecking}" ToolTip.Tip="Reading its state now" />
                             <!-- Sits inside the panel's inset (TrayTileCross), so nothing clips at the panel's edge -->
                             <Button Classes="pill glyph" Click="OnRemoveClick" ToolTip.Tip="Remove from panel" HorizontalAlignment="Right" VerticalAlignment="Top"
                                     Margin="{StaticResource TrayTileCross}" IsVisible="{Binding $parent[Window].DataContext.IsEditing}">

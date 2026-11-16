@@ -1,4 +1,4 @@
-using OmniControl.App.Services;
+﻿using OmniControl.App.Services;
 
 namespace OmniControl.App.Hotkeys;
 
@@ -10,8 +10,18 @@ public enum OptionKind { Number, Choice, Toggle, Text, Heading }
 /// </summary>
 public sealed record ActionOption(string Key, string Label, OptionKind Kind, string Default,
     int Min = 0, int Max = 0, int Step = 1, string Unit = "", IReadOnlyList<string>? Choices = null, string Hint = "",
-    string? ShowKey = null, IReadOnlyList<string>? ShowValues = null, PathKind? Browse = null)
+    string? ShowKey = null, IReadOnlyList<string>? ShowValues = null, PathKind? Browse = null,
+    bool Shared = false, string? NeedsKey = null, string NeedsReason = "")
 {
+    /// <summary>The value lives once, outside the action (<see cref="ISharedOptions"/>), and is the same for every action that offers it.</summary>
+    public ActionOption SharedSetting() => this with { Shared = true };
+
+    /// <summary>The row stays but is dimmed, with <paramref name="reason"/> as its tooltip, until the toggle <paramref name="other"/> is on.</summary>
+    public ActionOption NeedsOn(ActionOption other, string reason) => this with { NeedsKey = other.Key, NeedsReason = reason };
+
+    /// <summary>False while the setting this one needs is off.</summary>
+    public bool IsAvailable(Func<string, string?> valueOf) => NeedsKey is null || valueOf(NeedsKey) == "1";
+
     /// <summary>This setting only matters (and only shows) while another setting has one of these values.</summary>
     public ActionOption ShownWhen(ActionOption other, params string[] values) => this with { ShowKey = other.Key, ShowValues = values };
 
@@ -37,6 +47,13 @@ public sealed record ActionOption(string Key, string Label, OptionKind Kind, str
     /// <summary>A group's heading among the settings (holds no value); <paramref name="note"/> is a muted line under it when there is a fact to tell.</summary>
     public static ActionOption Heading(string key, string label, string note = "") =>
         new(key, label, OptionKind.Heading, "", Hint: note);
+}
+
+/// <summary>Where the value of a <see cref="ActionOption.Shared"/> setting is kept (its owner's settings), read and written as the row changes.</summary>
+public interface ISharedOptions
+{
+    string Read(ActionOption option);
+    void Write(ActionOption option, string value);
 }
 
 /// <summary>The values chosen for an action's options; anything not chosen reads as the option's default.</summary>

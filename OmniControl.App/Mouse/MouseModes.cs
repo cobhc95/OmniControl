@@ -1,4 +1,4 @@
-using OmniControl.App.Hotkeys;
+﻿using OmniControl.App.Hotkeys;
 using OmniControl.Core.Engine.Mouse;
 
 namespace OmniControl.App.Mouse;
@@ -21,6 +21,7 @@ public sealed class MouseModes : IDisposable
     private readonly Dictionary<MouseButton, int> _stuck = new();   // sticky buttons now held down, with a counter that tells one stick from the next
     private int? _lockX, _lockY;            // the pointer coordinate held fixed on that axis
     private int _stickCount;
+    private volatile bool _closing;
 
     // Queue thread only.
     private readonly WindowDrag _drag = new();
@@ -45,9 +46,10 @@ public sealed class MouseModes : IDisposable
     /// Starts (or, for toggles, flips) the mode, with the pointer look the action asks for while it lasts. Returns what to undo when
     /// the button comes up, or null when nothing is held (a toggle, or a mode that stays on until pressed again).
     /// </summary>
-    public Action? Start(MouseAction action, MouseEvent at)
+    /// <param name="heldBack">The button's own press was kept from the app (movement as scroll with its click also sent): on release without a drag, the click is sent then.</param>
+    public Action? Start(MouseAction action, MouseEvent at, bool heldBack = false)
     {
-        var undo = StartMode(action, at);
+        var undo = StartMode(action, at, heldBack);
 
         var scrolls = action.Id == MouseActionCatalog.MoveAsScroll;
         var look = action.Options.Text(scrolls ? MouseOptions.ScrollPointer : MouseOptions.HeldPointer);
@@ -64,7 +66,7 @@ public sealed class MouseModes : IDisposable
     }
 
 
-    private Action? StartMode(MouseAction action, MouseEvent at)
+    private Action? StartMode(MouseAction action, MouseEvent at, bool heldBack)
     {
         switch (action.Id)
         {
@@ -82,7 +84,7 @@ public sealed class MouseModes : IDisposable
                 return null;
             }
 
-            case MouseActionCatalog.MoveAsScroll: return StartMoveAsScroll(action.Options, at);
+            case MouseActionCatalog.MoveAsScroll: return StartMoveAsScroll(action.Options, at, heldBack);
 
             case MouseActionCatalog.AxisXHold: SetLock(x: at.X); return () => SetLock(clearX: true);
             case MouseActionCatalog.AxisYHold: SetLock(y: at.Y); return () => SetLock(clearY: true);
@@ -131,7 +133,7 @@ public sealed class MouseModes : IDisposable
         return () => _queue.Post(() => InputSender.Release(keys));
     }
 
-    private Action? StartMoveAsScroll(OptionValues options, MouseEvent at)
+    private Action? StartMoveAsScroll(OptionValues options, MouseEvent at, bool heldBack)
     {
         var sticky = options.Bool(MouseOptions.ScrollSticky);
         // With "keep scrolling until pressed again", the next press stops it.
@@ -147,8 +149,12 @@ public sealed class MouseModes : IDisposable
         if (sticky) return null;
         return () =>
         {
-            _scroll.Stop();
+            // Nothing was sent on press, so there is never a button to let go of: a click that stayed a click is sent whole, and none at all while closing.
+            var click = false;
+            if (heldBack) click = _scroll.StopWasClick();
+            else _scroll.Stop();
             Refresh();
+            if (click && !_closing) _queue.Post(() => InputSender.Click(at.Button));
         };
     }
 
@@ -281,6 +287,9 @@ public sealed class MouseModes : IDisposable
     }
 
     private static ushort[] ParseKeys(string text) => KeyChord.TryParse(text, out var keys) ? keys : Array.Empty<ushort>();
+
+    /// <summary>Called before the held actions are undone on quit: a click held back with a button is dropped then, not sent late.</summary>
+    public void BeginClose() => _closing = true;
 
     /// <summary>Lets go of everything still held (sticky buttons, locks, slowed pointer, pointer look) so quitting never leaves the mouse in a strange state.</summary>
     public void Dispose()

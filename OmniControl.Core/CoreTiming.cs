@@ -12,6 +12,15 @@ public static class CoreTiming
     /// <summary>How long the pointer-area probe waits for a window to answer a hit test before giving up on it.</summary>
     public const uint HitTestTimeoutMs = 50;
 
+    /// <summary>
+    /// A middle press the program may swallow (to stop an app's autoscroll) waits at most this long for the "is it a link, tab or button?"
+    /// lookup; past that the click passes through (fail open). It stays well under Windows' own hook time limit.
+    /// </summary>
+    public const int AutoscrollLookupMs = 80;
+
+    /// <summary>How many parents above the element under the pointer the link lookup also checks.</summary>
+    public const int AutoscrollParentLevels = 4;
+
     /// <summary>A mouse-hook handler slower than this is reported (Windows drops a hook that takes too long).</summary>
     public const int HookSlowMs = 50;
 

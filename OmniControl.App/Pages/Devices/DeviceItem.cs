@@ -22,6 +22,7 @@ public sealed partial class DeviceItem : ObservableObject, IDisposable
     private readonly Action<string> _report;
     private readonly Func<DialogMessage, Task<bool>> _ask;
     private readonly Func<DeviceItem, Task> _delete;
+    private readonly Func<Avalonia.Visual, Icons.IconRequest, Task<Icons.IconPick?>> _chooseIcon;
 
     public DeviceRecord Record { get; }
 
@@ -89,7 +90,8 @@ public sealed partial class DeviceItem : ObservableObject, IDisposable
     public string Details => _runtime.Details;
     public bool HasDetails => _runtime.LastFailed && _runtime.Details.Length > 0;
 
-    public DeviceItem(DeviceRecord record, DeviceService service, Action<string> report, Func<DialogMessage, Task<bool>> ask, Func<DeviceItem, Task> delete)
+    public DeviceItem(DeviceRecord record, DeviceService service, Action<string> report, Func<DialogMessage, Task<bool>> ask, Func<DeviceItem, Task> delete,
+        Func<Avalonia.Visual, Icons.IconRequest, Task<Icons.IconPick?>> chooseIcon)
     {
         Record = record;
         _service = service;
@@ -97,6 +99,7 @@ public sealed partial class DeviceItem : ObservableObject, IDisposable
         _report = report;
         _ask = ask;
         _delete = delete;
+        _chooseIcon = chooseIcon;
         _name = record.Name;
         SyncMethods();
         if (!record.IsReady) OpenSetup(Methods.FirstOrDefault(m => !m.IsReady) ?? Methods[0]);

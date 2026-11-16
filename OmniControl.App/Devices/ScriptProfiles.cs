@@ -23,8 +23,8 @@ public sealed class ScriptProfile
     /// <summary>The command that asks the device's state; empty when there is none (Toggle then follows the last command).</summary>
     public string State { get; set; } = string.Empty;
 
-    /// <summary>The icon (a <see cref="DeviceIcons"/> id) a device on this profile shows until the user picks another.</summary>
-    public string Icon { get; set; } = DeviceIcons.Plug;
+    /// <summary>The icon (a library id, <see cref="Icons.IconLibrary"/>) a device on this profile shows until the user picks another.</summary>
+    public string Icon { get; set; } = Icons.IconLibrary.Plug;
 
     /// <summary>The user's own profile: the built-in one it was made from (Reset to built-in goes back to it); empty when not known.</summary>
     public string BasedOn { get; set; } = string.Empty;
@@ -80,7 +80,7 @@ public static class ScriptProfiles
     {
         new ScriptProfile
         {
-            Id = Tapo, Name = "Tapo", Version = 1, On = $"{Smart} on", Off = $"{Smart} off", State = $"{Smart} state", Icon = DeviceIcons.Plug,
+            Id = Tapo, Name = "Tapo", Version = 1, On = $"{Smart} on", Off = $"{Smart} off", State = $"{Smart} state", Icon = Icons.IconLibrary.Plug,
             Brief = "All Tapo plugs, bulbs, strips and switches. Needs Third-Party Compatibility.",
             SignInNote = "Tapo account email and password", LowerCaseEmail = true,
             Stages = { new TemplateStage("tapo-app", "Tapo app setting", "In the Tapo app: Me › Third-Party Services › Third-Party Compatibility → On. Without it the device refuses the sign-in.", "I've turned it on") },
@@ -91,10 +91,10 @@ public static class ScriptProfiles
                 new ErrorTip("Unable to connect", NoAnswer),
             },
         },
-        new ScriptProfile { Id = Kasa, Name = "Kasa", Version = 1, On = $"{Host} on", Off = $"{Host} off", State = $"{Host} state", Icon = DeviceIcons.Plug, NeedsSignIn = false, LowerCaseEmail = true,
+        new ScriptProfile { Id = Kasa, Name = "Kasa", Version = 1, On = $"{Host} on", Off = $"{Host} off", State = $"{Host} state", Icon = Icons.IconLibrary.Plug, NeedsSignIn = false, LowerCaseEmail = true,
             Brief = "Older Kasa plugs and bulbs. No sign-in.",
             Tips = { new ErrorTip("Timed out", NoAnswer), new ErrorTip("Unable to connect", NoAnswer) } },
-        new ScriptProfile { Id = Auto, Name = "Auto-detect", Version = 1, On = $"{Host} on", Off = $"{Host} off", State = $"{Host} state", Icon = DeviceIcons.Plug,
+        new ScriptProfile { Id = Auto, Name = "Auto-detect", Version = 1, On = $"{Host} on", Off = $"{Host} off", State = $"{Host} state", Icon = Icons.IconLibrary.Plug,
             Brief = "Any python-kasa device; finds it on the network.", MenuTag = "slower",
             SignInNote = "Account email and password (only for devices that need them)" },
     };

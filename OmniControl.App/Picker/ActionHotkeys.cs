@@ -15,6 +15,7 @@ namespace OmniControl.App.Picker;
 public sealed partial class ActionHotkeys : ObservableObject, IDisposable
 {
     private readonly HotkeyRegistry _registry;
+    private readonly Func<Avalonia.Visual, HotkeyAction, Task> _changeIcon;
 
     public HotkeyAction Action { get; }
 
@@ -39,10 +40,12 @@ public sealed partial class ActionHotkeys : ObservableObject, IDisposable
     public IRelayCommand ShowCommand { get; }
 
     /// <param name="showPage">Opens the sidebar page with this title (the shell owns navigation).</param>
-    public ActionHotkeys(HotkeyAction action, HotkeyRegistry registry, Action<string> showPage)
+    /// <param name="changeIcon">The shared icon picker for the action ("Change icon…"), over the window holding the visual.</param>
+    public ActionHotkeys(HotkeyAction action, HotkeyRegistry registry, Action<string> showPage, Func<Avalonia.Visual, HotkeyAction, Task> changeIcon)
     {
         Action = action;
         _registry = registry;
+        _changeIcon = changeIcon;
         AddKeyCommand = new RelayCommand(AddKey);
         SuggestCommand = new RelayCommand(Suggest);
         // Through the registry, so the one gate (block rules) and the UI-thread hand-over apply as for any other way of running it.
@@ -52,6 +55,9 @@ public sealed partial class ActionHotkeys : ObservableObject, IDisposable
         action.RefreshDevices(); // the devices plugged in now
         Rebuild();
     }
+
+    /// <summary>"Change icon…": the shared icon picker; the answer is kept as the action's chosen icon.</summary>
+    public Task ChangeIconAsync(Avalonia.Visual from) => _changeIcon(from, Action);
 
     private void OnActionChanged(object? sender, PropertyChangedEventArgs e)
     {

@@ -54,6 +54,15 @@ public sealed partial class HotkeyAction : HotkeyTarget, Pages.IEditorItem
     /// <summary>The action's own glyph, the key of a <c>StreamGeometry</c> in <c>Styles/Brushes.axaml</c> (<see cref="Services.IconResources"/>); null: the pickers and the tray show its page's icon.</summary>
     public string? Icon { get; init; }
 
+    /// <summary>Two or three library icon ids (<see cref="Icons.IconLibrary"/>) that suit the action: the icon picker's "Suggested for this", and the first is its default icon.</summary>
+    public IReadOnlyList<string>? SuggestedIcons { get; init; }
+
+    /// <summary>The icon the user chose for it (a library id or a user icon), set by <see cref="Icons.IconStore"/> as it is registered; null: its default.</summary>
+    public string? ChosenIcon { get; set; }
+
+    /// <summary>The icon it shows: the chosen one, else its first suggestion, else its own <see cref="Icon"/>; null: its page's icon.</summary>
+    public string? ShownIcon => ChosenIcon ?? Icons.IconLibrary.DefaultOf(SuggestedIcons, Icon);
+
     /// <summary>The feature the action belongs to: the title of the page that registers it.</summary>
     public string Category { get; }
 

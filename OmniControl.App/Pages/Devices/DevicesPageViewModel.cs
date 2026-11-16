@@ -19,6 +19,7 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
     private readonly DeviceService _service;
     private readonly Func<DialogMessage, Task<bool>> _ask;
     private readonly Action<string> _report;
+    private readonly Func<Avalonia.Visual, Icons.IconRequest, Task<Icons.IconPick?>> _chooseIcon;
 
     /// <summary>The devices copied (or cut) with the list's menu or Ctrl+C / Ctrl+X; a cut is only moved by Paste.</summary>
     private readonly List<DeviceRecord> _clipboard = new();
@@ -39,11 +40,14 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
     public bool NoDevices => Items.Count == 0;
     public bool HasSelected => Selected is not null;
 
-    public DevicesPageViewModel(DeviceService service, Func<DialogMessage, Task<bool>> ask, Action<string> report)
+    /// <param name="chooseIcon">The shared icon picker (a device's "Change icon…").</param>
+    public DevicesPageViewModel(DeviceService service, Func<DialogMessage, Task<bool>> ask, Action<string> report,
+        Func<Avalonia.Visual, Icons.IconRequest, Task<Icons.IconPick?>> chooseIcon)
     {
         _service = service;
         _ask = ask;
         _report = report;
+        _chooseIcon = chooseIcon;
         foreach (var record in service.Settings.Devices) Items.Add(Make(record));
         Selected = Items.FirstOrDefault();
         Items.CollectionChanged += (_, _) => OnPropertyChanged(nameof(NoDevices));
@@ -62,7 +66,13 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
         foreach (var item in Items.ToList()) await item.CheckWhenShownAsync();
     }
 
-    private DeviceItem Make(DeviceRecord record) => new(record, _service, _report, _ask, DeleteAsync);
+    /// <summary>The device whose power state this is becomes the selected one, so its detail shows.</summary>
+    public override void Reveal(string stateId)
+    {
+        if (Items.FirstOrDefault(i => DeviceService.StateId(i.Record) == stateId) is { } item) Selected = item;
+    }
+
+    private DeviceItem Make(DeviceRecord record) => new(record, _service, _report, _ask, DeleteAsync, _chooseIcon);
 
     [RelayCommand]
     private void AddDevice()

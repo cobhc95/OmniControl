@@ -1,4 +1,5 @@
 using OmniControl.App.Hotkeys;
+using OmniControl.App.Pages;
 using OmniControl.App.Pages.AppSettingsPage;
 using OmniControl.App.Picker;
 using OmniControl.App.Services;
@@ -23,7 +24,21 @@ public sealed partial class ShellViewModel
             _ => ShowPage(home)) { NeverBlock = true });
         _hotkeys.Register(new HotkeyAction("app.actions.open", $"Open {ActionsWindowService.Title}", home, "actions hotkeys shortcuts keys list open window",
             _ => _actionsWindow.Open()) { NeverBlock = true });
-        return new TrayFlyoutModel(_hotkeys, _states, AppLifecycle.RequestShow);
+        return new TrayFlyoutModel(_hotkeys, _states, _iconPicker, AppLifecycle.RequestShow, ShowInApp);
+    }
+
+    /// <summary>
+    /// "Show in OmniControl" of a tray slider or tile: an action opens the Actions and hotkeys window at it; a state alone opens the main
+    /// window at the page that owns it, which brings the state's owner forward (<see cref="PageViewModel.Reveal"/>: a smart device is selected).
+    /// </summary>
+    private void ShowInApp(TrayTarget target)
+    {
+        if (target.Action is { } action) _actionsWindow.Open(action.Id);
+        else if (target.State is { } state)
+        {
+            ShowPage(state.Group);
+            _allPages.Concat(_allFooter).FirstOrDefault(p => p.Title == state.Group)?.Reveal(state.Id);
+        }
     }
 
     /// <summary>Shows the main window at a page.</summary>

@@ -11,6 +11,14 @@ namespace OmniControl.Tests;
 /// </summary>
 public class StatusWordsTests
 {
+    [Fact]
+    public void IdleEngine_SaysOnWhenTheSwitchIsOn_AndOffWhenItIsNot()
+    {
+        var method = EffectsRules.MethodFor("app");
+        Assert.StartsWith("Effects on", EngineStatus.Off.LineFor(method, fxOn: true));
+        Assert.StartsWith("Effects off", EngineStatus.Off.LineFor(method, fxOn: false));
+    }
+
     // ---- the steady delay: five-ms steps, held until the same new figure is read several times in a row ----
 
     [Theory]
