@@ -21,6 +21,8 @@ public static class OsdView
 
     private const string Sun = "M12,7 A5,5 0 1 0 12,17 A5,5 0 1 0 12,7 Z M11,1 H13 V4 H11 Z M11,20 H13 V23 H11 Z M1,11 H4 V13 H1 Z M20,11 H23 V13 H20 Z";
     private const string Speaker = "M3,9 H7 L12,4 V20 L7,15 H3 Z M15,8 Q18,12 15,16 L16.5,17.5 Q21,12 16.5,6.5 Z";
+    private const string Microphone = "M12,3 A3,3 0 0 1 15,6 V12 A3,3 0 0 1 9,12 V6 A3,3 0 0 1 12,3 Z M6,11 H8 A4,4 0 0 0 16,11 H18 A6,6 0 0 1 13,16.9 V20 H11 V16.9 A6,6 0 0 1 6,11 Z";
+    private const string MicrophoneOff = "M12,3 A3,3 0 0 1 15,6 V12 A3,3 0 0 1 9,12 V6 A3,3 0 0 1 12,3 Z M6,11 H8 A4,4 0 0 0 16,11 H18 A6,6 0 0 1 13,16.9 V20 H11 V16.9 A6,6 0 0 1 6,11 Z M3.5,4.9 L4.9,3.5 L20.5,19.1 L19.1,20.5 Z";
     private const string Disc = "M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 Z";
     private const string Thermometer = "M10,4 A2,2 0 0 1 14,4 V13.2 A4.5,4.5 0 1 1 10,13.2 Z";
     private const string Play = "M7,4 V20 L20,12 Z";
@@ -71,8 +73,14 @@ public static class OsdView
     private static Control BuildLevel(OsdSettings s, string label, OsdLevelIcon icon, List<Action<int>> updates)
     {
         var (bg, accent, fg, muted, track, edge) = Scheme.From(s);
-        var isVolume = icon == OsdLevelIcon.Speaker;
-        var iconPath = icon switch { OsdLevelIcon.Speaker => Speaker, OsdLevelIcon.Disc => Disc, OsdLevelIcon.Thermometer => Thermometer, _ => Sun };
+        var isMic = icon == OsdLevelIcon.Microphone;
+        var isVolume = icon == OsdLevelIcon.Speaker || isMic;
+        var iconPath = icon switch
+        {
+            OsdLevelIcon.Sun => Sun, OsdLevelIcon.Speaker => Speaker, OsdLevelIcon.Microphone => Microphone,
+            OsdLevelIcon.Disc => Disc, OsdLevelIcon.Thermometer => Thermometer,
+            _ => throw new ArgumentOutOfRangeException(nameof(icon), icon, "Every OSD icon needs its picture here"),
+        };
 
         Control Frame(Control child, double? w, double? h, double radius, Thickness pad) => OsdView.Frame(bg, edge, child, w, h, radius, pad);
 
@@ -104,6 +112,12 @@ public static class OsdView
             };
             var normal = pathIcon.Foreground;
             if (isVolume) updates.Add(v => pathIcon.Foreground = v == 0 ? Silent : normal);
+            if (isMic)
+            {
+                var on = pathIcon.Data;
+                var off = Geometry.Parse(MicrophoneOff);
+                updates.Add(v => pathIcon.Data = v == 0 ? off : on);
+            }
             return pathIcon;
         }
 

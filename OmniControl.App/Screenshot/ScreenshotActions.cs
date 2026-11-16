@@ -18,7 +18,7 @@ public static class ScreenshotActions
 
     public static void Register(HotkeyRegistry hotkeys, OsdService osd, Action<string> report)
     {
-        osd.Declare(ScreenshotService.OsdElement, isLevel: false);
+        osd.DeclareText(ScreenshotService.OsdElement);
         var settings = ScreenshotSettings.Load();
         var hevc = VideoEncoders.HevcAvailable();
         var service = new ScreenshotService(settings, report, message => osd.ShowMessage(ScreenshotService.OsdElement, message), hevc);
@@ -37,11 +37,18 @@ public static class ScreenshotActions
         [ShotKind.Area] = "Area", [ShotKind.Window] = "Window", [ShotKind.Screen] = "Screen", [ShotKind.AllScreens] = "All screens", [ShotKind.Record] = "Record",
     };
 
+    private static readonly Dictionary<ShotKind, string> Icons = new()
+    {
+        [ShotKind.Area] = "ShotAreaIcon", [ShotKind.Window] = "ShotWindowIcon", [ShotKind.Screen] = "ShotScreenIcon",
+        [ShotKind.AllScreens] = "ShotAllScreensIcon", [ShotKind.Record] = "VideoCameraIcon",
+    };
+
     private static HotkeyAction Make(string id, string title, ShotKind kind, string keywords, ScreenshotService service, ScreenshotSettings settings, bool hevc) =>
         new(id, title, Category, keywords, _ => Dispatcher.UIThread.Post(() => service.Take(kind, id)))
         {
             PickerSection = ActionSections.Screenshot,
             Short = ShortNames.GetValueOrDefault(kind),
+            Icon = Icons.GetValueOrDefault(kind),
             Editor = new ActionEditor(ScreenshotFields.Options(kind, hevc),
                 () => ScreenshotFields.Read(settings.For(id), settings.UsesShared(id)),
                 (key, value) => Edit(settings, id, key, value)),

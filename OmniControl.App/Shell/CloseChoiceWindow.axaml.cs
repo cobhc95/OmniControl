@@ -1,4 +1,4 @@
-using Avalonia.Controls;
+﻿using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using OmniControl.App.Services;
@@ -20,6 +20,8 @@ public partial class CloseChoiceWindow : Window
     }
 
     private void OnExitClick(object? sender, RoutedEventArgs e) => Close(new CloseChoice(CloseBehavior.Exit, RememberSwitch.IsChecked == true));
+
+    private void OnCancelClick(object? sender, RoutedEventArgs e) => Close(null);
 
     private void OnTrayClick(object? sender, RoutedEventArgs e) => Close(new CloseChoice(CloseBehavior.MinimizeToTray, RememberSwitch.IsChecked == true));
 }

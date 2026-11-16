@@ -108,6 +108,7 @@
         <x:Double x:Key="CaptureTextMinWidth">120</x:Double>
         <!-- Screen recording: a red glyph's size (Record, Stop), the bar's red dot, the gap around the dot and timer, the dashed frame's line -->
         <x:Double x:Key="ToolIconDangerGlyph">13</x:Double>
+        <x:Double x:Key="ToolIconOutlineGlyph">17</x:Double>
         <x:Double x:Key="RecordDotSize">8</x:Double>
         <Thickness x:Key="RecordClockInset">6,0</Thickness>
         <x:Double x:Key="RecordClockGap">6</x:Double>
@@ -240,6 +241,7 @@
         <CornerRadius x:Key="TrayTileCornerRadius">8</CornerRadius>
         <x:Double x:Key="TrayTileGap">8</x:Double>
         <x:Double x:Key="TrayGlyphSize">16</x:Double>
+        <Thickness x:Key="TrayTileCross">0,-6,-6,0</Thickness>
         <x:Double x:Key="TrayPartGap">10</x:Double>
     </Application.Resources>
 

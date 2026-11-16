@@ -15,8 +15,10 @@
             <!-- "Only with a hotkey" sits at the foot of the sections of a list of actions (never of triggers, conditions...) -->
             <Border Classes="sidebarpanel" BorderThickness="0,1,1,0" MinWidth="{DynamicResource PickerSectionsMinWidth}">
                 <DockPanel>
-                <CheckBox DockPanel.Dock="Bottom" Content="Only with a hotkey" IsChecked="{Binding OnlyWithKey}" IsVisible="{Binding ShowsKeyFilter}"
-                          Focusable="False" Margin="14,4,14,8" />
+                <StackPanel DockPanel.Dock="Bottom" Margin="14,4,14,8">
+                    <CheckBox Content="Only with a hotkey" IsChecked="{Binding OnlyWithKey}" IsVisible="{Binding ShowsKeyFilter}" Focusable="False" />
+                    <CheckBox Content="In panel only" IsChecked="{Binding OnlyInPanel}" IsVisible="{Binding HasPanel}" Focusable="False" />
+                </StackPanel>
                 <ListBox x:Name="SectionList" Classes="nav" Focusable="False" Margin="0,8,4,8" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                          ItemsSource="{Binding Sections}" SelectedIndex="{Binding SectionHighlight}">
                     <ListBox.ItemTemplate>
@@ -34,6 +36,9 @@
             <!-- Pane 2: the entries of the section (or the matches of the search), a small heading above each group -->
             <Border Grid.Column="1" MinWidth="{DynamicResource PickerEntriesMinWidth}" BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,1,1,0">
                 <ListBox x:Name="ActionList" Classes="pick active" Focusable="False" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ItemsSource="{Binding Actions}" SelectedIndex="{Binding ActionIndex}">
+                    <!-- The list is rebuilt on every search, so its rows are made one per entry and never recycled: a recycled row kept the
+                         previous list's entry drawn under the new one -->
+                    <ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
                     <!-- A group heading is its own row: no hover, no highlight, no click -->
                     <ListBox.Styles>
                         <Style Selector="ListBoxItem">
@@ -46,24 +51,30 @@
                             <StackPanel Background="Transparent" ToolTip.Tip="{Binding Unavailable}">
                                 <TextBlock Classes="hint small" Text="{Binding Text}" IsVisible="{Binding IsHeading}" Margin="0,4,0,2" />
                                 <!-- A greyed entry (Grid.unavailable) says why under its name and cannot be picked -->
-                                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8" Classes.unavailable="{Binding !IsAvailable}">
-                                    <StackPanel VerticalAlignment="Center" IsVisible="{Binding IsEntry}">
-                                        <TextBlock Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Classes="hint small" Text="{Binding Unavailable}" IsVisible="{Binding !IsAvailable}" TextWrapping="Wrap" />
-                                    </StackPanel>
-                                    <Button Classes="blockadd small" Content="{Binding Text}" HorizontalAlignment="Left" Focusable="False"
-                                            IsVisible="{Binding IsCommand}" Click="OnRowCommandClick" />
-                                    <TextBlock Grid.Column="1" Text="{Binding Hint}" Classes="muted small" VerticalAlignment="Center" />
-                                    <!-- The entry's keys as keycaps, right-aligned beside its name, or a muted "no key" (the Actions and hotkeys window) -->
-                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                        <ItemsControl ItemsSource="{Binding Keycaps}">
-                                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate><hk:KeycapRow Parts="{Binding}" /></DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                        <TextBlock Classes="muted small" Text="no key" IsVisible="{Binding ShowsNoKey}" />
-                                    </StackPanel>
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" IsVisible="{Binding !IsHeading}" Classes.unavailable="{Binding !IsAvailable}">
+                                    <!-- The entry's own glyph, else its section's icon -->
+                                    <PathIcon Data="{Binding Icon}" Width="16" Height="16" VerticalAlignment="Center" IsVisible="{Binding HasIcon}" />
+                                    <!-- The name takes its room first: the hint and the keycaps follow it on the line, or drop to a second line when it is short of room -->
+                                    <WrapPanel Grid.Column="1" ItemSpacing="8" LineSpacing="2" VerticalAlignment="Center">
+                                        <StackPanel VerticalAlignment="Center" IsVisible="{Binding IsEntry}">
+                                            <TextBlock Text="{Binding Text}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Classes="hint small" Text="{Binding Unavailable}" IsVisible="{Binding !IsAvailable}" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                        <Button Classes="blockadd small" Content="{Binding Text}" HorizontalAlignment="Left" Focusable="False"
+                                                IsVisible="{Binding IsCommand}" Click="OnRowCommandClick" />
+                                        <TextBlock Text="{Binding Hint}" Classes="muted small" VerticalAlignment="Center" />
+                                        <!-- The entry's keys as keycaps, or a muted "no key" (the Actions and hotkeys window) -->
+                                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                            <ItemsControl ItemsSource="{Binding Keycaps}">
+                                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="6" LineSpacing="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate><hk:KeycapRow Classes="small" Parts="{Binding}" /></DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <TextBlock Classes="muted small" Text="no key" IsVisible="{Binding ShowsNoKey}" />
+                                        </StackPanel>
+                                    </WrapPanel>
+                                    <Border Grid.Column="2" Classes="tag selected" IsVisible="{Binding InPanel}" VerticalAlignment="Center"><TextBlock Text="In panel ✓" /></Border>
                                 </Grid>
                             </StackPanel>
                         </DataTemplate>
@@ -122,6 +133,10 @@
                                 </ListBox.ItemTemplate>
                             </ListBox>
                             <TextBlock Classes="muted small" Text="{Binding Note}" IsVisible="{Binding HasNote}" TextWrapping="Wrap" Margin="14,4" />
+                            <StackPanel Margin="14,4,14,8" Spacing="6" IsVisible="{Binding ActiveInPanel}">
+                                <TextBlock Classes="muted small" Text="{Binding PanelNote}" TextWrapping="Wrap" />
+                                <Button Classes="pill" Content="Remove from panel" HorizontalAlignment="Left" Focusable="False" Click="OnRemoveFromPanelClick" />
+                            </StackPanel>
                             <Button Classes="pill" Classes.custom="{Binding OnFootButton}" Content="{Binding FootText}" IsVisible="{Binding HasFootButton}" Focusable="False"
                                     HorizontalAlignment="Left" Margin="14,8,14,8" Click="OnFootButtonClick" />
                         </StackPanel>

@@ -253,7 +253,7 @@ public static class MouseActionCatalog
     /// </summary>
     public static PickChoice OmniEntry(HotkeyAction a, IReadOnlyList<ActionOption>? options = null, string? unavailable = null) =>
         new($"{Omni}:{a.Id}", a.Section, a.Title, Keywords: $"{OmniControl} {a.Keywords}", Options: options, Unavailable: unavailable, Heading: a.PickerHeading,
-            Place: a.SectionPlace, RemoveText: a.RemoveText, Renaming: a.Renaming, IsListed: a.IsListed);
+            Place: a.SectionPlace, RemoveText: a.RemoveText, Renaming: a.Renaming, IsListed: a.IsListed, Icon: a.Icon);
 
     /// <summary>The settings of an OmniControl action: what it takes of its own (a program, how far a level moves, a power countdown), then the common "times / repeat" ones where repeating makes sense.</summary>
     private static IReadOnlyList<ActionOption> OmniOptions(HotkeyAction a)

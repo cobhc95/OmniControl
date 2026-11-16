@@ -94,7 +94,7 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
         (_engine, _hotkeys, _osd, _software, _report, _openPresets, _states) = (engine, hotkeys, osd, software, report, openPresets, states);
         _rescan = new ThrottledRun(Timing.DisplayRescanGap, RescanNow);
 
-        foreach (var spec in DisplayControls.All) osd.Declare(spec.Osd, icon: spec.Icon);
+        foreach (var spec in DisplayControls.All) osd.Declare(spec.Osd, spec.Icon);
 
         _store = DisplaySettingsStore.OnDisk();
         _scheduler = new WarmLightScheduler(software, _store);

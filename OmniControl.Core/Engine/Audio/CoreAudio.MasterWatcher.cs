@@ -9,12 +9,14 @@ public static partial class CoreAudio
     /// Raises <see cref="Changed"/> (percent, muted; on a Windows audio thread) when the master volume or mute of the default playback
     /// device changes, from anywhere. Windows calls in when it happens, so nothing is polled: a poll asked Windows twice per 16 ms and
     /// left a trail of COM objects for the garbage collector. When the default device changes, the watch moves to the new device.
+    /// Made with <c>recording: true</c> it watches the default recording device (the microphone) the same way.
     /// </summary>
     public sealed class MasterWatcher : IDisposable
     {
         private readonly object _gate = new();
         private readonly VolumeCallback _volumeCallback;
         private readonly DeviceCallback _deviceCallback;
+        private readonly int _flow;
         private IMMDeviceEnumerator? _enumerator;
         private IAudioEndpointVolume? _endpoint;
         private IntPtr _volumeSink, _deviceSink;
@@ -29,11 +31,12 @@ public static partial class CoreAudio
         /// <summary>Looks again at which device to watch (the answer of <see cref="Device"/> changed); a level that differs is not reported.</summary>
         public void Retarget() => ThreadPool.QueueUserWorkItem(_ => Attach(report: false));
 
-        public MasterWatcher()
+        public MasterWatcher(bool recording = false)
         {
+            _flow = recording ? Capture : Render;
             _volumeCallback = new VolumeCallback(Notify);
             // Windows asks not to be called back from inside its own notification, so the move to a new device runs on a worker.
-            _deviceCallback = new DeviceCallback(() => ThreadPool.QueueUserWorkItem(_ => Attach(report: true)));
+            _deviceCallback = new DeviceCallback(_flow, () => ThreadPool.QueueUserWorkItem(_ => Attach(report: true)));
         }
 
         /// <summary>Starts watching on a worker thread (the first Core Audio call is slow).</summary>
@@ -69,7 +72,7 @@ public static partial class CoreAudio
                 {
                     IMMDevice device;
                     if (Device?.Invoke() is { } id) { if (_enumerator.GetDevice(id, out device) != 0) return; } // unplugged now
-                    else if (_enumerator.GetDefaultAudioEndpoint(Render, Multimedia, out device) != 0) return; // no playback device now
+                    else if (_enumerator.GetDefaultAudioEndpoint(_flow, Multimedia, out device) != 0) return; // no device of this kind now
                     var iid = typeof(IAudioEndpointVolume).GUID;
                     var activated = device.Activate(ref iid, ClsCtxAll, IntPtr.Zero, out var o);
                     Marshal.ReleaseComObject(device);
@@ -169,13 +172,14 @@ public static partial class CoreAudio
 
         private sealed class DeviceCallback : IDeviceNotify
         {
+            private readonly int _watchedFlow;
             private readonly Action _defaultChanged;
 
-            public DeviceCallback(Action defaultChanged) => _defaultChanged = defaultChanged;
+            public DeviceCallback(int watchedFlow, Action defaultChanged) => (_watchedFlow, _defaultChanged) = (watchedFlow, defaultChanged);
 
             public int OnDefaultDeviceChanged(int flow, int role, string? id)
             {
-                if (flow == Render && role == Multimedia) _defaultChanged();
+                if (flow == _watchedFlow && role == Multimedia) _defaultChanged();
                 return 0;
             }
 

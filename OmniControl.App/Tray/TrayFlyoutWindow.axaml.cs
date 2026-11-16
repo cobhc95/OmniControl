@@ -12,7 +12,7 @@ namespace OmniControl.App.Tray;
 /// Layout and wiring only: the tray flyout's window. It opens beside the tray at the click (<see cref="TrayPlacement"/>, on the screen and
 /// at the DPI of the click, placed again whenever its size or scaling changes), hides when it loses the focus (a click anywhere else) or on
 /// Esc, and is hidden rather than closed until the app ends. Tab and Shift+Tab go round its controls. The pickers it opens are its own
-/// windows, so it stays open while one is up. Mouse first in edit mode (drag the grips, right-click a tile row; AGENTS.md rule 5).
+/// windows, so it stays open while one is up. Mouse first in edit mode (the crosses, the right-click menu; AGENTS.md rule 5).
 /// </summary>
 public partial class TrayFlyoutWindow : Window
 {
@@ -24,8 +24,6 @@ public partial class TrayFlyoutWindow : Window
     public TrayFlyoutWindow()
     {
         InitializeComponent();
-        ListDragReorder.Attach(SliderRows, (rows, at) => Model?.MoveSliders(rows, at));
-        ListDragReorder.Attach(TileRows, (rows, at) => Model?.MoveTiles(rows, at));
         KeyboardNavigation.SetTabNavigation(this, KeyboardNavigationMode.Cycle);
         Deactivated += OnDeactivated;
         SizeChanged += (_, _) => Place();
@@ -52,6 +50,20 @@ public partial class TrayFlyoutWindow : Window
         Activate();
         Dispatcher.UIThread.Post(() => KeyboardNavigationHandler.GetNext(this, NavigationDirection.Next)?.Focus(NavigationMethod.Tab));
     }
+
+    /// <summary>Builds the window's visuals once, unseen, so the first click only shows it.</summary>
+    public void Warm()
+    {
+        Model?.Showing();
+        (Opacity, ShowActivated) = (0, false);
+        Show();
+        Hide();
+        (Opacity, ShowActivated) = (1, true);
+        Model?.Hidden();
+    }
+
+    /// <summary>Hides it as a click elsewhere does.</summary>
+    public void Dismiss() => HideNow();
 
     /// <summary>Ends it for good (the app is exiting).</summary>
     public void CloseForGood()
@@ -108,10 +120,21 @@ public partial class TrayFlyoutWindow : Window
         OpenMenu(menu, rows, item.ChoiceRows);
     }
 
-    private void OnTileMenuOpened(object? sender, EventArgs e)
+    private void OnItemMenuOpened(object? sender, EventArgs e)
     {
         if (sender is not Flyout { Content: MenuRowList rows } menu || Model is not { } model) return;
-        if (menu.Target?.DataContext is TrayEditRow row) OpenMenu(menu, rows, model.TileMenu(row));
+        if (menu.Target?.DataContext is not ITrayPanelItem item) return;
+        var target = menu.Target;
+        OpenMenu(menu, rows, model.ItemMenu(item, icons => Dispatcher.UIThread.Post(() =>
+        {
+            OpenMenu(menu, rows, icons);
+            menu.ShowAt(target);
+        })));
+    }
+
+    private void OnRemoveClick(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is ITrayPanelItem item) Model?.Remove(item);
     }
 
     private void OpenMenu(Flyout menu, MenuRowList rows, IReadOnlyList<MenuRowItem> items)

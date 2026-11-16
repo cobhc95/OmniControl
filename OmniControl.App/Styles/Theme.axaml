@@ -24,7 +24,7 @@
     <Style Selector="Border.pane.edged"><Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" /></Style>
 
     <!-- Focus is shown with the accent colour, not the default white outline -->
-    <Style Selector="ToggleSwitch, ToggleSwitch:focus, ToggleSwitch:focus-visible, Button, ToggleButton, ListBoxItem, ComboBoxItem, ComboBox, TextBox, CheckBox, Button:focus-visible, ToggleButton:focus-visible, ListBoxItem:focus-visible, ComboBoxItem:focus-visible, ComboBox:focus-visible, TextBox:focus-visible, CheckBox:focus-visible, Button:focus, ToggleButton:focus">
+    <Style Selector="Slider, Slider:focus, Slider:focus-visible, ToggleSwitch, ToggleSwitch:focus, ToggleSwitch:focus-visible, Button, ToggleButton, ListBoxItem, ComboBoxItem, ComboBox, TextBox, CheckBox, Button:focus-visible, ToggleButton:focus-visible, ListBoxItem:focus-visible, ComboBoxItem:focus-visible, ComboBox:focus-visible, TextBox:focus-visible, CheckBox:focus-visible, Button:focus, ToggleButton:focus">
         <Setter Property="FocusAdorner" Value="{x:Null}" />
     </Style>
 

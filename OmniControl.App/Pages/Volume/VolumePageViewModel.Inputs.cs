@@ -1,6 +1,7 @@
 using OmniControl.App.Dialogs;
 using OmniControl.App.Audio.Engine;
 using OmniControl.App.Audio;
+using OmniControl.App.Osd;
 using OmniControl.App.Services;
 using OmniControl.Core.Engine;
 
@@ -16,8 +17,10 @@ public sealed partial class VolumePageViewModel
     /// <summary>The word under the default recording device's name.</summary>
     private const string DefaultWord = "default";
 
-    /// <summary>The OSD element (and its "Show in OSD" switch) for the default recording device's level.</summary>
-    private const string MicrophoneElement = "Microphone";
+    private const string MicrophoneElement = OsdService.MicrophoneElement;
+
+    /// <summary>The own glyphs (Styles/Brushes.axaml) of the microphone and effects actions and states.</summary>
+    private const string MicIcon = "MicIcon", FxIcon = "FxIcon";
 
     private void RefreshInputs()
     {
@@ -45,6 +48,13 @@ public sealed partial class VolumePageViewModel
         SyncWiring();
     }
 
+    /// <summary>OmniControl itself is changing a microphone: the page ignores the echo, and so does the OSD's watcher.</summary>
+    private void NoteInputChange()
+    {
+        _inputChange = DateTime.UtcNow;
+        _osd.NoteOwnChange(MicrophoneElement);
+    }
+
     private InputItem NewInput(AudioDevice d)
     {
         var id = d.Id;
@@ -52,8 +62,8 @@ public sealed partial class VolumePageViewModel
         return new InputItem(id)
         {
             Name = d.Name,
-            VolumeChanged = v => { _inputChange = DateTime.UtcNow; CoreAudio.SetDeviceVolume(id, v); },
-            MuteChanged = m => { _inputChange = DateTime.UtcNow; CoreAudio.SetDeviceMute(id, m); },
+            VolumeChanged = v => { NoteInputChange(); CoreAudio.SetDeviceVolume(id, v); },
+            MuteChanged = m => { NoteInputChange(); CoreAudio.SetDeviceMute(id, m); },
             FxToggled = on => _mixer.SetFxByUser(key, on),
             FxWindowToggled = () => _toggleFx(key),
         };

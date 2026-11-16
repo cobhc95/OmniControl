@@ -134,6 +134,16 @@ public sealed class LineMark : Mark
     }
 }
 
+/// <summary>The pure geometry of the drawings.</summary>
+public static class MarkMath
+{
+    /// <summary>
+    /// The rectangle two corners enclose, whichever way the drag went. A <c>Rect(Point, Point)</c> made from a drag up or to the left has a
+    /// negative width or height, and the renderer draws such a rectangle as nothing.
+    /// </summary>
+    public static Rect Enclosing(Point a, Point b) => new(Math.Min(a.X, b.X), Math.Min(a.Y, b.Y), Math.Abs(a.X - b.X), Math.Abs(a.Y - b.Y));
+}
+
 /// <summary>A rectangle outline.</summary>
 public sealed class BoxMark : Mark
 {
@@ -148,7 +158,7 @@ public sealed class BoxMark : Mark
         _pen = PenOf(color, width);
     }
 
-    public override void Draw(DrawingContext context) => context.DrawRectangle(null, _pen, new Rect(From, To));
+    public override void Draw(DrawingContext context) => context.DrawRectangle(null, _pen, MarkMath.Enclosing(From, To));
 }
 
 /// <summary>A line of text written with the text tool.</summary>

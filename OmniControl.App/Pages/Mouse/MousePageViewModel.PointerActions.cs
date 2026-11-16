@@ -31,7 +31,7 @@ public sealed partial class MousePageViewModel
                         (_, percent) => StepPointer(control, control.UnitsOf(percent)), group: group));
                     actions.Add(HotkeyAction.ForLevel($"{id}.down", $"{name} down", Title, control.Keywords, level, -1,
                         (_, percent) => StepPointer(control, control.UnitsOf(percent)), group: group));
-                    if (control.Osd is { } element) _osd.Declare(element, icon: OsdLevelIcon.Disc);
+                    if (control.Osd is { } element) _osd.Declare(element, OsdLevelIcon.Disc);
                     break;
                 case PointerKind.Number:
                     actions.Add(new HotkeyAction($"{id}.up", $"{name} up", Title, control.Keywords, _ => StepPointer(control, control.Step), group: group));

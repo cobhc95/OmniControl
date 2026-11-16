@@ -1,8 +1,10 @@
+using Avalonia.Media;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OmniControl.App.Hotkeys;
+using OmniControl.App.Services;
 using OmniControl.App.States;
 
 namespace OmniControl.App.Tray;
@@ -20,6 +22,7 @@ public sealed partial class TrayFlyoutModel : ObservableObject, IDisposable
     private readonly Action _openApp;
     private readonly TraySettings _settings = TraySettings.Load();
     private bool _shown;
+    private bool _stale = true; // the lists differ from the master lists: made again when next shown
 
     /// <param name="openApp">Shows the main window (the foot's "Open OmniControl").</param>
     public TrayFlyoutModel(HotkeyRegistry hotkeys, StateRegistry states, Action openApp)
@@ -45,7 +48,8 @@ public sealed partial class TrayFlyoutModel : ObservableObject, IDisposable
     public void Showing()
     {
         _shown = true;
-        Rebuild();
+        if (_stale) Rebuild();
+        else Refresh();
     }
 
     /// <summary>The flyout was hidden: it stops following and leaves edit mode.</summary>
@@ -67,11 +71,12 @@ public sealed partial class TrayFlyoutModel : ObservableObject, IDisposable
     /// <summary>The foot's edit link: its words follow the mode.</summary>
     public string EditText => IsEditing ? "Done" : "Edit";
 
-    private string? IconOf(TrayTarget target) => _hotkeys.SectionOf(target.Section)?.Icon;
+    private Geometry? IconOf(TrayTarget target) => IconResources.Of(target.OwnIcon, _hotkeys.SectionOf(target.Section)?.Icon);
 
     private void Rebuild()
     {
         if (!_shown) return;
+        _stale = false;
         var states = _states.States;
         Sliders.Clear();
         foreach (var target in TrayTargets.Sliders(_settings.SlidersInUse, states)) Sliders.Add(new TraySliderItem(target, IconOf(target), _states.Now));
@@ -79,7 +84,6 @@ public sealed partial class TrayFlyoutModel : ObservableObject, IDisposable
         foreach (var target in TrayTargets.Toggles(_settings.TilesInUse, states, _hotkeys.Actions, _hotkeys.Find))
             Tiles.Add(new TrayTileItem(target, IconOf(target), _states.Now, RunAction));
         Tiles.Add(TrayAddTile.Instance);
-        if (IsEditing) RebuildEditRows(states);
     }
 
     private IReadOnlyList<IReadOnlyList<TrayTarget>> MenuTargets()
@@ -92,6 +96,7 @@ public sealed partial class TrayFlyoutModel : ObservableObject, IDisposable
     {
         Menu = MenuTargets();
         MenuChanged?.Invoke();
+        _stale = true;
         Rebuild();
     }
 
@@ -103,9 +108,15 @@ public sealed partial class TrayFlyoutModel : ObservableObject, IDisposable
     {
         var id = change.Entry.Id;
         if (Menu.Any(g => g.Any(t => t.State?.Id == id))) MenuChanged?.Invoke();
-        if (!_shown) return;
         foreach (var slider in Sliders.Where(s => s.Shows(id))) slider.Read(_states.Now);
         foreach (var tile in Tiles.OfType<TrayTileItem>().Where(t => t.Shows(id))) tile.Read(_states.Now);
+    }
+
+    /// <summary>The lists are still right: only the values are taken again, from the states' last readings (never a device read).</summary>
+    private void Refresh()
+    {
+        foreach (var slider in Sliders) slider.Read(_states.Now);
+        foreach (var tile in Tiles.OfType<TrayTileItem>()) tile.Read(_states.Now);
     }
 
     public void Dispose()

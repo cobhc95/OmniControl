@@ -26,11 +26,11 @@ public sealed record StateValue(double? Number, string? Text, DateTime? At = nul
 /// choices), what is read now (<see cref="Read"/>: the owner's cached value, cheap, never a slow call, read on the UI thread), and one
 /// short sentence saying how the value is known. The owner calls <see cref="StateRegistry.Notify"/> when it may have changed.
 /// <see cref="Set"/>, when the owner gives one, changes the value the way its own control does (the tray flyout's sliders, tiles and
-/// pickers use it); <see cref="Short"/> is a shorter name for tight places (the flyout's rows), the <see cref="Name"/> when not given.
+/// pickers use it); <see cref="Icon"/> is the state's own glyph (a resource key of Styles/Brushes.axaml; null: its page's icon); <see cref="Short"/> is a shorter name for tight places (the flyout's rows), the <see cref="Name"/> when not given.
 /// </summary>
 public sealed record StateEntry(string Id, string Name, string Group, StateKind Kind, Func<StateValue?> Read, string HowKnown,
     string? Heading = null, int Min = 0, int Max = 100, string Unit = "", Func<IReadOnlyList<string>>? Choices = null, string Keywords = "",
-    Action<StateValue>? Set = null, string? Short = null)
+    Action<StateValue>? Set = null, string? Short = null, string? Icon = null)
 {
     /// <summary>What a tight place calls the state.</summary>
     public string ShortName => Short ?? Name;

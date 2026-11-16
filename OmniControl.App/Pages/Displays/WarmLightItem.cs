@@ -42,7 +42,7 @@ internal sealed class WarmLightItem
         Actions = new[]
         {
             DisplayActions.Once(WarmId, "Toggle warm light at night", "warm light night schedule evening blue light filter", category, DisplayControls.SoftwareGroup, VcpSections.Colour,
-                _ => Toggle(), devices: null),
+                _ => Toggle(), devices: null, icon: "MoonIcon"),
         };
         scheduler.Changed += Refresh;
     }

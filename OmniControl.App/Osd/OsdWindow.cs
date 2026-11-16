@@ -99,8 +99,8 @@ public sealed class OsdWindow : Window
         var steps = new List<Action> { () => RenderMessage(settings, WarmMessage) };
         for (var i = elements.Count - 1; i >= 0; i--)
         {
-            var element = elements[i];
-            foreach (var value in WarmValues) steps.Add(() => Render(settings, element.Name, element.Icon, value));
+            if (elements[i] is not { Icon: { } icon } element) continue; // a text pop-up has no level to draw
+            foreach (var value in WarmValues) steps.Add(() => Render(settings, element.Name, icon, value));
         }
         WarmStep(steps, 0);
     }

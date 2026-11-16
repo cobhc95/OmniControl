@@ -16,13 +16,14 @@ namespace OmniControl.App.Mouse;
 /// program), not an action: picking it runs the command, which returns the entries to add. <see cref="Opened"/>: called each time a picker listing the entry opens.
 /// <see cref="Category"/> is the entry's section in the Choose-the-action window (its pane 1); <see cref="Heading"/> is the small group heading it sits under in the
 /// section's list, and <see cref="Place"/> the section's icon and order (read from the live page list; null in a list that has none). <see cref="RemoveText"/> names the
+/// <see cref="Icon"/> is the entry's own glyph (a resource key of Styles/Brushes.axaml; null: its section's icon). <see cref="RemoveText"/> names the
 /// remove button, <see cref="Renaming"/> lets the user rename it, <see cref="IsListed"/> false hides a list button for now, <see cref="Editor"/> holds the data the settings pane edits live (a custom action) and <see cref="Create"/> makes a new entry from the form's values (the entry is that form, not an action).
 /// </summary>
 public sealed record PickChoice(string Spec, string Category, string Name, string? ParamHint = null, string Keywords = "",
     IReadOnlyList<ActionOption>? Options = null, string ParamLabel = "", string? Unavailable = null, bool AskFirst = false, PathKind? ParamBrowse = null,
     Action? Remove = null, Func<Visual, Task<IReadOnlyList<PickChoice>>>? Command = null, Action? Opened = null,
     string? Heading = null, ActionSection? Place = null, string RemoveText = "Remove", Renaming? Renaming = null, Func<bool>? IsListed = null,
-    ActionEditor? Editor = null, Func<IReadOnlyDictionary<string, string>, PickChoice>? Create = null)
+    ActionEditor? Editor = null, Func<IReadOnlyDictionary<string, string>, PickChoice>? Create = null, string? Icon = null)
 {
     public bool HasOptions => Options is { Count: > 0 };
 

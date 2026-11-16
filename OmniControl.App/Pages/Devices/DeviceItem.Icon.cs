@@ -15,7 +15,7 @@ public sealed record IconChoice(string Name, Geometry? Data, bool IsSelected, IR
 // picks one) or the user's own picture; lit in its colour while the device reads on, neutral otherwise.
 public sealed partial class DeviceItem
 {
-    private DeviceIcon Icon => DeviceIcons.Of(Record.Icon) ?? DeviceIcons.Of(Record.Methods.FirstOrDefault() is { IsSimulation: false } first ? _service.ProfileOf(first).Icon : DeviceIcons.Plug)!;
+    private DeviceIcon Icon => _service.IconOf(Record);
 
     public Geometry? IconData => GlyphOf(Icon);
 
@@ -39,8 +39,7 @@ public sealed partial class DeviceItem
     public IReadOnlyList<Color> IconColours => DeviceIcons.Colours.Select(c => c.Color).ToList();
     public int IconColourIndex => DeviceIcons.Colours.ToList().IndexOf(DeviceIcons.ColourOf(Record.IconColour));
 
-    private static Geometry? GlyphOf(DeviceIcon icon) =>
-        Application.Current?.TryFindResource(icon.Resource, out var found) == true ? found as Geometry : null;
+    private static Geometry? GlyphOf(DeviceIcon icon) => IconResources.Find(icon.Resource);
 
     private string _shownImage = string.Empty;
 
@@ -70,6 +69,7 @@ public sealed partial class DeviceItem
         Record.Icon = id;
         if (Record.IconImage.Length > 0) _service.ClearOwnImage(Record);
         _service.Edited();
+        _service.IconChanged(Record);
         RefreshIcon();
     }
 

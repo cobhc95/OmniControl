@@ -1,0 +1,12 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Tray panel: removing items (approved, 1A + 1B)</title>
+<!-- Approved by the owner 16 Nov 2026. Extends tray-flyout.html.
+  1A Edit mode (entered with the "Edit" link at the panel's foot, which then reads "Done"): every tile and every slider row shows a small round
+     remove button (CrossIcon, 18 px, panel surface + edge) overlapping its top-right corner; clicking removes it at once (no confirm; Esc/Done ends edit).
+     Tiles stay draggable to reorder in edit mode.
+  1B Any time (edit mode or not): right-click a tile or slider row -> listmenu: "Remove from panel", "Change icon…", "Move left" / "Move right"
+     (Move up/down for slider rows). Uses the shared ListMenuFlyout + MenuRowList. Keyboard: the context-menu key opens it on the focused tile.
+  Removal saves to tray.json immediately. -->
+<style>body{font-family:Segoe UI;background:#1b1b1b;color:#eee;padding:20px;font-size:12px}.t{position:relative;display:inline-block;width:56px;height:56px;border:1px solid #3a3a3a;border-radius:8px;margin:6px}.x{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:9px;background:#3a3a3a;border:1px solid #666;text-align:center;line-height:16px}</style></head><body>
+<span class="t"><span class="x">×</span></span><span class="t"><span class="x">×</span></span> · Edit → Done
+</body></html>

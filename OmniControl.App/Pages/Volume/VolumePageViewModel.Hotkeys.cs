@@ -21,31 +21,31 @@ public sealed partial class VolumePageViewModel
 
     private void RegisterHotkeys(HotkeyRegistry hotkeys)
     {
-        _osd.Declare(OsdService.VolumeElement, icon: OsdLevelIcon.Speaker);
-        _osd.Declare(MicrophoneElement);
+        _osd.Declare(OsdService.VolumeElement, OsdLevelIcon.Speaker);
+        _osd.Declare(MicrophoneElement, OsdLevelIcon.Microphone);
 
         var mic = new HotkeyLevel("mic", "Microphone level");
         var volume = new HotkeyLevel("volume", "Volume");
         hotkeys.Register(new HotkeyAction("volume.mic.mute", "Toggle microphone mute", Title, "sound audio input microphone mic mute silence",
-            _ => StepInput(0, toggleMute: true)));
+            _ => StepInput(0, toggleMute: true)) { Icon = MicIcon });
         hotkeys.Register(new HotkeyAction("volume.mic.fx", "Toggle microphone FX", Title, "sound audio input microphone mic fx effects chain",
             _ =>
             {
                 if (_mixer.RecordingDevices.FirstOrDefault(d => d.IsDefault) is { } d && _inputs.TryGetValue(d.Id, out var i)) i.FxOn = !i.FxOn;
-            }));
-        hotkeys.Register(HotkeyAction.ForLevel("volume.mic.up", "Microphone level up", Title, "sound audio input microphone mic louder", mic, +1, (_, delta) => StepInput(delta)));
-        hotkeys.Register(HotkeyAction.ForLevel("volume.mic.down", "Microphone level down", Title, "sound audio input microphone mic quieter", mic, -1, (_, delta) => StepInput(delta)));
+            }) { Icon = FxIcon });
+        hotkeys.Register(HotkeyAction.ForLevel("volume.mic.up", "Microphone level up", Title, "sound audio input microphone mic louder", mic, +1, (_, delta) => StepInput(delta), icon: MicIcon));
+        hotkeys.Register(HotkeyAction.ForLevel("volume.mic.down", "Microphone level down", Title, "sound audio input microphone mic quieter", mic, -1, (_, delta) => StepInput(delta), icon: MicIcon));
 
         // Combined microphones: one action per control over every combined microphone (the user picks all or some; the Shortcuts page
         // reads the device source each time it is shown).
         var combo = new HotkeyLevel("combomic", "Combined microphone level");
         _comboHotkeys.Add(new HotkeyAction("volume.combomic.mute", "Toggle combined microphone mute", Title,
             "sound audio input combined microphone mic mics mix mute silence", ids => OnUi(() => StepCombos(ids, 0, toggleMute: true)),
-            ComboNoun, ComboDevices));
+            ComboNoun, ComboDevices) { Icon = MicIcon });
         _comboHotkeys.Add(HotkeyAction.ForLevel("volume.combomic.up", "Combined microphone level up", Title,
-            "sound audio input combined microphone mic mics mix louder", combo, +1, (ids, delta) => OnUi(() => StepCombos(ids, delta)), ComboNoun, ComboDevices));
+            "sound audio input combined microphone mic mics mix louder", combo, +1, (ids, delta) => OnUi(() => StepCombos(ids, delta)), ComboNoun, ComboDevices, icon: MicIcon));
         _comboHotkeys.Add(HotkeyAction.ForLevel("volume.combomic.down", "Combined microphone level down", Title,
-            "sound audio input combined microphone mic mics mix quieter", combo, -1, (ids, delta) => OnUi(() => StepCombos(ids, delta)), ComboNoun, ComboDevices));
+            "sound audio input combined microphone mic mics mix quieter", combo, -1, (ids, delta) => OnUi(() => StepCombos(ids, delta)), ComboNoun, ComboDevices, icon: MicIcon));
         hotkeys.Register(_comboHotkeys);
 
         hotkeys.Register(HotkeyAction.ForLevel("volume.up", "Volume up", Title, "sound audio master louder", volume, +1, (_, delta) => StepMaster(delta)));
@@ -54,7 +54,7 @@ public sealed partial class VolumePageViewModel
         hotkeys.Register(new HotkeyAction("volume.closed.toggle", "Show or hide closed programs", Title, "sound audio mixer programs apps closed not open remembered list show hide",
             _ => OnUi(() => { if (Outputs.ProgramTools is { } tools) tools.ShowClosed = !tools.ShowClosed; })));
         hotkeys.Register(new HotkeyAction("volume.fx", "Toggle master FX", Title, "sound audio master fx effects chain equaliser",
-            _ => _mixer.SetFxByUser(null, !_mixer.IsFxOn(null))));
+            _ => _mixer.SetFxByUser(null, !_mixer.IsFxOn(null))) { Icon = FxIcon });
         SyncHotkeyAvailability();
     }
 
@@ -116,7 +116,7 @@ public sealed partial class VolumePageViewModel
         {
             var def = CoreAudio.InputDevices().FirstOrDefault(d => d.IsDefault);
             if (def is null || !CoreAudio.GetDeviceVolume(def.Id, out var v, out var muted)) return;
-            _inputChange = DateTime.UtcNow;
+            NoteInputChange();
             if (toggleMute) muted = !muted;
             else
             {
@@ -157,6 +157,7 @@ public sealed partial class VolumePageViewModel
         {
             var muted = toggleMute ? !c.Muted : c.Muted && delta <= 0;
             var level = Percent.Clamp(c.Volume + delta);
+            _osd.NoteOwnChange(MicrophoneElement);
             _mixer.SetCombinedLevel(c.Key, level, muted);
             if (_combos.TryGetValue(c.Key, out var row)) row.Sync(level, muted, row.FxOn, row.FxCount);
             if (shown) continue;

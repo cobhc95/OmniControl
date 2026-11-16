@@ -30,6 +30,9 @@
         <Setter Property="Width" Value="{DynamicResource TrayTileSize}" />
         <Setter Property="Height" Value="{DynamicResource TrayTileSize}" />
         <Setter Property="Padding" Value="4" />
+        <!-- No outer margin: the dashed "+ Add" tile (.blockadd) brings a chip margin that pushed it onto a row of its own -->
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="VerticalAlignment" Value="Top" />
         <Setter Property="CornerRadius" Value="{DynamicResource TrayTileCornerRadius}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="BorderBrush" Value="Transparent" />

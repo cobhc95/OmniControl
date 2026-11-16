@@ -253,6 +253,8 @@ public partial class PickerMenu : UserControl
         if (_model is not null) UseHighlighted(_model);
     }
 
+    private void OnRemoveFromPanelClick(object? sender, RoutedEventArgs e) => _model?.RemoveFromPanel();
+
     private void OnFootButtonClick(object? sender, RoutedEventArgs e) => _model?.RunFootButton();
 
     private void OnActionDoubleTapped(object? sender, TappedEventArgs e)

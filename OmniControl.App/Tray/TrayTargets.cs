@@ -11,6 +11,9 @@ public sealed record TrayTarget(TrayElement Element, HotkeyAction? Action, State
 
     /// <summary>The section whose icon it shows unless the element names another: the state's page, else the action's section.</summary>
     public string Section => Element.Icon ?? State?.Group ?? Action?.Section ?? string.Empty;
+
+    /// <summary>The glyph the entry brings itself (its action's, else its state's), unless the element names a section's icon to show instead; null: the section's icon.</summary>
+    public string? OwnIcon => Element.Icon is null ? Action?.Icon ?? State?.Icon : null;
 }
 
 /// <summary>

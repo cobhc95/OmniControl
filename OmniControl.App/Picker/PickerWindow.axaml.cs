@@ -54,6 +54,9 @@ public partial class PickerWindow : Window
     {
         var window = new PickerWindow { Title = title, _model = model };
         window.WireKeys();
+        // Over a topmost owner (the tray panel) it must be topmost too, or it sits behind it, looks inactive and cannot be dragged.
+        window.Topmost = owner.Topmost;
+        window.Opened += (_, _) => window.Activate();
         return window.ShowDialog<PickResult?>(owner);
     }
 

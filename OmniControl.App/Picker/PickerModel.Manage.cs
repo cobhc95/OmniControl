@@ -51,9 +51,10 @@ public sealed partial class PickerModel
 
     private IReadOnlyList<string>? KeysOf(PickChoice choice) => _manage?.KeysOf(choice);
 
-    private PickerRow Row(PickChoice choice, string? hint) => new(choice, choice.Name, hint, choice.Command is null ? KeysOf(choice) : null);
+    private PickerRow Row(PickChoice choice, string? hint) => new(choice, choice.Name, hint, choice.Command is null ? KeysOf(choice) : null, IsInPanel(choice));
 
-    private bool PassesKeyFilter(PickChoice choice) => !OnlyWithKey || !ListsActions || KeysOf(choice) is { Count: > 0 };
+    private bool PassesKeyFilter(PickChoice choice) =>
+        (!OnlyWithKey || !ListsActions || KeysOf(choice) is { Count: > 0 }) && (!OnlyInPanel || IsInPanel(choice));
 
     /// <summary>A search word matches one of the entry's keys ("ctrl+o", or the chord pressed in the search box).</summary>
     private bool KeyMatches(PickChoice choice, string word) => KeysOf(choice) is { } keys && keys.Any(k => TextMatch.Any(word, k));
@@ -92,6 +93,7 @@ public sealed partial class PickerModel
     public void Release()
     {
         Hotkeys?.Dispose();
+        if (_panel is not null) _panel.Changed -= OnPanelChanged;
         StopFollowing();
     }
 }

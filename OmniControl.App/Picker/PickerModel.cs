@@ -1,3 +1,4 @@
+using Avalonia.Media;
 using System.Collections.ObjectModel;
 using OmniControl.App.Hotkeys;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -26,6 +27,11 @@ public sealed class PickerRow
 
     public bool IsHeading => Choice is null;
 
+    /// <summary>The entry's own glyph, or its section's icon when it has none; null for a heading.</summary>
+    public Geometry? Icon => Choice is not { Command: null } ? null : IconResources.Of(Choice.Icon, Choice.Place?.Icon);
+
+    public bool HasIcon => Icon is not null;
+
     /// <summary>The line is a button of its list (add a program), not an entry.</summary>
     public bool IsCommand => Choice?.Command is not null;
     public bool IsEntry => Choice is { Command: null };
@@ -36,13 +42,17 @@ public sealed class PickerRow
     /// <summary>The entry can have keys but has none: the row says "no key".</summary>
     public bool ShowsNoKey { get; }
 
-    public PickerRow(PickChoice choice, string text, string? hint, IReadOnlyList<string>? keys = null)
+    /// <summary>The entry is in the panel the picker was opened from (the tray flyout): the row says so in place of "no key".</summary>
+    public bool InPanel { get; }
+
+    public PickerRow(PickChoice choice, string text, string? hint, IReadOnlyList<string>? keys = null, bool inPanel = false)
     {
         Choice = choice;
         Text = text;
         Hint = hint;
         Keycaps = (keys ?? Array.Empty<string>()).Select(k => Hotkeys.Keycaps.From(k, string.Empty)).ToList();
-        ShowsNoKey = keys is { Count: 0 };
+        InPanel = inPanel;
+        ShowsNoKey = keys is { Count: 0 } && !inPanel;
     }
 
     private PickerRow(string heading)
@@ -107,7 +117,7 @@ public sealed partial class PickerModel : ObservableObject
 
     /// <summary>The search box's tooltip (how to find an action by its key); none until the window gives the keys.</summary>
     public string? SearchTip => !HasKeys ? null : "Type a name or a key such as ctrl+o, or press the key combination (Ctrl+F)";
-    public string UseText => $"Use this {Noun}";
+    public string UseText => ActiveInPanel ? AddAgainText : $"Use this {Noun}";
 
     /// <summary>The sections in pane 1: the list's own, then Recent when an action list has entries used before.</summary>
     public IReadOnlyList<SectionRow> Sections => _sections ??= BuildSections();
@@ -340,6 +350,7 @@ public sealed partial class PickerModel : ObservableObject
         OptionIndex = -1;
         OnFootButton = false;
         OnPropertyChanged(nameof(CanUse));
+        NotifyPanelChanged();
         if (ActiveChoice is not { } choice)
         {
             SettingsTitle = string.Empty;

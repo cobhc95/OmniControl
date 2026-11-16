@@ -1,4 +1,4 @@
-namespace OmniControl.App.Services;
+﻿namespace OmniControl.App.Services;
 
 /// <summary>What the main window's X button does. Stored by number: do not reorder.</summary>
 public enum CloseBehavior { Ask, MinimizeToTray, Exit }
@@ -10,7 +10,7 @@ public static class CloseBehaviors
     {
         (CloseBehavior.Ask, "Ask each time"),
         (CloseBehavior.MinimizeToTray, "Minimise to tray"),
-        (CloseBehavior.Exit, "Exit completely"),
+        (CloseBehavior.Exit, "Quit"),
     };
 
     public static string LabelOf(CloseBehavior value) => All.First(e => e.Value == value).Label;

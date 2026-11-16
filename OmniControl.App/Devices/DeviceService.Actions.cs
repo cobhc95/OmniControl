@@ -24,16 +24,24 @@ public sealed partial class DeviceService
         UnregisterActions(device);
         var name = DisplayName(device);
         var keywords = $"smart device plug bulb socket outlet switch power tapo kasa {device.Name}";
+        var icon = IconOf(device).Resource;
         var actions = Enum.GetValues<DevicePower>()
-            .Select(power => new HotkeyAction(ActionId(device, power), $"{name}: {power}", Category, keywords, ids => _ = RunAsync(device, power), group: ActionGroup))
+            .Select(power => new HotkeyAction(ActionId(device, power), $"{name}: {power}", Category, keywords, ids => _ = RunAsync(device, power), group: ActionGroup) { Icon = icon })
             .Concat(device.Methods.SelectMany(method => Enum.GetValues<DevicePower>().Select(power =>
                 new HotkeyAction(ViaActionId(method, power), $"{name}: {power} via {device.NameOf(method)}", Category, $"{keywords} {method.Kind}",
-                    ids => _ = RunAsync(device, power, method), group: ActionGroup))))
+                    ids => _ = RunAsync(device, power, method), group: ActionGroup) { Icon = icon })))
             .ToList();
         _registered[device.Id] = actions.Select(a => a.Id).ToList();
         _hotkeys.Register(actions);
         RegisterState(device);
     }
+
+    /// <summary>The glyph the device shows: the one picked for it, else its first real method's template's, else the plug.</summary>
+    public DeviceIcon IconOf(DeviceRecord device) =>
+        DeviceIcons.Of(device.Icon) ?? DeviceIcons.Of(device.Methods.FirstOrDefault() is { IsSimulation: false } first ? ProfileOf(first).Icon : DeviceIcons.Plug)!;
+
+    /// <summary>The icon changed: the device's actions and state carry the new glyph.</summary>
+    public void IconChanged(DeviceRecord device) => RegisterActions(device);
 
     private void UnregisterActions(DeviceRecord device)
     {

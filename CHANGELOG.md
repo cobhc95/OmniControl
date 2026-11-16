@@ -5,6 +5,28 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+## 0.1.3 (16 Nov 2026)
+
+- Tray panel: in edit mode every slider and tile has a remove cross, and a right-click menu on any of them (or the menu key) removes it, changes its icon or moves it; removal is saved at once. The Choose-the-action window opened from the panel marks what is already in it ("In panel", a "Remove from panel" button, "Add again", an "In panel only" filter). Screenshot Record button is now an outline video camera.
+
+- Tray panel: opens on the first click in well under 100 ms (a second click within the double-click time opens OmniControl instead). The panel is built once after start-up and only shown again; values come from the last readings. Sliders no longer show a white focus box, the Choose-the-action window opened from the panel can be moved, and long action names no longer get squeezed by their keycaps.
+
+- OSD: the microphone pop-up now also shows when the mic is muted or its level changed from outside OmniControl (the laptop's mic-mute key, Windows settings, another app). It follows the default recording device and moves when that changes.
+
+- Tray panel: the tiles and the dashed "+ Add" now flow in one grid of four columns; "+ Add" takes the next free cell instead of a row of its own.
+
+- Icons: an action or state can have its own glyph, and the tray tiles, the Choose-an-action window and the Actions and hotkeys window show it (microphone, moon for night light, rotate, screenshot area / window / screen / all screens / record, effects, and a smart device's own chosen icon); an entry without one still shows its page's icon.
+
+- Screenshot editor: the Rectangle tool (and the blur's frame while it is dragged) drew nothing when dragged up or to the left; it now draws in every direction. Pen, line, arrow, marker, text and blur were checked, also after a blur.
+
+- OSD: the microphone level and mute pop-ups show a microphone (crossed out when muted) instead of the brightness sun; every OSD level now names its own icon, so none can fall back to brightness.
+
+- Choose-an-action window: after a search the first result no longer shows a ghost row from the previous list; names wrap to two lines before trimming and the keycaps in the list are compact.
+
+- Smart Devices: the device icon glyph is now centred in its rounded square (list rows, detail header and icon picker).
+
+- The footer Close button now does exactly what the title-bar X does (follows App settings "When closing"). "When closing" offers Ask each time, Minimise to tray and Quit; the question has Minimise to tray, Quit and Cancel.
+
 ## 0.1.2 (16 Nov 2026)
 
 - Tray panel: tiles now sit four to a row as designed, tile names are short ("Area", "Rotate") and wrap between words, and the speaker picker shows the device's short name instead of a trimmed one.

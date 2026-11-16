@@ -13,7 +13,7 @@ public sealed class OsdService : IDisposable
 {
     // Names this service needs itself: its watchers re-show brightness and volume changed outside OmniControl, and the pop-up picks
     // its icon by them. The features that own those levels declare them.
-    public const string BrightnessElement = "Brightness", VolumeElement = "Volume";
+    public const string BrightnessElement = "Brightness", VolumeElement = "Volume", MicrophoneElement = "Microphone";
     private const string UsbElement = "USB devices", PlayPauseElement = "Play / pause", TrackElement = "Track and artist";
 
     private readonly List<OsdElement> _elements = new();
@@ -23,6 +23,7 @@ public sealed class OsdService : IDisposable
     private readonly WindowsOsd _windowsOsd = new();
     private readonly BrightnessWatcher _brightness = new(Timing.OsdBrightnessFirstPoll, Timing.OsdBrightnessPoll);
     private readonly CoreAudio.MasterWatcher _volume = new();
+    private readonly CoreAudio.MasterWatcher _mic = new(recording: true);
     private readonly UsbDeviceWatcher _usb = new(Timing.OsdUsbSettle);
     private readonly MediaWatcher _media = new(Timing.OsdTrackQuiet);
     private readonly Dictionary<string, DateTime> _ownChange = new();
@@ -47,23 +48,29 @@ public sealed class OsdService : IDisposable
 
     /// <summary>
     /// Declares something a feature shows in the OSD (once, by the feature that shows it), so it gets a "Show in OSD" switch.
-    /// <paramref name="isLevel"/> is false for a text pop-up; a level pop-up carries <paramref name="icon"/>.
+    /// A level pop-up always names its own <paramref name="icon"/> (there is no default, so none silently shows another's).
     /// </summary>
-    public void Declare(string name, bool isLevel = true, OsdLevelIcon icon = OsdLevelIcon.Sun)
+    public void Declare(string name, OsdLevelIcon icon) => Add(new OsdElement(name, true, icon));
+
+    /// <summary>Declares a text pop-up (no level, no icon).</summary>
+    public void DeclareText(string name) => Add(new OsdElement(name, false, null));
+
+    private void Add(OsdElement element)
     {
-        if (_elements.Any(e => e.Name == name)) return;
-        _elements.Add(new OsdElement(name, isLevel, icon));
+        if (_elements.Any(e => e.Name == element.Name)) return;
+        _elements.Add(element);
         ElementsChanged?.Invoke();
     }
 
-    private OsdLevelIcon IconOf(string element) => _elements.FirstOrDefault(e => e.Name == element)?.Icon ?? OsdLevelIcon.Sun;
+    // A level shown under a name nobody declared gets the neutral disc, never another feature's picture.
+    private OsdLevelIcon IconOf(string element) => _elements.FirstOrDefault(e => e.Name == element)?.Icon ?? OsdLevelIcon.Disc;
 
     public OsdService()
     {
         _showQueued = ShowQueued;
-        Declare(UsbElement, isLevel: false);
-        Declare(PlayPauseElement, isLevel: false);
-        Declare(TrackElement, isLevel: false);
+        DeclareText(UsbElement);
+        DeclareText(PlayPauseElement);
+        DeclareText(TrackElement);
         _hide.Tick += (_, _) => { _hide.Stop(); _window?.Fade(); };
         _keepWarm.Tick += (_, _) => _window?.KeepWarm();
         AccentService.Changed += OnAccentChanged;
@@ -86,6 +93,13 @@ public sealed class OsdService : IDisposable
             if (!RecentOwnChange(VolumeElement)) ShowVolume(value, muted);
         };
         _volume.Start();
+
+        // The microphone changed outside OmniControl (the laptop's mic-mute key, Windows settings, another app).
+        _mic.Changed += (value, muted) =>
+        {
+            if (!RecentOwnChange(MicrophoneElement)) Show(MicrophoneElement, muted ? 0 : value, muted ? "Microphone muted" : MicrophoneElement);
+        };
+        _mic.Start();
 
         _usb.Changed += (connected, name) => Dispatcher.UIThread.Post(() => ShowMessage(UsbElement,
             new OsdMessage(connected ? OsdIcon.UsbConnected : OsdIcon.UsbRemoved, connected ? "USB device connected" : "USB device removed", name)));
@@ -245,6 +259,7 @@ public sealed class OsdService : IDisposable
         AccentService.Changed -= OnAccentChanged;
         _brightness.Dispose();
         _volume.Dispose();
+        _mic.Dispose();
         _usb.Dispose();
         _media.Dispose();
         _windowsOsd.Dispose();

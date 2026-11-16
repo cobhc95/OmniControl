@@ -1,45 +1,22 @@
-using Avalonia.Threading;
+using OmniControl.App.Services;
 using OmniControl.Core.Engine.Mouse;
 
 namespace OmniControl.App.Tray;
 
 /// <summary>
-/// Tells a single click on the tray icon from a double click. A first click waits Windows' own double-click time (the user's mouse setting,
-/// <see cref="SystemCommands.DoubleClick"/>, read at each click) for a second one: a second click within it is a double click and the
-/// single click never fires; none, and the single click fires when the time is up.
+/// Tells the second click of a double click on the tray icon from a single one, without making the single click wait: the first click acts
+/// at once, and a second within Windows' own double-click time (the user's mouse setting, <see cref="SystemCommands.DoubleClick"/>, read at
+/// each click) is the double click.
 /// </summary>
-internal sealed class TrayClicks : IDisposable
+internal sealed class TrayClicks
 {
-    private readonly DispatcherTimer _wait = new();
-    private readonly Action _single, _double;
+    private DateTime _last = DateTime.MinValue;
 
-    public TrayClicks(Action single, Action @double)
+    /// <summary>Counts a click; true when it is the second of a double click.</summary>
+    public bool IsDouble()
     {
-        (_single, _double) = (single, @double);
-        _wait.Tick += OnWaited;
-    }
-
-    public void Click()
-    {
-        if (_wait.IsEnabled)
-        {
-            _wait.Stop();
-            _double();
-            return;
-        }
-        _wait.Interval = TimeSpan.FromMilliseconds(SystemCommands.DoubleClick().Milliseconds);
-        _wait.Start();
-    }
-
-    private void OnWaited(object? sender, EventArgs e)
-    {
-        _wait.Stop();
-        _single();
-    }
-
-    public void Dispose()
-    {
-        _wait.Stop();
-        _wait.Tick -= OnWaited;
+        var isDouble = Grace.Within(_last, TimeSpan.FromMilliseconds(SystemCommands.DoubleClick().Milliseconds));
+        _last = isDouble ? DateTime.MinValue : DateTime.UtcNow;
+        return isDouble;
     }
 }

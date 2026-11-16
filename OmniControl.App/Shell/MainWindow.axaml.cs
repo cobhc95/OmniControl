@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -155,6 +155,6 @@ public partial class MainWindow : Window
         return ContentHost.GetVisualDescendants().OfType<Button>().FirstOrDefault(b => b.Tag is "grouphdr" && b.IsEffectivelyVisible);
     }
 
-    /// <summary>The footer button really quits (the title-bar X may only hide to the tray).</summary>
-    private void OnCloseClick(object? sender, RoutedEventArgs e) => Services.AppLifecycle.RequestQuit();
+    /// <summary>The footer button closes the window exactly like the title-bar X: <see cref="WindowLifecycle"/> follows "When closing".</summary>
+    private void OnCloseClick(object? sender, RoutedEventArgs e) => Close();
 }

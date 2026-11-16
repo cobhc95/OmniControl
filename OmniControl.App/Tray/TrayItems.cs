@@ -1,3 +1,4 @@
+using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OmniControl.App.Controls;
@@ -6,18 +7,26 @@ using OmniControl.App.States;
 
 namespace OmniControl.App.Tray;
 
+/// <summary>A slider or tile of the flyout and the stored element it comes from (what edit mode removes, moves and gives another icon).</summary>
+public interface ITrayPanelItem
+{
+    TrayElement Element { get; }
+    bool IsSlider { get; }
+}
+
 /// <summary>
 /// One slider row of the flyout: a level state's short name (or, with a choice state, a pick list of its values), its section's icon, the
 /// slider and the value. Moving it sets the state the way the state's own page does; a change from anywhere else moves it (<see cref="Read"/>).
 /// </summary>
-public sealed partial class TraySliderItem : ObservableObject
+public sealed partial class TraySliderItem : ObservableObject, ITrayPanelItem
 {
     private readonly StateEntry _state;
     private readonly StateEntry? _choice;
     private bool _syncing;
 
-    public TraySliderItem(TrayTarget target, string? icon, Func<string, StateValue?> now)
+    public TraySliderItem(TrayTarget target, Geometry? icon, Func<string, StateValue?> now)
     {
+        Element = target.Element;
         _state = target.State!;
         _choice = target.Choice;
         Name = target.Name;
@@ -25,9 +34,11 @@ public sealed partial class TraySliderItem : ObservableObject
         Read(now);
     }
 
+    public TrayElement Element { get; }
+    public bool IsSlider => true;
     public string Id => _state.Id;
     public string Name { get; }
-    public string? Icon { get; }
+    public Geometry? Icon { get; }
     /// <summary>The state's name, and the full device name when the chip shows its short one.</summary>
     public string Tip => HasChoice && FullChoice.Length > 0 ? $"{_state.Name} - {FullChoice}" : _state.Name;
     public int Minimum => _state.Min;
@@ -81,12 +92,12 @@ public sealed partial class TraySliderItem : ObservableObject
 /// One tile of the flyout: its section's icon and short name. A click runs its action (through the master list, so a block rule still
 /// applies), or, for an on/off state alone, sets it to the other value. It is lit while its state is on.
 /// </summary>
-public sealed partial class TrayTileItem : ObservableObject
+public sealed partial class TrayTileItem : ObservableObject, ITrayPanelItem
 {
     private readonly TrayTarget _target;
     private readonly Action<string> _runAction;
 
-    public TrayTileItem(TrayTarget target, string? icon, Func<string, StateValue?> now, Action<string> runAction)
+    public TrayTileItem(TrayTarget target, Geometry? icon, Func<string, StateValue?> now, Action<string> runAction)
     {
         _target = target;
         _runAction = runAction;
@@ -95,8 +106,10 @@ public sealed partial class TrayTileItem : ObservableObject
         Read(now);
     }
 
+    public TrayElement Element => _target.Element;
+    public bool IsSlider => false;
     public string Name { get; }
-    public string? Icon { get; }
+    public Geometry? Icon { get; }
 
     /// <summary>The full name (a tile's words are short and may be trimmed).</summary>
     public string Tip => _target.Action?.Title ?? _target.State?.Name ?? Name;
@@ -113,32 +126,6 @@ public sealed partial class TrayTileItem : ObservableObject
         if (_target.Action is { } action) _runAction(action.Id);
         else _target.State?.Set?.Invoke(StateValue.Of(!IsOn));
     }
-}
-
-/// <summary>One element in the flyout's edit list: its icon, what it shows now (several names for an id with a <c>*</c>), whether it shows at all, and its remove.</summary>
-public sealed class TrayEditRow
-{
-    public TrayEditRow(TrayElement element, IReadOnlyList<TrayTarget> targets, string? icon, Action remove)
-    {
-        Element = element;
-        Icon = icon;
-        Name = targets.Count == 0 ? element.State ?? element.Action ?? string.Empty : string.Join(", ", targets.Select(t => t.Name));
-        IsMissing = targets.Count == 0;
-        RemoveCommand = new RelayCommand(remove);
-    }
-
-    public TrayElement Element { get; }
-    public string? Icon { get; }
-    public string Name { get; }
-
-    /// <summary>Nothing it names is registered now (a removed device, a monitor not attached): it is kept but not shown.</summary>
-    public bool IsMissing { get; }
-
-    public string MissingText => "Not available now";
-    public string MissingTip => "Nothing it names is there now (a device removed, a monitor not attached). It shows again when it is back.";
-    public string RemoveTip => "Remove from the flyout";
-
-    public IRelayCommand RemoveCommand { get; }
 }
 
 /// <summary>The dashed tile after the others: adds a tile through the Choose-the-action window.</summary>

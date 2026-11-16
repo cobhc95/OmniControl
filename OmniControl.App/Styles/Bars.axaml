@@ -171,6 +171,14 @@
         <Setter Property="Stroke" Value="{DynamicResource BrushDanger}" />
         <Setter Property="Fill" Value="{DynamicResource BrushDanger}" />
     </Style>
+    <!-- .outline = a stroked glyph (the video camera of Record): no fill, larger -->
+    <Style Selector="Button.toolicon.danger.outline > Path.glyph">
+        <Setter Property="Width" Value="{DynamicResource ToolIconOutlineGlyph}" />
+        <Setter Property="Height" Value="{DynamicResource ToolIconOutlineGlyph}" />
+        <Setter Property="Fill" Value="Transparent" />
+        <Setter Property="StrokeThickness" Value="1.6" />
+        <Setter Property="StrokeJoin" Value="Round" />
+    </Style>
     <Style Selector="StackPanel.recclock">
         <Setter Property="Margin" Value="{DynamicResource RecordClockInset}" />
         <Setter Property="Spacing" Value="{DynamicResource RecordClockGap}" />

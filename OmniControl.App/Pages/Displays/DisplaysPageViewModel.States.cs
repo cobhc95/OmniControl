@@ -25,7 +25,7 @@ public sealed partial class DisplaysPageViewModel
     {
         _states.Register(new StateEntry(WarmLightId, "Warm light at night", Title, StateKind.OnOff, () => StateValue.Of(_warm.IsOn), WarmWords,
             Keywords: "warm light night schedule evening blue light filter", Set: value => _warm.SetEnabled(value.Number is { } on && on != 0),
-            Short: "Night light"));
+            Short: "Night light", Icon: "MoonIcon"));
         _scheduler.Changed += NotifyWarmLight;
     }
 

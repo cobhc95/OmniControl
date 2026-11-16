@@ -81,8 +81,8 @@
                     <Button Classes="toolicon" Command="{Binding SaveCommand}" ToolTip.Tip="Save (Ctrl+S)">
                         <Path Classes="glyph" Data="{StaticResource ShotSaveIcon}" />
                     </Button>
-                    <Button Classes="toolicon danger" Command="{Binding RecordCommand}" ToolTip.Tip="Record video">
-                        <Path Classes="glyph" Data="{StaticResource ShotRecordIcon}" />
+                    <Button Classes="toolicon danger outline" Command="{Binding RecordCommand}" ToolTip.Tip="Record video">
+                        <Path Classes="glyph" Data="{StaticResource VideoCameraIcon}" />
                     </Button>
                     <Border Classes="floatsep along" />
                     <Button Classes="toolicon" Command="{Binding SearchCommand}" ToolTip.Tip="Search image online: copies the picture and opens Google Lens in your browser, where you paste it">

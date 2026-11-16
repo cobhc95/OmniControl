@@ -25,14 +25,14 @@ public sealed partial class VolumePageViewModel
             new StateEntry(MasterMutedId, "Master muted", Title, StateKind.OnOff, () => StateValue.Of(_master.Muted, DateTime.Now), ScanWords,
                 Keywords: "sound mute silent", Set: value => _master.Muted = IsOn(value), Short: "Mute"),
             new StateEntry(MasterFxId, "Master effects on", Title, StateKind.OnOff, () => StateValue.Of(_master.FxOn, DateTime.Now), FxWords,
-                Keywords: "sound fx effects chain equaliser", Set: value => _mixer.SetFxByUser(null, IsOn(value)), Short: "FX"),
+                Keywords: "sound fx effects chain equaliser", Set: value => _mixer.SetFxByUser(null, IsOn(value)), Short: "FX", Icon: FxIcon),
             new StateEntry(DefaultSpeakerId, "Default speaker", Title, StateKind.Choice,
                 () => _mixer.Devices.FirstOrDefault(d => d.IsDefault) is { } device ? StateValue.Of(device.Name, DateTime.Now) : null, ScanWords,
                 Choices: () => _mixer.Devices.Select(d => d.Name).Distinct().ToList(), Keywords: "sound output playback device headphones",
                 Set: value => { if (_mixer.Devices.FirstOrDefault(d => d.Name == value.Text) is { } device) MakeMasterDevice(device.Id); }),
             new StateEntry(MicMutedId, "Microphone muted", Title, StateKind.OnOff,
                 () => DefaultInput() is { } input ? StateValue.Of(input.Muted, DateTime.Now) : null, ScanWords,
-                Keywords: "sound audio input microphone mic mute silence", Short: "Mic mute",
+                Keywords: "sound audio input microphone mic mute silence", Short: "Mic mute", Icon: MicIcon,
                 Set: value => { if (DefaultInput() is { } input && input.Muted != IsOn(value)) StepInput(0, toggleMute: true); }),
         });
         _master.PropertyChanged += OnMasterValue;

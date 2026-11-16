@@ -54,7 +54,7 @@ public sealed partial class DisplaysPageViewModel
             var captured = orientation;
             actions.Add(DisplayActions.Once($"displays.rotate.{captured.ToString().ToLowerInvariant()}", $"Rotate to {DisplayOrientationCard.Title(captured)}",
                 "rotate rotation orientation landscape portrait flipped turn screen", Title, hardware, OrientationSection,
-                ids => EachHardware(ids, h => h.Rotate(captured)), HardwareDevices, suggested, shortName: "Rotate"));
+                ids => EachHardware(ids, h => h.Rotate(captured)), HardwareDevices, suggested, shortName: "Rotate", icon: "RotateIcon"));
         }
 
         actions.Add(DisplayActions.Once("displays.hw.preset.next", "Next monitor preset", "hardware ddc preset saved profile monitors settings", Title, hardware, VcpSections.Presets,

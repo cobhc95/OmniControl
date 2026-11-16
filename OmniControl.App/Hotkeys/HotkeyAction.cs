@@ -51,6 +51,9 @@ public sealed partial class HotkeyAction : HotkeyTarget, Pages.IEditorItem
 
     public string ShortName => Short ?? Title;
 
+    /// <summary>The action's own glyph, the key of a <c>StreamGeometry</c> in <c>Styles/Brushes.axaml</c> (<see cref="Services.IconResources"/>); null: the pickers and the tray show its page's icon.</summary>
+    public string? Icon { get; init; }
+
     /// <summary>The feature the action belongs to: the title of the page that registers it.</summary>
     public string Category { get; }
 
@@ -209,10 +212,11 @@ public sealed partial class HotkeyAction : HotkeyTarget, Pages.IEditorItem
     /// </summary>
     public static HotkeyAction ForLevel(string id, string title, string category, string keywords, HotkeyLevel level, int direction,
         Action<IReadOnlyList<string>?, int> step, string? deviceNoun = null, Func<IReadOnlyList<HotkeyDevice>>? devices = null,
-        string? group = null, string? subgroup = null) =>
+        string? group = null, string? subgroup = null, string? icon = null) =>
         new(id, title, category, keywords, ids => step(ids, direction * DefaultStep), deviceNoun, devices,
             (ids, percent) => step(ids, direction * percent), group, subgroup)
         {
+            Icon = icon,
             Level = level,
             LevelDirection = direction,
         };
