@@ -1,76 +1,83 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:OmniControl.App.Pages.Volume"
              xmlns:pages="using:OmniControl.App.Pages"
+             xmlns:c="using:OmniControl.App.Controls"
+             xmlns:restore="using:OmniControl.App.Pages.Restore"
              xmlns:easy="using:OmniControl.App.Pages.Volume.Easy"
              x:Class="OmniControl.App.Pages.Volume.VolumePage"
              x:DataType="vm:VolumePageViewModel">
     <StackPanel Spacing="6">
         <!-- The title line: the page's name and the Easy | Advanced switch (the choice is kept between tabs and runs) -->
-        <StackPanel Orientation="Horizontal" Spacing="14" Margin="0,0,0,2">
-            <TextBlock Text="{Binding Title}" Classes="title" VerticalAlignment="Center" />
-            <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                <Button Tag="grouptool" Classes="pill" Classes.custom="{Binding IsEasy}" Content="Easy" Command="{Binding ShowEasyCommand}"
-                        ToolTip.Tip="A simple page: the volume, a few sound choices, and guided setup" />
-                <Button Tag="grouptool" Classes="pill" Classes.custom="{Binding IsAdvanced}" Content="Advanced" Command="{Binding ShowAdvancedCommand}"
-                        ToolTip.Tip="Every control: the Mixer, Wiring, sound modes and effects" />
-            </StackPanel>
-        </StackPanel>
+        <pages:PageTitleLine Title="{Binding Title}">
+            <pages:PageTitleLine.Middle>
+                <StackPanel Orientation="Horizontal" Spacing="2">
+                    <Button Tag="grouptool" Classes="pill" Classes.custom="{Binding IsEasy}" Content="Easy" Command="{Binding ShowEasyCommand}"
+                            ToolTip.Tip="A simple page: the volume, a few sound choices, and guided setup" />
+                    <Button Tag="grouptool" Classes="pill" Classes.custom="{Binding IsAdvanced}" Content="Advanced" Command="{Binding ShowAdvancedCommand}"
+                            ToolTip.Tip="Every control: the Mixer, Wiring, presets and effects" />
+                </StackPanel>
+            </pages:PageTitleLine.Middle>
+            <pages:PageTitleLine.Right>
+                <Panel>
+                    <!-- Easy: puts the audio settings back to the defaults (asks first; "Undo" follows on the Easy page's line) -->
+                    <Button Tag="grouptool" Classes="pill" Content="Restore defaults"
+                            IsVisible="{Binding IsEasy}" Command="{Binding Easy.RestoreDefaultsCommand}" ToolTip.Tip="{Binding Easy.RestoreTip}" ToolTip.ShowOnDisabled="True" />
+                    <!-- Advanced: the same audio reset, through the shared Restore defaults control (the Easy view keeps its own button and line) -->
+                    <Panel IsVisible="{Binding IsAdvanced}"><restore:RestoreBar DataContext="{Binding Restorer}" /></Panel>
+                </Panel>
+            </pages:PageTitleLine.Right>
+        </pages:PageTitleLine>
 
         <!-- EASY: the welcome, the Sound screen and the Easy page (new; reads and writes through the Advanced rows and the same services) -->
         <Panel x:Name="EasyHost" IsVisible="{Binding IsEasy}">
             <easy:EasyView DataContext="{Binding Easy}" />
         </Panel>
 
-        <!-- ADVANCED: the Mixer and Wiring tabs, exactly as they were -->
+        <!-- ADVANCED: the Mixer and Wiring tabs -->
         <StackPanel x:Name="CardsHost" Grid.IsSharedSizeScope="True" Spacing="6" IsVisible="{Binding IsAdvanced}">
-            <!-- The tabs; on the Mixer tab, the Sound mode button at the right (the same control and panel as the Wiring tab's, one view-model) -->
+            <!-- The tabs, and the Volume presets' preset picker at the right (the same control on both tabs, one view-model; the shared Controls/PresetPicker, as on the Mouse and Displays group lines) -->
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource WiringColumnGap}">
                 <pages:PageTabsView DataContext="{Binding Tabs}" />
-                <Panel Grid.Column="1" IsVisible="{Binding ShowsMixer}" VerticalAlignment="Center">
-                    <vm:SoundModeButton DataContext="{Binding SoundMode}" />
-                </Panel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource MenuGap}" VerticalAlignment="Center">
+                    <!-- Wiring tab only: the cable status and setup action, to the left of the presets, which stay at the same place on both tabs -->
+                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource MenuGap}" VerticalAlignment="Center" IsVisible="{Binding ShowsWiring}">
+                        <c:TagView DataContext="{Binding CableStatus}" IsVisible="{Binding $self.DataContext, Converter={x:Static ObjectConverters.IsNotNull}}" VerticalAlignment="Center" />
+                        <Button Tag="grouptool" Classes="pill" Content="{Binding CableSetup.Label}" Command="{Binding CableSetup.Command}"
+                                ToolTip.Tip="{Binding CableSetup.Tip}" IsVisible="{Binding HasCableSetup}" />
+                    </StackPanel>
+                    <c:PresetPicker DataContext="{Binding PresetChoice}" />
+                </StackPanel>
             </Grid>
 
-            <!-- MIXER: levels, mutes, meters and effects; where each row plays is read only here -->
+            <!-- MIXER: one row per source in columns (docs/mockups/mixer-rows-knobs.html), the small column headings above each group's rows -->
             <StackPanel Spacing="6" IsVisible="{Binding ShowsMixer}">
-                <Border Classes="groupPanel" x:DataType="vm:VolumeGroup" DataContext="{Binding Outputs}">
-                    <StackPanel Spacing="6">
-                        <!-- The header: name and the programs' count (trimmed first when narrow), then "Show closed" and "Add program" -->
-                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource WiringColumnGap}">
-                            <pages:GroupHeader />
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource MenuGap}" VerticalAlignment="Center"
-                                        IsVisible="{Binding HasProgramTools}">
-                                <TextBlock Classes="muted small" Text="Show closed" VerticalAlignment="Center" />
-                                <ToggleSwitch Classes="tool" Tag="grouptool" IsChecked="{Binding ProgramTools.ShowClosed}" OnContent="" OffContent=""
-                                              ToolTip.Tip="List remembered programs that are not open. Hidden ones keep their effects and return when opened." />
-                                <vm:AddProgramButton DataContext="{Binding ProgramTools.Add}" />
-                            </StackPanel>
-                        </Grid>
-                        <ListBox Classes="rows compact" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}" />
+                <!-- The Outputs header: name and the programs' count (trimmed first when narrow), then "Show closed" and "Add program" -->
+                <pages:GroupCard Group="{Binding Outputs}">
+                    <pages:GroupCard.Tools>
+                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource MenuGap}" VerticalAlignment="Center" IsVisible="{Binding Outputs.HasProgramTools}">
+                            <TextBlock Classes="muted small" Text="Show closed" VerticalAlignment="Center" />
+                            <ToggleSwitch Classes="tool plain" Tag="grouptool" IsChecked="{Binding Outputs.ProgramTools.ShowClosed}"
+                                          ToolTip.Tip="List remembered programs that are not open. Hidden ones keep their effects and return when opened." />
+                            <vm:AddProgramButton DataContext="{Binding Outputs.ProgramTools.Add}" />
+                        </StackPanel>
+                    </pages:GroupCard.Tools>
+                    <StackPanel Spacing="6" x:DataType="vm:VolumeGroup" DataContext="{Binding Outputs}">
+                        <vm:MixerHeadings />
+                        <ListBox Classes="rows compact" ItemsSource="{Binding Items}" />
                     </StackPanel>
-                </Border>
+                </pages:GroupCard>
 
-                <Border Classes="groupPanel" x:DataType="vm:VolumeGroup" DataContext="{Binding Inputs}">
-                    <StackPanel Spacing="6">
-                        <pages:GroupHeader />
-                        <ListBox Classes="rows compact" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}" />
+                <pages:GroupCard Group="{Binding Inputs}">
+                    <StackPanel Spacing="6" x:DataType="vm:VolumeGroup" DataContext="{Binding Inputs}">
+                        <vm:MixerHeadings />
+                        <ListBox Classes="rows compact" ItemsSource="{Binding Items}" />
                     </StackPanel>
-                </Border>
+                </pages:GroupCard>
             </StackPanel>
 
-            <!-- WIRING: the sound mode and the cable status on top; where each source plays and the cable it uses (combined devices are rows, "+ Combine ..." in a table header) -->
+            <!-- WIRING: where each source plays and the cable it uses (combined devices are rows, "+ Combine ..." in a table header); the cable status sits in the tab row above -->
             <StackPanel Spacing="6" IsVisible="{Binding ShowsWiring}">
-                <WrapPanel Classes="toolbar">
-                    <vm:SoundModeButton DataContext="{Binding SoundMode}" />
-                    <Border Classes="tag" Classes.good="{Binding CableStatus.IsGood}" Classes.caution="{Binding CableStatus.IsCaution}"
-                            IsVisible="{Binding HasCableStatus}" ToolTip.Tip="{Binding CableStatus.Tip}">
-                        <TextBlock Text="{Binding CableStatus.Text}" />
-                    </Border>
-                    <Button Tag="grouptool" Classes="pill" Content="{Binding CableSetup.Label}" Command="{Binding CableSetup.Command}"
-                            ToolTip.Tip="{Binding CableSetup.Tip}" IsVisible="{Binding HasCableSetup}" />
-                </WrapPanel>
-
                 <vm:WiringTable DataContext="{Binding WiringOutputs}" />
                 <vm:WiringTable DataContext="{Binding WiringInputs}" />
                 <vm:CableTable DataContext="{Binding WiringCables}" />

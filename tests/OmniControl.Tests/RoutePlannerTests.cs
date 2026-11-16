@@ -5,18 +5,18 @@ using Xunit.Abstractions;
 
 namespace OmniControl.Tests;
 
-/// <summary>The route planner on the owner's PC and settings (Full control and Fast), and across the events a session goes through.</summary>
+/// <summary>The route planner on the owner's PC and settings and across the events a session goes through.</summary>
 public class RoutePlannerTests(ITestOutputHelper output)
 {
     private static readonly IReadOnlySet<string> None = new HashSet<string>();
 
     private static HashSet<string> Set(params string[] keys) => keys.ToHashSet();
 
-    private RoutePlan Plan(MixerSettings s, SoundMode mode, IReadOnlySet<string> playing, IReadOnlySet<string>? sounding = null,
+    private RoutePlan Plan(MixerSettings s, IReadOnlySet<string> playing, IReadOnlySet<string>? sounding = null,
         IReadOnlySet<string>? holding = null, IReadOnlySet<string>? failed = null, bool twoPairs = false,
         IReadOnlySet<string>? capturing = null, bool captureWorks = true)
     {
-        var plan = RoutePlanner.Make(new PlanInput(mode, twoPairs ? OwnerPc.SupportTwoPairs : OwnerPc.Support, captureWorks, s, playing,
+        var plan = RoutePlanner.Make(new PlanInput(twoPairs ? OwnerPc.SupportTwoPairs : OwnerPc.Support, captureWorks, s, playing,
             sounding ?? None, holding ?? None, twoPairs ? OwnerPc.PlaybackTwoPairs : OwnerPc.Playback,
             twoPairs ? OwnerPc.RecordingTwoPairs : OwnerPc.Recording, failed ?? None, capturing));
         output.WriteLine(PlanPrinter.Print(plan));
@@ -30,7 +30,7 @@ public class RoutePlannerTests(ITestOutputHelper output)
     {
         foreach (var run in plan.Runs.Values)
         {
-            // A microphone's run plays INTO its cable on purpose (it records microphones); a Fast-mode recording uses no cable.
+            // A microphone's run plays INTO its cable on purpose (it records microphones); a recording uses no cable.
             if (run.Kind == RunKind.Mic || run.Cable is null) continue;
             Assert.DoesNotContain(run.Cable, run.Outputs);
             if (run.Kind == RunKind.Cable) Assert.NotEqual(plan.Bus?.Cable, run.Cable);
@@ -45,7 +45,7 @@ public class RoutePlannerTests(ITestOutputHelper output)
     [Fact]
     public void Full_OneVbCable_Automatic_SpotifyIsRecordedIntoTheBus()
     {
-        var plan = Plan(OwnerPc.Settings(), SoundModes.Full, Set(OwnerPc.Helium, OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify));
+        var plan = Plan(OwnerPc.Settings(), Set(OwnerPc.Helium, OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify));
         Assert.Equal(OwnerPc.CableInput, plan.Runs[MixerService.MasterKey].Cable);
         Assert.Contains(OwnerPc.Cable16, plan.CablesInUse);
         var spotify = plan.Runs[OwnerPc.Spotify];
@@ -62,11 +62,11 @@ public class RoutePlannerTests(ITestOutputHelper output)
     public void Full_OneVbCable_RouteCable_SpotifyNeedsAnotherCable()
     {
         var s = OwnerPc.Settings();
-        s.Apps.First(a => a.Key == OwnerPc.Spotify).FxRoute = SoundModes.RouteCable.Id;
-        var plan = Plan(s, SoundModes.Full, Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify));
+        s.Apps.First(a => a.Key == OwnerPc.Spotify).FxRoute = EffectsRules.RouteCable.Id;
+        var plan = Plan(s, Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify));
         Assert.False(plan.Runs.ContainsKey(OwnerPc.Spotify));
         Assert.Equal(EngineState.Unavailable, plan.Blocked[OwnerPc.Spotify].State);
-        Assert.Equal($"{SoundModes.NeedsAnotherCable}. Playing without effects.", plan.Blocked[OwnerPc.Spotify].Text);
+        Assert.Equal($"{EffectsRules.NeedsAnotherCable}. Playing without effects.", plan.Blocked[OwnerPc.Spotify].Text);
     }
 
     /// <summary>"Recording" never takes a cable, even when a whole pair is free.</summary>
@@ -74,10 +74,10 @@ public class RoutePlannerTests(ITestOutputHelper output)
     public void Full_RouteCapture_NeverTakesACable_EvenWithAFreePair()
     {
         var s = OwnerPc.Settings();
-        s.Apps.First(a => a.Key == OwnerPc.Spotify).FxRoute = SoundModes.RouteCapture.Id;
-        var one = Plan(s, SoundModes.Full, Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify));
+        s.Apps.First(a => a.Key == OwnerPc.Spotify).FxRoute = EffectsRules.RouteCapture.Id;
+        var one = Plan(s, Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify));
         Assert.Equal(RunKind.Capture, one.Runs[OwnerPc.Spotify].Kind);
-        var two = Plan(s, SoundModes.Full, Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify), twoPairs: true);
+        var two = Plan(s, Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify), twoPairs: true);
         Assert.Equal(RunKind.Capture, two.Runs[OwnerPc.Spotify].Kind);
         Assert.DoesNotContain(OwnerPc.CableA, two.CablesInUse);
     }
@@ -86,7 +86,7 @@ public class RoutePlannerTests(ITestOutputHelper output)
     [Fact]
     public void Full_TwoPairs_Automatic_PrefersTheCable()
     {
-        var plan = Plan(OwnerPc.Settings(), SoundModes.Full, Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify), twoPairs: true);
+        var plan = Plan(OwnerPc.Settings(), Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify), twoPairs: true);
         Assert.Equal(RunKind.Cable, plan.Runs[OwnerPc.Spotify].Kind);
         Assert.Equal(OwnerPc.CableA, plan.Runs[OwnerPc.Spotify].Cable);
     }
@@ -96,17 +96,17 @@ public class RoutePlannerTests(ITestOutputHelper output)
     public void Full_Automatic_RecordingKeepsRecording_WhenAPairFrees()
     {
         var s = OwnerPc.Settings();
-        var both = Plan(s, SoundModes.Full, Set(OwnerPc.Helium, OwnerPc.Spotify), sounding: Set(OwnerPc.Helium, OwnerPc.Spotify), twoPairs: true);
+        var both = Plan(s, Set(OwnerPc.Helium, OwnerPc.Spotify), sounding: Set(OwnerPc.Helium, OwnerPc.Spotify), twoPairs: true);
         Assert.Equal(RunKind.Cable, both.Runs[OwnerPc.Helium].Kind);
         Assert.Equal(RunKind.Capture, both.Runs[OwnerPc.Spotify].Kind);
 
         output.WriteLine("Helium closes; Spotify keeps recording:");
-        var after = Plan(s, SoundModes.Full, Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify), capturing: Set(OwnerPc.Spotify), twoPairs: true);
+        var after = Plan(s, Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify), capturing: Set(OwnerPc.Spotify), twoPairs: true);
         Assert.True(after.Runs[OwnerPc.Spotify].SameAs(both.Runs[OwnerPc.Spotify]));
         Assert.DoesNotContain(OwnerPc.CableA, after.CablesInUse);
 
         output.WriteLine("Spotify's run ended (it closed and opens again): Automatic takes the free pair:");
-        var again = Plan(s, SoundModes.Full, Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify), twoPairs: true);
+        var again = Plan(s, Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify), twoPairs: true);
         Assert.Equal(RunKind.Cable, again.Runs[OwnerPc.Spotify].Kind);
     }
 
@@ -117,22 +117,22 @@ public class RoutePlannerTests(ITestOutputHelper output)
         var s = OwnerPc.Settings();
         s.Apps.First(a => a.Key == OwnerPc.Helium).FxOn = false; // Helium without effects follows the master
         output.WriteLine("1. Spotify plays:");
-        var p1 = Plan(s, SoundModes.Full, Set(OwnerPc.Helium, OwnerPc.Spotify), sounding: Set(OwnerPc.Helium, OwnerPc.Spotify));
+        var p1 = Plan(s, Set(OwnerPc.Helium, OwnerPc.Spotify), sounding: Set(OwnerPc.Helium, OwnerPc.Spotify));
         Assert.Equal(RunKind.Capture, p1.Runs[OwnerPc.Spotify].Kind);
         Assert.Contains(OwnerPc.Helium, p1.BusRoutes);
         Assert.False(p1.Runs.ContainsKey(OwnerPc.Helium));
 
         output.WriteLine("2. Spotify paused, its recording is kept:");
-        var p2 = Plan(s, SoundModes.Full, Set(OwnerPc.Helium, OwnerPc.Spotify), capturing: Set(OwnerPc.Spotify));
+        var p2 = Plan(s, Set(OwnerPc.Helium, OwnerPc.Spotify), capturing: Set(OwnerPc.Spotify));
         Assert.True(p2.Runs[OwnerPc.Spotify].SameAs(p1.Runs[OwnerPc.Spotify]));
 
         output.WriteLine("3. Spotify closed:");
-        var p3 = Plan(s, SoundModes.Full, Set(OwnerPc.Helium));
+        var p3 = Plan(s, Set(OwnerPc.Helium));
         Assert.False(p3.Runs.ContainsKey(OwnerPc.Spotify));
         Assert.Equal(EngineState.Waiting, p3.Blocked[OwnerPc.Spotify].State);
 
         output.WriteLine("4. Spotify opened and plays again:");
-        var p4 = Plan(s, SoundModes.Full, Set(OwnerPc.Helium, OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify));
+        var p4 = Plan(s, Set(OwnerPc.Helium, OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify));
         Assert.True(p4.Runs[OwnerPc.Spotify].SameAs(p1.Runs[OwnerPc.Spotify]));
         Assert.True(p4.Runs[MixerService.MasterKey].SameAs(p1.Runs[MixerService.MasterKey])); // the bus never restarts for a program
     }
@@ -145,13 +145,13 @@ public class RoutePlannerTests(ITestOutputHelper output)
     public void Full_OneVbCable_BusGivenUp_RecordedProgramPlaysOnTheSpeaker()
     {
         var s = OwnerPc.Settings();
-        var automatic = Plan(s, SoundModes.Full, Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify), failed: Set(MixerService.MasterKey));
+        var automatic = Plan(s, Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify), failed: Set(MixerService.MasterKey));
         Assert.Null(automatic.Bus);
         Assert.Equal(RunKind.Cable, automatic.Runs[OwnerPc.Spotify].Kind);
         Assert.Equal(new[] { OwnerPc.Speaker }, automatic.Runs[OwnerPc.Spotify].Outputs);
 
-        s.Apps.First(a => a.Key == OwnerPc.Spotify).FxRoute = SoundModes.RouteCapture.Id;
-        var recording = Plan(s, SoundModes.Full, Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify), failed: Set(MixerService.MasterKey));
+        s.Apps.First(a => a.Key == OwnerPc.Spotify).FxRoute = EffectsRules.RouteCapture.Id;
+        var recording = Plan(s, Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify), failed: Set(MixerService.MasterKey));
         Assert.Equal(RunKind.Capture, recording.Runs[OwnerPc.Spotify].Kind);
         Assert.Equal(new[] { OwnerPc.Speaker }, recording.Runs[OwnerPc.Spotify].Outputs);
     }
@@ -160,7 +160,7 @@ public class RoutePlannerTests(ITestOutputHelper output)
     [Fact]
     public void Full_RecordingImpossible_RowSaysWhy()
     {
-        var plan = Plan(OwnerPc.Settings(), SoundModes.Full, Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify), captureWorks: false);
+        var plan = Plan(OwnerPc.Settings(), Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify), captureWorks: false);
         Assert.False(plan.Runs.ContainsKey(OwnerPc.Spotify));
         Assert.Equal(EngineState.Unavailable, plan.Blocked[OwnerPc.Spotify].State);
         Assert.StartsWith("Recording stops", plan.Blocked[OwnerPc.Spotify].Text);
@@ -170,8 +170,8 @@ public class RoutePlannerTests(ITestOutputHelper output)
     [Fact]
     public void OldSettings_LoadAsAutomatic()
     {
-        Assert.All(OwnerPc.Settings().Apps, a => Assert.Same(SoundModes.RouteAutomatic, SoundModes.RouteOf(a.FxRoute)));
-        Assert.Same(SoundModes.RouteAutomatic, SoundModes.RouteOf("something-unknown"));
+        Assert.All(OwnerPc.Settings().Apps, a => Assert.Same(EffectsRules.RouteAutomatic, EffectsRules.RouteOf(a.FxRoute)));
+        Assert.Same(EffectsRules.RouteAutomatic, EffectsRules.RouteOf("something-unknown"));
     }
 
     [Fact]
@@ -188,7 +188,7 @@ public class RoutePlannerTests(ITestOutputHelper output)
     [Fact]
     public void Full_SpotifyPlays_HeliumOnlyHoldsASilentStream_SpotifyGetsTheSpareCable()
     {
-        var plan = Plan(OwnerPc.Settings(), SoundModes.Full, Set(OwnerPc.Helium, OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify), twoPairs: true);
+        var plan = Plan(OwnerPc.Settings(), Set(OwnerPc.Helium, OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify), twoPairs: true);
 
         var bus = plan.Runs[MixerService.MasterKey];
         Assert.Equal(RunKind.Bus, bus.Kind);
@@ -208,7 +208,7 @@ public class RoutePlannerTests(ITestOutputHelper output)
     [Fact]
     public void Full_ProgramWithOnlyASilentStream_IsNotMovedEvenWithAFreeCable()
     {
-        var plan = Plan(OwnerPc.Settings(), SoundModes.Full, Set(OwnerPc.Helium), twoPairs: true);
+        var plan = Plan(OwnerPc.Settings(), Set(OwnerPc.Helium), twoPairs: true);
         Assert.False(plan.Runs.ContainsKey(OwnerPc.Helium));
         Assert.Equal(EngineState.Waiting, plan.Blocked[OwnerPc.Helium].State);
         Assert.DoesNotContain(OwnerPc.CableA, plan.CablesInUse); // only the bus's pair is in use
@@ -217,7 +217,7 @@ public class RoutePlannerTests(ITestOutputHelper output)
     [Fact]
     public void Full_BothHeard_TheSecondIsRecorded()
     {
-        var plan = Plan(OwnerPc.Settings(), SoundModes.Full, Set(OwnerPc.Helium, OwnerPc.Spotify), sounding: Set(OwnerPc.Helium, OwnerPc.Spotify), twoPairs: true);
+        var plan = Plan(OwnerPc.Settings(), Set(OwnerPc.Helium, OwnerPc.Spotify), sounding: Set(OwnerPc.Helium, OwnerPc.Spotify), twoPairs: true);
         Assert.Equal(OwnerPc.CableA, plan.Runs[OwnerPc.Helium].Cable); // settings order among programs that are heard
         Assert.Equal(RunKind.Capture, plan.Runs[OwnerPc.Spotify].Kind); // no pair left: Automatic records it
     }
@@ -225,7 +225,7 @@ public class RoutePlannerTests(ITestOutputHelper output)
     [Fact]
     public void Full_HeliumRunFailed_ItsCableGoesToSpotify_AndHeliumIsNotMovedAgain()
     {
-        var plan = Plan(OwnerPc.Settings(), SoundModes.Full, Set(OwnerPc.Helium, OwnerPc.Spotify),
+        var plan = Plan(OwnerPc.Settings(), Set(OwnerPc.Helium, OwnerPc.Spotify),
             sounding: Set(OwnerPc.Helium, OwnerPc.Spotify), failed: Set(OwnerPc.Helium), twoPairs: true);
         Assert.Equal(OwnerPc.CableA, plan.Runs[OwnerPc.Spotify].Cable);
         Assert.False(plan.Runs.ContainsKey(OwnerPc.Helium));
@@ -236,7 +236,7 @@ public class RoutePlannerTests(ITestOutputHelper output)
     [Fact]
     public void Full_BothPlay_TheProgramHoldingTheCableKeepsIt()
     {
-        var plan = Plan(OwnerPc.Settings(), SoundModes.Full, Set(OwnerPc.Helium, OwnerPc.Spotify),
+        var plan = Plan(OwnerPc.Settings(), Set(OwnerPc.Helium, OwnerPc.Spotify),
             sounding: Set(OwnerPc.Helium, OwnerPc.Spotify), holding: Set(OwnerPc.Spotify), twoPairs: true);
         Assert.Equal(OwnerPc.CableA, plan.Runs[OwnerPc.Spotify].Cable);
         Assert.Equal(RunKind.Capture, plan.Runs[OwnerPc.Helium].Kind);
@@ -249,21 +249,21 @@ public class RoutePlannerTests(ITestOutputHelper output)
         s.Apps.First(a => a.Key == OwnerPc.Helium).FxOn = false; // Helium follows the master
 
         output.WriteLine("1. Spotify closed, Helium open:");
-        var p1 = Plan(s, SoundModes.Full, Set(OwnerPc.Helium), twoPairs: true);
+        var p1 = Plan(s, Set(OwnerPc.Helium), twoPairs: true);
         Assert.Equal(EngineState.Waiting, p1.Blocked[OwnerPc.Spotify].State);
         Assert.Contains(OwnerPc.Helium, p1.BusRoutes);
 
         output.WriteLine("2. Spotify starts playing:");
-        var p2 = Plan(s, SoundModes.Full, Set(OwnerPc.Helium, OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify), twoPairs: true);
+        var p2 = Plan(s, Set(OwnerPc.Helium, OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify), twoPairs: true);
         Assert.Equal(new[] { OwnerPc.CableInput }, p2.Runs[OwnerPc.Spotify].Outputs);
         Assert.Equal(OwnerPc.CableA, p2.Runs[OwnerPc.Spotify].Cable);
 
         output.WriteLine("3. Spotify paused (stream still open), its run is held:");
-        var p3 = Plan(s, SoundModes.Full, Set(OwnerPc.Helium, OwnerPc.Spotify), holding: Set(OwnerPc.Spotify), twoPairs: true);
+        var p3 = Plan(s, Set(OwnerPc.Helium, OwnerPc.Spotify), holding: Set(OwnerPc.Spotify), twoPairs: true);
         Assert.True(p3.Runs[OwnerPc.Spotify].SameAs(p2.Runs[OwnerPc.Spotify])); // no restart on pause
 
         output.WriteLine("4. The master bus is given up (it heard nothing):");
-        var p4 = Plan(s, SoundModes.Full, Set(OwnerPc.Helium, OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify),
+        var p4 = Plan(s, Set(OwnerPc.Helium, OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify),
             holding: Set(OwnerPc.Spotify), failed: Set(MixerService.MasterKey), twoPairs: true);
         Assert.False(p4.Runs.ContainsKey(MixerService.MasterKey));
         Assert.Null(p4.Bus);
@@ -272,7 +272,7 @@ public class RoutePlannerTests(ITestOutputHelper output)
         Assert.Equal(new[] { OwnerPc.Speaker }, spotify.Outputs); // the real speakers by name, never "the default" that may be a cable
 
         output.WriteLine("5. Spotify closes:");
-        var p5 = Plan(s, SoundModes.Full, Set(OwnerPc.Helium), twoPairs: true);
+        var p5 = Plan(s, Set(OwnerPc.Helium), twoPairs: true);
         Assert.False(p5.Runs.ContainsKey(OwnerPc.Spotify));
         Assert.True(p5.Runs[MixerService.MasterKey].SameAs(p2.Runs[MixerService.MasterKey])); // the bus never restarts for a program
     }
@@ -282,23 +282,9 @@ public class RoutePlannerTests(ITestOutputHelper output)
     {
         var s = OwnerPc.Settings();
         s.Apps.First(a => a.Key == OwnerPc.Spotify).FxOn = false;
-        var plan = Plan(s, SoundModes.Full, Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify));
+        var plan = Plan(s, Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify));
         Assert.False(plan.Runs.ContainsKey(OwnerPc.Spotify));
         Assert.Contains(OwnerPc.Spotify, plan.BusRoutes);
-    }
-
-    [Fact]
-    public void Fast_Unchanged_ProgramsRecordedAndMasterInEqualizerApo()
-    {
-        var s = OwnerPc.Settings();
-        s.SoundMode = SoundModes.Fast.Id;
-        var plan = Plan(s, SoundModes.Fast, Set(OwnerPc.Helium, OwnerPc.Spotify), failed: Set(OwnerPc.Helium));
-        Assert.Null(plan.Bus);
-        Assert.Contains(MixerService.MasterKey, plan.ToApo);
-        Assert.Equal(RunKind.Capture, plan.Runs[OwnerPc.Spotify].Kind);
-        Assert.Equal(new string?[] { null }, plan.Runs[OwnerPc.Spotify].Outputs);
-        Assert.Equal(RunKind.Capture, plan.Runs[OwnerPc.Helium].Kind); // Fast keeps a failed run's spec: the engine shows the failure
-        Assert.Empty(plan.CablesInUse);
     }
 
     // ---- armed ahead of the sound ----
@@ -313,12 +299,12 @@ public class RoutePlannerTests(ITestOutputHelper output)
         var s = OwnerPc.Settings();
         s.Apps.First(a => a.Key == OwnerPc.Helium).FxOn = false;
         output.WriteLine("1. Spotify open, paused:");
-        var paused = Plan(s, SoundModes.Full, Set(OwnerPc.Spotify));
+        var paused = Plan(s, Set(OwnerPc.Spotify));
         Assert.Equal(RunKind.Capture, paused.Runs[OwnerPc.Spotify].Kind);
         Assert.Equal(new[] { OwnerPc.CableInput }, paused.Runs[OwnerPc.Spotify].Outputs);
 
         output.WriteLine("2. Spotify plays:");
-        var plays = Plan(s, SoundModes.Full, Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify), capturing: Set(OwnerPc.Spotify));
+        var plays = Plan(s, Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify), capturing: Set(OwnerPc.Spotify));
         Assert.True(plays.Runs[OwnerPc.Spotify].SameAs(paused.Runs[OwnerPc.Spotify]));
         Assert.True(plays.Runs[MixerService.MasterKey].SameAs(paused.Runs[MixerService.MasterKey]));
     }
@@ -328,8 +314,8 @@ public class RoutePlannerTests(ITestOutputHelper output)
     public void Full_SilentProgramOnVirtualCable_Waits()
     {
         var s = OwnerPc.Settings();
-        s.Apps.First(a => a.Key == OwnerPc.Spotify).FxRoute = SoundModes.RouteCable.Id;
-        var plan = Plan(s, SoundModes.Full, Set(OwnerPc.Spotify), twoPairs: true);
+        s.Apps.First(a => a.Key == OwnerPc.Spotify).FxRoute = EffectsRules.RouteCable.Id;
+        var plan = Plan(s, Set(OwnerPc.Spotify), twoPairs: true);
         Assert.False(plan.Runs.ContainsKey(OwnerPc.Spotify));
         Assert.Equal(EngineState.Waiting, plan.Blocked[OwnerPc.Spotify].State);
         Assert.DoesNotContain(OwnerPc.CableA, plan.CablesInUse);
@@ -340,8 +326,8 @@ public class RoutePlannerTests(ITestOutputHelper output)
     public void Full_SilentProgramOnRecording_IsArmed_EvenWithAFreePair()
     {
         var s = OwnerPc.Settings();
-        s.Apps.First(a => a.Key == OwnerPc.Spotify).FxRoute = SoundModes.RouteCapture.Id;
-        var plan = Plan(s, SoundModes.Full, Set(OwnerPc.Spotify), twoPairs: true);
+        s.Apps.First(a => a.Key == OwnerPc.Spotify).FxRoute = EffectsRules.RouteCapture.Id;
+        var plan = Plan(s, Set(OwnerPc.Spotify), twoPairs: true);
         Assert.Equal(RunKind.Capture, plan.Runs[OwnerPc.Spotify].Kind);
         Assert.DoesNotContain(OwnerPc.CableA, plan.CablesInUse);
     }
@@ -355,13 +341,13 @@ public class RoutePlannerTests(ITestOutputHelper output)
     {
         var s = OwnerPc.Settings();
         var capturing = Set(OwnerPc.Spotify, OwnerPc.Helium);
-        var first = Plan(s, SoundModes.Full, Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify), capturing: Set(OwnerPc.Spotify));
+        var first = Plan(s, Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify), capturing: Set(OwnerPc.Spotify));
         var states = new[]
         {
-            Plan(s, SoundModes.Full, Set(OwnerPc.Spotify, OwnerPc.Helium), sounding: Set(OwnerPc.Spotify), capturing: Set(OwnerPc.Spotify)), // Helium opens
-            Plan(s, SoundModes.Full, Set(OwnerPc.Spotify, OwnerPc.Helium), sounding: Set(OwnerPc.Spotify, OwnerPc.Helium), capturing: capturing), // Helium plays
-            Plan(s, SoundModes.Full, Set(OwnerPc.Spotify, OwnerPc.Helium), sounding: Set(OwnerPc.Helium), capturing: capturing), // Spotify pauses
-            Plan(s, SoundModes.Full, Set(OwnerPc.Spotify), capturing: capturing), // Helium closes
+            Plan(s, Set(OwnerPc.Spotify, OwnerPc.Helium), sounding: Set(OwnerPc.Spotify), capturing: Set(OwnerPc.Spotify)), // Helium opens
+            Plan(s, Set(OwnerPc.Spotify, OwnerPc.Helium), sounding: Set(OwnerPc.Spotify, OwnerPc.Helium), capturing: capturing), // Helium plays
+            Plan(s, Set(OwnerPc.Spotify, OwnerPc.Helium), sounding: Set(OwnerPc.Helium), capturing: capturing), // Spotify pauses
+            Plan(s, Set(OwnerPc.Spotify), capturing: capturing), // Helium closes
         };
         foreach (var plan in states)
         {
@@ -372,29 +358,24 @@ public class RoutePlannerTests(ITestOutputHelper output)
 
     /// <summary>
     /// Restore paths: the run ends (the engine then puts the original volume back) when the effects are switched off, when the last
-    /// enabled effect is disabled, and when the Test found no way to record; in Fast mode also when the program closes. In Full control a
+    /// enabled effect is disabled, and when the Test found no way to record. A
     /// closed program keeps its run (and its silence) so it is armed again the moment it reopens.
     /// </summary>
     [Fact]
-    public void ArmedRun_EndsWhenItShould_AndIsKeptWhileClosedInFullControl()
+    public void ArmedRun_EndsWhenItShould_AndIsKeptWhileClosed()
     {
         var off = OwnerPc.Settings();
         off.Apps.First(a => a.Key == OwnerPc.Spotify).FxOn = false;
-        Assert.False(Plan(off, SoundModes.Full, Set(OwnerPc.Spotify), capturing: Set(OwnerPc.Spotify)).Runs.ContainsKey(OwnerPc.Spotify));
+        Assert.False(Plan(off, Set(OwnerPc.Spotify), capturing: Set(OwnerPc.Spotify)).Runs.ContainsKey(OwnerPc.Spotify));
 
         var disabled = OwnerPc.Settings();
         disabled.Apps.First(a => a.Key == OwnerPc.Spotify).Fx.ForEach(f => f.Enabled = false);
-        Assert.False(Plan(disabled, SoundModes.Full, Set(OwnerPc.Spotify), capturing: Set(OwnerPc.Spotify)).Runs.ContainsKey(OwnerPc.Spotify));
+        Assert.False(Plan(disabled, Set(OwnerPc.Spotify), capturing: Set(OwnerPc.Spotify)).Runs.ContainsKey(OwnerPc.Spotify));
 
-        var untestable = Plan(OwnerPc.Settings(), SoundModes.Full, Set(OwnerPc.Spotify), captureWorks: false);
+        var untestable = Plan(OwnerPc.Settings(), Set(OwnerPc.Spotify), captureWorks: false);
         Assert.False(untestable.Runs.ContainsKey(OwnerPc.Spotify));
 
-        var fast = OwnerPc.Settings();
-        fast.SoundMode = SoundModes.Fast.Id;
-        Assert.Equal(RunKind.Capture, Plan(fast, SoundModes.Fast, Set(OwnerPc.Spotify)).Runs[OwnerPc.Spotify].Kind); // open, silent: armed
-        Assert.False(Plan(fast, SoundModes.Fast, None, capturing: Set(OwnerPc.Spotify)).Runs.ContainsKey(OwnerPc.Spotify)); // closed
-
-        var closed = Plan(OwnerPc.Settings(), SoundModes.Full, None, capturing: Set(OwnerPc.Spotify));
+        var closed = Plan(OwnerPc.Settings(), None, capturing: Set(OwnerPc.Spotify));
         Assert.Equal(RunKind.Capture, closed.Runs[OwnerPc.Spotify].Kind);
     }
 
@@ -408,14 +389,14 @@ public class RoutePlannerTests(ITestOutputHelper output)
         var file = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OmniControl", "mixer.json");
         if (!File.Exists(file)) return;
         var s = JsonSerializer.Deserialize<MixerSettings>(File.ReadAllText(file))!;
-        if (SoundModes.Find(s.SoundMode) != SoundModes.Full || s.Apps.FirstOrDefault(a => a.Name == "Spotify") is not { } spotify) return;
+        if (s.Apps.FirstOrDefault(a => a.Name == "Spotify") is not { } spotify) return;
         var all = s.Apps.Select(a => a.Key).ToHashSet();
-        var plan = Plan(s, SoundModes.Full, all, sounding: Set(spotify.Key));
+        var plan = Plan(s, all, sounding: Set(spotify.Key));
         output.WriteLine($"(Spotify = {spotify.Key})");
         // One VB-CABLE: the bus holds the pair and nothing ever uses "CABLE In 16ch"; Spotify's effects are recorded (Automatic or
         // Recording) or wait for a second cable (Virtual cable).
         if (!spotify.FxOn || !spotify.Fx.Any(f => f.Enabled)) return;
-        if (SoundModes.RouteOf(spotify.FxRoute) == SoundModes.RouteCable) Assert.Equal(EngineState.Unavailable, plan.Blocked[spotify.Key].State);
+        if (EffectsRules.RouteOf(spotify.FxRoute) == EffectsRules.RouteCable) Assert.Equal(EngineState.Unavailable, plan.Blocked[spotify.Key].State);
         else Assert.Equal(RunKind.Capture, plan.Runs[spotify.Key].Kind);
     }
 }

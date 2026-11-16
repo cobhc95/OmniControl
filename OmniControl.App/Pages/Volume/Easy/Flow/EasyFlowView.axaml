@@ -6,23 +6,12 @@
              xmlns:flow="using:OmniControl.App.Pages.Volume.Easy.Flow"
              x:Class="OmniControl.App.Pages.Volume.Easy.Flow.EasyFlowView"
              x:DataType="flow:EasyFlowViewModel">
-    <!-- One goal's guided setup, a small window-like page inside the Easy host: a progress strip (Goal · questions · Setup · Done, ticking as
+    <!-- One goal's guided setup, a small window-like page inside the Easy host: a progress strip (Goal · questions · Engine · Setup · Done, ticking as
          it goes), then the screen of the current step. Question screens ask (a ticked list, look chips, a name, or the Sound drawer); the
          Setup screen is a checklist that ticks by itself; "All set" says what was done. Back and Next under every screen but the last. -->
     <UserControl.Resources>
-        <!-- One line of a checklist (also used for the extra lines of the All set screen): its mark, words and an optional fix button -->
-        <DataTemplate x:Key="CheckLine" x:DataType="flow:EasyCheckItem">
-            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="0,2">
-                <TextBlock Text="{Binding Mark}" Classes.accenttext="{Binding IsDone}" Classes.cautiontext="{Binding IsTodo}" Classes.muted="{Binding IsBlocked}"
-                           FontWeight="SemiBold" MinWidth="12" TextAlignment="Center" VerticalAlignment="Center" />
-                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding Title}" TextWrapping="Wrap" Classes.muted="{Binding IsOptional}" />
-                    <TextBlock Text="{Binding Subtitle}" Classes="hint small" TextWrapping="Wrap" />
-                </StackPanel>
-                <Button Grid.Column="2" Tag="grouptool" Classes="pill" Classes.custom="{Binding IsTodo}" IsVisible="{Binding HasFix}" Content="{Binding FixLabel}"
-                        Command="{Binding FixCommand}" VerticalAlignment="Center" />
-            </Grid>
-        </DataTemplate>
+        <!-- One line of a checklist (also the extra lines of the All set screen): the shared line view -->
+        <DataTemplate x:Key="CheckLine" x:DataType="flow:EasyCheckItem"><flow:EasyCheckLineView /></DataTemplate>
     </UserControl.Resources>
     <Border Classes="groupPanel">
         <StackPanel Spacing="8" Margin="0,4">
@@ -34,8 +23,7 @@
                     <DataTemplate x:DataType="flow:EasyStripItem">
                         <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,6,0">
                             <TextBlock Text="✓" Classes="accenttext small" IsVisible="{Binding IsDone}" VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding Title}" Classes="small" Classes.accenttext="{Binding IsCurrent}" Classes.muted="{Binding !IsCurrent}"
-                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Title}" Classes="strong small" Classes.accenttext="{Binding IsCurrent}" Classes.muted="{Binding !IsCurrent}" VerticalAlignment="Center" />
                             <TextBlock Text="·" Classes="muted small" VerticalAlignment="Center" />
                         </StackPanel>
                     </DataTemplate>
@@ -45,21 +33,11 @@
             <!-- A question screen -->
             <StackPanel Spacing="6" IsVisible="{Binding IsQuestion}">
                 <StackPanel Spacing="6" DataContext="{Binding Question}" x:DataType="flow:EasyQuestionViewModel">
-                    <TextBlock Text="{Binding Prompt}" FontWeight="SemiBold" />
+                    <TextBlock Classes="strong" Text="{Binding Prompt}" />
                     <TextBlock Classes="hint" Text="{Binding Hint}" TextWrapping="Wrap" />
                     <Panel IsVisible="{Binding ShowsChoices}"><c:OptionList DataContext="{Binding Choices}" /></Panel>
                     <Panel IsVisible="{Binding ShowsAddProgram}" HorizontalAlignment="Left"><vm:AddProgramButton DataContext="{Binding AddProgram}" /></Panel>
-                    <ItemsControl ItemsSource="{Binding Looks}" IsVisible="{Binding ShowsLooks}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="easy:EasyChip">
-                                <Button Tag="grouptool" Classes="pill" Classes.custom="{Binding IsSelected}" Content="{Binding Name}" Command="{Binding PickCommand}"
-                                        Margin="0,0,4,4" HorizontalAlignment="Left" />
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <c:ChoiceChips ItemsSource="{Binding Looks}" IsVisible="{Binding ShowsLooks}" />
                     <TextBox Classes="field" IsVisible="{Binding ShowsName}" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
                              Watermark="{Binding NamePlaceholder}" MaxLength="64" />
                     <Panel IsVisible="{Binding ShowsSound}"><easy:EasySoundView DataContext="{Binding Sound}" /></Panel>
@@ -67,9 +45,40 @@
                 </StackPanel>
             </StackPanel>
 
+            <!-- The Engine step: two cards (the master option card look, selected = accent edge); a way the goal does not offer is greyed with its
+                 reason in place of its facts line; the "Get" button sits under its card and greys once the way is installed -->
+            <StackPanel Spacing="6" IsVisible="{Binding IsEngine}">
+                <TextBlock Classes="strong" Text="{Binding EnginePrompt}" />
+                <TextBlock Classes="hint" Text="{Binding EngineHint}" TextWrapping="Wrap" />
+                <ItemsControl ItemsSource="{Binding EngineCards}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><UniformGrid Columns="2" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="flow:EasyEngineItem">
+                            <StackPanel Spacing="4" Margin="0,0,6,0">
+                                <Button Tag="grouptool" Classes="optioncard" Classes.selected="{Binding IsSelected}" Command="{Binding PickCommand}"
+                                        IsEnabled="{Binding IsAvailable}" VerticalAlignment="Stretch">
+                                    <StackPanel Spacing="3">
+                                        <TextBlock Classes="strong" Text="{Binding Name}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Description}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Facts}" Classes="hint small" TextWrapping="Wrap" />
+                                        <Border Classes="tag" Classes.good="{Binding TagIsGood}" Classes.caution="{Binding TagIsCaution}" HorizontalAlignment="Left">
+                                            <TextBlock Text="{Binding Tag}" TextWrapping="Wrap" />
+                                        </Border>
+                                    </StackPanel>
+                                </Button>
+                                <Button Tag="grouptool" Classes="pill cardaction" Content="{Binding GetLabel}" Command="{Binding GetCommand}" HorizontalAlignment="Left" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Classes="hint small" Text="{Binding EngineProblem}" IsVisible="{Binding HasEngineProblem}" TextWrapping="Wrap" />
+            </StackPanel>
+
             <!-- The setup checklist -->
             <StackPanel Spacing="6" IsVisible="{Binding IsSetup}">
-                <TextBlock Text="Setting it up" FontWeight="SemiBold" />
+                <TextBlock Classes="strong" Text="Setting it up" />
                 <ItemsControl ItemsSource="{Binding Pictures}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="flow:EasyPictureRow">
@@ -82,7 +91,7 @@
 
             <!-- All set -->
             <StackPanel Spacing="6" IsVisible="{Binding IsDone}">
-                <TextBlock Text="{Binding DoneHeadline}" FontWeight="SemiBold" />
+                <TextBlock Classes="strong" Text="{Binding DoneHeadline}" />
                 <ItemsControl ItemsSource="{Binding DoneLines}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
@@ -92,14 +101,18 @@
             </StackPanel>
 
             <TextBlock Classes="hint small" Text="{Binding Note}" IsVisible="{Binding HasNote}" TextWrapping="Wrap" />
+            <TextBlock Classes="hint small" Text="{Binding StuckNote}" IsVisible="{Binding HasStuckNote}" TextWrapping="Wrap" />
 
+            <!-- Inside a run of several goals, "Continue with the next goal" leaves one that cannot be finished (nothing more is applied for it) -->
             <WrapPanel IsVisible="{Binding !IsDone}">
                 <Button Tag="grouptool" Classes="pill" Content="Back" Command="{Binding BackCommand}" Margin="0,0,6,0" />
+                <Button Tag="grouptool" Classes="pill" Content="{Binding SkipLabel}" Command="{Binding SkipGoalCommand}" IsVisible="{Binding IsSequence}" Margin="0,0,6,0" />
                 <Button Tag="grouptool" Classes="usebtn scope" Content="Next" Command="{Binding NextCommand}" ToolTip.Tip="{Binding NextTip}" />
             </WrapPanel>
             <WrapPanel IsVisible="{Binding IsDone}">
-                <Button Tag="grouptool" Classes="pill" Content="Set up something else" Command="{Binding SetUpSomethingElseCommand}" Margin="0,0,6,0" />
-                <Button Tag="grouptool" Classes="usebtn scope" Content="Go to Volume" Command="{Binding GoToVolumeCommand}" />
+                <Button Tag="grouptool" Classes="pill" Content="Set up something else" Command="{Binding SetUpSomethingElseCommand}" IsVisible="{Binding !IsSequence}" Margin="0,0,6,0" />
+                <Button Tag="grouptool" Classes="usebtn scope" Content="Next goal" Command="{Binding NextGoalCommand}" IsVisible="{Binding HasNextGoal}" />
+                <Button Tag="grouptool" Classes="usebtn scope" Content="Go to Volume" Command="{Binding GoToVolumeCommand}" IsVisible="{Binding !HasNextGoal}" />
             </WrapPanel>
         </StackPanel>
     </Border>

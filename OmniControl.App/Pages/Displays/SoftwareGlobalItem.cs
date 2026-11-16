@@ -8,7 +8,7 @@ namespace OmniControl.App.Pages.Displays;
 
 /// <summary>
 /// The software controls that belong to the whole desktop rather than one display: saturation, grayscale (saturation 0 as a switch
-/// that remembers the saturation before it) and invert, which are one Windows colour effect, and one Reset for every software change.
+/// that remembers the saturation before it) and invert, which are one Windows colour effect.
 /// Used on the UI thread.
 /// </summary>
 internal sealed class SoftwareGlobalItem
@@ -17,6 +17,7 @@ internal sealed class SoftwareGlobalItem
 
     private readonly SoftwareDisplayService _service;
     private readonly Action<string> _report;
+    private readonly Action _changed;
     private readonly SliderItem _saturation;
     private readonly ToggleItem _grayscale, _invert;
     private readonly OsdService _osd;
@@ -30,10 +31,11 @@ internal sealed class SoftwareGlobalItem
 
     public bool Invert => _invert.IsOn;
 
-    /// <param name="resetAll">Puts every display's picture and the colour effect back (the page owns the displays).</param>
-    public SoftwareGlobalItem(SoftwareDisplayService service, OsdService osd, string category, Action<string> report, Action resetAll)
+    /// <param name="resetAll">Puts every display's picture and the colour effect back (the page owns the displays); the reset hotkey runs it.</param>
+    /// <param name="changed">Told after the colour effect was applied (the preset drop-down re-reads the picture).</param>
+    public SoftwareGlobalItem(SoftwareDisplayService service, OsdService osd, string category, Action<string> report, Action resetAll, Action changed)
     {
-        (_service, _osd, _report) = (service, osd, report);
+        (_service, _osd, _report, _changed) = (service, osd, report, changed);
         var spec = DisplayControls.SoftwareSaturation;
         _saturation = new SliderItem(spec.Label, spec.Default, _ => Apply(), report, spec.Min, spec.Max, defaultValue: spec.Default) { Half = true };
         _grayscale = new ToggleItem("Grayscale (all displays)", false, SetGrayscale)
@@ -44,8 +46,7 @@ internal sealed class SoftwareGlobalItem
         {
             Half = true, Tip = "Windows' colour effect for every display; the same picture a negative would give",
         };
-        var reset = new ButtonItem("Reset everything", "Reset all", "All picture and colour settings back to normal", resetAll) { Half = true };
-        Cards = new IEditorItem[] { _saturation, _grayscale, _invert, reset };
+        Cards = new IEditorItem[] { _saturation, _grayscale, _invert };
 
         var actions = DisplayActions.Level(spec, DisplayControls.SoftwareKey(spec), category, DisplayControls.SoftwareGroup, (_, delta) => Step(spec, delta), devices: null).ToList();
         actions.Add(DisplayActions.Once(GrayscaleId, "Toggle grayscale", "digital software grayscale black white saturation", category, DisplayControls.SoftwareGroup, VcpSections.Colour,
@@ -61,7 +62,9 @@ internal sealed class SoftwareGlobalItem
     private OperationResult Apply()
     {
         _grayscale.Load(_saturation.Value == 0);
-        return _service.SetColorEffect(_saturation.Value, _invert.IsOn);
+        var result = _service.SetColorEffect(_saturation.Value, _invert.IsOn);
+        _changed();
+        return result;
     }
 
     private void ApplyReported()

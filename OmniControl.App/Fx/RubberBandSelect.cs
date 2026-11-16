@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.VisualTree;
+using OmniControl.App.Controls;
 
 namespace OmniControl.App.Fx;
 

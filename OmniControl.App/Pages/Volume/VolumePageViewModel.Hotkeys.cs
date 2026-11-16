@@ -15,7 +15,6 @@ public sealed partial class VolumePageViewModel
     private readonly object _inputStep = new();
 
     /// <summary>The actions that do nothing in some states; <see cref="SyncHotkeyAvailability"/> keeps their reason (shown on the Shortcuts page) up to date.</summary>
-    private HotkeyAction? _modeHotkey, _micFxHotkey;
     private readonly List<HotkeyAction> _comboHotkeys = new();
 
     private const string NoCombinedMicrophone = "No combined microphone yet";
@@ -29,13 +28,11 @@ public sealed partial class VolumePageViewModel
         var volume = new HotkeyLevel("volume", "Volume");
         hotkeys.Register(new HotkeyAction("volume.mic.mute", "Toggle microphone mute", Title, "sound audio input microphone mic mute silence",
             _ => StepInput(0, toggleMute: true)));
-        _micFxHotkey = new HotkeyAction("volume.mic.fx", "Toggle microphone FX", Title, "sound audio input microphone mic fx effects chain",
+        hotkeys.Register(new HotkeyAction("volume.mic.fx", "Toggle microphone FX", Title, "sound audio input microphone mic fx effects chain",
             _ =>
             {
-                if (_micFxHotkey?.UnavailableReason is { } why) _report(why);
-                else if (_mixer.RecordingDevices.FirstOrDefault(d => d.IsDefault) is { } d && _inputs.TryGetValue(d.Id, out var i)) i.FxOn = !i.FxOn;
-            });
-        hotkeys.Register(_micFxHotkey);
+                if (_mixer.RecordingDevices.FirstOrDefault(d => d.IsDefault) is { } d && _inputs.TryGetValue(d.Id, out var i)) i.FxOn = !i.FxOn;
+            }));
         hotkeys.Register(HotkeyAction.ForLevel("volume.mic.up", "Microphone level up", Title, "sound audio input microphone mic louder", mic, +1, (_, delta) => StepInput(delta)));
         hotkeys.Register(HotkeyAction.ForLevel("volume.mic.down", "Microphone level down", Title, "sound audio input microphone mic quieter", mic, -1, (_, delta) => StepInput(delta)));
 
@@ -57,23 +54,15 @@ public sealed partial class VolumePageViewModel
         hotkeys.Register(new HotkeyAction("volume.closed.toggle", "Show or hide closed programs", Title, "sound audio mixer programs apps closed not open remembered list show hide",
             _ => OnUi(() => { if (Outputs.ProgramTools is { } tools) tools.ShowClosed = !tools.ShowClosed; })));
         hotkeys.Register(new HotkeyAction("volume.fx", "Toggle master FX", Title, "sound audio master fx effects chain equaliser",
-            _ => _mixer.SetFxOn(null, !_mixer.IsFxOn(null))));
-        // The id is the old "Next master effects mode" one, so keys bound to it keep working.
-        _modeHotkey = new HotkeyAction("volume.fxmode.next", "Switch sound mode", Title,
-            "sound audio mode effects " + string.Join(' ', SoundModes.All.Select(m => m.Name.ToLowerInvariant())),
-            _ => NextSoundMode());
-        hotkeys.Register(_modeHotkey);
+            _ => _mixer.SetFxByUser(null, !_mixer.IsFxOn(null))));
         SyncHotkeyAvailability();
     }
 
     /// <summary>
-    /// The reason each state-dependent action does nothing now, or none: "Switch sound mode" when the next mode can't be chosen, the
-    /// microphone effects when the mode can't run them, the combined microphone actions while there is none. Kept live like every gate.
+    /// The reason each state-dependent action does nothing now, or none: the combined microphone actions while there is none. Kept live like every gate.
     /// </summary>
     private void SyncHotkeyAvailability()
     {
-        if (_modeHotkey is not null) _modeHotkey.UnavailableReason = SoundModes.NextModeUnavailable(_mixer.SoundMode, _modes.Current);
-        if (_micFxHotkey is not null) _micFxHotkey.UnavailableReason = _modes.Check(SoundFeature.MicEffects).Reason;
         var none = _mixer.Combined.Any(c => c.Kind == CombinedKind.Microphones) ? null : NoCombinedMicrophone;
         foreach (var action in _comboHotkeys) action.UnavailableReason = none;
     }

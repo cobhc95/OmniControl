@@ -1,0 +1,21 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Automation new buttons (approved option C)</title>
+<!-- Approved by the owner 15 Nov 2026: option C. Colours from the app theme; sizes are guides. -->
+<style>
+body{font-family:Segoe UI,sans-serif;background:#1b1b1b;color:#eee;padding:20px;font-size:13px}
+.g{border:1px solid #444;border-radius:10px;padding:10px 12px;background:#232323;margin-bottom:14px} /* Border.groupPanel */
+.t{font-size:14px;font-weight:600}                       /* group title */
+.pill{border:1px solid #666;border-radius:14px;padding:3px 12px} /* Button.pill on the group's title line, right-aligned (like Restore defaults / Refresh) */
+.row{display:flex;gap:6px;align-items:center;border:1px solid #444;border-radius:8px;padding:8px 10px;margin:6px 0}
+.w{color:#999}.b{border:1px solid #666;border-radius:6px;padding:2px 8px}.d{border:1px dashed #666;border-radius:6px;padding:2px 8px;color:#999} /* in-rule dashed chips stay as they are */
+.ghost{border:1px dashed #666;border-radius:8px;padding:10px;text-align:center;color:#999;margin-top:8px} /* empty-list row, shown ONLY when the list has no items */
+.link{color:#E8833A}                                     /* Button.link */
+</style></head><body>
+<!-- With items: "+ New automation" pill on the header line; the old "+ Add automation" under the list is removed. -->
+<div class="g"><div style="display:flex;align-items:center"><span class="t">Automations</span><span class="pill" style="margin-left:auto">+ New automation</span></div>
+<div class="row"><span class="w">When</span><span class="b">I press Ctrl+M</span><span class="d">+ or</span><span class="d">+ and</span><span class="w">do</span><span class="b">Turn off monitor</span><span class="d">+ then</span></div></div>
+<!-- Empty: same header pill, plus one dashed row with a one-sentence explanation and a link that does the same as the pill. -->
+<div class="g"><div style="display:flex;align-items:center"><span class="t">Blocks</span><span class="pill" style="margin-left:auto">+ New block</span></div>
+<div class="ghost">No blocks yet. A block stops an action while something is true. <span class="link">New block</span></div></div>
+<!-- Same pattern on the Custom actions tab: "+ New custom action" pill on its header; empty row when none. -->
+</body></html>

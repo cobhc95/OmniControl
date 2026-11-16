@@ -3,8 +3,8 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
+using OmniControl.App.Controls;
 using OmniControl.App.Fx.Plugins;
-using OmniControl.App.Fx.Presets;
 
 namespace OmniControl.App.Fx;
 
@@ -51,24 +51,10 @@ public partial class FxChainPanel : UserControl
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
-        if (_vm is not null)
-        {
-            _vm.ReselectRequested -= Reselect;
-            _vm.PresetManagerOpener = null;
-        }
+        if (_vm is not null) _vm.ReselectRequested -= Reselect;
         _vm = DataContext as FxChainViewModel;
-        if (_vm is not null)
-        {
-            _vm.ReselectRequested += Reselect;
-            _vm.PresetManagerOpener = ManagePresetsAsync;
-        }
+        if (_vm is not null) _vm.ReselectRequested += Reselect;
     }
-
-    /// <summary>The preset list's "Manage presets" row: the manager opens over the window that holds this panel and returns when it is closed.</summary>
-    private Task ManagePresetsAsync(PresetManagerRequest request) =>
-        _vm is { } vm && TopLevel.GetTopLevel(this) is Window owner
-            ? PresetManagerWindow.ShowAsync(owner, new PresetManagerViewModel(vm.Store, request))
-            : Task.CompletedTask;
 
     /// <summary>The chain list has the keyboard.</summary>
     public bool ListHasKeyboard => SlotList.IsKeyboardFocusWithin;

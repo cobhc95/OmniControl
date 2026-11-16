@@ -29,4 +29,10 @@ public static class Percent
 
     /// <summary>A percent (clamped to 0-100) as a 0-1 scalar.</summary>
     public static float ToScalar(int percent) => Clamp(percent) / (float)Max;
+
+    /// <summary>
+    /// <paramref name="percent"/> % of a range, at least 1: the one rule for how far a step moves a value (a wheel notch or a key is 1 % of
+    /// the range, a large step 10 %).
+    /// </summary>
+    public static double StepOf(double minimum, double maximum, double percent = 1) => Math.Max(1, (maximum - minimum) * percent / Max);
 }

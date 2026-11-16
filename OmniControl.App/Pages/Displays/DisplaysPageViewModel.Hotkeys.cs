@@ -1,3 +1,4 @@
+using OmniControl.Core.Interfaces;
 using OmniControl.Core.Models;
 using OmniControl.App.Hotkeys;
 
@@ -12,6 +13,17 @@ namespace OmniControl.App.Pages.Displays;
 /// </summary>
 public sealed partial class DisplaysPageViewModel
 {
+    private const string OrientationSection = "Orientation";
+
+    /// <summary>The orientations the hotkeys turn to, with the key suggested for each (the arrows point where the top of the picture goes).</summary>
+    private static readonly (DisplayOrientation Orientation, string Key)[] RotationKeys =
+    {
+        (DisplayOrientation.Landscape, "Ctrl+Alt+Up"),
+        (DisplayOrientation.Portrait, "Ctrl+Alt+Right"),
+        (DisplayOrientation.LandscapeFlipped, "Ctrl+Alt+Down"),
+        (DisplayOrientation.PortraitFlipped, "Ctrl+Alt+Left"),
+    };
+
     private readonly List<HotkeyAction> _scopedActions = new();
 
     private void RegisterActions()
@@ -36,6 +48,17 @@ public sealed partial class DisplaysPageViewModel
         }
         actions.Add(DisplayActions.Once("displays.power.off", "Turn screen off", "power off sleep standby turn screen off", Title, hardware, VcpSections.PowerMode,
             ids => EachHardware(ids, h => h.TurnOff()), HardwareDevices));
+
+        foreach (var (orientation, suggested) in RotationKeys)
+        {
+            var captured = orientation;
+            actions.Add(DisplayActions.Once($"displays.rotate.{captured.ToString().ToLowerInvariant()}", $"Rotate to {DisplayOrientationCard.Title(captured)}",
+                "rotate rotation orientation landscape portrait flipped turn screen", Title, hardware, OrientationSection,
+                ids => EachHardware(ids, h => h.Rotate(captured)), HardwareDevices, suggested));
+        }
+
+        actions.Add(DisplayActions.Once("displays.hw.preset.next", "Next monitor preset", "hardware ddc preset saved profile monitors settings", Title, hardware, VcpSections.Presets,
+            _ => _monitorBook.Next(), devices: null));
 
         foreach (var level in DisplayControls.Software)
         {

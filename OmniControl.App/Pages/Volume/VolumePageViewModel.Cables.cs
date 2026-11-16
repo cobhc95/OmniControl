@@ -5,7 +5,7 @@ namespace OmniControl.App.Pages.Volume;
 
 /// <summary>
 /// The Wiring tab's Virtual cables group: every virtual device the PC has (<see cref="AudioEffectsSupport.Found"/>), each cable pair's
-/// switch (stored by the mixer; <see cref="SoundModeService"/> then offers only the allowed ones to everything else), what the engine's
+/// switch (stored by the mixer; <see cref="EffectsSupportService"/> then offers only the allowed ones to everything else), what the engine's
 /// plan uses it for or why it is not used, the user's marked pairs, and the steps that get more cables.
 /// </summary>
 public sealed partial class VolumePageViewModel
@@ -30,7 +30,7 @@ public sealed partial class VolumePageViewModel
     /// <summary>Brings the list in line with what the PC has, the user's switches and the engine's plan.</summary>
     private void SyncCables()
     {
-        var found = _modes.Current?.Found ?? Array.Empty<FoundCable>();
+        var found = _support.Current?.Found ?? Array.Empty<FoundCable>();
         foreach (var gone in _cableRows.Keys.Where(id => found.All(f => f.Id != id)).ToList()) _cableRows.Remove(gone);
         var rows = found.Select(f =>
         {
@@ -44,7 +44,7 @@ public sealed partial class VolumePageViewModel
             foreach (var row in rows) WiringCables.Items.Add(row);
         }
         WiringCables.Summary = $"{found.Count(f => f.IsPair)} found";
-        var install = _modes.Current is { } support && !SoundModes.CableInstalled(support) ? CableSetupAction() : null;
+        var install = _support.Current is { } support && !EffectsRules.CableInstalled(support) ? CableSetupAction() : null;
         if (install?.Label != WiringCables.Install?.Label) WiringCables.Install = install;
     }
 
@@ -82,7 +82,7 @@ public sealed partial class VolumePageViewModel
         var inUse = holder is not null;
         row.State = inUse ? InUseState : FreeState;
         row.IsFree = !inUse;
-        row.SwitchTip = SoundModes.CableSwitchTip(holder);
+        row.SwitchTip = EffectsRules.CableSwitchTip(holder);
         row.Use = UsePrefix + (holder ?? AutomaticUse);
         row.UseTip = inUse ? "What the effects engine runs through it now" : "Given out when a combined device, a processed microphone or a program needs a cable";
     }
@@ -114,17 +114,17 @@ public sealed partial class VolumePageViewModel
 
     private void AllowCable(CableRow row, bool allowed)
     {
-        var holder = !allowed && _modes.Current?.Found.FirstOrDefault(f => f.Id == row.Id) is { } found ? CableHolderOf(found) : null;
+        var holder = !allowed && _support.Current?.Found.FirstOrDefault(f => f.Id == row.Id) is { } found ? CableHolderOf(found) : null;
         _mixer.SetCableAllowed(row.Id, allowed);
         _report(allowed ? $"{row.Name} can be used"
-            : holder is not null ? SoundModes.CableSwitchedOffStops(row.Name, holder)
+            : holder is not null ? EffectsRules.CableSwitchedOffStops(row.Name, holder)
             : $"{row.Name} switched off: OmniControl won't use it");
     }
 
     /// <summary>The pop-down opened: every plugged-in device that is not a known cable end.</summary>
     private void OpenCableMark(CableMarkMenu menu)
     {
-        var ends = (_modes.Current?.Found ?? Array.Empty<FoundCable>())
+        var ends = (_support.Current?.Found ?? Array.Empty<FoundCable>())
             .SelectMany(f => f.Inputs.Select(c => c.PlaybackId).Append(f.Id)).ToHashSet();
         bool Unknown(AudioDevice d) => !VirtualCables.IsCable(d.Name) && !ends.Contains(d.Id);
         menu.Refresh(_mixer.Devices.Where(Unknown).ToList(), _mixer.RecordingDevices.Where(Unknown).ToList());

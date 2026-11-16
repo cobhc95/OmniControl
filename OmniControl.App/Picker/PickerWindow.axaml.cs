@@ -14,7 +14,11 @@ public partial class PickerWindow : Window
     public PickerWindow()
     {
         InitializeComponent();
-        Menu.Picked += pick => Close(pick);
+        Menu.Picked += pick =>
+        {
+            Recents.Remember(pick.Choice.Spec);
+            Close(pick);
+        };
         Menu.CloseRequested += () => Close(null);
         Opened += (_, _) =>
         {
@@ -22,13 +26,6 @@ public partial class PickerWindow : Window
         };
         Closed += (_, _) => Menu.Release();
 
-        // Esc when nothing inside the picker has focus (the menu handles it itself otherwise).
-        KeyDown += (_, e) =>
-        {
-            if (e.Key != Key.Escape || e.Handled) return;
-            Close(null);
-            e.Handled = true;
-        };
     }
 
     /// <summary>Opens the window over <paramref name="owner"/> and returns the chosen entry and settings, or null when cancelled.</summary>

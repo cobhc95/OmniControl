@@ -1,3 +1,4 @@
+using OmniControl.App.Hotkeys;
 using OmniControl.App.Mouse;
 using OmniControl.Core.Engine.Mouse;
 
@@ -58,8 +59,6 @@ public class GestureOptionTests
         Assert.Contains(OmniControl.Core.Engine.Trackpad.WindowsGesture.ThreeFingerTap, wanted);
         Assert.DoesNotContain(OmniControl.Core.Engine.Trackpad.WindowsGesture.PinchToZoom, wanted); // its action keeps Windows' own
         Assert.DoesNotContain(OmniControl.Core.Engine.Trackpad.WindowsGesture.ThreeFingerSwipes, wanted); // at Default
-        old.Enabled = false;
-        Assert.Empty(TrackpadService.WantedOff(old)); // "Remap mouse and trackpad" off gives everything back
     }
 
     [Fact]
@@ -73,9 +72,6 @@ public class GestureOptionTests
         Assert.False(TrackpadService.Guards(With("1.ThreeFingerTap", "keys:Ctrl+C|original=1"), 1, MouseButton.ThreeFingerTap)); // option ticked
         Assert.False(TrackpadService.Guards(With("1.ThreeFingerTap", "desktop.search"), 1, MouseButton.ThreeFingerTap)); // opens Search itself
         Assert.False(TrackpadService.Guards(With("1.ThreeFingerUp", "keys:Alt+Tab"), 1, MouseButton.ThreeFingerUp)); // the switcher looks like Task view
-
-        settings.Enabled = false;
-        Assert.False(TrackpadService.Guards(settings, 1, MouseButton.ThreeFingerTap));
     }
 
     [Fact]

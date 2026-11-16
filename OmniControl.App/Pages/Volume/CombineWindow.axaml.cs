@@ -11,7 +11,6 @@ public partial class CombineWindow : Window
     public CombineWindow()
     {
         InitializeComponent();
-        AddHandler(KeyDownEvent, (_, e) => { if (e.Key == Key.Escape) { Close(false); e.Handled = true; } }, RoutingStrategies.Tunnel);
         MemberList.CloseRequested += () => Close(false);
         Opened += (_, _) =>
         {

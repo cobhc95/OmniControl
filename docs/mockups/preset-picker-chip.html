@@ -1,0 +1,16 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Preset picker as a chip (approved)</title>
+<!-- Approved by the owner 15 Nov 2026. Supersedes the drop-down look in preset-picker-manage-in-list.html (the "Manage presets…" last row stays).
+     The master Controls/PresetPicker looks IDENTICAL to the Apps scope chip (Controls AppScopeChip, Button.selector): "Preset: <name> ▾".
+     Its menu is the same listmenu as the Apps menu: muted title "Preset", a tick on the current preset, rows for the others, Border.hrule, "⚙ Manage presets…".
+     Applies everywhere the PresetPicker is used (Mouse Buttons, Trackpad, Displays Hardware/Software, Volume, Shortcuts). Disabled state: same chip greyed, reason in tooltip. -->
+<style>
+body{font-family:Segoe UI,sans-serif;background:#1b1b1b;color:#eee;padding:20px;font-size:13px}
+.hd{display:flex;align-items:center;gap:8px;border:1px solid #444;border-radius:8px;padding:6px 10px;background:#232323;max-width:640px}
+.chip{border:1px solid #666;border-radius:12px;padding:2px 10px;font-size:12px}
+.menu{width:200px;margin:4px 0 0 450px;border:1px solid #666;border-radius:8px;background:#262626;padding:6px;font-size:12px}
+.mr{padding:4px 8px}.hr{border-top:1px solid #444;margin:4px 0}.mu{color:#999;font-size:11px;padding:2px 8px}
+</style></head><body>
+<div class="hd"><b>▾ Mouse Buttons</b><span class="chip" style="margin-left:auto">Apps: all ▾</span><span class="chip">Preset: Laptop ▾</span></div>
+<div class="menu"><div class="mu">Preset</div><div class="mr">✓ Laptop</div><div class="mr">&nbsp;&nbsp;&nbsp;Layer 2</div><div class="mr">&nbsp;&nbsp;&nbsp;Gaming</div><div class="hr"></div><div class="mr">⚙ Manage presets…</div></div>
+</body></html>

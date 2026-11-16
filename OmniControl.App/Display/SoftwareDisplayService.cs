@@ -1,4 +1,4 @@
-using OmniControl.App.Services;
+﻿using OmniControl.App.Services;
 using OmniControl.Core.Engine;
 using OmniControl.Core.Models;
 
@@ -15,7 +15,7 @@ namespace OmniControl.App.Display;
 /// </summary>
 public sealed class SoftwareDisplayService : IDisposable
 {
-    private const string RecoveryFile = "software-display.json";
+    private static readonly DataStore RecoveryFile = DataStores.SoftwareDisplay;
 
     private readonly Func<string, IGammaDisplay> _makeDisplay;
     private readonly bool _keepRecovery;

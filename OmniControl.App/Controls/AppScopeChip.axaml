@@ -1,0 +1,15 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:OmniControl.App.Controls"
+             xmlns:apps="using:OmniControl.App.AppLists"
+             x:Class="OmniControl.App.Controls.AppScopeChip"
+             x:DataType="apps:AppScopeModel">
+    <!-- THE master apps scope control (docs/mockups/app-scope-and-lists.html): the "Apps: ..." chip on a group's header line, left of the
+         preset picker, opening the "Works in" menu (AppScopeMenuView). It is the shared ChipMenu; its data context is the group's AppScopeModel. -->
+    <c:ChipMenu x:Name="Chip" Text="{Binding Text}" MenuOpened="OnOpened" MenuClosed="OnClosed"
+                ChipToolTip="Which apps this works in: all, only the apps of a list, or all except those of a list">
+        <c:ChipMenu.Menu>
+            <c:AppScopeMenuView x:Name="Menu" />
+        </c:ChipMenu.Menu>
+    </c:ChipMenu>
+</UserControl>

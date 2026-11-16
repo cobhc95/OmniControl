@@ -1,4 +1,4 @@
-﻿using OmniControl.Core.Engine;
+using OmniControl.Core.Engine;
 
 namespace OmniControl.App.Audio.Engine;
 
@@ -6,23 +6,23 @@ namespace OmniControl.App.Audio.Engine;
 internal enum RunKind
 {
     /// <summary>
-    /// A program recorded, its original silenced, the processed copy played (<see cref="ProgramEngine"/>): every processed program in
-    /// Fast; in Full control a program that records instead of using a cable (into the master bus's cable when it follows the master).
+    /// A program recorded, its original silenced, the processed copy played (<see cref="ProgramEngine"/>): a program that records instead
+    /// of using a cable (into the master bus's cable when it follows the master).
     /// </summary>
     Capture,
-    /// <summary>Full control: a program sent to its own cable, processed, played on its outputs (<see cref="CableRoute"/>).</summary>
+    /// <summary>A program sent to its own cable, processed, played on its outputs (<see cref="CableRoute"/>).</summary>
     Cable,
     /// <summary>
-    /// Full control: a program sent to its own cable that has Equalizer APO on it; Equalizer APO runs its chain, and the cable's recording
+    /// A program sent to its own cable that has Equalizer APO on it; Equalizer APO runs its chain, and the cable's recording
     /// side is only passed on to its outputs (<see cref="CableRoute"/> with no chain of its own).
     /// </summary>
     ApoCable,
-    /// <summary>Full control: the master bus, every program that follows the master sent to one cable, processed, played on the master's outputs (<see cref="BusRun"/>).</summary>
+    /// <summary>The master bus, every program that follows the master sent to one cable, processed, played on the master's outputs (<see cref="BusRun"/>).</summary>
     Bus,
-    /// <summary>Full control: combined speakers, the cable played on every member (<see cref="FanOutRun"/>).</summary>
+    /// <summary>Combined speakers, the cable played on every member (<see cref="FanOutRun"/>).</summary>
     FanOut,
     /// <summary>
-    /// A processed microphone (Full control) or a combined microphone (either mode), recorded, mixed, processed, played into its cable
+    /// A processed microphone or a combined microphone, recorded, mixed, processed, played into its cable
     /// (<see cref="MicRun"/>).
     /// </summary>
     Mic,
@@ -39,14 +39,13 @@ internal sealed record RunSpec(string Key, RunKind Kind, string? Cable, IReadOnl
 }
 
 /// <summary>
-/// What the planner was given: the mode, what the PC has, the stored settings, which programs have sound streams now
+/// What the planner was given: what the PC has, the stored settings, which programs have sound streams now
 /// (<paramref name="Playing"/>, open even while silent), which of them are heard now (<paramref name="Sounding"/>), which hold a
 /// cable run now (<paramref name="Holding"/>), the rows whose run failed (<paramref name="Failed"/>; the master there = the bus
 /// was given up because it heard nothing: it then takes no cable and nothing is sent into it until the routing changes), and the
 /// programs recorded by a Capture run now (<paramref name="Capturing"/>; null = none).
 /// </summary>
 internal sealed record PlanInput(
-    SoundMode Mode,
     AudioEffectsSupport Support,
     bool CaptureWorks,
     MixerSettings Settings,
@@ -70,7 +69,7 @@ internal sealed class RoutePlan
     /// <summary>The runs to have, by row key (the master as <see cref="MixerService.MasterKey"/>).</summary>
     public Dictionary<string, RunSpec> Runs { get; } = new();
 
-    /// <summary>Rows that want something the plan can't give now, and why (a missing cable, the wrong mode, waiting for sound).</summary>
+    /// <summary>Rows that want something the plan can't give now, and why (a missing cable, waiting for sound).</summary>
     public Dictionary<string, EngineStatus> Blocked { get; } = new();
 
     /// <summary>Each program's own device when no run holds it (null = Windows' default).</summary>
@@ -90,9 +89,8 @@ internal sealed class RoutePlan
 
     /// <summary>
     /// The rows whose chain goes to Equalizer APO, each limited to its own device: the master (<see cref="MixerService.MasterKey"/>) when
-    /// it has effects to run and runs there (always in Fast mode; in Full control when its method is Equalizer APO), every plugged-in
-    /// microphone with effects (Fast mode), and each program run on a cable with Equalizer APO on it (<see cref="RunKind.ApoCable"/>,
-    /// written for that run's cable).
+    /// it has effects to run and its method is Equalizer APO, and each program run on a cable with Equalizer APO on it
+    /// (<see cref="RunKind.ApoCable"/>, written for that run's cable).
     /// </summary>
     public List<string> ToApo { get; } = new();
 
@@ -101,25 +99,21 @@ internal sealed class RoutePlan
     public RunMethod MasterMethod { get; set; }
 
     /// <summary>
-    /// The real speakers the master's Equalizer APO chain is written for in Full control (null = Windows' default playback device, as in
-    /// Fast mode, or none plugged in).
+    /// The real speakers the master's Equalizer APO chain is written for (null = none plugged in).
     /// </summary>
     public string? MasterApoDevice { get; set; }
 
     /// <summary>Why a program can't use Equalizer APO on a cable now (null = a pair with Equalizer APO on it is free).</summary>
     public string? ApoCableWhy { get; set; }
 
-    /// <summary>What the cables are used for besides the master bus (the help table's current row, the master's cable line).</summary>
+    /// <summary>What the cables are used for besides the master bus (the master's cable line).</summary>
     public CableUse CableUses { get; set; }
-
-    /// <summary>The live facts of the help table (its "Works" column and current row).</summary>
-    public HelpFacts Help { get; set; } = HelpFacts.Unknown;
 
     /// <summary>How many virtual cable pairs are installed, and whether one is still free after every run took its own (the Method menu offers a cable only then).</summary>
     public int CablePairs { get; set; }
     public bool CableFree { get; set; }
 
-    /// <summary>Full control: the master bus as planned (its cable and the real device the master plays on); null when no bus run is planned.</summary>
+    /// <summary>The master bus as planned (its cable and the real device the master plays on); null when no bus run is planned.</summary>
     public BusPlan? Bus { get; set; }
 }
 
@@ -129,44 +123,25 @@ internal sealed record BusPlan(string Cable, MasterDevice.Choice Real);
 /// <summary>
 /// Decides from the settings and what the PC has which engine runs exist and where every program plays; pure (no Windows calls, no
 /// state), so the whole routing logic is in one place and can be read top to bottom. The master's method comes first
-/// (<see cref="SoundModes.MasterMethodOf"/>): in Fast mode and with the master in Equalizer APO its chain goes to Equalizer APO on the
-/// speakers (<see cref="RoutePlan.ToApo"/>) and no cable is taken for it. Full control gives each consumer its own cable:
+/// (<see cref="EffectsRules.MasterMethodOf"/>): with the master in Equalizer APO its chain goes to Equalizer APO on the
+/// speakers (<see cref="RoutePlan.ToApo"/>) and no cable is taken for it. Each consumer gets its own cable:
 /// first the master bus when the master runs on it (it always wins), then the combined devices and processed microphones that remember a cable (apps point at
 /// it), then the other combined devices and microphones, each in the order of the settings, then programs with open streams (heard
 /// ones first, <see cref="InCableOrder"/>); a processed program with no free pair, or set to recording, is recorded instead (Capture and
-/// replay, the rule in <see cref="PlanFullProgram"/>). Fast mode gives cables to combined microphones only (remembered first). Every run
-/// takes a whole cable pair (<see cref="CableBox"/>).
+/// replay, the rule in <see cref="PlanProgram"/>). Every run takes a whole cable pair (<see cref="CableBox"/>).
 /// </summary>
 internal static class RoutePlanner
 {
     public static RoutePlan Make(PlanInput p)
     {
         var plan = new RoutePlan();
-        var full = p.Mode == SoundModes.Full;
         var cables = new CableBox(p.Support);
         var masterFx = FxSlot.AnyRuns(p.Settings.MasterFxOn, p.Settings.MasterFx);
         var real = RealDevice(p);
-        plan.Master = MasterFactsOf(p, cables, real, masterFx, full);
-        plan.MasterMethod = SoundModes.MasterMethodOf(SoundModes.MasterRouteOf(p.Settings.MasterMethod), plan.Master);
+        plan.Master = MasterFactsOf(p, cables, real, masterFx);
+        plan.MasterMethod = EffectsRules.MasterMethodOf(EffectsRules.MasterRouteOf(p.Settings.MasterMethod), plan.Master);
 
-        if (!full)
-        {
-            if (masterFx) plan.ToApo.Add(MixerService.MasterKey);
-            plan.ToApo.AddRange(PluggedInMics(p).Select(i => MixerService.InputPrefix + i.Id));
-            // Combined microphones need only a cable apps can record from, not the bus or Equalizer APO, so they run in Fast mode too;
-            // combined speakers are mixed for the master and programs, which Fast mode does not route through a cable.
-            var micCombos = p.Settings.Combined.Where(IsMicrophones).ToList();
-            TakeRememberedCables(plan, micCombos, cables);
-            TakeNewCables(plan, micCombos, cables);
-            foreach (var c in p.Settings.Combined)
-                if (IsMicrophones(c)) PlanCombined(p, plan, c, cables, busCable: null);
-                else plan.Blocked[c.Key] = Unavailable(SoundModes.CombinedNeedsFull, StatusKind.NeedsFull);
-            foreach (var app in p.Settings.Apps) PlanFastProgram(p, plan, app);
-            plan.ApoCableWhy = ApoCableWhy(p, cables);
-            return Finish(p, plan, cables);
-        }
-
-        // Full control. The master bus first (Windows' default device is the bus, so every program, effect and route passes through
+        // The master bus first (Windows' default device is the bus, so every program, effect and route passes through
         // it): a remembered cable never takes the bus's place. Unless the bus was given up: then programs that follow the master play on
         // Windows' default again, which is the real device once more. With the master in Equalizer APO there is no bus: the real
         // speakers stay the default and every cable is free for the others.
@@ -188,7 +163,7 @@ internal static class RoutePlanner
         // carries every program that follows the default: no program run may take it.
         if (!onBus) cables.Reserve(p.Playback.FirstOrDefault(d => d.IsDefault)?.Id);
         plan.ApoCableWhy = ApoCableWhy(p, cables); // what is left for programs
-        foreach (var app in InCableOrder(p)) PlanFullProgram(p, plan, app, busCable, cables);
+        foreach (var app in InCableOrder(p)) PlanProgram(p, plan, app, busCable, cables);
         return Finish(p, plan, cables);
     }
 
@@ -198,10 +173,6 @@ internal static class RoutePlanner
         plan.CablePairs = cables.Pairs;
         plan.CableFree = cables.AnyFree;
         plan.CableUses = UsesOf(plan.Runs.Values);
-        plan.Help = new HelpFacts(plan.Master.Full, plan.MasterMethod, plan.CablePairs, plan.Master.NoCable, plan.Master.ApoWhy, plan.Master.HasEffects,
-            p.Support.Cables.Any(c => ApoOn(p, c)), p.Support.Cables.Any(c => c.RecordingId is not null), plan.CableUses,
-            p.Support.Found.Count(f => f.IsPair && p.Settings.FreedCables.Contains(f.Id)),
-            p.Settings.Combined.Any(IsMicrophones), p.Settings.Combined.Any(c => !IsMicrophones(c)));
         return plan;
     }
 
@@ -216,19 +187,18 @@ internal static class RoutePlanner
     });
 
     /// <summary>
-    /// What decides the master's method: the cables allowed, whether Equalizer APO runs on the master's real speakers (Fast: on Windows'
-    /// default device), whether the master is set to several devices, and whether it has effects.
+    /// What decides the master's method: the cables allowed, whether Equalizer APO runs on the master's real speakers, whether the master is set to several devices, and whether it has effects.
     /// </summary>
-    private static MasterFacts MasterFactsOf(PlanInput p, CableBox cables, MasterDevice.Choice real, bool masterFx, bool full)
+    private static MasterFacts MasterFactsOf(PlanInput p, CableBox cables, MasterDevice.Choice real, bool masterFx)
     {
         var apo = p.Support.Apo;
-        var why = full ? SoundModes.ApoMissingOn(apo, apo.PlaybackOf(real.Id)) : SoundModes.ApoMissing(apo);
+        var why = EffectsRules.ApoMissingOn(apo, apo.PlaybackOf(real.Id));
         var several = p.Settings.MasterPlaysOn.Count > 1 || p.Settings.MasterPlaysOn.Any(CombinedDevice.IsKey);
-        return new MasterFacts(full, cables.Pairs, SoundModes.NoCableKind(p.Support), why, several, masterFx);
+        return new MasterFacts(cables.Pairs, EffectsRules.NoCableKind(p.Support), why, several, masterFx);
     }
 
     /// <summary>
-    /// Full control with the master in Equalizer APO: its chain goes to Equalizer APO on the real speakers when it has effects (whether
+    /// The master in Equalizer APO: its chain goes to Equalizer APO on the real speakers when it has effects (whether
     /// Equalizer APO is there is the engine's status); the speakers stay Windows' default and nothing is routed for the master.
     /// </summary>
     private static void PlanMasterApo(RoutePlan plan, string? realId, bool masterFx)
@@ -239,12 +209,12 @@ internal static class RoutePlanner
         else if (masterFx)
             plan.ToApo.Add(MixerService.MasterKey);
         else
-            plan.Blocked[MixerService.MasterKey] = new EngineStatus(EngineState.Off, SoundModes.MasterDirect, Kind: StatusKind.Direct, Method: RunMethod.Apo);
+            plan.Blocked[MixerService.MasterKey] = new EngineStatus(EngineState.Off, EffectsRules.MasterDirect, Kind: StatusKind.Direct, Method: RunMethod.Apo);
     }
 
     /// <summary>Why a program can't use Equalizer APO on a cable (asked once the others took theirs, before any program did): too few pairs, none with Equalizer APO on it, none free.</summary>
     private static string? ApoCableWhy(PlanInput p, CableBox cables) =>
-        SoundModes.ApoCableMissing(cables.Pairs, p.Support.Cables.Any(c => ApoOn(p, c)), cables.HasFree(c => ApoOn(p, c)), SoundModes.NoCableKind(p.Support));
+        EffectsRules.ApoCableMissing(cables.Pairs, p.Support.Cables.Any(c => ApoOn(p, c)), cables.HasFree(c => ApoOn(p, c)), EffectsRules.NoCableKind(p.Support));
 
     /// <summary>Equalizer APO runs on the cable's playback side, and the cable has a recording side to pass on (Equalizer APO's output arrives there).</summary>
     private static bool ApoOn(PlanInput p, VirtualCable cable) =>
@@ -292,25 +262,6 @@ internal static class RoutePlanner
     /// <summary>An open but silent program that waits for sound before it takes a cable.</summary>
     private static readonly EngineStatus WaitingForSound = new(EngineState.Waiting, "Starts when the program plays", Kind: StatusKind.WaitingForSound);
 
-    // ---- Fast ----
-
-    private static void PlanFastProgram(PlanInput p, RoutePlan plan, AppAudioEntry app)
-    {
-        var outputs = app.PlaysOn.Where(t => p.Playback.Any(d => d.Id == t)).ToList();
-        plan.Direct[app.Key] = outputs.FirstOrDefault();
-        var wantsRun = FxSlot.AnyRuns(app.FxOn, app.Fx) || outputs.Count > 1;
-        if (!wantsRun)
-        {
-            if (app.PlaysOn.Any(CombinedDevice.IsKey)) plan.Blocked[app.Key] = Unavailable(SoundModes.CombinedNeedsFull, StatusKind.NeedsFull);
-            return;
-        }
-        if (CaptureBlocked(p) is { } blocked) plan.Blocked[app.Key] = blocked;
-        else if (!p.Playing.Contains(app.Key)) plan.Blocked[app.Key] = ProgramClosed;
-        else plan.Runs[app.Key] = new RunSpec(app.Key, RunKind.Capture, null, outputs.Count > 0 ? outputs.Cast<string?>().ToList() : new string?[] { null }, Array.Empty<string>());
-    }
-
-    // ---- Full control ----
-
     private static void PlanCombined(PlanInput p, RoutePlan plan, CombinedDevice c, CableBox cables, string? busCable)
     {
         var cable = plan.ComboCables.GetValueOrDefault(c.Key);
@@ -337,8 +288,8 @@ internal static class RoutePlanner
     {
         if (cable is null)
             plan.Blocked[key] = new EngineStatus(EngineState.Unavailable, cables.Missing,
-                cables.RecordableName(busCable) is { } held ? SoundModes.BusHoldsCable(held) : null, cables.MissingKind(program: false));
-        else if (sources.Count == 0) plan.Blocked[key] = Unavailable(SoundModes.NoMicrophonePluggedIn, StatusKind.NothingPluggedIn);
+                cables.RecordableName(busCable) is { } held ? EffectsRules.BusHoldsCable(held) : null, cables.MissingKind(program: false));
+        else if (sources.Count == 0) plan.Blocked[key] = Unavailable(EffectsRules.NoMicrophonePluggedIn, StatusKind.NothingPluggedIn);
         else plan.Runs[key] = new RunSpec(key, RunKind.Mic, cable, new string?[] { cable }, sources);
     }
 
@@ -365,7 +316,7 @@ internal static class RoutePlanner
     private static MasterDevice.Choice RealDevice(PlanInput p) =>
         MasterDevice.Real(p.Playback, p.Playback.FirstOrDefault(d => d.IsDefault)?.Id, p.Settings.RealMasterDevice);
 
-    private static void PlanFullProgram(PlanInput p, RoutePlan plan, AppAudioEntry app, string? busCable, CableBox cables)
+    private static void PlanProgram(PlanInput p, RoutePlan plan, AppAudioEntry app, string? busCable, CableBox cables)
     {
         var outputs = Resolve(p, plan, app.PlaysOn).ToList();
         plan.Direct[app.Key] = outputs.Count == 1 ? outputs[0] : null;
@@ -398,7 +349,7 @@ internal static class RoutePlanner
             plan.Blocked[app.Key] = Unavailable("No speakers are plugged in to play on", StatusKind.NothingPluggedIn);
             return;
         }
-        // THE RULE for how a processed program runs (SoundModes.ProgramRoutes, the user's choice per program):
+        // THE RULE for how a processed program runs (EffectsRules.ProgramRoutes, the user's choice per program):
         // - Virtual cable: its own cable pair, or it waits for one.
         // - Recording: always Capture and replay (process loopback of the program, its original turned down), never a cable.
         // - Automatic: a cable while a whole pair is free (the preferred path: no recording, Windows mixes the program itself), else
@@ -408,10 +359,10 @@ internal static class RoutePlanner
         //   a silent session open all the time, which must not take the cable from the program that plays.
         // - Equalizer APO on a cable: like Virtual cable, but only a pair with Equalizer APO on it; Equalizer APO runs the chain and the
         //   run only passes the cable's recording side on (no processing of its own).
-        var route = SoundModes.RouteOf(app.FxRoute);
-        var apo = route == SoundModes.RouteApoCable;
-        var strict = route == SoundModes.RouteCable || apo; // a cable or nothing
-        var record = route == SoundModes.RouteCapture || route == SoundModes.RouteAutomatic && p.Capturing?.Contains(app.Key) == true;
+        var route = EffectsRules.RouteOf(app.FxRoute);
+        var apo = route == EffectsRules.RouteApoCable;
+        var strict = route == EffectsRules.RouteCable || apo; // a cable or nothing
+        var record = route == EffectsRules.RouteCapture || route == EffectsRules.RouteAutomatic && p.Capturing?.Contains(app.Key) == true;
         // Never the cable it plays on itself (a loop).
         bool Fits(VirtualCable c) => !outputs.Contains(c.PlaybackId) && (!apo || ApoOn(p, c));
         if (!heardOrHeld)
@@ -451,13 +402,13 @@ internal static class RoutePlanner
     {
         if (!apo || plan.ApoCableWhy is not { } why) return Unavailable($"{cables.Missing}. Playing without effects.", cables.MissingKind(program: true));
         var kind = cables.Pairs == 0 ? cables.MissingKind(program: true)
-            : why == SoundModes.NeedsSecondCable ? StatusKind.NeedsAnotherCable : cables.AnyFree ? StatusKind.NeedsApo : StatusKind.NoFreeCable;
-        return Unavailable($"{SoundModes.Capitalised(why)}. Playing without effects.", kind);
+            : why == EffectsRules.NeedsSecondCable ? StatusKind.NeedsAnotherCable : cables.AnyFree ? StatusKind.NeedsApo : StatusKind.NoFreeCable;
+        return Unavailable($"{EffectsRules.Capitalised(why)}. Playing without effects.", kind);
     }
 
     /// <summary>Why Capture and replay can't run on this PC (old Windows, or the last Test found no way to silence the original), else null.</summary>
     private static EngineStatus? CaptureBlocked(PlanInput p) => p.CaptureWorks ? null
-        : Unavailable($"{SoundModes.CaptureMissing(new SoundFacts(p.Support, p.CaptureWorks, true))}. Playing without effects.", StatusKind.CannotRecord);
+        : Unavailable($"{EffectsRules.CaptureMissing(new SoundFacts(p.Support, p.CaptureWorks))}. Playing without effects.", StatusKind.CannotRecord);
 
     /// <summary>The playback endpoints of "plays on" targets that can be used now: plugged-in devices, and combined devices with a cable.</summary>
     private static IEnumerable<string?> Resolve(PlanInput p, RoutePlan plan, IEnumerable<string> targets) =>

@@ -28,5 +28,6 @@ public static class OwnedWindow
     public static async Task<bool> ShowDialogAsync(Window dialog) =>
         MainWindow is { IsVisible: true } owner && await dialog.ShowDialog<bool?>(owner) == true;
 
-    private static Window? MainWindow => (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+    /// <summary>The main window (also where a picker opened by a service rather than from a control appears).</summary>
+    internal static Window? MainWindow => (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
 }

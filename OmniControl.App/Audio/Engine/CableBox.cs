@@ -14,20 +14,20 @@ internal sealed class CableBox
     private readonly List<VirtualCable> _free;
     private readonly StatusKind _noCable;
 
-    /// <param name="support">What the PC offers: its cables are the ALLOWED ones only (<see cref="SoundModeService.Current"/>), so a
+    /// <param name="support">What the PC offers: its cables are the ALLOWED ones only (<see cref="EffectsSupportService.Current"/>), so a
     /// cable the user switched off is never given out.</param>
     public CableBox(AudioEffectsSupport support)
     {
         _all = support.Cables;
         _free = _all.ToList();
-        _noCable = SoundModes.NoCableKind(support);
+        _noCable = EffectsRules.NoCableKind(support);
     }
 
     /// <summary>Every cable input a run uses or holds (a held pair's other inputs too).</summary>
     public List<string> Used { get; } = new();
 
     /// <summary>Why a consumer got no cable.</summary>
-    public string Missing => _all.Count == 0 ? SoundModes.Brief(_noCable) : SoundModes.NeedsAnotherCable;
+    public string Missing => _all.Count == 0 ? EffectsRules.Brief(_noCable) : EffectsRules.NeedsAnotherCable;
 
     /// <summary>The fact behind <see cref="Missing"/>: no cable installed or allowed, or (for a program that chose a cable) none free, else one more is needed.</summary>
     public StatusKind MissingKind(bool program) =>

@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
@@ -52,7 +52,9 @@ public static class WindowLifecycle
             finally { asking = false; }
         }
 
-        var tray = new TrayService(app, Show, Exit);
+        var tray = new TrayService(app, Show, Exit, shell.ToggleRulesPause);
+        void ShowPause() => tray.ShowPaused(shell.RulesPaused);
+        shell.RulesChanged += ShowPause;
 
         // X does what the setting says (a real exit, from any path, is not intercepted).
         window.Closing += (_, e) =>
@@ -81,6 +83,11 @@ public static class WindowLifecycle
 
         AppLifecycle.ShowRequested += Show;
         AppLifecycle.QuitRequested += Exit;
-        desktop.Exit += (_, _) => { tray.Dispose(); shell.Dispose(); };
+        AppLifecycle.RestartRequested += () =>
+        {
+            AppRestart.StartNext();
+            Exit();
+        };
+        desktop.Exit += (_, _) => { shell.RulesChanged -= ShowPause; tray.Dispose(); shell.Dispose(); };
     }
 }

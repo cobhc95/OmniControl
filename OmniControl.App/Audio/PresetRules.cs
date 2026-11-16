@@ -1,6 +1,6 @@
 namespace OmniControl.App.Audio;
 
-/// <summary>The naming and ordering rules every preset kind shares (adapted from TabForge's PresetRules and PresetManagePresenter). No UI.</summary>
+/// <summary>The naming rules every preset kind shares (adapted from TabForge's PresetRules). No UI.</summary>
 public static class PresetRules
 {
     public const int MaxNameLength = 64;
@@ -27,28 +27,18 @@ public static class PresetRules
         }
     }
 
-    public static bool Same(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
-
-    /// <summary>
-    /// The moves that shift the chosen names one row (delta) as a block: each moves past the row beside it when that row is not chosen,
-    /// so a name at the edge, or behind a chosen one that cannot move, stays. Empty when nothing can move.
-    /// </summary>
-    public static List<(string Name, int Index)> BlockSteps(IReadOnlyList<string> order, IReadOnlyList<string> chosen, int delta)
+    /// <summary>"name", then "name 2", "name 3" ...: the first one no preset has yet (a new preset's name before the user types one).</summary>
+    public static string FirstFree(string name, IReadOnlyList<string> existing)
     {
-        var list = order.ToList();
-        var set = new HashSet<string>(chosen, StringComparer.OrdinalIgnoreCase);
-        var moving = list.Where(set.Contains).ToList();
-        if (delta > 0) moving.Reverse();
-        var steps = new List<(string Name, int Index)>();
-        foreach (var name in moving)
+        for (var n = 1; ; n++)
         {
-            var from = list.FindIndex(n => Same(n, name));
-            var to = from + delta;
-            if (to < 0 || to >= list.Count || set.Contains(list[to])) continue;
-            list.RemoveAt(from);
-            list.Insert(to, name);
-            steps.Add((name, to));
+            var candidate = n == 1 ? name : $"{name} {n}";
+            if (!existing.Contains(candidate, StringComparer.OrdinalIgnoreCase)) return candidate;
         }
-        return steps;
     }
+
+    /// <summary>A new stable id for a saved preset (a preset's shortcut follows it through renames and moves).</summary>
+    public static string NewId() => Guid.NewGuid().ToString("N");
+
+    public static bool Same(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
 }

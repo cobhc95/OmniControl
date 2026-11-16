@@ -27,6 +27,10 @@ public sealed class PresetContent
 /// <summary>One preset of the user's own: its effect kind (<see cref="FxKind.Kind"/>), its name and what it holds.</summary>
 public sealed class UserPreset
 {
+    /// <summary>Stable id given by <see cref="UserPresetStore"/> (null in an export file and in a file saved before presets had ids).</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? Id { get; set; }
+
     public string Kind { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public PresetContent Content { get; set; } = new();

@@ -5,7 +5,7 @@ using OmniControl.Core.Engine;
 namespace OmniControl.App.Audio.Engine;
 
 /// <summary>
-/// Full control for one program (<see cref="RunKind.Cable"/>, and <see cref="RunKind.ApoCable"/> with no chain of its own): its output is
+/// One program on its own cable (<see cref="RunKind.Cable"/>, and <see cref="RunKind.ApoCable"/> with no chain of its own): its output is
 /// sent to its own cable (per-program routing, journaled), the cable is recorded (loopback of its playback side; its recording side
 /// when Equalizer APO is on it), the chain runs and the result plays on the program's outputs (several at once, the master bus,
 /// or Windows' default). The program's session volume still applies before the cable, so the row's sliders work as usual. Stopping
@@ -45,8 +45,8 @@ internal sealed class CableRoute : EngineRun
     }
 
     protected override string RunningText =>
-        Spec.Kind == RunKind.ApoCable ? SoundModes.RunningInApoOnCable
-        : Spec.Outputs.Count > 1 ? $"Playing on {Spec.Outputs.Count} devices through a cable" : SoundModes.RunningThroughCable;
+        Spec.Kind == RunKind.ApoCable ? EffectsRules.RunningInApoOnCable
+        : Spec.Outputs.Count > 1 ? $"Playing on {Spec.Outputs.Count} devices through a cable" : EffectsRules.RunningThroughCable;
 
     /// <summary>
     /// Per-program routing moves a stream only when the program lets it (many reopen their stream only on their next play): while the

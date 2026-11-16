@@ -11,5 +11,5 @@ public partial class GestureRow : UserControl
 
     private async void OnPickerClick(object? sender, RoutedEventArgs e) => await PickerWindow.ChooseForAsync(this, startInSettings: false, Picker, Picker);
 
-    private async void OnCogClick(object? sender, RoutedEventArgs e) => await PickerWindow.ChooseForAsync(this, startInSettings: true, Cog, Picker);
+    private async void OnCogClick(object? sender, RoutedEventArgs e) => await PickerWindow.ChooseForAsync(this, startInSettings: true, CogPart.Opener, Picker);
 }

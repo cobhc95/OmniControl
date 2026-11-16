@@ -19,6 +19,7 @@ internal sealed class WarmLightItem
     private readonly ButtonItem _state;
     private readonly ChoiceItem _start, _end;
     private readonly SliderItem _target;
+    private readonly IReadOnlyList<string> _timeNames;
 
     public IReadOnlyList<IEditorItem> Cards { get; }
     public IReadOnlyList<HotkeyAction> Actions { get; }
@@ -28,7 +29,7 @@ internal sealed class WarmLightItem
         (_scheduler, _store) = (scheduler, store);
         var settings = store.WarmLight;
         var times = WarmSchedule.Times().ToList();
-        var names = times.Select(WarmSchedule.Clock).ToList();
+        var names = _timeNames = times.Select(WarmSchedule.Clock).ToList();
 
         _state = new ButtonItem("Warm light at night", settings.Enabled ? TurnOff : TurnOn, scheduler.StateText, Toggle);
         _start = new ChoiceItem("Warm from", names, WarmSchedule.Clock(Nearest(times, settings.Start)), name => ChooseTime(name, t => settings.Start = t)) { Half = true };
@@ -49,9 +50,26 @@ internal sealed class WarmLightItem
     /// <summary>Stops listening to the schedule.</summary>
     public void Dispose() => _scheduler.Changed -= Refresh;
 
-    private void Toggle()
+    private void Toggle() => SetEnabled(!_store.WarmLight.Enabled);
+
+    /// <summary>Turns the schedule on or off (the button, its action and "Restore defaults").</summary>
+    public void SetEnabled(bool on)
     {
-        _store.WarmLight.Enabled = !_store.WarmLight.Enabled;
+        if (_store.WarmLight.Enabled == on) return;
+        _store.WarmLight.Enabled = on;
+        Changed();
+    }
+
+    /// <summary>Off, with the default times and temperature, the cards showing them.</summary>
+    public void Reset()
+    {
+        var defaults = new WarmLightSettings();
+        var settings = _store.WarmLight;
+        (settings.Enabled, settings.Start, settings.End, settings.Kelvin) = (defaults.Enabled, defaults.Start, defaults.End, defaults.Kelvin);
+        var times = WarmSchedule.Times().ToList();
+        _start.Load(_timeNames, WarmSchedule.Clock(Nearest(times, defaults.Start)));
+        _end.Load(_timeNames, WarmSchedule.Clock(Nearest(times, defaults.End)));
+        _target.Load(defaults.Kelvin);
         Changed();
     }
 

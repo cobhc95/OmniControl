@@ -8,7 +8,7 @@ namespace OmniControl.App.Audio.Engine;
 /// <summary>
 /// Runs what <see cref="RoutePlanner"/> decides for every Volume row and keeps it in step with the settings (UI thread): the runs
 /// (<see cref="ProgramEngine"/>, <see cref="CableRoute"/>, <see cref="BusRun"/>, <see cref="FanOutRun"/>, <see cref="MicRun"/>),
-/// each program's own device, and in Fast mode the master's and the microphones' chains in the user's Equalizer APO (or OmniControl
+/// each program's own device, and the master's chain in the user's Equalizer APO (or OmniControl
 /// APO, <see cref="ApoChainWriter"/>, <see cref="ApoConfigFiles"/>), whose line is taken out again whenever no chain runs there.
 /// A run whose spec is unchanged keeps running. Without effects the sound plays unprocessed, and <see cref="StatusOf"/> says why.
 /// A failed run stays stopped until the user changes that row or the routing. Dispose stops everything, puts every program's own
@@ -17,7 +17,7 @@ namespace OmniControl.App.Audio.Engine;
 public sealed class EffectsEngine : IDisposable
 {
     private readonly MixerService _mixer;
-    private readonly SoundModeService _modes;
+    private readonly EffectsSupportService _support;
     private readonly EngineJournal _journal;
     private readonly PluginChainHost _plugins;
     private readonly Action<string> _report;
@@ -31,17 +31,16 @@ public sealed class EffectsEngine : IDisposable
     private readonly HashSet<string> _fxPending = new();
     private readonly ApoChains _apo;
     private readonly BusDefault _busDefault;
-    /// <summary>The master bus of the latest plan (null in Fast mode and when none is planned).</summary>
+    /// <summary>The master bus of the latest plan (null when none is planned).</summary>
     private BusPlan? _bus;
     private IReadOnlySet<string> _cablesInUse = new HashSet<string>();
     private CableOffer _cables = CableOffer.None;
-    /// <summary>The rows whose chain the last plan sends to Equalizer APO (the master there, Fast mode's microphones, programs on a cable with Equalizer APO).</summary>
+    /// <summary>The rows whose chain the last plan sends to Equalizer APO (the master there, programs on a cable with Equalizer APO).</summary>
     private IReadOnlySet<string> _sentToApo = new HashSet<string>();
     private MasterFacts _masterFacts = MasterFacts.Unknown;
     private RunMethod _masterMethod = RunMethod.Apo;
-    private HelpFacts _help = HelpFacts.Unknown;
     private CableUse _cableUses;
-    private string? _apoCableWhy = SoundModes.NeedsSecondCable;
+    private string? _apoCableWhy = EffectsRules.NeedsSecondCable;
     private bool _disposed;
 
     /// <summary>A row's status changed (key null = the master). UI thread.</summary>
@@ -49,14 +48,14 @@ public sealed class EffectsEngine : IDisposable
 
     /// <summary>
     /// What the plan offers changed (a cable freed or taken, the master's method, Equalizer APO on a cable...): every menu and gate that
-    /// reads <see cref="CablesFor"/>, <see cref="MasterFacts"/>, <see cref="Help"/> or <see cref="CablesInUse"/> asks again. UI thread.
+    /// reads <see cref="CablesFor"/>, <see cref="MasterFacts"/> or <see cref="CablesInUse"/> asks again. UI thread.
     /// </summary>
     public event Action? PlanChanged;
 
-    public EffectsEngine(MixerService mixer, SoundModeService modes, EngineJournal journal, PluginChainHost plugins, Action<string> report)
+    public EffectsEngine(MixerService mixer, EffectsSupportService support, EngineJournal journal, PluginChainHost plugins, Action<string> report)
     {
         _mixer = mixer;
-        _modes = modes;
+        _support = support;
         _journal = journal;
         _plugins = plugins;
         _report = report;
@@ -68,7 +67,7 @@ public sealed class EffectsEngine : IDisposable
         mixer.FxChanged += OnFxChanged;
         mixer.ProgramChanged += OnProgramChanged;
         mixer.RoutingChanged += OnRoutingChanged;
-        modes.Changed += OnModeChanged;
+        support.Changed += OnSupportChanged;
         // Equalizer APO runs a VST2 from its saved settings: a newly saved state is written into its line (files change only when the text does).
         plugins.StatesSaved += Reconcile;
         Reconcile();
@@ -93,25 +92,21 @@ public sealed class EffectsEngine : IDisposable
     /// <summary>What the master's method depends on now (its Method pop-down), from the last plan.</summary>
     public MasterFacts MasterFacts => _masterFacts;
 
-    /// <summary>How the master runs now: <see cref="RunMethod.Bus"/> or <see cref="RunMethod.Apo"/> (Fast mode always the latter).</summary>
+    /// <summary>How the master runs now: <see cref="RunMethod.Bus"/> or <see cref="RunMethod.Apo"/>.</summary>
     public RunMethod MasterMethod => _masterMethod;
 
     /// <summary>What the cables are used for now besides the master bus.</summary>
     public CableUse CableUses => _cableUses;
 
-    /// <summary>The live facts of the help table (its "Works" column and the setup number), from the last plan.</summary>
-    public HelpFacts Help => _help;
-
     /// <summary>
-    /// How the row's effects run in the current mode, as the FX window and the tooltips name it: the mode's own method, except the master
-    /// in Equalizer APO in Full control and a program on a cable with Equalizer APO on it. Key null = the master.
+    /// How the row's effects run, as the FX window and the tooltips name it: through a cable, except the master in Equalizer APO and a
+    /// program on a cable with Equalizer APO on it. Key null = the master.
     /// </summary>
     public ModeMethod MethodFor(string? key)
     {
-        var mode = _mixer.SoundMode;
         if (key is null || key == MixerService.MasterKey)
-            return mode == SoundModes.Full && _masterMethod == RunMethod.Apo ? SoundModes.ApoOnSpeakers : mode.Master;
-        return _runs.GetValueOrDefault(key)?.Spec.Kind == RunKind.ApoCable ? SoundModes.ApoOnCable : mode.MethodFor(key);
+            return _masterMethod == RunMethod.Apo ? EffectsRules.ApoOnSpeakers : EffectsRules.MethodFor(key);
+        return _runs.GetValueOrDefault(key)?.Spec.Kind == RunKind.ApoCable ? EffectsRules.ApoOnCable : EffectsRules.MethodFor(key);
     }
 
     /// <summary>How the row's effects run right now (none while nothing runs): what a run or Equalizer APO does, in the short status' words.</summary>
@@ -191,8 +186,8 @@ public sealed class EffectsEngine : IDisposable
         if (_runs.TryGetValue(key, out var run)) run.OnProgramChanged();
     }
 
-    /// <summary>The mode or what the PC offers changed: a master bus that was given up (it heard nothing) may try again.</summary>
-    private void OnModeChanged()
+    /// <summary>What the PC offers changed: a master bus that was given up (it heard nothing) may try again.</summary>
+    private void OnSupportChanged()
     {
         _failed.Remove(MixerService.MasterKey);
         Reconcile();
@@ -209,13 +204,13 @@ public sealed class EffectsEngine : IDisposable
     {
         if (_disposed) return;
         _journal.RestoreRunning();
-        if (_modes.Facts is not { } facts) return; // nothing starts before the first look at what this PC offers (it reconciles then)
+        if (_support.Facts is not { } facts) return; // nothing starts before the first look at what this PC offers (it reconciles then)
         var playing = _mixer.Settings.Apps.Select(a => a.Key).Where(k => _mixer.OpenStreams(k).Count > 0).ToHashSet();
         var sounding = _mixer.Running.Where(r => r.IsPlaying).Select(r => r.Key).ToHashSet();
         var holding = RunsOf(RunKind.Cable);
-        var plan = RoutePlanner.Make(new PlanInput(_mixer.SoundMode, facts.Support, facts.CaptureWorks, _mixer.Settings, playing, sounding,
+        var plan = RoutePlanner.Make(new PlanInput(facts.Support, facts.CaptureWorks, _mixer.Settings, playing, sounding,
             holding, _mixer.Devices, _mixer.RecordingDevices, _failed.Keys.ToHashSet(), RunsOf(RunKind.Capture)));
-        var offered = (_cables, _masterFacts, _masterMethod, _help, _cableUses, _apoCableWhy);
+        var offered = (_cables, _masterFacts, _masterMethod, _cableUses, _apoCableWhy);
         var inUse = _cablesInUse;
         _cablesInUse = plan.CablesInUse;
         _cables = new CableOffer(plan.CablePairs, plan.CableFree, plan.Bus is not null, plan.Master.NoCable);
@@ -223,10 +218,9 @@ public sealed class EffectsEngine : IDisposable
         _bus = plan.Bus;
         _masterFacts = plan.Master;
         _masterMethod = plan.MasterMethod;
-        _help = plan.Help;
         _cableUses = plan.CableUses;
         _apoCableWhy = plan.ApoCableWhy;
-        var offerChanged = offered != (_cables, _masterFacts, _masterMethod, _help, _cableUses, _apoCableWhy) || !inUse.SetEquals(_cablesInUse);
+        var offerChanged = offered != (_cables, _masterFacts, _masterMethod, _cableUses, _apoCableWhy) || !inUse.SetEquals(_cablesInUse);
         RememberCables(plan.NewCables);
         foreach (var (key, device) in plan.Direct) _mixer.SetDirectRoute(key, device);
 
@@ -236,9 +230,8 @@ public sealed class EffectsEngine : IDisposable
         if (_runs.GetValueOrDefault(MixerService.MasterKey) is { } bus) bus.SetRouted(plan.BusRoutes);
         SyncDefault();
 
-        // The status of a row sent to Equalizer APO (and in Fast mode always the master's) is ApplyApo's.
-        var fast = _mixer.SoundMode == SoundModes.Fast;
-        foreach (var key in RowKeys().Where(k => !_runs.ContainsKey(k) && !_testing.Contains(k) && !plan.ToApo.Contains(k) && !(fast && k == MixerService.MasterKey)))
+        // The status of a row sent to Equalizer APO is ApplyApo's.
+        foreach (var key in RowKeys().Where(k => !_runs.ContainsKey(k) && !_testing.Contains(k) && !plan.ToApo.Contains(k)))
             SetStatus(key, _failed.GetValueOrDefault(key) ?? plan.Blocked.GetValueOrDefault(key, EngineStatus.Off));
         ApplyApo(plan, facts.Support.Apo);
         _tick.IsEnabled = _runs.Count > 0;
@@ -284,7 +277,7 @@ public sealed class EffectsEngine : IDisposable
             case RunKind.Capture:
                 return CaptureTestResult.MethodFor(_mixer.Settings.CaptureSilence) is { } method
                     ? new ProgramEngine(spec, name, _mixer, _journal, method)
-                    : null; // the planner plans Capture (either mode) only when the last Test did not fail
+                    : null; // the planner plans Capture only when the last Test did not fail
             case RunKind.Cable or RunKind.ApoCable:
                 return new CableRoute(spec, name, _mixer, _journal);
             case RunKind.Bus:
@@ -350,14 +343,13 @@ public sealed class EffectsEngine : IDisposable
 
     /// <summary>
     /// The chains the plan sends to Equalizer APO, each in its own Device section (<see cref="ApoChains.RowsFor"/>): the master on
-    /// Windows' default device (Fast) or the real speakers (Full control, method Equalizer APO), each microphone on itself (Fast), a
+    /// the real speakers (method Equalizer APO), a
     /// program on its cable; with none, OmniControl's line and file are taken out of every config folder. A program's run on a cable
     /// whose chain could not be written fails (its run only passes the cable on); every other row takes the status Equalizer APO gives.
     /// </summary>
     private void ApplyApo(RoutePlan plan, ApoState apo)
     {
         var statuses = _apo.Apply(ApoChains.RowsFor(plan, apo, _mixer.FxChain, NameOf), apo);
-        if (_mixer.SoundMode == SoundModes.Fast && !statuses.ContainsKey(MixerService.MasterKey)) SetStatus(null, EngineStatus.Off);
         foreach (var (key, status) in statuses)
         {
             if (!_runs.ContainsKey(key)) SetStatus(key == MixerService.MasterKey ? null : key, status);
@@ -383,10 +375,10 @@ public sealed class EffectsEngine : IDisposable
         StatusChanged?.Invoke(id == MixerService.MasterKey ? null : id);
     }
 
-    /// <summary>"Test" on a program's effects (either mode: can it be recorded while silenced?): the row's own engine pauses while the test runs.</summary>
+    /// <summary>"Test" on a program's effects (can it be recorded while silenced?): the row's own engine pauses while the test runs.</summary>
     public async Task<TestOutcome> TestAsync(string key)
     {
-        if (!_testing.Add(key)) return SoundModes.TestAlreadyRunning();
+        if (!_testing.Add(key)) return EffectsRules.TestAlreadyRunning();
         StopRun(key);
         try
         {
@@ -394,7 +386,7 @@ public sealed class EffectsEngine : IDisposable
             var (result, outcome) = await test.RunAsync(key);
             _mixer.Settings.CaptureSilence = result;
             _mixer.Save();
-            _modes.NotifyTested();
+            _support.NotifyTested();
             return outcome;
         }
         finally
@@ -418,12 +410,12 @@ public sealed class EffectsEngine : IDisposable
         _mixer.FxChanged -= OnFxChanged;
         _mixer.ProgramChanged -= OnProgramChanged;
         _mixer.RoutingChanged -= OnRoutingChanged;
-        _modes.Changed -= OnModeChanged;
+        _support.Changed -= OnSupportChanged;
         _plugins.StatesSaved -= Reconcile;
         foreach (var key in _runs.Keys.ToList()) StopRun(key);
         _busDefault.Release(); // after every program is routed back: Windows' default goes back to the real speakers
         _busDefault.Dispose();
-        if (_modes.Current is { } current) _apo.Clear(current.Apo); // effects in Equalizer APO run only while OmniControl runs
+        if (_support.Current is { } current) _apo.Clear(current.Apo); // effects in Equalizer APO run only while OmniControl runs
         _plugins.SaveStates(); // the plug-ins' owner unloads them as the very last step of exit
     }
 }

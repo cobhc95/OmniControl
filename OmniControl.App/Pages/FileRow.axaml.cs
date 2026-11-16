@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.Platform.Storage;
+using OmniControl.App.Controls;
+using OmniControl.App.Services;
 
 namespace OmniControl.App.Pages;
 
@@ -9,21 +10,22 @@ public partial class FileRow : UserControl
 {
     public FileRow() => InitializeComponent();
 
-    private async void OnChooseClick(object? sender, RoutedEventArgs e)
+    protected override void OnDataContextChanged(EventArgs e)
     {
-        if (DataContext is not FileItem item || TopLevel.GetTopLevel(this)?.StorageProvider is not { } storage) return;
-        if (item.Kind.Folder)
+        base.OnDataContextChanged(e);
+        if (DataContext is not FileItem { Kind: var kind }) return;
+        foreach (var field in new[] { PathBoxFull, PathBoxHalf })
         {
-            var folders = await storage.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = item.Kind.PickerTitle, AllowMultiple = false });
-            if (folders.Count > 0 && folders[0].TryGetLocalPath() is { } folder) item.Choose(folder);
-            return;
+            field.TypeName = kind.TypeName;
+            field.Patterns = kind.Patterns;
         }
-        var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = item.Kind.PickerTitle,
-            AllowMultiple = false,
-            FileTypeFilter = new[] { new FilePickerFileType(item.Kind.TypeName) { Patterns = item.Kind.Patterns } },
-        });
-        if (files.Count > 0 && files[0].TryGetLocalPath() is { } path) item.Choose(path);
+    }
+
+    // A typed or browsed path is applied only when it exists; otherwise the box goes back to the path in use.
+    private void OnChosen(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not PathField field || DataContext is not FileItem item) return;
+        if (field.Kind == PathKind.Folder ? Directory.Exists(field.Text) : File.Exists(field.Text)) item.Choose(field.Text);
+        else field.Text = item.Path;
     }
 }

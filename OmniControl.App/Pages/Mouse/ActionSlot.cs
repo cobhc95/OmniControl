@@ -1,3 +1,4 @@
+using OmniControl.App.Hotkeys;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OmniControl.App.Mouse;

@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:OmniControl.App.Pages.Volume"
              xmlns:pages="using:OmniControl.App.Pages"
+             xmlns:c="using:OmniControl.App.Controls"
              x:Class="OmniControl.App.Pages.Volume.MemberLevelView"
              x:DataType="vm:MemberLevelMenu">
     <!-- The pop-down of a combined microphone's member chip (inside a FlyoutPresenter.listmenu): the member's name, its level in the
@@ -9,13 +10,10 @@
          muted). Mouse first (AGENTS.md rule 5). -->
     <StackPanel Spacing="{StaticResource MenuGap}">
         <TextBlock Classes="menutext" Text="{Binding Name}" />
-        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{StaticResource MenuGap}" Margin="{StaticResource MenuTextInset}">
-            <Slider Classes="compact" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Level}"
-                    pages:SliderReset.Value="{Binding ResetValue}" ToolTip.Tip="Its level in the mix" VerticalAlignment="Center" />
-            <pages:NumberText Grid.Column="1" Value="{Binding Level}" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" VerticalAlignment="Center">
-                <TextBlock Classes="muted" Text="{Binding LevelText}" TextAlignment="Right" VerticalAlignment="Center" />
-            </pages:NumberText>
-            <Button Grid.Column="2" Classes="pill" Classes.custom="{Binding Muted}" Content="{Binding MuteText}" Command="{Binding ToggleMuteCommand}"
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource MenuGap}" Margin="{StaticResource MenuTextInset}">
+            <c:SliderField Compact="True" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Level}" ResetValue="{Binding ResetValue}"
+                           Text="{Binding LevelText}" ValueGap="{StaticResource MenuGap}" ToolTip.Tip="Its level in the mix" />
+            <Button Grid.Column="1" Classes="pill" Classes.custom="{Binding Muted}" Content="{Binding MuteText}" Command="{Binding ToggleMuteCommand}"
                     ToolTip.Tip="Leaves it out of the mix" VerticalAlignment="Center" />
         </Grid>
     </StackPanel>

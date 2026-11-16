@@ -15,7 +15,7 @@ public sealed class LevelMeter : Control
 {
     public static readonly StyledProperty<MeterModel?> ModelProperty = AvaloniaProperty.Register<LevelMeter, MeterModel?>(nameof(Model));
 
-    private const double BarWidth = 5, Gap = 2, Radius = 1.5, HoldHeight = 1.5, ClipMark = 3, MeterHeight = 28;
+    private const double BarWidth = 5, Gap = 2, Pad = 2, Radius = 1.5, FrameRadius = 3, HoldHeight = 1.5, ClipMark = 3, MeterHeight = 32;
     private static readonly IBrush Green = new SolidColorBrush(Palette.MeterGreen);
     private static readonly IBrush Amber = new SolidColorBrush(Palette.MeterAmber);
     private static readonly IBrush Red = new SolidColorBrush(Palette.Danger);
@@ -29,7 +29,7 @@ public sealed class LevelMeter : Control
 
     public LevelMeter()
     {
-        Width = BarWidth * 2 + Gap;
+        Width = BarWidth * 2 + Gap + Pad * 2;
         Height = MeterHeight;
         IsHitTestVisible = false;
     }
@@ -57,8 +57,12 @@ public sealed class LevelMeter : Control
 
     public override void Render(DrawingContext context)
     {
-        var height = Bounds.Height;
-        if (height < 4) return;
+        var frame = Bounds.Height;
+        if (frame < 4 + Pad * 2) return;
+        var height = frame - Pad * 2;
+        var edge = this.TryFindResource("BrushHoverEdge", ActualThemeVariant, out var e) && e is IBrush eb ? eb : Brushes.Gray;
+        context.DrawRectangle(null, new Pen(edge, 1), new RoundedRect(new Rect(0.5, 0.5, Bounds.Width - 1, frame - 1), FrameRadius));
+        using var _ = context.PushTransform(Matrix.CreateTranslation(Pad, Pad));
         var track = this.TryFindResource("BrushDivider", ActualThemeVariant, out var t) && t is IBrush b ? b : Brushes.Gray;
         var hold = this.TryFindResource("BrushMuted", ActualThemeVariant, out var h) && h is IBrush hb ? hb : Brushes.Silver;
         var m = Model;

@@ -1,10 +1,13 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace OmniControl.App.Hotkeys;
 
 /// <summary>What gets saved for one hotkey.</summary>
 public sealed record StoredHotkey(string Gesture, bool UseSelected, List<string> DeviceIds);
+
+/// <summary>A name the user may change in the pickers: what it is now, and what to do with the new one (returns the action's new title, or null when nothing changed).</summary>
+public sealed record Renaming(string Current, Func<string, string?> Apply);
 
 /// <summary>
 /// A level that a pair of actions moves up and down (volume, brightness...). <see cref="Id"/> is stored by the gestures that drive it
@@ -54,11 +57,72 @@ public sealed partial class HotkeyAction : ObservableObject, Pages.IEditorItem
 
     public string Keywords { get; }
 
+    /// <summary>
+    /// A key combination the feature suggests for this action ("Ctrl+Alt+Up"), or null. It is never bound by itself: the Shortcuts page's
+    /// "Use suggested keys" binds it on request (<see cref="HotkeyRegistry.UseSuggested"/>).
+    /// </summary>
+    public string? SuggestedKey { get; init; }
+
+    /// <summary>
+    /// True for the actions that keep the user in control (lock, open OmniControl, pause all rules): no automation block rule may stop
+    /// them. A flag on the master entry, so there is no second list of ids.
+    /// </summary>
+    public bool NeverBlock { get; init; }
+
     /// <summary>The level this action moves, for a level action made with <see cref="ForLevel"/>; null for any other action.</summary>
     public HotkeyLevel? Level { get; private init; }
 
     /// <summary>+1 when this level action raises its level, -1 when it lowers it.</summary>
     public int LevelDirection { get; private init; }
+
+    /// <summary>The part of the Choose-the-action window this action is listed under, when that is not the page that registers it (Power, Launch).</summary>
+    public string? PickerSection { get; init; }
+
+    /// <summary>The section the pickers list the action under: <see cref="PickerSection"/>, or its <see cref="Category"/>.</summary>
+    public string Section => PickerSection ?? Category;
+
+    /// <summary>Where the action's section stands in the pickers' section list and its icon; set by <see cref="HotkeyRegistry"/> from the live page list.</summary>
+    public ActionSection? SectionPlace { get; set; }
+
+    /// <summary>
+    /// The group heading inside the section ("Hardware - Presets"): group and subgroup as one line; an action listed under another section than its
+    /// own category (the apps, under Launch) takes the category as its heading; null when there is none or it only repeats the section.
+    /// </summary>
+    public string? PickerHeading =>
+        (Services.Heading.Join(Group, Subgroup) is { Length: > 0 } heading ? heading : PickerSection is not null && PickerSection != Category ? Category : null) is { } line && line != Section ? line : null;
+
+    /// <summary>The settings of its own the action takes from an input that runs it (a program to start, a countdown...); a level action always also takes its step (<see cref="Takes"/>).</summary>
+    public ActionSettings Accepts { get; init; }
+
+    /// <summary>What the pickers offer settings for.</summary>
+    public ActionSettings Takes => Level is null ? Accepts : Accepts | ActionSettings.Step;
+
+    /// <summary>How to run the action with the settings an input chose; null: it takes none beyond a level action's step.</summary>
+    public Action<RunSettings>? RunConfigured { get; init; }
+
+    /// <summary>Set: the pickers show "Remove" (or the hide wording) in this action's settings; it takes the action out of the master list (see <see cref="HotkeyRegistry.PickerActions"/>).</summary>
+    public Action? Remove { get; init; }
+
+    /// <summary>The words of the remove button ("Remove program", "Hide app").</summary>
+    public string RemoveText { get; init; } = "Remove";
+
+    /// <summary>Set: the user may rename what the action is about in the pickers (a program they added).</summary>
+    public Renaming? Renaming { get; init; }
+
+    /// <summary>Set: the pickers show these settings for the action and store each change at once (a custom action), or, with <see cref="ActionEditor.Create"/>, the form that makes one; see <see cref="ActionEditor"/>.</summary>
+    public ActionEditor? Editor { get; init; }
+
+    /// <summary>The Mouse and Trackpad picker lists its own version of this action (the layer actions, with their wrap and hold settings), so it leaves this one out.</summary>
+    public bool CoveredByMousePicker { get; init; }
+
+    /// <summary>Set: this is a button of its section's list in the pickers (add a program), not an action; it returns the actions it made, already registered.</summary>
+    public Func<Avalonia.Visual, Task<IReadOnlyList<HotkeyAction>>>? Command { get; init; }
+
+    /// <summary>For a <see cref="Command"/>: false hides the button for now ("Show hidden apps" while nothing is hidden).</summary>
+    public Func<bool>? IsListed { get; init; }
+
+    /// <summary>Called each time a picker listing this entry opens (the apps are looked for again).</summary>
+    public Action? PickerOpened { get; init; }
 
     public bool HasDevices => _deviceSource is not null;
 
@@ -66,12 +130,12 @@ public sealed partial class HotkeyAction : ObservableObject, Pages.IEditorItem
     public ObservableCollection<ScopeChip> Chips { get; } = new();
 
     /// <summary>Like "Ctrl+Alt+Up". Empty means not bound.</summary>
-    [ObservableProperty] private string _gesture = string.Empty;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(DisplayText))] private string _gesture = string.Empty;
 
     [ObservableProperty] private bool _useSelected;
 
     /// <summary>
-    /// Why the action does nothing right now (a mode or device it needs is missing), set and cleared live by the feature that owns it;
+    /// Why the action does nothing right now (a device it needs is missing), set and cleared live by the feature that owns it;
     /// null = it works. The Shortcuts page shows it on the action; the key can still be bound.
     /// </summary>
     [ObservableProperty, NotifyPropertyChangedFor(nameof(IsUnavailable))] private string? _unavailableReason;
@@ -81,16 +145,35 @@ public sealed partial class HotkeyAction : ObservableObject, Pages.IEditorItem
     /// <summary>True while the hotkey box waits for the user to press the new key combination.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HotkeyHint))]
+    [NotifyPropertyChangedFor(nameof(DisplayText))]
     private bool _isListening;
+
+    /// <summary>The keys held right now while listening ("Ctrl + Alt + ..."), shown in the box before the shortcut is saved.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(DisplayText))] private string _preview = string.Empty;
+
+    /// <summary>The combination waiting for its main key to be released (it is saved then); null while none is held.</summary>
+    internal string? PendingGesture { get; set; }
+
+    /// <summary>The main key (a key code) the pending combination waits on.</summary>
+    internal int? PendingKey { get; set; }
+
+    /// <summary>What the hotkey box shows: the live preview while listening, the saved shortcut otherwise.</summary>
+    public string DisplayText => IsListening ? Preview : Gesture;
 
     /// <summary>The last key press had no Ctrl, Alt or Win, so it was refused.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HotkeyHint))]
     private bool _rejectedNote;
 
-    public string HotkeyHint => IsListening ? (RejectedNote ? "Add Ctrl or Alt" : "Press keys...") : "Double-click to set";
+    public string HotkeyHint => IsListening ? (RejectedNote ? "Add Ctrl or Alt" : "Press keys…") : "Click to set";
 
-    partial void OnIsListeningChanged(bool value) => RejectedNote = false;
+    partial void OnIsListeningChanged(bool value)
+    {
+        RejectedNote = false;
+        Preview = string.Empty;
+        PendingGesture = null;
+        PendingKey = null;
+    }
 
     public bool ShowEmptyNote => HasDevices && Chips.Count <= 1;
 
@@ -148,6 +231,14 @@ public sealed partial class HotkeyAction : ObservableObject, Pages.IEditorItem
 
     /// <summary>Runs the action on every device, or only on the picked ones.</summary>
     public void Run() => _run(UseSelected ? _selectedIds.ToList() : null);
+
+    /// <summary>Runs the action with the settings the input that fired it chose (others just run).</summary>
+    public void RunWith(RunSettings settings)
+    {
+        if (RunConfigured is not null) RunConfigured(settings);
+        else if (settings.Step is { } percent && Level is not null) RunBy(percent);
+        else Run();
+    }
 
     /// <summary>Moves the level by <paramref name="percent"/> in the action's own direction (a level action only; others just run).</summary>
     public void RunBy(int percent)

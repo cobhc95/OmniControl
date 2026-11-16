@@ -269,13 +269,13 @@ public class DisplayPictureTests
         store.Save(Preset("evening", 9)); // the same name in another case replaces it where it stands
         Assert.Equal(new[] { "evening", "Day" }, store.Presets.Select(p => p.Name));
 
-        Assert.Equal("A preset of this name exists.", store.Rename("Day", "EVENING"));
-        Assert.NotNull(store.Rename("Day", "a/b"));
-        Assert.Null(store.Rename("Day", "Morning"));
+        Assert.Equal("A preset of this name exists.", store.Pictures.Rename("Day", "EVENING"));
+        Assert.NotNull(store.Pictures.Rename("Day", "a/b"));
+        Assert.Null(store.Pictures.Rename("Day", "Morning"));
         Assert.Equal(80, store.Find("morning")!.For("D1").Red);
         Assert.Equal(100, store.Find("morning")!.For("D9").Red); // a display the preset has none for gets the picture kept for any
 
-        store.Delete("EVENING");
+        store.Pictures.Delete("EVENING");
         Assert.Equal(new[] { "Morning" }, store.Presets.Select(p => p.Name));
         Assert.Equal(5, saves);
     }

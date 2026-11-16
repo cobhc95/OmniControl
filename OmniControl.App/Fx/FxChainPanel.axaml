@@ -13,7 +13,7 @@
 
         <!-- Left: the chain in signal order -->
         <Grid Width="{StaticResource FxChainListWidth}" RowDefinitions="*,Auto" RowSpacing="8">
-            <Border Grid.Row="0" Classes="pane" BorderThickness="1" CornerRadius="6" Background="{DynamicResource BrushSidebar}">
+            <Border Grid.Row="0" Classes="pane">
                 <Grid>
                     <ListBox x:Name="SlotList" Classes="fxlist" SelectionMode="Multiple" ItemsSource="{Binding Slots}" SelectedItem="{Binding Selected}">
                         <ListBox.ItemTemplate>
@@ -29,7 +29,7 @@
                                     <TextBlock Text="{Binding Number}" Classes="muted" TextAlignment="Right" VerticalAlignment="Center"
                                                ToolTip.Tip="Order in the chain, top to bottom" />
                                     <CheckBox Grid.Column="1" IsChecked="{Binding Enabled}" ToolTip.Tip="On or bypassed" MinWidth="0" />
-                                    <TextBlock Grid.Column="2" Text="{Binding Tag}" Classes="muted" FontSize="11" VerticalAlignment="Center" ToolTip.Tip="{Binding KindText}" />
+                                    <TextBlock Grid.Column="2" Text="{Binding Tag}" Classes="muted small" VerticalAlignment="Center" ToolTip.Tip="{Binding KindText}" />
                                     <TextBlock Grid.Column="3" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                                 </Grid>
                             </DataTemplate>
@@ -53,7 +53,7 @@
 
         <!-- Right: the selected effect's editor (cards, the equaliser, a plug-in's settings list or its own window) with all the
              height; its controls (preset, wet, on, Parameters, Scale, Pop out) are in the FX window's toolbar -->
-        <Border Grid.Column="1" Classes="pane" BorderThickness="1" CornerRadius="6" Background="{DynamicResource BrushSidebar}" Padding="6">
+        <Border Grid.Column="1" Classes="pane" Padding="6">
             <Grid>
                 <Panel IsVisible="{Binding ShowsCards}">
                     <vm:EffectEditorView x:Name="EditorView" DataContext="{Binding Selected}" />

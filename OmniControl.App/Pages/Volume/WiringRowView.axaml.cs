@@ -8,8 +8,8 @@ using Avalonia.VisualTree;
 namespace OmniControl.App.Pages.Volume;
 
 /// <summary>
-/// Wiring only: the dashed chip, the one-device choice or a click on the cell's empty part opens the cell's menu (attached to the whole
-/// cell, so it opens under it); the row fills it as it opens. A choice or Esc closes it; the keyboard goes back to the button it was
+/// Wiring only: the dashed chip, the one-device choice or a click on the cell's empty part opens the cell's menu (the shared
+/// <see cref="PlaysOnMenuView"/>, attached to the whole cell, so it opens under it); the row fills it as it opens. A choice or Esc closes it; the keyboard goes back to the button it was
 /// opened from when it was opened from the keyboard. A combined microphone's member chip opens its level pop-down, or, pressed on its
 /// x, takes the member away.
 /// </summary>
@@ -19,6 +19,7 @@ public partial class WiringRowView : UserControl
     private const string RemoveTag = "chipremove";
 
     private Flyout? _menu;
+    private PlaysOnMenuView? _menuView;
     private Control? _opener;
     private bool _openedByKeyboard;
     private bool _pressedOnRemove;
@@ -48,13 +49,17 @@ public partial class WiringRowView : UserControl
 
     private void OnMenuOpened(object? sender, EventArgs e)
     {
-        if (sender is not Flyout { Content: Control panel } flyout || DataContext is not WiringRow row) return;
+        if (sender is not Flyout { Content: PlaysOnMenuView view } flyout || DataContext is not WiringRow row) return;
         _menu = flyout;
-        panel.DataContext = row;
-        row.OpenMenu();
+        if (_menuView is null)
+        {
+            // The menu's view lives as long as this row's view, so the subscription needs no undoing.
+            _menuView = view;
+            view.Picked += () => CloseMenu(_openedByKeyboard);
+        }
+        view.DataContext = row.Menu;
+        row.Menu.Open();
     }
-
-    private void OnMenuChoiceClick(object? sender, RoutedEventArgs e) => CloseMenu(_openedByKeyboard);
 
     private void OnMenuKeyDown(object? sender, KeyEventArgs e)
     {

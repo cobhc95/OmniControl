@@ -2,8 +2,8 @@ using OmniControl.App.Audio;
 
 namespace OmniControl.App.Pages.Volume.Easy.Flow;
 
-/// <summary>The three kinds of screen a setup goes through: questions to answer, the setup checklist, the "All set" screen.</summary>
-public enum EasyStepKind { Question, Setup, Done }
+/// <summary>The kinds of screen a setup goes through: questions to answer, the Engine choice, the setup checklist, the "All set" screen.</summary>
+public enum EasyStepKind { Question, Engine, Setup, Done }
 
 /// <summary>What a question screen asks (what its view shows).</summary>
 public enum EasyQuestionKind { Sound, Programs, Microphone, MicLook, Microphones, Speakers }
@@ -15,7 +15,8 @@ public sealed record EasyStep(string Title, EasyStepKind Kind, EasyQuestionKind 
 public sealed record EasyDone(string Headline, IReadOnlyList<string> Lines);
 
 /// <summary>
-/// One goal's whole setup as data: the screens in order (the progress strip is "Goal", these screens' words, "Setup", "Done"), the
+/// One goal's whole setup as data: the screens in order (the progress strip is "Goal", these screens' words, "Setup", "Done"; a goal whose
+/// <see cref="EasyGoal.Engine"/> rule exists gets the Engine screen between its questions and "Setup"), the
 /// checklist of its Setup screen, the optional extra lines of its "All set" screen, and what that screen says. The flow engine
 /// (<see cref="EasyFlowViewModel"/>) reads only this; adding a goal means adding an entry to <see cref="EasyFlows.All"/>.
 /// </summary>
@@ -26,10 +27,22 @@ public sealed record EasyFlowDef(
     Func<EasyAnswers, EasyFacts, EasyDone> Done,
     Func<EasyAnswers, EasyFacts, IReadOnlyList<EasyCheck>>? Extras = null);
 
-/// <summary>The master list of setups, one per goal that has questions or a checklist ("Just the volume" has none: it goes straight to the page).</summary>
+/// <summary>The master list of setups, one per goal.</summary>
 public static class EasyFlows
 {
     private static readonly EasyStep Setup = new("Setup", EasyStepKind.Setup), Finish = new("Done", EasyStepKind.Done);
+
+    /// <summary>The Engine screen; <see cref="EasyFlowViewModel"/> puts it before "Setup" for every goal that has an engine rule.</summary>
+    public static readonly EasyStep Engine = new("Engine", EasyStepKind.Engine);
+
+    /// <summary>The screens a goal goes through: its definition's, with the Engine screen before "Setup" when the goal has an engine rule (unless <paramref name="engine"/> is false: a later goal of a sequence reuses the way already chosen).</summary>
+    public static IReadOnlyList<EasyStep> StepsOf(EasyGoal goal, EasyFlowDef def, bool engine = true)
+    {
+        if (goal.Engine is null || !engine) return def.Steps;
+        var steps = def.Steps.ToList();
+        steps.Insert(steps.FindIndex(s => s.Kind == EasyStepKind.Setup), Engine);
+        return steps;
+    }
 
     private static EasyStep Ask(string title, EasyQuestionKind kind) => new(title, EasyStepKind.Question, kind);
 

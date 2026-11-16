@@ -6,6 +6,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using OmniControl.App.Controls;
 
 namespace OmniControl.App.Pages;
 
@@ -14,6 +15,8 @@ namespace OmniControl.App.Pages;
 /// (<see cref="Mouse.OptionItem"/>): a double-click on the text, or Ctrl+Enter on the slider beside it, turns it into a small box;
 /// Enter, a click elsewhere or leaving the box applies the number (<see cref="TypedNumber"/>: held within
 /// <see cref="Minimum"/>..<see cref="Maximum"/>), Esc cancels. The text is the child declared in XAML, so it keeps its own look.
+/// A <see cref="Knob"/>'s value text is one too, opened by the knob's single click instead of a double-click (the owner's rule for
+/// knobs, where a double-click resets): <see cref="Register"/> answers every knob's request once, at start-up.
 /// </summary>
 public sealed class NumberText : Panel
 {
@@ -24,6 +27,18 @@ public sealed class NumberText : Panel
 
     /// <summary>How many decimals a typed value keeps (0 = whole numbers, the usual case; the equaliser's Hz, dB and Q use more).</summary>
     public static readonly StyledProperty<int> DecimalsProperty = AvaloniaProperty.Register<NumberText, int>(nameof(Decimals));
+
+    /// <summary>False inside a knob: its double-click resets, and its single click opens the box (through the knob).</summary>
+    public static readonly StyledProperty<bool> OpensOnDoubleClickProperty =
+        AvaloniaProperty.Register<NumberText, bool>(nameof(OpensOnDoubleClick), true);
+
+    /// <summary>Every knob's click (or Ctrl+Enter) opens the value text in its template for typing. Called once at start-up.</summary>
+    public static void Register() => Knob.TypeRequestedEvent.AddClassHandler<Knob>((knob, e) =>
+    {
+        if (knob.GetVisualDescendants().OfType<NumberText>().FirstOrDefault() is not { } text) return;
+        text.BeginTyping();
+        e.Handled = true;
+    });
 
     /// <summary>The style class of the box (its size lives in Theme.axaml).</summary>
     private const string BoxClass = "typednumber";
@@ -45,6 +60,7 @@ public sealed class NumberText : Panel
     public double Minimum { get => GetValue(MinimumProperty); set => SetValue(MinimumProperty, value); }
     public double Maximum { get => GetValue(MaximumProperty); set => SetValue(MaximumProperty, value); }
     public int Decimals { get => GetValue(DecimalsProperty); set => SetValue(DecimalsProperty, value); }
+    public bool OpensOnDoubleClick { get => GetValue(OpensOnDoubleClickProperty); set => SetValue(OpensOnDoubleClickProperty, value); }
 
     private bool IsTyping => _box.IsVisible;
 
@@ -61,7 +77,7 @@ public sealed class NumberText : Panel
 
     private void OnDoubleTapped(object? sender, TappedEventArgs e)
     {
-        if (IsTyping) return;
+        if (IsTyping || !OpensOnDoubleClick) return;
         BeginTyping();
         e.Handled = true;
     }
@@ -99,8 +115,10 @@ public sealed class NumberText : Panel
         _watching = null;
         var hadFocus = _box.IsFocused;
         ShowBox(false);
-        // Back on the card's control, so the keyboard carries on from where it was.
-        if (hadFocus && this.FindAncestorOfType<ListBoxItem>() is { } card) RowEditing.CardTarget(card).Focus(NavigationMethod.Directional);
+        // Back on the knob it belongs to, else on the card's control, so the keyboard carries on from where it was.
+        if (!hadFocus) return;
+        if (this.FindAncestorOfType<Knob>() is { } knob) knob.Focus(NavigationMethod.Directional);
+        else if (this.FindAncestorOfType<ListBoxItem>() is { } card) RowEditing.CardTarget(card).Focus(NavigationMethod.Directional);
     }
 
     private void ShowBox(bool typing)

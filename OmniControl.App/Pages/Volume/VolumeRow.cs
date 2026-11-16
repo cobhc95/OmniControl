@@ -6,29 +6,18 @@ using OmniControl.App.Audio;
 namespace OmniControl.App.Pages.Volume;
 
 /// <summary>
-/// One row of the Volume Mixer, whatever it stands for (the master, a program, a microphone, a combined device): name and icon, the
-/// sentence under the name ("→ Speakers · 2 effects", whose underlined words are controls: the devices open the Wiring tab at this
-/// row, the effects open the row's FX window), level and mute, a meter. Changes go out through the actions the page gives; the page
-/// fills the rest in. Where the row plays is only shown here: the Wiring tab changes it.
+/// One row of the Volume Mixer, whatever it stands for (the master, a program, a microphone, a combined device), in the columns of
+/// <c>docs/mockups/mixer-rows-knobs.html</c>: icon, name and its state word, where it plays (<see cref="PlaysOn"/>: the Wiring tab's own
+/// device menu), how its effects run (the <see cref="Method"/> chip, which opens the row's Method menu, and the short fact under it), pan
+/// and volume knobs, mute, a meter and the FX button (lit while effects run; it opens and closes the row's FX window). Changes go out
+/// through the actions the page gives; the page fills the rest in.
 /// </summary>
 public abstract partial class VolumeRow : ObservableObject, IEditorItem
 {
     private bool _syncing;
 
-    /// <param name="newGate">Makes the row's mode gates (each with the page's way to switch modes).</param>
-    protected VolumeRow(string key, Func<ModeGate> newGate)
-    {
-        Key = key;
-        EffectsGate = newGate();
-        CaptureGate = newGate();
-        // The gate lives as long as the row, so this subscription needs no undoing.
-        CaptureGate.PropertyChanged += (_, _) => OnCaptureChanged();
-        EffectsGate.PropertyChanged += (_, _) =>
-        {
-            OnPropertyChanged(nameof(ShowsEffectsSwitch));
-            OnPropertyChanged(nameof(FxTip));
-        };
-    }
+    /// <remarks>The page's actions (<see cref="VolumeChanged"/>...) are set by its object initialiser after this constructor.</remarks>
+    protected VolumeRow(string key) => Key = key;
 
     string IEditorItem.Label => Name;
 
@@ -45,10 +34,11 @@ public abstract partial class VolumeRow : ObservableObject, IEditorItem
     public Action<int>? VolumeChanged { get; init; }
     public Action<bool>? MuteChanged { get; init; }
     public Action<bool>? FxToggled { get; init; }
-    /// <summary>Opens this row's FX window (the effects link and the FX button).</summary>
-    public Action? OpenWindowRequested { get; init; }
 
-    /// <summary>The device words were clicked: the page opens Wiring at this row.</summary>
+    /// <summary>The FX button: opens this row's FX window, or closes it when it is open.</summary>
+    public Action? FxWindowToggled { get; init; }
+
+    /// <summary>Opens the Wiring tab at this row (a combined device's members are changed there); null = no jump.</summary>
     public Action? WiringRequested { get; init; }
 
     /// <summary>Removes the row (a remembered program, a combined device); null = it can't be removed.</summary>
@@ -74,6 +64,10 @@ public abstract partial class VolumeRow : ObservableObject, IEditorItem
     public virtual string? SourceTag => null;
     public bool HasSourceTag => SourceTag is not null;
 
+    /// <summary>The small muted word under the name: "playing", "not open", "default"; empty = none.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasStateWord))] private string _stateWord = string.Empty;
+    public bool HasStateWord => StateWord.Length > 0;
+
     /// <summary>Remembered programs that are not open are drawn quieter.</summary>
     [ObservableProperty, NotifyPropertyChangedFor(nameof(RowOpacity))] private bool _isQuiet;
     public double RowOpacity => IsQuiet ? QuietOpacity : 1;
@@ -87,79 +81,81 @@ public abstract partial class VolumeRow : ObservableObject, IEditorItem
     /// <summary>Left/right balance (-100..100), on the rows that have one (the master and programs).</summary>
     public virtual bool HasPan => false;
     public Action<int>? PanChanged { get; init; }
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(PanText))] private int _pan;
-    public string PanText => Pan == 0 ? "C" : Pan < 0 ? $"L{-Pan}" : $"R{Pan}";
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(PanText), nameof(PanTip))] private int _pan;
+
+    /// <summary>The pan knob's words: "C" in the middle, else the side and how far ("L 20", "R 20").</summary>
+    public string PanText => Pan == 0 ? "C" : Pan < 0 ? $"L {-Pan}" : $"R {Pan}";
+
+    /// <summary>The knobs' tooltips: what they set and the exact value.</summary>
+    public string PanTip => $"Pan (left to right): {PanText}";
+    public string VolumeValueTip => $"{VolumeTip}: {Volume}";
+
+    /// <summary>The volume knob's default (a double-click or Home goes back to it), and the pan knob's (the centre).</summary>
+    public const double VolumeReset = 100, PanReset = 0;
+
     public virtual string VolumeTip => "Volume";
-    [ObservableProperty] private int _volume;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(VolumeValueTip))] private int _volume;
     [ObservableProperty] private bool _muted;
 
-    // ---- the sentence ----
+    // ---- where it plays ----
 
-    /// <summary>Plain words at the start of the sentence ("Default microphone"); empty = none.</summary>
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasLead))] private string _lead = string.Empty;
-    public bool HasLead => Lead.Length > 0;
+    /// <summary>
+    /// The "Plays on" chip's menu (the master and programs): the same menu and rules as the Wiring tab's cell (<see cref="PlaysOnMenu"/>),
+    /// here a pick makes the device the only one. Null on rows whose devices are not picked from a list.
+    /// </summary>
+    public PlaysOnMenu? PlaysOn { get; init; }
 
-    /// <summary>The words before a row's devices: where it plays, where it records from.</summary>
-    protected const string PlaysOnArrow = "→", RecordsFromArrow = "←";
+    public bool HasPlaysOnMenu => PlaysOn is not null;
 
-    /// <summary>"→" where the row plays, "←" where it records from; empty when it has no wiring of its own (a microphone).</summary>
-    public virtual string RouteArrow => string.Empty;
-    public bool HasRoute => RouteArrow.Length > 0;
+    /// <summary>A combined device's chip opens the Wiring tab at its row, where its members are added and taken away.</summary>
+    public bool PlaysOnOpensWiring => PlaysOn is null && WiringRequested is not null;
 
-    /// <summary>The dot between the devices and the effects (combined speakers have no effects to follow it).</summary>
-    public bool ShowsRouteSeparator => HasRoute && HasEffects;
+    /// <summary>A microphone's chip only names the device it records from.</summary>
+    public bool PlaysOnIsFixed => PlaysOn is null && WiringRequested is null;
 
-    /// <summary>The devices it plays on or records from, as the Wiring tab sets them ("Speakers + Interface 2").</summary>
+    /// <summary>The devices it plays on or records from, as the routing model says ("Speakers + Interface 2", "Master").</summary>
     [ObservableProperty] private string _routeText = string.Empty;
 
-    public virtual bool HasEffects => true;
-    public ModeGate EffectsGate { get; }
+    // ---- how its effects run ----
 
-    /// <summary>The FX button's tooltip: why the effects can't be edited now (it is dimmed), else what it does.</summary>
-    public string FxTip => EffectsGate.Reason ?? "Opens this row's FX window";
+    /// <summary>The Method chip: the method in use now (its words and colour).</summary>
+    [ObservableProperty] private MethodChip _method = MethodChip.Of(RunMethod.None);
 
-    /// <summary>True: the effects' Switch link is offered only when the row has a chain to run (a microphone with no effects needs nothing).</summary>
-    protected virtual bool SwitchNeedsEffects => false;
-
-    /// <summary>The Switch link next to the effects text.</summary>
-    public bool ShowsEffectsSwitch => EffectsGate.CanSwitch && (!SwitchNeedsEffects || FxCount > 0);
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(EffectsText))] private bool _fxOn;
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(EffectsText), nameof(ShowsCaptureCaution), nameof(ShowsCaptureSwitch), nameof(ShowsStatus), nameof(ShowsTest), nameof(ShowsEffectsSwitch))] private int _fxCount;
-
-    public string EffectsText => (FxCount == 0 ? "no effects" : FxCount == 1 ? "1 effect" : $"{FxCount} effects") + (FxOn || FxCount == 0 ? string.Empty : ", off");
-
-    /// <summary>What the engine says about this row (empty when nothing runs or waits), after the sentence.</summary>
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowsStatus))] private string _status = string.Empty;
-
-    /// <summary>The one step that fixes what the status says is missing (a microphone in Fast mode: Choose devices; a program set to Virtual cable with no cable: Use Recording); null = none.</summary>
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasFix))] private ModeCardAction? _fix;
-    public bool HasFix => Fix is not null;
-
-    /// <summary>The status is shown unless the caution tag already says why nothing runs.</summary>
-    public bool ShowsStatus => Status.Length > 0 && !ShowsCaptureCaution;
-
-    /// <summary>The status's tooltip, with the FX window's longer line: the mode, how it runs the effects and what really happens ("Fast mode · effects by recording · Effects running · about 40 ms delay"), then what to do next.</summary>
-    [ObservableProperty] private string _modeLine = string.Empty;
-
-    /// <summary>A program in Fast mode whose sound can't be recorded on this PC: the reason, as a caution tag, and a Switch link to Full control.</summary>
-    public ModeGate CaptureGate { get; }
-
-    /// <summary>The caution shows only on a row that has effects, where it matters (one tag per fact, not on every program).</summary>
-    public bool ShowsCaptureCaution => !CaptureGate.IsAvailable && FxCount > 0;
-
-    /// <summary>The caution's Switch link: only when the mode it names can be chosen on this PC.</summary>
-    public bool ShowsCaptureSwitch => ShowsCaptureCaution && CaptureGate.CanSwitch;
-
-    /// <summary>The "Method" choice of a program or the master (how its effects run in Full control); null on every other row.</summary>
+    /// <summary>The "Method" menu of a program or the master; null on rows that have no choice (a microphone, a combined device).</summary>
     public RouteChoice? RouteChoice { get; init; }
 
-    /// <summary>The Method button shows in Full control, the only place the choice applies: on the master, and on a program with effects.</summary>
-    [ObservableProperty] private bool _showsRouteChoice;
+    public bool HasMethodMenu => RouteChoice is not null;
+
+    /// <summary>The short fact the engine gives (from <see cref="Audio.Engine.EngineStatus.Fact"/>: "70 ms", "no delay", "Starts when it plays").</summary>
+    [ObservableProperty] private string _fact = string.Empty;
+
+    public virtual bool HasEffects => true;
+    /// <summary>The FX button's tooltip: what it does.</summary>
+    public string FxTip => FxRuns ? FxRunningTip : FxOpenTip;
+    private const string FxRunningTip = "Effects on. Opens or closes this row's FX window", FxOpenTip = "Opens or closes this row's FX window";
+
+    [ObservableProperty] private bool _fxOn;
+    [ObservableProperty] private int _fxCount;
+
+    /// <summary>The FX button glows: the effects are on and at least one of them is switched on (<see cref="FxSlot.AnyRuns"/>).</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(FxTip))] private bool _fxRuns;
+
+    /// <summary>What the engine says about this row in one short line (empty when nothing runs or waits); the Easy page shows it.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowsStatus))] private string _status = string.Empty;
+
+    /// <summary>The one step that fixes what the status says is missing (a program set to Virtual cable with no cable: Use Recording); null = none.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasFix))] private CardAction? _fix;
+    public bool HasFix => Fix is not null;
+
+    public bool ShowsStatus => Status.Length > 0;
+
+    /// <summary>The long line behind the Method chip and the fact: the setup, how it runs the effects and what really happens, then what to do next.</summary>
+    [ObservableProperty] private string _engineLine = string.Empty;
 
     [ObservableProperty] private bool _canForget;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowsTest))] private bool _canTest;
 
-    /// <summary>The recording Test, on an open program that has effects; dimmed with the reason while it is not playing (<see cref="TestWhy"/>).</summary>
+    /// <summary>The recording Test (in the Method menu), on an open program that has effects; dimmed with the reason while it is not playing (<see cref="TestWhy"/>).</summary>
     public bool ShowsTest => CanTest && FxCount > 0;
 
     /// <summary>Why the Test can't run now (the program must be playing); null = it can.</summary>
@@ -174,24 +170,47 @@ public abstract partial class VolumeRow : ObservableObject, IEditorItem
     [ObservableProperty] private string _testTip = string.Empty;
     public bool HasTestNote => TestNote.Length > 0;
 
+    // ---- the line under the Method chip ----
+
+    /// <summary>The words under the Method chip: the Test's result while there is one, else the fact.</summary>
+    [ObservableProperty] private string _factLine = string.Empty;
+    [ObservableProperty] private string _factTip = string.Empty;
+
+    /// <summary>The one link after those words: the step that fixes what is missing; null = none.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasFactLink))] private CardAction? _factLink;
+    public bool HasFactLink => FactLink is not null;
+
+    /// <summary>One fact per line (AGENTS.md principle 11): what the line and its one link say now.</summary>
+    private void RefreshFact()
+    {
+        FactLine = HasTestNote ? TestNote : Fact;
+        FactTip = HasTestNote ? TestTip : EngineLine;
+        FactLink = Fix;
+    }
+
+    partial void OnFactChanged(string value) => RefreshFact();
+    partial void OnEngineLineChanged(string value) => RefreshFact();
+    partial void OnFixChanged(CardAction? value) => RefreshFact();
+    partial void OnTestNoteChanged(string value) => RefreshFact();
+    partial void OnTestTipChanged(string value) => RefreshFact();
+
+    partial void OnFxCountChanged(int value)
+    {
+        OnPropertyChanged(nameof(ShowsTest));
+        RefreshFact();
+    }
+
     partial void OnVolumeChanged(int value) { if (!_syncing) VolumeChanged?.Invoke(value); }
     partial void OnPanChanged(int value) { if (!_syncing) PanChanged?.Invoke(value); }
     partial void OnMutedChanged(bool value) { if (!_syncing) MuteChanged?.Invoke(value); }
     partial void OnFxOnChanged(bool value) { if (!_syncing) FxToggled?.Invoke(value); }
 
-    private void OnCaptureChanged()
-    {
-        OnPropertyChanged(nameof(ShowsCaptureCaution));
-        OnPropertyChanged(nameof(ShowsCaptureSwitch));
-        OnPropertyChanged(nameof(ShowsStatus));
-    }
-
     [RelayCommand] private void ToggleMute() => Muted = !Muted;
 
     [RelayCommand]
-    private void OpenWindow()
+    private void ToggleWindow()
     {
-        if (EffectsGate.IsAvailable) OpenWindowRequested?.Invoke();
+        FxWindowToggled?.Invoke();
     }
 
     [RelayCommand] private void ShowWiring() => WiringRequested?.Invoke();

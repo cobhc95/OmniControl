@@ -1,12 +1,13 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:pages="using:OmniControl.App.Pages"
+             xmlns:c="using:OmniControl.App.Controls"
              x:Class="OmniControl.App.Pages.FileRow"
              x:DataType="pages:FileItem"
              Classes="card" IsEnabled="{Binding Availability.IsAvailable}"
              ToolTip.Tip="{Binding Availability.Reason}" ToolTip.ShowOnDisabled="True">
     <Panel>
-        <!-- Full width: label, the file in use (trims; full path as tooltip), Choose…, and the optional Default -->
+        <!-- Full width: label, the path field (the file in use, typed or browsed), and the optional Default -->
         <Grid Margin="0,1" ColumnSpacing="8" IsVisible="{Binding !Half}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
@@ -15,9 +16,8 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <TextBlock Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,16,0" />
-            <TextBlock Grid.Column="1" Classes="muted" Text="{Binding FileName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
-                       ToolTip.Tip="{Binding Path}" />
-            <Button Grid.Column="2" Classes="pill" Tag="scope" Content="Choose…" VerticalAlignment="Center" Click="OnChooseClick" />
+            <c:PathField Grid.Column="1" Grid.ColumnSpan="2" x:Name="PathBoxFull" Text="{Binding Path, Mode=OneWay}" Kind="{Binding PathKind}"
+                         PickerTitle="{Binding Kind.PickerTitle}" Chosen="OnChosen" />
             <Button Grid.Column="3" Classes="pill" Tag="scope" Content="{Binding ResetText}" Command="{Binding ResetCommand}"
                     IsVisible="{Binding HasReset}" VerticalAlignment="Center" />
         </Grid>
@@ -31,9 +31,8 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <TextBlock Classes="cardlabel" Text="{Binding Label}" />
-            <TextBlock Grid.Column="1" Classes="muted" Text="{Binding FileName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
-                       ToolTip.Tip="{Binding Path}" />
-            <Button Grid.Column="2" Classes="pill" Tag="scope" Content="Choose…" VerticalAlignment="Center" Click="OnChooseClick" />
+            <c:PathField Grid.Column="1" Grid.ColumnSpan="2" x:Name="PathBoxHalf" Text="{Binding Path, Mode=OneWay}" Kind="{Binding PathKind}"
+                         PickerTitle="{Binding Kind.PickerTitle}" Chosen="OnChosen" />
             <Button Grid.Column="3" Classes="pill" Tag="scope" Content="{Binding ResetText}" Command="{Binding ResetCommand}"
                     IsVisible="{Binding HasReset}" VerticalAlignment="Center" />
         </Grid>

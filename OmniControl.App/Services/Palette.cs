@@ -17,6 +17,16 @@ public static class Palette
     public static readonly Color Caution = Color.Parse("#D29922");
     public static readonly Color CautionInk = Color.Parse("#9A6700");
 
+    /// <summary>The cable blue (a Mixer row's Method chip when the sound goes through a cable or the cable bus: BrushCable); <see cref="CableInk"/> is its darker form for text on the light theme.</summary>
+    public static readonly Color Cable = Color.Parse("#4A9BE6");
+    public static readonly Color CableInk = Color.Parse("#1F6FB8");
+
+    /// <summary>The OSD's grey accent.</summary>
+    public static readonly Color OsdGrey = Color.Parse("#9A9A9A");
+
+    /// <summary>The accent's soft glow around a lit button (AccentGlow, made by <see cref="AccentService"/>): its strength, blur and spread in pixels.</summary>
+    public const double GlowOpacity = 0.55, GlowBlur = 8, GlowSpread = 1;
+
     /// <summary>Opacity of the see-through colour wash behind a warning (BrushCautionSoft).</summary>
     public const double WashOpacity = 0.16;
 

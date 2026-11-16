@@ -9,7 +9,7 @@
         <Panel HorizontalAlignment="Center" VerticalAlignment="Center">
             <Image Source="{Binding Picture}" Width="{StaticResource RowPictureSize}" Height="{StaticResource RowPictureSize}" IsVisible="{Binding HasPicture}" />
             <Path Classes="glyph" Data="{Binding Glyph}" IsVisible="{Binding HasGlyph}" />
-            <TextBlock Text="{Binding Initial}" FontWeight="SemiBold" IsVisible="{Binding ShowsInitial}" />
+            <TextBlock Classes="strong" Text="{Binding Initial}" IsVisible="{Binding ShowsInitial}" />
         </Panel>
     </Border>
 </UserControl>

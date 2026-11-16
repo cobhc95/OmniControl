@@ -1,11 +1,11 @@
-<Window xmlns="https://github.com/avaloniaui"
+<Window Classes="dialog" xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:g="using:OmniControl.App.Pages.Gestures"
         xmlns:pages="using:OmniControl.App.Pages"
         x:Class="OmniControl.App.Pages.Gestures.RuleEditorWindow"
         x:DataType="g:RuleEditorViewModel"
-        Title="{Binding Title}" Icon="avares://OmniControl/Assets/OmniControl.ico" Width="640" MinWidth="460" SizeToContent="Height"
-        Background="{DynamicResource BrushBackground}" WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+        Title="{Binding Title}" Width="640" MinWidth="460" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
     <!-- A custom rule: its name, the sentence of blocks (Styles/Blocks.axaml), the Layer and Rate limit cards, what is worth knowing,
          and Test / Copy details / Delete rule / Close. Everything applies at once. -->
     <StackPanel Margin="12" Spacing="10">
@@ -18,37 +18,37 @@
                     <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.DataTemplates>
-                    <DataTemplate DataType="g:SentenceWord">
+                    <DataTemplate DataType="pages:SentenceWord">
                         <TextBlock Classes="blockword" Text="{Binding Text}" />
                     </DataTemplate>
-                    <DataTemplate DataType="g:SentenceBlock">
+                    <DataTemplate DataType="pages:SentenceBlock">
                         <Button Classes="block" Click="OnBlockClick" ToolTip.Tip="Change it (Enter); Delete removes it">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="{Binding Text}" />
-                                <Button Classes="blockx" Content="×" Click="OnRemoveClick" ToolTip.Tip="Remove" />
+                                <Button Classes="blockx" Click="OnRemoveClick" ToolTip.Tip="Remove">
+                                    <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+                                </Button>
                             </StackPanel>
                         </Button>
                     </DataTemplate>
-                    <DataTemplate DataType="g:SentenceJoin">
+                    <DataTemplate DataType="pages:SentenceJoin">
                         <Button Classes="blockjoin" Content="{Binding Text}" Click="OnJoinClick"
                                 ToolTip.Tip="and: all must hold. or: any one is enough." />
                     </DataTemplate>
-                    <DataTemplate DataType="g:SentenceAdd">
+                    <DataTemplate DataType="pages:SentenceAdd">
                         <Button Classes="blockadd" Content="{Binding Text}" Click="OnAddClick" />
                     </DataTemplate>
                 </ItemsControl.DataTemplates>
             </ItemsControl>
         </Border>
 
-        <ListBox x:Name="SettingsList" Classes="rows compact" ItemsSource="{Binding Settings}">
-            <ListBox.ItemsPanel><ItemsPanelTemplate><pages:HalfPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
-        </ListBox>
+        <ListBox x:Name="SettingsList" Classes="rows compact cards" ItemsSource="{Binding Settings}"></ListBox>
 
         <ItemsControl ItemsSource="{Binding Notes}">
             <ItemsControl.ItemTemplate>
-                <DataTemplate DataType="g:RuleTag">
+                <DataTemplate>
                     <Border Classes="tag" Classes.caution="{Binding IsCaution}" Classes.risk="{Binding IsRisk}" HorizontalAlignment="Left" Margin="0,0,0,4">
-                        <TextBlock Text="{Binding Detail}" />
+                        <TextBlock Text="{Binding Tip}" />
                     </Border>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>

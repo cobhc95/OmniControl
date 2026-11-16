@@ -14,9 +14,9 @@ public sealed class RuleSettings
     /// <summary>Hashes of the command and program steps the user allowed in the confirm window.</summary>
     public HashSet<string> Approved { get; set; } = new();
 
-    private const string FileName = "rules.json";
+    private static readonly DataStore Store = DataStores.GestureRules;
 
-    public static RuleSettings Load() => AppDataStore.Load<RuleSettings>(FileName) ?? new();
+    public static RuleSettings Load() => AppDataStore.Load<RuleSettings>(Store) ?? new();
 
-    public void Save() => AppDataStore.Save(FileName, this);
+    public void Save() => AppDataStore.Save(Store, this);
 }

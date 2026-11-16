@@ -1,93 +1,74 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:pages="using:OmniControl.App.Pages"
+             xmlns:ctl="using:OmniControl.App.Controls"
              xmlns:vm="using:OmniControl.App.Pages.Volume"
              x:Class="OmniControl.App.Pages.Volume.VolumeRowView"
              x:DataType="vm:VolumeRow">
-    <!-- Every Volume row (master, program, microphone, combined device): icon | name and sentence | pan | level | mute | meter | FX | remove.
-         The device words open the Wiring tab at this row (where they are changed); the effects link and the FX button open the row's FX
-         window. Controls are declared left to right, which is also the keyboard order (Left/Right walk them: the sentence's links first).
-         Columns are the same on every row so levels, mutes and meters line up. -->
-    <Grid ColumnSpacing="6" Opacity="{Binding RowOpacity}">
+    <!-- Every Mixer row (master, program, microphone, combined device; built to docs/mockups/mixer-rows-knobs.html):
+         icon | name and its state word | Plays on | Method (its fact line under it) | pan knob | volume knob | mute | FX | remove | meter.
+         The Plays on and Method chips share row 1 (one line); the fact line is row 2 under the Method chip; every other cell spans both rows and centres.
+         The name and the two pickers share the spare width (trimmed); the knobs, meter, mute, FX and remove keep their sizes in shared
+         columns (Mixer*, the same in MixerHeadings), so nothing is squeezed at the narrowest window and every row lines up. Controls are
+         declared left to right, which is also the keyboard order (Left/Right walk them; Enter opens a picker or starts turning a knob). -->
+    <Grid ColumnSpacing="{StaticResource MixerColumnGap}" Opacity="{Binding RowOpacity}">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="60" />
-            <ColumnDefinition Width="*" MinWidth="64" MaxWidth="100" />
-            <ColumnDefinition Width="Auto" SharedSizeGroup="VolumeMute" />
-            <ColumnDefinition Width="Auto" SharedSizeGroup="VolumeMeter" />
-            <ColumnDefinition Width="Auto" SharedSizeGroup="VolumeOpen" />
-            <ColumnDefinition Width="Auto" SharedSizeGroup="VolumeRemove" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="MixerIcon" />
+            <ColumnDefinition Width="10*" />
+            <ColumnDefinition Width="11*" />
+            <ColumnDefinition Width="11*" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="MixerPan" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="MixerVolume" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="MixerMute" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="MixerFx" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="MixerRemove" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="MixerMeter" />
         </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
 
-        <!-- Icon, name, and the sentence: "→ <devices> · <effects>" (the underlined words are controls) and the engine's status -->
-        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" VerticalAlignment="Center">
-            <vm:RowIcon />
-            <StackPanel Grid.Column="1" VerticalAlignment="Center" MinWidth="0">
-                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}" />
-                <WrapPanel Classes="sentence">
-                    <TextBlock Text="{Binding Lead}" IsVisible="{Binding HasLead}" />
-                    <TextBlock Text=" · " IsVisible="{Binding HasLead}" />
-                    <TextBlock Text="{Binding RouteArrow}" IsVisible="{Binding HasRoute}" Margin="0,0,3,0" />
-                    <Button Tag="scope" Classes="link" IsVisible="{Binding HasRoute}" Command="{Binding ShowWiringCommand}"
-                            ToolTip.Tip="Change this in the Wiring tab">
-                        <TextBlock Text="{Binding RouteText}" />
-                    </Button>
-                    <TextBlock Text=" · " IsVisible="{Binding ShowsRouteSeparator}" />
-                    <Button Tag="scope" Classes="link" IsVisible="{Binding HasEffects}" Command="{Binding OpenWindowCommand}"
-                            IsEnabled="{Binding EffectsGate.IsAvailable}" ToolTip.Tip="{Binding EffectsGate.Reason}" ToolTip.ShowOnDisabled="True">
-                        <TextBlock Text="{Binding EffectsText}" />
-                    </Button>
-                    <Button Tag="scope" Classes="link small" Margin="4,0,0,0" ToolTip.Tip="{Binding EffectsGate.Reason}"
-                            IsVisible="{Binding ShowsEffectsSwitch}" Command="{Binding EffectsGate.SwitchCommand}">
-                        <TextBlock Text="Switch" />
-                    </Button>
-                    <TextBlock Text=" · " IsVisible="{Binding ShowsStatus}" />
-                    <TextBlock Classes="status" Text="{Binding Status}" IsVisible="{Binding ShowsStatus}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
-                               ToolTip.Tip="{Binding ModeLine}" />
-                    <!-- The one step that fixes what the status says is missing (a microphone in Fast mode: Choose devices) -->
-                    <Button Tag="scope" Classes="link small" Margin="4,0,0,0" IsVisible="{Binding HasFix}" Command="{Binding Fix.Command}"
-                            ToolTip.Tip="{Binding Fix.Tip}">
-                        <TextBlock Text="{Binding Fix.Label}" />
-                    </Button>
-                    <!-- Fast mode can't record a program on this PC: the reason, Switch to Full control, and the Test that checks again -->
-                    <Border Classes="tag caution" Margin="6,0,0,0" IsVisible="{Binding ShowsCaptureCaution}"
-                            ToolTip.Tip="Fast mode records the program to run its effects. Test checks again.">
-                        <TextBlock Text="{Binding CaptureGate.Reason}" TextWrapping="Wrap" />
-                    </Border>
-                    <Button Tag="scope" Classes="link small" Margin="4,0,0,0" IsVisible="{Binding ShowsCaptureSwitch}"
-                            Command="{Binding CaptureGate.SwitchCommand}" ToolTip.Tip="Runs the effects through the virtual cable instead">
-                        <TextBlock Text="Switch to Full control" />
-                    </Button>
-                    <Button Tag="scope" Classes="link small" Margin="4,0,0,0" Command="{Binding RunTestCommand}" IsVisible="{Binding ShowsTest}"
-                            IsEnabled="{Binding CanRunTest}" ToolTip.Tip="{Binding TestButtonTip}" ToolTip.ShowOnDisabled="True">
-                        <TextBlock Text="Test" />
-                    </Button>
-                    <!-- A program's effects method (Full control): cable or recording; the engine's status above says which one runs -->
-                    <Panel IsVisible="{Binding ShowsRouteChoice}" Margin="4,0,0,0">
-                        <vm:RouteButton DataContext="{Binding RouteChoice}" />
-                    </Panel>
-                    <TextBlock Text="{Binding TestNote}" Margin="4,0,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" IsVisible="{Binding HasTestNote}"
-                               ToolTip.Tip="{Binding TestTip}" />
-                </WrapPanel>
-            </StackPanel>
+        <vm:RowIcon Grid.RowSpan="2" />
+
+        <!-- The name and the small state word under it ("playing", "not open", "default") -->
+        <StackPanel Grid.Column="1" Grid.RowSpan="2" VerticalAlignment="Center" MinWidth="0">
+            <TextBlock Classes="strong" Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}" />
+            <TextBlock Classes="muted small" Text="{Binding StateWord}" IsVisible="{Binding HasStateWord}" TextTrimming="CharacterEllipsis" />
+        </StackPanel>
+
+        <vm:PlaysOnButton Grid.Column="2" VerticalAlignment="Top" />
+
+        <!-- The Method chip and the one short fact under it (with its one link: the step that fixes what is missing) -->
+        <vm:MethodButton Grid.Column="3" VerticalAlignment="Top" />
+        <Grid Grid.Column="3" Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="4">
+                <TextBlock Classes="muted small" Text="{Binding FactLine}" ToolTip.Tip="{Binding FactTip}" TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center" />
+                <Button Grid.Column="1" Tag="scope" Classes="link small" IsVisible="{Binding HasFactLink}" Command="{Binding FactLink.Command}"
+                        ToolTip.Tip="{Binding FactLink.Tip}">
+                    <TextBlock Text="{Binding FactLink.Label}" />
+                </Button>
         </Grid>
 
-        <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="6" VerticalAlignment="Center" IsVisible="{Binding HasPan}">
-            <Slider Classes="compact" Minimum="-100" Maximum="100" Value="{Binding Pan}" pages:SliderReset.Value="0" ToolTip.Tip="Pan (left to right)" />
-            <TextBlock Grid.Column="1" Text="{Binding PanText}" Classes="muted" MinWidth="26" TextAlignment="Right" VerticalAlignment="Center" />
-        </Grid>
+        <ctl:Knob Grid.Column="4" Grid.RowSpan="2" Minimum="-100" Maximum="100" FromCentre="True" Value="{Binding Pan}" Text="{Binding PanText}"
+                  pages:SliderReset.Value="{x:Static vm:VolumeRow.PanReset}" ToolTip.Tip="{Binding PanTip}" IsVisible="{Binding HasPan}" />
 
-        <vm:VolumeSlider Grid.Column="2" IsVisible="{Binding HasVolume}" />
+        <ctl:Knob Grid.Column="5" Grid.RowSpan="2" Minimum="0" Maximum="100" Value="{Binding Volume}" Text="{Binding Volume}"
+                  pages:SliderReset.Value="{x:Static vm:VolumeRow.VolumeReset}" ToolTip.Tip="{Binding VolumeValueTip}" IsVisible="{Binding HasVolume}" />
 
-        <Button Grid.Column="3" Tag="scope" Classes="scope mute" Classes.on="{Binding Muted}" Content="M" Command="{Binding ToggleMuteCommand}"
+        <vm:LevelMeter Grid.Column="9" Grid.RowSpan="2" Model="{Binding Meter}" VerticalAlignment="Center" ToolTip.Tip="Level" />
+
+        <Button Grid.Column="6" Grid.RowSpan="2" Tag="scope" Classes="scope mute" Classes.on="{Binding Muted}" Content="M" Command="{Binding ToggleMuteCommand}"
                 ToolTip.Tip="Mute" IsVisible="{Binding HasVolume}" />
 
-        <vm:LevelMeter Grid.Column="4" Model="{Binding Meter}" VerticalAlignment="Center" ToolTip.Tip="Level" />
+        <!-- FX: lit (Button.pill.glow) while effects run; opens the row's FX window, or closes it when it is open -->
+        <Button Grid.Column="7" Grid.RowSpan="2" Tag="scope" Classes="pill" Classes.glow="{Binding FxRuns}" Content="FX" Command="{Binding ToggleWindowCommand}"
+                IsVisible="{Binding HasEffects}" ToolTip.Tip="{Binding FxTip}" ToolTip.ShowOnDisabled="True"
+                VerticalAlignment="Center" />
 
-        <Button Grid.Column="5" Tag="scope" Classes="pill" Content="FX" Command="{Binding OpenWindowCommand}" IsVisible="{Binding HasEffects}"
-                IsEnabled="{Binding EffectsGate.IsAvailable}" ToolTip.Tip="{Binding FxTip}" ToolTip.ShowOnDisabled="True" VerticalAlignment="Center" />
-
-        <Button Grid.Column="6" Tag="scope" Classes="pill glyph" Content="×" Command="{Binding RemoveCommand}" IsVisible="{Binding CanForget}"
-                ToolTip.Tip="Remove (forgets its settings)" VerticalAlignment="Center" />
+        <Button Grid.Column="8" Grid.RowSpan="2" Tag="scope" Classes="pill glyph" Command="{Binding RemoveCommand}" IsVisible="{Binding CanForget}"
+                ToolTip.Tip="Remove (forgets its settings)" VerticalAlignment="Center">
+            <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+        </Button>
     </Grid>
 </UserControl>

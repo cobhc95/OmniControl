@@ -50,7 +50,7 @@
             </Grid>
         </Grid>
 
-        <TextBlock Classes="hint" Text="No bands: the sound passes unchanged." IsVisible="{Binding !HasBands}" />
+        <pages:EmptyListRow Text="No bands: the sound passes unchanged." IsVisible="{Binding !HasBands}" />
 
         <!-- The selected band's Type, Frequency and Bandwidth (its gain is the slider above) -->
         <StackPanel IsVisible="{Binding HasBands}">

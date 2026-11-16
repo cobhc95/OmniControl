@@ -54,9 +54,9 @@ public sealed class AppSettings
     /// <summary>Read (and the first start decided) on first use, so merely making an <see cref="AppSettings"/> touches no file.</summary>
     private static readonly Lazy<AppSettings> Shared = new(LoadDecided);
 
-    private const string FileName = "settings.json";
+    private static readonly DataStore Store = DataStores.App;
 
-    public static AppSettings Load() => AppDataStore.Load<AppSettings>(FileName) ?? new();
+    public static AppSettings Load() => AppDataStore.Load<AppSettings>(Store) ?? new();
 
     /// <summary>Loads the settings and, on the first start of this version, records which Volume view to open (saved at once, so a later start cannot see a newer mixer.json and decide again).</summary>
     private static AppSettings LoadDecided()
@@ -67,7 +67,7 @@ public sealed class AppSettings
         return settings;
     }
 
-    public void Save() => AppDataStore.Save(FileName, this);
+    public void Save() => AppDataStore.Save(Store, this);
 }
 
 /// <summary>One effect type's editor view: its scale in percent, and whether the plain list of settings shows instead of the editor.</summary>

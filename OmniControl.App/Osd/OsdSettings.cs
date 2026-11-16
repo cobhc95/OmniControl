@@ -42,11 +42,11 @@ public sealed class OsdSettings
     /// <summary>Suppress Windows' own volume/brightness pop-up.</summary>
     public bool HideWindowsOsd { get; set; }
 
-    private const string FileName = "osd.json";
+    private static readonly DataStore Store = DataStores.Osd;
 
-    public static OsdSettings Load() => AppDataStore.Load<OsdSettings>(FileName) ?? new();
+    public static OsdSettings Load() => AppDataStore.Load<OsdSettings>(Store) ?? new();
 
-    public void Save() => AppDataStore.Save(FileName, this);
+    public void Save() => AppDataStore.Save(Store, this);
 
     public static string Describe(OsdPosition p) => p switch
     {

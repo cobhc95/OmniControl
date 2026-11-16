@@ -31,6 +31,9 @@
                     <SolidColorBrush x:Key="BrushTagGoodSoft" Color="{x:Static svc:Palette.On}" Opacity="{x:Static svc:Palette.TagWashOpacity}" />
                     <SolidColorBrush x:Key="BrushTagCautionSoft" Color="{x:Static svc:Palette.Caution}" Opacity="{x:Static svc:Palette.TagWashOpacity}" />
                     <SolidColorBrush x:Key="BrushTagRiskSoft" Color="{x:Static svc:Palette.Danger}" Opacity="{x:Static svc:Palette.TagWashOpacity}" />
+                    <!-- The cable blue (a Mixer row's Method chip for a cable or the cable bus): the words, and the chip's faint edge -->
+                    <SolidColorBrush x:Key="BrushCable" Color="{x:Static svc:Palette.Cable}" />
+                    <SolidColorBrush x:Key="BrushTagCable" Color="{x:Static svc:Palette.Cable}" Opacity="{x:Static svc:Palette.TagEdgeOpacity}" />
                     <!-- The parametric equaliser's band colours (Fx/EqBandColors.cs cycles through them by band number) -->
                     <SolidColorBrush x:Key="BrushBand1" Color="#E8873A" />
                     <SolidColorBrush x:Key="BrushBand2" Color="#4FA3D9" />
@@ -60,6 +63,8 @@
                     <SolidColorBrush x:Key="BrushTagGoodSoft" Color="{x:Static svc:Palette.On}" Opacity="{x:Static svc:Palette.TagWashOpacity}" />
                     <SolidColorBrush x:Key="BrushTagCautionSoft" Color="{x:Static svc:Palette.Caution}" Opacity="{x:Static svc:Palette.TagWashOpacity}" />
                     <SolidColorBrush x:Key="BrushTagRiskSoft" Color="{x:Static svc:Palette.Danger}" Opacity="{x:Static svc:Palette.TagWashOpacity}" />
+                    <SolidColorBrush x:Key="BrushCable" Color="{x:Static svc:Palette.CableInk}" />
+                    <SolidColorBrush x:Key="BrushTagCable" Color="{x:Static svc:Palette.CableInk}" Opacity="{x:Static svc:Palette.TagEdgeOpacity}" />
                     <SolidColorBrush x:Key="BrushBand1" Color="#C96A1F" />
                     <SolidColorBrush x:Key="BrushBand2" Color="#2A7FB8" />
                     <SolidColorBrush x:Key="BrushBand3" Color="#3C9A4E" />
@@ -70,6 +75,15 @@
             </ResourceDictionary.ThemeDictionaries>
             <!-- The small down arrow of a button that opens a list or pop-down -->
             <StreamGeometry x:Key="ChevronDownIcon">M6,9 L12,16 L18,9 Z</StreamGeometry>
+            <!-- The left and right arrows of a gallery's steppers -->
+            <StreamGeometry x:Key="ChevronLeftIcon">M15,5 L8,12 L15,19 Z</StreamGeometry>
+            <StreamGeometry x:Key="ChevronRightIcon">M9,5 L16,12 L9,19 Z</StreamGeometry>
+            <!-- A tick: an option list's checked entry, the entry in use in a "Plays on" menu -->
+            <StreamGeometry x:Key="TickIcon">M5,12 L10,17 L19,7</StreamGeometry>
+            <!-- A cross: take this away (remove chips and buttons) -->
+            <StreamGeometry x:Key="CrossIcon">M6,6 L18,18 M18,6 L6,18</StreamGeometry>
+            <!-- The six dots of a row that can be dragged to a new place (the preset manager's rows) -->
+            <StreamGeometry x:Key="GripIcon">M8,4 h3 v3 h-3 Z M13,4 h3 v3 h-3 Z M8,10.5 h3 v3 h-3 Z M13,10.5 h3 v3 h-3 Z M8,17 h3 v3 h-3 Z M13,17 h3 v3 h-3 Z</StreamGeometry>
             <!-- The cogwheel icon used beside actions that have settings -->
             <StreamGeometry x:Key="CogIcon">M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8 Z M10.5,2 H13.5 L14,4.6 L16,5.6 L18.2,4.1 L20.3,6.2 L18.8,8.4 L19.7,10.5 L22,11 V14 L19.7,14.5 L18.8,16.6 L20.3,18.8 L18.2,20.9 L16,19.4 L14,20.4 L13.5,22 H10.5 L10,20.4 L8,19.4 L5.8,20.9 L3.7,18.8 L5.2,16.6 L4.3,14.5 L2,14 V11 L4.3,10.5 L5.2,8.4 L3.7,6.2 L5.8,4.1 L8,5.6 L10,4.6 Z</StreamGeometry>
         </ResourceDictionary>

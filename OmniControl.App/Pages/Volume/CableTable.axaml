@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:OmniControl.App.Controls"
              xmlns:vm="using:OmniControl.App.Pages.Volume"
              xmlns:pages="using:OmniControl.App.Pages"
              x:Class="OmniControl.App.Pages.Volume.CableTable"
@@ -16,8 +17,7 @@
                 <Button x:Name="MarkChip" Classes="blockadd small" Tag="grouptool" HorizontalAlignment="Left" Content="{x:Static vm:CableMarkMenu.Label}"
                         ToolTip.Tip="{x:Static vm:CableMarkMenu.LabelTip}" Click="OnMarkClick">
                     <FlyoutBase.AttachedFlyout>
-                        <Flyout Placement="BottomEdgeAlignedLeft" PlacementConstraintAdjustment="SlideX, FlipY, ResizeY"
-                                VerticalOffset="{StaticResource MenuOffset}" FlyoutPresenterClasses="listmenu" Opened="OnMarkOpened">
+                        <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft" Opened="OnMarkOpened">
                             <StackPanel x:DataType="vm:CableMarkMenu" Spacing="{StaticResource ChipSpacing}" KeyDown="OnMarkKeyDown">
                                 <TextBlock Classes="menutext" Text="Mark two devices that carry the same sound as one cable" TextWrapping="Wrap" />
                                 <StackPanel Spacing="{StaticResource ChipSpacing}" IsVisible="{Binding HasDevices}">
@@ -28,7 +28,7 @@
                                 </StackPanel>
                                 <TextBlock Classes="menutext" Text="All devices are already known." IsVisible="{Binding !HasDevices}" />
                             </StackPanel>
-                        </Flyout>
+                        </c:ListMenuFlyout>
                     </FlyoutBase.AttachedFlyout>
                 </Button>
                 <WrapPanel ItemSpacing="{StaticResource MenuGap}" LineSpacing="{StaticResource ChipSpacing}">

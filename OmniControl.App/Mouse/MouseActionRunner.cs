@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using OmniControl.App.Hotkeys;
 using OmniControl.App.Services;
 using OmniControl.Core.Engine;
 using OmniControl.Core.Engine.Mouse;
@@ -19,15 +20,15 @@ public sealed class MouseActionRunner
         ["DuckDuckGo"] = "https://duckduckgo.com/?q=",
     };
 
-    private readonly Func<string, bool> _runOmniAction;
+    private readonly Func<string, RunSettings?, bool> _runOmniAction;
     private readonly Action<string> _report;
     private readonly Action<string> _log;
-    private readonly Queue<DateTime> _launches = new();   // when the latest programs or folders were started
+    private readonly LaunchLimiter _launches = new();   // the latest programs or folders started
 
-    /// <param name="runOmniAction">Runs the OmniControl hotkey action with this id; false when there is none.</param>
+    /// <param name="runOmniAction">Runs the OmniControl hotkey action with this id (with the settings the input chose: a program to start, how far a level moves, a power countdown); false when there is none.</param>
     /// <param name="report">Shows a short problem message to the user.</param>
     /// <param name="log">Writes a line to the mouse log (what was started, and what was refused).</param>
-    public MouseActionRunner(Func<string, bool> runOmniAction, Action<string> report, Action<string> log)
+    public MouseActionRunner(Func<string, RunSettings?, bool> runOmniAction, Action<string> report, Action<string> log)
     {
         _runOmniAction = runOmniAction;
         _report = report;
@@ -87,7 +88,7 @@ public sealed class MouseActionRunner
                     action.Options.Text(MouseOptions.WindowStyle), action.Options.Bool(MouseOptions.Administrator));
                 break;
             case MouseActionCatalog.Omni:
-                if (!_runOmniAction(action.Param)) _report("That OmniControl action is no longer available. Pick another for this button, gesture or rule.");
+                if (!_runOmniAction(action.Param, MouseOptions.RunOf(action.Options))) _report("That OmniControl action is no longer available. Pick another for this button, gesture or rule.");
                 break;
         }
     }
@@ -131,17 +132,11 @@ public sealed class MouseActionRunner
     /// </summary>
     private bool MayLaunch(string path)
     {
-        lock (_launches)
+        if (!_launches.TryAcquire())
         {
-            var now = DateTime.UtcNow;
-            while (_launches.Count > 0 && now - _launches.Peek() > Timing.LaunchBurstWindow) _launches.Dequeue();
-            if (_launches.Count >= Timing.LaunchBurstMax)
-            {
-                _log($"refused to start \"{path}\": too many launches in a row");
-                _report("Stopped a button, gesture or rule from opening programs or folders again and again. Check its settings.");
-                return false;
-            }
-            _launches.Enqueue(now);
+            _log($"refused to start \"{path}\": too many launches in a row");
+            _report("Stopped a button, gesture or rule from opening programs or folders again and again. Check its settings.");
+            return false;
         }
         _log($"starting \"{path}\"");
         return true;

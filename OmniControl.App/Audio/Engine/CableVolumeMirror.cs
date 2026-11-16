@@ -4,7 +4,7 @@ using OmniControl.Core.Engine;
 namespace OmniControl.App.Audio.Engine;
 
 /// <summary>
-/// Keeps the bus cable's volume and mute equal to the real device's while the cable is Windows' default (Full control). The hardware
+/// Keeps the bus cable's volume and mute equal to the real device's while the cable is Windows' default. The hardware
 /// volume keys, Windows' flyout and other programs change the default device, which is the cable, not the speakers the bus plays on;
 /// so a change of the cable is copied to the real device, and a change of the real device (OmniControl's own slider, its hotkeys)
 /// is copied to the cable. Both sit at the same level, so one key press raises the real device by exactly Windows' step. An echo of

@@ -1,0 +1,28 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Devices page (approved)</title>
+<!-- Approved by the owner 16 Nov 2026. Build the Scripts method now; Simulation is NOT built yet (the Method chip lists it disabled with tooltip "Not available yet", or omit it: show only what works).
+     Colours from the app theme; sizes are guides. Never include the owner's own scripts or credentials. -->
+<style>
+body{font-family:Segoe UI,sans-serif;background:#1b1b1b;color:#eee;padding:20px;font-size:13px;max-width:820px}
+.win{display:flex;border:1px solid #444;border-radius:8px;background:#232323;min-height:200px}
+.nav{width:170px;border-right:1px solid #444;padding:6px}.n{padding:5px 8px}.n.on{outline:1px solid #E8833A;border-radius:5px} /* ListBox.nav-like device list */
+.pill{border:1px solid #666;border-radius:11px;padding:1px 9px}       /* Button.pill */
+.chip{border:1px solid #666;border-radius:11px;padding:1px 9px}       /* Button.selector / ChipMenu: Method chip like the Mixer's */
+.add{border:1px dashed #666;border-radius:11px;padding:1px 9px;color:#999} /* Button.blockadd.small "+ Add device" */
+.tag{font-size:11px;border:1px solid #4a4;color:#6c6;border-radius:8px;padding:0 6px} /* Border.tag.good */
+.mu{color:#999;font-size:11px}
+.grid{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:12px;margin-top:10px}
+</style></head><body>
+<!-- 1. New sidebar page "Devices". Left: devices (name), "+ Add device". Right: name, Method chip (Scripts), state tag, On / Off pills.
+     Rows: Address (IP, "reserved" when confirmed by the user), Sign-in (account; password in Windows Credential Manager, never in json), Actions note.
+     Foot: one thin status line (statusstrip): last command and result.
+     Every device registers master actions in HotkeyRegistry: "<device>: On / Off / Toggle" (Shortcuts, Rules, mouse, gestures pick them up). -->
+<div class="win"><div class="nav"><div class="n on">Desk plug</div><div class="n">Lamp plug</div><div style="margin-top:8px" class="add">+ Add device</div></div>
+<div style="flex:1;padding:8px 10px"><div style="display:flex;gap:6px;align-items:center"><b>Desk plug</b><span class="chip">Method: Scripts ▾</span><span class="tag">ready</span><span style="margin-left:auto" class="pill">On</span><span class="pill">Off</span></div>
+<div class="grid"><span class="mu">Address</span><span>192.168.0.x · reserved ✓</span><span class="mu">Sign-in</span><span>Tapo account · saved in Windows</span><span class="mu">Actions</span><span>On, Off, Toggle → Shortcuts, Rules, mouse</span></div>
+<div class="mu" style="margin-top:10px;border-top:1px solid #444;padding-top:4px">Last command 08:02 · turned off in 0.6 s</div></div></div>
+<!-- 2. Scripts method setup checklist (shown for a device until all steps are done, then collapses): each step a row with state glyph and one pill.
+     Python 3.12 found (PythonLocator) · python-kasa installed (Install pill runs pip as normal user, output to log) · Reserve IP (Router guide pill: short steps + opens router page http://<gateway>) · Sign in (email + password fields) · Test (turns plug off then on). -->
+<div style="margin-top:16px;border:1px solid #444;border-radius:8px;padding:10px;background:#232323;font-size:12px">
+<div>✓ Python 3.12</div><div>! python-kasa <span class="pill">Install</span></div><div>○ Reserve IP <span class="pill">Router guide</span></div><div>○ Sign in</div><div>○ Test</div></div>
+</body></html>

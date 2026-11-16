@@ -1,0 +1,93 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- MASTER designs of a row's pickers and its lit button (docs/mockups/mixer-rows-knobs.html; AGENTS.md "Master design elements"),
+         included after Theme.axaml and Menus.axaml so these win (Avalonia has no specificity: the later style wins). Sizes: Chip* and
+         Selector* in App.axaml.
+         Button.selector  a chip-shaped picker that opens a menu: its value, trimmed, and a small chevron at the right (a Mixer row's Plays
+                          on and Method); outlined 1 px, the master button hover; keyboard focus = accent wash and edge (the edge never
+                          thickens, so the words never move).
+         Border.selector  the same chip shape when there is nothing to pick (a microphone's own device, a row whose method has no menu).
+         .method          the Method chip's colour, one class per method: .apo (Equalizer APO, green), .cable (a cable or the cable bus,
+                          blue BrushCable), .recording (the accent), none = direct (muted words, a plain edge).
+         Button.pill.glow the FX button while effects run: accent words, accent edge, accent wash and a soft accent glow (AccentGlow,
+                          made from the accent by AccentService). -->
+    <Style Selector="Button.selector">
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Height" Value="{DynamicResource ChipHeight}" />
+        <Setter Property="Padding" Value="{DynamicResource SelectorPadding}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource ChipCornerRadius}" />
+        <Setter Property="FontSize" Value="{DynamicResource MenuSmallFontSize}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.selector /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Button.selector:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+    </Style>
+    <Style Selector="Border.selector">
+        <Setter Property="Height" Value="{DynamicResource ChipHeight}" />
+        <Setter Property="Padding" Value="{DynamicResource SelectorPadding}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource ChipCornerRadius}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <!-- The words of either: one line, trimmed; the chevron after them -->
+    <Style Selector="Button.selector > Grid > TextBlock, Border.selector > TextBlock">
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        <Setter Property="TextWrapping" Value="NoWrap" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.selector > TextBlock"><Setter Property="FontSize" Value="{DynamicResource MenuSmallFontSize}" /></Style>
+    <Style Selector="Button.selector > Grid > PathIcon">
+        <Setter Property="Width" Value="{DynamicResource ChevronSize}" />
+        <Setter Property="Height" Value="{DynamicResource ChevronSize}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- The Method chip's colours (direct = the plain look above with muted words) -->
+    <Style Selector="Button.selector.method /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Foreground" Value="{DynamicResource BrushMuted}" /></Style>
+    <Style Selector="Border.selector.method > TextBlock"><Setter Property="Foreground" Value="{DynamicResource BrushMuted}" /></Style>
+    <Style Selector="Button.selector.method.apo /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource BrushOn}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushTagGood}" />
+    </Style>
+    <Style Selector="Border.selector.method.apo"><Setter Property="BorderBrush" Value="{DynamicResource BrushTagGood}" /></Style>
+    <Style Selector="Border.selector.method.apo > TextBlock"><Setter Property="Foreground" Value="{DynamicResource BrushOn}" /></Style>
+    <Style Selector="Button.selector.method.cable /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource BrushCable}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushTagCable}" />
+    </Style>
+    <Style Selector="Border.selector.method.cable"><Setter Property="BorderBrush" Value="{DynamicResource BrushTagCable}" /></Style>
+    <Style Selector="Border.selector.method.cable > TextBlock"><Setter Property="Foreground" Value="{DynamicResource BrushCable}" /></Style>
+    <Style Selector="Button.selector.method.recording /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" />
+    </Style>
+    <Style Selector="Border.selector.method.recording"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" /></Style>
+    <Style Selector="Border.selector.method.recording > TextBlock"><Setter Property="Foreground" Value="{DynamicResource BrushAccent}" /></Style>
+    <!-- Hover and focus keep the chip's colour words; only the wash and the edge take the master hover and focus -->
+    <Style Selector="Button.selector:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+    </Style>
+
+    <!-- The lit FX button: the pill's look in the accent, with a soft glow; hover keeps the glow -->
+    <Style Selector="Button.pill.glow /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="BoxShadow" Value="{DynamicResource AccentGlow}" />
+    </Style>
+    <Style Selector="Button.pill.glow:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+    </Style>
+</Styles>

@@ -1,0 +1,17 @@
+<Window Classes="dialog" xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="OmniControl.App.Pages.Automation.CountdownWindow"
+        Width="380" SizeToContent="Height" CanResize="False" Topmost="True"
+        WindowStartupLocation="CenterScreen">
+    <!-- The cancellable countdown before sleep, hibernate, shut down, restart or sign out (PowerGuard): what will happen, the seconds
+         left, Cancel (the main button, and Esc) and "Do it now". -->
+    <StackPanel Margin="14" Spacing="10">
+        <TextBlock x:Name="TitleText" Classes="section" Margin="0" />
+        <TextBlock x:Name="BodyText" TextWrapping="Wrap" />
+        <TextBlock x:Name="SecondsText" Classes="muted" />
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+            <Button Classes="pill cardaction" Content="Do it now" Click="OnNowClick" />
+            <Button Grid.Column="2" Classes="primary" Content="Cancel" Click="OnCancelClick" IsDefault="True" />
+        </Grid>
+    </StackPanel>
+</Window>

@@ -45,7 +45,7 @@ public sealed partial class CableRow : ObservableObject, IEditorItem
     [ObservableProperty] private string _useTip = string.Empty;
 
     /// <summary>The switch's tooltip: what it does, and what stops if it is switched off while a run uses the cable.</summary>
-    [ObservableProperty] private string _switchTip = SoundModes.CableSwitchTip(null);
+    [ObservableProperty] private string _switchTip = EffectsRules.CableSwitchTip(null);
 
     /// <summary>The switch can be moved (only a whole cable pair can be used).</summary>
     [ObservableProperty] private bool _canSwitch;

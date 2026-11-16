@@ -3,7 +3,7 @@ using OmniControl.Core.Engine;
 namespace OmniControl.App.Audio;
 
 /// <summary>
-/// Where sound goes, as the user set it: the global sound mode, each program's and the master's "plays on" devices, combined devices,
+/// Where sound goes, as the user set it: each program's and the master's "plays on" devices, combined devices,
 /// and the device names remembered for unplugged devices. The mixer stores these; the effects engine (<see cref="Engine.RoutePlanner"/>)
 /// decides from them what runs, and tells the mixer each program's own device (<see cref="SetDirectRoute"/>), which the mixer applies
 /// to every stream of the program, including ones opened later.
@@ -12,17 +12,8 @@ public sealed partial class MixerService
 {
     private readonly Dictionary<string, string?> _direct = new();
 
-    /// <summary>The sound mode, "plays on" devices or combined devices changed (UI thread): the engine plans again.</summary>
+    /// <summary>"Plays on" devices or combined devices changed (UI thread): the engine plans again.</summary>
     public event Action? RoutingChanged;
-
-    public SoundMode SoundMode => SoundModes.Find(Settings.SoundMode);
-
-    public void SetSoundMode(SoundMode mode)
-    {
-        if (Settings.SoundMode == mode.Id) return;
-        Settings.SoundMode = mode.Id;
-        Changed();
-    }
 
     // ---- "plays on" ----
 
@@ -39,8 +30,8 @@ public sealed partial class MixerService
         ProgramChanged?.Invoke(key);
     }
 
-    /// <summary>How the program's effects run in Full control (<see cref="SoundModes.ProgramRoutes"/>).</summary>
-    public EffectsRoute FxRouteOf(string key) => SoundModes.RouteOf(Find(key)?.FxRoute);
+    /// <summary>How the program's effects run (<see cref="EffectsRules.ProgramRoutes"/>).</summary>
+    public EffectsRoute FxRouteOf(string key) => EffectsRules.RouteOf(Find(key)?.FxRoute);
 
     public void SetFxRoute(string key, EffectsRoute route)
     {
@@ -50,8 +41,8 @@ public sealed partial class MixerService
         ProgramChanged?.Invoke(key);
     }
 
-    /// <summary>How the master runs in Full control (<see cref="SoundModes.MasterRoutes"/>).</summary>
-    public EffectsRoute MasterMethod => SoundModes.MasterRouteOf(Settings.MasterMethod);
+    /// <summary>How the master runs (<see cref="EffectsRules.MasterRoutes"/>).</summary>
+    public EffectsRoute MasterMethod => EffectsRules.MasterRouteOf(Settings.MasterMethod);
 
     /// <summary>The master's method: applies at once (the engine plans again on <see cref="RoutingChanged"/>).</summary>
     public void SetMasterMethod(EffectsRoute route)
@@ -61,7 +52,7 @@ public sealed partial class MixerService
         Changed();
     }
 
-    /// <summary>The master's chosen devices (Full control: several, or a combined device); empty = one real device alone (<see cref="MasterDeviceId"/>).</summary>
+    /// <summary>The master's chosen devices (several, or a combined device); empty = one real device alone (<see cref="MasterDeviceId"/>).</summary>
     public IReadOnlyList<string> MasterPlaysOn => Settings.MasterPlaysOn;
 
     public void SetMasterPlaysOn(IEnumerable<string> targets)

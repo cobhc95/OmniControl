@@ -66,7 +66,7 @@ public class EasyModeTests
         var bands = EasyEq.Bands(EasyEq.Flat());
         Assert.Equal(EasyEq.Parts.Count, bands.Count);
         Assert.All(bands, b => Assert.Equal(0, b.Gain));
-        Assert.True(EasyEq.IsLayout(bands));
+        Assert.True(EasyEq.Matches(bands));
         Assert.True(EasyEq.IsFlat(EasyEq.GainsOf(bands)));
     }
 
@@ -91,7 +91,7 @@ public class EasyModeTests
         // The Parametric's default layout with a 6 dB low shelf at 100 Hz: bass is up, treble is not.
         var bands = Eq.Default();
         bands[0].Gain = 6;
-        Assert.False(EasyEq.IsLayout(bands));
+        Assert.False(EasyEq.Matches(bands));
         var gains = EasyEq.GainsOf(bands);
         Assert.InRange(gains[0], 2, 4); // a shelf is at half its gain at its own frequency
         Assert.Equal(0, gains[4]);
@@ -146,17 +146,17 @@ public class EasyModeTests
 
         var custom = FxCatalog.Create(FxCatalog.EqKind);
         custom.Bands![1].Gain = 4;
-        Assert.True(EasyEq.HasOtherBands(new List<FxSlot> { custom }));
+        Assert.True(EasyEq.HasCustom(new List<FxSlot> { custom }));
         EasyEq.Write(new List<FxSlot> { custom }, EasyEq.Flat());
-        Assert.False(EasyEq.HasOtherBands(new List<FxSlot> { custom }));
+        Assert.False(EasyEq.HasCustom(new List<FxSlot> { custom }));
     }
 
     // ---- the goals ----
 
     [Fact]
-    public void Goals_AreTheSixCardsInOrder_EachWithAPicture()
+    public void Goals_AreTheFiveCardsInOrder_EachWithAPicture()
     {
-        Assert.Equal(new[] { "better", "perapp", "mic", "joinmics", "twospeakers", "volume" }, EasyGoals.All.Select(g => g.Id));
+        Assert.Equal(new[] { "better", "perapp", "mic", "joinmics", "twospeakers" }, EasyGoals.All.Select(g => g.Id));
         Assert.Equal(EasyGoals.All.Count, EasyGoals.All.Select(g => g.Id).Distinct().Count());
         Assert.All(EasyGoals.All, g =>
         {
@@ -172,6 +172,6 @@ public class EasyModeTests
         var card = new GoalCard(EasyGoals.All[0], isOn: false, _ => { });
         Assert.False(card.Steps[0].ArrowBefore);
         Assert.All(card.Steps.Skip(1), s => Assert.True(s.ArrowBefore));
-        Assert.True(card.Steps.Any(s => s.IsApo));
+        Assert.Contains(card.Steps, s => s.IsApo);
     }
 }

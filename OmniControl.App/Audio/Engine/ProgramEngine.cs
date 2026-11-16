@@ -42,9 +42,9 @@ public static class CaptureTestResult
 
 
 /// <summary>
-/// Capture and replay for one program (Fast mode, and Full control when the program records instead of using a cable): records the
+/// Capture and replay for one program (when the program records instead of using a cable): records the
 /// program's process tree (process loopback), runs the chain and plays the result on the program's outputs (one or several devices,
-/// in Full control usually the master bus's cable); the original is silenced through its sessions (<see cref="SilenceMethod"/>; with
+/// usually the master bus's cable); the original is silenced through its sessions (<see cref="SilenceMethod"/>; with
 /// <see cref="SilenceMethod.Quiet"/> the recording gets <see cref="QuietLevel.Makeup"/> and blocks above <see cref="QuietLevel.RawCeiling"/>
 /// are left out).
 /// <para>
@@ -98,7 +98,7 @@ internal sealed class ProgramEngine : EngineRun
             ShowWaiting(StartsWhenOpen, StatusKind.StartsWhenPlays);
             return;
         }
-        if (!_check.Proved) ShowWaiting(SoundModes.EffectsReady, StatusKind.Ready);
+        if (!_check.Proved) ShowWaiting(EffectsRules.EffectsReady, StatusKind.Ready);
         // A new pipe starts at gain 1 with no ceiling: the replay stays shut until the make-up and ceiling are set.
         Processor.GateOpen = false;
         StartPipe(_roots.Select(PipeSource.Program).ToList(), OpenReplay);
@@ -123,7 +123,7 @@ internal sealed class ProgramEngine : EngineRun
         return true;
     }
 
-    protected override string RunningText => Spec.Outputs.Count > 1 ? $"Playing on {Spec.Outputs.Count} devices by recording" : SoundModes.RunningByRecording;
+    protected override string RunningText => Spec.Outputs.Count > 1 ? $"Playing on {Spec.Outputs.Count} devices by recording" : EffectsRules.RunningByRecording;
 
     public override void Tick()
     {
@@ -141,7 +141,7 @@ internal sealed class ProgramEngine : EngineRun
                 ShowWaiting("Effects starting (checking the recording)", StatusKind.Checking);
                 break;
             default:
-                ShowWaiting(SoundModes.EffectsReady, StatusKind.Ready);
+                ShowWaiting(EffectsRules.EffectsReady, StatusKind.Ready);
                 break;
         }
     }

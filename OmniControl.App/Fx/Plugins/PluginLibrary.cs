@@ -16,11 +16,11 @@ public sealed class PluginLibrary
         public List<PluginEntry> Loaded { get; set; } = new();
     }
 
-    private const string FileName = "plugins.json";
+    private static readonly DataStore Store = DataStores.Plugins;
 
     private Stored? _stored;
 
-    private Stored Data => _stored ??= AppDataStore.Load<Stored>(FileName) ?? new();
+    private Stored Data => _stored ??= AppDataStore.Load<Stored>(Store) ?? new();
 
     private IReadOnlyList<PluginEntry> BuiltIns { get; } =
         FxCatalog.All.Select(k => new PluginEntry(k.Name, k.Kind, PluginEntry.BuiltIn, "OmniControl", k.Description)).ToList();
@@ -67,5 +67,5 @@ public sealed class PluginLibrary
         return entry;
     }
 
-    private void Write() => AppDataStore.Save(FileName, Data);
+    private void Write() => AppDataStore.Save(Store, Data);
 }

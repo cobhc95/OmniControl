@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using System.Windows.Input;
+using CommunityToolkit.Mvvm.Input;
 using OmniControl.App.Services;
 
 namespace OmniControl.App.Pages;
@@ -12,6 +14,7 @@ public class CardGroup : ObservableObject
 {
     private bool _isExpanded;
     private string _summary;
+    private ICommand? _restoreCommand;
 
     public string Key { get; }
     public string Name { get; }
@@ -21,6 +24,16 @@ public class CardGroup : ObservableObject
 
     /// <summary>True: the summary follows the name on the same line (grey) instead of sitting at the right edge.</summary>
     public bool SummaryBesideName { get; init; }
+
+    /// <summary>Puts the group's settings back to their defaults; set: the header gets the shared "Restore defaults" pill (<see cref="GroupRestorePill"/>), null: none.</summary>
+    public Action? Restore { get; init; }
+
+    /// <summary>What the pill's tooltip says it restores.</summary>
+    public string? RestoreTip { get; init; }
+
+    public bool HasRestore => Restore is not null;
+
+    public ICommand? RestoreCommand => Restore is null ? null : _restoreCommand ??= new RelayCommand(Restore);
 
     /// <summary>The short text at the right of the header (a count); a page may update it.</summary>
     public string Summary { get => _summary; set => SetProperty(ref _summary, value); }

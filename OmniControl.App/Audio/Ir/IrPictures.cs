@@ -5,6 +5,15 @@ internal static class IrPictures
 {
     public const double LowHz = 20, HighHz = 20000;
 
+    /// <summary>The largest magnitude of the IR's frequency response (1 = 0 dB): Auto level's measure.</summary>
+    public static double PeakResponse(float[] ir)
+    {
+        var (re, im) = Spectrum(ir);
+        var peak = 0.0;
+        for (var i = 0; i <= re.Length / 2; i++) peak = Math.Max(peak, Math.Sqrt(re[i] * (double)re[i] + im[i] * (double)im[i]));
+        return peak;
+    }
+
     /// <summary>
     /// The response shape in dB at <paramref name="points"/> frequencies spaced evenly on a log scale from <see cref="LowHz"/> to <see cref="HighHz"/> (or Nyquist):
     /// each point is the average power over a 1/6-octave band (so a long IR does not draw as noise), relative to the loudest point (0 dB).

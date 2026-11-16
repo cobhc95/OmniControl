@@ -37,6 +37,7 @@ internal static class ChainBuilder
         return slot.Kind switch
         {
             FxCatalog.GainKind => new GainStage(slot.Values.FirstOrDefault()),
+            FxCatalog.IrKind => new IrStage(slot.Path, Completed(slot)),
             FxCatalog.CompKind => new CompressorStage(Completed(slot), PipeFormat.SampleRate),
             FxCatalog.LimiterKind => new LimiterStage(Completed(slot), PipeFormat.SampleRate),
             _ => null,

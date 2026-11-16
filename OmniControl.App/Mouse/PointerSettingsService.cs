@@ -139,13 +139,23 @@ public sealed class PointerSettingsService : IDisposable
     }
 
     /// <summary>Every setting and pointer back to what the user had before OmniControl's first change (the swap too, without a trial). False when Windows refused any of it.</summary>
-    public Task<bool> RestoreOriginal()
+    public Task<bool> RestoreOriginal() => _backup.Original is { } original ? RestoreTo(original) : Task.FromResult(true);
+
+    /// <summary>The values and pointers Windows has now, as a copy <see cref="RestoreTo"/> can put back ("Restore defaults" keeps one for its undo).</summary>
+    public PointerOriginal Capture() => new(
+        PointerValues.All.Select(v => (v, _windows.Read(v))).Where(p => p.Item2 is not null).ToDictionary(p => p.v.ToString(), p => p.Item2!.Value),
+        CursorSchemes.Snapshot(), DateTime.Now);
+
+    /// <summary>What the user had before OmniControl's first change, or null when it has changed nothing.</summary>
+    public PointerOriginal? Original => _backup.Original;
+
+    /// <summary>Every setting and pointer in <paramref name="state"/> back in Windows (the swap too, without a trial). False when Windows refused any of it.</summary>
+    public Task<bool> RestoreTo(PointerOriginal state)
     {
-        if (_backup.Original is not { } original) return Task.FromResult(true);
         if (_trial is not null) EndTrial(); // the restore writes the swap itself
-        var values = PointerValues.All.Where(v => original.Values.ContainsKey(v.ToString()))
-            .ToDictionary(v => v, v => original.Values[v.ToString()]);
-        return Task.Run(() => WriteAll(values) & CursorSchemes.Restore(original.Cursors));
+        var values = PointerValues.All.Where(v => state.Values.ContainsKey(v.ToString()))
+            .ToDictionary(v => v, v => state.Values[v.ToString()]);
+        return Task.Run(() => WriteAll(values) & CursorSchemes.Restore(state.Cursors));
     }
 
     /// <summary>Worker thread: writes each value in restore order and tells the stepper where they now are. True when Windows took them all.</summary>
@@ -160,9 +170,7 @@ public sealed class PointerSettingsService : IDisposable
         return ok;
     }
 
-    private void KeepOriginal() => _backup.EnsureSaved(() => new PointerOriginal(
-        PointerValues.All.Select(v => (v, _windows.Read(v))).Where(p => p.Item2 is not null).ToDictionary(p => p.v.ToString(), p => p.Item2!.Value),
-        CursorSchemes.Snapshot(), DateTime.Now));
+    private void KeepOriginal() => _backup.EnsureSaved(Capture);
 
     /// <summary>Worker thread: one write; a refusal is reported on the UI thread.</summary>
     private void Write(PointerValue value, int wanted, bool persist = true)

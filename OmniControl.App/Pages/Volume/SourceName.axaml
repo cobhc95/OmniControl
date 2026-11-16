@@ -7,7 +7,7 @@
          ("Combined" on a combined microphone) -->
     <StackPanel Orientation="Horizontal" Spacing="{StaticResource MenuGap}">
         <vm:RowIcon />
-        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+        <TextBlock Classes="strong" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                    MaxWidth="{StaticResource WiringSourceMaxWidth}" ToolTip.Tip="{Binding Name}" />
         <Border Classes="tag" IsVisible="{Binding HasSourceTag}" VerticalAlignment="Center">
             <TextBlock Text="{Binding SourceTag}" />

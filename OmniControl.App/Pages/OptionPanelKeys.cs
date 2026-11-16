@@ -7,7 +7,7 @@ using Avalonia.VisualTree;
 namespace OmniControl.App.Pages;
 
 /// <summary>
-/// Keys inside a pop-down of option cards (<c>Button.optioncard</c>; the Sound mode panel): Up/Down move between the cards and wrap,
+/// Keys inside a pop-down of option cards (<c>Button.optioncard</c>; the Method menu): Up/Down move between the cards and wrap,
 /// Right/Left walk a card's own buttons (Install, Choose devices...) and back to the card, Enter picks (the button's own click), Esc
 /// closes. A picked card closes the pop-down; a card's own button leaves it open. One shared piece for every such pop-down: made
 /// when the pop-down opens, disposed when it closes.

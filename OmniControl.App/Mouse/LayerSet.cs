@@ -1,5 +1,8 @@
 namespace OmniControl.App.Mouse;
 
+/// <summary>One layer of one family as it was: its name (null = none given) and its mappings (stored keys and texts).</summary>
+public sealed record LayerSnapshot(int Layer, string? Name, IReadOnlyDictionary<string, string> Bindings, IReadOnlyDictionary<string, List<string>> Extras);
+
 /// <summary>
 /// One input family's layers as stored in <see cref="MouseSettings"/>: their names, the "only list used layers" choice and the mappings on
 /// each layer. A view over the settings; nothing is kept here.
@@ -39,8 +42,8 @@ public sealed class LayerSet
     public string DefaultNameOf(int layer) =>
         Family == InputFamily.Trackpad && layer >= 1 && layer <= TrackpadPresets.Length ? TrackpadPresets[layer - 1] : $"Layer {layer}";
 
-    /// <summary>True: the layer is one the family lists even when unused.</summary>
-    private bool IsPreset(int layer) => layer == 1 || (Family == InputFamily.Trackpad && layer <= TrackpadPresets.Length);
+    /// <summary>True: the layer is one the family lists even when unused (it can be cleared, never taken off the list).</summary>
+    public bool IsAlwaysListed(int layer) => layer == 1 || (Family == InputFamily.Trackpad && layer <= TrackpadPresets.Length);
 
     /// <summary>Every layer's name as shown, each different from the others (a repeated name gets its layer number added).</summary>
     public IReadOnlyDictionary<int, string> Labels()
@@ -56,7 +59,7 @@ public sealed class LayerSet
     /// <summary>The layers the drop-down offers: all of them, or (with <see cref="OnlyUsed"/>) layer 1, named and mapped ones, and any layer in <paramref name="alwaysShown"/>.</summary>
     public IReadOnlyList<int> Listed(params int[] alwaysShown) =>
         Enumerable.Range(1, MouseSettings.Layers)
-            .Where(n => !OnlyUsed || IsPreset(n) || Names.ContainsKey(n) || MappingCount(n) > 0 || alwaysShown.Contains(n))
+            .Where(n => !OnlyUsed || IsAlwaysListed(n) || Names.ContainsKey(n) || MappingCount(n) > 0 || alwaysShown.Contains(n))
             .ToList();
 
     public void SetName(int layer, string name)
@@ -73,6 +76,21 @@ public sealed class LayerSet
             _settings.Bindings.Remove(key);
             _settings.ExtraActions.Remove(key);
         }
+    }
+
+    /// <summary>The layer's name and this family's mappings on it, as they are now (what an undone clear puts back).</summary>
+    public LayerSnapshot Snapshot(int layer) =>
+        new(layer, NameOf(layer),
+            KeysOn(layer).ToDictionary(k => k, k => _settings.Bindings[k]),
+            KeysOn(layer).Where(_settings.ExtraActions.ContainsKey).ToDictionary(k => k, k => _settings.ExtraActions[k].ToList()));
+
+    /// <summary>Puts a layer back as <paramref name="snapshot"/> had it: its name and exactly those mappings.</summary>
+    public void Restore(LayerSnapshot snapshot)
+    {
+        Clear(snapshot.Layer);
+        SetName(snapshot.Layer, snapshot.Name ?? string.Empty);
+        foreach (var (key, spec) in snapshot.Bindings) _settings.Bindings[key] = spec;
+        foreach (var (key, extras) in snapshot.Extras) _settings.ExtraActions[key] = extras.ToList();
     }
 
     private IEnumerable<string> KeysOn(int layer) =>

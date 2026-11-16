@@ -6,10 +6,11 @@
     <!-- A group inside a group: its own header (chevron, name, count) and cards, collapsed like any other group -->
     <Border Classes="subgroupPanel">
         <StackPanel Spacing="4">
-            <pages:GroupHeader />
-            <ListBox Classes="rows compact" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}">
-                <ListBox.ItemsPanel><ItemsPanelTemplate><pages:HalfPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
-            </ListBox>
+            <Grid ColumnDefinitions="*,Auto">
+                <pages:GroupHeader />
+                <pages:GroupRestorePill Grid.Column="1" Margin="6,0,8,0" />
+            </Grid>
+            <ListBox Classes="rows compact cards" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}"></ListBox>
         </StackPanel>
     </Border>
 </UserControl>

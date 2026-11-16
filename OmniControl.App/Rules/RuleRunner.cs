@@ -27,17 +27,27 @@ public sealed class RuleRunner
 
     /// <summary>Runs the steps; returns null when all went well, otherwise one line saying what went wrong (also logged).</summary>
     /// <param name="at">Where the trigger happened (window actions act on the window there).</param>
-    public async Task<string?> RunAsync(string name, IReadOnlyList<string> steps, MouseEvent at)
+    /// <param name="waitsBefore">Seconds to wait before each step (parallel to <paramref name="steps"/>); null = none.</param>
+    /// <param name="stop">Ends the run between steps and during a wait (the automations' "pause all rules"); a stopped run is not a failure.</param>
+    public async Task<string?> RunAsync(string name, IReadOnlyList<string> steps, MouseEvent at, Func<int, int>? waitsBefore = null,
+        CancellationToken stop = default)
     {
         _log($"rule \"{name}\" runs");
         try
         {
-            foreach (var stored in steps)
+            for (var i = 0; i < steps.Count; i++)
             {
-                if (await RunStepAsync(stored, at) is not { } problem) continue;
+                if (waitsBefore?.Invoke(i) is > 0 and var seconds) await Task.Delay(TimeSpan.FromSeconds(seconds), stop);
+                stop.ThrowIfCancellationRequested();
+                if (await RunStepAsync(steps[i], at) is not { } problem) continue;
                 _log($"rule \"{name}\": {problem}");
                 return problem;
             }
+            return null;
+        }
+        catch (OperationCanceledException)
+        {
+            _log($"rule \"{name}\" stopped: rules were paused");
             return null;
         }
         catch (Exception ex)

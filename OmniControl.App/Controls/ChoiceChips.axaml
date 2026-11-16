@@ -1,0 +1,17 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="OmniControl.App.Controls.ChoiceChips">
+    <!-- THE row of choice chips ("one of a few", the chosen one `.custom` = the accent pill): each item brings Name, IsSelected and
+         PickCommand (the Easy sound and look chips). Wraps onto the next line instead of growing. -->
+    <ItemsControl x:Name="Items">
+        <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+            <DataTemplate>
+                <Button Tag="grouptool" Classes="pill" Classes.custom="{Binding IsSelected}" Content="{Binding Name}" Command="{Binding PickCommand}"
+                        Margin="0,0,4,4" HorizontalAlignment="Left" />
+            </DataTemplate>
+        </ItemsControl.ItemTemplate>
+    </ItemsControl>
+</UserControl>

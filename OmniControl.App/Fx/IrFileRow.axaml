@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:OmniControl.App.Fx"
+             xmlns:c="using:OmniControl.App.Controls"
              x:Class="OmniControl.App.Fx.IrFileRow"
              x:DataType="vm:IrFileItem">
     <!-- The IR Loader's file card, after TabForge's window: the file row (name, its path trimmed at the start, Browse), the picture of the
@@ -8,10 +9,8 @@
     <StackPanel Spacing="6" Margin="0,4">
         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
             <TextBlock Text="IR file" VerticalAlignment="Center" />
-            <TextBlock Grid.Column="1" Text="{Binding PathText}" TextTrimming="PrefixCharacterEllipsis"
-                       ToolTip.Tip="{Binding Path}" VerticalAlignment="Center" />
-            <Button Grid.Column="2" Tag="scope" Classes="scope" Content="Browse..." HorizontalContentAlignment="Center"
-                    VerticalAlignment="Center" Click="OnChooseClick" ToolTip.Tip="Open the file browser to pick an impulse response" />
+            <c:PathField Grid.Column="1" Grid.ColumnSpan="2" x:Name="PathBox" Text="{Binding Path, Mode=OneWay}" Hint="(none)" Kind="File"
+                         PickerTitle="Choose an impulse response" Chosen="OnChosen" />
         </Grid>
         <vm:IrGraph Height="{StaticResource IrGraphHeight}" />
         <TextBlock Text="{Binding Facts}" Classes="hint" />

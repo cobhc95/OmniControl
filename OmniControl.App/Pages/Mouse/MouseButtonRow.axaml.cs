@@ -33,13 +33,14 @@ public partial class MouseButtonRow : UserControl
     public MouseButtonRow()
     {
         InitializeComponent();
-        ParameterBox.KeyDown += (_, e) =>
-        {
-            if (e.Key != Key.Enter) return;
-            // Moving focus to the card makes the box commit its text.
-            this.FindAncestorOfType<ListBoxItem>()?.Focus();
-            e.Handled = true;
-        };
+        foreach (var box in new[] { ParameterBox, PathBox.Box })
+            box.KeyDown += (_, e) =>
+            {
+                if (e.Key != Key.Enter) return;
+                // Moving focus to the card makes the box commit its text.
+                this.FindAncestorOfType<ListBoxItem>()?.Focus();
+                e.Handled = true;
+            };
         AddHandler(PointerPressedEvent, OnPointerPressed, RoutingStrategies.Tunnel);
         AddHandler(PointerMovedEvent, OnPointerMoved, RoutingStrategies.Tunnel);
         AddHandler(PointerReleasedEvent, OnPointerReleased, RoutingStrategies.Tunnel);
@@ -79,7 +80,7 @@ public partial class MouseButtonRow : UserControl
 
     private async void OnPickerClick(object? sender, RoutedEventArgs e) => await PickerWindow.ChooseForAsync(this, startInSettings: false, Picker, FirstPart());
 
-    private async void OnCogClick(object? sender, RoutedEventArgs e) => await PickerWindow.ChooseForAsync(this, startInSettings: true, Cog, FirstPart());
+    private async void OnCogClick(object? sender, RoutedEventArgs e) => await PickerWindow.ChooseForAsync(this, startInSettings: true, CogPart.Opener, FirstPart());
 
     private async void OnAddClick(object? sender, RoutedEventArgs e)
     {

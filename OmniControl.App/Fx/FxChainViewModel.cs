@@ -32,10 +32,12 @@ public sealed partial class FxChainViewModel : ObservableObject, IDisposable, IP
     /// <param name="editors">Where this chain's effect editors show; disposed with this view-model.</param>
     /// <param name="library">What the Add effect window lists (the program's one library).</param>
     /// <param name="readings">What the effects engine measures for one of this chain's dynamics effects now (<see cref="EffectsEngine.ReadingOf"/>).</param>
+    /// <param name="managePresets">Opens the shared preset manager at an effect kind's card (a preset box's "Manage presets...").</param>
     public FxChainViewModel(MixerService mixer, string? key, IEffectEditors editors, FxClipboard clipboard, PluginLibrary library,
-        Func<FxSlot, DynamicsReading?> readings, UserPresetStore presets)
+        Func<FxSlot, DynamicsReading?> readings, UserPresetStore presets, Action<FxKind> managePresets)
     {
         Store = presets;
+        _managePresets = managePresets;
         _readings = readings;
         _mixer = mixer;
         Library = library;
@@ -53,10 +55,15 @@ public sealed partial class FxChainViewModel : ObservableObject, IDisposable, IP
 
     public UserPresetStore Store { get; }
 
-    /// <summary>Opens the preset manager (set by the panel that shows this chain; null while none does, then nothing opens).</summary>
-    public Func<PresetManagerRequest, Task>? PresetManagerOpener { get; set; }
+    private readonly Action<FxKind> _managePresets;
 
-    Task IPresetHost.ManagePresetsAsync(PresetManagerRequest request) => PresetManagerOpener?.Invoke(request) ?? Task.CompletedTask;
+    void IPresetHost.ManagePresets(FxKind kind) => _managePresets(kind);
+
+    /// <summary>The effect of this kind the preset manager acts on in this chain: the selected one, else (<paramref name="selectedOnly"/> false) the first of the kind; null when there is none.</summary>
+    internal FxSlotViewModel? PresetTargetOf(FxKind kind, bool selectedOnly) =>
+        Selected is { } selected && selected.Slot.Kind == kind.Kind ? selected
+        : selectedOnly ? null
+        : Slots.FirstOrDefault(s => s.Slot.Kind == kind.Kind);
 
     /// <summary>What the Add effect window lists (built-in effects and plug-ins).</summary>
     public PluginLibrary Library { get; }
@@ -216,6 +223,7 @@ public sealed partial class FxChainViewModel : ObservableObject, IDisposable, IP
         Slots.Add(vm);
         Selected = vm;
         ReselectRequested?.Invoke(new[] { vm });
+        _mixer.EffectsAdded(_key);
         Changed();
     }
 

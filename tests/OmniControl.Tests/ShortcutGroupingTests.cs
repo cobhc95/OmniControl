@@ -1,4 +1,4 @@
-using OmniControl.App.Hotkeys;
+﻿using OmniControl.App.Hotkeys;
 using OmniControl.App.Pages.Shortcuts;
 using OmniControl.Core.Models;
 
@@ -32,13 +32,19 @@ public class ShortcutGroupingTests
     }
 
     [Fact]
-    public void FoldingIntoPanels_KeepsEveryAction()
+    public void FoldingIntoCards_KeepsEveryAction_InThreeLevels()
     {
-        var all = new[] { Action("a", null), Action("b", "Colour"), Action("c", "Colour"), Action("d", "Presets") };
-        var group = new HotkeyGroup("Displays - Hardware", all);
+        var all = new[] { Action("a", null), Action("b", "Colour"), Action("c", "Colour"), Action("d", "Presets"),
+            new HotkeyAction("e", "e", "Displays", "", _ => { }), new HotkeyAction("f", "f", "Displays", "", _ => { }, group: "Software") };
+        var group = new HotkeyGroup("Displays", all, _ => { });
 
-        var kept = group.Actions.Concat(group.Subgroups.SelectMany(s => s.Actions)).Select(a => a.Id).OrderBy(i => i);
-        Assert.Equal(new[] { "a", "b", "c", "d" }, kept);
-        Assert.Equal(new[] { "Colour", "Presets" }, group.Subgroups.Select(s => s.Name));
+        Assert.Equal(new[] { "e" }, group.Actions.Select(a => a.Id));
+        Assert.Equal(new[] { "Hardware", "Software" }, group.Subgroups.Select(s => s.Name));
+        var hardware = group.Subgroups[0];
+        Assert.Equal(new[] { "a" }, hardware.Actions.Select(a => a.Id));
+        Assert.Equal(new[] { "Colour", "Presets" }, hardware.Parts.Select(p => p.Name));
+        Assert.Equal(new[] { "b", "c" }, hardware.Parts[0].Actions.Select(a => a.Id));
+        Assert.Equal("6 shortcuts", group.Summary);
+        Assert.Equal("4 shortcuts", hardware.Summary);
     }
 }

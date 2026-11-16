@@ -10,7 +10,7 @@ namespace OmniControl.App.Fx;
 /// One effect of a chain as the FX window edits it: its place in the chain, on/off, wet mix, and the editor cards for its parameters.
 /// How its editor is shown (scale, the plain settings list) is in FxSlotViewModel.View.cs.
 /// </summary>
-public sealed partial class FxSlotViewModel : ObservableObject
+public sealed partial class FxSlotViewModel : ObservableObject, IFxPresetTarget
 {
     private readonly FxSlot _slot;
     private readonly Action _save;
@@ -54,14 +54,15 @@ public sealed partial class FxSlotViewModel : ObservableObject
         FxEngines.None => "Saved only: not processed yet",
         FxEngines.Program => "Runs in OmniControl's engine only",
         FxEngines.Apo => "Runs in Equalizer APO only",
-        _ when IsPlugin => "Runs in both sound modes",
-        _ => "Runs in both sound modes",
+        _ => "Runs in OmniControl's engine and in Equalizer APO",
     };
 
     /// <summary>The detail behind <see cref="RunsNote"/> (its tooltip) for a plug-in Equalizer APO also runs; null otherwise.</summary>
     public string? RunsDetail => IsPlugin && FxCatalog.EnginesOf(_slot).HasFlag(FxEngines.Apo)
-        ? "Fast mode: Equalizer APO runs it inside Windows, without its window, with the settings saved here; changes reach Windows when its window closes. Only at a wet mix of 100 %."
-        : null;
+        ? "In Equalizer APO it runs inside Windows, without its window, with the settings saved here; changes reach Windows when its window closes. Only at a wet mix of 100 %."
+        : _slot.Kind == FxCatalog.IrKind
+            ? "In Equalizer APO the file, Gain and Auto level apply (Auto level as a Preamp worked out from the WAV file); Trim silence does not, and neither does a Mix below 100 %."
+            : null;
 
     public bool Enabled
     {
@@ -138,6 +139,19 @@ public sealed partial class FxSlotViewModel : ObservableObject
 
     /// <summary>Lets go of what the preset pull-down subscribed to (the effect leaves the chain, or the window closes).</summary>
     public void ReleasePresets() => _presets?.Dispose();
+
+    // The preset manager reads and applies through the effect's own preset box, so the editor on screen shows the change.
+    PresetContent IFxPresetTarget.Read()
+    {
+        _ = EditorItems; // the preset box is made with the editor
+        return _presets?.Read() ?? PresetCatalog.Read(FxCatalog.Find(_slot.Kind), _slot);
+    }
+
+    void IFxPresetTarget.Apply(PresetContent content)
+    {
+        _ = EditorItems;
+        _presets?.Apply(content);
+    }
 
     /// <summary>One card per setting of the effect's catalog entry, in its order: a slider, or a switch for an on/off setting. Also kept in <see cref="_paramCards"/> so a preset can show its values.</summary>
     /// <param name="changed">Called after a parameter changed (the equaliser and the dynamics cards redraw their curves).</param>

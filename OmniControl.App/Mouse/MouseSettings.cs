@@ -1,20 +1,19 @@
 using System.Text.Json.Serialization;
+using OmniControl.App.AppLists;
 using OmniControl.App.Services;
 using OmniControl.Core.Engine.Mouse;
 
 namespace OmniControl.App.Mouse;
 
-/// <summary>Mouse remapping preferences, stored as JSON in %APPDATA%\OmniControl\mouse.json.</summary>
+/// <summary>
+/// Mouse remapping preferences, stored as JSON in %APPDATA%\OmniControl\mouse.json. Remapping is always on: an input at Default keeps
+/// Windows' behaviour, and Windows' own gesture is turned off for every trackpad gesture that has an action which does not say "also
+/// let Windows do its own gesture" (<see cref="ReplacesWindows"/>, <c>TrackpadService</c>). Values of removed switches ("Enabled",
+/// "TakeOverWindowsGestures") in an older file are ignored.
+/// </summary>
 public sealed class MouseSettings
 {
     public const int Layers = 10;
-
-    /// <summary>
-    /// "Remap mouse and trackpad". While on, Windows' own gesture is turned off for every trackpad gesture that has an action which does
-    /// not say "also let Windows do its own gesture" (<see cref="ReplacesWindows"/>, <c>TrackpadService</c>); there is no separate switch
-    /// for that (a "TakeOverWindowsGestures" value in an older file is ignored).
-    /// </summary>
-    public bool Enabled { get; set; } = true;
 
     /// <summary>
     /// The action per layer and input, keyed "layer.Button" (for example "1.Middle", "2.ThreeFingerUp"). The layer number belongs to the
@@ -48,6 +47,12 @@ public sealed class MouseSettings
     /// <summary>True: the trackpad Layer drop-down lists only layer 1, named layers and layers with mappings.</summary>
     public bool TrackpadOnlyUsedLayers { get; set; } = true;
 
+    /// <summary>The apps the Mouse Buttons group works in (null: every app). The trackpad's gestures have no scope.</summary>
+    public AppScopeSetting? ButtonsScope { get; set; }
+
+    /// <summary>A button's own apps scope, by the button's name ("Back"); a button without an entry follows <see cref="ButtonsScope"/>.</summary>
+    public Dictionary<string, AppScopeSetting> CardScopes { get; set; } = new();
+
     /// <summary>Only read from files saved while the program still had profiles; <see cref="Upgrade"/> keeps the default profile's mappings and drops the rest.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<LegacyProfile>? Profiles { get; set; }
@@ -57,11 +62,11 @@ public sealed class MouseSettings
         public Dictionary<string, string> Bindings { get; set; } = new();
     }
 
-    private const string FileName = "mouse.json";
+    private static readonly DataStore Store = DataStores.Mouse;
 
     public static MouseSettings Load()
     {
-        var settings = AppDataStore.Load<MouseSettings>(FileName) ?? new();
+        var settings = AppDataStore.Load<MouseSettings>(Store) ?? new();
         settings.Upgrade();
         return settings;
     }
@@ -76,6 +81,7 @@ public sealed class MouseSettings
         if (Profiles is { Count: > 0 } && Bindings.Count == 0) Bindings = Profiles[0].Bindings;
         Profiles = null;
         ExtraActions ??= new(); // a hand-edited file may say null
+        CardScopes ??= new();
         if (TrackpadLayerNames is null)
         {
             TrackpadLayerNames = new();
@@ -93,7 +99,44 @@ public sealed class MouseSettings
         TrackpadNamesIndependent = true;
     }
 
-    public void Save() => AppDataStore.Save(FileName, this);
+    public void Save() => AppDataStore.Save(Store, this);
+
+    /// <summary>What a new install has: no mappings, no layer names, every option at its default (upgraded the way a loaded file is, so the two compare equal).</summary>
+    public static MouseSettings Defaults()
+    {
+        var settings = new MouseSettings();
+        settings.Upgrade();
+        return settings;
+    }
+
+    /// <summary>Takes every value of <paramref name="other"/> (this object stays, so whatever holds it sees the change).</summary>
+    public void CopyFrom(MouseSettings other)
+    {
+        Bindings = other.Bindings;
+        ExtraActions = other.ExtraActions;
+        LayerNames = other.LayerNames;
+        OnlyUsedLayers = other.OnlyUsedLayers;
+        TrackpadLayerNames = other.TrackpadLayerNames;
+        TrackpadNamesIndependent = other.TrackpadNamesIndependent;
+        TrackpadOnlyUsedLayers = other.TrackpadOnlyUsedLayers;
+        Profiles = other.Profiles;
+        ButtonsScope = other.ButtonsScope;
+        CardScopes = other.CardScopes;
+    }
+
+    /// <summary>The apps scope in force for a mouse button: its own, else its group's; null when it works in every app.</summary>
+    public AppScopeSetting? ScopeOf(MouseButton button)
+    {
+        var scope = CardScopes.GetValueOrDefault(button.ToString()) ?? ButtonsScope;
+        return scope is { IsLimited: true } ? scope : null;
+    }
+
+    /// <summary>Stores a button's own scope (null: it follows the group).</summary>
+    public void SetCardScope(MouseButton button, AppScopeSetting? scope)
+    {
+        if (scope is null) CardScopes.Remove(button.ToString());
+        else CardScopes[button.ToString()] = scope;
+    }
 
     /// <summary>One input family's layers: names, the "only used" choice, counts and clearing.</summary>
     public LayerSet LayersOf(InputFamily family) => new(this, family);

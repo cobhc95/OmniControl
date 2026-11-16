@@ -126,10 +126,29 @@ public static class ApoChainWriter
             case FxCatalog.GainKind:
                 return new[] { $"Preamp: {Num(slot.Values.FirstOrDefault())} dB" };
             case FxCatalog.IrKind:
-                if (slot.Values.FirstOrDefault() < Core.Models.Percent.Max || !System.IO.File.Exists(slot.Path)) return null; // its own Mix below 100 % cannot be expressed either
-                return new[] { $"Preamp: {Num(slot.Values.ElementAtOrDefault(1))} dB", $"Convolution: {slot.Path}" };
+                if (IrParams.ValueOf(slot, IrParams.Mix) < Core.Models.Percent.Max || !System.IO.File.Exists(slot.Path)) return null; // its own Mix below 100 % cannot be expressed either
+                return new[] { $"Preamp: {Num(IrParams.ValueOf(slot, IrParams.Gain) + AutoLevelDb(slot))} dB", $"Convolution: {slot.Path}" };
             default:
                 return null;
+        }
+    }
+
+    /// <summary>
+    /// The gain Auto level adds to an IR Loader (the loudest frequency of the file at 0 dB, as in OmniControl's engine), 0 when it is off or
+    /// the file cannot be read (Equalizer APO then plays the file as it is). Trim silence is not written: Equalizer APO's Convolution has no such option.
+    /// </summary>
+    private static double AutoLevelDb(FxSlot slot)
+    {
+        if (!IrParams.IsOn(IrParams.ValueOf(slot, IrParams.AutoLevel))) return 0;
+        try
+        {
+            var audio = Ir.IrWaveFile.Read(slot.Path);
+            var peak = Math.Max(Ir.IrPictures.PeakResponse(audio.Channels[0]), audio.Channels.Length > 1 ? Ir.IrPictures.PeakResponse(audio.Channels[1]) : 0);
+            return peak > 1e-9 ? Math.Round(-20 * Math.Log10(peak), 2) : 0;
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            return 0; // not a WAV this reader takes (a .flac, say): Equalizer APO reads it as it is
         }
     }
 

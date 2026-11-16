@@ -7,10 +7,10 @@ namespace OmniControl.App.Mouse;
 
 /// <summary>
 /// The trackpad gestures: runs the Core touchpad watcher and hands every recognised gesture to the shared mouse hook, which runs it like
-/// a button press (custom rules first, then, while "Remap mouse and trackpad" is on, the mapping on the trackpad layer in force). Also
+/// a button press (custom rules first, then the mapping on the trackpad layer in force). Also
 /// knows what the cards must say: whether a precision touchpad is there, whether the watcher could start, and which gestures Windows
-/// itself also uses. While an action uses a gesture on any trackpad layer and remapping is on, Windows' own gesture is always turned off
-/// (<see cref="GestureTakeover"/>, there is no switch for it) and given back when no action uses it, remapping goes off, at exit, or at
+/// itself also uses. While an action uses a gesture on any trackpad layer, Windows' own gesture is always turned off
+/// (<see cref="GestureTakeover"/>, there is no switch for it) and given back when no action uses it, at exit, or at
 /// the next start after a crash. A gesture whose action says "also let Windows do its own gesture" leaves Windows' one alone
 /// (<see cref="MouseSettings.ReplacesWindows"/>). The takeover is kept by events, not only by a timer: any write to Windows' touchpad
 /// settings key (the Settings app, a driver, Windows after resume, sign-in or a touchpad reconnect) is checked at once, a touchpad that
@@ -58,7 +58,7 @@ public sealed class TrackpadService : IDisposable
         // A write to the key may have changed what the cards say even when no takeover changed, so the cards are told then too.
         _settingsWatcher.Changed += written => Enqueue(() => _takeover.Check() | written);
         _mouse.Applied += SyncTakeover;
-        // Always on, like the mouse hook: rules with a trackpad trigger need it even while remapping is off (MouseService ignores the mappings then).
+        // Always on, like the mouse hook: rules with a trackpad trigger need it whether or not any gesture is mapped.
         StartWatcher();
         SyncTakeover(); // a crashed run's takeover that is no longer wanted is given back here
         _settingsWatcher.Start();
@@ -76,22 +76,20 @@ public sealed class TrackpadService : IDisposable
         SyncTakeover();
     }
 
-    /// <summary>The Windows gestures to turn off: those of a gesture with an action (on any trackpad layer) that does not keep Windows' own; none while remapping is off.</summary>
+    /// <summary>The Windows gestures to turn off: those of a gesture with an action (on any trackpad layer) that does not keep Windows' own.</summary>
     private IReadOnlySet<WindowsGesture> Wanted() => WantedOff(_mouse.Settings);
 
     /// <summary>The rule behind <see cref="Wanted"/>, apart so tests can check it: the takeover is always on for a remapped gesture.</summary>
     internal static IReadOnlySet<WindowsGesture> WantedOff(MouseSettings settings) =>
-        settings.Enabled
-            ? TrackpadGestures.All.Where(g => settings.ReplacesWindows(g.Button)).Select(g => g.AlsoWindows).ToHashSet()
-            : new HashSet<WindowsGesture>();
+        TrackpadGestures.All.Where(g => settings.ReplacesWindows(g.Button)).Select(g => g.AlsoWindows).ToHashSet();
 
     /// <summary>
-    /// True when the safety net watches this gesture on <paramref name="layer"/>: remapping is on, its first action there replaces Windows'
+    /// True when the safety net watches this gesture on <paramref name="layer"/>: its first action there replaces Windows'
     /// gesture (not Default, "also let Windows do its own gesture" off), and none of its actions opens a Windows panel itself (Win+S,
     /// Alt+Tab...), which the net would otherwise take for Windows' own.
     /// </summary>
     internal static bool Guards(MouseSettings settings, int layer, MouseButton button) =>
-        settings.Enabled && settings.ReplacesWindowsOn(layer, button) && !settings.OpensWindowsPanel(layer, button);
+        settings.ReplacesWindowsOn(layer, button) && !settings.OpensWindowsPanel(layer, button);
 
     /// <summary>
     /// Watcher thread: a gesture whose Windows action opens a panel and is supposed to be off was recognised: the safety net notes the

@@ -1,3 +1,5 @@
+using OmniControl.App.Dialogs;
+using OmniControl.App.AppLists;
 using OmniControl.App.Picker;
 using OmniControl.App.Gestures;
 using OmniControl.App.Hotkeys;
@@ -8,9 +10,11 @@ using OmniControl.Core.Models;
 
 namespace OmniControl.App.Pages.Gestures;
 
-public sealed class GesturesPageViewModel : PageViewModel
+public sealed partial class GesturesPageViewModel : PageViewModel
 {
     public override string Title => "Gestures";
+
+    public override string? NavGroup => NavGroups.Workflow;
 
     private const string AdminNote = "Programs running as administrator are not affected unless OmniControl runs as administrator too.";
 
@@ -30,6 +34,9 @@ public sealed class GesturesPageViewModel : PageViewModel
     public IReadOnlyList<object> Primary { get; }
 
     public ItemGroup Areas { get; }
+
+    /// <summary>The apps the screen-area gestures work in: the "Apps: ..." chip on the Areas group's title line.</summary>
+    public AppScopeModel AreasScope { get; }
     public ItemGroup Middle { get; }
     public ItemGroup Keys { get; }
 
@@ -49,15 +56,17 @@ public sealed class GesturesPageViewModel : PageViewModel
     private readonly List<GestureItem> _gestureItems = new();
     private readonly GestureService _gestures;
     private readonly RuleService _rules;
-    private readonly Func<EngineMessage, Task<bool>> _ask;
+    private readonly Func<DialogMessage, Task<bool>> _ask;
 
     // The gesture areas drawn on the screen: only while "Show margins" is on and this page can be seen. Always off at start-up.
     private readonly MarginOverlay _margins;
     private readonly ToggleItem _showMargins;
+    private readonly SliderItem _edgeStrip;
     private bool _onScreen;
 
     /// <param name="ask">Shows a short message with a confirm button (a rule's command, deleting a rule); true when confirmed.</param>
-    public GesturesPageViewModel(GestureService gestures, RuleService rules, MarginOverlay margins, HotkeyRegistry hotkeys, Func<EngineMessage, Task<bool>> ask)
+    /// <param name="scopes">Makes the apps scope models of the screen-area group and its cards.</param>
+    public GesturesPageViewModel(GestureService gestures, RuleService rules, MarginOverlay margins, HotkeyRegistry hotkeys, Func<DialogMessage, Task<bool>> ask, AppScopes scopes)
     {
         _gestures = gestures;
         _rules = rules;
@@ -68,19 +77,30 @@ public sealed class GesturesPageViewModel : PageViewModel
         _enabled = new ToggleItem("Enable gestures", settings.Enabled, on => { settings.Enabled = on; gestures.Apply(); }) { Half = true };
 
         // The action lists follow the master list: a level or action a feature registers later appears in every gesture's list.
-        var steps = GestureCatalog.Choices(hotkeys.Actions);
-        var clicks = GestureCatalog.ClickChoices(hotkeys.Actions);
+        var steps = GestureCatalog.Choices(hotkeys.PickerActions);
+        var clicks = GestureCatalog.ClickChoices(hotkeys.PickerActions);
         hotkeys.Actions.CollectionChanged += (_, _) =>
         {
-            steps = GestureCatalog.Choices(hotkeys.Actions);
-            clicks = GestureCatalog.ClickChoices(hotkeys.Actions);
+            steps = GestureCatalog.Choices(hotkeys.PickerActions);
+            clicks = GestureCatalog.ClickChoices(hotkeys.PickerActions);
             foreach (var item in _gestureItems) item.Reload();
             RefreshRules(); // a rule's sentence names its actions
         };
+        AreasScope = scopes.Group($"{Title} › {GestureCatalog.AreaGroup}", () => settings.AreasScope, scope =>
+        {
+            settings.AreasScope = scope;
+            gestures.Apply();
+        });
         List<object> CardsFor(string group, Func<IReadOnlyList<PickChoice>> choices) => GestureCatalog.Triggers.Where(t => t.Group == group)
             .Select(t =>
             {
-                var item = new GestureItem(t.Label, choices, settings.RuleFor(t), gestures.Apply, ApplyToOthers);
+                var rule = settings.RuleFor(t);
+                var scope = group != GestureCatalog.AreaGroup ? null : scopes.Card($"{Title} › {group} › {t.Label}", AreasScope, () => rule.Scope, own =>
+                {
+                    rule.Scope = own;
+                    gestures.Apply();
+                });
+                var item = new GestureItem(t.Label, choices, rule, gestures.Apply, ApplyToOthers, scope);
                 _gestureItems.Add(item);
                 return (object)item;
             }).ToList();
@@ -90,11 +110,13 @@ public sealed class GesturesPageViewModel : PageViewModel
             GestureSettings.MinEdgeStrip, GestureSettings.MaxEdgeStrip, GestureSettings.EdgeStripUnit, GestureSettings.DefaultEdgeStrip)
             { Companion = _showMargins };
 
+        _edgeStrip = strip;
         Primary = new object[] { _enabled };
         var areaCards = CardsFor(GestureCatalog.AreaGroup, () => steps);
         areaCards.Add(strip);
         Areas = new ItemGroup("Gestures/Areas", GestureCatalog.AreaGroup, areaCards)
         {
+            Summary = string.Empty, // the Apps chip takes the place of the count
             Tip = "Wheel up and down over the area do the action's two directions; a gesture that is on takes the scroll there. "
                   + "Show margins draws every area on screen while this page is open. " + AdminNote,
         };

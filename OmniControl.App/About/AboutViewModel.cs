@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Input;
 using OmniControl.App.Services;
 
 namespace OmniControl.App.About;
@@ -8,16 +8,15 @@ public sealed class AboutViewModel
 {
     private readonly Action<string> _report;
 
-    public AboutViewModel(string version, Action<string> report)
+    public AboutViewModel(Action<string> report)
     {
         _report = report;
-        Version = version;
         var notice = Credits.NoticeText();
         Notice = Credits.Preamble(notice);
         Entries = Credits.Entries(notice).Select(e => new CreditCard(e, OpenSite)).ToList();
     }
 
-    public string Version { get; }
+    public string Version => AppInfo.NameAndVersion;
     public string Notice { get; }
     public IReadOnlyList<CreditCard> Entries { get; }
 

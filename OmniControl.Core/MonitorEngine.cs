@@ -14,6 +14,7 @@ public sealed class MonitorEngine : IMonitorEngine
     public IReadOnlyList<IMonitor> Monitors { get; private set; } = Array.Empty<IMonitor>();
     public IReadOnlyList<DisplayInfo> Displays { get; private set; } = Array.Empty<DisplayInfo>();
     public ILaptopBrightness Laptop { get; }
+    public IDisplayRotation Rotation { get; } = new DisplayRotation();
 
     public MonitorEngine(IMonitorEnumerator? enumerator = null, ILaptopBrightness? laptop = null)
     {

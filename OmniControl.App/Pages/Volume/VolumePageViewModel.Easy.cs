@@ -1,3 +1,4 @@
+using OmniControl.App.Dialogs;
 using CommunityToolkit.Mvvm.Input;
 using OmniControl.App.Audio;
 using OmniControl.App.Audio.Engine;
@@ -46,20 +47,23 @@ public sealed partial class VolumePageViewModel
     /// </summary>
     private EasyFlowServices NewEasyFlowServices()
     {
-        var environment = new EasyEnvironment(_mixer, _modes, _engine, FreeCableFor, microphones => microphones ? BusHeldCable() : BusCableName());
+        var environment = new EasyEnvironment(_mixer, _support, _engine, FreeCableFor, microphones => microphones ? BusHeldCable() : BusCableName());
         var steps = new EasySetupSteps(InstallEqualizerApoAsync, () => ChooseDevicesCommand.ExecuteAsync(null),
-            () => RunSetupAsync(SoundModes.Full, null, _installer.InstallCableAsync()), () => _report(EngineInstaller.OpenCablePage().Text));
+            () => RunSetupAsync(null, _installer.InstallCableAsync()), () => _report(EngineInstaller.OpenCablePage().Text));
         return new EasyFlowServices(environment.Read, new EasyActions(new MixerEasyStore(_mixer), steps),
-            question => _ask(new EngineMessage(question.Title, question.Text, question.Button)));
+            question => _ask(new DialogMessage(question.Title, question.Text, question.Button)));
     }
 
     private void CreateEasy(HotkeyRegistry hotkeys)
     {
-        Easy = new EasyViewModel(_mixer, _modes, _engine, _master, Outputs, Inputs, _openFx, NewEasyFlowServices());
+        Easy = new EasyViewModel(_mixer, _support, _engine, _master, Outputs, Inputs, _openFx, NewEasyFlowServices());
         hotkeys.Register(new HotkeyAction("volume.view.toggle", "Switch Volume view (Easy / Advanced)", Title, "sound audio volume easy advanced simple view mode switch",
             _ => OnUi(() => IsEasy = !IsEasy)));
         hotkeys.Register(new HotkeyAction("volume.easy.sound.next", "Next sound preset for everything", Title,
             "sound audio master easy preset bass boost vocal night loud equaliser eq next",
-            _ => OnUi(Easy.NextMasterPreset)));
+            devices => OnUi(() => { _ = Easy.NextMasterPresetAsync(); })));
+        hotkeys.Register(new HotkeyAction("volume.easy.restore", "Restore audio defaults", Title,
+            "reset default audio restore sound effects off undo easy",
+            devices => OnUi(() => { _ = Easy.RestoreDefaultsAsync(); })));
     }
 }

@@ -5,6 +5,9 @@ namespace OmniControl.App.Pages.Volume.Easy.Flow;
 /// <summary>What the user chose on the question screens of one setup. Kept only while the setup is open; nothing here is stored.</summary>
 public sealed class EasyAnswers
 {
+    /// <summary>How the sound is processed (the Engine step): chosen by the user or pre-selected; null until the step has looked at the PC.</summary>
+    public EasyEngine? Engine { get; set; }
+
     /// <summary>The ticked apps (their mixer keys).</summary>
     public HashSet<string> Programs { get; } = new();
 

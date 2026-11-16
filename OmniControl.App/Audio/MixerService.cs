@@ -226,8 +226,38 @@ public sealed partial class MixerService : IDisposable
         return entry;
     }
 
+    /// <summary>The user switched this row's effects off themselves (adding an effect then leaves them off).</summary>
+    public bool IsFxUserOff(string? key) =>
+        key is null ? Settings.MasterFxUserOff : IsInput(key) ? InputEntry(key).FxUserOff : CombinedOf(key) is { } combo ? combo.FxUserOff : Find(key)?.FxUserOff ?? false;
+
+    /// <summary>The effects switch as the user flips it: remembers an "off" as the user's own choice. Everything automatic uses <see cref="SetFxOn"/>.</summary>
+    public void SetFxByUser(string? key, bool on)
+    {
+        SetFxUserOff(key, !on);
+        SetFxOn(key, on);
+    }
+
+    /// <summary>An effect was added to the chain: switches the effects on unless the user switched them off themselves.</summary>
+    public void EffectsAdded(string? key)
+    {
+        if (SwitchesOnWhenAdded(IsFxOn(key), IsFxUserOff(key))) SetFxOn(key, true);
+    }
+
+    /// <summary>The rule: an added effect switches the effects on when they are off and the user did not switch them off.</summary>
+    public static bool SwitchesOnWhenAdded(bool on, bool userOff) => !on && !userOff;
+
+    private void SetFxUserOff(string? key, bool off)
+    {
+        if (key is null) Settings.MasterFxUserOff = off;
+        else if (IsInput(key)) InputEntry(key).FxUserOff = off;
+        else if (CombinedOf(key) is { } combo) combo.FxUserOff = off;
+        else if (Find(key) is { } e) e.FxUserOff = off;
+    }
+
+    /// <summary>Switches a row's effects (the engine and Volume row react). Turning them on, by whoever, also clears "the user switched them off".</summary>
     public void SetFxOn(string? key, bool on)
     {
+        if (on) SetFxUserOff(key, false);
         if (key is null) Settings.MasterFxOn = on;
         else if (IsInput(key)) InputEntry(key).FxOn = on;
         else if (CombinedOf(key) is { } combo) combo.FxOn = on;
@@ -261,6 +291,15 @@ public sealed partial class MixerService : IDisposable
         Settings.Save();
         Scan();
         return key;
+    }
+
+    /// <summary>Whether the user's own "Add program" keeps this program's row (the restore of audio defaults and its undo); the row then follows <see cref="AppAudioEntry.KeepsRow"/>.</summary>
+    public void SetAdded(string key, bool added)
+    {
+        if (Find(key) is not { } e || e.Added == added) return;
+        e.Added = added;
+        Settings.Save();
+        Updated?.Invoke();
     }
 
     /// <summary>Forgets a remembered program that is not open (the row's remove button, the FX window's Forget program).</summary>

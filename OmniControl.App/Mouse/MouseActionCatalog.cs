@@ -1,4 +1,6 @@
-using OmniControl.App.Hotkeys;
+﻿using OmniControl.App.Hotkeys;
+using OmniControl.App.Presets;
+using OmniControl.App.Services;
 
 namespace OmniControl.App.Mouse;
 
@@ -26,20 +28,29 @@ public static class MouseActionCatalog
     public const string AxisXHold = "axis.x.hold", AxisXToggle = "axis.x.toggle", AxisYHold = "axis.y.hold", AxisYToggle = "axis.y.toggle";
     public const string StickyPrefix = "sticky.", DoubleDrag = "click.doubledrag", WindowMove = "window.move", WindowSize = "window.size", Reveal = "desktop.reveal";
 
-    private const string Basic = "Basic", Clicks = "Clicks and wheel", Drag = "Click and drag", Cursor = "Cursor and scrolling", Edit = "Edit and keys",
-        Desktop = "Windows and desktop", WindowControl = "Window control", Media = "Media and volume", Browser = "Browser",
-        Launch = "Launch", Layers = "Layers", TrackpadLayers = "Trackpad layers", Power = "Power and display", Custom = "Custom";
+    // Where an action is listed in the Choose-the-action window: its section (pane 1) and the group heading inside it.
+    private readonly record struct Home(string Section, string Heading);
+
+    private static readonly Home Basic = new(ActionSections.Mouse, "Basic"), Clicks = new(ActionSections.Mouse, "Clicks and wheel"),
+        Drag = new(ActionSections.Mouse, "Click and drag"), Cursor = new(ActionSections.Mouse, "Cursor and scrolling"),
+        Edit = new(ActionSections.Keys, "Editing and keys"), Desktop = new(ActionSections.Keys, "Desktop"),
+        VirtualDesktops = new(ActionSections.Keys, "Virtual desktops"), MagnifierGroup = new(ActionSections.Keys, "Magnifier"),
+        WindowControl = new(ActionSections.Keys, "Windows"), Media = new(ActionSections.Keys, "Media"), Browser = new(ActionSections.Keys, "Browser"),
+        Open = new(ActionSections.Launch, "Open"), Programs = new(ActionSections.Launch, "Programs and files"),
+        Screen = new(ActionSections.Power, "Screen");
+
+    private static readonly Home[] Repeatable = { Clicks, Cursor, Edit, Media, Browser };
 
     // A search word that finds every OmniControl action (they are listed under their own features' headings).
     private const string OmniControl = "OmniControl";
 
     /// <summary>What an action does: send a keystroke, run a program or folder, or neither (the runner or the modes handle it by id).</summary>
-    private sealed record Def(string Id, string Category, string Name, string? KeyText = null, string? RunText = null, string Keywords = "");
+    private sealed record Def(string Id, Home Where, string Name, string? KeyText = null, string? RunText = null, string Keywords = "");
 
     private static readonly Def[] Fixed =
     {
         new(Default, Basic, "Default behaviour", Keywords: "no change don't intercept normal"),
-        new(Disabled, Basic, "Disabled (do nothing)", Keywords: "disable off block"),
+        new(Disabled, Basic, "Do nothing", Keywords: "disable disabled off block"),
 
         new("click.left", Clicks, "Left click"), new("click.right", Clicks, "Right click"), new("click.middle", Clicks, "Middle click"),
         new("click.double", Clicks, "Double click"), new("click.back", Clicks, "Button 4 (back)", Keywords: "click button 4"),
@@ -68,62 +79,59 @@ public static class MouseActionCatalog
         new("edit.copy", Edit, "Copy", "Ctrl+C", Keywords: "ctrl c"), new("edit.paste", Edit, "Paste", "Ctrl+V", Keywords: "ctrl v"),
         new("edit.cut", Edit, "Cut", "Ctrl+X", Keywords: "ctrl x"), new("edit.undo", Edit, "Undo", "Ctrl+Z", Keywords: "ctrl z"),
         new("edit.redo", Edit, "Redo", "Ctrl+Y", Keywords: "ctrl y"), new("edit.selectall", Edit, "Select all", "Ctrl+A", Keywords: "ctrl a"),
-        new("edit.new", Edit, "New document (Ctrl+N)", "Ctrl+N"), new("edit.open", Edit, "Open file (Ctrl+O)", "Ctrl+O"), new("edit.save", Edit, "Save (Ctrl+S)", "Ctrl+S"),
+        new("edit.new", Edit, "New document", "Ctrl+N", Keywords: "ctrl n"), new("edit.open", Edit, "Open file", "Ctrl+O", Keywords: "ctrl o"), new("edit.save", Edit, "Save", "Ctrl+S", Keywords: "ctrl s"),
         new(WebSearch, Edit, "Web search selected text", Keywords: "google search copy selection"),
-        new("key.enter", Edit, "Enter", "Enter", Keywords: "return"), new("key.escape", Edit, "Escape", "Esc"), new("key.help", Edit, "Help (F1)", "F1", Keywords: "open help"),
+        new("key.enter", Edit, "Enter", "Enter", Keywords: "return"), new("key.escape", Edit, "Escape", "Esc"), new("key.help", Edit, "Help", "F1", Keywords: "open help f1"),
         new("key.printscreen", Edit, "Print Screen", "PrintScreen", Keywords: "prtsc screenshot"),
-        new("key.printwindow", Edit, "Print active window (Alt+Print Screen)", "Alt+PrintScreen", Keywords: "screenshot window"),
-        new("desktop.screenshot", Edit, "Screenshot (Win+Shift+S)", "Win+Shift+S", Keywords: "snip snipping tool"),
+        new("key.printwindow", Edit, "Print Screen, active window", "Alt+PrintScreen", Keywords: "screenshot window alt"),
+        new("desktop.screenshot", Edit, "Screenshot", "Win+Shift+S", Keywords: "snip snipping tool win shift s"),
         new("key.emoji", Edit, "Emoji panel", "Win+Period", Keywords: "open emoji keyboard"),
 
         new("desktop.taskview", Desktop, "Task view", "Win+Tab", Keywords: "windows tab overview"),
-        new("desktop.switch", Desktop, "Switch window (Alt+Tab)", "Alt+Tab", Keywords: "alt-tab"),
+        new("desktop.switch", Desktop, "Switch window", "Alt+Tab", Keywords: "alt-tab"),
         new("desktop.next", Desktop, "Next window", "Alt+Esc"), new("desktop.previous", Desktop, "Previous window", "Alt+Shift+Esc"),
-        new("desktop.show", Desktop, "Show / hide desktop", "Win+D", Keywords: "minimise all"),
+        new("desktop.show", Desktop, "Show or hide desktop", "Win+D", Keywords: "minimise all"),
         new(Reveal, Desktop, "Reveal desktop while held", Keywords: "peek desktop"),
-        new("desktop.new", Desktop, "Virtual desktop: new", "Win+Ctrl+D"), new("desktop.close", Desktop, "Virtual desktop: close", "Win+Ctrl+F4"),
-        new("desktop.left", Desktop, "Virtual desktop: switch left", "Win+Ctrl+Left"), new("desktop.right", Desktop, "Virtual desktop: switch right", "Win+Ctrl+Right"),
-        new("desktop.lock", Desktop, "Lock workstation", "Win+L", Keywords: "lock screen pc"), new("desktop.menu", Desktop, "System menu (Win+X)", "Win+X", Keywords: "power user"),
-        new("desktop.settings", Desktop, "Settings (Win+I)", "Win+I", Keywords: "pc settings"), new("desktop.search", Desktop, "Search (Win+S)", "Win+S", Keywords: "cortana"),
-        new("desktop.notifications", Desktop, "Notifications (Win+N)", "Win+N", Keywords: "action center"),
-        new(Magnifier, Desktop, "Magnifier: toggle on / off", Keywords: "zoom accessibility"),
-        new("desktop.zoomin", Desktop, "Magnifier: zoom in", "Win+Plus"), new("desktop.zoomout", Desktop, "Magnifier: zoom out", "Win+Minus"),
+        new("desktop.menu", Desktop, "System menu", "Win+X", Keywords: "power user win x"),
+        new("desktop.settings", Desktop, "Windows Settings", "Win+I", Keywords: "pc settings win i"), new("desktop.search", Desktop, "Windows search", "Win+S", Keywords: "cortana win s"),
+        new("desktop.notifications", Desktop, "Notifications", "Win+N", Keywords: "action center win n"),
+        new("desktop.new", VirtualDesktops, "New virtual desktop", "Win+Ctrl+D"), new("desktop.close", VirtualDesktops, "Close virtual desktop", "Win+Ctrl+F4"),
+        new("desktop.left", VirtualDesktops, "Switch virtual desktop left", "Win+Ctrl+Left"), new("desktop.right", VirtualDesktops, "Switch virtual desktop right", "Win+Ctrl+Right"),
+        new(Magnifier, MagnifierGroup, "Toggle magnifier", Keywords: "zoom accessibility on off"),
+        new("desktop.zoomin", MagnifierGroup, "Magnifier zoom in", "Win+Plus"), new("desktop.zoomout", MagnifierGroup, "Magnifier zoom out", "Win+Minus"),
 
-        new("window.minimize", WindowControl, "Minimise window", Keywords: "minimize"), new("window.maximize", WindowControl, "Maximise / restore window", Keywords: "maximize"),
+        new("window.minimize", WindowControl, "Minimise window", Keywords: "minimize"), new("window.maximize", WindowControl, "Maximise or restore window", Keywords: "maximize"),
         new("window.restore", WindowControl, "Restore window"), new("window.close", WindowControl, "Close window", Keywords: "quit"),
-        new("window.altf4", WindowControl, "Close (Alt+F4)", "Alt+F4", Keywords: "quit exit"),
+        new("window.altf4", WindowControl, "Close with Alt+F4", "Alt+F4", Keywords: "quit exit"),
         new("window.topmost", WindowControl, "Keep window on top", Keywords: "always on top pin"),
         new(WindowMove, WindowControl, "Drag to move window", Keywords: "alt drag hold"), new(WindowSize, WindowControl, "Drag to size window", Keywords: "resize hold"),
         new("snap.left", WindowControl, "Snap window left", "Win+Left", Keywords: "tile half"), new("snap.right", WindowControl, "Snap window right", "Win+Right", Keywords: "tile half"),
         new("snap.up", WindowControl, "Snap window up", "Win+Up", Keywords: "tile maximise"), new("snap.down", WindowControl, "Snap window down", "Win+Down", Keywords: "tile minimise"),
 
-        new("media.playpause", Media, "Play / pause", "MediaPlayPause"), new("media.next", Media, "Next track", "MediaNext"),
-        new("media.prev", Media, "Last track", "MediaPrevious", Keywords: "previous"), new("media.stop", Media, "Stop", "MediaStop"),
-        new("volume.up", Media, "Volume up", "VolumeUp", Keywords: "louder"), new("volume.down", Media, "Volume down", "VolumeDown", Keywords: "quieter"),
-        new("volume.mute", Media, "Mute", "VolumeMute", Keywords: "silence"),
+        new("media.playpause", Media, "Play or pause", "MediaPlayPause"), new("media.next", Media, "Next track", "MediaNext"),
+        new("media.prev", Media, "Previous track", "MediaPrevious", Keywords: "last"), new("media.stop", Media, "Stop playing", "MediaStop"),
 
-        new("browser.back", Browser, "Back", "BrowserBack"), new("browser.forward", Browser, "Forward", "BrowserForward"),
-        new("browser.refresh", Browser, "Refresh", "BrowserRefresh", Keywords: "reload"), new("browser.stop", Browser, "Stop loading", "BrowserStop", Keywords: "browser stop"),
-        new("browser.favourites", Browser, "Favourites", "BrowserFavorites", Keywords: "favorites bookmarks"), new("browser.search", Browser, "Search", "BrowserSearch"),
-        new("browser.home", Browser, "Home page", "BrowserHome"),
+        new("browser.back", Browser, "Browser back", "BrowserBack"), new("browser.forward", Browser, "Browser forward", "BrowserForward"),
+        new("browser.refresh", Browser, "Refresh page", "BrowserRefresh", Keywords: "reload"), new("browser.stop", Browser, "Stop loading", "BrowserStop", Keywords: "browser stop"),
+        new("browser.favourites", Browser, "Open favourites", "BrowserFavorites", Keywords: "favorites bookmarks"), new("browser.search", Browser, "Browser search", "BrowserSearch"),
 
-        new("launch.browser", Launch, "Web browser", "BrowserHome", Keywords: "open internet"), new("launch.mail", Launch, "Email", "LaunchMail", Keywords: "launch mail"),
-        new("launch.explorer", Launch, "Explorer", "Win+E", Keywords: "open files"), new("launch.documents", Launch, "Documents folder", RunText: "shell:Personal", Keywords: "my documents explorer"),
-        new("launch.thispc", Launch, "This PC", RunText: "shell:MyComputerFolder", Keywords: "my computer explorer"),
-        new("launch.network", Launch, "Network", RunText: "shell:NetworkPlacesFolder", Keywords: "network favourites explorer"),
-        new("launch.control", Launch, "Control Panel", RunText: "control.exe"), new("launch.calculator", Launch, "Calculator", RunText: "calc.exe"),
-        new("launch.rundialog", Launch, "Run dialog", "Win+R", Keywords: "open run command"),
+        new("launch.browser", Open, "Web browser", "BrowserHome", Keywords: "open internet home page"), new("launch.mail", Open, "Email", "LaunchMail", Keywords: "launch mail"),
+        new("launch.explorer", Open, "File Explorer", "Win+E", Keywords: "open files explorer"), new("launch.documents", Open, "Documents folder", RunText: "shell:Personal", Keywords: "my documents explorer"),
+        new("launch.thispc", Open, "This PC", RunText: "shell:MyComputerFolder", Keywords: "my computer explorer"),
+        new("launch.network", Open, "Network", RunText: "shell:NetworkPlacesFolder", Keywords: "network favourites explorer"),
+        new("launch.control", Open, "Control Panel", RunText: "control.exe"), new("launch.calculator", Open, "Calculator", RunText: "calc.exe"),
+        new("launch.rundialog", Open, "Run dialog", "Win+R", Keywords: "open run command"),
 
-        new("power.monitoroff", Power, "Turn monitors off", Keywords: "monitor power saving display sleep"), new("power.screensaver", Power, "Start screensaver"),
+        new("power.monitoroff", Screen, "Turn monitors off", Keywords: "monitor power saving display sleep"), new("power.screensaver", Screen, "Start screensaver"),
     };
 
     private static readonly IReadOnlyList<PickChoice> Parameterised = new PickChoice[]
     {
-        new(Keys + ":", Custom, "Send a shortcut", "Ctrl+Shift+T", "simulated keys keystroke",
-            new[] { MouseOptions.TriggerWithHold, MouseOptions.Times, MouseOptions.RepeatDelay, MouseOptions.RepeatEvery }, "Shortcut to send"),
-        new(Run + ":", Custom, "Open a program, file or link", @"C:\Path\App.exe", "run application launch file url website address",
-            new[] { MouseOptions.Arguments, MouseOptions.StartIn, MouseOptions.WindowStyle, MouseOptions.Administrator }, "Program, file or link"),
-        new(Folder + ":", Launch, "Open a folder", @"C:\Users\Me\Documents", "explorer at specified folder", ParamLabel: "Folder"),
+        new(Keys + ":", ActionSections.Keys, "Send a shortcut", "Ctrl+Shift+T", "simulated keys keystroke",
+            new[] { MouseOptions.TriggerWithHold, MouseOptions.Times, MouseOptions.RepeatDelay, MouseOptions.RepeatEvery }, "Shortcut to send", Heading: Edit.Heading),
+        new(Run + ":", Programs.Section, "Open a program, file or link", @"C:\Path\App.exe", "run application launch file url website address",
+            new[] { MouseOptions.Arguments, MouseOptions.StartIn, MouseOptions.WindowStyle, MouseOptions.Administrator }, "Program, file or link", ParamBrowse: PathKind.File, Heading: Programs.Heading),
+        new(Folder + ":", Programs.Section, "Open a folder", @"C:\Users\Me\Documents", "explorer at specified folder", ParamLabel: "Folder", ParamBrowse: PathKind.Folder, Heading: Programs.Heading),
     };
 
     private static readonly string[] WindowActions = { "window.minimize", "window.maximize", "window.restore", "window.close", "window.topmost" };
@@ -132,7 +140,7 @@ public static class MouseActionCatalog
     private static readonly string[] RepeatableDesktop = { "desktop.switch", "desktop.next", "desktop.previous", "desktop.left", "desktop.right", "desktop.zoomin", "desktop.zoomout" };
 
     /// <summary>The settings an action offers: its own, or the common "times / repeat" ones for actions that happen once per press.</summary>
-    private static IReadOnlyList<ActionOption>? OptionsOf(string id, string category)
+    private static IReadOnlyList<ActionOption>? OptionsOf(string id, Home where)
     {
         switch (id)
         {
@@ -153,7 +161,7 @@ public static class MouseActionCatalog
         if (id.StartsWith(StickyPrefix, StringComparison.Ordinal)) return new[] { MouseOptions.ReleaseAfter };
         if (IsMode(id)) return null;
 
-        var repeatable = category is Clicks or Cursor or Edit or Media or Browser || RepeatableDesktop.Contains(id);
+        var repeatable = Repeatable.Contains(where) || RepeatableDesktop.Contains(id);
         return repeatable ? MouseOptions.Common : null;
     }
 
@@ -204,19 +212,88 @@ public static class MouseActionCatalog
 
     private static List<PickChoice> Build(IEnumerable<HotkeyAction> omniActions, bool gesture, Func<string, string?> unavailable)
     {
-        var list = Fixed.Select(d => new PickChoice(d.Id, d.Category, d.Name, Keywords: d.Keywords, Options: WithAlongside(d.Id, OptionsOf(d.Id, d.Category), gesture),
-            Unavailable: unavailable(d.Id))).ToList();
+        var list = Fixed.Select(d => new PickChoice(d.Id, d.Where.Section, d.Name, Keywords: d.Keywords, Options: WithAlongside(d.Id, OptionsOf(d.Id, d.Where), gesture),
+            Unavailable: unavailable(d.Id), Heading: d.Where.Heading, Place: ActionSections.Find(d.Where.Section))).ToList();
         var layerChoices = gesture
             ? LayerChoices(InputFamily.Trackpad, withHold: false)
             : LayerChoices(InputFamily.Mouse, withHold: true).Concat(LayerChoices(InputFamily.Trackpad, withHold: true).Where(c => LayerActionOf(c.Spec)?.Move == LayerMove.Hold));
-        // The layer actions keep their place in the list, just before "Power and display".
-        list.InsertRange(list.FindIndex(c => c.Category == Power),
+        // The layer actions follow the rest of the Mouse and Trackpad section's built-in actions.
+        list.InsertRange(list.FindIndex(c => c.Category != ActionSections.Mouse),
             layerChoices.Select(c => c with { Options = WithAlongside(c.Spec, c.Options, gesture), Unavailable = unavailable(c.Spec) }));
-        list.AddRange(Parameterised.Select(c => c with { Options = WithAlongside(c.Spec, c.Options, gesture) }));
-        list.AddRange(omniActions.Select(a => new PickChoice($"{Omni}:{a.Id}", a.Heading, a.Title, Keywords: $"{OmniControl} {a.Keywords}",
-            Options: WithAlongside(Omni, MouseOptions.Common, gesture))));
-        return list;
+        list.AddRange(Parameterised.Select(c => c with { Options = WithAlongside(c.Spec, c.Options, gesture), Place = ActionSections.Find(c.Category) }));
+        list.AddRange(omniActions.Where(a => !a.CoveredByMousePicker).Select(a => OmniChoice(a, gesture)));
+        // The Power section lists OmniControl's own power actions first; the two built-in screen actions follow them.
+        return list.OrderBy(c => c.Category == Screen.Section && c.Heading == Screen.Heading ? 1 : 0).ToList();
     }
+
+    /// <summary>The picker entry of one master action (or of a picker list's button, <see cref="HotkeyAction.Command"/>).</summary>
+    private static PickChoice OmniChoice(HotkeyAction a, bool gesture) =>
+        OmniEntry(a, a.Command is not null ? null : a.Editor is { } editor ? editor.Options : WithAlongside(Omni, OmniOptions(a), gesture)) with
+        {
+            Remove = a.Remove,
+            Editor = a.Editor,
+            Create = a.Editor?.Create is { } create ? values => OmniChoice(create(values), gesture) : null,
+            Opened = a.PickerOpened,
+            Command = a.Command is null ? null : async from => (await a.Command(from)).Select(made => OmniChoice(made, gesture)).ToList(),
+        };
+
+    /// <summary>
+    /// The entry of a master action without anything it can do beyond being listed: its section, group heading, name and search words. The one
+    /// place an action is placed in a picker, shared by every list that offers OmniControl actions.
+    /// </summary>
+    public static PickChoice OmniEntry(HotkeyAction a, IReadOnlyList<ActionOption>? options = null, string? unavailable = null) =>
+        new($"{Omni}:{a.Id}", a.Section, a.Title, Keywords: $"{OmniControl} {a.Keywords}", Options: options, Unavailable: unavailable, Heading: a.PickerHeading,
+            Place: a.SectionPlace, RemoveText: a.RemoveText, Renaming: a.Renaming, IsListed: a.IsListed);
+
+    /// <summary>The settings of an OmniControl action: what it takes of its own (a program, how far a level moves, a power countdown), then the common "times / repeat" ones where repeating makes sense.</summary>
+    private static IReadOnlyList<ActionOption> OmniOptions(HotkeyAction a)
+    {
+        var own = new List<ActionOption>();
+        if (a.Takes.HasFlag(ActionSettings.Launch)) own.AddRange(MouseOptions.Launching);
+        if (a.Takes.HasFlag(ActionSettings.Step)) own.Add(MouseOptions.Step);
+        if (a.Takes.HasFlag(ActionSettings.Countdown)) own.Add(MouseOptions.Countdown);
+        if (a.Takes.HasFlag(ActionSettings.Force)) own.Add(MouseOptions.ForceClose);
+        var repeats = !a.Takes.HasFlag(ActionSettings.Launch) && !a.Takes.HasFlag(ActionSettings.Countdown); // starting a program or powering off once per press is all they do
+        return repeats ? own.Concat(MouseOptions.Common).ToList() : own;
+    }
+
+    /// <summary>
+    /// A stored action as it is called now: an action that was merged into an OmniControl one (the Volume keys, Lock) or into another built-in
+    /// reads as that one, and an OmniControl action that was merged reads as its replacement. Anything else is unchanged.
+    /// </summary>
+    public static string Migrated(string action)
+    {
+        var (id, parameter) = Split(action);
+        if (id == Omni)
+        {
+            var renamed = RenamedActions.Id(parameter);
+            return MovedToLayerAction(renamed) ?? Omni + ":" + renamed;
+        }
+        return MergedBuiltIns.TryGetValue(id, out var current) ? current + (parameter.Length > 0 ? ":" + parameter : string.Empty) : action;
+    }
+
+    /// <summary>
+    /// The picker's own layer action that replaces a master action which only moved a layer ("Next mouse layer", a layer's "Switch to layer"
+    /// shortcut action): the picker lists layer actions once, so a binding made with the master one reads as the layer action. Null for any other id.
+    /// </summary>
+    private static string? MovedToLayerAction(string omniId)
+    {
+        foreach (var family in new[] { InputFamily.Mouse, InputFamily.Trackpad })
+        {
+            if (omniId == (family == InputFamily.Mouse ? "mouse.layer.next" : "mouse.trackpad.layer.next")) return LayerActionId(family, LayerMove.Next);
+            var prefix = PresetShortcuts.ActionId(family == InputFamily.Mouse ? LayerPresets.MouseGroupId : LayerPresets.TrackpadGroupId, string.Empty);
+            if (!omniId.StartsWith(prefix, StringComparison.Ordinal) || !int.TryParse(omniId[prefix.Length..], out var layer)) continue;
+            return layer <= 1 ? LayerActionId(family, LayerMove.Reset) : LayerActionId(family, LayerMove.Switch, layer);
+        }
+        return null;
+    }
+
+    private static readonly IReadOnlyDictionary<string, string> MergedBuiltIns = new Dictionary<string, string>
+    {
+        ["volume.up"] = $"{Omni}:volume.up", ["volume.down"] = $"{Omni}:volume.down", ["volume.mute"] = $"{Omni}:volume.mute", // the Volume page's own actions (with a step)
+        ["desktop.lock"] = $"{Omni}:automation.power.lock", // "Lock workstation" and "Lock" were the same action
+        ["browser.home"] = "launch.browser", // both sent the browser's Home key
+    };
 
     /// <summary>Splits "keys:Ctrl+C" into "keys" and "Ctrl+C"; an action without a parameter gives an empty one.</summary>
     public static (string Id, string Param) Split(string spec)
@@ -235,7 +312,7 @@ public static class MouseActionCatalog
     public static string? RunTextOf(string id) => Fixed.FirstOrDefault(d => d.Id == id)?.RunText;
 
     /// <summary>True for the built-in actions that open a program or folder window, whether by a keystroke (Win+E) or by running it.</summary>
-    public static bool OpensWindow(string id) => Fixed.FirstOrDefault(d => d.Id == id)?.Category == Launch;
+    public static bool OpensWindow(string id) => Fixed.FirstOrDefault(d => d.Id == id)?.Where.Section == ActionSections.Launch;
 
     /// <summary>The id of a layer action of <paramref name="family"/> ("layer.next", "trackpad.layer.set.3").</summary>
     public static string LayerActionId(InputFamily family, LayerMove move, int layer = 0)
@@ -282,17 +359,17 @@ public static class MouseActionCatalog
     /// <summary>One family's layer actions for a picker: next, previous, back to 1, then "switch to" and (with <paramref name="withHold"/>) "hold for" per layer.</summary>
     private static IEnumerable<PickChoice> LayerChoices(InputFamily family, bool withHold)
     {
-        var category = family == InputFamily.Trackpad ? TrackpadLayers : Layers;
+        var heading = family == InputFamily.Trackpad ? "Trackpad layers" : "Layers";
         var noun = family == InputFamily.Trackpad ? $"{family.Noun()} layer" : "layer";
         var wrap = new[] { MouseOptions.Wrap };
-        yield return new PickChoice(LayerActionId(family, LayerMove.Next), category, $"Next {noun}", Keywords: $"{family.Noun()} layer", Options: wrap);
-        yield return new PickChoice(LayerActionId(family, LayerMove.Previous), category, $"Previous {noun}", Keywords: $"{family.Noun()} layer", Options: wrap);
-        yield return new PickChoice(LayerActionId(family, LayerMove.Reset), category, $"Back to {noun} 1", Keywords: $"{family.Noun()} layer modifier revert");
+        yield return new PickChoice(LayerActionId(family, LayerMove.Next), ActionSections.Mouse, $"Next {noun}", Keywords: $"{family.Noun()} layer", Options: wrap, Heading: heading);
+        yield return new PickChoice(LayerActionId(family, LayerMove.Previous), ActionSections.Mouse, $"Previous {noun}", Keywords: $"{family.Noun()} layer", Options: wrap, Heading: heading);
+        yield return new PickChoice(LayerActionId(family, LayerMove.Reset), ActionSections.Mouse, $"Back to {noun} 1", Keywords: $"{family.Noun()} layer modifier revert", Heading: heading);
         for (var layer = 2; layer <= MouseSettings.Layers; layer++)
         {
-            yield return new PickChoice(LayerActionId(family, LayerMove.Switch, layer), category, $"Switch to {noun} {layer}", Keywords: $"{family.Noun()} layer {layer}");
+            yield return new PickChoice(LayerActionId(family, LayerMove.Switch, layer), ActionSections.Mouse, $"Switch to {noun} {layer}", Keywords: $"{family.Noun()} layer {layer}", Heading: heading);
             if (withHold)
-                yield return new PickChoice(LayerActionId(family, LayerMove.Hold, layer), category, $"Hold for {noun} {layer}", Keywords: $"{family.Noun()} layer {layer} modifier");
+                yield return new PickChoice(LayerActionId(family, LayerMove.Hold, layer), ActionSections.Mouse, $"Hold for {noun} {layer}", Keywords: $"{family.Noun()} layer {layer} modifier", Heading: heading);
         }
     }
 

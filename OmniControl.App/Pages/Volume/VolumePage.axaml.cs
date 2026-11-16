@@ -1,10 +1,11 @@
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using Avalonia.Threading;
 
 namespace OmniControl.App.Pages.Volume;
 
 /// <summary>
-/// Wiring only: the page's keyboard (groups and cards of Advanced, the buttons of Easy, Ctrl+Tab between tabs), the level meters while the page is on screen, and a jump
+/// Wiring only: the presets' cogwheel, the page's keyboard (groups and cards of Advanced, the buttons of Easy, Ctrl+Tab between tabs), the level meters while the page is on screen, and a jump
 /// from a Mixer row to its Wiring row (the keyboard moves there and the page scrolls it into view once the tab has been laid out).
 /// </summary>
 public partial class VolumePage : UserControl

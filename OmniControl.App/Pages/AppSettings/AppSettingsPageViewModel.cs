@@ -6,10 +6,11 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using OmniControl.Core.Engine;
 using OmniControl.App.Hotkeys;
 using OmniControl.App.Services;
+using OmniControl.App.Services.Backup;
 
 namespace OmniControl.App.Pages.AppSettingsPage;
 
-/// <summary>The App settings page: appearance, startup, the close button, the plug-in folders (AppSettingsPageViewModel.Plugins.cs), About.</summary>
+/// <summary>The App settings page: appearance, startup, the close button, presets, backup and restore, the plug-in folders (AppSettingsPageViewModel.Plugins.cs), About.</summary>
 public sealed partial class AppSettingsPageViewModel : PageViewModel
 {
     private readonly AppSettings _settings = AppSettings.Current;
@@ -17,6 +18,8 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
     private readonly ChoiceItem _whenClosing;
     private readonly ToggleItem _startMinimised;
     private readonly ButtonItem _about;
+    private readonly ButtonItem _presets;
+    private readonly ButtonItem _backup;
     private bool _readingStartup;
 
     /// <summary>One plain sentence under the list when Windows has the start-up entry switched off or refused a change; empty otherwise.</summary>
@@ -24,7 +27,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
 
     public override string Title => "App settings";
     public override string Icon => "M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8 Z M10,2 H14 L14.6,4.6 L16.6,5.6 L19,4.3 L21.7,7 L20.4,9.4 L21.4,11.4 L24,12 V16 L21.4,16.6 L20.4,18.6 L21.7,21 L19,23.7 L16.6,22.4 L14.6,23.4 L14,26 H10 L9.4,23.4 L7.4,22.4 L5,23.7 L2.3,21 L3.6,18.6 L2.6,16.6 L0,16 V12 L2.6,11.4 L3.6,9.4 L2.3,7 L5,4.3 L7.4,5.6 L9.4,4.6 Z";
-    public override string Keywords => "settings appearance color colour mode theme accent plug-in plugin folders vst";
+    public override string Keywords => "settings appearance color colour mode theme accent plug-in plugin folders vst backup restore export import wipe";
 
     public GalleryItem Theme { get; }
     public GalleryItem Accent { get; }
@@ -39,13 +42,17 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
         Entry(_startWithWindows, "Startup", "start boot login windows launch"),
         Entry(_startMinimised, "Startup", "start minimized hidden background tray"),
         Entry(_whenClosing, "Window", "close tray exit quit notification area minimize x button ask remember"),
-    }.Concat(PluginSearchEntries()).Append(Entry(_about, "About", "about credits licence license gpl open source version notice"));
+        Entry(_presets, "Presets", "presets manage layers display monitor equaliser compressor shortcut order rename"),
+        Entry(_backup, "Backup and restore", "backup restore export import save load move computer wipe reset factory delete all settings"),
+    }.Concat(PluginSearchEntries()).Concat(RestoreSearchEntries()).Append(Entry(_about, "About", "about credits licence license gpl open source version notice"));
 
     /// <param name="openAbout">Opens the About and credits window.</param>
     /// <param name="scanPlugins">Scans the plug-in folders (the user's own included) and remembers what it found; gives the number found.</param>
     /// <param name="scanResult">The sentence saying what the last scan found.</param>
+    /// <param name="openPresets">Opens the preset manager at its first section with presets.</param>
+    /// <param name="backup">Export, import and wipe of every saved store (the Backup and restore card).</param>
     public AppSettingsPageViewModel(HotkeyRegistry hotkeys, Action openAbout, Func<IProgress<int>?, CancellationToken, Task<int>> scanPlugins,
-        Func<string> scanResult)
+        Func<string> scanResult, Action openPresets, BackupService backup)
     {
         var themes = Enum.GetNames<ThemeChoice>();
         Theme = new GalleryItem("Theme", themes, (int)_settings.Theme, () => ThemeSwatches.Build((int)_settings.Theme), i => OnThemeChosen(themes[i]));
@@ -75,8 +82,15 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
         });
 
         _about = new ButtonItem("About and credits", "Open", "Version, licence, credits", openAbout);
+        _presets = new ButtonItem("Presets", "Open", "Every preset of the program: order, names and shortcuts", openPresets);
 
-        foreach (var item in new object[] { Theme, Accent, _startWithWindows, _startMinimised, _whenClosing }) Items.Add(item);
+        _backup = new ButtonItem("Backup and restore", "Export...", "Settings, presets, shortcuts, rules, scripts, custom actions, app lists",
+            () => _ = backup.ExportAsync())
+        {
+            Extra = new[] { new CardAction("Import...", () => _ = backup.ImportAsync()), new CardAction("Wipe all...", () => _ = backup.WipeAsync(), danger: true) },
+        };
+
+        foreach (var item in new object[] { Theme, Accent, _startWithWindows, _startMinimised, _whenClosing, _presets, _backup }) Items.Add(item);
         _addFolder = new FileItem("Plug-in folders", FileKind.OfFolder("Choose a folder with plug-ins"), AddFolder) { EmptyText = "Add a folder to scan" };
         _scan = new ButtonItem("Plug-in scan", "Scan now", ScanIdleText, StartScan);
         _scanPlugins = scanPlugins;
@@ -86,7 +100,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
         Items.Add(_scan);
         Items.Add(_about);
         ReadStartup();
-        hotkeys.Register(new HotkeyAction("app.show", "Show OmniControl window", Title, "window open show tray restore", _ => AppLifecycle.RequestShow()));
+        hotkeys.Register(new HotkeyAction("app.show", "Open OmniControl", Title, "show window open tray restore", _ => AppLifecycle.RequestShow()) { NeverBlock = true });
         hotkeys.Register(new HotkeyAction("app.plugins.scan", "Scan for plug-ins", Title, "plug-in plugin vst vst2 vst3 scan search folders",
             _ => StartScan()));
     }

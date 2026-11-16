@@ -1,0 +1,31 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Devices: Simulation method (approved)</title>
+<!-- Approved by the owner 16 Nov 2026 ("build it all") from the described design. Extends devices-tab.html: the Method chip gains "Simulation".
+     Colours from the app theme; sizes are guides. -->
+<style>
+body{font-family:Segoe UI,sans-serif;background:#1b1b1b;color:#eee;padding:20px;font-size:13px;max-width:820px}
+.box{border:1px solid #444;border-radius:8px;padding:10px;background:#232323;margin-top:14px}
+.pill{border:1px solid #666;border-radius:11px;padding:1px 9px}.chip{border:1px solid #666;border-radius:11px;padding:1px 9px}
+.blk{border:1px solid #888;border-radius:5px;padding:1px 6px}            /* Button.block (sentence part, click to change) */
+.add{border:1px dashed #666;border-radius:11px;padding:1px 9px;color:#999}
+.row{display:flex;gap:6px;align-items:center;padding:4px 0}.mu{color:#999;font-size:11px}
+.fail{outline:1px solid #c44;border-radius:5px}
+</style></head><body>
+<!-- 1. Setup checklist for Method: Simulation (same checklist look as Scripts).
+     Emulator: detect installed ones (Android Studio emulator, BlueStacks, LDPlayer, others exposing ADB). Missing -> a choice chip of all of them, each with "Get it" opening its OFFICIAL download page in the browser (never download ourselves).
+     ADB: found (Android SDK platform-tools; official link if missing). Connect: per-emulator ADB address, auto-detected, editable.
+     "Open emulator" pill: the user sees the emulator window, installs the home app (e.g. Tapo) from the Play Store and signs in THERE; OmniControl never sees that password. -->
+<div class="box"><div>✓ Emulator: <span class="chip">BlueStacks ▾</span> <span class="mu">Android Studio · LDPlayer: Get it</span></div><div>✓ ADB connected <span class="mu">127.0.0.1:5555</span></div><div>○ Set up the app inside the emulator <span class="pill">Open emulator</span></div><div>○ Record the steps</div><div>○ Test</div></div>
+<!-- 2. Recorded steps = editable sentence list (Pages/SentenceBlocks look, like Automation rules). One recording per device; On/Off/Toggle reuse it:
+     the final "Check" step reads the state so On does nothing when already on, Off likewise, Toggle always taps.
+     Steps find elements by text / resource id (uiautomator dump over ADB), position only as fallback. Each waits (Timing value) for its element.
+     Per step: click a block to edit, "Re-pick" (tap the element in the emulator; replaces only this step), Test step, remove x, drag grip to reorder.
+     "+ add step": Open app, Wait for, Tap, Type text, Swipe, Back, Check. A failing step is outlined red with one plain reason. Record pill (re)records all. -->
+<div class="box"><div class="row"><b>Desk plug</b><span class="chip">Method: Simulation ▾</span><span style="margin-left:auto" class="pill">Record</span><span class="pill">Test all</span></div>
+<div class="row">1 Open app <span class="blk">Tapo</span></div>
+<div class="row">2 Wait for <span class="blk">"Desk plug"</span> · tap it <span class="mu" style="margin-left:auto">Re-pick · Test · ×</span></div>
+<div class="row fail">3 Wait for <span class="blk">"Power"</span> · tap it <span class="mu" style="margin-left:auto">Not found on screen · Re-pick</span></div>
+<div class="row">4 Check screen shows <span class="blk">"On"</span></div>
+<div class="row"><span class="add">+ add step</span></div>
+<div class="mu" style="border-top:1px solid #444;padding-top:4px">Last run 08:02 · stopped at step 3</div></div>
+</body></html>

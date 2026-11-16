@@ -1,3 +1,5 @@
+using OmniControl.App.AppLists;
+using OmniControl.App.Hotkeys;
 using CommunityToolkit.Mvvm.ComponentModel;
 using OmniControl.App.Gestures;
 using OmniControl.App.Mouse;
@@ -24,7 +26,7 @@ public sealed partial class GestureItem : ObservableObject, IEditorItem, IHalfWi
     [ObservableProperty] private bool _isOn;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(Summary), nameof(HasOptions))]
+    [NotifyPropertyChangedFor(nameof(Summary), nameof(HasOptions), nameof(ShowsCog))]
     private PickChoice _choice;
 
     /// <summary>The name of the action, as shown on the card's pill.</summary>
@@ -33,6 +35,17 @@ public sealed partial class GestureItem : ObservableObject, IEditorItem, IHalfWi
     /// <summary>True when the action has settings (the card shows a cogwheel).</summary>
     public bool HasOptions => Choice.HasOptions;
 
+    /// <summary>The card's own apps scope (its cogwheel's menu); null for a gesture that has none (only the screen-area ones do).</summary>
+    public AppScopeModel? Scope { get; }
+
+    /// <summary>The card shows a cogwheel: its action has settings, or it can be limited to apps.</summary>
+    public bool ShowsCog => HasOptions || Scope is not null;
+
+    /// <summary>The tag under the card: its apps, shown only while they differ from the group's.</summary>
+    public bool ShowsScopeTag => Scope?.ShowsTag == true;
+
+    public string ScopeTagText => Scope?.Text ?? string.Empty;
+
     /// <summary>The values of the action's settings (only those the user changed from the default).</summary>
     public IReadOnlyDictionary<string, string> Values => _rule.Options;
 
@@ -40,8 +53,16 @@ public sealed partial class GestureItem : ObservableObject, IEditorItem, IHalfWi
     /// <param name="rule">The saved state this card edits.</param>
     /// <param name="changed">Called after any change, so the settings are saved and the hook gets a fresh copy.</param>
     /// <param name="applyToOthers">Called when the user chose to give every gesture with the same action these settings.</param>
-    public GestureItem(string label, Func<IReadOnlyList<PickChoice>> choices, GestureRule rule, Action changed, Action<GestureItem, PickResult> applyToOthers)
+    /// <param name="scope">The card's apps scope, or null when the card has none.</param>
+    public GestureItem(string label, Func<IReadOnlyList<PickChoice>> choices, GestureRule rule, Action changed, Action<GestureItem, PickResult> applyToOthers,
+        AppScopeModel? scope = null)
     {
+        Scope = scope;
+        if (scope is not null) scope.PropertyChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(ShowsScopeTag));
+            OnPropertyChanged(nameof(ScopeTagText));
+        };
         Label = label;
         _choiceSource = choices;
         _choices = choices();
@@ -57,6 +78,7 @@ public sealed partial class GestureItem : ObservableObject, IEditorItem, IHalfWi
     public void Reload()
     {
         _choices = _choiceSource();
+        Scope?.Refresh();
         _loading = true;
         Choice = ChoiceOfRule();
         _parameter = Choice.ParameterOf(_rule.Action);

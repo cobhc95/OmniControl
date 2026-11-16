@@ -5,7 +5,7 @@ public enum LoadPlace
 {
     /// <summary>Nowhere: effects off, nothing to run, or the engine is not running (waiting, failed, not installed).</summary>
     None,
-    /// <summary>Inside Windows by Equalizer APO (Fast mode's master and microphones): OmniControl adds no delay and does not see the processing.</summary>
+    /// <summary>Inside Windows by Equalizer APO (the master): OmniControl adds no delay and does not see the processing.</summary>
     Apo,
     /// <summary>In OmniControl's own engine.</summary>
     Own,

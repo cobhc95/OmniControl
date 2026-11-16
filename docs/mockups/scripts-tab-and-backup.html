@@ -1,0 +1,26 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Scripts tab and Backup card (approved)</title>
+<!-- Approved by the owner 16 Nov 2026 ("build the custom script / importer exporter"). No secret vault. Do not add the owner's own scripts. Colours from the app theme. -->
+<style>
+body{font-family:Segoe UI,sans-serif;background:#1b1b1b;color:#eee;padding:20px;font-size:13px;max-width:820px}
+.tabs{display:flex;gap:16px;border-bottom:1px solid #444;margin-bottom:8px}.tab{padding:4px 2px;color:#999}.tab.on{color:#E8833A;border-bottom:2px solid #E8833A} /* shared PageTabsView: 3rd tab "Scripts" */
+.win{display:flex;border:1px solid #444;border-radius:8px;background:#232323;min-height:220px;font-size:12px}
+.nav{width:180px;border-right:1px solid #444;padding:6px}.n{padding:5px 8px}.n.on{outline:1px solid #E8833A;border-radius:5px} /* list of saved scripts (ListBox.nav-like) + "+ New script" pill */
+.pill{border:1px solid #666;border-radius:11px;padding:1px 9px;display:inline-block}.chip{border:1px solid #666;border-radius:11px;padding:1px 9px} /* Button.pill / the shared ChipMenu chip */
+.code{font-family:Consolas,monospace;border:1px solid #666;border-radius:6px;padding:8px;background:#1d1d1d;min-height:110px} /* monospace multi-line editor, saves live */
+.mu{color:#999;font-size:11px}
+.card{display:flex;gap:8px;align-items:center;border:1px solid #444;border-radius:8px;padding:10px;background:#232323;margin-top:20px}
+.danger{border:1px solid #c44;color:#e66;border-radius:11px;padding:1px 9px}
+</style></head><body>
+<!-- 1. Automation > Scripts tab. Left: saved scripts (name, type icon), "+ New script". Right: name (editable), language chip (PowerShell / CMD batch / Python — Python only offered when an installed Python is found),
+     "used by N", Run, Import… (load a .ps1/.bat/.cmd/.py file's text into a new script), Export… (save the script to a file), Delete (remove cross). Monospace editor; one thin muted status line: last run time and result.
+     Every saved script registers ONE master action "Run script: <name>", so rules, hotkeys, mouse, gestures and the action window can use it. Runs as normal user, hidden, with Timing.CustomActionTimeout, output to automation-log.txt (same runner as custom actions; one implementation). Scripts are stored inside the app's data (json), not as loose files. -->
+<div class="tabs"><span class="tab">Rules</span><span class="tab">Custom actions</span><span class="tab on">Scripts</span></div>
+<div class="win"><div class="nav"><div class="n on">Example script</div><div class="n">Another script</div><div style="margin-top:8px" class="pill">+ New script</div></div>
+<div style="flex:1;padding:8px"><div style="display:flex;gap:6px;align-items:center;margin-bottom:6px"><b>Example script</b><span class="chip">PowerShell ▾</span><span class="mu">used by 2</span><span style="margin-left:auto" class="pill">Run</span><span class="pill">Import…</span><span class="pill">Export…</span></div>
+<div class="code">Write-Output "Hello"</div><div class="mu" style="margin-top:6px">Last run 09:14 · finished in 0.4 s</div></div></div>
+<!-- 2. App settings > "Backup and restore" card (one card row): Export… / Import… / Wipe all… (red outline = real destructive action).
+     Export: ONE .omnibackup file (zip of every json the app saves). Contents come from ONE master registry of saved data stores (every settings class registers itself), so anything added later is included automatically.
+     Import: shows what the file contains (counts per area) and asks Replace everything or Merge; restart if needed. Wipe all: asks twice, deletes all saved data, restarts with factory defaults. -->
+<div class="card"><span>Backup and restore</span><span class="mu">Settings, presets, shortcuts, rules, scripts, custom actions, app lists</span><span style="margin-left:auto" class="pill">Export…</span><span class="pill">Import…</span><span class="danger">Wipe all…</span></div>
+</body></html>

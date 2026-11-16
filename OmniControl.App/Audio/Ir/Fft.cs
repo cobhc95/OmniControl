@@ -1,6 +1,6 @@
 namespace OmniControl.App.Audio.Ir;
 
-/// <summary>An in-place radix-2 complex FFT of one power-of-two size on separate real and imaginary arrays (for the impulse response's frequency-response curve). From TabForge (MIT, see NOTICE.txt).</summary>
+/// <summary>An in-place radix-2 complex FFT of one power-of-two size on separate real and imaginary arrays (the impulse response's frequency-response curve and the convolver). From TabForge (MIT, see NOTICE.txt).</summary>
 internal sealed class Fft
 {
     private readonly float[] _cos, _sin;
@@ -30,9 +30,17 @@ internal sealed class Fft
         }
     }
 
-    public void Forward(float[] re, float[] im) => Transform(re, im);
+    public void Forward(float[] re, float[] im) => Transform(re, im, false);
 
-    private void Transform(float[] re, float[] im)
+    /// <summary>The inverse transform, scaled by 1/N (Forward then Inverse gives the input back); the convolver's.</summary>
+    public void Inverse(float[] re, float[] im)
+    {
+        Transform(re, im, true);
+        var scale = 1f / Size;
+        for (var i = 0; i < Size; i++) { re[i] *= scale; im[i] *= scale; }
+    }
+
+    private void Transform(float[] re, float[] im, bool inverse)
     {
         var n = Size;
         for (var i = 0; i < n; i++)
@@ -42,6 +50,7 @@ internal sealed class Fft
             (re[i], re[j]) = (re[j], re[i]);
             (im[i], im[j]) = (im[j], im[i]);
         }
+        var sign = inverse ? -1f : 1f;
         for (var len = 2; len <= n; len <<= 1)
         {
             var half = len >> 1;
@@ -51,7 +60,7 @@ internal sealed class Fft
                 for (var k = 0; k < half; k++)
                 {
                     var wr = _cos[k * step];
-                    var wi = _sin[k * step];
+                    var wi = sign * _sin[k * step];
                     var a = start + k;
                     var b = a + half;
                     var tr = re[b] * wr - im[b] * wi;

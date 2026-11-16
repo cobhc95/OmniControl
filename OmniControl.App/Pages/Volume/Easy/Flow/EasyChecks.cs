@@ -13,9 +13,9 @@ public static class EasyChecks
 {
     public const string Waiting = "Finish the steps above first";
 
-    private const string FullControlChange =
-        "Full control sends sound through a virtual cable and OmniControl's engine (about 30-80 ms delay). " +
-        "It applies to the whole Volume page; switch back in Advanced.";
+    private const string ApoMasterChange =
+        "The master will run in Equalizer APO instead of the cable bus: one speaker, no VST3 plug-ins. " +
+        "Change it back with Method on the Master row in Advanced.";
 
     private static EasyCheck Line(string id, string title, string subtitle, CheckState state, EasyFix? fix = null, bool optional = false) =>
         new(id, title, subtitle, state, fix, optional);
@@ -39,15 +39,22 @@ public static class EasyChecks
 
     private static EasyCheck Needs(string id, string title, string reason) => Line(id, title, reason, CheckState.Blocked);
 
-    /// <summary>"Full control is on", with the switch (after a question) as the fix when it can be chosen.</summary>
-    private static EasyCheck FullControl(EasyFacts f)
+    /// <summary>The Equalizer APO way for the master: its method must be Equalizer APO while it still goes through the cable bus (its question comes first).</summary>
+    private static EasyCheck? ApoForMaster(EasyFacts f) => f.MasterOnBus
+        ? Line("apo-master", "Equalizer APO runs the master", "It goes through a cable now.", CheckState.Todo,
+            new EasyFix(EasyFixes.FreeCable, "Use Equalizer APO", new EasyConfirm("Use Equalizer APO?", ApoMasterChange, "Use it")))
+        : null;
+
+    /// <summary>The cable way for the master: the master on the cable bus (its method is Equalizer APO until this is done).</summary>
+    private static EasyCheck CableBus(EasyFacts f)
     {
-        if (f.FullControl) return Line("full", "Full control is on", "Sound goes through OmniControl's engine.", CheckState.Done);
-        return f.FullUnavailable is { } why
-            ? Line("full", "Full control is off", $"{why}.", CheckState.Blocked)
-            : Line("full", "Full control is off", "Combined speakers need it.", CheckState.Todo,
-                new EasyFix(EasyFixes.SwitchToFull, "Switch to Full control", new EasyConfirm("Switch to Full control?", FullControlChange, "Switch")));
+        if (f.MasterOnBus) return Line("engine", "OmniControl's engine runs your sound", "Through a virtual cable, with a short delay.", CheckState.Done);
+        if (f.CablesReady == 0 && !f.CableInstalled) return Line("engine", "Use the cable bus", $"{EffectsRules.NeedsCable}.", CheckState.Blocked);
+        if (f.CablesReady == 0) return Line("engine", "Use the cable bus", $"{EffectsRules.CablesOff}.", CheckState.Blocked);
+        return Line("engine", "Use the cable bus", "The master runs in Equalizer APO now.", CheckState.Todo, new EasyFix(EasyFixes.UseOwnEngine, "Use the cable"));
     }
+
+    private static bool UsesCable(EasyAnswers a) => a.Engine == EasyEngine.Cable;
 
     /// <summary>
     /// "A virtual cable is available" for a new combined device: done while one is free; otherwise why not and the next best step: install
@@ -59,13 +66,12 @@ public static class EasyChecks
         if (cable.FreeName is { } free) return Line("cable", title, $"{free} is free for it.", CheckState.Done);
         if (cable.Missing == StatusKind.NeedsCable)
             return Line("cable", title, "VB-CABLE is not installed.", CheckState.Todo, new EasyFix(EasyFixes.InstallCable, "Install VB-CABLE"));
-        if (cable.Missing == StatusKind.CablesOff) return Line("cable", title, $"{SoundModes.CablesOff}. Switch one on under Virtual cables in Advanced.", CheckState.Blocked);
+        if (cable.Missing == StatusKind.CablesOff) return Line("cable", title, $"{EffectsRules.CablesOff}. Switch one on under Virtual cables in Advanced.", CheckState.Blocked);
         if (cable.BusName is { } bus)
             return cable.CanFreeBus
                 ? Line("cable", title, $"The master uses {bus}. It can run in Equalizer APO instead.", CheckState.Todo,
                     new EasyFix(EasyFixes.FreeCable, "Free the cable", new EasyConfirm("Free the cable?",
-                        "The master will run in Equalizer APO instead of the cable bus: one speaker, no VST3 plug-ins. " +
-                        "Change it back with Method on the Master row in Advanced.", "Free it")))
+                        ApoMasterChange, "Free it")))
                 : Line("cable", title, $"The master uses {bus}. {(microphone ? "A microphone" : "Combined speakers")} needs a second cable pair.", CheckState.Todo,
                     new EasyFix(EasyFixes.MoreCables, "More cables"));
         return Line("cable", title, "Every cable is in use.", CheckState.Todo, new EasyFix(EasyFixes.MoreCables, "More cables"));
@@ -79,17 +85,14 @@ public static class EasyChecks
     public static IReadOnlyList<EasyCheck> Better(EasyAnswers a, EasyFacts f)
     {
         var lines = new List<EasyCheck>();
-        if (f.FullControl && f.MasterOnBus)
-            lines.Add(Line("engine", "OmniControl's engine runs your sound", "Through a virtual cable, with a short delay.", CheckState.Done));
+        if (UsesCable(a)) lines.Add(CableBus(f));
         else
         {
+            if (ApoForMaster(f) is { } apoMaster) lines.Add(apoMaster);
             lines.Add(ApoInstalled(f));
             lines.Add(Covered(f, "speakers", f.SpeakersApoWhy, "Your speakers are selected in Equalizer APO", "Your speakers are not selected yet", "Choose my speakers"));
         }
         lines.Add(ApplySound(f, lines.All(l => l.IsDone)));
-        if (!f.FullControl && f.FullUnavailable is null && !lines.Take(2).All(l => l.IsDone))
-            lines.Add(Line("other", "Use another way", "Through a virtual cable, with a little delay.", CheckState.Todo,
-                new EasyFix(EasyFixes.UseOwnEngine, "Use another way", new EasyConfirm("Use another way?", FullControlChange, "Switch")), optional: true));
         return lines;
     }
 
@@ -109,37 +112,34 @@ public static class EasyChecks
     public static IReadOnlyList<EasyCheck> PerApp(EasyAnswers a, EasyFacts f)
     {
         var works = f.ProgramsWhy is null
-            ? Line("works", "Effects work for these apps", f.FullControl ? "OmniControl uses a free cable, or records them." : "They are recorded, so no cable is needed.", CheckState.Done)
+            ? Line("works", "Effects work for these apps", "OmniControl uses a free cable, or records them.", CheckState.Done)
             : Needs("works", "Effects work for these apps", $"{f.ProgramsWhy}.");
+        var lines = new List<EasyCheck>();
+        if (UsesCable(a)) lines.Add(CableBus(f));
+        else if (ApoForMaster(f) is { } apoMaster) lines.Add(apoMaster);
         EasyCheck own;
         if (a.Programs.Count == 0) own = Needs("own", "Give each app its own sound", "Tick at least one app first.");
         else if (a.Programs.All(f.OwnEqPrograms.Contains))
             own = Line("own", "Each app has its own sound", $"{AppsList(f, a.Programs)}: ready to shape from its Sound button.", CheckState.Done);
-        else if (!works.IsDone) own = Needs("own", "Give each app its own sound", Waiting);
+        else if (!works.IsDone || !lines.All(l => l.IsDone)) own = Needs("own", "Give each app its own sound", Waiting);
         else
             own = Line("own", "Give each app its own sound", "Adds a flat equaliser to each.", CheckState.Todo,
                 new EasyFix(EasyFixes.ApplyProgramSounds, "Give them their own sound"));
-        return new[] { works, own };
+        lines.Add(works);
+        lines.Add(own);
+        return lines;
     }
 
     // ---- card 3: improve my microphone ----
 
     public static IReadOnlyList<EasyCheck> Microphone(EasyAnswers a, EasyFacts f)
     {
-        var lines = new List<EasyCheck>();
-        if (f.FullControl)
-            lines.Add(Line("fast", "Microphone effects run in Fast mode", "In Full control a microphone goes through a cable instead.", CheckState.Todo,
-                new EasyFix(EasyFixes.SwitchToFast, "Switch to Fast mode", new EasyConfirm("Switch to Fast mode?",
-                    "Fast mode runs master and microphone effects inside Windows and records programs. Combined speakers and playing on several speakers stop until you switch back in Advanced.",
-                    "Switch"))));
-        lines.Add(ApoInstalled(f));
+        var lines = new List<EasyCheck> { Cable(f.CableForMicrophone, microphone: true) };
         if (a.MicrophoneId is not { } id)
         {
-            lines.Add(Needs("mic", "Your microphone is selected in Device Selector", "Choose a microphone first."));
             lines.Add(Needs("apply", "Apply", "Choose a microphone first."));
             return lines;
         }
-        lines.Add(Covered(f, "mic", f.MicApoWhy.GetValueOrDefault(id), "Your microphone is selected in Device Selector", "Your microphone is not selected yet", "Choose my microphone"));
         var ready = lines.All(l => l.IsDone);
         var gains = a.MicGains;
         var now = f.MicGains.GetValueOrDefault(id) ?? EasyEq.Flat();
@@ -169,16 +169,15 @@ public static class EasyChecks
 
     public static IReadOnlyList<EasyCheck> TwoSpeakers(EasyAnswers a, EasyFacts f)
     {
-        var full = FullControl(f);
         var cable = Cable(f.CableForSpeakers, microphone: false);
         const string title = "Create the combined speaker";
         var made = CombinedOf(f, CombinedKind.Speakers, a);
         EasyCheck create;
         if (made is not null) create = Line("create", $"{made.Name} is created", "Apps can now play on it.", CheckState.Done);
         else if (a.Devices.Count < 2) create = Needs("create", title, "Tick at least two speakers first.");
-        else if (!full.IsDone || !cable.IsDone) create = Needs("create", title, Waiting);
+        else if (!cable.IsDone) create = Needs("create", title, Waiting);
         else create = Line("create", title, "Plays the same sound on all of them.", CheckState.Todo, new EasyFix(EasyFixes.CreateSpeakers, "Create it"));
-        return new[] { full, cable, create };
+        return new[] { cable, create };
     }
 
     /// <summary>Card 5's last step, shown on its "All set" screen: the master plays on the new device too (only the cable bus can).</summary>
@@ -205,7 +204,7 @@ public static class EasyChecks
 
     /// <summary>What apps pick as a combined microphone ("Apps record it from CABLE Output"); the cable that is free now when its own is not known yet.</summary>
     public static string RecordedFrom(EasyCombinedFact made, EasyCableFact cable) =>
-        (made.RecordingName ?? cable.RecordingName) is { } name ? SoundModes.AppsRecordFrom(name) + "." : "Apps record it from its cable.";
+        (made.RecordingName ?? cable.RecordingName) is { } name ? EffectsRules.AppsRecordFrom(name) + "." : "Apps record it from its cable.";
 
     // ---- the question screens ----
 

@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 namespace OmniControl.App.Pages.Volume.Easy;
@@ -12,14 +13,17 @@ public sealed record PictureStep(string Text, PictureTone Tone, bool ArrowBefore
     public static IReadOnlyList<PictureStep> Of(IReadOnlyList<PicturePart> parts) => parts.Select((p, i) => new PictureStep(p.Text, p.Tone, i > 0)).ToList();
 }
 
-/// <summary>One card of the welcome screen: a goal, whether it is already on (shown "✓ on"), and what choosing it does.</summary>
-public sealed class GoalCard
+/// <summary>
+/// One card of the welcome screen: a goal, whether it is already on (shown "✓ on") and whether it is ticked. Clicking anywhere on it toggles
+/// the tick; which goals are ticked is the view-model's list (<see cref="EasyViewModel"/>), this only shows it and reports the click.
+/// </summary>
+public sealed partial class GoalCard : ObservableObject
 {
-    public GoalCard(EasyGoal goal, bool isOn, Action<EasyGoal> choose)
+    public GoalCard(EasyGoal goal, bool isOn, Action<GoalCard> toggled)
     {
         Goal = goal;
         IsOn = isOn;
-        ChooseCommand = new RelayCommand(() => choose(goal));
+        ToggleCommand = new RelayCommand(() => toggled(this));
         Steps = PictureStep.Of(goal.Picture);
     }
 
@@ -27,5 +31,8 @@ public sealed class GoalCard
 
     public EasyGoal Goal { get; }
     public bool IsOn { get; }
-    public IRelayCommand ChooseCommand { get; }
+    public IRelayCommand ToggleCommand { get; }
+
+    /// <summary>Ticked: the setup will run for this goal (set by the view-model).</summary>
+    [ObservableProperty] private bool _isSelected;
 }

@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using OmniControl.App.Display;
 using OmniControl.App.Hotkeys;
 using OmniControl.App.Osd;
+using OmniControl.App.Presets;
 using OmniControl.App.Services;
 using OmniControl.Core;
 using OmniControl.Core.Interfaces;
@@ -21,6 +22,7 @@ namespace OmniControl.App.Pages.Displays;
 public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
 {
     private const string LaptopId = "laptop";
+    private const string BuiltIn = "Built-in display";
 
     /// <summary>What a worker thread found out about the displays, to be shown on the UI thread.</summary>
     private sealed record Snapshot(IReadOnlyList<DisplayInfo> Displays, IReadOnlyList<IMonitor> Monitors, bool HasLaptop);
@@ -36,13 +38,18 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
     private readonly WarmLightItem _warm;
     private readonly WarmLightScheduler _scheduler;
     private readonly DisplaySettingsStore _store;
-    private readonly ButtonItem _presetsCard;
+    private readonly PicturePresetBook _pictureBook;
+    private readonly ProviderChoice _presets;
+    private readonly MonitorPresetBook _monitorBook;
+    private readonly ProviderChoice _monitorPresets;
     private readonly List<HardwareDisplayItem> _hardware = new();
     private readonly List<SoftwareDisplayItem> _softwareItems = new();
     private IReadOnlyList<IMonitor> _shownMonitors = Array.Empty<IMonitor>();
     private bool _hasLaptop;
 
     public override string Title => "Displays";
+
+    public override string? NavGroup => NavGroups.Devices;
 
     public override string KeyHelp => "F5 looks at the monitors again (Refresh).";
     public override string Icon => "M4,4 H20 A2,2 0 0 1 22,6 V16 A2,2 0 0 1 20,18 H14 V20 H17 V22 H7 V20 H10 V18 H4 A2,2 0 0 1 2,16 V6 A2,2 0 0 1 4,4 Z M4,6 V16 H20 V6 Z";
@@ -60,50 +67,76 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
     /// <summary>What OmniControl does to the picture itself: the whole-desktop controls, then one inner group per display.</summary>
     public ParentGroup Software { get; }
 
-    /// <summary>The page asks the window layer to show the picture presets (wiring: the view opens the window).</summary>
-    public event Action<DisplayPresetsModel>? PresetsRequested;
+    /// <summary>The preset manager's ids of the two preset groups (also part of their shortcut actions' ids: never rename).</summary>
+    public const string HardwarePresetsId = "displays.hardware", SoftwarePresetsId = "displays.software";
+
+    private readonly Action<string?, string?> _openPresets;
 
     /// <summary>Only the controls a monitor has are searched for; the ones it does not report are not offered.</summary>
     public override IEnumerable<SearchEntry> SearchEntries =>
         _hardware.SelectMany(h => h.AvailableCards.Select(c => Entry(c, $"{c.Label} ({h.Name})", $"monitor display screen ddc {h.Name}", DisplayControls.HardwareGroup)))
             .Concat(SoftwareWholeCards.Select(c => Entry(c, c.Label, "monitor display screen digital software", DisplayControls.SoftwareGroup)))
             .Concat(_softwareItems.SelectMany(s => s.Cards.Select(c =>
-                Entry(c, $"{c.Label} ({s.Name})", $"monitor display screen digital software {s.Name}", DisplayControls.SoftwareGroup))));
+                Entry(c, $"{c.Label} ({s.Name})", $"monitor display screen digital software {s.Name}", DisplayControls.SoftwareGroup))))
+            .Append(Entry(PresetChoice, "Display presets", "display presets manage save apply picture preset cogwheel settings", DisplayControls.SoftwareGroup))
+            .Append(Entry(MonitorPresetChoice, "Monitor presets", "monitor presets manage save apply hardware ddc preset cogwheel settings", DisplayControls.HardwareGroup));
 
     private static string NoMonitors => "No monitors available";
 
-    public DisplaysPageViewModel(MonitorEngine engine, HotkeyRegistry hotkeys, OsdService osd, SoftwareDisplayService software, Action<string> report)
+    /// <param name="presets">The master list of preset groups: the page registers its two.</param>
+    /// <param name="openPresets">Opens the preset manager at a section and group (the header cogwheels).</param>
+    public DisplaysPageViewModel(MonitorEngine engine, HotkeyRegistry hotkeys, OsdService osd, SoftwareDisplayService software, Action<string> report,
+        PresetGroups presets, Action<string?, string?> openPresets)
     {
-        (_engine, _hotkeys, _osd, _software, _report) = (engine, hotkeys, osd, software, report);
+        (_engine, _hotkeys, _osd, _software, _report, _openPresets) = (engine, hotkeys, osd, software, report, openPresets);
         _rescan = new ThrottledRun(Timing.DisplayRescanGap, RescanNow);
 
         foreach (var spec in DisplayControls.All) osd.Declare(spec.Osd, icon: spec.Icon);
 
         _store = DisplaySettingsStore.OnDisk();
         _scheduler = new WarmLightScheduler(software, _store);
-        _global = new SoftwareGlobalItem(software, osd, Title, report, ResetAllSoftware);
+        // Order matters: a preset drop-down reads what it lists as soon as it is made. The store comes first; the global item comes before
+        // the picture drop-down (it reads the picture, including it); _hardware (a field initialiser, empty until the displays are
+        // read) is what the monitor drop-down reads, and it greys itself until a monitor reports a control. The two preset groups are
+        // registered after the page's own actions, once both books exist: registering may read their presets at once (a preset with a
+        // saved shortcut gets its action, listed after the page's own).
+        _global = new SoftwareGlobalItem(software, osd, Title, report, ResetAllSoftware, RefreshPictureChoice);
+        _pictureBook = new PicturePresetBook(_store, CapturePicture, ApplyPicture);
+        var pictureGroup = new BookPresets(_pictureBook);
+        _presets = new ProviderChoice(_pictureBook.Label, pictureGroup, ManagePicturePresets, withCustom: true);
+        _monitorBook = new MonitorPresetBook(_store, PresetTargets);
+        var monitorGroup = new BookPresets(_monitorBook);
+        _monitorPresets = new ProviderChoice(_monitorBook.Label, monitorGroup, ManageMonitorPresets, withCustom: true);
         _warm = new WarmLightItem(_scheduler, _store, Title, report);
-        _presetsCard = new ButtonItem("Display presets", "Presets...", "Save and restore picture settings", OpenPresets) { Half = true };
         Software = new ParentGroup("Displays/Software", DisplayControls.SoftwareGroup, string.Empty, SoftwareWholeCards.Cast<object>().ToList())
         {
             ExpandedByDefault = true,
+            Restore = ResetAllSoftware,
+            RestoreTip = "Puts every display's software picture, saturation, grayscale, invert and the warm-light schedule back to normal. Presets are kept.",
             Tip = "Applied by OmniControl on any display and put back when it closes (the saved presets and the warm-light schedule are kept). "
                   + "Colour temperature: minus is warmer, plus is cooler. Saturation, grayscale and invert apply to all displays. "
                   + "A display whose driver does not accept colour changes from programs is greyed out.",
         };
-        UpdateSoftwareSummary();
         RegisterActions();
+        presets.Register(new PresetGroup(HardwarePresetsId, Title, DisplayControls.HardwareGroup, monitorGroup));
+        presets.Register(new PresetGroup(SoftwarePresetsId, Title, DisplayControls.SoftwareGroup, pictureGroup));
         _scheduler.Changed += ShowRefusals;
         _scheduler.Start();
         Task.Run(RefreshNow);
     }
 
-    /// <summary>The software cards that belong to every display: the desktop's colour effect, the warm-light schedule and the presets.</summary>
-    private IEnumerable<IEditorItem> SoftwareWholeCards => _global.Cards.Concat(_warm.Cards).Append(_presetsCard);
+    private void RefreshPictureChoice() => _presets.Refresh();
+
+    /// <summary>The software cards that belong to every display: the desktop's colour effect and the warm-light schedule.</summary>
+    private IEnumerable<IEditorItem> SoftwareWholeCards => _global.Cards.Concat(_warm.Cards);
 
     // ---------------------------------------------------------------- picture presets
 
-    private void OpenPresets() => PresetsRequested?.Invoke(new DisplayPresetsModel(_store, CapturePicture, ApplyPicture));
+    /// <summary>The preset drop-down on the Software group's title line (the presets window is its cogwheel).</summary>
+    public ChoiceItem PresetChoice => _presets.Choice;
+
+    /// <summary>The cogwheel beside the picture preset drop-down: the preset manager at the Software card.</summary>
+    public void ManagePicturePresets() => _openPresets(Title, SoftwarePresetsId);
 
     /// <summary>The software picture every display and the desktop show now.</summary>
     private DisplayPreset CapturePicture()
@@ -221,10 +254,17 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
         Hardware.Subgroups.Clear();
         _shownMonitors = monitors;
 
-        if (snapshot.HasLaptop) Add(new HardwareDisplayItem(LaptopId, "Built-in display", new LaptopAccess(_engine.Laptop), _levels, _osd, _report, ShowHardwareGroups));
+        if (snapshot.HasLaptop)
+        {
+            var panel = snapshot.Displays.FirstOrDefault(d => d.IsInternal)?.DeviceName;
+            Add(new HardwareDisplayItem(LaptopId, BuiltIn, new LaptopAccess(_engine.Laptop), Orientation(panel, BuiltIn), _levels, _osd, _report, ShowHardwareGroups, _monitorPresets.Refresh));
+        }
         foreach (var monitor in monitors)
-            Add(new HardwareDisplayItem(monitor.Info.DeviceName, monitor.Info.Name, new MonitorAccess(monitor), _levels, _osd, _report, ShowHardwareGroups));
+            Add(new HardwareDisplayItem(monitor.Info.DeviceName, monitor.Info.Name, new MonitorAccess(monitor), Orientation(monitor.Info.DeviceName, monitor.Info.Name),
+                _levels, _osd, _report, ShowHardwareGroups, _monitorPresets.Refresh));
     }
+
+    private DisplayOrientationCard Orientation(string? deviceName, string name) => new(deviceName, name, _engine.Rotation, _report);
 
     private void Add(HardwareDisplayItem display)
     {
@@ -238,6 +278,7 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
     {
         Hardware.Subgroups.Clear();
         foreach (var group in _hardware.SelectMany(h => h.Groups)) Hardware.Subgroups.Add(group);
+        _monitorPresets.Refresh(); // a monitor that was read, came or went changes what a monitor preset shows and whether one can be saved
     }
 
     /// <summary>Software groups follow the attached displays: new ones appear, gone ones are forgotten, the others keep their values.</summary>
@@ -253,7 +294,7 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
         foreach (var display in displays)
         {
             var item = _softwareItems.FirstOrDefault(s => s.Id == display.DeviceName);
-            item ??= new SoftwareDisplayItem(display, _software, _report);
+            item ??= new SoftwareDisplayItem(display, _software, _report, _presets.Refresh);
             fresh.Add(item);
         }
 
@@ -264,27 +305,26 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
             Software.Subgroups.Clear();
             foreach (var item in fresh) Software.Subgroups.Add(item.Group);
         }
-        UpdateSoftwareSummary();
+        _presets.Refresh(); // a display that came or went changes what the picture is
     }
 
-    private void UpdateSoftwareSummary()
-    {
-        var count = SoftwareWholeCards.Count() + _softwareItems.Sum(s => s.Cards.Count);
-        Software.Summary = count == 1 ? "1 setting" : $"{count} settings";
-    }
-
-    /// <summary>Every display's software picture and the saturation back to normal.</summary>
+    /// <summary>Every display's software picture, the colour effect and the warm-light schedule back to normal (the saved presets are kept).</summary>
     private void ResetAllSoftware()
     {
         foreach (var item in _softwareItems) item.Reset();
         _global.Reset();
+        _warm.Reset();
         _software.ResetAll();
+        _presets.Refresh();
     }
 
     public void Dispose()
     {
         _scheduler.Changed -= ShowRefusals;
         _warm.Dispose();
+        _presets.Dispose();
+        _monitorPresets.Dispose();
+        _monitorBook.Dispose();
         _scheduler.Dispose();
         _rescan.Dispose();
         foreach (var display in _hardware) display.Dispose();

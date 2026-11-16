@@ -1,0 +1,25 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Pages.Devices"
+             xmlns:pages="using:OmniControl.App.Pages"
+             x:Class="OmniControl.App.Pages.Devices.DevicesPage"
+             x:DataType="vm:DevicesPageViewModel">
+    <!-- The Devices page (docs/mockups/devices-tab.html): the devices on the left (ListBox.nav) with a dashed "+ Add device" under them, the chosen
+         device on the right (DeviceDetail, template in App.axaml). With no device, one dashed row says so. -->
+    <StackPanel Spacing="6">
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" IsVisible="{Binding !NoDevices}">
+            <StackPanel Spacing="8" MinWidth="120" MaxWidth="200">
+                <ListBox Classes="nav" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:DeviceItem">
+                            <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Label}" />
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <Button Classes="blockadd small" Content="+ Add device" Command="{Binding AddDeviceCommand}" HorizontalAlignment="Left" />
+            </StackPanel>
+            <ContentControl Grid.Column="1" Content="{Binding Selected}" IsVisible="{Binding HasSelected}" />
+        </Grid>
+        <pages:EmptyListRow IsVisible="{Binding NoDevices}" Text="No devices yet. A device is a smart plug OmniControl can switch on and off." LinkText="Add device" Command="{Binding AddDeviceCommand}" />
+    </StackPanel>
+</UserControl>

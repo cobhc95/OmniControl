@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -9,10 +9,10 @@ using Avalonia.VisualTree;
 namespace OmniControl.App.Picker;
 
 /// <summary>
-/// The master picker's two-pane, searchable list, with a second page for the settings of an entry (behind its cogwheel).
-/// On the first page focus never leaves the search box, so typing always searches; the arrow keys move the highlight
-/// (Up/Down inside a side, Left/Right between categories, entries and the cogwheel while the box is empty).
-/// On the settings page Up/Down choose a setting and Left/Right change it.
+/// The master picker's three panes: sections, the entries of the section, and the settings of the highlighted entry (always shown, live).
+/// While the keys are in the list, focus never leaves the search box, so typing always searches; the arrow keys move the highlight
+/// (Up/Down in the list, Left/Right between sections while the box is empty) and Tab moves into the settings. In the settings Up/Down choose
+/// a setting and Left/Right change it. Enter uses the highlighted entry from anywhere; Esc leaves the settings, clears the search, then closes.
 /// </summary>
 public partial class PickerMenu : UserControl
 {
@@ -21,7 +21,7 @@ public partial class PickerMenu : UserControl
     /// <summary>An entry was chosen, with the values of its settings.</summary>
     public event Action<PickResult>? Picked;
 
-    /// <summary>The user asked to close the window (Esc on the first page with nothing typed).</summary>
+    /// <summary>The user asked to close the window (Esc with nothing typed and the keys in the list).</summary>
     public event Action? CloseRequested;
 
     public PickerMenu()
@@ -30,8 +30,8 @@ public partial class PickerMenu : UserControl
         AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
         AddHandler(PointerPressedEvent, OnAnyPress, RoutingStrategies.Tunnel);
         OptionList.AddHandler(PointerWheelChangedEvent, OnOptionWheel);
-        ActionList.AddHandler(TappedEvent, OnActionTapped);
-        CategoryList.AddHandler(TappedEvent, OnCategoryTapped);
+        ActionList.AddHandler(DoubleTappedEvent, OnActionDoubleTapped);
+        SectionList.AddHandler(TappedEvent, OnSectionTapped);
     }
 
     /// <summary>Starts a fresh pick: shows the model and puts the cursor where typing or the arrow keys belong.</summary>
@@ -43,8 +43,9 @@ public partial class PickerMenu : UserControl
         DataContext = model;
         Dispatcher.UIThread.Post(() =>
         {
-            FocusCurrentPage();
-            CategoryList.ScrollIntoView(model.CategoryIndex);
+            if (model.StartInSettings) model.EnterSettings();
+            FocusCurrentPane();
+            SectionList.ScrollIntoView(model.SectionIndex);
             ActionList.ScrollIntoView(model.ActionIndex);
         }, DispatcherPriority.Loaded);
     }
@@ -56,9 +57,9 @@ public partial class PickerMenu : UserControl
         _model = null;
     }
 
-    private void FocusCurrentPage()
+    private void FocusCurrentPane()
     {
-        if (_model?.IsEditingOptions == true) OptionsFocus.Focus(NavigationMethod.Directional);
+        if (_model?.InSettings == true) SettingsFocus.Focus(NavigationMethod.Directional);
         else Search.Focus(NavigationMethod.Directional);
     }
 
@@ -68,27 +69,33 @@ public partial class PickerMenu : UserControl
         switch (e.PropertyName)
         {
             case nameof(PickerModel.ActionIndex) when _model.ActionIndex >= 0: ActionList.ScrollIntoView(_model.ActionIndex); break;
-            case nameof(PickerModel.CategoryIndex) when _model.CategoryIndex >= 0: CategoryList.ScrollIntoView(_model.CategoryIndex); break;
+            case nameof(PickerModel.SectionIndex) when _model.SectionIndex >= 0: SectionList.ScrollIntoView(_model.SectionIndex); break;
             case nameof(PickerModel.OptionIndex) when _model.OptionIndex >= 0: OptionList.ScrollIntoView(_model.OptionIndex); break;
-            case nameof(PickerModel.IsEditingOptions): Dispatcher.UIThread.Post(FocusCurrentPage, DispatcherPriority.Loaded); break;
+            case nameof(PickerModel.InSettings): Dispatcher.UIThread.Post(FocusCurrentPane, DispatcherPriority.Loaded); break;
         }
     }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
         if (_model is not { } model) return;
-        var handled = model.IsEditingOptions ? OnOptionsKey(model, e) : OnPickKey(model, e);
+        // A click into a settings box puts the keys there too.
+        var inSettings = model.InSettings || TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() is TextBox box && box != Search;
+        var handled = inSettings ? OnSettingsKey(model, e) : OnListKey(model, e);
         if (handled) e.Handled = true;
     }
 
-    /// <summary>Hands on the result of choosing an entry from the list (nothing when it can't be picked or its text is asked for first).</summary>
-    private void Choose(PickerModel model, Mouse.PickChoice choice)
+    /// <summary>Uses the highlighted entry (a list's button runs instead). Nothing happens when it can't be used.</summary>
+    private void UseHighlighted(PickerModel model)
     {
-        if (model.PickFor(choice) is { } pick) Picked?.Invoke(pick);
+        // A text being typed is taken first (a text setting commits when its box loses focus).
+        SettingsFocus.Focus(NavigationMethod.Directional);
+        if (model.ActiveChoice is { Command: not null } command) _ = model.RunCommandAsync(command, this);
+        else if (model.Use() is { } pick) Picked?.Invoke(pick);
+        else FocusCurrentPane();
     }
 
-    /// <summary>Keys on the first page. Returns true when the key was used.</summary>
-    private bool OnPickKey(PickerModel model, KeyEventArgs e)
+    /// <summary>Keys while they are in the list. Returns true when the key was used.</summary>
+    private bool OnListKey(PickerModel model, KeyEventArgs e)
     {
         var typing = model.Query.Length > 0; // with text in the box, Left/Right belong to the caret
 
@@ -97,21 +104,14 @@ public partial class PickerMenu : UserControl
             case Key.Up or Key.Down:
                 model.Move(Services.Wrap.Direction(e.Key));
                 return true;
-            case Key.Left when !typing:
-                if (model.InCog) model.InCog = false;
-                else model.InCategories = true;
-                return true;
-            case Key.Right when !typing:
-                if (!model.InCategories && model.CanOpenOptions && !model.InCog) model.InCog = true;
-                else model.InCategories = false;
+            case Key.Left or Key.Right when !typing:
+                model.MoveSection(e.Key == Key.Right ? 1 : -1);
                 return true;
             case Key.Enter:
-                if (model.InCog) model.OpenOptions();
-                else if (model.InCategories && !model.IsSearching) model.InCategories = false;
-                else if (model.ActiveChoice is { } choice) Choose(model, choice);
+                UseHighlighted(model);
                 return true;
             case Key.Tab:
-                model.OpenOptions(); // the only stop is the search box, so Tab is free to open the highlighted entry's settings
+                model.EnterSettings(); // the only stop is the search box, so Tab is free to move into the settings
                 return true;
             case Key.Escape:
                 if (typing) model.Query = string.Empty;
@@ -121,41 +121,42 @@ public partial class PickerMenu : UserControl
         return false;
     }
 
-    /// <summary>Keys on the settings page. Returns true when the key was used.</summary>
-    private bool OnOptionsKey(PickerModel model, KeyEventArgs e)
+    /// <summary>Keys while they are in the settings. Returns true when the key was used.</summary>
+    private bool OnSettingsKey(PickerModel model, KeyEventArgs e)
     {
         var inText = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() is TextBox;
 
         switch (e.Key)
         {
             case Key.Up or Key.Down:
-                if (inText) OptionsFocus.Focus(NavigationMethod.Directional);
+                if (inText) SettingsFocus.Focus(NavigationMethod.Directional);
                 model.MoveOption(Services.Wrap.Direction(e.Key));
                 return true;
             case Key.Left or Key.Right when !inText:
                 model.SelectedOption?.Step(e.Key == Key.Right ? 1 : -1);
                 return true;
             case Key.Space when !inText:
-                if (model.OnUseButton) UseSettings(model);
+                if (model.OnFootButton) model.RunFootButton();
                 else model.SelectedOption?.Flip();
                 return true;
             case Key.Enter:
-                if (model.OnUseButton) UseSettings(model);
-                else if (inText) OptionsFocus.Focus(NavigationMethod.Directional); // done typing (a typed number is taken when the box loses focus)
-                else if (model.SelectedOption is { IsText: true } && e.KeyModifiers != KeyModifiers.Control) EditText();
+                if (model.OnFootButton) model.RunFootButton();
+                else if (inText) SettingsFocus.Focus(NavigationMethod.Directional); // done typing (a typed number is taken when the box loses focus)
+                else if (model.SelectedOption is { IsText: true } or { IsPath: true } && e.KeyModifiers != KeyModifiers.Control) EditText();
                 else if (model.SelectedOption is { IsNumber: true } number && e.KeyModifiers == KeyModifiers.Control) BeginTyping(number); // Enter itself applies
-                else UseSettings(model);
+                else UseHighlighted(model);
                 return true;
-            case Key.Left when e.KeyModifiers == KeyModifiers.Alt && model.CanGoBack:
-                model.CloseOptions();
+            case Key.Tab:
+                SettingsFocus.Focus(NavigationMethod.Directional); // takes a typed text before the keys go back to the list
+                model.InSettings = false;
                 return true;
             case Key.Escape:
                 if (inText)
                 {
                     model.SelectedOption?.CancelTyping();
-                    OptionsFocus.Focus(NavigationMethod.Directional);
+                    SettingsFocus.Focus(NavigationMethod.Directional);
                 }
-                else model.CloseOptions();
+                else model.InSettings = false;
                 return true;
         }
         return false;
@@ -181,37 +182,28 @@ public partial class PickerMenu : UserControl
         row.GetVisualDescendants().OfType<TextBox>().FirstOrDefault(t => t.IsEffectivelyVisible)?.Focus(NavigationMethod.Directional);
     }
 
-    private void UseSettings(PickerModel model)
-    {
-        // A text being typed is taken first (a text setting commits when its box loses focus).
-        OptionsFocus.Focus(NavigationMethod.Directional);
-        if (model.PickFromOptions() is { } pick) Picked?.Invoke(pick);
-    }
-
     private void OnUseClick(object? sender, RoutedEventArgs e)
     {
-        if (_model is not null) UseSettings(_model);
+        if (_model is not null) UseHighlighted(_model);
     }
 
-    private void OnBackClick(object? sender, RoutedEventArgs e) => _model?.CloseOptions();
+    private void OnFootButtonClick(object? sender, RoutedEventArgs e) => _model?.RunFootButton();
 
-    private void OnActionTapped(object? sender, TappedEventArgs e)
+    private void OnActionDoubleTapped(object? sender, TappedEventArgs e)
     {
-        if (e.Source is Visual source && source.FindAncestorOfType<Button>() is not null) return; // the cogwheel has its own click
-        if (_model is not null && (e.Source as Control)?.FindAncestorOfType<ListBoxItem>()?.DataContext is PickerRow row)
-            Choose(_model, row.Choice);
+        if (_model is null || e.Source is Visual source && source.FindAncestorOfType<Button>() is not null) return;
+        if ((e.Source as Control)?.FindAncestorOfType<ListBoxItem>()?.DataContext is PickerRow) UseHighlighted(_model);
     }
 
-    private void OnCategoryTapped(object? sender, TappedEventArgs e)
+    private void OnSectionTapped(object? sender, TappedEventArgs e)
     {
-        if (_model is null) return;
-        _model.InCategories = true;
+        if (_model is { IsSearching: true }) _model.Query = string.Empty; // a click on the section that was highlighted leaves the search too
         Search.Focus(NavigationMethod.Directional);
     }
 
-    private void OnRowCogClick(object? sender, RoutedEventArgs e)
+    private void OnRowCommandClick(object? sender, RoutedEventArgs e)
     {
-        if (_model is not null && (sender as Control)?.DataContext is PickerRow row) _model.OpenOptionsFor(row.Choice);
+        if (_model is not null && (sender as Control)?.DataContext is PickerRow { Choice: { } choice }) _ = _model.RunCommandAsync(choice, this);
         e.Handled = true;
     }
 
@@ -221,7 +213,7 @@ public partial class PickerMenu : UserControl
         if (_model?.OptionItems.FirstOrDefault(i => i.IsTyping) is not { } typing) return;
         if (e.Source is Visual source && source.FindAncestorOfType<TextBox>() is not null) return;
         typing.CommitTyping();
-        OptionsFocus.Focus(NavigationMethod.Directional);
+        FocusCurrentPane();
     }
 
     /// <summary>The wheel over a number or choice changes it (up = next, down = previous), like Left and Right do.</summary>

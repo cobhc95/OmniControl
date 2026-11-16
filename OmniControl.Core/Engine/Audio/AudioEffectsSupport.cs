@@ -2,10 +2,10 @@ using OmniControl.Core.Engine.Apo;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>What this PC offers for the sound modes, as found by <see cref="IAudioEffectsSupport.Check"/>.</summary>
+/// <summary>What this PC offers the effects engine, as found by <see cref="IAudioEffectsSupport.Check"/>.</summary>
 /// <param name="ProcessLoopback">Windows can record one program's sound on its own (process loopback capture).</param>
 /// <param name="Cables">The virtual cables OmniControl may use (<see cref="VirtualCables.Usable"/>), in name order; empty when there is none.</param>
-/// <param name="Apo">What is in place for Equalizer APO / OmniControl APO (master and microphone effects in Fast mode).</param>
+/// <param name="Apo">What is in place for Equalizer APO / OmniControl APO (the master's and a cable's effects).</param>
 /// <param name="DefaultDeviceId">The default playback device; null when there is none.</param>
 public sealed record AudioEffectsSupport(bool ProcessLoopback, IReadOnlyList<VirtualCable> Cables, ApoState Apo, string? DefaultDeviceId)
 {

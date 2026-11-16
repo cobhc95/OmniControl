@@ -2,7 +2,8 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Platform.Storage;
+using OmniControl.App.Controls;
+using OmniControl.App.Services;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using OmniControl.App.Audio;
@@ -67,13 +68,7 @@ public partial class AddProgramButton : UserControl
     private async void OnBrowseClick(object? sender, RoutedEventArgs e)
     {
         _menu?.Hide();
-        if (DataContext is not AddProgramMenuViewModel menu || TopLevel.GetTopLevel(this)?.StorageProvider is not { } storage) return;
-        var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "Choose a program",
-            AllowMultiple = false,
-            FileTypeFilter = new[] { new FilePickerFileType("Programs") { Patterns = new[] { "*.exe" } } },
-        });
-        if (files.Count > 0 && files[0].TryGetLocalPath() is { } path) menu.Add(path);
+        if (DataContext is not AddProgramMenuViewModel menu) return;
+        if (await PathPicker.PickProgramAsync(this) is { } path) menu.Add(path);
     }
 }

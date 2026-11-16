@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using OmniControl.App.Services;
 
 namespace OmniControl.App.Pages;
 
@@ -28,6 +29,9 @@ public sealed partial class FileItem : ObservableObject, IEditorItem, IHalfWidth
     public bool Half { get; init; }
 
     public FileKind Kind { get; }
+
+    /// <summary>The picker the card opens: a folder or a file.</summary>
+    public PathKind PathKind => Kind.Folder ? PathKind.Folder : PathKind.File;
 
     /// <summary>The text of the second button ("Default"), or null for none.</summary>
     public string? ResetText { get; }

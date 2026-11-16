@@ -11,7 +11,7 @@ public sealed record SetupPreview(string Text, bool CanApply, string Summary);
 public sealed record SetupResult(string Text, bool Failed = false, string? Details = null);
 
 /// <summary>
-/// Installs and removes what the sound modes need (the setup buttons on the Sound mode cards). Nothing here changes the PC by itself:
+/// Installs and removes what the effects engine needs (the steps at the foot of the master's Method menu). Nothing here changes the PC by itself:
 /// Equalizer APO only through its own unmodified installer (when the owner placed it next to the app) or its Device Selector,
 /// otherwise its download page opens; OmniControl APO (the optional fork, only when built) through OmniControl.exe itself, started
 /// again with the administrator prompt in its <see cref="EngineSetupCommand"/> mode, so Windows never meets a second unknown
@@ -29,9 +29,9 @@ public sealed class EngineInstaller
     /// <summary>The download pages a setup falls back to.</summary>
     private const string EqualizerApoPage = "https://sourceforge.net/projects/equalizerapo/", CablePage = "https://vb-audio.com/Cable/";
 
-    private readonly SoundModeService _modes;
+    private readonly EffectsSupportService _support;
 
-    public EngineInstaller(SoundModeService modes) => _modes = modes;
+    public EngineInstaller(EffectsSupportService support) => _support = support;
 
     /// <summary>The setup log: what OmniControl's setup steps did and why one failed.</summary>
     public static string LogPath => AppDataStore.PathOf(LogName);
@@ -79,7 +79,7 @@ public sealed class EngineInstaller
     public static bool ForkBuilt => File.Exists(Path.Combine(ApoSource, ApoIds.DllName));
 
     public Task<SetupPreview> PreviewForkInstallAsync() => Task.Run(() =>
-        _modes.Current?.DefaultDeviceId is { } device
+        _support.Current?.DefaultDeviceId is { } device
             ? PreviewOf(ApoPlanner.PlanInstall(ApoSource, device))
             : new SetupPreview(NoDevice, false, NoDevice));
 
@@ -91,7 +91,7 @@ public sealed class EngineInstaller
         new(plan.Describe(), plan.CanApply, plan.Problems.FirstOrDefault() ?? (plan.Steps.Count == 0 ? "There is nothing to change." : string.Empty));
 
     public Task<SetupResult> InstallForkAsync() =>
-        RunSelfAsync("install", _modes.Current?.DefaultDeviceId, "OmniControl APO installed.", "The install didn't finish and was undone.");
+        RunSelfAsync("install", _support.Current?.DefaultDeviceId, "OmniControl APO installed.", "The install didn't finish and was undone.");
 
     public Task<SetupResult> RemoveForkAsync() =>
         RunSelfAsync("uninstall", null, "OmniControl APO removed; the original audio settings are back.", "Removing didn't finish.");
@@ -102,7 +102,7 @@ public sealed class EngineInstaller
         if (Environment.ProcessPath is not { } self) return Fail("Couldn't find OmniControl's own program file.", "Environment.ProcessPath is empty.");
         var logStart = LogLength();
         var result = HelperProcess.RunElevated(self, EngineSetupCommand.Arguments(verb, LogPath, device, device is null ? null : ApoSource));
-        _modes.Refresh();
+        _support.Refresh();
         if (result.Failure != HelperFailure.None) return Outcome(result, "OmniControl's setup step", "use Equalizer APO's own installer instead");
         var log = LogSince(logStart);
         var details = $"{log}{Environment.NewLine}{result.Detail}";
@@ -123,7 +123,7 @@ public sealed class EngineInstaller
         if (EqualizerApoSetup is not { } setup)
             return PageResult(EqualizerApoPage, "Opened Equalizer APO's download page. After installing it, tick your speakers in its Device Selector (and microphones on its Capture tab).");
         var result = HelperProcess.RunElevated(setup, string.Empty);
-        _modes.Refresh();
+        _support.Refresh();
         if (result.Failure != HelperFailure.None) return Outcome(result, "Equalizer APO's installer", "run it yourself, or download it from its page");
         return new SetupResult(result.ExitCode == 0
             ? "Equalizer APO's installer finished. If it isn't found yet, restart Windows."
@@ -133,10 +133,10 @@ public sealed class EngineInstaller
     /// <summary>Equalizer APO is installed: its own Device Selector puts it on playback devices and, on its Capture tab, on microphones.</summary>
     public Task<SetupResult> ChooseEqualizerApoDevicesAsync() => Task.Run(() =>
     {
-        if (_modes.Current?.Apo.UpstreamDeviceSelector is not { } selector)
+        if (_support.Current?.Apo.UpstreamDeviceSelector is not { } selector)
             return new SetupResult("Equalizer APO's Device Selector wasn't found; open it from the Start menu.");
         var result = HelperProcess.RunElevated(selector, string.Empty);
-        _modes.Refresh();
+        _support.Refresh();
         return result.Failure != HelperFailure.None
             ? Outcome(result, "Equalizer APO's Device Selector", "open it from the Start menu")
             : new SetupResult("Equalizer APO's Device Selector closed. If the device isn't found yet, restart Windows.");
@@ -156,7 +156,7 @@ public sealed class EngineInstaller
     {
         if (!File.Exists(CableSetup)) return PageResult(CablePage, noSetup);
         var result = HelperProcess.RunElevated(CableSetup, string.Empty);
-        _modes.Refresh();
+        _support.Refresh();
         return result.Failure != HelperFailure.None ? Outcome(result, "VB-CABLE's setup", "download it from its page") : new SetupResult(done);
     });
 

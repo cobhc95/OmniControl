@@ -5,7 +5,7 @@ using OmniControl.Core.Engine;
 namespace OmniControl.App.Audio.Engine;
 
 /// <summary>
-/// "Test effects on this program": checks Capture and replay on demand from a program row (either mode). It records the program,
+/// "Test effects on this program": checks Capture and replay on demand from a program row. It records the program,
 /// silences the original each way in turn (muting the session, volume 0, then turned down to <see cref="QuietLevel.Scalar"/> with
 /// the recording made up) and checks whether the recording keeps sound (<see cref="QuietLevel.KeepsSound"/>); on the first that
 /// works it plays the processed sound for a moment and measures the delay. Whatever happens, the
@@ -27,9 +27,9 @@ internal sealed class CaptureTest
     /// <summary>The result to store (<see cref="CaptureTestResult"/>; unchanged when the test could not decide) and what to show (a short line and the full sentence).</summary>
     public async Task<(string Result, TestOutcome Outcome)> RunAsync(string key)
     {
-        if (_mixer.Find(key) is not { } entry) return (Unchanged, SoundModes.TestNotListed());
+        if (_mixer.Find(key) is not { } entry) return (Unchanged, EffectsRules.TestNotListed());
         var streams = _mixer.OpenStreams(key);
-        if (streams.Count == 0) return (Unchanged, SoundModes.TestNotPlaying(entry.Name));
+        if (streams.Count == 0) return (Unchanged, EffectsRules.TestNotPlaying(entry.Name));
 
         var level = new UserLevel();
         level.Set(entry.Volume, entry.Pan, entry.Muted);
@@ -44,7 +44,7 @@ internal sealed class CaptureTest
         }
         catch (InvalidOperationException ex)
         {
-            return (Unchanged, SoundModes.TestCannotRecord(entry.Name, ex.Message));
+            return (Unchanged, EffectsRules.TestCannotRecord(entry.Name, ex.Message));
         }
 
         try
@@ -52,7 +52,7 @@ internal sealed class CaptureTest
             pipe.TakeCapturePeak();
             await Task.Delay(Timing.CaptureTestListen);
             if (pipe.TakeCapturePeak() < ProgramEngine.Audible)
-                return (Unchanged, SoundModes.TestHeardNothing(entry.Name));
+                return (Unchanged, EffectsRules.TestHeardNothing(entry.Name));
 
             // Silent ways first (nothing of the original is left); the quiet way works where the recording follows the session's volume.
             foreach (var method in new[] { SilenceMethod.Mute, SilenceMethod.ZeroVolume, SilenceMethod.Quiet })
@@ -65,9 +65,9 @@ internal sealed class CaptureTest
                 await Task.Delay(Timing.CaptureTestPlay);
                 var delay = StableDelay.Round(pipe.DelayMs);
                 Restore(key);
-                return (CaptureTestResult.From(method), SoundModes.TestPassed(delay, method, _chain.StageCount, EngineStatus.SkippedNote(_chain.Skipped)));
+                return (CaptureTestResult.From(method), EffectsRules.TestPassed(delay, method, _chain.StageCount, EngineStatus.SkippedNote(_chain.Skipped)));
             }
-            return (CaptureTestResult.Failed, SoundModes.TestWentSilent(entry.Name));
+            return (CaptureTestResult.Failed, EffectsRules.TestWentSilent(entry.Name));
         }
         finally
         {

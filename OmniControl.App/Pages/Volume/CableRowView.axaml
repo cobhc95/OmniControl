@@ -15,9 +15,9 @@
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="Auto" SharedSizeGroup="WiringRemove" />
         </Grid.ColumnDefinitions>
-        <ToggleSwitch Classes="tool" IsChecked="{Binding IsAllowed}" IsEnabled="{Binding CanSwitch}" OnContent="" OffContent="" VerticalAlignment="Center"
+        <ToggleSwitch Classes="tool plain" IsChecked="{Binding IsAllowed}" IsEnabled="{Binding CanSwitch}" VerticalAlignment="Center"
                       ToolTip.Tip="{Binding SwitchTip}" ToolTip.ShowOnDisabled="True" />
-        <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+        <TextBlock Classes="strong" Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                    MaxWidth="{StaticResource WiringSourceMaxWidth}" ToolTip.Tip="{Binding Tip}" />
         <Border Grid.Column="2" Classes="tag" VerticalAlignment="Center" HorizontalAlignment="Left">
             <TextBlock Text="{Binding EndsTag}" />
@@ -27,7 +27,9 @@
         </Border>
         <TextBlock Grid.Column="4" Classes="muted small" Text="{Binding Use}" ToolTip.Tip="{Binding UseTip}" HorizontalAlignment="Right"
                    VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Right" />
-        <Button Grid.Column="5" Tag="scope" Classes="pill glyph" Content="×" Command="{Binding RemoveCommand}" IsVisible="{Binding CanRemove}"
-                ToolTip.Tip="Forget this marked cable" VerticalAlignment="Center" />
+        <Button Grid.Column="5" Tag="scope" Classes="pill glyph" Command="{Binding RemoveCommand}" IsVisible="{Binding CanRemove}"
+                ToolTip.Tip="Forget this marked cable" VerticalAlignment="Center">
+            <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+        </Button>
     </Grid>
 </UserControl>

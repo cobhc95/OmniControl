@@ -1,25 +1,20 @@
+using OmniControl.App.Services;
+
 namespace OmniControl.App.About;
 
 /// <summary>Opens the About and credits window, one at a time (a second request brings it to the front).</summary>
 public sealed class AboutWindowService
 {
-    private readonly string _version;
     private readonly Action<string> _report;
-    private AboutWindow? _open;
+    private readonly SingleWindow<AboutWindow> _window;
 
-    public AboutWindowService(string version, Action<string> report)
+    public AboutWindowService(Action<string> report)
     {
-        _version = version;
         _report = report;
+        _window = new SingleWindow<AboutWindow>(report);
     }
 
-    public void Open()
-    {
-        if (_open is not null) { _open.Activate(); return; }
-        _open = new AboutWindow { DataContext = new AboutViewModel(_version, _report) };
-        _open.Closed += (_, _) => _open = null;
-        Services.OwnedWindow.Show(_open);
-    }
+    public void Open() => _window.Show(() => new AboutWindow { DataContext = new AboutViewModel(_report) }, _ => { }, "Couldn't open About");
 
-    public void Close() => _open?.Close();
+    public void Close() => _window.Close();
 }

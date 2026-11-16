@@ -1,20 +1,21 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using OmniControl.App.Rules;
+using OmniControl.App.Services;
 
 namespace OmniControl.App.Pages.Gestures;
 
-/// <summary>A short fact on a rule's line (Border.tag): its text, the full sentence (tooltip, and the line in the editor), and its tone.</summary>
-public sealed record RuleTag(string Text, string Detail, bool IsCaution = false, bool IsRisk = false)
+/// <summary>The facts of a rule as tags (its text, the full sentence as the tip, its tone).</summary>
+public static class RuleTags
 {
     /// <summary>Every fact worth showing about a rule, most important first.</summary>
-    public static IReadOnlyList<RuleTag> Of(Rule rule, RuleService rules)
+    public static IReadOnlyList<TagItem> Of(Rule rule, RuleService rules)
     {
-        var tags = new List<RuleTag>();
-        if (rules.ProblemOf(rule) is { } problem) tags.Add(new RuleTag("Last run failed", $"Last run: {problem}.", IsRisk: true));
-        if (rule.Trigger.Length == 0) tags.Add(new RuleTag("Needs a trigger", "Choose what starts the rule (the first block)."));
-        else if (RuleTriggers.ProblemOf(rule.Trigger) is { } trigger) tags.Add(new RuleTag("Shortcut can't be used", trigger, IsCaution: true));
-        if (rule.Steps.Count == 0) tags.Add(new RuleTag("Needs an action", "Choose what the rule does (after \"then\")."));
-        if (rules.ConflictOf(rule) is { } conflict) tags.Add(new RuleTag(conflict.Chip, conflict.Detail, IsCaution: true));
+        var tags = new List<TagItem>();
+        if (rules.ProblemOf(rule) is { } problem) tags.Add(new TagItem("Last run failed", TagTone.Risk, $"Last run: {problem}."));
+        if (rule.Trigger.Length == 0) tags.Add(new TagItem("Needs a trigger", Tip: "Choose what starts the rule (the first block)."));
+        else if (RuleTriggers.ProblemOf(rule.Trigger) is { } trigger) tags.Add(new TagItem("Shortcut can't be used", TagTone.Caution, trigger));
+        if (rule.Steps.Count == 0) tags.Add(new TagItem("Needs an action", Tip: "Choose what the rule does (after \"then\")."));
+        if (rules.ConflictOf(rule) is { } conflict) tags.Add(new TagItem(conflict.Chip, TagTone.Caution, conflict.Detail));
         return tags;
     }
 }
@@ -33,7 +34,7 @@ public sealed partial class RuleItem : ObservableObject, IEditorItem
     /// <summary>"Name: If ... then ...", or the sentence alone for a rule without a name.</summary>
     [ObservableProperty] private string _line = string.Empty;
 
-    [ObservableProperty] private IReadOnlyList<RuleTag> _tags = Array.Empty<RuleTag>();
+    [ObservableProperty] private IReadOnlyList<TagItem> _tags = Array.Empty<TagItem>();
 
     /// <summary>What search shows and matches: the name, or the sentence.</summary>
     public string Label => Rule.Name.Trim() is { Length: > 0 } name ? name : Line;
@@ -56,7 +57,7 @@ public sealed partial class RuleItem : ObservableObject, IEditorItem
         _loading = true;
         var sentence = _rules.SentenceOf(Rule);
         Line = Rule.Name.Trim() is { Length: > 0 } name ? $"{name}: {sentence}" : sentence;
-        Tags = RuleTag.Of(Rule, _rules);
+        Tags = RuleTags.Of(Rule, _rules);
         IsOn = Rule.On;
         _loading = false;
         OnPropertyChanged(nameof(Label));

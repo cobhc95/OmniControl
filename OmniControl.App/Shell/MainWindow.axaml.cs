@@ -69,7 +69,7 @@ public partial class MainWindow : Window
             else SearchBox.Focus();
             e.Handled = true;
         }
-        else if (e.Key is Key.Down or Key.Up && focused is ListBoxItem nav && StepBetweenNavLists(nav, e.Key == Key.Down))
+        else if (e.Key is Key.Down or Key.Up && focused is InputElement nav && StepBetweenNavLists(nav, e.Key == Key.Down))
         {
             e.Handled = true;
         }
@@ -81,27 +81,44 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>Arrow keys continue from the end of the category list into App settings and back, and wrap round at either end.</summary>
-    private bool StepBetweenNavLists(ListBoxItem item, bool down)
+    /// <summary>Arrow keys continue from the end of the category list to the footer's App settings button and back, and wrap round at either end.</summary>
+    private bool StepBetweenNavLists(InputElement item, bool down)
     {
-        var list = item.FindAncestorOfType<ListBox>();
-        // Only the two sidebar lists hand over to each other; a card list on a page loops inside its own page (Tab leaves it).
-        if (list != MainNav && list != FooterNav) return false;
-        ListBox? other = null;
-        var at = list.IndexFromContainer(item);
-        if (down && at == list.ItemCount - 1) other = list == MainNav ? FooterNav : MainNav; // past the last item: on to the next list, and round to the top
-        else if (!down && at == 0) other = list == FooterNav ? MainNav : FooterNav; // before the first item: back round to the bottom
-        if (other is null || other.ItemCount == 0) return false;
-        var target = other.ContainerFromIndex(down ? 0 : other.ItemCount - 1) as ListBoxItem;
-        if (target is null) return false;
-        target.IsSelected = true;
-        target.Focus(NavigationMethod.Directional);
+        var footer = FooterButtons();
+        if (footer.Count == 0) return false;
+        if (item is Button { Tag: "footernav" })
+        {
+            // From the footer button: Down goes round to the first page, Up back to the last.
+            var pageRows = NavPageRows();
+            if (pageRows.Count == 0) return false;
+            return Select(down ? pageRows[0] : pageRows[^1]);
+        }
+        // Only the category list hands over; a card list on a page loops inside its own page (Tab leaves it).
+        if (item is not ListBoxItem row || row.FindAncestorOfType<ListBox>() != MainNav) return false;
+        var rows = NavPageRows();
+        if (row != (down ? rows.LastOrDefault() : rows.FirstOrDefault())) return false;
+        if (footer[0].DataContext is PageViewModel page) (DataContext as ShellViewModel)?.OpenFooterPageCommand.Execute(page);
+        footer[0].Focus(NavigationMethod.Directional);
         return true;
+
+        static bool Select(ListBoxItem? target)
+        {
+            if (target is null) return false;
+            target.IsSelected = true;
+            target.Focus(NavigationMethod.Directional);
+            return true;
+        }
     }
 
+    /// <summary>The sidebar's page rows in order (the group headings are not among them).</summary>
+    private List<ListBoxItem> NavPageRows() => MainNav.GetVisualDescendants().OfType<ListBoxItem>().Where(i => i.Focusable).ToList();
+
+    private List<Button> FooterButtons() => FooterNav.GetVisualDescendants().OfType<Button>().Where(b => b.Tag is "footernav").ToList();
+
     private InputElement? FocusSidebar() =>
-        Sidebar.GetVisualDescendants().OfType<ListBoxItem>().FirstOrDefault(i => i.IsSelected)
-        ?? Sidebar.GetVisualDescendants().OfType<ListBoxItem>().FirstOrDefault();
+        (InputElement?)NavPageRows().FirstOrDefault(i => i.IsSelected)
+        ?? (InputElement?)FooterButtons().FirstOrDefault(b => b.Classes.Contains("custom"))
+        ?? NavPageRows().FirstOrDefault();
 
     /// <param name="fromSearch">Coming down from the search box always lands on the first result, not the last selected card.</param>
     private InputElement? FocusPage(bool fromSearch = false)

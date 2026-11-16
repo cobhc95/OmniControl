@@ -12,7 +12,7 @@ public sealed partial class CableGroup : CardGroup
 {
     public const string Hint = "More cables let more programs run on cables.";
 
-    public CableGroup(CableMarkMenu mark, ModeCardAction moreCables)
+    public CableGroup(CableMarkMenu mark, CardAction moreCables)
         : base("Volume/Wiring/Cables", "Virtual cables", string.Empty)
     {
         Mark = mark;
@@ -24,9 +24,9 @@ public sealed partial class CableGroup : CardGroup
     public CableMarkMenu Mark { get; }
 
     /// <summary>"Get more cables": the cable maker's page.</summary>
-    public ModeCardAction MoreCables { get; }
+    public CardAction MoreCables { get; }
 
     /// <summary>Install VB-CABLE while no cable pair is installed; null = one is.</summary>
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasInstall))] private ModeCardAction? _install;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasInstall))] private CardAction? _install;
     public bool HasInstall => Install is not null;
 }

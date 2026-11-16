@@ -6,7 +6,7 @@ namespace OmniControl.App.Pages.Volume;
 /// <summary>
 /// The Wiring tab: one table row per source (the master, programs and combined speakers in Outputs; recording devices and combined
 /// microphones in Microphones), all made from the Mixer's own rows and the routing model (<see cref="TargetsOf"/>); a cell's menu
-/// (what can still be added, dimmed where the mode forbids it with the reason and one Switch; a microphone's "Combine with"); the
+/// (what can still be added, dimmed where it can't be used, with the reason; a microphone's "Combine with"); the
 /// Cable column with the step that gets a cable; and the jump from a Mixer row.
 /// </summary>
 public sealed partial class VolumePageViewModel
@@ -15,6 +15,7 @@ public sealed partial class VolumePageViewModel
     private const string FollowMasterChoice = "Master (default device)";
     private const string CableTag = "Cable";
     private const string AddTitle = "Add a device", ChooseTitle = "Choose a device";
+    private const string AddSecondChoice = "+ Add a second device", AddSecondTip = "Opens Wiring, where this row can play on several devices";
     private const string CombineWithTitle = "Combine with", CombineWithLabel = "Combine with...", CombineWithTip = "Mixes this microphone with others into one";
     private const string AddMicTitle = "Add a microphone", AddMicTip = "Add a microphone to the mix";
     private const string AddSpeakerTip = "Add a device that plays the same sound";
@@ -35,20 +36,20 @@ public sealed partial class VolumePageViewModel
     private VolumeGroup NewWiringOutputs() => new("Volume/Wiring/Outputs", "Outputs")
     {
         ExpandedByDefault = true,
-        RouteColumn = "Plays on",
-        Tip = "A chip's × removes a device, + add adds one. Dimmed choices need the other sound mode.",
+        RouteColumn = PlaysOnWords,
+        Tip = "A chip's × removes a device, + add adds one. A dimmed choice says why in its tooltip.",
         SummaryBesideName = true, // the header's right end holds "+ Combine speakers"
         ToolGate = CombineSpeakersGate,
-        Tool = new ModeCardAction("+ Combine speakers", "Plays the same sound on several speakers (Full control)", CombineSpeakersCommand, Main: true),
+        Tool = new CardAction("+ Combine speakers", "Plays the same sound on several speakers", CombineSpeakersCommand, Main: true),
     };
 
     private VolumeGroup NewWiringInputs() => new("Volume/Wiring/Microphones", "Microphones")
     {
         ExpandedByDefault = true,
-        RouteColumn = "Records from",
+        RouteColumn = RecordsFromWords,
         SummaryBesideName = true, // the header's right end holds "+ Combine microphones"
         ToolGate = CombineMicrophonesGate,
-        Tool = new ModeCardAction("+ Combine microphones", "Mixes several microphones into one that apps record from", CombineMicrophonesCommand, Main: true),
+        Tool = new CardAction("+ Combine microphones", "Mixes several microphones into one that apps record from", CombineMicrophonesCommand, Main: true),
     };
 
     /// <summary>Brings the Wiring tab in line with the Mixer's rows and the routing model.</summary>
@@ -74,7 +75,12 @@ public sealed partial class VolumePageViewModel
     private WiringRow WiringFor(VolumeRow row)
     {
         if (!_wiring.TryGetValue(row.Key, out var w) || !ReferenceEquals(w.Source, row))
-            _wiring[row.Key] = w = new WiringRow(row, Gate(), Gate(), OpenWiringMenu);
+        {
+            // The menu is made first and finds its row when it opens (by then the row exists).
+            WiringRow? made = null;
+            made = new WiringRow(row, new PlaysOnMenu(new ControlGate(), _ => OpenWiringMenu(made!), marksCurrent: false));
+            _wiring[row.Key] = w = made;
+        }
         SyncWiringRow(w);
         return w;
     }
@@ -86,14 +92,12 @@ public sealed partial class VolumePageViewModel
     }
 
     /// <summary>
-    /// A row's cell from the routing model: one choice where the mode takes one device, else chips and "+ add"; a combined
+    /// A row's cell from the routing model: one choice where the row takes one device, else chips and "+ add"; a combined
     /// device's members as chips; a microphone's own words with "Combine with...".
     /// </summary>
     private void SyncWiringRow(WiringRow w)
     {
         w.Cable = CableStateOf(w.Key, _mixer.CombinedOf(w.Key)?.Cable);
-        if (w.Source is ComboItem { IsMicrophone: false } && _modes.Check(SoundFeature.CombineSpeakers) is { Reason: { } blocked })
-            w.Cable = new CableState(SoundModes.NeedsFullTag, blocked, IsCaution: true); // Fast mode: the engine says the same
         SyncCableSteps(w);
         switch (w.Source)
         {
@@ -104,7 +108,7 @@ public sealed partial class VolumePageViewModel
                 SyncMembers(w);
                 break;
             default:
-                w.MenuGate.Sync(CreateGateFor(true)); // the menu says why a new combined microphone can't be made now (its entries are dimmed)
+                w.Menu.Gate.Sync(CreateGateFor(true)); // the menu says why a new combined microphone can't be made now (its entries are dimmed)
                 w.ShowFixed(ThisMicrophone, CombineWithLabel, CombineWithTip);
                 break;
         }
@@ -112,8 +116,8 @@ public sealed partial class VolumePageViewModel
 
     private void SyncOutputCell(WiringRow w, MixerItem source)
     {
-        var gate = source.IsMaster ? MasterOutputsGate() : _modes.Check(SoundFeature.ProgramSeveralOutputs);
-        w.MenuGate.Sync(gate);
+        var gate = OutputsGateOf(source);
+        w.Menu.Gate.Sync(gate);
         var targets = TargetsOf(source);
         if (!gate.Allowed)
         {
@@ -125,14 +129,15 @@ public sealed partial class VolumePageViewModel
             source.IsMaster ? null : FollowsMasterNote);
     }
 
+    /// <summary>Whether the master or a program can play on several devices now (the Plays on menus of both tabs).</summary>
+    private Audio.Gate OutputsGateOf(MixerItem source) => source.IsMaster ? MasterOutputsGate() : Audio.Gate.Open;
+
     /// <summary>
-    /// Whether the master can play on several devices: Fast mode can't (Switch to Full control); in Full control only the cable bus can,
-    /// so with the master in Equalizer APO its devices are one choice (its Method link changes that).
+    /// Whether the master can play on several devices: only the cable bus can, so with the master in Equalizer APO its devices are
+    /// one choice (its Method link changes that).
     /// </summary>
     private Audio.Gate MasterOutputsGate() =>
-        _mixer.SoundMode == SoundModes.Full && !MasterOnBus
-            ? new Audio.Gate(SoundModes.ApoOneSpeaker, null, "Equalizer APO plays the master on one speaker.")
-            : _modes.Check(SoundFeature.MasterSeveralOutputs);
+        MasterOnBus ? Audio.Gate.Open : new Audio.Gate(EffectsRules.ApoOneSpeaker, "Equalizer APO plays the master on one speaker.");
 
     /// <summary>
     /// A combined device's members: a chip each (a microphone's words open its level, a speaker's are plain; the x takes it away and the
@@ -140,7 +145,7 @@ public sealed partial class VolumePageViewModel
     /// </summary>
     private void SyncMembers(WiringRow w)
     {
-        w.MenuGate.Sync(Audio.Gate.Open);
+        w.Menu.Gate.Sync(Audio.Gate.Open);
         if (_mixer.CombinedOf(w.Key) is not { } c) return;
         var removable = c.Members.Count > 1;
         if (c.Kind == CombinedKind.Microphones)
@@ -159,7 +164,7 @@ public sealed partial class VolumePageViewModel
         var menu = new MemberLevelMenu(name,
             () => _mixer.CombinedOf(key) is { } c ? (c.LevelOf(member), c.IsMuted(member)) : (CombinedDevice.DefaultMemberLevel, false),
             (level, muted) => _mixer.SetMemberLevel(key, member, level, muted));
-        var tip = LoopbackInputs.RecordsPlayback(name) ? $"{MemberTip} {SoundModes.RecordsPlaybackTag}: {SoundModes.RecordsPlaybackTip}" : MemberTip;
+        var tip = LoopbackInputs.RecordsPlayback(name) ? $"{MemberTip} {EffectsRules.RecordsPlaybackTag}: {EffectsRules.RecordsPlaybackTip}" : MemberTip;
         return new WiringMember(member, ChipLabelOf(member), tip, removable, menu, () =>
         {
             _mixer.ToggleMember(key, member);
@@ -177,23 +182,16 @@ public sealed partial class VolumePageViewModel
     /// <summary>The menu opened: what can still be added (or chosen), from what is plugged in now.</summary>
     private void OpenWiringMenu(WiringRow w)
     {
-        _modes.Refresh();
+        _support.Refresh();
         SyncWiringRow(w);
         switch (w.Source)
         {
             case MixerItem source:
-                var targets = TargetsOf(source);
-                var choices = new List<WiringChoice>();
-                if (!source.IsMaster && targets.Count > 0) choices.Add(new WiringChoice(FollowMasterChoice, null, null, () => ChooseTarget(w, DefaultTarget)));
-                // The master in Equalizer APO (Full control) plays on one real speaker: combined speakers are dimmed with that reason.
-                var combinedGate = source.IsMaster && _mixer.SoundMode == SoundModes.Full && !MasterOnBus ? MasterOutputsGate() : _modes.Check(SoundFeature.CombinedOutputs);
-                choices.AddRange(DeviceChoices(targets, cables: !source.IsMaster && SoundModes.CablesOfferedAsDevices(_mixer.SoundMode), combinedGate, t => ChooseTarget(w, t)));
-                w.MenuTitle = w.MenuGate.IsAvailable ? AddTitle : ChooseTitle;
-                w.Choices = choices;
+                FillPlaysOn(w.Menu, source);
                 break;
             case ComboItem combo:
                 var members = TargetsOf(combo);
-                w.MenuTitle = combo.IsMicrophone ? AddMicTitle : AddTitle;
+                w.Menu.Title = combo.IsMicrophone ? AddMicTitle : AddTitle;
                 Action<string> add = m =>
                 {
                     _mixer.ToggleMember(combo.Key, m);
@@ -202,19 +200,62 @@ public sealed partial class VolumePageViewModel
                 var candidates = combo.IsMicrophone
                     ? MicrophoneChoices(members, add)
                     : CombinedDevice.Candidates(_mixer.Devices).Where(d => !members.Contains(d.Id)).Select(d => new WiringChoice(d.Name, null, null, () => add(d.Id)));
-                w.Choices = candidates.Append(new WiringChoice(RenameChoice, null, null, () => _ = EditComboAsync(combo.Key), tip: RenameTip)).ToList();
+                w.Menu.Choices = candidates.Append(new WiringChoice(RenameChoice, null, null, () => _ = EditComboAsync(combo.Key), tip: RenameTip)).ToList();
                 break;
             case InputItem input:
-                w.MenuTitle = CombineWithTitle;
-                w.Choices = CombineWithChoices(input).ToList();
+                w.Menu.Title = CombineWithTitle;
+                w.Menu.Choices = CombineWithChoices(input).ToList();
                 break;
         }
     }
 
     /// <summary>
-    /// Playback devices not chosen yet, combined speakers (dimmed with <paramref name="combinedGate"/>'s reason, tagged with the mode
-    /// that allows them, where they can't be chosen; dimmed too while one has no cable to play through), and free cables (programs in
-    /// Full control only: in Fast mode nothing records a cable).
+    /// The one "Plays on" menu of the master or a program, for both tabs. The Wiring cell's menu lists what can still be added (several
+    /// devices) or chosen (one), its chips show the rest; the Mixer chip's menu (<see cref="PlaysOnMenu.MarksCurrent"/>) lists the devices
+    /// in use too, ticked, a pick makes the device the only one, and "+ Add a second device" opens Wiring where several are allowed. The
+    /// same entries, greying and reasons in both (<see cref="DeviceChoices"/>), the same gate note.
+    /// </summary>
+    private void FillPlaysOn(PlaysOnMenu menu, MixerItem source)
+    {
+        var gate = OutputsGateOf(source);
+        menu.Gate.Sync(gate);
+        var adds = gate.Allowed && !menu.MarksCurrent;
+        var targets = TargetsOf(source);
+        var choices = new List<WiringChoice>();
+        void Choose(string target)
+        {
+            if (source.IsMaster) ChooseMasterTarget(target, adds);
+            else ChooseProgramTarget(source.Key, target, adds);
+            AfterTargetChange(source);
+        }
+        if (!source.IsMaster && (menu.MarksCurrent || targets.Count > 0))
+            choices.Add(new WiringChoice(FollowMasterChoice, null, null, () => Choose(DefaultTarget), isCurrent: menu.MarksCurrent && targets.Count == 0));
+        if (menu.MarksCurrent) choices.AddRange(targets.Select(t => new WiringChoice(ChipLabelOf(t), null, null, () => Choose(t), isCurrent: true)));
+        // The master in Equalizer APO plays on one real speaker: combined speakers are dimmed with that reason.
+        var combinedGate = source.IsMaster ? MasterOutputsGate() : Audio.Gate.Open;
+        choices.AddRange(DeviceChoices(targets, cables: !source.IsMaster, combinedGate, Choose));
+        if (menu.MarksCurrent && gate.Allowed) choices.Add(new WiringChoice(AddSecondChoice, null, null, () => ShowWiring(source.Key), tip: AddSecondTip));
+        menu.Title = menu.MarksCurrent ? PlaysOnWords : gate.Allowed ? AddTitle : ChooseTitle;
+        menu.Choices = choices;
+    }
+
+    /// <summary>The Mixer chip's menu is opening: what this PC offers is read again first (the Wiring cell's menu does the same).</summary>
+    private void OpenPlaysOn(PlaysOnMenu menu, MixerItem source)
+    {
+        _support.Refresh();
+        FillPlaysOn(menu, source);
+    }
+
+    /// <summary>Where a row plays changed: its Wiring row and its Mixer row follow.</summary>
+    private void AfterTargetChange(MixerItem source)
+    {
+        SyncWiringOf(source.Key);
+        SyncRow(source);
+    }
+
+    /// <summary>
+    /// Playback devices not chosen yet, combined speakers (dimmed with <paramref name="combinedGate"/>'s reason where they can't be
+    /// chosen; dimmed too while one has no cable to play through), and free cables (programs only).
     /// </summary>
     private IEnumerable<WiringChoice> DeviceChoices(IReadOnlyList<string> chosen, bool cables, Audio.Gate combinedGate, Action<string> choose)
     {
@@ -223,8 +264,8 @@ public sealed partial class VolumePageViewModel
 
         foreach (var c in _mixer.Combined.Where(c => c.Kind == CombinedKind.Speakers && !chosen.Contains(c.Key) && !(c.Cable.Length > 0 && chosen.Contains(c.Cable))))
         {
-            var gate = SoundModes.CombinedChoiceGate(combinedGate, _engine.StatusOf(c.Key).Kind, c.Name);
-            yield return new WiringChoice(c.Name, gate.SwitchTo?.Name ?? ComboItem.CombinedTag, gate.Reason, () => choose(c.Key));
+            var gate = EffectsRules.CombinedChoiceGate(combinedGate, _engine.StatusOf(c.Key).Kind, c.Name);
+            yield return new WiringChoice(c.Name, ComboItem.CombinedTag, gate.Reason, () => choose(c.Key));
         }
 
         if (!cables) yield break;
@@ -238,7 +279,7 @@ public sealed partial class VolumePageViewModel
     /// </summary>
     private IEnumerable<WiringChoice> MicrophoneChoices(IReadOnlyList<string> chosen, Action<string> choose, string? disabledReason = null) =>
         CombinedDevice.Candidates(_mixer.RecordingDevices).Where(d => !chosen.Contains(d.Id)).Select(d => LoopbackInputs.RecordsPlayback(d.Name)
-            ? new WiringChoice(d.Name, SoundModes.RecordsPlaybackTag, disabledReason, () => choose(d.Id), caution: true, tip: SoundModes.RecordsPlaybackTip)
+            ? new WiringChoice(d.Name, EffectsRules.RecordsPlaybackTag, disabledReason, () => choose(d.Id), caution: true, tip: EffectsRules.RecordsPlaybackTip)
             : new WiringChoice(d.Name, null, disabledReason, () => choose(d.Id)));
 
     /// <summary>A microphone's "Combine with": every other microphone (a new combined microphone, named in the window), then "Add to ..." each combined microphone it is not in.</summary>
@@ -249,15 +290,6 @@ public sealed partial class VolumePageViewModel
             yield return choice;
         foreach (var c in _mixer.Combined.Where(c => c.Kind == CombinedKind.Microphones && !c.Members.Contains(input.Id)))
             yield return new WiringChoice($"Add to {c.Name}", ComboItem.CombinedTag, null, () => _mixer.ToggleMember(c.Key, input.Id));
-    }
-
-    /// <summary>A menu choice: added (several devices) or the one device (one choice), at once.</summary>
-    private void ChooseTarget(WiringRow w, string target)
-    {
-        if (w.Source is not MixerItem source) return;
-        if (source.IsMaster) ChooseMasterTarget(target, w.MenuGate.IsAvailable);
-        else ChooseProgramTarget(source.Key, target, w.MenuGate.IsAvailable);
-        AfterWiringChange(w);
     }
 
     /// <summary>A chip's x: that device is taken away (the master keeps its last one).</summary>
@@ -281,40 +313,32 @@ public sealed partial class VolumePageViewModel
     private bool IsRecordingRow(string key) => MixerService.IsInput(key) || _mixer.CombinedOf(key)?.Kind == CombinedKind.Microphones;
 
     /// <summary>
-    /// The cable a row's run uses now (or the cable a combined device keeps in Full control, <paramref name="remembered"/>), the engine's
+    /// The cable a row's run uses now (or the cable a combined device keeps, <paramref name="remembered"/>), the engine's
     /// own words when it waits for one (the tooltip says why when the planner knows: the master bus holds it), or nothing.
     /// </summary>
     private CableState CableStateOf(string key, string? remembered)
     {
         var status = _engine.StatusOf(key);
-        if (SoundModes.IsCableMissing(status.Kind))
+        if (EffectsRules.IsCableMissing(status.Kind))
             return new CableState(status.Brief, status.Detail ?? (IsRecordingRow(key) ? "Starts when a cable is free" : "Plays without effects until a cable is free"), IsCaution: true);
-        var id = _engine.CableOf(key) ?? (_mixer.SoundMode == SoundModes.Full && remembered is { Length: > 0 } ? remembered : null);
+        var id = _engine.CableOf(key) ?? (remembered is { Length: > 0 } ? remembered : null);
         if (id is null) return CableState.None;
-        var cable = _modes.Current?.Cables.FirstOrDefault(c => c.PlaybackId == id);
+        var cable = _support.Current?.Cables.FirstOrDefault(c => c.PlaybackId == id);
         var name = cable?.Name ?? _mixer.DeviceNameOf(id);
-        var tip = IsRecordingRow(key) ? SoundModes.AppsRecordFrom(cable?.RecordingName ?? name)
+        var tip = IsRecordingRow(key) ? EffectsRules.AppsRecordFrom(cable?.RecordingName ?? name)
             : CombinedDevice.IsKey(key) ? $"Plays on every member of {name}"
             : $"Sound goes through {name} to the engine";
         return new CableState(name, tip, IsCaution: false);
     }
 
     /// <summary>
-    /// While a microphone or combined device waits for a cable: the step that gets one (Install VB-CABLE, More cables) and, when the
-    /// master bus holds the only pair apps can record from (the status's detail, from the planner), "Switch to Fast". A combined
-    /// speaker that Fast mode cannot run says so with "Switch to Full control".
+    /// While a microphone or combined device waits for a cable: the step that gets one (Install VB-CABLE, More cables).
     /// </summary>
     private void SyncCableSteps(WiringRow w)
     {
         var waiting = w.Cable.IsCaution && (IsRecordingRow(w.Key) || CombinedDevice.IsKey(w.Key));
         var step = waiting ? CableStepFor(w.Cable.Text) : null;
         if (step?.Label != w.CableAction?.Label) w.CableAction = step;
-        if (w.Source is ComboItem { IsMicrophone: false })
-            w.CableSwitch.Sync(_modes.Check(SoundFeature.CombineSpeakers));
-        else
-            w.CableSwitch.Sync(waiting && _mixer.SoundMode == SoundModes.Full && _engine.StatusOf(w.Key).Detail is { } held
-                ? new Audio.Gate(held, SoundModes.Fast)
-                : Audio.Gate.Open);
     }
 
     // ---- the jump from the Mixer ----

@@ -1,75 +1,117 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:picker="using:OmniControl.App.Picker"
+             xmlns:ctl="using:OmniControl.App.Controls"
              x:Class="OmniControl.App.Picker.PickerMenu"
              x:DataType="picker:PickerModel">
-    <!-- Keyboard focus stays in the search box (or, on the settings page, the focus holder); the lists only show the highlight, which the model moves. -->
+    <!-- Three panes (docs/mockups/action-picker-three-pane.html): sections | entries | settings of the highlighted entry (always shown, live).
+         Keyboard focus stays in the search box, or in the focus holder while the keys are in the settings; the lists only show the highlight, which the model moves. -->
     <Grid RowDefinitions="Auto,*,Auto">
-        <TextBox x:Name="Search" Classes="field" Text="{Binding Query}" Watermark="{Binding SearchHint}" Margin="8"
-                 IsVisible="{Binding !IsEditingOptions}" />
+        <TextBox x:Name="Search" Classes="field" Text="{Binding Query}" Watermark="{Binding SearchHint}" Margin="8" />
 
-        <!-- Page 1: pick an entry -->
-        <Grid Grid.Row="1" ColumnDefinitions="Auto,*" IsVisible="{Binding !IsEditingOptions}">
-            <ListBox x:Name="CategoryList" Classes="pick" Classes.active="{Binding InCategories}" Width="190" Focusable="False"
-                     ItemsSource="{Binding Categories}" SelectedIndex="{Binding CategoryIndex}" IsVisible="{Binding !IsSearching}" />
-            <ListBox x:Name="ActionList" Grid.Column="1" Classes="pick" Classes.active="{Binding !InCategories}" Focusable="False"
-                     ItemsSource="{Binding Actions}" SelectedIndex="{Binding ActionIndex}">
-                <ListBox.ItemTemplate>
-                    <DataTemplate DataType="picker:PickerRow">
-                        <!-- A greyed entry (Grid.unavailable) says why under its name and can't be picked -->
-                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8" Background="Transparent"
-                              Classes.unavailable="{Binding !IsAvailable}" ToolTip.Tip="{Binding Unavailable}">
-                            <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
-                                <TextBlock Classes="hint small" Text="{Binding Unavailable}" IsVisible="{Binding !IsAvailable}" TextWrapping="Wrap" />
+        <Grid Grid.Row="1" ColumnDefinitions="Auto,*,1.3*">
+            <!-- Pane 1: the sections (the main window's sidebar look) -->
+            <Border Classes="sidebarpanel" BorderThickness="0,1,1,0">
+                <ListBox x:Name="SectionList" Classes="nav" Focusable="False" Margin="0,8,0,8"
+                         ItemsSource="{Binding Sections}" SelectedIndex="{Binding SectionHighlight}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="picker:SectionRow">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <PathIcon Data="{Binding Icon}" Width="16" Height="16" VerticalAlignment="Center" IsVisible="{Binding HasIcon}" />
+                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
                             </StackPanel>
-                            <TextBlock Grid.Column="1" Text="{Binding Hint}" Classes="muted small" VerticalAlignment="Center" />
-                            <Button Grid.Column="2" Classes="pill cog" Classes.active="{Binding IsCogActive}" Focusable="False"
-                                    IsVisible="{Binding HasOptions}" Click="OnRowCogClick" ToolTip.Tip="Settings for this entry">
-                                <PathIcon Data="{DynamicResource CogIcon}" Width="12" Height="12" />
-                            </Button>
-                        </Grid>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
-        </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Border>
 
-        <!-- Page 2: the chosen entry's settings (and the text it takes) -->
-        <Grid Grid.Row="1" RowDefinitions="Auto,*" IsVisible="{Binding IsEditingOptions}">
-            <Border x:Name="OptionsFocus" Width="1" Height="1" Focusable="True" HorizontalAlignment="Left" Opacity="0" />
-            <TextBlock Text="{Binding OptionsTitle}" FontWeight="SemiBold" Margin="14,10,14,6" HorizontalAlignment="Left" />
-            <ListBox x:Name="OptionList" Grid.Row="1" Classes="pick active" Focusable="False"
-                     ItemsSource="{Binding OptionItems}" SelectedIndex="{Binding OptionIndex}">
-                <ListBox.ItemTemplate>
-                    <DataTemplate DataType="picker:OptionItem">
-                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" MinHeight="30">
-                            <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextWrapping="Wrap" />
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" IsVisible="{Binding IsStepper}">
-                                <Button Classes="pill glyph" Content="‹" Tag="-1" Focusable="False" Click="OnOptionStepClick" />
-                                <Panel MinWidth="120" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Display}" TextAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !IsTyping}"
-                                               DoubleTapped="OnNumberDoubleTapped" />
-                                    <TextBox Classes="field" Text="{Binding Typed}" TextAlignment="Center" Width="100" HorizontalAlignment="Center"
-                                             IsVisible="{Binding IsTyping}" LostFocus="OnNumberLostFocus" />
-                                </Panel>
-                                <Button Classes="pill glyph" Content="›" Tag="1" Focusable="False" Click="OnOptionStepClick" />
+            <!-- Pane 2: the entries of the section (or the matches of the search), a small heading above each group -->
+            <Border Grid.Column="1" MinWidth="220" BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,1,1,0">
+                <ListBox x:Name="ActionList" Classes="pick active" Focusable="False" ItemsSource="{Binding Actions}" SelectedIndex="{Binding ActionIndex}">
+                    <!-- A group heading is its own row: no hover, no highlight, no click -->
+                    <ListBox.Styles>
+                        <Style Selector="ListBoxItem">
+                            <Setter Property="IsHitTestVisible" Value="{Binding !IsHeading}" />
+                            <Setter Property="Focusable" Value="{Binding !IsHeading}" />
+                        </Style>
+                    </ListBox.Styles>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="picker:PickerRow">
+                            <StackPanel Background="Transparent" ToolTip.Tip="{Binding Unavailable}">
+                                <TextBlock Classes="hint small" Text="{Binding Text}" IsVisible="{Binding IsHeading}" Margin="0,4,0,2" />
+                                <!-- A greyed entry (Grid.unavailable) says why under its name and cannot be picked -->
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Classes.unavailable="{Binding !IsAvailable}">
+                                    <StackPanel VerticalAlignment="Center" IsVisible="{Binding IsEntry}">
+                                        <TextBlock Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Classes="hint small" Text="{Binding Unavailable}" IsVisible="{Binding !IsAvailable}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                    <Button Classes="blockadd small" Content="{Binding Text}" HorizontalAlignment="Left" Focusable="False"
+                                            IsVisible="{Binding IsCommand}" Click="OnRowCommandClick" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Hint}" Classes="muted small" VerticalAlignment="Center" />
+                                </Grid>
                             </StackPanel>
-                            <ToggleSwitch Grid.Column="1" IsChecked="{Binding IsOn}" OnContent="On" OffContent="Off" Focusable="False"
-                                          IsVisible="{Binding IsToggle}" VerticalAlignment="Center" />
-                            <TextBox Classes="field" Grid.Column="1" Text="{Binding Value, UpdateSourceTrigger=LostFocus}" Watermark="{Binding Hint}" Width="260"
-                                     IsVisible="{Binding IsText}" VerticalAlignment="Center" />
-                        </Grid>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Border>
+
+            <!-- Pane 3: the highlighted entry's settings -->
+            <Border Grid.Column="2" MinWidth="260" BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,1,0,0">
+                <Grid RowDefinitions="Auto,*" Margin="0,10,0,0">
+                    <Border x:Name="SettingsFocus" Width="1" Height="1" Focusable="True" HorizontalAlignment="Left" Opacity="0" />
+                    <TextBlock Classes="strong" Text="{Binding SettingsTitle}" Margin="14,0,14,6" HorizontalAlignment="Left" TextWrapping="Wrap" />
+                    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel>
+                            <ListBox x:Name="OptionList" Classes="pick" Classes.active="{Binding InSettings}" Focusable="False"
+                                     ItemsSource="{Binding OptionItems}" SelectedIndex="{Binding OptionIndex}">
+                                <ListBox.ItemTemplate>
+                                    <!-- One template per kind of row, chosen when the row is built: a recycled row never keeps the other kind's controls -->
+                                    <picker:OptionTemplateSelector>
+                                        <picker:OptionTemplateSelector.Inline>
+                                            <DataTemplate DataType="picker:OptionItem">
+                                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" MinHeight="30">
+                                                <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" IsVisible="{Binding IsStepper}">
+                                                    <Button Classes="pill glyph" Tag="-1" Focusable="False" Click="OnOptionStepClick"><Path Classes="glyph" Data="{StaticResource ChevronLeftIcon}" /></Button>
+                                                    <Panel MinWidth="100" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Display}" TextAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !IsTyping}"
+                                                                   DoubleTapped="OnNumberDoubleTapped" />
+                                                        <TextBox Classes="field" Text="{Binding Typed}" TextAlignment="Center" Width="90" HorizontalAlignment="Center"
+                                                                 IsVisible="{Binding IsTyping}" LostFocus="OnNumberLostFocus" />
+                                                    </Panel>
+                                                    <Button Classes="pill glyph" Tag="1" Focusable="False" Click="OnOptionStepClick"><Path Classes="glyph" Data="{StaticResource ChevronRightIcon}" /></Button>
+                                                </StackPanel>
+                                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding IsOn}" OnContent="On" OffContent="Off" Focusable="False"
+                                                              IsVisible="{Binding IsToggle}" VerticalAlignment="Center" />
+                                            </Grid>
+                                            </DataTemplate>
+                                        </picker:OptionTemplateSelector.Inline>
+                                        <picker:OptionTemplateSelector.Block>
+                                            <DataTemplate DataType="picker:OptionItem">
+                                            <StackPanel Spacing="4" Margin="0,2">
+                                                <TextBlock Text="{Binding Label}" TextWrapping="Wrap" />
+                                                <TextBox Classes="field" Text="{Binding Value, UpdateSourceTrigger=LostFocus}" Watermark="{Binding Hint}"
+                                                         IsVisible="{Binding IsText}" />
+                                                <ctl:PathField Text="{Binding Value}" Kind="{Binding PathKind}" Hint="{Binding Hint}" PickerTitle="{Binding PickerTitle}"
+                                                               IsVisible="{Binding IsPath}" />
+                                            </StackPanel>
+                                            </DataTemplate>
+                                        </picker:OptionTemplateSelector.Block>
+                                    </picker:OptionTemplateSelector>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            <TextBlock Classes="muted small" Text="{Binding Note}" IsVisible="{Binding HasNote}" TextWrapping="Wrap" Margin="14,4" />
+                            <Button Classes="pill" Classes.custom="{Binding OnFootButton}" Content="{Binding FootText}" IsVisible="{Binding HasFootButton}" Focusable="False"
+                                    HorizontalAlignment="Left" Margin="14,8,14,8" Click="OnFootButtonClick" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
         </Grid>
 
-        <!-- The settings page's confirm; the picker's keys are in the Keyboard shortcuts of the pages that open it (PickerModel.KeyHelp) -->
-        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="12,6" IsVisible="{Binding IsEditingOptions}">
-            <Button Classes="pill" Content="Back" HorizontalAlignment="Left" Focusable="False" IsVisible="{Binding CanGoBack}"
-                    Click="OnBackClick" ToolTip.Tip="Back to the list without choosing (Esc, Alt+Left)" />
-            <Button Grid.Column="1" Classes="scope usebtn" Classes.picked="{Binding OnUseButton}" Tag="scope" Content="{Binding UseText}" IsVisible="{Binding IsEditingOptions}"
-                    HorizontalAlignment="Right" Focusable="False" Click="OnUseClick" />
-        </Grid>
+        <!-- The only confirm; the picker's keys are in the Keyboard shortcuts of the pages that open it (PickerModel.KeyHelp) -->
+        <Border Grid.Row="2" Classes="footer">
+            <Button Classes="scope usebtn" Tag="scope" Content="{Binding UseText}" IsEnabled="{Binding CanUse}" HorizontalAlignment="Right" Focusable="False" Click="OnUseClick" />
+        </Border>
     </Grid>
 </UserControl>

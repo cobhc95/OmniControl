@@ -29,6 +29,18 @@ public interface ILaptopBrightness
     OperationResult SetBrightness(int level);
 }
 
+/// <summary>How a display is turned (the order matches the choices shown to the user).</summary>
+public enum DisplayOrientation { Landscape, Portrait, LandscapeFlipped, PortraitFlipped }
+
+/// <summary>Reads and turns a display through Windows, whether or not it speaks DDC/CI. Slow: call off the UI thread.</summary>
+public interface IDisplayRotation
+{
+    /// <summary>The display's orientation now; null when Windows would not say.</summary>
+    DisplayOrientation? Read(string deviceName);
+
+    OperationResult Set(string deviceName, DisplayOrientation orientation);
+}
+
 public interface IMonitorEngine : IDisposable
 {
     /// <summary>The DDC/CI monitors now attached; replaced as a whole when the set changes, so a held list stays valid (its monitors are disposed).</summary>
@@ -38,6 +50,8 @@ public interface IMonitorEngine : IDisposable
     IReadOnlyList<DisplayInfo> Displays { get; }
 
     ILaptopBrightness Laptop { get; }
+
+    IDisplayRotation Rotation { get; }
 
     /// <summary>Opens every monitor again, dropping what was learned about them. Slow.</summary>
     void RefreshMonitors();

@@ -1,0 +1,134 @@
+<Window Classes="dialog" xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:OmniControl.App.Controls"
+        xmlns:pages="using:OmniControl.App.Pages"
+        xmlns:apps="using:OmniControl.App.AppLists"
+        xmlns:core="using:OmniControl.Core.Engine"
+        x:Class="OmniControl.App.AppLists.AppListManagerWindow"
+        x:DataType="apps:AppListManagerViewModel"
+        Title="App lists" Width="760" Height="480" MinWidth="560" MinHeight="360"
+        WindowStartupLocation="CenterOwner">
+    <!-- The app lists manager (docs/mockups/app-scope-and-lists.html). Left: the lists with their counts and the dashed "+ New list".
+         Right: the open list's name with Rename and Delete pills and a "used by" tag, its apps as chips (Button.chipx, the x takes one away),
+         the three ways to add one (running, installed, browse) and "Used by". Foot: "Changes apply at once." and Close. Mouse first
+         (AGENTS.md rule 5): Tab reaches everything, Enter or leaving the name box applies a rename, Esc cancels it, then closes. -->
+    <DockPanel>
+        <Border DockPanel.Dock="Bottom" Classes="footer">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                <TextBlock Classes="statusline" Text="Changes apply at once." VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Classes="statusline caution" Text="{Binding Message}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                <Button Grid.Column="2" Classes="primary close" Content="Close" Click="OnCloseClick" />
+            </Grid>
+        </Border>
+
+        <Border DockPanel.Dock="Left" Width="190" Classes="sidebarpanel" BorderThickness="0,0,1,0">
+            <DockPanel>
+                <Button DockPanel.Dock="Bottom" Classes="blockadd small" Content="+ New list" Command="{Binding NewListCommand}" HorizontalAlignment="Left" Margin="12,6,12,10" />
+                <ListBox Classes="nav" ItemsSource="{Binding Lists}" SelectedItem="{Binding Selected}" Margin="0,12,0,0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="apps:AppListItem">
+                            <StackPanel>
+                                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Classes="hint" Text="{Binding CountText}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+
+        <Panel Margin="16,12">
+            <pages:EmptyListRow VerticalAlignment="Top" Text="No app lists yet." LinkText="New list" Command="{Binding NewListCommand}" IsVisible="{Binding HasNoSelection}" />
+            <ScrollViewer IsVisible="{Binding HasSelection}">
+                <StackPanel Spacing="10">
+                    <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
+                        <Panel VerticalAlignment="Center">
+                            <TextBlock Classes="title" Text="{Binding Heading}" IsVisible="{Binding !IsRenaming}" TextTrimming="CharacterEllipsis" />
+                            <TextBox x:Name="NameBox" Classes="field" Text="{Binding EditText}" IsVisible="{Binding IsRenaming}" MaxLength="40"
+                                     KeyDown="OnNameKeyDown" LostFocus="OnNameLostFocus" />
+                        </Panel>
+                        <Border Grid.Column="1" Classes="tag" IsVisible="{Binding HasUsers}" VerticalAlignment="Center"><TextBlock Text="{Binding UsedByTag}" /></Border>
+                        <Button Grid.Column="2" Classes="pill" Tag="scope" Content="Rename" Command="{Binding BeginRenameCommand}" VerticalAlignment="Center" />
+                        <Button Grid.Column="3" Classes="pill" Tag="scope" Content="Delete" Command="{Binding DeleteCommand}" VerticalAlignment="Center" />
+                    </Grid>
+
+                    <pages:EmptyListRow Text="No apps in this list yet." IsVisible="{Binding HasNoApps}" />
+                    <ItemsControl ItemsSource="{Binding Apps}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><WrapPanel ItemSpacing="{StaticResource ChipSpacing}" LineSpacing="{StaticResource ChipSpacing}" /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="apps:AppChipItem">
+                                <Button Classes="chipx" Tag="scope" Command="{Binding RemoveCommand}" ToolTip.Tip="{Binding Tip}">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Name}" />
+                                        <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource ChipSpacing}">
+                        <!-- Each pop-down hangs on a Panel, not on its button, so the button's styles do not reach into it -->
+                        <Panel x:Name="RunningHolder">
+                            <FlyoutBase.AttachedFlyout>
+                                <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft" Opened="OnPopDownOpened">
+                                    <StackPanel>
+                                        <TextBlock Classes="menutext" Text="Apps with a window now" />
+                                        <ScrollViewer MaxHeight="{StaticResource OptionListMaxHeight}" HorizontalScrollBarVisibility="Disabled">
+                                            <ItemsControl ItemsSource="{Binding Running}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="core:RunningProgram">
+                                                        <Button Classes="menurow" Click="OnRunningClick" ToolTip.Tip="{Binding Id}">
+                                                            <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                                        </Button>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </StackPanel>
+                                </c:ListMenuFlyout>
+                            </FlyoutBase.AttachedFlyout>
+                            <Button Classes="blockadd small" Tag="scope" Content="+ Running app" Click="OnRunningMenuClick" />
+                        </Panel>
+                        <Panel x:Name="InstalledHolder">
+                            <FlyoutBase.AttachedFlyout>
+                                <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft" Opened="OnPopDownOpened">
+                                    <StackPanel>
+                                        <TextBlock Classes="menutext" Text="Installed apps OmniControl knows" />
+                                        <ScrollViewer MaxHeight="{StaticResource OptionListMaxHeight}" HorizontalScrollBarVisibility="Disabled">
+                                            <ItemsControl ItemsSource="{Binding Installed}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="apps:InstalledApp">
+                                                        <Button Classes="menurow" Click="OnInstalledClick" ToolTip.Tip="{Binding Program}">
+                                                            <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                                        </Button>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                        <TextBlock Classes="menutext" Text="Any other app: use “+ Browse…”." />
+                                    </StackPanel>
+                                </c:ListMenuFlyout>
+                            </FlyoutBase.AttachedFlyout>
+                            <Button Classes="blockadd small" Tag="scope" Content="+ Installed app" Click="OnInstalledMenuClick" />
+                        </Panel>
+                        <Button Classes="blockadd small" Tag="scope" Content="+ Browse…" Click="OnBrowseClick" ToolTip.Tip="Choose a program on this PC" />
+                    </StackPanel>
+
+                    <Border Classes="hrule" />
+                    <StackPanel Spacing="2">
+                        <TextBlock Classes="hint" Text="Used by" />
+                        <pages:EmptyListRow Text="Nothing yet. Pick this list from an Apps chip." IsVisible="{Binding !HasUsers}" />
+                        <ItemsControl ItemsSource="{Binding UsedBy}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </Panel>
+    </DockPanel>
+</Window>

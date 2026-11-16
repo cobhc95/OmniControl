@@ -16,14 +16,13 @@
     <Border Classes="flash" Classes.lit="{Binding IsFlashing}" CornerRadius="8" BorderThickness="1" Padding="0">
     <Grid RowDefinitions="Auto,Auto" RowSpacing="4" Margin="0,1">
         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6">
-            <TextBlock Classes="cardlabel" Text="{Binding Label}" FontSize="11.5" LineHeight="12" Margin="0,0,4,0" VerticalAlignment="Top" />
+            <TextBlock Classes="cardlabel" Text="{Binding Label}" Margin="0,0,4,0" VerticalAlignment="Top" />
             <Button x:Name="Picker" Grid.Column="1" Classes="pill" Tag="scope" Click="OnPickerClick" IsVisible="{Binding !IsCustom}">
                 <TextBlock Text="{x:Static mouse:MouseButtonItem.Summary}" VerticalAlignment="Center" />
             </Button>
             <Panel x:Name="ChipHolder" Grid.Column="1" IsVisible="{Binding IsCustom}">
                 <FlyoutBase.AttachedFlyout>
-                    <Flyout Placement="BottomEdgeAlignedLeft" PlacementConstraintAdjustment="SlideX, FlipY, ResizeY"
-                            VerticalOffset="{StaticResource MenuOffset}" FlyoutPresenterClasses="listmenu">
+                    <ctl:ListMenuFlyout Placement="BottomEdgeAlignedLeft">
                         <StackPanel x:DataType="mouse:MouseButtonItem" KeyDown="OnListKeyDown">
                             <TextBlock Classes="menutext" Text="Actions, in the order they run" />
                             <ScrollViewer MaxHeight="{StaticResource OptionListMaxHeight}">
@@ -42,14 +41,16 @@
                                                 </Button>
                                                 <Button Grid.Column="2" Classes="pill glyph" Content="↑" Command="{Binding MoveUpCommand}" IsEnabled="{Binding CanMoveUp}" ToolTip.Tip="Run earlier" />
                                                 <Button Grid.Column="3" Classes="pill glyph" Content="↓" Command="{Binding MoveDownCommand}" IsEnabled="{Binding CanMoveDown}" ToolTip.Tip="Run later" />
-                                                <Button Grid.Column="4" Classes="pill glyph" Content="×" Click="OnListRemoveClick" ToolTip.Tip="Remove this action" />
+                                                <Button Grid.Column="4" Classes="pill glyph" Click="OnListRemoveClick" ToolTip.Tip="Remove this action">
+                                                    <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+                                                </Button>
                                             </Grid>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </ScrollViewer>
                         </StackPanel>
-                    </Flyout>
+                    </ctl:ListMenuFlyout>
                 </FlyoutBase.AttachedFlyout>
                 <ItemsControl x:Name="ChipRow" ItemsSource="{Binding Chips}">
                     <ItemsControl.ItemsPanel>
@@ -65,7 +66,7 @@
                                     <TextBlock Text="{Binding Name}" />
                                     <TextBlock Classes="chipdetail" Text="{Binding Parameter}" IsVisible="{Binding HasDetail}" />
                                     <Border Tag="chipremove" Background="Transparent" ToolTip.Tip="Remove this action">
-                                        <Path Classes="glyph" Data="M6,6 L18,18 M18,6 L6,18" />
+                                        <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
                                     </Border>
                                 </StackPanel>
                             </Button>
@@ -80,14 +81,17 @@
                     </ItemsControl.DataTemplates>
                 </ItemsControl>
             </Panel>
-            <Button x:Name="Cog" Grid.Column="2" Classes="pill cog" Tag="scope" IsVisible="{Binding HasOptions}" Click="OnCogClick" VerticalAlignment="Top"
-                    ToolTip.Tip="Settings for the first action">
-                <PathIcon Data="{DynamicResource CogIcon}" Width="12" Height="12" />
-            </Button>
+            <ctl:ScopeCog x:Name="CogPart" Grid.Column="2" IsVisible="{Binding ShowsCog}" Scope="{Binding Scope}" ShowsSettings="{Binding HasOptions}"
+                          CogTip="Which apps this works in, and the first action's settings" SettingsClicked="OnCogClick" VerticalAlignment="Top" />
         </Grid>
         <StackPanel Grid.Row="1" Spacing="4">
             <TextBox x:Name="ParameterBox" Classes="field" Text="{Binding Parameter, UpdateSourceTrigger=LostFocus}"
                      Watermark="{Binding Hint}" IsVisible="{Binding NeedsParameter}" />
+            <ctl:PathField x:Name="PathBox" Text="{Binding Parameter}" Kind="{Binding PathKind}" Hint="{Binding Hint}" PickerTitle="Choose what to open"
+                           IsVisible="{Binding NeedsPath}" />
+            <Border Classes="tag" HorizontalAlignment="Left" IsVisible="{Binding ShowsScopeTag}" ToolTip.Tip="This button works in different apps than its group">
+                <TextBlock Text="{Binding ScopeTagText}" />
+            </Border>
             <Border Classes="tag" HorizontalAlignment="Left" IsVisible="{Binding ShowsWindowsAlso}" ToolTip.Tip="{Binding WindowsDetail}">
                 <TextBlock Text="{x:Static mouse:MouseButtonItem.WindowsAlsoText}" />
             </Border>

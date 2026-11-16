@@ -1,0 +1,24 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:hk="using:OmniControl.App.Hotkeys"
+             x:Class="OmniControl.App.Hotkeys.KeycapRow">
+    <!-- A shortcut drawn as keycaps (Border.keycap) with "+" between them; the key still to press is a dashed accent slot
+         (Rectangle.keyslot). Used by a rule's "I press" block and its capture pop-down. -->
+    <ItemsControl x:Name="Host">
+        <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="4" /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="hk:KeycapPart">
+                <Panel VerticalAlignment="Center">
+                    <Border Classes="keycap" IsVisible="{Binding IsKey}"><TextBlock Text="{Binding Text}" /></Border>
+                    <TextBlock Classes="muted" Text="+" IsVisible="{Binding IsPlus}" VerticalAlignment="Center" />
+                    <Panel IsVisible="{Binding IsSlot}">
+                        <Rectangle Classes="keyslot" />
+                        <TextBlock Classes="keyslot" Text="{Binding Text}" />
+                    </Panel>
+                </Panel>
+            </DataTemplate>
+        </ItemsControl.ItemTemplate>
+    </ItemsControl>
+</UserControl>

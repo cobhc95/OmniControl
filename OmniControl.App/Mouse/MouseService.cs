@@ -1,4 +1,6 @@
 using Avalonia.Threading;
+using OmniControl.App.AppLists;
+using OmniControl.App.Hotkeys;
 using OmniControl.App.Services;
 using OmniControl.Core.Engine.Mouse;
 
@@ -8,10 +10,10 @@ namespace OmniControl.App.Mouse;
 /// Remaps the mouse: owns the hook, picks the layer for each input and runs the mapped action with its options.
 /// The hook thread only reads an immutable snapshot, so editing settings on the UI thread never blocks or races it.
 /// </summary>
-public sealed class MouseService : IDisposable
+public sealed class MouseService : ILayerControl, IDisposable
 {
-    /// <summary>The settings as the hook reads them: the first action per key, and the others in order.</summary>
-    private sealed record Snapshot(bool Enabled, Dictionary<string, MouseAction> Actions, Dictionary<string, MouseAction[]> Extras)
+    /// <summary>The settings as the hook reads them: the first action per key, the others in order, and the apps scope of each limited button.</summary>
+    private sealed record Snapshot(Dictionary<string, MouseAction> Actions, Dictionary<string, MouseAction[]> Extras, Dictionary<MouseButton, AppScopeSetting> Scopes)
     {
         public MouseAction[] ExtrasOf(string key) => Extras.TryGetValue(key, out var extras) ? extras : NoExtras;
     }
@@ -23,6 +25,7 @@ public sealed class MouseService : IDisposable
     private readonly Action<string> _report;
     private readonly Action<string> _log;
     private readonly Func<MouseEvent, MouseAction?> _gestureAt;
+    private readonly AppScopeGate _scopes;
 
     private readonly object _gate = new();
     private readonly HashSet<MouseButton> _swallowed = new();           // pressed buttons whose release must be swallowed too
@@ -32,9 +35,6 @@ public sealed class MouseService : IDisposable
     private volatile Snapshot _snapshot;
 
     public MouseSettings Settings { get; } = MouseSettings.Load();
-
-    /// <summary>Raised on the UI thread when a hotkey changed the on/off state.</summary>
-    public event Action? StateChanged;
 
     /// <summary>
     /// Raised on the UI thread with a family and its layer now in force, whenever a button, gesture or hotkey changes it (also while a
@@ -55,10 +55,12 @@ public sealed class MouseService : IDisposable
     /// <param name="hook">The shared mouse hook (the caller starts and stops it).</param>
     /// <param name="gestureAt">
     /// Asked first on the hook thread for every press: the action a gesture puts on this press instead of the button's mapping (a middle
-    /// click over a screen area), or null. That action runs even while remapping is off, exactly as a mapped one would.
+    /// click over a screen area), or null.
     /// </param>
-    public MouseService(MouseHook hook, Func<string, bool> runOmniAction, Action<string> report, Func<MouseEvent, MouseAction?> gestureAt)
+    /// <param name="scopes">Says whether a button's mapping works in the app the user is in (the Apps chip of the Mouse Buttons group and its cards).</param>
+    public MouseService(MouseHook hook, Func<string, RunSettings?, bool> runOmniAction, Action<string> report, Func<MouseEvent, MouseAction?> gestureAt, AppScopeGate scopes)
     {
+        _scopes = scopes;
         _report = report;
         _log = hook.Diagnose;
         _gestureAt = gestureAt;
@@ -79,12 +81,17 @@ public sealed class MouseService : IDisposable
         Applied?.Invoke();
     }
 
-    public void SetEnabled(bool on)
+    /// <summary>
+    /// Puts <paramref name="target"/> in place of every mapping, layer name and option ("Restore defaults" and its undo), back on layer 1 of
+    /// both families. Saved and applied like any change, so a Windows gesture no mapping takes over any more is given back.
+    /// </summary>
+    public void ReplaceSettings(MouseSettings target)
     {
-        if (Settings.Enabled == on) return;
-        Settings.Enabled = on;
+        Settings.CopyFrom(target);
         Apply();
-        StateChanged?.Invoke();
+        StepLayer(InputFamily.Mouse, 0);
+        StepLayer(InputFamily.Trackpad, 0);
+        LayersChanged?.Invoke();
     }
 
     public void RenameLayer(InputFamily family, int layer, string name)
@@ -97,6 +104,13 @@ public sealed class MouseService : IDisposable
     public void ClearLayer(InputFamily family, int layer)
     {
         Settings.LayersOf(family).Clear(layer);
+        Apply();
+        LayersChanged?.Invoke();
+    }
+
+    public void RestoreLayer(InputFamily family, LayerSnapshot snapshot)
+    {
+        Settings.LayersOf(family).Restore(snapshot);
         Apply();
         LayersChanged?.Invoke();
     }
@@ -126,8 +140,10 @@ public sealed class MouseService : IDisposable
     }
 
     private Snapshot TakeSnapshot() =>
-        new(Settings.Enabled, Settings.Bindings.ToDictionary(b => b.Key, b => MouseAction.Parse(b.Value)),
-            Settings.ExtraActions.ToDictionary(e => e.Key, e => e.Value.Take(MouseSettings.MaxActions - 1).Select(MouseAction.Parse).ToArray()));
+        new(Settings.Bindings.ToDictionary(b => b.Key, b => MouseAction.Parse(b.Value)),
+            Settings.ExtraActions.ToDictionary(e => e.Key, e => e.Value.Take(MouseSettings.MaxActions - 1).Select(MouseAction.Parse).ToArray()),
+            Enum.GetValues<MouseButton>().Where(b => b.FamilyOf() == InputFamily.Mouse && Settings.ScopeOf(b) is not null)
+                .ToDictionary(b => b, b => Settings.ScopeOf(b)!));
 
     private void NotifyLayer(InputFamily family)
     {
@@ -147,14 +163,16 @@ public sealed class MouseService : IDisposable
         // Gestures win over the button's mapping; release, swallowing and "while held" work the same for both.
         var gesture = _gestureAt(ev);
         var snapshot = _snapshot;
-        if (gesture is null && !snapshot.Enabled) return false;
         if (gesture is null && ev.Button is MouseButton.Left or MouseButton.Right && OwnProgram.IsUnder(ev.X, ev.Y)) return false;
 
         var layer = _layers.Current(ev.Button.FamilyOf());
         var key = MouseSettings.KeyOf(layer, ev.Button);
         var action = gesture;
         if (action is null && (!snapshot.Actions.TryGetValue(key, out action) || action.Id == MouseActionCatalog.Default))
-            return PassThrough(ev, layer);
+            return PassThrough(ev, layer, NotMapped);
+        // Outside the apps its mapping works in, the input behaves as if it had none.
+        if (gesture is null && snapshot.Scopes.TryGetValue(ev.Button, out var scope) && !_scopes.Allows(scope))
+            return PassThrough(ev, layer, OutsideApps);
         // Every action of one firing comes from the layer in force when it fired; a layer action among them changes the layer for the next firing.
         var extras = gesture is null ? snapshot.ExtrasOf(key) : NoExtras;
         if (!IsPlainClick(ev.Button))
@@ -210,6 +228,8 @@ public sealed class MouseService : IDisposable
         return false;
     }
 
+    private const string NotMapped = "not mapped", OutsideApps = "not for this app";
+
     // Plain clicks are left out of the log so they never use up its lines.
     private static bool IsPlainClick(MouseButton button) => button is MouseButton.Left or MouseButton.Right;
 
@@ -219,12 +239,12 @@ public sealed class MouseService : IDisposable
     /// each pass-through Back started a new Explorer folder-window process until the shell crashed. There the press and its release are
     /// swallowed. The log names the window class each pass-through goes to, so a repeat elsewhere shows where.
     /// </summary>
-    private bool PassThrough(MouseEvent ev, int layer)
+    private bool PassThrough(MouseEvent ev, int layer, string why)
     {
         if (IsPlainClick(ev.Button)) return false;
         var goesTo = WindowQuery.RootClassAt(ev.X, ev.Y);
         var nowhereToGo = ev.Button is MouseButton.Back or MouseButton.Forward && (OwnProgram.IsUnder(ev.X, ev.Y) || PointerArea.IsDesktop(ev.X, ev.Y));
-        _log($"{ev.Button} on layer {layer}: not mapped, {(nowhereToGo ? "swallowed (no back or forward there)" : "passes through")} over \"{goesTo}\"");
+        _log($"{ev.Button} on layer {layer}: {why}, {(nowhereToGo ? "swallowed (no back or forward there)" : "passes through")} over \"{goesTo}\"");
         if (!nowhereToGo) return false;
         lock (_gate) _swallowed.Add(ev.Button);
         return true;

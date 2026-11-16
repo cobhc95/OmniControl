@@ -1,10 +1,10 @@
-<Window xmlns="https://github.com/avaloniaui"
+<Window Classes="dialog" xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:about="using:OmniControl.App.About"
         x:Class="OmniControl.App.About.AboutWindow"
         x:DataType="about:AboutViewModel"
-        Icon="avares://OmniControl/Assets/OmniControl.ico" Title="About and credits" Width="640" Height="600" MinWidth="440" MinHeight="360"
-        Background="{DynamicResource BrushBackground}" WindowStartupLocation="CenterScreen">
+        Title="About and credits" Width="640" Height="600" MinWidth="440" MinHeight="360"
+        WindowStartupLocation="CenterScreen">
     <!-- OmniControl's notice, then one card per credited project (from NOTICE.txt), then Close. Up/Down walk the cards, Esc closes. -->
     <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="8" Margin="12">
         <TextBlock Classes="title" Text="{Binding Version}" />
@@ -15,7 +15,7 @@
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                         <StackPanel Spacing="2">
                             <WrapPanel>
-                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                <TextBlock Classes="strong" Text="{Binding Name}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,6,0" />
                                 <Border Classes="tag" VerticalAlignment="Center"><TextBlock Text="{Binding Licence}" TextWrapping="Wrap" /></Border>
                             </WrapPanel>
                             <TextBlock Classes="muted" Text="{Binding Version}" TextWrapping="Wrap" />

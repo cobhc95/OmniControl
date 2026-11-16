@@ -12,7 +12,7 @@
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource MenuGap}" Background="Transparent"
                       Tapped="OnEntryTapped" PointerEntered="OnEntryPointerEntered">
                     <Border Classes="tickbox" Classes.checked="{Binding IsChecked}" VerticalAlignment="Center">
-                        <Path Classes="tick" Data="M5,12 L10,17 L19,7" IsVisible="{Binding IsChecked}" />
+                        <Path Classes="tick" Data="{StaticResource TickIcon}" IsVisible="{Binding IsChecked}" />
                     </Border>
                     <TextBlock Grid.Column="1" Text="{Binding Label}" TextWrapping="Wrap" HorizontalAlignment="Left" VerticalAlignment="Center" />
                 </Grid>

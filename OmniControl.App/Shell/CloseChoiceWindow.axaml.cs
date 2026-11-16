@@ -16,7 +16,6 @@ public partial class CloseChoiceWindow : Window
         InitializeComponent();
         ExitButton.Content = CloseBehaviors.LabelOf(CloseBehavior.Exit);
         TrayButton.Content = CloseBehaviors.LabelOf(CloseBehavior.MinimizeToTray);
-        AddHandler(KeyDownEvent, (_, e) => { if (e.Key == Key.Escape) { Close(null); e.Handled = true; } }, RoutingStrategies.Tunnel);
         Opened += (_, _) => TrayButton.Focus();
     }
 

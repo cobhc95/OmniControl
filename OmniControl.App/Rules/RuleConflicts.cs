@@ -40,7 +40,6 @@ public static class RuleConflicts
 
     private static RuleConflict? MappingConflict(Rule rule, RuleTrigger trigger, MouseSettings mouse)
     {
-        if (!mouse.Enabled) return null;
         var layers = rule.Layer == Rule.AnyLayer ? Enumerable.Range(1, MouseSettings.Layers) : new[] { rule.Layer };
         var names = mouse.LayersOf(trigger.Family).Labels();
         foreach (var layer in layers)

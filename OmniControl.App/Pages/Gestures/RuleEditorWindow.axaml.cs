@@ -1,9 +1,7 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Threading;
-using Avalonia.VisualTree;
 using OmniControl.App.Picker;
 
 namespace OmniControl.App.Pages.Gestures;
@@ -19,12 +17,6 @@ public partial class RuleEditorWindow : Window
         InitializeComponent();
         RowEditing.Attach(SettingsList);
         AddHandler(KeyDownEvent, OnSentenceKey, RoutingStrategies.Tunnel);
-        KeyDown += (_, e) =>
-        {
-            if (e.Key != Key.Escape || e.Handled) return; // a drop-down or the name box used it first
-            Close();
-            e.Handled = true;
-        };
         Opened += (_, _) => FocusSentence(0);
     }
 
@@ -37,18 +29,11 @@ public partial class RuleEditorWindow : Window
         model.Closed();
     }
 
-    /// <summary>The sentence's buttons in reading order (the crosses inside blocks are not stops).</summary>
-    private List<Button> SentenceButtons() =>
-        SentenceHost.GetVisualDescendants().OfType<Button>().Where(b => !b.Classes.Contains("blockx") && b.IsEffectivelyVisible).ToList();
+    private List<Button> SentenceButtons() => SentenceFocus.ButtonsOf(SentenceHost);
 
-    /// <summary>Puts the keyboard on the sentence's button at <paramref name="index"/> (or the last one) once the sentence is drawn again.</summary>
-    private void FocusSentence(int index) => Dispatcher.UIThread.Post(() =>
-    {
-        var buttons = SentenceButtons();
-        if (buttons.Count > 0) buttons[Math.Clamp(index, 0, buttons.Count - 1)].Focus(NavigationMethod.Directional);
-    }, DispatcherPriority.Loaded);
+    private void FocusSentence(int index) => SentenceFocus.FocusLater(SentenceHost, index);
 
-    private int SentenceIndexOf(object? control) => control is Button button ? SentenceButtons().IndexOf(button) : -1;
+    private int SentenceIndexOf(object? control) => SentenceFocus.IndexOf(SentenceHost, control);
 
     private void OnSentenceKey(object? sender, KeyEventArgs e)
     {

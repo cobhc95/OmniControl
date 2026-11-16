@@ -1,32 +1,37 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:hk="using:OmniControl.App.Hotkeys"
+             xmlns:c="using:OmniControl.App.Controls"
              x:Class="OmniControl.App.Hotkeys.HotkeyRow"
              x:DataType="hk:HotkeyAction">
-    <Grid ColumnDefinitions="150,190" ColumnSpacing="12">
-        <TextBox Classes="field" IsReadOnly="True" Text="{Binding Gesture}" Watermark="{Binding HotkeyHint}"
-                 Classes.listening="{Binding IsListening}"
-                 VerticalAlignment="Center"
-                 DoubleTapped="OnHotkeyDoubleTapped" LostFocus="OnHotkeyLostFocus" />
+    <Grid ColumnDefinitions="Auto,190" ColumnSpacing="12">
+        <hk:HotkeyBox ToolTip.Tip="Click, then press the keys; Backspace removes the shortcut" />
 
-        <Button Grid.Column="1" Tag="scope" Classes="scope" IsVisible="{Binding HasDevices}">
-            <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Text="{Binding ScopeSummary}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                <PathIcon Grid.Column="1" Data="{DynamicResource ChevronDownIcon}" Width="10" Height="10" Margin="8,0,0,0" />
+        <Button Grid.Column="1" Tag="scope" Classes="selector" IsVisible="{Binding HasDevices}">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
+                <TextBlock Text="{Binding ScopeSummary}" TextTrimming="CharacterEllipsis" />
+                <PathIcon Grid.Column="1" Data="{DynamicResource ChevronDownIcon}" />
             </Grid>
             <Button.Flyout>
-                <Flyout Placement="BottomEdgeAlignedLeft" Opened="OnFlyoutOpened" Closed="OnFlyoutClosed" FlyoutPresenterClasses="scopemenu">
+                <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft" Opened="OnFlyoutOpened" Closed="OnFlyoutClosed">
                     <StackPanel x:DataType="hk:HotkeyAction">
                         <ItemsControl ItemsSource="{Binding Chips}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="hk:ScopeChip">
-                                    <ToggleButton Classes="menuitem" Content="{Binding Name}" IsChecked="{Binding IsOn}" />
+                                    <ToggleButton Classes="menurow" IsChecked="{Binding IsOn}">
+                                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource MenuGap}">
+                                            <Panel Width="{StaticResource MenuGlyphSize}">
+                                                <Path Classes="glyph" Data="{StaticResource TickIcon}" IsVisible="{Binding IsOn}" />
+                                            </Panel>
+                                            <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                        </Grid>
+                                    </ToggleButton>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <TextBlock Text="No devices detected." Classes="muted" Margin="12,8" IsVisible="{Binding ShowEmptyNote}" />
+                        <TextBlock Classes="menutext" Text="No devices detected." IsVisible="{Binding ShowEmptyNote}" />
                     </StackPanel>
-                </Flyout>
+                </c:ListMenuFlyout>
             </Button.Flyout>
         </Button>
     </Grid>

@@ -102,10 +102,30 @@ public static class InstalledPrograms
 
     // ---- App Paths ----
 
+    private static readonly (RegistryHive Hive, RegistryView View)[] AppPathPlaces =
+        { (RegistryHive.LocalMachine, RegistryView.Registry64), (RegistryHive.LocalMachine, RegistryView.Registry32), (RegistryHive.CurrentUser, RegistryView.Default) };
+
+    /// <summary>The program an "App Paths" key names ("chrome.exe"), when it is registered and the file exists.</summary>
+    internal static string? AppPathOf(string exeName)
+    {
+        foreach (var (hive, view) in AppPathPlaces)
+        {
+            try
+            {
+                using var root = RegistryKey.OpenBaseKey(hive, view);
+                using var key = root.OpenSubKey($@"{AppPathsKey}\{exeName}");
+                if (key?.GetValue(null) is string value && value.Trim().Trim('"') is { Length: > 0 } path && File.Exists(path)) return path;
+            }
+            catch (SecurityException) { /* a key that may not be read is skipped */ }
+            catch (UnauthorizedAccessException) { }
+            catch (IOException) { }
+        }
+        return null;
+    }
+
     private static IEnumerable<FoundProgram> FromAppPaths()
     {
-        var places = new[] { (RegistryHive.LocalMachine, RegistryView.Registry64), (RegistryHive.LocalMachine, RegistryView.Registry32), (RegistryHive.CurrentUser, RegistryView.Default) };
-        foreach (var (hive, view) in places)
+        foreach (var (hive, view) in AppPathPlaces)
             foreach (var path in AppPathsOf(hive, view))
                 yield return new FoundProgram(ProgramFile.NameOf(path), path);
     }

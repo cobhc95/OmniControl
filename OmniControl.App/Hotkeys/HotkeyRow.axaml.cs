@@ -13,21 +13,6 @@ public partial class HotkeyRow : UserControl
 
     public HotkeyRow() => InitializeComponent();
 
-    /// <summary>Double-click is the same as pressing Enter on the box: start listening for keys.</summary>
-    private void OnHotkeyDoubleTapped(object? sender, TappedEventArgs e)
-    {
-        if (sender is not TextBox { DataContext: HotkeyAction action } box) return;
-        box.Focus(NavigationMethod.Directional);
-        action.IsListening = true;
-        e.Handled = true;
-    }
-
-    /// <summary>Leaving the box (Tab, clicking elsewhere) cancels listening.</summary>
-    private void OnHotkeyLostFocus(object? sender, RoutedEventArgs e)
-    {
-        if (sender is Control { DataContext: HotkeyAction action }) action.IsListening = false;
-    }
-
     /// <summary>
     /// The device list opens on its first ticked option. Up/Down move, Space ticks (and lets you tick more),
     /// Enter picks the highlighted option (just that one, unless Space was used) and closes the list.

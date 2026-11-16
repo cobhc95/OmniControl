@@ -1,10 +1,10 @@
 namespace OmniControl.App.Audio.Engine;
 
 /// <summary>
-/// Windows' default playback device while the master bus runs (Full control): the bus's cable becomes the default, so every program
+/// Windows' default playback device while the master bus runs: the bus's cable becomes the default, so every program
 /// and system sound goes through the bus, and the real device it replaced is remembered (<see cref="MixerSettings.RealMasterDevice"/>)
 /// as where the bus plays and what the master's volume acts on (<see cref="MixerService.MasterDeviceId"/>). When the bus stops running
-/// (Fast mode, the master's method set to Equalizer APO, no cable, a failed run, exit) the default goes back to the real device, but only while the cable is still the default:
+/// (the master's method set to Equalizer APO, no cable, a failed run, exit) the default goes back to the real device, but only while the cable is still the default:
 /// a device the user chose in the meantime is not undone. Never leaves the cable as the default without a running bus. UI thread.
 /// </summary>
 internal sealed class BusDefault
@@ -48,7 +48,7 @@ internal sealed class BusDefault
 
     /// <summary>
     /// The rule of <see cref="Sync"/> (pure): the cable becomes the default while the bus runs; a bus only restarting on the cable it owns
-    /// keeps it; anything else (no bus planned: Fast mode, the master in Equalizer APO, no cable; a failed bus) gives the default back.
+    /// keeps it; anything else (no bus planned: the master in Equalizer APO, no cable; a failed bus) gives the default back.
     /// </summary>
     /// <param name="ownedCable">The cable OmniControl made the default (<see cref="MixerSettings.BusCable"/>; empty = none).</param>
     internal static Step StepFor(BusPlan? bus, bool busExists, bool busRunning, string ownedCable) =>

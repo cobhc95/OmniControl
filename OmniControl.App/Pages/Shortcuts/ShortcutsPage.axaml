@@ -3,6 +3,8 @@
              xmlns:vm="using:OmniControl.App.Pages.Shortcuts"
              xmlns:pages="using:OmniControl.App.Pages"
              xmlns:hk="using:OmniControl.App.Hotkeys"
+             xmlns:c="using:OmniControl.App.Controls"
+             xmlns:restore="using:OmniControl.App.Pages.Restore"
              x:Class="OmniControl.App.Pages.Shortcuts.ShortcutsPage"
              x:DataType="vm:ShortcutsPageViewModel">
     <UserControl.Resources>
@@ -11,7 +13,7 @@
             <Grid ColumnDefinitions="*,Auto">
                 <!-- An action that does nothing now is dimmed and says why under its name (Volume's own availability) -->
                 <StackPanel Classes.unavailable="{Binding IsUnavailable}" VerticalAlignment="Center" MinWidth="0">
-                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Classes="strong" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
                     <TextBlock Classes="muted small" Text="{Binding UnavailableReason}" IsVisible="{Binding IsUnavailable}"
                                TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding UnavailableReason}" />
                 </StackPanel>
@@ -20,32 +22,68 @@
         </DataTemplate>
     </UserControl.Resources>
     <StackPanel Spacing="6">
+        <!-- The title line (docs/mockups/shortcuts-grouped-presets.html): the page's name, the ONE preset picker of the whole shortcut set,
+             "Clear all", and the shared Restore defaults at the far right -->
+        <pages:PageTitleLine Title="{Binding Title}">
+            <pages:PageTitleLine.Right>
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <c:PresetPicker DataContext="{Binding SetChoice}" />
+                    <Button Tag="grouptool" Classes="pill" Content="Clear all" Command="{Binding ClearAllCommand}"
+                            VerticalAlignment="Center" ToolTip.Tip="Remove every shortcut in the set now in use (it asks first)" />
+                    <restore:RestoreBar DataContext="{Binding Restorer}" />
+                </StackPanel>
+            </pages:PageTitleLine.Right>
+        </pages:PageTitleLine>
         <ItemsControl x:Name="GroupsHost" ItemsSource="{Binding Groups}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="vm:HotkeyGroup">
-                    <Border Classes="groupPanel">
+                    <pages:GroupCard Group="{Binding}">
+                        <!-- Only a card with suggested keys has it; the keys are never bound without it -->
+                        <pages:GroupCard.Tools>
+                            <Button Classes="pill" Tag="grouptool" Content="Use suggested keys"
+                                    Command="{Binding UseSuggestedCommand}" IsVisible="{Binding HasSuggestions}"
+                                    ToolTip.Tip="Bind the keys suggested for these actions. A key another action already uses is left alone." />
+                        </pages:GroupCard.Tools>
                         <StackPanel Spacing="6">
-                            <pages:GroupHeader />
-                            <StackPanel Spacing="6" IsVisible="{Binding IsExpanded}">
-                            <ListBox Classes="rows compact" ItemsSource="{Binding Actions}" IsVisible="{Binding HasActions}"
-                                     ItemTemplate="{StaticResource ActionCard}" />
-                            <ItemsControl ItemsSource="{Binding Subgroups}">
-                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="vm:HotkeySubgroup">
-                                        <Border Classes="subgroupPanel">
-                                            <StackPanel Spacing="4">
-                                                <pages:GroupHeader />
-                                                <ListBox Classes="rows compact" ItemsSource="{Binding Actions}" IsVisible="{Binding IsExpanded}"
-                                                         ItemTemplate="{StaticResource ActionCard}" />
-                                            </StackPanel>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                            </StackPanel>
+                                <ListBox Classes="rows compact" ItemsSource="{Binding Actions}" IsVisible="{Binding HasActions}"
+                                         ItemTemplate="{StaticResource ActionCard}" />
+                                <ItemsControl ItemsSource="{Binding Subgroups}">
+                                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="vm:HotkeySubgroup">
+                                            <Border Classes="subgroupPanel">
+                                                <StackPanel Spacing="4">
+                                                    <Grid ColumnDefinitions="*,Auto">
+                                                        <pages:GroupHeader />
+                                                        <Button Grid.Column="1" Classes="pill" Tag="grouptool" Content="Use suggested keys" VerticalAlignment="Center" Margin="6,0,8,0"
+                                                                Command="{Binding UseSuggestedCommand}" IsVisible="{Binding HasSuggestions}"
+                                                                ToolTip.Tip="Bind the keys suggested for these actions. A key another action already uses is left alone." />
+                                                    </Grid>
+                                                    <StackPanel Spacing="4" IsVisible="{Binding IsExpanded}">
+                                                        <ListBox Classes="rows compact" ItemsSource="{Binding Actions}" IsVisible="{Binding HasActions}"
+                                                                 ItemTemplate="{StaticResource ActionCard}" />
+                                                        <ItemsControl ItemsSource="{Binding Parts}">
+                                                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate DataType="vm:HotkeyPart">
+                                                                    <Border Classes="subgroupPanel">
+                                                                        <StackPanel Spacing="4">
+                                                                            <pages:GroupHeader />
+                                                                            <ListBox Classes="rows compact" ItemsSource="{Binding Actions}" IsVisible="{Binding IsExpanded}"
+                                                                                     ItemTemplate="{StaticResource ActionCard}" />
+                                                                        </StackPanel>
+                                                                    </Border>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
                         </StackPanel>
-                    </Border>
+                    </pages:GroupCard>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>

@@ -18,7 +18,15 @@ public sealed partial class GalleryItem : ObservableObject, IEditorItem
     /// <summary>A fact about the setting the label does not say, shown as the card's tooltip; null: none.</summary>
     public string? Tip { get; init; }
 
+    /// <summary>Greyed out, with a reason, while the choice cannot be made or read (a display Windows would not report on).</summary>
+    public Availability Availability { get; } = new();
+
+    /// <summary>The card's tooltip: why it is unavailable, else <see cref="Tip"/>.</summary>
+    public string? Hint => Availability.Reason ?? Tip;
+
     [ObservableProperty] private int _index;
+
+    private bool _loading;
 
     public string Name => Options[Index];
 
@@ -32,6 +40,15 @@ public sealed partial class GalleryItem : ObservableObject, IEditorItem
         _index = Math.Clamp(index, 0, options.Count - 1);
         _preview = preview;
         _apply = apply;
+        Availability.PropertyChanged += (_, _) => OnPropertyChanged(nameof(Hint));
+    }
+
+    /// <summary>Shows a choice read from elsewhere without applying it.</summary>
+    public void Load(int index)
+    {
+        _loading = true;
+        Index = Math.Clamp(index, 0, Options.Count - 1);
+        _loading = false;
     }
 
     /// <summary>Moves to the next (+1) or previous (-1) option, wrapping around.</summary>
@@ -42,7 +59,7 @@ public sealed partial class GalleryItem : ObservableObject, IEditorItem
 
     partial void OnIndexChanged(int value)
     {
-        _apply(value);
+        if (!_loading) _apply(value);
         OnPropertyChanged(nameof(Name));
         OnPropertyChanged(nameof(Preview));
     }

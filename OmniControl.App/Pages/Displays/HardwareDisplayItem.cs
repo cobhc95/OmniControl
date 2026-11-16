@@ -1,6 +1,7 @@
 using Avalonia.Threading;
 using OmniControl.App.Osd;
 using OmniControl.App.Services;
+using OmniControl.Core.Interfaces;
 using OmniControl.Core.Models;
 
 namespace OmniControl.App.Pages.Displays;
@@ -12,7 +13,7 @@ namespace OmniControl.App.Pages.Displays;
 /// (Refresh, or a change of the attached displays). After the answer the page shows the cards the display has; the ones it does not
 /// report wait, greyed and with the reason, in a second group that is collapsed.
 /// </summary>
-internal sealed class HardwareDisplayItem
+internal sealed partial class HardwareDisplayItem
 {
     private const string Checking = "Reading the monitor...";
     private const string NotAnswering = "No DDC/CI answer. Turn it on in the monitor's menu, then Refresh.";
@@ -26,10 +27,13 @@ internal sealed class HardwareDisplayItem
     private readonly OsdService _osd;
     private readonly Action<string> _report;
     private readonly Action _groupsChanged;
+    private readonly Action _valuesChanged;
     private readonly Dictionary<HardwareLevel, SliderItem> _sliders = new();
     private readonly Dictionary<HardwareChoice, ChoiceItem> _choices = new();
     private readonly Dictionary<HardwareChoice, IReadOnlyList<VcpChoice>> _values = new();
     private readonly ButtonItem _power;
+    private readonly DisplayOrientationCard _orientation;
+    private MonitorCapabilities? _capabilities;
     private bool _disposed;
 
     /// <summary>"laptop" for the built-in panel, otherwise Windows' name for the display: the id of its hotkey device.</summary>
@@ -47,9 +51,13 @@ internal sealed class HardwareDisplayItem
     public IEnumerable<IEditorItem> AvailableCards => Cards.Where(c => AvailabilityOf(c).IsAvailable);
 
     /// <param name="groupsChanged">Called on the UI thread when <see cref="Groups"/> was replaced (after the display was read).</param>
-    public HardwareDisplayItem(string id, string name, IHardwareAccess access, LevelStepper levels, OsdService osd, Action<string> report, Action groupsChanged)
+    /// <param name="valuesChanged">Called on the UI thread when a value the display shows changed (a card was used or a hotkey stepped it).</param>
+    /// <param name="orientation">The display's Orientation card, which Windows (not DDC/CI) answers, so it is available whatever the monitor reports.</param>
+    public HardwareDisplayItem(string id, string name, IHardwareAccess access, DisplayOrientationCard orientation, LevelStepper levels, OsdService osd,
+        Action<string> report, Action groupsChanged, Action valuesChanged)
     {
-        (Id, Name, _access, _levels, _osd, _report, _groupsChanged) = (id, name, access, levels, osd, report, groupsChanged);
+        (Id, Name, _access, _orientation, _levels, _osd, _report, _groupsChanged, _valuesChanged) =
+            (id, name, access, orientation, levels, osd, report, groupsChanged, valuesChanged);
 
         var cards = new List<IEditorItem>();
         foreach (var level in DisplayControls.Hardware)
@@ -68,6 +76,7 @@ internal sealed class HardwareDisplayItem
         _power = new ButtonItem("Screen power", "Turn off",
             "Wake it with its button or input", PowerOff) { Half = true };
         cards.Add(_power);
+        cards.Add(_orientation.Card);
         Cards = cards;
 
         foreach (var card in Cards) AvailabilityOf(card).MakeUnavailable(Checking);
@@ -81,22 +90,32 @@ internal sealed class HardwareDisplayItem
         SliderItem s => s.Availability,
         ChoiceItem c => c.Availability,
         ButtonItem b => b.Availability,
+        GalleryItem g => g.Availability,
         _ => throw new ArgumentException("Not a card with an availability.", nameof(card)),
     };
 
     /// <summary>Asks the display what it supports, off the UI thread, and fills the cards in.</summary>
-    public void Start() => Task.Run(() =>
+    public void Start()
     {
-        var capabilities = _access.Probe();
-        Dispatcher.UIThread.Post(() => ShowCapabilities(capabilities));
-    });
+        _orientation.Start();
+        Task.Run(() =>
+        {
+            var capabilities = _access.Probe();
+            Dispatcher.UIThread.Post(() => ShowCapabilities(capabilities));
+        });
+    }
 
     /// <summary>Stops the display from touching the page when its answer arrives late. </summary>
-    public void Dispose() => _disposed = true;
+    public void Dispose()
+    {
+        _disposed = true;
+        _orientation.Dispose();
+    }
 
     private void ShowCapabilities(MonitorCapabilities capabilities)
     {
         if (_disposed) return;
+        _capabilities = capabilities;
         var reason = capabilities.Answers ? _access.UnsupportedReason : NotAnswering;
 
         foreach (var (level, slider) in _sliders)
@@ -154,6 +173,7 @@ internal sealed class HardwareDisplayItem
     private OperationResult Set(HardwareLevel level, int percent)
     {
         _levels.Set(KeyOf(level), percent, p => Write(level, p));
+        _valuesChanged();
         return OperationResult.Ok();
     }
 
@@ -175,6 +195,7 @@ internal sealed class HardwareDisplayItem
     private void Pick(HardwareChoice choice, string name)
     {
         if (_values.GetValueOrDefault(choice)?.FirstOrDefault(v => v.Name == name) is { } value) WriteRaw(choice.Feature.Code, value.Value);
+        _valuesChanged();
     }
 
     private void PowerOff() => WriteRaw(VcpCode.PowerMode, VcpCode.Power.Off);
@@ -186,7 +207,12 @@ internal sealed class HardwareDisplayItem
     public int? Step(HardwareLevel level, int delta, Action<int>? corrected)
     {
         var now = _levels.Step(KeyOf(level), delta, () => _access.ReadPercent(level.Code), p => Write(level, p), corrected);
-        if (now is { } value) Dispatcher.UIThread.Post(() => { if (!_disposed) _sliders[level].Load(value); });
+        if (now is { } value) Dispatcher.UIThread.Post(() =>
+        {
+            if (_disposed) return;
+            _sliders[level].Load(value);
+            _valuesChanged();
+        });
         return now;
     }
 
@@ -197,6 +223,9 @@ internal sealed class HardwareDisplayItem
 
     /// <summary>Selects the next value of a choice (the next colour preset or input source...); nothing when the display lists none.</summary>
     public void NextChoice(HardwareChoice choice) => SelectNext(_choices[choice]);
+
+    /// <summary>Turns the display to this orientation; nothing while Windows has not said how it is turned.</summary>
+    public void Rotate(DisplayOrientation orientation) => _orientation.Choose(orientation);
 
     /// <summary>Turns the screen off; nothing when the display has no power control.</summary>
     public void TurnOff()

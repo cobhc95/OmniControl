@@ -17,7 +17,7 @@
             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" VerticalAlignment="Center">
                 <vm:RowIcon DataContext="{Binding Row}" />
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" MinWidth="0">
-                    <TextBlock Text="{Binding Row.Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Row.Name}" />
+                    <TextBlock Classes="strong" Text="{Binding Row.Name}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Row.Name}" />
                     <WrapPanel Classes="sentence">
                         <TextBlock Text="{Binding State}" Classes="hint small" />
                         <TextBlock Text=" · " Classes="hint small" IsVisible="{Binding Sound.IsActive}" />
@@ -28,8 +28,7 @@
             <vm:VolumeSlider Grid.Column="1" DataContext="{Binding Row}" />
             <Button Grid.Column="2" Tag="grouptool" Classes="scope mute" Classes.on="{Binding Row.Muted}" Content="M" Command="{Binding Row.ToggleMuteCommand}"
                     ToolTip.Tip="Mute" VerticalAlignment="Center" />
-            <Button Grid.Column="3" Tag="grouptool" Classes="pill" Classes.custom="{Binding Sound.IsOpen}" Command="{Binding Sound.ToggleCommand}"
-                    Content="Sound ▾" ToolTip.Tip="Presets and five sliders for this one" VerticalAlignment="Center" />
+            <easy:SoundChip Grid.Column="3" ToolTip.Tip="Presets and five sliders for this one" VerticalAlignment="Center" />
         </Grid>
         <easy:EasyDrawerView IsVisible="{Binding Sound.IsOpen}" Margin="30,2,0,4" />
     </StackPanel>

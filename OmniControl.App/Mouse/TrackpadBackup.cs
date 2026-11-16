@@ -9,9 +9,9 @@ namespace OmniControl.App.Mouse;
 /// </summary>
 internal static class TrackpadBackup
 {
-    private const string FileName = "trackpad-settings-original.json";
+    private static readonly DataStore Store = DataStores.TrackpadOriginal;
 
-    public static Dictionary<string, int?>? Load() => AppDataStore.Load<Dictionary<string, int?>>(FileName);
+    public static Dictionary<string, int?>? Load() => AppDataStore.Load<Dictionary<string, int?>>(Store);
 
-    public static void Save(IReadOnlyDictionary<string, int?> originals) => AppDataStore.Save(FileName, originals);
+    public static void Save(IReadOnlyDictionary<string, int?> originals) => AppDataStore.Save(Store, originals);
 }

@@ -1,9 +1,11 @@
+using OmniControl.App.Dialogs;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using OmniControl.App.Audio.Engine;
 using OmniControl.App.Mouse;
 using OmniControl.App.Picker;
 using OmniControl.App.Rules;
+using OmniControl.App.Services;
 
 namespace OmniControl.App.Pages.Gestures;
 
@@ -19,7 +21,7 @@ public sealed partial class RuleEditorViewModel : ObservableObject
         "Left/Right move through the sentence; Enter changes a block or adds one; Delete removes a block; Tab goes on to the settings and buttons; Esc closes.";
 
     private readonly RuleService _rules;
-    private readonly Func<EngineMessage, Task<bool>> _ask;
+    private readonly Func<DialogMessage, Task<bool>> _ask;
     private readonly Action _changed;
     private readonly Action _delete;
     private readonly Action _closed;
@@ -39,7 +41,7 @@ public sealed partial class RuleEditorViewModel : ObservableObject
     public IReadOnlyList<object> Settings { get; }
 
     /// <summary>What is worth knowing about the rule now (the same facts as its line, with their full sentences).</summary>
-    [ObservableProperty] private IReadOnlyList<RuleTag> _notes = Array.Empty<RuleTag>();
+    [ObservableProperty] private IReadOnlyList<TagItem> _notes = Array.Empty<TagItem>();
 
     /// <summary>The last run went wrong: "Copy details" is offered.</summary>
     [ObservableProperty] private bool _hasFailure;
@@ -51,7 +53,7 @@ public sealed partial class RuleEditorViewModel : ObservableObject
     /// <param name="changed">The rule changed: its line on the page is refreshed.</param>
     /// <param name="delete">Deletes the rule (the window then closes).</param>
     /// <param name="closed">The window closed (a new rule left empty is dropped then).</param>
-    public RuleEditorViewModel(Rule rule, bool isNew, RuleService rules, Func<EngineMessage, Task<bool>> ask, Action changed, Action delete, Action closed)
+    public RuleEditorViewModel(Rule rule, bool isNew, RuleService rules, Func<DialogMessage, Task<bool>> ask, Action changed, Action delete, Action closed)
     {
         Rule = rule;
         Title = isNew ? "New rule" : "Edit rule";
@@ -137,7 +139,7 @@ public sealed partial class RuleEditorViewModel : ObservableObject
         Sentence.Add(new SentenceAdd(Rule.Steps.Count == 0 ? "+ action" : "+ then", new RuleSlot(RuleSlotKind.Step, -1)));
 
         ShowLayerNames();
-        Notes = RuleTag.Of(Rule, _rules);
+        Notes = RuleTags.Of(Rule, _rules);
         HasFailure = _rules.ProblemOf(Rule) is not null;
         CanTest = Rule.Steps.Count > 0;
     }
@@ -164,7 +166,6 @@ public sealed partial class RuleEditorViewModel : ObservableObject
         var model = new PickerModel(PickChoice.Group(choices), current, values, currentParameter: current?.ParameterOf(action) ?? string.Empty)
         {
             Noun = noun,
-            AskSettingsFirst = true,
         };
         return ($"Choose {(slot.IsNew ? "a" : "the")} {noun}", model);
     }
@@ -187,7 +188,7 @@ public sealed partial class RuleEditorViewModel : ObservableObject
         var stored = Compose(pick);
         if (slot.Kind == RuleSlotKind.Step && RuleSteps.NeedsApproval(stored) && !_rules.IsApproved(stored))
         {
-            var allowed = await _ask(new EngineMessage("Allow this command?",
+            var allowed = await _ask(new DialogMessage("Allow this command?",
                 "The rule runs this command each time it triggers. Changing it later asks again.",
                 "Allow", RuleSteps.Describe(stored), ShowDetails: true));
             if (!allowed) return;
@@ -234,8 +235,7 @@ public sealed partial class RuleEditorViewModel : ObservableObject
     /// <summary>Asks first; true when the rule was deleted (the window closes).</summary>
     public async Task<bool> DeleteAsync()
     {
-        var name = Rule.Name.Length > 0 ? $"\"{Rule.Name}\"" : "This rule";
-        if (!await _ask(new EngineMessage("Delete this rule?", $"{name} will be removed for good.", "Delete"))) return false;
+        if (!await _ask(Confirm.Delete("rule", Rule.Name))) return false;
         _delete();
         return true;
     }

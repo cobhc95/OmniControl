@@ -9,6 +9,10 @@ public static class AppLifecycle
     public static event Action? ShowRequested;
     public static event Action? QuitRequested;
 
+    /// <summary>Exit and start again (after an import or a wipe, which is carried out as the new run starts).</summary>
+    public static event Action? RestartRequested;
+
     public static void RequestShow() => ShowRequested?.Invoke();
     public static void RequestQuit() => QuitRequested?.Invoke();
+    public static void RequestRestart() => RestartRequested?.Invoke();
 }

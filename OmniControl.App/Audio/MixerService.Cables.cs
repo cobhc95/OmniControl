@@ -4,7 +4,7 @@ namespace OmniControl.App.Audio;
 
 /// <summary>
 /// The user's choices about virtual cables: which found cables OmniControl may use (all by default) and the device pairs the user
-/// marked as cables. Stored here; <see cref="SoundModeService"/> applies them to what the PC offers, so every consumer reads the
+/// marked as cables. Stored here; <see cref="EffectsSupportService"/> applies them to what the PC offers, so every consumer reads the
 /// allowed cables from one place.
 /// </summary>
 public sealed partial class MixerService
@@ -23,7 +23,6 @@ public sealed partial class MixerService
         if (IsCableAllowed(id) == allowed) return;
         if (allowed) Settings.ForbiddenCables.Remove(id);
         else Settings.ForbiddenCables.Add(id);
-        Settings.FreedCables.Remove(id); // the user's own choice now, not setup 5's
         CablesSaved();
     }
 
@@ -40,6 +39,24 @@ public sealed partial class MixerService
     {
         if (Settings.MarkedCables.RemoveAll(m => m.RecordingId == id) == 0) return;
         Settings.ForbiddenCables.Remove(id);
+        CablesSaved();
+    }
+
+    /// <summary>Sets which cables are switched off (the restore of audio defaults, its undo, a Volume preset); raises <see cref="CablesChanged"/> when that differs.</summary>
+    public void SetCables(IEnumerable<string> forbidden)
+    {
+        var off = forbidden.Distinct().ToList();
+        if (off.SequenceEqual(Settings.ForbiddenCables)) return;
+        Settings.ForbiddenCables = off;
+        CablesSaved();
+    }
+
+    /// <summary>Replaces the marked pairs (the restore of audio defaults and its undo); raises <see cref="CablesChanged"/> when that differs.</summary>
+    public void SetMarkedCables(IEnumerable<CableMark> marks)
+    {
+        var list = marks.ToList();
+        if (System.Text.Json.JsonSerializer.Serialize(list) == System.Text.Json.JsonSerializer.Serialize(Settings.MarkedCables)) return;
+        Settings.MarkedCables = list;
         CablesSaved();
     }
 

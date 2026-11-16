@@ -10,8 +10,8 @@ public enum CombinedKind
 }
 
 /// <summary>
-/// A device the user made by combining others. It owns one virtual cable: for speakers (Full control), whatever is sent to the cable
-/// plays on every member; for microphones (either mode), the members are recorded, each at its own level, mixed and played into the
+/// A device the user made by combining others. It owns one virtual cable: for speakers, whatever is sent to the cable
+/// plays on every member; for microphones, the members are recorded, each at its own level, mixed and played into the
 /// cable, whose recording side apps use as their microphone. Kept in mixer.json even while members are unplugged.
 /// </summary>
 public sealed class CombinedDevice
@@ -33,6 +33,8 @@ public sealed class CombinedDevice
 
     /// <summary>A combined microphone's effects (switched on, chain), level and mute; unused for speakers.</summary>
     public bool FxOn { get; set; }
+    /// <summary>The user switched the effects off themselves, so adding an effect does not switch them back on (<see cref="MixerService.EffectsAdded"/>).</summary>
+    public bool FxUserOff { get; set; }
     public List<FxSlot> Fx { get; set; } = new();
     public int Volume { get; set; } = 100;
     public bool Muted { get; set; }

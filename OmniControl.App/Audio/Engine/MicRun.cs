@@ -4,7 +4,7 @@ using OmniControl.Core.Engine;
 namespace OmniControl.App.Audio.Engine;
 
 /// <summary>
-/// A processed microphone (Full control) or a combined microphone (either mode): its recording devices are recorded and mixed (a
+/// A processed or a combined microphone: its recording devices are recorded and mixed (a
 /// combined microphone's members each at their own level and mute), the chain runs (and, for a combined microphone, its own level and
 /// mute) and the result plays into its cable, whose recording side apps use as their microphone. The microphones themselves are not
 /// changed, so there is nothing to undo.
@@ -18,7 +18,7 @@ internal sealed class MicRun : EngineRun
         : base(spec, name, mixer, journal, new ChainProcessor(level, gateOpen: true))
     {
         _level = level;
-        RunningText = SoundModes.AppsRecordFrom(cableName);
+        RunningText = EffectsRules.AppsRecordFrom(cableName);
     }
 
     public override void Start()

@@ -1,4 +1,4 @@
-<Application xmlns="https://github.com/avaloniaui"
+﻿<Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:pages="using:OmniControl.App.Pages"
              xmlns:hotkeys="using:OmniControl.App.Hotkeys"
@@ -8,6 +8,8 @@
              xmlns:volume="using:OmniControl.App.Pages.Volume"
              xmlns:mouse="using:OmniControl.App.Pages.Mouse"
              xmlns:gestures="using:OmniControl.App.Pages.Gestures"
+             xmlns:automation="using:OmniControl.App.Pages.Automation"
+             xmlns:devices="using:OmniControl.App.Pages.Devices"
              xmlns:fx="using:OmniControl.App.Fx"
              xmlns:appsettings="using:OmniControl.App.Pages.AppSettingsPage"
              x:Class="OmniControl.App.App"
@@ -25,6 +27,11 @@
         <DataTemplate DataType="gestures:GesturesPageViewModel"><gestures:GesturesPage /></DataTemplate>
         <DataTemplate DataType="gestures:GestureItem"><gestures:GestureRow /></DataTemplate>
         <DataTemplate DataType="gestures:RuleItem"><gestures:RuleRow /></DataTemplate>
+        <DataTemplate DataType="automation:AutomationPageViewModel"><automation:AutomationPage /></DataTemplate>
+        <DataTemplate DataType="devices:DevicesPageViewModel"><devices:DevicesPage /></DataTemplate>
+        <DataTemplate DataType="devices:DeviceItem"><devices:DeviceDetail /></DataTemplate>
+        <DataTemplate DataType="automation:AutomationItem"><automation:AutomationRuleRow /></DataTemplate>
+        <DataTemplate DataType="automation:CustomActionItem"><automation:CustomActionRow /></DataTemplate>
         <DataTemplate DataType="volume:VolumeRow"><volume:VolumeRowView /></DataTemplate>
         <DataTemplate DataType="volume:WiringRow"><volume:WiringRowView /></DataTemplate>
         <DataTemplate DataType="volume:CableRow"><volume:CableRowView /></DataTemplate>
@@ -50,6 +57,10 @@
         <x:Double x:Key="TextControlThemeMinHeight">26</x:Double>
         <!-- Least width of the editor column in the search results; the title column gets the rest -->
         <x:Double x:Key="SearchEditorMinWidth">300</x:Double>
+        <!-- The hotkey capture box (Hotkeys/HotkeyBox): the Shortcuts page's rows and the preset manager's shortcut column -->
+        <x:Double x:Key="HotkeyBoxWidth">150</x:Double>
+        <!-- The master path field (Controls/PathField) where it sits in a pop-down's settings page: text box and Browse -->
+        <x:Double x:Key="PathFieldWidth">340</x:Double>
         <x:Double x:Key="OptionMenuWidth">400</x:Double>
         <!-- Width of the FX window's effect list (FxChainPanel): fixed and narrow, so the editor beside it gets the rest of the window -->
         <x:Double x:Key="FxChainListWidth">170</x:Double>
@@ -78,11 +89,12 @@
         <Thickness x:Key="ToolSwitchInset">0,-5</Thickness>
         <!-- A window's status strip (Border.statusstrip): its inset, type, the gap between its parts, and the widest the caution gets -->
         <Thickness x:Key="StatusStripPadding">8,2</Thickness>
+        <!-- A window's foot (Border.footer) and the one width of its Close button (Button.primary.close) -->
+        <Thickness x:Key="FooterPadding">16,8</Thickness>
+        <x:Double x:Key="DialogCloseWidth">84</x:Double>
         <x:Double x:Key="StatusFontSize">10</x:Double>
         <x:Double x:Key="StatusStripGap">12</x:Double>
-        <x:Double x:Key="StatusCautionMaxWidth">260</x:Double>
         <!-- The FX window toolbar's controls for the selected effect: the preset drop-down, the Wet slider and its value -->
-        <x:Double x:Key="FxToolPresetWidth">120</x:Double>
         <x:Double x:Key="FxToolWetWidth">56</x:Double>
         <x:Double x:Key="FxToolValueWidth">22</x:Double>
         <!-- The FX window toolbar's analysis (Fx/FxAnalysisBar, owner-approved "Design A"): the response thumbnail, the tiny stacked Peak
@@ -120,6 +132,7 @@
         <!-- Menu-like pop-downs (Styles/Menus.axaml): the pop-down's inner padding, its rows (Controls/OptionList's list and
              Button.menurow) and their inset, the gap between a row's mark or glyph and its words, the glyph, the small text (base - 1) -->
         <Thickness x:Key="MenuPadding">6</Thickness>
+        <x:Double x:Key="CaptureMenuWidth">250</x:Double>
         <x:Double x:Key="MenuRowHeight">26</x:Double>
         <Thickness x:Key="MenuRowPadding">8,0</Thickness>
         <CornerRadius x:Key="MenuRowCornerRadius">4</CornerRadius>
@@ -146,7 +159,7 @@
         <x:Double x:Key="RowPictureSize">18</x:Double>
         <!-- The gap between a control and the menu pop-down it opens -->
         <x:Double x:Key="MenuOffset">2</x:Double>
-        <!-- A small drop-down arrow beside words (the Sound mode button, a Wiring row's one-device choice) -->
+        <!-- A small drop-down arrow beside words (a Wiring row's one-device choice, a Mixer row's pickers) -->
         <x:Double x:Key="ChevronSize">8</x:Double>
         <!-- A page's tabs (Button.tab, Pages/PageTabsView): the words' inset, the rounded top of the hover wash, the line under the open
              tab, the gap between tabs -->
@@ -159,19 +172,19 @@
         <x:Double x:Key="WiringSourceMaxWidth">150</x:Double>
         <x:Double x:Key="WiringCableMaxWidth">120</x:Double>
         <x:Double x:Key="WiringColumnGap">10</x:Double>
-        <Thickness x:Key="WiringHeaderInset">11,0,11,0</Thickness>
-        <!-- A round number (Border.badge: the live setup on the Sound mode button, the setup table's numbers): its size, rounding, text -->
-        <x:Double x:Key="BadgeSize">16</x:Double>
-        <CornerRadius x:Key="BadgeRadius">8</CornerRadius>
-        <x:Double x:Key="BadgeFontSize">10</x:Double>
-        <!-- A table window (the setup table): a cell's inset, the gap between columns, the window's width and the most of its height -->
-        <Thickness x:Key="TableCellPadding">6,6</Thickness>
-        <x:Double x:Key="TableColumnGap">10</x:Double>
-        <x:Double x:Key="SetupTableWidth">820</x:Double>
-        <x:Double x:Key="SetupTableMaxHeight">640</x:Double>
-        <x:Double x:Key="TableTagMaxWidth">150</x:Double>
-        <!-- The Sound mode card's buttons: one width for the column, so they line up and sit centred in the card -->
-        <x:Double x:Key="ModeCardActionWidth">120</x:Double>
+        <Thickness x:Key="RowHeadingInset">11,0,11,0</Thickness>
+        <!-- The master knob (Controls/Knob, Styles/Knobs.axaml): the drawn face's size, its arc and pointer line, the gap to the value
+             words under it and their size, and the knob's column (the face plus room for "L 100"), which the typing box takes too -->
+        <x:Double x:Key="KnobSize">32</x:Double>
+        <x:Double x:Key="KnobArcThickness">3</x:Double>
+        <x:Double x:Key="KnobPointerThickness">2</x:Double>
+        <x:Double x:Key="KnobTextGap">0</x:Double>
+        <x:Double x:Key="KnobFontSize">10</x:Double>
+        <x:Double x:Key="KnobColumnWidth">38</x:Double>
+        <!-- A chip-shaped picker (Button.selector / Border.selector, Styles/RowControls.axaml): the words' inset (its height and rounding are the chip's) -->
+        <Thickness x:Key="SelectorPadding">8,0,6,0</Thickness>
+        <!-- The Mixer rows' columns (Pages/Volume/VolumeRowView, MixerHeadings): the gap between them -->
+        <x:Double x:Key="MixerColumnGap">6</x:Double>
     </Application.Resources>
 
     <Application.Styles>
@@ -184,6 +197,8 @@
         <StyleInclude Source="/Styles/Bars.axaml" />
         <StyleInclude Source="/Styles/Tables.axaml" />
         <StyleInclude Source="/Styles/Menus.axaml" />
+        <StyleInclude Source="/Styles/Knobs.axaml" />
+        <StyleInclude Source="/Styles/RowControls.axaml" />
         <StyleInclude Source="/Styles/ScrollBars.axaml" />
     </Application.Styles>
 </Application>

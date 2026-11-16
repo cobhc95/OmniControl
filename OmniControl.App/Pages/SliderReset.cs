@@ -1,26 +1,29 @@
 using Avalonia;
-using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 
 namespace OmniControl.App.Pages;
 
-/// <summary>Attached property that gives a slider a value to jump back to when it is double-clicked (pan to centre, volume to full...).</summary>
+/// <summary>
+/// Attached property that gives a slider or a knob (any <see cref="RangeBase"/> value control) a value to jump back to when it is
+/// double-clicked (pan to centre, volume to full...).
+/// </summary>
 public static class SliderReset
 {
-    public static readonly AttachedProperty<double?> ValueProperty = AvaloniaProperty.RegisterAttached<Slider, double?>("Value", typeof(SliderReset));
+    public static readonly AttachedProperty<double?> ValueProperty = AvaloniaProperty.RegisterAttached<RangeBase, double?>("Value", typeof(SliderReset));
 
-    public static double? GetValue(Slider slider) => slider.GetValue(ValueProperty);
-    public static void SetValue(Slider slider, double? value) => slider.SetValue(ValueProperty, value);
+    public static double? GetValue(RangeBase control) => control.GetValue(ValueProperty);
+    public static void SetValue(RangeBase control, double? value) => control.SetValue(ValueProperty, value);
 
-    static SliderReset() => ValueProperty.Changed.AddClassHandler<Slider>((slider, e) =>
+    static SliderReset() => ValueProperty.Changed.AddClassHandler<RangeBase>((control, e) =>
     {
-        // Handled events too: the slider's thumb marks the press it received as handled.
-        slider.RemoveHandler(Avalonia.Input.Gestures.DoubleTappedEvent, OnDoubleTapped);
-        if (e.NewValue is double) slider.AddHandler(Avalonia.Input.Gestures.DoubleTappedEvent, OnDoubleTapped, handledEventsToo: true);
+        // Handled events too: the slider's thumb (and the knob) mark the press they received as handled.
+        control.RemoveHandler(Avalonia.Input.Gestures.DoubleTappedEvent, OnDoubleTapped);
+        if (e.NewValue is double) control.AddHandler(Avalonia.Input.Gestures.DoubleTappedEvent, OnDoubleTapped, handledEventsToo: true);
     });
 
     private static void OnDoubleTapped(object? sender, TappedEventArgs e)
     {
-        if (sender is Slider slider && GetValue(slider) is { } value) slider.Value = value;
+        if (sender is RangeBase control && GetValue(control) is { } value) control.Value = value;
     }
 }

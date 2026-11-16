@@ -15,14 +15,6 @@ public partial class AboutWindow : Window
             CreditList.SelectedIndex = 0;
             (CreditList.ContainerFromIndex(0) as Control ?? CreditList).Focus();
         };
-        AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
-    }
-
-    private void OnKeyDown(object? sender, KeyEventArgs e)
-    {
-        if (e.Key != Key.Escape) return;
-        Close();
-        e.Handled = true;
     }
 
     private void OnCloseClick(object? sender, RoutedEventArgs e) => Close();

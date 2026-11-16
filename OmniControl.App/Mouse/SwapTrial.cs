@@ -11,16 +11,16 @@ public sealed record SwapTrialJournal(bool SwappedBefore);
 /// </summary>
 internal static class SwapTrial
 {
-    private const string FileName = "pointer-swap-trial.json";
+    private static readonly DataStore Store = DataStores.PointerSwapTrial;
 
-    public static void Begin(bool swappedBefore) => AppDataStore.Save(FileName, new SwapTrialJournal(swappedBefore));
+    public static void Begin(bool swappedBefore) => AppDataStore.Save(Store, new SwapTrialJournal(swappedBefore));
 
-    public static void End() => AppDataStore.Delete(FileName);
+    public static void End() => AppDataStore.Delete(Store);
 
     /// <summary>The swap state to go back to after a trial a previous run left open, or null when there was none. Ends the journal.</summary>
     public static bool? TakeLeftOver()
     {
-        var left = AppDataStore.Load<SwapTrialJournal>(FileName);
+        var left = AppDataStore.Load<SwapTrialJournal>(Store);
         if (left is not null) End();
         return left?.SwappedBefore;
     }

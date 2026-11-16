@@ -136,6 +136,7 @@ public sealed partial class FxChainViewModel
             added.Add(vm);
         }
         Selected = added[0];
+        _mixer.EffectsAdded(_key);
         Changed();
         ReselectRequested?.Invoke(added);
     }

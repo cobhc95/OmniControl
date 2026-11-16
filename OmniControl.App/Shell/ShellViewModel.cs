@@ -1,6 +1,8 @@
 ﻿using System.Collections.ObjectModel;
+using OmniControl.App.Dialogs;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using OmniControl.App.AppLists;
 using OmniControl.App.Hotkeys;
 using OmniControl.App.Pages;
 using OmniControl.App.Pages.AppSettingsPage;
@@ -9,9 +11,17 @@ using OmniControl.App.Osd;
 using OmniControl.App.Pages.Osd;
 using OmniControl.App.Mouse;
 using OmniControl.App.Pages.Mouse;
+using OmniControl.App.Pages.Presets;
+using OmniControl.App.Presets;
 using OmniControl.App.Gestures;
 using OmniControl.App.Rules;
+using OmniControl.App.Apps;
+using OmniControl.App.Automation;
+using OmniControl.App.Pages.Automation;
 using OmniControl.App.Pages.Gestures;
+using OmniControl.App.Pages.Devices;
+using OmniControl.App.Devices;
+using OmniControl.Core.Interfaces;
 using OmniControl.Core.Engine;
 using OmniControl.Core.Engine.Mouse;
 using OmniControl.App.Pages.Shortcuts;
@@ -19,6 +29,7 @@ using OmniControl.App.Pages.Volume;
 using OmniControl.App.Audio;
 using OmniControl.App.Audio.Engine;
 using OmniControl.App.Services;
+using OmniControl.App.Services.Backup;
 using OmniControl.App.Fx;
 using OmniControl.App.Fx.Plugins;
 using OmniControl.App.Display;
@@ -32,25 +43,35 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     private readonly MonitorEngine _engine = new();
     private readonly SoftwareDisplayService _softwareDisplays = new();
     private readonly HotkeyRegistry _hotkeys = new();
+    private readonly AppActions _appActions;
+    private readonly PresetGroups _presetGroups = new(); // made before the pages, which register their preset groups in it
     private readonly OsdService _osd = new();
     // The effects journal is read first: a previous run that ended without putting programs' sound back is undone before the
     // mixer looks at the programs (field initialisers run in this order).
     private readonly EngineJournal _journal = EngineJournal.Recover();
     private readonly MixerService _mixer = new();
-    private readonly SoundModeService _soundModes;
+    private readonly EffectsSupportService _effectsSupport;
+    private readonly VolumePresets _volumePresets;
     private readonly PluginChainHost _plugins;
     private readonly PluginLibrary _library = new();
-    private readonly UserPresetStore _presets = new();
+    private readonly UserPresetStore _presets = UserPresetStore.OnDisk();
+    private readonly PresetShortcuts _presetShortcuts;
+    private readonly PresetManagerService _presetManager;
     private readonly EffectsEngine _effects;
     private readonly EngineInstaller _installer;
     private readonly FxWindowService _fxWindows;
+    private readonly DialogService _dialogs = new();
     private readonly AboutWindowService _about;
+    private readonly AppListStore _appLists = new(AppListSettings.Load()); // the master list of app lists, made before the services and pages that limit things to apps
+    private readonly AppListManagerService _appListManager;
+    private readonly AppScopes _appScopes;
     private readonly MouseHook _mouseHook = new(); // one system-wide hook shared by the mouse buttons and the gestures
     private readonly GestureService _gestures;
     private readonly MouseService _mouse;
     private readonly TrackpadService _trackpad;
     private readonly PointerSettingsService _pointer = new(); // at start-up it puts back a button swap a crashed run left on trial
     private readonly RuleService _rules;
+    private readonly AutomationService _automation;
     private readonly MarginOverlay _margins;
     private readonly IReadOnlyList<PageViewModel> _allPages;
     private bool _syncing;
@@ -59,11 +80,14 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     /// <summary>Feature pages in the sidebar (after search filtering).</summary>
     public ObservableCollection<PageViewModel> Pages { get; } = new();
 
+    /// <summary>What the sidebar list shows: the <see cref="Pages"/> with a <see cref="NavHeading"/> before the first page of each group.</summary>
+    public ObservableCollection<object> NavItems { get; } = new();
+
     /// <summary>Pages pinned to the bottom of the sidebar (app-level, not features).</summary>
     public ObservableCollection<PageViewModel> FooterPages { get; } = new();
     private readonly IReadOnlyList<PageViewModel> _allFooter;
 
-    public string Version { get; } = $"OmniControl {typeof(ShellViewModel).Assembly.GetName().Version!.ToString(2)}";
+    public string VersionText => AppInfo.VersionText;
 
     /// <summary>The page shown on the right. Set via the two sidebar lists below.</summary>
     [ObservableProperty]
@@ -86,20 +110,34 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     public ShellViewModel()
     {
         _hotkeys.Report = Report;
-        _soundModes = new SoundModeService(new AudioEffectsProbe(), _mixer);
+        // Presets, in this order: the master list of groups (a field, empty), the preset shortcuts (they follow the list and register a
+        // preset's action in _hotkeys when its group arrives), then the one opener of the preset manager. All three come before the FX
+        // windows and the pages, which are given the opener and register their groups; the manager's sections are given after the pages.
+        _presetShortcuts = new PresetShortcuts(_hotkeys, _presetGroups, Report);
+        _presetManager = new PresetManagerService(_presetGroups, _presetShortcuts, Report);
+        _effectsSupport = new EffectsSupportService(new AudioEffectsProbe(), _mixer);
+        _volumePresets = new VolumePresets(_mixer);
         _plugins = new PluginChainHost(_mixer.Save);
-        _effects = new EffectsEngine(_mixer, _soundModes, _journal, _plugins, Report);
+        _effects = new EffectsEngine(_mixer, _effectsSupport, _journal, _plugins, Report);
         _osd.WatchVolumeOf(() => _mixer.MasterDeviceId); // the pop-up for outside volume changes follows the master's real device
         _mixer.MasterDeviceChanged += _osd.RetargetVolume;
-        _installer = new EngineInstaller(_soundModes);
-        _fxWindows = new FxWindowService(_mixer, _effects, _soundModes, _plugins, _library, _presets, Report);
-        _about = new AboutWindowService(Version, Report);
+        _installer = new EngineInstaller(_effectsSupport);
+        _fxWindows = new FxWindowService(_mixer, _effects, _effectsSupport, _plugins, _library, _presets, Report, _presetManager.Open);
+        _about = new AboutWindowService(Report);
+        _appActions = new AppActions(new AppLauncher(Report), _hotkeys);
+        _appListManager = new AppListManagerService(_appLists, () => _appActions.InstalledPrograms(), _dialogs.AskAsync, Report);
+        _appScopes = new AppScopes(_appLists, _appListManager.Open);
+        var appScopeGate = new AppScopeGate(_appLists);
         // Gestures are asked first, so a scroll or middle click they take never reaches the button mappings: the wheel gestures have
         // their own hook handler ahead of the mouse service's, and the mouse service asks for a middle-click gesture before its mapping.
-        _gestures = new GestureService(_mouseHook, _hotkeys.RunLevel, Report);
-        _mouse = new MouseService(_mouseHook, _hotkeys.Run, Report, _gestures.MiddleClickAt);
+        _gestures = new GestureService(_mouseHook, _hotkeys.RunLevel, Report, appScopeGate);
+        _mouse = new MouseService(_mouseHook, _hotkeys.Run, Report, _gestures.MiddleClickAt, appScopeGate);
         // Custom rules are asked before both (their handler goes first on the hook), so a rule that matches wins.
         _rules = new RuleService(_mouseHook, _gestures, _mouse, _hotkeys, () => _mixer.Settings.Apps.Select(a => a.ExePath), Report);
+        // The automation rules: they register their own actions in the master list and are the one gate every action passes.
+        _automation = new AutomationService(_hotkeys, CountdownWindow.ConfirmAsync, () => _mixer.Settings.Apps.Select(a => a.ExePath),
+            StartupRegistration.IsBackgroundStart(Environment.GetCommandLineArgs().Skip(1)), Report);
+        _automation.Changed += OnAutomationChanged;
         // Trackpad gestures are handed to the same hook, so rules and mappings treat them like button presses.
         _trackpad = new TrackpadService(_mouseHook, _mouse);
         _margins = new MarginOverlay(_gestures.Settings);
@@ -109,25 +147,49 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _mouseHook.Log = line => AppDataStore.AppendLog("mouse-log.txt", line);
         if (!_mouseHook.Start()) Report("Couldn't start mouse remapping and gestures: Windows refused the mouse hook.");
 
-        // Register new feature pages here, in sidebar order. Pages that list actions (Shortcuts, Mouse, Gestures) follow the master
+        // Register new feature pages here, in sidebar order (a page's NavGroup decides its heading; keep the pages of a group together). Pages that list actions (Shortcuts, Mouse, Gestures) follow the master
         // list's changes, so the order does not decide which actions they offer.
         _allPages = new PageViewModel[]
         {
-            new DisplaysPageViewModel(_engine, _hotkeys, _osd, _softwareDisplays, Report),
-            new VolumePageViewModel(_mixer, _soundModes, _effects, _installer, _hotkeys, _osd, Report, _fxWindows.Open,
-                _fxWindows.AskAsync, CombineWindow.AskAsync, SetupTableWindow.Opener()),
+            new DisplaysPageViewModel(_engine, _hotkeys, _osd, _softwareDisplays, Report, _presetGroups, _presetManager.Open),
+            new VolumePageViewModel(_mixer, _effectsSupport, _effects, _installer, _hotkeys, _osd, Report, _fxWindows.Open, _fxWindows.Toggle,
+                _dialogs.AskAsync, CombineWindow.AskAsync, _volumePresets, _presetGroups, _presetManager.Open),
+            new DevicesPageViewModel(new DeviceService(_hotkeys, new WindowsCredentialStore(), Report), _dialogs.AskAsync, Report),
+            new MousePageViewModel(_mouse, _trackpad, _pointer, _hotkeys, _osd, _dialogs.AskAsync, Report, _presetGroups, _presetManager.Open, _appScopes),
+            new GesturesPageViewModel(_gestures, _rules, _margins, _hotkeys, _dialogs.AskAsync, _appScopes),
+            new AutomationPageViewModel(_automation, _dialogs.AskAsync),
+            new ShortcutsPageViewModel(_hotkeys, _presetGroups, _presetManager.Open, _dialogs.AskAsync),
             new OsdPageViewModel(_osd, _hotkeys),
-            new MousePageViewModel(_mouse, _trackpad, _pointer, _hotkeys, _osd, _fxWindows.AskAsync, Report),
-            new GesturesPageViewModel(_gestures, _rules, _margins, _hotkeys, _fxWindows.AskAsync),
-            new ShortcutsPageViewModel(_hotkeys),
         };
-        _allFooter = new PageViewModel[] { new AppSettingsPageViewModel(_hotkeys, _about.Open, _library.ScanAsync, _library.FoundText) };
+        // The effects' preset groups belong to the Volume page; they are made by the FX windows, which know how a preset reaches an effect.
+        _presetGroups.Register(_fxWindows.PresetGroupsFor(_allPages.OfType<VolumePageViewModel>().Single().Title));
+        _presetManager.UseSections(_allPages.Select(p => new PresetSection(p.Title, p.Icon)).ToList());
+        _allFooter = new PageViewModel[]
+        {
+            new AppSettingsPageViewModel(_hotkeys, _about.Open, _library.ScanAsync, _library.FoundText, () => _presetManager.Open(null, null),
+                new BackupService(_dialogs.ChooseAsync, Report)),
+        };
+        // The Choose-the-action window's sections are the sidebar pages, in the sidebar's order, with their icons.
+        _hotkeys.UseSections(_allPages.Concat(_allFooter).Select((p, i) => new ActionSection(p.Title, p.Icon, i + 1)).ToList());
+
+        WireRestore();
 
         Categories = new[] { AllCategories }.Concat(_allPages.Concat(_allFooter).Select(p => p.Title)).ToArray();
         _selectedCategory = AllCategories;
 
         ApplyFilter();
     }
+
+    /// <summary>All automation rules are paused (the tray item says Resume then).</summary>
+    public bool RulesPaused => _automation.Paused;
+
+    /// <summary>Raised when the rules were paused or resumed (or anything a rule shows changed).</summary>
+    public event Action? RulesChanged;
+
+    /// <summary>The tray's Pause all rules item.</summary>
+    public void ToggleRulesPause() => _automation.TogglePause();
+
+    private void OnAutomationChanged() => RulesChanged?.Invoke();
 
     private const string AllCategories = "All categories";
 
@@ -158,12 +220,19 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         Show(value);
     }
 
+    /// <summary>The footer's App settings button: opens the page it stands for.</summary>
+    [RelayCommand]
+    private void OpenFooterPage(PageViewModel? page) => SelectedFooterPage = page;
+
     private void Show(PageViewModel page)
     {
         if (page == CurrentPage) return;
         if (_windowShown) CurrentPage?.OnOnScreenChanged(false);
+        if (CurrentPage is not null) CurrentPage.IsOpen = false;
         CurrentPage = page;
+        page.IsOpen = true;
         page.OnShown();
+        page.Restorer?.Refresh();
         if (_windowShown) page.OnOnScreenChanged(true);
     }
 
@@ -172,6 +241,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     {
         if (shown == _windowShown) return;
         _windowShown = shown;
+        if (shown) _appActions.Refresh();
         CurrentPage?.OnOnScreenChanged(shown);
         foreach (var page in _allPages) page.OnWindowShownChanged(shown);
     }
@@ -195,6 +265,14 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
 
         Pages.Clear();
         foreach (var p in _allPages.Where(p => Matches(p, q))) Pages.Add(p);
+        NavItems.Clear();
+        string? group = null;
+        foreach (var p in Pages)
+        {
+            if (p.NavGroup is { } g && g != group) NavItems.Add(new NavHeading(g));
+            group = p.NavGroup;
+            NavItems.Add(p);
+        }
         FooterPages.Clear();
         foreach (var p in _allFooter.Where(p => Matches(p, q))) FooterPages.Add(p);
 
@@ -242,7 +320,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         if (!IsSearching && CurrentPage is { KeyHelp.Length: > 0 } page) sections.Add(page.Title + Environment.NewLine + page.KeyHelp);
         sections.Add("Cards" + Environment.NewLine + PageViewModel.CardKeys);
         sections.Add("Everywhere" + Environment.NewLine + ShellKeys);
-        _ = _fxWindows.AskAsync(new EngineMessage("Keyboard shortcuts", string.Join(Environment.NewLine + Environment.NewLine, sections)));
+        _ = _dialogs.AskAsync(new DialogMessage("Keyboard shortcuts", string.Join(Environment.NewLine + Environment.NewLine, sections)));
     }
 
     // The trackpad's layer in force is shown by its own drop-down on the same page; the footer keeps one short fact.
@@ -250,11 +328,18 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        DisposeRestore();
+        _presetManager.Close();
+        _appListManager.Close();
+        _presetShortcuts.Dispose();
+        _presetGroups.Dispose();
         foreach (var page in _allPages.OfType<IDisposable>()) page.Dispose();
         _softwareDisplays.Dispose(); // puts every display's picture back
         _margins.Dispose();
         _trackpad.Dispose();
         _pointer.Dispose(); // a button swap that was never kept goes back
+        _automation.Changed -= OnAutomationChanged;
+        _automation.Dispose();
         _rules.Dispose();
         _mouse.Dispose();
         _mouseHook.Dispose();
@@ -264,7 +349,8 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _fxWindows.CloseAll(); // plug-in editors close (and save) before the plug-ins are unloaded
         _effects.Dispose(); // every program's own sound is put back, the APO gets an empty chain, plug-in settings are saved
         _about.Close();
-        _soundModes.Dispose();
+        _effectsSupport.Dispose();
+        _volumePresets.Dispose();
         _mixer.Dispose();
         _engine.Dispose();
         // Last: a plug-in's own teardown can hang (a JUCE plug-in disconnecting every UI Automation provider of the process

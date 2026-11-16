@@ -18,8 +18,6 @@ public interface IEasyMixer
     EffectsRoute MasterMethod { get; }
     void SetMasterMethod(EffectsRoute route);
     void SetMasterPlaysOn(IEnumerable<string> targets);
-    SoundMode SoundMode { get; }
-    void SetSoundMode(SoundMode mode);
 }
 
 /// <summary><see cref="IEasyMixer"/> over the real <see cref="MixerService"/>: it only forwards.</summary>
@@ -41,8 +39,6 @@ public sealed class MixerEasyStore : IEasyMixer
     public EffectsRoute MasterMethod => _mixer.MasterMethod;
     public void SetMasterMethod(EffectsRoute route) => _mixer.SetMasterMethod(route);
     public void SetMasterPlaysOn(IEnumerable<string> targets) => _mixer.SetMasterPlaysOn(targets);
-    public SoundMode SoundMode => _mixer.SoundMode;
-    public void SetSoundMode(SoundMode mode) => _mixer.SetSoundMode(mode);
 }
 
 /// <summary>
@@ -51,8 +47,21 @@ public sealed class MixerEasyStore : IEasyMixer
 /// </summary>
 public static class EasyApply
 {
-    /// <summary>Turns the master's chosen sound on (writes its equaliser back and switches the effects on); a flat sound needs nothing and switches them off when nothing else runs.</summary>
-    public static void MasterSound(IEasyMixer mixer) => Sound(mixer, null, EasyEq.StoredGains(mixer.FxChain(null)));
+    /// <summary>
+    /// Turns the master's chosen sound on (writes its equaliser back and switches the effects on); a flat sound needs nothing and switches
+    /// them off when nothing else runs. A shape made in the full effects window is only switched on, never rewritten.
+    /// </summary>
+    public static void MasterSound(IEasyMixer mixer)
+    {
+        var chain = mixer.FxChain(null);
+        if (EasyEq.Find(chain) is { } slot && EasyEq.IsCustom(slot))
+        {
+            slot.Enabled = true;
+            if (mixer.IsFxOn(null)) mixer.SaveFx(null);
+            else mixer.SetFxOn(null, true);
+        }
+        else Sound(mixer, null, EasyEq.StoredGains(chain));
+    }
 
     /// <summary>
     /// Gives each program its own Parametric equaliser, switched on: flat when it had none (the Sound drawer then shapes it), the one it
@@ -65,7 +74,7 @@ public static class EasyApply
             var chain = mixer.FxChain(key);
             if (EasyEq.Find(chain) is { } slot) slot.Enabled = true;
             else EasyEq.Write(chain, EasyEq.Flat());
-            if (mixer.FxRouteOf(key) != SoundModes.RouteAutomatic) mixer.SetFxRoute(key, SoundModes.RouteAutomatic);
+            if (mixer.FxRouteOf(key) != EffectsRules.RouteAutomatic) mixer.SetFxRoute(key, EffectsRules.RouteAutomatic);
             if (mixer.IsFxOn(key)) mixer.SaveFx(key);
             else mixer.SetFxOn(key, true);
         }
@@ -92,17 +101,14 @@ public static class EasyApply
         return device;
     }
 
-    /// <summary>Switches to Full control (OmniControl's own engine through a cable); a master method set to Equalizer APO goes back to Automatic so the cable bus is what runs.</summary>
+    /// <summary>OmniControl's own engine through a cable: a master method set to Equalizer APO goes back to Automatic so the cable bus is what runs.</summary>
     public static void UseOwnEngine(IEasyMixer mixer)
     {
-        mixer.SetSoundMode(SoundModes.Full);
-        if (mixer.MasterMethod == SoundModes.MasterApo) mixer.SetMasterMethod(SoundModes.MasterAutomatic);
+        if (mixer.MasterMethod == EffectsRules.MasterApo) mixer.SetMasterMethod(EffectsRules.MasterAutomatic);
     }
 
-    public static void UseFastMode(IEasyMixer mixer) => mixer.SetSoundMode(SoundModes.Fast);
-
     /// <summary>The master runs in Equalizer APO on the speakers, which frees the cable the bus held.</summary>
-    public static void FreeTheCable(IEasyMixer mixer) => mixer.SetMasterMethod(SoundModes.MasterApo);
+    public static void FreeTheCable(IEasyMixer mixer) => mixer.SetMasterMethod(EffectsRules.MasterApo);
 
     /// <summary>The master plays on this combined device alone.</summary>
     public static void MasterPlaysOn(IEasyMixer mixer, string key) => mixer.SetMasterPlaysOn(new[] { key });

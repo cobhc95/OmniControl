@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using OmniControl.App.Audio;
 using OmniControl.App.Audio.Engine;
+using OmniControl.App.Pages.Volume.Easy.Flow;
 
 namespace OmniControl.App.Pages.Volume.Easy;
 
@@ -11,10 +12,10 @@ namespace OmniControl.App.Pages.Volume.Easy;
 /// </summary>
 public sealed partial class EasyRow : ObservableObject, IDisposable
 {
-    public EasyRow(VolumeRow row, MixerService mixer, EffectsEngine engine, Action<string?> openFx)
+    public EasyRow(VolumeRow row, MixerService mixer, EffectsEngine engine, Action<string?> openFx, Func<EasyConfirm, Task<bool>> confirm)
     {
         Row = row;
-        Sound = new EasySound(mixer, engine, row.ChainKey, () => openFx(row.ChainKey), WhyNot);
+        Sound = new EasySound(mixer, engine, row.ChainKey, () => openFx(row.ChainKey), WhyNot, confirm);
     }
 
     public VolumeRow Row { get; }
@@ -37,12 +38,10 @@ public sealed partial class EasyRow : ObservableObject, IDisposable
 
     /// <summary>
     /// Why this row's sound cannot be applied now, as one sentence (the drawer greys itself with it); null = it can. The reasons are the
-    /// ones the Advanced row already works out: a mode that cannot run the effects, a program that cannot be recorded, a setup step missing.
+    /// ones the Advanced row already works out: a setup step missing.
     /// </summary>
     private string? WhyNot()
     {
-        if (Row.EffectsGate.Reason is { } gate) return gate;
-        if (Row is MixerItem { IsMaster: false } && Row.CaptureGate.Reason is { } record) return record;
         if (Row.HasFix) return Row.Status.Length > 0 ? Row.Status : "It needs a setup step first.";
         return null;
     }

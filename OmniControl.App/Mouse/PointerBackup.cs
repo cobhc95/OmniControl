@@ -12,9 +12,9 @@ public sealed record PointerOriginal(Dictionary<string, int> Values, CursorSnaps
 /// </summary>
 internal sealed class PointerBackup
 {
-    private const string FileName = "pointer-settings-original.json";
+    private static readonly DataStore Store = DataStores.PointerOriginal;
 
-    private PointerOriginal? _original = AppDataStore.Load<PointerOriginal>(FileName);
+    private PointerOriginal? _original = AppDataStore.Load<PointerOriginal>(Store);
 
     /// <summary>The saved originals, or null when OmniControl has changed nothing yet.</summary>
     public PointerOriginal? Original => _original;
@@ -24,6 +24,6 @@ internal sealed class PointerBackup
     {
         if (_original is not null) return;
         _original = capture();
-        AppDataStore.Save(FileName, _original);
+        AppDataStore.Save(Store, _original);
     }
 }

@@ -6,12 +6,12 @@ namespace OmniControl.App.Audio;
 /// <summary>
 /// The user's own presets of every effect kind, in presets.json (through <see cref="AppDataStore"/>). A preset belongs to one kind
 /// (<see cref="UserPreset.Kind"/>), because a 16-band and a 32-band equaliser, or an equaliser and a compressor, hold different things;
-/// the order among one kind's presets is the order shown. The built-in presets stay in the catalog (<see cref="PresetCatalog"/>) and are
-/// never stored here. No UI.
+/// the order among one kind's presets is the order shown; each has a stable id (a preset's shortcut follows it). The built-in presets
+/// stay in the catalog (<see cref="PresetCatalog"/>) and are never stored here. No UI.
 /// </summary>
 public sealed class UserPresetStore
 {
-    private const string FileName = "presets.json";
+    private static readonly DataStore Store = DataStores.EffectPresets;
 
     /// <summary>The ending of an exported preset file (without the dot).</summary>
     public const string FileExtension = "json";
@@ -23,14 +23,29 @@ public sealed class UserPresetStore
     }
 
     private readonly Stored _data;
+    private readonly Action<Stored> _save;
 
-    public UserPresetStore()
+    /// <param name="data">What was saved (null: nothing yet).</param>
+    /// <param name="save">Writes the presets; a test gives its own so nothing is written under the user's folder.</param>
+    public UserPresetStore(Stored? data, Action<Stored> save)
     {
-        _data = AppDataStore.Load<Stored>(FileName) ?? new Stored();
+        _data = data ?? new Stored();
+        _save = save;
+        _data.Presets ??= new List<UserPreset>();
         // A damaged or hand-edited entry is dropped rather than shown: the catalog says what each kind can hold.
         _data.Presets.RemoveAll(p => p is null || FxCatalog.All.FirstOrDefault(k => k.Kind == p.Kind) is not { } kind
             || PresetRules.Error(p.Name ?? "") is not null || p.Content is null || PresetCatalog.Fit(kind, p.Content) is null);
+        var gaveIds = false;
+        foreach (var preset in _data.Presets.Where(p => string.IsNullOrEmpty(p.Id)))
+        {
+            preset.Id = PresetRules.NewId();
+            gaveIds = true;
+        }
+        if (gaveIds) _save(_data); // the ids of an older file's presets stay the same from now on
     }
+
+    /// <summary>The store as the program uses it: read from and written to the user's folder.</summary>
+    public static UserPresetStore OnDisk() => new(AppDataStore.Load<Stored>(Store), data => AppDataStore.Save(Store, data));
 
     /// <summary>Something in the list changed (raised on the thread that changed it, the UI thread).</summary>
     public event Action? Changed;
@@ -42,23 +57,28 @@ public sealed class UserPresetStore
 
     public UserPreset? Find(string kind, string name) => _data.Presets.FirstOrDefault(p => p.Kind == kind && PresetRules.Same(p.Name, name));
 
-    /// <summary>Keeps the content as the preset of that name: a preset of the same name (any case) is replaced where it stands, else it goes last.</summary>
-    public void Save(string kind, string name, PresetContent content)
+    public UserPreset? FindById(string id) => _data.Presets.FirstOrDefault(p => p.Id == id);
+
+    /// <summary>
+    /// Keeps the content as the preset of that name: a preset of the same name (any case) is replaced where it stands and keeps its id,
+    /// else it goes last with a new one. Returns the preset's id.
+    /// </summary>
+    public string Save(string kind, string name, PresetContent content)
     {
         name = name.Trim();
         var fit = PresetCatalog.Fit(FxCatalog.All.First(k => k.Kind == kind), content) ?? throw new InvalidDataException("This is not a preset of this effect.");
-        var preset = new UserPreset { Kind = kind, Name = name, Content = fit };
         var at = _data.Presets.FindIndex(p => p.Kind == kind && PresetRules.Same(p.Name, name));
+        var preset = new UserPreset { Kind = kind, Name = name, Content = fit, Id = at >= 0 ? _data.Presets[at].Id : PresetRules.NewId() };
         if (at >= 0) _data.Presets[at] = preset;
         else _data.Presets.Add(preset);
         Commit();
+        return preset.Id!;
     }
 
-    /// <summary>Renames a preset; with <paramref name="replace"/> another of the new name (any case) is removed first.</summary>
-    public void Rename(string kind, string from, string to, bool replace)
+    /// <summary>Renames a preset (the caller has checked the name is free).</summary>
+    public void Rename(string kind, string from, string to)
     {
         if (Find(kind, from) is not { } preset) return;
-        if (replace) _data.Presets.RemoveAll(p => p.Kind == kind && !ReferenceEquals(p, preset) && PresetRules.Same(p.Name, to));
         preset.Name = to.Trim();
         Commit();
     }
@@ -96,8 +116,10 @@ public sealed class UserPresetStore
         };
     }
 
-    /// <summary>One preset as the bytes of an export file.</summary>
-    public static byte[] Export(UserPreset preset) => JsonSerializer.SerializeToUtf8Bytes(preset, new JsonSerializerOptions { WriteIndented = true });
+    /// <summary>One preset as the bytes of an export file (its id stays at home: an imported preset gets its own).</summary>
+    public static byte[] Export(UserPreset preset) =>
+        JsonSerializer.SerializeToUtf8Bytes(new UserPreset { Kind = preset.Kind, Name = preset.Name, Content = preset.Content, Saved = preset.Saved },
+            new JsonSerializerOptions { WriteIndented = true });
 
     /// <summary>The preset an export file holds; null when the bytes are no preset of a kind this version knows.</summary>
     public static UserPreset? Read(byte[] bytes)
@@ -115,7 +137,7 @@ public sealed class UserPresetStore
 
     private void Commit()
     {
-        AppDataStore.Save(FileName, _data);
+        _save(_data);
         Changed?.Invoke();
     }
 }

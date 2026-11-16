@@ -1,0 +1,23 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:OmniControl.App.Controls"
+             x:Class="OmniControl.App.Controls.ScopeCog">
+    <!-- A card's cogwheel when the card has an apps scope (docs/mockups/app-scope-and-lists.html: "a card may override its group from its cog"):
+         it opens the same "Works in" menu as the group's Apps chip (with "Same as the group" first), and, when the action has settings,
+         an "Action settings..." row above it. A card without a scope (a trackpad gesture) goes straight to the action's settings. The
+         menu hangs on this control, not on the pill, so the pill's styles do not reach into it. -->
+    <FlyoutBase.AttachedFlyout>
+        <c:ListMenuFlyout Placement="BottomEdgeAlignedRight" Opened="OnOpened" Closed="OnClosed">
+            <StackPanel>
+                <StackPanel IsVisible="{Binding ShowsSettings}">
+                    <Button Classes="menurow" Click="OnSettingsRowClick"><TextBlock Text="Action settings…" /></Button>
+                    <Border Classes="hrule" Margin="0,4" />
+                </StackPanel>
+                <c:AppScopeMenuView />
+            </StackPanel>
+        </c:ListMenuFlyout>
+    </FlyoutBase.AttachedFlyout>
+    <Button x:Name="Cog" Classes="pill cog" Tag="scope" Click="OnClick" ToolTip.Tip="{Binding $parent[UserControl].CogTip}">
+        <PathIcon Data="{DynamicResource CogIcon}" Width="12" Height="12" />
+    </Button>
+</UserControl>

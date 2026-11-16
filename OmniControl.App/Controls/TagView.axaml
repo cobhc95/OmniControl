@@ -1,0 +1,9 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="OmniControl.App.Controls.TagView"
+             x:DataType="svc:TagItem" xmlns:svc="using:OmniControl.App.Services">
+    <!-- One tag (Border.tag) for a TagItem: its words, its colour from the tone, its tip as the tooltip. The container sets margins and placement. -->
+    <Border Classes="tag" Classes.good="{Binding IsGood}" Classes.caution="{Binding IsCaution}" Classes.risk="{Binding IsRisk}" ToolTip.Tip="{Binding Tip}">
+        <TextBlock Text="{Binding Text}" />
+    </Border>
+</UserControl>

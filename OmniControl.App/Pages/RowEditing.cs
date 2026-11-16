@@ -1,8 +1,10 @@
 ﻿using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.VisualTree;
+using OmniControl.App.Controls;
 using OmniControl.App.Hotkeys;
 
 namespace OmniControl.App.Pages;
@@ -12,10 +14,13 @@ namespace OmniControl.App.Pages;
 /// Up/Down move between cards, Left/Right move between the parts of the selected card,
 /// Enter works on the highlighted part (start listening, open the list, adjust the slider), Esc backs out of that.
 /// A vertical slider (a graphic equaliser's band) keeps Up/Down for its value; Esc on it gives the keyboard back to its card.
+/// A knob is a part like a slider: Enter starts adjusting it (its own keys, <see cref="KnobMath.KeyStep"/>, then turn it), Enter or Esc
+/// finish; Home resets it; Ctrl+Enter types its value.
 /// </summary>
 public static class RowEditing
 {
-    private static Slider? _activeSlider;
+    /// <summary>The slider or knob being adjusted (Enter on it), whose keys change it until Enter or Esc.</summary>
+    private static RangeBase? _activeSlider;
 
     public static void Attach(ListBox list) =>
         list.AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
@@ -26,7 +31,8 @@ public static class RowEditing
     /// </summary>
     public static bool IsEditing(object? focused) =>
         HotkeyCapture.IsListening(focused)
-        || (focused is Slider s && (s == _activeSlider || IsVertical(s)))
+        || (focused is RangeBase r && r == _activeSlider)
+        || (focused is Slider s && IsVertical(s))
         || NumberText.IsTypingIn(focused)
         || focused is ComboBox { IsDropDownOpen: true } or ComboBoxItem;
 
@@ -55,7 +61,7 @@ public static class RowEditing
     public static InputElement CardTarget(ListBoxItem card) => Parts(card).FirstOrDefault() ?? card;
 
     private static bool IsPart(Control c) =>
-        c is Slider or ComboBox or ToggleSwitch
+        c is Slider or Knob or ComboBox or ToggleSwitch
         || c is Border { Tag: "gallery" }
         || c is Button { Tag: "scope" }
         || HotkeyCapture.IsHotkeyBox(c)
@@ -108,7 +114,7 @@ public static class RowEditing
         s.Value = Math.Clamp(s.Value + (e.Key == Key.Right ? step : -step), s.Minimum, s.Maximum);
     }
 
-    private static void Activate(Slider slider)
+    private static void Activate(RangeBase slider)
     {
         _activeSlider = slider;
         slider.Classes.Set("active", true);
@@ -167,7 +173,16 @@ public static class RowEditing
             return;
         }
 
-        // 3. A slider being adjusted: Left/Right change it, Enter/Esc finish.
+        // 3a. A knob being adjusted: Enter/Esc finish; its own keys turn it (they reach it unhandled).
+        if (src is Knob turning && turning == _activeSlider)
+        {
+            if (e.Key is not (Key.Enter or Key.Escape) || e.KeyModifiers != KeyModifiers.None) return;
+            Deactivate();
+            e.Handled = true;
+            return;
+        }
+
+        // 3b. A slider being adjusted: Left/Right change it, Enter/Esc finish.
         if (src is Slider active && active == _activeSlider)
         {
             switch (e.Key)
@@ -230,6 +245,17 @@ public static class RowEditing
 
             case Key.Enter when src is Slider slider && !IsVertical(slider) && parts.Count > 1:
                 Activate(slider);
+                e.Handled = true;
+                break;
+
+            case Key.Enter when src is Knob knob && e.KeyModifiers == KeyModifiers.None:
+                Activate(knob);
+                e.Handled = true;
+                break;
+
+            // Home on a knob: its reset value (the same as a double-click).
+            case Key.Home when src is Knob reset && SliderReset.GetValue(reset) is { } home:
+                reset.Value = home;
                 e.Handled = true;
                 break;
 

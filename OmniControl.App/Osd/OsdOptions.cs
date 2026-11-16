@@ -15,7 +15,7 @@ public static class OsdPalette
     /// <summary>Extra OSD-only accents (not offered for the whole program: white would make text on accent buttons unreadable).</summary>
     public static readonly IReadOnlyList<(string Name, Color Color)> ExtraAccents = new[]
     {
-        ("White", Color.Parse(Palette.LightHex)), ("Grey", Color.Parse("#9A9A9A")),
+        ("White", Color.Parse(Palette.LightHex)), ("Grey", Palette.OsdGrey),
     };
 
     public static readonly IReadOnlyList<(string Name, string Hex)> Backgrounds = new[]

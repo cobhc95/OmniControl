@@ -1,0 +1,30 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Pages.Devices"
+             xmlns:c="using:OmniControl.App.Controls"
+             x:Class="OmniControl.App.Pages.Devices.SimulationFields"
+             x:DataType="vm:SimulationViewModel">
+    <!-- The simulation method's two rows (docs/mockups/devices-simulation.html section 1): the emulator (the shared ChipMenu: the installed ones to
+         pick, the others with a "Get it" tag that opens their official page) with the Open emulator pill, and the adb address with Connect. -->
+    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="6">
+        <TextBlock Classes="muted" Text="Emulator" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+            <c:ChipMenu x:Name="EmulatorChip" Text="{Binding EmulatorText}" ChipToolTip="{Binding EmulatorTip}" MenuOpened="OnMenuOpened">
+                <c:ChipMenu.Menu>
+                    <c:MenuRowList x:Name="EmulatorRows" />
+                </c:ChipMenu.Menu>
+            </c:ChipMenu>
+            <Button Classes="pill" Content="Open emulator" Command="{Binding OpenEmulatorCommand}" IsEnabled="{Binding CanOpenEmulator}" VerticalAlignment="Center"
+                    ToolTip.Tip="Opens the emulator: install the device app there (for example Tapo from its store) and sign in inside it. OmniControl never sees that password."
+                    ToolTip.ShowOnDisabled="True" />
+        </StackPanel>
+
+        <TextBlock Grid.Row="1" Classes="muted" Text="ADB address" VerticalAlignment="Center" />
+        <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="10">
+            <TextBox Classes="field" Text="{Binding AdbAddress, UpdateSourceTrigger=LostFocus}" Watermark="{Binding AddressWatermark}" MinWidth="220"
+                     ToolTip.Tip="Where adb reaches the emulator. It is found for you; type another address only if the emulator uses one." />
+            <Button Classes="pill" Content="Connect" Command="{Binding ConnectCommand}" IsEnabled="{Binding CanConnect}" VerticalAlignment="Center" />
+            <Border Classes="tag good" IsVisible="{Binding IsConnected}" VerticalAlignment="Center"><TextBlock Text="connected" /></Border>
+        </StackPanel>
+    </Grid>
+</UserControl>

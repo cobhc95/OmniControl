@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:OmniControl.App.Controls"
              xmlns:pages="using:OmniControl.App.Pages"
              xmlns:vm="using:OmniControl.App.Pages.Volume"
              xmlns:easy="using:OmniControl.App.Pages.Volume.Easy"
@@ -8,40 +9,30 @@
     <!-- The Easy page (docs/mockups/easy-mode.html section 5): the "Everything" card (big master level, Mute, Sound drawer), one card with the
          apps and microphones and "Add program", and the footer (what is set up, Set up again, Fix it). No cables, methods or wiring here. -->
     <StackPanel Spacing="6" Grid.IsSharedSizeScope="True">
-        <Border Classes="groupPanel">
+        <pages:GroupCard Group="{Binding EverythingGroup}">
             <StackPanel Spacing="6" Margin="0,4">
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                    <TextBlock Text="Everything" FontWeight="SemiBold" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="1" Text="all your apps and speakers" Classes="hint small" VerticalAlignment="Center" />
-                </Grid>
                 <Grid ColumnSpacing="8" DataContext="{Binding Master}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" SharedSizeGroup="EasyMute" />
                         <ColumnDefinition Width="Auto" SharedSizeGroup="EasySound" />
                     </Grid.ColumnDefinitions>
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" DataContext="{Binding Row}" VerticalAlignment="Center">
-                        <Slider Classes="thick" Minimum="0" Maximum="100" Value="{Binding Volume}" pages:SliderReset.Value="100" ToolTip.Tip="{Binding VolumeTip}" />
-                        <pages:NumberText Grid.Column="1" Value="{Binding Volume}" Minimum="0" Maximum="100" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Volume}" Classes="muted" MinWidth="28" TextAlignment="Right" VerticalAlignment="Center" />
-                        </pages:NumberText>
-                    </Grid>
+                    <c:SliderField DataContext="{Binding Row}" Thick="True" Minimum="0" Maximum="100" Value="{Binding Volume}" ResetValue="100"
+                                   Text="{Binding Volume}" ValueMinWidth="28" ToolTip.Tip="{Binding VolumeTip}" VerticalAlignment="Center" />
                     <Button Grid.Column="1" Tag="grouptool" Classes="scope mute" Classes.on="{Binding Row.Muted}" Content="M" Command="{Binding Row.ToggleMuteCommand}"
                             ToolTip.Tip="Mute" VerticalAlignment="Center" />
-                    <Button Grid.Column="2" Tag="grouptool" Classes="pill" Classes.custom="{Binding Sound.IsOpen}" Command="{Binding Sound.ToggleCommand}"
-                            Content="Sound ▾" ToolTip.Tip="Presets and five sliders for everything" VerticalAlignment="Center" />
+                    <easy:SoundChip Grid.Column="2" ToolTip.Tip="Presets and five sliders for everything" VerticalAlignment="Center" />
                 </Grid>
                 <Panel IsVisible="{Binding Master.Sound.IsOpen}"><easy:EasyDrawerView DataContext="{Binding Master}" /></Panel>
             </StackPanel>
-        </Border>
+        </pages:GroupCard>
 
-        <Border Classes="groupPanel">
+        <pages:GroupCard Group="{Binding AppsGroup}">
+            <pages:GroupCard.Tools>
+                <vm:AddProgramButton DataContext="{Binding AddProgram}" />
+            </pages:GroupCard.Tools>
             <StackPanel Spacing="6" Margin="0,4">
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                    <TextBlock Text="Apps and microphones" FontWeight="SemiBold" VerticalAlignment="Center" />
-                    <vm:AddProgramButton Grid.Column="1" DataContext="{Binding AddProgram}" />
-                </Grid>
-                <TextBlock Classes="hint" Text="Nothing is playing. Apps appear here when they do." IsVisible="{Binding !HasApps}" TextWrapping="Wrap" />
+                <pages:EmptyListRow Text="Nothing is playing. Apps appear here when they do." IsVisible="{Binding !HasApps}" />
                 <ItemsControl ItemsSource="{Binding Apps}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate><StackPanel Spacing="6" /></ItemsPanelTemplate>
@@ -53,7 +44,7 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </StackPanel>
-        </Border>
+        </pages:GroupCard>
 
         <!-- The footer: what is set up on the left; Set up again and Fix it on the right (it wraps when the window is narrow) -->
         <WrapPanel Classes="toolbar">

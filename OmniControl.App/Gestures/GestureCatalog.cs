@@ -49,15 +49,15 @@ public static class GestureCatalog
     public static string AreaName(PointerAreaKind area) => Triggers.First(t => t.Group == AreaGroup && t.Area == area).Label;
 
     /// <summary>A step that is not an OmniControl level: a keystroke per wheel direction, or neither (the runner handles it by id).</summary>
-    private sealed record Step(string Id, string Category, string Name, IReadOnlyList<ActionOption> Options, string? UpKeys = null, string? DownKeys = null);
+    private sealed record Step(string Id, string Category, string Name, IReadOnlyList<ActionOption> Options, string Heading, string? UpKeys = null, string? DownKeys = null);
 
     private static readonly IReadOnlyList<ActionOption> Stepped = new[] { GestureOptions.Steps, GestureOptions.Reverse };
     private static readonly IReadOnlyList<ActionOption> LevelOptions = new[] { GestureOptions.Amount, GestureOptions.Reverse };
 
     private static readonly Step[] Steps =
     {
-        new(Opacity, "Windows", "Window opacity", new[] { GestureOptions.OpacityStep, GestureOptions.Reverse }),
-        new("desktop", "Windows", "Switch virtual desktop", Stepped, UpKeys: "Win+Ctrl+Left", DownKeys: "Win+Ctrl+Right"),
+        new(Opacity, ActionSections.Keys, "Window opacity", new[] { GestureOptions.OpacityStep, GestureOptions.Reverse }, "Windows"),
+        new("desktop", ActionSections.Keys, "Switch virtual desktop", Stepped, "Virtual desktops", UpKeys: "Win+Ctrl+Left", DownKeys: "Win+Ctrl+Right"),
     };
 
     /// <summary>
@@ -66,8 +66,8 @@ public static class GestureCatalog
     /// </summary>
     public static List<PickChoice> Choices(IEnumerable<HotkeyAction> omniActions) =>
         omniActions.Where(a => a.Level is not null).GroupBy(a => a.Level!.Id).Select(g => g.First())
-            .Select(a => new PickChoice(a.Level!.Id, a.Heading, a.Level.Name, Keywords: a.Keywords, Options: LevelOptions))
-            .Concat(Steps.Select(s => new PickChoice(s.Id, s.Category, s.Name, Options: s.Options)))
+            .Select(a => new PickChoice(a.Level!.Id, a.Section, a.Level.Name, Keywords: a.Keywords, Options: LevelOptions, Heading: a.PickerHeading, Place: a.SectionPlace))
+            .Concat(Steps.Select(s => new PickChoice(s.Id, s.Category, s.Name, Options: s.Options, Heading: s.Heading, Place: ActionSections.Find(s.Category))))
             .ToList();
 
     /// <summary>

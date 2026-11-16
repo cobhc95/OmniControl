@@ -8,7 +8,7 @@ namespace OmniControl.Tests;
 /// <summary>
 /// The owner's PC as read on 14 Nov 2026 (endpoints from Core's own enumeration) and the relevant part of the owner's mixer.json
 /// (program paths shortened): one VB-CABLE with two inputs ("CABLE Input" and "CABLE In 16ch") and one output, a Realtek speaker,
-/// Full control, Helium and Spotify with an equaliser each, Claude with effects off, the master with an equaliser.
+/// the master bus, Helium and Spotify with an equaliser each, Claude with effects off, the master with an equaliser.
 /// </summary>
 internal static class OwnerPc
 {
@@ -23,7 +23,7 @@ internal static class OwnerPc
     public const string Claude = @"c:\program files\windowsapps\anthropicpbc.claude_x64__fnn82j28hfe8t\app\claude.exe";
     public const string Spotify = @"c:\apps\spotify\spotify.exe";
 
-    /// <summary>Windows' default is the bus cable, as it is while Full control runs.</summary>
+    /// <summary>Windows' default is the bus cable, as it is while the master bus runs.</summary>
     public static IReadOnlyList<AudioDevice> Playback { get; } = new[]
     {
         new AudioDevice(CableInput, "CABLE Input (VB-Audio Virtual Cable)", true),
@@ -45,7 +45,7 @@ internal static class OwnerPc
     public const string CableA = "{0.0.0.00000000}.{aaaaaaaa-0000-0000-0000-00000000000a}";
     public const string CableAOutput = "{0.0.1.00000000}.{aaaaaaaa-0000-0000-0000-00000000000b}";
 
-    /// <summary>The same PC with a second, independent cable pair (VB-CABLE A): what a processed program needs in Full control.</summary>
+    /// <summary>The same PC with a second, independent cable pair (VB-CABLE A): what a processed program needs.</summary>
     public static IReadOnlyList<AudioDevice> PlaybackTwoPairs { get; } =
         Playback.Append(new AudioDevice(CableA, "CABLE-A Input (VB-Audio Cable A)", false)).ToArray();
 

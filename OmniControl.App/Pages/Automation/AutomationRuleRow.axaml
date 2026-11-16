@@ -1,0 +1,118 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Pages.Automation"
+             xmlns:pages="using:OmniControl.App.Pages"
+             xmlns:hk="using:OmniControl.App.Hotkeys"
+             xmlns:c="using:OmniControl.App.Controls"
+             x:Class="OmniControl.App.Pages.Automation.AutomationRuleRow"
+             x:DataType="vm:AutomationItem">
+    <!-- One rule: its switch, its name and a delete cross on the first line; the sentence of blocks (Styles/Blocks.axaml) on the second;
+         its facts as tags (Border.tag) on the third. Every block opens the shared picker; a hotkey block opens its capture pop-down (the Popup below). -->
+    <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" Margin="0,2,0,4">
+        <ToggleSwitch Classes="plain" IsChecked="{Binding IsOn}" VerticalAlignment="Center" />
+        <TextBox Grid.Column="1" Classes="field" Text="{Binding Name, UpdateSourceTrigger=LostFocus}" Watermark="Name" MaxWidth="320"
+                 HorizontalAlignment="Left" MinWidth="160" />
+        <Button Grid.Column="2" Classes="pill glyph" Click="OnDeleteClick" ToolTip.Tip="Delete">
+            <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+        </Button>
+
+        <ItemsControl x:Name="SentenceHost" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" ItemsSource="{Binding Sentence}" Margin="0,4,0,0">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.DataTemplates>
+                <DataTemplate DataType="pages:SentenceWord">
+                    <TextBlock Classes="blockword" Text="{Binding Text}" />
+                </DataTemplate>
+                <DataTemplate DataType="pages:SentenceBlock">
+                    <Button Classes="block" Click="OnBlockClick" ToolTip.Tip="Change it (Enter); Delete removes it">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Text}" />
+                            <Button Classes="blockx" Click="OnRemoveClick" ToolTip.Tip="Remove">
+                                <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+                            </Button>
+                        </StackPanel>
+                    </Button>
+                </DataTemplate>
+                <DataTemplate DataType="pages:SentenceHotkey">
+                    <Button Classes="block" Classes.capturing="{Binding Capturing}" Click="OnHotkeyClick" Loaded="OnHotkeyBlockLoaded"
+                            ToolTip.Tip="Set the keys; Delete removes it">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="I press" />
+                            <hk:KeycapRow Parts="{Binding Keys}" VerticalAlignment="Center" />
+                            <Button Classes="blockx" Click="OnRemoveClick" ToolTip.Tip="Remove">
+                                <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+                            </Button>
+                        </StackPanel>
+                    </Button>
+                </DataTemplate>
+                <DataTemplate DataType="pages:SentenceLink">
+                    <Button Classes="blockjoin" Content="{Binding Text}" ToolTip.Tip="Change how this joins the part before it">
+                        <Button.Flyout>
+                            <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft">
+                                <StackPanel x:DataType="pages:SentenceLink">
+                                    <ItemsControl ItemsSource="{Binding Options}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="pages:SentenceLinkOption">
+                                                <Button Classes="menurow" Click="OnLinkOptionClick">
+                                                    <Grid ColumnDefinitions="*,Auto">
+                                                        <TextBlock Text="{Binding Text}" />
+                                                        <Border Grid.Column="1" Classes="tag selected" IsVisible="{Binding IsOn}"><TextBlock Text="now" /></Border>
+                                                    </Grid>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <Border Classes="hrule" IsVisible="{Binding HasAmount}" />
+                                    <Grid IsVisible="{Binding HasAmount}" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8"
+                                          Margin="{StaticResource MenuTextInset}">
+                                        <TextBlock Text="{Binding Amount.Label}" Classes="menutext" Margin="0" VerticalAlignment="Center" />
+                                        <Slider Grid.Column="1" Classes="compact" MinWidth="140" Minimum="{Binding Amount.Minimum}" Maximum="{Binding Amount.Maximum}"
+                                                Value="{Binding Amount.Value}" pages:SliderReset.Value="{Binding Amount.Standard}" />
+                                        <pages:NumberText Grid.Column="2" Value="{Binding Amount.Value}" Minimum="{Binding Amount.Minimum}"
+                                                          Maximum="{Binding Amount.Maximum}" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Amount.Text}" Classes="muted" MinWidth="40" TextAlignment="Right" />
+                                        </pages:NumberText>
+                                    </Grid>
+                                </StackPanel>
+                            </c:ListMenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                </DataTemplate>
+                <DataTemplate DataType="pages:SentenceAdd">
+                    <Button Classes="blockadd" Content="{Binding Text}" Click="OnAddClick" />
+                </DataTemplate>
+            </ItemsControl.DataTemplates>
+        </ItemsControl>
+
+        <ItemsControl Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" ItemsSource="{Binding Tags}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <c:TagView Margin="0,0,4,2" />
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- The capture pop-down under the "I press" block (placed on it when the block is drawn): live keycaps of the held keys and
+             the dashed slot of the key still to press; the shortcut is saved when the main key is released. Focus stays on the block,
+             so the keys reach the row (HotkeyCapture). -->
+        <Popup x:Name="CapturePopup" Placement="BottomEdgeAlignedLeft" VerticalOffset="{DynamicResource MenuOffset}" IsLightDismissEnabled="False">
+            <FlyoutPresenter Classes="capturemenu">
+                <StackPanel Spacing="8">
+                    <Panel>
+                        <Border Classes="capturebox" />
+                        <hk:KeycapRow Parts="{Binding CaptureKeys}" HorizontalAlignment="Center" Margin="0,14" />
+                    </Panel>
+                    <TextBlock Classes="menutext" Text="{Binding CaptureNote}" HorizontalAlignment="Center" Margin="0" />
+                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                        <Button Classes="pill cardaction" Content="Clear" Focusable="False" Click="OnCaptureClearClick" />
+                        <Button Classes="pill cardaction" Content="Cancel" Focusable="False" Click="OnCaptureCancelClick" />
+                    </StackPanel>
+                </StackPanel>
+            </FlyoutPresenter>
+        </Popup>
+    </Grid>
+</UserControl>

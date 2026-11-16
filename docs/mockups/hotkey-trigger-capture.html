@@ -1,0 +1,29 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Hotkey trigger capture (approved option C)</title>
+<!-- Approved by the owner 15 Nov 2026: option C. Sizes are guides; colours come from the app's theme (accent = orange). -->
+<style>
+body{font-family:Segoe UI,sans-serif;background:#1b1b1b;color:#eee;padding:20px;font-size:13px}
+.r{display:flex;align-items:center;gap:6px;margin:8px 0}
+.s{width:70px;color:#999;font-size:12px}
+.w{color:#999}                                   /* plain sentence word (TextBlock.blockword) */
+.b{border:1px solid #555;border-radius:6px;padding:3px 8px}   /* a picked part (Button.block) */
+.acc{border:1.5px solid #E8833A;border-radius:6px;padding:3px 8px;color:#E8833A}  /* the block while capturing: accent */
+.k{border:1px solid #666;border-bottom-width:2px;border-radius:5px;padding:1px 7px;font-family:Consolas,monospace;font-size:12px;background:#2a2a2a} /* one keycap, shared look */
+.ke{border:1px dashed #E8833A;border-radius:5px;padding:1px 10px;font-size:12px;color:#E8833A} /* the next key still to press */
+.p{animation:pl 1.2s ease-in-out infinite}       /* pulse while listening (existing TextBox.listening style) */
+@keyframes pl{50%{box-shadow:0 0 0 3px rgba(232,131,58,.25)}}
+.pop{margin:2px 0 6px 76px;width:250px;border:1px solid #555;border-radius:8px;padding:12px;background:#232323;text-align:center} /* capture pop-down under the block, ~250 px wide */
+</style></head><body>
+<!-- 1. Picking "I press a hotkey" in the trigger picker immediately opens this capture pop-down under the block. -->
+<div class="r"><span class="s">Listening</span><span class="w">When</span><span class="acc">I press …</span></div>
+<div class="pop">
+  <!-- Live keycaps: held modifiers appear as they are pressed; the dashed slot is the main key still to press. Saved on release. -->
+  <div class="p" style="border:1.5px solid #E8833A;border-radius:8px;padding:14px 0"><span class="k">Ctrl</span> + <span class="k">Alt</span> + <span class="ke">…</span></div>
+  <div style="font-size:12px;color:#999;margin-top:8px">Press the keys now</div>  <!-- one short muted line, not keyboard instructions -->
+  <div style="display:flex;gap:6px;justify-content:center;margin-top:8px"><span class="b">Clear</span><span class="b">Cancel</span></div> <!-- Button.pill.cardaction -->
+</div>
+<!-- 2. Set: the block shows the shortcut as keycaps. Clicking the block reopens the capture pop-down. -->
+<div class="r"><span class="s">Set</span><span class="w">When</span><span class="b">I press <span class="k">Ctrl</span>+<span class="k">Alt</span>+<span class="k">S</span></span></div>
+<!-- 3. Empty (capture cancelled with nothing set): the block reads "I press" plus a dashed accent "set keys" slot, and the rule shows the tag "Needs a hotkey". -->
+<div class="r"><span class="s">Empty</span><span class="w">When</span><span class="b">I press <span class="ke">set keys</span></span></div>
+</body></html>

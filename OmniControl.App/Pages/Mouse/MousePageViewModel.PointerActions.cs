@@ -1,3 +1,4 @@
+using OmniControl.App.Dialogs;
 using OmniControl.App.Audio.Engine;
 using OmniControl.App.Hotkeys;
 using OmniControl.App.Osd;
@@ -98,7 +99,7 @@ public sealed partial class MousePageViewModel
         UpdateRestoreCard();
         var seconds = (int)Timing.PointerSwapKeep.TotalSeconds;
         var now = swapped ? "The right button now clicks." : "The left button now clicks.";
-        var keep = await _ask(new EngineMessage("Keep this button swap?",
+        var keep = await _ask(new DialogMessage("Keep this button swap?",
             $"{now} It goes back in {seconds} seconds unless you keep it.", "Keep", Dismiss: trial));
         if (keep) _pointer.KeepSwap();
         else _pointer.PutBackSwap();

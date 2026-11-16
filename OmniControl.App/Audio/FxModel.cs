@@ -43,9 +43,9 @@ public sealed class FxSlot
 public enum FxEngines
 {
     None = 0,
-    /// <summary>OmniControl's own engine (programs in Fast mode; everything in Full control).</summary>
+    /// <summary>OmniControl's own engine (every row it runs).</summary>
     Program = 1,
-    /// <summary>Equalizer APO or OmniControl APO (the master and microphones in Fast mode).</summary>
+    /// <summary>Equalizer APO or OmniControl APO (the master, and a program on a cable).</summary>
     Apo = 2,
 }
 
@@ -86,7 +86,7 @@ public static class FxCatalog
     public const string Vst2Kind = "vst2";
 
     /// <summary>
-    /// The plug-in formats a chain can hold. VST3 runs in OmniControl's own engine only (Equalizer APO has no VST3 host: in Fast mode it is
+    /// The plug-in formats a chain can hold. VST3 runs in OmniControl's own engine only (Equalizer APO has no VST3 host: there it is
     /// kept but not run on the master and microphones); VST2 also runs in Equalizer APO (its <c>VSTPlugin:</c> command, <see cref="Engine.ApoChainWriter"/>).
     /// </summary>
     public static readonly IReadOnlyList<PluginType> PluginTypes = new PluginType[]
@@ -136,7 +136,8 @@ public static class FxCatalog
         new(IrKind, "IR Loader", "Impulse response (cabinet, room or speaker correction) by convolution", new FxParam[]
         {
             Percent("Mix", 100), new("Gain", 0, -24, 24, " dB"),
-        }, FxEngines.Apo),
+            new("Auto level", 1, 0, 1, "", IsSwitch: true), new("Trim silence", 0, 0, 1, "", IsSwitch: true),
+        }, FxEngines.Program | FxEngines.Apo),
         new(EqKind, "Equaliser - Parametric", "Parametric equaliser: any number of bands, eight filter types, response graph",
             new[] { EqGain }, FxEngines.Program | FxEngines.Apo, Eq.Layout),
         new("geq32", "Equaliser - 32 Bands", "Graphic equaliser: 32 sliders a third of an octave apart, 16 Hz to 20 kHz, response curve",

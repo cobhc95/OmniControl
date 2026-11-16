@@ -127,7 +127,7 @@ public class MultipleActionsTests
 
         var gestureLater = MouseActionCatalog.ExtraChoices(NoOmniActions, gesture: true);
         Assert.Contains(gestureLater, c => c.Spec == "trackpad.layer.next");
-        Assert.DoesNotContain(gestureLater.Single(c => c.Spec == "volume.mute").Options ?? Array.Empty<ActionOption>(),
+        Assert.DoesNotContain(gestureLater.Single(c => c.Spec == "media.next").Options ?? Array.Empty<ActionOption>(),
             o => o.Key == MouseOptions.KeepWindowsGesture.Key);
     }
 }

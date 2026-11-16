@@ -1,3 +1,4 @@
+using OmniControl.App.Dialogs;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -70,7 +71,7 @@ public partial class FxWindow : Window
 
     /// <summary>Options > Keyboard shortcuts: the window's keys in the small message window, kept above this window.</summary>
     private void OnShortcutsClick(object? sender, RoutedEventArgs e) =>
-        _ = new MessageWindow(new EngineMessage("Keyboard shortcuts", FxWindowViewModel.KeyHelp)).AskAsync(this);
+        _ = new MessageWindow(new DialogMessage("Keyboard shortcuts", FxWindowViewModel.KeyHelp)).AskAsync(this);
 
     protected override void OnDataContextChanged(EventArgs e)
     {

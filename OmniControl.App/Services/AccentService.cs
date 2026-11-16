@@ -81,6 +81,22 @@ public static class AccentService
             Set(app, variant, $"ToggleSwitch{part}OnPointerOver", over);
             Set(app, variant, $"ToggleSwitch{part}OnPressed", pressed);
         }
+        DictionaryOf(app, variant)[GlowKey] = new BoxShadows(new BoxShadow
+        {
+            Blur = Palette.GlowBlur,
+            Spread = Palette.GlowSpread,
+            Color = Color.FromArgb((byte)(Palette.GlowOpacity * byte.MaxValue), accent.R, accent.G, accent.B),
+        });
+    }
+
+    /// <summary>The soft accent glow around a lit button (Button.pill.glow, the Mixer's FX button while effects run).</summary>
+    private const string GlowKey = "AccentGlow";
+
+    private static ResourceDictionary DictionaryOf(Application app, ThemeVariant variant)
+    {
+        if (!app.Resources.ThemeDictionaries.TryGetValue(variant, out var provider) || provider is not ResourceDictionary dict)
+            app.Resources.ThemeDictionaries[variant] = dict = new ResourceDictionary();
+        return dict;
     }
 
     private static void Set(Application app, ThemeVariant variant, string key, Color color)
@@ -89,8 +105,6 @@ public static class AccentService
 
         brush = new SolidColorBrush(color);
         AccentBrushes[(variant, key)] = brush;
-        if (!app.Resources.ThemeDictionaries.TryGetValue(variant, out var provider) || provider is not ResourceDictionary dict)
-            app.Resources.ThemeDictionaries[variant] = dict = new ResourceDictionary();
-        dict[key] = brush;
+        DictionaryOf(app, variant)[key] = brush;
     }
 }

@@ -11,15 +11,15 @@ public sealed record CombineStart(CombinedKind Kind, bool KindFixed, IReadOnlyLi
 
 /// <summary>
 /// The window's cable line: the cable the device gets or uses, or what it waits for; the step that gets a cable (installer or VB-Audio's
-/// page); and the Switch to the mode that allows it, e.g. "Switch to Fast" when the master bus holds the cable (null = not shown).
+/// page).
 /// <see cref="Blocks"/> = a new device can't be created now (the text says why): Create stays dimmed.
 /// </summary>
-public sealed record CombineCableLine(string Text, ModeCardAction? Setup, ModeGate? Switch, bool Blocks = false);
+public sealed record CombineCableLine(string Text, CardAction? Setup, bool Blocks = false);
 
 /// <summary>
 /// The Combine devices window: a name, the kind (speakers or microphones; hidden when the window was opened for one kind), a one-line
 /// hint of what the kind does, the member devices (ticks), and the cable line. Create is dimmed, with the reason in the cable line, while
-/// a new device of that kind can't work (Fast mode for speakers, no cable or none free: <see cref="SoundModes.CombineGate"/>). The same
+/// a new device of that kind can't work (no cable or none free: <see cref="EffectsRules.CombineGate"/>). The same
 /// window edits a combined device (its kind stays; members that are unplugged now stay members; saving is never blocked).
 /// </summary>
 public sealed partial class CombineDeviceViewModel : ObservableObject
@@ -36,7 +36,7 @@ public sealed partial class CombineDeviceViewModel : ObservableObject
 
     /// <param name="speakers">Playback devices that can be members (no cables).</param>
     /// <param name="microphones">Recording devices that can be members (no cables).</param>
-    /// <param name="cableLine">The cable line for microphones (true) or speakers (false), asked again when the kind or the mode changes.</param>
+    /// <param name="cableLine">The cable line for microphones (true) or speakers (false), asked again when the kind changes.</param>
     /// <param name="createGate">Whether a new device of the kind (true = microphones) can be created now; a kind that can't is dimmed with the reason.</param>
     /// <param name="recordingName">What apps would pick as the combined microphone ("CABLE Output"); null = not known yet.</param>
     /// <param name="editing">The combined device to edit; null = a new one.</param>
@@ -94,7 +94,7 @@ public sealed partial class CombineDeviceViewModel : ObservableObject
 
     /// <summary>What the kind does, in one line ("Mixes them into one microphone. Apps record it from CABLE Output.").</summary>
     public string Hint => IsMicrophones
-        ? _recordingName is null ? "Mixes them into one microphone." : $"Mixes them into one microphone. {SoundModes.AppsRecordFrom(_recordingName)}."
+        ? _recordingName is null ? "Mixes them into one microphone." : $"Mixes them into one microphone. {EffectsRules.AppsRecordFrom(_recordingName)}."
         : SpeakersHint;
 
     /// <summary>Why Create is dimmed for want of ticks ("Tick at least one more microphone"); empty when there are enough.</summary>
@@ -113,10 +113,9 @@ public sealed partial class CombineDeviceViewModel : ObservableObject
 
     public OptionListModel Members { get; }
 
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasCableSetup), nameof(HasCableSwitch), nameof(CanCreate))] private CombineCableLine _cable = new(string.Empty, null, null);
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasCableSetup), nameof(CanCreate))] private CombineCableLine _cable = new(string.Empty, null);
 
     public bool HasCableSetup => Cable.Setup is not null;
-    public bool HasCableSwitch => Cable.Switch?.CanSwitch == true;
 
     /// <summary>A name, at least two devices, and (for a new device) a kind that can work now.</summary>
     public bool CanCreate => Name.Trim().Length > 0 && _ticked.Count >= MinMembers && (IsEditing || !Cable.Blocks);
@@ -124,7 +123,7 @@ public sealed partial class CombineDeviceViewModel : ObservableObject
     [RelayCommand] private void ChooseSpeakers() { if (CanChooseSpeakers) IsMicrophones = false; }
     [RelayCommand] private void ChooseMicrophones() { if (CanChooseMicrophones) IsMicrophones = true; }
 
-    /// <summary>Asks the cable line again (the kind or the sound mode changed).</summary>
+    /// <summary>Asks the cable line again (the kind changed).</summary>
     public void RefreshCable()
     {
         Cable = _cableLine(IsMicrophones);

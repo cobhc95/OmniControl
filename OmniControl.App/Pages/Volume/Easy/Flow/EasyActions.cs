@@ -41,8 +41,7 @@ public sealed class EasyActions : IEasyActions
             case EasyFixes.ApplyMasterSound: EasyApply.MasterSound(_mixer); return "Your sound is on.";
             case EasyFixes.ApplyProgramSounds: EasyApply.ProgramSounds(_mixer, answers.Programs); return "Each app has its own sound now.";
             case EasyFixes.ApplyMicrophone: return ApplyMicrophone(answers, facts);
-            case EasyFixes.UseOwnEngine or EasyFixes.SwitchToFull: EasyApply.UseOwnEngine(_mixer); return "Full control is on.";
-            case EasyFixes.SwitchToFast: EasyApply.UseFastMode(_mixer); return "Fast mode is on.";
+            case EasyFixes.UseOwnEngine: EasyApply.UseOwnEngine(_mixer); return "The master now runs through a cable.";
             case EasyFixes.FreeCable: EasyApply.FreeTheCable(_mixer); return "The master now runs in Equalizer APO.";
             case EasyFixes.CreateMicrophone: return Create(CombinedKind.Microphones, answers, facts.SuggestedMicrophoneName);
             case EasyFixes.CreateSpeakers: return Create(CombinedKind.Speakers, answers, facts.SuggestedSpeakersName);

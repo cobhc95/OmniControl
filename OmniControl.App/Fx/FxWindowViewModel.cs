@@ -10,22 +10,22 @@ namespace OmniControl.App.Fx;
 /// <summary>
 /// The FX window around one chain: its title, the row's effects on/off, the program's output device (Options > Plays on), the
 /// chain's total response and live numbers (<see cref="Analysis"/>, fed from here), what the effects engine does with the chain (the
-/// same line and Fast-mode caution as the Volume row, in the status strip), the window options and its keyboard shortcuts. The chain
+/// same line as the Volume row, in the status strip), the window options and its keyboard shortcuts. The chain
 /// itself is <see cref="Chain"/>.
 /// </summary>
 public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
 {
     private readonly MixerService _mixer;
     private readonly EffectsEngine _engine;
-    private readonly SoundModeService _modes;
+    private readonly EffectsSupportService _support;
     private readonly string? _key;
 
     /// <param name="key">The program key, an input key, or null for the master.</param>
-    public FxWindowViewModel(MixerService mixer, EffectsEngine engine, SoundModeService modes, string? key, FxChainViewModel chain)
+    public FxWindowViewModel(MixerService mixer, EffectsEngine engine, EffectsSupportService support, string? key, FxChainViewModel chain)
     {
         _mixer = mixer;
         _engine = engine;
-        _modes = modes;
+        _support = support;
         _key = key;
         Chain = chain;
         var entry = key is null ? null : mixer.Find(key);
@@ -37,7 +37,7 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
         chain.Edited += ShowChain;
         mixer.Updated += OnMixerUpdated;
         engine.StatusChanged += OnEngineStatus;
-        modes.Changed += OnModesChanged;
+        support.Changed += OnSupportChanged;
     }
 
     public FxChainViewModel Chain { get; }
@@ -75,18 +75,14 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
         GraphicEqItem.KeyHelp,
     });
 
-    /// <summary>The mode, how it runs this chain and what the effects engine really does with it (the line the Volume row shows as its status's tooltip).</summary>
-    public string EngineText => _engine.StatusOf(_key).LineFor(_mixer.SoundMode, _engine.MethodFor(_key));
-
-    /// <summary>A program in Fast mode whose sound can't be recorded on this PC: the reason, as on its Volume row (null: none).</summary>
-    public string? CaptureCaution => IsProgram ? _modes.ProgramCaptureCaution : null;
-    public bool HasCaptureCaution => CaptureCaution is not null;
+    /// <summary>How the effects engine runs this chain and what it really does with it (the line the Volume row shows as its Method chip's tooltip).</summary>
+    public string EngineText => _engine.StatusOf(_key).LineFor(_engine.MethodFor(_key));
 
     /// <summary>The row's effects are switched on (the toolbar's switch and Options > Chain on; the Volume row says "N effects, off" when not).</summary>
     public bool FxOn
     {
         get => _mixer.IsFxOn(_key);
-        set { if (_mixer.IsFxOn(_key) != value) _mixer.SetFxOn(_key, value); }
+        set { if (_mixer.IsFxOn(_key) != value) _mixer.SetFxByUser(_key, value); }
     }
 
     /// <summary>A remembered program that isn't running can be forgotten from here.</summary>
@@ -118,7 +114,7 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
         Analysis.RefreshLoad();
     }
 
-    /// <summary>The chain as the engine that runs this row in the current sound mode plays it, with the row's on/off.</summary>
+    /// <summary>The chain as the engine that runs this row plays it, with the row's on/off.</summary>
     private void ShowChain() => Analysis.Show(Chain.Effects, _engine.MethodFor(_key).Engine, FxOn);
 
     private void OnMixerUpdated()
@@ -126,15 +122,13 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(FxOn));
         OnPropertyChanged(nameof(CanForget));
         RefreshOutput();
-        OnModesChanged(); // the sound mode is stored by the mixer
+        OnSupportChanged();
     }
 
-    private void OnModesChanged()
+    private void OnSupportChanged()
     {
         ShowChain();
         OnPropertyChanged(nameof(EngineText));
-        OnPropertyChanged(nameof(CaptureCaution));
-        OnPropertyChanged(nameof(HasCaptureCaution));
     }
 
     /// <summary>The Plays on entries: the default device, every device, and a "several devices" entry when the Volume page set more than one; rebuilt only when they change, so an open menu stays.</summary>
@@ -168,7 +162,7 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
     {
         _mixer.Updated -= OnMixerUpdated;
         _engine.StatusChanged -= OnEngineStatus;
-        _modes.Changed -= OnModesChanged;
+        _support.Changed -= OnSupportChanged;
         Chain.Edited -= ShowChain;
         Analysis.Dispose();
         Chain.Dispose();

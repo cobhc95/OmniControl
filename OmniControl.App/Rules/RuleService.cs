@@ -79,6 +79,17 @@ public sealed class RuleService : IDisposable
         return rule;
     }
 
+    /// <summary>Puts <paramref name="target"/>'s rules and approved commands in place of the current ones ("Restore defaults" and its undo).</summary>
+    public void ReplaceAll(RuleSettings target)
+    {
+        Settings.Rules.Clear();
+        Settings.Rules.AddRange(target.Rules);
+        Settings.Approved.Clear();
+        Settings.Approved.UnionWith(target.Approved);
+        _problems.Clear();
+        Apply();
+    }
+
     public void Remove(Rule rule)
     {
         Settings.Rules.Remove(rule);
@@ -94,7 +105,7 @@ public sealed class RuleService : IDisposable
     public IReadOnlyList<PickChoice> ConditionChoices(Rule rule, string? editing) =>
         RuleConditions.Choices(rule, ProgramNames.Known(_remembered()), editing);
 
-    public IReadOnlyList<PickChoice> StepChoices() => RuleSteps.Choices(_hotkeys.Actions);
+    public IReadOnlyList<PickChoice> StepChoices() => RuleSteps.Choices(_hotkeys.PickerActions);
 
     public string SentenceOf(Rule rule) => RuleSentence.Of(rule, StepChoices());
 

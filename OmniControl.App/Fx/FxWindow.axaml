@@ -1,11 +1,12 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:OmniControl.App.Controls"
         xmlns:fx="using:OmniControl.App.Fx"
         xmlns:pages="using:OmniControl.App.Pages"
         x:Class="OmniControl.App.Fx.FxWindow"
         x:DataType="fx:FxWindowViewModel"
         Title="{Binding Title}" Topmost="{Binding KeepOnTop}" Width="860" Height="540" MinWidth="560" MinHeight="380"
-        Background="{DynamicResource BrushBackground}" WindowStartupLocation="CenterScreen" FontSize="12">
+        WindowStartupLocation="CenterScreen" FontSize="12">
     <Window.Styles>
         <Style Selector="MenuItem"><Setter Property="FontSize" Value="12" /></Style>
     </Window.Styles>
@@ -14,10 +15,10 @@
          less used controls fold into "…" and the numbers drop out when narrow); the chain list and the selected effect's editor with
          all the remaining height; ONE thin status strip with what the effects engine does with this chain -->
     <Grid RowDefinitions="Auto,Auto,*,Auto">
-        <Border Background="{DynamicResource BrushSidebar}" BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,0,0,1">
+        <Border Classes="barstrip" BorderThickness="0,0,0,1">
             <Menu FontSize="12">
                 <MenuItem Header="_FX">
-                    <MenuItem Header="Add effect..." Click="OnAddClick" InputGesture="Ctrl+N" />
+                    <MenuItem Header="Add effect…" Click="OnAddClick" InputGesture="Ctrl+N" />
                     <MenuItem Header="Remove" Command="{Binding Chain.RemoveCommand}" InputGesture="Delete" />
                     <MenuItem Header="Copy" Command="{Binding Chain.CopyCommand}" InputGesture="Ctrl+C" />
                     <MenuItem Header="Paste" Command="{Binding Chain.PasteCommand}" InputGesture="Ctrl+V" />
@@ -67,9 +68,8 @@
             <fx:FoldingRow Spacing="{DynamicResource ToolRowGap}">
                 <ToggleSwitch IsChecked="{Binding FxOn}" OnContent="Effects on" OffContent="Effects off"
                               ToolTip.Tip="The whole chain on or off" />
-                <ComboBox ItemsSource="{Binding Chain.Selected.PresetChoice.Options}" SelectedItem="{Binding Chain.Selected.PresetChoice.Selected}"
-                          IsVisible="{Binding Chain.Selected.HasPresets, FallbackValue=False}" Width="{DynamicResource FxToolPresetWidth}"
-                          ToolTip.Tip="Preset of the selected effect" />
+                <c:PresetPicker DataContext="{Binding Chain.Selected.PresetChoice}" IsVisible="{Binding $parent[Window].DataContext.Chain.Selected.HasPresets, FallbackValue=False}"
+                                ToolTip.Tip="Preset of the selected effect" />
                 <StackPanel Orientation="Horizontal" Spacing="{DynamicResource ToolRowInnerGap}" IsVisible="{Binding Chain.HasSelection}"
                             ToolTip.Tip="Wet mix: how much processed sound is heard">
                     <TextBlock Text="Wet" Classes="muted" VerticalAlignment="Center" />
@@ -118,13 +118,10 @@
             </fx:FxChainPanel.ListTools>
         </fx:FxChainPanel>
 
-        <!-- The status strip: Fast mode's recording caution, the engine line (the same line a Volume row shows as its status's
+        <!-- The status strip: the engine line (the same line a Volume row shows as its status's
              tooltip: running, waiting, not installed, failed and why), and the selected effect's "Runs in ..." note when it fits -->
         <Border Grid.Row="3" Classes="statusstrip">
             <fx:FoldingRow Spacing="{DynamicResource StatusStripGap}">
-                <TextBlock Classes="statusline caution" Text="{Binding CaptureCaution}" IsVisible="{Binding HasCaptureCaution}"
-                           MaxWidth="{DynamicResource StatusCautionMaxWidth}"
-                           ToolTip.Tip="Fast mode records the program to run its effects. Test and Switch to Full control are on its Volume row." />
                 <TextBlock Classes="statusline" Text="{Binding EngineText}" ToolTip.Tip="{Binding EngineText}" fx:FoldingRow.Fill="True" />
                 <TextBlock Classes="statusline" Text="{Binding Chain.Selected.RunsNote}" IsVisible="{Binding Chain.HasSelection}" fx:FoldingRow.FoldLevel="1"
                            ToolTip.Tip="{Binding Chain.Selected.RunsDetail}" />

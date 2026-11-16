@@ -3,7 +3,7 @@ using OmniControl.Core.Engine;
 namespace OmniControl.App.Audio;
 
 /// <summary>
-/// Which real speakers the master plays on in Full control, where Windows' default playback device is a virtual cable (the master
+/// Which real speakers the master plays on, where Windows' default playback device is a virtual cable (the master
 /// bus's). Pure: the one rule the route planner and the default-device keeper share.
 /// </summary>
 internal static class MasterDevice

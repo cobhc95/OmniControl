@@ -14,7 +14,7 @@ namespace OmniControl.App.Pages.Volume.Easy;
 public enum EasyScreen { Welcome, Flow, Page }
 
 /// <summary>
-/// The Easy view of the Volume page: the welcome (six goal cards), a goal's guided setup (<see cref="EasyFlowViewModel"/>, driven by
+/// The Easy view of the Volume page: the welcome (five goal cards to tick), a goal's guided setup (<see cref="EasyFlowViewModel"/>, driven by
 /// <see cref="EasyFlows"/>), and the Easy page (the "Everything" card, the apps and microphones, the footer). It owns no sound state: its rows wrap the Advanced page's own
 /// <see cref="VolumeRow"/>s and its drawers edit the same effect chains through <see cref="MixerService"/>, so Easy and Advanced always agree.
 /// Which programs are listed is the Mixer's own list (open ones first, "Show closed" honoured), read from the Outputs group.
@@ -22,28 +22,32 @@ public enum EasyScreen { Welcome, Flow, Page }
 public sealed partial class EasyViewModel : ObservableObject, IDisposable
 {
     private readonly MixerService _mixer;
-    private readonly SoundModeService _modes;
+    private readonly EffectsSupportService _support;
     private readonly EffectsEngine _engine;
     private readonly VolumeGroup _outputs;
     private readonly VolumeGroup _inputs;
     private readonly Action<string?> _openFx;
     private readonly EasyFlowServices _flowServices;
     private readonly Dictionary<string, EasyRow> _cache = new();
+    private readonly IAudioDefaultsMixer _defaults;
+    private readonly IDefaultsSnapshot _snapshot = new FileDefaultsSnapshot();
+    private readonly Dictionary<string, EasyEngine> _engines = new(); // the way the user picked per goal, for the next "Set up again"
     private readonly DispatcherTimer _fade = new() { Interval = Timing.EasyConfirmation };
     private bool _rowsPending;
 
     /// <param name="flow">What a guided setup needs: the live facts (the page's apps are added here), carrying out a fix, asking a question.</param>
-    public EasyViewModel(MixerService mixer, SoundModeService modes, EffectsEngine engine, MixerItem master, VolumeGroup outputs, VolumeGroup inputs,
+    public EasyViewModel(MixerService mixer, EffectsSupportService support, EffectsEngine engine, MixerItem master, VolumeGroup outputs, VolumeGroup inputs,
         Action<string?> openFx, EasyFlowServices flow)
     {
         _mixer = mixer;
-        _modes = modes;
+        _defaults = new MixerDefaultsStore(mixer);
+        _support = support;
         _engine = engine;
         _outputs = outputs;
         _inputs = inputs;
         _openFx = openFx;
         _flowServices = flow with { Read = () => flow.Read() with { Programs = ProgramOptions() } };
-        Master = new EasyRow(master, mixer, engine, openFx);
+        Master = new EasyRow(master, mixer, engine, openFx, flow.Confirm);
         _screen = AppSettings.Current.EasyWelcomeDone ? EasyScreen.Page : EasyScreen.Welcome;
         SyncRows();
         Refresh();
@@ -52,7 +56,7 @@ public sealed partial class EasyViewModel : ObservableObject, IDisposable
         inputs.Items.CollectionChanged += OnListChanged;
         mixer.Updated += Refresh;
         mixer.FxChanged += OnFxChanged;
-        modes.Changed += Refresh;
+        support.Changed += Refresh;
         engine.StatusChanged += OnStatusChanged;
         engine.PlanChanged += Refresh;
         _fade.Tick += OnFade;
@@ -60,6 +64,11 @@ public sealed partial class EasyViewModel : ObservableObject, IDisposable
 
     /// <summary>The "Everything" card: the master's level and mute, and its Sound drawer.</summary>
     public EasyRow Master { get; }
+
+    /// <summary>The two folding cards of the page (open unless the user closed them).</summary>
+    public CardGroup EverythingGroup { get; } = new("Easy/Everything", "Everything", "all your apps and speakers") { ExpandedByDefault = true };
+
+    public CardGroup AppsGroup { get; } = new("Easy/Apps and microphones", "Apps and microphones", string.Empty) { ExpandedByDefault = true };
 
     /// <summary>The apps (the Mixer's listed programs) and then the microphones.</summary>
     public ObservableCollection<EasyRow> Apps { get; } = new();
@@ -84,20 +93,63 @@ public sealed partial class EasyViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<GoalCard> Goals { get; } = new();
 
-    /// <summary>Makes the cards from the master list of goals, each with whether it is on now (read from the same facts the setups use).</summary>
+    private readonly EasySelection _selection = new();
+
+    /// <summary>Whether at least one goal is ticked (Next is off until then).</summary>
+    public bool HasSelection => _selection.CanStart;
+
+    /// <summary>The "What you will need" box: the lines for the ticked goals, redrawn whenever the ticks or the PC change.</summary>
+    public ObservableCollection<EasyCheckItem> Needs { get; } = new();
+
+    /// <summary>Makes the cards from the master list of goals, none ticked, each with whether it is on now (read from the same facts the setups use).</summary>
     private void BuildGoals()
     {
         var facts = _flowServices.Read();
+        _selection.Clear();
         Goals.Clear();
-        foreach (var goal in EasyGoals.All) Goals.Add(new GoalCard(goal, EasyGoals.IsOn(goal.Id, facts), Choose));
+        foreach (var goal in EasyGoals.All) Goals.Add(new GoalCard(goal, EasyGoals.IsOn(goal.Id, facts), Toggle));
+        SelectionChanged(facts);
     }
 
-    /// <summary>A goal was chosen: its guided setup opens; a goal with none ("Just the volume") goes straight to the page.</summary>
-    private void Choose(EasyGoal goal)
+    /// <summary>A card was clicked: it is ticked or unticked, and the box under the cards follows.</summary>
+    private void Toggle(GoalCard card)
+    {
+        card.IsSelected = _selection.Toggle(card.Goal.Id);
+        SelectionChanged();
+    }
+
+    private void SelectionChanged(EasyFacts? facts = null)
+    {
+        OnPropertyChanged(nameof(HasSelection));
+        StartCommand.NotifyCanExecuteChanged();
+        RefreshNeeds(facts ?? _flowServices.Read());
+    }
+
+    private void RefreshNeeds(EasyFacts facts) => EasyCheckItem.Sync(Needs, EasyNeeds.Of(_selection.Ids, facts), GetNeedAsync);
+
+    /// <summary>A "Get" button of the box: the line is looked at again first, then the same installer step the checklists use runs (only when pressed).</summary>
+    private async Task GetNeedAsync(string id)
+    {
+        var facts = _flowServices.Read();
+        if (EasyNeeds.Of(_selection.Ids, facts).FirstOrDefault(l => l.Id == id) is not { Fix: { } fix }) return;
+        foreach (var line in Needs) line.IsBusy = true;
+        try
+        {
+            await _flowServices.Actions.RunAsync(fix, new EasyAnswers(), facts);
+        }
+        finally
+        {
+            foreach (var line in Needs) line.IsBusy = false;
+        }
+        RefreshNeeds(_flowServices.Read());
+    }
+
+    /// <summary>"Next": the guided setups of the ticked goals start, one after another in the order of the cards.</summary>
+    [RelayCommand(CanExecute = nameof(HasSelection))]
+    private void Start()
     {
         WelcomeAnswered();
-        if (EasyFlows.Of(goal.Id) is { } def) StartFlow(goal, def);
-        else Screen = EasyScreen.Page;
+        BeginSetup(_selection.Goals);
     }
 
     [RelayCommand]
@@ -107,7 +159,7 @@ public sealed partial class EasyViewModel : ObservableObject, IDisposable
         Screen = EasyScreen.Page;
     }
 
-    /// <summary>The welcome does not come back by itself after a goal or Skip (only "Set up again" brings it).</summary>
+    /// <summary>The welcome does not come back by itself after a setup or Skip (only "Set up again" brings it).</summary>
     private static void WelcomeAnswered()
     {
         if (AppSettings.Current.EasyWelcomeDone) return;
@@ -118,22 +170,31 @@ public sealed partial class EasyViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void SetUpAgain() => ShowCards();
 
-    // ---- a goal's guided setup ----
+    // ---- the guided setups ----
 
-    private void StartFlow(EasyGoal goal, EasyFlowDef def)
+    private EasySequence? _sequence;
+
+    private void BeginSetup(IReadOnlyList<EasyGoal> goals)
     {
         CloseFlow();
-        var answers = new EasyAnswers();
-        Flow = new EasyFlowViewModel(goal, def, answers, _flowServices,
-            (kind, changed) => new EasyQuestionViewModel(kind, answers, changed, kind == EasyQuestionKind.Sound ? NewMasterSound() : null, AddProgram),
-            ShowCards, () => FinishFlow(goal, answers));
+        _sequence = new EasySequence(goals, MakeFlow, flow => Flow = flow, FinishSetup);
         Screen = EasyScreen.Flow;
+        _sequence.Start();
+    }
+
+    /// <summary>One goal's setup; the engine the user chose for it last time is the pre-selection unless an earlier goal of this run settled one.</summary>
+    private EasyFlowViewModel MakeFlow(EasyGoal goal, EasyAnswers answers, EasyFlowPlace place)
+    {
+        answers.Engine ??= _engines.TryGetValue(goal.Id, out var engine) ? engine : null;
+        return new EasyFlowViewModel(goal, EasyFlows.Of(goal.Id)!, answers, _flowServices,
+            (kind, changed) => new EasyQuestionViewModel(kind, answers, changed, kind == EasyQuestionKind.Sound ? NewMasterSound() : null, AddProgram),
+            ShowCards, place.Finish, chosen => _engines[goal.Id] = chosen, place);
     }
 
     /// <summary>The master's Sound drawer for the setup's Sound question: never greyed (the checklist says what is still missing), and its own so it is not the page's.</summary>
-    private EasySound NewMasterSound() => new(_mixer, _engine, null, () => _openFx(null), () => null);
+    private EasySound NewMasterSound() => new(_mixer, _engine, null, () => _openFx(null), () => null, _flowServices.Confirm);
 
-    /// <summary>"Back" from the first screen, "Set up something else" and "Set up again": the six cards, each marked "on" where the app can tell.</summary>
+    /// <summary>"Back" from the first screen, "Set up something else" and "Set up again": the cards, each marked "on" where the app can tell.</summary>
     private void ShowCards()
     {
         CloseFlow();
@@ -141,21 +202,24 @@ public sealed partial class EasyViewModel : ObservableObject, IDisposable
         Screen = EasyScreen.Welcome;
     }
 
-    /// <summary>"Go to Volume": the Easy page with one line about what was set up; each ticked app's Sound drawer is open once.</summary>
-    private void FinishFlow(EasyGoal goal, EasyAnswers answers)
+    /// <summary>The end of a run: the Easy page with one line about what was set up; each ticked app's Sound drawer is open once.</summary>
+    private void FinishSetup(EasySummary summary)
     {
         CloseFlow();
         Screen = EasyScreen.Page;
-        if (goal.Id == EasyGoals.PerApp)
-            foreach (var row in Apps.Where(r => r.Row is MixerItem && answers.Programs.Contains(r.Row.Key))) row.Sound.IsOpen = true;
-        Confirm(goal.Id == EasyGoals.Better
-            ? Master.Sound.IsActive ? $"Your sound is on: {Master.Sound.Name}." : "Your sound is Normal: nothing is changed."
-            : $"{goal.Title}: set up.");
+        foreach (var result in summary.Completed.Where(r => r.Goal.Id == EasyGoals.PerApp))
+            foreach (var row in Apps.Where(r => r.Row is MixerItem && result.Answers.Programs.Contains(r.Row.Key))) row.Sound.IsOpen = true;
+        Confirm(summary is { Completed.Count: 1, Skipped.Count: 0 } ? OneGoalLine(summary.Completed[0].Goal) : summary.Text);
     }
+
+    private string OneGoalLine(EasyGoal goal) => goal.Id == EasyGoals.Better
+        ? Master.Sound.IsActive ? $"Your sound is on: {Master.Sound.Name}." : "Your sound is Normal: nothing is changed."
+        : $"{goal.Title}: set up.";
 
     private void CloseFlow()
     {
-        Flow?.Dispose();
+        _sequence?.Dispose();
+        _sequence = null;
         Flow = null;
     }
 
@@ -166,11 +230,13 @@ public sealed partial class EasyViewModel : ObservableObject, IDisposable
 
     [ObservableProperty] private double _confirmationOpacity;
 
-    private void Confirm(string text)
+    private void Confirm(string text, TimeSpan? hold = null)
     {
+        CanUndoRestore = false;
         Confirmation = text;
         ConfirmationOpacity = 1;
         _fade.Stop();
+        _fade.Interval = hold ?? Timing.EasyConfirmation;
         _fade.Start();
     }
 
@@ -178,6 +244,7 @@ public sealed partial class EasyViewModel : ObservableObject, IDisposable
     {
         _fade.Stop();
         ConfirmationOpacity = 0;
+        CanUndoRestore = false;
     }
 
     /// <summary>What is set up, in a few words ("Bass boost sound on every app"); empty when nothing is.</summary>
@@ -229,7 +296,7 @@ public sealed partial class EasyViewModel : ObservableObject, IDisposable
 
     private EasyRow RowFor(VolumeRow row)
     {
-        if (!_cache.TryGetValue(row.Key, out var easy)) _cache[row.Key] = easy = new EasyRow(row, _mixer, _engine, _openFx);
+        if (!_cache.TryGetValue(row.Key, out var easy)) _cache[row.Key] = easy = new EasyRow(row, _mixer, _engine, _openFx, _flowServices.Confirm);
         return easy;
     }
 
@@ -269,7 +336,9 @@ public sealed partial class EasyViewModel : ObservableObject, IDisposable
         if (Apps.Any(r => r.Row is InputItem && r.Sound.IsActive)) parts.Add("microphone cleanup");
         SetUpText = string.Join(" · ", parts);
         IsSetUp = parts.Count > 0;
+        RefreshRestore();
         Flow?.Reevaluate();
+        if (IsWelcome) RefreshNeeds(_flowServices.Read());
     }
 
     /// <summary>The Easy view came on screen: read the rows again, they may have changed in Advanced.</summary>
@@ -280,10 +349,9 @@ public sealed partial class EasyViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>The hotkey: the master's next sound preset (the same chips as the drawer).</summary>
-    public void NextMasterPreset()
+    public async Task NextMasterPresetAsync()
     {
-        Master.Sound.NextPreset();
-        Confirm($"Everything: {Master.Sound.Name}.");
+        if (await Master.Sound.NextPresetAsync()) Confirm($"Everything: {Master.Sound.Name}.");
     }
 
     public void Dispose()
@@ -292,7 +360,7 @@ public sealed partial class EasyViewModel : ObservableObject, IDisposable
         _inputs.Items.CollectionChanged -= OnListChanged;
         _mixer.Updated -= Refresh;
         _mixer.FxChanged -= OnFxChanged;
-        _modes.Changed -= Refresh;
+        _support.Changed -= Refresh;
         _engine.StatusChanged -= OnStatusChanged;
         _engine.PlanChanged -= Refresh;
         _fade.Stop();

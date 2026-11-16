@@ -13,7 +13,7 @@ namespace OmniControl.App.Audio.Engine;
 /// </summary>
 public sealed class EngineJournal
 {
-    private const string FileName = "engine-journal.json";
+    private static readonly DataStore Store = DataStores.EngineJournal;
 
     /// <summary>One program to put back: its key (lower-case .exe path), its own volume, mute and pan, and its own device.</summary>
     public sealed class Entry
@@ -42,7 +42,7 @@ public sealed class EngineJournal
     /// <summary>Reads the journal left by the last run and puts back every program that is running now.</summary>
     public static EngineJournal Recover()
     {
-        var saved = AppDataStore.Load<List<Entry>>(FileName) ?? new List<Entry>();
+        var saved = AppDataStore.Load<List<Entry>>(Store) ?? new List<Entry>();
         var journal = new EngineJournal(saved.Where(e => e.Key.Length > 0).GroupBy(e => e.Key).ToDictionary(g => g.Key, g => g.Last()));
         journal.RestoreRunning();
         return journal;
@@ -102,7 +102,7 @@ public sealed class EngineJournal
 
     private void Save()
     {
-        if (_entries.Count == 0) AppDataStore.Delete(FileName);
-        else AppDataStore.Save(FileName, _entries.Values.ToList());
+        if (_entries.Count == 0) AppDataStore.Delete(Store);
+        else AppDataStore.Save(Store, _entries.Values.ToList());
     }
 }

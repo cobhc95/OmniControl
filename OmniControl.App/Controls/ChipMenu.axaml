@@ -1,0 +1,17 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:OmniControl.App.Controls"
+             x:Class="OmniControl.App.Controls.ChipMenu">
+    <!-- THE chip + menu base (docs/mockups/preset-picker-chip.html, app-scope-and-lists.html): a Button.selector chip on a group's header line
+         (its words and a chevron) that opens a FlyoutPresenter.listmenu holding whatever menu content the owner gives it. The Apps scope
+         chip and the preset picker are both this control, so they cannot drift apart. -->
+    <FlyoutBase.AttachedFlyout>
+        <c:ListMenuFlyout Placement="BottomEdgeAlignedRight" Opened="OnOpened" Closed="OnClosed" />
+    </FlyoutBase.AttachedFlyout>
+    <Button x:Name="Chip" Tag="grouptool" Classes="selector" HorizontalAlignment="Right" Click="OnClick">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
+            <TextBlock x:Name="Words" />
+            <PathIcon Grid.Column="1" Data="{DynamicResource ChevronDownIcon}" />
+        </Grid>
+    </Button>
+</UserControl>

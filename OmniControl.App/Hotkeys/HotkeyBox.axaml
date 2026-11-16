@@ -1,0 +1,13 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:hk="using:OmniControl.App.Hotkeys"
+             x:Class="OmniControl.App.Hotkeys.HotkeyBox"
+             x:DataType="hk:HotkeyAction">
+    <!-- The one hotkey capture box (the Shortcuts page's rows, the preset manager's shortcut column): a click (or Enter, through
+         Pages/RowEditing) listens for the keys, previewing the ones held; the shortcut is saved when its main key is released; leaving
+         the box stops listening. The listening look is TextBox.listening in Theme.axaml. Its width is HotkeyBoxWidth (App.axaml). -->
+    <TextBox Classes="field" IsReadOnly="True" Text="{Binding DisplayText}" Watermark="{Binding HotkeyHint}"
+             Classes.listening="{Binding IsListening}" Width="{StaticResource HotkeyBoxWidth}"
+             VerticalAlignment="Center"
+             Tapped="OnHotkeyTapped" KeyUp="OnHotkeyKeyUp" LostFocus="OnHotkeyLostFocus" />
+</UserControl>

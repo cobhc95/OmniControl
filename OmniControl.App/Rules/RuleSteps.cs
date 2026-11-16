@@ -13,7 +13,6 @@ namespace OmniControl.App.Rules;
 public static class RuleSteps
 {
     public const string Command = "script", Wait = "wait";
-    private const string Category = "Commands and timing";
 
     public static readonly ActionOption CommandText = ActionOption.Text("command", "Command", "", "Start-Process notepad");
     public static readonly ActionOption Shell = ActionOption.Choice("shell", "Run with", new[] { ScriptRunner.PowerShell, ScriptRunner.Cmd });
@@ -31,9 +30,9 @@ public static class RuleSteps
 
     private static readonly PickChoice[] Own =
     {
-        new(Command, Category, "Run a PowerShell or CMD command", Keywords: "script powershell cmd batch terminal console",
-            Options: new[] { CommandText, Shell, Hidden, Timeout }, AskFirst: true),
-        new(Wait, Category, "Wait", Keywords: "pause delay sleep", Options: new[] { WaitTime }, AskFirst: true),
+        new(Command, ActionSections.Launch, "Run a PowerShell or CMD command", Keywords: "script powershell cmd batch terminal console",
+            Options: new[] { CommandText, Shell, Hidden, Timeout }, AskFirst: true, Heading: "Programs and files", Place: ActionSections.Find(ActionSections.Launch)),
+        new(Wait, ActionSections.Automation, "Wait between actions", Keywords: "pause delay sleep wait", Options: new[] { WaitTime }, AskFirst: true, Heading: "Timing"),
     };
 
     /// <summary>The picker's list, read from the live master list each time.</summary>

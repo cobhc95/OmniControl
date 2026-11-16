@@ -13,16 +13,20 @@ public sealed partial class VolumePageViewModel
     private readonly MixerItem _master;
     private DateTime _masterChange;
 
+    /// <summary>The words under a program's name: not open, or playing now (an open, silent program says nothing).</summary>
+    private const string NotOpenWord = "not open", PlayingWord = "playing";
+
+    /// <summary>The master's row. Its menus find the row when they open (it exists by then: it is made in the page's constructor).</summary>
     private MixerItem NewMaster() =>
-        new(MixerService.MasterKey, true, Gate)
+        new(MixerService.MasterKey, true)
         {
             Name = "Master",
             VolumeChanged = v => { _masterChange = DateTime.UtcNow; _steps.Remember(MixerService.MasterKey, v); CoreAudio.SetMasterVolume(v, _mixer.MasterDeviceId); },
             PanChanged = p => { _masterChange = DateTime.UtcNow; CoreAudio.SetMasterPan(p, _mixer.MasterDeviceId); },
             MuteChanged = m => { _masterChange = DateTime.UtcNow; CoreAudio.SetMasterMute(m, _mixer.MasterDeviceId); },
-            FxToggled = on => _mixer.SetFxOn(null, on),
-            OpenWindowRequested = () => _openFx(null),
-            WiringRequested = () => ShowWiring(MixerService.MasterKey),
+            FxToggled = on => _mixer.SetFxByUser(null, on),
+            FxWindowToggled = () => _toggleFx(null),
+            PlaysOn = new PlaysOnMenu(new ControlGate(), menu => OpenPlaysOn(menu, _master), marksCurrent: true),
             RouteChoice = RouteChoice.ForMaster(route => { _mixer.SetMasterMethod(route); SyncRow(_master); }, () => SyncRow(_master)),
         };
 
@@ -50,16 +54,16 @@ public sealed partial class VolumePageViewModel
     {
         var key = entry.Key;
         MixerItem? row = null;
-        row = new MixerItem(key, false, Gate)
+        row = new MixerItem(key, false)
         {
             Name = entry.Name,
             Picture = ProcessIcons.Get(entry.ExePath),
             VolumeChanged = v => _mixer.SetVolume(key, v),
             PanChanged = p => _mixer.SetPan(key, p),
             MuteChanged = m => _mixer.SetMuted(key, m),
-            FxToggled = on => _mixer.SetFxOn(key, on),
-            OpenWindowRequested = () => _openFx(key),
-            WiringRequested = () => ShowWiring(key),
+            FxToggled = on => _mixer.SetFxByUser(key, on),
+            FxWindowToggled = () => _toggleFx(key),
+            PlaysOn = new PlaysOnMenu(new ControlGate(), menu => OpenPlaysOn(menu, row!), marksCurrent: true),
             Forget = () => _mixer.Forget(key),
             Test = () => TestCaptureAsync(row!),
             RouteChoice = RouteChoice.ForProgram(route => { _mixer.SetFxRoute(key, route); SyncRow(row!); }, () => SyncRow(row!)),
@@ -76,8 +80,8 @@ public sealed partial class VolumePageViewModel
         var pan = useSystem ? r.Pan : item.Pan;
         item.Name = e.Name;
         item.Sync(r.IsOpen, volume, pan, muted, e.FxOn, e.Fx.Count);
-        item.TestWhy = SoundModes.TestUnavailable(e.Name, r.IsPlaying);
-        item.Lead = !r.IsOpen ? "Not open" : string.Empty;
+        item.TestWhy = EffectsRules.TestUnavailable(e.Name, r.IsPlaying);
+        item.StateWord = !r.IsOpen ? NotOpenWord : r.IsPlaying ? PlayingWord : string.Empty;
         SyncRow(item);
     }
 

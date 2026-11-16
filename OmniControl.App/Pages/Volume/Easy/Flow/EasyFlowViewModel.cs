@@ -20,16 +20,19 @@ public sealed partial class EasyFlowViewModel : ObservableObject, IDisposable
 {
     private readonly EasyGoal _goal;
     private readonly EasyFlowDef _def;
+    private readonly IReadOnlyList<EasyStep> _steps;
+    private readonly Action<EasyEngine>? _engineChosen;
     private readonly EasyAnswers _answers;
     private readonly EasyFlowServices _services;
     private readonly IReadOnlyList<EasyQuestionViewModel?> _questions;
     private readonly Action _toCards;
     private readonly Action _toPage;
+    private readonly EasyFlowPlace? _place;
     private EasyFacts _facts = new() { Looking = true };
     private string? _picturesShown;
 
     public EasyFlowViewModel(EasyGoal goal, EasyFlowDef def, EasyAnswers answers, EasyFlowServices services,
-        Func<EasyQuestionKind, Action, EasyQuestionViewModel> makeQuestion, Action toCards, Action toPage)
+        Func<EasyQuestionKind, Action, EasyQuestionViewModel> makeQuestion, Action toCards, Action toPage, Action<EasyEngine>? engineChosen = null, EasyFlowPlace? place = null)
     {
         _goal = goal;
         _def = def;
@@ -37,9 +40,15 @@ public sealed partial class EasyFlowViewModel : ObservableObject, IDisposable
         _services = services;
         _toCards = toCards;
         _toPage = toPage;
-        _questions = def.Steps.Select(s => s.Kind == EasyStepKind.Question ? makeQuestion(s.Question, Reevaluate) : null).ToList();
-        Strip = new[] { new EasyStripItem("Goal") }.Concat(def.Steps.Select(s => new EasyStripItem(s.Title))).ToList();
+        _engineChosen = engineChosen;
+        _place = place;
+        _steps = EasyFlows.StepsOf(goal, def, place?.SkipEngine != true);
+        _questions = _steps.Select(s => s.Kind == EasyStepKind.Question ? makeQuestion(s.Question, Reevaluate) : null).ToList();
+        Strip = new[] { new EasyStripItem(IsSequence ? $"{goal.Title} (goal {place!.Number} of {place.Count})" : "Goal") }.Concat(_steps.Select(s => new EasyStripItem(s.Title))).ToList();
+        EngineCards = new[] { EasyEngine.Apo, EasyEngine.Cable }.Select(e => new EasyEngineItem(e, PickEngine, GetEngineAsync)).ToList();
         BackCommand = new RelayCommand(Back);
+        SkipGoalCommand = new RelayCommand(() => _place?.SkipGoal());
+        NextGoalCommand = new RelayCommand(() => _place?.NextGoal());
         NextCommand = new RelayCommand(Next, () => CanNext);
         Enter(0);
         Reevaluate();
@@ -48,14 +57,51 @@ public sealed partial class EasyFlowViewModel : ObservableObject, IDisposable
     public IReadOnlyList<EasyStripItem> Strip { get; }
     public IRelayCommand BackCommand { get; }
     public IRelayCommand NextCommand { get; }
+
+    // ---- one goal of several ----
+
+    /// <summary>This setup is one of several (the user ticked more than one goal).</summary>
+    public bool IsSequence => _place is { IsSequence: true };
+
+    /// <summary>Another goal follows this one.</summary>
+    public bool HasNextGoal => _place is { IsSequence: true, HasNext: true };
+
+    /// <summary>The words of the button that leaves a goal that cannot be finished: on to the next goal, or (for the last) finish without it.</summary>
+    public string SkipLabel => HasNextGoal ? "Continue with the next goal" : "Finish without this goal";
+
+    /// <summary>Leaves this goal without applying anything more and goes on (shown in a sequence, on every screen but "All set").</summary>
+    public IRelayCommand SkipGoalCommand { get; }
+
+    /// <summary>The "All set" screen's way on to the next goal.</summary>
+    public IRelayCommand NextGoalCommand { get; }
+
+    /// <summary>The way the user settled on at the Engine screen when the goal offered a real choice (carried to the goals after it); null otherwise.</summary>
+    public EasyEngine? SettledEngine { get; private set; }
+
+    /// <summary>One line saying why this goal cannot be finished now (a line of its checklist is blocked), only inside a sequence; empty otherwise.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasStuckNote))] private string _stuckNote = string.Empty;
+
+    public bool HasStuckNote => StuckNote.Length > 0;
     public ObservableCollection<EasyCheckItem> Checks { get; } = new();
     public ObservableCollection<EasyCheckItem> Extras { get; } = new();
     public ObservableCollection<EasyPictureRow> Pictures { get; } = new();
 
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsQuestion), nameof(IsSetup), nameof(IsDone), nameof(Question))] private int _stepIndex;
+    /// <summary>The two cards of the Engine step, in place for good; their words and states are read from the live facts.</summary>
+    public IReadOnlyList<EasyEngineItem> EngineCards { get; }
 
-    private EasyStep Step => _def.Steps[StepIndex];
+    public string EnginePrompt => EasyEngines.Prompt;
+    public string EngineHint => EasyEngines.Hint;
+
+    /// <summary>Why the Engine step cannot be left yet (the chosen way is not installed); empty when it can.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasEngineProblem))] private string _engineProblem = string.Empty;
+
+    public bool HasEngineProblem => EngineProblem.Length > 0;
+
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsQuestion), nameof(IsEngine), nameof(IsSetup), nameof(IsDone), nameof(Question))] private int _stepIndex;
+
+    private EasyStep Step => _steps[StepIndex];
     public bool IsQuestion => Step.Kind == EasyStepKind.Question;
+    public bool IsEngine => Step.Kind == EasyStepKind.Engine;
     public bool IsSetup => Step.Kind == EasyStepKind.Setup;
     public bool IsDone => Step.Kind == EasyStepKind.Done;
     public EasyQuestionViewModel? Question => _questions[StepIndex];
@@ -89,7 +135,8 @@ public sealed partial class EasyFlowViewModel : ObservableObject, IDisposable
 
     private void Next()
     {
-        if (!CanNext || StepIndex >= _def.Steps.Count - 1) return;
+        if (!CanNext || StepIndex >= _steps.Count - 1) return;
+        if (IsEngine && _goal.Engine is { HasChoice: true }) SettledEngine = _answers.Engine;
         Enter(StepIndex + 1);
         Reevaluate();
     }
@@ -118,11 +165,13 @@ public sealed partial class EasyFlowViewModel : ObservableObject, IDisposable
     {
         _facts = _services.Read();
         foreach (var question in _questions) question?.Refresh(_facts);
+        if (_goal.Engine is { } rule && !_facts.Looking) SyncEngine(rule);
         if (IsSetup)
         {
             Sync(Checks, Evaluate(_facts));
             SyncPictures();
         }
+        StuckNote = IsSequence && IsSetup && !_facts.Looking && Checks.FirstOrDefault(StuckLine) is { } stuck ? $"{stuck.Title}: {stuck.Subtitle}" : string.Empty;
         if (IsDone)
         {
             Sync(Extras, _def.Extras?.Invoke(_answers, _facts) ?? Array.Empty<EasyCheck>());
@@ -132,26 +181,57 @@ public sealed partial class EasyFlowViewModel : ObservableObject, IDisposable
         (CanNext, NextTip) = Step.Kind switch
         {
             EasyStepKind.Question => Question?.Problem is { Length: > 0 } why ? (false, why) : (true, string.Empty),
+            EasyStepKind.Engine => EngineProblem.Length > 0 ? (false, EngineProblem) : (true, string.Empty),
             EasyStepKind.Setup => Checks.Where(c => !c.IsOptional).All(c => c.IsDone) && !_facts.Looking ? (true, string.Empty) : (false, "Finish the steps first"),
             _ => (false, string.Empty),
         };
         NextCommand.NotifyCanExecuteChanged();
     }
 
+    // ---- the Engine step ----
+
+    /// <summary>Settles the way (the user's pick, the remembered one, or the pre-selected one) and redraws the two cards and the reason Next waits.</summary>
+    private void SyncEngine(EasyEngineRule rule)
+    {
+        var engine = EasyEngines.Resolve(_answers.Engine, rule, _facts);
+        _answers.Engine = engine;
+        var cards = EasyEngines.Cards(rule, _facts);
+        for (var i = 0; i < cards.Count; i++) EngineCards[i].Update(cards[i], cards[i].Engine == engine);
+        EngineProblem = EasyEngines.NextWhy(engine, _facts) ?? string.Empty;
+    }
+
+    private void PickEngine(EasyEngine engine)
+    {
+        _answers.Engine = engine;
+        _engineChosen?.Invoke(engine);
+        Reevaluate();
+    }
+
+    /// <summary>A card's "Get ..." button: the same installer step the checklists use, run only when pressed; the cards read the PC again afterwards.</summary>
+    private async Task GetEngineAsync(EasyEngine engine)
+    {
+        var card = EasyEngines.Cards(_goal.Engine!, _services.Read()).First(c => c.Engine == engine);
+        if (!card.CanGet || card.Get is not { } fix) return;
+        foreach (var item in EngineCards) item.IsBusy = true;
+        try
+        {
+            Note = await _services.Actions.RunAsync(fix, _answers, _facts) ?? string.Empty;
+        }
+        finally
+        {
+            foreach (var item in EngineCards) item.IsBusy = false;
+        }
+        Reevaluate();
+    }
+
     private IReadOnlyList<EasyCheck> Evaluate(EasyFacts facts) => facts.Looking
         ? new[] { new EasyCheck("looking", "Looking at your PC", "One moment.", CheckState.Blocked) }
         : _def.Checks(_answers, facts);
 
-    private void Sync(ObservableCollection<EasyCheckItem> items, IReadOnlyList<EasyCheck> checks)
-    {
-        if (items.Select(i => i.Id).SequenceEqual(checks.Select(c => c.Id)))
-        {
-            for (var i = 0; i < items.Count; i++) items[i].Update(checks[i]);
-            return;
-        }
-        items.Clear();
-        foreach (var check in checks) items.Add(new EasyCheckItem(check, RunFixAsync));
-    }
+    private void Sync(ObservableCollection<EasyCheckItem> items, IReadOnlyList<EasyCheck> checks) => EasyCheckItem.Sync(items, checks, RunFixAsync);
+
+    /// <summary>A required line that cannot be done now for its own reason (not one that only waits for the lines above it).</summary>
+    private static bool StuckLine(EasyCheckItem line) => !line.IsOptional && line.IsBlocked && line.Subtitle != EasyChecks.Waiting;
 
     /// <summary>The small pictures above the checklist: the goal's own, or for "A different sound per app" one per ticked app.</summary>
     private void SyncPictures()

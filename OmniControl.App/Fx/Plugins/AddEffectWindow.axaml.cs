@@ -1,7 +1,8 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Platform.Storage;
+using OmniControl.App.Controls;
+using OmniControl.App.Services;
 
 namespace OmniControl.App.Fx.Plugins;
 
@@ -27,8 +28,7 @@ public partial class AddEffectWindow : Window
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Escape && e.Source is not ComboBox { IsDropDownOpen: true }) { Close(null); e.Handled = true; }
-        else if (e.Key == Key.Enter && e.Source is not Button && DataContext is AddEffectViewModel { CanAdd: true }) { Commit(); e.Handled = true; }
+        if (e.Key == Key.Enter && e.Source is not Button && DataContext is AddEffectViewModel { CanAdd: true }) { Commit(); e.Handled = true; }
         else if (e.Key == Key.Down && e.Source == SearchBox && ResultList.ItemCount > 0)
         {
             if (ResultList.SelectedIndex < 0) ResultList.SelectedIndex = 0;
@@ -44,12 +44,6 @@ public partial class AddEffectWindow : Window
     private async void OnLoadClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not AddEffectViewModel vm) return;
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "Load a plug-in",
-            AllowMultiple = false,
-            FileTypeFilter = new[] { new FilePickerFileType("VST plug-ins") { Patterns = vm.FilePatterns } },
-        });
-        if (files.Count > 0 && files[0].TryGetLocalPath() is { } path) vm.LoadFile(path);
+        if (await PathPicker.PickAsync(this, PathKind.File, "Load a plug-in", typeName: "VST plug-ins", patterns: vm.FilePatterns) is { } path) vm.LoadFile(path);
     }
 }

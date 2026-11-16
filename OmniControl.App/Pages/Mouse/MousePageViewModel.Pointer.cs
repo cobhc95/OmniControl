@@ -1,3 +1,4 @@
+using OmniControl.App.Dialogs;
 using OmniControl.App.Audio.Engine;
 using OmniControl.App.Mouse;
 using OmniControl.App.Osd;
@@ -21,7 +22,7 @@ public sealed partial class MousePageViewModel
     private static readonly FileKind PointerFiles = new("Choose a pointer", "Pointers", CursorSchemes.FilePatterns);
 
     private readonly PointerSettingsService _pointer;
-    private readonly Func<EngineMessage, Task<bool>> _ask;
+    private readonly Func<DialogMessage, Task<bool>> _ask;
     private readonly OsdService _osd;
     private readonly Action<string> _report;
     private readonly Dictionary<PointerValue, SliderItem> _pointerSliders = new();

@@ -7,11 +7,17 @@
     <!-- The Easy view of the Volume page: the welcome, one goal's guided setup, or the Easy page. The line
          under the title confirms a finished setup and fades by itself (its space stays, so the page does not jump). -->
     <StackPanel Spacing="6">
-        <TextBlock Classes="hint" Text="{Binding Confirmation}" Opacity="{Binding ConfirmationOpacity}" MinHeight="16" IsVisible="{Binding IsPage}">
-            <TextBlock.Transitions>
-                <Transitions><DoubleTransition Property="Opacity" Duration="{StaticResource EasyFadeTime}" /></Transitions>
-            </TextBlock.Transitions>
-        </TextBlock>
+        <StackPanel Orientation="Horizontal" Spacing="8" MinHeight="16" IsVisible="{Binding IsPage}">
+            <TextBlock Classes="hint" Text="{Binding Confirmation}" Opacity="{Binding ConfirmationOpacity}" VerticalAlignment="Center">
+                <TextBlock.Transitions>
+                    <Transitions><DoubleTransition Property="Opacity" Duration="{StaticResource EasyFadeTime}" /></Transitions>
+                </TextBlock.Transitions>
+            </TextBlock>
+            <Button Tag="grouptool" Classes="link small" Command="{Binding UndoRestoreCommand}" IsVisible="{Binding CanUndoRestore}" VerticalAlignment="Center"
+                    ToolTip.Tip="Put the earlier audio settings back">
+                <TextBlock Text="Undo" />
+            </Button>
+        </StackPanel>
         <easy:EasyWelcomeView IsVisible="{Binding IsWelcome}" />
         <Panel IsVisible="{Binding IsFlow}"><flow:EasyFlowView DataContext="{Binding Flow}" /></Panel>
         <easy:EasyPageView IsVisible="{Binding IsPage}" />

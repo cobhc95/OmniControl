@@ -1,10 +1,10 @@
 namespace OmniControl.App.Audio;
 
 /// <summary>
-/// Brings mixer.json files from before the global sound mode up to date (run on every load by <see cref="MixerSettings.Load"/>; a file
-/// that already has a sound mode passes through unchanged). Old per-row effects modes become one global mode, and what was not
-/// processed before stays unprocessed: a row whose stored mode was Off gets its effects power switched off instead. A program's
-/// single output device becomes its "plays on" list. The old fields are cleared, so they are written back empty.
+/// Brings old mixer.json files up to date (run on every load by <see cref="MixerSettings.Load"/>; a file with none of the old fields
+/// passes through unchanged). What was not processed before stays unprocessed: a row whose stored per-row effects mode was Off gets
+/// its effects power switched off instead. A program's single output device becomes its "plays on" list. The old fields are cleared,
+/// so they are written back empty. A stored sound mode of an older file is simply ignored when the file is read.
 /// </summary>
 internal static class MixerMigration
 {
@@ -14,8 +14,7 @@ internal static class MixerMigration
     /// <summary>Returns true when the file was old and has been converted (the caller saves it).</summary>
     public static bool Run(MixerSettings s)
     {
-        if (s.SoundMode.Length > 0) return false;
-        s.SoundMode = (s.Apps.Any(a => a.FxMode == OldVirtual && a.FxOn) ? SoundModes.Full : SoundModes.Fast).Id;
+        if (s.MasterFxMode is null && s.Apps.All(a => a.FxMode is null && a.DeviceId is null)) return false;
 
         if (s.MasterFxMode == OldOff) s.MasterFxOn = false;
         s.MasterFxMode = null;

@@ -7,7 +7,7 @@ namespace OmniControl.App.Pages.Mouse;
 /// <summary>
 /// The Trackpad group: one card per gesture of <see cref="TrackpadGestures"/> (each built like a mouse button's card: same picker and
 /// settings, on the trackpad's own layers, picked on the group's title line), then the card that opens Windows' touchpad settings. The
-/// gestures follow the page's main switch; a gesture with an action always replaces Windows' own (no switch), unless that action's
+/// gesture with an action always replaces Windows' own (no switch), unless that action's
 /// settings tick "Also let Windows do its own gesture". The cards say what is true now: greyed with the reason when no gesture can be
 /// seen, and tagged (only once the gesture has an action) when Windows' own one still runs on purpose or could not be turned off.
 /// </summary>
@@ -36,7 +36,7 @@ public sealed partial class MousePageViewModel
         return new ItemGroup("Mouse/Trackpad", "Trackpad", items)
         {
             ExpandedByDefault = true,
-            Tip = "Swipes, pinches and taps on a precision touchpad, while \"Remap mouse and trackpad\" is on; Default lets Windows do what it normally does. "
+            Tip = "Swipes, pinches and taps on a precision touchpad; Default lets Windows do what it normally does. "
                   + "The layer drop-down on this line picks the trackpad's own layer, separate from the mouse's. "
                   + "OmniControl can't block Windows' own gesture, so while a gesture has an action it turns Windows' one off and gives it back afterwards; "
                   + "tick \"Also let Windows do its own gesture\" in an action's settings to keep both. "

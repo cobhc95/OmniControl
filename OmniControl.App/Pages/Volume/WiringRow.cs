@@ -13,17 +13,14 @@ namespace OmniControl.App.Pages.Volume;
 /// </summary>
 public sealed partial class WiringRow : ObservableObject, IEditorItem
 {
-    private readonly Action<WiringRow> _opening;
     private readonly WiringAdd _add;
     private readonly WiringSingle _single;
 
-    /// <param name="opening">The cell's menu is opening: the page fills <see cref="Choices"/> from what is plugged in now.</param>
-    public WiringRow(VolumeRow source, ModeGate menuGate, ModeGate cableSwitch, Action<WiringRow> opening)
+    /// <param name="menu">The cell's menu (the shared "Plays on" menu; the page fills it as it opens).</param>
+    public WiringRow(VolumeRow source, PlaysOnMenu menu)
     {
         Source = source;
-        MenuGate = menuGate;
-        CableSwitch = cableSwitch;
-        _opening = opening;
+        Menu = menu;
         _add = new WiringAdd(this);
         _single = new WiringSingle(this);
     }
@@ -41,26 +38,12 @@ public sealed partial class WiringRow : ObservableObject, IEditorItem
     [ObservableProperty] private CableState _cable = CableState.None;
 
     /// <summary>Install VB-CABLE or More cables beside the Cable column while a microphone waits for a cable; null = nothing to get.</summary>
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasCableAction))] private ModeCardAction? _cableAction;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasCableAction))] private CardAction? _cableAction;
 
     public bool HasCableAction => CableAction is not null;
 
-    /// <summary>"Switch to Fast" beside the Cable column while the master bus holds the cable a microphone needs (closed = not shown).</summary>
-    public ModeGate CableSwitch { get; }
-
-    /// <summary>Why the cell can't take several devices in this mode (its menu says so, with Switch); open = it can.</summary>
-    public ModeGate MenuGate { get; }
-
-    /// <summary>The menu's entries (filled when it opens).</summary>
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasNoChoices))] private IReadOnlyList<WiringChoice> _choices = Array.Empty<WiringChoice>();
-
-    public bool HasNoChoices => Choices.Count == 0;
-
-    /// <summary>The menu's title ("Add a device", "Choose a device").</summary>
-    [ObservableProperty] private string _menuTitle = string.Empty;
-
-    /// <summary>The cell's menu is opening.</summary>
-    public void OpenMenu() => _opening(this);
+    /// <summary>The cell's menu: what can be added or chosen, and why the row takes one device only (its gate).</summary>
+    public PlaysOnMenu Menu { get; }
 
     /// <summary>
     /// Several devices: their chips (<see cref="WiringChip"/>, or <see cref="WiringMember"/> for a combined microphone's members), the
@@ -213,26 +196,34 @@ public sealed partial class WiringSingle : ObservableObject
     [ObservableProperty] private string _text = string.Empty;
 }
 
-/// <summary>One entry of a Wiring cell's menu: a device that can be added (or chosen), or one this mode can't use (dimmed, its reason as tooltip, a small tag).</summary>
+/// <summary>
+/// One entry of a "Plays on" menu (<see cref="PlaysOnMenu"/>, both tabs): a device that can be added (or chosen), one in use now (ticked,
+/// the Mixer's menu), or one that can't be used (dimmed, its reason as tooltip, a small tag).
+/// </summary>
 public sealed partial class WiringChoice
 {
     private readonly Action _choose;
 
     /// <param name="caution">The tag is a fact to keep in mind (yellow), such as "Records the PC's sound".</param>
     /// <param name="tip">The tooltip of an entry that can be chosen (a dimmed one shows its reason).</param>
-    public WiringChoice(string label, string? tag, string? disabledReason, Action choose, bool caution = false, string? tip = null)
+    /// <param name="isCurrent">The row plays there now (the entry is ticked).</param>
+    public WiringChoice(string label, string? tag, string? disabledReason, Action choose, bool caution = false, string? tip = null, bool isCurrent = false)
     {
         Label = label;
         Tag = tag;
         DisabledReason = disabledReason;
         IsCaution = caution;
         Tip = disabledReason ?? tip;
+        IsCurrent = isCurrent;
         _choose = choose;
     }
 
     public string Label { get; }
 
-    /// <summary>A small fact at the right ("Full control" on a device this mode can't use, "Cable", "Combined"); null = none.</summary>
+    /// <summary>The row plays there now: the entry carries a tick.</summary>
+    public bool IsCurrent { get; }
+
+    /// <summary>A small fact at the right ("Cable", "Combined"); null = none.</summary>
     public string? Tag { get; }
     public bool HasTag => Tag is not null;
     public bool IsCaution { get; }

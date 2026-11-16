@@ -7,20 +7,23 @@ public sealed class VolumeGroup : CardGroup
 {
     public ObservableCollection<object> Items { get; } = new();
 
-    /// <summary>A Wiring table's middle column title ("Plays on", "Records from"); empty for the Mixer's groups.</summary>
+    /// <summary>The title of the column that says where the rows play or record from ("Plays on", "Records from"), on both tabs.</summary>
     public string RouteColumn { get; init; } = string.Empty;
 
+    /// <summary>The Mixer group's rows have a pan knob (Outputs), so its column has a heading.</summary>
+    public bool ShowsPan { get; init; }
+
     /// <summary>A Wiring table's action at the right of its header ("+ Combine microphones"); null = none.</summary>
-    public ModeCardAction? Tool { get; init; }
+    public CardAction? Tool { get; init; }
     public bool HasTool => Tool is not null;
 
-    private ModeGate? _toolGate;
+    private ControlGate? _toolGate;
 
     /// <summary>
-    /// Whether <see cref="Tool"/> can work now (dimmed with the reason as its tooltip, and a Switch link where another mode allows it); the
+    /// Whether <see cref="Tool"/> can work now (dimmed with the reason as its tooltip); the
     /// page keeps it up to date. Null = the action always works.
     /// </summary>
-    public ModeGate? ToolGate
+    public ControlGate? ToolGate
     {
         get => _toolGate;
         init

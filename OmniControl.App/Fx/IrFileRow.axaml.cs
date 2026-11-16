@@ -2,6 +2,8 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using OmniControl.App.Controls;
+using OmniControl.App.Services;
 
 namespace OmniControl.App.Fx;
 
@@ -11,23 +13,19 @@ public partial class IrFileRow : UserControl
     public IrFileRow()
     {
         InitializeComponent();
+        PathBox.TypeName = "Impulse responses";
+        PathBox.Patterns = IrFileItem.Extensions.Select(x => "*" + x).ToArray();
         DragDrop.SetAllowDrop(this, true);
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
         AddHandler(DragDrop.DropEvent, OnDrop);
     }
 
-    private async void OnChooseClick(object? sender, RoutedEventArgs e)
+    // A typed or browsed path is applied only when the file can be used; otherwise the box goes back to the file in use.
+    private void OnChosen(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is not IrFileItem item || TopLevel.GetTopLevel(this)?.StorageProvider is not { } storage) return;
-        var folder = item.Path.Length > 0 && System.IO.Path.GetDirectoryName(item.Path) is { Length: > 0 } dir ? await storage.TryGetFolderFromPathAsync(dir) : null;
-        var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "Choose an impulse response",
-            AllowMultiple = false,
-            SuggestedStartLocation = folder,
-            FileTypeFilter = new[] { new FilePickerFileType("Impulse responses") { Patterns = IrFileItem.Extensions.Select(x => "*" + x).ToArray() } },
-        });
-        if (files.Count > 0 && files[0].TryGetLocalPath() is { } path) item.Choose(path);
+        if (DataContext is not IrFileItem item) return;
+        if (File.Exists(PathBox.Text) && item.Accepts(PathBox.Text)) item.Choose(PathBox.Text);
+        else PathBox.Text = item.Path;
     }
 
     private void OnDragOver(object? sender, DragEventArgs e) =>

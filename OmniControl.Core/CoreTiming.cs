@@ -90,4 +90,10 @@ public static class CoreTiming
 
     /// <summary>How long an elevated helper (the APO installer) may run before OmniControl stops waiting for it.</summary>
     public const int ElevatedHelperTimeoutMs = 120_000;
+
+    /// <summary>One adb command (connect, a screen dump, a tap) is stopped after this long; a swipe takes this long on the screen.</summary>
+    public const int AdbCommandTimeoutMs = 20_000, AdbSwipeMs = 300;
+
+    /// <summary>A touch that moves less than this many pixels (of the screen) is a tap, not a swipe, when a recording reads the screen's touches.</summary>
+    public const int AdbTapSlopPx = 24;
 }

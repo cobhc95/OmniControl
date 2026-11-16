@@ -1,3 +1,4 @@
+using OmniControl.App.Hotkeys;
 using OmniControl.Core.Engine.Mouse;
 
 namespace OmniControl.App.Mouse;

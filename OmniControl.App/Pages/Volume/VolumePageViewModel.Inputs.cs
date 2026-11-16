@@ -1,3 +1,4 @@
+using OmniControl.App.Dialogs;
 using OmniControl.App.Audio.Engine;
 using OmniControl.App.Audio;
 using OmniControl.App.Services;
@@ -12,6 +13,9 @@ public sealed partial class VolumePageViewModel
     private readonly Dictionary<string, ComboItem> _combos = new();
     private DateTime _inputChange;
 
+    /// <summary>The word under the default recording device's name.</summary>
+    private const string DefaultWord = "default";
+
     /// <summary>The OSD element (and its "Show in OSD" switch) for the default recording device's level.</summary>
     private const string MicrophoneElement = "Microphone";
 
@@ -24,7 +28,7 @@ public sealed partial class VolumePageViewModel
             seen.Add(d.Id);
             if (!_inputs.TryGetValue(d.Id, out var item)) _inputs[d.Id] = item = NewInput(d);
             item.Name = d.Name;
-            item.Lead = d.IsDefault ? "Default microphone" : string.Empty;
+            item.StateWord = d.IsDefault ? DefaultWord : string.Empty;
             if (!Grace.Within(_inputChange, Timing.SliderEchoGrace) && CoreAudio.GetDeviceVolume(d.Id, out var v, out var muted))
                 item.Sync(v, muted, _mixer.IsFxOn(item.Key), _mixer.FxChain(item.Key).Count);
             SyncRow(item);
@@ -45,13 +49,13 @@ public sealed partial class VolumePageViewModel
     {
         var id = d.Id;
         var key = _mixer.InputKey(id, d.Name);
-        return new InputItem(id, Gate)
+        return new InputItem(id)
         {
             Name = d.Name,
             VolumeChanged = v => { _inputChange = DateTime.UtcNow; CoreAudio.SetDeviceVolume(id, v); },
             MuteChanged = m => { _inputChange = DateTime.UtcNow; CoreAudio.SetDeviceMute(id, m); },
-            FxToggled = on => _mixer.SetFxOn(key, on),
-            OpenWindowRequested = () => _openFx(key),
+            FxToggled = on => _mixer.SetFxByUser(key, on),
+            FxWindowToggled = () => _toggleFx(key),
         };
     }
 
@@ -78,13 +82,13 @@ public sealed partial class VolumePageViewModel
     {
         var key = device.Key;
         ComboItem? row = null;
-        row = new ComboItem(device, Gate)
+        row = new ComboItem(device)
         {
             Name = device.Name,
             VolumeChanged = v => _mixer.SetCombinedLevel(key, v, row!.Muted),
             MuteChanged = m => _mixer.SetCombinedLevel(key, row!.Volume, m),
-            FxToggled = on => _mixer.SetFxOn(key, on),
-            OpenWindowRequested = () => _openFx(key),
+            FxToggled = on => _mixer.SetFxByUser(key, on),
+            FxWindowToggled = () => _toggleFx(key),
             WiringRequested = () => ShowWiring(key),
             Forget = () => _ = ForgetComboAsync(key),
         };
@@ -98,7 +102,7 @@ public sealed partial class VolumePageViewModel
         var line = c.Kind == CombinedKind.Microphones
             ? $"Apps using {RecordingNameFor(c) ?? "its cable"} hear nothing."
             : "Programs on it go back to the master; apps using its cable hear nothing.";
-        if (!await _ask(new EngineMessage($"Remove {c.Name}?", line, "Remove"))) return;
+        if (!await _ask(new DialogMessage($"Remove {c.Name}?", line, "Remove"))) return;
         _mixer.RemoveCombined(key);
         _report($"Removed {c.Name}");
     }

@@ -57,9 +57,8 @@ internal sealed class ApoChains
     }
 
     /// <summary>
-    /// The rows a plan sends to Equalizer APO (<see cref="RoutePlan.ToApo"/>), each on its own device: the master on Windows' default
-    /// device (Fast mode) or on the real speakers (<see cref="RoutePlan.MasterApoDevice"/>, Full control); a microphone on itself; a
-    /// program on the cable its run uses (<see cref="RunKind.ApoCable"/>). Pure: the chains and names come from the callers.
+    /// The rows a plan sends to Equalizer APO (<see cref="RoutePlan.ToApo"/>), each on its own device: the master on the real speakers
+    /// (<see cref="RoutePlan.MasterApoDevice"/>); a program on the cable its run uses (<see cref="RunKind.ApoCable"/>). Pure: the chains and names come from the callers.
     /// </summary>
     /// <param name="chainOf">A row's chain (null key = the master).</param>
     /// <param name="nameOf">A row's name for the section's comment.</param>
@@ -71,19 +70,13 @@ internal sealed class ApoChains
         {
             if (key == MixerService.MasterKey)
             {
-                var speakers = plan.MasterApoDevice is { } id ? apo.PlaybackOf(id) : apo.Output;
-                rows.Add(new ApoRow(key, nameOf(key), chainOf(null), speakers, SoundModes.ApoMissingOn(apo, speakers), Silent,
-                    plan.Master.Full ? StatusKind.ApoNotApplied : StatusKind.NeedsApo));
-            }
-            else if (MixerService.IsInput(key))
-            {
-                var id = MixerService.InputIdOf(key);
-                rows.Add(new ApoRow(key, $"Microphone: {nameOf(key)}", chainOf(key), apo.MicrophoneOf(id), SoundModes.MicApoMissing(apo, id), "Recording without effects."));
+                var speakers = plan.MasterApoDevice is { } id ? apo.PlaybackOf(id) : null;
+                rows.Add(new ApoRow(key, nameOf(key), chainOf(null), speakers, EffectsRules.ApoMissingOn(apo, speakers), Silent, StatusKind.ApoNotApplied));
             }
             else if (plan.Runs.GetValueOrDefault(key)?.Cable is { } cable)
             {
                 var onCable = apo.PlaybackOf(cable);
-                rows.Add(new ApoRow(key, $"Program: {nameOf(key)}", chainOf(key), onCable, SoundModes.ApoMissingOn(apo, onCable), Silent));
+                rows.Add(new ApoRow(key, $"Program: {nameOf(key)}", chainOf(key), onCable, EffectsRules.ApoMissingOn(apo, onCable), Silent));
             }
         }
         return rows;
@@ -127,7 +120,7 @@ internal sealed class ApoChains
         foreach (var (key, folder, section) in placed)
             statuses[key] = errors.TryGetValue(folder, out var error)
                 ? new EngineStatus(EngineState.Failed, error, null, StatusKind.ApoFailed, RunMethod.Apo)
-                : new EngineStatus(EngineState.Running, $"{SoundModes.ApoSent(apo, folder)} · {PluginNote(section)}{EngineStatus.SkippedNote(section.Skipped)}", null, StatusKind.Running, RunMethod.Apo);
+                : new EngineStatus(EngineState.Running, $"{EffectsRules.ApoSent(apo, folder)} · {PluginNote(section)}{EngineStatus.SkippedNote(section.Skipped)}", null, StatusKind.Running, RunMethod.Apo);
         return statuses;
     }
 

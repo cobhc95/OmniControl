@@ -1,0 +1,22 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:OmniControl.App.Controls"
+             x:Class="OmniControl.App.Controls.MenuRowList">
+    <!-- The content of a small menu pop-down (the content of a ChipMenu): a column of Button.menurow rows, a tick at the one that is on now and
+         an optional tag at the right ("Get it"). Mouse first (AGENTS.md rule 5). Used by the Devices page's Method and emulator menus. -->
+    <ItemsControl x:Name="Rows">
+        <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="c:MenuRowItem">
+                <Button Classes="menurow" Command="{Binding Command}" Click="OnRowClick" ToolTip.Tip="{Binding Tip}">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource MenuGap}">
+                        <Panel Width="{StaticResource MenuGlyphSize}">
+                            <Path Classes="glyph" Data="{StaticResource TickIcon}" IsVisible="{Binding IsOn}" />
+                        </Panel>
+                        <TextBlock Grid.Column="1" Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
+                        <Border Grid.Column="2" Classes="tag" IsVisible="{Binding HasNote}"><TextBlock Text="{Binding Note}" /></Border>
+                    </Grid>
+                </Button>
+            </DataTemplate>
+        </ItemsControl.ItemTemplate>
+    </ItemsControl>
+</UserControl>

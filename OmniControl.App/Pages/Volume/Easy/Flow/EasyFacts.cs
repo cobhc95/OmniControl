@@ -24,14 +24,15 @@ public sealed record EasyCableFact(string? FreeName, string? RecordingName, Stat
 /// </summary>
 public sealed record EasyFacts
 {
-    /// <summary>The PC has not been looked at yet (no answer from the sound mode service); every check waits.</summary>
+    /// <summary>The PC has not been looked at yet (no answer from the effects support service); every check waits.</summary>
     public bool Looking { get; init; }
 
-    // ---- the mode and Equalizer APO ----
-    public bool FullControl { get; init; }
-    /// <summary>Why Full control can't be chosen now (no allowed cable), or null when it can.</summary>
-    public string? FullUnavailable { get; init; }
+    // ---- Equalizer APO and the cables ----
     public bool ApoInstalled { get; init; } = true;
+    /// <summary>How many virtual cable pairs OmniControl may use now (0 = none installed, or all switched off).</summary>
+    public int CablesReady { get; init; } = 1;
+    /// <summary>A virtual cable is installed (allowed or switched off).</summary>
+    public bool CableInstalled { get; init; } = true;
     /// <summary>Equalizer APO's Device Selector can fix a device it is missing on.</summary>
     public bool DeviceSelectorFixes { get; init; } = true;
 
@@ -48,15 +49,13 @@ public sealed record EasyFacts
 
     // ---- card 2: apps ----
     public IReadOnlyList<EasyOption> Programs { get; init; } = Array.Empty<EasyOption>();
-    /// <summary>Why a program's effects cannot run in this mode on this PC (recording does not work), or null.</summary>
+    /// <summary>Why a program's effects cannot run on this PC (recording does not work), or null.</summary>
     public string? ProgramsWhy { get; init; }
     /// <summary>Apps (keys) whose own equaliser is on.</summary>
     public IReadOnlySet<string> OwnEqPrograms { get; init; } = new HashSet<string>();
 
     // ---- card 3: microphones ----
     public IReadOnlyList<EasyOption> Microphones { get; init; } = Array.Empty<EasyOption>();
-    /// <summary>Why Equalizer APO is not on a microphone (endpoint id), or null; a microphone not listed counts as covered.</summary>
-    public IReadOnlyDictionary<string, string?> MicApoWhy { get; init; } = new Dictionary<string, string?>();
     /// <summary>The five gains a microphone's chain makes now, by endpoint id (flat while off); not listed = flat.</summary>
     public IReadOnlyDictionary<string, int[]> MicGains { get; init; } = new Dictionary<string, int[]>();
     /// <summary>Microphones (endpoint ids) with a look on (a non-flat equaliser, effects on).</summary>

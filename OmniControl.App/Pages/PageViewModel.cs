@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using OmniControl.App.Pages.Restore;
 
 namespace OmniControl.App.Pages;
 
@@ -10,8 +11,15 @@ public abstract class PageViewModel : ObservableObject
 {
     public abstract string Title { get; }
 
+    /// <summary>The sidebar group this page sits under (one of <see cref="NavGroups"/>); null: no group (a footer page).</summary>
+    public virtual string? NavGroup => null;
+
     /// <summary>SVG path data (24x24 viewbox) shown next to the title in the sidebar.</summary>
     public abstract string Icon { get; }
+
+    /// <summary>True while this is the page shown on the right (set by the shell; a footer button uses it for its selected look).</summary>
+    public bool IsOpen { get => _isOpen; set => SetProperty(ref _isOpen, value); }
+    private bool _isOpen;
 
     /// <summary>True when the page draws its own title row (to put a control beside the title); the shell then skips its title.</summary>
     public virtual bool ShowsOwnHeader => false;
@@ -24,6 +32,14 @@ public abstract class PageViewModel : ObservableObject
 
     /// <summary>This page's own keys beyond <see cref="CardKeys"/>, for the Keyboard shortcuts window (empty: none).</summary>
     public virtual string KeyHelp => string.Empty;
+
+    /// <summary>What "Restore defaults" does on this page (its scope, comparison, copy, reset and undo); null: the page has nothing to restore.</summary>
+    public virtual IRestorable? Restorable => null;
+
+    /// <summary>The page's "Restore defaults" button and line, given by the shell from <see cref="Restorable"/>; null while the page has none.</summary>
+    public PageRestore? Restorer { get; private set; }
+
+    public void AttachRestorer(PageRestore restorer) => Restorer = restorer;
 
     /// <summary>Extra words the sidebar search matches besides the title.</summary>
     public virtual string Keywords => string.Empty;

@@ -13,6 +13,7 @@ namespace OmniControl.App.Pages.Displays;
 internal sealed class SoftwareDisplayItem
 {
     private readonly SoftwareDisplayService _service;
+    private readonly Action _changed;
     private readonly Dictionary<SoftwareLevel, SliderItem> _sliders = new();
 
     /// <summary>Windows' name for the display ("\.\DISPLAY1"): what the ramp is set on and the id of its hotkey device.</summary>
@@ -21,9 +22,10 @@ internal sealed class SoftwareDisplayItem
     public ItemGroup Group { get; }
     public IReadOnlyList<IEditorItem> Cards { get; }
 
-    public SoftwareDisplayItem(DisplayInfo display, SoftwareDisplayService service, Action<string> report)
+    /// <param name="changed">Told after the picture was applied (the preset drop-down re-reads it).</param>
+    public SoftwareDisplayItem(DisplayInfo display, SoftwareDisplayService service, Action<string> report, Action changed)
     {
-        (Id, Name, _service) = (display.DeviceName, display.Name, service);
+        (Id, Name, _service, _changed) = (display.DeviceName, display.Name, service, changed);
 
         foreach (var level in DisplayControls.Software)
         {
@@ -31,7 +33,12 @@ internal sealed class SoftwareDisplayItem
             _sliders[level] = new SliderItem(spec.Label, spec.Default, _ => Apply(), report, spec.Min, spec.Max, defaultValue: spec.Default) { Half = true };
         }
         Cards = DisplayControls.Software.Select(level => (IEditorItem)_sliders[level]).ToList();
-        Group = new ItemGroup($"Displays/Software/{Id}", Name, Cards.Cast<object>().ToList());
+        Group = new ItemGroup($"Displays/Software/{Id}", Name, Cards.Cast<object>().ToList())
+        {
+            Summary = string.Empty,
+            Restore = RestoreDefaults,
+            RestoreTip = $"Puts {Name}'s software picture back to normal",
+        };
         service.Track(Id);
         ShowRefusal();
     }
@@ -52,6 +59,7 @@ internal sealed class SoftwareDisplayItem
     {
         var result = _service.Set(Id, Values.ToColor());
         ShowRefusal();
+        _changed();
         return result;
     }
 
@@ -88,6 +96,12 @@ internal sealed class SoftwareDisplayItem
     {
         foreach (var (level, slider) in _sliders) slider.Load(level.Spec.Default);
         _service.Reset(Id);
+    }
+
+    private void RestoreDefaults()
+    {
+        Reset();
+        _changed();
     }
 
     /// <summary>The display is gone: forget its picture without touching it.</summary>

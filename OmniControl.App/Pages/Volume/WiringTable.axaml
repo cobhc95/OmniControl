@@ -12,16 +12,12 @@
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource WiringColumnGap}">
                 <pages:GroupHeader />
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource MenuGap}" VerticalAlignment="Center" IsVisible="{Binding HasTool}">
-                    <!-- Dimmed (with the reason as its tooltip) while a new combined device can't work now; the Switch link names the mode that allows it -->
-                    <Button Tag="scope" Classes="link small" IsVisible="{Binding ToolGate.CanSwitch}" Command="{Binding ToolGate.SwitchCommand}"
-                            ToolTip.Tip="{Binding ToolGate.Reason}">
-                        <TextBlock Text="{Binding ToolGate.SwitchLabel}" />
-                    </Button>
+                    <!-- Dimmed (with the reason as its tooltip) while a new combined device can't work now -->
                     <Button Tag="grouptool" Classes="pill cardaction main" IsEnabled="{Binding ToolGate.IsAvailable}"
                             Content="{Binding Tool.Label}" Command="{Binding Tool.Command}" ToolTip.Tip="{Binding ToolTipText}" ToolTip.ShowOnDisabled="True" />
                 </StackPanel>
             </Grid>
-            <Grid ColumnSpacing="{StaticResource WiringColumnGap}" Margin="{StaticResource WiringHeaderInset}" IsVisible="{Binding IsExpanded}">
+            <Grid ColumnSpacing="{StaticResource WiringColumnGap}" Margin="{StaticResource RowHeadingInset}" IsVisible="{Binding IsExpanded}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" SharedSizeGroup="WiringSource" />
                     <ColumnDefinition Width="*" />

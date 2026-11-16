@@ -6,7 +6,7 @@ public sealed record EasyPreset(string Name, int[] Gains);
 /// <summary>
 /// The Easy mode's five-slider equaliser (Bass, Low mid, Mid, High mid, Treble) as a fixed layout of a Parametric equaliser's bands:
 /// one definition, so the Easy sliders and the Advanced equaliser edit the same effect. The mapping goes both ways: gains to bands
-/// (<see cref="Bands"/>) and bands back to gains (<see cref="GainsOf"/>, exact for this layout, the response at each part's frequency
+/// (<see cref="Bands"/>) and bands back to gains (<see cref="GainsOf(FxSlot)"/>, exact for this layout, the response at each part's frequency
 /// for any other). The friendly presets are the shared <see cref="Eq.PresetShapes"/> sampled at the five frequencies. No UI.
 /// </summary>
 public static class EasyEq
@@ -37,10 +37,25 @@ public static class EasyEq
         Id = i + 1, Type = p.Type, Freq = p.Freq, Q = p.Q, Gain = Math.Clamp(gains[i], -MaxGainDb, MaxGainDb),
     }).ToList();
 
-    /// <summary>Whether these bands are exactly this layout (any gains), so the five sliders show them as they are.</summary>
-    public static bool IsLayout(IReadOnlyList<EqBand>? bands) =>
+    /// <summary>How far a band's frequency may be from its part's (a fraction) and its Q (absolute) and still be this layout: fine moves in the FX window are not a new shape.</summary>
+    private const double FreqTolerance = 0.01, QTolerance = 0.01;
+
+    /// <summary>
+    /// Whether these bands still have the Easy layout, so the five sliders can show and edit them exactly: the same band count, types,
+    /// frequencies and Qs (within a small tolerance), every band switched on and every gain inside the slider's reach.
+    /// </summary>
+    public static bool Matches(IReadOnlyList<EqBand>? bands) =>
         bands is not null && bands.Count == Parts.Count
-        && bands.Zip(Parts).All(x => x.First.Type == x.Second.Type && x.First.Freq == x.Second.Freq && x.First.Q == x.Second.Q);
+        && bands.Zip(Parts).All(x => x.First.Enabled && x.First.Type == x.Second.Type
+            && Math.Abs(x.First.Freq / x.Second.Freq - 1) <= FreqTolerance && Math.Abs(x.First.Q - x.Second.Q) <= QTolerance
+            && Math.Abs(x.First.Gain) <= MaxGainDb);
+
+    /// <summary>Whether the effect is exactly what the five sliders can describe: the Easy layout, no overall gain, fully wet.</summary>
+    public static bool Describes(FxSlot slot) => Matches(slot.Bands) && FxCatalog.EqGainOf(slot) == 0 && slot.Wet == FxSlot.DefaultWet;
+
+    /// <summary>The effect has a shape (a band that does something, or an overall gain) the five sliders cannot describe: it was made in the full effects window.</summary>
+    public static bool IsCustom(FxSlot slot) =>
+        !Describes(slot) && (FxCatalog.EqGainOf(slot) != 0 || (slot.Bands ?? new List<EqBand>()).Any(b => !EqMath.IsFlat(b)));
 
     /// <summary>
     /// The five gains of these bands: the bands' own gains (rounded to a dB) when they are this layout; otherwise what the bands do at each
@@ -49,11 +64,20 @@ public static class EasyEq
     public static int[] GainsOf(IReadOnlyList<EqBand>? bands)
     {
         if (bands is null || bands.Count == 0) return Flat();
-        var db = IsLayout(bands)
-            ? bands.Select(b => b.Enabled ? b.Gain : 0)
-            : EqMath.CurveDb(bands, 0, Parts.Select(p => p.Freq).ToList());
-        return db.Select(g => (int)Math.Clamp(Math.Round(g), -MaxGainDb, MaxGainDb)).ToArray();
+        return Matches(bands) ? bands.Select(b => (int)Math.Round(b.Gain)).ToArray() : Sample(bands, 0, 1);
     }
+
+    /// <summary>The five gains of this equaliser effect: exact when it is the Easy layout, otherwise its whole response (bands, overall gain and wet mix) sampled at the five frequencies.</summary>
+    public static int[] GainsOf(FxSlot? slot) => slot is null ? Flat() : Describes(slot) ? GainsOf(slot.Bands) : BestFit(slot);
+
+    /// <summary>
+    /// The five-slider sound closest to this equaliser effect: its response (bands, overall gain and wet mix, the same maths as the FX
+    /// window's graph) read at the five frequencies, in whole dB inside the slider's reach. What "Back to simple sliders" puts in.
+    /// </summary>
+    public static int[] BestFit(FxSlot slot) => Sample(slot.Bands ?? new List<EqBand>(), FxCatalog.EqGainOf(slot), Core.Models.Percent.ToScalar(slot.Wet));
+
+    private static int[] Sample(IReadOnlyList<EqBand> bands, double gainDb, double wet) =>
+        EqMath.CurveDb(bands, gainDb, Parts.Select(p => p.Freq).ToList(), wet).Select(g => (int)Math.Clamp(Math.Round(g), -MaxGainDb, MaxGainDb)).ToArray();
 
     /// <summary>The words of a chip that means "no change", and each chip with the shared shape it is made from (null = flat), in the order of the chips.</summary>
     private static readonly (string Label, string? Shape)[] Chips =
@@ -91,13 +115,12 @@ public static class EasyEq
 
     /// <summary>The five gains the chain makes now: flat when it has no equaliser or its equaliser is switched off.</summary>
     public static int[] Read(IReadOnlyList<FxSlot> chain) =>
-        Find(chain) is { Enabled: true } slot ? GainsOf(slot.Bands) : Flat();
+        Find(chain) is { Enabled: true } slot ? GainsOf(slot) : Flat();
 
-    /// <summary>True when the chain has an equaliser the five sliders cannot show exactly (bands made in the Advanced editor): moving a slider replaces them.</summary>
-    public static bool HasOtherBands(IReadOnlyList<FxSlot> chain) =>
-        Find(chain) is { Enabled: true } slot && !IsLayout(slot.Bands) && !(slot.Bands ?? new List<EqBand>()).All(EqMath.IsFlat);
+    /// <summary>True when the chain has an equaliser with a shape the five sliders cannot describe (<see cref="IsCustom"/>): writing the five replaces it, so ask first.</summary>
+    public static bool HasCustom(IReadOnlyList<FxSlot> chain) => Find(chain) is { } slot && IsCustom(slot);
 
-    /// <summary>Puts these gains in the chain's equaliser (made first in the chain when there is none, and switched on) and returns it.</summary>
+    /// <summary>Puts these gains in the chain's equaliser as the Easy layout (made first in the chain when there is none, switched on, no overall gain, fully wet) and returns it. It replaces any shape made elsewhere: the caller asks first (<see cref="HasCustom"/>).</summary>
     public static FxSlot Write(List<FxSlot> chain, IReadOnlyList<int> gains)
     {
         var slot = Find(chain);
@@ -107,12 +130,14 @@ public static class EasyEq
             chain.Insert(0, slot);
         }
         slot.Bands = Bands(gains);
+        if (slot.Values.Count > 0) slot.Values[0] = 0; // the overall gain is part of the shape the five sliders replace
+        slot.Wet = FxSlot.DefaultWet;
         slot.Enabled = true;
         return slot;
     }
 
     /// <summary>The five gains stored in the chain's equaliser even while it is switched off (what the user chose); flat when it has none.</summary>
-    public static int[] StoredGains(IReadOnlyList<FxSlot> chain) => GainsOf(Find(chain)?.Bands);
+    public static int[] StoredGains(IReadOnlyList<FxSlot> chain) => GainsOf(Find(chain));
 
     /// <summary>The chain has an equaliser that is switched on and its effects are on: what "its own sound is on" means.</summary>
     public static bool OwnEqOn(IReadOnlyList<FxSlot> chain, bool effectsOn) => effectsOn && Find(chain) is { Enabled: true };

@@ -22,12 +22,13 @@ internal sealed class LayerPicker
     public int Layer { get; private set; }
 
     /// <param name="reloadCards">Shows the family's cards on the new layer.</param>
-    public LayerPicker(MouseService mouse, InputFamily family, string label, Action reloadCards)
+    /// <param name="manage">The chip's "Manage presets…": opens the preset manager at the family's layers.</param>
+    public LayerPicker(MouseService mouse, InputFamily family, string label, Action reloadCards, Action manage)
     {
         _mouse = mouse;
         _family = family;
         _reloadCards = reloadCards;
-        Choice = new ChoiceItem(label, new[] { string.Empty }, string.Empty, OnPicked);
+        Choice = new ChoiceItem(label, new[] { string.Empty }, string.Empty, OnPicked) { Manage = manage };
         Layer = mouse.LayerOf(family);
         Refresh();
     }

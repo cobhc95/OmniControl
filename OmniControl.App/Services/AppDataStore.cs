@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace OmniControl.App.Services;
 
 /// <summary>
-/// The one place that reads and writes OmniControl's json files under %APPDATA%\OmniControl.
+/// The one place that reads and writes OmniControl's json files under %APPDATA%\OmniControl, each by its entry in <see cref="DataStores"/>.
 /// A missing or damaged file gives defaults and a failed save is ignored: settings are never worth stopping the app for.
 /// </summary>
 public static class AppDataStore
@@ -21,11 +21,11 @@ public static class AppDataStore
     }
 
     /// <summary>The saved value, or null when the file is missing, unreadable or damaged.</summary>
-    public static T? Load<T>(string fileName) where T : class
+    public static T? Load<T>(DataStore store) where T : class
     {
         try
         {
-            var path = PathOf(fileName);
+            var path = PathOf(store.FileName);
             return File.Exists(path) ? JsonSerializer.Deserialize<T>(File.ReadAllText(path)) : null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
@@ -34,12 +34,12 @@ public static class AppDataStore
         }
     }
 
-    public static void Save<T>(string fileName, T value)
+    public static void Save<T>(DataStore store, T value)
     {
         try
         {
             Directory.CreateDirectory(Folder);
-            File.WriteAllText(PathOf(fileName), JsonSerializer.Serialize(value));
+            File.WriteAllText(PathOf(store.FileName), JsonSerializer.Serialize(value));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -48,9 +48,9 @@ public static class AppDataStore
     }
 
     /// <summary>Removes a file; a missing or locked file is not a problem.</summary>
-    public static void Delete(string fileName)
+    public static void Delete(DataStore store)
     {
-        try { File.Delete(PathOf(fileName)); }
+        try { File.Delete(PathOf(store.FileName)); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             // Left behind: it is read again, harmlessly, at the next start.

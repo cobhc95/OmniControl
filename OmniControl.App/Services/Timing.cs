@@ -90,8 +90,8 @@ public static class Timing
     /// <summary>How often the warm-light schedule looks at the clock; its ease in and out is 30 minutes, so every look moves the picture by a small step.</summary>
     public static readonly TimeSpan WarmLightTick = TimeSpan.FromSeconds(30);
 
-    /// <summary>What the PC offers for the sound modes (Windows version, virtual cables, Equalizer APO) is looked at again at most this often.</summary>
-    public static readonly TimeSpan SoundModeRecheckGap = TimeSpan.FromSeconds(3);
+    /// <summary>What the PC offers the effects engine (Windows version, virtual cables, Equalizer APO) is looked at again at most this often.</summary>
+    public static readonly TimeSpan SupportRecheckGap = TimeSpan.FromSeconds(3);
 
     /// <summary>How often the effects engine looks at its running programs (sound arriving, silence checks, delay shown).</summary>
     public static readonly TimeSpan EngineTick = TimeSpan.FromMilliseconds(100);
@@ -160,6 +160,9 @@ public static class Timing
     /// </summary>
     public static readonly TimeSpan PluginEditorIdle = TimeSpan.FromMilliseconds(33);
 
+    /// <summary>How often the automation countdown window counts down (it shows whole seconds).</summary>
+    public static readonly TimeSpan CountdownTick = TimeSpan.FromSeconds(1);
+
     /// <summary>How often the FX window reads its row's live Latency (a plug-in may change its latency while it runs).</summary>
     public static readonly TimeSpan FxAnalysisRefresh = TimeSpan.FromMilliseconds(500);
 
@@ -207,6 +210,9 @@ public static class Timing
     public static readonly TimeSpan LaunchBurstWindow = TimeSpan.FromSeconds(5);
     public const int LaunchBurstMax = 3;
 
+    /// <summary>The installed apps (the "Open ..." actions) are looked for again when the window is shown or a picker listing them opens, but not more often than this.</summary>
+    public static readonly TimeSpan AppScanGap = TimeSpan.FromSeconds(30);
+
     /// <summary>A custom gesture rule runs at most once per this time unless its own rate limit says otherwise (the default of a new rule).</summary>
     public static readonly TimeSpan RuleRateLimit = TimeSpan.FromSeconds(1);
 
@@ -231,4 +237,68 @@ public static class Timing
 
     /// <summary>How long the Easy page's confirmation line ("Your sound is on: Bass boost") stays before it fades away.</summary>
     public static readonly TimeSpan EasyConfirmation = TimeSpan.FromSeconds(6);
+
+    /// <summary>How long "Undo" stays beside a "Restore defaults" confirmation (the Easy page's and every other page's).</summary>
+    public static readonly TimeSpan RestoreUndo = TimeSpan.FromSeconds(60);
+
+    /// <summary>How long a "Restore defaults" line without an Undo ("Already at the defaults.") stays.</summary>
+    public static readonly TimeSpan RestoreNote = TimeSpan.FromSeconds(6);
+
+    /// <summary>How often the open page's "Restore defaults" button looks again at whether the page is at its defaults.</summary>
+    public static readonly TimeSpan RestoreStateCheck = TimeSpan.FromSeconds(1);
+
+    // ---- Automation (Pages/Automation, App/Automation) ----
+
+    /// <summary>How often the automations look at the clock, the battery, the idle time, the running programs and the devices.</summary>
+    public static readonly TimeSpan AutomationTick = TimeSpan.FromSeconds(5);
+
+    /// <summary>Between two looks the clock jumped by more than this: the PC was asleep, so the "wakes from sleep" trigger fires.</summary>
+    public static readonly TimeSpan AutomationResumeGap = TimeSpan.FromSeconds(30);
+
+    /// <summary>A time-of-day automation whose time passed while the PC slept still runs if it woke within this time of it.</summary>
+    public static readonly TimeSpan AutomationCatchUp = TimeSpan.FromMinutes(10);
+
+    /// <summary>An automation never starts again within this time of its last start.</summary>
+    public static readonly TimeSpan AutomationMinGap = TimeSpan.FromSeconds(10);
+
+    /// <summary>An automation that starts more than <see cref="AutomationBurstMax"/> times within this window is paused (it is looping).</summary>
+    public static readonly TimeSpan AutomationBurstWindow = TimeSpan.FromMinutes(1);
+    public const int AutomationBurstMax = 5;
+
+    /// <summary>The longest "then wait" between two actions of an automation, in seconds, and what a new one starts at.</summary>
+    public const int AutomationMaxWaitSeconds = 600, AutomationDefaultWaitSeconds = 5;
+
+    /// <summary>Sleep, hibernate, shut down, restart and sign out never happen within this time of OmniControl starting.</summary>
+    public static readonly TimeSpan PowerActionGrace = TimeSpan.FromMinutes(2);
+
+    /// <summary>The countdown (with Cancel) before sleep, hibernate, shut down, restart or sign out.</summary>
+    public static readonly TimeSpan PowerCountdown = TimeSpan.FromSeconds(20);
+
+    /// <summary>The shortest and longest countdown an input may ask for (never none: the user must always be able to cancel).</summary>
+    public const int PowerCountdownMinSeconds = 5, PowerCountdownMaxSeconds = 300;
+
+    /// <summary>A custom action's command or script is stopped (with everything it started) after this long.</summary>
+    public static readonly TimeSpan CustomActionTimeout = TimeSpan.FromSeconds(60);
+
+    /// <summary>A smart plug command (kasa) is stopped after this long.</summary>
+    public static readonly TimeSpan DeviceCommandTimeout = TimeSpan.FromSeconds(30);
+
+    /// <summary>The quick looks at what is installed for the Devices page (is python-kasa there) are stopped after this long.</summary>
+    public static readonly TimeSpan DeviceProbeTimeout = TimeSpan.FromSeconds(20);
+
+    /// <summary>Installing python-kasa with pip (a download) is stopped after this long.</summary>
+    public static readonly TimeSpan DeviceInstallTimeout = TimeSpan.FromMinutes(5);
+
+    /// <summary>A simulated device's step waits this long for its element or text to show, looking again every poll; after a tap, typing or swipe it lets the screen settle; a whole run is stopped after the run timeout.</summary>
+    public static readonly TimeSpan DeviceSimElementWait = TimeSpan.FromSeconds(10), DeviceSimPoll = TimeSpan.FromMilliseconds(700),
+        DeviceSimSettle = TimeSpan.FromMilliseconds(600), DeviceSimRunTimeout = TimeSpan.FromMinutes(2);
+
+    /// <summary>While steps are being recorded the screen is read again this often, so a tap is matched with the screen it was made on.</summary>
+    public static readonly TimeSpan DeviceSimRecordGap = TimeSpan.FromMilliseconds(900);
+
+    /// <summary>After a USB announcement the automations wait this long before comparing the device list.</summary>
+    public static readonly TimeSpan AutomationUsbSettle = TimeSpan.FromSeconds(2);
+
+    /// <summary>How long a restarted OmniControl waits for the run before it to end (it saves its settings as it closes) before it carries out a staged import or wipe.</summary>
+    public static readonly TimeSpan RestartWait = TimeSpan.FromSeconds(15);
 }

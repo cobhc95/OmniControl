@@ -11,9 +11,11 @@ public sealed record EasyFix(string Id, string Label, EasyConfirm? Confirm = nul
 
 /// <summary>
 /// One line of a setup checklist, worked out from the live state each time something changes. <see cref="Optional"/> lines (an
-/// alternative way) do not have to be done for the setup to be finished.
+/// alternative way) do not have to be done for the setup to be finished. <see cref="Live"/> is a short live word at the right of the line
+/// ("0 installed"); a <see cref="Note"/> is a plain sentence with no state mark (the "What you will need" box uses both).
 /// </summary>
-public sealed record EasyCheck(string Id, string Title, string Subtitle, CheckState State, EasyFix? Fix = null, bool Optional = false)
+public sealed record EasyCheck(string Id, string Title, string Subtitle, CheckState State, EasyFix? Fix = null, bool Optional = false,
+    string Live = "", bool Note = false)
 {
     public bool IsDone => State == CheckState.Done;
 }
@@ -22,7 +24,7 @@ public sealed record EasyCheck(string Id, string Title, string Subtitle, CheckSt
 public static class EasyFixes
 {
     public const string InstallApo = "install-apo", ChooseDevices = "choose-devices", ApplyMasterSound = "apply-master", UseOwnEngine = "use-own-engine",
-        ApplyProgramSounds = "apply-programs", ApplyMicrophone = "apply-microphone", SwitchToFast = "switch-fast", SwitchToFull = "switch-full",
+        ApplyProgramSounds = "apply-programs", ApplyMicrophone = "apply-microphone",
         InstallCable = "install-cable", MoreCables = "more-cables", FreeCable = "free-cable", CreateMicrophone = "create-microphone",
         CreateSpeakers = "create-speakers", PlayOnBoth = "play-on-both";
 }

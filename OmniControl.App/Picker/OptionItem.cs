@@ -1,3 +1,4 @@
+using OmniControl.App.Hotkeys;
 using CommunityToolkit.Mvvm.ComponentModel;
 using OmniControl.App.Mouse;
 using OmniControl.App.Pages;
@@ -20,7 +21,16 @@ public sealed partial class OptionItem : ObservableObject
     public bool IsStepper => Option.Kind is OptionKind.Number or OptionKind.Choice;
     public bool IsNumber => Option.Kind == OptionKind.Number;
     public bool IsToggle => Option.Kind == OptionKind.Toggle;
-    public bool IsText => Option.Kind == OptionKind.Text;
+
+    /// <summary>A number, choice or switch sits on the label line; a text or path gets the pane width on a line of its own below the label.</summary>
+    public bool IsInline => IsStepper || IsToggle;
+    public bool IsBlock => !IsInline;
+    public bool IsText => Option.Kind == OptionKind.Text && Option.Browse is null;
+
+    /// <summary>A text that is a path: shown with the shared path field and its Browse button.</summary>
+    public bool IsPath => Option.Kind == OptionKind.Text && Option.Browse is not null;
+    public PathKind PathKind => Option.Browse ?? PathKind.File;
+    public string PickerTitle => $"Choose: {Option.Label}";
     public string Hint => Option.Hint;
 
     /// <summary>True while a number is being typed in instead of stepped (Enter or a double-click on it).</summary>

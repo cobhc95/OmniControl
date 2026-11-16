@@ -1,3 +1,5 @@
+using OmniControl.App.AppLists;
+using OmniControl.App.Hotkeys;
 using OmniControl.App.Services;
 using Avalonia.Threading;
 using OmniControl.App.Mouse;
@@ -16,19 +18,22 @@ public sealed class GestureService
     // Middle-click gestures have no edge areas, so a strip of 0 keeps an edge from hiding the desktop or title bar beneath it.
     private const int NoEdgeStrip = 0;
 
-    private sealed record Active(string Step, OptionValues Options);
+    private sealed record Active(string Step, OptionValues Options, AppScopeSetting? Scope);
     private sealed record Snapshot(bool Enabled, int EdgeStrip, Dictionary<Modifiers, Active> Keys, Dictionary<PointerAreaKind, Active> Areas,
         Dictionary<PointerAreaKind, MouseAction> MiddleAreas);
 
     private readonly GestureActionRunner _runner;
+    private readonly AppScopeGate _scopes;
     private volatile Snapshot _snapshot;
 
     public GestureSettings Settings { get; } = GestureSettings.Load();
 
     /// <param name="hook">The shared mouse hook (the caller starts and stops it).</param>
     /// <param name="runLevel">Moves an OmniControl level (by its id) up or down by a percent; false when no action moves it.</param>
-    public GestureService(MouseHook hook, Func<string, bool, int, bool> runLevel, Action<string> report)
+    /// <param name="scopes">Says whether a screen-area gesture works in the app the user is in (the Apps chip of its group and cards).</param>
+    public GestureService(MouseHook hook, Func<string, bool, int, bool> runLevel, Action<string> report, AppScopeGate scopes)
     {
+        _scopes = scopes;
         _runner = new GestureActionRunner(runLevel, message => Dispatcher.UIThread.Post(() => report(message)));
         _snapshot = TakeSnapshot();
         hook.AddHandler(Handle);
@@ -51,7 +56,7 @@ public sealed class GestureService
         Active ActiveFor(GestureTrigger t)
         {
             var rule = Settings.RuleFor(t);
-            return new Active(rule.Action, new OptionValues(new Dictionary<string, string>(rule.Options)));
+            return new Active(rule.Action, new OptionValues(new Dictionary<string, string>(rule.Options)), t.Group == GestureCatalog.AreaGroup ? Settings.AreaScopeOf(t) : null);
         }
         MouseAction ClickFor(GestureTrigger t)
         {
@@ -93,7 +98,7 @@ public sealed class GestureService
         Active? active = null;
         if (held != Modifiers.None) snapshot.Keys.TryGetValue(held, out active);
         else if (snapshot.Areas.Count > 0) snapshot.Areas.TryGetValue(PointerArea.At(ev.X, ev.Y, snapshot.EdgeStrip), out active);
-        if (active is null) return false;
+        if (active is null || !_scopes.Allows(active.Scope)) return false; // outside its apps the scroll goes to the window as usual
 
         var wheelUp = ev.Button == MouseButton.WheelUp;
         Task.Run(() => _runner.Run(active.Step, active.Options, wheelUp, ev));

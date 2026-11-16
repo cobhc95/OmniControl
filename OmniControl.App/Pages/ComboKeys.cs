@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
+using OmniControl.App.Controls;
 using OmniControl.App.Services;
 
 namespace OmniControl.App.Pages;
@@ -63,8 +64,9 @@ public static class ComboKeys
     /// <summary>The next or previous entry of a closed drop-down, stopping at the ends (the wheel and Left/Right).</summary>
     public static void Step(ComboBox combo, int by)
     {
-        if (combo.IsDropDownOpen || combo.ItemCount == 0) return;
-        combo.SelectedIndex = Math.Clamp(Math.Max(0, combo.SelectedIndex) + by, 0, combo.ItemCount - 1);
+        var count = combo.ItemCount;
+        if (combo.IsDropDownOpen || count == 0) return;
+        combo.SelectedIndex = Math.Clamp(Math.Max(0, combo.SelectedIndex) + by, 0, count - 1);
     }
 
     private static void OnKeyDown(TopLevel _, KeyEventArgs e)

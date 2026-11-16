@@ -20,6 +20,9 @@ public sealed partial class ChoiceItem : ObservableObject, IEditorItem, IHalfWid
     /// <summary>Greyed out, with a reason, while the choice cannot be made (a monitor that does not list its inputs).</summary>
     public Availability Availability { get; } = new();
 
+    /// <summary>For a preset drop-down: what its "Manage presets…" row does (opens the preset manager at the group); null for a plain choice.</summary>
+    public Action? Manage { get; init; }
+
     private bool _loading;
 
     public ChoiceItem(string label, IReadOnlyList<string> options, string selected, Action<string> apply)

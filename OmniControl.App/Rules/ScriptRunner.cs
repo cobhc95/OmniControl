@@ -4,7 +4,7 @@ using System.Diagnostics;
 namespace OmniControl.App.Rules;
 
 /// <summary>
-/// Runs a rule's PowerShell or CMD command: never elevated, hidden unless asked otherwise, stopped (with everything it started) after
+/// Runs a rule's PowerShell or CMD command, a custom action's script or a saved script: never elevated, hidden unless asked otherwise, stopped (with everything it started) after
 /// its timeout. Output is discarded; the error text of a failure is kept (shortened) for the rules log.
 /// </summary>
 public static class ScriptRunner
@@ -17,7 +17,7 @@ public static class ScriptRunner
     /// <summary>The program and arguments a command runs as: what the confirm window shows and what is started.</summary>
     public static (string File, string[] Arguments) CommandLine(string shell, string command) => shell == Cmd
         ? ("cmd.exe", new[] { "/d", "/c", command })
-        : ("powershell.exe", new[] { "-NoProfile", "-NonInteractive", "-Command", command });
+        : ("powershell.exe", new[] { "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", command });
 
     /// <summary>The command line as one readable line.</summary>
     public static string Describe(string shell, string command)
@@ -27,9 +27,20 @@ public static class ScriptRunner
     }
 
     /// <summary>Runs the command and waits for it; null when it ended well, otherwise one line saying what went wrong.</summary>
-    public static async Task<string?> RunAsync(string shell, string command, bool hidden, TimeSpan timeout)
+    public static Task<string?> RunAsync(string shell, string command, bool hidden, TimeSpan timeout)
     {
         var (file, arguments) = CommandLine(shell, command);
+        return RunAsync(file, arguments, hidden, timeout);
+    }
+
+    /// <summary>
+    /// Runs <paramref name="file"/> with <paramref name="arguments"/> (each passed as is) and waits for it, the same way as a command.
+    /// <paramref name="environment"/> adds variables for this one run (a secret that must not be in the arguments); <paramref name="output"/>,
+    /// when given, receives the text the program printed (shortened) once it ended.
+    /// </summary>
+    public static async Task<string?> RunAsync(string file, IReadOnlyList<string> arguments, bool hidden, TimeSpan timeout,
+        IReadOnlyDictionary<string, string>? environment = null, Action<string>? output = null)
+    {
         var start = new ProcessStartInfo(file)
         {
             UseShellExecute = false,
@@ -38,6 +49,8 @@ public static class ScriptRunner
             RedirectStandardOutput = hidden,
         };
         foreach (var argument in arguments) start.ArgumentList.Add(argument);
+        if (environment is not null)
+            foreach (var (name, value) in environment) start.Environment[name] = value;
 
         Process process;
         try
@@ -52,7 +65,7 @@ public static class ScriptRunner
         using (process)
         {
             var errors = hidden ? process.StandardError.ReadToEndAsync() : Task.FromResult(string.Empty);
-            var output = hidden ? process.StandardOutput.ReadToEndAsync() : Task.FromResult(string.Empty); // read so a full pipe never blocks it
+            var printed = hidden ? process.StandardOutput.ReadToEndAsync() : Task.FromResult(string.Empty); // read so a full pipe never blocks it
             using var limit = new CancellationTokenSource(timeout);
             try
             {
@@ -61,16 +74,18 @@ public static class ScriptRunner
             catch (OperationCanceledException)
             {
                 StopTree(process);
-                await Drain(errors, output);
+                await Drain(errors, printed);
                 return $"stopped after {timeout.TotalSeconds:0} s (its timeout)";
             }
-            await Drain(errors, output);
+            await Drain(errors, printed);
+            if (output is not null && printed.IsCompletedSuccessfully) output(Shortened(printed.Result.Trim()));
             if (process.ExitCode == 0) return null;
-            var text = errors.IsCompletedSuccessfully ? errors.Result.Trim() : string.Empty;
-            if (text.Length > ErrorTextLimit) text = text[..ErrorTextLimit];
+            var text = Shortened(errors.IsCompletedSuccessfully ? errors.Result.Trim() : string.Empty);
             return text.Length == 0 ? $"ended with code {process.ExitCode}" : $"ended with code {process.ExitCode}: {text}";
         }
     }
+
+    private static string Shortened(string text) => text.Length > ErrorTextLimit ? text[..ErrorTextLimit] : text;
 
     /// <summary>Lets the output readers finish; a pipe broken by stopping the command only means there is no more to read.</summary>
     private static async Task Drain(params Task<string>[] readers)

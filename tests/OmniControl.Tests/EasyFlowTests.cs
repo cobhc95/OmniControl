@@ -21,8 +21,7 @@ public class EasyFlowTests
         private readonly Dictionary<string, bool> _on = new();
         private readonly Dictionary<string, EffectsRoute> _routes = new();
         private readonly List<CombinedDevice> _combined = new();
-        public SoundMode SoundMode { get; private set; } = SoundModes.Fast;
-        public EffectsRoute MasterMethod { get; private set; } = SoundModes.MasterAutomatic;
+        public EffectsRoute MasterMethod { get; private set; } = EffectsRules.MasterAutomatic;
         public List<string> PlaysOn { get; private set; } = new();
 
         public List<FxSlot> FxChain(string? key) => _chains.TryGetValue(key ?? "master", out var c) ? c : _chains[key ?? "master"] = new List<FxSlot>();
@@ -30,13 +29,12 @@ public class EasyFlowTests
         public void SetFxOn(string? key, bool on) => _on[key ?? "master"] = on;
         public void SaveFx(string? key) { }
         public string InputKey(string deviceId, string name) => MixerService.InputPrefix + deviceId;
-        public EffectsRoute FxRouteOf(string key) => _routes.GetValueOrDefault(key, SoundModes.RouteAutomatic);
+        public EffectsRoute FxRouteOf(string key) => _routes.GetValueOrDefault(key, EffectsRules.RouteAutomatic);
         public void SetFxRoute(string key, EffectsRoute route) => _routes[key] = route;
         public IReadOnlyList<CombinedDevice> Combined => _combined;
         public void AddCombined(CombinedDevice device) => _combined.Add(device);
         public void SetMasterMethod(EffectsRoute route) => MasterMethod = route;
         public void SetMasterPlaysOn(IEnumerable<string> targets) => PlaysOn = targets.ToList();
-        public void SetSoundMode(SoundMode mode) => SoundMode = mode;
     }
 
     /// <summary>Records which fixes were carried out, and with what answer.</summary>
@@ -63,29 +61,23 @@ public class EasyFlowTests
         return a;
     }
 
+    private static EasyAnswers ApoWay => new() { Engine = EasyEngine.Apo };
+
+    private static EasyAnswers CableWay => new() { Engine = EasyEngine.Cable };
+
     private static EasyCableFact Free => new("CABLE Input", "CABLE Output", StatusKind.Other, null, false);
 
     // ---- card 1: make everything sound better ----
 
     [Fact]
-    public void Better_ApoNotInstalled_OffersTheInstallerAndWaitsOnTheRest_AndAnotherWayWhenACableCanBeUsed()
+    public void Better_ApoNotInstalled_OffersTheInstallerAndWaitsOnTheRest()
     {
-        var lines = EasyChecks.Better(new EasyAnswers(), new EasyFacts { ApoInstalled = false, SpeakersApoWhy = "Equalizer APO is not installed", MasterStoredGains = Bass });
+        var lines = EasyChecks.Better(ApoWay, new EasyFacts { ApoInstalled = false, SpeakersApoWhy = "Equalizer APO is not installed", MasterStoredGains = Bass });
         Assert.Equal(CheckState.Todo, Line(lines, "apo").State);
         Assert.Equal(EasyFixes.InstallApo, Line(lines, "apo").Fix!.Id);
         Assert.Equal(CheckState.Blocked, Line(lines, "speakers").State);
         Assert.Equal(CheckState.Blocked, Line(lines, "apply").State);
-        var other = Line(lines, "other");
-        Assert.True(other.Optional);
-        Assert.NotNull(other.Fix!.Confirm);
-        Assert.Contains("Full control", other.Fix.Confirm!.Text);
-    }
-
-    [Fact]
-    public void Better_NoCableToUse_HidesTheOtherWay()
-    {
-        var lines = EasyChecks.Better(new EasyAnswers(), new EasyFacts { ApoInstalled = false, SpeakersApoWhy = "x", FullUnavailable = "Needs VB-CABLE", MasterStoredGains = Bass });
-        Assert.DoesNotContain(lines, l => l.Id == "other");
+        Assert.DoesNotContain(lines, l => l.Id is "other" or "engine"); // the Engine step decides the way now, no "use another way" line
     }
 
     [Fact]
@@ -127,19 +119,19 @@ public class EasyFlowTests
     }
 
     [Fact]
-    public void Better_InFullControlOnTheBus_NeedsNoEqualizerApo()
+    public void Better_OnTheBus_NeedsNoEqualizerApo()
     {
-        var lines = EasyChecks.Better(new EasyAnswers(), new EasyFacts { FullControl = true, MasterOnBus = true, ApoInstalled = false, SpeakersApoWhy = "x", MasterStoredGains = Bass, MasterGains = Bass, MasterFxOn = true });
+        var lines = EasyChecks.Better(CableWay, new EasyFacts { MasterOnBus = true, ApoInstalled = false, SpeakersApoWhy = "x", MasterStoredGains = Bass, MasterGains = Bass, MasterFxOn = true });
         Assert.DoesNotContain(lines, l => l.Id is "apo" or "speakers" or "other");
         Assert.All(lines, l => Assert.Equal(CheckState.Done, l.State));
     }
 
     [Fact]
-    public void Better_InFullControlWithEqualizerApoAsTheMastersMethod_StillChecksTheSpeakers()
+    public void Better_WithEqualizerApoAsTheMastersMethod_StillChecksTheSpeakers()
     {
-        var lines = EasyChecks.Better(new EasyAnswers(), new EasyFacts { FullControl = true, MasterOnBus = false, SpeakersApoWhy = "Equalizer APO is not on this device", MasterStoredGains = Bass });
+        var lines = EasyChecks.Better(ApoWay, new EasyFacts { MasterOnBus = false, SpeakersApoWhy = "Equalizer APO is not on this device", MasterStoredGains = Bass });
         Assert.Contains(lines, l => l.Id == "speakers");
-        Assert.DoesNotContain(lines, l => l.Id == "other"); // already in Full control: nothing to switch to
+        Assert.DoesNotContain(lines, l => l.Id == "apo-master"); // the master is not on the bus: nothing to change
     }
 
     // ---- card 2: a different sound per app ----
@@ -179,35 +171,26 @@ public class EasyFlowTests
     public void Microphone_NoneChosenYet_WaitsOnTheChoice()
     {
         var lines = EasyChecks.Microphone(new EasyAnswers(), new EasyFacts());
-        Assert.Equal(CheckState.Blocked, Line(lines, "mic").State);
+        Assert.Equal(CheckState.Done, Line(lines, "cable").State);
         Assert.Equal(CheckState.Blocked, Line(lines, "apply").State);
     }
 
     [Fact]
-    public void Microphone_NotInDeviceSelector_OffersItsDeviceSelector_AndApplyingFollows()
+    public void Microphone_NeedsACable_AndApplyingFollows()
     {
         var a = new EasyAnswers { MicrophoneId = "mic1", MicLook = "Clear voice" };
-        var facts = new EasyFacts { MicApoWhy = new Dictionary<string, string?> { ["mic1"] = "Equalizer APO is not on this microphone" } };
-        var before = EasyChecks.Microphone(a, facts);
-        Assert.Equal(EasyFixes.ChooseDevices, Line(before, "mic").Fix!.Id);
+        var noCable = new EasyFacts { CableForMicrophone = new EasyCableFact(null, null, StatusKind.NeedsCable, null, false) };
+        var before = EasyChecks.Microphone(a, noCable);
+        Assert.Equal(EasyFixes.InstallCable, Line(before, "cable").Fix!.Id);
         Assert.Equal(CheckState.Blocked, Line(before, "apply").State);
 
-        var after = EasyChecks.Microphone(a, facts with { MicApoWhy = new Dictionary<string, string?> { ["mic1"] = null } });
+        var after = EasyChecks.Microphone(a, new EasyFacts());
         Assert.Equal(CheckState.Todo, Line(after, "apply").State);
         Assert.Equal(EasyFixes.ApplyMicrophone, Line(after, "apply").Fix!.Id);
 
-        var on = EasyChecks.Microphone(a, facts with { MicApoWhy = new Dictionary<string, string?>(), MicGains = new Dictionary<string, int[]> { ["mic1"] = a.MicGains.ToArray() } });
+        var on = EasyChecks.Microphone(a, new EasyFacts { MicGains = new Dictionary<string, int[]> { ["mic1"] = a.MicGains.ToArray() } });
         Assert.Equal(CheckState.Done, Line(on, "apply").State);
-    }
-
-    [Fact]
-    public void Microphone_InFullControl_AsksToGoBackToFastModeFirst()
-    {
-        var a = new EasyAnswers { MicrophoneId = "mic1" };
-        var fast = Line(EasyChecks.Microphone(a, new EasyFacts { FullControl = true }), "fast");
-        Assert.Equal(EasyFixes.SwitchToFast, fast.Fix!.Id);
-        Assert.NotNull(fast.Fix.Confirm);
-        Assert.DoesNotContain(EasyChecks.Microphone(a, new EasyFacts()), l => l.Id == "fast");
+        Assert.DoesNotContain(on, l => l.Id is "apo" or "mic" or "fast");
     }
 
     [Fact]
@@ -272,20 +255,20 @@ public class EasyFlowTests
     }
 
     [Fact]
-    public void TwoSpeakers_NeedsFullControl_WithAConfirmedSwitch_AndSaysWhyWhenItCannot()
+    public void TwoSpeakers_NeedACable_AndSayWhyWhenThereIsNone()
     {
         var a = Answers("s1", "s2");
-        var off = Line(EasyChecks.TwoSpeakers(a, new EasyFacts()), "full");
-        Assert.Equal(EasyFixes.SwitchToFull, off.Fix!.Id);
-        Assert.NotNull(off.Fix.Confirm);
-        Assert.Equal(CheckState.Blocked, Line(EasyChecks.TwoSpeakers(a, new EasyFacts()), "create").State);
+        var none = EasyChecks.TwoSpeakers(a, new EasyFacts { CableForSpeakers = new EasyCableFact(null, null, StatusKind.NeedsCable, null, false) });
+        Assert.Equal(EasyFixes.InstallCable, Line(none, "cable").Fix!.Id);
+        Assert.Equal(CheckState.Blocked, Line(none, "create").State);
+        Assert.DoesNotContain(none, l => l.Id == "full");
 
-        var cannot = Line(EasyChecks.TwoSpeakers(a, new EasyFacts { FullUnavailable = "Needs VB-CABLE" }), "full");
-        Assert.Equal(CheckState.Blocked, cannot.State);
-        Assert.Contains("VB-CABLE", cannot.Subtitle);
+        var off = Line(EasyChecks.TwoSpeakers(a, new EasyFacts { CableForSpeakers = new EasyCableFact(null, null, StatusKind.CablesOff, null, false) }), "cable");
+        Assert.Equal(CheckState.Blocked, off.State);
+        Assert.Contains(EffectsRules.CablesOff, off.Subtitle);
 
-        var on = EasyChecks.TwoSpeakers(a, new EasyFacts { FullControl = true });
-        Assert.Equal(CheckState.Done, Line(on, "full").State);
+        var on = EasyChecks.TwoSpeakers(a, new EasyFacts());
+        Assert.Equal(CheckState.Done, Line(on, "cable").State);
         Assert.Equal(EasyFixes.CreateSpeakers, Line(on, "create").Fix!.Id);
     }
 
@@ -296,7 +279,7 @@ public class EasyFlowTests
         var made = new EasyCombinedFact("combo:2", CombinedKind.Speakers, "Both speakers", new[] { "s1", "s2" }, null);
         Assert.Empty(EasyChecks.TwoSpeakersExtras(a, new EasyFacts()));
 
-        var bus = EasyChecks.TwoSpeakersExtras(a, new EasyFacts { Combined = new[] { made }, FullControl = true, MasterOnBus = true }).Single();
+        var bus = EasyChecks.TwoSpeakersExtras(a, new EasyFacts { Combined = new[] { made }, MasterOnBus = true }).Single();
         Assert.Equal(EasyFixes.PlayOnBoth, bus.Fix!.Id);
         Assert.NotNull(bus.Fix.Confirm);
 
@@ -336,7 +319,7 @@ public class EasyFlowTests
         Assert.True(EasyGoals.IsOn(EasyGoals.JoinMicrophones, new EasyFacts { Combined = new[] { mic } }));
         Assert.False(EasyGoals.IsOn(EasyGoals.TwoSpeakers, new EasyFacts { Combined = new[] { mic } }));
         Assert.True(EasyGoals.IsOn(EasyGoals.TwoSpeakers, new EasyFacts { Combined = new[] { spk } }));
-        Assert.False(EasyGoals.IsOn(EasyGoals.JustVolume, new EasyFacts { Combined = new[] { mic, spk } }));
+        Assert.False(EasyGoals.IsOn("volume", new EasyFacts { Combined = new[] { mic, spk } })); // an id that is no goal is never on
     }
 
     // ---- what each step changes ----
@@ -361,12 +344,12 @@ public class EasyFlowTests
     {
         var mixer = new FakeMixer();
         EasyEq.Write(mixer.FxChain("b"), Bass);
-        mixer.SetFxRoute("a", SoundModes.RouteCapture);
+        mixer.SetFxRoute("a", EffectsRules.RouteCapture);
         EasyApply.ProgramSounds(mixer, new[] { "a", "b" });
         Assert.True(mixer.IsFxOn("a"));
         Assert.True(EasyEq.IsFlat(EasyEq.Read(mixer.FxChain("a"))));
         Assert.True(EasyEq.OwnEqOn(mixer.FxChain("a"), mixer.IsFxOn("a")));
-        Assert.Equal(SoundModes.RouteAutomatic, mixer.FxRouteOf("a"));
+        Assert.Equal(EffectsRules.RouteAutomatic, mixer.FxRouteOf("a"));
         Assert.Equal(Bass, EasyEq.Read(mixer.FxChain("b")));
         Assert.True(mixer.IsFxOn("b"));
         Assert.False(mixer.IsFxOn("c")); // an app that was not ticked is not touched
@@ -399,22 +382,19 @@ public class EasyFlowTests
     }
 
     [Fact]
-    public void ModeSwitches_ChangeOnlyTheModeAndTheMethodThatWouldStopThem()
+    public void MasterSteps_ChangeOnlyTheMethodThatWouldStopThem()
     {
         var mixer = new FakeMixer();
-        mixer.SetMasterMethod(SoundModes.MasterApo);
+        mixer.SetMasterMethod(EffectsRules.MasterApo);
         EasyApply.UseOwnEngine(mixer);
-        Assert.Equal(SoundModes.Full, mixer.SoundMode);
-        Assert.Equal(SoundModes.MasterAutomatic, mixer.MasterMethod);
+        Assert.Equal(EffectsRules.MasterAutomatic, mixer.MasterMethod);
 
-        mixer.SetMasterMethod(SoundModes.MasterBus);
+        mixer.SetMasterMethod(EffectsRules.MasterBus);
         EasyApply.UseOwnEngine(mixer);
-        Assert.Equal(SoundModes.MasterBus, mixer.MasterMethod); // a chosen method that already works is left alone
+        Assert.Equal(EffectsRules.MasterBus, mixer.MasterMethod); // a chosen method that already works is left alone
 
-        EasyApply.UseFastMode(mixer);
-        Assert.Equal(SoundModes.Fast, mixer.SoundMode);
         EasyApply.FreeTheCable(mixer);
-        Assert.Equal(SoundModes.MasterApo, mixer.MasterMethod);
+        Assert.Equal(EffectsRules.MasterApo, mixer.MasterMethod);
         EasyApply.MasterPlaysOn(mixer, "combo:9");
         Assert.Equal(new[] { "combo:9" }, mixer.PlaysOn);
     }
@@ -437,7 +417,7 @@ public class EasyFlowTests
         await actions.RunAsync(new EasyFix(EasyFixes.InstallCable, ""), a, facts);
         await actions.RunAsync(new EasyFix(EasyFixes.MoreCables, ""), a, facts);
         Assert.Equal(new[] { "install-apo", "device-selector", "cable", "more" }, steps);
-        Assert.Equal(SoundModes.Fast, mixer.SoundMode); // those four change no setting of ours
+        Assert.Equal(EffectsRules.MasterAutomatic, mixer.MasterMethod); // those four change no setting of ours
 
         await actions.RunAsync(new EasyFix(EasyFixes.ApplyMicrophone, ""), a, facts);
         Assert.True(mixer.IsFxOn(MixerService.InputPrefix + "m1"));
@@ -445,18 +425,18 @@ public class EasyFlowTests
         Assert.True(mixer.IsFxOn("spotify"));
         Assert.Equal("Combined microphone created.", await actions.RunAsync(new EasyFix(EasyFixes.CreateMicrophone, ""), a, facts));
         Assert.Equal(CombinedKind.Microphones, mixer.Combined.Single().Kind);
-        await actions.RunAsync(new EasyFix(EasyFixes.SwitchToFull, ""), a, facts);
-        Assert.Equal(SoundModes.Full, mixer.SoundMode);
+        await actions.RunAsync(new EasyFix(EasyFixes.FreeCable, ""), a, facts);
+        Assert.Equal(EffectsRules.MasterApo, mixer.MasterMethod);
         Assert.Equal("That step is not available.", await actions.RunAsync(new EasyFix("nope", ""), a, facts));
     }
 
     // ---- the list of setups ----
 
     [Fact]
-    public void EveryGoalButTheVolumeHasASetup_EndingInSetupThenDone()
+    public void EveryGoalHasASetup_EndingInSetupThenDone()
     {
-        Assert.Equal(EasyGoals.All.Where(g => g.Id != EasyGoals.JustVolume).Select(g => g.Id), EasyFlows.All.Select(f => f.GoalId));
-        Assert.Null(EasyFlows.Of(EasyGoals.JustVolume));
+        Assert.Equal(EasyGoals.All.Select(g => g.Id), EasyFlows.All.Select(f => f.GoalId));
+        Assert.Null(EasyFlows.Of("volume"));
         Assert.All(EasyFlows.All, f =>
         {
             Assert.Equal(EasyStepKind.Setup, f.Steps[^2].Kind);
@@ -495,13 +475,16 @@ public class EasyFlowTests
     public void Flow_StripNamesTheScreens_AndTicksAsItGoes()
     {
         var rig = new Rig(EasyGoals.Better);
-        Assert.Equal(new[] { "Goal", "Sound", "Setup", "Done" }, rig.Flow.Strip.Select(s => s.Title));
-        Assert.Equal(new[] { true, false, false, false }, rig.Flow.Strip.Select(s => s.IsDone));
+        Assert.Equal(new[] { "Goal", "Sound", "Engine", "Setup", "Done" }, rig.Flow.Strip.Select(s => s.Title));
+        Assert.Equal(new[] { true, false, false, false, false }, rig.Flow.Strip.Select(s => s.IsDone));
         Assert.True(rig.Flow.Strip[1].IsCurrent);
         rig.Flow.NextCommand.Execute(null);
-        Assert.True(rig.Flow.IsSetup);
-        Assert.Equal(new[] { true, true, false, false }, rig.Flow.Strip.Select(s => s.IsDone));
+        Assert.True(rig.Flow.IsEngine);
         Assert.True(rig.Flow.Strip[2].IsCurrent);
+        rig.Flow.NextCommand.Execute(null);
+        Assert.True(rig.Flow.IsSetup);
+        Assert.Equal(new[] { true, true, true, false, false }, rig.Flow.Strip.Select(s => s.IsDone));
+        Assert.True(rig.Flow.Strip[3].IsCurrent);
     }
 
     [Fact]
@@ -517,6 +500,7 @@ public class EasyFlowTests
         rig.Flow.Question.Choices.Choose(entry);
         Assert.True(entry.IsChecked);
         Assert.True(rig.Flow.CanNext);
+        rig.Flow.NextCommand.Execute(null);
         rig.Flow.NextCommand.Execute(null);
         Assert.True(rig.Flow.IsSetup);
         Assert.Contains("spotify", rig.Answers.Programs);
@@ -538,17 +522,16 @@ public class EasyFlowTests
     }
 
     [Fact]
-    public void Flow_SetupCannotBeLeftUntilEveryRequiredLineIsDone_AndTheOptionalOneDoesNotCount()
+    public void Flow_SetupCannotBeLeftUntilEveryRequiredLineIsDone()
     {
         var rig = new Rig(EasyGoals.Better, new EasyFacts { SpeakersApoWhy = "Equalizer APO is not on this device", MasterStoredGains = Bass });
         rig.Flow.NextCommand.Execute(null);
-        Assert.Contains(rig.Flow.Checks, c => c.IsOptional);
+        rig.Flow.NextCommand.Execute(null);
         Assert.False(rig.Flow.CanNext);
 
         rig.Facts = rig.Facts with { SpeakersApoWhy = null, MasterFxOn = true, MasterGains = Bass }; // the user ticked the speakers in Device Selector
         rig.Flow.Reevaluate();
         Assert.All(rig.Flow.Checks.Where(c => !c.IsOptional), c => Assert.True(c.IsDone));
-        Assert.DoesNotContain(rig.Flow.Checks, c => c.IsOptional);
         Assert.True(rig.Flow.CanNext);
         rig.Flow.NextCommand.Execute(null);
         Assert.True(rig.Flow.IsDone);
@@ -558,12 +541,17 @@ public class EasyFlowTests
     [Fact]
     public async Task Flow_AFixThatAsksDoesNothingOnNo_AndRunsOnYes_ThenTheLinesTick()
     {
-        var rig = new Rig(EasyGoals.TwoSpeakers, new EasyFacts { Speakers = new[] { new EasyOption("s1", "A"), new EasyOption("s2", "B") } });
+        var rig = new Rig(EasyGoals.TwoSpeakers, new EasyFacts
+        {
+            Speakers = new[] { new EasyOption("s1", "A"), new EasyOption("s2", "B") },
+            CableForSpeakers = new EasyCableFact(null, null, StatusKind.Other, "CABLE Input", true),
+        });
         rig.Answers.Devices.AddRange(new[] { "s1", "s2" });
         rig.Flow.Reevaluate();
         rig.Flow.NextCommand.Execute(null);
+        rig.Flow.NextCommand.Execute(null);
         Assert.True(rig.Flow.IsSetup);
-        var full = rig.Flow.Checks.Single(c => c.Id == "full");
+        var full = rig.Flow.Checks.Single(c => c.Id == "cable");
         Assert.True(full.HasFix);
 
         rig.Agree = false;
@@ -574,21 +562,24 @@ public class EasyFlowTests
         rig.Agree = true;
         rig.Actions.Effect = fix =>
         {
-            rig.Facts = rig.Facts with { FullControl = true };
-            return "Full control is on.";
+            rig.Facts = rig.Facts with { CableForSpeakers = new EasyCableFact("CABLE Input", "CABLE Output", StatusKind.Other, null, false) };
+            return "The master now runs in Equalizer APO.";
         };
         await full.FixCommand.ExecuteAsync(null);
-        Assert.Equal(new[] { EasyFixes.SwitchToFull }, rig.Actions.Ran);
-        Assert.Equal("Full control is on.", rig.Flow.Note);
-        Assert.True(rig.Flow.Checks.Single(c => c.Id == "full").IsDone);
+        Assert.Equal(new[] { EasyFixes.FreeCable }, rig.Actions.Ran);
+        Assert.Equal("The master now runs in Equalizer APO.", rig.Flow.Note);
+        Assert.True(rig.Flow.Checks.Single(c => c.Id == "cable").IsDone);
         Assert.Equal(CheckState.Todo, rig.Flow.Checks.Single(c => c.Id == "create").State);
     }
 
     [Fact]
     public async Task Flow_AFixThatIsNoLongerOffered_IsNotRun()
     {
-        var rig = new Rig(EasyGoals.Better, new EasyFacts { ApoInstalled = false, SpeakersApoWhy = "x", MasterStoredGains = Bass });
+        var rig = new Rig(EasyGoals.Better, new EasyFacts { SpeakersApoWhy = "x", MasterStoredGains = Bass });
         rig.Flow.NextCommand.Execute(null);
+        rig.Flow.NextCommand.Execute(null);
+        rig.Facts = rig.Facts with { ApoInstalled = false }; // removed again after the Engine step let it through
+        rig.Flow.Reevaluate();
         var install = rig.Flow.Checks.Single(c => c.Id == "apo");
         rig.Facts = rig.Facts with { ApoInstalled = true }; // it got installed meanwhile
         await install.FixCommand.ExecuteAsync(null);
@@ -599,6 +590,7 @@ public class EasyFlowTests
     public void Flow_WhileThePcIsBeingLookedAt_NothingCanBeDone()
     {
         var rig = new Rig(EasyGoals.Better, new EasyFacts { Looking = true });
+        rig.Flow.NextCommand.Execute(null);
         rig.Flow.NextCommand.Execute(null);
         Assert.Equal("looking", rig.Flow.Checks.Single().Id);
         Assert.False(rig.Flow.CanNext);
@@ -611,6 +603,7 @@ public class EasyFlowTests
         var rig = new Rig(EasyGoals.Better, new EasyFacts { MasterStoredGains = Bass, MasterGains = Bass, MasterFxOn = true });
         rig.Flow.NextCommand.Execute(null);
         rig.Flow.NextCommand.Execute(null);
+        rig.Flow.NextCommand.Execute(null);
         Assert.True(rig.Flow.IsDone);
         rig.Flow.SetUpSomethingElseCommand.Execute(null);
         rig.Flow.GoToVolumeCommand.Execute(null);
@@ -621,7 +614,7 @@ public class EasyFlowTests
     public void Flow_TheMicrophoneSetupHasTwoQuestions_AndTheNameKeepsTheSuggestionWhenEmpty()
     {
         var rig = new Rig(EasyGoals.Microphone, new EasyFacts { Microphones = new[] { new EasyOption("m1", "Headset") } });
-        Assert.Equal(new[] { "Goal", "Microphone", "Look", "Setup", "Done" }, rig.Flow.Strip.Select(s => s.Title));
+        Assert.Equal(new[] { "Goal", "Microphone", "Look", "Engine", "Setup", "Done" }, rig.Flow.Strip.Select(s => s.Title));
         rig.Flow.Question!.Choices.Choose(rig.Flow.Question.Choices.Shown.Single());
         rig.Flow.NextCommand.Execute(null);
         Assert.True(rig.Flow.Question!.ShowsLooks);

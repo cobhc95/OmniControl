@@ -2,72 +2,41 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:OmniControl.App.Pages.Mouse"
              xmlns:pages="using:OmniControl.App.Pages"
+             xmlns:c="using:OmniControl.App.Controls"
              x:Class="OmniControl.App.Pages.Mouse.MousePage"
              x:DataType="vm:MousePageViewModel">
     <StackPanel Spacing="6">
         <StackPanel x:Name="CardsHost" Grid.IsSharedSizeScope="True">
-            <!-- The title line: the page's name, with the on/off switch as a half-width card beside it -->
-            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,6">
-                <TextBlock Text="{Binding Title}" Classes="title" VerticalAlignment="Center" />
-                <ListBox Grid.Column="1" Classes="rows compact" ItemsSource="{Binding Primary}" MinWidth="280" VerticalAlignment="Center" />
-            </Grid>
+            <!-- Mouse Buttons group: the Apps chip and the mouse layer picker sit on the title line, hidden with the rest while the group is collapsed -->
+            <pages:GroupCard Group="{Binding ButtonsGroup}">
+                <pages:GroupCard.Tools>
+                    <c:AppScopeChip DataContext="{Binding ButtonsScope}" />
+                    <c:PresetPicker DataContext="{Binding MouseLayer}" />
+                </pages:GroupCard.Tools>
+                <ListBox Classes="rows compact cards" ItemsSource="{Binding ButtonsGroup.Items}"></ListBox>
+            </pages:GroupCard>
 
-            <!-- Mouse Buttons group: the mouse layer picker sits on the title line, hidden with the rest while the group is collapsed -->
-            <Border Classes="groupPanel">
-                <StackPanel Spacing="6">
-                    <Grid ColumnDefinitions="*,Auto,Auto">
-                        <pages:GroupHeader x:DataType="pages:ItemGroup" DataContext="{Binding ButtonsGroup}" />
-                        <ComboBox Grid.Column="1" Classes="tool" Tag="grouptool" ItemsSource="{Binding MouseLayer.Options}" SelectedItem="{Binding MouseLayer.Selected}"
-                                  IsVisible="{Binding ButtonsGroup.IsExpanded}" VerticalAlignment="Center" Margin="8,0,0,0" />
-                        <Button Grid.Column="2" Classes="pill cog" Tag="scope" IsVisible="{Binding ButtonsGroup.IsExpanded}" VerticalAlignment="Center"
-                                Margin="6,0,0,0" Click="OnManageMouseLayers" ToolTip.Tip="Manage mouse layers: rename, switch to, clear">
-                            <PathIcon Data="{DynamicResource CogIcon}" Width="12" Height="12" />
-                        </Button>
-                    </Grid>
-                    <ListBox Classes="rows compact" ItemsSource="{Binding ButtonsGroup.Items}" IsVisible="{Binding ButtonsGroup.IsExpanded}">
-                        <ListBox.ItemsPanel><ItemsPanelTemplate><pages:HalfPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
-                    </ListBox>
-                </StackPanel>
-            </Border>
-
-            <!-- Trackpad group: the trackpad's own layer picker on the title line (same markup as Mouse Buttons), then the takeover switch,
+            <!-- Trackpad group: the trackpad's own layer picker on the title line (same markup as Mouse Buttons), then
                  Windows' touchpad settings and one card per gesture -->
-            <Border Classes="groupPanel">
-                <StackPanel Spacing="6">
-                    <Grid ColumnDefinitions="*,Auto,Auto">
-                        <pages:GroupHeader x:DataType="pages:ItemGroup" DataContext="{Binding TrackpadGroup}" />
-                        <ComboBox Grid.Column="1" Classes="tool" Tag="grouptool" ItemsSource="{Binding TrackpadLayer.Options}" SelectedItem="{Binding TrackpadLayer.Selected}"
-                                  IsVisible="{Binding TrackpadGroup.IsExpanded}" VerticalAlignment="Center" Margin="8,0,0,0" />
-                        <Button Grid.Column="2" Classes="pill cog" Tag="scope" IsVisible="{Binding TrackpadGroup.IsExpanded}" VerticalAlignment="Center"
-                                Margin="6,0,0,0" Click="OnManageTrackpadLayers" ToolTip.Tip="Manage trackpad layers: rename, switch to, clear">
-                            <PathIcon Data="{DynamicResource CogIcon}" Width="12" Height="12" />
-                        </Button>
-                    </Grid>
-                    <ListBox Classes="rows compact" ItemsSource="{Binding TrackpadGroup.Items}" IsVisible="{Binding TrackpadGroup.IsExpanded}">
-                        <ListBox.ItemsPanel><ItemsPanelTemplate><pages:HalfPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
-                    </ListBox>
-                </StackPanel>
-            </Border>
+            <pages:GroupCard Group="{Binding TrackpadGroup}">
+                <pages:GroupCard.Tools>
+                    <c:PresetPicker DataContext="{Binding TrackpadLayer}" />
+                </pages:GroupCard.Tools>
+                <ListBox Classes="rows compact cards" ItemsSource="{Binding TrackpadGroup.Items}"></ListBox>
+            </pages:GroupCard>
 
             <!-- Pointer settings: Windows' own mouse settings, changed live; the pointers of the scheme as an inner group; reset and restore last -->
-            <Border Classes="groupPanel">
-                <StackPanel Spacing="6">
-                    <pages:GroupHeader x:DataType="pages:ParentGroup" DataContext="{Binding PointerGroup}" />
-                    <StackPanel Spacing="4" IsVisible="{Binding PointerGroup.IsExpanded}">
-                        <ListBox Classes="rows compact" ItemsSource="{Binding PointerGroup.Items}">
-                            <ListBox.ItemsPanel><ItemsPanelTemplate><pages:HalfPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
-                        </ListBox>
-                        <ItemsControl ItemsSource="{Binding PointerGroup.Subgroups}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="pages:ItemGroup"><pages:SubgroupPanel /></DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <ListBox Classes="rows compact" ItemsSource="{Binding PointerFooter}">
-                            <ListBox.ItemsPanel><ItemsPanelTemplate><pages:HalfPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
-                        </ListBox>
-                    </StackPanel>
+            <pages:GroupCard Group="{Binding PointerGroup}">
+                <StackPanel Spacing="4">
+                    <ListBox Classes="rows compact cards" ItemsSource="{Binding PointerGroup.Items}"></ListBox>
+                    <ItemsControl ItemsSource="{Binding PointerGroup.Subgroups}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="pages:ItemGroup"><pages:SubgroupPanel /></DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <ListBox Classes="rows compact cards" ItemsSource="{Binding PointerFooter}"></ListBox>
                 </StackPanel>
-            </Border>
+            </pages:GroupCard>
 
         </StackPanel>
     </StackPanel>

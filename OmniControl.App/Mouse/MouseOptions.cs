@@ -1,3 +1,5 @@
+using OmniControl.App.Hotkeys;
+using OmniControl.App.Services;
 using OmniControl.Core.Engine.Mouse;
 
 namespace OmniControl.App.Mouse;
@@ -52,9 +54,29 @@ public static class MouseOptions
 
     // Run a program.
     public static readonly ActionOption Arguments = ActionOption.Text("args", "Arguments");
-    public static readonly ActionOption StartIn = ActionOption.Text("startin", "Start in folder");
+    public static readonly ActionOption StartIn = ActionOption.Path("startin", "Start in folder", PathKind.Folder);
+    // An app's "Open ..." action ("Open Spotify"): the program to start instead of the one found.
+    public static readonly ActionOption AppProgram = ActionOption.Path("path", "Program (empty: the one found)", PathKind.Program);
     public static readonly ActionOption WindowStyle = ActionOption.Choice("style", "Window", new[] { "Normal", "Minimised", "Maximised", "Hidden" });
     public static readonly ActionOption Administrator = ActionOption.Toggle("admin", "Run as administrator");
+
+    /// <summary>The settings of an action that starts a program the catalogue found (<see cref="HotkeyAction.RunLaunch"/>): its own choice of program, arguments and folder.</summary>
+    public static readonly IReadOnlyList<ActionOption> Launching = new[] { AppProgram, Arguments, StartIn };
+
+    /// <summary>What an input chose for a program-starting action.</summary>
+    public static LaunchSettings LaunchOf(OptionValues values) => new(values.Text(AppProgram), values.Text(Arguments), values.Text(StartIn));
+
+    // How far a level action (volume, brightness...) moves per press.
+    public static readonly ActionOption Step = ActionOption.Number("step", "Change by", HotkeyAction.DefaultStep, 1, 100, 1, " %");
+
+    // A power action's cancellable countdown, and whether shutting down closes programs that object.
+    public static readonly ActionOption Countdown = ActionOption.Number("countdown", "Countdown before it happens", (int)Timing.PowerCountdown.TotalSeconds,
+        Timing.PowerCountdownMinSeconds, Timing.PowerCountdownMaxSeconds, 5, " s");
+    public static readonly ActionOption ForceClose = ActionOption.Toggle("force", "Close programs that don't respond (unsaved work is lost)");
+
+    /// <summary>What an input chose for an OmniControl action: its program, how far it moves a level, its power countdown (each used only by the actions that take it).</summary>
+    public static RunSettings RunOf(OptionValues values) =>
+        new(LaunchOf(values), values.Int(Step), values.Int(Countdown), values.Bool(ForceClose));
 
     // Pointer speed.
     public static readonly ActionOption SlowSpeed = ActionOption.Number("speed", "Slow speed (1 slowest, 20 fastest)", 3, 1, 20);

@@ -1,3 +1,5 @@
+using OmniControl.App.AppLists;
+using OmniControl.App.Hotkeys;
 using System.Collections.ObjectModel;
 using OmniControl.App.Picker;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -96,11 +98,27 @@ public sealed partial class MouseButtonItem : ObservableObject, IEditorItem, IHa
         }
     }
 
-    public bool NeedsParameter => First?.Choice.ParamHint is not null;
+    /// <summary>The first action's text is a plain one (a shortcut): a text box.</summary>
+    public bool NeedsParameter => First?.Choice is { ParamHint: not null, ParamBrowse: null };
+
+    /// <summary>The first action's text is a path (a program, a file, a folder): the shared path field with Browse.</summary>
+    public bool NeedsPath => First?.Choice is { ParamHint: not null, ParamBrowse: not null };
+    public PathKind PathKind => First?.Choice.ParamBrowse ?? PathKind.File;
     public string Hint => First?.Choice.ParamHint ?? string.Empty;
 
-    /// <summary>True when the first action has settings (the card shows a cogwheel).</summary>
+    /// <summary>True when the first action has settings.</summary>
     public bool HasOptions => First?.HasOptions == true;
+
+    /// <summary>The card's own apps scope (its cogwheel's menu); null for a trackpad gesture, which has none.</summary>
+    public AppScopeModel? Scope { get; }
+
+    /// <summary>The card shows a cogwheel: its action has settings, or it can be limited to apps.</summary>
+    public bool ShowsCog => HasOptions || Scope is not null;
+
+    /// <summary>The tag under the card: its apps, shown only while they differ from the group's.</summary>
+    public bool ShowsScopeTag => Scope?.ShowsTag == true;
+
+    public string ScopeTagText => Scope?.Text ?? string.Empty;
 
     /// <summary>Every action's name, so search finds the card by any of them.</summary>
     public string SearchWords => string.Join(" ", Slots.Select(s => s.Name));
@@ -109,9 +127,16 @@ public sealed partial class MouseButtonItem : ObservableObject, IEditorItem, IHa
     /// <param name="laterChoices">The list for the second and later actions (one-shot only).</param>
     /// <param name="read">The stored actions of this input right now, in order.</param>
     /// <param name="write">Stores the actions in order.</param>
+    /// <param name="scope">The card's apps scope, or null when the card has none.</param>
     public MouseButtonItem(MouseButton button, string label, Func<IReadOnlyList<PickChoice>> firstChoices, Func<IReadOnlyList<PickChoice>> laterChoices,
-        Func<IReadOnlyList<string>> read, Action<IReadOnlyList<string>> write)
+        Func<IReadOnlyList<string>> read, Action<IReadOnlyList<string>> write, AppScopeModel? scope = null)
     {
+        Scope = scope;
+        if (scope is not null) scope.PropertyChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(ShowsScopeTag));
+            OnPropertyChanged(nameof(ScopeTagText));
+        };
         Button = button;
         Label = label;
         _firstSource = firstChoices;
@@ -132,6 +157,7 @@ public sealed partial class MouseButtonItem : ObservableObject, IEditorItem, IHa
     {
         _first = _firstSource();
         _later = _laterSource();
+        Scope?.Refresh();
         var stored = _read();
         while (Slots.Count > stored.Count) RemoveChip(Slots.Count - 1);
         for (var i = 0; i < stored.Count; i++)
@@ -179,8 +205,11 @@ public sealed partial class MouseButtonItem : ObservableObject, IEditorItem, IHa
         OnPropertyChanged(nameof(IsCustom));
         OnPropertyChanged(nameof(Parameter));
         OnPropertyChanged(nameof(NeedsParameter));
+        OnPropertyChanged(nameof(NeedsPath));
+        OnPropertyChanged(nameof(PathKind));
         OnPropertyChanged(nameof(Hint));
         OnPropertyChanged(nameof(HasOptions));
+        OnPropertyChanged(nameof(ShowsCog));
         OnPropertyChanged(nameof(ShowsWindowsAlso));
         OnPropertyChanged(nameof(ShowsWindowsProblem));
     }
@@ -200,19 +229,16 @@ public sealed partial class MouseButtonItem : ObservableObject, IEditorItem, IHa
 
     public void Pick(PickResult pick) => PickSlot(0, pick);
 
-    /// <summary>A chip's picker: opens on its settings with Back to the list (or on the list when it has none).</summary>
+    /// <summary>A chip's picker: opens on its action, with its settings beside the list.</summary>
     private PickerModel SlotMenu(int index, bool startInSettings)
     {
         var slot = Slots[index];
-        return new PickerModel(PickChoice.Group(ListFor(index)), slot.Choice, slot.Values, startInSettings, slot.Parameter, backToList: true)
-        {
-            AskSettingsFirst = index > 0,
-        };
+        return new PickerModel(PickChoice.Group(ListFor(index)), slot.Choice, slot.Values, startInSettings, slot.Parameter);
     }
 
     /// <summary>The add chip's picker: the one-shot list (or the full list while the input has no action), asking for an action's text first.</summary>
     private PickerModel NewMenu() =>
-        new(PickChoice.Group(ListFor(Slots.Count)), null, new Dictionary<string, string>()) { AskSettingsFirst = true };
+        new(PickChoice.Group(ListFor(Slots.Count)), null, new Dictionary<string, string>());
 
     /// <summary>Takes a pick for the action at <paramref name="index"/> (a new last one when it is the count). Default as the first action clears the card.</summary>
     private void PickSlot(int index, PickResult pick)

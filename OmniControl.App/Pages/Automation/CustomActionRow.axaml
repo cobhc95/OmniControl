@@ -1,0 +1,25 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Pages.Automation"
+             xmlns:c="using:OmniControl.App.Controls"
+             x:Class="OmniControl.App.Pages.Automation.CustomActionRow"
+             x:DataType="vm:CustomActionItem">
+    <!-- One custom action on two lines: name, type, Run and delete; then its target (a command, a file, a program, a folder or an
+         address) and, for a script or program, its arguments. Changes apply when a box is left. -->
+    <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="4" Margin="0,2,0,4">
+        <TextBox Classes="field" Text="{Binding Name, UpdateSourceTrigger=LostFocus}" Watermark="Name" MinWidth="120" />
+        <ComboBox Grid.Column="1" Classes="choice half" ItemsSource="{Binding KindNames}" SelectedItem="{Binding KindName}" />
+        <Button Grid.Column="2" Classes="pill" Content="Run" Click="OnRunClick" ToolTip.Tip="Run it once now, as you (never as administrator)" />
+        <Button Grid.Column="3" Classes="pill glyph" Click="OnDeleteClick" ToolTip.Tip="Delete">
+            <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+        </Button>
+
+        <DockPanel Grid.Row="1" Grid.ColumnSpan="4" LastChildFill="True">
+            <TextBox DockPanel.Dock="Right" Classes="field" Text="{Binding Arguments, UpdateSourceTrigger=LostFocus}" Watermark="Arguments"
+                     IsVisible="{Binding ShowsArguments}" MinWidth="160" MaxWidth="260" Margin="8,0,0,0" />
+            <TextBox Classes="field" Text="{Binding Target, UpdateSourceTrigger=LostFocus}" Watermark="{Binding TargetHint}" IsVisible="{Binding !TakesPath}" />
+            <c:PathField Text="{Binding Target}" Kind="{Binding TargetPathKind}" Hint="{Binding TargetHint}" PickerTitle="Choose what to open"
+                         IsVisible="{Binding TakesPath}" />
+        </DockPanel>
+    </Grid>
+</UserControl>

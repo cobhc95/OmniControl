@@ -1,3 +1,5 @@
+using OmniControl.App.Hotkeys;
+
 namespace OmniControl.App.Mouse;
 
 /// <summary>
@@ -22,14 +24,14 @@ public sealed class MouseAction
     public static MouseAction Parse(string stored)
     {
         var bar = stored.IndexOf(OptionsSeparator);
-        var (id, param) = MouseActionCatalog.Split(bar < 0 ? stored : stored[..bar]);
+        var (id, param) = MouseActionCatalog.Split(MouseActionCatalog.Migrated(bar < 0 ? stored : stored[..bar]));
         return new MouseAction(id, param, bar < 0 ? OptionValues.None : new OptionValues(ParseValues(stored[(bar + 1)..])));
     }
 
     /// <summary>An action kept as its "id:parameter" text and its option values apart (as a gesture stores it).</summary>
     public static MouseAction From(string action, IReadOnlyDictionary<string, string> values)
     {
-        var (id, param) = MouseActionCatalog.Split(action);
+        var (id, param) = MouseActionCatalog.Split(MouseActionCatalog.Migrated(action));
         return new MouseAction(id, param, new OptionValues(new Dictionary<string, string>(values)));
     }
 
@@ -37,7 +39,7 @@ public sealed class MouseAction
     public static (string Action, Dictionary<string, string> Values) Split(string stored)
     {
         var bar = stored.IndexOf(OptionsSeparator);
-        return bar < 0 ? (stored, new Dictionary<string, string>()) : (stored[..bar], ParseValues(stored[(bar + 1)..]));
+        return bar < 0 ? (MouseActionCatalog.Migrated(stored), new Dictionary<string, string>()) : (MouseActionCatalog.Migrated(stored[..bar]), ParseValues(stored[(bar + 1)..]));
     }
 
     /// <summary>The stored text for an action with these option values; values that are the default are left out.</summary>

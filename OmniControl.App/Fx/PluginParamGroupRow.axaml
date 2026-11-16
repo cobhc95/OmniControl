@@ -7,7 +7,7 @@
     <!-- One card of a plug-in's plain settings list: the plug-in's group name, then one row per setting: name, slider, the plug-in's
          own value text (double-click to type a value in the setting's units). Labels share the editor label column. -->
     <StackPanel Spacing="2" Margin="0,2">
-        <TextBlock Text="{Binding Name}" IsVisible="{Binding HasName}" FontWeight="SemiBold" TextWrapping="Wrap" />
+        <TextBlock Classes="strong" Text="{Binding Name}" IsVisible="{Binding HasName}" TextWrapping="Wrap" />
         <ItemsControl ItemsSource="{Binding Items}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="vm:PluginParamItem">

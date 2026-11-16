@@ -1,4 +1,4 @@
-﻿using System.Text.RegularExpressions;
+using System.Text.RegularExpressions;
 using OmniControl.App.Services;
 
 namespace OmniControl.App.Audio;
@@ -20,16 +20,18 @@ public sealed class AppAudioEntry
 
     /// <summary>
     /// Where the program plays: endpoint ids and combined devices (<see cref="CombinedDevice.KeyPrefix"/>); empty = it follows the
-    /// master (Windows' default device, or the master bus in Full control).
+    /// master (Windows' default device, or the master bus).
     /// </summary>
     public List<string> PlaysOn { get; set; } = new();
 
     /// <summary>The effects are switched on.</summary>
     public bool FxOn { get; set; }
+    /// <summary>The user switched the effects off themselves, so adding an effect does not switch them back on (<see cref="MixerService.EffectsAdded"/>).</summary>
+    public bool FxUserOff { get; set; }
     public List<FxSlot> Fx { get; set; } = new();
 
     /// <summary>
-    /// How the effects run in Full control (<see cref="SoundModes.ProgramRoutes"/> id): empty = Automatic (a free cable, else recording;
+    /// How the effects run (<see cref="EffectsRules.ProgramRoutes"/> id): empty = Automatic (a free cable, else recording;
     /// files written before the choice existed load as Automatic), "cable" or "capture".
     /// </summary>
     public string FxRoute { get; set; } = string.Empty;
@@ -63,46 +65,36 @@ public sealed class MixerSettings
 {
     public List<AppAudioEntry> Apps { get; set; } = new();
     public bool MasterFxOn { get; set; }
+    /// <summary>The user switched the effects off themselves, so adding an effect does not switch them back on (<see cref="MixerService.EffectsAdded"/>).</summary>
+    public bool MasterFxUserOff { get; set; }
     public List<FxSlot> MasterFx { get; set; } = new();
 
-    /// <summary>The sound mode (<see cref="SoundModes"/> id); empty in files written before modes were global (MixerMigration fills it).</summary>
-    public string SoundMode { get; set; } = string.Empty;
-
-    /// <summary>The master's devices when it plays on more than one (Full control); otherwise it plays on Windows' default device.</summary>
+    /// <summary>The master's devices when it plays on more than one; otherwise it plays on Windows' default device.</summary>
     public List<string> MasterPlaysOn { get; set; } = new();
 
     /// <summary>
-    /// The real playback device (endpoint id) the master plays on in Full control, where Windows' default device is the master bus's
-    /// cable; it is the one Windows' default was when Full control started, or the one chosen since. Empty = none remembered yet.
+    /// The real playback device (endpoint id) the master plays on, where Windows' default device is the master bus's
+    /// cable; it is the one Windows' default was when the master bus started, or the one chosen since. Empty = none remembered yet.
     /// </summary>
     public string RealMasterDevice { get; set; } = string.Empty;
 
     /// <summary>
     /// The virtual cable (endpoint id) OmniControl made Windows' default playback device for the master bus, to be put back to
-    /// <see cref="RealMasterDevice"/> when Full control ends; empty = OmniControl changed nothing. Kept in the file so a crash is
+    /// <see cref="RealMasterDevice"/> when the master bus ends; empty = OmniControl changed nothing. Kept in the file so a crash is
     /// repaired at the next start.
     /// </summary>
     public string BusCable { get; set; } = string.Empty;
 
     /// <summary>
-    /// How the master runs in Full control (<see cref="SoundModes.MasterRoutes"/> id): empty = Automatic (files written before the choice
-    /// existed load as Automatic), "bus" = the cable bus, "apo" = Equalizer APO on the speakers. Fast mode always uses Equalizer APO.
+    /// How the master runs (<see cref="EffectsRules.MasterRoutes"/> id): empty = Automatic (files written before the choice
+    /// existed load as Automatic), "bus" = the cable bus, "apo" = Equalizer APO on the speakers.
     /// </summary>
     public string MasterMethod { get; set; } = string.Empty;
-
-    /// <summary>
-    /// The Full control setup (a numbered row of the help table, <see cref="SoundModes.HelpCombinations"/>) to restore when Full control
-    /// is chosen again; 0 = none yet (<see cref="SoundModes.DefaultFullSetup"/>). Files without it load as 0.
-    /// </summary>
-    public int FullSetup { get; set; }
-
-    /// <summary>Cables (<see cref="Core.Engine.FoundCable.Id"/>) that setup 5 switched off to keep them free; choosing another setup switches them on again. Also in <see cref="ForbiddenCables"/>.</summary>
-    public List<string> FreedCables { get; set; } = new();
 
     /// <summary>Last known names of devices by endpoint id, so a "plays on" list can name a device that is unplugged now.</summary>
     public Dictionary<string, string> DeviceNames { get; set; } = new();
 
-    /// <summary>Devices the user combined (Full control).</summary>
+    /// <summary>Devices the user combined.</summary>
     public List<CombinedDevice> Combined { get; set; } = new();
 
     // Read only to convert older files (MixerMigration); written back empty.
@@ -128,11 +120,11 @@ public sealed class MixerSettings
     public List<EqBand>? MasterEqBands { get; set; }
     public int[]? MasterEqGains { get; set; }
 
-    private const string FileName = "mixer.json";
+    private static readonly DataStore Store = DataStores.Mixer;
 
     public static MixerSettings Load()
     {
-        var s = AppDataStore.Load<MixerSettings>(FileName) ?? new();
+        var s = AppDataStore.Load<MixerSettings>(Store) ?? new();
         if (s.MasterFx.Count == 0 && ConvertLegacy(s.MasterEqBands, s.MasterEqGains) is { } master)
         {
             s.MasterFx.Add(master);
@@ -195,7 +187,7 @@ public sealed class MixerSettings
         return slot;
     }
 
-    public void Save() => AppDataStore.Save(FileName, this);
+    public void Save() => AppDataStore.Save(Store, this);
 }
 
 /// <summary>What OmniControl remembers about one recording device's FX chain.</summary>
@@ -204,8 +196,10 @@ public sealed class InputFxEntry
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public bool FxOn { get; set; }
+    /// <summary>The user switched the effects off themselves, so adding an effect does not switch them back on (<see cref="MixerService.EffectsAdded"/>).</summary>
+    public bool FxUserOff { get; set; }
     public List<FxSlot> Fx { get; set; } = new();
 
-    /// <summary>The cable its processed sound last went to (Full control), so apps that picked that cable keep finding it; empty = none yet.</summary>
+    /// <summary>The cable its processed sound last went to so apps that picked that cable keep finding it; empty = none yet.</summary>
     public string Cable { get; set; } = string.Empty;
 }

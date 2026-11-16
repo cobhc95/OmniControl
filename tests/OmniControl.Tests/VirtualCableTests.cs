@@ -9,7 +9,7 @@ namespace OmniControl.Tests;
 
 /// <summary>
 /// Virtual cables of any maker: detection and pairing (<see cref="VirtualCables.Scan"/>), the user's switches and marked pairs
-/// (<see cref="VirtualCables.Usable"/>, as <see cref="SoundModeService"/> applies them), and the planner giving out only allowed cables:
+/// (<see cref="VirtualCables.Usable"/>, as <see cref="EffectsSupportService"/> applies them), and the planner giving out only allowed cables:
 /// the master bus the first, programs the others, "No free cable" when none is left.
 /// </summary>
 public class VirtualCableTests(ITestOutputHelper output)
@@ -44,7 +44,7 @@ public class VirtualCableTests(ITestOutputHelper output)
     private RoutePlan Plan(AudioEffectsSupport support, IReadOnlyList<AudioDevice> playback, IReadOnlyList<AudioDevice> recording,
         MixerSettings s, params string[] sounding)
     {
-        var plan = RoutePlanner.Make(new PlanInput(SoundModes.Full, support, true, s, sounding.ToHashSet(), sounding.ToHashSet(), None,
+        var plan = RoutePlanner.Make(new PlanInput(support, true, s, sounding.ToHashSet(), sounding.ToHashSet(), None,
             playback, recording, None));
         output.WriteLine(PlanPrinter.Print(plan));
         return plan;
@@ -63,7 +63,7 @@ public class VirtualCableTests(ITestOutputHelper output)
         Assert.Equal("CABLE", cable.Name);
         Assert.Equal("VB-Audio", cable.Maker);
         Assert.Equal(new[] { OwnerPc.Cable16, OwnerPc.CableInput }.Order(), cable.Inputs.Select(c => c.PlaybackId).Order());
-        Assert.Equal(1, SoundModes.AllowedPairs(Support(OwnerPc.Playback, OwnerPc.Recording)));
+        Assert.Equal(1, EffectsRules.AllowedPairs(Support(OwnerPc.Playback, OwnerPc.Recording)));
     }
 
     /// <summary>Three makers' cables are three pairs; the real speaker, Stereo Mix and the microphone are never taken.</summary>
@@ -77,7 +77,7 @@ public class VirtualCableTests(ITestOutputHelper output)
         Assert.DoesNotContain(OwnerPc.Speaker, ends);
         Assert.DoesNotContain(OwnerPc.StereoMix, ends);
         Assert.DoesNotContain(OwnerPc.MicArray, ends);
-        Assert.Equal(3, SoundModes.AllowedPairs(Support(ThreeMakersPlayback, ThreeMakersRecording)));
+        Assert.Equal(3, EffectsRules.AllowedPairs(Support(ThreeMakersPlayback, ThreeMakersRecording)));
     }
 
     /// <summary>Voicemeeter's input alone: listed as a mixer with one end, never a usable cable.</summary>
@@ -103,7 +103,7 @@ public class VirtualCableTests(ITestOutputHelper output)
         var support = Support(OwnerPc.Playback, OwnerPc.Recording.Where(r => r.Id != OwnerPc.CableOutput).ToArray());
         Assert.Empty(support.Cables);
         Assert.All(support.Found, f => Assert.Equal(CableEnds.InputOnly, f.Ends));
-        Assert.Equal(SoundModes.NeedsCable, SoundModes.CablesMissing(support));
+        Assert.Equal(EffectsRules.NeedsCable, EffectsRules.CablesMissing(support));
     }
 
     /// <summary>A pair the user marked by hand is a cable like any other: listed, usable, given out; unknown devices are never guessed.</summary>
@@ -166,13 +166,13 @@ public class VirtualCableTests(ITestOutputHelper output)
     public void NoFreeCable_WhenEveryAllowedCableIsInUse()
     {
         var s = OwnerPc.Settings();
-        s.Apps.First(a => a.Key == OwnerPc.Spotify).FxRoute = SoundModes.RouteCable.Id;
+        s.Apps.First(a => a.Key == OwnerPc.Spotify).FxRoute = EffectsRules.RouteCable.Id;
         var support = Support(ThreeMakersPlayback, ThreeMakersRecording, forbidden: new HashSet<string> { HiFiOut, LineOut });
         var plan = Plan(support, ThreeMakersPlayback, ThreeMakersRecording, s, OwnerPc.Spotify);
         Assert.Equal(OwnerPc.CableInput, plan.Runs[MixerService.MasterKey].Cable);
         Assert.False(plan.Runs.ContainsKey(OwnerPc.Spotify));
         Assert.Equal(StatusKind.NoFreeCable, plan.Blocked[OwnerPc.Spotify].Kind);
-        Assert.Equal("No free cable", SoundModes.Brief(plan.Blocked[OwnerPc.Spotify].Kind));
+        Assert.Equal("No free cable", EffectsRules.Brief(plan.Blocked[OwnerPc.Spotify].Kind));
     }
 
     /// <summary>Every cable switched off: nothing takes one and the status says so (not "Needs VB-CABLE": it is installed).</summary>
@@ -183,8 +183,8 @@ public class VirtualCableTests(ITestOutputHelper output)
         var plan = Plan(support, OwnerPc.Playback, OwnerPc.Recording, OwnerPc.Settings(), OwnerPc.Spotify);
         Assert.Empty(plan.CablesInUse);
         Assert.Equal(StatusKind.CablesOff, plan.Blocked[MixerService.MasterKey].Kind);
-        Assert.Equal(SoundModes.CablesOff, SoundModes.CablesMissing(support));
-        Assert.True(SoundModes.CableInstalled(support));
+        Assert.Equal(EffectsRules.CablesOff, EffectsRules.CablesMissing(support));
+        Assert.True(EffectsRules.CableInstalled(support));
     }
 
     /// <summary>A mixer.json written before cables could be switched off or marked loads unchanged: every cable allowed, none marked.</summary>

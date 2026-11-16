@@ -5,8 +5,8 @@ using OmniControl.App.Services;
 namespace OmniControl.Tests;
 
 /// <summary>
-/// The short words a Mixer row, the Wiring tab and the footer use for the effects engine (<see cref="SoundModes.Brief"/>), the steady
-/// delay figure (<see cref="StableDelay"/>), the Method menu's enabled and disabled entries (<see cref="SoundModes.OfferOf"/>), the
+/// The short words a Mixer row, the Wiring tab and the footer use for the effects engine (<see cref="EffectsRules.Brief"/>), the steady
+/// delay figure (<see cref="StableDelay"/>), the Method menu's enabled and disabled entries (<see cref="EffectsRules.OfferOf"/>), the
 /// footer's two sizes of message and the planner's answer for a program set to Virtual cable.
 /// </summary>
 public class StatusWordsTests
@@ -85,7 +85,7 @@ public class StatusWordsTests
     [InlineData(StatusKind.Stopped, RunMethod.None, null, "Engine stopped")]
     public void Brief_IsShortAndNamesTheRealMethod(StatusKind kind, RunMethod method, int? delay, string expected)
     {
-        Assert.Equal(expected, SoundModes.Brief(kind, method, delay));
+        Assert.Equal(expected, EffectsRules.Brief(kind, method, delay));
     }
 
     [Fact]
@@ -94,7 +94,7 @@ public class StatusWordsTests
         foreach (var kind in Enum.GetValues<StatusKind>())
             foreach (var method in Enum.GetValues<RunMethod>())
             {
-                var text = SoundModes.Brief(kind, method, 70);
+                var text = EffectsRules.Brief(kind, method, 70);
                 Assert.DoesNotContain('\n', text);
                 Assert.DoesNotContain("about", text, StringComparison.OrdinalIgnoreCase);
                 Assert.DoesNotContain("delay", text, StringComparison.OrdinalIgnoreCase);
@@ -116,8 +116,9 @@ public class StatusWordsTests
     [Fact]
     public void TheTooltip_HoldsTheFullLine_AndWhatToDoNext()
     {
-        var status = new EngineStatus(EngineState.Unavailable, $"{SoundModes.NeedsAnotherCable}. Playing without effects.", null, StatusKind.NoFreeCable);
-        var tip = status.TipFor(SoundModes.Full, SoundModes.Full.Program);
+        var status = new EngineStatus(EngineState.Unavailable, $"{EffectsRules.NeedsAnotherCable}. Playing without effects.", null, StatusKind.NoFreeCable);
+        var tip = status.TipFor(EffectsRules.MethodFor("app"));
+        Assert.StartsWith(status.Text, tip);
         Assert.Contains("Playing without effects", tip);
         Assert.Contains("Use Recording", tip);
     }
@@ -127,7 +128,7 @@ public class StatusWordsTests
     [Fact]
     public void TestPassed_IsOneShortLine_WithTheFullSentenceBehindIt()
     {
-        var outcome = SoundModes.TestPassed(70, SilenceMethod.Quiet, 1, string.Empty);
+        var outcome = EffectsRules.TestPassed(70, SilenceMethod.Quiet, 1, string.Empty);
         Assert.Equal("Test passed · 70 ms", outcome.Brief);
         Assert.StartsWith("It works on this PC", outcome.Full);
         Assert.Contains("Effects that ran: 1", outcome.Full);
@@ -136,11 +137,11 @@ public class StatusWordsTests
     [Fact]
     public void TestFailed_IsOneShortLine()
     {
-        Assert.Equal("Test failed · went silent", SoundModes.TestWentSilent("Spotify").Brief);
+        Assert.Equal("Test failed · went silent", EffectsRules.TestWentSilent("Spotify").Brief);
         foreach (var outcome in new[]
                  {
-                     SoundModes.TestNotListed(), SoundModes.TestNotPlaying("Spotify"), SoundModes.TestCannotRecord("Spotify", "no"),
-                     SoundModes.TestHeardNothing("Spotify"), SoundModes.TestRunning(), SoundModes.TestAlreadyRunning(),
+                     EffectsRules.TestNotListed(), EffectsRules.TestNotPlaying("Spotify"), EffectsRules.TestCannotRecord("Spotify", "no"),
+                     EffectsRules.TestHeardNothing("Spotify"), EffectsRules.TestRunning(), EffectsRules.TestAlreadyRunning(),
                  })
         {
             Assert.True(outcome.Brief.Length <= 30, outcome.Brief);
@@ -167,7 +168,7 @@ public class StatusWordsTests
     [Fact]
     public void VirtualCable_IsDisabled_WhenNoCablePairIsInstalled()
     {
-        var offer = SoundModes.OfferOf(SoundModes.RouteCable, Facts(0, false, false));
+        var offer = EffectsRules.OfferOf(EffectsRules.RouteCable, Facts(0, false, false));
         Assert.False(offer.Available);
         Assert.Equal("Not available: no cable pair installed", offer.Description);
         Assert.Contains("no cable pair installed", offer.Tip);
@@ -176,7 +177,7 @@ public class StatusWordsTests
     [Fact]
     public void VirtualCable_IsDisabled_WhenTheMasterBusHoldsTheOnlyPair()
     {
-        var offer = SoundModes.OfferOf(SoundModes.RouteCable, Facts(1, false, true));
+        var offer = EffectsRules.OfferOf(EffectsRules.RouteCable, Facts(1, false, true));
         Assert.False(offer.Available);
         Assert.Equal("Not available: the master bus uses the cable", offer.Description);
     }
@@ -184,17 +185,17 @@ public class StatusWordsTests
     [Fact]
     public void VirtualCable_IsDisabled_WhenEveryPairIsInUse_AndEnabledWhenOneIsFree()
     {
-        Assert.Equal("Not available: every cable pair is in use", SoundModes.OfferOf(SoundModes.RouteCable, Facts(2, false, true)).Description);
-        var free = SoundModes.OfferOf(SoundModes.RouteCable, Facts(2, true, true));
+        Assert.Equal("Not available: every cable pair is in use", EffectsRules.OfferOf(EffectsRules.RouteCable, Facts(2, false, true)).Description);
+        var free = EffectsRules.OfferOf(EffectsRules.RouteCable, Facts(2, true, true));
         Assert.True(free.Available);
-        Assert.Equal(SoundModes.RouteCable.Description, free.Description);
+        Assert.Equal(EffectsRules.RouteCable.Description, free.Description);
     }
 
     [Fact]
     public void Recording_IsDisabledOnlyWhenItIsImpossibleOnThisPc()
     {
-        Assert.True(SoundModes.OfferOf(SoundModes.RouteCapture, Facts(0, false, false)).Available);
-        var offer = SoundModes.OfferOf(SoundModes.RouteCapture, Facts(1, true, false, "Needs Windows 10 version 2004 or later"));
+        Assert.True(EffectsRules.OfferOf(EffectsRules.RouteCapture, Facts(0, false, false)).Available);
+        var offer = EffectsRules.OfferOf(EffectsRules.RouteCapture, Facts(1, true, false, "Needs Windows 10 version 2004 or later"));
         Assert.False(offer.Available);
         Assert.Equal("Not available: needs Windows 10 version 2004 or later", offer.Description);
     }
@@ -202,24 +203,24 @@ public class StatusWordsTests
     [Fact]
     public void Automatic_IsAlwaysAvailable_AndSaysWhatItUsesNow()
     {
-        Assert.Equal("Currently: recording", SoundModes.OfferOf(SoundModes.RouteAutomatic, Facts(1, false, true, current: RunMethod.Recording)).Description);
-        Assert.Equal("Currently: cable", SoundModes.OfferOf(SoundModes.RouteAutomatic, Facts(2, true, true, current: RunMethod.Cable)).Description);
-        var idle = SoundModes.OfferOf(SoundModes.RouteAutomatic, Facts(0, false, false));
+        Assert.Equal("Currently: recording", EffectsRules.OfferOf(EffectsRules.RouteAutomatic, Facts(1, false, true, current: RunMethod.Recording)).Description);
+        Assert.Equal("Currently: cable", EffectsRules.OfferOf(EffectsRules.RouteAutomatic, Facts(2, true, true, current: RunMethod.Cable)).Description);
+        var idle = EffectsRules.OfferOf(EffectsRules.RouteAutomatic, Facts(0, false, false));
         Assert.True(idle.Available);
-        Assert.Equal(SoundModes.RouteAutomatic.Description, idle.Description);
+        Assert.Equal(EffectsRules.RouteAutomatic.Description, idle.Description);
     }
 
     [Fact]
     public void ADisabledCard_CannotBePicked()
     {
         EffectsRoute? picked = null;
-        var card = new OmniControl.App.Pages.Volume.RouteCard(SoundModes.RouteCable, r => picked = r);
-        card.Sync(false, SoundModes.OfferOf(SoundModes.RouteCable, Facts(1, false, true)));
+        var card = new OmniControl.App.Pages.Volume.RouteCard(EffectsRules.RouteCable, r => picked = r);
+        card.Sync(false, EffectsRules.OfferOf(EffectsRules.RouteCable, Facts(1, false, true)));
         card.PickCommand.Execute(null);
         Assert.Null(picked);
-        card.Sync(false, SoundModes.OfferOf(SoundModes.RouteCable, Facts(2, true, false)));
+        card.Sync(false, EffectsRules.OfferOf(EffectsRules.RouteCable, Facts(2, true, false)));
         card.PickCommand.Execute(null);
-        Assert.Equal(SoundModes.RouteCable, picked);
+        Assert.Equal(EffectsRules.RouteCable, picked);
     }
 
     [Fact]
@@ -227,10 +228,10 @@ public class StatusWordsTests
     {
         EffectsRoute? picked = null;
         var choice = OmniControl.App.Pages.Volume.RouteChoice.ForProgram(r => picked = r, () => { });
-        choice.SyncProgram(SoundModes.RouteCable, Facts(1, false, true));
+        choice.SyncProgram(EffectsRules.RouteCable, Facts(1, false, true));
         Assert.True(choice.RecordingAvailable);
         choice.UseRecording!.Command.Execute(null);
-        Assert.Equal(SoundModes.RouteCapture, picked);
+        Assert.Equal(EffectsRules.RouteCapture, picked);
     }
 
     // ---- the planner: a program set to Virtual cable with no free cable is said so at once, silent or not ----
@@ -239,10 +240,10 @@ public class StatusWordsTests
     public void Planner_ProgramOnVirtualCable_WithNoFreePair_SaysNoFreeCable_EvenWhileSilent()
     {
         var s = OwnerPc.Settings();
-        s.Apps.First(a => a.Key == OwnerPc.Spotify).FxRoute = SoundModes.RouteCable.Id;
+        s.Apps.First(a => a.Key == OwnerPc.Spotify).FxRoute = EffectsRules.RouteCable.Id;
         var playing = new HashSet<string> { OwnerPc.Spotify };
         var none = new HashSet<string>();
-        var plan = RoutePlanner.Make(new PlanInput(SoundModes.Full, OwnerPc.Support, true, s, playing, none, none, OwnerPc.Playback,
+        var plan = RoutePlanner.Make(new PlanInput(OwnerPc.Support, true, s, playing, none, none, OwnerPc.Playback,
             OwnerPc.Recording, none));
         var status = plan.Blocked[OwnerPc.Spotify];
         Assert.Equal(EngineState.Unavailable, status.State);

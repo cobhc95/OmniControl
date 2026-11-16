@@ -28,7 +28,7 @@ public sealed partial class MixerService
         MasterDeviceChanged?.Invoke();
     }
 
-    /// <summary>The real device the master bus plays on (the Wiring tab's choice in Full control); Windows' default stays the cable.</summary>
+    /// <summary>The real device the master bus plays on (the Wiring tab's choice); Windows' default stays the cable.</summary>
     public void SetRealMasterDevice(string deviceId)
     {
         if (Settings.RealMasterDevice == deviceId) return;

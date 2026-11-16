@@ -4,7 +4,7 @@ using OmniControl.Core.Engine;
 namespace OmniControl.App.Audio.Engine;
 
 /// <summary>
-/// The master bus (Full control): the cable is recorded, the master chain runs and the result plays on the master's devices (one or
+/// The master bus: the cable is recorded, the master chain runs and the result plays on the master's devices (one or
 /// several). The cable is Windows' default playback device (<see cref="BusDefault"/>), so system sounds and every program that
 /// follows the default arrive there; programs that follow the master are also sent to the cable by per-program routing (each
 /// journaled before it moves), which holds them there when they picked their device themselves. Stopping routes every program back

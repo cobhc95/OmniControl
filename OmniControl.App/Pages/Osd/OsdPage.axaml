@@ -6,27 +6,15 @@
              x:DataType="vm:OsdPageViewModel">
     <StackPanel Spacing="6">
         <StackPanel x:Name="CardsHost" Grid.IsSharedSizeScope="True">
-            <ListBox Classes="rows compact" ItemsSource="{Binding Primary}">
-                <ListBox.ItemsPanel><ItemsPanelTemplate><pages:HalfPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
-            </ListBox>
+            <ListBox Classes="rows compact cards" ItemsSource="{Binding Primary}"></ListBox>
 
-            <Border Classes="groupPanel" x:DataType="pages:ItemGroup" DataContext="{Binding Customize}">
-                <StackPanel Spacing="6">
-                    <pages:GroupHeader />
-                    <ListBox Classes="rows compact" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}">
-                        <ListBox.ItemsPanel><ItemsPanelTemplate><pages:HalfPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
-                    </ListBox>
-                </StackPanel>
-            </Border>
+            <pages:GroupCard Group="{Binding Customize}">
+                <ListBox Classes="rows compact cards" ItemsSource="{Binding Customize.Items}"></ListBox>
+            </pages:GroupCard>
 
-            <Border Classes="groupPanel" x:DataType="pages:ItemGroup" DataContext="{Binding Elements}">
-                <StackPanel Spacing="6">
-                    <pages:GroupHeader />
-                    <ListBox Classes="rows compact" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}">
-                        <ListBox.ItemsPanel><ItemsPanelTemplate><pages:HalfPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
-                    </ListBox>
-                </StackPanel>
-            </Border>
+            <pages:GroupCard Group="{Binding Elements}">
+                <ListBox Classes="rows compact cards" ItemsSource="{Binding Elements.Items}"></ListBox>
+            </pages:GroupCard>
 
         </StackPanel>
     </StackPanel>
