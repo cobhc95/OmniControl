@@ -7,10 +7,10 @@ internal static class AppInfo
 {
     public const string Name = "OmniControl";
 
-    /// <summary>The version as written in the project file, without any build suffix ("0.1").</summary>
+    /// <summary>The version as written in the project file, without any build suffix.</summary>
     public static string Version { get; } = ReadVersion();
 
-    /// <summary>"Version: 0.1", for the sidebar and anywhere a short label is wanted.</summary>
+    /// <summary>"Version: x.y.z", for the sidebar and anywhere a short label is wanted.</summary>
     public static string VersionText => $"Version: {Version}";
 
     /// <summary>"OmniControl 0.1", for window titles.</summary>

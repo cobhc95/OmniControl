@@ -3468,7 +3468,7 @@ No control, size, style or layout changed; no behaviour changed. About 55 string
 
 
 ## Version line and App settings pill (14 Nov)
-- The version has one master: `<Version>0.1</Version>` in `OmniControl.App.csproj`, read by `Services/AppInfo.cs`. The sidebar's grey line under the title shows `AppInfo.VersionText` ("Version: 0.1"); the About window title uses `AppInfo.NameAndVersion`. `AppInfoTests` scans the app's source for the version in a string. A setup or installer should read the same project property.
+- The version has one master: `<Version>` in `OmniControl.App.csproj`, read by `Services/AppInfo.cs`. The sidebar's grey line under the title shows `AppInfo.VersionText`; the About window title uses `AppInfo.NameAndVersion`. `AppInfoTests` scans the app's source for the version in a string. tools/release.ps1 reads the same property for the Setup and Portable pre-release; CHANGELOG.md holds the notes.
 - The footer's left text is gone; App settings is now a `Button.pill` (gear icon + words) at the footer's left before "Keyboard shortcuts", accent look (`.custom`) while the page is open (`PageViewModel.IsOpen`, set by the shell). The sidebar's App settings list was removed.
 - Keys: Up/Down in the category list still wrap, now through the footer button (Down from the last page lands on App settings and opens it, Down from there goes to the first page; Up mirrors). Tab still only swaps sidebar and page (it never reached the footer buttons). Not verified on screen.
 
