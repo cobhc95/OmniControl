@@ -17,4 +17,5 @@ if ($LASTEXITCODE) { throw 'setup build failed' }
 $log = Get-Content (Join-Path $root 'CHANGELOG.md') -Raw
 $notes = [regex]::Match($log, "(?ms)^## $([regex]::Escape($version))[^\n]*\n(.*?)(?=^## |\z)").Groups[1].Value.Trim()
 $files = Get-ChildItem $out -File | Where-Object { $_.Name -match 'Setup\.exe$|Portable\.zip$' } | ForEach-Object FullName
-gh release create "v$version" @files --prerelease --title "OmniControl $version" --notes $notes
+$notesFile = Join-Path $out "notes.md"; Set-Content -Path $notesFile -Value $notes -Encoding utf8
+gh release create "v$version" @files --prerelease --title "OmniControl $version" --notes-file $notesFile
