@@ -108,3 +108,9 @@ Every kind of control has ONE master design in `Styles/Theme.axaml` (its colours
 ## Master list additions (audit-unify, no-look pass)
 
 `ListBox.cards` (with `rows compact`) = the card list (pairs half-width cards; never write `ItemsPanel HalfPanel` by hand). `Border.sidebarpanel` = a window's side panel, `Border.barstrip` = a window's top bar (sidebar tint and divider edge; the control sets only which side its `BorderThickness` shows), `Border.pane` (+ `.edged` for the divider outline) = a boxed pane. `CrossIcon` (`Brushes.axaml`) = every drawn remove cross. `TextBlock.navheading` (`Theme.axaml`) = a sidebar group heading (small muted capitals; made by `Controls/NavList` from a `NavHeading`, never clickable, focusable or hovered; a page names its group in `PageViewModel.NavGroup`, texts in `Pages/NavGroups.cs`). Tags in code are `TagItem` (`Services/TagItem.cs`), drawn by `Controls/TagView`. Windows that exist once use `Services/SingleWindow<T>`. Asking or confirming goes through `Dialogs/DialogService.AskAsync` with a `DialogMessage` (`Confirm.Delete(kind, name)` for deletes). "Choose a program" is `PathPicker.PickProgramAsync`.
+
+## Versions and releases (owner's rule, 16 Nov 2026)
+
+- The version lives ONLY in `<Version>` in `OmniControl.App/OmniControl.App.csproj`; the app (`Services/AppInfo.cs`), the installer (`tools/setup.iss`) and the release (`tools/release.ps1`) all read it. Never type it anywhere else.
+- Every fix or feature adds a line under "Unreleased" in `CHANGELOG.md`. When the owner asks to upload: move those lines under the next version (0.1.0 -> 0.1.1 ... 0.1.9 -> 0.2.0), bump `<Version>` once, commit, push, then run `powershell -ExecutionPolicy Bypass -File tools\release.ps1` (GitHub pre-release with Setup and Portable). Several fixes may share one bump.
+- Licence: GPLv3 (`LICENSE`). Never commit private info (names, emails, IPs, credentials, personal scripts); check the staged diff before every push.
