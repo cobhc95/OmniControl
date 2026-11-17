@@ -1,0 +1,15 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Smart Devices auto-check (approved)</title>
+<!-- Approved by the owner 17 Nov 2026. Replaces the Auto-check choices in device-state-refresh.html.
+  Auto-check chip menu (ChipMenu/MenuRowList), muted title "Check the real state":
+    When OmniControl starts and every 5 min (DEFAULT) | When OmniControl starts and every 15 min | When OmniControl starts only |
+    When the page or tray panel opens | Off (Check now only). Intervals in Timing.cs.
+  hrule; row "Same for every device" with a plain switch, ON by default (principle 5): while on, a change applies to all devices; off = this device only.
+  Muted note: "Uses Scripts only. Simulation is never used for checks."
+  Checks run in the background through the device's Scripts method ONLY; a device with no Scripts method shows a disabled chip
+  "Auto-check: manual only" with the note "Checking by simulation is slow and heavy, so it only runs when you press Check now."
+  Start-up check runs after the UI is up (StartupMode.Inert respected) so the tray tiles show real state from the first open.
+  Existing saved per-device AutoCheck values migrate to the nearest option. Also: tray tile names wrap only between words (no "Landscap/e"). -->
+<style>body{font-family:Segoe UI;background:#1b1b1b;color:#eee;padding:20px;font-size:12px}</style></head><body>
+<p>Auto-check: when OmniControl starts and every 5 min ▾ · Same for every device [on] · Simulation-only: manual only</p>
+</body></html>

@@ -21,9 +21,18 @@ public sealed partial class MouseService
         _states.Register(new StateEntry(AutoscrollId, "Block apps' middle-click autoscroll", ActionSections.Mouse, StateKind.OnOff,
             () => StateValue.Of(Settings.BlockAutoscroll), "Read from the setting: on swallows a middle press that is not over a link, tab or button.",
             Set: value => SetBlockAutoscroll(value.Number == 1), Keywords: "middle click autoscroll scroll browser block"));
+        _states.Register(new StateEntry(PauseFullScreenId, "Pause mouse features in full-screen games", ActionSections.Mouse, StateKind.OnOff,
+            () => StateValue.Of(Settings.PauseInFullScreen), "Read from the setting: on makes every mouse input pass untouched while a full-screen app is in front.",
+            Set: value => SetPauseInFullScreen(value.Number == 1), Keywords: "full screen fullscreen game pause mouse buttons gestures"));
+        _states.Register(new StateEntry(ClickingId, "Repeated clicking running", ActionSections.Mouse, StateKind.OnOff,
+            () => StateValue.Of(Clicking.IsRunning), "Read from the clicker itself: on while it is clicking.", Keywords: "repeated clicking auto clicker running"));
+        Clicking.RunningChanged += () => _states.Notify(ClickingId);
         LayerChanged += NotifyLayer;
         LayersChanged += NotifyLayers;
     }
+
+    /// <summary>The id of the state "Repeated clicking running".</summary>
+    public const string ClickingId = "mouse.repeatclick.running";
 
     /// <summary>The id of the "Toggle app autoscroll" action and of the state it flips.</summary>
     public const string AutoscrollId = "mouse.autoscroll";
@@ -35,6 +44,43 @@ public sealed partial class MouseService
         Settings.BlockAutoscroll = on;
         Apply();
         _states.Notify(AutoscrollId);
+    }
+
+    /// <summary>The id of the "Toggle pause in full-screen games" action and of the state it flips.</summary>
+    public const string PauseFullScreenId = "mouse.pause.fullscreen";
+
+    /// <summary>Turns "Pause in full-screen games" on or off.</summary>
+    public void SetPauseInFullScreen(bool on)
+    {
+        if (Settings.PauseInFullScreen == on) return;
+        Settings.PauseInFullScreen = on;
+        Apply();
+        _states.Notify(PauseFullScreenId);
+    }
+
+    public void TogglePauseInFullScreen() => SetPauseInFullScreen(!Settings.PauseInFullScreen);
+
+    /// <summary>
+    /// Turns "Run as administrator" on or off. Turning it on while not elevated starts OmniControl again with the administrator prompt (the
+    /// window then closes); the plain sentence it returns says why that did not happen (the setting is then put back to off), null otherwise.
+    /// </summary>
+    public string? SetRunAsAdministrator(bool on)
+    {
+        if (Settings.RunAsAdministrator == on) return null;
+        Settings.RunAsAdministrator = on;
+        Apply();
+        if (!on || AdministratorMode.RestartElevated() is not { } problem) return null;
+        Settings.RunAsAdministrator = false;
+        Apply();
+        return problem;
+    }
+
+    /// <summary>"Restore defaults" of the Where mouse features work group.</summary>
+    public void RestoreWhereDefaults()
+    {
+        Settings.RestoreWhereDefaults();
+        Apply();
+        _states.Notify(PauseFullScreenId);
     }
 
     public void ToggleBlockAutoscroll() => SetBlockAutoscroll(!Settings.BlockAutoscroll);
@@ -58,6 +104,6 @@ public sealed partial class MouseService
     {
         LayerChanged -= NotifyLayer;
         LayersChanged -= NotifyLayers;
-        _states.Unregister(new[] { StateId(InputFamily.Mouse), StateId(InputFamily.Trackpad), AutoscrollId });
+        _states.Unregister(new[] { StateId(InputFamily.Mouse), StateId(InputFamily.Trackpad), AutoscrollId, PauseFullScreenId });
     }
 }

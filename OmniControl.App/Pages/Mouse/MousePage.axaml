@@ -25,6 +25,17 @@
                 <ListBox Classes="rows compact cards" ItemsSource="{Binding TrackpadGroup.Items}"></ListBox>
             </pages:GroupCard>
 
+            <!-- Where mouse features work: pause in full-screen games and the apps to never act in (half-width pair), run as administrator, then one muted line -->
+            <pages:GroupCard Group="{Binding WhereGroup}">
+                <pages:GroupCard.Tools>
+                    <pages:GroupRestorePill DataContext="{Binding WhereGroup}" />
+                </pages:GroupCard.Tools>
+                <StackPanel Spacing="4">
+                    <ListBox Classes="rows compact cards" ItemsSource="{Binding WhereGroup.Items}"></ListBox>
+                    <TextBlock Classes="muted" Text="{Binding WhereNote}" TextWrapping="Wrap" />
+                </StackPanel>
+            </pages:GroupCard>
+
             <!-- Pointer settings: Windows' own mouse settings, changed live; the pointers of the scheme as an inner group; reset and restore last -->
             <pages:GroupCard Group="{Binding PointerGroup}">
                 <StackPanel Spacing="4">

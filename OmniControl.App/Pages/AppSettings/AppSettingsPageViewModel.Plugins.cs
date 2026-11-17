@@ -7,7 +7,6 @@ namespace OmniControl.App.Pages.AppSettingsPage;
 /// </summary>
 public sealed partial class AppSettingsPageViewModel
 {
-    private const string FoldersGroup = "Plug-in folders";
     private const string ScanIdleText = "Searches the standard folders and yours, with subfolders.";
 
     private readonly FileItem _addFolder;
@@ -19,9 +18,9 @@ public sealed partial class AppSettingsPageViewModel
     private IEnumerable<SearchEntry> PluginSearchEntries() =>
         new[]
         {
-            Entry(_addFolder, FoldersGroup, "plug-in plugin vst vst2 vst3 folder directory path add other places"),
-            Entry(_scan, FoldersGroup, "plug-in plugin vst vst2 vst3 scan search find refresh"),
-        }.Concat(Items.OfType<ButtonItem>().Where(IsFolderRow).Select(row => Entry(row, FoldersGroup, $"plug-in folder remove {row.Description}")));
+            Entry(_addFolder, PluginsName, "plug-in plugin vst vst2 vst3 folder directory path add other places"),
+            Entry(_scan, PluginsName, "plug-in plugin vst vst2 vst3 scan search find refresh"),
+        }.Concat(PluginItems.OfType<ButtonItem>().Where(IsFolderRow).Select(row => Entry(row, PluginsName, $"plug-in folder remove {row.Description}")));
 
     private static bool IsFolderRow(ButtonItem item) => item.Label == FolderLabel;
 
@@ -42,7 +41,7 @@ public sealed partial class AppSettingsPageViewModel
         if (_settings.PluginFolders.Contains(full, StringComparer.OrdinalIgnoreCase)) return;
         _settings.PluginFolders.Add(full);
         _settings.Save();
-        Items.Insert(Items.IndexOf(_scan), FolderRow(full));
+        PluginItems.Insert(PluginItems.IndexOf(_scan), FolderRow(full));
         _scan.Description = "Scan now to find its plug-ins.";
     }
 
@@ -50,7 +49,7 @@ public sealed partial class AppSettingsPageViewModel
     {
         _settings.PluginFolders.RemoveAll(f => string.Equals(f, folder, StringComparison.OrdinalIgnoreCase));
         _settings.Save();
-        Items.Remove(row);
+        PluginItems.Remove(row);
         _scan.Description = "Scan now to drop its plug-ins from the list.";
     }
 

@@ -17,6 +17,11 @@ internal sealed class DisplayOrientationCard
 
     private static readonly IReadOnlyList<string> Names = new[] { "Landscape", "Portrait", "Landscape (flipped)", "Portrait (flipped)" };
 
+    private static readonly IReadOnlyList<string> ShortNames = new[] { "Landscape", "Portrait", "Landscape (flip)", "Portrait (flip)" };
+
+    /// <summary>The orientation's name for a small tile (the tray panel's): each its own, so two tiles never read the same.</summary>
+    public static string ShortTitle(DisplayOrientation orientation) => ShortNames[(int)orientation];
+
     /// <summary>What the orientation is called in the card and in the hotkeys' titles.</summary>
     public static string Title(DisplayOrientation orientation) => Names[(int)orientation];
 

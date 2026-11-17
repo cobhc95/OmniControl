@@ -49,7 +49,7 @@ public sealed class LaptopBrightnessController : ILaptopBrightness
                 return true;
             }
         }
-        catch { /* no WMI brightness class: not a laptop panel */ }
+        catch (ManagementException) { /* no WMI brightness class: not a laptop panel */ }
         return false;
     }
 }

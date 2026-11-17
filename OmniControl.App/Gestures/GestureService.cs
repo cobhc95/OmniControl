@@ -34,13 +34,48 @@ public sealed class GestureService
     public GestureService(MouseHook hook, Func<string, bool, int, bool> runLevel, Action<string> report, AppScopeGate scopes)
     {
         _scopes = scopes;
-        _runner = new GestureActionRunner(runLevel, message => Dispatcher.UIThread.Post(() => report(message)));
+        _runner = new GestureActionRunner(runLevel, report);
         _snapshot = TakeSnapshot();
         hook.AddHandler(Handle);
     }
 
     /// <summary>Raised after every settings change (the custom rules follow the on/off switch and the edge strip).</summary>
     public event Action? Applied;
+
+    /// <summary>Turns every gesture on or off.</summary>
+    public void SetEnabled(bool on)
+    {
+        Settings.Enabled = on;
+        Apply();
+    }
+
+    /// <summary>Sets the width of the screen-edge strip.</summary>
+    public void SetEdgeStrip(int value)
+    {
+        Settings.EdgeStrip = value;
+        Apply();
+    }
+
+    /// <summary>Sets the apps every screen-area gesture works in.</summary>
+    public void SetAreasScope(AppScopeSetting? scope)
+    {
+        Settings.AreasScope = scope;
+        Apply();
+    }
+
+    /// <summary>Sets the apps one gesture works in (null = the group's).</summary>
+    public void SetScope(GestureTrigger trigger, AppScopeSetting? scope)
+    {
+        Settings.RuleFor(trigger).Scope = scope;
+        Apply();
+    }
+
+    /// <summary>Replaces the whole gesture setup (Restore).</summary>
+    public void Replace(GestureSettings other)
+    {
+        Settings.CopyFrom(other);
+        Apply();
+    }
 
     /// <summary>Call after any settings change: saves, and hands the hook a fresh copy.</summary>
     public void Apply()

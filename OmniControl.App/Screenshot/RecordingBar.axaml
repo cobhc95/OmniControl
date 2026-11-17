@@ -3,7 +3,7 @@
         xmlns:shot="using:OmniControl.App.Screenshot"
         x:Class="OmniControl.App.Screenshot.RecordingBar"
         x:DataType="shot:RecordingViewModel"
-        Title="Recording" SystemDecorations="None" ShowInTaskbar="False" CanResize="False" Topmost="True" SizeToContent="WidthAndHeight"
+        Title="Recording" SystemDecorations="None" CanResize="False" Topmost="True" SizeToContent="WidthAndHeight"
         Background="Transparent" TransparencyLevelHint="Transparent">
     <!-- The recording bar under the recorded area (docs/mockups/area-video-recording.html): red dot and timer | Pause/Resume, Stop |
          Microphone, System sound (MP4 only). The same floating bar as the screenshot overlay's (Border.floatbar, Button.toolicon; .danger =
@@ -23,7 +23,7 @@
                 </Panel>
             </Button>
             <Button Classes="toolicon danger" Command="{Binding StopCommand}" ToolTip.Tip="Stop and save (Esc)">
-                <Path Classes="glyph" Data="{StaticResource ShotStopIcon}" />
+                <Path Classes="glyph" Data="{StaticResource StopIcon}" />
             </Button>
             <Border Classes="floatsep along" IsVisible="{Binding TakesSound}" />
             <Button Classes="toolicon" Classes.selected="{Binding Microphone}" Command="{Binding ToggleMicrophoneCommand}"

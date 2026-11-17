@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using OmniControl.App.Services;
 using Avalonia.Threading;
 
@@ -45,9 +45,6 @@ public sealed class HotkeyRegistry : IActionRegistry, IDisposable
         foreach (var action in PickerActions) action.SectionPlace = PlaceOf(action.Section);
     }
 
-    /// <summary>Where a page's section stands in the sidebar (1 = first); after all pages when it is not one.</summary>
-    public int RankOf(string section) => PlaceOf(section)?.Rank ?? int.MaxValue;
-
     private ActionSection? PlaceOf(string section) => _pages.FirstOrDefault(p => p.Name == section) ?? ActionSections.Find(section);
 
     /// <summary>The section (name, icon, place) of a page or an extra section; null when there is none by that name.</summary>
@@ -58,6 +55,29 @@ public sealed class HotkeyRegistry : IActionRegistry, IDisposable
 
     /// <summary>Asked before every action runs (see <see cref="IActionGate"/>); null = nothing is ever refused.</summary>
     public IActionGate? Gate { get; set; }
+
+    /// <summary>What the actions' own settings are and mean (<see cref="IActionSettings"/>); null = none are used and every action just runs.</summary>
+    public IActionSettings? Settings { get; set; }
+
+    /// <summary>
+    /// What an input that chose these settings runs the action with. An input that keeps no copy of its own (<see cref="OptionValues.OwnKey"/> unset, none of
+    /// the action's own settings stored: every binding made before the action had defaults) runs it with the action's defaults, so editing them
+    /// changes what it does.
+    /// </summary>
+    private RunSettings? Resolve(HotkeyAction action, RunSettings? settings)
+    {
+        if (Settings is not { } known || settings is null) return settings;
+        var chosen = settings.Options ?? OptionValues.None;
+        var keeps = chosen.Has(OptionValues.OwnKey) || known.OptionsOf(action).Any(o => chosen.Has(o.Key));
+        return keeps ? settings : known.RunOf(new OptionValues(action.Defaults));
+    }
+
+    /// <summary>Runs the action as a key or a rule does: with its defaults once it has any, else as it is.</summary>
+    private void RunByDefaults(HotkeyAction action)
+    {
+        if (Settings is { } known && action.Defaults.Count > 0) action.RunWith(known.RunOf(new OptionValues(action.Defaults)));
+        else action.Run();
+    }
 
     /// <summary>Where problems are shown (the footer status line).</summary>
     public Action<string>? Report { get; set; }
@@ -73,25 +93,33 @@ public sealed class HotkeyRegistry : IActionRegistry, IDisposable
 
     public void Register(HotkeyAction action)
     {
-        if (_stored.TryGetValue(action.Id, out var saved)) action.Restore(saved);
-        action.Changed += OnChanged;
-        action.SectionPlace = PlaceOf(action.Section);
-        Actions.Add(action);
+        Add(action);
         Rebind();
     }
 
     /// <summary>Registers several actions at once (one rebinding of the hotkeys).</summary>
     public void Register(IEnumerable<HotkeyAction> actions)
     {
-        foreach (var action in actions)
-        {
-            if (_stored.TryGetValue(action.Id, out var saved)) action.Restore(saved);
-            action.Changed += OnChanged;
-            action.SectionPlace = PlaceOf(action.Section);
-            Actions.Add(action);
-        }
+        foreach (var action in actions) Add(action);
         Rebind();
     }
+
+    // The saved keys, else (first time only) its default key unless the key is not allowed or another action has it already.
+    private void Add(HotkeyAction action)
+    {
+        if (_stored.TryGetValue(action.Id, out var saved)) action.Restore(saved);
+        else if (action.DefaultKey is { } key && ConflictOf(key, action.Id, Actions) is null)
+        {
+            action.Restore(HotkeyDefaults.For(key));
+            _stored[action.Id] = action.Export();
+        }
+        action.Changed += OnChanged;
+        action.SectionPlace = PlaceOf(action.Section);
+        Actions.Add(action);
+    }
+
+    /// <summary>The default key combination of the action with this id, or null.</summary>
+    public string? DefaultKeyOf(string id) => Find(id)?.DefaultKey;
 
     public void Unregister(string id)
     {
@@ -124,9 +152,6 @@ public sealed class HotkeyRegistry : IActionRegistry, IDisposable
     /// <summary>The action other than <paramref name="exceptId"/> that has this key in the set in use, or null.</summary>
     public HotkeyAction? OwnerOf(string gesture, string exceptId) => OwnerOf(gesture, exceptId, Actions);
 
-    /// <summary>Takes this key from whichever action has it and gives it to <paramref name="to"/> as one more key (keys stay unique).</summary>
-    public void MoveKey(string gesture, HotkeyAction to) => to.SetKeys(to.Keys.Append(gesture)); // OnChanged takes it from the other
-
     /// <summary>Runs an action by id (for example from a mouse button). False when no such action is registered.</summary>
     public bool Run(string id)
     {
@@ -145,9 +170,36 @@ public sealed class HotkeyRegistry : IActionRegistry, IDisposable
         else
         {
             var chain = _chain.Value;
-            Dispatcher.UIThread.Post(() => RunNow(action, chain, a => a.RunWith(settings)), DispatcherPriority.Send);
+            var resolved = Resolve(action, settings)!;
+            Dispatcher.UIThread.Post(() => RunNow(action, chain, a => a.RunWith(resolved)), DispatcherPriority.Send);
         }
         return true;
+    }
+
+    /// <summary>Starts an action that lasts while its input is held (<see cref="HotkeyAction.RunHeld"/>) and returns what ends it; null when the action does not last with these settings.</summary>
+    public Action? RunHeld(string id, RunSettings settings)
+    {
+        if (Find(id) is not { RunHeld: { } start } action) return null;
+        // A refused action still answers "it lasts" with nothing to end, so the input does not fall back to running it once.
+        if (!PermittedFromAnyThread(action)) return () => { };
+        var chain = _chain.Value;
+        Action? stop = null;
+        var resolved = Resolve(action, settings)!;
+        if (Guard.Run($"Action {action.Id}", () => stop = start(resolved)) is not null)
+        {
+            Dispatcher.UIThread.Post(() => Report?.Invoke($"Couldn't run {action.Title}. Details are in {Guard.LogFile}."), DispatcherPriority.Send);
+            return () => { };
+        }
+        if (stop is not null) Dispatcher.UIThread.Post(() => RaiseRan(action, chain), DispatcherPriority.Send);
+        return stop;
+    }
+
+    /// <summary>The gate's answer for a caller that may be on the mouse hook's thread: asked on the UI thread, waiting only <see cref="Timing.GateAskWait"/> (no answer in time means no).</summary>
+    private bool PermittedFromAnyThread(HotkeyAction action)
+    {
+        if (Dispatcher.UIThread.CheckAccess()) return Permitted(action);
+        var ask = Dispatcher.UIThread.InvokeAsync(() => Permitted(action), DispatcherPriority.Send).GetTask();
+        return ask.Wait(Timing.GateAskWait) && ask.Result;
     }
 
     /// <summary>
@@ -168,7 +220,7 @@ public sealed class HotkeyRegistry : IActionRegistry, IDisposable
     private void RunSoon(HotkeyAction action)
     {
         var chain = _chain.Value; // read on the calling thread: a rule's worker carries its chain here
-        Dispatcher.UIThread.Post(() => RunNow(action, chain, a => a.Run()), DispatcherPriority.Send);
+        Dispatcher.UIThread.Post(() => RunNow(action, chain, RunByDefaults), DispatcherPriority.Send);
     }
 
     /// <summary>
@@ -183,13 +235,25 @@ public sealed class HotkeyRegistry : IActionRegistry, IDisposable
         _chain.Value = chain;
         try
         {
-            run(action);
+            // The one guard for every caller: a broken action is logged and said calmly, and never takes the app down.
+            if (Guard.Run($"Action {action.Id}", () => run(action)) is not null)
+            {
+                Report?.Invoke($"Couldn't run {action.Title}. Details are in {Guard.LogFile}.");
+                return;
+            }
         }
         finally
         {
             _chain.Value = outer;
         }
-        Ran?.Invoke(action, chain);
+        RaiseRan(action, chain);
+    }
+
+    private void RaiseRan(HotkeyAction action, RunChain? chain)
+    {
+        if (Ran is not { } ran) return;
+        foreach (var handler in ran.GetInvocationList().Cast<Action<HotkeyAction, RunChain?>>())
+            Guard.Run($"Ran handler for {action.Id}", () => handler(action, chain));
     }
 
     private readonly AsyncLocal<RunChain?> _chain = new();

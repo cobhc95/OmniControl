@@ -35,10 +35,10 @@ public static partial class CoreAudio
                         result.Add(new AudioSession((int)pid, deviceId, state, c2, vol, ctl as IChannelAudioVolume, ctl as IAudioMeterInformation));
                     }
                 }
-                catch { /* skip a device that misbehaves */ }
+                catch (Exception ex) when (ex is COMException or InvalidCastException) { /* skip a device that misbehaves */ }
             }
         }
-        catch { /* no audio service */ }
+        catch (Exception ex) when (ex is COMException or InvalidCastException) { /* no audio service */ }
         return result;
     }
 

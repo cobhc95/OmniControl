@@ -28,7 +28,11 @@ public static class ListDiff
                 continue;
             }
             if (at != i) target.Move(at, i);
-            if (!same(target[i], wanted[i])) target[i] = wanted[i];
+            if (same(target[i], wanted[i])) continue;
+            // Remove and insert, never a replace: a replace keeps the list's container for the row and only rebinds it, and a
+            // virtualised panel then kept the old row's measured size and drawing under the new one (two layouts on top of each other).
+            target.RemoveAt(i);
+            target.Insert(i, wanted[i]);
         }
         while (target.Count > wanted.Count) target.RemoveAt(target.Count - 1);
     }

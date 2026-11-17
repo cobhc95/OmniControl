@@ -67,9 +67,6 @@ public sealed class EngineJournal
         if (_entries.Remove(key)) Save();
     }
 
-    /// <summary>Programs from an earlier run that still wait to be put back.</summary>
-    public bool HasLeftOver => _leftOver.Count > 0;
-
     /// <summary>Puts back every program left over from an earlier run that has sound sessions now; the others wait for a later call.</summary>
     public void RestoreRunning()
     {

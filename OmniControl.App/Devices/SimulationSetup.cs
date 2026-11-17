@@ -94,6 +94,10 @@ public sealed class SimulationSetup : IDisposable
     public string AddressOf(MethodRecord method) =>
         method.AdbAddress.Trim().Length > 0 ? method.AdbAddress.Trim() : EmulatorOf(method)?.DefaultAddress ?? string.Empty;
 
+    /// <summary>Hides the method's emulator window again once its set-up is closed; the emulator keeps running.</summary>
+    public Task HideWindowAsync(MethodRecord method) =>
+        EmulatorOf(method) is { } emulator ? Keeper.HideWindowAsync(emulator, AddressOf(method)) : Task.CompletedTask;
+
     public bool IsConnected(string address) => _connected.Contains(address);
 
     /// <summary>

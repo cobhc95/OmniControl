@@ -86,8 +86,6 @@ public sealed class AppListStore
     /// <summary>Registers a user (a scope model); it then shows in the manager and is reset when its list is deleted.</summary>
     public void Register(IAppScopeUser user) => _users.Add(user);
 
-    public void Unregister(IAppScopeUser user) => _users.Remove(user);
-
     public IReadOnlyList<IAppScopeUser> UsersOf(string listId) => _users.Where(u => u.Stored is { } s && s.ListId == listId && s.IsLimited).ToList();
 
     // ---- internals ----

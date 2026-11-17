@@ -20,7 +20,7 @@ public static partial class CoreAudio
                 result.Add(new AudioDevice(id, DeviceName(d), id == defaultId));
             }
         }
-        catch { /* no audio service */ }
+        catch (Exception ex) when (ex is COMException or InvalidCastException) { /* no audio service */ }
         return result;
     }
 
@@ -32,7 +32,7 @@ public static partial class CoreAudio
             var iid = typeof(IAudioEndpointVolume).GUID;
             return dev.Activate(ref iid, ClsCtxAll, IntPtr.Zero, out var o) == 0 ? o as IAudioEndpointVolume : null;
         }
-        catch { return null; /* device vanished or has no volume interface */ }
+        catch (Exception ex) when (ex is COMException or InvalidCastException) { return null; /* device vanished or has no volume interface */ }
     }
 
     public static bool GetDeviceVolume(string id, out int percent, out bool muted)

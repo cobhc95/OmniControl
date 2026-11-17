@@ -12,7 +12,7 @@ public sealed partial class OptionItem : ObservableObject
     public ActionOption Option { get; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(Display), nameof(IsOn))]
+    [NotifyPropertyChangedFor(nameof(Display), nameof(IsOn), nameof(Tag), nameof(HasTag))]
     private string _value;
 
     public string Label => Option.Label;
@@ -31,12 +31,25 @@ public sealed partial class OptionItem : ObservableObject
     public bool IsPath => Option.Kind == OptionKind.Text && Option.Browse is not null;
     public PathKind PathKind => Option.Browse ?? PathKind.File;
 
+    /// <summary>A point on the screen: shown with the shared point field and its Pick button.</summary>
+    public bool IsPoint => Option.Kind == OptionKind.Point;
+
     /// <summary>A group's heading (no value), with its note under it when it has one.</summary>
     public bool IsHeading => Option.Kind == OptionKind.Heading;
     public bool IsLabel => !IsHeading;
     public bool HasHeadingNote => IsHeading && Option.Hint.Length > 0;
+    /// <summary>A whole editor as one row (<see cref="ActionOption.Panel"/>): its view-model, made when the settings pane shows the row; null for any other row.</summary>
+    public ISettingsPanel? PanelModel { get; }
+    public bool IsPanel => Option.Kind == OptionKind.Panel;
     public string PickerTitle => $"Choose: {Option.Label}";
     public string Hint => Option.Hint;
+
+    /// <summary>A muted line under a switch's label.</summary>
+    public bool HasNote => IsToggle && Option.Hint.Length > 0;
+
+    /// <summary>A caution tag shown on the row while its option says so (<see cref="ActionOption.TaggedWhen"/>).</summary>
+    public string? Tag => Option.TagNow?.Invoke();
+    public bool HasTag => Tag is { Length: > 0 };
 
     /// <summary>False while the setting this row needs is off: the row is dimmed and its tooltip says why.</summary>
     [ObservableProperty]
@@ -65,6 +78,7 @@ public sealed partial class OptionItem : ObservableObject
     {
         Option = option;
         _value = value;
+        PanelModel = option.MakePanel?.Invoke();
     }
 
     /// <summary>Left/Right: a number goes down or up by its step, a choice goes to the previous or next entry (wrapping), a switch goes off or on.</summary>
@@ -102,7 +116,11 @@ public sealed partial class OptionItem : ObservableObject
         IsTyping = false;
     }
 
-    public void CancelTyping() => IsTyping = false;
+    public void CancelTyping()
+    {
+        IsTyping = false;
+        PanelModel?.CancelTyping();
+    }
 
     /// <summary>Space: a switch flips.</summary>
     public void Flip()

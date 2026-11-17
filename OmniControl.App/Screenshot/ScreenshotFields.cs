@@ -12,7 +12,7 @@ namespace OmniControl.App.Screenshot;
 public static class ScreenshotFields
 {
     public const string Same = "same", Folder = "folder", Pattern = "pattern", Format = "format", Quality = "quality", CopyAs = "copy",
-        Quick = "quick", OpenFolder = "open", Note = "note", OnTop = "ontop";
+        Quick = "quick", WindowsKeys = "winkeys", OpenFolder = "open", Note = "note", OnTop = "ontop";
 
     public const string Video = "video", RecFolder = "vfolder", RecFormat = "vformat", FrameRate = "fps", Encoder = "encoder",
         RecQuality = "vquality", SystemSound = "sound", Microphone = "mic", Cursor = "cursor", Clicks = "clicks";
@@ -28,16 +28,20 @@ public static class ScreenshotFields
     private static readonly string[] FrameRateNames = VideoMath.FrameRates.Select(FrameRateName).ToArray();
     private static readonly string[] Mp4Names = VideoMath.Formats.Where(VideoMath.IsMp4).Select(VideoMath.Name).ToArray();
 
+    // One global switch (not part of any action's set), at the head of every screenshot action's settings.
+    private static ActionOption WindowsKeysOption(Func<string?> pendingTag) =>
+        ActionOption.Toggle(WindowsKeys, "Turn off Windows' own screenshot keys", note: "Print Screen and Win+Shift+S stop opening Snipping Tool").TaggedWhen(pendingTag);
+
     private static readonly ActionOption FormatOption = ActionOption.Choice(Format, "Format", FormatNames);
 
     /// <summary>
     /// The settings of one screenshot action. The area action has the overlay's "Stay on top" and the Video group; "Record area" has the file
     /// name, Stay on top and the Video group only; the others say what they do with the picture. <paramref name="hevc"/>: Windows has an HEVC encoder.
     /// </summary>
-    public static IReadOnlyList<ActionOption> Options(ShotKind kind, bool hevc)
+    public static IReadOnlyList<ActionOption> Options(ShotKind kind, bool hevc, Func<string?> windowsKeysTag)
     {
         var record = kind == ShotKind.Record;
-        var options = new List<ActionOption> { ActionOption.Toggle(Same, "Same settings for every screenshot action", on: true) };
+        var options = new List<ActionOption> { ActionOption.Toggle(Same, "Same settings for every screenshot action", on: true), WindowsKeysOption(windowsKeysTag) };
         if (!record)
         {
             options.Add(ActionOption.Path(Folder, "Save folder", PathKind.Folder, ScreenshotOptions.DefaultFolder));
@@ -75,9 +79,10 @@ public static class ScreenshotFields
     private static string FrameRateName(int rate) => $"{rate} fps";
 
     /// <summary>The value of every setting, as the settings pane shows it.</summary>
-    public static IReadOnlyDictionary<string, string> Read(ScreenshotOptions o, bool same) => new Dictionary<string, string>
+    public static IReadOnlyDictionary<string, string> Read(ScreenshotOptions o, bool same, bool windowsKeys) => new Dictionary<string, string>
     {
         [Same] = Flag(same),
+        [WindowsKeys] = Flag(windowsKeys),
         [Folder] = o.Folder,
         [Pattern] = o.Pattern,
         [Format] = ImageFormats.Name(o.Format),
@@ -98,7 +103,7 @@ public static class ScreenshotFields
         [Clicks] = Flag(o.HighlightClicks),
     };
 
-    /// <summary>Stores one changed setting (not <see cref="Same"/>, which the owner of the shared set handles).</summary>
+    /// <summary>Stores one changed setting (not <see cref="Same"/> or <see cref="WindowsKeys"/>, which the owner of the shared set handles).</summary>
     public static void Apply(ScreenshotOptions o, string key, string value)
     {
         switch (key)

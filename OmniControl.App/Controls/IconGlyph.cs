@@ -19,7 +19,16 @@ public sealed class IconGlyph : Control
 
     public static readonly StyledProperty<IBrush?> ForegroundProperty = TextElement.ForegroundProperty.AddOwner<IconGlyph>();
 
-    static IconGlyph() => AffectsRender<IconGlyph>(SourceProperty, ForegroundProperty);
+    /// <summary>A library icon named in layout (its id, <see cref="Icons.IconLibrary"/>): sets <see cref="Source"/> from the library.</summary>
+    public static readonly StyledProperty<string?> LibraryIdProperty = AvaloniaProperty.Register<IconGlyph, string?>(nameof(LibraryId));
+
+    static IconGlyph()
+    {
+        AffectsRender<IconGlyph>(SourceProperty, ForegroundProperty);
+        LibraryIdProperty.Changed.AddClassHandler<IconGlyph>((glyph, e) => glyph.Source = IconResources.Find(e.NewValue as string));
+    }
+
+    public string? LibraryId { get => GetValue(LibraryIdProperty); set => SetValue(LibraryIdProperty, value); }
 
     public IconImage? Source { get => GetValue(SourceProperty); set => SetValue(SourceProperty, value); }
 

@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="OmniControl.App.Screenshot.RecordingFrame"
-        Title="Recording" SystemDecorations="None" ShowInTaskbar="False" CanResize="False" Topmost="True" ShowActivated="False"
+        Title="Recording" SystemDecorations="None" CanResize="False" Topmost="True" ShowActivated="False"
         Background="Transparent" TransparencyLevelHint="Transparent" IsHitTestVisible="False">
     <!-- The dashed red frame just outside a recorded area (docs/mockups/area-video-recording.html). The window is cut down to the frame's
          line (RecordingWindow.KeepOnly), so the area inside stays usable, and it is left out of every capture. Looks: Rectangle.recordframe in

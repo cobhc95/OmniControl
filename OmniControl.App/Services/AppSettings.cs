@@ -42,11 +42,17 @@ public sealed class AppSettings
     /// <summary>The user's own folders the plug-in scan also searches (besides the standard VST3 and VST2 folders), in the order added.</summary>
     public List<string> PluginFolders { get; set; } = new();
 
+    /// <summary>The update check: whether it runs daily, when it last ran and what it found (see Services/Updates).</summary>
+    public UpdateSettings Updates { get; set; } = new();
+
     /// <summary>Keys of the collapsible card groups the user expanded (groups start collapsed unless defined otherwise).</summary>
     public List<string> ExpandedGroups { get; set; } = new();
 
     /// <summary>Keys of groups the user closed on purpose, so a group that starts open stays closed for them.</summary>
     public List<string> CollapsedGroups { get; set; } = new();
+
+    /// <summary>How groups start when a page opens (see <see cref="GroupsOpen"/>); the remembered lists above are used only for "Remember last state".</summary>
+    public GroupsOpenChoice GroupsOpen { get; set; } = GroupsOpenChoice.Remember;
 
     /// <summary>The settings in use by the running program (one shared instance).</summary>
     public static AppSettings Current => Shared.Value;
@@ -68,6 +74,26 @@ public sealed class AppSettings
     }
 
     public void Save() => AppDataStore.Save(Store, this);
+}
+
+/// <summary>What the update check keeps between runs: the daily switch (on by default), the time of the last check and what it found.</summary>
+public sealed class UpdateSettings
+{
+    public bool Daily { get; set; } = true;
+    public DateTime? LastCheck { get; set; }
+    public bool LastFailed { get; set; }
+
+    /// <summary>The newest release the last successful check found (whether or not it is newer than this version); null: none yet.</summary>
+    public ReleaseInfo? Latest { get; set; }
+}
+
+/// <summary>A release found on GitHub: its version text, its page, when it was published and whether it is marked a pre-release.</summary>
+public sealed class ReleaseInfo
+{
+    public string Version { get; set; } = string.Empty;
+    public string Url { get; set; } = string.Empty;
+    public DateTime? Published { get; set; }
+    public bool Prerelease { get; set; }
 }
 
 /// <summary>One effect type's editor view: its scale in percent, and whether the plain list of settings shows instead of the editor.</summary>

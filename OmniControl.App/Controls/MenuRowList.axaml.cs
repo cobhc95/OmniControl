@@ -11,7 +11,7 @@ namespace OmniControl.App.Controls;
 /// one that is on now, a tooltip and what it does; optionally tags (after the words, or on their own line under them with
 /// <see cref="TagsOnOwnLine"/>), one muted line of detail, a dimmed look, or a header row (a muted section title) with a thin line above it.
 /// </summary>
-public sealed record MenuRowItem(string Text, string Link, bool IsOn, string Tip, ICommand Command, IReadOnlyList<TagItem>? Tags = null, string Detail = "", bool Dim = false, bool IsHeader = false, bool RuleAbove = false, bool TagsOnOwnLine = false)
+public sealed record MenuRowItem(string Text, string Link, bool IsOn, string Tip, ICommand Command, IReadOnlyList<TagItem>? Tags = null, string Detail = "", bool Dim = false, bool IsHeader = false, bool RuleAbove = false, bool TagsOnOwnLine = false, bool IsSwitch = false)
 {
     /// <summary>A muted section title with no command.</summary>
     public static MenuRowItem Header(string text, bool ruleAbove = false) => new(text, string.Empty, false, string.Empty, NoCommand, IsHeader: true, RuleAbove: ruleAbove);
@@ -24,6 +24,9 @@ public sealed record MenuRowItem(string Text, string Link, bool IsOn, string Tip
     public bool HasOwnLineTags => OwnLineTags.Count > 0;
     public double RowOpacity => Dim ? 0.6 : 1;
     public bool HasLink => Link.Length > 0;
+
+    /// <summary>A row with a switch at its right (shown by <see cref="IsOn"/>) instead of a tick at its left.</summary>
+    public bool ShowsTick => IsOn && !IsSwitch;
     public bool HasDetail => Detail.Length > 0;
 }
 

@@ -43,6 +43,8 @@
         <DataTemplate DataType="pages:ChoiceItem"><pages:ChoiceRow /></DataTemplate>
         <DataTemplate DataType="pages:ToggleItem"><pages:ToggleRow /></DataTemplate>
         <DataTemplate DataType="pages:ButtonItem"><pages:ButtonRow /></DataTemplate>
+        <DataTemplate DataType="pages:FactItem"><pages:FactRow /></DataTemplate>
+        <DataTemplate DataType="pages:ScopeItem"><pages:ScopeRow /></DataTemplate>
         <DataTemplate DataType="pages:FileItem"><pages:FileRow /></DataTemplate>
         <DataTemplate DataType="pages:GalleryItem"><pages:GalleryRow /></DataTemplate>
     </Application.DataTemplates>
@@ -56,7 +58,6 @@
         <!-- The hotkey capture box (Hotkeys/HotkeyBox): the Actions and hotkeys window's keys and the preset manager's shortcut column -->
         <x:Double x:Key="HotkeyBoxWidth">150</x:Double>
         <!-- The master path field (Controls/PathField) where it sits in a pop-down's settings page: text box and Browse -->
-        <x:Double x:Key="PathFieldWidth">340</x:Double>
         <x:Double x:Key="OptionMenuWidth">400</x:Double>
         <!-- The Choose-the-action / Actions and hotkeys window: its size, and the least width of each pane (the window's minimum is their sum plus the dividers) -->
         <x:Double x:Key="PickerWindowWidth">1000</x:Double>
@@ -245,14 +246,29 @@
         <x:Double x:Key="TrayNameMaxWidth">96</x:Double>
         <x:Double x:Key="TrayValueWidth">26</x:Double>
         <x:Double x:Key="TrayTileSize">62</x:Double>
+        <x:Double x:Key="TrayTileFitFontSize">9</x:Double>
         <CornerRadius x:Key="TrayTileCornerRadius">8</CornerRadius>
         <x:Double x:Key="TrayTileGap">8</x:Double>
         <x:Double x:Key="TrayGlyphSize">16</x:Double>
-        <Thickness x:Key="TrayTileCross">0,-6,-6,0</Thickness>
+        <Thickness x:Key="TrayTileCross">0,-5,-5,0</Thickness>
+        <!-- The remove badge (Button.removebadge, Styles/Tray.axaml, docs/mockups/remove-badge.html): round chip, its drawn cross, the clickable square around it -->
+        <x:Double x:Key="RemoveBadgeSize">16</x:Double>
+        <x:Double x:Key="RemoveBadgeCross">9</x:Double>
+        <x:Double x:Key="RemoveBadgeHit">20</x:Double>
         <x:Double x:Key="TrayPartGap">10</x:Double>
-        <x:Double x:Key="TrayFadedOpacity">0.5</x:Double>
-        <x:Double x:Key="TrayCheckDot">6</x:Double>
-        <Thickness x:Key="TrayCheckDotMargin">6</Thickness>
+        <x:Double x:Key="PillIconWidth">32</x:Double>
+        <!-- The round X pill (Button.pill.closex, Styles/ThemeButtons.axaml, docs/mockups/device-close-x.html) -->
+        <x:Double x:Key="CloseXSize">24</x:Double>
+        <x:Double x:Key="CloseXCross">12</x:Double>
+        <x:Double x:Key="TrayFadedOpacity">0.55</x:Double>
+        <x:Double x:Key="StatePowerSize">20</x:Double>
+        <x:Double x:Key="StatePowerGlyph">12</x:Double>
+        <x:Double x:Key="StatePowerStop">8</x:Double>
+        <CornerRadius x:Key="StatePowerRadius">10</CornerRadius>
+        <x:Double x:Key="TrayMarkSize">11</x:Double>
+        <x:Double x:Key="TrayMarkDot">7</x:Double>
+        <x:Double x:Key="TrayMarkStroke">1.5</x:Double>
+        <Thickness x:Key="TrayMarkMargin">5</Thickness>
     </Application.Resources>
 
     <Application.Styles>
@@ -260,6 +276,8 @@
         <StyleInclude Source="/Styles/Brushes.axaml" />
         <StyleInclude Source="/Styles/Icons.axaml" />
         <StyleInclude Source="/Styles/Theme.axaml" />
+        <StyleInclude Source="/Styles/ThemeLists.axaml" />
+        <StyleInclude Source="/Styles/ThemeButtons.axaml" />
         <StyleInclude Source="/Styles/Sliders.axaml" />
         <StyleInclude Source="/Styles/Blocks.axaml" />
         <StyleInclude Source="/Styles/Graphs.axaml" />

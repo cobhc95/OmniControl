@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using OmniControl.App.Services;
 using System.Drawing;
 using System.Drawing.Imaging;
 using Bitmap = Avalonia.Media.Imaging.Bitmap;
@@ -24,7 +26,10 @@ public static class ProcessIcons
                 result = new Bitmap(ms);
             }
         }
-        catch { /* no icon: the row shows an initial instead */ }
+        catch (Exception ex) when (ex is ArgumentException or IOException or Win32Exception or UnauthorizedAccessException)
+        {
+            Guard.Log($"Reading the icon of {exePath}", ex); // no icon: the row shows an initial instead
+        }
         Cache[exePath] = result;
         return result;
     }

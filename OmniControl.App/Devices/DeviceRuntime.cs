@@ -52,6 +52,58 @@ public sealed class DeviceRuntime
 
     public string FailedReason { get; private set; } = string.Empty;
 
+    /// <summary>The method the running command is trying now (empty when none); each method row's power button shows its spinner for its own.</summary>
+    public string RunningMethodId { get; private set; } = string.Empty;
+
+    /// <summary>Why a method's last try failed (by method id); a method that worked is not listed. Lets each method row's power button show its own warning.</summary>
+    private readonly Dictionary<string, string> _methodProblems = new();
+
+    public string? ProblemOf(string methodId) => _methodProblems.GetValueOrDefault(methodId);
+
+    private readonly object _stopGate = new();
+    private CancellationTokenSource? _stop;
+
+    /// <summary>A command starts: the token that <see cref="Stop"/> cancels.</summary>
+    public CancellationToken BeginRun()
+    {
+        lock (_stopGate)
+        {
+            _stop?.Dispose();
+            _stop = new CancellationTokenSource();
+            return _stop.Token;
+        }
+    }
+
+    /// <summary>The command is over.</summary>
+    public void EndRun()
+    {
+        lock (_stopGate)
+        {
+            _stop?.Dispose();
+            _stop = null;
+        }
+    }
+
+    /// <summary>The user stops the running command (its method's power button): the wait ends and a program we started is killed.</summary>
+    public void Stop()
+    {
+        lock (_stopGate) _stop?.Cancel();
+    }
+
+    /// <summary>A method starts (<paramref name="methodId"/>) or the command is over (empty).</summary>
+    public void Trying(string methodId)
+    {
+        RunningMethodId = methodId;
+        Changed?.Invoke();
+    }
+
+    /// <summary>A method's try ended: its problem, or null when it worked.</summary>
+    public void Tried(string methodId, string? problem)
+    {
+        if (problem is null) _methodProblems.Remove(methodId);
+        else _methodProblems[methodId] = problem;
+    }
+
     /// <summary>Raised when any of it changed (may come from another thread).</summary>
     public event Action? Changed;
 

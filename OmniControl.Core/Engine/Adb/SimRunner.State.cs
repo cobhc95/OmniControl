@@ -63,7 +63,7 @@ public static partial class SimRunner
     /// Takes <paramref name="count"/> looks at the switch's card, <paramref name="gap"/> apart, while the person holds the device in one state
     /// (teaching). The switch is the step's element, or where the model last found it. A short phrase when the screen or the switch was not there.
     /// </summary>
-    public static async Task<(IReadOnlyList<StateSample> Samples, string? Problem)> CaptureAsync(IAdbScreen adb, SimStep switchStep, StateModel model, int count, TimeSpan gap, CancellationToken stop = default)
+    public static async Task<(IReadOnlyList<StateSample> Samples, string? Problem)> CaptureAsync(IAdbScreen adb, SimStep switchStep, StateModel model, int count, TimeSpan gap, Action<string>? log = null, CancellationToken stop = default)
     {
         var samples = new List<StateSample>();
         for (var i = 0; i < count; i++)
@@ -71,7 +71,7 @@ public static partial class SimRunner
             if (i > 0) await Task.Delay(gap, stop);
             if (await ReadAsync(adb) is not { } screen) return (samples, "the screen couldn't be read from adb");
             if (FindSwitch(screen, switchStep, model) is not { } node) return (samples, $"{Words(switchStep)} isn't on the emulator's screen");
-            samples.Add(StateSample.Take(screen, node, Png.Decode(await adb.ScreenshotAsync())));
+            samples.Add(StateSample.Take(screen, node, await PictureAsync(adb, screen, log)));
         }
         return (samples, null);
     }
@@ -93,7 +93,7 @@ public static partial class SimRunner
         var clock = Stopwatch.StartNew();
         do
         {
-            if (await LookAsync(adb, model, stop) is { Switch: not null } look) return look;
+            if (await LookAsync(adb, model, timing.Log, stop) is { Switch: not null } look) return look;
             await Task.Delay(timing.Poll, stop);
         } while (clock.Elapsed < timing.ElementWait);
 
@@ -102,7 +102,7 @@ public static partial class SimRunner
         {
             if (!(await SwipeAsync(adb, direction)).Ok) break;
             await Task.Delay(timing.Settle, stop);
-            if (await LookAsync(adb, model, stop) is { Switch: not null } look) return look;
+            if (await LookAsync(adb, model, timing.Log, stop) is { Switch: not null } look) return look;
         }
         return new StateLook(new StateReading(DeviceState.Unknown, 0), null);
     }
@@ -114,7 +114,7 @@ public static partial class SimRunner
         var clock = Stopwatch.StartNew();
         do
         {
-            last = await LookAsync(adb, model, stop);
+            last = await LookAsync(adb, model, timing.Log, stop);
             if (last.Reading.State != DeviceState.Unknown && last.Reading.State != was) return last;
             await Task.Delay(timing.Poll, stop);
         } while (clock.Elapsed < timing.ElementWait);
@@ -122,11 +122,24 @@ public static partial class SimRunner
     }
 
     /// <summary>One look: the dump, the switch in it and, when found, a screenshot and the reading.</summary>
-    private static async Task<StateLook> LookAsync(IAdbScreen adb, StateModel model, CancellationToken stop)
+    private static async Task<StateLook> LookAsync(IAdbScreen adb, StateModel model, Action<string>? log, CancellationToken stop)
     {
         stop.ThrowIfCancellationRequested();
         if (await ReadAsync(adb) is not { } screen || model.Target?.Locate(screen) is not { } node) return new StateLook(new StateReading(DeviceState.Unknown, 0), null);
-        var sample = StateSample.Take(screen, node, Png.Decode(await adb.ScreenshotAsync()));
+        var sample = StateSample.Take(screen, node, await PictureAsync(adb, screen, log));
         return new StateLook(model.Read(sample), node);
+    }
+
+    /// <summary>
+    /// The screenshot when it can be used for colours and shapes; otherwise null, and the reason is logged plainly (the state is then read from
+    /// the dump's attributes and words only; <see cref="StateSample.PixelsMissing"/>).
+    /// </summary>
+    private static async Task<RgbaImage?> PictureAsync(IAdbScreen adb, SimScreen screen, Action<string>? log)
+    {
+        var image = Png.Decode(await adb.ScreenshotAsync());
+        var problem = ScreenshotCheck.Problem(image, screen.Size.Width, screen.Size.Height);
+        if (problem is null) return image;
+        log?.Invoke($"Screenshot unusable: {problem}. Reading the state from the screen's switch state and words only.");
+        return null;
     }
 }

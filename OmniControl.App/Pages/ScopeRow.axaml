@@ -1,0 +1,18 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pages="using:OmniControl.App.Pages"
+             xmlns:c="using:OmniControl.App.Controls"
+             x:Class="OmniControl.App.Pages.ScopeRow"
+             x:DataType="pages:ScopeItem">
+    <!-- A card with the apps scope chip: the label (wraps) and the master chip at the right, as the other half-width cards place their control -->
+    <Panel ToolTip.Tip="{Binding Tip}">
+        <Grid Margin="0,1" ColumnDefinitions="Auto,*" ColumnSpacing="12" IsVisible="{Binding !Half}">
+            <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+            <c:AppScopeChip Grid.Column="1" DataContext="{Binding Scope}" HorizontalAlignment="Left" />
+        </Grid>
+        <Grid Margin="0,1" ColumnDefinitions="*,Auto" ColumnSpacing="8" IsVisible="{Binding Half}">
+            <TextBlock Classes="cardlabel" Text="{Binding Label}" />
+            <c:AppScopeChip Grid.Column="1" DataContext="{Binding Scope}" VerticalAlignment="Center" />
+        </Grid>
+    </Panel>
+</UserControl>

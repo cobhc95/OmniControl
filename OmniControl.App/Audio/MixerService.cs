@@ -1,6 +1,7 @@
 ﻿using OmniControl.Core.Models;
 using OmniControl.App.Services;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Avalonia.Threading;
 using OmniControl.Core.Engine;
 
@@ -36,10 +37,11 @@ public sealed partial class MixerService : IDisposable
     public event Action? Updated;
 
     /// <summary>Reports problems the user should know about (a device change Windows refused).</summary>
-    public Action<string>? Report { get; set; }
+    public Action<string>? Report { get; }
 
-    public MixerService()
+    public MixerService(Action<string>? report = null)
     {
+        Report = report;
         _timer.Tick += (_, _) => Scan();
         foreach (var key in Settings.Apps.Select(a => a.Key).Where(IgnoredPrograms.Contains).ToList()) Remove(key); // remembered by an older version
         Scan();
@@ -156,7 +158,10 @@ public sealed partial class MixerService : IDisposable
                     : new RunningApp(a.Key, false, false, a.Volume, a.Pan, a.Muted))
                 .ToList();
         }
-        catch { /* keep the last known state */ }
+        catch (Exception ex) when (ex is COMException or InvalidCastException or InvalidOperationException)
+        {
+            Guard.Log("Scanning programs and devices", ex); // keep the last known state
+        }
         Updated?.Invoke();
     }
 

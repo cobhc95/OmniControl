@@ -16,7 +16,7 @@ public sealed partial class TrayFlyoutModel
     private const string RemoveWords = "Remove from panel", ChangeActionWords = "Change action…", ChangeIconWords = "Change icon…",
         LockWords = "Lock layout", ShowWords = "Show in OmniControl";
 
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(EditText))] private bool _isEditing;
+    [ObservableProperty] private bool _isEditing;
 
     [RelayCommand]
     private void ToggleEdit() => IsEditing = !IsEditing;
@@ -85,14 +85,17 @@ public sealed partial class TrayFlyoutModel
     public void SetIcon(ITrayPanelItem item, IconPick pick) => EditList(item.IsSlider, (list, shown) => TrayOrder.WithIcon(list, shown, IndexOf(item), pick.Value));
 
     /// <summary>The right-click menu of a slider or tile; the window shows the pickers (they need it as their owner).</summary>
-    public IReadOnlyList<MenuRowItem> ItemMenu(ITrayPanelItem item, Action<ITrayPanelItem> changeAction, Action<ITrayPanelItem> changeIcon) => new[]
+    public IReadOnlyList<MenuRowItem> ItemMenu(ITrayPanelItem item, Action<ITrayPanelItem> changeAction, Action<ITrayPanelItem> changeIcon)
     {
-        Row(RemoveWords, false, () => Remove(item)),
-        Row(ChangeActionWords, false, () => changeAction(item)),
-        Row(ChangeIconWords, false, () => changeIcon(item)),
-        Row(LockWords, IsLocked, ToggleLock),
-        Row(ShowWords, false, () => _showInApp(item.Target)),
-    };
+        var rows = new List<MenuRowItem>();
+        if (item is TrayTileItem { Failure: { } failure }) rows.Add(MenuRowItem.Header(failure)); // why the tile's mark is red
+        rows.Add(Row(RemoveWords, false, () => Remove(item)));
+        rows.Add(Row(ChangeActionWords, false, () => changeAction(item)));
+        rows.Add(Row(ChangeIconWords, false, () => changeIcon(item)));
+        rows.Add(Row(LockWords, IsLocked, ToggleLock));
+        rows.Add(Row(ShowWords, false, () => _showInApp(item.Target)));
+        return rows;
+    }
 
     private static MenuRowItem Row(string text, bool ticked, Action run) => new(text, string.Empty, ticked, string.Empty, new RelayCommand(run));
 
@@ -105,13 +108,13 @@ public sealed partial class TrayFlyoutModel
 
     /// <summary>The item's place among the shown sliders or tiles (what <see cref="TrayOrder"/> counts in).</summary>
     private int IndexOf(ITrayPanelItem item) =>
-        item.IsSlider ? Sliders.IndexOf((TraySliderItem)item) : Tiles.OfType<TrayTileItem>().ToList().IndexOf((TrayTileItem)item);
+        item.IsSlider ? Sliders.IndexOf((TraySliderItem)item) : Tiles.IndexOf((TrayTileItem)item);
 
     /// <summary>An edit of the slider or tile list, given the stored list and what it shows now.</summary>
     private void EditList(bool slider, Func<IReadOnlyList<TrayElement>, IReadOnlyList<TrayTarget>, List<TrayElement>> change) => Edit(() =>
     {
         var list = slider ? SliderList : TileList;
-        var shown = slider ? Sliders.Select(s => s.Target).ToList() : Tiles.OfType<TrayTileItem>().Select(t => t.Target).ToList();
+        var shown = slider ? Sliders.Select(s => s.Target).ToList() : Tiles.Select(t => t.Target).ToList();
         var changed = change(list, shown);
         list.Clear();
         list.AddRange(changed);

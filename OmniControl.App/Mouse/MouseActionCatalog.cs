@@ -231,11 +231,12 @@ public static class MouseActionCatalog
     }
 
     /// <summary>
-    /// The entries of the Actions and hotkeys window: every master action (and the buttons of its lists) with only what a key keeps of its
-    /// own (a custom action's editor, remove, rename) and why it does nothing now, since a key runs an action without the settings an input chooses.
+    /// The entries of the Actions and hotkeys window: every master action (and the buttons of its lists) with the settings its hotkeys and
+    /// rules use (<see cref="OwnOptions"/>: the action's defaults, not the "times / repeat" ones of an input), what a key keeps of its
+    /// own (a custom action's editor, remove, rename) and why it does nothing now.
     /// </summary>
     public static List<PickChoice> ManageChoices(IEnumerable<HotkeyAction> omniActions) =>
-        omniActions.Select(a => OmniChoice(a, _ => null) with { Unavailable = a.UnavailableReason }).ToList();
+        omniActions.Select(a => OmniChoice(a, b => OwnOptions(b).Concat(b.ManageSettings ?? Array.Empty<ActionOption>()).ToList() is { Count: > 0 } own ? own : null) with { Unavailable = a.UnavailableReason }).ToList();
 
     /// <summary>The master action's id in an entry made by <see cref="OmniEntry"/>; null for any other entry.</summary>
     public static string? OmniIdOf(string spec) => Split(spec) is (Omni, var id) ? id : null;
@@ -257,17 +258,25 @@ public static class MouseActionCatalog
     /// </summary>
     public static PickChoice OmniEntry(HotkeyAction a, IReadOnlyList<ActionOption>? options = null, string? unavailable = null) =>
         new($"{Omni}:{a.Id}", a.Section, a.Title, Keywords: $"{OmniControl} {a.Keywords}", Options: options, Unavailable: unavailable, Heading: a.PickerHeading,
-            Place: a.SectionPlace, RemoveText: a.RemoveText, Renaming: a.Renaming, IsListed: a.IsListed, Icon: a.ShownIcon);
+            Place: a.SectionPlace, RemoveText: a.RemoveText, Renaming: a.Renaming, IsListed: a.IsListed, Icon: a.ShownIcon, Family: a.Family, FamilyRole: a.FamilyRole, Tag: a.Tag);
 
-    /// <summary>The settings of an OmniControl action: what it takes of its own (a program, how far a level moves, a power countdown), then the common "times / repeat" ones where repeating makes sense.</summary>
-    private static IReadOnlyList<ActionOption> OmniOptions(HotkeyAction a)
+    /// <summary>The settings of an OmniControl action of its own (a program, how far a level moves, a power countdown): what its hotkeys and rules use as its defaults.</summary>
+    public static IReadOnlyList<ActionOption> OwnOptions(HotkeyAction a)
     {
         var own = new List<ActionOption>();
         if (a.Takes.HasFlag(ActionSettings.Launch)) own.AddRange(MouseOptions.Launching);
         if (a.Takes.HasFlag(ActionSettings.Step)) own.Add(MouseOptions.Step);
         if (a.Takes.HasFlag(ActionSettings.Countdown)) own.Add(MouseOptions.Countdown);
         if (a.Takes.HasFlag(ActionSettings.Force)) own.Add(MouseOptions.ForceClose);
-        var repeats = !a.Takes.HasFlag(ActionSettings.Launch) && !a.Takes.HasFlag(ActionSettings.Countdown); // starting a program or powering off once per press is all they do
+        if (a.Takes.HasFlag(ActionSettings.Clicking)) own.AddRange(MouseOptions.RepeatClicking);
+        return own;
+    }
+
+    /// <summary>The settings of an OmniControl action for a button or gesture: its own, then the common "times / repeat" ones where repeating makes sense.</summary>
+    private static IReadOnlyList<ActionOption> OmniOptions(HotkeyAction a)
+    {
+        var own = OwnOptions(a);
+        var repeats = !a.Takes.HasFlag(ActionSettings.Launch) && !a.Takes.HasFlag(ActionSettings.Countdown) && !a.Takes.HasFlag(ActionSettings.Clicking); // starting a program or powering off once per press is all they do
         return repeats ? own.Concat(MouseOptions.Common).ToList() : own;
     }
 

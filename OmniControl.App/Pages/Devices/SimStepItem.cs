@@ -82,7 +82,6 @@ public sealed partial class SimStepItem : ObservableObject
     public string Target => SimSteps.Words(Step).Target;
     public string Tail => SimSteps.Words(Step).Tail;
     public string TargetTip => SimSteps.Detail(Step);
-    public bool HasTarget => Target.Length > 0;
     public bool HasTail => Tail.Length > 0;
 
     /// <summary>Only steps that point at something on the screen can be picked again.</summary>

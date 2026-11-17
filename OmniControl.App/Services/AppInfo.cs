@@ -7,6 +7,15 @@ internal static class AppInfo
 {
     public const string Name = "OmniControl";
 
+    /// <summary>The GitHub repository the releases are published in ("owner/name"): the one place it is written (the update check and its link read it).</summary>
+    public const string Repository = "cobhc95/OmniControl";
+
+    /// <summary>The page listing every release, in a browser.</summary>
+    public static string ReleasesPageUrl => $"https://github.com/{Repository}/releases";
+
+    /// <summary>GitHub's public list of the repository's releases (pre-releases included).</summary>
+    public static string ReleasesApiUrl => $"https://api.github.com/repos/{Repository}/releases?per_page=20";
+
     /// <summary>The version as written in the project file, without any build suffix.</summary>
     public static string Version { get; } = ReadVersion();
 

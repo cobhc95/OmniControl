@@ -66,7 +66,7 @@
                 IsVisible="{Binding HasEffects}" ToolTip.Tip="{Binding FxTip}" ToolTip.ShowOnDisabled="True"
                 VerticalAlignment="Center" />
 
-        <Button Grid.Column="8" Grid.RowSpan="2" Tag="scope" Classes="pill glyph" Command="{Binding RemoveCommand}" IsVisible="{Binding CanForget}"
+        <Button Grid.Column="8" Grid.RowSpan="2" Tag="scope" Classes="removebadge" Command="{Binding RemoveCommand}" IsVisible="{Binding CanForget}"
                 ToolTip.Tip="Remove (forgets its settings)" VerticalAlignment="Center">
             <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
         </Button>

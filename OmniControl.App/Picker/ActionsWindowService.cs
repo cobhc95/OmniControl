@@ -51,10 +51,10 @@ public sealed class ActionsWindowService : IDisposable
         _setChoice = new ProviderChoice("Shortcut sets", setPresets, () => _openPresets(Title, SetsGroupId));
         presets.Register(new PresetGroup(SetsGroupId, Title, "Shortcut sets", setPresets));
         Restorable = new SettingsRestore<Dictionary<string, StoredHotkey>>(RestoreKey, Title,
-            () => "Removes every keyboard shortcut and puts each action back on all its devices.",
-            registry.ExportAll, () => HotkeyDefaults.Of(registry.ExportAll()),
+            () => "Puts every action back on its default keyboard shortcut (most have none) and on all its devices.",
+            registry.ExportAll, () => HotkeyDefaults.Of(registry.ExportAll(), registry.DefaultKeyOf),
             all => { registry.ImportAll(all); return Task.FromResult(true); },
-            atDefaults: HotkeyDefaults.IsAtDefaults);
+            atDefaults: all => HotkeyDefaults.IsAtDefaults(all, registry.DefaultKeyOf));
         ClearAllCommand = new AsyncRelayCommand(ClearAllAsync);
         registry.BindingsSaved += OnBindingsSaved;
         PickerWindow.UseKeys(Keys);
@@ -99,7 +99,7 @@ public sealed class ActionsWindowService : IDisposable
     private void Closed() => _model = null;
 
     /// <summary>The keys part every Choose-the-action window shows, read from the live master list (pick mode gets it from the window).</summary>
-    public ManageMode Keys => new(KeysOf, PaneFor, _registry);
+    public ManageMode Keys => new(KeysOf, PaneFor, ActionOf, _registry);
 
     private HotkeyAction? ActionOf(PickChoice choice) => MouseActionCatalog.OmniIdOf(choice.Spec) is { } id ? _registry.Find(id) : null;
 

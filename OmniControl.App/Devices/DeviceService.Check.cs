@@ -1,3 +1,4 @@
+using Avalonia.Threading;
 using OmniControl.App.Services;
 using OmniControl.Core.Engine;
 
@@ -54,6 +55,88 @@ public sealed partial class DeviceService
             runtime.Checking = false;
             runtime.Busy = false;
         }
+    }
+
+    // ---- Reading on its own (docs/mockups/device-autocheck.html): from the service, so the tray tiles show real states without the page ----
+
+    private DispatcherTimer? _autoTimer;
+    private readonly Dictionary<string, DateTime> _lastAuto = new();
+    private bool _autoRunning;
+
+    /// <summary>The device's auto-check changed (a pick or the switch): the page's chips read it again.</summary>
+    public event Action? AutoCheckChanged;
+
+    /// <summary>Starts the start-up check (a few seconds after the window is up) and the timer that keeps the periodic ones; once. Never in a screenshot export.</summary>
+    public void StartAutoChecks()
+    {
+        if (StartupMode.Inert || _autoTimer is not null) return;
+        _autoTimer = new DispatcherTimer { Interval = Timing.DeviceAutoCheckTick };
+        _autoTimer.Tick += (_, _) => _ = RunAutoChecksAsync(atStart: false);
+        _autoTimer.Start();
+        DispatcherTimer.RunOnce(() => _ = RunAutoChecksAsync(atStart: true), Timing.DeviceStartCheckDelay);
+    }
+
+    /// <summary>The choice a device follows now (null = manual only).</summary>
+    public AutoCheck? AutoCheckOf(DeviceRecord device) => AutoChecks.Effective(Settings, device);
+
+    public void PickAutoCheck(DeviceRecord device, AutoCheck value)
+    {
+        AutoChecks.Pick(Settings, device, value);
+        AutoCheckEdited();
+    }
+
+    public bool AutoCheckOnTrayOf(DeviceRecord device) => AutoChecks.OnTray(Settings, device);
+
+    public void PickAutoCheckOnTray(DeviceRecord device, bool value)
+    {
+        AutoChecks.PickOnTray(Settings, device, value);
+        AutoCheckEdited();
+    }
+
+    public void SetAutoCheckSame(DeviceRecord device, bool same)
+    {
+        AutoChecks.SetSame(Settings, device, same);
+        AutoCheckEdited();
+    }
+
+    private void AutoCheckEdited()
+    {
+        Edited();
+        AutoCheckChanged?.Invoke();
+    }
+
+    /// <summary>The page opened: devices set to "When the page or tray panel opens" read their state (Scripts only).</summary>
+    public async Task CheckWhenShownAsync()
+    {
+        foreach (var device in Settings.Devices.ToList())
+            if (AutoCheckOf(device) is { } choice && AutoChecks.Of(choice).WhenShown) await CheckAutoAsync(device);
+    }
+
+    private async Task RunAutoChecksAsync(bool atStart)
+    {
+        if (_autoRunning) return;
+        _autoRunning = true;
+        try
+        {
+            if (atStart) await Setup.RefreshAsync(); // Python and python-kasa are looked for before the first read
+            var now = DateTime.UtcNow;
+            foreach (var device in Settings.Devices.ToList())
+            {
+                if (AutoCheckOf(device) is not { } value) continue;
+                var choice = AutoChecks.Of(value);
+                var due = atStart ? choice.AtStart : choice.Every is { } every && AutoChecks.Due(_lastAuto.TryGetValue(device.Id, out var last) ? last : null, now, every);
+                if (!due) continue;
+                _lastAuto[device.Id] = now;
+                await CheckAutoAsync(device);
+            }
+        }
+        finally { _autoRunning = false; }
+    }
+
+    /// <summary>One automatic read: ready, set up and Scripts only; a problem is in the device's foot line and the log, never a pop-up.</summary>
+    private async Task CheckAutoAsync(DeviceRecord device)
+    {
+        if (device.IsReady && CanCheckByScript(device) && MissingFor(device) is null && !RuntimeOf(device).InSetup) await CheckStateAsync(device, scriptsOnly: true);
     }
 
     /// <summary>A Scripts method is ready, so the state can be read quickly without waking an emulator.</summary>

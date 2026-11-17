@@ -7,16 +7,17 @@
         Title="OmniControl">
     <!-- The tray flyout (docs/mockups/tray-flyout.html, docs/mockups/tray-remove-tiles.html). Layout only; the model is Tray/TrayFlyoutModel.
          Slider rows (icon, name or a choice chip, slider, value; the name column is shared so the sliders line up), then a 4-column wrap of
-         tiles ending in the dashed "+ Add" tile, then the foot: "Open OmniControl" at the left, "Edit"/"Done" at the right. In edit mode every
+         tiles, then the foot (docs/mockups/tray-footer.html): Add and Edit/Done icon buttons at the left, "Open OmniControl" at the right. In edit mode every
          slider and tile shows a remove cross and "+ slider" appears. Any slider or tile can be dragged to another place (Controls/PanelDragReorder)
          unless the layout is locked, and has a right-click menu: Remove from panel, Change action…, Change icon…, Lock layout, Show in OmniControl.
-         A tile whose state is being read again shows a small dot (Ellipse.checkdot); one that shows only a last known state is faded. -->
+         A tile shows its real or last-read state and one corner mark (Panel.tilemark, docs/mockups/tray-tile-states.html): a spinning ring while an
+         action runs, a pulsing dot while it is read, a clock (and faded) when only the last known value, a red warning when it failed. -->
     <Border Classes="flyoutpanel">
         <StackPanel Spacing="{StaticResource TrayPartGap}">
             <ItemsControl x:Name="SliderItems" ItemsSource="{Binding Sliders}" Grid.IsSharedSizeScope="True">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="t:TraySliderItem">
-                        <Grid Classes="trayslider" ColumnSpacing="8" ToolTip.Tip="{Binding Tip}" Background="Transparent">
+                        <Grid Classes="trayslider" ColumnSpacing="8" Background="Transparent">
                             <Grid.ContextFlyout>
                                 <c:ListMenuFlyout Placement="Pointer" Opening="OnItemMenuOpening">
                                     <c:MenuRowList />
@@ -31,7 +32,7 @@
                             </Grid.ColumnDefinitions>
                             <c:IconGlyph Source="{Binding Icon}" IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNotNull}}" />
                             <TextBlock Grid.Column="1" Classes="trayname" Text="{Binding Name}" IsVisible="{Binding HasName}" />
-                            <c:ChipMenu Grid.Column="1" Text="{Binding ChoiceText}" ChipToolTip="{Binding Tip}" IsVisible="{Binding HasChoice}"
+                            <c:ChipMenu Grid.Column="1" Text="{Binding ChoiceText}" IsVisible="{Binding HasChoice}"
                                         MenuOpened="OnChoiceMenuOpened" VerticalAlignment="Center">
                                 <c:ChipMenu.Menu>
                                     <c:MenuRowList />
@@ -40,7 +41,7 @@
                             <Slider Grid.Column="2" Classes="compact" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Value}"
                                     IsEnabled="{Binding CanSet}" />
                             <TextBlock Grid.Column="3" Classes="trayvalue" Text="{Binding ValueText}" />
-                            <Button Grid.Column="4" Classes="pill glyph" Click="OnRemoveClick" ToolTip.Tip="Remove from panel" VerticalAlignment="Center"
+                            <Button Grid.Column="4" Classes="removebadge" Click="OnRemoveClick"
                                     IsVisible="{Binding $parent[Window].DataContext.IsEditing}">
                                 <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
                             </Button>
@@ -49,8 +50,7 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <Button Classes="blockadd small" Content="+ slider" HorizontalAlignment="Left" Click="OnAddSliderClick" IsVisible="{Binding IsEditing}"
-                    ToolTip.Tip="Adds a slider: any level OmniControl knows and can change." />
+            <Button Classes="blockadd small" Content="+ slider" HorizontalAlignment="Left" Click="OnAddSliderClick" IsVisible="{Binding IsEditing}" />
 
             <ItemsControl x:Name="TileItems" ItemsSource="{Binding Tiles}">
                 <ItemsControl.ItemsPanel>
@@ -59,7 +59,7 @@
                 <ItemsControl.DataTemplates>
                     <DataTemplate DataType="t:TrayTileItem">
                         <Panel>
-                            <Button Classes="tile" Classes.on="{Binding IsOn}" Classes.faded="{Binding IsFaded}" Command="{Binding RunCommand}" ToolTip.Tip="{Binding Tip}">
+                            <Button Classes="tile" Classes.on="{Binding IsOn}" Classes.faded="{Binding IsNotSure}" Command="{Binding RunCommand}" ToolTip.Tip="{Binding Reason}">
                                 <Button.ContextFlyout>
                                     <c:ListMenuFlyout Placement="Pointer" Opening="OnItemMenuOpening">
                                         <c:MenuRowList />
@@ -67,29 +67,45 @@
                                 </Button.ContextFlyout>
                                 <StackPanel>
                                     <c:IconGlyph Source="{Binding Icon}" IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                                    <TextBlock Text="{Binding Name}" />
+                                    <c:WordText Text="{Binding Name}" />
                                 </StackPanel>
                             </Button>
-                            <Ellipse Classes="checkdot" IsVisible="{Binding IsChecking}" ToolTip.Tip="Reading its state now" />
-                            <!-- Sits inside the panel's inset (TrayTileCross), so nothing clips at the panel's edge -->
-                            <Button Classes="pill glyph" Click="OnRemoveClick" ToolTip.Tip="Remove from panel" HorizontalAlignment="Right" VerticalAlignment="Top"
+                            <Panel Classes="tilemark">
+                                <Ellipse Classes="markring" IsVisible="{Binding IsActing}" />
+                                <Path Classes="markarc" IsVisible="{Binding IsActing}" />
+                                <Ellipse Classes="markdot" IsVisible="{Binding IsReading}" />
+                                <c:IconGlyph Classes="marknotsure" LibraryId="clock" IsVisible="{Binding IsNotSure}" />
+                                <c:IconGlyph Classes="markfailed" LibraryId="alert" IsVisible="{Binding IsFailed}" />
+                            </Panel>
+                            <!-- Overlaps the tile's top-right corner (TrayTileCross) and stays within the panel's inset, so nothing clips -->
+                            <Button Classes="removebadge" Click="OnRemoveClick" HorizontalAlignment="Right" VerticalAlignment="Top"
                                     Margin="{StaticResource TrayTileCross}" IsVisible="{Binding $parent[Window].DataContext.IsEditing}">
                                 <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
                             </Button>
                         </Panel>
                     </DataTemplate>
-                    <DataTemplate DataType="t:TrayAddTile">
-                        <Button Classes="blockadd tile" Click="OnAddTileClick" ToolTip.Tip="{Binding Tip}">
-                            <TextBlock Text="{Binding Text}" />
-                        </Button>
-                    </DataTemplate>
                 </ItemsControl.DataTemplates>
             </ItemsControl>
 
-            <Grid ColumnDefinitions="*,Auto">
-                <Button Classes="link" Command="{Binding OpenAppCommand}" HorizontalAlignment="Left"><TextBlock Text="Open OmniControl" /></Button>
-                <Button Grid.Column="1" Classes="link" Command="{Binding ToggleEditCommand}"><TextBlock Text="{Binding EditText}" /></Button>
-            </Grid>
+            <Border Classes="trayfoot">
+                <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="6">
+                    <Button x:Name="AddButton" Classes="pill icon" Click="OnAddTileClick">
+                        <c:IconGlyph LibraryId="plus" />
+                    </Button>
+                    <Button x:Name="EditButton" Grid.Column="1" Classes="pill icon" Classes.accentline="{Binding IsEditing}" Command="{Binding ToggleEditCommand}">
+                        <Panel>
+                            <c:IconGlyph LibraryId="pencil" IsVisible="{Binding !IsEditing}" />
+                            <c:IconGlyph LibraryId="check" IsVisible="{Binding IsEditing}" />
+                        </Panel>
+                    </Button>
+                    <Button x:Name="OpenButton" Grid.Column="2" Classes="pill accentline" Command="{Binding OpenAppCommand}" HorizontalAlignment="Right">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <c:IconGlyph LibraryId="window" />
+                            <TextBlock Text="Open OmniControl" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </Border>
         </StackPanel>
     </Border>
 </Window>

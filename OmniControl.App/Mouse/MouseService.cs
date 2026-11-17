@@ -13,7 +13,8 @@ namespace OmniControl.App.Mouse;
 public sealed partial class MouseService : ILayerControl, ISharedOptions, IDisposable
 {
     /// <summary>The settings as the hook reads them: the first action per key, the others in order, and the apps scope of each limited button.</summary>
-    private sealed record Snapshot(Dictionary<string, MouseAction> Actions, Dictionary<string, MouseAction[]> Extras, Dictionary<MouseButton, AppScopeSetting> Scopes, bool BlockAutoscroll)
+    private sealed record Snapshot(Dictionary<string, MouseAction> Actions, Dictionary<string, MouseAction[]> Extras, Dictionary<MouseButton, AppScopeSetting> Scopes, bool BlockAutoscroll,
+        bool PauseInFullScreen, AppScopeSetting? NeverActIn)
     {
         public MouseAction[] ExtrasOf(string key) => Extras.TryGetValue(key, out var extras) ? extras : NoExtras;
     }
@@ -22,6 +23,9 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
 
     private readonly MouseActionRunner _runner;
     private readonly MouseModes _modes;
+    private readonly Func<string, RunSettings, Action?> _holdOmniAction;
+    private readonly AutoscrollWatcher _autoscroll = new(); // keeps the middle-press answer ready so the hook never waits for it
+    private readonly FullScreenWatcher _fullScreen = new(); // keeps "a full-screen app is in front" ready for the same reason
     private readonly Action<string> _report;
     private readonly Action<string> _log;
     private readonly Func<MouseEvent, MouseAction?> _gestureAt;
@@ -35,6 +39,9 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
     private volatile Snapshot _snapshot;
 
     public MouseSettings Settings { get; } = MouseSettings.Load();
+
+    /// <summary>The "Repeated clicking" action's engine; its master action (registered by the Mouse page) starts and stops it.</summary>
+    public RepeatedClicking Clicking { get; } = new();
 
     /// <summary>
     /// Raised on the UI thread with a family and its layer now in force, whenever a button, gesture or hotkey changes it (also while a
@@ -58,17 +65,21 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
     /// click over a screen area), or null.
     /// </param>
     /// <param name="scopes">Says whether a button's mapping works in the app the user is in (the Apps chip of the Mouse Buttons group and its cards).</param>
+    /// <param name="holdOmniAction">Starts an OmniControl action that lasts while the button is held and returns what ends it (null: it does not last).</param>
     /// <param name="states">The master list of states: the mouse's and the trackpad's layer in force are registered there.</param>
-    public MouseService(MouseHook hook, Func<string, RunSettings?, bool> runOmniAction, Action<string> report, Func<MouseEvent, MouseAction?> gestureAt, AppScopeGate scopes,
+    public MouseService(MouseHook hook, Func<string, RunSettings?, bool> runOmniAction, Func<string, RunSettings, Action?> holdOmniAction, Action<string> report, Func<MouseEvent, MouseAction?> gestureAt, AppScopeGate scopes,
         States.StateRegistry states)
     {
         _scopes = scopes;
+        _holdOmniAction = holdOmniAction;
         _report = report;
         _log = hook.Diagnose;
         _gestureAt = gestureAt;
         _runner = new MouseActionRunner(runOmniAction, Say, hook.Diagnose);
         _modes = new MouseModes(hook);
         _snapshot = TakeSnapshot();
+        ApplyWatchers();
+        hook.PassAll = PassesEverything;
         hook.AddHandler(Handle);
         _states = states;
         RegisterStates();
@@ -82,6 +93,7 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
     {
         Settings.Save();
         _snapshot = TakeSnapshot();
+        ApplyWatchers();
         Applied?.Invoke();
     }
 
@@ -148,7 +160,23 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
             Settings.ExtraActions.ToDictionary(e => e.Key, e => e.Value.Take(MouseSettings.MaxActions - 1).Select(MouseAction.Parse).ToArray()),
             Enum.GetValues<MouseButton>().Where(b => b.FamilyOf() == InputFamily.Mouse && Settings.ScopeOf(b) is not null)
                 .ToDictionary(b => b, b => Settings.ScopeOf(b)!),
-            Settings.BlockAutoscroll);
+            Settings.BlockAutoscroll, Settings.PauseInFullScreen, Settings.NeverActIn is { IsLimited: true } never ? never : null);
+
+    private void ApplyWatchers()
+    {
+        _autoscroll.SetEnabled(Settings.BlockAutoscroll);
+        _fullScreen.SetEnabled(Settings.PauseInFullScreen);
+    }
+
+    /// <summary>
+    /// Asked by the hook before any handler for every press and wheel step: true while a full-screen app is in front (when paused there) or the
+    /// app in front is one mouse features never act in. Reads only what workers have cached, so it never waits.
+    /// </summary>
+    private bool PassesEverything()
+    {
+        var snapshot = _snapshot;
+        return (snapshot.PauseInFullScreen && _fullScreen.IsActive) || !_scopes.Allows(snapshot.NeverActIn);
+    }
 
     private void NotifyLayer(InputFamily family)
     {
@@ -239,14 +267,14 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
 
     /// <summary>
     /// "Block apps' middle-click autoscroll": a middle press nothing is mapped to is swallowed (press and release) unless it is over a link, tab,
-    /// button or menu item, so the app never starts its autoscroll. Not in the apps the button's scope leaves out; when the lookup cannot say in
-    /// time the press passes through. Nothing is sent on a swallowed press, so nothing can be left held.
+    /// button or menu item, so the app never starts its autoscroll. Not in the apps the button's scope leaves out; when no ready answer covers the pointer's spot
+    /// the press passes through. Nothing is sent on a swallowed press, so nothing can be left held.
     /// </summary>
     private bool BlocksAutoscroll(MouseEvent ev, Snapshot snapshot)
     {
         if (ev.Button != MouseButton.Middle || !snapshot.BlockAutoscroll) return false;
         if (snapshot.Scopes.TryGetValue(ev.Button, out var scope) && !_scopes.Allows(scope)) return false;
-        if (MiddleClickPolicy.DecideAt(ev.X, ev.Y) != ClickVerdict.Swallow) return false;
+        if (_autoscroll.Verdict(ev.X, ev.Y) != ClickVerdict.Swallow) return false;
         _log("Middle press swallowed: not over a link, tab or button (apps' autoscroll blocked)");
         lock (_gate) _swallowed.Add(ev.Button);
         return true;
@@ -298,6 +326,11 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
         if (trigger == MouseOptions.KeysHeld && action.Id == MouseActionCatalog.Keys)
         {
             undo = _modes.HoldKeys(action.Param);
+            RunInOrder(ev, null, extras);
+        }
+        else if (isPressable && action.Id == MouseActionCatalog.Omni && _holdOmniAction(action.Param, MouseOptions.RunOf(action.Options)) is { } held)
+        {
+            undo = held; // an action that lasts while the button is held (repeated clicking): the release ends it
             RunInOrder(ev, null, extras);
         }
         else if (trigger == MouseOptions.OnRelease) undo = () => RunInOrder(ev, action, extras);
@@ -364,7 +397,7 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
         return swallowed;
     }
 
-    private void Say(string message) => Dispatcher.UIThread.Post(() => _report(message));
+    private void Say(string message) => _report(message);
 
     public void Dispose()
     {
@@ -373,6 +406,7 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
         lock (_gate) pending = _undoOnRelease.Values.ToList();
         foreach (var undo in pending) undo(); // let go of whatever a held button was doing
         _modes.Dispose();
+        Clicking.Dispose();
         ForgetStates();
     }
 }

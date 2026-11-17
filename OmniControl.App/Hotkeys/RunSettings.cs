@@ -17,7 +17,10 @@ public enum ActionSettings
 
     /// <summary>Whether a shut down, restart or sign out closes programs that object.</summary>
     Force = 8,
+
+    /// <summary>The repeated-clicking settings (button, speed, when to stop...).</summary>
+    Clicking = 16,
 }
 
 /// <summary>What an input chose for the action it runs; an action uses only the settings it <see cref="HotkeyAction.Takes"/> and ignores the rest.</summary>
-public sealed record RunSettings(LaunchSettings? Launch = null, int? Step = null, int? CountdownSeconds = null, bool Force = false);
+public sealed record RunSettings(LaunchSettings? Launch = null, int? Step = null, int? CountdownSeconds = null, bool Force = false, OptionValues? Options = null);

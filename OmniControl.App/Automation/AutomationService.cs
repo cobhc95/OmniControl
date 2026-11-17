@@ -62,7 +62,7 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         _states = states;
         _sources = new Sources(hotkeys, states);
         _remembered = remembered;
-        _report = message => Dispatcher.UIThread.Post(() => report(message));
+        _report = report;
         SessionOff = KeyboardState.Held().HasFlag(Modifiers.Shift);
         var actions = new MouseActionRunner(hotkeys.Run, _report, Log);
         _runner = new RuleRunner(actions, IsApproved, Log);

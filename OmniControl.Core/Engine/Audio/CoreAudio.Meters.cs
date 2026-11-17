@@ -25,7 +25,7 @@ public static partial class CoreAudio
             left = right = p;
             return true;
         }
-        catch { return false; /* device vanished: caller reopens the meter */ }
+        catch (Exception ex) when (ex is COMException or InvalidCastException) { return false; /* device vanished: caller reopens the meter */ }
     }
 
     /// <summary>
@@ -59,6 +59,6 @@ public static partial class CoreAudio
             var iid = typeof(IAudioMeterInformation).GUID;
             return dev.Activate(ref iid, ClsCtxAll, IntPtr.Zero, out var o) == 0 ? o as IAudioMeterInformation : null;
         }
-        catch { return null; /* device has no meter */ }
+        catch (Exception ex) when (ex is COMException or InvalidCastException) { return null; /* device has no meter */ }
     }
 }

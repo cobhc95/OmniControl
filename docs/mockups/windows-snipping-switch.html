@@ -1,0 +1,13 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Windows screenshot keys switch (approved)</title>
+<!-- Approved by the owner 17 Nov 2026. Actions and hotkeys window, settings pane of every screenshot action (shared settings),
+  directly under "Same settings for every screenshot action": a full-width switch card
+  "Turn off Windows' own screenshot keys", muted note "Print Screen and Win+Shift+S stop opening Snipping Tool". OFF by default.
+  On: Print Screen no longer opens Snipping Tool (HKCU Control Panel\Keyboard PrintScreenKeyForSnippingEnabled=0, effective at once);
+      Win+Shift+S released (HKCU ...\Explorer\Advanced DisabledHotkeys gains "S"), which needs Explorer restart / sign-out:
+      a Border.tag.caution "applies after sign-out" shows on the card while that is pending.
+  Off: both put back exactly as they were before (previous values remembered). Registry access lives in Core/Engine. One global app setting,
+  searchable; registers a hotkey action toggling it. -->
+<style>body{font-family:Segoe UI;background:#1b1b1b;color:#eee;padding:20px;font-size:13px}</style></head><body>
+<p>[Same settings for every screenshot action  (on)]<br>[Turn off Windows' own screenshot keys — Print Screen and Win+Shift+S stop opening Snipping Tool  (off)] [applies after sign-out]</p>
+</body></html>

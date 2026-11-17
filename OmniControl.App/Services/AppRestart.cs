@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using OmniControl.App.Services.Backup;
+using OmniControl.Core.Engine;
 
 namespace OmniControl.App.Services;
 
@@ -32,6 +33,12 @@ public static class AppRestart
             return false;
         }
     }
+
+    /// <summary>Starts the next run as administrator (Windows asks the user); the caller exits when this says None, and stays as it is when the user refused.</summary>
+    public static HelperFailure StartNextElevated() =>
+        Environment.ProcessPath is { } self
+            ? Elevation.StartElevated(self, new[] { AfterArgument, Environment.ProcessId.ToString() })
+            : HelperFailure.NotStarted;
 
     /// <summary>At start, before anything is loaded: waits for the run that restarted this one, then carries out a staged import or wipe.</summary>
     public static void BeforeStart(string[] args)

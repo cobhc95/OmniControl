@@ -25,7 +25,6 @@ internal sealed class MarginWindow : Window
     {
         SystemDecorations = SystemDecorations.None;
         Topmost = true;
-        ShowInTaskbar = false;
         ShowActivated = false;
         WindowStartupLocation = WindowStartupLocation.Manual;
         SizeToContent = SizeToContent.Manual;

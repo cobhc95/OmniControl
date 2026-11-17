@@ -171,4 +171,86 @@ public class ActionPickerTests
         model.Query = string.Empty;
         Assert.Contains(model.Actions, a => a.IsCommand);
     }
+
+    // ---- Families: the directions of one thing are one line (docs/mockups/grouped-actions.html) ----
+
+    private static HotkeyAction[] PointerActions()
+    {
+        var speed = new HotkeyLevel("pointer", "Pointer speed");
+        var scroll = new HotkeyLevel("scroll", "Scroll lines");
+        var scheme = new ActionFamily("pointer.scheme", "Pointer scheme");
+        return new[]
+        {
+            HotkeyAction.ForLevel("pointer.speed.up", "Pointer speed up", "Mouse", "", speed, +1, (_, _) => { }, group: "Pointer settings"),
+            HotkeyAction.ForLevel("pointer.speed.down", "Pointer speed down", "Mouse", "", speed, -1, (_, _) => { }, group: "Pointer settings"),
+            HotkeyAction.ForLevel("pointer.scroll.up", "Scroll lines up", "Mouse", "", scroll, +1, (_, _) => { }, group: "Pointer settings"),
+            HotkeyAction.ForLevel("pointer.scroll.down", "Scroll lines down", "Mouse", "", scroll, -1, (_, _) => { }, group: "Pointer settings"),
+            new HotkeyAction("pointer.scheme.next", "Next pointer scheme", "Mouse", "", _ => { }, group: "Pointer settings") { Family = scheme, FamilyRole = "Next" },
+            new HotkeyAction("pointer.scheme.previous", "Previous pointer scheme", "Mouse", "", _ => { }, group: "Pointer settings") { Family = scheme, FamilyRole = "Previous" },
+            new HotkeyAction("pointer.precision.toggle", "Toggle pointer precision", "Mouse", "", _ => { }, group: "Pointer settings"),
+        };
+    }
+
+    private static PickerModel ManageModel(HotkeyAction[] actions) =>
+        new(PickChoice.Group(MouseActionCatalog.ManageChoices(actions)), null, new Dictionary<string, string>()) { Noun = "trigger" };
+
+    [Fact]
+    public void TheDirectionsOfAFamilyAreOneLine_AndSingleActionsStayAlone()
+    {
+        var actions = PointerActions();
+        var model = ManageModel(actions);
+
+        var lines = model.Actions.Where(a => a.IsEntry).ToList();
+
+        Assert.Equal(new[] { "Pointer speed", "Scroll lines", "Pointer scheme", "Toggle pointer precision" }, lines.Select(l => l.Text));
+        Assert.Equal(7, lines.Sum(l => l.Members?.Count ?? 1)); // 7 actions, 4 lines
+        Assert.Equal("Up · Down", lines[0].Summary);
+    }
+
+    [Fact]
+    public void EveryDirectionKeepsItsOwnIdInTheList()
+    {
+        var actions = PointerActions();
+        var model = ManageModel(actions);
+
+        var specs = model.Actions.SelectMany(a => a.Members ?? (a.Choice is null ? Array.Empty<PickChoice>() : new[] { a.Choice })).Select(c => c.Spec);
+
+        Assert.Equal(actions.Select(a => $"omni:{a.Id}").OrderBy(x => x), specs.OrderBy(x => x));
+        Assert.Equal("Next", actions[4].FamilyRole);
+        Assert.Equal("Up", actions[0].FamilyRole);
+        Assert.Equal("Down", actions[1].FamilyRole);
+    }
+
+    [Fact]
+    public void ASearchForADirection_ShowsTheFamilyLineWithThatDirectionChosen()
+    {
+        var model = ManageModel(PointerActions());
+
+        model.Query = "pointer speed down";
+        model.Settle();
+
+        var line = Assert.Single(model.Actions, a => a.Text == "Pointer speed");
+        Assert.NotNull(line.Members);
+        Assert.Equal("omni:pointer.speed.down", model.ActiveChoice!.Spec);
+    }
+
+    [Fact]
+    public void PickingFromAFamily_ReturnsTheDirectionChosenInTheDirectionSetting()
+    {
+        var model = ManageModel(PointerActions());
+        model.Query = "Next pointer scheme";
+        model.Settle();
+        Assert.Equal("omni:pointer.scheme.next", model.Use()!.Choice.Spec);
+
+        var pick = new PickerModel(PickChoice.Group(MouseActionCatalog.ManageChoices(PointerActions())), null, new Dictionary<string, string>()) { Noun = "trigger" };
+        pick.Move(0);
+        var direction = pick.OptionItems.Single(o => o.Option.Label == "Direction");
+        Assert.Equal("Up", direction.Value);
+        direction.Value = "Down";
+
+        var result = pick.Use()!;
+
+        Assert.Equal("omni:pointer.speed.down", result.Choice.Spec);
+        Assert.DoesNotContain(result.Values.Keys, k => k.StartsWith('$'));
+    }
 }

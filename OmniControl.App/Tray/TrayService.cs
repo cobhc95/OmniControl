@@ -39,6 +39,7 @@ public sealed class TrayService : IDisposable
         _icon.Menu = new NativeMenu();
         FillMenu();
         _flyout.MenuChanged += FillMenu;
+        _flyout.ToggleRequested += OnToggleRequested;
         TrayIcon.SetIcons(app, new TrayIcons { _icon });
         if (!StartupMode.Inert) Dispatcher.UIThread.Post(Prebuild, DispatcherPriority.Background);
     }
@@ -72,6 +73,19 @@ public sealed class TrayService : IDisposable
         UiTiming.Shown("Tray panel", timer);
     }
 
+    /// <summary>The panel's hotkey: closes it when it is open, else opens it above the notification area with the keyboard on its first item.</summary>
+    private void OnToggleRequested()
+    {
+        if (Window() is { IsOpen: true } open)
+        {
+            open.Dismiss();
+            return;
+        }
+        var at = TrayArea.Centre() ?? SystemCommands.GetCursorPos();
+        if (at is { } point) _click = new PixelPoint(point.X, point.Y);
+        Window().ShowAt(_click, fromKeyboard: true);
+    }
+
     /// <summary>The menu again from the master list: one group after another with a thin line between, a toggle with its tick.</summary>
     private void FillMenu()
     {
@@ -98,6 +112,7 @@ public sealed class TrayService : IDisposable
     public void Dispose()
     {
         _flyout.MenuChanged -= FillMenu;
+        _flyout.ToggleRequested -= OnToggleRequested;
         _window?.CloseForGood();
         _icon.Clicked -= OnClicked;
         _icon.IsVisible = false;

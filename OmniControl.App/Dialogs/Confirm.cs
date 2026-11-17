@@ -4,9 +4,16 @@ namespace OmniControl.App.Dialogs;
 public static class Confirm
 {
     /// <summary>"Delete this rule?": <paramref name="name"/> is quoted in the sentence; without one the sentence starts "This rule".</summary>
-    public static DialogMessage Delete(string kind, string? name)
+    /// <param name="rememberKind">The kind the "Don't ask again" memory knows this by when <paramref name="kind"/> varies ("3 devices" is a "device").</param>
+    public static DialogMessage Delete(string kind, string? name, string? rememberKind = null)
     {
         var subject = string.IsNullOrEmpty(name) ? $"This {kind}" : $"\"{name}\"";
-        return new DialogMessage($"Delete this {kind}?", $"{subject} will be removed for good.", "Delete");
+        return new DialogMessage($"Delete this {kind}?", $"{subject} will be removed for good.", "Delete",
+            RememberKey: DeleteKey(rememberKind ?? kind), RememberName: DeleteName(rememberKind ?? kind));
     }
+
+    /// <summary>The memory key and Settings name of deleting one kind of thing, so every delete prompt of that kind shares one choice.</summary>
+    public static string DeleteKey(string kind) => $"delete.{kind.ToLowerInvariant()}";
+
+    public static string DeleteName(string kind) => $"Delete a {kind}";
 }

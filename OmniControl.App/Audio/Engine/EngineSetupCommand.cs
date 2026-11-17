@@ -1,4 +1,4 @@
-using System.Security.Principal;
+using OmniControl.Core.Engine;
 using OmniControl.Core.Engine.Apo;
 
 namespace OmniControl.App.Audio.Engine;
@@ -84,7 +84,7 @@ public static class EngineSetupCommand
     {
         say(plan.Describe());
         if (!plan.CanApply) return PlanProblems;
-        if (!IsAdministrator())
+        if (!Elevation.IsElevated())
         {
             say("Run as administrator to make these changes.");
             return NotAdministrator;
@@ -98,12 +98,6 @@ public static class EngineSetupCommand
             if (undo.CanApply) ApoApplier.Apply(undo, say);
         }
         return StepFailed;
-    }
-
-    private static bool IsAdministrator()
-    {
-        using var identity = WindowsIdentity.GetCurrent();
-        return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
     }
 
     private static Dictionary<string, string> Options(IEnumerable<string> args)

@@ -15,7 +15,7 @@ public enum EmulatorEase { Easy, Hard }
 public sealed record EmulatorInfo(string Id, string Name, string DownloadPage, string DefaultAddress, string[] Programs, string[] Processes, string AdbNote, EmulatorEase Ease, int UsesGb, int PcGb, string Summary,
     string[] RegistryNames, string[] RegistryPrograms, string? RegistryAdb)
 {
-    /// <summary>Only Android Studio's emulator can be started without its window (<c>-no-window</c>); the others always show theirs.</summary>
+    /// <summary>Only Android Studio's emulator window is hidden and shown by OmniControl (<see cref="Emulators.SetWindowVisible"/>); the others always show theirs.</summary>
     public bool CanHide => Id == Emulators.AndroidStudio;
 
     /// <summary>Memory the emulator holds while running, as the menu shows it.</summary>
@@ -121,9 +121,9 @@ public static class Emulators
 
     /// <summary>
     /// Starts the emulator (Android Studio's with its first virtual device) as the normal user; null when it started, otherwise one plain sentence.
-    /// <paramref name="show"/> false starts Android Studio's without its window; <paramref name="quickBoot"/> lets it load its saved snapshot.
+    /// <paramref name="quickBoot"/> lets it load its saved snapshot. It always starts with its window; hiding it is <see cref="SetWindowVisible"/>.
     /// </summary>
-    public static string? Open(EmulatorInfo emulator, bool show = true, bool quickBoot = false)
+    public static string? Open(EmulatorInfo emulator, bool quickBoot = false)
     {
         if (Find(emulator) is not { } program) return $"{emulator.Name} isn't installed.";
         var start = new ProcessStartInfo(program) { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = Path.GetDirectoryName(program) ?? string.Empty };
@@ -137,7 +137,6 @@ public static class Emulators
             if (!quickBoot) start.ArgumentList.Add("-no-snapshot-load");
             start.ArgumentList.Add("-memory");
             start.ArgumentList.Add("2048");
-            if (!show) start.ArgumentList.Add("-no-window");
         }
         try
         {
@@ -148,6 +147,32 @@ public static class Emulators
         {
             return $"{emulator.Name} wouldn't start: {ex.Message}";
         }
+    }
+
+    private const string WindowTitlePrefix = "Android Emulator";
+
+    /// <summary>
+    /// Hides or shows the emulator's window (the emulator keeps running with full graphics; only the window goes). Only its titled top-level windows are
+    /// touched (the toolbar belongs to them); <see cref="Process.MainWindowHandle"/> cannot find a hidden window, so the windows are enumerated.
+    /// True when a window was found (a starting emulator has none yet).
+    /// </summary>
+    public static bool SetWindowVisible(EmulatorInfo emulator, bool visible)
+    {
+        var ids = Running(emulator).Select(p => { using (p) return (uint)p.Id; }).ToHashSet();
+        var found = false;
+        var text = new System.Text.StringBuilder(256);
+        ForegroundNative.EnumWindows((window, _) =>
+        {
+            ForegroundNative.GetWindowThreadProcessId(window, out var owner);
+            if (!ids.Contains(owner)) return true;
+            text.Clear();
+            ForegroundNative.GetWindowText(window, text, text.Capacity);
+            if (!text.ToString().StartsWith(WindowTitlePrefix, StringComparison.Ordinal)) return true;
+            found = true;
+            ForegroundNative.ShowWindow(window, visible ? ForegroundNative.SwShow : ForegroundNative.SwHide);
+            return true;
+        }, IntPtr.Zero);
+        return found;
     }
 
     /// <summary>Brings the emulator's main window to the front (restoring it when minimised); false when it has no window (running hidden, or not running).</summary>

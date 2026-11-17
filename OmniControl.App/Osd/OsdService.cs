@@ -101,6 +101,7 @@ public sealed class OsdService : IDisposable
         };
         _mic.Start();
 
+        _usb.Failed += ex => Guard.Log("Watching USB devices", ex);
         _usb.Changed += (connected, name) => Dispatcher.UIThread.Post(() => ShowMessage(UsbElement,
             new OsdMessage(connected ? OsdIcon.UsbConnected : OsdIcon.UsbRemoved, connected ? "USB device connected" : "USB device removed", name)));
         _usb.Start();

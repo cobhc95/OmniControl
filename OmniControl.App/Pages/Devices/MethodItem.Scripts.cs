@@ -97,8 +97,8 @@ public sealed partial class MethodItem
         get
         {
             var rows = ScriptProfiles.BuiltIn.Select(ProfileRow).ToList();
-            if (_service.Settings.Profiles.Count > 0) rows.Add(MenuRowItem.Header("My templates", ruleAbove: true));
-            rows.AddRange(_service.Settings.Profiles.Select(ProfileRow));
+            if (_service.Profiles.Count > 0) rows.Add(MenuRowItem.Header("My templates", ruleAbove: true));
+            rows.AddRange(_service.Profiles.Select(ProfileRow));
             rows.Add(new MenuRowItem("Manage templates…", string.Empty, false, "Opens Advanced: edit, save as your own, export or import.", new RelayCommand(() => ShowsAdvanced = true), RuleAbove: true));
             return rows;
         }

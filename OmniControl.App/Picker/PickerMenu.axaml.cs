@@ -5,7 +5,9 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using OmniControl.App.Controls;
 using OmniControl.App.Hotkeys;
+using OmniControl.App.Pages;
 
 namespace OmniControl.App.Picker;
 
@@ -173,6 +175,7 @@ public partial class PickerMenu : UserControl
             case Key.Enter:
                 if (model.OnFootButton) model.RunFootButton();
                 else if (inText) SettingsFocus.Focus(NavigationMethod.Directional); // done typing (a typed number is taken when the box loses focus)
+                else if (model.SelectedOption is { IsPoint: true }) PickPoint();
                 else if (model.SelectedOption is { IsText: true } or { IsPath: true } && e.KeyModifiers != KeyModifiers.Control) EditText();
                 else if (model.SelectedOption is { IsNumber: true } number && e.KeyModifiers == KeyModifiers.Control) BeginTyping(number); // Enter itself applies
                 else UseHighlighted(model);
@@ -250,10 +253,18 @@ public partial class PickerMenu : UserControl
         row.GetVisualDescendants().OfType<TextBox>().FirstOrDefault(t => t.IsEffectivelyVisible)?.Focus(NavigationMethod.Directional);
     }
 
+    private async void PickPoint()
+    {
+        if (OptionList.ContainerFromIndex(OptionList.SelectedIndex) is not Control row) return;
+        if (row.GetVisualDescendants().OfType<PointField>().FirstOrDefault(f => f.IsEffectivelyVisible) is { } field) await field.PickAsync();
+    }
+
     private void OnUseClick(object? sender, RoutedEventArgs e)
     {
         if (_model is not null) UseHighlighted(_model);
     }
+
+    private void OnCloseClick(object? sender, RoutedEventArgs e) => CloseRequested?.Invoke();
 
     private void OnRemoveFromPanelClick(object? sender, RoutedEventArgs e) => _model?.RemoveFromPanel();
 
@@ -290,7 +301,8 @@ public partial class PickerMenu : UserControl
     /// <summary>The wheel over a number or choice changes it (up = next, down = previous), like Left and Right do.</summary>
     private void OnOptionWheel(object? sender, PointerWheelEventArgs e)
     {
-        if (_model is null || (e.Source as Visual)?.FindAncestorOfType<ListBoxItem>()?.DataContext is not OptionItem { IsStepper: true, IsTyping: false } item) return;
+        if (_model is null || !ValueWheel.IsOverSelector(e.Source as Visual)) return;
+        if ((e.Source as Visual)?.FindAncestorOfType<ListBoxItem>()?.DataContext is not OptionItem { IsStepper: true, IsTyping: false } item) return;
         _model.OptionIndex = _model.OptionItems.IndexOf(item);
         item.Step(e.Delta.Y > 0 ? 1 : -1);
         e.Handled = true;

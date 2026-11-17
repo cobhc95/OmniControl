@@ -42,11 +42,16 @@ public static class AppDataStore
         try
         {
             Directory.CreateDirectory(Folder);
-            File.WriteAllText(PathOf(store.FileName), JsonSerializer.Serialize(value));
+            // Temp file then move: a crash or power cut mid-write leaves the old file whole, never a truncated one.
+            var path = PathOf(store.FileName);
+            var temp = path + ".tmp";
+            File.WriteAllText(temp, JsonSerializer.Serialize(value));
+            File.Move(temp, path, overwrite: true);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // Read-only or locked folder: keep running with the values in memory.
+            // Read-only or locked folder: keep running with the values in memory, and say so in the log.
+            AppendLog(Guard.LogFile, $"Couldn't save {store.FileName}: {ex.Message}");
         }
     }
 

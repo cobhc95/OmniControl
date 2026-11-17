@@ -83,6 +83,7 @@ public sealed class StateModel
         double total = 0, weights = 0;
         foreach (var family in Signals.GroupBy(s => FamilyOf(s.Key)))
         {
+            if (sample.PixelsMissing && family.Key is SignalFamily.Colour or SignalFamily.Shape) continue; // nothing to measure without a picture
             var score = family.Sum(s => s.Weight * Vote(s, sample)) / family.Sum(s => s.Weight);
             var weight = WeightOf(family.Key);
             total += weight * score;

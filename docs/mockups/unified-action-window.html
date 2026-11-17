@@ -1,0 +1,14 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>One action window (approved)</title>
+<!-- Approved by the owner 17 Nov 2026. The Choose-the-action window and the Actions and hotkeys window become ONE window/interface (App/Picker),
+  same three panes everywhere. The settings pane always shows, in order: name; Hotkey keys (HotkeyBox rows, + add key, Also on/Move here, Suggest);
+  Run now | Show on its page | Change icon...; then the action's SETTINGS (its ActionOptions, the same cards the mouse picker shows today).
+  Opened from the menu (manage mode): the settings edited are the action's own defaults, used by its hotkeys and rules; muted heading
+    "Settings · used by hotkeys and rules". Top bar stays (shortcut-set PresetPicker, Clear all, Restore defaults). Foot: Close only.
+  Opened from a mouse button / gesture / rule step (pick mode): same panes; first settings row "Same as the hotkey's settings" switch, ON by default
+    (principle 5): while on the binding uses the action's defaults and edits change those defaults; off = this binding's own copy.
+    Foot: "Use for <target name>" (Button.usebtn) plus Close. The top bar may show too (same window).
+  One window class, one view-model with a mode/target; no second window. Live values (no Apply). -->
+<style>body{font-family:Segoe UI;background:#1b1b1b;color:#eee;padding:20px;font-size:12px}</style></head><body>
+<p>Menu: name · Hotkey · pills · Settings (used by hotkeys and rules) · [Close] | From Middle button: … · Same as the hotkey's settings [on] · settings · [Use for Middle button]</p>
+</body></html>

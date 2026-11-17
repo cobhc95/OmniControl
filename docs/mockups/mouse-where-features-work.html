@@ -1,0 +1,14 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Mouse: where features work (approved)</title>
+<!-- Approved by the owner 17 Nov 2026. A new group card on the Mouse page: "Where mouse features work", with the shared "Restore defaults" pill at the right of its title.
+  Row 1, two half-width cards:
+    "Pause in full-screen games" + plain switch, ON by default. While a full-screen app (game) is in front, the hook passes every input untouched
+      (buttons, gestures, autoscroll block); detection lives in Core.
+    "Never act in" + the shared Apps scope chip (Controls/AppScopeChip, "Apps: none" = no exclusions), opening the existing app lists (AppListStore);
+      applies to buttons, gestures and the autoscroll block alike, checked through AppScopeGate (inverse: All except...).
+  Row 2, full-width card: "Run as administrator" + switch, OFF by default, muted second line "Works over admin windows too. Windows asks once at each start."
+    Turning it on restarts OmniControl elevated (runas); auto-start must then still work (note open items in HANDOVER if not possible).
+  Under the cards, one muted line: "Over a program run as administrator, mouse features do nothing unless this is on." -->
+<style>body{font-family:Segoe UI;background:#1b1b1b;color:#eee;padding:20px;font-size:12px}</style></head><body>
+<p>Where mouse features work [Restore defaults] · Pause in full-screen games [on] | Never act in [Apps: none ▾] · Run as administrator [off] · note</p>
+</body></html>

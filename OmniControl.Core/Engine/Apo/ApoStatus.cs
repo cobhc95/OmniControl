@@ -53,9 +53,6 @@ public sealed record ApoState(
     /// <summary>OmniControl APO sits on the default playback device.</summary>
     public bool OnDevice => Output?.OursOn == true;
 
-    /// <summary>Equalizer APO sits on the default playback device (OmniControl APO is never put on top of it).</summary>
-    public bool UpstreamOnDevice => Output?.UpstreamOn == true;
-
     /// <summary>"Audio enhancements" are off on the default playback device.</summary>
     public bool EnhancementsOff => Output?.EnhancementsOff == true;
 
@@ -64,9 +61,6 @@ public sealed record ApoState(
 
     /// <summary>OmniControl APO is registered, loaded by Windows and has its config folder.</summary>
     public bool ForkUsable => Registered && ProtectedAudioDisabled && ConfigFolder is not null;
-
-    /// <summary>The user's own Equalizer APO runs on the default device: OmniControl adds its master chain to it.</summary>
-    public bool UsesUpstream => Output is { } o && UpstreamUsable && o.UpstreamOn && !o.EnhancementsOff;
 
     /// <summary>Everything needed for OmniControl APO to run on the default device.</summary>
     public bool Ready => Output is { } o && ForkUsable && o.OursOn && !o.EnhancementsOff;
@@ -80,9 +74,6 @@ public sealed record ApoState(
         : UpstreamUsable && endpoint.UpstreamOn ? UpstreamConfigFolder
         : ForkUsable && endpoint.OursOn ? ConfigFolder
         : null;
-
-    /// <summary>The config folder the master chain goes to now, or null when neither APO runs on the default playback device.</summary>
-    public string? ConfigTarget => Output is { } o ? FolderFor(o) : null;
 
     /// <summary>The slots of the recording device <paramref name="endpointId"/>, or null when it was not looked at (unplugged, a cable).</summary>
     public ApoEndpoint? MicrophoneOf(string endpointId) =>

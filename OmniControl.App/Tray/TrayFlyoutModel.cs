@@ -6,7 +6,6 @@ using OmniControl.App.Hotkeys;
 using OmniControl.App.Icons;
 using OmniControl.App.Services;
 using OmniControl.App.States;
-using Avalonia.Threading;
 
 namespace OmniControl.App.Tray;
 
@@ -33,18 +32,16 @@ public sealed partial class TrayFlyoutModel : ObservableObject, IDisposable
     public TrayFlyoutModel(HotkeyRegistry hotkeys, StateRegistry states, IconPicker icons, Action openApp, Action<TrayTarget> showInApp)
     {
         (_hotkeys, _states, _icons, _openApp, _showInApp) = (hotkeys, states, icons, openApp, showInApp);
-        _rechecks = new DispatcherTimer { Interval = Timing.TrayRecheckEvery };
-        _rechecks.Tick += OnRecheckTick;
         _icons.Changed += OnListsChanged;
         _hotkeys.Actions.CollectionChanged += OnActionsChanged;
         _states.ListChanged += OnListChanged;
         _states.ValueChanged += OnValueChanged;
+        _states.LivenessChanged += OnLivenessChanged;
         Menu = MenuTargets();
     }
 
     public ObservableCollection<TraySliderItem> Sliders { get; } = new();
-    /// <summary>The tiles, then the dashed "+ Add" tile (<see cref="TrayAddTile"/>).</summary>
-    public ObservableCollection<object> Tiles { get; } = new();
+    public ObservableCollection<TrayTileItem> Tiles { get; } = new();
 
     /// <summary>The right-click menu: groups of master actions, each with the state that ticks it (if any).</summary>
     public IReadOnlyList<IReadOnlyList<TrayTarget>> Menu { get; private set; }
@@ -66,7 +63,7 @@ public sealed partial class TrayFlyoutModel : ObservableObject, IDisposable
     {
         _shown = false;
         IsEditing = false;
-        _rechecks.Stop();
+        StopRechecks();
     }
 
     /// <summary>Runs a master action by id, through the one run path (so the gate of block rules applies).</summary>
@@ -77,9 +74,6 @@ public sealed partial class TrayFlyoutModel : ObservableObject, IDisposable
 
     [RelayCommand]
     private void OpenApp() => _openApp();
-
-    /// <summary>The foot's edit link: its words follow the mode.</summary>
-    public string EditText => IsEditing ? "Done" : "Edit";
 
     /// <summary>The icon the user gave it, else its entry's own, else its section's (a section name saved before the icon library is read as that section).</summary>
     private IconImage? IconOf(TrayTarget target) => IconResources.Find(target.Element.Icon) ?? IconResources.Of(target.OwnIcon, _hotkeys.SectionOf(target.Section)?.Icon);
@@ -94,7 +88,6 @@ public sealed partial class TrayFlyoutModel : ObservableObject, IDisposable
         Tiles.Clear();
         foreach (var target in TrayTargets.Toggles(_settings.TilesInUse, states, _hotkeys.Actions, _hotkeys.Find))
             Tiles.Add(new TrayTileItem(target, IconOf(target), _states.Now, RunAction));
-        Tiles.Add(TrayAddTile.Instance);
     }
 
     private IReadOnlyList<IReadOnlyList<TrayTarget>> MenuTargets()
@@ -120,14 +113,19 @@ public sealed partial class TrayFlyoutModel : ObservableObject, IDisposable
         var id = change.Entry.Id;
         if (Menu.Any(g => g.Any(t => t.State?.Id == id))) MenuChanged?.Invoke();
         foreach (var slider in Sliders.Where(s => s.Shows(id))) slider.Read(_states.Now);
-        foreach (var tile in Tiles.OfType<TrayTileItem>().Where(t => t.Shows(id))) tile.Read(_states.Now);
+        foreach (var tile in Tiles.Where(t => t.Shows(id))) tile.Read(_states.Now);
+    }
+
+    private void OnLivenessChanged(StateEntry entry)
+    {
+        foreach (var tile in Tiles.Where(t => t.Shows(entry.Id))) tile.Read(_states.Now);
     }
 
     /// <summary>The lists are still right: only the values are taken again, from the states' last readings (never a device read).</summary>
     private void Refresh()
     {
         foreach (var slider in Sliders) slider.Read(_states.Now);
-        foreach (var tile in Tiles.OfType<TrayTileItem>()) tile.Read(_states.Now);
+        foreach (var tile in Tiles) tile.Read(_states.Now);
     }
 
     public void Dispose()
@@ -135,8 +133,8 @@ public sealed partial class TrayFlyoutModel : ObservableObject, IDisposable
         _hotkeys.Actions.CollectionChanged -= OnActionsChanged;
         _states.ListChanged -= OnListChanged;
         _states.ValueChanged -= OnValueChanged;
+        _states.LivenessChanged -= OnLivenessChanged;
         _icons.Changed -= OnListsChanged;
-        _rechecks.Stop();
-        _rechecks.Tick -= OnRecheckTick;
+        StopRechecks();
     }
 }

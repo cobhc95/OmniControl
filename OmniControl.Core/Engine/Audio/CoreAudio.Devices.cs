@@ -20,7 +20,7 @@ public static partial class CoreAudio
             try { return pv.vt == 31 ? Marshal.PtrToStringUni(pv.p) ?? "Unknown device" : "Unknown device"; }
             finally { PropVariantClear(ref pv); }
         }
-        catch { return "Unknown device"; }
+        catch (Exception ex) when (ex is COMException or InvalidCastException) { return "Unknown device"; }
     }
 
     private static List<IMMDevice> ActiveDevices(IMMDeviceEnumerator e, int flow = Render)
@@ -47,7 +47,7 @@ public static partial class CoreAudio
                 result.Add(new AudioDevice(id, DeviceName(d), id == defaultId));
             }
         }
-        catch { /* no audio service */ }
+        catch (Exception ex) when (ex is COMException or InvalidCastException) { /* no audio service */ }
         return result;
     }
 

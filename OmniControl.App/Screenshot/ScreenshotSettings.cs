@@ -1,4 +1,5 @@
 using OmniControl.App.Services;
+using OmniControl.Core.Engine;
 using OmniControl.Core.Engine.Screenshot;
 
 namespace OmniControl.App.Screenshot;
@@ -67,6 +68,15 @@ public sealed class ScreenshotSettings
     private static readonly DataStore Store = DataStores.Screenshots;
 
     public ScreenshotOptions Shared { get; set; } = new();
+
+    /// <summary>On: Windows' own screenshot keys (Print Screen, Win+Shift+S) are turned off (<see cref="WindowsKeysSwitch"/>). One global setting, not part of any action's set.</summary>
+    public bool TurnOffWindowsKeys { get; set; }
+
+    /// <summary>What Windows had before the switch was turned on, so turning it off puts it back; null while the switch is off.</summary>
+    public SnippingKeysBackup? WindowsKeysBackup { get; set; }
+
+    /// <summary>When the switch last changed (UTC); Win+Shift+S applies once Explorer has restarted after it.</summary>
+    public DateTime? WindowsKeysChangedUtc { get; set; }
 
     /// <summary>By action id: the actions that do not use the shared set.</summary>
     public Dictionary<string, ScreenshotOptions> Own { get; set; } = new();

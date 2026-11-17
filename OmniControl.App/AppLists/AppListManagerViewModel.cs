@@ -125,7 +125,7 @@ public sealed partial class AppListManagerViewModel : ObservableObject, IDisposa
         if (users.Count > 0)
         {
             var text = $"“{open.Name}” is used by {users.Count} {(users.Count == 1 ? "setting" : "settings")}. They will work in all apps.";
-            if (!await _ask(new DialogMessage("Delete this app list?", text, "Delete"))) return;
+            if (!await _ask(new DialogMessage("Delete this app list?", text, "Delete", RememberKey: Confirm.DeleteKey("app list"), RememberName: Confirm.DeleteName("app list")))) return;
         }
         _store.Delete(open.List);
     }
@@ -143,12 +143,6 @@ public sealed partial class AppListManagerViewModel : ObservableObject, IDisposa
         if (Selected is not { } open) return;
         Message = _store.Add(open.List, program, name) ? string.Empty : "That app is already in the list.";
     }
-
-    [RelayCommand]
-    private void AddRunning(RunningProgram program) => AddProgram(program.Id, program.Name);
-
-    [RelayCommand]
-    private void AddInstalled(InstalledApp app) => AddProgram(app.Program, app.Name);
 
     /// <summary>A program file the user browsed to: named as its file describes itself.</summary>
     public void AddFile(string path) => AddProgram(path, ProgramFile.NameOf(path));

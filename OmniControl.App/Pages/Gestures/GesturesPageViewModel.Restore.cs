@@ -18,8 +18,7 @@ public sealed partial class GesturesPageViewModel
 
     private Task<bool> ApplyState(GestureRestoreState target)
     {
-        _gestures.Settings.CopyFrom(target.Gestures);
-        _gestures.Apply();
+        _gestures.Replace(target.Gestures);
         _rules.ReplaceAll(target.Rules);
         _enabled.Load(_gestures.Settings.Enabled);
         _edgeStrip.Load(_gestures.Settings.EdgeStrip);

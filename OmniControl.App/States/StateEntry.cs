@@ -30,7 +30,8 @@ public sealed record StateValue(double? Number, string? Text, DateTime? At = nul
 /// </summary>
 public sealed record StateEntry(string Id, string Name, string Group, StateKind Kind, Func<StateValue?> Read, string HowKnown,
     string? Heading = null, int Min = 0, int Max = 100, string Unit = "", Func<IReadOnlyList<string>>? Choices = null, string Keywords = "",
-    Action<StateValue>? Set = null, string? Short = null, string? Icon = null, IReadOnlyList<string>? SuggestedIcons = null, StateRecheck? Recheck = null)
+    Action<StateValue>? Set = null, string? Short = null, string? Icon = null, IReadOnlyList<string>? SuggestedIcons = null, StateRecheck? Recheck = null,
+    Func<StateLiveness>? Liveness = null)
 {
     /// <summary>What a tight place calls the state.</summary>
     public string ShortName => Short ?? Name;
@@ -54,6 +55,14 @@ public sealed record StateEntry(string Id, string Name, string Group, StateKind 
 /// answer arrives as any change does (<see cref="StateRegistry.Notify"/>).
 /// </summary>
 public sealed record StateRecheck(Func<bool> CanCheck, Func<Task> CheckAsync);
+
+/// <summary>
+/// What a state's owner is doing with the value right now and how far the value can be trusted (docs/mockups/tray-tile-states.html): it is
+/// being changed (<see cref="Acting"/>) or read (<see cref="Reading"/>), the last change or read failed (<see cref="Failure"/>, one plain
+/// sentence), or the value is only the last one known (<see cref="NotSure"/>, why). Cheap, read on the UI thread; the owner calls
+/// <see cref="StateRegistry.NotifyLiveness"/> when it changes. A state without one is always sure and calm.
+/// </summary>
+public sealed record StateLiveness(bool Acting, bool Reading, string? Failure, string? NotSure);
 
 /// <summary>A state's value changed: the reading before (null: not known) and now, and the chain of rules whose run caused it, when known.</summary>
 public sealed record StateChange(StateEntry Entry, StateValue? Before, StateValue? After, Hotkeys.RunChain? Chain);

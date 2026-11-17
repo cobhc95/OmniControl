@@ -22,16 +22,7 @@ public static partial class CoreAudio
             var iid = typeof(IAudioEndpointVolume).GUID;
             return dev.Activate(ref iid, ClsCtxAll, IntPtr.Zero, out var o) == 0 ? o as IAudioEndpointVolume : null;
         }
-        catch { return null; /* no playback device */ }
-    }
-
-    public static string DefaultDeviceName()
-    {
-        try
-        {
-            return NewEnumerator().GetDefaultAudioEndpoint(Render, Multimedia, out var d) == 0 ? DeviceName(d) : "No playback device";
-        }
-        catch { return "No playback device"; }
+        catch (Exception ex) when (ex is COMException or InvalidCastException) { return null; /* no playback device */ }
     }
 
     public static bool GetMaster(out int percent, out bool muted, string? deviceId = null)

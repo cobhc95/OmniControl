@@ -6,7 +6,7 @@
         xmlns:restore="using:OmniControl.App.Pages.Restore"
         x:Class="OmniControl.App.Shell.MainWindow"
         x:DataType="shell:ShellViewModel"
-        Title="OmniControl" Width="860" Height="620" MinWidth="680" MinHeight="460"
+        Title="OmniControl" ShowInTaskbar="True" Width="860" Height="620" MinWidth="680" MinHeight="460"
        
         WindowStartupLocation="CenterScreen">
 
@@ -30,9 +30,8 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <!-- The one place the main window's keyboard shortcuts are listed (principle 12: no key instructions on the pages) -->
-                <Button Grid.Column="1" Classes="pill" Content="Keyboard shortcuts" Command="{Binding ShowKeyboardShortcutsCommand}"
-                        VerticalAlignment="Center" Margin="14,0,0,0" ToolTip.Tip="The keys of the open page and of the whole window (F1)" />
+                <!-- How groups start when a page opens (docs/mockups/groups-open-setting.html); the main window's keys are listed by F1 -->
+                <c:GroupsOpenChip Grid.Column="1" VerticalAlignment="Center" Margin="14,0,0,0" />
                 <TextBlock Grid.Column="2" Text="{Binding Status}" Classes="muted" TextTrimming="CharacterEllipsis"
                            HorizontalAlignment="Right" VerticalAlignment="Center" Margin="12,0,16,0" ToolTip.Tip="{Binding StatusTip}" />
                 <TextBlock Grid.Column="3" Text="{Binding ActiveLayer}" Classes="muted" VerticalAlignment="Center" Margin="0,0,14,0" IsVisible="{Binding ShowsActiveLayer}" />
@@ -53,6 +52,14 @@
                 <!-- Entries pinned to the bottom under a thin divider that open a window, not a page (Actions and hotkeys); the same item look
                      as the list above; a click or Enter opens the window (MainWindow.axaml.cs) -->
                 <StackPanel DockPanel.Dock="Bottom">
+                    <!-- Only while a newer version exists (the update check): a click opens App settings at the Updates group -->
+                    <Button Classes="pill accentline" Command="{Binding OpenUpdatesCommand}" IsVisible="{Binding HasUpdate}" HorizontalAlignment="Left"
+                            Margin="24,0,14,6" ToolTip.Tip="Open the Updates group in App settings">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <c:IconGlyph LibraryId="download" />
+                            <TextBlock Text="{Binding UpdateNotice}" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Button>
                     <Border Classes="hrule" Margin="14,6,14,6" />
                     <c:NavList x:Name="PinnedNav" Classes="nav" ItemsSource="{Binding PinnedEntries}">
                         <c:NavList.DataTemplates>

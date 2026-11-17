@@ -17,18 +17,17 @@ namespace OmniControl.App.Mouse;
 /// <see cref="Category"/> is the entry's section in the Choose-the-action window (its pane 1); <see cref="Heading"/> is the small group heading it sits under in the
 /// section's list, and <see cref="Place"/> the section's icon and order (read from the live page list; null in a list that has none). <see cref="RemoveText"/> names the
 /// <see cref="Icon"/> is the entry's own glyph (a resource key of Styles/Brushes.axaml; null: its section's icon). <see cref="RemoveText"/> names the
+/// <see cref="Family"/> and <see cref="FamilyRole"/> (from the master entry): the lists show the directions of a family as one row. <see cref="RemoveText"/> names the
 /// remove button, <see cref="Renaming"/> lets the user rename it, <see cref="IsListed"/> false hides a list button for now, <see cref="Editor"/> holds the data the settings pane edits live (a custom action) and <see cref="Create"/> makes a new entry from the form's values (the entry is that form, not an action).
 /// </summary>
 public sealed record PickChoice(string Spec, string Category, string Name, string? ParamHint = null, string Keywords = "",
     IReadOnlyList<ActionOption>? Options = null, string ParamLabel = "", string? Unavailable = null, bool AskFirst = false, PathKind? ParamBrowse = null,
     Action? Remove = null, Func<Visual, Task<IReadOnlyList<PickChoice>>>? Command = null, Action? Opened = null,
     string? Heading = null, ActionSection? Place = null, string RemoveText = "Remove", Renaming? Renaming = null, Func<bool>? IsListed = null,
-    ActionEditor? Editor = null, Func<IReadOnlyDictionary<string, string>, PickChoice>? Create = null, string? Icon = null)
+    ActionEditor? Editor = null, Func<IReadOnlyDictionary<string, string>, PickChoice>? Create = null, string? Icon = null,
+    ActionFamily? Family = null, string? FamilyRole = null, string? Tag = null)
 {
     public bool HasOptions => Options is { Count: > 0 };
-
-    /// <summary>True when the entry needs text or settings before it can be used.</summary>
-    public bool NeedsSettings => ParamHint is not null || AskFirst;
 
     /// <summary>True when a stored entry ("id" or "id:parameter", without options) is this choice.</summary>
     public bool Matches(string stored) => ParamHint is null ? Spec == stored : stored.StartsWith(Spec, StringComparison.Ordinal);

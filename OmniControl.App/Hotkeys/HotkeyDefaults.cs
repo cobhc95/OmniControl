@@ -1,16 +1,22 @@
 namespace OmniControl.App.Hotkeys;
 
-/// <summary>What "Restore defaults" means for the shortcuts (pure): no key combination on any action, and every action working on all its devices.</summary>
+/// <summary>
+/// What "Restore defaults" means for the shortcuts (pure): every action on its default key combination (<see cref="HotkeyAction.DefaultKey"/>,
+/// none for most), on all its devices and with its settings back at their defaults. <c>keyOf</c> gives an action's default key by id (null: none), so nothing here keeps its own list.
+/// </summary>
 public static class HotkeyDefaults
 {
     /// <summary>One action with nothing bound.</summary>
     public static readonly StoredHotkey Cleared = new(string.Empty, false, new List<string>());
 
-    /// <summary>True when no action has a key combination or a device pick of its own.</summary>
-    public static bool IsAtDefaults(IReadOnlyDictionary<string, StoredHotkey> all) => all.Values.All(IsCleared);
+    /// <summary>One action on its default key (<see cref="Cleared"/> when it has none).</summary>
+    public static StoredHotkey For(string? defaultKey) => defaultKey is null ? Cleared : new(defaultKey, false, new List<string>());
 
-    /// <summary>The same actions with nothing bound.</summary>
-    public static Dictionary<string, StoredHotkey> Of(IReadOnlyDictionary<string, StoredHotkey> all) => all.Keys.ToDictionary(id => id, _ => Cleared);
+    /// <summary>True when every action has exactly its default key, no device pick of its own and no changed settings.</summary>
+    public static bool IsAtDefaults(IReadOnlyDictionary<string, StoredHotkey> all, Func<string, string?>? keyOf = null) =>
+        all.All(p => !p.Value.UseSelected && p.Value.Options is not { Count: > 0 } && p.Value.Keys.SequenceEqual(For(keyOf?.Invoke(p.Key)).Keys));
 
-    private static bool IsCleared(StoredHotkey s) => !s.Keys.Any() && !s.UseSelected;
+    /// <summary>The same actions on their default keys.</summary>
+    public static Dictionary<string, StoredHotkey> Of(IReadOnlyDictionary<string, StoredHotkey> all, Func<string, string?>? keyOf = null) =>
+        all.Keys.ToDictionary(id => id, id => For(keyOf?.Invoke(id)));
 }

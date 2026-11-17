@@ -1,5 +1,6 @@
 ﻿using Avalonia;
 using OmniControl.App.Audio.Engine;
+using OmniControl.App.Mouse;
 using OmniControl.App.Services;
 using OmniControl.Core.Engine;
 
@@ -17,6 +18,7 @@ internal static class Program
         if (EngineSetupCommand.TryRun(args) is { } exitCode) return exitCode;
         ProcessPower.StayResponsive();
         AppRestart.BeforeStart(args);
+        if (AdministratorMode.RelaunchIfWanted(args)) return 0;
         return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 

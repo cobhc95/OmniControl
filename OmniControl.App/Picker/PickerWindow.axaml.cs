@@ -47,7 +47,7 @@ public partial class PickerWindow : Window
     /// <summary>The Actions and hotkeys window (non-modal; <see cref="ActionsWindowService"/> shows it): <paramref name="model"/> in manage mode.</summary>
     internal static PickerWindow Manage(string title, PickerModel model, ActionsWindowService bar)
     {
-        var window = new PickerWindow { Title = title, _model = model, ShowInTaskbar = true };
+        var window = new PickerWindow { Title = title, _model = model };
         window.ManageBar.DataContext = bar;
         window.ManageBar.IsVisible = true;
         window.WireKeys();
@@ -103,6 +103,7 @@ public partial class PickerWindow : Window
         if (TopLevel.GetTopLevel(at) is not Window owner) return;
         var clock = Stopwatch.StartNew();
         var model = card.MenuFor(startInSettings);
+        model.Target = card.Label;
         model.Live += card.Pick;
         if (await ChooseAsync(owner, $"Choose an action for {card.Label}", model, clock) is { } picked) card.Pick(picked);
         model.Live -= card.Pick;

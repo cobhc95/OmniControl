@@ -103,6 +103,13 @@ public sealed class AdbClient : IAdbScreen
 
     public Task<AdbResult> TypeAsync(string text) => ShellAsync($"input text '{EscapeForInput(text)}'");
 
+    /// <summary>Wakes the screen and lifts the lock screen; a hidden emulator comes up asleep and a sleeping screen answers with a black picture.</summary>
+    public async Task<AdbResult> WakeScreenAsync()
+    {
+        var woken = await ShellAsync("input keyevent KEYCODE_WAKEUP");
+        return woken.Ok ? await ShellAsync("wm dismiss-keyguard") : woken;
+    }
+
     public Task<AdbResult> BackAsync() => ShellAsync("input keyevent KEYCODE_BACK");
 
     public Task<AdbResult> OpenAppAsync(string package) =>

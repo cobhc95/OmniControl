@@ -1,4 +1,6 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.VisualTree;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using OmniControl.App.Controls;
@@ -13,6 +15,25 @@ namespace OmniControl.App.Pages;
 /// </summary>
 public static class ValueWheel
 {
+    /// <summary>
+    /// Marks the part of a row that is the ‹ value › selector itself (arrows and value). A row-level wheel handler changes the value only
+    /// when the pointer is over a marked element (<see cref="IsOverSelector"/>); over the label or empty space it leaves the wheel
+    /// unhandled so the page scrolls.
+    /// </summary>
+    public static readonly AttachedProperty<bool> SelectorProperty =
+        AvaloniaProperty.RegisterAttached<Control, bool>("Selector", typeof(ValueWheel));
+
+    public static bool GetSelector(Control control) => control.GetValue(SelectorProperty);
+    public static void SetSelector(Control control, bool value) => control.SetValue(SelectorProperty, value);
+
+    /// <summary>True when the wheel's source is a marked selector or inside one: the one decision every row-level wheel handler asks.</summary>
+    public static bool IsOverSelector(Visual? source)
+    {
+        for (var visual = source; visual is not null; visual = visual.GetVisualParent())
+            if (visual is Control control && GetSelector(control)) return true;
+        return false;
+    }
+
     public static void Register()
     {
         InputElement.PointerWheelChangedEvent.AddClassHandler<Slider>(OnRangeWheel);

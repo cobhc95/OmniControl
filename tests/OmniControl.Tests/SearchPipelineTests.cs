@@ -144,6 +144,19 @@ public class SearchPipelineTests
     }
 
     [Fact]
+    public void AChangedRowIsRemovedAndInserted_NeverReplacedInPlace()
+    {
+        var list = new ObservableCollection<Item>(new[] { new Item("a", "old"), new Item("b", "") });
+        var seen = Watch(list);
+
+        ListDiff.Apply(list, new[] { new Item("a", "new"), list[1] }, i => i.Name, (shown, wanted) => shown == wanted);
+
+        Assert.DoesNotContain(NotifyCollectionChangedAction.Replace, seen);
+        Assert.Equal(2, list.Count);
+        Assert.Equal("new", list[0].Group);
+    }
+
+    [Fact]
     public void ProgressiveFillShowsAScreenfulFirst_AndANewerFillStopsTheOlder()
     {
         var list = new ObservableCollection<Item>();

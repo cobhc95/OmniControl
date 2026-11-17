@@ -320,7 +320,7 @@ public class RestoreDefaultsTests
     public void Mouse_copy_covers_every_stored_setting()
     {
         var writable = typeof(MouseSettings).GetProperties().Where(p => p.CanWrite && p.GetMethod!.IsPublic).Select(p => p.Name).ToList();
-        Assert.Equal(11, writable.Count); // a new stored setting must be added to CopyFrom (and to this list)
+        Assert.Equal(14, writable.Count); // a new stored setting must be added to CopyFrom (and to this list)
 
         var source = new MouseSettings
         {
@@ -328,6 +328,7 @@ public class RestoreDefaultsTests
             Bindings = { ["2.Back"] = "Copy" }, ExtraActions = { ["2.Back"] = new List<string> { "Paste" } },
             LayerNames = { [2] = "Games" }, TrackpadLayerNames = new() { [3] = "Pad" },
             ButtonsScope = new(ScopeMode.Only, "list1"), CardScopes = { ["Back"] = new(ScopeMode.Except, "list2") },
+            PauseInFullScreen = false, NeverActIn = new(ScopeMode.Only, "list3"), RunAsAdministrator = true,
         };
         var target = MouseSettings.Defaults();
         target.CopyFrom(source);

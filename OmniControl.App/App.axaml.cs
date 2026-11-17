@@ -16,6 +16,7 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        CrashGuard.Install();
         var settings = AppSettings.Current;
         AccentService.Initialize(settings.Accent);
         ValueWheel.Register();

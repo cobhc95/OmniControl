@@ -26,7 +26,7 @@ public sealed partial class IconCell : ObservableObject
     [ObservableProperty] private bool _isSelected;
 }
 
-/// <summary>One part of the picker: its title ("Suggested for this", "Your icons", "All icons · 100") and its cells; hidden when empty.</summary>
+/// <summary>One part of the picker: its title ("Suggested for this", "Your icons", "All icons", then one part per category) and its cells; hidden when empty.</summary>
 public sealed class IconSection
 {
     public IconSection(string title, IReadOnlyList<IconCell> cells) => (Title, Cells) = (title, cells);
@@ -171,7 +171,9 @@ public sealed partial class IconPickerModel : ObservableObject
         if (!searching) Add("Suggested for this", _request.Suggested.Select(Library));
         Add("Your icons", _store.Mine.Where(i => !searching || TextMatch.Any(Search, i.Name)).Select(i => new IconCell(i.Value, i.Name, IconResources.Find(i.Value), true)));
         var all = IconLibrary.Search(Search);
-        Add(searching ? $"Found · {all.Count}" : $"All icons · {all.Count}", all.Select(i => Library(i.Id)));
+        // One part per category of the matches, in the library's order, each under its own heading with its count.
+        foreach (var part in all.GroupBy(i => i.Category))
+            Add($"{part.Key} · {part.Count()}", part.Select(i => Library(i.Id)));
         SelectValue(_selectedValue);
     }
 

@@ -1,0 +1,19 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Repeated clicking action (approved)</title>
+<!-- Approved by the owner 17 Nov 2026. ONE new master action "Repeated clicking" (HotkeyRegistry, Mouse section/group of the action picker), bindable to
+  a hotkey, mouse button, gesture or rule like any action. Its settings (ActionOptions, shown in the picker's settings pane, half-width cards):
+    Button: Left | Right | Middle | Back | Forward (default Left)
+    Click type: Single | Double | Hold down (default Single)
+    Start and stop: Press to toggle (default) | While held
+    Stop after: Until stopped (default) | N clicks | N seconds (number typed)
+    Speed: slider 1..50 clicks/s (default 10), full-width card
+    Where: At the pointer (default) | At a fixed point (pick by clicking the screen)
+    Random timing: +/- 0..50 % (default 10 %)
+    Stop when mouse moves: switch, default off
+    Show on-screen badge: switch, default on (small "Clicking... N" badge via the OSD while running)
+  Muted foot line: "Esc always stops it. Never faster than 50 clicks/s."
+  SAFETY (principle 10): hard max rate (Timing), Esc always stops, always releases any held button, clicks sent via InputSender (marked, so our hook
+  ignores them), runs off the hook and UI threads; a state "Repeated clicking running" registered in StateRegistry. -->
+<style>body{font-family:Segoe UI;background:#1b1b1b;color:#eee;padding:20px;font-size:12px}</style></head><body>
+<p>Repeated clicking · Button [Left] · Click type [Single] · Start and stop [Press to toggle] · Stop after [Until stopped] · Speed 10/s · Where [At the pointer] · Random ±10% · Stop when mouse moves [off] · Badge [on]</p>
+</body></html>

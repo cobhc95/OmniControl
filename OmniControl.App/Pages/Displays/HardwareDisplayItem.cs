@@ -196,7 +196,7 @@ internal sealed partial class HardwareDisplayItem
 
     private void Fail(OperationResult result)
     {
-        if (!result.Success) Dispatcher.UIThread.Post(() => _report(result.Message));
+        if (!result.Success) _report(result.Message);
     }
 
     private void WriteRaw(byte code, uint value) => Task.Run(() => Fail(_access.WriteRaw(code, value)));

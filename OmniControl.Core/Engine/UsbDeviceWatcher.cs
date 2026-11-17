@@ -42,7 +42,22 @@ public sealed class UsbDeviceWatcher : IDisposable
         }
     }
 
+    /// <summary>A look at the device list (or a subscriber of <see cref="Changed"/>) threw on the timer thread; the watcher keeps going.</summary>
+    public event Action<Exception>? Failed;
+
     private void Scan()
+    {
+        try
+        {
+            Look();
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            Failed?.Invoke(ex); // a timer thread must not end the process
+        }
+    }
+
+    private void Look()
     {
         var now = ReadDevices();
         List<string> added, removed;

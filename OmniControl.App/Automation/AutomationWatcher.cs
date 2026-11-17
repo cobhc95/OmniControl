@@ -25,6 +25,7 @@ public sealed class AutomationWatcher : IDisposable
 
     public AutomationWatcher()
     {
+        _usb.Failed += ex => Guard.Log("Watching USB devices", ex);
         _usb.Changed += (connected, name) =>
             _devices.Enqueue(new AutomationEvent(connected ? AutomationTriggers.DeviceConnect : AutomationTriggers.DeviceDisconnect, name));
     }

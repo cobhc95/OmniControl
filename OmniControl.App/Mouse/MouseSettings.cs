@@ -59,6 +59,23 @@ public sealed class MouseSettings
     /// </summary>
     public bool BlockAutoscroll { get; set; } = true;
 
+    /// <summary>True: while a full-screen app (a game) is in front, every mouse input passes untouched (buttons, gestures, the autoscroll block).</summary>
+    public bool PauseInFullScreen { get; set; } = true;
+
+    /// <summary>The apps mouse features never act in ("all except" a list); null: no exclusions.</summary>
+    public AppScopeSetting? NeverActIn { get; set; }
+
+    /// <summary>True: OmniControl starts as administrator (Windows asks at each start), so mouse features also work over programs run as administrator.</summary>
+    public bool RunAsAdministrator { get; set; }
+
+    /// <summary>Puts the "Where mouse features work" group's settings back to their defaults.</summary>
+    public void RestoreWhereDefaults()
+    {
+        PauseInFullScreen = true;
+        NeverActIn = null;
+        RunAsAdministrator = false;
+    }
+
     /// <summary>Only read from files saved while the program still had profiles; <see cref="Upgrade"/> keeps the default profile's mappings and drops the rest.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<LegacyProfile>? Profiles { get; set; }
@@ -129,6 +146,9 @@ public sealed class MouseSettings
         ButtonsScope = other.ButtonsScope;
         CardScopes = other.CardScopes;
         BlockAutoscroll = other.BlockAutoscroll;
+        PauseInFullScreen = other.PauseInFullScreen;
+        NeverActIn = other.NeverActIn;
+        RunAsAdministrator = other.RunAsAdministrator;
     }
 
     /// <summary>The apps scope in force for a mouse button: its own, else its group's; null when it works in every app.</summary>

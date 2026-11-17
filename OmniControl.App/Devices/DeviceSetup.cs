@@ -30,8 +30,6 @@ public sealed class DeviceSetup
     /// <summary>The router's page (<c>http://192.168.0.1</c>), or null when no address was found.</summary>
     public string? RouterPage => _gateway is null ? null : $"http://{_gateway}";
 
-    public string PythonPage => PythonDownloadPage;
-
     /// <summary>Raised when what was found or the installing state changed.</summary>
     public event Action? Changed;
 

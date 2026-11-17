@@ -26,10 +26,12 @@ public sealed partial class DeviceService
         var keywords = $"smart device plug bulb socket outlet switch power tapo kasa {device.Name}";
         var icon = IconOf(device);
         var actions = Enum.GetValues<DevicePower>()
-            .Select(power => new HotkeyAction(ActionId(device, power), $"{name}: {power}", Category, keywords, ids => _ = RunAsync(device, power), group: ActionGroup) { Icon = icon })
+            .Select(power => new HotkeyAction(ActionId(device, power), $"{name}: {power}", Category, keywords, ids => _ = RunAsync(device, power), group: ActionGroup)
+                { Icon = icon, Family = new ActionFamily($"devices.{device.Id}", name), FamilyRole = power.ToString() })
             .Concat(device.Methods.SelectMany(method => Enum.GetValues<DevicePower>().Select(power =>
                 new HotkeyAction(ViaActionId(method, power), $"{name}: {power} via {device.NameOf(method)}", Category, $"{keywords} {method.Kind}",
-                    ids => _ = RunAsync(device, power, method), group: ActionGroup) { Icon = icon })))
+                    ids => _ = RunAsync(device, power, method), group: ActionGroup)
+                    { Icon = icon, Family = new ActionFamily($"devices.method.{method.Id}", $"{name} via {device.NameOf(method)}"), FamilyRole = power.ToString() })))
             .ToList();
         _registered[device.Id] = actions.Select(a => a.Id).ToList();
         _hotkeys.Register(actions);

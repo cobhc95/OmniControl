@@ -30,6 +30,19 @@ public sealed partial class DeviceService
     private readonly DispatcherTimer _saveSoon = new() { Interval = Timing.DeviceNameSaveDelay };
 
     public DeviceSettings Settings { get; }
+
+    /// <summary>The devices in the order the page shows them (read-only: change them through this service's methods).</summary>
+    public IReadOnlyList<DeviceRecord> Records => Settings.Devices;
+
+    /// <summary>Saved templates for a method's script (read-only).</summary>
+    public IReadOnlyList<ScriptProfile> Profiles => Settings.Profiles;
+
+    /// <summary>Whether auto-check settings are shared by every device.</summary>
+    public bool AutoCheckSame => Settings.AutoCheckSame;
+
+    public int IndexOf(DeviceRecord device) => Settings.Devices.IndexOf(device);
+
+    public bool Has(DeviceRecord device) => Settings.Devices.Contains(device);
     public DeviceSetup Setup { get; }
     public SimulationSetup Simulation { get; }
 
@@ -62,6 +75,7 @@ public sealed partial class DeviceService
             }
             RegisterActions(device);
         }
+        migrated |= AutoChecks.Migrate(Settings);
         if (migrated) Settings.Save();
         WakeEmulatorAtStart();
     }

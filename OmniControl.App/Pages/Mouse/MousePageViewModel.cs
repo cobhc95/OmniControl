@@ -28,7 +28,7 @@ public sealed partial class MousePageViewModel : PageViewModel
         "A pair of half-width cards reads left, then right. Enter on an action (or its cogwheel) opens the action picker.",
         "Action picker: " + PickerModel.KeyHelp);
     public override string Icon => "M12,2 C8.13,2 5,5.13 5,9 V15 C5,18.87 8.13,22 12,22 C15.87,22 19,18.87 19,15 V9 C19,5.13 15.87,2 12,2 Z M11,5 H13 V10 H11 Z M5,11.5 H19 V13 H5 Z";
-    public override string Keywords => "mouse buttons remap layer wheel tilt x-mouse button control side button middle click " + TrackpadKeywords + " " + PointerKeywords;
+    public override string Keywords => "mouse buttons remap layer wheel tilt x-mouse button control side button middle click " + TrackpadKeywords + " " + PointerKeywords + " " + WhereKeywords;
 
     private static readonly (MouseButton Button, string Label)[] Buttons =
     {
@@ -63,6 +63,7 @@ public sealed partial class MousePageViewModel : PageViewModel
             .Concat(ButtonsGroup.Items.Select(i => Entry(i, Title, WithActionNames(i, ButtonKeywords), ButtonsGroup.Name)))
             .Append(Entry(TrackpadLayer, Title, TrackpadKeywords, TrackpadGroup.Name))
             .Concat(TrackpadGroup.Items.Select(i => Entry(i, Title, WithActionNames(i, TrackpadKeywords), TrackpadGroup.Name)))
+            .Concat(WhereSearchEntries())
             .Concat(PointerSearchEntries());
 
     private MouseSettings Settings => _mouse.Settings;
@@ -140,6 +141,7 @@ public sealed partial class MousePageViewModel : PageViewModel
                   + "not pass mouse input to programs running as administrator unless OmniControl runs as administrator too.",
         };
         TrackpadGroup = BuildTrackpadGroup(gestureCards, report);
+        BuildWhereGroup(scopes, hotkeys);
         BuildPointerGroup();
 
         mouse.LayerChanged += (family, layer) => PickerOf(family).Follow(layer);
@@ -159,6 +161,7 @@ public sealed partial class MousePageViewModel : PageViewModel
         hotkeys.Register(new HotkeyAction(MouseService.AutoscrollId, "Toggle app autoscroll", Title, "middle click autoscroll scroll browser block apps",
             _ => _mouse.ToggleBlockAutoscroll()));
         RegisterPointerActions(hotkeys);
+        RegisterClickingAction(hotkeys);
         // Last: a preset group's card is named after the page group it belongs to, and a layer with a saved shortcut gets its action
         // after the page's own actions.
         presets.Register(new PresetGroup(MouseLayersId, Title, ButtonsGroup.Name, new LayerPresets(mouse, InputFamily.Mouse)) { MovesLayer = true });

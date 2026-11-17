@@ -1,23 +1,30 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Styling;
 using CommunityToolkit.Mvvm.ComponentModel;
+using OmniControl.App.Dialogs;
 using OmniControl.Core.Engine;
 using OmniControl.App.Hotkeys;
 using OmniControl.App.Services;
 using OmniControl.App.Services.Backup;
+using OmniControl.App.Services.Updates;
 
 namespace OmniControl.App.Pages.AppSettingsPage;
 
-/// <summary>The App settings page: appearance, startup, the close button, presets, backup and restore, the plug-in folders (AppSettingsPageViewModel.Plugins.cs), About.</summary>
+/// <summary>
+/// The App settings page, five collapsible groups: Appearance; Start and close; Your data (presets, backup and restore, the Confirmations,
+/// Restore all defaults); Plug-ins (AppSettingsPageViewModel.Plugins.cs); Updates and about (AppSettingsPageViewModel.Updates.cs).
+/// </summary>
 public sealed partial class AppSettingsPageViewModel : PageViewModel
 {
     private readonly AppSettings _settings = AppSettings.Current;
     private readonly ToggleItem _startWithWindows;
     private readonly ChoiceItem _whenClosing;
+    private readonly ChoiceItem _groupsOpen;
     private readonly ToggleItem _startMinimised;
     private readonly ButtonItem _about;
+    private readonly ButtonItem _restoreAllCard;
     private readonly ButtonItem _presets;
     private readonly ButtonItem _backup;
     private bool _readingStartup;
@@ -27,35 +34,55 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
 
     public override string Title => "App settings";
     public override string Icon => "M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8 Z M10,2 H14 L14.6,4.6 L16.6,5.6 L19,4.3 L21.7,7 L20.4,9.4 L21.4,11.4 L24,12 V16 L21.4,16.6 L20.4,18.6 L21.7,21 L19,23.7 L16.6,22.4 L14.6,23.4 L14,26 H10 L9.4,23.4 L7.4,22.4 L5,23.7 L2.3,21 L3.6,18.6 L2.6,16.6 L0,16 V12 L2.6,11.4 L3.6,9.4 L2.3,7 L5,4.3 L7.4,5.6 L9.4,4.6 Z";
-    public override string Keywords => "settings appearance color colour mode theme accent plug-in plugin folders vst backup restore export import wipe";
+    public override string Keywords => "settings appearance color colour mode theme accent plug-in plugin folders vst backup restore export import wipe confirm confirmation ask again";
 
     public GalleryItem Theme { get; }
     public GalleryItem Accent { get; }
 
-    /// <summary>The settings as cards, so the keyboard model matches the other pages (the plug-in folder rows come and go).</summary>
-    public ObservableCollection<object> Items { get; } = new();
+    /// <summary>The cards of each group, so the keyboard model matches the other pages (the folder and confirmation rows come and go).</summary>
+    public ObservableCollection<object> AppearanceItems { get; } = new();
+    public ObservableCollection<object> StartItems { get; } = new();
+    public ObservableCollection<object> DataItems { get; } = new();
+    public ObservableCollection<object> PluginItems { get; } = new();
+    public ObservableCollection<object> UpdateItems { get; } = new();
+
+    public ItemGroup Appearance { get; }
+    public ItemGroup StartAndClose { get; }
+    public ItemGroup YourData { get; }
+    public ItemGroup PlugIns { get; }
+    public ItemGroup UpdatesAndAbout { get; }
 
     public override IEnumerable<SearchEntry> SearchEntries => new[]
     {
-        Entry(Theme, "Appearance", "light dark color mode system"),
-        Entry(Accent, "Appearance", "accent color colour highlight orange blue green"),
-        Entry(_startWithWindows, "Startup", "start boot login windows launch"),
-        Entry(_startMinimised, "Startup", "start minimized hidden background tray"),
-        Entry(_whenClosing, "Window", "close tray exit quit notification area minimize x button ask remember"),
-        Entry(_presets, "Presets", "presets manage layers display monitor equaliser compressor shortcut order rename"),
-        Entry(_backup, "Backup and restore", "backup restore export import save load move computer wipe reset factory delete all settings"),
-    }.Concat(PluginSearchEntries()).Concat(RestoreSearchEntries()).Append(Entry(_about, "About", "about credits licence license gpl open source version notice"));
+        Entry(Theme, AppearanceName, "light dark color mode system"),
+        Entry(Accent, AppearanceName, "accent color colour highlight orange blue green"),
+        Entry(_groupsOpen, AppearanceName, "groups open collapsed collapse expand remember last state sections panels page opens"),
+        Entry(_startWithWindows, StartName, "start boot login windows launch"),
+        Entry(_startMinimised, StartName, "start minimized hidden background tray"),
+        Entry(_whenClosing, StartName, "close tray exit quit notification area minimize x button ask remember"),
+        Entry(_presets, DataName, "presets manage layers display monitor equaliser compressor shortcut order rename"),
+        Entry(_backup, DataName, "backup restore export import save load move computer wipe reset factory delete all settings"),
+        Entry(_restoreAllCard, DataName, "reset default restore every page all settings"),
+    }.Concat(ConfirmationSearchEntries()).Concat(PluginSearchEntries()).Concat(UpdateSearchEntries())
+     .Append(Entry(_about, UpdatesName, "about credits licence license gpl open source version notice"));
+
+    private const string AppearanceName = "Appearance", StartName = "Start and close", DataName = "Your data", PluginsName = "Plug-ins", UpdatesName = "Updates and about";
 
     /// <param name="openAbout">Opens the About and credits window.</param>
     /// <param name="scanPlugins">Scans the plug-in folders (the user's own included) and remembers what it found; gives the number found.</param>
     /// <param name="scanResult">The sentence saying what the last scan found.</param>
     /// <param name="openPresets">Opens the preset manager at its first section with presets.</param>
+    /// <param name="confirmations">The prompts the user chose not to be asked about again (the Confirmations cards of Your data).</param>
     /// <param name="backup">Export, import and wipe of every saved store (the Backup and restore card).</param>
+    /// <param name="updates">The update check (the Updates and about group).</param>
+    /// <param name="report">Says one plain sentence in the window's footer (a web page that would not open).</param>
+    /// <param name="showShortcuts">Opens the Keyboard shortcuts window (F1); registered as an action so it stays reachable from search and the Actions and hotkeys window.</param>
     public AppSettingsPageViewModel(HotkeyRegistry hotkeys, Action openAbout, Func<IProgress<int>?, CancellationToken, Task<int>> scanPlugins,
-        Func<string> scanResult, Action openPresets, BackupService backup)
+        Func<string> scanResult, Action openPresets, BackupService backup, ConfirmationMemory confirmations, UpdateService updates, Action<string> report, Action showShortcuts)
     {
+        _confirmations = confirmations;
         var themes = Enum.GetNames<ThemeChoice>();
-        Theme = new GalleryItem("Theme", themes, (int)_settings.Theme, () => ThemeSwatches.Build((int)_settings.Theme), i => OnThemeChosen(themes[i]));
+        Theme = new GalleryItem("Theme", themes, (int)_settings.Theme, () => ThemeSwatches.Build((int)_settings.Theme), i => OnThemeChosen(themes[i])) { Half = true };
         Apply(_settings.Theme);
 
         var names = AccentService.Names;
@@ -69,8 +96,16 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
             })
         {
             Tip = "Used everywhere; the OSD can match it.",
+            Half = true,
         };
         AccentService.Changed += Accent.Refresh;
+
+        var groupLabels = GroupsOpen.All.Select(e => e.Label).ToList();
+        _groupsOpen = new ChoiceItem("Groups when a page opens", groupLabels, GroupsOpen.LabelOf(_settings.GroupsOpen), label => GroupsOpen.Set(GroupsOpen.Find(label)))
+        {
+            Half = true,
+        };
+        GroupsOpen.Changed += ShowGroupsOpen;
 
         _startWithWindows = new ToggleItem("Start with Windows", StartupRegistration.State == StartupState.On, OnStartWithWindowsChosen) { Half = true };
         _startMinimised = new ToggleItem("Start minimised", _settings.StartMinimised, on => { _settings.StartMinimised = on; _settings.Save(); }) { Half = true };
@@ -90,20 +125,39 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
             Extra = new[] { new CardAction("Import...", () => _ = backup.ImportAsync()), new CardAction("Wipe all...", () => _ = backup.WipeAsync(), danger: true) },
         };
 
-        foreach (var item in new object[] { Theme, Accent, _startWithWindows, _startMinimised, _whenClosing, _presets, _backup }) Items.Add(item);
         _addFolder = new FileItem("Plug-in folders", FileKind.OfFolder("Choose a folder with plug-ins"), AddFolder) { EmptyText = "Add a folder to scan" };
         _scan = new ButtonItem("Plug-in scan", "Scan now", ScanIdleText, StartScan);
         _scanPlugins = scanPlugins;
         _scanResult = scanResult;
-        Items.Add(_addFolder);
-        foreach (var folder in _settings.PluginFolders) Items.Add(FolderRow(folder));
-        Items.Add(_scan);
-        Items.Add(_about);
+        _resetAllConfirmations = new ButtonItem("Confirmations", "Reset all", string.Empty, confirmations.ResetAll);
+        _restoreAllCard = new ButtonItem("Restore all defaults", "Restore all", "Puts every page back to its defaults after one question; you can undo it", () => _ = RestoreAll?.RestoreAsync());
+        MakeUpdateCards(updates, report);
+
+        // Each group is made from its fixed cards (its closed header lists their names), then the cards that come and go are added.
+        Appearance = Fill(AppearanceItems, "AppSettings/Appearance", AppearanceName, Theme, Accent, _groupsOpen);
+        StartAndClose = Fill(StartItems, "AppSettings/Start", StartName, _startWithWindows, _startMinimised, _whenClosing);
+        YourData = Fill(DataItems, "AppSettings/Data", DataName, _presets, _backup, _resetAllConfirmations, _restoreAllCard);
+        PlugIns = Fill(PluginItems, "AppSettings/Plugins", PluginsName, _addFolder, _scan);
+        UpdatesAndAbout = Fill(UpdateItems, "AppSettings/Updates", UpdatesName, _updateDaily, _version, _latest, _about);
+        foreach (var folder in _settings.PluginFolders) PluginItems.Insert(PluginItems.IndexOf(_scan), FolderRow(folder));
+        ReloadConfirmations();
+        confirmations.Changed += ReloadConfirmations;
         ReadStartup();
         hotkeys.Register(new HotkeyAction("app.show", "Open OmniControl", Title, "show window open tray restore", _ => AppLifecycle.RequestShow()) { NeverBlock = true, SuggestedIcons = new[] { "app", "home" } });
+        hotkeys.Register(new HotkeyAction("app.shortcuts", "Keyboard shortcuts", Title, "keyboard shortcuts keys help list f1", _ => showShortcuts()) { SuggestedIcons = new[] { "keyboard", "help" } });
         hotkeys.Register(new HotkeyAction("app.quit", "Quit OmniControl", Title, "exit quit close stop tray", _ => AppLifecycle.RequestQuit()) { SuggestedIcons = new[] { "power", "lock" } });
+        hotkeys.Register(new HotkeyAction("app.updates.check", "Check for updates", Title, "update updates upgrade new version release github check", _ => CheckNow())
+        {
+            SuggestedIcons = new[] { "download", "refresh" },
+        });
         hotkeys.Register(new HotkeyAction("app.plugins.scan", "Scan for plug-ins", Title, "plug-in plugin vst vst2 vst3 scan search folders",
             _ => StartScan()));
+    }
+
+    private static ItemGroup Fill(ObservableCollection<object> items, string key, string name, params object[] cards)
+    {
+        foreach (var card in cards) items.Add(card);
+        return ItemGroup.Summarised(key, name, items);
     }
 
     /// <summary>Windows may have changed the start-up entry (Task Manager), and the close dialog may have remembered a choice.</summary>
@@ -111,6 +165,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
     {
         ReadStartup();
         _whenClosing.Load(_whenClosing.Options, CloseBehaviors.LabelOf(_settings.CloseBehavior));
+        RefreshUpdates();
     }
 
     private void OnStartWithWindowsChosen(bool on)
@@ -132,6 +187,9 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
             ? "Switched off in Task Manager > Startup apps; turning this on re-enables it."
             : string.Empty;
     }
+
+    /// <summary>The choice was changed elsewhere (the sidebar chip, Restore defaults): the card shows it without applying it again.</summary>
+    private void ShowGroupsOpen() => _groupsOpen.Load(_groupsOpen.Options, GroupsOpen.LabelOf(_settings.GroupsOpen));
 
     private void OnThemeChosen(string name)
     {

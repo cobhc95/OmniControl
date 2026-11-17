@@ -32,8 +32,4 @@ public static class MiddleClickPolicy
             return ClickVerdict.Pass; // the lookup failed (COM refused, element gone): fail open
         }
     }
-
-    /// <summary>The usual lookup: the pointer's shape and the control types at a screen point.</summary>
-    public static ClickVerdict DecideAt(int x, int y) =>
-        Decide(PointerShape.IsHandShown(), () => UiaElements.ControlTypesAt(x, y, CoreTiming.AutoscrollParentLevels), CoreTiming.AutoscrollLookupMs);
 }

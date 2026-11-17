@@ -14,6 +14,9 @@ public partial class MessageWindow : Window
     private readonly string? _details;
     private DialogAnswer _answer;
 
+    /// <summary>The box was ticked (only a window that offers it can have it ticked).</summary>
+    public bool DontAskAgain => DontAsk.IsVisible && DontAsk.IsChecked == true;
+
     public MessageWindow() => InitializeComponent();
 
     public MessageWindow(DialogMessage message) : this()
@@ -25,6 +28,7 @@ public partial class MessageWindow : Window
         DetailsBox.Text = message.Details;
         DetailsBox.IsVisible = message.ShowDetails && message.Details is not null;
         CopyButton.IsVisible = message.Details is not null;
+        DontAsk.IsVisible = message.CanRemember;
         ConfirmButton.Content = message.Confirm;
         ConfirmButton.IsVisible = message.Confirm is not null;
         OtherButton.Content = message.Other;

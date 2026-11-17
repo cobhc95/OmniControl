@@ -4,7 +4,7 @@
         x:Class="OmniControl.App.Fx.Plugins.AddEffectWindow"
         x:DataType="p:AddEffectViewModel"
         Title="Add effect" Width="580" Height="520" MinWidth="440" MinHeight="360" FontSize="12"
-        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+        WindowStartupLocation="CenterOwner">
     <Grid RowDefinitions="Auto,*,Auto,Auto" RowSpacing="8" Margin="12" Grid.IsSharedSizeScope="True">
 
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">

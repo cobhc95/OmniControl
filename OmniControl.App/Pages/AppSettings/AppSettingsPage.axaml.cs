@@ -7,6 +7,6 @@ public partial class AppSettingsPage : UserControl
     public AppSettingsPage()
     {
         InitializeComponent();
-        RowEditing.Attach(SettingsList);
+        GroupedCards.Attach(this, CardsHost);
     }
 }

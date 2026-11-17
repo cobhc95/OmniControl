@@ -36,10 +36,11 @@ public static class ScriptRunner
     /// <summary>
     /// Runs <paramref name="file"/> with <paramref name="arguments"/> (each passed as is) and waits for it, the same way as a command.
     /// <paramref name="environment"/> adds variables for this one run (a secret that must not be in the arguments); <paramref name="output"/>,
-    /// when given, receives the text the program printed (shortened) once it ended.
+    /// when given, receives the text the program printed (shortened) once it ended. <paramref name="stop"/> ends the wait early and kills the program
+    /// and everything it started.
     /// </summary>
     public static async Task<string?> RunAsync(string file, IReadOnlyList<string> arguments, bool hidden, TimeSpan timeout,
-        IReadOnlyDictionary<string, string>? environment = null, Action<string>? output = null)
+        IReadOnlyDictionary<string, string>? environment = null, Action<string>? output = null, CancellationToken stop = default)
     {
         var start = new ProcessStartInfo(file)
         {
@@ -66,7 +67,8 @@ public static class ScriptRunner
         {
             var errors = hidden ? process.StandardError.ReadToEndAsync() : Task.FromResult(string.Empty);
             var printed = hidden ? process.StandardOutput.ReadToEndAsync() : Task.FromResult(string.Empty); // read so a full pipe never blocks it
-            using var limit = new CancellationTokenSource(timeout);
+            using var limit = CancellationTokenSource.CreateLinkedTokenSource(stop);
+            limit.CancelAfter(timeout);
             try
             {
                 await process.WaitForExitAsync(limit.Token);
@@ -75,6 +77,7 @@ public static class ScriptRunner
             {
                 StopTree(process);
                 await Drain(errors, printed);
+                if (stop.IsCancellationRequested) return "stopped by the user";
                 return $"stopped after {timeout.TotalSeconds:0} s (its timeout)";
             }
             await Drain(errors, printed);

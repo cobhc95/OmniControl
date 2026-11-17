@@ -5,7 +5,7 @@ namespace OmniControl.App.Devices;
 
 /// <summary>
 /// Keeps the simulation method's emulator up for as long as the user chose (<see cref="EmulatorKeep"/>): an action wakes it when it is not
-/// running (hidden when it can be, quick boot after one good cold boot, one cold boot as the fallback), waits until Android has started, and
+/// running (its window hidden when it can be, quick boot after one good cold boot, one cold boot as the fallback), waits until Android has started, and
 /// afterwards the idle timer or "close after each action" shuts it down cleanly so its snapshot is saved. Starting, adb and memory
 /// are Core's (<see cref="Emulators"/>, <see cref="AdbClient"/>); this decides when.
 /// </summary>
@@ -32,7 +32,7 @@ public sealed class EmulatorKeeper : IDisposable
 
     public EmulatorKeepSettings Settings { get; }
 
-    /// <summary>True when OmniControl started the running emulator without its window, false when with it; null when it was not started by OmniControl (or is not running).</summary>
+    /// <summary>True when OmniControl hid the running emulator's window, false when it is shown; null when it is not running or its window is not OmniControl's to hide.</summary>
     public bool? Hidden { get; private set; }
 
     public void Edited()
@@ -58,8 +58,8 @@ public sealed class EmulatorKeeper : IDisposable
     }
 
     /// <summary>
-    /// Makes sure the emulator is up and ready before an action; a stopped one starts with its window only when <paramref name="show"/> (set-up),
-    /// otherwise hidden where it can be. <paramref name="progress"/> hears what is happening. Null when it is up, otherwise one plain sentence.
+    /// Makes sure the emulator is up and ready before an action; with <paramref name="show"/> (set-up) it must have its window, so a stopped one starts with it
+    /// and a hidden one restarts with it; otherwise a stopped one starts hidden where it can be. <paramref name="progress"/> hears what is happening. Null when it is up, otherwise one plain sentence.
     /// </summary>
     public async Task<string?> EnsureRunningAsync(EmulatorInfo emulator, string address, Action<string>? progress = null, bool show = false)
     {
@@ -95,29 +95,49 @@ public sealed class EmulatorKeeper : IDisposable
         finally { _one.Release(); }
     }
 
-    /// <summary>True when OmniControl started the running emulator without its window, so showing it means a restart (the caller asks first).</summary>
-    public bool NeedsRestartToShow => Hidden == true;
-
-    /// <summary>
-    /// Shows the emulator's window: starts it when it is not running, brings the window to the front when it is already showing, and restarts it
-    /// with its window when it runs hidden (<see cref="NeedsRestartToShow"/>; ask first). Null when done, otherwise one plain sentence.
-    /// </summary>
+    /// <summary>Shows the emulator's window: starts the emulator (with it) when it is not running, otherwise un-hides the window and brings it to the front. Null when done, otherwise one plain sentence.</summary>
     public async Task<string?> ShowAsync(EmulatorInfo emulator, string address, Action<string> progress)
     {
-        if (_adb() is not { } adb) return Emulators.Open(emulator, show: true); // nothing to wait for or close without adb
+        if (_adb() is not { } adb) return Emulators.Open(emulator); // nothing to wait for or close without adb
         _idle.Change(Timeout.Infinite, Timeout.Infinite);
         await _one.WaitAsync();
         try
         {
-            if (await IsUpAsync(adb, address))
-            {
-                if (Hidden != true) return Emulators.BringToFront(emulator) ? null : $"{emulator.Name}'s window wasn't found. Open it from the Start menu.";
-                progress("Restarting the emulator…");
-                if (await ShutDownAsync(emulator, address) is { } problem) return problem;
-            }
-            return await EnsureAsync(emulator, address, show: true, progress);
+            if (!await IsUpAsync(adb, address)) return await EnsureAsync(emulator, address, show: true, progress);
+            return Reveal(emulator) ? null : $"{emulator.Name}'s window wasn't found. Open it from the Start menu.";
         }
         finally { _one.Release(); }
+    }
+
+    /// <summary>Hides the running emulator's window again (set-up closed); it keeps running.</summary>
+    public async Task HideWindowAsync(EmulatorInfo emulator, string address)
+    {
+        if (!emulator.CanHide || _adb() is not { } adb) return;
+        await _one.WaitAsync();
+        try
+        {
+            if (await IsUpAsync(adb, address) && Emulators.SetWindowVisible(emulator, false))
+            {
+                Hidden = true;
+                _changed();
+            }
+        }
+        finally { _one.Release(); }
+    }
+
+    private bool Reveal(EmulatorInfo emulator)
+    {
+        if (emulator.CanHide) Emulators.SetWindowVisible(emulator, true);
+        if (emulator.CanHide) Hidden = false;
+        _changed();
+        return Emulators.BringToFront(emulator);
+    }
+
+    /// <summary>Hides the window of an emulator that was just started, as soon as it has one (it opens a moment after the program starts).</summary>
+    private async Task HideWhenOpenAsync(EmulatorInfo emulator)
+    {
+        var until = DateTime.UtcNow + Timing.EmulatorWindowWait;
+        while (DateTime.UtcNow < until && !Emulators.SetWindowVisible(emulator, false)) await Task.Delay(Timing.EmulatorWindowPoll);
     }
 
     /// <summary>The memory the emulator holds now, in bytes (0 when it is not running).</summary>
@@ -137,13 +157,22 @@ public sealed class EmulatorKeeper : IDisposable
     private async Task<string?> EnsureAsync(EmulatorInfo emulator, string address, bool show, Action<string>? progress)
     {
         if (_adb() is not { } adb) return "adb isn't installed yet.";
-        if (await IsUpAsync(adb, address)) return null;
+        if (await IsUpAsync(adb, address))
+        {
+            if (show) Reveal(emulator); // set-up needs the window: un-hide it, no restart
+            return null;
+        }
         var quick = Settings.ColdBootWorked;
         progress?.Invoke("Starting the emulator…");
-        if (Emulators.Open(emulator, show, quick) is { } problem) return problem;
-        Hidden = emulator.CanHide ? !show : null;
+        if (Emulators.Open(emulator, quick) is { } problem) return problem;
+        Hidden = emulator.CanHide ? false : null;
+        _log($"Waking {emulator.Name} ({(quick ? "quick boot" : "cold boot")}{(show || !emulator.CanHide ? string.Empty : ", window hidden")})");
+        if (!show && emulator.CanHide)
+        {
+            await HideWhenOpenAsync(emulator);
+            Hidden = true;
+        }
         _changed();
-        _log($"Waking {emulator.Name} ({(quick ? "quick boot" : "cold boot")}{(Hidden == true ? ", hidden" : string.Empty)})");
         progress?.Invoke("Waiting for Android to start…");
         var ready = await WaitReadyAsync(adb, address, quick ? Timing.EmulatorQuickBootTimeout : Timing.EmulatorBootTimeout);
         if (!ready && quick)
@@ -154,7 +183,8 @@ public sealed class EmulatorKeeper : IDisposable
             progress?.Invoke("Starting again from scratch… (this takes longer)");
             Emulators.Kill(emulator);
             await Task.Delay(Timing.EmulatorBootPoll);
-            if (Emulators.Open(emulator, show, quickBoot: false) is { } again) return again;
+            if (Emulators.Open(emulator, quickBoot: false) is { } again) return again;
+            if (!show && emulator.CanHide) await HideWhenOpenAsync(emulator);
             ready = await WaitReadyAsync(adb, address, Timing.EmulatorBootTimeout);
             quick = false;
         }

@@ -217,9 +217,6 @@ public sealed partial class SimulationViewModel : ObservableObject, IDisposable
     private async Task Show()
     {
         if (_service.Simulation.EmulatorOf(_record) is not { } emulator) return;
-        if (IsConnected && Keeper.NeedsRestartToShow
-            && !await _ask(new DialogMessage("Show the emulator", "The emulator is running hidden. Restart it with its window? This takes about a minute.", "Restart")))
-            return;
         await Working(() => Keeper.ShowAsync(emulator, _service.Simulation.AddressOf(_record), _report));
     }
 
@@ -388,7 +385,7 @@ public sealed partial class SimulationViewModel : ObservableObject, IDisposable
     private async Task Record()
     {
         if (IsRecording) { await StopRecording(); return; }
-        if (Rows.Count > 0 && !await _ask(new DialogMessage("Record again?", "The steps of this device will be replaced by the new recording.", "Start recording"))) return;
+        if (Rows.Count > 0 && !await _ask(new DialogMessage("Record again?", "The steps of this device will be replaced by the new recording.", "Start recording", RememberKey: "record.again", RememberName: "Record a device again"))) return;
         var (recorder, problem) = await _service.StartRecorderAsync(_device, _record);
         if (recorder is null) { _report(problem!); return; }
         _recorder = recorder;

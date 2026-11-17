@@ -4,7 +4,7 @@
         xmlns:shot="using:OmniControl.App.Screenshot"
         x:Class="OmniControl.App.Screenshot.CaptureOverlay"
         x:DataType="shot:CaptureOverlayViewModel"
-        Title="Screenshot" SystemDecorations="None" ShowInTaskbar="False" CanResize="False" Topmost="True">
+        Title="Screenshot" SystemDecorations="None" CanResize="False" Topmost="True">
     <!-- The area capture overlay of one monitor (docs/mockups/screenshot-tool.html). Mouse first (AGENTS rule 5): drag to select, handles
          resize, drag inside moves; the bars are clicked. Keys: Esc, Ctrl+C/S/P, Ctrl+Z/Y, Ctrl+Shift+. and , (size), arrows nudge (CaptureOverlayViewModel.HandleKey).
          Looks: Border.floatbar, Button.toolicon (.selected), Button.swatch and shot|CaptureCanvas in Styles/Bars.axaml; icons Shot* in Brushes.axaml. -->

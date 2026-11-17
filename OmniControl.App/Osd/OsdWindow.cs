@@ -39,7 +39,6 @@ public sealed class OsdWindow : Window
     {
         SystemDecorations = SystemDecorations.None;
         Topmost = true;
-        ShowInTaskbar = false;
         ShowActivated = false;
         WindowStartupLocation = WindowStartupLocation.Manual;
         CanResize = false;

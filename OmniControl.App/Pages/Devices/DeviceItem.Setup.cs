@@ -109,6 +109,7 @@ public sealed partial class DeviceItem
 
     private void CloseSetup()
     {
+        if (Editing is { Record.IsSimulation: true } simulated) _ = _service.Simulation.HideWindowAsync(simulated.Record);
         Editing = null;
         InSetup = false;
         SyncMethods();

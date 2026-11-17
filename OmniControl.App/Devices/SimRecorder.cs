@@ -199,7 +199,7 @@ public sealed class SimRecorder : IDisposable
         _stop.Cancel();
         _touches.Touched -= OnTouched;
         _touches.Dispose();
+        // _stop is cancelled, not disposed: the screen loop may still read its token once more, and a source without a timer holds nothing.
         lock (_gate) _pick?.TrySetCanceled();
-        _stop.Dispose();
     }
 }

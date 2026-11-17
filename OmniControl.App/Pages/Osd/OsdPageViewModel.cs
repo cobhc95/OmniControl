@@ -27,7 +27,15 @@ public sealed class OsdPageViewModel : PageViewModel
     public ItemGroup Customize { get; }
 
     /// <summary>"Show in OSD": one switch per element the features declared (<see cref="OsdService.Declare"/>); rebuilt when one is added.</summary>
-    public ItemGroup Elements { get => _elements; private set => SetProperty(ref _elements, value); }
+    public ItemGroup Elements
+    {
+        get => _elements;
+        private set
+        {
+            var old = _elements;
+            if (SetProperty(ref _elements, value)) old?.Dispose();
+        }
+    }
     private ItemGroup _elements;
 
     /// <summary>Every setting in page order.</summary>

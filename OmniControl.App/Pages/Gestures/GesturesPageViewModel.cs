@@ -74,7 +74,7 @@ public sealed partial class GesturesPageViewModel : PageViewModel
         _margins = margins;
         _showMargins = new ToggleItem("Show margins", false, _ => UpdateMargins());
         var settings = gestures.Settings;
-        _enabled = new ToggleItem("Enable gestures", settings.Enabled, on => { settings.Enabled = on; gestures.Apply(); }) { Half = true };
+        _enabled = new ToggleItem("Enable gestures", settings.Enabled, gestures.SetEnabled) { Half = true };
 
         // The action lists follow the master list: a level or action a feature registers later appears in every gesture's list.
         var steps = GestureCatalog.Choices(hotkeys.PickerActions);
@@ -86,27 +86,19 @@ public sealed partial class GesturesPageViewModel : PageViewModel
             foreach (var item in _gestureItems) item.Reload();
             RefreshRules(); // a rule's sentence names its actions
         };
-        AreasScope = scopes.Group($"{Title} › {GestureCatalog.AreaGroup}", () => settings.AreasScope, scope =>
-        {
-            settings.AreasScope = scope;
-            gestures.Apply();
-        });
+        AreasScope = scopes.Group($"{Title} › {GestureCatalog.AreaGroup}", () => settings.AreasScope, gestures.SetAreasScope);
         List<object> CardsFor(string group, Func<IReadOnlyList<PickChoice>> choices) => GestureCatalog.Triggers.Where(t => t.Group == group)
             .Select(t =>
             {
                 var rule = settings.RuleFor(t);
-                var scope = group != GestureCatalog.AreaGroup ? null : scopes.Card($"{Title} › {group} › {t.Label}", AreasScope, () => rule.Scope, own =>
-                {
-                    rule.Scope = own;
-                    gestures.Apply();
-                });
+                var scope = group != GestureCatalog.AreaGroup ? null : scopes.Card($"{Title} › {group} › {t.Label}", AreasScope, () => rule.Scope, own => gestures.SetScope(t, own));
                 var item = new GestureItem(t.Label, choices, rule, gestures.Apply, ApplyToOthers, scope);
                 _gestureItems.Add(item);
                 return (object)item;
             }).ToList();
 
         var strip = new SliderItem(GestureSettings.EdgeStripLabel, settings.EdgeStrip,
-            v => { settings.EdgeStrip = v; gestures.Apply(); margins.Refresh(); return OperationResult.Ok(GestureSettings.EdgeStripLabel); }, _ => { },
+            v => { gestures.SetEdgeStrip(v); margins.Refresh(); return OperationResult.Ok(GestureSettings.EdgeStripLabel); }, _ => { },
             GestureSettings.MinEdgeStrip, GestureSettings.MaxEdgeStrip, GestureSettings.EdgeStripUnit, GestureSettings.DefaultEdgeStrip)
             { Companion = _showMargins };
 

@@ -46,11 +46,11 @@ public sealed class RuleService : IDisposable
         _hotkeys = hotkeys;
         _remembered = remembered;
         _report = report;
-        var actions = new MouseActionRunner(hotkeys.Run, message => Dispatcher.UIThread.Post(() => report(message)), Log);
+        var actions = new MouseActionRunner(hotkeys.Run, report, Log);
         _runner = new RuleRunner(actions, IsApproved, Log);
         _engine = new RuleEngine(hook, mouse.LayerOf, Start);
-        _shortcuts.Failed += shortcut => Dispatcher.UIThread.Post(() =>
-            report($"Couldn't use {shortcut} for a rule: another program or an OmniControl shortcut already uses it."));
+        _shortcuts.Failed += shortcut =>
+            report($"Couldn't use {shortcut} for a rule: another program or an OmniControl shortcut already uses it.");
         gestures.Applied += Load;
         hotkeys.Moved += FollowMoved;
         Load();

@@ -50,10 +50,12 @@ public static class DataStores
     public static readonly DataStore Osd = new("osd.json", "On-screen display", StoreKind.Saved);
     public static readonly DataStore AppLists = new("app-lists.json", "App lists", StoreKind.Saved, Mergeable: true);
     public static readonly DataStore AppActions = new("app-actions.json", "App actions", StoreKind.Saved, Mergeable: true);
+    public static readonly DataStore PowerPlans = new("power-plans.json", "Power plan actions", StoreKind.Saved, Mergeable: true);
     public static readonly DataStore RecentActions = new("recent-actions.json", "Recent actions", StoreKind.Saved, Mergeable: true);
     public static readonly DataStore Devices = new("devices.json", "Smart devices (never their passwords)", StoreKind.Saved, Mergeable: true);
     public static readonly DataStore Screenshots = new("screenshots.json", "Screenshot settings", StoreKind.Saved);
     public static readonly DataStore Tray = new("tray.json", "Tray flyout", StoreKind.Saved);
+    public static readonly DataStore Confirmations = new("confirmations.json", "Confirmations you chose not to be asked again", StoreKind.Saved);
     public static readonly DataStore Icons = new("icons.json", "Your icons and chosen icons", StoreKind.Saved);
 
     public static readonly DataStore MixerBeforeRestore = new("mixer-before-restore.json", "Mixer before restore", StoreKind.Undo);
@@ -68,7 +70,7 @@ public static class DataStores
     public static IReadOnlyList<DataStore> All { get; } = new[]
     {
         App, Mixer, EffectPresets, VolumePresets, Plugins, Automation, GestureRules, Gestures, Hotkeys, HotkeySets, Mouse, Displays, Osd,
-        AppLists, AppActions, RecentActions, Devices, Screenshots, Tray, Icons, MixerBeforeRestore, BeforeRestore, EngineJournal, SoftwareDisplay, PointerOriginal,
+        AppLists, AppActions, PowerPlans, RecentActions, Devices, Screenshots, Tray, Icons, Confirmations, MixerBeforeRestore, BeforeRestore, EngineJournal, SoftwareDisplay, PointerOriginal,
         PointerSwapTrial, TrackpadOriginal,
     };
 

@@ -14,8 +14,6 @@ public sealed class UndoList<T>
 
     public IReadOnlyList<T> Items => _items;
     public bool CanUndo => _items.Count > 0;
-    public bool CanRedo => _undone.Count > 0;
-
     public void Add(T item)
     {
         while (_undone.Count > 0) Dropped?.Invoke(_undone.Pop());

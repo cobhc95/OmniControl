@@ -1,12 +1,12 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace OmniControl.App.Hotkeys;
 
-/// <summary>What gets saved for one hotkey.</summary>
-/// <summary>What gets saved for one hotkey: its first key, the device choice, and its further keys (<see cref="More"/>; absent in files written
-/// before an action could have several keys, which is how those read as one key).</summary>
-public sealed record StoredHotkey(string Gesture, bool UseSelected, List<string> DeviceIds, List<string>? More = null)
+/// <summary>What gets saved for one hotkey: its first key, the device choice, its further keys (<see cref="More"/>; absent in files written
+/// before an action could have several keys, which is how those read as one key) and the action's own settings that differ from their
+/// defaults (<see cref="Options"/>; absent until one is changed), which every hotkey and rule that runs the action uses.</summary>
+public sealed record StoredHotkey(string Gesture, bool UseSelected, List<string> DeviceIds, List<string>? More = null, Dictionary<string, string>? Options = null)
 {
     /// <summary>Every key, the first one first.</summary>
     public IEnumerable<string> Keys => (More ?? new List<string>()).Prepend(Gesture).Where(k => k.Length > 0);
@@ -20,6 +20,12 @@ public sealed record Renaming(string Current, Func<string, string?> Apply);
 /// (gestures.json), so it never changes; <see cref="Name"/> is what the gesture picker calls it.
 /// </summary>
 public sealed record HotkeyLevel(string Id, string Name);
+
+/// <summary>
+/// Actions that are the directions of one thing ("Pointer speed": Up, Down) and are listed as ONE row in the Actions and hotkeys window and the
+/// Choose-the-action window. Every direction stays its own <see cref="HotkeyAction"/> with its own id, keys and settings; only the lists group them.
+/// </summary>
+public sealed record ActionFamily(string Id, string Title);
 
 /// <summary>
 /// A bindable hotkey, and the master entry for everything OmniControl itself can do. Every feature registers its actions through
@@ -84,6 +90,12 @@ public sealed partial class HotkeyAction : HotkeyTarget, Pages.IEditorItem
     public string? SuggestedKey { get; init; }
 
     /// <summary>
+    /// The key combination the action starts with ("Alt+Z"), or null. <see cref="HotkeyRegistry"/> binds it when the action is first registered
+    /// (never again once the user has given or cleared its keys, and not when another action already has it); "Restore defaults" puts it back.
+    /// </summary>
+    public string? DefaultKey { get; init; }
+
+    /// <summary>
     /// True for the actions that keep the user in control (lock, open OmniControl, pause all rules): no automation block rule may stop
     /// them. A flag on the master entry, so there is no second list of ids.
     /// </summary>
@@ -94,6 +106,23 @@ public sealed partial class HotkeyAction : HotkeyTarget, Pages.IEditorItem
 
     /// <summary>+1 when this level action raises its level, -1 when it lowers it.</summary>
     public int LevelDirection { get; private init; }
+
+    private readonly ActionFamily? _family;
+    private readonly string? _familyRole;
+
+    /// <summary>The family this action is one direction of (see <see cref="ActionFamily"/>); a level action is the family of its level, so it needs none set. Null: listed alone.</summary>
+    public ActionFamily? Family
+    {
+        get => _family ?? (Level is { } level ? new ActionFamily(level.Id, level.Name) : null);
+        init => _family = value;
+    }
+
+    /// <summary>The word for this action's direction inside its family ("Up", "Down", "Next", "On"); a level action says Up or Down by itself.</summary>
+    public string? FamilyRole
+    {
+        get => _familyRole ?? (Level is null ? null : LevelDirection > 0 ? "Up" : "Down");
+        init => _familyRole = value;
+    }
 
     /// <summary>The part of the Choose-the-action window this action is listed under, when that is not the page that registers it (Power, Launch).</summary>
     public string? PickerSection { get; init; }
@@ -120,6 +149,9 @@ public sealed partial class HotkeyAction : HotkeyTarget, Pages.IEditorItem
     /// <summary>How to run the action with the settings an input chose; null: it takes none beyond a level action's step.</summary>
     public Action<RunSettings>? RunConfigured { get; init; }
 
+    /// <summary>For an action that can last while its input is held (repeated clicking): starts it with the settings the input chose and returns what ends it, or null when the settings say it does not last. Called on the input's thread, so it must return at once.</summary>
+    public Func<RunSettings, Action?>? RunHeld { get; init; }
+
     /// <summary>Set: the pickers show "Remove" (or the hide wording) in this action's settings; it takes the action out of the master list (see <see cref="HotkeyRegistry.PickerActions"/>).</summary>
     public Action? Remove { get; init; }
 
@@ -140,6 +172,12 @@ public sealed partial class HotkeyAction : HotkeyTarget, Pages.IEditorItem
 
     /// <summary>For a <see cref="Command"/>: false hides the button for now ("Show hidden apps" while nothing is hidden).</summary>
     public Func<bool>? IsListed { get; init; }
+
+    /// <summary>A small fact shown as a tag beside the entry's name in the Actions and hotkeys window ("active"); null: none. Set again by the owner when the fact changes.</summary>
+    public string? Tag { get; init; }
+
+    /// <summary>Set: the editor (a heading and a panel row) the Actions and hotkeys window shows in this action's settings, besides its defaults (the power plan editor).</summary>
+    public IReadOnlyList<ActionOption>? ManageSettings { get; init; }
 
     /// <summary>Called each time a picker listing this entry opens (the apps are looked for again).</summary>
     public Action? PickerOpened { get; init; }
@@ -167,6 +205,20 @@ public sealed partial class HotkeyAction : HotkeyTarget, Pages.IEditorItem
     }
 
     [ObservableProperty] private bool _useSelected;
+
+    /// <summary>
+    /// The action's own settings that differ from their defaults (a program to start, how far a level moves, a countdown): what its hotkeys and
+    /// rules run it with, and what a mouse button, gesture or rule step uses while it has no copy of its own. Kept with the keys, so a shortcut set holds them.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> Defaults { get; private set; } = new Dictionary<string, string>();
+
+    /// <summary>Takes these as the action's settings (only those that differ from the option's default are kept), with one save.</summary>
+    public void SetDefaults(IReadOnlyDictionary<string, string> values)
+    {
+        Defaults = new Dictionary<string, string>(values);
+        OnPropertyChanged(nameof(Defaults));
+        Raise();
+    }
 
     /// <summary>
     /// Why the action does nothing right now (a device it needs is missing), set and cleared live by the feature that owns it;
@@ -262,7 +314,8 @@ public sealed partial class HotkeyAction : HotkeyTarget, Pages.IEditorItem
         OnPropertyChanged(nameof(ScopeSummary));
     }
 
-    public StoredHotkey Export() => new(Gesture, UseSelected, _selectedIds.ToList(), MoreKeys.Count > 0 ? MoreKeys.ToList() : null);
+    public StoredHotkey Export() => new(Gesture, UseSelected, _selectedIds.ToList(), MoreKeys.Count > 0 ? MoreKeys.ToList() : null,
+        Defaults.Count > 0 ? new Dictionary<string, string>(Defaults) : null);
 
     public void Restore(StoredHotkey s)
     {
@@ -273,8 +326,21 @@ public sealed partial class HotkeyAction : HotkeyTarget, Pages.IEditorItem
         _selectedIds.Clear();
         foreach (var id in s.DeviceIds) _selectedIds.Add(id);
         UseSelected = s.UseSelected && HasDevices;
+        Defaults = s.Options is { Count: > 0 } ? new Dictionary<string, string>(s.Options) : new Dictionary<string, string>();
+        OnPropertyChanged(nameof(Defaults));
         _loading = false;
         RefreshDevices();
+    }
+
+    /// <summary>Takes the device choice of another direction of the same family (its settings are shared), with one save when it differs.</summary>
+    public void CopyScopeFrom(HotkeyAction other)
+    {
+        if (!HasDevices || (UseSelected == other.UseSelected && _selectedIds.SetEquals(other._selectedIds))) return;
+        _selectedIds.Clear();
+        foreach (var id in other._selectedIds) _selectedIds.Add(id);
+        UseSelected = other.UseSelected;
+        RefreshDevices();
+        Raise();
     }
 
     /// <summary>Picks exactly this option ("All displays" or one device) and clears the rest.</summary>

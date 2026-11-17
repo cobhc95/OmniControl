@@ -2,9 +2,14 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:picker="using:OmniControl.App.Picker"
              xmlns:ctl="using:OmniControl.App.Controls"
+             xmlns:pages="using:OmniControl.App.Pages"
              xmlns:hk="using:OmniControl.App.Hotkeys"
+             xmlns:power="using:OmniControl.App.Power"
              x:Class="OmniControl.App.Picker.PickerMenu"
              x:DataType="picker:PickerModel">
+    <UserControl.DataTemplates>
+        <DataTemplate DataType="power:PowerPlanViewModel"><power:PowerPlanEditor /></DataTemplate>
+    </UserControl.DataTemplates>
     <!-- Three panes (docs/mockups/action-picker-three-pane.html): sections | entries | settings of the highlighted entry (always shown, live).
          Keyboard focus stays in the search box, or in the focus holder while the keys are in the settings; the lists only show the highlight, which the model moves. -->
     <Grid RowDefinitions="Auto,*,Auto">
@@ -63,6 +68,9 @@
                                         <Button Classes="blockadd small" Content="{Binding Text}" HorizontalAlignment="Left" Focusable="False"
                                                 IsVisible="{Binding IsCommand}" Click="OnRowCommandClick" />
                                         <TextBlock Text="{Binding Hint}" Classes="muted small" VerticalAlignment="Center" />
+                                        <Border Classes="tag good" IsVisible="{Binding HasTag}" VerticalAlignment="Center"><TextBlock Text="{Binding Tag}" /></Border>
+                                        <!-- A family's directions and their keys in a few words (one line for Up and Down, Next and Previous...) -->
+                                        <TextBlock Text="{Binding Summary}" Classes="muted small" VerticalAlignment="Center" IsVisible="{Binding HasSummary}" />
                                         <!-- The entry's keys as keycaps, or a muted "no key" (the Actions and hotkeys window) -->
                                         <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                                             <ItemsControl ItemsSource="{Binding Keycaps}">
@@ -90,17 +98,29 @@
                     <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel>
                             <!-- The Actions and hotkeys window: the action's keys first, then Run now and Show on its page, then its settings -->
-                            <picker:ActionHotkeysView x:Name="HotkeyPart" DataContext="{Binding Hotkeys}" />
+                            <!-- One block for the entry, or one per direction when it is a family (docs/mockups/grouped-actions.html) -->
+                            <ItemsControl x:Name="HotkeyPart" ItemsSource="{Binding HotkeyBlocks}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate><picker:ActionHotkeysView /></DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                             <ListBox x:Name="OptionList" Classes="pick" Classes.active="{Binding InSettings}" Focusable="False"
                                      ItemsSource="{Binding OptionItems}" SelectedIndex="{Binding OptionIndex}">
+                                <!-- Not virtualised: a handful of rows inside the pane's own scroll viewer. A virtualised list reuses the previous
+                                     action's rows when the settings are cleared and refilled, and two actions' settings drew on top of each other -->
+                                <ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
                                 <ListBox.ItemTemplate>
                                     <!-- One template per kind of row, chosen when the row is built: a recycled row never keeps the other kind's controls -->
                                     <picker:OptionTemplateSelector>
                                         <picker:OptionTemplateSelector.Inline>
                                             <DataTemplate DataType="picker:OptionItem">
                                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" MinHeight="30" Opacity="{Binding Opacity}" ToolTip.Tip="{Binding Tip}">
-                                                <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextWrapping="Wrap" />
-                                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" IsVisible="{Binding IsStepper}">
+                                                <StackPanel VerticalAlignment="Center" Spacing="2">
+                                                    <TextBlock Text="{Binding Label}" TextWrapping="Wrap" />
+                                                    <TextBlock Classes="hint small" Text="{Binding Hint}" IsVisible="{Binding HasNote}" TextWrapping="Wrap" />
+                                                    <Border Classes="tag caution" IsVisible="{Binding HasTag}" HorizontalAlignment="Left"><TextBlock Text="{Binding Tag}" /></Border>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" IsVisible="{Binding IsStepper}" pages:ValueWheel.Selector="True">
                                                     <Button Classes="pill glyph" Tag="-1" Focusable="False" Click="OnOptionStepClick"><Path Classes="glyph" Data="{StaticResource ChevronLeftIcon}" /></Button>
                                                     <Panel MinWidth="100" VerticalAlignment="Center">
                                                         <TextBlock Text="{Binding Display}" TextAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !IsTyping}"
@@ -126,6 +146,9 @@
                                                          IsVisible="{Binding IsText}" />
                                                 <ctl:PathField Text="{Binding Value}" Kind="{Binding PathKind}" Hint="{Binding Hint}" PickerTitle="{Binding PickerTitle}"
                                                                IsVisible="{Binding IsPath}" />
+                                                <ctl:PointField Value="{Binding Value}" IsVisible="{Binding IsPoint}" />
+                                                <!-- an editor of its own (the power plan editor): its view is picked by its view-model's type (DataTemplates above) -->
+                                                <ContentControl Content="{Binding PanelModel}" IsVisible="{Binding IsPanel}" />
                                             </StackPanel>
                                             </DataTemplate>
                                         </picker:OptionTemplateSelector.Block>
@@ -145,9 +168,13 @@
             </Border>
         </Grid>
 
-        <!-- The only confirm; the picker's keys are in the Keyboard shortcuts of the pages that open it (PickerModel.KeyHelp) -->
-        <Border Grid.Row="2" Classes="footer" IsVisible="{Binding IsPicking}">
-            <Button Classes="scope usebtn" Tag="scope" Content="{Binding UseText}" IsEnabled="{Binding CanUse}" HorizontalAlignment="Right" Focusable="False" Click="OnUseClick" />
+        <!-- The foot: the only confirm, "Use for <target>", when a button, gesture or rule step is being given its action; Close in both modes.
+             The picker's keys are in the Keyboard shortcuts of the pages that open it (PickerModel.KeyHelp) -->
+        <Border Grid.Row="2" Classes="footer">
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                <Button Classes="scope usebtn" Tag="scope" Content="{Binding UseText}" IsEnabled="{Binding CanUse}" IsVisible="{Binding IsPicking}" Focusable="False" Click="OnUseClick" />
+                <Button Classes="primary close" Content="Close" Focusable="False" Click="OnCloseClick" />
+            </StackPanel>
         </Border>
     </Grid>
 </UserControl>

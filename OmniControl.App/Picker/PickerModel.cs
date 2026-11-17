@@ -22,10 +22,24 @@ public sealed class PickerRow
     public PickChoice? Choice { get; }
     public string Text { get; }
     public string? Hint { get; }
-    public string? Unavailable => Choice?.Unavailable;
+
+    /// <summary>The entry's small fact tag ("active"), or null.</summary>
+    public string? Tag => Choice?.Tag;
+    public bool HasTag => Tag is not null;
+    public string? Unavailable => Members is { } members ? (members.All(m => m.Unavailable is not null) ? members[0].Unavailable : null) : Choice?.Unavailable; // a family is greyed only when every direction is
     public bool IsAvailable => Unavailable is null;
 
     public bool IsHeading => Choice is null;
+
+    /// <summary>The directions of a family, in order, when this line stands for one (<see cref="Choice"/> is the first of them); null for a single entry.</summary>
+    public IReadOnlyList<PickChoice>? Members { get; }
+
+    /// <summary>The family's key (section, group and id), or null for a single entry or a heading.</summary>
+    public string? FamilyKey { get; }
+
+    /// <summary>A family's keys in a few words, one per direction ("Up Ctrl+F7 · Down no key"; the directions alone while none has a key); empty for a single entry.</summary>
+    public string Summary { get; } = string.Empty;
+    public bool HasSummary => Summary.Length > 0;
 
     private readonly IReadOnlyList<string> _keys;
     private IReadOnlyList<IReadOnlyList<KeycapPart>>? _keycaps;
@@ -59,6 +73,13 @@ public sealed class PickerRow
     /// <summary>The entry is in the panel the picker was opened from (the tray flyout): the row says so in place of "no key".</summary>
     public bool InPanel { get; }
 
+    /// <summary>A line for a family: its title, its directions and their keys in <paramref name="summary"/>.</summary>
+    public PickerRow(string familyKey, string title, IReadOnlyList<PickChoice> members, string? hint, string summary, bool inPanel)
+        : this(members[0], title, hint, null, inPanel)
+    {
+        (FamilyKey, Members, Summary) = (familyKey, members, summary);
+    }
+
     public PickerRow(PickChoice choice, string text, string? hint, IReadOnlyList<string>? keys = null, bool inPanel = false)
     {
         Choice = choice;
@@ -85,8 +106,9 @@ public sealed class PickerRow
 
     /// <summary>True when the two rows draw the same (the shown row is kept as it is).</summary>
     public static bool Same(PickerRow shown, PickerRow wanted) =>
-        ReferenceEquals(shown.Choice, wanted.Choice) && shown.Text == wanted.Text && shown.Hint == wanted.Hint
-        && shown.InPanel == wanted.InPanel && shown.ShowsNoKey == wanted.ShowsNoKey && shown._keys.SequenceEqual(wanted._keys);
+        ReferenceEquals(shown.Choice, wanted.Choice) && shown.Text == wanted.Text && shown.Hint == wanted.Hint && shown.Tag == wanted.Tag
+        && shown.InPanel == wanted.InPanel && shown.ShowsNoKey == wanted.ShowsNoKey && shown._keys.SequenceEqual(wanted._keys)
+        && shown.Summary == wanted.Summary && (shown.Members ?? Array.Empty<PickChoice>()).SequenceEqual(wanted.Members ?? Array.Empty<PickChoice>());
 }
 
 /// <summary>
@@ -142,7 +164,7 @@ public sealed partial class PickerModel : ObservableObject
 
     /// <summary>The search box's tooltip (how to find an action by its key); none until the window gives the keys.</summary>
     public string? SearchTip => !HasKeys ? null : "Type a name or a key such as ctrl+o, or press the key combination (Ctrl+F)";
-    public string UseText => ActiveInPanel ? AddAgainText : $"Use this {Noun}";
+    public string UseText => ActiveInPanel ? AddAgainText : Target is { } target ? $"Use for {target}" : $"Use this {Noun}";
 
     /// <summary>The sections in pane 1: the list's own, then Recent when an action list has entries used before.</summary>
     public IReadOnlyList<SectionRow> Sections => _sections ??= BuildSections();
@@ -204,7 +226,9 @@ public sealed partial class PickerModel : ObservableObject
     public bool IsSearching => Query.Trim().Length > 0;
 
     /// <summary>The highlighted entry, or null when nothing matches.</summary>
-    public PickChoice? ActiveChoice => ActionIndex >= 0 && ActionIndex < Actions.Count ? Actions[ActionIndex].Choice : null;
+    public PickChoice? ActiveChoice => ActiveRow is { } row ? MemberOf(row) : null;
+
+    private PickerRow? ActiveRow => ActionIndex >= 0 && ActionIndex < Actions.Count ? Actions[ActionIndex] : null;
 
     /// <summary>True when the highlighted entry can be used (it is not greyed and not a list button).</summary>
     public bool CanUse => ActiveChoice is { Unavailable: null, Command: null, Create: null };
@@ -237,7 +261,7 @@ public sealed partial class PickerModel : ObservableObject
         StartInSettings = startInSettings && current is not null;
         _sectionIndex = current is null ? 0 : Math.Max(0, _groups.FindIndex(g => g.Name == current.Category));
         var rows = Build();
-        var at = current is null ? -1 : rows.FindIndex(a => a.Choice == current);
+        var at = current is null ? -1 : RowOf(rows, current);
         ShowRows(rows, () => at >= 0 ? at : FirstEntry());
     }
 
@@ -300,7 +324,7 @@ public sealed partial class PickerModel : ObservableObject
     private static int IndexIn(IReadOnlyList<PickerRow> rows, string spec)
     {
         for (var i = 0; i < rows.Count; i++)
-            if (rows[i].Choice?.Spec == spec) return i;
+            if (rows[i].Choice?.Spec == spec || rows[i].Members?.Any(m => m.Spec == spec) == true) return i;
         return -1;
     }
 
@@ -343,7 +367,8 @@ public sealed partial class PickerModel : ObservableObject
 
     private PickResult Gather(PickChoice choice)
     {
-        var settings = _allOptions.Where(i => i.Option.Key is not (ParameterKey or ApplyToAllKey or NameKey) && !i.Option.Shared && i.Option.IsShown(ValueOf)).ToDictionary(i => i.Option.Key, i => i.Value);
+        var settings = WithOwnCopy(_allOptions.Where(i => i.Option.Key is not (ParameterKey or ApplyToAllKey or NameKey or SameKey or DefaultsHeadingKey or DirectionKey) && !i.Option.Shared && i.Option.IsShown(ValueOf))
+            .ToDictionary(i => i.Option.Key, i => i.Value));
         var applyToAll = _allOptions.FirstOrDefault(i => i.Option.Key == ApplyToAllKey)?.Value == "1";
         var parameter = _allOptions.FirstOrDefault(i => i.Option.Key == ParameterKey)?.Value;
         return new PickResult(choice, settings, parameter, applyToAll);
@@ -401,7 +426,7 @@ public sealed partial class PickerModel : ObservableObject
     {
         var keep = ActionIndex;
         var rows = Build();
-        var found = highlight is null ? -1 : rows.FindIndex(a => a.Choice == highlight);
+        var found = highlight is null ? -1 : RowOf(rows, highlight);
         var clamped = Math.Clamp(keep, 0, Math.Max(0, rows.Count - 1));
         ShowRows(rows, () => found >= 0 ? found : rows.Count > clamped && rows[clamped].IsHeading ? FirstEntry() : clamped);
     }
@@ -429,7 +454,7 @@ public sealed partial class PickerModel : ObservableObject
             return;
         }
 
-        SettingsTitle = choice.Name;
+        SettingsTitle = TitleOf(choice);
         HasFootButton = (choice.Remove is not null || choice.Create is not null) && choice.Command is null;
         FootText = choice.Create is not null ? choice.Editor!.CreateText : choice.RemoveText;
         if (choice.Unavailable is not null || choice.Command is not null)
@@ -440,18 +465,20 @@ public sealed partial class PickerModel : ObservableObject
         }
 
         _editing = choice;
-        var values = choice.Editor is { } editor ? editor.Read() : choice == _current ? _currentValues : NoValues;
+        var values = ReadDefaults(choice, choice.Editor is { } editor ? editor.Read() : choice == _current ? _currentValues : NoValues);
         _allOptions = (choice.Options ?? Array.Empty<ActionOption>())
             .Select(o => new OptionItem(o, o.Shared && _shared is not null ? _shared.Read(o) : values.TryGetValue(o.Key, out var v) ? v : o.Default)).ToList();
         if (choice.ParamHint is not null)
             _allOptions.Insert(0, new OptionItem(ActionOption.Text(ParameterKey, choice.ParamLabel, "", choice.ParamHint) with { Browse = choice.ParamBrowse }, choice == _current ? _currentParameter : string.Empty));
         if (choice.Renaming is { } renaming)
             _allOptions.Insert(0, new OptionItem(ActionOption.Text(NameKey, "Name"), renaming.Current));
+        AddDefaultsRow();
+        AddDirectionRow(choice);
         if (_offerApplyToAll && choice.HasOptions) _allOptions.Add(new OptionItem(ActionOption.Toggle(ApplyToAllKey, "Apply these settings to every gesture that uses this action", on: true), "1"));
         foreach (var item in _allOptions) item.PropertyChanged += OnOptionValueChanged;
         SyncVisibleOptions();
-        OptionIndex = OptionItems.Count > 0 ? 0 : -1;
-        Note = OptionItems.Count == 0 && !HasFootButton && Hotkeys is null ? "Nothing to set here." : string.Empty;
+        OptionIndex = OptionItems.Count > 0 ? NextOption(-1, 1) : -1;
+        Note = OptionItems.Count == 0 && !HasFootButton && !HasHotkeys ? "Nothing to set here." : string.Empty;
         RaiseSettingsChanged();
     }
 
@@ -471,6 +498,12 @@ public sealed partial class PickerModel : ObservableObject
             SyncVisibleOptions();
             return;
         }
+        if (item.Option.Key == DirectionKey)
+        {
+            PickDirection(item.Value);
+            return;
+        }
+        if (TakeDefaultsChange(item)) return;
         if (item.Option.Key == NameKey) Rename(item.Value);
         if (item.Option.Shared) _shared?.Write(item.Option, item.Value);
         SyncVisibleOptions();
@@ -539,6 +572,14 @@ public sealed partial class PickerModel : ObservableObject
         return true;
     }
 
+    /// <summary>The row after <paramref name="from"/> in this direction that is a setting, not a heading (-1 when there is none).</summary>
+    private int NextOption(int from, int direction)
+    {
+        for (var i = from + direction; i >= 0 && i < OptionItems.Count; i += direction)
+            if (!OptionItems[i].IsHeading) return i;
+        return -1;
+    }
+
     /// <summary>Up/Down walk the settings and then the remove button (when there is one), and loop.</summary>
     public void MoveOption(int direction)
     {
@@ -546,6 +587,7 @@ public sealed partial class PickerModel : ObservableObject
         if (stops == 0) return;
         var at = OnFootButton ? OptionItems.Count : OptionIndex;
         var next = Wrap.Index(at + direction, stops);
+        while (next < OptionItems.Count && OptionItems[next].IsHeading && next != at) next = Wrap.Index(next + direction, stops); // a heading holds no value: the keys pass it
         OnFootButton = next == OptionItems.Count;
         OptionIndex = OnFootButton ? -1 : next;
     }
@@ -561,7 +603,7 @@ public sealed partial class PickerModel : ObservableObject
     {
         if (_groups.Count == 0) return new List<PickerRow>();
         if (IsSearching) return SearchRows(Index.Match(Query));
-        if (InRecent) return RecentChoices.Select(c => Row(c, c.Category)).ToList();
+        if (InRecent) return Rows(RecentChoices, c => c.Category, preselect: true);
         if (SectionIndex >= _groups.Count) return new List<PickerRow>();
         return InGroups(_groups[SectionIndex].Choices.Where(IsShown));
     }
@@ -574,13 +616,13 @@ public sealed partial class PickerModel : ObservableObject
         foreach (var heading in all.Select(c => c.Heading).Distinct().OrderBy(h => h is null ? 0 : 1))
         {
             if (heading is not null) rows.Add(PickerRow.HeadingOf(heading));
-            rows.AddRange(all.Where(c => c.Heading == heading).Select(c => Row(c, null)));
+            rows.AddRange(Rows(all.Where(c => c.Heading == heading), _ => null, preselect: false));
         }
         return rows;
     }
 
     /// <summary>The rows of a search's matches, each with its section as its hint.</summary>
-    private List<PickerRow> SearchRows(IEnumerable<PickChoice> matches) => matches.Where(IsShown).Select(c => Row(c, c.Category)).ToList();
+    private List<PickerRow> SearchRows(IEnumerable<PickChoice> matches) => Rows(matches.Where(IsShown), c => c.Category, preselect: true);
 
     private bool IsShown(PickChoice choice) => (choice.IsListed?.Invoke() ?? true) && PassesKeyFilter(choice);
 

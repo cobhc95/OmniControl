@@ -17,7 +17,7 @@
                         <Button Classes="menurow" Command="{Binding Command}" Click="OnRowClick" ToolTip.Tip="{Binding Tip}" IsVisible="{Binding IsRow}" Opacity="{Binding RowOpacity}">
                             <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="{StaticResource MenuGap}" Margin="{StaticResource MenuRowInset}">
                                 <Panel Width="{StaticResource MenuGlyphSize}" VerticalAlignment="Top" Height="{StaticResource MenuRowLine}">
-                                    <Path Classes="glyph" Data="{StaticResource TickIcon}" IsVisible="{Binding IsOn}" />
+                                    <Path Classes="glyph" Data="{StaticResource TickIcon}" IsVisible="{Binding ShowsTick}" />
                                 </Panel>
                                 <WrapPanel Grid.Column="1" ItemSpacing="{StaticResource MenuTagGap}" LineSpacing="{StaticResource MenuTagGap}" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Text}" TextWrapping="Wrap" VerticalAlignment="Center" />
@@ -27,6 +27,7 @@
                                     </ItemsControl>
                                 </WrapPanel>
                                 <Button Grid.Column="2" Classes="link" Content="{Binding Link}" IsVisible="{Binding HasLink}" IsHitTestVisible="False" Focusable="False" VerticalAlignment="Top" />
+                                <ToggleSwitch Grid.Column="2" Classes="plain" IsChecked="{Binding IsOn, Mode=OneWay}" IsVisible="{Binding IsSwitch}" IsHitTestVisible="False" Focusable="False" VerticalAlignment="Center" />
                                 <ItemsControl Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" ItemsSource="{Binding OwnLineTags}" IsVisible="{Binding HasOwnLineTags}" Margin="{StaticResource MenuTagLineMargin}">
                                     <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="{StaticResource MenuTagGap}" LineSpacing="{StaticResource MenuTagGap}" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate><DataTemplate><c:TagView /></DataTemplate></ItemsControl.ItemTemplate>

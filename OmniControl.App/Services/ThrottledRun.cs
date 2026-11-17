@@ -54,7 +54,8 @@ public sealed class ThrottledRun : IDisposable
             _running = true;
             _lastStart = DateTime.UtcNow;
         }
-        try { _work(); }
+        // A timer-thread throw would end the process: log it and stay ready for the next request.
+        try { Guard.Run("Throttled work", _work); }
         finally { lock (_gate) _running = false; }
     }
 

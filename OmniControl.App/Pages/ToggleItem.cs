@@ -12,6 +12,11 @@ public sealed partial class ToggleItem : ObservableObject, IEditorItem, IHalfWid
     /// <summary>A fact about the setting the label does not say (a limit), shown as the card's tooltip; null: none.</summary>
     public string? Tip { get; init; }
 
+    /// <summary>A muted second line under the label of a full-width card (what the setting does or costs); null: none.</summary>
+    public string? Note { get; init; }
+
+    public bool HasNote => !string.IsNullOrEmpty(Note);
+
     /// <summary>True: the card takes half the width and may share a row with the next half-width card.</summary>
     public bool Half { get; init; }
 

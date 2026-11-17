@@ -18,8 +18,11 @@ public sealed class DeviceRecord
     public string IconColour { get; set; } = string.Empty;
     public string IconImage { get; set; } = string.Empty;
 
-    /// <summary>When the real state is read on its own; null = <see cref="AutoChecks.DefaultFor"/> the first method.</summary>
+    /// <summary>This device's own choice, used only while "Same for every device" is off; null = the shared one.</summary>
     public AutoCheck? AutoCheck { get; set; }
+
+    /// <summary>This device's own "Also when the tray panel opens", used only while "Same for every device" is off; null = the shared one.</summary>
+    public bool? AutoCheckOnTray { get; set; }
 
     /// <summary>The ways to reach it, in the order On, Off, Toggle and Check try them (the first that works is used). Never empty once loaded.</summary>
     public List<MethodRecord> Methods { get; set; } = new();
@@ -31,10 +34,6 @@ public sealed class DeviceRecord
     /// <summary>At least one method's set-up is finished: it shows with a switch in the list.</summary>
     [JsonIgnore]
     public bool IsReady => Methods.Any(m => m.IsReady);
-
-    /// <summary>The kind of its first method (what the auto-check default and the default icon follow).</summary>
-    [JsonIgnore]
-    public string FirstKind => Methods.FirstOrDefault()?.Kind ?? DeviceMethods.Scripts;
 
     /// <summary>A method's name in this device: its kind, numbered when the device has more than one of that kind ("Scripts 2").</summary>
     public string NameOf(MethodRecord method)
@@ -72,7 +71,7 @@ public sealed class DeviceRecord
     /// <summary>Takes every field of <paramref name="other"/> (the copy made when the set-up opened); the id stays.</summary>
     public void CopyFrom(DeviceRecord other)
     {
-        (Name, Icon, IconColour, IconImage, AutoCheck) = (other.Name, other.Icon, other.IconColour, other.IconImage, other.AutoCheck);
+        (Name, Icon, IconColour, IconImage, AutoCheck, AutoCheckOnTray) = (other.Name, other.Icon, other.IconColour, other.IconImage, other.AutoCheck, other.AutoCheckOnTray);
         Methods = other.Methods.Select(m => m.Clone()).ToList();
     }
 }
@@ -130,6 +129,18 @@ public sealed class DeviceSettings
     public List<DeviceRecord> Devices { get; set; } = new();
 
     public EmulatorKeepSettings Emulator { get; set; } = new();
+
+    /// <summary>The auto-check every device follows while <see cref="AutoCheckSame"/> is on (otherwise it is each device's fallback).</summary>
+    public AutoCheck AutoCheck { get; set; } = AutoChecks.Default;
+
+    /// <summary>"Also when the tray panel opens": on by default; follows <see cref="AutoCheckSame"/> like <see cref="AutoCheck"/>.</summary>
+    public bool AutoCheckOnTray { get; set; } = true;
+
+    /// <summary>"Same for every device": on by default; off = a pick changes one device only.</summary>
+    public bool AutoCheckSame { get; set; } = true;
+
+    /// <summary>The per-device values of older files were folded into <see cref="AutoCheck"/> (<see cref="AutoChecks.Migrate"/>).</summary>
+    public bool AutoCheckMigrated { get; set; }
 
     /// <summary>The user's own scripts templates (the built-in ones are in <see cref="ScriptProfiles.BuiltIn"/>, never here).</summary>
     public List<ScriptProfile> Profiles { get; set; } = new();

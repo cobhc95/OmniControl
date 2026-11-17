@@ -1,4 +1,4 @@
-﻿namespace OmniControl.App.Services;
+namespace OmniControl.App.Services;
 
 /// <summary>Every interval and grace period the app uses, in one place, so a timing change never means a hunt through the code.</summary>
 public static class Timing
@@ -74,6 +74,21 @@ public static class Timing
     /// or window change before the next one arrives.
     /// </summary>
     public static readonly TimeSpan MouseActionGap = TimeSpan.FromMilliseconds(40);
+
+    /// <summary>Repeated clicking: the hard ceiling on its speed, whatever is set (clicks per second).</summary>
+    public const int ClickSpeedMax = 50;
+
+    /// <summary>Repeated clicking: how often the loop looks at Esc, the pointer and the stop limits while it waits between clicks.</summary>
+    public static readonly TimeSpan ClickWatchEvery = TimeSpan.FromMilliseconds(10);
+
+    /// <summary>Repeated clicking: how far the pointer may drift (pixels) before "stop when the mouse moves" stops it.</summary>
+    public const int ClickMoveTolerance = 4;
+
+    /// <summary>How long a mouse button waits for the one action gate's answer from the UI thread before the action is refused (the hook must never wait long).</summary>
+    public static readonly TimeSpan GateAskWait = TimeSpan.FromMilliseconds(150);
+
+    /// <summary>Repeated clicking: how often the on-screen badge is refreshed with the click count.</summary>
+    public static readonly TimeSpan ClickBadgeEvery = TimeSpan.FromSeconds(1);
 
     /// <summary>A display level OmniControl set or read this recently is trusted for the next step instead of asking the display again (DDC/CI reads take 40 ms or more).</summary>
     public static readonly TimeSpan DisplayLevelTrust = TimeSpan.FromSeconds(10);
@@ -309,7 +324,8 @@ public static class Timing
     public const int EmulatorIdleMinutes = 30;
 
     /// <summary>A woken emulator is waited for this long to finish starting (a cold boot); a quick boot from a snapshot gets the shorter time before one cold boot is tried; adb is asked every poll.</summary>
-    public static readonly TimeSpan EmulatorBootTimeout = TimeSpan.FromMinutes(3), EmulatorQuickBootTimeout = TimeSpan.FromSeconds(75), EmulatorBootPoll = TimeSpan.FromSeconds(2);
+    public static readonly TimeSpan EmulatorBootTimeout = TimeSpan.FromMinutes(5), EmulatorQuickBootTimeout = TimeSpan.FromSeconds(120), EmulatorBootPoll = TimeSpan.FromSeconds(2),
+        EmulatorWindowPoll = TimeSpan.FromMilliseconds(150), EmulatorWindowWait = TimeSpan.FromSeconds(60);
 
     /// <summary>Two reports of a tap closer than this in time and <see cref="DeviceSimSameTouchPixels"/> in place are one tap.</summary>
     public static readonly TimeSpan DeviceSimSameTouch = TimeSpan.FromMilliseconds(400);
@@ -332,6 +348,9 @@ public static class Timing
 
     /// <summary>How often a device with "Every 5 min" / "Every 15 min" reads its real state.</summary>
     public static readonly TimeSpan DeviceAutoCheck5 = TimeSpan.FromMinutes(5), DeviceAutoCheck15 = TimeSpan.FromMinutes(15);
+
+    /// <summary>How often the service looks at which devices' periodic check is due, and how long after start-up the first check waits (the window is up by then).</summary>
+    public static readonly TimeSpan DeviceAutoCheckTick = TimeSpan.FromMinutes(1), DeviceStartCheckDelay = TimeSpan.FromSeconds(4);
 
     /// <summary>After a USB announcement the automations wait this long before comparing the device list.</summary>
     public static readonly TimeSpan AutomationUsbSettle = TimeSpan.FromSeconds(2);
@@ -356,12 +375,27 @@ public static class Timing
     /// </summary>
     public static readonly TimeSpan TrayReopenGrace = TimeSpan.FromMilliseconds(400);
 
-    /// <summary>While the tray panel is open, a smart device that a Scripts method can read is read again this often (Tray/TrayFlyoutModel.Rechecks).</summary>
-    public static readonly TimeSpan TrayRecheckEvery = TimeSpan.FromSeconds(15);
+    /// <summary>Opening the panel reads its devices' states one at a time, this long apart (Tray/TrayFlyoutModel.Rechecks), so opening stays instant.</summary>
+    public static readonly TimeSpan TrayRecheckStagger = TimeSpan.FromMilliseconds(400);
+
+    /// <summary>A device's state read longer ago than this is only the last one known: its tray tile is faded with a clock.</summary>
+    public static readonly TimeSpan DeviceStateStale = TimeSpan.FromMinutes(30);
 
     /// <summary>A tile's state is never read again sooner than this after the last read was asked for (a quick re-open of the panel asks nothing).</summary>
     public static readonly TimeSpan TrayRecheckMinGap = TimeSpan.FromSeconds(10);
 
     /// <summary>A key typed into a search box this soon after another waits this long before its search runs (the first letter is searched at once; <see cref="SearchRunner{T}"/>).</summary>
     public static readonly TimeSpan SearchDebounce = TimeSpan.FromMilliseconds(60);
+
+    /// <summary>At most one automatic update check per this long (the daily check; "Check now" ignores it).</summary>
+    public static readonly TimeSpan UpdateCheckEvery = TimeSpan.FromHours(24);
+
+    /// <summary>The first automatic update check waits this long after start-up, so it never competes with the app settling.</summary>
+    public static readonly TimeSpan UpdateCheckFirstDelay = TimeSpan.FromSeconds(45);
+
+    /// <summary>How often the running app asks whether the daily update check is due (a PC that stays on for days).</summary>
+    public static readonly TimeSpan UpdateCheckPoll = TimeSpan.FromHours(1);
+
+    /// <summary>An update check that has not answered after this long counts as failed.</summary>
+    public static readonly TimeSpan UpdateRequestTimeout = TimeSpan.FromSeconds(15);
 }

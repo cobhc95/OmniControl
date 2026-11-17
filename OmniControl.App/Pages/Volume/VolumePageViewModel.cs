@@ -132,7 +132,6 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
         _report = report;
         _openFx = openFx;
         _toggleFx = toggleFx;
-        mixer.Report = report;
         _presets = presets;
         _openPresets = openPresets;
 

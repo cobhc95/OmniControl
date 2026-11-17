@@ -16,23 +16,20 @@ public sealed partial class DeviceService
 {
     private const string Masked = "•••";
 
-    /// <summary>Every template a device can use: the built-in ones, then the user's own.</summary>
-    public IEnumerable<ScriptProfile> AllProfiles => ScriptProfiles.BuiltIn.Concat(Settings.Profiles);
-
     public ScriptProfile ProfileOf(MethodRecord method) => ScriptProfiles.Of(method.ProfileId, Settings.Profiles);
 
-    private async Task<Attempt> RunScriptAsync(MethodRecord method, DevicePower power, bool? lastKnown, ScriptProfile profile)
+    private async Task<Attempt> RunScriptAsync(MethodRecord method, DevicePower power, bool? lastKnown, ScriptProfile profile, CancellationToken stop)
     {
         var turnOn = power switch
         {
             DevicePower.On => true,
             DevicePower.Off => false,
-            _ => (await ReadScriptStateAsync(method, profile) ?? lastKnown) != true,
+            _ => (await ReadScriptStateAsync(method, profile, stop) ?? lastKnown) != true,
         };
         var clock = Stopwatch.StartNew();
-        var run = await RunTemplateAsync(method, profile.TemplateOf(turnOn ? DevicePower.On : DevicePower.Off), profile);
+        var run = await RunTemplateAsync(method, profile.TemplateOf(turnOn ? DevicePower.On : DevicePower.Off), profile, stop);
         if (run.Problem is not null) return Attempt.Failed(run.Problem, run.Details);
-        var reads = await ReadScriptStateAsync(method, profile);
+        var reads = await ReadScriptStateAsync(method, profile, stop);
         clock.Stop();
         if (reads is { } state && state != turnOn) return Attempt.Failed($"it still reads {(state ? "on" : "off")} after the command.", run.Details);
         var words = $"turned {(turnOn ? "on" : "off")} in {clock.Elapsed.TotalSeconds:0.0} s{(reads is null ? string.Empty : ", read back")}";
@@ -40,10 +37,10 @@ public sealed partial class DeviceService
     }
 
     /// <summary>The device's state by the profile's State command; null when it has none or its answer does not say.</summary>
-    private async Task<bool?> ReadScriptStateAsync(MethodRecord method, ScriptProfile profile)
+    private async Task<bool?> ReadScriptStateAsync(MethodRecord method, ScriptProfile profile, CancellationToken stop)
     {
         if (profile.State.Trim().Length == 0) return null;
-        var run = await RunTemplateAsync(method, profile.State, profile);
+        var run = await RunTemplateAsync(method, profile.State, profile, stop);
         return run.Problem is null ? KasaCommand.StateOf(run.Printed) : null;
     }
 
@@ -59,7 +56,7 @@ public sealed partial class DeviceService
     }
 
     /// <summary>Runs one command template for the method (its address and sign-in): <c>kasa</c> is the kasa program found, the placeholders are filled in; a known error of <paramref name="profile"/> is told by its tip.</summary>
-    public async Task<ScriptRun> RunTemplateAsync(MethodRecord method, string template, ScriptProfile? profile = null)
+    public async Task<ScriptRun> RunTemplateAsync(MethodRecord method, string template, ScriptProfile? profile = null, CancellationToken stop = default)
     {
         var email = KasaCommand.EmailFor(method.Email, profile?.LowerCaseEmail ?? false);
         var words = KasaCommand.Fill(template, method.Address.Trim(), email);
@@ -75,7 +72,7 @@ public sealed partial class DeviceService
             [KasaCommand.PasswordVariable] = password,
         };
         var printed = string.Empty;
-        var problem = await ScriptRunner.RunAsync(file, arguments, hidden: true, Timing.DeviceCommandTimeout, environment, text => printed = text);
+        var problem = await ScriptRunner.RunAsync(file, arguments, hidden: true, Timing.DeviceCommandTimeout, environment, text => printed = text, stop);
         var details = Mask(method, password, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {file} {string.Join(' ', arguments)}\n{problem ?? "ended with code 0"}\n{printed}".Trim());
         Log(details.ReplaceLineEndings(" | "));
         if (problem is null) return new ScriptRun(null, printed, details);

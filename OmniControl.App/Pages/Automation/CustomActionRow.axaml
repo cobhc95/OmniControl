@@ -10,7 +10,7 @@
         <TextBox Classes="field" Text="{Binding Name, UpdateSourceTrigger=LostFocus}" Watermark="Name" MinWidth="120" />
         <ComboBox Grid.Column="1" Classes="choice half" ItemsSource="{Binding KindNames}" SelectedItem="{Binding KindName}" />
         <Button Grid.Column="2" Classes="pill" Content="Run" Click="OnRunClick" ToolTip.Tip="Run it once now, as you (never as administrator)" />
-        <Button Grid.Column="3" Classes="pill glyph" Click="OnDeleteClick" ToolTip.Tip="Delete">
+        <Button Grid.Column="3" Classes="pill glyph closex" Click="OnDeleteClick" ToolTip.Tip="Delete">
             <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
         </Button>
 

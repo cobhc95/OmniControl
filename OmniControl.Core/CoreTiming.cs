@@ -18,11 +18,30 @@ public static class CoreTiming
     /// </summary>
     public const int AutoscrollLookupMs = 80;
 
+    /// <summary>
+    /// The autoscroll answer is looked up by a worker (<c>AutoscrollWatcher</c>) every <see cref="AutoscrollWatchMs"/> while the pointer is
+    /// somewhere the last answer does not cover; an answer covers the same window within <see cref="AutoscrollCachePx"/> pixels for
+    /// <see cref="AutoscrollCacheMs"/>. The mouse hook only reads it.
+    /// </summary>
+    public const int AutoscrollWatchMs = 60, AutoscrollCachePx = 8, AutoscrollCacheMs = 1500;
+
     /// <summary>How many parents above the element under the pointer the link lookup also checks.</summary>
     public const int AutoscrollParentLevels = 4;
 
+    /// <summary>
+    /// How often a worker looks whether a full-screen app is in front (<c>FullScreenWatcher</c>) and which program the user is working in
+    /// (<c>ForegroundProgram</c>); the mouse hook only reads what they found.
+    /// </summary>
+    public const int FullScreenWatchMs = 500, ForegroundWatchMs = 100;
+
     /// <summary>A mouse-hook handler slower than this is reported (Windows drops a hook that takes too long).</summary>
     public const int HookSlowMs = 50;
+
+    /// <summary>
+    /// The mouse hook's watchdog looks this often whether Windows has silently dropped the hook (pointer moved and input happened, yet
+    /// the hook saw nothing), and puts it back when it has.
+    /// </summary>
+    public const int HookWatchdogMs = 3000;
 
     /// <summary>Most diagnostic lines the mouse hook writes per run.</summary>
     public const int HookLogLimit = 150;
@@ -105,6 +124,13 @@ public static class CoreTiming
 
     /// <summary>A touch that moves less than this many pixels (of the screen) is a tap, not a swipe, when a recording reads the screen's touches.</summary>
     public const int AdbTapSlopPx = 24;
+
+    /// <summary>
+    /// A screenshot is blank when every pixel of a <see cref="ScreenBlankGrid"/> by <see cref="ScreenBlankGrid"/> sample is within this many levels
+    /// (0-255) of the first one; it has the wrong size when its shape differs from the screen's by more than this share.
+    /// </summary>
+    public const int ScreenBlankGrid = 16, ScreenBlankTolerance = 6;
+    public const double ScreenShapeTolerance = 0.05;
 
     /// <summary>
     /// Reading a simulated device's state (<c>Engine/Adb/StateModel</c>): a reading whose weighted vote (0-1) reaches the threshold is On or Off,

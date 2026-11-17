@@ -112,7 +112,7 @@ public sealed partial class VolumePageViewModel
         var line = c.Kind == CombinedKind.Microphones
             ? $"Apps using {RecordingNameFor(c) ?? "its cable"} hear nothing."
             : "Programs on it go back to the master; apps using its cable hear nothing.";
-        if (!await _ask(new DialogMessage($"Remove {c.Name}?", line, "Remove"))) return;
+        if (!await _ask(new DialogMessage($"Remove {c.Name}?", line, "Remove", RememberKey: "remove.combined", RememberName: "Remove a combined device"))) return;
         _mixer.RemoveCombined(key);
         _report($"Removed {c.Name}");
     }

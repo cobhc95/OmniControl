@@ -34,15 +34,17 @@ public sealed partial class MousePageViewModel
                     if (control.Osd is { } element) _osd.Declare(element, OsdLevelIcon.Disc);
                     break;
                 case PointerKind.Number:
-                    actions.Add(new HotkeyAction($"{id}.up", $"{name} up", Title, control.Keywords, _ => StepPointer(control, control.Step), group: group));
-                    actions.Add(new HotkeyAction($"{id}.down", $"{name} down", Title, control.Keywords, _ => StepPointer(control, -control.Step), group: group));
+                    var numberFamily = new ActionFamily(id, control.Label);
+                    actions.Add(new HotkeyAction($"{id}.up", $"{name} up", Title, control.Keywords, _ => StepPointer(control, control.Step), group: group) { Family = numberFamily, FamilyRole = "Up" });
+                    actions.Add(new HotkeyAction($"{id}.down", $"{name} down", Title, control.Keywords, _ => StepPointer(control, -control.Step), group: group) { Family = numberFamily, FamilyRole = "Down" });
                     break;
                 case PointerKind.Switch:
                     actions.Add(new HotkeyAction($"{id}.toggle", $"Toggle {control.ActionName}", Title, control.Keywords, _ => TogglePointer(control), group: group));
                     break;
                 case PointerKind.Choice:
-                    actions.Add(new HotkeyAction($"{id}.next", $"Next {control.ActionName}", Title, control.Keywords, _ => StepScheme(+1), group: group));
-                    actions.Add(new HotkeyAction($"{id}.previous", $"Previous {control.ActionName}", Title, control.Keywords, _ => StepScheme(-1), group: group));
+                    var choiceFamily = new ActionFamily(id, control.Label);
+                    actions.Add(new HotkeyAction($"{id}.next", $"Next {control.ActionName}", Title, control.Keywords, _ => StepScheme(+1), group: group) { Family = choiceFamily, FamilyRole = "Next" });
+                    actions.Add(new HotkeyAction($"{id}.previous", $"Previous {control.ActionName}", Title, control.Keywords, _ => StepScheme(-1), group: group) { Family = choiceFamily, FamilyRole = "Previous" });
                     break;
             }
         }

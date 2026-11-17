@@ -1,0 +1,15 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Update check (approved)</title>
+<!-- Approved by the owner 17 Nov 2026. Checks only; never downloads or installs.
+  App settings: group "Updates" (GroupCard), header pill "Check now" (Button.pill) at the right of its title.
+    Half-width cards: "Check once a day" switch (ON by default) | "Version <x.y.z>" with muted "checked HH:mm" (or "not checked yet").
+    When a newer release exists: an accent-outlined row: Border.tag.selected "<ver> available", muted "pre-release · <date>", Button.pill.accentline
+      "Open on GitHub" opening the release page in the browser.
+    Results in one calm line: "You have the latest version." / "Couldn't check. Try again later." (details in the log).
+  Sidebar foot (only while a newer version exists): accent line with download glyph "Update available: <ver>"; click opens the Updates group.
+  Logic: GitHub releases API for the repo (read owner/repo from one place, e.g. AppInfo; pre-releases included; compare to <Version> from AppInfo),
+    at most once per Timing.UpdateCheckEvery (24 h) when the switch is on, after start-up has settled (StartupMode respected); last-check time and
+    last result persisted in settings; no personal data sent; generic User-Agent "OmniControl". Searchable in settings; a hotkey action "Check for updates". -->
+<style>body{font-family:Segoe UI;background:#1b1b1b;color:#eee;padding:20px;font-size:12px}</style></head><body>
+<p>Updates [Check now] · Check once a day [on] | Version 0.1.5 checked 09:12 · [0.1.6 available] pre-release · 17 Nov [Open on GitHub] · sidebar: Update available: 0.1.6</p>
+</body></html>

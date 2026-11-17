@@ -32,13 +32,17 @@ public sealed partial class DeviceService
         if (methods.Count == 0) return Fail(runtime, name, "no method is set up yet.");
         if (!_limiter.TryAcquire()) return Fail(runtime, name, "too many commands in a short time, so this one was skipped.");
         runtime.Busy = true;
+        var stop = runtime.BeginRun();
         try
         {
             var failed = new List<(MethodRecord Method, Attempt Attempt)>();
             var goal = power;
             foreach (var method in methods)
             {
-                var attempt = MissingFor(method) is { } missing ? Attempt.Failed($"{missing}.") : await TryAsync(device, method, goal, runtime, name, profile);
+                runtime.Trying(method.Id);
+                var attempt = MissingFor(method) is { } missing ? Attempt.Failed($"{missing}.") : await TryAsync(device, method, goal, runtime, name, profile, stop);
+                if (stop.IsCancellationRequested) return Stopped(runtime, name, method);
+                runtime.Tried(method.Id, attempt.Problem);
                 if (attempt.Problem is null) return Succeeded(device, runtime, name, method, attempt, failed);
                 failed.Add((method, attempt));
                 Log($"\"{name}\" via {device.NameOf(method)}: {attempt.Problem.ReplaceLineEndings(" | ")}");
@@ -48,12 +52,25 @@ public sealed partial class DeviceService
         }
         finally
         {
+            runtime.EndRun();
+            runtime.Trying(string.Empty);
             runtime.Busy = false;
         }
     }
 
-    private Task<Attempt> TryAsync(DeviceRecord device, MethodRecord method, DevicePower power, DeviceRuntime runtime, string name, ScriptProfile? profile) =>
-        method.IsSimulation ? RunSimulationAsync(device, method, power, name) : RunScriptAsync(method, power, runtime.IsOn, profile ?? ProfileOf(method));
+    /// <summary>What a stopped command returns: not a failure, so no report, no problem on the method and the last known state stays.</summary>
+    public const string StoppedSentence = "Stopped";
+
+    private string Stopped(DeviceRuntime runtime, string name, MethodRecord method)
+    {
+        runtime.Tried(method.Id, null);
+        runtime.Finished(runtime.IsOn, known: false, $"Last command {DateTime.Now:t} · {StoppedSentence}", failed: false);
+        Log($"\"{name}\": stopped by the user");
+        return StoppedSentence;
+    }
+
+    private Task<Attempt> TryAsync(DeviceRecord device, MethodRecord method, DevicePower power, DeviceRuntime runtime, string name, ScriptProfile? profile, CancellationToken stop) =>
+        method.IsSimulation ? RunSimulationAsync(device, method, power, name, stop) : RunScriptAsync(method, power, runtime.IsOn, profile ?? ProfileOf(method), stop);
 
     /// <summary>"Simulation: " when the device has more than one method (a one-method device's lines read as they always did).</summary>
     private static string Via(DeviceRecord device, MethodRecord method) => device.Methods.Count > 1 ? $"{device.NameOf(method)}: " : string.Empty;

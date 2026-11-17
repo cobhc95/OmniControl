@@ -87,9 +87,6 @@ public static partial class EffectsRules
     /// </summary>
     public static string? ApoMissingOn(ApoState apo, ApoEndpoint? endpoint) => EndpointMissing(apo, endpoint, "this device");
 
-    /// <summary>Why a microphone's effects can't run in Equalizer APO on that recording device, or null when they can (the same checks).</summary>
-    public static string? MicApoMissing(ApoState apo, string endpointId) => EndpointMissing(apo, apo.MicrophoneOf(endpointId), "this microphone");
-
     private static string? EndpointMissing(ApoState apo, ApoEndpoint? endpoint, string where)
     {
         if (endpoint is not null && apo.FolderFor(endpoint) is not null) return null;

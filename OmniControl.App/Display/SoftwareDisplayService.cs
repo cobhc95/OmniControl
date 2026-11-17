@@ -123,12 +123,6 @@ public sealed class SoftwareDisplayService : IDisposable
         return _effect.Set(saturationPercent, invert);
     }
 
-    /// <summary>Saturation on its own (keeps the invert state).</summary>
-    public OperationResult SetSaturation(int percent) => SetColorEffect(percent, _invert);
-
-    /// <summary>Invert on its own (keeps the saturation).</summary>
-    public OperationResult SetInvert(bool invert) => SetColorEffect(_saturation, invert);
-
     /// <summary>Puts every display and the colour effect back as they were (the warm-light schedule, if it is active, still warms the displays).</summary>
     public void ResetAll()
     {

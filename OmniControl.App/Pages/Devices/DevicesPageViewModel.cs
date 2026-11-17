@@ -48,7 +48,7 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
         _ask = ask;
         _report = report;
         _chooseIcon = chooseIcon;
-        foreach (var record in service.Settings.Devices) Items.Add(Make(record));
+        foreach (var record in service.Records) Items.Add(Make(record));
         Selected = Items.FirstOrDefault();
         Items.CollectionChanged += (_, _) => OnPropertyChanged(nameof(NoDevices));
     }
@@ -63,7 +63,7 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
     {
         var probes = Task.WhenAll(_service.Setup.RefreshAsync(), _service.Simulation.RefreshAsync());
         await probes;
-        foreach (var item in Items.ToList()) await item.CheckWhenShownAsync();
+        await _service.CheckWhenShownAsync();
     }
 
     /// <summary>The device whose power state this is becomes the selected one, so its detail shows.</summary>
@@ -86,10 +86,10 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
     private void SyncItems()
     {
         var kept = Items.ToDictionary(i => i.Record);
-        foreach (var gone in Items.Where(i => !_service.Settings.Devices.Contains(i.Record)).ToList()) gone.Dispose();
+        foreach (var gone in Items.Where(i => !_service.Has(i.Record)).ToList()) gone.Dispose();
         var selected = Selected;
         Items.Clear();
-        foreach (var record in _service.Settings.Devices) Items.Add(kept.TryGetValue(record, out var item) ? item : Make(record));
+        foreach (var record in _service.Records) Items.Add(kept.TryGetValue(record, out var item) ? item : Make(record));
         Selected = selected is not null && Items.Contains(selected) ? selected : Items.FirstOrDefault();
     }
 
@@ -138,25 +138,25 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
         var below = InOrder(rows).LastOrDefault();
         if (_clipboardIsCut)
         {
-            var devices = _service.Settings.Devices;
-            var moving = _clipboard.Where(devices.Contains).Select(d => devices.IndexOf(d)).ToList();
+            var devices = _service.Records;
+            var moving = _clipboard.Where(_service.Has).Select(_service.IndexOf).ToList();
             var stay = devices.Where(d => !_clipboard.Contains(d)).ToList();
             var insertAt = below is null ? stay.Count : stay.IndexOf(below.Record) + 1;
-            if (below is not null && _clipboard.Contains(below.Record)) insertAt = stay.Count(d => devices.IndexOf(d) < devices.IndexOf(below.Record));
+            if (below is not null && _clipboard.Contains(below.Record)) insertAt = stay.Count(d => _service.IndexOf(d) < _service.IndexOf(below.Record));
             _service.MoveDevices(moving, insertAt);
             _clipboard.Clear();
             _clipboardIsCut = false;
             SyncItems();
             return;
         }
-        var at = below is null ? _service.Settings.Devices.Count : _service.Settings.Devices.IndexOf(below.Record) + 1;
+        var at = below is null ? _service.Records.Count : _service.IndexOf(below.Record) + 1;
         AddCopies(_clipboard.ToList(), at);
     }
 
     /// <summary>Each device gets a copy right after it.</summary>
     public void Duplicate(IReadOnlyList<DeviceItem> rows)
     {
-        var copies = InOrder(rows).Select(row => _service.Duplicate(row.Record, _service.Settings.Devices.IndexOf(row.Record) + 1)).ToList();
+        var copies = InOrder(rows).Select(row => _service.Duplicate(row.Record, _service.IndexOf(row.Record) + 1)).ToList();
         Copied(copies);
     }
 
@@ -180,7 +180,7 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
     {
         var doomed = InOrder(rows);
         if (doomed.Count == 0) return;
-        var question = doomed.Count == 1 ? Confirm.Delete("device", doomed[0].Record.Name) : Confirm.Delete($"{doomed.Count} devices", null);
+        var question = doomed.Count == 1 ? Confirm.Delete("device", doomed[0].Record.Name) : Confirm.Delete($"{doomed.Count} devices", null, "device");
         if (!await _ask(question)) return;
         foreach (var item in doomed) RemoveItem(item);
     }

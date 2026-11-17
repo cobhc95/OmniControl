@@ -54,7 +54,7 @@ public sealed partial class PickerModel
         if (at >= 0 && ActiveChoice is { } same && _editing is not null)
         {
             _editing = same; // the same entry, read anew: its settings and values on the pane stay as they are
-            SettingsTitle = same.Name;
+            SettingsTitle = TitleOf(same);
         }
         else SyncSettings();
     }

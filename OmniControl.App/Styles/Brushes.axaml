@@ -106,7 +106,7 @@
             <StreamGeometry x:Key="ShotSmallerIcon">M3,19 L8.5,5 L14,19 M5.2,14 H11.8 M15,12 H22</StreamGeometry>
             <!-- Screen recording (Record and Stop are filled red by Button.toolicon.danger) -->
             <StreamGeometry x:Key="VideoCameraIcon">M5,7 H13 A2,2 0 0 1 15,9 V15 A2,2 0 0 1 13,17 H5 A2,2 0 0 1 3,15 V9 A2,2 0 0 1 5,7 Z M15,11 L21,8 V16 L15,13</StreamGeometry>
-            <StreamGeometry x:Key="ShotStopIcon">M6,6 H18 V18 H6 Z</StreamGeometry>
+            <StreamGeometry x:Key="StopIcon">M6,6 H18 V18 H6 Z</StreamGeometry>
             <StreamGeometry x:Key="ShotPauseIcon">M9,5 V19 M15,5 V19</StreamGeometry>
             <StreamGeometry x:Key="ShotResumeIcon">M7,5 L19,12 L7,19 Z</StreamGeometry>
             <StreamGeometry x:Key="ShotMicIcon">M12,3 A3,3 0 0 1 15,6 V11 A3,3 0 0 1 9,11 V6 A3,3 0 0 1 12,3 Z M5.5,11 A6.5,6.5 0 0 0 18.5,11 M12,17.5 V21 M8.5,21 H15.5</StreamGeometry>

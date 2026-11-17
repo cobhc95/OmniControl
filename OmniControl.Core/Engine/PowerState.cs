@@ -35,6 +35,9 @@ public static class PowerState
         return status.BatteryLifePercent;
     }
 
+    /// <summary>True when the PC has a battery (a laptop or tablet); false when there is none or Windows can't say.</summary>
+    public static bool HasBattery() => GetSystemPowerStatus(out var status) && (status.BatteryFlag & NoBattery) == 0 && status.BatteryFlag != 255;
+
     /// <summary>How long it is since the last key press or mouse input (any program), or zero when Windows can't say.</summary>
     public static TimeSpan IdleFor()
     {

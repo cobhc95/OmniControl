@@ -10,14 +10,14 @@
          delete the device; Setup: remove that method, or the device when it has one). Under it one wrapping line: in a set-up the method's
          Method chip (docs/mockups/method-menu-briefs.html) and, for scripts, its Template chip; in the Ready view the "ready" and state tags,
          Check now and Auto-check. The line takes the whole width and wraps, so nothing clips at the narrowest window.
-         READY: On / Off / Toggle (the methods in order) and Show emulator; the methods (MethodList); the drift sentence with Re-teach.
+         READY: the methods (MethodList); the drift sentence with Re-teach. On / Off / Toggle and Show emulator are registered actions only.
          SETUP: the method's numbered stages (SetupView), then Cancel | Finish setup.
          Both: the foot line with the last command and Copy details. -->
     <StackPanel Spacing="8">
         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
             <vm:DeviceIconView Pickable="True" VerticalAlignment="Center" />
             <TextBox Grid.Column="1" Classes="field" Text="{Binding Name}" Watermark="Name" MinWidth="0" VerticalAlignment="Center" />
-            <Button Grid.Column="2" Classes="pill glyph" Command="{Binding RemoveCommand}" ToolTip.Tip="{Binding RemoveTip}" VerticalAlignment="Center">
+            <Button Grid.Column="2" Classes="pill glyph closex" Command="{Binding RemoveCommand}" ToolTip.Tip="{Binding RemoveTip}" VerticalAlignment="Center">
                 <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
             </Button>
         </Grid>
@@ -43,21 +43,14 @@
                     <TextBlock Text="Check now" />
                 </StackPanel>
             </Button>
-            <c:ChipMenu Text="{Binding AutoCheckLabel}" ChipToolTip="{Binding AutoCheckTip}" MenuOpened="OnAutoCheckMenuOpened" IsVisible="{Binding ShowsReadyTags}" VerticalAlignment="Center">
+            <c:ChipMenu Text="{Binding AutoCheckLabel}" ChipToolTip="{Binding AutoCheckTip}" MenuOpened="OnAutoCheckMenuOpened" IsVisible="{Binding ShowsReadyTags}" IsEnabled="{Binding AutoCheckEditable}" ToolTip.ShowOnDisabled="True" VerticalAlignment="Center">
                 <c:ChipMenu.Menu>
-                    <c:MenuRowList x:Name="AutoCheckRows" Title="Auto-check" />
+                    <c:MenuRowList x:Name="AutoCheckRows" Title="Check the real state" />
                 </c:ChipMenu.Menu>
             </c:ChipMenu>
         </WrapPanel>
 
         <StackPanel Spacing="8" IsVisible="{Binding !InSetup}">
-            <WrapPanel ItemSpacing="6" LineSpacing="4">
-                <Button Classes="pill" Content="On" Command="{Binding OnCommand}" ToolTip.Tip="{Binding SwitchTip}" ToolTip.ShowOnDisabled="True" />
-                <Button Classes="pill" Content="Off" Command="{Binding OffCommand}" ToolTip.Tip="{Binding SwitchTip}" ToolTip.ShowOnDisabled="True" />
-                <Button Classes="pill" Content="Toggle" Command="{Binding ToggleCommand}" ToolTip.Tip="{Binding SwitchTip}" ToolTip.ShowOnDisabled="True" />
-                <Button Classes="pill" Content="Show emulator" Command="{Binding ShowEmulatorCommand}" IsVisible="{Binding HasSimulation}"
-                        ToolTip.Tip="Shows the emulator's window. Actions from the page, shortcuts and rules run it hidden." />
-            </WrapPanel>
             <vm:MethodList />
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" IsVisible="{Binding HasDrift}">
                 <TextBlock Classes="cautiontext" Text="{Binding DriftText}" TextWrapping="Wrap" VerticalAlignment="Center" />

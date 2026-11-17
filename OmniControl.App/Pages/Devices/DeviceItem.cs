@@ -71,14 +71,6 @@ public sealed partial class DeviceItem : ObservableObject, IDisposable
     public bool StateTagGood => !_runtime.Busy && _runtime.IsOn == true;
     public bool StateTagCaution => !_runtime.Busy && _runtime.KnownAt is not null && _runtime.IsOn is null;
 
-    /// <summary>The first simulation method (its emulator is the one Show emulator shows); null when there is none.</summary>
-    public MethodItem? FirstSimulation => Methods.FirstOrDefault(m => m.IsSimulation);
-    public bool HasSimulation => FirstSimulation is not null;
-
-    /// <summary>Show emulator on the Ready view: the first simulation method's emulator.</summary>
-    [RelayCommand]
-    private Task ShowEmulator() => FirstSimulation?.Simulation.ShowCommand.ExecuteAsync(null) ?? Task.CompletedTask;
-
     /// <summary>A simulation method whose recent readings were unsure: its sentence and Re-teach.</summary>
     private MethodItem? Drifting => Methods.FirstOrDefault(m => m.HasDrift);
     public bool HasDrift => Drifting is not null;
@@ -106,13 +98,13 @@ public sealed partial class DeviceItem : ObservableObject, IDisposable
         _service.Setup.Changed += OnOutsideChange;
         _service.Simulation.Changed += OnOutsideChange;
         _runtime.Changed += OnOutsideChange;
+        _service.AutoCheckChanged += OnAutoCheckChanged;
         Refresh();
-        StartAutoCheck();
     }
 
     public void Dispose()
     {
-        StopAutoCheck();
+        _service.AutoCheckChanged -= OnAutoCheckChanged;
         _service.Setup.Changed -= OnOutsideChange;
         _service.Simulation.Changed -= OnOutsideChange;
         _runtime.Changed -= OnOutsideChange;
@@ -131,8 +123,6 @@ public sealed partial class DeviceItem : ObservableObject, IDisposable
             Methods.Add(kept.TryGetValue(record, out var item) ? item : new MethodItem(Record, record, _service, _report, _ask, Refresh, EditSetup));
         for (var i = 0; i < Methods.Count; i++) Methods[i].Number = i + 1;
         if (Editing is { } editing && !Methods.Contains(editing)) Editing = null;
-        OnPropertyChanged(nameof(FirstSimulation));
-        OnPropertyChanged(nameof(HasSimulation));
     }
 
     /// <summary>A drag in the method list: the order On, Off, Toggle and Check try them changes.</summary>
@@ -158,14 +148,11 @@ public sealed partial class DeviceItem : ObservableObject, IDisposable
     {
         foreach (var method in Methods) method.Refresh();
         RefreshIcon();
-        OnCommand.NotifyCanExecuteChanged();
-        OffCommand.NotifyCanExecuteChanged();
-        ToggleCommand.NotifyCanExecuteChanged();
         FinishCommand.NotifyCanExecuteChanged();
         CheckNowCommand.NotifyCanExecuteChanged();
         foreach (var property in new[]
                  {
-                     nameof(IsReady), nameof(CanSwitch), nameof(CanCheck), nameof(SwitchTip), nameof(AutoCheckLabel), nameof(AutoCheckTip), nameof(FirstSimulation), nameof(HasSimulation),
+                     nameof(IsReady), nameof(CanSwitch), nameof(CanCheck), nameof(SwitchTip), nameof(AutoCheckLabel), nameof(AutoCheckTip), nameof(AutoCheckEditable),
                      nameof(ListOn), nameof(StateTagText), nameof(HasStateTag), nameof(StateTagGood), nameof(StateTagCaution), nameof(HasDrift), nameof(DriftText),
                      nameof(LastLine), nameof(HasLastLine), nameof(LastFailed), nameof(Details), nameof(HasDetails), nameof(CanFinish), nameof(ShowsReadyTags), nameof(ShowsStateTag),
                      nameof(ShowsTemplateChip), nameof(RemoveTip),
@@ -178,15 +165,6 @@ public sealed partial class DeviceItem : ObservableObject, IDisposable
         if (value.Trim().Length == 0) return; // a blank name is not kept
         _service.Rename(Record, value.Trim());
     }
-
-    [RelayCommand(CanExecute = nameof(CanSwitch))]
-    private Task On() => Switch(DevicePower.On);
-
-    [RelayCommand(CanExecute = nameof(CanSwitch))]
-    private Task Off() => Switch(DevicePower.Off);
-
-    [RelayCommand(CanExecute = nameof(CanSwitch))]
-    private Task Toggle() => Switch(DevicePower.Toggle);
 
     private async Task Switch(DevicePower power)
     {

@@ -3,13 +3,13 @@
              xmlns:pages="using:OmniControl.App.Pages"
              x:Class="OmniControl.App.Pages.GalleryRow"
              x:DataType="pages:GalleryItem">
-    <Grid Margin="0,1" IsEnabled="{Binding Availability.IsAvailable}" ToolTip.Tip="{Binding Hint}" ToolTip.ShowOnDisabled="True">
+    <Grid x:Name="Layout" Margin="0,1" IsEnabled="{Binding Availability.IsAvailable}" ToolTip.Tip="{Binding Hint}" ToolTip.ShowOnDisabled="True">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
-        <TextBlock Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,24,0" />
-        <Border Classes="gallery" Tag="gallery" Focusable="True" PointerPressed="OnPressed" PointerWheelChanged="OnWheel">
+        <TextBlock x:Name="LabelText" Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,24,0" />
+        <Border Classes="gallery" Classes.half="{Binding Half}" Tag="gallery" Focusable="True" pages:ValueWheel.Selector="True" PointerPressed="OnPressed" PointerWheelChanged="OnWheel">
             <Grid ColumnDefinitions="Auto,*,Auto">
                 <Button Classes="step" Focusable="False" Click="OnPrevious">
                     <PathIcon Data="{StaticResource ChevronLeftIcon}" Width="10" Height="10" />

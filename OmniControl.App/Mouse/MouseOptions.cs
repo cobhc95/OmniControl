@@ -80,7 +80,29 @@ public static class MouseOptions
 
     /// <summary>What an input chose for an OmniControl action: its program, how far it moves a level, its power countdown (each used only by the actions that take it).</summary>
     public static RunSettings RunOf(OptionValues values) =>
-        new(LaunchOf(values), values.Int(Step), values.Int(Countdown), values.Bool(ForceClose));
+        new(LaunchOf(values), values.Int(Step), values.Int(Countdown), values.Bool(ForceClose), values);
+
+    // Repeated clicking (the master action "Repeated clicking"): one list, read by the picker and by RepeatedClicking.
+    public const string StartToggle = "Press to toggle", StartHeld = "While held",
+        StopNever = "Until stopped", StopClicks = "After a number of clicks", StopSeconds = "After a number of seconds",
+        AtPointer = "At the pointer", AtPoint = "At a fixed point", TypeSingle = "Single", TypeDouble = "Double", TypeHold = "Hold down";
+    public static readonly ActionOption ClickButton = ActionOption.Choice("rcbutton", "Button", new[] { "Left", "Right", "Middle", "Back", "Forward" });
+    public static readonly ActionOption ClickType = ActionOption.Choice("rctype", "Click type", new[] { TypeSingle, TypeDouble, TypeHold });
+    public static readonly ActionOption ClickStart = ActionOption.Choice("rcstart", "Start and stop", new[] { StartToggle, StartHeld });
+    public static readonly ActionOption ClickStop = ActionOption.Choice("rcstop", "Stop after", new[] { StopNever, StopClicks, StopSeconds });
+    public static readonly ActionOption ClickCount = ActionOption.Number("rccount", "Number of clicks", 100, 1, 1000000).ShownWhen(ClickStop, StopClicks);
+    public static readonly ActionOption ClickSeconds = ActionOption.Number("rcseconds", "Number of seconds", 10, 1, 86400, 1, " s").ShownWhen(ClickStop, StopSeconds);
+    public static readonly ActionOption ClickSpeed = ActionOption.Number("rcspeed", "Speed", 10, 1, Timing.ClickSpeedMax, 1, " clicks/s");
+    public static readonly ActionOption ClickWhere = ActionOption.Choice("rcwhere", "Where", new[] { AtPointer, AtPoint });
+    public static readonly ActionOption ClickPoint = ActionOption.Point("rcpoint", "The point").ShownWhen(ClickWhere, AtPoint);
+    public static readonly ActionOption ClickJitter = ActionOption.Number("rcjitter", "Random timing", 10, 0, 50, 5, " %");
+    public static readonly ActionOption ClickStopOnMove = ActionOption.Toggle("rcmove", "Stop when the mouse moves");
+    public static readonly ActionOption ClickBadge = ActionOption.Toggle("rcbadge", "Show on-screen badge", on: true);
+    public static readonly IReadOnlyList<ActionOption> RepeatClicking = new[]
+    {
+        ClickButton, ClickType, ClickStart, ClickStop, ClickCount, ClickSeconds, ClickSpeed, ClickWhere, ClickPoint, ClickJitter, ClickStopOnMove, ClickBadge,
+        ActionOption.Heading("rcnote", "Esc always stops it.", $"Never faster than {Timing.ClickSpeedMax} clicks/s."),
+    };
 
     // Pointer speed.
     public static readonly ActionOption SlowSpeed = ActionOption.Number("speed", "Slow speed (1 slowest, 20 fastest)", 3, 1, 20);

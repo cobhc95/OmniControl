@@ -101,9 +101,6 @@ public sealed class AudioPipe : IDisposable
     /// </param>
     public void SetSourceGain(int index, float gain, float rawCeiling = float.PositiveInfinity) => _output.SetGain(index, gain, rawCeiling);
 
-    /// <summary>How many capture packets have arrived in total.</summary>
-    public long CapturedPackets => _captures.Sum(c => c.Packets);
-
     /// <summary>
     /// Estimated extra delay of the processed sound on its slowest device: capture packet + what waits in the queue + the playback
     /// buffer, plus an extra device's own queue.

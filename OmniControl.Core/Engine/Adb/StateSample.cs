@@ -14,6 +14,9 @@ public sealed class StateSample
     public Dictionary<string, string> Facts { get; set; } = new();
     public Dictionary<string, double[]> Measures { get; set; } = new();
 
+    /// <summary>No usable screenshot went with this look (none, blank or the wrong size), so only its dump facts count in a reading.</summary>
+    public bool PixelsMissing { get; set; }
+
     /// <summary>The element that was looked at (the device's switch): its words, id and class, and its centre on the screen.</summary>
     public string TargetText { get; set; } = string.Empty;
     public string TargetDescription { get; set; } = string.Empty;
@@ -57,6 +60,7 @@ public sealed class StateSample
             if (node != target && node.Text.Trim().Length > 0)
                 sample.Anchors.TryAdd(node.Text.Trim(), new[] { target.CenterX - node.CenterX, target.CenterY - node.CenterY });
         }
+        sample.PixelsMissing = image is null;
         if (image is not null) Measure(sample, screen, target, card, image);
         return sample;
     }

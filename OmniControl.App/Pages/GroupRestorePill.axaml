@@ -4,6 +4,6 @@
              x:Class="OmniControl.App.Pages.GroupRestorePill"
              x:DataType="pages:CardGroup">
     <!-- The one "Restore defaults" pill of a group's header line (data context: the CardGroup; shown only when the group has a Restore) -->
-    <Button Classes="pill" Tag="grouptool" Content="Restore defaults" Command="{Binding RestoreCommand}" IsVisible="{Binding HasRestore}"
+    <Button Classes="pill" Tag="grouptool" Content="{Binding RestoreText}" Command="{Binding RestoreCommand}" IsVisible="{Binding HasRestore}"
             VerticalAlignment="Center" ToolTip.Tip="{Binding RestoreTip}" />
 </UserControl>

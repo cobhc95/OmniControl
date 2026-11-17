@@ -5,7 +5,7 @@
         x:Class="OmniControl.App.Icons.IconPickerWindow"
         x:DataType="i:IconPickerModel"
         Title="{Binding Title}" Width="{DynamicResource IconPickerWidth}" Height="{DynamicResource IconPickerHeight}" MinHeight="320"
-        CanResize="True" WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+        CanResize="True" WindowStartupLocation="CenterOwner">
     <!-- THE icon picker (docs/mockups/icon-library.html), opened by every "Change icon…": the search box (names and keywords), then
          "Suggested for this", "Your icons" (when there are any; the selected one's name can be edited, and it can be removed) and every
          library icon, 8 cells per row (Button.iconcell). Foot: Default | Own image… | + Add your own… | Use. Mouse first for the grid,

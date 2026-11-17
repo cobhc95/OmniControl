@@ -1,0 +1,117 @@
+using OmniControl.App.Devices;
+using Xunit;
+
+namespace OmniControl.Tests;
+
+/// <summary>The device auto-check rules: migrating the old per-device values, "Same for every device", and Scripts-only checks (no UI, no devices).</summary>
+public class AutoCheckTests
+{
+    private static DeviceRecord Plug(AutoCheck? own = null, string kind = DeviceMethods.Scripts) =>
+        new() { AutoCheck = own, Methods = { new MethodRecord { Kind = kind } } };
+
+    private static DeviceSettings With(params DeviceRecord[] devices) => new() { Devices = devices.ToList() };
+
+    [Fact]
+    public void Migrating_equal_values_makes_them_the_shared_one()
+    {
+        var settings = With(Plug(AutoCheck.StartAndEvery15), Plug(AutoCheck.StartAndEvery15), Plug());
+        Assert.True(AutoChecks.Migrate(settings));
+        Assert.Equal(AutoCheck.StartAndEvery15, settings.AutoCheck);
+        Assert.True(settings.AutoCheckSame);
+        Assert.All(settings.Devices, d => Assert.Null(d.AutoCheck));
+    }
+
+    [Fact]
+    public void Migrating_different_values_keeps_each_and_turns_the_switch_off()
+    {
+        var settings = With(Plug(AutoCheck.Off), Plug(AutoCheck.WhenOpens));
+        AutoChecks.Migrate(settings);
+        Assert.False(settings.AutoCheckSame);
+        Assert.Equal(AutoCheck.Off, AutoChecks.Effective(settings, settings.Devices[0]));
+        Assert.Equal(AutoCheck.WhenOpens, AutoChecks.Effective(settings, settings.Devices[1]));
+    }
+
+    [Fact]
+    public void Migrating_runs_once_and_old_numbers_keep_their_meaning()
+    {
+        var settings = With(Plug());
+        Assert.True(AutoChecks.Migrate(settings));
+        Assert.False(AutoChecks.Migrate(settings));
+        Assert.Equal(AutoChecks.Default, settings.AutoCheck);
+        Assert.Equal(AutoCheck.StartAndEvery5, (AutoCheck)2);
+        Assert.Equal(AutoCheck.StartAndEvery15, (AutoCheck)3);
+    }
+
+    [Fact]
+    public void Same_for_every_device_is_on_by_default_and_a_pick_applies_to_all()
+    {
+        var a = Plug();
+        var b = Plug();
+        var settings = With(a, b);
+        Assert.True(settings.AutoCheckSame);
+        AutoChecks.Pick(settings, a, AutoCheck.StartOnly);
+        Assert.Equal(AutoCheck.StartOnly, AutoChecks.Effective(settings, a));
+        Assert.Equal(AutoCheck.StartOnly, AutoChecks.Effective(settings, b));
+    }
+
+    [Fact]
+    public void With_the_switch_off_a_pick_changes_one_device_only()
+    {
+        var a = Plug();
+        var b = Plug();
+        var settings = With(a, b);
+        AutoChecks.SetSame(settings, a, false);
+        AutoChecks.Pick(settings, a, AutoCheck.Off);
+        Assert.Equal(AutoCheck.Off, AutoChecks.Effective(settings, a));
+        Assert.Equal(AutoChecks.Default, AutoChecks.Effective(settings, b));
+    }
+
+    [Fact]
+    public void Reading_when_the_tray_opens_is_on_by_default_follows_the_switch_and_never_uses_simulation()
+    {
+        var a = Plug();
+        var b = Plug();
+        var sim = Plug(kind: DeviceMethods.Simulation);
+        var settings = With(a, b, sim);
+        Assert.True(AutoChecks.OnTray(settings, a));
+        Assert.False(AutoChecks.OnTray(settings, sim));
+        AutoChecks.PickOnTray(settings, a, false);
+        Assert.False(AutoChecks.OnTray(settings, b));
+        AutoChecks.SetSame(settings, a, false);
+        AutoChecks.PickOnTray(settings, b, true);
+        Assert.False(AutoChecks.OnTray(settings, a));
+        Assert.True(AutoChecks.OnTray(settings, b));
+    }
+
+    [Fact]
+    public void Turning_the_switch_on_makes_this_devices_choice_the_one_for_all()
+    {
+        var a = Plug();
+        var b = Plug();
+        var settings = With(a, b);
+        AutoChecks.SetSame(settings, a, false);
+        AutoChecks.Pick(settings, b, AutoCheck.WhenOpens);
+        AutoChecks.SetSame(settings, b, true);
+        Assert.Equal(AutoCheck.WhenOpens, AutoChecks.Effective(settings, a));
+    }
+
+    [Fact]
+    public void A_simulation_only_device_is_manual_only()
+    {
+        var sim = Plug(kind: DeviceMethods.Simulation);
+        var settings = With(sim);
+        Assert.Null(AutoChecks.Effective(settings, sim));
+        sim.Methods.Add(new MethodRecord { Kind = DeviceMethods.Scripts });
+        Assert.NotNull(AutoChecks.Effective(settings, sim));
+    }
+
+    [Fact]
+    public void A_periodic_check_is_due_when_never_read_or_the_interval_passed()
+    {
+        var now = DateTime.UtcNow;
+        var every = TimeSpan.FromMinutes(5);
+        Assert.True(AutoChecks.Due(null, now, every));
+        Assert.False(AutoChecks.Due(now.AddMinutes(-2), now, every));
+        Assert.True(AutoChecks.Due(now.AddMinutes(-5), now, every));
+    }
+}

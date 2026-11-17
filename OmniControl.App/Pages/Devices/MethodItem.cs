@@ -103,6 +103,32 @@ public sealed partial class MethodItem : ObservableObject, IDisposable
 
     public bool IsReady => Record.IsReady;
 
+    // ---- The row's power button (docs/mockups/method-test-button.html) ----
+
+    /// <summary>The device is on, as the master list of states says (the button's accent look).</summary>
+    public bool PowerOn => _service.PowerOf(_device) == true;
+
+    /// <summary>This method is the one running now (the button shows its spinner).</summary>
+    public bool PowerRunning => _runtime.Busy && _runtime.RunningMethodId == Record.Id;
+
+    /// <summary>This method's last try failed (the button shows the red warning; the reason is its tooltip).</summary>
+    public bool PowerFailed => !PowerRunning && _runtime.ProblemOf(Record.Id) is not null;
+
+    public bool PowerNormal => !PowerRunning && !PowerFailed;
+
+    public string PowerTip => PowerFailed ? $"Failed: {_runtime.ProblemOf(Record.Id)}"
+        : PowerRunning ? "Stop" : $"Switch the device through {_device.NameOf(Record)} only (no other method is tried).";
+
+    /// <summary>Switches the device through this method only (the result goes to the device's "Last command" line); while this method runs, stops it.</summary>
+    [RelayCommand(CanExecute = nameof(CanPower))]
+    private void Power()
+    {
+        if (PowerRunning) _runtime.Stop();
+        else _ = _service.RunAsync(_device, DevicePower.Toggle, Record);
+    }
+
+    private bool CanPower() => !_runtime.Busy || PowerRunning;
+
     /// <summary>"Edit setup…" on the row (a click on the row does the same).</summary>
     [RelayCommand]
     private void EditSetup() => _edit(this);
@@ -124,8 +150,10 @@ public sealed partial class MethodItem : ObservableObject, IDisposable
                  {
                      nameof(Stages), nameof(MethodLabel), nameof(MethodTip), nameof(MethodOptions), nameof(IsSimulation), nameof(IsScripts), nameof(IsReady), nameof(CanFinish),
                      nameof(RowTitle), nameof(RowNote), nameof(RowTip), nameof(HasDrift), nameof(DriftText), nameof(NeedsAdb),
+                     nameof(PowerOn), nameof(PowerRunning), nameof(PowerFailed), nameof(PowerNormal), nameof(PowerTip),
                  })
             OnPropertyChanged(property);
+        PowerCommand.NotifyCanExecuteChanged();
     }
 
     private void Changed() => _changed();

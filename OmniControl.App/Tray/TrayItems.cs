@@ -33,13 +33,14 @@ public sealed partial class TraySliderItem : ObservableObject, ITrayPanelItem
         Read(now);
     }
 
+    /// <summary>How far an arrow or +/- key moves the value: the slider's own small change.</summary>
+    public const int KeyStep = 1;
+
     public TrayTarget Target { get; }
     public bool IsSlider => true;
     public string Id => _state.Id;
     public string Name { get; }
     public IconImage? Icon { get; }
-    /// <summary>The state's name, and the full device name when the chip shows its short one.</summary>
-    public string Tip => HasChoice && FullChoice.Length > 0 ? $"{_state.Name} - {FullChoice}" : _state.Name;
     public int Minimum => _state.Min;
     public int Maximum => _state.Max;
 
@@ -87,9 +88,13 @@ public sealed partial class TraySliderItem : ObservableObject, ITrayPanelItem
     }
 }
 
+/// <summary>The one small mark at a tile's corner: nothing, an action running, the state being read, only the last known value, or a failure.</summary>
+public enum TileMark { None, Acting, Reading, NotSure, Failed }
+
 /// <summary>
 /// One tile of the flyout: its section's icon and short name. A click runs its action (through the master list, so a block rule still
-/// applies), or, for an on/off state alone, sets it to the other value. It is lit while its state is on.
+/// applies), or, for an on/off state alone, sets it to the other value. It always shows the state's real or last-read value (lit while on)
+/// and never lights because it was clicked; its <see cref="Mark"/> says what is happening to that value.
 /// </summary>
 public sealed partial class TrayTileItem : ObservableObject, ITrayPanelItem
 {
@@ -110,16 +115,24 @@ public sealed partial class TrayTileItem : ObservableObject, ITrayPanelItem
     public string Name { get; }
     public IconImage? Icon { get; }
 
-    /// <summary>The full name (a tile's words are short and may be trimmed).</summary>
-    public string Tip => _target.Action?.Title ?? _target.State?.Name ?? Name;
 
     [ObservableProperty] private bool _isOn;
 
-    /// <summary>Its state is being read again now (the corner dot).</summary>
-    [ObservableProperty] private bool _isChecking;
+    /// <summary>The corner mark (docs/mockups/tray-tile-states.html): what the state's owner is doing with it or how far it can be trusted; never lights the tile.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsActing), nameof(IsReading), nameof(IsNotSure), nameof(IsFailed), nameof(Reason))] private TileMark _mark;
 
-    /// <summary>Its state is only the last one known and nothing cheap can read it again (a device run by simulation only): drawn faded.</summary>
-    [ObservableProperty] private bool _isFaded;
+    /// <summary>Why a failed action or read failed, one plain sentence; shown in the tile's right-click menu, never on hover.</summary>
+    public string? Failure { get; private set; }
+
+    private string? _notSure;
+
+    public bool IsActing => Mark == TileMark.Acting;
+    public bool IsReading => Mark == TileMark.Reading;
+    public bool IsNotSure => Mark == TileMark.NotSure;
+    public bool IsFailed => Mark == TileMark.Failed;
+
+    /// <summary>The hover words, only for a state that is not sure ("Last read 08:39"); null for every other mark.</summary>
+    public string? Reason => IsNotSure ? _notSure : null;
 
     /// <summary>How its state can be read again on request; null when it needs none.</summary>
     public StateRecheck? Recheck => _target.State?.Recheck;
@@ -127,7 +140,18 @@ public sealed partial class TrayTileItem : ObservableObject, ITrayPanelItem
     public void Read(Func<string, StateValue?> now)
     {
         IsOn = _target.State is { } state && now(state.Id)?.Number is { } number && number != 0;
-        IsFaded = Recheck is { } recheck && !recheck.CanCheck();
+        var live = _target.State?.Liveness?.Invoke();
+        Failure = live?.Failure;
+        _notSure = live?.NotSure;
+        Mark = live switch
+        {
+            null => TileMark.None,
+            { Acting: true } => TileMark.Acting,
+            { Reading: true } => TileMark.Reading,
+            { Failure: not null } => TileMark.Failed,
+            { NotSure: not null } => TileMark.NotSure,
+            _ => TileMark.None,
+        };
     }
 
     public bool Shows(string stateId) => _target.State?.Id == stateId;
@@ -138,15 +162,4 @@ public sealed partial class TrayTileItem : ObservableObject, ITrayPanelItem
         if (_target.Action is { } action) _runAction(action.Id);
         else _target.State?.Set?.Invoke(StateValue.Of(!IsOn));
     }
-}
-
-/// <summary>The dashed tile after the others: adds a tile through the Choose-the-action window.</summary>
-public sealed class TrayAddTile
-{
-    public static TrayAddTile Instance { get; } = new();
-
-    private TrayAddTile() { }
-
-    public string Text => "+ Add";
-    public string Tip => "Adds a tile: any action, or anything that is on or off.";
 }

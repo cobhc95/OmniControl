@@ -3,7 +3,7 @@ using System.Diagnostics;
 namespace OmniControl.Core.Engine;
 
 /// <summary>How long a step waits for what it needs (given by the app, so the values live in one place).</summary>
-public sealed record SimTiming(TimeSpan ElementWait, TimeSpan Poll, TimeSpan Settle, int ScrollTries = 0);
+public sealed record SimTiming(TimeSpan ElementWait, TimeSpan Poll, TimeSpan Settle, int ScrollTries = 0, Action<string>? Log = null);
 
 /// <summary>What a run is for: a state to reach, or a toggle (which always taps).</summary>
 public enum SimGoal { On, Off, Toggle }

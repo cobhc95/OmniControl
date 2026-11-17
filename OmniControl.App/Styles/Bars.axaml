@@ -27,6 +27,24 @@
         <Setter Property="OffContent" Value="" />
         <Setter Property="MinWidth" Value="0" />
     </Style>
+    <!-- ToggleSwitch.master = a group header's master switch (Pages/GroupMasterSwitch). All on / all off look like any switch; the mixed state
+         (IsChecked null) is an accent outline with no knob and Border.masterdash, the accent dash drawn in its middle. -->
+    <Style Selector="ToggleSwitch.master:indeterminate /template/ Border#OuterBorder">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="BorderThickness" Value="2" />
+    </Style>
+    <Style Selector="ToggleSwitch.master:indeterminate /template/ Grid#PART_SwitchKnob">
+        <Setter Property="Opacity" Value="0" />
+    </Style>
+    <Style Selector="Border.masterdash">
+        <Setter Property="Width" Value="10" />
+        <Setter Property="Height" Value="2" />
+        <Setter Property="CornerRadius" Value="1" />
+        <Setter Property="Background" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
     <Style Selector="Border.toolrow ComboBox">
         <Setter Property="MinWidth" Value="0" />
         <Setter Property="MinHeight" Value="{DynamicResource ToolControlHeight}" />

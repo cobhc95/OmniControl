@@ -11,8 +11,30 @@ namespace OmniControl.Tests;
 public class IconLibraryTests
 {
     [Fact]
-    public void Library_has_one_hundred_icons_with_unique_ids() =>
-        Assert.Equal(100, IconLibrary.All.Select(i => i.Id).Distinct().Count());
+    public void Library_has_about_five_hundred_icons_with_unique_ids() =>
+        Assert.InRange(IconLibrary.All.Select(i => i.Id).Distinct().Count(), 480, 560);
+
+    [Fact]
+    public void Every_icon_has_unique_id_name_category_and_keywords()
+    {
+        Assert.Equal(IconLibrary.All.Count, IconLibrary.All.Select(i => i.Id).Distinct(StringComparer.Ordinal).Count());
+        Assert.All(IconLibrary.All, i =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(i.Name), i.Id);
+            Assert.False(string.IsNullOrWhiteSpace(i.Category), i.Id);
+            Assert.False(string.IsNullOrWhiteSpace(i.Keywords), i.Id);
+        });
+    }
+
+    [Theory]
+    [InlineData("vehicle", "car")]
+    [InlineData("auto", "car")]
+    [InlineData("cursor", "pointer")]
+    [InlineData("money", "wallet")]
+    [InlineData("undo", "arrow-back-up")]
+    [InlineData("Cars and transport", "bus")]
+    public void Search_finds_synonyms_and_categories(string query, string expected) =>
+        Assert.Contains(IconLibrary.Search(query), i => i.Id == expected);
 
     [Theory]
     [InlineData("light", "bulb")]
@@ -55,6 +77,7 @@ public class IconLibraryTests
         Assert.Contains("lamp", fromName);
         Assert.True(IconLibrary.Suggestions(null, "bulb", "Volume up and down").Count <= IconLibrary.SuggestionCount);
         Assert.Empty(IconLibrary.Suggestions(null, null, "zz"));
+        Assert.Equal("car", IconLibrary.Suggestions(null, null, "Car").First());
     }
 
     [Fact]

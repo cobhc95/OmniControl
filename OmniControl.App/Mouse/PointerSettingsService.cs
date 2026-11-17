@@ -30,9 +30,6 @@ public sealed class PointerSettingsService : IDisposable
     /// <summary>True once the user's original values are kept, so they can be restored.</summary>
     public bool HasOriginal => _backup.Original is not null;
 
-    /// <summary>True while a button swap waits for "Keep".</summary>
-    public bool IsSwapOnTrial => _trial is not null;
-
     public PointerSettingsService()
     {
         // A previous run ended during a swap trial: the swap was never kept, so it goes back.

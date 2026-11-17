@@ -21,6 +21,17 @@ public sealed partial class ActionHotkeys : ObservableObject, IDisposable
 
     public ObservableCollection<HotkeyKeySlot> Slots { get; } = new();
 
+    /// <summary>The direction this block is for when the action is one of a family ("Up", "Next", "Toggle"); null for an action on its own.</summary>
+    public string? Role { get; set; }
+
+    /// <summary>What the key boxes are labelled: the direction, else "Hotkey".</summary>
+    public string Label => Role ?? "Hotkey";
+
+    /// <summary>True for the block that also shows what the whole family shares (devices, its page, its icon); every block of a family but the first is not.</summary>
+    public bool IsLead { get; private set; } = true;
+
+    private readonly List<HotkeyAction> _sharing = new();
+
     /// <summary>Why the last key pressed was refused (reserved, or not usable as a shortcut); empty when nothing was.</summary>
     [ObservableProperty, NotifyPropertyChangedFor(nameof(HasRefusal))] private string _refusal = string.Empty;
 
@@ -54,6 +65,26 @@ public sealed partial class ActionHotkeys : ObservableObject, IDisposable
         action.PropertyChanged += OnActionChanged;
         action.RefreshDevices(); // the devices plugged in now
         Rebuild();
+    }
+
+    /// <summary>
+    /// This block shows the devices of the whole family once: a change to them is copied to the other directions' actions
+    /// (<paramref name="others"/>, the following blocks), which are then not the lead; nothing is copied until it is changed.
+    /// </summary>
+    public void ShareScopeWith(IEnumerable<ActionHotkeys> others)
+    {
+        foreach (var other in others)
+        {
+            other.IsLead = false;
+            _sharing.Add(other.Action);
+        }
+        if (_sharing.Count == 0) return;
+        Action.Changed += OnScopeChanged;
+    }
+
+    private void OnScopeChanged(HotkeyAction changed)
+    {
+        foreach (var other in _sharing) other.CopyScopeFrom(changed);
     }
 
     /// <summary>"Change icon…": the shared icon picker; the answer is kept as the action's chosen icon.</summary>
@@ -125,5 +156,9 @@ public sealed partial class ActionHotkeys : ObservableObject, IDisposable
         else Action.SetKeys(Action.Keys.Where(k => k != slot.Key));
     }
 
-    public void Dispose() => Action.PropertyChanged -= OnActionChanged;
+    public void Dispose()
+    {
+        Action.PropertyChanged -= OnActionChanged;
+        Action.Changed -= OnScopeChanged;
+    }
 }

@@ -10,7 +10,7 @@ namespace OmniControl.App.Devices;
 // page, the list, shortcuts and rules run it hidden.
 public sealed partial class DeviceService
 {
-    private static readonly SimTiming Pace = new(Timing.DeviceSimElementWait, Timing.DeviceSimPoll, Timing.DeviceSimSettle, Timing.DeviceSimScrollTries);
+    private SimTiming Pace => new(Timing.DeviceSimElementWait, Timing.DeviceSimPoll, Timing.DeviceSimSettle, Timing.DeviceSimScrollTries, Log);
 
     /// <summary>The one plain sentence when a simulated device's state could not be read.</summary>
     public const string ReTeachSentence = "OmniControl couldn't tell whether it is on or off, so nothing was tapped. Teach on and off again in Edit setup.";
@@ -26,22 +26,23 @@ public sealed partial class DeviceService
         return method.Taught.IsTaught ? null : "its on and off are not taught yet";
     }
 
-    private async Task<Attempt> RunSimulationAsync(DeviceRecord device, MethodRecord method, DevicePower power, string name)
+    private async Task<Attempt> RunSimulationAsync(DeviceRecord device, MethodRecord method, DevicePower power, string name, CancellationToken stop)
     {
         var (client, problem) = await ReachAsync(device, method, wake: true);
         try
         {
-            return client is null ? Attempt.Failed(problem!) : await RunStepsAsync(method, power, name, client);
+            return client is null ? Attempt.Failed(problem!) : stop.IsCancellationRequested ? Attempt.Failed(StoppedSentence) : await RunStepsAsync(method, power, name, client, stop);
         }
         finally { EmulatorActionDone(method); }
     }
 
-    private async Task<Attempt> RunStepsAsync(MethodRecord method, DevicePower power, string name, AdbClient client)
+    private async Task<Attempt> RunStepsAsync(MethodRecord method, DevicePower power, string name, AdbClient client, CancellationToken stop)
     {
         var goal = power switch { DevicePower.On => SimGoal.On, DevicePower.Off => SimGoal.Off, _ => SimGoal.Toggle };
         Log($"\"{name}\" {goal} by simulation ({method.Steps.Count} steps, {Simulation.AddressOf(method)})");
         var clock = Stopwatch.StartNew();
-        using var limit = new CancellationTokenSource(Timing.DeviceSimRunTimeout);
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(stop);
+        limit.CancelAfter(Timing.DeviceSimRunTimeout);
         SimResult result;
         try
         {
@@ -49,6 +50,7 @@ public sealed partial class DeviceService
         }
         catch (OperationCanceledException)
         {
+            if (stop.IsCancellationRequested) return Attempt.Failed(StoppedSentence);
             return Attempt.Failed($"the steps took longer than {Timing.DeviceSimRunTimeout.TotalMinutes:0} minutes, so they were stopped.");
         }
         clock.Stop();
@@ -111,7 +113,7 @@ public sealed partial class DeviceService
         {
             var (client, problem) = await ReachAsync(device, method);
             if (client is null) return problem;
-            var (samples, failed) = await SimRunner.CaptureAsync(client, method.Steps[at], method.Taught, Timing.DeviceSimTeachLooks, Timing.DeviceSimTeachGap);
+            var (samples, failed) = await SimRunner.CaptureAsync(client, method.Steps[at], method.Taught, Timing.DeviceSimTeachLooks, Timing.DeviceSimTeachGap, Log);
             if (failed is not null)
             {
                 Log($"\"{DisplayName(device)}\" teaching {(on ? "on" : "off")}: {failed}");
@@ -156,7 +158,10 @@ public sealed partial class DeviceService
         if (wake && Simulation.EmulatorOf(method) is { } emulator
             && await Simulation.Keeper.EnsureRunningAsync(emulator, address, show: RuntimeOf(device).InSetup) is { } wakeProblem) return (null, wakeProblem);
         if (await Simulation.ConnectAsync(address, null, _ => { }) is { } problem) return (null, problem);
-        return (new AdbClient(adb, address), null);
+        var client = new AdbClient(adb, address);
+        // The one place every run, reading, teaching and recording starts from (wake or not): a screen left asleep or locked answers with a black picture.
+        if (!(await client.WakeScreenAsync()).Ok) Log($"Waking the emulator's screen at {address} didn't work.");
+        return (client, null);
     }
 
     /// <summary>Starts watching the method's emulator for a recording or a Re-pick; the watcher must be disposed. The problem is one plain sentence.</summary>

@@ -86,6 +86,14 @@ public sealed class StateRegistry
         _post(() => Compare(id, chain));
     }
 
+    /// <summary>What the owner is doing with the state, or how far it can be trusted, changed (its <see cref="StateEntry.Liveness"/>); the value itself may not have.</summary>
+    public event Action<StateEntry>? LivenessChanged;
+
+    public void NotifyLiveness(string id) => _post(() =>
+    {
+        if (Find(id) is { } entry) LivenessChanged?.Invoke(entry);
+    });
+
     private void Compare(string id, RunChain? chain)
     {
         if (Find(id) is not { } entry) return;

@@ -7,13 +7,16 @@ namespace OmniControl.App.Pages;
 /// A pick-one setting shown as a live preview that is browsed with Left/Right (or the arrow buttons).
 /// The preview is rebuilt whenever the choice changes or <see cref="Refresh"/> is called.
 /// </summary>
-public sealed partial class GalleryItem : ObservableObject, IEditorItem
+public sealed partial class GalleryItem : ObservableObject, IEditorItem, IHalfWidth
 {
     private readonly Action<int> _apply;
     private readonly Func<Control> _preview;
 
     public string Label { get; }
     public IReadOnlyList<string> Options { get; }
+
+    /// <summary>True: the card takes half the width and may share a row with the next half-width card (the gallery sits at its right end).</summary>
+    public bool Half { get; init; }
 
     /// <summary>A fact about the setting the label does not say, shown as the card's tooltip; null: none.</summary>
     public string? Tip { get; init; }

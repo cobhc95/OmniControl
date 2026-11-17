@@ -25,7 +25,6 @@ internal sealed class PipeCapture : IDisposable
     private readonly bool _pcm16;
     private readonly float[] _scratch;
     private int _peakBits;
-    private long _packets;
 
     public AudioRing Ring { get; }
 
@@ -94,7 +93,6 @@ internal sealed class PipeCapture : IDisposable
     /// <summary>Capture thread: converts the packet to float, notes its peak and queues it. No allocation, no lock.</summary>
     private void OnData(ReadOnlySpan<byte> buffer, AudioClientBufferFlags flags, long devicePosition, long qpcPosition)
     {
-        Interlocked.Increment(ref _packets);
         ReadOnlySpan<float> samples;
         if (_pcm16)
         {
@@ -128,9 +126,6 @@ internal sealed class PipeCapture : IDisposable
 
     /// <summary>The loudest raw sample since the last call (0 = digital silence or nothing arrived).</summary>
     public float TakePeak() => BitConverter.Int32BitsToSingle(Interlocked.Exchange(ref _peakBits, 0));
-
-    /// <summary>How many packets have arrived so far (process loopback sends none while the program plays nothing).</summary>
-    public long Packets => Interlocked.Read(ref _packets);
 
     public void Dispose()
     {

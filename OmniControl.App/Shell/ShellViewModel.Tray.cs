@@ -24,7 +24,10 @@ public sealed partial class ShellViewModel
             _ => ShowPage(home)) { NeverBlock = true });
         _hotkeys.Register(new HotkeyAction("app.actions.open", $"Open {ActionsWindowService.Title}", home, "actions hotkeys shortcuts keys list open window",
             _ => _actionsWindow.Open()) { NeverBlock = true });
-        return new TrayFlyoutModel(_hotkeys, _states, _iconPicker, AppLifecycle.RequestShow, ShowInApp);
+        var flyout = new TrayFlyoutModel(_hotkeys, _states, _iconPicker, AppLifecycle.RequestShow, ShowInApp);
+        _hotkeys.Register(new HotkeyAction("app.tray.toggle", "Show or hide tray panel", home, "tray panel flyout quick show hide toggle",
+            _ => flyout.RequestToggle()) { NeverBlock = true, DefaultKey = "Alt+Z", SuggestedIcons = new[] { "app", "home" } });
+        return flyout;
     }
 
     /// <summary>

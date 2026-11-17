@@ -5,7 +5,7 @@
         x:Class="OmniControl.App.Pages.Gestures.RuleEditorWindow"
         x:DataType="g:RuleEditorViewModel"
         Title="{Binding Title}" Width="640" MinWidth="460" SizeToContent="Height"
-        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+        WindowStartupLocation="CenterOwner">
     <!-- A custom rule: its name, the sentence of blocks (Styles/Blocks.axaml), the Layer and Rate limit cards, what is worth knowing,
          and Test / Copy details / Delete rule / Close. Everything applies at once. -->
     <StackPanel Margin="12" Spacing="10">

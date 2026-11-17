@@ -1,0 +1,28 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pages="using:OmniControl.App.Pages"
+             xmlns:c="using:OmniControl.App.Controls"
+             xmlns:svc="using:OmniControl.App.Services"
+             x:Class="OmniControl.App.Pages.FactRow"
+             x:DataType="pages:FactItem"
+             Classes="card">
+    <!-- A fact card: name and value, then the muted note (wraps to a second line), then the tags and the one pill; works at full and half width -->
+    <Grid Margin="0,1" ColumnSpacing="8" ColumnDefinitions="Auto,*,Auto">
+        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+            <TextBlock Classes="strong" Text="{Binding Value}" VerticalAlignment="Center" IsVisible="{Binding Value, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+        </StackPanel>
+        <TextBlock Grid.Column="1" Classes="cardlabel muted" Text="{Binding Note}" ToolTip.Tip="{Binding Note}" />
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <ItemsControl ItemsSource="{Binding Tags}" IsVisible="{Binding HasTags}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="svc:TagItem"><c:TagView /></DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Classes="pill accentline" Tag="scope" Content="{Binding ActionText}" Command="{Binding Command}" IsVisible="{Binding HasAction}" VerticalAlignment="Center" />
+        </StackPanel>
+    </Grid>
+</UserControl>
