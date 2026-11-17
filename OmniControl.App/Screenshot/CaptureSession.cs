@@ -1,3 +1,4 @@
+using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using OmniControl.App.Services;
 using OmniControl.Core.Engine.Screenshot;
@@ -20,12 +21,13 @@ public sealed class CaptureSession
     public event Action? Closed;
 
     /// <param name="recordAtOnce">"Record area": recording starts as soon as a selection is drawn.</param>
-    public CaptureSession(IEnumerable<(ScreenRect Bounds, ScreenImage Image)> shots, IShotOutput output, StayOnTop onTop, bool recordAtOnce, ToolSizes sizes)
+    /// <param name="shots">Each monitor and its frozen picture; the session owns the pictures and releases them when it closes.</param>
+    public CaptureSession(IEnumerable<(ScreenRect Bounds, Bitmap Picture)> shots, IShotOutput output, StayOnTop onTop, bool recordAtOnce, ToolSizes sizes)
     {
         _onTop = onTop;
-        foreach (var (bounds, image) in shots)
+        foreach (var (bounds, picture) in shots)
         {
-            var model = new CaptureOverlayViewModel(image, bounds, output, Close, recordAtOnce, sizes);
+            var model = new CaptureOverlayViewModel(picture, bounds, output, Close, recordAtOnce, sizes);
             model.SelectionStarted += OnSelectionStarted;
             _overlays.Add((new CaptureOverlay(model, bounds, onTop == StayOnTop.Strong), model));
         }

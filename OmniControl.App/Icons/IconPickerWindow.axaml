@@ -11,7 +11,7 @@
          library icon, 8 cells per row (Button.iconcell). Foot: Default | Own image… | + Add your own… | Use. Mouse first for the grid,
          the arrows move the selection from anywhere (AGENTS.md rule 5); Enter uses it, Esc cancels. -->
     <DockPanel>
-        <TextBox x:Name="SearchBox" DockPanel.Dock="Top" Classes="field" Text="{Binding Search}" Watermark="Search icons…" Margin="12,12,12,6" />
+        <TextBox x:Name="SearchBox" DockPanel.Dock="Top" Classes="field search" Text="{Binding Search}" Watermark="Search icons…" Margin="12,12,12,6" />
         <Border DockPanel.Dock="Bottom" Classes="footer">
             <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="8">
                 <Button Classes="pill" Content="Default" Click="OnDefaultClick" VerticalAlignment="Center" ToolTip.Tip="Show its own icon again" />

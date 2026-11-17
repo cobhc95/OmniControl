@@ -1,0 +1,123 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Pages.OtherPcs"
+             xmlns:pages="using:OmniControl.App.Pages"
+             xmlns:c="using:OmniControl.App.Controls"
+             xmlns:svc="using:OmniControl.App.Services"
+             x:Class="OmniControl.App.Pages.OtherPcs.OtherPcsPage"
+             x:DataType="vm:OtherPcsPageViewModel">
+    <!-- The Other PCs page (docs/mockups/other-pcs.html, basic only): the title line; while pairing, one outlined panel (Border.stage.open) with what
+         to do next; one boxed pane (Border.pane.edged) with the paired PCs on the left (icon, name, online or last-seen tag; the dashed "+ Pair a PC"
+         under them) and the chosen PC on the right (PcDetail, template in App.axaml). With no PC paired, one dashed row says so. -->
+    <StackPanel Spacing="6">
+        <pages:PageTitleLine Title="{Binding Title}" />
+
+        <Border Classes="stage open" IsVisible="{Binding Pairing.IsActive}">
+            <StackPanel Spacing="6">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <TextBlock Classes="strong" Text="Pair a PC" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Classes="pill" Content="Close" Command="{Binding ClosePairingCommand}" VerticalAlignment="Center" />
+                </Grid>
+
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" IsVisible="{Binding Pairing.IsOpen}">
+                    <c:ChoiceChips ItemsSource="{Binding ModeChips}" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Classes="pill" Content="Check again" Command="{Binding CheckAgainCommand}" IsEnabled="{Binding CanCheckAgain}"
+                            IsVisible="{Binding InternetMode}" VerticalAlignment="Center" />
+                </Grid>
+
+                <StackPanel Spacing="6" IsVisible="{Binding ShowsInternet}">
+                    <TextBlock Classes="hint small" Text="Tailscale on this PC" />
+                    <vm:TailscaleChecklist Items="{Binding Checks}" />
+                    <TextBlock Classes="hint small" Text="Pick the other PC" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6">
+                        <c:ChipMenu Text="Online PCs" ChipToolTip="The PCs of your Tailscale network that are online now." MenuOpened="OnPeerMenuOpened" VerticalAlignment="Center">
+                            <c:ChipMenu.Menu>
+                                <c:MenuRowList x:Name="PeerList" Title="On your Tailscale network" />
+                            </c:ChipMenu.Menu>
+                        </c:ChipMenu>
+                        <TextBox Grid.Column="1" Classes="field" Text="{Binding TailscaleTarget}" Watermark="Or type its Tailscale name or address, such as 100.64.0.7" MinWidth="0" VerticalAlignment="Center">
+                            <TextBox.KeyBindings>
+                                <KeyBinding Gesture="Enter" Command="{Binding PairOverInternetCommand}" />
+                            </TextBox.KeyBindings>
+                        </TextBox>
+                        <Button Grid.Column="2" Classes="pill" Content="Pair" Command="{Binding PairOverInternetCommand}" VerticalAlignment="Center" />
+                    </Grid>
+                    <TextBlock Classes="hint small" TextWrapping="Wrap" Text="Choose Pair a PC and Over the internet on the other PC too. It then shows a code to type here. After pairing, either PC can control the other." />
+                </StackPanel>
+
+                <StackPanel Spacing="6" IsVisible="{Binding ShowsLan}">
+                    <TextBlock Classes="hint" TextWrapping="Wrap" Text="This PC can now be found for pairing. On the other PC choose Pair a PC too, then pick one of the PCs below there or here." />
+                    <ItemsControl ItemsSource="{Binding Nearby}" IsVisible="{Binding HasNearby}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><WrapPanel ItemSpacing="6" LineSpacing="4" /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Classes="pill" Content="{Binding Name}" ToolTip.Tip="{Binding Address}"
+                                        Command="{Binding DataContext.PairWithNearbyCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Classes="hint small" Text="No other PC is open to pairing on this network yet." IsVisible="{Binding NoNearby}" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                        <TextBox Classes="field" Text="{Binding PairAddress}" Watermark="Or the address of a PC on another network, such as ZeroTier" MinWidth="0" VerticalAlignment="Center">
+                            <TextBox.KeyBindings>
+                                <KeyBinding Gesture="Enter" Command="{Binding PairWithAddressCommand}" />
+                            </TextBox.KeyBindings>
+                        </TextBox>
+                        <Button Grid.Column="1" Classes="pill" Content="Pair" Command="{Binding PairWithAddressCommand}" VerticalAlignment="Center" />
+                    </Grid>
+                </StackPanel>
+
+                <StackPanel Spacing="6" IsVisible="{Binding Pairing.IsAsking}">
+                    <TextBlock TextWrapping="Wrap" Text="{Binding Pairing.PeerName, StringFormat='Type the 6-digit code shown on {0}:'}" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                        <TextBox Classes="field" Text="{Binding TypedCode}" Watermark="000 000" MaxLength="7" MinWidth="0" VerticalAlignment="Center">
+                            <TextBox.KeyBindings>
+                                <KeyBinding Gesture="Enter" Command="{Binding SubmitCodeCommand}" />
+                            </TextBox.KeyBindings>
+                        </TextBox>
+                        <Button Grid.Column="1" Classes="usebtn" Content="Pair" Command="{Binding SubmitCodeCommand}" VerticalAlignment="Center" />
+                    </Grid>
+                </StackPanel>
+
+                <StackPanel Spacing="4" IsVisible="{Binding Pairing.IsShowing}">
+                    <TextBlock TextWrapping="Wrap" Text="{Binding Pairing.PeerName, StringFormat='Type this code on {0}:'}" />
+                    <TextBlock Classes="strong" Text="{Binding Pairing.Code}" />
+                </StackPanel>
+
+                <TextBlock Classes="hint" TextWrapping="Wrap" Text="{Binding Pairing.Message}"
+                           IsVisible="{Binding Pairing.Message, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            </StackPanel>
+        </Border>
+
+        <Border Classes="pane edged" IsVisible="{Binding HasPcs}">
+            <Grid ColumnDefinitions="Auto,*">
+                <Border Classes="sidebarpanel" BorderThickness="0,0,1,0" Padding="{StaticResource DeviceListPadding}">
+                    <DockPanel>
+                    <Button DockPanel.Dock="Bottom" Classes="blockadd small" Content="+ Pair a PC" Command="{Binding PairAPcCommand}" IsVisible="{Binding !Pairing.IsActive}" Margin="0,6,0,0" />
+                    <ListBox Classes="nav compact" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}"
+                             MinWidth="{StaticResource DeviceListMinWidth}" MaxWidth="{StaticResource DeviceListMaxWidth}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:PcItem">
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6">
+                                    <c:IconGlyph LibraryId="device-desktop" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Name}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}" VerticalAlignment="Center" />
+                                    <ItemsControl Grid.Column="2" ItemsSource="{Binding Tags}" VerticalAlignment="Center">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="svc:TagItem"><c:TagView /></DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    </DockPanel>
+                </Border>
+                <ContentControl Grid.Column="1" Content="{Binding Selected}" IsVisible="{Binding HasSelected}" Margin="{StaticResource DeviceDetailPadding}" />
+            </Grid>
+        </Border>
+        <pages:EmptyListRow IsVisible="{Binding NoPcs}" Text="No PCs paired yet. Pair another PC to see what it shares and run its actions from here." LinkText="Pair a PC" Command="{Binding PairAPcCommand}" />
+
+    </StackPanel>
+</UserControl>

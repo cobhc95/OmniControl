@@ -1,0 +1,49 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Fx"
+             xmlns:c="using:OmniControl.App.Controls"
+             xmlns:pages="using:OmniControl.App.Pages"
+             x:Class="OmniControl.App.Fx.FxFolderEditor"
+             x:DataType="vm:FxSlotViewModel" Grid.IsSharedSizeScope="True">
+    <!-- A device folder's editor (docs/mockups/fx-device-folders.html), shown in the FX window's right pane while its row is selected:
+         the folder's glyph, device and On switch, then cards (Device menu, the device's method read only, Mix), then its effects and
+         "Add effect here..". The method is only shown here: the Mixer owns it. -->
+    <ScrollViewer>
+        <StackPanel Spacing="8">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="4,2,4,0">
+                <Grid.Resources><x:Double x:Key="ToggleSwitchThemeMinWidth">0</x:Double></Grid.Resources>
+                <c:IconGlyph Classes="chainfolder" Classes.playing="{Binding Folder.Playing}" Classes.cable="{Binding Folder.IsCable}"
+                             LibraryId="device-speaker" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Classes="strong" Text="{Binding Folder.DeviceName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                <ToggleSwitch Grid.Column="2" Classes="plain" IsChecked="{Binding Enabled}" VerticalAlignment="Center"
+                              ToolTip.Tip="The folder on, or bypassed (its effects then do not run)" />
+            </Grid>
+            <TextBlock Classes="muted small" TextWrapping="Wrap" Margin="4,0"
+                       Text="Plays only while this device is playing. Effects inside run in order, after anything above the folder." />
+            <ListBox Classes="rows compact" ItemsSource="{Binding Folder.Cards}">
+                <ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
+            </ListBox>
+            <TextBlock Classes="menutext" Text="Effects in this folder · click one to edit" Margin="4,2,4,0" />
+            <pages:EmptyListRow Text="No effects in this folder yet." IsVisible="{Binding Folder.IsEmpty}" />
+            <ItemsControl ItemsSource="{Binding Folder.Children}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:FxSlotViewModel">
+                        <Button Classes="menurow" Command="{Binding $parent[UserControl].DataContext.Folder.SelectChildCommand}" CommandParameter="{Binding}">
+                            <StackPanel>
+                                <TextBlock Classes="muted" Text="{Binding Number}" MinWidth="16" TextAlignment="Right" />
+                                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Classes="muted small" Text="{Binding Summary}" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <WrapPanel Classes="toolbar">
+                <Button Classes="pill" Content="Add effect here…" Command="{Binding Folder.AddHereCommand}"
+                        ToolTip.Tip="Add an effect at the end of this folder" />
+                <Button Classes="pill" Content="Save folder as preset…" Command="{Binding Folder.SaveAsPresetCommand}"
+                        ToolTip.Tip="Keep this folder's device, Mix and effects as a preset (Preset manager, Volume, Device folders)" />
+            </WrapPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

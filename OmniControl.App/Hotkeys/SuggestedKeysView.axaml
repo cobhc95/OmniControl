@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:hk="using:OmniControl.App.Hotkeys"
+             xmlns:c="using:OmniControl.App.Controls"
+             x:Class="OmniControl.App.Hotkeys.SuggestedKeysView"
+             x:DataType="hk:SuggestedKeysSwitch">
+    <!-- docs/mockups/suggested-keys-switch.html: a small stacked block at a card's right: the muted label and a plain switch, the keys as keycaps
+         under it (tooltip: each key and what it does), a caution tag for a key another action holds. -->
+    <StackPanel Spacing="3" HorizontalAlignment="Right" VerticalAlignment="Center" ToolTip.Tip="{Binding Tip}">
+        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
+            <TextBlock Classes="muted small" Text="{Binding Label}" VerticalAlignment="Center" />
+            <ToggleSwitch Classes="plain" IsChecked="{Binding IsOn}" VerticalAlignment="Center" />
+        </StackPanel>
+        <hk:KeycapRow Classes="small" Parts="{Binding Keys}" HorizontalAlignment="Right" />
+        <ItemsControl ItemsSource="{Binding Tags}" HorizontalAlignment="Right">
+            <ItemsControl.ItemTemplate><DataTemplate><c:TagView /></DataTemplate></ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>

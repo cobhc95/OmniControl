@@ -18,7 +18,13 @@ public sealed class EqGraph : ItemDrawing<EqPanelItem>
     private const double LabelSize = DrawKit.LabelSize, InfoSize = DrawKit.InfoSize + 1, HoverGrow = 2, HitRadius = 16;
 
     /// <summary>A band's circle: the normal radius, the smaller one once there are more than <see cref="CrowdedBands"/> bands, and how much the selected one grows.</summary>
-    private const double PointRadius = 11, CrowdedRadius = 8, SelectedGrow = 3;
+    private const double CrowdedRadius = 8, SelectedGrow = 0;
+
+    /// <summary>The band circle's radius: half of <c>EqBandCircle</c> (App.axaml).</summary>
+    private double PointRadius => Size("EqBandCircle", 22) / 2;
+
+    private double Size(string key, double fallback) =>
+        this.TryFindResource(key, ActualThemeVariant, out var v) && v is double d ? d : fallback;
     private const int CrowdedBands = 10;
     private const int CurvePoints = 240;
     private static readonly double[] CurveFreqs = EqMath.LogGrid(CurvePoints + 1, Eq.MinFreq, Eq.MaxFreq);
@@ -26,6 +32,7 @@ public sealed class EqGraph : ItemDrawing<EqPanelItem>
     private static readonly double[] PhaseLabels = { PhaseRange, 0, -PhaseRange };
 
     private int _drag = -1, _hover = -1;
+    private bool _widthDrag;
 
     public EqGraph() => ClipToBounds = true;
 
@@ -104,6 +111,7 @@ public sealed class EqGraph : ItemDrawing<EqPanelItem>
     {
         if (Item is null) return;
         var crowded = Item.Bands.Count > CrowdedBands;
+        DrawWidthHandles(ctx, accent);
         foreach (var b in Item.Bands)
         {
             var on = b.Index == Item.SelectedIndex;
@@ -117,6 +125,39 @@ public sealed class EqGraph : ItemDrawing<EqPanelItem>
             var n = Text(b.Number, on ? LabelSize : LabelSize - 2, b.Enabled ? card : ink);
             ctx.DrawText(n, new Point(c.X - n.Width / 2, c.Y - n.Height / 2));
         }
+    }
+
+    // ---- bandwidth handles (the selected band only) ----
+
+    /// <summary>The selected band when it has a bandwidth the handles can change, else null.</summary>
+    private EqBandItem? HandleBand => Item?.Selected is { UsesBandwidth: true } b ? b : null;
+
+    /// <summary>Where a handle sits: at the band's height, on the band's edge frequency (half its bandwidth either side, in octaves).</summary>
+    private Rect HandleRect(EqBandItem b, int side)
+    {
+        var w = Size("EqWidthHandleWidth", 8);
+        var h = Size("EqWidthHandleHeight", 12);
+        var edge = Math.Clamp(b.Freq * Math.Pow(2, side * b.Bandwidth / 2), Eq.MinFreq, Eq.MaxFreq);
+        var c = PointOf(b);
+        return new Rect(X(edge) - w / 2, c.Y - h / 2, w, h);
+    }
+
+    private void DrawWidthHandles(DrawingContext ctx, IBrush accent)
+    {
+        if (HandleBand is not { } b) return;
+        var left = HandleRect(b, -1);
+        var right = HandleRect(b, 1);
+        var line = new Pen(Brush("BrushAccentEdge"), 1, dashStyle: DashStyle.Dash);
+        ctx.DrawLine(line, left.Center, right.Center);
+        foreach (var r in new[] { left, right }) ctx.DrawRectangle(Brush("BrushHover"), new Pen(accent, 1), r, 3, 3);
+    }
+
+    /// <summary>-1 or 1 for the handle under <paramref name="p"/>, else 0.</summary>
+    private int HandleAt(Point p)
+    {
+        if (HandleBand is not { } b) return 0;
+        if (HandleRect(b, -1).Inflate(3).Contains(p)) return -1;
+        return HandleRect(b, 1).Inflate(3).Contains(p) ? 1 : 0;
     }
 
     // ---- mouse ----
@@ -139,6 +180,14 @@ public sealed class EqGraph : ItemDrawing<EqPanelItem>
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
+        if (HandleOver(e.GetPosition(this)) != 0 && HandleBand is { } handled)
+        {
+            e.Handled = true;
+            if (e.ClickCount == 2) { handled.ResetWidth(); return; }
+            _widthDrag = true;
+            e.Pointer.Capture(this);
+            return;
+        }
         var hit = PointAt(e.GetPosition(this));
         if (hit < 0 || Item is null) return;
         Item.SelectedIndex = hit;
@@ -157,6 +206,11 @@ public sealed class EqGraph : ItemDrawing<EqPanelItem>
         base.OnPointerMoved(e);
         if (Item is null) return;
         var p = e.GetPosition(this);
+        if (_widthDrag)
+        {
+            HandleBand?.SetWidthFromEdge(FreqAt(p.X));
+            return;
+        }
         if (_drag >= 0 && _drag < Item.Bands.Count)
         {
             var b = Item.Bands[_drag];
@@ -164,16 +218,33 @@ public sealed class EqGraph : ItemDrawing<EqPanelItem>
             if (b.UsesGain) b.Gain = Math.Round(DbAt(p.Y) / DragGainStep) * DragGainStep;
             return;
         }
+        UpdateCursor(p);
         var hover = PointAt(p);
         if (hover == _hover) return;
         _hover = hover;
-        Cursor = new Cursor(hover >= 0 ? StandardCursorType.Hand : StandardCursorType.Arrow);
         InvalidateVisual();
     }
+
+    /// <summary>The handle under <paramref name="p"/> unless the band's own circle is there (a narrow band's handles sit against it).</summary>
+    private int HandleOver(Point p)
+    {
+        if (HandleBand is not { } b) return 0;
+        var c = PointOf(b);
+        return Math.Sqrt(Math.Pow(c.X - p.X, 2) + Math.Pow(c.Y - p.Y, 2)) <= PointRadius ? 0 : HandleAt(p);
+    }
+
+    private void UpdateCursor(Point p) =>
+        Cursor = new Cursor(_widthDrag || HandleOver(p) != 0 ? StandardCursorType.SizeWestEast : PointAt(p) >= 0 ? StandardCursorType.Hand : StandardCursorType.Arrow);
 
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
         base.OnPointerReleased(e);
+        if (_widthDrag)
+        {
+            _widthDrag = false;
+            e.Pointer.Capture(null);
+            return;
+        }
         if (_drag < 0) return;
         _drag = -1;
         e.Pointer.Capture(null);

@@ -14,7 +14,7 @@ namespace OmniControl.App.Pages.AppSettingsPage;
 
 /// <summary>
 /// The App settings page, five collapsible groups: Appearance; Start and close; Your data (presets, backup and restore, the Confirmations,
-/// Restore all defaults); Plug-ins (AppSettingsPageViewModel.Plugins.cs); Updates and about (AppSettingsPageViewModel.Updates.cs).
+/// Restore all defaults); Plug-ins (AppSettingsPageViewModel.Plugins.cs, with Keep OmniControl's effects in place); Updates and about (AppSettingsPageViewModel.Updates.cs).
 /// </summary>
 public sealed partial class AppSettingsPageViewModel : PageViewModel
 {
@@ -32,7 +32,9 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
     /// <summary>One plain sentence under the list when Windows has the start-up entry switched off or refused a change; empty otherwise.</summary>
     [ObservableProperty] private string _startupNote = string.Empty;
 
-    public override string Title => "App settings";
+    public const string Name = "App settings";
+
+    public override string Title => Name;
     public override string Icon => "M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8 Z M10,2 H14 L14.6,4.6 L16.6,5.6 L19,4.3 L21.7,7 L20.4,9.4 L21.4,11.4 L24,12 V16 L21.4,16.6 L20.4,18.6 L21.7,21 L19,23.7 L16.6,22.4 L14.6,23.4 L14,26 H10 L9.4,23.4 L7.4,22.4 L5,23.7 L2.3,21 L3.6,18.6 L2.6,16.6 L0,16 V12 L2.6,11.4 L3.6,9.4 L2.3,7 L5,4.3 L7.4,5.6 L9.4,4.6 Z";
     public override string Keywords => "settings appearance color colour mode theme accent plug-in plugin folders vst backup restore export import wipe confirm confirmation ask again";
 
@@ -77,8 +79,10 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
     /// <param name="updates">The update check (the Updates and about group).</param>
     /// <param name="report">Says one plain sentence in the window's footer (a web page that would not open).</param>
     /// <param name="showShortcuts">Opens the Keyboard shortcuts window (F1); registered as an action so it stays reachable from search and the Actions and hotkeys window.</param>
+    /// <param name="mixer">Holds "Keep OmniControl's effects in place" (the Plug-ins group's switch, also in every FX window's Options).</param>
     public AppSettingsPageViewModel(HotkeyRegistry hotkeys, Action openAbout, Func<IProgress<int>?, CancellationToken, Task<int>> scanPlugins,
-        Func<string> scanResult, Action openPresets, BackupService backup, ConfirmationMemory confirmations, UpdateService updates, Action<string> report, Action showShortcuts)
+        Func<string> scanResult, Action openPresets, BackupService backup, ConfirmationMemory confirmations, UpdateService updates, Action<string> report, Action showShortcuts,
+        Audio.MixerService mixer)
     {
         _confirmations = confirmations;
         var themes = Enum.GetNames<ThemeChoice>();
@@ -128,6 +132,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
         _addFolder = new FileItem("Plug-in folders", FileKind.OfFolder("Choose a folder with plug-ins"), AddFolder) { EmptyText = "Add a folder to scan" };
         _scan = new ButtonItem("Plug-in scan", "Scan now", ScanIdleText, StartScan);
         _scanPlugins = scanPlugins;
+        _keepFx = KeepFxCard(mixer);
         _scanResult = scanResult;
         _resetAllConfirmations = new ButtonItem("Confirmations", "Reset all", string.Empty, confirmations.ResetAll);
         _restoreAllCard = new ButtonItem("Restore all defaults", "Restore all", "Puts every page back to its defaults after one question; you can undo it", () => _ = RestoreAll?.RestoreAsync());
@@ -137,13 +142,15 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
         Appearance = Fill(AppearanceItems, "AppSettings/Appearance", AppearanceName, Theme, Accent, _groupsOpen);
         StartAndClose = Fill(StartItems, "AppSettings/Start", StartName, _startWithWindows, _startMinimised, _whenClosing);
         YourData = Fill(DataItems, "AppSettings/Data", DataName, _presets, _backup, _resetAllConfirmations, _restoreAllCard);
-        PlugIns = Fill(PluginItems, "AppSettings/Plugins", PluginsName, _addFolder, _scan);
+        PlugIns = Fill(PluginItems, "AppSettings/Plugins", PluginsName, _addFolder, _scan, _keepFx);
         UpdatesAndAbout = Fill(UpdateItems, "AppSettings/Updates", UpdatesName, _updateDaily, _version, _latest, _about);
         foreach (var folder in _settings.PluginFolders) PluginItems.Insert(PluginItems.IndexOf(_scan), FolderRow(folder));
         ReloadConfirmations();
         confirmations.Changed += ReloadConfirmations;
         ReadStartup();
         hotkeys.Register(new HotkeyAction("app.show", "Open OmniControl", Title, "show window open tray restore", _ => AppLifecycle.RequestShow()) { NeverBlock = true, SuggestedIcons = new[] { "app", "home" } });
+        hotkeys.Register(new HotkeyAction("app.toggle", "Show or hide OmniControl", Title, "show hide toggle window tray minimise", _ => AppLifecycle.RequestToggle())
+            { NeverBlock = true, DefaultKey = "Alt+X", SuggestedIcons = new[] { "app", "home" } });
         hotkeys.Register(new HotkeyAction("app.shortcuts", "Keyboard shortcuts", Title, "keyboard shortcuts keys help list f1", _ => showShortcuts()) { SuggestedIcons = new[] { "keyboard", "help" } });
         hotkeys.Register(new HotkeyAction("app.quit", "Quit OmniControl", Title, "exit quit close stop tray", _ => AppLifecycle.RequestQuit()) { SuggestedIcons = new[] { "power", "lock" } });
         hotkeys.Register(new HotkeyAction("app.updates.check", "Check for updates", Title, "update updates upgrade new version release github check", _ => CheckNow())

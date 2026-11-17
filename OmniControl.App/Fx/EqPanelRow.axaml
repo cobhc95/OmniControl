@@ -46,7 +46,10 @@
                         Minimum="{Binding Minimum}" Maximum="{Binding Maximum}"
                         Value="{Binding Value}" pages:SliderReset.Value="{Binding ResetValue}" />
                 <TextBlock Grid.Row="2" Text="{Binding Minimum}" Classes="muted" FontSize="{StaticResource EqFontSize}" HorizontalAlignment="Center" />
-                <TextBlock Grid.Row="3" Text="{Binding ValueText}" FontSize="{StaticResource EqFontSize}" HorizontalAlignment="Center" />
+                <pages:NumberText Grid.Row="3" DataContext="{Binding $parent[UserControl].DataContext}" Value="{Binding OverallGainTyped}"
+                                  Minimum="{Binding OverallGain.Minimum}" Maximum="{Binding OverallGain.Maximum}" Decimals="2" HorizontalAlignment="Center">
+                    <TextBlock Text="{Binding OverallGainText}" FontSize="{StaticResource EqFontSize}" HorizontalAlignment="Center" />
+                </pages:NumberText>
             </Grid>
         </Grid>
 

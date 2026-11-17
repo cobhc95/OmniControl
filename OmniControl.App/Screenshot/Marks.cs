@@ -56,6 +56,7 @@ public sealed class StrokeMark : Mark
 {
     private readonly List<Point> _points;
     private readonly IPen _pen;
+    private StreamGeometry? _geometry; // built once per change of the points, not on every frame
 
     public StrokeMark(Point start, Color color, double width, double opacity)
     {
@@ -63,7 +64,12 @@ public sealed class StrokeMark : Mark
         _pen = PenOf(color, width, opacity);
     }
 
-    public void Extend(Point point) => _points.Add(point);
+    public void Extend(Point point)
+    {
+        if (point == _points[^1]) return; // a move that went nowhere would only make the line longer to draw
+        _points.Add(point);
+        _geometry = null;
+    }
 
     public override void Draw(DrawingContext context)
     {
@@ -72,14 +78,15 @@ public sealed class StrokeMark : Mark
             context.DrawLine(_pen, _points[0], _points[0]);
             return;
         }
-        var geometry = new StreamGeometry();
-        using (var g = geometry.Open())
+        if (_geometry is null)
         {
+            _geometry = new StreamGeometry();
+            using var g = _geometry.Open();
             g.BeginFigure(_points[0], false);
             for (var i = 1; i < _points.Count; i++) g.LineTo(_points[i]);
             g.EndFigure(false);
         }
-        context.DrawGeometry(null, _pen, geometry);
+        context.DrawGeometry(null, _pen, _geometry);
     }
 }
 
@@ -179,15 +186,16 @@ public sealed class TextMark : Mark
 /// <summary>A blurred (pixelated) area: the coarse picture made from the screenshot when it was drawn, stretched over the area without smoothing.</summary>
 public sealed class BlurMark : Mark
 {
-    private readonly WriteableBitmap _coarse;
+    private readonly Bitmap _coarse;
     private readonly ScreenRect _area;
     private readonly int _block;
 
-    public BlurMark(ScreenImage source, ScreenRect area, int block)
+    /// <param name="part">The screenshot's pixels inside <paramref name="area"/> (picture pixels), as <see cref="ImageBitmaps.Crop"/> gives them.</param>
+    public BlurMark(ScreenImage part, ScreenRect area, int block)
     {
         _area = area;
         _block = block;
-        _coarse = ImageBitmaps.ToBitmap(Pixelation.Blocks(source, area, block));
+        _coarse = ImageBitmaps.ToBitmap(Pixelation.Blocks(part, part.Bounds, block));
     }
 
     public override void Draw(DrawingContext context)

@@ -35,9 +35,27 @@ public sealed partial class EqPanelItem : ObservableObject, IEditorItem, ISideNa
     public double OverallGainDb
     {
         get => _overallGainDb;
-        set { _overallGainDb = value; Redraw?.Invoke(); }
+        set
+        {
+            _overallGainDb = value;
+            OnPropertyChanged(nameof(OverallGainTyped));
+            OnPropertyChanged(nameof(OverallGainText));
+            Redraw?.Invoke();
+        }
     }
     private double _overallGainDb;
+
+    /// <summary>The overall gain as a typed value (to 0.01 dB, never snapped to the slider's whole-dB steps); the slider follows it as near as it can.</summary>
+    public double OverallGainTyped
+    {
+        get => OverallGainDb;
+        set => ApplyOverallGain?.Invoke(value);
+    }
+
+    /// <summary>Stores a typed overall gain in the effect (set by the slot that owns the setting).</summary>
+    public Action<double>? ApplyOverallGain { get; set; }
+
+    public string OverallGainText => $"{DrawKit.SignedDb(OverallGainDb)} dB";
 
     /// <summary>The equaliser's overall gain setting (the effect's own gain parameter), edited by the vertical slider beside the graph.</summary>
     public SliderItem? OverallGain { get; set; }

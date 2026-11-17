@@ -1,20 +1,19 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><title>Other PCs (approved)</title>
-<!-- Approved by the owner 17 Nov 2026.
-  PAGE: sidebar entry "Other PCs" (DEVICES group, devices-pc icon). Title line: "Other PCs" + dashed "+ Pair a PC" at the right.
-  Body: a pane like Smart Devices: left list of paired PCs (name + Border.tag "online · LAN" good / "offline" plain), right the selected PC:
-    name, a ChipMenu "Connect: LAN ▾" (choices: LAN; "Tailscale / ZeroTier" = connect by that network's address; later relay),
-    muted heading "States · live" then half-width cards of the states that PC shares (level = read-only bar + value, on/off = switch,
-    choice = value) updating live; muted heading "Actions · its own list, run there" then Button.pill per shared action (a few)
-    + "All actions…" opening the list. Remote states/actions ALSO register into this PC's StateRegistry/HotkeyRegistry as
-    "<PC name>: <item>" (so hotkeys, mouse, gestures, automation, search use them), removed when unpaired.
-  SHARING (on the sharing PC, a group "This PC shares" on the same page): ChipMenu "Share: Nothing | Everything | Chosen items" (default Chosen),
-    ChipMenu "with: <paired PC>" (per paired PC), a search box, two ticked lists (Controls/OptionList) read LIVE from StateRegistry
-    ("States (read only)") and HotkeyRegistry ("Actions (can run)"), grouped "Page · name". Never a hand-written list; new registrations
-    appear automatically. Risky actions (scripts, launch, power off/shut down, custom actions) start unticked; flag on the master entry.
-  NETWORK: LAN first: discovery on the local network, pairing with a short code shown on one PC and typed on the other, then an encrypted,
-    authenticated connection; nothing reachable before pairing; every remote run goes through HotkeyRegistry.RunNow (gate, rate limit, RunChain). -->
+<html><head><meta charset="utf-8"><title>Other PCs, basic only (approved)</title>
+<!-- Approved by the owner 17 Nov 2026 (basic only; replaces the mirrored/advanced and share-chooser versions).
+  Left: paired PCs (ListBox.nav style rows): PC icon + name, Border.tag.good "online · LAN|Tailscale" or muted "last seen HH:mm";
+    dashed "+ Pair a PC" under the list.
+  Right, selected PC: title line = name (large) + ChipMenu "Connect: … ▾" + Button.pill.danger "Unpair".
+  Then GroupCards (same as the main app's pages, collapsible, icons on headers and cards), half-width cards where two fit:
+   1 Screens (monitor icon): header master switch "all" (GroupSwitch) at the right; one half-width ToggleItem per screen (icon, name, power switch).
+   2 Sound (volume icon): one full-width SliderRow: output ChipMenu "Speakers ▾" + volume slider + value; then half-width toggles Mute, Mic mute.
+   3 Now playing (music icon): one full-width card: app icon, title (semi-bold) over muted "artist · app", then Button.pill Previous,
+     Play/Pause (accent while playing), Next (drawn glyphs). Hidden or "Nothing playing" muted line when no session.
+   4 Smart devices (plug icon): half-width toggle per device (device icon, name, power switch).
+   5 Power (power icon): battery "76 %" muted at the header's right (only with a battery); full-width toggle "Keep awake" (coffee icon);
+     then a row of Button.pill with icons: Lock, Sign out, Sleep, Restart, Shut down (Restart and Shut down ask to confirm via DialogService).
+  Everything pre-shared on pairing: no share window or choices. A group with nothing to show is hidden. -->
 <style>body{font-family:Segoe UI;background:#1b1b1b;color:#eee;padding:20px;font-size:13px}</style></head><body>
-<p>Sidebar: Other PCs · [+ Pair a PC] · Living room PC [online · LAN] / Studio laptop [offline] · Connect: LAN ▾ · States: Brightness 70 %, Master volume 35 %, Mute, L530 · Actions: Sleep, Lock, Screenshot, All actions…<br>
-This PC shares [Share: chosen items ▾] [with: Studio laptop ▾] · search · States ☑ … | Actions ☑ …</p>
+<p>[Living room PC · online · Tailscale] [Studio laptop · last seen 09:41] (+ Pair a PC) | Living room PC [Connect ▾] [Unpair]<br>
+Screens (all ⏻): LG 27 ⏻ | Dell 24 ⏻ · Sound: [Speakers ▾] ━━○ 45 · Mute | Mic mute · Now playing: Song · Artist · Spotify ⏮ ⏸ ⏭ · Smart devices: L530 | Orbit 11 · Power (76 %): Keep awake · Lock Sign out Sleep Restart Shut down</p>
 </body></html>

@@ -18,8 +18,14 @@ public sealed class FxClipboard
 
     public void Copy(IEnumerable<FxSlot> slots)
     {
+        _copied = Snapshot(slots);
+    }
+
+    /// <summary>Independent copies with every plug-in's current settings stored first (what a saved chain file holds too).</summary>
+    public List<FxSlot> Snapshot(IEnumerable<FxSlot> slots)
+    {
         _saveStates();
-        _copied = slots.Select(s => s.Copy()).ToList();
+        return slots.Select(s => s.Copy()).ToList();
     }
 
     /// <summary>New copies of what was copied (pasting twice gives two independent sets).</summary>

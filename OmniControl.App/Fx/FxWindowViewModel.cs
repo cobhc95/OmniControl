@@ -37,6 +37,8 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
         chain.Edited += ShowChain;
         mixer.Updated += OnMixerUpdated;
         engine.StatusChanged += OnEngineStatus;
+        engine.ApoPlacementChanged += OnApoPlacementChanged;
+        mixer.KeepFxInPlaceChanged += OnKeepFxInPlaceChanged;
         support.Changed += OnSupportChanged;
     }
 
@@ -58,7 +60,7 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
         "Up/Down choose an effect; Shift+arrows, Ctrl+click, Ctrl+A or a box drawn on the empty part of the list select several.",
         "Enter gives the editor the keyboard; Tab or F6 switch between the list and the editor; Shift+Tab from the list goes to the response graph.",
         "Space switches the selected effects on or off; Delete removes them; Alt+Up / Alt+Down (or drag) move them; Ctrl+C / Ctrl+V copy and paste.",
-        "Ctrl+N adds an effect. A double-click on a row puts its editor in its own window, and back.",
+        "Ctrl+S saves the chain to a file, Ctrl+O loads one. Ctrl+N adds an effect. A double-click on a row puts its editor in its own window, and back.",
         "Ctrl+- / Ctrl+= make the editor smaller or larger, Ctrl+0 puts it back to 100 %.",
         "Esc first leaves one effect selected, then closes the window.",
         "",
@@ -85,6 +87,27 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
         set { if (_mixer.IsFxOn(_key) != value) _mixer.SetFxByUser(_key, value); }
     }
 
+    /// <summary>Options > Keep OmniControl's effects in place (one setting for every chain Equalizer APO runs).</summary>
+    public bool KeepFxInPlace
+    {
+        get => _mixer.KeepFxInPlace;
+        set => _mixer.SetKeepFxInPlace(value);
+    }
+
+    public string KeepFxInPlaceText => EffectsRules.KeepInPlace;
+    public string KeepFxInPlaceTip => EffectsRules.KeepInPlaceTip;
+
+    /// <summary>This chain is sent to Equalizer APO now (the master there, or a program on a cable with Equalizer APO).</summary>
+    private bool InApo => _engine.MethodOf(_key) is RunMethod.Apo or RunMethod.ApoCable;
+
+    /// <summary>Equalizer APO's config was written without OmniControl's line and is left so: the status strip offers "Put back".</summary>
+    public bool ShowsPutBack => InApo && _engine.ApoDisplaced;
+
+    /// <summary>Equalizer APO's config also runs effects of its own: one tag in the status strip says so.</summary>
+    public TagItem? OwnApoEffects => InApo && _engine.ApoOwnEffects ? new TagItem(EffectsRules.ApoOwnEffects, TagTone.Neutral, EffectsRules.ApoOwnEffectsTip) : null;
+
+    [RelayCommand] private void PutBack() => _engine.PutBackApo();
+
     /// <summary>A remembered program that isn't running can be forgotten from here.</summary>
     public bool CanForget => IsProgram && !_mixer.Running.Any(r => r.Key == _key && r.IsOpen);
 
@@ -93,6 +116,13 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
     {
         get => AppSettings.Current.FxKeepOnTop;
         set { AppSettings.Current.FxKeepOnTop = value; AppSettings.Current.Save(); OnPropertyChanged(); }
+    }
+
+    /// <summary>The effect list's width as dragged at the splitter, kept for every FX window (0 = the standard width).</summary>
+    public double ChainListWidth
+    {
+        get => AppSettings.Current.FxChainListWidth;
+        set { AppSettings.Current.FxChainListWidth = value; AppSettings.Current.Save(); OnPropertyChanged(); }
     }
 
     public event Action? CloseRequested;
@@ -111,8 +141,17 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
     {
         if (key != _key) return;
         OnPropertyChanged(nameof(EngineText));
+        OnApoPlacementChanged();
         Analysis.RefreshLoad();
     }
+
+    private void OnApoPlacementChanged()
+    {
+        OnPropertyChanged(nameof(ShowsPutBack));
+        OnPropertyChanged(nameof(OwnApoEffects));
+    }
+
+    private void OnKeepFxInPlaceChanged() => OnPropertyChanged(nameof(KeepFxInPlace));
 
     /// <summary>The chain as the engine that runs this row plays it, with the row's on/off.</summary>
     private void ShowChain() => Analysis.Show(Chain.Effects, _engine.MethodFor(_key).Engine, FxOn);
@@ -162,6 +201,8 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
     {
         _mixer.Updated -= OnMixerUpdated;
         _engine.StatusChanged -= OnEngineStatus;
+        _engine.ApoPlacementChanged -= OnApoPlacementChanged;
+        _mixer.KeepFxInPlaceChanged -= OnKeepFxInPlaceChanged;
         _support.Changed -= OnSupportChanged;
         Chain.Edited -= ShowChain;
         Analysis.Dispose();

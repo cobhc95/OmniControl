@@ -608,12 +608,12 @@ public sealed partial class PickerModel : ObservableObject
         return InGroups(_groups[SectionIndex].Choices.Where(IsShown));
     }
 
-    /// <summary>The entries of one section, those without a group heading first, then each group together under its heading row.</summary>
+    /// <summary>The entries of one section, those without a group heading first, then each group together under its heading row, the groups by name (one PC's group of Other PCs after another's); entries keep their registration order.</summary>
     private List<PickerRow> InGroups(IEnumerable<PickChoice> choices)
     {
         var rows = new List<PickerRow>();
         var all = choices.ToList();
-        foreach (var heading in all.Select(c => c.Heading).Distinct().OrderBy(h => h is null ? 0 : 1))
+        foreach (var heading in all.Select(c => c.Heading).Distinct().OrderBy(h => h is null ? 0 : 1).ThenBy(h => h, StringComparer.OrdinalIgnoreCase))
         {
             if (heading is not null) rows.Add(PickerRow.HeadingOf(heading));
             rows.AddRange(Rows(all.Where(c => c.Heading == heading), _ => null, preselect: false));

@@ -9,12 +9,13 @@ namespace OmniControl.App.Hotkeys;
 /// in the Actions and hotkeys window (and in search), in the mouse button and middle-click pickers, and (for a level action) in the wheel gesture
 /// picker, and is saved and registered as a hotkey automatically. Consumers read <see cref="Actions"/> and follow its changes.
 /// </summary>
-public sealed class HotkeyRegistry : IActionRegistry, IDisposable
+public sealed partial class HotkeyRegistry : IActionRegistry, IDisposable
 {
     private static readonly DataStore Store = DataStores.Hotkeys;
 
     private readonly HotkeyService _service = new();
     private readonly Dictionary<string, StoredHotkey> _stored = Load();
+    private readonly bool _fresh; // nothing was saved before this run: a first start
 
     public ObservableCollection<HotkeyAction> Actions { get; } = new();
 
@@ -84,6 +85,7 @@ public sealed class HotkeyRegistry : IActionRegistry, IDisposable
 
     public HotkeyRegistry()
     {
+        _fresh = _stored.Count == 0;
         _service.Failed += gesture => Dispatcher.UIThread.Post(() =>
         {
             var names = string.Join(", ", Actions.Where(a => a.Keys.Contains(gesture)).Select(a => a.Title));
@@ -95,6 +97,7 @@ public sealed class HotkeyRegistry : IActionRegistry, IDisposable
     {
         Add(action);
         Rebind();
+        if (SettleSuggestedKeys()) Save();
     }
 
     /// <summary>Registers several actions at once (one rebinding of the hotkeys).</summary>
@@ -102,6 +105,7 @@ public sealed class HotkeyRegistry : IActionRegistry, IDisposable
     {
         foreach (var action in actions) Add(action);
         Rebind();
+        if (SettleSuggestedKeys()) Save();
     }
 
     // The saved keys, else (first time only) its default key unless the key is not allowed or another action has it already.
@@ -300,6 +304,8 @@ public sealed class HotkeyRegistry : IActionRegistry, IDisposable
             action.Restore(all.TryGetValue(action.Id, out var saved) ? saved : HotkeyDefaults.Cleared);
             _stored[action.Id] = action.Export();
         }
+        AdoptSuggestedKeys();
+        SettleSuggestedKeys();
         Save();
         Rebind();
     }
@@ -317,6 +323,7 @@ public sealed class HotkeyRegistry : IActionRegistry, IDisposable
             action.Restore(_stored.GetValueOrDefault(action.Id) ?? HotkeyDefaults.Cleared);
             _stored[action.Id] = action.Export();
         }
+        SettleSuggestedKeys();
         Save();
         Rebind();
     }
@@ -332,12 +339,24 @@ public sealed class HotkeyRegistry : IActionRegistry, IDisposable
         // A key combination can only belong to one action.
         foreach (var other in Actions.Where(a => a != changed && a.Keys.Intersect(changed.Keys).Any()).ToList())
             other.SetKeys(other.Keys.Except(changed.Keys));
+        TurnOffByHand(changed);
         foreach (var a in Actions) _stored[a.Id] = a.Export();
         Save();
         Rebind();
     }
 
-    private bool _held;
+    private bool _held, _paused;
+
+    /// <summary>
+    /// The hotkeys master switch (<see cref="HotkeysSwitch"/>): while paused, no key is registered with Windows except those of
+    /// <see cref="HotkeyAction.NeverBlock"/> actions. The keys stay saved and on their actions. Mouse buttons and rules run through other paths and are not paused.
+    /// </summary>
+    public void PauseKeys(bool paused)
+    {
+        if (paused == _paused) return;
+        _paused = paused;
+        Rebind();
+    }
 
     /// <summary>
     /// While held, only the keys of the actions that must always work (<see cref="HotkeyAction.NeverBlock"/>) stay registered with Windows,
@@ -352,7 +371,7 @@ public sealed class HotkeyRegistry : IActionRegistry, IDisposable
     }
 
     private void Rebind() =>
-        _service.Apply(Actions.Where(a => !_held || a.NeverBlock).SelectMany(a => a.Keys.Where(k => ReservedKeys.ProblemWith(k) is null).Select(k => (k, (Action)(() => RunSoon(a))))));
+        _service.Apply(Actions.Where(a => !(_held || _paused) || a.NeverBlock).SelectMany(a => a.Keys.Where(k => ReservedKeys.ProblemWith(k) is null).Select(k => (k, (Action)(() => RunSoon(a))))));
 
     private static Dictionary<string, StoredHotkey> Load() =>
         Unique(RenamedActions.Migrate(AppDataStore.Load<Dictionary<string, StoredHotkey>>(Store) ?? new()));

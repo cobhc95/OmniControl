@@ -1,4 +1,5 @@
-﻿using OmniControl.App.Hotkeys;
+using OmniControl.App.Hotkeys;
+using OmniControl.App.States;
 using OmniControl.Core.Engine;
 
 namespace OmniControl.App.Automation;
@@ -27,26 +28,29 @@ public static class PowerActions
     public static IEnumerable<HotkeyAction> Make(PowerGuard guard, Action togglePause)
     {
         // The countdown and Force close an input chose arrive as run settings; a shortcut runs with the defaults.
-        HotkeyAction Guarded(string id, string title, string keywords, Func<bool, bool> doIt, ActionSettings takes) =>
+        HotkeyAction Guarded(string id, string title, string keywords, Func<bool, bool> doIt, ActionSettings takes, bool basic = false, bool confirm = false, string? icon = null) =>
             new(id, title, AutomationService.Category, $"{Words} {keywords}", ids => _ = guard.RequestAsync(title, () => doIt(false)), group: Power)
             {
                 PickerSection = Power,
+                Common = basic ? CommonGroups.Power : null,
+                ConfirmRun = confirm,
+                SuggestedIcons = icon is null ? null : new[] { icon },
                 Accepts = takes,
                 RunConfigured = settings => _ = guard.RequestAsync(title, () => doIt(settings.Force),
                     settings.CountdownSeconds is { } seconds ? TimeSpan.FromSeconds(seconds) : null),
             };
 
         const ActionSettings Closes = ActionSettings.Countdown | ActionSettings.Force;
-        yield return Guarded("automation.power.sleep", "Sleep", "suspend standby", _ => PowerCommands.Sleep(), ActionSettings.Countdown);
+        yield return Make("automation.power.lock", "Lock", Power, Power, "lock screen workstation win+l", () => PowerCommands.Lock(), neverBlock: true, basic: true, icon: "lock");
+        yield return Guarded("automation.power.signout", "Sign out", "log off logoff", PowerCommands.SignOut, Closes, basic: true, icon: "logout");
+        yield return Guarded("automation.power.sleep", "Sleep", "suspend standby", _ => PowerCommands.Sleep(), ActionSettings.Countdown, basic: true, icon: "moon");
         yield return Guarded("automation.power.hibernate", "Hibernate", "suspend hibernation", _ => PowerCommands.Hibernate(), ActionSettings.Countdown);
-        yield return Guarded("automation.power.shutdown", "Shut down", "turn off power off", PowerCommands.ShutDown, Closes);
-        yield return Guarded("automation.power.restart", "Restart", "reboot", PowerCommands.Restart, Closes);
-        yield return Guarded("automation.power.signout", "Sign out", "log off logoff", PowerCommands.SignOut, Closes);
-        yield return Make("automation.power.lock", "Lock", Power, Power, "lock screen workstation win+l", () => PowerCommands.Lock(), neverBlock: true);
+        yield return Guarded("automation.power.restart", "Restart", "reboot", PowerCommands.Restart, Closes, basic: true, confirm: true, icon: "refresh");
+        yield return Guarded("automation.power.shutdown", "Shut down", "turn off power off", PowerCommands.ShutDown, Closes, basic: true, confirm: true, icon: "power");
         foreach (var (mode, id, name, keywords) in Modes) yield return Make(id, $"{name} mode", Mode, Power, keywords, () => PowerCommands.SetMode(mode));
         yield return Make("automation.pause", "Pause all rules", Control, null, "resume stop disable automation emergency", togglePause, neverBlock: true);
     }
 
-    private static HotkeyAction Make(string id, string title, string group, string? section, string keywords, Action run, bool neverBlock = false) =>
-        new(id, title, AutomationService.Category, $"{Words} {keywords}", _ => run(), group: group) { NeverBlock = neverBlock, PickerSection = section };
+    private static HotkeyAction Make(string id, string title, string group, string? section, string keywords, Action run, bool neverBlock = false, bool basic = false, string? icon = null) =>
+        new(id, title, AutomationService.Category, $"{Words} {keywords}", _ => run(), group: group) { NeverBlock = neverBlock, PickerSection = section, Common = basic ? CommonGroups.Power : null, SuggestedIcons = icon is null ? null : new[] { icon } };
 }

@@ -1,4 +1,4 @@
-using OmniControl.App.Dialogs;
+﻿using OmniControl.App.Dialogs;
 using CommunityToolkit.Mvvm.Input;
 using OmniControl.App.Audio;
 using OmniControl.App.Audio.Engine;
@@ -126,6 +126,9 @@ public sealed partial class VolumePageViewModel
     private const string SetupFailedTitle = "The setup step didn't finish";
 
     /// <summary>Install for Equalizer APO: a short confirmation only when its installer will run (the download page needs none).</summary>
+    /// <summary>The same step from outside the page (an FX window's device menu): one install path.</summary>
+    public Task InstallEqualizerApoStepAsync() => InstallEqualizerApoAsync();
+
     private async Task InstallEqualizerApoAsync()
     {
         if (EngineInstaller.EqualizerApoSetup is not null

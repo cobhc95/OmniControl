@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:pages="using:OmniControl.App.Pages"
+             xmlns:c="using:OmniControl.App.Controls"
              x:Class="OmniControl.App.Pages.ChoiceRow"
              x:DataType="pages:ChoiceItem"
              Classes="card" IsEnabled="{Binding Availability.IsAvailable}"
@@ -11,7 +12,7 @@
                 <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <TextBlock Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,24,0" />
+            <c:IconText Icon="{Binding Icon}" Text="{Binding Label}" Margin="0,0,24,0" />
             <ComboBox Classes="choice" ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}" />
         </Grid>
 
@@ -21,7 +22,7 @@
                 <ColumnDefinition Width="*" MinWidth="56" />
                 <ColumnDefinition Width="1.6*" />
             </Grid.ColumnDefinitions>
-            <TextBlock Classes="cardlabel" Text="{Binding Label}" />
+            <c:IconText Compact="True" Icon="{Binding Icon}" Text="{Binding Label}" />
             <ComboBox Grid.Column="1" Classes="choice half" ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}" />
         </Grid>
     </Panel>

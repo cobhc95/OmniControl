@@ -1,4 +1,4 @@
-<Styles xmlns="https://github.com/avaloniaui"
+﻿<Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shot="using:OmniControl.App.Screenshot">
     <!-- MASTER designs of a window's thin bars (the FX window): Border.toolrow = ONE toolbar row of small controls (about 30 px high,
@@ -85,6 +85,11 @@
     </Style>
     <Style Selector="Button.primary.close">
         <Setter Property="Width" Value="{DynamicResource DialogCloseWidth}" />
+        <Setter Property="Height" Value="{DynamicResource DialogButtonHeight}" />
+        <Setter Property="Padding" Value="12,0" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
     </Style>
     <Style Selector="Border.statusstrip">
@@ -220,6 +225,14 @@
         <Setter Property="Stroke" Value="{DynamicResource BrushDanger}" />
         <Setter Property="StrokeThickness" Value="{DynamicResource RecordFrameThickness}" />
         <Setter Property="StrokeDashArray" Value="3,2" />
+    </Style>
+    <!-- Rectangle.osdframe = the dashed accent edge of the OSD placement preview (Osd/OsdPreview); OsdFrameThickness / OsdFrameRadius in App.axaml -->
+    <Style Selector="Rectangle.osdframe">
+        <Setter Property="Stroke" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="StrokeThickness" Value="{DynamicResource OsdFrameThickness}" />
+        <Setter Property="StrokeDashArray" Value="3,2" />
+        <Setter Property="RadiusX" Value="{DynamicResource OsdFrameRadius}" />
+        <Setter Property="RadiusY" Value="{DynamicResource OsdFrameRadius}" />
     </Style>
     <Style Selector="StackPanel.qrcode">
         <Setter Property="Spacing" Value="{DynamicResource MenuTagGap}" />

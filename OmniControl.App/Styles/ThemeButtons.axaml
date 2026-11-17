@@ -1,8 +1,9 @@
-<Styles xmlns="https://github.com/avaloniaui"
+﻿<Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:svc="using:OmniControl.App.Services"
         xmlns:pages="using:OmniControl.App.Pages"
-        xmlns:vol="using:OmniControl.App.Pages.Volume">
+        xmlns:vol="using:OmniControl.App.Pages.Volume"
+        xmlns:c="using:OmniControl.App.Controls">
     <!-- Pills, tags, links, tabs and the other button and row masters, moved out of Theme.axaml (700-line limit); included straight after ThemeLists, so the later-wins order is unchanged. -->
 
     <!-- Action pill on a mouse button's card: quiet outline for "Default", accent tint once remapped -->
@@ -141,6 +142,7 @@
     <Style Selector="Border.tag.good"><Setter Property="Background" Value="{DynamicResource BrushTagGoodSoft}" /><Setter Property="BorderBrush" Value="{DynamicResource BrushTagGood}" /></Style>
     <Style Selector="Border.tag.caution"><Setter Property="Background" Value="{DynamicResource BrushTagCautionSoft}" /><Setter Property="BorderBrush" Value="{DynamicResource BrushTagCaution}" /></Style>
     <Style Selector="Border.tag.risk"><Setter Property="Background" Value="{DynamicResource BrushTagRiskSoft}" /><Setter Property="BorderBrush" Value="{DynamicResource BrushTagRisk}" /></Style>
+    <Style Selector="Border.tag.cable"><Setter Property="BorderBrush" Value="{DynamicResource BrushCable}" /></Style>
     <Style Selector="Border.tag.selected"><Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" /><Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" /></Style>
 
 
@@ -189,6 +191,18 @@
     <Style Selector="ListBox.fxlist > ListBoxItem:selected:pointerover /template/ ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
     </Style>
+
+    <!-- Device folders in the FX chain list (docs/mockups/fx-device-folders.html): Grid.chainfolder = a folder row (dimmed with .dim while its device is
+         not playing); c|IconGlyph.chainfolder = its folder glyph (muted, accent with .playing, cable blue with .cable); Border.chainindent = the 2 px accent
+         bar at the left of an effect inside a folder; TextBlock.chainhint = the muted "all devices" hint of an effect outside every folder -->
+    <Style Selector="Grid.chainfolder.dim"><Setter Property="Opacity" Value="0.55" /></Style>
+    <Style Selector="c|IconGlyph.chainfolder"><Setter Property="Width" Value="14" /><Setter Property="Height" Value="14" /><Setter Property="Foreground" Value="{DynamicResource BrushMuted}" /></Style>
+    <Style Selector="c|IconGlyph.chainfolder.playing"><Setter Property="Foreground" Value="{DynamicResource BrushAccent}" /></Style>
+    <Style Selector="c|IconGlyph.chainfolder.cable"><Setter Property="Foreground" Value="{DynamicResource BrushCable}" /></Style>
+    <Style Selector="Button.step.chainchevron"><Setter Property="Padding" Value="2" /><Setter Property="MinWidth" Value="0" /><Setter Property="MinHeight" Value="0" /></Style>
+    <Style Selector="c|IconGlyph.pillglyph"><Setter Property="Width" Value="{DynamicResource PillGlyphSize}" /><Setter Property="Height" Value="{DynamicResource PillGlyphSize}" /></Style>
+    <Style Selector="Border.chainindent"><Setter Property="Width" Value="2" /><Setter Property="Margin" Value="6,-5,0,-5" /><Setter Property="Background" Value="{DynamicResource BrushAccent}" /></Style>
+    <Style Selector="TextBlock.chainhint"><Setter Property="FontSize" Value="10.5" /><Setter Property="Foreground" Value="{DynamicResource BrushMuted}" /></Style>
 
     <!-- A thin upright line between two parts of a card (FX split button, a slider and its switch) -->
     <Style Selector="Border.divider"><Setter Property="Background" Value="{DynamicResource BrushDivider}" /><Setter Property="Width" Value="1" /></Style>

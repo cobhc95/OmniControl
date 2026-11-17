@@ -2,6 +2,7 @@ using OmniControl.Core.Models;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Avalonia.Platform;
 using OmniControl.App.Services;
 
 namespace OmniControl.App.Osd;
@@ -15,12 +16,6 @@ public sealed class OsdWindow : Window
 {
     // Far off every screen, so the parked window can never sit over (and block the pointer shape of) anything.
     private static readonly PixelPoint Parked = new(-32000, -32000);
-
-    /// <summary>Gap between the pop-up and the edge of the screen's working area.</summary>
-    private const double ScreenMargin = 32;
-
-    /// <summary>Whole pixels added to the measured size so rounding never puts the pop-up a pixel over the margin.</summary>
-    private const int RoundingSlack = 2;
 
     /// <summary>Values drawn per level pop-up at start-up: zero (the muted look), full, then the sample that stays drawn.</summary>
     private static readonly int[] WarmValues = { 0, Percent.Max, OsdView.SampleValue };
@@ -125,13 +120,13 @@ public sealed class OsdWindow : Window
     }
 
     /// <summary>
-    /// Moves the pop-up to <paramref name="position"/> on the primary screen without stealing focus. With
+    /// Moves the pop-up to <paramref name="spot"/> on <paramref name="screen"/> without stealing focus. With
     /// <paramref name="newVisual"/> the move waits until the new visual's frame is drawn, so the previous pop-up's frame never flashes.
     /// When the pop-up is already there (values streaming in), nothing moves: the new value draws in place.
     /// </summary>
-    public void ShowAt(OsdPosition position, bool newVisual)
+    public void ShowAt(OsdSpot spot, Screen screen, bool newVisual)
     {
-        if (Place(position) is not { } target || _onScreen == target) return;
+        if (Place(spot, screen) is not { } target || _onScreen == target) return;
         _onScreen = target;
         if (!newVisual) MoveOnScreen();
         else
@@ -154,32 +149,10 @@ public sealed class OsdWindow : Window
 
     private void Redraw() => (Content as Control)?.InvalidateVisual();
 
-    /// <summary>Where the pop-up goes on the primary screen for its current content, in screen pixels.</summary>
-    private PixelPoint? Place(OsdPosition position)
+    /// <summary>Where the pop-up goes on <paramref name="screen"/> for its current content, in screen pixels.</summary>
+    private PixelPoint? Place(OsdSpot spot, Screen screen)
     {
-        var screen = Screens.Primary;
-        if (screen is null || Content is not Control content) return null;
-        var area = screen.WorkingArea;
-        var scale = screen.Scaling;
-
-        // Measuring is free when nothing changed size: a value change keeps every size fixed (see OsdView).
-        content.Measure(Size.Infinity);
-        var w = (int)(content.DesiredSize.Width * scale) + RoundingSlack;
-        var h = (int)(content.DesiredSize.Height * scale) + RoundingSlack;
-        var margin = (int)(ScreenMargin * scale);
-
-        var x = position switch
-        {
-            OsdPosition.TopLeft or OsdPosition.BottomLeft => area.X + margin,
-            OsdPosition.TopRight or OsdPosition.BottomRight => area.Right - w - margin,
-            _ => area.X + (area.Width - w) / 2,
-        };
-        var y = position switch
-        {
-            OsdPosition.TopLeft or OsdPosition.TopCenter or OsdPosition.TopRight => area.Y + margin,
-            OsdPosition.Center => area.Y + (area.Height - h) / 2,
-            _ => area.Bottom - h - margin,
-        };
-        return new PixelPoint(x, y);
+        if (Content is not Control content) return null;
+        return OsdPlacement.Position(spot, screen.WorkingArea, screen.Scaling, OsdPlacement.SizeOf(content, screen.Scaling));
     }
 }

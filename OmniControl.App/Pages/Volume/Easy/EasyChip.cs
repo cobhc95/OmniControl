@@ -16,6 +16,9 @@ public sealed partial class EasyChip : ObservableObject
 
     public IRelayCommand PickCommand { get; }
 
+    /// <summary>The chips of a row (Controls/ChoiceChips) may carry an icon; the Sound chips do not.</summary>
+    public string? Icon => null;
+
     [ObservableProperty] private bool _isSelected;
 
     [ObservableProperty] private bool _canPick = true;

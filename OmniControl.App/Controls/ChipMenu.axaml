@@ -8,7 +8,7 @@
     <FlyoutBase.AttachedFlyout>
         <c:ListMenuFlyout Placement="BottomEdgeAlignedRight" Opened="OnOpened" Closed="OnClosed" />
     </FlyoutBase.AttachedFlyout>
-    <Button x:Name="Chip" Tag="grouptool" Classes="selector" HorizontalAlignment="Right" Click="OnClick">
+    <Button x:Name="Chip" Classes="selector" Click="OnClick">
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
             <TextBlock x:Name="Words" />
             <PathIcon Grid.Column="1" Data="{DynamicResource ChevronDownIcon}" />

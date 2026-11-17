@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OmniControl.App.Audio;
@@ -15,11 +15,14 @@ public sealed partial class AddEffectViewModel : ObservableObject
     private const string AllKinds = "All";
 
     private readonly PluginLibrary _library;
+    private readonly bool _allowFolders;
     private CancellationTokenSource? _scan;
 
-    public AddEffectViewModel(PluginLibrary library)
+    /// <param name="allowFolders">Whether "Device folder" is offered: only the master chain can hold one.</param>
+    public AddEffectViewModel(PluginLibrary library, bool allowFolders)
     {
         _library = library;
+        _allowFolders = allowFolders;
         Refresh();
         Status = _library.HasScanned ? string.Empty : $"Scan the plug-in folders or load a {Tags} file. {OtherPlaces}";
     }
@@ -92,7 +95,7 @@ public sealed partial class AddEffectViewModel : ObservableObject
     private void Refresh()
     {
         var keep = Selected;
-        var found = _library.All().Where(e => (Kind == AllKinds || e.Format == Kind) && TextMatch.Any(Query, e.Name, e.Format, e.Vendor, e.Description)).ToList();
+        var found = _library.All().Where(e => (_allowFolders || !e.IsFolder) && (Kind == AllKinds || e.Format == Kind) && TextMatch.Any(Query, e.Name, e.Format, e.Vendor, e.Description, e.Keywords)).ToList();
         ListDiff.Apply(Results, found, e => e);
         Selected = keep is not null && Results.Contains(keep) ? keep : Results.FirstOrDefault();
     }

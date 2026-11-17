@@ -9,6 +9,7 @@
          Border.selector  the same chip shape when there is nothing to pick (a microphone's own device, a row whose method has no menu).
          .method          the Method chip's colour, one class per method: .apo (Equalizer APO, green), .cable (a cable or the cable bus,
                           blue BrushCable), .recording (the accent), none = direct (muted words, a plain edge).
+         Button.selector.running  a chip whose thing is running now (the Simulation row's emulator chip): accent words and edge.
          Button.pill.glow the FX button while effects run: accent words, accent edge, accent wash and a soft accent glow (AccentGlow,
                           made from the accent by AccentService).
          Button.reveal    the eye inside a password field's right edge (Controls/PasswordField): flat, muted glyph, hover wash; accent wash and
@@ -73,6 +74,10 @@
         <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" />
     </Style>
+    <Style Selector="Button.selector.running /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" />
+    </Style>
     <Style Selector="Border.selector.method.recording"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" /></Style>
     <Style Selector="Border.selector.method.recording > TextBlock"><Setter Property="Foreground" Value="{DynamicResource BrushAccent}" /></Style>
     <!-- Hover and focus keep the chip's colour words; only the wash and the edge take the master hover and focus -->
@@ -117,4 +122,33 @@
         <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
     </Style>
     <Style Selector="Button.reveal:focus-visible > Path.glyph, Button.reveal:pressed > Path.glyph"><Setter Property="Stroke" Value="{DynamicResource BrushAccent}" /></Style>
+    <!-- Controls/AnchorPicker (docs/mockups/osd-custom-position.html): Border.anchorframe = its frame (an invisible 1 px edge that turns accent
+         while it has the keyboard, so nothing moves); Button.anchorcell = one small square of its 3 x 3 grid (raised and quiet; the chosen one
+         .selected = accent; hover = the master hover edge). Sizes AnchorCell* in App.axaml. -->
+    <Style Selector="Border.anchorframe">
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="CornerRadius" Value="{DynamicResource AnchorFrameCornerRadius}" />
+        <Setter Property="Padding" Value="{DynamicResource AnchorFramePadding}" />
+    </Style>
+    <Style Selector="Border.anchorframe.focused"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
+    <Style Selector="Button.anchorcell">
+        <Setter Property="Width" Value="{DynamicResource AnchorCellSize}" />
+        <Setter Property="Height" Value="{DynamicResource AnchorCellSize}" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="{DynamicResource AnchorCellGap}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource AnchorCellCornerRadius}" />
+    </Style>
+    <Style Selector="Button.anchorcell /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.anchorcell:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" /></Style>
+    <Style Selector="Button.anchorcell.selected /template/ ContentPresenter#PART_ContentPresenter, Button.anchorcell.selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+    </Style>
 </Styles>

@@ -21,6 +21,9 @@ public sealed partial class GalleryItem : ObservableObject, IEditorItem, IHalfWi
     /// <summary>A fact about the setting the label does not say, shown as the card's tooltip; null: none.</summary>
     public string? Tip { get; init; }
 
+    /// <summary>Something shown at the card's right end beside the gallery (a <see cref="Hotkeys.SuggestedKeysSwitch"/>), drawn by the data template of its type; null: nothing.</summary>
+    public object? Extra { get; init; }
+
     /// <summary>Greyed out, with a reason, while the choice cannot be made or read (a display Windows would not report on).</summary>
     public Availability Availability { get; } = new();
 

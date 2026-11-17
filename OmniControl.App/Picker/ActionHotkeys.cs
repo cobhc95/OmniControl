@@ -117,9 +117,11 @@ public sealed partial class ActionHotkeys : ObservableObject, IDisposable
     private void Suggest()
     {
         if (Action.SuggestedKey is not { } key || Action.Keys.Contains(key)) return;
+        // The key goes through the same rules as a pressed one; the box is only shown when it has to say whose the key is (a transient box
+        // added and then replaced by the rebuild a given key causes would change the list under the command that is running).
         var slot = Slots.FirstOrDefault(s => s.Key.Length == 0) ?? NewSlot(string.Empty);
-        if (!Slots.Contains(slot)) Slots.Add(slot);
         slot.Capture(key);
+        if (slot.HasConflict && !Slots.Contains(slot)) Slots.Add(slot);
     }
 
     /// <summary>A key was captured in a box: given to the action, refused, or shown as another action's.</summary>

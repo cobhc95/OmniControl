@@ -20,10 +20,13 @@ public static class PowerStates
         yield return new StateEntry(OnBattery, "On battery", PowerActions.Power, StateKind.OnOff,
             () => PowerState.IsOnBattery() is { } on ? StateValue.Of(on, DateTime.Now) : null, Looked, Keywords: "power source plugged unplugged laptop charger");
         yield return new StateEntry(Charge, "Battery charge", PowerActions.Power, StateKind.Level,
-            () => PowerState.BatteryPercent() is { } percent ? StateValue.Of(percent, DateTime.Now) : null, Looked, Unit: "%", Keywords: "battery level percent low");
+            () => PowerState.BatteryPercent() is { } percent ? StateValue.Of(percent, DateTime.Now) : null, Looked, Unit: "%", Keywords: "battery level percent low",
+            Common: PowerState.HasBattery() ? CommonGroups.Power : null);
         yield return new StateEntry(Mode, "Power mode", PowerActions.Power, StateKind.Choice,
             () => PowerCommands.CurrentMode() is { } mode ? StateValue.Of(NameOf(mode), DateTime.Now) : null, Looked,
-            Choices: () => PowerActions.Modes.Select(m => m.Name).ToList(), Keywords: "efficiency balanced performance");
+            Choices: () => PowerActions.Modes.Select(m => m.Name).ToList(), Keywords: "efficiency balanced performance",
+            Set: value => { if (PowerActions.Modes.FirstOrDefault(m => m.Name == value.Text) is { Name: not null } chosen) PowerCommands.SetMode(chosen.Mode); },
+            SuggestedIcons: new[] { "gauge", "bolt", "battery" });
     }
 
     private static string NameOf(PowerMode mode) => PowerActions.Modes.First(m => m.Mode == mode).Name;

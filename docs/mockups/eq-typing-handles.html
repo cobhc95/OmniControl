@@ -1,0 +1,19 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Typeable values, EQ handles (approved)</title>
+<!-- Approved by the owner 17 Nov 2026.
+  1 Typeable value look (option A), for EVERY value registered with Pages/NumberText (app-wide, in the shared piece/style, never per control):
+    a faint field box: 1 px neutral edge (BrushFieldEdge or the text-box edge), dark field background like TextBox, small corner radius
+    as text boxes, padding ~2x8, right-aligned value; hover = accent edge + I-beam cursor; focus as the master focus style. No layout shift
+    (same thickness). Values that are not typeable keep plain text.
+  2 Parametric EQ graph: band circles 34 px -> 22 px (size resource in App.axaml), selected band keeps its ring.
+  3 EQ graph bandwidth handles: for the SELECTED band only, two small rounded handles (8x12, raised fill, accent edge) left and right of
+    the band at its bandwidth edges, joined by a faint dashed accent line; dragging a handle sideways changes the band's bandwidth
+    (symmetric), live; cursor = horizontal resize; hidden for band types without a bandwidth. Double-click a handle resets bandwidth.
+  4 Slider knob grips: the MASTER thick slider knob (Slider.thick, Styles/Sliders.axaml) gets three small vertical grip lines centred
+    on the knob (muted colour, accent on hover/drag); applies to every Slider.thick (and the vertical ones, lines turned horizontal).
+  5 FX window: the gap between the effects list (left) and the editor (right) is a drag handle (GridSplitter) that resizes the list's width;
+    resize cursor, a faint accent line on hover; min widths so neither side clips; the width is remembered. One shared splitter style
+    (a master in the styles), used here and by any future pane split. -->
+<style>body{font-family:Segoe UI;background:#1b1b1b;color:#eee;padding:20px;font-size:13px}</style></head><body>
+<p>Gain ━━━━━(|||)━━ [ +8.5 dB ] · graph: [▯]- - -(1)- - -[▯] band circle 22 px</p>
+</body></html>

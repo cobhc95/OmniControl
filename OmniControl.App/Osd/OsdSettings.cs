@@ -9,6 +9,26 @@ public sealed class OsdSettings
 {
     public bool Enabled { get; set; } = true;
     public OsdPosition Position { get; set; } = OsdPosition.BottomCenter;
+
+    /// <summary>The id of the user's named place in use (one of <see cref="Places"/>); null: the built-in <see cref="Position"/>.</summary>
+    public string? CustomPlace { get; set; }
+
+    /// <summary>The places the user named, in their order (the OSD place presets).</summary>
+    public List<OsdPlace> Places { get; set; } = new();
+
+    /// <summary>On which screens the pop-up shows; every screen by default.</summary>
+    public OsdShowOn ShowOn { get; set; } = OsdShowOn.AllScreens;
+
+    /// <summary>The screens (<see cref="OsdScreens.KeyOf"/>) shown on while <see cref="ShowOn"/> is <see cref="OsdShowOn.Chosen"/>.</summary>
+    public List<string> Screens { get; set; } = new();
+
+    /// <summary>Where the pop-up goes: the named place in use, else the built-in one.</summary>
+    public OsdSpot CurrentSpot() =>
+        CustomPlace is { } id && Places.FirstOrDefault(p => p.Id == id) is { } place ? place.ToSpot() : OsdPlacement.Of(Position);
+
+    /// <summary>The name of <see cref="CurrentSpot"/>'s place, as the Position card shows it.</summary>
+    public string CurrentPlaceName() =>
+        CustomPlace is { } id && Places.FirstOrDefault(p => p.Id == id) is { } place ? place.Name : Describe(Position);
     public OsdStyle Style { get; set; } = OsdStyle.Pill;
     /// <summary>"Match program" (follow the program accent) or the name of an AccentService preset.</summary>
     public string Accent { get; set; } = MatchProgram;
@@ -56,6 +76,19 @@ public sealed class OsdSettings
         OsdPosition.Center => "Center",
         OsdPosition.BottomLeft => "Bottom left",
         OsdPosition.BottomCenter => "Bottom center",
+        _ => "Bottom right",
+    };
+
+    public static string Describe(OsdAnchor a) => a switch
+    {
+        OsdAnchor.TopLeft => "Top left",
+        OsdAnchor.Top => "Top center",
+        OsdAnchor.TopRight => "Top right",
+        OsdAnchor.Left => "Left",
+        OsdAnchor.Center => "Center",
+        OsdAnchor.Right => "Right",
+        OsdAnchor.BottomLeft => "Bottom left",
+        OsdAnchor.Bottom => "Bottom center",
         _ => "Bottom right",
     };
 

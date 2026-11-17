@@ -1,4 +1,5 @@
 using Avalonia.Threading;
+using OmniControl.App.Hotkeys;
 using OmniControl.App.Services;
 using OmniControl.Core.Interfaces;
 
@@ -29,17 +30,20 @@ internal sealed class DisplayOrientationCard
     private readonly string _displayName;
     private readonly IDisplayRotation _rotation;
     private readonly Action<string> _report;
+    private readonly SuggestedKeysSwitch? _suggestedKeys;
     private bool _disposed;
 
     public GalleryItem Card { get; }
 
     /// <param name="deviceName">Windows' name for the display (the one it turns); null when Windows lists none for it.</param>
-    public DisplayOrientationCard(string? deviceName, string displayName, IDisplayRotation rotation, Action<string> report)
+    /// <param name="suggestedKeys">The switch for the orientation hotkeys' suggested keys, shown at the card's right; the card owns it.</param>
+    public DisplayOrientationCard(string? deviceName, string displayName, IDisplayRotation rotation, Action<string> report, SuggestedKeysSwitch? suggestedKeys = null)
     {
-        (_deviceName, _displayName, _rotation, _report) = (deviceName, displayName, rotation, report);
+        (_deviceName, _displayName, _rotation, _report, _suggestedKeys) = (deviceName, displayName, rotation, report, suggestedKeys);
         Card = new GalleryItem("Orientation", Names, 0, () => OrientationPreview.Build(Card!.Index), Apply)
         {
             Tip = "Turns the screen through Windows. Its width and height swap between landscape and portrait.",
+            Extra = suggestedKeys,
         };
         Card.Availability.MakeUnavailable("Reading the display...");
     }
@@ -51,7 +55,11 @@ internal sealed class DisplayOrientationCard
         Dispatcher.UIThread.Post(() => Show(now));
     });
 
-    public void Dispose() => _disposed = true;
+    public void Dispose()
+    {
+        _disposed = true;
+        _suggestedKeys?.Dispose();
+    }
 
     /// <summary>Turns the display (a hotkey); nothing while the card is unavailable.</summary>
     public void Choose(DisplayOrientation orientation)

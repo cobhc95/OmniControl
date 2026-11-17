@@ -134,6 +134,7 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
         _toggleFx = toggleFx;
         _presets = presets;
         _openPresets = openPresets;
+        _micKey = new MicMuteKey(report);
 
         CombineSpeakersGate = new ControlGate();
         CombineMicrophonesGate = new ControlGate();
@@ -161,6 +162,7 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
         RegisterPresets(presetGroups);
         CreateEasy(hotkeys);
         RegisterStates();
+        RegisterMedia(hotkeys);
     }
 
     public override void OnShown()
@@ -213,6 +215,7 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
         _presetChoice?.Dispose();
         Easy.Dispose();
         ForgetStates();
+        ForgetMedia();
         _meterTimer.Stop();
     }
 }

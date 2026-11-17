@@ -1,0 +1,21 @@
+<Window Classes="dialog" xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:OmniControl.App.Pages.Osd"
+        x:Class="OmniControl.App.Pages.Osd.OsdPlacementWindow"
+        x:DataType="vm:OsdPlacementViewModel"
+        Title="{Binding Heading}" Width="{DynamicResource OsdPlacementWidth}" SizeToContent="Height"
+        CanResize="False" WindowStartupLocation="CenterOwner">
+    <!-- docs/mockups/osd-custom-position.html part 2: the cards Screen, Anchor, Across, Up/Down from the anchor and Name, then Cancel and OK.
+         While this window is open the OSD is shown live on the chosen screen (Osd/OsdPreview): drag it, or nudge it with the arrow keys
+         (1 px, Shift 10 px) after clicking it. Esc = Cancel. -->
+    <StackPanel Margin="12" Spacing="10">
+        <TextBlock Classes="title" Text="{Binding Heading}" />
+        <StackPanel Grid.IsSharedSizeScope="True">
+            <ListBox x:Name="CardList" Classes="rows compact cards" ItemsSource="{Binding Cards}" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Classes="usebtn scope" Tag="scope" Content="OK" IsEnabled="{Binding CanSave}" ToolTip.Tip="{Binding Problem}" ToolTip.ShowOnDisabled="True" Click="OnOkClick" />
+            <Button Classes="primary close" Content="Cancel" Click="OnCancelClick" />
+        </StackPanel>
+    </StackPanel>
+</Window>

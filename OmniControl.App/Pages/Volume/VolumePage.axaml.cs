@@ -38,6 +38,7 @@ public partial class VolumePage : UserControl
         if (_running is null) return;
         _running.StartMeters();
         _running.RevealRequested += OnReveal;
+        if (_running.TakePendingReveal() is { } pending) OnReveal(pending);
     }
 
     private void OnReveal(object item) =>

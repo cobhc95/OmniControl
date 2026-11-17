@@ -1,3 +1,4 @@
+﻿using OmniControl.App.Services;
 using OmniControl.Core.Engine.Apo;
 
 namespace OmniControl.App.Audio.Engine;
@@ -10,6 +11,9 @@ namespace OmniControl.App.Audio.Engine;
 internal sealed record ApoRow(string Key, string Title, IReadOnlyList<FxSlot> Chain, ApoEndpoint? Endpoint, string? Missing, string Without,
     StatusKind MissingKind = StatusKind.NeedsApo);
 
+/// <summary>What is on disk in one config folder: OmniControl's part is as it should be, and config.txt runs effects of its own (outside OmniControl's lines).</summary>
+public sealed record ApoFolderFacts(bool InPlace, bool OwnEffects);
+
 /// <summary>Where OmniControl's Equalizer APO text goes: the real config folders (<see cref="ApoConfigFiles"/>), or a fake in the tests.</summary>
 internal interface IApoConfigStore
 {
@@ -18,6 +22,12 @@ internal interface IApoConfigStore
 
     /// <summary>Takes OmniControl's file and include line out of <paramref name="folder"/>; the error sentence, or null when done.</summary>
     string? Remove(string folder);
+
+    /// <summary>What is really on disk (<paramref name="wanted"/> null = none of OmniControl's part); null while a file is busy.</summary>
+    ApoFolderFacts? Read(string folder, string? wanted);
+
+    /// <summary>Makes the APO of <paramref name="folder"/> load it again without changing it; the error sentence, or null.</summary>
+    string? Touch(string folder);
 }
 
 /// <summary>The real config folders.</summary>
@@ -27,35 +37,74 @@ internal sealed class ApoConfigFolders : IApoConfigStore
 
     public string? Apply(string folder, string text) => ApoConfigFiles.Apply(folder, text);
     public string? Remove(string folder) => ApoConfigFiles.Remove(folder);
+    public ApoFolderFacts? Read(string folder, string? wanted) => ApoConfigFiles.Read(folder, wanted);
+    public string? Touch(string folder) => ApoConfigFiles.Touch(folder);
+}
+
+/// <summary>
+/// What OmniControl's part of every config folder should be: the chain text per folder (<see cref="Files"/>) and the folders that must hold
+/// none of it (<see cref="Clean"/>). Immutable, so the folder watch reads it off the UI thread.
+/// </summary>
+internal sealed record ApoTarget(IReadOnlyDictionary<string, string> Files, IReadOnlyList<string> Clean)
+{
+    public static readonly ApoTarget None = new(new Dictionary<string, string>(), Array.Empty<string>());
+
+    public IEnumerable<string> Folders => Files.Keys.Concat(Clean);
+
+    /// <summary>The chain text that belongs in <paramref name="folder"/>; null = none of OmniControl's part.</summary>
+    public string? WantedIn(string folder) => Files.GetValueOrDefault(folder);
+
+    public bool SameAs(ApoTarget other) =>
+        Files.Count == other.Files.Count && Files.All(kv => other.Files.TryGetValue(kv.Key, out var text) && text == kv.Value)
+        && Clean.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(other.Clean);
 }
 
 /// <summary>
 /// The chains that run in Equalizer APO (or OmniControl APO): puts each row's section into OmniControl.txt of the config folder whose
 /// APO runs on that row's device (<see cref="ApoChainWriter"/>, <see cref="IApoConfigStore"/>), takes OmniControl's line and file out of
-/// every other folder, touches files only when the wanted text changes, and says per row what is true: the chain was sent (not that
-/// Windows applied it), the APO is missing there and why, or a write failed. The first call after start-up always writes (or cleans),
-/// so a crashed run's lines are taken out. UI thread.
+/// every other folder, writes only when the wanted text changes (what is really on disk is checked by <see cref="ApoKeeper"/>, which
+/// puts back what another program took out), and says per row what is true: the chain was sent (not that Windows applied it), the APO is
+/// missing there and why, the config no longer includes it (<see cref="SetDisplaced"/>), or a write failed. A failed write is tried
+/// again no sooner than <see cref="Timing.ApoRetryGap"/>, so a locked folder is not rewritten on every change. The first call after
+/// start-up always writes (or cleans), so a crashed run's lines are taken out. UI thread.
 /// </summary>
 internal sealed class ApoChains
 {
-    private static readonly IReadOnlyDictionary<string, string> Nothing = new Dictionary<string, string>();
-
     private readonly Action<string> _report;
     private readonly IApoConfigStore _store;
+    private readonly IrLevels _levels;
 
-    /// <summary>What was last put in place: config folder -> OmniControl.txt text (empty = OmniControl's line taken out everywhere).</summary>
-    private IReadOnlyDictionary<string, string> _applied = Nothing;
+    /// <summary>What should be in place (updated on every change, whether or not the write worked).</summary>
+    private ApoTarget _target = ApoTarget.None;
+    /// <summary>The last write's errors by folder (kept until the next write, so a row keeps saying it failed).</summary>
+    private Dictionary<string, string> _errors = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>Folders whose config no longer includes OmniControl's part and that are left so (Keep in place is off).</summary>
+    private readonly HashSet<string> _displaced = new(StringComparer.OrdinalIgnoreCase);
     private bool _synced;
+    private DateTime _retryAt = DateTime.MinValue;
     private string? _reported;
 
+    /// <summary>Folders whose chain file was just written (the keeper nudges Equalizer APO once the burst is over). UI thread.</summary>
+    public event Action<IReadOnlyCollection<string>>? Wrote;
+
     /// <param name="report">The footer line: a failed clean-up of a folder no row writes to is said there once (nothing else shows it).</param>
+    /// <param name="levelMeasured">An IR file's Auto level became known (worker thread): the owner applies the chains again.</param>
     /// <param name="store">Where the text goes (the real folders unless a test gives a fake).</param>
-    public ApoChains(Action<string> report, IApoConfigStore? store = null)
+    public ApoChains(Action<string> report, Action levelMeasured, IApoConfigStore? store = null)
     {
         _report = report;
+        _levels = new IrLevels(levelMeasured);
         _store = store ?? ApoConfigFolders.Instance;
     }
 
+    /// <summary>What should be in place now.</summary>
+    public ApoTarget Target => _target;
+
+    /// <summary>The last write left a folder unwritten.</summary>
+    public bool Failing => !_synced;
+
+    /// <summary>Some folder's config no longer includes OmniControl's effects and is left so.</summary>
+    public bool AnyDisplaced => _displaced.Count > 0;
     /// <summary>
     /// The rows a plan sends to Equalizer APO (<see cref="RoutePlan.ToApo"/>), each on its own device: the master on the real speakers
     /// (<see cref="RoutePlan.MasterApoDevice"/>); a program on the cable its run uses (<see cref="RunKind.ApoCable"/>). Pure: the chains and names come from the callers.
@@ -71,7 +120,7 @@ internal sealed class ApoChains
             if (key == MixerService.MasterKey)
             {
                 var speakers = plan.MasterApoDevice is { } id ? apo.PlaybackOf(id) : null;
-                rows.Add(new ApoRow(key, nameOf(key), chainOf(null), speakers, EffectsRules.ApoMissingOn(apo, speakers), Silent, StatusKind.ApoNotApplied));
+                rows.Add(new ApoRow(key, nameOf(key), FxFolders.ApoChainFor(chainOf(null), plan.MasterApoDevice), speakers, EffectsRules.ApoMissingOn(apo, speakers), Silent, StatusKind.ApoNotApplied));
             }
             else if (plan.Runs.GetValueOrDefault(key)?.Cable is { } cable)
             {
@@ -96,32 +145,48 @@ internal sealed class ApoChains
                 statuses[row.Key] = new EngineStatus(EngineState.Unavailable, $"{row.Missing ?? "Equalizer APO is not on this device"}. {row.Without}", null, row.MissingKind, RunMethod.Apo);
                 continue;
             }
-            var section = ApoChainWriter.Section(row.Title, row.Chain, ApoIds.DeviceKeyOf(row.Endpoint.EndpointId));
+            var section = ApoChainWriter.Section(row.Title, row.Chain, ApoIds.DeviceKeyOf(row.Endpoint.EndpointId), _levels);
             if (!sections.TryGetValue(folder, out var list)) sections[folder] = list = new List<ApoSection>();
             list.Add(section);
             placed.Add((row.Key, folder, section));
         }
 
-        var wanted = sections.ToDictionary(s => s.Key, s => ApoChainWriter.File(s.Value), StringComparer.OrdinalIgnoreCase);
-        var errors = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        if (!_synced || !Same(wanted, _applied))
+        var target = TargetFor(sections, apo);
+        if (!target.SameAs(_target) || (!_synced && DateTime.UtcNow >= _retryAt))
         {
-            errors = PutInPlace(apo, wanted);
-            if (errors.Count == 0)
-            {
-                _applied = wanted;
-                _synced = true;
-            }
-            var cleanUp = errors.Where(e => !wanted.ContainsKey(e.Key)).Select(e => e.Value).FirstOrDefault();
-            if (cleanUp is not null && cleanUp != _reported) _report(cleanUp); // tried again on the next change
-            _reported = cleanUp;
+            _target = target;
+            _displaced.IntersectWith(target.Files.Keys); // a folder that should now be clean is cleaned, whatever the switch says
+            Write();
         }
 
         foreach (var (key, folder, section) in placed)
-            statuses[key] = errors.TryGetValue(folder, out var error)
-                ? new EngineStatus(EngineState.Failed, error, null, StatusKind.ApoFailed, RunMethod.Apo)
-                : new EngineStatus(EngineState.Running, $"{EffectsRules.ApoSent(apo, folder)} · {PluginNote(section)}{EngineStatus.SkippedNote(section.Skipped)}", null, StatusKind.Running, RunMethod.Apo);
+            statuses[key] = StatusOf(apo, folder, section, sections[folder].Any(s => s.Waiting));
         return statuses;
+    }
+
+    /// <summary>
+    /// The wanted chain text per folder and the folders to clean. A folder whose IR level is still being measured keeps the text it
+    /// had (or, with none yet, is neither written nor cleaned) until the measurement is in.
+    /// </summary>
+    private ApoTarget TargetFor(Dictionary<string, List<ApoSection>> sections, ApoState apo)
+    {
+        var files = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var held = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (folder, list) in sections)
+        {
+            if (!list.Any(s => s.Waiting)) files[folder] = ApoChainWriter.File(list);
+            else if (_target.WantedIn(folder) is { } before) files[folder] = before;
+            else held.Add(folder);
+        }
+        return new ApoTarget(files, apo.ConfigFolders.Where(f => !files.ContainsKey(f) && !held.Contains(f)).ToList());
+    }
+
+    private EngineStatus StatusOf(ApoState apo, string folder, ApoSection section, bool waiting)
+    {
+        if (_errors.TryGetValue(folder, out var error)) return new EngineStatus(EngineState.Failed, error, null, StatusKind.ApoFailed, RunMethod.Apo);
+        if (waiting) return new EngineStatus(EngineState.Waiting, EffectsRules.ApoMeasuringIr, null, StatusKind.Starting, RunMethod.Apo);
+        if (_displaced.Contains(folder)) return new EngineStatus(EngineState.Unavailable, $"{EffectsRules.ApoDisplaced}. Playing without effects.", null, StatusKind.ApoDisplaced, RunMethod.Apo);
+        return new EngineStatus(EngineState.Running, $"{EffectsRules.ApoSent(apo, folder)} · {PluginNote(section)}{EngineStatus.SkippedNote(section.Skipped)}", null, StatusKind.Running, RunMethod.Apo);
     }
 
     /// <summary>
@@ -136,19 +201,68 @@ internal sealed class ApoChains
     }
 
     /// <summary>Takes OmniControl's line and file out of every config folder (exit: effects run only while OmniControl runs).</summary>
-    public void Clear(ApoState apo) => PutInPlace(apo, Nothing);
-
-    /// <summary>Removes OmniControl's line from every folder not wanted, then writes each wanted file; the errors by folder.</summary>
-    private Dictionary<string, string> PutInPlace(ApoState apo, IReadOnlyDictionary<string, string> wanted)
+    public void Clear(ApoState apo)
     {
-        var errors = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var folder in apo.ConfigFolders.Where(f => !wanted.ContainsKey(f)))
-            if (_store.Remove(folder) is { } error) errors[folder] = error;
-        foreach (var (folder, text) in wanted)
-            if (_store.Apply(folder, text) is { } error) errors[folder] = error;
-        return errors;
+        _target = new ApoTarget(new Dictionary<string, string>(), apo.ConfigFolders.ToList());
+        _displaced.Clear();
+        Write();
     }
 
-    private static bool Same(IReadOnlyDictionary<string, string> a, IReadOnlyDictionary<string, string> b) =>
-        a.Count == b.Count && a.All(kv => b.TryGetValue(kv.Key, out var text) && text == kv.Value);
+    /// <summary>
+    /// Puts OmniControl's whole part back where it should be (the keeper found it taken out, or the user asked with "Put back"): every
+    /// folder is written again (unchanged files are left alone) and none is left displaced.
+    /// </summary>
+    public void PutBack()
+    {
+        _displaced.Clear();
+        Write();
+    }
+
+    /// <summary>A failed write is tried again once its gap is over (the watchdog asks; a change in the chain writes at once anyway).</summary>
+    public void RetryIfDue()
+    {
+        if (!_synced && DateTime.UtcNow >= _retryAt) Write();
+    }
+
+    /// <summary>
+    /// Marks <paramref name="folder"/> as no longer including OmniControl's part (left so while Keep in place is off), or as including it
+    /// again; true when that changed. Only a folder that should hold a chain can be displaced.
+    /// </summary>
+    public bool SetDisplaced(string folder, bool displaced) =>
+        displaced ? _target.Files.ContainsKey(folder) && _displaced.Add(folder) : _displaced.Remove(folder);
+
+    /// <summary>Makes Equalizer APO load <paramref name="folders"/> again (after a burst of writes); a failure is said once.</summary>
+    public void Nudge(IEnumerable<string> folders)
+    {
+        foreach (var folder in folders.Where(f => _target.Files.ContainsKey(f)))
+            if (_store.Touch(folder) is { } error) Say(error);
+    }
+
+    /// <summary>Writes <see cref="_target"/>: removes OmniControl's part from every folder to clean, then writes each wanted file (except displaced ones).</summary>
+    private void Write()
+    {
+        var errors = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var folder in _target.Clean)
+            if (_store.Remove(folder) is { } error) errors[folder] = error;
+        var written = new List<string>();
+        foreach (var (folder, text) in _target.Files.Where(f => !_displaced.Contains(f.Key)))
+        {
+            if (_store.Apply(folder, text) is { } error) errors[folder] = error;
+            else written.Add(folder);
+        }
+        _errors = errors;
+        _synced = errors.Count == 0;
+        if (!_synced) _retryAt = DateTime.UtcNow + Timing.ApoRetryGap;
+        var cleanUp = errors.Where(e => !_target.Files.ContainsKey(e.Key)).Select(e => e.Value).FirstOrDefault();
+        if (cleanUp is not null) Say(cleanUp);
+        else _reported = null; // a later failure is said again
+        if (written.Count > 0) Wrote?.Invoke(written);
+    }
+
+    private void Say(string sentence)
+    {
+        if (sentence == _reported) return;
+        _reported = sentence;
+        _report(sentence);
+    }
 }

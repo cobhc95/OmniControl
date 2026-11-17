@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using OmniControl.App.Services;
 
@@ -26,13 +27,15 @@ public sealed partial class IconCell : ObservableObject
     [ObservableProperty] private bool _isSelected;
 }
 
-/// <summary>One part of the picker: its title ("Suggested for this", "Your icons", "All icons", then one part per category) and its cells; hidden when empty.</summary>
-public sealed class IconSection
+/// <summary>One part of the picker: its title ("Suggested for this", "Your icons", then one part per category) and its cells; kept while the search changes, so the cells that stay are not rebuilt.</summary>
+public sealed partial class IconSection : ObservableObject
 {
-    public IconSection(string title, IReadOnlyList<IconCell> cells) => (Title, Cells) = (title, cells);
+    public IconSection(string key, string title) => (Key, _title) = (key, title);
 
-    public string Title { get; }
-    public IReadOnlyList<IconCell> Cells { get; }
+    public string Key { get; }
+    public ObservableCollection<IconCell> Cells { get; } = new();
+
+    [ObservableProperty] private string _title;
 }
 
 /// <summary>
@@ -48,11 +51,20 @@ public sealed partial class IconPickerModel : ObservableObject
     private readonly IconStore _store;
     private readonly IconRequest _request;
     private IconCell? _selected;
+    private readonly SearchRunner<IReadOnlyList<SectionSpec>> _runner;
+    private readonly Dictionary<(string Section, string Value), IconCell> _libraryCells = new();
+    private int _generation;
+
+    /// <summary>One part of a search result: plain data made off the UI thread, turned into cells on it.</summary>
+    private sealed record SectionSpec(string Key, string Title, IReadOnlyList<CellSpec> Cells);
+
+    private sealed record CellSpec(string Value, string Name, bool IsMine);
 
     public IconPickerModel(IconStore store, IconRequest request)
     {
         (_store, _request) = (store, request);
         _selectedValue = IconLibrary.Current(request.Current);
+        _runner = new SearchRunner<IReadOnlyList<SectionSpec>>(Show, "icons");
         Rebuild();
     }
 
@@ -83,6 +95,9 @@ public sealed partial class IconPickerModel : ObservableObject
     public IconPick? Answer { get; private set; }
 
     partial void OnSearchChanged(string value) => Rebuild();
+
+    /// <summary>Stops a search still running (the window closes).</summary>
+    public void Close() => _runner.Dispose();
 
     /// <summary>Selects a cell (a click).</summary>
     public void Select(IconCell cell) => SelectValue(cell.Value);
@@ -164,25 +179,70 @@ public sealed partial class IconPickerModel : ObservableObject
         OnPropertyChanged(nameof(HasSelection));
     }
 
+    /// <summary>Starts the search for the typed words: the matching runs off the UI thread (an older one is cancelled), the first letter at once, later keys after a short wait.</summary>
     private void Rebuild()
     {
-        Sections.Clear();
-        var searching = Search.Trim().Length > 0;
-        if (!searching) Add("Suggested for this", _request.Suggested.Select(Library));
-        Add("Your icons", _store.Mine.Where(i => !searching || TextMatch.Any(Search, i.Name)).Select(i => new IconCell(i.Value, i.Name, IconResources.Find(i.Value), true)));
-        var all = IconLibrary.Search(Search);
+        var query = Search;
+        var suggested = _request.Suggested.Select(IconLibrary.Find).OfType<LibraryIcon>().Select(i => new CellSpec(i.Id, i.Name, false)).ToList();
+        var mine = _store.Mine.Select(i => (i.Value, i.Name)).ToList();
+        if (query.Trim().Length == 0)
+        {
+            _runner.Cancel();
+            Show(Compute(query, suggested, mine, CancellationToken.None));
+            return;
+        }
+        _runner.Request(cancel => Compute(query, suggested, mine, cancel));
+    }
+
+    // Only reads data that does not change (the library, its search index and copies taken on the UI thread).
+    private static IReadOnlyList<SectionSpec> Compute(string query, IReadOnlyList<CellSpec> suggested, IReadOnlyList<(string Value, string Name)> mine, CancellationToken cancel)
+    {
+        var searching = query.Trim().Length > 0;
+        var parts = new List<SectionSpec>();
+        if (!searching && suggested.Count > 0) parts.Add(new SectionSpec("suggested", "Suggested for this", suggested));
+        var own = mine.Where(i => !searching || TextMatch.Any(query, i.Name)).Select(i => new CellSpec(i.Value, i.Name, true)).ToList();
+        if (own.Count > 0) parts.Add(new SectionSpec("mine", "Your icons", own));
         // One part per category of the matches, in the library's order, each under its own heading with its count.
-        foreach (var part in all.GroupBy(i => i.Category))
-            Add($"{part.Key} · {part.Count()}", part.Select(i => Library(i.Id)));
+        foreach (var part in IconLibrary.Search(query, cancel).GroupBy(i => i.Category))
+            parts.Add(new SectionSpec("category:" + part.Key, $"{part.Key} · {part.Count()}", part.Select(i => new CellSpec(i.Id, i.Name, false)).ToList()));
+        return parts;
+    }
+
+    /// <summary>Shows a result: the first screenful of cells at once, the rest in the next frames (a newer result drops the rest of an older one).</summary>
+    private void Show(IReadOnlyList<SectionSpec> parts)
+    {
+        var generation = ++_generation;
+        Apply(parts, Timing.IconPickerFirstCells);
+        if (parts.Sum(p => p.Cells.Count) <= Timing.IconPickerFirstCells) return;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (generation == _generation) Apply(parts, int.MaxValue);
+        }, DispatcherPriority.Background);
+    }
+
+    private void Apply(IReadOnlyList<SectionSpec> parts, int budget)
+    {
+        var wanted = new List<IconSection>();
+        foreach (var part in parts)
+        {
+            if (budget <= 0) break;
+            var section = Sections.FirstOrDefault(s => s.Key == part.Key) ?? new IconSection(part.Key, part.Title);
+            section.Title = part.Title;
+            var cells = part.Cells.Take(budget).Select(c => CellFor(part.Key, c)).ToList();
+            budget -= cells.Count;
+            ListDiff.Apply(section.Cells, cells, c => c.Value, (a, b) => a.Value == b.Value && a.Name == b.Name && a.IsMine == b.IsMine);
+            wanted.Add(section);
+        }
+        ListDiff.Apply(Sections, wanted, s => s.Key);
         SelectValue(_selectedValue);
     }
 
-    private void Add(string title, IEnumerable<IconCell?> cells)
+    // A library cell is made once per part and kept; a user icon's is made again (its name can change).
+    private IconCell CellFor(string section, CellSpec spec)
     {
-        var list = cells.OfType<IconCell>().ToList();
-        if (list.Count > 0) Sections.Add(new IconSection(title, list));
+        if (spec.IsMine) return new IconCell(spec.Value, spec.Name, IconResources.Find(spec.Value), true);
+        if (!_libraryCells.TryGetValue((section, spec.Value), out var cell))
+            _libraryCells[(section, spec.Value)] = cell = new IconCell(spec.Value, spec.Name, IconResources.Find(spec.Value), false);
+        return cell;
     }
-
-    private static IconCell? Library(string id) =>
-        IconLibrary.Find(id) is { } icon ? new IconCell(icon.Id, icon.Name, IconResources.Find(icon.Id), false) : null;
 }

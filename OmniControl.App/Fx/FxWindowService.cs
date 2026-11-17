@@ -27,15 +27,22 @@ public sealed class FxWindowService
     private readonly Dictionary<string, FxWindow> _open = new();
     private readonly Action<string> _report;
     private readonly Action<string?, string?> _openPresets;
+    private readonly FxMixerLinks _mixerLinks;
+    private readonly Func<DialogMessage, Task<bool>> _ask;
+    private FolderPresets? _folderPresets;
     private string? _lastActive; // the FX window (its chain's id) the user worked in last
 
     /// <param name="report">Shows a message in the status bar when a window or a plug-in editor can't be opened.</param>
     /// <param name="presets">The user's own presets (the preset pull-down of every FX window and the preset manager's effect cards).</param>
     /// <param name="library">The plug-ins the Add effect window offers (shared with the App settings page's scan).</param>
     /// <param name="openPresets">Opens the shared preset manager at a section and group (a preset box's "Manage presets...").</param>
+    /// <param name="mixerLinks">Opens the Mixer and runs its Equalizer APO install step, for a device folder's editor and device menu.</param>
+    /// <param name="ask">Asks a question through the program's dialogs (true = confirmed): removing a device folder that holds effects.</param>
     public FxWindowService(MixerService mixer, EffectsEngine engine, EffectsSupportService support, PluginChainHost plugins, PluginLibrary library, UserPresetStore presets,
-        Action<string> report, Action<string?, string?> openPresets)
+        Action<string> report, Action<string?, string?> openPresets, FxMixerLinks mixerLinks, Func<DialogMessage, Task<bool>> ask)
     {
+        _ask = ask;
+        _mixerLinks = mixerLinks;
         _openPresets = openPresets;
         _library = library;
         _presets = presets;
@@ -49,12 +56,27 @@ public sealed class FxWindowService
 
     /// <summary>The view-model of one chain; its popped-out effect editors stay above <paramref name="owner"/>, the FX window.</summary>
     private FxChainViewModel CreateChain(string? key, Func<Window?> owner) =>
-        new(_mixer, key, new EffectEditorDock(_plugins, owner, _report), _clipboard, _library, slot => _engine.ReadingOf(key, slot), _presets,
-            kind => _openPresets(null, FxKindPresets.GroupId(kind)));
+        new(_mixer, key, new EffectEditorDock(_plugins, owner, _report), _clipboard, _library, _presets,
+            new FxChainTies(slot => _engine.ReadingOf(key, slot), kind => _openPresets(null, FxKindPresets.GroupId(kind)),
+                key is null ? new FxDeviceSource(_mixer, _support, _engine) : null, _mixerLinks, _ask, SaveFolderPreset)); // device folders: the master only
 
     /// <summary>One preset group per effect kind that has presets, in the catalog's order, for the preset manager's <paramref name="section"/> (the Volume page).</summary>
     public IEnumerable<PresetGroup> PresetGroupsFor(string section) =>
-        PresetCatalog.Kinds.Select(kind => new PresetGroup(FxKindPresets.GroupId(kind), section, kind.Name, new FxKindPresets(kind, _presets, PresetTargetOf)));
+        PresetCatalog.Kinds.Select(kind => new PresetGroup(FxKindPresets.GroupId(kind), section, kind.Name, new FxKindPresets(kind, _presets, PresetTargetOf)))
+            .Append(new PresetGroup(FolderPresets.GroupId, section, "Device folders", FolderPresetsProvider));
+
+    private FolderPresets FolderPresetsProvider => _folderPresets ??= new FolderPresets(_presets, FolderTargetOf);
+
+    /// <summary>The master's device folder a folder preset reaches: through the master's FX window when it is open (its list shows the change), else the saved chain.</summary>
+    private IFxFolderTarget FolderTargetOf() =>
+        ChainOf(MixerService.MasterKey) is { } master ? master : new SlotFolderTarget(_mixer.FxChain(null), () => _mixer.SaveFx(null));
+
+    /// <summary>A folder's "Save folder as preset...": it is kept under a first name and the preset manager opens at the folder presets, where it is renamed.</summary>
+    private void SaveFolderPreset(FolderPreset folder)
+    {
+        FolderPresetsProvider.Save(folder);
+        _openPresets(null, FolderPresets.GroupId);
+    }
 
     /// <summary>
     /// The effect a preset of this kind is read from and applied to: the selected effect of the FX window used last when it is of this

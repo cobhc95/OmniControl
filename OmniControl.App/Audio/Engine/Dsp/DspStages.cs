@@ -170,3 +170,54 @@ internal sealed class WetStage : IDspStage
         if (_inner.GetType() == wet._inner.GetType()) _inner.TakeStateFrom(wet._inner);
     }
 }
+
+/// <summary>The dry sound a folder's <see cref="MixOpenStage"/> keeps for its <see cref="MixCloseStage"/> (one block; audio thread).</summary>
+internal sealed class MixTap
+{
+    public readonly float[] Dry = new float[PipeFormat.MaxBlockSamples];
+    public int Length;
+}
+
+/// <summary>Start of a device folder's effects: keeps the dry sound so the folder's Mix can blend it back at <see cref="MixCloseStage"/>.</summary>
+internal sealed class MixOpenStage : IDspStage
+{
+    private readonly MixTap _tap;
+
+    public MixOpenStage(MixTap tap) => _tap = tap;
+
+    public void Process(Span<float> samples, int channels)
+    {
+        _tap.Length = Math.Min(samples.Length, _tap.Dry.Length);
+        samples[.._tap.Length].CopyTo(_tap.Dry);
+    }
+
+    public void TakeStateFrom(IDspStage previous) { }
+}
+
+/// <summary>End of a device folder's effects: the folder's Mix (0-100 %) of their result with the dry sound; at a settled 100 % the sound passes untouched.</summary>
+internal sealed class MixCloseStage : IDspStage
+{
+    private readonly MixTap _tap;
+    private Glide _wet;
+
+    public MixCloseStage(MixTap tap, double mix)
+    {
+        _tap = tap;
+        _wet = new Glide((float)mix);
+    }
+
+    public void Process(Span<float> samples, int channels)
+    {
+        if (!_wet.Moving && _wet.Now == 1) return;
+        for (var at = 0; at + channels <= _tap.Length && at + channels <= samples.Length; at += channels)
+        {
+            var wet = _wet.Next();
+            for (var i = at; i < at + channels; i++) samples[i] = _tap.Dry[i] + (samples[i] - _tap.Dry[i]) * wet;
+        }
+    }
+
+    public void TakeStateFrom(IDspStage previous)
+    {
+        if (previous is MixCloseStage close) _wet.StartFrom(close._wet.Now);
+    }
+}

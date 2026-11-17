@@ -1,4 +1,4 @@
-using Avalonia.Threading;
+﻿using Avalonia.Threading;
 using OmniControl.App.Audio.Engine.Dsp;
 using OmniControl.App.Services;
 using OmniControl.Core.Engine.Apo;
@@ -9,7 +9,9 @@ namespace OmniControl.App.Audio.Engine;
 /// Runs what <see cref="RoutePlanner"/> decides for every Volume row and keeps it in step with the settings (UI thread): the runs
 /// (<see cref="ProgramEngine"/>, <see cref="CableRoute"/>, <see cref="BusRun"/>, <see cref="FanOutRun"/>, <see cref="MicRun"/>),
 /// each program's own device, and the master's chain in the user's Equalizer APO (or OmniControl
-/// APO, <see cref="ApoChainWriter"/>, <see cref="ApoConfigFiles"/>), whose line is taken out again whenever no chain runs there.
+/// APO, <see cref="ApoChainWriter"/>, <see cref="ApoConfigFiles"/>), whose line is taken out again whenever no chain runs there and is
+/// kept in place from what is really on disk (<see cref="ApoWatch"/> reads the folders off the UI thread, <see cref="ApoKeeper"/> puts
+/// back what another program took out, or leaves it and says so while "Keep OmniControl's effects in place" is off).
 /// A run whose spec is unchanged keeps running. Without effects the sound plays unprocessed, and <see cref="StatusOf"/> says why.
 /// A failed run stays stopped until the user changes that row or the routing. Dispose stops everything, puts every program's own
 /// sound back and saves the plug-ins' settings (it does not unload them).
@@ -30,6 +32,11 @@ public sealed class EffectsEngine : IDisposable
     /// <summary>Rows (the master as <see cref="MixerService.MasterKey"/>) whose chain changed inside the current gap.</summary>
     private readonly HashSet<string> _fxPending = new();
     private readonly ApoChains _apo;
+    private readonly ApoKeeper _keeper;
+    /// <summary>Reads the config folders and the IR files in use off the UI thread (null in a screenshot export, which writes nothing).</summary>
+    private readonly ApoWatch? _watch;
+    /// <summary>What the watch compares the disk with; replaced (never changed) on the UI thread, read by the watch's worker.</summary>
+    private volatile ApoWatchInput _watchInput = ApoWatchInput.None;
     private readonly BusDefault _busDefault;
     /// <summary>The master bus of the latest plan (null when none is planned).</summary>
     private BusPlan? _bus;
@@ -52,6 +59,9 @@ public sealed class EffectsEngine : IDisposable
     /// </summary>
     public event Action? PlanChanged;
 
+    /// <summary>Equalizer APO's config was found without OmniControl's effects, or with them again, or with effects of its own (<see cref="ApoDisplaced"/>, <see cref="ApoOwnEffects"/>). UI thread.</summary>
+    public event Action? ApoPlacementChanged;
+
     public EffectsEngine(MixerService mixer, EffectsSupportService support, EngineJournal journal, PluginChainHost plugins, Action<string> report)
     {
         _mixer = mixer;
@@ -59,7 +69,11 @@ public sealed class EffectsEngine : IDisposable
         _journal = journal;
         _plugins = plugins;
         _report = report;
-        _apo = new ApoChains(report);
+        _apo = new ApoChains(report, () => Dispatcher.UIThread.Post(() => Guard.Run("Effects: IR level measured", Reconcile)));
+        _keeper = new ApoKeeper(_apo, () => mixer.KeepFxInPlace, report, OnApoPlacementChanged);
+        if (!StartupMode.Inert)
+            _watch = new ApoWatch(ApoConfigFolders.Instance, () => _watchInput,
+                found => Dispatcher.UIThread.Post(() => Guard.Run("Effects: Equalizer APO config check", () => OnApoFound(found))));
         _busDefault = new BusDefault(mixer, report);
         _tick.Tick += OnTick;
         _fxGap.Tick += OnFxGapEnded;
@@ -67,6 +81,7 @@ public sealed class EffectsEngine : IDisposable
         mixer.FxChanged += OnFxChanged;
         mixer.ProgramChanged += OnProgramChanged;
         mixer.RoutingChanged += OnRoutingChanged;
+        mixer.KeepFxInPlaceChanged += OnKeepFxInPlaceChanged;
         support.Changed += OnSupportChanged;
         // Equalizer APO runs a VST2 from its saved settings: a newly saved state is written into its line (files change only when the text does).
         plugins.StatesSaved += Reconcile;
@@ -88,6 +103,15 @@ public sealed class EffectsEngine : IDisposable
 
     /// <summary>Why the program <paramref name="key"/> can't use Equalizer APO on a cable now (null = it can; the one it holds counts).</summary>
     public string? ApoCableWhyFor(string key) => _runs.GetValueOrDefault(key)?.Spec.Kind == RunKind.ApoCable ? null : _apoCableWhy;
+
+    /// <summary>Equalizer APO's config no longer includes OmniControl's effects and is left so ("Keep OmniControl's effects in place" is off).</summary>
+    public bool ApoDisplaced => _apo.AnyDisplaced;
+
+    /// <summary>Equalizer APO's config.txt runs effects of its own besides OmniControl's chain (the last look at the disk).</summary>
+    public bool ApoOwnEffects => _keeper.OwnEffects;
+
+    /// <summary>"Put back": OmniControl's include line and file go back into every config folder that should have them.</summary>
+    public void PutBackApo() => _keeper.PutBack();
 
     /// <summary>What the master's method depends on now (its Method pop-down), from the last plan.</summary>
     public MasterFacts MasterFacts => _masterFacts;
@@ -227,7 +251,12 @@ public sealed class EffectsEngine : IDisposable
         foreach (var (key, run) in _runs.ToList())
             if (!plan.Runs.TryGetValue(key, out var spec) || !spec.SameAs(run.Spec)) StopRun(key);
         foreach (var spec in plan.Runs.Values) Keep(spec, facts);
-        if (_runs.GetValueOrDefault(MixerService.MasterKey) is { } bus) bus.SetRouted(plan.BusRoutes);
+        if (_runs.GetValueOrDefault(MixerService.MasterKey) is { } bus)
+        {
+            bus.SetRouted(plan.BusRoutes);
+            if (_chainDevice != plan.Bus?.Real.Id && FxFolders.HasFolders(_mixer.FxChain(null))) bus.SetChain(BuildChain(null)); // the playing device changed: its folder's effects take over
+        }
+        _chainDevice = plan.Bus?.Real.Id;
         SyncDefault();
 
         // The status of a row sent to Equalizer APO is ApplyApo's.
@@ -314,7 +343,13 @@ public sealed class EffectsEngine : IDisposable
     }
 
     /// <summary>The row's chain; empty while its effects are switched off (a run that only routes, such as the master bus, must not apply them).</summary>
-    private DspChain BuildChain(string? key) => _mixer.IsFxOn(key) ? ChainBuilder.Build(_mixer.FxChain(key), _plugins.Get) : DspChain.Empty;
+    /// <remarks>The master's chain is what runs for the device the bus plays on now (<see cref="FxFolders.ChainFor"/>).</remarks>
+    private DspChain BuildChain(string? key) => _mixer.IsFxOn(key)
+        ? key is null ? ChainBuilder.BuildParts(FxFolders.PartsFor(_mixer.FxChain(null), _bus?.Real.Id), _plugins.Get) : ChainBuilder.Build(_mixer.FxChain(key), _plugins.Get)
+        : DspChain.Empty;
+
+    /// <summary>The device the master bus plays on when its chain was last built (a folder's effects follow it).</summary>
+    private string? _chainDevice;
 
     private void OnRunChanged(EngineRun run)
     {
@@ -355,6 +390,60 @@ public sealed class EffectsEngine : IDisposable
             if (!_runs.ContainsKey(key)) SetStatus(key == MixerService.MasterKey ? null : key, status);
             else if (status.IsProblem) FailRun(key, status);
         }
+        _watchInput = new ApoWatchInput(_apo.Target, IrFilesInUse());
+        _watch?.Follow(_apo.Target.Folders);
+        _watch?.Request(); // every change, device change and support change is checked against the real files
+    }
+
+    /// <summary>
+    /// The IR files of every chain whose effects are on, with the version each was loaded at: a file already known keeps the version it was
+    /// loaded at, so a replacement is noticed by the watch (and loaded again) instead of being taken as the new normal.
+    /// </summary>
+    private IReadOnlyDictionary<string, long> IrFilesInUse()
+    {
+        var known = _watchInput.IrFiles;
+        return RowKeys().Select(k => k == MixerService.MasterKey ? null : k).Where(_mixer.IsFxOn)
+            .SelectMany(_mixer.FxChain).Where(s => s.Enabled && s.Kind == FxCatalog.IrKind && s.Path.Length > 0)
+            .Select(s => s.Path).Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(path => path, path => known.TryGetValue(path, out var stamp) ? stamp : Ir.IrFileStamp.Of(path), StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>One look at the disk (UI thread): woken from sleep, a replaced IR file, and OmniControl's part of the config folders.</summary>
+    private void OnApoFound(ApoFindings found)
+    {
+        if (_disposed) return;
+        if (found.Resumed) _support.Refresh(); // the devices and Equalizer APO's state may differ after sleep; the answer reconciles
+        if (found.IrReplaced)
+        {
+            ReloadIrFiles();
+            return; // the reconcile writes the new chains and asks for a fresh look
+        }
+        if (!_keeper.Take(found)) _watch?.Request();
+    }
+
+    /// <summary>An IR file in use was replaced under the same name: the runs that play one load it again, and the APO chains are rewritten.</summary>
+    private void ReloadIrFiles()
+    {
+        foreach (var run in _runs.Values.Where(r => RunsChain(r.Spec.Kind)))
+            if (_mixer.FxChain(ChainKeyOf(run.Spec)).Any(s => s.Kind == FxCatalog.IrKind)) run.SetChain(BuildChain(ChainKeyOf(run.Spec)));
+        _watchInput = _watchInput with { IrFiles = new Dictionary<string, long>() }; // the versions just loaded are taken afresh
+        Reconcile();
+    }
+
+    /// <summary>The keeper found the config changed (displaced, put back, own effects): the rows say so.</summary>
+    private void OnApoPlacementChanged()
+    {
+        // A program's run on an Equalizer APO cable that stopped because its line was taken out may start again once it is back.
+        if (!_apo.AnyDisplaced)
+            foreach (var key in _failed.Where(f => f.Value.Kind == StatusKind.ApoDisplaced).Select(f => f.Key).ToList()) _failed.Remove(key);
+        Reconcile();
+        ApoPlacementChanged?.Invoke();
+    }
+
+    /// <summary>Switched on: whatever was taken out goes back at once. Switched off: nothing changes until another program takes it out.</summary>
+    private void OnKeepFxInPlaceChanged()
+    {
+        if (_mixer.KeepFxInPlace) _keeper.PutBack();
     }
 
     /// <summary>A run that can't go on: it stops, the original sound comes back, the failure stands until the row or the routing changes.</summary>
@@ -410,11 +499,14 @@ public sealed class EffectsEngine : IDisposable
         _mixer.FxChanged -= OnFxChanged;
         _mixer.ProgramChanged -= OnProgramChanged;
         _mixer.RoutingChanged -= OnRoutingChanged;
+        _mixer.KeepFxInPlaceChanged -= OnKeepFxInPlaceChanged;
         _support.Changed -= OnSupportChanged;
         _plugins.StatesSaved -= Reconcile;
         foreach (var key in _runs.Keys.ToList()) StopRun(key);
         _busDefault.Release(); // after every program is routed back: Windows' default goes back to the real speakers
         _busDefault.Dispose();
+        _watch?.Dispose(); // first, so nothing is put back while the line is taken out
+        _keeper.Dispose();
         if (_support.Current is { } current) _apo.Clear(current.Apo); // effects in Equalizer APO run only while OmniControl runs
         _plugins.SaveStates(); // the plug-ins' owner unloads them as the very last step of exit
     }

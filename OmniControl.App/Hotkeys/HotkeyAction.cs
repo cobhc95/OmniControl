@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace OmniControl.App.Hotkeys;
@@ -90,6 +90,12 @@ public sealed partial class HotkeyAction : HotkeyTarget, Pages.IEditorItem
     public string? SuggestedKey { get; init; }
 
     /// <summary>
+    /// The id of the set of actions whose <see cref="SuggestedKey"/>s are switched on and off together (<see cref="HotkeyRegistry.SetSuggestedKeys"/>, shown by
+    /// <see cref="SuggestedKeysSwitch"/>); null: the action's suggested key is only offered by "Suggest". Set on the master entry, so there is no side list.
+    /// </summary>
+    public string? SuggestedKeySet { get; init; }
+
+    /// <summary>
     /// The key combination the action starts with ("Alt+Z"), or null. <see cref="HotkeyRegistry"/> binds it when the action is first registered
     /// (never again once the user has given or cleared its keys, and not when another action already has it); "Restore defaults" puts it back.
     /// </summary>
@@ -100,6 +106,15 @@ public sealed partial class HotkeyAction : HotkeyTarget, Pages.IEditorItem
     /// them. A flag on the master entry, so there is no second list of ids.
     /// </summary>
     public bool NeverBlock { get; init; }
+
+    /// <summary>True for an action another PC must confirm before it is run on this one (Restart, Shut down). A flag on the master entry, so there is no second list of ids.</summary>
+    public bool ConfirmRun { get; init; }
+
+    /// <summary>True for the action that turns every screen off at once ("Turn off displays"): the all-screens master switch (here and on another PC's view) uses it when a screen has no power control of its own. A flag on the master entry, so there is no second list of ids.</summary>
+    public bool ScreensOff { get; init; }
+
+    /// <summary>The card of the basic set another PC sees that lists this action (<see cref="States.CommonGroups"/>), or null. Set by its owner on the master entry, so there is no side list.</summary>
+    public string? Common { get; init; }
 
     /// <summary>The level this action moves, for a level action made with <see cref="ForLevel"/>; null for any other action.</summary>
     public HotkeyLevel? Level { get; private init; }
@@ -273,11 +288,12 @@ public sealed partial class HotkeyAction : HotkeyTarget, Pages.IEditorItem
     /// </summary>
     public static HotkeyAction ForLevel(string id, string title, string category, string keywords, HotkeyLevel level, int direction,
         Action<IReadOnlyList<string>?, int> step, string? deviceNoun = null, Func<IReadOnlyList<HotkeyDevice>>? devices = null,
-        string? group = null, string? subgroup = null, string? icon = null) =>
+        string? group = null, string? subgroup = null, string? icon = null, string? suggestedKey = null) =>
         new(id, title, category, keywords, ids => step(ids, direction * DefaultStep), deviceNoun, devices,
             (ids, percent) => step(ids, direction * percent), group, subgroup)
         {
             Icon = icon,
+            SuggestedKey = suggestedKey,
             Level = level,
             LevelDirection = direction,
         };

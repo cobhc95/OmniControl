@@ -16,7 +16,9 @@ public sealed class SimulationSetup : IDisposable
     private int _asking;
 
     private readonly Timer? _recheck;
+    private readonly Timer? _memoryLook;
     private int _busy;
+    private IReadOnlyDictionary<string, long> _memory = new Dictionary<string, long>();
 
     /// <summary>Looks again every <see cref="Timing.DeviceSimRecheck"/>, so installing or uninstalling an emulator shows up without a restart.</summary>
     public SimulationSetup(Action<string> log, EmulatorKeepSettings keep, Action save)
@@ -26,7 +28,31 @@ public sealed class SimulationSetup : IDisposable
         if (StartupMode.Inert) return; // a screenshot export looks for no emulator
         _recheck = new Timer(_ => Recheck(), null, Timing.DeviceSimRecheck, Timing.DeviceSimRecheck);
         _live = new Timer(_ => _ = LookAtConnectionsAsync(), null, Timing.DeviceSimLive, Timing.DeviceSimLive);
+        _memoryLook = new Timer(_ => LookAtMemory(), null, Timing.EmulatorMemoryRefresh, Timing.EmulatorMemoryRefresh);
     }
+
+    /// <summary>The memory each installed emulator's programs hold (Core measures it), read on a gentle timer; <see cref="Changed"/> only when a figure's shown tenth of a GB moves.</summary>
+    private void LookAtMemory()
+    {
+        Dictionary<string, long> now;
+        try
+        {
+            now = Installed.ToDictionary(e => e.Id, e => Emulators.MemoryUsed(e));
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            _log($"Reading the emulator's memory failed: {ex.Message}"); // Windows refused to list the processes; the last figures stay
+            return;
+        }
+        var moved = now.Count != _memory.Count || now.Any(pair => !_memory.TryGetValue(pair.Key, out var before) || Tenths(before) != Tenths(pair.Value));
+        _memory = now;
+        if (moved) Changed?.Invoke();
+    }
+
+    private static long Tenths(long bytes) => (long)Math.Round(bytes / 107374182.4);
+
+    /// <summary>The memory the emulator held at the last look, in bytes (0 when it is not running).</summary>
+    public long MemoryOf(EmulatorInfo emulator) => _memory.TryGetValue(emulator.Id, out var bytes) ? bytes : 0;
 
     /// <summary>Asks adb which emulators are up, so the checklist follows one opening, closing or being connected without a click.</summary>
     private async Task LookAtConnectionsAsync()
@@ -63,6 +89,7 @@ public sealed class SimulationSetup : IDisposable
     {
         _recheck?.Dispose();
         _live?.Dispose();
+        _memoryLook?.Dispose();
         Keeper.Dispose();
     }
 

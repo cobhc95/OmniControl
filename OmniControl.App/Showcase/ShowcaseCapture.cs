@@ -21,7 +21,7 @@ internal sealed class ShowcaseCapture
     {
         var monitor = new ScreenRect(0, 0, Width, Height);
         var sizes = new ToolSizes(new Dictionary<string, double>(), () => { });
-        var model = _model = new CaptureOverlayViewModel(Picture(), monitor, new NoOutput(), () => { }, recordAtOnce: false, sizes) { Scale = 1 };
+        var model = _model = new CaptureOverlayViewModel(ImageBitmaps.ToBitmap(Picture()), monitor, new NoOutput(), () => { }, recordAtOnce: false, sizes) { Scale = 1 };
         var window = new CaptureOverlay(model, monitor, strong: false);
         Drag(model, DrawTool.None, new Point(300, 150), new Point(980, 560)); // the selection
         Drag(model, DrawTool.Box, new Point(380, 230), new Point(640, 340));

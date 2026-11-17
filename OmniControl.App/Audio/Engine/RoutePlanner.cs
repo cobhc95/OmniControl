@@ -1,4 +1,4 @@
-using OmniControl.Core.Engine;
+﻿using OmniControl.Core.Engine;
 
 namespace OmniControl.App.Audio.Engine;
 
@@ -136,8 +136,9 @@ internal static class RoutePlanner
     {
         var plan = new RoutePlan();
         var cables = new CableBox(p.Support);
-        var masterFx = FxSlot.AnyRuns(p.Settings.MasterFxOn, p.Settings.MasterFx);
         var real = RealDevice(p);
+        // Only what runs for the device playing now counts: a chain of folders for other devices leaves this one direct.
+        var masterFx = FxSlot.AnyRuns(p.Settings.MasterFxOn, FxFolders.ChainFor(p.Settings.MasterFx, real.Id));
         plan.Master = MasterFactsOf(p, cables, real, masterFx);
         plan.MasterMethod = EffectsRules.MasterMethodOf(EffectsRules.MasterRouteOf(p.Settings.MasterMethod), plan.Master);
 

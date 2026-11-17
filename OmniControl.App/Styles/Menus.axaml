@@ -97,6 +97,9 @@
         <Setter Property="BorderBrush" Value="Transparent" />
     </Style>
     <Style Selector="Button.menurow:pressed /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.menurow:pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" /></Style>
+    <!-- Button.menurow.accent = the row that opens something bigger (Position's "Custom position..."): accent words; .muted = a way out to a manager ("Manage places..."): muted words -->
+    <Style Selector="Button.menurow.accent TextBlock"><Setter Property="Foreground" Value="{DynamicResource BrushAccent}" /></Style>
+    <Style Selector="Button.menurow.muted TextBlock"><Setter Property="Foreground" Value="{DynamicResource BrushMuted}" /></Style>
     <!-- A ticked row (ToggleButton.menurow, the Shortcuts device scope) shows its tick, not a filled background -->
     <Style Selector="ToggleButton.menurow:checked /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.menurow:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="Transparent" />

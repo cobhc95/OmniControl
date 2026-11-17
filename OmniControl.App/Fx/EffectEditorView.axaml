@@ -6,7 +6,7 @@
     <!-- An effect's editor as OmniControl draws it (in the FX window and in its own window): the cards (the equaliser, sliders) or
          the plain settings list, scaled as a whole by the effect's Scale; one scroll bar beside it (the master style), never scaled -->
     <Grid RowDefinitions="Auto,*" RowSpacing="6">
-        <TextBox Classes="field" Text="{Binding PluginParameters.Search}" Watermark="Find a setting"
+        <TextBox Classes="field search" Text="{Binding PluginParameters.Search}" Watermark="Find a setting"
                  IsVisible="{Binding PluginParameters.HasSearch, FallbackValue=False}" />
         <ScrollViewer Grid.Row="1">
             <LayoutTransformControl LayoutTransform="{Binding ScaleFactor, Converter={x:Static vm:EffectEditorView.ToScale}}">

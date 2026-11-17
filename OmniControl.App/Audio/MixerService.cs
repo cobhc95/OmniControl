@@ -278,6 +278,20 @@ public sealed partial class MixerService : IDisposable
 
     public void Save() => Settings.Save();
 
+    /// <summary>"Keep OmniControl's effects in place" (<see cref="MixerSettings.KeepFxInPlace"/>).</summary>
+    public bool KeepFxInPlace => Settings.KeepFxInPlace;
+
+    /// <summary>The setting changed (here, from the FX window, App settings or a rule). UI thread.</summary>
+    public event Action? KeepFxInPlaceChanged;
+
+    public void SetKeepFxInPlace(bool on)
+    {
+        if (Settings.KeepFxInPlace == on) return;
+        Settings.KeepFxInPlace = on;
+        Settings.Save();
+        KeepFxInPlaceChanged?.Invoke();
+    }
+
     /// <summary>Saves after an edit of a chain (or of one of its effects) and tells the running engine at once.</summary>
     public void SaveFx(string? key)
     {

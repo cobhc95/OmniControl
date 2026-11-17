@@ -1,0 +1,12 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:OmniControl.App.Controls"
+             x:Class="OmniControl.App.Controls.ChoiceChip">
+    <!-- THE chip that picks one of a few (a ChoiceItem as a chip + menu instead of a drop-down card): the shared ChipMenu showing the chosen
+         value, its menu one row per option with a tick on the chosen one. Used by a slider row's leading chip (SliderItem.Lead). -->
+    <c:ChipMenu x:Name="Chip" MenuOpened="OnOpened" MenuClosed="OnClosed" HorizontalAlignment="Left" VerticalAlignment="Center">
+        <c:ChipMenu.Menu>
+            <c:MenuRowList x:Name="Rows" />
+        </c:ChipMenu.Menu>
+    </c:ChipMenu>
+</UserControl>

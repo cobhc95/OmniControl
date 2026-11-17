@@ -1,4 +1,4 @@
-<Styles xmlns="https://github.com/avaloniaui"
+﻿<Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <!-- THE icon library's drawings (docs/mockups/icon-library.html): 523 icons from Tabler Icons 3.19.0 (MIT, credited in NOTICE.txt),
          each the path data of its outline icon on a 24 x 24 grid, drawn as 2 px round strokes by Controls/IconGlyph. Key = "Icon." + the
@@ -284,6 +284,7 @@
             <StreamGeometry x:Key="Icon.device-tablet">M5 4a1 1 0 0 1 1 -1h12a1 1 0 0 1 1 1v16a1 1 0 0 1 -1 1h-12a1 1 0 0 1 -1 -1v-16z M11 17a1 1 0 1 0 2 0a1 1 0 0 0 -2 0</StreamGeometry>
             <StreamGeometry x:Key="Icon.device-watch">M6 9a3 3 0 0 1 3 -3h6a3 3 0 0 1 3 3v6a3 3 0 0 1 -3 3h-6a3 3 0 0 1 -3 -3v-6z M9 18v3h6v-3 M9 6v-3h6v3</StreamGeometry>
             <StreamGeometry x:Key="Icon.device-speaker">M5 3m0 2a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2z M12 14m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0 M12 7l0 .01</StreamGeometry>
+            <StreamGeometry x:Key="Icon.device-speaker-plus">M13 21h-6a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v8 M12 13m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0 M12 6.5l0 .01 M16 19h6 M19 16v6</StreamGeometry>
             <StreamGeometry x:Key="Icon.device-gamepad-2">M12 5h3.5a5 5 0 0 1 0 10h-5.5l-4.015 4.227a2.3 2.3 0 0 1 -3.923 -2.035l1.634 -8.173a5 5 0 0 1 4.904 -4.019h3.4z M14 15l4.07 4.284a2.3 2.3 0 0 0 3.925 -2.023l-1.6 -8.232 M8 9v2 M7 10h2 M14 10h2</StreamGeometry>
             <StreamGeometry x:Key="Icon.device-airpods">M6 4a4 4 0 0 1 4 3.8l0 .2v10.5a1.5 1.5 0 0 1 -3 0v-6.5h-1a4 4 0 0 1 -4 -3.8l0 -.2a4 4 0 0 1 4 -4z M18 4a4 4 0 0 0 -4 3.8l0 .2v10.5a1.5 1.5 0 0 0 3 0v-6.5h1a4 4 0 0 0 4 -3.8l0 -.2a4 4 0 0 0 -4 -4z</StreamGeometry>
             <StreamGeometry x:Key="Icon.device-remote">M12 10m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0 M7 3m0 2a2 2 0 0 1 2 -2h6a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-6a2 2 0 0 1 -2 -2z M12 3v2 M10 15v.01 M10 18v.01 M14 18v.01 M14 15v.01</StreamGeometry>

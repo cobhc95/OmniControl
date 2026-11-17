@@ -1,4 +1,5 @@
 using OmniControl.App.States;
+using OmniControl.Core.Models;
 
 namespace OmniControl.App.Pages.Displays;
 
@@ -16,9 +17,38 @@ public sealed partial class DisplaysPageViewModel
         _states.Register(DisplayControls.Hardware.Select(level => new StateEntry(StateId(display, level), $"{level.Spec.Label} ({display.Name})", Title,
             StateKind.Level, () => display.LevelOf(level) is { } value ? StateValue.Of(value) : null, LevelWords,
             Heading: Services.Heading.Join(Title, display.Name), Min: level.Spec.Min, Max: level.Spec.Max, Unit: "%", Keywords: $"monitor display screen {level.Spec.Keywords}",
-            Set: value => { if (value.Number is { } number) display.SetLevel(level, (int)Math.Round(number)); }, Short: display.Name, SuggestedIcons: new[] { "sun", "sun-low", "brightness" })));
+            Set: value => { if (value.Number is { } number) display.SetLevel(level, (int)Math.Round(number)); }, Short: display.Name, SuggestedIcons: new[] { "sun", "sun-low", "brightness" }, Common: level.Code == VcpCode.Brightness ? CommonGroups.Screens : null)));
 
-    private void ForgetStates(HardwareDisplayItem display) => _states.Unregister(DisplayControls.Hardware.Select(level => StateId(display, level)));
+    private void ForgetStates(HardwareDisplayItem display)
+    {
+        _states.Unregister(DisplayControls.Hardware.Select(level => StateId(display, level)));
+        if (_powerStates.Remove(display.Id)) _states.Unregister(PowerId(display));
+    }
+
+    private const string PowerWords = "What the monitor said when it was read, then the last power command sent from here (a press of the monitor's own button is not seen).";
+
+    private readonly HashSet<string> _powerStates = new();
+
+    private static string PowerId(HardwareDisplayItem display) => $"displays.{display.Id}.power";
+
+    /// <summary>A display that has said it takes DDC power commands has its screen power in the list of states (on or off, settable); one that has not has none. Called after displays were read.</summary>
+    private void SyncPowerStates()
+    {
+        foreach (var display in _hardware)
+        {
+            if (display.HasScreenPower && _powerStates.Add(display.Id))
+                _states.Register(new StateEntry(PowerId(display), $"Screen power ({display.Name})", Title, StateKind.OnOff, () => display.ScreenOn is { } on ? StateValue.Of(on) : null,
+                    PowerWords, Heading: Services.Heading.Join(Title, display.Name), Keywords: "monitor display screen power on off sleep standby ddc", Short: display.Name,
+                    Set: value => display.SetScreenOn(value.Number is { } on && on != 0), SuggestedIcons: new[] { "device-desktop", "power", "moon" }, ScreenPower: true, Common: CommonGroups.Screens));
+            else if (!display.HasScreenPower && _powerStates.Remove(display.Id)) _states.Unregister(PowerId(display));
+        }
+    }
+
+    /// <summary>The Hardware group's master switch: every screen that can be switched on its own, and "Turn off displays" for the case that some cannot.</summary>
+    private GroupSwitch ScreenMaster() => ScreenPowerSwitch.All(
+        () => _hardware.Where(h => h.HasScreenPower).Select(h => new ScreenPowerSwitch.Screen(() => h.ScreenOn, h.SetScreenOn)).ToList(),
+        () => _hardware.Count > 0 && _hardware.All(h => h.HasScreenPower) && _softwareItems.Count <= _hardware.Count,
+        TurnOffDisplays);
 
     /// <summary>The page's states that live as long as the page: the warm-light schedule.</summary>
     private void RegisterPageStates()
@@ -43,5 +73,7 @@ public sealed partial class DisplaysPageViewModel
         _monitorPresets.Refresh();
         foreach (var display in _hardware)
         foreach (var level in DisplayControls.Hardware) _states.Notify(StateId(display, level));
+        foreach (var display in _hardware.Where(h => h.HasScreenPower)) _states.Notify(PowerId(display));
+        Hardware.RefreshMaster();
     }
 }

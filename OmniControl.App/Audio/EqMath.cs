@@ -32,6 +32,9 @@ public static class EqMath
     public static bool UsesGain(EqType type) => type is EqType.Peak or EqType.LowShelf or EqType.HighShelf;
 
     /// <summary>A band that passes sound unchanged: switched off, or a gain type at 0 dB.</summary>
+    /// <summary>Types whose width is a bandwidth around the frequency (a bell, notch, band-pass or all-pass); shelves and the pass filters use the setting as a slope or resonance.</summary>
+    public static bool UsesBandwidth(EqType type) => type is EqType.Peak or EqType.Notch or EqType.BandPass or EqType.AllPass;
+
     public static bool IsFlat(EqBand band) => !band.Enabled || (UsesGain(band.Type) && band.Gain == 0);
 
     /// <summary>Bandwidth in octaves for a Q (the cookbook's relation: 1/Q = 2 sinh(ln 2 / 2 * BW)).</summary>

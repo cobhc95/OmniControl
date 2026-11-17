@@ -35,7 +35,7 @@ public sealed partial class VolumePageViewModel
         CoreAudio.GetMaster(out var v, out var muted, _mixer.MasterDeviceId);
         _steps.Remember(MixerService.MasterKey, v);
         CoreAudio.GetMasterPan(out var pan, _mixer.MasterDeviceId);
-        _master.Sync(true, v, pan, muted, _mixer.IsFxOn(null), _mixer.FxChain(null).Count);
+        _master.Sync(true, v, pan, muted, _mixer.IsFxOn(null), FxSlot.EffectCount(_mixer.FxChain(null)));
         SyncRow(_master);
     }
 
@@ -79,7 +79,7 @@ public sealed partial class VolumePageViewModel
         var muted = useSystem ? r.Muted : r.IsOpen ? item.Muted : e.Muted;
         var pan = useSystem ? r.Pan : item.Pan;
         item.Name = e.Name;
-        item.Sync(r.IsOpen, volume, pan, muted, e.FxOn, e.Fx.Count);
+        item.Sync(r.IsOpen, volume, pan, muted, e.FxOn, FxSlot.EffectCount(e.Fx));
         item.TestWhy = EffectsRules.TestUnavailable(e.Name, r.IsPlaying);
         item.StateWord = !r.IsOpen ? NotOpenWord : r.IsPlaying ? PlayingWord : string.Empty;
         SyncRow(item);

@@ -1,0 +1,12 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Hotkeys master switch (approved)</title>
+<!-- Approved by the owner 17 Nov 2026. Actions and hotkeys window top bar (Border.barstrip), in the empty space LEFT of
+  "Preset: Default set": muted "Hotkeys" + ToggleSwitch (on/off words like other switches). ON by default.
+  OFF = every hotkey is paused (keys are KEPT, nothing cleared, not per preset); ON = all work again exactly as before.
+  Enforced at the ONE run gate in HotkeyRegistry / the keyboard hook registration (unregister global keys while off),
+  except actions flagged HotkeyAction.NeverBlock (they keep their keys). Persisted app setting. Also a StateEntry "Hotkeys on" and a
+  toggle action "Hotkeys: on/off" (NeverBlock itself, so the user can switch them back with its key), so it can be on the tray,
+  a mouse button or a rule. Mouse buttons, gestures and rules are NOT paused by this switch (only keyboard hotkeys). -->
+<style>body{font-family:Segoe UI;background:#1b1b1b;color:#eee;padding:20px;font-size:13px}</style></head><body>
+<p>Actions and hotkeys ........ Hotkeys (on) [Preset: Default set ▾] [Clear all] [Restore defaults]</p>
+</body></html>

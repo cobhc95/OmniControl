@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -26,28 +26,30 @@ public sealed partial class FxChainViewModel : ObservableObject, IDisposable, IP
     private readonly IEffectEditors _editors;
     private readonly FxClipboard _clipboard;
     private readonly Func<FxSlot, DynamicsReading?> _readings;
+    private readonly FxChainTies _ties;
 
+    /// <param name="ties">What the window around the chain gives it: engine readings, the preset manager, and (the master only) device folders.</param>
     /// <param name="presets">The user's own presets, shared by every effect window.</param>
     /// <param name="key">The program key, an input key, or null for the master.</param>
     /// <param name="editors">Where this chain's effect editors show; disposed with this view-model.</param>
     /// <param name="library">What the Add effect window lists (the program's one library).</param>
-    /// <param name="readings">What the effects engine measures for one of this chain's dynamics effects now (<see cref="EffectsEngine.ReadingOf"/>).</param>
-    /// <param name="managePresets">Opens the shared preset manager at an effect kind's card (a preset box's "Manage presets...").</param>
     public FxChainViewModel(MixerService mixer, string? key, IEffectEditors editors, FxClipboard clipboard, PluginLibrary library,
-        Func<FxSlot, DynamicsReading?> readings, UserPresetStore presets, Action<FxKind> managePresets)
+        UserPresetStore presets, FxChainTies ties)
     {
         Store = presets;
-        _managePresets = managePresets;
-        _readings = readings;
+        _ties = ties;
+        _managePresets = ties.ManagePresets;
+        _readings = ties.Readings;
         _mixer = mixer;
         Library = library;
         _key = key;
         _editors = editors;
         _clipboard = clipboard;
         _chain = mixer.FxChain(key);
-        foreach (var s in _chain) Slots.Add(Track(new FxSlotViewModel(s, SaveChain, _readings, this)));
+        foreach (var s in _chain) Slots.Add(Track(MakeSlot(s)));
         Renumber();
         editors.Changed += RefreshEditor;
+        if (ties.Devices is { } devices) devices.Changed += OnDevicesChanged;
         Selected = Slots.FirstOrDefault();
     }
 
@@ -80,8 +82,14 @@ public sealed partial class FxChainViewModel : ObservableObject, IDisposable, IP
     public bool ShowsPluginEditor => PluginEditor is not null;
 
     /// <summary>OmniControl's own cards show inside the panel: a built-in effect's editor, or a plug-in's open settings list.</summary>
-    public bool ShowsCards => Selected is { } s && !_loadingEditor && !_editors.IsPoppedOut(s.Slot)
+    public bool ShowsCards => Selected is { IsFolder: false } s && !_loadingEditor && !_editors.IsPoppedOut(s.Slot)
                               && (!s.IsPlugin || (s.ShowsParameters && s.PluginParameters is not null));
+
+    /// <summary>A device folder is selected: its own editor shows (device, method, Mix, its effects).</summary>
+    public bool ShowsFolder => Selected is { Folder: not null };
+
+    /// <summary>The toolbar's effect controls (Wet, On, Parameters, Scale, Pop out) apply to an effect, not to a folder, which has its own editor.</summary>
+    public bool ShowsEffectTools => Selected is { IsFolder: false };
 
     public bool CanPopOut => Selected is { } s && !_editors.IsPoppedOut(s.Slot);
     public bool CanPutBack => Selected is { } s && _editors.IsPoppedOut(s.Slot);
@@ -106,6 +114,7 @@ public sealed partial class FxChainViewModel : ObservableObject, IDisposable, IP
     partial void OnSelectedChanged(FxSlotViewModel? value)
     {
         if (_reordering) return; // a reorder briefly clears the list's selection; the editor stays open through it
+        if (value?.Folder is { } folder) foreach (var child in folder.Children) child.NotifySummary(); // the folder's list says what each effect is set to now
         if (value is { IsPlugin: true } && !_editors.IsPoppedOut(value.Slot)) LoadEditorLater();
         else RefreshEditor();
     }
@@ -161,6 +170,8 @@ public sealed partial class FxChainViewModel : ObservableObject, IDisposable, IP
         OnPropertyChanged(nameof(Hint));
         OnPropertyChanged(nameof(HasHint));
         OnPropertyChanged(nameof(ShowsCards));
+        OnPropertyChanged(nameof(ShowsFolder));
+        OnPropertyChanged(nameof(ShowsEffectTools));
         OnPropertyChanged(nameof(CanPopOut));
         OnPropertyChanged(nameof(CanPutBack));
         OnPropertyChanged(nameof(PopText));
@@ -214,13 +225,15 @@ public sealed partial class FxChainViewModel : ObservableObject, IDisposable, IP
     /// <summary>Puts the effect chosen in the Add effect window at the end of the chain and selects it.</summary>
     public void AddEntry(PluginEntry entry)
     {
+        if (entry.IsFolder) { AddFolder(); return; } // the Add effect window's "Device folder": the same command as the pill
         var slot = entry.IsBuiltIn ? FxCatalog.Create(entry.Path)
             : entry.Type is { } type ? FxCatalog.CreatePlugin(type, entry.Name, entry.Path)
             : null;
         if (slot is null) return; // a plugins.json entry of a format this version does not know
-        _chain.Add(slot);
-        var vm = Track(new FxSlotViewModel(slot, SaveChain, _readings, this));
-        Slots.Add(vm);
+        var at = AddPosition();
+        _chain.Insert(at, slot);
+        var vm = Track(MakeSlot(slot));
+        Slots.Insert(at, vm);
         Selected = vm;
         ReselectRequested?.Invoke(new[] { vm });
         _mixer.EffectsAdded(_key);
@@ -228,7 +241,8 @@ public sealed partial class FxChainViewModel : ObservableObject, IDisposable, IP
     }
 
     /// <summary>The effects in the order the sound passes them (the stored chain itself; read only).</summary>
-    public IReadOnlyList<FxSlot> Effects => _chain;
+    /// <remarks>The master's chain is what runs for the device playing now (<see cref="FxFolders.ChainFor"/>), so the total response matches it.</remarks>
+    public IReadOnlyList<FxSlot> Effects => _ties.Devices is { } devices ? FxFolders.ChainFor(_chain, devices.PlayingId) : _chain;
 
     /// <summary>Any effect, its settings or the chain's order changed (after it was saved): the window's total response follows.</summary>
     public event Action? Edited;
@@ -251,7 +265,83 @@ public sealed partial class FxChainViewModel : ObservableObject, IDisposable, IP
 
     private void Renumber()
     {
-        for (var i = 0; i < Slots.Count; i++) Slots[i].Number = i + 1;
+        var anyFolder = FxFolders.HasFolders(_chain);
+        FxSlotViewModel? folder = null;
+        for (var i = 0; i < Slots.Count; i++)
+        {
+            var s = Slots[i];
+            s.Number = i + 1;
+            if (s.IsFolder)
+            {
+                folder = s;
+                s.IsChild = false;
+                s.ShowsAllDevices = false;
+                s.Shown = true;
+                s.Folder?.Children.Clear();
+            }
+            else
+            {
+                s.IsChild = folder is not null;
+                s.ShowsAllDevices = anyFolder && folder is null;
+                s.Shown = folder?.Folder is not { Expanded: false };
+                folder?.Folder?.Children.Add(s);
+            }
+        }
+        foreach (var f in Slots.Where(s => s.Folder is not null)) f.Folder!.Count = f.Folder.Children.Count;
+        OnPropertyChanged(nameof(HasFolders));
+    }
+
+    /// <summary>The slot's view-model; a folder's gets its folder model (made only on the master, the one chain that knows its device).</summary>
+    private FxSlotViewModel MakeSlot(FxSlot slot)
+    {
+        var vm = new FxSlotViewModel(slot, SaveChain, _readings, this);
+        if (slot.IsFolder && _ties.Devices is { } devices)
+            vm.Folder = new FxFolderViewModel(slot, devices, SaveChain, _ties.Mixer.OpenMixer, () => AddRequested?.Invoke(), s => Selected = s, _ties.Mixer.InstallApo, Renumber, () => SaveFolderAsPreset(slot));
+        return vm;
+    }
+
+    public bool HasFolders => FxFolders.HasFolders(_chain);
+
+    /// <summary>The folder's own "Add effect here…" asked for the Add effect window (its folder is the selection, so the effect goes in it).</summary>
+    public event Action? AddRequested;
+
+    /// <summary>The pill "Device folder" is shown on the master's chain only: the engine knows the playing device for no other row.</summary>
+    public bool CanAddFolder => _ties.Devices is not null;
+
+    private void OnDevicesChanged()
+    {
+        foreach (var s in Slots) s.Folder?.Refresh();
+        Edited?.Invoke(); // the response follows the device that plays now
+    }
+
+    /// <summary>
+    /// Where an added effect goes: at the end of the selected folder (or of the folder the selected effect is in), else at the end of
+    /// the effects that run for every device (the whole chain while there is no folder).
+    /// </summary>
+    private int AddPosition()
+    {
+        var at = Selected is { } s ? FxFolders.FolderIndexOf(_chain, Slots.IndexOf(s)) : -1;
+        return at >= 0 ? FxFolders.FolderEnd(_chain, at) : FxFolders.TopLevelEnd(_chain);
+    }
+
+    /// <summary>
+    /// THE one command that makes a device folder (the pill under the list and the Add effect window's first entry). It is for the
+    /// playing device unless that already has a folder, then the first device without one; the user changes it in the folder's editor.
+    /// </summary>
+    [RelayCommand]
+    private void AddFolder()
+    {
+        if (_ties.Devices is not { } devices) return;
+        var taken = _chain.Where(s => s.IsFolder).Select(s => s.DeviceId).ToHashSet();
+        var all = devices.Devices();
+        var device = all.Where(d => !taken.Contains(d.Id)).OrderByDescending(d => d.Playing).FirstOrDefault() ?? all.FirstOrDefault();
+        var slot = new FxSlot { Kind = FxFolders.Kind, Name = device?.Name ?? "No device", DeviceId = device?.Id ?? string.Empty };
+        _chain.Add(slot);
+        var vm = Track(MakeSlot(slot));
+        Slots.Add(vm);
+        Selected = vm;
+        ReselectRequested?.Invoke(new[] { vm });
+        Changed();
     }
 
     private FxSlotViewModel Track(FxSlotViewModel slot)
@@ -277,6 +367,11 @@ public sealed partial class FxChainViewModel : ObservableObject, IDisposable, IP
     {
         _disposed = true;
         _editors.Changed -= RefreshEditor;
+        if (_ties.Devices is { } devices)
+        {
+            devices.Changed -= OnDevicesChanged;
+            devices.Dispose();
+        }
         foreach (var s in Slots) Untrack(s);
         _editors.Dispose(); // the plug-in editors close while their host window still exists
         foreach (var s in Slots) s.PluginParameters = null;

@@ -189,6 +189,111 @@ public class VideoRecordingTests
         }
     }
 
+    [Fact]
+    public void Gif_NoisyFrameReadsBackExactly()
+    {
+        // Random pixels of 64 colours fill the LZW code table several times, so every table reset is read back too.
+        const int width = 160, height = 120;
+        var colours = Enumerable.Range(0, 64).Select(i => ((byte)(i / 2 * 8), (byte)0, (byte)(i % 2 * 128))).ToArray();
+        var random = new Random(7);
+        var picks = Enumerable.Range(0, width * height).Select(_ => random.Next(colours.Length)).ToArray();
+        var noisy = Pixels(width, height, (x, y) => colours[picks[y * width + x]]);
+        var path = Path.Combine(Path.GetTempPath(), $"omnicontrol-test-{Guid.NewGuid():N}.gif");
+        try
+        {
+            using (var gif = new GifWriter(path, width, height, VideoQuality.High))
+            {
+                gif.WriteFrame(noisy, width * 4, 0);
+                gif.Finish(Second);
+            }
+            using var codec = SKCodec.Create(path);
+            var info = new SKImageInfo(width, height, SKColorType.Bgra8888, SKAlphaType.Premul);
+            using var bitmap = new SKBitmap(info);
+            Assert.Equal(SKCodecResult.Success, codec.GetPixels(info, bitmap.GetPixels()));
+            for (var y = 0; y < height; y++)
+            for (var x = 0; x < width; x++)
+            {
+                var (r, g, b) = colours[picks[y * width + x]];
+                Assert.Equal(new SKColor(r, g, b), bitmap.GetPixel(x, y));
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void MakeOpaque_SetsEveryAlphaAndKeepsTheColours()
+    {
+        var pixels = Enumerable.Range(0, 4 * 37).Select(i => (byte)(i * 3)).ToArray(); // 37 pixels: whole vectors and a remainder
+        var before = (byte[])pixels.Clone();
+        ScreenImage.MakeOpaque(pixels);
+        for (var i = 0; i < pixels.Length; i++) Assert.Equal(i % 4 == 3 ? 255 : before[i], pixels[i]);
+    }
+
+    [Fact]
+    public void ClickCircle_IsPremultipliedInsideAndEmptyOutside()
+    {
+        const int radius = 3;
+        var side = radius * 2 + 1;
+        var pixels = new byte[side * side * 4];
+        PointerPainter.Circle(pixels, radius, 0xFF8000, 0.5);
+        Assert.Equal(new byte[] { 0, 64, 127, 127 }, pixels.AsSpan((radius * side + radius) * 4, 4).ToArray()); // the centre: B, G, R, A
+        Assert.Equal(new byte[4], pixels.AsSpan(0, 4).ToArray()); // a corner is outside the circle
+    }
+
+    // ---- GIF worker queue ----
+
+    /// <summary>A sink that records what reaches it and can hold the worker inside its first frame.</summary>
+    private sealed class SlowSink : IVideoSink
+    {
+        public readonly List<(long At, byte First)> Frames = new();
+        public readonly ManualResetEventSlim Entered = new(), Go = new();
+        public long Finished = -1;
+        public bool Fail;
+
+        public void WriteFrame(ReadOnlySpan<byte> bgra, int stride, long at)
+        {
+            if (Fail) throw new IOException("disk gone");
+            Frames.Add((at, bgra[0]));
+            Entered.Set();
+            Go.Wait();
+        }
+
+        public long Length => Frames.Count;
+        public void Finish(long end) => Finished = end;
+        public void Dispose() { }
+    }
+
+    private static byte[] Frame(byte value) => Enumerable.Repeat(value, 2 * 2 * 4).ToArray();
+
+    [Fact]
+    public void Queue_KeepsOneFrameWaitingAndDropsTheRest()
+    {
+        var inner = new SlowSink();
+        using var queue = new QueuedVideoSink(inner, 2, 2, "test");
+        queue.WriteFrame(Frame(1), 8, 10);
+        Assert.True(inner.Entered.Wait(5000)); // the worker is busy with frame 1
+        queue.WriteFrame(Frame(2), 8, 20); // waits
+        queue.WriteFrame(Frame(3), 8, 30); // dropped: frame 2 lasts longer
+        inner.Go.Set();
+        queue.Finish(40);
+        Assert.Equal(new[] { (10L, (byte)1), (20L, (byte)2) }, inner.Frames);
+        Assert.Equal(40, inner.Finished);
+        Assert.Equal(2, queue.Length);
+    }
+
+    [Fact]
+    public void Queue_HandsAWorkerFailureToTheRecordingThread()
+    {
+        var inner = new SlowSink { Fail = true };
+        using var queue = new QueuedVideoSink(inner, 2, 2, "test");
+        queue.WriteFrame(Frame(1), 8, 10);
+        Assert.Throws<IOException>(() => queue.Finish(20));
+        Assert.Equal(-1, inner.Finished);
+    }
+
     // ---- Drawing sizes ----
 
     [Fact]

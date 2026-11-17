@@ -8,7 +8,9 @@
              xmlns:gestures="using:OmniControl.App.Pages.Gestures"
              xmlns:automation="using:OmniControl.App.Pages.Automation"
              xmlns:devices="using:OmniControl.App.Pages.Devices"
+             xmlns:otherpcs="using:OmniControl.App.Pages.OtherPcs"
              xmlns:fx="using:OmniControl.App.Fx"
+             xmlns:hk="using:OmniControl.App.Hotkeys"
              xmlns:appsettings="using:OmniControl.App.Pages.AppSettingsPage"
              x:Class="OmniControl.App.App"
              RequestedThemeVariant="Dark">
@@ -27,6 +29,8 @@
         <DataTemplate DataType="automation:AutomationPageViewModel"><automation:AutomationPage /></DataTemplate>
         <DataTemplate DataType="devices:DevicesPageViewModel"><devices:DevicesPage /></DataTemplate>
         <DataTemplate DataType="devices:DeviceItem"><devices:DeviceDetail /></DataTemplate>
+        <DataTemplate DataType="otherpcs:OtherPcsPageViewModel"><otherpcs:OtherPcsPage /></DataTemplate>
+        <DataTemplate DataType="otherpcs:PcItem"><otherpcs:PcDetail /></DataTemplate>
         <DataTemplate DataType="automation:AutomationItem"><automation:AutomationRuleRow /></DataTemplate>
         <DataTemplate DataType="automation:CustomActionItem"><automation:CustomActionRow /></DataTemplate>
         <DataTemplate DataType="volume:VolumeRow"><volume:VolumeRowView /></DataTemplate>
@@ -47,6 +51,10 @@
         <DataTemplate DataType="pages:ScopeItem"><pages:ScopeRow /></DataTemplate>
         <DataTemplate DataType="pages:FileItem"><pages:FileRow /></DataTemplate>
         <DataTemplate DataType="pages:GalleryItem"><pages:GalleryRow /></DataTemplate>
+        <DataTemplate DataType="pages:MenuChoiceItem"><pages:MenuChoiceRow /></DataTemplate>
+        <DataTemplate DataType="pages:AnchorItem"><pages:AnchorRow /></DataTemplate>
+        <DataTemplate DataType="pages:TextItem"><pages:TextRow /></DataTemplate>
+        <DataTemplate DataType="hk:SuggestedKeysSwitch"><hk:SuggestedKeysView /></DataTemplate>
     </Application.DataTemplates>
 
     <!-- The app's base text size (Fluent's default is 14); windows and controls take it from here -->
@@ -83,6 +91,20 @@
         <x:Double x:Key="SliderThickTrack">8</x:Double>
         <x:Double x:Key="SliderThickKnob">20</x:Double>
         <Thickness x:Key="SliderThickRing">2</Thickness>
+        <!-- The grip lines on a thick slider's knob: how many are drawn is in the style; their length, thickness and spacing -->
+        <x:Double x:Key="SliderGripLength">8</x:Double>
+        <x:Double x:Key="SliderGripGap">3</x:Double>
+        <!-- A typeable value's field box (Pages/NumberText): the space between its frame and the value, and its corners -->
+        <Thickness x:Key="TypeableInset">8,2</Thickness>
+        <CornerRadius x:Key="TypeableCornerRadius">4</CornerRadius>
+        <!-- The parametric equaliser graph: a band's circle (diameter, a ring of the selected one), and the bandwidth handles of the selected band -->
+        <x:Double x:Key="EqBandCircle">22</x:Double>
+        <x:Double x:Key="EqWidthHandleWidth">8</x:Double>
+        <x:Double x:Key="EqWidthHandleHeight">12</x:Double>
+        <!-- The pane splitter (Styles/Splitters.axaml, GridSplitter.pane): its grab width -->
+        <x:Double x:Key="PaneSplitterWidth">10</x:Double>
+        <x:Double x:Key="FxChainListMinWidth">120</x:Double>
+        <x:Double x:Key="FxEditorMinWidth">320</x:Double>
         <!-- How long the Easy page's confirmation line takes to fade out (how long it stays first is Timing.EasyConfirmation) -->
         <x:TimeSpan x:Key="EasyFadeTime">0:0:0.6</x:TimeSpan>
         <x:Double x:Key="ToolControlHeight">22</x:Double>
@@ -114,6 +136,15 @@
         <Thickness x:Key="RecordClockInset">6,0</Thickness>
         <x:Double x:Key="RecordClockGap">6</x:Double>
         <x:Double x:Key="RecordFrameThickness">2</x:Double>
+        <!-- The OSD placement window (docs/mockups/osd-custom-position.html): the preview's dashed accent edge, the anchor picker's 3 x 3 squares, the window's width -->
+        <x:Double x:Key="OsdFrameThickness">1.5</x:Double>
+        <x:Double x:Key="OsdFrameRadius">14</x:Double>
+        <x:Double x:Key="AnchorCellSize">16</x:Double>
+        <Thickness x:Key="AnchorCellGap">2</Thickness>
+        <CornerRadius x:Key="AnchorCellCornerRadius">3</CornerRadius>
+        <Thickness x:Key="AnchorFramePadding">3</Thickness>
+        <CornerRadius x:Key="AnchorFrameCornerRadius">6</CornerRadius>
+        <x:Double x:Key="OsdPlacementWidth">460</x:Double>
         <!-- A window's status strip (Border.statusstrip): its inset, type, the gap between its parts, and the widest the caution gets -->
         <Thickness x:Key="StatusStripPadding">8,2</Thickness>
         <!-- A window's foot (Border.footer) and the one width of its Close button (Button.primary.close) -->
@@ -180,6 +211,8 @@
         <!-- The icon library (Controls/IconGlyph, Icons/IconPickerWindow, docs/mockups/icon-library.html): a glyph's size where nothing sets it,
              the picker window, its 34 px cells and the glyph in them -->
         <x:Double x:Key="IconGlyphSize">16</x:Double>
+        <!-- The optional icon before a card's label or a chip's words (Controls/IconText): a little under the base text so a card keeps its height -->
+        <x:Double x:Key="CardIconSize">14</x:Double>
         <x:Double x:Key="IconPickerWidth">384</x:Double>
         <x:Double x:Key="IconPickerHeight">520</x:Double>
         <x:Double x:Key="IconCellSize">34</x:Double>
@@ -255,8 +288,12 @@
         <x:Double x:Key="RemoveBadgeSize">16</x:Double>
         <x:Double x:Key="RemoveBadgeCross">9</x:Double>
         <x:Double x:Key="RemoveBadgeHit">20</x:Double>
+        <CornerRadius x:Key="RemoveBadgeRadius">8</CornerRadius>
         <x:Double x:Key="TrayPartGap">10</x:Double>
         <x:Double x:Key="PillIconWidth">32</x:Double>
+        <x:Double x:Key="PillGlyphSize">17</x:Double>
+        <x:Double x:Key="FxFolderPillGlyph">17</x:Double>
+        <x:Double x:Key="DialogButtonHeight">28</x:Double>
         <!-- The round X pill (Button.pill.closex, Styles/ThemeButtons.axaml, docs/mockups/device-close-x.html) -->
         <x:Double x:Key="CloseXSize">24</x:Double>
         <x:Double x:Key="CloseXCross">12</x:Double>
@@ -279,6 +316,7 @@
         <StyleInclude Source="/Styles/ThemeLists.axaml" />
         <StyleInclude Source="/Styles/ThemeButtons.axaml" />
         <StyleInclude Source="/Styles/Sliders.axaml" />
+        <StyleInclude Source="/Styles/Splitters.axaml" />
         <StyleInclude Source="/Styles/Blocks.axaml" />
         <StyleInclude Source="/Styles/Graphs.axaml" />
         <StyleInclude Source="/Styles/Bars.axaml" />

@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:pages="using:OmniControl.App.Pages"
+             xmlns:c="using:OmniControl.App.Controls"
              x:Class="OmniControl.App.Pages.ToggleRow"
              x:DataType="pages:ToggleItem">
     <Panel ToolTip.Tip="{Binding Tip}">
@@ -11,7 +12,7 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
-                <TextBlock Text="{Binding Label}" />
+                <c:IconText Icon="{Binding Icon}" Text="{Binding Label}" />
                 <TextBlock Classes="muted" Text="{Binding Note}" IsVisible="{Binding HasNote}" TextWrapping="Wrap" />
             </StackPanel>
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding IsOn}" OnContent="On" OffContent="Off" />
@@ -19,7 +20,7 @@
 
         <!-- Half-width card: the label takes what is left (and wraps), the switch sits at the right -->
         <Grid Margin="0,1" ColumnDefinitions="*,Auto" ColumnSpacing="12" IsVisible="{Binding Half}">
-            <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <c:IconText Icon="{Binding Icon}" Text="{Binding Label}" />
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding IsOn}" OnContent="On" OffContent="Off" VerticalAlignment="Center" />
         </Grid>
     </Panel>

@@ -28,12 +28,19 @@
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
-                        <Button Classes="blockadd small" Content="+ Add device" Command="{Binding AddDeviceCommand}" HorizontalAlignment="Left" />
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Button Classes="blockadd small" Content="+ Add device" Command="{Binding AddDeviceCommand}" VerticalAlignment="Center" />
+                            <Button Classes="pill" Content="Import…" Command="{Binding OpenImportCommand}" ToolTip.Tip="Copy devices from another paired PC" VerticalAlignment="Center" />
+                        </StackPanel>
                     </StackPanel>
                 </Border>
                 <ContentControl Grid.Column="1" Content="{Binding Selected}" IsVisible="{Binding HasSelected}" Margin="{StaticResource DeviceDetailPadding}" />
             </Grid>
         </Border>
-        <pages:EmptyListRow IsVisible="{Binding NoDevices}" Text="No devices yet. A device is a smart plug or bulb OmniControl can switch on and off." LinkText="Add device" Command="{Binding AddDeviceCommand}" />
+        <pages:EmptyListRow IsVisible="{Binding NoDevices}" Text="No devices yet. A device is a smart plug or bulb OmniControl can switch on and off." LinkText="Add device" Command="{Binding AddDeviceCommand}"
+                         SecondLinkText="Import from another PC" SecondCommand="{Binding OpenImportCommand}" />
+        <pages:GroupCard x:Name="ImportCard" Group="{Binding Import.Group}">
+            <vm:DeviceImport DataContext="{Binding Import}" />
+        </pages:GroupCard>
     </StackPanel>
 </UserControl>

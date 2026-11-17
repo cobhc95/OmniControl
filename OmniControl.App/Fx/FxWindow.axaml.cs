@@ -1,4 +1,6 @@
+using OmniControl.App.Controls;
 using OmniControl.App.Dialogs;
+using OmniControl.App.Services;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -39,6 +41,12 @@ public partial class FxWindow : Window
     private void OnKeyDownTunnel(object? sender, KeyEventArgs e)
     {
         if (e.Key == Key.Escape && Analysis.ClosePanel()) { e.Handled = true; return; }
+        if (e.KeyModifiers == KeyModifiers.Control && e.Key is Key.S or Key.O)
+        {
+            _ = e.Key == Key.S ? SaveChainAsync() : LoadChainAsync();
+            e.Handled = true;
+            return;
+        }
         if (TabToGraph(e)) { e.Handled = true; return; }
         FxView.HandleKey(e);
         if (e.Handled || e.Key != Key.Escape) return;
@@ -66,6 +74,29 @@ public partial class FxWindow : Window
         Analysis.FocusGraph();
         return true;
     }
+
+    private void OnSaveChainClick(object? sender, RoutedEventArgs e) => _ = SaveChainAsync();
+
+    private void OnLoadChainClick(object? sender, RoutedEventArgs e) => _ = LoadChainAsync();
+
+    /// <summary>FX > Save chain…: the one save picker, then the whole chain into the chosen .omnifx file.</summary>
+    private async Task SaveChainAsync()
+    {
+        if (DataContext is not FxWindowViewModel vm) return;
+        var path = await PathPicker.PickSaveAsync(this, "Save chain", "chain", FxChainFile.Extension, FxChainFile.TypeName, FxChainFile.Patterns);
+        if (path is not null) await ShowProblemAsync("Save chain", vm.Chain.SaveTo(path));
+    }
+
+    /// <summary>FX > Load chain…: the one file picker, then the file's chain replaces this window's.</summary>
+    private async Task LoadChainAsync()
+    {
+        if (DataContext is not FxWindowViewModel vm) return;
+        var path = await PathPicker.PickAsync(this, PathKind.File, "Load chain", typeName: FxChainFile.TypeName, patterns: FxChainFile.Patterns);
+        if (path is not null) await ShowProblemAsync("Load chain", vm.Chain.LoadFrom(path));
+    }
+
+    private Task ShowProblemAsync(string title, string? sentence) =>
+        sentence is null ? Task.CompletedTask : new MessageWindow(new DialogMessage(title, sentence)).AskAsync(this);
 
     private void OnAddClick(object? sender, RoutedEventArgs e) => FxView.AddEffect();
 

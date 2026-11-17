@@ -120,6 +120,7 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
                   + "Colour temperature: minus is warmer, plus is cooler. Saturation, grayscale and invert apply to all displays. "
                   + "A display whose driver does not accept colour changes from programs is greyed out.",
         };
+        Hardware.UseSwitch(ScreenMaster());
         RegisterActions();
         presets.Register(new PresetGroup(HardwarePresetsId, Title, DisplayControls.HardwareGroup, monitorGroup));
         presets.Register(new PresetGroup(SoftwarePresetsId, Title, DisplayControls.SoftwareGroup, pictureGroup));
@@ -269,7 +270,7 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
                 _levels, _osd, _report, ShowHardwareGroups, OnDisplayValues));
     }
 
-    private DisplayOrientationCard Orientation(string? deviceName, string name) => new(deviceName, name, _engine.Rotation, _report);
+    private DisplayOrientationCard Orientation(string? deviceName, string name) => new(deviceName, name, _engine.Rotation, _report, new SuggestedKeysSwitch(_hotkeys, RotationKeySet));
 
     private void Add(HardwareDisplayItem display)
     {
@@ -284,6 +285,7 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
     {
         Hardware.Subgroups.Clear();
         foreach (var group in _hardware.SelectMany(h => h.Groups)) Hardware.Subgroups.Add(group);
+        SyncPowerStates();
         OnDisplayValues(); // a monitor that was read, came or went changes what a monitor preset shows and whether one can be saved
     }
 

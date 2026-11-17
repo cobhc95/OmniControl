@@ -40,11 +40,13 @@ public sealed class ActionsWindowService : IDisposable
     /// <param name="ask">Shows a short message with a confirm button; true when confirmed.</param>
     /// <param name="showPage">Opens the sidebar page with this title ("Show on its page").</param>
     /// <param name="changeIcon">The shared icon picker for an action ("Change icon…" in its settings).</param>
+    /// <param name="hotkeysSwitch">The master switch the top bar shows at its left.</param>
     /// <param name="report">Says on the footer when the window cannot be opened.</param>
     public ActionsWindowService(HotkeyRegistry registry, PresetGroups presets, Action<string?, string?> openPresets,
-        Func<DialogMessage, Task<bool>> ask, Action<string> showPage, Func<Avalonia.Visual, HotkeyAction, Task> changeIcon, Action<string> report)
+        Func<DialogMessage, Task<bool>> ask, Action<string> showPage, Func<Avalonia.Visual, HotkeyAction, Task> changeIcon, HotkeysSwitch hotkeysSwitch, Action<string> report)
     {
         (_registry, _openPresets, _ask, _showPage, _changeIcon) = (registry, openPresets, ask, showPage, changeIcon);
+        HotkeysSwitch = hotkeysSwitch;
         _window = new SingleWindow<PickerWindow>(report);
         _sets = new HotkeySets(registry);
         var setPresets = new HotkeySetPresets(_sets);
@@ -52,20 +54,26 @@ public sealed class ActionsWindowService : IDisposable
         presets.Register(new PresetGroup(SetsGroupId, Title, "Shortcut sets", setPresets));
         Restorable = new SettingsRestore<Dictionary<string, StoredHotkey>>(RestoreKey, Title,
             () => "Puts every action back on its default keyboard shortcut (most have none) and on all its devices.",
-            registry.ExportAll, () => HotkeyDefaults.Of(registry.ExportAll(), registry.DefaultKeyOf),
+            registry.ExportAll, registry.DefaultBindings,
             all => { registry.ImportAll(all); return Task.FromResult(true); },
-            atDefaults: all => HotkeyDefaults.IsAtDefaults(all, registry.DefaultKeyOf));
+            atDefaults: all => HotkeyDefaults.IsAtDefaults(all, DefaultKeyFrom(registry.DefaultBindings())));
         ClearAllCommand = new AsyncRelayCommand(ClearAllAsync);
         registry.BindingsSaved += OnBindingsSaved;
         PickerWindow.UseKeys(Keys);
         if (!StartupMode.Inert) DrawFirst.ThenWire(PickerWindow.Warm);
     }
 
+    private static Func<string, string?> DefaultKeyFrom(IReadOnlyDictionary<string, StoredHotkey> defaults) =>
+        id => defaults.TryGetValue(id, out var saved) ? saved.Keys.FirstOrDefault() : null;
+
     /// <summary>What "Restore defaults" puts back (every key removed, every action on all its devices); the shell wires it like a page's.</summary>
     public IRestorable Restorable { get; }
 
     /// <summary>The window's "Restore defaults", given by the shell from <see cref="Restorable"/>.</summary>
     public PageRestore? Restorer { get; set; }
+
+    /// <summary>The hotkeys master switch the top bar shows.</summary>
+    public HotkeysSwitch HotkeysSwitch { get; }
 
     public IAsyncRelayCommand ClearAllCommand { get; }
 

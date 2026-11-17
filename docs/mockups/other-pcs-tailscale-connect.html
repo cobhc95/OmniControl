@@ -1,0 +1,21 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Choosing Tailscale on a paired PC (approved)</title>
+<!-- Approved by the owner 17 Nov 2026. Extends docs/mockups/other-pcs-tailscale.html.
+  PC detail (paired PC), "Connect:" chip set to Tailscale while Tailscale between the two PCs is NOT working:
+  1 Honest state: the PC list row's tag shows the REAL route ("online · LAN", or "offline"); "via Tailscale" only once a Tailscale link
+    actually works. Under the title line a Border.tag.caution "Tailscale not set up yet · still using LAN" (or "· not connected").
+  2 Instead of the address box, a Border.stage.open "Set up Tailscale for this PC" with "Check again" pill, holding THE SAME checklist
+    control/code as the Pair a PC internet steps (one shared piece, never a second copy), rows:
+    Installed on this PC · Running and signed in · Connected (this PC's IP tag) · Firewall allows OmniControl ·
+    "<PC> on your Tailscale" (found among tailnet peers; fix link "How to add it" = install/sign in on that PC with the same account) ·
+    "Reaches OmniControl on it" (TCP reach; pending until the row above passes). Each failing row keeps its one fix.
+  3 Muted line: "No new pairing code: this PC is already paired. Once every row is ticked it switches to Tailscale by itself and shows
+    [via Tailscale]." The existing pairing key is reused; the PC's Tailscale address is learned from the tailnet peer list (by name) and
+    stored; the other PC learns ours over the current (LAN) link, so both sides stay two-way.
+  4 No "Pair a PC" error box for this case (that message was wrong: it treated it as a new pairing).
+  5 Once working: the stage closes, the tag becomes "via Tailscale". If it later fails, the stage comes back with the first failing row. -->
+<style>body{font-family:Segoe UI;background:#1b1b1b;color:#eee;padding:20px;font-size:13px}</style></head><body>
+<p>[studio-laptop · online · LAN] | studio-laptop [Connect: Tailscale ▾] [Unpair]<br>[Tailscale not set up yet · still using LAN]<br>
+Set up Tailscale for this PC [Check again]: ✓ Installed · ✓ Running and signed in · ✓ Connected [100.64.0.3] · ✓ Firewall · ⚠ studio-laptop on your Tailscale — not found · How to add it · • Reaches OmniControl on it<br>
+No new pairing code… switches to Tailscale by itself.</p>
+</body></html>

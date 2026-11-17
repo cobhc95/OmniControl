@@ -106,6 +106,12 @@ public sealed class MixerSettings
     /// </summary>
     public string CaptureSilence { get; set; } = string.Empty;
 
+    /// <summary>
+    /// "Keep OmniControl's effects in place": when Equalizer APO's editor or another program writes its config without OmniControl's line,
+    /// it is put back at once (<see cref="Engine.ApoKeeper"/>). Off: it is left out and the rows say so. Files without it load as on.
+    /// </summary>
+    public bool KeepFxInPlace { get; set; } = true;
+
     /// <summary>FX chains of recording devices (keyed by endpoint id), kept even while the device is unplugged.</summary>
     public List<InputFxEntry> Inputs { get; set; } = new();
 

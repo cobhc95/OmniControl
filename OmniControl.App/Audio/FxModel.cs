@@ -9,7 +9,16 @@ public sealed class FxSlot
     public bool Enabled { get; set; } = true;
 
     /// <summary>Whether a row's chain has something to run: its effects are switched on and at least one effect in it is enabled.</summary>
-    public static bool AnyRuns(bool on, IEnumerable<FxSlot> chain) => on && chain.Any(s => s.Enabled);
+    public static bool AnyRuns(bool on, IEnumerable<FxSlot> chain) => on && chain.Any(s => s.Enabled && !s.IsFolder);
+
+    /// <summary>How many effects a chain holds (the count on the Volume list): device folders are not effects.</summary>
+    public static int EffectCount(IEnumerable<FxSlot> chain) => chain.Count(s => !s.IsFolder);
+
+    /// <summary>A device folder (<see cref="FxFolders"/>): not an effect; the effects after it, up to the next folder, are its own.</summary>
+    public bool IsFolder => Kind == FxFolders.Kind;
+
+    /// <summary>A folder's playback device (endpoint id); empty for an effect. <see cref="Name"/> keeps the device's name for when it is unplugged.</summary>
+    public string DeviceId { get; set; } = string.Empty;
 
     /// <summary>A new effect is fully wet.</summary>
     public const int DefaultWet = Core.Models.Percent.Max;
@@ -33,7 +42,7 @@ public sealed class FxSlot
     /// <summary>An independent copy (copy and paste in the FX window): a new slot, so the engine and the plug-in host treat it as a new effect.</summary>
     public FxSlot Copy() => new()
     {
-        Kind = Kind, Name = Name, Enabled = Enabled, Wet = Wet, Values = new List<double>(Values),
+        Kind = Kind, Name = Name, DeviceId = DeviceId, Enabled = Enabled, Wet = Wet, Values = new List<double>(Values),
         Bands = Bands?.Select(b => b.Copy()).ToList(), Path = Path, State = State, Custom = Custom?.Copy(),
     };
 }
@@ -70,9 +79,12 @@ public sealed record PluginType(string Kind, string Tag, string Extension, Core.
 /// <param name="Kind">The stored id (<see cref="FxSlot.Kind"/>); never renamed.</param>
 /// <param name="Name">The name shown everywhere (Add effect, the chain, the APO file's comments); a built-in slot takes it from here on load.</param>
 /// <param name="Engines">The engines that process this effect; elsewhere it is kept in the chain but passes the sound unchanged.</param>
+/// <param name="SortsFirst">The Add effect window lists it before the other built-in effects (the device folder).</param>
+/// <param name="Keywords">Extra words the Add effect window's search finds it by.</param>
+/// <param name="Icon">A library icon id (<see cref="Icons.IconLibrary"/>) the Add effect window shows before the name; empty for none.</param>
 /// <param name="Eq">For an equaliser, how it makes and loads its bands (its slot holds <see cref="FxSlot.Bands"/>); null for the other effects.</param>
 public sealed record FxKind(string Kind, string Name, string Description, IReadOnlyList<FxParam> Params, FxEngines Engines = FxEngines.None,
-    EqLayout? Eq = null, IReadOnlyList<FxPreset>? Presets = null);
+    EqLayout? Eq = null, IReadOnlyList<FxPreset>? Presets = null, bool SortsFirst = false, string Keywords = "", string Icon = "");
 
 /// <summary>
 /// The built-in effects the Add effect window offers. The parameter lists follow TabForge's built-ins (same names, ranges and defaults);
@@ -133,6 +145,7 @@ public static class FxCatalog
 
     public static readonly IReadOnlyList<FxKind> All = new FxKind[]
     {
+        new(FxFolders.Kind, "Device folder", "Pick an output device; this chain plays only on it.", Array.Empty<FxParam>(), SortsFirst: true, Keywords: "selector device folder container output", Icon: "device-speaker-plus"),
         new(IrKind, "IR Loader", "Impulse response (cabinet, room or speaker correction) by convolution", new FxParam[]
         {
             Percent("Mix", 100), new("Gain", 0, -24, 24, " dB"),

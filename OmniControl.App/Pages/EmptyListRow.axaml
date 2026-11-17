@@ -11,6 +11,10 @@
                     IsVisible="{Binding LinkText, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                 <TextBlock Text="{Binding LinkText, RelativeSource={RelativeSource AncestorType=UserControl}}" />
             </Button>
+            <Button Classes="link small" VerticalAlignment="Center" Command="{Binding SecondCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                    IsVisible="{Binding SecondLinkText, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <TextBlock Text="{Binding SecondLinkText, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+            </Button>
         </StackPanel>
     </Panel>
 </UserControl>

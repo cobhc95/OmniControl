@@ -119,6 +119,9 @@ public static class CoreTiming
     /// <summary>How long an elevated helper (the APO installer) may run before OmniControl stops waiting for it.</summary>
     public const int ElevatedHelperTimeoutMs = 120_000;
 
+    /// <summary>How long a Tailscale or netsh read may take, and how long a plain connect test waits (Other PCs over Tailscale).</summary>
+    public const int TailscaleCliWaitMs = 5_000, TcpReachWaitMs = 3_000;
+
     /// <summary>One adb command (connect, a screen dump, a tap) is stopped after this long; a swipe takes this long on the screen.</summary>
     public const int AdbCommandTimeoutMs = 20_000, AdbSwipeMs = 300;
 
@@ -165,4 +168,7 @@ public static class CoreTiming
 
     /// <summary>Screen recording: sound is written in pieces of at least this length; the size, length and disk-space limits are checked this often.</summary>
     public const int RecordSoundChunkMs = 20, RecordLimitCheckMs = 1000;
+
+    /// <summary>Screen recording on the graphics card: when Windows takes the Desktop Duplication away, it is asked for again this often (GDI copies meanwhile).</summary>
+    public const int RecordDuplicationRetryMs = 500;
 }

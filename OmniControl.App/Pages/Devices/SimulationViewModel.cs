@@ -115,10 +115,42 @@ public sealed partial class SimulationViewModel : ObservableObject, IDisposable
             if (!IsConnected) return "stopped";
             var parts = new List<string> { "running" };
             if (Keeper.Hidden is { } hidden) parts.Add(hidden ? "hidden" : "shown");
-            if (_service.Simulation.EmulatorOf(_record) is { } emulator && EmulatorKeeper.MemoryOf(emulator) is > 0 and var bytes) parts.Add($"{bytes / 1073741824.0:0.0} GB");
+            if (MemoryText is { } memory) parts.Add(memory);
             return string.Join(" · ", parts);
         }
     }
+
+    /// <summary>The memory the running emulator holds ("1.9 GB", from the gentle background look); null when it is not known.</summary>
+    private string? MemoryText => _service.Simulation.EmulatorOf(_record) is { } emulator && _service.Simulation.MemoryOf(emulator) is > 0 and var bytes ? $"{bytes / 1073741824.0:0.0} GB" : null;
+
+    // ---- The Simulation row's emulator chip (docs/mockups/emulator-chip.html) ----
+
+    /// <summary>"Emulator: running · 1.9 GB" or "Emulator: closed".</summary>
+    public string ChipText => IsConnected ? $"Emulator: running{(MemoryText is { } memory ? " · " + memory : string.Empty)}" : "Emulator: closed";
+
+    public bool ChipRunning => IsConnected;
+
+    public string ChipTip => IsConnected ? "Closes the emulator. Right-click for Show and how long it keeps running." : "Starts the emulator hidden. Right-click for Show and how long it keeps running.";
+
+    /// <summary>The first rows of the chip's right-click menu: close (or start) now, and show the window; the Keep running menu follows them.</summary>
+    public IReadOnlyList<MenuRowItem> EmulatorActions { get; private set; } = Array.Empty<MenuRowItem>();
+
+    private void ReadEmulatorActions() => EmulatorActions = new[]
+    {
+        new MenuRowItem(IsConnected ? "Close now" : "Start", string.Empty, false, string.Empty, ChipCommand),
+        new MenuRowItem("Show", string.Empty, false, "Shows the emulator's window, starting it first when it is closed.", ShowCommand),
+    };
+
+    /// <summary>A click on the chip: closes the running emulator, or starts the closed one hidden.</summary>
+    [RelayCommand(CanExecute = nameof(CanChip))]
+    private async Task Chip()
+    {
+        if (_service.Simulation.EmulatorOf(_record) is not { } emulator) return;
+        var address = _service.Simulation.AddressOf(_record);
+        await Working(() => IsConnected ? Keeper.CloseNowAsync(emulator, address) : Keeper.StartAsync(emulator, address));
+    }
+
+    private bool CanChip() => CanOpenEmulator && !_working;
 
     /// <summary>Minutes of no action before "until idle" closes the emulator (typed in the menu's number box).</summary>
     public double IdleMinutes
@@ -154,6 +186,7 @@ public sealed partial class SimulationViewModel : ObservableObject, IDisposable
             Detail: $"{e.UsesText} · {e.PcText} · {char.ToLowerInvariant(e.Summary[0])}{e.Summary[1..].TrimEnd('.')}", Dim: true)));
         EmulatorOptions = options;
         ReadKeepMenu();
+        ReadEmulatorActions();
         for (var i = 0; i < Rows.Count; i++)
         {
             Rows[i].RunFailure = _runtime.FailedMethodId == _record.Id && _runtime.FailedStep == i ? _runtime.FailedReason : string.Empty;
@@ -161,11 +194,12 @@ public sealed partial class SimulationViewModel : ObservableObject, IDisposable
         }
         foreach (var name in new[]
                  {
-                     nameof(EmulatorOptions), nameof(EmulatorText), nameof(EmulatorTip), nameof(AddressWatermark), nameof(IsConnected), nameof(CanOpenEmulator), nameof(CanShow), nameof(CanClose), nameof(KeepText), nameof(StateText), nameof(KeepOptions), nameof(KeepSwitches),
+                     nameof(EmulatorOptions), nameof(EmulatorText), nameof(EmulatorTip), nameof(AddressWatermark), nameof(IsConnected), nameof(CanOpenEmulator), nameof(CanShow), nameof(CanClose), nameof(KeepText), nameof(StateText), nameof(ChipText), nameof(ChipRunning), nameof(ChipTip), nameof(EmulatorActions), nameof(KeepOptions), nameof(KeepSwitches),
                      nameof(CanConnect), nameof(CanWork), nameof(HasSteps), nameof(OnTaught), nameof(OffTaught), nameof(CanTeach),
                  })
             OnPropertyChanged(name);
         RecordCommand.NotifyCanExecuteChanged();
+        ChipCommand.NotifyCanExecuteChanged();
         TeachOnCommand.NotifyCanExecuteChanged();
         TeachOffCommand.NotifyCanExecuteChanged();
     }

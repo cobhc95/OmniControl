@@ -6,14 +6,14 @@
              x:DataType="vm:DeviceItem">
     <!-- A device's methods in the Ready view (docs/mockups/device-multiple-methods.html): the muted title, then a boxed list (Border.pane.edged),
          one row per method in the order they are tried: grip (drag to reorder, ListDragReorder), number, "Scripts · Tapo", a "ready" or
-         "set-up" tag and the "Edit setup…" link (wrapping together in the middle), and how fast and where it works in small muted words, then the round power button (Button.statepower) at the far right. A click on the row (or Enter) opens that method's set-up. Under the box the dashed "+ add method" opens the list of methods. -->
+         "set-up" tag and the "Edit setup…" link (wrapping together in the middle), and how fast and where it works in small muted words, then, on a simulation row, the emulator chip (click starts or closes it, right-click opens the Keep running menu with Close now / Start and Show), then the round power button (Button.statepower) at the far right. A click on the row (or Enter) opens that method's set-up. Under the box the dashed "+ add method" opens the list of methods. -->
     <StackPanel Spacing="4">
         <TextBlock Classes="hint small" Text="Methods (drag to order; first that works is used)" TextWrapping="Wrap" />
         <Border Classes="pane edged">
             <ListBox x:Name="MethodRows" Classes="rows compact" ItemsSource="{Binding Methods}" KeyDown="OnRowKeyDown">
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:MethodItem">
-                        <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="8" ToolTip.Tip="{Binding RowTip}">
+                        <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto" ColumnSpacing="8" ToolTip.Tip="{Binding RowTip}">
                             <PathIcon Classes="grip" Data="{DynamicResource GripIcon}" VerticalAlignment="Center" ToolTip.Tip="Drag to change the order" />
                             <TextBlock Grid.Column="1" Classes="muted" Text="{Binding NumberText}" VerticalAlignment="Center" />
                             <WrapPanel Grid.Column="2" ItemSpacing="6" LineSpacing="4" VerticalAlignment="Center">
@@ -24,8 +24,15 @@
                                     <TextBlock Text="Edit setup…" />
                                 </Button>
                             </WrapPanel>
-                            <TextBlock Grid.Column="3" Classes="hint small" Text="{Binding RowNote}" VerticalAlignment="Center" />
-                            <Button Grid.Column="4" Classes="statepower" Classes.on="{Binding PowerOn}" Command="{Binding PowerCommand}" ToolTip.Tip="{Binding PowerTip}">
+                            <Button Grid.Column="3" Classes="selector" Classes.running="{Binding Simulation.ChipRunning}" HorizontalAlignment="Right" IsVisible="{Binding IsSimulation}"
+                                    Command="{Binding Simulation.ChipCommand}" ContextRequested="OnEmulatorContext" ToolTip.Tip="{Binding Simulation.ChipTip}" ToolTip.ShowOnDisabled="True">
+                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="4">
+                                    <c:IconGlyph LibraryId="device-mobile" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Simulation.ChipText}" />
+                                </Grid>
+                            </Button>
+                            <TextBlock Grid.Column="4" Classes="hint small" Text="{Binding RowNote}" VerticalAlignment="Center" />
+                            <Button Grid.Column="5" Classes="statepower" Classes.on="{Binding PowerOn}" Command="{Binding PowerCommand}" ToolTip.Tip="{Binding PowerTip}">
                                 <Panel>
                                     <c:IconGlyph LibraryId="power" IsVisible="{Binding PowerNormal}" />
                                     <c:IconGlyph Classes="markfailed" LibraryId="alert" IsVisible="{Binding PowerFailed}" />

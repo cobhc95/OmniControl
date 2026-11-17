@@ -16,7 +16,7 @@ public sealed class GestureRule
     public AppScopeSetting? Scope { get; set; }
 }
 
-/// <summary>Gesture preferences, stored as JSON in %APPDATA%\OmniControl\gestures.json. Every gesture starts off.</summary>
+/// <summary>Gesture preferences, stored as JSON in %APPDATA%\OmniControl\gestures.json. A gesture starts as its trigger's DefaultOn says.</summary>
 public sealed class GestureSettings
 {
     public const int MinEdgeStrip = 2, MaxEdgeStrip = 40, DefaultEdgeStrip = 6;
@@ -57,7 +57,7 @@ public sealed class GestureSettings
         {
             var rule = RuleFor(trigger);
             var source = other.Rules.GetValueOrDefault(trigger.Id);
-            rule.On = source?.On ?? false;
+            rule.On = source?.On ?? trigger.DefaultOn;
             rule.Action = source?.Action ?? trigger.DefaultAction;
             rule.Options = source is null ? new() : new Dictionary<string, string>(source.Options);
             rule.Scope = source?.Scope;
@@ -75,7 +75,7 @@ public sealed class GestureSettings
     public GestureRule RuleFor(GestureTrigger trigger)
     {
         if (!Rules.TryGetValue(trigger.Id, out var rule))
-            Rules[trigger.Id] = rule = new GestureRule { Action = trigger.DefaultAction };
+            Rules[trigger.Id] = rule = new GestureRule { On = trigger.DefaultOn, Action = trigger.DefaultAction };
         return rule;
     }
 }

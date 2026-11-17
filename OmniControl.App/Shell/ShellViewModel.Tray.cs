@@ -14,6 +14,8 @@ public sealed partial class ShellViewModel
     /// <summary>What the tray flyout and menu show.</summary>
     public TrayFlyoutModel TrayFlyout { get; private set; }
 
+    private WinAKey _winA = null!;
+
     /// <summary>Runs a master action by id through the one run path (the tray menu). False when no such action is registered.</summary>
     public bool RunAction(string id) => _hotkeys.Run(id);
 
@@ -25,8 +27,21 @@ public sealed partial class ShellViewModel
         _hotkeys.Register(new HotkeyAction("app.actions.open", $"Open {ActionsWindowService.Title}", home, "actions hotkeys shortcuts keys list open window",
             _ => _actionsWindow.Open()) { NeverBlock = true });
         var flyout = new TrayFlyoutModel(_hotkeys, _states, _iconPicker, AppLifecycle.RequestShow, ShowInApp);
-        _hotkeys.Register(new HotkeyAction("app.tray.toggle", "Show or hide tray panel", home, "tray panel flyout quick show hide toggle",
-            _ => flyout.RequestToggle()) { NeverBlock = true, DefaultKey = "Alt+Z", SuggestedIcons = new[] { "app", "home" } });
+        const string toggleId = "app.tray.toggle";
+        _winA = new WinAKey(toggleId, _hotkeys.Run, Report);
+        _hotkeys.Register(new HotkeyAction(toggleId, "Show or hide quick panel", home, "tray panel flyout quick settings show hide toggle win a",
+            _ => flyout.RequestToggle())
+        {
+            NeverBlock = true, DefaultKey = "Alt+Z", SuggestedIcons = new[] { "app", "home" },
+            Editor = new ActionEditor(
+                new[] { ActionOption.Toggle(WinAKey.OptionKey, "Use for Win+A (replaces Windows' quick settings)", note: "Win+A opens this panel instead of Windows' quick settings") },
+                () => new Dictionary<string, string> { [WinAKey.OptionKey] = _winA.IsOn ? "1" : "0" },
+                (key, value) =>
+                {
+                    if (key == WinAKey.OptionKey) _winA.Set(value == "1");
+                    return null;
+                }),
+        });
         return flyout;
     }
 

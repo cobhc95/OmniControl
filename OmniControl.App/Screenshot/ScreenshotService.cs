@@ -1,3 +1,4 @@
+using Avalonia.Media.Imaging;
 using OmniControl.App.Osd;
 using OmniControl.App.Services;
 using OmniControl.Core.Engine.Screenshot;
@@ -78,8 +79,17 @@ public sealed class ScreenshotService
     private void OpenOverlay(ScreenshotOptions options, bool recordAtOnce)
     {
         var app = ScreenCapture.ActiveApp();
-        var shots = ScreenCapture.Monitors().Select(m => (m.Bounds, ScreenCapture.Capture(m.Bounds))).ToList();
-        _session = new CaptureSession(shots, new Output(this, options, app), options.OnTop, recordAtOnce, new ToolSizes(_settings.ToolSizes, _settings.Save));
+        var shots = new List<(ScreenRect, Bitmap)>();
+        try
+        {
+            foreach (var monitor in ScreenCapture.Monitors()) shots.Add((monitor.Bounds, ImageBitmaps.Capture(monitor.Bounds)));
+        }
+        catch (InvalidOperationException)
+        {
+            foreach (var (_, picture) in shots) picture.Dispose(); // the monitors copied before the failure are not kept
+            throw;
+        }
+        _session = new CaptureSession(shots,new Output(this, options, app), options.OnTop, recordAtOnce, new ToolSizes(_settings.ToolSizes, _settings.Save));
         _session.Closed += () => _session = null;
         _session.Show();
     }

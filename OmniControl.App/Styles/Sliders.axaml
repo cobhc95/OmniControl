@@ -45,11 +45,32 @@
         <Setter Property="Height" Value="{DynamicResource SliderThickKnob}" />
         <Setter Property="Template">
             <ControlTemplate>
-                <Border Background="{TemplateBinding Background}" BorderBrush="{DynamicResource BrushBackground}"
-                        BorderThickness="{DynamicResource SliderThickRing}" CornerRadius="10" />
+                <Panel>
+                    <Border Background="{TemplateBinding Background}" BorderBrush="{DynamicResource BrushBackground}"
+                            BorderThickness="{DynamicResource SliderThickRing}" CornerRadius="10" />
+                    <!-- Three grip lines on the knob: upright on a horizontal slider, lying on a vertical one -->
+                    <StackPanel x:Name="GripAcross" Orientation="Horizontal" Spacing="{DynamicResource SliderGripGap}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False">
+                        <Rectangle Classes="grip" Width="1" Height="{DynamicResource SliderGripLength}" />
+                        <Rectangle Classes="grip" Width="1" Height="{DynamicResource SliderGripLength}" />
+                        <Rectangle Classes="grip" Width="1" Height="{DynamicResource SliderGripLength}" />
+                    </StackPanel>
+                    <StackPanel x:Name="GripLying" Orientation="Vertical" Spacing="{DynamicResource SliderGripGap}" IsVisible="False"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False">
+                        <Rectangle Classes="grip" Height="1" Width="{DynamicResource SliderGripLength}" />
+                        <Rectangle Classes="grip" Height="1" Width="{DynamicResource SliderGripLength}" />
+                        <Rectangle Classes="grip" Height="1" Width="{DynamicResource SliderGripLength}" />
+                    </StackPanel>
+                </Panel>
             </ControlTemplate>
         </Setter>
     </Style>
+    <Style Selector="Slider.thick /template/ Thumb /template/ Rectangle.grip"><Setter Property="Fill" Value="{DynamicResource BrushGrip}" /></Style>
+    <Style Selector="Slider.thick /template/ Thumb:pointerover /template/ Rectangle.grip, Slider.thick /template/ Thumb:pressed /template/ Rectangle.grip">
+        <Setter Property="Fill" Value="{DynamicResource BrushAccent}" />
+    </Style>
+    <Style Selector="Slider.thick:vertical /template/ Thumb /template/ StackPanel#GripAcross"><Setter Property="IsVisible" Value="False" /></Style>
+    <Style Selector="Slider.thick:vertical /template/ Thumb /template/ StackPanel#GripLying"><Setter Property="IsVisible" Value="True" /></Style>
     <Style Selector="Slider.thick /template/ RepeatButton /template/ Border#TrackBackground">
         <Setter Property="CornerRadius" Value="4" />
         <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />

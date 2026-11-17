@@ -100,7 +100,7 @@ public partial class CaptureOverlay : Window
     private void PlaceBars()
     {
         if (_model.Selection is not { IsEmpty: false } sel || Bounds.Width <= 0) return;
-        var k = Bounds.Width / _model.Image.Width;
+        var k = Bounds.Width / _model.PictureWidth;
         double x = sel.X * k, y = sel.Y * k, w = sel.Width * k, h = sel.Height * k;
         Place(ToolBar, SelectionMath.PlaceBar(BarSide.Right, x, y, w, h, ToolBar.Bounds.Width, ToolBar.Bounds.Height, Bounds.Width, Bounds.Height, _gap));
         Place(ActionBar, SelectionMath.PlaceBar(BarSide.Below, x, y, w, h, ActionBar.Bounds.Width, ActionBar.Bounds.Height, Bounds.Width, Bounds.Height, _gap));
@@ -120,7 +120,7 @@ public partial class CaptureOverlay : Window
     {
         CommitText();
         _textAt = at;
-        var k = Bounds.Width / _model.Image.Width;
+        var k = Bounds.Width / _model.PictureWidth;
         Canvas.SetLeft(TextEntry, at.X * k);
         Canvas.SetTop(TextEntry, at.Y * k);
         TextEntry.Text = string.Empty;

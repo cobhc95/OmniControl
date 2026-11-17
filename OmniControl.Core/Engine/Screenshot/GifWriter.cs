@@ -93,10 +93,15 @@ internal sealed class GifWriter : IVideoSink
     }
 }
 
-/// <summary>GIF's LZW compression of a frame's palette indices, written as the format's sub-blocks of at most 255 bytes.</summary>
+/// <summary>
+/// GIF's LZW compression of a frame's palette indices, written as the format's sub-blocks of at most 255 bytes. The code table is an
+/// open-addressed hash of two small arrays (the classic GIF encoders' table: a prime size a little over 4096, double hashing), several
+/// times faster than a dictionary on every pixel of a large frame and cleared in a moment when the table fills.
+/// </summary>
 internal static class GifLzw
 {
     private const int MaxCodes = 4096, MaxCodeSize = 12;
+    private const int TableSize = 5003, HashShift = 4; // HashShift keeps (index << shift) ^ prefix inside the table
 
     public static void Write(ReadOnlySpan<byte> indices, int minCodeSize, Stream output)
     {
@@ -104,7 +109,7 @@ internal static class GifLzw
         var bits = new BitPacker(output);
         var clear = 1 << minCodeSize;
         var end = clear + 1;
-        var codes = new Dictionary<int, int>(MaxCodes);
+        var codes = new CodeTable();
         var codeSize = minCodeSize + 1;
         var next = end + 1;
         bits.Write(clear, codeSize);
@@ -118,8 +123,8 @@ internal static class GifLzw
         for (var i = 1; i < indices.Length; i++)
         {
             int k = indices[i];
-            var key = prefix << 8 | k;
-            if (codes.TryGetValue(key, out var code))
+            var slot = codes.Find(prefix, k);
+            if (codes.Code(slot) is var code and >= 0)
             {
                 prefix = code;
                 continue;
@@ -127,7 +132,7 @@ internal static class GifLzw
             bits.Write(prefix, codeSize);
             if (next < MaxCodes)
             {
-                codes[key] = next++;
+                codes.Add(slot, prefix, k, next++);
                 if (next > 1 << codeSize && codeSize < MaxCodeSize) codeSize++; // the reader widens its codes one entry later
             }
             else
@@ -142,6 +147,41 @@ internal static class GifLzw
         bits.Write(prefix, codeSize);
         bits.Write(end, codeSize);
         bits.Finish();
+    }
+
+    /// <summary>The string table: "prefix code followed by index k" to its code, keyed by both packed in one number.</summary>
+    private sealed class CodeTable
+    {
+        private readonly int[] _keys = new int[TableSize];
+        private readonly short[] _codes = new short[TableSize];
+
+        public CodeTable() => Clear();
+
+        public void Clear() => Array.Fill(_keys, -1);
+
+        /// <summary>The slot that holds (prefix, k), or the empty slot where it would go.</summary>
+        public int Find(int prefix, int k)
+        {
+            var key = k << MaxCodeSize | prefix;
+            var slot = k << HashShift ^ prefix;
+            if (_keys[slot] == key || _keys[slot] < 0) return slot;
+            var step = slot == 0 ? 1 : TableSize - slot;
+            while (true)
+            {
+                slot -= step;
+                if (slot < 0) slot += TableSize;
+                if (_keys[slot] == key || _keys[slot] < 0) return slot;
+            }
+        }
+
+        /// <summary>The code in a slot <see cref="Find"/> gave, or -1 when the slot is empty.</summary>
+        public int Code(int slot) => _keys[slot] < 0 ? -1 : _codes[slot];
+
+        public void Add(int slot, int prefix, int k, int code)
+        {
+            _keys[slot] = k << MaxCodeSize | prefix;
+            _codes[slot] = (short)code;
+        }
     }
 
     /// <summary>Packs codes least significant bit first into sub-blocks.</summary>

@@ -2,8 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:OmniControl.App.Pages.Devices"
              xmlns:c="using:OmniControl.App.Controls"
-             xmlns:pages="using:OmniControl.App.Pages"
-             x:Class="OmniControl.App.Pages.Devices.SimulationFields"
+                          x:Class="OmniControl.App.Pages.Devices.SimulationFields"
              x:DataType="vm:SimulationViewModel">
     <!-- The set-up's stage 1 "Emulator and connection" (docs/mockups/smart-devices-setup-vs-ready.html): the emulator (the shared ChipMenu with
          the emulator menu v3: Installed / Not installed, names never trimmed), the Keep running chip, the state tag, Show and Close now (one row
@@ -18,17 +17,7 @@
             </c:ChipMenu>
             <c:ChipMenu Text="{Binding KeepText}" ChipToolTip="{Binding KeepTip}" MenuOpened="OnKeepOpened">
                 <c:ChipMenu.Menu>
-                    <StackPanel>
-                        <c:MenuRowList x:Name="KeepRows" Title="Keep running" />
-                        <Grid x:Name="IdleRow" ColumnDefinitions="*,Auto" Margin="0,2">
-                            <TextBlock Classes="menutext" Text="Idle minutes (double-click to type)" VerticalAlignment="Center" />
-                            <pages:NumberText Grid.Column="1" Value="{Binding IdleMinutes}" Minimum="1" Maximum="1440" VerticalAlignment="Center" Margin="6,0">
-                                <TextBlock Text="{Binding IdleMinutes}" />
-                            </pages:NumberText>
-                        </Grid>
-                        <Border Classes="hrule" Margin="0,4" />
-                        <c:MenuRowList x:Name="KeepSwitches" />
-                    </StackPanel>
+                    <vm:KeepRunningMenu x:Name="KeepMenu" />
                 </c:ChipMenu.Menu>
             </c:ChipMenu>
             <Border Classes="tag" Classes.good="{Binding IsConnected}" VerticalAlignment="Center"><TextBlock Text="{Binding StateText}" /></Border>

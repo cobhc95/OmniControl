@@ -77,6 +77,7 @@ public sealed partial class DeviceService
         }
         migrated |= AutoChecks.Migrate(Settings);
         if (migrated) Settings.Save();
+        RegisterEmulatorState();
         WakeEmulatorAtStart();
     }
 

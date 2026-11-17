@@ -1,7 +1,7 @@
 namespace OmniControl.App.Pages.AppSettingsPage;
 
 /// <summary>
-/// The plug-in folders on App settings: the user's own folders the plug-in scan also searches (<see cref="Services.AppSettings.PluginFolders"/>,
+/// The plug-in folders on App settings, and the effects' "Keep OmniControl's effects in place" switch: the user's own folders the plug-in scan also searches (<see cref="Services.AppSettings.PluginFolders"/>,
 /// added with the folder picker card, one row each with Remove), and Scan now with what the scan found. Changes count from the next
 /// scan, here or in the Add effect window (the same scan).
 /// </summary>
@@ -10,6 +10,7 @@ public sealed partial class AppSettingsPageViewModel
     private const string ScanIdleText = "Searches the standard folders and yours, with subfolders.";
 
     private readonly FileItem _addFolder;
+    private readonly ToggleItem _keepFx;
     private readonly ButtonItem _scan;
     private readonly Func<IProgress<int>?, CancellationToken, Task<int>> _scanPlugins;
     private readonly Func<string> _scanResult;
@@ -20,9 +21,18 @@ public sealed partial class AppSettingsPageViewModel
         {
             Entry(_addFolder, PluginsName, "plug-in plugin vst vst2 vst3 folder directory path add other places"),
             Entry(_scan, PluginsName, "plug-in plugin vst vst2 vst3 scan search find refresh"),
+            Entry(_keepFx, PluginsName, "equalizer apo config effects keep in place restore put back include editor"),
         }.Concat(PluginItems.OfType<ButtonItem>().Where(IsFolderRow).Select(row => Entry(row, PluginsName, $"plug-in folder remove {row.Description}")));
 
     private static bool IsFolderRow(ButtonItem item) => item.Label == FolderLabel;
+
+    /// <summary>The switch card of "Keep OmniControl's effects in place"; it follows changes made elsewhere (an FX window, a rule).</summary>
+    private static ToggleItem KeepFxCard(Audio.MixerService mixer)
+    {
+        var card = new ToggleItem(Audio.EffectsRules.KeepInPlace, mixer.KeepFxInPlace, mixer.SetKeepFxInPlace) { Tip = Audio.EffectsRules.KeepInPlaceTip };
+        mixer.KeepFxInPlaceChanged += () => card.Load(mixer.KeepFxInPlace); // the page lives as long as the mixer
+        return card;
+    }
 
     private const string FolderLabel = "Scanned folder";
 

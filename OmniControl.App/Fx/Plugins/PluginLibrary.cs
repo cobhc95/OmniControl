@@ -1,4 +1,4 @@
-using OmniControl.App.Services;
+﻿using OmniControl.App.Services;
 using OmniControl.App.Audio;
 
 namespace OmniControl.App.Fx.Plugins;
@@ -23,7 +23,7 @@ public sealed class PluginLibrary
     private Stored Data => _stored ??= AppDataStore.Load<Stored>(Store) ?? new();
 
     private IReadOnlyList<PluginEntry> BuiltIns { get; } =
-        FxCatalog.All.Select(k => new PluginEntry(k.Name, k.Kind, PluginEntry.BuiltIn, "OmniControl", k.Description)).ToList();
+        FxCatalog.All.OrderByDescending(k => k.SortsFirst).Select(k => new PluginEntry(k.Name, k.Kind, PluginEntry.BuiltIn, "OmniControl", k.Description, k.Keywords, k.Icon)).ToList();
 
     /// <summary>Built-ins first, then plug-ins by name. Files that no longer exist are left out.</summary>
     public IReadOnlyList<PluginEntry> All() => BuiltIns

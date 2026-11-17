@@ -1,0 +1,12 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>FX chain save and load (approved)</title>
+<!-- Approved by the owner 17 Nov 2026 (owner simplified: no preset picker, no toolbar change).
+  FX window, "FX" menu only: after "Move down" and its thin line, two plain items:
+    "Save chain…"  (Ctrl+S)  -> the master save picker (Controls/PathPicker), saves the whole chain (every effect with settings, device
+                                folders included) as one .omnifx file (json through the shared serializer).
+    "Load chain…"  (Ctrl+O)  -> Controls/PathPicker open; replaces the window's chain (undo-able like other edits if undo exists);
+                                an unreadable/foreign file -> one plain sentence via the error path, chain untouched.
+  Then a thin line, then the existing "Pop out effect window" group. Nothing else changes. -->
+<style>body{font-family:Segoe UI;background:#1b1b1b;color:#eee;padding:20px;font-size:13px}</style></head><body>
+<p>FX ▾: Add effect… · Remove · Copy · Paste · Move up · Move down ── Save chain… Ctrl+S · Load chain… Ctrl+O ── Pop out effect window …</p>
+</body></html>

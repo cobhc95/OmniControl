@@ -7,15 +7,18 @@
              Classes="card" IsEnabled="{Binding Availability.IsAvailable}"
              ToolTip.Tip="{Binding Availability.Reason}" ToolTip.ShowOnDisabled="True">
     <Panel>
-        <!-- Slider alone: label, slider, value -->
+        <!-- Slider alone: label, [leading chip], slider, value -->
         <Grid Margin="0,1" IsVisible="{Binding IsPlain}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <TextBlock Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,24,0" />
-            <c:SliderField Grid.Column="1" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Value}" ResetValue="{Binding ResetValue}"
-                           Thick="{Binding Thick}" Text="{Binding ValueText}" ValueMinWidth="48" />
+            <c:IconText Icon="{Binding Icon}" Text="{Binding Label}" Margin="0,0,24,0" />
+            <Grid Grid.Column="1" ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                <c:ChoiceChip DataContext="{Binding Lead}" IsVisible="{Binding $parent[UserControl].DataContext.HasLead}" />
+                <c:SliderField Grid.Column="1" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Value}" ResetValue="{Binding ResetValue}"
+                               Thick="{Binding Thick}" Text="{Binding ValueText}" ValueMinWidth="48" />
+            </Grid>
         </Grid>
 
         <!-- Slider with a companion switch on the same line: label, slider, value | switch name, switch.
@@ -27,7 +30,7 @@
                 <ColumnDefinition Width="2*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <TextBlock Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,24,0" />
+            <c:IconText Icon="{Binding Icon}" Text="{Binding Label}" Margin="0,0,24,0" />
             <c:SliderField Grid.Column="1" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Value}" ResetValue="{Binding ResetValue}"
                            Thick="{Binding Thick}" Text="{Binding ValueText}" ValueMinWidth="48" />
             <Grid Grid.Column="2" ColumnDefinitions="Auto,*" HorizontalAlignment="Right">
@@ -43,7 +46,7 @@
                 <ColumnDefinition Width="*" MinWidth="56" />
                 <ColumnDefinition Width="1.6*" MinWidth="64" />
             </Grid.ColumnDefinitions>
-            <TextBlock Classes="cardlabel" Text="{Binding Label}" />
+            <c:IconText Compact="True" Icon="{Binding Icon}" Text="{Binding Label}" />
             <c:SliderField Grid.Column="1" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Value}" ResetValue="{Binding ResetValue}"
                            Thick="{Binding Thick}" Text="{Binding ValueText}" ValueMinWidth="32" />
         </Grid>

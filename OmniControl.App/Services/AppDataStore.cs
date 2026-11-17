@@ -8,7 +8,8 @@ namespace OmniControl.App.Services;
 /// </summary>
 public static class AppDataStore
 {
-    public static string Folder { get; } =
+    /// <summary>Settable only by the test assembly (internal), so tests never write into the real app data.</summary>
+    public static string Folder { get; internal set; } =
 #if DEBUG
         Environment.GetEnvironmentVariable(Showcase.ShowcaseOptions.DataFolderVariable) ??
 #endif

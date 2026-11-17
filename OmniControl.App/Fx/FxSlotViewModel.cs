@@ -33,6 +33,43 @@ public sealed partial class FxSlotViewModel : ObservableObject, IFxPresetTarget
     public string Name => _slot.Name;
     public bool IsPlugin => FxCatalog.IsPlugin(_slot);
 
+    /// <summary>The slot is a device folder (<see cref="FxFolders"/>); <see cref="Folder"/> is what its row and editor show.</summary>
+    public bool IsFolder => _slot.IsFolder;
+    public bool IsEffect => !_slot.IsFolder;
+    public FxFolderViewModel? Folder { get; internal set; }
+
+    private bool _isChild, _showsAllDevices, _shown = true;
+
+    /// <summary>The row is in the list: false while its folder is closed.</summary>
+    public bool Shown
+    {
+        get => _shown;
+        internal set => SetProperty(ref _shown, value);
+    }
+
+    /// <summary>A short muted line of what the effect is set to (its first settings), for its folder's list.</summary>
+    public string Summary => FxCatalog.PluginTypeOf(_slot)?.Tag
+        ?? (FxCatalog.KindOf(_slot) is not { } kind ? string.Empty
+            : kind.Eq is not null ? $"{_slot.Bands?.Count ?? 0} bands"
+            : string.Join(" · ", kind.Params.Select((p, i) => (p, i)).Where(x => x.i < _slot.Values.Count && !x.p.IsSwitch).Take(2)
+                .Select(x => $"{x.p.Name} {Math.Round(_slot.Values[x.i], 1)}{x.p.Unit}")));
+
+    internal void NotifySummary() => OnPropertyChanged(nameof(Summary));
+
+    /// <summary>The effect is inside a folder (its row is indented under an accent bar).</summary>
+    public bool IsChild
+    {
+        get => _isChild;
+        internal set => SetProperty(ref _isChild, value);
+    }
+
+    /// <summary>The effect is outside every folder while folders exist: it runs for every device, said at the right of its row.</summary>
+    public bool ShowsAllDevices
+    {
+        get => _showsAllDevices;
+        internal set => SetProperty(ref _showsAllDevices, value);
+    }
+
     /// <summary>The short kind shown on the row before the name: the plug-in's format ("VST3", "VST2") or "FX" for a built-in effect.</summary>
     public string Tag => FxCatalog.PluginTypeOf(_slot)?.Tag ?? BuiltInTag;
 
@@ -96,6 +133,7 @@ public sealed partial class FxSlotViewModel : ObservableObject, IFxPresetTarget
 
     private IReadOnlyList<object> BuildEditor()
     {
+        if (_slot.IsFolder) return Array.Empty<object>();
         if (FxCatalog.EqLayoutOf(_slot) is { } eq) return BuildEq(eq);
         if (IsPlugin) return Array.Empty<object>();
         return _slot.Kind switch
@@ -132,6 +170,13 @@ public sealed partial class FxSlotViewModel : ObservableObject, IFxPresetTarget
         if (editor is EqPanelItem panel)
         {
             panel.OverallGain = _eqSettings.OfType<SliderItem>().FirstOrDefault();
+            panel.ApplyOverallGain = db =>
+            {
+                _slot.Values[0] = db;
+                _save();
+                panel.OverallGainDb = db;
+                panel.OverallGain?.Load((int)Math.Round(db));
+            };
             return new List<object> { editor };
         }
         return _eqSettings.Prepend(editor).ToList();

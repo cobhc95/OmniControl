@@ -254,7 +254,7 @@ public class RestoreDefaultsTests
     }
 
     [Fact]
-    public void Gestures_are_at_their_defaults_when_every_rule_is_off_with_its_default_action_and_no_rules_exist()
+    public void Gestures_are_at_their_defaults_when_every_rule_is_at_its_default_with_its_default_action_and_no_rules_exist()
     {
         var current = GestureRestoreState.Defaults();
         Assert.True(GestureRestoreState.Same(current, GestureRestoreState.Defaults()));
@@ -263,7 +263,7 @@ public class RestoreDefaultsTests
         current.Gestures.RuleFor(trigger); // created lazily by the page: still the defaults
         Assert.True(GestureRestoreState.Same(current, GestureRestoreState.Defaults()));
 
-        current.Gestures.RuleFor(trigger).On = true;
+        current.Gestures.RuleFor(trigger).On = !trigger.DefaultOn;
         Assert.False(GestureRestoreState.Same(current, GestureRestoreState.Defaults()));
 
         var withRule = GestureRestoreState.Defaults();
@@ -277,13 +277,13 @@ public class RestoreDefaultsTests
         var settings = new GestureSettings { Enabled = false, EdgeStrip = 20 };
         var trigger = GestureCatalog.Triggers[0];
         var rule = settings.RuleFor(trigger);
-        rule.On = true;
+        rule.On = !trigger.DefaultOn;
         rule.Action = "something";
         rule.Options["x"] = "1";
 
         settings.CopyFrom(new GestureSettings());
         Assert.Same(rule, settings.RuleFor(trigger));
-        Assert.False(rule.On);
+        Assert.Equal(trigger.DefaultOn, rule.On);
         Assert.Equal(trigger.DefaultAction, rule.Action);
         Assert.Empty(rule.Options);
         Assert.True(settings.Enabled);

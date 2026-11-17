@@ -20,7 +20,7 @@ public sealed partial class DeviceService
             Keywords: $"smart device plug bulb power {device.Name}", Icon: IconOf(device),
             Set: value => _ = RunAsync(device, value.Number is { } on && on != 0 ? DevicePower.On : DevicePower.Off),
             Recheck: new StateRecheck(() => CanCheckByScript(device) && AutoChecks.ReadsWhenTrayOpens(Settings, device), () => CheckStateAsync(device, scriptsOnly: true)),
-            Liveness: () => LivenessOf(device, runtime)));
+            Liveness: () => LivenessOf(device, runtime), Common: CommonGroups.SmartDevices));
     }
 
     /// <summary>What the tray tile needs besides the value: a command or read running, the last one failed, or the value only the last one known (docs/mockups/tray-tile-states.html).</summary>
@@ -44,4 +44,34 @@ public sealed partial class DeviceService
         _states.Notify(StateId(device));
         _states.NotifyLiveness(StateId(device));
     };
+
+    // The emulator's running state ("Emulator · on/off"): one entry for the simulation methods' emulator. Its owner is this service because it
+    // knows the methods; the keeper only does the starting and closing. Setting it starts the emulator hidden or closes it.
+    public const string EmulatorStateId = "devices.emulator.running";
+
+    private void RegisterEmulatorState()
+    {
+        _states.Register(new StateEntry(EmulatorStateId, "Emulator", Category, StateKind.OnOff,
+            () => StateValue.Of(EmulatorIsUp(), DateTime.Now), "Whether adb reaches the simulation method's emulator, looked at every few seconds.",
+            Keywords: "smart devices simulation emulator android running memory", Icon: "device-mobile",
+            Set: value => _ = SetEmulatorAsync(value.Number is { } on && on != 0),
+            Liveness: () => new StateLiveness(Simulation.Keeper.Busy, false, null, null)));
+        Simulation.Changed += () =>
+        {
+            _states.Notify(EmulatorStateId);
+            _states.NotifyLiveness(EmulatorStateId);
+        };
+    }
+
+    private IEnumerable<MethodRecord> SimulationMethods => Settings.Devices.SelectMany(d => d.Methods).Where(m => m.IsSimulation);
+
+    private bool EmulatorIsUp() => SimulationMethods.Any(m => Simulation.IsConnected(Simulation.AddressOf(m)));
+
+    private async Task SetEmulatorAsync(bool on)
+    {
+        if (SimulationMethods.FirstOrDefault() is not { } method || Simulation.EmulatorOf(method) is not { } emulator) return;
+        var address = Simulation.AddressOf(method);
+        var problem = on ? await Simulation.Keeper.StartAsync(emulator, address) : await Simulation.Keeper.CloseNowAsync(emulator, address);
+        if (problem is not null) _report(problem);
+    }
 }

@@ -28,4 +28,29 @@ public static class Keycaps
         }
         return parts;
     }
+
+    // The arrow keys, in the order a row of them reads, drawn as arrows.
+    private static readonly (string Name, string Glyph)[] Arrows = { ("Up", "↑"), ("Down", "↓"), ("Left", "←"), ("Right", "→") };
+
+    private static int ArrowRank(string name)
+    {
+        var at = Array.FindIndex(Arrows, a => a.Name == name);
+        return at >= 0 ? at : Arrows.Length;
+    }
+
+    /// <summary>
+    /// Several shortcuts as one short row of keycaps: the keys they all begin with ("Ctrl", "Alt"), then each one's last key; arrow keys are drawn as arrows
+    /// and read Up, Down, Left, Right. Shortcuts without a common beginning give just their last keys.
+    /// </summary>
+    public static IReadOnlyList<KeycapPart> Summary(IEnumerable<string> shortcuts)
+    {
+        var split = shortcuts.Select(s => s.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).Where(p => p.Length > 0).ToList();
+        if (split.Count == 0) return Array.Empty<KeycapPart>();
+        var common = split[0].Take(split[0].Length - 1).TakeWhile((name, i) => split.All(p => p.Length - 1 > i && p[i] == name)).ToList();
+        var last = split.Select(p => p[^1]).OrderBy(ArrowRank).ToList();
+        var parts = common.Select(name => new KeycapPart(name, KeycapKind.Key)).ToList();
+        var ends = string.Join(" ", last.Select(name => Arrows.FirstOrDefault(a => a.Name == name).Glyph ?? name));
+        parts.Add(new KeycapPart(ends, KeycapKind.Key));
+        return parts;
+    }
 }

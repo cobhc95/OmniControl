@@ -234,6 +234,10 @@ public class MasterMethodTests(ITestOutputHelper output)
             Files.Remove(folder);
             return null;
         }
+
+        public ApoFolderFacts? Read(string folder, string? wanted) => new(Files.GetValueOrDefault(folder) == wanted, false);
+
+        public string? Touch(string folder) => null;
     }
 
     private static IReadOnlyDictionary<string, EngineStatus> Send(ApoChains chains, RoutePlan plan, MixerSettings s, ApoState apo) =>
@@ -246,7 +250,7 @@ public class MasterMethodTests(ITestOutputHelper output)
     {
         var apo = OwnerPc.ApoOnSpeaker(onCableA: true);
         var store = new FakeStore();
-        var chains = new ApoChains(_ => { }, store);
+        var chains = new ApoChains(_ => { }, () => { }, store);
         var s = Settings(EffectsRules.MasterApo);
         s.Apps.First(a => a.Key == OwnerPc.Spotify).FxRoute = EffectsRules.RouteApoCable.Id;
         var plan = Plan(s, Set(OwnerPc.Spotify), twoPairs: true, apo: apo);
@@ -270,7 +274,7 @@ public class MasterMethodTests(ITestOutputHelper output)
     public void ApoWriter_EqualizerApoNotOnTheSpeakers_WritesNothing_AndSaysNotApplied()
     {
         var store = new FakeStore();
-        var chains = new ApoChains(_ => { }, store);
+        var chains = new ApoChains(_ => { }, () => { }, store);
         var s = Settings(EffectsRules.MasterApo);
         var apo = ApoState.None with { };
         var plan = Plan(s, None, apo: apo);

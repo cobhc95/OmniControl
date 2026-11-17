@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:svc="using:OmniControl.App.Services"
         xmlns:pages="using:OmniControl.App.Pages"
+        xmlns:c="using:OmniControl.App.Controls"
         xmlns:vol="using:OmniControl.App.Pages.Volume">
 
 
@@ -79,6 +80,13 @@
         <Setter Property="Width" Value="220" />
     </Style>
 
+    <!-- A choice card whose pop-down is the shared menu (Pages/MenuChoiceRow): placed exactly like ComboBox.choice, full or half -->
+    <Style Selector="c|ChipMenu.choice">
+        <Setter Property="Grid.ColumnSpan" Value="2" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="Width" Value="220" />
+    </Style>
+
     <!-- Search results (ListBox.results): the title column takes what the editors leave, the editors share one right-hand column,
          so the controls that do not stretch hug the right edge. Declared after the page placement above so it overrides it. -->
     <Style Selector="ListBox.results pages|GalleryRow Border.gallery">
@@ -99,6 +107,17 @@
         <Setter Property="HorizontalAlignment" Value="Right" />
     </Style>
     <Style Selector="ListBox.results ComboBox.choice.half"><Setter Property="HorizontalAlignment" Value="Stretch" /></Style>
+    <Style Selector="c|ChipMenu.choice.half">
+        <Setter Property="Grid.ColumnSpan" Value="1" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="Width" Value="NaN" />
+    </Style>
+    <Style Selector="ListBox.results c|ChipMenu.choice">
+        <Setter Property="Grid.Column" Value="1" />
+        <Setter Property="Grid.ColumnSpan" Value="1" />
+        <Setter Property="HorizontalAlignment" Value="Right" />
+    </Style>
+    <Style Selector="ListBox.results c|ChipMenu.choice.half"><Setter Property="HorizontalAlignment" Value="Stretch" /></Style>
     <Style Selector="ListBox.results pages|ToggleRow">
         <Setter Property="HorizontalAlignment" Value="Right" />
     </Style>
@@ -153,7 +172,7 @@
         <Setter Property="Padding" Value="8,3,8,2" />
         <Setter Property="Margin" Value="0,0,0,4" />
     </Style>
-    <!-- The group card: the panel, its header line with the tools at the right, the body (both tools and body follow the group's open/closed state) -->
+    <!-- The group card: the panel, its header line with the master switch and the tools at the right, the body (both tools and body follow the group's open/closed state) -->
     <Style Selector="pages|GroupCard">
         <Setter Property="Template">
             <ControlTemplate>
@@ -161,13 +180,13 @@
                     <StackPanel Spacing="6">
                         <Grid ColumnDefinitions="*,Auto,Auto">
                             <pages:GroupHeader DataContext="{TemplateBinding Group}" />
-                            <ItemsControl Grid.Column="1" ItemsSource="{TemplateBinding Tools}" Margin="0,0,8,0" VerticalAlignment="Center"
+                            <pages:GroupMasterSwitch Grid.Column="1" DataContext="{TemplateBinding Group}" Margin="0,0,8,0" />
+                            <ItemsControl Grid.Column="2" ItemsSource="{TemplateBinding Tools}" Margin="0,0,8,0" VerticalAlignment="Center"
                                           IsVisible="{Binding Group.IsExpanded, RelativeSource={RelativeSource TemplatedParent}}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate>
                                 </ItemsControl.ItemsPanel>
                             </ItemsControl>
-                            <pages:GroupMasterSwitch Grid.Column="2" DataContext="{TemplateBinding Group}" Margin="0,0,8,0" />
                         </Grid>
                         <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
                                           IsVisible="{Binding Group.IsExpanded, RelativeSource={RelativeSource TemplatedParent}}" />
@@ -203,6 +222,12 @@
     <Style Selector="PathIcon.chev.collapsed">
         <Setter Property="RenderTransform" Value="rotate(-90deg)" />
     </Style>
+
+    <!-- A pop-down must draw above the cards below it (the Position drop-down showed a switch through its list): the card that holds the keyboard,
+         which includes the control whose list is open, is drawn above its neighbours, and a drop-down's list is a solid surface of the
+         panel colour, never see-through. One rule here, so every page's drop-downs and menus have it. -->
+    <Style Selector="ListBox.rows > ListBoxItem:focus-within"><Setter Property="ZIndex" Value="1" /></Style>
+    <Style Selector="ComboBox /template/ Border#PopupBorder"><Setter Property="Background" Value="{DynamicResource BrushSidebar}" /></Style>
 
     <!-- Hover feedback for the mouse (keyboard focus uses the accent border) -->
     <Style Selector="ListBox.nav > ListBoxItem:pointerover:not(:selected) /template/ ContentPresenter">

@@ -55,7 +55,7 @@ public sealed class VideoRecording
         string? note;
         try
         {
-            (_recorder, note) = await ScreenRecorder.StartAsync(request);
+            (_recorder, note) = await ScreenRecorder.StartAsync(request, line => AppDataStore.AppendLog(Guard.LogFile, line));
         }
         catch (InvalidOperationException ex)
         {

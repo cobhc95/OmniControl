@@ -24,6 +24,9 @@ public class CardGroup : ObservableObject
     /// <summary>Facts about the whole group that are not on its cards (what it talks to, its limits), shown as the header's tooltip; null: none.</summary>
     public string? Tip { get; init; }
 
+    /// <summary>A library icon id drawn before the name on the header (a group that has one, such as the Other PCs cards); null: none.</summary>
+    public string? Icon { get; init; }
+
     /// <summary>True: the summary follows the name on the same line (grey) instead of sitting at the right edge.</summary>
     public bool SummaryBesideName { get; init; }
 
@@ -113,13 +116,29 @@ public class CardGroup : ObservableObject
     }
 
     /// <summary>True: every card is an on/off switch, so the header gets the master switch (<see cref="GroupMasterSwitch"/>).</summary>
-    public virtual bool HasMaster => false;
+    public virtual bool HasMaster => _switch is not null;
 
     /// <summary>The master switch's state: true all on, false all off, null some on (the mixed look). Null too when there is no master.</summary>
-    public virtual bool? MasterState => null;
+    public virtual bool? MasterState => _switch?.State();
 
     /// <summary>The master switch was clicked: all on becomes all off, anything else becomes all on.</summary>
-    public virtual void ToggleAll() { }
+    public virtual void ToggleAll() => _switch?.Toggle();
+
+    private GroupSwitch? _switch;
+
+    /// <summary>Gives the group a master switch that is not made of its cards (a screen's power); null takes it away.</summary>
+    public void UseSwitch(GroupSwitch? groupSwitch)
+    {
+        _switch = groupSwitch;
+        RefreshMaster();
+    }
+
+    /// <summary>The value behind the switch may have changed: the header shows it again.</summary>
+    public void RefreshMaster()
+    {
+        OnPropertyChanged(nameof(HasMaster));
+        OnPropertyChanged(nameof(MasterState));
+    }
 
     public void Toggle() => IsExpanded = !IsExpanded;
 
@@ -139,13 +158,13 @@ public sealed class ItemGroup : CardGroup, IDisposable
 
     public IReadOnlyList<object> Items { get; }
 
-    public override bool HasMaster => _toggles.Count > 0;
+    public override bool HasMaster => _toggles.Count > 0 || base.HasMaster;
 
     public override bool? MasterState
     {
         get
         {
-            if (_toggles.Count == 0) return null;
+            if (_toggles.Count == 0) return base.MasterState;
             var on = _toggles.Count(t => t.IsOn);
             return on == _toggles.Count ? true : on == 0 ? false : null;
         }
@@ -170,6 +189,11 @@ public sealed class ItemGroup : CardGroup, IDisposable
 
     public override void ToggleAll()
     {
+        if (_toggles.Count == 0)
+        {
+            base.ToggleAll();
+            return;
+        }
         var target = MasterState != true;
         _bulk = true;
         foreach (var toggle in _toggles) toggle.IsOn = target;

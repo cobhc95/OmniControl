@@ -1,5 +1,13 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:OmniControl.App.Controls">
     <!-- MASTER design of a caution fact said in words (TextBlock.cautiontext: an Easy check line's to-do mark), the tags' caution colour. Included after Theme.axaml. -->
     <Style Selector="TextBlock.cautiontext"><Setter Property="Foreground" Value="{DynamicResource BrushCaution}" /></Style>
+    <!-- The marks of a checklist line (Other PCs' Tailscale checks): c|IconGlyph.cautionmark = a failing check, Ellipse.pendingdot = not known yet; a passing one is Path.glyph.tickmark. -->
+    <Style Selector="c|IconGlyph.cautionmark"><Setter Property="Foreground" Value="{DynamicResource BrushCaution}" /></Style>
+    <Style Selector="Ellipse.pendingdot">
+        <Setter Property="Width" Value="5" />
+        <Setter Property="Height" Value="5" />
+        <Setter Property="Fill" Value="{DynamicResource BrushMuted}" />
+    </Style>
 </Styles>

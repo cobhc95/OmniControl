@@ -1,0 +1,25 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Other PCs over the internet via Tailscale (approved)</title>
+<!-- Approved by the owner 17 Nov 2026. Extends docs/mockups/other-pcs.html (pairing stays Border.stage.open under the title line).
+  1 Pair a PC stage: two choice pills (shared ChoiceChips) "On this network" | "Over the internet" (Tailscale). LAN behaviour unchanged.
+  2 Over the internet: heading "Tailscale on this PC" then a checklist (one row each: icon tick/caution/pending, words, right-side tag or fix pill):
+      Installed (tag = version) -> fix Button.link "Get Tailscale" (opens tailscale.com download)
+      Running -> fix "Start Tailscale"
+      Signed in (account in tooltip only) -> fix "Sign in" (opens Tailscale's own login)
+      Connected (tag = this PC's Tailscale IP)
+      OmniControl allowed through Windows Firewall on Tailscale -> fix Button.pill "Allow" (Windows' own elevation prompt; Core does the firewall call)
+      Other PC reachable (pending until a PC is picked)
+    "Check again" pill at the stage's right. Checks are READ-ONLY (tailscale CLI `status --json`/LocalAPI); nothing changes without a fix press.
+  3 Step "Pick the other PC": ChipMenu listing the tailnet's online Windows peers (name · 100.x IP), or type a name/IP.
+  4 Step: the existing pairing code + Pair. Pairing is the ONLY approval (owner); afterwards everything works automatically, LAN or internet.
+  5 Paired PC row gets a plain Border.tag "via Tailscale". If a Tailscale-paired PC goes offline the checks re-run in the background and the
+    PC detail shows the first failing check as one sentence + its fix.
+  6 Pairing is two-way (owner, 17 Nov): after ONE pairing either PC controls the other, nothing set up on the second PC. Both PCs store
+    each other's Tailscale address during the pairing exchange, so either side can dial; either may be the one that pressed Pair.
+  No bell/notification card. Same encryption/protocol as LAN (PcCrypto); Tailscale is only the transport. -->
+<style>body{font-family:Segoe UI;background:#1b1b1b;color:#eee;padding:20px;font-size:13px}</style></head><body>
+<p>Pair a PC [On this network] [Over the internet*] ........ [Check again]<br>
+Tailscale on this PC: ✓ Installed [1.76] · ✓ Running · ✓ Signed in · ✓ Connected [100.64.0.3] · ⚠ Firewall [Allow] · • Other PC reachable<br>
+Pick the other PC [studio-laptop · 100.64.0.7 ▾] · Code [482 913] [Pair]<br>
+Studio laptop [online] [via Tailscale]</p>
+</body></html>

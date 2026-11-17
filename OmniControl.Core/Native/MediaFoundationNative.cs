@@ -39,6 +39,15 @@ internal static unsafe class MediaFoundationNative
     public static readonly Guid Rgb32 = new("00000016-0000-0010-8000-00aa00389b71");
     public static readonly Guid H264 = new("34363248-0000-0010-8000-00aa00389b71");
     public static readonly Guid Hevc = new("43564548-0000-0010-8000-00aa00389b71");
+    public static readonly Guid Argb32 = new("00000015-0000-0010-8000-00aa00389b71");
+    public static readonly Guid SinkWriterD3DManager = new("ec822da2-e1e9-4b29-a0d8-563c719f5269");
+    public static readonly Guid SampleBindFlags = new("eacf97ad-065c-4408-bee3-fdcbfd128be2");
+    public static readonly Guid IidSampleAllocatorEx = new("545b3a48-3283-4f62-866f-a62d8f598f9f");
+    public static readonly Guid IidDxgiBuffer = new("e7174cfa-1c9e-48b1-8866-626226bfc258");
+    public static readonly Guid Iid2DBuffer = new("7DC9D5F9-9ED9-44ec-9BBF-0600BB589FBB");
+
+    /// <summary>The sample allocator has no free sample (the encoder still holds them all).</summary>
+    public const int SampleAllocatorEmpty = unchecked((int)0xC00D4A3E);
 
     [StructLayout(LayoutKind.Sequential)]
     public struct TypeInfo
@@ -53,6 +62,8 @@ internal static unsafe class MediaFoundationNative
     [DllImport("mfplat.dll")] public static extern int MFCreateSample(out IntPtr sample);
     [DllImport("mfplat.dll")] public static extern int MFCreateMemoryBuffer(uint maxLength, out IntPtr buffer);
     [DllImport("mfplat.dll")] public static extern int MFTEnumEx(Guid category, uint flags, IntPtr inputType, ref TypeInfo outputType, out IntPtr activates, out uint count);
+    [DllImport("mfplat.dll")] public static extern int MFCreateDXGIDeviceManager(out uint resetToken, out IntPtr manager);
+    [DllImport("mfplat.dll")] public static extern int MFCreateVideoSampleAllocatorEx(ref Guid iid, out IntPtr allocator);
     [DllImport("mfreadwrite.dll", CharSet = CharSet.Unicode)] public static extern int MFCreateSinkWriterFromURL(string url, IntPtr byteStream, IntPtr attributes, out IntPtr writer);
     [DllImport("ole32.dll")] public static extern void CoTaskMemFree(IntPtr memory);
 
@@ -76,6 +87,9 @@ internal static unsafe class MediaFoundationNative
     public static void SetGuid(IntPtr obj, Guid key, Guid value) =>
         Check(((delegate* unmanaged[Stdcall]<IntPtr, Guid*, Guid*, int>)Vtbl(obj)[24])(obj, &key, &value));
 
+    public static void SetUnknown(IntPtr obj, Guid key, IntPtr value) =>
+        Check(((delegate* unmanaged[Stdcall]<IntPtr, Guid*, IntPtr, int>)Vtbl(obj)[27])(obj, &key, value));
+
     /// <summary>Two 32-bit numbers in one 64-bit attribute (a frame size, a frame rate, a pixel aspect ratio).</summary>
     public static void SetPair(IntPtr obj, Guid key, uint high, uint low) => SetUInt64(obj, key, (ulong)high << 32 | low);
 
@@ -88,6 +102,13 @@ internal static unsafe class MediaFoundationNative
 
     public static void AddBuffer(IntPtr sample, IntPtr buffer) =>
         Check(((delegate* unmanaged[Stdcall]<IntPtr, IntPtr, int>)Vtbl(sample)[42])(sample, buffer));
+
+    public static IntPtr GetBufferByIndex(IntPtr sample, uint index)
+    {
+        IntPtr buffer;
+        Check(((delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int>)Vtbl(sample)[40])(sample, index, &buffer));
+        return buffer;
+    }
 
     // IMFMediaBuffer
     public static byte* Lock(IntPtr buffer)
@@ -102,6 +123,55 @@ internal static unsafe class MediaFoundationNative
 
     public static void SetCurrentLength(IntPtr buffer, uint length) =>
         Check(((delegate* unmanaged[Stdcall]<IntPtr, uint, int>)Vtbl(buffer)[6])(buffer, length));
+
+    // IMF2DBuffer
+    public static byte* Lock2D(IntPtr buffer, out int pitch)
+    {
+        byte* scanline0;
+        int stride;
+        Check(((delegate* unmanaged[Stdcall]<IntPtr, byte**, int*, int>)Vtbl(buffer)[3])(buffer, &scanline0, &stride));
+        pitch = stride;
+        return scanline0;
+    }
+
+    public static void Unlock2D(IntPtr buffer) => Check(((delegate* unmanaged[Stdcall]<IntPtr, int>)Vtbl(buffer)[4])(buffer));
+
+    public static uint GetContiguousLength(IntPtr buffer)
+    {
+        uint length;
+        Check(((delegate* unmanaged[Stdcall]<IntPtr, uint*, int>)Vtbl(buffer)[7])(buffer, &length));
+        return length;
+    }
+
+    // IMFDXGIBuffer
+    public static IntPtr GetResource(IntPtr buffer, Guid iid)
+    {
+        IntPtr resource;
+        Check(((delegate* unmanaged[Stdcall]<IntPtr, Guid*, IntPtr*, int>)Vtbl(buffer)[3])(buffer, &iid, &resource));
+        return resource;
+    }
+
+    // IMFDXGIDeviceManager
+    public static void ResetDevice(IntPtr manager, IntPtr device, uint token) =>
+        Check(((delegate* unmanaged[Stdcall]<IntPtr, IntPtr, uint, int>)Vtbl(manager)[7])(manager, device, token));
+
+    // IMFVideoSampleAllocatorEx
+    public static void SetDirectXManager(IntPtr allocator, IntPtr manager) =>
+        Check(((delegate* unmanaged[Stdcall]<IntPtr, IntPtr, int>)Vtbl(allocator)[3])(allocator, manager));
+
+    public static int UninitializeSampleAllocator(IntPtr allocator) => ((delegate* unmanaged[Stdcall]<IntPtr, int>)Vtbl(allocator)[4])(allocator);
+
+    /// <summary>A free sample, or the failure (<see cref="SampleAllocatorEmpty"/> when the encoder holds them all).</summary>
+    public static int AllocateSample(IntPtr allocator, out IntPtr sample)
+    {
+        IntPtr found;
+        var hr = ((delegate* unmanaged[Stdcall]<IntPtr, IntPtr*, int>)Vtbl(allocator)[6])(allocator, &found);
+        sample = found;
+        return hr;
+    }
+
+    public static void InitializeSampleAllocatorEx(IntPtr allocator, uint initial, uint maximum, IntPtr attributes, IntPtr type) =>
+        Check(((delegate* unmanaged[Stdcall]<IntPtr, uint, uint, IntPtr, IntPtr, int>)Vtbl(allocator)[7])(allocator, initial, maximum, attributes, type));
 
     // IMFSinkWriter
     public static uint AddStream(IntPtr writer, IntPtr type)

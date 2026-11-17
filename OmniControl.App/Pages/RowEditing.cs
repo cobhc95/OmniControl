@@ -61,7 +61,7 @@ public static class RowEditing
     public static InputElement CardTarget(ListBoxItem card) => Parts(card).FirstOrDefault() ?? card;
 
     private static bool IsPart(Control c) =>
-        c is Slider or Knob or ComboBox or ToggleSwitch
+        c is Slider or Knob or ComboBox or ToggleSwitch or AnchorPicker
         || c is Border { Tag: "gallery" }
         || c is Button { Tag: "scope" }
         || HotkeyCapture.IsHotkeyBox(c)
@@ -212,6 +212,11 @@ public static class RowEditing
             // A card whose only part is a slider needs no Enter: Left/Right change it directly.
             case Key.Left or Key.Right when src is Slider only && parts.Count == 1:
                 StepSlider(only, e);
+                e.Handled = true;
+                break;
+
+            // The anchor picker: the arrow keys walk its grid; at the grid's edge they leave it like any part (next part or card).
+            case Key.Left or Key.Right or Key.Up or Key.Down when src is AnchorPicker picker && e.KeyModifiers == KeyModifiers.None && picker.Walk(e.Key):
                 e.Handled = true;
                 break;
 

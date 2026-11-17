@@ -10,7 +10,7 @@ namespace OmniControl.App.Pages.Displays;
 /// double-click returns it to. The card, its up/down hotkey actions (and so the Shortcuts page, the mouse and gesture pickers and search)
 /// and the OSD element are all made from this entry; nothing else lists the control.
 /// </summary>
-internal sealed record LevelSpec(string Key, string Label, string Keywords, string Osd, OsdLevelIcon Icon, int Min, int Max, int Default, string Section)
+internal sealed record LevelSpec(string Key, string Label, string Keywords, string Osd, OsdLevelIcon Icon, int Min, int Max, int Default, string Section, string? SuggestedUp = null, string? SuggestedDown = null)
 {
     /// <summary>The value as a 0-100 share of the control's range, which is what the OSD draws.</summary>
     public int OsdPercent(int value) => Percent.OfRange(value, Min, Max);
@@ -39,7 +39,7 @@ internal static class DisplayControls
 
     /// <summary>One entry per feature of <see cref="VcpFeatures"/> that is a level: the monitor reports which of them it has.</summary>
     public static readonly IReadOnlyList<HardwareLevel> Hardware = VcpFeatures.Levels.Select(f =>
-        new HardwareLevel(new LevelSpec(f.Key, f.Label, Screen + f.Keywords, f.Label, IconOf(f), Percent.Min, Percent.Max, f.Default ?? Percent.Max / 2, f.Section),
+        new HardwareLevel(new LevelSpec(f.Key, f.Label, Screen + f.Keywords, f.Label, IconOf(f), Percent.Min, Percent.Max, f.Default ?? Percent.Max / 2, f.Section, f.SuggestedUp, f.SuggestedDown),
             f.Code, f.Default is null)).ToList();
 
     /// <summary>One entry per feature of <see cref="VcpFeatures"/> that is a choice.</summary>

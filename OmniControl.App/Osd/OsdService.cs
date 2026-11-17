@@ -1,3 +1,4 @@
+using Avalonia.Platform;
 using Avalonia.Threading;
 using OmniControl.App.Services;
 using OmniControl.Core.Engine;
@@ -27,7 +28,8 @@ public sealed class OsdService : IDisposable
     private readonly UsbDeviceWatcher _usb = new(Timing.OsdUsbSettle);
     private readonly MediaWatcher _media = new(Timing.OsdTrackQuiet);
     private readonly Dictionary<string, DateTime> _ownChange = new();
-    private OsdWindow? _window;
+    // One pop-up window per screen it shows on (the first is made at start-up and kept; the others come and go with the "Show on" choice).
+    private readonly List<OsdWindow> _windows = new();
 
     // The newest level asked for from another thread and not drawn yet. Steps that arrive faster than the UI thread draws replace
     // it, so only the newest is drawn and the dispatcher queue never fills with stale values.
@@ -37,8 +39,18 @@ public sealed class OsdService : IDisposable
 
     public OsdSettings Settings { get; } = OsdSettings.Load();
 
+    /// <summary>The places the user named (the OSD place presets).</summary>
+    public OsdPlaces Places { get; }
+
     /// <summary>Raised when an OSD setting changes, so open previews can redraw.</summary>
     public event Action? SettingsChanged;
+
+    /// <summary>
+    /// Windows reported a new level or mute of the watched playback or recording device (level, muted), from anywhere, as it happens and on a
+    /// Windows audio thread; raised before the OSD decides whether to show it. The same notification the pop-up uses, so the states built on
+    /// it (the tray's mute tiles) are as fast as the pop-up.
+    /// </summary>
+    public event Action<int, bool>? VolumeWatched, MicrophoneWatched;
 
     /// <summary>Raised when a feature declares a new element, so the "Show in OSD" switches follow.</summary>
     public event Action? ElementsChanged;
@@ -68,11 +80,12 @@ public sealed class OsdService : IDisposable
     public OsdService()
     {
         _showQueued = ShowQueued;
+        Places = new OsdPlaces(Settings, PlacesChanged);
         DeclareText(UsbElement);
         DeclareText(PlayPauseElement);
         DeclareText(TrackElement);
-        _hide.Tick += (_, _) => { _hide.Stop(); _window?.Fade(); };
-        _keepWarm.Tick += (_, _) => _window?.KeepWarm();
+        _hide.Tick += (_, _) => { _hide.Stop(); foreach (var window in _windows) window.Fade(); };
+        _keepWarm.Tick += (_, _) => { foreach (var window in _windows) window.KeepWarm(); };
         AccentService.Changed += OnAccentChanged;
         if (StartupMode.Inert) return; // a screenshot export hides no Windows pop-up and watches no brightness, volume, USB or media change
         _windowsOsd.Hidden = Settings.HideWindowsOsd;
@@ -90,6 +103,7 @@ public sealed class OsdService : IDisposable
         // echo would show it again, or briefly show an older value between two quick steps.
         _volume.Changed += (value, muted) =>
         {
+            VolumeWatched?.Invoke(value, muted);
             if (!RecentOwnChange(VolumeElement)) ShowVolume(value, muted);
         };
         _volume.Start();
@@ -97,6 +111,7 @@ public sealed class OsdService : IDisposable
         // The microphone changed outside OmniControl (the laptop's mic-mute key, Windows settings, another app).
         _mic.Changed += (value, muted) =>
         {
+            MicrophoneWatched?.Invoke(value, muted);
             if (!RecentOwnChange(MicrophoneElement)) Show(MicrophoneElement, muted ? 0 : value, muted ? "Microphone muted" : MicrophoneElement);
         };
         _mic.Start();
@@ -110,7 +125,7 @@ public sealed class OsdService : IDisposable
         _media.Start();
 
         // As soon as the dispatcher runs, ahead of building the main window's pages, so even the first pop-up is ready.
-        Dispatcher.UIThread.Post(() => _ = Window, DispatcherPriority.Send);
+        Dispatcher.UIThread.Post(Prepare, DispatcherPriority.Send);
         _keepWarm.Start();
     }
 
@@ -170,7 +185,49 @@ public sealed class OsdService : IDisposable
         Preview();
     }
 
-    public void SetPosition(OsdPosition p) { Settings.Position = p; Settings.Save(); }
+    /// <summary>Uses a built-in place.</summary>
+    public void SetPosition(OsdPosition p)
+    {
+        (Settings.Position, Settings.CustomPlace) = (p, null);
+        Settings.Save();
+        SettingsChanged?.Invoke();
+    }
+
+    /// <summary>Uses one of the user's named places (nothing happens for an id that is gone).</summary>
+    public void UsePlace(string id)
+    {
+        if (Places.Find(id) is null) return;
+        Settings.CustomPlace = id;
+        Settings.Save();
+        SettingsChanged?.Invoke();
+    }
+
+    /// <summary>Chooses where the pop-up shows; <paramref name="screens"/> (when given) replaces the screens kept for <see cref="OsdShowOn.Chosen"/>.</summary>
+    public void SetShowOn(OsdShowOn on, IEnumerable<string>? screens = null)
+    {
+        Settings.ShowOn = on;
+        if (screens is not null) Settings.Screens = screens.ToList();
+        Settings.Save();
+        SettingsChanged?.Invoke();
+        Prepare();
+    }
+
+    /// <summary>Ticks or unticks one screen for "Show on"; the first tick turns "Show on" to the chosen screens, the last untick back to all.</summary>
+    public void ToggleScreen(string key)
+    {
+        if (Settings.ShowOn != OsdShowOn.Chosen) (Settings.ShowOn, Settings.Screens) = (OsdShowOn.Chosen, new List<string> { key });
+        else if (!Settings.Screens.Remove(key)) Settings.Screens.Add(key);
+        if (Settings.Screens.Count == 0) Settings.ShowOn = OsdShowOn.AllScreens;
+        Settings.Save();
+        SettingsChanged?.Invoke();
+        Prepare();
+    }
+
+    /// <summary>Every screen Windows has now, in its order (the choices of "Show on" and of the placement window).</summary>
+    public IReadOnlyList<Screen> AllScreens => Primary.Screens.All;
+
+    /// <summary>Makes a placement preview that follows the real pop-up's look; <paramref name="dragged"/> hears every spot the user drags or nudges it to.</summary>
+    public OsdPreview MakePreview(Action<OsdSpot> dragged) => new(Settings, dragged);
 
     public void SetStyle(OsdStyle s) { Settings.Style = s; Changed(); }
     public void SetAccent(string name) { Settings.Accent = name; Changed(); }
@@ -181,6 +238,13 @@ public sealed class OsdService : IDisposable
         Settings.Save();
         SettingsChanged?.Invoke();
         Preview();
+    }
+
+    // Saves and tells the listeners without a sample pop-up (the named places changed).
+    private void PlacesChanged()
+    {
+        Settings.Save();
+        SettingsChanged?.Invoke();
     }
 
     public void SetHideWindowsOsd(bool on)
@@ -219,17 +283,36 @@ public sealed class OsdService : IDisposable
     }
 
     /// <summary>
-    /// The pop-up window; the first use creates it and draws every declared level pop-up once, parked off screen. It is first used
+    /// The first pop-up window; the first use creates it and draws every declared level pop-up once, parked off screen. It is first used
     /// from a dispatcher post made at start-up, after the pages (which declare the levels) have been built.
     /// </summary>
-    private OsdWindow Window
+    private OsdWindow Primary
     {
         get
         {
-            if (_window is not null) return _window;
-            _window = new OsdWindow();
-            _window.Warm(Settings, Elements.Where(e => e.IsLevel).ToList());
-            return _window;
+            if (_windows.Count > 0) return _windows[0];
+            return Add();
+        }
+    }
+
+    private OsdWindow Add()
+    {
+        var window = new OsdWindow();
+        window.Warm(Settings, Elements.Where(e => e.IsLevel).ToList());
+        _windows.Add(window);
+        return window;
+    }
+
+    /// <summary>Makes (and warms) a window for each screen the pop-up shows on and closes the ones no longer needed, so the first pop-up on each is as quick as on the first.</summary>
+    private void Prepare() => Resize(OsdScreens.Targets(Primary.Screens.All, Settings).Count);
+
+    private void Resize(int count)
+    {
+        while (_windows.Count < count) Add();
+        while (_windows.Count > Math.Max(1, count))
+        {
+            _windows[^1].Close();
+            _windows.RemoveAt(_windows.Count - 1);
         }
     }
 
@@ -240,15 +323,19 @@ public sealed class OsdService : IDisposable
     public void ShowMessage(string element, OsdMessage message)
     {
         if (!Settings.Enabled || !IsShown(element)) return;
-        Window.RenderMessage(Settings, message);
-        Present(newVisual: true);
+        Present(window => { window.RenderMessage(Settings, message); return true; });
     }
 
-    private void Display(string label, OsdLevelIcon icon, int value) => Present(Window.Render(Settings, label, icon, value));
+    private void Display(string label, OsdLevelIcon icon, int value) => Present(window => window.Render(Settings, label, icon, value));
 
-    private void Present(bool newVisual)
+    /// <summary>Draws the pop-up on every screen it shows on (<paramref name="draw"/> says whether a window got a new visual) and starts the hide timer.</summary>
+    private void Present(Func<OsdWindow, bool> draw)
     {
-        Window.ShowAt(Settings.Position, newVisual);
+        var screens = Primary.Screens.All;
+        var targets = OsdScreens.Targets(screens, Settings);
+        Resize(targets.Count);
+        var spot = Settings.CurrentSpot();
+        for (var i = 0; i < targets.Count; i++) _windows[i].ShowAt(spot, targets[i], draw(_windows[i]));
         _hide.Stop();
         _hide.Start();
     }
@@ -264,6 +351,7 @@ public sealed class OsdService : IDisposable
         _usb.Dispose();
         _media.Dispose();
         _windowsOsd.Dispose();
-        _window?.Close();
+        foreach (var window in _windows) window.Close();
+        _windows.Clear();
     }
 }

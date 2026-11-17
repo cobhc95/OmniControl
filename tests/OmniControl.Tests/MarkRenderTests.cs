@@ -76,7 +76,7 @@ public class MarkRenderTests
     /// <summary>A model with almost the whole picture selected (the canvas has no style here, so no frame is drawn and only drawings differ from the picture).</summary>
     private static CaptureOverlayViewModel Model(bool stripes = false)
     {
-        var model = new CaptureOverlayViewModel(Picture(stripes), new ScreenRect(0, 0, Size, Size), new NoOutput(), () => { }, false,
+        var model = new CaptureOverlayViewModel(ImageBitmaps.ToBitmap(Picture(stripes)), new ScreenRect(0, 0, Size, Size), new NoOutput(), () => { }, false,
             new ToolSizes(new Dictionary<string, double>(), () => { })) { Scale = 1 };
         Drag(model, DrawTool.None, new Point(10, 10), new Point(190, 190));
         return model;

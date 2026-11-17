@@ -16,6 +16,8 @@ public partial class MethodList : UserControl
 {
     private Flyout? _menu;
     private MenuRowList? _kinds;
+    private Flyout? _emulatorMenu;
+    private KeepRunningMenu? _emulatorRows;
 
     public MethodList()
     {
@@ -29,6 +31,21 @@ public partial class MethodList : UserControl
         var source = e.Source as Visual;
         if (source?.FindAncestorOfType<Button>(includeSelf: true) is not null) return; // the row's own link does it
         if (source?.FindAncestorOfType<ListBoxItem>(includeSelf: true) is { DataContext: MethodItem method }) method.EditSetupCommand.Execute(null);
+    }
+
+    /// <summary>A right-click (or the menu key) on a simulation row's emulator chip: the Keep running menu with Close now / Start and Show at its top.</summary>
+    private void OnEmulatorContext(object? sender, ContextRequestedEventArgs e)
+    {
+        if (sender is not Button chip || chip.DataContext is not MethodItem method) return;
+        if (_emulatorMenu is null)
+        {
+            _emulatorRows = new KeepRunningMenu();
+            _emulatorRows.Picked += (_, _) => _emulatorMenu?.Hide();
+            _emulatorMenu = new ListMenuFlyout { Placement = PlacementMode.Pointer, Content = _emulatorRows };
+        }
+        _emulatorRows!.Bind(method.Simulation, withActions: true);
+        _emulatorMenu.ShowAt(chip, showAtPointer: true);
+        e.Handled = true;
     }
 
     private void OnRowKeyDown(object? sender, KeyEventArgs e)

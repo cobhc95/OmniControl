@@ -7,9 +7,19 @@
              x:DataType="pages:FactItem"
              Classes="card">
     <!-- A fact card: name and value, then the muted note (wraps to a second line), then the tags and the one pill; works at full and half width -->
-    <Grid Margin="0,1" ColumnSpacing="8" ColumnDefinitions="Auto,*,Auto">
+    <Panel>
+    <!-- Stacked (a media line): icon, value over the muted note, then the pills -->
+    <Grid Margin="0,1" ColumnSpacing="8" ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding Stacked}">
+        <c:IconText Icon="{Binding Icon}" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+            <TextBlock Classes="strong cardlabel" Text="{Binding Value}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Value}" IsVisible="{Binding HasValue}" />
+            <TextBlock Classes="cardlabel muted" Text="{Binding Note}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Note}" />
+        </StackPanel>
+        <c:ChoiceChips Grid.Column="2" ItemsSource="{Binding Pills}" IsVisible="{Binding HasPills}" VerticalAlignment="Center" />
+    </Grid>
+    <Grid Margin="0,1" ColumnSpacing="8" ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding IsPlain}">
         <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+            <c:IconText Icon="{Binding Icon}" Text="{Binding Label}" />
             <TextBlock Classes="strong" Text="{Binding Value}" VerticalAlignment="Center" IsVisible="{Binding Value, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
         </StackPanel>
         <TextBlock Grid.Column="1" Classes="cardlabel muted" Text="{Binding Note}" ToolTip.Tip="{Binding Note}" />
@@ -22,7 +32,9 @@
                     <DataTemplate x:DataType="svc:TagItem"><c:TagView /></DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <Button Classes="pill accentline" Tag="scope" Content="{Binding ActionText}" Command="{Binding Command}" IsVisible="{Binding HasAction}" VerticalAlignment="Center" />
+            <Button Classes="pill accentline" Tag="scope" Content="{Binding ActionText}" Command="{Binding Command}" IsVisible="{Binding HasPillAction}" VerticalAlignment="Center" />
+            <Button Classes="link" Content="{Binding ActionText}" Command="{Binding Command}" IsVisible="{Binding HasLinkAction}" VerticalAlignment="Center" />
         </StackPanel>
     </Grid>
+    </Panel>
 </UserControl>

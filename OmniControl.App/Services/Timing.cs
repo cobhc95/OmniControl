@@ -54,6 +54,16 @@ public static class Timing
     /// <summary>After a USB plug or unplug, wait this long for the rest of the device's parts to appear before showing the OSD once.</summary>
     public static readonly TimeSpan OsdUsbSettle = TimeSpan.FromMilliseconds(800);
 
+    /// <summary>
+    /// OSD placement, in device-independent pixels (a place's offsets are stored in them, so a place survives a change of resolution or
+    /// scale): the gap the seven built-in places keep from the screen edge; how close a dragged OSD must come to an edge, a margin line or
+    /// the centre lines to snap to it; how far an arrow key (or Shift + arrow) nudges it; and the most an offset may be.
+    /// </summary>
+    public const int OsdMargin = 32, OsdSnap = 8, OsdNudge = 1, OsdNudgeLarge = 10, OsdOffsetMax = 1200;
+
+    /// <summary>Whole pixels added to a measured pop-up's size so rounding never puts it a pixel over the margin.</summary>
+    public const int OsdRoundingSlack = 2;
+
     /// <summary>A play/pause change this soon after a track change is part of the skip, so only the track is shown.</summary>
     public static readonly TimeSpan OsdTrackQuiet = TimeSpan.FromMilliseconds(1200);
 
@@ -164,6 +174,36 @@ public static class Timing
     public const int ApoFileAttempts = 5;
 
     /// <summary>
+    /// Keeping OmniControl's effects in Equalizer APO's config (<see cref="Audio.Engine.ApoKeeper"/>): after a change in the config folder the
+    /// files are read back once the other writer had <see cref="ApoChangeSettle"/> to finish, at most once per <see cref="ApoCheckGap"/>; the
+    /// slow watchdog reads them every <see cref="ApoWatchdog"/> anyway (a missed change notice, a folder that could not be watched).
+    /// </summary>
+    public static readonly TimeSpan ApoChangeSettle = TimeSpan.FromMilliseconds(150);
+    public static readonly TimeSpan ApoCheckGap = TimeSpan.FromMilliseconds(250);
+    public static readonly TimeSpan ApoWatchdog = TimeSpan.FromSeconds(10);
+
+    /// <summary>Two watchdog looks this far apart mean the PC slept in between: what the PC offers and the config files are looked at again.</summary>
+    public static readonly TimeSpan ApoResumeGap = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// OmniControl's include line or file is put back at most once per <see cref="ApoRestoreGap"/> (a later one waits for the gap, so it is
+    /// never lost); <see cref="ApoRestoreLoopCount"/> put-backs inside <see cref="ApoRestoreLoopWindow"/> mean another program keeps taking
+    /// them out, which is said once.
+    /// </summary>
+    public static readonly TimeSpan ApoRestoreGap = TimeSpan.FromSeconds(2);
+    public static readonly TimeSpan ApoRestoreLoopWindow = TimeSpan.FromMinutes(1);
+    public const int ApoRestoreLoopCount = 3;
+
+    /// <summary>A config write that failed (a clean-up or a chain) is tried again no sooner than this, so a locked folder is not rewritten on every change.</summary>
+    public static readonly TimeSpan ApoRetryGap = TimeSpan.FromSeconds(5);
+
+    /// <summary>
+    /// After the last write of a burst (an EQ drag, a put-back) OmniControl's file is touched once more after this pause, so Equalizer APO,
+    /// which may have been reading while the burst went on, loads the final chain.
+    /// </summary>
+    public static readonly TimeSpan ApoReloadSettle = TimeSpan.FromMilliseconds(300);
+
+    /// <summary>
     /// At exit, how long unloading the plug-ins (VST3 and VST2) may take before OmniControl ends its own process (a plug-in's teardown
     /// can hang; by then the sound is back and every setting is saved).
     /// </summary>
@@ -224,6 +264,19 @@ public static class Timing
     /// </summary>
     public static readonly TimeSpan LaunchBurstWindow = TimeSpan.FromSeconds(5);
     public const int LaunchBurstMax = 3;
+
+    /// <summary>How long OmniControl waits for the user to press their microphone mute key when learning it.</summary>
+    public static readonly TimeSpan MicKeyLearn = TimeSpan.FromSeconds(8);
+
+    /// <summary>Keys pressed this soon after learning starts are ignored (the repeat of the key that started it).</summary>
+    public static readonly TimeSpan MicKeyLearnSettle = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>After sending the learned mute key, the microphone's mute is read again this much later; if it is not as wanted, the normal mute is used.</summary>
+    public static readonly TimeSpan MicKeyCheckDelay = TimeSpan.FromMilliseconds(800);
+
+    /// <summary>The learned mute key is sent at most <see cref="MicKeyBurstMax"/> times per this window (a runaway rule can never hammer the keyboard).</summary>
+    public static readonly TimeSpan MicKeyBurstWindow = TimeSpan.FromSeconds(2);
+    public const int MicKeyBurstMax = 4;
 
     /// <summary>The installed apps (the "Open ..." actions) are looked for again when the window is shown or a picker listing them opens, but not more often than this.</summary>
     public static readonly TimeSpan AppScanGap = TimeSpan.FromSeconds(30);
@@ -286,11 +339,57 @@ public static class Timing
     /// </summary>
     public const int AutomationChainMax = 3;
 
+    // ---- Other PCs (OtherPcs/): the LAN link between paired PCs ----
+
+    /// <summary>How often this PC announces itself on the local network while Other PCs is in use.</summary>
+    public static readonly TimeSpan PcBeaconEvery = TimeSpan.FromSeconds(4);
+
+    /// <summary>How long "Pair a PC" keeps this PC open to a pairing (then it closes by itself).</summary>
+    public static readonly TimeSpan PcPairingOpen = TimeSpan.FromMinutes(2);
+
+    /// <summary>Each step of a connection's start (a pairing's messages, a session's proof) must arrive within this time, or the connection is dropped.</summary>
+    public static readonly TimeSpan PcHandshakeStep = TimeSpan.FromSeconds(8);
+
+    /// <summary>How often a paired PC that is seen but not connected is dialled, and how often a live link is checked and sends its keep-alive.</summary>
+    public static readonly TimeSpan PcLinkCheck = TimeSpan.FromSeconds(5);
+
+    /// <summary>A link that has sent nothing (not even its keep-alive) for this long is closed.</summary>
+    public static readonly TimeSpan PcLinkSilence = TimeSpan.FromSeconds(30);
+
+    /// <summary>A change in what is shared waits this long for more changes before it is sent (a page's actions register in a burst).</summary>
+    public static readonly TimeSpan PcShareSettle = TimeSpan.FromMilliseconds(400);
+
+    /// <summary>A paired PC may start at most <see cref="PcRunBurstMax"/> actions here within this time; more is treated as a runaway and dropped.</summary>
+    public static readonly TimeSpan PcRunBurstWindow = TimeSpan.FromSeconds(5);
+    public const int PcRunBurstMax = 8;
+
+    /// <summary>A level dragged here for another PC is sent at most this often (only the newest value); the other PC accepts at most <see cref="PcSetBurstMax"/> sets per <see cref="PcSetBurstWindow"/>.</summary>
+    public static readonly TimeSpan PcSetEvery = TimeSpan.FromMilliseconds(120);
+    public static readonly TimeSpan PcSetBurstWindow = TimeSpan.FromSeconds(2);
+    public const int PcSetBurstMax = 40;
+
+    /// <summary>How long a request for another PC's device set-ups waits for the answer, and how many such requests one paired PC may make of this one within the window.</summary>
+    public static readonly TimeSpan PcDevicesWait = TimeSpan.FromSeconds(10);
+    public static readonly TimeSpan PcDevicesBurstWindow = TimeSpan.FromSeconds(10);
+    public const int PcDevicesBurstMax = 4;
+
+    /// <summary>A card of another PC's state ignores that PC's reports for this long after the user moved it here (the echo of the user's own change).</summary>
+    public static readonly TimeSpan PcEchoGrace = TimeSpan.FromSeconds(1);
+
+    /// <summary>At most this many connections may be in their start (before they proved who they are) at once.</summary>
+    public const int PcHandshakesMax = 4;
+
+    /// <summary>How often a Tailscale-paired PC that is offline gets the Tailscale checks again, how long to wait after a fix (start, sign in) before reading Tailscale again, and how long to wait before trying to open a Tailscale link again after one failed.</summary>
+    public static readonly TimeSpan PcTailscaleRecheck = TimeSpan.FromSeconds(30), PcTailscaleAfterFix = TimeSpan.FromSeconds(3), PcTailscaleSwitchBackoff = TimeSpan.FromMinutes(2);
+
     /// <summary>The longest "then wait" between two actions of an automation, in seconds, and what a new one starts at.</summary>
     public const int AutomationMaxWaitSeconds = 600, AutomationDefaultWaitSeconds = 5;
 
     /// <summary>Sleep, hibernate, shut down, restart and sign out never happen within this time of OmniControl starting.</summary>
     public static readonly TimeSpan PowerActionGrace = TimeSpan.FromMinutes(2);
+
+    /// <summary>"Turn off displays" waits this long first, so the click or key that started it does not wake the screens again at once.</summary>
+    public static readonly TimeSpan DisplaysOffGrace = TimeSpan.FromSeconds(1);
 
     /// <summary>The countdown (with Cancel) before sleep, hibernate, shut down, restart or sign out.</summary>
     public static readonly TimeSpan PowerCountdown = TimeSpan.FromSeconds(20);
@@ -319,6 +418,9 @@ public static class Timing
 
     /// <summary>How often adb is asked which emulators are up, so the set-up checklist follows an emulator opening or closing; and how long a tap on a home screen waits for the app to open.</summary>
     public static readonly TimeSpan DeviceSimLive = TimeSpan.FromSeconds(3), DeviceSimLaunchWait = TimeSpan.FromSeconds(1.5);
+
+    /// <summary>How often the memory the emulator's programs hold is read again for the Simulation row's chip (a gentle background look; the figure only needs to be roughly right).</summary>
+    public static readonly TimeSpan EmulatorMemoryRefresh = TimeSpan.FromSeconds(10);
 
     /// <summary>"Keep running: until idle" closes the emulator after this many minutes without an action (the default; the user types another).</summary>
     public const int EmulatorIdleMinutes = 30;
@@ -383,6 +485,9 @@ public static class Timing
 
     /// <summary>A tile's state is never read again sooner than this after the last read was asked for (a quick re-open of the panel asks nothing).</summary>
     public static readonly TimeSpan TrayRecheckMinGap = TimeSpan.FromSeconds(10);
+
+    /// <summary>The icon picker shows this many cells at once after a search; the rest follow in the next frame so the first results appear immediately.</summary>
+    public const int IconPickerFirstCells = 48;
 
     /// <summary>A key typed into a search box this soon after another waits this long before its search runs (the first letter is searched at once; <see cref="SearchRunner{T}"/>).</summary>
     public static readonly TimeSpan SearchDebounce = TimeSpan.FromMilliseconds(60);

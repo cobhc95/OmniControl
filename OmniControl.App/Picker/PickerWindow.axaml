@@ -13,7 +13,15 @@
         <Border x:Name="ManageBar" DockPanel.Dock="Top" Classes="barstrip" BorderThickness="0,0,0,1" Padding="12,6" IsVisible="False"
                 x:DataType="picker:ActionsWindowService">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                <TextBlock Classes="strong" Text="{Binding $parent[Window].Title}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock Classes="strong" Text="{Binding $parent[Window].Title}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    <!-- docs/mockups/hotkeys-master-switch.html: muted name and a switch with the On/Off words, left of the preset picker -->
+                    <StackPanel Orientation="Horizontal" Spacing="6" DataContext="{Binding HotkeysSwitch}"
+                                ToolTip.Tip="Off pauses every keyboard hotkey; the keys are kept. Mouse buttons, gestures and rules keep working.">
+                        <TextBlock Classes="muted" Text="{Binding Label}" VerticalAlignment="Center" />
+                        <ToggleSwitch IsChecked="{Binding IsOn}" OnContent="On" OffContent="Off" VerticalAlignment="Center" />
+                    </StackPanel>
+                </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
                     <c:PresetPicker DataContext="{Binding SetChoice}" />
                     <Button Classes="pill" Content="Clear all" Command="{Binding ClearAllCommand}" VerticalAlignment="Center"

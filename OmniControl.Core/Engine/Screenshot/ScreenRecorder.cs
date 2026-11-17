@@ -20,12 +20,15 @@ public sealed record RecordingResult(string? Path, RecordingEnd End, string? Mes
 /// Records an area of the screen to an MP4 or a GIF on a thread of its own: a frame is copied every frame length of the recording's own
 /// clock (<see cref="RecordingClock"/>, which stands still while paused), late frames are skipped rather than queued, and the sound
 /// follows the same clock a little behind (<see cref="CoreTiming.RecordSoundLagMs"/>). The limits are checked every
-/// <see cref="CoreTiming.RecordLimitCheckMs"/>. Everything it opens (screen copy, encoder, sound captures, timer resolution) is released
-/// when it ends, and a file that could not be finished is deleted.
+/// <see cref="CoreTiming.RecordLimitCheckMs"/>. An MP4 with the hardware encoder keeps its frames on the graphics card (Desktop
+/// Duplication into the encoder, <see cref="GpuFrames"/>) when it can, else, said once in the log, copies them with GDI
+/// (<see cref="GdiFrames"/>), as a GIF always does (its encoding on a worker, <see cref="QueuedVideoSink"/>). Everything it opens
+/// (screen copy, encoder, sound captures, timer resolution) is released when it ends, and a file that could not be finished is deleted.
 /// </summary>
 public sealed class ScreenRecorder
 {
     private readonly RecordingRequest _request;
+    private readonly Action<string> _log;
     private readonly int _frameRate;
     private readonly RecordingClock _clock = new();
     private readonly RecordingSound? _sound;
@@ -46,9 +49,10 @@ public sealed class ScreenRecorder
     /// <summary>True when the file takes sound (MP4); a GIF has none.</summary>
     public bool TakesSound => _sound is not null;
 
-    private ScreenRecorder(RecordingRequest request)
+    private ScreenRecorder(RecordingRequest request, Action<string> log)
     {
         _request = request;
+        _log = log;
         _frameRate = VideoMath.FrameRateFor(request.Format, request.FrameRate);
         if (VideoMath.IsMp4(request.Format)) _sound = new RecordingSound();
     }
@@ -56,10 +60,11 @@ public sealed class ScreenRecorder
     /// <summary>
     /// Opens the file and starts recording. The result has the recorder, and a sentence when something was not as asked (sound that could
     /// not be opened, the other encoder used). Throws <see cref="InvalidOperationException"/> when the recording could not start.
+    /// <paramref name="log"/> gets technical facts the person need not see (the graphics-card path not used, and why); any thread.
     /// </summary>
-    public static async Task<(ScreenRecorder Recorder, string? Note)> StartAsync(RecordingRequest request)
+    public static async Task<(ScreenRecorder Recorder, string? Note)> StartAsync(RecordingRequest request, Action<string> log)
     {
-        var recorder = new ScreenRecorder(request);
+        var recorder = new ScreenRecorder(request, log);
         var notes = new List<string>();
         if (recorder._sound is { } sound)
         {
@@ -117,14 +122,14 @@ public sealed class ScreenRecorder
     {
         timeBeginPeriod(1); // frame times to the millisecond; given back below
         IVideoSink? sink = null;
+        IFrameSource? frames = null;
         var end = RecordingEnd.Stopped;
         string? message = null;
         try
         {
-            using var grabber = new FrameGrabber(_request.Area, _request.Pointer);
-            sink = Open(out var note);
+            (sink, frames) = Open(out var note);
             _started.TrySetResult(note);
-            end = Record(grabber, sink);
+            end = Record(frames, sink);
             sink.Finish(_clock.Ticks);
         }
         catch (Exception ex) when (ex is COMException or IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException)
@@ -134,7 +139,8 @@ public sealed class ScreenRecorder
         }
         finally
         {
-            sink?.Dispose();
+            sink?.Dispose(); // before the frames: an MP4 on the graphics card uses their device until it is released
+            frames?.Dispose();
             _sound?.Dispose();
             timeEndPeriod(1);
         }
@@ -143,17 +149,61 @@ public sealed class ScreenRecorder
         _started.TrySetResult(null); // after the result, so a start that failed is seen as failed
     }
 
-    private IVideoSink Open(out string? note)
+    /// <summary>Opens the file and the way its frames are copied: on the graphics card for an MP4 with the hardware encoder when possible, else with GDI.</summary>
+    private (IVideoSink Sink, IFrameSource Frames) Open(out string? note)
     {
         note = null;
         var area = _request.Area;
-        if (_request.Format == VideoFormat.Gif) return new GifWriter(_request.Path, area.Width, area.Height, _request.Quality);
+        if (_request.Format == VideoFormat.Gif)
+            return WithGdi(() => new QueuedVideoSink(new GifWriter(_request.Path, area.Width, area.Height, _request.Quality), area.Width, area.Height, "GIF encoding"));
         var bitrate = VideoMath.Bitrate(area.Width, area.Height, _frameRate, _request.Quality, _request.Format);
-        return Mp4Writer.Open(_request.Path, area.Width, area.Height, _frameRate, _request.Format, bitrate, _request.Hardware, out note);
+        if (_request.Hardware && OpenOnGpu(bitrate) is { } onGpu) return onGpu;
+        string? encoderNote = null;
+        var opened = WithGdi(() => Mp4Writer.Open(_request.Path, area.Width, area.Height, _frameRate, _request.Format, bitrate, _request.Hardware, out encoderNote));
+        note = encoderNote;
+        return opened;
+    }
+
+    private (IVideoSink, IFrameSource) WithGdi(Func<IVideoSink> openSink)
+    {
+        var grabber = new FrameGrabber(_request.Area, _request.Pointer);
+        try
+        {
+            var sink = openSink();
+            return (sink, new GdiFrames(grabber, sink));
+        }
+        catch
+        {
+            grabber.Dispose();
+            throw;
+        }
+    }
+
+    /// <summary>Desktop Duplication into an MP4 writer on the same graphics card; null (said in the log) when either is not possible here.</summary>
+    private (IVideoSink, IFrameSource)? OpenOnGpu(int bitrate)
+    {
+        var area = _request.Area;
+        var capture = DesktopDuplication.TryOpen(area, _request.Pointer, _log, out var why);
+        if (capture is null)
+        {
+            _log($"Screen recording: frames are copied with GDI because the graphics-card copy is not available ({why}).");
+            return null;
+        }
+        try
+        {
+            var writer = Mp4Writer.OpenOnGpu(_request.Path, area.Width, area.Height, _frameRate, _request.Format, bitrate, capture);
+            return (writer, new GpuFrames(capture, writer));
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException)
+        {
+            capture.Dispose();
+            _log($"Screen recording: frames are copied with GDI because the encoder cannot take frames from the graphics card ({ex.Message}).");
+            return null;
+        }
     }
 
     /// <summary>The loop: a frame when one is due, the sound up to the clock less the lag, the limits now and then; until stopped or a limit.</summary>
-    private RecordingEnd Record(FrameGrabber grabber, IVideoSink sink)
+    private RecordingEnd Record(IFrameSource frames, IVideoSink sink)
     {
         var nextFrame = 0L;
         var soundWritten = 0L;
@@ -177,7 +227,7 @@ public sealed class ScreenRecorder
             var frame = VideoMath.FrameAt(now, _frameRate);
             if (frame >= nextFrame)
             {
-                sink.WriteFrame(grabber.Grab(), grabber.Stride, VideoMath.FrameStart(frame, _frameRate));
+                frames.Write(VideoMath.FrameStart(frame, _frameRate));
                 nextFrame = frame + 1;
             }
             if (sink is ISoundSink soundSink) soundWritten = WriteSound(soundSink, soundWritten, now);

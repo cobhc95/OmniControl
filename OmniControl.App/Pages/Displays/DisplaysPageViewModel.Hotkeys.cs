@@ -1,4 +1,7 @@
+using OmniControl.App.States;
+using OmniControl.Core.Engine;
 using OmniControl.Core.Interfaces;
+using OmniControl.App.Services;
 using OmniControl.Core.Models;
 using OmniControl.App.Hotkeys;
 
@@ -15,16 +18,28 @@ public sealed partial class DisplaysPageViewModel
 {
     private const string OrientationSection = "Orientation";
 
-    /// <summary>The orientations the hotkeys turn to, with the key suggested for each (the arrows point where the top of the picture goes).</summary>
+    /// <summary>The id of the orientation hotkeys' suggested-keys set (<see cref="HotkeyAction.SuggestedKeySet"/>): the Orientation card's switch turns them on and off together.</summary>
+    private const string RotationKeySet = "displays.rotate";
+
+    /// <summary>The orientations the hotkeys turn to, with the key suggested for each (as NVIDIA's panel: Up and Down for landscape, Left and Right for portrait).</summary>
     private static readonly (DisplayOrientation Orientation, string Key)[] RotationKeys =
     {
         (DisplayOrientation.Landscape, "Ctrl+Alt+Up"),
-        (DisplayOrientation.Portrait, "Ctrl+Alt+Right"),
+        (DisplayOrientation.Portrait, "Ctrl+Alt+Left"),
         (DisplayOrientation.LandscapeFlipped, "Ctrl+Alt+Down"),
-        (DisplayOrientation.PortraitFlipped, "Ctrl+Alt+Left"),
+        (DisplayOrientation.PortraitFlipped, "Ctrl+Alt+Right"),
     };
 
+    private const string DisplaysOffId = "displays.screens.off";
+
     private readonly List<HotkeyAction> _scopedActions = new();
+
+    /// <summary>Waits a moment (so the input that started it is over), then asks Windows to switch every screen off.</summary>
+    private static void TurnOffDisplays() => Task.Run(async () =>
+    {
+        await Task.Delay(Timing.DisplaysOffGrace);
+        Guard.Run("Turning the displays off", () => PowerCommands.TurnOffDisplays());
+    });
 
     private void RegisterActions()
     {
@@ -49,12 +64,16 @@ public sealed partial class DisplaysPageViewModel
         actions.Add(DisplayActions.Once("displays.power.off", "Turn screen off", "power off sleep standby turn screen off", Title, hardware, VcpSections.PowerMode,
             ids => EachHardware(ids, h => h.TurnOff()), HardwareDevices));
 
+        actions.Add(DisplayActions.Once(DisplaysOffId, "Turn off displays", "turn off all screens monitors black sleep standby power", Title, hardware, VcpSections.PowerMode,
+            _ => TurnOffDisplays(), devices: null, shortName: "Screens off", suggestedIcons: new[] { "device-desktop", "power", "moon" }, screensOff: true, common: CommonGroups.Screens,
+            manageSettings: new[] { ActionOption.Heading("displaysoff.note", "Turns every screen off at once", "Any mouse movement or key press wakes them again; that is how Windows works.") }));
+
         foreach (var (orientation, suggested) in RotationKeys)
         {
             var captured = orientation;
             actions.Add(DisplayActions.Once($"displays.rotate.{captured.ToString().ToLowerInvariant()}", $"Rotate to {DisplayOrientationCard.Title(captured)}",
                 "rotate rotation orientation landscape portrait flipped turn screen", Title, hardware, OrientationSection,
-                ids => EachHardware(ids, h => h.Rotate(captured)), HardwareDevices, suggested, shortName: DisplayOrientationCard.ShortTitle(captured), icon: Icons.IconLibrary.Rotate));
+                ids => EachHardware(ids, h => h.Rotate(captured)), HardwareDevices, suggested, shortName: DisplayOrientationCard.ShortTitle(captured), icon: Icons.IconLibrary.Rotate, suggestedKeySet: RotationKeySet));
         }
 
         actions.Add(DisplayActions.Once("displays.hw.preset.next", "Next monitor preset", "hardware ddc preset saved profile monitors settings", Title, hardware, VcpSections.Presets,

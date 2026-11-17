@@ -41,6 +41,22 @@ public static class InputSender
             U = new Union { Key = new KeyData { Vk = vk, Flags = (down ? 0u : KeyUp) | (KeyChord.IsExtended(vk) ? KeyExtended : 0u), Extra = Marker } },
         };
 
+    private static Input RawKey(ushort vk, ushort scan, uint flags) =>
+        new() { Type = InputKeyboard, U = new Union { Key = new KeyData { Vk = vk, Scan = scan, Flags = flags, Extra = Marker } } };
+
+    /// <summary>
+    /// Presses and releases one key exactly as a keyboard reported it (virtual key and scan code, extended or not) in one call, so it is never
+    /// left down. Returns true when Windows accepted both halves; if it took only the press, the release is sent at once.
+    /// </summary>
+    public static bool Tap(ushort vk, ushort scan, bool extended)
+    {
+        var flags = extended ? KeyExtended : 0u;
+        var up = RawKey(vk, scan, flags | KeyUp);
+        var sent = Send(RawKey(vk, scan, flags), up);
+        if (sent == 1) Send(up);
+        return sent == 2;
+    }
+
     /// <summary>Presses all keys in order, then releases them in reverse (a shortcut such as Ctrl+C).</summary>
     public static void Chord(IReadOnlyList<ushort> keys) =>
         Send(keys.Select(k => Key(k, true)).Concat(keys.Reverse().Select(k => Key(k, false))).ToArray());

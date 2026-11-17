@@ -95,7 +95,7 @@
             <!-- Top bar: global search on the right -->
             <Border DockPanel.Dock="Top" Padding="12,12,12,0">
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                    <TextBox x:Name="SearchBox" Classes="bar" Text="{Binding SearchText}" Watermark="Search settings…" ToolTip.Tip="Search (Ctrl+F)" />
+                    <TextBox x:Name="SearchBox" Classes="bar search" Text="{Binding SearchText}" Watermark="Search settings…" ToolTip.Tip="Search (Ctrl+F)" />
                     <ComboBox Grid.Column="1" Classes="bar" ItemsSource="{Binding Categories}"
                               SelectedItem="{Binding SelectedCategory}" Width="200" />
                 </Grid>

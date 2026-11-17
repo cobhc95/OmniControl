@@ -43,13 +43,19 @@ public sealed class NumberText : Panel
     /// <summary>The style class of the box (its size lives in Theme.axaml).</summary>
     private const string BoxClass = "typednumber";
 
+    /// <summary>The field look's resources (App.axaml, Brushes.axaml): the inset between the frame and the value, and its corner radius.</summary>
+    private const string InsetKey = "TypeableInset", CornerKey = "TypeableCornerRadius";
+
     private readonly TextBox _box = new() { IsVisible = false };
+    private readonly Border _frame = new() { BorderThickness = new Thickness(1), IsHitTestVisible = false };
     private TopLevel? _watching;
 
     public NumberText()
     {
         Background = Brushes.Transparent; // the whole value area takes the double-click, not just the glyphs
+        Cursor = new Cursor(StandardCursorType.Ibeam);
         _box.Classes.Add(BoxClass);
+        Children.Add(_frame);
         Children.Add(_box);
         AddHandler(DoubleTappedEvent, OnDoubleTapped);
         _box.AddHandler(KeyDownEvent, OnBoxKeyDown, RoutingStrategies.Tunnel);
@@ -63,6 +69,58 @@ public sealed class NumberText : Panel
     public bool OpensOnDoubleClick { get => GetValue(OpensOnDoubleClickProperty); set => SetValue(OpensOnDoubleClickProperty, value); }
 
     private bool IsTyping => _box.IsVisible;
+
+    // ---- the typeable look: a faint field box around the value (same thickness hovered or not, so nothing shifts) ----
+
+    private Thickness Inset => this.TryFindResource(InsetKey, ActualThemeVariant, out var v) && v is Thickness t ? t : default;
+
+    protected override Size MeasureOverride(Size availableSize)
+    {
+        var inset = Inset;
+        var inner = new Size();
+        foreach (var child in Children)
+        {
+            if (child == _frame) continue;
+            child.Measure(availableSize.Deflate(inset));
+            inner = new Size(Math.Max(inner.Width, child.DesiredSize.Width), Math.Max(inner.Height, child.DesiredSize.Height));
+        }
+        return inner.Inflate(inset);
+    }
+
+    protected override Size ArrangeOverride(Size finalSize)
+    {
+        var inset = Inset;
+        _frame.Arrange(new Rect(finalSize));
+        var inside = new Rect(inset.Left, inset.Top, Math.Max(0, finalSize.Width - inset.Left - inset.Right), Math.Max(0, finalSize.Height - inset.Top - inset.Bottom));
+        foreach (var child in Children) if (child != _frame) child.Arrange(inside);
+        return finalSize;
+    }
+
+    private void ShowFrame()
+    {
+        _frame.BorderBrush = (IBrush?)(this.TryFindResource(IsPointerOver ? "BrushAccent" : "BrushFieldEdge", ActualThemeVariant, out var edge) ? edge : null);
+        _frame.Background = (IBrush?)(this.TryFindResource("BrushField", ActualThemeVariant, out var fill) ? fill : null);
+        _frame.CornerRadius = this.TryFindResource(CornerKey, ActualThemeVariant, out var r) && r is CornerRadius c ? c : default;
+        _frame.IsVisible = !IsTyping; // the text box has its own frame while typing
+    }
+
+    protected override void OnPointerEntered(PointerEventArgs e)
+    {
+        base.OnPointerEntered(e);
+        ShowFrame();
+    }
+
+    protected override void OnPointerExited(PointerEventArgs e)
+    {
+        base.OnPointerExited(e);
+        ShowFrame();
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        ShowFrame();
+    }
 
     /// <summary>True when <paramref name="focused"/> is a value box being typed in (so Esc and Enter belong to it).</summary>
     public static bool IsTypingIn(object? focused) => focused is TextBox box && box.Classes.Contains(BoxClass) && box.IsVisible;
@@ -123,7 +181,8 @@ public sealed class NumberText : Panel
 
     private void ShowBox(bool typing)
     {
-        foreach (var child in Children) child.IsVisible = (child == _box) == typing;
+        foreach (var child in Children) if (child != _frame) child.IsVisible = (child == _box) == typing;
+        ShowFrame();
     }
 
     private void OnBoxKeyDown(object? sender, KeyEventArgs e)

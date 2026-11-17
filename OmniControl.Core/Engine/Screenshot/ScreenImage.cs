@@ -1,3 +1,6 @@
+using System.Numerics;
+using System.Runtime.InteropServices;
+
 namespace OmniControl.Core.Engine.Screenshot;
 
 /// <summary>A rectangle in physical screen pixels (virtual-desktop coordinates for a place on screen, image pixels inside a picture).</summary>
@@ -45,6 +48,20 @@ public sealed class ScreenImage
     }
 
     public ScreenRect Bounds => new(0, 0, Width, Height);
+
+    /// <summary>
+    /// Sets every pixel's alpha to full (a screenshot has no transparency), a vector's width of pixels at a time: on a 4K picture this is
+    /// one quick pass instead of eight million single-byte writes.
+    /// </summary>
+    public static void MakeOpaque(Span<byte> bgra)
+    {
+        const uint alpha = 0xFF000000;
+        var pixels = MemoryMarshal.Cast<byte, uint>(bgra);
+        var vectors = MemoryMarshal.Cast<uint, Vector<uint>>(pixels);
+        var full = new Vector<uint>(alpha);
+        for (var i = 0; i < vectors.Length; i++) vectors[i] |= full;
+        for (var i = vectors.Length * Vector<uint>.Count; i < pixels.Length; i++) pixels[i] |= alpha;
+    }
 
     /// <summary>A copy of the part of the picture inside <paramref name="area"/> (held to the picture).</summary>
     public ScreenImage Crop(ScreenRect area)

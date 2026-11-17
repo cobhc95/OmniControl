@@ -21,6 +21,10 @@ public partial class DevicesPage : UserControl
     {
         InitializeComponent();
         DeviceList.ContextRequested += OnDeviceContext;
+        DataContextChanged += (_, _) =>
+        {
+            if (DataContext is DevicesPageViewModel vm) vm.ImportOpened += () => Dispatcher.UIThread.Post(ImportCard.BringIntoView, DispatcherPriority.Background);
+        };
     }
 
     private IReadOnlyList<DeviceItem> Chosen() => (DeviceList.SelectedItems ?? new List<object>()).OfType<DeviceItem>().ToList();

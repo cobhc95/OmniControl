@@ -13,7 +13,8 @@ namespace OmniControl.App.Audio.Engine;
 /// left as it was, including edits made in between. Before the first change config.txt is copied to
 /// <see cref="ApoIds.ConfigBackupFileName"/>; the copy is deleted again once the file matches it. Bytes outside OmniControl's lines
 /// are never re-encoded (Equalizer APO reads UTF-8 or the ANSI code page). Equalizer APO's installer lets the Users group write this
-/// folder, so no administrator rights are needed. Each method returns an error sentence or null.
+/// folder, so no administrator rights are needed. <see cref="Read"/> says what is really on disk (the keeper compares it with what
+/// should be there), <see cref="Touch"/> makes Equalizer APO reload. The writers return an error sentence or null.
 /// </summary>
 public static class ApoConfigFiles
 {
@@ -25,18 +26,63 @@ public static class ApoConfigFiles
     /// <summary>The UTF-8 byte order mark as <see cref="Bytes"/> reads it.</summary>
     private static readonly string Bom = Bytes.GetString(Encoding.UTF8.Preamble);
 
-    /// <summary>Writes the chain and makes sure config.txt includes it.</summary>
+    /// <summary>Writes the chain (only when it differs, so an unchanged file causes no reload) and makes sure config.txt includes it, at its top.</summary>
     public static string? Apply(string folder, string chainText)
     {
         try
         {
-            WriteShut(Path.Combine(folder, ApoIds.ChainFileName), Encoding.UTF8.GetBytes(chainText));
-            AddInclude(folder);
+            var chain = Path.Combine(folder, ApoIds.ChainFileName);
+            var bytes = Encoding.UTF8.GetBytes(chainText);
+            if (!File.Exists(chain) || !File.ReadAllBytes(chain).AsSpan().SequenceEqual(bytes)) WriteShut(chain, bytes);
+            PlaceInclude(folder);
             return null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             return $"Couldn't write to Equalizer APO's config folder ({folder}): {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// What is on disk in <paramref name="folder"/> now: whether OmniControl's part is as wanted (<paramref name="wanted"/> = the chain text,
+    /// with the include at the top of config.txt; null = none of OmniControl's lines and no chain file), and whether config.txt runs
+    /// effects of its own. Null when a file is busy or can't be read right now (asked again later).
+    /// </summary>
+    public static ApoFolderFacts? Read(string folder, string? wanted)
+    {
+        try
+        {
+            var config = Path.Combine(folder, ApoIds.ConfigFileName);
+            var text = File.Exists(config) ? Bytes.GetString(File.ReadAllBytes(config)) : string.Empty;
+            var lines = SplitLines(text[BomOf(text).Length..]).ToList();
+            var own = lines.Any(line => !IsOurs(line) && IsCommand(line));
+            var chain = Path.Combine(folder, ApoIds.ChainFileName);
+            var inPlace = wanted is null
+                ? !lines.Any(IsOurs) && !File.Exists(chain)
+                : Placed(text) == text && File.Exists(chain) && File.ReadAllBytes(chain).AsSpan().SequenceEqual(Encoding.UTF8.GetBytes(wanted));
+            return new ApoFolderFacts(inPlace, own);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null; // Equalizer APO or its editor holds a file this moment
+        }
+    }
+
+    /// <summary>
+    /// Makes Equalizer APO load the folder again without changing a byte: OmniControl's chain file gets a new write time (Equalizer APO
+    /// watches the folder for writes). Nothing happens when the file is not there.
+    /// </summary>
+    public static string? Touch(string folder)
+    {
+        try
+        {
+            var chain = Path.Combine(folder, ApoIds.ChainFileName);
+            if (File.Exists(chain)) File.SetLastWriteTimeUtc(chain, DateTime.UtcNow);
+            return null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return $"Couldn't ask Equalizer APO to reload ({folder}): {ex.Message}";
         }
     }
 
@@ -49,8 +95,7 @@ public static class ApoConfigFiles
             if (File.Exists(config))
             {
                 var text = Bytes.GetString(File.ReadAllBytes(config));
-                var bom = BomOf(text);
-                var kept = bom + string.Concat(SplitLines(text[bom.Length..]).Where(line => !IsOurs(line)));
+                var kept = Without(text);
                 if (kept != text) WriteShut(config, Bytes.GetBytes(kept));
                 DropBackupIfSame(folder, kept);
             }
@@ -64,17 +109,39 @@ public static class ApoConfigFiles
         }
     }
 
-    private static void AddInclude(string folder)
+    /// <summary>
+    /// Puts OmniControl's marker and include line at the very top of config.txt, once: above any Device:, Channel: or Stage: line of the
+    /// user's, which would otherwise limit or reshape OmniControl's sections. A line found lower down (moved, or written back by Equalizer
+    /// APO's editor) or twice is taken out first. The user's file before OmniControl's first line is kept as the backup.
+    /// </summary>
+    private static void PlaceInclude(string folder)
     {
         var config = Path.Combine(folder, ApoIds.ConfigFileName);
         var text = File.Exists(config) ? Bytes.GetString(File.ReadAllBytes(config)) : string.Empty;
-        var bom = BomOf(text);
-        if (SplitLines(text[bom.Length..]).Any(IsInclude)) return; // already there (perhaps moved by the user: left where it is)
+        var placed = Placed(text);
+        if (placed == text) return;
         var backup = Path.Combine(folder, ApoIds.ConfigBackupFileName);
-        if (text.Length > 0 && !File.Exists(backup)) File.WriteAllBytes(backup, Bytes.GetBytes(text));
-        var ours = ApoIds.IncludeMarker + NewLine + ApoIds.IncludeLine + NewLine;
-        WriteShut(config, Bytes.GetBytes(bom + ours + text[bom.Length..]));
+        var users = Without(text);
+        if (users.Length > 0 && !File.Exists(backup)) File.WriteAllBytes(backup, Bytes.GetBytes(users));
+        WriteShut(config, Bytes.GetBytes(placed));
     }
+
+    /// <summary><paramref name="text"/> with OmniControl's two lines at the top and nowhere else.</summary>
+    private static string Placed(string text)
+    {
+        var bom = BomOf(text);
+        return bom + ApoIds.IncludeMarker + NewLine + ApoIds.IncludeLine + NewLine + Without(text)[bom.Length..];
+    }
+
+    /// <summary><paramref name="text"/> without any of OmniControl's lines (its byte order mark kept).</summary>
+    private static string Without(string text)
+    {
+        var bom = BomOf(text);
+        return bom + string.Concat(SplitLines(text[bom.Length..]).Where(line => !IsOurs(line)));
+    }
+
+    /// <summary>A line Equalizer APO acts on (not blank, not a comment).</summary>
+    private static bool IsCommand(string line) => line.Trim() is { Length: > 0 } trimmed && !trimmed.StartsWith('#');
 
     private static string BomOf(string text) => text.StartsWith(Bom, StringComparison.Ordinal) ? Bom : string.Empty;
 

@@ -9,6 +9,9 @@ public sealed partial class ToggleItem : ObservableObject, IEditorItem, IHalfWid
 
     public string Label { get; }
 
+    /// <summary>An icon id of the icon library drawn before the label (Other PCs' mirrored cards); null: no icon, the card looks as without.</summary>
+    public string? Icon { get; init; }
+
     /// <summary>A fact about the setting the label does not say (a limit), shown as the card's tooltip; null: none.</summary>
     public string? Tip { get; init; }
 

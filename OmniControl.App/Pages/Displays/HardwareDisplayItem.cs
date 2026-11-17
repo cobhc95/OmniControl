@@ -31,9 +31,10 @@ internal sealed partial class HardwareDisplayItem
     private readonly Dictionary<HardwareLevel, SliderItem> _sliders = new();
     private readonly Dictionary<HardwareChoice, ChoiceItem> _choices = new();
     private readonly Dictionary<HardwareChoice, IReadOnlyList<VcpChoice>> _values = new();
-    private readonly ButtonItem _power;
     private readonly DisplayOrientationCard _orientation;
     private MonitorCapabilities? _capabilities;
+    private ItemGroup? _main;
+    private bool? _screenOn;
     private bool _disposed;
 
     /// <summary>"laptop" for the built-in panel, otherwise Windows' name for the display: the id of its hotkey device.</summary>
@@ -43,6 +44,12 @@ internal sealed partial class HardwareDisplayItem
 
     /// <summary>What the page shows for this display: its group, and after the probe a collapsed group of what it does not report.</summary>
     public IReadOnlyList<ItemGroup> Groups { get; private set; }
+
+    /// <summary>True once the monitor has said it takes DDC power commands (VCP 0xD6). Never the built-in panel: Windows has no per-screen way to switch it off and on again.</summary>
+    public bool HasScreenPower { get; private set; }
+
+    /// <summary>Whether the screen is on as far as this program knows: what the monitor said when it was read, then the last command sent from here (a press of the monitor's own button is not seen); null while not known.</summary>
+    public bool? ScreenOn => HasScreenPower ? _screenOn : null;
 
     /// <summary>Every card this display could have, whether it reports the control or not.</summary>
     public IReadOnlyList<IEditorItem> Cards { get; }
@@ -73,9 +80,6 @@ internal sealed partial class HardwareDisplayItem
             _choices[choice] = card;
             cards.Add(card);
         }
-        _power = new ButtonItem("Screen power", "Turn off",
-            "Wake it with its button or input", PowerOff) { Half = true };
-        cards.Add(_power);
         cards.Add(_orientation.Card);
         Cards = cards;
 
@@ -144,8 +148,8 @@ internal sealed partial class HardwareDisplayItem
             _values[choice] = capabilities.ChoicesOf(choice.Feature.Code);
             ShowChoice(card, capabilities, choice.Feature.Code, _values[choice], reason);
         }
-        if (capabilities.Has(VcpCode.PowerMode)) _power.Availability.MakeAvailable();
-        else _power.Availability.MakeUnavailable(reason);
+        HasScreenPower = !IsLaptopPanel && capabilities.Has(VcpCode.PowerMode);
+        _screenOn = HasScreenPower ? capabilities.Features[VcpCode.PowerMode].Current != VcpCode.Power.Off : null;
 
         ShowGroups();
     }
@@ -155,7 +159,9 @@ internal sealed partial class HardwareDisplayItem
     {
         var shown = AvailableCards.Cast<object>().ToList();
         var hidden = Cards.Where(c => !AvailabilityOf(c).IsAvailable).Cast<object>().ToList();
-        var groups = new List<ItemGroup> { new(GroupKey, Name, shown) { Summary = $"{shown.Count} available" } };
+        _main = new ItemGroup(GroupKey, Name, shown) { Summary = $"{shown.Count} available", Tip = HasScreenPower ? null : NoPowerTip };
+        if (HasScreenPower) _main.UseSwitch(ScreenPowerSwitch.One(new ScreenPowerSwitch.Screen(() => ScreenOn, SetScreenOn)));
+        var groups = new List<ItemGroup> { _main };
         if (hidden.Count > 0)
             groups.Add(new ItemGroup($"{GroupKey}/unavailable", UnavailableName + Name, hidden) { Summary = $"{hidden.Count} not reported" });
         Groups = groups;
@@ -207,7 +213,19 @@ internal sealed partial class HardwareDisplayItem
         _valuesChanged();
     }
 
-    private void PowerOff() => WriteRaw(VcpCode.PowerMode, VcpCode.Power.Off);
+    private string NoPowerTip => IsLaptopPanel
+        ? "No power switch for this screen: Windows has no way to turn the built-in panel off and on on its own. Use Turn off displays for all screens."
+        : "No power switch for this screen: the monitor does not report DDC power control.";
+
+    /// <summary>Switches the screen off (it sleeps; its button or input wakes it) or on again, over DDC power; nothing when the monitor has no power control.</summary>
+    public void SetScreenOn(bool on)
+    {
+        if (!HasScreenPower) return;
+        _screenOn = on;
+        WriteRaw(VcpCode.PowerMode, on ? VcpCode.Power.On : VcpCode.Power.Off);
+        _main?.RefreshMaster();
+        _valuesChanged();
+    }
 
     /// <summary>
     /// Changes a level by <paramref name="delta"/> percent from the level last set or read and returns the new level (null when the display
@@ -237,10 +255,7 @@ internal sealed partial class HardwareDisplayItem
     public void Rotate(DisplayOrientation orientation) => _orientation.Choose(orientation);
 
     /// <summary>Turns the screen off; nothing when the display has no power control.</summary>
-    public void TurnOff()
-    {
-        if (_power.Availability.IsAvailable) PowerOff();
-    }
+    public void TurnOff() => SetScreenOn(false);
 
     /// <summary>Choosing the option runs the card's own pick handler, which writes it.</summary>
     private static void SelectNext(ChoiceItem card)

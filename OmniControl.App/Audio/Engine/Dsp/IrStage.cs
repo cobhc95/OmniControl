@@ -24,14 +24,17 @@ internal sealed class IrStage : IDspStage
     /// <param name="values">The slot's values in the catalog's order (<see cref="IrParams"/>).</param>
     public IrStage(string path, IReadOnlyList<double> values)
     {
-        _key = new Key(path, path.Length == 0 ? 0 : File.GetLastWriteTimeUtc(path).Ticks, IrParams.IsOn(values[IrParams.AutoLevel]), IrParams.IsOn(values[IrParams.TrimSilence]));
+        _key = new Key(path, IrFileStamp.Of(path), IrParams.IsOn(values[IrParams.AutoLevel]), IrParams.IsOn(values[IrParams.TrimSilence]));
         _gain = new Glide((float)DspMath.DbToLin(values[IrParams.Gain]));
         _mix = new Glide((float)(values[IrParams.Mix] / Core.Models.Percent.Max));
         var key = _key;
         _ = Task.Run(() => Volatile.Write(ref _ready, Load(key)));
     }
 
-    /// <summary>Worker: the prepared impulse response; an empty kernel (pass-through) when there is no usable file.</summary>
+    /// <summary>
+    /// Worker: the prepared impulse response; an empty kernel (pass-through) when there is no usable file. Every failure ends in a kernel,
+    /// so a stage never waits for ever on the previous file; an unexpected one (a damaged file the reader trips on) is also logged.
+    /// </summary>
     private static Kernel Load(Key key)
     {
         if (key.Path.Length == 0) return new Kernel(key, null, null);
@@ -43,6 +46,11 @@ internal sealed class IrStage : IDspStage
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or OutOfMemoryException)
         {
             return new Kernel(key, null, null); // the file is missing or not a WAV this reader takes: the sound passes unchanged
+        }
+        catch (Exception ex) when (ex is ArgumentException or IndexOutOfRangeException or OverflowException or NotSupportedException)
+        {
+            Services.Guard.Log($"Effects: loading the IR file {key.Path}", ex);
+            return new Kernel(key, null, null);
         }
     }
 

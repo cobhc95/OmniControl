@@ -10,7 +10,16 @@ public sealed partial class SliderItem : ObservableObject, IEditorItem, IHalfWid
     private readonly Action<string> _report;
     private bool _ready;
 
-    public string Label { get; }
+    /// <summary>The card's name; it may change while the card is shown (the OSD placement window's offsets are named after the anchor).</summary>
+    [ObservableProperty] private string _label;
+
+    /// <summary>An icon id of the icon library drawn before the label (Other PCs' mirrored cards); null: no icon, the card looks as without.</summary>
+    public string? Icon { get; init; }
+
+    /// <summary>A pick-one chip drawn at the left of the slider inside the same card (Other PCs' Sound: the output beside the volume); null: none, the card looks as without.</summary>
+    public ChoiceItem? Lead { get; init; }
+
+    public bool HasLead => Lead is not null;
     public int Minimum { get; }
     public int Maximum { get; }
     public string Unit { get; }
@@ -46,7 +55,7 @@ public sealed partial class SliderItem : ObservableObject, IEditorItem, IHalfWid
     public SliderItem(string label, int initial, Func<int, OperationResult> apply, Action<string> report,
         int minimum = 0, int maximum = 100, string unit = "", int? defaultValue = null)
     {
-        Label = label;
+        _label = label;
         _apply = apply;
         _report = report;
         Minimum = minimum;

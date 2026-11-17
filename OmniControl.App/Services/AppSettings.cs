@@ -23,6 +23,15 @@ public sealed class AppSettings
     /// <summary>FX chain windows stay above other windows.</summary>
     public bool FxKeepOnTop { get; set; }
 
+    /// <summary>The hotkeys master switch (<see cref="Hotkeys.HotkeysSwitch"/>): off pauses every keyboard hotkey, keeping its keys.</summary>
+    public bool HotkeysOn { get; set; } = true;
+
+    /// <summary>On: Win+A opens the quick panel instead of Windows' quick settings (<see cref="Tray.WinAKey"/>). Off by default.</summary>
+    public bool WinAForPanel { get; set; }
+
+    /// <summary>Width of the FX window's effect list in pixels, as the user dragged it (0 = the standard width).</summary>
+    public double FxChainListWidth { get; set; }
+
     /// <summary>What the equaliser editor shows (the same for every equaliser): its band tabs, the graph's grid, the phase curve.</summary>
     public bool EqShowGrid { get; set; } = true;
     public bool EqShowPhase { get; set; }

@@ -27,7 +27,7 @@ public sealed partial class VolumePageViewModel
         var mic = new HotkeyLevel("mic", "Microphone level");
         var volume = new HotkeyLevel("volume", "Volume");
         hotkeys.Register(new HotkeyAction("volume.mic.mute", "Toggle microphone mute", Title, "sound audio input microphone mic mute silence",
-            _ => StepInput(0, toggleMute: true)) { Icon = MicIcon });
+            _ => StepInput(0, toggleMute: true)) { Icon = MicIcon, Editor = MicMuteEditor() });
         hotkeys.Register(new HotkeyAction("volume.mic.fx", "Toggle microphone FX", Title, "sound audio input microphone mic fx effects chain",
             _ =>
             {
@@ -117,6 +117,7 @@ public sealed partial class VolumePageViewModel
             var def = CoreAudio.InputDevices().FirstOrDefault(d => d.IsDefault);
             if (def is null || !CoreAudio.GetDeviceVolume(def.Id, out var v, out var muted)) return;
             NoteInputChange();
+            if (toggleMute && MuteByKey(def.Id, v, !muted)) return;
             if (toggleMute) muted = !muted;
             else
             {

@@ -64,12 +64,37 @@ public sealed class EmulatorKeeper : IDisposable
     public async Task<string?> EnsureRunningAsync(EmulatorInfo emulator, string address, Action<string>? progress = null, bool show = false)
     {
         _idle.Change(Timeout.Infinite, Timeout.Infinite);
+        return await Exclusively(() => EnsureAsync(emulator, address, show, progress));
+    }
+
+    /// <summary>Starts the emulator hidden where it can be (a click on the Simulation row's chip) and, with "until idle", lets the idle timer close it again; "close after each action" is about actions, so it stays up. Null when it is up, otherwise one plain sentence.</summary>
+    public async Task<string?> StartAsync(EmulatorInfo emulator, string address, Action<string>? progress = null)
+    {
+        var problem = await EnsureRunningAsync(emulator, address, progress);
+        if (problem is null)
+        {
+            (_lastEmulator, _lastAddress) = (emulator, address);
+            if (Settings.Keep == EmulatorKeep.UntilIdle) ArmIdle();
+        }
+        return problem;
+    }
+
+    /// <summary>True while a start, show or close is being done (the state's "acting" mark).</summary>
+    public bool Busy => _one.CurrentCount == 0;
+
+    private async Task<T> Exclusively<T>(Func<Task<T>> job)
+    {
         await _one.WaitAsync();
+        _changed();
         try
         {
-            return await EnsureAsync(emulator, address, show, progress);
+            return await job();
         }
-        finally { _one.Release(); }
+        finally
+        {
+            _one.Release();
+            _changed();
+        }
     }
 
     /// <summary>An action ended: closes the emulator, or starts the idle timer, as the user chose.</summary>
@@ -79,20 +104,17 @@ public sealed class EmulatorKeeper : IDisposable
         switch (Settings.Keep)
         {
             case EmulatorKeep.AfterEachAction: _ = CloseNowAsync(emulator, address); break;
-            case EmulatorKeep.UntilIdle: _idle.Change(TimeSpan.FromMinutes(Math.Max(1, Settings.IdleMinutes)), Timeout.InfiniteTimeSpan); break;
+            case EmulatorKeep.UntilIdle: ArmIdle(); break;
         }
     }
+
+    private void ArmIdle() => _idle.Change(TimeSpan.FromMinutes(Math.Max(1, Settings.IdleMinutes)), Timeout.InfiniteTimeSpan);
 
     /// <summary>Shuts the emulator down cleanly; null when it is closed, otherwise one plain sentence.</summary>
     public async Task<string?> CloseNowAsync(EmulatorInfo emulator, string address)
     {
         _idle.Change(Timeout.Infinite, Timeout.Infinite);
-        await _one.WaitAsync();
-        try
-        {
-            return await ShutDownAsync(emulator, address);
-        }
-        finally { _one.Release(); }
+        return await Exclusively(() => ShutDownAsync(emulator, address));
     }
 
     /// <summary>Shows the emulator's window: starts the emulator (with it) when it is not running, otherwise un-hides the window and brings it to the front. Null when done, otherwise one plain sentence.</summary>
@@ -100,13 +122,11 @@ public sealed class EmulatorKeeper : IDisposable
     {
         if (_adb() is not { } adb) return Emulators.Open(emulator); // nothing to wait for or close without adb
         _idle.Change(Timeout.Infinite, Timeout.Infinite);
-        await _one.WaitAsync();
-        try
+        return await Exclusively(async () =>
         {
             if (!await IsUpAsync(adb, address)) return await EnsureAsync(emulator, address, show: true, progress);
             return Reveal(emulator) ? null : $"{emulator.Name}'s window wasn't found. Open it from the Start menu.";
-        }
-        finally { _one.Release(); }
+        });
     }
 
     /// <summary>Hides the running emulator's window again (set-up closed); it keeps running.</summary>
@@ -139,9 +159,6 @@ public sealed class EmulatorKeeper : IDisposable
         var until = DateTime.UtcNow + Timing.EmulatorWindowWait;
         while (DateTime.UtcNow < until && !Emulators.SetWindowVisible(emulator, false)) await Task.Delay(Timing.EmulatorWindowPoll);
     }
-
-    /// <summary>The memory the emulator holds now, in bytes (0 when it is not running).</summary>
-    public static long MemoryOf(EmulatorInfo emulator) => Emulators.MemoryUsed(emulator);
 
     private async Task CloseIdleAsync()
     {

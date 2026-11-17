@@ -19,6 +19,8 @@ namespace OmniControl.App.Automation;
 /// </summary>
 public sealed partial class AutomationService : IActionGate, IDisposable
 {
+    private readonly KeepAwakeEntries _keepAwake;
+
     /// <summary>The page's title: the category every action of this feature is registered under.</summary>
     public const string Category = ActionSections.Automation;
 
@@ -69,6 +71,7 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         _custom = new CustomActionRunner(actions, Log);
 
         hotkeys.Register(PowerActions.Make(new PowerGuard(countdown, _report), TogglePause));
+        _keepAwake = new KeepAwakeEntries(hotkeys, states);
         hotkeys.Register(Settings.Rules.Where(r => r.Kind == AutomationKind.Do).Select(MakeRuleAction));
         hotkeys.Register(Settings.Customs.Select(MakeCustomAction));
         hotkeys.Register(Settings.Scripts.Select(MakeScriptAction));
@@ -373,5 +376,6 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         _stopRuns.Dispose();
         StopTriggers();
         _emergency.Dispose();
+        _keepAwake.Dispose();
     }
 }

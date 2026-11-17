@@ -74,7 +74,20 @@ public static class ScreenCapture
     }
 
     /// <summary>A copy of the screen inside <paramref name="area"/> (layered windows included), every pixel opaque.</summary>
-    public static ScreenImage Capture(ScreenRect area)
+    public static ScreenImage Capture(ScreenRect area) => Capture(area, (bits, stride) =>
+    {
+        var pixels = new byte[stride * area.Height];
+        Marshal.Copy(bits, pixels, 0, pixels.Length);
+        ScreenImage.MakeOpaque(pixels);
+        return new ScreenImage(area.Width, area.Height, pixels);
+    });
+
+    /// <summary>
+    /// Copies the screen inside <paramref name="area"/> (layered windows included) and hands the copy to <paramref name="use"/>: BGRA, top
+    /// row first, the given bytes per row, alpha not set. The pixels are valid only while <paramref name="use"/> runs, so a caller that
+    /// keeps its own copy (the area overlay's bitmap) makes it straight from Windows' bitmap with no picture in between.
+    /// </summary>
+    public static T Capture<T>(ScreenRect area, Func<IntPtr, int, T> use)
     {
         if (area.IsEmpty) throw new ArgumentException("Nothing to capture.", nameof(area));
         var screen = GetDC(IntPtr.Zero);
@@ -92,10 +105,7 @@ public static class ScreenCapture
             var copied = BitBlt(memory, 0, 0, area.Width, area.Height, screen, area.X, area.Y, SrcCopy | CaptureBlt);
             SelectObject(memory, old);
             if (!copied) throw new InvalidOperationException("Windows did not allow the screen to be copied.");
-            var pixels = new byte[area.Width * area.Height * ScreenImage.BytesPerPixel];
-            Marshal.Copy(bits, pixels, 0, pixels.Length);
-            for (var i = 3; i < pixels.Length; i += ScreenImage.BytesPerPixel) pixels[i] = 255; // the screen has no transparency
-            return new ScreenImage(area.Width, area.Height, pixels);
+            return use(bits, area.Width * ScreenImage.BytesPerPixel);
         }
         finally
         {

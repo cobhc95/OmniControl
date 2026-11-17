@@ -16,6 +16,7 @@ public static class PowerCommands
 {
     [DllImport("powrprof.dll")] private static extern bool SetSuspendState(bool hibernate, bool forceCritical, bool disableWakeEvent);
     [DllImport("user32.dll")] private static extern bool LockWorkStation();
+    [DllImport("user32.dll")] private static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
     [DllImport("powrprof.dll")] private static extern uint PowerSetActiveOverlayScheme(in Guid overlay);
     [DllImport("powrprof.dll")] private static extern uint PowerGetEffectiveOverlayScheme(out Guid overlay);
 
@@ -29,6 +30,9 @@ public static class PowerCommands
     public static bool Hibernate() => SetSuspendState(true, false, false);
 
     public static bool Lock() => LockWorkStation();
+
+    // WM_SYSCOMMAND (0x0112) with SC_MONITORPOWER (0xF170) = 2 to every top-level window switches all screens off; any input wakes them again.
+    public static bool TurnOffDisplays() => PostMessage(new IntPtr(0xFFFF), 0x0112, new IntPtr(0xF170), new IntPtr(2));
 
     public static bool ShutDown(bool force = false) => RunShutdown("/s /t 0", force);
 

@@ -81,6 +81,11 @@ public static class WindowLifecycle
         }
 
         AppLifecycle.ShowRequested += Show;
+        AppLifecycle.ToggleRequested += () =>
+        {
+            if (window.IsVisible && window.WindowState != WindowState.Minimized && window.IsActive) window.Hide();
+            else Show();
+        };
         AppLifecycle.QuitRequested += Exit;
         AppLifecycle.RestartRequested += () =>
         {

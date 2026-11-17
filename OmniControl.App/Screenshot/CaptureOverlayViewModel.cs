@@ -38,10 +38,13 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
     private ScreenRect _selectionAtStart;
     private Color _color = Palette.Drawing[0];
 
-    public ScreenImage Image { get; }
+    private readonly ScreenRect _pictureBounds;
 
-    /// <summary>The frozen picture as shown; released with the overlay.</summary>
-    public WriteableBitmap Picture { get; }
+    /// <summary>The frozen picture as shown (immutable, so the renderer keeps it on the graphics card); released with the overlay.</summary>
+    public Bitmap Picture { get; }
+
+    /// <summary>The picture's width in pixels: the view's scale between screen units and picture pixels.</summary>
+    public int PictureWidth => _pictureBounds.Width;
 
     /// <summary>The monitor's scale (1 = 96 dpi), set by the view: drawings are as thick on every monitor.</summary>
     public double Scale { get; set; } = 1;
@@ -84,8 +87,14 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
     public IReadOnlyList<SwatchItem> Colours { get; }
     public ObservableCollection<QrItem> QrCodes { get; } = new();
 
-    /// <summary>The picture or a drawing changed: the view draws again.</summary>
+    /// <summary>The selection changed (or the drawing in progress began or ended): the view moves its frame, clip and bars.</summary>
     public event Action? Redraw;
+
+    /// <summary>A finished drawing came or went (drawn, undone, redone): the view draws its finished drawings again.</summary>
+    public event Action? MarksChanged;
+
+    /// <summary>Only the drawing in progress changed (each pointer move while drawing): the view draws just that layer.</summary>
+    public event Action? PreviewChanged;
 
     /// <summary>The text tool was pressed at this point (picture pixels): the view opens a box there.</summary>
     public event Action<Point>? TextRequested;
@@ -93,12 +102,13 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
     /// <summary>This overlay began a new selection; the other monitors' overlays drop theirs.</summary>
     public event Action<CaptureOverlayViewModel>? SelectionStarted;
 
+    /// <param name="picture">The frozen picture; the overlay owns it from now on and releases it in <see cref="Dispose"/>.</param>
     /// <param name="monitor">Where the picture sits on the desktop (physical pixels).</param>
     /// <param name="recordAtOnce">"Record area": recording starts as soon as a selection is drawn.</param>
-    public CaptureOverlayViewModel(ScreenImage image, ScreenRect monitor, IShotOutput output, Action close, bool recordAtOnce, ToolSizes sizes)
+    public CaptureOverlayViewModel(Bitmap picture, ScreenRect monitor, IShotOutput output, Action close, bool recordAtOnce, ToolSizes sizes)
     {
-        Image = image;
-        Picture = ImageBitmaps.ToBitmap(image);
+        Picture = picture;
+        _pictureBounds = new ScreenRect(0, 0, picture.PixelSize.Width, picture.PixelSize.Height);
         _monitor = monitor;
         _output = output;
         _close = close;
@@ -158,10 +168,10 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
         var dy = (int)Math.Round(p.Y - _dragStart.Y);
         switch (_drag)
         {
-            case Drag.Select: Selection = SelectionMath.FromDrag((int)_dragStart.X, (int)_dragStart.Y, (int)p.X, (int)p.Y, Image.Bounds); break;
-            case Drag.Move: Selection = SelectionMath.Move(_selectionAtStart, dx, dy, Image.Bounds); break;
-            case Drag.Resize: Selection = SelectionMath.Resize(_selectionAtStart, _grip, dx, dy, Image.Bounds); break;
-            case Drag.Draw: Extend(p); break;
+            case Drag.Select: Selection = SelectionMath.FromDrag((int)_dragStart.X, (int)_dragStart.Y, (int)p.X, (int)p.Y, _pictureBounds); break;
+            case Drag.Move: Selection = SelectionMath.Move(_selectionAtStart, dx, dy, _pictureBounds); break;
+            case Drag.Resize: Selection = SelectionMath.Resize(_selectionAtStart, _grip, dx, dy, _pictureBounds); break;
+            case Drag.Draw: Extend(p); PreviewChanged?.Invoke(); return;
             default: return;
         }
         Redraw?.Invoke();
@@ -206,12 +216,12 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
     {
         if (Tool == DrawTool.Blur && preview is BoxMark box)
         {
-            var area = SelectionMath.FromDrag((int)box.From.X, (int)box.From.Y, (int)box.To.X, (int)box.To.Y, Image.Bounds);
+            var area = SelectionMath.FromDrag((int)box.From.X, (int)box.From.Y, (int)box.To.X, (int)box.To.Y, _pictureBounds);
             if (area.IsEmpty) return;
-            _marks.Add(new BlurMark(Image, area, Math.Max(1, (int)Math.Round(MarkLook.BlurBlock * Scale))));
+            _marks.Add(new BlurMark(ImageBitmaps.Crop(Picture, area), area, Math.Max(1, (int)Math.Round(MarkLook.BlurBlock * Scale))));
         }
         else _marks.Add(preview);
-        NotifyUndo();
+        Changed();
     }
 
     /// <summary>The text box was closed with words in it: they become a drawing at the point it was opened.</summary>
@@ -219,8 +229,7 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
     {
         if (string.IsNullOrWhiteSpace(text)) return;
         _marks.Add(new TextMark(at, text, _color, TextSize * Scale));
-        NotifyUndo();
-        Redraw?.Invoke();
+        Changed();
     }
 
     // ---- Keys ----
@@ -273,7 +282,7 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
     private bool Nudge(int dx, int dy, bool large)
     {
         if (Selection is not { IsEmpty: false } sel) return false;
-        Selection = SelectionMath.Nudge(sel, dx, dy, large, Image.Bounds);
+        Selection = SelectionMath.Nudge(sel, dx, dy, large, _pictureBounds);
         Redraw?.Invoke();
         return true;
     }
@@ -305,7 +314,7 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
     private void Changed()
     {
         NotifyUndo();
-        Redraw?.Invoke();
+        MarksChanged?.Invoke();
     }
 
     private void NotifyUndo() => UndoCommand.NotifyCanExecuteChanged();
@@ -335,7 +344,7 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
         IReadOnlyList<string> found;
         try
         {
-            found = await _output.ReadQrAsync(Image.Crop(sel));
+            found = await _output.ReadQrAsync(ImageBitmaps.Crop(Picture, sel));
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
         {

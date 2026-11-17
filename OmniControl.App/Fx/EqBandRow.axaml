@@ -52,7 +52,7 @@
                     Value="{Binding GainSteps}" pages:SliderReset.Value="{Binding DefaultGainSteps}" IsEnabled="{Binding UsesGain}"
                     Classes="thick" />
             <pages:NumberText Grid.Column="2" Value="{Binding Gain}" Minimum="{x:Static vm:EqBandItem.MinGain}"
-                              Maximum="{x:Static vm:EqBandItem.MaxGain}" Decimals="1" Margin="8,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Center"
+                              Maximum="{x:Static vm:EqBandItem.MaxGain}" Decimals="{x:Static vm:EqBandItem.GainDecimals}" Margin="8,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Center"
                               IsEnabled="{Binding UsesGain}">
                 <TextBlock Text="{Binding GainTextDb}" Classes="muted" HorizontalAlignment="Right" VerticalAlignment="Center" />
             </pages:NumberText>

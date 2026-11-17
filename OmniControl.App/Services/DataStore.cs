@@ -56,7 +56,9 @@ public static class DataStores
     public static readonly DataStore Screenshots = new("screenshots.json", "Screenshot settings", StoreKind.Saved);
     public static readonly DataStore Tray = new("tray.json", "Tray flyout", StoreKind.Saved);
     public static readonly DataStore Confirmations = new("confirmations.json", "Confirmations you chose not to be asked again", StoreKind.Saved);
+    public static readonly DataStore OtherPcs = new("other-pcs.json", "Other PCs (paired PCs and what each last shared; the pairing keys are kept by Windows, never in a backup)", StoreKind.Saved);
     public static readonly DataStore Icons = new("icons.json", "Your icons and chosen icons", StoreKind.Saved);
+    public static readonly DataStore MicMuteKey = new("mic-mute-key.json", "Microphone mute key (the key your keyboard sends)", StoreKind.Saved);
 
     public static readonly DataStore MixerBeforeRestore = new("mixer-before-restore.json", "Mixer before restore", StoreKind.Undo);
     public static readonly DataStore BeforeRestore = new("*-before-restore.json", "Settings before restore", StoreKind.Undo);
@@ -70,7 +72,7 @@ public static class DataStores
     public static IReadOnlyList<DataStore> All { get; } = new[]
     {
         App, Mixer, EffectPresets, VolumePresets, Plugins, Automation, GestureRules, Gestures, Hotkeys, HotkeySets, Mouse, Displays, Osd,
-        AppLists, AppActions, PowerPlans, RecentActions, Devices, Screenshots, Tray, Icons, Confirmations, MixerBeforeRestore, BeforeRestore, EngineJournal, SoftwareDisplay, PointerOriginal,
+        AppLists, AppActions, PowerPlans, RecentActions, Devices, Screenshots, Tray, Icons, MicMuteKey, OtherPcs, Confirmations, MixerBeforeRestore, BeforeRestore, EngineJournal, SoftwareDisplay, PointerOriginal,
         PointerSwapTrial, TrackpadOriginal,
     };
 

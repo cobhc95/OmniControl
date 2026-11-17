@@ -23,6 +23,7 @@ public static class TrayDefaults
         TrayElement.OfAction("screenshot.area"),
         TrayElement.OfState("volume.mic.muted"),
         TrayElement.OfAction("displays.rotate.portrait"),
+        TrayElement.OfAction("displays.screens.off"),
     };
 
     /// <summary>The right-click menu: groups of master actions (a thin line between groups); a toggle names its state, which ticks it.</summary>

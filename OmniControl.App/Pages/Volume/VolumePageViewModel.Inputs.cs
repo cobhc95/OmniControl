@@ -33,7 +33,7 @@ public sealed partial class VolumePageViewModel
             item.Name = d.Name;
             item.StateWord = d.IsDefault ? DefaultWord : string.Empty;
             if (!Grace.Within(_inputChange, Timing.SliderEchoGrace) && CoreAudio.GetDeviceVolume(d.Id, out var v, out var muted))
-                item.Sync(v, muted, _mixer.IsFxOn(item.Key), _mixer.FxChain(item.Key).Count);
+                item.Sync(v, muted, _mixer.IsFxOn(item.Key), FxSlot.EffectCount(_mixer.FxChain(item.Key)));
             SyncRow(item);
             ordered.Add(item);
         }
@@ -79,7 +79,7 @@ public sealed partial class VolumePageViewModel
             seen.Add(c.Key);
             if (!_combos.TryGetValue(c.Key, out var row)) _combos[c.Key] = row = NewCombo(c);
             row.Name = c.Name;
-            row.Sync(c.Volume, c.Muted, c.FxOn, c.Fx.Count);
+            row.Sync(c.Volume, c.Muted, c.FxOn, FxSlot.EffectCount(c.Fx));
             SyncRow(row);
             rows.Add(row);
         }

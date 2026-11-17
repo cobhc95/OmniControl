@@ -5,6 +5,7 @@ using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using OmniControl.App.Controls;
 using OmniControl.App.Fx.Plugins;
+using OmniControl.App.Services;
 
 namespace OmniControl.App.Fx;
 
@@ -20,6 +21,10 @@ public partial class FxChainPanel : UserControl
     /// <summary>The host's own buttons, shown after Add and Remove under the list (the FX window's Forget program).</summary>
     public static readonly StyledProperty<object?> ListToolsProperty = AvaloniaProperty.Register<FxChainPanel, object?>(nameof(ListTools));
 
+    /// <summary>The effect list's width in pixels (0 = the standard width, <c>FxChainListWidth</c>); the user drags it at the splitter.</summary>
+    public static readonly StyledProperty<double> ListWidthProperty =
+        AvaloniaProperty.Register<FxChainPanel, double>(nameof(ListWidth), defaultBindingMode: Avalonia.Data.BindingMode.TwoWay);
+
     private readonly ListDragReorder.Drag _drag;
     private readonly RubberBandSelect.Band _band;
     private FxChainViewModel? _vm;
@@ -34,6 +39,21 @@ public partial class FxChainPanel : UserControl
         SlotList.AddHandler(PointerPressedEvent, OnRowPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
         AddHandler(KeyDownEvent, (_, e) => HandleKey(e), RoutingStrategies.Tunnel);
         PluginArea.ScaleRefused += () => _vm?.Selected?.PluginScaleRefused();
+        PaneSplitter.DragCompleted += (_, _) => SetCurrentValue(ListWidthProperty, Panes.ColumnDefinitions[0].ActualWidth);
+        ApplyListWidth();
+    }
+
+    public double ListWidth
+    {
+        get => GetValue(ListWidthProperty);
+        set => SetValue(ListWidthProperty, value);
+    }
+
+    private void ApplyListWidth()
+    {
+        var standard = Application.Current?.TryFindResource("FxChainListWidth", out var w) == true && w is double d ? d : 0;
+        var width = ListWidth > 0 ? ListWidth : standard;
+        Panes.ColumnDefinitions[0].Width = width > 0 ? new GridLength(width) : GridLength.Auto;
     }
 
     public object? ListTools
@@ -46,14 +66,15 @@ public partial class FxChainPanel : UserControl
     {
         base.OnPropertyChanged(change);
         if (change.Property == ListToolsProperty) ToolsHost.Content = change.NewValue;
+        else if (change.Property == ListWidthProperty) ApplyListWidth();
     }
 
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
-        if (_vm is not null) _vm.ReselectRequested -= Reselect;
+        if (_vm is not null) { _vm.ReselectRequested -= Reselect; _vm.AddRequested -= AddEffect; }
         _vm = DataContext as FxChainViewModel;
-        if (_vm is not null) _vm.ReselectRequested += Reselect;
+        if (_vm is not null) { _vm.ReselectRequested += Reselect; _vm.AddRequested += AddEffect; }
     }
 
     /// <summary>The chain list has the keyboard.</summary>
@@ -75,6 +96,8 @@ public partial class FxChainPanel : UserControl
         else if (e.Key == Key.Enter && vm.HasSelection) FocusEditor();
         else if (e.Key == Key.Space) vm.ToggleEnabled();
         else if (e.Key == Key.Delete) vm.RemoveCommand.Execute(null);
+        else if (e.Key is Key.Up or Key.Down && e.KeyModifiers == KeyModifiers.None && vm.StepSelection(Wrap.Direction(e.Key))) FocusChain();
+        else if (e.Key is Key.Left or Key.Right && e.KeyModifiers == KeyModifiers.None) { if (!vm.SetSelectedFolderOpen(e.Key == Key.Right)) return; }
         else if (e.Key == Key.C && ctrl) vm.CopyCommand.Execute(null);
         else if (e.Key == Key.V && ctrl) vm.PasteCommand.Execute(null);
         else if (e.Key is Key.Up or Key.Down && e.KeyModifiers == KeyModifiers.Alt)
@@ -126,7 +149,7 @@ public partial class FxChainPanel : UserControl
     public async void AddEffect()
     {
         if (_vm is not { } vm || TopLevel.GetTopLevel(this) is not Window owner) return;
-        var picked = await new AddEffectWindow { DataContext = new AddEffectViewModel(vm.Library) }.ShowDialog<PluginEntry?>(owner);
+        var picked = await new AddEffectWindow { DataContext = new AddEffectViewModel(vm.Library, vm.CanAddFolder) }.ShowDialog<PluginEntry?>(owner);
         if (picked is not null) vm.AddEntry(picked);
     }
 

@@ -9,6 +9,9 @@ public sealed partial class ChoiceItem : ObservableObject, IEditorItem, IHalfWid
 
     public string Label { get; }
 
+    /// <summary>An icon id of the icon library drawn before the label (Other PCs' mirrored cards); null: no icon, the card looks as without.</summary>
+    public string? Icon { get; init; }
+
     /// <summary>True: the card takes half the width and may share a row with the next half-width card.</summary>
     public bool Half { get; init; }
 

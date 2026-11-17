@@ -113,6 +113,20 @@ public static partial class EffectsRules
     public static string ApoSent(ApoState apo, string folder) =>
         string.Equals(folder, apo.UpstreamConfigFolder, StringComparison.OrdinalIgnoreCase) ? "Chain sent to your Equalizer APO" : "Chain sent to OmniControl APO";
 
+    /// <summary>Equalizer APO's config.txt no longer includes OmniControl's file (its editor or another program wrote it back without the line).</summary>
+    public const string ApoDisplaced = "Equalizer APO's config no longer includes OmniControl's effects";
+
+    /// <summary>An IR Loader's Auto level is measured before its chain is written for Equalizer APO.</summary>
+    public const string ApoMeasuringIr = "Measuring the IR file's level before sending the chain";
+
+    /// <summary>The tag beside a chain run by Equalizer APO whose config.txt also runs effects of its own, and the tag's tooltip.</summary>
+    public const string ApoOwnEffects = "Equalizer APO's own effects also run",
+        ApoOwnEffectsTip = "config.txt holds effects of its own besides OmniControl's line; Equalizer APO runs them as well.";
+
+    /// <summary>The setting that puts OmniControl's include line and file back when another program takes them out.</summary>
+    public const string KeepInPlace = "Keep OmniControl's effects in place",
+        KeepInPlaceTip = "When Equalizer APO's editor or another program writes its config without OmniControl's line, put it back at once.";
+
     /// <summary>What a row or card says when no cable is installed, when every installed cable is switched off, or when every allowed cable is in use.</summary>
     public const string NeedsCable = "Needs VB-CABLE", CablesOff = "Cables switched off", NeedsAnotherCable = "Needs another cable";
 

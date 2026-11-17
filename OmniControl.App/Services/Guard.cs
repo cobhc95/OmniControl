@@ -23,6 +23,19 @@ public static class Guard
         }
     }
 
+    /// <summary>Runs <paramref name="step"/> to its end; a failure is logged with <paramref name="what"/> and never escapes (for a task nobody awaits).</summary>
+    public static async Task RunAsync(string what, Func<Task> step)
+    {
+        try
+        {
+            await step().ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            Log(what, ex);
+        }
+    }
+
     /// <summary>Writes a failure and its stack to the errors log.</summary>
     public static void Log(string what, Exception ex) => AppDataStore.AppendLog(LogFile, $"{what}: {ex}");
 

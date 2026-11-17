@@ -22,6 +22,7 @@ public partial class IconPickerWindow : Window
         _model = model;
         DataContext = model;
         AddHandler(KeyDownEvent, OnKeys, RoutingStrategies.Tunnel);
+        Closed += (_, _) => model.Close();
         Opened += (_, _) => Dispatcher.UIThread.Post(() => SearchBox.Focus());
     }
 

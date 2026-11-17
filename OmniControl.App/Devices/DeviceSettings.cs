@@ -13,6 +13,9 @@ public sealed class DeviceRecord
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Name { get; set; } = string.Empty;
 
+    /// <summary>The id the device had on the PC it was imported from (empty = made here), so a second import knows it is already here.</summary>
+    public string OriginId { get; set; } = string.Empty;
+
     /// <summary>The icon (a library id or a user icon, <see cref="Icons.IconLibrary"/>; empty = the first method's template's, or the plug), its colour while on, and the user's own image (a file in <see cref="DeviceIcons.ImageFolder"/>; empty = none).</summary>
     public string Icon { get; set; } = string.Empty;
     public string IconColour { get; set; } = string.Empty;
@@ -71,7 +74,7 @@ public sealed class DeviceRecord
     /// <summary>Takes every field of <paramref name="other"/> (the copy made when the set-up opened); the id stays.</summary>
     public void CopyFrom(DeviceRecord other)
     {
-        (Name, Icon, IconColour, IconImage, AutoCheck, AutoCheckOnTray) = (other.Name, other.Icon, other.IconColour, other.IconImage, other.AutoCheck, other.AutoCheckOnTray);
+        (Name, OriginId, Icon, IconColour, IconImage, AutoCheck, AutoCheckOnTray) = (other.Name, other.OriginId, other.Icon, other.IconColour, other.IconImage, other.AutoCheck, other.AutoCheckOnTray);
         Methods = other.Methods.Select(m => m.Clone()).ToList();
     }
 }

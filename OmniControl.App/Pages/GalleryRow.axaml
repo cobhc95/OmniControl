@@ -7,6 +7,7 @@
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
             <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
         <TextBlock x:Name="LabelText" Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,24,0" />
         <Border Classes="gallery" Classes.half="{Binding Half}" Tag="gallery" Focusable="True" pages:ValueWheel.Selector="True" PointerPressed="OnPressed" PointerWheelChanged="OnWheel">
@@ -23,5 +24,6 @@
                 </Button>
             </Grid>
         </Border>
+        <ContentControl Grid.Column="2" Content="{Binding Extra}" Margin="12,0,0,0" VerticalAlignment="Center" />
     </Grid>
 </UserControl>

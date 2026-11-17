@@ -358,4 +358,30 @@ public sealed partial class VolumePageViewModel
         group.IsExpanded = true;
         RevealRequested?.Invoke(target!);
     }
+
+    private object? _pendingReveal;
+
+    /// <summary>
+    /// A jump from another window (a device folder's "Change in Mixer"): the Advanced Mixer with that device's own row shown when the
+    /// Outputs list has one, else the master row, whose Method every playback device runs through. The page moves the keyboard there once it
+    /// is on screen (<see cref="TakePendingReveal"/>).
+    /// </summary>
+    public void ShowMixerFor(string deviceId)
+    {
+        IsEasy = false;
+        Tabs.Select(MixerTab);
+        Outputs.IsExpanded = true;
+        object row = _mixer.Combined.FirstOrDefault(c => c.Kind == CombinedKind.Speakers && c.Cable == deviceId) is { } device
+                     && _combos.TryGetValue(device.Key, out var combo) ? combo : _master;
+        if (RevealRequested is { } reveal) reveal(row);
+        else _pendingReveal = row;
+    }
+
+    /// <summary>The row a jump asked for while the page was not on screen; asked for once, by the page when it comes on screen.</summary>
+    public object? TakePendingReveal()
+    {
+        var row = _pendingReveal;
+        _pendingReveal = null;
+        return row;
+    }
 }

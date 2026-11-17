@@ -1,4 +1,4 @@
-using OmniControl.App.Services;
+﻿using OmniControl.App.Services;
 
 namespace OmniControl.App.Icons;
 
@@ -161,6 +161,7 @@ public static class IconLibrary
         new("device-tablet", "Tablet", "Computer and hardware", "ipad mobile touchscreen portable"),
         new("device-watch", "Watch", "Computer and hardware", "smartwatch wearable arm hour date minutes sec."),
         new("device-speaker", "Speaker", "Computer and hardware", "audio sound music loud media"),
+        new("device-speaker-plus", "Add speaker", "Computer and hardware", "audio sound new device folder playback"),
         new("device-gamepad-2", "Game controller", "Computer and hardware", "gamepad play entertainment console joystick joypad"),
         new("device-airpods", "Earbuds", "Computer and hardware", "airpods wireless audio music iphone apple headphones sound"),
         new("device-remote", "Remote control", "Computer and hardware", "tv clicker home television"),
@@ -574,8 +575,21 @@ public static class IconLibrary
     /// <summary>A saved icon value as it is meant now: an earlier value becomes its library id; anything else (a library id, a user icon) is kept.</summary>
     public static string? Current(string? value) => value is not null && Earlier.TryGetValue(value, out var now) ? now : value;
 
-    /// <summary>The icons whose name, keywords or id hold every typed word (the one search rule, <see cref="TextMatch"/>); all for an empty query.</summary>
-    public static IReadOnlyList<LibraryIcon> Search(string query) => All.Where(i => TextMatch.Any(query, i.Name, i.Keywords, i.Id, i.Category)).ToList();
+    // One normalised text per icon (its name, keywords, id and category), built once from the immutable list; every search reads it.
+    private static readonly string[] Haystacks = All.Select(i => TextMatch.Haystack(new[] { i.Name, i.Keywords, i.Id, i.Category })).ToArray();
+
+    /// <summary>The icons whose name, keywords or id hold every typed word (the one search rule, <see cref="TextMatch"/>); all for an empty query. Safe off the UI thread.</summary>
+    public static IReadOnlyList<LibraryIcon> Search(string query, CancellationToken cancel = default)
+    {
+        var words = TextMatch.Words(query);
+        var found = new List<LibraryIcon>();
+        for (var i = 0; i < All.Count; i++)
+        {
+            cancel.ThrowIfCancellationRequested();
+            if (TextMatch.AllIn(words, Haystacks[i])) found.Add(All[i]);
+        }
+        return found;
+    }
 
     /// <summary>The icon an entry shows when the user chose none: its first suggestion that is in the library, else its own icon.</summary>
     public static string? DefaultOf(IReadOnlyList<string>? suggested, string? own) =>

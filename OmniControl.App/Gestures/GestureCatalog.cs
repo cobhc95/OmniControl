@@ -8,9 +8,10 @@ namespace OmniControl.App.Gestures;
 /// One gesture's trigger: scrolling while the pointer is over a screen area (<see cref="Area"/>) or while a set of keys is held
 /// (<see cref="Keys"/>), or, with <see cref="MiddleClick"/>, pressing the middle button over a screen area.
 /// <see cref="DefaultAction"/> is the action a new gesture starts with: a step action for the wheel, a mouse button action for a middle click.
+/// <see cref="DefaultOn"/>: the gesture starts on (for a new user and after Restore defaults).
 /// </summary>
 public sealed record GestureTrigger(string Id, string Group, string Label, string DefaultAction,
-    PointerAreaKind Area = PointerAreaKind.Elsewhere, Modifiers Keys = Modifiers.None, bool MiddleClick = false);
+    PointerAreaKind Area = PointerAreaKind.Elsewhere, Modifiers Keys = Modifiers.None, bool MiddleClick = false, bool DefaultOn = false);
 
 /// <summary>
 /// Every gesture trigger, and the "step" actions a wheel can drive (wheel up goes one way, wheel down the other).
@@ -28,7 +29,7 @@ public static class GestureCatalog
     // default action is a level id declared by a page (HotkeyLevel.Id: "volume", "brightness") or a step listed below.
     public static readonly IReadOnlyList<GestureTrigger> Triggers = new GestureTrigger[]
     {
-        new("area.taskbar", AreaGroup, "Taskbar", "volume", PointerAreaKind.Taskbar),
+        new("area.taskbar", AreaGroup, "Taskbar", "volume", PointerAreaKind.Taskbar, DefaultOn: true),
         new("area.top", AreaGroup, "Top edge", "brightness", PointerAreaKind.TopEdge),
         new("area.left", AreaGroup, "Left edge", "volume", PointerAreaKind.LeftEdge),
         new("area.right", AreaGroup, "Right edge", "volume", PointerAreaKind.RightEdge),

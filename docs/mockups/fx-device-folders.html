@@ -1,0 +1,31 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>FX device folders (approved)</title>
+<!-- Approved by the owner 17 Nov 2026 (inspired by Reaper containers / TabForge folders).
+  FX window chain list (left):
+  - Effects at top level (outside folders) run for every device ("all devices" muted hint at the row's right).
+  - A DEVICE FOLDER is a chain row: expand chevron, on tick, folder glyph (accent when its device is the one playing, cable-blue for a cable
+    device, muted when not playing), the device name, under it a Border.tag: .good "Equalizer APO" / cable-blue "via cable" / plain "not playing"
+    or "not supported"; the count of its effects at the right. A whole folder dims while its device is not playing.
+  - Its effects are indented under it with a 2 px accent bar at their left (like a TabForge container); drag effects in and out of folders.
+  - Buttons under the list: Add… (adds into the selected folder when one is selected), a folder-plus icon pill (new device folder), Remove.
+  Editor (right) when a folder is selected: folder glyph, "Device folder", ChipMenu "Device: <name> ▾", On switch, Mix (percentage);
+    muted line "Plays only while this device is playing. Effects inside run in order, after anything above the folder."
+  Device menu (listmenu): muted "Playback devices", every Windows playback device read live (like Equalizer APO's device selection),
+    a tick on the chosen one, a tag at the right: "Equalizer APO" (installed for it) / "works via cable" (the cable method can carry it) /
+    "not supported"; a thin line, then "Install Equalizer APO on a device…" (the existing install step).
+  ADDITION (approved 17 Nov, replaces the editor description above):
+  - Device menu: a device that can use BOTH methods shows both tags ("Equalizer APO" and "cable").
+  - Editor when the FOLDER is selected (top to bottom): folder glyph + device name (semi-bold) and On switch at the right;
+    card "Device" with ChipMenu "<name> ▾"; card "Method" showing the device's CURRENT method as a READ-ONLY Border.tag
+    ("Equalizer APO · no extra delay" / "Cable · ~N ms") + Button.link "Change in Mixer" (opens the Volume page Mixer at that device's row);
+    the method is NEVER changed here (owner: it is owned by the Mixer); card "Mix" slider with typeable %; muted "Effects in this folder ·
+    click one to edit" then one compact row per child effect (number, name, a muted key-value summary from the effect) that selects it;
+    pills "Add effect here…" and "Save folder as preset…" (uses the existing FX preset store).
+  NEW-FOLDER BUTTON (approved 17 Nov): under the list, between "Add…" and "Remove": a Button.pill with an icon AND words
+    "Device folder": icon = a speaker glyph (icon library device-speaker) with a small plus at its lower right, a little larger than
+    the pill text (~17 px speaker, ~10 px plus); no icon-only folder button.
+  Behaviour: whenever the playing/default output device changes, only the matching folder's chain (plus top-level effects) runs, through
+    whichever method that device has (APO chain written for that device, or the cable path); honest status per EngineStatus rules. -->
+<style>body{font-family:Segoe UI;background:#1b1b1b;color:#eee;padding:20px;font-size:13px}</style></head><body>
+<p>1 ☑ FX Limiter (all devices)<br>▾ ☑ 📁 Audient iD4 [Equalizer APO] 3 · | IR Loader · | Equaliser - Parametric · | Gain<br>▸ ☑ 📁 Bluetooth headphones [via cable] 2<br>▸ 📁 Laptop speakers [not playing]<br>[Add…] [📁+] [Remove] | Device folder [Device: Audient iD4 ▾] On · Mix 100 %</p>
+</body></html>

@@ -50,7 +50,7 @@
         <DockPanel Margin="16,12,16,0">
             <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" ColumnSpacing="16" Margin="0,0,0,10">
                 <TextBlock Classes="title" Text="{Binding Heading}" VerticalAlignment="Center" />
-                <TextBox x:Name="SearchBox" Grid.Column="1" Classes="bar" Text="{Binding Search}" Watermark="Search presets and shortcuts…"
+                <TextBox x:Name="SearchBox" Grid.Column="1" Classes="bar search" Text="{Binding Search}" Watermark="Search presets and shortcuts…"
                          ToolTip.Tip="Search every section's presets by name or shortcut (Ctrl+F; Esc clears)" />
             </Grid>
             <TextBlock DockPanel.Dock="Top" Classes="hint" Text="No preset matches." IsVisible="{Binding NothingFound}" Margin="4,0,0,8" />

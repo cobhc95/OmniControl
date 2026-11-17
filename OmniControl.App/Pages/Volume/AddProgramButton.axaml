@@ -13,7 +13,7 @@
         <FlyoutBase.AttachedFlyout>
             <c:ListMenuFlyout Placement="BottomEdgeAlignedRight" Opened="OnMenuOpened" Closed="OnMenuClosed">
                 <StackPanel x:DataType="vm:AddProgramMenuViewModel" KeyDown="OnMenuKeyDown">
-                    <TextBox Classes="field" Text="{Binding Query}" Watermark="Search programs…" Margin="0,0,0,4" />
+                    <TextBox Classes="field search" Text="{Binding Query}" Watermark="Search programs…" Margin="0,0,0,4" />
                     <ScrollViewer MaxHeight="{StaticResource OptionListMaxHeight}" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel>
                             <ItemsControl ItemsSource="{Binding Choices}">

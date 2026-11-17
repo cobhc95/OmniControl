@@ -26,6 +26,9 @@ public sealed partial class EqBandItem : ObservableObject
 
     /// <summary>The gain slider moves in half-dB steps.</summary>
     private const double GainStepsPerDb = 2;
+
+    /// <summary>A typed gain is kept to 0.01 dB (the band row's value box uses the same count); only the slider moves in half dB.</summary>
+    public const int GainDecimals = 2;
     public static double MinGainSteps => Eq.MinGain * GainStepsPerDb;
     public static double MaxGainSteps => Eq.MaxGain * GainStepsPerDb;
 
@@ -71,7 +74,7 @@ public sealed partial class EqBandItem : ObservableObject
 
     public bool Enabled { get => _enabled; set { if (_enabled == value) return; _enabled = value; Changed(); } }
     public double Freq { get => _freq; set => Set(ref _freq, Math.Clamp(value, Eq.MinFreq, Eq.MaxFreq)); }
-    public double Gain { get => _gain; set => Set(ref _gain, Math.Clamp(Math.Round(value, 1), Eq.MinGain, Eq.MaxGain)); }
+    public double Gain { get => _gain; set => Set(ref _gain, Math.Clamp(Math.Round(value, GainDecimals), Eq.MinGain, Eq.MaxGain)); }
     public double Q { get => _q; set => Set(ref _q, Math.Clamp(value, Eq.MinQ, Eq.MaxQ)); }
     public EqType Type { get => _type; set { if (_type == value) return; _type = value; Changed(); } }
 
@@ -109,6 +112,16 @@ public sealed partial class EqBandItem : ObservableObject
 
     /// <summary>The mouse wheel over this band's point on the graph: wider (up) or narrower, as far as the wheel moves the slider.</summary>
     public void NudgeWidth(int direction) => WidthPos = Math.Clamp(WidthPos + direction * ValueWheel.StepOf(0, LogSteps), 0, LogSteps);
+
+    /// <summary>True for types whose bandwidth the graph's handles can drag.</summary>
+    public bool UsesBandwidth => EqMath.UsesBandwidth(Type);
+
+    /// <summary>A graph handle dragged to <paramref name="edgeFreq"/>: the bandwidth reaching that far each side of the centre, through the Bandwidth slider's own position.</summary>
+    public void SetWidthFromEdge(double edgeFreq) =>
+        WidthPos = Math.Clamp(ToLogPos(2 * Math.Abs(Math.Log2(edgeFreq / Freq)), Eq.MinBandwidth, Eq.MaxBandwidth), 0, LogSteps);
+
+    /// <summary>Double-click on a handle: the slider's double-click, this place's default width.</summary>
+    public void ResetWidth() => WidthPos = DefaultWidthPos;
 
     private static double ToLogPos(double value, double min, double max) => Math.Round(LogSteps * Math.Log(value / min) / Math.Log(max / min));
     private static double FromLogPos(double pos, double min, double max) => min * Math.Pow(max / min, pos / LogSteps);
@@ -158,7 +171,7 @@ public sealed partial class EqBandItem : ObservableObject
 
     private static readonly string[] Shown =
     {
-        nameof(Enabled), nameof(Freq), nameof(Gain), nameof(Q), nameof(Bandwidth), nameof(Type), nameof(UsesGain), nameof(FreqPos),
+        nameof(Enabled), nameof(Freq), nameof(Gain), nameof(Q), nameof(Bandwidth), nameof(Type), nameof(UsesGain), nameof(UsesBandwidth), nameof(FreqPos),
         nameof(GainSteps), nameof(WidthPos), nameof(TypeName), nameof(FreqText), nameof(GainTextDb), nameof(BandwidthText),
         nameof(QText), nameof(NoteText), nameof(ListFreq), nameof(IsBypassed),
     };

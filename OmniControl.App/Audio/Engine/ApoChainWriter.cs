@@ -9,7 +9,8 @@ namespace OmniControl.App.Audio.Engine;
 /// <param name="Skipped">The enabled effects the APO does not run (kept in the chain, said on the row; a plug-in with its reason).</param>
 /// <param name="Plugins">The plug-ins written as <c>VSTPlugin:</c> lines (their delay is not known to OmniControl).</param>
 /// <param name="Defaults">Of those, the ones with no saved settings yet: Equalizer APO runs them with the plug-in's defaults.</param>
-public sealed record ApoSection(string Text, IReadOnlyList<string> Skipped, IReadOnlyList<string> Plugins, IReadOnlyList<string> Defaults);
+/// <param name="Waiting">An IR Loader's Auto level is still being measured (<see cref="IrLevels"/>): the section is not written yet.</param>
+public sealed record ApoSection(string Text, IReadOnlyList<string> Skipped, IReadOnlyList<string> Plugins, IReadOnlyList<string> Defaults, bool Waiting = false);
 
 /// <summary>
 /// The master's and the microphones' chains in Equalizer APO's config language (the user's Equalizer APO and OmniControl APO read
@@ -36,8 +37,10 @@ public static class ApoChainWriter
     }
 
     /// <summary>The section for <paramref name="slots"/> on the device <paramref name="deviceGuid"/> ("{...}"), named <paramref name="title"/> in a comment.</summary>
-    public static ApoSection Section(string title, IEnumerable<FxSlot> slots, string deviceGuid)
+    /// <param name="levels">The IR Loaders' Auto level gains, measured off the UI thread.</param>
+    internal static ApoSection Section(string title, IEnumerable<FxSlot> slots, string deviceGuid, IrLevels levels)
     {
+        var waiting = false;
         var text = new StringBuilder($"# {Clean(title)}{NewLine}Device: {deviceGuid}{NewLine}");
         var notRun = new List<string>();
         var plugins = new List<string>();
@@ -46,7 +49,11 @@ public static class ApoChainWriter
         {
             string? reason = null;
             IReadOnlyList<string>? lines = null;
-            if (FxCatalog.EnginesOf(slot).HasFlag(FxEngines.Apo) && slot.Kind != FxCatalog.Vst2Kind) lines = LinesOf(slot);
+            if (FxCatalog.EnginesOf(slot).HasFlag(FxEngines.Apo) && slot.Kind != FxCatalog.Vst2Kind)
+            {
+                lines = LinesOf(slot, levels, out var measuring);
+                waiting |= measuring;
+            }
             else if (FxCatalog.EnginesOf(slot).HasFlag(FxEngines.Apo) && PluginLine(slot, out reason, out var withDefaults) is { } line)
             {
                 lines = new[] { line };
@@ -55,6 +62,7 @@ public static class ApoChainWriter
             }
             if (lines is null)
             {
+                if (reason is null && FxCatalog.EnginesOf(slot).HasFlag(FxEngines.Apo) && !FxCatalog.ApoCanMix(slot)) reason = "mix below 100 %";
                 notRun.Add(reason is null ? slot.Name : $"{slot.Name} ({reason})");
                 text.Append($"# {Clean(slot.Name)}: not run by the APO{NewLine}");
                 continue;
@@ -62,7 +70,7 @@ public static class ApoChainWriter
             text.Append($"# {Clean(slot.Name)}{NewLine}");
             foreach (var l in lines) text.Append(l).Append(NewLine);
         }
-        return new ApoSection(text.ToString(), notRun, plugins, defaults);
+        return new ApoSection(text.ToString(), notRun, plugins, defaults, waiting);
     }
 
     /// <summary>
@@ -116,8 +124,10 @@ public static class ApoChainWriter
     private static string Quoted(string part) => $"\"{part.Replace("\"", "\"\"")}\"";
 
     /// <summary>Lines for one slot, or null when this slot cannot be expressed (a wet mix below 100 %, an IR mixed below 100 % or missing).</summary>
-    private static IReadOnlyList<string>? LinesOf(FxSlot slot)
+    /// <param name="waiting">An IR file's Auto level is not measured yet.</param>
+    private static IReadOnlyList<string>? LinesOf(FxSlot slot, IrLevels levels, out bool waiting)
     {
+        waiting = false;
         if (!FxCatalog.ApoCanMix(slot)) return null;
         if (FxCatalog.EqLayoutOf(slot) is { } eq) // every equaliser, parametric or graphic: its bands are ordinary bands
             return EqLines((slot.Bands ?? eq.Default()).Where(b => !EqMath.IsFlat(b)).ToList(), FxCatalog.EqGainOf(slot));
@@ -126,29 +136,19 @@ public static class ApoChainWriter
             case FxCatalog.GainKind:
                 return new[] { $"Preamp: {Num(slot.Values.FirstOrDefault())} dB" };
             case FxCatalog.IrKind:
-                if (IrParams.ValueOf(slot, IrParams.Mix) < Core.Models.Percent.Max || !System.IO.File.Exists(slot.Path)) return null; // its own Mix below 100 % cannot be expressed either
-                return new[] { $"Preamp: {Num(IrParams.ValueOf(slot, IrParams.Gain) + AutoLevelDb(slot))} dB", $"Convolution: {slot.Path}" };
+                var stamp = Ir.IrFileStamp.Of(slot.Path);
+                if (IrParams.ValueOf(slot, IrParams.Mix) < Core.Models.Percent.Max || stamp == 0) return null; // its own Mix below 100 % cannot be expressed either
+                var level = IrParams.IsOn(IrParams.ValueOf(slot, IrParams.AutoLevel)) ? levels.Of(slot.Path, stamp) : 0;
+                if (level is not { } autoDb)
+                {
+                    waiting = true;
+                    return Array.Empty<string>();
+                }
+                // The file's write time is part of the text: a file replaced under the same name changes it, so Equalizer APO loads it again.
+                // Trim silence is not written: Equalizer APO's Convolution has no such option.
+                return new[] { $"# file saved {new DateTime(stamp, DateTimeKind.Utc):O}", $"Preamp: {Num(IrParams.ValueOf(slot, IrParams.Gain) + autoDb)} dB", $"Convolution: {slot.Path}" };
             default:
                 return null;
-        }
-    }
-
-    /// <summary>
-    /// The gain Auto level adds to an IR Loader (the loudest frequency of the file at 0 dB, as in OmniControl's engine), 0 when it is off or
-    /// the file cannot be read (Equalizer APO then plays the file as it is). Trim silence is not written: Equalizer APO's Convolution has no such option.
-    /// </summary>
-    private static double AutoLevelDb(FxSlot slot)
-    {
-        if (!IrParams.IsOn(IrParams.ValueOf(slot, IrParams.AutoLevel))) return 0;
-        try
-        {
-            var audio = Ir.IrWaveFile.Read(slot.Path);
-            var peak = Math.Max(Ir.IrPictures.PeakResponse(audio.Channels[0]), audio.Channels.Length > 1 ? Ir.IrPictures.PeakResponse(audio.Channels[1]) : 0);
-            return peak > 1e-9 ? Math.Round(-20 * Math.Log10(peak), 2) : 0;
-        }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
-        {
-            return 0; // not a WAV this reader takes (a .flac, say): Equalizer APO reads it as it is
         }
     }
 

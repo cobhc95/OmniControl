@@ -12,6 +12,10 @@ public sealed record VcpFeature(byte Code, string Key, string Label, string Keyw
 {
     /// <summary>The part of the monitor's controls it belongs to (one of <see cref="VcpSections"/>): what lists group its actions under.</summary>
     public string Section { get; init; } = VcpSections.Other;
+
+    /// <summary>The keys "Suggest" offers for a level's Up and Down actions (never bound by default); null: none.</summary>
+    public string? SuggestedUp { get; init; }
+    public string? SuggestedDown { get; init; }
 }
 
 /// <summary>The sections the monitor features are grouped in, in the order lists show them.</summary>
@@ -45,7 +49,10 @@ public static class VcpFeatures
 
     public static readonly IReadOnlyList<VcpFeature> All = new[]
     {
-        Level(VcpCode.Brightness, "brightness", "Brightness", "brightness backlight luminance", 50) with { Section = VcpSections.BrightnessContrast },
+        Level(VcpCode.Brightness, "brightness", "Brightness", "brightness backlight luminance", 50) with
+        {
+            Section = VcpSections.BrightnessContrast, SuggestedUp = "Ctrl+Shift+Up", SuggestedDown = "Ctrl+Shift+Down",
+        },
         Level(VcpCode.Contrast, "contrast", "Contrast", "contrast", 50) with { Section = VcpSections.BrightnessContrast },
         Level(VcpCode.RedGain, "red", "Red gain", Rgb + "red gain video", 100) with { Section = VcpSections.Colour },
         Level(VcpCode.GreenGain, "green", "Green gain", Rgb + "green gain video", 100) with { Section = VcpSections.Colour },

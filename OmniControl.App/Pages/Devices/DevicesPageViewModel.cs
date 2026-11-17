@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OmniControl.App.Controls;
 using OmniControl.App.Devices;
+using OmniControl.App.OtherPcs;
 using OmniControl.App.Services;
 using OmniControl.App.Dialogs;
 
@@ -37,12 +38,20 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
 
     [ObservableProperty, NotifyPropertyChangedFor(nameof(HasSelected))] private DeviceItem? _selected;
 
+    /// <summary>The "Import from another PC" group under the devices.</summary>
+    public DeviceImportViewModel Import { get; }
+
+    /// <summary>The group was asked for (the empty row's link, the Import pill): the view scrolls to it.</summary>
+    public event Action? ImportOpened;
+
     public bool NoDevices => Items.Count == 0;
     public bool HasSelected => Selected is not null;
 
     /// <param name="chooseIcon">The shared icon picker (a device's "Change icon…").</param>
+    /// <param name="otherPcs">The paired PCs the import group asks.</param>
+    /// <param name="openOtherPcs">Opens the Other PCs page (the import group's way to pair one).</param>
     public DevicesPageViewModel(DeviceService service, Func<DialogMessage, Task<bool>> ask, Action<string> report,
-        Func<Avalonia.Visual, Icons.IconRequest, Task<Icons.IconPick?>> chooseIcon)
+        Func<Avalonia.Visual, Icons.IconRequest, Task<Icons.IconPick?>> chooseIcon, OtherPcsService otherPcs, Action openOtherPcs)
     {
         _service = service;
         _ask = ask;
@@ -51,11 +60,27 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
         foreach (var record in service.Records) Items.Add(Make(record));
         Selected = Items.FirstOrDefault();
         Items.CollectionChanged += (_, _) => OnPropertyChanged(nameof(NoDevices));
+        Import = new DeviceImportViewModel(service, otherPcs, report, openOtherPcs);
+        Import.Imported += OnImported;
+    }
+
+    [RelayCommand]
+    private void OpenImport()
+    {
+        Import.Open();
+        ImportOpened?.Invoke();
+    }
+
+    private void OnImported(IReadOnlyList<DeviceRecord> added)
+    {
+        SyncItems();
+        Selected = Items.FirstOrDefault(i => i.Record == added[0]);
     }
 
     // The checks of Python, python-kasa, adb and the emulators run when the page is shown, not at start-up.
     public override void OnShown()
     {
+        Import.Refresh();
         if (!StartupMode.Inert) _ = ProbeThenCheckAsync(); // the probes start programs (Python, adb, the emulators): never in a screenshot export
     }
 
@@ -219,6 +244,8 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
 
     public void Dispose()
     {
+        Import.Imported -= OnImported;
+        Import.Dispose();
         foreach (var item in Items) item.Dispose();
     }
 }

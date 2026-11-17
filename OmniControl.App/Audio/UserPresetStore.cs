@@ -20,6 +20,9 @@ public sealed class UserPresetStore
     public sealed class Stored
     {
         public List<UserPreset> Presets { get; set; } = new();
+
+        /// <summary>Device folders saved as presets (<see cref="FolderPreset"/>).</summary>
+        public List<FolderPreset> Folders { get; set; } = new();
     }
 
     private readonly Stored _data;
@@ -35,10 +38,17 @@ public sealed class UserPresetStore
         // A damaged or hand-edited entry is dropped rather than shown: the catalog says what each kind can hold.
         _data.Presets.RemoveAll(p => p is null || FxCatalog.All.FirstOrDefault(k => k.Kind == p.Kind) is not { } kind
             || PresetRules.Error(p.Name ?? "") is not null || p.Content is null || PresetCatalog.Fit(kind, p.Content) is null);
+        _data.Folders ??= new List<FolderPreset>();
+        _data.Folders.RemoveAll(f => f is null || PresetRules.Error(f.Name ?? "") is not null || f.Effects is null || f.Effects.Any(e => e is null || e.IsFolder));
         var gaveIds = false;
         foreach (var preset in _data.Presets.Where(p => string.IsNullOrEmpty(p.Id)))
         {
             preset.Id = PresetRules.NewId();
+            gaveIds = true;
+        }
+        foreach (var folder in _data.Folders.Where(f => string.IsNullOrEmpty(f.Id)))
+        {
+            folder.Id = PresetRules.NewId();
             gaveIds = true;
         }
         if (gaveIds) _save(_data); // the ids of an older file's presets stay the same from now on
@@ -133,6 +143,63 @@ public sealed class UserPresetStore
         {
             return null;
         }
+    }
+
+    // ---- device folders as presets: their own list, in their own order, with their own names ----
+
+    /// <summary>The folder presets in their order.</summary>
+    public IReadOnlyList<FolderPreset> Folders => _data.Folders;
+
+    public FolderPreset? FindFolder(string id) => _data.Folders.FirstOrDefault(f => f.Id == id);
+
+    /// <summary>Keeps a copy of the folder as the preset of that name (same name, any case: replaced where it stands, keeping its id; else last). Returns its id.</summary>
+    public string SaveFolder(string name, FolderPreset content)
+    {
+        name = name.Trim();
+        var at = _data.Folders.FindIndex(f => PresetRules.Same(f.Name, name));
+        var preset = content.Copy();
+        preset.Name = name;
+        preset.Id = at >= 0 ? _data.Folders[at].Id : PresetRules.NewId();
+        preset.Saved = DateTime.Now;
+        if (at >= 0) _data.Folders[at] = preset;
+        else _data.Folders.Add(preset);
+        Commit();
+        return preset.Id!;
+    }
+
+    /// <summary>Renames a folder preset (the caller has checked the name is free).</summary>
+    public void RenameFolder(string id, string to)
+    {
+        if (FindFolder(id) is not { } preset) return;
+        preset.Name = to.Trim();
+        Commit();
+    }
+
+    /// <summary>Puts a folder preset at this place among the folder presets.</summary>
+    public void MoveFolder(string id, int index)
+    {
+        var from = _data.Folders.FindIndex(f => f.Id == id);
+        if (from < 0) return;
+        var preset = _data.Folders[from];
+        _data.Folders.RemoveAt(from);
+        _data.Folders.Insert(Math.Clamp(index, 0, _data.Folders.Count), preset);
+        Commit();
+    }
+
+    /// <summary>Deletes a folder preset; the result puts it back where it was (null when there was none).</summary>
+    public Action? DeleteFolder(string id)
+    {
+        var at = _data.Folders.FindIndex(f => f.Id == id);
+        if (at < 0) return null;
+        var preset = _data.Folders[at];
+        _data.Folders.RemoveAt(at);
+        Commit();
+        return () =>
+        {
+            if (_data.Folders.Any(f => PresetRules.Same(f.Name, preset.Name))) return; // the name was taken meanwhile: keep the newer one
+            _data.Folders.Insert(Math.Min(at, _data.Folders.Count), preset);
+            Commit();
+        };
     }
 
     private void Commit()

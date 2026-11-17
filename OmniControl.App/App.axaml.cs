@@ -21,6 +21,8 @@ public partial class App : Application
         AccentService.Initialize(settings.Accent);
         ValueWheel.Register();
         NumberText.Register();
+        SearchClear.Register();
+        EmptyToolTips.Register();
         ComboKeys.Register();
         DialogKeys.Register();
 

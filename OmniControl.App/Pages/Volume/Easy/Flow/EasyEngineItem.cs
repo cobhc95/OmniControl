@@ -18,6 +18,9 @@ public sealed partial class EasyEngineItem : ObservableObject
 
     public EasyEngine Engine { get; }
     public IRelayCommand PickCommand { get; }
+
+    /// <summary>The chips of a row (Controls/ChoiceChips) may carry an icon; the engine chips do not.</summary>
+    public string? Icon => null;
     public IAsyncRelayCommand GetCommand { get; }
 
     [ObservableProperty] private string _name = string.Empty;

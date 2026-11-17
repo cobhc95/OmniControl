@@ -30,8 +30,8 @@ internal static class DrawKit
     /// <summary>A frequency with its unit: "31.5 Hz", "1.25 kHz".</summary>
     public static string Freq(double hz) => hz >= 1000 ? $"{hz / 1000:0.##} kHz" : $"{hz:0.#} Hz";
 
-    /// <summary>A gain with its sign and one decimal, no unit: "+3.5", "0.0", "-6.0".</summary>
-    public static string SignedDb(double db) => db > 0 ? $"+{db:0.0}" : $"{db:0.0}";
+    /// <summary>A gain with its sign and one to two decimals (a typed 7.25 stays 7.25), no unit: "+3.5", "0.0", "-6.0", "+7.25".</summary>
+    public static string SignedDb(double db) => db > 0 ? $"+{db:0.0#}" : $"{db:0.0#}";
 
     /// <summary>A frequency read off a graph, three figures: "52.3 Hz", "250 Hz", "1.00 kHz", "12.5 kHz".</summary>
     public static string ReadoutFreq(double hz) => hz switch
@@ -43,5 +43,5 @@ internal static class DrawKit
     };
 
     /// <summary>A gain read off a graph: "+24.0 dB", "-0.3 dB" (a value that rounds to zero reads "0.0 dB").</summary>
-    public static string ReadoutDb(double db) => $"{SignedDb(Math.Round(db, 1) == 0 ? 0 : db)} dB";
+    public static string ReadoutDb(double db) => $"{SignedDb(Math.Round(db, 2) == 0 ? 0 : db)} dB";
 }

@@ -28,6 +28,8 @@ public enum StatusKind
     /// <summary>The user chose Equalizer APO for the master, but it can't run on the speakers.</summary>
     ApoNotApplied,
     ApoFailed,
+    /// <summary>Equalizer APO's config no longer includes OmniControl's effects, and Keep in place is off.</summary>
+    ApoDisplaced,
     /// <summary>The master in Equalizer APO with no effects: nothing runs, it plays straight on the speakers.</summary>
     Direct,
     WentSilent,
@@ -106,6 +108,7 @@ public static partial class EffectsRules
             StatusKind.ApoNotApplied => "Equalizer APO not applied",
             StatusKind.Direct => "Direct",
             StatusKind.ApoFailed => "APO write failed",
+            StatusKind.ApoDisplaced => "Taken out of Equalizer APO",
             StatusKind.WentSilent => word.Length == 0 ? "Went silent" : $"{word} went silent",
             StatusKind.NotMoved => "Not on its cable yet",
             StatusKind.CouldNotMove => "Windows would not move it",
@@ -131,6 +134,7 @@ public static partial class EffectsRules
         },
         StatusKind.NoFreeCable => "Every virtual cable pair is in use. Use Recording for this program, or free a cable.",
         StatusKind.ApoNotApplied => "Choose devices in Equalizer APO, or choose Cable bus as the master's method.",
+        StatusKind.ApoDisplaced => "Put back in the FX window, or switch on Keep OmniControl's effects in place.",
         StatusKind.Direct => "The cable is free for a program, a combined microphone or a combined speaker.",
         StatusKind.NeedsCable => "Install VB-CABLE to use a virtual cable.",
         StatusKind.CablesOff => "Switch a cable on under Wiring > Virtual cables.",
