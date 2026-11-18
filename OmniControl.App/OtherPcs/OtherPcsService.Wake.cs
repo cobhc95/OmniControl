@@ -66,7 +66,7 @@ public sealed partial class OtherPcsService
     {
         var id = pair.Id;
         _hotkeys.Unregister(WakeActionId(id));
-        _hotkeys.Register(new HotkeyAction(WakeActionId(id), $"Wake {pair.DisplayName}", Category, $"wake turn on power start boot wol {pair.DisplayName}", _ => Guard.RunAsync("Other PCs: wake", () => WakeAsync(id)), group: pair.DisplayName)
+        _hotkeys.Register(new HotkeyAction(WakeActionId(id), $"Wake {pair.DisplayName}", Category, $"wake turn on power start boot wol {pair.DisplayName}", keys => { _ = Guard.RunAsync("Other PCs: wake", () => WakeAsync(id)); }, group: pair.DisplayName)
             { RemotePc = LabelOf(pair), SuggestedIcons = new[] { "power" } });
     }
 
