@@ -26,12 +26,12 @@ public sealed record StateValue(double? Number, string? Text, DateTime? At = nul
 /// choices), what is read now (<see cref="Read"/>: the owner's cached value, cheap, never a slow call, read on the UI thread), and one
 /// short sentence saying how the value is known. The owner calls <see cref="StateRegistry.Notify"/> when it may have changed.
 /// <see cref="Set"/>, when the owner gives one, changes the value the way its own control does (the tray flyout's sliders, tiles and
-/// pickers use it); <see cref="Common"/> names the card of the basic set another PC sees (<see cref="CommonGroups"/>), or null; set by the owner. <see cref="ScreenPower"/> marks the on/off state of one screen's power (the Displays page, and Other PCs' Displays view, give it the screen's header switch instead of a card); <see cref="Icon"/> is the state's own icon (a library id or a user icon, <see cref="Icons.IconLibrary"/>; null: its page's icon); <see cref="Short"/> is a shorter name for tight places (the flyout's rows), the <see cref="Name"/> when not given.
+/// pickers use it); <see cref="Common"/> names the card of the basic set another PC sees (<see cref="CommonGroups"/>), or null; set by the owner. <see cref="ScreenPower"/> marks the on/off state of one screen's power (the Displays page, and Other PCs' Displays view, give it the screen's header switch instead of a card); <see cref="RemotePc"/> is the other PC the state is read from (the lists mark it "Other PCs · name"), null for this PC's own; <see cref="Icon"/> is the state's own icon (a library id or a user icon, <see cref="Icons.IconLibrary"/>; null: its page's icon); <see cref="Short"/> is a shorter name for tight places (the flyout's rows), the <see cref="Name"/> when not given.
 /// </summary>
 public sealed record StateEntry(string Id, string Name, string Group, StateKind Kind, Func<StateValue?> Read, string HowKnown,
     string? Heading = null, int Min = 0, int Max = 100, string Unit = "", Func<IReadOnlyList<string>>? Choices = null, string Keywords = "",
     Action<StateValue>? Set = null, string? Short = null, string? Icon = null, IReadOnlyList<string>? SuggestedIcons = null, StateRecheck? Recheck = null,
-    Func<StateLiveness>? Liveness = null, bool ScreenPower = false, string? Common = null)
+    Func<StateLiveness>? Liveness = null, bool ScreenPower = false, string? Common = null, Services.RemotePcLabel? RemotePc = null)
 {
     /// <summary>What a tight place calls the state.</summary>
     public string ShortName => Short ?? Name;

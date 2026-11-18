@@ -258,7 +258,7 @@ public static class MouseActionCatalog
     /// </summary>
     public static PickChoice OmniEntry(HotkeyAction a, IReadOnlyList<ActionOption>? options = null, string? unavailable = null) =>
         new($"{Omni}:{a.Id}", a.Section, a.Title, Keywords: $"{OmniControl} {a.Keywords}", Options: options, Unavailable: unavailable, Heading: a.PickerHeading,
-            Place: a.SectionPlace, RemoveText: a.RemoveText, Renaming: a.Renaming, IsListed: a.IsListed, Icon: a.ShownIcon, Family: a.Family, FamilyRole: a.FamilyRole, Tag: a.Tag);
+            Place: a.SectionPlace, RemoveText: a.RemoveText, Renaming: a.Renaming, IsListed: a.IsListed, Icon: a.ShownIcon, Family: a.Family, FamilyRole: a.FamilyRole, Tag: a.Tag, Remote: a.RemotePc);
 
     /// <summary>The settings of an OmniControl action of its own (a program, how far a level moves, a power countdown): what its hotkeys and rules use as its defaults.</summary>
     public static IReadOnlyList<ActionOption> OwnOptions(HotkeyAction a)

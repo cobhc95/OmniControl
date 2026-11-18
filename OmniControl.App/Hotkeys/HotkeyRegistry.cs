@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using OmniControl.App.Services;
 using Avalonia.Threading;
 
@@ -14,6 +14,7 @@ public sealed partial class HotkeyRegistry : IActionRegistry, IDisposable
     private static readonly DataStore Store = DataStores.Hotkeys;
 
     private readonly HotkeyService _service = new();
+    private readonly HardwareWatches _hardware;
     private readonly Dictionary<string, StoredHotkey> _stored = Load();
     private readonly bool _fresh; // nothing was saved before this run: a first start
 
@@ -80,11 +81,16 @@ public sealed partial class HotkeyRegistry : IActionRegistry, IDisposable
         else action.Run();
     }
 
+    /// <summary>Answers the state an On or Off action is linked to (<see cref="HotkeyAction.StateId"/>); null = every such action just runs.</summary>
+    public IStateReader? StateReader { get; set; }
+
     /// <summary>Where problems are shown (the footer status line).</summary>
     public Action<string>? Report { get; set; }
 
-    public HotkeyRegistry()
+    /// <param name="hardware">The master list of hardware watches: an action whose picked device is missing makes its watch refresh once before it is run.</param>
+    public HotkeyRegistry(HardwareWatches hardware)
     {
+        _hardware = hardware;
         _fresh = _stored.Count == 0;
         _service.Failed += gesture => Dispatcher.UIThread.Post(() =>
         {
@@ -232,9 +238,14 @@ public sealed partial class HotkeyRegistry : IActionRegistry, IDisposable
     /// gate, runs the action with the chain of rules that caused it in force (so what the action does, and the state changes it makes,
     /// carry it on), then raises <see cref="Ran"/>.
     /// </summary>
-    private void RunNow(HotkeyAction action, RunChain? chain, Action<HotkeyAction> run)
+    private void RunNow(HotkeyAction action, RunChain? chain, Action<HotkeyAction> run, bool retried = false, bool stateRead = false)
     {
+        // A picked device that is not listed may only be unseen (a monitor after Remote Desktop): its watch looks again once, off this thread, and the action then runs once more
+        // (at the same priority as the refresh's own posts to the window, so it follows them).
+        if (!retried && action.HasMissingPick
+            && _hardware.RefreshThen(action.HardwareWatch!, () => Dispatcher.UIThread.Post(() => RunNow(action, chain, run, retried: true)))) return;
         if (!Permitted(action)) return;
+        if (SkipsOrWaitsForState(action, chain, run, stateRead)) return;
         var outer = _chain.Value;
         _chain.Value = chain;
         try
@@ -251,6 +262,28 @@ public sealed partial class HotkeyRegistry : IActionRegistry, IDisposable
             _chain.Value = outer;
         }
         RaiseRan(action, chain);
+    }
+
+    /// <summary>
+    /// "Set to a state": an On or Off action linked to a state does nothing when the state is already the target. A state not known is read again once
+    /// when its owner can (the run then continues from here); still not known, the action runs and says so. True when this run ends here.
+    /// </summary>
+    internal bool SkipsOrWaitsForState(HotkeyAction action, RunChain? chain, Action<HotkeyAction> run, bool stateRead)
+    {
+        if (action.StateId is not { } stateId || StateReader is not { } reader || StateTarget.Wanted(action.FamilyRole) is not { } wanted) return false;
+        switch (StateTarget.Decide(action.FamilyRole, reader.Read(stateId)))
+        {
+            case StateVerdict.AlreadyThere:
+                Report?.Invoke($"{action.Family?.Title ?? action.Title} is already {(wanted ? "on" : "off")}.");
+                return true;
+            case StateVerdict.Unknown when !stateRead && reader.Refresh(stateId, () => RunNow(action, chain, run, retried: true, stateRead: true)):
+                return true;
+            case StateVerdict.Unknown:
+                Report?.Invoke($"Not sure whether {action.Family?.Title ?? action.Title} is {(wanted ? "on" : "off")}, so it was sent anyway.");
+                return false;
+            default:
+                return false;
+        }
     }
 
     private void RaiseRan(HotkeyAction action, RunChain? chain)

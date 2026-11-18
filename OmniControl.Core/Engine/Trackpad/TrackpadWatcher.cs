@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using OmniControl.Core.Engine.Mouse;
 using static OmniControl.Core.Engine.Trackpad.RawInputNative;
+using static OmniControl.Core.Native.WindowNative;
 
 namespace OmniControl.Core.Engine.Trackpad;
 

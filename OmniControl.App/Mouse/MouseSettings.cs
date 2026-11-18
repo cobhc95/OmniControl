@@ -60,7 +60,7 @@ public sealed class MouseSettings
     public bool BlockAutoscroll { get; set; } = true;
 
     /// <summary>True: while a full-screen app (a game) is in front, every mouse input passes untouched (buttons, gestures, the autoscroll block).</summary>
-    public bool PauseInFullScreen { get; set; } = true;
+    public bool PauseInFullScreen { get; set; }
 
     /// <summary>The apps mouse features never act in ("all except" a list); null: no exclusions.</summary>
     public AppScopeSetting? NeverActIn { get; set; }
@@ -71,7 +71,7 @@ public sealed class MouseSettings
     /// <summary>Puts the "Where mouse features work" group's settings back to their defaults.</summary>
     public void RestoreWhereDefaults()
     {
-        PauseInFullScreen = true;
+        PauseInFullScreen = false;
         NeverActIn = null;
         RunAsAdministrator = false;
     }

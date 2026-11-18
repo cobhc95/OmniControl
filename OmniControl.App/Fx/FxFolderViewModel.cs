@@ -147,11 +147,12 @@ public sealed partial class FxFolderViewModel : ObservableObject
 /// <summary>What the FX window gives one chain (keeps <see cref="FxChainViewModel"/>'s constructor small).</summary>
 /// <param name="Readings">What the effects engine measures for one of the chain's dynamics effects now.</param>
 /// <param name="ManagePresets">Opens the shared preset manager at an effect kind's card.</param>
+/// <param name="Spectrum">Opens the live spectrum of an equaliser of this chain until the result is disposed (its pictures go to the callback on the UI thread).</param>
 /// <param name="Devices">The playback devices, for the master's device folders; null for every other chain.</param>
 /// <param name="Mixer">Where the Volume page's Mixer is opened and its Equalizer APO install step run (the Mixer owns each device's method).</param>
 /// <param name="Ask">Asks a question through the program's dialogs (true = confirmed): removing a device folder that holds effects.</param>
 /// <param name="SaveFolderPreset">Keeps a device folder as a preset and opens the preset manager at the folder presets.</param>
-public sealed record FxChainTies(Func<FxSlot, DynamicsReading?> Readings, Action<FxKind> ManagePresets, FxDeviceSource? Devices, FxMixerLinks Mixer,
+public sealed record FxChainTies(Func<FxSlot, DynamicsReading?> Readings, Func<FxSlot, Action<float[]?>, IDisposable> Spectrum, Action<FxKind> ManagePresets, FxDeviceSource? Devices, FxMixerLinks Mixer,
     Func<DialogMessage, Task<bool>> Ask, Action<FolderPreset> SaveFolderPreset);
 
 /// <summary>The two things the FX window asks of the Volume page (given by the shell, so the FX window never knows the page).</summary>

@@ -15,14 +15,16 @@ public sealed partial class FxSlotViewModel : ObservableObject, IFxPresetTarget
     private readonly FxSlot _slot;
     private readonly Action _save;
     private readonly Func<FxSlot, DynamicsReading?> _readings;
+    private readonly Func<FxSlot, Action<float[]?>, IDisposable> _spectrum;
     private readonly IPresetHost _presetHost;
     private PresetPicker? _presets;
     private int _number;
 
     /// <param name="readings">What the effects engine measures for a dynamics effect of this chain now (null: nothing), for the compressor's and the limiter's meters.</param>
     /// <param name="presets">Where the preset pull-down finds the user's presets and opens the manager.</param>
-    internal FxSlotViewModel(FxSlot slot, Action save, Func<FxSlot, DynamicsReading?> readings, IPresetHost presets)
+    internal FxSlotViewModel(FxSlot slot, Action save, Func<FxSlot, DynamicsReading?> readings, Func<FxSlot, Action<float[]?>, IDisposable> spectrum, IPresetHost presets)
     {
+        _spectrum = spectrum;
         _presetHost = presets;
         _slot = slot;
         _save = save;
@@ -169,6 +171,7 @@ public sealed partial class FxSlotViewModel : ObservableObject, IFxPresetTarget
         // The Parametric editor carries the overall gain as its own vertical slider; the graphic ones keep the card under them.
         if (editor is EqPanelItem panel)
         {
+            panel.OpenSpectrum = onFrame => _spectrum(_slot, onFrame);
             panel.OverallGain = _eqSettings.OfType<SliderItem>().FirstOrDefault();
             panel.ApplyOverallGain = db =>
             {

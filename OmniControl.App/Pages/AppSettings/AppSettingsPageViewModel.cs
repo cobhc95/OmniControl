@@ -22,6 +22,8 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
     private readonly ToggleItem _startWithWindows;
     private readonly ChoiceItem _whenClosing;
     private readonly ChoiceItem _groupsOpen;
+    private readonly ChoiceItem _hardwareCheck;
+    private readonly HardwareWatches _hardware;
     private readonly ToggleItem _startMinimised;
     private readonly ButtonItem _about;
     private readonly ButtonItem _restoreAllCard;
@@ -62,6 +64,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
         Entry(_startWithWindows, StartName, "start boot login windows launch"),
         Entry(_startMinimised, StartName, "start minimized hidden background tray"),
         Entry(_whenClosing, StartName, "close tray exit quit notification area minimize x button ask remember"),
+        Entry(_hardwareCheck, StartName, "hardware check refresh monitors displays sound devices touchpad undetected missing remote desktop safety periodic every minutes"),
         Entry(_presets, DataName, "presets manage layers display monitor equaliser compressor shortcut order rename"),
         Entry(_backup, DataName, "backup restore export import save load move computer wipe reset factory delete all settings"),
         Entry(_restoreAllCard, DataName, "reset default restore every page all settings"),
@@ -80,11 +83,13 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
     /// <param name="report">Says one plain sentence in the window's footer (a web page that would not open).</param>
     /// <param name="showShortcuts">Opens the Keyboard shortcuts window (F1); registered as an action so it stays reachable from search and the Actions and hotkeys window.</param>
     /// <param name="mixer">Holds "Keep OmniControl's effects in place" (the Plug-ins group's switch, also in every FX window's Options).</param>
+    /// <param name="hardware">The master list of hardware watches: the "Check hardware every" card sets how often its periodic safety check runs.</param>
     public AppSettingsPageViewModel(HotkeyRegistry hotkeys, Action openAbout, Func<IProgress<int>?, CancellationToken, Task<int>> scanPlugins,
         Func<string> scanResult, Action openPresets, BackupService backup, ConfirmationMemory confirmations, UpdateService updates, Action<string> report, Action showShortcuts,
-        Audio.MixerService mixer)
+        Audio.MixerService mixer, HardwareWatches hardware)
     {
         _confirmations = confirmations;
+        _hardware = hardware;
         var themes = Enum.GetNames<ThemeChoice>();
         Theme = new GalleryItem("Theme", themes, (int)_settings.Theme, () => ThemeSwatches.Build((int)_settings.Theme), i => OnThemeChosen(themes[i])) { Half = true };
         Apply(_settings.Theme);
@@ -120,6 +125,9 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
             _settings.Save();
         });
 
+        var checkLabels = HardwareChecks.All.Select(e => e.Label).ToList();
+        _hardwareCheck = new ChoiceItem("Check hardware every", checkLabels, HardwareChecks.LabelOf(_hardware.Check), label => _hardware.SetCheck(HardwareChecks.Find(label)));
+
         _about = new ButtonItem("About and credits", "Open", "Version, licence, credits", openAbout);
         _presets = new ButtonItem("Presets", "Open", "Every preset of the program: order, names and shortcuts", openPresets);
 
@@ -140,7 +148,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
 
         // Each group is made from its fixed cards (its closed header lists their names), then the cards that come and go are added.
         Appearance = Fill(AppearanceItems, "AppSettings/Appearance", AppearanceName, Theme, Accent, _groupsOpen);
-        StartAndClose = Fill(StartItems, "AppSettings/Start", StartName, _startWithWindows, _startMinimised, _whenClosing);
+        StartAndClose = Fill(StartItems, "AppSettings/Start", StartName, _startWithWindows, _startMinimised, _whenClosing, _hardwareCheck);
         YourData = Fill(DataItems, "AppSettings/Data", DataName, _presets, _backup, _resetAllConfirmations, _restoreAllCard);
         PlugIns = Fill(PluginItems, "AppSettings/Plugins", PluginsName, _addFolder, _scan, _keepFx);
         UpdatesAndAbout = Fill(UpdateItems, "AppSettings/Updates", UpdatesName, _updateDaily, _version, _latest, _about);

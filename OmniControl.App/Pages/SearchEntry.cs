@@ -11,6 +11,10 @@ public sealed class SearchEntry
     /// <summary>The part of the page it belongs to (a hotkey's heading, "Hardware"...), or null.</summary>
     public string? Group { get; init; }
 
+    /// <summary>The other PC the result runs on; its mark replaces the heading under the title.</summary>
+    public Services.RemotePcLabel? RemotePc { get; init; }
+    public bool ShowsHeading => RemotePc is null;
+
     /// <summary>What the result shows under its title: the category, then the group.</summary>
     public string Heading => Services.Heading.Join(Category, Group);
 

@@ -38,7 +38,11 @@ public sealed partial class TrayFlyoutModel : ObservableObject, IDisposable
         _states.ValueChanged += OnValueChanged;
         _states.LivenessChanged += OnLivenessChanged;
         Menu = MenuTargets();
+        OpenTip = new ActionKeyTip(hotkeys, "app.toggle", "Open OmniControl");
     }
+
+    /// <summary>The "Open OmniControl" button's tooltip with the keys of the show-or-hide action.</summary>
+    public ActionKeyTip OpenTip { get; }
 
     public ObservableCollection<TraySliderItem> Sliders { get; } = new();
     public ObservableCollection<TrayTileItem> Tiles { get; } = new();
@@ -135,6 +139,7 @@ public sealed partial class TrayFlyoutModel : ObservableObject, IDisposable
         _states.ValueChanged -= OnValueChanged;
         _states.LivenessChanged -= OnLivenessChanged;
         _icons.Changed -= OnListsChanged;
+        OpenTip.Dispose();
         StopRechecks();
     }
 }

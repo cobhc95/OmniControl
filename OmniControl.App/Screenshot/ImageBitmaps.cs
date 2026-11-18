@@ -2,15 +2,16 @@ using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Media.Immutable;
 using Avalonia.Platform;
 using OmniControl.Core.Engine.Screenshot;
 
 namespace OmniControl.App.Screenshot;
 
 /// <summary>
-/// Between Core's <see cref="ScreenImage"/> and Avalonia bitmaps: a captured picture to show, a part of it back as pixels, and the finished
-/// selection with its drawings back to pixels. The bitmaps are immutable, so the renderer uploads a picture to the graphics card once and
-/// reuses it on every frame, and reading a part back never makes it upload the picture again.
+/// Between Core's <see cref="ScreenImage"/> and Avalonia bitmaps: a captured picture to keep, a part of it back as pixels, and a part of
+/// it with its drawings back to pixels (the export and the overlay's repainted parts). The bitmaps are immutable: reading a part back
+/// never locks or copies the whole picture.
 /// </summary>
 public static class ImageBitmaps
 {
@@ -49,22 +50,62 @@ public static class ImageBitmaps
     }
 
     /// <summary>
-    /// The picture inside <paramref name="selection"/> with the drawings on it, as pixels: the drawings are clipped to the selection, so
-    /// nothing drawn outside it is exported. The render target is released before it returns.
+    /// The picture inside <paramref name="area"/> with the drawings on it, as opaque pixels: the export (the selection), and each part
+    /// of the area overlay's bright picture that is painted again, so what the overlay shows is what is exported. Drawings outside the
+    /// area are cut off. A drawing still being made (<paramref name="inProgress"/>) is drawn from its settled parts and growing rest,
+    /// faded as one. The render target is released before it returns.
     /// </summary>
-    public static ScreenImage Export(Bitmap source, ScreenRect selection, IEnumerable<Mark> marks)
+    public static ScreenImage Render(Bitmap source, ScreenRect area, IEnumerable<Mark> marks, Mark? inProgress = null)
     {
-        var size = new PixelSize(selection.Width, selection.Height);
+        var size = new PixelSize(area.Width, area.Height);
+        var inside = new Rect(area.X, area.Y, area.Width, area.Height);
         using var target = new RenderTargetBitmap(size, ScreenDpi);
         using (var context = target.CreateDrawingContext())
         {
-            var area = new Rect(selection.X, selection.Y, selection.Width, selection.Height);
-            context.DrawImage(source, area, new Rect(0, 0, selection.Width, selection.Height));
-            using (context.PushClip(new Rect(0, 0, selection.Width, selection.Height)))
-            using (context.PushTransform(Matrix.CreateTranslation(-selection.X, -selection.Y)))
-                foreach (var mark in marks) mark.Draw(context);
+            context.DrawImage(source, inside, new Rect(0, 0, area.Width, area.Height));
+            using (context.PushClip(new Rect(0, 0, area.Width, area.Height)))
+            using (context.PushTransform(Matrix.CreateTranslation(-area.X, -area.Y)))
+            {
+                var drawings = marks.Select(mark => (Mark: mark, Growing: false)).ToList();
+                if (inProgress is not null) drawings.Add((inProgress, true));
+                DrawLayered(context, drawings, inside);
+            }
         }
         return CopyOut(target, new PixelRect(size));
+    }
+
+    /// <summary>
+    /// Draws the drawings in order. A run of see-through ones (the marker) is drawn solid into one layer that is faded once (an opacity
+    /// mask fades its group as one, where Avalonia's own opacity fades each shape on its own), so overlaps, a stroke crossing itself
+    /// included, never get darker and the later colour wins. One still being made (<c>Growing</c>) is drawn from its settled parts and
+    /// growing rest. The screen (<see cref="MarkPainter"/>) and the export both come through here.
+    /// </summary>
+    private static void DrawLayered(DrawingContext context, IReadOnlyList<(Mark Mark, bool Growing)> drawings, Rect area)
+    {
+        for (var i = 0; i < drawings.Count;)
+        {
+            var opacity = drawings[i].Mark.InProgressOpacity;
+            if (opacity >= 1)
+            {
+                DrawSolid(context, drawings[i++]);
+                continue;
+            }
+            var end = i;
+            while (end < drawings.Count && drawings[end].Mark.InProgressOpacity == opacity) end++;
+            using (context.PushOpacityMask(new ImmutableSolidColorBrush(Colors.Black, opacity), area)) // only the strength counts
+                for (; i < end; i++) DrawSolid(context, drawings[i]);
+        }
+    }
+
+    private static void DrawSolid(DrawingContext context, (Mark Mark, bool Growing) drawing)
+    {
+        if (!drawing.Growing)
+        {
+            drawing.Mark.DrawSolid(context);
+            return;
+        }
+        drawing.Mark.DrawSettled(context);
+        drawing.Mark.DrawGrowing(context);
     }
 
     /// <summary>A rectangle of a bitmap's pixels, every one opaque (a screenshot has no transparency).</summary>

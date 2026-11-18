@@ -8,14 +8,25 @@
              Classes="card">
     <!-- A fact card: name and value, then the muted note (wraps to a second line), then the tags and the one pill; works at full and half width -->
     <Panel>
-    <!-- Stacked (a media line): icon, value over the muted note, then the pills -->
-    <Grid Margin="0,1" ColumnSpacing="8" ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding Stacked}">
+    <!-- Stacked (a media line, docs/mockups/now-playing-two-lines.html): line 1 = icon, value over the muted note; line 2 = the pills, icon-only, centred in the card (wrap instead of clipping), names in tooltips -->
+    <Grid Margin="0,1" RowSpacing="4" ColumnSpacing="8" RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,*" IsVisible="{Binding Stacked}">
         <c:IconText Icon="{Binding Icon}" VerticalAlignment="Center" />
         <StackPanel Grid.Column="1" VerticalAlignment="Center">
             <TextBlock Classes="strong cardlabel" Text="{Binding Value}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Value}" IsVisible="{Binding HasValue}" />
             <TextBlock Classes="cardlabel muted" Text="{Binding Note}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Note}" />
         </StackPanel>
-        <c:ChoiceChips Grid.Column="2" ItemsSource="{Binding Pills}" IsVisible="{Binding HasPills}" VerticalAlignment="Center" />
+        <ItemsControl Grid.Row="1" Grid.ColumnSpan="2" ItemsSource="{Binding Pills}" IsVisible="{Binding HasPills}" HorizontalAlignment="Center">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" ItemSpacing="6" LineSpacing="4" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Button Tag="grouptool" Classes="pill icon" Classes.custom="{Binding IsSelected}" Command="{Binding PickCommand}" ToolTip.Tip="{Binding Name}">
+                        <c:IconGlyph LibraryId="{Binding Icon}" />
+                    </Button>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
     </Grid>
     <Grid Margin="0,1" ColumnSpacing="8" ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding IsPlain}">
         <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">

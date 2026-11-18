@@ -7,7 +7,7 @@
              x:Class="OmniControl.App.Pages.Automation.AutomationRuleRow"
              x:DataType="vm:AutomationItem">
     <!-- One rule: its switch, its name and a delete cross on the first line; the sentence of blocks (Styles/Blocks.axaml) on the second;
-         its facts as tags (Border.tag) on the third. Every block opens the shared picker; a hotkey block opens its capture pop-down (the Popup below). -->
+         its facts as tags (Border.tag) on the third, with the one fix link a tag may need under them. Every block opens the shared picker; a hotkey block opens its capture pop-down (the Popup below). -->
     <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" Margin="0,2,0,4">
         <ToggleSwitch Classes="plain" IsChecked="{Binding IsOn}" VerticalAlignment="Center" />
         <TextBox Grid.Column="1" Classes="field" Text="{Binding Name, UpdateSourceTrigger=LostFocus}" Watermark="Name" MaxWidth="320"
@@ -85,16 +85,23 @@
             </ItemsControl.DataTemplates>
         </ItemsControl>
 
-        <ItemsControl Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" ItemsSource="{Binding Tags}">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <c:TagView Margin="0,0,4,2" />
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
+        <StackPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2">
+            <ItemsControl ItemsSource="{Binding Tags}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <c:TagView Margin="0,0,4,2" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <!-- The one fix for "Needs Start with Windows": puts OmniControl in Windows' start-up list, as App settings' switch does. -->
+            <Button Classes="link small" Command="{Binding TurnOnStartupCommand}" IsVisible="{Binding NeedsStartup}" HorizontalAlignment="Left"
+                    ToolTip.Tip="Adds OmniControl to Windows' start-up list, so &quot;At log in&quot; runs when you sign in.">
+                <TextBlock Text="Turn on Start with Windows" />
+            </Button>
+        </StackPanel>
 
         <!-- The capture pop-down under the "I press" block (placed on it when the block is drawn): live keycaps of the held keys and
              the dashed slot of the key still to press; the shortcut is saved when the main key is released. Focus stays on the block,

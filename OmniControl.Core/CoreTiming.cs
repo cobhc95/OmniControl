@@ -53,6 +53,9 @@ public static class CoreTiming
     /// </summary>
     public const int PipeCaptureBufferMs = 20, PipeRenderLatencyMs = 30, PipePrefillMs = 20, PipeMaxQueueMs = 120;
 
+    /// <summary>How long stopping a display-only loopback tap waits for its thread to end.</summary>
+    public const int DisplayTapStopWaitMs = 500;
+
     /// <summary>The effects pipe's sound format: every capture is asked for this and Windows converts the program's own format.</summary>
     public const int PipeSampleRate = 48000, PipeChannels = 2;
 
@@ -100,6 +103,15 @@ public static class CoreTiming
 
     /// <summary>How long stopping the touchpad watcher waits for its thread to unregister and close (it calls nothing slow).</summary>
     public const int TrackpadStopWaitMs = 1000;
+
+    /// <summary>
+    /// Hardware announcements come from two listeners (the hidden window and .NET's <c>SystemEvents</c>), so the same kind seen again within
+    /// this time is the same event told twice and is dropped (<c>HardwareSignalFilter</c>).
+    /// </summary>
+    public const int HardwareSignalDuplicateMs = 1000;
+
+    /// <summary>How long one read of the System event log (the power journal's sleeps and wakes, <c>PowerEventLog</c>) may wait for a batch of records.</summary>
+    public const int EventLogReadWaitMs = 2000;
 
     /// <summary>
     /// The takeover's safety net (<c>ShellSurfaceGuard</c>): after a gesture whose Windows action is supposed to be off, a panel that
@@ -171,4 +183,15 @@ public static class CoreTiming
 
     /// <summary>Screen recording on the graphics card: when Windows takes the Desktop Duplication away, it is asked for again this often (GDI copies meanwhile).</summary>
     public const int RecordDuplicationRetryMs = 500;
+
+    /// <summary>
+    /// Screen recording's watchdog (<see cref="Engine.Screenshot.ScreenRecorder"/>): a way of recording (encoder and screen copy) must open
+    /// within <see cref="RecordOpenWaitMs"/> and have its first frame encoded within <see cref="RecordFirstFrameWaitMs"/> of recording time,
+    /// no single call into the encoder may take longer than <see cref="RecordStuckMs"/>, and finishing the file after Stop may take
+    /// <see cref="RecordFinishWaitMs"/>; past any of these the next way is tried (or, while finishing, the recording ends as failed). The
+    /// watchdog looks every <see cref="RecordWatchMs"/>; the encoder's counts are read every <see cref="RecordStatsMs"/> and logged every
+    /// <see cref="RecordLogFramesMs"/>; the whole start (adapters, sound, every way tried) gives up after <see cref="RecordStartWaitMs"/>.
+    /// </summary>
+    public const int RecordOpenWaitMs = 6000, RecordFirstFrameWaitMs = 4000, RecordStuckMs = 5000, RecordFinishWaitMs = 10000,
+        RecordWatchMs = 100, RecordStatsMs = 500, RecordLogFramesMs = 5000, RecordStartWaitMs = 45000;
 }

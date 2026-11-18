@@ -18,6 +18,8 @@
                             <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="{StaticResource MenuGap}" Margin="{StaticResource MenuRowInset}">
                                 <Panel Width="{StaticResource MenuGlyphSize}" VerticalAlignment="Top" Height="{StaticResource MenuRowLine}">
                                     <Path Classes="glyph" Data="{StaticResource TickIcon}" IsVisible="{Binding ShowsTick}" />
+                                    <c:IconGlyph LibraryId="{Binding Icon}" Width="{StaticResource MenuGlyphSize}" Height="{StaticResource MenuGlyphSize}" VerticalAlignment="Center" IsVisible="{Binding HasIcon}" />
+
                                 </Panel>
                                 <WrapPanel Grid.Column="1" ItemSpacing="{StaticResource MenuTagGap}" LineSpacing="{StaticResource MenuTagGap}" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Text}" TextWrapping="Wrap" VerticalAlignment="Center" />

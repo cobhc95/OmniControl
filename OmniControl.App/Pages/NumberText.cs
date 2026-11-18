@@ -15,8 +15,9 @@ namespace OmniControl.App.Pages;
 /// (<see cref="Mouse.OptionItem"/>): a double-click on the text, or Ctrl+Enter on the slider beside it, turns it into a small box;
 /// Enter, a click elsewhere or leaving the box applies the number (<see cref="TypedNumber"/>: held within
 /// <see cref="Minimum"/>..<see cref="Maximum"/>), Esc cancels. The text is the child declared in XAML, so it keeps its own look.
-/// A <see cref="Knob"/>'s value text is one too, opened by the knob's single click instead of a double-click (the owner's rule for
-/// knobs, where a double-click resets): <see cref="Register"/> answers every knob's request once, at start-up.
+/// A <see cref="Knob"/>'s value text is one too: a click or double-click on the box opens it and never resets the knob, and the knob
+/// face's own click or right-click asks for it (the owner's rule: there a double-click resets): <see cref="Register"/> answers every
+/// knob's request once, at start-up.
 /// </summary>
 public sealed class NumberText : Panel
 {
@@ -27,10 +28,6 @@ public sealed class NumberText : Panel
 
     /// <summary>How many decimals a typed value keeps (0 = whole numbers, the usual case; the equaliser's Hz, dB and Q use more).</summary>
     public static readonly StyledProperty<int> DecimalsProperty = AvaloniaProperty.Register<NumberText, int>(nameof(Decimals));
-
-    /// <summary>False inside a knob: its double-click resets, and its single click opens the box (through the knob).</summary>
-    public static readonly StyledProperty<bool> OpensOnDoubleClickProperty =
-        AvaloniaProperty.Register<NumberText, bool>(nameof(OpensOnDoubleClick), true);
 
     /// <summary>Every knob's click (or Ctrl+Enter) opens the value text in its template for typing. Called once at start-up.</summary>
     public static void Register() => Knob.TypeRequestedEvent.AddClassHandler<Knob>((knob, e) =>
@@ -58,6 +55,7 @@ public sealed class NumberText : Panel
         Children.Add(_frame);
         Children.Add(_box);
         AddHandler(DoubleTappedEvent, OnDoubleTapped);
+        AddHandler(PointerPressedEvent, OnPressed);
         _box.AddHandler(KeyDownEvent, OnBoxKeyDown, RoutingStrategies.Tunnel);
         _box.LostFocus += (_, _) => CommitTyping();
     }
@@ -66,7 +64,6 @@ public sealed class NumberText : Panel
     public double Minimum { get => GetValue(MinimumProperty); set => SetValue(MinimumProperty, value); }
     public double Maximum { get => GetValue(MaximumProperty); set => SetValue(MaximumProperty, value); }
     public int Decimals { get => GetValue(DecimalsProperty); set => SetValue(DecimalsProperty, value); }
-    public bool OpensOnDoubleClick { get => GetValue(OpensOnDoubleClickProperty); set => SetValue(OpensOnDoubleClickProperty, value); }
 
     private bool IsTyping => _box.IsVisible;
 
@@ -135,10 +132,22 @@ public sealed class NumberText : Panel
 
     private void OnDoubleTapped(object? sender, TappedEventArgs e)
     {
-        if (IsTyping || !OpensOnDoubleClick) return;
+        if (IsTyping) return;
         BeginTyping();
         e.Handled = true;
     }
+
+    /// <summary>Inside a knob the value box opens on the first press and the knob never sees it (no drag, no reset from the box).</summary>
+    private void OnPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (this.FindAncestorOfType<Knob>() is null) return;
+        if (!IsTyping) BeginTyping();
+        e.Handled = true;
+    }
+
+    /// <summary>True when a gesture started on a value box (or in its text box): a reset or a drag must not take it.</summary>
+    public static bool IsValueBox(object? source) =>
+        source is Visual visual && (visual is NumberText || visual.FindAncestorOfType<NumberText>() is not null);
 
     private void BeginTyping()
     {

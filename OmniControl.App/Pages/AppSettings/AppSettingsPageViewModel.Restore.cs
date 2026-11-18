@@ -36,6 +36,7 @@ public sealed partial class AppSettingsPageViewModel
         _startMinimised.IsOn = target.StartMinimised;
         _whenClosing.Selected = CloseBehaviors.LabelOf(target.CloseBehavior);
         GroupsOpen.Set(target.GroupsOpen);
+        _hardwareCheck.Selected = HardwareChecks.LabelOf(target.HardwareCheck);
         _updateDaily.IsOn = target.UpdateCheckDaily;
         SetFolders(target.PluginFolders);
 

@@ -48,5 +48,5 @@ internal static class TrayPicks
     /// <param name="needsSet">A slider must be able to change its level; a tile may only show a state.</param>
     private static PickChoice StateChoice(StateEntry state, Func<string, ActionSection?> sectionOf, bool needsSet) =>
         new($"{StatePrefix}{state.Id}", state.Group, state.Name, Keywords: $"state {state.Keywords}", Heading: state.Heading ?? StatesHeading,
-            Place: sectionOf(state.Group), Unavailable: needsSet && state.Set is null ? ReadOnlyWords : null, Icon: state.ShownIcon);
+            Place: sectionOf(state.Group), Unavailable: needsSet && state.Set is null ? ReadOnlyWords : null, Icon: state.ShownIcon, Remote: state.RemotePc);
 }

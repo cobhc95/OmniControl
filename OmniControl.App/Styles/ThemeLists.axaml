@@ -8,7 +8,7 @@
     <!-- Sidebar navigation items -->
     <Style Selector="ListBox.nav"><Setter Property="Background" Value="Transparent" /></Style>
     <Style Selector="ListBox.nav > ListBoxItem">
-        <Setter Property="Padding" Value="24,7,16,7" />
+        <Setter Property="Padding" Value="{DynamicResource NavPadding}" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="Margin" Value="0,0,0,2" />
         <Setter Property="CornerRadius" Value="0" />
@@ -19,7 +19,7 @@
     <Style Selector="ListBox.nav.compact > ListBoxItem"><Setter Property="Padding" Value="{DynamicResource NavCompactPadding}" /></Style>
     <!-- A sidebar group heading (NavHeading): small, muted capitals; its container is neither clickable nor focusable, so no hover or focus look applies -->
     <Style Selector="ListBox.nav > ListBoxItem.navheading">
-        <Setter Property="Padding" Value="24,10,16,2" />
+        <Setter Property="Padding" Value="{DynamicResource NavHeadingPadding}" />
         <Setter Property="Margin" Value="0" />
     </Style>
     <Style Selector="TextBlock.navheading">
@@ -106,6 +106,14 @@
     <Style Selector="Button.usebtn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+    </Style>
+    <!-- A confirm that loses or undoes something (Button.usebtn.danger: Yes, close / Yes, unpair): red words and edge, hover as every confirm -->
+    <Style Selector="Button.usebtn.danger /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushDanger}" />
+        <Setter Property="Foreground" Value="{DynamicResource BrushDanger}" />
+    </Style>
+    <Style Selector="Button.usebtn.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushDanger}" />
     </Style>
 
     <!-- Mixer row: mute lights in the accent, the FX power button lights green when the chain is on -->

@@ -17,8 +17,14 @@ public sealed partial class MixerService
     private readonly object _postGate = new();
     private bool _scanPosted;
 
+    /// <summary>The mixer's entry in the master list of hardware watches: the playback and recording devices (both lists come from one scan). The scan is made on the UI thread, as the timer's is.</summary>
+    public const string HardwareWatchId = "audio.devices";
+
     private void StartWatching()
     {
+        _hardware.Register(new HardwareWatch(HardwareWatchId, "Sound devices",
+            HardwareSignal.Audio | HardwareSignal.Device | HardwareSignal.Session | HardwareSignal.Resume, () => Dispatcher.UIThread.Invoke(Scan)));
+        _sessionWatcher.DevicesChanged += OnSoundDevicesChanged;
         _sessionWatcher.Created += OnSessionCreated;
         _sessionWatcher.Start();
         _soundPoll.Tick += OnSoundPoll;
@@ -30,8 +36,12 @@ public sealed partial class MixerService
         _soundPoll.Stop();
         _soundPoll.Tick -= OnSoundPoll;
         _sessionWatcher.Created -= OnSessionCreated;
+        _sessionWatcher.DevicesChanged -= OnSoundDevicesChanged;
         _sessionWatcher.Dispose();
     }
+
+    /// <summary>Worker thread: Windows added, removed, enabled or disabled a sound device; the watch refreshes once the burst is over.</summary>
+    private void OnSoundDevicesChanged() => _hardware.Signal(HardwareSignal.Audio);
 
     /// <summary>Worker thread: a burst of new sessions (a browser opens several) becomes one scan on the UI thread.</summary>
     private void OnSessionCreated()

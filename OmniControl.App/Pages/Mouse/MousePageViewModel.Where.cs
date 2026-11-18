@@ -54,8 +54,10 @@ public sealed partial class MousePageViewModel
         };
 
         _mouse.Applied += ShowWhereSettings;
-        hotkeys.Register(new HotkeyAction(MouseService.PauseFullScreenId, "Toggle pause in full-screen games", Title, "full screen fullscreen game pause mouse buttons gestures",
-            _ => _mouse.TogglePauseInFullScreen()));
+        var pauseFamily = new OnOffFamily(MouseService.PauseFullScreenId, "Pause in full-screen games", MouseService.PauseFullScreenId);
+        var pause = new HotkeyAction(MouseService.PauseFullScreenId, "Toggle pause in full-screen games", Title, "full screen fullscreen game pause mouse buttons gestures",
+            _ => _mouse.TogglePauseInFullScreen()) { Family = pauseFamily.Family, FamilyRole = OnOffFamily.ToggleRole };
+        hotkeys.Register(pauseFamily.Siblings(pause, _mouse.SetPauseInFullScreen).Prepend(pause));
     }
 
     private void OnAdministratorPicked(bool on)

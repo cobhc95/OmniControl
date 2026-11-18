@@ -98,7 +98,7 @@
                             <c:IconGlyph LibraryId="check" IsVisible="{Binding IsEditing}" />
                         </Panel>
                     </Button>
-                    <Button x:Name="OpenButton" Grid.Column="2" Classes="pill accentline" Command="{Binding OpenAppCommand}" HorizontalAlignment="Right">
+                    <Button x:Name="OpenButton" Grid.Column="2" Classes="pill accentline" Command="{Binding OpenAppCommand}" HorizontalAlignment="Right" ToolTip.Tip="{Binding OpenTip.Text}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <c:IconGlyph LibraryId="window" />
                             <TextBlock Text="Open OmniControl" TextTrimming="CharacterEllipsis" />

@@ -105,6 +105,10 @@ public static class ScriptProfiles
     private static readonly Dictionary<string, string> Renamed = new() { ["tapo-plug"] = Tapo, ["tapo-bulb"] = Tapo, ["kasa-plug"] = Kasa };
 
     /// <summary>The template with this id among the built-in ones and the user's; Auto-detect when it is not known (a deleted template).</summary>
+    /// <summary>Whether the email goes to the device in lower case: the template asks, or the built-in one it is a copy of does (copies saved before the flag existed).</summary>
+    public static bool LowersEmail(ScriptProfile? profile) =>
+        profile is not null && (profile.LowerCaseEmail || Of(profile.BasedOn, Array.Empty<ScriptProfile>()).LowerCaseEmail);
+
     public static ScriptProfile Of(string? id, IEnumerable<ScriptProfile> own)
     {
         if (id is not null && Renamed.TryGetValue(id, out var now)) id = now;

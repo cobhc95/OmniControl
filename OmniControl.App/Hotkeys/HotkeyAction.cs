@@ -116,6 +116,9 @@ public sealed partial class HotkeyAction : HotkeyTarget, Pages.IEditorItem
     /// <summary>The card of the basic set another PC sees that lists this action (<see cref="States.CommonGroups"/>), or null. Set by its owner on the master entry, so there is no side list.</summary>
     public string? Common { get; init; }
 
+    /// <summary>The other PC this action runs on (the lists mark it "Other PCs · name"), set by its owner on the master entry; null for an action of this PC.</summary>
+    public Services.RemotePcLabel? RemotePc { get; init; }
+
     /// <summary>The level this action moves, for a level action made with <see cref="ForLevel"/>; null for any other action.</summary>
     public HotkeyLevel? Level { get; private init; }
 
@@ -138,6 +141,15 @@ public sealed partial class HotkeyAction : HotkeyTarget, Pages.IEditorItem
         get => _familyRole ?? (Level is null ? null : LevelDirection > 0 ? "Up" : "Down");
         init => _familyRole = value;
     }
+
+    /// <summary>
+    /// The id of the on/off state (<see cref="States.StateRegistry"/>) an action with the family role On or Off sets. The run path reads it first and does nothing
+    /// when the thing is already there (<see cref="StateTarget"/>). Set on the master entry by the state's owner; null: the action just runs.
+    /// </summary>
+    public string? StateId { get; init; }
+
+    /// <summary>For an action that works on something over the network (a smart device): how a rule waits for it and learns how a run went. Null: none.</summary>
+    public ActionReach? Reach { get; init; }
 
     /// <summary>The part of the Choose-the-action window this action is listed under, when that is not the page that registers it (Power, Launch).</summary>
     public string? PickerSection { get; init; }
@@ -297,6 +309,16 @@ public sealed partial class HotkeyAction : HotkeyTarget, Pages.IEditorItem
             Level = level,
             LevelDirection = direction,
         };
+
+    /// <summary>
+    /// The id of the <see cref="Services.HardwareWatch"/> that keeps this action's device list (<see cref="HotkeyDevice"/>s) current. Set by the
+    /// feature that owns the devices; when a picked device is missing at run time the registry refreshes that watch once and tries again.
+    /// </summary>
+    public string? HardwareWatch { get; set; }
+
+    /// <summary>True when the action is limited to picked devices and one of them is not in the device list now.</summary>
+    public bool HasMissingPick => HardwareWatch is not null && UseSelected && _deviceSource is { } source
+        && _selectedIds.Except(source().Select(d => d.Id)).Any();
 
     /// <summary>Runs the action on every device, or only on the picked ones.</summary>
     public void Run() => _run(UseSelected ? _selectedIds.ToList() : null);

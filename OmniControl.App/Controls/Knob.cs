@@ -12,7 +12,8 @@ namespace OmniControl.App.Controls;
 /// The master knob (AGENTS.md "Master design elements"): a round value control with a 270 degree sweep and its value text under it,
 /// drawn by its template (Styles/Knobs.axaml: a <see cref="KnobFace"/> and the value text). <see cref="FromCentre"/> = a pan knob, whose
 /// arc runs from the centre mark. Mouse: drag up or down turns it; one click without a drag asks for the value to be typed
-/// (<see cref="TypeRequestedEvent"/>, after the double-click time, so the two never mix: the owner's rule for knobs); a double-click
+/// (<see cref="TypeRequestedEvent"/>, after the double-click time, so the two never mix: the owner's rule for knobs), and a right-click
+/// asks at once; a double-click
 /// resets it (Pages/SliderReset, as on every slider); the wheel steps it (Pages/ValueWheel). Keys: <see cref="KnobMath.KeyStep"/>; in a
 /// card list the shared row keys (Pages/RowEditing) decide first, as for a slider. The maths is <see cref="KnobMath"/>; this class only
 /// turns pointer and key input into values. It knows nothing of the pages: typing and resetting are registered once by them.
@@ -54,7 +55,16 @@ public class Knob : RangeBase
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
-        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        var properties = e.GetCurrentPoint(this).Properties;
+        if (properties.IsRightButtonPressed)
+        {
+            // Right-click types at once: there is no double-click to wait for.
+            Focus(NavigationMethod.Pointer);
+            RequestTyping();
+            e.Handled = true;
+            return;
+        }
+        if (!properties.IsLeftButtonPressed) return;
         StopTypeTimer(); // a second press of a double-click: the reset follows, not the typing
         _pressedAt = e.GetPosition(this);
         _startValue = Value;

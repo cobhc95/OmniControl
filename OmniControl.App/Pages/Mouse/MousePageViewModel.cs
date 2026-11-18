@@ -135,7 +135,6 @@ public sealed partial class MousePageViewModel : PageViewModel
         // The key stays "Mouse/Buttons" so a group the user opened before the rename stays open.
         ButtonsGroup = new ItemGroup("Mouse/Buttons", ButtonsGroupName, buttonCards.Cast<object>().ToList())
         {
-            Summary = string.Empty, // the Apps chip takes the place of the count
             Tip = "A button left at Default works as Windows normally does. The layer drop-down shows the mouse layer in force and changes it (the trackpad "
                   + "has its own); a button set to \"Hold for layer N\" uses layer N while held. Over OmniControl's own window the left and right buttons are never remapped. Windows does "
                   + "not pass mouse input to programs running as administrator unless OmniControl runs as administrator too.",
@@ -158,8 +157,10 @@ public sealed partial class MousePageViewModel : PageViewModel
             _ => mouse.StepLayer(InputFamily.Mouse)) { CoveredByMousePicker = true });
         hotkeys.Register(new HotkeyAction("mouse.trackpad.layer.next", "Next trackpad layer", Title, "trackpad touchpad gestures layer preset switch next",
             _ => mouse.StepLayer(InputFamily.Trackpad)) { CoveredByMousePicker = true });
-        hotkeys.Register(new HotkeyAction(MouseService.AutoscrollId, "Toggle app autoscroll", Title, "middle click autoscroll scroll browser block apps",
-            _ => _mouse.ToggleBlockAutoscroll()));
+        var autoscrollFamily = new OnOffFamily(MouseService.AutoscrollId, "App autoscroll block", MouseService.AutoscrollId);
+        var autoscroll = new HotkeyAction(MouseService.AutoscrollId, "Toggle app autoscroll", Title, "middle click autoscroll scroll browser block apps",
+            _ => _mouse.ToggleBlockAutoscroll()) { Family = autoscrollFamily.Family, FamilyRole = OnOffFamily.ToggleRole };
+        hotkeys.Register(autoscrollFamily.Siblings(autoscroll, _mouse.SetBlockAutoscroll).Prepend(autoscroll));
         RegisterPointerActions(hotkeys);
         RegisterClickingAction(hotkeys);
         // Last: a preset group's card is named after the page group it belongs to, and a layer with a saved shortcut gets its action

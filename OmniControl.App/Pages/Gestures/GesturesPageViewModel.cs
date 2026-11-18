@@ -108,7 +108,6 @@ public sealed partial class GesturesPageViewModel : PageViewModel
         areaCards.Add(strip);
         Areas = new ItemGroup("Gestures/Areas", GestureCatalog.AreaGroup, areaCards)
         {
-            Summary = string.Empty, // the Apps chip takes the place of the count
             Tip = "Wheel up and down over the area do the action's two directions; a gesture that is on takes the scroll there. "
                   + "Show margins draws every area on screen while this page is open. " + AdminNote,
         };

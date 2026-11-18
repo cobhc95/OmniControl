@@ -262,6 +262,7 @@ public class VideoRecordingTests
         }
 
         public long Length => Frames.Count;
+        public long FramesDone => Frames.Count;
         public void Finish(long end) => Finished = end;
         public void Dispose() { }
     }

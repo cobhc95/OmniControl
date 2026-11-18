@@ -10,20 +10,22 @@ using OmniControl.App.States;
 namespace OmniControl.App.Pages.OtherPcs;
 
 /// <summary>
-/// One paired PC on the Other PCs page: a row of the list (name, online or offline tag) and the detail on the right (its name, the Connect
-/// chip) and its mirrored sections (<see cref="PcMirror"/>, made from what the PC shares, read from the master lists, so they are exactly
+/// One paired PC on the Other PCs page: its browser-style tab (name, status dot, route word) and the panel under the tabs (its name, the
+/// probe tag, the Connect chip) and its mirrored sections (<see cref="PcMirror"/>, made from what the PC shares, read from the master lists, so they are exactly
 /// what hotkeys, rules and search can use too).
 /// </summary>
 public sealed partial class PcItem : ObservableObject
 {
     private readonly OtherPcsService _service;
     private readonly Func<DialogMessage, Task<bool>> _ask;
+    private readonly Func<DialogMessage, Task<string?>> _askText;
 
-    public PcItem(PairedPc pair, OtherPcsService service, Func<DialogMessage, Task<bool>> ask, Action<string> report)
+    public PcItem(PairedPc pair, OtherPcsService service, Func<DialogMessage, Task<bool>> ask, Func<DialogMessage, Task<string?>> askText, Action<string> report)
     {
         Id = pair.Id;
         _service = service;
         _ask = ask;
+        _askText = askText;
         Mirror = new PcMirror(pair.Id, service, ask, report);
         _address = pair.Address;
         Refresh();
@@ -31,12 +33,27 @@ public sealed partial class PcItem : ObservableObject
 
     public string Id { get; }
 
-    public string Name => _service.Find(Id)?.Name ?? string.Empty;
+    /// <summary>What the PC is called here: its nickname, or its own name.</summary>
+    public string Name => _service.Find(Id)?.DisplayName ?? string.Empty;
 
-    /// <summary>The list row's tag and the detail's: online (and how) or offline.</summary>
+    /// <summary>The PC's own name, shown muted beside a nickname in the detail header.</summary>
+    public string RealName => _service.Find(Id)?.Name ?? string.Empty;
+
+    public bool HasNickname => _service.Find(Id)?.Nickname.Length > 0;
+
+    /// <summary>The header's one tag: what a probe over the chosen route found (or why not), or when the PC was last seen.</summary>
     [ObservableProperty] private IReadOnlyList<TagItem> _tags = Array.Empty<TagItem>();
 
     [ObservableProperty] private bool _isOnline;
+
+    /// <summary>The PC is connected but has not yet sent what it shares: each group shows the spinner instead of its cards.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowsGroups))] private bool _isLoading;
+
+    /// <summary>The group cards show once what the PC shares has arrived.</summary>
+    public bool ShowsGroups => IsOnline && !IsLoading;
+
+    /// <summary>The names and icons of the groups every PC may share, for the loading placeholders (the master list, never a copy).</summary>
+    public IReadOnlyList<(string Name, string Icon)> LoadingGroups => CommonGroups.All;
 
     /// <summary>The PC's shared items as sections with real controls.</summary>
     public PcMirror Mirror { get; }
@@ -46,11 +63,17 @@ public sealed partial class PcItem : ObservableObject
 
     public bool HasNote => Note.Length > 0;
 
-    /// <summary>True while the PC is set to Tailscale and Tailscale does not carry its link: the "Set up Tailscale for this PC" stage shows, with the tag under the title line.</summary>
+    /// <summary>True while the PC is set to Tailscale and Tailscale does not carry its link (the header's tag then says so).</summary>
     [ObservableProperty] private bool _needsTailscale;
 
-    /// <summary>The caution tag under the title line while <see cref="NeedsTailscale"/>: honest about what is used meanwhile.</summary>
-    [ObservableProperty] private IReadOnlyList<TagItem> _setupTags = Array.Empty<TagItem>();
+    /// <summary>The "Set up Tailscale for this PC" stage shows only while a check fails or the switch over failed; all passing is folded into the header's tag.</summary>
+    [ObservableProperty] private bool _showsChecklist;
+
+    /// <summary>The route word in the tab: how the link really runs, or "offline".</summary>
+    [ObservableProperty] private string _tabRoute = string.Empty;
+
+    /// <summary>The tab's tooltip: the full name and the tag's detail.</summary>
+    [ObservableProperty] private string _tabTip = string.Empty;
 
     /// <summary>The stage's checklist (the same <see cref="TailscaleChecklist"/> as pairing over the internet, with this PC's extra rows).</summary>
     public ObservableCollection<TailscaleCheckItem> Checks { get; } = new();
@@ -60,7 +83,8 @@ public sealed partial class PcItem : ObservableObject
 
     public bool HasSwitchProblem => SwitchProblem.Length > 0;
 
-    public bool CanCheckAgain => !_service.PairCheckBusy(Id);
+    /// <summary>The button's words: it is never disabled (a button disabled under the pointer stays pressed), it says a check runs instead.</summary>
+    public string CheckText => _service.PairCheckBusy(Id) ? "Checking…" : "Check again";
 
     [RelayCommand]
     private void CheckAgain() => _service.CheckPairTailscale(Id);
@@ -102,37 +126,63 @@ public sealed partial class PcItem : ObservableObject
     public void Refresh()
     {
         IsOnline = _service.IsOnline(Id);
-        var viaTailscale = _service.IsViaTailscale(Id);
-        // The tags say how the PC is really reached, never what is only chosen.
-        var how = viaTailscale ? "online" : Route == PcRoute.Address ? "online · other address" : "online · LAN";
-        var state = IsOnline ? new TagItem(how, TagTone.Good) : new TagItem(_service.SeenWords(Id));
-        Tags = IsOnline && viaTailscale ? new[] { state, new TagItem("via Tailscale") } : new[] { state };
+        IsLoading = IsOnline && !_service.HasLiveCatalog(Id);
+        OnPropertyChanged(nameof(ShowsGroups));
+        // The tag says what a probe over the chosen route really found (an authenticated ping answered by that PC), never what is only chosen.
+        var probe = _service.ProbeOf(Id);
+        var connected = _service.RouteConnected(Id);
+        var word = Route switch { PcRoute.Tailscale => "Tailscale", PcRoute.Address => "Other address", _ => "LAN" };
         NeedsTailscale = _service.NeedsTailscaleSetup(Id);
-        SetupTags = NeedsTailscale ? new[] { new TagItem(IsOnline ? "Tailscale not set up yet · still using LAN" : "Tailscale not set up yet · not connected", TagTone.Caution) } : Array.Empty<TagItem>();
+        TagItem state;
+        if (connected) state = new TagItem($"{word} ✓ {probe!.Result.Ms} ms", TagTone.Good, $"Reached over {word}.");
+        else if (NeedsTailscale) state = new TagItem(IsOnline ? "Tailscale not working yet · still using LAN" : "Tailscale not working yet · not connected", TagTone.Caution, probe is { Result.Ok: false, Route: PcRoute.Tailscale } ? probe.Result.Reason : null);
+        else if (probe is { Result.Ok: false } && IsOnline) state = new TagItem($"{word} ✗ · still using LAN", TagTone.Caution, probe.Result.Reason);
+        else if (probe is { Result.Ok: false }) state = new TagItem(_service.SeenWords(Id), TagTone.Neutral, $"{word}: {probe.Result.Reason}");
+        else state = new TagItem(IsOnline ? "checking…" : _service.SeenWords(Id), TagTone.Neutral, "Waiting for the first check over this route.");
+        Tags = new[] { state };
+        TabRoute = connected ? word : IsOnline ? "LAN" : "offline";
+        TabTip = state.Tip is { Length: > 0 } tip ? $"{Name}: {state.Text}. {tip}" : $"{Name}: {state.Text}";
         Checks.Clear();
         if (NeedsTailscale)
             foreach (var check in _service.PairChecklist(Id)) Checks.Add(new TailscaleCheckItem(check, checkId => _service.RunPairTailscaleFix(Id, checkId)));
         SwitchProblem = NeedsTailscale ? _service.PairSwitchProblem(Id) : string.Empty;
-        OnPropertyChanged(nameof(CanCheckAgain));
-        Note = IsOnline ? string.Empty
+        ShowsChecklist = NeedsTailscale && (Checks.Any(c => c.IsFailed) || HasSwitchProblem);
+        OnPropertyChanged(nameof(CheckText));
+        Note = connected || IsOnline ? string.Empty
             : !_service.HasKey(Id) ? "Its pairing key is missing on this PC. Unpair it and pair again."
+            : probe is { Result.Ok: false } ? $"Not connected: {probe.Result.Reason}"
             : "Not connected. It connects by itself when that PC is on and can be reached.";
         OnPropertyChanged(nameof(Name));
+        OnPropertyChanged(nameof(RealName));
+        OnPropertyChanged(nameof(HasNickname));
         OnPropertyChanged(nameof(ConnectText));
         OnPropertyChanged(nameof(ShowsAddress));
     }
 
     /// <summary>Makes the sections again from what the PC shares now.</summary>
-    public void Rebuild() => Mirror.Rebuild();
+    public void Rebuild()
+    {
+        Mirror.Rebuild();
+        IsLoading = IsOnline && !_service.HasLiveCatalog(Id);
+    }
 
     /// <summary>One state's value changed: its card shows it at once.</summary>
     public void Update(StateEntry state) => Mirror.Update(state);
+
+    /// <summary>"Give nickname…": asks for the name (empty removes it); kept on this PC only.</summary>
+    public async Task GiveNicknameAsync()
+    {
+        var pair = _service.Find(Id);
+        if (pair is null) return;
+        var typed = await _askText(new DialogMessage($"Nickname for {pair.Name}", "Only on this PC. Leave empty to use its own name.", "OK", Input: pair.Nickname));
+        if (typed is not null) _service.Rename(Id, typed);
+    }
 
     [RelayCommand]
     private async Task UnpairAsync()
     {
         var name = Name;
-        if (await _ask(new DialogMessage($"Unpair {name}?", $"\"{name}\" will no longer see or run anything here. Its entries leave the lists. The other PC keeps its side until it is unpaired there too.", "Unpair", RememberKey: "unpair.pc", RememberName: "Unpair a PC")))
+        if (await _ask(new DialogMessage($"Unpair {name}?", "Its tab closes and the two PCs stop controlling each other. Pair again to undo.", "Yes, unpair", YesNo: true, Danger: true)))
             _service.Unpair(Id);
     }
 }

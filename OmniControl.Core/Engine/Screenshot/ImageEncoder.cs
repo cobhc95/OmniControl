@@ -29,7 +29,10 @@ public static class ImageFormats
     /// <summary>True for the formats that lose detail by a chosen quality (JPG, WebP).</summary>
     public static bool UsesQuality(ImageFormat format) => format is ImageFormat.Jpg or ImageFormat.WebP;
 
-    public const int MinQuality = 1, MaxQuality = 100, DefaultQuality = 90;
+    public const int MinQuality = 1, MaxQuality = 100, DefaultQuality = 80;
+
+    /// <summary>The format a screenshot is saved and copied in until the person picks another (the owner's choice: JPG at <see cref="DefaultQuality"/>).</summary>
+    public const ImageFormat DefaultFormat = ImageFormat.Jpg;
 }
 
 /// <summary>Turns a <see cref="ScreenImage"/> into the bytes of an image file. PNG, JPG and WebP through SkiaSharp; BMP is written here (Skia has no BMP encoder).</summary>

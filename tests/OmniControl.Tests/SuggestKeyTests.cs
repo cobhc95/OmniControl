@@ -1,3 +1,4 @@
+using OmniControl.App.Services;
 using OmniControl.App.Hotkeys;
 using OmniControl.App.Picker;
 
@@ -15,7 +16,7 @@ public class SuggestKeyTests
     [Fact]
     public void Suggest_OnAScopedAction_GivesItsKeyAndNeverThrows()
     {
-        using var registry = new HotkeyRegistry();
+        using var registry = new HotkeyRegistry(new HardwareWatches());
         var landscape = Rotate("t.rotate.landscape", "Ctrl+Alt+Up");
         var portrait = Rotate("t.rotate.portrait", "Ctrl+Alt+Left");
         registry.Register(landscape);

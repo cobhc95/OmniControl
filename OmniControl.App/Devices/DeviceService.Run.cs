@@ -22,8 +22,16 @@ public sealed partial class DeviceService
     /// <summary>As <see cref="RunAsync(DeviceRecord, DevicePower)"/> by <paramref name="via"/> only (its "via" action, or its set-up's Test), ready or not.</summary>
     public Task<string?> RunAsync(DeviceRecord device, DevicePower power, MethodRecord? via) => RunAsync(device, power, via, null);
 
-    /// <summary>The run itself; a scripts method uses <paramref name="profile"/> instead of its own (the Advanced pane's Test).</summary>
+    /// <summary>The run; how it ended is kept on the device's runtime, so a rule step that started it learns the result.</summary>
     private async Task<string?> RunAsync(DeviceRecord device, DevicePower power, MethodRecord? via, ScriptProfile? profile)
+    {
+        var problem = await RunCommandAsync(device, power, via, profile);
+        RuntimeOf(device).Commanded(problem);
+        return problem;
+    }
+
+    /// <summary>The run itself; a scripts method uses <paramref name="profile"/> instead of its own (the Advanced pane's Test).</summary>
+    private async Task<string?> RunCommandAsync(DeviceRecord device, DevicePower power, MethodRecord? via, ScriptProfile? profile)
     {
         var runtime = RuntimeOf(device);
         var name = DisplayName(device);

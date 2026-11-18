@@ -123,6 +123,15 @@ public static partial class EffectsRules
     public const string ApoOwnEffects = "Equalizer APO's own effects also run",
         ApoOwnEffectsTip = "config.txt holds effects of its own besides OmniControl's line; Equalizer APO runs them as well.";
 
+    /// <summary>The tag in the FX window while a plug-in's meters or an equaliser's spectrum are fed with a capture of what you hear, and its tooltip.</summary>
+    public const string DisplayFed = "Display fed with what you hear",
+        DisplayFedTip = "Equalizer APO runs this effect inside Windows, where OmniControl can't see its sound, so the meters and analysers here are fed with a capture of the device, after Equalizer APO. "
+            + "The capture is level-matched to the full-volume signal (scaled back up by the device's volume). "
+            + "It is used for the display only, never played or sent anywhere, and may differ from what Equalizer APO is doing: dynamics meters such as gain reduction read the already-processed sound.",
+        DisplayNotFed = "Display not fed: device muted or too quiet",
+        DisplayNotFedTip = "The capture comes after the device's volume, so while the device is muted or its volume is nearly zero there is no sound to level-match, "
+            + "and nothing is fed to the meters and analysers (they hold their last picture).";
+
     /// <summary>The setting that puts OmniControl's include line and file back when another program takes them out.</summary>
     public const string KeepInPlace = "Keep OmniControl's effects in place",
         KeepInPlaceTip = "When Equalizer APO's editor or another program writes its config without OmniControl's line, put it back at once.";

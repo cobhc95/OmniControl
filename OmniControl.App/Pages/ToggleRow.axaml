@@ -8,11 +8,11 @@
         <!-- Full-width card: label column shared with the other cards so the switches line up -->
         <Grid Margin="0,1" IsVisible="{Binding !Half}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
+                <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
-                <c:IconText Icon="{Binding Icon}" Text="{Binding Label}" />
+                <c:IconText Classes="cardname" Icon="{Binding Icon}" Text="{Binding Label}" />
                 <TextBlock Classes="muted" Text="{Binding Note}" IsVisible="{Binding HasNote}" TextWrapping="Wrap" />
             </StackPanel>
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding IsOn}" OnContent="On" OffContent="Off" />

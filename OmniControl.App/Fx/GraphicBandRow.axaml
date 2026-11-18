@@ -8,11 +8,11 @@
          be typed (double-click it, or Ctrl+Enter on the slider). Columns shared with the Parametric's band cards and the slider cards. -->
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
+            <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="Auto" MinWidth="64" SharedSizeGroup="EqValue" />
         </Grid.ColumnDefinitions>
-        <TextBlock Text="{Binding FreqText}" VerticalAlignment="Center" Margin="0,0,24,0" />
+        <TextBlock Classes="cardname" Text="{Binding FreqText}" VerticalAlignment="Center" Margin="0,0,24,0" />
         <Slider Grid.Column="1" Minimum="{x:Static vm:GraphicBandItem.MinPos}" Maximum="{x:Static vm:GraphicBandItem.MaxPos}"
                 Value="{Binding GainPos}" pages:SliderReset.Value="{x:Static vm:GraphicBandItem.ResetPos}" />
         <pages:NumberText Grid.Column="2" Value="{Binding Gain}" Minimum="{x:Static vm:GraphicBandItem.MinGain}"

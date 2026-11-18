@@ -1,0 +1,16 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Pair a PC inside a tab (approved)</title>
+<!-- Approved by the owner 18 Nov 2026. Extends docs/mockups/other-pcs-browser-tabs.html.
+  1 The "+" after the PC tabs opens a new browser tab "New PC" (plus icon, a small x to close it) and selects it; the pairing
+    (On this network | Over the internet choice pills, sentence, PC list / empty row, address field + Pair, the Tailscale checklist)
+    lives in that tab's panel. No "Pair a PC" stage above the tabs any more.
+  2 After a successful pairing that tab becomes the paired PC's tab (same place in the strip).
+  3 Abandoned set-up is KEPT: a "New PC" tab not finished stays in the strip (saved across restarts with its progress: chosen
+    method, typed address / picked peer, Tailscale step) so the user can come back and finish it. Only its x (or Esc on it, after
+    the shared confirm only if something was typed) removes it.
+  4 Fix with it: PC tab names must not trim when there is room (tab shrinking only when the strip is actually full);
+    sliders in the half-width group cards (Brightness, Master volume) must stay visible (narrow card fit rule: chip trims first,
+    slider keeps its minimum, value never clips). -->
+<style>body{font-family:Segoe UI;background:#1b1b1b;color:#eee;padding:20px;font-size:13px}</style></head><body>
+<p>[🖥 Laptop ● Tailscale] [+ New PC ×] [+]<br>Pair a PC [On this network*] [Over the internet] · sentence · empty row · [address] [Pair]</p>
+</body></html>

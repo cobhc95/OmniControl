@@ -53,6 +53,9 @@ public interface IMonitorEngine : IDisposable
 
     IDisplayRotation Rotation { get; }
 
+    /// <summary>The name Windows gives a display now (looked up fresh, by its device path); null when it is not attached. Cheap.</summary>
+    string? ResolveDeviceName(DisplayInfo remembered);
+
     /// <summary>Opens every monitor again, dropping what was learned about them. Slow.</summary>
     void RefreshMonitors();
 

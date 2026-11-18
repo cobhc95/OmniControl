@@ -28,8 +28,11 @@ internal sealed class GifWriter : IVideoSink
 
     public long Length => _file.Length;
 
+    public long FramesDone { get; private set; }
+
     public void WriteFrame(ReadOnlySpan<byte> bgra, int stride, long at)
     {
+        FramesDone++;
         var row = _width * 4;
         if (_held is { } held && SameAs(held, bgra, stride)) return; // the held frame just lasts longer
         if (_held is not null) Emit(_held, _heldAt, at);

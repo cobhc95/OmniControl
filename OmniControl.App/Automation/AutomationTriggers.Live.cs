@@ -54,11 +54,11 @@ public static partial class AutomationTriggers
         var options = new[] { ActionOption.Heading(NowKey, $"Now: {state.Words(now)}", known + state.HowKnown) }.Concat(OptionsOf(state, choices)).ToList();
         return new PickChoice($"{StateChanges}:{state.Id}", StatesSection, state.Name, Keywords: $"state value {state.Group} {state.Keywords}",
             Options: options, AskFirst: true, Heading: state.Heading ?? state.Group,
-            Unavailable: state.Kind == StateKind.Choice && choices.Count == 0 ? "There is nothing to choose from yet." : null);
+            Unavailable: state.Kind == StateKind.Choice && choices.Count == 0 ? "There is nothing to choose from yet." : null, Remote: state.RemotePc);
     }
 
     private static PickChoice ActionChoice(HotkeyAction action) =>
-        new($"{ActionRuns}:{action.Id}", ActionsSection, action.Title, Keywords: $"action runs ran {action.Keywords}", Heading: action.PickerHeading);
+        new($"{ActionRuns}:{action.Id}", ActionsSection, action.Title, Keywords: $"action runs ran {action.Keywords}", Heading: action.PickerHeading, Remote: action.RemotePc);
 
     /// <summary>How any stored trigger reads in the sentence ("when L530 bulb turns on", "when Volume up runs").</summary>
     public static string PhraseOf(string stored, ITriggerSources sources)

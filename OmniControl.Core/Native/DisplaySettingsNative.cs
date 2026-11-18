@@ -6,6 +6,7 @@ namespace OmniControl.Core.Native;
 internal static class DisplaySettingsNative
 {
     public const int CurrentSettings = -1;          // ENUM_CURRENT_SETTINGS
+    public const uint FieldPosition = 0x00000020;    // DM_POSITION
     public const uint FieldOrientation = 0x00000080; // DM_DISPLAYORIENTATION
     public const uint FieldWidth = 0x00080000;       // DM_PELSWIDTH
     public const uint FieldHeight = 0x00100000;      // DM_PELSHEIGHT

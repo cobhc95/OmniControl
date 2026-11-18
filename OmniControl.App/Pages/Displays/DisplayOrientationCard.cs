@@ -2,6 +2,7 @@ using Avalonia.Threading;
 using OmniControl.App.Hotkeys;
 using OmniControl.App.Services;
 using OmniControl.Core.Interfaces;
+using OmniControl.Core.Models;
 
 namespace OmniControl.App.Pages.Displays;
 
@@ -14,6 +15,7 @@ namespace OmniControl.App.Pages.Displays;
 internal sealed class DisplayOrientationCard
 {
     private const string LogFile = "display-log.txt";
+    private const string CardReason = "chosen on the Orientation card";
     private const string Unknown = "Windows would not say how this display is turned";
 
     private static readonly IReadOnlyList<string> Names = new[] { "Landscape", "Portrait", "Landscape (flipped)", "Portrait (flipped)" };
@@ -26,20 +28,23 @@ internal sealed class DisplayOrientationCard
     /// <summary>What the orientation is called in the card and in the hotkeys' titles.</summary>
     public static string Title(DisplayOrientation orientation) => Names[(int)orientation];
 
-    private readonly string? _deviceName;
+    private readonly DisplayInfo? _display;
+    private readonly Func<DisplayInfo, string?> _resolve;
     private readonly string _displayName;
     private readonly IDisplayRotation _rotation;
     private readonly Action<string> _report;
     private readonly SuggestedKeysSwitch? _suggestedKeys;
     private bool _disposed;
+    private string _reason = CardReason;
 
     public GalleryItem Card { get; }
 
-    /// <param name="deviceName">Windows' name for the display (the one it turns); null when Windows lists none for it.</param>
+    /// <param name="display">The display it turns, remembered by its device path; null when Windows lists none for it.</param>
+    /// <param name="resolve">Asks Windows for the display's name right now (it can change when displays come and go); null: it is not attached, and nothing is turned.</param>
     /// <param name="suggestedKeys">The switch for the orientation hotkeys' suggested keys, shown at the card's right; the card owns it.</param>
-    public DisplayOrientationCard(string? deviceName, string displayName, IDisplayRotation rotation, Action<string> report, SuggestedKeysSwitch? suggestedKeys = null)
+    public DisplayOrientationCard(DisplayInfo? display, Func<DisplayInfo, string?> resolve, string displayName, IDisplayRotation rotation, Action<string> report, SuggestedKeysSwitch? suggestedKeys = null)
     {
-        (_deviceName, _displayName, _rotation, _report, _suggestedKeys) = (deviceName, displayName, rotation, report, suggestedKeys);
+        (_display, _resolve, _displayName, _rotation, _report, _suggestedKeys) = (display, resolve, displayName, rotation, report, suggestedKeys);
         Card = new GalleryItem("Orientation", Names, 0, () => OrientationPreview.Build(Card!.Index), Apply)
         {
             Tip = "Turns the screen through Windows. Its width and height swap between landscape and portrait.",
@@ -51,7 +56,7 @@ internal sealed class DisplayOrientationCard
     /// <summary>Asks Windows how the display is turned now, off the UI thread, and fills the card in.</summary>
     public void Start() => Task.Run(() =>
     {
-        var now = _deviceName is null ? null : _rotation.Read(_deviceName);
+        var now = CurrentName() is { } name ? _rotation.Read(name) : null;
         Dispatcher.UIThread.Post(() => Show(now));
     });
 
@@ -64,8 +69,13 @@ internal sealed class DisplayOrientationCard
     /// <summary>Turns the display (a hotkey); nothing while the card is unavailable.</summary>
     public void Choose(DisplayOrientation orientation)
     {
-        if (Card.Availability.IsAvailable) Card.Index = (int)orientation;
+        if (!Card.Availability.IsAvailable) return;
+        _reason = "a hotkey or action asked for it";
+        Card.Index = (int)orientation;
     }
+
+    /// <summary>The display's name in Windows now, asked fresh each time; null when it is not attached.</summary>
+    private string? CurrentName() => _display is null ? null : _resolve(_display);
 
     private void Show(DisplayOrientation? now)
     {
@@ -81,13 +91,26 @@ internal sealed class DisplayOrientationCard
 
     private void Apply(int index)
     {
-        if (_deviceName is null) return;
+        if (_display is null) return;
+        var reason = _reason;
+        _reason = CardReason;
         Task.Run(() =>
         {
-            var result = _rotation.Set(_deviceName, (DisplayOrientation)index);
-            if (result.Success) return;
-            AppDataStore.AppendLog(LogFile, $"Turning {_displayName} ({_deviceName}) to {Names[index]} failed: {result.Message}");
-            var now = _rotation.Read(_deviceName);
+            var deviceName = CurrentName();
+            if (deviceName is null)
+            {
+                AppDataStore.AppendLog(LogFile, $"Turning {_displayName} to {Names[index]} skipped ({reason}): Windows no longer lists this display, so nothing was turned.");
+                Dispatcher.UIThread.Post(() => { if (!_disposed) _report($"{_displayName} is not attached, so it was not turned."); });
+                return;
+            }
+            var result = _rotation.Set(deviceName, (DisplayOrientation)index);
+            if (result.Success)
+            {
+                AppDataStore.AppendLog(LogFile, $"Turned {_displayName} ({deviceName}) to {Names[index]} and saved it to Windows' display settings: {reason}.");
+                return;
+            }
+            AppDataStore.AppendLog(LogFile, $"Turning {_displayName} ({deviceName}) to {Names[index]} failed ({reason}): {result.Message}");
+            var now = _rotation.Read(deviceName);
             Dispatcher.UIThread.Post(() =>
             {
                 if (_disposed) return;

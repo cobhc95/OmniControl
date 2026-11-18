@@ -294,7 +294,7 @@ public sealed partial class FxChainViewModel : ObservableObject, IDisposable, IP
     /// <summary>The slot's view-model; a folder's gets its folder model (made only on the master, the one chain that knows its device).</summary>
     private FxSlotViewModel MakeSlot(FxSlot slot)
     {
-        var vm = new FxSlotViewModel(slot, SaveChain, _readings, this);
+        var vm = new FxSlotViewModel(slot, SaveChain, _readings, _ties.Spectrum, this);
         if (slot.IsFolder && _ties.Devices is { } devices)
             vm.Folder = new FxFolderViewModel(slot, devices, SaveChain, _ties.Mixer.OpenMixer, () => AddRequested?.Invoke(), s => Selected = s, _ties.Mixer.InstallApo, Renumber, () => SaveFolderAsPreset(slot));
         return vm;

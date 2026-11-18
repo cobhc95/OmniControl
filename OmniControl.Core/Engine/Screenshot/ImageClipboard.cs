@@ -6,21 +6,28 @@ namespace OmniControl.Core.Engine.Screenshot;
 
 /// <summary>
 /// Puts a picture (and, when asked, the file it was saved to) or a text on the Windows clipboard. The picture goes on as a DIB (every
-/// program) and as PNG (browsers, Office); a file path goes on as a file (paste in Explorer) and as text. Memory the clipboard does not
-/// take is freed here; the clipboard owns the rest.
+/// program) and, in the screenshot's format, as JPG ("JFIF", for the programs that take JPG from the clipboard) or else as PNG (browsers,
+/// Office); a file path goes on as a file (paste in Explorer) and as text. Memory the clipboard does not take is freed here; the clipboard
+/// owns the rest.
 /// </summary>
 public static class ImageClipboard
 {
     private const int DropFilesSize = 20; // DROPFILES: offset, point, non-client flag, wide flag
-    private static readonly Lazy<uint> PngFormat = new(() => RegisterClipboardFormat("PNG"));
+    private static readonly Lazy<uint> PngFormat = new(() => RegisterClipboardFormat("PNG")), JpgFormat = new(() => RegisterClipboardFormat("JFIF"));
 
-    /// <summary>Puts the picture on the clipboard, with <paramref name="filePath"/> as a file and as text when given. False when the clipboard stayed busy.</summary>
-    public static bool SetImage(ScreenImage image, string? filePath = null)
+    /// <summary>
+    /// Puts the picture on the clipboard: always as a DIB, plus JPG at <paramref name="quality"/> when <paramref name="format"/> is JPG and PNG
+    /// otherwise (WebP and BMP have no clipboard format programs read); with <paramref name="filePath"/> as a file and as text when given.
+    /// False when the clipboard stayed busy.
+    /// </summary>
+    public static bool SetImage(ScreenImage image, ImageFormat format, int quality, string? filePath = null)
     {
         var items = new List<(uint Format, byte[] Data)>
         {
             (CfDib, Dib(image)),
-            (PngFormat.Value, ImageEncoder.Encode(image, ImageFormat.Png, ImageFormats.MaxQuality)),
+            format == ImageFormat.Jpg
+                ? (JpgFormat.Value, ImageEncoder.Encode(image, ImageFormat.Jpg, quality))
+                : (PngFormat.Value, ImageEncoder.Encode(image, ImageFormat.Png, ImageFormats.MaxQuality)),
         };
         if (filePath is { Length: > 0 })
         {

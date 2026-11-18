@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
 using OmniControl.App.Audio;
+using OmniControl.App.Audio.Engine.Dsp;
 
 namespace OmniControl.App.Fx;
 
@@ -17,16 +18,13 @@ public sealed class EqGraph : ItemDrawing<EqPanelItem>
     private const double RightPlain = ResponsePlot.AxisRight, RightPhase = 40;
     private const double LabelSize = DrawKit.LabelSize, InfoSize = DrawKit.InfoSize + 1, HoverGrow = 2, HitRadius = 16;
 
-    /// <summary>A band's circle: the normal radius, the smaller one once there are more than <see cref="CrowdedBands"/> bands, and how much the selected one grows.</summary>
-    private const double CrowdedRadius = 8, SelectedGrow = 0;
-
     /// <summary>The band circle's radius: half of <c>EqBandCircle</c> (App.axaml).</summary>
     private double PointRadius => Size("EqBandCircle", 22) / 2;
 
     private double Size(string key, double fallback) =>
         this.TryFindResource(key, ActualThemeVariant, out var v) && v is double d ? d : fallback;
-    private const int CrowdedBands = 10;
     private const int CurvePoints = 240;
+    private const double SpectrumOpacity = 0.25;
     private static readonly double[] CurveFreqs = EqMath.LogGrid(CurvePoints + 1, Eq.MinFreq, Eq.MaxFreq);
     private const double PhaseRange = 180, DragGainStep = 0.5;
     private static readonly double[] PhaseLabels = { PhaseRange, 0, -PhaseRange };
@@ -35,6 +33,18 @@ public sealed class EqGraph : ItemDrawing<EqPanelItem>
     private bool _widthDrag;
 
     public EqGraph() => ClipToBounds = true;
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        Item?.WatchSpectrum(true);
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        Item?.WatchSpectrum(false); // the capture is released as soon as the graph is not on screen
+        base.OnDetachedFromVisualTree(e);
+    }
 
     // ---- geometry ----
 
@@ -68,6 +78,7 @@ public sealed class EqGraph : ItemDrawing<EqPanelItem>
         DrawScale(ctx, muted, divider);
         if (Item is null) return;
 
+        DrawSpectrum(ctx, Item.Spectrum, Brush("BrushMuted"));
         var bands = Item.Export();
         if (Item.Selected is { } selected) DrawOwnShare(ctx, bands[selected.Index], Brush("BrushAccentSoft"));
         if (Item.ShowPhase) DrawPhase(ctx, bands, muted); // over the shading, so the shade never hides the phase line
@@ -94,6 +105,22 @@ public sealed class EqGraph : ItemDrawing<EqPanelItem>
         }
     }
 
+    /// <summary>The live spectrum behind everything else: a faint filled shape in the muted brush, from the bottom of the plot up.</summary>
+    private void DrawSpectrum(DrawingContext ctx, float[]? levels, IBrush muted)
+    {
+        if (levels is null) return;
+        var area = Frame.Area;
+        var ratio = Eq.MaxFreq / Eq.MinFreq;
+        var points = new Point[levels.Length];
+        for (var i = 0; i < levels.Length; i++)
+        {
+            var hz = Eq.MinFreq * Math.Pow(ratio, (i + 0.5) / levels.Length);
+            var share = Math.Clamp((levels[i] - SpectrumAnalyzer.FloorDb) / -SpectrumAnalyzer.FloorDb, 0, 1);
+            points[i] = new Point(X(hz), area.Bottom - area.Height * share);
+        }
+        using (ctx.PushOpacity(SpectrumOpacity)) ctx.DrawGeometry(muted, null, ResponsePlot.Fill(points, area.Bottom));
+    }
+
     /// <summary>The selected band's own contribution, shaded down to 0 dB.</summary>
     private void DrawOwnShare(DrawingContext ctx, EqBand band, IBrush soft) =>
         ctx.DrawGeometry(soft, null, ResponsePlot.Fill(Frame.Points(CurveFreqs, EqMath.CurveDb(new[] { band }, 0, CurveFreqs)), Y(0)));
@@ -110,20 +137,17 @@ public sealed class EqGraph : ItemDrawing<EqPanelItem>
     private void DrawPoints(DrawingContext ctx, IBrush accent, IBrush muted, IBrush card)
     {
         if (Item is null) return;
-        var crowded = Item.Bands.Count > CrowdedBands;
         DrawWidthHandles(ctx, accent);
         foreach (var b in Item.Bands)
         {
             var on = b.Index == Item.SelectedIndex;
             var ink = EqBandColors.Of(this, b.Index);
-            var radius = (crowded ? CrowdedRadius : PointRadius) + (on ? SelectedGrow : 0) + (b.Index == _hover || b.Index == _drag ? HoverGrow : 0);
+            var radius = PointRadius + (b.Index == _hover || b.Index == _drag ? HoverGrow : 0);
             var c = PointOf(b);
             if (on) ctx.DrawEllipse(null, new Pen(accent, 2), c, radius + 3, radius + 3);
             var edge = b.Enabled ? new Pen(ink, 2) : new Pen(ink, 2, dashStyle: DashStyle.Dash);
             ctx.DrawEllipse(b.Enabled ? ink : card, edge, c, radius, radius);
-            if (crowded && !on) continue; // too small to hold the number
-            var n = Text(b.Number, on ? LabelSize : LabelSize - 2, b.Enabled ? card : ink);
-            ctx.DrawText(n, new Point(c.X - n.Width / 2, c.Y - n.Height / 2));
+            // the circle is too small to hold its number: the selected band's title is in the info line, the list shows the numbers
         }
     }
 

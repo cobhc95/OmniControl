@@ -1,4 +1,4 @@
-﻿<Application xmlns="https://github.com/avaloniaui"
+<Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:pages="using:OmniControl.App.Pages"
              xmlns:displays="using:OmniControl.App.Pages.Displays"
@@ -31,6 +31,7 @@
         <DataTemplate DataType="devices:DeviceItem"><devices:DeviceDetail /></DataTemplate>
         <DataTemplate DataType="otherpcs:OtherPcsPageViewModel"><otherpcs:OtherPcsPage /></DataTemplate>
         <DataTemplate DataType="otherpcs:PcItem"><otherpcs:PcDetail /></DataTemplate>
+        <DataTemplate DataType="otherpcs:SetupTabItem"><otherpcs:PairPcPanel /></DataTemplate>
         <DataTemplate DataType="automation:AutomationItem"><automation:AutomationRuleRow /></DataTemplate>
         <DataTemplate DataType="automation:CustomActionItem"><automation:CustomActionRow /></DataTemplate>
         <DataTemplate DataType="volume:VolumeRow"><volume:VolumeRowView /></DataTemplate>
@@ -98,7 +99,7 @@
         <Thickness x:Key="TypeableInset">8,2</Thickness>
         <CornerRadius x:Key="TypeableCornerRadius">4</CornerRadius>
         <!-- The parametric equaliser graph: a band's circle (diameter, a ring of the selected one), and the bandwidth handles of the selected band -->
-        <x:Double x:Key="EqBandCircle">22</x:Double>
+        <x:Double x:Key="EqBandCircle">11</x:Double>
         <x:Double x:Key="EqWidthHandleWidth">8</x:Double>
         <x:Double x:Key="EqWidthHandleHeight">12</x:Double>
         <!-- The pane splitter (Styles/Splitters.axaml, GridSplitter.pane): its grab width -->
@@ -170,8 +171,7 @@
         <x:Double x:Key="DynamicsGraphSize">240</x:Double>
         <!-- The IR Loader's picture (Fx/IrFileRow): its height -->
         <x:Double x:Key="IrGraphHeight">150</x:Double>
-        <!-- A plug-in's plain settings list: the widest a setting's name gets before it wraps, and its value text before it ends in "..." -->
-        <x:Double x:Key="ParamLabelMaxWidth">170</x:Double>
+        <!-- A plug-in's plain settings list: the widest a setting's value text gets before it ends in "..." -->
         <x:Double x:Key="ParamValueMaxWidth">110</x:Double>
         <!-- A graphic equaliser (Fx/GraphicEqRow): the height of the response curve above the sliders and of the sliders, and the
              height of a band slider's knob (Slider.vband), which the dB scale beside the sliders reads to line its marks up -->
@@ -184,6 +184,25 @@
         <x:Double x:Key="OptionListMaxHeight">320</x:Double>
         <!-- The longest a chip's words get before they end in "..." -->
         <x:Double x:Key="ChipMaxWidth">150</x:Double>
+        <!-- Narrow cards (Controls/LeadFitPanel): a leading chip trims its words down to ChipMinWidth first, then the slider with its value
+             shrinks down to SliderFieldMinWidth (the slider's least width + the typed value + their gap); the value and the label never clip -->
+        <x:Double x:Key="ChipMinWidth">72</x:Double>
+        <x:Double x:Key="SliderBarMinWidth">60</x:Double>
+        <x:Double x:Key="SliderValueMinWidth">48</x:Double>
+        <x:Double x:Key="SliderValueGap">8</x:Double>
+        <!-- = SliderBarMinWidth + SliderValueGap + SliderValueMinWidth -->
+        <x:Double x:Key="SliderFieldMinWidth">116</x:Double>
+        <!-- A card's name (TextBlock.cardname): the least width of the label column that the cards of a page share so their controls line up, and the widest a name gets
+             before it wraps; CardLabelMinWidth = the least width of a half-width card's name (wrapped to two lines). ChoiceMaxWidth and GalleryMaxWidth = the widest a card's
+             drop-down or gallery gets; narrower, it shrinks inside the room right of the label and never covers it -->
+        <x:Double x:Key="CardLabelMaxWidth">170</x:Double>
+        <x:Double x:Key="CardLabelColumnMinWidth">110</x:Double>
+        <x:Double x:Key="CardLabelMinWidth">56</x:Double>
+        <x:Double x:Key="ChoiceMaxWidth">220</x:Double>
+        <x:Double x:Key="GalleryMaxWidth">300</x:Double>
+        <!-- Pages/MasonryPanel (a PC's groups on Other PCs): the least width of a column and the gap between columns -->
+        <x:Double x:Key="MasonryColumnMinWidth">250</x:Double>
+        <x:Double x:Key="MasonryGap">10</x:Double>
         <!-- The narrow list pop-down (FlyoutPresenter.listmenu) sizes to its content between these -->
         <x:Double x:Key="ListMenuMinWidth">260</x:Double>
         <x:Double x:Key="ListMenuMaxWidth">300</x:Double>
@@ -204,6 +223,12 @@
         <x:Double x:Key="DeviceListMaxWidth">190</x:Double>
         <Thickness x:Key="DeviceListPadding">6</Thickness>
         <Thickness x:Key="NavCompactPadding">6,5</Thickness>
+        <!-- The sidebar's one left inset (8 px to the text; items take 7 plus their 1 px outline): item padding, heading padding and the title above them line up on it -->
+        <Thickness x:Key="NavPadding">7,7,16,7</Thickness>
+        <Thickness x:Key="NavHeadingPadding">7,10,16,2</Thickness>
+        <Thickness x:Key="NavTitleMargin">8,0,0,10</Thickness>
+        <Thickness x:Key="NavPillMargin">8,0,8,6</Thickness>
+        <Thickness x:Key="NavRuleMargin">8,6,8,6</Thickness>
         <Thickness x:Key="DeviceDetailPadding">10,8</Thickness>
         <x:Double x:Key="DeviceIconSize">26</x:Double>
         <x:Double x:Key="DeviceIconGlyph">15</x:Double>
@@ -251,6 +276,13 @@
         <CornerRadius x:Key="TabCornerRadius">6,6,0,0</CornerRadius>
         <x:Double x:Key="TabUnderlineHeight">2</x:Double>
         <x:Double x:Key="TabGap">4</x:Double>
+        <!-- Browser-style tabs (Styles/BrowserTabs.axaml, Controls/BrowserTabStrip): a tab's inner space, its widest and least width (names trim between), the gap between tabs, the status dot, the rounded top -->
+        <Thickness x:Key="BrowserTabPadding">10,5</Thickness>
+        <x:Double x:Key="BrowserTabMaxWidth">210</x:Double>
+        <x:Double x:Key="BrowserTabMinWidth">90</x:Double>
+        <x:Double x:Key="BrowserTabGap">2</x:Double>
+        <x:Double x:Key="BrowserTabDotSize">7</x:Double>
+        <CornerRadius x:Key="BrowserTabCornerRadius">7,7,0,0</CornerRadius>
         <!-- The Volume Wiring tables: the widest a source's name gets (then "..."), the widest the Cable column's words get (then they
              wrap), the gap between the columns, and the column titles' inset (a compact row's padding 10 plus its 1 px border) -->
         <x:Double x:Key="WiringSourceMaxWidth">150</x:Double>
@@ -315,6 +347,7 @@
         <StyleInclude Source="/Styles/Theme.axaml" />
         <StyleInclude Source="/Styles/ThemeLists.axaml" />
         <StyleInclude Source="/Styles/ThemeButtons.axaml" />
+        <StyleInclude Source="/Styles/BrowserTabs.axaml" />
         <StyleInclude Source="/Styles/Sliders.axaml" />
         <StyleInclude Source="/Styles/Splitters.axaml" />
         <StyleInclude Source="/Styles/Blocks.axaml" />

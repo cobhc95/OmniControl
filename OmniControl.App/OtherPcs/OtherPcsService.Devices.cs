@@ -20,7 +20,7 @@ public sealed partial class OtherPcsService
     /// <summary>Asks a connected PC for its device set-ups. <paramref name="includeScripts"/> also asks for the user's own script templates.</summary>
     public async Task<DeviceSetupsReply> RequestDeviceSetupsAsync(string pcId, bool includeScripts)
     {
-        var name = Find(pcId)?.Name ?? "That PC";
+        var name = Find(pcId)?.DisplayName ?? "That PC";
         if (!_links.TryGetValue(pcId, out var link)) return new DeviceSetupsReply(null, $"{name} is not connected.");
         var rid = ++_nextRid;
         var answer = new TaskCompletionSource<DeviceSetupsReply>(TaskCreationOptions.RunContinuationsAsynchronously);

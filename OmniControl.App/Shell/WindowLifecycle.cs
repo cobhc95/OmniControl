@@ -71,9 +71,6 @@ public static class WindowLifecycle
                 shell.SetWindowShown(window.IsVisible && window.WindowState != WindowState.Minimized);
         };
 
-        // The desktop's displays changed (one plugged in or removed): pages that follow them look again. The window gets this even while hidden.
-        window.Screens.Changed += (_, _) => shell.NotifyDisplaysChanged();
-
         if (startHidden || settings.StartMinimised)
         {
             window.WindowState = WindowState.Minimized;

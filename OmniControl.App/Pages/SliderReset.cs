@@ -24,6 +24,7 @@ public static class SliderReset
 
     private static void OnDoubleTapped(object? sender, TappedEventArgs e)
     {
+        if (NumberText.IsValueBox(e.Source)) return; // the typeable value text opens for typing, it never resets
         if (sender is RangeBase control && GetValue(control) is { } value) control.Value = value;
     }
 }

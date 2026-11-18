@@ -18,11 +18,13 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
     private readonly MixerService _mixer;
     private readonly EffectsEngine _engine;
     private readonly EffectsSupportService _support;
+    private readonly DisplayFeeds _feeds;
     private readonly string? _key;
 
     /// <param name="key">The program key, an input key, or null for the master.</param>
-    public FxWindowViewModel(MixerService mixer, EffectsEngine engine, EffectsSupportService support, string? key, FxChainViewModel chain)
+    public FxWindowViewModel(MixerService mixer, EffectsEngine engine, EffectsSupportService support, DisplayFeeds feeds, string? key, FxChainViewModel chain)
     {
+        _feeds = feeds;
         _mixer = mixer;
         _engine = engine;
         _support = support;
@@ -40,6 +42,8 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
         engine.ApoPlacementChanged += OnApoPlacementChanged;
         mixer.KeepFxInPlaceChanged += OnKeepFxInPlaceChanged;
         support.Changed += OnSupportChanged;
+        feeds.Changed += OnDisplayFeedChanged;
+        chain.PropertyChanged += OnChainChanged;
     }
 
     public FxChainViewModel Chain { get; }
@@ -105,6 +109,18 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
 
     /// <summary>Equalizer APO's config also runs effects of its own: one tag in the status strip says so.</summary>
     public TagItem? OwnApoEffects => InApo && _engine.ApoOwnEffects ? new TagItem(EffectsRules.ApoOwnEffects, TagTone.Neutral, EffectsRules.ApoOwnEffectsTip) : null;
+
+    /// <summary>The selected effect's meters or spectrum are fed with what you hear (Equalizer APO runs it where OmniControl can't see its sound): one tag says so, the detail is its tooltip.</summary>
+    public TagItem? DisplayFed => Chain.Selected is { } s && _feeds.IsFed(s.Slot)
+        ? _feeds.IsPaused(s.Slot) ? new TagItem(EffectsRules.DisplayNotFed, TagTone.Caution, EffectsRules.DisplayNotFedTip) : new TagItem(EffectsRules.DisplayFed, TagTone.Neutral, EffectsRules.DisplayFedTip)
+        : null;
+
+    private void OnDisplayFeedChanged() => OnPropertyChanged(nameof(DisplayFed));
+
+    private void OnChainChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(FxChainViewModel.Selected)) OnPropertyChanged(nameof(DisplayFed));
+    }
 
     [RelayCommand] private void PutBack() => _engine.PutBackApo();
 
@@ -200,6 +216,8 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         _mixer.Updated -= OnMixerUpdated;
+        _feeds.Changed -= OnDisplayFeedChanged;
+        Chain.PropertyChanged -= OnChainChanged;
         _engine.StatusChanged -= OnEngineStatus;
         _engine.ApoPlacementChanged -= OnApoPlacementChanged;
         _mixer.KeepFxInPlaceChanged -= OnKeepFxInPlaceChanged;

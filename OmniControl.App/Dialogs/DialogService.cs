@@ -11,6 +11,13 @@ public sealed class DialogService
     /// <summary>Shows <paramref name="message"/>; true when the user confirmed (its confirm button), false for Close, Cancel or Esc.</summary>
     public async Task<bool> AskAsync(DialogMessage message) => await ChooseAsync(message) == DialogAnswer.Confirm;
 
+    /// <summary>Asks for one line of text (<paramref name="message"/> with its <see cref="DialogMessage.Input"/> set); the trimmed text, or null when the user cancelled.</summary>
+    public async Task<string?> AskTextAsync(DialogMessage message)
+    {
+        var window = new MessageWindow(message);
+        return await window.AskAsync() == DialogAnswer.Confirm ? window.Typed : null;
+    }
+
     /// <summary>Shows <paramref name="message"/> with its two answers; which one the user chose, or Cancel.</summary>
     public async Task<DialogAnswer> ChooseAsync(DialogMessage message)
     {

@@ -114,11 +114,11 @@ internal sealed class PcLink : IDisposable
 /// </summary>
 internal static class PcSession
 {
-    public static async Task<PcLink?> DialAsync(Stream stream, string ownId, string peerId, byte[] secret, CancellationToken ct)
+    public static async Task<PcLink?> DialAsync(Stream stream, string ownId, string peerId, byte[] secret, CancellationToken ct, byte kind = PcProtocol.WantsSession)
     {
         var ownNonce = PcCrypto.Random(PcProtocol.KeyBytes);
         var hello = new byte[1 + PcProtocol.IdBytes + PcProtocol.KeyBytes];
-        hello[0] = PcProtocol.WantsSession;
+        hello[0] = kind;
         PcIds.Bytes(ownId).CopyTo(hello, 1);
         ownNonce.CopyTo(hello, 1 + PcProtocol.IdBytes);
         await stream.WriteAsync(hello, ct).ConfigureAwait(false);

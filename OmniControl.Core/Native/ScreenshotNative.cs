@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 
 namespace OmniControl.Core.Native;
 
-/// <summary>user32, gdi32, dwmapi and kernel32 calls of the screenshot feature: monitors, screen copies, the clipboard and the overlay's place on top.</summary>
+/// <summary>user32, gdi32, dwmapi and kernel32 calls of the screenshot feature: monitors, screen copies and pictures, the clipboard and the overlay's place on top.</summary>
 internal static class ScreenshotNative
 {
     [StructLayout(LayoutKind.Sequential)] public struct Rect { public int Left, Top, Right, Bottom; }
@@ -48,6 +48,23 @@ internal static class ScreenshotNative
     [DllImport("gdi32.dll")] public static extern IntPtr SelectObject(IntPtr hdc, IntPtr obj);
     [DllImport("gdi32.dll")] public static extern bool DeleteObject(IntPtr obj);
     [DllImport("gdi32.dll")] public static extern bool BitBlt(IntPtr dest, int x, int y, int width, int height, IntPtr source, int sx, int sy, int rop);
+    [DllImport("gdi32.dll")] public static extern bool GdiFlush();
+    [DllImport("gdi32.dll")] public static extern IntPtr CreateSolidBrush(uint colorRef);
+    [DllImport("user32.dll")] public static extern int FillRect(IntPtr hdc, ref Rect rect, IntPtr brush);
+    [DllImport("gdi32.dll")] public static extern int SaveDC(IntPtr hdc);
+    [DllImport("gdi32.dll")] public static extern bool RestoreDC(IntPtr hdc, int saved);
+    [DllImport("gdi32.dll")] public static extern int ExcludeClipRect(IntPtr hdc, int left, int top, int right, int bottom);
+
+    /// <summary>A 32-bit BGRA bitmap the program can write into (<paramref name="bits"/>), top row first; zero when Windows refuses it.</summary>
+    public static IntPtr CreateTopDownBitmap(IntPtr hdc, int width, int height, out IntPtr bits)
+    {
+        var header = new BitmapInfoHeader
+        {
+            Size = Marshal.SizeOf<BitmapInfoHeader>(), Width = width, Height = -height, // negative: top row first
+            Planes = 1, BitCount = 32,
+        };
+        return CreateDIBSection(hdc, ref header, DibRgbColors, out bits, IntPtr.Zero, 0);
+    }
 
     // Clipboard
     public const uint CfUnicodeText = 13, CfDib = 8, CfHDrop = 15, GmemMoveable = 0x0002;

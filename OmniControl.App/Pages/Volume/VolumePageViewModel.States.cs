@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using Avalonia.Threading;
 using OmniControl.App.Audio;
+using OmniControl.App.Hotkeys;
 using OmniControl.App.Services;
 using OmniControl.App.States;
 
@@ -13,6 +14,10 @@ public sealed partial class VolumePageViewModel
 {
     private const string MasterVolumeId = "volume.master.level", MasterMutedId = "volume.master.muted", MasterFxId = "volume.master.fx",
         DefaultSpeakerId = "volume.default.speaker", MicMutedId = "volume.mic.muted", KeepFxId = "volume.fx.keepinplace";
+    // The On / Off / Toggle families of the actions that set these states (each action's StateId is the state it sets).
+    private static readonly OnOffFamily MuteFamily = new("volume.mute", "Mute", MasterMutedId);
+    private static readonly OnOffFamily MicMuteFamily = new("volume.mic.mute", "Microphone mute", MicMutedId);
+    private static readonly OnOffFamily MasterFxFamily = new("volume.fx", "Master FX", MasterFxId);
     private static readonly string[] StateIds = { MasterVolumeId, MasterMutedId, MasterFxId, DefaultSpeakerId, MicMutedId, KeepFxId };
 
     private const string ScanWords = "Windows' own value: Windows reports every change as it happens (the volume pop-up's source), and it is looked at every few seconds as a backstop.";

@@ -7,16 +7,20 @@
         Title="Screenshot" SystemDecorations="None" CanResize="False" Topmost="True">
     <!-- The area capture overlay of one monitor (docs/mockups/screenshot-tool.html). Mouse first (AGENTS rule 5): drag to select, handles
          resize, drag inside moves; the bars are clicked. Keys: Esc, Ctrl+C/S/P, Ctrl+Z/Y, Ctrl+Shift+. and , (size), arrows nudge (CaptureOverlayViewModel.HandleKey).
-         Looks: Border.floatbar, Button.toolicon (.selected), Button.swatch and shot|CaptureCanvas in Styles/Bars.axaml; icons Shot* in Brushes.axaml. -->
-    <Panel>
-        <shot:CaptureCanvas x:Name="Picture" />
-        <Canvas x:Name="Layer">
-            <Border x:Name="SizeLabel" Classes="floatbar label" IsVisible="{Binding HasSelection}">
+         Looks: Border.floatbar, Button.toolicon (.selected), Button.swatch, Popup.floating and shot|CaptureCanvas in Styles/Bars.axaml; icons
+         Shot* in Brushes.axaml. The picture (shot:CaptureCanvas, a native window that covers anything Avalonia draws under it) is put first
+         in Root by the code-behind, which needs the view-model to make it; so the label, the bars and the text box are pop-ups above it,
+         each placed at a point of the window by its offsets. -->
+    <Panel x:Name="Root">
+        <Popup x:Name="SizePopup" Classes="floating" IsOpen="{Binding HasSelection, Mode=OneWay}">
+            <Border x:Name="SizeLabel" Classes="floatbar label">
                 <TextBlock Text="{Binding SizeText}" />
             </Border>
+        </Popup>
 
-            <!-- The drawing toolbar: right of the selection (left or inside when there is no room) -->
-            <Border x:Name="ToolBar" Classes="floatbar" IsVisible="{Binding ShowBars}">
+        <!-- The drawing toolbar: right of the selection (left or inside when there is no room) -->
+        <Popup x:Name="ToolPopup" Classes="floating" IsOpen="{Binding ShowBars, Mode=OneWay}">
+            <Border x:Name="ToolBar" Classes="floatbar">
                 <StackPanel>
                     <Button Classes="toolicon" Classes.selected="{Binding IsPen}" Command="{Binding PickToolCommand}" CommandParameter="{x:Static shot:DrawTool.Pen}" ToolTip.Tip="Pen">
                         <Path Classes="glyph" Data="{StaticResource ShotPenIcon}" />
@@ -71,9 +75,11 @@
                     </Button>
                 </StackPanel>
             </Border>
+        </Popup>
 
-            <!-- The action bar: under the selection (above or inside when there is no room) -->
-            <Border x:Name="ActionBar" Classes="floatbar" IsVisible="{Binding ShowBars}">
+        <!-- The action bar: under the selection (above or inside when there is no room) -->
+        <Popup x:Name="ActionPopup" Classes="floating" IsOpen="{Binding ShowBars, Mode=OneWay}">
+            <Border x:Name="ActionBar" Classes="floatbar">
                 <StackPanel Orientation="Horizontal">
                     <Button Classes="toolicon" Command="{Binding CopyCommand}" ToolTip.Tip="Copy (Ctrl+C)">
                         <Path Classes="glyph" Data="{StaticResource ShotCopyIcon}" />
@@ -120,9 +126,11 @@
                     </Button>
                 </StackPanel>
             </Border>
+        </Popup>
 
-            <!-- The text tool's box, opened where the selection was clicked; Enter or clicking away keeps the words, Esc drops them -->
-            <TextBox x:Name="TextEntry" Classes="shottext" IsVisible="False" FontSize="{Binding TextSize}" Foreground="{Binding CurrentBrush}" />
-        </Canvas>
+        <!-- The text tool's box, opened where the selection was clicked; Enter or clicking away keeps the words, Esc drops them -->
+        <Popup x:Name="TextPopup" Classes="floating">
+            <TextBox x:Name="TextEntry" Classes="shottext" FontSize="{Binding TextSize}" Foreground="{Binding CurrentBrush}" />
+        </Popup>
     </Panel>
 </Window>

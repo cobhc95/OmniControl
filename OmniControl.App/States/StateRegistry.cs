@@ -11,7 +11,7 @@ namespace OmniControl.App.States;
 /// owners. Consumers read <see cref="States"/> and follow <see cref="ListChanged"/>; the automation rules' "When a state changes" trigger
 /// is one. Everything runs on the UI thread; <see cref="Notify"/> may be called from any thread.
 /// </summary>
-public sealed class StateRegistry
+public sealed class StateRegistry : IStateReader
 {
     private readonly Action<Action> _post;
     private readonly Func<RunChain?> _chainNow;
@@ -42,6 +42,23 @@ public sealed class StateRegistry
 
     /// <summary>The value last read (null: not known, or no such state).</summary>
     public StateValue? Now(string id) => _last.GetValueOrDefault(id);
+
+    /// <summary>The owner's current value of the state (null: not known, or no such state): what an On or Off action checks before it runs.</summary>
+    public StateValue? Read(string id) => Find(id) is { } entry ? Safe(entry) : null;
+
+    /// <summary>Has the owner read the state again (its <see cref="StateEntry.Recheck"/>), then calls <paramref name="done"/> on the UI thread; false when it cannot.</summary>
+    public bool Refresh(string id, Action done)
+    {
+        if (Find(id)?.Recheck is not { } recheck || !recheck.CanCheck()) return false;
+        _ = RefreshAsync(id, recheck, done);
+        return true;
+    }
+
+    private async Task RefreshAsync(string id, StateRecheck recheck, Action done)
+    {
+        await Services.Guard.RunAsync($"Read state {id}", recheck.CheckAsync);
+        _post(done);
+    }
 
     /// <summary>Adds a state, or replaces the one with the same id (a rename): its value is read now and kept as the last one.</summary>
     public void Register(StateEntry entry)

@@ -1,5 +1,6 @@
 using Avalonia.Threading;
 using OmniControl.App.Services;
+using OmniControl.Core.Engine;
 using OmniControl.Core.Engine.Mouse;
 using OmniControl.Core.Engine.Trackpad;
 
@@ -20,7 +21,11 @@ namespace OmniControl.App.Mouse;
 /// </summary>
 public sealed class TrackpadService : IDisposable
 {
+    /// <summary>The entry in the master list of hardware watches: the touchpads and Windows' settings for them (the mouse hook needs no device list).</summary>
+    public const string HardwareWatchId = "pointing.devices";
+
     private readonly MouseHook _hook;
+    private readonly HardwareWatches _hardware;
     private readonly MouseService _mouse;
     private readonly ITouchpadSettingsStore _store = new TouchpadSettingsStore();
     private readonly TrackpadLog _log = new();
@@ -47,10 +52,14 @@ public sealed class TrackpadService : IDisposable
         : !Windows.TouchpadOn ? "The touchpad is turned off in Windows settings."
         : _problem;
 
-    public TrackpadService(MouseHook hook, MouseService mouse)
+    /// <param name="hardware">The master list of hardware watches: the service registers the touchpads there and tells it when one comes or goes.</param>
+    public TrackpadService(MouseHook hook, MouseService mouse, HardwareWatches hardware)
     {
         _hook = hook;
         _mouse = mouse;
+        _hardware = hardware;
+        hardware.Register(new HardwareWatch(HardwareWatchId, "Mouse and touchpad", HardwareSignal.Device | HardwareSignal.Session | HardwareSignal.Resume,
+            () => Dispatcher.UIThread.Invoke(Refresh), LooksStale: () => TrackpadWatcher.IsPresent() != IsPresent));
         Windows = WindowsTouchpad.Read(_store);
         _takeover = new GestureTakeover(_store, TrackpadBackup.Load(), TrackpadBackup.Save) { Log = _log.Write };
         _guard = new ShellSurfaceGuard(new ShellSurfaceProbe()) { Log = _log.Write };
@@ -196,8 +205,8 @@ public sealed class TrackpadService : IDisposable
         watcher.DevicesChanged -= OnDevicesChanged;
     }
 
-    // A touchpad that arrives (or comes back after sleep) gets the takeover applied again through Refresh.
-    private void OnDevicesChanged() => Dispatcher.UIThread.Post(Refresh);
+    // A touchpad that arrives (or comes back after sleep) gets the takeover applied again through its hardware watch's refresh.
+    private void OnDevicesChanged() => _hardware.Request(HardwareWatchId);
 
     /// <summary>At exit every Windows gesture OmniControl turned off is given back, on this thread, after the queued work.</summary>
     public void Dispose()

@@ -43,14 +43,14 @@ public partial class ChoiceChip : UserControl
         if (e.PropertyName == nameof(ChoiceItem.Selected)) ShowChosen();
     }
 
-    private void ShowChosen() => Chip.Text = _item?.Selected;
+    private void ShowChosen() => (Chip.Text, Chip.ChipToolTip) = (_item?.Selected, _item?.Selected); // the tooltip carries the full name when the words are trimmed
 
     private void OnOpened(object? sender, Flyout flyout)
     {
         _menu = flyout;
         if (_item is not { } item) return;
         Rows.Title = item.Label;
-        Rows.ItemsSource = item.Options.Select(o => new MenuRowItem(o, string.Empty, o == item.Selected, o, new RelayCommand(() => item.Selected = o))).ToList();
+        Rows.ItemsSource = item.Options.Select((o, i) => new MenuRowItem(o, string.Empty, o == item.Selected, o, new RelayCommand(() => item.Selected = o), RuleAbove: item.FirstApart && i == 1)).ToList();
     }
 
     private void OnClosed(object? sender, EventArgs e) => _menu = null;

@@ -13,6 +13,9 @@ internal interface IVideoSink : IDisposable
     /// <summary>The bytes in the file so far (for the size limit).</summary>
     long Length { get; }
 
+    /// <summary>Frames really encoded so far (the watchdog's proof that the encoder works). May call into the encoder: recording thread only.</summary>
+    long FramesDone { get; }
+
     /// <summary>Ends the file at <paramref name="end"/>; it is complete and playable after this.</summary>
     void Finish(long end);
 }
@@ -29,7 +32,10 @@ internal interface ISoundSink
 /// (<see cref="WriteFrame(ReadOnlySpan{byte}, int, long)"/>, from the GDI copy), or frames that stay on the graphics card
 /// (<see cref="OpenOnGpu"/> + <see cref="WriteFrame(IGpuFrame, long)"/>: the Sink Writer gets the device through a DXGI device manager, so
 /// the colour conversion and the encoder work on the textures and no frame is copied to or from memory). Frame samples come from a
-/// <see cref="SamplePool"/>. Nothing is bundled: the encoders are Windows' own (HEVC needs the HEVC Video Extensions or a graphics card
+/// <see cref="SamplePool"/>. A third way, for the encoder of another graphics adapter: frames in memory, with a device manager holding a
+/// device on that adapter (<see cref="OpenWithDevice"/>). Nothing here falls back by itself: <see cref="ScreenRecorder"/>'s chain decides
+/// what to try next. Every step of the opening is logged (<see cref="RecordingLog"/>), and the encoder the Sink Writer chose is read back
+/// (<see cref="Encoder"/>). Nothing is bundled: the encoders are Windows' own (HEVC needs the HEVC Video Extensions or a graphics card
 /// that encodes it). Every COM object is released.
 /// </summary>
 internal sealed unsafe class Mp4Writer : IVideoSink, ISoundSink
@@ -40,37 +46,50 @@ internal sealed unsafe class Mp4Writer : IVideoSink, ISoundSink
     private readonly string _path;
     private readonly int _width, _height;
     private readonly long _frameTicks;
+    private readonly bool _gpuFrames;
+    private readonly RecordingLog _log;
     private IntPtr _writer, _manager;
     private readonly uint _video, _sound;
     private SamplePool? _pool;
     private bool _started;
 
-    private Mp4Writer(string path, int width, int height, int frameRate, VideoFormat format, int bitrate, bool hardware, IGpuFrame? gpu)
+    /// <summary>The encoder the Sink Writer chose, or null when Windows does not say.</summary>
+    public EncoderFacts? Encoder { get; }
+
+    private Mp4Writer(string path, int width, int height, int frameRate, VideoFormat format, int bitrate, bool hardware, IntPtr device, bool gpuFrames, RecordingLog log)
     {
         _path = path;
         _width = width;
         _height = height;
+        _gpuFrames = gpuFrames;
+        _log = log;
         _frameTicks = VideoMath.FrameTicks(frameRate);
-        Check(MFStartup(MfVersion, MfStartupFull));
+        log.Step("Media Foundation start", () => Check(MFStartup(MfVersion, MfStartupFull)));
         _started = true;
         try
         {
-            if (gpu is not null) _manager = DeviceManager(gpu.Device);
+            if (device != IntPtr.Zero) _manager = log.Step("DXGI device manager", () => DeviceManager(device));
             Check(MFCreateAttributes(out var attributes, 3));
             try
             {
                 SetUInt32(attributes, EnableHardware, hardware ? 1u : 0u);
                 if (_manager != IntPtr.Zero) SetUnknown(attributes, SinkWriterD3DManager, _manager);
                 SetGuid(attributes, ContainerType, ContainerMp4);
-                Check(MFCreateSinkWriterFromURL(path, IntPtr.Zero, attributes, out _writer));
+                _writer = log.Step($"Sink Writer create (hardware encoders {(hardware ? "allowed" : "off")}, device manager {(_manager != IntPtr.Zero ? "yes" : "no")})", () =>
+                {
+                    Check(MFCreateSinkWriterFromURL(path, IntPtr.Zero, attributes, out var writer));
+                    return writer;
+                });
             }
             finally
             {
                 Release(attributes);
             }
             _video = AddVideo(frameRate, format, bitrate);
-            _sound = AddSound();
-            BeginWriting(_writer);
+            _sound = log.Step("sound stream (AAC 48 kHz stereo)", AddSound);
+            log.Step("Sink Writer begin writing", () => BeginWriting(_writer));
+            Encoder = EncoderFacts.Read(_writer, _video);
+            log.Line(Encoder?.ToString() ?? "encoder: Windows does not say which one");
         }
         catch
         {
@@ -79,31 +98,30 @@ internal sealed unsafe class Mp4Writer : IVideoSink, ISoundSink
         }
     }
 
-    /// <summary>
-    /// Opens the MP4 for frames in memory, on the graphics card's encoder first when <paramref name="hardware"/> is on and in software when
-    /// that is refused (or the other way round when software was asked for and refused). Says in <paramref name="note"/> when the other way
-    /// was used.
-    /// </summary>
-    public static Mp4Writer Open(string path, int width, int height, int frameRate, VideoFormat format, int bitrate, bool hardware, out string? note)
-    {
-        note = null;
-        try
-        {
-            return new Mp4Writer(path, width, height, frameRate, format, bitrate, hardware, null);
-        }
-        catch (COMException)
-        {
-            note = hardware ? "The graphics card's encoder was not available, so the video was encoded in software." : "The software encoder was not available, so the graphics card's encoder was used.";
-            return new Mp4Writer(path, width, height, frameRate, format, bitrate, !hardware, null);
-        }
-    }
+    /// <summary>Opens the MP4 for frames in memory, with a graphics card's encoder when <paramref name="hardware"/> is on (Windows picks which), else in software.</summary>
+    public static Mp4Writer Open(string path, int width, int height, int frameRate, VideoFormat format, int bitrate, bool hardware, RecordingLog log) =>
+        new(path, width, height, frameRate, format, bitrate, hardware, IntPtr.Zero, false, log);
+
+    /// <summary>Opens the MP4 for frames in memory, with the hardware encoder of the adapter that <paramref name="device"/> (an ID3D11Device) is on.</summary>
+    public static Mp4Writer OpenWithDevice(string path, int width, int height, int frameRate, VideoFormat format, int bitrate, IntPtr device, RecordingLog log) =>
+        new(path, width, height, frameRate, format, bitrate, true, device, false, log);
 
     /// <summary>
     /// Opens the MP4 for frames that stay on <paramref name="gpu"/>'s graphics card, with its hardware encoder. Throws
-    /// <see cref="COMException"/> when Media Foundation cannot take textures from that device (the caller then records from memory).
+    /// <see cref="COMException"/> when Media Foundation cannot take textures from that device.
     /// </summary>
-    public static Mp4Writer OpenOnGpu(string path, int width, int height, int frameRate, VideoFormat format, int bitrate, IGpuFrame gpu) =>
-        new(path, width, height, frameRate, format, bitrate, true, gpu);
+    public static Mp4Writer OpenOnGpu(string path, int width, int height, int frameRate, VideoFormat format, int bitrate, IGpuFrame gpu, RecordingLog log) =>
+        new(path, width, height, frameRate, format, bitrate, true, gpu.Device, true, log);
+
+    /// <summary>Video frames the encoder has put out so far (from the Sink Writer's statistics).</summary>
+    public long FramesDone => (long)GetStatistics(_writer, _video).SamplesEncoded;
+
+    /// <summary>The Sink Writer's video counts in words, for the periodic log line.</summary>
+    public string Counts()
+    {
+        var s = GetStatistics(_writer, _video);
+        return $"received {s.SamplesReceived}, encoded {s.SamplesEncoded}, written {s.SamplesProcessed}, queued {s.ByteCountQueued} bytes";
+    }
 
     /// <summary>A DXGI device manager holding <paramref name="device"/>, for the Sink Writer and the sample pool.</summary>
     private static IntPtr DeviceManager(IntPtr device)
@@ -128,15 +146,15 @@ internal sealed unsafe class Mp4Writer : IVideoSink, ISoundSink
         {
             SetUInt32(output, AvgBitrate, (uint)bitrate);
             SetFrame(output, frameRate);
-            var stream = AddStream(_writer, output);
-            var onGpu = _manager != IntPtr.Zero;
-            var input = NewType(Video, onGpu ? Argb32 : Rgb32); // ARGB32 = the textures' BGRA format
+            var name = format == VideoFormat.Mp4Hevc ? "HEVC" : "H.264";
+            var stream = _log.Step($"video stream {name} {_width}x{_height} @{frameRate}, {bitrate / 1000} kbit/s", () => AddStream(_writer, output));
+            var input = NewType(Video, _gpuFrames ? Argb32 : Rgb32); // ARGB32 = the textures' BGRA format
             try
             {
                 SetFrame(input, frameRate);
-                if (!onGpu) SetUInt32(input, DefaultStride, (uint)(_width * 4)); // top row first, as the frames are grabbed
-                SetInputMediaType(_writer, stream, input);
-                _pool = Pool(input);
+                if (!_gpuFrames) SetUInt32(input, DefaultStride, (uint)(_width * 4)); // top row first, as the frames are grabbed
+                _log.Step($"video input {(_gpuFrames ? "ARGB32 textures" : "RGB32 in memory")} (the encoder is chosen here)", () => SetInputMediaType(_writer, stream, input));
+                _pool = _log.Step("sample pool", () => Pool(input));
             }
             finally
             {
@@ -151,12 +169,12 @@ internal sealed unsafe class Mp4Writer : IVideoSink, ISoundSink
     }
 
     /// <summary>
-    /// The pool of frame samples. On the graphics card it is required (a failure ends the opening, so the caller records from memory);
+    /// The pool of frame samples. On the graphics card it is required (a failure ends the opening, so the next way is tried);
     /// in memory a pool Windows refuses only means a new buffer per frame, as before pooling.
     /// </summary>
     private SamplePool? Pool(IntPtr input)
     {
-        if (_manager != IntPtr.Zero) return SamplePool.Create(input, _manager);
+        if (_gpuFrames) return SamplePool.Create(input, _manager);
         try
         {
             return SamplePool.Create(input, IntPtr.Zero);

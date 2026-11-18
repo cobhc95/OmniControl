@@ -9,6 +9,7 @@ namespace OmniControl.Core.Native;
 internal static class DisplayConfigNative
 {
     public const uint ActivePaths = 0x2;                       // QDC_ONLY_ACTIVE_PATHS
+    private const uint SdcUseSuppliedConfig = 0x20, SdcApply = 0x80, SdcSaveToDatabase = 0x200, SdcAllowChanges = 0x400;
     private const uint SourceDeviceName = 1, TargetDeviceName = 2;
     private const uint OutputInternal = 0x80000000, OutputDisplayPortEmbedded = 11, OutputUdiEmbedded = 13;
 
@@ -65,6 +66,24 @@ internal static class DisplayConfigNative
 
     [DllImport("user32.dll")]
     private static extern int DisplayConfigGetDeviceInfo(ref TargetName request);
+
+    [DllImport("user32.dll")]
+    private static extern int SetDisplayConfig(uint paths, [In] PathInfo[] pathArray, uint modes, [In] ModeInfo[] modeArray, uint flags);
+
+    /// <summary>
+    /// Writes the configuration Windows is showing now to its display database, the way Settings does, so that sleep, wake and restart bring
+    /// back this layout (including each display's turn) rather than an older stored one. Returns the Windows error code, 0 when saved.
+    /// </summary>
+    public static int SaveCurrentToDatabase()
+    {
+        var sizes = GetDisplayConfigBufferSizes(ActivePaths, out var pathCount, out var modeCount);
+        if (sizes != 0) return sizes;
+        var paths = new PathInfo[pathCount];
+        var modes = new ModeInfo[modeCount];
+        var queried = QueryDisplayConfig(ActivePaths, ref pathCount, paths, ref modeCount, modes, IntPtr.Zero);
+        if (queried != 0) return queried;
+        return SetDisplayConfig(pathCount, paths, modeCount, modes, SdcApply | SdcUseSuppliedConfig | SdcSaveToDatabase | SdcAllowChanges);
+    }
 
     /// <summary>What Windows knows about the monitor on one display.</summary>
     public readonly record struct Target(string FriendlyName, string DevicePath, bool IsInternal);

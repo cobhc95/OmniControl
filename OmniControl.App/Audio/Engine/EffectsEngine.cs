@@ -1,4 +1,4 @@
-﻿using Avalonia.Threading;
+using Avalonia.Threading;
 using OmniControl.App.Audio.Engine.Dsp;
 using OmniControl.App.Services;
 using OmniControl.Core.Engine.Apo;
@@ -44,6 +44,7 @@ public sealed class EffectsEngine : IDisposable
     private CableOffer _cables = CableOffer.None;
     /// <summary>The rows whose chain the last plan sends to Equalizer APO (the master there, programs on a cable with Equalizer APO).</summary>
     private IReadOnlySet<string> _sentToApo = new HashSet<string>();
+    private string? _masterApoDevice;
     private MasterFacts _masterFacts = MasterFacts.Unknown;
     private RunMethod _masterMethod = RunMethod.Apo;
     private CableUse _cableUses;
@@ -147,6 +148,19 @@ public sealed class EffectsEngine : IDisposable
         return _sentToApo.Contains(id) ? RunMethod.Apo : RunMethod.None;
     }
 
+    /// <summary>
+    /// The playback device whose sound a display copy of the effect may be fed with (what you hear, after Equalizer APO): only for an
+    /// effect Equalizer APO runs on the master, which OmniControl's own engine does not process. Null for everything else (a row in
+    /// OmniControl's own engine has the real sound; a program on a cable with Equalizer APO is not fed).
+    /// </summary>
+    public string? DisplayDeviceOf(string? key, FxSlot slot) =>
+        (key is null || key == MixerService.MasterKey) && _sentToApo.Contains(MixerService.MasterKey) && FxCatalog.EnginesOf(slot).HasFlag(FxEngines.Apo)
+            && _mixer.FxChain(null).Contains(slot) ? _masterApoDevice : null;
+
+    /// <summary>The tap on the sound entering the effect in the row's own run now (the real signal); null when OmniControl's engine does not run it.</summary>
+    internal SpectrumTap? OwnTapOf(string? key, FxSlot slot) =>
+        _runs.TryGetValue(key ?? MixerService.MasterKey, out var run) ? run.TapOf(slot) : null;
+
     /// <summary>The cable (its playback side's endpoint id) the row's run uses now, or null when no run of that row uses one; key null = the master.</summary>
     public string? CableOf(string? key) => _runs.GetValueOrDefault(key ?? MixerService.MasterKey)?.Spec.Cable;
 
@@ -239,6 +253,7 @@ public sealed class EffectsEngine : IDisposable
         _cablesInUse = plan.CablesInUse;
         _cables = new CableOffer(plan.CablePairs, plan.CableFree, plan.Bus is not null, plan.Master.NoCable);
         _sentToApo = plan.ToApo.ToHashSet();
+        _masterApoDevice = plan.MasterApoDevice;
         _bus = plan.Bus;
         _masterFacts = plan.Master;
         _masterMethod = plan.MasterMethod;

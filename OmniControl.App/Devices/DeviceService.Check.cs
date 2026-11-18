@@ -112,6 +112,26 @@ public sealed partial class DeviceService
             if (AutoCheckOf(device) is { } choice && AutoChecks.Of(choice).WhenShown) await CheckAutoAsync(device);
     }
 
+    /// <summary>The smart devices' entry in the master list of hardware watches.</summary>
+    public const string HardwareWatchId = "devices.smart";
+
+    /// <summary>Reads the state of every device that has an auto-check, due or not (the network may just have come back); one reading run at a time.</summary>
+    public async Task CheckAllNowAsync()
+    {
+        if (_autoRunning) return;
+        _autoRunning = true;
+        try
+        {
+            foreach (var device in Settings.Devices.ToList())
+            {
+                if (AutoCheckOf(device) is null) continue;
+                _lastAuto[device.Id] = DateTime.UtcNow;
+                await CheckAutoAsync(device);
+            }
+        }
+        finally { _autoRunning = false; }
+    }
+
     private async Task RunAutoChecksAsync(bool atStart)
     {
         if (_autoRunning) return;

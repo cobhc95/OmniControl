@@ -7,7 +7,7 @@
     <!-- A card with the apps scope chip: the label (wraps) and the master chip at the right, as the other half-width cards place their control -->
     <Panel ToolTip.Tip="{Binding Tip}">
         <Grid Margin="0,1" ColumnDefinitions="Auto,*" ColumnSpacing="12" IsVisible="{Binding !Half}">
-            <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+            <TextBlock Classes="cardname" Text="{Binding Label}" VerticalAlignment="Center" />
             <c:AppScopeChip Grid.Column="1" DataContext="{Binding Scope}" HorizontalAlignment="Left" />
         </Grid>
         <Grid Margin="0,1" ColumnDefinitions="*,Auto" ColumnSpacing="8" IsVisible="{Binding Half}">

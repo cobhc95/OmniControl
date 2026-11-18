@@ -20,6 +20,7 @@ public sealed partial class MixerService : IDisposable
     public const string MasterKey = "master";
 
     private readonly DispatcherTimer _timer = new() { Interval = Timing.MixerRefresh };
+    private readonly HardwareWatches _hardware;
     private readonly Dictionary<string, List<AudioSession>> _sessions = new();
     private readonly Dictionary<int, string?> _paths = new();
     private readonly HashSet<int> _applied = new();
@@ -39,9 +40,11 @@ public sealed partial class MixerService : IDisposable
     /// <summary>Reports problems the user should know about (a device change Windows refused).</summary>
     public Action<string>? Report { get; }
 
-    public MixerService(Action<string>? report = null)
+    /// <param name="hardware">The master list of hardware watches: the mixer registers its sound devices there and tells it when Windows announces a change.</param>
+    public MixerService(HardwareWatches hardware, Action<string>? report = null)
     {
         Report = report;
+        _hardware = hardware;
         _timer.Tick += (_, _) => Scan();
         foreach (var key in Settings.Apps.Select(a => a.Key).Where(IgnoredPrograms.Contains).ToList()) Remove(key); // remembered by an older version
         Scan();

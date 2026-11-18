@@ -27,7 +27,7 @@ internal sealed class DesktopDuplication : IGpuFrame, IDisposable
 {
     private readonly ScreenRect _area;
     private readonly PointerPainter _pointer;
-    private readonly Action<string> _log;
+    private readonly RecordingLog _log;
     private IntPtr _device, _context, _output, _duplication, _desktop, _desktopSurface, _frame, _frameSurface, _screen;
     private Box _box;
     private long _retryAt;
@@ -35,7 +35,10 @@ internal sealed class DesktopDuplication : IGpuFrame, IDisposable
 
     public IntPtr Device => _device;
 
-    private DesktopDuplication(ScreenRect area, PointerLook pointer, Action<string> log)
+    /// <summary>The LUID of the adapter that drives the monitor (and so holds the device, the textures and the encoder's device manager).</summary>
+    public long AdapterLuid { get; private set; }
+
+    private DesktopDuplication(ScreenRect area, PointerLook pointer, RecordingLog log)
     {
         _area = area;
         _pointer = new PointerPainter(pointer);
@@ -47,14 +50,14 @@ internal sealed class DesktopDuplication : IGpuFrame, IDisposable
     /// the reason in <paramref name="why"/>, when that cannot be done (the area spans monitors, a turned monitor, no Direct3D 11 video
     /// support, Windows refused); the caller then records with GDI.
     /// </summary>
-    public static DesktopDuplication? TryOpen(ScreenRect area, PointerLook pointer, Action<string> log, out string? why)
+    public static DesktopDuplication? TryOpen(ScreenRect area, PointerLook pointer, RecordingLog log, out string? why)
     {
         var capture = new DesktopDuplication(area, pointer, log);
         try
         {
             why = capture.Open();
         }
-        catch (Exception ex) when (ex is COMException or InvalidOperationException or DllNotFoundException or EntryPointNotFoundException)
+        catch (Exception ex) when (ex is COMException or UnauthorizedAccessException or InvalidOperationException or DllNotFoundException or EntryPointNotFoundException)
         {
             why = ex.Message;
         }
@@ -64,7 +67,7 @@ internal sealed class DesktopDuplication : IGpuFrame, IDisposable
     }
 
     /// <summary>Finds the output and its adapter, makes the device, the duplication and the two textures. Null when done, else why not.</summary>
-    private string? Open()
+    private unsafe string? Open()
     {
         var iid = IidFactory1;
         Check(CreateDXGIFactory1(ref iid, out var factory));
@@ -81,6 +84,9 @@ internal sealed class DesktopDuplication : IGpuFrame, IDisposable
         if (adapter == IntPtr.Zero) return "the area is not inside one monitor";
         try
         {
+            var owner = GetAdapterDesc1(adapter);
+            AdapterLuid = owner.Luid;
+            _log.Line($"monitor {new string(desktop.DeviceName)} is driven by \"{new string(owner.Description)}\" LUID {(uint)(owner.Luid >> 32):X8}:{(uint)owner.Luid:X8}; duplication, colour conversion and encoder device all go on it");
             if (desktop.Rotation is not (RotationIdentity or RotationUnspecified)) return "the monitor is turned";
             _box = BoxOf(desktop.Desktop);
             Check(D3D11CreateDevice(adapter, DriverTypeUnknown, IntPtr.Zero, CreateBgraSupport | CreateVideoSupport, IntPtr.Zero, 0, SdkVersion,
@@ -94,7 +100,17 @@ internal sealed class DesktopDuplication : IGpuFrame, IDisposable
         if (multithread == IntPtr.Zero) return "the graphics card's device cannot be shared with the encoder";
         SetMultithreadProtected(multithread, true); // the encoder uses the same device from its own threads
         Release(multithread);
-        if (Duplicate() is { } refused) return refused;
+        string? refused;
+        try
+        {
+            refused = Duplicate();
+        }
+        catch (UnauthorizedAccessException) // E_ACCESSDENIED; any other refusal goes to the caller, which records with GDI
+        {
+            refused = null; // the secure desktop (locked, UAC) refuses it for now: GDI copies into the textures until it can be duplicated again
+            Lost();
+        }
+        if (refused is not null) return refused;
         (_desktop, _desktopSurface) = NewTexture();
         (_frame, _frameSurface) = NewTexture();
         _screen = Gdi.GetDC(IntPtr.Zero);
@@ -103,7 +119,7 @@ internal sealed class DesktopDuplication : IGpuFrame, IDisposable
     }
 
     /// <summary>The adapter (AddRef'd) and IDXGIOutput1 of the attached monitor whose desktop holds the whole area; zeros when none.</summary>
-    private (IntPtr Adapter, IntPtr Output1, OutputDesc Desc) FindOutput(IntPtr factory)
+    private unsafe (IntPtr Adapter, IntPtr Output1, OutputDesc Desc) FindOutput(IntPtr factory)
     {
         for (uint a = 0; EnumAdapters1(factory, a, out var adapter) == 0; a++)
         {
@@ -158,6 +174,7 @@ internal sealed class DesktopDuplication : IGpuFrame, IDisposable
         if (desktop.AttachedToDesktop == 0 || !Holds(desktop.Desktop)) return "the area is no longer inside the monitor";
         var duplication = DuplicateOutput(_output, _device);
         var desc = GetDuplicationDesc(duplication);
+        _log.Line($"duplication {desc.Width}x{desc.Height} at {(desc.RefreshDenominator == 0 ? 0 : (double)desc.RefreshNumerator / desc.RefreshDenominator):0.##} Hz, format {desc.Format}, image in {(desc.DesktopImageInSystemMemory != 0 ? "system memory" : "video memory")}");
         if (desc.Rotation is not (RotationIdentity or RotationUnspecified) || desc.DesktopImageInSystemMemory != 0)
         {
             Release(duplication);
@@ -207,7 +224,7 @@ internal sealed class DesktopDuplication : IGpuFrame, IDisposable
     {
         var hr = AcquireNextFrame(_duplication, 0, out var resource);
         if (hr == ErrorWaitTimeout) return; // nothing changed: the last picture stands
-        if (hr == ErrorAccessLost)
+        if (hr is ErrorAccessLost or AccessDenied)
         {
             Lost();
             CopyWithGdi();
@@ -235,7 +252,7 @@ internal sealed class DesktopDuplication : IGpuFrame, IDisposable
         _retryAt = Environment.TickCount64 + CoreTiming.RecordDuplicationRetryMs;
         if (_lossLogged) return;
         _lossLogged = true;
-        _log("Screen recording: Windows stopped the graphics-card copy of the screen (a display change or the secure desktop); frames are copied with GDI until it is back.");
+        _log.Line("Windows stopped the graphics-card copy of the screen (a display change or the secure desktop); frames are copied with GDI until it is back.");
     }
 
     private void TryDuplicateAgain()
@@ -244,7 +261,7 @@ internal sealed class DesktopDuplication : IGpuFrame, IDisposable
         {
             if (Duplicate() is null) return;
         }
-        catch (COMException)
+        catch (Exception ex) when (ex is UnauthorizedAccessException or COMException) // E_ACCESSDENIED comes as UnauthorizedAccessException
         {
             // still refused (the secure desktop is up, the mode is changing): GDI copies go on and it is tried again later
         }

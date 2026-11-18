@@ -26,8 +26,9 @@ public sealed partial class VolumePageViewModel
 
         var mic = new HotkeyLevel("mic", "Microphone level");
         var volume = new HotkeyLevel("volume", "Volume");
-        hotkeys.Register(new HotkeyAction("volume.mic.mute", "Toggle microphone mute", Title, "sound audio input microphone mic mute silence",
-            _ => StepInput(0, toggleMute: true)) { Icon = MicIcon, Editor = MicMuteEditor() });
+        var micMute = new HotkeyAction("volume.mic.mute", "Toggle microphone mute", Title, "sound audio input microphone mic mute silence",
+            _ => StepInput(0, toggleMute: true)) { Icon = MicIcon, Editor = MicMuteEditor(), Family = MicMuteFamily.Family, FamilyRole = OnOffFamily.ToggleRole };
+        hotkeys.Register(MicMuteFamily.Siblings(micMute, muted => StepInput(0, toggleMute: true, muteTo: muted)).Prepend(micMute));
         hotkeys.Register(new HotkeyAction("volume.mic.fx", "Toggle microphone FX", Title, "sound audio input microphone mic fx effects chain",
             _ =>
             {
@@ -50,11 +51,15 @@ public sealed partial class VolumePageViewModel
 
         hotkeys.Register(HotkeyAction.ForLevel("volume.up", "Volume up", Title, "sound audio master louder", volume, +1, (_, delta) => StepMaster(delta)));
         hotkeys.Register(HotkeyAction.ForLevel("volume.down", "Volume down", Title, "sound audio master quieter", volume, -1, (_, delta) => StepMaster(delta)));
-        hotkeys.Register(new HotkeyAction("volume.mute", "Toggle mute", Title, "sound audio master mute silence", _ => ToggleMasterMute()) { SuggestedIcons = new[] { "mute", "volume" } });
+        var mute = new HotkeyAction("volume.mute", "Toggle mute", Title, "sound audio master mute silence", _ => ToggleMasterMute())
+            { SuggestedIcons = new[] { "mute", "volume" }, Family = MuteFamily.Family, FamilyRole = OnOffFamily.ToggleRole };
+        hotkeys.Register(MuteFamily.Siblings(mute, muted => ToggleMasterMute(muted)).Prepend(mute));
         hotkeys.Register(new HotkeyAction("volume.closed.toggle", "Show or hide closed programs", Title, "sound audio mixer programs apps closed not open remembered list show hide",
             _ => OnUi(() => { if (Outputs.ProgramTools is { } tools) tools.ShowClosed = !tools.ShowClosed; })));
-        hotkeys.Register(new HotkeyAction("volume.fx", "Toggle master FX", Title, "sound audio master fx effects chain equaliser",
-            _ => _mixer.SetFxByUser(null, !_mixer.IsFxOn(null))) { Icon = FxIcon, SuggestedIcons = new[] { FxIcon, "eq", "wave" } });
+        var masterFx = new HotkeyAction("volume.fx", "Toggle master FX", Title, "sound audio master fx effects chain equaliser",
+            _ => _mixer.SetFxByUser(null, !_mixer.IsFxOn(null)))
+            { Icon = FxIcon, SuggestedIcons = new[] { FxIcon, "eq", "wave" }, Family = MasterFxFamily.Family, FamilyRole = OnOffFamily.ToggleRole };
+        hotkeys.Register(MasterFxFamily.Siblings(masterFx, on => _mixer.SetFxByUser(null, on)).Prepend(masterFx));
         SyncHotkeyAvailability();
     }
 
@@ -93,15 +98,17 @@ public sealed partial class VolumePageViewModel
     }
 
     /// <summary>Off the UI thread like the steps (Windows audio calls are slow); the pop-up shows before the change is written.</summary>
-    private void ToggleMasterMute() => Task.Run(() =>
+    /// <summary>Mutes or unmutes the master (<paramref name="to"/>: true = muted), or flips it when null.</summary>
+    private void ToggleMasterMute(bool? to = null) => Task.Run(() =>
     {
         var device = _mixer.MasterDeviceId;
         if (!CoreAudio.GetMaster(out var v, out var muted, device)) return;
-        _osd.ShowVolume(v, !muted);
+        var next = to ?? !muted;
+        _osd.ShowVolume(v, next);
         _osd.NoteOwnChange(OsdService.VolumeElement);
-        CoreAudio.SetMasterMute(!muted, device);
+        CoreAudio.SetMasterMute(next, device);
         _masterChange = DateTime.UtcNow;
-        Dispatcher.UIThread.Post(() => _master.Sync(true, v, _master.Pan, !muted, _master.FxOn, _master.FxCount));
+        Dispatcher.UIThread.Post(() => _master.Sync(true, v, _master.Pan, next, _master.FxOn, _master.FxCount));
     });
 
     // ---- microphone ----
@@ -110,15 +117,15 @@ public sealed partial class VolumePageViewModel
     /// Hotkeys: change the level of, or mute, the default recording device. Off the UI thread like the master steps: listing the
     /// recording devices and changing one are slow Windows calls that held up drawing the pop-up. One step at a time, in order.
     /// </summary>
-    private void StepInput(int delta, bool toggleMute = false) => Task.Run(() =>
+    private void StepInput(int delta, bool toggleMute = false, bool? muteTo = null) => Task.Run(() =>
     {
         lock (_inputStep)
         {
             var def = CoreAudio.InputDevices().FirstOrDefault(d => d.IsDefault);
             if (def is null || !CoreAudio.GetDeviceVolume(def.Id, out var v, out var muted)) return;
             NoteInputChange();
-            if (toggleMute && MuteByKey(def.Id, v, !muted)) return;
-            if (toggleMute) muted = !muted;
+            if (toggleMute && MuteByKey(def.Id, v, muteTo ?? !muted)) return;
+            if (toggleMute) muted = muteTo ?? !muted;
             else
             {
                 if (muted && delta > 0) muted = false;

@@ -60,6 +60,32 @@ public sealed partial class EqPanelItem : ObservableObject, IEditorItem, ISideNa
     /// <summary>The equaliser's overall gain setting (the effect's own gain parameter), edited by the vertical slider beside the graph.</summary>
     public SliderItem? OverallGain { get; set; }
 
+    /// <summary>Opens this equaliser's live spectrum (pictures arrive on the UI thread) until the result is disposed; set by the effect that owns the card.</summary>
+    public Func<Action<float[]?>, IDisposable>? OpenSpectrum { get; set; }
+
+    private IDisposable? _spectrumSession;
+
+    /// <summary>The spectrum drawn behind the curve: a level (dB) per band from <see cref="Audio.Engine.Dsp.SpectrumAnalyzer"/>, or null while there is no sound.</summary>
+    public float[]? Spectrum { get; private set; }
+
+    /// <summary>The graph came on screen (true) or left it (false): the spectrum runs only while it is shown, and its capture is released when it is not.</summary>
+    public void WatchSpectrum(bool shown)
+    {
+        _spectrumSession?.Dispose();
+        _spectrumSession = null;
+        if (shown && OpenSpectrum is { } open) _spectrumSession = open(OnSpectrum);
+        else SetSpectrum(null);
+    }
+
+    private void OnSpectrum(float[]? bands) => SetSpectrum(bands);
+
+    private void SetSpectrum(float[]? bands)
+    {
+        if (Spectrum is null && bands is null) return;
+        Spectrum = bands;
+        Redraw?.Invoke();
+    }
+
     /// <summary>A band was changed, added or removed by the user: save it.</summary>
     public event Action? Edited;
 

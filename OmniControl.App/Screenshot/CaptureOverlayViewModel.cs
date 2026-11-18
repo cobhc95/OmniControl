@@ -4,6 +4,7 @@ using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OmniControl.App.Services;
@@ -40,7 +41,7 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
 
     private readonly ScreenRect _pictureBounds;
 
-    /// <summary>The frozen picture as shown (immutable, so the renderer keeps it on the graphics card); released with the overlay.</summary>
+    /// <summary>The frozen picture (immutable, so reading a part back never copies all of it); released with the overlay.</summary>
     public Bitmap Picture { get; }
 
     /// <summary>The picture's width in pixels: the view's scale between screen units and picture pixels.</summary>
@@ -54,7 +55,7 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
     /// <summary>The drawing being made, shown until the press ends.</summary>
     public Mark? Preview { get; private set; }
 
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasSelection), nameof(ShowBars), nameof(SizeText))] private ScreenRect? _selection;
+    [ObservableProperty] private ScreenRect? _selection;
 
     [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowBars))] private bool _isDragging;
 
@@ -70,6 +71,21 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
     public bool HasSelection => Selection is { IsEmpty: false };
     public bool ShowBars => HasSelection && !IsDragging;
     public string SizeText => Selection is { } s ? $"{s.Width} × {s.Height}" : string.Empty;
+
+    /// <summary>
+    /// Tells the bindings only what really changed: moving the selection changes neither whether there is one nor its size, so a move
+    /// costs the bars and the size label nothing (the bindings are resolved by reflection, on every pointer move before).
+    /// </summary>
+    partial void OnSelectionChanged(ScreenRect? oldValue, ScreenRect? newValue)
+    {
+        if ((oldValue is { IsEmpty: false }) != (newValue is { IsEmpty: false }))
+        {
+            OnPropertyChanged(nameof(HasSelection));
+            OnPropertyChanged(nameof(ShowBars));
+        }
+        if (oldValue?.Width != newValue?.Width || oldValue?.Height != newValue?.Height) OnPropertyChanged(nameof(SizeText));
+    }
+
     public bool IsPen => Tool == DrawTool.Pen;
     public bool IsLine => Tool == DrawTool.Line;
     public bool IsArrow => Tool == DrawTool.Arrow;
@@ -90,10 +106,10 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
     /// <summary>The selection changed (or the drawing in progress began or ended): the view moves its frame, clip and bars.</summary>
     public event Action? Redraw;
 
-    /// <summary>A finished drawing came or went (drawn, undone, redone): the view draws its finished drawings again.</summary>
+    /// <summary>A finished drawing came or went (drawn, undone, redone): the view repaints where it came or went.</summary>
     public event Action? MarksChanged;
 
-    /// <summary>Only the drawing in progress changed (each pointer move while drawing): the view draws just that layer.</summary>
+    /// <summary>Only the drawing in progress changed (each pointer move while drawing): the view repaints only where it changed.</summary>
     public event Action? PreviewChanged;
 
     /// <summary>The text tool was pressed at this point (picture pixels): the view opens a box there.</summary>
@@ -330,8 +346,13 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
     private void Record()
     {
         if (Selection is not { IsEmpty: false } sel) return;
-        _close();
-        _output.Record(sel.Offset(_monitor.X, _monitor.Y), _monitor, Scale);
+        var area = sel.Offset(_monitor.X, _monitor.Y);
+        // Posted: this runs inside the picture window's own message, which the close destroys, and the recording's windows belong to the UI thread's own turn
+        Dispatcher.UIThread.Post(() =>
+        {
+            _close();
+            _output.Record(area, _monitor, Scale);
+        });
     }
 
     /// <summary>Reads the QR codes in the selection (drawings left out) for the pop-down: one row per code, or one plain line.</summary>
@@ -362,7 +383,7 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
     private void Finish(Action<ScreenImage> use)
     {
         if (Selection is not { IsEmpty: false } sel) return;
-        var image = ImageBitmaps.Export(Picture, sel, Marks);
+        var image = ImageBitmaps.Render(Picture, sel, Marks);
         _close();
         use(image);
     }

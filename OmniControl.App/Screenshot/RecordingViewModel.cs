@@ -8,13 +8,14 @@ using OmniControl.Core.Engine.Screenshot;
 namespace OmniControl.App.Screenshot;
 
 /// <summary>
-/// The recording bar: the timer, Pause / Resume, Stop, and the microphone and system sound switches (an MP4 only). Esc on the bar stops.
+/// The recording bar: the timer, Pause / Resume, Stop, Cancel, and the microphone and system sound switches (an MP4 only). Esc on the bar stops, twice quickly cancels.
 /// The recorder does the work; this only asks it and shows what it says.
 /// </summary>
 public sealed partial class RecordingViewModel : ObservableObject, IDisposable
 {
     private readonly ScreenRecorder _recorder;
-    private readonly Action _stop;
+    private readonly Action _stop, _cancel;
+    private DateTime _lastEsc = DateTime.MinValue;
     private readonly Action<string> _report;
     private readonly DispatcherTimer _tick = new() { Interval = Timing.RecordingTimerTick };
 
@@ -33,10 +34,11 @@ public sealed partial class RecordingViewModel : ObservableObject, IDisposable
     public string MicrophoneTip => Microphone ? "Microphone: on" : "Microphone: off";
     public string SystemSoundTip => SystemSound ? "System sound: on" : "System sound: off";
 
-    public RecordingViewModel(ScreenRecorder recorder, Action stop, Action<string> report, bool systemSound, bool microphone)
+    public RecordingViewModel(ScreenRecorder recorder, Action stop, Action cancel, Action<string> report, bool systemSound, bool microphone)
     {
         _recorder = recorder;
         _stop = stop;
+        _cancel = cancel;
         _report = report;
         _systemSound = recorder.TakesSound && systemSound;
         _microphone = recorder.TakesSound && microphone;
@@ -58,18 +60,22 @@ public sealed partial class RecordingViewModel : ObservableObject, IDisposable
     private void Stop() => _stop();
 
     [RelayCommand]
-    private void ToggleMicrophone()
+    private void Cancel() => _cancel();
+
+    /// <summary>Opening or closing a sound capture runs off the UI thread; the switch shows the new state once it is done.</summary>
+    [RelayCommand]
+    private async Task ToggleMicrophone()
     {
         var on = !Microphone;
-        if (_recorder.SetMicrophone(on) is { } problem) _report(problem);
+        if (await _recorder.SetMicrophoneAsync(on) is { } problem) _report(problem);
         else Microphone = on;
     }
 
     [RelayCommand]
-    private void ToggleSystemSound()
+    private async Task ToggleSystemSound()
     {
         var on = !SystemSound;
-        if (_recorder.SetSystemSound(on) is { } problem) _report(problem);
+        if (await _recorder.SetSystemSoundAsync(on) is { } problem) _report(problem);
         else SystemSound = on;
     }
 
@@ -77,7 +83,11 @@ public sealed partial class RecordingViewModel : ObservableObject, IDisposable
     public bool HandleKey(Key key)
     {
         if (key != Key.Escape) return false;
-        _stop();
+        var now = DateTime.UtcNow;
+        var twice = now - _lastEsc <= Timing.RecordingEscTwice;
+        _lastEsc = now;
+        if (twice) _cancel(); // Esc twice quickly is the kill switch
+        else _stop();
         return true;
     }
 

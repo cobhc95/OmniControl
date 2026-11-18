@@ -16,6 +16,7 @@ public sealed class PluginChainHost : IDisposable
         public IPluginEffect? Effect;
         public string? Error;
         public int Editors;
+        public int Windows; // of those, the plug-in's own editor windows (not its settings list)
     }
 
     private readonly Dictionary<FxSlot, Loaded> _loaded = new(ReferenceEqualityComparer.Instance);
@@ -29,6 +30,15 @@ public sealed class PluginChainHost : IDisposable
     /// the saved settings (Equalizer APO) takes them again. UI thread.
     /// </summary>
     public event Action? StatesSaved;
+
+    /// <summary>The plug-in's own editor opened or closed (UI thread): what shows its meters and analysers follows it.</summary>
+    public event Action<FxSlot>? EditorWindowChanged;
+
+    /// <summary>The plug-ins whose own editor is open now.</summary>
+    public IReadOnlyList<FxSlot> EditorSlots() => _loaded.Where(e => e.Value.Windows > 0).Select(e => e.Key).ToList();
+
+    /// <summary>The plug-in's own editor (not its settings list) is open now.</summary>
+    public bool HasEditorWindow(FxSlot slot) => _loaded.TryGetValue(slot, out var entry) && entry.Windows > 0;
 
     /// <summary>The slot's plug-in, loading it (with its saved settings) the first time; or the reason it can't run.</summary>
     internal (IPluginEffect? Effect, string? Error) Get(FxSlot slot)
@@ -73,6 +83,8 @@ public sealed class PluginChainHost : IDisposable
         }
         if (editor is null) { error = "This plug-in has no editor window."; return null; }
         _loaded[slot].Editors++;
+        _loaded[slot].Windows++;
+        EditorWindowChanged?.Invoke(slot);
         return editor;
     }
 
@@ -90,10 +102,15 @@ public sealed class PluginChainHost : IDisposable
         return effect;
     }
 
-    /// <summary>The editor or settings list was closed: keep what the user changed.</summary>
-    public void EditorClosed(FxSlot slot)
+    /// <summary>The editor or settings list was closed: keep what the user changed. <paramref name="wasEditor"/>: it was the plug-in's own editor.</summary>
+    public void EditorClosed(FxSlot slot, bool wasEditor)
     {
-        if (_loaded.TryGetValue(slot, out var entry)) entry.Editors = Math.Max(0, entry.Editors - 1);
+        if (_loaded.TryGetValue(slot, out var entry))
+        {
+            entry.Editors = Math.Max(0, entry.Editors - 1);
+            if (wasEditor) entry.Windows = Math.Max(0, entry.Windows - 1);
+        }
+        if (wasEditor) EditorWindowChanged?.Invoke(slot); // before anything is unloaded: a feed stops using the plug-in first
         SaveStates();
     }
 

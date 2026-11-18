@@ -102,11 +102,21 @@ public sealed partial class OtherPcsService : IDisposable
         {
             if (!PcIds.IsValid(pair.Id) || pair.Id == clean.OwnId || clean.Pairs.Any(p => p.Id == pair.Id)) continue;
             pair.Name = PcIds.CleanName(pair.Name);
+            pair.Nickname = string.IsNullOrWhiteSpace(pair.Nickname) ? string.Empty : PcIds.CleanName(pair.Nickname);
             pair.Address ??= string.Empty;
             pair.TailscaleAddress ??= string.Empty;
             if (pair.Route == PcRoute.Tailscale && pair.TailscaleAddress.Length == 0) pair.TailscaleAddress = pair.Address; // saved before the Tailscale address had its own place
             clean.Pairs.Add(pair);
         }
+        foreach (var tab in loaded.SetupTabs ?? new List<SetupTab>())
+        {
+            if (string.IsNullOrWhiteSpace(tab.Id) || clean.SetupTabs.Any(t => t.Id == tab.Id)) continue;
+            tab.Address ??= string.Empty;
+            tab.Target ??= string.Empty;
+            clean.SetupTabs.Add(tab);
+        }
+        var known = clean.Pairs.Select(p => p.Id).Concat(clean.SetupTabs.Select(t => t.Id)).ToList();
+        clean.TabOrder = (loaded.TabOrder ?? new List<string>()).Where(known.Contains).Concat(known).Distinct().ToList(); // saved order first, whatever it lacks after
         if (clean.OwnId != loaded.OwnId) AppDataStore.Save(Store, clean);
         return clean;
     }
@@ -125,7 +135,41 @@ public sealed partial class OtherPcsService : IDisposable
         _credentials.Delete(CredentialTarget(id));
         _secrets.TryRemove(id, out _);
         _settings.Pairs.Remove(pair);
+        _settings.TabOrder.Remove(id);
         Save();
+        RaiseChanged();
+    }
+
+    /// <summary>The ids of all tabs, paired PCs and New PC tabs, in the saved order.</summary>
+    public IReadOnlyList<string> TabOrder => _settings.TabOrder.ToList();
+
+    /// <summary>Moves a tab (a paired PC or a New PC tab) to another place (a tab dragged); the one order is saved.</summary>
+    public void Move(string id, int to)
+    {
+        var from = _settings.TabOrder.IndexOf(id);
+        if (from < 0 || to < 0 || to >= _settings.TabOrder.Count || to == from) return;
+        _settings.TabOrder = Reorder.Moved(_settings.TabOrder, new[] { from }, to);
+        Save();
+        RaiseChanged();
+    }
+
+    /// <summary>The display a per-display card of a paired PC drives (empty: all displays).</summary>
+    public string ScreenPick(string id, string card) => Find(id)?.ScreenPicks.GetValueOrDefault(card) ?? string.Empty;
+
+    public void SetScreenPick(string id, string card, string display)
+    {
+        if (Find(id) is not { } pair) return;
+        if (display.Length == 0) pair.ScreenPicks.Remove(card); else pair.ScreenPicks[card] = display;
+        Save();
+    }
+
+    /// <summary>Gives a paired PC a nickname that is kept on this PC only (empty removes it). Everything it shared is listed again under the new name at once.</summary>
+    public void Rename(string id, string nickname)
+    {
+        if (Find(id) is not { } pair) return;
+        pair.Nickname = string.IsNullOrWhiteSpace(nickname) ? string.Empty : PcIds.CleanName(nickname);
+        Save();
+        Reregister(id);
         RaiseChanged();
     }
 
@@ -134,6 +178,7 @@ public sealed partial class OtherPcsService : IDisposable
     {
         if (Find(id) is not { } pair) return;
         pair.Route = route;
+        _probes.Remove(id); // what was measured over the old route says nothing about the new one
         if (route == PcRoute.Address) pair.Address = address.Trim();
         Save();
         if (route == PcRoute.Tailscale) CheckPairTailscale(id);

@@ -1,0 +1,17 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:OmniControl.App.Controls"
+             x:Class="OmniControl.App.Controls.BrowserTabStrip">
+    <!-- THE browser-style tab strip (docs/mockups/other-pcs-browser-tabs.html; styles Styles/BrowserTabs.axaml): the tabs (a ListBox, so Left/Right walk and open
+         them), the "+" directly after the last tab, and a thin baseline behind the tabs that the open tab covers. The page gives the items, the
+         tab's content (TabContent) and what "+" does; drag-to-reorder, Ctrl+Tab and Esc are wired in the code. -->
+    <Grid>
+        <Border Classes="tabbaseline" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+            <ListBox x:Name="Tabs" Classes="browsertabs" KeyboardNavigation.TabNavigation="Once" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
+            <Button x:Name="AddButton" Classes="browsertabadd" IsVisible="False">
+                <local:IconGlyph LibraryId="plus" />
+            </Button>
+        </StackPanel>
+    </Grid>
+</UserControl>

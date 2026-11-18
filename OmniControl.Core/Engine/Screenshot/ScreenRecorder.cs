@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using static OmniControl.Core.Native.VideoNative;
 
 namespace OmniControl.Core.Engine.Screenshot;
@@ -6,102 +5,147 @@ namespace OmniControl.Core.Engine.Screenshot;
 /// <summary>The most a recording may grow: its length, its file size, and the free disk space it must leave.</summary>
 public sealed record RecordingLimits(TimeSpan MaxLength, long MaxBytes, long MinFreeBytes);
 
-/// <summary>What to record: the area (physical pixels, already even for MP4), the file, the format and its settings, sound and pointer.</summary>
+/// <summary>
+/// What to record: the area (physical pixels, already even for MP4), the file, the format and its settings, sound and pointer, and the
+/// way remembered from earlier recordings on this PC (<see cref="RecordingRoute"/>; null = start at the top).
+/// </summary>
 public sealed record RecordingRequest(ScreenRect Area, string Path, VideoFormat Format, int FrameRate, VideoQuality Quality, bool Hardware,
-    bool SystemSound, bool Microphone, PointerLook Pointer, RecordingLimits Limits);
+    bool SystemSound, bool Microphone, PointerLook Pointer, RecordingLimits Limits, RecordingRoute? Route = null);
 
 /// <summary>Why a recording ended.</summary>
-public enum RecordingEnd { Stopped, LengthLimit, SizeLimit, DiskFull, Failed }
-
-/// <summary>How a recording ended: the file (null when nothing was kept), why, and a sentence when there is something to say.</summary>
-public sealed record RecordingResult(string? Path, RecordingEnd End, string? Message);
+public enum RecordingEnd { Stopped, LengthLimit, SizeLimit, DiskFull, Failed, Cancelled }
 
 /// <summary>
-/// Records an area of the screen to an MP4 or a GIF on a thread of its own: a frame is copied every frame length of the recording's own
-/// clock (<see cref="RecordingClock"/>, which stands still while paused), late frames are skipped rather than queued, and the sound
-/// follows the same clock a little behind (<see cref="CoreTiming.RecordSoundLagMs"/>). The limits are checked every
-/// <see cref="CoreTiming.RecordLimitCheckMs"/>. An MP4 with the hardware encoder keeps its frames on the graphics card (Desktop
-/// Duplication into the encoder, <see cref="GpuFrames"/>) when it can, else, said once in the log, copies them with GDI
-/// (<see cref="GdiFrames"/>), as a GIF always does (its encoding on a worker, <see cref="QueuedVideoSink"/>). Everything it opens
-/// (screen copy, encoder, sound captures, timer resolution) is released when it ends, and a file that could not be finished is deleted.
+/// How a recording ended: the file (null when nothing was kept), why, a sentence when there is something to say, the way to remember for
+/// the next recording on this PC (the caller stores it when it differs from what it passed), and the recording's log lines ("Copy details").
+/// </summary>
+public sealed record RecordingResult(string? Path, RecordingEnd End, string? Message, RecordingRoute? Route = null, string? Details = null);
+
+/// <summary>A recording that could not start: the sentence for the person, and the recording's log lines for "Copy details".</summary>
+public sealed class RecordingFailedException(string message, string details) : InvalidOperationException(message)
+{
+    public string Details { get; } = details;
+}
+
+/// <summary>
+/// Records an area of the screen to an MP4 or a GIF, and never hangs or blocks its caller: a watchdog thread (MTA) runs the recording as a
+/// chain of ways (<see cref="RecordingStep"/>: the graphics card's encoder fed by Desktop Duplication on the adapter that drives the monitor;
+/// a graphics card's encoder, another adapter's when there is one, fed by GDI; the software encoder), each a <see cref="RecordingAttempt"/>
+/// on its own thread and part file. A way that does not open within <see cref="CoreTiming.RecordOpenWaitMs"/>, encodes no frame within
+/// <see cref="CoreTiming.RecordFirstFrameWaitMs"/>, has a call that does not return within <see cref="CoreTiming.RecordStuckMs"/> or fails
+/// is left behind and the next one records (said in the log and to the person); a Stop whose file is not finished within
+/// <see cref="CoreTiming.RecordFinishWaitMs"/> ends as failed, and the next recording starts at the next way. The way that worked is
+/// handed back to be remembered for this PC's drivers. Every method here only sets a flag or starts a task, so the UI thread never waits
+/// on Windows' encoder, screen copy or sound. Everything it opens is released when it ends, and a file that could not be finished is deleted.
 /// </summary>
 public sealed class ScreenRecorder
 {
     private readonly RecordingRequest _request;
-    private readonly Action<string> _log;
+    private readonly RecordingLog _log;
+    private readonly Action<string>? _notice;
+    private readonly RecordingWaits _waits;
+    private readonly RecordingFaults? _faults;
     private readonly int _frameRate;
-    private readonly RecordingClock _clock = new();
     private readonly RecordingSound? _sound;
     private readonly object _signal = new();
+    private readonly List<string> _notes = new();
     private readonly TaskCompletionSource<RecordingResult> _done = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TaskCompletionSource<string?> _started = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private volatile bool _stop;
-    private byte[] _pcm = Array.Empty<byte>();
+    private volatile bool _stop, _abort, _paused;
+    private volatile RecordingAttempt? _attempt;
 
     /// <summary>Finishes when the recording has ended and its file is complete (or deleted), whatever ended it.</summary>
     public Task<RecordingResult> Completion => _done.Task;
 
-    /// <summary>The recording's length so far (pauses not counted).</summary>
-    public TimeSpan Elapsed => _clock.Elapsed;
+    /// <summary>The recording's length so far (pauses not counted; from the start of the way that records now).</summary>
+    public TimeSpan Elapsed => _attempt?.Clock?.Elapsed ?? TimeSpan.Zero;
 
-    public bool IsPaused => _clock.IsPaused;
+    public bool IsPaused => _paused;
 
     /// <summary>True when the file takes sound (MP4); a GIF has none.</summary>
     public bool TakesSound => _sound is not null;
 
-    private ScreenRecorder(RecordingRequest request, Action<string> log)
+    private ScreenRecorder(RecordingRequest request, Action<string> log, Action<string>? notice, RecordingWaits waits, RecordingFaults? faults)
     {
         _request = request;
-        _log = log;
+        _log = new RecordingLog(log);
+        _notice = notice;
+        _waits = waits;
+        _faults = faults;
         _frameRate = VideoMath.FrameRateFor(request.Format, request.FrameRate);
         if (VideoMath.IsMp4(request.Format)) _sound = new RecordingSound();
     }
 
     /// <summary>
-    /// Opens the file and starts recording. The result has the recorder, and a sentence when something was not as asked (sound that could
-    /// not be opened, the other encoder used). Throws <see cref="InvalidOperationException"/> when the recording could not start.
-    /// <paramref name="log"/> gets technical facts the person need not see (the graphics-card path not used, and why); any thread.
+    /// Starts recording. The result has the recorder, and a sentence when something was not as asked (sound that could not be opened, another
+    /// way used). Throws <see cref="RecordingFailedException"/> when no way could start. <paramref name="log"/> gets the recording's diagnostic
+    /// lines (<see cref="RecordingLog"/>) and <paramref name="notice"/> a sentence when the way changes while recording; both on any thread.
     /// </summary>
-    public static async Task<(ScreenRecorder Recorder, string? Note)> StartAsync(RecordingRequest request, Action<string> log)
+    public static Task<(ScreenRecorder Recorder, string? Note)> StartAsync(RecordingRequest request, Action<string> log, Action<string>? notice = null) =>
+        StartAsync(request, log, notice, RecordingWaits.Default, null);
+
+    internal static async Task<(ScreenRecorder Recorder, string? Note)> StartAsync(RecordingRequest request, Action<string> log, Action<string>? notice,
+        RecordingWaits waits, RecordingFaults? faults)
     {
-        var recorder = new ScreenRecorder(request, log);
-        var notes = new List<string>();
-        if (recorder._sound is { } sound)
-        {
-            if (request.SystemSound && sound.SetSystem(true) is { } system) notes.Add(system);
-            if (request.Microphone && sound.SetMicrophone(true) is { } mic) notes.Add(mic);
-        }
-        var thread = new Thread(recorder.Run) { IsBackground = true, Name = "Screen recording", Priority = ThreadPriority.AboveNormal };
+        var recorder = new ScreenRecorder(request, log, notice, waits, faults);
+        var thread = new Thread(recorder.Watch) { IsBackground = true, Name = "Screen recording watchdog" };
+        thread.SetApartmentState(ApartmentState.MTA);
         thread.Start();
-        var problem = await recorder._started.Task;
-        if (recorder._done.Task.IsCompleted) throw new InvalidOperationException((await recorder._done.Task).Message);
-        if (problem is not null) notes.Add(problem);
-        return (recorder, notes.Count > 0 ? string.Join(" ", notes) : null);
+        string? note;
+        try
+        {
+            note = await recorder._started.Task.WaitAsync(TimeSpan.FromMilliseconds(CoreTiming.RecordStartWaitMs)).ConfigureAwait(false);
+        }
+        catch (TimeoutException)
+        {
+            recorder.Abort();
+            throw new RecordingFailedException("it did not start in time; the details are in the log.", recorder._log.Text);
+        }
+        if (recorder._done.Task.IsCompleted)
+        {
+            var result = await recorder._done.Task.ConfigureAwait(false);
+            throw new RecordingFailedException(result.Message ?? "it did not start.", result.Details ?? recorder._log.Text);
+        }
+        return (recorder, note);
     }
 
     public void Pause()
     {
-        _clock.Pause();
+        _paused = true;
+        _attempt?.Pause();
         Wake();
     }
 
     public void Resume()
     {
-        _clock.Resume();
+        _paused = false;
+        _attempt?.Resume();
         Wake();
     }
 
-    /// <summary>Turns recording what the speakers play on or off. Null when done, otherwise why not.</summary>
-    public string? SetSystemSound(bool on) => _sound?.SetSystem(on);
+    /// <summary>Turns recording what the speakers play on or off, off the caller's thread. Null when done, otherwise why not.</summary>
+    public Task<string?> SetSystemSoundAsync(bool on) => _sound is { } sound ? Task.Run(() => sound.SetSystem(on)) : Task.FromResult<string?>(null);
 
-    /// <summary>Turns recording the microphone on or off. Null when done, otherwise why not.</summary>
-    public string? SetMicrophone(bool on) => _sound?.SetMicrophone(on);
+    /// <summary>Turns recording the microphone on or off, off the caller's thread. Null when done, otherwise why not.</summary>
+    public Task<string?> SetMicrophoneAsync(bool on) => _sound is { } sound ? Task.Run(() => sound.SetMicrophone(on)) : Task.FromResult<string?>(null);
 
-    /// <summary>Asks the recording to end; <see cref="Completion"/> finishes once the file is complete.</summary>
+    /// <summary>Asks the recording to end; <see cref="Completion"/> finishes once the file is complete (or the watchdog gives up on it).</summary>
     public void Stop()
     {
         _stop = true;
         Wake();
+    }
+
+    /// <summary>
+    /// Ends the recording at once and keeps nothing: <see cref="Completion"/> finishes now (no file), even when a recording thread is stuck
+    /// in the encoder; that thread releases what it holds and deletes its part file whenever it gets free.
+    /// </summary>
+    public void Abort()
+    {
+        _abort = true;
+        _stop = true;
+        Wake();
+        _done.TrySetResult(new RecordingResult(null, RecordingEnd.Cancelled, null, _request.Route, _log.Text));
     }
 
     private void Wake()
@@ -109,171 +153,193 @@ public sealed class ScreenRecorder
         lock (_signal) Monitor.PulseAll(_signal);
     }
 
-    /// <summary>Waits up to <paramref name="ms"/> or until stopped, paused or resumed.</summary>
     private void Sleep(int ms)
     {
-        lock (_signal)
-        {
-            if (!_stop) Monitor.Wait(_signal, ms);
-        }
+        lock (_signal) Monitor.Wait(_signal, ms);
     }
 
-    private void Run()
+    /// <summary>The watchdog: opens the sound, lists the adapters, then runs the chain of ways until one ends the recording.</summary>
+    private void Watch()
     {
         timeBeginPeriod(1); // frame times to the millisecond; given back below
-        IVideoSink? sink = null;
-        IFrameSource? frames = null;
-        var end = RecordingEnd.Stopped;
-        string? message = null;
         try
         {
-            (sink, frames) = Open(out var note);
-            _started.TrySetResult(note);
-            end = Record(frames, sink);
-            sink.Finish(_clock.Ticks);
+            var area = _request.Area;
+            _log.Line($"start: {VideoMath.Name(_request.Format)} {area.Width}x{area.Height} at {area.X},{area.Y}, {_request.FrameRate} fps asked, {_frameRate} used, " +
+                      $"quality {_request.Quality}, hardware encoder {(_request.Hardware ? "on" : "off")}, system sound {(_request.SystemSound ? "on" : "off")}, " +
+                      $"microphone {(_request.Microphone ? "on" : "off")}; Windows {Environment.OSVersion.Version}, {Thread.CurrentThread.GetApartmentState()}");
+            OpenSound();
+            var adapters = GraphicsAdapters.List(_log);
+            var key = GraphicsAdapters.MachineKey(adapters);
+            var chain = RecordingSteps.Chain(_request.Format, _request.Hardware);
+            if (chain.Count > 1) LogEncoders(adapters);
+            RunChain(chain, RecordingSteps.StartIndex(chain, _request.Route, key, _log), adapters, key);
         }
-        catch (Exception ex) when (ex is COMException or IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException)
+        catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            end = RecordingEnd.Failed;
-            message = ex.Message;
+            _log.Line($"the watchdog failed: {RecordingLog.Describe(ex)}"); // a bug must not leave the caller waiting
+            End(new RecordingResult(null, RecordingEnd.Failed, "the recording failed; the details are in the log.", _request.Route, _log.Text));
         }
         finally
         {
-            sink?.Dispose(); // before the frames: an MP4 on the graphics card uses their device until it is released
-            frames?.Dispose();
-            _sound?.Dispose();
+            if (_sound is { } sound) _log.Step("sound stop", sound.Dispose);
             timeEndPeriod(1);
+            _log.Line("recording over");
         }
-        var path = end == RecordingEnd.Failed ? Delete(_request.Path) : _request.Path;
-        _done.TrySetResult(new RecordingResult(path, end, message ?? EndMessage(end)));
+    }
+
+    /// <summary>Which hardware encoders each real adapter has for the format (Windows' list; the encoder itself does not say its adapter).</summary>
+    private void LogEncoders(IReadOnlyList<GraphicsAdapter> adapters)
+    {
+        var subtype = _request.Format == VideoFormat.Mp4Hevc ? Native.MediaFoundationNative.Hevc : Native.MediaFoundationNative.H264;
+        foreach (var adapter in adapters.Where(a => !a.Software))
+        {
+            var names = string.Join(", ", GraphicsAdapters.HardwareEncoders(adapter.Luid, subtype));
+            _log.Line($"hardware encoders on adapter {adapter.Index}: {(names.Length > 0 ? names : "none")}");
+        }
+    }
+
+    private void OpenSound()
+    {
+        if (_sound is not { } sound) return;
+        if (_request.SystemSound && _log.Step("system sound open", () => sound.SetSystem(true)) is { } system) _notes.Add(system);
+        if (_request.Microphone && _log.Step("microphone open", () => sound.SetMicrophone(true)) is { } mic) _notes.Add(mic);
+    }
+
+    /// <summary>Tries each way from <paramref name="index"/> on until one ends the recording, or none is left.</summary>
+    private void RunChain(IReadOnlyList<RecordingStep> chain, int index, IReadOnlyList<GraphicsAdapter> adapters, string key)
+    {
+        var tries = 0;
+        for (; index < chain.Count; index++)
+        {
+            var step = chain[index];
+            var attempt = new RecordingAttempt(step, _request, $"{_request.Path}.part{++tries}", _frameRate, _sound, adapters, _log, _faults);
+            _attempt = attempt;
+            if (_paused) attempt.Pause();
+            attempt.Start();
+            var (outcome, why) = Follow(attempt);
+            switch (outcome)
+            {
+                case Outcome.Done:
+                    Keep(attempt, chain, key);
+                    return;
+                case Outcome.Cancelled:
+                    return;
+                case Outcome.Fatal:
+                    End(Failed(why));
+                    return;
+                case Outcome.FinishHung:
+                    End(new RecordingResult(null, RecordingEnd.Failed, "the encoder did not finish the file in time, so it could not be saved; the next recording uses another way.",
+                        RecordingSteps.AfterHang(chain, step, key, _request.Route), _log.Text));
+                    return;
+            }
+            _log.Line($"{step} given up: {why}");
+            if (_stop)
+            {
+                End(Failed($"it could not be finished ({why})."));
+                return;
+            }
+            if (index + 1 < chain.Count) Tell($"{Capital(RecordingSteps.Words(step))} did not work, so the recording restarted with {RecordingSteps.Words(chain[index + 1])}.");
+        }
+        End(Failed("no way of recording worked on this PC; the details are in the log."));
+    }
+
+    private enum Outcome { Done, Cancelled, Fatal, FinishHung, MoveOn }
+
+    /// <summary>Watches one way until it ends the recording or must be left behind (it is then abandoned here).</summary>
+    private (Outcome, string?) Follow(RecordingAttempt attempt)
+    {
+        var stopSent = false;
+        var pausedSeen = false;
+        var recordingSeen = false;
+        while (true)
+        {
+            if (_abort)
+            {
+                _log.Line("Cancel asked: nothing is kept");
+                attempt.Abandon();
+                return (Outcome.Cancelled, null);
+            }
+            if (_stop && !stopSent)
+            {
+                stopSent = true;
+                _log.Line("Stop asked");
+                attempt.Stop();
+            }
+            if (_paused != pausedSeen)
+            {
+                pausedSeen = _paused;
+                _log.Line(pausedSeen ? "paused" : "resumed");
+            }
+            if (!recordingSeen && attempt.State == AttemptState.Recording)
+            {
+                recordingSeen = true;
+                if (attempt.Note is { } note) Tell(note);
+                _started.TrySetResult(_notes.Count > 0 ? string.Join(" ", _notes) : null); // the first way that records ends the start
+            }
+            if (Check(attempt) is { } verdict)
+            {
+                if (verdict.Item1 is Outcome.MoveOn or Outcome.FinishHung) attempt.Abandon();
+                return verdict;
+            }
+            Sleep(CoreTiming.RecordWatchMs);
+        }
+    }
+
+    /// <summary>What the watchdog makes of a way now: null while all is well.</summary>
+    private (Outcome, string?)? Check(RecordingAttempt attempt)
+    {
+        switch (attempt.State)
+        {
+            case AttemptState.Opening:
+                return attempt.StateMs > _waits.OpenMs ? (Outcome.MoveOn, $"it did not open within {_waits.OpenMs / 1000.0:0.#} s") : null;
+            case AttemptState.Recording:
+                if (attempt.CallMs > _waits.StuckMs) return (Outcome.MoveOn, $"its {attempt.CallName} did not return within {_waits.StuckMs / 1000.0:0.#} s");
+                if (attempt.FramesDone == 0 && attempt.Clock is { } clock && clock.Elapsed.TotalMilliseconds > _waits.FirstFrameMs)
+                    return (Outcome.MoveOn, $"no frame was encoded within {_waits.FirstFrameMs / 1000.0:0.#} s");
+                return null;
+            case AttemptState.Finishing:
+                return attempt.StateMs > _waits.FinishMs ? (Outcome.FinishHung, $"finishing took over {_waits.FinishMs / 1000.0:0.#} s") : null;
+            case AttemptState.Done:
+                return (Outcome.Done, null);
+            default:
+                return (attempt.Fatal ? Outcome.Fatal : Outcome.MoveOn, attempt.Problem);
+        }
+    }
+
+    /// <summary>The finished part file becomes the recording's file; the way is handed back to be remembered.</summary>
+    private void Keep(RecordingAttempt attempt, IReadOnlyList<RecordingStep> chain, string key)
+    {
+        var route = RecordingSteps.AfterSuccess(chain, attempt.Step, key, _request.Route);
+        try
+        {
+            _log.Step("move the file into place", () => File.Move(attempt.PartPath, _request.Path));
+            End(new RecordingResult(_request.Path, attempt.End, EndMessage(attempt.End), route, _log.Text));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            End(new RecordingResult(attempt.PartPath, attempt.End, $"The recording was kept as {Path.GetFileName(attempt.PartPath)}: {ex.Message}", route, _log.Text));
+        }
+    }
+
+    private RecordingResult Failed(string? why) => new(null, RecordingEnd.Failed, why ?? "the recording failed; the details are in the log.", _request.Route, _log.Text);
+
+    /// <summary>Sets the result (a Cancel may already have), then lets a start that was still waiting see it.</summary>
+    private void End(RecordingResult result)
+    {
+        if (_done.TrySetResult(result)) _log.Line($"ended: {result.End}{(result.Message is { } m ? $" ({m})" : "")}");
         _started.TrySetResult(null); // after the result, so a start that failed is seen as failed
     }
 
-    /// <summary>Opens the file and the way its frames are copied: on the graphics card for an MP4 with the hardware encoder when possible, else with GDI.</summary>
-    private (IVideoSink Sink, IFrameSource Frames) Open(out string? note)
+    /// <summary>A sentence for the person: part of the start's note before the recording shows, else said at once.</summary>
+    private void Tell(string sentence)
     {
-        note = null;
-        var area = _request.Area;
-        if (_request.Format == VideoFormat.Gif)
-            return WithGdi(() => new QueuedVideoSink(new GifWriter(_request.Path, area.Width, area.Height, _request.Quality), area.Width, area.Height, "GIF encoding"));
-        var bitrate = VideoMath.Bitrate(area.Width, area.Height, _frameRate, _request.Quality, _request.Format);
-        if (_request.Hardware && OpenOnGpu(bitrate) is { } onGpu) return onGpu;
-        string? encoderNote = null;
-        var opened = WithGdi(() => Mp4Writer.Open(_request.Path, area.Width, area.Height, _frameRate, _request.Format, bitrate, _request.Hardware, out encoderNote));
-        note = encoderNote;
-        return opened;
+        _log.Line($"said: {sentence}");
+        if (_started.Task.IsCompleted) _notice?.Invoke(sentence);
+        else _notes.Add(sentence);
     }
 
-    private (IVideoSink, IFrameSource) WithGdi(Func<IVideoSink> openSink)
-    {
-        var grabber = new FrameGrabber(_request.Area, _request.Pointer);
-        try
-        {
-            var sink = openSink();
-            return (sink, new GdiFrames(grabber, sink));
-        }
-        catch
-        {
-            grabber.Dispose();
-            throw;
-        }
-    }
-
-    /// <summary>Desktop Duplication into an MP4 writer on the same graphics card; null (said in the log) when either is not possible here.</summary>
-    private (IVideoSink, IFrameSource)? OpenOnGpu(int bitrate)
-    {
-        var area = _request.Area;
-        var capture = DesktopDuplication.TryOpen(area, _request.Pointer, _log, out var why);
-        if (capture is null)
-        {
-            _log($"Screen recording: frames are copied with GDI because the graphics-card copy is not available ({why}).");
-            return null;
-        }
-        try
-        {
-            var writer = Mp4Writer.OpenOnGpu(_request.Path, area.Width, area.Height, _frameRate, _request.Format, bitrate, capture);
-            return (writer, new GpuFrames(capture, writer));
-        }
-        catch (Exception ex) when (ex is COMException or InvalidOperationException)
-        {
-            capture.Dispose();
-            _log($"Screen recording: frames are copied with GDI because the encoder cannot take frames from the graphics card ({ex.Message}).");
-            return null;
-        }
-    }
-
-    /// <summary>The loop: a frame when one is due, the sound up to the clock less the lag, the limits now and then; until stopped or a limit.</summary>
-    private RecordingEnd Record(IFrameSource frames, IVideoSink sink)
-    {
-        var nextFrame = 0L;
-        var soundWritten = 0L;
-        var nextCheck = 0L;
-        var checkGap = TimeSpan.FromMilliseconds(CoreTiming.RecordLimitCheckMs).Ticks;
-        var wasPaused = false;
-        while (!_stop)
-        {
-            if (_clock.IsPaused)
-            {
-                wasPaused = true;
-                Sleep(CoreTiming.RecordLimitCheckMs);
-                continue;
-            }
-            if (wasPaused)
-            {
-                wasPaused = false;
-                _sound?.Clear(); // nothing heard during the pause goes in
-            }
-            var now = _clock.Ticks;
-            var frame = VideoMath.FrameAt(now, _frameRate);
-            if (frame >= nextFrame)
-            {
-                frames.Write(VideoMath.FrameStart(frame, _frameRate));
-                nextFrame = frame + 1;
-            }
-            if (sink is ISoundSink soundSink) soundWritten = WriteSound(soundSink, soundWritten, now);
-            if (now >= nextCheck)
-            {
-                nextCheck = now + checkGap;
-                if (OverLimit(now, sink) is { } limit) return limit;
-            }
-            var wait = (VideoMath.FrameStart(nextFrame, _frameRate) - _clock.Ticks) / TimeSpan.TicksPerMillisecond;
-            if (wait > 0) Sleep((int)wait);
-        }
-        return RecordingEnd.Stopped;
-    }
-
-    /// <summary>Writes the sound from where it stopped up to the clock less the lag, in pieces of at least the chunk length. The frames written so far.</summary>
-    private long WriteSound(ISoundSink sink, long written, long now)
-    {
-        var lag = TimeSpan.FromMilliseconds(CoreTiming.RecordSoundLagMs).Ticks;
-        var due = Math.Max(0, now - lag) * RecordingSound.SampleRate / VideoMath.TicksPerSecond;
-        var count = due - written;
-        if (count < RecordingSound.SampleRate * CoreTiming.RecordSoundChunkMs / 1000) return written;
-        var length = (int)count * RecordingSound.BytesPerFrame;
-        if (_pcm.Length < length) _pcm = new byte[length];
-        var pcm = _pcm.AsSpan(0, length);
-        _sound!.Read(pcm);
-        var at = written * VideoMath.TicksPerSecond / RecordingSound.SampleRate;
-        sink.WriteSound(pcm, at, count * VideoMath.TicksPerSecond / RecordingSound.SampleRate);
-        return due;
-    }
-
-    private RecordingEnd? OverLimit(long now, IVideoSink sink)
-    {
-        var limits = _request.Limits;
-        if (TimeSpan.FromTicks(now) >= limits.MaxLength) return RecordingEnd.LengthLimit;
-        if (sink.Length >= limits.MaxBytes) return RecordingEnd.SizeLimit;
-        var root = Path.GetPathRoot(Path.GetFullPath(_request.Path));
-        if (string.IsNullOrEmpty(root)) return null;
-        try
-        {
-            return new DriveInfo(root).AvailableFreeSpace < limits.MinFreeBytes ? RecordingEnd.DiskFull : null;
-        }
-        catch (Exception ex) when (ex is IOException or ArgumentException or UnauthorizedAccessException)
-        {
-            return null; // a network folder whose free space Windows does not report: only the size limit applies
-        }
-    }
+    private static string Capital(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];
 
     private string? EndMessage(RecordingEnd end) => end switch
     {
@@ -285,18 +351,4 @@ public sealed class ScreenRecorder
 
     private static string Words(TimeSpan length) =>
         length.TotalHours >= 1 ? $"{length.TotalHours:0.#} hour" : $"{length.TotalMinutes:0} minute";
-
-    /// <summary>Removes a file that could not be finished. Null (no file is kept).</summary>
-    private static string? Delete(string path)
-    {
-        try
-        {
-            File.Delete(path);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            // the unfinished file stays; the failure message already says the recording did not work
-        }
-        return null;
-    }
 }

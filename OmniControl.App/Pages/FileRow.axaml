@@ -10,12 +10,12 @@
         <!-- Full width: label, the path field (the file in use, typed or browsed), and the optional Default -->
         <Grid Margin="0,1" ColumnSpacing="8" IsVisible="{Binding !Half}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
+                <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <TextBlock Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,16,0" />
+            <TextBlock Classes="cardname" Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,16,0" />
             <c:PathField Grid.Column="1" Grid.ColumnSpan="2" x:Name="PathBoxFull" Text="{Binding Path, Mode=OneWay}" Kind="{Binding PathKind}"
                          PickerTitle="{Binding Kind.PickerTitle}" Chosen="OnChosen" />
             <Button Grid.Column="3" Classes="pill" Tag="scope" Content="{Binding ResetText}" Command="{Binding ResetCommand}"

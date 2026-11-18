@@ -42,9 +42,13 @@ public sealed partial class SliderItem : ObservableObject, IEditorItem, IHalfWid
     /// <summary>True: the card takes half the width (label, slider and value on one line, see <see cref="HalfPanel"/>). A companion is not shown on a half card.</summary>
     public bool Half { get; init; }
 
-    /// <summary>Which of the card's three layouts the view shows: full width, full width with the companion switch, or half width.</summary>
-    public bool IsPlain => !Half && Companion is null;
-    public bool HasCompanionLine => !Half && Companion is not null;
+    /// <summary>True: the master knob (Controls/Knob) replaces the slider, its value words under it, and the name wraps onto two lines (Other PCs' mirrored cards). A companion is not shown.</summary>
+    public bool AsKnob { get; init; }
+
+    /// <summary>Which of the card's layouts the view shows: full width, full width with the companion switch, half width, or the knob.</summary>
+    public bool IsPlain => !AsKnob && !Half && Companion is null;
+    public bool HasCompanionLine => !AsKnob && !Half && Companion is not null;
+    public bool IsHalfSlider => !AsKnob && Half;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ValueText))]

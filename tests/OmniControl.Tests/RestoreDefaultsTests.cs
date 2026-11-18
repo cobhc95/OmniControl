@@ -328,7 +328,7 @@ public class RestoreDefaultsTests
             Bindings = { ["2.Back"] = "Copy" }, ExtraActions = { ["2.Back"] = new List<string> { "Paste" } },
             LayerNames = { [2] = "Games" }, TrackpadLayerNames = new() { [3] = "Pad" },
             ButtonsScope = new(ScopeMode.Only, "list1"), CardScopes = { ["Back"] = new(ScopeMode.Except, "list2") },
-            PauseInFullScreen = false, NeverActIn = new(ScopeMode.Only, "list3"), RunAsAdministrator = true,
+            PauseInFullScreen = true, NeverActIn = new(ScopeMode.Only, "list3"), RunAsAdministrator = true,
         };
         var target = MouseSettings.Defaults();
         target.CopyFrom(source);

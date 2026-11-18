@@ -104,6 +104,18 @@ public sealed class DeviceRuntime
         else _methodProblems[methodId] = problem;
     }
 
+    /// <summary>When the last On, Off or Toggle command ended (null until one did), and its problem (null when it worked); checks do not count.</summary>
+    public DateTime? CommandEnded { get; private set; }
+
+    public string? CommandProblem { get; private set; }
+
+    /// <summary>An On, Off or Toggle command ended with this problem (null: it worked). A rule step that started it reads it (<see cref="Hotkeys.ActionReach"/>).</summary>
+    public void Commanded(string? problem)
+    {
+        CommandProblem = problem;
+        CommandEnded = DateTime.Now;
+    }
+
     /// <summary>Raised when any of it changed (may come from another thread).</summary>
     public event Action? Changed;
 

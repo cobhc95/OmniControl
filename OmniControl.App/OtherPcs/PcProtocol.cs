@@ -14,8 +14,8 @@ internal static class PcProtocol
     public const int UdpPort = 47811;
     public const string BeaconTag = "omnicontrol-pc/1";
 
-    /// <summary>First byte of a connection: a pairing (only answered while pairing is open) or a session of an already paired PC.</summary>
-    public const byte WantsPairing = 0x50, WantsSession = 0x53;
+    /// <summary>First byte of a connection: a pairing (only answered while pairing is open), a session of an already paired PC, or a probe (the same proof as a session, then one sealed ping answered with a pong, and the connection ends).</summary>
+    public const byte WantsPairing = 0x50, WantsSession = 0x53, WantsProbe = 0x51;
 
     /// <summary>The largest message accepted: before a PC proved who it is, <see cref="MaxOpenFrame"/>; after, <see cref="MaxFrame"/>.</summary>
     public const int MaxOpenFrame = 4096, MaxFrame = 1 << 20;
@@ -39,7 +39,7 @@ internal static class PcProtocol
 /// <summary>What a message is.</summary>
 internal static class PcMsgType
 {
-    public const string Catalog = "catalog", State = "state", Set = "set", Run = "run", Ran = "ran", Ping = "ping",
+    public const string Catalog = "catalog", State = "state", Set = "set", Run = "run", Ran = "ran", Ping = "ping", Pong = "pong",
         Devices = "devices", DevicesAnswer = "devices-answer", TailscaleAddress = "ts-address";
 }
 

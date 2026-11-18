@@ -133,6 +133,8 @@
                         ToolTip.Tip="Put OmniControl's line back into Equalizer APO's config" />
                 <c:TagView DataContext="{Binding OwnApoEffects}" IsVisible="{Binding $parent[Window].DataContext.OwnApoEffects, Converter={x:Static ObjectConverters.IsNotNull}}"
                            fx:FoldingRow.FoldLevel="1" VerticalAlignment="Center" />
+                <c:TagView DataContext="{Binding DisplayFed}" IsVisible="{Binding $parent[Window].DataContext.DisplayFed, Converter={x:Static ObjectConverters.IsNotNull}}"
+                           fx:FoldingRow.FoldLevel="1" VerticalAlignment="Center" />
                 <TextBlock Classes="statusline" Text="{Binding Chain.Selected.RunsNote}" IsVisible="{Binding Chain.HasSelection}" fx:FoldingRow.FoldLevel="1"
                            ToolTip.Tip="{Binding Chain.Selected.RunsDetail}" />
             </fx:FoldingRow>

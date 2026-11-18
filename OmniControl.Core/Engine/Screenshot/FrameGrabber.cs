@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using static OmniControl.Core.Native.ScreenshotNative;
 using static OmniControl.Core.Native.VideoNative;
 
@@ -25,12 +24,7 @@ internal sealed unsafe class FrameGrabber : IDisposable
         _area = area;
         _screen = GetDC(IntPtr.Zero);
         _memory = CreateCompatibleDC(_screen);
-        var header = new BitmapInfoHeader
-        {
-            Size = Marshal.SizeOf<BitmapInfoHeader>(), Width = area.Width, Height = -area.Height, // negative: top row first
-            Planes = 1, BitCount = 32,
-        };
-        _bitmap = CreateDIBSection(_screen, ref header, DibRgbColors, out var bits, IntPtr.Zero, 0);
+        _bitmap = CreateTopDownBitmap(_screen, area.Width, area.Height, out var bits);
         if (_bitmap == IntPtr.Zero)
         {
             DeleteDC(_memory);

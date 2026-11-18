@@ -1,0 +1,226 @@
+using System.Diagnostics;
+using OmniControl.Core.Engine;
+
+namespace OmniControl.App.Services;
+
+/// <summary>The two power facts the automations start from: a confirmed wake, and whether this start-up is a new log-in.</summary>
+public interface IPowerEvents
+{
+    /// <summary>The PC really woke (confirmed by two channels, or Windows' own suspend-and-resume pair); raised once per wake, on any thread.</summary>
+    event Action? Woke;
+
+    /// <summary>True once per sign-in when OmniControl was started by its start-up entry; false for a second start in the same sign-in.</summary>
+    bool TakeLogin(bool startedByWindows);
+}
+
+/// <summary>One line of the power journal: what happened, when, and which channels told it.</summary>
+public sealed class PowerJournalEntry
+{
+    public DateTime At { get; set; }
+    public string Kind { get; set; } = string.Empty;
+    public string Channels { get; set; } = string.Empty;
+    public string Detail { get; set; } = string.Empty;
+}
+
+/// <summary>What <c>power-journal.json</c> holds: the latest entries, how far the event log was read, and the sign-in "At log in" last ran for.</summary>
+public sealed class PowerJournalData
+{
+    public List<PowerJournalEntry> Entries { get; set; } = new();
+    public DateTime? EventLogUpTo { get; set; }
+    public DateTime? LoginBoot { get; set; }
+    public int LoginSession { get; set; } = -1;
+}
+
+/// <summary>
+/// THE power journal: every power and session event the hardware listeners hear (<see cref="HardwareWatches.Power"/>; no listener of its own)
+/// goes in <c>power-journal.json</c> (the same kind told by several channels within <see cref="Timing.PowerEventSame"/> is one entry) and in
+/// <see cref="LogFile"/>, and the <see cref="WakeDetector"/> decides from them when the PC really woke (each decision is a log line). At
+/// start-up it reads the journal, the time since Windows started and the System event log to say what happened while OmniControl was not
+/// running (logged only: no rule runs for the past). Thread-safe: listeners call it from their own threads.
+/// </summary>
+public sealed class PowerJournal : IPowerEvents, IDisposable
+{
+    /// <summary>The power diagnostics log: every event, every wake decision.</summary>
+    public const string LogFile = "power-log.txt";
+
+    private const int Kept = 300, EventLogMax = 50;
+
+    private readonly PowerJournalData _data;
+    private readonly WakeDetector _detector;
+    private readonly Action<PowerJournalData> _save;
+    private readonly Action<string> _log;
+    private readonly Func<DateTime> _now;
+    private readonly Func<long> _ms;
+    private readonly Func<DateTime> _boot;
+    private readonly int _session;
+    private readonly object _gate = new();
+    private readonly HardwareWatches? _hardware;
+    private Timer? _expire;
+
+    public event Action? Woke;
+
+    /// <summary>The app's journal: listens to <paramref name="hardware"/>'s power events, saved in <see cref="DataStores.PowerJournal"/>.</summary>
+    public PowerJournal(HardwareWatches hardware)
+        : this(AppDataStore.Load<PowerJournalData>(DataStores.PowerJournal) ?? new(), data => AppDataStore.Save(DataStores.PowerJournal, data),
+            line => AppDataStore.AppendLog(LogFile, line), () => DateTime.Now, () => Environment.TickCount64,
+            () => DateTime.Now - TimeSpan.FromMilliseconds(Environment.TickCount64), Process.GetCurrentProcess().SessionId)
+    {
+        _hardware = hardware;
+        hardware.Power += Record;
+    }
+
+    /// <summary>A journal with its time, store and log given (tests replay signals with a fake clock).</summary>
+    internal PowerJournal(PowerJournalData data, Action<PowerJournalData> save, Action<string> log, Func<DateTime> now, Func<long> ms, Func<DateTime> boot, int session)
+    {
+        _data = data;
+        _save = save;
+        _log = log;
+        _now = now;
+        _ms = ms;
+        _boot = boot;
+        _session = session;
+        _detector = new WakeDetector((long)Timing.WakeConfirmWindow.TotalMilliseconds, (long)Timing.WakeQuiet.TotalMilliseconds,
+            (long)Timing.StandbyDisplayOffMin.TotalMilliseconds);
+    }
+
+    /// <summary>Starts the confirm timer and, off the UI thread, the look at what happened while OmniControl was not running. Never in a screenshot export.</summary>
+    public void Start()
+    {
+        if (StartupMode.Inert || _expire is not null) return;
+        _expire = new Timer(_ => Guard.Run("Power journal: wake check", Tick), null, Timing.PowerClockTick, Timing.PowerClockTick);
+        Task.Run(() => Guard.Run("Power journal: start-up look", LookBack));
+    }
+
+    /// <summary>One event from a listener (any thread): journalled, logged and given to the wake detector.</summary>
+    public void Record(PowerSignal signal)
+    {
+        WakeDecision? decision;
+        lock (_gate)
+        {
+            Add(signal, _now());
+            decision = _detector.Observe(signal, _ms());
+        }
+        _log($"{signal.Kind} ({signal.Channel}: {signal.Detail})");
+        Decided(decision);
+        if (signal.Kind is PowerEventKind.Shutdown or PowerEventKind.Logoff) Save(); // the process may end before a queued save runs
+        else Task.Run(() => Guard.Run("Power journal: save", Save));
+    }
+
+    /// <summary>Timer: a wake candidate whose confirm window passed is decided.</summary>
+    internal void Tick()
+    {
+        WakeDecision? decision;
+        lock (_gate) decision = _detector.Expire(_ms());
+        Decided(decision);
+    }
+
+    public bool TakeLogin(bool startedByWindows)
+    {
+        if (!startedByWindows) return false;
+        var boot = _boot();
+        lock (_gate)
+        {
+            if (_data.LoginSession == _session && _data.LoginBoot is { } last && (boot - last).Duration() < Timing.LoginSameBoot)
+            {
+                _log($"At log in: not run again, it already ran for this sign-in (Windows started {boot:g}); OmniControl was started again.");
+                return false;
+            }
+            _data.LoginBoot = boot;
+            _data.LoginSession = _session;
+            Add(new PowerSignal(PowerEventKind.Logon, PowerChannel.Uptime, "OmniControl started by its start-up entry"), _now());
+        }
+        _log($"At log in: a new sign-in (Windows started {boot:g}, session {_session}).");
+        Save();
+        return true;
+    }
+
+    /// <summary>The journal's entries, oldest first (a copy).</summary>
+    public IReadOnlyList<PowerJournalEntry> Entries
+    {
+        get { lock (_gate) return _data.Entries.ToList(); }
+    }
+
+    private void Decided(WakeDecision? decision)
+    {
+        if (decision is null) return;
+        _log($"Wake {decision.Verdict.ToString().ToLowerInvariant()}: {decision.Why} [{string.Join(", ", decision.Channels)}].");
+        if (decision.Verdict != WakeVerdict.Confirmed) return;
+        if (Woke is { } woke)
+            foreach (var handler in woke.GetInvocationList().Cast<Action>())
+                Guard.Run("Power journal: wake handler", handler);
+        if (_expire is not null) Task.Run(() => Guard.Run("Power journal: event log after a wake", () => ReadEventLog(running: true)));
+    }
+
+    /// <summary>The same kind within <see cref="Timing.PowerEventSame"/> of the last entry is that entry told again: its channel is added.</summary>
+    private void Add(PowerSignal signal, DateTime at)
+    {
+        var kind = signal.Kind.ToString();
+        var channel = signal.Channel.ToString();
+        if (_data.Entries.LastOrDefault() is { } last && last.Kind == kind && (at - last.At).Duration() < Timing.PowerEventSame)
+        {
+            if (!last.Channels.Split(", ").Contains(channel)) last.Channels += $", {channel}";
+            return;
+        }
+        _data.Entries.Add(new PowerJournalEntry { At = at, Kind = kind, Channels = channel, Detail = signal.Detail });
+        if (_data.Entries.Count > Kept) _data.Entries.RemoveRange(0, _data.Entries.Count - Kept);
+    }
+
+    private void Save()
+    {
+        PowerJournalData copy;
+        lock (_gate)
+            copy = new PowerJournalData
+            {
+                Entries = _data.Entries.Select(e => new PowerJournalEntry { At = e.At, Kind = e.Kind, Channels = e.Channels, Detail = e.Detail }).ToList(),
+                EventLogUpTo = _data.EventLogUpTo, LoginBoot = _data.LoginBoot, LoginSession = _data.LoginSession,
+            };
+        _save(copy);
+    }
+
+    /// <summary>Start-up: what happened while OmniControl was not running, from the journal, the time since Windows started and the event log.</summary>
+    internal void LookBack()
+    {
+        var boot = _boot();
+        PowerJournalEntry? last;
+        lock (_gate) last = _data.Entries.LastOrDefault();
+        if (last is null) _log("Power journal started (no earlier entries).");
+        else if (boot > last.At)
+        {
+            lock (_gate) Add(new PowerSignal(PowerEventKind.Boot, PowerChannel.Uptime, $"Windows started {boot:g}"), boot);
+            _log($"Windows started {boot:g}, after the last entry ({last.Kind} {last.At:g}): it restarted while OmniControl was not running.");
+        }
+        else if (last.Kind is nameof(PowerEventKind.Suspend) or nameof(PowerEventKind.Hibernate))
+            _log($"The last entry is {last.Kind} {last.At:g} with no restart since: the PC woke while OmniControl was not running (it was closed after the wake).");
+        ReadEventLog(running: false);
+        Save();
+    }
+
+    /// <summary>Adds the sleeps and wakes Windows logged since the last read; at start-up they are the past, so they are only logged.</summary>
+    private void ReadEventLog(bool running)
+    {
+        DateTime since;
+        lock (_gate) since = _data.EventLogUpTo ?? _boot();
+        var (events, problem) = PowerEventLog.Since(since, EventLogMax);
+        if (problem is not null)
+        {
+            _log($"Event log: {problem}.");
+            return;
+        }
+        lock (_gate)
+        {
+            foreach (var logged in events) Add(logged.Signal, logged.At);
+            if (events.Count > 0) _data.EventLogUpTo = events[^1].At;
+            _data.Entries.Sort((a, b) => a.At.CompareTo(b.At));
+        }
+        foreach (var logged in events)
+            _log($"Event log: {logged.Signal.Kind} {logged.At:g} ({logged.Signal.Detail}){(running ? string.Empty : ", while OmniControl was not running: no rule runs for it")}.");
+        if (running) Save();
+    }
+
+    public void Dispose()
+    {
+        if (_hardware is not null) _hardware.Power -= Record;
+        _expire?.Dispose();
+        _expire = null;
+    }
+}

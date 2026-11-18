@@ -7,12 +7,14 @@ using OmniControl.Core.Engine;
 namespace OmniControl.App.Automation;
 
 // Starting Do rules from their triggers: one look every Timing.AutomationTick at the clock, the idle time, the power source, the
-// running programs and the USB devices (AutomationWatcher), plus the start-up events and a wake timer for rules that ask for one.
+// running programs and the USB devices (AutomationWatcher), plus the start-up events, the confirmed wakes of the power journal
+// (IPowerEvents, once per wake) and a wake timer for rules that ask for one.
 public sealed partial class AutomationService
 {
     private readonly AutomationWatcher _watcher = new();
     private readonly WakeTimer _wake = new();
-    private readonly List<AutomationEvent> _startEvents = new();   // "At log in" / "When OmniControl starts", taken by the first look
+    private readonly IPowerEvents _power;
+    private readonly List<AutomationEvent> _pending = new();       // "At log in", "When OmniControl starts" and wakes, taken by the next look
     private readonly Dictionary<string, DateTime> _timers = new(); // "After a timer" rules: when each started counting (MaxValue: done)
     private readonly HashSet<string> _idleFired = new();           // "idle" rules that already ran in this idle spell
     private DispatcherTimer? _tick;
@@ -30,8 +32,8 @@ public sealed partial class AutomationService
             _report(SafeStartWords);
             return;
         }
-        _startEvents.Add(new AutomationEvent(AutomationTriggers.Start));
-        if (startedByWindows) _startEvents.Add(new AutomationEvent(AutomationTriggers.Login));
+        _pending.Add(new AutomationEvent(AutomationTriggers.Start));
+        if (_power.TakeLogin(startedByWindows)) _pending.Add(new AutomationEvent(AutomationTriggers.Login));
         RunTriggers();
     }
 
@@ -39,13 +41,22 @@ public sealed partial class AutomationService
     private void RunTriggers()
     {
         _lastLook = DateTime.Now;
+        _power.Woke += OnWoke;
         SyncTriggers();
         _tick = new DispatcherTimer(Timing.AutomationTick, DispatcherPriority.Background, (_, _) => Look());
         _tick.Start();
     }
 
+    /// <summary>The power journal confirmed a wake (any thread): the next look starts the "wakes from sleep" rules.</summary>
+    private void OnWoke() => Dispatcher.UIThread.Post(() =>
+    {
+        Log("the PC woke (confirmed by the power journal)");
+        _pending.Add(new AutomationEvent(AutomationTriggers.Resume));
+    });
+
     private void StopTriggers()
     {
+        _power.Woke -= OnWoke;
         _tick?.Stop();
         _watcher.Dispose();
         _wake.Dispose();
@@ -82,18 +93,20 @@ public sealed partial class AutomationService
         var from = _lastLook;
         _lastLook = now;
         NotifyPowerStates();
+        // Taken even while paused: a wake or a start-up is not kept to run hours later when rules are on again.
+        var events = new List<AutomationEvent>(_pending);
+        _pending.Clear();
         if (Paused) return;
 
-        var events = new List<AutomationEvent>(_startEvents);
-        _startEvents.Clear();
-        if (now - from > Timing.AutomationResumeGap) events.Add(new AutomationEvent(AutomationTriggers.Resume));
+        var afterWake = events.Any(e => e.Kind is AutomationTriggers.Resume or AutomationTriggers.Login or AutomationTriggers.Start);
         var watchPrograms = Settings.Rules.Any(r => IsActive(r) && IsTrigger(r, AutomationTriggers.ProgramStart, AutomationTriggers.ProgramClose));
         events.AddRange(_watcher.Poll(watchPrograms));
         var idle = PowerState.IdleFor();
         if (idle < Timing.AutomationTick) _idleFired.Clear(); // input since the last look: idle rules are ready again
 
         foreach (var rule in Settings.Rules.Where(IsActive).ToList())
-            if (IsDue(rule, events, from, now, idle)) TryStart(rule);
+            if (IsDue(rule, events, from, now, idle))
+                TryStart(rule, waitForReady: afterWake && IsTrigger(rule, AutomationTriggers.Resume, AutomationTriggers.Login, AutomationTriggers.Start));
         UpdateWake();
     }
 

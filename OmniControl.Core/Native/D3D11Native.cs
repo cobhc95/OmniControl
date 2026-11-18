@@ -17,12 +17,14 @@ internal static unsafe class D3D11Native
     public const uint RotationUnspecified = 0, RotationIdentity = 1;
 
     public const int ErrorAccessLost = unchecked((int)0x887A0026),
-        ErrorWaitTimeout = unchecked((int)0x887A0027);
+        ErrorWaitTimeout = unchecked((int)0x887A0027),
+        AccessDenied = unchecked((int)0x80070005); // E_ACCESSDENIED: the secure desktop (locked, UAC, Ctrl+Alt+Del) is up
 
     public static readonly Guid IidFactory1 = new("770aae78-f26f-4dba-a829-253c83d1b387");
     public static readonly Guid IidOutput1 = new("00cddea8-939b-4b83-a340-a685226666cc");
     public static readonly Guid IidTexture2D = new("6f15aaf2-d208-4e89-9ab4-489535d34f9c");
     public static readonly Guid IidSurface1 = new("4AE63092-6327-4c1b-80AE-BFE12EA32B86");
+    public static readonly Guid IidDxgiDevice = new("54ec77fa-1377-44e6-8c32-88fd5f44c84c");
     public static readonly Guid IidMultithread = new("9B7E4E00-342C-4106-A19F-4F2704F689F0");
 
     [StructLayout(LayoutKind.Sequential)]
@@ -34,6 +36,19 @@ internal static unsafe class D3D11Native
         public uint Rotation;
         public IntPtr Monitor;
     }
+
+    /// <summary>DXGI_ADAPTER_DESC1; <see cref="Flags"/> with <see cref="AdapterSoftware"/> = Microsoft's Basic Render Driver.</summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public struct AdapterDesc1
+    {
+        public fixed char Description[128];
+        public uint VendorId, DeviceId, SubSysId, Revision;
+        public nuint DedicatedVideoMemory, DedicatedSystemMemory, SharedSystemMemory;
+        public long Luid;
+        public uint Flags;
+    }
+
+    public const uint AdapterSoftware = 0x2;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct DuplicationDesc
@@ -92,6 +107,22 @@ internal static unsafe class D3D11Native
         var hr = ((delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int>)Vtbl(adapter)[7])(adapter, index, &found);
         output = found;
         return hr;
+    }
+
+    // IDXGIAdapter1
+    public static AdapterDesc1 GetAdapterDesc1(IntPtr adapter1)
+    {
+        AdapterDesc1 desc;
+        MediaFoundationNative.Check(((delegate* unmanaged[Stdcall]<IntPtr, AdapterDesc1*, int>)Vtbl(adapter1)[10])(adapter1, &desc));
+        return desc;
+    }
+
+    /// <summary>The user-mode driver's version (four 16-bit parts, highest first), or 0 when the adapter will not say.</summary>
+    public static long DriverVersion(IntPtr adapter)
+    {
+        var iid = IidDxgiDevice;
+        long version;
+        return ((delegate* unmanaged[Stdcall]<IntPtr, Guid*, long*, int>)Vtbl(adapter)[9])(adapter, &iid, &version) >= 0 ? version : 0;
     }
 
     // IDXGIOutput

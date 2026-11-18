@@ -193,7 +193,7 @@ public static class OsdView
         }
     }
 
-    /// <summary>A pop-up that tells something (icon, a title, an optional second line) instead of showing a level. Uses the chosen colours, not the level styles.</summary>
+    /// <summary>A pop-up that tells something (icon, a title, an optional second and third line) instead of showing a level. Uses the chosen colours, not the level styles.</summary>
     public static Control BuildMessage(OsdSettings s, OsdMessage message)
     {
         var (bg, accent, fg, muted, _, edge) = Scheme.From(s);
@@ -201,6 +201,13 @@ public static class OsdView
         var lines = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
         lines.Children.Add(Line(message.Title, BodyText, fg, true));
         if (!string.IsNullOrWhiteSpace(message.Subtitle)) lines.Children.Add(Line(message.Subtitle, SubtitleText, muted, false));
+        if (!string.IsNullOrWhiteSpace(message.Detail))
+        {
+            var detail = Line(message.Detail, CaptionText, muted, false);
+            detail.TextTrimming = TextTrimming.PrefixCharacterEllipsis; // the start and the end of a path stay readable
+            ToolTip.SetTip(detail, message.Detail); // the whole path, where the pop-up can be hovered (on screen it is click-through)
+            lines.Children.Add(detail);
+        }
 
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), ColumnSpacing = 12, MaxWidth = MessageMaxWidth };
         row.Children.Add(new PathIcon

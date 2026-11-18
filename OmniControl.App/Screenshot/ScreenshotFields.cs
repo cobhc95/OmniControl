@@ -12,10 +12,10 @@ namespace OmniControl.App.Screenshot;
 public static class ScreenshotFields
 {
     public const string Same = "same", Folder = "folder", Pattern = "pattern", Format = "format", Quality = "quality", CopyAs = "copy",
-        Quick = "quick", WindowsKeys = "winkeys", OpenFolder = "open", Note = "note", OnTop = "ontop";
+        Quick = "quick", WindowsKeys = "winkeys", OpenFolder = "open", Note = "note", OnTop = "ontop", AskFolder = "askfolder";
 
     public const string Video = "video", RecFolder = "vfolder", RecFormat = "vformat", FrameRate = "fps", Encoder = "encoder",
-        RecQuality = "vquality", SystemSound = "sound", Microphone = "mic", Cursor = "cursor", Clicks = "clicks";
+        RecQuality = "vquality", SystemSound = "sound", Microphone = "mic", Cursor = "cursor", Clicks = "clicks", AskVideoFolder = "askvfolder";
 
     private const string HevcMissing = "MP4 (HEVC) needs the HEVC Video Extensions from the Microsoft Store or a graphics card that encodes HEVC.";
 
@@ -32,7 +32,7 @@ public static class ScreenshotFields
     private static ActionOption WindowsKeysOption(Func<string?> pendingTag) =>
         ActionOption.Toggle(WindowsKeys, "Turn off Windows' own screenshot keys", note: "Print Screen and Win+Shift+S stop opening Snipping Tool").TaggedWhen(pendingTag);
 
-    private static readonly ActionOption FormatOption = ActionOption.Choice(Format, "Format", FormatNames);
+    private static readonly ActionOption FormatOption = ActionOption.Choice(Format, "Format", FormatNames) with { Default = ImageFormats.Name(ImageFormats.DefaultFormat) };
 
     /// <summary>
     /// The settings of one screenshot action. The area action has the overlay's "Stay on top" and the Video group; "Record area" has the file
@@ -45,6 +45,7 @@ public static class ScreenshotFields
         if (!record)
         {
             options.Add(ActionOption.Path(Folder, "Save folder", PathKind.Folder, ScreenshotOptions.DefaultFolder));
+            options.Add(ActionOption.Toggle(AskFolder, "Ask where to save", on: true, note: "Name and folder before each screenshot is saved"));
             options.Add(ActionOption.Text(Pattern, "File name", ScreenshotOptions.DefaultPattern, "{date} {time} {app}"));
             options.Add(FormatOption);
             options.Add(ActionOption.Number(Quality, "Quality", ImageFormats.DefaultQuality, ImageFormats.MinQuality, ImageFormats.MaxQuality, 5, " %")
@@ -74,6 +75,7 @@ public static class ScreenshotFields
         yield return ActionOption.Toggle(Cursor, "Show cursor", on: true);
         yield return ActionOption.Toggle(Clicks, "Highlight clicks");
         yield return ActionOption.Path(RecFolder, "Save folder", PathKind.Folder, ScreenshotOptions.DefaultVideoFolder);
+        yield return ActionOption.Toggle(AskVideoFolder, "Ask where to save", on: true, note: "Name and folder after each recording");
     }
 
     private static string FrameRateName(int rate) => $"{rate} fps";
@@ -84,6 +86,7 @@ public static class ScreenshotFields
         [Same] = Flag(same),
         [WindowsKeys] = Flag(windowsKeys),
         [Folder] = o.Folder,
+        [AskFolder] = Flag(o.AskFolder),
         [Pattern] = o.Pattern,
         [Format] = ImageFormats.Name(o.Format),
         [Quality] = o.Quality.ToString(),
@@ -93,6 +96,7 @@ public static class ScreenshotFields
         [Note] = Flag(o.ShowNote),
         [OnTop] = OnTopNames[(int)o.OnTop],
         [RecFolder] = o.VideoFolder,
+        [AskVideoFolder] = Flag(o.AskVideoFolder),
         [RecFormat] = VideoMath.Name(o.VideoFormat),
         [FrameRate] = FrameRateName(o.FrameRate),
         [Encoder] = EncoderNames[o.HardwareEncoder ? 0 : 1],
@@ -109,6 +113,7 @@ public static class ScreenshotFields
         switch (key)
         {
             case Folder: o.Folder = value.Trim(); break;
+            case AskFolder: o.AskFolder = value == "1"; break;
             case Pattern: o.Pattern = value.Trim().Length > 0 ? value.Trim() : ScreenshotOptions.DefaultPattern; break;
             case Format: o.Format = ImageFormats.Parse(value); break;
             case Quality:
@@ -120,6 +125,7 @@ public static class ScreenshotFields
             case Note: o.ShowNote = value == "1"; break;
             case OnTop: o.OnTop = (StayOnTop)IndexOf(OnTopNames, value); break;
             case RecFolder: o.VideoFolder = value.Trim(); break;
+            case AskVideoFolder: o.AskVideoFolder = value == "1"; break;
             case RecFormat: o.VideoFormat = VideoMath.Parse(value); break;
             case FrameRate: o.FrameRate = VideoMath.FrameRates[IndexOf(FrameRateNames, value)]; break;
             case Encoder: o.HardwareEncoder = IndexOf(EncoderNames, value) == 0; break;

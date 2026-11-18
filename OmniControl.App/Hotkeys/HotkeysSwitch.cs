@@ -28,8 +28,10 @@ public sealed partial class HotkeysSwitch : ObservableObject, IDisposable
         states.Register(new StateEntry(StateId, "Hotkeys on", category, StateKind.OnOff, () => StateValue.Of(IsOn),
             "Set by OmniControl: off pauses every keyboard hotkey (mouse buttons, gestures and rules keep working).", Keywords: "hotkeys keyboard shortcuts pause resume keys",
             Set: value => IsOn = value.Number is { } on && on != 0, Short: "Hotkeys", SuggestedIcons: new[] { "keyboard" }));
-        registry.Register(new HotkeyAction(ActionId, "Hotkeys: on/off", category, "hotkeys keyboard shortcuts pause resume keys toggle",
-            _ => IsOn = !IsOn) { NeverBlock = true, SuggestedIcons = new[] { "keyboard" } });
+        var family = new OnOffFamily(ActionId, "Hotkeys", StateId);
+        var toggle = new HotkeyAction(ActionId, "Hotkeys: on/off", category, "hotkeys keyboard shortcuts pause resume keys toggle",
+            _ => IsOn = !IsOn) { NeverBlock = true, SuggestedIcons = new[] { "keyboard" }, Family = family.Family, FamilyRole = OnOffFamily.ToggleRole };
+        registry.Register(family.Siblings(toggle, on => IsOn = on).Prepend(toggle));
     }
 
     partial void OnIsOnChanged(bool value)
@@ -45,6 +47,7 @@ public sealed partial class HotkeysSwitch : ObservableObject, IDisposable
     public void Dispose()
     {
         _registry.Unregister(ActionId);
+        foreach (var id in OnOffFamily.SiblingIds(ActionId)) _registry.Unregister(id);
         _states.Unregister(StateId);
     }
 }

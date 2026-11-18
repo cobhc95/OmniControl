@@ -30,7 +30,6 @@ internal static class VideoNative
     [DllImport("user32.dll")] public static extern bool GetIconInfo(IntPtr icon, out IconInfo info);
     [DllImport("user32.dll")] public static extern bool DrawIconEx(IntPtr hdc, int x, int y, IntPtr icon, int width, int height, int step, IntPtr brush, int flags);
     [DllImport("user32.dll")] public static extern short GetAsyncKeyState(int key);
-    [DllImport("gdi32.dll")] public static extern bool GdiFlush();
 
     /// <summary>AlphaBlend's BLENDFUNCTION packed in one number: source over, full constant alpha, per-pixel (premultiplied) alpha.</summary>
     public const int BlendPerPixelAlpha = 0x01FF0000;

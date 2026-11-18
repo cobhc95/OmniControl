@@ -112,7 +112,7 @@
          drawing toolbar, the action bar; .label = the selection's size), Button.toolicon = a square icon button of such a bar (.selected =
          the tool in use: accent wash and accent glyph; hover and press only change the wash, nothing moves), Button.swatch + Ellipse.swatch =
          one colour of a colour pop-down (the Ellipse is also the colour button's dot), shot|CaptureCanvas = the overlay's dim, frame and
-         handles, TextBox.shottext = the text tool's box, StackPanel.qrcode = one code of the QR pop-down. Sizes Capture*, ToolIcon*, Swatch*
+         handles (drawn natively by Core's PictureSurface from these values), TextBox.shottext = the text tool's box, StackPanel.qrcode = one code of the QR pop-down. Sizes Capture*, ToolIcon*, Swatch*
          in App.axaml. -->
     <Style Selector="Border.floatbar">
         <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
@@ -163,6 +163,17 @@
         <Setter Property="Height" Value="{DynamicResource SwatchSize}" />
         <Setter Property="Stroke" Value="{DynamicResource BrushHoverEdge}" />
         <Setter Property="StrokeThickness" Value="1" />
+    </Style>
+    <!-- Popup.floating = a pop-up placed at a point of its window by its HorizontalOffset/VerticalOffset (from the window's top-left),
+         never slid or flipped by Avalonia, never closed by a click elsewhere and without a window shadow: the overlay's size label, bars
+         and text box, which float above its picture (a native window, see shot:CaptureCanvas) and are placed by CaptureOverlay. -->
+    <Style Selector="Popup.floating">
+        <Setter Property="Placement" Value="AnchorAndGravity" />
+        <Setter Property="PlacementAnchor" Value="TopLeft" />
+        <Setter Property="PlacementGravity" Value="BottomRight" />
+        <Setter Property="PlacementConstraintAdjustment" Value="None" />
+        <Setter Property="IsLightDismissEnabled" Value="False" />
+        <Setter Property="WindowManagerAddShadowHint" Value="False" />
     </Style>
     <Style Selector="shot|CaptureCanvas">
         <Setter Property="Dim" Value="{DynamicResource BrushCaptureDim}" />

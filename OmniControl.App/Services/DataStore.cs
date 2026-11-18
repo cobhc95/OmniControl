@@ -11,6 +11,9 @@ public enum StoreKind
 
     /// <summary>What lets OmniControl put Windows back as it was (originals, journals): never exported and never wiped, or a change to Windows could no longer be undone.</summary>
     Safety,
+
+    /// <summary>A record OmniControl keeps for itself and the diagnostics (the power journal): wiped, never exported.</summary>
+    Record,
 }
 
 /// <summary>
@@ -69,11 +72,13 @@ public static class DataStores
     public static readonly DataStore PointerSwapTrial = new("pointer-swap-trial.json", "Button swap trial", StoreKind.Safety);
     public static readonly DataStore TrackpadOriginal = new("trackpad-settings-original.json", "Original trackpad settings", StoreKind.Safety);
 
+    public static readonly DataStore PowerJournal = new("power-journal.json", "Power journal (sleeps, wakes, log-ins)", StoreKind.Record);
+
     public static IReadOnlyList<DataStore> All { get; } = new[]
     {
         App, Mixer, EffectPresets, VolumePresets, Plugins, Automation, GestureRules, Gestures, Hotkeys, HotkeySets, Mouse, Displays, Osd,
         AppLists, AppActions, PowerPlans, RecentActions, Devices, Screenshots, Tray, Icons, MicMuteKey, OtherPcs, Confirmations, MixerBeforeRestore, BeforeRestore, EngineJournal, SoftwareDisplay, PointerOriginal,
-        PointerSwapTrial, TrackpadOriginal,
+        PointerSwapTrial, TrackpadOriginal, PowerJournal,
     };
 
     /// <summary>The stores a backup holds.</summary>

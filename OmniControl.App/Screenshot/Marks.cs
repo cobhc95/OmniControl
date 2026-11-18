@@ -43,7 +43,44 @@ public static class MarkLook
 /// </summary>
 public abstract class Mark : IDisposable
 {
+    /// <summary>The finished drawing, as shown and exported.</summary>
     public abstract void Draw(DrawingContext context);
+
+    /// <summary>The drawing at full strength, for a layer that is faded once (<see cref="InProgressOpacity"/> below 1); the finished drawing by default.</summary>
+    public virtual void DrawSolid(DrawingContext context) => Draw(context);
+
+    /// <summary>
+    /// While it is being drawn: the part that no longer changes, kept as shapes that are not built again on each pointer move. Nothing by
+    /// default.
+    /// </summary>
+    public virtual void DrawSettled(DrawingContext context) { }
+
+    /// <summary>While it is being drawn: the part that changes on each pointer move (the whole drawing by default).</summary>
+    public virtual void DrawGrowing(DrawingContext context) => Draw(context);
+
+    /// <summary>
+    /// The see-through strength of the drawing (1 = solid): it is drawn solid in a layer that is faded once with the others of its
+    /// kind next to it, so where they overlap is not darker.
+    /// </summary>
+    public virtual double InProgressOpacity => 1;
+
+    /// <summary>
+    /// Where the finished drawing paints, as a few rectangles that hug its shape (picture pixels, the pen's width and its soft edge
+    /// included): what the overlay paints again when the drawing comes or goes.
+    /// </summary>
+    public abstract IEnumerable<Rect> Covers();
+
+    /// <summary>How far the drawing in progress has got (a free-hand line: its points); 0 for one that changes as a whole.</summary>
+    public virtual int Version => 0;
+
+    /// <summary>Where the drawing in progress may look different from how it looked at <paramref name="version"/> (everywhere by default).</summary>
+    public virtual IEnumerable<Rect> CoversChangedSince(int version) => Covers();
+
+    /// <summary>How far a pen's anti-aliased edge reaches beyond half its width.</summary>
+    protected const double SoftEdge = 2;
+
+    /// <summary>The rectangle around two points, widened by <paramref name="reach"/> on every side.</summary>
+    protected static Rect Around(Point a, Point b, double reach) => MarkMath.Enclosing(a, b).Inflate(reach);
 
     public virtual void Dispose() { }
 
@@ -51,42 +88,107 @@ public abstract class Mark : IDisposable
         new ImmutablePen(new ImmutableSolidColorBrush(color, opacity), width, lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
 }
 
-/// <summary>A free-hand line: the pen, or the wide see-through marker.</summary>
+/// <summary>
+/// A free-hand line: the pen, or the wide see-through marker. Finished, it is one line. While it is drawn it is cut into settled parts of
+/// <see cref="PartLength"/> steps and the growing rest, so each pointer move builds and repaints only the short rest, not the whole line
+/// (a long scribble used to cost more on every move). With round ends and joins the parts together are exactly the one line.
+/// </summary>
 public sealed class StrokeMark : Mark
 {
+    /// <summary>Steps per settled part: small enough that the growing rest stays cheap, large enough that parts settle rarely.</summary>
+    private const int PartLength = 64;
+
     private readonly List<Point> _points;
-    private readonly IPen _pen;
-    private StreamGeometry? _geometry; // built once per change of the points, not on every frame
+    private readonly IPen _pen;      // finished: the colour at the tool's see-through strength
+    private readonly IPen _solidPen; // in progress: the same colour solid; the overlay applies the strength to all parts at once
+    private readonly double _opacity;
+    private readonly List<StreamGeometry> _settled = new();
+    private StreamGeometry? _whole, _growing; // built once per change of the points, not on every frame
 
     public StrokeMark(Point start, Color color, double width, double opacity)
     {
         _points = new List<Point> { start };
+        _opacity = opacity;
         _pen = PenOf(color, width, opacity);
+        _solidPen = opacity < 1 ? PenOf(color, width) : _pen;
     }
 
     public void Extend(Point point)
     {
         if (point == _points[^1]) return; // a move that went nowhere would only make the line longer to draw
         _points.Add(point);
-        _geometry = null;
+        _whole = _growing = null;
+        var start = GrowingStart;
+        if (_points.Count - 1 - start == PartLength) _settled.Add(Line(start, _points.Count - 1));
     }
+
+    /// <summary>The point the growing rest starts at: the last settled part's end.</summary>
+    private int GrowingStart => _settled.Count * PartLength;
+
+    public override double InProgressOpacity => _opacity;
 
     public override void Draw(DrawingContext context)
     {
-        if (_points.Count == 1)
+        if (_points.Count == 1) context.DrawLine(_pen, _points[0], _points[0]);
+        else context.DrawGeometry(null, _pen, _whole ??= Line(0, _points.Count - 1));
+    }
+
+    public override void DrawSolid(DrawingContext context)
+    {
+        if (_points.Count == 1) context.DrawLine(_solidPen, _points[0], _points[0]);
+        else context.DrawGeometry(null, _solidPen, _whole ??= Line(0, _points.Count - 1));
+    }
+
+    public override void DrawSettled(DrawingContext context)
+    {
+        foreach (var part in _settled) context.DrawGeometry(null, _solidPen, part);
+    }
+
+    public override void DrawGrowing(DrawingContext context)
+    {
+        var start = GrowingStart;
+        var last = _points.Count - 1;
+        if (last > start) context.DrawGeometry(null, _solidPen, _growing ??= Line(start, last));
+        else if (start == 0) context.DrawLine(_solidPen, _points[0], _points[0]); // a dot; a settled part's round end already covers its own last point
+    }
+
+    public override int Version => _points.Count;
+
+    /// <summary>One rectangle per settled part's length of points, so a long scribble is not repainted as one big box.</summary>
+    public override IEnumerable<Rect> Covers()
+    {
+        for (var from = 0; from < _points.Count; from += PartLength) yield return Bounds(from, Math.Min(from + PartLength, _points.Count - 1));
+    }
+
+    /// <summary>The points added since <paramref name="version"/>, with the one before them (the join to the line drawn already).</summary>
+    public override IEnumerable<Rect> CoversChangedSince(int version)
+    {
+        yield return Bounds(Math.Clamp(version - 1, 0, _points.Count - 1), _points.Count - 1);
+    }
+
+    private Rect Bounds(int from, int to)
+    {
+        double left = _points[from].X, top = _points[from].Y, right = left, bottom = top;
+        for (var i = from + 1; i <= to; i++)
         {
-            context.DrawLine(_pen, _points[0], _points[0]);
-            return;
+            var p = _points[i];
+            left = Math.Min(left, p.X);
+            top = Math.Min(top, p.Y);
+            right = Math.Max(right, p.X);
+            bottom = Math.Max(bottom, p.Y);
         }
-        if (_geometry is null)
-        {
-            _geometry = new StreamGeometry();
-            using var g = _geometry.Open();
-            g.BeginFigure(_points[0], false);
-            for (var i = 1; i < _points.Count; i++) g.LineTo(_points[i]);
-            g.EndFigure(false);
-        }
-        context.DrawGeometry(null, _pen, _geometry);
+        return Around(new Point(left, top), new Point(right, bottom), _pen.Thickness / 2 + SoftEdge);
+    }
+
+    /// <summary>The line through the points from index <paramref name="from"/> to <paramref name="to"/>.</summary>
+    private StreamGeometry Line(int from, int to)
+    {
+        var geometry = new StreamGeometry();
+        using var g = geometry.Open();
+        g.BeginFigure(_points[from], false);
+        for (var i = from + 1; i <= to; i++) g.LineTo(_points[i]);
+        g.EndFigure(false);
+        return geometry;
     }
 }
 
@@ -139,6 +241,21 @@ public sealed class LineMark : Mark
         }
         context.DrawGeometry(_fill, _pen, geometry);
     }
+
+    /// <summary>The line in pieces of <see cref="PieceLength"/> pixels (a long slanted line is not repainted as one big box), and the arrow's head.</summary>
+    public override IEnumerable<Rect> Covers()
+    {
+        var reach = _width / 2 + SoftEdge;
+        var length = Math.Sqrt(Math.Pow(To.X - From.X, 2) + Math.Pow(To.Y - From.Y, 2));
+        var pieces = Math.Max(1, (int)Math.Ceiling(length / PieceLength));
+        for (var i = 0; i < pieces; i++) yield return Around(At((double)i / pieces), At((double)(i + 1) / pieces), reach);
+        // the head's far corners are about 1.12 head lengths from its tip
+        if (_arrow) yield return Around(To, To, _width * MarkLook.ArrowHead * 1.2 + reach);
+    }
+
+    private const double PieceLength = 128;
+
+    private Point At(double t) => new(From.X + (To.X - From.X) * t, From.Y + (To.Y - From.Y) * t);
 }
 
 /// <summary>The pure geometry of the drawings.</summary>
@@ -166,6 +283,17 @@ public sealed class BoxMark : Mark
     }
 
     public override void Draw(DrawingContext context) => context.DrawRectangle(null, _pen, MarkMath.Enclosing(From, To));
+
+    /// <summary>Its four sides (the inside of a large box is never repainted for it).</summary>
+    public override IEnumerable<Rect> Covers()
+    {
+        var box = MarkMath.Enclosing(From, To);
+        var reach = _pen.Thickness / 2 + SoftEdge;
+        yield return Around(box.TopLeft, box.TopRight, reach);
+        yield return Around(box.BottomLeft, box.BottomRight, reach);
+        yield return Around(box.TopLeft, box.BottomLeft, reach);
+        yield return Around(box.TopRight, box.BottomRight, reach);
+    }
 }
 
 /// <summary>A line of text written with the text tool.</summary>
@@ -181,6 +309,12 @@ public sealed class TextMark : Mark
     }
 
     public override void Draw(DrawingContext context) => context.DrawText(_text, _at);
+
+    /// <summary>The text's box, widened by a quarter of its line height for letters that reach past it.</summary>
+    public override IEnumerable<Rect> Covers()
+    {
+        yield return new Rect(_at, new Size(_text.WidthIncludingTrailingWhitespace, _text.Height)).Inflate(_text.Height / 4 + SoftEdge);
+    }
 }
 
 /// <summary>A blurred (pixelated) area: the coarse picture made from the screenshot when it was drawn, stretched over the area without smoothing.</summary>
@@ -203,6 +337,11 @@ public sealed class BlurMark : Mark
         using (context.PushClip(new Rect(_area.X, _area.Y, _area.Width, _area.Height)))
         using (context.PushRenderOptions(new RenderOptions { BitmapInterpolationMode = BitmapInterpolationMode.None }))
             context.DrawImage(_coarse, new Rect(_area.X, _area.Y, _coarse.PixelSize.Width * _block, _coarse.PixelSize.Height * _block));
+    }
+
+    public override IEnumerable<Rect> Covers()
+    {
+        yield return new Rect(_area.X, _area.Y, _area.Width, _area.Height);
     }
 
     public override void Dispose() => _coarse.Dispose();

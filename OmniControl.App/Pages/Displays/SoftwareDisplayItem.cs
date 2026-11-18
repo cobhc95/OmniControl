@@ -35,7 +35,6 @@ internal sealed class SoftwareDisplayItem
         Cards = DisplayControls.Software.Select(level => (IEditorItem)_sliders[level]).ToList();
         Group = new ItemGroup($"Displays/Software/{Id}", Name, Cards.Cast<object>().ToList())
         {
-            Summary = string.Empty,
             Restore = RestoreDefaults,
             RestoreTip = $"Puts {Name}'s software picture back to normal",
         };

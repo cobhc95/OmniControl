@@ -11,12 +11,12 @@
     <StackPanel Spacing="4" TextElement.FontSize="{StaticResource EqFontSize}">
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
+                <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" MinWidth="64" SharedSizeGroup="EqValue" />
                 <ColumnDefinition Width="Auto" MinWidth="48" SharedSizeGroup="EqExtra" />
             </Grid.ColumnDefinitions>
-            <TextBlock Text="{Binding Title}" VerticalAlignment="Center" Margin="0,0,24,0" />
+            <TextBlock Classes="cardname" Text="{Binding Title}" VerticalAlignment="Center" Margin="0,0,24,0" />
             <ComboBox Grid.Column="1" Classes="choice" FontSize="{StaticResource EqFontSize}" ItemsSource="{x:Static vm:EqBandItem.TypeNames}" SelectedItem="{Binding TypeName}"
                       />
             <ToggleSwitch Grid.Column="3" FontSize="{StaticResource EqFontSize}" IsChecked="{Binding Enabled}" OnContent="On" OffContent="Off" HorizontalAlignment="Right"
@@ -24,12 +24,12 @@
         </Grid>
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
+                <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" MinWidth="64" SharedSizeGroup="EqValue" />
                 <ColumnDefinition Width="Auto" MinWidth="48" SharedSizeGroup="EqExtra" />
             </Grid.ColumnDefinitions>
-            <TextBlock Text="Frequency" VerticalAlignment="Center" Margin="0,0,24,0" />
+            <TextBlock Classes="cardname" Text="Frequency" VerticalAlignment="Center" Margin="0,0,24,0" />
             <Slider Grid.Column="1" Minimum="0" Maximum="{x:Static vm:EqBandItem.LogSteps}" Value="{Binding FreqPos}"
                     pages:SliderReset.Value="{Binding DefaultFreqPos}" Classes="thick" />
             <pages:NumberText Grid.Column="2" Value="{Binding Freq}" Minimum="{x:Static vm:EqBandItem.MinFreq}"
@@ -42,12 +42,12 @@
         </Grid>
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
+                <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" MinWidth="64" SharedSizeGroup="EqValue" />
                 <ColumnDefinition Width="Auto" MinWidth="48" SharedSizeGroup="EqExtra" />
             </Grid.ColumnDefinitions>
-            <TextBlock Text="Gain" VerticalAlignment="Center" Margin="0,0,24,0" />
+            <TextBlock Classes="cardname" Text="Gain" VerticalAlignment="Center" Margin="0,0,24,0" />
             <Slider Grid.Column="1" Minimum="{x:Static vm:EqBandItem.MinGainSteps}" Maximum="{x:Static vm:EqBandItem.MaxGainSteps}"
                     Value="{Binding GainSteps}" pages:SliderReset.Value="{Binding DefaultGainSteps}" IsEnabled="{Binding UsesGain}"
                     Classes="thick" />
@@ -59,12 +59,12 @@
         </Grid>
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
+                <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" MinWidth="64" SharedSizeGroup="EqValue" />
                 <ColumnDefinition Width="Auto" MinWidth="48" SharedSizeGroup="EqExtra" />
             </Grid.ColumnDefinitions>
-            <TextBlock Text="Bandwidth" VerticalAlignment="Center" Margin="0,0,24,0" />
+            <TextBlock Classes="cardname" Text="Bandwidth" VerticalAlignment="Center" Margin="0,0,24,0" />
             <Slider Grid.Column="1" Minimum="0" Maximum="{x:Static vm:EqBandItem.LogSteps}" Value="{Binding WidthPos}"
                     pages:SliderReset.Value="{Binding DefaultWidthPos}" Classes="thick" />
             <pages:NumberText Grid.Column="2" Value="{Binding Bandwidth}" Minimum="{x:Static vm:EqBandItem.MinBandwidth}"

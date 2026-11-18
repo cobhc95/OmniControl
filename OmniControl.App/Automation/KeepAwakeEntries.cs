@@ -22,8 +22,11 @@ public sealed class KeepAwakeEntries : IDisposable
         states.Register(new StateEntry(StateId, "Keep awake", PowerActions.Power, StateKind.OnOff, () => StateValue.Of(_awake.IsOn, DateTime.Now),
             "Set by OmniControl: the PC does not go to sleep by itself while this is on.", Keywords: "stay awake never sleep caffeine insomnia",
             Set: value => Apply(value.Number is { } on && on != 0), Short: "Keep awake", SuggestedIcons: new[] { "coffee", "sun" }, Common: CommonGroups.Power));
-        hotkeys.Register(new HotkeyAction(ActionId, "Toggle keep awake", AutomationService.Category, "stay awake never sleep caffeine insomnia",
-            _ => Apply(!_awake.IsOn), group: PowerActions.Power) { PickerSection = PowerActions.Power, SuggestedIcons = new[] { "coffee", "sun" } });
+        var family = new OnOffFamily(ActionId, "Keep awake", StateId);
+        var toggle = new HotkeyAction(ActionId, "Toggle keep awake", AutomationService.Category, "stay awake never sleep caffeine insomnia",
+            _ => Apply(!_awake.IsOn), group: PowerActions.Power)
+            { PickerSection = PowerActions.Power, SuggestedIcons = new[] { "coffee", "sun" }, Family = family.Family, FamilyRole = OnOffFamily.ToggleRole };
+        hotkeys.Register(family.Siblings(toggle, Apply).Prepend(toggle));
     }
 
     private void Apply(bool on)
@@ -35,6 +38,7 @@ public sealed class KeepAwakeEntries : IDisposable
     public void Dispose()
     {
         _hotkeys.Unregister(ActionId);
+        foreach (var id in OnOffFamily.SiblingIds(ActionId)) _hotkeys.Unregister(id);
         _states.Unregister(StateId);
         _awake.Dispose();
     }

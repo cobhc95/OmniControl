@@ -10,7 +10,7 @@ public sealed partial class OtherPcsService
 {
     private readonly Dictionary<string, IReadOnlyList<TailscaleCheck>> _pairChecks = new();
     private readonly HashSet<string> _pairChecking = new();
-    private readonly Dictionary<string, DateTime> _switchFailedAt = new();
+    private readonly Dictionary<string, (DateTime At, string Address)> _switchFailedAt = new();
     private readonly Dictionary<string, string> _switchProblems = new();
     private readonly Dictionary<string, DateTime> _pairCheckedAt = new();
 
@@ -18,7 +18,10 @@ public sealed partial class OtherPcsService
     public bool IsViaTailscale(string id) => _links.TryGetValue(id, out var link) && link.ViaTailscale;
 
     /// <summary>True when the PC is set to Tailscale and Tailscale does not carry its link (yet, or any more): its detail shows the checklist.</summary>
-    public bool NeedsTailscaleSetup(string id) => Find(id) is { Route: PcRoute.Tailscale } && !IsViaTailscale(id);
+    public bool NeedsTailscaleSetup(string id) => Find(id) is { Route: PcRoute.Tailscale } && !RouteConnected(id);
+
+    // The link itself (not the probe) still has to be moved onto Tailscale: what the periodic checks work on, so a passing probe on a LAN link still switches it.
+    private bool LinkNeedsTailscale(string id) => Find(id) is { Route: PcRoute.Tailscale } && !IsViaTailscale(id);
 
     /// <summary>The checklist of one paired PC as last read (empty until the first read).</summary>
     public IReadOnlyList<TailscaleCheck> PairChecklist(string id) => _pairChecks.GetValueOrDefault(id) ?? Array.Empty<TailscaleCheck>();
@@ -37,23 +40,28 @@ public sealed partial class OtherPcsService
         {
             TailscaleStatus status = TailscaleStatus.NotInstalled;
             bool? firewall = null, reach = null;
+            ProbeResult? probe = null;
             TailscalePeer? peer = null;
             try
             {
                 status = TailscaleStatusReader.Read();
                 firewall = status.Installed ? TailscaleFirewall.IsAllowed() : null;
                 peer = status.Peers.FirstOrDefault(p => known.Length > 0 && p.Address == known) ?? status.Peers.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
-                reach = firewall == true && status.Connected && peer is not null ? await ReachAsync(peer.Address).ConfigureAwait(false) : null;
+                if (firewall == true && status.Connected && peer is not null)
+                {
+                    probe = await ProbeAddressAsync(id, peer.Address).ConfigureAwait(false);
+                    reach = probe.Ok;
+                }
             }
             finally
             {
-                var (read, fw, found, answered) = (status, firewall, peer, reach);
-                Post(() => FinishPairCheck(id, read, fw, found, answered));
+                var (read, fw, found, answered, measured) = (status, firewall, peer, reach, probe);
+                Post(() => FinishPairCheck(id, read, fw, found, answered, measured));
             }
         });
     }
 
-    private void FinishPairCheck(string id, TailscaleStatus status, bool? firewall, TailscalePeer? peer, bool? reach)
+    private void FinishPairCheck(string id, TailscaleStatus status, bool? firewall, TailscalePeer? peer, bool? reach, ProbeResult? probe)
     {
         _pairChecking.Remove(id);
         if (Find(id) is not { } pair)
@@ -62,7 +70,14 @@ public sealed partial class OtherPcsService
             return;
         }
         _tsStatus = status;
-        var checks = TailscaleChecks.Build(status, firewall, reach, pair.Name, pair.Name, peer is not null);
+        var checks = TailscaleChecks.Build(status, firewall, reach, pair.Name, pair.Name, peer is not null).ToList();
+        if (probe is not null && peer is not null)
+        {
+            // The last row is the probe itself: its measured time when it passed, its real reason when it did not.
+            if (pair.Route == PcRoute.Tailscale) RecordProbe(id, PcRoute.Tailscale, peer.Address, probe);
+            var at = checks.FindIndex(c => c.Id == TailscaleChecks.Reachable);
+            if (at >= 0) checks[at] = probe.Ok ? checks[at] with { Tag = $"{probe.Ms} ms", TagTip = "Round trip of an authenticated ping over Tailscale." } : checks[at] with { Sentence = probe.Reason };
+        }
         _pairChecks[id] = checks;
         if (pair.Route == PcRoute.Tailscale && peer is not null && TailscaleChecks.AllOk(checks)) TailscaleWorks(id, peer.Address);
         RaiseChanged();
@@ -77,9 +92,11 @@ public sealed partial class OtherPcsService
     private void TailscaleWorks(string id, string address)
     {
         if (Find(id) is not { } pair || IsViaTailscale(id) || _dialing.Contains(id)) return;
-        if (_switchFailedAt.TryGetValue(id, out var failed) && DateTime.UtcNow - failed < Timing.PcTailscaleSwitchBackoff) return;
+        // Only a failure at this very address holds the try back: a failed dial to an old stored address says nothing about the address Tailscale lists now.
+        if (_switchFailedAt.TryGetValue(id, out var failed) && failed.Address == address && DateTime.UtcNow - failed.At < Timing.PcTailscaleSwitchBackoff) return;
         pair.TailscaleAddress = address;
         _tailscaleFailed.Remove(id);
+        _switchProblems.Remove(id);
         Save();
         var own = OwnTailscaleAddress;
         if (_links.TryGetValue(id, out var link) && own.Length > 0)
@@ -88,11 +105,11 @@ public sealed partial class OtherPcsService
     }
 
     // The Tailscale link could not be opened although Tailscale and the firewall are fine: LAN is kept, the stage says which step failed.
-    private void TailscaleDialFailed(string id)
+    private void TailscaleDialFailed(string id, string address)
     {
         _tailscaleFailed.Add(id);
-        _switchFailedAt[id] = DateTime.UtcNow;
-        _switchProblems[id] = "Tailscale reaches the PC, but OmniControl could not open a link there. Still using LAN; it tries again later.";
+        _switchFailedAt[id] = (DateTime.UtcNow, address);
+        _switchProblems[id] = $"OmniControl could not open a link to {address}. The other PC may not have this PC paired, or may be set to LAN. Still using LAN; it tries again later.";
         RaiseChanged();
     }
 
@@ -117,7 +134,7 @@ public sealed partial class OtherPcsService
     // switches it over once Tailscale works, and what brings the checklist back if it stops); other PCs lose their stale results.
     private void RecheckTailscalePairs()
     {
-        var waiting = _settings.Pairs.Where(p => NeedsTailscaleSetup(p.Id)).Select(p => p.Id).ToList();
+        var waiting = _settings.Pairs.Where(p => LinkNeedsTailscale(p.Id) || NeedsTailscaleSetup(p.Id)).Select(p => p.Id).ToList();
         var stale = _pairChecks.Keys.Except(waiting).ToList();
         foreach (var id in stale)
         {

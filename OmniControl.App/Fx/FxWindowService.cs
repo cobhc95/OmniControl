@@ -1,4 +1,4 @@
-﻿using Avalonia.Controls;
+using Avalonia.Controls;
 using OmniControl.App.Dialogs;
 using OmniControl.App.Audio;
 using OmniControl.App.Audio.Engine;
@@ -21,6 +21,7 @@ public sealed class FxWindowService
     private readonly EffectsEngine _engine;
     private readonly EffectsSupportService _support;
     private readonly PluginChainHost _plugins;
+    private readonly DisplayFeeds _displayFeeds;
     private readonly FxClipboard _clipboard;
     private readonly PluginLibrary _library;
     private readonly UserPresetStore _presets;
@@ -38,7 +39,7 @@ public sealed class FxWindowService
     /// <param name="openPresets">Opens the shared preset manager at a section and group (a preset box's "Manage presets...").</param>
     /// <param name="mixerLinks">Opens the Mixer and runs its Equalizer APO install step, for a device folder's editor and device menu.</param>
     /// <param name="ask">Asks a question through the program's dialogs (true = confirmed): removing a device folder that holds effects.</param>
-    public FxWindowService(MixerService mixer, EffectsEngine engine, EffectsSupportService support, PluginChainHost plugins, PluginLibrary library, UserPresetStore presets,
+    public FxWindowService(MixerService mixer, EffectsEngine engine, EffectsSupportService support, PluginChainHost plugins, DisplayFeeds displayFeeds, PluginLibrary library, UserPresetStore presets,
         Action<string> report, Action<string?, string?> openPresets, FxMixerLinks mixerLinks, Func<DialogMessage, Task<bool>> ask)
     {
         _ask = ask;
@@ -50,6 +51,7 @@ public sealed class FxWindowService
         _engine = engine;
         _support = support;
         _plugins = plugins;
+        _displayFeeds = displayFeeds;
         _report = report;
         _clipboard = new FxClipboard(plugins.SaveStates);
     }
@@ -57,7 +59,7 @@ public sealed class FxWindowService
     /// <summary>The view-model of one chain; its popped-out effect editors stay above <paramref name="owner"/>, the FX window.</summary>
     private FxChainViewModel CreateChain(string? key, Func<Window?> owner) =>
         new(_mixer, key, new EffectEditorDock(_plugins, owner, _report), _clipboard, _library, _presets,
-            new FxChainTies(slot => _engine.ReadingOf(key, slot), kind => _openPresets(null, FxKindPresets.GroupId(kind)),
+            new FxChainTies(slot => _engine.ReadingOf(key, slot), (slot, onFrame) => _displayFeeds.OpenSpectrum(key, slot, onFrame), kind => _openPresets(null, FxKindPresets.GroupId(kind)),
                 key is null ? new FxDeviceSource(_mixer, _support, _engine) : null, _mixerLinks, _ask, SaveFolderPreset)); // device folders: the master only
 
     /// <summary>One preset group per effect kind that has presets, in the catalog's order, for the preset manager's <paramref name="section"/> (the Volume page).</summary>
@@ -105,7 +107,7 @@ public sealed class FxWindowService
         var clock = System.Diagnostics.Stopwatch.StartNew();
         try
         {
-            vm = new FxWindowViewModel(_mixer, _engine, _support, key, CreateChain(key, () => window));
+            vm = new FxWindowViewModel(_mixer, _engine, _support, _displayFeeds, key, CreateChain(key, () => window));
             window = new FxWindow { DataContext = vm };
             UiTiming.WhenOpened(window, "FX", clock);
             // Plug-in editors are taken out while the window still exists (both plug-in formats ask for that), so this is Closing, not Closed.

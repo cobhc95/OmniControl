@@ -14,6 +14,9 @@ internal sealed class WarmLightItem
     private const string TurnOn = "Turn on", TurnOff = "Turn off";
     private const string WarmId = "displays.sw.warmlight";
 
+    /// <summary>The id of the state "Warm light at night" (the page registers it; its On and Off actions are checked against it).</summary>
+    public const string StateId = "displays.warmlight";
+
     private readonly WarmLightScheduler _scheduler;
     private readonly DisplaySettingsStore _store;
     private readonly ButtonItem _state;
@@ -39,11 +42,10 @@ internal sealed class WarmLightItem
             " K", new WarmLightSettings().Kelvin) { Half = true };
         Cards = new IEditorItem[] { _state, _start, _end, _target };
 
-        Actions = new[]
-        {
-            DisplayActions.Once(WarmId, "Toggle warm light at night", "warm light night schedule evening blue light filter", category, DisplayControls.SoftwareGroup, VcpSections.Colour,
-                _ => Toggle(), devices: null, icon: Icons.IconLibrary.Moon),
-        };
+        var family = new OnOffFamily(WarmId, "Warm light at night", StateId);
+        var toggle = DisplayActions.Once(WarmId, "Toggle warm light at night", "warm light night schedule evening blue light filter", category, DisplayControls.SoftwareGroup, VcpSections.Colour,
+            _ => Toggle(), devices: null, icon: Icons.IconLibrary.Moon, family: family.Family, familyRole: OnOffFamily.ToggleRole);
+        Actions = family.Siblings(toggle, SetEnabled).Prepend(toggle).ToList();
         scheduler.Changed += Refresh;
     }
 

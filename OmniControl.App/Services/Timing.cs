@@ -30,6 +30,12 @@ public static class Timing
     /// <summary>Refresh rate of the Volume page's level meters (25 per second).</summary>
     public static readonly TimeSpan MeterFrame = TimeSpan.FromMilliseconds(40);
 
+    /// <summary>Below this master volume (percent) a display feed is not level-matched (1 / volume would be a gain over 50) and says it is not fed.</summary>
+    public const int DisplayFeedMinPercent = 2;
+
+    /// <summary>How often the Parametric equaliser graph's live spectrum is worked out and drawn again (about 15 per second).</summary>
+    public static readonly TimeSpan SpectrumFrame = TimeSpan.FromMilliseconds(66);
+
     /// <summary>How long the OSD pop-up stays visible.</summary>
     public static readonly TimeSpan OsdVisible = TimeSpan.FromMilliseconds(1500);
 
@@ -109,8 +115,21 @@ public static class Timing
     /// <summary>The displays are looked at again (to see whether one was plugged in or removed) at most this often, however many events ask for it.</summary>
     public static readonly TimeSpan DisplayRescanGap = TimeSpan.FromSeconds(4);
 
-    /// <summary>After Windows reports a display change, wait this long for it to settle before looking at the displays.</summary>
-    public static readonly TimeSpan DisplayChangeSettle = TimeSpan.FromMilliseconds(1500);
+    /// <summary>After Windows announces a hardware change (<see cref="HardwareWatches"/>), wait this long for the burst to end (a Remote Desktop return makes several) before refreshing what depends on it.</summary>
+    public static readonly TimeSpan HardwareDebounce = TimeSpan.FromSeconds(2);
+
+    /// <summary>
+    /// After an announcement, a watch that can tell when it looks stale is refreshed at these times after the last one of the burst, stopping as
+    /// soon as it looks right (<see cref="HardwareRetry"/>): after a return from Remote Desktop the monitors often do not answer DDC/CI for 2-10 s.
+    /// </summary>
+    public static readonly IReadOnlyList<TimeSpan> HardwareRetrySchedule =
+        [TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20)];
+
+    /// <summary>One watched piece of hardware is refreshed at most this often, however many announcements arrive; a later one still gets its refresh once the gap is over.</summary>
+    public static readonly TimeSpan HardwareRefreshGap = TimeSpan.FromSeconds(4);
+
+    /// <summary>An action that finds its picked device missing makes its watch refresh once; the same watch is not refreshed again for an action within this time (a held key on an unplugged monitor).</summary>
+    public static readonly TimeSpan HardwareOnDemandGap = TimeSpan.FromSeconds(10);
 
     /// <summary>How often the warm-light schedule looks at the clock; its ease in and out is 30 minutes, so every look moves the picture by a small step.</summary>
     public static readonly TimeSpan WarmLightTick = TimeSpan.FromSeconds(30);
@@ -320,8 +339,49 @@ public static class Timing
     /// <summary>How often the automations look at the clock, the battery, the idle time, the running programs and the devices.</summary>
     public static readonly TimeSpan AutomationTick = TimeSpan.FromSeconds(5);
 
-    /// <summary>Between two looks the clock jumped by more than this: the PC was asleep, so the "wakes from sleep" trigger fires.</summary>
-    public static readonly TimeSpan AutomationResumeGap = TimeSpan.FromSeconds(30);
+    // ---- Power journal and wakes (Services/PowerJournal, Core/Engine/WakeDetector and ClockGap) ----
+
+    /// <summary>How often the clock check samples (and a waiting wake candidate is looked at again).</summary>
+    public static readonly TimeSpan PowerClockTick = TimeSpan.FromSeconds(2);
+
+    /// <summary>A clock sample this much later than asked means the program was stopped (the PC slept, or Modern Standby froze it): one piece of wake evidence.</summary>
+    public static readonly TimeSpan PowerClockGap = TimeSpan.FromSeconds(20);
+
+    /// <summary>A wake told by one channel waits this long for a second one (<see cref="Core.Engine.WakeDetector"/>).</summary>
+    public static readonly TimeSpan WakeConfirmWindow = TimeSpan.FromSeconds(20);
+
+    /// <summary>After a confirmed wake, more wake evidence within this time is the same wake told again, unless the PC went down in between.</summary>
+    public static readonly TimeSpan WakeQuiet = TimeSpan.FromMinutes(2);
+
+    /// <summary>The display must have been off at least this long for its return to count as wake evidence (Modern Standby; a short blank is not).</summary>
+    public static readonly TimeSpan StandbyDisplayOffMin = TimeSpan.FromSeconds(30);
+
+    /// <summary>The same kind of power event told by several channels within this time is one journal entry.</summary>
+    public static readonly TimeSpan PowerEventSame = TimeSpan.FromSeconds(5);
+
+    /// <summary>"At log in" runs once per sign-in: a start-up whose Windows start time is within this of the last one that ran it, in the same session, is the same sign-in.</summary>
+    public static readonly TimeSpan LoginSameBoot = TimeSpan.FromMinutes(2);
+
+    // ---- Steps that need the network or a device (Rules/ReadyWait, Hotkeys/ActionReach) ----
+
+    /// <summary>After a wake or a log-in, the waits between readiness checks (network up, device answers); the last repeats.</summary>
+    public static readonly IReadOnlyList<TimeSpan> ReadyBackoff =
+        new[] { TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(8), TimeSpan.FromSeconds(13), TimeSpan.FromSeconds(20) };
+
+    /// <summary>The longest a step waits for the network and its device before it is reported as not reachable.</summary>
+    public static readonly TimeSpan ReadyTimeout = TimeSpan.FromMinutes(3);
+
+    /// <summary>The waits before a failed step is tried again; the last repeats.</summary>
+    public static readonly IReadOnlyList<TimeSpan> StepRetryBackoff = new[] { TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30) };
+
+    /// <summary>How many times in all a step that needs a device is tried.</summary>
+    public const int StepTriesMax = 3;
+
+    /// <summary>How often a step looks whether its device's command has ended, and how long nothing may be running before it counts as "nothing ran".</summary>
+    public static readonly TimeSpan StepOutcomePoll = TimeSpan.FromMilliseconds(500), StepOutcomeIdle = TimeSpan.FromSeconds(10);
+
+    /// <summary>The longest a step waits for its device's command to end (a simulation can take two minutes).</summary>
+    public static readonly TimeSpan StepOutcomeWait = TimeSpan.FromMinutes(3);
 
     /// <summary>A time-of-day automation whose time passed while the PC slept still runs if it woke within this time of it.</summary>
     public static readonly TimeSpan AutomationCatchUp = TimeSpan.FromMinutes(10);
@@ -352,6 +412,9 @@ public static class Timing
 
     /// <summary>How often a paired PC that is seen but not connected is dialled, and how often a live link is checked and sends its keep-alive.</summary>
     public static readonly TimeSpan PcLinkCheck = TimeSpan.FromSeconds(5);
+
+    /// <summary>The route probe (an authenticated ping answered with a pong): how often it runs for each paired PC, how long it waits, and how long a success counts as connected.</summary>
+    public static readonly TimeSpan PcProbeEvery = TimeSpan.FromSeconds(15), PcProbeTimeout = TimeSpan.FromSeconds(4), PcProbeFresh = TimeSpan.FromSeconds(40);
 
     /// <summary>A link that has sent nothing (not even its keep-alive) for this long is closed.</summary>
     public static readonly TimeSpan PcLinkSilence = TimeSpan.FromSeconds(30);
@@ -462,6 +525,9 @@ public static class Timing
 
     /// <summary>While the screenshot overlay is open in its strong "Stay on top" mode it puts itself back on top (and takes the foreground back) this often.</summary>
     public static readonly TimeSpan ScreenshotOnTopRefresh = TimeSpan.FromMilliseconds(250);
+
+    /// <summary>After Stop is asked, a recording that has not finished its file within this long counts as stuck: it is said once, and the bar's X (Esc twice, the emergency key) then offers "Force close". Esc pressed twice within <see cref="RecordingEscTwice"/> asks to discard.</summary>
+    public static readonly TimeSpan RecordingStopWait = TimeSpan.FromSeconds(8), RecordingEscTwice = TimeSpan.FromMilliseconds(700);
 
     /// <summary>The recording bar's timer is updated this often.</summary>
     public static readonly TimeSpan RecordingTimerTick = TimeSpan.FromMilliseconds(250);

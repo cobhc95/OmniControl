@@ -10,7 +10,7 @@ using OmniControl.Core.Models;
 
 namespace OmniControl.App.Pages.OtherPcs;
 
-/// <summary>One card of another PC's basic set (Screens, Sound...): its group, drawn like any page's group, and the chips that run its actions.</summary>
+/// <summary>One group of another PC's basic set (Screens, Sound...): its group, drawn like any page's group, and the chips that run its actions. Placed by <see cref="MasonryPanel"/> (two independent columns when the pane is wide).</summary>
 public sealed record MirrorGroup(ItemGroup Group, IReadOnlyList<ChipItem> Actions)
 {
     public bool HasActions => Actions.Count > 0;
@@ -26,6 +26,7 @@ public sealed record MirrorGroup(ItemGroup Group, IReadOnlyList<ChipItem> Action
 /// </summary>
 public sealed partial class PcMirror : ObservableObject
 {
+    private const string AllScreensWords = "All displays";
     private readonly string _pcId;
     private readonly OtherPcsService _service;
     private readonly Func<DialogMessage, Task<bool>> _ask;
@@ -73,7 +74,7 @@ public sealed partial class PcMirror : ObservableObject
         var summary = states.Where(s => !s.Settable && s.Entry.Kind == StateKind.Level).ToList();
         var cards = states.Except(summary).OrderBy(s => Rank(s.Entry.Kind)).ToList();
         var items = Cards(cards, chips).Cast<object>().ToList();
-        var group = new ItemGroup($"OtherPcs/{_pcId}/{name}", name, items) { Icon = icon, ExpandedByDefault = true, Summary = string.Empty };
+        var group = new ItemGroup($"OtherPcs/{_pcId}/{name}", name, items) { Icon = icon, ExpandedByDefault = true };
         foreach (var state in summary)
         {
             group.Summary = state.Entry.Words(state.Entry.Read());
@@ -112,9 +113,14 @@ public sealed partial class PcMirror : ObservableObject
         var leads = lead is not null && states.Any(s => s.Settable && s.Entry.Kind == StateKind.Level) ? lead : null;
         var made = new List<IEditorItem>();
         var skip = leads;
+        var shown = new HashSet<string>();
         foreach (var state in states.Where(s => s != skip))
         {
-            if (IsNowPlaying(state.Entry)) made.Add(NowPlayingCard(state.Entry, chips));
+            if (IsPerScreen(state))
+            {
+                if (shown.Add(state.Name)) made.Add(ScreenSlider(state.Name, states.Where(s => IsPerScreen(s) && s.Name == state.Name).ToList()));
+            }
+            else if (IsNowPlaying(state.Entry)) made.Add(NowPlayingCard(state.Entry, chips));
             else if (leads is not null && state.Settable && state.Entry.Kind == StateKind.Level)
             {
                 made.Add(Slider(state.Entry, LabelOf(state), Choice(leads.Entry, LabelOf(leads))));
@@ -127,6 +133,10 @@ public sealed partial class PcMirror : ObservableObject
 
     private static string LabelOf(RemoteState state) =>
         state.Section.Length == 0 ? state.Name : state.ScreenPower ? state.Section : $"{state.Section}: {state.Name}";
+
+    /// <summary>A level of one screen (its section is the screen's name): the screens' same-named levels become ONE card with a display chip.</summary>
+    private static bool IsPerScreen(RemoteState state) =>
+        state.Settable && !state.ScreenPower && state.Entry.Kind == StateKind.Level && state.Section.Length > 0;
 
     private static bool IsNowPlaying(StateEntry entry) => entry.Id.EndsWith(":" + NowPlayingText.StateId, StringComparison.Ordinal);
 
@@ -155,8 +165,32 @@ public sealed partial class PcMirror : ObservableObject
         {
             Send(entry, StateValue.Of(v));
             return OperationResult.Ok();
-        }, _report, entry.Min, entry.Max, entry.Unit, defaultValue: null) { Icon = entry.ShownIcon, Lead = lead };
+        }, _report, entry.Min, entry.Max, entry.Unit, defaultValue: null) { Icon = entry.ShownIcon, Lead = lead, AsKnob = true };
         _updaters[entry.Id] = e => { if (e.Read()?.Number is { } n) slider.Load((int)Math.Round(n)); };
+        return slider;
+    }
+
+    /// <summary>One knob for a level every screen of the PC has (Brightness): its display chip picks "All displays" (every screen moves together, the knob shows the first one's level) or one screen; the pick is kept for this PC. Each screen is still its own shared state.</summary>
+    private SliderItem ScreenSlider(string name, List<RemoteState> screens)
+    {
+        var options = new List<string> { AllScreensWords };
+        options.AddRange(screens.Select(s => s.Section));
+        var saved = _service.ScreenPick(_pcId, name);
+        var picked = options.Contains(saved) ? saved : AllScreensWords;
+        SliderItem? slider = null;
+        IEnumerable<RemoteState> Targets(string pick) => pick == AllScreensWords ? screens : screens.Where(s => s.Section == pick);
+        int LevelOf(string pick) => (int)Math.Round(Targets(pick).First().Entry.Read()?.Number ?? screens[0].Entry.Min);
+        var choice = new ChoiceItem(name, options, picked, pick =>
+        {
+            _service.SetScreenPick(_pcId, name, pick == AllScreensWords ? string.Empty : pick);
+            slider?.Load(LevelOf(pick));
+        }) { FirstApart = true, Icon = screens[0].Entry.ShownIcon };
+        slider = new SliderItem(name, LevelOf(picked), v =>
+        {
+            foreach (var target in Targets(choice.Selected)) Send(target.Entry, StateValue.Of(v));
+            return OperationResult.Ok();
+        }, _report, screens[0].Entry.Min, screens[0].Entry.Max, screens[0].Entry.Unit, defaultValue: null) { Icon = screens[0].Entry.ShownIcon, Lead = choice, AsKnob = true };
+        foreach (var screen in screens) _updaters[screen.Entry.Id] = _ => slider.Load(LevelOf(choice.Selected));
         return slider;
     }
 

@@ -88,11 +88,13 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
     /// <param name="presets">The master list of preset groups: the page registers its two.</param>
     /// <param name="openPresets">Opens the preset manager at a section and group (the header cogwheels).</param>
     /// <param name="states">The master list of states: each display's levels are registered there while it is attached.</param>
+    /// <param name="hardware">The master list of hardware watches: the page registers its two (the monitors, and the list of displays).</param>
     public DisplaysPageViewModel(MonitorEngine engine, HotkeyRegistry hotkeys, OsdService osd, SoftwareDisplayService software, Action<string> report,
-        PresetGroups presets, Action<string?, string?> openPresets, StateRegistry states)
+        PresetGroups presets, Action<string?, string?> openPresets, StateRegistry states, HardwareWatches hardware)
     {
         (_engine, _hotkeys, _osd, _software, _report, _openPresets, _states) = (engine, hotkeys, osd, software, report, openPresets, states);
         _rescan = new ThrottledRun(Timing.DisplayRescanGap, RescanNow);
+        RegisterWatches(hardware);
 
         foreach (var spec in DisplayControls.All) osd.Declare(spec.Osd, spec.Icon);
 
@@ -180,11 +182,12 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
 
     public override void OnWindowShownChanged(bool shown) => _rescan.Request();
 
-    public override void OnDisplaysChanged() => _rescan.Request(Timing.DisplayChangeSettle);
-
     /// <summary>Opens every monitor again and asks each what it supports (the Refresh button, F5).</summary>
     [RelayCommand]
-    private void Reload() => Task.Run(() =>
+    private void Reload() => Task.Run(ReloadNow);
+
+    /// <summary>The Refresh button's work (worker thread), also the monitors' hardware watch: open every monitor again, then show what they answer.</summary>
+    private void ReloadNow()
     {
         _engine.RefreshMonitors();
         Dispatcher.UIThread.Post(() =>
@@ -193,7 +196,7 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
             ShowRefusals();
         });
         RefreshNow();
-    });
+    }
 
     /// <summary>The throttled check (worker thread): only when the attached displays differ from the last look is anything redone.</summary>
     private void RescanNow()
@@ -262,15 +265,15 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
 
         if (snapshot.HasLaptop)
         {
-            var panel = snapshot.Displays.FirstOrDefault(d => d.IsInternal)?.DeviceName;
+            var panel = snapshot.Displays.FirstOrDefault(d => d.IsInternal);
             Add(new HardwareDisplayItem(LaptopId, BuiltIn, new LaptopAccess(_engine.Laptop), Orientation(panel, BuiltIn), _levels, _osd, _report, ShowHardwareGroups, OnDisplayValues));
         }
         foreach (var monitor in monitors)
-            Add(new HardwareDisplayItem(monitor.Info.DeviceName, monitor.Info.Name, new MonitorAccess(monitor), Orientation(monitor.Info.DeviceName, monitor.Info.Name),
+            Add(new HardwareDisplayItem(monitor.Info.DeviceName, monitor.Info.Name, new MonitorAccess(monitor), Orientation(monitor.Info, monitor.Info.Name),
                 _levels, _osd, _report, ShowHardwareGroups, OnDisplayValues));
     }
 
-    private DisplayOrientationCard Orientation(string? deviceName, string name) => new(deviceName, name, _engine.Rotation, _report, new SuggestedKeysSwitch(_hotkeys, RotationKeySet));
+    private DisplayOrientationCard Orientation(DisplayInfo? display, string name) => new(display, _engine.ResolveDeviceName, name, _engine.Rotation, _report, new SuggestedKeysSwitch(_hotkeys, RotationKeySet));
 
     private void Add(HardwareDisplayItem display)
     {

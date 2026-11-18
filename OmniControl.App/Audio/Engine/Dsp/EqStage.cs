@@ -27,6 +27,9 @@ internal sealed class EqStage : IDspStage
     private readonly int _channels;
     private Glide _gain;
 
+    /// <summary>The sound entering the equaliser, for the graph's live spectrum (off until the graph asks).</summary>
+    public SpectrumTap Tap { get; } = new();
+
     public EqStage(IReadOnlyList<EqBand> bands, double gainDb, int sampleRate, int channels)
     {
         _bands = Math.Min(bands.Count, Eq.MaxBands);
@@ -48,6 +51,7 @@ internal sealed class EqStage : IDspStage
 
     public void Process(Span<float> samples, int channels)
     {
+        Tap.Write(samples, channels);
         var frames = samples.Length / channels;
         for (var b = 0; b < _now.Length; b++)
         {

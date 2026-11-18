@@ -1,0 +1,23 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Recording: save dialog and cancel confirm (approved)</title>
+<!-- Approved by the owner 18 Nov 2026; additions the same day (shared with screenshots, settings on the actions, folder line in the note).
+  1 ONE save dialog for screenshots AND recordings (Screenshot/SaveFileWindow), title "Save screenshot" or "Save recording":
+    Name (TextBox.field, default = the action's "File name" pattern with the format's ending, e.g. "Screenshot 2026-11-18 01-12-33.mp4"),
+    Folder (Controls/PathField Kind=Folder: path + "Browse…"), tick box "Always save here, don't ask", foot: Discard
+    (Button.pill.danger, asks the same Discard confirm) and Save (Button.primary). Shown after a screenshot is saved (copy-and-save
+    included) and after a recording is stopped.
+    The folder and the choice are NOT new settings: they are the action's own settings in the Actions and hotkeys window
+    (ScreenshotFields / ActionOption): the dialog shows the action's "Save folder" (pictures) or the Video group's "Save folder"
+    (recordings); Save writes the chosen folder there EVERY time (it is the folder offered next time, ticked or not; browsing then discarding changes nothing); "Always save here" additionally turns that kind's "Ask where to save" switch off. The switch is
+    one ActionOption per kind on the same actions, beside its "Save folder" (on by default), which is also how it is turned back on.
+    No App settings switch.
+  2 X (cancel) on the recording bar, double-Esc and the emergency key ask first via DialogService.AskAsync (shared confirm):
+    "Discard this recording?" / "The video will not be saved." buttons "Keep recording" and "Discard" (danger). If Stop has hung
+    (past Timing.RecordingStopWait) the question offers "Force close" instead so the user can never be stuck. (For a screenshot the
+    dialog's Discard asks "Discard this screenshot?" / "The picture will not be saved." with "Keep screenshot" and "Discard".)
+  3 The "Screenshot saved" / "Video saved" pop-up (the OSD text pop-up): title, file name, and the folder as a third, smaller muted line
+    shortened in the middle when long ("C:\Users\…\Pictures\OmniControl"), the full path as its tooltip. -->
+<style>body{font-family:Segoe UI;background:#1b1b1b;color:#eee;padding:20px;font-size:13px}</style></head><body>
+<p>Save recording · Name [Recording 2026-11-18 01-12.mp4] · Folder [C:\…\Videos\OmniControl] [Browse…] · ☐ Always save here, don't ask · [Discard] [Save]<br>
+Discard this recording? The video will not be saved. [Keep recording] [Discard]</p>
+</body></html>

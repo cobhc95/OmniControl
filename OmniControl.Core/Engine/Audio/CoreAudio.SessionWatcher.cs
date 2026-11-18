@@ -22,11 +22,18 @@ public static partial class CoreAudio
         /// <summary>A program opened a new session somewhere (worker thread; the session itself is read by the next scan).</summary>
         public event Action? Created;
 
+        /// <summary>A playback device was added, removed, enabled or disabled (worker thread): the list of devices is stale.</summary>
+        public event Action? DevicesChanged;
+
         public SessionWatcher()
         {
             // Windows asks not to be called back into from inside its notification, so both events leave its thread first.
             _sessionCallback = new SessionCallback(() => ThreadPool.QueueUserWorkItem(_ => Created?.Invoke()));
-            _deviceCallback = new DeviceCallback(() => ThreadPool.QueueUserWorkItem(_ => Attach()));
+            _deviceCallback = new DeviceCallback(() => ThreadPool.QueueUserWorkItem(_ =>
+            {
+                DevicesChanged?.Invoke();
+                Attach();
+            }));
         }
 
         /// <summary>Starts watching on a worker thread (Windows wants the registration from a multithreaded apartment; the first call is slow).</summary>

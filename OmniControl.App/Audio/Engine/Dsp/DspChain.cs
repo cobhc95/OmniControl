@@ -48,6 +48,14 @@ internal sealed class DspChain
         return null;
     }
 
+    /// <summary>The spectrum tap of the stage built from <paramref name="source"/> (its slot); null when it has none or is not in this chain.</summary>
+    public SpectrumTap? TapOf(object source)
+    {
+        for (var i = 0; i < _stages.Length; i++)
+            if (ReferenceEquals(_sources[i], source)) return _stages[i].Tap;
+        return null;
+    }
+
     /// <summary>
     /// Audio thread: each stage carries on from the stage built from the same slot in the chain this one replaces (when they are the
     /// same kind), so moving or adding an effect does not hand one effect's state to another.

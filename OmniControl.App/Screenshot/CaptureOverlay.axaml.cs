@@ -1,20 +1,25 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
+using OmniControl.App.Services;
 using OmniControl.Core.Engine.Screenshot;
 
 namespace OmniControl.App.Screenshot;
 
 /// <summary>
-/// One monitor's overlay window: fills its monitor (full screen at the monitor's own scale), shows the canvas, places the bars beside the
-/// selection and hands keys and the text box to the view-model. Layout and wiring only.
+/// One monitor's overlay window: fills its monitor (full screen at the monitor's own scale), shows the picture (<see cref="CaptureCanvas"/>),
+/// places the bars beside the selection and hands keys and the text box to the view-model. Layout and wiring only.
 /// </summary>
 public partial class CaptureOverlay : Window
 {
     private readonly CaptureOverlayViewModel _model;
     private readonly bool _strong;
     private readonly double _gap;
+    private readonly OncePerFrame _placeBars;
+    private readonly CaptureCanvas? _picture;
     private Point _textAt;
 
     /// <summary>The monitor this overlay covers, in physical pixels.</summary>
@@ -29,17 +34,20 @@ public partial class CaptureOverlay : Window
         _strong = strong;
         Monitor = monitor;
         DataContext = model;
-        Picture.Model = model;
+        _placeBars = new OncePerFrame(this, "Screenshot overlay: placing the bars", PlaceBars);
         _gap = Application.Current?.TryFindResource("CaptureBarGap", out var gap) == true && gap is double g ? g : 0;
         Position = new PixelPoint(monitor.X, monitor.Y);
         Width = monitor.Width;
         Height = monitor.Height;
         if (model is null) return;
-        model.Redraw += PlaceBars;
+        Root.Children.Insert(0, _picture = new CaptureCanvas(model)); // under the pop-ups; made here because it needs the view-model
+        model.Redraw += _placeBars.Request;
         model.TextRequested += OpenTextBox;
         Opened += OnOpened;
         Closed += OnClosed;
-        Layer.LayoutUpdated += OnLayoutUpdated;
+        SizeLabel.SizeChanged += OnBarSizeChanged;
+        ToolBar.SizeChanged += OnBarSizeChanged;
+        ActionBar.SizeChanged += OnBarSizeChanged;
         TextEntry.KeyDown += OnTextKey;
         ColourButton.PointerWheelChanged += OnColourWheel;
         TextEntry.LostFocus += OnTextLostFocus;
@@ -54,14 +62,17 @@ public partial class CaptureOverlay : Window
 
     private void OnClosed(object? sender, EventArgs e)
     {
-        _model.Redraw -= PlaceBars;
+        _model.Redraw -= _placeBars.Request;
         _model.TextRequested -= OpenTextBox;
         Opened -= OnOpened;
         Closed -= OnClosed;
-        Layer.LayoutUpdated -= OnLayoutUpdated;
+        SizeLabel.SizeChanged -= OnBarSizeChanged;
+        ToolBar.SizeChanged -= OnBarSizeChanged;
+        ActionBar.SizeChanged -= OnBarSizeChanged;
         TextEntry.KeyDown -= OnTextKey;
         TextEntry.LostFocus -= OnTextLostFocus;
         ColourButton.PointerWheelChanged -= OnColourWheel;
+        _picture?.Dispose();
     }
 
     /// <summary>The wheel over the colour button steps the tool's size (mouse first, AGENTS rule 5).</summary>
@@ -90,11 +101,12 @@ public partial class CaptureOverlay : Window
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
-        if (!TextEntry.IsVisible && _model.HandleKey(e.Key, e.KeyModifiers)) e.Handled = true;
+        if (!TextPopup.IsOpen && _model.HandleKey(e.Key, e.KeyModifiers)) e.Handled = true;
         base.OnKeyDown(e);
     }
 
-    private void OnLayoutUpdated(object? sender, EventArgs e) => PlaceBars();
+    /// <summary>A bar took its size (it opened, or its buttons changed): placed again at once, so it never shows at a stale place.</summary>
+    private void OnBarSizeChanged(object? sender, SizeChangedEventArgs e) => PlaceBars();
 
     /// <summary>Puts the size label above the selection's top-left corner, the toolbar beside it and the action bar under it, each kept on screen.</summary>
     private void PlaceBars()
@@ -102,16 +114,17 @@ public partial class CaptureOverlay : Window
         if (_model.Selection is not { IsEmpty: false } sel || Bounds.Width <= 0) return;
         var k = Bounds.Width / _model.PictureWidth;
         double x = sel.X * k, y = sel.Y * k, w = sel.Width * k, h = sel.Height * k;
-        Place(ToolBar, SelectionMath.PlaceBar(BarSide.Right, x, y, w, h, ToolBar.Bounds.Width, ToolBar.Bounds.Height, Bounds.Width, Bounds.Height, _gap));
-        Place(ActionBar, SelectionMath.PlaceBar(BarSide.Below, x, y, w, h, ActionBar.Bounds.Width, ActionBar.Bounds.Height, Bounds.Width, Bounds.Height, _gap));
+        Place(ToolPopup, SelectionMath.PlaceBar(BarSide.Right, x, y, w, h, ToolBar.Bounds.Width, ToolBar.Bounds.Height, Bounds.Width, Bounds.Height, _gap));
+        Place(ActionPopup, SelectionMath.PlaceBar(BarSide.Below, x, y, w, h, ActionBar.Bounds.Width, ActionBar.Bounds.Height, Bounds.Width, Bounds.Height, _gap));
         var labelY = y - _gap - SizeLabel.Bounds.Height;
-        Place(SizeLabel, (x, labelY >= 0 ? labelY : y + _gap));
+        Place(SizePopup, (x, labelY >= 0 ? labelY : y + _gap));
     }
 
-    private static void Place(Control control, (double X, double Y) at)
+    /// <summary>Moves a pop-up to a point of the window (screen units); Windows only moves its small window, nothing is drawn again.</summary>
+    private static void Place(Popup popup, (double X, double Y) at)
     {
-        if (Canvas.GetLeft(control) != at.X) Canvas.SetLeft(control, at.X);
-        if (Canvas.GetTop(control) != at.Y) Canvas.SetTop(control, at.Y);
+        if (popup.HorizontalOffset != at.X) popup.HorizontalOffset = at.X;
+        if (popup.VerticalOffset != at.Y) popup.VerticalOffset = at.Y;
     }
 
     // ---- The text tool's box ----
@@ -121,10 +134,9 @@ public partial class CaptureOverlay : Window
         CommitText();
         _textAt = at;
         var k = Bounds.Width / _model.PictureWidth;
-        Canvas.SetLeft(TextEntry, at.X * k);
-        Canvas.SetTop(TextEntry, at.Y * k);
+        Place(TextPopup, (at.X * k, at.Y * k));
         TextEntry.Text = string.Empty;
-        TextEntry.IsVisible = true;
+        TextPopup.IsOpen = true;
         TextEntry.Focus();
     }
 
@@ -150,7 +162,7 @@ public partial class CaptureOverlay : Window
 
     private void CommitText()
     {
-        if (!TextEntry.IsVisible) return;
+        if (!TextPopup.IsOpen) return;
         var text = TextEntry.Text ?? string.Empty;
         CloseTextBox();
         _model.AddText(_textAt, text);
@@ -158,13 +170,18 @@ public partial class CaptureOverlay : Window
 
     private void CloseTextBox()
     {
-        TextEntry.IsVisible = false;
+        TextPopup.IsOpen = false;
         TextEntry.Text = string.Empty;
     }
 
-    private void OnSwatchPicked(object? sender, RoutedEventArgs e)
+    /// <summary>
+    /// Closes the colour pop-down after a colour was clicked. A button raises Click before it runs its command, and a closed flyout loses
+    /// its place in the window's tree, so closing it here at once cut the swatch off from its data and its command never ran: the colour
+    /// did not change. Closing is therefore put after the click is fully handled.
+    /// </summary>
+    private void OnSwatchPicked(object? sender, RoutedEventArgs e) => Dispatcher.UIThread.Post(() =>
     {
         ColourButton.Flyout?.Hide();
-        if (TextEntry.IsVisible) TextEntry.Focus(); // back to the words being typed, now in the new colour
-    }
+        if (TextPopup.IsOpen) TextEntry.Focus(); // back to the words being typed, now in the new colour
+    });
 }

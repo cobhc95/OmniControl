@@ -23,6 +23,14 @@ public readonly record struct ScreenRect(int X, int Y, int Width, int Height)
     }
 
     public ScreenRect Offset(int dx, int dy) => this with { X = X + dx, Y = Y + dy };
+
+    /// <summary>The smallest rectangle holding both.</summary>
+    public ScreenRect Union(ScreenRect other)
+    {
+        var left = Math.Min(X, other.X);
+        var top = Math.Min(Y, other.Y);
+        return new ScreenRect(left, top, Math.Max(Right, other.Right) - left, Math.Max(Bottom, other.Bottom) - top);
+    }
 }
 
 /// <summary>
@@ -62,6 +70,30 @@ public sealed class ScreenImage
         for (var i = 0; i < vectors.Length; i++) vectors[i] |= full;
         for (var i = vectors.Length * Vector<uint>.Count; i < pixels.Length; i++) pixels[i] |= alpha;
     }
+
+    /// <summary>
+    /// Lays a wash of <paramref name="argb"/> (its alpha is its strength) over BGRA pixels the way drawing that colour over them would, and
+    /// makes them opaque: the area overlay's dimmed copy of a picture, made once instead of blended on every frame.
+    /// </summary>
+    public static void Wash(Span<byte> bgra, uint argb)
+    {
+        var strength = (int)(argb >> 24);
+        Span<byte> blue = stackalloc byte[256], green = stackalloc byte[256], red = stackalloc byte[256];
+        for (var v = 0; v < 256; v++)
+        {
+            blue[v] = Blend(v, (int)(argb & 0xFF), strength);
+            green[v] = Blend(v, (int)((argb >> 8) & 0xFF), strength);
+            red[v] = Blend(v, (int)((argb >> 16) & 0xFF), strength);
+        }
+        var pixels = MemoryMarshal.Cast<byte, uint>(bgra);
+        for (var i = 0; i < pixels.Length; i++)
+        {
+            var p = pixels[i];
+            pixels[i] = 0xFF000000u | (uint)red[(int)(p >> 16) & 0xFF] << 16 | (uint)green[(int)(p >> 8) & 0xFF] << 8 | blue[(int)p & 0xFF];
+        }
+    }
+
+    private static byte Blend(int under, int over, int strength) => (byte)((under * (255 - strength) + over * strength + 127) / 255);
 
     /// <summary>A copy of the part of the picture inside <paramref name="area"/> (held to the picture).</summary>
     public ScreenImage Crop(ScreenRect area)

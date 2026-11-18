@@ -20,12 +20,7 @@ public sealed partial class DeviceService
 
     private async Task<Attempt> RunScriptAsync(MethodRecord method, DevicePower power, bool? lastKnown, ScriptProfile profile, CancellationToken stop)
     {
-        var turnOn = power switch
-        {
-            DevicePower.On => true,
-            DevicePower.Off => false,
-            _ => (await ReadScriptStateAsync(method, profile, stop) ?? lastKnown) != true,
-        };
+        var turnOn = Wanted(power) ?? (await ReadScriptStateAsync(method, profile, stop) ?? lastKnown) != true;
         var clock = Stopwatch.StartNew();
         var run = await RunTemplateAsync(method, profile.TemplateOf(turnOn ? DevicePower.On : DevicePower.Off), profile, stop);
         if (run.Problem is not null) return Attempt.Failed(run.Problem, run.Details);
@@ -58,7 +53,7 @@ public sealed partial class DeviceService
     /// <summary>Runs one command template for the method (its address and sign-in): <c>kasa</c> is the kasa program found, the placeholders are filled in; a known error of <paramref name="profile"/> is told by its tip.</summary>
     public async Task<ScriptRun> RunTemplateAsync(MethodRecord method, string template, ScriptProfile? profile = null, CancellationToken stop = default)
     {
-        var email = KasaCommand.EmailFor(method.Email, profile?.LowerCaseEmail ?? false);
+        var email = KasaCommand.EmailFor(method.Email, ScriptProfiles.LowersEmail(profile));
         var words = KasaCommand.Fill(template, method.Address.Trim(), email);
         if (words.Count == 0) return new ScriptRun("the command is empty", string.Empty, string.Empty);
         if (words[0].Equals(KasaCommand.Program, StringComparison.OrdinalIgnoreCase) && Setup.Kasa is null) return new ScriptRun("python-kasa is not installed", string.Empty, string.Empty);

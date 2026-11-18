@@ -4,6 +4,6 @@
              x:DataType="svc:TagItem" xmlns:svc="using:OmniControl.App.Services">
     <!-- One tag (Border.tag) for a TagItem: its words, its colour from the tone, its tip as the tooltip. The container sets margins and placement. -->
     <Border Classes="tag" Classes.good="{Binding IsGood}" Classes.caution="{Binding IsCaution}" Classes.risk="{Binding IsRisk}" Classes.selected="{Binding IsSelected}" Classes.cable="{Binding IsCable}" ToolTip.Tip="{Binding Tip}">
-        <TextBlock Text="{Binding Text}" />
+        <TextBlock Text="{Binding Text}" TextAlignment="Center" />
     </Border>
 </UserControl>

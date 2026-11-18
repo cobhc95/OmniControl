@@ -2,6 +2,7 @@
 using OmniControl.App.Dialogs;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using OmniControl.App.Audio.Engine;
 using OmniControl.App.Automation;
 using OmniControl.App.Hotkeys;
@@ -9,7 +10,6 @@ using OmniControl.App.Mouse;
 using OmniControl.App.Picker;
 using OmniControl.App.Rules;
 using OmniControl.App.Services;
-using OmniControl.Core.Engine;
 
 namespace OmniControl.App.Pages.Automation;
 
@@ -37,6 +37,9 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
     public ObservableCollection<object> Sentence { get; } = new();
 
     [ObservableProperty] private IReadOnlyList<TagItem> _tags = Array.Empty<TagItem>();
+
+    /// <summary>"At log in" cannot fire because Start with Windows is off: the row offers the one link that turns it on.</summary>
+    [ObservableProperty] private bool _needsStartup;
 
     /// <summary>The rule's own "Run: name" action while it is listening for a key (the page captures the keys).</summary>
     public HotkeyAction? OwnAction => _action;
@@ -75,6 +78,7 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
         IsOn = Rule.On;
         Name = Rule.Name;
         Rebuild();
+        NeedsStartup = _service.NeedsStartup(Rule);
         Tags = BuildTags();
         _loading = false;
         OnPropertyChanged(nameof(Line));
@@ -95,6 +99,9 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
         FollowAction();
         Refresh();
     }
+
+    [RelayCommand]
+    private void TurnOnStartup() => _service.TurnOnStartup();
 
     private void Save()
     {
@@ -231,7 +238,13 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
     private IReadOnlyList<TagItem> BuildTags()
     {
         var tags = new List<TagItem>();
-        if (_service.ProblemOf(Rule) is { } problem) tags.Add(new TagItem("Last run failed", TagTone.Risk, $"Last run: {problem}."));
+        var problem = _service.ProblemOf(Rule);
+        if (problem is not null)
+            tags.Add(new TagItem(_service.FailedShortOf(Rule) is { } words ? $"Failed: {words}" : "Last run failed", TagTone.Risk,
+                $"Last run{(Rule.LastRan is { } failedAt ? $" {failedAt:ddd HH:mm}" : string.Empty)}: {problem}."));
+        var waiting = _service.WaitingFor(Rule);
+        if (waiting is not null)
+            tags.Add(new TagItem($"Waiting for {waiting}", Tip: $"Started after the PC woke or you logged in: it waits for the network and {waiting} to answer, then runs its steps."));
         if (_service.PausedWhyOf(Rule) is { } paused) tags.Add(new TagItem("Paused", TagTone.Caution, paused));
         if (!IsBlock && Rule.Trigger.Length == 0) tags.Add(new TagItem("Needs a trigger", Tip: "Choose what starts it (the first block)."));
         if (IsBlock && Rule.Conditions.Count == 0) tags.Add(new TagItem("Needs a condition", Tip: "Choose when it blocks (the first block)."));
@@ -241,9 +254,14 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
         var (missingTrigger, missingAction) = _service.MissingOf(Rule);
         if (missingTrigger) tags.Add(new TagItem("Trigger missing", TagTone.Caution, "A state or action it starts from is gone (a device was removed?), so it never starts from that. Choose another."));
         if (missingAction) tags.Add(new TagItem("Action missing", TagTone.Caution, IsBlock ? "An action it blocks is gone." : "An action it does is gone, so that step is skipped. Choose another."));
-        if (Rule.AllTriggers.Any(t => t.StartsWith(AutomationTriggers.Login, StringComparison.Ordinal)) && StartupRegistration.State != StartupState.On)
-            tags.Add(new TagItem("Needs Start with Windows", TagTone.Caution, "\"At log in\" runs when Windows starts OmniControl. Turn on Start with Windows in App settings."));
-        if (Rule.On && Rule.LastRan is { } ran) tags.Add(new TagItem($"Ran {ran:ddd HH:mm}", Tip: $"It last started on {ran:f}."));
+        if (NeedsStartup)
+            tags.Add(new TagItem("Needs Start with Windows", TagTone.Caution, "\"At log in\" runs only when Windows starts OmniControl, and Start with Windows is off."));
+        if (Rule.On && problem is null && waiting is null && Rule.LastRan is { } ran)
+        {
+            var tries = _service.TriesOf(Rule);
+            tags.Add(new TagItem($"Ran {ran:ddd HH:mm}{(tries > 1 ? $" after {tries} tries" : string.Empty)}",
+                Tip: $"It last started on {ran:f}{(tries > 1 ? $"; a step needed {tries} tries" : string.Empty)}."));
+        }
         if (_service.NextRunOf(Rule) is { } next) tags.Add(new TagItem(next, Tip: "The next time it is due."));
         return tags;
     }

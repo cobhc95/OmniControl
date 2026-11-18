@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 
 namespace OmniControl.Core.Engine.Trackpad;
 
-/// <summary>Raw Input (user32), the HID report parser (hid.dll) and the message-only window the touchpad watcher needs.</summary>
+/// <summary>Raw Input (user32), the HID report parser (hid.dll) and the message loop of the touchpad watcher's message-only window (the window itself: <see cref="OmniControl.Core.Native.WindowNative"/>).</summary>
 internal static unsafe class RawInputNative
 {
     public const ushort DigitizerPage = 0x0D, GenericDesktopPage = 0x01;
@@ -64,20 +64,6 @@ internal static unsafe class RawInputNative
     [StructLayout(LayoutKind.Sequential)]
     public struct Msg { public IntPtr Hwnd; public uint Message; public UIntPtr WParam; public IntPtr LParam; public uint Time; public int X, Y; }
 
-    public delegate IntPtr WndProc(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam);
-
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-    public struct WndClassEx
-    {
-        public uint Size, Style;
-        public IntPtr WndProc;
-        public int ClassExtra, WindowExtra;
-        public IntPtr Instance, Icon, Cursor, Background;
-        public string? MenuName;
-        public string ClassName;
-        public IntPtr SmallIcon;
-    }
-
     [DllImport("user32.dll", SetLastError = true)]
     public static extern bool RegisterRawInputDevices(RawInputDevice[] devices, uint count, uint size);
 
@@ -103,18 +89,8 @@ internal static unsafe class RawInputNative
     public static extern int HidP_GetUsages(int reportType, ushort usagePage, ushort linkCollection, ushort* usages, ref uint length,
         IntPtr preparsed, byte* report, uint reportLength);
 
-    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)] public static extern ushort RegisterClassEx(ref WndClassEx wc);
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern bool UnregisterClass(string className, IntPtr instance);
-
-    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-    public static extern IntPtr CreateWindowEx(uint exStyle, string className, string? name, uint style, int x, int y, int w, int h,
-        IntPtr parent, IntPtr menu, IntPtr instance, IntPtr param);
-
-    [DllImport("user32.dll")] public static extern bool DestroyWindow(IntPtr hwnd);
-    [DllImport("user32.dll")] public static extern IntPtr DefWindowProc(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam);
     [DllImport("user32.dll")] public static extern int GetMessage(out Msg m, IntPtr h, uint min, uint max);
     [DllImport("user32.dll")] public static extern IntPtr DispatchMessage(ref Msg m);
     [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam);
     [DllImport("user32.dll")] public static extern void PostQuitMessage(int code);
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr GetModuleHandle(string? name);
 }

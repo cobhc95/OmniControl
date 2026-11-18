@@ -92,12 +92,7 @@ public static class ScreenCapture
         if (area.IsEmpty) throw new ArgumentException("Nothing to capture.", nameof(area));
         var screen = GetDC(IntPtr.Zero);
         var memory = CreateCompatibleDC(screen);
-        var header = new BitmapInfoHeader
-        {
-            Size = Marshal.SizeOf<BitmapInfoHeader>(), Width = area.Width, Height = -area.Height, // negative: top row first
-            Planes = 1, BitCount = 32,
-        };
-        var bitmap = CreateDIBSection(screen, ref header, DibRgbColors, out var bits, IntPtr.Zero, 0);
+        var bitmap = CreateTopDownBitmap(screen, area.Width, area.Height, out var bits);
         try
         {
             if (bitmap == IntPtr.Zero) throw new InvalidOperationException("Windows could not make a bitmap for the screenshot.");

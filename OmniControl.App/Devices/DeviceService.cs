@@ -3,6 +3,7 @@ using Avalonia.Threading;
 using OmniControl.App.Hotkeys;
 using OmniControl.App.Services;
 using OmniControl.App.States;
+using OmniControl.Core.Engine;
 using OmniControl.Core.Interfaces;
 
 namespace OmniControl.App.Devices;
@@ -50,8 +51,11 @@ public sealed partial class DeviceService
     public event Action? ListChanged;
 
     /// <param name="states">The master list of states: each device's power is registered there.</param>
-    public DeviceService(HotkeyRegistry hotkeys, StateRegistry states, ICredentialStore credentials, Action<string> report, DeviceSettings? settings = null)
+    /// <param name="hardware">The master list of hardware watches: the service registers the devices' state reading there (after sleep or Remote Desktop the network may be back).</param>
+    public DeviceService(HotkeyRegistry hotkeys, StateRegistry states, HardwareWatches hardware, ICredentialStore credentials, Action<string> report, DeviceSettings? settings = null)
     {
+        hardware.Register(new HardwareWatch(HardwareWatchId, "Smart devices", HardwareSignal.Session | HardwareSignal.Resume,
+            () => Dispatcher.UIThread.Post(() => _ = Guard.RunAsync("Smart devices: check after a hardware change", CheckAllNowAsync))));
         _hotkeys = hotkeys;
         _states = states;
         _credentials = credentials;

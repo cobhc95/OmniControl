@@ -30,6 +30,9 @@ public sealed partial class PairingState : ObservableObject
     [ObservableProperty, NotifyPropertyChangedFor(nameof(IsClosed), nameof(IsOpen), nameof(IsAsking), nameof(IsShowing), nameof(IsWorking), nameof(IsEnded), nameof(IsActive))]
     private PairingPhase _phase;
 
+    /// <summary>The New PC tab this pairing belongs to (its id); only that tab shows the code, the questions and the message.</summary>
+    [ObservableProperty] private string _tabId = string.Empty;
+
     /// <summary>The other PC's name, once it is known.</summary>
     [ObservableProperty] private string _peerName = string.Empty;
 

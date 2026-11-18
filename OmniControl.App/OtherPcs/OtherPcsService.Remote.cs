@@ -28,6 +28,7 @@ public sealed partial class OtherPcsService
     }
 
     private readonly Dictionary<string, RemoteSet> _remote = new();
+    private readonly HashSet<string> _liveCatalogs = new(); // PCs whose catalog arrived over the link now up (not the saved one)
     private readonly Dictionary<string, StateValue?> _remoteValues = new();
     private readonly Dictionary<int, string> _pending = new();
     private readonly Dictionary<string, LaunchLimiter> _runLimits = new();
@@ -35,6 +36,9 @@ public sealed partial class OtherPcsService
     private readonly Dictionary<string, (string PcId, string ItemId, StateValue Value)> _setQueue = new();
     private DispatcherTimer? _setTimer;
     private int _nextRid;
+
+    /// <summary>True once the connected PC has sent what it shares (until then the page shows a loading state, not the last saved set).</summary>
+    public bool HasLiveCatalog(string pcId) => _liveCatalogs.Contains(pcId);
 
     /// <summary>A PC's shared items were registered, changed or removed (the page shows them again).</summary>
     public event Action? RemoteChanged;
@@ -89,7 +93,10 @@ public sealed partial class OtherPcsService
         if (_disposed || _links.GetValueOrDefault(link.PeerId) != link) return;
         switch (message.T)
         {
-            case PcMsgType.Catalog: ApplyCatalog(link.PeerId, message); break;
+            case PcMsgType.Catalog:
+                _liveCatalogs.Add(link.PeerId);
+                ApplyCatalog(link.PeerId, message);
+                break;
             case PcMsgType.State: ApplyState(link.PeerId, message); break;
             case PcMsgType.Set: HandleSet(link, message); break;
             case PcMsgType.Run: HandleRun(link, message); break;
@@ -166,11 +173,24 @@ public sealed partial class OtherPcsService
         }
     }
 
+    /// <summary>Lists what a PC shares again under its current display name (the nickname changed); the values and the link are kept.</summary>
+    private void Reregister(string pcId)
+    {
+        if (Find(pcId) is not { } pair || !_remote.TryGetValue(pcId, out var set)) return;
+        _states.Unregister(set.StateInfo.Keys.Select(id => PcProtocol.RemoteId(pcId, id)).ToList());
+        foreach (var id in set.ActionInfo.Keys) _hotkeys.Unregister(PcProtocol.RemoteId(pcId, id));
+        _states.Register(set.StateInfo.Values.Select(s => MakeState(pair, PcProtocol.RemoteId(pcId, s.Id), s)).ToList());
+        _hotkeys.Register(set.ActionInfo.Values.Select(a => MakeAction(pair, a)).ToList());
+        SetAvailable(pcId, IsOnline(pcId));
+        RemoteChanged?.Invoke();
+    }
+
     /// <summary>A PC's actions are unavailable, and its states say they are only the last known, while it is not connected.</summary>
     private void SetAvailable(string pcId, bool online)
     {
+        if (!online) _liveCatalogs.Remove(pcId);
         if (!_remote.TryGetValue(pcId, out var set)) return;
-        var name = Find(pcId)?.Name ?? "That PC";
+        var name = Find(pcId)?.DisplayName ?? "That PC";
         foreach (var id in set.Actions.Keys)
             if (_hotkeys.Find(PcProtocol.RemoteId(pcId, id)) is { } action) action.UnavailableReason = online ? null : $"{name} is not connected.";
         foreach (var id in set.States.Keys) _states.NotifyLiveness(PcProtocol.RemoteId(pcId, id));
@@ -183,10 +203,14 @@ public sealed partial class OtherPcsService
 
     private StateEntry MakeState(PairedPc pair, string remoteId, SharedState s) =>
         new(remoteId, Clip(s.Name), Category, (StateKind)s.Kind, () => _remoteValues.GetValueOrDefault(remoteId),
-            $"Reported live by {pair.Name} over the network{(s.Settable ? string.Empty : " (read only)")}.", Heading: pair.Name, Min: s.Min, Max: s.Max, Unit: Clip(s.Unit, 12),
-            Choices: s.Choices is { } choices ? () => choices.Select(c => Clip(c)).ToList() : null, Keywords: $"other pc remote {pair.Name}",
+            $"Reported live by {pair.DisplayName} over the network{(s.Settable ? string.Empty : " (read only)")}.", Heading: pair.DisplayName, Min: s.Min, Max: s.Max, Unit: Clip(s.Unit, 12),
+            Choices: s.Choices is { } choices ? () => choices.Select(c => Clip(c)).ToList() : null, Keywords: $"other pc remote {pair.DisplayName}",
             Set: s.Settable ? value => SendSet(pair.Id, s.Id, value) : null, SuggestedIcons: SuggestedFrom(s.Icon), ScreenPower: s.ScreenPower,
-            Liveness: () => new StateLiveness(false, false, null, IsOnline(pair.Id) ? null : $"{pair.Name} is not connected: this is the last value it reported."));
+            Liveness: () => new StateLiveness(false, false, null, IsOnline(pair.Id) ? null : $"{pair.DisplayName} is not connected: this is the last value it reported."),
+            RemotePc: LabelOf(pair));
+
+    /// <summary>The mark of an entry of this PC in the lists: read from the pairing each time, so a rename follows.</summary>
+    private static RemotePcLabel LabelOf(PairedPc pair) => new(Category, () => pair.DisplayName, () => pair.Nickname.Length > 0 ? pair.Name : null);
 
     private static IReadOnlyList<string>? SuggestedFrom(string? icon) => icon is null ? null : new[] { Clip(icon, 60) };
 
@@ -194,8 +218,8 @@ public sealed partial class OtherPcsService
     {
         var pcId = pair.Id;
         var itemId = a.Id;
-        return new HotkeyAction(PcProtocol.RemoteId(pcId, itemId), Clip(a.Title), Category, $"other pc remote run {pair.Name}",
-            _ => RunRemote(pcId, itemId), group: pair.Name) { SuggestedIcons = SuggestedFrom(a.Icon), ScreensOff = a.ScreensOff, UnavailableReason = IsOnline(pcId) ? null : $"{pair.Name} is not connected." };
+        return new HotkeyAction(PcProtocol.RemoteId(pcId, itemId), Clip(a.Title), Category, $"other pc remote run {pair.DisplayName}",
+            _ => RunRemote(pcId, itemId), group: pair.DisplayName) { RemotePc = LabelOf(pair), SuggestedIcons = SuggestedFrom(a.Icon), ScreensOff = a.ScreensOff, UnavailableReason = IsOnline(pcId) ? null : $"{pair.DisplayName} is not connected." };
     }
 
     private void ApplyState(string pcId, PcMsg message)
@@ -225,12 +249,12 @@ public sealed partial class OtherPcsService
     {
         if (Find(pcId) is not { } pair || !_links.TryGetValue(pcId, out var link))
         {
-            _report($"{Find(pcId)?.Name ?? "That PC"} is not connected, so the action was not sent.");
+            _report($"{Find(pcId)?.DisplayName ?? "That PC"} is not connected, so the action was not sent.");
             return;
         }
         if (_pending.Count >= 64) _pending.Clear(); // answers that never came
         var rid = ++_nextRid;
-        _pending[rid] = pair.Name;
+        _pending[rid] = pair.DisplayName;
         _ = link.SendAsync(new PcMsg { T = PcMsgType.Run, Id = actionId, Rid = rid, Chain = _hotkeys.Chain?.Rules.ToList() });
     }
 
@@ -242,7 +266,7 @@ public sealed partial class OtherPcsService
         var remoteId = PcProtocol.RemoteId(pcId, itemId);
         if (!_links.ContainsKey(pcId))
         {
-            _report($"{Find(pcId)?.Name ?? "That PC"} is not connected, so the change was not sent.");
+            _report($"{Find(pcId)?.DisplayName ?? "That PC"} is not connected, so the change was not sent.");
             return;
         }
         _remoteValues[remoteId] = value;
@@ -262,7 +286,7 @@ public sealed partial class OtherPcsService
             if (Find(pcId) is not { } pair || !_links.TryGetValue(pcId, out var link)) continue;
             if (_pending.Count >= 64) _pending.Clear();
             var rid = ++_nextRid;
-            _pending[rid] = pair.Name;
+            _pending[rid] = pair.DisplayName;
             _ = link.SendAsync(new PcMsg { T = PcMsgType.Set, Id = itemId, Number = value.Number, Text = value.Text, Rid = rid });
         }
     }

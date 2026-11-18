@@ -21,8 +21,11 @@ public sealed class ScreenshotOptions
     /// <summary>The folder files are saved in; empty = <see cref="DefaultFolder"/>.</summary>
     public string Folder { get; set; } = string.Empty;
 
+    /// <summary>On: saving a screenshot first asks for its name and folder (the Save screenshot dialog); off: it goes straight to <see cref="FolderInUse"/>.</summary>
+    public bool AskFolder { get; set; } = true;
+
     public string Pattern { get; set; } = DefaultPattern;
-    public ImageFormat Format { get; set; } = ImageFormat.Png;
+    public ImageFormat Format { get; set; } = ImageFormats.DefaultFormat;
     public int Quality { get; set; } = ImageFormats.DefaultQuality;
     public CopyKind CopyAs { get; set; } = CopyKind.Image;
     public QuickKind Quick { get; set; } = QuickKind.CopyAndSave;
@@ -32,6 +35,9 @@ public sealed class ScreenshotOptions
 
     /// <summary>The folder recordings are saved in; empty = <see cref="DefaultVideoFolder"/>.</summary>
     public string VideoFolder { get; set; } = string.Empty;
+
+    /// <summary>On: a finished recording first asks for its name and folder (the Save recording dialog); off: it is kept in <see cref="VideoFolderInUse"/>.</summary>
+    public bool AskVideoFolder { get; set; } = true;
 
     public VideoFormat VideoFormat { get; set; } = VideoFormat.Mp4H264;
     public int FrameRate { get; set; } = VideoMath.DefaultFrameRate;
@@ -80,6 +86,13 @@ public sealed class ScreenshotSettings
 
     /// <summary>By action id: the actions that do not use the shared set.</summary>
     public Dictionary<string, ScreenshotOptions> Own { get; set; } = new();
+
+    /// <summary>
+    /// The way of recording to start with on this PC (a fallback that worked, or the one after a way that hung), with the graphics drivers it
+    /// was found on; null = the graphics card first. Decided by the recorder (<see cref="RecordingResult.Route"/>), kept here by
+    /// <see cref="ScreenshotService"/>; a driver or adapter change makes the recorder try the graphics card again.
+    /// </summary>
+    public RecordingRoute? RecordingRoute { get; set; }
 
     /// <summary>The size each drawing tool was last set to, by tool name (<see cref="ToolSizes"/>).</summary>
     public Dictionary<string, double> ToolSizes { get; set; } = new();

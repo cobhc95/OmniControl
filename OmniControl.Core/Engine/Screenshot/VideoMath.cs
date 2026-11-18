@@ -58,9 +58,15 @@ public static class VideoMath
     public static ScreenRect FrameArea(ScreenRect area, VideoFormat format) =>
         IsMp4(format) ? area with { Width = Even(area.Width), Height = Even(area.Height) } : area;
 
-    /// <summary>The frame rate a format really records at (a GIF is held to <see cref="GifMaxFrameRate"/>).</summary>
+    /// <summary>
+    /// An MP4 never goes faster than this: H.264 level 5.2 (the highest many hardware encoders take) holds 4K only up to 60 frames a second,
+    /// so a stored rate above it (a 140 Hz monitor's) is held here rather than refused by the encoder.
+    /// </summary>
+    public const int Mp4MaxFrameRate = 60;
+
+    /// <summary>The frame rate a format really records at (a GIF is held to <see cref="GifMaxFrameRate"/>, an MP4 to <see cref="Mp4MaxFrameRate"/>).</summary>
     public static int FrameRateFor(VideoFormat format, int frameRate) =>
-        Math.Max(1, format == VideoFormat.Gif ? Math.Min(frameRate, GifMaxFrameRate) : frameRate);
+        Math.Clamp(frameRate, 1, format == VideoFormat.Gif ? GifMaxFrameRate : Mp4MaxFrameRate);
 
     /// <summary>The video bitrate in bits per second: pixels per second times the quality's bits per pixel, less for HEVC, held to the limits.</summary>
     public static int Bitrate(int width, int height, int frameRate, VideoQuality quality, VideoFormat format)

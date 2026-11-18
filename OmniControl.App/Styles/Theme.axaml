@@ -63,28 +63,34 @@
     <Style Selector="Border.gallery"><Setter Property="Padding" Value="4,2" /></Style>
     <!-- Placement of the centred editors on a page: the control sits in the middle of its card, over the label column -->
     <Style Selector="pages|GalleryRow Border.gallery">
-        <Setter Property="Grid.ColumnSpan" Value="2" />
-        <Setter Property="HorizontalAlignment" Value="Center" />
-        <Setter Property="MinWidth" Value="300" />
+        <Setter Property="Grid.Column" Value="1" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="MaxWidth" Value="{StaticResource GalleryMaxWidth}" />
     </Style>
     <!-- A half-width gallery card: no room to centre it over the label column, it sits at the card's right end -->
     <Style Selector="pages|GalleryRow Border.gallery.half">
         <Setter Property="Grid.Column" Value="1" />
         <Setter Property="Grid.ColumnSpan" Value="1" />
         <Setter Property="HorizontalAlignment" Value="Right" />
-        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="MaxWidth" Value="Infinity" />
     </Style>
+    <!-- A card's name: wraps (never one endless line) and is never wider than CardLabelMaxWidth, so the control beside it always keeps room -->
+    <Style Selector="TextBlock.cardname, c|IconText.cardname">
+        <Setter Property="MaxWidth" Value="{StaticResource CardLabelMaxWidth}" />
+    </Style>
+    <Style Selector="TextBlock.cardname"><Setter Property="TextWrapping" Value="Wrap" /></Style>
+    <!-- A drop-down card: the control sits in the room right of the label, centred there, at most ChoiceMaxWidth wide, and shrinks rather than covering the label -->
     <Style Selector="ComboBox.choice">
-        <Setter Property="Grid.ColumnSpan" Value="2" />
-        <Setter Property="HorizontalAlignment" Value="Center" />
-        <Setter Property="Width" Value="220" />
+        <Setter Property="Grid.Column" Value="1" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="MaxWidth" Value="{StaticResource ChoiceMaxWidth}" />
     </Style>
 
     <!-- A choice card whose pop-down is the shared menu (Pages/MenuChoiceRow): placed exactly like ComboBox.choice, full or half -->
     <Style Selector="c|ChipMenu.choice">
-        <Setter Property="Grid.ColumnSpan" Value="2" />
-        <Setter Property="HorizontalAlignment" Value="Center" />
-        <Setter Property="Width" Value="220" />
+        <Setter Property="Grid.Column" Value="1" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="MaxWidth" Value="{StaticResource ChoiceMaxWidth}" />
     </Style>
 
     <!-- Search results (ListBox.results): the title column takes what the editors leave, the editors share one right-hand column,
@@ -100,24 +106,28 @@
         <Setter Property="Grid.ColumnSpan" Value="1" />
         <Setter Property="HorizontalAlignment" Value="Stretch" />
         <Setter Property="Width" Value="NaN" />
+        <Setter Property="MaxWidth" Value="Infinity" />
     </Style>
     <Style Selector="ListBox.results ComboBox.choice">
         <Setter Property="Grid.Column" Value="1" />
         <Setter Property="Grid.ColumnSpan" Value="1" />
         <Setter Property="HorizontalAlignment" Value="Right" />
+        <Setter Property="Width" Value="{StaticResource ChoiceMaxWidth}" />
     </Style>
-    <Style Selector="ListBox.results ComboBox.choice.half"><Setter Property="HorizontalAlignment" Value="Stretch" /></Style>
+    <Style Selector="ListBox.results ComboBox.choice.half"><Setter Property="HorizontalAlignment" Value="Stretch" /><Setter Property="Width" Value="NaN" /></Style>
     <Style Selector="c|ChipMenu.choice.half">
         <Setter Property="Grid.ColumnSpan" Value="1" />
         <Setter Property="HorizontalAlignment" Value="Stretch" />
         <Setter Property="Width" Value="NaN" />
+        <Setter Property="MaxWidth" Value="Infinity" />
     </Style>
     <Style Selector="ListBox.results c|ChipMenu.choice">
         <Setter Property="Grid.Column" Value="1" />
         <Setter Property="Grid.ColumnSpan" Value="1" />
         <Setter Property="HorizontalAlignment" Value="Right" />
+        <Setter Property="Width" Value="{StaticResource ChoiceMaxWidth}" />
     </Style>
-    <Style Selector="ListBox.results c|ChipMenu.choice.half"><Setter Property="HorizontalAlignment" Value="Stretch" /></Style>
+    <Style Selector="ListBox.results c|ChipMenu.choice.half"><Setter Property="HorizontalAlignment" Value="Stretch" /><Setter Property="Width" Value="NaN" /></Style>
     <Style Selector="ListBox.results pages|ToggleRow">
         <Setter Property="HorizontalAlignment" Value="Right" />
     </Style>
@@ -277,6 +287,8 @@
     <Style Selector="TextBlock.section"><Setter Property="FontSize" Value="13" /><Setter Property="FontWeight" Value="SemiBold" /><Setter Property="Margin" Value="0,12,0,4" /></Style>
     <!-- A name or heading in a row: the semi-bold weight, nothing else -->
     <Style Selector="TextBlock.strong"><Setter Property="FontWeight" Value="SemiBold" /></Style>
+    <!-- The section of an entry that runs on another PC ("Other PCs · Laptop", Controls/RemoteSectionTag): bold accent words -->
+    <Style Selector="TextBlock.remotesection"><Setter Property="FontWeight" Value="Bold" /><Setter Property="Foreground" Value="{DynamicResource BrushAccent}" /></Style>
     <Style Selector="TextBlock.muted"><Setter Property="Foreground" Value="{DynamicResource BrushMuted}" /></Style>
     <!-- A grey caption that carries state or a limit (a start-up note, "None yet"); never keyboard instructions (AGENTS.md principle 12) -->
     <Style Selector="TextBlock.hint">

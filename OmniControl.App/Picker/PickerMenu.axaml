@@ -67,7 +67,8 @@
                                         </StackPanel>
                                         <Button Classes="blockadd small" Content="{Binding Text}" HorizontalAlignment="Left" Focusable="False"
                                                 IsVisible="{Binding IsCommand}" Click="OnRowCommandClick" />
-                                        <TextBlock Text="{Binding Hint}" Classes="muted small" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding Hint}" Classes="muted small" VerticalAlignment="Center" IsVisible="{Binding ShowsHint}" />
+                                        <ctl:RemoteSectionTag Label="{Binding Remote}" />
                                         <Border Classes="tag good" IsVisible="{Binding HasTag}" VerticalAlignment="Center"><TextBlock Text="{Binding Tag}" /></Border>
                                         <!-- A family's directions and their keys in a few words (one line for Up and Down, Next and Previous...) -->
                                         <TextBlock Text="{Binding Summary}" Classes="muted small" VerticalAlignment="Center" IsVisible="{Binding HasSummary}" />

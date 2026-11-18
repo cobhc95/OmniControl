@@ -3,8 +3,8 @@
         xmlns:ctl="using:OmniControl.App.Controls"
         xmlns:pages="using:OmniControl.App.Pages">
     <!-- MASTER knob (Controls/Knob, AGENTS.md "Master design elements"): the drawn face (Controls/KnobFace: a 270 degree grey track, the
-         accent value arc, a pointer line, a pan knob's centre mark) and the value words under it, which the knob's single click turns into
-         a small box for typing (Pages/NumberText, OpensOnDoubleClick off: a double-click resets the knob). Same size everywhere: Knob* in
+         accent value arc, a pointer line, a pan knob's centre mark) and the value words under it, which a click or double-click on them
+         (or the face's single or right click) turns into a small box for typing (Pages/NumberText; the box never resets the knob). Same size everywhere: Knob* in
          App.axaml. Hover lightens the track; keyboard focus draws the accent ring (no default outline); adjusting (.active, Enter in a card
          list) keeps the ring; disabled = dimmed. Included after Theme.axaml. -->
     <Style Selector="ctl|Knob">
@@ -27,7 +27,7 @@
                                   ValueBrush="{TemplateBinding ValueBrush}" PointerBrush="{TemplateBinding PointerBrush}"
                                   RingBrush="{TemplateBinding RingBrush}"
                                   ArcThickness="{DynamicResource KnobArcThickness}" PointerThickness="{DynamicResource KnobPointerThickness}" />
-                    <pages:NumberText HorizontalAlignment="Center" OpensOnDoubleClick="False"
+                    <pages:NumberText HorizontalAlignment="Center"
                                       Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}"
                                       Value="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
                         <TextBlock Classes="knobvalue" Text="{TemplateBinding Text}" />

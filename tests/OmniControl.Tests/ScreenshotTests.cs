@@ -189,6 +189,42 @@ public class ScreenshotTests
         Assert.Equal(70, settings.For("screenshot.area").Quality);
     }
 
+    [Fact]
+    public void Defaults_AreJpgAt80AndAskWhereToSave()
+    {
+        var options = new ScreenshotOptions();
+        Assert.Equal(ImageFormat.Jpg, options.Format);
+        Assert.Equal(80, options.Quality);
+        Assert.True(options.AskFolder);
+        Assert.True(options.AskVideoFolder);
+        var format = ScreenshotFields.Options(ShotKind.Area, false, () => null).Single(o => o.Key == ScreenshotFields.Format);
+        Assert.Equal("JPG", format.Default); // what Restore defaults puts back
+        Assert.Contains("PNG", format.Choices!);
+    }
+
+    [Fact]
+    public void AlwaysSaveHere_WritesTheActionsOwnFolderAndTurnsAskingOff()
+    {
+        var options = new ScreenshotOptions();
+        SaveKinds.AlwaysSaveHere(SaveKind.Recording, options, @"D:\Clips");
+        Assert.Equal(@"D:\Clips", options.VideoFolderInUse);
+        Assert.False(options.AskVideoFolder);
+        Assert.True(options.AskFolder); // pictures keep their own choice
+        Assert.Equal("0", ScreenshotFields.Read(options, true, false)[ScreenshotFields.AskVideoFolder]);
+    }
+
+    [Theory]
+    [InlineData("Clip 1.mp4", "Clip 1")]
+    [InlineData("Clip 1", "Clip 1")]
+    [InlineData("a<b>:c.mp4", "abc")]
+    [InlineData("  .mp4 ", "")]
+    public void SaveDialog_NameKeepsTheFormatsEnding(string typed, string clean)
+    {
+        var model = new SaveFileModel("Save recording", "x", ".mp4", @"C:\Videos") { Name = typed };
+        Assert.Equal(clean, model.CleanName);
+        Assert.Equal(clean.Length > 0, model.CanSave);
+    }
+
     [Theory]
     [InlineData("https://example.com/a", true)]
     [InlineData("http://example.com", true)]

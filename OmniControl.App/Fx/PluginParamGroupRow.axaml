@@ -13,12 +13,11 @@
                 <DataTemplate DataType="vm:PluginParamItem">
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
+                            <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" MinWidth="64" SharedSizeGroup="ParamValue" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="{Binding Title}" VerticalAlignment="Center" Margin="0,0,24,0" TextWrapping="Wrap"
-                                   MaxWidth="{StaticResource ParamLabelMaxWidth}" ToolTip.Tip="{Binding Title}" />
+                        <TextBlock Classes="cardname" Text="{Binding Title}" VerticalAlignment="Center" Margin="0,0,24,0" ToolTip.Tip="{Binding Title}" />
                         <Slider Grid.Column="1" Minimum="0" Maximum="{Binding Maximum}" Value="{Binding Position}"
                                 pages:SliderReset.Value="{Binding ResetPosition}" Classes="thick" />
                         <pages:NumberText Grid.Column="2" Value="{Binding Plain}" Minimum="{x:Static vm:PluginParamItem.TypedMin}"

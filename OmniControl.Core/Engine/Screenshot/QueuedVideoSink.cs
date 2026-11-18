@@ -18,7 +18,7 @@ internal sealed class QueuedVideoSink : IVideoSink
     private byte[] _waiting, _working;
     private long _waitingAt;
     private bool _full, _closing;
-    private long _length;
+    private long _length, _done;
     private volatile ExceptionDispatchInfo? _failure;
 
     public QueuedVideoSink(IVideoSink inner, int width, int height, string name)
@@ -33,6 +33,8 @@ internal sealed class QueuedVideoSink : IVideoSink
     }
 
     public long Length => Interlocked.Read(ref _length);
+
+    public long FramesDone => Interlocked.Read(ref _done);
 
     public void WriteFrame(ReadOnlySpan<byte> bgra, int stride, long at)
     {
@@ -88,6 +90,7 @@ internal sealed class QueuedVideoSink : IVideoSink
             {
                 _inner.WriteFrame(_working, _row, at);
                 Interlocked.Exchange(ref _length, _inner.Length);
+                Interlocked.Increment(ref _done);
             }
             catch (Exception ex)
             {

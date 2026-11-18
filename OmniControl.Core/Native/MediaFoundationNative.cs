@@ -45,6 +45,12 @@ internal static unsafe class MediaFoundationNative
     public static readonly Guid IidSampleAllocatorEx = new("545b3a48-3283-4f62-866f-a62d8f598f9f");
     public static readonly Guid IidDxgiBuffer = new("e7174cfa-1c9e-48b1-8866-626226bfc258");
     public static readonly Guid Iid2DBuffer = new("7DC9D5F9-9ED9-44ec-9BBF-0600BB589FBB");
+    public static readonly Guid IidSinkWriterEx = new("588d72ab-5bc1-496a-8714-b70617141b25");
+    public static readonly Guid FriendlyName = new("314ffbae-5b41-4c95-9c19-4e7d586face3");
+    public static readonly Guid HardwareUrl = new("2fb866ac-b078-4942-ab6c-003d05cda674");
+    public static readonly Guid TransformClsid = new("6821c42b-65a4-4e82-99bc-9a88205ecd0c");
+    public static readonly Guid TransformAsync = new("f81a699a-649a-497d-8c73-29f8fed6ad7a");
+    public static readonly Guid AdapterLuid = new("1d39518c-e220-4da8-a07f-ba172552d6b1");
 
     /// <summary>The sample allocator has no free sample (the encoder still holds them all).</summary>
     public const int SampleAllocatorEmpty = unchecked((int)0xC00D4A3E);
@@ -62,6 +68,7 @@ internal static unsafe class MediaFoundationNative
     [DllImport("mfplat.dll")] public static extern int MFCreateSample(out IntPtr sample);
     [DllImport("mfplat.dll")] public static extern int MFCreateMemoryBuffer(uint maxLength, out IntPtr buffer);
     [DllImport("mfplat.dll")] public static extern int MFTEnumEx(Guid category, uint flags, IntPtr inputType, ref TypeInfo outputType, out IntPtr activates, out uint count);
+    [DllImport("mfplat.dll")] public static extern int MFTEnum2(Guid category, uint flags, IntPtr inputType, ref TypeInfo outputType, IntPtr attributes, out IntPtr activates, out uint count);
     [DllImport("mfplat.dll")] public static extern int MFCreateDXGIDeviceManager(out uint resetToken, out IntPtr manager);
     [DllImport("mfplat.dll")] public static extern int MFCreateVideoSampleAllocatorEx(ref Guid iid, out IntPtr allocator);
     [DllImport("mfreadwrite.dll", CharSet = CharSet.Unicode)] public static extern int MFCreateSinkWriterFromURL(string url, IntPtr byteStream, IntPtr attributes, out IntPtr writer);
@@ -92,6 +99,58 @@ internal static unsafe class MediaFoundationNative
 
     /// <summary>Two 32-bit numbers in one 64-bit attribute (a frame size, a frame rate, a pixel aspect ratio).</summary>
     public static void SetPair(IntPtr obj, Guid key, uint high, uint low) => SetUInt64(obj, key, (ulong)high << 32 | low);
+
+    public static int TryGetUInt32(IntPtr obj, Guid key, out uint value)
+    {
+        uint found;
+        var hr = ((delegate* unmanaged[Stdcall]<IntPtr, Guid*, uint*, int>)Vtbl(obj)[7])(obj, &key, &found);
+        value = found;
+        return hr;
+    }
+
+    public static int TryGetUInt64(IntPtr obj, Guid key, out ulong value)
+    {
+        ulong found;
+        var hr = ((delegate* unmanaged[Stdcall]<IntPtr, Guid*, ulong*, int>)Vtbl(obj)[8])(obj, &key, &found);
+        value = found;
+        return hr;
+    }
+
+    public static int TryGetGuid(IntPtr obj, Guid key, out Guid value)
+    {
+        Guid found;
+        var hr = ((delegate* unmanaged[Stdcall]<IntPtr, Guid*, Guid*, int>)Vtbl(obj)[10])(obj, &key, &found);
+        value = found;
+        return hr;
+    }
+
+    /// <summary>A string attribute, or null when the object does not have it.</summary>
+    public static string? TryGetString(IntPtr obj, Guid key)
+    {
+        char* text;
+        uint length;
+        if (((delegate* unmanaged[Stdcall]<IntPtr, Guid*, char**, uint*, int>)Vtbl(obj)[13])(obj, &key, &text, &length) < 0) return null;
+        try
+        {
+            return new string(text, 0, (int)length);
+        }
+        finally
+        {
+            CoTaskMemFree((IntPtr)text);
+        }
+    }
+
+    /// <summary>An 8-byte blob attribute (an adapter LUID), or null when the object does not have it.</summary>
+    public static long? TryGetLuid(IntPtr obj, Guid key)
+    {
+        long value;
+        uint size;
+        var hr = ((delegate* unmanaged[Stdcall]<IntPtr, Guid*, byte*, uint, uint*, int>)Vtbl(obj)[15])(obj, &key, (byte*)&value, sizeof(long), &size);
+        return hr >= 0 && size == sizeof(long) ? value : null;
+    }
+
+    public static void SetLuid(IntPtr obj, Guid key, long luid) =>
+        Check(((delegate* unmanaged[Stdcall]<IntPtr, Guid*, byte*, uint, int>)Vtbl(obj)[26])(obj, &key, (byte*)&luid, sizeof(long)));
 
     // IMFSample
     public static void SetSampleTime(IntPtr sample, long time) =>
@@ -188,6 +247,51 @@ internal static unsafe class MediaFoundationNative
 
     public static void WriteSample(IntPtr writer, uint stream, IntPtr sample) =>
         Check(((delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr, int>)Vtbl(writer)[6])(writer, stream, sample));
+
+    /// <summary>What the Sink Writer has done with one stream so far (MF_SINK_WRITER_STATISTICS; <see cref="Size"/> is set before the call).</summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public struct SinkWriterStatistics
+    {
+        public uint Size;
+        public long LastTimestampReceived, LastTimestampEncoded, LastTimestampProcessed, LastStreamTickReceived, LastSinkSampleRequest;
+        public ulong SamplesReceived, SamplesEncoded, SamplesProcessed, StreamTicksReceived;
+        public uint ByteCountQueued;
+        public ulong ByteCountProcessed;
+        public uint OutstandingSinkSampleRequests, AverageRateReceived, AverageRateEncoded, AverageRateProcessed;
+    }
+
+    public static SinkWriterStatistics GetStatistics(IntPtr writer, uint stream)
+    {
+        var statistics = new SinkWriterStatistics { Size = (uint)sizeof(SinkWriterStatistics) };
+        Check(((delegate* unmanaged[Stdcall]<IntPtr, uint, SinkWriterStatistics*, int>)Vtbl(writer)[13])(writer, stream, &statistics));
+        return statistics;
+    }
+
+    // IMFSinkWriterEx
+    /// <summary>The <paramref name="index"/>th transform the Sink Writer put on a stream (colour converter, encoder), or the failure when there is none.</summary>
+    public static int GetTransformForStream(IntPtr writerEx, uint stream, uint index, out Guid category, out IntPtr transform)
+    {
+        Guid found;
+        IntPtr made;
+        var hr = ((delegate* unmanaged[Stdcall]<IntPtr, uint, uint, Guid*, IntPtr*, int>)Vtbl(writerEx)[14])(writerEx, stream, index, &found, &made);
+        category = found;
+        transform = made;
+        return hr;
+    }
+
+    // IMFTransform
+    public static IntPtr TransformAttributes(IntPtr transform)
+    {
+        IntPtr attributes;
+        return ((delegate* unmanaged[Stdcall]<IntPtr, IntPtr*, int>)Vtbl(transform)[8])(transform, &attributes) >= 0 ? attributes : IntPtr.Zero;
+    }
+
+    /// <summary>The transform's current input (or output) media type on stream 0; zero when it has none or will not say.</summary>
+    public static IntPtr TransformCurrentType(IntPtr transform, bool output)
+    {
+        IntPtr type;
+        return ((delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int>)Vtbl(transform)[output ? 18 : 17])(transform, 0, &type) >= 0 ? type : IntPtr.Zero;
+    }
 
     public static void FinalizeWriter(IntPtr writer) => Check(((delegate* unmanaged[Stdcall]<IntPtr, int>)Vtbl(writer)[11])(writer));
 }

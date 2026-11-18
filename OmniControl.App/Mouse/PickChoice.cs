@@ -14,7 +14,7 @@ namespace OmniControl.App.Mouse;
 /// <see cref="AskFirst"/>: the entry is not complete without its settings (a command to run), so a picker that asks for them opens its settings page when it is picked.
 /// <see cref="Remove"/>: the user may take the entry out of the list (it shows a remove cross). <see cref="Command"/>: the line is a button of its list (add a
 /// program), not an action: picking it runs the command, which returns the entries to add. <see cref="Opened"/>: called each time a picker listing the entry opens.
-/// <see cref="Category"/> is the entry's section in the Choose-the-action window (its pane 1); <see cref="Heading"/> is the small group heading it sits under in the
+/// <see cref="Remote"/> is the other PC the entry runs on (its row is marked "Other PCs · name"). <see cref="Category"/> is the entry's section in the Choose-the-action window (its pane 1); <see cref="Heading"/> is the small group heading it sits under in the
 /// section's list, and <see cref="Place"/> the section's icon and order (read from the live page list; null in a list that has none). <see cref="RemoveText"/> names the
 /// <see cref="Icon"/> is the entry's own glyph (a resource key of Styles/Brushes.axaml; null: its section's icon). <see cref="RemoveText"/> names the
 /// <see cref="Family"/> and <see cref="FamilyRole"/> (from the master entry): the lists show the directions of a family as one row. <see cref="RemoveText"/> names the
@@ -25,7 +25,7 @@ public sealed record PickChoice(string Spec, string Category, string Name, strin
     Action? Remove = null, Func<Visual, Task<IReadOnlyList<PickChoice>>>? Command = null, Action? Opened = null,
     string? Heading = null, ActionSection? Place = null, string RemoveText = "Remove", Renaming? Renaming = null, Func<bool>? IsListed = null,
     ActionEditor? Editor = null, Func<IReadOnlyDictionary<string, string>, PickChoice>? Create = null, string? Icon = null,
-    ActionFamily? Family = null, string? FamilyRole = null, string? Tag = null)
+    ActionFamily? Family = null, string? FamilyRole = null, string? Tag = null, Services.RemotePcLabel? Remote = null)
 {
     public bool HasOptions => Options is { Count: > 0 };
 

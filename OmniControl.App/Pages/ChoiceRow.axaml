@@ -9,17 +9,17 @@
     <Panel>
         <Grid Margin="0,1" IsVisible="{Binding !Half}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
+                <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <c:IconText Icon="{Binding Icon}" Text="{Binding Label}" Margin="0,0,24,0" />
+            <c:IconText Classes="cardname" Icon="{Binding Icon}" Text="{Binding Label}" Margin="0,0,24,0" />
             <ComboBox Classes="choice" ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}" />
         </Grid>
 
         <!-- Half-width card: the label (wraps to two lines) and a drop-down that fills the rest -->
         <Grid Margin="0,1" ColumnSpacing="8" IsVisible="{Binding Half}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" MinWidth="56" />
+                <ColumnDefinition Width="*" MinWidth="{StaticResource CardLabelMinWidth}" />
                 <ColumnDefinition Width="1.6*" />
             </Grid.ColumnDefinitions>
             <c:IconText Compact="True" Icon="{Binding Icon}" Text="{Binding Label}" />

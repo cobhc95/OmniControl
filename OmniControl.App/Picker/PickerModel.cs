@@ -26,6 +26,10 @@ public sealed class PickerRow
     /// <summary>The entry's small fact tag ("active"), or null.</summary>
     public string? Tag => Choice?.Tag;
     public bool HasTag => Tag is not null;
+
+    /// <summary>The other PC the entry runs on (drawn as "Other PCs · name"), or null; its section then replaces the hint.</summary>
+    public Services.RemotePcLabel? Remote => Choice?.Remote;
+    public bool ShowsHint => Remote is null;
     public string? Unavailable => Members is { } members ? (members.All(m => m.Unavailable is not null) ? members[0].Unavailable : null) : Choice?.Unavailable; // a family is greyed only when every direction is
     public bool IsAvailable => Unavailable is null;
 

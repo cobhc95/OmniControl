@@ -32,7 +32,7 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
                         <c:SliderField Grid.Column="1" Thick="True" Minimum="{Binding Floor}" Maximum="{Binding Reach}" Value="{Binding Value}" ResetValue="0"
-                                       Text="{Binding Text}" ValueMinWidth="48" ToolTip.Tip="Double-click the number to type a number of dB" />
+                                       Text="{Binding Text}" ToolTip.Tip="Double-click the number to type a number of dB" />
                     </Grid>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>

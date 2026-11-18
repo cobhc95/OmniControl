@@ -10,29 +10,29 @@
         <!-- Slider alone: label, [leading chip], slider, value -->
         <Grid Margin="0,1" IsVisible="{Binding IsPlain}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
+                <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <c:IconText Icon="{Binding Icon}" Text="{Binding Label}" Margin="0,0,24,0" />
-            <Grid Grid.Column="1" ColumnDefinitions="Auto,*" ColumnSpacing="8">
+            <c:IconText Classes="cardname" Icon="{Binding Icon}" Text="{Binding Label}" Margin="0,0,24,0" />
+            <c:LeadFitPanel Grid.Column="1" Spacing="8" LeadMinWidth="{DynamicResource ChipMinWidth}" MainMinWidth="{DynamicResource SliderFieldMinWidth}">
                 <c:ChoiceChip DataContext="{Binding Lead}" IsVisible="{Binding $parent[UserControl].DataContext.HasLead}" />
-                <c:SliderField Grid.Column="1" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Value}" ResetValue="{Binding ResetValue}"
-                               Thick="{Binding Thick}" Text="{Binding ValueText}" ValueMinWidth="48" />
-            </Grid>
+                <c:SliderField Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Value}" ResetValue="{Binding ResetValue}"
+                               Thick="{Binding Thick}" Text="{Binding ValueText}" />
+            </c:LeadFitPanel>
         </Grid>
 
         <!-- Slider with a companion switch on the same line: label, slider, value | switch name, switch.
              The switch name shares the room left with the slider and wraps (then trims) when the card is narrow; the switch never shrinks. -->
         <Grid Margin="0,1" IsVisible="{Binding HasCompanionLine}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
-                <ColumnDefinition Width="3*" />
+                <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
+                <ColumnDefinition Width="3*" MinWidth="{StaticResource SliderFieldMinWidth}" />
                 <ColumnDefinition Width="2*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <c:IconText Icon="{Binding Icon}" Text="{Binding Label}" Margin="0,0,24,0" />
+            <c:IconText Classes="cardname" Icon="{Binding Icon}" Text="{Binding Label}" Margin="0,0,24,0" />
             <c:SliderField Grid.Column="1" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Value}" ResetValue="{Binding ResetValue}"
-                           Thick="{Binding Thick}" Text="{Binding ValueText}" ValueMinWidth="48" />
+                           Thick="{Binding Thick}" Text="{Binding ValueText}" />
             <Grid Grid.Column="2" ColumnDefinitions="Auto,*" HorizontalAlignment="Right">
                 <Border Classes="divider" Margin="12,4" />
                 <TextBlock Grid.Column="1" Classes="cardlabel" Text="{Binding Companion.Label}" />
@@ -40,15 +40,26 @@
             <ToggleSwitch Grid.Column="3" IsChecked="{Binding Companion.IsOn}" OnContent="On" OffContent="Off" Margin="8,0,0,0" VerticalAlignment="Center" />
         </Grid>
 
-        <!-- Half-width card: the label (wraps to two lines at the card's height) takes a share, the slider the larger share (never below its least width), the value sits at the right -->
-        <Grid Margin="0,1" ColumnSpacing="8" IsVisible="{Binding Half}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" MinWidth="56" />
-                <ColumnDefinition Width="1.6*" MinWidth="64" />
-            </Grid.ColumnDefinitions>
+        <!-- Half-width card (Controls/LabelFitPanel): the label (wraps to two lines) beside the shared narrow-card row (chip trims first, then the slider with its value
+             shrinks to SliderFieldMinWidth, the value never clips); when even that does not fit, the slider and value wrap under the label inside the same card -->
+        <c:LabelFitPanel Margin="0,1" Spacing="8" LabelMinWidth="{DynamicResource CardLabelMinWidth}" MainMinWidth="{DynamicResource SliderFieldMinWidth}" IsVisible="{Binding IsHalfSlider}">
             <c:IconText Compact="True" Icon="{Binding Icon}" Text="{Binding Label}" />
-            <c:SliderField Grid.Column="1" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Value}" ResetValue="{Binding ResetValue}"
-                           Thick="{Binding Thick}" Text="{Binding ValueText}" ValueMinWidth="32" />
-        </Grid>
+            <c:LeadFitPanel Spacing="8" LeadMinWidth="{DynamicResource ChipMinWidth}" MainMinWidth="{DynamicResource SliderFieldMinWidth}">
+                <c:ChoiceChip DataContext="{Binding Lead}" IsVisible="{Binding $parent[UserControl].DataContext.HasLead}" />
+                <c:SliderField Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Value}" ResetValue="{Binding ResetValue}"
+                               Thick="{Binding Thick}" Text="{Binding ValueText}" />
+            </c:LeadFitPanel>
+        </c:LabelFitPanel>
+
+        <!-- Knob (SliderItem.AsKnob): the two-line label beside the rest (Controls/LabelFitPanel); the optional chip takes the room between the name and the
+             knob (its words wrap to two lines, trimmed only when even that does not fit), the master knob at the right; the value words are under the knob -->
+        <c:LabelFitPanel Margin="0,1" Spacing="8" LabelMinWidth="{DynamicResource CardLabelMinWidth}" MainMinWidth="{DynamicResource SliderFieldMinWidth}" IsVisible="{Binding AsKnob}">
+            <c:IconText Compact="True" Icon="{Binding Icon}" Text="{Binding Label}" VerticalAlignment="Center" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <c:ChoiceChip Classes="wrap" DataContext="{Binding Lead}" IsVisible="{Binding $parent[UserControl].DataContext.HasLead}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                <c:Knob Grid.Column="1" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Value}" Text="{Binding ValueText}"
+                        pages:SliderReset.Value="{Binding ResetValue}" />
+            </Grid>
+        </c:LabelFitPanel>
     </Panel>
 </UserControl>

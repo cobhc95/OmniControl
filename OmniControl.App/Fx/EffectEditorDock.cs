@@ -88,9 +88,10 @@ internal sealed class EffectEditorDock : IEffectEditors
     {
         if (_embeddedSlot is { } slot && (_embedded is not null || _embeddedParameters is not null))
         {
+            var wasEditor = _embedded is not null;
             _embedded?.Dispose(); // removed from its host window, which still exists
             _embeddedParameters?.Close();
-            _plugins.EditorClosed(slot);
+            _plugins.EditorClosed(slot, wasEditor);
         }
         _embeddedSlot = null;
         _embedded = null;
@@ -141,7 +142,7 @@ internal sealed class EffectEditorDock : IEffectEditors
         {
             list.Close();
             if (ReferenceEquals(effect.PluginParameters, list)) effect.PluginParameters = null;
-            _plugins.EditorClosed(effect.Slot);
+            _plugins.EditorClosed(effect.Slot, wasEditor: false);
         };
         return window;
     }
@@ -162,7 +163,7 @@ internal sealed class EffectEditorDock : IEffectEditors
         window.Closed += (_, _) =>
         {
             area.ScaleRefused -= effect.PluginScaleRefused;
-            _plugins.EditorClosed(effect.Slot);
+            _plugins.EditorClosed(effect.Slot, wasEditor: true);
         };
         return window;
     }

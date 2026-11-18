@@ -45,6 +45,8 @@ public sealed class MonitorEngine : IMonitorEngine
         }
     }
 
+    public string? ResolveDeviceName(DisplayInfo remembered) => DisplayIdentity.Resolve(remembered, ListDisplays());
+
     private static List<DisplayInfo> ListDisplays() => DisplayEnumerator.Enumerate().Select(d => d.Info).ToList();
 
     private static string Signature(IEnumerable<DisplayInfo> displays) => string.Join('|', displays.Select(d => d.ToString()));

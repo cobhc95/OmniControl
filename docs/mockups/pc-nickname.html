@@ -1,0 +1,17 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Other PCs: local nickname (approved)</title>
+<!-- Approved by the owner 17 Nov 2026.
+  1 Other PCs page, PC list: right-click a paired PC -> shared right-click menu (ListMenuFlyout Placement=Pointer + MenuRowList, as the
+    Simulation step menu) with one row "Give nickname…" (pencil glyph). The list row then shows the nickname instead of the real name.
+  2 "Give nickname…" opens a small dialog (DialogService pattern / Classes="dialog"): title line "Nickname for <real name>",
+    a TextBox.field prefilled with the current nickname, a muted note "Only on this PC. Leave empty to use its own name.",
+    foot Cancel + OK (Button.primary). Enter = OK, Esc = Cancel. Empty = remove nickname.
+  3 PC detail header: nickname (strong) then the REAL name in muted smaller words beside it; with no nickname only the real name.
+    Connect chip and Unpair stay at the right.
+  4 Local only: stored on this PC with the paired PC entry, never sent to the other PC. The nickname is the display name used
+    everywhere the PC appears here (list, header, its actions/states group in Actions and hotkeys, search). -->
+<style>body{font-family:Segoe UI;background:#1b1b1b;color:#eee;padding:20px;font-size:13px}</style></head><body>
+<p>[🖥 Living room PC (online · LAN)] → right-click → [✎ Give nickname…]<br>
+Header: <b>Living room PC</b> <span style="color:#999">DESKTOP-2PFM4S9</span> ...... [Connect: LAN ▾] [Unpair]<br>
+Dialog: Nickname for DESKTOP-2PFM4S9 · [Living room PC] · "Only on this PC. Leave empty to use its own name." · [Cancel] [OK]</p>
+</body></html>

@@ -29,7 +29,7 @@ internal static class DisplayActions
     /// <summary>A one-off action (next colour preset, turn the screen off, reset...) that acts on the chosen displays.</summary>
     public static HotkeyAction Once(string id, string title, string keywords, string category, string group, string subgroup,
         Action<IReadOnlyList<string>?> run, Func<IReadOnlyList<HotkeyDevice>>? devices, string? suggestedKey = null, string? shortName = null, string? icon = null,
-        IReadOnlyList<string>? suggestedIcons = null, IReadOnlyList<ActionOption>? manageSettings = null, bool screensOff = false, string? common = null, string? suggestedKeySet = null) =>
+        IReadOnlyList<string>? suggestedIcons = null, IReadOnlyList<ActionOption>? manageSettings = null, bool screensOff = false, string? common = null, string? suggestedKeySet = null, ActionFamily? family = null, string? familyRole = null) =>
         new(id, title, category, "monitor display screen " + keywords, run, devices is null ? null : Noun, devices, group: group, subgroup: subgroup)
         {
             SuggestedIcons = suggestedIcons,
@@ -40,5 +40,7 @@ internal static class DisplayActions
             Icon = icon,
             ScreensOff = screensOff,
             Common = common,
+            Family = family,
+            FamilyRole = familyRole,
         };
 }

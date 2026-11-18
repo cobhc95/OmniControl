@@ -26,6 +26,9 @@ public sealed partial class ChoiceItem : ObservableObject, IEditorItem, IHalfWid
     /// <summary>For a preset drop-down: what its "Manage presets…" row does (opens the preset manager at the group); null for a plain choice.</summary>
     public Action? Manage { get; init; }
 
+    /// <summary>True: a chip menu draws a thin line under the first option, which stands apart from the rest ("All displays" before each display).</summary>
+    public bool FirstApart { get; init; }
+
     private bool _loading;
 
     public ChoiceItem(string label, IReadOnlyList<string> options, string selected, Action<string> apply)

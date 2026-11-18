@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:OmniControl.App.Controls">
     <!-- MASTER designs of menus and pop-downs, moved out of Theme.axaml (700-line limit) and included after it and Blocks.axaml, so these
          win as they did at the end of Theme.axaml: Avalonia has no selector specificity, the later style wins (a glyph size set before
          Theme's Path.glyph would be overwritten by its 14 px). Sizes: Menu*, TickBox*, Chip* in App.axaml. -->
@@ -129,6 +130,15 @@
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Focusable" Value="False" />
         <Setter Property="FontSize" Value="{DynamicResource MenuSmallFontSize}" />
+    </Style>
+    <!-- c|ChoiceChip.wrap: a chip that wraps its words onto up to two lines before trimming (the knob card's device chip); it grows from the one-line height -->
+    <Style Selector="c|ChoiceChip.wrap c|ChipMenu > Button.selector">
+        <Setter Property="Height" Value="NaN" />
+        <Setter Property="MinHeight" Value="{DynamicResource ChipHeight}" />
+    </Style>
+    <Style Selector="c|ChoiceChip.wrap c|ChipMenu > Button.selector > Grid > TextBlock">
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="MaxLines" Value="2" />
     </Style>
     <Style Selector="Button.chipx:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />

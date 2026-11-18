@@ -254,9 +254,6 @@ internal sealed partial class HardwareDisplayItem
     /// <summary>Turns the display to this orientation; nothing while Windows has not said how it is turned.</summary>
     public void Rotate(DisplayOrientation orientation) => _orientation.Choose(orientation);
 
-    /// <summary>Turns the screen off; nothing when the display has no power control.</summary>
-    public void TurnOff() => SetScreenOn(false);
-
     /// <summary>Choosing the option runs the card's own pick handler, which writes it.</summary>
     private static void SelectNext(ChoiceItem card)
     {

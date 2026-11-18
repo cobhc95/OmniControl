@@ -10,16 +10,16 @@
     <Panel>
         <Grid Margin="0,1" IsVisible="{Binding !Half}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" MinWidth="110" SharedSizeGroup="EditorLabel" />
+                <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <TextBlock Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,24,0" />
+            <TextBlock Classes="cardname" Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,24,0" />
             <c:ChipMenu x:Name="FullChip" Classes="choice" ChipTag="scope" ChipAlignment="Stretch" Text="{Binding Text}" ChipToolTip="{Binding Tip}" />
         </Grid>
 
         <Grid Margin="0,1" ColumnSpacing="8" IsVisible="{Binding Half}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" MinWidth="56" />
+                <ColumnDefinition Width="*" MinWidth="{StaticResource CardLabelMinWidth}" />
                 <ColumnDefinition Width="1.6*" />
             </Grid.ColumnDefinitions>
             <TextBlock Classes="cardlabel" Text="{Binding Label}" />

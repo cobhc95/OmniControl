@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using OmniControl.App.Dialogs;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -46,7 +46,9 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
 {
     private readonly MonitorEngine _engine = new();
     private readonly SoftwareDisplayService _softwareDisplays = new();
-    private readonly HotkeyRegistry _hotkeys = new();
+    private readonly HardwareWatches _hardware = new(); // the master list of hardware watches, made first: the registry and the features that depend on hardware are given it
+    private readonly PowerJournal _power; // the power journal: hears sleeps, wakes and log-ins through the hardware watches' listeners
+    private readonly HotkeyRegistry _hotkeys;
     private readonly Icons.IconStore _icons; // the user's icons and the chosen icons of actions, made right after the master list it follows
     private readonly Icons.IconPicker _iconPicker;
     private readonly States.StateRegistry _states; // the master list of states, made before the services and pages that register theirs
@@ -62,6 +64,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     private readonly VolumePresets _volumePresets;
     private VolumePageViewModel? _volumePage; // read by the FX windows' links to the Mixer when they are used
     private readonly PluginChainHost _plugins;
+    private readonly DisplayFeeds _displayFeeds;
     private readonly PluginLibrary _library = new();
     private readonly UserPresetStore _presets = UserPresetStore.OnDisk();
     private readonly PresetShortcuts _presetShortcuts;
@@ -127,10 +130,12 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
 
     public ShellViewModel()
     {
+        _hotkeys = new HotkeyRegistry(_hardware);
         _hotkeys.Report = Report;
         _hotkeys.Settings = new OmniActionSettings();
-        _mixer = new MixerService(Report); // after the effects journal (a field initialiser): a left-over run is undone first
+        _mixer = new MixerService(_hardware, Report); // after the effects journal (a field initialiser): a left-over run is undone first
         _states = new States.StateRegistry(chainNow: () => _hotkeys.Chain);
+        _hotkeys.StateReader = _states;
         _icons = new Icons.IconStore(_hotkeys);
         _iconPicker = new Icons.IconPicker(_icons);
         // Presets, in this order: the master list of groups (a field, empty), the preset shortcuts (they follow the list and register a
@@ -145,15 +150,16 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _volumePresets = new VolumePresets(_mixer);
         _plugins = new PluginChainHost(_mixer.Save);
         _effects = new EffectsEngine(_mixer, _effectsSupport, _journal, _plugins, Report);
+        _displayFeeds = new DisplayFeeds(_plugins, _effects, Report);
         _osd.WatchVolumeOf(() => _mixer.MasterDeviceId); // the pop-up for outside volume changes follows the master's real device
         _mixer.MasterDeviceChanged += _osd.RetargetVolume;
         _installer = new EngineInstaller(_effectsSupport);
-        _fxWindows = new FxWindowService(_mixer, _effects, _effectsSupport, _plugins, _library, _presets, Report, _presetManager.Open,
+        _fxWindows = new FxWindowService(_mixer, _effects, _effectsSupport, _plugins, _displayFeeds, _library, _presets, Report, _presetManager.Open,
             new FxMixerLinks(deviceId => { if (_volumePage is { } page) { OpenPage(page.Title); page.ShowMixerFor(deviceId); } }, () => _volumePage?.InstallEqualizerApoStepAsync() ?? Task.CompletedTask), _dialogs.AskAsync);
         _about = new AboutWindowService(Report);
         _appActions = new AppActions(new AppLauncher(Report), _hotkeys);
         _powerPlanActions = new Power.PowerPlanActions(new OmniControl.Core.Engine.PowerPlanService(), _hotkeys);
-        _windowsKeys = Screenshot.ScreenshotActions.Register(_hotkeys, _osd, Report);
+        _windowsKeys = Screenshot.ScreenshotActions.Register(_hotkeys, _osd, Report, _dialogs.AskAsync);
         _appListManager = new AppListManagerService(_appLists, () => _appActions.InstalledPrograms(), _dialogs.AskAsync, Report);
         _appScopes = new AppScopes(_appLists, _appListManager.Open);
         var appScopeGate = new AppScopeGate(_appLists);
@@ -166,10 +172,11 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         // Custom rules are asked before both (their handler goes first on the hook), so a rule that matches wins.
         _rules = new RuleService(_mouseHook, _gestures, _mouse, _hotkeys, () => _mixer.Settings.Apps.Select(a => a.ExePath), Report);
         // The automation rules: they register their own actions in the master list and are the one gate every action passes.
+        _power = new PowerJournal(_hardware);
         _automation = new AutomationService(_hotkeys, _states, CountdownWindow.ConfirmAsync, () => _mixer.Settings.Apps.Select(a => a.ExePath),
-            StartupRegistration.IsBackgroundStart(Environment.GetCommandLineArgs().Skip(1)), Report);
+            StartupRegistration.IsBackgroundStart(Environment.GetCommandLineArgs().Skip(1)), Report, _power);
         // Trackpad gestures are handed to the same hook, so rules and mappings treat them like button presses.
-        _trackpad = new TrackpadService(_mouseHook, _mouse);
+        _trackpad = new TrackpadService(_mouseHook, _mouse, _hardware);
         _margins = new MarginOverlay(_gestures.Settings);
         _mouse.LayerChanged += (_, _) => UpdateActiveLayer();
         _mouse.LayersChanged += UpdateActiveLayer;
@@ -181,7 +188,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
 
         // The devices are read from the service (start-up and periodic checks), so the tray tiles are right before the page is ever opened.
         ICredentialStore credentials = StartupMode.Inert ? new NoCredentialStore() : new WindowsCredentialStore();
-        _devices = new DeviceService(_hotkeys, _states, credentials, Report);
+        _devices = new DeviceService(_hotkeys, _states, _hardware, credentials, Report);
         Guard.Run("Start-up: device auto-checks", _devices.StartAutoChecks);
         _otherPcs = new OtherPcsService(_hotkeys, _states, credentials, Report, _devices.ShareSetups); // listens only once a PC is paired or "Pair a PC" is opened
 
@@ -190,11 +197,11 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         // Each page starts on its own: one that fails is logged and left out, and the window still opens.
         _allPages = new[]
         {
-            TryMake("Displays", () => new DisplaysPageViewModel(_engine, _hotkeys, _osd, _softwareDisplays, Report, _presetGroups, _presetManager.Open, _states)),
+            TryMake("Displays", () => new DisplaysPageViewModel(_engine, _hotkeys, _osd, _softwareDisplays, Report, _presetGroups, _presetManager.Open, _states, _hardware)),
             TryMake("Volume", () => new VolumePageViewModel(_mixer, _effectsSupport, _effects, _installer, _hotkeys, _osd, Report, _fxWindows.Open, _fxWindows.Toggle,
                 _dialogs.AskAsync, CombineWindow.AskAsync, _volumePresets, _presetGroups, _presetManager.Open, _states)),
             TryMake("Devices", () => new DevicesPageViewModel(_devices, _dialogs.AskAsync, Report, _iconPicker.ChooseAsync, _otherPcs, () => OpenPage(OtherPcsService.Category))),
-            TryMake("Other PCs", () => new OtherPcsPageViewModel(_otherPcs, _dialogs.AskAsync, Report)),
+            TryMake("Other PCs", () => new OtherPcsPageViewModel(_otherPcs, _hotkeys, _dialogs.AskAsync, _dialogs.AskTextAsync, Report)),
             TryMake("Mouse and Trackpad", () => new MousePageViewModel(_mouse, _trackpad, _pointer, _hotkeys, _osd, _dialogs.AskAsync, Report, _presetGroups, _presetManager.Open, _appScopes)),
             TryMake("Gestures", () => new GesturesPageViewModel(_gestures, _rules, _margins, _hotkeys, _dialogs.AskAsync, _appScopes)),
             TryMake("Automation", () => new AutomationPageViewModel(_automation, _dialogs.AskAsync)),
@@ -208,11 +215,14 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _allFooter = new[]
         {
             TryMake("App settings", () => new AppSettingsPageViewModel(_hotkeys, _about.Open, _library.ScanAsync, _library.FoundText, () => _presetManager.Open(null, null),
-                new BackupService(_dialogs.ChooseAsync, Report), _dialogs.Confirmations, _updates, Report, ShowKeyboardShortcuts, _mixer)),
+                new BackupService(_dialogs.ChooseAsync, Report), _dialogs.Confirmations, _updates, Report, ShowKeyboardShortcuts, _mixer, _hardware)),
         }.OfType<PageViewModel>().ToArray();
         // The Choose-the-action window's sections are the sidebar pages, in the sidebar's order, with their icons.
         _hotkeys.UseSections(_allPages.Concat(_allFooter).Select((p, i) => new ActionSection(p.Title, p.Icon, i + 1)).ToList());
 
+        Guard.Run("Start-up: power journal", _power.Start);
+        _hardware.Start();
+        _hardware.ApplyCheck();
         WireRestore();
         TrayFlyout = MakeTray();
         WatchUpdates();
@@ -312,12 +322,6 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         foreach (var page in _allPages) page.OnWindowShownChanged(shown);
     }
 
-    /// <summary>Windows reported a display change (reported by <see cref="WindowLifecycle"/>).</summary>
-    public void NotifyDisplaysChanged()
-    {
-        foreach (var page in _allPages) page.OnDisplaysChanged();
-    }
-
     /// <summary>The one way anything reports to the screen; safe from any thread, so services never post it themselves.</summary>
     private void Report(string message)
     {
@@ -355,6 +359,8 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         void Step(string what, Action step) => Guard.Run($"Shut-down: {what}", step);
         Step("search", () => _search?.Dispose());
         Step("restore", DisposeRestore);
+        Step("hardware watches", _hardware.Dispose); // before the services whose refreshes it calls
+        Step("power journal", _power.Dispose);
         Step("win+a key", _winA.Dispose); // gives Win+A back to Windows
         Step("tray", TrayFlyout.Dispose);
         Step("preset manager", _presetManager.Close);
@@ -389,6 +395,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         Step("engine", _engine.Dispose);
         // Last: a plug-in's own teardown can hang (a JUCE plug-in disconnecting every UI Automation provider of the process
         // deadlocks with Avalonia's), so it runs after everything is saved and put back, and the process ends regardless.
+        Step("display feeds", _displayFeeds.Dispose); // before the plug-ins they read from are unloaded
         using (ExitGuard.Start(Timing.PluginUnloadLimit)) Step("plug-ins", _plugins.Dispose);
     }
 }

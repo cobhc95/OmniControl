@@ -93,6 +93,7 @@ public sealed partial class OtherPcsService
             using var first = PcWire.Step(_stop.Token);
             if (await PcWire.ReadExactAsync(stream, 1, first.Token).ConfigureAwait(false) is not { } kind) return;
             if (kind[0] == PcProtocol.WantsPairing) await RespondToPairingAsync(stream).ConfigureAwait(false);
+            else if (kind[0] == PcProtocol.WantsProbe) await AnswerProbeAsync(stream).ConfigureAwait(false);
             else if (kind[0] == PcProtocol.WantsSession)
             {
                 link = await PcSession.AcceptAsync(stream, OwnId, id => _secrets.GetValueOrDefault(id), _stop.Token).ConfigureAwait(false);
@@ -169,6 +170,7 @@ public sealed partial class OtherPcsService
         }
         foreach (var pair in _settings.Pairs.Where(p => !_links.ContainsKey(p.Id)).ToList()) DialIfMine(pair);
         RecheckTailscalePairs();
+        StartProbes();
         var nearbyNow = Nearby.Count;
         if (nearbyNow != _nearbyShown)
         {
@@ -198,7 +200,7 @@ public sealed partial class OtherPcsService
                 {
                     _dialing.Remove(pair.Id);
                     if (made is not null) Attach(made);
-                    else if (viaTailscale) TailscaleDialFailed(pair.Id);
+                    else if (viaTailscale) TailscaleDialFailed(pair.Id, address);
                 });
             }
         });
@@ -248,6 +250,12 @@ public sealed partial class OtherPcsService
     {
         if (_disposed || Find(link.PeerId) is not { } pair)
         {
+            link.Dispose();
+            return;
+        }
+        if (link.ViaTailscale && pair.Route != PcRoute.Tailscale)
+        {
+            // The route chosen here is the one source: the other PC dialling over Tailscale does not override it (it falls back to LAN when it finds no link there).
             link.Dispose();
             return;
         }

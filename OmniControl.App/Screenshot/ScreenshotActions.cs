@@ -1,4 +1,5 @@
 using Avalonia.Threading;
+using OmniControl.App.Dialogs;
 using OmniControl.App.Hotkeys;
 using OmniControl.App.Icons;
 using OmniControl.App.Osd;
@@ -14,17 +15,18 @@ namespace OmniControl.App.Screenshot;
 public static class ScreenshotActions
 {
     public const string Category = ActionSections.Screenshot;
+    public const string StopRecordingId = "screenshot.stoprecording";
     private const string Words = "screenshot screen capture snip snipping print screen grab picture image";
     private const string RecordWords = "record recording video screen recorder capture mp4 gif clip";
 
-    public static WindowsKeysSwitch Register(HotkeyRegistry hotkeys, OsdService osd, Action<string> report)
+    public static WindowsKeysSwitch Register(HotkeyRegistry hotkeys, OsdService osd, Action<string> report, Func<DialogMessage, Task<bool>> ask)
     {
         osd.DeclareText(ScreenshotService.OsdElement);
         var settings = ScreenshotSettings.Load();
         var hevc = VideoEncoders.HevcAvailable();
         var windowsKeys = new WindowsKeysSwitch(settings, report);
         windowsKeys.Reapply();
-        var service = new ScreenshotService(settings, report, message => osd.ShowMessage(ScreenshotService.OsdElement, message), hevc);
+        var service = new ScreenshotService(settings, report, message => osd.ShowMessage(ScreenshotService.OsdElement, message), hevc, ask);
         hotkeys.Register(new[]
         {
             Make("screenshot.area", "Screenshot: area (edit)", ShotKind.Area, $"{Words} region select draw annotate lightshot", service, settings, hevc, windowsKeys),
@@ -32,6 +34,8 @@ public static class ScreenshotActions
             Make("screenshot.screen", "Screenshot: full screen", ShotKind.Screen, $"{Words} monitor display under pointer", service, settings, hevc, windowsKeys),
             Make("screenshot.all", "Screenshot: all screens", ShotKind.AllScreens, $"{Words} every monitor desktop", service, settings, hevc, windowsKeys),
             Make("screenshot.record", "Record area", ShotKind.Record, RecordWords, service, settings, hevc, windowsKeys),
+            new HotkeyAction(StopRecordingId, "Stop screen recording", Category, $"{RecordWords} stop end emergency cancel kill", _ => Dispatcher.UIThread.Post(service.StopRecording))
+                { PickerSection = ActionSections.Screenshot, Icon = IconLibrary.Video, NeverBlock = true, DefaultKey = "Ctrl+Alt+F12" },
             new HotkeyAction(WindowsKeysSwitch.ActionId, "Turn off Windows' screenshot keys: toggle", Category, $"{Words} windows keys snipping tool print screen win shift s disable block",
                 _ => windowsKeys.Toggle()) { PickerSection = ActionSections.Screenshot, Icon = IconLibrary.Screen },
         });

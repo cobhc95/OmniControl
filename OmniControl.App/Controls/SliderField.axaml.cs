@@ -20,13 +20,12 @@ public partial class SliderField : UserControl
     public static readonly StyledProperty<string?> TextProperty = AvaloniaProperty.Register<SliderField, string?>(nameof(Text));
     public static readonly StyledProperty<bool> ThickProperty = AvaloniaProperty.Register<SliderField, bool>(nameof(Thick));
     public static readonly StyledProperty<bool> CompactProperty = AvaloniaProperty.Register<SliderField, bool>(nameof(Compact));
+    public static readonly StyledProperty<double> ValueGapProperty = AvaloniaProperty.Register<SliderField, double>(nameof(ValueGap));
     public static readonly StyledProperty<double> ValueMinWidthProperty = AvaloniaProperty.Register<SliderField, double>(nameof(ValueMinWidth));
-    public static readonly StyledProperty<double> ValueGapProperty = AvaloniaProperty.Register<SliderField, double>(nameof(ValueGap), 8);
 
     public SliderField()
     {
         InitializeComponent();
-        Layout.ColumnSpacing = ValueGap;
         // The slider and the typed number tell Value only when the user changes them; setting them from <see cref="Value"/>
         // never writes back, so a limit that arrives after the value cannot clamp the stored value.
         Bar.ValueChanged += (_, e) => { if (!_applying) Value = e.NewValue; };
@@ -59,10 +58,10 @@ public partial class SliderField : UserControl
     /// <summary>The small slider (<c>Slider.compact</c>).</summary>
     public bool Compact { get => GetValue(CompactProperty); set => SetValue(CompactProperty, value); }
 
-    /// <summary>The least width of the value words, so a changing number does not move the slider.</summary>
+    /// <summary>The least width of the value words (default: SliderValueMinWidth), so a changing number does not move the slider.</summary>
     public double ValueMinWidth { get => GetValue(ValueMinWidthProperty); set => SetValue(ValueMinWidthProperty, value); }
 
-    /// <summary>The space between the slider and its value.</summary>
+    /// <summary>The space between the slider and its value when a use sets its own (default: SliderValueGap).</summary>
     public double ValueGap { get => GetValue(ValueGapProperty); set => SetValue(ValueGapProperty, value); }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)

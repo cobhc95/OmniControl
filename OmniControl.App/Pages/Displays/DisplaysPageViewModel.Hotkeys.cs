@@ -61,12 +61,8 @@ public sealed partial class DisplaysPageViewModel
             actions.Add(DisplayActions.Once($"displays.{choice.Feature.Key}.next", choice.ActionTitle, choice.Feature.Keywords, Title, hardware, choice.Feature.Section,
                 ids => EachHardware(ids, h => h.NextChoice(captured)), HardwareDevices));
         }
-        actions.Add(DisplayActions.Once("displays.power.off", "Turn screen off", "power off sleep standby turn screen off", Title, hardware, VcpSections.PowerMode,
-            ids => EachHardware(ids, h => h.TurnOff()), HardwareDevices));
-
-        actions.Add(DisplayActions.Once(DisplaysOffId, "Turn off displays", "turn off all screens monitors black sleep standby power", Title, hardware, VcpSections.PowerMode,
-            _ => TurnOffDisplays(), devices: null, shortName: "Screens off", suggestedIcons: new[] { "device-desktop", "power", "moon" }, screensOff: true, common: CommonGroups.Screens,
-            manageSettings: new[] { ActionOption.Heading("displaysoff.note", "Turns every screen off at once", "Any mouse movement or key press wakes them again; that is how Windows works.") }));
+        actions.AddRange(ScreenPowerActions(hardware));
+        actions.AddRange(AllScreensActions(hardware));
 
         foreach (var (orientation, suggested) in RotationKeys)
         {
@@ -88,6 +84,8 @@ public sealed partial class DisplaysPageViewModel
         actions.Add(DisplayActions.Once("displays.sw.preset.next", "Next display preset", "digital software preset picture saved profile", Title, software, VcpSections.Presets,
             _ => NextPreset(), devices: null));
 
+        foreach (var action in actions.Where(a => a.HasDevices))
+            action.HardwareWatch = action.Group == hardware ? HardwareWatchId : SoftwareWatchId; // a picked display that is missing is looked for once before the action is refused
         _scopedActions.AddRange(actions);
         actions.AddRange(_global.Actions);
         actions.AddRange(_warm.Actions);

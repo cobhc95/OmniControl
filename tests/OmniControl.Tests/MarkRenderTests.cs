@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using Avalonia;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using OmniControl.App.Screenshot;
 using OmniControl.Core.Engine.Screenshot;
@@ -8,8 +9,10 @@ using OmniControl.Core.Engine.Screenshot;
 namespace OmniControl.Tests;
 
 /// <summary>
-/// The area overlay's drawing tools end to end without a window: pointer calls on the view-model, then the real canvas drawn into a
-/// bitmap. Every tool must leave marks, in every drag direction and after a blur. Avalonia runs on one STA thread of its own.
+/// The area overlay's drawing tools end to end without a window: pointer calls on the view-model, then the bright picture painted by the
+/// overlay's own <see cref="MarkPainter"/> into a copy of the picture, as the overlay's surface holds it. Every tool must leave marks, in
+/// every drag direction and after a blur, and painting only what changed must give what one full drawing gives. Avalonia runs on one STA
+/// thread of its own.
 /// </summary>
 public class MarkRenderTests
 {
@@ -73,7 +76,7 @@ public class MarkRenderTests
         model.Release(to);
     }
 
-    /// <summary>A model with almost the whole picture selected (the canvas has no style here, so no frame is drawn and only drawings differ from the picture).</summary>
+    /// <summary>A model with almost the whole picture selected (only drawings differ from the picture in what is painted).</summary>
     private static CaptureOverlayViewModel Model(bool stripes = false)
     {
         var model = new CaptureOverlayViewModel(ImageBitmaps.ToBitmap(Picture(stripes)), new ScreenRect(0, 0, Size, Size), new NoOutput(), () => { }, false,
@@ -82,22 +85,44 @@ public class MarkRenderTests
         return model;
     }
 
-    /// <summary>The canvas drawn into pixels.</summary>
-    private static byte[] Render(CaptureOverlayViewModel model)
+    /// <summary>
+    /// The bright picture as the overlay's surface holds it: a copy of the picture that the painter writes its repainted parts into. Kept
+    /// across changes, it shows what painting only the changed parts gives.
+    /// </summary>
+    private sealed class Screen
     {
-        var canvas = new CaptureCanvas { Model = model, Width = Size, Height = Size };
-        canvas.Measure(new Size(Size, Size));
-        canvas.Arrange(new Rect(0, 0, Size, Size));
-        using var target = new RenderTargetBitmap(new PixelSize(Size, Size), new Vector(96, 96));
-        target.Render(canvas);
-        var pixels = new byte[Size * Size * 4];
-        var pin = GCHandle.Alloc(pixels, GCHandleType.Pinned);
-        try { target.CopyPixels(new PixelRect(0, 0, Size, Size), pin.AddrOfPinnedObject(), pixels.Length, Size * 4); }
-        finally { pin.Free(); }
-        return pixels;
+        private readonly ScreenImage _image;
+        private readonly MarkPainter _painter;
+
+        public Screen(CaptureOverlayViewModel model)
+        {
+            _image = ImageBitmaps.Crop(model.Picture, new ScreenRect(0, 0, Size, Size));
+            _painter = new MarkPainter(model.Picture, Write);
+        }
+
+        private void Write(ScreenRect area, ScreenImage part)
+        {
+            for (var y = 0; y < area.Height; y++)
+                Buffer.BlockCopy(part.Pixels, y * part.Stride, _image.Pixels, (area.Y + y) * _image.Stride + area.X * ScreenImage.BytesPerPixel, part.Stride);
+        }
+
+        public byte[] Show(CaptureOverlayViewModel model)
+        {
+            _painter.Update(model.Marks, model.Preview);
+            return (byte[])_image.Pixels.Clone();
+        }
     }
 
-    /// <summary>How many pixels of the drawn canvas are not the plain grey picture.</summary>
+    /// <summary>The picture with its drawings as a fresh overlay would paint it.</summary>
+    private static byte[] Render(CaptureOverlayViewModel model) => new Screen(model).Show(model);
+
+    /// <summary>The picture with its drawings drawn whole in one go (the drawing in progress too).</summary>
+    private static byte[] Whole(CaptureOverlayViewModel model) =>
+        ImageBitmaps.Render(model.Picture, new ScreenRect(0, 0, Size, Size), model.Marks, model.Preview is { } p && !model.Marks.Contains(p) ? p : null).Pixels;
+
+    private static int Worst(byte[] a, byte[] b) => Enumerable.Range(0, a.Length).Max(i => Math.Abs(a[i] - b[i]));
+
+    /// <summary>How many pixels of the painted picture are not the plain grey picture.</summary>
     private static int Changed(CaptureOverlayViewModel model)
     {
         var pixels = Render(model);
@@ -113,6 +138,30 @@ public class MarkRenderTests
         Drag(model, DrawTool.Blur, new Point(150, 150), new Point(180, 180));
         then?.Invoke(model);
         return Changed(model);
+    });
+
+    /// <summary>Two marker strokes over each other (one crossing itself too) are no darker where they overlap than a single stroke is.</summary>
+    [Fact]
+    public void MarkerOverlapIsAsStrongAsOneStroke() => OnUi<int>(() =>
+    {
+        var picture = ImageBitmaps.ToBitmap(Picture());
+        var all = new ScreenRect(0, 0, Size, Size);
+        StrokeMark Stroke(Point from, Point to, params Point[] more)
+        {
+            var mark = new StrokeMark(from, Colors.Yellow, 20, MarkLook.MarkerOpacity);
+            mark.Extend(to);
+            foreach (var p in more) mark.Extend(p);
+            return mark;
+        }
+        var single = ImageBitmaps.Render(picture, all, new[] { Stroke(new Point(20, 100), new Point(180, 100)) }).Pixels;
+        var crossing = ImageBitmaps.Render(picture, all,
+            new[] { Stroke(new Point(20, 100), new Point(180, 100)), Stroke(new Point(100, 20), new Point(100, 180)), Stroke(new Point(20, 100), new Point(180, 100)) }).Pixels;
+        var at = (100 * Size + 100) * ScreenImage.BytesPerPixel; // the crossing of the strokes
+        var one = (100 * Size + 40) * ScreenImage.BytesPerPixel; // on a single stroke only
+        Assert.Equal(single[one], crossing[at]);
+        Assert.Equal(single[one + 2], crossing[at + 2]);
+        Assert.NotEqual(Grey, single[one]); // the stroke did colour the picture
+        return 0;
     });
 
     [Fact]
@@ -161,6 +210,93 @@ public class MarkRenderTests
 
     [Fact]
     public void TextStillDrawsAfterABlur() => Assert.True(AfterBlur(m => m.AddText(new Point(30, 30), "Hello")) > AfterBlur(null));
+
+    /// <summary>
+    /// A long free-hand line (several settled parts and a growing rest, a zigzag so the parts meet at turns) looks the same while it is
+    /// drawn as once it is finished; for the see-through marker too, where parts meeting must not be darker.
+    /// </summary>
+    [Theory]
+    [InlineData(DrawTool.Pen)]
+    [InlineData(DrawTool.Marker)]
+    public void LongStroke_LooksTheSameWhileDrawnAsWhenFinished(DrawTool tool)
+    {
+        var (drawing, finished) = OnUi(() =>
+        {
+            var m = Model();
+            m.Tool = tool;
+            m.Press(new Point(20, 20), 4);
+            var last = new Point(20, 20);
+            for (var i = 1; i <= 150; i++) m.MoveTo(last = new Point(20 + i, 20 + (i % 20 < 10 ? i % 10 : 10 - i % 10) * 15));
+            var whileDrawn = Render(m);
+            m.Release(last);
+            return (whileDrawn, Render(m));
+        });
+        // Only anti-aliasing may differ: Skia picks another edge rasteriser for a short path than for a long one (up to about 24 of 255 on
+        // an edge pixel of the solid pen). Marker parts faded each on their own would be about 30 darker where they meet.
+        var allowed = tool == DrawTool.Marker ? 16 : 32;
+        var worst = Worst(drawing, finished);
+        Assert.True(worst <= allowed, $"{tool}: a colour differs by {worst} while drawn");
+    }
+
+    /// <summary>
+    /// Painting only where drawings changed, after every pointer move, gives what drawing everything at once gives: a line or box that
+    /// moved leaves nothing behind, a free-hand line misses no piece, undo and redo clean up. Only anti-aliasing may differ a little.
+    /// </summary>
+    [Theory]
+    [InlineData(DrawTool.Pen)]
+    [InlineData(DrawTool.Marker)]
+    [InlineData(DrawTool.Line)]
+    [InlineData(DrawTool.Arrow)]
+    [InlineData(DrawTool.Box)]
+    [InlineData(DrawTool.Blur)]
+    public void PaintingOnlyWhatChanged_MatchesDrawingItWhole(DrawTool tool)
+    {
+        var worst = OnUi(() =>
+        {
+            var m = Model(stripes: true);
+            var screen = new Screen(m);
+            var worst = 0;
+            void Check() => worst = Math.Max(worst, Worst(screen.Show(m), Whole(m)));
+            m.Tool = tool;
+            m.Press(new Point(40, 40), 4);
+            for (var i = 1; i <= 140; i++)
+            {
+                m.MoveTo(new Point(40 + i, 40 + (i % 30 < 15 ? i % 15 : 15 - i % 15) * 8)); // to and fro, so earlier places must be cleaned up
+                if (i % 7 == 0) Check(); // several moves between two frames, as with a fast mouse
+            }
+            Check();
+            m.Release(new Point(180, 60));
+            Check();
+            m.HandleKey(Avalonia.Input.Key.Z, Avalonia.Input.KeyModifiers.Control);
+            Check();
+            m.HandleKey(Avalonia.Input.Key.Y, Avalonia.Input.KeyModifiers.Control);
+            Check();
+            return worst;
+        });
+        Assert.True(worst <= 32, $"{tool}: painting only what changed differs by {worst}");
+    }
+
+    /// <summary>A colour picked from the colour pop-down is the colour of the next drawing; drawings made before keep theirs.</summary>
+    [Fact]
+    public void PickedColour_IsUsedForNewDrawingsOnly()
+    {
+        var (before, after) = OnUi(() =>
+        {
+            var m = Model();
+            Drag(m, DrawTool.Box, new Point(30, 30), new Point(60, 60));
+            var first = Render(m);
+            var pick = m.Colours[1];
+            pick.Pick.Execute(null);
+            Assert.Equal(((Avalonia.Media.ISolidColorBrush)pick.Brush).Color, ((Avalonia.Media.ISolidColorBrush)m.CurrentBrush).Color); // the colour button's dot
+            Drag(m, DrawTool.Box, new Point(100, 100), new Point(140, 140));
+            return (first, Render(m));
+        });
+        var at = (30 * Size + 45) * 4; // on the first box's top side: unchanged
+        Assert.Equal(before.Skip(at).Take(3), after.Skip(at).Take(3));
+        var second = (100 * Size + 120) * 4; // on the second box's top side: the picked colour
+        var colour = OmniControl.App.Services.Palette.Drawing[1];
+        Assert.Equal(new[] { colour.B, colour.G, colour.R }, after.Skip(second).Take(3).ToArray());
+    }
 
     [Theory]
     [InlineData(10, 10, 60, 40, 10, 10, 50, 30)]

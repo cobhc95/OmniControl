@@ -9,7 +9,7 @@ namespace OmniControl.App.Pages.Displays;
 public sealed partial class DisplaysPageViewModel
 {
     private const string LevelWords = "What the monitor reported when it was read, and every change made here since (a change on the monitor's own buttons is seen at the next read).";
-    private const string WarmLightId = "displays.warmlight", WarmWords = "The page's Warm light at night switch.";
+    private const string WarmLightId = WarmLightItem.StateId, WarmWords = "The page's Warm light at night switch.";
 
     private static string StateId(HardwareDisplayItem display, HardwareLevel level) => $"displays.{display.Id}.{level.Spec.Key}";
 

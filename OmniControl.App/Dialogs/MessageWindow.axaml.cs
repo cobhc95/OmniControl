@@ -1,5 +1,7 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Input;
+using Avalonia.Media;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using OmniControl.App.Audio.Engine;
@@ -17,6 +19,9 @@ public partial class MessageWindow : Window
     /// <summary>The box was ticked (only a window that offers it can have it ticked).</summary>
     public bool DontAskAgain => DontAsk.IsVisible && DontAsk.IsChecked == true;
 
+    /// <summary>What was typed in the box of a question that asks for text, trimmed.</summary>
+    public string Typed => (InputBox.Text ?? string.Empty).Trim();
+
     public MessageWindow() => InitializeComponent();
 
     public MessageWindow(DialogMessage message) : this()
@@ -33,8 +38,22 @@ public partial class MessageWindow : Window
         ConfirmButton.IsVisible = message.Confirm is not null;
         OtherButton.Content = message.Other;
         OtherButton.IsVisible = message.Other is not null;
-        CloseButton.Content = message.Confirm is null ? "Close" : "Cancel";
-        Opened += (_, _) => (message.Confirm is null ? CloseButton : ConfirmButton).Focus();
+        CloseButton.Content = message.Cancel ?? (message.Confirm is null ? "Close" : "Cancel");
+        ConfirmButton.Classes.Set("danger", message.Danger);
+        if (message.HasAccessKeys) UseAccessKeys(message);
+        InputBox.IsVisible = message.AsksText;
+        InputBox.Text = message.Input;
+        Message.Classes.Set("hint", message.AsksText);
+        Opened += (_, _) =>
+        {
+            if (message.HasAccessKeys) NoButton.Focus(); // Enter must not undo something by accident
+            else if (!message.AsksText) (message.Confirm is null ? CloseButton : ConfirmButton).Focus();
+            else
+            {
+                InputBox.Focus();
+                InputBox.SelectAll();
+            }
+        };
         if (message.Dismiss.CanBeCanceled)
         {
             var dismissed = message.Dismiss.Register(() => Dispatcher.UIThread.Post(Close));
@@ -52,6 +71,51 @@ public partial class MessageWindow : Window
     }
 
     private async void OnCopyClick(object? sender, RoutedEventArgs e) => await CopyDetails.ToClipboardAsync(this, _details);
+
+    // A Yes/No question: Cancel (with its Esc hint) first, then No and the confirm button, the first letter of each underlined; Y and N answer from anywhere in the window (Esc is the dialog window's own).
+    private void UseAccessKeys(DialogMessage message)
+    {
+        if (CloseButton.Parent is Panel foot)
+        {
+            foot.Children.Remove(CloseButton);
+            foot.Children.Insert(0, CloseButton);
+        }
+        CloseButton.Classes.Set("primary", false);
+        CloseButton.Classes.Add("usebtn");
+        CloseButton.Classes.Add("scope");
+        CloseButton.Tag = "scope";
+        var cancel = new TextBlock { Inlines = new() { new Run("Cancel") } };
+        var esc = new Run("  Esc");
+        if (this.TryFindResource("BrushMuted", ActualThemeVariant, out var muted) && muted is IBrush brush) esc.Foreground = brush;
+        cancel.Inlines!.Add(esc);
+        CloseButton.Content = cancel;
+        NoButton.IsVisible = true;
+        NoButton.Content = Keyed("No");
+        ConfirmButton.Content = Keyed(message.Confirm!);
+        KeyDown += OnAccessKey;
+        Closed += (_, _) => KeyDown -= OnAccessKey;
+    }
+
+    private static TextBlock Keyed(string text) => new()
+    {
+        Inlines = new() { new Run(text[..1]) { TextDecorations = TextDecorations.Underline }, new Run(text[1..]) },
+    };
+
+    private void OnAccessKey(object? sender, KeyEventArgs e)
+    {
+        if (e.KeyModifiers != KeyModifiers.None || e.Source is TextBox) return;
+        if (e.Key == Key.Y) OnConfirmClick(sender, e);
+        else if (e.Key == Key.N) OnCloseClick(sender, e);
+        else return;
+        e.Handled = true;
+    }
+
+    private void OnInputKey(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter) return;
+        e.Handled = true;
+        OnConfirmClick(sender, e);
+    }
 
     private void OnConfirmClick(object? sender, RoutedEventArgs e)
     {

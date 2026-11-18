@@ -1,4 +1,4 @@
-﻿using Avalonia.Threading;
+using Avalonia.Threading;
 using OmniControl.App.Audio.Engine.Dsp;
 using OmniControl.Core.Engine;
 
@@ -112,6 +112,9 @@ internal abstract class EngineRun : IDisposable
 
     /// <summary>The live meters of the effect built from <paramref name="slot"/> in the running chain (null: it has none or does not run here).</summary>
     public DynamicsReading? ReadingOf(FxSlot slot) => Status.IsRunning && _chain.ReadoutOf(slot) is { } r ? new DynamicsReading(r.ReductionDb, r.LevelDb) : null;
+
+    /// <summary>The tap that records the sound entering the effect built from <paramref name="slot"/> in the running chain (null: it has none or does not run here).</summary>
+    public SpectrumTap? TapOf(FxSlot slot) => Status.IsRunning ? _chain.TapOf(slot) : null;
 
     /// <summary>The running chain has at least one effect that runs (an empty chain only passes the sound on).</summary>
     protected bool HasEffects => _chain.StageCount > 0;

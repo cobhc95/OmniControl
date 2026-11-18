@@ -29,11 +29,7 @@ internal sealed unsafe class PointerPainter : IDisposable
         var screen = GetDC(IntPtr.Zero);
         try
         {
-            var header = new BitmapInfoHeader
-            {
-                Size = Marshal.SizeOf<BitmapInfoHeader>(), Width = _circleSide, Height = -_circleSide, Planes = 1, BitCount = 32,
-            };
-            _circleBitmap = CreateDIBSection(screen, ref header, DibRgbColors, out var bits, IntPtr.Zero, 0);
+            _circleBitmap = CreateTopDownBitmap(screen, _circleSide, _circleSide, out var bits);
             if (_circleBitmap == IntPtr.Zero) throw new InvalidOperationException("Windows could not make a bitmap for the recording.");
             _circleDc = CreateCompatibleDC(screen);
             _circleOld = SelectObject(_circleDc, _circleBitmap);

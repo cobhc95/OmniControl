@@ -38,6 +38,9 @@ public sealed partial class AutomationService : IActionGate, IDisposable
     private readonly Dictionary<string, string> _pausedWhy = new();                // rule id -> why it was paused
     private CancellationTokenSource _stopRuns = new();                             // ends running rules (in a wait) when rules are paused
     private readonly Dictionary<string, string> _problems = new();                 // rule id -> what went wrong the last time it ran
+    private readonly Dictionary<string, string> _failedShort = new();              // rule id -> that in a few words ("Orbit 11 not reachable")
+    private readonly Dictionary<string, int> _tries = new();                       // rule id -> tries its steps needed the last time (more than one)
+    private readonly Dictionary<string, string> _waiting = new();                  // rule id -> what its run is waiting for now
 
     public AutomationSettings Settings { get; } = AutomationSettings.Load();
 
@@ -57,17 +60,19 @@ public sealed partial class AutomationService : IActionGate, IDisposable
     /// <param name="startedByWindows">OmniControl was started by its start-up entry: the "At log in" trigger fires.</param>
     /// <param name="report">Shows one plain sentence in the status line.</param>
     /// <param name="states">The master list of states: the "When a state changes" triggers watch it, and the power states are registered in it.</param>
+    /// <param name="power">The power journal: a confirmed wake starts the "wakes from sleep" rules, and it says whether this start-up is a new log-in.</param>
     public AutomationService(HotkeyRegistry hotkeys, StateRegistry states, Func<string, string, TimeSpan, Task<bool>> countdown,
-        Func<IEnumerable<string>> remembered, bool startedByWindows, Action<string> report)
+        Func<IEnumerable<string>> remembered, bool startedByWindows, Action<string> report, IPowerEvents power)
     {
         _hotkeys = hotkeys;
+        _power = power;
         _states = states;
         _sources = new Sources(hotkeys, states);
         _remembered = remembered;
         _report = report;
         SessionOff = KeyboardState.Held().HasFlag(Modifiers.Shift);
         var actions = new MouseActionRunner(hotkeys.Run, _report, Log);
-        _runner = new RuleRunner(actions, IsApproved, Log);
+        _runner = new RuleRunner(actions, IsApproved, Log, id => hotkeys.Find(id)?.Reach);
         _custom = new CustomActionRunner(actions, Log);
 
         hotkeys.Register(PowerActions.Make(new PowerGuard(countdown, _report), TogglePause));
@@ -217,6 +222,25 @@ public sealed partial class AutomationService : IActionGate, IDisposable
     /// <summary>What went wrong the last time the rule ran (since OmniControl started), or null.</summary>
     public string? ProblemOf(AutomationRule rule) => _problems.GetValueOrDefault(rule.Id);
 
+    /// <summary>A failed last run in a few words for its tag ("Orbit 11 not reachable"), or null.</summary>
+    public string? FailedShortOf(AutomationRule rule) => _failedShort.GetValueOrDefault(rule.Id);
+
+    /// <summary>How many tries the last run's steps needed when more than one, else 1.</summary>
+    public int TriesOf(AutomationRule rule) => _tries.GetValueOrDefault(rule.Id, 1);
+
+    /// <summary>What the rule's run is waiting for now (the network and a device, after a wake or a log-in), or null.</summary>
+    public string? WaitingFor(AutomationRule rule) => _waiting.GetValueOrDefault(rule.Id);
+
+    /// <summary>The rule starts "At log in" while OmniControl is not started by Windows, so that trigger cannot fire.</summary>
+    public bool NeedsStartup(AutomationRule rule) => IsTrigger(rule, AutomationTriggers.Login) && StartupRegistration.State != StartupState.On;
+
+    /// <summary>The fix the "Needs Start with Windows" tag offers: puts OmniControl in Windows' start-up list (as App settings' switch does).</summary>
+    public void TurnOnStartup()
+    {
+        _report(StartupRegistration.Set(true) ? "OmniControl now starts with Windows, so \"At log in\" rules run." : "Windows refused to add OmniControl to its start-up list.");
+        Changed?.Invoke();
+    }
+
     /// <summary>Why the rule was paused for starting too often, or null.</summary>
     public string? PausedWhyOf(AutomationRule rule) => _pausedWhy.GetValueOrDefault(rule.Id);
 
@@ -302,7 +326,8 @@ public sealed partial class AutomationService : IActionGate, IDisposable
     /// Starts the rule's steps on a worker unless a safety stops it. False when it did not start. <paramref name="chain"/> is the chain of
     /// rules this run belongs to (this rule last); every action its steps run carries it, so triggers it causes know where they came from.
     /// </summary>
-    private bool TryStart(AutomationRule rule, RunChain? chain = null)
+    /// <param name="waitForReady">Started by a wake or a log-in: steps that need the network or a device wait for them first.</param>
+    private bool TryStart(AutomationRule rule, RunChain? chain = null, bool waitForReady = false)
     {
         if (!rule.On || !rule.IsComplete || rule.Kind != AutomationKind.Do || Paused || SessionOff || _pausedWhy.ContainsKey(rule.Id)) return false;
         var context = NewContext();
@@ -336,32 +361,51 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         var id = rule.Id;
         var stop = _stopRuns.Token;
         var runChain = chain ?? RunChain.Start(id);
+        var run = new RunReport { WaitForReady = waitForReady, Waiting = target => Dispatcher.UIThread.Post(() => SetWaiting(id, target)) };
+        if (waitForReady) Log($"rule \"{name}\" started by a wake or a log-in: steps that need the network or a device wait for them first");
         Task.Run(async () =>
         {
             _hotkeys.RunWithin(runChain);
-            var problem = await _runner.RunAsync(name, steps, new MouseEvent(MouseButton.Left, true, 0, 0), i => waits[i], stop);
-            Dispatcher.UIThread.Post(() => Finished(id, problem, name));
+            var problem = await _runner.RunAsync(name, steps, new MouseEvent(MouseButton.Left, true, 0, 0), i => waits[i], stop, run);
+            Dispatcher.UIThread.Post(() => Finished(id, problem, name, run));
         });
         Changed?.Invoke();
         return true;
     }
 
-    private void Finished(string ruleId, string? problem, string name)
+    private void Finished(string ruleId, string? problem, string name, RunReport run)
     {
-        var had = _problems.GetValueOrDefault(ruleId);
-        if (problem is null) _problems.Remove(ruleId);
+        _waiting.Remove(ruleId);
+        if (run.Tries > 1) _tries[ruleId] = run.Tries;
+        else _tries.Remove(ruleId);
+        if (problem is null)
+        {
+            _problems.Remove(ruleId);
+            _failedShort.Remove(ruleId);
+        }
         else
         {
             _problems[ruleId] = problem;
+            if (run.Short is { } words) _failedShort[ruleId] = words;
+            else _failedShort.Remove(ruleId);
             _report($"\"{name}\" didn't finish: {problem}. Details are in {LogFile}.");
         }
-        if (had != problem) Changed?.Invoke();
+        Changed?.Invoke();
+    }
+
+    private void SetWaiting(string ruleId, string? target)
+    {
+        if (target is null) _waiting.Remove(ruleId);
+        else _waiting[ruleId] = target;
+        Changed?.Invoke();
     }
 
     private void ForgetRun(AutomationRule rule)
     {
         _pausedWhy.Remove(rule.Id);
         _problems.Remove(rule.Id);
+        _failedShort.Remove(rule.Id);
+        _tries.Remove(rule.Id);
         _starts.Remove(rule.Id);
         ForgetTimers(rule);
     }

@@ -8,7 +8,7 @@
     <!-- The recording bar under the recorded area (docs/mockups/area-video-recording.html): red dot and timer | Pause/Resume, Stop |
          Microphone, System sound (MP4 only). The same floating bar as the screenshot overlay's (Border.floatbar, Button.toolicon; .danger =
          red, .selected = a sound switch that is on); the dot and timer are Ellipse.recdot and TextBlock.rectimer in Styles/Bars.axaml.
-         Mouse first like the overlay's bars; Esc on the bar stops. Left out of every capture. -->
+         Mouse first like the overlay's bars; Esc on the bar stops, twice quickly cancels. Left out of every capture. -->
     <Border Classes="floatbar">
         <StackPanel Orientation="Horizontal">
             <StackPanel Classes="recclock" Orientation="Horizontal" VerticalAlignment="Center">
@@ -24,6 +24,9 @@
             </Button>
             <Button Classes="toolicon danger" Command="{Binding StopCommand}" ToolTip.Tip="Stop and save (Esc)">
                 <Path Classes="glyph" Data="{StaticResource StopIcon}" />
+            </Button>
+            <Button Classes="toolicon danger" Command="{Binding CancelCommand}" ToolTip.Tip="Cancel recording and close (nothing is saved; Esc twice)">
+                <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
             </Button>
             <Border Classes="floatsep along" IsVisible="{Binding TakesSound}" />
             <Button Classes="toolicon" Classes.selected="{Binding Microphone}" Command="{Binding ToggleMicrophoneCommand}"

@@ -21,6 +21,9 @@ internal interface IDspStage
 
     /// <summary>The stage's live meters (the dynamics effects); null for the others. Read on the UI thread.</summary>
     IDynamicsReadout? Readout => null;
+
+    /// <summary>Where the stage copies the sound it receives for a live spectrum (recording only while enabled); null for the effects that have no graph.</summary>
+    SpectrumTap? Tap => null;
 }
 
 /// <summary>A value that moves to its target in a straight line over <see cref="PipeFormat.GlideFrames"/>, one step per frame (audio thread).</summary>
@@ -145,6 +148,7 @@ internal sealed class WetStage : IDspStage
 
     public int LatencyFrames => _inner.LatencyFrames;
     public IDynamicsReadout? Readout => _inner.Readout;
+    public SpectrumTap? Tap => _inner.Tap;
 
     public void Process(Span<float> samples, int channels)
     {

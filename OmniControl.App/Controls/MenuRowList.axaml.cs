@@ -12,8 +12,11 @@ namespace OmniControl.App.Controls;
 /// <see cref="TagsOnOwnLine"/>), one muted line of detail, a dimmed look, a row that keeps the menu open when clicked (a ticked list where
 /// several can be ticked), an accent row (the one that opens something bigger) or a muted row (a way out to a manager), or a header row (a muted section title) with a thin line above it.
 /// </summary>
-public sealed record MenuRowItem(string Text, string Link, bool IsOn, string Tip, ICommand Command, IReadOnlyList<TagItem>? Tags = null, string Detail = "", bool Dim = false, bool IsHeader = false, bool RuleAbove = false, bool TagsOnOwnLine = false, bool IsSwitch = false, bool KeepsOpen = false, bool IsAccent = false, bool IsMuted = false)
+public sealed record MenuRowItem(string Text, string Link, bool IsOn, string Tip, ICommand Command, IReadOnlyList<TagItem>? Tags = null, string Detail = "", bool Dim = false, bool IsHeader = false, bool RuleAbove = false, bool TagsOnOwnLine = false, bool IsSwitch = false, bool KeepsOpen = false, bool IsAccent = false, bool IsMuted = false, string? Icon = null)
 {
+    /// <summary>True when the row has an icon (an icon-library id) in its glyph slot; null means nothing is drawn.</summary>
+    public bool HasIcon => Icon is not null;
+
     /// <summary>A muted section title with no command.</summary>
     public static MenuRowItem Header(string text, bool ruleAbove = false) => new(text, string.Empty, false, string.Empty, NoCommand, IsHeader: true, RuleAbove: ruleAbove);
 
