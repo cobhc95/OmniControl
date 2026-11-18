@@ -87,9 +87,18 @@ public sealed class OsdPageViewModel : PageViewModel
             i => osd.SetBackground(backgrounds[i].Hex));
 
         // Previews that depend on other settings (the OSD sample, the match-program swatch) redraw when anything changes.
-        osd.SettingsChanged += () => { style.Refresh(); accent.Refresh(); background.Refresh(); position.Refresh(); showOn.Refresh(); };
-
         var opacity = new SliderItem("Opacity", osd.Settings.Opacity, v => { osd.SetOpacity(v); return OperationResult.Ok("OSD opacity"); }, _ => { }) { Half = true };
+        osd.SettingsChanged += () => { style.Refresh(); accent.Refresh(); background.Refresh(); position.Refresh(); showOn.Refresh(); };
+        // The settings were read from disk again (an import): the cards the service does not redraw itself show the new values without applying them.
+        osd.Reloaded += () =>
+        {
+            show.Load(osd.Settings.Enabled);
+            windows.Load(osd.Settings.HideWindowsOsd);
+            opacity.Value = osd.Settings.Opacity;
+            style.Load(Math.Max(0, Array.IndexOf(styles, osd.Settings.Style)));
+            accent.Load(AccentIndex());
+            background.Load(BackgroundIndex());
+        };
 
         // The page: the master switch and Windows' own OSD, then the collapsible "Customize OSD" and "Show in OSD" groups.
         Primary = new object[] { show, windows };

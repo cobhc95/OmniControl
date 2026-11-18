@@ -4,6 +4,7 @@ using OmniControl.App.Audio;
 using OmniControl.App.Hotkeys;
 using OmniControl.App.Services;
 using OmniControl.App.States;
+using OmniControl.Core.Engine;
 
 namespace OmniControl.App.Pages.Volume;
 
@@ -13,12 +14,12 @@ namespace OmniControl.App.Pages.Volume;
 public sealed partial class VolumePageViewModel
 {
     private const string MasterVolumeId = "volume.master.level", MasterMutedId = "volume.master.muted", MasterFxId = "volume.master.fx",
-        DefaultSpeakerId = "volume.default.speaker", MicMutedId = "volume.mic.muted", KeepFxId = "volume.fx.keepinplace";
+        DefaultSpeakerId = "volume.default.speaker", AllSpeakersId = "volume.speakers.all.level", MicMutedId = "volume.mic.muted", KeepFxId = "volume.fx.keepinplace";
     // The On / Off / Toggle families of the actions that set these states (each action's StateId is the state it sets).
     private static readonly OnOffFamily MuteFamily = new("volume.mute", "Mute", MasterMutedId);
     private static readonly OnOffFamily MicMuteFamily = new("volume.mic.mute", "Microphone mute", MicMutedId);
     private static readonly OnOffFamily MasterFxFamily = new("volume.fx", "Master FX", MasterFxId);
-    private static readonly string[] StateIds = { MasterVolumeId, MasterMutedId, MasterFxId, DefaultSpeakerId, MicMutedId, KeepFxId };
+    private static readonly string[] StateIds = { MasterVolumeId, MasterMutedId, MasterFxId, DefaultSpeakerId, AllSpeakersId, MicMutedId, KeepFxId };
 
     private const string ScanWords = "Windows' own value: Windows reports every change as it happens (the volume pop-up's source), and it is looked at every few seconds as a backstop.";
     private const string FxWords = "What the master row's FX switch shows.";
@@ -38,6 +39,9 @@ public sealed partial class VolumePageViewModel
                 () => _mixer.Devices.FirstOrDefault(d => d.IsDefault) is { } device ? StateValue.Of(device.Name, DateTime.Now) : null, ScanWords,
                 Choices: () => _mixer.Devices.Select(d => d.Name).Distinct().ToList(), Keywords: "sound output playback device headphones",
                 Set: value => { if (_mixer.Devices.FirstOrDefault(d => d.Name == value.Text) is { } device) MakeMasterDevice(device.Id); }, Common: CommonGroups.Sound),
+            new StateEntry(AllSpeakersId, "All speakers volume", Title, StateKind.Level, () => StateValue.Of(_master.Volume, DateTime.Now),
+                "Reads the default speaker; setting it sets every output device to the same level.", Unit: "%", Keywords: "sound level loud quiet every output device speakers",
+                Set: SetAllSpeakers, Short: "All speakers", SuggestedIcons: new[] { "volume", "speaker" }),
             new StateEntry(MicMutedId, "Microphone muted", Title, StateKind.OnOff,
                 () => DefaultInput() is { } input ? StateValue.Of(input.Muted, DateTime.Now) : null, ScanWords,
                 Keywords: "sound audio input microphone mic mute silence", Short: "Mic mute", Icon: MicIcon, SuggestedIcons: new[] { MicIcon, "mic-off" }, Liveness: MicLiveness, Common: CommonGroups.Sound,
@@ -64,6 +68,16 @@ public sealed partial class VolumePageViewModel
         _states.Notify(MicMutedId);
     });
 
+    /// <summary>Every output device to one level: the default speaker as the master row does, the others off the UI thread (each is a slow Windows call).</summary>
+    private void SetAllSpeakers(StateValue value)
+    {
+        if (value.Number is not { } number) return;
+        var level = (int)Math.Round(number);
+        _master.Volume = level;
+        var others = _mixer.Devices.Where(d => !d.IsDefault).Select(d => d.Id).ToList();
+        Task.Run(() => Guard.RunAsync("Set every speaker", () => { foreach (var id in others) CoreAudio.SetDeviceVolume(id, level); return Task.CompletedTask; }));
+    }
+
     private static bool IsOn(StateValue value) => value.Number is { } number && number != 0;
 
     /// <summary>The default recording device's row, or null when there is none.</summary>
@@ -72,7 +86,11 @@ public sealed partial class VolumePageViewModel
 
     private void OnMasterValue(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(VolumeRow.Volume)) _states.Notify(MasterVolumeId);
+        if (e.PropertyName == nameof(VolumeRow.Volume))
+        {
+            _states.Notify(MasterVolumeId);
+            _states.Notify(AllSpeakersId);
+        }
         else if (e.PropertyName == nameof(VolumeRow.Muted)) _states.Notify(MasterMutedId);
         else if (e.PropertyName == nameof(VolumeRow.FxOn)) _states.Notify(MasterFxId);
     }

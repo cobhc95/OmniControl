@@ -1,3 +1,5 @@
+using OmniControl.App.Services;
+
 namespace OmniControl.App.Devices;
 
 // Devices shared with another paired PC and devices imported from one (docs/mockups/import-devices.html). The text that travels is
@@ -6,6 +8,24 @@ public sealed partial class DeviceService
 {
     /// <summary>This PC's device set-ups for another paired PC, without any secret (see <see cref="DeviceShareFormat.Write"/>).</summary>
     public string ShareSetups(bool includeScripts) => DeviceShareFormat.Write(Settings, includeScripts);
+
+    /// <summary>
+    /// For "Import settings from another PC": how many of the devices in the imported file need their password typed here (passwords are never sent), as
+    /// a short fact such as "2 need passwords"; null when none does or the file cannot be read.
+    /// </summary>
+    public string? PasswordsNeededIn(IReadOnlyDictionary<string, string> files)
+    {
+        if (!files.TryGetValue(DataStores.Devices.FileName, out var text)) return null;
+        try
+        {
+            var count = System.Text.Json.JsonSerializer.Deserialize<DeviceSettings>(text)?.Devices.Count(NeedsSignIn) ?? 0;
+            return count == 0 ? null : count == 1 ? "1 needs a password" : $"{count} need passwords";
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null; // the import reports an unreadable file itself
+        }
+    }
 
     /// <summary>True when the device of another PC is already in the list: it was imported before, or came from here.</summary>
     public bool IsHere(DeviceRecord remote) =>

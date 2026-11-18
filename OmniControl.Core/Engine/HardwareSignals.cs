@@ -132,11 +132,23 @@ public sealed class HardwareSignals : IDisposable
 
     // ---------------------------------------------------------------- second listener: .NET's SystemEvents
 
+    /// <summary>
+    /// SystemEvents puts its hidden window on the thread that first subscribes when that thread is STA, which the caller's UI thread is:
+    /// every broadcast Windows and other programs send to all windows would then wait for OmniControl's UI thread. Subscribing from a short
+    /// MTA thread makes SystemEvents use a thread of its own.
+    /// </summary>
     private void StartSystemEvents()
+    {
+        var subscriber = new Thread(Subscribe) { IsBackground = true, Name = "SystemEvents subscribe" };
+        subscriber.SetApartmentState(ApartmentState.MTA);
+        subscriber.Start();
+        subscriber.Join();
+    }
+
+    private void Subscribe()
     {
         try
         {
-            // Subscribed from a thread without a message loop, so SystemEvents makes its own hidden window and thread.
             SystemEvents.SessionSwitch += OnSessionSwitch;
             SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
             SystemEvents.PowerModeChanged += OnPowerModeChanged;

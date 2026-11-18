@@ -77,6 +77,13 @@ public sealed class GestureService
         Apply();
     }
 
+    /// <summary>Takes gestures.json from disk as it is now (an import wrote it) and applies it like any change.</summary>
+    public bool ReloadFromDisk()
+    {
+        Replace(GestureSettings.Load());
+        return true;
+    }
+
     /// <summary>Call after any settings change: saves, and hands the hook a fresh copy.</summary>
     public void Apply()
     {
@@ -131,7 +138,8 @@ public sealed class GestureService
         if (ev.Button != MouseButton.Middle || !ev.IsDown || !snapshot.Enabled || snapshot.MiddleAreas.Count == 0) return null;
         // As for the wheel: areas only count with no modifier held, so Ctrl+middle click keeps its own meaning.
         if (KeyboardState.Held() != Modifiers.None) return null;
-        return snapshot.MiddleAreas.TryGetValue(PointerArea.At(ev.X, ev.Y, NoEdgeStrip), out var action) ? action : null;
+        var area = PointerArea.At(ev.X, ev.Y, NoEdgeStrip, snapshot.MiddleAreas.ContainsKey(PointerAreaKind.TitleBar));
+        return snapshot.MiddleAreas.TryGetValue(area, out var action) ? action : null;
     }
 
     /// <summary>Runs on the hook thread for every input; only the wheel matters here. Returns true to swallow it.</summary>
@@ -145,7 +153,8 @@ public sealed class GestureService
         var held = KeyboardState.Held();
         Active? active = null;
         if (held != Modifiers.None) snapshot.Keys.TryGetValue(held, out active);
-        else if (snapshot.Areas.Count > 0) snapshot.Areas.TryGetValue(PointerArea.At(ev.X, ev.Y, snapshot.EdgeStrip), out active);
+        else if (snapshot.Areas.Count > 0)
+            snapshot.Areas.TryGetValue(PointerArea.At(ev.X, ev.Y, snapshot.EdgeStrip, snapshot.Areas.ContainsKey(PointerAreaKind.TitleBar)), out active);
         if (active is null || !_scopes.Allows(active.Scope)) return false; // outside its apps the scroll goes to the window as usual
 
         var wheelUp = ev.Button == MouseButton.WheelUp;

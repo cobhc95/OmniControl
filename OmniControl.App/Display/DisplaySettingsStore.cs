@@ -19,24 +19,48 @@ public sealed class DisplaySettingsStore
     /// <param name="save">Writes the settings; a test gives its own so nothing is written under the user's folder.</param>
     public DisplaySettingsStore(DisplaySettings? data, Action<DisplaySettings> save)
     {
-        Data = data ?? new DisplaySettings();
+        Data = Tidy(data ?? new DisplaySettings());
         _save = save;
-        // A damaged or hand-edited entry is dropped rather than shown.
-        Data.Presets ??= new List<DisplayPreset>();
-        Data.Presets.RemoveAll(p => p is null || PresetRules.Error(p.Name ?? string.Empty) is not null || p.Displays is null || p.Any is null);
-        Data.MonitorPresets ??= new List<MonitorPreset>();
-        Data.MonitorPresets.RemoveAll(p => p is null || PresetRules.Error(p.Name ?? string.Empty) is not null || p.Monitors is null);
-        foreach (var preset in Data.MonitorPresets)
-        {
-            preset.Monitors.RemoveAll(m => m is null || m.Values is null);
-            foreach (var entry in preset.Monitors) { entry.Name ??= string.Empty; entry.Id ??= string.Empty; }
-        }
-        Data.MonitorLastPreset ??= new Dictionary<string, string>();
-        Data.WarmLight ??= new WarmLightSettings();
 
         _pictures = new PresetList<DisplayPreset>(Data.Presets, () => _save(Data));
         Monitors = new PresetList<MonitorPreset>(Data.MonitorPresets, () => _save(Data), ForgetRenamed, ForgetDeleted);
         if (_pictures.GaveIds || Monitors.GaveIds) _save(Data); // the ids of an older file's presets stay the same from now on
+    }
+
+    /// <summary>A damaged or hand-edited entry is dropped rather than shown.</summary>
+    private static DisplaySettings Tidy(DisplaySettings data)
+    {
+        data.Presets ??= new List<DisplayPreset>();
+        data.Presets.RemoveAll(p => p is null || PresetRules.Error(p.Name ?? string.Empty) is not null || p.Displays is null || p.Any is null);
+        data.MonitorPresets ??= new List<MonitorPreset>();
+        data.MonitorPresets.RemoveAll(p => p is null || PresetRules.Error(p.Name ?? string.Empty) is not null || p.Monitors is null);
+        foreach (var preset in data.MonitorPresets)
+        {
+            preset.Monitors.RemoveAll(m => m is null || m.Values is null);
+            foreach (var entry in preset.Monitors) { entry.Name ??= string.Empty; entry.Id ??= string.Empty; }
+        }
+        data.MonitorLastPreset ??= new Dictionary<string, string>();
+        data.WarmLight ??= new WarmLightSettings();
+        return data;
+    }
+
+    /// <summary>
+    /// Takes display-settings.json from disk as it is now (an import wrote it). The two preset lists keep their identity (the lists' rules
+    /// hold them), so they are emptied and filled; the warm-light settings and the rest are copied into the objects held (no file: the defaults).
+    /// </summary>
+    public bool ReloadFromDisk()
+    {
+        var fresh = Tidy(AppDataStore.Load<DisplaySettings>(Store) ?? new DisplaySettings());
+        var (presets, monitors) = (Data.Presets, Data.MonitorPresets);
+        SettingsCopy.Into(Data, fresh);
+        presets.Clear();
+        presets.AddRange(fresh.Presets);
+        monitors.Clear();
+        monitors.AddRange(fresh.MonitorPresets);
+        (Data.Presets, Data.MonitorPresets) = (presets, monitors);
+        _pictures.NotifyChanged();
+        Monitors.NotifyChanged();
+        return true;
     }
 
     /// <summary>The store as the program uses it: read from and written to the user's folder.</summary>

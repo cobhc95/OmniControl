@@ -36,6 +36,15 @@ public sealed class AppActions
         Refresh(force: true);
     }
 
+    /// <summary>Takes app-actions.json from disk as it is now (an import wrote it): the added and hidden apps follow and their actions are registered again.</summary>
+    public bool ReloadFromDisk()
+    {
+        SettingsCopy.Into(_settings, AppDataStore.Load<AppActionsSettings>(Store) ?? new());
+        Refresh(force: true);
+        Sync();
+        return true;
+    }
+
     /// <summary>Looks for the installed apps again, unless that was done a moment ago.</summary>
     public void Refresh(bool force = false) => _launcher.Scan(Entries(), force);
 

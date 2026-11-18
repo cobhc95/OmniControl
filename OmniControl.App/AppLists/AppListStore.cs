@@ -1,3 +1,4 @@
+using OmniControl.App.Services;
 using OmniControl.Core.Engine;
 
 namespace OmniControl.App.AppLists;
@@ -97,6 +98,16 @@ public sealed class AppListStore
         if (!taken.Contains(name)) return name;
         for (var n = 2; ; n++)
             if (!taken.Contains($"{name} {n}")) return $"{name} {n}";
+    }
+
+    /// <summary>Takes app-lists.json from disk as it is now (an import wrote it): the lists are replaced and whatever shows or uses them is told. The file is not written.</summary>
+    public bool ReloadFromDisk()
+    {
+        SettingsCopy.Into(_settings, AppListSettings.Load());
+        TakeSnapshot();
+        Changed?.Invoke();
+        UsageChanged?.Invoke();
+        return true;
     }
 
     private void Commit()

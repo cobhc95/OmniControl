@@ -41,10 +41,16 @@ public sealed partial class AutomationPageViewModel
     private IEnumerable<SearchEntry> ScriptSearchEntries =>
         Scripts.Select(s => Entry(s, s.Label, $"script powershell cmd batch python {s.Name}", ScriptsTab));
 
-    private void ShowScripts()
+    private void ShowScriptItems()
     {
+        Scripts.Clear();
         foreach (var script in _service.Settings.Scripts) Scripts.Add(new ScriptItem(script, _service));
         SelectedScript = Scripts.FirstOrDefault();
+    }
+
+    private void ShowScripts()
+    {
+        ShowScriptItems();
         Scripts.CollectionChanged += (_, _) => OnPropertyChanged(nameof(NoScripts));
         _service.ScriptAdded += OnScriptAdded;
         _service.ScriptRemoved += OnScriptRemoved;

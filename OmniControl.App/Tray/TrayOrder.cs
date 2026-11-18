@@ -75,7 +75,7 @@ public static class TrayOrder
         return (elements, items);
     }
 
-    private static bool IsPattern(TrayElement element) => IdPattern.IsPattern(element.Action ?? string.Empty) || IdPattern.IsPattern(element.State ?? string.Empty);
+    private static bool IsPattern(TrayElement element) => !element.Together && (IdPattern.IsPattern(element.Action ?? string.Empty) || IdPattern.IsPattern(element.State ?? string.Empty));
 
     /// <summary>One shown match of a pattern as an element of its own (the ids it found, the pattern's choice and icon).</summary>
     private static TrayElement Spelt(TrayTarget target) => new()
@@ -83,6 +83,7 @@ public static class TrayOrder
         Action = target.Element.Action is null ? null : target.Action?.Id ?? target.Element.Action,
         State = target.Element.State is null ? null : target.State?.Id ?? target.Element.State,
         Choice = target.Element.Choice,
+        AllState = target.Element.AllState,
         Icon = target.Element.Icon,
     };
 }

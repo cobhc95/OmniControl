@@ -38,7 +38,24 @@ public static class AppDataStore
         }
     }
 
-    public static void Save<T>(DataStore store, T value)
+    public static void Save<T>(DataStore store, T value) => SaveText(store, JsonSerializer.Serialize(value));
+
+    /// <summary>The file's text exactly as saved, or null when it is missing or unreadable.</summary>
+    public static string? LoadText(DataStore store)
+    {
+        try
+        {
+            var path = PathOf(store.FileName);
+            return File.Exists(path) ? File.ReadAllText(path) : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Saves the text atomically; false (and a line in the log) when the folder could not be written.</summary>
+    public static bool SaveText(DataStore store, string text)
     {
         try
         {
@@ -46,13 +63,15 @@ public static class AppDataStore
             // Temp file then move: a crash or power cut mid-write leaves the old file whole, never a truncated one.
             var path = PathOf(store.FileName);
             var temp = path + ".tmp";
-            File.WriteAllText(temp, JsonSerializer.Serialize(value));
+            File.WriteAllText(temp, text);
             File.Move(temp, path, overwrite: true);
+            return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             // Read-only or locked folder: keep running with the values in memory, and say so in the log.
             AppendLog(Guard.LogFile, $"Couldn't save {store.FileName}: {ex.Message}");
+            return false;
         }
     }
 

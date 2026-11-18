@@ -262,9 +262,13 @@
         <Setter Property="Background" Value="{DynamicResource BrushHover}" />
         <Setter Property="BorderBrush" Value="Transparent" />
     </Style>
-    <Style Selector="Button.iconcell.selected /template/ ContentPresenter#PART_ContentPresenter, Button.iconcell.selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Style Selector="Button.iconcell.selected /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" />
+    </Style>
+    <Style Selector="Button.iconcell.selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
     </Style>
     <Style Selector="Path.glyph.tickmark">
         <Setter Property="Width" Value="{DynamicResource MenuGlyphSize}" />

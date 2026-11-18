@@ -38,6 +38,31 @@ public sealed partial class OtherPcsService
     /// <summary>How the PC reported it can be woken (null: never).</summary>
     public WakeFacts? WakeFactsOf(string id) => Find(id)?.Wake;
 
+    /// <summary>How this PC itself reported it can be woken (null: not read yet).</summary>
+    public WakeFacts? OwnWakeFacts => _ownWake;
+
+    /// <summary>What can honestly be said about waking this PC from the network (its tag on the page's title line).</summary>
+    internal WakeAdvice OwnWakeAdvice(string name) => WakeAdvices.Of(_ownWake, true, null, true, name);
+
+    /// <summary>Reads this PC's wake facts if they are old or were never read (off the UI thread; <see cref="Changed"/> follows when they changed).</summary>
+    public void ReadOwnWake() => RefreshOwnWake();
+
+    /// <summary>Reads this PC's wake facts again now.</summary>
+    public async Task<WakeReply> CheckOwnWakeAsync()
+    {
+        await ReadOwnWakeAsync();
+        RaiseChanged();
+        return new WakeReply(true, string.Empty);
+    }
+
+    /// <summary>Turns the settings on for this PC; Windows asks for administrator rights first and nothing changes without a yes.</summary>
+    public async Task<WakeReply> FixOwnWakeAsync(IReadOnlyList<WakeFix> fixes)
+    {
+        var (reply, _) = await ApplyWakeFixesHereAsync(fixes);
+        RaiseChanged();
+        return reply;
+    }
+
     /// <summary>How the PC went away, from its notice: the words and when (null: no notice came).</summary>
     public (string Away, DateTime At)? AwayOf(string id) => Find(id) is { Away: { } away, AwayAt: { } at } ? (away, at) : null;
 
@@ -156,6 +181,8 @@ public sealed partial class OtherPcsService
         });
     }
 
+    private static void LogWakeReadFailure(string text) => AppDataStore.AppendLog(Guard.LogFile, text);
+
     private void SetOwnWake(WakeFacts facts)
     {
         _readingWake = false;
@@ -179,7 +206,7 @@ public sealed partial class OtherPcsService
         }
         if (WakeStatusOf(pcId).Phase == WakePhase.Waking) return WakeStatusOf(pcId);
         var advice = WakeAdviceOf(pcId);
-        if (advice.State != WakeState.Wakeable)
+        if (advice.State is not (WakeState.Wakeable or WakeState.Unconfirmed))
         {
             _report(advice.Reason.Length > 0 ? advice.Reason : $"{pair.DisplayName} can't be woken remotely.");
             return WakeStatusOf(pcId);

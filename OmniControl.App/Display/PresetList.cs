@@ -44,6 +44,9 @@ public sealed class PresetList<T> where T : class, INamedPreset
 
     public IReadOnlyList<T> Items => _items;
 
+    /// <summary>The owner replaced the contents of the list it gave (a reload from disk): tells the listeners.</summary>
+    public void NotifyChanged() => Changed?.Invoke();
+
     public T? Find(string name) => _items.FirstOrDefault(p => PresetRules.Same(p.Name, name));
 
     /// <summary>Keeps the preset: one of the same name (any case) is replaced where it stands and keeps its id, else it goes last with a new id.</summary>

@@ -4,7 +4,7 @@ using OmniControl.App.States;
 namespace OmniControl.App.Tray;
 
 /// <summary>What one shown slider, tile or menu item is: the element it comes from and the live action and/or state it found.</summary>
-public sealed record TrayTarget(TrayElement Element, HotkeyAction? Action, StateEntry? State, StateEntry? Choice = null)
+public sealed record TrayTarget(TrayElement Element, HotkeyAction? Action, StateEntry? State, StateEntry? Choice = null, IReadOnlyList<StateEntry>? Group = null, StateEntry? AllLevel = null)
 {
     /// <summary>The words it shows: the action's name (a state that only ticks or lights it never renames it), else a state alone's short name.</summary>
     public string Name => Action?.ShortName ?? State?.ShortName ?? string.Empty;
@@ -28,9 +28,17 @@ public static class TrayTargets
     {
         var list = elements.ToList();
         var named = Named(list, e => e.State);
-        return list.SelectMany(e => e.State is { } id
-            ? StatesOf(id, states, StateKind.Level, named).Select(s => new TrayTarget(e, null, s, ChoiceOf(e, states)))
-            : Enumerable.Empty<TrayTarget>()).ToList();
+        return list.SelectMany(e => e.State is { } id ? SliderTargets(e, id, states, named) : Enumerable.Empty<TrayTarget>()).ToList();
+    }
+
+    /// <summary>One target per matching level state, or, for a together element, one target holding every match (the first stands for its name and icon).</summary>
+    private static IEnumerable<TrayTarget> SliderTargets(TrayElement element, string id, IReadOnlyList<StateEntry> states, IReadOnlySet<string> named)
+    {
+        var matches = StatesOf(id, states, StateKind.Level, named).ToList();
+        var choice = ChoiceOf(element, states);
+        var all = element.AllState is { } allId ? states.FirstOrDefault(s => s.Kind == StateKind.Level && s.Id == allId) : null;
+        if (!element.Together || !IdPattern.IsPattern(id)) return matches.Select(s => new TrayTarget(element, null, s, choice, AllLevel: all));
+        return matches.Count == 0 ? Enumerable.Empty<TrayTarget>() : new[] { new TrayTarget(element, null, matches[0], choice, matches) };
     }
 
     /// <summary>Tiles and menu items: an action (lit or ticked by its state when it names an on/off one), or an on/off state alone.</summary>

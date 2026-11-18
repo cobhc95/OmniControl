@@ -21,12 +21,21 @@ public static class WindowLifecycle
         var asking = false;
         // The one exit path: the tray's Quit (the app.quit action), the footer button, the X button's "Exit" and the close dialog all end here,
         // and desktop.Exit below disposes the shell (engine, journal, display ramps).
+        var showing = false;
         void Exit() { quitting = true; desktop.Shutdown(); }
-        void Show()
+        // Every open names what asked; when the window really opens (it was hidden or minimised) that goes to the errors log, so a window
+        // that "opened by itself" can be traced.
+        void Show(string source)
         {
-            window.Show();
-            if (window.WindowState == WindowState.Minimized) window.WindowState = WindowState.Normal;
-            window.Activate();
+            if (!window.IsVisible || window.WindowState == WindowState.Minimized) AppDataStore.AppendLog(Guard.LogFile, $"Main window opened by {source}.");
+            showing = true;
+            try
+            {
+                window.Show();
+                if (window.WindowState == WindowState.Minimized) window.WindowState = WindowState.Normal;
+                window.Activate();
+            }
+            finally { showing = false; }
         }
 
         void Apply(CloseBehavior behavior)
@@ -53,7 +62,7 @@ public static class WindowLifecycle
             finally { asking = false; }
         }
 
-        var tray = new TrayService(app, Show, shell.TrayFlyout, shell.RunAction);
+        var tray = new TrayService(app, () => Show("a double-click on the tray icon"), shell.TrayFlyout, shell.RunAction);
 
         // X does what the setting says (a real exit, from any path, is not intercepted).
         window.Closing += (_, e) =>
@@ -65,11 +74,16 @@ public static class WindowLifecycle
         };
 
         // Tell the shell whether its page can be seen, so on-screen work (the gesture margins) runs only then.
+        var started = false;
         window.PropertyChanged += (_, e) =>
         {
             if (e.Property == Visual.IsVisibleProperty || e.Property == Window.WindowStateProperty)
                 shell.SetWindowShown(window.IsVisible && window.WindowState != WindowState.Minimized);
+            // Hidden to shown by anything but Show above (and the start-up itself): logged too, as nothing else should open it.
+            if (started && !showing && e.Property == Visual.IsVisibleProperty && window.IsVisible)
+                AppDataStore.AppendLog(Guard.LogFile, "Main window opened, not by any of OmniControl's open requests.");
         };
+        window.Opened += (_, _) => Dispatcher.UIThread.Post(() => started = true);
 
         if (startHidden || settings.StartMinimised)
         {
@@ -78,10 +92,10 @@ public static class WindowLifecycle
         }
 
         AppLifecycle.ShowRequested += Show;
-        AppLifecycle.ToggleRequested += () =>
+        AppLifecycle.ToggleRequested += source =>
         {
             if (window.IsVisible && window.WindowState != WindowState.Minimized && window.IsActive) window.Hide();
-            else Show();
+            else Show(source);
         };
         AppLifecycle.QuitRequested += Exit;
         AppLifecycle.RestartRequested += () =>

@@ -36,6 +36,16 @@ public sealed class PowerPlanActions
         Sync();
     }
 
+    /// <summary>Takes power-plans.json from disk as it is now (an import wrote it): the actions of plans no longer listed are taken out and the rest are made again.</summary>
+    public bool ReloadFromDisk()
+    {
+        SettingsCopy.Into(_settings, AppDataStore.Load<PowerPlanSettings>(Store) ?? new());
+        foreach (var id in _registered.Keys.Where(id => !_settings.Added.Contains(id.ToString())).ToList())
+            if (_registered.Remove(id, out var gone)) _hotkeys.Unregister(gone.Action.Id);
+        Sync();
+        return true;
+    }
+
     /// <summary>Reads the plans from Windows and brings the registered actions (names, the active tag, what is missing) up to date.</summary>
     public void Sync()
     {

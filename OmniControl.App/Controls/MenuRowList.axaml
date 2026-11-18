@@ -14,7 +14,7 @@
                     <StackPanel>
                         <Border Classes="hrule" Margin="0,4" IsVisible="{Binding RuleAbove}" />
                         <TextBlock Classes="menutext" Text="{Binding Text}" IsVisible="{Binding IsHeader}" />
-                        <Button Classes="menurow" Classes.accent="{Binding IsAccent}" Classes.muted="{Binding IsMuted}" Command="{Binding Command}" Click="OnRowClick" ToolTip.Tip="{Binding Tip}" IsVisible="{Binding IsRow}" Opacity="{Binding RowOpacity}">
+                        <Button Classes="menurow" Classes.accent="{Binding IsAccent}" Classes.muted="{Binding IsMuted}" Classes.danger="{Binding IsDanger}" Command="{Binding Command}" Click="OnRowClick" ToolTip.Tip="{Binding Tip}" IsVisible="{Binding IsRow}" Opacity="{Binding RowOpacity}">
                             <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="{StaticResource MenuGap}" Margin="{StaticResource MenuRowInset}">
                                 <Panel Width="{StaticResource MenuGlyphSize}" VerticalAlignment="Top" Height="{StaticResource MenuRowLine}">
                                     <Path Classes="glyph" Data="{StaticResource TickIcon}" IsVisible="{Binding ShowsTick}" />

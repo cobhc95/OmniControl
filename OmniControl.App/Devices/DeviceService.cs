@@ -71,6 +71,14 @@ public sealed partial class DeviceService
             _saveSoon.Stop();
             Settings.Save();
         };
+        if (TakeUp()) Settings.Save();
+        RegisterEmulatorState();
+        WakeEmulatorAtStart();
+    }
+
+    /// <summary>Brings the devices of an older file up to date and registers each one's actions; true when something was changed (the file is saved).</summary>
+    private bool TakeUp()
+    {
         var migrated = false;
         foreach (var device in Settings.Devices)
         {
@@ -82,10 +90,24 @@ public sealed partial class DeviceService
             }
             RegisterActions(device);
         }
-        migrated |= AutoChecks.Migrate(Settings);
-        if (migrated) Settings.Save();
-        RegisterEmulatorState();
-        WakeEmulatorAtStart();
+        return migrated | AutoChecks.Migrate(Settings);
+    }
+
+    /// <summary>
+    /// Takes devices.json from disk as it is now (an import wrote it): the devices, templates and auto-check choices are replaced, each device's
+    /// actions and state are registered again (their keys come back by action id) and the page's list is told. Passwords are never in the file.
+    /// </summary>
+    public bool ReloadFromDisk()
+    {
+        foreach (var device in Settings.Devices.ToList())
+        {
+            UnregisterActions(device);
+            _runtime.Remove(device.Id);
+        }
+        SettingsCopy.Into(Settings, DeviceSettings.Load());
+        if (TakeUp()) Settings.Save();
+        ListChanged?.Invoke();
+        return true;
     }
 
     /// <summary>The Credential Manager entry that holds a method's password (by the method's id, so a merged method keeps it).</summary>

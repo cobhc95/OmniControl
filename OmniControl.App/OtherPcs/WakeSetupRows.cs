@@ -13,10 +13,10 @@ public static class WakeSetupRows
 {
     public const string TestId = "test";
 
-    public static IReadOnlyList<WakeRowSpec> Of(WakeFacts? facts, string name)
+    public static IReadOnlyList<WakeRowSpec> Of(WakeFacts? facts, string name, bool canTest = true)
     {
         var f = facts ?? new WakeFacts();
-        return new[]
+        var rows = new List<WakeRowSpec>
         {
             new WakeRowSpec("card", f.CardCanWake ? WakeRowKind.Done : WakeRowKind.Needed, "Network card can wake this PC", f.Adapter,
                 f.CardCanWake ? string.Empty : f.Known ? "This card or its driver cannot wake the PC, so it cannot be woken over the network." : "Not read yet. Press Check again while the PC is on.", null),
@@ -25,8 +25,9 @@ public static class WakeSetupRows
             Row("only", f.MagicOnly, "Only a magic packet can wake it", "So other network traffic does not wake it.", WakeFix.MagicOnly),
             new WakeRowSpec("fast", f.Known && !f.FastStartupOn ? WakeRowKind.Done : WakeRowKind.Optional, "Fast Startup off", "optional", "Only needed to wake it from shut down.", WakeFix.FastStartup),
             new WakeRowSpec("bios", WakeRowKind.You, "BIOS wake setting", "you do this · optional", "Only for waking from shut down. Look for \"Wake on LAN\" in the BIOS.", null),
-            new WakeRowSpec(TestId, WakeRowKind.Test, "Test wake", string.Empty, $"Puts {name} to sleep, then wakes it from here.", null),
         };
+        if (canTest) rows.Add(new WakeRowSpec(TestId, WakeRowKind.Test, "Test wake", string.Empty, $"Puts {name} to sleep, then wakes it from here.", null));
+        return rows;
     }
 
     private static WakeRowSpec Row(string id, bool on, string label, string note, WakeFix fix) =>

@@ -349,6 +349,24 @@ public sealed partial class HotkeyRegistry : IActionRegistry, IDisposable
     /// <summary>Makes these bindings the saved ones (an action not named has none), with one save and one rebinding.</summary>
     public void ImportStored(IReadOnlyDictionary<string, StoredHotkey> all)
     {
+        TakeStored(all);
+        Save();
+        Rebind();
+    }
+
+    /// <summary>
+    /// Reads hotkeys.json again and puts its bindings in force (an import from another PC wrote it): one rebinding, and neither the file nor the
+    /// shortcut sets are written (the sets' own file arrived with it and is reloaded by its owner).
+    /// </summary>
+    public bool ReloadFromDisk()
+    {
+        TakeStored(Load());
+        Rebind();
+        return true;
+    }
+
+    private void TakeStored(IReadOnlyDictionary<string, StoredHotkey> all)
+    {
         _stored.Clear();
         foreach (var (id, saved) in Unique(new Dictionary<string, StoredHotkey>(all))) _stored[id] = saved;
         foreach (var action in Actions)
@@ -357,8 +375,6 @@ public sealed partial class HotkeyRegistry : IActionRegistry, IDisposable
             _stored[action.Id] = action.Export();
         }
         SettleSuggestedKeys();
-        Save();
-        Rebind();
     }
 
     private void OnChanged(HotkeyAction changed)

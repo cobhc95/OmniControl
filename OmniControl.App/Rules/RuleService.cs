@@ -98,6 +98,13 @@ public sealed class RuleService : IDisposable
         Apply();
     }
 
+    /// <summary>Takes rules.json from disk as it is now (an import wrote it) and applies it like any change.</summary>
+    public bool ReloadFromDisk()
+    {
+        ReplaceAll(RuleSettings.Load());
+        return true;
+    }
+
     public void Remove(Rule rule)
     {
         Settings.Rules.Remove(rule);

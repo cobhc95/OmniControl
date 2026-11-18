@@ -42,7 +42,8 @@ internal static class PcMsgType
 {
     public const string Catalog = "catalog", State = "state", Set = "set", Run = "run", Ran = "ran", Ping = "ping", Pong = "pong",
         Devices = "devices", DevicesAnswer = "devices-answer", TailscaleAddress = "ts-address",
-        WakeInfo = "wake-info", Leaving = "leaving", WakeAsk = "wake-ask", WakeAnswer = "wake-answer";
+        WakeInfo = "wake-info", Leaving = "leaving", WakeAsk = "wake-ask", WakeAnswer = "wake-answer",
+        ImportList = "import-list", ImportGet = "import-get", ImportAnswer = "import-answer", Route = "route";
 
     /// <summary>What a <c>wake-ask</c> wants (its <see cref="PcMsg.Id"/>): send a magic packet for a PC on this PC's network, read the wake facts again, turn settings on (behind this PC's own prompt), or put this PC to sleep as a test (behind its prompt).</summary>
     public const string WakeRelay = "relay", WakeCheck = "check", WakeFix = "fix", WakeTest = "test";
@@ -64,7 +65,8 @@ public sealed record SharedAction(string Id, string Title, string? Icon, string 
 /// <c>state</c>: one state's new value; <c>set</c>: set the shared state <see cref="Id"/> to <see cref="Number"/> / <see cref="Text"/> (answered with <c>ran</c>);
 /// <c>ts-address</c>: the sender's Tailscale address in <see cref="Text"/>, so the receiver can dial it once Tailscale works between the two;
 /// <c>run</c>: start the action <see cref="Id"/> (<see cref="Rid"/> numbers the request, <see cref="Chain"/>
-/// is the chain of rules that caused it); <c>ran</c>: its answer.
+/// is the chain of rules that caused it); <c>ran</c>: its answer; <c>route</c>: the route the sender now uses for this pair (<see cref="PcRoute"/> name in
+/// <see cref="Text"/>), which the receiver takes too.
 /// </summary>
 internal sealed class PcMsg
 {

@@ -16,13 +16,16 @@ public sealed class BackupService
 
     private readonly Func<DialogMessage, Task<DialogAnswer>> _choose;
     private readonly Action<string> _report;
+    private readonly SettingsImport.ImportFromPcService _importFromPc;
 
     /// <param name="choose">Shows a message with up to two answers (the shared <see cref="DialogService"/>).</param>
     /// <param name="report">Shows one plain sentence in the status line.</param>
-    public BackupService(Func<DialogMessage, Task<DialogAnswer>> choose, Action<string> report)
+    /// <param name="importFromPc">Opens "Import settings from a PC" (the Import from another PC card).</param>
+    public BackupService(Func<DialogMessage, Task<DialogAnswer>> choose, Action<string> report, SettingsImport.ImportFromPcService importFromPc)
     {
         _choose = choose;
         _report = report;
+        _importFromPc = importFromPc;
     }
 
     public async Task ExportAsync()
@@ -56,6 +59,12 @@ public sealed class BackupService
         if (answer == DialogAnswer.Cancel) return;
         Stage(() => PendingRestore.Stage(AppDataStore.Folder, contents, answer == DialogAnswer.Other ? RestoreMode.Merge : RestoreMode.Replace));
     }
+
+    /// <summary>The paired PCs that are connected now: the only ones a settings import can read from.</summary>
+    public IReadOnlyList<(string Id, string Name)> OnlinePcs() => _importFromPc.OnlinePcs();
+
+    /// <summary>Opens "Import settings from a PC" for the paired PC.</summary>
+    public void ImportFromPc(string pcId) => _importFromPc.Open(pcId);
 
     public async Task WipeAsync()
     {

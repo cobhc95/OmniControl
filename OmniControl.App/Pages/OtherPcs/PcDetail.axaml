@@ -6,51 +6,38 @@
              xmlns:svc="using:OmniControl.App.Services"
              x:Class="OmniControl.App.Pages.OtherPcs.PcDetail"
              x:DataType="vm:PcItem">
-    <!-- One paired PC (docs/mockups/other-pcs.html, other-pcs-browser-tabs.html; template in App.axaml): the header line (its name, its real name, the one probe
-         tag, at the right the Connect chip and Unpair), the address box when it is reached by address, the Tailscale checklist only while a check fails, then,
+    <!-- One paired PC (docs/mockups/other-pcs.html, other-pcs-browser-tabs.html; template in App.axaml): the header line (docs/mockups/pc-header-tidy.html: its name and real name, at the right the connection chip, the split Wake button and the "..." menu), the address box when it is reached by address, the Tailscale checklist only while a check fails, then,
          while it is connected, its basic set as groups (Screens, Sound, Now playing, Smart devices, Power; two independent columns when wide, one when narrow) with real
          controls and action pills. While it is offline one sentence says so. -->
     <StackPanel Spacing="8">
-        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
             <WrapPanel ItemSpacing="8" LineSpacing="4" VerticalAlignment="Center">
                 <TextBlock Classes="strong" Text="{Binding Name}" TextWrapping="Wrap" VerticalAlignment="Center" />
                 <TextBlock Classes="hint small" Text="{Binding RealName}" IsVisible="{Binding HasNickname}" TextWrapping="Wrap" VerticalAlignment="Center" />
-                <ItemsControl ItemsSource="{Binding Tags}" VerticalAlignment="Center">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="svc:TagItem"><c:TagView /></DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                <!-- Wake (docs/mockups/other-pc-wake.html): its tags, "Turn on" / "Set up wake…", the Wake pill or "Waking…" with the shared spinner -->
-                <ItemsControl ItemsSource="{Binding WakeTags}" VerticalAlignment="Center">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="svc:TagItem"><c:TagView /></DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                <Button Classes="link" Content="Turn on" Command="{Binding SetUpWakeCommand}" IsVisible="{Binding ShowsTurnOn}" ToolTip.Tip="Opens the wake set-up. Nothing changes on that PC until a person there allows it." VerticalAlignment="Center" />
-                <Button Classes="link" Content="Set up wake…" Command="{Binding SetUpWakeCommand}" IsVisible="{Binding ShowsSetUpLink}" VerticalAlignment="Center" />
-                <Button Classes="pill accentline" Command="{Binding WakeCommand}" IsVisible="{Binding ShowsWake}" ToolTip.Tip="Send the wake signal to this PC over the network." VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <c:IconGlyph LibraryId="power" VerticalAlignment="Center" />
-                        <TextBlock Text="Wake" VerticalAlignment="Center" />
-                    </StackPanel>
-                </Button>
-                <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsWaking}" VerticalAlignment="Center">
-                    <Panel Classes="tilemark" Margin="0" VerticalAlignment="Center">
-                        <Ellipse Classes="markring" />
-                        <Path Classes="markarc" />
-                    </Panel>
-                    <TextBlock Classes="hint" Text="Waking…" VerticalAlignment="Center" />
-                </StackPanel>
             </WrapPanel>
-            <c:ChipMenu Grid.Column="1" Text="{Binding ConnectText}" ChipToolTip="How this PC is reached." MenuOpened="OnConnectMenuOpened" VerticalAlignment="Center">
-                <c:ChipMenu.Menu>
-                    <c:MenuRowList x:Name="ConnectRows" Title="Connect" />
-                </c:ChipMenu.Menu>
-            </c:ChipMenu>
-            <Button Grid.Column="2" Classes="pill danger" Content="Unpair" Command="{Binding UnpairCommand}" ToolTip.Tip="Forget this PC. It keeps its side until it is unpaired there too." VerticalAlignment="Center" />
+            <!-- docs/mockups/pc-header-tidy.html: the connection chip, the split Wake button, then the "..." menu (the tab's right-click rows) -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <ItemsControl ItemsSource="{Binding WakeFailed}" VerticalAlignment="Center">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="svc:TagItem"><c:TagView /></DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <c:ChipMenu Text="{Binding Connection.Text}" Tone="{Binding Connection.Tone}" ChipToolTip="{Binding ConnectTip}" MenuOpened="OnConnectMenuOpened" VerticalAlignment="Center">
+                    <c:ChipMenu.Menu>
+                        <c:MenuRowList x:Name="ConnectRows" />
+                    </c:ChipMenu.Menu>
+                </c:ChipMenu>
+                <vm:WakeSplit Status="{Binding WakeStatus}" SetUpCommand="{Binding SetUpWakeCommand}" WakeCommand="{Binding WakeCommand}" ShowsWake="{Binding ShowsWake}"
+                              Unconfirmed="{Binding WakeUnconfirmed}" IsWaking="{Binding IsWaking}" WakeTip="{Binding WakeTip}" VerticalAlignment="Center" />
+                <Button Classes="pill" ToolTip.Tip="More" VerticalAlignment="Center">
+                    <TextBlock Text="&#x22EF;" />
+                    <Button.Flyout>
+                        <c:ListMenuFlyout Placement="BottomEdgeAlignedRight" Opening="OnMoreOpening">
+                            <c:MenuRowList x:Name="MoreRows" />
+                        </c:ListMenuFlyout>
+                    </Button.Flyout>
+                </Button>
+            </StackPanel>
         </Grid>
         <TextBox Classes="field" Text="{Binding Address}" Watermark="Its address, such as 100.64.0.7" IsVisible="{Binding ShowsAddress}"
                  LostFocus="OnAddressLeft" KeyDown="OnAddressKey" />

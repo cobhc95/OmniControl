@@ -112,6 +112,19 @@ public sealed class HotkeySets : IDisposable
         AppDataStore.Save(Store, _file);
     }
 
+    /// <summary>
+    /// Reads hotkey-sets.json again (an import from another PC wrote it): the sets and the one in use are replaced and the listeners told.
+    /// The bindings in force are not touched (hotkeys.json is reloaded by the registry); with no sets in the file the ones here are kept.
+    /// </summary>
+    public bool ReloadFromDisk()
+    {
+        if (AppDataStore.Load<HotkeySetsFile>(Store) is not { Sets.Count: > 0 } saved) return true;
+        _file.Sets = saved.Sets;
+        _file.CurrentId = saved.Sets.Any(s => s.Id == saved.CurrentId) ? saved.CurrentId : saved.Sets[0].Id;
+        Changed?.Invoke();
+        return true;
+    }
+
     private void Saved()
     {
         AppDataStore.Save(Store, _file);

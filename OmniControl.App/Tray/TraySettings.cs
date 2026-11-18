@@ -19,6 +19,18 @@ public sealed class TrayElement
     /// <summary>A slider's choice state shown as a pick list in place of its name ("Speakers ▾": the default playback device).</summary>
     public string? Choice { get; set; }
 
+    /// <summary>A pattern slider shown as ONE row with a display chip ("All displays", then each match) instead of one row per match.</summary>
+    public bool Together { get; set; }
+
+    /// <summary>A level state that moves every output device at once: the speaker row's "All speakers" choice.</summary>
+    public string? AllState { get; set; }
+
+    /// <summary>What the row's chip was set to: a together row's chosen state id (null: all), a speaker row's pinned device name, <see cref="AllPick"/>, or null (it follows Windows' default).</summary>
+    public string? Pick { get; set; }
+
+    /// <summary>The <see cref="Pick"/> of a speaker row that moves every output device.</summary>
+    public const string AllPick = "*";
+
     /// <summary>The icon the user chose for it (a library id or a user icon, <see cref="Icons.IconLibrary"/>; a section's name saved before the library
     /// still shows that section's icon); null: its own action's or state's icon.</summary>
     public string? Icon { get; set; }
@@ -27,7 +39,7 @@ public sealed class TrayElement
 
     public static TrayElement OfState(string id, string? choice = null) => new() { State = id, Choice = choice };
 
-    public TrayElement Copy() => new() { Action = Action, State = State, Choice = Choice, Icon = Icon };
+    public TrayElement Copy() => new() { Action = Action, State = State, Choice = Choice, Together = Together, AllState = AllState, Pick = Pick, Icon = Icon };
 }
 
 /// <summary>The tray flyout's sliders and tiles, stored in tray.json. Null lists: the defaults (<see cref="TrayDefaults"/>), read from the master lists each time.</summary>

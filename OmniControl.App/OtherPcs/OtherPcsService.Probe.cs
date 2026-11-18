@@ -25,6 +25,15 @@ public sealed partial class OtherPcsService
     public bool RouteConnected(string id) => Find(id) is { } pair && _probes.TryGetValue(id, out var probe)
         && probe.Route == pair.Route && probe.Result.Ok && DateTime.UtcNow - probe.At < Timing.PcProbeFresh;
 
+    /// <summary>"Check now": forgets the last probe of a PC and measures its chosen route again at once.</summary>
+    public void CheckRouteNow(string id)
+    {
+        if (_disposed || Find(id) is null) return;
+        _probes.Remove(id);
+        StartProbes();
+        RaiseChanged();
+    }
+
     /// <summary>The address a probe of the PC's current route goes to; empty when none is known (a LAN PC not heard on the network lately).</summary>
     private string ProbeAddress(PairedPc pair) => pair.Route switch
     {

@@ -26,7 +26,7 @@ public sealed partial class ShellViewModel
             _ => ShowPage(home)) { NeverBlock = true });
         _hotkeys.Register(new HotkeyAction("app.actions.open", $"Open {ActionsWindowService.Title}", home, "actions hotkeys shortcuts keys list open window",
             _ => _actionsWindow.Open()) { NeverBlock = true });
-        var flyout = new TrayFlyoutModel(_hotkeys, _states, _iconPicker, AppLifecycle.RequestShow, ShowInApp);
+        var flyout = new TrayFlyoutModel(_hotkeys, _states, _iconPicker, () => AppLifecycle.RequestShow("the quick panel's Open OmniControl"), ShowInApp);
         const string toggleId = "app.tray.toggle";
         _winA = new WinAKey(toggleId, _hotkeys.Run, Report);
         _hotkeys.Register(new HotkeyAction(toggleId, "Show or hide quick panel", home, "tray panel flyout quick settings show hide toggle win a",
@@ -62,7 +62,7 @@ public sealed partial class ShellViewModel
     /// <summary>Shows the main window at a page.</summary>
     private void ShowPage(string title)
     {
-        AppLifecycle.RequestShow();
+        AppLifecycle.RequestShow($"a request to open {title} ({RunChain.Describe(_hotkeys.Chain)})");
         OpenPage(title);
     }
 }

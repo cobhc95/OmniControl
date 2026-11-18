@@ -96,10 +96,12 @@ public sealed class OsdService : IDisposable
         if (!Settings.HideWindowsOsd) _windowsOsd.Restore(); // undo a hide left over from an earlier run
 
         // Brightness changed outside OmniControl (the laptop's brightness keys, Windows settings): show it here too.
+        // A change made outside OmniControl may open Windows' own pop-up; only a pop-up opening then is taken for it (WindowsOsd).
         _brightness.Changed += value =>
         {
-            Dispatcher.UIThread.Post(_windowsOsd.Trigger);
-            if (!RecentOwnChange(BrightnessElement)) Show(BrightnessElement, value);
+            if (RecentOwnChange(BrightnessElement)) return;
+            _windowsOsd.Trigger();
+            Show(BrightnessElement, value);
         };
         _brightness.Start();
 
@@ -108,7 +110,9 @@ public sealed class OsdService : IDisposable
         _volume.Changed += (value, muted) =>
         {
             VolumeWatched?.Invoke(value, muted);
-            if (!RecentOwnChange(VolumeElement)) ShowVolume(value, muted);
+            if (RecentOwnChange(VolumeElement)) return;
+            _windowsOsd.Trigger();
+            ShowVolume(value, muted);
         };
         _volume.Start();
 
@@ -116,7 +120,9 @@ public sealed class OsdService : IDisposable
         _mic.Changed += (value, muted) =>
         {
             MicrophoneWatched?.Invoke(value, muted);
-            if (!RecentOwnChange(MicrophoneElement)) Show(MicrophoneElement, muted ? 0 : value, muted ? "Microphone muted" : MicrophoneElement);
+            if (RecentOwnChange(MicrophoneElement)) return;
+            _windowsOsd.Trigger();
+            Show(MicrophoneElement, muted ? 0 : value, muted ? "Microphone muted" : MicrophoneElement);
         };
         _mic.Start();
 
@@ -125,7 +131,11 @@ public sealed class OsdService : IDisposable
             new OsdMessage(connected ? OsdIcon.UsbConnected : OsdIcon.UsbRemoved, connected ? "USB device connected" : "USB device removed", name)));
         _usb.Start();
 
-        _media.Changed += change => Dispatcher.UIThread.Post(() => OnMedia(change));
+        _media.Changed += change =>
+        {
+            _windowsOsd.Trigger(); // a media key opens Windows' media pop-up
+            Dispatcher.UIThread.Post(() => OnMedia(change));
+        };
         _media.Start();
 
         // As soon as the dispatcher runs, ahead of building the main window's pages, so even the first pop-up is ready.
@@ -232,6 +242,25 @@ public sealed class OsdService : IDisposable
 
     /// <summary>Makes a placement preview that follows the real pop-up's look; <paramref name="dragged"/> hears every spot the user drags or nudges it to.</summary>
     public OsdPreview MakePreview(Action<OsdSpot> dragged) => new(Settings, dragged);
+
+    /// <summary>Takes osd.json from disk as it is now (an import wrote it): the look, places and screens change at once and the listeners are told.</summary>
+    public bool ReloadFromDisk()
+    {
+        SettingsCopy.Into(Settings, OsdSettings.Load());
+        if (!StartupMode.Inert)
+        {
+            _windowsOsd.Hidden = Settings.HideWindowsOsd;
+            if (!Settings.HideWindowsOsd) _windowsOsd.Restore();
+        }
+        SettingsChanged?.Invoke();
+        Reloaded?.Invoke();
+        ElementsChanged?.Invoke(); // the elements shown may differ
+        Prepare();
+        return true;
+    }
+
+    /// <summary>The settings were read from disk again (an import): a page's cards that hold their own copy of a value show it again.</summary>
+    public event Action? Reloaded;
 
     public void SetStyle(OsdStyle s) { Settings.Style = s; Changed(); }
     public void SetAccent(string name) { Settings.Accent = name; Changed(); }

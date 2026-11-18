@@ -70,6 +70,14 @@ public sealed partial class TrayFlyoutModel : ObservableObject, IDisposable
         StopRechecks();
     }
 
+    /// <summary>Takes tray.json from disk as it is now (an import wrote it): the panel's tiles and sliders and the menu are made again from it.</summary>
+    public bool ReloadFromDisk()
+    {
+        SettingsCopy.Into(_settings, TraySettings.Load());
+        OnListsChanged();
+        return true;
+    }
+
     /// <summary>Runs a master action by id, through the one run path (so the gate of block rules applies).</summary>
     private void RunAction(string id) => _hotkeys.Run(id);
 
@@ -88,7 +96,7 @@ public sealed partial class TrayFlyoutModel : ObservableObject, IDisposable
         _stale = false;
         var states = _states.States;
         Sliders.Clear();
-        foreach (var target in TrayTargets.Sliders(_settings.SlidersInUse, states)) Sliders.Add(new TraySliderItem(target, IconOf(target), _states.Now));
+        foreach (var target in TrayTargets.Sliders(_settings.SlidersInUse, states)) Sliders.Add(new TraySliderItem(target, IconOf(target), _states.Now, pick => SavePick(target.Element, pick)));
         Tiles.Clear();
         foreach (var target in TrayTargets.Toggles(_settings.TilesInUse, states, _hotkeys.Actions, _hotkeys.Find))
             Tiles.Add(new TrayTileItem(target, IconOf(target), _states.Now, RunAction));

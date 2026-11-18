@@ -1,0 +1,16 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Tray sliders: display chip and speaker default-follow (approved)</title>
+<!-- Approved by the owner 18 Nov 2026. Tray flyout slider rows (Grid.trayslider):
+  1 Brightness row: the display name becomes the SAME chip + menu as the speaker row (shared chip/listmenu, Button.selector + MenuRowList):
+    "All displays" first (ticked by default), thin line, then each display by name (live from the Displays monitor list). The slider
+    controls the chosen display, or all displays together. Choice persisted in the tray settings.
+  2 Speaker row menu: first row "Windows default · <current default name>" (ticked by default), thin line, then each output device.
+    Default-follow rule: by default the row follows Windows' default output. Picking a device pins it; but when Windows' default
+    output CHANGES afterwards, the row goes back to following the default (shows the new default, Windows default row ticked).
+    UPDATED: add an "All speakers" row right under "Windows default" (before the thin line); it sets every output device's volume
+    together (relative to each one's own level is NOT required: the slider sets all to the same value). Default stays Windows default.
+    Chip shows the device's short name (or "All speakers"). -->
+<style>body{font-family:Segoe UI;background:#1b1b1b;color:#eee;padding:20px;font-size:13px}</style></head><body>
+<p>☀ [All displays ▾] ——●—— 70 · menu: ✓ All displays / — / Built-in display / PHL 27M1F5800</p>
+<p>🔊 [Speaker ▾] ——●—— 35 · menu: ✓ Windows default · Speaker / — / CABLE Input (VB-Audio Virtual Cable) / CABLE In 16ch / Speaker (Realtek(R) Audio)</p>
+</body></html>

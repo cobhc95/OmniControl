@@ -68,7 +68,7 @@
         <Setter Property="BorderThickness" Value="2" />
         <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
     </Style>
-    <Style Selector="Button.pill.custom:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Style Selector="Button.pill.custom:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.pill.cog.active:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
     </Style>
     <Style Selector="Button.pill:focus-visible /template/ ContentPresenter#PART_ContentPresenter, Button.pill:focus-visible:pointerover /template/ ContentPresenter#PART_ContentPresenter">
@@ -125,6 +125,10 @@
     <Style Selector="Button.optioncard.selected /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" />
+    </Style>
+    <Style Selector="Button.optioncard.selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
     </Style>
     <Style Selector="Button.optioncard:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
@@ -289,6 +293,7 @@
     <Style Selector="Button.tab.selected /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Foreground" Value="{DynamicResource BrushAccent}" /></Style>
     <Style Selector="Button.tab.selected /template/ Border#Underline"><Setter Property="Background" Value="{DynamicResource BrushAccent}" /></Style>
     <Style Selector="Button.tab:focus-visible /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" /></Style>
+    <Style Selector="Button.tab.selected:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" /></Style>
 
     <!-- A Volume row: the icon tile, a stroked icon in it, the sentence under the name (small, muted), the engine's words in it -->
     <Style Selector="Border.rowicon">

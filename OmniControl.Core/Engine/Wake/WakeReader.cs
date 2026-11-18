@@ -14,23 +14,56 @@ public static class WakeReader
 {
     private const string PowerKey = @"SYSTEM\CurrentControlSet\Control\Session Manager\Power";
 
+    private const string AdapterClassKey = @"SYSTEM\CurrentControlSet\Control\Class\{4d36e972-e325-11ce-bfc1-08002be10318}";
+
+    /// <summary>A part of the read failed (text for the log), raised once per distinct text, on the calling thread.</summary>
+    public static event Action<string>? Failed;
+
+    private static readonly HashSet<string> Told = new();
+
     public static WakeFacts Read()
     {
         var facts = new WakeFacts { ModernStandby = WakeNative.IsModernStandby(), FastStartupOn = FastStartup() };
-        try
+        NetworkInterface? card;
+        try { card = ActiveCard(); }
+        catch (Exception ex) when (ex is NetworkInformationException or UnauthorizedAccessException)
         {
-            if (ActiveCard() is not { } card) return facts;
-            facts.Adapter = card.Description;
-            facts.Mac = string.Join(':', card.GetPhysicalAddress().GetAddressBytes().Select(b => b.ToString("X2")));
-            facts.Subnet = SubnetOf(card);
-            ReadPower(card, facts);
-            facts.Known = facts.Mac.Length > 0 && facts.Subnet.Length > 0;
+            Tell("network cards", ex);
+            return facts;
         }
-        catch (Exception ex) when (ex is NetworkInformationException or ManagementException or COMException or UnauthorizedAccessException)
-        {
-            facts.Known = false; // Windows would not say: shown as "not known", never as a guess
-        }
+        if (card is null) return facts;
+        facts.Adapter = card.Description;
+        var addressRead = Guarded("card address", () => facts.Mac = string.Join(':', card.GetPhysicalAddress().GetAddressBytes().Select(b => b.ToString("X2"))));
+        var subnetRead = Guarded("card subnet", () => facts.Subnet = SubnetOf(card));
+        facts.Known = addressRead && subnetRead && facts.Mac.Length > 0 && facts.Subnet.Length > 0;
+        if (!facts.Known) return facts;
+
+        // Each source may fail on its own (one broken adapter fails the whole WMI class); the card's settings are known if any source answers.
+        var settings = Guarded("card power settings (WMI)", () => ReadSettingsWmi(card, facts));
+        if (!settings) settings = Guarded("card power settings (registry)", () => ReadSettingsRegistry(card, facts));
+        var permission = Guarded("wake permission", () => ReadPermission(card, facts));
+        if (!settings && permission) facts.CardCanWake = true; // Windows lists the card as wake-programmable
+        if (!settings && !permission) facts.Known = false; // no source could say: shown as "not known", never as a guess
         return facts;
+    }
+
+    private static bool Guarded(string what, Func<bool> read)
+    {
+        try { return read(); }
+        catch (Exception ex) when (ex is NetworkInformationException or ManagementException or COMException or UnauthorizedAccessException or System.Security.SecurityException or IOException)
+        {
+            Tell(what, ex);
+            return false;
+        }
+    }
+
+    private static bool Guarded(string what, Action read) => Guarded(what, () => { read(); return true; });
+
+    private static void Tell(string what, Exception ex)
+    {
+        var text = $"Wake: could not read the {what}: {ex.Message}";
+        lock (Told) if (!Told.Add(text)) return;
+        Failed?.Invoke(text);
     }
 
     private static bool FastStartup()
@@ -54,26 +87,58 @@ public static class WakeReader
         return $"{new IPAddress(network)}/{mask.Sum(b => BitOperations.PopCount(b))}";
     }
 
-    // The card's own wake settings (root\StandardCimv2: 2 = enabled, 1 = disabled, anything else = the driver does not offer it) and
-    // Windows' permission for the card to wake the PC (root\wmi, keyed by the card's device id).
-    private static void ReadPower(NetworkInterface card, WakeFacts facts)
+    // The card's own wake settings through WMI (root\StandardCimv2: 2 = enabled, 1 = disabled, anything else = the driver does not offer it).
+    // False when the class gave no row for this card.
+    private static bool ReadSettingsWmi(NetworkInterface card, WakeFacts facts)
     {
-        using (var search = new ManagementObjectSearcher(@"root\StandardCimv2", $"SELECT * FROM MSFT_NetAdapterPowerManagementSettingData WHERE Name = '{Escape(card.Name)}'"))
+        var found = false;
+        using var search = new ManagementObjectSearcher(@"root\StandardCimv2", $"SELECT * FROM MSFT_NetAdapterPowerManagementSettingData WHERE Name = '{Escape(card.Name)}'");
+        foreach (var row in search.Get())
         {
-            foreach (var row in search.Get())
-            {
-                var magic = Level(row["WakeOnMagicPacket"]);
-                var pattern = Level(row["WakeOnPattern"]);
-                facts.CardCanWake = magic != 0;
-                facts.MagicPacketOn = magic == 2;
-                facts.MagicOnly = pattern != 2;
-            }
+            ApplySettings(Level(row["WakeOnMagicPacket"]), Level(row["WakeOnPattern"]), facts);
+            found = true;
         }
+        return found;
+    }
+
+    // The same settings from the driver's own keys (standardized keywords: "1" on, "0" off, missing = not offered), found by the card's id.
+    private static bool ReadSettingsRegistry(NetworkInterface card, WakeFacts facts)
+    {
+        using var classKey = Registry.LocalMachine.OpenSubKey(AdapterClassKey);
+        if (classKey is null) return false;
+        foreach (var name in classKey.GetSubKeyNames())
+        {
+            using var key = classKey.OpenSubKey(name);
+            if (key?.GetValue("NetCfgInstanceId") is not string id || !id.Equals(card.Id, StringComparison.OrdinalIgnoreCase)) continue;
+            ApplySettings(KeywordLevel(key.GetValue("*WakeOnMagicPacket")), KeywordLevel(key.GetValue("*WakeOnPattern")), facts);
+            return true;
+        }
+        return false;
+    }
+
+    private static int KeywordLevel(object? value) => value is null ? 0 : Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture)?.Trim() switch { "1" => 2, "0" => 1, _ => 0 };
+
+    private static void ApplySettings(int magic, int pattern, WakeFacts facts)
+    {
+        facts.CardCanWake = magic != 0;
+        facts.MagicPacketOn = magic == 2;
+        facts.MagicOnly = pattern != 2;
+    }
+
+    // Windows' permission for the card to wake the PC (root\wmi, keyed by the card's device id). True when the card has a row there.
+    private static bool ReadPermission(NetworkInterface card, WakeFacts facts)
+    {
         var device = PnpId(card.Id);
-        if (device.Length == 0) return;
+        if (device.Length == 0) return false;
+        var found = false;
         using var wake = new ManagementObjectSearcher(@"root\wmi", "SELECT InstanceName, Enable FROM MSPower_DeviceWakeEnable");
         foreach (var row in wake.Get())
-            if (row["InstanceName"] is string name && name.StartsWith(device, StringComparison.OrdinalIgnoreCase)) facts.Armed = row["Enable"] is true;
+            if (row["InstanceName"] is string name && name.StartsWith(device, StringComparison.OrdinalIgnoreCase))
+            {
+                facts.Armed = row["Enable"] is true;
+                found = true;
+            }
+        return found;
     }
 
     private static int Level(object? value) => value switch

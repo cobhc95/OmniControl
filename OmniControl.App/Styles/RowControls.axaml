@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:OmniControl.App.Controls">
     <!-- MASTER designs of a row's pickers and its lit button (docs/mockups/mixer-rows-knobs.html; AGENTS.md "Master design elements"),
          included after Theme.axaml and Menus.axaml so these win (Avalonia has no specificity: the later style wins). Sizes: Chip* and
          Selector* in App.axaml.
@@ -80,6 +81,28 @@
     </Style>
     <Style Selector="Border.selector.method.recording"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" /></Style>
     <Style Selector="Border.selector.method.recording > TextBlock"><Setter Property="Foreground" Value="{DynamicResource BrushAccent}" /></Style>
+    <!-- A chip with a status dot (Controls/ChipMenu.Tone, docs/mockups/pc-header-tidy.html): .good = green words and edge (connected), .caution = yellow edge; the dot is c|StatusDot -->
+    <Style Selector="Button.selector.good /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource BrushOn}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushTagGood}" />
+    </Style>
+    <Style Selector="Button.selector.caution /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="BorderBrush" Value="{DynamicResource BrushTagCaution}" /></Style>
+    <Style Selector="Button.selector > Grid > TextBlock.withdot"><Setter Property="Margin" Value="{DynamicResource ChipDotInset}" /></Style>
+    <Style Selector="c|StatusDot">
+        <Setter Property="Width" Value="{DynamicResource BrowserTabDotSize}" />
+        <Setter Property="Height" Value="{DynamicResource BrowserTabDotSize}" />
+        <Setter Property="Fill" Value="{DynamicResource BrushMuted}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="c|StatusDot.good"><Setter Property="Fill" Value="{DynamicResource BrushOn}" /></Style>
+    <Style Selector="c|StatusDot.caution"><Setter Property="Fill" Value="{DynamicResource BrushCaution}" /></Style>
+    <Style Selector="c|StatusDot.risk"><Setter Property="Fill" Value="{DynamicResource BrushDanger}" /></Style>
+    <!-- A pill in two halves (the Wake split button): Button.pill.splitleft + Button.pill.splitright side by side with the right one's Margin -1,0,0,0 so the shared edge is one line -->
+    <Style Selector="Button.pill.splitleft"><Setter Property="CornerRadius" Value="13,0,0,13" /></Style>
+    <Style Selector="Button.pill.splitleft /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="CornerRadius" Value="13,0,0,13" /></Style>
+    <Style Selector="Button.pill.splitright"><Setter Property="CornerRadius" Value="0,13,13,0" /></Style>
+    <Style Selector="Button.pill.splitright /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="CornerRadius" Value="0,13,13,0" /></Style>
+    <Style Selector="Button.pill.splitleft:pointerover, Button.pill.splitright:pointerover, Button.pill.splitleft:focus-visible, Button.pill.splitright:focus-visible"><Setter Property="ZIndex" Value="1" /></Style>
     <!-- Hover and focus keep the chip's colour words; only the wash and the edge take the master hover and focus -->
     <Style Selector="Button.selector:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
@@ -147,8 +170,12 @@
         <Setter Property="BorderBrush" Value="Transparent" />
     </Style>
     <Style Selector="Button.anchorcell:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" /></Style>
-    <Style Selector="Button.anchorcell.selected /template/ ContentPresenter#PART_ContentPresenter, Button.anchorcell.selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Style Selector="Button.anchorcell.selected /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+    </Style>
+    <Style Selector="Button.anchorcell.selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
     </Style>
 </Styles>

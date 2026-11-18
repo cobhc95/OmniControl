@@ -5,6 +5,8 @@ using CommunityToolkit.Mvvm.Input;
 using OmniControl.App.Dialogs;
 using OmniControl.App.Hotkeys;
 using OmniControl.App.OtherPcs;
+using OmniControl.App.Services;
+using OmniControl.App.SettingsImport;
 using OmniControl.App.States;
 
 namespace OmniControl.App.Pages.OtherPcs;
@@ -20,6 +22,7 @@ public sealed partial class OtherPcsPageViewModel : PageViewModel, IDisposable
     private readonly Func<DialogMessage, Task<bool>> _ask;
     private readonly Func<DialogMessage, Task<string?>> _askText;
     private readonly Action<string> _report;
+    private readonly ImportFromPcService _importFrom;
 
     public override string Title => OtherPcsService.Category;
 
@@ -44,10 +47,15 @@ public sealed partial class OtherPcsPageViewModel : PageViewModel, IDisposable
 
     private const string NewTabActionId = "otherpcs.tab.new", CloseTabActionId = "otherpcs.tab.close";
     private readonly HotkeyRegistry _hotkeys;
+    private const string ThisPcWindowKey = "this-pc"; // cannot clash with a PC's id
+    private readonly Dictionary<string, SingleWindow<WakeSetupWindow>> _wakeWindows = new();
+
+    /// <summary>This PC's wake tag and cogwheel on the title line.</summary>
+    public ThisPcWake ThisPc { get; }
     private bool _ready;
     private bool _onScreen;
 
-    public OtherPcsPageViewModel(OtherPcsService service, HotkeyRegistry hotkeys, Func<DialogMessage, Task<bool>> ask, Func<DialogMessage, Task<string?>> askText, Action<string> report)
+    public OtherPcsPageViewModel(OtherPcsService service, HotkeyRegistry hotkeys, Func<DialogMessage, Task<bool>> ask, Func<DialogMessage, Task<string?>> askText, Action<string> report, ImportFromPcService importFrom)
     {
         _service = service;
         _hotkeys = hotkeys;
@@ -55,6 +63,7 @@ public sealed partial class OtherPcsPageViewModel : PageViewModel, IDisposable
         _ask = ask;
         _askText = askText;
         _report = report;
+        _importFrom = importFrom;
         foreach (var id in service.TabOrder)
         {
             if (service.Find(id) is { } pair) Items.Add(Make(pair));
@@ -67,12 +76,29 @@ public sealed partial class OtherPcsPageViewModel : PageViewModel, IDisposable
             OnPropertyChanged(nameof(NoTabs));
             OnPropertyChanged(nameof(HasTabs));
         };
+        ThisPc = new ThisPcWake(service);
+        ThisPc.SetupRequested += () => OpenWakeSetup(ThisPcWindowKey, () => new OwnWakeTarget(service));
         service.Changed += OnServiceChanged;
         service.RemoteChanged += OnRemoteChanged;
         service.RemoteValueChanged += OnRemoteValue;
     }
 
-    private PcItem Make(PairedPc pair) => new(pair, _service, _ask, _askText, _report);
+    private PcItem Make(PairedPc pair)
+    {
+        var item = new PcItem(pair, _service, _ask, _askText, _report);
+        item.SetupWakeRequested += OpenWakeSetup;
+        item.ImportRequested += pc => _importFrom.Open(pc.Id);
+        return item;
+    }
+
+    private void OpenWakeSetup(PcItem pc) => OpenWakeSetup(pc.Id, () => new PairedWakeTarget(pc.Id, _service));
+
+    /// <summary>Opens the wake set-up of a PC, or of this PC (one window per PC; asking again brings it to the front).</summary>
+    private void OpenWakeSetup(string key, Func<IWakeTarget> target)
+    {
+        if (!_wakeWindows.TryGetValue(key, out var window)) _wakeWindows[key] = window = new SingleWindow<WakeSetupWindow>(_report);
+        window.Show(() => new WakeSetupWindow { DataContext = new WakeSetupViewModel(target()) }, closed => (closed.DataContext as IDisposable)?.Dispose(), "Couldn't open the wake set-up");
+    }
 
     partial void OnSelectedChanged(object? value)
     {
@@ -167,9 +193,11 @@ public sealed partial class OtherPcsPageViewModel : PageViewModel, IDisposable
     {
         _hotkeys.Unregister(NewTabActionId);
         _hotkeys.Unregister(CloseTabActionId);
+        ThisPc.Dispose();
         _service.Changed -= OnServiceChanged;
         _service.RemoteChanged -= OnRemoteChanged;
         _service.RemoteValueChanged -= OnRemoteValue;
         foreach (var tab in Items.OfType<SetupTabItem>()) tab.Dispose();
+        foreach (var window in _wakeWindows.Values) window.Close();
     }
 }

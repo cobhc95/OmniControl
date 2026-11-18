@@ -34,28 +34,43 @@ public sealed class UserPresetStore
     {
         _data = data ?? new Stored();
         _save = save;
-        _data.Presets ??= new List<UserPreset>();
-        // A damaged or hand-edited entry is dropped rather than shown: the catalog says what each kind can hold.
-        _data.Presets.RemoveAll(p => p is null || FxCatalog.All.FirstOrDefault(k => k.Kind == p.Kind) is not { } kind
+        Tidy(_data, _save);
+    }
+
+    /// <summary>A damaged or hand-edited entry is dropped rather than shown: the catalog says what each kind can hold; an older file's presets get their ids (saved once so they stay).</summary>
+    private static void Tidy(Stored data, Action<Stored> save)
+    {
+        data.Presets ??= new List<UserPreset>();
+        data.Presets.RemoveAll(p => p is null || FxCatalog.All.FirstOrDefault(k => k.Kind == p.Kind) is not { } kind
             || PresetRules.Error(p.Name ?? "") is not null || p.Content is null || PresetCatalog.Fit(kind, p.Content) is null);
-        _data.Folders ??= new List<FolderPreset>();
-        _data.Folders.RemoveAll(f => f is null || PresetRules.Error(f.Name ?? "") is not null || f.Effects is null || f.Effects.Any(e => e is null || e.IsFolder));
+        data.Folders ??= new List<FolderPreset>();
+        data.Folders.RemoveAll(f => f is null || PresetRules.Error(f.Name ?? "") is not null || f.Effects is null || f.Effects.Any(e => e is null || e.IsFolder));
         var gaveIds = false;
-        foreach (var preset in _data.Presets.Where(p => string.IsNullOrEmpty(p.Id)))
+        foreach (var preset in data.Presets.Where(p => string.IsNullOrEmpty(p.Id)))
         {
             preset.Id = PresetRules.NewId();
             gaveIds = true;
         }
-        foreach (var folder in _data.Folders.Where(f => string.IsNullOrEmpty(f.Id)))
+        foreach (var folder in data.Folders.Where(f => string.IsNullOrEmpty(f.Id)))
         {
             folder.Id = PresetRules.NewId();
             gaveIds = true;
         }
-        if (gaveIds) _save(_data); // the ids of an older file's presets stay the same from now on
+        if (gaveIds) save(data); // the ids of an older file's presets stay the same from now on
     }
 
     /// <summary>The store as the program uses it: read from and written to the user's folder.</summary>
     public static UserPresetStore OnDisk() => new(AppDataStore.Load<Stored>(Store), data => AppDataStore.Save(Store, data));
+
+    /// <summary>Takes presets.json from disk as it is now (an import wrote it): the presets and device folders are replaced and the listeners told.</summary>
+    public bool ReloadFromDisk()
+    {
+        var fresh = AppDataStore.Load<Stored>(Store) ?? new Stored();
+        Tidy(fresh, _save);
+        SettingsCopy.Into(_data, fresh);
+        Changed?.Invoke();
+        return true;
+    }
 
     /// <summary>Something in the list changed (raised on the thread that changed it, the UI thread).</summary>
     public event Action? Changed;

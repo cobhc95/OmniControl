@@ -147,6 +147,33 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         Edited(rule);
     }
 
+    /// <summary>The rules, custom actions and scripts were all replaced by what automation.json holds (an import): the page lists them again.</summary>
+    public event Action? Reloaded;
+
+    /// <summary>
+    /// Takes automation.json from disk as it is now (an import wrote it): every rule, custom action and script action is taken out and made
+    /// again from the file (their keys come back by action id), the triggers are looked at again and the page is told. The approvals of program
+    /// steps are this PC's own (an import never takes them).
+    /// </summary>
+    public bool ReloadFromDisk()
+    {
+        foreach (var rule in Settings.Rules.ToList())
+        {
+            _hotkeys.Unregister(rule.ActionId);
+            ForgetRun(rule);
+        }
+        foreach (var custom in Settings.Customs) _hotkeys.Unregister(custom.ActionId);
+        foreach (var script in Settings.Scripts) _hotkeys.Unregister(script.ActionId);
+        SettingsCopy.Into(Settings, AutomationSettings.Load());
+        _hotkeys.Register(Settings.Rules.Where(r => r.Kind == AutomationKind.Do).Select(MakeRuleAction));
+        _hotkeys.Register(Settings.Customs.Select(MakeCustomAction));
+        _hotkeys.Register(Settings.Scripts.Select(MakeScriptAction));
+        SyncTriggers();
+        Reloaded?.Invoke();
+        Changed?.Invoke();
+        return true;
+    }
+
     /// <summary>Call after any change to a rule's blocks or switch: saves, starts its timers again and clears a pause.</summary>
     public void Edited(AutomationRule rule)
     {

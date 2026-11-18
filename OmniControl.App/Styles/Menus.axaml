@@ -62,6 +62,8 @@
         <Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" />
     </Style>
     <Style Selector="Border.tickbox.checked"><Setter Property="Background" Value="{DynamicResource BrushAccent}" /><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
+    <!-- .mixed = some of what it stands for is ticked (the import window's "Everything"): accent edge, Border.masterdash inside -->
+    <Style Selector="Border.tickbox.mixed"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
     <Style Selector="Path.tick">
         <Setter Property="Stroke" Value="{DynamicResource BrushBackground}" />
         <Setter Property="StrokeThickness" Value="1.75" />
@@ -101,6 +103,8 @@
     <!-- Button.menurow.accent = the row that opens something bigger (Position's "Custom position..."): accent words; .muted = a way out to a manager ("Manage places..."): muted words -->
     <Style Selector="Button.menurow.accent TextBlock"><Setter Property="Foreground" Value="{DynamicResource BrushAccent}" /></Style>
     <Style Selector="Button.menurow.muted TextBlock"><Setter Property="Foreground" Value="{DynamicResource BrushMuted}" /></Style>
+    <!-- .danger = a destructive row (Unpair): red words, like Button.pill.danger -->
+    <Style Selector="Button.menurow.danger TextBlock"><Setter Property="Foreground" Value="{DynamicResource BrushDanger}" /></Style>
     <!-- A ticked row (ToggleButton.menurow, the Shortcuts device scope) shows its tick, not a filled background -->
     <Style Selector="ToggleButton.menurow:checked /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.menurow:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="Transparent" />

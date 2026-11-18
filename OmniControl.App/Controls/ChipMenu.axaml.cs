@@ -4,6 +4,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
+using OmniControl.App.Services;
 
 namespace OmniControl.App.Controls;
 
@@ -22,6 +23,8 @@ public partial class ChipMenu : UserControl
     public static readonly StyledProperty<HorizontalAlignment> ChipAlignmentProperty =
         AvaloniaProperty.Register<ChipMenu, HorizontalAlignment>(nameof(ChipAlignment), HorizontalAlignment.Right);
 
+    public static readonly StyledProperty<TagTone?> ToneProperty = AvaloniaProperty.Register<ChipMenu, TagTone?>(nameof(Tone));
+
     public ChipMenu()
     {
         InitializeComponent();
@@ -33,6 +36,9 @@ public partial class ChipMenu : UserControl
 
     /// <summary>Where the chip sits in its room: at the right on a header line, stretched across a half-width card.</summary>
     public HorizontalAlignment ChipAlignment { get => GetValue(ChipAlignmentProperty); set => SetValue(ChipAlignmentProperty, value); }
+
+    /// <summary>A status dot before the words, and the chip's edge for Good (green) and Caution (yellow); null = no dot, the plain chip.</summary>
+    public TagTone? Tone { get => GetValue(ToneProperty); set => SetValue(ToneProperty, value); }
 
     /// <summary>The chip's words.</summary>
     public string? Text { get => GetValue(TextProperty); set => SetValue(TextProperty, value); }
@@ -59,6 +65,13 @@ public partial class ChipMenu : UserControl
         base.OnPropertyChanged(change);
         if (change.Property == TextProperty) Words.Text = Text;
         else if (change.Property == MenuProperty) { if (Popup is { } pop) pop.Content = Menu; }
+        else if (change.Property == ToneProperty)
+        {
+            Dot.Tone = Tone;
+            Words.Classes.Set("withdot", Tone is not null);
+            Chip.Classes.Set("good", Tone == TagTone.Good);
+            Chip.Classes.Set("caution", Tone == TagTone.Caution);
+        }
         else if (change.Property == ChipTagProperty) Chip.Tag = ChipTag;
         else if (change.Property == ChipAlignmentProperty) Chip.HorizontalAlignment = ChipAlignment;
         else if (change.Property == ChipToolTipProperty)

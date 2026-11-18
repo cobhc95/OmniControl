@@ -120,6 +120,15 @@ public sealed partial class TrayFlyoutModel
         list.AddRange(changed);
     });
 
+    /// <summary>A row's chip was set (a display, a pinned speaker): kept with its element, saved at once. The row already shows it, so nothing is made again.</summary>
+    private void SavePick(TrayElement shown, string? pick)
+    {
+        var stored = SliderList.FirstOrDefault(e => e.State == shown.State && e.Choice == shown.Choice && e.Together == shown.Together);
+        if (stored is null || stored.Pick == pick) return;
+        stored.Pick = pick;
+        _settings.Save();
+    }
+
     /// <summary>One edit: made, saved at once, and shown.</summary>
     private void Edit(Action change)
     {

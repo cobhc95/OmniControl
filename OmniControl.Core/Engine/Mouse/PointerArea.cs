@@ -27,7 +27,11 @@ public static class PointerArea
     /// <see cref="AreaMap"/> draws the areas cut in this same order.
     /// </summary>
     /// <param name="edgeStrip">How many pixels deep the strip along a screen edge is.</param>
-    public static PointerAreaKind At(int x, int y, int edgeStrip)
+    /// <param name="titleBar">
+    /// False when the caller has no use for <see cref="PointerAreaKind.TitleBar"/>: the window under the pointer is then never asked (the title-bar
+    /// test sends it a message and waits up to <see cref="CoreTiming.HitTestTimeoutMs"/>, which the mouse hook should only do when it must).
+    /// </param>
+    public static PointerAreaKind At(int x, int y, int edgeStrip, bool titleBar = true)
     {
         var root = WindowQuery.RootWindowAt(x, y);
         var className = root == IntPtr.Zero ? string.Empty : WindowQuery.ClassOf(root);
@@ -35,7 +39,7 @@ public static class PointerArea
         if (IsTaskbar(className)) return PointerAreaKind.Taskbar;
         if (EdgeAt(x, y, edgeStrip) is { } edge) return edge;
         if (IsDesktopClass(className)) return PointerAreaKind.Desktop;
-        return root != IntPtr.Zero && IsCaption(root, x, y) == true ? PointerAreaKind.TitleBar : PointerAreaKind.Elsewhere;
+        return titleBar && root != IntPtr.Zero && IsCaption(root, x, y) == true ? PointerAreaKind.TitleBar : PointerAreaKind.Elsewhere;
     }
 
     internal static bool IsTaskbar(string className) => TaskbarClasses.Contains(className);

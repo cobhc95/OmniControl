@@ -3,7 +3,9 @@ using Avalonia.Threading;
 using OmniControl.App.Dialogs;
 using OmniControl.App.Hotkeys;
 using OmniControl.App.Services;
+using OmniControl.App.SettingsImport;
 using OmniControl.App.States;
+using OmniControl.Core.Engine.Wake;
 using OmniControl.Core.Interfaces;
 
 namespace OmniControl.App.OtherPcs;
@@ -30,6 +32,7 @@ public sealed partial class OtherPcsService : IDisposable
     private readonly ICredentialStore _credentials;
     private readonly Action<string> _report;
     private readonly Func<bool, string> _shareDevices;
+    private readonly SettingsShare _settingsShare;
     private readonly Func<DialogMessage, Task<bool>> _askHere;
     private readonly OtherPcsSettings _settings;
     private readonly string _ownName = PcIds.CleanName(Environment.MachineName);
@@ -38,11 +41,13 @@ public sealed partial class OtherPcsService : IDisposable
     private bool _disposed;
 
     /// <param name="shareDevices">Makes the text of this PC's device set-ups for a paired PC that asks (true = with the user's script templates).</param>
+    /// <param name="settingsShare">Hands the settings areas to a paired PC that imports them.</param>
     /// <param name="ask">Asks the person at this PC a yes/no question (a paired PC asking to change a wake setting or to put this PC to sleep).</param>
-    public OtherPcsService(HotkeyRegistry hotkeys, StateRegistry states, ICredentialStore credentials, Action<string> report, Func<bool, string> shareDevices, Func<DialogMessage, Task<bool>> ask)
+    public OtherPcsService(HotkeyRegistry hotkeys, StateRegistry states, ICredentialStore credentials, Action<string> report, Func<bool, string> shareDevices, Func<DialogMessage, Task<bool>> ask, SettingsShare settingsShare)
     {
         _askHere = ask;
         _shareDevices = shareDevices;
+        _settingsShare = settingsShare;
         _hotkeys = hotkeys;
         _states = states;
         _credentials = credentials;
@@ -53,6 +58,7 @@ public sealed partial class OtherPcsService : IDisposable
             if (ReadSecret(pair.Id) is { } secret) _secrets[pair.Id] = secret;
         }
         if (StartupMode.Inert) return;
+        WakeReader.Failed += LogWakeReadFailure;
         WatchShares();
         RestoreCatalogs();
         RegisterWakeActions();
@@ -183,23 +189,45 @@ public sealed partial class OtherPcsService : IDisposable
     public void SetRoute(string id, PcRoute route, string address)
     {
         if (Find(id) is not { } pair) return;
-        pair.Route = route;
-        _probes.Remove(id); // what was measured over the old route says nothing about the new one
-        if (route == PcRoute.Address) pair.Address = address.Trim();
-        Save();
-        if (route == PcRoute.Tailscale) CheckPairTailscale(id);
-        else
+        if (pair.Route != route && _links.TryGetValue(id, out var link))
         {
-            CloseLink(id); // dialled again by the new route
-            CheckLinksSoon();
+            // The other PC hears it over the working link first; only then this PC switches.
+            _ = Guard.RunAsync("Other PCs: route change", async () =>
+            {
+                var sent = await SendRoute(link, route).ConfigureAwait(false);
+                Post(() => ChooseRoute(id, route, address, sent));
+            });
         }
+        else ChooseRoute(id, route, address, sent: false);
+    }
+
+    private void ChooseRoute(string id, PcRoute route, string address, bool sent)
+    {
+        if (Find(id) is not { } pair) return;
+        var changed = pair.Route != route;
+        SwitchRoute(pair, route, "chosen by the owner");
+        if (route == PcRoute.Address) pair.Address = address.Trim();
+        if (changed)
+        {
+            pair.PendingRoute = sent ? null : route;
+            _routeNotes[id] = sent ? "Switched on both PCs." : $"{pair.DisplayName} will switch when it next connects.";
+        }
+        Save();
+        AfterRouteChange(id, route);
         RaiseChanged();
+    }
+
+    /// <summary>Writes every change of a PC's route and its cause to the log; the route is only ever changed by the owner's pick or by pairing again.</summary>
+    private void LogRoute(PairedPc pair, PcRoute to, string cause)
+    {
+        if (pair.Route != to) AppDataStore.AppendLog(Guard.LogFile, $"Other PCs: route of {pair.Name} changed from {pair.Route} to {to} ({cause}).");
     }
 
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
+        WakeReader.Failed -= LogWakeReadFailure;
         _stop.Cancel();
         UnwatchShares();
         _setTimer?.Stop();

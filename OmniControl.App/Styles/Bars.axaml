@@ -151,6 +151,7 @@
         <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
     </Style>
     <Style Selector="Button.toolicon.selected /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" /></Style>
+    <Style Selector="Button.toolicon.selected:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.toolicon.selected:pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushAccentHover}" /></Style>
     <Style Selector="Button.toolicon:disabled /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="Transparent" /></Style>
     <Style Selector="Button.toolicon > Path.glyph">
         <Setter Property="Width" Value="{DynamicResource ToolIconGlyph}" />

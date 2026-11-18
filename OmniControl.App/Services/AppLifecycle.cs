@@ -2,20 +2,22 @@ namespace OmniControl.App.Services;
 
 /// <summary>
 /// Window-level requests that pages and hotkeys can make without knowing about the window or the tray icon.
-/// App.axaml.cs owns the listeners.
+/// App.axaml.cs owns the listeners. A request to show the window names its source, which is logged when the window really opens
+/// (so a window that "opened by itself" can be traced).
 /// </summary>
 public static class AppLifecycle
 {
-    public static event Action? ShowRequested;
-    public static event Action? ToggleRequested;
+    public static event Action<string>? ShowRequested;
+    public static event Action<string>? ToggleRequested;
     public static event Action? QuitRequested;
 
     /// <summary>Exit and start again (after an import or a wipe, which is carried out as the new run starts).</summary>
     public static event Action? RestartRequested;
 
-    public static void RequestShow() => ShowRequested?.Invoke();
+    /// <param name="source">What asked, in words for the log ("a double-click on the tray icon").</param>
+    public static void RequestShow(string source) => ShowRequested?.Invoke(source);
     /// <summary>Hide the window to the tray when it is the one in front, otherwise show and focus it.</summary>
-    public static void RequestToggle() => ToggleRequested?.Invoke();
+    public static void RequestToggle(string source) => ToggleRequested?.Invoke(source);
     public static void RequestQuit() => QuitRequested?.Invoke();
     public static void RequestRestart() => RestartRequested?.Invoke();
 }

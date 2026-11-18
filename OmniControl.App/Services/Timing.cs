@@ -79,6 +79,12 @@ public static class Timing
     /// <summary>Minimum gap between attempts to create the hiding helper for Windows' OSD.</summary>
     public static readonly TimeSpan WindowsOsdRetry = TimeSpan.FromSeconds(2);
 
+    /// <summary>
+    /// An Explorer pop-up is taken for Windows' own volume pop-up (and hidden) only when it opens this close to a volume, brightness,
+    /// microphone or media change made outside OmniControl; any other Explorer pop-up (the taskbar's thumbnails) is never touched.
+    /// </summary>
+    public static readonly TimeSpan WindowsOsdMatch = TimeSpan.FromSeconds(1);
+
     /// <summary>On quit, how long to wait for queued mouse work (letting go of held keys and buttons, restoring the pointer) to finish.</summary>
     public static readonly TimeSpan MouseQueueDrain = TimeSpan.FromSeconds(1);
 
@@ -442,6 +448,11 @@ public static class Timing
     public static readonly TimeSpan PcDevicesWait = TimeSpan.FromSeconds(10);
     public static readonly TimeSpan PcDevicesBurstWindow = TimeSpan.FromSeconds(10);
     public const int PcDevicesBurstMax = 4;
+
+    /// <summary>How long a request of the settings import (the list of areas, or one area's files) waits for the answer, and how many such requests one paired PC may make of this one within the window (one per area, so a whole import fits).</summary>
+    public static readonly TimeSpan PcImportWait = TimeSpan.FromSeconds(20);
+    public static readonly TimeSpan PcImportBurstWindow = TimeSpan.FromSeconds(30);
+    public const int PcImportBurstMax = 40;
 
     /// <summary>A card of another PC's state ignores that PC's reports for this long after the user moved it here (the echo of the user's own change).</summary>
     public static readonly TimeSpan PcEchoGrace = TimeSpan.FromSeconds(1);

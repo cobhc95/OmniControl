@@ -11,7 +11,15 @@
          plus icon, name, a small x); the "+" opens a New PC tab. They are joined to one boxed pane (Border.pane.edged.tabbed) with the chosen tab: a PC (PcDetail)
          or the pairing flow of a New PC tab (PairPcPanel), templates in App.axaml. With no tab, one dashed row says so. -->
     <StackPanel Spacing="6">
-        <pages:PageTitleLine Title="{Binding Title}" />
+        <pages:PageTitleLine Title="{Binding Title}">
+            <pages:PageTitleLine.Right>
+                <!-- This PC's wake (docs/mockups/this-pc-wake.html, pc-header-tidy.html): muted "This PC" and the split Wake button (status half, cogwheel) -->
+                <StackPanel Orientation="Horizontal" Spacing="6" DataContext="{Binding ThisPc}" VerticalAlignment="Center">
+                    <TextBlock Classes="hint" Text="{Binding Name}" VerticalAlignment="Center" />
+                    <vm:WakeSplit Status="{Binding Status}" SetUpCommand="{Binding SetUpCommand}" VerticalAlignment="Center" />
+                </StackPanel>
+            </pages:PageTitleLine.Right>
+        </pages:PageTitleLine>
 
         <StackPanel IsVisible="{Binding HasTabs}" Spacing="0">
             <c:BrowserTabStrip x:Name="PcTabs" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected, Mode=TwoWay}"

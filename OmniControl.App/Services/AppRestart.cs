@@ -47,6 +47,9 @@ public static class AppRestart
         if (PendingRestore.ApplyPending(AppDataStore.Folder) is { } done) AppDataStore.AppendLog(LogName, done);
     }
 
+    /// <summary>True when this run was started by a restart of the run before it (which may still be closing).</summary>
+    public static bool IsRestart(string[] args) => Array.IndexOf(args, AfterArgument) >= 0;
+
     private static void WaitForPrevious(string[] args)
     {
         var at = Array.IndexOf(args, AfterArgument);

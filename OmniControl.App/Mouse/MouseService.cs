@@ -110,6 +110,13 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
         LayersChanged?.Invoke();
     }
 
+    /// <summary>Takes mouse.json from disk as it is now (an import wrote it): mappings, layers and options are replaced and applied like any change.</summary>
+    public bool ReloadFromDisk()
+    {
+        ReplaceSettings(MouseSettings.Load());
+        return true;
+    }
+
     public void RenameLayer(InputFamily family, int layer, string name)
     {
         Settings.LayersOf(family).SetName(layer, name);

@@ -116,17 +116,20 @@ public sealed partial class OtherPcsService
     /// <summary>Why the switch to Tailscale did not happen although the checks pass (empty when it did not fail).</summary>
     public string PairSwitchProblem(string id) => _switchProblems.GetValueOrDefault(id) ?? string.Empty;
 
-    // The other PC reached Tailscale and told us its address over the current link: it is kept and this side is set to Tailscale too, so
-    // the two PCs stay two-way (as when they pair over the internet). Only an address of Tailscale's own ranges is taken.
+    // The other PC reached Tailscale and told us its address over the current link: the address is kept for when the owner picks Tailscale here,
+    // but it never changes the route chosen on this PC (it used to, which moved a PC the owner had set to LAN over to Tailscale by itself).
+    // Only an address of Tailscale's own ranges is taken.
     private void HandleTailscaleAddress(string id, string? text)
     {
         if (Find(id) is not { } pair || text is null || !TailscaleStatusReader.IsTailscaleAddress(text)) return;
-        if (pair.Route == PcRoute.Tailscale && pair.TailscaleAddress == text) return;
+        if (pair.TailscaleAddress == text) return;
         pair.TailscaleAddress = text;
-        pair.Route = PcRoute.Tailscale;
-        _tailscaleFailed.Remove(id);
         Save();
-        CheckPairTailscale(id);
+        if (pair.Route == PcRoute.Tailscale)
+        {
+            _tailscaleFailed.Remove(id);
+            CheckPairTailscale(id);
+        }
         RaiseChanged();
     }
 

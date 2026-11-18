@@ -10,6 +10,7 @@
     </FlyoutBase.AttachedFlyout>
     <Button x:Name="Chip" Classes="selector" Click="OnClick">
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
+            <c:StatusDot x:Name="Dot" HorizontalAlignment="Left" />
             <TextBlock x:Name="Words" />
             <PathIcon Grid.Column="1" Data="{DynamicResource ChevronDownIcon}" />
         </Grid>

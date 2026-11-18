@@ -11,11 +11,14 @@ public enum WakeState
     /// <summary>On, and everything a wake needs is on: the green tag.</summary>
     CanWake,
 
-    /// <summary>On, its card can wake it but a setting is off: the yellow tag and "Turn on".</summary>
+    /// <summary>On, its card can wake it but a setting is off: the yellow tag and the set-up cogwheel.</summary>
     SettingOff,
 
     /// <summary>Off and can be woken: the Wake pill.</summary>
     Wakeable,
+
+    /// <summary>The card's wake settings could not be read (not known either way): a plain "Wake not confirmed" tag while on; while off the Wake pill is still offered, with a caution mark.</summary>
+    Unconfirmed,
 
     /// <summary>Off or on, and cannot be woken: the plain tag, the reason in its tooltip.</summary>
     Cannot,
@@ -38,7 +41,10 @@ public static class WakeAdvices
     public static WakeAdvice Of(WakeFacts? facts, bool online, string? away, bool pathExists, string name)
     {
         if (facts is null) return online ? new WakeAdvice(WakeState.None, string.Empty) : new WakeAdvice(WakeState.Cannot, $"{name} has not told this PC how it can be woken. Connect it once.");
-        if (!facts.Known) return new WakeAdvice(WakeState.Cannot, $"{name} could not read its network card, so it cannot say whether it can be woken.");
+        if (!facts.Known)
+            return online || pathExists
+                ? new WakeAdvice(WakeState.Unconfirmed, $"{name} could not confirm whether its network card can wake it.")
+                : new WakeAdvice(WakeState.Cannot, $"No PC on the network of {name} is on to send the wake signal.");
         if (!facts.CardCanWake) return new WakeAdvice(WakeState.Cannot, $"The network card of {name} ({facts.Adapter}) cannot wake the PC.");
         if (online) return new WakeAdvice(facts.Ready ? WakeState.CanWake : WakeState.SettingOff, facts.Ready ? string.Empty : $"Wake is off on {name}.");
         if (!facts.Ready) return new WakeAdvice(WakeState.Cannot, $"Wake was not turned on in {name} while it was on.");

@@ -43,6 +43,15 @@ public sealed class ConfirmationMemory
         Persist();
     }
 
+    /// <summary>Reads the Confirmations store again (an import replaced the file); a missing or damaged file means nothing is remembered. Always true.</summary>
+    public bool Reload()
+    {
+        _remembered.Clear();
+        foreach (var (key, name) in (AppDataStore.Load<ConfirmationData>(DataStores.Confirmations) ?? new()).Remembered) _remembered[key] = name;
+        Changed?.Invoke();
+        return true;
+    }
+
     public void Reset(string key)
     {
         if (_remembered.Remove(key)) Persist();

@@ -180,6 +180,9 @@
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
         <Setter Property="BorderThickness" Value="2,0,0,0" />
     </Style>
+    <Style Selector="ListBox.pick.active > ListBoxItem:selected:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
+    </Style>
 
     <!-- Label of a compact (one-line, half-width) card: wraps to a second line rather than being cut off, and the tight line
          height keeps two lines inside the card's normal height. Use it instead of a plain trimmed label on such cards. -->

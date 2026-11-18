@@ -34,8 +34,14 @@ public static class CoreTiming
     /// </summary>
     public const int FullScreenWatchMs = 500, ForegroundWatchMs = 100;
 
-    /// <summary>A mouse-hook handler slower than this is reported (Windows drops a hook that takes too long).</summary>
+    /// <summary>A mouse-hook call slower than this is reported (Windows holds all mouse input while it runs, and drops a hook that takes too long).</summary>
     public const int HookSlowMs = 50;
+
+    /// <summary>
+    /// A hook problem (a slow call, the hook dropped by Windows) goes to the errors log at most once per this time, with a count of the ones
+    /// since the last line, so a stalled hook never floods the log.
+    /// </summary>
+    public const int HookReportGapMs = 60_000;
 
     /// <summary>
     /// The mouse hook's watchdog looks this often whether Windows has silently dropped the hook (pointer moved and input happened, yet

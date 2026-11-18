@@ -257,9 +257,15 @@ public sealed partial class OtherPcsService
         }
         if (link.ViaTailscale && pair.Route != PcRoute.Tailscale)
         {
-            // The route chosen here is the one source: the other PC dialling over Tailscale does not override it (it falls back to LAN when it finds no link there).
-            link.Dispose();
-            return;
+            // A connection from a paired PC is always accepted, so a one-sided change cannot strand the two. One the other PC opened over Tailscale
+            // makes this PC take Tailscale too, unless a choice made here is still waiting to be told (then that one is sent over this link below).
+            if (link.Dialled || pair.PendingRoute is not null)
+            {
+                link.Dispose();
+                return;
+            }
+            SwitchRoute(pair, PcRoute.Tailscale, $"changed on {pair.DisplayName}: it connected over Tailscale");
+            _routeNotes[pair.Id] = $"Switched on both PCs (changed on {pair.DisplayName}).";
         }
         if (_links.TryGetValue(pair.Id, out var old))
         {
@@ -288,6 +294,7 @@ public sealed partial class OtherPcsService
         _ = Guard.RunAsync("Other PCs: link", link.RunAsync);
         SendCatalog(link, force: true);
         OnWakeLinkUp(link, pair);
+        SendPendingRoute(link, pair);
         RaiseChanged();
     }
 

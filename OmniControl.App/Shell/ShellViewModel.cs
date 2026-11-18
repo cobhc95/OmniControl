@@ -33,6 +33,7 @@ using OmniControl.App.Audio;
 using OmniControl.App.Audio.Engine;
 using OmniControl.App.Services;
 using OmniControl.App.Services.Backup;
+using OmniControl.App.SettingsImport;
 using OmniControl.App.Services.Updates;
 using OmniControl.App.Fx;
 using OmniControl.App.Fx.Plugins;
@@ -89,6 +90,8 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     private readonly AutomationService _automation;
     private readonly DeviceService _devices;
     private readonly OtherPcsService _otherPcs;
+    private readonly ImportHooks _importHooks = new();
+    private readonly ImportFromPcService _importFromPc;
     private readonly MarginOverlay _margins;
     private readonly IReadOnlyList<PageViewModel> _allPages;
     private bool _syncing;
@@ -182,6 +185,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _mouse.LayersChanged += UpdateActiveLayer;
         UpdateActiveLayer();
         _mouseHook.Log = line => AppDataStore.AppendLog("mouse-log.txt", line);
+        _mouseHook.Problem = line => AppDataStore.AppendLog(Guard.LogFile, $"Mouse hook: {line}");
         var hookStarted = true;
         if (!StartupMode.Inert && Guard.Run("Start-up: mouse hook", () => hookStarted = _mouseHook.Start()) is not null) hookStarted = false;
         if (!hookStarted) Report("Couldn't start mouse remapping and gestures: Windows refused the mouse hook.");
@@ -190,8 +194,11 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         ICredentialStore credentials = StartupMode.Inert ? new NoCredentialStore() : new WindowsCredentialStore();
         _devices = new DeviceService(_hotkeys, _states, _hardware, credentials, Report, _osd.ShowDeviceNote);
         Guard.Run("Start-up: device auto-checks", _devices.StartAutoChecks);
-        _otherPcs = new OtherPcsService(_hotkeys, _states, credentials, Report, _devices.ShareSetups, _dialogs.AskAsync); // listens only once a PC is paired or "Pair a PC" is opened
+        _otherPcs = new OtherPcsService(_hotkeys, _states, credentials, Report, _devices.ShareSetups, _dialogs.AskAsync, new SettingsShare()); // listens only once a PC is paired or "Pair a PC" is opened
         _power.Leaving += _otherPcs.AnnounceLeaving; // paired PCs are told before this one sleeps or shuts down
+        // What an import from another PC may reload live, and the facts it shows after an area: each owner says so once, here.
+        RegisterReloads();
+        _importFromPc = new ImportFromPcService(_otherPcs, _importHooks, Report);
 
         // Register new feature pages here, in sidebar order (a page's NavGroup decides its heading; keep the pages of a group together). Pages that list actions (Mouse, Gestures) follow the master
         // list's changes, so the order does not decide which actions they offer.
@@ -202,7 +209,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
             TryMake("Volume", () => new VolumePageViewModel(_mixer, _effectsSupport, _effects, _installer, _hotkeys, _osd, Report, _fxWindows.Open, _fxWindows.Toggle,
                 _dialogs.AskAsync, CombineWindow.AskAsync, _volumePresets, _presetGroups, _presetManager.Open, _states)),
             TryMake("Devices", () => new DevicesPageViewModel(_devices, _dialogs.AskAsync, Report, _iconPicker.ChooseAsync, _otherPcs, () => OpenPage(OtherPcsService.Category))),
-            TryMake("Other PCs", () => new OtherPcsPageViewModel(_otherPcs, _hotkeys, _dialogs.AskAsync, _dialogs.AskTextAsync, Report)),
+            TryMake("Other PCs", () => new OtherPcsPageViewModel(_otherPcs, _hotkeys, _dialogs.AskAsync, _dialogs.AskTextAsync, Report, _importFromPc)),
             TryMake("Mouse and Trackpad", () => new MousePageViewModel(_mouse, _trackpad, _pointer, _hotkeys, _osd, _dialogs.AskAsync, Report, _presetGroups, _presetManager.Open, _appScopes)),
             TryMake("Gestures", () => new GesturesPageViewModel(_gestures, _rules, _margins, _hotkeys, _dialogs.AskAsync, _appScopes)),
             TryMake("Automation", () => new AutomationPageViewModel(_automation, _dialogs.AskAsync)),
@@ -216,7 +223,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _allFooter = new[]
         {
             TryMake("App settings", () => new AppSettingsPageViewModel(_hotkeys, _about.Open, _library.ScanAsync, _library.FoundText, () => _presetManager.Open(null, null),
-                new BackupService(_dialogs.ChooseAsync, Report), _dialogs.Confirmations, _updates, Report, ShowKeyboardShortcuts, _mixer, _hardware)),
+                new BackupService(_dialogs.ChooseAsync, Report, _importFromPc), _dialogs.Confirmations, _updates, Report, ShowKeyboardShortcuts, _mixer, _hardware)),
         }.OfType<PageViewModel>().ToArray();
         // The Choose-the-action window's sections are the sidebar pages, in the sidebar's order, with their icons.
         _hotkeys.UseSections(_allPages.Concat(_allFooter).Select((p, i) => new ActionSection(p.Title, p.Icon, i + 1)).ToList());

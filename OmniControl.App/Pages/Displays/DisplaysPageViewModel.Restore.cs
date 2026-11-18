@@ -14,6 +14,14 @@ public sealed partial class DisplaysPageViewModel
         () => DisplayRestoreState.DefaultsOf(new DisplayRestoreState { Picture = CapturePicture() }),
         ApplyState);
 
+    /// <summary>Takes display-settings.json from disk as it is now (an import wrote it): the preset lists follow and the warm-light schedule is applied again.</summary>
+    public bool ReloadSettings()
+    {
+        var done = _store.ReloadFromDisk();
+        _scheduler.Update();
+        return done;
+    }
+
     /// <summary>Shows and applies the pictures through the same path a preset takes, and sets warm light through its own card.</summary>
     private Task<bool> ApplyState(DisplayRestoreState state)
     {

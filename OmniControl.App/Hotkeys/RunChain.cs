@@ -18,4 +18,10 @@ public sealed record RunChain(IReadOnlyList<string> Rules, bool ByPerson = false
 
     /// <summary>The chain a rule's own run carries: <paramref name="rule"/> after the chain that started it (a new chain, started by a person or not, when none).</summary>
     public static RunChain After(RunChain? chain, string rule, bool byPerson = false) => chain is null ? Start(rule, byPerson) : chain.Then(rule);
+
+    /// <summary>Who started a run, for a log line: the rules by id (a request from another PC is one of them), or, with no chain, a person.</summary>
+    public static string Describe(RunChain? chain) =>
+        chain is null
+            ? "a key, mouse button, tray menu or Run now"
+            : $"rule {string.Join(" > ", chain.Rules)} ({(chain.ByPerson ? "started by a person" : "started by a trigger")})";
 }

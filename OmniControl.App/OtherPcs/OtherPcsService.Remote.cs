@@ -103,11 +103,14 @@ public sealed partial class OtherPcsService
             case PcMsgType.Ran: HandleRan(message); break;
             case PcMsgType.Devices: HandleDevicesRequest(link, message); break;
             case PcMsgType.DevicesAnswer: HandleDevicesAnswer(link, message); break;
+            case PcMsgType.ImportList or PcMsgType.ImportGet: HandleImportRequest(link, message); break;
+            case PcMsgType.ImportAnswer: HandleImportAnswer(link, message); break;
             case PcMsgType.WakeInfo: HandleWakeInfo(link.PeerId, message); break;
             case PcMsgType.Leaving: HandleLeaving(link.PeerId, message); break;
             case PcMsgType.WakeAsk: HandleWakeAsk(link, message); break;
             case PcMsgType.WakeAnswer: HandleWakeAnswer(link, message); break;
             case PcMsgType.TailscaleAddress: HandleTailscaleAddress(link.PeerId, message.Text); break;
+            case PcMsgType.Route: HandleRoute(link.PeerId, message.Text); break;
             // A ping only keeps the link from looking silent; anything else is ignored.
         }
     }

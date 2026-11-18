@@ -16,6 +16,17 @@ public enum StoreKind
     Record,
 }
 
+/// <summary>Where a store sits in "Import settings from another PC": the <see cref="ImportGroups"/> heading, the area's name (stores with the same name are one tick box) and a muted note.</summary>
+public sealed record ImportPlace(string Group, string Area, string? Note = null);
+
+/// <summary>The headings of the import window's areas, in order (the sidebar's own groups).</summary>
+public static class ImportGroups
+{
+    public const string Devices = "Devices", Workflow = "Workflow", Keys = "Keys", LookAndApp = "Look and app";
+
+    public static readonly IReadOnlyList<string> All = new[] { Devices, Workflow, Keys, LookAndApp };
+}
+
 /// <summary>
 /// One json file OmniControl saves under its data folder. Every file is one entry of <see cref="DataStores"/> and is read and written only
 /// through <see cref="AppDataStore"/> by its entry, so backup, import and wipe always know every store.
@@ -24,7 +35,10 @@ public enum StoreKind
 /// <param name="Area">What the backup window calls it.</param>
 /// <param name="Mergeable">An import may merge it (add what is missing, keep what is here) instead of replacing it.</param>
 /// <param name="NotImported">Top-level properties an import never takes from a file (the approvals of commands: a file must not pre-approve them).</param>
-public sealed record DataStore(string FileName, string Area, StoreKind Kind, bool Mergeable = false, string[]? NotImported = null)
+/// <param name="Import">Where the store sits in the import from another PC; null: that import does not offer it.</param>
+/// <param name="MachineSpecific">Belongs to this PC alone (its pairing list, the key its keyboard sends, paths of plug-ins): never sent to another PC.</param>
+public sealed record DataStore(string FileName, string Area, StoreKind Kind, bool Mergeable = false, string[]? NotImported = null,
+    ImportPlace? Import = null, bool MachineSpecific = false)
 {
     public bool IsFamily => FileName.Contains('*');
 
@@ -38,30 +52,48 @@ public sealed record DataStore(string FileName, string Area, StoreKind Kind, boo
 /// </summary>
 public static class DataStores
 {
-    public static readonly DataStore App = new("settings.json", "App settings", StoreKind.Saved);
-    public static readonly DataStore Mixer = new("mixer.json", "Volume mixer and wiring", StoreKind.Saved);
-    public static readonly DataStore EffectPresets = new("presets.json", "Effect presets", StoreKind.Saved, Mergeable: true);
-    public static readonly DataStore VolumePresets = new("volume-presets.json", "Volume presets", StoreKind.Saved, Mergeable: true);
-    public static readonly DataStore Plugins = new("plugins.json", "Plug-in list", StoreKind.Saved, Mergeable: true);
-    public static readonly DataStore Automation = new("automation.json", "Rules, custom actions and scripts", StoreKind.Saved, Mergeable: true, NotImported: new[] { "Approved" });
-    public static readonly DataStore GestureRules = new("rules.json", "Gesture rules", StoreKind.Saved, Mergeable: true, NotImported: new[] { "Approved" });
-    public static readonly DataStore Gestures = new("gestures.json", "Gestures", StoreKind.Saved);
-    public static readonly DataStore Hotkeys = new("hotkeys.json", "Shortcuts", StoreKind.Saved, Mergeable: true);
-    public static readonly DataStore HotkeySets = new("hotkey-sets.json", "Shortcut sets", StoreKind.Saved, Mergeable: true);
-    public static readonly DataStore Mouse = new("mouse.json", "Mouse and trackpad", StoreKind.Saved);
-    public static readonly DataStore Displays = new("display-settings.json", "Displays", StoreKind.Saved);
-    public static readonly DataStore Osd = new("osd.json", "On-screen display", StoreKind.Saved);
-    public static readonly DataStore AppLists = new("app-lists.json", "App lists", StoreKind.Saved, Mergeable: true);
-    public static readonly DataStore AppActions = new("app-actions.json", "App actions", StoreKind.Saved, Mergeable: true);
-    public static readonly DataStore PowerPlans = new("power-plans.json", "Power plan actions", StoreKind.Saved, Mergeable: true);
-    public static readonly DataStore RecentActions = new("recent-actions.json", "Recent actions", StoreKind.Saved, Mergeable: true);
-    public static readonly DataStore Devices = new("devices.json", "Smart devices (never their passwords)", StoreKind.Saved, Mergeable: true);
-    public static readonly DataStore Screenshots = new("screenshots.json", "Screenshot settings", StoreKind.Saved);
-    public static readonly DataStore Tray = new("tray.json", "Tray flyout", StoreKind.Saved);
-    public static readonly DataStore Confirmations = new("confirmations.json", "Confirmations you chose not to be asked again", StoreKind.Saved);
-    public static readonly DataStore OtherPcs = new("other-pcs.json", "Other PCs (paired PCs and what each last shared; the pairing keys are kept by Windows, never in a backup)", StoreKind.Saved);
-    public static readonly DataStore Icons = new("icons.json", "Your icons and chosen icons", StoreKind.Saved);
-    public static readonly DataStore MicMuteKey = new("mic-mute-key.json", "Microphone mute key (the key your keyboard sends)", StoreKind.Saved);
+    private static class Places
+    {
+        public static readonly ImportPlace Displays = new(ImportGroups.Devices, "Displays", "presets");
+        public static readonly ImportPlace Volume = new(ImportGroups.Devices, "Volume and effects", "EQ, FX chains");
+        public static readonly ImportPlace SmartDevices = new(ImportGroups.Devices, "Smart devices", "no passwords");
+        public static readonly ImportPlace Mouse = new(ImportGroups.Devices, "Mouse and trackpad", "buttons, layers");
+        public static readonly ImportPlace Gestures = new(ImportGroups.Workflow, "Gestures");
+        public static readonly ImportPlace Automation = new(ImportGroups.Workflow, "Automation", "rules, scripts");
+        public static readonly ImportPlace Shortcuts = new(ImportGroups.Keys, "Keyboard shortcuts");
+        public static readonly ImportPlace Osd = new(ImportGroups.LookAndApp, "OSD", "style, places");
+        public static readonly ImportPlace IconsAndLists = new(ImportGroups.LookAndApp, "Icons and app lists");
+        public static readonly ImportPlace AppSettings = new(ImportGroups.LookAndApp, "App settings", "theme, start-up");
+        public static readonly ImportPlace Confirmations = new(ImportGroups.LookAndApp, "Confirmations", "answers you chose not to be asked again");
+    }
+
+    public static readonly DataStore App = new("settings.json", "App settings", StoreKind.Saved, Import: Places.AppSettings);
+    public static readonly DataStore Mixer = new("mixer.json", "Volume mixer and wiring", StoreKind.Saved,
+        NotImported: new[] { "BusCable", "RealMasterDevice", "CaptureSilence" }, Import: Places.Volume);
+    public static readonly DataStore EffectPresets = new("presets.json", "Effect presets", StoreKind.Saved, Mergeable: true, Import: Places.Volume);
+    public static readonly DataStore VolumePresets = new("volume-presets.json", "Volume presets", StoreKind.Saved, Mergeable: true, Import: Places.Volume);
+    public static readonly DataStore Plugins = new("plugins.json", "Plug-in list", StoreKind.Saved, Mergeable: true, MachineSpecific: true);
+    public static readonly DataStore Automation = new("automation.json", "Rules, custom actions and scripts", StoreKind.Saved, Mergeable: true, NotImported: new[] { "Approved" }, Import: Places.Automation);
+    public static readonly DataStore GestureRules = new("rules.json", "Gesture rules", StoreKind.Saved, Mergeable: true, NotImported: new[] { "Approved" }, Import: Places.Gestures);
+    public static readonly DataStore Gestures = new("gestures.json", "Gestures", StoreKind.Saved, Import: Places.Gestures);
+    public static readonly DataStore Hotkeys = new("hotkeys.json", "Shortcuts", StoreKind.Saved, Mergeable: true, Import: Places.Shortcuts);
+    public static readonly DataStore HotkeySets = new("hotkey-sets.json", "Shortcut sets", StoreKind.Saved, Mergeable: true, Import: Places.Shortcuts);
+    public static readonly DataStore Mouse = new("mouse.json", "Mouse and trackpad", StoreKind.Saved, Import: Places.Mouse);
+    public static readonly DataStore Displays = new("display-settings.json", "Displays", StoreKind.Saved, Import: Places.Displays);
+    public static readonly DataStore Osd = new("osd.json", "On-screen display", StoreKind.Saved, Import: Places.Osd);
+    public static readonly DataStore AppLists = new("app-lists.json", "App lists", StoreKind.Saved, Mergeable: true, Import: Places.IconsAndLists);
+    public static readonly DataStore AppActions = new("app-actions.json", "App actions", StoreKind.Saved, Mergeable: true, Import: Places.Automation);
+    public static readonly DataStore PowerPlans = new("power-plans.json", "Power plan actions", StoreKind.Saved, Mergeable: true, Import: Places.Automation);
+    public static readonly DataStore RecentActions = new("recent-actions.json", "Recent actions", StoreKind.Saved, Mergeable: true, Import: Places.AppSettings);
+    public static readonly DataStore Devices = new("devices.json", "Smart devices (never their passwords)", StoreKind.Saved, Mergeable: true, Import: Places.SmartDevices);
+    public static readonly DataStore Screenshots = new("screenshots.json", "Screenshot settings", StoreKind.Saved,
+        NotImported: new[] { "TurnOffWindowsKeys", "WindowsKeysBackup", "WindowsKeysChangedUtc", "RecordingRoute" },
+        Import: Places.AppSettings);
+    public static readonly DataStore Tray = new("tray.json", "Tray flyout", StoreKind.Saved, Import: Places.AppSettings);
+    public static readonly DataStore Confirmations = new("confirmations.json", "Confirmations you chose not to be asked again", StoreKind.Saved, Import: Places.Confirmations);
+    public static readonly DataStore OtherPcs = new("other-pcs.json", "Other PCs (paired PCs and what each last shared; the pairing keys are kept by Windows, never in a backup)", StoreKind.Saved, MachineSpecific: true);
+    public static readonly DataStore Icons = new("icons.json", "Your icons and chosen icons", StoreKind.Saved, Import: Places.IconsAndLists);
+    public static readonly DataStore MicMuteKey = new("mic-mute-key.json", "Microphone mute key (the key your keyboard sends)", StoreKind.Saved, MachineSpecific: true);
 
     public static readonly DataStore MixerBeforeRestore = new("mixer-before-restore.json", "Mixer before restore", StoreKind.Undo);
     public static readonly DataStore BeforeRestore = new("*-before-restore.json", "Settings before restore", StoreKind.Undo);

@@ -54,6 +54,20 @@ public sealed class VolumePresets : IDisposable
         Store(preset);
     }
 
+    /// <summary>
+    /// Takes volume-presets.json from disk as it is now (an import wrote it): the presets and the one in force are replaced in the list the
+    /// rules hold, and the listeners told. Nothing is applied: the mixer's own file arrived with it.
+    /// </summary>
+    public bool ReloadFromDisk()
+    {
+        var fresh = VolumePresetFile.Load();
+        _file.Presets.Clear();
+        _file.Presets.AddRange(fresh.Presets);
+        _file.ActiveId = fresh.Presets.Any(p => p.Id == fresh.ActiveId) ? fresh.ActiveId : fresh.Presets[0].Id;
+        List.NotifyChanged();
+        return true;
+    }
+
     /// <summary>Adds an empty preset under the first free "Preset N"; returns its id.</summary>
     public string Add()
     {
@@ -69,7 +83,7 @@ public sealed class VolumePresets : IDisposable
     /// <summary>An edit on the Volume page: the live setup is saved into the preset in force (only when it differs, so a scan writes nothing).</summary>
     private void Capture()
     {
-        if (_applying || Active is not { } active) return;
+        if (_applying || _mixer.IsReloading || Active is not { } active) return;
         if (active.Setup is { } kept && AudioDefaults.SameSetup(kept, _mixer.Settings)) return;
         Store(active);
     }

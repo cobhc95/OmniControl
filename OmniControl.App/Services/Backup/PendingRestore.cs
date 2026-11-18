@@ -57,6 +57,7 @@ public static class PendingRestore
             File.Delete(planPath); // first, so a restore (above all a wipe) is never carried out twice, even if the folder can't be removed
             if (plan is null) return "a staged restore had no plan; nothing was changed";
             if (plan.Mode != RestoreMode.Merge) DeleteStores(folder, staging);
+            if (plan.Mode == RestoreMode.Wipe) File.Delete(Path.Combine(folder, BackupFile.BeforeImportName));
             if (plan.Mode != RestoreMode.Wipe)
                 foreach (var store in DataStores.BackedUp)
                     Apply(folder, staging, store, plan.Mode);

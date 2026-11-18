@@ -16,14 +16,24 @@ internal static class Program
 #endif
         // The elevated setup mode (OmniControl APO install/remove) runs and exits before anything of the app starts.
         if (EngineSetupCommand.TryRun(args) is { } exitCode) return exitCode;
+        // A second start only asks the running copy to open its window (a start-up entry's start asks nothing), before it can touch any
+        // file (a staged import, settings).
+        var restart = AppRestart.IsRestart(args);
+        var askToOpen = !StartupRegistration.IsBackgroundStart(args);
+        if (!StartupMode.Inert && !restart && SingleInstance.HandOff(askToOpen)) return 0;
         ProcessPower.StayResponsive();
         AppRestart.BeforeStart(args);
         if (AdministratorMode.RelaunchIfWanted(args)) return 0;
-        return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        using var instance = StartupMode.Inert ? null : SingleInstance.Claim(restart ? Timing.RestartWait : TimeSpan.Zero, askToOpen);
+        if (!StartupMode.Inert && instance is null) return 0;
+        return BuildAvaloniaApp(instance).StartWithClassicDesktopLifetime(args);
     }
 
-    public static AppBuilder BuildAvaloniaApp() =>
-        AppBuilder.Configure<App>()
+    /// <summary>For the designer.</summary>
+    public static AppBuilder BuildAvaloniaApp() => BuildAvaloniaApp(null);
+
+    private static AppBuilder BuildAvaloniaApp(SingleInstance? instance) =>
+        AppBuilder.Configure(() => new App(instance))
             .UsePlatformDetect()
             .WithInterFont()
             .LogToTrace();

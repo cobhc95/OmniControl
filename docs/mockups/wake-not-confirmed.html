@@ -1,0 +1,16 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Wake not confirmed: try anyway (approved)</title>
+<!-- Approved by the owner 18 Nov 2026. Extends other-pc-wake.html.
+  When the wake capability could not be CONFIRMED (some reads failed, unknown), do not say "Can't be woken remotely":
+  - Online: plain Border.tag "Wake not confirmed"; tooltip = the one-line reason + hint "Right-click the <name> tab, then Set up wake…, to check it."
+  - Offline: the normal accent "Wake" pill is still offered, with a small caution triangle glyph after the word (BrushCaution, ~11 px);
+    tooltip "Not guaranteed: <name> couldn't confirm its card can wake it." A failed try shows the usual red "Didn't wake" with "Set up wake…".
+  UPDATED (approved): a small round cog button (the master Button.pill.cog) sits right after EVERY wake tag, and after the Wake pill when offline;
+  tooltip "Set up wake…"; it opens the Set up wake window. It REPLACES the "Turn on" link on the caution tag, and the right-click hint is
+  dropped from the tooltips (the right-click menu row stays).
+  "Can't be woken remotely" only when known for sure (no wake-capable card, shut down with Fast Startup); its tooltip also ends with the
+  same right-click hint. Every wake tag's tooltip carries that hint (one shared text in WakeAdvice). -->
+<style>body{font-family:Segoe UI;background:#1b1b1b;color:#eee;padding:20px;font-size:13px}</style></head><body>
+<p>Online: Laptop … [Wake not confirmed] (tooltip: reason + right-click hint)</p>
+<p>Offline: Laptop [Asleep since 09:12] … <span style="color:#e8892f">[⏻ Wake <span style="color:#ef9f27;font-size:10px">▲</span>]</span></p>
+</body></html>

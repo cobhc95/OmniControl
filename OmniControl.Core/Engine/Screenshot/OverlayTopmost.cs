@@ -30,11 +30,12 @@ public static class OverlayTopmost
 
     /// <summary>
     /// Brings the window to the foreground even when another program has it: Windows only lets the program with the last input do that,
-    /// so the call is made with this thread's input attached to the foreground window's thread for a moment.
+    /// so the call is made with this thread's input attached to the foreground window's thread for a moment (always let go again).
+    /// It never hands the foreground right on to other programs (AllowSetForegroundWindow(ASFW_ANY) did, which let any program take the
+    /// foreground from the one the user picked on the taskbar).
     /// </summary>
     public static void TakeForeground(IntPtr window)
     {
-        AllowSetForegroundWindow(AsfwAny);
         var foregroundThread = GetWindowThreadProcessId(GetForegroundWindow(), out _);
         var ownThread = GetCurrentThreadId();
         var attached = foregroundThread != 0 && foregroundThread != ownThread && AttachThreadInput(ownThread, foregroundThread, true);

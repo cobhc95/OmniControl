@@ -1,0 +1,117 @@
+<Window Classes="dialog" xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:si="using:OmniControl.App.SettingsImport"
+        xmlns:c="using:OmniControl.App.Controls"
+        x:Class="OmniControl.App.SettingsImport.ImportFromPcWindow"
+        x:DataType="si:ImportFromPcViewModel"
+        Title="{Binding Title}" Width="580" MinWidth="440" SizeToContent="Height"
+        CanResize="False" WindowStartupLocation="CenterOwner">
+    <!-- Import settings from another PC (docs/mockups/import-settings-from-pc.html). Step 1 (choose): the bold "Everything" tick (a dash when some
+         are ticked, "N of M areas" at its right), a thin line, then the areas the PC has grouped like the sidebar (muted capital headings), two columns,
+         each a tick box, its name and a muted note and count. Step 2 (progress) and 3 (result) share the list: "Backup of this PC" then one row per area
+         with its mark (tick, spinner, open circle, red cross), its words (checked / importing / saved, restart to finish / not applied, kept yours) and an
+         optional yellow fact; a long result folds the plain checked ones into "+ N more checked". -->
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" Margin="12" RowSpacing="8">
+        <TextBlock Classes="title" Text="{Binding Title}" TextWrapping="Wrap" />
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsLoading}">
+            <Panel Classes="tilemark" Margin="0" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Ellipse Classes="markring" />
+                <Path Classes="markarc" />
+            </Panel>
+            <TextBlock Classes="hint" Text="Asking what it has…" VerticalAlignment="Center" />
+        </StackPanel>
+        <TextBlock Grid.Row="1" Classes="cautiontext" Text="{Binding Problem}" IsVisible="{Binding HasProblem}" TextWrapping="Wrap" />
+
+        <StackPanel Grid.Row="2" Spacing="2" IsVisible="{Binding IsChoosing}">
+            <Button Classes="menurow" Command="{Binding ToggleEverythingCommand}">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource MenuGap}">
+                    <Border Classes="tickbox" Classes.checked="{Binding AllChecked}" Classes.mixed="{Binding IsPartial}" VerticalAlignment="Center">
+                        <Panel>
+                            <Path Classes="tick" Data="{StaticResource TickIcon}" IsVisible="{Binding AllChecked}" />
+                            <Border Classes="masterdash" IsVisible="{Binding IsPartial}" />
+                        </Panel>
+                    </Border>
+                    <TextBlock Grid.Column="1" Classes="strong" Text="Everything" />
+                    <TextBlock Grid.Column="2" Classes="hint small" Text="{Binding EverythingCount}" IsVisible="{Binding IsPartial}" />
+                </Grid>
+            </Button>
+            <Border Classes="hrule" Margin="0,2" />
+            <ItemsControl ItemsSource="{Binding Groups}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="si:ImportGroupItem">
+                        <StackPanel Spacing="2" Margin="0,4,0,0">
+                            <TextBlock Classes="navheading" Text="{Binding Heading}" Margin="8,0,0,0" />
+                            <ItemsControl ItemsSource="{Binding Areas}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><UniformGrid Columns="2" /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="si:ImportAreaItem">
+                                        <Button Classes="menurow" Command="{Binding ToggleCommand}">
+                                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource MenuGap}">
+                                                <Border Classes="tickbox" Classes.checked="{Binding IsChecked}" VerticalAlignment="Center">
+                                                    <Path Classes="tick" Data="{StaticResource TickIcon}" IsVisible="{Binding IsChecked}" />
+                                                </Border>
+                                                <TextBlock Grid.Column="1" Text="{Binding Name}" TextWrapping="Wrap" />
+                                                <TextBlock Grid.Column="2" Classes="hint small" Text="{Binding Detail}" TextTrimming="CharacterEllipsis" MaxWidth="150"
+                                                           VerticalAlignment="Center" ToolTip.Tip="{Binding Detail}" />
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Classes="hint" TextWrapping="Wrap" Margin="8,8,0,0"
+                       Text="Chosen areas replace this PC's. A backup is made first. Devices that aren't on this PC are kept and marked &quot;not found&quot;." />
+        </StackPanel>
+
+        <ItemsControl Grid.Row="2" ItemsSource="{Binding Progress}" IsVisible="{Binding ShowsProgress}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="si:ImportProgressRow">
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" MinHeight="24" Margin="6,2" ToolTip.Tip="{Binding Why}">
+                        <Panel Width="{DynamicResource MenuGlyphSize}" VerticalAlignment="Center">
+                            <Path Classes="glyph tickmark" Data="{StaticResource TickIcon}" IsVisible="{Binding IsChecked}" />
+                            <Path Classes="glyph failmark" Data="{StaticResource CrossIcon}" IsVisible="{Binding IsFailed}" />
+                            <Panel Classes="tilemark" Margin="0" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsRunning}">
+                                <Ellipse Classes="markring" />
+                                <Path Classes="markarc" />
+                            </Panel>
+                            <c:IconGlyph LibraryId="circle" Opacity="0.5" IsVisible="{Binding IsPending}" />
+                        </Panel>
+                        <TextBlock Grid.Column="1" Text="{Binding Label}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                        <Border Grid.Column="2" Classes="tag caution" IsVisible="{Binding HasFact}" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Fact}" />
+                        </Border>
+                        <Panel Grid.Column="3" VerticalAlignment="Center">
+                            <TextBlock Classes="goodtext" Text="{Binding Text}" IsVisible="{Binding IsChecked}" />
+                            <TextBlock Classes="badtext" Text="{Binding Text}" IsVisible="{Binding IsFailed}" />
+                            <TextBlock Classes="accenttext" Text="{Binding Text}" IsVisible="{Binding IsRunning}" />
+                            <TextBlock Classes="hint" Text="{Binding Text}" IsVisible="{Binding IsPending}" />
+                            <TextBlock Classes="hint" Text="{Binding Text}" IsVisible="{Binding IsMore}" />
+                        </Panel>
+                    </Grid>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <TextBlock Grid.Row="3" Classes="statusline" Text="{Binding Status}" IsVisible="{Binding HasStatus}" TextWrapping="Wrap" />
+
+        <Border Grid.Row="4" Classes="footer">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="8">
+                <Button Classes="pill" Content="Copy details" Click="OnCopyClick" IsVisible="{Binding IsDone}" />
+                <Button Grid.Column="1" Classes="pill" Content="Undo import" Command="{Binding UndoCommand}" IsVisible="{Binding CanUndo}"
+                        ToolTip.Tip="Puts this PC's settings back from the backup made before the import." />
+                <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="8">
+                    <Button Classes="pill" Content="Cancel" Click="OnCloseClick" IsVisible="{Binding IsAsking}" />
+                    <Button Classes="primary" Content="{Binding ImportText}" Command="{Binding ImportCommand}" IsVisible="{Binding IsChoosing}" />
+                    <Button Classes="pill" Content="Stop" Command="{Binding StopCommand}" IsVisible="{Binding IsRunning}" />
+                    <Button Classes="primary close" Content="Close" Click="OnCloseClick" IsVisible="{Binding IsDone}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

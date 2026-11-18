@@ -96,18 +96,32 @@ public sealed partial class OtherPcsService
             reply.Why = $"{_ownName} did not allow it.";
             return;
         }
-        var facts = await ReadOwnWakeAsync();
-        var result = await Task.Run(() => WakeFixer.Apply(fixes, facts.Mac));
-        reply.Wake = await ReadOwnWakeAsync(); // what really changed, row by row
-        reply.Ok = result.Failure == HelperFailure.None && result.ExitCode == 0;
-        if (reply.Ok != true) reply.Why = result.Failure switch
+        var (done, facts) = await ApplyWakeFixesHereAsync(fixes);
+        reply.Wake = facts; // what really changed, row by row
+        reply.Ok = done.Ok;
+        if (!done.Ok) reply.Why = done.Why;
+    }
+
+    /// <summary>
+    /// Turns the settings on for this PC, behind Windows' own administrator prompt: the one path for a fix another PC asked for (after this PC's own
+    /// question) and for the one asked in this PC's own set-up window. Returns how it ended and the facts read again afterwards.
+    /// </summary>
+    private async Task<(WakeReply Reply, WakeFacts Facts)> ApplyWakeFixesHereAsync(IReadOnlyList<WakeFix> fixes)
+    {
+        var before = await ReadOwnWakeAsync();
+        var result = await Task.Run(() => WakeFixer.Apply(fixes, before.Mac));
+        var after = await ReadOwnWakeAsync();
+        var ok = result.Failure == HelperFailure.None && result.ExitCode == 0;
+        if (ok) return (new WakeReply(true, string.Empty), after);
+        Guard.Log("Other PCs: wake fix", new IOException(result.Detail));
+        var why = result.Failure switch
         {
             HelperFailure.Cancelled => $"The Windows prompt on {_ownName} was refused.",
             HelperFailure.Blocked => "Windows blocked the change.",
             HelperFailure.None => $"Windows could not change every setting on {_ownName}.",
             _ => $"The change could not be started on {_ownName}.",
         };
-        if (reply.Ok != true) Guard.Log("Other PCs: wake fix", new IOException(result.Detail));
+        return (new WakeReply(false, why), after);
     }
 
     private async Task<bool> TestHereAsync(PairedPc pair, PcMsg reply)

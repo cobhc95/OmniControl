@@ -94,13 +94,28 @@ public sealed partial class AutomationPageViewModel : PageViewModel, IDisposable
         Customs.CollectionChanged += (_, _) => OnPropertyChanged(nameof(NoCustoms));
         Tabs.PropertyChanged += OnTabChanged;
         service.Changed += RefreshStatus;
+        service.Reloaded += ShowAll;
         RefreshStatus();
+    }
+
+    /// <summary>Every rule, custom action and script was replaced (an import): the lists are made again from the service's.</summary>
+    private void ShowAll()
+    {
+        foreach (var item in Automations.Concat(Blocks)) item.Dispose();
+        foreach (var item in Customs) item.Dispose();
+        Automations.Clear();
+        Blocks.Clear();
+        Customs.Clear();
+        foreach (var rule in _service.Settings.Rules) Show(rule);
+        foreach (var custom in _service.Settings.Customs) Customs.Add(new CustomActionItem(custom, _service, _ask));
+        ShowScriptItems();
     }
 
     public void Dispose()
     {
         Tabs.PropertyChanged -= OnTabChanged;
         _service.Changed -= RefreshStatus;
+        _service.Reloaded -= ShowAll;
         _service.CustomAdded -= OnCustomAdded;
         _service.CustomRemoved -= OnCustomRemoved;
         ForgetScripts();

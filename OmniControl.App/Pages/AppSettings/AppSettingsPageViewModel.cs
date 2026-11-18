@@ -3,6 +3,8 @@ using Avalonia;
 using Avalonia.Media;
 using Avalonia.Styling;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using OmniControl.App.Controls;
 using OmniControl.App.Dialogs;
 using OmniControl.Core.Engine;
 using OmniControl.App.Hotkeys;
@@ -29,6 +31,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
     private readonly ButtonItem _restoreAllCard;
     private readonly ButtonItem _presets;
     private readonly ButtonItem _backup;
+    private readonly MenuChoiceItem _importFromPc;
     private bool _readingStartup;
 
     /// <summary>One plain sentence under the list when Windows has the start-up entry switched off or refused a change; empty otherwise.</summary>
@@ -67,6 +70,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
         Entry(_hardwareCheck, StartName, "hardware check refresh monitors displays sound devices touchpad undetected missing remote desktop safety periodic every minutes"),
         Entry(_presets, DataName, "presets manage layers display monitor equaliser compressor shortcut order rename"),
         Entry(_backup, DataName, "backup restore export import save load move computer wipe reset factory delete all settings"),
+        Entry(_importFromPc, DataName, "import settings another pc computer laptop copy paired other pcs move"),
         Entry(_restoreAllCard, DataName, "reset default restore every page all settings"),
     }.Concat(ConfirmationSearchEntries()).Concat(PluginSearchEntries()).Concat(UpdateSearchEntries())
      .Append(Entry(_about, UpdatesName, "about credits licence license gpl open source version notice"));
@@ -137,6 +141,11 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
             Extra = new[] { new CardAction("Import...", () => _ = backup.ImportAsync()), new CardAction("Wipe all...", () => _ = backup.WipeAsync(), danger: true) },
         };
 
+        _importFromPc = new MenuChoiceItem("Import from another PC", () => "Choose a PC", () => ImportPcRows(backup))
+        {
+            Tip = "Copy chosen areas of a paired PC's settings here. It has to be on and connected.",
+        };
+
         _addFolder = new FileItem("Plug-in folders", FileKind.OfFolder("Choose a folder with plug-ins"), AddFolder) { EmptyText = "Add a folder to scan" };
         _scan = new ButtonItem("Plug-in scan", "Scan now", ScanIdleText, StartScan);
         _scanPlugins = scanPlugins;
@@ -149,15 +158,16 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
         // Each group is made from its fixed cards (its closed header lists their names), then the cards that come and go are added.
         Appearance = Fill(AppearanceItems, "AppSettings/Appearance", AppearanceName, Theme, Accent, _groupsOpen);
         StartAndClose = Fill(StartItems, "AppSettings/Start", StartName, _startWithWindows, _startMinimised, _whenClosing, _hardwareCheck);
-        YourData = Fill(DataItems, "AppSettings/Data", DataName, _presets, _backup, _resetAllConfirmations, _restoreAllCard);
+        YourData = Fill(DataItems, "AppSettings/Data", DataName, _presets, _backup, _importFromPc, _resetAllConfirmations, _restoreAllCard);
         PlugIns = Fill(PluginItems, "AppSettings/Plugins", PluginsName, _addFolder, _scan, _keepFx);
         UpdatesAndAbout = Fill(UpdateItems, "AppSettings/Updates", UpdatesName, _updateDaily, _version, _latest, _about);
         foreach (var folder in _settings.PluginFolders) PluginItems.Insert(PluginItems.IndexOf(_scan), FolderRow(folder));
         ReloadConfirmations();
         confirmations.Changed += ReloadConfirmations;
         ReadStartup();
-        hotkeys.Register(new HotkeyAction("app.show", "Open OmniControl", Title, "show window open tray restore", _ => AppLifecycle.RequestShow()) { NeverBlock = true, SuggestedIcons = new[] { "app", "home" } });
-        hotkeys.Register(new HotkeyAction("app.toggle", "Show or hide OmniControl", Title, "show hide toggle window tray minimise", _ => AppLifecycle.RequestToggle())
+        hotkeys.Register(new HotkeyAction("app.show", "Open OmniControl", Title, "show window open tray restore", _ => AppLifecycle.RequestShow($"the action Open OmniControl, run by {RunChain.Describe(hotkeys.Chain)}")) { NeverBlock = true, SuggestedIcons = new[] { "app", "home" } });
+        hotkeys.Register(new HotkeyAction("app.toggle", "Show or hide OmniControl", Title, "show hide toggle window tray minimise",
+            _ => AppLifecycle.RequestToggle($"the action Show or hide OmniControl, run by {RunChain.Describe(hotkeys.Chain)}"))
             { NeverBlock = true, DefaultKey = "Alt+X", SuggestedIcons = new[] { "app", "home" } });
         hotkeys.Register(new HotkeyAction("app.shortcuts", "Keyboard shortcuts", Title, "keyboard shortcuts keys help list f1", _ => showShortcuts()) { SuggestedIcons = new[] { "keyboard", "help" } });
         hotkeys.Register(new HotkeyAction("app.quit", "Quit OmniControl", Title, "exit quit close stop tray", _ => AppLifecycle.RequestQuit()) { SuggestedIcons = new[] { "power", "lock" } });
@@ -167,6 +177,14 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
         });
         hotkeys.Register(new HotkeyAction("app.plugins.scan", "Scan for plug-ins", Title, "plug-in plugin vst vst2 vst3 scan search folders",
             _ => StartScan()));
+    }
+
+    /// <summary>The menu of the Import from another PC card: the paired PCs that are connected now (asked every time it opens), each opens the import window.</summary>
+    private static IReadOnlyList<MenuRowItem> ImportPcRows(BackupService backup)
+    {
+        var pcs = backup.OnlinePcs();
+        if (pcs.Count == 0) return new[] { MenuRowItem.Header("No paired PC is online") };
+        return pcs.Select(pc => new MenuRowItem(pc.Name, string.Empty, false, $"Import settings from {pc.Name}…", new RelayCommand(() => backup.ImportFromPc(pc.Id)), Icon: "download")).ToList();
     }
 
     private static ItemGroup Fill(ObservableCollection<object> items, string key, string name, params object[] cards)
@@ -201,6 +219,26 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
         StartupNote = state == StartupState.DisabledByUser
             ? "Switched off in Task Manager > Startup apps; turning this on re-enables it."
             : string.Empty;
+    }
+
+    /// <summary>
+    /// Takes settings.json from disk as it is now (an import wrote it): the theme and accent are applied, the cards show the values and the
+    /// hardware check runs as chosen. Whatever else reads <see cref="AppSettings.Current"/> reads it where it is used.
+    /// </summary>
+    public bool ReloadFromDisk()
+    {
+        SettingsCopy.Into(_settings, AppSettings.Load());
+        Apply(_settings.Theme);
+        Theme.Load((int)_settings.Theme);
+        var names = AccentService.Names.ToList();
+        if (names.Contains(_settings.Accent)) AccentService.Set(_settings.Accent);
+        Accent.Load(Math.Max(0, names.IndexOf(_settings.Accent)));
+        ShowGroupsOpen();
+        _startMinimised.Load(_settings.StartMinimised);
+        _whenClosing.Load(_whenClosing.Options, CloseBehaviors.LabelOf(_settings.CloseBehavior));
+        _hardware.ApplyCheck();
+        _hardwareCheck.Load(_hardwareCheck.Options, HardwareChecks.LabelOf(_hardware.Check));
+        return true;
     }
 
     /// <summary>The choice was changed elsewhere (the sidebar chip, Restore defaults): the card shows it without applying it again.</summary>

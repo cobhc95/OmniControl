@@ -94,6 +94,17 @@ public sealed class IconStore : IDisposable
         }
     }
 
+    /// <summary>Takes icons.json from disk as it is now (an import wrote it): the user's icons and every action's chosen icon follow, and what shows icons draws them again.</summary>
+    public bool ReloadFromDisk()
+    {
+        foreach (var icon in _settings.Mine) Application.Current?.Resources.Remove(icon.Value);
+        SettingsCopy.Into(_settings, AppDataStore.Load<IconSettings>(DataStores.Icons) ?? new());
+        foreach (var icon in _settings.Mine) Publish(icon);
+        foreach (var action in _hotkeys.Actions) Apply(action);
+        Changed?.Invoke();
+        return true;
+    }
+
     public void Rename(string value, string name)
     {
         if (Find(value) is not { } icon || name.Trim().Length == 0 || icon.Name == name.Trim()) return;

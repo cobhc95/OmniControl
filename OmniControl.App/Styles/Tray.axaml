@@ -87,9 +87,13 @@
         <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
         <Setter Property="BorderBrush" Value="Transparent" />
     </Style>
-    <Style Selector="Button.tile.on /template/ ContentPresenter#PART_ContentPresenter, Button.tile.on:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Style Selector="Button.tile.on /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" />
+    </Style>
+    <Style Selector="Button.tile.on:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
     </Style>
     <Style Selector="Button.tile.on > StackPanel > c|IconGlyph"><Setter Property="Foreground" Value="{DynamicResource BrushAccent}" /></Style>
     <!-- .faded = its state is only the last one known (docs/mockups/tray-tile-states.html): the whole tile is dimmed, lit or not -->
@@ -162,9 +166,13 @@
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
     </Style>
     <Style Selector="Button.statepower.on"><Setter Property="Foreground" Value="{DynamicResource BrushAccent}" /></Style>
-    <Style Selector="Button.statepower.on /template/ ContentPresenter#PART_ContentPresenter, Button.statepower.on:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Style Selector="Button.statepower.on /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" />
+    </Style>
+    <Style Selector="Button.statepower.on:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
     </Style>
     <Style Selector="Button.statepower:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />

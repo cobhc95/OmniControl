@@ -211,6 +211,7 @@ public sealed partial class OtherPcsService
         if (Find(id) is { } known)
         {
             known.Name = name; // paired again: the new key replaces the old, what is shared stays
+            LogRoute(known, route, "paired again");
             known.Route = route;
             known.Address = address;
             known.TailscaleAddress = tailscale;

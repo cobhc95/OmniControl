@@ -7,11 +7,11 @@ namespace OmniControl.App.Tray;
 /// </summary>
 public static class TrayDefaults
 {
-    /// <summary>Brightness, one row per display; then the volume with the default speaker as its pick list.</summary>
+    /// <summary>Brightness, one row with a chip choosing a display or all of them; then the volume with the default speaker as its pick list.</summary>
     public static IReadOnlyList<TrayElement> Sliders => new[]
     {
-        TrayElement.OfState("displays.*.brightness"),
-        TrayElement.OfState("volume.master.level", choice: "volume.default.speaker"),
+        new TrayElement { State = "displays.*.brightness", Together = true },
+        new TrayElement { State = "volume.master.level", Choice = "volume.default.speaker", AllState = "volume.speakers.all.level" },
     };
 
     /// <summary>Effects on/off, every smart device, night light, area screenshot, microphone mute, rotate.</summary>

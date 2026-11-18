@@ -282,6 +282,8 @@
         <x:Double x:Key="BrowserTabMinWidth">90</x:Double>
         <x:Double x:Key="BrowserTabGap">2</x:Double>
         <x:Double x:Key="BrowserTabDotSize">7</x:Double>
+        <!-- A chip's status dot (c|StatusDot, Controls/ChipMenu): the words' inset when the chip has a dot (the dot's size plus a gap) -->
+        <Thickness x:Key="ChipDotInset">11,0,0,0</Thickness>
         <CornerRadius x:Key="BrowserTabCornerRadius">7,7,0,0</CornerRadius>
         <!-- The Volume Wiring tables: the widest a source's name gets (then "..."), the widest the Cable column's words get (then they
              wrap), the gap between the columns, and the column titles' inset (a compact row's padding 10 plus its 1 px border) -->

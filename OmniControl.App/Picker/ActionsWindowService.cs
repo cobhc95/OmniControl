@@ -125,6 +125,9 @@ public sealed class ActionsWindowService : IDisposable
         _registry.ImportAll(_registry.ExportAll().ToDictionary(p => p.Key, p => p.Value with { Gesture = string.Empty, More = null }));
     }
 
+    /// <summary>Takes the shortcut sets from disk as they are now (an import wrote them); false when the file holds none.</summary>
+    public bool ReloadShortcutSets() => _sets.ReloadFromDisk();
+
     public void Dispose()
     {
         _registry.BindingsSaved -= OnBindingsSaved;

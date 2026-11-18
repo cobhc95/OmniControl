@@ -25,6 +25,9 @@ public static class BackupFile
 {
     public const string Extension = "omnibackup";
     private const string ManifestName = "manifest.json";
+
+    /// <summary>The automatic backup taken before "Import settings from another PC" (one file in the data folder, replaced by the next import; a wipe removes it).</summary>
+    public const string BeforeImportName = "import-backup." + Extension;
     private const int Format = 1;
 
     /// <summary>A backup or a store in it larger than this is not one OmniControl made.</summary>
@@ -103,7 +106,11 @@ public static class BackupFile
         }
     }
 
-    private static bool TryParse(string text, out JsonNode? node)
+    /// <summary>The entries of the list store whose text this is (null for plain settings or damaged text): what an import window counts.</summary>
+    public static int? CountOfText(DataStore store, string text) => TryParse(text, out var node) ? CountOf(store, node) : null;
+
+    /// <summary>Whether the text is json (the node), as every store has to be.</summary>
+    public static bool TryParse(string text, out JsonNode? node)
     {
         try
         {

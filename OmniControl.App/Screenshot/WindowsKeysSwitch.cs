@@ -1,3 +1,4 @@
+using OmniControl.App.Services;
 using OmniControl.Core.Engine;
 
 namespace OmniControl.App.Screenshot;
@@ -28,6 +29,17 @@ public sealed class WindowsKeysSwitch
     public void Reapply()
     {
         if (IsOn && !SnippingKeys.IsOff(SnippingKeys.Capture())) SnippingKeys.TurnOff();
+    }
+
+    /// <summary>
+    /// Takes screenshots.json from disk as it is now (an import wrote it; this PC's own switch, its backup of Windows' keys and its recording way are
+    /// kept by the import) and makes a switch that is on true again. The screenshot actions and the capture service hold this same settings object.
+    /// </summary>
+    public bool ReloadFromDisk()
+    {
+        SettingsCopy.Into(_settings, ScreenshotSettings.Load());
+        Reapply();
+        return true;
     }
 
     public void Toggle() => Set(!IsOn);

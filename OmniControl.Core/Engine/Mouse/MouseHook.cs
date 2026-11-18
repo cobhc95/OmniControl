@@ -47,18 +47,51 @@ public sealed class MouseHook : IDisposable
     private int _logged, _wheelLogged, _moveLogged, _diagnosed;
 
     // Log lines are written by their own thread: file writes inside the hook callback would slow every input down.
-    private readonly ConcurrentQueue<string> _logLines = new();
+    private readonly ConcurrentQueue<(string Line, bool Problem)> _logLines = new();
     private readonly SemaphoreSlim _logReady = new(0);
+
+    // Problems (a slow call, the hook dropped) are told at most once per CoreTiming.HookReportGapMs, with a count of the ones in between.
+    private readonly object _problemGate = new();
+    private long _lastProblem = long.MinValue / 2;
+    private int _problemsSince;
+    private string? _slowestHandler; // hook thread only: the handler that was slow during the current call
 
     /// <summary>Where the hook writes what it did (installed or refused, first inputs, errors, slow handlers); set before <see cref="Start"/>. Called on a background thread.</summary>
     public Action<string>? Log { get; set; }
+
+    /// <summary>
+    /// Where a problem the owner should hear about goes (a hook call slower than <see cref="CoreTiming.HookSlowMs"/>, Windows dropping the
+    /// hook), at most once per <see cref="CoreTiming.HookReportGapMs"/>; set before <see cref="Start"/>. Called on a background thread.
+    /// </summary>
+    public Action<string>? Problem { get; set; }
 
     public MouseHook() => _proc = Callback;
 
     private void Note(string line, ref int counter)
     {
         if (Log is null || Interlocked.Increment(ref counter) > CoreTiming.HookLogLimit) return;
-        _logLines.Enqueue(line);
+        _logLines.Enqueue((line, false));
+        _logReady.Release();
+    }
+
+    /// <summary>Tells a problem (any thread, never waits on anything slow): to <see cref="Problem"/> and the hook log, at most once per gap.</summary>
+    private void ReportProblem(string line)
+    {
+        if (Problem is null) return;
+        string? report = null;
+        lock (_problemGate)
+        {
+            var now = Environment.TickCount64;
+            _problemsSince++;
+            if (now - _lastProblem >= CoreTiming.HookReportGapMs)
+            {
+                report = _problemsSince > 1 ? $"{line} ({_problemsSince - 1} more since the last report)" : line;
+                _problemsSince = 0;
+                _lastProblem = now;
+            }
+        }
+        if (report is null) return;
+        _logLines.Enqueue((report, true));
         _logReady.Release();
     }
 
@@ -132,7 +165,9 @@ public sealed class MouseHook : IDisposable
         while (true)
         {
             _logReady.Wait();
-            if (_logLines.TryDequeue(out var line)) Log?.Invoke(line);
+            if (!_logLines.TryDequeue(out var item)) continue;
+            Log?.Invoke(item.Line);
+            if (item.Problem) Problem?.Invoke(item.Line);
         }
     }
 
@@ -153,6 +188,7 @@ public sealed class MouseHook : IDisposable
             {
                 if (hook != IntPtr.Zero) UnhookWindowsHookEx(hook);
                 hook = Install("hook reinstalled (Windows had dropped it)");
+                ReportProblem("Windows had dropped the mouse hook (it saw no input while the pointer moved; a call was too slow, or a program run as administrator was in front); it was put back");
             }
         }
         if (hook != IntPtr.Zero) UnhookWindowsHookEx(hook);
@@ -199,32 +235,45 @@ public sealed class MouseHook : IDisposable
         if (_started) PostThreadMessage(_threadId, WmRaise, (UIntPtr)(uint)button, IntPtr.Zero);
     }
 
+    /// <summary>
+    /// Windows' call for every mouse input. Windows holds all mouse input (the taskbar's too) while it runs, so a call slower than
+    /// <see cref="CoreTiming.HookSlowMs"/> is reported with the handler that took the time.
+    /// </summary>
     private IntPtr Callback(int code, IntPtr wParam, IntPtr lParam)
     {
-        Volatile.Write(ref _lastCallback, Environment.TickCount64);
-        if (code >= 0 && (uint)wParam == WmMouseMove && MoveHandler is { } onMove)
+        var started = Environment.TickCount64;
+        Volatile.Write(ref _lastCallback, started);
+        _slowestHandler = null;
+        var swallow = code >= 0 && Swallows((uint)wParam, lParam);
+        var took = Environment.TickCount64 - started;
+        if (took >= CoreTiming.HookSlowMs)
+            ReportProblem($"a mouse hook call took {took} ms (message 0x{(uint)wParam:x}{(_slowestHandler is { } slow ? $", {slow}" : string.Empty)}); Windows holds all mouse input meanwhile");
+        return swallow ? (IntPtr)1 : CallNextHookEx(IntPtr.Zero, code, wParam, lParam);
+    }
+
+    /// <summary>True to swallow the input. Hook thread only.</summary>
+    private bool Swallows(uint message, IntPtr lParam)
+    {
+        if (message == WmMouseMove)
         {
+            if (MoveHandler is not { } onMove) return false;
             var move = Read(lParam);
             try
             {
-                if (move.ExtraInfo != InputSender.Marker && onMove(move.X, move.Y))
-                {
-                    if (_moveLogged < 5) Note($"  -> move to {move.X},{move.Y} swallowed", ref _moveLogged); // a few show the movement is caught
-                    return (IntPtr)1;
-                }
+                if (move.ExtraInfo == InputSender.Marker || !onMove(move.X, move.Y)) return false;
+                if (_moveLogged < 5) Note($"  -> move to {move.X},{move.Y} swallowed", ref _moveLogged); // a few show the movement is caught
+                return true;
             }
             catch (Exception ex)
             {
                 // As below: an exception must never escape the hook; the movement passes through and the error is logged.
                 Note($"move handler failed: {ex}", ref _moveLogged);
+                return false;
             }
         }
-        else if (code >= 0 && (uint)wParam != WmMouseMove && _handlers.Length > 0)
-        {
-            var data = Read(lParam);
-            if (data.ExtraInfo != InputSender.Marker && Translate((uint)wParam, data) is { } ev && RunHandlers(ev)) return (IntPtr)1;
-        }
-        return CallNextHookEx(IntPtr.Zero, code, wParam, lParam);
+        if (_handlers.Length == 0) return false;
+        var data = Read(lParam);
+        return data.ExtraInfo != InputSender.Marker && Translate(message, data) is { } ev && RunHandlers(ev);
     }
 
     /// <summary>Asks the handlers in order; true when one took the input. Runs on the hook thread only.</summary>
@@ -232,9 +281,9 @@ public sealed class MouseHook : IDisposable
     {
         if (ev.IsDown && PassAll?.Invoke() == true) return false;
         if (ev.Button is not (MouseButton.Left or MouseButton.Right) && Wants(ev.Button)) Note(ev.Button, $"hook sees {ev.Button} {(ev.IsDown ? "down" : "up")}"); // plain clicks would use up the log
-        var started = Environment.TickCount64;
         foreach (var handler in _handlers)
         {
+            var started = Environment.TickCount64;
             try
             {
                 if (handler(ev))
@@ -248,9 +297,12 @@ public sealed class MouseHook : IDisposable
                 // An exception escaping a hook callback would take the whole app down; the input passes through and the error is logged.
                 Note(ev.Button, $"handler failed on {ev.Button}: {ex}");
             }
+            finally
+            {
+                var took = Environment.TickCount64 - started;
+                if (took >= CoreTiming.HookSlowMs) _slowestHandler = $"{handler.Method.DeclaringType?.Name}.{handler.Method.Name} {took} ms on {ev.Button} {(ev.IsDown ? "down" : "up")}";
+            }
         }
-        var took = Environment.TickCount64 - started;
-        if (took >= CoreTiming.HookSlowMs) Note(ev.Button, $"handlers were slow: {took} ms (Windows drops a hook that takes too long)");
         return false;
     }
 

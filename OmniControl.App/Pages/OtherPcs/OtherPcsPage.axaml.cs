@@ -4,12 +4,11 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
-using CommunityToolkit.Mvvm.Input;
 using OmniControl.App.Controls;
 
 namespace OmniControl.App.Pages.OtherPcs;
 
-/// <summary>Wiring only: a right-click on a PC's tab opens its menu (Give nickname…, Unpair) in the shared menu style; a dragged tab is handed to the view-model; Ctrl+Tab switches tabs, Ctrl+T opens a New PC tab, Ctrl+W closes the open one; Esc on an open New PC tab closes it.</summary>
+/// <summary>Wiring only: a right-click on a PC's tab opens its menu (Give nickname…, Set up wake…, Import settings from… while the PC is online, Unpair) in the shared menu style; a dragged tab is handed to the view-model; Ctrl+Tab switches tabs, Ctrl+T opens a New PC tab, Ctrl+W closes the open one; Esc on an open New PC tab closes it.</summary>
 public partial class OtherPcsPage : UserControl
 {
     private Flyout? _rowMenu;
@@ -32,11 +31,7 @@ public partial class OtherPcsPage : UserControl
             _rowRows.Picked += (_, _) => _rowMenu?.Hide();
             _rowMenu = new ListMenuFlyout { Placement = PlacementMode.Pointer, Content = _rowRows };
         }
-        _rowRows!.ItemsSource = new[]
-        {
-            new MenuRowItem("Give nickname…", string.Empty, false, "Name this PC here; the other PC is never told.", new AsyncRelayCommand(pc.GiveNicknameAsync), Icon: "pencil"),
-            new MenuRowItem("Unpair", string.Empty, false, "Forget this PC. It keeps its side until it is unpaired there too.", pc.UnpairCommand, Icon: "trash"),
-        };
+        _rowRows!.ItemsSource = pc.MenuRows;
         _rowMenu.ShowAt(item, showAtPointer: true);
         e.Handled = true;
     }

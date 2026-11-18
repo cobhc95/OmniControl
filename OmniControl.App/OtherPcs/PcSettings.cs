@@ -20,6 +20,9 @@ public sealed class PairedPc
     public string Name { get; set; } = string.Empty;
     public PcRoute Route { get; set; } = PcRoute.Lan;
 
+    /// <summary>A route chosen here that the other PC has not been told yet (it was unreachable); sent on the next contact. Null = nothing waiting.</summary>
+    public PcRoute? PendingRoute { get; set; }
+
     /// <summary>The name the user gave this PC on this PC only (never sent to it); empty = none, <see cref="Name"/> is used.</summary>
     public string Nickname { get; set; } = string.Empty;
 

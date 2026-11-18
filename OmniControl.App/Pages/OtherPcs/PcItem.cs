@@ -42,8 +42,8 @@ public sealed partial class PcItem : ObservableObject
 
     public bool HasNickname => _service.Find(Id)?.Nickname.Length > 0;
 
-    /// <summary>The header's one tag: what a probe over the chosen route found (or why not), or when the PC was last seen.</summary>
-    [ObservableProperty] private IReadOnlyList<TagItem> _tags = Array.Empty<TagItem>();
+    /// <summary>The connection chip's words and tone (docs/mockups/pc-header-tidy.html): what a probe over the chosen route found (or why not), or how the PC went away.</summary>
+    [ObservableProperty] private TagItem _connection = new("Checking…");
 
     [ObservableProperty] private bool _isOnline;
 
@@ -59,7 +59,7 @@ public sealed partial class PcItem : ObservableObject
     /// <summary>The PC's shared items as sections with real controls.</summary>
     public PcMirror Mirror { get; }
 
-    /// <summary>The note under the Connect chip while the PC is not connected (why, in one sentence).</summary>
+    /// <summary>The note under the header while the PC is not connected (why, in one sentence).</summary>
     [ObservableProperty, NotifyPropertyChangedFor(nameof(HasNote))] private string _note = string.Empty;
 
     public bool HasNote => Note.Length > 0;
@@ -92,19 +92,22 @@ public sealed partial class PcItem : ObservableObject
 
     // ---- Wake (docs/mockups/other-pc-wake.html) ----
 
-    /// <summary>The wake tags in the header line: "Can wake from sleep", "Wake is off on X", "Can't be woken remotely", or "Didn't wake (tried N times)".</summary>
-    [ObservableProperty] private IReadOnlyList<TagItem> _wakeTags = Array.Empty<TagItem>();
+    /// <summary>The wake status in the left half of the split Wake button: "Wake ready", "Wake not set up", "Wake unconfirmed" or "Can't wake" (the reason in its tooltip).</summary>
+    [ObservableProperty] private TagItem? _wakeStatus;
 
-    /// <summary>The yellow tag's "Turn on" link: opens the set-up window (nothing changes until that PC allows it).</summary>
-    [ObservableProperty] private bool _showsTurnOn;
+    /// <summary>The red "Didn't wake" note beside the buttons after a wake that was not answered (its reason in the tooltip); empty otherwise.</summary>
+    [ObservableProperty] private IReadOnlyList<TagItem> _wakeFailed = Array.Empty<TagItem>();
 
-    /// <summary>The red message's "Set up wake…" link.</summary>
-    [ObservableProperty] private bool _showsSetUpLink;
-
-    /// <summary>The accent "Wake" pill: the PC is off and can be woken.</summary>
+    /// <summary>The left half of the split button is the accent "Wake" action: the PC is off and can be woken.</summary>
     [ObservableProperty] private bool _showsWake;
 
-    /// <summary>The signal was sent and the PC is awaited: the spinner and "Waking…" replace the pill.</summary>
+    /// <summary>The Wake action is offered but the PC's wake could not be confirmed: it carries a caution mark.</summary>
+    [ObservableProperty] private bool _wakeUnconfirmed;
+
+    /// <summary>The Wake action's tooltip.</summary>
+    [ObservableProperty] private string _wakeTip = string.Empty;
+
+    /// <summary>The signal was sent and the PC is awaited: the left half says "Waking…" with the shared spinner.</summary>
     [ObservableProperty] private bool _isWaking;
 
     /// <summary>Asks for the wake set-up window of this PC (the page opens it).</summary>
@@ -116,27 +119,26 @@ public sealed partial class PcItem : ObservableObject
     [RelayCommand]
     private void SetUpWake() => SetupWakeRequested?.Invoke(this);
 
+    /// <summary>Asks for the "Import settings from this PC" window (the page opens it; only while the PC is online).</summary>
+    public event Action<PcItem>? ImportRequested;
+
+    [RelayCommand]
+    private void ImportSettings() => ImportRequested?.Invoke(this);
+
     private void RefreshWake()
     {
         var advice = _service.WakeAdviceOf(Id);
         var status = _service.WakeStatusOf(Id);
-        var tags = new List<TagItem>();
         IsWaking = !IsOnline && status.Phase == WakePhase.Waking;
         var failed = !IsOnline && status.Phase == WakePhase.Failed;
-        ShowsTurnOn = advice.State == WakeState.SettingOff;
-        ShowsWake = !IsWaking && advice.State == WakeState.Wakeable;
-        ShowsSetUpLink = failed;
-        switch (advice.State)
-        {
-            case WakeState.CanWake: tags.Add(new TagItem("Can wake from sleep", TagTone.Good, $"It can be woken over the network ({_service.WakeFactsOf(Id)?.Adapter}).")); break;
-            case WakeState.SettingOff: tags.Add(new TagItem($"Wake is off on {Name}", TagTone.Caution, "Its network card can wake it, but a setting is off. Turn on opens the set-up; nothing changes there until that PC allows it.")); break;
-            case WakeState.Cannot: tags.Add(new TagItem("Can't be woken remotely", TagTone.Neutral, advice.Reason)); break;
-        }
-        if (failed) tags.Add(new TagItem(OtherPcsService.WakeFailedWords(status), TagTone.Risk, status.Why));
-        WakeTags = tags;
+        WakeUnconfirmed = advice.State == WakeState.Unconfirmed;
+        ShowsWake = !IsWaking && !IsOnline && advice.State is WakeState.Wakeable or WakeState.Unconfirmed;
+        WakeTip = WakeUnconfirmed ? $"Not guaranteed: {Name} couldn't confirm its card can wake it." : "Send the wake signal to this PC over the network.";
+        WakeStatus = WakeStatusWords.Of(advice, _service.WakeFactsOf(Id));
+        WakeFailed = failed ? new[] { new TagItem(OtherPcsService.WakeFailedWords(status), TagTone.Risk, status.Why) } : Array.Empty<TagItem>();
     }
 
-    /// <summary>The offline tag: how the PC went away from its notice ("Asleep since 09:12"), or just "Offline" (the last time it was seen in the tip).</summary>
+    /// <summary>The offline status: how the PC went away from its notice ("Asleep since 09:12"), or just "Offline" (the last time it was seen in the tip).</summary>
     private TagItem OfflineTag(string? detail)
     {
         var seen = _service.SeenWords(Id);
@@ -148,25 +150,44 @@ public sealed partial class PcItem : ObservableObject
 
     private PcRoute Route => _service.Find(Id)?.Route ?? PcRoute.Lan;
 
-    public string ConnectText => Route switch { PcRoute.Lan => "Connect: LAN", PcRoute.Tailscale => "Connect: Tailscale", _ => "Connect: other address" };
+    private static string RouteWord(PcRoute route) => route switch { PcRoute.Tailscale => "Tailscale", PcRoute.Address => "Other address", _ => "LAN" };
+
+    /// <summary>The chip's tooltip: the status sentence, or what the chip is.</summary>
+    public string ConnectTip
+    {
+        get
+        {
+            var tip = Connection.Tip is { Length: > 0 } status ? status : "How this PC is reached.";
+            return _service.RouteNote(Id) is { Length: > 0 } note ? $"{tip} {note}" : tip;
+        }
+    }
 
     public bool ShowsAddress => Route == PcRoute.Address;
 
     /// <summary>The address typed for a PC on ZeroTier or another network; applied when the box is left.</summary>
     [ObservableProperty] private string _address = string.Empty;
 
+    /// <summary>The Connect menu: the routes, each with its live result (only the chosen route is measured), a thin line and "Check now".</summary>
     public IReadOnlyList<MenuRowItem> ConnectRows => new[]
     {
-        new MenuRowItem("LAN", string.Empty, Route == PcRoute.Lan, "Found on the local network by itself.", new RelayCommand(() => SetRoute(PcRoute.Lan))),
-        new MenuRowItem("Tailscale", string.Empty, Route == PcRoute.Tailscale, "Reached over Tailscale; this page checks what is still needed.", new RelayCommand(() => SetRoute(PcRoute.Tailscale))),
-        new MenuRowItem("Other address", string.Empty, Route == PcRoute.Address, "Reached at an address on another network such as ZeroTier; type it below.", new RelayCommand(() => SetRoute(PcRoute.Address))),
+        MenuRowItem.Header("Connect via"),
+        RouteRow(PcRoute.Lan, "Found on the local network by itself."),
+        RouteRow(PcRoute.Tailscale, "Reached over Tailscale; this page checks what is still needed."),
+        RouteRow(PcRoute.Address, "Reached at an address on another network such as ZeroTier; type it below."),
+        new MenuRowItem("Check now", string.Empty, false, "Measure the chosen route again.", new RelayCommand(() => _service.CheckRouteNow(Id)), RuleAbove: true),
     };
+
+    private MenuRowItem RouteRow(PcRoute route, string tip)
+    {
+        var result = route == Route && _service.ProbeOf(Id) is { } probe && probe.Route == route ? probe.Result : null;
+        var tags = result is null ? null : new[] { result.Ok ? new TagItem($"{result.Ms} ms", TagTone.Good) : new TagItem("not reachable", TagTone.Neutral, result.Reason) };
+        return new MenuRowItem(RouteWord(route), string.Empty, route == Route, tip, new RelayCommand(() => SetRoute(route)), Tags: tags);
+    }
 
     private void SetRoute(PcRoute route)
     {
         _service.SetRoute(Id, route, Address);
-        OnPropertyChanged(nameof(ConnectText));
-        OnPropertyChanged(nameof(ShowsAddress));
+        Refresh();
     }
 
     /// <summary>The address box was left or confirmed: the PC is reached there from now on.</summary>
@@ -186,15 +207,18 @@ public sealed partial class PcItem : ObservableObject
         // The tag says what a probe over the chosen route really found (an authenticated ping answered by that PC), never what is only chosen.
         var probe = _service.ProbeOf(Id);
         var connected = _service.RouteConnected(Id);
-        var word = Route switch { PcRoute.Tailscale => "Tailscale", PcRoute.Address => "Other address", _ => "LAN" };
+        var word = RouteWord(Route);
         NeedsTailscale = _service.NeedsTailscaleSetup(Id);
+        // The chosen route is never swapped silently: a failed one is said in the chip, and the one fall-back that exists (Tailscale to LAN) names both.
         TagItem state;
-        if (connected) state = new TagItem($"{word} ✓ {probe!.Result.Ms} ms", TagTone.Good, $"Reached over {word}.");
-        else if (NeedsTailscale) state = new TagItem(IsOnline ? "Tailscale not working yet · still using LAN" : "Tailscale not working yet · not connected", TagTone.Caution, probe is { Result.Ok: false, Route: PcRoute.Tailscale } ? probe.Result.Reason : null);
-        else if (probe is { Result.Ok: false } && IsOnline) state = new TagItem($"{word} ✗ · still using LAN", TagTone.Caution, probe.Result.Reason);
+        if (connected) state = new TagItem($"{word} · {probe!.Result.Ms} ms", TagTone.Good, $"Reached over {word}.");
+        else if (NeedsTailscale) state = IsOnline
+            ? new TagItem("LAN (Tailscale not reachable)", TagTone.Caution, probe is { Result.Ok: false, Route: PcRoute.Tailscale } ? probe.Result.Reason : "Tailscale is set but does not carry the link yet; it stays on LAN meanwhile.")
+            : new TagItem("Tailscale · not reachable", TagTone.Caution, probe is { Result.Ok: false, Route: PcRoute.Tailscale } ? probe.Result.Reason : null);
+        else if (probe is { Result.Ok: false } && IsOnline) state = new TagItem($"{word} · not reachable", TagTone.Caution, probe.Result.Reason);
         else if (probe is { Result.Ok: false }) state = OfflineTag($"{word}: {probe.Result.Reason}");
-        else state = IsOnline ? new TagItem("checking…", TagTone.Neutral, "Waiting for the first check over this route.") : OfflineTag(null);
-        Tags = new[] { state };
+        else state = IsOnline ? new TagItem("Checking…", TagTone.Neutral, "Waiting for the first check over this route.") : OfflineTag(null);
+        Connection = state;
         RefreshWake();
         TabRoute = connected ? word : IsOnline ? "LAN" : "offline";
         TabTip = state.Tip is { Length: > 0 } tip ? $"{Name}: {state.Text}. {tip}" : $"{Name}: {state.Text}";
@@ -211,7 +235,7 @@ public sealed partial class PcItem : ObservableObject
         OnPropertyChanged(nameof(Name));
         OnPropertyChanged(nameof(RealName));
         OnPropertyChanged(nameof(HasNickname));
-        OnPropertyChanged(nameof(ConnectText));
+        OnPropertyChanged(nameof(ConnectTip));
         OnPropertyChanged(nameof(ShowsAddress));
     }
 
@@ -224,6 +248,23 @@ public sealed partial class PcItem : ObservableObject
 
     /// <summary>One state's value changed: its card shows it at once.</summary>
     public void Update(StateEntry state) => Mirror.Update(state);
+
+    /// <summary>The rows of the PC's menu, ONE source for the tab's right-click menu and the header's "⋯" pill.</summary>
+    public IReadOnlyList<MenuRowItem> MenuRows
+    {
+        get
+        {
+            var rows = new List<MenuRowItem>
+            {
+                new("Give nickname…", string.Empty, false, "Name this PC here; the other PC is never told.", new AsyncRelayCommand(GiveNicknameAsync), Icon: "pencil"),
+                new("Set up wake…", string.Empty, false, "Check and turn on what waking this PC over the network needs.", SetUpWakeCommand, Icon: "power"),
+            };
+            if (IsOnline)
+                rows.Add(new MenuRowItem($"Import settings from {Name}…", string.Empty, false, "Copy chosen areas of that PC's settings here, after a backup of this PC. No passwords are sent.", ImportSettingsCommand, Icon: "download"));
+            rows.Add(new MenuRowItem("Unpair", string.Empty, false, "Forget this PC. It keeps its side until it is unpaired there too.", UnpairCommand, RuleAbove: true, Icon: "trash", IsDanger: true));
+            return rows;
+        }
+    }
 
     /// <summary>"Give nickname…": asks for the name (empty removes it); kept on this PC only.</summary>
     public async Task GiveNicknameAsync()
