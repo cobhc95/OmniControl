@@ -198,9 +198,17 @@ public static class OsdView
     {
         var (bg, accent, fg, muted, _, edge) = Scheme.From(s);
 
+        // A state (on, off, failed) colours the picture and the second line; every other message keeps the accent picture and muted words.
+        var (iconColour, wordsColour) = message.Tone switch
+        {
+            OsdTone.On => (accent, accent),
+            OsdTone.Off => (muted, muted),
+            OsdTone.Failed => (Palette.Danger, Palette.Danger),
+            _ => (accent, muted),
+        };
         var lines = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
         lines.Children.Add(Line(message.Title, BodyText, fg, true));
-        if (!string.IsNullOrWhiteSpace(message.Subtitle)) lines.Children.Add(Line(message.Subtitle, SubtitleText, muted, false));
+        if (!string.IsNullOrWhiteSpace(message.Subtitle)) lines.Children.Add(Line(message.Subtitle, SubtitleText, wordsColour, false));
         if (!string.IsNullOrWhiteSpace(message.Detail))
         {
             var detail = Line(message.Detail, CaptionText, muted, false);
@@ -210,11 +218,18 @@ public static class OsdView
         }
 
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), ColumnSpacing = 12, MaxWidth = MessageMaxWidth };
-        row.Children.Add(new PathIcon
-        {
-            Data = Geometry.Parse(IconPath(message.Icon)), Width = MessageIconSize, Height = MessageIconSize,
-            Foreground = new SolidColorBrush(accent), VerticalAlignment = VerticalAlignment.Center,
-        });
+        var picked = IconResources.Find(message.LibraryIcon);
+        row.Children.Add(picked is not null
+            ? new Controls.IconGlyph
+            {
+                Source = picked, Width = MessageIconSize, Height = MessageIconSize,
+                Foreground = new SolidColorBrush(iconColour), VerticalAlignment = VerticalAlignment.Center,
+            }
+            : new PathIcon
+            {
+                Data = Geometry.Parse(IconPath(message.Icon)), Width = MessageIconSize, Height = MessageIconSize,
+                Foreground = new SolidColorBrush(iconColour), VerticalAlignment = VerticalAlignment.Center,
+            });
         Grid.SetColumn(lines, 1);
         row.Children.Add(lines);
         return Frame(bg, edge, row, null, null, CardRadius, CardPad);

@@ -103,6 +103,10 @@ public sealed partial class OtherPcsService
             case PcMsgType.Ran: HandleRan(message); break;
             case PcMsgType.Devices: HandleDevicesRequest(link, message); break;
             case PcMsgType.DevicesAnswer: HandleDevicesAnswer(link, message); break;
+            case PcMsgType.WakeInfo: HandleWakeInfo(link.PeerId, message); break;
+            case PcMsgType.Leaving: HandleLeaving(link.PeerId, message); break;
+            case PcMsgType.WakeAsk: HandleWakeAsk(link, message); break;
+            case PcMsgType.WakeAnswer: HandleWakeAnswer(link, message); break;
             case PcMsgType.TailscaleAddress: HandleTailscaleAddress(link.PeerId, message.Text); break;
             // A ping only keeps the link from looking silent; anything else is ignored.
         }
@@ -181,6 +185,7 @@ public sealed partial class OtherPcsService
         foreach (var id in set.ActionInfo.Keys) _hotkeys.Unregister(PcProtocol.RemoteId(pcId, id));
         _states.Register(set.StateInfo.Values.Select(s => MakeState(pair, PcProtocol.RemoteId(pcId, s.Id), s)).ToList());
         _hotkeys.Register(set.ActionInfo.Values.Select(a => MakeAction(pair, a)).ToList());
+        RegisterWake(pair);
         SetAvailable(pcId, IsOnline(pcId));
         RemoteChanged?.Invoke();
     }
@@ -371,7 +376,7 @@ public sealed partial class OtherPcsService
         if (!(_runLimits.TryGetValue(pair.Id, out var limit) ? limit : _runLimits[pair.Id] = new LaunchLimiter(Timing.PcRunBurstMax, Timing.PcRunBurstWindow)).TryAcquire())
             return "Too many actions were asked for at once, so this one was not run.";
         action = found;
-        chain = RunChain.After(incoming, peerRule);
+        chain = RunChain.After(incoming, peerRule, byPerson: incoming is null); // no chain: a person on that PC asked
         return null;
     }
 }

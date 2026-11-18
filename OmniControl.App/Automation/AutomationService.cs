@@ -20,6 +20,7 @@ namespace OmniControl.App.Automation;
 public sealed partial class AutomationService : IActionGate, IDisposable
 {
     private readonly KeepAwakeEntries _keepAwake;
+    private readonly PowerGuard _guard;
 
     /// <summary>The page's title: the category every action of this feature is registered under.</summary>
     public const string Category = ActionSections.Automation;
@@ -75,7 +76,8 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         _runner = new RuleRunner(actions, IsApproved, Log, id => hotkeys.Find(id)?.Reach);
         _custom = new CustomActionRunner(actions, Log);
 
-        hotkeys.Register(PowerActions.Make(new PowerGuard(countdown, _report), TogglePause));
+        _guard = new PowerGuard(countdown, _report, () => hotkeys.Chain);
+        hotkeys.Register(PowerActions.Make(_guard, TogglePause));
         _keepAwake = new KeepAwakeEntries(hotkeys, states);
         hotkeys.Register(Settings.Rules.Where(r => r.Kind == AutomationKind.Do).Select(MakeRuleAction));
         hotkeys.Register(Settings.Customs.Select(MakeCustomAction));
@@ -319,7 +321,8 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         var chain = _hotkeys.Chain; // set when another rule's run (through an "action runs" trigger) runs this rule's own action
         if (!RunChain.MayStart(chain, rule.Id, Timing.AutomationChainMax)) Log($"rule \"{rule.Name}\" not started by its own action: it is already in this chain of rules");
         else if (!rule.On) _report($"\"{rule.Name}\" is switched off.");
-        else if (!TryStart(rule, RunChain.After(chain, rule.Id))) _report($"\"{rule.Name}\" did not start: rules are paused, its conditions don't hold, or it just ran.");
+        // No chain: a person ran the rule's own action (its hotkey, a mouse button, Run now), so its steps are that person's request.
+        else if (!TryStart(rule, RunChain.After(chain, rule.Id, byPerson: chain is null))) _report($"\"{rule.Name}\" did not start: rules are paused, its conditions don't hold, or it just ran.");
     }
 
     /// <summary>

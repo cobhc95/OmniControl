@@ -25,7 +25,7 @@ public partial class RemoteSectionTag : UserControl
     {
         base.OnPropertyChanged(change);
         if (change.Property != LabelProperty) return;
-        DataContext = Label;
+        Body.DataContext = Label; // the inner panel only: the control's own DataContext feeds its Label binding
         IsVisible = Label is not null;
     }
 }

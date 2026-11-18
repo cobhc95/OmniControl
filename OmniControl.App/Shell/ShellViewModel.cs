@@ -188,9 +188,10 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
 
         // The devices are read from the service (start-up and periodic checks), so the tray tiles are right before the page is ever opened.
         ICredentialStore credentials = StartupMode.Inert ? new NoCredentialStore() : new WindowsCredentialStore();
-        _devices = new DeviceService(_hotkeys, _states, _hardware, credentials, Report);
+        _devices = new DeviceService(_hotkeys, _states, _hardware, credentials, Report, _osd.ShowDeviceNote);
         Guard.Run("Start-up: device auto-checks", _devices.StartAutoChecks);
-        _otherPcs = new OtherPcsService(_hotkeys, _states, credentials, Report, _devices.ShareSetups); // listens only once a PC is paired or "Pair a PC" is opened
+        _otherPcs = new OtherPcsService(_hotkeys, _states, credentials, Report, _devices.ShareSetups, _dialogs.AskAsync); // listens only once a PC is paired or "Pair a PC" is opened
+        _power.Leaving += _otherPcs.AnnounceLeaving; // paired PCs are told before this one sleeps or shuts down
 
         // Register new feature pages here, in sidebar order (a page's NavGroup decides its heading; keep the pages of a group together). Pages that list actions (Mouse, Gestures) follow the master
         // list's changes, so the order does not decide which actions they offer.
@@ -380,6 +381,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _hotkeys.Moved -= _gestures.FollowMoved;
         Step("mouse", _mouse.Dispose);
         Step("mouse hook", _mouseHook.Dispose);
+        _power.Leaving -= _otherPcs.AnnounceLeaving;
         Step("other PCs", _otherPcs.Dispose); // its link ends and what other PCs shared leaves the master lists
         Step("icons", _icons.Dispose);
         Step("hotkeys", _hotkeys.Dispose);

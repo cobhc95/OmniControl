@@ -12,7 +12,17 @@
     <Grid Margin="0,1" RowSpacing="4" ColumnSpacing="8" RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,*" IsVisible="{Binding Stacked}">
         <c:IconText Icon="{Binding Icon}" VerticalAlignment="Center" />
         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-            <TextBlock Classes="strong cardlabel" Text="{Binding Value}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Value}" IsVisible="{Binding HasValue}" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6" IsVisible="{Binding HasValue}">
+                <TextBlock Classes="strong cardlabel" Text="{Binding Value}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Value}" VerticalAlignment="Center" />
+                <ItemsControl Grid.Column="1" ItemsSource="{Binding Tags}" IsVisible="{Binding HasTags}" VerticalAlignment="Center">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="svc:TagItem"><c:TagView /></DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Grid>
             <TextBlock Classes="cardlabel muted" Text="{Binding Note}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Note}" />
         </StackPanel>
         <ItemsControl Grid.Row="1" Grid.ColumnSpan="2" ItemsSource="{Binding Pills}" IsVisible="{Binding HasPills}" HorizontalAlignment="Center">

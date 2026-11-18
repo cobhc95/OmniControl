@@ -27,6 +27,7 @@ public sealed partial class DeviceService
     {
         var problem = await RunCommandAsync(device, power, via, profile);
         RuntimeOf(device).Commanded(problem);
+        if (problem is not null && problem != StoppedSentence) NoteFailed(device, power);
         return problem;
     }
 
@@ -92,6 +93,7 @@ public sealed partial class DeviceService
         runtime.Finished(attempt.IsOn, known: true, $"Last command {DateTime.Now:t} · {Via(device, method)}{attempt.Words}{Others(device, failed)}", failed: false,
             details: attempt.Details, confirmed: attempt.Confirmed);
         Log($"\"{name}\" {attempt.Words} via {device.NameOf(method)}");
+        if (attempt.IsOn is { } on) NoteState(device, on);
         return null;
     }
 

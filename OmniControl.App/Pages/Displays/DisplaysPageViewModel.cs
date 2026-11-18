@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Management;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
 using OmniControl.App.Display;
@@ -184,9 +183,12 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
 
     /// <summary>Opens every monitor again and asks each what it supports (the Refresh button, F5).</summary>
     [RelayCommand]
-    private void Reload() => Task.Run(ReloadNow);
+    private void Reload() => Task.Run(() => Guard.Run("Displays: Refresh", ReloadNow));
 
-    /// <summary>The Refresh button's work (worker thread), also the monitors' hardware watch: open every monitor again, then show what they answer.</summary>
+    /// <summary>
+    /// The Refresh button's work (worker thread), also the monitors' hardware watch: open every monitor again, show them, and return once
+    /// each has answered what it supports (the cards fill in as the answers come), so the watch's check sees the real answers.
+    /// </summary>
     private void ReloadNow()
     {
         _engine.RefreshMonitors();
@@ -196,6 +198,7 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
             ShowRefusals();
         });
         RefreshNow();
+        ProbeMonitors();
     }
 
     /// <summary>The throttled check (worker thread): only when the attached displays differ from the last look is anything redone.</summary>
@@ -211,23 +214,19 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
         }
     }
 
-    /// <summary>Shows the engine's current displays (worker thread), whatever Windows says.</summary>
+    /// <summary>
+    /// Shows the engine's current displays (worker thread), whatever Windows says. The laptop panel is asked through WMI, which can fail
+    /// in any way while a session changes (a COM or access error, not only a WMI one): that failure is logged and the monitors are shown
+    /// without the panel, never left unshown.
+    /// </summary>
     private void RefreshNow()
     {
-        try { Publish(); }
-        catch (Exception ex) when (ex is Win32Exception or ManagementException)
+        var hasLaptop = false;
+        Guard.Run("Displays: read the built-in panel", () =>
         {
-            // WMI could not answer for the laptop panel: show the monitors without it.
-            var snapshot = new Snapshot(_engine.Displays, _engine.Monitors, false);
-            Dispatcher.UIThread.Post(() => Show(snapshot));
-        }
-    }
-
-    /// <summary>Collects what the page needs from the engine (worker thread: the laptop panel is asked through WMI) and shows it.</summary>
-    private void Publish()
-    {
-        var laptop = _engine.Laptop;
-        var hasLaptop = laptop.IsAvailable && laptop.GetBrightness(out _, out var max).Success && max > 0;
+            var laptop = _engine.Laptop;
+            hasLaptop = laptop.IsAvailable && laptop.GetBrightness(out _, out var max).Success && max > 0;
+        });
         var snapshot = new Snapshot(_engine.Displays, _engine.Monitors, hasLaptop);
         Dispatcher.UIThread.Post(() => Show(snapshot));
     }

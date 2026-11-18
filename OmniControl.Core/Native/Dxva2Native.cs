@@ -30,6 +30,9 @@ internal static class Dxva2Native
     public delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdc, IntPtr lParam, IntPtr dwData);
 
     [DllImport("dxva2.dll", SetLastError = true)]
+    public static extern bool GetNumberOfPhysicalMonitorsFromHMONITOR(IntPtr hMonitor, out uint pdwNumberOfPhysicalMonitors);
+
+    [DllImport("dxva2.dll", SetLastError = true)]
     public static extern bool GetPhysicalMonitorsFromHMONITOR(IntPtr hMonitor, uint dwCount, [Out] PHYSICAL_MONITOR[] pdm);
 
     [DllImport("dxva2.dll", SetLastError = true)]

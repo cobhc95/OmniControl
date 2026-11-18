@@ -22,6 +22,13 @@ public static class NowPlayingText
         return new StateValue(info.IsPlaying ? 1 : 0, detail.Length > 0 ? title + Divider + detail : title, DateTime.Now);
     }
 
+    /// <summary>The middle pill shows what a click will do: Pause while playing, Play otherwise (name and icon id of the icon library).</summary>
+    public static (string Name, string Icon) PlayPausePill(bool playing) => playing ? ("Pause", "player-pause") : ("Play", "player-play");
+
+    /// <summary>The small tag at the right of the title line: "Playing" (accent), "Paused" (plain), none when nothing plays.</summary>
+    public static IReadOnlyList<TagItem> StateTags(bool playing, bool nothing) =>
+        nothing ? Array.Empty<TagItem>() : new[] { playing ? new TagItem("Playing", TagTone.Selected) : new TagItem("Paused") };
+
     /// <summary>The title, the muted "artist · app" line and whether it plays; the title is empty when nothing plays.</summary>
     public static (string Title, string Detail, bool Playing, bool Nothing) Read(StateValue? value)
     {

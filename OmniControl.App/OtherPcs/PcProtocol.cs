@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using OmniControl.Core.Engine.Wake;
 
 namespace OmniControl.App.OtherPcs;
 
@@ -40,7 +41,11 @@ internal static class PcProtocol
 internal static class PcMsgType
 {
     public const string Catalog = "catalog", State = "state", Set = "set", Run = "run", Ran = "ran", Ping = "ping", Pong = "pong",
-        Devices = "devices", DevicesAnswer = "devices-answer", TailscaleAddress = "ts-address";
+        Devices = "devices", DevicesAnswer = "devices-answer", TailscaleAddress = "ts-address",
+        WakeInfo = "wake-info", Leaving = "leaving", WakeAsk = "wake-ask", WakeAnswer = "wake-answer";
+
+    /// <summary>What a <c>wake-ask</c> wants (its <see cref="PcMsg.Id"/>): send a magic packet for a PC on this PC's network, read the wake facts again, turn settings on (behind this PC's own prompt), or put this PC to sleep as a test (behind its prompt).</summary>
+    public const string WakeRelay = "relay", WakeCheck = "check", WakeFix = "fix", WakeTest = "test";
 }
 
 /// <summary>
@@ -74,6 +79,9 @@ internal sealed class PcMsg
 
     /// <summary><c>devices</c>: the request includes the user's own script templates. <c>devices-answer</c>: the device set-ups as text (what <see cref="Payload"/> holds is not this layer's business).</summary>
     public bool? Scripts { get; set; }
+
+    /// <summary><c>wake-info</c> and <c>wake-answer</c>: how this PC can be woken. <c>leaving</c>: <see cref="Text"/> is "sleep", "hibernate" or "shutdown". <c>wake-ask</c>: <see cref="Id"/> is what is wanted (<see cref="PcMsgType.WakeRelay"/>...), <see cref="Text"/> its address or the fixes, <see cref="Payload"/> the network.</summary>
+    public WakeFacts? Wake { get; set; }
     public string? Payload { get; set; }
     public List<SharedState>? States { get; set; }
     public List<SharedAction>? Actions { get; set; }

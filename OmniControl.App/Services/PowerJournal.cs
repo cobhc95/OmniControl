@@ -59,6 +59,9 @@ public sealed class PowerJournal : IPowerEvents, IDisposable
 
     public event Action? Woke;
 
+    /// <summary>This PC is about to sleep, hibernate or shut down (the event that says so, on the listener's thread, while there is still a moment): other paired PCs are told so their tag is exact.</summary>
+    public event Action<PowerEventKind>? Leaving;
+
     /// <summary>The app's journal: listens to <paramref name="hardware"/>'s power events, saved in <see cref="DataStores.PowerJournal"/>.</summary>
     public PowerJournal(HardwareWatches hardware)
         : this(AppDataStore.Load<PowerJournalData>(DataStores.PowerJournal) ?? new(), data => AppDataStore.Save(DataStores.PowerJournal, data),
@@ -101,6 +104,9 @@ public sealed class PowerJournal : IPowerEvents, IDisposable
             decision = _detector.Observe(signal, _ms());
         }
         _log($"{signal.Kind} ({signal.Channel}: {signal.Detail})");
+        if (signal.Kind is PowerEventKind.Suspend or PowerEventKind.Hibernate or PowerEventKind.Shutdown && Leaving is { } leaving)
+            foreach (var handler in leaving.GetInvocationList().Cast<Action<PowerEventKind>>())
+                Guard.Run("Power journal: leaving handler", () => handler(signal.Kind));
         Decided(decision);
         if (signal.Kind is PowerEventKind.Shutdown or PowerEventKind.Logoff) Save(); // the process may end before a queued save runs
         else Task.Run(() => Guard.Run("Power journal: save", Save));

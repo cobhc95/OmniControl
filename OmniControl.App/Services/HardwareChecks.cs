@@ -9,9 +9,9 @@ public static class HardwareChecks
     public static readonly IReadOnlyList<(HardwareCheck Value, string Label, TimeSpan? Every)> All = new (HardwareCheck, string, TimeSpan?)[]
     {
         (HardwareCheck.Off, "Off", null),
-        (HardwareCheck.EveryMinute, "1 minute", TimeSpan.FromMinutes(1)),
-        (HardwareCheck.Every5Minutes, "5 minutes", TimeSpan.FromMinutes(5)),
-        (HardwareCheck.Every15Minutes, "15 minutes", TimeSpan.FromMinutes(15)),
+        (HardwareCheck.EveryMinute, "1 minute", Timing.HardwareCheckMinute),
+        (HardwareCheck.Every5Minutes, "5 minutes", Timing.HardwareCheck5Minutes),
+        (HardwareCheck.Every15Minutes, "15 minutes", Timing.HardwareCheck15Minutes),
     };
 
     public static string LabelOf(HardwareCheck value) => All.First(e => e.Value == value).Label;

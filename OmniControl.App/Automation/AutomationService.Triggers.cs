@@ -51,6 +51,7 @@ public sealed partial class AutomationService
     private void OnWoke() => Dispatcher.UIThread.Post(() =>
     {
         Log("the PC woke (confirmed by the power journal)");
+        _guard.Woke();
         _pending.Add(new AutomationEvent(AutomationTriggers.Resume));
     });
 

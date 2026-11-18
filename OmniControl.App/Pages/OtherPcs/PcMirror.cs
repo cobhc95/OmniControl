@@ -222,7 +222,10 @@ public sealed partial class PcMirror : ObservableObject
             fact.Value = title;
             fact.Note = nothing ? NowPlayingText.NothingWords : detail;
             fact.Pills = nothing ? Array.Empty<ChipItem>() : own;
-            if (playPause is not null) playPause.IsSelected = playing;
+            fact.Tags = NowPlayingText.StateTags(playing, nothing);
+            if (playPause is null) return;
+            (playPause.Name, playPause.Icon) = NowPlayingText.PlayPausePill(playing);
+            playPause.IsSelected = playing;
         }
         Show(entry);
         _updaters[entry.Id] = Show;

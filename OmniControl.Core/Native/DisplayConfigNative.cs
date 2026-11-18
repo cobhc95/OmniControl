@@ -85,6 +85,26 @@ internal static class DisplayConfigNative
         return SetDisplayConfig(pathCount, paths, modeCount, modes, SdcApply | SdcUseSuppliedConfig | SdcSaveToDatabase | SdcAllowChanges);
     }
 
+    private const int ErrorInsufficientBuffer = 122, QueryTries = 3;
+
+    /// <summary>
+    /// The active paths. While displays are being attached (a return from Remote Desktop, a wake) the configuration can grow between the two
+    /// calls and Windows answers "buffer too small": asked again a few times, so the names and device paths are not lost for that look.
+    /// </summary>
+    private static bool Query(out PathInfo[] paths, out uint pathCount)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            paths = Array.Empty<PathInfo>();
+            if (GetDisplayConfigBufferSizes(ActivePaths, out pathCount, out var modeCount) != 0) return false;
+            paths = new PathInfo[pathCount];
+            var modes = new ModeInfo[modeCount];
+            var error = QueryDisplayConfig(ActivePaths, ref pathCount, paths, ref modeCount, modes, IntPtr.Zero);
+            if (error == 0) return true;
+            if (error != ErrorInsufficientBuffer || attempt + 1 >= QueryTries) return false;
+        }
+    }
+
     /// <summary>What Windows knows about the monitor on one display.</summary>
     public readonly record struct Target(string FriendlyName, string DevicePath, bool IsInternal);
 
@@ -92,10 +112,7 @@ internal static class DisplayConfigNative
     public static Dictionary<string, Target> ReadTargets()
     {
         var result = new Dictionary<string, Target>(StringComparer.OrdinalIgnoreCase);
-        if (GetDisplayConfigBufferSizes(ActivePaths, out var pathCount, out var modeCount) != 0) return result;
-        var paths = new PathInfo[pathCount];
-        var modes = new ModeInfo[modeCount];
-        if (QueryDisplayConfig(ActivePaths, ref pathCount, paths, ref modeCount, modes, IntPtr.Zero) != 0) return result;
+        if (!Query(out var paths, out var pathCount)) return result;
 
         for (var i = 0; i < pathCount; i++)
         {

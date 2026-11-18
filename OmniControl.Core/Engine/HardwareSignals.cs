@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
+using OmniControl.Core.Native;
 using static OmniControl.Core.Engine.Trackpad.RawInputNative;
 using static OmniControl.Core.Native.PowerNative;
 using static OmniControl.Core.Native.SessionNative;
@@ -26,8 +27,11 @@ public enum HardwareSignal
     /// <summary>The user's session moved or came back: console connect (back at the PC after Remote Desktop), remote connect or disconnect, logon, unlock.</summary>
     Session = 8,
 
-    /// <summary>The PC woke from sleep.</summary>
+    /// <summary>The PC woke from sleep (or the clock check found the program was stopped for a while).</summary>
     Resume = 16,
+
+    /// <summary>The screens came back on (after the display-off timeout or Modern Standby): monitors that slept may not have answered DDC/CI meanwhile.</summary>
+    DisplayPower = 32,
 }
 
 /// <summary>
@@ -35,7 +39,8 @@ public enum HardwareSignal
 /// change, a session that moved or came back (Remote Desktop, unlock) and a wake from sleep. They are only signals: they carry no detail and
 /// arrive in bursts, so the one that listens decides what to look at again and when.
 /// Two independent listeners, so one that Windows starves still leaves the other: a hidden top-level window on its own thread (broadcasts
-/// such as device and display changes are not sent to message-only windows; it registers for the session notice itself) and .NET's
+/// such as device and display changes are not sent to message-only windows; it registers for the session notice and the monitor interface
+/// notice itself, so a monitor arriving or leaving is a display change) and .NET's
 /// <see cref="SystemEvents"/> (its own window and thread). The same kind told by both is passed once (<see cref="HardwareSignalFilter"/>).
 /// The same listeners also tell every power and session event, unfiltered and with the channel that heard it, through <see cref="Power"/>
 /// (the power journal decides what is the same event); a third listener, a clock check (<see cref="ClockGap"/>), tells when the program was
@@ -53,6 +58,7 @@ public sealed class HardwareSignals : IDisposable
     private readonly ClockGap _gap;
     private readonly TimeSpan _gapInterval;
     private readonly List<IntPtr> _powerNotices = new();
+    private IntPtr _monitorNotice;
     private Timer? _clockCheck;
     private Thread? _thread;
     private IntPtr _window;
@@ -226,6 +232,10 @@ public sealed class HardwareSignals : IDisposable
             if (notice != IntPtr.Zero) _powerNotices.Add(notice);
             else Failed?.Invoke($"Windows refused the display power notice {setting} (error {Marshal.GetLastWin32Error()}); Modern Standby is then seen by the clock check.");
         }
+        // A monitor arriving or leaving is told by name only to a window that asks; the display change may come later or not at all.
+        _monitorNotice = DeviceNotifyNative.RegisterForInterface(_window, DeviceNotifyNative.MonitorInterface);
+        if (_monitorNotice == IntPtr.Zero)
+            Failed?.Invoke($"Windows refused the monitor notice (error {Marshal.GetLastWin32Error()}); a monitor coming back is then seen by the display change and the periodic check.");
         return true;
     }
 
@@ -233,6 +243,8 @@ public sealed class HardwareSignals : IDisposable
     {
         foreach (var notice in _powerNotices) UnregisterPowerSettingNotification(notice);
         _powerNotices.Clear();
+        if (_monitorNotice != IntPtr.Zero) DeviceNotifyNative.UnregisterDeviceNotification(_monitorNotice);
+        _monitorNotice = IntPtr.Zero;
         if (_window != IntPtr.Zero)
         {
             WTSUnRegisterSessionNotification(_window);
@@ -248,6 +260,11 @@ public sealed class HardwareSignals : IDisposable
         {
             switch (message)
             {
+                case WmDeviceChange when (int)wParam is DbtDeviceArrival or DbtDeviceRemoveComplete
+                                         && DeviceNotifyNative.DeviceTypeOf(lParam) == DeviceNotifyNative.DeviceInterfaceType:
+                    // Only the monitor interface is registered, so an interface notice is a monitor that arrived or left.
+                    Raise(HardwareSignal.Display, $"WM_DEVICECHANGE monitor {((int)wParam == DbtDeviceArrival ? "arrived" : "left")}");
+                    break;
                 case WmDeviceChange when (int)wParam is DbtDevNodesChanged or DbtDeviceArrival or DbtDeviceRemoveComplete:
                     Raise(HardwareSignal.Device, $"WM_DEVICECHANGE 0x{(int)wParam:X}");
                     break;

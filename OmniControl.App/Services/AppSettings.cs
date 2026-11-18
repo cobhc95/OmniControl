@@ -27,7 +27,7 @@ public sealed class AppSettings
     public bool HotkeysOn { get; set; } = true;
 
     /// <summary>How often the periodic safety check looks at the hardware (<see cref="HardwareWatches"/>); Off by default: Windows' own announcements already refresh it.</summary>
-    public HardwareCheck HardwareCheck { get; set; } = HardwareCheck.Off;
+    public HardwareCheck HardwareCheck { get; set; } = HardwareCheck.EveryMinute;
 
     /// <summary>On: Win+A opens the quick panel instead of Windows' quick settings (<see cref="Tray.WinAKey"/>). Off by default.</summary>
     public bool WinAForPanel { get; set; }

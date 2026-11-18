@@ -39,11 +39,13 @@ public sealed class MonitorEngine : IMonitorEngine
     {
         lock (_refresh)
         {
-            if (_disposed || Signature(ListDisplays()) == Signature(Displays)) return false;
+            if (_disposed || !DisplaysChanged()) return false;
             RefreshMonitors();
             return true;
         }
     }
+
+    public bool DisplaysChanged() => Signature(ListDisplays()) != Signature(Displays);
 
     public string? ResolveDeviceName(DisplayInfo remembered) => DisplayIdentity.Resolve(remembered, ListDisplays());
 

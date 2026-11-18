@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Avalonia.Threading;
+using OmniControl.App.Dialogs;
 using OmniControl.App.Hotkeys;
 using OmniControl.App.Services;
 using OmniControl.App.States;
@@ -29,6 +30,7 @@ public sealed partial class OtherPcsService : IDisposable
     private readonly ICredentialStore _credentials;
     private readonly Action<string> _report;
     private readonly Func<bool, string> _shareDevices;
+    private readonly Func<DialogMessage, Task<bool>> _askHere;
     private readonly OtherPcsSettings _settings;
     private readonly string _ownName = PcIds.CleanName(Environment.MachineName);
     private readonly ConcurrentDictionary<string, byte[]> _secrets = new(); // read by the network tasks; written on the UI thread
@@ -36,8 +38,10 @@ public sealed partial class OtherPcsService : IDisposable
     private bool _disposed;
 
     /// <param name="shareDevices">Makes the text of this PC's device set-ups for a paired PC that asks (true = with the user's script templates).</param>
-    public OtherPcsService(HotkeyRegistry hotkeys, StateRegistry states, ICredentialStore credentials, Action<string> report, Func<bool, string> shareDevices)
+    /// <param name="ask">Asks the person at this PC a yes/no question (a paired PC asking to change a wake setting or to put this PC to sleep).</param>
+    public OtherPcsService(HotkeyRegistry hotkeys, StateRegistry states, ICredentialStore credentials, Action<string> report, Func<bool, string> shareDevices, Func<DialogMessage, Task<bool>> ask)
     {
+        _askHere = ask;
         _shareDevices = shareDevices;
         _hotkeys = hotkeys;
         _states = states;
@@ -51,6 +55,7 @@ public sealed partial class OtherPcsService : IDisposable
         if (StartupMode.Inert) return;
         WatchShares();
         RestoreCatalogs();
+        RegisterWakeActions();
         if (_settings.Pairs.Count > 0) StartNetwork();
     }
 
@@ -134,6 +139,7 @@ public sealed partial class OtherPcsService : IDisposable
         ForgetRemote(id);
         _credentials.Delete(CredentialTarget(id));
         _secrets.TryRemove(id, out _);
+        _hotkeys.Unregister(WakeActionId(id));
         _settings.Pairs.Remove(pair);
         _settings.TabOrder.Remove(id);
         Save();
@@ -200,7 +206,11 @@ public sealed partial class OtherPcsService : IDisposable
         StopNetwork();
         foreach (var link in _links.Values.ToList()) link.Dispose();
         _links.Clear();
-        foreach (var pair in _settings.Pairs) ForgetRemote(pair.Id);
+        foreach (var pair in _settings.Pairs)
+        {
+            ForgetRemote(pair.Id);
+            _hotkeys.Unregister(WakeActionId(pair.Id));
+        }
         _stop.Dispose();
     }
 }

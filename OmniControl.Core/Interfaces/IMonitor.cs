@@ -61,4 +61,7 @@ public interface IMonitorEngine : IDisposable
 
     /// <summary>Looks at which displays are attached and reopens the monitors only when that changed. Cheap. True when it changed.</summary>
     bool Rescan();
+
+    /// <summary>True when the displays Windows lists now (how many, which, named how) differ from <see cref="Displays"/>. Cheap: no monitor is talked to.</summary>
+    bool DisplaysChanged();
 }

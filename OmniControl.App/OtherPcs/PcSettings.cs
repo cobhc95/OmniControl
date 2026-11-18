@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using OmniControl.Core.Engine.Wake;
 
 namespace OmniControl.App.OtherPcs;
 
@@ -40,6 +41,15 @@ public sealed class PairedPc
 
     /// <summary>What it shared when it was last connected.</summary>
     public PcCatalog? Catalog { get; set; }
+
+    /// <summary>How it said it can be woken (its network card, settings and network) the last time it was connected; null = never told (an older version).</summary>
+    public WakeFacts? Wake { get; set; }
+
+    /// <summary>How it went away, from the notice it sent just before: "sleep", "hibernate" or "shutdown"; null = no notice came (it was switched off or lost).</summary>
+    public string? Away { get; set; }
+
+    /// <summary>When the notice came (this PC's clock).</summary>
+    public DateTime? AwayAt { get; set; }
 
     /// <summary>The device set-ups it last handed over (without scripts), so they can be imported while it is offline; null = never asked.</summary>
     public string? DeviceSetups { get; set; }

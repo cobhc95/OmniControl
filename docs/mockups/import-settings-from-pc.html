@@ -1,0 +1,31 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Import settings from another PC (approved)</title>
+<!-- Approved by the owner 18 Nov 2026.
+  ENTRY POINTS (only while that PC is online): (1) Other PCs: a PC tab's right-click menu (shared ListMenuFlyout) row
+  "Import settings from <name>…" (between "Set up wake…" and the line before Unpair); (2) App settings > Backup group: a card
+  "Import from another PC" with a chip picker of paired PCs (Controls/ChipMenu) opening the same window.
+  WINDOW "Import settings from <name>" (shared dialog window, Classes="dialog"): tick "Everything" (bold; mixed state when partial),
+  a thin line (Border.hrule), then a two-column grid of area tick boxes generated from the DataStores master list (each store has a
+  display name/area; never a hand list): Mouse buttons and gestures, Keyboard shortcuts, Keyboard remapping, Equaliser and effects,
+  Smart devices (muted note "no passwords"), Automation rules, OSD, App lists, Icons, App settings, ... Muted note: "Chosen areas
+  replace this PC's. A backup is made first. Devices that aren't on this PC are kept and marked "not found"." Foot: Cancel, Import (primary).
+  UPDATED (approved later the same day): the area list is GROUPED like the sidebar (muted capital headings: DEVICES: Displays (presets),
+  Volume and effects (EQ, FX chains), Smart devices (no passwords), Mouse and trackpad (buttons, layers); WORKFLOW: Gestures (N gestures),
+  Automation (rules, scripts); KEYS: Keyboard shortcuts (N keys), Keyboard remapping (N keys); LOOK AND APP: OSD (style, places),
+  Icons and app lists, App settings (theme, start-up)), two columns, each row a tick box + name + muted note at right with live counts
+  from that PC. "Everything" shows a dash when partial and "N of M areas" at right. Primary button reads "Import N areas".
+  PROGRESS (same window after Import): title "Importing from <name>…"; rows: "Backup of this PC" (saved), then each area: done tick +
+  green "checked", spinner + accent "importing", muted open circle pending; foot "Stop".
+  RESULT: title "Imported X of N areas"; per area: green "checked" (read back from disk equals what was sent AND the owning service
+  reloaded it), yellow fact like "2 need passwords" (smart devices without credentials), red cross "not applied, kept yours" (that area
+  rolled back alone, others continue); long lists collapse to "+ N more checked". Foot: Copy details (shared CopyDetails), Undo import
+  (restores the automatic backup), Close (primary).
+  Transfer over the existing encrypted PcProtocol/PcCrypto; passwords (Credential Manager) and pairing keys never sent; machine-specific
+  data (other-PC pairing list, this PC's identity) excluded by a flag on the store entry. Automatic backup via the existing backup path,
+  then atomic saves through AppDataStore, then live reload (or one clear "Restart to finish" if a store can't reload live). -->
+<style>body{font-family:Segoe UI;background:#1b1b1b;color:#eee;padding:20px;font-size:13px}</style></head><body>
+<p>Right-click Laptop tab: Give nickname… / Set up wake… / <b style="color:#e8892f">Import settings from Laptop…</b> / — / Unpair<br>
+App settings › Backup: Back up settings [Save…] · Restore from file [Open…] · Import from another PC [Laptop ▾]</p>
+<p>Import settings from Laptop · ☑ Everything · ☑ Mouse buttons and gestures ☑ Keyboard shortcuts ☑ Keyboard remapping ☑ Equaliser and effects
+☑ Smart devices (no passwords) ☑ Automation rules ☑ OSD ☑ App lists ☑ Icons ☑ App settings · note · [Cancel] [Import]</p>
+</body></html>

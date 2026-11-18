@@ -194,4 +194,7 @@ public static class CoreTiming
     /// </summary>
     public const int RecordOpenWaitMs = 6000, RecordFirstFrameWaitMs = 4000, RecordStuckMs = 5000, RecordFinishWaitMs = 10000,
         RecordWatchMs = 100, RecordStatsMs = 500, RecordLogFramesMs = 5000, RecordStartWaitMs = 45000;
+
+    /// <summary>How long Windows' shutdown.exe may take to accept or refuse a shut down, restart or sign out; still running then counts as accepted.</summary>
+    public const int ShutdownExeWaitMs = 5000;
 }

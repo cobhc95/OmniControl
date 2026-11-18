@@ -17,6 +17,9 @@ public sealed class OsdService : IDisposable
     public const string BrightnessElement = "Brightness", VolumeElement = "Volume", MicrophoneElement = "Microphone";
     private const string UsbElement = "USB devices", PlayPauseElement = "Play / pause", TrackElement = "Track and artist";
 
+    /// <summary>The smart devices' state changes and failures (shown by <see cref="ShowDeviceNote"/>).</summary>
+    public const string SmartDevicesElement = "Smart devices";
+
     private readonly List<OsdElement> _elements = new();
 
     private readonly DispatcherTimer _hide = new() { Interval = Timing.OsdVisible };
@@ -84,6 +87,7 @@ public sealed class OsdService : IDisposable
         DeclareText(UsbElement);
         DeclareText(PlayPauseElement);
         DeclareText(TrackElement);
+        DeclareText(SmartDevicesElement);
         _hide.Tick += (_, _) => { _hide.Stop(); foreach (var window in _windows) window.Fade(); };
         _keepWarm.Tick += (_, _) => { foreach (var window in _windows) window.KeepWarm(); };
         AccentService.Changed += OnAccentChanged;
@@ -325,6 +329,9 @@ public sealed class OsdService : IDisposable
         if (!Settings.Enabled || !IsShown(element)) return;
         Present(window => { window.RenderMessage(Settings, message); return true; });
     }
+
+    /// <summary>Shows a smart device's state or failure (<see cref="SmartDevicesElement"/>) from any thread.</summary>
+    public void ShowDeviceNote(OsdMessage message) => Dispatcher.UIThread.Post(() => ShowMessage(SmartDevicesElement, message));
 
     private void Display(string label, OsdLevelIcon icon, int value) => Present(window => window.Render(Settings, label, icon, value));
 

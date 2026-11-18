@@ -35,6 +35,7 @@ public sealed partial class OtherPcsService
             _report("Other PCs can't look for PCs on the network now (the port is in use). A PC can still be paired or connected by its address.");
         }
         _ = Guard.RunAsync("Other PCs: link checks", CheckLinksAsync);
+        RefreshOwnWake();
     }
 
     private void StopNetwork()
@@ -171,6 +172,7 @@ public sealed partial class OtherPcsService
         foreach (var pair in _settings.Pairs.Where(p => !_links.ContainsKey(p.Id)).ToList()) DialIfMine(pair);
         RecheckTailscalePairs();
         StartProbes();
+        RefreshOwnWake();
         var nearbyNow = Nearby.Count;
         if (nearbyNow != _nearbyShown)
         {
@@ -285,6 +287,7 @@ public sealed partial class OtherPcsService
         link.Closed += () => Post(() => OnLinkClosed(link));
         _ = Guard.RunAsync("Other PCs: link", link.RunAsync);
         SendCatalog(link, force: true);
+        OnWakeLinkUp(link, pair);
         RaiseChanged();
     }
 

@@ -217,7 +217,9 @@ public sealed partial class OtherPcsService
         }
         else
         {
-            _settings.Pairs.Add(new PairedPc { Id = id, Name = name, Route = route, Address = address, TailscaleAddress = tailscale });
+            var added = new PairedPc { Id = id, Name = name, Route = route, Address = address, TailscaleAddress = tailscale };
+            _settings.Pairs.Add(added);
+            RegisterWake(added);
             _settings.TabOrder.Add(id);
         }
         CloseLink(id);

@@ -10,30 +10,80 @@ namespace OmniControl.App.Services;
 /// <param name="Name">What the watch is called in the log.</param>
 /// <param name="Signals">Which Windows announcements can affect it (the one place that says which signal refreshes what).</param>
 /// <param name="Refresh">Looks at the hardware again. Runs on a worker thread and returns when done; one that must touch the window waits for the UI thread itself.</param>
-/// <param name="LooksStale">A cheap check: true when what the program shows no longer matches the hardware. Used by the periodic safety check and,
-/// after an announcement, by the retry schedule (<see cref="HardwareRetry"/>), which stops once it is false. Null: one refresh per burst of announcements.</param>
-public sealed record HardwareWatch(string Id, string Name, HardwareSignal Signals, Action Refresh, Func<bool>? LooksStale = null);
+/// <param name="LooksStale">A cheap check: true when what the program shows no longer matches the hardware (something changed, or answers less
+/// than it did). Used by the periodic safety check and, after an announcement, by the retry schedule (<see cref="HardwareRetry"/>), which stops
+/// once it is false. Null: one refresh per burst of announcements.</param>
+/// <param name="LooksUnsettled">A stricter check for the retry schedule after an announcement and at start, when the hardware may still be
+/// waking (a monitor not answering at all): the schedule goes on while it is true. Null: <paramref name="LooksStale"/>. Never used by the
+/// periodic check, so hardware that never answers is not refreshed again and again.</param>
+/// <param name="Describe">What the watch holds now, in a few words for the log line of each automatic refresh ("3 displays, 3 DDC/CI monitors: ...").</param>
+public sealed record HardwareWatch(string Id, string Name, HardwareSignal Signals, Action Refresh, Func<bool>? LooksStale = null,
+    Func<bool>? LooksUnsettled = null, Func<string>? Describe = null)
+{
+    /// <summary>" Found: ..." for a log line, or empty when the watch cannot describe itself (a failure to describe is logged, never thrown).</summary>
+    internal string Found()
+    {
+        string? text = null;
+        if (Describe is { } describe) Guard.Run($"Hardware describe {Name}", () => text = describe());
+        return string.IsNullOrWhiteSpace(text) ? string.Empty : $" Found: {text}.";
+    }
+}
 
 /// <summary>
-/// THE master list of hardware watches and the one place that decides when hardware is looked at again. Three ways in, all ending in the
-/// same refresh of a watch: Windows' announcements (<see cref="HardwareSignals"/> and the sound devices' own, passed in through
-/// <see cref="Signal"/>), bursts joined, then one refresh per watch or, for a watch that can tell when it looks stale, the retry schedule
-/// <see cref="Timing.HardwareRetrySchedule"/>; an action whose picked device is missing (<see cref="RefreshThen"/>); and
-/// an optional periodic check (<see cref="SetCheck"/>) that refreshes only the watches that say they look stale. Every refresh runs on a
-/// worker thread inside <see cref="Guard"/>. Each announcement and each scheduled try is one line in <see cref="LogFile"/>.
+/// THE master list of hardware watches and the one place that decides when hardware is looked at again. Five ways in, all ending in the
+/// same refresh of a watch, each refresh one line in <see cref="LogFile"/> with what started it and what it found:
+/// Windows' announcements (<see cref="HardwareSignals"/> and the sound devices' own, passed in through <see cref="Signal"/>; the screens
+/// coming back on and a clock gap, from the same listeners' power events), bursts joined, then one refresh per watch or, for a watch that can
+/// tell when it looks stale, the retry schedule <see cref="Timing.HardwareRetrySchedule"/>; the start of the program (the same schedule, each
+/// try only when the watch looks wrong); a watch's own feature (<see cref="Request"/>); an action whose picked device is missing
+/// (<see cref="RefreshThen"/>); and the periodic check (<see cref="SetCheck"/>) that refreshes only the watches that say they look stale,
+/// at most <see cref="Timing.HardwareStaleRefreshMax"/> times in a row before it waits for an announcement. Every refresh runs on a worker
+/// thread inside <see cref="Guard"/>.
 /// </summary>
 public sealed class HardwareWatches : IDisposable
 {
     private sealed class Slot
     {
-        public required HardwareWatch Watch { get; init; }
-        public required ThrottledRun Run { get; init; }
-        public HardwareRetry? Retry { get; init; }
+        private string? _trigger;
+        private int _staleRuns;
+
+        public Slot(HardwareWatch watch, Action<Slot> work, HardwareRetry? retry)
+        {
+            Watch = watch;
+            Retry = retry;
+            Run = new ThrottledRun(Timing.HardwareRefreshGap, () => work(this));
+        }
+
+        public HardwareWatch Watch { get; }
+        public ThrottledRun Run { get; }
+        public HardwareRetry? Retry { get; }
         public DateTime LastOnDemand { get; set; } = DateTime.MinValue;
+
+        /// <summary>Asks for a throttled refresh; <paramref name="trigger"/> is what the log line will say started it (the latest of a joined burst).</summary>
+        public void Request(string trigger, TimeSpan? delay)
+        {
+            Volatile.Write(ref _trigger, trigger);
+            Run.Request(delay);
+        }
+
+        public string TakeTrigger() => Interlocked.Exchange(ref _trigger, null) ?? "requested";
+
+        /// <summary>How many periodic refreshes in a row left the watch still looking stale; an announcement starts the count again.</summary>
+        public int StaleRuns => Volatile.Read(ref _staleRuns);
+        public int CountStaleRun() => Interlocked.Increment(ref _staleRuns);
+        public void ResetStaleRuns() => Volatile.Write(ref _staleRuns, 0);
+
+        public void Dispose()
+        {
+            Run.Dispose();
+            Retry?.Dispose();
+        }
     }
 
     /// <summary>The hardware diagnostics log: announcements and what each refresh found.</summary>
     public const string LogFile = "hardware-log.txt";
+
+    private const string StartTrigger = "start", PeriodicTrigger = "periodic check", ActionTrigger = "an action's device was missing", OwnTrigger = "its own notice";
 
     private readonly List<Slot> _slots = new();
     private readonly IReadOnlyList<TimeSpan> _retrySchedule;
@@ -66,24 +116,22 @@ public sealed class HardwareWatches : IDisposable
     /// <summary>Adds a watch; the same id twice replaces the first.</summary>
     public void Register(HardwareWatch watch)
     {
-        var slot = new Slot
-        {
-            Watch = watch,
-            Run = new ThrottledRun(Timing.HardwareRefreshGap, watch.Refresh),
-            Retry = watch.LooksStale is { } stale ? new HardwareRetry(watch.Name, _retrySchedule, watch.Refresh, stale, _log) : null,
-        };
+        var slot = new Slot(watch, RefreshLogged, watch.LooksStale is not null ? new HardwareRetry(watch, _retrySchedule, _log) : null);
         Slot? old;
         lock (_gate)
         {
-            if (_disposed) { Release(slot); return; }
+            if (_disposed) { slot.Dispose(); return; }
             old = _slots.FirstOrDefault(s => s.Watch.Id == watch.Id);
             if (old is not null) _slots.Remove(old);
             _slots.Add(slot);
         }
-        if (old is not null) Release(old);
+        old?.Dispose();
     }
 
-    /// <summary>Starts listening to Windows. Never in a screenshot export (<see cref="StartupMode.Inert"/>).</summary>
+    /// <summary>
+    /// Starts listening to Windows and gives every watch that can tell when it looks wrong its retry schedule once, each try only when it
+    /// does (at log-on the monitors may not answer yet when the program first reads them). Never in a screenshot export (<see cref="StartupMode.Inert"/>).
+    /// </summary>
     public void Start()
     {
         if (StartupMode.Inert || _signals is not null) return;
@@ -93,6 +141,9 @@ public sealed class HardwareWatches : IDisposable
         _signals.Failed += text => AppDataStore.AppendLog(Guard.LogFile, $"Hardware signals: {text}");
         _log("Listening for hardware announcements.");
         _signals.Start(); // when Windows refuses the window the reason is in the log; on-demand and periodic refreshes still work
+        List<Slot> slots;
+        lock (_gate) slots = _slots.ToList();
+        foreach (var slot in slots) slot.Retry?.Start(StartTrigger, checkFirst: true);
     }
 
     /// <summary>
@@ -105,17 +156,22 @@ public sealed class HardwareWatches : IDisposable
         List<Slot> hit;
         lock (_gate) hit = _slots.Where(s => (s.Watch.Signals & signal) != 0).ToList();
         _log($"Signal {signal}{(source is null ? "" : $" ({source})")}: {(hit.Count == 0 ? "no watch" : string.Join(", ", hit.Select(s => s.Watch.Name)))}.");
+        var trigger = $"after {signal}";
         foreach (var slot in hit)
         {
-            if (slot.Retry is { } retry) retry.Start();
-            else slot.Run.Request(Timing.HardwareDebounce);
+            slot.ResetStaleRuns();
+            // The screens coming back on leaves the monitors' handles valid: only a watch that looks wrong is refreshed.
+            if (slot.Retry is { } retry) retry.Start(trigger, checkFirst: signal == HardwareSignal.DisplayPower);
+            else slot.Request(trigger, Timing.HardwareDebounce);
         }
     }
 
     /// <summary>A watch's own feature noticed a change (a touchpad plugged in): that watch alone is refreshed after the same settle time.</summary>
     public void Request(string id)
     {
-        lock (_gate) _slots.FirstOrDefault(s => s.Watch.Id == id)?.Run.Request(Timing.HardwareDebounce);
+        Slot? slot;
+        lock (_gate) slot = _slots.FirstOrDefault(s => s.Watch.Id == id);
+        slot?.Request(OwnTrigger, Timing.HardwareDebounce);
     }
 
     /// <summary>
@@ -134,7 +190,7 @@ public sealed class HardwareWatches : IDisposable
         }
         Task.Run(() =>
         {
-            Guard.Run($"Hardware refresh {slot.Watch.Name}", slot.Watch.Refresh);
+            Refresh(slot, ActionTrigger);
             Guard.Run($"Hardware retry after {slot.Watch.Name}", then);
         });
         return true;
@@ -170,7 +226,11 @@ public sealed class HardwareWatches : IDisposable
         old?.Dispose();
     }
 
-    /// <summary>Timer thread: refreshes the watches whose cheap check says they look stale (a watch without a check is left to signals).</summary>
+    /// <summary>
+    /// Timer thread: asks each watch's cheap check (no device is talked to beyond what it already knows) and refreshes the ones that look
+    /// stale. A watch still stale after <see cref="Timing.HardwareStaleRefreshMax"/> such refreshes in a row (a monitor switched to another
+    /// input) is left alone until the next announcement, so the page is not rebuilt every interval for nothing.
+    /// </summary>
     private void CheckStale()
     {
         List<Slot> slots;
@@ -178,8 +238,33 @@ public sealed class HardwareWatches : IDisposable
         foreach (var slot in slots)
         {
             var stale = false;
-            if (Guard.Run($"Hardware check {slot.Watch.Name}", () => stale = slot.Watch.LooksStale!()) is null && stale) slot.Run.Request();
+            if (Guard.Run($"Hardware check {slot.Watch.Name}", () => stale = slot.Watch.LooksStale!()) is not null) continue;
+            if (!stale) { slot.ResetStaleRuns(); continue; }
+            var runs = slot.CountStaleRun();
+            if (runs <= Timing.HardwareStaleRefreshMax) slot.Request(PeriodicTrigger, null);
+            else if (runs == Timing.HardwareStaleRefreshMax + 1)
+                _log($"{slot.Watch.Name} ({PeriodicTrigger}): still looks stale after {Timing.HardwareStaleRefreshMax} refreshes; waiting for an announcement or Refresh.{slot.Watch.Found()}");
         }
+    }
+
+    /// <summary>The throttled refresh of a watch (worker thread), told in the log with what asked for it.</summary>
+    private void RefreshLogged(Slot slot) => Refresh(slot, slot.TakeTrigger());
+
+    /// <summary>Refreshes one watch now (worker thread) and writes one log line: what started it, the result, and what the watch found.</summary>
+    private void Refresh(Slot slot, string trigger)
+    {
+        var watch = slot.Watch;
+        var failure = Guard.Run($"Hardware refresh {watch.Name}", watch.Refresh);
+        string result;
+        if (failure is not null) result = $"refresh failed ({failure.GetType().Name}: {failure.Message}).";
+        else if (watch.LooksStale is not { } looksStale) result = "refreshed.";
+        else
+        {
+            var stale = true;
+            Guard.Run($"Hardware check {watch.Name}", () => stale = looksStale());
+            result = stale ? "refreshed; still looks stale." : "refreshed; looks right.";
+        }
+        _log($"{watch.Name} ({trigger}): {result}{watch.Found()}");
     }
 
     public void Dispose()
@@ -202,14 +287,17 @@ public sealed class HardwareWatches : IDisposable
             _signals = null;
         }
         periodic?.Dispose();
-        foreach (var slot in slots) Release(slot);
+        foreach (var slot in slots) slot.Dispose();
     }
 
-    private void OnPower(PowerSignal signal) => Power?.Invoke(signal);
-
-    private static void Release(Slot slot)
+    /// <summary>
+    /// A power event (listener thread): passed on to the power journal, and two of them are also hardware announcements the window does not
+    /// make itself: the screens coming back on (monitors that slept may not have answered meanwhile) and a clock gap (a wake that sent no message).
+    /// </summary>
+    private void OnPower(PowerSignal signal)
     {
-        slot.Run.Dispose();
-        slot.Retry?.Dispose();
+        if (signal.Kind == PowerEventKind.DisplayOn) Signal(HardwareSignal.DisplayPower, signal.Detail);
+        else if (signal.Kind == PowerEventKind.ClockGap) Signal(HardwareSignal.Resume, $"clock gap, {signal.Detail}");
+        Power?.Invoke(signal);
     }
 }

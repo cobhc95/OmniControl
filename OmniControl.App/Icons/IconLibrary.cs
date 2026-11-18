@@ -23,7 +23,7 @@ public static class IconLibrary
 
     // Ids named in code (the defaults of entries that have no icon of their own).
     public const string Plug = "plug", Bulb = "bulb", Sliders = "sliders", Mic = "mic", Moon = "moon", Rotate = "rotate", Area = "area",
-        Window = "window", Screen = "screen", Desktop = "desktop", Video = "video";
+        Window = "window", Screen = "screen", Desktop = "desktop", Video = "video", Warning = "alert";
 
     public static IReadOnlyList<LibraryIcon> All { get; } = new LibraryIcon[]
     {

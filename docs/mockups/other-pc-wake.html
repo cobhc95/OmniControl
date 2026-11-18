@@ -1,0 +1,23 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Other PCs: wake over the network (approved)</title>
+<!-- Approved by the owner 18 Nov 2026. In a PC tab's header line, in the empty space left of "Connect:" (one shared tag/pill area):
+  1 Online, wake supported and armed: Border.tag.good "Can wake from sleep" (with tick glyph).
+  2 Online, card can wake but Windows wake arming is off: Border.tag.caution "Wake is off on <name>" + Button.link "Turn on"
+    (asks THAT PC to arm its adapter; that PC shows its own UAC/permission prompt; never silently).
+  3 Offline and wakeable: status tag says how it went away ("Asleep since 09:12" / "Shut down since 09:12" / "Offline" when
+    no notice came) + accent Button.pill "Wake" (power glyph). Click: "Waking…" with the shared spinner, sends the magic packet
+    (from this PC on the LAN, else relayed via another online paired PC on that PC's LAN, over the encrypted link), retries
+    (Timing values), succeeds when the PC is reachable again, else red "Didn't wake (tried N times)" one sentence, details in tooltip/log.
+  4 Offline and not wakeable (no capable card, shut down with Fast Startup, unknown): plain tag "Can't be woken remotely",
+    one-line reason in its tooltip.
+  Honest data: while online, each PC reports its own wake capability (adapter can wake, armed, magic-packet setting, sleep type S3/S0,
+  Fast Startup) and MAC/subnet of the active adapter; Core/Engine reads it (powercfg-equivalent APIs, no shell parsing if avoidable).
+  Before sleep/shutdown/restart (PowerJournal's suspend/session-end events) a PC tells its paired PCs "going to sleep/shut down"
+  so the tag is exact. A "Wake <PC>" master action per paired PC (HotkeyRegistry, RemotePc label) for hotkeys and rules.
+  Do not break the existing wake/log-in triggers (PowerJournal, WakeDetector, ReadyWait). -->
+<style>body{font-family:Segoe UI;background:#1b1b1b;color:#eee;padding:20px;font-size:13px}</style></head><body>
+<p>1 Laptop COBHC [Tailscale ✓ 4 ms] … <span style="color:#97c459">[✓ Can wake from sleep]</span> [Connect ▾] [Unpair]</p>
+<p>2 … <span style="color:#ef9f27">[Wake is off on Laptop]</span> <u>Turn on</u></p>
+<p>3 Laptop [Asleep since 09:12] … <span style="color:#e8892f">[⏻ Wake]</span> → Waking… → online / <span style="color:#e24b4a">Didn't wake (tried 3 times)</span></p>
+<p>4 Laptop [Offline] … [Can't be woken remotely]</p>
+</body></html>

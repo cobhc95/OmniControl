@@ -52,7 +52,7 @@
         <Setter Property="StrokeThickness" Value="1.6" />
         <Setter Property="Stroke" Value="{Binding $parent[ContentPresenter].Foreground}" />
     </Style>
-    <!-- The round X pill (remove / delete beside a row or name box): a 24 px circle holding a 12 px drawn cross; after pill.glyph so it wins -->
+    <!-- The round X pill (remove / delete beside a row or name box): an 18 px circle holding a 9 px drawn cross; after pill.glyph so it wins -->
     <Style Selector="Button.pill.closex">
         <Setter Property="Padding" Value="0" />
         <Setter Property="Width" Value="{DynamicResource CloseXSize}" />

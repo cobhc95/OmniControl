@@ -33,9 +33,11 @@ public sealed partial class DeviceService
                 if (attempt.Problem is null)
                 {
                     var on = attempt.IsOn == true;
+                    var before = runtime.IsOn;
                     runtime.Finished(on, known: true, $"Checked {DateTime.Now:t} · {Via(device, method)}reads {(on ? "on" : "off")}{Others(device, failed)}", failed: false,
                         details: attempt.Details, confirmed: true);
                     Log($"\"{name}\" check via {device.NameOf(method)}: reads {(on ? "on" : "off")}");
+                    if (before is { } was && was != on) NoteState(device, on); // a first read, or the same state again, is not news
                     return null;
                 }
                 failed.Add((method, attempt));

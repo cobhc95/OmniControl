@@ -26,6 +26,7 @@ public sealed partial class DeviceService
     private readonly StateRegistry _states;
     private readonly ICredentialStore _credentials;
     private readonly Action<string> _report;
+    private readonly Action<Osd.OsdMessage> _note;
     private readonly LaunchLimiter _limiter = new();
     private readonly Dictionary<string, DeviceRuntime> _runtime = new();
     private readonly DispatcherTimer _saveSoon = new() { Interval = Timing.DeviceNameSaveDelay };
@@ -51,8 +52,9 @@ public sealed partial class DeviceService
     public event Action? ListChanged;
 
     /// <param name="states">The master list of states: each device's power is registered there.</param>
+    /// <param name="note">Where a device's state change or failure is announced (the master OSD).</param>
     /// <param name="hardware">The master list of hardware watches: the service registers the devices' state reading there (after sleep or Remote Desktop the network may be back).</param>
-    public DeviceService(HotkeyRegistry hotkeys, StateRegistry states, HardwareWatches hardware, ICredentialStore credentials, Action<string> report, DeviceSettings? settings = null)
+    public DeviceService(HotkeyRegistry hotkeys, StateRegistry states, HardwareWatches hardware, ICredentialStore credentials, Action<string> report, Action<Osd.OsdMessage> note, DeviceSettings? settings = null)
     {
         hardware.Register(new HardwareWatch(HardwareWatchId, "Smart devices", HardwareSignal.Session | HardwareSignal.Resume,
             () => Dispatcher.UIThread.Post(() => _ = Guard.RunAsync("Smart devices: check after a hardware change", CheckAllNowAsync))));
@@ -60,6 +62,7 @@ public sealed partial class DeviceService
         _states = states;
         _credentials = credentials;
         _report = report;
+        _note = note;
         Settings = settings ?? DeviceSettings.Load();
         Setup = new DeviceSetup(Log);
         Simulation = new SimulationSetup(Log, Settings.Emulator, Edited);

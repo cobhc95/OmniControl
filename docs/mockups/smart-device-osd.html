@@ -1,0 +1,10 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Smart device state on the OSD (approved)</title>
+<!-- Approved by the owner 18 Nov 2026. When a smart device's power state really changes (rule, hotkey, click, tray, schedule, other PC),
+  the existing OSD pop-up shows: the icon the USER PICKED for that device (its stored icon, the same one its card and tile show; default only if none picked), its name, and the new state under it:
+  "On" in accent (icon accent), "Off" muted (icon muted). A failed switch shows a warning icon and "Couldn't turn on/off" in red (BrushDanger).
+  Uses the master OSD (same look, place, timing, screen choice) as a registered OsdElement, never a second pop-up; shown after
+  the device confirms the state (not on request). One OSD setting "Smart devices" (switch, on by default) under the OSD page. -->
+<style>body{font-family:Segoe UI;background:#2a2a2a;color:#eee;padding:20px;font-size:13px}</style></head><body>
+<p>[plug icon muted] Orbit 11 / Off &nbsp; [plug icon accent] Orbit 11 / <span style="color:#e8892f">On</span> &nbsp; [warning red] Orbit 11 / <span style="color:#e24b4a">Couldn't turn off</span></p>
+</body></html>

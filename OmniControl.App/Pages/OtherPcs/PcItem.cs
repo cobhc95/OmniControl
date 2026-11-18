@@ -6,6 +6,7 @@ using OmniControl.App.Dialogs;
 using OmniControl.App.OtherPcs;
 using OmniControl.App.Services;
 using OmniControl.App.States;
+using OmniControl.Core.Engine.Wake;
 
 namespace OmniControl.App.Pages.OtherPcs;
 
@@ -89,6 +90,60 @@ public sealed partial class PcItem : ObservableObject
     [RelayCommand]
     private void CheckAgain() => _service.CheckPairTailscale(Id);
 
+    // ---- Wake (docs/mockups/other-pc-wake.html) ----
+
+    /// <summary>The wake tags in the header line: "Can wake from sleep", "Wake is off on X", "Can't be woken remotely", or "Didn't wake (tried N times)".</summary>
+    [ObservableProperty] private IReadOnlyList<TagItem> _wakeTags = Array.Empty<TagItem>();
+
+    /// <summary>The yellow tag's "Turn on" link: opens the set-up window (nothing changes until that PC allows it).</summary>
+    [ObservableProperty] private bool _showsTurnOn;
+
+    /// <summary>The red message's "Set up wake…" link.</summary>
+    [ObservableProperty] private bool _showsSetUpLink;
+
+    /// <summary>The accent "Wake" pill: the PC is off and can be woken.</summary>
+    [ObservableProperty] private bool _showsWake;
+
+    /// <summary>The signal was sent and the PC is awaited: the spinner and "Waking…" replace the pill.</summary>
+    [ObservableProperty] private bool _isWaking;
+
+    /// <summary>Asks for the wake set-up window of this PC (the page opens it).</summary>
+    public event Action<PcItem>? SetupWakeRequested;
+
+    [RelayCommand]
+    private void Wake() => _ = _service.WakeAsync(Id);
+
+    [RelayCommand]
+    private void SetUpWake() => SetupWakeRequested?.Invoke(this);
+
+    private void RefreshWake()
+    {
+        var advice = _service.WakeAdviceOf(Id);
+        var status = _service.WakeStatusOf(Id);
+        var tags = new List<TagItem>();
+        IsWaking = !IsOnline && status.Phase == WakePhase.Waking;
+        var failed = !IsOnline && status.Phase == WakePhase.Failed;
+        ShowsTurnOn = advice.State == WakeState.SettingOff;
+        ShowsWake = !IsWaking && advice.State == WakeState.Wakeable;
+        ShowsSetUpLink = failed;
+        switch (advice.State)
+        {
+            case WakeState.CanWake: tags.Add(new TagItem("Can wake from sleep", TagTone.Good, $"It can be woken over the network ({_service.WakeFactsOf(Id)?.Adapter}).")); break;
+            case WakeState.SettingOff: tags.Add(new TagItem($"Wake is off on {Name}", TagTone.Caution, "Its network card can wake it, but a setting is off. Turn on opens the set-up; nothing changes there until that PC allows it.")); break;
+            case WakeState.Cannot: tags.Add(new TagItem("Can't be woken remotely", TagTone.Neutral, advice.Reason)); break;
+        }
+        if (failed) tags.Add(new TagItem(OtherPcsService.WakeFailedWords(status), TagTone.Risk, status.Why));
+        WakeTags = tags;
+    }
+
+    /// <summary>The offline tag: how the PC went away from its notice ("Asleep since 09:12"), or just "Offline" (the last time it was seen in the tip).</summary>
+    private TagItem OfflineTag(string? detail)
+    {
+        var seen = _service.SeenWords(Id);
+        var tip = detail is { Length: > 0 } ? $"{detail} ({seen})" : seen;
+        return _service.AwayOf(Id) is { } gone ? new TagItem(WakeAdvices.AwayWords(gone.Away, gone.At), TagTone.Neutral, tip) : new TagItem("Offline", TagTone.Neutral, tip);
+    }
+
     // ---- Connect ----
 
     private PcRoute Route => _service.Find(Id)?.Route ?? PcRoute.Lan;
@@ -137,9 +192,10 @@ public sealed partial class PcItem : ObservableObject
         if (connected) state = new TagItem($"{word} ✓ {probe!.Result.Ms} ms", TagTone.Good, $"Reached over {word}.");
         else if (NeedsTailscale) state = new TagItem(IsOnline ? "Tailscale not working yet · still using LAN" : "Tailscale not working yet · not connected", TagTone.Caution, probe is { Result.Ok: false, Route: PcRoute.Tailscale } ? probe.Result.Reason : null);
         else if (probe is { Result.Ok: false } && IsOnline) state = new TagItem($"{word} ✗ · still using LAN", TagTone.Caution, probe.Result.Reason);
-        else if (probe is { Result.Ok: false }) state = new TagItem(_service.SeenWords(Id), TagTone.Neutral, $"{word}: {probe.Result.Reason}");
-        else state = new TagItem(IsOnline ? "checking…" : _service.SeenWords(Id), TagTone.Neutral, "Waiting for the first check over this route.");
+        else if (probe is { Result.Ok: false }) state = OfflineTag($"{word}: {probe.Result.Reason}");
+        else state = IsOnline ? new TagItem("checking…", TagTone.Neutral, "Waiting for the first check over this route.") : OfflineTag(null);
         Tags = new[] { state };
+        RefreshWake();
         TabRoute = connected ? word : IsOnline ? "LAN" : "offline";
         TabTip = state.Tip is { Length: > 0 } tip ? $"{Name}: {state.Text}. {tip}" : $"{Name}: {state.Text}";
         Checks.Clear();

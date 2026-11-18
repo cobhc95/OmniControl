@@ -3,7 +3,7 @@
              x:Class="OmniControl.App.Controls.RemoteSectionTag"
              x:DataType="svc:RemotePcLabel" xmlns:svc="using:OmniControl.App.Services">
     <!-- The mark of an entry that runs on another PC (docs/mockups/other-pc-action-tag.html): "Other PCs · name" in bold accent, then the real name, muted -->
-    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+    <StackPanel x:Name="Body" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
         <TextBlock Classes="remotesection" Text="{Binding Section}" />
         <TextBlock Classes="muted small" Text="{Binding RealName}" IsVisible="{Binding HasRealName}" VerticalAlignment="Center" />
     </StackPanel>

@@ -107,6 +107,22 @@ public class HardwareRetryTests
     }
 
     [Fact]
+    public void The_retry_uses_the_stricter_check_when_the_watch_has_one()
+    {
+        var refreshes = 0;
+        var log = new ConcurrentQueue<string>();
+        using var watches = new HardwareWatches(FastSchedule, log.Enqueue);
+        watches.Register(new HardwareWatch("displays.hardware", "Monitors", HardwareSignal.Session,
+            () => Interlocked.Increment(ref refreshes), LooksStale: () => false, LooksUnsettled: () => Volatile.Read(ref refreshes) < 2,
+            Describe: () => "fake monitors"));
+        watches.Signal(HardwareSignal.Session, "fake unlock");
+        Assert.True(WaitFor(log, "try 2 of 4 found it"));
+        Assert.Contains(log, l => l.StartsWith("Monitors (after Session): try 1 of 4 still looks stale") && l.EndsWith("Found: fake monitors."));
+        Thread.Sleep(FastSchedule[^1] * 2);
+        Assert.Equal(2, Volatile.Read(ref refreshes));
+    }
+
+    [Fact]
     public void A_signal_the_watch_does_not_list_starts_nothing()
     {
         var monitors = new FakeMonitors(readyOn: 1);
@@ -142,5 +158,16 @@ public class HardwareRetryTests
         Assert.False(expected.LooksStale([@"\\?\DISPLAY#TV"], 1));
         Assert.False(expected.LooksStale([], 0)); // a laptop panel alone
         Assert.True(expected.LooksStale([@"\\?\DISPLAY#NEW"], 0)); // a desktop monitor and none answering
+    }
+
+    [Fact]
+    public void A_monitor_answering_fewer_codes_than_before_looks_stale()
+    {
+        var expected = new MonitorExpectation();
+        Assert.False(expected.AnswersLess(@"\\?\DISPLAY#A", 19));
+        Assert.True(expected.AnswersLess(@"\\?\DISPLAY#A", 15)); // read while it was still waking
+        Assert.True(expected.AnswersLess(@"\\?\DISPLAY#A", 0));
+        Assert.False(expected.AnswersLess(@"\\?\DISPLAY#A", 19));
+        Assert.False(expected.AnswersLess(@"\\?\DISPLAY#B", 0)); // never answered: left to the stricter check after an announcement
     }
 }

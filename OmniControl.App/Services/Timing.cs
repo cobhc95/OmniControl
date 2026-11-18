@@ -119,11 +119,18 @@ public static class Timing
     public static readonly TimeSpan HardwareDebounce = TimeSpan.FromSeconds(2);
 
     /// <summary>
-    /// After an announcement, a watch that can tell when it looks stale is refreshed at these times after the last one of the burst, stopping as
-    /// soon as it looks right (<see cref="HardwareRetry"/>): after a return from Remote Desktop the monitors often do not answer DDC/CI for 2-10 s.
+    /// After an announcement (and at start, then only when it looks wrong), a watch that can tell when it looks stale is refreshed at these
+    /// times after the last one of the burst, stopping as soon as it looks right (<see cref="HardwareRetry"/>): after a return from Remote
+    /// Desktop, an unlock or a log-on the monitors often do not answer DDC/CI for 2-10 s, and some take longer.
     /// </summary>
     public static readonly IReadOnlyList<TimeSpan> HardwareRetrySchedule =
-        [TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20)];
+        [TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(40)];
+
+    /// <summary>The periodic hardware check refreshes a watch that still looks stale at most this many times in a row; then it waits for the next announcement or Refresh.</summary>
+    public const int HardwareStaleRefreshMax = 3;
+
+    /// <summary>The choices of App settings' "Check hardware every" (<see cref="HardwareChecks"/>; 1 minute is the default): each look only compares what Windows lists with what the program holds and refreshes nothing unless that differs.</summary>
+    public static readonly TimeSpan HardwareCheckMinute = TimeSpan.FromMinutes(1), HardwareCheck5Minutes = TimeSpan.FromMinutes(5), HardwareCheck15Minutes = TimeSpan.FromMinutes(15);
 
     /// <summary>One watched piece of hardware is refreshed at most this often, however many announcements arrive; a later one still gets its refresh once the gap is over.</summary>
     public static readonly TimeSpan HardwareRefreshGap = TimeSpan.FromSeconds(4);
@@ -445,10 +452,24 @@ public static class Timing
     /// <summary>How often a Tailscale-paired PC that is offline gets the Tailscale checks again, how long to wait after a fix (start, sign in) before reading Tailscale again, and how long to wait before trying to open a Tailscale link again after one failed.</summary>
     public static readonly TimeSpan PcTailscaleRecheck = TimeSpan.FromSeconds(30), PcTailscaleAfterFix = TimeSpan.FromSeconds(3), PcTailscaleSwitchBackoff = TimeSpan.FromMinutes(2);
 
+    /// <summary>Waking another PC (docs/mockups/other-pc-wake.html): the wake signal is sent up to <see cref="WakeTries"/> times, each followed by up to <see cref="WakeWaitEach"/> of waiting for the PC to be reachable; a relay answers within <see cref="WakeAskWait"/>.</summary>
+    public const int WakeTries = 3;
+    public static readonly TimeSpan WakeWaitEach = TimeSpan.FromSeconds(40), WakeAskWait = TimeSpan.FromSeconds(6), WakePoll = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>How long a PC about to sleep or shut down waits for its "going away" notice to be sent, and how often it re-reads its own wake facts.</summary>
+    public static readonly TimeSpan WakeNoticeWait = TimeSpan.FromMilliseconds(1500), WakeFactsEvery = TimeSpan.FromMinutes(5);
+
+    /// <summary>A paired PC may ask this one for wake help (relay, check, fix, test) at most <see cref="WakeAskBurstMax"/> times per window.</summary>
+    public static readonly TimeSpan WakeAskBurstWindow = TimeSpan.FromSeconds(30);
+    public const int WakeAskBurstMax = 6;
+
+    /// <summary>How long the PC that asked waits for another PC's answer to a wake fix (its own prompt and the Windows prompt wait for a person), and for a test: the sleep, then the wake.</summary>
+    public static readonly TimeSpan WakeFixWait = TimeSpan.FromMinutes(3), WakeSleepWait = TimeSpan.FromSeconds(90), WakeTestDelay = TimeSpan.FromSeconds(2);
+
     /// <summary>The longest "then wait" between two actions of an automation, in seconds, and what a new one starts at.</summary>
     public const int AutomationMaxWaitSeconds = 600, AutomationDefaultWaitSeconds = 5;
 
-    /// <summary>Sleep, hibernate, shut down, restart and sign out never happen within this time of OmniControl starting.</summary>
+    /// <summary>A rule that a trigger started (not a person) may not sleep, hibernate, shut down, restart or sign out within this time of OmniControl starting or the PC waking.</summary>
     public static readonly TimeSpan PowerActionGrace = TimeSpan.FromMinutes(2);
 
     /// <summary>"Turn off displays" waits this long first, so the click or key that started it does not wake the screens again at once.</summary>
