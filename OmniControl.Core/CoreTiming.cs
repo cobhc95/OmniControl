@@ -13,10 +13,11 @@ public static class CoreTiming
     public const uint HitTestTimeoutMs = 50;
 
     /// <summary>
-    /// A middle press the program may swallow (to stop an app's autoscroll) waits at most this long for the "is it a link, tab or button?"
-    /// lookup; past that the click passes through (fail open). It stays well under Windows' own hook time limit.
+    /// An app whose "is it a link, tab or button?" lookup took longer than <see cref="AutoscrollSlowMs"/> is not asked again for
+    /// <see cref="AutoscrollBackoffMs"/> (presses there pass meanwhile), so a busy app is never kept busier; the watcher remembers whether
+    /// a process is Windows' shell for at most <see cref="AutoscrollProcessCache"/> processes.
     /// </summary>
-    public const int AutoscrollLookupMs = 80;
+    public const int AutoscrollSlowMs = 200, AutoscrollBackoffMs = 5000, AutoscrollProcessCache = 256;
 
     /// <summary>
     /// The autoscroll answer is looked up by a worker (<c>AutoscrollWatcher</c>) every <see cref="AutoscrollWatchMs"/> while the pointer is
@@ -33,6 +34,25 @@ public static class CoreTiming
     /// (<c>ForegroundProgram</c>); the mouse hook only reads what they found.
     /// </summary>
     public const int FullScreenWatchMs = 500, ForegroundWatchMs = 100;
+
+    /// <summary>
+    /// The size and place Windows' own volume and brightness pop-up may have (<c>WindowsOsdWindows.HasFlyoutShape</c>), as shares of its
+    /// monitor: at most this wide and tall, its centre this close to the monitor's centre line, its edge this close to the monitor's bottom
+    /// or top; and at least <see cref="WindowsOsdMinSidePx"/> on each side. A screen-sized Explorer host or a thumbnail preview fails.
+    /// </summary>
+    public const double WindowsOsdMaxWidthShare = 0.4, WindowsOsdMaxHeightShare = 0.25, WindowsOsdCentreShare = 0.1, WindowsOsdEdgeShare = 0.3;
+
+    /// <inheritdoc cref="WindowsOsdMaxWidthShare"/>
+    public const int WindowsOsdMinSidePx = 20;
+
+    /// <summary>
+    /// A call into Explorer (its touchpad settings service) is waited for at most <see cref="ShellCallTimeoutMs"/>; one slower than
+    /// <see cref="ShellCallSlowMs"/> is logged, naming the call.
+    /// </summary>
+    public const int ShellCallTimeoutMs = 1500, ShellCallSlowMs = 200;
+
+    /// <summary>At start-up the hardware listeners' hidden window and SystemEvents are each waited for at most this long (the UI thread waits).</summary>
+    public const int HardwareSignalsStartWaitMs = 3000;
 
     /// <summary>A mouse-hook call slower than this is reported (Windows holds all mouse input while it runs, and drops a hook that takes too long).</summary>
     public const int HookSlowMs = 50;
@@ -137,6 +157,12 @@ public static class CoreTiming
     /// <summary>How long an elevated helper (the APO installer) may run before OmniControl stops waiting for it.</summary>
     public const int ElevatedHelperTimeoutMs = 120_000;
 
+    /// <summary>
+    /// How long OmniControl waits for Equalizer APO's Configurator (Device Selector) to be closed before it reads the devices again: the
+    /// user ticks devices there at their own pace, so the wait is long; a worker waits, never the UI.
+    /// </summary>
+    public const int ConfiguratorWaitMs = 30 * 60_000;
+
     /// <summary>How long a Tailscale or netsh read may take, and how long a plain connect test waits (Other PCs over Tailscale).</summary>
     public const int TailscaleCliWaitMs = 5_000, TcpReachWaitMs = 3_000;
 
@@ -203,4 +229,10 @@ public static class CoreTiming
 
     /// <summary>How long Windows' shutdown.exe may take to accept or refuse a shut down, restart or sign out; still running then counts as accepted.</summary>
     public const int ShutdownExeWaitMs = 5000;
+
+    /// <summary>
+    /// Reading how this PC can be woken (<c>WakeReader</c>): each source gets its own wait, and a slow one is given up on so the next is tried
+    /// (WMI can take 18 s on a broken adapter; powercfg answers in well under a second).
+    /// </summary>
+    public const int WakeReadWmiMs = 5_000, WakeReadPowercfgMs = 4_000, WakeReadApiMs = 3_000;
 }

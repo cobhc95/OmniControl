@@ -21,6 +21,7 @@ public partial class SliderField : UserControl
     public static readonly StyledProperty<bool> ThickProperty = AvaloniaProperty.Register<SliderField, bool>(nameof(Thick));
     public static readonly StyledProperty<bool> CompactProperty = AvaloniaProperty.Register<SliderField, bool>(nameof(Compact));
     public static readonly StyledProperty<double> ValueGapProperty = AvaloniaProperty.Register<SliderField, double>(nameof(ValueGap));
+    public static readonly StyledProperty<int> DecimalsProperty = AvaloniaProperty.Register<SliderField, int>(nameof(Decimals));
     public static readonly StyledProperty<double> ValueMinWidthProperty = AvaloniaProperty.Register<SliderField, double>(nameof(ValueMinWidth));
 
     public SliderField()
@@ -29,7 +30,7 @@ public partial class SliderField : UserControl
         // The slider and the typed number tell Value only when the user changes them; setting them from <see cref="Value"/>
         // never writes back, so a limit that arrives after the value cannot clamp the stored value.
         Bar.ValueChanged += (_, e) => { if (!_applying) Value = e.NewValue; };
-        Typed.PropertyChanged += (_, e) => { if (!_applying && e.Property == NumberText.ValueProperty) Value = Typed.Value; };
+        Typed.PropertyChanged += (_, e) => { if (!_applying && e.Property == NumberText.ValueProperty) Value = Math.Round(Typed.Value * Scale); };
     }
 
     private bool _applying;
@@ -37,12 +38,20 @@ public partial class SliderField : UserControl
     private void ShowValue()
     {
         _applying = true;
-        (Bar.Minimum, Bar.Maximum, Typed.Minimum, Typed.Maximum) = (Minimum, Maximum, Minimum, Maximum);
-        (Bar.Value, Typed.Value) = (Value, Value);
+        (Bar.Minimum, Bar.Maximum, Typed.Minimum, Typed.Maximum) = (Minimum, Maximum, Minimum / Scale, Maximum / Scale);
+        (Bar.Value, Typed.Value, Typed.Decimals) = (Value, Value / Scale, Decimals);
         _applying = false;
     }
 
     public double Value { get => GetValue(ValueProperty); set => SetValue(ValueProperty, value); }
+
+    /// <summary>
+    /// Decimals of the value as it is typed: with 1 the slider's numbers count in tenths, so a slider at 15 types and shows as 1.5 (the OSD's
+    /// seconds). 0: the slider's own numbers.
+    /// </summary>
+    public int Decimals { get => GetValue(DecimalsProperty); set => SetValue(DecimalsProperty, value); }
+
+    private double Scale => Math.Pow(10, Decimals);
     public double Minimum { get => GetValue(MinimumProperty); set => SetValue(MinimumProperty, value); }
     public double Maximum { get => GetValue(MaximumProperty); set => SetValue(MaximumProperty, value); }
 
@@ -69,7 +78,7 @@ public partial class SliderField : UserControl
         base.OnPropertyChanged(change);
         if (change.Property == ThickProperty) Bar.Classes.Set("thick", Thick);
         else if (change.Property == CompactProperty) Bar.Classes.Set("compact", Compact);
-        else if (change.Property == ValueProperty || change.Property == MinimumProperty || change.Property == MaximumProperty) ShowValue();
+        else if (change.Property == ValueProperty || change.Property == MinimumProperty || change.Property == MaximumProperty || change.Property == DecimalsProperty) ShowValue();
         else if (change.Property == ResetValueProperty) SliderReset.SetValue(Bar, ResetValue);
         else if (change.Property == TextProperty) Words.Text = Text;
         else if (change.Property == ValueMinWidthProperty) Words.MinWidth = ValueMinWidth;

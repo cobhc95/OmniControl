@@ -10,7 +10,10 @@ namespace OmniControl.App.Services;
 /// </summary>
 public static class NowPlayingText
 {
-    public const string StateId = "media.nowplaying", PlayPauseId = "media.playpause", NothingWords = "Nothing playing";
+    public const string StateId = "media.nowplaying", PreviousId = "media.previous", PlayPauseId = "media.playpause", NextId = "media.next", NothingWords = "Nothing playing";
+
+    /// <summary>The media actions in the order the card's pills show them.</summary>
+    public static IReadOnlyList<string> ActionIds { get; } = new[] { PreviousId, PlayPauseId, NextId };
 
     private const string Divider = " ‖ ", Join = " · ";
 

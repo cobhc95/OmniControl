@@ -57,12 +57,14 @@ public static class AppDataStore
     /// <summary>Saves the text atomically; false (and a line in the log) when the folder could not be written.</summary>
     public static bool SaveText(DataStore store, string text)
     {
+        string? temp = null;
         try
         {
             Directory.CreateDirectory(Folder);
-            // Temp file then move: a crash or power cut mid-write leaves the old file whole, never a truncated one.
+            // Temp file then move: a crash or power cut mid-write leaves the old file whole, never a truncated one. The temp file's name is
+            // unique per call, so two saves of one store at once never write the same temp file (the later move wins).
             var path = PathOf(store.FileName);
-            var temp = path + ".tmp";
+            temp = $"{path}.{Guid.NewGuid():N}.tmp";
             File.WriteAllText(temp, text);
             File.Move(temp, path, overwrite: true);
             return true;
@@ -71,17 +73,20 @@ public static class AppDataStore
         {
             // Read-only or locked folder: keep running with the values in memory, and say so in the log.
             AppendLog(Guard.LogFile, $"Couldn't save {store.FileName}: {ex.Message}");
+            if (temp is not null) TryDelete(temp);
             return false;
         }
     }
 
     /// <summary>Removes a file; a missing or locked file is not a problem.</summary>
-    public static void Delete(DataStore store)
+    public static void Delete(DataStore store) => TryDelete(PathOf(store.FileName));
+
+    private static void TryDelete(string path)
     {
-        try { File.Delete(PathOf(store.FileName)); }
+        try { File.Delete(path); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // Left behind: it is read again, harmlessly, at the next start.
+            // Left behind: a store is read again, harmlessly, at the next start; a temp file is never read.
         }
     }
 

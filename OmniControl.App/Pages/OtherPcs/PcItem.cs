@@ -54,7 +54,7 @@ public sealed partial class PcItem : ObservableObject
     public bool ShowsGroups => IsOnline && !IsLoading;
 
     /// <summary>The names and icons of the groups every PC may share, for the loading placeholders (the master list, never a copy).</summary>
-    public IReadOnlyList<(string Name, string Icon)> LoadingGroups => CommonGroups.All;
+    public IReadOnlyList<CommonGroup> LoadingGroups => CommonGroups.All;
 
     /// <summary>The PC's shared items as sections with real controls.</summary>
     public PcMirror Mirror { get; }

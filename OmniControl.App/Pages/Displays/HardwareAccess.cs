@@ -19,6 +19,9 @@ internal interface IHardwareAccess
 
     OperationResult WritePercent(byte code, int percent);
 
+    /// <summary>A table-type control's current raw value (power mode); null when the display does not answer (a sleeping monitor often does not).</summary>
+    uint? ReadRaw(byte code);
+
     /// <summary>A table-type control (input, colour preset, power) set to one of its values.</summary>
     OperationResult WriteRaw(byte code, uint value);
 }
@@ -39,6 +42,8 @@ internal sealed class MonitorAccess : IHardwareAccess
 
     public OperationResult WritePercent(byte code, int percent) =>
         _monitor.TrySetVcp(code, Percent.ToRaw(percent, _monitor.Probe().Level(code)?.Maximum ?? Percent.Max));
+
+    public uint? ReadRaw(byte code) => _monitor.GetVcp(code)?.Current;
 
     public OperationResult WriteRaw(byte code, uint value) => _monitor.TrySetVcp(code, value);
 }
@@ -65,6 +70,8 @@ internal sealed class LaptopAccess : IHardwareAccess
 
     public OperationResult WritePercent(byte code, int percent) =>
         code == VcpCode.Brightness ? _laptop.SetBrightness(percent) : OperationResult.Fail(UnsupportedReason);
+
+    public uint? ReadRaw(byte code) => null;
 
     public OperationResult WriteRaw(byte code, uint value) => OperationResult.Fail(UnsupportedReason);
 }

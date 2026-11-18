@@ -14,6 +14,7 @@
             <ColumnDefinition Width="Auto" SharedSizeGroup="MixerPan" />
             <ColumnDefinition Width="Auto" SharedSizeGroup="MixerVolume" />
             <ColumnDefinition Width="Auto" SharedSizeGroup="MixerMute" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="MixerListen" />
             <ColumnDefinition Width="Auto" SharedSizeGroup="MixerFx" />
             <ColumnDefinition Width="Auto" SharedSizeGroup="MixerRemove" />
             <ColumnDefinition Width="Auto" SharedSizeGroup="MixerMeter" />
@@ -23,6 +24,7 @@
         <TextBlock Grid.Column="4" Classes="muted small" Text="Pan" HorizontalAlignment="Center" IsVisible="{Binding ShowsPan}" />
         <TextBlock Grid.Column="5" Classes="muted small" Text="Volume" HorizontalAlignment="Center" />
         <TextBlock Grid.Column="6" Classes="muted small" Text="Mute" HorizontalAlignment="Center" />
-        <TextBlock Grid.Column="7" Classes="muted small" Text="FX" HorizontalAlignment="Center" />
+        <TextBlock Grid.Column="7" Classes="muted small" Text="Listen" HorizontalAlignment="Center" IsVisible="{Binding ShowsListen}" />
+        <TextBlock Grid.Column="8" Classes="muted small" Text="FX" HorizontalAlignment="Center" />
     </Grid>
 </UserControl>

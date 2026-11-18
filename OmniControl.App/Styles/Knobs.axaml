@@ -14,7 +14,7 @@
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="FocusAdorner" Value="{x:Null}" />
         <Setter Property="Cursor" Value="Arrow" />
-        <Setter Property="TrackBrush" Value="{DynamicResource BrushHoverStrong}" />
+        <Setter Property="TrackBrush" Value="{DynamicResource BrushControlTrack}" />
         <Setter Property="ValueBrush" Value="{DynamicResource BrushAccent}" />
         <Setter Property="PointerBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
         <Setter Property="Template">

@@ -54,7 +54,7 @@ public static partial class EffectsRules
     /// </summary>
     public static readonly EffectsRoute RouteApoCable = new("apo-cable", "Equalizer APO on a cable",
         "Its own cable; Equalizer APO runs the effects.",
-        "Windows sends the program to a cable with Equalizer APO on it (ticked for that cable in Equalizer APO's Device Selector); Equalizer APO runs the equaliser, gain, IR loader and VST2 plug-ins, VST3 plug-ins are kept but not run, and OmniControl passes the cable's sound on to the speakers. Needs a second cable pair. Your own settings in Equalizer APO's config.txt that are not limited to a device would apply on that cable too.");
+        "Windows sends the program to a cable with Equalizer APO on it (ticked for that cable in Equalizer APO's Configurator); Equalizer APO runs the equaliser, gain, IR loader and VST2 plug-ins, VST3 plug-ins are kept but not run, and OmniControl passes the cable's sound on to the speakers. Needs a second cable pair. Your own settings in Equalizer APO's config.txt that are not limited to a device would apply on that cable too.");
 
     /// <summary>Every way a program's effects can run, in the order a picker lists them.</summary>
     public static IReadOnlyList<EffectsRoute> ProgramRoutes { get; } = new[] { RouteAutomatic, RouteCable, RouteCapture, RouteApoCable };

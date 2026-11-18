@@ -11,6 +11,10 @@
    - BIOS wake setting · you do this · optional, note "Only for waking from shut down. Look for "Wake on LAN" in the BIOS." - no button
    - Test wake (dashed row), note "Puts <PC> to sleep, then wakes it from here", "Start test" pill - only on click, never automatic.
   Foot: "Check again" pill, "Fix all" accent-outline pill (one permission prompt on that PC for all fixes), Close primary.
+  ADDED (approved 18 Nov): while checking or fixing, a "Stop" Button.pill sits right after the status line ("Checking…"/"Fixing…" with the shared
+  spinner); Stop cancels at once and puts back anything half-done. After any fix, an "Undo my changes" Button.pill appears in the foot between
+  "Check again" and "Fix all": it restores exactly the values OmniControl changed (their old values recorded before each change, kept per PC
+  in a saved store so it works after closing the window or restarting), in one elevated step, then re-checks. Status after fixes e.g. "✓ 2 fixed".
   Fixes run ON THE OTHER PC via the encrypted PcProtocol, behind that PC's own Windows elevation prompt; never silently; results honest per row.
   Opens ONLY when asked: the caution tag's "Turn on" link, a "Set up wake…" link on a failed wake's red message, and the PC tab's right-click menu.
   While that PC is offline: shows the last reported check, read-only (Fix buttons hidden/disabled with tooltip "Laptop is asleep"). -->

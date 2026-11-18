@@ -23,16 +23,16 @@ public sealed partial class FxFolderViewModel : ObservableObject
     private readonly Action _save;
     private readonly Action _addHere;
     private readonly Action<FxSlotViewModel> _select;
-    private readonly Func<Task> _installApo;
+    private readonly FxMixerLinks _mixer;
     private readonly Action _layout;
     private readonly MenuChoiceItem _deviceCard;
     private readonly FactItem _methodCard;
 
-    internal FxFolderViewModel(FxSlot slot, FxDeviceSource devices, Action save, Action<string> openMixer, Action addHere, Action<FxSlotViewModel> select,
-        Func<Task> installApo, Action layout, Action saveAsPreset)
+    internal FxFolderViewModel(FxSlot slot, FxDeviceSource devices, Action save, FxMixerLinks mixer, Action addHere, Action<FxSlotViewModel> select,
+        Action layout, Action saveAsPreset)
     {
         _saveAsPreset = saveAsPreset;
-        _installApo = installApo;
+        _mixer = mixer;
         _layout = layout;
         _slot = slot;
         _devices = devices;
@@ -40,7 +40,7 @@ public sealed partial class FxFolderViewModel : ObservableObject
         _addHere = addHere;
         _select = select;
         _deviceCard = new MenuChoiceItem("Device", () => ChipText, DeviceRows) { Tip = "The playback device this folder is for" };
-        _methodCard = new FactItem("Method", () => openMixer(_slot.DeviceId)) { ActionText = "Change in Mixer", ActionIsLink = true };
+        _methodCard = new FactItem("Method", () => mixer.OpenMixer(_slot.DeviceId)) { ActionText = "Change in Mixer", ActionIsLink = true };
         _mixCard = new SliderItem("Mix", Mix, v => { Mix = v; return OperationResult.Ok("FX"); }, _ => { }, 0, Percent.Max, "%", (int)DefaultMix) { Thick = true };
         Cards = new object[] { _deviceCard, _methodCard, _mixCard };
         Refresh();
@@ -75,8 +75,9 @@ public sealed partial class FxFolderViewModel : ObservableObject
     partial void OnPlayingChanged(bool value) => OnPropertyChanged(nameof(Dim));
 
     /// <summary>
-    /// Folder Mix, 0-100: how much of the folder's effects is heard against the sound that enters the folder. OmniControl's own engine
-    /// mixes it (<c>MixCloseStage</c>); Equalizer APO has no dry/wet mix, so below 100 % it runs none of the folder's effects (said on the Method card).
+    /// Folder Mix, 0-100: how much of the folder's effects is heard against the sound that enters the folder (dry x (1 - mix) +
+    /// processed x mix). OmniControl's own engine mixes it (<c>MixCloseStage</c>), Equalizer APO with virtual channels (<c>ApoChainWriter</c>);
+    /// an Equalizer APO too old for that keeps it at 100 % and says so (<see cref="FxDeviceSource.MixBlockedOn"/>).
     /// </summary>
     public int Mix
     {
@@ -106,14 +107,28 @@ public sealed partial class FxFolderViewModel : ObservableObject
         OnPropertyChanged(nameof(ChipText));
         _deviceCard.Refresh();
         _methodCard.Tags = MethodTag is { } tag ? new[] { tag } : Array.Empty<TagItem>();
+        RefreshMix();
         RefreshMethodNote();
     }
 
-    /// <summary>The Method card's muted line: when the device has no method yet, or that Equalizer APO cannot apply a Mix below 100 %.</summary>
+    /// <summary>Mix works, or is held at 100 % with its one sentence while the device's Equalizer APO can't blend.</summary>
+    private void RefreshMix()
+    {
+        if (_devices.MixBlockedOn(_slot.DeviceId) is not { } reason)
+        {
+            _mixCard.Availability.MakeAvailable();
+            return;
+        }
+        _mixCard.Availability.MakeUnavailable(reason);
+        if (Mix == FxSlot.DefaultWet) return;
+        Mix = FxSlot.DefaultWet;
+        _mixCard.Load(Mix);
+    }
+
+    /// <summary>The Method card's muted line: when the device has no method yet, or that its Equalizer APO keeps Mix at 100 %.</summary>
     private void RefreshMethodNote() => _methodCard.Note =
         MethodTag is null ? "It chooses its method when it plays."
-        : MethodTag.Text.StartsWith(FxDeviceSource.ApoTag, StringComparison.Ordinal) && Mix < FxSlot.DefaultWet ? "Equalizer APO has no mix: its effects do not run below 100 %."
-        : string.Empty;
+        : _devices.MixBlockedOn(_slot.DeviceId) ?? string.Empty;
 
     /// <summary>The folder was changed from outside (a folder preset replaced its effects and Mix): the editor shows what the slot holds now.</summary>
     public void Reload()
@@ -127,7 +142,7 @@ public sealed partial class FxFolderViewModel : ObservableObject
     private IReadOnlyList<MenuRowItem> DeviceRows() => _devices.Devices()
         .Select(d => new MenuRowItem(d.Name, string.Empty, d.Id == _slot.DeviceId, d.Name, new RelayCommand(() => Choose(d)), d.Tags))
         .Prepend(MenuRowItem.Header("Playback devices"))
-        .Append(new MenuRowItem("Install Equalizer APO on a device…", string.Empty, false, "Opens Equalizer APO's setup", new AsyncRelayCommand(_installApo), RuleAbove: true))
+        .Append(new MenuRowItem("Install Equalizer APO on a device…", string.Empty, false, _mixer.InstallApoTip(), new AsyncRelayCommand(_mixer.InstallApo), RuleAbove: true))
         .ToList();
 
     private void Choose(FolderDevice device)
@@ -155,5 +170,8 @@ public sealed partial class FxFolderViewModel : ObservableObject
 public sealed record FxChainTies(Func<FxSlot, DynamicsReading?> Readings, Func<FxSlot, Action<float[]?>, IDisposable> Spectrum, Action<FxKind> ManagePresets, FxDeviceSource? Devices, FxMixerLinks Mixer,
     Func<DialogMessage, Task<bool>> Ask, Action<FolderPreset> SaveFolderPreset);
 
-/// <summary>The two things the FX window asks of the Volume page (given by the shell, so the FX window never knows the page).</summary>
-public sealed record FxMixerLinks(Action<string> OpenMixer, Func<Task> InstallApo);
+/// <summary>
+/// What the FX window asks of the Volume page (given by the shell, so the FX window never knows the page): open its Mixer at a device,
+/// and its one Equalizer APO step (the Configurator when it is installed, else its setup) with that step's tooltip.
+/// </summary>
+public sealed record FxMixerLinks(Action<string> OpenMixer, Func<Task> InstallApo, Func<string> InstallApoTip);

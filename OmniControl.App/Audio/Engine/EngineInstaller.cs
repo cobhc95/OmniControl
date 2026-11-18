@@ -1,4 +1,5 @@
 using OmniControl.App.Services;
+using OmniControl.Core;
 using OmniControl.Core.Engine;
 using OmniControl.Core.Engine.Apo;
 
@@ -117,30 +118,54 @@ public sealed class EngineInstaller
         };
     });
 
+    /// <summary>Equalizer APO is installed (its Configurator was found when the effects support was last read; for tooltips and confirmations).</summary>
+    public bool EqualizerApoInstalled => _support.Current?.Apo.UpstreamDeviceSelector is not null;
+
+    /// <summary>
+    /// THE "install Equalizer APO" step, whichever place offers it (the master's Method menu, a Mixer row's fix link, an FX device
+    /// folder's device menu, Easy): Equalizer APO's Configurator when it is installed (<see cref="ApoStatus.UpstreamConfigurator"/>, read
+    /// now), otherwise its setup (its own installer when placed next to the app, else its download page). <see cref="SetUpTip"/> says which.
+    /// </summary>
+    public Task<SetupResult> SetUpEqualizerApoAsync() => Task.Run(() =>
+        ApoStatus.UpstreamConfigurator() is { } configurator ? RunConfigurator(configurator) : RunInstaller());
+
+    /// <summary>The tooltip of <see cref="SetUpEqualizerApoAsync"/>'s button.</summary>
+    public string SetUpTip => EqualizerApoInstalled ? ConfiguratorTip
+        : EqualizerApoSetup is null ? "Opens Equalizer APO's download page" : "Runs Equalizer APO's own installer (administrator)";
+
+    public const string ConfiguratorTip = "Opens Equalizer APO's Configurator to choose the devices it runs on (administrator)";
+
     /// <summary>Install for Equalizer APO: its own installer when placed next to the app, else its download page.</summary>
-    public Task<SetupResult> InstallEqualizerApoAsync() => Task.Run(() =>
+    private SetupResult RunInstaller()
     {
         if (EqualizerApoSetup is not { } setup)
-            return PageResult(EqualizerApoPage, "Opened Equalizer APO's download page. After installing it, tick your speakers in its Device Selector (and microphones on its Capture tab).");
+            return PageResult(EqualizerApoPage, "Opened Equalizer APO's download page. After installing it, tick your speakers in its Configurator (and microphones on its Capture tab).");
         var result = HelperProcess.RunElevated(setup, string.Empty);
         _support.Refresh();
         if (result.Failure != HelperFailure.None) return Outcome(result, "Equalizer APO's installer", "run it yourself, or download it from its page");
         return new SetupResult(result.ExitCode == 0
             ? "Equalizer APO's installer finished. If it isn't found yet, restart Windows."
             : "Equalizer APO's installer was closed before it finished.");
-    });
+    }
 
-    /// <summary>Equalizer APO is installed: its own Device Selector puts it on playback devices and, on its Capture tab, on microphones.</summary>
+    /// <summary>Equalizer APO is installed: its own Configurator puts it on playback devices and, on its Capture tab, on microphones.</summary>
     public Task<SetupResult> ChooseEqualizerApoDevicesAsync() => Task.Run(() =>
+        ApoStatus.UpstreamConfigurator() is { } configurator
+            ? RunConfigurator(configurator)
+            : new SetupResult("Equalizer APO's Configurator wasn't found; open it from the Start menu."));
+
+    /// <summary>
+    /// Runs the Configurator and waits until it is closed (<see cref="CoreTiming.ConfiguratorWaitMs"/>), then reads again which devices
+    /// have Equalizer APO, so every row and folder follows what was ticked there.
+    /// </summary>
+    private SetupResult RunConfigurator(string configurator)
     {
-        if (_support.Current?.Apo.UpstreamDeviceSelector is not { } selector)
-            return new SetupResult("Equalizer APO's Device Selector wasn't found; open it from the Start menu.");
-        var result = HelperProcess.RunElevated(selector, string.Empty);
+        var result = HelperProcess.RunElevated(configurator, string.Empty, CoreTiming.ConfiguratorWaitMs);
         _support.Refresh();
         return result.Failure != HelperFailure.None
-            ? Outcome(result, "Equalizer APO's Device Selector", "open it from the Start menu")
-            : new SetupResult("Equalizer APO's Device Selector closed. If the device isn't found yet, restart Windows.");
-    });
+            ? Outcome(result, "Equalizer APO's Configurator", "open it from the Start menu")
+            : new SetupResult("Equalizer APO's Configurator closed. If the device isn't found yet, restart Windows.");
+    }
 
     /// <summary>VB-CABLE: its own installer when bundled (it asks for administrator rights itself), else its download page.</summary>
     public Task<SetupResult> InstallCableAsync() => RunCableSetupAsync(

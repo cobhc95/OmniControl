@@ -48,17 +48,25 @@ public sealed partial class OtherPcsService
     public void ReadOwnWake() => RefreshOwnWake();
 
     /// <summary>Reads this PC's wake facts again now.</summary>
-    public async Task<WakeReply> CheckOwnWakeAsync()
+    public async Task<WakeReply> CheckOwnWakeAsync(CancellationToken stop = default)
     {
-        await ReadOwnWakeAsync();
+        await Task.WhenAny(ReadOwnWakeAsync(), Until(stop));
         RaiseChanged();
         return new WakeReply(true, string.Empty);
     }
 
     /// <summary>Turns the settings on for this PC; Windows asks for administrator rights first and nothing changes without a yes.</summary>
-    public async Task<WakeReply> FixOwnWakeAsync(IReadOnlyList<WakeFix> fixes)
+    public async Task<WakeReply> FixOwnWakeAsync(IReadOnlyList<WakeFix> fixes, CancellationToken stop = default)
     {
-        var (reply, _) = await ApplyWakeFixesHereAsync(fixes);
+        var (reply, _) = await ApplyWakeFixesHereAsync(fixes, stop);
+        RaiseChanged();
+        return reply;
+    }
+
+    /// <summary>Puts back what OmniControl changed on this PC (Windows asks for administrator rights; nothing changes without a yes).</summary>
+    public async Task<WakeReply> UndoOwnWakeAsync()
+    {
+        var (reply, _) = await UndoWakeHereAsync();
         RaiseChanged();
         return reply;
     }
@@ -129,7 +137,7 @@ public sealed partial class OtherPcsService
         return new WakeFacts
         {
             Known = facts.Known && mac.Length > 0 && subnet.Length > 0, Adapter = Clip(facts.Adapter, 80), Mac = mac, Subnet = subnet, CardCanWake = facts.CardCanWake,
-            MagicPacketOn = facts.MagicPacketOn, Armed = facts.Armed, MagicOnly = facts.MagicOnly, FastStartupOn = facts.FastStartupOn, ModernStandby = facts.ModernStandby,
+            MagicPacketOn = facts.MagicPacketOn, Armed = facts.Armed, MagicOnly = facts.MagicOnly, FastStartupOn = facts.FastStartupOn, ModernStandby = facts.ModernStandby, CanUndo = facts.CanUndo,
         };
     }
 
@@ -176,12 +184,19 @@ public sealed partial class OtherPcsService
         _readingWake = true;
         OffUi("Other PCs: reading wake facts", async () =>
         {
-            var facts = await Task.Run(WakeReader.Read).ConfigureAwait(false);
-            Post(() => SetOwnWake(facts));
+            try
+            {
+                var facts = await Task.Run(ReadWakeFacts).ConfigureAwait(false);
+                Post(() => SetOwnWake(facts));
+            }
+            finally
+            {
+                Post(() => _readingWake = false); // however the read ended, the next one may start
+            }
         });
     }
 
-    private static void LogWakeReadFailure(string text) => AppDataStore.AppendLog(Guard.LogFile, text);
+    private static void LogWakeRead(string text) => AppDataStore.AppendLog(Guard.LogFile, text);
 
     private void SetOwnWake(WakeFacts facts)
     {
@@ -270,7 +285,7 @@ public sealed partial class OtherPcsService
 
     // ---- Asking another PC (check, fix, test, relay) ----
 
-    private async Task<PcMsg?> AskWakeAsync(string pcId, PcMsg ask, TimeSpan wait)
+    private async Task<PcMsg?> AskWakeAsync(string pcId, PcMsg ask, TimeSpan wait, CancellationToken stop = default)
     {
         if (!_links.TryGetValue(pcId, out var link)) return null;
         var rid = ++_nextRid;
@@ -280,7 +295,7 @@ public sealed partial class OtherPcsService
         try
         {
             if (!await link.SendAsync(ask)) return null;
-            return await Task.WhenAny(answer.Task, Task.Delay(wait)) == answer.Task ? answer.Task.Result : null;
+            return await Task.WhenAny(answer.Task, Task.Delay(wait, stop)) == answer.Task ? answer.Task.Result : null;
         }
         finally
         {
@@ -299,12 +314,16 @@ public sealed partial class OtherPcsService
         : new WakeReply(answer.Ok == true, answer.Ok == true ? string.Empty : Clip(answer.Why, 200) is { Length: > 0 } why ? why : $"{name} could not do it.");
 
     /// <summary>Asks a connected PC to read how it can be woken again.</summary>
-    public async Task<WakeReply> CheckWakeAsync(string pcId) =>
-        ReplyOf(await AskWakeAsync(pcId, new PcMsg { T = PcMsgType.WakeAsk, Id = PcMsgType.WakeCheck }, Timing.WakeAskWait), Find(pcId)?.DisplayName ?? "That PC");
+    public async Task<WakeReply> CheckWakeAsync(string pcId, CancellationToken stop = default) =>
+        ReplyOf(await AskWakeAsync(pcId, new PcMsg { T = PcMsgType.WakeAsk, Id = PcMsgType.WakeCheck }, Timing.WakeAskWait, stop), Find(pcId)?.DisplayName ?? "That PC");
 
     /// <summary>Asks a connected PC to turn the settings on. It shows its own prompt, and Windows asks it once more; nothing changes unless a person there allows both.</summary>
-    public async Task<WakeReply> FixWakeAsync(string pcId, IEnumerable<WakeFix> fixes) =>
-        ReplyOf(await AskWakeAsync(pcId, new PcMsg { T = PcMsgType.WakeAsk, Id = PcMsgType.WakeFix, Text = string.Join(',', fixes.Select(f => f.ToString())) }, Timing.WakeFixWait), Find(pcId)?.DisplayName ?? "That PC");
+    public async Task<WakeReply> FixWakeAsync(string pcId, IEnumerable<WakeFix> fixes, CancellationToken stop = default) =>
+        ReplyOf(await AskWakeAsync(pcId, new PcMsg { T = PcMsgType.WakeAsk, Id = PcMsgType.WakeFix, Text = string.Join(',', fixes.Select(f => f.ToString())) }, Timing.WakeFixWait, stop), Find(pcId)?.DisplayName ?? "That PC");
+
+    /// <summary>Asks a connected PC to put back what OmniControl turned on there (behind its own prompt).</summary>
+    public async Task<WakeReply> UndoWakeAsync(string pcId) =>
+        ReplyOf(await AskWakeAsync(pcId, new PcMsg { T = PcMsgType.WakeAsk, Id = PcMsgType.WakeUndo }, Timing.WakeFixWait), Find(pcId)?.DisplayName ?? "That PC");
 
     /// <summary>
     /// The test: asks the PC to go to sleep (it shows its own prompt), waits for it to go, then wakes it from here. The words say what really

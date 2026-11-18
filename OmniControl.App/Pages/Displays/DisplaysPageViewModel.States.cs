@@ -1,3 +1,4 @@
+using Avalonia.Threading;
 using OmniControl.App.States;
 using OmniControl.Core.Models;
 
@@ -48,7 +49,20 @@ public sealed partial class DisplaysPageViewModel
     private GroupSwitch ScreenMaster() => ScreenPowerSwitch.All(
         () => _hardware.Where(h => h.HasScreenPower).Select(h => new ScreenPowerSwitch.Screen(() => h.ScreenOn, h.SetScreenOn)).ToList(),
         () => _hardware.Count > 0 && _hardware.All(h => h.HasScreenPower) && _softwareItems.Count <= _hardware.Count,
-        TurnOffDisplays);
+        TurnOffDisplays, knownOff: () => _systemScreens.IsOff);
+
+    /// <summary>Windows said the screens went off, came on or dimmed (listener thread): every screen's switch and state follows on the UI thread, and so does every paired PC through the states.</summary>
+    private void OnScreensChanged() => Dispatcher.UIThread.Post(() =>
+    {
+        foreach (var display in _hardware) display.ScreensChanged();
+        NotifyScreenPower();
+    });
+
+    private void NotifyScreenPower()
+    {
+        foreach (var display in _hardware.Where(h => h.HasScreenPower)) _states.Notify(PowerId(display));
+        Hardware.RefreshMaster();
+    }
 
     /// <summary>The page's states that live as long as the page: the warm-light schedule.</summary>
     private void RegisterPageStates()
@@ -73,7 +87,6 @@ public sealed partial class DisplaysPageViewModel
         _monitorPresets.Refresh();
         foreach (var display in _hardware)
         foreach (var level in DisplayControls.Hardware) _states.Notify(StateId(display, level));
-        foreach (var display in _hardware.Where(h => h.HasScreenPower)) _states.Notify(PowerId(display));
-        Hardware.RefreshMaster();
+        NotifyScreenPower();
     }
 }

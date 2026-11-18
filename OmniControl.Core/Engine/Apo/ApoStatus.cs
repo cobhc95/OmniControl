@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security;
 using Microsoft.Win32;
 
@@ -11,7 +12,11 @@ namespace OmniControl.Core.Engine.Apo;
 /// <param name="OursOn">OmniControl APO is in one of its slots.</param>
 /// <param name="UpstreamOn">Equalizer APO is in one of its slots.</param>
 /// <param name="EnhancementsOff">"Audio enhancements" are off on it, so Windows loads no APO there.</param>
-public sealed record ApoEndpoint(string EndpointId, bool OursOn, bool UpstreamOn, bool EnhancementsOff);
+/// <param name="Channels">Its channel count (its own format, as Windows keeps it); stereo when it can't be read.</param>
+public sealed record ApoEndpoint(string EndpointId, bool OursOn, bool UpstreamOn, bool EnhancementsOff, int Channels = ApoEndpoint.Stereo)
+{
+    public const int Stereo = 2;
+}
 
 /// <summary>
 /// What is in place for effects in Windows' audio engine on this PC (read only): the user's own Equalizer APO (upstream) and
@@ -43,6 +48,16 @@ public sealed record ApoState(
     /// default (the real speakers while a cable is the default, a cable a program's chain is written for). Empty when not read.
     /// </summary>
     public IReadOnlyList<ApoEndpoint> Playback { get; init; } = Array.Empty<ApoEndpoint>();
+
+    /// <summary>Equalizer APO's version (its EqualizerAPO.dll); null when it is not installed or the file has none.</summary>
+    public Version? UpstreamVersion { get; init; }
+
+    /// <summary>
+    /// The APO that reads <paramref name="folder"/> can blend an effect's result with the sound before it (a Mix below 100 %, see
+    /// <see cref="ApoIds.BlendVersion"/>): OmniControl APO always; Equalizer APO from that version on, or when its version can't be read.
+    /// </summary>
+    public bool BlendsIn(string? folder) =>
+        !string.Equals(folder, UpstreamConfigFolder, StringComparison.OrdinalIgnoreCase) || UpstreamVersion is null || UpstreamVersion >= ApoIds.BlendVersion;
 
     /// <summary>The slots of the playback device <paramref name="endpointId"/>: from <see cref="Playback"/>, else <see cref="Output"/> when it is that device; null when not looked at.</summary>
     public ApoEndpoint? PlaybackOf(string? endpointId) =>
@@ -89,7 +104,7 @@ public sealed record ApoState(
     public bool Equals(ApoState? other) =>
         other is not null && Registered == other.Registered && ProtectedAudioDisabled == other.ProtectedAudioDisabled
         && ConfigFolder == other.ConfigFolder && UpstreamInstalled == other.UpstreamInstalled && UpstreamRegistered == other.UpstreamRegistered
-        && UpstreamConfigFolder == other.UpstreamConfigFolder && UpstreamDeviceSelector == other.UpstreamDeviceSelector
+        && UpstreamConfigFolder == other.UpstreamConfigFolder && UpstreamDeviceSelector == other.UpstreamDeviceSelector && UpstreamVersion == other.UpstreamVersion
         && Output == other.Output && Microphones.SequenceEqual(other.Microphones) && Playback.SequenceEqual(other.Playback);
 
     public override int GetHashCode() => HashCode.Combine(Registered, ProtectedAudioDisabled, ConfigFolder, UpstreamInstalled, Output, Microphones.Count);
@@ -115,8 +130,7 @@ public static class ApoStatus
             var installFolder = UpstreamInstallFolder(machine);
             using var upstream = machine.OpenSubKey(ApoIds.UpstreamAppKey);
             var upstreamConfig = upstream?.GetValue("ConfigPath") is string path && Directory.Exists(path) ? path : null;
-            var selector = installFolder is null ? null : Path.Combine(installFolder, ApoIds.UpstreamDeviceSelectorExe);
-            if (selector is not null && !File.Exists(selector)) selector = null;
+            var selector = ConfiguratorIn(installFolder);
             return new ApoState(registered, dg, config,
                 installFolder is not null, IsRegistered(machine, ApoIds.UpstreamPreMixClsid, ApoIds.UpstreamPostMixClsid),
                 upstreamConfig, selector,
@@ -124,6 +138,7 @@ public static class ApoStatus
                 microphoneIds.Select(id => EndpointOf(machine, id)).ToList())
             {
                 Playback = playbackIds.Select(id => EndpointOf(machine, id)).ToList(),
+                UpstreamVersion = installFolder is null ? null : VersionOf(Path.Combine(installFolder, ApoIds.UpstreamDllName)),
             };
         }
         catch (Exception ex) when (ex is SecurityException or UnauthorizedAccessException or IOException)
@@ -137,7 +152,24 @@ public static class ApoStatus
     {
         var key = EndpointKey(machine, ApoIds.DeviceKeyOf(endpointId));
         var slots = SlotsOf(machine, key);
-        return new ApoEndpoint(endpointId, slots.Any(ApoIds.IsOurs), slots.Any(ApoIds.IsUpstream), EnhancementsOffOn(machine, key));
+        return new ApoEndpoint(endpointId, slots.Any(ApoIds.IsOurs), slots.Any(ApoIds.IsUpstream), EnhancementsOffOn(machine, key), ChannelsOf(machine, key));
+    }
+
+    /// <summary>The device's channel count from its own format (<see cref="ApoIds.DeviceFormatValue"/>); stereo when it can't be read.</summary>
+    private static int ChannelsOf(RegistryKey machine, string endpointKey)
+    {
+        using var properties = machine.OpenSubKey($@"{endpointKey}\Properties");
+        return properties?.GetValue(ApoIds.DeviceFormatValue) is byte[] format && format.Length >= ApoIds.DeviceFormatChannelsOffset + sizeof(ushort)
+            && BitConverter.ToUInt16(format, ApoIds.DeviceFormatChannelsOffset) is var channels and > 0
+            ? channels
+            : ApoEndpoint.Stereo;
+    }
+
+    /// <summary>A program file's version (major.minor.build), or null when it has none.</summary>
+    private static Version? VersionOf(string file)
+    {
+        var info = FileVersionInfo.GetVersionInfo(file);
+        return info.FileMajorPart == 0 && info.FileMinorPart == 0 && info.FileBuildPart == 0 ? null : new Version(info.FileMajorPart, info.FileMinorPart, info.FileBuildPart);
     }
 
     /// <summary>
@@ -151,14 +183,37 @@ public static class ApoStatus
     }
 
     /// <summary>
-    /// Equalizer APO's install folder when its program files are really there (EqualizerAPO.dll in its InstallPath), else null. Its
-    /// uninstaller leaves HKLM\SOFTWARE\EqualizerAPO and the config folder behind, so neither alone means it is installed.
+    /// Equalizer APO's install folder when its program files are really there (EqualizerAPO.dll in its InstallPath, else in its usual
+    /// Program Files folder when that value is missing or stale), else null. Its uninstaller leaves HKLM\SOFTWARE\EqualizerAPO and the
+    /// config folder behind, so neither alone means it is installed.
     /// </summary>
     internal static string? UpstreamInstallFolder(RegistryKey machine)
     {
         using var upstream = machine.OpenSubKey(ApoIds.UpstreamAppKey);
-        return upstream?.GetValue("InstallPath") is string folder && File.Exists(Path.Combine(folder, ApoIds.UpstreamDllName)) ? folder : null;
+        var usual = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), ApoIds.UpstreamFolderName);
+        return new[] { upstream?.GetValue("InstallPath") as string, usual }
+            .FirstOrDefault(folder => !string.IsNullOrEmpty(folder) && File.Exists(Path.Combine(folder, ApoIds.UpstreamDllName)));
     }
+
+    /// <summary>
+    /// Equalizer APO's Configurator (its DeviceSelector.exe) when Equalizer APO is installed (<see cref="UpstreamInstallFolder"/>), read
+    /// now; null otherwise. Every "install Equalizer APO" step opens it instead of the setup when it exists.
+    /// </summary>
+    public static string? UpstreamConfigurator()
+    {
+        try
+        {
+            using var machine = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
+            return ConfiguratorIn(UpstreamInstallFolder(machine));
+        }
+        catch (Exception ex) when (ex is SecurityException or UnauthorizedAccessException or IOException)
+        {
+            return null; // not allowed to read: treated as not installed, which only offers the setup
+        }
+    }
+
+    private static string? ConfiguratorIn(string? installFolder) =>
+        installFolder is not null && Path.Combine(installFolder, ApoIds.UpstreamDeviceSelectorExe) is var exe && File.Exists(exe) ? exe : null;
 
     /// <summary>Device Selector's checkAPORegistration: both classes under CLSID and under the audio engine's APO list.</summary>
     private static bool IsRegistered(RegistryKey machine, string preMix, string postMix) =>

@@ -1,15 +1,17 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:OmniControl.App.Controls"
              xmlns:vm="using:OmniControl.App.Pages.Volume"
              x:Class="OmniControl.App.Pages.Volume.RowIcon"
              x:DataType="vm:VolumeRow" VerticalAlignment="Center">
-    <!-- A Volume row's icon tile: the program's picture, else a stroked icon (microphone, combined device), else its initial.
+    <!-- A Volume row's icon tile: the program's picture, else a library icon (microphone, combined device), else its initial.
+         Each fills the tile's inner square and centres itself in it (sizes and weights in the Border.rowicon styles).
          Shared by the Mixer row, the Wiring row and the combined device card. -->
     <Border Classes="rowicon">
-        <Panel HorizontalAlignment="Center" VerticalAlignment="Center">
-            <Image Source="{Binding Picture}" Width="{StaticResource RowPictureSize}" Height="{StaticResource RowPictureSize}" IsVisible="{Binding HasPicture}" />
-            <Path Classes="glyph" Data="{Binding Glyph}" IsVisible="{Binding HasGlyph}" />
-            <TextBlock Classes="strong" Text="{Binding Initial}" IsVisible="{Binding ShowsInitial}" />
+        <Panel>
+            <Image Source="{Binding Picture}" IsVisible="{Binding HasPicture}" />
+            <c:IconGlyph LibraryId="{Binding Icon}" IsVisible="{Binding HasIcon}" />
+            <TextBlock Text="{Binding Initial}" IsVisible="{Binding ShowsInitial}" />
         </Panel>
     </Border>
 </UserControl>

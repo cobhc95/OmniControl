@@ -68,13 +68,18 @@ public sealed partial class WakeSetupViewModel : ObservableObject, IDisposable
 {
     private readonly IWakeTarget _target;
     private readonly Dictionary<string, string> _results = new();
+    private CancellationTokenSource? _stop;
 
     public WakeSetupViewModel(IWakeTarget target)
     {
         _target = target;
         target.Changed += Refresh;
         Refresh();
-        if (target.ReadOnOpen) CheckAgain();
+        if (target.ReadOnOpen)
+        {
+            if (target.Facts is null) CheckAgain(); // never read: wait for it
+            else _ = Guard.RunAsync("Other PCs: wake check", () => _target.CheckAsync(CancellationToken.None)); // the last answer shows at once; this refreshes it
+        }
     }
 
     public ObservableCollection<WakeRowItem> Rows { get; } = new();
@@ -97,12 +102,16 @@ public sealed partial class WakeSetupViewModel : ObservableObject, IDisposable
 
     [ObservableProperty] private bool _busy;
 
+    /// <summary>OmniControl changed something there that "Undo my changes" can put back.</summary>
+    public bool CanUndo => _target.Facts?.CanUndo == true;
+
     private void Refresh()
     {
         IsOnline = _target.IsOnline;
         OnPropertyChanged(nameof(Name));
         OnPropertyChanged(nameof(Heading));
         OnPropertyChanged(nameof(OfflineNote));
+        OnPropertyChanged(nameof(CanUndo));
         Rows.Clear();
         foreach (var spec in WakeSetupRows.Of(_target.Facts, Name, _target.CanTest))
         {
@@ -127,8 +136,17 @@ public sealed partial class WakeSetupViewModel : ObservableObject, IDisposable
     private async Task CheckAsync()
     {
         if (!Begin(_target.IsOwn ? "Checking…" : $"Asking {Name} to read its network card again…")) return;
-        var reply = await _target.CheckAsync();
-        End(reply.Ok ? string.Empty : reply.Why);
+        var stop = _stop!.Token;
+        try
+        {
+            var reply = await _target.CheckAsync(stop);
+            End(stop.IsCancellationRequested ? "Stopped." : reply.Ok ? string.Empty : reply.Why);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            End("The check could not finish."); // the waiting never outlives a failure
+            throw;
+        }
     }
 
     private async Task FixAsync(IReadOnlyList<WakeFix> fixes)
@@ -138,12 +156,50 @@ public sealed partial class WakeSetupViewModel : ObservableObject, IDisposable
             Status = "Nothing here needs fixing.";
             return;
         }
-        if (!Begin(_target.IsOwn ? "Waiting for your OK…" : $"Waiting for {Name} to allow it…")) return;
-        var reply = await _target.FixAsync(fixes);
-        foreach (var row in WakeSetupRows.Of(_target.Facts, Name, _target.CanTest).Where(r => r.Fix is { } fix && fixes.Contains(fix) && r.Kind != WakeRowKind.Done))
-            _results[row.Id] = reply.Ok ? "It still reads as off after the change." : reply.Why;
-        End(reply.Ok ? string.Empty : reply.Why);
+        if (!Begin(_target.IsOwn ? "Fixing…" : $"Waiting for {Name} to allow it…")) return;
+        var stop = _stop!.Token;
+        try
+        {
+            var reply = await _target.FixAsync(fixes, stop);
+            if (stop.IsCancellationRequested)
+            {
+                Status = "Stopped. Putting back anything changed…";
+                reply = await _target.UndoAsync();
+                End(reply.Ok || !_target.IsOnline ? string.Empty : reply.Why);
+                return;
+            }
+            foreach (var row in WakeSetupRows.Of(_target.Facts, Name, _target.CanTest).Where(r => r.Fix is { } fix && fixes.Contains(fix) && r.Kind != WakeRowKind.Done))
+                _results[row.Id] = reply.Ok ? "It still reads as off after the change." : reply.Why;
+            End(reply.Ok ? string.Empty : reply.Why);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            End("The change could not finish.");
+            throw;
+        }
     }
+
+    [RelayCommand]
+    private void Undo() => _ = Guard.RunAsync("Other PCs: wake undo", UndoAsync);
+
+    private async Task UndoAsync()
+    {
+        if (!Begin(_target.IsOwn ? "Putting back…" : $"Waiting for {Name} to allow it…")) return;
+        try
+        {
+            var reply = await _target.UndoAsync();
+            End(reply.Ok ? "Put back." : reply.Why);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            End("The undo could not finish.");
+            throw;
+        }
+    }
+
+    /// <summary>Stops what is being checked or fixed; anything half-done is put back.</summary>
+    [RelayCommand]
+    private void Stop() => _stop?.Cancel();
 
     private async Task TestAsync()
     {
@@ -158,6 +214,7 @@ public sealed partial class WakeSetupViewModel : ObservableObject, IDisposable
     {
         if (Busy || !IsOnline) return false;
         Busy = true;
+        _stop = new CancellationTokenSource();
         _results.Clear();
         Status = words;
         return true;
@@ -165,10 +222,16 @@ public sealed partial class WakeSetupViewModel : ObservableObject, IDisposable
 
     private void End(string words)
     {
+        _stop?.Dispose();
+        _stop = null;
         Busy = false;
         Status = words;
         Refresh();
     }
 
-    public void Dispose() => _target.Changed -= Refresh;
+    public void Dispose()
+    {
+        _target.Changed -= Refresh;
+        _stop?.Cancel();
+    }
 }

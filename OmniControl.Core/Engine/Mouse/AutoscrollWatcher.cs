@@ -50,11 +50,15 @@ public sealed class AutoscrollWatcher
 
     private void Watch()
     {
+        using var uia = new UiaElements();
+        var shell = new Dictionary<int, bool>(); // process id -> is one of Windows' shell programs (read once per process)
+        var slow = (Window: IntPtr.Zero, Until: 0L);
         while (Enabled)
         {
             try
             {
-                if (SystemCommands.GetCursorPos() is { } at && (_entry is not { } cached || !Covers(cached, at.X, at.Y))) Refresh(at.X, at.Y);
+                if (SystemCommands.GetCursorPos() is { } at && (_entry is not { } cached || !Covers(cached, at.X, at.Y)))
+                    slow = Refresh(uia, shell, slow, at.X, at.Y);
             }
             catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException)
             {
@@ -64,11 +68,32 @@ public sealed class AutoscrollWatcher
         }
     }
 
-    private void Refresh(int x, int y)
+    /// <summary>
+    /// Looks under the pointer, one lookup at a time on this worker. Windows' shell (Explorer, the taskbar, Start) and OmniControl itself
+    /// are never asked (they have no autoscroll to block, and a UI Automation call waits on the asked program's UI thread); a window whose
+    /// answer took longer than <see cref="CoreTiming.AutoscrollSlowMs"/> is not asked again for <see cref="CoreTiming.AutoscrollBackoffMs"/>,
+    /// so a busy app is never kept busier. Returns the window being left alone and until when.
+    /// </summary>
+    private (IntPtr Window, long Until) Refresh(UiaElements uia, Dictionary<int, bool> shell, (IntPtr Window, long Until) slow, int x, int y)
     {
         var root = WindowQuery.RootWindowAt(x, y);
-        if (root == IntPtr.Zero || WindowQuery.ProcessOf(root) is not { } process) { _entry = null; return; }
-        var verdict = MiddleClickPolicy.Decide(false, () => UiaElements.ControlTypesAt(x, y, CoreTiming.AutoscrollParentLevels), CoreTiming.AutoscrollLookupMs);
-        _entry = new Entry(root, process, x, y, Environment.TickCount64, verdict);
+        if (root == IntPtr.Zero || WindowQuery.ProcessOf(root) is not { } process) { _entry = null; return slow; }
+        var started = Environment.TickCount64;
+        if (process == Environment.ProcessId || IsShell(shell, process) || (root == slow.Window && started < slow.Until))
+        {
+            _entry = new Entry(root, process, x, y, started, ClickVerdict.Pass);
+            return slow;
+        }
+        var verdict = MiddleClickPolicy.Decide(false, () => uia.ControlTypesAt(x, y, CoreTiming.AutoscrollParentLevels));
+        var finished = Environment.TickCount64;
+        _entry = new Entry(root, process, x, y, finished, verdict);
+        return finished - started > CoreTiming.AutoscrollSlowMs ? (root, finished + CoreTiming.AutoscrollBackoffMs) : slow;
+    }
+
+    private static bool IsShell(Dictionary<int, bool> shell, int process)
+    {
+        if (shell.TryGetValue(process, out var known)) return known;
+        if (shell.Count > CoreTiming.AutoscrollProcessCache) shell.Clear();
+        return shell[process] = WindowQuery.IsShellProgram(process);
     }
 }

@@ -85,10 +85,11 @@ public sealed class HardwareSignals : IDisposable
     public bool Start()
     {
         var started = false;
-        using var ready = new ManualResetEventSlim();
+        var ready = new ManualResetEventSlim(); // not disposed: a listener that starts late still sets it
         _thread = new Thread(() => Loop(ready, ok => started = ok)) { IsBackground = true, Name = "HardwareSignals" };
         _thread.Start();
-        ready.Wait();
+        if (!ready.Wait(CoreTiming.HardwareSignalsStartWaitMs))
+            Failed?.Invoke("the hidden window did not start in time; it goes on starting in the background.");
         StartSystemEvents();
         _clockCheck = new Timer(_ => SampleClock(), null, _gapInterval, _gapInterval);
         return started;
@@ -142,7 +143,8 @@ public sealed class HardwareSignals : IDisposable
         var subscriber = new Thread(Subscribe) { IsBackground = true, Name = "SystemEvents subscribe" };
         subscriber.SetApartmentState(ApartmentState.MTA);
         subscriber.Start();
-        subscriber.Join();
+        if (!subscriber.Join(CoreTiming.HardwareSignalsStartWaitMs))
+            Failed?.Invoke("SystemEvents did not start in time; it goes on starting in the background.");
     }
 
     private void Subscribe()
@@ -214,7 +216,7 @@ public sealed class HardwareSignals : IDisposable
         var instance = GetModuleHandle(null);
         var ok = Open(instance);
         started(ok);
-        ready.Set(); // after this Start returns and disposes the event: it is not touched again
+        ready.Set();
         if (ok)
             while (GetMessage(out var msg, IntPtr.Zero, 0, 0) > 0) DispatchMessage(ref msg);
         Close(instance);
@@ -323,9 +325,12 @@ public sealed class HardwareSignals : IDisposable
                 break;
             case PbtPowerSettingChange when ReadSetting(lParam) is { } setting:
                 var name = setting.Setting == ConsoleDisplayState ? "console display" : setting.Setting == MonitorPowerOn ? "monitor power" : null;
-                // Dimmed (2) is neither: the display is still on.
-                if (name is not null && setting.Value is 0 or 1)
-                    TellPower(setting.Value == 0 ? PowerEventKind.DisplayOff : PowerEventKind.DisplayOn, PowerChannel.Display, $"{name} {(setting.Value == 0 ? "off" : "on")}");
+                // Dimmed (2) is told as its own kind: the display is still on, so it is not a wake.
+                if (name is not null && setting.Value is 0 or 1 or 2)
+                {
+                    var (display, word) = setting.Value switch { 0 => (PowerEventKind.DisplayOff, "off"), 1 => (PowerEventKind.DisplayOn, "on"), _ => (PowerEventKind.DisplayDimmed, "dimmed") };
+                    TellPower(display, PowerChannel.Display, $"{name} {word}");
+                }
                 break;
         }
     }

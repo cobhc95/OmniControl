@@ -133,7 +133,7 @@ public sealed partial class VolumePageViewModel
         var apo = _support.Current?.Apo ?? Core.Engine.Apo.ApoState.None;
         return facts.ApoCableWhy == EffectsRules.ApoNotOnCable && EffectsRules.DeviceSelectorFixes(apo)
             ? _cableDevices ??= new CardAction("Choose devices",
-                "Opens Equalizer APO's Device Selector: tick the virtual cable on its Playback tab (administrator). A restart may be needed.",
+                "Opens Equalizer APO's Configurator: tick the virtual cable on its Playback tab (administrator). A restart may be needed.",
                 ChooseDevicesCommand)
             : null;
     }

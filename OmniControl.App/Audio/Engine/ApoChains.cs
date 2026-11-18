@@ -5,10 +5,10 @@ namespace OmniControl.App.Audio.Engine;
 
 /// <summary>
 /// One row whose chain should run in Equalizer APO (the master, a microphone, a program on a cable with Equalizer APO on it): its key,
-/// the name for the section's comment, its chain, the device it runs on (null when there is none), why the APO can't run there (null =
+/// the name for the section's comment, its chain as parts (<see cref="FxFolders.PartsFor"/>: a device folder keeps its Mix), the device it runs on (null when there is none), why the APO can't run there (null =
 /// it can), what the row then does ("Playing without effects.") and the fact its status names then.
 /// </summary>
-internal sealed record ApoRow(string Key, string Title, IReadOnlyList<FxSlot> Chain, ApoEndpoint? Endpoint, string? Missing, string Without,
+internal sealed record ApoRow(string Key, string Title, IReadOnlyList<FxPart> Parts, ApoEndpoint? Endpoint, string? Missing, string Without,
     StatusKind MissingKind = StatusKind.NeedsApo);
 
 /// <summary>What is on disk in one config folder: OmniControl's part is as it should be, and config.txt runs effects of its own (outside OmniControl's lines).</summary>
@@ -120,12 +120,12 @@ internal sealed class ApoChains
             if (key == MixerService.MasterKey)
             {
                 var speakers = plan.MasterApoDevice is { } id ? apo.PlaybackOf(id) : null;
-                rows.Add(new ApoRow(key, nameOf(key), FxFolders.ApoChainFor(chainOf(null), plan.MasterApoDevice), speakers, EffectsRules.ApoMissingOn(apo, speakers), Silent, StatusKind.ApoNotApplied));
+                rows.Add(new ApoRow(key, nameOf(key), FxFolders.PartsFor(chainOf(null), plan.MasterApoDevice), speakers, EffectsRules.ApoMissingOn(apo, speakers), Silent, StatusKind.ApoNotApplied));
             }
             else if (plan.Runs.GetValueOrDefault(key)?.Cable is { } cable)
             {
                 var onCable = apo.PlaybackOf(cable);
-                rows.Add(new ApoRow(key, $"Program: {nameOf(key)}", chainOf(key), onCable, EffectsRules.ApoMissingOn(apo, onCable), Silent));
+                rows.Add(new ApoRow(key, $"Program: {nameOf(key)}", new[] { new FxPart(null, chainOf(key)) }, onCable, EffectsRules.ApoMissingOn(apo, onCable), Silent));
             }
         }
         return rows;
@@ -145,7 +145,7 @@ internal sealed class ApoChains
                 statuses[row.Key] = new EngineStatus(EngineState.Unavailable, $"{row.Missing ?? "Equalizer APO is not on this device"}. {row.Without}", null, row.MissingKind, RunMethod.Apo);
                 continue;
             }
-            var section = ApoChainWriter.Section(row.Title, row.Chain, ApoIds.DeviceKeyOf(row.Endpoint.EndpointId), _levels);
+            var section = ApoChainWriter.Section(row.Title, row.Parts, ApoIds.DeviceKeyOf(row.Endpoint.EndpointId), row.Endpoint.Channels, apo.BlendsIn(folder), _levels);
             if (!sections.TryGetValue(folder, out var list)) sections[folder] = list = new List<ApoSection>();
             list.Add(section);
             placed.Add((row.Key, folder, section));

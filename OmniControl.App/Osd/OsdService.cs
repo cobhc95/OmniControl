@@ -22,7 +22,9 @@ public sealed class OsdService : IDisposable
 
     private readonly List<OsdElement> _elements = new();
 
-    private readonly DispatcherTimer _hide = new() { Interval = Timing.OsdVisible };
+    private readonly DispatcherTimer _hide = new();
+    // Which program caused a pop-up, where that is known (the duration's per-app exceptions).
+    private readonly ProgramIdentity _programs = new();
     private readonly DispatcherTimer _keepWarm = new() { Interval = Timing.OsdKeepWarm };
     private readonly WindowsOsd _windowsOsd = new();
     private readonly BrightnessWatcher _brightness = new(Timing.OsdBrightnessFirstPoll, Timing.OsdBrightnessPoll);
@@ -37,13 +39,16 @@ public sealed class OsdService : IDisposable
     // The newest level asked for from another thread and not drawn yet. Steps that arrive faster than the UI thread draws replace
     // it, so only the newest is drawn and the dispatcher queue never fills with stale values.
     private readonly object _queuedGate = new();
-    private (string Element, int Value, string Label)? _queued;
+    private (string Element, int Value, string Label, string? Program)? _queued;
     private readonly Action _showQueued;
 
     public OsdSettings Settings { get; } = OsdSettings.Load();
 
     /// <summary>The places the user named (the OSD place presets).</summary>
     public OsdPlaces Places { get; }
+
+    /// <summary>How long the pop-up stays, and its exceptions per app or event.</summary>
+    public OsdDurations Durations { get; }
 
     /// <summary>Raised when an OSD setting changes, so open previews can redraw.</summary>
     public event Action? SettingsChanged;
@@ -83,7 +88,8 @@ public sealed class OsdService : IDisposable
     public OsdService()
     {
         _showQueued = ShowQueued;
-        Places = new OsdPlaces(Settings, PlacesChanged);
+        Places = new OsdPlaces(Settings, SaveQuietly);
+        Durations = new OsdDurations(Settings, SaveQuietly);
         DeclareText(UsbElement);
         DeclareText(PlayPauseElement);
         DeclareText(TrackElement);
@@ -106,13 +112,14 @@ public sealed class OsdService : IDisposable
         _brightness.Start();
 
         // Volume changed outside OmniControl (volume keys, another app). OmniControl's own steps already showed their value; the
-        // echo would show it again, or briefly show an older value between two quick steps.
+        // echo would show it again, or briefly show an older value between two quick steps. The keys act for the program in front,
+        // so that is taken as the program that caused it.
         _volume.Changed += (value, muted) =>
         {
             VolumeWatched?.Invoke(value, muted);
             if (RecentOwnChange(VolumeElement)) return;
             _windowsOsd.Trigger();
-            ShowVolume(value, muted);
+            Show(VolumeElement, muted ? 0 : value, VolumeLabel(muted), _programs.Foreground());
         };
         _volume.Start();
 
@@ -122,7 +129,7 @@ public sealed class OsdService : IDisposable
             MicrophoneWatched?.Invoke(value, muted);
             if (RecentOwnChange(MicrophoneElement)) return;
             _windowsOsd.Trigger();
-            Show(MicrophoneElement, muted ? 0 : value, muted ? "Microphone muted" : MicrophoneElement);
+            Show(MicrophoneElement, muted ? 0 : value, muted ? "Microphone muted" : MicrophoneElement, _programs.Foreground());
         };
         _mic.Start();
 
@@ -160,8 +167,8 @@ public sealed class OsdService : IDisposable
     private void OnMedia(MediaChange change)
     {
         var details = string.Join(" - ", new[] { change.Title, change.Artist }.Where(t => t.Length > 0));
-        if (change.IsTrack) ShowMessage(TrackElement, new OsdMessage(OsdIcon.Track, change.Title, change.Artist));
-        else ShowMessage(PlayPauseElement, new OsdMessage(change.IsPlaying ? OsdIcon.Play : OsdIcon.Pause, change.IsPlaying ? "Playing" : "Paused", details));
+        if (change.IsTrack) ShowMessage(TrackElement, new OsdMessage(OsdIcon.Track, change.Title, change.Artist), change.Program);
+        else ShowMessage(PlayPauseElement, new OsdMessage(change.IsPlaying ? OsdIcon.Play : OsdIcon.Pause, change.IsPlaying ? "Playing" : "Paused", details), change.Program);
     }
 
     /// <summary>
@@ -179,7 +186,9 @@ public sealed class OsdService : IDisposable
     }
 
     /// <summary>Shows the master volume (marked as muted when it is), unless the OSD or the volume element is switched off.</summary>
-    public void ShowVolume(int value, bool muted) => Show(VolumeElement, muted ? 0 : value, muted ? "Volume (muted)" : VolumeElement);
+    public void ShowVolume(int value, bool muted) => Show(VolumeElement, muted ? 0 : value, VolumeLabel(muted));
+
+    private static string VolumeLabel(bool muted) => muted ? "Volume (muted)" : VolumeElement;
 
     public bool IsShown(string element) => !Settings.Excluded.Contains(element);
 
@@ -273,8 +282,8 @@ public sealed class OsdService : IDisposable
         Preview();
     }
 
-    // Saves and tells the listeners without a sample pop-up (the named places changed).
-    private void PlacesChanged()
+    // Saves and tells the listeners without a sample pop-up (the named places or the durations changed).
+    private void SaveQuietly()
     {
         Settings.Save();
         SettingsChanged?.Invoke();
@@ -291,11 +300,14 @@ public sealed class OsdService : IDisposable
     public void Show(string element, int value) => Show(element, value, element);
 
     /// <summary>As <see cref="Show(string, int)"/>, with a label other than the element's name ("Volume (muted)", "Microphone on").</summary>
-    public void Show(string element, int value, string label)
+    public void Show(string element, int value, string label) => Show(element, value, label, null);
+
+    // As above, for a pop-up whose program (the duration's per-app exceptions) is known; null: unknown.
+    private void Show(string element, int value, string label, string? program)
     {
         if (Dispatcher.UIThread.CheckAccess())
         {
-            if (Settings.Enabled && IsShown(element)) Display(label, IconOf(element), value);
+            if (Settings.Enabled && IsShown(element)) Display(label, IconOf(element), value, Durations.For(element, program));
             return;
         }
         // Callers on other threads (slow display writes, hotkey steps) must not wait for the UI thread.
@@ -303,16 +315,16 @@ public sealed class OsdService : IDisposable
         lock (_queuedGate)
         {
             post = _queued is null;
-            _queued = (element, value, label);
+            _queued = (element, value, label, program);
         }
         if (post) Dispatcher.UIThread.Post(_showQueued, DispatcherPriority.Send);
     }
 
     private void ShowQueued()
     {
-        (string Element, int Value, string Label)? queued;
+        (string Element, int Value, string Label, string? Program)? queued;
         lock (_queuedGate) (queued, _queued) = (_queued, null);
-        if (queued is { } q) Show(q.Element, q.Value, q.Label);
+        if (queued is { } q) Show(q.Element, q.Value, q.Label, q.Program);
     }
 
     /// <summary>
@@ -350,22 +362,25 @@ public sealed class OsdService : IDisposable
     }
 
     /// <summary>Shows a sample so a changed position can be judged; ignores the element switches.</summary>
-    public void Preview() => Display("Preview", OsdLevelIcon.Sun, OsdView.SampleValue);
+    public void Preview() => Display("Preview", OsdLevelIcon.Sun, OsdView.SampleValue, TimeSpan.FromSeconds(Durations.EverythingElse));
 
-    /// <summary>Shows a text pop-up for <paramref name="element"/> (a text element its feature declared) unless the OSD or that element is switched off. UI thread.</summary>
-    public void ShowMessage(string element, OsdMessage message)
+    /// <summary>
+    /// Shows a text pop-up for <paramref name="element"/> (a text element its feature declared) unless the OSD or that element is switched off.
+    /// <paramref name="program"/> is the program that caused it when known (the duration's per-app exceptions). UI thread.
+    /// </summary>
+    public void ShowMessage(string element, OsdMessage message, string? program = null)
     {
         if (!Settings.Enabled || !IsShown(element)) return;
-        Present(window => { window.RenderMessage(Settings, message); return true; });
+        Present(window => { window.RenderMessage(Settings, message); return true; }, Durations.For(element, program));
     }
 
     /// <summary>Shows a smart device's state or failure (<see cref="SmartDevicesElement"/>) from any thread.</summary>
     public void ShowDeviceNote(OsdMessage message) => Dispatcher.UIThread.Post(() => ShowMessage(SmartDevicesElement, message));
 
-    private void Display(string label, OsdLevelIcon icon, int value) => Present(window => window.Render(Settings, label, icon, value));
+    private void Display(string label, OsdLevelIcon icon, int value, TimeSpan stays) => Present(window => window.Render(Settings, label, icon, value), stays);
 
-    /// <summary>Draws the pop-up on every screen it shows on (<paramref name="draw"/> says whether a window got a new visual) and starts the hide timer.</summary>
-    private void Present(Func<OsdWindow, bool> draw)
+    /// <summary>Draws the pop-up on every screen it shows on (<paramref name="draw"/> says whether a window got a new visual) and starts the hide timer for <paramref name="stays"/>.</summary>
+    private void Present(Func<OsdWindow, bool> draw, TimeSpan stays)
     {
         var screens = Primary.Screens.All;
         var targets = OsdScreens.Targets(screens, Settings);
@@ -373,6 +388,7 @@ public sealed class OsdService : IDisposable
         var spot = Settings.CurrentSpot();
         for (var i = 0; i < targets.Count; i++) _windows[i].ShowAt(spot, targets[i], draw(_windows[i]));
         _hide.Stop();
+        _hide.Interval = stays;
         _hide.Start();
     }
 

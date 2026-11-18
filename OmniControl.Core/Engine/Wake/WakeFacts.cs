@@ -36,11 +36,14 @@ public sealed class WakeFacts
     /// <summary>The PC sleeps in Modern Standby (S0) rather than classic sleep (S3).</summary>
     public bool ModernStandby { get; set; }
 
+    /// <summary>OmniControl on that PC has changed settings it can put back ("Undo my changes" is offered).</summary>
+    public bool CanUndo { get; set; }
+
     /// <summary>The three settings a wake needs are all on.</summary>
     public bool Ready => Known && CardCanWake && MagicPacketOn && Armed;
 
     /// <summary>The facts as one text: equal facts give equal text (used to see whether they changed).</summary>
-    public string Key => string.Join('|', Known, Adapter, Mac, Subnet, CardCanWake, MagicPacketOn, Armed, MagicOnly, FastStartupOn, ModernStandby);
+    public string Key => string.Join('|', Known, Adapter, Mac, Subnet, CardCanWake, MagicPacketOn, Armed, MagicOnly, FastStartupOn, ModernStandby, CanUndo);
 }
 
 /// <summary>A card setting <see cref="WakeFixer"/> can change (each is one row of the set-up window).</summary>

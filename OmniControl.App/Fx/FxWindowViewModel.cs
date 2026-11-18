@@ -170,7 +170,7 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
     private void OnKeepFxInPlaceChanged() => OnPropertyChanged(nameof(KeepFxInPlace));
 
     /// <summary>The chain as the engine that runs this row plays it, with the row's on/off.</summary>
-    private void ShowChain() => Analysis.Show(Chain.Effects, _engine.MethodFor(_key).Engine, FxOn);
+    private void ShowChain() => Analysis.Show(Chain.Effects, _engine.MethodFor(_key).Engine, _engine.ApoBlends, FxOn);
 
     private void OnMixerUpdated()
     {

@@ -53,6 +53,9 @@ public static class PowerCommands
     // WM_SYSCOMMAND (0x0112) with SC_MONITORPOWER (0xF170) = 2 to every top-level window switches all screens off; any input wakes them again.
     public static bool TurnOffDisplays() => PostMessage(new IntPtr(0xFFFF), 0x0112, new IntPtr(0xF170), new IntPtr(2));
 
+    // SC_MONITORPOWER = -1 switches them on again (the same as the input that wakes them).
+    public static bool TurnOnDisplays() => PostMessage(new IntPtr(0xFFFF), 0x0112, new IntPtr(0xF170), new IntPtr(-1));
+
     public static bool ShutDown(bool force = false) => RunShutdown("/s /t 0", force);
 
     public static bool Restart(bool force = false) => RunShutdown("/r /t 0", force);

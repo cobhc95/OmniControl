@@ -96,11 +96,12 @@ public sealed partial class FxAnalysisViewModel : ObservableObject, IRedrawSourc
     public string NoteTip => "Not in the curve: " + string.Join(", ", _curve.NotDrawn) + ".";
 
     /// <summary>The chain, the engine that runs the row (<see cref="ModeMethod.Engine"/>) or the row's on/off changed: work the curve out again.</summary>
-    public void Show(IReadOnlyList<FxSlot> chain, FxEngines engine, bool on)
+    /// <param name="apoBlends">Equalizer APO blends a wet mix below 100 % (<see cref="EffectsRules.ApoBlends"/>).</param>
+    public void Show(IReadOnlyList<FxSlot> chain, FxEngines engine, bool apoBlends, bool on)
     {
         _engine = engine;
         IsOn = on;
-        _curve = ChainResponse.Of(chain, engine, Freqs);
+        _curve = ChainResponse.Of(chain, engine, apoBlends, Freqs);
         ScaleDb = ScaleFor(_curve.Db);
         Notify(nameof(IsOn), nameof(ScaleDb), nameof(ScaleText), nameof(PeakDb), nameof(PeakHz), nameof(HasBoost), nameof(PeakIsHigh),
             nameof(PeakText), nameof(PeakAtText), nameof(PeakTip), nameof(HasNote), nameof(NoteTip), nameof(LatencyText), nameof(LatencyTip));

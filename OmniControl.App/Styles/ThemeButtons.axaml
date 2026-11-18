@@ -27,7 +27,7 @@
     </Style>
     <Style Selector="Button.pill /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Foreground" Value="{DynamicResource BrushMuted}" />
         <Setter Property="CornerRadius" Value="13" />
@@ -89,7 +89,7 @@
          card, so the text takes the normal colour and the edge a clear grey; .main (the one action that does the job, Install) is outlined in the accent -->
     <Style Selector="Button.pill.cardaction /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
     </Style>
     <Style Selector="Button.pill.cardaction.main /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
@@ -108,6 +108,52 @@
         <Setter Property="BorderThickness" Value="2" />
     </Style>
 
+
+    <!-- State button (Button.statetoggle, Pages/StateButtonItem, docs/mockups/sound-mute-buttons.html): an on/off state shown as its icon and words
+         on a card's extras line, filling its share of the line; the plain control fill and edge while live; .muted = red words, edge and a faint red wash.
+         The words stay on one line and trim; hover and focus as every pill (the edge only, so nothing moves) -->
+    <Style Selector="Button.statetoggle">
+        <Setter Property="MinHeight" Value="24" />
+        <Setter Property="Padding" Value="8,0" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="Button.statetoggle /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushControlFill}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="Button.statetoggle.muted /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushTagRiskSoft}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushDanger}" />
+        <Setter Property="Foreground" Value="{DynamicResource BrushDanger}" />
+    </Style>
+    <Style Selector="Button.statetoggle:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+    </Style>
+    <Style Selector="Button.statetoggle.muted:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushDanger}" />
+        <Setter Property="Foreground" Value="{DynamicResource BrushDanger}" />
+    </Style>
+    <Style Selector="Button.statetoggle:focus-visible /template/ ContentPresenter#PART_ContentPresenter, Button.statetoggle:focus-visible:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+    </Style>
+    <Style Selector="Button.statetoggle > Grid > c|IconGlyph">
+        <Setter Property="Width" Value="{DynamicResource CardIconSize}" />
+        <Setter Property="Height" Value="{DynamicResource CardIconSize}" />
+        <Setter Property="Margin" Value="0,0,6,0" />
+    </Style>
+    <Style Selector="Button.statetoggle > Grid > TextBlock">
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="TextWrapping" Value="NoWrap" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
 
     <!-- The smaller text of a pop-down card (its description and notes) -->
     <Style Selector="TextBlock.small"><Setter Property="FontSize" Value="11" /></Style>
@@ -140,7 +186,7 @@
         <Setter Property="CornerRadius" Value="9" />
         <Setter Property="Padding" Value="5,0" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
     </Style>
     <Style Selector="Border.tag TextBlock"><Setter Property="FontSize" Value="10.5" /><Setter Property="TextWrapping" Value="Wrap" /><Setter Property="VerticalAlignment" Value="Center" /><Setter Property="TextAlignment" Value="Center" /></Style>
     <Style Selector="Border.tag.good"><Setter Property="Background" Value="{DynamicResource BrushTagGoodSoft}" /><Setter Property="BorderBrush" Value="{DynamicResource BrushTagGood}" /></Style>
@@ -209,7 +255,7 @@
     <Style Selector="TextBlock.chainhint"><Setter Property="FontSize" Value="10.5" /><Setter Property="Foreground" Value="{DynamicResource BrushMuted}" /></Style>
 
     <!-- A thin upright line between two parts of a card (FX split button, a slider and its switch) -->
-    <Style Selector="Border.divider"><Setter Property="Background" Value="{DynamicResource BrushDivider}" /><Setter Property="Width" Value="1" /></Style>
+    <Style Selector="Border.divider"><Setter Property="Background" Value="{DynamicResource BrushControlEdge}" /><Setter Property="Width" Value="1" /></Style>
 
     <!-- Hover for the individual elements inside cards (sliders, switches, check boxes, plain buttons), listed last so they win.
          Rule 5 in AGENTS.md: every clickable element needs its own hover; add new element types here. -->
@@ -301,6 +347,37 @@
         <Setter Property="Height" Value="24" />
         <Setter Property="CornerRadius" Value="6" />
         <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
+        <!-- A thin accent edge, so the tile stays clear on a focused row, whose fill is the same accent wash (the box keeps its size) -->
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <!-- Fixed square: never stretched by its cell nor squeezed, so the glyph or letter centres inside it -->
+        <Setter Property="MinWidth" Value="24" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="ClipToBounds" Value="False" />
+    </Style>
+    <!-- Its picture, library icon (the shared IconGlyphSize and the library's thin stroke, as everywhere else) or initial (normal weight),
+         each centred both ways in the tile's inner square -->
+    <Style Selector="Border.rowicon > Panel > Image">
+        <Setter Property="Width" Value="{StaticResource RowPictureSize}" />
+        <Setter Property="Height" Value="{StaticResource RowPictureSize}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.rowicon > Panel > c|IconGlyph">
+        <Setter Property="Width" Value="{DynamicResource IconGlyphSize}" />
+        <Setter Property="Height" Value="{DynamicResource IconGlyphSize}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.rowicon > Panel > TextBlock">
+        <Setter Property="LineHeight" Value="NaN" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="TextAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
     <Style Selector="Path.glyph">
         <Setter Property="Width" Value="14" />

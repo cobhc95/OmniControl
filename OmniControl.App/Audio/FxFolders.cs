@@ -117,15 +117,6 @@ public static class FxFolders
     /// <summary>The effects that run while <paramref name="deviceId"/> plays, in order (no folder slot is in the result).</summary>
     public static List<FxSlot> ChainFor(IReadOnlyList<FxSlot> chain, string? deviceId) =>
         PartsFor(chain, deviceId).SelectMany(p => p.Effects).ToList();
-
-    /// <summary>
-    /// <see cref="ChainFor"/> for Equalizer APO, which has no dry/wet mix: the effects of a folder whose Mix is below 100 % are given that
-    /// mix (copies), so the chain writer leaves them out and the row says they are not run, as it does for an effect's own mix.
-    /// </summary>
-    public static List<FxSlot> ApoChainFor(IReadOnlyList<FxSlot> chain, string? deviceId) =>
-        PartsFor(chain, deviceId)
-            .SelectMany(p => p.Folder is { } f && f.Wet < FxSlot.DefaultWet ? p.Effects.Select(e => { var c = e.Copy(); c.Wet = Math.Min(c.Wet, f.Wet); return c; }) : p.Effects)
-            .ToList();
 }
 
 /// <summary>Effects that run together: a device folder's (with the folder, for its Mix) or the ones outside every folder (no folder).</summary>

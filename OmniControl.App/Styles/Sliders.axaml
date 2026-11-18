@@ -73,7 +73,7 @@
     <Style Selector="Slider.thick:vertical /template/ Thumb /template/ StackPanel#GripLying"><Setter Property="IsVisible" Value="True" /></Style>
     <Style Selector="Slider.thick /template/ RepeatButton /template/ Border#TrackBackground">
         <Setter Property="CornerRadius" Value="4" />
-        <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
+        <Setter Property="Background" Value="{DynamicResource BrushControlTrack}" />
     </Style>
     <Style Selector="Slider.thick:horizontal /template/ RepeatButton /template/ Border#TrackBackground"><Setter Property="Height" Value="{DynamicResource SliderThickTrack}" /></Style>
     <Style Selector="Slider.thick:vertical /template/ RepeatButton /template/ Border#TrackBackground"><Setter Property="Width" Value="{DynamicResource SliderThickTrack}" /></Style>

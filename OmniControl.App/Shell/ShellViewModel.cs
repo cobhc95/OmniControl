@@ -158,7 +158,8 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _mixer.MasterDeviceChanged += _osd.RetargetVolume;
         _installer = new EngineInstaller(_effectsSupport);
         _fxWindows = new FxWindowService(_mixer, _effects, _effectsSupport, _plugins, _displayFeeds, _library, _presets, Report, _presetManager.Open,
-            new FxMixerLinks(deviceId => { if (_volumePage is { } page) { OpenPage(page.Title); page.ShowMixerFor(deviceId); } }, () => _volumePage?.InstallEqualizerApoStepAsync() ?? Task.CompletedTask), _dialogs.AskAsync);
+            new FxMixerLinks(deviceId => { if (_volumePage is { } page) { OpenPage(page.Title); page.ShowMixerFor(deviceId); } }, () => _volumePage?.InstallEqualizerApoStepAsync() ?? Task.CompletedTask,
+                () => _installer.SetUpTip), _dialogs.AskAsync);
         _about = new AboutWindowService(Report);
         _appActions = new AppActions(new AppLauncher(Report), _hotkeys);
         _powerPlanActions = new Power.PowerPlanActions(new OmniControl.Core.Engine.PowerPlanService(), _hotkeys);
@@ -213,7 +214,8 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
             TryMake("Mouse and Trackpad", () => new MousePageViewModel(_mouse, _trackpad, _pointer, _hotkeys, _osd, _dialogs.AskAsync, Report, _presetGroups, _presetManager.Open, _appScopes)),
             TryMake("Gestures", () => new GesturesPageViewModel(_gestures, _rules, _margins, _hotkeys, _dialogs.AskAsync, _appScopes)),
             TryMake("Automation", () => new AutomationPageViewModel(_automation, _dialogs.AskAsync)),
-            TryMake("OSD", () => new OsdPageViewModel(_osd, _hotkeys, _presetGroups, _presetManager.Open, OsdPlacementWindow.AskAsync)),
+            TryMake("OSD", () => new OsdPageViewModel(_osd, _hotkeys, _presetGroups, _presetManager.Open, OsdPlacementWindow.AskAsync,
+                () => _appLists.Lists.SelectMany(l => l.Apps).Select(a => new RunningProgram(a.Program, a.Name)).ToList(), Report)),
         }.OfType<PageViewModel>().ToArray();
         // The effects' preset groups belong to the Volume page; they are made by the FX windows, which know how a preset reaches an effect.
         _volumePage = _allPages.OfType<VolumePageViewModel>().FirstOrDefault();

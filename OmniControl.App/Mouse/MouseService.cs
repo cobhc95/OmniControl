@@ -34,6 +34,7 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
     private readonly object _gate = new();
     private readonly HashSet<MouseButton> _swallowed = new();           // pressed buttons whose release must be swallowed too
     private readonly Dictionary<MouseButton, Action> _undoOnRelease = new(); // what to do when a button comes up: undo a "while held" action, or run a "when released" one
+    private readonly MouseHook _hook;
     private readonly LayerState _layers = new();                        // the mouse's and the trackpad's layer in force
     private readonly HashSet<MouseButton> _sequenceRunning = new();     // inputs whose second and later actions are still running
     private volatile Snapshot _snapshot;
@@ -81,6 +82,8 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
         ApplyWatchers();
         hook.PassAll = PassesEverything;
         hook.AddHandler(Handle);
+        _hook = hook;
+        hook.Reinstalled += ReleaseAllHeld;
         _states = states;
         RegisterStates();
     }
@@ -404,10 +407,23 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
         return swallowed;
     }
 
+    /// <summary>
+    /// The hook was put back after Windows dropped it: a release may have been missed, so every held input is let go now (keys, buttons,
+    /// held layers, movement as scroll), as if released. A button still held then simply ends early; pressing it again starts it again.
+    /// </summary>
+    private void ReleaseAllHeld() => Guard.Run("Mouse: let go after the hook was put back", () =>
+    {
+        List<MouseButton> held;
+        lock (_gate) held = _undoOnRelease.Keys.Concat(_swallowed).Distinct().ToList();
+        foreach (var button in held) ReleaseSwallowed(button);
+        foreach (var family in _layers.ReleaseAll()) NotifyLayer(family);
+    });
+
     private void Say(string message) => _report(message);
 
     public void Dispose()
     {
+        _hook.Reinstalled -= ReleaseAllHeld;
         _modes.BeginClose();
         List<Action> pending;
         lock (_gate) pending = _undoOnRelease.Values.ToList();

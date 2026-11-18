@@ -16,6 +16,9 @@ public static class WindowQuery
 
     private const uint GaRoot = 2;
 
+    /// <summary>The programs that draw Windows' own shell (taskbar, Start, pop-ups, File Explorer windows).</summary>
+    private static readonly string[] ShellPrograms = { "explorer.exe", "ShellExperienceHost.exe", "StartMenuExperienceHost.exe", "SearchHost.exe" };
+
     /// <summary>The top-level window the user is working in (the one with keyboard focus), or zero.</summary>
     internal static IntPtr ActiveWindow()
     {
@@ -57,4 +60,12 @@ public static class WindowQuery
     /// <summary>The id of the process that owns the window, or null when there is no such window.</summary>
     internal static int? ProcessOf(IntPtr hwnd) =>
         hwnd != IntPtr.Zero && GetWindowThreadProcessId(hwnd, out var pid) != 0 ? (int)pid : null;
+
+    /// <summary>True when the process is one of Windows' shell programs (explorer.exe and the shell's experience hosts). Reads the process's path: not for the mouse hook.</summary>
+    public static bool IsShellProgram(int processId)
+    {
+        if (processId == 0 || CoreAudio.ProcessPath(processId) is not { } path) return false;
+        var name = Path.GetFileName(path);
+        return ShellPrograms.Any(p => string.Equals(p, name, StringComparison.OrdinalIgnoreCase));
+    }
 }

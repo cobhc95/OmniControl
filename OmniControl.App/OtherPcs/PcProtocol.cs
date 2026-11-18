@@ -45,8 +45,8 @@ internal static class PcMsgType
         WakeInfo = "wake-info", Leaving = "leaving", WakeAsk = "wake-ask", WakeAnswer = "wake-answer",
         ImportList = "import-list", ImportGet = "import-get", ImportAnswer = "import-answer", Route = "route";
 
-    /// <summary>What a <c>wake-ask</c> wants (its <see cref="PcMsg.Id"/>): send a magic packet for a PC on this PC's network, read the wake facts again, turn settings on (behind this PC's own prompt), or put this PC to sleep as a test (behind its prompt).</summary>
-    public const string WakeRelay = "relay", WakeCheck = "check", WakeFix = "fix", WakeTest = "test";
+    /// <summary>What a <c>wake-ask</c> wants (its <see cref="PcMsg.Id"/>): send a magic packet for a PC on this PC's network, read the wake facts again, turn settings on or put back what was turned on (behind this PC's own prompt), or put this PC to sleep as a test (behind its prompt).</summary>
+    public const string WakeRelay = "relay", WakeCheck = "check", WakeFix = "fix", WakeUndo = "undo", WakeTest = "test";
 }
 
 /// <summary>
@@ -55,7 +55,7 @@ internal static class PcMsgType
 /// user icon: the other PC does not have it), <see cref="Settable"/> whether the other PC may set it (the owner gave the entry a way to).
 /// </summary>
 public sealed record SharedState(string Id, string Name, string Group, int Kind, int Min, int Max, string Unit, List<string>? Choices, double? Number, string? Text,
-    string? Heading = null, string? Icon = null, bool Settable = false, bool ScreenPower = false, string? Common = null);
+    string? Heading = null, string? Icon = null, bool Settable = false, bool ScreenPower = false, string? Common = null, string? Subject = null);
 
 /// <summary>One action a PC shares and lets the other run: its title, its icon, the card (<see cref="Common"/>) it belongs to, whether it turns every screen off and whether the other PC must confirm it first.</summary>
 public sealed record SharedAction(string Id, string Title, string? Icon, string Common, bool ScreensOff = false, bool ConfirmRun = false);
@@ -74,6 +74,9 @@ internal sealed class PcMsg
     public string? Id { get; set; }
     public double? Number { get; set; }
     public string? Text { get; set; }
+
+    /// <summary><c>state</c>: the device or thing the value is about (<see cref="StateValue.Subject"/>).</summary>
+    public string? Subject { get; set; }
     public int? Rid { get; set; }
     public bool? Ok { get; set; }
     public string? Why { get; set; }

@@ -34,6 +34,7 @@ public sealed partial class VolumePageViewModel
             item.StateWord = d.IsDefault ? DefaultWord : string.Empty;
             if (!Grace.Within(_inputChange, Timing.SliderEchoGrace) && CoreAudio.GetDeviceVolume(d.Id, out var v, out var muted))
                 item.Sync(v, muted, _mixer.IsFxOn(item.Key), FxSlot.EffectCount(_mixer.FxChain(item.Key)));
+            SyncListen(item);
             SyncRow(item);
             ordered.Add(item);
         }
@@ -59,8 +60,11 @@ public sealed partial class VolumePageViewModel
     {
         var id = d.Id;
         var key = _mixer.InputKey(id, d.Name);
-        return new InputItem(id)
+        InputItem? row = null;
+        return row = new InputItem(id)
         {
+            ListenToggled = on => SetListen(row!, on, null, keepOutput: true),
+            ListenMenu = () => ListenRows(row!),
             Name = d.Name,
             VolumeChanged = v => { NoteInputChange(); CoreAudio.SetDeviceVolume(id, v); },
             MuteChanged = m => { NoteInputChange(); CoreAudio.SetDeviceMute(id, m); },

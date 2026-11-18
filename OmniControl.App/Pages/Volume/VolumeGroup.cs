@@ -13,6 +13,9 @@ public sealed class VolumeGroup : CardGroup
     /// <summary>The Mixer group's rows have a pan knob (Outputs), so its column has a heading.</summary>
     public bool ShowsPan { get; init; }
 
+    /// <summary>The group's rows have a Listen button (Microphones), so its column has a heading.</summary>
+    public bool ShowsListen { get; init; }
+
     /// <summary>A Wiring table's action at the right of its header ("+ Combine microphones"); null = none.</summary>
     public CardAction? Tool { get; init; }
     public bool HasTool => Tool is not null;

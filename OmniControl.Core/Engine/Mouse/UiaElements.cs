@@ -4,9 +4,10 @@ namespace OmniControl.Core.Engine.Mouse;
 
 /// <summary>
 /// Reads what is under a screen point through UI Automation (raw COM, since only a few calls are needed): the control type of the
-/// element and of its parents. Nothing is kept between calls. Run it on a thread-pool (multithreaded apartment) thread.
+/// element and of its parents. One instance per worker thread (a multithreaded-apartment thread, never the UI or hook thread) keeps one
+/// automation object for its life; every element and walker a lookup gets is released at once, so nothing is held in the other app.
 /// </summary>
-internal static class UiaElements
+internal sealed class UiaElements : IDisposable
 {
     private const int ControlTypePropertyId = 30003;
     private static readonly Guid AutomationClass = new("ff48dba4-60ef-4201-aa87-54103eef594e");
@@ -37,27 +38,45 @@ internal static class UiaElements
         [PreserveSig] int GetParentElement(IUIAutomationElement element, out IUIAutomationElement? parent);
     }
 
+    private IUIAutomation? _automation;
+
     /// <summary>The control types of the element at the point and up to <paramref name="parentLevels"/> parents; null when it can't be read.</summary>
-    public static IReadOnlyList<int>? ControlTypesAt(int x, int y, int parentLevels)
+    public IReadOnlyList<int>? ControlTypesAt(int x, int y, int parentLevels)
     {
-        if (Activator.CreateInstance(Type.GetTypeFromCLSID(AutomationClass)!) is not IUIAutomation automation) return null;
+        _automation ??= Activator.CreateInstance(Type.GetTypeFromCLSID(AutomationClass)!) as IUIAutomation;
+        if (_automation is null) return null;
+        if (_automation.ElementFromPoint(new Pt { X = x, Y = y }, out var element) != 0 || element is null) return null;
+        IUIAutomationTreeWalker? walker = null;
+        IUIAutomationElement? at = element;
         try
         {
-            if (automation.ElementFromPoint(new Pt { X = x, Y = y }, out var element) != 0 || element is null) return null;
-            if (automation.ControlViewWalker(out var walker) != 0) return null;
+            if (_automation.ControlViewWalker(out walker) != 0) return null;
             var types = new List<int>();
-            IUIAutomationElement? at = element;
             for (var level = 0; at is not null && level <= parentLevels; level++)
             {
                 if (at.GetCurrentPropertyValue(ControlTypePropertyId, out var type) == 0 && type is int id) types.Add(id);
-                if (walker.GetParentElement(at, out var parent) != 0) break;
-                at = parent;
+                var failed = walker.GetParentElement(at, out var parent) != 0;
+                var done = at;
+                at = failed ? null : parent;
+                Release(done);
             }
             return types;
         }
         finally
         {
-            Marshal.ReleaseComObject(automation);
+            Release(at);
+            Release(walker);
         }
+    }
+
+    private static void Release(object? com)
+    {
+        if (com is not null && Marshal.IsComObject(com)) Marshal.ReleaseComObject(com);
+    }
+
+    public void Dispose()
+    {
+        Release(_automation);
+        _automation = null;
     }
 }

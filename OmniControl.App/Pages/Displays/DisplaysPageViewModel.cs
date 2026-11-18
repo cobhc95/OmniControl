@@ -44,6 +44,8 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
     private readonly MonitorPresetBook _monitorBook;
     private readonly ProviderChoice _monitorPresets;
     private readonly List<HardwareDisplayItem> _hardware = new();
+    private readonly HardwareWatches _watches;
+    private readonly SystemScreens _systemScreens;
     private readonly List<SoftwareDisplayItem> _softwareItems = new();
     private IReadOnlyList<IMonitor> _shownMonitors = Array.Empty<IMonitor>();
     private bool _hasLaptop;
@@ -93,7 +95,10 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
     {
         (_engine, _hotkeys, _osd, _software, _report, _openPresets, _states) = (engine, hotkeys, osd, software, report, openPresets, states);
         _rescan = new ThrottledRun(Timing.DisplayRescanGap, RescanNow);
+        _watches = hardware;
+        _systemScreens = new SystemScreens(hardware);
         RegisterWatches(hardware);
+        hardware.ScreensChanged += OnScreensChanged;
 
         foreach (var spec in DisplayControls.All) osd.Declare(spec.Osd, spec.Icon);
 
@@ -245,6 +250,7 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
             1 => "1 monitor available",
             _ => $"{_hardware.Count} monitors available",
         };
+        Hardware.RefreshMaster(); // with screens that have a power switch the summary reads "N of M on"
     }
 
     /// <summary>A monitor that is also the laptop's panel is shown once, as the laptop panel (its brightness is Windows').</summary>
@@ -265,11 +271,11 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
         if (snapshot.HasLaptop)
         {
             var panel = snapshot.Displays.FirstOrDefault(d => d.IsInternal);
-            Add(new HardwareDisplayItem(LaptopId, BuiltIn, new LaptopAccess(_engine.Laptop), Orientation(panel, BuiltIn), _levels, _osd, _report, ShowHardwareGroups, OnDisplayValues));
+            Add(new HardwareDisplayItem(LaptopId, BuiltIn, new LaptopAccess(_engine.Laptop), Orientation(panel, BuiltIn), _levels, _osd, _systemScreens, _report, ShowHardwareGroups, OnDisplayValues));
         }
         foreach (var monitor in monitors)
             Add(new HardwareDisplayItem(monitor.Info.DeviceName, monitor.Info.Name, new MonitorAccess(monitor), Orientation(monitor.Info, monitor.Info.Name),
-                _levels, _osd, _report, ShowHardwareGroups, OnDisplayValues));
+                _levels, _osd, _systemScreens, _report, ShowHardwareGroups, OnDisplayValues));
     }
 
     private DisplayOrientationCard Orientation(DisplayInfo? display, string name) => new(display, _engine.ResolveDeviceName, name, _engine.Rotation, _report, new SuggestedKeysSwitch(_hotkeys, RotationKeySet));
@@ -331,6 +337,7 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
     public void Dispose()
     {
         _scheduler.Changed -= ShowRefusals;
+        _watches.ScreensChanged -= OnScreensChanged;
         ForgetPageStates();
         _warm.Dispose();
         _presets.Dispose();

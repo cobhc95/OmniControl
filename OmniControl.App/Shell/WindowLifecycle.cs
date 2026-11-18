@@ -21,27 +21,34 @@ public static class WindowLifecycle
         var asking = false;
         // The one exit path: the tray's Quit (the app.quit action), the footer button, the X button's "Exit" and the close dialog all end here,
         // and desktop.Exit below disposes the shell (engine, journal, display ramps).
-        var showing = false;
+        var ours = false; // true while Show or Hide below changes the window, so the change watcher knows it was asked for
         void Exit() { quitting = true; desktop.Shutdown(); }
-        // Every open names what asked; when the window really opens (it was hidden or minimised) that goes to the errors log, so a window
-        // that "opened by itself" can be traced.
+        // Every open and every hide names what asked; when the window really opens or goes (it was hidden or minimised, or shown) that goes
+        // to the errors log, so a window that "opened or closed by itself" can be traced.
         void Show(string source)
         {
-            if (!window.IsVisible || window.WindowState == WindowState.Minimized) AppDataStore.AppendLog(Guard.LogFile, $"Main window opened by {source}.");
-            showing = true;
+            if (!window.IsVisible || window.WindowState == WindowState.Minimized) Log($"Main window opened by {source}.");
+            ours = true;
             try
             {
                 window.Show();
                 if (window.WindowState == WindowState.Minimized) window.WindowState = WindowState.Normal;
                 window.Activate();
             }
-            finally { showing = false; }
+            finally { ours = false; }
+        }
+        void Hide(string source)
+        {
+            if (window.IsVisible) Log($"Main window hidden by {source}.");
+            ours = true;
+            try { window.Hide(); }
+            finally { ours = false; }
         }
 
         void Apply(CloseBehavior behavior)
         {
             if (behavior == CloseBehavior.Exit) Exit();
-            else window.Hide();
+            else Hide("the X button (When closing: keep running in the tray)");
         }
 
         async void Ask()
@@ -79,22 +86,41 @@ public static class WindowLifecycle
         {
             if (e.Property == Visual.IsVisibleProperty || e.Property == Window.WindowStateProperty)
                 shell.SetWindowShown(window.IsVisible && window.WindowState != WindowState.Minimized);
-            // Hidden to shown by anything but Show above (and the start-up itself): logged too, as nothing else should open it.
-            if (started && !showing && e.Property == Visual.IsVisibleProperty && window.IsVisible)
-                AppDataStore.AppendLog(Guard.LogFile, "Main window opened, not by any of OmniControl's open requests.");
+            // Shown, hidden or minimised by anything but Show and Hide above (and the start-up itself): logged too, so the next report says
+            // what did it (the minimise button and Windows' own Win+D or Win+M are the expected ones).
+            if (!started || ours) return;
+            if (e.Property == Visual.IsVisibleProperty)
+                Log(window.IsVisible ? "Main window opened, not by any of OmniControl's open requests." : "Main window hidden, not by any of OmniControl's hide requests.");
+            else if (e.Property == Window.WindowStateProperty && window.WindowState == WindowState.Minimized)
+                Log("Main window minimised by the minimise button or Windows (not by OmniControl).");
         };
         window.Opened += (_, _) => Dispatcher.UIThread.Post(() => started = true);
 
         if (startHidden || settings.StartMinimised)
         {
+            // Avalonia raises Opened on EVERY show, not only the first: a handler that stayed subscribed hid the window again each time
+            // it was opened (from the tray, a hotkey or another start), so it showed and at once went away. It runs once and lets go.
+            var startSource = startHidden ? "starting in the tray (the start-up entry)" : "starting in the tray (Start minimised)";
+            Log($"Main window minimised by {startSource}.");
             window.WindowState = WindowState.Minimized;
-            window.Opened += (_, _) => window.Hide();
+            void HideOnFirstOpen(object? sender, EventArgs e)
+            {
+                window.Opened -= HideOnFirstOpen;
+                Hide(startSource);
+            }
+            window.Opened += HideOnFirstOpen;
         }
 
         AppLifecycle.ShowRequested += Show;
+        // A held hotkey repeats: each repeat is a request, and without this the window flipped shown, hidden, shown... while the key was down.
+        var lastToggle = long.MinValue / 2;
         AppLifecycle.ToggleRequested += source =>
         {
-            if (window.IsVisible && window.WindowState != WindowState.Minimized && window.IsActive) window.Hide();
+            var now = Environment.TickCount64;
+            var repeat = now - lastToggle < Timing.WindowToggleRepeat.TotalMilliseconds;
+            lastToggle = now;
+            if (repeat) return;
+            if (window.IsVisible && window.WindowState != WindowState.Minimized && window.IsActive) Hide(source);
             else Show(source);
         };
         AppLifecycle.QuitRequested += Exit;
@@ -105,4 +131,6 @@ public static class WindowLifecycle
         };
         desktop.Exit += (_, _) => { tray.Dispose(); shell.Dispose(); };
     }
+
+    private static void Log(string line) => AppDataStore.AppendLog(Guard.LogFile, line);
 }

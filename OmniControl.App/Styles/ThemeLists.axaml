@@ -67,8 +67,8 @@
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     </Style>
     <Style Selector="Button.scope /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
+        <Setter Property="Background" Value="{DynamicResource BrushControlFill}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
         <Setter Property="BorderThickness" Value="1" />
     </Style>
     <Style Selector="Button.scope:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
@@ -121,6 +121,8 @@
         <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
     </Style>
+    <!-- A lit row button holding a glyph (a microphone's Listen) draws it in the accent -->
+    <Style Selector="Button.scope.mute.on > Path.glyph"><Setter Property="Stroke" Value="{DynamicResource BrushAccent}" /></Style>
 
     <!-- Parametric equaliser band row (Button.bandrow, a tab-like row of the band list): outlined, flat; the selected one is raised with a 3 px accent
          bar at its left edge (an inner Border.bandbar, so the text never moves); a bypassed band is dimmed and struck through (.off) -->

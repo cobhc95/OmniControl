@@ -65,6 +65,12 @@ public sealed class MouseHook : IDisposable
     /// </summary>
     public Action<string>? Problem { get; set; }
 
+    /// <summary>
+    /// Windows had dropped the hook and it was put back: any release that came meanwhile was never seen, so whoever holds keys or buttons
+    /// for a pressed input lets them go. Raised on a pool thread (input sent from the hook's own thread would wait on this very hook).
+    /// </summary>
+    public event Action? Reinstalled;
+
     public MouseHook() => _proc = Callback;
 
     private void Note(string line, ref int counter)
@@ -189,6 +195,7 @@ public sealed class MouseHook : IDisposable
                 if (hook != IntPtr.Zero) UnhookWindowsHookEx(hook);
                 hook = Install("hook reinstalled (Windows had dropped it)");
                 ReportProblem("Windows had dropped the mouse hook (it saw no input while the pointer moved; a call was too slow, or a program run as administrator was in front); it was put back");
+                if (Reinstalled is { } reinstalled) ThreadPool.QueueUserWorkItem(_ => reinstalled());
             }
         }
         if (hook != IntPtr.Zero) UnhookWindowsHookEx(hook);

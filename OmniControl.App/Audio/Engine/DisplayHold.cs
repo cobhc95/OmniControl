@@ -23,8 +23,9 @@ internal sealed class DisplayHold : IDisposable
     public string DeviceId { get; }
 
     /// <summary>
-    /// The loopback comes after the device's master volume, but Equalizer APO's real copy runs before it: every block is scaled by
-    /// 1 / the master volume so the display sees the full-volume signal.
+    /// The loopback comes after the device's own master volume, but Equalizer APO's real copy runs before it: every block is scaled back
+    /// by the amplitude that volume left (<see cref="CoreAudio.LoopbackLevel"/>: its dB as a linear factor, 1 when the device turns the
+    /// volume down itself), so the display sees the track as at 100 %. Nothing else is applied (no mono sum, no pan law).
     /// </summary>
     /// <param name="failed">Called on the UI thread with a plain sentence when the sound can't be heard (Windows refused, the device went away).</param>
     /// <param name="fedChanged">Called on the UI thread with false while the display is not fed (device muted or nearly silent) and true when it is fed again.</param>
@@ -39,11 +40,18 @@ internal sealed class DisplayHold : IDisposable
         _ = Guard.RunAsync("display tap", () => StartAsync(onBlock));
     }
 
+    /// <summary>The watcher's thread: the device's level or mute changed. The gain is read from Windows on a worker, never inside its notification.</summary>
     private void OnLevel(int percent, bool muted)
     {
+        if (muted || percent < Timing.DisplayFeedMinPercent) SetGain(0f);
+        else ThreadPool.QueueUserWorkItem(_ => Guard.Run("display tap level", () => SetGain(CoreAudio.LoopbackLevel(DeviceId) is float level and > 0f ? 1f / level : 100f / percent)));
+    }
+
+    private void SetGain(float gain)
+    {
         var wasFed = _gain > 0f;
-        _gain = muted || percent < Timing.DisplayFeedMinPercent ? 0f : 100f / percent;
-        if (wasFed != _gain > 0f) Dispatcher.UIThread.Post(() => { if (!_disposed) _fedChanged(_gain > 0f); });
+        _gain = gain;
+        if (wasFed != gain > 0f) Dispatcher.UIThread.Post(() => { if (!_disposed) _fedChanged(gain > 0f); });
     }
 
     private async Task StartAsync(DisplayBlock onBlock)

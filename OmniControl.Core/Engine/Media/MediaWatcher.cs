@@ -3,8 +3,11 @@ using Windows.Media.Control;
 
 namespace OmniControl.Core.Engine.Media;
 
-/// <summary>What changed in the media that is playing: a new track (with its title and artist), or play/pause.</summary>
-public sealed record MediaChange(bool IsTrack, bool IsPlaying, string Title, string Artist);
+/// <summary>
+/// What changed in the media that is playing: a new track (with its title and artist), or play/pause. <paramref name="Program"/> is the
+/// program whose session it is (<see cref="ProgramIdentity.Normalize"/>), or empty when Windows names it in a way that is no program file (a Store app).
+/// </summary>
+public sealed record MediaChange(bool IsTrack, bool IsPlaying, string Title, string Artist, string Program);
 
 /// <summary>
 /// Raises <see cref="Changed"/> (on a worker thread) when any app playing media (browser, music player, video player) starts, pauses
@@ -15,7 +18,7 @@ public sealed class MediaWatcher : IDisposable
     private sealed class Tracked
     {
         public GlobalSystemMediaTransportControlsSessionPlaybackStatus? Status;
-        public string Title = string.Empty, Artist = string.Empty;
+        public string Title = string.Empty, Artist = string.Empty, Program = string.Empty;
     }
 
     private readonly TimeSpan _trackQuiet;
@@ -59,7 +62,7 @@ public sealed class MediaWatcher : IDisposable
             gone = _sessions.Keys.Where(s => !current.Contains(s)).ToList();
             fresh = current.Where(s => !_sessions.ContainsKey(s)).ToList();
             foreach (var s in gone) _sessions.Remove(s);
-            foreach (var s in fresh) _sessions[s] = new Tracked { Status = s.GetPlaybackInfo()?.PlaybackStatus };
+            foreach (var s in fresh) _sessions[s] = new Tracked { Status = s.GetPlaybackInfo()?.PlaybackStatus, Program = ProgramOf(s) };
         }
 
         foreach (var s in gone) Detach(s);
@@ -89,9 +92,26 @@ public sealed class MediaWatcher : IDisposable
             var before = tracked.Status;
             tracked.Status = status;
             var isNews = before is not null && before != status && DateTime.UtcNow - _lastTrackChange > _trackQuiet;
-            if (isNews) change = new MediaChange(false, status == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing, tracked.Title, tracked.Artist);
+            if (isNews) change = new MediaChange(false, status == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing, tracked.Title, tracked.Artist, tracked.Program);
         }
         if (change is not null) Changed?.Invoke(change);
+    }
+
+    /// <summary>
+    /// The program of a session: Windows names a desktop program's session after its file ("Spotify.exe") or its short name ("Chrome",
+    /// "MSEdge"), which is the program's identity; a Store app's name ("Microsoft.ZuneMusic_8wekyb3d8bbwe!Microsoft.ZuneMusic") is not, so it is unknown.
+    /// </summary>
+    private static string ProgramOf(GlobalSystemMediaTransportControlsSession session)
+    {
+        try
+        {
+            var id = session.SourceAppUserModelId ?? string.Empty;
+            return id.Contains('!') ? string.Empty : ProgramIdentity.Normalize(id);
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException)
+        {
+            return string.Empty; // the player closed while it was asked: unknown, so only the event's own setting applies
+        }
     }
 
     private void OnPropertiesChanged(GlobalSystemMediaTransportControlsSession session, object? args) =>
@@ -114,7 +134,7 @@ public sealed class MediaWatcher : IDisposable
                 if (isNew && announce && properties.Title.Length > 0)
                 {
                     _lastTrackChange = DateTime.UtcNow;
-                    change = new MediaChange(true, tracked.Status == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing, properties.Title, properties.Artist);
+                    change = new MediaChange(true, tracked.Status == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing, properties.Title, properties.Artist, tracked.Program);
                 }
             }
             if (change is not null) Changed?.Invoke(change);

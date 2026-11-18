@@ -55,7 +55,7 @@ public sealed partial class OtherPcsService
         {
             var now = _states.Now(s.Id);
             return new SharedState(s.Id, s.Name, s.Group, (int)s.Kind, s.Min, s.Max, s.Unit, s.Choices?.Invoke().ToList(), now?.Number, now?.Text,
-                s.Heading, SharedIcon(s.ShownIcon), s.Set is not null, s.ScreenPower, s.Common);
+                s.Heading, SharedIcon(s.ShownIcon), s.Set is not null, s.ScreenPower, s.Common, now?.Subject);
         }).ToList();
 
     private List<SharedAction> SharedActions() => _hotkeys.Actions
@@ -85,7 +85,7 @@ public sealed partial class OtherPcsService
         foreach (var link in _links.Values.ToList())
         {
             if (change.Entry.Common is null) continue;
-            _ = link.SendAsync(new PcMsg { T = PcMsgType.State, Id = change.Entry.Id, Number = change.After?.Number, Text = change.After?.Text });
+            _ = link.SendAsync(new PcMsg { T = PcMsgType.State, Id = change.Entry.Id, Number = change.After?.Number, Text = change.After?.Text, Subject = change.After?.Subject });
         }
     }
 }

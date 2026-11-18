@@ -39,6 +39,20 @@ public class CardGroup : ObservableObject
     /// <summary>What the pill's tooltip says it restores.</summary>
     public string? RestoreTip { get; init; }
 
+    /// <summary>A small fact (icon and words) at the header's right instead of the summary, or null.</summary>
+    public GroupBadge? Badge
+    {
+        get => _badge;
+        set
+        {
+            if (SetProperty(ref _badge, value)) OnPropertyChanged(nameof(HasBadge));
+        }
+    }
+
+    public bool HasBadge => _badge is not null;
+
+    private GroupBadge? _badge;
+
     /// <summary>True: the summary is shown only while the group is closed (a list of what is inside, which the open group shows itself).</summary>
     public bool SummaryWhenClosed { get; init; }
 
@@ -116,7 +130,20 @@ public class CardGroup : ObservableObject
     }
 
     /// <summary>True: every card is an on/off switch, so the header gets the master switch (<see cref="GroupMasterSwitch"/>).</summary>
-    public virtual bool HasMaster => _switch is not null;
+    public virtual bool HasMaster => !NoMasterSwitch && _switch is not null;
+
+    /// <summary>True: the group never shows a master switch, for a group whose one switch card it would only repeat (Power's Keep awake), and so no "N of M on" count either.</summary>
+    public bool NoMasterSwitch
+    {
+        get => _noMasterSwitch;
+        init
+        {
+            _noMasterSwitch = value;
+            if (value) _summary = string.Empty;
+        }
+    }
+
+    private readonly bool _noMasterSwitch;
 
     /// <summary>The master switch's state: true all on, false all off, null some on (the mixed look). Null too when there is no master.</summary>
     public virtual bool? MasterState => _switch?.State();
@@ -136,6 +163,7 @@ public class CardGroup : ObservableObject
     /// <summary>The value behind the switch may have changed: the header shows it again.</summary>
     public void RefreshMaster()
     {
+        if (_switch?.Count?.Invoke() is var (on, total)) Summary = $"{on} of {total} on";
         OnPropertyChanged(nameof(HasMaster));
         OnPropertyChanged(nameof(MasterState));
     }
@@ -158,7 +186,7 @@ public sealed class ItemGroup : CardGroup, IDisposable
 
     public IReadOnlyList<object> Items { get; }
 
-    public override bool HasMaster => _toggles.Count > 0 || base.HasMaster;
+    public override bool HasMaster => !NoMasterSwitch && (_toggles.Count > 0 || base.HasMaster);
 
     public override bool? MasterState
     {
@@ -171,7 +199,7 @@ public sealed class ItemGroup : CardGroup, IDisposable
     }
 
     public ItemGroup(string key, string name, IReadOnlyList<object> items)
-        : base(key, name, items.Count == 1 ? "1 setting" : $"{items.Count} settings")
+        : base(key, name, SettingsCount(items))
     {
         Items = items;
         if (items.Count == 0 || !items.All(i => i is ToggleItem)) return;
@@ -206,9 +234,17 @@ public sealed class ItemGroup : CardGroup, IDisposable
         if (!_bulk && e.PropertyName == nameof(ToggleItem.IsOn)) Refresh();
     }
 
+    /// <summary>"N settings" counts the cards that set something; a fact (Now playing, a read-only value) is not a setting, and none says nothing.</summary>
+    private static string SettingsCount(IReadOnlyList<object> items) => items.Count(i => i is not FactItem) switch
+    {
+        0 => string.Empty,
+        1 => "1 setting",
+        var n => $"{n} settings",
+    };
+
     private void Refresh()
     {
-        Summary = $"{_toggles.Count(t => t.IsOn)} of {_toggles.Count} on";
+        if (!NoMasterSwitch) Summary = $"{_toggles.Count(t => t.IsOn)} of {_toggles.Count} on";
         OnPropertyChanged(nameof(MasterState));
     }
 

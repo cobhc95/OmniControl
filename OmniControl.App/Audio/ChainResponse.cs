@@ -16,17 +16,18 @@ public sealed record ChainCurve(double[] Db, double PeakDb, double PeakHz, IRead
 /// </summary>
 public static class ChainResponse
 {
-    /// <param name="engine">The engine that runs the row (<see cref="ModeMethod.Engine"/>): Equalizer APO runs no wet mix below 100 %.</param>
+    /// <param name="engine">The engine that runs the row (<see cref="ModeMethod.Engine"/>).</param>
+    /// <param name="apoBlends">Equalizer APO blends a wet mix below 100 % (<see cref="EffectsRules.ApoBlends"/>); when not, it leaves such effects out.</param>
     /// <param name="freqs">Where the curve is wanted (a <see cref="EqMath.LogGrid"/>); the peak is also looked for at every band's own frequency inside that range.</param>
-    public static ChainCurve Of(IReadOnlyList<FxSlot> slots, FxEngines engine, IReadOnlyList<double> freqs)
+    public static ChainCurve Of(IReadOnlyList<FxSlot> slots, FxEngines engine, bool apoBlends, IReadOnlyList<double> freqs)
     {
         var drawn = new List<(IReadOnlyList<EqBand> Bands, double GainDb, double Wet)>();
         var notDrawn = new List<string>();
         var runsPlugins = false;
         foreach (var slot in slots.Where(s => s.Enabled))
         {
-            runsPlugins |= FxCatalog.IsPlugin(slot) && FxCatalog.EnginesOf(slot).HasFlag(engine) && (engine != FxEngines.Apo || FxCatalog.ApoCanMix(slot));
-            if (NotDrawnReason(slot, engine) is { } reason) notDrawn.Add($"{slot.Name} ({reason})");
+            runsPlugins |= FxCatalog.IsPlugin(slot) && FxCatalog.EnginesOf(slot).HasFlag(engine) && (engine != FxEngines.Apo || FxCatalog.ApoRuns(slot, apoBlends));
+            if (NotDrawnReason(slot, engine, apoBlends) is { } reason) notDrawn.Add($"{slot.Name} ({reason})");
             else drawn.Add(Linear(slot));
         }
 
@@ -55,14 +56,14 @@ public static class ChainResponse
     }
 
     /// <summary>Why an enabled effect is not part of the drawn total; null when it is (an equaliser or Gain that the engine runs).</summary>
-    private static string? NotDrawnReason(FxSlot slot, FxEngines engine)
+    private static string? NotDrawnReason(FxSlot slot, FxEngines engine, bool apoBlends)
     {
         var engines = FxCatalog.EnginesOf(slot);
         if (engines == FxEngines.None) return "saved only, it does not process sound yet";
         if (!engines.HasFlag(engine)) return engine == FxEngines.Apo ? "not run by Equalizer APO" : "runs only in Equalizer APO";
         if (FxCatalog.IsPlugin(slot)) return "plug-in: its response is not known";
         if (FxCatalog.EqLayoutOf(slot) is null && slot.Kind != FxCatalog.GainKind) return "its response is not drawn";
-        if (engine == FxEngines.Apo && !FxCatalog.ApoCanMix(slot)) return "not run by Equalizer APO with a wet mix below 100 %";
+        if (engine == FxEngines.Apo && !FxCatalog.ApoRuns(slot, apoBlends)) return $"not run: {EffectsRules.ApoNoBlendReason}";
         return null;
     }
 }

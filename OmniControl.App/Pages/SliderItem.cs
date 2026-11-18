@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using OmniControl.Core.Models;
 
@@ -20,6 +22,25 @@ public sealed partial class SliderItem : ObservableObject, IEditorItem, IHalfWid
     public ChoiceItem? Lead { get; init; }
 
     public bool HasLead => Lead is not null;
+
+    /// <summary>State buttons on a second line of the card under a thin line, side by side at equal width (Other PCs' Sound: Sound and Mic mute under the volume); empty: no second line.</summary>
+    public IReadOnlyList<StateButtonItem> Extras { get; init; } = Array.Empty<StateButtonItem>();
+
+    public bool HasExtras => Extras.Count > 0;
+
+    /// <summary>The master cogwheel (Button.pill.cog) at the end of the card, opening the card's further settings (the OSD's Duration); null: none.</summary>
+    public ICommand? Cog { get; init; }
+
+    /// <summary>What the cogwheel opens, as its tooltip.</summary>
+    public string? CogTip { get; init; }
+
+    public bool HasCog => Cog is not null;
+
+    /// <summary>
+    /// How many decimals the value has: <see cref="Value"/>, <see cref="Minimum"/>, <see cref="Maximum"/> and <see cref="ResetValue"/> then count
+    /// in tenths (1) or hundredths (2), and the value is shown and typed as the real number (the OSD's 0.5-10 s). 0: whole numbers, the usual case.
+    /// </summary>
+    public int Decimals { get; init; }
     public int Minimum { get; }
     public int Maximum { get; }
     public string Unit { get; }
@@ -54,7 +75,11 @@ public sealed partial class SliderItem : ObservableObject, IEditorItem, IHalfWid
     [NotifyPropertyChangedFor(nameof(ValueText))]
     private int _value;
 
-    public string ValueText => Minimum < 0 && Value > 0 ? $"+{Value}{Unit}" : $"{Value}{Unit}";
+    public string ValueText => Minimum < 0 && Value > 0 ? $"+{Number}{Unit}" : $"{Number}{Unit}";
+
+    private string Number => Decimals == 0
+        ? Value.ToString(CultureInfo.CurrentCulture)
+        : (Value / Math.Pow(10, Decimals)).ToString("F" + Decimals, CultureInfo.CurrentCulture);
 
     public SliderItem(string label, int initial, Func<int, OperationResult> apply, Action<string> report,
         int minimum = 0, int maximum = 100, string unit = "", int? defaultValue = null)

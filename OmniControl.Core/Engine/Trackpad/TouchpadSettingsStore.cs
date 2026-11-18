@@ -19,6 +19,11 @@ public sealed class TouchpadSettingsStore : ITouchpadSettingsStore
     // bit word, the user-settings bit word at byte 16, then sensitivityLevel and five UINTs: 44 bytes.
     private const int ParametersSize = 44, ParametersVersion = 1, UserBitsOffset = 16;
 
+    private readonly ShellTouchpadSettings _shell;
+
+    /// <param name="log">Where a slow or unanswered call into Explorer is told (one line each).</param>
+    public TouchpadSettingsStore(Action<string>? log = null) => _shell = new ShellTouchpadSettings(log);
+
     public string? Read(WindowsGestureSetting setting, out int? value)
     {
         value = null;
@@ -44,12 +49,12 @@ public sealed class TouchpadSettingsStore : ITouchpadSettingsStore
         setting.Route == SettingRoute.Registry ? WriteRegistry(setting, value) : WriteParameter(setting, (value ?? setting.WindowsDefault) != 0);
 
     public string? Announce(WindowsGestureSetting setting) =>
-        setting.ShellId < 0 ? null : ShellTouchpadSettings.Refresh(setting.ShellId);
+        setting.ShellId < 0 ? null : _shell.Refresh(setting.ShellId);
 
     public string? ReadInEffect(WindowsGestureSetting setting, out int? value)
     {
         if (setting.ShellId < 0) return Read(setting, out value);
-        var problem = ShellTouchpadSettings.Read(setting.ShellId, out var used);
+        var problem = _shell.Read(setting.ShellId, out var used);
         value = problem is null ? used : null;
         return problem;
     }

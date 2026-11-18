@@ -113,6 +113,16 @@ public static partial class EffectsRules
     public static string ApoSent(ApoState apo, string folder) =>
         string.Equals(folder, apo.UpstreamConfigFolder, StringComparison.OrdinalIgnoreCase) ? "Chain sent to your Equalizer APO" : "Chain sent to OmniControl APO";
 
+    /// <summary>
+    /// The APO OmniControl writes to blends a Mix below 100 % (the config folder it would use for a chain, Equalizer APO's first; see
+    /// <see cref="ApoState.BlendsIn"/>). The FX window's curve and the folder's Mix read it; the chain writer asks per folder.
+    /// </summary>
+    public static bool ApoBlends(ApoState apo) => apo.BlendsIn(apo.UpstreamUsable ? apo.UpstreamConfigFolder : apo.ConfigFolder);
+
+    /// <summary>A device folder's Mix while Equalizer APO runs it and is too old to blend (the slider stays at 100 %), and the skipped effects' reason.</summary>
+    public static readonly string ApoNoBlend = $"This Equalizer APO is older than {ApoIds.BlendVersion} and can't blend, so Mix stays at 100 %.",
+        ApoNoBlendReason = $"a mix below 100 % needs Equalizer APO {ApoIds.BlendVersion}";
+
     /// <summary>Equalizer APO's config.txt no longer includes OmniControl's file (its editor or another program wrote it back without the line).</summary>
     public const string ApoDisplaced = "Equalizer APO's config no longer includes OmniControl's effects";
 

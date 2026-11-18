@@ -49,6 +49,17 @@ internal sealed class LayerState
         }
     }
 
+    /// <summary>Every held layer is let go (a release may have been missed): the families whose layer changed.</summary>
+    public List<InputFamily> ReleaseAll()
+    {
+        lock (_gate)
+        {
+            var families = _held.Select(h => h.Family).Distinct().ToList();
+            _held.Clear();
+            return families;
+        }
+    }
+
     /// <summary><paramref name="button"/> came up: the family whose held layer it let go, or null when it held none.</summary>
     public InputFamily? Release(MouseButton button)
     {

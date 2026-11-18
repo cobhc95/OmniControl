@@ -29,6 +29,9 @@ public abstract partial class VolumeRow : ObservableObject, IEditorItem
 
     public MeterModel Meter { get; } = new();
 
+    /// <summary>A recording device's row has a Listen button (Windows' own "Listen to this device"); see <see cref="InputItem"/>.</summary>
+    public virtual bool HasListen => false;
+
     // ---- what the page supplies ----
 
     public Action<int>? VolumeChanged { get; init; }
@@ -52,13 +55,13 @@ public abstract partial class VolumeRow : ObservableObject, IEditorItem
     [ObservableProperty, NotifyPropertyChangedFor(nameof(Initial))] private string _name = string.Empty;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(HasPicture), nameof(ShowsInitial))] private Bitmap? _picture;
 
-    /// <summary>A stroked 24 x 24 icon when the row has no picture (a microphone, a combined device).</summary>
-    public virtual string? Glyph => null;
+    /// <summary>The library icon (<see cref="Icons.IconLibrary"/> id) when the row has no picture (a microphone, a combined device).</summary>
+    public virtual string? Icon => null;
 
     public string Initial => Name.Length > 0 ? Name[..1].ToUpperInvariant() : "?";
     public bool HasPicture => Picture is not null;
-    public bool HasGlyph => Glyph is not null;
-    public bool ShowsInitial => Picture is null && Glyph is null;
+    public bool HasIcon => Icon is not null;
+    public bool ShowsInitial => Picture is null && Icon is null;
 
     /// <summary>A small tag after the name in the Wiring Source column ("Combined"); null = none.</summary>
     public virtual string? SourceTag => null;

@@ -35,6 +35,10 @@
         <Setter Property="BorderThickness" Value="2" />
         <Setter Property="Background" Value="{DynamicResource BrushBackground}" />
     </Style>
+    <!-- The resting edge of fields, drop-downs and switch tracks: BrushControlEdge, so it stays clear on a hovered card (hover and focus override it) -->
+    <Style Selector="TextBox:not(:focus) /template/ Border#PART_BorderElement, ComboBox:not(:focus) /template/ Border#Background, ToggleSwitch /template/ Border#OuterBorder">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
+    </Style>
     <Style Selector="ComboBox:focus /template/ Border#Background, ComboBox:focus:pointerover /template/ Border#Background">
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
         <Setter Property="BorderThickness" Value="2" />
@@ -158,7 +162,7 @@
                   List row styles use "ListBox.x > ListBoxItem" (direct items only) so a list inside a pop-down opened from a row never takes the page rows' look.
          Blocks:  Styles/Blocks.axaml (a sentence of blocks, the rule editor: Button.block, .blockx, .blockjoin, .blockadd, TextBlock.blockword);
                   Button.blockadd.small = the same dashed "+ add" at chip size, after a row of chips (Menus.axaml)
-         Volume rows: Border.rowicon (the icon tile), Path.glyph (a stroked row icon), WrapPanel.sentence (the line under a row's name),
+         Volume rows: Border.rowicon (the icon tile: a picture, a library IconGlyph or the initial, each centred), Path.glyph (a stroked small glyph), WrapPanel.sentence (the line under a row's name),
                   WrapPanel.toolbar (a line of controls that wraps: the Wiring tab's top bar)
          Numbers: StackPanel.stats of StackPanel.stat, TextBlock.statlabel + TextBlock.statvalue (.caution) = live numbers beside a graph (Graphs.axaml);
                   FlyoutPresenter.graphmenu = a pop-down holding a larger graph (Menus.axaml)
@@ -267,6 +271,9 @@
         <Setter Property="Icon" Value="avares://OmniControl/Assets/OmniControl.ico" />
         <!-- Only the main window has a taskbar button (it sets ShowInTaskbar itself); every other window is a helper of it -->
         <Setter Property="ShowInTaskbar" Value="False" />
+        <!-- Every tooltip in the app waits a little before showing (owner, 18 Nov); inherited by all controls of the window -->
+        <Setter Property="ToolTip.ShowDelay" Value="{StaticResource TooltipShowDelay}" />
+        <Setter Property="ToolTip.BetweenShowDelay" Value="{StaticResource TooltipBetweenDelay}" />
     </Style>
 
     <!-- The page title line: the name, a slot beside it, a slot at the right -->
@@ -290,6 +297,10 @@
     <!-- The section of an entry that runs on another PC ("Other PCs · Laptop", Controls/RemoteSectionTag): bold accent words -->
     <Style Selector="TextBlock.remotesection"><Setter Property="FontWeight" Value="Bold" /><Setter Property="Foreground" Value="{DynamicResource BrushAccent}" /></Style>
     <Style Selector="TextBlock.muted"><Setter Property="Foreground" Value="{DynamicResource BrushMuted}" /></Style>
+    <!-- A group header's small fact (icon + words, Pages/GroupBadge): muted, green (.good) or yellow (.caution); the icon and words inherit the colour -->
+    <Style Selector="StackPanel.groupbadge"><Setter Property="TextElement.Foreground" Value="{DynamicResource BrushMuted}" /></Style>
+    <Style Selector="StackPanel.groupbadge.good"><Setter Property="TextElement.Foreground" Value="{DynamicResource BrushOn}" /></Style>
+    <Style Selector="StackPanel.groupbadge.caution"><Setter Property="TextElement.Foreground" Value="{DynamicResource BrushCaution}" /></Style>
     <!-- A grey caption that carries state or a limit (a start-up note, "None yet"); never keyboard instructions (AGENTS.md principle 12) -->
     <Style Selector="TextBlock.hint">
         <Setter Property="Foreground" Value="{DynamicResource BrushMuted}" />

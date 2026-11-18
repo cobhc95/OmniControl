@@ -32,7 +32,8 @@ public static class HelperProcess
     /// Equalizer APO's Qt programs find their "qt" plugin folder relative to the current folder and otherwise fail with
     /// "no Qt platform plugin could be initialized".
     /// </summary>
-    public static HelperResult RunElevated(string exe, string arguments)
+    /// <param name="waitMs">How long to wait for it to end (<see cref="HelperFailure.StillRunning"/> after that).</param>
+    public static HelperResult RunElevated(string exe, string arguments, int waitMs = CoreTiming.ElevatedHelperTimeoutMs)
     {
         var name = Path.GetFileName(exe);
         try
@@ -44,8 +45,8 @@ public static class HelperProcess
                 WorkingDirectory = Path.GetDirectoryName(Path.GetFullPath(exe)) ?? string.Empty,
             });
             if (process is null) return new HelperResult(-1, HelperFailure.NotStarted, $"{name} did not start.");
-            if (!process.WaitForExit(CoreTiming.ElevatedHelperTimeoutMs))
-                return new HelperResult(-1, HelperFailure.StillRunning, $"{name} was still running after {CoreTiming.ElevatedHelperTimeoutMs / 1000} s.");
+            if (!process.WaitForExit(waitMs))
+                return new HelperResult(-1, HelperFailure.StillRunning, $"{name} was still running after {waitMs / 1000} s.");
             return new HelperResult(process.ExitCode, HelperFailure.None, $"{name} ended with code {process.ExitCode}.");
         }
         catch (Win32Exception ex) when (ex.NativeErrorCode == Cancelled)

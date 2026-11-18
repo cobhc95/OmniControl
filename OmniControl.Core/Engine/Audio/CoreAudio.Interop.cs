@@ -140,7 +140,15 @@ public static partial class CoreAudio
         [PreserveSig] int GetChannelVolumeLevelScalar(uint channel, out float level);
         [PreserveSig] int SetMute([MarshalAs(UnmanagedType.Bool)] bool mute, ref Guid ctx);
         [PreserveSig] int GetMute([MarshalAs(UnmanagedType.Bool)] out bool mute);
+        [PreserveSig] int GetVolumeStepInfo(out uint step, out uint stepCount);
+        [PreserveSig] int VolumeStepUp(ref Guid ctx);
+        [PreserveSig] int VolumeStepDown(ref Guid ctx);
+        [PreserveSig] int QueryHardwareSupport(out uint mask);
+        [PreserveSig] int GetVolumeRange(out float minDb, out float maxDb, out float incrementDb);
     }
+
+    /// <summary>QueryHardwareSupport: the device applies the master volume itself (ENDPOINT_HARDWARE_SUPPORT_VOLUME).</summary>
+    private const uint HardwareVolume = 0x1;
 
     /// <summary>The PROPERTYKEY Windows passes to <see cref="IDeviceNotify.OnPropertyValueChanged"/> (not used, but it sets the call's layout).</summary>
     [StructLayout(LayoutKind.Sequential)]
@@ -179,8 +187,8 @@ public static partial class CoreAudio
         [PreserveSig] int SetProcessingPeriod();
         [PreserveSig] int GetShareMode();
         [PreserveSig] int SetShareMode();
-        [PreserveSig] int GetPropertyValue();
-        [PreserveSig] int SetPropertyValue();
+        [PreserveSig] int GetPropertyValue([MarshalAs(UnmanagedType.LPWStr)] string deviceId, [MarshalAs(UnmanagedType.Bool)] bool fxStore, ref PropertyKey key, out PropVariant value);
+        [PreserveSig] int SetPropertyValue([MarshalAs(UnmanagedType.LPWStr)] string deviceId, [MarshalAs(UnmanagedType.Bool)] bool fxStore, ref PropertyKey key, ref PropVariant value);
         [PreserveSig] int SetDefaultEndpoint([MarshalAs(UnmanagedType.LPWStr)] string deviceId, int role);
     }
 

@@ -25,9 +25,12 @@ public interface IWakeTarget
 
     event Action Changed;
 
-    Task<WakeReply> CheckAsync();
+    Task<WakeReply> CheckAsync(CancellationToken stop);
 
-    Task<WakeReply> FixAsync(IReadOnlyList<WakeFix> fixes);
+    Task<WakeReply> FixAsync(IReadOnlyList<WakeFix> fixes, CancellationToken stop);
+
+    /// <summary>Puts back what OmniControl turned on there (it was recorded before each change).</summary>
+    Task<WakeReply> UndoAsync();
 
     Task<string> TestAsync();
 }
@@ -66,9 +69,11 @@ public sealed class PairedWakeTarget : IWakeTarget
         remove => _service.Changed -= value;
     }
 
-    public Task<WakeReply> CheckAsync() => _service.CheckWakeAsync(_id);
+    public Task<WakeReply> CheckAsync(CancellationToken stop) => _service.CheckWakeAsync(_id, stop);
 
-    public Task<WakeReply> FixAsync(IReadOnlyList<WakeFix> fixes) => _service.FixWakeAsync(_id, fixes);
+    public Task<WakeReply> FixAsync(IReadOnlyList<WakeFix> fixes, CancellationToken stop) => _service.FixWakeAsync(_id, fixes, stop);
+
+    public Task<WakeReply> UndoAsync() => _service.UndoWakeAsync(_id);
 
     public Task<string> TestAsync() => _service.TestWakeAsync(_id);
 }
@@ -103,9 +108,11 @@ public sealed class OwnWakeTarget : IWakeTarget
         remove => _service.Changed -= value;
     }
 
-    public Task<WakeReply> CheckAsync() => _service.CheckOwnWakeAsync();
+    public Task<WakeReply> CheckAsync(CancellationToken stop) => _service.CheckOwnWakeAsync(stop);
 
-    public Task<WakeReply> FixAsync(IReadOnlyList<WakeFix> fixes) => _service.FixOwnWakeAsync(fixes);
+    public Task<WakeReply> FixAsync(IReadOnlyList<WakeFix> fixes, CancellationToken stop) => _service.FixOwnWakeAsync(fixes, stop);
+
+    public Task<WakeReply> UndoAsync() => _service.UndoOwnWakeAsync();
 
     public Task<string> TestAsync() => Task.FromResult("This PC cannot wake itself.");
 }

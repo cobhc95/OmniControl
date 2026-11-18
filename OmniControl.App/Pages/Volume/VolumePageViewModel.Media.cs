@@ -11,8 +11,7 @@ namespace OmniControl.App.Pages.Volume;
 public sealed partial class VolumePageViewModel
 {
     private const string NowPlayingId = NowPlayingText.StateId, MediaWords = "Windows' current media session, reported as it changes.";
-    private static readonly string[] MediaActionIds = { "media.previous", NowPlayingText.PlayPauseId, "media.next" };
-    private NowPlaying? _nowPlaying;
+        private NowPlaying? _nowPlaying;
     private HotkeyRegistry? _mediaHotkeys;
 
     private void RegisterMedia(HotkeyRegistry hotkeys)
@@ -20,19 +19,19 @@ public sealed partial class VolumePageViewModel
         var playing = _nowPlaying = new NowPlaying();
         _mediaHotkeys = hotkeys;
         _states.Register(new StateEntry(NowPlayingId, "Now playing", Title, StateKind.Choice, () => NowPlayingText.Of(playing.Current), MediaWords,
-            Keywords: "media music song track playing spotify", Short: "Now playing", SuggestedIcons: new[] { "music", "player-play" }, Common: CommonGroups.NowPlaying));
+            Keywords: "media music song track playing spotify", Short: "Now playing", SuggestedIcons: new[] { "music", "player-play" }, Common: CommonGroups.Sound));
         hotkeys.Register(new[]
         {
-            Media("media.previous", "Previous track", "previous back song", playing.PreviousAsync, new[] { "player-track-prev", "prev" }),
+            Media(NowPlayingText.PreviousId, "Previous track", "previous back song", playing.PreviousAsync, new[] { "player-track-prev", "prev" }),
             Media(NowPlayingText.PlayPauseId, "Play or pause media", "play pause toggle", playing.PlayPauseAsync, new[] { "player-play", "player-pause" }),
-            Media("media.next", "Next track", "next skip forward song", playing.NextAsync, new[] { "player-track-next", "next" }),
+            Media(NowPlayingText.NextId, "Next track", "next skip forward song", playing.NextAsync, new[] { "player-track-next", "next" }),
         });
         playing.Changed += OnNowPlayingChanged;
         playing.Start();
     }
 
     private HotkeyAction Media(string id, string title, string words, Func<Task> run, string[] icons) =>
-        new(id, title, Title, "media music player " + words, ids => { _ = Guard.RunAsync(title, run); }) { SuggestedIcons = icons, Common = CommonGroups.NowPlaying };
+        new(id, title, Title, "media music player " + words, ids => { _ = Guard.RunAsync(title, run); }) { SuggestedIcons = icons, Common = CommonGroups.Sound };
 
     private void OnNowPlayingChanged() => Dispatcher.UIThread.Post(() => _states.Notify(NowPlayingId));
 
@@ -41,7 +40,7 @@ public sealed partial class VolumePageViewModel
         if (_nowPlaying is null) return;
         _nowPlaying.Changed -= OnNowPlayingChanged;
         _nowPlaying.Dispose();
-        foreach (var id in MediaActionIds) _mediaHotkeys?.Unregister(id);
+        foreach (var id in NowPlayingText.ActionIds) _mediaHotkeys?.Unregister(id);
         _states.Unregister(new[] { NowPlayingId });
     }
 }

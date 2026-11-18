@@ -6,7 +6,7 @@ using OmniControl.App.States;
 namespace OmniControl.App.OtherPcs;
 
 /// <summary>One state another PC shares, as the Other PCs page draws it: the master-list entry (live value, and a way to set it when <see cref="Settable"/>), the card it is in, the part of the page ("LG 27"), its name without that part, and whether it is a screen's power switch.</summary>
-public sealed record RemoteState(StateEntry Entry, string Common, string Section, string Name, bool Settable, bool ScreenPower);
+public sealed record RemoteState(StateEntry Entry, string Common, string Section, string Name, bool Settable, bool ScreenPower, string? Compact = null, OnOffIcons? StateIcons = null);
 
 /// <summary>One action another PC shares: the master-list entry (running it asks that PC), the card it is in, whether it turns every screen off and whether it is confirmed first.</summary>
 public sealed record RemoteAction(HotkeyAction Action, string Common, bool ScreensOff, bool ConfirmRun);
@@ -52,13 +52,16 @@ public sealed partial class OtherPcsService
         var prefix = PcProtocol.RemotePrefixOf(pcId);
         if (!_remote.TryGetValue(pcId, out var set)) return Array.Empty<RemoteState>();
         var list = new List<RemoteState>();
-        foreach (var entry in _states.States.Where(s => s.Id.StartsWith(prefix, StringComparison.Ordinal)))
+        // By id, never by arrival order, so the cards of a group keep their places when the catalog is sent again.
+        foreach (var entry in _states.States.Where(s => s.Id.StartsWith(prefix, StringComparison.Ordinal)).OrderBy(s => s.Id, StringComparer.Ordinal))
         {
             if (!set.StateInfo.TryGetValue(entry.Id[prefix.Length..], out var info)) continue;
             var section = SectionOf(Clip(info.Group), info.Heading);
-            var name = Clip(info.Name);
+            // This PC's own entry of the same id names it when it has one, so a PC on an older build still shows today's wording.
+            var own = _states.Find(info.Id);
+            var name = own?.Name ?? Clip(info.Name);
             if (section.Length > 0 && name.EndsWith($" ({section})", StringComparison.Ordinal)) name = name[..^(section.Length + 3)];
-            list.Add(new RemoteState(entry, Clip(info.Common, 40), section, name, info.Settable, info.ScreenPower));
+            list.Add(new RemoteState(entry, Clip(info.Common, 40), section, name, info.Settable, info.ScreenPower, own?.Compact, own?.StateIcons));
         }
         return list;
     }
@@ -76,7 +79,7 @@ public sealed partial class OtherPcsService
     {
         var prefix = PcProtocol.RemotePrefixOf(pcId);
         if (!_remote.TryGetValue(pcId, out var set)) return Array.Empty<RemoteAction>();
-        return _hotkeys.Actions.Where(a => a.Id.StartsWith(prefix, StringComparison.Ordinal))
+        return _hotkeys.Actions.Where(a => a.Id.StartsWith(prefix, StringComparison.Ordinal)).OrderBy(a => a.Id, StringComparer.Ordinal)
             .Select(a => (Action: a, Info: set.ActionInfo.GetValueOrDefault(a.Id[prefix.Length..])))
             .Where(x => x.Info is not null)
             .Select(x => new RemoteAction(x.Action, Clip(x.Info!.Common, 40), x.Info.ScreensOff, x.Info.ConfirmRun)).ToList();
@@ -138,7 +141,7 @@ public sealed partial class OtherPcsService
         {
             var remoteId = PcProtocol.RemoteId(pcId, s.Id);
             set.StateInfo[s.Id] = s;
-            _remoteValues[remoteId] = new StateValue(s.Number, s.Text is null ? null : Clip(s.Text));
+            _remoteValues[remoteId] = new StateValue(s.Number, s.Text is null ? null : Clip(s.Text), Subject: s.Subject is null ? null : Clip(s.Subject));
             var key = StructureOf(s);
             if (set.States.TryGetValue(s.Id, out var was) && was == key)
             {
@@ -235,7 +238,7 @@ public sealed partial class OtherPcsService
         if (message.Id is not { Length: > 0 and <= IdMax } id) return;
         var remoteId = PcProtocol.RemoteId(pcId, id);
         if (!_remoteValues.ContainsKey(remoteId)) return; // not in what was shared: ignored
-        _remoteValues[remoteId] = new StateValue(message.Number, message.Text is null ? null : Clip(message.Text));
+        _remoteValues[remoteId] = new StateValue(message.Number, message.Text is null ? null : Clip(message.Text), Subject: message.Subject is null ? null : Clip(message.Subject));
         _states.Notify(remoteId);
     }
 

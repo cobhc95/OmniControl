@@ -140,8 +140,11 @@ public static class FxCatalog
     /// <summary>The engines that can run this slot.</summary>
     public static FxEngines EnginesOf(FxSlot slot) => PluginTypeOf(slot)?.Engines ?? KindOf(slot)?.Engines ?? FxEngines.None;
 
-    /// <summary>Equalizer APO has no dry/wet mix: it runs an effect only at a wet mix of 100 % (the chain writer leaves the others out).</summary>
-    public static bool ApoCanMix(FxSlot slot) => slot.Wet == Core.Models.Percent.Max;
+    /// <summary>
+    /// Equalizer APO runs the effect: at a wet mix of 100 %, or below it when that APO blends (<see cref="EffectsRules.ApoBlends"/>, the
+    /// chain writer's virtual channels); otherwise the chain writer leaves it out.
+    /// </summary>
+    public static bool ApoRuns(FxSlot slot, bool blends) => blends || slot.Wet == Core.Models.Percent.Max;
 
     public static readonly IReadOnlyList<FxKind> All = new FxKind[]
     {

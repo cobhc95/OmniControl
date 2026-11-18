@@ -61,6 +61,16 @@ public sealed class FxDeviceSource : IDisposable
     }
 
     /// <summary>
+    /// Why a device folder's Mix can't go below 100 % on <paramref name="deviceId"/> (Equalizer APO runs there and is too old to blend,
+    /// <see cref="EffectsRules.ApoNoBlend"/>); null when Mix works.
+    /// </summary>
+    public string? MixBlockedOn(string deviceId)
+    {
+        var apo = _support.Current?.Apo ?? Core.Engine.Apo.ApoState.None;
+        return apo.PlaybackOf(deviceId) is { } endpoint && apo.FolderFor(endpoint) is { } folder && !apo.BlendsIn(folder) ? EffectsRules.ApoNoBlend : null;
+    }
+
+    /// <summary>
     /// The folder row's tag: the device's method as it runs now (read only, the Mixer owns the method) while it plays; "not supported"
     /// when nothing can run on it; "not playing" otherwise (which method it would use is decided when it plays).
     /// </summary>

@@ -16,18 +16,18 @@ public static class MiddleClickPolicy
     public static bool IsLinkLike(IEnumerable<int> controlTypes) => controlTypes.Any(PassingTypes.Contains);
 
     /// <param name="handCursor">The system pointer at the time of the press is the hand.</param>
-    /// <param name="lookup">The control types from the element under the pointer upwards, or null when they could not be read. Runs off the calling thread.</param>
-    /// <param name="timeoutMs">How long to wait for <paramref name="lookup"/>.</param>
-    public static ClickVerdict Decide(bool handCursor, Func<IReadOnlyList<int>?> lookup, int timeoutMs)
+    /// <param name="lookup">
+    /// The control types from the element under the pointer upwards, or null when they could not be read. Runs on the calling thread (the
+    /// autoscroll watcher's own worker), so there is only ever one lookup at a time and none piles up behind a slow app.
+    /// </param>
+    public static ClickVerdict Decide(bool handCursor, Func<IReadOnlyList<int>?> lookup)
     {
         if (handCursor) return ClickVerdict.Pass;
         try
         {
-            var task = Task.Run(lookup);
-            if (!task.Wait(timeoutMs) || task.Result is not { } types) return ClickVerdict.Pass;
-            return IsLinkLike(types) ? ClickVerdict.Pass : ClickVerdict.Swallow;
+            return lookup() is { } types && !IsLinkLike(types) ? ClickVerdict.Swallow : ClickVerdict.Pass;
         }
-        catch (AggregateException)
+        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or InvalidCastException)
         {
             return ClickVerdict.Pass; // the lookup failed (COM refused, element gone): fail open
         }

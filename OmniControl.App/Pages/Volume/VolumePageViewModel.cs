@@ -39,6 +39,7 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
     private readonly Action<string?> _openFx;
     private readonly Action<string?> _toggleFx;
     private readonly Stopwatch _clock = Stopwatch.StartNew();
+    private readonly OmniControl.Core.Engine.CaptureMeterStreams _captures = new(Guard.Log);
     private readonly DispatcherTimer _meterTimer = new() { Interval = Timing.MeterFrame };
 
     public override string Title => "Volume";
@@ -73,7 +74,7 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
     };
 
     /// <summary>Microphones: recording devices and combined microphones. Open unless the user closed it (key kept from "Inputs").</summary>
-    public VolumeGroup Inputs { get; } = new("Volume/Inputs", "Microphones") { ExpandedByDefault = true, RouteColumn = RecordsFromWords };
+    public VolumeGroup Inputs { get; } = new("Volume/Inputs", "Microphones") { ExpandedByDefault = true, RouteColumn = RecordsFromWords, ShowsListen = true };
 
     /// <summary>Whether new combined speakers can be created and run now (no cable or none free): the "+ Combine speakers" pill and the window's choice.</summary>
     public ControlGate CombineSpeakersGate { get; }
@@ -159,6 +160,7 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
         engine.PlanChanged += OnPlanChanged;
         _meterTimer.Tick += (_, _) => FeedMeters();
         RegisterHotkeys(hotkeys);
+        RegisterListen(hotkeys);
         RegisterPresets(presetGroups);
         CreateEasy(hotkeys);
         RegisterStates();

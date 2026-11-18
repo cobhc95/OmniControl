@@ -63,6 +63,21 @@ public static class ApoIds
     /// <summary>Upstream Equalizer APO's engine in its InstallPath: without it Equalizer APO is not installed, whatever the registry says.</summary>
     public const string UpstreamDllName = "EqualizerAPO.dll";
 
+    /// <summary>Equalizer APO's own folder name under Program Files: where it is looked for when its InstallPath value is missing.</summary>
+    public const string UpstreamFolderName = "EqualizerAPO";
+
+    /// <summary>
+    /// The first Equalizer APO that runs a dry/wet mix as OmniControl writes it: a Copy command whose target is a new name keeps a virtual
+    /// channel (CopyFilter.cpp at bbfcc3e) that later Copy lines can read. OmniControl APO is built from a newer version.
+    /// </summary>
+    public static readonly Version BlendVersion = new(1, 2);
+
+    /// <summary>A device's own format in its Properties key (PKEY_AudioEngine_DeviceFormat): a WAVEFORMATEX after an 8-byte header.</summary>
+    public const string DeviceFormatValue = "{f19f064d-082c-4e27-bc73-6882a1bb8e4c},0";
+
+    /// <summary>Where nChannels sits in <see cref="DeviceFormatValue"/>: the 8-byte header, then wFormatTag (2 bytes).</summary>
+    public const int DeviceFormatChannelsOffset = 10;
+
     /// <summary>
     /// Where an APO's COM class and its audio-engine entry live; Device Selector's checkAPORegistration needs both for both classes
     /// (DeviceAPOInfo.cpp: HKCR\AudioEngine\AudioProcessingObjects and HKCR\CLSID).

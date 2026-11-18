@@ -12,6 +12,8 @@ namespace OmniControl.App.OtherPcs;
 public sealed partial class OtherPcsService
 {
     private readonly Dictionary<string, LaunchLimiter> _wakeLimits = new();
+    private readonly WakeUndoLog _wakeUndo = new();
+    private Task _fixRun = Task.CompletedTask; // the elevated change that is running now, so an undo never starts before it ended
 
     private void HandleWakeAsk(PcLink link, PcMsg message)
     {
@@ -42,6 +44,9 @@ public sealed partial class OtherPcsService
             case PcMsgType.WakeFix:
                 await FixHereAsync(pair, message, reply);
                 break;
+            case PcMsgType.WakeUndo:
+                await UndoHereAsync(pair, reply);
+                break;
             case PcMsgType.WakeTest:
                 sleepAfter = await TestHereAsync(pair, reply);
                 break;
@@ -57,8 +62,15 @@ public sealed partial class OtherPcsService
 
     private async Task<WakeFacts> ReadOwnWakeAsync()
     {
-        var facts = await Task.Run(WakeReader.Read);
+        var facts = await Task.Run(ReadWakeFacts);
         SetOwnWake(facts);
+        return facts;
+    }
+
+    private WakeFacts ReadWakeFacts()
+    {
+        var facts = WakeReader.Read();
+        facts.CanUndo = _wakeUndo.Any;
         return facts;
     }
 
@@ -104,24 +116,64 @@ public sealed partial class OtherPcsService
 
     /// <summary>
     /// Turns the settings on for this PC, behind Windows' own administrator prompt: the one path for a fix another PC asked for (after this PC's own
-    /// question) and for the one asked in this PC's own set-up window. Returns how it ended and the facts read again afterwards.
+    /// question) and for the one asked in this PC's own set-up window. What was off is recorded first so it can be put back. Returns how it ended and
+    /// the facts read again afterwards; <paramref name="stop"/> ends the wait at once (the change may still be running: an undo waits for it).
     /// </summary>
-    private async Task<(WakeReply Reply, WakeFacts Facts)> ApplyWakeFixesHereAsync(IReadOnlyList<WakeFix> fixes)
+    private async Task<(WakeReply Reply, WakeFacts Facts)> ApplyWakeFixesHereAsync(IReadOnlyList<WakeFix> fixes, CancellationToken stop = default)
     {
-        var before = await ReadOwnWakeAsync();
-        var result = await Task.Run(() => WakeFixer.Apply(fixes, before.Mac));
+        var before = _ownWake is { Known: true } known ? known : await ReadOwnWakeAsync();
+        if (stop.IsCancellationRequested) return (new WakeReply(false, "Stopped."), before);
+        var added = _wakeUndo.Record(fixes, before);
+        var run = Task.Run(() => WakeFixer.Apply(fixes, before.Mac));
+        _fixRun = run;
+        if (await Task.WhenAny(run, Until(stop)) != run) return (new WakeReply(false, "Stopped."), before);
+        var result = await run;
+        if (result.Failure is not (HelperFailure.None or HelperFailure.StillRunning)) _wakeUndo.Forget(added); // it never started: nothing to put back
         var after = await ReadOwnWakeAsync();
-        var ok = result.Failure == HelperFailure.None && result.ExitCode == 0;
-        if (ok) return (new WakeReply(true, string.Empty), after);
-        Guard.Log("Other PCs: wake fix", new IOException(result.Detail));
-        var why = result.Failure switch
+        return (WakeReplyOf(result, "change"), after);
+    }
+
+    private WakeReply WakeReplyOf(HelperResult result, string what)
+    {
+        if (result.Failure == HelperFailure.None && result.ExitCode == 0) return new WakeReply(true, string.Empty);
+        Guard.Log("Other PCs: wake " + what, new IOException(result.Detail));
+        return new WakeReply(false, result.Failure switch
         {
-            HelperFailure.Cancelled => $"The Windows prompt on {_ownName} was refused.",
+            HelperFailure.Cancelled => $"You said no at the Windows prompt on {_ownName}.",
             HelperFailure.Blocked => "Windows blocked the change.",
-            HelperFailure.None => $"Windows could not change every setting on {_ownName}.",
-            _ => $"The change could not be started on {_ownName}.",
-        };
-        return (new WakeReply(false, why), after);
+            HelperFailure.None => $"Windows could not {what} every setting on {_ownName}.",
+            HelperFailure.StillRunning => $"The {what} on {_ownName} did not finish in time.",
+            _ => $"The {what} could not be started on {_ownName}.",
+        });
+    }
+
+    /// <summary>Puts back what OmniControl changed on this PC, in one elevated step, then reads again.</summary>
+    private async Task<(WakeReply Reply, WakeFacts Facts)> UndoWakeHereAsync()
+    {
+        await Task.WhenAny(_fixRun);
+        var changed = _wakeUndo.Changed;
+        var facts = _ownWake is { Known: true } known ? known : await ReadOwnWakeAsync();
+        if (changed.Count == 0) return (new WakeReply(false, "There is nothing to undo."), facts);
+        var run = Task.Run(() => WakeFixer.Revert(changed, facts.Mac));
+        _fixRun = run;
+        var result = await run;
+        if (result.Failure == HelperFailure.None && result.ExitCode == 0) _wakeUndo.Clear();
+        return (WakeReplyOf(result, "undo"), await ReadOwnWakeAsync());
+    }
+
+    private static Task Until(CancellationToken stop) => Task.Delay(Timeout.Infinite, stop).ContinueWith(_ => { }, TaskScheduler.Default);
+
+    private async Task UndoHereAsync(PairedPc pair, PcMsg reply)
+    {
+        if (!await _askHere(new DialogMessage($"Set up wake for {pair.DisplayName}", $"{pair.DisplayName} asks to put back the wake settings OmniControl changed on this PC. Windows will ask once more before it changes.", "Allow", YesNo: true)))
+        {
+            reply.Why = $"{_ownName} did not allow it.";
+            return;
+        }
+        var (done, facts) = await UndoWakeHereAsync();
+        reply.Wake = facts;
+        reply.Ok = done.Ok;
+        if (!done.Ok) reply.Why = done.Why;
     }
 
     private async Task<bool> TestHereAsync(PairedPc pair, PcMsg reply)

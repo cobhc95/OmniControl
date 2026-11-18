@@ -182,6 +182,7 @@ public sealed partial class VolumePageViewModel
     public void StopMeters()
     {
         _meterTimer.Stop();
+        _captures.Keep(Array.Empty<string>());
         foreach (var row in AllRows()) row.Meter.Clear();
     }
 
@@ -198,12 +199,14 @@ public sealed partial class VolumePageViewModel
                 row.Meter.Feed(l, r, now);
             }
         }
+        // A recording device's meter only moves while something captures from it, so the open input rows keep a quiet capture.
+        _captures.Keep(Inputs.IsExpanded ? _inputs.Keys : Array.Empty<string>());
         if (Inputs.IsExpanded)
         {
             foreach (var row in _inputs.Values)
             {
                 CoreAudio.DevicePeaks(row.Id, true, out var l, out var r);
-                row.Meter.Feed(row.Muted ? 0 : l, row.Muted ? 0 : r, now);
+                row.Meter.Feed(l, r, now); // a muted mic still shows what it hears
             }
         }
     }

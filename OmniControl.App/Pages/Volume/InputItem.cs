@@ -1,3 +1,4 @@
+using OmniControl.App.Icons;
 using OmniControl.App.Audio;
 
 namespace OmniControl.App.Pages.Volume;
@@ -5,18 +6,41 @@ namespace OmniControl.App.Pages.Volume;
 /// <summary>
 /// A Microphones row: one recording device (its Windows level and mute; its effects run through its own cable).
 /// </summary>
-public sealed class InputItem : VolumeRow
+public sealed partial class InputItem : VolumeRow
 {
-    /// <summary>The microphone outline shared by microphone rows.</summary>
-    internal const string MicGlyph = "M12,3 A3,3 0 0 1 15,6 V12 A3,3 0 0 1 9,12 V6 A3,3 0 0 1 12,3 Z M6,11 A6,6 0 0 0 18,11 M12,17 V21";
-
     public InputItem(string id) : base(MixerService.InputPrefix + id) => Id = id;
 
     /// <summary>The device's endpoint id.</summary>
     public string Id { get; }
 
-    public override string? Glyph => MicGlyph;
+    public override string? Icon => IconLibrary.Mic;
     public override string VolumeTip => "Input level";
+    public override bool HasListen => true;
+
+    /// <summary>The Listen button: turns Windows' "Listen to this device" on or off (the page sets it and reads it back).</summary>
+    public Action<bool>? ListenToggled { get; init; }
+
+    /// <summary>The rows of the Listen button's right-click menu (which output it plays on).</summary>
+    public Func<IReadOnlyList<Controls.MenuRowItem>>? ListenMenu { get; init; }
+
+    private bool _listening;
+    private string _listenOutput = string.Empty;
+
+    /// <summary>Whether Windows plays this input now, as Windows reports it.</summary>
+    public bool Listening { get => _listening; private set { if (SetProperty(ref _listening, value)) OnPropertyChanged(nameof(ListenTip)); } }
+
+    public string ListenTip => Listening ? $"Listening on {_listenOutput}" : $"Listen to this mic on {_listenOutput}";
+
+    /// <summary>The page's scan: what Windows says now (<paramref name="output"/> = the output's name).</summary>
+    public void SyncListen(bool on, string output)
+    {
+        _listenOutput = output;
+        Listening = on;
+        OnPropertyChanged(nameof(ListenTip));
+    }
+
+    [CommunityToolkit.Mvvm.Input.RelayCommand]
+    private void ToggleListen() => ListenToggled?.Invoke(!Listening);
 }
 
 /// <summary>
@@ -28,8 +52,6 @@ public sealed class ComboItem : VolumeRow
     /// <summary>The one word for a combined device in a tag (the Wiring Source column, the menus' entries).</summary>
     public const string CombinedTag = "Combined";
 
-    private const string SpeakersGlyph = "M3,9 H7 L12,4 V20 L7,15 H3 Z M16,8 V16 M20,6 V18";
-
     public ComboItem(CombinedDevice device) : base(device.Key)
     {
         IsMicrophone = device.Kind == CombinedKind.Microphones;
@@ -37,7 +59,7 @@ public sealed class ComboItem : VolumeRow
     }
 
     public bool IsMicrophone { get; }
-    public override string? Glyph => IsMicrophone ? InputItem.MicGlyph : SpeakersGlyph;
+    public override string? Icon => IsMicrophone ? IconLibrary.Mic : IconLibrary.Volume;
     public override bool HasVolume => IsMicrophone;
     public override bool HasEffects => IsMicrophone;
 

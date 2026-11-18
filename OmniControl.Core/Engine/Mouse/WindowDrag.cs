@@ -11,7 +11,7 @@ public sealed class WindowDrag
     [DllImport("user32.dll")] private static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
     [DllImport("user32.dll")] private static extern bool IsZoomed(IntPtr hwnd);
 
-    private const uint SwpNoSize = 0x1, SwpNoZOrder = 0x4, SwpNoActivate = 0x10;
+    private const uint SwpNoSize = 0x1, SwpNoZOrder = 0x4, SwpNoActivate = 0x10, SwpAsyncWindowPos = 0x4000; // async: never wait on the dragged app
     private const int MinSize = 120; // a window dragged smaller than this is too small to grab again
 
     private IntPtr _window;
@@ -40,9 +40,9 @@ public sealed class WindowDrag
         var dy = y - _startY;
         if (_resize)
             SetWindowPos(_window, IntPtr.Zero, _start.Left, _start.Top,
-                Math.Max(MinSize, _start.Right - _start.Left + dx), Math.Max(MinSize, _start.Bottom - _start.Top + dy), SwpNoZOrder | SwpNoActivate);
+                Math.Max(MinSize, _start.Right - _start.Left + dx), Math.Max(MinSize, _start.Bottom - _start.Top + dy), SwpNoZOrder | SwpNoActivate | SwpAsyncWindowPos);
         else
-            SetWindowPos(_window, IntPtr.Zero, _start.Left + dx, _start.Top + dy, 0, 0, SwpNoZOrder | SwpNoActivate | SwpNoSize);
+            SetWindowPos(_window, IntPtr.Zero, _start.Left + dx, _start.Top + dy, 0, 0, SwpNoZOrder | SwpNoActivate | SwpNoSize | SwpAsyncWindowPos);
     }
 
     public void End() => _window = IntPtr.Zero;

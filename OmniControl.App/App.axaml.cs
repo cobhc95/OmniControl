@@ -13,6 +13,7 @@ namespace OmniControl.App;
 public partial class App : Application
 {
     private readonly SingleInstance? _instance;
+    private UiWatchdog? _watchdog; // logs every thread's stack once when the UI thread stops answering
 
     public App() { }
 
@@ -24,6 +25,7 @@ public partial class App : Application
     public override void OnFrameworkInitializationCompleted()
     {
         CrashGuard.Install();
+        _watchdog = new UiWatchdog();
         var settings = AppSettings.Current;
         AccentService.Initialize(settings.Accent);
         ValueWheel.Register();
@@ -35,6 +37,7 @@ public partial class App : Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            desktop.Exit += (_, _) => _watchdog?.Dispose();
             var shell = new ShellViewModel();
             var window = new MainWindow { DataContext = shell };
             desktop.MainWindow = window;

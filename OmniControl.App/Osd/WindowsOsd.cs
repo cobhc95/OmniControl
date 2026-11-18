@@ -4,32 +4,47 @@ using Avalonia.Threading;
 
 namespace OmniControl.App.Osd;
 
+/// <summary>Where Windows' pop-up was before OmniControl moved it off screen, so the next run can put it back if this one ended first.</summary>
+public sealed class WindowsOsdRecord
+{
+    public long Window { get; set; }
+    public int ProcessId { get; set; }
+    public int Left { get; set; }
+    public int Top { get; set; }
+    public int Width { get; set; }
+    public int Height { get; set; }
+}
+
 /// <summary>
-/// Best-effort suppression of Windows' own volume/brightness pop-up (Windows 11): its window is minimised, and Windows then never shows it.
-/// Explorer uses the same kind of window for other pop-ups, the taskbar's thumbnail previews among them (<see cref="WindowsOsdWindows"/>), and
-/// minimising those broke the taskbar while OmniControl ran. So a window is taken for the volume pop-up only when it opens within
-/// <see cref="Timing.WindowsOsdMatch"/> of a volume, brightness, microphone or media change made outside OmniControl (<see cref="Trigger"/>)
-/// while the pointer is not on the taskbar; one Windows opens again with no such change near it is let go. Nothing here activates a window
-/// or waits on Explorer. Found windows are logged to %APPDATA%\OmniControl\osd-log.txt.
-/// The window-finding approach follows the open-source HideVolumeOSD tool (gpkgpk/HideVolumeOSD, tag v1.3.3.0).
+/// Best-effort suppression of Windows' own volume/brightness pop-up (Windows 11). Only ONE window is ever touched: the one learned as the
+/// pop-up the first time it naturally opens after a real change. A candidate (<see cref="WindowsOsdWindows"/>: an Explorer XAML pop-up
+/// window, checked by class, children, styles and owning program) is learned only when it (1) is seen opening while hiding is on (a window
+/// already on screen when hiding starts never counts), (2) opens 0 ms to <see cref="Timing.WindowsOsdMatch"/> AFTER a volume, brightness,
+/// microphone or media change made outside OmniControl (<see cref="Trigger"/>; never before it), (3) has the pop-up's size and place
+/// (<see cref="WindowsOsdWindows.HasFlyoutShape"/>: a screen-sized host or a thumbnail preview is refused) and (4) opens while the pointer is
+/// off the taskbar. Nothing is ever done to make the pop-up appear (no key presses, no change to the sound). It is hidden only by moving it
+/// off screen, never minimised, activated or re-ordered, and put back to the exact place it had; where it was is saved
+/// (<see cref="DataStores.WindowsOsdHidden"/>) so a run that ended first is undone at the next start, only if that handle is still the same
+/// pop-up. When more than <see cref="Timing.WindowsOsdMaxWindows"/> different windows have been learned in a run, hiding stops for the run.
+/// Every decision is logged to %APPDATA%\OmniControl\osd-log.txt.
 /// </summary>
 public sealed class WindowsOsd : IDisposable
 {
-    /// <summary>How many times the pop-up is shown (a mute pair) to find its window before giving up (a gap of <see cref="Timing.WindowsOsdRetry"/> between tries).</summary>
-    private const int MaxCreateTries = 5;
-
     /// <summary>Lines written to osd-log.txt per run, so a stuck loop cannot grow the file.</summary>
     private const int MaxLogLines = 100;
 
     private readonly DispatcherTimer _timer = new() { Interval = Timing.WindowsOsdPoll };
-    private readonly Dictionary<IntPtr, long> _shownSince = new(); // each candidate on screen now, and since when (tick count)
-    private readonly HashSet<IntPtr> _osd = new();                 // the windows taken for Windows' pop-up and minimised here
-    private long _lastChange = long.MinValue / 2;                  // tick count of the last change Windows may show its pop-up for
-    private DateTime _lastCreate = DateTime.MinValue;
-    private int _creates;
+    private readonly Dictionary<IntPtr, long> _openedAt = new(); // candidates seen opening while hiding is on, and when (tick count)
+    private readonly HashSet<IntPtr> _taken = new();             // every window learned as the pop-up in this run (the kill switch counts them)
+    private HashSet<IntPtr> _onScreen = new();                   // candidates on screen at the last look
+    private long _lastChange = long.MinValue / 2;                // tick count of the last outside change Windows may show its pop-up for
+    private IntPtr _flyout;                                      // the learned pop-up, or zero
+    private int _flyoutProcess;
+    private WindowPlace? _parkedFrom;                            // where the pop-up was when it was last moved off screen
+    private bool _stopped;
     private int _logged;
 
-    public WindowsOsd() => _timer.Tick += (_, _) => Tick();
+    public WindowsOsd() => _timer.Tick += (_, _) => Guard.Run("Hide Windows' OSD: look", Tick);
 
     public bool Hidden
     {
@@ -37,13 +52,12 @@ public sealed class WindowsOsd : IDisposable
         set
         {
             if (value == _timer.IsEnabled) return;
-            if (value)
-            {
-                _creates = 0;
-                RestoreStrays();
-                _timer.Start();
-            }
-            else { _timer.Stop(); Restore(); }
+            if (!value) { _timer.Stop(); Restore(); return; }
+            if (_stopped) return;
+            PutBackEarlierRun();
+            _openedAt.Clear();
+            _onScreen = WindowsOsdWindows.Find().Where(WindowsOsdWindows.IsOnScreen).ToHashSet();
+            _timer.Start();
         }
     }
 
@@ -55,93 +69,127 @@ public sealed class WindowsOsd : IDisposable
 
     private void Tick()
     {
+        // The change is read before the clock, so a change heard during this look can never give a negative gap.
+        var lastChange = Interlocked.Read(ref _lastChange);
         var now = Environment.TickCount64;
-        var hosts = WindowsOsdWindows.Find();
-        Forget(hosts);
-        if (_osd.Count == 0) Probe();
+        var gap = now - lastChange;
+        var afterChange = gap >= 0 && gap <= Timing.WindowsOsdMatch.TotalMilliseconds;
 
-        var nearChange = Math.Abs(now - Interlocked.Read(ref _lastChange)) <= Timing.WindowsOsdMatch.TotalMilliseconds;
-        foreach (var host in hosts)
+        if (_flyout != IntPtr.Zero && !WindowsOsdWindows.IsSameCandidate(_flyout, _flyoutProcess))
         {
-            if (!WindowsOsdWindows.IsShown(host))
-            {
-                _shownSince.Remove(host);
-                continue;
-            }
-            if (!_shownSince.TryGetValue(host, out var since)) _shownSince[host] = since = now;
-            var justOpened = now - since <= Timing.WindowsOsdMatch.TotalMilliseconds;
-            if (_osd.Contains(host))
-            {
-                if (justOpened && nearChange) Minimise(host, "again");
-                else if (!justOpened)
-                {
-                    _osd.Remove(host);
-                    Log($"let go of {WindowsOsdWindows.Describe(host)}: Windows showed it with no volume, brightness or media change near, so it is not the volume pop-up");
-                }
-                continue;
-            }
-            if (justOpened && nearChange && !WindowsOsdWindows.PointerOverShell())
-            {
-                _osd.Add(host);
-                Minimise(host, $"opened {now - Interlocked.Read(ref _lastChange)} ms after a change");
-            }
+            Log($"forgot 0x{_flyout.ToInt64():x}: it is gone or no longer the same kind of window");
+            Forget();
         }
+
+        var candidates = _flyout != IntPtr.Zero ? new List<IntPtr> { _flyout } : WindowsOsdWindows.Find();
+        var onScreen = candidates.Where(WindowsOsdWindows.IsOnScreen).ToHashSet();
+        foreach (var opened in onScreen.Where(w => !_onScreen.Contains(w))) _openedAt[opened] = now;
+        foreach (var closed in _openedAt.Keys.Where(w => !onScreen.Contains(w)).ToList()) _openedAt.Remove(closed);
+        _onScreen = onScreen;
+
+        foreach (var window in onScreen.Where(w => _openedAt.TryGetValue(w, out var at) && at == now))
+            Opened(window, afterChange, gap);
+    }
+
+    /// <summary>A candidate just opened (it was not on screen at the last look).</summary>
+    private void Opened(IntPtr window, bool afterChange, long gap)
+    {
+        var known = window == _flyout;
+        if (!afterChange)
+        {
+            if (known)
+            {
+                Log($"let go of {WindowsOsdWindows.Describe(window)}: Windows showed it with no outside change before it");
+                Forget();
+            }
+            return;
+        }
+        if (!WindowsOsdWindows.HasFlyoutShape(window))
+        {
+            Log($"left alone {WindowsOsdWindows.Describe(window)}: opened {gap} ms after a change, but it is not the pop-up's size or place");
+            if (known) Forget();
+            return;
+        }
+        if (!known)
+        {
+            if (WindowsOsdWindows.PointerOverShell()) return; // a taskbar pop-up opening under the pointer, never the volume pop-up
+            if (!Learn(window)) return;
+        }
+        Park(window, $"opened {gap} ms after a change");
+    }
+
+    /// <summary>Takes the window for the pop-up; false (and hiding stopped for the run) when too many different windows were taken.</summary>
+    private bool Learn(IntPtr window)
+    {
+        _taken.Add(window);
+        if (_taken.Count > Timing.WindowsOsdMaxWindows)
+        {
+            Log($"stopped hiding for this run: {_taken.Count} different windows looked like Windows' pop-up, so they are not being told apart");
+            _stopped = true;
+            _timer.Stop();
+            Restore();
+            return false;
+        }
+        _flyout = window;
+        _flyoutProcess = WindowsOsdWindows.ProcessOf(window);
+        Log($"learned {WindowsOsdWindows.Describe(window)} as Windows' pop-up");
+        return true;
+    }
+
+    private void Park(IntPtr window, string why)
+    {
+        if (WindowsOsdWindows.PlaceOf(window) is not { } place) return;
+        _parkedFrom = place;
+        AppDataStore.Save(DataStores.WindowsOsdHidden, new WindowsOsdRecord
+        {
+            Window = window.ToInt64(), ProcessId = _flyoutProcess, Left = place.Left, Top = place.Top, Width = place.Width, Height = place.Height,
+        });
+        Log($"moving off screen {WindowsOsdWindows.Describe(window)} ({why})");
+        WindowsOsdWindows.Park(window);
+    }
+
+    /// <summary>Puts the pop-up back where it was if it is still off screen, and forgets it.</summary>
+    private void Forget()
+    {
+        if (_parkedFrom is { } place)
+        {
+            if (_flyout != IntPtr.Zero && WindowsOsdWindows.IsParked(_flyout))
+            {
+                WindowsOsdWindows.MoveTo(_flyout, place);
+                Log($"put back 0x{_flyout.ToInt64():x} at {place.Left},{place.Top}");
+            }
+            AppDataStore.Delete(DataStores.WindowsOsdHidden);
+        }
+        _flyout = IntPtr.Zero;
+        _flyoutProcess = 0;
+        _parkedFrom = null;
     }
 
     /// <summary>
-    /// While the pop-up's window is not known, it is shown once (a mute pair, at most <see cref="MaxCreateTries"/> times) so the window that
-    /// opens can be told from Explorer's other pop-ups.
+    /// The pop-up an earlier run moved off screen (and could not put back, as it ended first) is put back, only when that handle is still
+    /// the same pop-up of the same process and still where OmniControl parked it. Nothing else is touched.
     /// </summary>
-    private void Probe()
+    private void PutBackEarlierRun()
     {
-        if (_creates >= MaxCreateTries || Grace.Within(_lastCreate, Timing.WindowsOsdRetry)) return;
-        _lastCreate = DateTime.UtcNow;
-        if (++_creates == MaxCreateTries) Log("last try to find Windows' pop-up; if it is not found it is left alone (shown)");
-        Log("Windows' pop-up not known yet, sending mute pair");
-        Trigger();
-        WindowsOsdWindows.ShowVolumePopup();
-    }
-
-    private void Minimise(IntPtr host, string why)
-    {
-        Log($"minimising {WindowsOsdWindows.Describe(host)} ({why})");
-        WindowsOsdWindows.Minimise(host);
-    }
-
-    /// <summary>Drops what is kept about windows that no longer exist (Explorer restarted or closed a pop-up for good).</summary>
-    private void Forget(List<IntPtr> hosts)
-    {
-        foreach (var gone in _shownSince.Keys.Where(h => !hosts.Contains(h)).ToList()) _shownSince.Remove(gone);
-        _osd.RemoveWhere(h => !hosts.Contains(h));
-    }
-
-    /// <summary>
-    /// Explorer never minimises these pop-ups itself, so a minimised one when hiding starts was left so by an earlier run (an earlier version
-    /// also minimised the taskbar's thumbnail previews): it is put back, without activating it. The first probe then waits a retry gap, so
-    /// a window put back here is never taken for the pop-up as it reappears.
-    /// </summary>
-    private void RestoreStrays()
-    {
-        foreach (var host in WindowsOsdWindows.Find().Where(WindowsOsdWindows.IsMinimised))
+        if (AppDataStore.Load<WindowsOsdRecord>(DataStores.WindowsOsdHidden) is not { } record) return;
+        AppDataStore.Delete(DataStores.WindowsOsdHidden);
+        var window = new IntPtr(record.Window);
+        if (!WindowsOsdWindows.IsSameCandidate(window, record.ProcessId) || !WindowsOsdWindows.IsParked(window))
         {
-            Log($"putting back {WindowsOsdWindows.Describe(host)}, left minimised by an earlier run");
-            WindowsOsdWindows.Restore(host);
-            _lastCreate = DateTime.UtcNow;
+            Log($"an earlier run's record of 0x{record.Window:x} no longer matches a parked pop-up; nothing touched");
+            return;
         }
+        WindowsOsdWindows.MoveTo(window, new WindowPlace(record.Left, record.Top, record.Width, record.Height));
+        Log($"put back 0x{record.Window:x} at {record.Left},{record.Top}, left off screen by an earlier run");
     }
 
-    /// <summary>Brings back Windows' own pop-up: puts back every minimised one (without activating it), then shows the pop-up once so Windows picks it up again.</summary>
+    /// <summary>Brings back Windows' own pop-up: the one this run moved off screen, and one an earlier run left off screen.</summary>
     public void Restore()
     {
-        var any = false;
-        foreach (var host in WindowsOsdWindows.Find().Where(WindowsOsdWindows.IsMinimised))
-        {
-            WindowsOsdWindows.Restore(host);
-            any = true;
-        }
-        _osd.Clear();
-        _shownSince.Clear();
-        if (any) { Log("restored OSD windows"); WindowsOsdWindows.ShowVolumePopup(); }
+        Forget();
+        PutBackEarlierRun();
+        _openedAt.Clear();
+        _onScreen.Clear();
     }
 
     private void Log(string line)

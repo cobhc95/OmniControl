@@ -1,0 +1,14 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Microphone Listen button (approved)</title>
+<!-- Approved by the owner 18 Nov 2026. MICROPHONES section only (never on output rows). Each mic row gets a "Listen" column (header "Listen")
+  between Mute and FX: a square button the size of the Mute button holding a headphones glyph. Off = plain master button look; on = accent
+  edge, accent glyph, accent wash (the existing .on look). Tooltip: "Listen to this mic on <device>" / "Listening on <device>".
+  Click toggles. Right-click opens the shared ListMenuFlyout: muted title "Listen on", default output first ("Default speaker · <name>"),
+  then each output device, ticked = current. Implementation = Windows' own "Listen to this device" for that capture endpoint
+  (IPolicyConfig / property store PKEY_MonitorEnabled + PKEY_MonitorPassthrough/target endpoint, in Core/Engine), so no extra delay from
+  OmniControl; state read back from Windows (live, honest: if Windows refuses, one-sentence status). Registered as a state + On/Off/Toggle
+  action family per mic (master lists), so hotkeys and rules can use it. -->
+<style>body{font-family:Segoe UI;background:#1b1b1b;color:#eee;padding:20px;font-size:13px}</style></head><body>
+<p>🎤 Analogue 1/2 (Audient iD4) default ...... 100 [M] [<span style="color:#e8892f">🎧</span>] FX ▮▮</p>
+<p>🎤 Loop-back 1/2 (Audient iD4) ...... 100 [M] [🎧] FX ▮▮</p>
+</body></html>

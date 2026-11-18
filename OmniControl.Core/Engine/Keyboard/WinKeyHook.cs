@@ -109,8 +109,13 @@ public sealed class WinKeyHook : IDisposable
             if (!_swallowing)
             {
                 _swallowing = true;
-                InputSender.Tap(VkUnassigned, 0, false); // so letting go of Win alone does not open the Start menu
-                ThreadPool.QueueUserWorkItem(_ => Pressed?.Invoke());
+                // The unassigned tap (so letting go of Win alone does not open the Start menu) is sent from a worker: input sent from inside
+                // the hook callback waits on this very hook and can stall all typing until Windows drops the hook.
+                ThreadPool.QueueUserWorkItem(_ =>
+                {
+                    InputSender.Tap(VkUnassigned, 0, false);
+                    Pressed?.Invoke();
+                });
             }
             return true;
         }

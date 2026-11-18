@@ -19,7 +19,7 @@ public sealed partial class VolumePageViewModel
     private static readonly OnOffFamily MuteFamily = new("volume.mute", "Mute", MasterMutedId);
     private static readonly OnOffFamily MicMuteFamily = new("volume.mic.mute", "Microphone mute", MicMutedId);
     private static readonly OnOffFamily MasterFxFamily = new("volume.fx", "Master FX", MasterFxId);
-    private static readonly string[] StateIds = { MasterVolumeId, MasterMutedId, MasterFxId, DefaultSpeakerId, AllSpeakersId, MicMutedId, KeepFxId };
+    private static readonly string[] StateIds = { MasterVolumeId, MasterMutedId, MasterFxId, DefaultSpeakerId, AllSpeakersId, MicMutedId, KeepFxId, MicListenId };
 
     private const string ScanWords = "Windows' own value: Windows reports every change as it happens (the volume pop-up's source), and it is looked at every few seconds as a backstop.";
     private const string FxWords = "What the master row's FX switch shows.";
@@ -31,8 +31,8 @@ public sealed partial class VolumePageViewModel
             new StateEntry(MasterVolumeId, "Master volume", Title, StateKind.Level, () => StateValue.Of(_master.Volume, DateTime.Now), ScanWords,
                 Unit: "%", Keywords: "sound level loud quiet", Set: value => { if (value.Number is { } level) _master.Volume = (int)Math.Round(level); },
                 Short: "Volume", SuggestedIcons: new[] { "volume", "volume-low", "speaker" }, Common: CommonGroups.Sound),
-            new StateEntry(MasterMutedId, "Master muted", Title, StateKind.OnOff, () => StateValue.Of(_master.Muted, DateTime.Now), ScanWords,
-                Keywords: "sound mute silent", Set: value => _master.Muted = IsOn(value), Short: "Mute", SuggestedIcons: new[] { "mute", "volume" }, Common: CommonGroups.Sound),
+            new StateEntry(MasterMutedId, "Sound muted", Title, StateKind.OnOff, () => StateValue.Of(_master.Muted, DateTime.Now, DeviceSubject("Default speaker", _mixer.Devices.FirstOrDefault(d => d.IsDefault)?.Name)), ScanWords,
+                Keywords: "sound mute silent", Set: value => _master.Muted = IsOn(value), Short: "Mute", Compact: "Sound", StateIcons: new OnOffIcons("mute", "volume"), SuggestedIcons: new[] { "mute", "volume" }, Common: CommonGroups.Sound),
             new StateEntry(MasterFxId, "Master effects on", Title, StateKind.OnOff, () => StateValue.Of(_master.FxOn, DateTime.Now), FxWords,
                 Keywords: "sound fx effects chain equaliser", Set: value => _mixer.SetFxByUser(null, IsOn(value)), Short: "FX", Icon: FxIcon, SuggestedIcons: new[] { FxIcon, "eq", "wave" }),
             new StateEntry(DefaultSpeakerId, "Default speaker", Title, StateKind.Choice,
@@ -42,9 +42,9 @@ public sealed partial class VolumePageViewModel
             new StateEntry(AllSpeakersId, "All speakers volume", Title, StateKind.Level, () => StateValue.Of(_master.Volume, DateTime.Now),
                 "Reads the default speaker; setting it sets every output device to the same level.", Unit: "%", Keywords: "sound level loud quiet every output device speakers",
                 Set: SetAllSpeakers, Short: "All speakers", SuggestedIcons: new[] { "volume", "speaker" }),
-            new StateEntry(MicMutedId, "Microphone muted", Title, StateKind.OnOff,
-                () => DefaultInput() is { } input ? StateValue.Of(input.Muted, DateTime.Now) : null, ScanWords,
-                Keywords: "sound audio input microphone mic mute silence", Short: "Mic mute", Icon: MicIcon, SuggestedIcons: new[] { MicIcon, "mic-off" }, Liveness: MicLiveness, Common: CommonGroups.Sound,
+            new StateEntry(MicMutedId, "Mic muted", Title, StateKind.OnOff,
+                () => DefaultInput() is { } input ? StateValue.Of(input.Muted, DateTime.Now, DeviceSubject("Default microphone", _mixer.RecordingDevices.FirstOrDefault(d => d.IsDefault)?.Name)) : null, ScanWords,
+                Keywords: "sound audio input microphone mic mute silence", Short: "Mic mute", Compact: "Mic", StateIcons: new OnOffIcons("mic-off", MicIcon), Icon: MicIcon, SuggestedIcons: new[] { MicIcon, "mic-off" }, Liveness: MicLiveness, Common: CommonGroups.Sound,
                 Set: value => { if (DefaultInput() is { } input && input.Muted != IsOn(value)) StepInput(0, toggleMute: true); }),
             new StateEntry(KeepFxId, EffectsRules.KeepInPlace, Title, StateKind.OnOff, () => StateValue.Of(_mixer.KeepFxInPlace), "Read from the setting: on puts OmniControl's line back into Equalizer APO's config whenever another program takes it out.",
                 Keywords: "equalizer apo config keep effects in place restore put back include", Set: value => _mixer.SetKeepFxInPlace(IsOn(value)), Short: "Keep FX", SuggestedIcons: new[] { FxIcon }),
@@ -66,6 +66,7 @@ public sealed partial class VolumePageViewModel
         if (DefaultInput() is not { } input) return;
         input.Sync(Grace.Within(_inputChange, Timing.SliderEchoGrace) ? input.Volume : level, muted, input.FxOn, input.FxCount);
         _states.Notify(MicMutedId);
+        _states.Notify(MicListenId);
     });
 
     /// <summary>Every output device to one level: the default speaker as the master row does, the others off the UI thread (each is a slow Windows call).</summary>
@@ -77,6 +78,9 @@ public sealed partial class VolumePageViewModel
         var others = _mixer.Devices.Where(d => !d.IsDefault).Select(d => d.Id).ToList();
         Task.Run(() => Guard.RunAsync("Set every speaker", () => { foreach (var id in others) CoreAudio.SetDeviceVolume(id, level); return Task.CompletedTask; }));
     }
+
+    /// <summary>What a mute state says about the device it acts on ("Default speaker: Speakers"); null when there is no name.</summary>
+    private static string? DeviceSubject(string role, string? name) => string.IsNullOrEmpty(name) ? null : $"{role}: {name}";
 
     private static bool IsOn(StateValue value) => value.Number is { } number && number != 0;
 
@@ -98,6 +102,7 @@ public sealed partial class VolumePageViewModel
     private void NotifyScanned()
     {
         _states.Notify(DefaultSpeakerId);
+        _states.Notify(MasterMutedId); // its subject names the default speaker
         _states.Notify(MicMutedId);
     }
 

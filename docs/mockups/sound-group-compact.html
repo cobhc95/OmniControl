@@ -1,0 +1,17 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Sound group compact with Now playing (approved)</title>
+<!-- Approved by the owner 18 Nov 2026 (Other PCs mirror, and any Sound group built from the same shared cards).
+  Sound group, in order:
+  1 Master volume card: label, the output-device chip (made WIDER than now: give it a larger max width resource so more of the device name shows,
+    still trimming with … and never clipping the knob; it may take the free space between label and knob), the knob + value box.
+  2 One row of TWO HALF-WIDTH cards (existing Half cards / ListBox.cards pairing): "Sound muted" (volume-off icon) and "Mic muted" (mic icon),
+    each with a plain switch; the On/Off words move to the switch tooltip so both fit.
+  3 Now playing as ONE ROW card: music icon, title + small state tag (Playing = accent tag, Paused = plain tag, none when idle) over muted
+    "artist · app", both trimming with …; at the right three small ICON-ONLY pills (previous, play/pause with accent look and state-shaped glyph,
+    next), names in tooltips. Nothing playing = same row muted "Nothing playing" with the three pills. Replaces the stacked two-line media card
+    (now-playing-two-lines.html / now-playing-state.html keep their rules about glyph state and tags) and fixes the bug where an idle card showed
+    three wordy action pills and "0 settings".
+  The separate "Now playing" group is REMOVED: CommonGroups order becomes LEFT Screens, Sound; RIGHT Power, Smart devices (pc-mirror-fixed-layout). -->
+<style>body{font-family:Segoe UI;background:#1b1b1b;color:#eee;padding:20px;font-size:13px}</style></head><body>
+<p>▼ Sound<br>[🔊 Master volume [Analogue 1/2 (wider chip…) ▾] (knob 15%)]<br>[🔇 Sound muted ◯] [🎤 Mic muted ◯]<br>[♫ Revelation (Playing) / Insomnium · Spotify ...... [⏮][⏸][⏭]]</p>
+</body></html>

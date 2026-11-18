@@ -58,7 +58,8 @@ public sealed partial class OtherPcsService : IDisposable
             if (ReadSecret(pair.Id) is { } secret) _secrets[pair.Id] = secret;
         }
         if (StartupMode.Inert) return;
-        WakeReader.Failed += LogWakeReadFailure;
+        WakeReader.Failed += LogWakeRead;
+        WakeReader.Answered += LogWakeRead;
         WatchShares();
         RestoreCatalogs();
         RegisterWakeActions();
@@ -227,7 +228,8 @@ public sealed partial class OtherPcsService : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        WakeReader.Failed -= LogWakeReadFailure;
+        WakeReader.Failed -= LogWakeRead;
+        WakeReader.Answered -= LogWakeRead;
         _stop.Cancel();
         UnwatchShares();
         _setTimer?.Stop();

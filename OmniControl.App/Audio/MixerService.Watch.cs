@@ -7,23 +7,21 @@ namespace OmniControl.App.Audio;
 /// <summary>
 /// How the mixer hears about programs between its regular scans (<see cref="Timing.MixerRefresh"/>): Windows' session event the moment
 /// a program opens a new session (<see cref="CoreAudio.SessionWatcher"/>), and a quick look every <see cref="Timing.ProgramSoundPoll"/>
-/// at whether the sessions of programs with effects started or stopped playing. Either starts a scan at once, which raises
-/// <see cref="Updated"/>, so the effects engine plans again within milliseconds instead of up to two seconds later.
+/// at whether the sessions of programs with effects started or stopped playing. Either asks for a scan at once (<see cref="Scan"/>, read
+/// on a worker), which raises <see cref="Updated"/>, so the effects engine plans again within milliseconds instead of up to two seconds later.
 /// </summary>
 public sealed partial class MixerService
 {
     private readonly CoreAudio.SessionWatcher _sessionWatcher = new();
     private readonly DispatcherTimer _soundPoll = new() { Interval = Timing.ProgramSoundPoll };
-    private readonly object _postGate = new();
-    private bool _scanPosted;
 
-    /// <summary>The mixer's entry in the master list of hardware watches: the playback and recording devices (both lists come from one scan). The scan is made on the UI thread, as the timer's is.</summary>
+    /// <summary>The mixer's entry in the master list of hardware watches: the playback and recording devices (both lists come from one scan, read on the watch's worker).</summary>
     public const string HardwareWatchId = "audio.devices";
 
     private void StartWatching()
     {
         _hardware.Register(new HardwareWatch(HardwareWatchId, "Sound devices",
-            HardwareSignal.Audio | HardwareSignal.Device | HardwareSignal.Session | HardwareSignal.Resume, () => Dispatcher.UIThread.Invoke(Scan)));
+            HardwareSignal.Audio | HardwareSignal.Device | HardwareSignal.Session | HardwareSignal.Resume, ScanForWatch));
         _sessionWatcher.DevicesChanged += OnSoundDevicesChanged;
         _sessionWatcher.Created += OnSessionCreated;
         _sessionWatcher.Start();
@@ -43,20 +41,8 @@ public sealed partial class MixerService
     /// <summary>Worker thread: Windows added, removed, enabled or disabled a sound device; the watch refreshes once the burst is over.</summary>
     private void OnSoundDevicesChanged() => _hardware.Signal(HardwareSignal.Audio);
 
-    /// <summary>Worker thread: a burst of new sessions (a browser opens several) becomes one scan on the UI thread.</summary>
-    private void OnSessionCreated()
-    {
-        lock (_postGate)
-        {
-            if (_scanPosted) return;
-            _scanPosted = true;
-        }
-        Dispatcher.UIThread.Post(() =>
-        {
-            lock (_postGate) _scanPosted = false;
-            Scan();
-        });
-    }
+    /// <summary>Worker thread: a burst of new sessions (a browser opens several) becomes one scan (<see cref="Scan"/> runs one read at a time).</summary>
+    private void OnSessionCreated() => Scan();
 
     /// <summary>Scans at once when a program with effects started or stopped playing since the last scan.</summary>
     private void OnSoundPoll(object? sender, EventArgs e)

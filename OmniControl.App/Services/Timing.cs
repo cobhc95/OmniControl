@@ -76,14 +76,33 @@ public static class Timing
     /// <summary>How often Windows' own OSD window is looked for so it can be hidden.</summary>
     public static readonly TimeSpan WindowsOsdPoll = TimeSpan.FromMilliseconds(60);
 
-    /// <summary>Minimum gap between attempts to create the hiding helper for Windows' OSD.</summary>
-    public static readonly TimeSpan WindowsOsdRetry = TimeSpan.FromSeconds(2);
-
     /// <summary>
-    /// An Explorer pop-up is taken for Windows' own volume pop-up (and hidden) only when it opens this close to a volume, brightness,
-    /// microphone or media change made outside OmniControl; any other Explorer pop-up (the taskbar's thumbnails) is never touched.
+    /// An Explorer pop-up is taken for Windows' own volume pop-up (and hidden) only when it opens within this time AFTER a volume,
+    /// brightness, microphone or media change made outside OmniControl (0 ms or more, never before); any other Explorer pop-up is never touched.
     /// </summary>
     public static readonly TimeSpan WindowsOsdMatch = TimeSpan.FromSeconds(1);
+
+    /// <summary>
+    /// Kill switch: when more than this many different windows have been taken for Windows' pop-up in one run, hiding stops for the rest of
+    /// the run (Explorer restarting makes a new one; more than this means the windows are not being told apart).
+    /// </summary>
+    public const int WindowsOsdMaxWindows = 3;
+
+    /// <summary>
+    /// The UI watchdog (<c>UiWatchdog</c>) posts a heartbeat this often; when the UI thread has not run one for <see cref="UiStuckAfter"/>,
+    /// every thread's stack (at most <see cref="UiStuckFramesPerThread"/> frames each) goes to hang-log.txt, once per stall and at most
+    /// <see cref="UiStuckLogsPerRun"/> times per run.
+    /// </summary>
+    public static readonly TimeSpan UiHeartbeatEvery = TimeSpan.FromMilliseconds(500), UiStuckAfter = TimeSpan.FromSeconds(2);
+
+    /// <inheritdoc cref="UiHeartbeatEvery"/>
+    public const int UiStuckLogsPerRun = 5, UiStuckFramesPerThread = 40;
+
+    /// <summary>
+    /// "Show or hide OmniControl" ignores a request that comes this soon after the one before (a held hotkey's repeats arrive every ~30 ms
+    /// after Windows' repeat delay of up to 1 s), so holding its key shows the window once instead of flipping it shown and hidden.
+    /// </summary>
+    public static readonly TimeSpan WindowToggleRepeat = TimeSpan.FromMilliseconds(1100);
 
     /// <summary>On quit, how long to wait for queued mouse work (letting go of held keys and buttons, restoring the pointer) to finish.</summary>
     public static readonly TimeSpan MouseQueueDrain = TimeSpan.FromSeconds(1);
@@ -351,6 +370,9 @@ public static class Timing
 
     /// <summary>How often the automations look at the clock, the battery, the idle time, the running programs and the devices.</summary>
     public static readonly TimeSpan AutomationTick = TimeSpan.FromSeconds(5);
+
+    /// <summary>The battery charge (percent) at or below which the Power header's battery fact turns to the caution colour.</summary>
+    public const int BatteryLowPercent = 20;
 
     // ---- Power journal and wakes (Services/PowerJournal, Core/Engine/WakeDetector and ClockGap) ----
 

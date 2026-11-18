@@ -15,8 +15,12 @@ public sealed class LabelFitPanel : Panel
     public static readonly StyledProperty<double> MainMinWidthProperty = AvaloniaProperty.Register<LabelFitPanel, double>(nameof(MainMinWidth));
     public static readonly StyledProperty<double> LabelShareProperty = AvaloniaProperty.Register<LabelFitPanel, double>(nameof(LabelShare), 0.4);
     public static readonly StyledProperty<double> SpacingProperty = AvaloniaProperty.Register<LabelFitPanel, double>(nameof(Spacing));
+    public static readonly StyledProperty<bool> LabelFirstProperty = AvaloniaProperty.Register<LabelFitPanel, bool>(nameof(LabelFirst));
 
-    static LabelFitPanel() => AffectsMeasure<LabelFitPanel>(LabelMinWidthProperty, MainMinWidthProperty, LabelShareProperty, SpacingProperty);
+    static LabelFitPanel() => AffectsMeasure<LabelFitPanel>(LabelMinWidthProperty, MainMinWidthProperty, LabelShareProperty, SpacingProperty, LabelFirstProperty);
+
+    /// <summary>True: the label keeps its whole one-line width (never wrapped or broken) and the main control gets what is left, trimming its words first; the share is ignored.</summary>
+    public bool LabelFirst { get => GetValue(LabelFirstProperty); set => SetValue(LabelFirstProperty, value); }
 
     public double LabelMinWidth { get => GetValue(LabelMinWidthProperty); set => SetValue(LabelMinWidthProperty, value); }
 
@@ -37,12 +41,18 @@ public sealed class LabelFitPanel : Panel
     {
         var width = double.IsInfinity(available.Width) ? LabelMinWidth + Spacing + MainMinWidth : available.Width;
         _stacked = width < LabelMinWidth + Spacing + MainMinWidth;
-        _labelWidth = _stacked ? width : Math.Clamp((width - Spacing) * LabelShare, LabelMinWidth, width - Spacing - MainMinWidth);
+        _labelWidth = _stacked ? width : LabelFirst ? NaturalLabelWidth(width) : Math.Clamp((width - Spacing) * LabelShare, LabelMinWidth, width - Spacing - MainMinWidth);
         var mainWidth = _stacked ? width : width - Spacing - _labelWidth;
         Label?.Measure(new Size(_labelWidth, double.PositiveInfinity));
         Main?.Measure(new Size(mainWidth, double.PositiveInfinity));
         double labelHeight = Label?.DesiredSize.Height ?? 0, mainHeight = Main?.DesiredSize.Height ?? 0;
         return new Size(width, _stacked ? labelHeight + mainHeight : Math.Max(labelHeight, mainHeight));
+    }
+
+    private double NaturalLabelWidth(double width)
+    {
+        Label?.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        return Math.Clamp(Math.Ceiling(Label?.DesiredSize.Width ?? LabelMinWidth) + 1, LabelMinWidth, width - Spacing - MainMinWidth);
     }
 
     protected override Size ArrangeOverride(Size finalSize)

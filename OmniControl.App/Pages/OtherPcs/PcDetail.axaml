@@ -7,7 +7,7 @@
              x:Class="OmniControl.App.Pages.OtherPcs.PcDetail"
              x:DataType="vm:PcItem">
     <!-- One paired PC (docs/mockups/other-pcs.html, other-pcs-browser-tabs.html; template in App.axaml): the header line (docs/mockups/pc-header-tidy.html: its name and real name, at the right the connection chip, the split Wake button and the "..." menu), the address box when it is reached by address, the Tailscale checklist only while a check fails, then,
-         while it is connected, its basic set as groups (Screens, Sound, Now playing, Smart devices, Power; two independent columns when wide, one when narrow) with real
+         while it is connected, its basic set as groups (Screens, Sound, Power, Smart devices; two independent columns when wide, one when narrow) with real
          controls and action pills. While it is offline one sentence says so. -->
     <StackPanel Spacing="8">
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
@@ -57,7 +57,7 @@
         <!-- Connected but what the PC shares has not arrived yet: each group's place shows its name and the shared spinner (the tile mark's ring and arc) -->
         <ItemsControl ItemsSource="{Binding LoadingGroups}" IsVisible="{Binding IsLoading}">
             <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate><pages:MasonryPanel ColumnMinWidth="{StaticResource MasonryColumnMinWidth}" Gap="{StaticResource MasonryGap}" /></ItemsPanelTemplate>
+                <ItemsPanelTemplate><pages:FixedColumnsPanel ColumnMinWidth="{StaticResource FixedColumnMinWidth}" Gap="{StaticResource FixedColumnGap}" /></ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
@@ -79,16 +79,16 @@
           <ContentControl.ContentTemplate>
             <DataTemplate x:DataType="vm:PcMirror">
         <StackPanel Spacing="6">
-            <TextBlock Classes="hint" Text="This PC shares nothing with you yet." IsVisible="{Binding IsEmpty}" />
             <ItemsControl ItemsSource="{Binding Groups}">
                 <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate><pages:MasonryPanel ColumnMinWidth="{StaticResource MasonryColumnMinWidth}" Gap="{StaticResource MasonryGap}" /></ItemsPanelTemplate>
+                    <ItemsPanelTemplate><pages:FixedColumnsPanel ColumnMinWidth="{StaticResource FixedColumnMinWidth}" Gap="{StaticResource FixedColumnGap}" /></ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:MirrorGroup">
                         <pages:GroupCard Group="{Binding Group}" Margin="0,0,0,6" VerticalAlignment="Top">
                             <StackPanel Spacing="4">
-                                <ListBox Classes="rows compact cards" ItemsSource="{Binding Group.Items}" />
+                                <TextBlock Classes="hint" Text="Not available" IsVisible="{Binding IsEmpty}" />
+                                <ListBox Classes="rows compact cards" ItemsSource="{Binding Group.Items}" IsVisible="{Binding !IsEmpty}" />
                                 <c:ChoiceChips ItemsSource="{Binding Actions}" IsVisible="{Binding HasActions}" />
                             </StackPanel>
                         </pages:GroupCard>

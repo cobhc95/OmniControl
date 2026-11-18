@@ -10,15 +10,15 @@ using OmniControl.Core.Models;
 
 namespace OmniControl.App.Pages.OtherPcs;
 
-/// <summary>One group of another PC's basic set (Screens, Sound...): its group, drawn like any page's group, and the chips that run its actions. Placed by <see cref="MasonryPanel"/> (two independent columns when the pane is wide).</summary>
-public sealed record MirrorGroup(ItemGroup Group, IReadOnlyList<ChipItem> Actions)
+/// <summary>One group of another PC's basic set (Screens, Sound...): its group, drawn like any page's group, and the chips that run its actions. Placed by <see cref="FixedColumnsPanel"/> in the fixed column its <see cref="CommonGroup"/> names; a group the PC shares nothing in keeps its place and says "Not available".</summary>
+public sealed record MirrorGroup(ItemGroup Group, IReadOnlyList<ChipItem> Actions, int Column, bool IsEmpty) : IColumnPlaced
 {
     public bool HasActions => Actions.Count > 0;
 }
 
 /// <summary>
-/// Another PC's basic set (docs/mockups/other-pcs.html): one group per entry of <see cref="CommonGroups.All"/> that PC shares something in, in
-/// that order, each with real controls of the shared card kinds (a slider, a switch, a drop-down; a read-only fact when the PC does not let
+/// Another PC's basic set (docs/mockups/other-pcs.html): one group per entry of <see cref="CommonGroups.All"/>, always, in
+/// that order and in that entry's fixed column (one that PC shares nothing in says "Not available"), each with real controls of the shared card kinds (a slider, a switch, a drop-down; a read-only fact when the PC does not let
 /// a state be set) made from what the PC shares and read live from the master lists (<see cref="OtherPcsService.StatesOf"/>); a change
 /// made here is sent to that PC, a change there arrives and moves the card. A screen's power state is its switch card and the group's
 /// header has the all-screens master (<see cref="ScreenPowerSwitch"/>), as on the local Displays page. A read-only level (the battery) is
@@ -40,9 +40,7 @@ public sealed partial class PcMirror : ObservableObject
 
     public ObservableCollection<MirrorGroup> Groups { get; } = new();
 
-    public bool IsEmpty => Groups.Count == 0;
-
-    /// <summary>Makes every group again from what the PC shares now (its catalog changed).</summary>
+    /// <summary>Makes every group again from what the PC shares now (its catalog changed). Every group of <see cref="CommonGroups.All"/> is always made, in that order, so none changes place.</summary>
     public void Rebuild()
     {
         _updaters.Clear();
@@ -50,13 +48,12 @@ public sealed partial class PcMirror : ObservableObject
         Groups.Clear();
         var states = _service.StatesOf(_pcId);
         var actions = _service.ActionsOf(_pcId);
-        foreach (var (name, icon) in CommonGroups.All)
+        foreach (var common in CommonGroups.All)
         {
-            var own = states.Where(s => s.Common == name).ToList();
-            var chips = actions.Where(a => a.Common == name && !a.ScreensOff).Select(Chip).ToList();
-            if (own.Count > 0 || chips.Count > 0) Groups.Add(Make(name, icon, own, chips, actions.FirstOrDefault(a => a.Common == name && a.ScreensOff)));
+            var own = states.Where(s => CommonGroups.Resolve(s.Common) == common.Name).ToList();
+            var chips = actions.Where(a => CommonGroups.Resolve(a.Common) == common.Name && !a.ScreensOff).Select(Chip).ToList();
+            Groups.Add(Make(common, own, chips, actions.FirstOrDefault(a => CommonGroups.Resolve(a.Common) == common.Name && a.ScreensOff)));
         }
-        OnPropertyChanged(nameof(IsEmpty));
     }
 
     /// <summary>One state's value changed there: its card shows it at once (not while the user is moving it here), and a screen switch looks again.</summary>
@@ -69,23 +66,36 @@ public sealed partial class PcMirror : ObservableObject
 
     // ---- Groups ----
 
-    private MirrorGroup Make(string name, string icon, IReadOnlyList<RemoteState> states, List<ChipItem> chips, RemoteAction? screensOff)
+    private MirrorGroup Make(CommonGroup common, IReadOnlyList<RemoteState> states, List<ChipItem> chips, RemoteAction? screensOff)
     {
+        var (name, icon) = (common.Name, common.Icon);
+        var empty = states.Count == 0 && chips.Count == 0;
         var summary = states.Where(s => !s.Settable && s.Entry.Kind == StateKind.Level).ToList();
-        var cards = states.Except(summary).OrderBy(s => Rank(s.Entry.Kind)).ToList();
+        var detail = states.Where(s => !s.Settable && s.Entry.Kind == StateKind.Choice && !IsNowPlaying(s.Entry)).ToList();
+        var cards = states.Except(summary).Except(detail).OrderBy(Rank).ToList();
         var items = Cards(cards, chips).Cast<object>().ToList();
-        var group = new ItemGroup($"OtherPcs/{_pcId}/{name}", name, items) { Icon = icon, ExpandedByDefault = true };
-        foreach (var state in summary)
-        {
-            group.Summary = state.Entry.Words(state.Entry.Read());
-            _updaters[state.Entry.Id] = e => group.Summary = e.Words(e.Read());
-        }
+        var group = new ItemGroup($"OtherPcs/{_pcId}/{name}", name, items) { Icon = icon, ExpandedByDefault = true, NoMasterSwitch = empty || name == CommonGroups.Power };
+        if (name == CommonGroups.Power) ShowBattery(group, summary.FirstOrDefault()?.Entry, detail.FirstOrDefault()?.Entry);
+        else
+            foreach (var state in summary)
+            {
+                group.Summary = state.Entry.Words(state.Entry.Read());
+                _updaters[state.Entry.Id] = e => group.Summary = e.Words(e.Read());
+            }
         AttachMaster(group, states, screensOff);
-        return new MirrorGroup(group, chips);
+        return new MirrorGroup(group, chips, common.Column, empty);
     }
 
-    /// <summary>Drop-downs first, then sliders, then switches: the order the mock-up shows a card's cards in.</summary>
-    private static int Rank(StateKind kind) => kind switch { StateKind.Choice => 0, StateKind.Level => 1, _ => 2 };
+    /// <summary>The Power header's battery fact (icon, percent, tooltip) from the charge and status states; it follows either one.</summary>
+    private void ShowBattery(CardGroup group, StateEntry? level, StateEntry? status)
+    {
+        void Show(StateEntry _) => group.Badge = BatteryBadge.Make(level, status);
+        Show(level ?? status!);
+        foreach (var entry in new[] { level, status }) if (entry is not null) _updaters[entry.Id] = Show;
+    }
+
+    /// <summary>Drop-downs first, then sliders, then switches, then the Now playing line: the order the mock-up shows a group's cards in.</summary>
+    private static int Rank(RemoteState state) => IsNowPlaying(state.Entry) ? 3 : state.Entry.Kind switch { StateKind.Choice => 0, StateKind.Level => 1, _ => 2 };
 
     /// <summary>The master of a group's screens: each screen that has a power state of its own, and the PC's "Turn off displays" action for turning all off when it is shared.</summary>
     private void AttachMaster(CardGroup group, IReadOnlyList<RemoteState> states, RemoteAction? screensOff)
@@ -93,7 +103,8 @@ public sealed partial class PcMirror : ObservableObject
         var screens = states.Where(s => s.ScreenPower && s.Settable).ToList();
         if (screens.Count == 0) return;
         group.UseSwitch(ScreenPowerSwitch.All(() => screens.Select(ScreenOf).ToList(), () => screensOff is null,
-            screensOff is null ? null : () => _service.Run(screensOff.Action)));
+            screensOff is null ? null : () => _service.Run(screensOff.Action),
+            knownOff: () => screens.All(s => ScreenOf(s).IsOn() == false)));
         foreach (var screen in screens)
         {
             if (!_switches.TryGetValue(screen.Entry.Id, out var list)) _switches[screen.Entry.Id] = list = new List<CardGroup>();
@@ -106,30 +117,32 @@ public sealed partial class PcMirror : ObservableObject
 
     // ---- Cards: one real control per state kind ----
 
-    /// <summary>The group's cards; a drop-down beside a slider (Sound's output and volume) becomes the slider's leading chip, and Now playing's actions join its card.</summary>
+    /// <summary>The group's cards; a drop-down beside a slider (Sound's output and volume) becomes the slider's leading chip, the on/off states
+    /// that have state-button words and icons (Sound's and the mic's mute) become the slider's state buttons (docs/mockups/sound-mute-buttons.html),
+    /// and the media actions join the Now playing card.</summary>
     private List<IEditorItem> Cards(List<RemoteState> states, List<ChipItem> chips)
     {
-        var lead = states.FirstOrDefault(s => s.Settable && s.Entry.Kind == StateKind.Choice && !IsNowPlaying(s.Entry));
-        var leads = lead is not null && states.Any(s => s.Settable && s.Entry.Kind == StateKind.Level) ? lead : null;
+        var level = states.FirstOrDefault(s => s.Settable && s.Entry.Kind == StateKind.Level && !IsPerScreen(s));
+        var lead = level is null ? null : states.FirstOrDefault(s => s.Settable && s.Entry.Kind == StateKind.Choice && !IsNowPlaying(s.Entry));
+        var buttons = level is null ? new List<RemoteState>() : states.Where(IsStateButton).ToList();
         var made = new List<IEditorItem>();
-        var skip = leads;
         var shown = new HashSet<string>();
-        foreach (var state in states.Where(s => s != skip))
+        foreach (var state in states.Where(s => s != lead && !buttons.Contains(s)))
         {
             if (IsPerScreen(state))
             {
                 if (shown.Add(state.Name)) made.Add(ScreenSlider(state.Name, states.Where(s => IsPerScreen(s) && s.Name == state.Name).ToList()));
             }
             else if (IsNowPlaying(state.Entry)) made.Add(NowPlayingCard(state.Entry, chips));
-            else if (leads is not null && state.Settable && state.Entry.Kind == StateKind.Level)
-            {
-                made.Add(Slider(state.Entry, LabelOf(state), Choice(leads.Entry, LabelOf(leads))));
-                leads = null;
-            }
+            else if (state == level) made.Add(Slider(state.Entry, LabelOf(state), lead is null ? null : Choice(lead.Entry, LabelOf(lead)), buttons.Select(StateButton).ToList()));
             else made.Add(Card(state, states.Count == 1));
         }
         return made;
     }
+
+    /// <summary>An on/off state its owner gives state-button words and icons (<see cref="StateEntry.Compact"/>, <see cref="StateEntry.StateIcons"/>).</summary>
+    private static bool IsStateButton(RemoteState state) =>
+        state.Settable && !state.ScreenPower && state.Entry.Kind == StateKind.OnOff && state.Compact is not null && state.StateIcons is not null;
 
     private static string LabelOf(RemoteState state) =>
         state.Section.Length == 0 ? state.Name : state.ScreenPower ? state.Section : $"{state.Section}: {state.Name}";
@@ -148,7 +161,7 @@ public sealed partial class PcMirror : ObservableObject
         return entry.Kind switch
         {
             StateKind.Level => Slider(entry, label),
-            StateKind.OnOff => Toggle(entry, label, half: !alone),
+            StateKind.OnOff => Toggle(entry, !alone && state.Compact is { } compact ? compact : label, half: !alone),
             _ => Choice(entry, label),
         };
     }
@@ -159,16 +172,32 @@ public sealed partial class PcMirror : ObservableObject
         entry.Set?.Invoke(value);
     }
 
-    private SliderItem Slider(StateEntry entry, string label, ChoiceItem? lead = null)
+    private SliderItem Slider(StateEntry entry, string label, ChoiceItem? lead = null, IReadOnlyList<StateButtonItem>? extras = null)
     {
         var slider = new SliderItem(label, (int)Math.Round(entry.Read()?.Number ?? entry.Min), v =>
         {
             Send(entry, StateValue.Of(v));
             return OperationResult.Ok();
-        }, _report, entry.Min, entry.Max, entry.Unit, defaultValue: null) { Icon = entry.ShownIcon, Lead = lead, AsKnob = true };
+        }, _report, entry.Min, entry.Max, entry.Unit, defaultValue: null) { Icon = entry.ShownIcon, Lead = lead, AsKnob = true, Extras = extras ?? Array.Empty<StateButtonItem>() };
         _updaters[entry.Id] = e => { if (e.Read()?.Number is { } n) slider.Load((int)Math.Round(n)); };
         return slider;
     }
+
+    /// <summary>A mute state as a state button: its name while on ("Sound muted"), its compact name and "on" while off ("Sound on"); the tooltip names the device it acts on.</summary>
+    private StateButtonItem StateButton(RemoteState state)
+    {
+        var entry = state.Entry;
+        var button = new StateButtonItem(IsOn(entry.Read()), state.Name, $"{state.Compact} {StateValue.OnWord}", state.StateIcons!.On, state.StateIcons.Off,
+            on => Send(entry, StateValue.Of(on))) { Tip = entry.Read()?.Subject ?? string.Empty };
+        _updaters[entry.Id] = e =>
+        {
+            button.Tip = e.Read()?.Subject ?? string.Empty;
+            button.Load(IsOn(e.Read()));
+        };
+        return button;
+    }
+
+    private static bool IsOn(StateValue? reading) => reading?.Number is not (null or 0);
 
     /// <summary>One knob for a level every screen of the PC has (Brightness): its display chip picks "All displays" (every screen moves together, the knob shows the first one's level) or one screen; the pick is kept for this PC. Each screen is still its own shared state.</summary>
     private SliderItem ScreenSlider(string name, List<RemoteState> screens)
@@ -196,8 +225,12 @@ public sealed partial class PcMirror : ObservableObject
 
     private ToggleItem Toggle(StateEntry entry, string label, bool half)
     {
-        var toggle = new ToggleItem(label, entry.Read()?.Number is not (null or 0), on => Send(entry, StateValue.Of(on))) { Half = half, Icon = entry.ShownIcon };
-        _updaters[entry.Id] = e => toggle.Load(e.Read()?.Number is not (null or 0));
+        var toggle = new ToggleItem(label, IsOn(entry.Read()), on => Send(entry, StateValue.Of(on))) { Half = half, Icon = entry.ShownIcon, Subject = entry.Read()?.Subject ?? string.Empty };
+        _updaters[entry.Id] = e =>
+        {
+            toggle.Subject = e.Read()?.Subject ?? string.Empty;
+            toggle.Load(IsOn(e.Read()));
+        };
         return toggle;
     }
 
@@ -209,11 +242,11 @@ public sealed partial class PcMirror : ObservableObject
         return choice;
     }
 
-    /// <summary>Now playing as one card (docs/mockups/other-pcs.html): the title over the muted "artist · app" line and the PC's media actions as pills, Play/Pause in the accent while it plays; "Nothing playing" alone when no app plays.</summary>
+    /// <summary>Now playing as one row inside Sound (docs/mockups/sound-group-compact.html): the title and its state tag over the muted "artist · app" line and the PC's three media actions as icon pills at the right, Play/Pause in the accent while it plays; "Nothing playing" in the same row, with the pills, when no app plays.</summary>
     private FactItem NowPlayingCard(StateEntry entry, List<ChipItem> chips)
     {
-        var own = chips.ToList();
-        chips.Clear(); // the card holds them: the group shows no second row
+        var own = NowPlayingText.ActionIds.Select(id => chips.FirstOrDefault(c => c.Key.EndsWith(":" + id, StringComparison.Ordinal))).OfType<ChipItem>().ToList();
+        foreach (var chip in own) chips.Remove(chip); // the card holds them: the group shows no second row for them
         var playPause = own.FirstOrDefault(c => c.Key.EndsWith(":" + NowPlayingText.PlayPauseId, StringComparison.Ordinal));
         var fact = new FactItem(entry.Name) { Icon = entry.ShownIcon, Stacked = true };
         void Show(StateEntry e)
@@ -221,7 +254,7 @@ public sealed partial class PcMirror : ObservableObject
             var (title, detail, playing, nothing) = NowPlayingText.Read(e.Read());
             fact.Value = title;
             fact.Note = nothing ? NowPlayingText.NothingWords : detail;
-            fact.Pills = nothing ? Array.Empty<ChipItem>() : own;
+            fact.Pills = own;
             fact.Tags = NowPlayingText.StateTags(playing, nothing);
             if (playPause is null) return;
             (playPause.Name, playPause.Icon) = NowPlayingText.PlayPausePill(playing);

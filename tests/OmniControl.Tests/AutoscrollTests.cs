@@ -20,29 +20,25 @@ public class AutoscrollTests
     [InlineData(50011)] // menu item
     [InlineData(50019)] // tab item
     public void Decide_PassesOverALinkTabButtonOrMenuItem(int type) =>
-        Assert.Equal(ClickVerdict.Pass, MiddleClickPolicy.Decide(false, () => new[] { 50026, type }, 500));
+        Assert.Equal(ClickVerdict.Pass, MiddleClickPolicy.Decide(false, () => new[] { 50026, type }));
 
     [Fact]
     public void Decide_SwallowsOverAnythingElse() =>
-        Assert.Equal(ClickVerdict.Swallow, MiddleClickPolicy.Decide(false, () => new[] { 50020, 50026, 50033 }, 500));
+        Assert.Equal(ClickVerdict.Swallow, MiddleClickPolicy.Decide(false, () => new[] { 50020, 50026, 50033 }));
 
     [Fact]
     public void Decide_PassesWhileThePointerIsTheHand_WithoutLookingUp()
     {
         var looked = false;
-        var verdict = MiddleClickPolicy.Decide(true, () => { looked = true; return Array.Empty<int>(); }, 500);
+        var verdict = MiddleClickPolicy.Decide(true, () => { looked = true; return Array.Empty<int>(); });
         Assert.Equal(ClickVerdict.Pass, verdict);
         Assert.False(looked);
     }
 
     [Fact]
-    public void Decide_PassesWhenTheLookupIsTooSlow() =>
-        Assert.Equal(ClickVerdict.Pass, MiddleClickPolicy.Decide(false, () => { Thread.Sleep(600); return new[] { 50020 }; }, 30));
-
-    [Fact]
     public void Decide_PassesWhenTheLookupFailsOrSaysNothing()
     {
-        Assert.Equal(ClickVerdict.Pass, MiddleClickPolicy.Decide(false, () => null, 500));
-        Assert.Equal(ClickVerdict.Pass, MiddleClickPolicy.Decide(false, () => throw new InvalidOperationException(), 500));
+        Assert.Equal(ClickVerdict.Pass, MiddleClickPolicy.Decide(false, () => null));
+        Assert.Equal(ClickVerdict.Pass, MiddleClickPolicy.Decide(false, () => throw new InvalidOperationException()));
     }
 }

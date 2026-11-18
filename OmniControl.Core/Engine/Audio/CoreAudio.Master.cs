@@ -35,6 +35,19 @@ public static partial class CoreAudio
         return true;
     }
 
+    /// <summary>
+    /// How loud a loopback of the device is against its sound before Windows' volume, as a linear amplitude factor (0 to 1): the master
+    /// level in dB turned into amplitude, since Windows scales the samples by that (the slider's percent is an audio taper, not the gain);
+    /// 1 when the device applies the volume itself, after the loopback. The channel balance is left out. Null when it can't be read.
+    /// </summary>
+    public static float? LoopbackLevel(string deviceId)
+    {
+        var m = Master(deviceId);
+        if (m is null) return null;
+        if (m.QueryHardwareSupport(out var mask) == 0 && (mask & HardwareVolume) != 0) return 1f;
+        return m.GetMasterVolumeLevel(out var db) == 0 ? (float)Math.Pow(10, db / 20.0) : null;
+    }
+
     public static bool SetMasterVolume(int percent, string? deviceId = null) =>
         Master(deviceId) is { } m && m.SetMasterVolumeLevelScalar(Percent.ToScalar(percent), ref _ctx) == 0;
 

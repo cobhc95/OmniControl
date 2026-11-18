@@ -28,7 +28,7 @@
     </Style>
     <Style Selector="Button.selector /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
         <Setter Property="BorderThickness" Value="1" />
     </Style>
     <Style Selector="Button.selector:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
@@ -40,7 +40,7 @@
         <Setter Property="Padding" Value="{DynamicResource SelectorPadding}" />
         <Setter Property="CornerRadius" Value="{DynamicResource ChipCornerRadius}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
     <!-- The words of either: one line, trimmed; the chevron after them -->

@@ -15,7 +15,8 @@ public sealed record ApoSection(string Text, IReadOnlyList<string> Skipped, IRea
 /// <summary>
 /// The master's and the microphones' chains in Equalizer APO's config language (the user's Equalizer APO and OmniControl APO read
 /// the same language); <see cref="ApoConfigFiles"/> writes the file. Only effects the APO can run are written (<see cref="FxEngines.Apo"/>);
-/// the others are listed as comments and returned, so the row can say they are not run.
+/// the others are listed as comments and returned, so the row can say they are not run. A mix below 100 % (an effect's own, an IR
+/// Loader's Mix, a device folder's Mix) is the same blend as in OmniControl's own engine, written with virtual channels and Copy lines.
 /// </summary>
 /// <remarks>
 /// Each section starts with <c>Device: {guid}</c>. Equalizer APO (DeviceFilterFactory.cpp at bbfcc3e) matches a word with a brace
@@ -36,57 +37,130 @@ public static class ApoChainWriter
         return text.ToString();
     }
 
-    /// <summary>The section for <paramref name="slots"/> on the device <paramref name="deviceGuid"/> ("{...}"), named <paramref name="title"/> in a comment.</summary>
+    /// <summary>
+    /// The section for <paramref name="parts"/> (<see cref="FxFolders.PartsFor"/>: the effects outside every folder, then each folder
+    /// that runs on this device) on the device <paramref name="deviceGuid"/> ("{...}"), named <paramref name="title"/> in a comment.
+    /// </summary>
+    /// <param name="channels">The device's channel count: a mix below 100 % keeps a dry copy of each (<see cref="SectionText.Blend"/>).</param>
+    /// <param name="blends">The APO that reads this file blends (<see cref="Core.Engine.Apo.ApoState.BlendsIn"/>); when not, an effect
+    /// or folder below 100 % is left out and named.</param>
     /// <param name="levels">The IR Loaders' Auto level gains, measured off the UI thread.</param>
-    internal static ApoSection Section(string title, IEnumerable<FxSlot> slots, string deviceGuid, IrLevels levels)
+    internal static ApoSection Section(string title, IEnumerable<FxPart> parts, string deviceGuid, int channels, bool blends, IrLevels levels)
     {
-        var waiting = false;
-        var text = new StringBuilder($"# {Clean(title)}{NewLine}Device: {deviceGuid}{NewLine}");
-        var notRun = new List<string>();
-        var plugins = new List<string>();
-        var defaults = new List<string>();
-        foreach (var slot in slots.Where(s => s.Enabled))
+        var section = new SectionText(Math.Max(1, channels));
+        section.Text.Append($"# {Clean(title)}{NewLine}Device: {deviceGuid}{NewLine}");
+        foreach (var part in parts)
         {
-            string? reason = null;
-            IReadOnlyList<string>? lines = null;
-            if (FxCatalog.EnginesOf(slot).HasFlag(FxEngines.Apo) && slot.Kind != FxCatalog.Vst2Kind)
+            var mix = part.Folder is { } folder ? Core.Models.Percent.ToScalar(folder.Wet) : 1;
+            if (mix < 1 && !blends)
             {
-                lines = LinesOf(slot, levels, out var measuring);
-                waiting |= measuring;
-            }
-            else if (FxCatalog.EnginesOf(slot).HasFlag(FxEngines.Apo) && PluginLine(slot, out reason, out var withDefaults) is { } line)
-            {
-                lines = new[] { line };
-                plugins.Add(slot.Name);
-                if (withDefaults) defaults.Add(slot.Name);
-            }
-            if (lines is null)
-            {
-                if (reason is null && FxCatalog.EnginesOf(slot).HasFlag(FxEngines.Apo) && !FxCatalog.ApoCanMix(slot)) reason = "mix below 100 %";
-                notRun.Add(reason is null ? slot.Name : $"{slot.Name} ({reason})");
-                text.Append($"# {Clean(slot.Name)}: not run by the APO{NewLine}");
+                foreach (var slot in part.Effects.Where(s => s.Enabled)) section.NotRun(slot, EffectsRules.ApoNoBlendReason);
                 continue;
             }
-            text.Append($"# {Clean(slot.Name)}{NewLine}");
-            foreach (var l in lines) text.Append(l).Append(NewLine);
+            var effects = new StringBuilder();
+            foreach (var slot in part.Effects.Where(s => s.Enabled)) Effect(section, effects, slot, blends, levels);
+            if (effects.Length == 0) continue;
+            section.Text.Append(mix < 1 ? section.Blend($"Device folder {part.Folder!.Name}", mix, effects.ToString()) : effects.ToString());
         }
-        return new ApoSection(text.ToString(), notRun, plugins, defaults, waiting);
+        return new ApoSection(section.Text.ToString(), section.Skipped, section.Plugins, section.Defaults, section.Waiting);
+    }
+
+    /// <summary>One enabled effect's lines into <paramref name="into"/>, inside its own blend when its mix is below 100 %; or why it is not run.</summary>
+    private static void Effect(SectionText section, StringBuilder into, FxSlot slot, bool blends, IrLevels levels)
+    {
+        if (!FxCatalog.EnginesOf(slot).HasFlag(FxEngines.Apo))
+        {
+            section.NotRun(slot, null);
+            return;
+        }
+        var mix = MixOf(slot);
+        if (mix < 1 && !blends)
+        {
+            section.NotRun(slot, EffectsRules.ApoNoBlendReason);
+            return;
+        }
+        IReadOnlyList<string>? lines;
+        string? reason = null;
+        if (slot.Kind != FxCatalog.Vst2Kind)
+        {
+            lines = LinesOf(slot, levels, out var measuring);
+            section.Waiting |= measuring;
+        }
+        else if (PluginLine(slot, out reason, out var withDefaults) is { } line)
+        {
+            lines = new[] { line };
+            section.Plugins.Add(slot.Name);
+            if (withDefaults) section.Defaults.Add(slot.Name);
+        }
+        else lines = null;
+        if (lines is null)
+        {
+            section.NotRun(slot, reason);
+            return;
+        }
+        var text = new StringBuilder($"# {Clean(slot.Name)}{NewLine}");
+        foreach (var l in lines) text.Append(l).Append(NewLine);
+        into.Append(mix < 1 ? section.Blend(slot.Name, mix, text.ToString()) : text.ToString());
+    }
+
+    /// <summary>The effect's own mix (0-1): its wet mix, and for an IR Loader its Mix as well (the built-in engine applies both in turn).</summary>
+    private static double MixOf(FxSlot slot) =>
+        Core.Models.Percent.ToScalar(slot.Wet) * (slot.Kind == FxCatalog.IrKind ? IrParams.ValueOf(slot, IrParams.Mix) / Core.Models.Percent.Max : 1);
+
+    /// <summary>The start of a blend's virtual channel names ("OCDRY1_2" = blend 1's dry copy of channel 2); never a channel a device has.</summary>
+    private const string DryPrefix = "OCDRY";
+
+    /// <summary>
+    /// One section's text while it is written, what it leaves out, and its blends' numbering (each blend's dry copies are virtual
+    /// channels with their own names, so blends can sit inside each other: a folder's around an effect's).
+    /// </summary>
+    private sealed class SectionText(int channels)
+    {
+        private int _blends;
+
+        public StringBuilder Text { get; } = new();
+        public List<string> Skipped { get; } = new();
+        public List<string> Plugins { get; } = new();
+        public List<string> Defaults { get; } = new();
+        public bool Waiting { get; set; }
+
+        public void NotRun(FxSlot slot, string? reason)
+        {
+            Skipped.Add(reason is null ? slot.Name : $"{slot.Name} ({reason})");
+            Text.Append($"# {Clean(slot.Name)}: not run by the APO{NewLine}");
+        }
+
+        /// <summary>
+        /// <paramref name="lines"/> blended with the sound before them: dry x (1 - mix) + processed x mix, per channel. A Copy keeps each
+        /// channel in a new virtual channel (a name the device does not have: Equalizer APO adds it and never plays it), the lines run on the
+        /// device's channels only (a Copy leaves the channel selection as it was), then a Copy mixes each channel back with its dry copy.
+        /// Channels are named by number, so any layout works.
+        /// </summary>
+        public string Blend(string name, double mix, string lines)
+        {
+            var id = ++_blends;
+            string Dry(int channel) => $"{DryPrefix}{id}_{channel}";
+            var all = Enumerable.Range(1, channels).ToList();
+            return $"# {Clean(name)}: mix {Num(mix * Core.Models.Percent.Max)} %, blended with the sound before it{NewLine}"
+                + $"Copy: {string.Join(' ', all.Select(c => $"{Dry(c)}={c}"))}{NewLine}"
+                + lines
+                + $"Copy: {string.Join(' ', all.Select(c => $"{c}={Num(1 - mix)}*{Dry(c)}+{Num(mix)}*{c}"))}{NewLine}";
+        }
     }
 
     /// <summary>
     /// A VST2 plug-in as Equalizer APO's <c>VSTPlugin:</c> command (VSTPluginFilterFactory.cpp at bbfcc3e): the full path of its .dll,
     /// then its saved settings, the program chunk as <c>ChunkData</c> or each parameter's name and value (Equalizer APO finds parameters
-    /// by name). Null, with the reason, when Equalizer APO can't run it: a wet mix below 100 %, a missing file, or a plug-in without the
-    /// entry point Equalizer APO calls (VSTPluginMain). <paramref name="withDefaults"/>: no settings are saved yet.
+    /// by name). Null, with the reason, when Equalizer APO can't run it: a missing file, or a plug-in without the entry point Equalizer
+    /// APO calls (VSTPluginMain). <paramref name="withDefaults"/>: no settings are saved yet.
     /// </summary>
     private static string? PluginLine(FxSlot slot, out string? reason, out bool withDefaults)
     {
         withDefaults = false;
-        reason = !FxCatalog.ApoCanMix(slot) ? null // said like every other effect with a wet mix below 100 %
-            : !System.IO.File.Exists(slot.Path) ? "its file is missing"
+        reason = !System.IO.File.Exists(slot.Path) ? "its file is missing"
             : !Vst2File.HasApoEntry(slot.Path) ? "Equalizer APO can't start this plug-in"
             : null;
-        if (!FxCatalog.ApoCanMix(slot) || reason is not null) return null;
+        if (reason is not null) return null;
         var line = new StringBuilder($"VSTPlugin: Library {Quoted(slot.Path)}");
         switch (SettingsOf(slot))
         {
@@ -123,12 +197,11 @@ public static class ApoChainWriter
     /// <summary>A part in quotes, as Equalizer APO splits a line (StringHelper::splitQuoted): a quote inside is written twice.</summary>
     private static string Quoted(string part) => $"\"{part.Replace("\"", "\"\"")}\"";
 
-    /// <summary>Lines for one slot, or null when this slot cannot be expressed (a wet mix below 100 %, an IR mixed below 100 % or missing).</summary>
+    /// <summary>Lines for one slot (its mix is the caller's), or null when this slot cannot be expressed (an unknown kind, an IR file that is missing).</summary>
     /// <param name="waiting">An IR file's Auto level is not measured yet.</param>
     private static IReadOnlyList<string>? LinesOf(FxSlot slot, IrLevels levels, out bool waiting)
     {
         waiting = false;
-        if (!FxCatalog.ApoCanMix(slot)) return null;
         if (FxCatalog.EqLayoutOf(slot) is { } eq) // every equaliser, parametric or graphic: its bands are ordinary bands
             return EqLines((slot.Bands ?? eq.Default()).Where(b => !EqMath.IsFlat(b)).ToList(), FxCatalog.EqGainOf(slot));
         switch (slot.Kind)
@@ -137,7 +210,7 @@ public static class ApoChainWriter
                 return new[] { $"Preamp: {Num(slot.Values.FirstOrDefault())} dB" };
             case FxCatalog.IrKind:
                 var stamp = Ir.IrFileStamp.Of(slot.Path);
-                if (IrParams.ValueOf(slot, IrParams.Mix) < Core.Models.Percent.Max || stamp == 0) return null; // its own Mix below 100 % cannot be expressed either
+                if (stamp == 0) return null;
                 var level = IrParams.IsOn(IrParams.ValueOf(slot, IrParams.AutoLevel)) ? levels.Of(slot.Path, stamp) : 0;
                 if (level is not { } autoDb)
                 {

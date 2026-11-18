@@ -15,7 +15,7 @@ public sealed partial class VolumePageViewModel
 {
     /// <summary>
     /// The install and remove steps at the foot of the master's Method menu: Equalizer APO's install (when it is missing), the virtual
-    /// cable's (Install VB-CABLE, or More cables once one is installed), Choose devices (Equalizer APO's Device Selector), Remove
+    /// cable's (Install VB-CABLE, or More cables once one is installed), Choose devices (Equalizer APO's Configurator), Remove
     /// VB-CABLE, then OmniControl APO's advanced install steps.
     /// </summary>
     private IReadOnlyList<CardAction> SetupSteps()
@@ -53,7 +53,7 @@ public sealed partial class VolumePageViewModel
         var apo = _support.Current?.Apo ?? ApoState.None;
         var missing = _support.Current is not null && EffectsRules.ApoMissing(apo) is not null;
         if (EffectsRules.DeviceSelectorFixes(apo))
-            actions.Add(new("Choose devices", "Opens Equalizer APO's Device Selector (administrator)",
+            actions.Add(new("Choose devices", "Opens Equalizer APO's Configurator (administrator)",
                 ChooseDevicesCommand, Main: missing));
         var none = !apo.UpstreamInstalled && !apo.AnyInstalled;
         if (missing && (none || apo.UpstreamInstalled && apo.UpstreamConfigFolder is null))
@@ -68,20 +68,18 @@ public sealed partial class VolumePageViewModel
         return actions;
     }
 
-    /// <summary>Equalizer APO's Device Selector (administrator): where it is put on playback devices and, on its Capture tab, on microphones.</summary>
+    /// <summary>Equalizer APO's Configurator (administrator): where it is put on playback devices and, on its Capture tab, on microphones.</summary>
     private IAsyncRelayCommand ChooseDevicesCommand => _chooseDevices ??=
         new AsyncRelayCommand(() => RunSetupAsync(null, _installer.ChooseEqualizerApoDevicesAsync()));
 
     private IAsyncRelayCommand? _chooseDevices;
     private CardAction? _speakerDevices;
     private CardAction? _cableDevices;
-    private CardAction? _installApo;
+    private IAsyncRelayCommand? _installApo;
 
-    /// <summary>Install Equalizer APO: its own installer when it was placed next to the app, else its download page.</summary>
-    private CardAction InstallApoAction => _installApo ??= new("Install Equalizer APO", EngineInstaller.EqualizerApoSetup is null
-            ? "Opens Equalizer APO's download page"
-            : "Runs Equalizer APO's own installer (administrator)",
-        new AsyncRelayCommand(InstallEqualizerApoAsync), Main: true);
+    /// <summary>Install Equalizer APO: the one shared step (<see cref="EngineInstaller.SetUpEqualizerApoAsync"/>), its tooltip saying what it opens now.</summary>
+    private CardAction InstallApoAction => new("Install Equalizer APO", _installer.SetUpTip,
+        _installApo ??= new AsyncRelayCommand(InstallEqualizerApoAsync), Main: true);
 
     /// <summary>
     /// The master's step when Equalizer APO can't run it on the speakers: Choose devices when its Device Selector fixes
@@ -93,7 +91,7 @@ public sealed partial class VolumePageViewModel
         var apo = _support.Current?.Apo ?? ApoState.None;
         if (EffectsRules.DeviceSelectorFixes(apo))
             return _speakerDevices ??= new CardAction("Choose devices",
-                "Opens Equalizer APO's Device Selector: tick your speakers on its Playback tab (administrator). A restart may be needed.",
+                "Opens Equalizer APO's Configurator: tick your speakers on its Playback tab (administrator). A restart may be needed.",
                 ChooseDevicesCommand);
         return apo.UpstreamInstalled ? null : InstallApoAction;
     }
@@ -125,15 +123,18 @@ public sealed partial class VolumePageViewModel
 
     private const string SetupFailedTitle = "The setup step didn't finish";
 
-    /// <summary>Install for Equalizer APO: a short confirmation only when its installer will run (the download page needs none).</summary>
     /// <summary>The same step from outside the page (an FX window's device menu): one install path.</summary>
     public Task InstallEqualizerApoStepAsync() => InstallEqualizerApoAsync();
 
+    /// <summary>
+    /// Install for Equalizer APO (<see cref="EngineInstaller.SetUpEqualizerApoAsync"/>: its Configurator when it is installed, else its
+    /// setup): a short confirmation only when its installer will run (the download page and the Configurator need none).
+    /// </summary>
     private async Task InstallEqualizerApoAsync()
     {
-        if (EngineInstaller.EqualizerApoSetup is not null
+        if (!_installer.EqualizerApoInstalled && EngineInstaller.EqualizerApoSetup is not null
             && !await _ask(new DialogMessage("Install Equalizer APO?", EngineInstaller.EqualizerApoConfirm, "Install"))) return;
-        await RunSetupAsync(null, _installer.InstallEqualizerApoAsync());
+        await RunSetupAsync(null, _installer.SetUpEqualizerApoAsync());
     }
 
     /// <summary>"Preview changes": what the advanced install would change; changes nothing.</summary>

@@ -6,7 +6,9 @@ namespace OmniControl.Core.Engine.Mouse;
 /// <summary>Acts on the window under the mouse pointer: minimise, maximise, close, keep on top.</summary>
 public static class WindowCommands
 {
-    [DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr hwnd, int command);
+    // Async forms only: the window belongs to another program, and a synchronous call waits for that program's UI thread (a hung app would
+    // stall the mouse queue, and every release behind it).
+    [DllImport("user32.dll")] private static extern bool ShowWindowAsync(IntPtr hwnd, int command);
     [DllImport("user32.dll")] private static extern bool IsZoomed(IntPtr hwnd);
     [DllImport("user32.dll")] private static extern bool PostMessage(IntPtr hwnd, uint message, UIntPtr w, IntPtr l);
     [DllImport("user32.dll")] private static extern int GetClassName(IntPtr hwnd, StringBuilder name, int max);
@@ -21,15 +23,15 @@ public static class WindowCommands
     private const uint LwaAlpha = 0x2;
     private const int MaxAlpha = 255, MinAlpha = 40; // below this a window is too faint to find again
     private const int SwMaximize = 3, SwMinimize = 6, SwRestore = 9, GwlExStyle = -20;
-    private const uint WmClose = 0x0010, SwpNoSize = 0x1, SwpNoMove = 0x2, SwpNoActivate = 0x10, ExTopmost = 0x8;
+    private const uint WmClose = 0x0010, SwpNoSize = 0x1, SwpNoMove = 0x2, SwpNoActivate = 0x10, SwpAsyncWindowPos = 0x4000, ExTopmost = 0x8;
     private static readonly IntPtr HwndTopmost = new(-1), HwndNoTopmost = new(-2);
 
     // Never act on the desktop or taskbar: closing or minimising those is never what a button mapping means.
     private static readonly string[] ProtectedClasses = { "Progman", "WorkerW", "Shell_TrayWnd", "Shell_SecondaryTrayWnd" };
 
-    public static void Minimize(int x, int y, bool activeWindow = false) => With(x, y, activeWindow, h => ShowWindow(h, SwMinimize));
+    public static void Minimize(int x, int y, bool activeWindow = false) => With(x, y, activeWindow, h => ShowWindowAsync(h, SwMinimize));
 
-    public static void ToggleMaximize(int x, int y, bool activeWindow = false) => With(x, y, activeWindow, h => ShowWindow(h, IsZoomed(h) ? SwRestore : SwMaximize));
+    public static void ToggleMaximize(int x, int y, bool activeWindow = false) => With(x, y, activeWindow, h => ShowWindowAsync(h, IsZoomed(h) ? SwRestore : SwMaximize));
 
     /// <summary>
     /// Scrolls whatever is under the pointer by one line, or one page (vertical or sideways), with the window's own scroll messages, for
@@ -62,7 +64,7 @@ public static class WindowCommands
         return PostMessage(target, horizontal ? WmMouseHWheel : WmMouseWheel, wParam, lParam);
     }
 
-    public static void Restore(int x, int y, bool activeWindow = false) => With(x, y, activeWindow, h => ShowWindow(h, SwRestore));
+    public static void Restore(int x, int y, bool activeWindow = false) => With(x, y, activeWindow, h => ShowWindowAsync(h, SwRestore));
 
     public static void Close(int x, int y, bool activeWindow = false) => With(x, y, activeWindow, h => PostMessage(h, WmClose, UIntPtr.Zero, IntPtr.Zero));
 
@@ -81,7 +83,7 @@ public static class WindowCommands
     public static void ToggleTopmost(int x, int y, bool activeWindow = false) => With(x, y, activeWindow, h =>
     {
         var onTop = ((long)GetWindowLongPtr(h, GwlExStyle) & ExTopmost) != 0;
-        SetWindowPos(h, onTop ? HwndNoTopmost : HwndTopmost, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate);
+        SetWindowPos(h, onTop ? HwndNoTopmost : HwndTopmost, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate | SwpAsyncWindowPos);
     });
 
     /// <summary>True for the desktop and taskbar windows, which no mouse action should minimise, close, fade or drag.</summary>

@@ -151,11 +151,15 @@ public sealed class EffectsEngine : IDisposable
     /// <summary>
     /// The playback device whose sound a display copy of the effect may be fed with (what you hear, after Equalizer APO): only for an
     /// effect Equalizer APO runs on the master, which OmniControl's own engine does not process. Null for everything else (a row in
-    /// OmniControl's own engine has the real sound; a program on a cable with Equalizer APO is not fed).
+    /// OmniControl's own engine has the real sound; a program on a cable with Equalizer APO is not fed). An effect in a device folder is fed
+    /// only while its folder runs, so the feed is always its own device's sound, scaled back by that device's own volume (<see cref="DisplayHold"/>).
     /// </summary>
     public string? DisplayDeviceOf(string? key, FxSlot slot) =>
         (key is null || key == MixerService.MasterKey) && _sentToApo.Contains(MixerService.MasterKey) && FxCatalog.EnginesOf(slot).HasFlag(FxEngines.Apo)
-            && _mixer.FxChain(null).Contains(slot) ? _masterApoDevice : null;
+            && FxFolders.ChainFor(_mixer.FxChain(null), _masterApoDevice).Contains(slot) ? _masterApoDevice : null;
+
+    /// <summary>Equalizer APO, where OmniControl writes chains, blends a mix below 100 % (<see cref="EffectsRules.ApoBlends"/>): the FX curves read it.</summary>
+    public bool ApoBlends => EffectsRules.ApoBlends(_support.Current?.Apo ?? Core.Engine.Apo.ApoState.None);
 
     /// <summary>The tap on the sound entering the effect in the row's own run now (the real signal); null when OmniControl's engine does not run it.</summary>
     internal SpectrumTap? OwnTapOf(string? key, FxSlot slot) =>

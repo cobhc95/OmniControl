@@ -296,7 +296,7 @@ public sealed partial class FxChainViewModel : ObservableObject, IDisposable, IP
     {
         var vm = new FxSlotViewModel(slot, SaveChain, _readings, _ties.Spectrum, this);
         if (slot.IsFolder && _ties.Devices is { } devices)
-            vm.Folder = new FxFolderViewModel(slot, devices, SaveChain, _ties.Mixer.OpenMixer, () => AddRequested?.Invoke(), s => Selected = s, _ties.Mixer.InstallApo, Renumber, () => SaveFolderAsPreset(slot));
+            vm.Folder = new FxFolderViewModel(slot, devices, SaveChain, _ties.Mixer, () => AddRequested?.Invoke(), s => Selected = s, Renumber, () => SaveFolderAsPreset(slot));
         return vm;
     }
 

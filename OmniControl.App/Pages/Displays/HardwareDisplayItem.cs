@@ -25,6 +25,7 @@ internal sealed partial class HardwareDisplayItem
     private readonly IHardwareAccess _access;
     private readonly LevelStepper _levels;
     private readonly OsdService _osd;
+    private readonly SystemScreens _screens;
     private readonly Action<string> _report;
     private readonly Action _groupsChanged;
     private readonly Action _valuesChanged;
@@ -48,8 +49,11 @@ internal sealed partial class HardwareDisplayItem
     /// <summary>True once the monitor has said it takes DDC power commands (VCP 0xD6). Never the built-in panel: Windows has no per-screen way to switch it off and on again.</summary>
     public bool HasScreenPower { get; private set; }
 
-    /// <summary>Whether the screen is on as far as this program knows: what the monitor said when it was read, then the last command sent from here (a press of the monitor's own button is not seen); null while not known.</summary>
-    public bool? ScreenOn => HasScreenPower ? _screenOn : null;
+    /// <summary>
+    /// Whether this screen is on: off while Windows says the screens are all off (whoever did it), else what the monitor said when it was read
+    /// (VCP 0xD6) and the last command sent from here; null while not known. A press of the monitor's own button is seen at the next read.
+    /// </summary>
+    public bool? ScreenOn => HasScreenPower ? (_screens.IsOff ? false : _screenOn) : null;
 
     /// <summary>Every card this display could have, whether it reports the control or not.</summary>
     public IReadOnlyList<IEditorItem> Cards { get; }
@@ -61,10 +65,10 @@ internal sealed partial class HardwareDisplayItem
     /// <param name="valuesChanged">Called on the UI thread when a value the display shows changed (a card was used or a hotkey stepped it).</param>
     /// <param name="orientation">The display's Orientation card, which Windows (not DDC/CI) answers, so it is available whatever the monitor reports.</param>
     public HardwareDisplayItem(string id, string name, IHardwareAccess access, DisplayOrientationCard orientation, LevelStepper levels, OsdService osd,
-        Action<string> report, Action groupsChanged, Action valuesChanged)
+        SystemScreens screens, Action<string> report, Action groupsChanged, Action valuesChanged)
     {
-        (Id, Name, _access, _orientation, _levels, _osd, _report, _groupsChanged, _valuesChanged) =
-            (id, name, access, orientation, levels, osd, report, groupsChanged, valuesChanged);
+        (Id, Name, _access, _orientation, _levels, _osd, _screens, _report, _groupsChanged, _valuesChanged) =
+            (id, name, access, orientation, levels, osd, screens, report, groupsChanged, valuesChanged);
 
         var cards = new List<IEditorItem>();
         foreach (var level in DisplayControls.Hardware)
@@ -149,7 +153,7 @@ internal sealed partial class HardwareDisplayItem
             ShowChoice(card, capabilities, choice.Feature.Code, _values[choice], reason);
         }
         HasScreenPower = !IsLaptopPanel && capabilities.Has(VcpCode.PowerMode);
-        _screenOn = HasScreenPower ? capabilities.Features[VcpCode.PowerMode].Current != VcpCode.Power.Off : null;
+        _screenOn = HasScreenPower ? !VcpCode.Power.IsOff(capabilities.Features[VcpCode.PowerMode].Current) : null;
 
         ShowGroups();
     }
@@ -217,12 +221,53 @@ internal sealed partial class HardwareDisplayItem
         ? "No power switch for this screen: Windows has no way to turn the built-in panel off and on on its own. Use Turn off displays for all screens."
         : "No power switch for this screen: the monitor does not report DDC power control.";
 
-    /// <summary>Switches the screen off (it sleeps; its button or input wakes it) or on again, over DDC power; nothing when the monitor has no power control.</summary>
+    /// <summary>
+    /// Switches this one screen off (it sleeps; its button or input wakes it) or on again, over DDC power; nothing when the monitor has no
+    /// power control. While Windows has all screens off a monitor gets no signal to answer DDC, so "on" wakes the screens instead and the
+    /// monitors are read again when Windows says they are on. A command the monitor refused is taken back and reported.
+    /// </summary>
     public void SetScreenOn(bool on)
     {
         if (!HasScreenPower) return;
+        var before = _screenOn;
         _screenOn = on;
-        WriteRaw(VcpCode.PowerMode, on ? VcpCode.Power.On : VcpCode.Power.Off);
+        if (on && _screens.IsOff) _screens.WakeUp();
+        else Task.Run(() =>
+        {
+            var result = _access.WriteRaw(VcpCode.PowerMode, on ? VcpCode.Power.On : VcpCode.Power.Off);
+            if (result.Success) return;
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (_disposed) return;
+                _screenOn = before;
+                _report(result.Message);
+                Shown();
+            });
+        });
+        Shown();
+    }
+
+    /// <summary>Windows said the screens went off, came on or dimmed: the switch follows at once, and a screen that is on is read again (it may have been switched off by itself before).</summary>
+    public void ScreensChanged()
+    {
+        _main?.RefreshMaster();
+        if (HasScreenPower && !_screens.IsOff) Task.Run(ReadScreenPower);
+    }
+
+    /// <summary>Asks the monitor its power mode (VCP 0xD6) and shows the answer; an unanswered read keeps what is known (worker thread).</summary>
+    private void ReadScreenPower()
+    {
+        if (_access.ReadRaw(VcpCode.PowerMode) is not { } mode) return;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_disposed) return;
+            _screenOn = !VcpCode.Power.IsOff(mode);
+            Shown();
+        });
+    }
+
+    private void Shown()
+    {
         _main?.RefreshMaster();
         _valuesChanged();
     }

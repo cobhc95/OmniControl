@@ -187,7 +187,7 @@ public sealed partial class EasySound : ObservableObject, IDisposable
         ShowCurve();
     }
 
-    private void ShowCurve() => Curve?.Show(_mixer.FxChain(_key), _engine.MethodFor(_key).Engine, _mixer.IsFxOn(_key));
+    private void ShowCurve() => Curve?.Show(_mixer.FxChain(_key), _engine.MethodFor(_key).Engine, _engine.ApoBlends, _mixer.IsFxOn(_key));
 
     public void Dispose()
     {

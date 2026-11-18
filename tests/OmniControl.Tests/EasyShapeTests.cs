@@ -175,16 +175,16 @@ public class EasyShapeTests
         owner.Values[0] = 2;
         var chain = new List<FxSlot> { owner };
         using var chart = new FxAnalysisViewModel(() => RowLoad.None);
-        chart.Show(chain, FxEngines.Program, true);
-        var shared = ChainResponse.Of(chain, FxEngines.Program, FxAnalysisViewModel.Freqs);
+        chart.Show(chain, FxEngines.Program, true, true);
+        var shared = ChainResponse.Of(chain, FxEngines.Program, true, FxAnalysisViewModel.Freqs);
         Assert.Equal(shared.Db, chart.Curve);
         Assert.Equal(shared.PeakDb, chart.PeakDb);
         Assert.True(chart.PeakDb > 12, "the +17 dB hump is in the chart");
         Assert.True(chart.ScaleDb > FxAnalysisViewModel.DefaultScaleDb, "the scale widens for it as the FX window's does");
 
         owner.Bands[1].Gain = 0; // an edit in the FX window: showing again follows it
-        chart.Show(chain, FxEngines.Program, true);
-        Assert.Equal(ChainResponse.Of(chain, FxEngines.Program, FxAnalysisViewModel.Freqs).Db, chart.Curve);
+        chart.Show(chain, FxEngines.Program, true, true);
+        Assert.Equal(ChainResponse.Of(chain, FxEngines.Program, true, FxAnalysisViewModel.Freqs).Db, chart.Curve);
     }
 
     private sealed class FakeMixer : IEasyMixer

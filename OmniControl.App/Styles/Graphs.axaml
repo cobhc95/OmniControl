@@ -19,11 +19,11 @@
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="VerticalContentAlignment" Value="Stretch" />
         <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
     </Style>
     <Style Selector="Button.graphthumb /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
     </Style>
     <Style Selector="Button.graphthumb:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />

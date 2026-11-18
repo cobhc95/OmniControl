@@ -108,7 +108,11 @@ public static class ApoApplier
     {
         using var process = Process.Start(new ProcessStartInfo("regsvr32.exe", arguments) { UseShellExecute = false, CreateNoWindow = true })
                             ?? throw new InvalidOperationException("regsvr32 did not start.");
-        process.WaitForExit();
+        if (!process.WaitForExit(CoreTiming.ElevatedHelperTimeoutMs))
+        {
+            process.Kill();
+            throw new InvalidOperationException($"regsvr32 {arguments} did not finish in time.");
+        }
         if (process.ExitCode != 0) throw new InvalidOperationException($"regsvr32 {arguments} returned {process.ExitCode}.");
     }
 

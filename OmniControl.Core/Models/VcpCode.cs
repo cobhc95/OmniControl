@@ -23,5 +23,8 @@ public static class VcpCode
     {
         public const uint On = 0x01;
         public const uint Off = 0x04;
+
+        /// <summary>Standby (2), suspend (3) and off (4, 5) are all a screen that is not showing; on is only 1. An unknown value is not called off.</summary>
+        public static bool IsOff(uint value) => value is >= 2 and <= 5;
     }
 }

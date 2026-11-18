@@ -7,17 +7,17 @@ public enum StateKind { OnOff, Level, Choice }
 /// One reading of a state: a number (on/off as 1 or 0, a level) and/or a text (on/off as "on"/"off", a choice), and when the owner last
 /// read or set it (null: the owner does not say). Two readings are the same value when number and text match; the time is not compared.
 /// </summary>
-public sealed record StateValue(double? Number, string? Text, DateTime? At = null)
+public sealed record StateValue(double? Number, string? Text, DateTime? At = null, string? Subject = null)
 {
     public const string OnWord = "on", OffWord = "off";
 
-    public static StateValue Of(bool on, DateTime? at = null) => new(on ? 1 : 0, on ? OnWord : OffWord, at);
+    public static StateValue Of(bool on, DateTime? at = null, string? subject = null) => new(on ? 1 : 0, on ? OnWord : OffWord, at, subject);
 
     public static StateValue Of(double level, DateTime? at = null) => new(level, null, at);
 
     public static StateValue Of(string choice, DateTime? at = null) => new(null, choice, at);
 
-    public bool SameValue(StateValue? other) => other is not null && Number == other.Number && Text == other.Text;
+    public bool SameValue(StateValue? other) => other is not null && Number == other.Number && Text == other.Text && Subject == other.Subject;
 }
 
 /// <summary>
@@ -31,8 +31,11 @@ public sealed record StateValue(double? Number, string? Text, DateTime? At = nul
 public sealed record StateEntry(string Id, string Name, string Group, StateKind Kind, Func<StateValue?> Read, string HowKnown,
     string? Heading = null, int Min = 0, int Max = 100, string Unit = "", Func<IReadOnlyList<string>>? Choices = null, string Keywords = "",
     Action<StateValue>? Set = null, string? Short = null, string? Icon = null, IReadOnlyList<string>? SuggestedIcons = null, StateRecheck? Recheck = null,
-    Func<StateLiveness>? Liveness = null, bool ScreenPower = false, string? Common = null, Services.RemotePcLabel? RemotePc = null)
+    Func<StateLiveness>? Liveness = null, bool ScreenPower = false, string? Common = null, Services.RemotePcLabel? RemotePc = null, string? Compact = null, OnOffIcons? StateIcons = null)
 {
+    // Compact: the one or two words a half-width card or a state button uses ("Sound", "Mic"; the icon carries the rest, the tooltip the full name); null = the Name.
+    // StateIcons: an on/off state's icon for each value (a state button shows the one of the value now: "mute" while muted, "volume" while not); null = none.
+
     /// <summary>What a tight place calls the state.</summary>
     public string ShortName => Short ?? Name;
 
@@ -63,6 +66,9 @@ public sealed record StateRecheck(Func<bool> CanCheck, Func<Task> CheckAsync);
 /// <see cref="StateRegistry.NotifyLiveness"/> when it changes. A state without one is always sure and calm.
 /// </summary>
 public sealed record StateLiveness(bool Acting, bool Reading, string? Failure, string? NotSure);
+
+/// <summary>The icons of an on/off state for each of its values (library ids).</summary>
+public sealed record OnOffIcons(string On, string Off);
 
 /// <summary>A state's value changed: the reading before (null: not known) and now, and the chain of rules whose run caused it, when known.</summary>
 public sealed record StateChange(StateEntry Entry, StateValue? Before, StateValue? After, Hotkeys.RunChain? Chain);

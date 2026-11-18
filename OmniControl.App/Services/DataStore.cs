@@ -104,13 +104,17 @@ public static class DataStores
     public static readonly DataStore PointerSwapTrial = new("pointer-swap-trial.json", "Button swap trial", StoreKind.Safety);
     public static readonly DataStore TrackpadOriginal = new("trackpad-settings-original.json", "Original trackpad settings", StoreKind.Safety);
 
+    public static readonly DataStore WindowsOsdHidden = new("windows-osd-hidden.json", "Windows' volume pop-up moved off screen (to put back)", StoreKind.Safety);
+
+    public static readonly DataStore WakeUndo = new("wake-undo.json", "Wake settings OmniControl changed on this PC (to put back)", StoreKind.Safety);
+
     public static readonly DataStore PowerJournal = new("power-journal.json", "Power journal (sleeps, wakes, log-ins)", StoreKind.Record);
 
     public static IReadOnlyList<DataStore> All { get; } = new[]
     {
         App, Mixer, EffectPresets, VolumePresets, Plugins, Automation, GestureRules, Gestures, Hotkeys, HotkeySets, Mouse, Displays, Osd,
         AppLists, AppActions, PowerPlans, RecentActions, Devices, Screenshots, Tray, Icons, MicMuteKey, OtherPcs, Confirmations, MixerBeforeRestore, BeforeRestore, EngineJournal, SoftwareDisplay, PointerOriginal,
-        PointerSwapTrial, TrackpadOriginal, PowerJournal,
+        PointerSwapTrial, TrackpadOriginal, WindowsOsdHidden, WakeUndo, PowerJournal,
     };
 
     /// <summary>The stores a backup holds.</summary>

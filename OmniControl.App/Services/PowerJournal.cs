@@ -54,6 +54,7 @@ public sealed class PowerJournal : IPowerEvents, IDisposable
     private readonly Func<DateTime> _boot;
     private readonly int _session;
     private readonly object _gate = new();
+    private readonly object _saveGate = new(); // taken before _gate, never inside it
     private readonly HardwareWatches? _hardware;
     private Timer? _expire;
 
@@ -171,16 +172,23 @@ public sealed class PowerJournal : IPowerEvents, IDisposable
         if (_data.Entries.Count > Kept) _data.Entries.RemoveRange(0, _data.Entries.Count - Kept);
     }
 
+    /// <summary>
+    /// One writer at a time: several listeners (a wake is told by three channels at once), the start-up look and the log-in check all save,
+    /// and two saves of one file at once collided on its temp file. The copy is taken inside the writer's lock, so the last save is the newest.
+    /// </summary>
     private void Save()
     {
-        PowerJournalData copy;
-        lock (_gate)
-            copy = new PowerJournalData
-            {
-                Entries = _data.Entries.Select(e => new PowerJournalEntry { At = e.At, Kind = e.Kind, Channels = e.Channels, Detail = e.Detail }).ToList(),
-                EventLogUpTo = _data.EventLogUpTo, LoginBoot = _data.LoginBoot, LoginSession = _data.LoginSession,
-            };
-        _save(copy);
+        lock (_saveGate)
+        {
+            PowerJournalData copy;
+            lock (_gate)
+                copy = new PowerJournalData
+                {
+                    Entries = _data.Entries.Select(e => new PowerJournalEntry { At = e.At, Kind = e.Kind, Channels = e.Channels, Detail = e.Detail }).ToList(),
+                    EventLogUpTo = _data.EventLogUpTo, LoginBoot = _data.LoginBoot, LoginSession = _data.LoginSession,
+                };
+            _save(copy);
+        }
     }
 
     /// <summary>Start-up: what happened while OmniControl was not running, from the journal, the time since Windows started and the event log.</summary>

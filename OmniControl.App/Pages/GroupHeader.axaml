@@ -16,6 +16,11 @@
                            TextTrimming="CharacterEllipsis" IsVisible="{Binding SummaryBesideName}" />
                 <TextBlock Text="{Binding ShownSummary}" Classes="muted" FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center"
                            IsVisible="{Binding !SummaryBesideName}" />
+                <StackPanel Classes="groupbadge" Classes.good="{Binding Badge.IsGood}" Classes.caution="{Binding Badge.IsCaution}" Orientation="Horizontal" Spacing="5"
+                            HorizontalAlignment="Right" VerticalAlignment="Center" IsVisible="{Binding HasBadge}" ToolTip.Tip="{Binding Badge.Tip}">
+                    <c:IconGlyph LibraryId="{Binding Badge.Icon}" />
+                    <TextBlock Text="{Binding Badge.Text}" FontSize="12" VerticalAlignment="Center" />
+                </StackPanel>
             </Panel>
         </Grid>
     </Button>

@@ -39,12 +39,20 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
-        <TextBlock Grid.Row="3" Classes="statusline" Text="{Binding Status}" IsVisible="{Binding HasStatus}" TextWrapping="Wrap" />
+        <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" IsVisible="{Binding HasStatus}">
+            <Panel Classes="tilemark" Margin="0" VerticalAlignment="Center" IsVisible="{Binding Busy}">
+                <Ellipse Classes="markring" />
+                <Path Classes="markarc" />
+            </Panel>
+            <TextBlock Grid.Column="1" Classes="statusline" Text="{Binding Status}" TextWrapping="Wrap" VerticalAlignment="Center" />
+            <Button Grid.Column="2" Classes="pill" Content="Stop" Command="{Binding StopCommand}" IsVisible="{Binding Busy}" ToolTip.Tip="Stops and puts back anything half-done." />
+        </Grid>
         <Border Grid.Row="4" Classes="footer">
-            <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="8">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="8">
                 <Button Classes="pill" Content="Check again" Command="{Binding CheckAgainCommand}" IsVisible="{Binding IsOnline}" ToolTip.Tip="Asks that PC to read its network card again." />
-                <Button Grid.Column="1" Classes="pill accentline" Content="Fix all" Command="{Binding FixAllCommand}" IsVisible="{Binding IsOnline}" ToolTip.Tip="Turns on every needed row with one prompt on that PC." />
-                <Button Grid.Column="3" Classes="primary close" Content="Close" Click="OnCloseClick" />
+                <Button Grid.Column="1" Classes="pill" Content="Undo my changes" Command="{Binding UndoCommand}" IsVisible="{Binding CanUndo}" ToolTip.Tip="Puts back exactly the settings OmniControl turned on, with one prompt on that PC." />
+                <Button Grid.Column="2" Classes="pill accentline" Content="Fix all" Command="{Binding FixAllCommand}" IsVisible="{Binding IsOnline}" ToolTip.Tip="Turns on every needed row with one prompt on that PC." />
+                <Button Grid.Column="4" Classes="primary close" Content="Close" Click="OnCloseClick" />
             </Grid>
         </Border>
     </Grid>

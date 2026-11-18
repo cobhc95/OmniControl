@@ -31,7 +31,7 @@ public sealed class DynamicsMeter : ItemDrawing<DynamicsItem>
     {
         var size = Bounds.Size;
         if (Item is not { } item || size.Width < 4 || size.Height < 2) return;
-        ctx.DrawRectangle(DrawKit.Brush(this, "BrushBackground"), new Pen(DrawKit.Brush(this, "BrushDivider"), Thickness), new Rect(size), Radius, Radius);
+        ctx.DrawRectangle(DrawKit.Brush(this, "BrushBackground"), new Pen(DrawKit.Brush(this, "BrushControlEdge"), Thickness), new Rect(size), Radius, Radius);
         var reduction = Kind == DynamicsMeterKind.GainReduction;
         var fraction = reduction ? item.ReductionFraction : item.LevelFraction;
         if (fraction <= 0) return;

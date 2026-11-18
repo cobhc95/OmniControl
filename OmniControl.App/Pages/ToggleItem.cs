@@ -23,7 +23,13 @@ public sealed partial class ToggleItem : ObservableObject, IEditorItem, IHalfWid
     /// <summary>True: the card takes half the width and may share a row with the next half-width card.</summary>
     public bool Half { get; init; }
 
-    [ObservableProperty] private bool _isOn;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(StateWords))] private bool _isOn;
+
+    /// <summary>What the switch acts on ("Default microphone: Blue Yeti"), put before On/Off in a half-width card's tooltip; empty: none. May change while shown.</summary>
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(StateWords))] private string _subject = string.Empty;
+
+    /// <summary>"On" or "Off": the tooltip of a half-width card's switch, which has no words of its own.</summary>
+    public string StateWords => Subject.Length > 0 ? $"{Subject} · {(IsOn ? "On" : "Off")}" : IsOn ? "On" : "Off";
 
     public ToggleItem(string label, bool isOn, Action<bool> apply)
     {

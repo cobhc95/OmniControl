@@ -56,6 +56,12 @@ public sealed class OsdSettings
 
     public static int ClampOpacity(int percent) => Math.Clamp(percent, MinOpacity, Percent.Max);
 
+    /// <summary>How long the pop-up stays, in seconds, when no exception matches ("Everything else"; <see cref="OsdDuration"/>).</summary>
+    public double Duration { get; set; } = OsdDuration.Default;
+
+    /// <summary>The exceptions of the duration, per app or per event, in order: the first that matches wins.</summary>
+    public List<OsdDurationRule> Durations { get; set; } = new();
+
     /// <summary>Elements the user excluded from the OSD (everything else is shown).</summary>
     public List<string> Excluded { get; set; } = new();
 

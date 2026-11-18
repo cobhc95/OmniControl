@@ -107,6 +107,26 @@ public sealed class HardwareWatches : IDisposable
     /// </summary>
     public event Action<PowerSignal>? Power;
 
+    private int _screens = (int)ScreenLight.Unknown;
+
+    /// <summary>What Windows last said about the console's screens as a whole, whoever turned them off (Windows' display-state notice; Unknown until it has said anything).</summary>
+    public ScreenLight Screens => (ScreenLight)Volatile.Read(ref _screens);
+
+    /// <summary>The screens went off, came on or dimmed (raised on a listener's thread; handlers must return at once). Not raised again for the same state.</summary>
+    public event Action? ScreensChanged;
+
+    private void NoteScreens(PowerSignal signal)
+    {
+        var light = signal.Kind switch
+        {
+            PowerEventKind.DisplayOff => ScreenLight.Off,
+            PowerEventKind.DisplayOn => ScreenLight.On,
+            PowerEventKind.DisplayDimmed => ScreenLight.Dimmed,
+            _ => ScreenLight.Unknown,
+        };
+        if (light != ScreenLight.Unknown && Interlocked.Exchange(ref _screens, (int)light) != (int)light) ScreensChanged?.Invoke();
+    }
+
     /// <summary>The watches, in the order they were registered.</summary>
     public IReadOnlyList<HardwareWatch> Watches
     {
@@ -296,6 +316,7 @@ public sealed class HardwareWatches : IDisposable
     /// </summary>
     private void OnPower(PowerSignal signal)
     {
+        NoteScreens(signal);
         if (signal.Kind == PowerEventKind.DisplayOn) Signal(HardwareSignal.DisplayPower, signal.Detail);
         else if (signal.Kind == PowerEventKind.ClockGap) Signal(HardwareSignal.Resume, $"clock gap, {signal.Detail}");
         Power?.Invoke(signal);

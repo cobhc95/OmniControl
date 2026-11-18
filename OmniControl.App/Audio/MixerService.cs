@@ -47,7 +47,7 @@ public sealed partial class MixerService : IDisposable
         _hardware = hardware;
         _timer.Tick += (_, _) => Scan();
         foreach (var key in Settings.Apps.Select(a => a.Key).Where(IgnoredPrograms.Contains).ToList()) Remove(key); // remembered by an older version
-        Scan();
+        ScanNow(); // the first look is complete before the pages are built
         if (StartupMode.Inert) return; // a screenshot export keeps the first look and watches nothing
         _timer.Start();
         StartWatching();
@@ -76,29 +76,23 @@ public sealed partial class MixerService : IDisposable
         return true;
     }
 
-    public void Scan()
+    /// <summary>
+    /// UI thread: takes what a scan read (<see cref="ScanRead"/>, made on a worker) into the mixer: the device lists, the programs'
+    /// sessions (the session objects themselves are made again here only when a program opened, closed, started or stopped playing,
+    /// since Windows' session objects can't be used from another thread), saved settings put back on programs that just opened, and
+    /// volumes changed elsewhere taken in. Raises <see cref="Updated"/>.
+    /// </summary>
+    private void Apply(ScanRead read)
     {
+        if (read.Ticket < _appliedTicket) return; // an older read that finished after a newer one
+        _appliedTicket = read.Ticket;
         try
         {
-            Devices = CoreAudio.Devices();
-            RecordingDevices = CoreAudio.InputDevices();
+            Devices = read.Devices;
+            RecordingDevices = read.RecordingDevices;
             RememberNames();
-            var live = CoreAudio.Sessions();
-
-            _sessions.Clear();
-            var livePids = new HashSet<int>();
-            foreach (var s in live)
-            {
-                if (s.ProcessId == Environment.ProcessId) continue; // OmniControl's own effects playback is not a program row
-                livePids.Add(s.ProcessId);
-                if (PathOf(s.ProcessId) is not { } path) continue;
-                var key = AppAudioEntry.KeyFor(path);
-                if (IgnoredPrograms.Contains(key)) continue;
-                if (!_sessions.TryGetValue(key, out var list)) _sessions[key] = list = new();
-                list.Add(s);
-            }
-            _applied.IntersectWith(livePids);
-            foreach (var pid in _paths.Keys.Where(p => !livePids.Contains(p)).ToList()) _paths.Remove(pid);
+            foreach (var (pid, path) in read.Paths) _paths.TryAdd(pid, path);
+            if (!SameSessions(read.Sessions)) Regroup();
 
             var changed = false;
             foreach (var (key, list) in _sessions)
@@ -166,6 +160,26 @@ public sealed partial class MixerService : IDisposable
             Guard.Log("Scanning programs and devices", ex); // keep the last known state
         }
         Updated?.Invoke();
+    }
+
+    /// <summary>Makes the programs' session objects again on this (UI) thread and groups them by program; forgets what belonged to processes that are gone.</summary>
+    private void Regroup()
+    {
+        var live = CoreAudio.Sessions().Where(s => s.ProcessId != Environment.ProcessId).ToList(); // OmniControl's own effects playback is not a program row
+        _heldSessions = SessionKey.Sorted(live.Select(SessionKey.Of));
+        _sessions.Clear();
+        var livePids = new HashSet<int>();
+        foreach (var s in live)
+        {
+            livePids.Add(s.ProcessId);
+            if (PathOf(s.ProcessId) is not { } path) continue;
+            var key = AppAudioEntry.KeyFor(path);
+            if (IgnoredPrograms.Contains(key)) continue;
+            if (!_sessions.TryGetValue(key, out var list)) _sessions[key] = list = new();
+            list.Add(s);
+        }
+        _applied.IntersectWith(livePids);
+        foreach (var pid in _paths.Keys.Where(p => !livePids.Contains(p)).ToList()) _paths.Remove(pid);
     }
 
     // ---- changes made by the user ----
@@ -346,6 +360,7 @@ public sealed partial class MixerService : IDisposable
 
     public void Dispose()
     {
+        _disposed = true;
         _timer.Stop();
         StopWatching();
     }

@@ -27,8 +27,8 @@ public sealed class TrackpadService : IDisposable
     private readonly MouseHook _hook;
     private readonly HardwareWatches _hardware;
     private readonly MouseService _mouse;
-    private readonly ITouchpadSettingsStore _store = new TouchpadSettingsStore();
     private readonly TrackpadLog _log = new();
+    private readonly ITouchpadSettingsStore _store;
     private readonly GestureTakeover _takeover;
     private readonly ShellSurfaceGuard _guard;
     private readonly TouchpadSettingsWatcher _settingsWatcher;
@@ -55,6 +55,7 @@ public sealed class TrackpadService : IDisposable
     /// <param name="hardware">The master list of hardware watches: the service registers the touchpads there and tells it when one comes or goes.</param>
     public TrackpadService(MouseHook hook, MouseService mouse, HardwareWatches hardware)
     {
+        _store = new TouchpadSettingsStore(_log.Write);
         _hook = hook;
         _mouse = mouse;
         _hardware = hardware;
