@@ -1,0 +1,24 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:OmniControl.App.Shared.Ui.Controls">
+    <!-- MASTER design of a caution fact said in words (TextBlock.cautiontext: an Easy check line's to-do mark), the tags' caution colour. Included after Theme.axaml. -->
+    <Style Selector="TextBlock.cautiontext"><Setter Property="Foreground" Value="{DynamicResource BrushCaution}" /></Style>
+    <!-- c|IconGlyph.cautionmark = the small caution triangle after a control's words (the Wake pill when the wake is not confirmed). -->
+    <Style Selector="c|IconGlyph.cautionmark"><Setter Property="Foreground" Value="{DynamicResource BrushCaution}" /><Setter Property="Width" Value="11" /><Setter Property="Height" Value="11" /></Style>
+    <!-- TextBlock.goodtext / .badtext = a good / failed fact in words (an import area that was checked / not applied); Path.glyph.failmark = the red cross mark of a line that failed (the import result). -->
+    <Style Selector="TextBlock.goodtext"><Setter Property="Foreground" Value="{DynamicResource BrushOn}" /></Style>
+    <Style Selector="TextBlock.badtext"><Setter Property="Foreground" Value="{DynamicResource BrushDanger}" /></Style>
+    <Style Selector="Path.glyph.failmark">
+        <Setter Property="Stroke" Value="{DynamicResource BrushDanger}" />
+        <Setter Property="Width" Value="{DynamicResource MenuGlyphSize}" />
+        <Setter Property="Height" Value="{DynamicResource MenuGlyphSize}" />
+        <Setter Property="StrokeThickness" Value="1.75" />
+    </Style>
+    <!-- The marks of a checklist line (Other PCs' Tailscale checks): c|IconGlyph.cautionmark = a failing check, Ellipse.pendingdot = not known yet; a passing one is Path.glyph.tickmark. -->
+    <Style Selector="c|IconGlyph.cautionmark"><Setter Property="Foreground" Value="{DynamicResource BrushCaution}" /></Style>
+    <Style Selector="Ellipse.pendingdot">
+        <Setter Property="Width" Value="5" />
+        <Setter Property="Height" Value="5" />
+        <Setter Property="Fill" Value="{DynamicResource BrushMuted}" />
+    </Style>
+</Styles>

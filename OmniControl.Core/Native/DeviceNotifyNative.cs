@@ -1,17 +1,13 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Native;
 
-/// <summary>
 /// user32's device-interface notice: a window asks to be told when a device of one interface class (the monitors) arrives or leaves.
 /// Without it Windows only broadcasts "something changed" (DBT_DEVNODES_CHANGED), never which kind.
-/// </summary>
 internal static class DeviceNotifyNative
 {
-    /// <summary>GUID_DEVINTERFACE_MONITOR: every monitor Windows knows, whether or not it is on the desktop yet.</summary>
+    /// GUID_DEVINTERFACE_MONITOR: every monitor Windows knows, whether or not it is on the desktop yet.
     public static readonly Guid MonitorInterface = new("E6F07B5F-EE97-4A90-B076-33F57BF4EAA7");
 
-    /// <summary>DBT_DEVTYP_DEVICEINTERFACE: the notice's header says the device is an interface of a registered class.</summary>
+    /// DBT_DEVTYP_DEVICEINTERFACE: the notice's header says the device is an interface of a registered class.
     public const int DeviceInterfaceType = 5;
 
     private const uint NotifyWindowHandle = 0; // DEVICE_NOTIFY_WINDOW_HANDLE
@@ -36,14 +32,14 @@ internal static class DeviceNotifyNative
     [DllImport("user32.dll", SetLastError = true)]
     public static extern bool UnregisterDeviceNotification(IntPtr handle);
 
-    /// <summary>Asks Windows to tell <paramref name="window"/> when a device of <paramref name="interfaceClass"/> arrives or leaves; zero when refused.</summary>
+    /// Asks Windows to tell <paramref name="window"/> when a device of <paramref name="interfaceClass"/> arrives or leaves; zero when refused.
     public static IntPtr RegisterForInterface(IntPtr window, Guid interfaceClass)
     {
         var filter = new BroadcastInterfaceFilter { Size = Marshal.SizeOf<BroadcastInterfaceFilter>(), DeviceType = DeviceInterfaceType, ClassGuid = interfaceClass };
         return RegisterDeviceNotification(window, ref filter, NotifyWindowHandle);
     }
 
-    /// <summary>The kind of device a WM_DEVICECHANGE arrival or removal is about (its header's device type); null when it carries none.</summary>
+    /// The kind of device a WM_DEVICECHANGE arrival or removal is about (its header's device type); null when it carries none.
     public static int? DeviceTypeOf(IntPtr broadcast) =>
         broadcast == IntPtr.Zero ? null : Marshal.PtrToStructure<BroadcastHeader>(broadcast).DeviceType;
 }

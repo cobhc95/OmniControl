@@ -1,11 +1,7 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// Stops Windows putting the PC to sleep on its own while on (the screens may still turn off). SetThreadExecutionState holds for the
 /// thread that calls it, so one dedicated thread makes every call and, when it ends, Windows forgets the request: nothing stays held after exit.
-/// </summary>
 public sealed class KeepAwake : IDisposable
 {
     private const uint Continuous = 0x80000000, SystemRequired = 0x00000001;

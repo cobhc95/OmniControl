@@ -1,12 +1,10 @@
-using System.Runtime.InteropServices;
 using OmniControl.Core.Engine.Mouse;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>Where a window was on screen (its top-left corner and size), so it can be put back exactly.</summary>
+/// Where a window was on screen (its top-left corner and size), so it can be put back exactly.
 public readonly record struct WindowPlace(int Left, int Top, int Width, int Height);
 
-/// <summary>
 /// The Windows 11 pop-up windows that may be Windows' own volume and brightness pop-up: top-level, untitled Explorer windows of class
 /// XamlExplorerHostIslandWindow holding a DesktopWindowContentBridge "DesktopWindowXamlSource" with an InputSite child, owned by
 /// explorer.exe or ShellExperienceHost.exe. Explorer uses the same kind of window for other surfaces too (the taskbar's thumbnail previews,
@@ -16,14 +14,13 @@ public readonly record struct WindowPlace(int Left, int Top, int Width, int Heig
 /// A window is hidden only by moving it off screen (<see cref="Park"/>) and put back by moving it to where it was (<see cref="MoveTo"/>): its
 /// show state, size, z-order and the foreground are never changed, every move is asynchronous and nothing here sends Explorer a message
 /// or waits on it.
-/// </summary>
 public static class WindowsOsdWindows
 {
     private const string HostClass = "XamlExplorerHostIslandWindow";
     private const string BridgeClass = "Windows.UI.Composition.DesktopWindowContentBridge", BridgeTitle = "DesktopWindowXamlSource";
     private const string InputSiteClass = "Windows.UI.Input.InputSite.WindowClass";
 
-    /// <summary>Where a hidden pop-up is parked: Windows' own off-screen spot, on no monitor.</summary>
+    /// Where a hidden pop-up is parked: Windows' own off-screen spot, on no monitor.
     private const int ParkAt = -32000;
 
     private const int GwlStyle = -16, GwlExStyle = -20;
@@ -46,7 +43,7 @@ public static class WindowsOsdWindows
     [DllImport("user32.dll")] private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo info);
     [DllImport("user32.dll")] private static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
 
-    /// <summary>Every candidate window that exists now (class, children, styles and owning program all match).</summary>
+    /// Every candidate window that exists now (class, children, styles and owning program all match).
     public static List<IntPtr> Find()
     {
         var list = new List<IntPtr>();
@@ -56,37 +53,33 @@ public static class WindowsOsdWindows
         return list;
     }
 
-    /// <summary>
     /// True when the window still is a candidate (it exists and is still the same kind of shell pop-up) and still belongs to process
     /// <paramref name="processId"/>: a window handle Windows has given to another window since is never touched.
-    /// </summary>
     public static bool IsSameCandidate(IntPtr window, int processId) =>
         IsWindow(window) && ProcessOf(window) == processId && WindowQuery.ClassOf(window) == HostClass && GetWindowTextLength(window) == 0 && HasCandidateShape(window);
 
-    /// <summary>The id of the process that owns the window, or 0.</summary>
+    /// The id of the process that owns the window, or 0.
     public static int ProcessOf(IntPtr window) => GetWindowThreadProcessId(window, out var pid) != 0 ? (int)pid : 0;
 
-    /// <summary>True when the window is on screen: visible, not minimised and on a monitor (a parked window is not).</summary>
+    /// True when the window is on screen: visible, not minimised and on a monitor (a parked window is not).
     public static bool IsOnScreen(IntPtr window)
     {
         if (!IsWindowVisible(window) || IsIconic(window) || !GetWindowRect(window, out var r)) return false;
         return MonitorFromRect(ref r, MonitorDefaultToNull) != IntPtr.Zero;
     }
 
-    /// <summary>True when the window is where <see cref="Park"/> puts it.</summary>
+    /// True when the window is where <see cref="Park"/> puts it.
     public static bool IsParked(IntPtr window) => GetWindowRect(window, out var r) && r.Left == ParkAt && r.Top == ParkAt;
 
-    /// <summary>The window's place, or null when it can't be read.</summary>
+    /// The window's place, or null when it can't be read.
     public static WindowPlace? PlaceOf(IntPtr window) =>
         GetWindowRect(window, out var r) ? new WindowPlace(r.Left, r.Top, r.Right - r.Left, r.Bottom - r.Top) : null;
 
-    /// <summary>
     /// True when the window has the size and place of Windows' volume and brightness pop-up on its monitor: small (between
     /// <see cref="CoreTiming.WindowsOsdMinSidePx"/> and the <see cref="CoreTiming.WindowsOsdMaxWidthShare"/> and
     /// <see cref="CoreTiming.WindowsOsdMaxHeightShare"/> of the monitor), centred across it within <see cref="CoreTiming.WindowsOsdCentreShare"/>
     /// and near its bottom or top edge (within <see cref="CoreTiming.WindowsOsdEdgeShare"/>). A screen-sized host or a thumbnail preview
     /// beside a taskbar button fails this.
-    /// </summary>
     public static bool HasFlyoutShape(IntPtr window)
     {
         if (!GetWindowRect(window, out var r)) return false;
@@ -103,19 +96,17 @@ public static class WindowsOsdWindows
         return m.Bottom - r.Bottom <= edge || r.Top - m.Top <= edge;
     }
 
-    /// <summary>Moves the window off screen without resizing, activating it or changing its z-order or show state; never waits on Explorer.</summary>
+    /// Moves the window off screen without resizing, activating it or changing its z-order or show state; never waits on Explorer.
     public static void Park(IntPtr window) => Move(window, ParkAt, ParkAt);
 
-    /// <summary>Moves the window back to <paramref name="place"/>'s corner, the same way as <see cref="Park"/>.</summary>
+    /// Moves the window back to <paramref name="place"/>'s corner, the same way as <see cref="Park"/>.
     public static void MoveTo(IntPtr window, WindowPlace place) => Move(window, place.Left, place.Top);
 
     private static void Move(IntPtr window, int x, int y) =>
         SetWindowPos(window, IntPtr.Zero, x, y, 0, 0, SwpNoSize | SwpNoZOrder | SwpNoOwnerZOrder | SwpNoActivate | SwpAsyncWindowPos);
 
-    /// <summary>
     /// True when the pointer is over the taskbar or over one of these pop-ups: a pop-up that opens then is the taskbar's own (a thumbnail
     /// preview), never taken for the volume pop-up.
-    /// </summary>
     public static bool PointerOverShell()
     {
         if (SystemCommands.GetCursorPos() is not { } at) return false;
@@ -123,13 +114,13 @@ public static class WindowsOsdWindows
         return PointerArea.IsTaskbar(className) || className == HostClass;
     }
 
-    /// <summary>The window's handle, process and place for a log line ("0x1a2b (pid 812) at 100,200 300x80").</summary>
+    /// The window's handle, process and place for a log line ("0x1a2b (pid 812) at 100,200 300x80").
     public static string Describe(IntPtr window) =>
         PlaceOf(window) is { } p
             ? $"0x{window.ToInt64():x} (pid {ProcessOf(window)}) at {p.Left},{p.Top} {p.Width}x{p.Height}"
             : $"0x{window.ToInt64():x}";
 
-    /// <summary>The checks that need no timing: the XAML-island children, a top-level window that is not listed on the taskbar, owned by the shell.</summary>
+    /// The checks that need no timing: the XAML-island children, a top-level window that is not listed on the taskbar, owned by the shell.
     private static bool HasCandidateShape(IntPtr host)
     {
         var bridge = FindWindowEx(host, IntPtr.Zero, BridgeClass, BridgeTitle);

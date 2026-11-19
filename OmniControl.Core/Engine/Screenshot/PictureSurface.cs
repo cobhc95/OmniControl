@@ -1,19 +1,16 @@
-using System.Runtime.InteropServices;
 using static OmniControl.Core.Native.ScreenshotNative;
 using static OmniControl.Core.Native.WindowNative;
 
 namespace OmniControl.Core.Engine.Screenshot;
 
-/// <summary>The pointer shapes the picture surface shows.</summary>
+/// The pointer shapes the picture surface shows.
 public enum SurfaceCursor { Cross, Move, Text, NorthSouth, WestEast, NorthWestSouthEast, NorthEastSouthWest }
 
-/// <summary>
 /// The area overlay's frozen picture as a plain Win32 child window, painted the way Lightshot paints it: an opaque window and two copies
 /// of the picture made once (dimmed, and bright with the drawings); on every change only the changed rectangles are copied to the window
 /// with GDI BitBlt, plus the selection's frame and handles. Nothing is blended, cleared or copied whole per frame, and Windows composes
 /// only the changed area, on whichever graphics card drives the monitor. Coordinates are the window's physical pixels, which are the
 /// picture's. Made and used on one thread (the UI thread); the pointer events are raised there.
-/// </summary>
 public sealed unsafe class PictureSurface : IDisposable
 {
     private readonly WndProc _proc; // kept in a field so the garbage collector cannot free the callback while Windows holds it
@@ -32,13 +29,13 @@ public sealed unsafe class PictureSurface : IDisposable
     private int Bytes => Stride * Height;
     private ScreenRect Bounds => new(0, 0, Width, Height);
 
-    /// <summary>The left button went down (the surface then holds the pointer until it goes up), in picture pixels.</summary>
+    /// The left button went down (the surface then holds the pointer until it goes up), in picture pixels.
     public event Action<int, int>? Pressed;
 
-    /// <summary>The pointer moved over the surface, or anywhere while the left button is held down.</summary>
+    /// The pointer moved over the surface, or anywhere while the left button is held down.
     public event Action<int, int>? Moved;
 
-    /// <summary>The left button went up.</summary>
+    /// The left button went up.
     public event Action<int, int>? Released;
 
     /// <param name="failed">Told when something failed while the window handled a message (a failure must never cross into Windows).</param>
@@ -62,7 +59,7 @@ public sealed unsafe class PictureSurface : IDisposable
         _cursor = LoadCursor(IntPtr.Zero, IdcCross); // the first shape, before the pointer's first move picks one
     }
 
-    /// <summary>Makes the window inside <paramref name="parent"/>, at its top-left corner and the picture's size.</summary>
+    /// Makes the window inside <paramref name="parent"/>, at its top-left corner and the picture's size.
     public IntPtr Create(IntPtr parent)
     {
         if (_window != IntPtr.Zero) return _window;
@@ -76,7 +73,7 @@ public sealed unsafe class PictureSurface : IDisposable
         throw new InvalidOperationException($"Windows refused the screenshot overlay's window (error {error}).");
     }
 
-    /// <summary>Closes the window (the picture copies stay until <see cref="Dispose"/>). Safe to call more than once.</summary>
+    /// Closes the window (the picture copies stay until <see cref="Dispose"/>). Safe to call more than once.
     public void Destroy()
     {
         if (_window == IntPtr.Zero) return;
@@ -85,7 +82,7 @@ public sealed unsafe class PictureSurface : IDisposable
         UnregisterClass(_className, GetModuleHandle(null));
     }
 
-    /// <summary>Writes the picture into the bright copy (no drawings yet) through <paramref name="write"/>: the copy's first byte and its bytes per row.</summary>
+    /// Writes the picture into the bright copy (no drawings yet) through <paramref name="write"/>: the copy's first byte and its bytes per row.
     public void ShowPicture(Action<IntPtr, int> write)
     {
         GdiFlush(); // GDI may still be reading the copy for a paint it batched
@@ -93,7 +90,7 @@ public sealed unsafe class PictureSurface : IDisposable
         Invalidate(Bounds);
     }
 
-    /// <summary>Makes the dimmed copy: the picture (written through <paramref name="write"/>) under a wash of <paramref name="argb"/>.</summary>
+    /// Makes the dimmed copy: the picture (written through <paramref name="write"/>) under a wash of <paramref name="argb"/>.
     public void Dim(Action<IntPtr, int> write, uint argb)
     {
         GdiFlush();
@@ -102,7 +99,7 @@ public sealed unsafe class PictureSurface : IDisposable
         Invalidate(Bounds);
     }
 
-    /// <summary>Puts repainted pixels (the picture with its drawings) into the bright copy at <paramref name="area"/>; shown where the selection is.</summary>
+    /// Puts repainted pixels (the picture with its drawings) into the bright copy at <paramref name="area"/>; shown where the selection is.
     public void Paint(ScreenRect area, ScreenImage pixels)
     {
         var part = area.Intersect(Bounds);
@@ -116,7 +113,7 @@ public sealed unsafe class PictureSurface : IDisposable
         if (_selection is { } selection) Invalidate(part.Intersect(selection));
     }
 
-    /// <summary>The frame's colour (ARGB; drawn opaque), its line and its handles in physical pixels.</summary>
+    /// The frame's colour (ARGB; drawn opaque), its line and its handles in physical pixels.
     public void SetLook(uint edgeArgb, int line, int handle)
     {
         line = Math.Max(1, line);
@@ -131,7 +128,7 @@ public sealed unsafe class PictureSurface : IDisposable
         foreach (var part in edges.Concat(SelectionFrame.Changed(null, _selection, _line, _handle))) Invalidate(part);
     }
 
-    /// <summary>The selection (picture pixels; null or empty = none): only the strips that changed are painted again.</summary>
+    /// The selection (picture pixels; null or empty = none): only the strips that changed are painted again.
     public void SetSelection(ScreenRect? selection)
     {
         if (selection is { IsEmpty: true }) selection = null;
@@ -141,7 +138,7 @@ public sealed unsafe class PictureSurface : IDisposable
         foreach (var part in changed) Invalidate(part);
     }
 
-    /// <summary>The pointer's shape over the surface from now on, shown at once (call it while the pointer is over the surface).</summary>
+    /// The pointer's shape over the surface from now on, shown at once (call it while the pointer is over the surface).
     public void ShowCursor(SurfaceCursor cursor)
     {
         _cursor = LoadCursor(IntPtr.Zero, cursor switch
@@ -157,7 +154,7 @@ public sealed unsafe class PictureSurface : IDisposable
         SetCursor(_cursor);
     }
 
-    /// <summary>Paints what changed now, instead of when Windows next gets round to it.</summary>
+    /// Paints what changed now, instead of when Windows next gets round to it.
     public void PaintNow()
     {
         if (_window != IntPtr.Zero) UpdateWindow(_window);
@@ -209,7 +206,7 @@ public sealed unsafe class PictureSurface : IDisposable
     private static int X(IntPtr lParam) => (short)((long)lParam & 0xFFFF);
     private static int Y(IntPtr lParam) => (short)(((long)lParam >> 16) & 0xFFFF);
 
-    /// <summary>Copies the dimmed picture outside the selection and the bright one inside it, then draws the frame; Windows clips it all to what changed.</summary>
+    /// Copies the dimmed picture outside the selection and the bright one inside it, then draws the frame; Windows clips it all to what changed.
     private void Paint(IntPtr hwnd)
     {
         var dc = BeginPaint(hwnd, out var paint);
@@ -255,7 +252,7 @@ public sealed unsafe class PictureSurface : IDisposable
         _edgeBrush = IntPtr.Zero;
     }
 
-    /// <summary>One copy of the picture: a bitmap the program writes into, selected into a memory DC that the window copies from.</summary>
+    /// One copy of the picture: a bitmap the program writes into, selected into a memory DC that the window copies from.
     private sealed class PictureCopy : IDisposable
     {
         private readonly IntPtr _bitmap, _old;

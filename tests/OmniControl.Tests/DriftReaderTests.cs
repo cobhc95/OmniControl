@@ -1,15 +1,12 @@
 using OmniControl.Core;
-using OmniControl.Core.Engine;
 using Xunit.Abstractions;
 
 namespace OmniControl.Tests;
 
-/// <summary>
 /// The drift reader shared by a pipe's captures and extra devices, on a simulated clock: a writer faster or slower than the reader for
 /// ten minutes of 10 ms blocks. Pure arithmetic, no device is opened. An extra device (40 ms target) holds 0.5 % either way; a capture
 /// (20 ms target, the old prefill, so no added delay) holds 0.5 % fast and 0.2 % slow, twenty times a real crystal's drift (~0.01 %):
 /// 0.5 % slow would need the queue 25 ms below its target.
-/// </summary>
 public class DriftReaderTests(ITestOutputHelper output)
 {
     private const int Channels = CoreTiming.PipeChannels;

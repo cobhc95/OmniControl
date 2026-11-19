@@ -1,0 +1,34 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Features.Volume.Pages"
+             x:Class="OmniControl.App.Features.Volume.Pages.PlaysOnMenuView"
+             x:DataType="vm:PlaysOnMenu">
+    <!-- The one "Plays on" menu (both tabs: a Wiring cell's menu and a Mixer row's Plays on chip), the content of a FlyoutPresenter.listmenu:
+         the title, one Button.menurow per device (the accent bar at the ones in use when the menu marks them; a tag at the right; dimmed with its
+         reason where it can't be used), and, while the row takes one device only, the gate's note. Mouse first
+         (AGENTS.md rule 5): the host closes the menu after a pick (Picked) and on Esc. -->
+    <StackPanel>
+        <TextBlock Classes="menutext" Text="{Binding Title}" />
+        <ItemsControl ItemsSource="{Binding Choices}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:WiringChoice">
+                    <Button Classes="menurow" Classes.chosen="{Binding IsCurrent}" Command="{Binding ChooseCommand}" IsEnabled="{Binding IsEnabled}"
+                            ToolTip.Tip="{Binding Tip}" ToolTip.ShowOnDisabled="True">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource MenuGap}">
+                            <TextBlock Text="{Binding Label}" TextWrapping="Wrap" />
+                            <Border Grid.Column="1" Classes="tag" Classes.caution="{Binding IsCaution}" IsVisible="{Binding HasTag}" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Tag}" />
+                            </Border>
+                        </Grid>
+                    </Button>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock Classes="menutext" Text="All devices are chosen." IsVisible="{Binding HasNoChoices}" />
+        <!-- Why the row takes one device here -->
+        <StackPanel IsVisible="{Binding !Gate.IsAvailable}">
+            <Border Classes="hrule" Margin="{StaticResource MenuRuleMargin}" />
+            <TextBlock Classes="menutext" Text="{Binding Gate.Note}" />
+        </StackPanel>
+    </StackPanel>
+</UserControl>

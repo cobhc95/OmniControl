@@ -1,32 +1,29 @@
-using System.Runtime.InteropServices;
-using OmniControl.Core.Native;
 using static OmniControl.Core.Native.MediaFoundationNative;
 
 namespace OmniControl.Core.Engine.Screenshot;
 
-/// <summary>Where a recording's frames go: an MP4 (<see cref="Mp4Writer"/>) or a GIF (<see cref="GifWriter"/>).</summary>
+/// Where a recording's frames go: an MP4 (<see cref="Mp4Writer"/>) or a GIF (<see cref="GifWriter"/>).
 internal interface IVideoSink : IDisposable
 {
-    /// <summary>Adds a BGRA frame (top row first) shown from <paramref name="at"/> on.</summary>
+    /// Adds a BGRA frame (top row first) shown from <paramref name="at"/> on.
     void WriteFrame(ReadOnlySpan<byte> bgra, int stride, long at);
 
-    /// <summary>The bytes in the file so far (for the size limit).</summary>
+    /// The bytes in the file so far (for the size limit).
     long Length { get; }
 
-    /// <summary>Frames really encoded so far (the watchdog's proof that the encoder works). May call into the encoder: recording thread only.</summary>
+    /// Frames really encoded so far (the watchdog's proof that the encoder works). May call into the encoder: recording thread only.
     long FramesDone { get; }
 
-    /// <summary>Ends the file at <paramref name="end"/>; it is complete and playable after this.</summary>
+    /// Ends the file at <paramref name="end"/>; it is complete and playable after this.
     void Finish(long end);
 }
 
-/// <summary>A sink that also takes sound (16-bit stereo PCM at <see cref="RecordingSound.SampleRate"/>).</summary>
+/// A sink that also takes sound (16-bit stereo PCM at <see cref="RecordingSound.SampleRate"/>).
 internal interface ISoundSink
 {
     void WriteSound(ReadOnlySpan<byte> pcm, long at, long duration);
 }
 
-/// <summary>
 /// An MP4 written by Windows' Media Foundation Sink Writer: H.264 or HEVC video from BGRA frames (the Sink Writer converts the colours)
 /// and AAC sound, on the graphics card's encoder when <c>hardware</c> is on and Windows has one. Two ways in: frames in memory
 /// (<see cref="WriteFrame(ReadOnlySpan{byte}, int, long)"/>, from the GDI copy), or frames that stay on the graphics card
@@ -37,10 +34,9 @@ internal interface ISoundSink
 /// what to try next. Every step of the opening is logged (<see cref="RecordingLog"/>), and the encoder the Sink Writer chose is read back
 /// (<see cref="Encoder"/>). Nothing is bundled: the encoders are Windows' own (HEVC needs the HEVC Video Extensions or a graphics card
 /// that encodes it). Every COM object is released.
-/// </summary>
 internal sealed unsafe class Mp4Writer : IVideoSink, ISoundSink
 {
-    /// <summary>The AAC sound's bytes per second (192 kbit/s, one of the four rates Windows' AAC encoder takes).</summary>
+    /// The AAC sound's bytes per second (192 kbit/s, one of the four rates Windows' AAC encoder takes).
     private const uint AacBytesPerSecond = 24000;
 
     private readonly string _path;
@@ -53,7 +49,7 @@ internal sealed unsafe class Mp4Writer : IVideoSink, ISoundSink
     private SamplePool? _pool;
     private bool _started;
 
-    /// <summary>The encoder the Sink Writer chose, or null when Windows does not say.</summary>
+    /// The encoder the Sink Writer chose, or null when Windows does not say.
     public EncoderFacts? Encoder { get; }
 
     private Mp4Writer(string path, int width, int height, int frameRate, VideoFormat format, int bitrate, bool hardware, IntPtr device, bool gpuFrames, RecordingLog log)
@@ -98,32 +94,30 @@ internal sealed unsafe class Mp4Writer : IVideoSink, ISoundSink
         }
     }
 
-    /// <summary>Opens the MP4 for frames in memory, with a graphics card's encoder when <paramref name="hardware"/> is on (Windows picks which), else in software.</summary>
+    /// Opens the MP4 for frames in memory, with a graphics card's encoder when <paramref name="hardware"/> is on (Windows picks which), else in software.
     public static Mp4Writer Open(string path, int width, int height, int frameRate, VideoFormat format, int bitrate, bool hardware, RecordingLog log) =>
         new(path, width, height, frameRate, format, bitrate, hardware, IntPtr.Zero, false, log);
 
-    /// <summary>Opens the MP4 for frames in memory, with the hardware encoder of the adapter that <paramref name="device"/> (an ID3D11Device) is on.</summary>
+    /// Opens the MP4 for frames in memory, with the hardware encoder of the adapter that <paramref name="device"/> (an ID3D11Device) is on.
     public static Mp4Writer OpenWithDevice(string path, int width, int height, int frameRate, VideoFormat format, int bitrate, IntPtr device, RecordingLog log) =>
         new(path, width, height, frameRate, format, bitrate, true, device, false, log);
 
-    /// <summary>
     /// Opens the MP4 for frames that stay on <paramref name="gpu"/>'s graphics card, with its hardware encoder. Throws
     /// <see cref="COMException"/> when Media Foundation cannot take textures from that device.
-    /// </summary>
     public static Mp4Writer OpenOnGpu(string path, int width, int height, int frameRate, VideoFormat format, int bitrate, IGpuFrame gpu, RecordingLog log) =>
         new(path, width, height, frameRate, format, bitrate, true, gpu.Device, true, log);
 
-    /// <summary>Video frames the encoder has put out so far (from the Sink Writer's statistics).</summary>
+    /// Video frames the encoder has put out so far (from the Sink Writer's statistics).
     public long FramesDone => (long)GetStatistics(_writer, _video).SamplesEncoded;
 
-    /// <summary>The Sink Writer's video counts in words, for the periodic log line.</summary>
+    /// The Sink Writer's video counts in words, for the periodic log line.
     public string Counts()
     {
         var s = GetStatistics(_writer, _video);
         return $"received {s.SamplesReceived}, encoded {s.SamplesEncoded}, written {s.SamplesProcessed}, queued {s.ByteCountQueued} bytes";
     }
 
-    /// <summary>A DXGI device manager holding <paramref name="device"/>, for the Sink Writer and the sample pool.</summary>
+    /// A DXGI device manager holding <paramref name="device"/>, for the Sink Writer and the sample pool.
     private static IntPtr DeviceManager(IntPtr device)
     {
         Check(MFCreateDXGIDeviceManager(out var token, out var manager));
@@ -168,10 +162,8 @@ internal sealed unsafe class Mp4Writer : IVideoSink, ISoundSink
         }
     }
 
-    /// <summary>
     /// The pool of frame samples. On the graphics card it is required (a failure ends the opening, so the next way is tried);
     /// in memory a pool Windows refuses only means a new buffer per frame, as before pooling.
-    /// </summary>
     private SamplePool? Pool(IntPtr input)
     {
         if (_gpuFrames) return SamplePool.Create(input, _manager);
@@ -274,10 +266,8 @@ internal sealed unsafe class Mp4Writer : IVideoSink, ISoundSink
         }
     }
 
-    /// <summary>
     /// Hands the frame that is on the graphics card to the encoder: it is copied there into a pooled texture. False when every pooled
     /// texture is still with the encoder, so the frame is skipped (the video stays in time, as with any late frame).
-    /// </summary>
     public bool WriteFrame(IGpuFrame frame, long at)
     {
         var sample = _pool!.Take();
@@ -326,7 +316,7 @@ internal sealed unsafe class Mp4Writer : IVideoSink, ISoundSink
         }
     }
 
-    /// <summary>The bytes a frame takes in a pooled buffer (its 2-D length when it has one, else the packed size).</summary>
+    /// The bytes a frame takes in a pooled buffer (its 2-D length when it has one, else the packed size).
     private uint ContiguousLength(IntPtr buffer)
     {
         var twoD = D3D11Native.As(buffer, Iid2DBuffer);
@@ -341,7 +331,7 @@ internal sealed unsafe class Mp4Writer : IVideoSink, ISoundSink
         }
     }
 
-    /// <summary>Copies the frame's rows into a pooled memory buffer, following its own row pitch when it is a 2-D buffer.</summary>
+    /// Copies the frame's rows into a pooled memory buffer, following its own row pitch when it is a 2-D buffer.
     private void FillRows(IntPtr buffer, ReadOnlySpan<byte> bgra, int stride)
     {
         var twoD = D3D11Native.As(buffer, Iid2DBuffer);
@@ -422,7 +412,7 @@ internal sealed unsafe class Mp4Writer : IVideoSink, ISoundSink
         }
     }
 
-    /// <summary>Wraps a filled buffer in a sample with its time and hands it to the Sink Writer.</summary>
+    /// Wraps a filled buffer in a sample with its time and hands it to the Sink Writer.
     private void Send(uint stream, IntPtr buffer, int length, long at, long duration)
     {
         SetCurrentLength(buffer, (uint)length);

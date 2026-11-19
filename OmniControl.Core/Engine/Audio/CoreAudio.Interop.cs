@@ -1,9 +1,6 @@
-﻿using System.Runtime.InteropServices;
-using System.Text;
+﻿namespace OmniControl.Core.Engine;
 
-namespace OmniControl.Core.Engine;
-
-/// <summary>Native calls and COM declarations. Nothing else in the program touches these.</summary>
+/// Native calls and COM declarations. Nothing else in the program touches these.
 public static partial class CoreAudio
 {
     // ---- native ----
@@ -147,14 +144,14 @@ public static partial class CoreAudio
         [PreserveSig] int GetVolumeRange(out float minDb, out float maxDb, out float incrementDb);
     }
 
-    /// <summary>QueryHardwareSupport: the device applies the master volume itself (ENDPOINT_HARDWARE_SUPPORT_VOLUME).</summary>
+    /// QueryHardwareSupport: the device applies the master volume itself (ENDPOINT_HARDWARE_SUPPORT_VOLUME).
     private const uint HardwareVolume = 0x1;
 
-    /// <summary>The PROPERTYKEY Windows passes to <see cref="IDeviceNotify.OnPropertyValueChanged"/> (not used, but it sets the call's layout).</summary>
+    /// The PROPERTYKEY Windows passes to <see cref="IDeviceNotify.OnPropertyValueChanged"/> (not used, but it sets the call's layout).
     [StructLayout(LayoutKind.Sequential)]
     public struct NotifyKey { public Guid Format; public uint Id; }
 
-    /// <summary>IMMNotificationClient (the watchers' device events). Public only because Windows can only call interfaces that are visible to COM.</summary>
+    /// IMMNotificationClient (the watchers' device events). Public only because Windows can only call interfaces that are visible to COM.
     [ComVisible(true), Guid("7991EEC9-7E89-4D85-8390-6C703CEC60C0"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     public interface IDeviceNotify
     {
@@ -165,17 +162,15 @@ public static partial class CoreAudio
         [PreserveSig] int OnPropertyValueChanged([MarshalAs(UnmanagedType.LPWStr)] string id, NotifyKey key);
     }
 
-    /// <summary>IAudioSessionNotification (a program opened a new session). Public only because Windows can only call interfaces that are visible to COM.</summary>
+    /// IAudioSessionNotification (a program opened a new session). Public only because Windows can only call interfaces that are visible to COM.
     [ComVisible(true), Guid("641DD20B-4D41-49CC-ABA3-174B9477BB08"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     public interface ISessionNotify
     {
         [PreserveSig] int OnSessionCreated(IntPtr session);
     }
 
-    /// <summary>
     /// Windows' undocumented policy-config interface (the one its Sound settings use; Windows 7 and later), declared only up to the
     /// call OmniControl makes. The ten methods before it are never called: they only keep the table order.
-    /// </summary>
     [ComImport, Guid("F8679F50-850A-41CF-9C72-430F290290C8"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     private interface IPolicyConfig
     {

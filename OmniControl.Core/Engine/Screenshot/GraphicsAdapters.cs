@@ -1,14 +1,13 @@
-using System.Runtime.InteropServices;
 using static OmniControl.Core.Native.D3D11Native;
 using static OmniControl.Core.Native.MediaFoundationNative;
 
 namespace OmniControl.Core.Engine.Screenshot;
 
-/// <summary>One graphics adapter as DXGI lists it: its name, ids, LUID (unique until the next restart), driver version and monitors.</summary>
+/// One graphics adapter as DXGI lists it: its name, ids, LUID (unique until the next restart), driver version and monitors.
 internal sealed record GraphicsAdapter(int Index, string Name, uint VendorId, uint DeviceId, long Luid, bool Software, string Driver,
     IReadOnlyList<string> Outputs, IReadOnlyList<ScreenRect> Screens)
 {
-    /// <summary>True when one of its attached monitors holds the whole <paramref name="area"/>.</summary>
+    /// True when one of its attached monitors holds the whole <paramref name="area"/>.
     public bool Shows(ScreenRect area) => Screens.Any(s => area.X >= s.X && area.Y >= s.Y && area.Right <= s.Right && area.Bottom <= s.Bottom);
 
     public string LuidText => $"{(uint)(Luid >> 32):X8}:{(uint)Luid:X8}";
@@ -18,14 +17,12 @@ internal sealed record GraphicsAdapter(int Index, string Name, uint VendorId, ui
         $", monitors: {(Outputs.Count == 0 ? "none" : string.Join(", ", Outputs))}";
 }
 
-/// <summary>
 /// The PC's graphics adapters for a recording: listed once per recording (and logged), the key that says whether the drivers changed
 /// since a way of recording was remembered (<see cref="MachineKey"/>), the hardware encoders each adapter has (Media Foundation's
 /// MFTEnum2 by adapter LUID), and a Direct3D 11 device on one adapter for the encoder. Never keeps anything open.
-/// </summary>
 internal static class GraphicsAdapters
 {
-    /// <summary>Every adapter DXGI lists, in its order; empty when DXGI cannot be asked (said in the log).</summary>
+    /// Every adapter DXGI lists, in its order; empty when DXGI cannot be asked (said in the log).
     public static IReadOnlyList<GraphicsAdapter> List(RecordingLog log)
     {
         var found = new List<GraphicsAdapter>();
@@ -86,14 +83,12 @@ internal static class GraphicsAdapters
         return new GraphicsAdapter(index, name, desc.VendorId, desc.DeviceId, desc.Luid, (desc.Flags & AdapterSoftware) != 0, driver, outputs, screens);
     }
 
-    /// <summary>
     /// What a remembered way of recording is tied to: every real adapter's vendor, device and driver version (not the LUID, which changes at
     /// every restart). A new driver, a card added or removed gives a new key, so the graphics card is tried again.
-    /// </summary>
     public static string MachineKey(IReadOnlyList<GraphicsAdapter> adapters) =>
         string.Join(";", adapters.Where(a => !a.Software).Select(a => $"{a.VendorId:X4}:{a.DeviceId:X4}:{a.Driver}"));
 
-    /// <summary>The names of the hardware encoders of <paramref name="subtype"/> (H.264 or HEVC) on one adapter; empty when none or Windows cannot say.</summary>
+    /// The names of the hardware encoders of <paramref name="subtype"/> (H.264 or HEVC) on one adapter; empty when none or Windows cannot say.
     public static IReadOnlyList<string> HardwareEncoders(long luid, Guid subtype)
     {
         var names = new List<string>();
@@ -124,10 +119,8 @@ internal static class GraphicsAdapters
         return names;
     }
 
-    /// <summary>
     /// A Direct3D 11 device (with video support, shared with the encoder's own threads) on the adapter with <paramref name="luid"/>.
     /// Throws <see cref="COMException"/> or <see cref="InvalidOperationException"/> when there is none or it cannot be made.
-    /// </summary>
     public static IntPtr CreateDevice(long luid)
     {
         var iid = IidFactory1;

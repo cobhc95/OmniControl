@@ -1,11 +1,6 @@
-﻿using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Input;
-using Avalonia.Interactivity;
-using Avalonia.Threading;
+﻿using Avalonia.Input;
 using Avalonia.VisualTree;
-using OmniControl.App.Hotkeys;
-using OmniControl.App.Pages;
+using OmniControl.App.Features.Hotkeys;
 
 namespace OmniControl.App.Shell;
 
@@ -22,15 +17,48 @@ public partial class MainWindow : Window
         PinnedNav.AddHandler(TappedEvent, (_, _) => OpenPinned());
         PinnedNav.AddHandler(KeyDownEvent, OnPinnedKeyDown);
         Opened += (_, _) => Dispatcher.UIThread.Post(() => FocusSidebar()?.Focus(NavigationMethod.Tab), DispatcherPriority.Loaded);
+        DataContextChanged += (_, _) =>
+        {
+            if (_shell is not null)
+            {
+                _shell.PropertyChanged -= OnShellChanged;
+                _shell.SearchFocusRequested -= OnSearchFocusRequested;
+            }
+            _shell = DataContext as ShellViewModel;
+            if (_shell is not null)
+            {
+                _shell.PropertyChanged += OnShellChanged;
+                _shell.SearchFocusRequested += OnSearchFocusRequested;
+            }
+        };
     }
 
-    /// <summary>A click anywhere except the hotkey box that is listening cancels listening.</summary>
+    private ShellViewModel? _shell;
+
+    /// Where the page was scrolled when its view was let go while the window was hidden (<see cref="ShellViewModel.ShownPage"/>).
+    private (PageViewModel Page, Vector Offset)? _keptScroll;
+
+    /// The page view went while the window was hidden, or came back: the same page comes back where it was scrolled.
+    private void OnShellChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(ShellViewModel.ShownPage) || sender is not ShellViewModel shell) return;
+        if (shell.ShownPage is null)
+        {
+            if (shell.CurrentPage is { } page) _keptScroll = (page, ContentHost.Offset);
+            return;
+        }
+        if (_keptScroll is { } kept && kept.Page == shell.ShownPage)
+            Dispatcher.UIThread.Post(() => ContentHost.Offset = kept.Offset, DispatcherPriority.Loaded);
+        _keptScroll = null;
+    }
+
+    /// A click anywhere except the hotkey box that is listening cancels listening.
     private void OnPointerPressedTunnel(object? sender, PointerPressedEventArgs e)
     {
         HotkeyCapture.CancelOnPressElsewhere(FocusManager?.GetFocusedElement(), e.Source);
     }
 
-    /// <summary>The highlighted pinned entry opens its window; the entry does not stay selected, as it is not a page.</summary>
+    /// The highlighted pinned entry opens its window; the entry does not stay selected, as it is not a page.
     private void OpenPinned()
     {
         if (PinnedNav.SelectedItem is not NavLauncher entry) return;
@@ -45,7 +73,17 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
-    /// <summary>F1 lists the keyboard shortcuts; Tab swaps between sidebar and page; Ctrl+F jumps to search; Down/Enter in search enters results.</summary>
+    /// The search action ran (any thread): bring the cursor into the search box.
+    private void OnSearchFocusRequested() => Dispatcher.UIThread.Post(FocusSearch);
+
+    private void FocusSearch()
+    {
+        if (!SearchBox.IsFocused) _returnFocus = FocusManager?.GetFocusedElement() as InputElement;
+        SearchBox.Focus();
+        SearchBox.SelectAll();
+    }
+
+    /// F1 lists the keyboard shortcuts; Tab swaps between sidebar and page; Ctrl+F jumps to search; Down/Enter in search enters results.
     private void OnKeyDownTunnel(object? sender, KeyEventArgs e)
     {
         var focused = FocusManager?.GetFocusedElement();
@@ -61,9 +99,7 @@ public partial class MainWindow : Window
         }
         else if (e.Key == Key.F && e.KeyModifiers == KeyModifiers.Control)
         {
-            if (!SearchBox.IsFocused) _returnFocus = focused as InputElement;
-            SearchBox.Focus();
-            SearchBox.SelectAll();
+            FocusSearch();
             e.Handled = true;
         }
         else if (SearchBox.IsFocused && e.Key is Key.Enter or Key.Down)
@@ -96,7 +132,7 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>Arrow keys continue from the end of the category list to the footer's App settings button and back, and wrap round at either end.</summary>
+    /// Arrow keys continue from the end of the category list to the footer's App settings button and back, and wrap round at either end.
     private bool StepBetweenNavLists(InputElement item, bool down)
     {
         var footer = FooterButtons();
@@ -132,7 +168,7 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>The sidebar's page rows in order: the grouped pages, then the pinned ones (the group headings are not among them).</summary>
+    /// The sidebar's page rows in order: the grouped pages, then the pinned ones (the group headings are not among them).
     private List<ListBoxItem> NavPageRows() => MainNav.GetVisualDescendants().Concat(PinnedNav.GetVisualDescendants())
         .OfType<ListBoxItem>().Where(i => i.Focusable).ToList();
 
@@ -155,6 +191,6 @@ public partial class MainWindow : Window
         return ContentHost.GetVisualDescendants().OfType<Button>().FirstOrDefault(b => b.Tag is "grouphdr" && b.IsEffectivelyVisible);
     }
 
-    /// <summary>The footer button closes the window exactly like the title-bar X: <see cref="WindowLifecycle"/> follows "When closing".</summary>
+    /// The footer button closes the window exactly like the title-bar X: <see cref="WindowLifecycle"/> follows "When closing".
     private void OnCloseClick(object? sender, RoutedEventArgs e) => Close();
 }

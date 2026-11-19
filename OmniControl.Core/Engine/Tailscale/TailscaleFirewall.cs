@@ -1,19 +1,16 @@
-using System.ComponentModel;
-using System.Diagnostics;
-
 namespace OmniControl.Core.Engine.Tailscale;
 
-/// <summary>The one Windows Firewall rule that lets the other PCs on the tailnet reach OmniControl: reading it is free, adding it is Windows' own administrator prompt.</summary>
+/// The one Windows Firewall rule that lets the other PCs on the tailnet reach OmniControl: reading it is free, adding it is Windows' own administrator prompt.
 public static class TailscaleFirewall
 {
     private const string RuleName = "OmniControl on Tailscale";
 
-    /// <summary>Tailscale's own address ranges (IPv4 and IPv6): the rule lets in nothing else.</summary>
+    /// Tailscale's own address ranges (IPv4 and IPv6): the rule lets in nothing else.
     private const string TailnetRanges = "100.64.0.0/10,fd7a:115c:a1e0::/48";
 
     private static string Netsh => Path.Combine(Environment.SystemDirectory, "netsh.exe");
 
-    /// <summary>True when the rule exists (netsh's exit code says so in every language). Call off the UI thread.</summary>
+    /// True when the rule exists (netsh's exit code says so in every language). Call off the UI thread.
     public static bool IsAllowed()
     {
         try
@@ -29,7 +26,7 @@ public static class TailscaleFirewall
         }
     }
 
-    /// <summary>Adds the rule for <paramref name="port"/> (the person answers Windows' administrator prompt). Call off the UI thread.</summary>
+    /// Adds the rule for <paramref name="port"/> (the person answers Windows' administrator prompt). Call off the UI thread.
     public static HelperResult Allow(int port) =>
         HelperProcess.RunElevated(Netsh, $"advfirewall firewall add rule name=\"{RuleName}\" dir=in action=allow protocol=TCP localport={port} remoteip={TailnetRanges} profile=any");
 }

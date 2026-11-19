@@ -1,9 +1,7 @@
 namespace OmniControl.Core.Models;
 
-/// <summary>
 /// The VESA MCCS VCP codes OmniControl reads and writes. A monitor only answers the codes it implements; which ones it does is
 /// found per monitor (<see cref="MonitorCapabilities"/>), never assumed.
-/// </summary>
 public static class VcpCode
 {
     public const byte Brightness  = 0x10; // continuous
@@ -18,13 +16,13 @@ public static class VcpCode
     public const byte Saturation  = 0x8A; // continuous
     public const byte PowerMode   = 0xD6; // table: on, standby, off
 
-    /// <summary>Values of <see cref="PowerMode"/>. Off is the "soft" off a monitor leaves again on its own button or on input.</summary>
+    /// Values of <see cref="PowerMode"/>. Off is the "soft" off a monitor leaves again on its own button or on input.
     public static class Power
     {
         public const uint On = 0x01;
         public const uint Off = 0x04;
 
-        /// <summary>Standby (2), suspend (3) and off (4, 5) are all a screen that is not showing; on is only 1. An unknown value is not called off.</summary>
+        /// Standby (2), suspend (3) and off (4, 5) are all a screen that is not showing; on is only 1. An unknown value is not called off.
         public static bool IsOff(uint value) => value is >= 2 and <= 5;
     }
 }

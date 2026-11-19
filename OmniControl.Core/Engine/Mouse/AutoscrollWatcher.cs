@@ -1,11 +1,9 @@
 namespace OmniControl.Core.Engine.Mouse;
 
-/// <summary>
 /// Keeps the answer to "may a middle press here be swallowed?" ready before the press, so the mouse hook never waits for a UI Automation
 /// lookup (Windows drops a hook that is too slow). While enabled, a worker looks under the pointer whenever it has moved to a spot the
 /// cached answer does not cover; <see cref="Verdict"/> only compares the pointer's window, process and position with that answer.
 /// No fresh answer means pass (fail open).
-/// </summary>
 public sealed class AutoscrollWatcher
 {
     private sealed record Entry(IntPtr Window, int Process, int X, int Y, long At, ClickVerdict Verdict);
@@ -15,7 +13,7 @@ public sealed class AutoscrollWatcher
     private bool _enabled;
     private Thread? _worker;
 
-    /// <summary>Starts or stops the worker; stopped, the cache is dropped and every press passes.</summary>
+    /// Starts or stops the worker; stopped, the cache is dropped and every press passes.
     public void SetEnabled(bool on)
     {
         lock (_gate)
@@ -31,7 +29,7 @@ public sealed class AutoscrollWatcher
 
     private bool Enabled { get { lock (_gate) return _enabled; } }
 
-    /// <summary>Runs on the hook thread: reads the cache only, never calls UI Automation. Pass unless a fresh answer for this spot says swallow.</summary>
+    /// Runs on the hook thread: reads the cache only, never calls UI Automation. Pass unless a fresh answer for this spot says swallow.
     public ClickVerdict Verdict(int x, int y)
     {
         if (_entry is not { Verdict: ClickVerdict.Swallow } entry) return ClickVerdict.Pass;
@@ -40,10 +38,13 @@ public sealed class AutoscrollWatcher
         return PointerShape.IsHandShown() ? ClickVerdict.Pass : ClickVerdict.Swallow;
     }
 
-    private static bool Covers(Entry e, int x, int y)
+    private static bool Covers(Entry e, int x, int y) =>
+        Environment.TickCount64 - e.At <= CoreTiming.AutoscrollCacheMs
+        && Math.Abs(e.X - x) <= CoreTiming.AutoscrollCachePx && Math.Abs(e.Y - y) <= CoreTiming.AutoscrollCachePx
+        && SameWindow(e, x, y);
+
+    private static bool SameWindow(Entry e, int x, int y)
     {
-        if (Environment.TickCount64 - e.At > CoreTiming.AutoscrollCacheMs) return false;
-        if (Math.Abs(e.X - x) > CoreTiming.AutoscrollCachePx || Math.Abs(e.Y - y) > CoreTiming.AutoscrollCachePx) return false;
         var root = WindowQuery.RootWindowAt(x, y);
         return root == e.Window && WindowQuery.ProcessOf(root) == e.Process;
     }
@@ -58,7 +59,12 @@ public sealed class AutoscrollWatcher
             try
             {
                 if (SystemCommands.GetCursorPos() is { } at && (_entry is not { } cached || !Covers(cached, at.X, at.Y)))
-                    slow = Refresh(uia, shell, slow, at.X, at.Y);
+                {
+                    // A pointer that has not moved over the same window keeps its answer (renewed, not asked again): a resting pointer
+                    // never keeps an app answering UI Automation. The hand pointer still wins at press time (Verdict).
+                    if (_entry is { } old && old.X == at.X && old.Y == at.Y && SameWindow(old, at.X, at.Y)) _entry = old with { At = Environment.TickCount64 };
+                    else slow = Refresh(uia, shell, slow, at.X, at.Y);
+                }
             }
             catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException)
             {
@@ -68,12 +74,10 @@ public sealed class AutoscrollWatcher
         }
     }
 
-    /// <summary>
     /// Looks under the pointer, one lookup at a time on this worker. Windows' shell (Explorer, the taskbar, Start) and OmniControl itself
     /// are never asked (they have no autoscroll to block, and a UI Automation call waits on the asked program's UI thread); a window whose
     /// answer took longer than <see cref="CoreTiming.AutoscrollSlowMs"/> is not asked again for <see cref="CoreTiming.AutoscrollBackoffMs"/>,
     /// so a busy app is never kept busier. Returns the window being left alone and until when.
-    /// </summary>
     private (IntPtr Window, long Until) Refresh(UiaElements uia, Dictionary<int, bool> shell, (IntPtr Window, long Until) slow, int x, int y)
     {
         var root = WindowQuery.RootWindowAt(x, y);

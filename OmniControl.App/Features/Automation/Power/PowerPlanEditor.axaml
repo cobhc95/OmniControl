@@ -1,0 +1,63 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:power="using:OmniControl.App.Features.Automation.Power"
+             xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
+             x:Class="OmniControl.App.Features.Automation.Power.PowerPlanEditor"
+             x:DataType="power:PowerPlanViewModel">
+    <!-- The power plan editor (docs/mockups/power-plan-editor.html): the plan's own settings, read from Windows, two value columns
+         (Plugged in, On battery) on shared widths, collapsible groups, every change written at once. Layout and wiring only. -->
+    <UserControl.DataTemplates>
+        <!-- One ‹ value › selector; a typed number replaces the value while the box is open -->
+        <DataTemplate DataType="power:PowerValueCell">
+            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" IsVisible="{Binding Visible}" pages:ValueWheel.Selector="True">
+                <Button Classes="pill glyph" Focusable="False" Command="{Binding StepDownCommand}"><Path Classes="glyph" Data="{StaticResource ChevronLeftIcon}" /></Button>
+                <Panel MinWidth="64" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Text}" TextAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" IsVisible="{Binding !IsTyping}"
+                               DoubleTapped="OnValueDoubleTapped" />
+                    <TextBox Classes="field" Text="{Binding Typed}" TextAlignment="Center" Width="72" HorizontalAlignment="Center"
+                             IsVisible="{Binding IsTyping}" LostFocus="OnBoxLostFocus" />
+                </Panel>
+                <Button Classes="pill glyph" Focusable="False" Command="{Binding StepUpCommand}"><Path Classes="glyph" Data="{StaticResource ChevronRightIcon}" /></Button>
+            </StackPanel>
+        </DataTemplate>
+    </UserControl.DataTemplates>
+    <StackPanel Spacing="4" Grid.IsSharedSizeScope="True" Margin="0,2">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <TextBlock Classes="hint small strong" Text="{Binding Status}" VerticalAlignment="Center" Margin="0,6,0,0" />
+            <Button Grid.Column="1" Classes="pill" Content="Restore plan defaults" IsVisible="{Binding CanRestore}" Focusable="False" Command="{Binding RestoreCommand}" />
+        </Grid>
+        <TextBlock Classes="cautiontext" Text="{Binding Problem}" IsVisible="{Binding HasProblem}" TextWrapping="Wrap" />
+        <Grid ColumnSpacing="8">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" SharedSizeGroup="Plugged" /><ColumnDefinition Width="Auto" SharedSizeGroup="Battery" /></Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="1" Classes="muted small" Text="Plugged in" HorizontalAlignment="Center" />
+            <TextBlock Grid.Column="2" Classes="muted small" Text="On battery" HorizontalAlignment="Center" IsVisible="{Binding HasBattery}" />
+        </Grid>
+        <ItemsControl ItemsSource="{Binding Groups}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="power:PowerGroupItem">
+                    <StackPanel>
+                        <Button Classes="groupHeader" Tag="grouphdr" Command="{Binding ToggleCommand}" Focusable="False">
+                            <Grid ColumnDefinitions="Auto,Auto,*">
+                                <PathIcon Classes="chev" Classes.collapsed="{Binding IsClosed}" Data="{StaticResource ChevronDownIcon}" Width="12" Height="12" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                <TextBlock Classes="strong" Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2" Classes="muted small" Text="{Binding Summary}" Margin="12,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                            </Grid>
+                        </Button>
+                        <ItemsControl ItemsSource="{Binding Rows}" IsVisible="{Binding IsOpen}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="power:PowerSettingRow">
+                                    <Grid ColumnSpacing="8" MinHeight="30">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" SharedSizeGroup="Plugged" /><ColumnDefinition Width="Auto" SharedSizeGroup="Battery" /></Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Name}" Margin="22,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                        <ContentControl Grid.Column="1" Content="{Binding PluggedIn}" />
+                                        <ContentControl Grid.Column="2" Content="{Binding OnBattery}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>

@@ -1,17 +1,11 @@
-using System.ComponentModel;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Engine;
 
-/// <summary>What Windows' power plan overlay can be set to ("Power mode" in Settings).</summary>
+/// What Windows' power plan overlay can be set to ("Power mode" in Settings).
 public enum PowerMode { BestEfficiency, Balanced, BestPerformance }
 
-/// <summary>
 /// Puts the PC to sleep, hibernates, shuts down, restarts, locks, signs out and sets the power mode. Everything runs as the normal user
 /// (no elevation), and shut down, restart and sign out force programs closed only when asked to, so by default a program with unsaved work can still say no.
 /// Each call returns false when Windows refused. The caller decides when it is wise to call these (the app asks first).
-/// </summary>
 public static class PowerCommands
 {
     [DllImport("powrprof.dll")] private static extern bool SetSuspendState(bool hibernate, bool forceCritical, bool disableWakeEvent);
@@ -68,7 +62,7 @@ public static class PowerCommands
         return PowerSetActiveOverlayScheme(overlay) == 0;
     }
 
-    /// <summary>The power mode in force now, or null when Windows can't say (an older Windows, or a mode set by the maker).</summary>
+    /// The power mode in force now, or null when Windows can't say (an older Windows, or a mode set by the maker).
     public static PowerMode? CurrentMode()
     {
         Guid overlay;

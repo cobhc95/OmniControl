@@ -1,32 +1,30 @@
 namespace OmniControl.Core.Engine;
 
-/// <summary>What the detector decided about one piece of wake evidence, or about a candidate whose time ran out (each is one log line).</summary>
+/// What the detector decided about one piece of wake evidence, or about a candidate whose time ran out (each is one log line).
 public enum WakeVerdict
 {
-    /// <summary>Evidence noted; waiting for a second channel.</summary>
+    /// Evidence noted; waiting for a second channel.
     Pending,
 
-    /// <summary>A real wake: the "wakes from sleep" trigger fires once.</summary>
+    /// A real wake: the "wakes from sleep" trigger fires once.
     Confirmed,
 
-    /// <summary>Only one channel told it and it is not a sleep-and-resume pair: no trigger (a screen time-out, a clock blip).</summary>
+    /// Only one channel told it and it is not a sleep-and-resume pair: no trigger (a screen time-out, a clock blip).
     Rejected,
 
-    /// <summary>Another telling of a wake already confirmed: absorbed.</summary>
+    /// Another telling of a wake already confirmed: absorbed.
     Duplicate,
 }
 
-/// <summary>One decision, with the channels that told it and the sentence for the log.</summary>
+/// One decision, with the channels that told it and the sentence for the log.
 public sealed record WakeDecision(WakeVerdict Verdict, IReadOnlyList<PowerChannel> Channels, string Why);
 
-/// <summary>
 /// Decides when the PC really woke, from the power events of every listener (<see cref="HardwareSignals"/>). Evidence of a wake is a resume
 /// broadcast (hidden window, <c>SystemEvents</c>), the display coming back after being off long enough (Modern Standby), and a clock gap
 /// (<see cref="ClockGap"/>). A wake is confirmed as soon as two different channels tell it; when only one does within the confirm window, it
 /// is confirmed only if it is a resume broadcast after a suspend was seen (Windows' own pair), else rejected. After a confirmed wake further
 /// evidence is a duplicate until something says the PC went down again (a suspend, or the display going off) or the quiet time passes.
 /// Pure and thread-safe: the caller passes a monotonic time in milliseconds, so tests replay sequences without sleeping.
-/// </summary>
 public sealed class WakeDetector
 {
     private sealed class Candidate(long startMs, bool afterSuspend)
@@ -53,7 +51,7 @@ public sealed class WakeDetector
         _displayOffMinMs = displayOffMinMs;
     }
 
-    /// <summary>Takes one event; a decision when it was wake evidence or closed a waiting candidate (null for events that only go in the journal).</summary>
+    /// Takes one event; a decision when it was wake evidence or closed a waiting candidate (null for events that only go in the journal).
     public WakeDecision? Observe(PowerSignal signal, long nowMs)
     {
         lock (_gate)
@@ -82,7 +80,7 @@ public sealed class WakeDetector
         }
     }
 
-    /// <summary>Called by a timer: a candidate whose confirm window passed is decided now; null when there is none or it may still get a second channel.</summary>
+    /// Called by a timer: a candidate whose confirm window passed is decided now; null when there is none or it may still get a second channel.
     public WakeDecision? Expire(long nowMs)
     {
         lock (_gate) return _candidate is { } c && nowMs - c.StartMs >= _confirmMs ? Decide(c) : null;

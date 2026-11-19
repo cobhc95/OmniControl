@@ -4,12 +4,12 @@ using System.Net.Sockets;
 
 namespace OmniControl.Core.Engine.Wake;
 
-/// <summary>The Wake-on-LAN "magic packet": six 0xFF bytes and the card's address sixteen times, sent as a broadcast to the card's own network.</summary>
+/// The Wake-on-LAN "magic packet": six 0xFF bytes and the card's address sixteen times, sent as a broadcast to the card's own network.
 public static class MagicPacket
 {
     private const int Port = 9, MacBytes = 6, Repeats = 16;
 
-    /// <summary>The address "AA:BB:CC:DD:EE:FF" (or with dashes) as six bytes, or null when it is not one.</summary>
+    /// The address "AA:BB:CC:DD:EE:FF" (or with dashes) as six bytes, or null when it is not one.
     public static byte[]? ParseMac(string? text)
     {
         var parts = (text ?? string.Empty).Split(':', '-');
@@ -28,7 +28,7 @@ public static class MagicPacket
         return packet;
     }
 
-    /// <summary>The broadcast address of "192.168.1.0/24" (192.168.1.255), or null when the text is not a network.</summary>
+    /// The broadcast address of "192.168.1.0/24" (192.168.1.255), or null when the text is not a network.
     public static IPAddress? BroadcastOf(string? subnet)
     {
         var parts = (subnet ?? string.Empty).Split('/');
@@ -39,7 +39,7 @@ public static class MagicPacket
         return new IPAddress(address);
     }
 
-    /// <summary>Sends the packet for <paramref name="mac"/> to the broadcast of <paramref name="subnet"/>. Call off the UI thread. False (with why) when the address or network is not valid or the send failed.</summary>
+    /// Sends the packet for <paramref name="mac"/> to the broadcast of <paramref name="subnet"/>. Call off the UI thread. False (with why) when the address or network is not valid or the send failed.
     public static bool Send(string mac, string subnet, out string why)
     {
         why = string.Empty;

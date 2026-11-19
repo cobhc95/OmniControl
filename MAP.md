@@ -1,0 +1,235 @@
+﻿# OmniControl map
+
+Where everything lives, the master pieces to reuse, how to add things, the allowed exceptions and the open items. Rules: `AGENTS.md`.
+Keep it current in the same task: a new folder, master piece, recipe, exception or open item gets its line here (one line per folder, never per file).
+
+## Layers (dependencies point down only)
+
+```
+OmniControl.App/Shell             start-up, main window, sidebar, search, footer; lists the feature modules
+OmniControl.App/Features/<X>      one folder per feature: services, actions, states, pages, Timing.<X>.cs, its <X>Module.cs
+OmniControl.App/Shared            what features share: Contracts, Ui (Controls, Pages kit, Restore, Styles), Services, Dialogs, Presets, Scripts
+OmniControl.Core                  Windows access only (DDC/CI, Core Audio, WMI, WASAPI, VST hosting, hooks, Win32). No UI, no Avalonia, no settings files
+```
+
+- Core never references App; Shared should name no feature (some still do: open item); a feature reaches another only through a narrow interface or a `Func`/`Action` given by the shell (`IActionRegistry`/`IActionCatalogue`/`IActionRunner`, `IStateRegistry`/`IStateCatalogue`, `IOsd`, `IPresetGroups`, `IHardwareWatches`, `IPairedPcs`, `IPcBook`, `ActionGateSlot`).
+- A view-model never calls Win32/COM (it calls a service or Core); views hold layout and input wiring only.
+- Start-up: `Program.cs` -> `App.axaml.cs` -> `Shell/ShellViewModel` makes the shared registries, then each module's `Register(FeatureContext)` in start-up order (this order decides the master lists' order and the mouse hook's handler order), then the pages in sidebar order, then `PagesMade`. `App.axaml` holds only the shared card rows' templates and the app-wide sizes.
+- Shut-down: `Features/ShutdownSteps` runs every owner's steps in `ShutdownStage` order, each guarded; steps that put Windows back (displays, pointer, hook, effects) keep their stages; plug-in teardown is last.
+- Saved files: `%APPDATA%\OmniControl`, one `DataStore` per file in `Shared/Services/DataStore.cs`, read and written only through `AppDataStore` (atomic). A store changed often (mixer, OSD) uses `AppDataStore.SaveSoon` (text taken at once, written by a worker after `Timing.SaveSoonDelay`); a read, direct save or delete of that store writes or drops the waiting text first, and `FlushSaves` runs at shut-down (`ShutdownStage.Flush`), before a backup or import, and after a restore. Logs: `AppDataStore.AppendLog` queues to the one background `LogWriter` (roll-over at `Timing.LogMaxBytes` to `name.old.txt`; `FlushLogs` at exit and on an unhandled exception).
+- Idle work: a view that wants fresh values holds a handle (`Shared/Services/HoldCount`): `MixerService.WatchClosely` (Volume page on screen, FX window, tray panel: 2 s scans, else `Timing.MixerRefreshIdle`), `MouseService.WatchPresses` (Mouse page). Fine 1 ms timers only through `Core/Engine/TimerResolution.Hold()` (meters, FX windows, recording, OSD on screen). The mouse hook is installed only while a handler's owner says it needs it (`MouseHook.AddHandler(handler, needsHook)`, `Recheck` from `InputModule`); its last owner, `Input/Mouse/BackForwardGuard` (Back/Forward over OmniControl or the desktop), always does, so in practice it stays installed; the touchpad watcher only while `mouse.NeedsTrackpad || rules.NeedsTrackpad`. The hidden main window lets its page view go after `Timing.HiddenSettle` (`ShellViewModel.ShownPage`) and `ProcessPower.Compact` gives memory back (also `Timing.CompactAfterStart`). The Resources poller (`ResourceMonitor.Need`) reads only the parts its needs ask for (`SampleParts`: page all, gadget its shown readings, rules the watched ones, adapters only while the adapter menu is open); the sensor library opens only for GPU, disk or temperature readings, with only those hardware groups, updated at most every `CoreTiming.SensorEvery`.
+
+## Feature modules (`Features/IFeatureModule.cs`: `Register`, `Pages`, `PagesMade`, `Templates`; `FeatureContext.cs`; `ShutdownSteps.cs`)
+
+| Module file | Owns |
+|---|---|
+| `Volume/VolumeModule.cs` | mixer, effects engine and plug-ins, FX windows, Volume page (Mixer, Wiring, Easy), volume presets |
+| `AppLists/AppsModule.cs` | "Open <app>" actions (`Apps/AppCatalogue`), the app lists, `AppScopes` and `AppScopeGate` |
+| `Automation/Power/PowerModule.cs` | power plan actions and the plan editor |
+| `Screenshot/ScreenshotModule.cs` | screenshot and area recording actions, the overlay, Windows' own screenshot keys switch |
+| `Input/InputModule.cs` | the one mouse hook: button mappings, layers, gestures, custom gesture rules, trackpad, pointer settings; Mouse and Trackpad page (all of them) |
+| `Automation/AutomationModule.cs` | Do and Block rules, custom actions, scripts, power and keep-awake actions, the action gate, Automation page |
+| `Devices/DevicesModule.cs` | Smart Devices (methods: scripts, simulation, emulator), their states, OSD, page |
+| `OtherPcs/OtherPcsModule.cs` | pairing, the link, wake, shared items of other PCs, settings import, Other PCs page |
+| `Osd/OsdModule.cs` | the OSD pop-up (`IOsd`), places and screens, durations, OSD page |
+| `Displays/DisplaysModule.cs` | monitors (DDC/CI), software display (gamma, colour matrix), warm light, rotation, monitor presets, Displays page |
+| `Resources/ResourcesModule.cs` | readings poller and states, network limits, taskbar gadget (its weather and layouts), presets, Resources page (Readings and Taskbar gadget tabs) |
+
+Made by the shell, not modules: `Hotkeys` (master action list, Actions and hotkeys window, hotkeys switch), `States` (master state list), `Icons` (icon store and picker), `Tray` (`ShellViewModel.Tray`), `Settings` (App settings page, About, backup), `Shared/Presets` (preset groups, shortcuts, manager).
+
+## Master lists (register once in the owner; every consumer reads the live list)
+
+| List | Where | Entry |
+|---|---|---|
+| Actions | `Features/Hotkeys/HotkeyRegistry` (`Register`; one run path, gate, `Ran`, `RunChain`) | `HotkeyAction` (id, title, category = page `Title`, `Group`, `Family`/`FamilyRole`, level via `ForLevel`, device source, `SuggestedKey`, `Common`, `NeverBlock`, `ConfirmRun`, `HardwareWatch`, `Tag`, `SuggestedIcons`) |
+| Action sections, keys no action may have | `Hotkeys/ActionSection.cs` (sections = sidebar pages), `Hotkeys/ReservedKeys.cs` | `ActionSection`, key |
+| Built-in mouse actions | `Hotkeys/Actions/MouseActionCatalog` (+ layer choices per `InputFamily`) | `PickChoice`, `MouseAction` |
+| States; Other PCs' basic set | `Features/States/StateRegistry` (`Register`, `Notify`, `Move`, `Watch`); `States/CommonGroups.cs` (Screens, Sound, Now playing, Smart devices, Power) | `StateEntry` (id, name, group, kind, getter, `HowKnown`, `Set`, `Short`, `Compact`, `StateIcons`, `ScreenPower`); the `Common` flag on an action or state |
+| Hardware watches | `Shared/Services/HardwareWatches` (`IHardwareWatches`); signals only from `Core/Engine/HardwareSignals` | `HardwareWatch` (id, name, `HardwareSignal`, refresh, `LooksStale`) |
+| OSD elements; places | `Osd/OsdService.Declare` / `DeclareText` (`IOsd`); preset group `osd.places` (`Osd/OsdPlacePresets`) | `OsdElement` (name, level or text, icon); named place |
+| Preset groups | `Shared/Presets/PresetGroups` (`IPresetGroups.Register`) | `PresetGroup` + `IPresetProvider` |
+| Saved files | `Shared/Services/DataStore.cs` (`DataStores`) | `DataStore` (file, area, kind, `Mergeable`, `NotImported`, `Import`, `MachineSpecific`) |
+| Search | each page's `SearchEntries` via `PageViewModel.Entry`; actions via `ActionsWindowService.SearchEntries` | `SearchEntry` (category = page `Title`, group) |
+| Sidebar groups; icons | `Shared/Ui/Pages/NavGroups.cs` (a page says `PageViewModel.NavGroup`); `Features/Icons/IconLibrary` (drawings `Shared/Ui/Styles/Icons.axaml`), user icons `IconStore` | `NavHeading`; icon id or `user:<id>` |
+| Apps to open; app lists | `AppLists/Apps/AppCatalogue.All`; `AppLists/AppListStore` (`app-lists.json`) | `AppEntry` (`app.<id>`); `AppList` of `ProgramIdentity` ids |
+| Readings | `Features/Resources/Reading.All` | `Reading` (gadget label defaults, `SuggestedIcons`) |
+| Rule triggers, conditions, steps; gesture triggers | `Input/Rules/RuleTriggers`, `RuleConditions`, `RuleSteps`; `Input/Gestures/GestureCatalog` | `RuleTrigger`, condition text, step; `GestureTrigger` |
+| Pointer settings | `Input/Pages/Mouse/PointerControls.All` (ranges `Core/Engine/Pointer/PointerValues`); pointer roles `Core/Engine/Pointer/CursorRoles` | `PointerControl` |
+| Trackpad gestures, Windows' gesture settings, shell panels | `Core/Engine/Trackpad/TrackpadGestures`, `WindowsGestureSettings`, `ShellSurfaceGuard` | `TrackpadGesture`, `WindowsGestureSetting` |
+| Effect kinds and engines; effects methods, status words, availability, row chip | `Volume/Audio/FxModel.cs` (`FxCatalog.All`, `FxKind.Engines`, `PluginTypes`); `Volume/Audio/EffectsRules*.cs` (pure) | `FxKind`; route, `StatusKind`, gate |
+| Credits | `NOTICE.txt` (read by `Settings/About/Credits`) | project block |
+
+## Folders
+
+| Folder | What it holds |
+|---|---|
+| `OmniControl.App` (root), `Assets` | `Program.cs`, `App.axaml(.cs)` (shared row templates, app-wide sizes), `GlobalUsings.cs`, csproj (the `<Version>`); the app icon |
+| `Shell` | `ShellViewModel` (+ `.Search`, `.Reloads`, `.Restore`, `.Tray`, `.Updates`), `MainWindow`, `WindowLifecycle` (the one exit), `CrashGuard`, close-choice dialog |
+| `Features` | `IFeatureModule`, `FeatureContext`, `ShutdownSteps` |
+| `Features/AppLists` (+ `Apps`) | app lists, Apps scope model/chip users, gate, manager window; app catalogue and launcher |
+| `Features/Automation` (+ `Pages`, `Power`) | rules, triggers, conditions, steps, custom actions, scripts, keep awake, power actions and guard; the page; power plans |
+| `Features/Devices` (+ `Pages`) | device service (methods, checks, reach, states, OSD, import, share), emulator keeper, script profiles; the page, set-up stages, simulation |
+| `Features/Displays` (+ `Pages`) | display settings and presets, software display service, warm light; the page, cards, orientation |
+| `Features/Hotkeys` | master action list, `HotkeyAction`, keys service, keycaps, hotkey box, suggested keys, hotkeys switch, action gate slot, narrow interfaces |
+| `Features/Hotkeys/Actions` | the pick model: `PickChoice`, mouse action catalogue and runner, options, `MovedActions` |
+| `Features/Hotkeys/Picker` | THE action window (`PickerWindow`, `PickerModel` + partials, settings pane, Actions and hotkeys window service) |
+| `Features/Input` (+ `Mouse`, `Gestures`, `Rules`) | module and timings; mapping, layers, modes, input queue, pointer and trackpad services; wheel and middle-click gestures, margins overlay; custom gesture rules |
+| `Features/Input/Pages/Mouse`, `Pages/Gestures` | Mouse and Trackpad page (buttons, trackpad, all mouse and trackpad features, pointer settings); its gesture groups and custom gesture rules (`GestureGroups`, a child view-model like the Devices page's import group) and the rule editor |
+| `Features/Osd` (+ `Pages`) | OSD service, window, view, placement maths, screens, durations, hiding Windows' OSD; the page and its windows |
+| `Features/OtherPcs` (+ `Pages`, `SettingsImport`) | service partials, link, pairing, crypto, protocol, wake, Tailscale; page, PC detail and mirror; import window and hooks |
+| `Features/Resources` (+ `Pages`, `Gadget`, `Weather`) | readings, monitor, settings, network limits, presets; page (Readings tab); taskbar gadget (THE cell drawing `GadgetCells`, each cell keeping room for its reading's `GadgetWidest`, labels with {icon} or coloured {icon:colour} tokens `GadgetLabel` (names `Palette.DrawingNamed`, fixed meanings `GadgetLabel.*Colour`, warn colour wins), layouts preset group `GadgetLayouts` (Classic = a new setup's look; each built-in entry carries its name, description, category and Favourite flag, `LayoutAbout`; a user layout keeps its `Saved` day), the Ready-made layouts gallery `GadgetLayoutGallery` + `GadgetLayoutsView` (folded: favourite tiles two to a line and the dashed "More layouts" tile; unfolded in place: filter chips, a section per category with Yours first, the Save / Manage / Fewer foot; previews drawn only for tiles on screen, unknown or 0 values as samples `Reading.SampleOr` / `WeatherWords.Sampled`), the page's Taskbar gadget tab `GadgetTabView` + `GadgetSettingsModel` (groups in order: Ready-made layouts, What it shows, Weather, Size and spacing, Numbers and units, Hover details, Clicks; gadget speeds show at most three digits, `Reading.SpeedText`) and the label editor, hover tooltips `ReadingTips` and the Hover details group; today's high and low per reading are kept in memory by `ResourceMonitor.Today`); the gadget's weather (service and states, words, Place card) |
+| `Features/Screenshot` | capture overlay, marks, save dialog, video recording, settings |
+| `Features/Settings/Pages` (+ `Backup`), `About` | App settings page (plug-in folders, confirmations, updates, restore, the Tray icon and Tray icon colour cards `AppSettingsPageViewModel.TrayIcon`); backup service; About and credits |
+| `Features/States`, `Tray`, `Icons` | state registry and entries, common groups, now-playing text; tray icon, flyout, tray defaults, Win+A key; the tray icon's look (`ITrayIconLook` on the flyout model, kept in tray.json; THE choices `TrayIconChoices`; drawn by `TrayIconImage` into an in-memory .ico only on a change of look, accent or taskbar theme; the tray menu's "Tray icon â€º" and "Tray icon colour â€º" sub-menus in `TrayService`); icon library (`omnicontrol` = the logo as an outline), user icons, icon picker |
+| `Features/Volume/Audio` (+ `Engine`, `Engine/Dsp`, `Ir`) | mixer service, FX model, EQ, presets, effects rules; engine planner, runs, status, installer; DSP stages (the IR convolver `PartitionedConvolver`: zero latency, partitions growing 128 to 16384, real FFT `RealFft`, the tail stage on a thread-pool worker within its one-block slack, done on the audio thread if late); IR loading |
+| `Features/Volume/Fx` (+ `Plugins`, `Presets`) | FX window and chain panel, effect editors, EQ graph, plug-in library and Add effect window, effect presets |
+| `Features/Volume/Pages` (+ `Easy`, `Easy/Flow`) | Volume page partials, mixer and wiring rows, meters, method and Plays on menus; Easy view and its guided flows |
+| `Shared/Contracts`, `Dialogs` | `RunChain`, `IStateReader`, `IColumnPlaced`; `DialogService`, `DialogMessage`, `Confirm`, `ConfirmationMemory`, message window |
+| `Shared/Presets` (+ `Manager`) | preset groups, the provider base, rules, shortcuts; THE preset manager window |
+| `Shared/Scripts` | script runner, command approval, program names, run report |
+| `Shared/Services` (+ `Backup`, `Updates`) | settings and slots, data stores, guard, timing, palette, accent, background surfaces, search pipeline, wrap, grace, hardware watches, power journal, restart and `AdministratorMode` (THE way to start or restart elevated: the sign-in task, else Windows' prompt; keeps the task in step with "Run as administrator"; `IsElevated`), program icons (`ProcessIcons`, one bounded cache per owner: the Mixer, Network by app), small helpers; backup file and merge; update check |
+| `Shared/Ui/Controls` | master controls (chips, menus, pickers, fields, knob, tabs, drag reorder, icons, tags) |
+| `Shared/Ui/Pages` | card kit (items and rows), groups, page base, keyboard model, wheel/reset/typing, view templates |
+| `Shared/Ui/Restore` | Restore defaults: `IRestorable`, `SettingsRestore`, restore bar |
+| `Shared/Ui/Styles` | the master styles (`Theme`, `ThemeLists`, `ThemeButtons`, `Brushes`, `Menus` last, and per-kind files) |
+| `OmniControl.Core` (root) | `MonitorEngine`, `CoreTiming`, `GlobalUsings.cs` |
+| `Core/Engine` | displays (DDC/CI, gamma, rotation), power, startup entry, the sign-in task (`SignInTask`: Task Scheduler task "OmniControl", highest privileges, no trigger, run on demand with the starter's arguments), elevation, hardware signals, programs, credentials, keep awake, Windows' accent shades, misc Windows calls |
+| `Core/Engine/Adb`, `Apo` | Android emulator and adb (Smart Devices simulation); Equalizer APO ids and status |
+| `Core/Engine/Audio` | `CoreAudio` partials, sessions, devices, pipe, captures, VST2/VST3 hosting, plug-in loader |
+| `Core/Engine/Keyboard`, `Media` | key learner and Win-key hook; Windows' now-playing session |
+| `Core/Engine/Mouse`, `Pointer`, `Trackpad` | low-level hook, input sender, pointer areas; pointer settings and schemes; Raw Input touchpad and Windows' gesture settings |
+| `Core/Engine/Weather` | weather and place-search requests (Open-Meteo, MET Norway, OpenWeatherMap; plain JSON over one HttpClient), Windows location |
+| `Core/Engine/Resources`, `Screenshot` | sampler, network by app (ETW), network rules (each sync reads what Windows holds by name, `NetworkRules.Plan` decides, then reads back), download shaper (one token bucket per program through Windows Packet Filter `PacketFilter` + `PacketFilterSetup`; port owners); capture, desktop duplication, encoders (MP4, GIF), recording |
+| `Core/Engine/Tailscale`, `Wake` | Tailscale CLI and firewall; wake facts, fixer, magic packet |
+| `Core/Interfaces`, `Models`, `Native` | `IMonitor`, `ICredentialStore`; pure models (`Percent`, VCP); P/Invoke declarations |
+| `tests/OmniControl.Tests`, `tools` | headless tests (fakes; never touch a device or Windows setting); `release.ps1`, `setup.iss` |
+| `docs/screenshots` | README images (`docs/mockups` exists only while a mock-up's job is open) |
+
+## Master UI pieces (styles in `Shared/Ui/Styles`, sizes in `App.axaml`; use by class, never restyle a control)
+
+| Piece | Use |
+|---|---|
+| `Button.primary` (`.close`) | the one accent action of a window (Close); `.close` = the one Close/Cancel width |
+| `Button.usebtn` | confirm in a window ("Use for ..."); `.danger` for a destructive confirm |
+| `Button.pill` | small outlined action beside a card's name (Refresh, Clear); `.custom` = a toggle that is on |
+| `Button.pill` `.cog` / `.danger` / `.cardaction` (`.main`) / `.glyph` / `.icon` / `.accentline` / `.glow` | action settings / destructive / action inside a pop-down card / one-character / drawn glyph only / accent words and edge / FX button while effects run |
+| `Button.pill.closex` + `glyph`; `Button.removebadge` | THE round X remove pill (`CloseXSize`, `CrossIcon`); THE small remove cross chip (tray tiles, rows, search boxes) |
+| `Button.pill.splitleft` + `.splitright` | one pill in two halves (Wake split button) |
+| `Button.statetoggle` (`.muted`); `Button.statepower` (`.on`) | an on/off state as its icon and words in a card's extras line (`StateButtonItem`); the round power button of a Smart Devices method row |
+| `Button.link` (`.small`) | underlined words that act inside a sentence or line |
+| `Button.pin` (`.on`) + `Path.glyph` of `Icon.pinned` | a row's pin (Network by app): faint muted outline, full on row hover; `.on` = filled in the accent (`Styles/RowControls.axaml`, sizes `Pin*`) |
+| `Button.tab` (`.selected`) + `PageTabsView`; `ListBox.browsertabs` (`Controls/BrowserTabStrip`) | a page's own tabs (`PageViewModel.Tabs`, opened at a tab by `FeatureContext.OpenPage(title, tab)`); browser-style tab strip joined to a `Border.pane.tabbed` |
+| `Button.optioncard` in `FlyoutPresenter.optionmenu` | selectable card of a wide pop-down (Method menu), always on a `ListMenuFlyout` (its class after `listmenu`); keys `OptionPanelKeys` |
+| `Button.menurow` (`.chosen`, `.danger`, `.accent`, `.muted`) in `FlyoutPresenter.listmenu` via `Controls/ListMenuFlyout` + `MenuRowList` | THE menu pop-down and its rows, Windows 11 style (`Styles/Menus.axaml`: card surface, soft edge, 8 px corners, `MenuShadow` drawn in `MenuShadowRoom`, 32 px rows, 40 with a muted second line `MenuRowItem.Detail`; the one in force of a single-choice menu = `.chosen`, the accent bar `Border.menubar` and `BrushMenuChosen`, never a tick; a multi-choice menu (`KeepsOpen` rows, `ToggleButton.menurow`) keeps accent ticks `Path.menutick`; the glyph column only when a row has an icon or tick; the same look for every `ComboBox` list; also right-click menus, `Placement="Pointer"`; never a `ContextMenu`); placed above or below its opener it opens directly under (or over) it, left edges aligned and at least as wide as it (`ChipMenu` opens at its chip), and picks the side that fits the screen's working area (taskbar excluded), else the roomier side with a scroll bar; a sub-menu is `MenuRowItem.Sub` (chevron row opening a nested `ListMenuFlyout` at its side after the pointer rests on it for Windows' menu show delay (`SystemCommands.MenuShowDelay`, fallback `Timing.SubmenuDelay`), on a click or on Right; resting on another row closes it) |
+| `Button.selector` / `Border.selector` (`.running`, `.method`, `.apo`, `.cable`, `.recording`, `.good`, `.caution`) | chip-shaped picker; on a group header always `Controls/ChipMenu`; `c|ChipMenu.dropbox` = the same drawn as a Windows drop-down box (tray panel rows) |
+| `Controls/PresetPicker` | THE preset picker ("Preset: name", last row "Manage presetsâ€¦") on a group's header line |
+| `Controls/AppScopeChip`, `ScopeCog` | THE "Apps: ..." scope chip on a group header; a card's scope cogwheel; `AppScopes.Exclusions` = the same chip as a "never in these apps" list ("None" or the list's name) |
+| `Button.chipx` (`.walk`, `.more`) + `Button.blockadd.small` | removable value chips, "+N more", dashed "+ add" |
+| `Button.blockadd.card` | dashed last card of a gallery of option cards that unfolds the rest in place (the gadget's "More layouts"; `OptionCardPadding`/`OptionCardCornerRadius`) |
+| `Button.block`, `.blockx`, `.blockjoin`, `.blockadd`, `TextBlock.blockword` (`Pages/SentenceBlocks`, `SentenceFocus`) | sentence parts of rule editors |
+| `Border.keycap` (`Hotkeys/KeycapRow`), `Hotkeys/HotkeyBox` | shown shortcut keys; THE hotkey capture box |
+| `Button.bandrow` + `Border.bandbar` | Parametric EQ band list rows (colours `BrushBand1..6` via `Fx/EqBandColors`) |
+| `Button.scope`, `Button.step`, `Button.groupHeader`, `Button.graphthumb` | field-like picker, flat arrow, group header, graph thumbnail |
+| `Button.tile` (`.on`) in `StackPanel.traytile`, `Window.trayflyout`, `Border.flyoutpanel` > `.flyoutbody` > `.traytiles` / `.traysliders` / `.trayfoot`, `Button.trayfootbutton` (`.on`, `.quiet`) | tray flyout pieces (`Styles/Tray.axaml`; surfaces from `SurfaceService`: panel `BrushSidebar`, sliders band `BrushCardShade`, foot `BrushBackground`; `TrayPanelShadow` in `Brushes.axaml`): tile = button with glyph, name under it; bands tiles, sliders, foot (one step darker each); foot = plain icon buttons with a hover square |
+| `Button.toolicon` (`.selected`, `.danger`), `Button.swatch`, `Border.floatbar`, `Popup.floating` | floating bars over a picture (screenshot overlay) |
+| `Controls/SwatchList` of `SwatchItem` (`ItemsControl.swatches`, `Ellipse.swatch`, `.follow` + `TextBlock.swatchletter`) | THE row of colour dots (screenshot colours, gadget warn and icon colours; its panel and dot template come from the class it gives itself, so no use site sets them); a null brush is the "follow the text colour" dot |
+| `Pages/Swatches` (`SwatchStrip`, `AccentSwatches`, `ThemeSwatches`) | a gallery card's dots: `SwatchStrip` shows only whole dots, a run around the chosen one that the arrows and wheel move (never clipped at any width); `AccentSwatches` = every accent gallery (edged, Windows mark `WindowsMarkIcon` on "Windows accent") |
+| `BrushOnAccent` (`AccentService.OnAccent`) | words, glyph or switch knob drawn ON an accent fill: near-black ink (`Palette.OnAccentInk`) or white, whichever has more contrast (dark ink on the dark theme's light shades) |
+| Accent shades (`AccentService`, `ColorMath.AccentShade`, `Core/Engine/AccentShades`) | every accent brush is the shade Windows paints with: Accent Light 2 (dark theme) / Accent Dark 1 (light theme), Windows' own for "Windows accent", worked out the same way for the other choices; Blue when Windows reports no accent |
+| Surfaces (`SurfaceService`, `SurfaceSet`; App settings > Background colour) | THE surface colours (page `BrushBackground`, card `BrushSidebar`, raised `BrushHover`, edge `BrushDivider`, control `BrushControlFill` and the brushes worked out from them: `BrushCardShade`, `BrushField`, a menu's chosen row `BrushMenuChosen`, tracks, edges, scroll bars, the off switch `ToggleSwitch*Off`) for both themes per choice (Follow Windows, Carbon, Slate blue, Black, Soft plum), written into the app's theme dictionaries with `ThemeBrushes`; never a surface colour in a view; the OSD's background choices are the same sets |
+| `Button.devicon`, `Border.devicon` | a device's icon square |
+| `Border.tag` (`.good`, `.caution`, `.risk`, `.selected`) via `TagItem` + `Controls/TagView` | a small fact pill |
+| `Border.groupPanel` (`.target`) via `Pages/GroupCard`; `Pages/PageTitleLine` | a page's group card; the title line |
+| `ToggleSwitch.master` + `Pages/GroupMasterSwitch` / `GroupSwitch`; `ToggleSwitch.plain` | a group header's master switch; a switch without On/Off words |
+| `ListBox.cards` (`rows compact`) + `HalfPanel` | the card list (half-width cards pair) |
+| `ListBox.nav` (`.compact`), `TextBlock.navheading`; `ListBox.pick` | sidebar and pane navigation lists and headings; picker lists |
+| `Border.sidebarpanel`, `Border.barstrip`, `Border.pane` (`.edged`), `Border.footer` | a window's side panel, top bar, boxed pane, foot |
+| `Border.toolrow` (in `Fx/FoldingRow`), `Border.statusstrip` + `TextBlock.statusline` | a toolbar row; the one thin status line |
+| `Border.stage` (`.open`); `Border.hrule`, `Border.divider` | a numbered set-up stage; thin line in a pop-down; divider |
+| every `Slider` (drawn by `Controls/SliderBar`) + `TextBlock.slidervalue`; `Slider.vband` | THE Windows-style slider, one design for both orientations, no variants (Windows 11's sizes and colours: 4 px `BrushSliderTrack` track, accent fill from the minimum or from a centre mark for a range through zero, 20 px round knob in the control colour with a 1 px `BrushSliderKnobEdge` edge and a 10 px accent dot (14 on hover, 8 while dragged) that grows on hover and shrinks while dragged, ring on focus; a press anywhere on the bar sets the value and drags; sizes `Slider*` in `App.axaml`; the template sits behind `:horizontal`/`:vertical` so it outranks Fluent's) and the plain number beside it; `.vband` = the same slider upright (equaliser bands, the parametric EQ's overall gain) |
+| `Controls/Knob`; `Controls/SliderField` | THE knob (click types, double-click resets, drag, wheel, keys); slider + typed value + reset |
+| `Pages/NumberText`, `ValueWheel`, `SliderReset` | typing (a faint field box; `.plain`, set by the slider rows, none beside a horizontal slider), wheel and double-click reset for every value control (a reset holds the slider still until the button is let go) |
+| `GridSplitter.pane` | THE draggable gap between two panes |
+| ScrollBars (`Styles/ScrollBars.axaml`) | the one scroll bar look, never styled per control |
+| `TextBox.field` (`.code`), `search` class (`Pages/SearchClear`) | text field, code field; every search box: magnifier, clear badge, and the quiet shortcut pill when `SearchClear.Shortcut` is set (main window: `ShellViewModel.SearchShortcut`, action `app.search.focus`, no default key because hotkeys are system-wide) |
+| `Controls/PathField` + `PathPicker`; `PointField` + `PointPicker` | any file, program or folder path; any place on the screen |
+| `Controls/PasswordField`; `CopyDetails` | THE password field; every "Copy details" |
+| `Controls/IconGlyph`, `IconText`; `Icons/IconPicker` | drawing an icon; icon before a name; THE icon picker |
+| `Controls/ChoiceChips`, `ChoiceChip`; `Pages/ChoiceChipsItem` | row of choice pills (`ChipTag` "scope" in a card); a chip + menu leading a slider row; a card of choice pills with a muted note and an optional chip menu after them (`ChoiceChipsItem.Menu`) |
+| `Controls/OptionList`, `Border.tickbox` (`.mixed`) | ticked option list |
+| `Controls/StatusDot`; `RemoteSectionTag` + `TextBlock.remotesection` | green/yellow/red/grey status dot; "Other PCs Â· name" mark of a remote entry |
+| `Controls/PanelDragReorder`, `ListDragReorder`; `AnchorPicker` | drag reorder in a panel / a ListBox; 3 x 3 place grid |
+| `Pages/FactItem`, `MenuChoiceItem`, `TextItem`, `AnchorItem`, `StateButtonItem`, `SliderItem`, `ChoiceItem`, `ChoiceChipsItem`, `ToggleItem`, `GalleryItem`, `ButtonItem`, `FileItem`, `ScopeItem` | the card kinds |
+| `Pages/EmptyListRow`; `DialogKeys` (`Classes="dialog"`); `EmptyToolTips` | every list that can be empty; Esc closes a window; blank tool tips dropped |
+| `Shared/Services/SingleWindow<T>`; `Dialogs/DialogService.AskAsync` + `DialogMessage` (`Confirm.Delete`, `RememberKey`) | a window that exists once; every question or confirmation |
+| `ActionOption` (`.Heading`, `.Toggle`, `.Point`, `.Path`, `.Panel`) | an action's settings rows in the action window |
+| `Pages/ProviderChoice` | a group header's preset drop-down from its `IPresetProvider` |
+| `TextBlock` `.cardlabel`, `.hint`, `.strong`, `.menutext`, `.cautiontext`, `.goodtext`, `.badtext`, `.statlabel`/`.statvalue` | two-line card label, muted hint, semi-bold, menu note, caution / good / failed fact, graph numbers |
+
+## Recipes
+
+- **Feature module:** `Features/<X>/<X>Module.cs` implementing `IFeatureModule`; in `Register(FeatureContext)` make services, register actions, states, watches, preset groups, `context.Imports.OnReload(store, ...)`, `context.Shutdown.Add(stage, what, step)`; offer `Pages` and `Templates`; add the module to the shell's start-up list (and the sidebar list if it has pages).
+- **Page:** `<Name>PageViewModel` (derives `PageViewModel`: `Title`, `Icon`, `NavGroup`, `SearchEntries` via `Entry`, `OnShown`, `OnOnScreenChanged`, `KeyHelp`) + `<Name>Page.axaml` in `Features/<X>/Pages`; one `FeaturePage` in the module's `Pages`, one `ViewTemplate.For<VM, View>()` in its `Templates` (never `App.axaml`). Tabs: override `Tabs` with a `PageTabs` shown by `PageTabsView`; anything opening the page at a tab calls `context.OpenPage(Title, tabName)`.
+- **Action:** `context.Actions.Register(new HotkeyAction(id, title, Title, keywords, run) { ... })`; a level: `HotkeyAction.ForLevel` both directions; changing devices: one action with a device source + `RefreshDevices`; directions of one thing share a `Family`; a renamed id: `Move`.
+- **State:** `context.States.Register(new StateEntry(...))`; call `Notify(id)` when it may have changed.
+- **Hardware watch:** `context.Hardware.Register(new HardwareWatch(id, name, signals, refresh, looksStale))`; name it in the action's `HardwareWatch`.
+- **OSD pop-up:** `context.Osd.Declare(name, icon)` once, then show through `IOsd`.
+- **Preset group:** a provider deriving `Shared/Presets/PresetProvider` (the defaults said once; `ListPresetProvider<T>` for a `PresetList` after built-ins, entries worked out once per change) + `context.Presets.Register(new PresetGroup(id, section, title, provider))`; show it with `PresetPicker` on the group's header line.
+- **Data store:** a `DataStore` line in `DataStores` (with `Import`/`MachineSpecific`/`NotImported`); the settings class loads and saves only through `AppDataStore`; reload on import via `context.Imports.OnReload`.
+- **Setting slot:** a field in `AppSettings` read and written by the feature through `context.Settings.Slot(s => s.X, (s, v) => s.X = v)` (`ISettingSlot<T>`), never `AppSettings.Current`.
+- **Timing:** a named value in `Features/<X>/Timing.<X>.cs` (`public static partial class Timing`, namespace `OmniControl.App.Shared.Services`, so calls stay `Timing.X`); Core values in `Core/CoreTiming.cs`.
+- **Restore defaults:** the page implements `IRestorable` (`Shared/Ui/Restore`), the pill sits at the right of the section title.
+- **Apps scope:** store an `AppScopeSetting?`, make the model with `AppScopes.Group`/`.Card`, ask `AppScopeGate.Allows` before acting.
+
+## Exceptions (allowed on purpose; the owner may overrule)
+
+Hard-coded:
+- `Icons/IconLibrary.All` and `Styles/Icons.axaml` are data (the master list itself); `Tray/TrayDefaults` types default ids as tray.json holds them.
+- `Screenshot/ImageBitmaps` opacity mask uses `Colors.Black` (only its strength counts); `StrokeMark.PartLength` 64 is a drawing detail.
+- `Fx/FxChainPanel.axaml` rubber band: `BrushAccent` at `Opacity="0.15"` (must stay see-through; `BrushAccentSoft` is opaque).
+- `Palette.MeterGreen`/`MeterAmber` differ slightly from `BrushOn` (unifying changes the meters' look).
+- `Devices/Pages/DeviceItem.Icon.cs` suggests bulb, plug, lamp as a constant; `Resources/Gadget/GadgetRowItem` lists the label editor's network, temperature, component and memory icon grids (and `LabelIconGroup.MaxColumns`, the cells a line of its pop-down holds), `GadgetLayouts` its built-in layouts (data).
+- `PickerWindow.UseKeys` is a set-once static (the one live keys part every picker shows).
+- `tools/setup.iss` retypes `--quit`'s "needs administrator" exit code 2 from `Shared/Services/SingleInstance` (Inno's script cannot read C#), and the firewall group name "OmniControl" from `Core/Engine/Resources/NetworkRules` for the uninstall clean-up, and Windows Packet Filter's app folder `windows-packet-filter` (also in the App csproj), INF `ndisrd_lwf.inf`, component id `nt_ndisrd`, driver `ndisrd.sys`, service `ndisrd` and the record `HKCU\Software\OmniControl` `PacketFilterInstalled` from `Core/Engine/Resources/PacketFilterSetup` and `PacketFilter`, and the saved "Run as administrator" (`"RunAsAdministrator":true` in `%APPDATA%\OmniControl\mouse.json`) to decide whether to run `OmniControl.exe --sign-in-task on|off` in its one admin prompt (the task's name and definition stay in `SignInTask`).
+- Process-wide static state on purpose: `AppDataStore`'s waiting saves and `LogWriter`'s queue (the files are one set for the whole process).
+- Diagnostic logs kept deliberately: `mouse-log.txt`, `osd-log.txt`, `hang-log.txt`, `timing-log.txt` (the mouse log is capped per kind by `CoreTiming.HookLogLimit` and written off the hook thread; every log rolls over at `Timing.LogMaxBytes`). `hang-log.txt` (`UiWatchdog`) records a stall and its length only, no thread stacks (the stack reader, ClrMD, was dropped for size).
+- Download size (csproj, one commented block): publish trims (`TrimMode` partial, every used assembly kept whole as copyused, only `Microsoft.Windows.SDK.NET` member-trimmed), keeps COM interop and reflection JSON on, silences trim warnings, and leaves out the files in `LeaveOutOfPublish`; Release builds no pdbs. A plain `dotnet build` is not trimmed (all runtime files), so a trimming fault shows only in a published build (`tools\release.ps1`). Memory: workstation GC, concurrent, `System.GC.ConserveMemory` 5.
+
+Mouse first (rule 5; the control that opens each stays keyboard reachable, Esc closes):
+- Every menu or pop-down opened from a control: Plays on, Method, option cards, preset menu, Apps scope menu, Add program, cable table, Wiring cell menu, member levels, chips rows, device icon, the gadget's menu, OSD exceptions chip, OSD Position and Show on, the gadget's label editor and its weather place results.
+- Screenshot overlay: tool and swatch buttons are not focusable, so the overlay keeps Esc, Ctrl+C/S/P, Ctrl+Z/Y and the arrows.
+- Drag only: Smart Devices method order, OSD preview drag (arrow nudges once clicked), rubber-band selection, graphs and curves.
+- Power plan editor values and action setting step buttons are not keyboard stops (wheel, double-click typing).
+- Rule editor hotkey block: click, then press keys (reachable by Tab and Enter); the Actions window's key part walks by arrows only.
+- Parametric EQ band list: mouse first; the card's Left/Right still picks a band.
+- Tray panel: a tile's name sits under its button and is not clickable (the button is the keyboard stop, named for screen readers); the panel's transparent shadow margin (`TrayShadowInset`) takes clicks without closing it.
+- Other PCs Sound state buttons are reached by Tab, not the card's Left/Right; the script editor (`TextBox.field.code`) does not take Tab, so the keyboard is never trapped.
+
+## Known limits (not bugs)
+
+- Effects an engine does not run (`FxKind.Engines`) are stored only and the UI says so; VST3 plug-ins on Equalizer APO rows are kept, not run; a blend's dry part is not delayed to match a plug-in's latency.
+- Pan needs Windows to allow per-channel session levels (`AudioSession.CanPan`); per-app output uses an undocumented interface (`CoreAudio.Routing.cs`); hiding Windows' OSD is best-effort (`WindowsOsd`).
+- The mouse hook cannot act on programs running as administrator unless OmniControl runs as administrator.
+- Other PCs is basic only (LAN or Tailscale/ZeroTier address); no relay; Windows Remote Desktop covers more.
+- Download limits (`Core/Engine/Resources/DownloadShaper`) need Windows Packet Filter (`ndisrd.sys` and its `ndisrd` service; its official Windows 10+ x64 driver files, taken unmodified from its MSI, ship in `third_party/windows-packet-filter/driver`, copied to the app folder's `windows-packet-filter\` by the App csproj; Setup's task "Install Windows Packet Filter", on by default, runs Windows' `netcfg -v -l <inf> -c s -i nt_ndisrd` behind one admin prompt unless the driver is there, a failure only shows one line; while OmniControl runs as administrator the first download limit set, or a saved one at start-up, installs it the same way (hidden, no prompt) after checking the files' pinned SHA-256 in `PacketFilterSetup`, and "Install Windows Packet Filterâ€¦" shows only as a retry after a failure; both record it under `HKCU\Software\OmniControl`, and uninstall runs `netcfg -v -u nt_ndisrd` only with that record). Without administrator rights Network by app shows only `NetworkLimits.NeedsAdministratorLine` and "Restart as administrator": nothing is read (no per-program ETW session) or put into Windows. The driver is opened only while a limited program owns ports (port tables read every `Timing.ResourcesShapePortsIdle` while none does, every `Timing.ResourcesShapePorts` while one does), every adapter tunnelled (new ones through the `resources.download-adapters` hardware watch), and only packets to the limited programs' ports (its filter table) reach OmniControl, so a new connection runs unlimited until the next look; IPv6 packets with extension headers pass unlimited; `NetworkLimits.Download` says what runs.
+- Gadget weather: Open-Meteo's rain chance is today's highest on the gadget (the hover tooltip can give the next hour's; sunrise, sunset and the next hours come in the same request); only Open-Meteo gives a next-hour rain chance, MET Norway gives no sunrise or sunset and OpenWeatherMap no next hours, so those tooltip lines are left out; MET Norway gives no feels-like or rain chance (high and low are the next 24 hours); OpenWeatherMap's free current weather gives no rain chance and its high and low are the current observation's range; "Use my location" needs Windows' location on for desktop apps. Places are sent rounded to two decimals.
+- Rendering is Win32 only (`Program.cs`: `UseWin32().UseSkia()`) in Avalonia's default rendering order (ANGLE over Direct3D, then software; `av_libglesv2.dll` is shipped). Text is the system font (Segoe UI), no font is bundled.
+- Trade-offs approved for idle cost: the USB pop-up and "device connected" rules follow Windows' device notice through the hardware watches (about `Timing.HardwareDebounce` after the plug); the laptop brightness check read runs for `Timing.OsdBrightnessCheckFor` only when Windows' brightness event is listened to; the autoscroll answer is renewed without a new lookup while the pointer rests; the OSD keep-warm redraw is every `Timing.OsdKeepWarm` (30 s).
+- In a published build the .NET framework assemblies (except CoreLib) lose their precompiled ReadyToRun code (trimming rewrites them), so a little more JIT at start-up; putting it back costs about 19 MB installed.
+
+## Open items
+
+- Job 5 splits skipped: the Volume Wiring tab is still `VolumePageViewModel.Wiring.cs` (no `WiringViewModel`); `Hotkeys/Picker/PickerModel.cs` (527 lines) keeps the settings pane; Core `CoreAudio` is partials, not separate meter, session and device classes.
+- Win32 in App (rule 8): `Features/Hotkeys/HotkeyService.cs` (RegisterHotKey loop) and `Shared/Services/ClickThrough.cs` belong in `Core/Engine`.
+- About 25 `Shared` files still name a feature (mostly `Hotkeys`, `AppLists`, `Volume`: presets manager, scope chip and menu, `RowEditing`, `SentenceBlocks`, styles): move the piece or take an interface.
+- Static mutable state: `RowEditing._activeSlider`; static `Guid _ctx` in `CoreAudio` and `AudioSession`.
+- 16 bare `catch` blocks in Core not yet narrowed (`Wake/WakeFixer`, `Screenshot/Mp4Writer`, `RecordingAttempt`, `DesktopDuplication`, `SamplePool`, `RecordingSound`, `Audio/Vst2Effect.Host`).
+- Shared code still reads `AppSettings.Current` (`CardGroup`, `GroupsOpen`, `HardwareWatches`, the shell, `App.axaml.cs`); features use slots.
+- Hook-thread waits: `HotkeyRegistry.RunHeld` asks the gate on the UI thread for up to `Timing.GateAskWait`; `Core/Engine/Mouse/PointerArea` sends `WM_NCHITTEST` (`CoreTiming.HitTestTimeoutMs`) from the hook for title-bar gestures.
+- `AppSettingsPageViewModel` takes 14 constructor parameters: move a concern into its own service when next touched.
+- Views that decide: key routing in `PickerMenu.axaml.cs`, `HotkeyRow.axaml.cs`, `FxChainPanel.axaml.cs`, `RuleEditorWindow.axaml.cs` belongs in their view-models.
+- Duplicates: the typing state machine (`NumberText` / `Picker/OptionItem`); the pointer-drag session (`ListDragReorder` / `RubberBandSelect`).
+- Literal `FontSize` in the FX windows (`FxWindow`, `FxChainPanel`, `EffectEditorWindow`, `AddEffectWindow`).
+- About 100 `.axaml` comments still name deleted `docs/mockups/*.html` files: drop them when the file is next touched.
+- NAudio's obsolete `WasapiCapture` is still used (`CaptureMeterStreams`, `RecordingSound`).
+

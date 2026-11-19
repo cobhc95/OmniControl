@@ -1,12 +1,10 @@
 using Avalonia;
-using OmniControl.App.Hotkeys;
-using OmniControl.App.States;
-using OmniControl.App.Tray;
-using Xunit;
+using OmniControl.App.Features.States;
+using OmniControl.App.Features.Tray;
 
 namespace OmniControl.Tests;
 
-/// <summary>The tray flyout's elements: id patterns, the defaults read from the master lists, missing ids, and where the flyout goes (no UI, no Windows).</summary>
+/// The tray flyout's elements: id patterns, the defaults read from the master lists, missing ids, and where the flyout goes (no UI, no Windows).
 public class TrayTests
 {
     private static StateEntry Level(string id, string name) => new(id, name, "Displays", StateKind.Level, () => StateValue.Of(50), "test", Set: _ => { });

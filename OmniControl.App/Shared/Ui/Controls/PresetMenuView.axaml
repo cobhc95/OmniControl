@@ -1,0 +1,26 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+             x:Class="OmniControl.App.Shared.Ui.Controls.PresetMenuView">
+    <!-- The preset picker's menu (docs/mockups/preset-picker-chip.html), the content of a FlyoutPresenter.listmenu like the Apps menu:
+         muted title, the accent bar on the current preset, the others as menu rows, a thin line, "Manage presets...". Mouse first (AGENTS.md rule 5). -->
+    <StackPanel>
+        <TextBlock x:Name="TitleText" Classes="menutext" Text="Preset" />
+        <ItemsControl x:Name="List">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="c:PresetRow">
+                    <Button Classes="menurow" Classes.chosen="{Binding IsCurrent}" Click="OnRowClick">
+                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                    </Button>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Border Classes="hrule" Margin="{StaticResource MenuRuleMargin}" />
+        <Button Classes="menurow" Click="OnManageClick">
+            <StackPanel>
+                <PathIcon Data="{DynamicResource CogIcon}" Width="12" Height="12" />
+                <TextBlock x:Name="FooterWords" Text="Manage presets…" />
+            </StackPanel>
+        </Button>
+    </StackPanel>
+</UserControl>

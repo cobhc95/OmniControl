@@ -1,17 +1,13 @@
-using System.Diagnostics;
-
 namespace OmniControl.Core.Engine;
 
-/// <summary>A look at the device's card: what the reading says, and the switch it looked at (null when the card was not found).</summary>
+/// A look at the device's card: what the reading says, and the switch it looked at (null when the card was not found).
 public sealed record StateLook(StateReading Reading, SimNode? Switch);
 
 // Teaching a device's on and off, reading its state, and the On / Off / Toggle run that taps only when the reading says so.
 public static partial class SimRunner
 {
-    /// <summary>
     /// Switches the device: the steps up to the switch, a reading, the tap when it is needed, a second reading that must show the change, then
     /// the steps after the switch. See the class summary for the rules.
-    /// </summary>
     public static async Task<SimResult> RunAsync(IAdbScreen adb, IReadOnlyList<SimStep> steps, StateModel model, SimGoal goal, SimTiming timing, CancellationToken stop = default)
     {
         var at = SwitchIndex(steps);
@@ -42,10 +38,8 @@ public static partial class SimRunner
         return new SimResult(-1, null, after.Reading.State == DeviceState.On, Confidence: confidence);
     }
 
-    /// <summary>
     /// Only reads the state: the steps up to the switch, then a reading; nothing is tapped. <see cref="SimResult.Unsure"/> when the reading was
     /// not clear; a failed step or a switch that was not found comes back as the problem.
-    /// </summary>
     public static async Task<SimResult> ReadStateAsync(IAdbScreen adb, IReadOnlyList<SimStep> steps, StateModel model, SimTiming timing, CancellationToken stop = default)
     {
         var at = SwitchIndex(steps);
@@ -59,10 +53,8 @@ public static partial class SimRunner
         return new SimResult(-1, null, look.Reading.State == DeviceState.On, Confidence: look.Reading.Confidence);
     }
 
-    /// <summary>
     /// Takes <paramref name="count"/> looks at the switch's card, <paramref name="gap"/> apart, while the person holds the device in one state
     /// (teaching). The switch is the step's element, or where the model last found it. A short phrase when the screen or the switch was not there.
-    /// </summary>
     public static async Task<(IReadOnlyList<StateSample> Samples, string? Problem)> CaptureAsync(IAdbScreen adb, SimStep switchStep, StateModel model, int count, TimeSpan gap, Action<string>? log = null, CancellationToken stop = default)
     {
         var samples = new List<StateSample>();
@@ -76,7 +68,7 @@ public static partial class SimRunner
         return (samples, null);
     }
 
-    /// <summary>The switch while teaching: the step's own element, else the taught target, else the element with the step's id (its words may have changed with the state).</summary>
+    /// The switch while teaching: the step's own element, else the taught target, else the element with the step's id (its words may have changed with the state).
     private static SimNode? FindSwitch(SimScreen screen, SimStep step, StateModel model)
     {
         if (screen.Find(step) is { } found) return found;
@@ -87,7 +79,7 @@ public static partial class SimRunner
         return screen.Find(byId);
     }
 
-    /// <summary>Reads the state on the screen as it is: waits for the card, then scrolls up and down to find it.</summary>
+    /// Reads the state on the screen as it is: waits for the card, then scrolls up and down to find it.
     private static async Task<StateLook> FindAndReadAsync(IAdbScreen adb, StateModel model, SimTiming timing, CancellationToken stop)
     {
         var clock = Stopwatch.StartNew();
@@ -107,7 +99,7 @@ public static partial class SimRunner
         return new StateLook(new StateReading(DeviceState.Unknown, 0), null);
     }
 
-    /// <summary>Reads again until the state is known and differs from <paramref name="was"/>, or the wait is over (then the last look).</summary>
+    /// Reads again until the state is known and differs from <paramref name="was"/>, or the wait is over (then the last look).
     private static async Task<StateLook> WaitChangeAsync(IAdbScreen adb, StateModel model, DeviceState was, SimTiming timing, CancellationToken stop)
     {
         var last = new StateLook(new StateReading(DeviceState.Unknown, 0), null);
@@ -121,7 +113,7 @@ public static partial class SimRunner
         return last;
     }
 
-    /// <summary>One look: the dump, the switch in it and, when found, a screenshot and the reading.</summary>
+    /// One look: the dump, the switch in it and, when found, a screenshot and the reading.
     private static async Task<StateLook> LookAsync(IAdbScreen adb, StateModel model, Action<string>? log, CancellationToken stop)
     {
         stop.ThrowIfCancellationRequested();
@@ -130,10 +122,8 @@ public static partial class SimRunner
         return new StateLook(model.Read(sample), node);
     }
 
-    /// <summary>
     /// The screenshot when it can be used for colours and shapes; otherwise null, and the reason is logged plainly (the state is then read from
     /// the dump's attributes and words only; <see cref="StateSample.PixelsMissing"/>).
-    /// </summary>
     private static async Task<RgbaImage?> PictureAsync(IAdbScreen adb, SimScreen screen, Action<string>? log)
     {
         var image = Png.Decode(await adb.ScreenshotAsync());

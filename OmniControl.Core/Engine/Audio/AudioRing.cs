@@ -1,9 +1,7 @@
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// A lock-free ring of samples between exactly one writer thread (a capture) and one reader thread (the playback). Allocates only
 /// when it is made; reads and writes never block and never allocate, so they are safe inside audio callbacks.
-/// </summary>
 internal sealed class AudioRing
 {
     private readonly float[] _buffer;
@@ -12,10 +10,10 @@ internal sealed class AudioRing
 
     public AudioRing(int capacity) => _buffer = new float[capacity];
 
-    /// <summary>Samples waiting to be read.</summary>
+    /// Samples waiting to be read.
     public int Count => (int)(Volatile.Read(ref _written) - Volatile.Read(ref _read));
 
-    /// <summary>Writer side. When the reader has fallen too far behind, the newest samples that do not fit are dropped.</summary>
+    /// Writer side. When the reader has fallen too far behind, the newest samples that do not fit are dropped.
     public void Write(ReadOnlySpan<float> samples)
     {
         var free = _buffer.Length - Count;
@@ -27,7 +25,7 @@ internal sealed class AudioRing
         Volatile.Write(ref _written, _written + samples.Length);
     }
 
-    /// <summary>Reader side: adds up to <paramref name="into"/>.Length samples onto it (mixing); returns how many there were.</summary>
+    /// Reader side: adds up to <paramref name="into"/>.Length samples onto it (mixing); returns how many there were.
     public int MixInto(Span<float> into)
     {
         var n = Math.Min(into.Length, Count);
@@ -41,7 +39,7 @@ internal sealed class AudioRing
         return n;
     }
 
-    /// <summary>Reader side: throws away the oldest samples so that only <paramref name="keep"/> remain.</summary>
+    /// Reader side: throws away the oldest samples so that only <paramref name="keep"/> remain.
     public void DropTo(int keep)
     {
         var drop = Count - keep;

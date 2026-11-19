@@ -1,8 +1,6 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Engine;
 
-/// <summary>Reads plain text from the Windows clipboard.</summary>
+/// Reads plain text from the Windows clipboard.
 public static class ClipboardText
 {
     [DllImport("user32.dll")] private static extern bool OpenClipboard(IntPtr owner);
@@ -13,7 +11,7 @@ public static class ClipboardText
 
     private const uint UnicodeText = 13;
 
-    /// <summary>The text now on the clipboard, or null when it holds none or could not be opened.</summary>
+    /// The text now on the clipboard, or null when it holds none or could not be opened.
     public static string? Read()
     {
         for (var i = 0; i < CoreTiming.ClipboardAttempts; i++)

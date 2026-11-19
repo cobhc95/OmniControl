@@ -1,14 +1,10 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// Which process to record for a program. Browsers and many apps play sound from a child process of the same .exe, so the capture
 /// asks for the topmost process of the same .exe above the one that owns the sound (and its whole tree).
-/// </summary>
 public static class ProcessTree
 {
-    /// <summary>The distinct top processes of the same .exe above each of <paramref name="processIds"/>.</summary>
+    /// The distinct top processes of the same .exe above each of <paramref name="processIds"/>.
     public static IReadOnlyList<int> Roots(IEnumerable<int> processIds)
     {
         var parents = ParentMap();
@@ -26,7 +22,7 @@ public static class ProcessTree
         return roots.ToList();
     }
 
-    /// <summary>Every running process's parent, from one Toolhelp snapshot.</summary>
+    /// Every running process's parent, from one Toolhelp snapshot.
     private static Dictionary<int, int> ParentMap()
     {
         var map = new Dictionary<int, int>();
@@ -45,10 +41,8 @@ public static class ProcessTree
         return map;
     }
 
-    /// <summary>
     /// True while the process is still running. A process that has ended can still be opened while someone holds a handle to it (the
     /// audio service does for its sessions), so its exit code is asked, not only whether it opens.
-    /// </summary>
     public static bool IsRunning(int processId)
     {
         var handle = OpenProcess(QueryLimitedInformation, false, processId);

@@ -1,8 +1,6 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Native;
 
-/// <summary>user32 display-mode calls (read a display's current mode, change it) and the DEVMODE they use.</summary>
+/// user32 display-mode calls (read a display's current mode, change it) and the DEVMODE they use.
 internal static class DisplaySettingsNative
 {
     public const int CurrentSettings = -1;          // ENUM_CURRENT_SETTINGS
@@ -13,7 +11,7 @@ internal static class DisplaySettingsNative
     public const uint UpdateRegistry = 0x00000001;   // CDS_UPDATEREGISTRY
     public const int Successful = 0;                 // DISP_CHANGE_SUCCESSFUL
 
-    /// <summary>The display flavour of DEVMODEW (the printer fields of its union are not used here).</summary>
+    /// The display flavour of DEVMODEW (the printer fields of its union are not used here).
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     public struct DEVMODE
     {

@@ -1,4 +1,4 @@
 ﻿namespace OmniControl.Core.Engine;
 
-/// <summary>An active playback device.</summary>
+/// An active playback device.
 public sealed record AudioDevice(string Id, string Name, bool IsDefault);

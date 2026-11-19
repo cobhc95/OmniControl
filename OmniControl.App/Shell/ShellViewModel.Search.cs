@@ -1,8 +1,3 @@
-using System.Collections.ObjectModel;
-using CommunityToolkit.Mvvm.ComponentModel;
-using OmniControl.App.Pages;
-using OmniControl.App.Services;
-
 namespace OmniControl.App.Shell;
 
 // The main window's "Search settings...": the sidebar keeps the pages that match, and the results list shows the matching settings
@@ -16,7 +11,7 @@ public sealed partial class ShellViewModel
     private SearchIndex<PageViewModel>? _pageIndex;
     private SearchIndex<SearchEntry>? _entryIndex;
 
-    /// <summary>Editable settings matching the search text.</summary>
+    /// Editable settings matching the search text.
     public ObservableCollection<SearchEntry> SearchResults { get; } = new();
 
     [ObservableProperty] private bool _isSearching;
@@ -67,7 +62,7 @@ public sealed partial class ShellViewModel
         Search.Request(token => index.Match(q, token));
     }
 
-    /// <summary>The pages under their sidebar group headings.</summary>
+    /// The pages under their sidebar group headings.
     private static List<object> NavGrouped(IEnumerable<PageViewModel> pages)
     {
         var items = new List<object>();

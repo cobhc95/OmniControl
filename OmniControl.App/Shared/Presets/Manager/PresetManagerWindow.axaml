@@ -1,0 +1,139 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:OmniControl.App.Shared.Presets.Manager"
+        xmlns:presets="using:OmniControl.App.Shared.Presets"
+        xmlns:hk="using:OmniControl.App.Features.Hotkeys"
+        xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+        xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
+        x:Class="OmniControl.App.Shared.Presets.Manager.PresetManagerWindow"
+        x:DataType="vm:PresetManagerViewModel"
+        Title="Presets" Width="900" Height="600" MinWidth="720" MinHeight="400"
+        WindowStartupLocation="CenterOwner">
+    <!-- The one preset manager (docs/mockups/unified-preset-manager.html). Left: the app's sidebar sections with their icons (a section
+         without presets dimmed, "none"). Right: the search, the section's name, one card per preset group (Border.groupPanel; the card
+         it was opened at outlined, .target), each preset a row: drag grip, name (renamed in place) with its tags, the shared shortcut box,
+         Apply / Rename / Delete pills and, where offered, a "more" menu (Duplicate, Export). The card's foot: the dashed add button, the
+         group's switch, Import. Foot of the window: "Changes apply at once.", a message or the Undo of a delete, Close. Mouse first
+         (AGENTS.md rule 5): Tab reaches everything, Esc closes. -->
+    <DockPanel>
+        <Border DockPanel.Dock="Bottom" Classes="footer">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="10">
+                <TextBlock Classes="statusline" Text="{x:Static vm:PresetManagerViewModel.ApplyNote}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Classes="statusline caution" Text="{Binding Message}" IsVisible="{Binding HasMessage}" TextWrapping="Wrap"
+                           VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2" Classes="statusline" Text="{Binding UndoText}" IsVisible="{Binding HasUndo}" VerticalAlignment="Center" />
+                <Button Grid.Column="3" Classes="link small" Content="Undo" Command="{Binding UndoCommand}" IsVisible="{Binding HasUndo}" VerticalAlignment="Center" />
+                <Button Grid.Column="4" Classes="primary close" Content="Close" Click="OnCloseClick" />
+            </Grid>
+        </Border>
+
+        <!-- The sections: the main window's sidebar look (ListBox.nav), as wide as its longest name -->
+        <Border DockPanel.Dock="Left" Classes="sidebarpanel" BorderThickness="0,0,1,0">
+            <ListBox Classes="nav" ItemsSource="{Binding Sections}" SelectedItem="{Binding SelectedSection}" Margin="0,12,0,8">
+                <ListBox.Styles>
+                    <Style Selector="ListBox.nav > ListBoxItem"><Setter Property="IsEnabled" Value="{Binding HasPresets}" /></Style>
+                </ListBox.Styles>
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:PresetSectionItem">
+                        <StackPanel Orientation="Horizontal" Spacing="14">
+                            <PathIcon Data="{Binding Icon}" Width="18" Height="18" VerticalAlignment="Center" />
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Title}" />
+                                <TextBlock Classes="hint" Text="{Binding CountText}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+
+        <DockPanel Margin="16,12,16,0">
+            <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" ColumnSpacing="16" Margin="0,0,0,10">
+                <TextBlock Classes="title" Text="{Binding Heading}" VerticalAlignment="Center" />
+                <TextBox x:Name="SearchBox" Grid.Column="1" Classes="bar search" Text="{Binding Search}" Watermark="Search presets and shortcuts…"
+                         ToolTip.Tip="Search every section's presets by name or shortcut (Ctrl+F; Esc clears)" />
+            </Grid>
+            <TextBlock DockPanel.Dock="Top" Classes="hint" Text="No preset matches." IsVisible="{Binding NothingFound}" Margin="4,0,0,8" />
+            <ScrollViewer>
+                <ItemsControl x:Name="CardList" ItemsSource="{Binding Cards}" Grid.IsSharedSizeScope="True" Margin="0,0,0,12">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:PresetCardViewModel">
+                            <Border Classes="groupPanel" Classes.target="{Binding IsTarget}">
+                                <StackPanel Spacing="4" Margin="4">
+                                    <TextBlock Classes="strong" Text="{Binding Title}" TextTrimming="CharacterEllipsis" Margin="6,2,0,0" />
+                                    <pages:EmptyListRow Text="No presets yet." IsVisible="{Binding IsEmpty}" />
+                                    <ListBox Classes="rows compact" ItemsSource="{Binding Rows}" IsVisible="{Binding !IsEmpty}" Loaded="OnCardListLoaded">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:PresetRowViewModel">
+                                                <Grid ColumnSpacing="8">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" SharedSizeGroup="PresetGrip" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" SharedSizeGroup="PresetShortcut" />
+                                                        <ColumnDefinition Width="Auto" SharedSizeGroup="PresetActions" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <PathIcon Classes="grip" Data="{DynamicResource GripIcon}" VerticalAlignment="Center" IsVisible="{Binding CanMove}"
+                                                              ToolTip.Tip="Drag to move (or Alt+Up / Alt+Down)" />
+                                                    <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="6" VerticalAlignment="Center">
+                                                        <Panel VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding Name}" IsVisible="{Binding !IsEditing}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                                                                       ToolTip.Tip="{Binding NameTip}" DoubleTapped="OnNameDoubleTapped" />
+                                                            <TextBox Classes="field" Text="{Binding EditText}" IsVisible="{Binding IsEditing}" MaxLength="{Binding NameMaxLength}"
+                                                                     KeyDown="OnRenameKey" LostFocus="OnRenameLostFocus" />
+                                                        </Panel>
+                                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                                            <Border Classes="tag selected" IsVisible="{Binding InUse}" VerticalAlignment="Center"><TextBlock Text="in use" /></Border>
+                                                            <ItemsControl ItemsSource="{Binding Tags}" VerticalAlignment="Center">
+                                                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate>
+                                                                        <c:TagView VerticalAlignment="Center" />
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                    <hk:HotkeyBox Grid.Column="2" DataContext="{Binding Shortcut}"
+                                                                  ToolTip.Tip="The shortcut that applies this preset from anywhere: double-click, then press the keys; Backspace removes it" />
+                                                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                                        <Button Classes="pill" Tag="scope" Content="{Binding ApplyText}" Command="{Binding ApplyCommand}" IsVisible="{Binding CanApply}" />
+                                                        <Button Classes="pill" Tag="scope" Content="Rename" Command="{Binding BeginRenameCommand}" IsVisible="{Binding CanRename}" />
+                                                        <Button Classes="pill" Tag="scope" Content="{Binding DeleteText}" Command="{Binding DeleteCommand}" IsVisible="{Binding CanDelete}" />
+                                                        <!-- The "more" menu hangs on a Panel, not on the pill, so the pill's styles do not reach into it -->
+                                                        <Panel IsVisible="{Binding HasMore}">
+                                                            <FlyoutBase.AttachedFlyout>
+                                                                <c:ListMenuFlyout Placement="BottomEdgeAlignedRight">
+                                                                    <StackPanel>
+                                                                        <Button Classes="menurow" Command="{Binding DuplicateCommand}" IsVisible="{Binding CanDuplicate}" Click="OnMenuRowClick">
+                                                                            <TextBlock Text="Duplicate" />
+                                                                        </Button>
+                                                                        <Button Classes="menurow" Command="{Binding ExportCommand}" IsVisible="{Binding CanExport}" Click="OnMenuRowClick">
+                                                                            <TextBlock Text="Export to a file…" />
+                                                                        </Button>
+                                                                    </StackPanel>
+                                                                </c:ListMenuFlyout>
+                                                            </FlyoutBase.AttachedFlyout>
+                                                            <Button Classes="pill glyph" Tag="scope" Content="…" Click="OnMoreClick" ToolTip.Tip="Duplicate, export" />
+                                                        </Panel>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="6,2,0,4">
+                                        <Button Classes="blockadd small" Content="{Binding AddText}" Command="{Binding AddCommand}" IsEnabled="{Binding CanAdd}"
+                                                IsVisible="{Binding !IsFiltering}" ToolTip.Tip="{Binding AddTip}" ToolTip.ShowOnDisabled="True" />
+                                        <Button Classes="pill" Tag="scope" Content="Import…" Command="{Binding ImportCommand}" IsVisible="{Binding CanImport}"
+                                                ToolTip.Tip="Add presets from files" />
+                                        <ToggleSwitch IsChecked="{Binding SwitchOn}" OnContent="{Binding SwitchLabel}" OffContent="{Binding SwitchLabel}"
+                                                      IsVisible="{Binding HasSwitch}" ToolTip.Tip="{Binding SwitchTip}" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </DockPanel>
+    </DockPanel>
+</Window>

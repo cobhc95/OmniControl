@@ -1,16 +1,13 @@
-using System.Runtime.InteropServices;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 
 namespace OmniControl.Core.Engine.Screenshot;
 
-/// <summary>
 /// A recording's sound: what the speakers play (WASAPI loopback of the default output) and the default microphone, each switched on and
 /// off at any moment, brought to 48 kHz stereo and mixed. Silence fills any gap (loopback sends nothing while nothing plays), and sound
 /// that waited longer than <see cref="CoreTiming.RecordSoundMaxQueueMs"/> is dropped, so the sound never drifts behind the picture.
 /// Each capture is opened only while it is on (so Windows' microphone sign shows only then) and released when it goes off.
-/// </summary>
 public sealed class RecordingSound : IDisposable
 {
     public const int SampleRate = 48000, Channels = 2, BytesPerFrame = Channels * 2;
@@ -20,10 +17,10 @@ public sealed class RecordingSound : IDisposable
     private Source? _system, _microphone;
     private float[] _floats = Array.Empty<float>();
 
-    /// <summary>Starts or stops recording what the speakers play. Null when done, otherwise why not.</summary>
+    /// Starts or stops recording what the speakers play. Null when done, otherwise why not.
     public string? SetSystem(bool on) => Set(ref _system, on, () => new WasapiLoopbackCapture(), "System sound");
 
-    /// <summary>Starts or stops recording the default microphone. Null when done, otherwise why not.</summary>
+    /// Starts or stops recording the default microphone. Null when done, otherwise why not.
     public string? SetMicrophone(bool on) => Set(ref _microphone, on, () => new WasapiCapture(), "The microphone");
 
     private string? Set(ref Source? source, bool on, Func<WasapiCapture> open, string what)
@@ -59,7 +56,7 @@ public sealed class RecordingSound : IDisposable
         }
     }
 
-    /// <summary>Drops whatever sound is waiting (after a pause, so nothing from the pause is recorded).</summary>
+    /// Drops whatever sound is waiting (after a pause, so nothing from the pause is recorded).
     public void Clear()
     {
         lock (_gate)
@@ -69,7 +66,7 @@ public sealed class RecordingSound : IDisposable
         }
     }
 
-    /// <summary>Fills <paramref name="pcm"/> with the mixed sound as 16-bit stereo, silence where there is none.</summary>
+    /// Fills <paramref name="pcm"/> with the mixed sound as 16-bit stereo, silence where there is none.
     public void Read(Span<byte> pcm)
     {
         var samples = pcm.Length / 2;
@@ -101,7 +98,7 @@ public sealed class RecordingSound : IDisposable
         }
     }
 
-    /// <summary>One capture: its packets go into a buffer that is read back as 48 kHz stereo.</summary>
+    /// One capture: its packets go into a buffer that is read back as 48 kHz stereo.
     private sealed class Source : IDisposable
     {
         private readonly WasapiCapture _capture;
@@ -111,7 +108,7 @@ public sealed class RecordingSound : IDisposable
 
         public ISampleProvider Output { get; }
 
-        /// <summary>Opens the capture; on a failure it is released before the exception goes on.</summary>
+        /// Opens the capture; on a failure it is released before the exception goes on.
         public Source(Func<WasapiCapture> open)
         {
             _capture = open();
@@ -145,7 +142,7 @@ public sealed class RecordingSound : IDisposable
 
         private void OnData(object? sender, WaveInEventArgs e) => _buffer.AddSamples(e.Buffer, 0, e.BytesRecorded);
 
-        /// <summary>When too much waits, keeps only the newest <see cref="CoreTiming.RecordSoundLagMs"/>.</summary>
+        /// When too much waits, keeps only the newest <see cref="CoreTiming.RecordSoundLagMs"/>.
         public void Trim()
         {
             var extra = _buffer.BufferedBytes - _keepBytes;

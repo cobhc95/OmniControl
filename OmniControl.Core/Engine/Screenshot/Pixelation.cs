@@ -1,12 +1,10 @@
 namespace OmniControl.Core.Engine.Screenshot;
 
-/// <summary>The blur tool's picture: an area made coarse, one pixel per square of the source (each the average colour of its square).</summary>
+/// The blur tool's picture: an area made coarse, one pixel per square of the source (each the average colour of its square).
 public static class Pixelation
 {
-    /// <summary>
     /// The coarse form of <paramref name="area"/> (held to the picture): one pixel per <paramref name="block"/> x <paramref name="block"/> square,
     /// the last row and column of squares cut short at the area's edge. Drawn stretched over the area without smoothing, it hides what was there.
-    /// </summary>
     public static ScreenImage Blocks(ScreenImage source, ScreenRect area, int block)
     {
         area = area.Intersect(source.Bounds);

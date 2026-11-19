@@ -1,15 +1,12 @@
 using System.Collections.ObjectModel;
-using OmniControl.App.Audio;
-using OmniControl.App.Pages.Volume.Easy;
-using OmniControl.App.Pages.Volume.Easy.Flow;
+using OmniControl.App.Features.Volume.Pages.Easy;
+using OmniControl.App.Features.Volume.Pages.Easy.Flow;
 
 namespace OmniControl.Tests;
 
-/// <summary>
-/// The Easy welcome with several goals (docs/mockups/easy-cards-multiselect.html): the five cards (no "Just the volume"), the tick rules and
+/// The Easy welcome with several goals: the five cards (no "Just the volume"), the tick rules and
 /// Next gating, the "What you will need" box for every kind of selection, and the setups run one after another with the engine chosen once.
 /// Fakes only; nothing touches Windows.
-/// </summary>
 public class EasyMultiSelectTests
 {
     private const string Join = EasyGoals.JoinMicrophones, Speakers = EasyGoals.TwoSpeakers;
@@ -192,11 +189,6 @@ public class EasyMultiSelectTests
 
     // ---- the setups one after another ----
 
-    private sealed class Actions : IEasyActions
-    {
-        public Task<string?> RunAsync(EasyFix fix, EasyAnswers answers, EasyFacts facts) => Task.FromResult<string?>(null);
-    }
-
     private sealed class Run
     {
         public EasyFacts Facts { get; set; }
@@ -209,7 +201,7 @@ public class EasyMultiSelectTests
         public Run(IReadOnlyList<string> goalIds, EasyFacts? facts = null)
         {
             Facts = facts ?? new EasyFacts();
-            var services = new EasyFlowServices(() => Facts, new Actions(), _ => Task.FromResult(true));
+            var services = new EasyFlowServices(() => Facts, new EasyFakeActions(), _ => Task.FromResult(true));
             Sequence = new EasySequence(goalIds.Select(id => EasyGoals.All.Single(g => g.Id == id)).ToList(),
                 (goal, answers, place) =>
                 {
@@ -221,7 +213,7 @@ public class EasyMultiSelectTests
             Sequence.Start();
         }
 
-        /// <summary>Presses Next until the flow reaches the Engine screen, picks a way there and leaves it.</summary>
+        /// Presses Next until the flow reaches the Engine screen, picks a way there and leaves it.
         public void ChooseEngine(EasyEngine engine)
         {
             while (!Flow.IsEngine) Flow.NextCommand.Execute(null);
@@ -359,7 +351,7 @@ public class EasyMultiSelectTests
     public void Disposing_StopsTheRun_AndShowsNoFlow()
     {
         var shown = new List<EasyFlowViewModel?>();
-        var services = new EasyFlowServices(() => new EasyFacts(), new Actions(), _ => Task.FromResult(true));
+        var services = new EasyFlowServices(() => new EasyFacts(), new EasyFakeActions(), _ => Task.FromResult(true));
         var sequence = new EasySequence(new[] { EasyGoals.All[0] },
             (goal, answers, place) => new EasyFlowViewModel(goal, EasyFlows.Of(goal.Id)!, answers, services,
                 (kind, changed) => new EasyQuestionViewModel(kind, answers, changed, null, null), () => { }, () => { }, null, place),

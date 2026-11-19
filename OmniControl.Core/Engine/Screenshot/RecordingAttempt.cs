@@ -1,12 +1,10 @@
-using System.Runtime.InteropServices;
 using static OmniControl.Core.Native.MediaFoundationNative;
 
 namespace OmniControl.Core.Engine.Screenshot;
 
-/// <summary>Where one try at recording is.</summary>
+/// Where one try at recording is.
 internal enum AttemptState { Opening, Recording, Finishing, Done, Failed }
 
-/// <summary>
 /// One try at recording in one way (<see cref="RecordingStep"/>), on a thread of its own (MTA, so no encoder or capture it makes can end
 /// up on the UI thread's apartment), into a part file of its own next to the final file, so a try that hangs inside Windows can be left
 /// behind while the next one records. It opens the screen copy and the file, then writes a frame on the clock's grid (late frames are
@@ -14,7 +12,6 @@ internal enum AttemptState { Opening, Recording, Finishing, Done, Failed }
 /// file. It never decides what happens next: it only says how far it got (<see cref="State"/>, how long the call in progress has taken,
 /// the frames encoded), and <see cref="ScreenRecorder"/>'s watchdog acts on that. A try that is left behind (<see cref="Abandon"/>) touches
 /// nothing shared again and deletes its part file whenever Windows lets its thread go. Every step is logged.
-/// </summary>
 internal sealed class RecordingAttempt
 {
     private readonly RecordingRequest _request;
@@ -35,27 +32,27 @@ internal sealed class RecordingAttempt
 
     public RecordingStep Step { get; }
 
-    /// <summary>The file this try writes; moved over the final file once it is complete.</summary>
+    /// The file this try writes; moved over the final file once it is complete.
     public string PartPath { get; }
 
     public AttemptState State => _state;
 
-    /// <summary>Why the recording ended, once <see cref="State"/> is <see cref="AttemptState.Done"/>.</summary>
+    /// Why the recording ended, once <see cref="State"/> is <see cref="AttemptState.Done"/>.
     public RecordingEnd End { get; private set; } = RecordingEnd.Stopped;
 
-    /// <summary>Why it failed (one sentence), once <see cref="State"/> is <see cref="AttemptState.Failed"/>.</summary>
+    /// Why it failed (one sentence), once <see cref="State"/> is <see cref="AttemptState.Failed"/>.
     public string? Problem { get; private set; }
 
-    /// <summary>The failure is the disk's or the folder's, so no other way of recording can do better.</summary>
+    /// The failure is the disk's or the folder's, so no other way of recording can do better.
     public bool Fatal { get; private set; }
 
-    /// <summary>Something not as asked that the person should hear (H.264 used for HEVC).</summary>
+    /// Something not as asked that the person should hear (H.264 used for HEVC).
     public string? Note { get; private set; }
 
-    /// <summary>How long the current state has lasted.</summary>
+    /// How long the current state has lasted.
     public long StateMs => Environment.TickCount64 - Interlocked.Read(ref _stateSince);
 
-    /// <summary>How long the call into the encoder or the screen copy in progress has taken (0 when none is).</summary>
+    /// How long the call into the encoder or the screen copy in progress has taken (0 when none is).
     public long CallMs
     {
         get
@@ -69,7 +66,7 @@ internal sealed class RecordingAttempt
 
     public long FramesDone => Interlocked.Read(ref _framesDone);
 
-    /// <summary>The try's clock from the moment it records (null while it opens).</summary>
+    /// The try's clock from the moment it records (null while it opens).
     public RecordingClock? Clock => _clock;
 
     public RecordingAttempt(RecordingStep step, RecordingRequest request, string partPath, int frameRate, RecordingSound? sound,
@@ -92,14 +89,14 @@ internal sealed class RecordingAttempt
         thread.Start();
     }
 
-    /// <summary>Ends the recording; the file is finished.</summary>
+    /// Ends the recording; the file is finished.
     public void Stop()
     {
         _stop = true;
         Wake();
     }
 
-    /// <summary>Leaves this try behind: it stops as soon as its thread is free, touches nothing shared and deletes its part file.</summary>
+    /// Leaves this try behind: it stops as soon as its thread is free, touches nothing shared and deletes its part file.
     public void Abandon()
     {
         _abandoned = true;
@@ -190,7 +187,7 @@ internal sealed class RecordingAttempt
 
     private const int DiskFull = unchecked((int)0x80070070);
 
-    /// <summary>Opens this way's file and screen copy; throws when it cannot.</summary>
+    /// Opens this way's file and screen copy; throws when it cannot.
     private (IVideoSink Sink, IFrameSource Frames) Open()
     {
         _log.Line($"trying {Step}: {RecordingSteps.Words(Step)}, file {Path.GetFileName(PartPath)}");
@@ -209,7 +206,7 @@ internal sealed class RecordingAttempt
         };
     }
 
-    /// <summary>Desktop Duplication into the encoder, all on the adapter that drives the monitor; refused when the encoder Windows chose says it is on another one.</summary>
+    /// Desktop Duplication into the encoder, all on the adapter that drives the monitor; refused when the encoder Windows chose says it is on another one.
     private (IVideoSink, IFrameSource) OnGpu(int bitrate)
     {
         var area = _request.Area;
@@ -233,10 +230,8 @@ internal sealed class RecordingAttempt
         }
     }
 
-    /// <summary>
     /// A hardware encoder fed from memory: on another adapter that has one when there is such an adapter (its device goes to the Sink
     /// Writer), else on whichever Windows picks.
-    /// </summary>
     private IVideoSink OtherEncoder(int bitrate)
     {
         var area = _request.Area;
@@ -259,7 +254,7 @@ internal sealed class RecordingAttempt
         }
     }
 
-    /// <summary>Windows' software encoder; HEVC (which has none on many PCs) becomes H.264, said in <see cref="Note"/>.</summary>
+    /// Windows' software encoder; HEVC (which has none on many PCs) becomes H.264, said in <see cref="Note"/>.
     private IVideoSink Software(int bitrate)
     {
         var area = _request.Area;
@@ -291,7 +286,7 @@ internal sealed class RecordingAttempt
         }
     }
 
-    /// <summary>The loop: a frame when one is due, the sound up to the clock less the lag, the counts and limits now and then; until stopped or a limit.</summary>
+    /// The loop: a frame when one is due, the sound up to the clock less the lag, the counts and limits now and then; until stopped or a limit.
     private RecordingEnd Record(IFrameSource frames, IVideoSink sink, RecordingClock clock)
     {
         long nextFrame = 0, soundWritten = 0, nextCheck = 0, nextStats = 0, nextLog = 0;
@@ -350,7 +345,7 @@ internal sealed class RecordingAttempt
         return RecordingEnd.Stopped;
     }
 
-    /// <summary>A call into the encoder or the screen copy, timed for the watchdog; its first run is logged so a first call that never returns shows.</summary>
+    /// A call into the encoder or the screen copy, timed for the watchdog; its first run is logged so a first call that never returns shows.
     private T Call<T>(string what, Func<T> call)
     {
         var first = _logged.Add(what);
@@ -370,7 +365,7 @@ internal sealed class RecordingAttempt
         }
     }
 
-    /// <summary>Writes the sound from where it stopped up to the clock less the lag, in pieces of at least the chunk length. The frames written so far.</summary>
+    /// Writes the sound from where it stopped up to the clock less the lag, in pieces of at least the chunk length. The frames written so far.
     private long WriteSound(ISoundSink sink, long written, long now)
     {
         var lag = TimeSpan.FromMilliseconds(CoreTiming.RecordSoundLagMs).Ticks;
@@ -403,7 +398,7 @@ internal sealed class RecordingAttempt
         }
     }
 
-    /// <summary>A test's hang: blocks here, as a stuck driver call would, until the test lets go.</summary>
+    /// A test's hang: blocks here, as a stuck driver call would, until the test lets go.
     private void Fault(RecordingFault fault)
     {
         if (!Has(fault)) return;
@@ -413,7 +408,7 @@ internal sealed class RecordingAttempt
 
     private bool Has(RecordingFault fault) => _faults is not null && _faults.At.TryGetValue(Step, out var set) && set == fault;
 
-    /// <summary>Removes a file that is not kept (logged; a file Windows still holds stays).</summary>
+    /// Removes a file that is not kept (logged; a file Windows still holds stays).
     public static void Delete(string path, RecordingLog log)
     {
         try

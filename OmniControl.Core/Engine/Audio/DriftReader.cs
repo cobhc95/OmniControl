@@ -2,14 +2,12 @@ using NAudio.Dsp;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// Reads a ring that another clock fills (a capture, or the first device of a pipe for an extra device) on the reader's own clock
 /// without clicks: the ring is read through a resampler whose rate is nudged from how full the ring is (at most
 /// <see cref="CoreTiming.PipeDriftMaxShift"/>), so it stays near its target. A ring that still grows past
 /// <see cref="CoreTiming.PipeMaxQueueMs"/> is trimmed back to the target; one that runs dry gives silence until it has gathered
 /// <see cref="CoreTiming.PipePrefillMs"/> again. Runs on the reader's audio thread: no locks; the resampler's buffers grow during the
 /// first blocks and are reused from then on. Used by <see cref="ExtraOutput"/> and by every capture of an <see cref="AudioPipe"/>.
-/// </summary>
 internal sealed class DriftReader
 {
     private const int Channels = CoreTiming.PipeChannels;
@@ -37,7 +35,7 @@ internal sealed class DriftReader
 
     public int QueuedMs => Ring.Count / SamplesPerMs;
 
-    /// <summary>Fills <paramref name="block"/> (whole frames, interleaved) with the next sound, overwriting it; silence while not primed.</summary>
+    /// Fills <paramref name="block"/> (whole frames, interleaved) with the next sound, overwriting it; silence while not primed.
     public void Read(Span<float> block)
     {
         var frames = block.Length / Channels;

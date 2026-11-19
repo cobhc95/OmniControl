@@ -1,9 +1,6 @@
-using OmniControl.App.Audio;
-using OmniControl.Core.Engine;
-
 namespace OmniControl.Tests;
 
-/// <summary>Which programs the Mixer lists (Show closed) and which the "Add program" menu offers; the installed-program clean-up (dedupe, setup tools).</summary>
+/// Which programs the Mixer lists (Show closed) and which the "Add program" menu offers; the installed-program clean-up (dedupe, setup tools).
 public class ProgramListingTests
 {
     private const string Windows = @"C:\Windows";

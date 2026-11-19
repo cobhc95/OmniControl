@@ -1,6 +1,4 @@
-using OmniControl.App.Apps;
-using OmniControl.App.Services;
-using Xunit;
+using OmniControl.App.Features.AppLists.Apps;
 
 namespace OmniControl.Tests;
 

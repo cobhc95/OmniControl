@@ -1,8 +1,6 @@
-using OmniControl.Core.Models;
-
 namespace OmniControl.Core.Interfaces;
 
-/// <summary>A monitor reached over DDC/CI (dxva2). All calls are slow (tens of milliseconds each): call them off the UI thread.</summary>
+/// A monitor reached over DDC/CI (dxva2). All calls are slow (tens of milliseconds each): call them off the UI thread.
 public interface IMonitor : IDisposable
 {
     DisplayInfo Info { get; }
@@ -10,10 +8,8 @@ public interface IMonitor : IDisposable
     VcpValue? GetVcp(byte code);
     OperationResult TrySetVcp(byte code, uint value);
 
-    /// <summary>
     /// What the monitor supports. The first call probes it (about a dozen reads, and the capabilities string when the monitor has
     /// inputs or colour presets to list) and the answer is kept, so later calls are free. Slow once: call it off the UI thread.
-    /// </summary>
     MonitorCapabilities Probe();
 }
 
@@ -29,13 +25,13 @@ public interface ILaptopBrightness
     OperationResult SetBrightness(int level);
 }
 
-/// <summary>How a display is turned (the order matches the choices shown to the user).</summary>
+/// How a display is turned (the order matches the choices shown to the user).
 public enum DisplayOrientation { Landscape, Portrait, LandscapeFlipped, PortraitFlipped }
 
-/// <summary>Reads and turns a display through Windows, whether or not it speaks DDC/CI. Slow: call off the UI thread.</summary>
+/// Reads and turns a display through Windows, whether or not it speaks DDC/CI. Slow: call off the UI thread.
 public interface IDisplayRotation
 {
-    /// <summary>The display's orientation now; null when Windows would not say.</summary>
+    /// The display's orientation now; null when Windows would not say.
     DisplayOrientation? Read(string deviceName);
 
     OperationResult Set(string deviceName, DisplayOrientation orientation);
@@ -43,25 +39,25 @@ public interface IDisplayRotation
 
 public interface IMonitorEngine : IDisposable
 {
-    /// <summary>The DDC/CI monitors now attached; replaced as a whole when the set changes, so a held list stays valid (its monitors are disposed).</summary>
+    /// The DDC/CI monitors now attached; replaced as a whole when the set changes, so a held list stays valid (its monitors are disposed).
     IReadOnlyList<IMonitor> Monitors { get; }
 
-    /// <summary>Every attached display, with or without DDC/CI (the laptop's own panel included).</summary>
+    /// Every attached display, with or without DDC/CI (the laptop's own panel included).
     IReadOnlyList<DisplayInfo> Displays { get; }
 
     ILaptopBrightness Laptop { get; }
 
     IDisplayRotation Rotation { get; }
 
-    /// <summary>The name Windows gives a display now (looked up fresh, by its device path); null when it is not attached. Cheap.</summary>
+    /// The name Windows gives a display now (looked up fresh, by its device path); null when it is not attached. Cheap.
     string? ResolveDeviceName(DisplayInfo remembered);
 
-    /// <summary>Opens every monitor again, dropping what was learned about them. Slow.</summary>
+    /// Opens every monitor again, dropping what was learned about them. Slow.
     void RefreshMonitors();
 
-    /// <summary>Looks at which displays are attached and reopens the monitors only when that changed. Cheap. True when it changed.</summary>
+    /// Looks at which displays are attached and reopens the monitors only when that changed. Cheap. True when it changed.
     bool Rescan();
 
-    /// <summary>True when the displays Windows lists now (how many, which, named how) differ from <see cref="Displays"/>. Cheap: no monitor is talked to.</summary>
+    /// True when the displays Windows lists now (how many, which, named how) differ from <see cref="Displays"/>. Cheap: no monitor is talked to.
     bool DisplaysChanged();
 }

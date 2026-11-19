@@ -1,0 +1,51 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+             xmlns:w="using:OmniControl.App.Features.Resources.Weather"
+             x:Class="OmniControl.App.Features.Resources.Weather.WeatherPlaceRow"
+             x:DataType="w:WeatherPlaceItem"
+             Classes="card">
+    <!-- The weather's Place card: search box with the found places, "Use my location (Windows)", and for OpenWeatherMap THE password field. -->
+    <StackPanel Spacing="{StaticResource Gap}" Margin="0,1">
+        <Grid ColumnSpacing="{StaticResource GapLarge}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Classes="cardname" Text="{Binding Label}" VerticalAlignment="Center" />
+            <TextBox x:Name="Search" Grid.Column="1" Classes="field search" Text="{Binding Query}" Watermark="Type a town or city"
+                     ToolTip.Tip="Found with Open-Meteo's free place search">
+                <FlyoutBase.AttachedFlyout>
+                    <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft">
+                        <c:MenuRowList x:Name="Results" />
+                    </c:ListMenuFlyout>
+                </FlyoutBase.AttachedFlyout>
+            </TextBox>
+            <Button Grid.Column="2" Classes="pill" Classes.custom="{Binding UseLocation}" Tag="scope" Command="{Binding UseLocationCommand}"
+                    ToolTip.Tip="Asks Windows' location service at each update; needs location on for desktop apps">
+                <c:IconText Icon="current-location" Text="Use my location (Windows)" />
+            </Button>
+        </Grid>
+        <Grid ColumnSpacing="{StaticResource GapLarge}" IsVisible="{Binding !UseLocation}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Classes="cardname" Text="Name shown" VerticalAlignment="Center" />
+            <c:ChipMenu x:Name="NameStyle" Grid.Column="1" Classes="choice" ChipTag="scope" Text="{Binding NameStyleWords}"
+                        ChipToolTip="Full: Oslo, Norway. Short: Oslo. Nickname: a name you type." />
+            <TextBox Grid.Column="2" Classes="field" Text="{Binding Nickname}" Watermark="Home" IsVisible="{Binding IsNickname}" />
+        </Grid>
+        <Grid ColumnSpacing="{StaticResource GapLarge}" IsVisible="{Binding NeedsKey}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Classes="cardname" Text="API key" VerticalAlignment="Center" />
+            <c:PasswordField Grid.Column="1" Text="{Binding KeyText}" Watermark="Your OpenWeatherMap API key" SaveCommand="{Binding SaveKeyCommand}"
+                             HasSaved="{Binding HasKey}" SavedAt="{Binding KeySavedAt}" />
+        </Grid>
+    </StackPanel>
+</UserControl>

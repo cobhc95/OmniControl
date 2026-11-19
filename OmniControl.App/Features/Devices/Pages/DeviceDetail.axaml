@@ -1,0 +1,78 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Features.Devices.Pages"
+             xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+             x:Class="OmniControl.App.Features.Devices.Pages.DeviceDetail"
+             x:DataType="vm:DeviceItem">
+    <!-- One device (docs/mockups/smart-devices-setup-vs-ready.html, device-icons.html, script-templates.html, device-multiple-methods.html;
+         template in App.axaml).
+         Header, both modes: icon (click: icon pop-down), the name (every key renames the device and its list row) and the remove cross (Ready:
+         delete the device; Setup: remove that method, or the device when it has one). Under it one wrapping line: in a set-up the method's
+         Method chip (docs/mockups/method-menu-briefs.html) and, for scripts, its Template chip; in the Ready view the "ready" and state tags,
+         Check now and Auto-check. The line takes the whole width and wraps, so nothing clips at the narrowest window.
+         READY: the methods (MethodList); the drift sentence with Re-teach. On / Off / Toggle and Show emulator are registered actions only.
+         SETUP: the method's numbered stages (SetupView), then Cancel | Finish setup.
+         Both: the foot line with the last command and Copy details. -->
+    <StackPanel Spacing="8">
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+            <vm:DeviceIconView Pickable="True" VerticalAlignment="Center" />
+            <TextBox Grid.Column="1" Classes="field" Text="{Binding Name}" Watermark="Name" MinWidth="0" VerticalAlignment="Center" />
+            <Button Grid.Column="2" Classes="pill glyph closex" Command="{Binding RemoveCommand}" ToolTip.Tip="{Binding RemoveTip}" VerticalAlignment="Center">
+                <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+            </Button>
+        </Grid>
+        <WrapPanel ItemSpacing="6" LineSpacing="4">
+            <c:ChipMenu Text="{Binding Editing.MethodLabel}" ChipToolTip="{Binding Editing.MethodTip}" MenuOpened="OnMethodMenuOpened" IsVisible="{Binding InSetup}" VerticalAlignment="Center">
+                <c:ChipMenu.Menu>
+                    <c:MenuRowList x:Name="MethodRows" Title="Method" />
+                </c:ChipMenu.Menu>
+            </c:ChipMenu>
+            <c:ChipMenu Text="{Binding Editing.TemplateChipText}" ChipToolTip="How OmniControl talks to this kind of device." MenuOpened="OnTemplateMenuOpened" IsVisible="{Binding ShowsTemplateChip}" VerticalAlignment="Center">
+                <c:ChipMenu.Menu>
+                    <c:MenuRowList x:Name="TemplateRows" Title="Template" />
+                </c:ChipMenu.Menu>
+            </c:ChipMenu>
+            <Border Classes="tag good" IsVisible="{Binding ShowsReadyTags}" VerticalAlignment="Center"><TextBlock Text="ready" /></Border>
+            <Border Classes="tag" Classes.good="{Binding StateTagGood}" Classes.caution="{Binding StateTagCaution}" IsVisible="{Binding ShowsStateTag}" VerticalAlignment="Center">
+                <TextBlock Text="{Binding StateTagText}" />
+            </Border>
+            <Button Classes="pill" Command="{Binding CheckNowCommand}" IsVisible="{Binding ShowsReadyTags}" ToolTip.ShowOnDisabled="True" VerticalAlignment="Center"
+                    ToolTip.Tip="Reads the device's real state now and updates the tag, the list switch and the icon.">
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                    <Path Classes="glyph" Data="{StaticResource RefreshIcon}" />
+                    <TextBlock Text="Check now" />
+                </StackPanel>
+            </Button>
+            <c:ChipMenu Text="{Binding AutoCheckLabel}" ChipToolTip="{Binding AutoCheckTip}" MenuOpened="OnAutoCheckMenuOpened" IsVisible="{Binding ShowsReadyTags}" IsEnabled="{Binding AutoCheckEditable}" ToolTip.ShowOnDisabled="True" VerticalAlignment="Center">
+                <c:ChipMenu.Menu>
+                    <c:MenuRowList x:Name="AutoCheckRows" Title="Check the real state" />
+                </c:ChipMenu.Menu>
+            </c:ChipMenu>
+        </WrapPanel>
+
+        <StackPanel Spacing="8" IsVisible="{Binding !InSetup}">
+            <vm:MethodList />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" IsVisible="{Binding HasDrift}">
+                <TextBlock Classes="cautiontext" Text="{Binding DriftText}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Classes="pill" Content="Re-teach" Command="{Binding ReTeachCommand}" VerticalAlignment="Center" />
+            </Grid>
+        </StackPanel>
+
+        <StackPanel Spacing="8" IsVisible="{Binding InSetup}">
+            <vm:SetupView DataContext="{Binding Editing}" />
+            <WrapPanel ItemSpacing="6" LineSpacing="4" HorizontalAlignment="Right">
+                <Button Classes="pill" Content="Cancel" Command="{Binding CancelCommand}" ToolTip.Tip="Puts the device back as it was (a device that was never set up is removed)." />
+                <Button Classes="pill cardaction main" Content="Finish setup" Command="{Binding FinishCommand}" ToolTip.ShowOnDisabled="True"
+                        ToolTip.Tip="Every stage must be done. The method is then ready." />
+            </WrapPanel>
+        </StackPanel>
+
+        <Border Classes="statusstrip" IsVisible="{Binding HasLastLine}">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <TextBlock Classes="statusline" Classes.failed="{Binding LastFailed}" Text="{Binding LastLine}" ToolTip.Tip="{Binding LastLine}" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Classes="pill" Content="Copy details" IsVisible="{Binding HasDetails}" Click="OnCopyDetails" VerticalAlignment="Center"
+                        ToolTip.Tip="Copies the last command's log lines (email and password masked)." />
+            </Grid>
+        </Border>
+    </StackPanel>
+</UserControl>

@@ -2,7 +2,7 @@ using OmniControl.Core.Engine.Mouse;
 
 namespace OmniControl.Tests;
 
-/// <summary>The click-or-drag decision of a held-back button, and what a middle press unused by any action does (<see cref="MiddleClickPolicy"/>).</summary>
+/// The click-or-drag decision of a held-back button, and what a middle press unused by any action does (<see cref="MiddleClickPolicy"/>).
 public class AutoscrollTests
 {
     [Theory]

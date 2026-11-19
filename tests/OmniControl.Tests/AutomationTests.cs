@@ -1,7 +1,6 @@
-﻿using OmniControl.App.Automation;
-using OmniControl.App.Hotkeys;
-using OmniControl.App.Mouse;
-using Xunit;
+﻿using OmniControl.App.Features.Hotkeys.Actions;
+using OmniControl.App.Features.Automation;
+using OmniControl.App.Features.Input.Mouse;
 
 namespace OmniControl.Tests;
 

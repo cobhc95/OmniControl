@@ -1,23 +1,19 @@
-using System.ComponentModel;
-using System.Diagnostics;
 using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>One touch on the screen, in screen pixels: where the finger went down and where it came up.</summary>
+/// One touch on the screen, in screen pixels: where the finger went down and where it came up.
 public sealed record TouchGesture(int FromX, int FromY, int ToX, int ToY)
 {
     public bool IsTap => Math.Abs(ToX - FromX) <= CoreTiming.AdbTapSlopPx && Math.Abs(ToY - FromY) <= CoreTiming.AdbTapSlopPx;
 
-    /// <summary>The way a swipe went: up, down, left or right.</summary>
+    /// The way a swipe went: up, down, left or right.
     public string Direction => Math.Abs(ToX - FromX) > Math.Abs(ToY - FromY) ? (ToX > FromX ? "right" : "left") : (ToY > FromY ? "down" : "up");
 }
 
-/// <summary>
 /// Reads the lines of <c>adb shell getevent -l</c> and says when a finger came up, and where. The device reports positions in its own range
 /// (<c>max</c> of ABS_MT_POSITION_X and Y), which are scaled to the screen's size. One finger only.
-/// </summary>
 public sealed class TouchReader
 {
     private static readonly Regex Max = new(@"ABS_MT_POSITION_(?<axis>[XY])\s*:.*?max\s+(?<max>\d+)", RegexOptions.Compiled);
@@ -34,7 +30,7 @@ public sealed class TouchReader
         _height = height;
     }
 
-    /// <summary>The ranges in <c>getevent -lp</c> (the first device that reports positions); null when none does.</summary>
+    /// The ranges in <c>getevent -lp</c> (the first device that reports positions); null when none does.
     public static (int MaxX, int MaxY)? RangesOf(string eventInfo)
     {
         int? x = null, y = null;
@@ -46,7 +42,7 @@ public sealed class TouchReader
         return x is { } maxX && y is { } maxY ? (maxX, maxY) : null;
     }
 
-    /// <summary>Takes one line of <c>getevent -l</c>; the gesture when it ended a touch, else null.</summary>
+    /// Takes one line of <c>getevent -l</c>; the gesture when it ended a touch, else null.
     public TouchGesture? Feed(string line)
     {
         var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -81,10 +77,8 @@ public sealed class TouchReader
     private static int Scale(int raw, int max, int size) => max > 0 && size > 0 ? (int)((long)raw * size / (max + 1)) : raw;
 }
 
-/// <summary>
 /// Streams the touches made on an Android screen (<c>adb shell getevent</c>) so a recording can turn them into steps. It reads the touch
 /// device's range and the screen's size first. Dispose it to stop.
-/// </summary>
 public sealed class AdbTouchWatcher : IDisposable
 {
     private readonly string _adb;
@@ -97,10 +91,10 @@ public sealed class AdbTouchWatcher : IDisposable
         _serial = serial;
     }
 
-    /// <summary>A finger came up (raised on a background thread).</summary>
+    /// A finger came up (raised on a background thread).
     public event Action<TouchGesture>? Touched;
 
-    /// <summary>Starts listening; null when it works, otherwise one plain sentence.</summary>
+    /// Starts listening; null when it works, otherwise one plain sentence.
     public async Task<string?> StartAsync()
     {
         var info = await AdbClient.RunAsync(_adb, new[] { "-s", _serial, "shell", "getevent -lp" });

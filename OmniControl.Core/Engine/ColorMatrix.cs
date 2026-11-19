@@ -1,10 +1,8 @@
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// The colour matrix of the whole-desktop effect (pure, no Windows calls): saturation, then invert. Grayscale is saturation 0. A ramp
 /// cannot do these (it treats each colour channel alone), so they are one matrix for the Magnification API, not part of a display's ramp.
 /// The 5x5 matrix is row-major and multiplies the row [red green blue alpha 1].
-/// </summary>
 public static class ColorMatrix
 {
     public const int SaturationMin = 0, SaturationMax = 150, SaturationNeutral = 100;

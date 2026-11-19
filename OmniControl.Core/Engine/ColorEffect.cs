@@ -1,18 +1,13 @@
-using OmniControl.Core.Models;
-using OmniControl.Core.Native;
-
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// Colour saturation and invert for the whole desktop (every display at once, one matrix: <see cref="ColorMatrix"/>) through the Windows Magnification API's full-screen colour
 /// effect. Windows removes the effect when the process that set it ends, so a crash cannot leave it behind. Use from one thread
 /// (the UI thread): the Magnification runtime belongs to the thread that started it.
-/// </summary>
 public sealed class ColorEffect : IDisposable
 {
     private bool _started;
 
-    /// <summary>Applies saturation (percent, 100 is normal) and invert to every display; both neutral puts the colours back.</summary>
+    /// Applies saturation (percent, 100 is normal) and invert to every display; both neutral puts the colours back.
     public OperationResult Set(int saturationPercent, bool invert)
     {
         if (!_started)
@@ -24,7 +19,7 @@ public sealed class ColorEffect : IDisposable
         return Apply(ColorMatrix.Build(saturationPercent, invert));
     }
 
-    /// <summary>Puts the colours back and releases the Magnification runtime.</summary>
+    /// Puts the colours back and releases the Magnification runtime.
     public void Reset()
     {
         if (!_started) return;

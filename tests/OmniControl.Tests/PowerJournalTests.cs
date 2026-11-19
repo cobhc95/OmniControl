@@ -1,16 +1,10 @@
 using System.Collections.Concurrent;
-using OmniControl.App.Hotkeys;
-using OmniControl.App.Rules;
-using OmniControl.App.Services;
-using OmniControl.Core.Engine;
-using Xunit;
+using OmniControl.App.Features.Input.Rules;
 
 namespace OmniControl.Tests;
 
-/// <summary>
 /// The power journal and the wake decision, replayed with fake signals and a fake clock (nothing of Windows is touched, the PC never sleeps),
 /// and the readiness wait and retries of a step that needs a device, with a fake device and no real delays.
-/// </summary>
 public class PowerJournalTests
 {
     private static readonly long Confirm = (long)Timing.WakeConfirmWindow.TotalMilliseconds;

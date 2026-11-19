@@ -1,14 +1,10 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Engine;
 
-/// <summary>Choosing Windows' default playback device (what the Volume page's master plays on).</summary>
+/// Choosing Windows' default playback device (what the Volume page's master plays on).
 public static partial class CoreAudio
 {
-    /// <summary>
     /// Makes <paramref name="deviceId"/> Windows' default playback device, as Sound settings' "Set as default" does (the console and
     /// multimedia roles; the communications default is left alone). Returns false with a reason when Windows refuses.
-    /// </summary>
     public static bool TrySetDefaultDevice(string deviceId, out string error)
     {
         error = string.Empty;

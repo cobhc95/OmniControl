@@ -2,7 +2,7 @@ using OmniControl.Core.Engine.Screenshot;
 
 namespace OmniControl.Tests;
 
-/// <summary>The recorder's kill switch: Abort ends a running recording at once, reports it cancelled and leaves no file. A tiny GIF of the screen's corner is recorded; nothing is shown or changed.</summary>
+/// The recorder's kill switch: Abort ends a running recording at once, reports it cancelled and leaves no file. A tiny GIF of the screen's corner is recorded; nothing is shown or changed.
 public class RecordingAbortTests
 {
     private static RecordingRequest Request(string path) => new(new ScreenRect(0, 0, 16, 16), path, VideoFormat.Gif, 10, VideoQuality.Low, false, false, false,

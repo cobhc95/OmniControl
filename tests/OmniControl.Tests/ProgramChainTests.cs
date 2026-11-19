@@ -1,15 +1,11 @@
-using OmniControl.App.Audio;
-using OmniControl.App.Audio.Engine.Dsp;
-using OmniControl.Core.Engine;
+using OmniControl.App.Features.Volume.Audio.Engine.Dsp;
 using Xunit.Abstractions;
 
 namespace OmniControl.Tests;
 
-/// <summary>
-/// The sound a program's run makes from the owner's saved chain: the same <see cref="ChainBuilder"/> and the same
+/// The sound a program's run makes from the reference saved chain: the same <see cref="ChainBuilder"/> and the same
 /// <see cref="ChainProcessor"/> (no row level, gate open) that <c>CableRoute</c> and <c>BusRun</c> build, fed a synthetic sine in
 /// the pipe's format and blocks, the level at the tone measured with Goertzel.
-/// </summary>
 public class ProgramChainTests(ITestOutputHelper output)
 {
     private const int Rate = PipeFormat.SampleRate, Channels = PipeFormat.Channels;
@@ -18,7 +14,7 @@ public class ProgramChainTests(ITestOutputHelper output)
 
     private static (IPluginEffect?, string?) NoPlugins(FxSlot slot) => (null, "no plug-ins in this test");
 
-    /// <summary>Gain in dB at <paramref name="hz"/> through a run's processor built from <paramref name="slots"/>.</summary>
+    /// Gain in dB at <paramref name="hz"/> through a run's processor built from <paramref name="slots"/>.
     private static double GainDb(IEnumerable<FxSlot> slots, double hz)
     {
         var processor = new ChainProcessor(level: null, gateOpen: true); // exactly as CableRoute and BusRun make theirs
@@ -41,7 +37,7 @@ public class ProgramChainTests(ITestOutputHelper output)
         return 20 * Math.Log10(Goertzel(measured, hz) / amplitude);
     }
 
-    /// <summary>Amplitude of the tone at <paramref name="hz"/> in <paramref name="x"/>.</summary>
+    /// Amplitude of the tone at <paramref name="hz"/> in <paramref name="x"/>.
     private static double Goertzel(IReadOnlyList<float> x, double hz)
     {
         var w = 2 * Math.PI * hz / Rate;
@@ -57,7 +53,7 @@ public class ProgramChainTests(ITestOutputHelper output)
         return 2 * Math.Sqrt(Math.Max(power, 0)) / x.Count;
     }
 
-    private static List<FxSlot> SpotifyChain() => OwnerPc.Settings().Apps.First(a => a.Key == OwnerPc.Spotify).Fx;
+    private static List<FxSlot> SpotifyChain() => OwnerPc.Settings().Apps.First(a => a.Key == OwnerPc.Player).Fx;
 
     [Fact]
     public void SpotifyChain_BoostsItsBandBy24Db()

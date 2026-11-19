@@ -1,0 +1,33 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+             x:Class="OmniControl.App.Features.OtherPcs.Pages.WakeSplit">
+    <!-- THE wake control (docs/mockups/pc-header-tidy.html, UPDATED part): normally ONE pill (status dot, state words, a small muted cog at its right; a click
+         anywhere opens Set up wake). Only while the PC is asleep or off and can be woken it is split in two: the accent "Wake" action (a caution mark after it
+         when not confirmed) | the cogwheel. "Waking…" with the shared spinner while it is awaited. A PC's header and this PC's title line both use it. -->
+    <StackPanel Orientation="Horizontal" Spacing="0">
+        <Panel>
+            <Button x:Name="StatusHalf" Classes="pill" Click="OnSetUp" ToolTip.Tip="Set up wake…">
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                    <c:StatusDot x:Name="Dot" />
+                    <Panel x:Name="Spinner" Classes="tilemark" Margin="0" VerticalAlignment="Center" IsVisible="False">
+                        <Ellipse Classes="markring" />
+                        <Path Classes="markarc" />
+                    </Panel>
+                    <TextBlock x:Name="Words" VerticalAlignment="Center" />
+                    <PathIcon Data="{DynamicResource CogIcon}" Width="11" Height="11" Margin="2,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource BrushMuted}" />
+                </StackPanel>
+            </Button>
+            <Button x:Name="ActionHalf" Classes="pill splitleft accentline custom" Click="OnWake" IsVisible="False">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <c:IconGlyph LibraryId="power" VerticalAlignment="Center" />
+                    <TextBlock Text="Wake" VerticalAlignment="Center" />
+                    <c:IconGlyph x:Name="Caution" Classes="cautionmark" LibraryId="alert" VerticalAlignment="Center" IsVisible="False" />
+                </StackPanel>
+            </Button>
+        </Panel>
+        <Button x:Name="CogHalf" Classes="pill splitright cog" Margin="-1,0,0,0" Click="OnSetUp" ToolTip.Tip="Set up wake…" IsVisible="False">
+            <PathIcon Data="{DynamicResource CogIcon}" />
+        </Button>
+    </StackPanel>
+</UserControl>

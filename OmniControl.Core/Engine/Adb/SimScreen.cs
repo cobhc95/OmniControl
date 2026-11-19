@@ -4,7 +4,7 @@ using System.Xml.Linq;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>One element of an Android screen as <c>uiautomator dump</c> reports it.</summary>
+/// One element of an Android screen as <c>uiautomator dump</c> reports it.
 public sealed record SimNode(string Text, string Description, string ResourceId, bool Clickable, int Left, int Top, int Right, int Bottom,
     string Package = "", bool Checkable = false, bool Checked = false, string ClassName = "", bool Selected = false, bool Enabled = true, bool Activated = false)
 {
@@ -15,7 +15,7 @@ public sealed record SimNode(string Text, string Description, string ResourceId,
     public bool Contains(int x, int y) => x >= Left && x < Right && y >= Top && y < Bottom;
 }
 
-/// <summary>One screen read from a uiautomator dump: what is on it, how to find an element by its text, description or resource id, and which element is at a point.</summary>
+/// One screen read from a uiautomator dump: what is on it, how to find an element by its text, description or resource id, and which element is at a point.
 public sealed class SimScreen
 {
     private static readonly Regex BoundsPattern = new(@"\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]", RegexOptions.Compiled);
@@ -24,7 +24,7 @@ public sealed class SimScreen
 
     public IReadOnlyList<SimNode> Nodes { get; }
 
-    /// <summary>Reads a dump (adb may print a line before or after the XML); null when it holds no screen.</summary>
+    /// Reads a dump (adb may print a line before or after the XML); null when it holds no screen.
     public static SimScreen? Parse(string? dump)
     {
         if (dump is null) return null;
@@ -53,7 +53,7 @@ public sealed class SimScreen
             (string?)e.Attribute("selected") == "true", (string?)e.Attribute("enabled") != "false", (string?)e.Attribute("activated") == "true");
     }
 
-    /// <summary>The element a step names: its text and description must match (the whole text, ignoring case) and its resource id narrows the choice. Null when there is none.</summary>
+    /// The element a step names: its text and description must match (the whole text, ignoring case) and its resource id narrows the choice. Null when there is none.
     public SimNode? Find(SimStep step)
     {
         IEnumerable<SimNode> found = Nodes;
@@ -77,10 +77,10 @@ public sealed class SimScreen
 
     private long ScreenArea => Nodes.Count == 0 ? 0 : Nodes.Max(n => n.Area);
 
-    /// <summary>A page container (pager, list, layout) or an element covering most of the screen: never what a person means to tap.</summary>
+    /// A page container (pager, list, layout) or an element covering most of the screen: never what a person means to tap.
     private bool IsContainer(SimNode n) => n.Area * 10 > ScreenArea * 6 || (!n.Clickable && ContainerClasses.Any(c => n.ClassName.EndsWith(c, StringComparison.Ordinal)));
 
-    /// <summary>The card or row around an element: the smallest container (not most of the screen) with other words in it; the element itself when there is none.</summary>
+    /// The card or row around an element: the smallest container (not most of the screen) with other words in it; the element itself when there is none.
     public SimNode CardOf(SimNode node)
     {
         var limit = ScreenArea * 6 / 10;
@@ -88,7 +88,7 @@ public sealed class SimScreen
             .FirstOrDefault(box => Nodes.Any(n => n.Text.Length > 0 && box.Holds(n) && !Same(n.Text, node.Text) && n != node)) ?? node;
     }
 
-    /// <summary>The texts of the card or row around an element (<see cref="CardOf"/>), own words left out, top to bottom.</summary>
+    /// The texts of the card or row around an element (<see cref="CardOf"/>), own words left out, top to bottom.
     public IReadOnlyList<string> CardTexts(SimNode node)
     {
         var box = CardOf(node);
@@ -96,16 +96,16 @@ public sealed class SimScreen
         return Nodes.Where(n => n.Text.Length > 0 && box.Holds(n) && !Same(n.Text, node.Text) && n != node).OrderBy(n => n.Top).ThenBy(n => n.Left).Select(n => n.Text.Trim()).Distinct().ToList();
     }
 
-    /// <summary>The elements inside a box (the box itself included), top to bottom.</summary>
+    /// The elements inside a box (the box itself included), top to bottom.
     public IReadOnlyList<SimNode> Inside(SimNode box) => Nodes.Where(box.Holds).OrderBy(n => n.Top).ThenBy(n => n.Left).ToList();
 
-    /// <summary>The screen's size in the dump's pixels (the largest element's right and bottom edges).</summary>
+    /// The screen's size in the dump's pixels (the largest element's right and bottom edges).
     public (int Width, int Height) Size => Nodes.Count == 0 ? (0, 0) : (Nodes.Max(n => n.Right), Nodes.Max(n => n.Bottom));
 
-    /// <summary>True when more than one element on the screen has the same text, description and id as this one.</summary>
+    /// True when more than one element on the screen has the same text, description and id as this one.
     public bool IsAmbiguous(SimNode node) => Nodes.Count(n => n.ResourceId == node.ResourceId && Same(n.Text, node.Text) && Same(n.Description, node.Description)) > 1;
 
-    /// <summary>What a person calls an element: its words, else "the card's name" + its id made readable ("Tapo L530's device switch").</summary>
+    /// What a person calls an element: its words, else "the card's name" + its id made readable ("Tapo L530's device switch").
     public string LabelFor(SimNode node)
     {
         if (node.Text.Length > 0) return node.Text;
@@ -115,21 +115,21 @@ public sealed class SimScreen
         return SimSteps.Humanise(node.ResourceId);
     }
 
-    /// <summary>The app the screen belongs to: the package most elements report, not counting the system bars; empty when none.</summary>
+    /// The app the screen belongs to: the package most elements report, not counting the system bars; empty when none.
     public string AppPackage => Nodes.Where(n => n.Package.Length > 0 && n.Package != SimSteps.SystemUiPackage)
         .GroupBy(n => n.Package).OrderByDescending(g => g.Count()).Select(g => g.Key).FirstOrDefault() ?? string.Empty;
 
-    /// <summary>True when the screen shows this text (as an element's text or description).</summary>
+    /// True when the screen shows this text (as an element's text or description).
     public bool Shows(string text) => text.Length > 0 && Nodes.Any(n => Same(n.Text, text) || Same(n.Description, text));
 
-    /// <summary>The smallest element that holds the point, preferring one that can be tapped; null when none.</summary>
+    /// The smallest element that holds the point, preferring one that can be tapped; null when none.
     public SimNode? At(int x, int y) => Nodes.Where(n => n.Contains(x, y) && n.Area > 0)
         .OrderByDescending(n => n.Clickable && (n.Text.Length > 0 || n.Description.Length > 0 || n.ResourceId.Length > 0)).ThenBy(n => n.Area).FirstOrDefault();
 
-    /// <summary>The smallest element at the point that can be tapped and is no page container; null when there is none.</summary>
+    /// The smallest element at the point that can be tapped and is no page container; null when there is none.
     public SimNode? TappableAt(int x, int y) => Nodes.Where(n => (n.Clickable || n.Checkable) && n.Contains(x, y) && n.Area > 0 && !IsContainer(n)).OrderBy(n => n.Area).FirstOrDefault();
 
-    /// <summary>The step a tap at a point stands for: the tappable element there by what it says, else by its resource id (with the card it sits in when several look alike); null when nothing there can be tapped.</summary>
+    /// The step a tap at a point stands for: the tappable element there by what it says, else by its resource id (with the card it sits in when several look alike); null when nothing there can be tapped.
     public SimStep? TapAt(int x, int y)
     {
         if (TappableAt(x, y) is not { } node) return null;
@@ -143,7 +143,7 @@ public sealed class SimScreen
         return step;
     }
 
-    /// <summary>The words an element at a point shows (its text, else its description); empty when it shows none.</summary>
+    /// The words an element at a point shows (its text, else its description); empty when it shows none.
     public string WordsAt(int x, int y) => At(x, y) is { } node ? (node.Text.Length > 0 ? node.Text : node.Description) : string.Empty;
 
     internal static bool Same(string a, string b) => string.Equals(a.Trim(), b.Trim(), StringComparison.OrdinalIgnoreCase);

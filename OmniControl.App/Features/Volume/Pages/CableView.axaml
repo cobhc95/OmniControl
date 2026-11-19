@@ -1,0 +1,14 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Features.Volume.Pages"
+             x:Class="OmniControl.App.Features.Volume.Pages.CableView"
+             x:DataType="vm:CableState" VerticalAlignment="Center" MaxWidth="{StaticResource WiringCableMaxWidth}" ToolTip.Tip="{Binding Tip}">
+    <!-- The Cable column of a Wiring row or combined device: the cable it uses (a tag), the engine's words while it waits for one (a
+         caution tag, wrapping), or a dash -->
+    <Panel>
+        <Border Classes="tag" Classes.caution="{Binding IsCaution}" IsVisible="{Binding HasTag}" HorizontalAlignment="Left">
+            <TextBlock Text="{Binding Text}" />
+        </Border>
+        <TextBlock Classes="muted" Text="{Binding Text}" IsVisible="{Binding !HasTag}" />
+    </Panel>
+</UserControl>

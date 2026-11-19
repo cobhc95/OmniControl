@@ -1,0 +1,16 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Features.Volume.Pages"
+             x:Class="OmniControl.App.Features.Volume.Pages.SourceName"
+             x:DataType="vm:VolumeRow" VerticalAlignment="Center">
+    <!-- The Source column of the Wiring tab (a table row, a combined device card): the row's icon, its name, trimmed, and its tag
+         ("Combined" on a combined microphone) -->
+    <StackPanel Orientation="Horizontal" Spacing="{StaticResource MenuGap}">
+        <vm:RowIcon />
+        <TextBlock Classes="strong" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                   MaxWidth="{StaticResource WiringSourceMaxWidth}" ToolTip.Tip="{Binding Name}" />
+        <Border Classes="tag" IsVisible="{Binding HasSourceTag}" VerticalAlignment="Center">
+            <TextBlock Text="{Binding SourceTag}" />
+        </Border>
+    </StackPanel>
+</UserControl>

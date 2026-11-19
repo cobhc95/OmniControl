@@ -1,8 +1,6 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Native;
 
-/// <summary>P/Invoke surface for dxva2.dll (DDC/CI) and user32 monitor enumeration.</summary>
+/// P/Invoke surface for dxva2.dll (DDC/CI) and user32 monitor enumeration.
 internal static class Dxva2Native
 {
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]

@@ -2,7 +2,7 @@ using System.Net.Sockets;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>Whether something answers at an address and port (a plain connect, nothing is sent).</summary>
+/// Whether something answers at an address and port (a plain connect, nothing is sent).
 public static class TcpReach
 {
     public static async Task<bool> CanConnectAsync(string host, int port, CancellationToken ct)

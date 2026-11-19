@@ -3,7 +3,7 @@ using System.IO.Compression;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>A decoded picture: <see cref="Pixels"/> holds red, green, blue and alpha for each pixel, row after row.</summary>
+/// A decoded picture: <see cref="Pixels"/> holds red, green, blue and alpha for each pixel, row after row.
 public sealed record RgbaImage(int Width, int Height, byte[] Pixels)
 {
     public (byte R, byte G, byte B) At(int x, int y)
@@ -13,10 +13,8 @@ public sealed record RgbaImage(int Width, int Height, byte[] Pixels)
     }
 }
 
-/// <summary>
 /// Reads the PNG that <c>adb exec-out screencap -p</c> prints: 8 bits per channel, grey, grey with alpha, RGB or RGBA, not interlaced (what
 /// Android writes). Anything else is not read (null), so a screenshot that cannot be read only means no colour is measured.
-/// </summary>
 public static class Png
 {
     private static readonly byte[] Signature = { 137, 80, 78, 71, 13, 10, 26, 10 };

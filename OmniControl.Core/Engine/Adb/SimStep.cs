@@ -2,17 +2,15 @@ using System.Text.Json.Serialization;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>What one recorded step of a simulated device does on the Android screen.</summary>
+/// What one recorded step of a simulated device does on the Android screen.
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum SimStepKind { OpenApp, WaitFor, Tap, TypeText, Swipe, Back, Check }
 
-/// <summary>One thing a step can be told: each is a text box in the step's editor.</summary>
+/// One thing a step can be told: each is a text box in the step's editor.
 public enum SimField { Package, Text, Description, ResourceId, Direction }
 
-/// <summary>
 /// One recorded step. An element is found by its text, its content description or its resource id (<see cref="SimScreen.Find"/>);
 /// the position (<see cref="X"/>, <see cref="Y"/>, -1 = none) is only used when the element has none of those.
-/// </summary>
 public sealed class SimStep
 {
     public SimStepKind Kind { get; set; }
@@ -21,13 +19,13 @@ public sealed class SimStep
     public string Description { get; set; } = string.Empty;
     public string ResourceId { get; set; } = string.Empty;
 
-    /// <summary>A swipe's way: up, down, left or right.</summary>
+    /// A swipe's way: up, down, left or right.
     public string Direction { get; set; } = string.Empty;
 
-    /// <summary>What a person reads for the step ("Tapo", "Orbit 11's power button"); display only, the matcher fields above stay precise. Empty = made from the matcher.</summary>
+    /// What a person reads for the step ("Tapo", "Orbit 11's power button"); display only, the matcher fields above stay precise. Empty = made from the matcher.
     public string Label { get; set; } = string.Empty;
 
-    /// <summary>The text of the card or row the element sits in, when several elements look alike (every device card has the same power button): the match is the one inside that card.</summary>
+    /// The text of the card or row the element sits in, when several elements look alike (every device card has the same power button): the match is the one inside that card.
     public string Anchor { get; set; } = string.Empty;
 
     public int X { get; set; } = -1;
@@ -39,18 +37,18 @@ public sealed class SimStep
     public bool HasPosition => X >= 0 && Y >= 0;
 }
 
-/// <summary>A step as a sentence: "Wait for" + <c>"Power"</c> + "· tap it".</summary>
+/// A step as a sentence: "Wait for" + <c>"Power"</c> + "· tap it".
 public sealed record SimStepWords(string Lead, string Target, string Tail);
 
-/// <summary>The master list of step kinds and everything that depends on the kind (its words, its fields, what makes it complete).</summary>
+/// The master list of step kinds and everything that depends on the kind (its words, its fields, what makes it complete).
 public static class SimSteps
 {
     public static readonly string[] Directions = { "up", "down", "left", "right" };
 
-    /// <summary>The system bars; never the app a person works in.</summary>
+    /// The system bars; never the app a person works in.
     public const string SystemUiPackage = "com.android.systemui";
 
-    /// <summary>A home screen (launcher): opening an app from it is recorded as Open app, and it is never the app to open.</summary>
+    /// A home screen (launcher): opening an app from it is recorded as Open app, and it is never the app to open.
     public static bool IsLauncher(string package) =>
         package.Length == 0 || package == SystemUiPackage || package.Contains("launcher", StringComparison.OrdinalIgnoreCase) || package.EndsWith(".home", StringComparison.OrdinalIgnoreCase);
 
@@ -67,7 +65,7 @@ public static class SimSteps
         new(SimStepKind.Check, "Check", "Check screen shows", new[] { SimField.Text, SimField.Description, SimField.ResourceId }),
     };
 
-    /// <summary>Every step kind, in the order the "+ add step" menu lists them.</summary>
+    /// Every step kind, in the order the "+ add step" menu lists them.
     public static IReadOnlyList<SimStepKind> All { get; } = Kinds.Select(k => k.Kind).ToList();
 
     public static string NameOf(SimStepKind kind) => Of(kind).Name;
@@ -108,7 +106,7 @@ public static class SimSteps
 
     public static SimStep Blank(SimStepKind kind) => new() { Kind = kind, Direction = kind == SimStepKind.Swipe ? "up" : string.Empty };
 
-    /// <summary>Why the step cannot run yet, as a short phrase; null when it is complete.</summary>
+    /// Why the step cannot run yet, as a short phrase; null when it is complete.
     public static string? Missing(SimStep step) => step.Kind switch
     {
         SimStepKind.OpenApp => IsPackage(step.Package) ? null : "the app's package name is missing",
@@ -119,7 +117,7 @@ public static class SimSteps
         _ => null,
     };
 
-    /// <summary>One plain sentence saying what step number <paramref name="number"/> still needs and what to do about it; null when it is complete.</summary>
+    /// One plain sentence saying what step number <paramref name="number"/> still needs and what to do about it; null when it is complete.
     public static string? Fix(SimStep step, int number)
     {
         if (Missing(step) is null) return null;
@@ -135,10 +133,10 @@ public static class SimSteps
         return $"Step {number} has {what}.";
     }
 
-    /// <summary>An Android package name; also the only thing that is ever put into an adb shell command from a step.</summary>
+    /// An Android package name; also the only thing that is ever put into an adb shell command from a step.
     public static bool IsPackage(string text) => text.Length > 0 && text.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '_');
 
-    /// <summary>The words of a step: what it does, what it is about (a block) and what follows.</summary>
+    /// The words of a step: what it does, what it is about (a block) and what follows.
     public static SimStepWords Words(SimStep step)
     {
         var info = Of(step.Kind);
@@ -153,7 +151,7 @@ public static class SimSteps
         return new SimStepWords(info.Lead, target, tail);
     }
 
-    /// <summary>The exact matcher of a step, for its tooltip (package, text, id and position); empty when there is nothing beyond its label.</summary>
+    /// The exact matcher of a step, for its tooltip (package, text, id and position); empty when there is nothing beyond its label.
     public static string Detail(SimStep step)
     {
         var parts = new List<string>();
@@ -166,7 +164,7 @@ public static class SimSteps
         return string.Join(" · ", parts);
     }
 
-    /// <summary>"device_switch" or "deviceSwitch" as "device switch"; first letter capital when <paramref name="capital"/>.</summary>
+    /// "device_switch" or "deviceSwitch" as "device switch"; first letter capital when <paramref name="capital"/>.
     public static string Humanise(string id, bool capital = true)
     {
         var name = System.Text.RegularExpressions.Regex.Replace(id.Contains('/') ? id[(id.LastIndexOf('/') + 1)..] : id, "([a-z0-9])([A-Z])", "$1 $2").Replace('_', ' ').Trim().ToLowerInvariant();

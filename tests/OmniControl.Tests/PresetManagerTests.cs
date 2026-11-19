@@ -1,31 +1,32 @@
-using OmniControl.App.Audio;
-using OmniControl.App.Display;
-using OmniControl.App.Fx;
-using OmniControl.App.Fx.Presets;
-using OmniControl.App.Hotkeys;
-using OmniControl.App.Mouse;
-using OmniControl.App.Pages.Displays;
-using OmniControl.App.Pages.Presets;
-using OmniControl.App.Presets;
+using System.Collections.ObjectModel;
+using OmniControl.App.Features.Hotkeys.Actions;
+using OmniControl.App.Features.Displays;
+using OmniControl.App.Features.Volume.Fx;
+using OmniControl.App.Features.Volume.Fx.Presets;
+using OmniControl.App.Features.Input.Mouse;
+using OmniControl.App.Features.Displays.Pages;
+using OmniControl.App.Shared.Presets.Manager;
+using OmniControl.App.Shared.Presets;
 using OmniControl.Core.Engine.Mouse;
 
 namespace OmniControl.Tests;
 
-/// <summary>
 /// The unified preset manager, headless and with fakes (no shortcut is registered on the PC, nothing is written under the user's
 /// folder): each group's adapter (layers, picture and monitor presets, an effect kind's presets), the stable ids and order that are
 /// saved, the preset shortcuts in the master list of actions, where the manager opens, the dimmed sections, and building every piece in
 /// the shell's order with no data at all.
-/// </summary>
 public class PresetManagerTests
 {
     // ---------------------------------------------------------------- fakes
 
-    /// <summary>The master list of actions in memory: what hotkeys.json would keep is <see cref="Saved"/>.</summary>
+    /// The master list of actions in memory: what hotkeys.json would keep is <see cref="Saved"/>.
     private sealed class FakeActions : IActionRegistry
     {
-        public List<HotkeyAction> Actions { get; } = new();
+        public ObservableCollection<HotkeyAction> Actions { get; } = new();
         public Dictionary<string, string> Saved { get; } = new();
+        public IEnumerable<HotkeyAction> PickerActions => Actions;
+        public event Action? BindingsSaved { add { } remove { } }
+        public event Action<IReadOnlyDictionary<string, string>>? Moved { add { } remove { } }
 
         public void Register(HotkeyAction action)
         {
@@ -34,9 +35,25 @@ public class PresetManagerTests
             Actions.Add(action);
         }
 
-        public void Unregister(string id) => Actions.RemoveAll(a => a.Id == id);
+        public void Register(IEnumerable<HotkeyAction> actions)
+        {
+            foreach (var action in actions) Register(action);
+        }
+
+        public void RegisterPickerCommand(HotkeyAction command) { }
+
+        public void Move(IReadOnlyDictionary<string, string> moved) { }
+
+        public void Unregister(string id)
+        {
+            foreach (var gone in Actions.Where(a => a.Id == id).ToList()) Actions.Remove(gone);
+        }
 
         public HotkeyAction? Find(string id) => Actions.FirstOrDefault(a => a.Id == id);
+
+        public ActionSection? SectionOf(string section) => null;
+
+        public HotkeyAction? OwnerOf(string gesture, string exceptId) => HotkeyRegistry.OwnerOf(gesture, exceptId, Actions);
 
         public IReadOnlyList<string> SavedWithShortcut(string prefix) =>
             Saved.Where(p => p.Key.StartsWith(prefix, StringComparison.Ordinal) && p.Value.Length > 0).Select(p => p.Key).ToList();
@@ -44,7 +61,7 @@ public class PresetManagerTests
         public string? ProblemWith(string gesture, string id) => HotkeyRegistry.ConflictOf(gesture, id, Actions);
     }
 
-    /// <summary>The mouse service's layer side, in memory (MouseSettings never saved).</summary>
+    /// The mouse service's layer side, in memory (MouseSettings never saved).
     private sealed class FakeLayers : ILayerControl
     {
         private readonly Dictionary<InputFamily, int> _current = new() { [InputFamily.Mouse] = 1, [InputFamily.Trackpad] = 1 };
@@ -73,7 +90,7 @@ public class PresetManagerTests
         public event Action? LayersChanged;
     }
 
-    /// <summary>An effect the presets are read from and applied to.</summary>
+    /// An effect the presets are read from and applied to.
     private sealed class FakeTarget : IFxPresetTarget
     {
         public PresetContent Content { get; set; } = new() { Bands = Eq.Layout.Default() };
@@ -388,11 +405,9 @@ public class PresetManagerTests
         new("Displays", "M0,0"), new("Volume", "M0,0"), new("OSD", "M0,0"), new("Mouse and Trackpad", "M0,0"), new("Gestures", "M0,0"), new("Shortcuts", "M0,0"),
     };
 
-    /// <summary>
     /// The shell's order with nothing saved: the master list, the shortcuts, the opener, then the pages' groups (Displays with no monitor
     /// read yet, the layers), the effects' groups, the sections; the window's model is made last, as Open makes it. Nothing may need a
     /// piece that comes later, and empty data must not crash.
-    /// </summary>
     private static (PresetGroups Groups, PresetShortcuts Shortcuts, PresetManagerViewModel Vm, FakeActions Actions) BuildInTheShellsOrder()
     {
         var actions = new FakeActions();

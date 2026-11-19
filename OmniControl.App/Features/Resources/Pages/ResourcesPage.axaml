@@ -1,0 +1,76 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Features.Resources.Pages"
+             xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
+             xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+             x:Class="OmniControl.App.Features.Resources.Pages.ResourcesPage"
+             x:DataType="vm:ResourcesPageViewModel">
+    <!-- The title line with the preset picker, the tabs, then Readings (Live readings and Network by app: its headings, rows and the one status
+         line) or the Taskbar gadget tab (Gadget/GadgetTabView, built after the tab's first opening and then kept, hidden with the tab). -->
+    <StackPanel Spacing="{StaticResource Gap}">
+        <pages:PageTitleLine Title="{Binding Title}">
+            <pages:PageTitleLine.Right>
+                <c:PresetPicker DataContext="{Binding PresetChoice}" />
+            </pages:PageTitleLine.Right>
+        </pages:PageTitleLine>
+
+        <StackPanel x:Name="CardsHost" Spacing="{StaticResource Gap}" Grid.IsSharedSizeScope="True">
+            <pages:PageTabsView DataContext="{Binding Tabs}" />
+
+            <StackPanel IsVisible="{Binding ShowsReadings}">
+                <pages:GroupCard Group="{Binding Live}">
+                    <pages:GroupCard.Tools>
+                        <c:ChoiceChip DataContext="{Binding ReadEvery}" />
+                    </pages:GroupCard.Tools>
+                    <ListBox Classes="rows compact cards" ItemsSource="{Binding Live.Items}" />
+                </pages:GroupCard>
+
+                <pages:GroupCard Group="{Binding Apps}">
+                    <pages:GroupCard.Tools>
+                        <c:AppScopeChip DataContext="{Binding AppsScope}" />
+                    </pages:GroupCard.Tools>
+                    <Panel>
+                        <!-- Not run as administrator: one line and the restart, nothing of the programs -->
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource MenuGap}" IsVisible="{Binding NeedsAdministrator}">
+                            <TextBlock Classes="hint" Text="{Binding NeedsAdministratorLine}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Classes="pill" Content="Restart as administrator" Command="{Binding RestartAsAdministratorCommand}"
+                                    VerticalAlignment="Center" ToolTip.Tip="Starts OmniControl again as administrator (Windows asks unless Run as administrator is on)." />
+                        </Grid>
+                        <StackPanel Spacing="{StaticResource GapSmall}" IsVisible="{Binding !NeedsAdministrator}">
+                            <Grid ColumnSpacing="{StaticResource MenuGap}" Margin="{StaticResource RowHeadingInset}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="NetPin" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="NetDown" />
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="NetUp" />
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="NetUpLimit" />
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="NetDownLimit" />
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="NetOn" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="1" Classes="muted small" Text="App" />
+                                <TextBlock Grid.Column="2" Classes="muted small" Text="Down" />
+                                <TextBlock Grid.Column="3" Classes="muted small" Text="Up" />
+                                <TextBlock Grid.Column="4" Classes="muted small" Text="Upload limit" />
+                                <TextBlock Grid.Column="5" Classes="muted small" Text="Download limit" />
+                                <TextBlock Grid.Column="6" Classes="muted small" Text="On" />
+                            </Grid>
+                            <pages:EmptyListRow Text="No program has used the network since OmniControl started." IsVisible="{Binding !HasApps}" />
+                            <ListBox Classes="rows compact" ItemsSource="{Binding AppRows}" IsVisible="{Binding HasApps}" />
+                            <Border Classes="statusstrip">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource MenuGap}">
+                                    <TextBlock Classes="statusline" Classes.failed="{Binding StatusFailed}" Text="{Binding Status}" ToolTip.Tip="{Binding StatusTip}"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <Button Grid.Column="1" Classes="link small" Content="Install Windows Packet Filter…" Command="{Binding InstallPacketFilterCommand}"
+                                            IsVisible="{Binding OffersInstall}" VerticalAlignment="Center"
+                                            ToolTip.Tip="Tries again: checks the driver files that come with OmniControl, then adds them with Windows' own network set-up." />
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </Panel>
+                </pages:GroupCard>
+            </StackPanel>
+
+            <ContentControl Content="{Binding Gadget}" IsVisible="{Binding !ShowsReadings}" />
+        </StackPanel>
+    </StackPanel>
+</UserControl>

@@ -1,11 +1,7 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Native;
 
-/// <summary>
 /// user32's display configuration: which monitor (by model name) is on which display, and whether it is the laptop's own panel.
 /// The structures are laid out exactly as in wingdi.h (a path is 72 bytes, a mode 64).
-/// </summary>
 internal static class DisplayConfigNative
 {
     public const uint ActivePaths = 0x2;                       // QDC_ONLY_ACTIVE_PATHS
@@ -70,10 +66,8 @@ internal static class DisplayConfigNative
     [DllImport("user32.dll")]
     private static extern int SetDisplayConfig(uint paths, [In] PathInfo[] pathArray, uint modes, [In] ModeInfo[] modeArray, uint flags);
 
-    /// <summary>
     /// Writes the configuration Windows is showing now to its display database, the way Settings does, so that sleep, wake and restart bring
     /// back this layout (including each display's turn) rather than an older stored one. Returns the Windows error code, 0 when saved.
-    /// </summary>
     public static int SaveCurrentToDatabase()
     {
         var sizes = GetDisplayConfigBufferSizes(ActivePaths, out var pathCount, out var modeCount);
@@ -87,10 +81,8 @@ internal static class DisplayConfigNative
 
     private const int ErrorInsufficientBuffer = 122, QueryTries = 3;
 
-    /// <summary>
     /// The active paths. While displays are being attached (a return from Remote Desktop, a wake) the configuration can grow between the two
     /// calls and Windows answers "buffer too small": asked again a few times, so the names and device paths are not lost for that look.
-    /// </summary>
     private static bool Query(out PathInfo[] paths, out uint pathCount)
     {
         for (var attempt = 0; ; attempt++)
@@ -105,10 +97,10 @@ internal static class DisplayConfigNative
         }
     }
 
-    /// <summary>What Windows knows about the monitor on one display.</summary>
+    /// What Windows knows about the monitor on one display.
     public readonly record struct Target(string FriendlyName, string DevicePath, bool IsInternal);
 
-    /// <summary>The monitor on each active display, by the display's device name. Empty when Windows cannot say.</summary>
+    /// The monitor on each active display, by the display's device name. Empty when Windows cannot say.
     public static Dictionary<string, Target> ReadTargets()
     {
         var result = new Dictionary<string, Target>(StringComparer.OrdinalIgnoreCase);

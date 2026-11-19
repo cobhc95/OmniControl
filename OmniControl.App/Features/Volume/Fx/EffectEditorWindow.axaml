@@ -1,0 +1,17 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="OmniControl.App.Features.Volume.Fx.EffectEditorWindow"
+        WindowStartupLocation="CenterOwner" FontSize="12">
+    <!-- A popped-out effect: a bar with its name and Put back (double-click the bar does the same), then its editor -->
+    <DockPanel>
+        <Border DockPanel.Dock="Top" Classes="barstrip" BorderThickness="0,0,0,1" Padding="12,6">
+            <Grid x:Name="Bar" ColumnDefinitions="*,Auto" ColumnSpacing="12" Background="Transparent"
+                  ToolTip.Tip="Double-click: back into the FX window">
+                <TextBlock x:Name="NameText" Classes="muted" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <Button Grid.Column="1" Classes="pill" Content="Put back" Click="OnPutBack" VerticalAlignment="Center"
+                        ToolTip.Tip="Back into the FX window (or double-click this bar)" />
+            </Grid>
+        </Border>
+        <ContentControl x:Name="Body" />
+    </DockPanel>
+</Window>

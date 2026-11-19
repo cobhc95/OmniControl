@@ -1,14 +1,12 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Engine;
 
-/// <summary>Live peak levels of the default playback device, a recording device, or a program (see <see cref="AudioSession.Peaks"/>).</summary>
+/// Live peak levels of the default playback device, a recording device, or a program (see <see cref="AudioSession.Peaks"/>).
 public static partial class CoreAudio
 {
     private static readonly Dictionary<string, (IAudioMeterInformation? Meter, long At)> _meters = new();
     private const long DefaultRefreshMs = 1500;
 
-    /// <summary>Left and right peak (0 to 1) of one meter; a mono source reports the same value on both sides.</summary>
+    /// Left and right peak (0 to 1) of one meter; a mono source reports the same value on both sides.
     internal static bool ReadPeaks(IAudioMeterInformation meter, out float left, out float right)
     {
         left = right = 0;
@@ -28,10 +26,8 @@ public static partial class CoreAudio
         catch (Exception ex) when (ex is COMException or InvalidCastException) { return false; /* device vanished: caller reopens the meter */ }
     }
 
-    /// <summary>
     /// Peak levels of a device. <paramref name="id"/> null means the default device of that kind. The meter object is kept between calls
     /// (the default device is looked up again every second and a half, so a changed default is followed).
-    /// </summary>
     public static bool DevicePeaks(string? id, bool recording, out float left, out float right)
     {
         left = right = 0;

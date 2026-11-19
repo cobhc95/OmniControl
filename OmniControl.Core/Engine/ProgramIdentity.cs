@@ -1,28 +1,24 @@
 using System.Collections.Concurrent;
-using System.ComponentModel;
-using System.Diagnostics;
 using OmniControl.Core.Engine.Mouse;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>A program with a window now: its identity (<see cref="ProgramIdentity.Normalize"/>) and the name a person knows it by.</summary>
+/// A program with a window now: its identity (<see cref="ProgramIdentity.Normalize"/>) and the name a person knows it by.
 public sealed record RunningProgram(string Id, string Name);
 
-/// <summary>
 /// How a program is identified everywhere (rules, automation, app lists): its executable's name in lower case, without folder or ".exe"
 /// ("chrome"). <see cref="NameOf"/> answers for a process id and <see cref="Foreground"/> for the program the user is working in; both are
 /// cheap enough for the mouse hook (a program is looked up once, then cached), so one instance should live as long as its asker.
-/// </summary>
 public sealed class ProgramIdentity
 {
     // A process id can be reused by a new program after the old one ends; the cache is emptied now and then so a stale name does not last.
     private const int CacheLimit = 512;
     private readonly ConcurrentDictionary<int, string> _byId = new();
 
-    /// <summary>The one way a typed or found program name is compared: "C:\Apps\Chrome.exe", "chrome.exe" and "chrome" are the same.</summary>
+    /// The one way a typed or found program name is compared: "C:\Apps\Chrome.exe", "chrome.exe" and "chrome" are the same.
     public static string Normalize(string program) => Path.GetFileNameWithoutExtension(program.Trim()).ToLowerInvariant();
 
-    /// <summary>The name of the program with this process id, or empty when it has ended or can't be read.</summary>
+    /// The name of the program with this process id, or empty when it has ended or can't be read.
     public string NameOf(int processId)
     {
         if (processId == 0) return string.Empty;
@@ -42,10 +38,10 @@ public sealed class ProgramIdentity
         return name;
     }
 
-    /// <summary>The program the user is working in (the active window's), or empty when there is none or it can't be read.</summary>
+    /// The program the user is working in (the active window's), or empty when there is none or it can't be read.
     public string Foreground() => NameOf(WindowQuery.ActiveProcessId());
 
-    /// <summary>The programs with a window now (OmniControl itself left out), each once, in alphabetical order of their names.</summary>
+    /// The programs with a window now (OmniControl itself left out), each once, in alphabetical order of their names.
     public static IReadOnlyList<RunningProgram> Running()
     {
         var found = new SortedDictionary<string, RunningProgram>(StringComparer.OrdinalIgnoreCase);

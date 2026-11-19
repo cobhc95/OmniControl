@@ -1,9 +1,8 @@
 using System.Numerics;
-using System.Runtime.InteropServices;
 
 namespace OmniControl.Core.Engine.Screenshot;
 
-/// <summary>A rectangle in physical screen pixels (virtual-desktop coordinates for a place on screen, image pixels inside a picture).</summary>
+/// A rectangle in physical screen pixels (virtual-desktop coordinates for a place on screen, image pixels inside a picture).
 public readonly record struct ScreenRect(int X, int Y, int Width, int Height)
 {
     public int Right => X + Width;
@@ -12,7 +11,7 @@ public readonly record struct ScreenRect(int X, int Y, int Width, int Height)
 
     public bool Contains(int x, int y) => x >= X && x < Right && y >= Y && y < Bottom;
 
-    /// <summary>The part both rectangles cover; empty when they do not meet.</summary>
+    /// The part both rectangles cover; empty when they do not meet.
     public ScreenRect Intersect(ScreenRect other)
     {
         var left = Math.Max(X, other.X);
@@ -24,7 +23,7 @@ public readonly record struct ScreenRect(int X, int Y, int Width, int Height)
 
     public ScreenRect Offset(int dx, int dy) => this with { X = X + dx, Y = Y + dy };
 
-    /// <summary>The smallest rectangle holding both.</summary>
+    /// The smallest rectangle holding both.
     public ScreenRect Union(ScreenRect other)
     {
         var left = Math.Min(X, other.X);
@@ -33,10 +32,8 @@ public readonly record struct ScreenRect(int X, int Y, int Width, int Height)
     }
 }
 
-/// <summary>
 /// A picture held in memory: 32-bit BGRA pixels, top row first, <see cref="Stride"/> = 4 bytes per pixel with no padding. Managed memory only,
 /// so nothing needs releasing.
-/// </summary>
 public sealed class ScreenImage
 {
     public const int BytesPerPixel = 4;
@@ -57,10 +54,8 @@ public sealed class ScreenImage
 
     public ScreenRect Bounds => new(0, 0, Width, Height);
 
-    /// <summary>
     /// Sets every pixel's alpha to full (a screenshot has no transparency), a vector's width of pixels at a time: on a 4K picture this is
     /// one quick pass instead of eight million single-byte writes.
-    /// </summary>
     public static void MakeOpaque(Span<byte> bgra)
     {
         const uint alpha = 0xFF000000;
@@ -71,10 +66,8 @@ public sealed class ScreenImage
         for (var i = vectors.Length * Vector<uint>.Count; i < pixels.Length; i++) pixels[i] |= alpha;
     }
 
-    /// <summary>
     /// Lays a wash of <paramref name="argb"/> (its alpha is its strength) over BGRA pixels the way drawing that colour over them would, and
     /// makes them opaque: the area overlay's dimmed copy of a picture, made once instead of blended on every frame.
-    /// </summary>
     public static void Wash(Span<byte> bgra, uint argb)
     {
         var strength = (int)(argb >> 24);
@@ -95,7 +88,7 @@ public sealed class ScreenImage
 
     private static byte Blend(int under, int over, int strength) => (byte)((under * (255 - strength) + over * strength + 127) / 255);
 
-    /// <summary>A copy of the part of the picture inside <paramref name="area"/> (held to the picture).</summary>
+    /// A copy of the part of the picture inside <paramref name="area"/> (held to the picture).
     public ScreenImage Crop(ScreenRect area)
     {
         var part = area.Intersect(Bounds);

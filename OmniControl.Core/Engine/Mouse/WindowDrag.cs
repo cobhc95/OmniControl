@@ -1,8 +1,6 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Engine.Mouse;
 
-/// <summary>Moves or resizes the window under the pointer as the pointer moves (the way Alt-drag works on other systems).</summary>
+/// Moves or resizes the window under the pointer as the pointer moves (the way Alt-drag works on other systems).
 public sealed class WindowDrag
 {
     [StructLayout(LayoutKind.Sequential)] private struct Rect { public int Left, Top, Right, Bottom; }
@@ -19,10 +17,10 @@ public sealed class WindowDrag
     private int _startX, _startY;
     private Rect _start;
 
-    /// <summary>True while a drag is going on.</summary>
+    /// True while a drag is going on.
     public bool IsActive => _window != IntPtr.Zero;
 
-    /// <summary>Starts dragging the window under (<paramref name="x"/>, <paramref name="y"/>); false when there is nothing sensible to drag (desktop, taskbar, maximised window).</summary>
+    /// Starts dragging the window under (<paramref name="x"/>, <paramref name="y"/>); false when there is nothing sensible to drag (desktop, taskbar, maximised window).
     public bool Begin(int x, int y, bool resize)
     {
         var window = WindowQuery.RootWindowAt(x, y);
@@ -32,7 +30,7 @@ public sealed class WindowDrag
         return true;
     }
 
-    /// <summary>Follows the pointer to (<paramref name="x"/>, <paramref name="y"/>).</summary>
+    /// Follows the pointer to (<paramref name="x"/>, <paramref name="y"/>).
     public void Move(int x, int y)
     {
         if (!IsActive) return;

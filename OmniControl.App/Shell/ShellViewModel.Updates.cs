@@ -1,7 +1,4 @@
-using Avalonia.Threading;
-using OmniControl.App.Services;
-using CommunityToolkit.Mvvm.Input;
-using OmniControl.App.Pages.AppSettingsPage;
+using OmniControl.App.Features.Settings.Pages;
 
 namespace OmniControl.App.Shell;
 
@@ -9,12 +6,12 @@ namespace OmniControl.App.Shell;
 // which opens App settings at the Updates group. The check itself is the UpdateService (Services/Updates); the page owns its cards.
 public sealed partial class ShellViewModel
 {
-    /// <summary>The line at the sidebar's foot, empty when this is the newest version.</summary>
+    /// The line at the sidebar's foot, empty when this is the newest version.
     public string UpdateNotice => _updates.Available is { } release ? $"Update available: {release.Version}" : string.Empty;
 
     public bool HasUpdate => UpdateNotice.Length > 0;
 
-    /// <summary>Starts the daily check (never in a screenshot export) and follows what it finds.</summary>
+    /// Starts the daily check and follows what it finds.
     private void WatchUpdates()
     {
         _updates.Changed += () => Dispatcher.UIThread.Post(() =>
@@ -22,7 +19,7 @@ public sealed partial class ShellViewModel
             OnPropertyChanged(nameof(UpdateNotice));
             OnPropertyChanged(nameof(HasUpdate));
         });
-        if (!StartupMode.Inert) _updates.StartDaily();
+        _updates.StartDaily();
     }
 
     [RelayCommand]

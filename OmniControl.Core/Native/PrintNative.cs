@@ -1,11 +1,9 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Native;
 
-/// <summary>comdlg32 and gdi32 calls that show Windows' print dialog and print one picture on the printer chosen there.</summary>
+/// comdlg32 and gdi32 calls that show Windows' print dialog and print one picture on the printer chosen there.
 internal static class PrintNative
 {
-    /// <summary>PRINTDLGW with the 64-bit layout (natural alignment).</summary>
+    /// PRINTDLGW with the 64-bit layout (natural alignment).
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     public struct PrintDlg
     {

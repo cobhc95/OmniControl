@@ -1,18 +1,13 @@
-using System.ComponentModel;
-using System.Runtime.InteropServices;
 using System.Security;
-using Microsoft.Win32;
 using OmniControl.Core.Engine.Pointer;
 
 namespace OmniControl.Core.Engine.Trackpad;
 
-/// <summary>
-/// Windows' own touchpad settings, read and written the way the Settings app keeps them (findings in HANDOVER.md, "Trackpad gesture
-/// takeover" and "Trackpad takeover: the shell's own copy"). Tap to click, two-finger tap and pinch to zoom are fields of
+/// Windows' own touchpad settings, read and written the way the Settings app keeps them.
+/// Tap to click, two-finger tap and pinch to zoom are fields of
 /// TOUCHPAD_PARAMETERS: SPI_SETTOUCHPADPARAMETERS saves them and Windows' input applies them at once. Three/four-finger swipes and the
 /// three-finger tap are registry values under <c>HKCU\...\PrecisionTouchPad</c> that the shell acts on from its own copy: after writing
 /// one, the shell is told to refresh it (<see cref="ShellTouchpadSettings"/>), as the Settings app does.
-/// </summary>
 public sealed class TouchpadSettingsStore : ITouchpadSettingsStore
 {
     // TOUCHPAD_PARAMETERS_V1 (WinUser.h, SDK 10.0.26100): versionNumber, maxSupportedContacts, legacyTouchpadFeatures, the status

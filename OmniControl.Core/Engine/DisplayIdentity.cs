@@ -1,15 +1,11 @@
-using OmniControl.Core.Models;
-
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// Finds a display again by what stays the same when Windows renumbers them (a replug, a driver reset, a GPU switch can turn
 /// <c>\.\DISPLAY2</c> into <c>\.\DISPLAY3</c>): the monitor's device path. A display is never matched by its GDI name alone when it has a
 /// path, so a turn meant for one screen can never land on another.
-/// </summary>
 public static class DisplayIdentity
 {
-    /// <summary>The GDI name the remembered display has in <paramref name="now"/>; null when it is not attached.</summary>
+    /// The GDI name the remembered display has in <paramref name="now"/>; null when it is not attached.
     public static string? Resolve(DisplayInfo remembered, IReadOnlyList<DisplayInfo> now)
     {
         if (remembered.DevicePath.Length > 0)

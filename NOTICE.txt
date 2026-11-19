@@ -9,9 +9,7 @@ the full licence text.
 
 VST is a registered trademark of Steinberg Media Technologies GmbH.
 
-Every release must ship this file and LICENSE, and offer the exact source code of every binary it contains (the
-OmniControl APO DLL and its helper included). Upstream copyright notices and licence files are kept unchanged next
-to the code they belong to (see native/EqualizerAPO).
+Every release must ship this file and LICENSE, and offer the exact source code of every binary it contains.
 
 The list below is the one list of open source and third-party projects OmniControl uses or offers. The app's
 "About and credits" window is built from it: each entry starts with a "Name:" line and ends at a blank line.
@@ -21,42 +19,7 @@ Version: 1.4.2 (source commit bbfcc3e5024cbb9d61ba75fc88d78605cc4c9687)
 Licence: GPL-2.0-or-later
 Copyright: Copyright (C) 2012-2025 Jonas Thedering and contributors
 Website: https://sourceforge.net/projects/equalizerapo/
-Used for: The master effects run in the user's own Equalizer APO (OmniControl adds its chain through its config language); its official installer may be shipped unmodified beside the app (source: the website above). The optional OmniControl APO is a fork of its audio processing object and filters.
-
-Name: FFTW
-Version: 3.3.5
-Licence: GPL-2.0-or-later
-Copyright: Copyright (c) 2003, 2007-11 Matteo Frigo, Massachusetts Institute of Technology
-Website: https://www.fftw.org
-Used for: Fast Fourier transforms for convolution in the OmniControl APO.
-
-Name: libsndfile
-Version: 1.2.2
-Licence: LGPL-2.1-or-later
-Copyright: Copyright (C) Erik de Castro Lopo and the libsndfile team
-Website: https://libsndfile.github.io/libsndfile/
-Used for: Reading impulse response files in the OmniControl APO.
-
-Name: libHybridConv
-Version: 0.1.1
-Licence: LGPL-2.0-or-later
-Copyright: Copyright (C) 2009 Christian Borss
-Website: https://sourceforge.net/projects/equalizerapo/
-Used for: Partitioned convolution in the OmniControl APO (bundled with Equalizer APO).
-
-Name: muparserx
-Version: 3.0.1
-Licence: BSD-2-Clause
-Copyright: Copyright (C) Ingo Berg
-Website: https://github.com/beltoforion/muparserx
-Used for: Expressions in the OmniControl APO's config language.
-
-Name: VeSTige aeffectx.h
-Version: from Equalizer APO 1.4.2
-Licence: GPL-2.0-or-later
-Copyright: Copyright (c) 2006 Javier Serrano Polo (LMMS)
-Website: https://lmms.io
-Used for: Kept unchanged in the Equalizer APO fork's sources (VST2 header of the fork's VST2 host). OmniControl's own VST2 host does not use it (its definitions come from TabForge, below).
+Used for: The master effects run in the user's own Equalizer APO (OmniControl adds its chain through its config language); its official download page is offered for installing it.
 
 Name: NAudio (NAudio.Core, NAudio.Wasapi, NAudio.Vst3, NAudio.Midi)
 Version: 3.3.0
@@ -107,12 +70,40 @@ Copyright: Copyright (c) Michael Jahn and the ZXing.Net contributors (a port of 
 Website: https://github.com/micjahn/ZXing.Net
 Used for: Reading QR codes in a screenshot selection, on the PC only.
 
-Name: .NET libraries (System.Drawing.Common, System.Management, System.ServiceProcess.ServiceController)
-Version: 8.0.10, 8.0.0, 9.0.0
+Name: .NET libraries (System.Management, System.IO.Ports)
+Version: 10.0.2, 10.0.3
 Licence: MIT
-Copyright: Copyright (c) .NET Foundation and Contributors
+Copyright: Copyright (c) .NET Foundation and Contributors; Copyright (c) Microsoft Corporation
 Website: https://github.com/dotnet/runtime
-Used for: Program icons, Windows Management Instrumentation (laptop brightness, USB events) and the audio service restart.
+Used for: Windows Management Instrumentation (laptop brightness, USB events, the upload limits' Windows throttle rules). System.IO.Ports comes with LibreHardwareMonitorLib.
+
+Name: LibreHardwareMonitorLib
+Version: 0.9.6
+Licence: MPL-2.0
+Copyright: Copyright (c) LibreHardwareMonitor contributors (based on Open Hardware Monitor, Copyright (c) Michael Möller)
+Website: https://github.com/LibreHardwareMonitor/LibreHardwareMonitor
+Used for: The Resources page's GPU load, disk activity and temperatures. This build uses the PawnIO driver when the user has installed it (never WinRing0); OmniControl does not bring or install PawnIO. Unmodified; its source is at the website above.
+
+Name: DiskInfoToolkit and RAMSPDToolkit-NDD (through LibreHardwareMonitorLib)
+Version: 1.1.2, 1.4.2
+Licence: MPL-2.0
+Copyright: Copyright (c) Florian K.
+Website: https://github.com/Blacktempel/DiskInfoToolkit
+Used for: Reading disks' health and temperature for LibreHardwareMonitorLib. Unmodified; RAMSPDToolkit's source is at https://github.com/Blacktempel/RAMSPDToolkit.
+
+Name: HidSharp (through LibreHardwareMonitorLib)
+Version: 2.6.4
+Licence: Apache-2.0
+Copyright: Copyright 2010-2025 James F. Bellinger
+Website: https://software.seekye.com/hidsharp
+Used for: USB devices LibreHardwareMonitorLib can read (fan and pump controllers).
+
+Name: Windows Packet Filter (WinpkFilter, ndisapi)
+Version: 3.6.2
+Licence: MIT
+Copyright: Copyright (c) 2018 Vadim Smirnov
+Website: https://github.com/wiresock/ndisapi
+Used for: Download limits per program: while a limited program has network connections, received packets are tunnelled through its NDIS filter driver (ndisrd.sys) and limited programs' packets are paced. Shipped unmodified: the Windows 10+ x64 driver files (ndisrd.sys, ndisrd_lwf.inf, ndisrd.cat, signed by Microsoft's hardware programme) taken from the official installer of the v3.6.2 GitHub release (Windows.Packet.Filter.3.6.2.1.x64.msi), with its licence text, are in the windows-packet-filter folder next to OmniControl; Setup installs them with Windows' netcfg when its "Install Windows Packet Filter" task is chosen, OmniControl does the same after checking their SHA-256 when the person asks, and uninstalling OmniControl removes the driver only if OmniControl installed it. OmniControl talks to the driver with its own declarations of the device's control codes and structure layouts, taken from ndisapi's include/Common.h (MIT; licence text at https://github.com/wiresock/ndisapi/blob/master/LICENSE).
 
 Name: TabForge
 Version: built-in effect parameter lists; FX loader ideas and code, VST2 hosting and PE export reading from commit 9bb7236 (12 Nov 2026)
@@ -140,4 +131,33 @@ Version: 3.19.0
 Licence: MIT
 Copyright: Copyright (c) 2020-2024 Paweł Kuna
 Website: https://tabler.io/icons
-Used for: The 523 built-in icons of the icon library (version 3.19.0) (tray tiles, smart devices, actions); their outline path data is converted into Styles/Icons.axaml. Its MIT licence text is kept unchanged in third_party/tabler-icons/LICENSE.
+Used for: The 529 built-in icons of the icon library (version 3.19.0) (tray tiles, smart devices, actions); their outline path data is converted into Styles/Icons.axaml. Its MIT licence text is kept unchanged in third_party/tabler-icons/LICENSE.
+
+Name: Lucide
+Version: -
+Licence: ISC
+Copyright: Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022 as part of Feather (MIT). All other copyright (c) for Lucide are held by Lucide Contributors 2022.
+Website: https://lucide.dev
+Used for: The icon library's "memory-stick" icon; its outline path data is converted into Styles/Icons.axaml.
+Licence text: Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby granted, provided that the above copyright notice and this permission notice appear in all copies. THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+Name: Open-Meteo
+Version: Forecast API v1 and Geocoding API v1 (web services)
+Licence: CC BY 4.0 (weather and place data)
+Copyright: Weather data by Open-Meteo.com
+Website: https://open-meteo.com/
+Used for: The taskbar gadget's weather (the default provider) and the place search of the Resources page's Taskbar gadget tab; asked only while the gadget and its weather are on, at the chosen interval. The gadget's weather tooltip names the provider.
+
+Name: MET Norway Locationforecast
+Version: 2.0 (web service)
+Licence: CC BY 4.0 and NLOD 2.0 (weather data)
+Copyright: Data from MET Norway (The Norwegian Meteorological Institute)
+Website: https://api.met.no/
+Used for: The taskbar gadget's weather when MET Norway (yr.no) is chosen as the provider. The gadget's weather tooltip names the provider.
+
+Name: OpenWeatherMap
+Version: Current weather data API 2.5 (web service)
+Licence: CC BY-SA 4.0 (weather data); the user's own API key under OpenWeatherMap's terms
+Copyright: Weather data provided by OpenWeather
+Website: https://openweathermap.org/
+Used for: The taskbar gadget's weather when OpenWeatherMap is chosen as the provider, with the user's own API key (kept in Windows' credential store). The gadget's weather tooltip names the provider.

@@ -1,7 +1,0 @@
-<Project>
-  <!-- OmniControl APO build settings. This file also stops MSBuild from reading the .NET Directory.Build.props at the repository root.
-       OcDeps = the folder build.ps1 fills with the pinned third-party libraries (see README.md). -->
-  <PropertyGroup>
-    <OcDeps Condition="'$(OcDeps)' == ''">$(MSBuildThisFileDirectory)deps</OcDeps>
-  </PropertyGroup>
-</Project>

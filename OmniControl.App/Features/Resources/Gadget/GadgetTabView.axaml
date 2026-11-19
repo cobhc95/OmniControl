@@ -1,0 +1,139 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:g="using:OmniControl.App.Features.Resources.Gadget"
+             xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
+             xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+             x:Class="OmniControl.App.Features.Resources.Gadget.GadgetTabView"
+             x:DataType="g:GadgetSettingsModel">
+    <!-- The Resources page's Taskbar gadget tab: the live preview with "Show on taskbar" at its right, then the Ready-made layouts, What it shows, Weather,
+         Size and spacing, Numbers and units, Hover details and Clicks group cards. -->
+    <StackPanel Spacing="{StaticResource Gap}" Grid.IsSharedSizeScope="True">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}">
+            <Border Classes="pane" Background="{Binding PreviewBackground}" Height="{StaticResource GadgetPreviewHeight}" ClipToBounds="True">
+                <Grid ColumnDefinitions="Auto,*">
+                    <TextBlock Classes="muted small" Text="Preview" VerticalAlignment="Center" Margin="{StaticResource RowHeadingInset}" />
+                    <Viewbox Grid.Column="1" StretchDirection="DownOnly" HorizontalAlignment="Right">
+                        <g:GadgetCells Cells="{Binding PreviewCells}" Layout="{Binding PreviewLayout}" />
+                    </Viewbox>
+                </Grid>
+            </Border>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource MenuGap}" VerticalAlignment="Center">
+                <TextBlock Classes="muted" Text="Show on taskbar" VerticalAlignment="Center" />
+                <ToggleSwitch Tag="grouptool" IsChecked="{Binding Shown}" OnContent="On" OffContent="Off" VerticalAlignment="Center" />
+            </StackPanel>
+        </Grid>
+
+        <StackPanel>
+            <pages:GroupCard Group="{Binding LayoutsGroup}">
+                <pages:GroupCard.Tools>
+                    <c:PresetPicker DataContext="{Binding LayoutChoice}" />
+                </pages:GroupCard.Tools>
+                <g:GadgetLayoutsView DataContext="{Binding Gallery}" />
+            </pages:GroupCard>
+
+            <pages:GroupCard Group="{Binding ReadingsGroup}">
+                <pages:GroupCard.Tools>
+                    <c:ChoiceChip DataContext="{Binding LabelChoice}" />
+                </pages:GroupCard.Tools>
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                    <Grid ColumnSpacing="{StaticResource MenuGap}" Margin="{StaticResource RowHeadingInset}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="GadgetGrip" />
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="GadgetTick" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="GadgetLabel" />
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="GadgetIconColour" />
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="GadgetWarn" />
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="GadgetColour" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="2" Classes="muted small" Text="Reading" />
+                        <TextBlock Grid.Column="3" Classes="muted small" Text="Label" />
+                        <TextBlock Grid.Column="4" Classes="muted small" Text="Icon colour" />
+                        <TextBlock Grid.Column="5" Classes="muted small" Text="Warn at" />
+                        <TextBlock Grid.Column="6" Classes="muted small" Text="Warn colour" />
+                    </Grid>
+                    <ListBox x:Name="ReadingRows" Grid.Row="1" Classes="rows compact" ItemsSource="{Binding Rows}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="g:GadgetRowItem">
+                                <Grid ColumnSpacing="{StaticResource MenuGap}" Opacity="{Binding Opacity}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="GadgetGrip" />
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="GadgetTick" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="GadgetLabel" />
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="GadgetIconColour" />
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="GadgetWarn" />
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="GadgetColour" />
+                                    </Grid.ColumnDefinitions>
+                                    <PathIcon Classes="grip" Data="{DynamicResource GripIcon}" VerticalAlignment="Center" ToolTip.Tip="Drag to change the order" />
+                                    <CheckBox Grid.Column="1" Tag="scope" IsChecked="{Binding Shown}" VerticalAlignment="Center" ToolTip.Tip="Show on the taskbar" />
+                                    <TextBlock Grid.Column="2" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                    <Button Grid.Column="3" Classes="scope" Tag="scope" MinWidth="{StaticResource GadgetLabelWidth}" VerticalAlignment="Center"
+                                            ToolTip.Tip="Edit the label: words and icons, and the gap after it">
+                                        <Panel>
+                                            <g:GadgetLabelView Label="{Binding Label}" Spacing="2" />
+                                            <TextBlock Classes="muted" Text="none" IsVisible="{Binding !HasLabel}" />
+                                        </Panel>
+                                        <Button.Flyout>
+                                            <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft">
+                                                <g:GadgetLabelEditor />
+                                            </c:ListMenuFlyout>
+                                        </Button.Flyout>
+                                    </Button>
+                                    <Button Grid.Column="4" Classes="swatch" Tag="scope" ToolTip.Tip="Icon colour: every icon of the label" VerticalAlignment="Center" IsEnabled="{Binding HasIcon}">
+                                        <Panel>
+                                            <Ellipse Classes="swatch" Classes.follow="{Binding IconFollows}" Fill="{Binding IconDot}" />
+                                            <TextBlock Classes="swatchletter" Text="A" IsVisible="{Binding IconFollows}" />
+                                        </Panel>
+                                        <Button.Flyout>
+                                            <c:ListMenuFlyout Placement="BottomEdgeAlignedRight">
+                                                <c:SwatchList ItemsSource="{Binding AllIconColours}" Picked="OnPicked" />
+                                            </c:ListMenuFlyout>
+                                        </Button.Flyout>
+                                    </Button>
+                                    <pages:NumberText Grid.Column="5" Value="{Binding WarnAt}" Minimum="0" Maximum="{Binding WarnMax}" VerticalAlignment="Center"
+                                                      IsVisible="{Binding HasWarn}" ToolTip.Tip="Past this value the reading takes its warn colour; 0 = never">
+                                        <TextBlock Classes="muted" Text="{Binding WarnText}" MinWidth="{DynamicResource SliderValueMinWidth}" TextAlignment="Right" />
+                                    </pages:NumberText>
+                                    <Button Grid.Column="6" Classes="swatch" Tag="scope" ToolTip.Tip="Warn colour" VerticalAlignment="Center" IsVisible="{Binding HasWarn}">
+                                        <Ellipse Classes="swatch" Fill="{Binding Colour}" />
+                                        <Button.Flyout>
+                                            <c:ListMenuFlyout Placement="BottomEdgeAlignedRight">
+                                                <c:SwatchList ItemsSource="{Binding Colours}" Picked="OnPicked" />
+                                            </c:ListMenuFlyout>
+                                        </Button.Flyout>
+                                    </Button>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </pages:GroupCard>
+            <pages:GroupCard Group="{Binding Weather.Group}">
+                <StackPanel Spacing="{StaticResource GapSmall}">
+                    <ListBox Classes="rows compact cards" ItemsSource="{Binding Weather.Group.Items}" />
+                    <Border Classes="statusstrip">
+                        <TextBlock Classes="statusline" Classes.failed="{Binding Weather.Failed}" Text="{Binding Weather.Status}" TextTrimming="CharacterEllipsis"
+                                   ToolTip.Tip="{Binding Weather.Status}" />
+                    </Border>
+                </StackPanel>
+            </pages:GroupCard>
+            <pages:GroupCard Group="{Binding Display.Layout}">
+                <ListBox Classes="rows compact cards" ItemsSource="{Binding Display.Layout.Items}" />
+            </pages:GroupCard>
+            <pages:GroupCard Group="{Binding Display.Numbers}">
+                <ListBox Classes="rows compact cards" ItemsSource="{Binding Display.Numbers.Items}" />
+            </pages:GroupCard>
+            <pages:GroupCard Group="{Binding Hover.Group}">
+                <StackPanel Spacing="{StaticResource GapSmall}">
+                    <ListBox Classes="rows compact cards" ItemsSource="{Binding Hover.Group.Items}" />
+                    <TextBlock Classes="hint" Text="{Binding Hover.Note}" TextWrapping="Wrap" />
+                </StackPanel>
+            </pages:GroupCard>
+            <pages:GroupCard Group="{Binding Display.Behaviour}">
+                <ListBox Classes="rows compact cards" ItemsSource="{Binding Display.Behaviour.Items}" />
+            </pages:GroupCard>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

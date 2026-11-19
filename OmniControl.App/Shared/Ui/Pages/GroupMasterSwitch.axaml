@@ -1,0 +1,12 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
+             x:Class="OmniControl.App.Shared.Ui.Pages.GroupMasterSwitch"
+             x:DataType="pages:CardGroup">
+    <!-- The one master switch of a group header (data context: the CardGroup; shown only when every card of the group is a switch).
+         The mixed state is the tick-less ToggleSwitch.master look plus the accent dash drawn over it. -->
+    <Panel IsVisible="{Binding HasMaster}" VerticalAlignment="Center">
+        <ToggleSwitch x:Name="Switch" Classes="plain master tool" IsThreeState="True" Tag="grouptool" />
+        <Border x:Name="Dash" Classes="masterdash" IsVisible="False" IsHitTestVisible="False" />
+    </Panel>
+</UserControl>

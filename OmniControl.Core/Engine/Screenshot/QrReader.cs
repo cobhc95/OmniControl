@@ -3,10 +3,10 @@ using ZXing.Common;
 
 namespace OmniControl.Core.Engine.Screenshot;
 
-/// <summary>Finds and reads the QR codes in a picture, on this PC only (ZXing.Net, Apache-2.0); nothing is sent anywhere. Slow on a large picture: call it off the UI thread.</summary>
+/// Finds and reads the QR codes in a picture, on this PC only (ZXing.Net, Apache-2.0); nothing is sent anywhere. Slow on a large picture: call it off the UI thread.
 public static class QrReader
 {
-    /// <summary>The text of every QR code found, each once, in the order found; empty when there is none.</summary>
+    /// The text of every QR code found, each once, in the order found; empty when there is none.
     public static IReadOnlyList<string> Read(ScreenImage image)
     {
         var source = new RGBLuminanceSource(image.Pixels, image.Width, image.Height, RGBLuminanceSource.BitmapFormat.BGRA32);

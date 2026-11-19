@@ -1,9 +1,8 @@
-using OmniControl.App.Services;
-using OmniControl.App.Services.Updates;
+using OmniControl.App.Shared.Services.Updates;
 
 namespace OmniControl.Tests;
 
-/// <summary>The update check's pure parts: version order, reading GitHub's release list, and when the daily check is due.</summary>
+/// The update check's pure parts: version order, reading GitHub's release list, and when the daily check is due.
 public class UpdateCheckTests
 {
     private static ReleaseVersion V(string text)

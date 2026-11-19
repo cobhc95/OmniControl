@@ -1,8 +1,6 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Native;
 
-/// <summary>wevtapi: reading events from a Windows event log by an XPath query, each rendered as its XML.</summary>
+/// wevtapi: reading events from a Windows event log by an XPath query, each rendered as its XML.
 internal static class EventLogNative
 {
     public const int QueryChannelPath = 0x1, QueryReverseDirection = 0x200, RenderEventXml = 1, InsufficientBuffer = 122, NoMoreItems = 259;

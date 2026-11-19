@@ -1,11 +1,10 @@
-using System.Text.Json;
-using OmniControl.App.Hotkeys;
-using OmniControl.App.Mouse;
+using OmniControl.App.Features.Hotkeys.Actions;
+using OmniControl.App.Features.Input.Mouse;
 using OmniControl.Core.Engine.Mouse;
 
 namespace OmniControl.Tests;
 
-/// <summary>Several actions per input: storage (and old files), running order, the gesture takeover, and which actions may come second.</summary>
+/// Several actions per input: storage (and old files), running order, the gesture takeover, and which actions may come second.
 public class MultipleActionsTests
 {
     private static readonly HotkeyAction[] NoOmniActions = Array.Empty<HotkeyAction>();

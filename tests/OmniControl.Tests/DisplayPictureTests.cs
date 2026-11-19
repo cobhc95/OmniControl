@@ -1,16 +1,12 @@
-using System.Text.Json;
-using OmniControl.App.Display;
-using OmniControl.App.Pages.Displays;
-using OmniControl.Core.Engine;
+using OmniControl.App.Features.Displays;
+using OmniControl.App.Features.Displays.Pages;
 using OmniControl.Core.Models;
 
 namespace OmniControl.Tests;
 
-/// <summary>
 /// The Displays page's software picture and monitor features, without touching any display: the one gamma-ramp computation, the colour
 /// matrix, the warm-light schedule's maths, the service that layers them (over a fake ramp), the saved presets, and what a monitor's
 /// capabilities become (fake capability strings and reads).
-/// </summary>
 public class DisplayPictureTests
 {
     // ---- the ramp: one pure function, neutral is the original ----

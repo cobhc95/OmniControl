@@ -1,9 +1,8 @@
-using OmniControl.App.Hotkeys;
 using OmniControl.Core.Models;
 
 namespace OmniControl.Tests;
 
-/// <summary>The grouping data on the master entries: every monitor feature has a section, and a subgroup extends the heading.</summary>
+/// The grouping data on the master entries: every monitor feature has a section, and a subgroup extends the heading.
 public class ShortcutGroupingTests
 {
     [Fact]

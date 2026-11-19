@@ -1,0 +1,78 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:g="using:OmniControl.App.Features.Resources.Gadget"
+             xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
+             xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+             x:Class="OmniControl.App.Features.Resources.Gadget.GadgetLayoutsView"
+             x:DataType="g:GadgetLayoutGallery">
+    <!-- The Ready-made layouts group's gallery (GadgetLayoutGallery). Folded: the favourite tiles two to a line, then the full-width dashed "More layouts" tile.
+         Unfolded in place: the filter chips, a section per category (the user's own first) under a small capital heading, and the foot line. -->
+    <UserControl.DataTemplates>
+        <!-- One layout tile: name (wraps, never trimmed) over its description (trims), the preview on the taskbar's colour at the right; a click applies it -->
+        <DataTemplate DataType="g:LayoutCard">
+            <Button Classes="optioncard" Classes.selected="{Binding IsSelected}" Command="{Binding Apply}" ToolTip.Tip="{Binding Description}">
+                <Grid ColumnDefinitions="5*,4*" ColumnSpacing="{StaticResource Gap}">
+                    <StackPanel VerticalAlignment="Center" Spacing="1">
+                        <TextBlock Classes="strong" Text="{Binding Name}" TextWrapping="Wrap" />
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource GapSmall}">
+                            <Border Classes="tag selected" IsVisible="{Binding IsOwn}" VerticalAlignment="Center">
+                                <TextBlock Classes="small" Text="yours" />
+                            </Border>
+                            <TextBlock Grid.Column="1" Classes="muted small" Text="{Binding Description}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        </Grid>
+                    </StackPanel>
+                    <Border Grid.Column="1" Background="{Binding Background}" Height="{StaticResource GadgetThumbHeight}" CornerRadius="{DynamicResource TypeableCornerRadius}"
+                            ClipToBounds="True" VerticalAlignment="Center">
+                        <Viewbox StretchDirection="DownOnly">
+                            <g:GadgetCells Cells="{Binding Cells}" Layout="{Binding Layout}" IsHitTestVisible="False" />
+                        </Viewbox>
+                    </Border>
+                </Grid>
+            </Button>
+        </DataTemplate>
+    </UserControl.DataTemplates>
+
+    <Panel>
+        <StackPanel Spacing="{StaticResource Gap}" IsVisible="{Binding !IsExpanded}">
+            <ItemsControl ItemsSource="{Binding Favourites}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="2" ColumnSpacing="{StaticResource Gap}" RowSpacing="{StaticResource Gap}" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            </ItemsControl>
+            <Button Classes="blockadd card" Command="{Binding ShowMoreCommand}" ToolTip.Tip="More layouts, and your own">
+                <StackPanel Orientation="Horizontal" Spacing="{StaticResource GapSmall}" HorizontalAlignment="Center">
+                    <c:IconGlyph Classes="cardicon" LibraryId="layout-grid-add" />
+                    <TextBlock Text="{Binding MoreText}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+        </StackPanel>
+
+        <StackPanel Spacing="{StaticResource Gap}" IsVisible="{Binding IsExpanded}">
+            <c:ChoiceChips ItemsSource="{Binding Filters}" />
+            <ItemsControl ItemsSource="{Binding Sections}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="g:LayoutSection">
+                        <StackPanel Spacing="{StaticResource GapSmall}" Margin="{StaticResource GadgetSectionInset}" IsVisible="{Binding IsShown}">
+                            <TextBlock Classes="navheading" Text="{Binding Heading}" />
+                            <ItemsControl ItemsSource="{Binding Cards}" IsVisible="{Binding !IsEmpty}">
+                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="2" ColumnSpacing="{StaticResource Gap}" RowSpacing="{StaticResource Gap}" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                            <pages:EmptyListRow IsVisible="{Binding IsEmpty}" Text="No layouts of your own yet." LinkText="Save current as a layout" Command="{Binding Add}" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Border Classes="hrule" />
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource GapSmall}">
+                <Button Classes="pill accentline" Content="{Binding SaveText}" Command="{Binding Save}" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Classes="menurow muted" Command="{Binding Manage}" HorizontalAlignment="Right" ToolTip.Tip="Open the preset manager at the gadget's layouts">
+                    <TextBlock Text="Manage layouts…" TextTrimming="CharacterEllipsis" />
+                </Button>
+                <Button Grid.Column="2" Classes="menurow muted" Command="{Binding ShowFewerCommand}">
+                    <StackPanel>
+                        <Path Classes="glyph" Data="{DynamicResource ChevronUpIcon}" />
+                        <TextBlock Text="Fewer layouts" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </StackPanel>
+    </Panel>
+</UserControl>

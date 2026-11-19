@@ -2,69 +2,45 @@ using System.Management;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>
-/// Raises <see cref="Changed"/> (connected, device name; on a worker thread) when a USB device is plugged in or removed.
-/// Windows announces "something changed" without a name, so each announcement triggers one look at the USB device list,
-/// compared with the previous list. One plug makes several entries (the device, its interfaces), so the look waits for them to settle.
-/// </summary>
-public sealed class UsbDeviceWatcher : IDisposable
+/// Raises <see cref="Changed"/> (connected, device name; on the caller's thread) when the USB device list differs from the last look.
+/// Windows announces "something changed" without a name and the app hears it once (its hardware watches, <see cref="HardwareSignal.Device"/>),
+/// so the owner calls <see cref="Look"/> once a burst of announcements has settled (one plug makes several entries: the device, its
+/// interfaces), and the look compares the device list with the previous one. Nothing listens or polls here.
+public sealed class UsbDeviceWatcher
 {
     private const string DeviceListQuery = "SELECT Name, PNPDeviceID FROM Win32_PnPEntity WHERE PNPDeviceID LIKE 'USB%'";
-    private const string ChangeQuery = "SELECT * FROM Win32_DeviceChangeEvent WHERE EventType = 2 OR EventType = 3"; // 2 = arrival, 3 = removal
 
     // Windows' own names for the parts of a device; a more specific name (the product) is shown when there is one.
     private static readonly string[] GenericNames = { "USB Composite Device", "USB Input Device", "USB Root Hub", "Generic USB Hub", "USB Hub", "Unknown" };
 
-    private readonly TimeSpan _settle;
     private readonly object _gate = new();
-    private ManagementEventWatcher? _watcher;
-    private Timer? _timer;
-    private Dictionary<string, string> _known = new();
+    private Dictionary<string, string>? _known; // null while stopped (or until the first list is read)
 
     public event Action<bool, string>? Changed;
 
-    /// <param name="settle">How long after the last announcement to wait before looking at the device list.</param>
-    public UsbDeviceWatcher(TimeSpan settle) => _settle = settle;
-
-    public void Start()
+    /// Takes the device list as it is now (on a worker: WMI is slow to answer the first time); looks compare with it from then on.
+    public void Start() => Task.Run(() =>
     {
-        _timer = new Timer(_ => Scan());
-        Task.Run(() => { lock (_gate) _known = ReadDevices(); }); // WMI is slow to answer the first time; keep it off the caller's thread
-        try
-        {
-            _watcher = new ManagementEventWatcher(new ManagementScope(@"root\cimv2"), new WqlEventQuery(ChangeQuery));
-            _watcher.EventArrived += (_, _) => _timer.Change(_settle, Timeout.InfiniteTimeSpan);
-            _watcher.Start();
-        }
-        catch (ManagementException)
-        {
-            _watcher = null; // WMI device events unavailable: there is simply no USB pop-up
-        }
+        if (ReadDevices() is { } now) lock (_gate) _known ??= now;
+    });
+
+    /// Stops comparing until the next <see cref="Start"/>.
+    public void Stop()
+    {
+        lock (_gate) _known = null;
     }
 
-    /// <summary>A look at the device list (or a subscriber of <see cref="Changed"/>) threw on the timer thread; the watcher keeps going.</summary>
-    public event Action<Exception>? Failed;
-
-    private void Scan()
+    /// Reads the device list and raises <see cref="Changed"/> for what came or went since the last look (worker thread; nothing while stopped).
+    public void Look()
     {
-        try
-        {
-            Look();
-        }
-        catch (Exception ex) when (ex is not OutOfMemoryException)
-        {
-            Failed?.Invoke(ex); // a timer thread must not end the process
-        }
-    }
-
-    private void Look()
-    {
-        var now = ReadDevices();
+        lock (_gate) if (_known is null) return;
+        if (ReadDevices() is not { } now) return;
         List<string> added, removed;
         lock (_gate)
         {
-            added = now.Where(d => !_known.ContainsKey(d.Key)).Select(d => d.Value).ToList();
-            removed = _known.Where(d => !now.ContainsKey(d.Key)).Select(d => d.Value).ToList();
+            if (_known is not { } known) return;
+            added = now.Where(d => !known.ContainsKey(d.Key)).Select(d => d.Value).ToList();
+            removed = known.Where(d => !now.ContainsKey(d.Key)).Select(d => d.Value).ToList();
             _known = now;
         }
         if (added.Count > 0) Changed?.Invoke(true, BestName(added));
@@ -74,13 +50,15 @@ public sealed class UsbDeviceWatcher : IDisposable
     private static string BestName(List<string> names) =>
         names.FirstOrDefault(n => !GenericNames.Any(g => n.StartsWith(g, StringComparison.OrdinalIgnoreCase))) ?? names[0];
 
-    private static Dictionary<string, string> ReadDevices()
+    /// The USB devices now, or null when WMI did not answer (a busy WMI must not look like every device leaving).
+    private static Dictionary<string, string>? ReadDevices()
     {
         var devices = new Dictionary<string, string>();
         try
         {
             using var search = new ManagementObjectSearcher(DeviceListQuery);
-            foreach (var item in search.Get())
+            using var found = search.Get();
+            foreach (var item in found)
             {
                 using (item)
                     if (item["PNPDeviceID"] is string id && item["Name"] is string name) devices[id] = name;
@@ -88,14 +66,8 @@ public sealed class UsbDeviceWatcher : IDisposable
         }
         catch (ManagementException)
         {
-            // WMI busy or unavailable: report no change this time.
+            return null; // WMI busy or unavailable: no change this time
         }
         return devices;
-    }
-
-    public void Dispose()
-    {
-        _timer?.Dispose();
-        try { _watcher?.Stop(); _watcher?.Dispose(); } catch (ManagementException) { /* the watcher may already be gone at shutdown */ }
     }
 }

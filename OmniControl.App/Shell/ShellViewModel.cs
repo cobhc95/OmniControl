@@ -1,231 +1,144 @@
-using System.Collections.ObjectModel;
-using OmniControl.App.Dialogs;
-using Avalonia.Threading;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using OmniControl.App.AppLists;
-using OmniControl.App.Hotkeys;
-using OmniControl.App.Pages;
-using OmniControl.App.Pages.AppSettingsPage;
-using OmniControl.App.Pages.Displays;
-using OmniControl.App.Osd;
-using OmniControl.App.Pages.Osd;
-using OmniControl.App.Mouse;
-using OmniControl.App.Pages.Mouse;
-using OmniControl.App.Pages.Presets;
-using OmniControl.App.Presets;
-using OmniControl.App.Gestures;
-using OmniControl.App.Rules;
-using OmniControl.App.Apps;
-using OmniControl.App.Automation;
-using OmniControl.App.Pages.Automation;
-using OmniControl.App.Pages.Gestures;
-using OmniControl.App.Pages.Devices;
-using OmniControl.App.Pages.OtherPcs;
-using OmniControl.App.OtherPcs;
-using OmniControl.App.Devices;
-using OmniControl.Core.Interfaces;
-using OmniControl.Core.Engine;
-using OmniControl.Core.Engine.Mouse;
-using OmniControl.App.Picker;
-using OmniControl.App.Pages.Volume;
-using OmniControl.App.Audio;
-using OmniControl.App.Audio.Engine;
-using OmniControl.App.Services;
-using OmniControl.App.Services.Backup;
-using OmniControl.App.SettingsImport;
-using OmniControl.App.Services.Updates;
-using OmniControl.App.Fx;
-using OmniControl.App.Fx.Plugins;
-using OmniControl.App.Display;
-using OmniControl.App.About;
-using OmniControl.Core;
+using Avalonia.Controls.Templates;
+using OmniControl.App.Features;
+using OmniControl.App.Features.AppLists;
+using OmniControl.App.Features.Automation;
+using OmniControl.App.Features.Automation.Power;
+using OmniControl.App.Features.Devices;
+using OmniControl.App.Features.Displays;
+using OmniControl.App.Features.Hotkeys;
+using OmniControl.App.Features.Hotkeys.Actions;
+using OmniControl.App.Features.Hotkeys.Picker;
+using OmniControl.App.Features.Icons;
+using OmniControl.App.Features.Input;
+using OmniControl.App.Features.Osd;
+using OmniControl.App.Features.OtherPcs;
+using OmniControl.App.Features.OtherPcs.SettingsImport;
+using OmniControl.App.Features.Resources;
+using OmniControl.App.Features.Screenshot;
+using OmniControl.App.Features.Settings.About;
+using OmniControl.App.Features.Settings.Pages;
+using OmniControl.App.Features.Settings.Pages.Backup;
+using OmniControl.App.Features.States;
+using OmniControl.App.Features.Volume;
+using OmniControl.App.Shared.Presets;
+using OmniControl.App.Shared.Presets.Manager;
+using OmniControl.App.Shared.Services.Updates;
 
 namespace OmniControl.App.Shell;
 
 public sealed partial class ShellViewModel : ObservableObject, IDisposable
 {
-    private readonly MonitorEngine _engine = new();
-    private readonly SoftwareDisplayService _softwareDisplays = new();
+    private readonly DisplaysModule _displays = new(); // made first: the monitors' engine and the software displays
     private readonly HardwareWatches _hardware = new(); // the master list of hardware watches, made first: the registry and the features that depend on hardware are given it
     private readonly PowerJournal _power; // the power journal: hears sleeps, wakes and log-ins through the hardware watches' listeners
     private readonly HotkeyRegistry _hotkeys;
-    private readonly Icons.IconStore _icons; // the user's icons and the chosen icons of actions, made right after the master list it follows
-    private readonly Icons.IconPicker _iconPicker;
-    private readonly States.StateRegistry _states; // the master list of states, made before the services and pages that register theirs
-    private readonly AppActions _appActions;
-    private readonly Power.PowerPlanActions _powerPlanActions;
+    private readonly ActionGateSlot _actionGate = new(); // the Automation feature attaches its block rules here; the registry asks it before every run
+    private readonly IconStore _icons; // the user's icons and the chosen icons of actions, made right after the master list it follows
+    private readonly IconPicker _iconPicker;
+    private readonly StateRegistry _states; // the master list of states, made before the services and pages that register theirs
     private readonly PresetGroups _presetGroups = new(); // made before the pages, which register their preset groups in it
-    private readonly OsdService _osd = new();
-    // The effects journal is read first: a previous run that ended without putting programs' sound back is undone before the
-    // mixer looks at the programs (field initialisers run in this order).
-    private readonly EngineJournal _journal = EngineJournal.Recover();
-    private readonly MixerService _mixer;
-    private readonly EffectsSupportService _effectsSupport;
-    private readonly VolumePresets _volumePresets;
-    private VolumePageViewModel? _volumePage; // read by the FX windows' links to the Mixer when they are used
-    private readonly PluginChainHost _plugins;
-    private readonly DisplayFeeds _displayFeeds;
-    private readonly PluginLibrary _library = new();
-    private readonly UserPresetStore _presets = UserPresetStore.OnDisk();
+    private readonly VolumeModule _volume = new(); // reads the effects journal when made, so a left-over run is undone before anything looks at programs
     private readonly PresetShortcuts _presetShortcuts;
     private readonly PresetManagerService _presetManager;
-    private readonly EffectsEngine _effects;
-    private readonly EngineInstaller _installer;
-    private readonly FxWindowService _fxWindows;
     private readonly DialogService _dialogs = new();
     private readonly AboutWindowService _about;
+    private readonly AppSettings _settings = AppSettings.Current;
     private readonly UpdateService _updates = UpdateService.Create(AppSettings.Current);
-    private readonly AppListStore _appLists = new(AppListSettings.Load()); // the master list of app lists, made before the services and pages that limit things to apps
-    private readonly AppListManagerService _appListManager;
     private readonly ActionsWindowService _actionsWindow;
     private readonly HotkeysSwitch _hotkeysSwitch;
-    private readonly AppScopes _appScopes;
-    private readonly MouseHook _mouseHook = new(); // one system-wide hook shared by the mouse buttons and the gestures
-    private readonly GestureService _gestures;
-    private readonly MouseService _mouse;
-    private readonly TrackpadService _trackpad;
-    private readonly PointerSettingsService _pointer = new(); // at start-up it puts back a button swap a crashed run left on trial
-    private readonly RuleService _rules;
-    private readonly AutomationService _automation;
-    private readonly DeviceService _devices;
-    private readonly OtherPcsService _otherPcs;
     private readonly ImportHooks _importHooks = new();
-    private readonly ImportFromPcService _importFromPc;
-    private readonly MarginOverlay _margins;
+    private readonly ShutdownSteps _shutdown = new();
+    private readonly InputModule _input;
+    private readonly OsdModule _osd;
+    private readonly AppsModule _apps;
+    private readonly ScreenshotModule _screenshot = new();
+    private readonly DevicesModule _devices;
+    private readonly OtherPcsModule _otherPcs;
+    private readonly IReadOnlyList<IFeatureModule> _modules; // in start-up order
     private readonly IReadOnlyList<PageViewModel> _allPages;
     private bool _syncing;
     private bool _windowShown; // the main window is showing and not minimised
     private PageViewModel? _wired; // the open page once it has been wired (DrawFirst); null until then
 
-    /// <summary>Feature pages in the sidebar (after search filtering).</summary>
+    /// Feature pages in the sidebar (after search filtering).
     public ObservableCollection<PageViewModel> Pages { get; } = new();
 
-    /// <summary>What the sidebar list shows: the <see cref="Pages"/> with a <see cref="NavHeading"/> before the first page of each group.</summary>
+    /// What the sidebar list shows: the <see cref="Pages"/> with a <see cref="NavHeading"/> before the first page of each group.
     public ObservableCollection<object> NavItems { get; } = new();
 
-    /// <summary>Pages pinned to the bottom of the sidebar (app-level, not features).</summary>
+    /// Pages pinned to the bottom of the sidebar (app-level, not features).
     public ObservableCollection<PageViewModel> FooterPages { get; } = new();
 
-    /// <summary>The entries at the bottom of the sidebar under a divider that open a window, not a page (Actions and hotkeys).</summary>
+    /// The entries at the bottom of the sidebar under a divider that open a window, not a page (Actions and hotkeys).
     public IReadOnlyList<NavLauncher> PinnedEntries { get; }
     private readonly IReadOnlyList<PageViewModel> _allFooter;
 
     public string VersionText => AppInfo.VersionText;
 
-    /// <summary>The page shown on the right. Set via the two sidebar lists below.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowsActiveLayer))]
-    private PageViewModel? _currentPage;
+    /// The page shown on the right. Set via the two sidebar lists below.
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShownPage))] private PageViewModel? _currentPage;
 
-    /// <summary>The footer names the mouse layer in force only on the Mouse and Trackpad page.</summary>
-    public bool ShowsActiveLayer => CurrentPage is MousePageViewModel;
+    /// The page whose view the window holds: <see cref="CurrentPage"/>, or null once the window has been hidden for
+    /// <see cref="Timing.HiddenSettle"/> (its view is let go to give the memory back; the page itself stays and its view is built again on show).
+    public PageViewModel? ShownPage => _viewReleased ? null : CurrentPage;
+
+    private readonly DispatcherTimer _hiddenSettle = new() { Interval = Timing.HiddenSettle };
+    private bool _viewReleased;
     [ObservableProperty] private PageViewModel? _selectedMainPage;
     [ObservableProperty] private PageViewModel? _selectedFooterPage;
     [ObservableProperty] private string _searchText = string.Empty;
     [ObservableProperty] private string _status = string.Empty;
 
-    /// <summary>The footer's tooltip: the full text of the message whose short line <see cref="Status"/> shows.</summary>
+    /// The footer's tooltip: the full text of the message whose short line <see cref="Status"/> shows.
     [ObservableProperty] private string _statusTip = string.Empty;
-
-    /// <summary>The footer line naming the mouse layer in force.</summary>
-    [ObservableProperty] private string _activeLayer = string.Empty;
 
     public ShellViewModel()
     {
-        _hotkeys = new HotkeyRegistry(_hardware);
-        _hotkeys.Report = Report;
-        _hotkeys.Settings = new OmniActionSettings();
-        _mixer = new MixerService(_hardware, Report); // after the effects journal (a field initialiser): a left-over run is undone first
-        _states = new States.StateRegistry(chainNow: () => _hotkeys.Chain);
-        _hotkeys.StateReader = _states;
-        _icons = new Icons.IconStore(_hotkeys);
-        _iconPicker = new Icons.IconPicker(_icons);
+        _input = new InputModule(_volume.RememberedPrograms); // its pointer settings put back a button swap a crashed run left on trial
+        _osd = new OsdModule(() => _apps.ListedPrograms());
+        _hotkeys = new HotkeyRegistry(_hardware, Report, new OmniActionSettings(), () => _states, _actionGate);
+        _states = new StateRegistry(chainNow: () => _hotkeys.Chain);
+        _icons = new IconStore(_hotkeys);
+        _iconPicker = new IconPicker(_icons);
         // Presets, in this order: the master list of groups (a field, empty), the preset shortcuts (they follow the list and register a
-        // preset's action in _hotkeys when its group arrives), then the one opener of the preset manager. All three come before the FX
-        // windows and the pages, which are given the opener and register their groups; the manager's sections are given after the pages.
+        // preset's action in _hotkeys when its group arrives), then the one opener of the preset manager. All three come before the
+        // modules, which are given the opener and register their groups; the manager's sections are given after the pages.
         _presetShortcuts = new PresetShortcuts(_hotkeys, _presetGroups, Report);
         _presetManager = new PresetManagerService(_presetGroups, _presetShortcuts, Report);
-        _hotkeysSwitch = new HotkeysSwitch(_hotkeys, _states, AppSettingsPageViewModel.Name, Report);
+        _hotkeysSwitch = new HotkeysSwitch(_hotkeys, _states, AppSettingsPageViewModel.Name, Report, _settings.Slot(s => s.HotkeysOn, (s, on) => s.HotkeysOn = on));
         _actionsWindow = new ActionsWindowService(_hotkeys, _presetGroups, _presetManager.Open, _dialogs.AskAsync, OpenPage, _iconPicker.ChooseForActionAsync, _hotkeysSwitch, Report);
         PinnedEntries = new[] { new NavLauncher(ActionsWindowService.Title, ActionsWindowService.Icon, () => _actionsWindow.Open()) };
-        _effectsSupport = new EffectsSupportService(new AudioEffectsProbe(), _mixer);
-        _volumePresets = new VolumePresets(_mixer);
-        _plugins = new PluginChainHost(_mixer.Save);
-        _effects = new EffectsEngine(_mixer, _effectsSupport, _journal, _plugins, Report);
-        _displayFeeds = new DisplayFeeds(_plugins, _effects, Report);
-        _osd.WatchVolumeOf(() => _mixer.MasterDeviceId); // the pop-up for outside volume changes follows the master's real device
-        _mixer.MasterDeviceChanged += _osd.RetargetVolume;
-        _installer = new EngineInstaller(_effectsSupport);
-        _fxWindows = new FxWindowService(_mixer, _effects, _effectsSupport, _plugins, _displayFeeds, _library, _presets, Report, _presetManager.Open,
-            new FxMixerLinks(deviceId => { if (_volumePage is { } page) { OpenPage(page.Title); page.ShowMixerFor(deviceId); } }, () => _volumePage?.InstallEqualizerApoStepAsync() ?? Task.CompletedTask,
-                () => _installer.SetUpTip), _dialogs.AskAsync);
         _about = new AboutWindowService(Report);
-        _appActions = new AppActions(new AppLauncher(Report), _hotkeys);
-        _powerPlanActions = new Power.PowerPlanActions(new OmniControl.Core.Engine.PowerPlanService(), _hotkeys);
-        _windowsKeys = Screenshot.ScreenshotActions.Register(_hotkeys, _osd, Report, _dialogs.AskAsync);
-        _appListManager = new AppListManagerService(_appLists, () => _appActions.InstalledPrograms(), _dialogs.AskAsync, Report);
-        _appScopes = new AppScopes(_appLists, _appListManager.Open);
-        var appScopeGate = new AppScopeGate(_appLists);
-        // Gestures are asked first, so a scroll or middle click they take never reaches the button mappings: the wheel gestures have
-        // their own hook handler ahead of the mouse service's, and the mouse service asks for a middle-click gesture before its mapping.
-        _gestures = new GestureService(_mouseHook, _hotkeys.RunLevel, Report, appScopeGate);
-        _mouse = new MouseService(_mouseHook, _hotkeys.Run, _hotkeys.RunHeld, Report, _gestures.MiddleClickAt, appScopeGate, _states);
-        _hotkeys.Moved += _mouse.FollowMoved;
-        _hotkeys.Moved += _gestures.FollowMoved;
-        // Custom rules are asked before both (their handler goes first on the hook), so a rule that matches wins.
-        _rules = new RuleService(_mouseHook, _gestures, _mouse, _hotkeys, () => _mixer.Settings.Apps.Select(a => a.ExePath), Report);
-        // The automation rules: they register their own actions in the master list and are the one gate every action passes.
+        _apps = new AppsModule(_dialogs.AskAsync, Report);
         _power = new PowerJournal(_hardware);
-        _automation = new AutomationService(_hotkeys, _states, CountdownWindow.ConfirmAsync, () => _mixer.Settings.Apps.Select(a => a.ExePath),
-            StartupRegistration.IsBackgroundStart(Environment.GetCommandLineArgs().Skip(1)), Report, _power);
-        // Trackpad gestures are handed to the same hook, so rules and mappings treat them like button presses.
-        _trackpad = new TrackpadService(_mouseHook, _mouse, _hardware);
-        _margins = new MarginOverlay(_gestures.Settings);
-        _mouse.LayerChanged += (_, _) => UpdateActiveLayer();
-        _mouse.LayersChanged += UpdateActiveLayer;
-        UpdateActiveLayer();
-        _mouseHook.Log = line => AppDataStore.AppendLog("mouse-log.txt", line);
-        _mouseHook.Problem = line => AppDataStore.AppendLog(Guard.LogFile, $"Mouse hook: {line}");
-        var hookStarted = true;
-        if (!StartupMode.Inert && Guard.Run("Start-up: mouse hook", () => hookStarted = _mouseHook.Start()) is not null) hookStarted = false;
-        if (!hookStarted) Report("Couldn't start mouse remapping and gestures: Windows refused the mouse hook.");
+        _devices = new DevicesModule(() => _otherPcs.Paired, () => OpenPage(OtherPcsService.Category));
+        _otherPcs = new OtherPcsModule(_devices.ShareSetups);
+        var context = new FeatureContext(_hotkeys, _hotkeys, _states, _hardware, _osd.Osd, _presetGroups, _presetManager.Open, _dialogs.AskAsync, _dialogs.AskTextAsync,
+            Report, OpenPage, _apps.Scopes, _apps.Gate, _iconPicker, _actionGate, _power, setId => new SuggestedKeysSwitch(_hotkeys, setId), _settings, _importHooks, _shutdown);
+        var automation = new AutomationModule(_volume.RememberedPrograms);
+        var resources = new ResourcesModule();
 
-        // The devices are read from the service (start-up and periodic checks), so the tray tiles are right before the page is ever opened.
-        ICredentialStore credentials = StartupMode.Inert ? new NoCredentialStore() : new WindowsCredentialStore();
-        _devices = new DeviceService(_hotkeys, _states, _hardware, credentials, Report, _osd.ShowDeviceNote);
-        Guard.Run("Start-up: device auto-checks", _devices.StartAutoChecks);
-        _otherPcs = new OtherPcsService(_hotkeys, _states, credentials, Report, _devices.ShareSetups, _dialogs.AskAsync, new SettingsShare()); // listens only once a PC is paired or "Pair a PC" is opened
-        _power.Leaving += _otherPcs.AnnounceLeaving; // paired PCs are told before this one sleeps or shuts down
-        // What an import from another PC may reload live, and the facts it shows after an area: each owner says so once, here.
+        // Every feature, in start-up order: it decides the order of the master lists (actions, states, hardware watches) and of the
+        // mouse hook's handlers (inside the Input module), so keep it.
+        _modules = new IFeatureModule[] { _volume, _apps, new PowerModule(), _screenshot, _input, automation, _devices, _otherPcs, _osd, _displays, resources };
+        foreach (var module in _modules) module.Register(context);
+        // What an import from another PC may reload live of what the shell itself owns; each module says so for its own.
         RegisterReloads();
-        _importFromPc = new ImportFromPcService(_otherPcs, _importHooks, Report);
 
-        // Register new feature pages here, in sidebar order (a page's NavGroup decides its heading; keep the pages of a group together). Pages that list actions (Mouse, Gestures) follow the master
-        // list's changes, so the order does not decide which actions they offer.
-        // Each page starts on its own: one that fails is logged and left out, and the window still opens.
-        _allPages = new[]
-        {
-            TryMake("Displays", () => new DisplaysPageViewModel(_engine, _hotkeys, _osd, _softwareDisplays, Report, _presetGroups, _presetManager.Open, _states, _hardware)),
-            TryMake("Volume", () => new VolumePageViewModel(_mixer, _effectsSupport, _effects, _installer, _hotkeys, _osd, Report, _fxWindows.Open, _fxWindows.Toggle,
-                _dialogs.AskAsync, CombineWindow.AskAsync, _volumePresets, _presetGroups, _presetManager.Open, _states)),
-            TryMake("Devices", () => new DevicesPageViewModel(_devices, _dialogs.AskAsync, Report, _iconPicker.ChooseAsync, _otherPcs, () => OpenPage(OtherPcsService.Category))),
-            TryMake("Other PCs", () => new OtherPcsPageViewModel(_otherPcs, _hotkeys, _dialogs.AskAsync, _dialogs.AskTextAsync, Report, _importFromPc)),
-            TryMake("Mouse and Trackpad", () => new MousePageViewModel(_mouse, _trackpad, _pointer, _hotkeys, _osd, _dialogs.AskAsync, Report, _presetGroups, _presetManager.Open, _appScopes)),
-            TryMake("Gestures", () => new GesturesPageViewModel(_gestures, _rules, _margins, _hotkeys, _dialogs.AskAsync, _appScopes)),
-            TryMake("Automation", () => new AutomationPageViewModel(_automation, _dialogs.AskAsync)),
-            TryMake("OSD", () => new OsdPageViewModel(_osd, _hotkeys, _presetGroups, _presetManager.Open, OsdPlacementWindow.AskAsync,
-                () => _appLists.Lists.SelectMany(l => l.Apps).Select(a => new RunningProgram(a.Program, a.Name)).ToList(), Report)),
-        }.OfType<PageViewModel>().ToArray();
-        // The effects' preset groups belong to the Volume page; they are made by the FX windows, which know how a preset reaches an effect.
-        _volumePage = _allPages.OfType<VolumePageViewModel>().FirstOrDefault();
-        if (_volumePage is { } volumePage) _presetGroups.Register(_fxWindows.PresetGroupsFor(volumePage.Title));
+        // The sidebar, in order (a page's NavGroup decides its heading; keep the pages of a group together). Pages that list actions
+        // (Mouse and Trackpad) follow the master list's changes, so the order does not decide which actions they offer. Each page starts on
+        // its own: one that fails is logged and left out, and the window still opens.
+        _allPages = new IFeatureModule[] { _displays, _volume, _devices, _otherPcs, _input, automation, _osd, resources }
+            .SelectMany(m => m.Pages).Select(p => TryMake(p.Name, p.Make)).OfType<PageViewModel>().ToArray();
+        foreach (var module in _modules) module.PagesMade();
         _presetManager.UseSections(_allPages.Select(p => new PresetSection(p.Title, p.Icon))
             .Append(new PresetSection(ActionsWindowService.Title, ActionsWindowService.Icon)).ToList());
+        TrayFlyout = MakeTray();
         _allFooter = new[]
         {
-            TryMake("App settings", () => new AppSettingsPageViewModel(_hotkeys, _about.Open, _library.ScanAsync, _library.FoundText, () => _presetManager.Open(null, null),
-                new BackupService(_dialogs.ChooseAsync, Report, _importFromPc), _dialogs.Confirmations, _updates, Report, ShowKeyboardShortcuts, _mixer, _hardware)),
+            TryMake("App settings", () => new AppSettingsPageViewModel(_hotkeys, () => _hotkeys.Chain, _about.Open, _volume.Library.ScanAsync, _volume.Library.FoundText,
+                () => _presetManager.Open(null, null), new BackupService(_dialogs.ChooseAsync, Report, _otherPcs.ImportFrom), _dialogs.Confirmations, _updates, Report,
+                ShowKeyboardShortcuts, _volume.Mixer, _hardware, _settings, TrayFlyout)),
         }.OfType<PageViewModel>().ToArray();
         // The Choose-the-action window's sections are the sidebar pages, in the sidebar's order, with their icons.
         _hotkeys.UseSections(_allPages.Concat(_allFooter).Select((p, i) => new ActionSection(p.Title, p.Icon, i + 1)).ToList());
@@ -234,16 +147,32 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _hardware.Start();
         _hardware.ApplyCheck();
         WireRestore();
-        TrayFlyout = MakeTray();
+        RegisterTray(TrayFlyout);
         WatchUpdates();
 
         Categories = new[] { AllCategories }.Concat(_allPages.Concat(_allFooter).Select(p => p.Title)).ToArray();
         _selectedCategory = AllCategories;
 
         ApplyFilter();
+        _hiddenSettle.Tick += OnHiddenSettled;
+        _hiddenSettle.Start(); // the window is not shown yet (it may start in the tray)
     }
 
-    /// <summary>Makes one page; a page that fails to start is logged, said in one plain sentence and left out.</summary>
+    /// The window has stayed hidden a while: its page view goes, then one full collection gives the freed memory back to Windows.
+    private void OnHiddenSettled(object? sender, EventArgs e)
+    {
+        _hiddenSettle.Stop();
+        _viewReleased = true;
+        OnPropertyChanged(nameof(ShownPage));
+        // After the view has really left (layout and its detach handlers run first).
+        Dispatcher.UIThread.Post(() => Guard.Run("Give memory back", ProcessPower.Compact), DispatcherPriority.Background);
+    }
+
+    /// Every feature's view templates and those of what the shell itself makes (App settings, the suggested keys switch); added to the app's at start-up.
+    public IEnumerable<IDataTemplate> Templates => _modules.SelectMany(m => m.Templates)
+        .Append(ViewTemplate.For<AppSettingsPageViewModel, AppSettingsPage>()).Append(ViewTemplate.For<SuggestedKeysSwitch, SuggestedKeysView>());
+
+    /// Makes one page; a page that fails to start is logged, said in one plain sentence and left out.
     private PageViewModel? TryMake(string name, Func<PageViewModel> make)
     {
         try
@@ -260,7 +189,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
 
     private const string AllCategories = "All categories";
 
-    /// <summary>Entries of the category filter next to the search box.</summary>
+    /// Entries of the category filter next to the search box.
     public IReadOnlyList<string> Categories { get; }
 
     [ObservableProperty] private string _selectedCategory;
@@ -278,11 +207,15 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         Show(value);
     }
 
-    /// <summary>Opens the sidebar page with this title (a page hidden by the search filter stays closed).</summary>
-    private void OpenPage(string title)
+    /// Opens the sidebar page with this title (a page hidden by the search filter stays closed).
+    private void OpenPage(string title) => OpenPage(title, null);
+
+    /// THE way to open a page, at one of its tabs when <paramref name="tab"/> names one (the gadget's "Gadget settings…").
+    private void OpenPage(string title, string? tab)
     {
         if (Pages.FirstOrDefault(p => p.Title == title) is { } page) SelectedMainPage = page;
         else if (FooterPages.FirstOrDefault(p => p.Title == title) is { } footer) SelectedFooterPage = footer;
+        if (tab is not null) _allPages.Concat(_allFooter).FirstOrDefault(p => p.Title == title)?.Tabs?.Select(tab);
     }
 
     partial void OnSelectedFooterPageChanged(PageViewModel? value)
@@ -294,7 +227,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         Show(value);
     }
 
-    /// <summary>The footer's App settings button: opens the page it stands for.</summary>
+    /// The footer's App settings button: opens the page it stands for.
     [RelayCommand]
     private void OpenFooterPage(PageViewModel? page) => SelectedFooterPage = page;
 
@@ -316,23 +249,30 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     {
         if (page != CurrentPage) return; // another page was opened before this one was wired
         _wired = page;
-        if (StartupMode.MayRead) page.OnShown(); // a page's look at the system is for a screenshot export only when it is read-only (a page that acts on devices gates itself)
+        page.OnShown();
         page.Restorer?.Refresh();
         if (_windowShown) page.OnOnScreenChanged(true);
         UiTiming.Write($"Page {page.Title}: wired {clock.ElapsedMilliseconds} ms");
     }
 
-    /// <summary>The main window was shown, hidden, minimised or restored: the open page comes on or goes off screen with it.</summary>
+    /// The main window was shown, hidden, minimised or restored: the open page comes on or goes off screen with it.
     public void SetWindowShown(bool shown)
     {
         if (shown == _windowShown) return;
         _windowShown = shown;
-        if (shown) _appActions.Refresh();
+        _hiddenSettle.IsEnabled = !shown;
+        FollowRestoreCheck(shown);
+        if (shown && _viewReleased)
+        {
+            _viewReleased = false;
+            OnPropertyChanged(nameof(ShownPage));
+        }
+        if (shown) _apps.Refresh();
         _wired?.OnOnScreenChanged(shown); // a page not wired yet comes on screen when it is
         foreach (var page in _allPages) page.OnWindowShownChanged(shown);
     }
 
-    /// <summary>The one way anything reports to the screen; safe from any thread, so services never post it themselves.</summary>
+    /// The one way anything reports to the screen; safe from any thread, so services never post it themselves.
     private void Report(string message)
     {
         if (!Dispatcher.UIThread.CheckAccess())
@@ -344,12 +284,12 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         StatusTip = StatusMessage.FullOf(message);
     }
 
-    /// <summary>The main window's own keys (MainWindow.axaml.cs), for the Keyboard shortcuts window.</summary>
+    /// The main window's own keys (MainWindow.axaml.cs), for the Keyboard shortcuts window.
     private const string ShellKeys =
         "Tab moves between the sidebar and the page; Up/Down move through the sidebar (round at the ends). "
         + "Ctrl+F searches: Down or Enter goes to the results, Esc goes back. F1 shows this list.";
 
-    /// <summary>The Keyboard shortcuts window (F1 and the App settings action): the open page's own keys, the keys every card list shares and the main window's, in the small message window.</summary>
+    /// The Keyboard shortcuts window (F1 and the App settings action): the open page's own keys, the keys every card list shares and the main window's, in the small message window.
     [RelayCommand]
     private void ShowKeyboardShortcuts()
     {
@@ -360,53 +300,31 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _ = _dialogs.AskAsync(new DialogMessage("Keyboard shortcuts", string.Join(Environment.NewLine + Environment.NewLine, sections)));
     }
 
-    // The trackpad's layer in force is shown by its own drop-down on the same page; the footer keeps one short fact.
-    private void UpdateActiveLayer() => ActiveLayer = $"Mouse layer: {_mouse.Settings.LayersOf(InputFamily.Mouse).Labels()[_mouse.LayerOf(InputFamily.Mouse)]}";
-
     public void Dispose()
     {
-        // Every step on its own: one that throws is logged and the next still runs, so the steps that put Windows back are never skipped.
-        void Step(string what, Action step) => Guard.Run($"Shut-down: {what}", step);
-        Step("search", () => _search?.Dispose());
-        Step("restore", DisposeRestore);
-        Step("hardware watches", _hardware.Dispose); // before the services whose refreshes it calls
-        Step("power journal", _power.Dispose);
-        Step("win+a key", _winA.Dispose); // gives Win+A back to Windows
-        Step("tray", TrayFlyout.Dispose);
-        Step("preset manager", _presetManager.Close);
-        Step("app list manager", _appListManager.Close);
-        Step("actions window", _actionsWindow.Dispose);
-        Step("hotkeys switch", _hotkeysSwitch.Dispose);
-        Step("preset shortcuts", _presetShortcuts.Dispose);
-        Step("preset groups", _presetGroups.Dispose);
-        foreach (var page in _allPages.OfType<IDisposable>()) Step(page.GetType().Name, page.Dispose);
-        Step("software displays", _softwareDisplays.Dispose); // puts every display's picture back
-        Step("margins", _margins.Dispose);
-        Step("trackpad", _trackpad.Dispose);
-        Step("pointer", _pointer.Dispose); // a button swap that was never kept goes back
-        Step("automation", _automation.Dispose);
-        Step("rules", _rules.Dispose);
-        _hotkeys.Moved -= _mouse.FollowMoved;
-        _hotkeys.Moved -= _gestures.FollowMoved;
-        Step("mouse", _mouse.Dispose);
-        Step("mouse hook", _mouseHook.Dispose);
-        _power.Leaving -= _otherPcs.AnnounceLeaving;
-        Step("other PCs", _otherPcs.Dispose); // its link ends and what other PCs shared leaves the master lists
-        Step("icons", _icons.Dispose);
-        Step("hotkeys", _hotkeys.Dispose);
-        _mixer.MasterDeviceChanged -= _osd.RetargetVolume;
-        Step("OSD", _osd.Dispose);
-        Step("effect windows", _fxWindows.CloseAll); // plug-in editors close (and save) before the plug-ins are unloaded
-        Step("effects", _effects.Dispose); // every program's own sound is put back, the APO gets an empty chain, plug-in settings are saved
-        Step("about window", _about.Close);
-        Step("update check", _updates.Dispose);
-        Step("effects support", _effectsSupport.Dispose);
-        Step("volume presets", _volumePresets.Dispose);
-        Step("mixer", _mixer.Dispose);
-        Step("engine", _engine.Dispose);
-        // Last: a plug-in's own teardown can hang (a JUCE plug-in disconnecting every UI Automation provider of the process
-        // deadlocks with Avalonia's), so it runs after everything is saved and put back, and the process ends regardless.
-        Step("display feeds", _displayFeeds.Dispose); // before the plug-ins they read from are unloaded
-        using (ExitGuard.Start(Timing.PluginUnloadLimit)) Step("plug-ins", _plugins.Dispose);
+        // The shell's own steps join the modules' at their stages (ShutdownStage); every step runs on its own.
+        _hiddenSettle.Stop();
+        _hiddenSettle.Tick -= OnHiddenSettled;
+        void Step(ShutdownStage stage, string what, Action step) => _shutdown.Add(stage, what, step);
+        Step(ShutdownStage.Search, "search", () => _search?.Dispose());
+        Step(ShutdownStage.Search, "search key", () => _searchKeyTip?.Dispose());
+        Step(ShutdownStage.Restore, "restore", DisposeRestore);
+        Step(ShutdownStage.HardwareWatches, "hardware watches", _hardware.Dispose);
+        Step(ShutdownStage.PowerJournal, "power journal", _power.Dispose);
+        Step(ShutdownStage.WinAKey, "win+a key", _winA.Dispose);
+        Step(ShutdownStage.Tray, "tray", TrayFlyout.Dispose);
+        Step(ShutdownStage.PresetManager, "preset manager", _presetManager.Close);
+        Step(ShutdownStage.ActionsWindow, "actions window", _actionsWindow.Dispose);
+        Step(ShutdownStage.HotkeysSwitch, "hotkeys switch", _hotkeysSwitch.Dispose);
+        Step(ShutdownStage.PresetShortcuts, "preset shortcuts", _presetShortcuts.Dispose);
+        Step(ShutdownStage.PresetGroups, "preset groups", _presetGroups.Dispose);
+        foreach (var page in _allPages.OfType<IDisposable>()) Step(ShutdownStage.Pages, page.GetType().Name, page.Dispose);
+        Step(ShutdownStage.Icons, "icons", _icons.Dispose);
+        Step(ShutdownStage.Hotkeys, "hotkeys", _hotkeys.Dispose);
+        Step(ShutdownStage.AppWindows, "about window", _about.Close);
+        Step(ShutdownStage.AppWindows, "update check", _updates.Dispose);
+        Step(ShutdownStage.Flush, "waiting saves", AppDataStore.FlushSaves);
+        Step(ShutdownStage.Flush, "log lines", AppDataStore.FlushLogs);
+        _shutdown.Run();
     }
 }

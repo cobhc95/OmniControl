@@ -1,8 +1,6 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Native;
 
-/// <summary>user32, gdi32, dwmapi and kernel32 calls of the screenshot feature: monitors, screen copies and pictures, the clipboard and the overlay's place on top.</summary>
+/// user32, gdi32, dwmapi and kernel32 calls of the screenshot feature: monitors, screen copies and pictures, the clipboard and the overlay's place on top.
 internal static class ScreenshotNative
 {
     [StructLayout(LayoutKind.Sequential)] public struct Rect { public int Left, Top, Right, Bottom; }
@@ -55,7 +53,7 @@ internal static class ScreenshotNative
     [DllImport("gdi32.dll")] public static extern bool RestoreDC(IntPtr hdc, int saved);
     [DllImport("gdi32.dll")] public static extern int ExcludeClipRect(IntPtr hdc, int left, int top, int right, int bottom);
 
-    /// <summary>A 32-bit BGRA bitmap the program can write into (<paramref name="bits"/>), top row first; zero when Windows refuses it.</summary>
+    /// A 32-bit BGRA bitmap the program can write into (<paramref name="bits"/>), top row first; zero when Windows refuses it.
     public static IntPtr CreateTopDownBitmap(IntPtr hdc, int width, int height, out IntPtr bits)
     {
         var header = new BitmapInfoHeader

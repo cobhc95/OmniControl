@@ -1,15 +1,10 @@
-using System.Runtime.InteropServices;
 using OmniControl.Core.Interfaces;
-using OmniControl.Core.Models;
-using OmniControl.Core.Native;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// Reads and sets a display's orientation through Windows (DEVMODE <c>dmDisplayOrientation</c>), which works for any display, the built-in
 /// one included. Going between landscape and portrait swaps the mode's width and height. The values follow Windows' own: DMDO_270 is what
 /// Settings calls Portrait and DMDO_90 is Portrait (flipped).
-/// </summary>
 public sealed class DisplayRotation : IDisplayRotation
 {
     private static readonly uint[] DmdoOf = { 0, 3, 2, 1 }; // by DisplayOrientation: Landscape, Portrait, LandscapeFlipped, PortraitFlipped
@@ -51,17 +46,17 @@ public sealed class DisplayRotation : IDisplayRotation
         return saved == 0 ? OperationResult.Ok() : OperationResult.Fail($"The display turned but Windows would not remember it (error {saved}).");
     }
 
-    /// <summary>The DEVMODE value (DMDO_*) for an orientation.</summary>
+    /// The DEVMODE value (DMDO_*) for an orientation.
     internal static uint ToDmdo(DisplayOrientation orientation) => DmdoOf[(int)orientation];
 
-    /// <summary>The orientation for a DEVMODE value; null for a value Windows does not define.</summary>
+    /// The orientation for a DEVMODE value; null for a value Windows does not define.
     internal static DisplayOrientation? FromDmdo(uint dmdo)
     {
         var index = Array.IndexOf(DmdoOf, dmdo);
         return index < 0 ? null : (DisplayOrientation)index;
     }
 
-    /// <summary>Whether going between two DMDO values trades the mode's width and height (landscape to portrait or back).</summary>
+    /// Whether going between two DMDO values trades the mode's width and height (landscape to portrait or back).
     internal static bool SwapsSides(uint from, uint to) => (from + to) % 2 == 1;
 
     private static DisplaySettingsNative.DEVMODE NewMode() =>

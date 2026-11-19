@@ -3,7 +3,7 @@ using OmniControl.Core.Engine.Trackpad;
 
 namespace OmniControl.Tests;
 
-/// <summary>The takeover's safety net: closing a panel Windows opened right after a gesture, against a fake window probe (nothing is pressed).</summary>
+/// The takeover's safety net: closing a panel Windows opened right after a gesture, against a fake window probe (nothing is pressed).
 public class ShellSurfaceGuardTests
 {
     private static readonly IntPtr Editor = new(100), Search = new(200), TaskView = new(300), Other = new(400);

@@ -1,25 +1,19 @@
-using System.Runtime.InteropServices;
-using System.Text;
 using static OmniControl.Core.Native.ScreenshotNative;
 
 namespace OmniControl.Core.Engine.Screenshot;
 
-/// <summary>
 /// Puts a picture (and, when asked, the file it was saved to) or a text on the Windows clipboard. The picture goes on as a DIB (every
 /// program) and, in the screenshot's format, as JPG ("JFIF", for the programs that take JPG from the clipboard) or else as PNG (browsers,
 /// Office); a file path goes on as a file (paste in Explorer) and as text. Memory the clipboard does not take is freed here; the clipboard
 /// owns the rest.
-/// </summary>
 public static class ImageClipboard
 {
     private const int DropFilesSize = 20; // DROPFILES: offset, point, non-client flag, wide flag
     private static readonly Lazy<uint> PngFormat = new(() => RegisterClipboardFormat("PNG")), JpgFormat = new(() => RegisterClipboardFormat("JFIF"));
 
-    /// <summary>
     /// Puts the picture on the clipboard: always as a DIB, plus JPG at <paramref name="quality"/> when <paramref name="format"/> is JPG and PNG
     /// otherwise (WebP and BMP have no clipboard format programs read); with <paramref name="filePath"/> as a file and as text when given.
     /// False when the clipboard stayed busy.
-    /// </summary>
     public static bool SetImage(ScreenImage image, ImageFormat format, int quality, string? filePath = null)
     {
         var items = new List<(uint Format, byte[] Data)>
@@ -37,7 +31,7 @@ public static class ImageClipboard
         return Put(items);
     }
 
-    /// <summary>Puts plain text on the clipboard. False when the clipboard stayed busy.</summary>
+    /// Puts plain text on the clipboard. False when the clipboard stayed busy.
     public static bool SetText(string text) => Put(new List<(uint, byte[])> { (CfUnicodeText, Encoding.Unicode.GetBytes(text + '\0')) });
 
     private static bool Put(List<(uint Format, byte[] Data)> items)
@@ -77,7 +71,7 @@ public static class ImageClipboard
         if (SetClipboardData(format, memory) == IntPtr.Zero) GlobalFree(memory); // taken: the clipboard frees it later
     }
 
-    /// <summary>A packed DIB: the 40-byte header, then 32-bit pixels bottom row first.</summary>
+    /// A packed DIB: the 40-byte header, then 32-bit pixels bottom row first.
     internal static byte[] Dib(ScreenImage image)
     {
         var header = Marshal.SizeOf<BitmapInfoHeader>();

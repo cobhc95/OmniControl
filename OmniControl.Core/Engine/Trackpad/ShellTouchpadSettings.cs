@@ -1,24 +1,45 @@
-using System.Runtime.InteropServices;
+using System.Collections.Concurrent;
 
 namespace OmniControl.Core.Engine.Trackpad;
 
-/// <summary>
 /// The shell's own copy of the three- and four-finger settings. The shell (<c>twinui.dll</c> in explorer.exe) reads them from the registry
 /// into a cache when it starts and does not watch the key: it reads them again only when told to through its touchpad settings service,
-/// which is what the Settings app does after writing a value (findings in HANDOVER.md, "Trackpad takeover: the shell's own copy").
+/// which is what the Settings app does after writing a value.
 /// The service is an undocumented interface of the immersive shell, reached as the Settings app reaches it: the immersive shell's
 /// IServiceProvider, then QueryService for the service. Its slot 3 takes a setting's id and makes the shell refresh its cache; slot 5
 /// returns the value the shell uses now for an id. Slot 4 is never called (its meaning is unknown).
-/// Every call goes into explorer.exe, so it runs on its own thread and is waited for at most <see cref="CoreTiming.ShellCallTimeoutMs"/>:
-/// a busy or hung Explorer never holds the caller (the touchpad queue, the UI thread). While a call that did not come back in time is
-/// still out, no new one is made; a call slower than <see cref="CoreTiming.ShellCallSlowMs"/> is logged, naming it.
-/// </summary>
+/// Every call goes into explorer.exe, so it runs on one worker thread of its own (made at the first call and kept, in the multithreaded
+/// apartment the service wants) and is waited for at most <see cref="CoreTiming.ShellCallTimeoutMs"/>: a busy or hung Explorer never holds
+/// the caller (the touchpad queue, the UI thread). While a call that did not come back in time is still out, no new one is made; a call
+/// slower than <see cref="CoreTiming.ShellCallSlowMs"/> is logged, naming it.
 internal sealed class ShellTouchpadSettings
 {
     private readonly Action<string>? _log;
-    private volatile Thread? _late; // a call that did not come back in time
+    private readonly BlockingCollection<Action> _calls = new();
+    private readonly Lazy<Thread> _worker;
+    private volatile bool _late; // a call did not come back in time and is still out
 
-    public ShellTouchpadSettings(Action<string>? log) => _log = log;
+    public ShellTouchpadSettings(Action<string>? log)
+    {
+        _log = log;
+        _worker = new Lazy<Thread>(() =>
+        {
+            var thread = new Thread(Work) { IsBackground = true, Name = "Shell touchpad calls" };
+            thread.SetApartmentState(ApartmentState.MTA);
+            thread.Start();
+            return thread;
+        });
+    }
+
+    /// The worker: one call at a time, for the life of the program (a background thread, it ends with it).
+    private void Work()
+    {
+        foreach (var call in _calls.GetConsumingEnumerable())
+        {
+            call();
+            _late = false;
+        }
+    }
 
     private static readonly Guid ImmersiveShell = new("c2f03a33-21f5-47fa-b4bb-156362a2f239");
     private static readonly Guid ServiceId = new("53660488-8855-460b-a9ab-5cfc6b5012ca");
@@ -34,20 +55,20 @@ internal sealed class ShellTouchpadSettings
     [ComImport, Guid("4214f6fa-eb36-4e2f-9ca2-23fdc1832df7"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     private interface ITouchpadSettingsService
     {
-        /// <summary>Slot 3: the setting with this id was written; the shell refreshes its cache.</summary>
+        /// Slot 3: the setting with this id was written; the shell refreshes its cache.
         [PreserveSig] int SettingChanged(int id);
 
-        /// <summary>Slot 4: placeholder that keeps the slots in order; never called.</summary>
+        /// Slot 4: placeholder that keeps the slots in order; never called.
         [PreserveSig] int Unused(int id);
 
-        /// <summary>Slot 5: the value the shell uses now for this id.</summary>
+        /// Slot 5: the value the shell uses now for this id.
         [PreserveSig] int GetValue(int id, out int value);
     }
 
-    /// <summary>Tells the shell that the setting with this id was written. Returns null when the shell took the call, or one plain sentence.</summary>
+    /// Tells the shell that the setting with this id was written. Returns null when the shell took the call, or one plain sentence.
     public string? Refresh(int id) => Run($"refresh setting {id}", service => service.SettingChanged(id));
 
-    /// <summary>The value the shell acts on now for this id. Returns null when it answered, or one plain sentence.</summary>
+    /// The value the shell acts on now for this id. Returns null when it answered, or one plain sentence.
     public string? Read(int id, out int value)
     {
         var read = 0;
@@ -58,15 +79,20 @@ internal sealed class ShellTouchpadSettings
 
     private string? Run(string what, Func<ITouchpadSettingsService, int> call)
     {
-        if (_late is { IsAlive: true }) return "Windows' shell is still busy with an earlier touchpad call.";
+        if (_late) return "Windows' shell is still busy with an earlier touchpad call.";
         string? problem = null;
-        var thread = new Thread(() => problem = Use(call)) { IsBackground = true, Name = "Shell touchpad call" };
-        thread.SetApartmentState(ApartmentState.MTA);
+        var done = new ManualResetEventSlim(); // not disposed: a late call still sets it after the wait gave up
         var started = Environment.TickCount64;
-        thread.Start();
-        if (!thread.Join(CoreTiming.ShellCallTimeoutMs))
+        _ = _worker.Value;
+        _calls.Add(() =>
         {
-            _late = thread;
+            problem = Use(call);
+            done.Set();
+        });
+        if (!done.Wait(CoreTiming.ShellCallTimeoutMs))
+        {
+            _late = true;
+            if (done.IsSet) _late = false; // it came back just now, after the worker had already cleared the mark
             _log?.Invoke($"Explorer's touchpad settings service did not answer \"{what}\" within {CoreTiming.ShellCallTimeoutMs} ms; no new call is made until it does.");
             return "Windows' shell didn't answer in time.";
         }

@@ -1,0 +1,55 @@
+<Window Classes="dialog" xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:i="using:OmniControl.App.Features.Icons"
+        xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+        x:Class="OmniControl.App.Features.Icons.IconPickerWindow"
+        x:DataType="i:IconPickerModel"
+        Title="{Binding Title}" Width="{DynamicResource IconPickerWidth}" Height="{DynamicResource IconPickerHeight}" MinHeight="320"
+        CanResize="True" WindowStartupLocation="CenterOwner">
+    <!-- THE icon picker (docs/mockups/icon-library.html), opened by every "Change icon…": the search box (names and keywords), then
+         "Suggested for this", "Your icons" (when there are any; the selected one's name can be edited, and it can be removed) and every
+         library icon, 8 cells per row (Button.iconcell). Foot: Default | Own image… | + Add your own… | Use. Mouse first for the grid,
+         the arrows move the selection from anywhere (AGENTS.md rule 5); Enter uses it, Esc cancels. -->
+    <DockPanel>
+        <TextBox x:Name="SearchBox" DockPanel.Dock="Top" Classes="field search" Text="{Binding Search}" Watermark="Search icons…" Margin="12,12,12,6" />
+        <Border DockPanel.Dock="Bottom" Classes="footer">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="8">
+                <Button Classes="pill" Content="Default" Click="OnDefaultClick" VerticalAlignment="Center" ToolTip.Tip="Show its own icon again" />
+                <Button Grid.Column="1" Classes="pill" Content="Own image…" Click="OnOwnImageClick" VerticalAlignment="Center"
+                        ToolTip.Tip="Use a picture of your own (SVG or PNG) for this; it is also kept in Your icons" />
+                <Button Grid.Column="2" Classes="blockadd small" Content="+ Add your own…" Click="OnAddClick" VerticalAlignment="Center"
+                        ToolTip.Tip="Add an SVG or PNG to Your icons; it is kept in OmniControl's data and backed up" />
+                <TextBlock Grid.Column="3" Classes="cautiontext" x:Name="Problem" IsVisible="False" TextWrapping="Wrap" VerticalAlignment="Center" />
+                <Button Grid.Column="4" Classes="primary close" Content="Use" Click="OnUseClick" IsEnabled="{Binding HasSelection}" />
+            </Grid>
+        </Border>
+        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="12,0,12,8" IsVisible="{Binding SelectedIsMine}">
+            <TextBlock Text="Name" VerticalAlignment="Center" />
+            <TextBox Grid.Column="1" Classes="field" Text="{Binding SelectedName, UpdateSourceTrigger=LostFocus}" />
+            <Button Grid.Column="2" Classes="pill danger" Content="Remove" Click="OnRemoveClick" VerticalAlignment="Center"
+                    ToolTip.Tip="Take this icon out of Your icons; what showed it shows its default again" />
+        </Grid>
+        <ScrollViewer x:Name="Scroller" Padding="12,0,12,8">
+            <ItemsControl ItemsSource="{Binding Sections}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="i:IconSection">
+                        <StackPanel Spacing="4" Margin="0,0,0,8">
+                            <TextBlock Classes="hint small" Text="{Binding Title}" />
+                            <ItemsControl ItemsSource="{Binding Cells}">
+                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="8" HorizontalAlignment="Left" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="i:IconCell">
+                                        <Button Classes="iconcell" Classes.selected="{Binding IsSelected}" Click="OnCellClick" DoubleTapped="OnCellDoubleTapped"
+                                                Focusable="False" ToolTip.Tip="{Binding Name}">
+                                            <c:IconGlyph Source="{Binding Image}" />
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

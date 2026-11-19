@@ -2,12 +2,12 @@ using System.Globalization;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>Reads the vcp(...) part of a monitor's MCCS capabilities string: "vcp(10 12 14(01 05 0B) 60(0F 11 12) D6(01 04))".</summary>
+/// Reads the vcp(...) part of a monitor's MCCS capabilities string: "vcp(10 12 14(01 05 0B) 60(0F 11 12) D6(01 04))".
 internal static class CapabilitiesParser
 {
     private const string Section = "vcp(";
 
-    /// <summary>The codes the string lists, each with the values it allows (empty for a continuous control).</summary>
+    /// The codes the string lists, each with the values it allows (empty for a continuous control).
     public static Dictionary<byte, List<uint>> Vcp(string capabilities)
     {
         var codes = new Dictionary<byte, List<uint>>();

@@ -1,7 +1,3 @@
-using System.Diagnostics;
-using System.Runtime.InteropServices;
-using Microsoft.Win32;
-using OmniControl.Core.Native;
 using static OmniControl.Core.Engine.Trackpad.RawInputNative;
 using static OmniControl.Core.Native.PowerNative;
 using static OmniControl.Core.Native.SessionNative;
@@ -9,32 +5,34 @@ using static OmniControl.Core.Native.WindowNative;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>What Windows announced that may have changed the hardware the program sees. A watch lists the ones that can affect it.</summary>
+/// What Windows announced that may have changed the hardware the program sees. A watch lists the ones that can affect it.
 [Flags]
 public enum HardwareSignal
 {
     None = 0,
 
-    /// <summary>A device node came, went or changed (USB, Bluetooth, a touchpad...).</summary>
+    /// A device node came, went or changed (USB, Bluetooth, a touchpad...).
     Device = 1,
 
-    /// <summary>The displays changed (one plugged in, removed, a resolution or layout change).</summary>
+    /// The displays changed (one plugged in, removed, a resolution or layout change).
     Display = 2,
 
-    /// <summary>A sound device was added, removed, enabled or disabled (Windows' audio notification; raised by the mixer's own watcher).</summary>
+    /// A sound device was added, removed, enabled or disabled (Windows' audio notification; raised by the mixer's own watcher).
     Audio = 4,
 
-    /// <summary>The user's session moved or came back: console connect (back at the PC after Remote Desktop), remote connect or disconnect, logon, unlock.</summary>
+    /// The user's session moved or came back: console connect (back at the PC after Remote Desktop), remote connect or disconnect, logon, unlock.
     Session = 8,
 
-    /// <summary>The PC woke from sleep (or the clock check found the program was stopped for a while).</summary>
+    /// The PC woke from sleep (or the clock check found the program was stopped for a while).
     Resume = 16,
 
-    /// <summary>The screens came back on (after the display-off timeout or Modern Standby): monitors that slept may not have answered DDC/CI meanwhile.</summary>
+    /// The screens came back on (after the display-off timeout or Modern Standby): monitors that slept may not have answered DDC/CI meanwhile.
     DisplayPower = 32,
+
+    /// Explorer made the taskbar again (it restarted): what sits on the taskbar must find it anew.
+    Taskbar = 64,
 }
 
-/// <summary>
 /// Raises <see cref="Raised"/> for Windows' hardware announcements that need no registration of a device kind: a device change, a display
 /// change, a session that moved or came back (Remote Desktop, unlock) and a wake from sleep. They are only signals: they carry no detail and
 /// arrive in bursts, so the one that listens decides what to look at again and when.
@@ -45,11 +43,11 @@ public enum HardwareSignal
 /// The same listeners also tell every power and session event, unfiltered and with the channel that heard it, through <see cref="Power"/>
 /// (the power journal decides what is the same event); a third listener, a clock check (<see cref="ClockGap"/>), tells when the program was
 /// stopped for a while, which catches a wake that sent no message.
-/// </summary>
 public sealed class HardwareSignals : IDisposable
 {
     private const string ClassName = "OmniControlHardwareSignals";
-    private const uint WmDeviceChange = 0x0219, WmDisplayChange = 0x007E;
+    private const uint WmDeviceChange = 0x0219, WmDisplayChange = 0x007E, AllowMessage = 1;
+    private static readonly uint WmTaskbarCreated = RegisterWindowMessage("TaskbarCreated");
     private const int DbtDevNodesChanged = 0x0007, DbtDeviceArrival = 0x8000, DbtDeviceRemoveComplete = 0x8004;
 
     private readonly WndProc _proc; // kept in a field so the garbage collector cannot free the callback while Windows holds it
@@ -63,13 +61,13 @@ public sealed class HardwareSignals : IDisposable
     private Thread? _thread;
     private IntPtr _window;
 
-    /// <summary>Something announced a change, with where it came from for the log (raised on a listener's thread; handlers must return at once).</summary>
+    /// Something announced a change, with where it came from for the log (raised on a listener's thread; handlers must return at once).
     public event Action<HardwareSignal, string>? Raised;
 
-    /// <summary>A power or session event as one listener heard it (raised on that listener's thread; handlers must return at once).</summary>
+    /// A power or session event as one listener heard it (raised on that listener's thread; handlers must return at once).
     public event Action<PowerSignal>? Power;
 
-    /// <summary>A listener could not start or a handler threw (text for the log).</summary>
+    /// A listener could not start or a handler threw (text for the log).
     public event Action<string>? Failed;
 
     /// <param name="gapInterval">How often the clock check samples.</param>
@@ -81,7 +79,7 @@ public sealed class HardwareSignals : IDisposable
         _gap = new ClockGap((long)gapInterval.TotalMilliseconds, (long)gapThreshold.TotalMilliseconds);
     }
 
-    /// <summary>Starts both listeners; false when Windows refused the window (<see cref="Failed"/> has the reason; <see cref="SystemEvents"/> may still run).</summary>
+    /// Starts both listeners; false when Windows refused the window (<see cref="Failed"/> has the reason; <see cref="SystemEvents"/> may still run).
     public bool Start()
     {
         var started = false;
@@ -106,7 +104,7 @@ public sealed class HardwareSignals : IDisposable
         _thread = null;
     }
 
-    /// <summary>Tells the listeners once per kind (both listeners report the same Windows event).</summary>
+    /// Tells the listeners once per kind (both listeners report the same Windows event).
     private void Raise(HardwareSignal signal, string source)
     {
         if (_filter.Pass(signal, _clock.ElapsedMilliseconds)) Raised?.Invoke(signal, source);
@@ -116,7 +114,7 @@ public sealed class HardwareSignals : IDisposable
 
     // ---------------------------------------------------------------- third listener: the clock check
 
-    /// <summary>Timer thread: one sample of the two clocks; a gap is told as a power event.</summary>
+    /// Timer thread: one sample of the two clocks; a gap is told as a power event.
     private void SampleClock()
     {
         try
@@ -133,11 +131,9 @@ public sealed class HardwareSignals : IDisposable
 
     // ---------------------------------------------------------------- second listener: .NET's SystemEvents
 
-    /// <summary>
     /// SystemEvents puts its hidden window on the thread that first subscribes when that thread is STA, which the caller's UI thread is:
     /// every broadcast Windows and other programs send to all windows would then wait for OmniControl's UI thread. Subscribing from a short
     /// MTA thread makes SystemEvents use a thread of its own.
-    /// </summary>
     private void StartSystemEvents()
     {
         var subscriber = new Thread(Subscribe) { IsBackground = true, Name = "SystemEvents subscribe" };
@@ -199,7 +195,7 @@ public sealed class HardwareSignals : IDisposable
             Guarded(() => TellPower(e.Mode == PowerModes.Resume ? PowerEventKind.Resume : PowerEventKind.Suspend, PowerChannel.SystemEvents, $"power mode {e.Mode}"));
     }
 
-    /// <summary>A throw on SystemEvents' thread would end the process: it is reported and the listener goes on.</summary>
+    /// A throw on SystemEvents' thread would end the process: it is reported and the listener goes on.
     private void Guarded(Action raise)
     {
         try { raise(); }
@@ -238,6 +234,8 @@ public sealed class HardwareSignals : IDisposable
             Failed?.Invoke($"Windows refused the hardware listener (error {Marshal.GetLastWin32Error()}).");
             return false;
         }
+        // Explorer runs without administrator rights: its "TaskbarCreated" broadcast reaches this (elevated) window only when let through.
+        ChangeWindowMessageFilterEx(_window, WmTaskbarCreated, AllowMessage, IntPtr.Zero);
         if (!WTSRegisterSessionNotification(_window, NotifyForThisSession))
             Failed?.Invoke($"Windows refused the session notice (error {Marshal.GetLastWin32Error()}); a return from Remote Desktop is then seen through SystemEvents and the display change.");
         foreach (var setting in new[] { ConsoleDisplayState, MonitorPowerOn })
@@ -295,6 +293,9 @@ public sealed class HardwareSignals : IDisposable
                     var logoff = (lParam.ToInt64() & EndSessionLogoff) != 0;
                     TellPower(logoff ? PowerEventKind.Logoff : PowerEventKind.Shutdown, PowerChannel.Window, "WM_ENDSESSION");
                     break;
+                case var taskbar when taskbar == WmTaskbarCreated && taskbar != 0:
+                    Raise(HardwareSignal.Taskbar, "TaskbarCreated");
+                    break;
                 case WmClose:
                     DestroyWindow(hwnd);
                     _window = IntPtr.Zero;
@@ -349,4 +350,7 @@ public sealed class HardwareSignals : IDisposable
         };
         if (power is { } p) TellPower(p, PowerChannel.Window, $"WM_WTSSESSION_CHANGE {kind}");
     }
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern uint RegisterWindowMessage(string name);
+    [DllImport("user32.dll")] private static extern bool ChangeWindowMessageFilterEx(IntPtr window, uint message, uint action, IntPtr status);
 }

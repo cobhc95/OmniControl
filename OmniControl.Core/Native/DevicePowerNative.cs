@@ -1,13 +1,7 @@
-using System.ComponentModel;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Native;
 
-/// <summary>
 /// Which devices may wake the PC, from Windows' own lists: powrprof's device power list and, because that list leaves out some cards (a Realtek
 /// Wi-Fi card that powercfg shows as armed is missing from it), powercfg /devicequery itself, which only reads.
-/// </summary>
 internal static class DevicePowerNative
 {
     private const uint FilterWakeEnabled = 0x00000002, FilterWakeProgrammable = 0x00000004, MaxNames = 512;
@@ -16,16 +10,16 @@ internal static class DevicePowerNative
     [DllImport("powrprof.dll", SetLastError = true)]
     private static extern bool DevicePowerEnumDevices(uint queryIndex, uint interpretationFlags, uint queryFlags, byte[]? buffer, ref uint bufferSize);
 
-    /// <summary>The friendly names of the devices Windows lets wake the PC (device power list), or null when the question failed.</summary>
+    /// The friendly names of the devices Windows lets wake the PC (device power list), or null when the question failed.
     public static HashSet<string>? WakeEnabledNames() => Names(FilterWakeEnabled);
 
-    /// <summary>The friendly names of the devices that can be allowed to wake the PC (device power list), or null when the question failed.</summary>
+    /// The friendly names of the devices that can be allowed to wake the PC (device power list), or null when the question failed.
     public static HashSet<string>? WakeProgrammableNames() => Names(FilterWakeProgrammable);
 
-    /// <summary>The same as <see cref="WakeEnabledNames"/> from <c>powercfg /devicequery wake_armed</c>, or null when it failed or took longer than <paramref name="waitMs"/>.</summary>
+    /// The same as <see cref="WakeEnabledNames"/> from <c>powercfg /devicequery wake_armed</c>, or null when it failed or took longer than <paramref name="waitMs"/>.
     public static HashSet<string>? PowercfgWakeArmed(int waitMs) => Powercfg("wake_armed", waitMs);
 
-    /// <summary>The same as <see cref="WakeProgrammableNames"/> from <c>powercfg /devicequery wake_programmable</c>.</summary>
+    /// The same as <see cref="WakeProgrammableNames"/> from <c>powercfg /devicequery wake_programmable</c>.
     public static HashSet<string>? PowercfgWakeProgrammable(int waitMs) => Powercfg("wake_programmable", waitMs);
 
     private static HashSet<string>? Names(uint filter)

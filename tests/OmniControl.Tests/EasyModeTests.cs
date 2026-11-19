@@ -1,11 +1,8 @@
-using System.Text.Json;
-using OmniControl.App.Audio;
-using OmniControl.App.Pages.Volume.Easy;
-using OmniControl.App.Services;
+using OmniControl.App.Features.Volume.Pages.Easy;
 
 namespace OmniControl.Tests;
 
-/// <summary>The Volume page's Easy mode: which view the first start picks and how the choice is stored, the five-slider equaliser mapping, and the goal list.</summary>
+/// The Volume page's Easy mode: which view the first start picks and how the choice is stored, the five-slider equaliser mapping, and the goal list.
 public class EasyModeTests
 {
     // ---- the first start and the stored choice ----

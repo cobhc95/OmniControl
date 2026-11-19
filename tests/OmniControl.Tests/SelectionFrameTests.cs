@@ -2,16 +2,14 @@ using OmniControl.Core.Engine.Screenshot;
 
 namespace OmniControl.Tests;
 
-/// <summary>
 /// The area overlay's picture surface repaints only <see cref="SelectionFrame.Changed"/> when the selection changes. Every pixel that looks
 /// different afterwards (dim to bright, bright to dim, the old or new frame and handles) must lie inside those rectangles, or the screen
 /// keeps a stale stripe. Checked on a small model of the screen, pixel by pixel.
-/// </summary>
 public class SelectionFrameTests
 {
     private const int Size = 120, Line = 2, Handle = 7;
 
-    /// <summary>What each pixel shows for a selection: 0 dim, 1 bright, 2 frame or handle (drawn last, as the surface does).</summary>
+    /// What each pixel shows for a selection: 0 dim, 1 bright, 2 frame or handle (drawn last, as the surface does).
     private static int[,] Look(ScreenRect? selection)
     {
         var look = new int[Size, Size];

@@ -1,0 +1,41 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Features.Displays.Pages"
+             xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
+             xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+             x:Class="OmniControl.App.Features.Displays.Pages.DisplaysPage"
+             x:DataType="vm:DisplaysPageViewModel">
+    <StackPanel Spacing="6">
+        <StackPanel x:Name="CardsHost" Grid.IsSharedSizeScope="True">
+            <!-- Hardware: what each monitor itself can do. The count follows the title; the monitor presets (drop-down and cogwheel, the same header tool as the Software group's) and Refresh sit at the right end of the same line. -->
+            <pages:GroupCard Group="{Binding Hardware}">
+                <pages:GroupCard.Tools>
+                    <c:PresetPicker DataContext="{Binding MonitorPresetChoice}" />
+                    <Button Classes="pill" Tag="grouptool" Content="Refresh" Click="OnRefresh"
+                            ToolTip.Tip="Look at the monitors again and ask each what it supports (F5)" />
+                </pages:GroupCard.Tools>
+                <ItemsControl ItemsSource="{Binding Hardware.Subgroups}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="pages:ItemGroup"><pages:SubgroupPanel /></DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </pages:GroupCard>
+
+            <!-- Software: what OmniControl does to the picture itself, on any display -->
+            <pages:GroupCard Group="{Binding Software}">
+                <pages:GroupCard.Tools>
+                    <pages:GroupRestorePill DataContext="{Binding Software}" />
+                    <c:PresetPicker DataContext="{Binding PresetChoice}" />
+                </pages:GroupCard.Tools>
+                <StackPanel Spacing="4">
+                    <ListBox Classes="rows compact cards" ItemsSource="{Binding Software.Items}"></ListBox>
+                    <ItemsControl ItemsSource="{Binding Software.Subgroups}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="pages:ItemGroup"><pages:SubgroupPanel /></DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </pages:GroupCard>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

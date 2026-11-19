@@ -1,15 +1,11 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Engine;
 
-/// <summary>One block of what a <see cref="DisplayTap"/> heard: interleaved stereo floats, in the pipe's format. The callee may change it freely (it is a scratch copy).</summary>
+/// One block of what a <see cref="DisplayTap"/> heard: interleaved stereo floats, in the pipe's format. The callee may change it freely (it is a scratch copy).
 public delegate void DisplayBlock(Span<float> stereo);
 
-/// <summary>
 /// A display-only loopback of one playback device (what you hear, after Equalizer APO): records it with the effects pipe's capture and
 /// hands every block to a callback on its own thread. It plays nothing and routes nothing anywhere; the callback must only draw from
 /// the sound (a meter, an analyser) and throw it away. Stop it with <see cref="Dispose"/>, which ends the thread and releases the capture.
-/// </summary>
 public sealed class DisplayTap : IDisposable
 {
     private readonly PipeCapture _capture;
@@ -17,7 +13,7 @@ public sealed class DisplayTap : IDisposable
     private readonly Thread _thread;
     private volatile bool _stopped;
 
-    /// <summary>Raised on the tap's thread when it stopped with an error (the device went away); the sound is no longer heard.</summary>
+    /// Raised on the tap's thread when it stopped with an error (the device went away); the sound is no longer heard.
     public event Action<string>? Failed;
 
     private DisplayTap(PipeCapture capture, DisplayBlock onBlock)
@@ -29,7 +25,7 @@ public sealed class DisplayTap : IDisposable
         _thread.Start();
     }
 
-    /// <summary>Starts hearing <paramref name="playbackDeviceId"/>. Throws (COM or invalid operation) when Windows refuses to record it.</summary>
+    /// Starts hearing <paramref name="playbackDeviceId"/>. Throws (COM or invalid operation) when Windows refuses to record it.
     public static async Task<DisplayTap> StartAsync(string playbackDeviceId, DisplayBlock onBlock)
     {
         var capture = await PipeCapture.StartAsync(PipeSource.Playback(playbackDeviceId)).ConfigureAwait(false);

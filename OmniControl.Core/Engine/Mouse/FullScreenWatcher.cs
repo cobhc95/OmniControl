@@ -1,11 +1,7 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Engine.Mouse;
 
-/// <summary>
 /// Keeps the answer to "is a full-screen app (a game, a video) in front?" ready, so the mouse hook only reads a flag. While enabled a worker
 /// asks Windows every <see cref="CoreTiming.FullScreenWatchMs"/>; stopped, or when Windows can't say, the answer is no (fail open).
-/// </summary>
 public sealed class FullScreenWatcher
 {
     // SHQueryUserNotificationState: 2 = a full-screen app that is not a Direct3D one, 3 = a full-screen Direct3D app (most games).
@@ -18,10 +14,13 @@ public sealed class FullScreenWatcher
     private bool _enabled;
     private Thread? _worker;
 
-    /// <summary>True while a full-screen app is in front and the watcher is enabled. Cheap: reads a flag.</summary>
+    /// True while a full-screen app is in front and the watcher is enabled. Cheap: reads a flag.
     public bool IsActive => _active;
 
-    /// <summary>Starts or stops the worker; stopped, the answer is no.</summary>
+    /// Asks Windows once whether a full-screen app is in front (false when it can't say).
+    public static bool AppInFront() => SHQueryUserNotificationState(out var state) == 0 && state is Busy or RunningD3DFullScreen;
+
+    /// Starts or stops the worker; stopped, the answer is no.
     public void SetEnabled(bool on)
     {
         lock (_gate)
@@ -41,7 +40,7 @@ public sealed class FullScreenWatcher
     {
         while (Enabled)
         {
-            _active = SHQueryUserNotificationState(out var state) == 0 && state is Busy or RunningD3DFullScreen;
+            _active = AppInFront();
             Thread.Sleep(CoreTiming.FullScreenWatchMs);
         }
     }

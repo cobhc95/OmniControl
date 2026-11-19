@@ -1,0 +1,14 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
+             xmlns:vm="using:OmniControl.App.Features.Volume.Pages"
+             x:Class="OmniControl.App.Features.Volume.Pages.VolumeSlider"
+             x:DataType="vm:VolumeRow" VerticalAlignment="Center">
+    <!-- A row's level: the slider (double-click resets to full) and its value, which can be typed in -->
+    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6" VerticalAlignment="Center">
+        <Slider Minimum="0" Maximum="100" Value="{Binding Volume}" pages:SliderReset.Value="100" ToolTip.Tip="{Binding VolumeTip}" />
+        <pages:NumberText Grid.Column="1" Classes="plain" Value="{Binding Volume}" Minimum="0" Maximum="100" VerticalAlignment="Center">
+            <TextBlock Text="{Binding Volume}" Classes="slidervalue" MinWidth="24" />
+        </pages:NumberText>
+    </Grid>
+</UserControl>

@@ -1,17 +1,15 @@
 namespace OmniControl.Core.Engine.Screenshot;
 
-/// <summary>
 /// The pure geometry of the area overlay's selection, in the picture's pixels: the frame's line, its eight handles, and what must be
 /// painted again when the selection changes. Only the strips that turn bright or dim and the old and new frame are repainted, so a
 /// moved or resized selection costs a few thin strips, not the monitor (as Lightshot does it).
-/// </summary>
 public static class SelectionFrame
 {
-    /// <summary>Where the eight handles sit, as fractions of the selection's width and height.</summary>
+    /// Where the eight handles sit, as fractions of the selection's width and height.
     private static readonly (double X, double Y)[] HandleSpots =
         { (0, 0), (0.5, 0), (1, 0), (1, 0.5), (1, 1), (0.5, 1), (0, 1), (0, 0.5) };
 
-    /// <summary>The frame's line: four bars <paramref name="thickness"/> pixels wide astride the selection's edge (a 1 px line just outside it).</summary>
+    /// The frame's line: four bars <paramref name="thickness"/> pixels wide astride the selection's edge (a 1 px line just outside it).
     public static IEnumerable<ScreenRect> Line(ScreenRect selection, int thickness)
     {
         var outer = Inflate(selection, (thickness + 1) / 2);
@@ -22,7 +20,7 @@ public static class SelectionFrame
         yield return new ScreenRect(outer.Right - thickness, outer.Y + thickness, thickness, side);
     }
 
-    /// <summary>The eight square handles of <paramref name="size"/> pixels, centred on the corners and the middle of each side.</summary>
+    /// The eight square handles of <paramref name="size"/> pixels, centred on the corners and the middle of each side.
     public static IEnumerable<ScreenRect> Handles(ScreenRect selection, int size)
     {
         foreach (var (fx, fy) in HandleSpots)
@@ -33,10 +31,8 @@ public static class SelectionFrame
         }
     }
 
-    /// <summary>
     /// What looks different after the selection changed from <paramref name="before"/> to <paramref name="after"/> (null = none): the
     /// parts that turned bright or dim, and a strip along each side of both frames that holds the line and the handles.
-    /// </summary>
     public static List<ScreenRect> Changed(ScreenRect? before, ScreenRect? after, int thickness, int handleSize)
     {
         var changed = new List<ScreenRect>();
@@ -53,7 +49,7 @@ public static class SelectionFrame
         return changed;
     }
 
-    /// <summary>The parts of <paramref name="a"/> outside <paramref name="b"/>: at most four rectangles.</summary>
+    /// The parts of <paramref name="a"/> outside <paramref name="b"/>: at most four rectangles.
     public static IEnumerable<ScreenRect> Subtract(ScreenRect a, ScreenRect b)
     {
         var inside = a.Intersect(b);
@@ -73,7 +69,7 @@ public static class SelectionFrame
             if (!part.IsEmpty) yield return part;
     }
 
-    /// <summary>A strip <paramref name="reach"/> pixels to each side of every edge of the selection.</summary>
+    /// A strip <paramref name="reach"/> pixels to each side of every edge of the selection.
     private static IEnumerable<ScreenRect> Edges(ScreenRect s, int reach)
     {
         var across = 2 * reach;

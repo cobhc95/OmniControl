@@ -1,15 +1,15 @@
 namespace OmniControl.Core.Engine.Trackpad;
 
-/// <summary>What OmniControl has done with one of Windows' own touchpad gestures.</summary>
+/// What OmniControl has done with one of Windows' own touchpad gestures.
 public enum TakeoverState
 {
-    /// <summary>Left as Windows has it.</summary>
+    /// Left as Windows has it.
     None,
 
-    /// <summary>OmniControl turned it off and will give it back.</summary>
+    /// OmniControl turned it off and will give it back.
     TurnedOff,
 
-    /// <summary>OmniControl wanted it off but could not; <see cref="TakeoverStatus.Problem"/> says why.</summary>
+    /// OmniControl wanted it off but could not; <see cref="TakeoverStatus.Problem"/> says why.
     Failed,
 }
 
@@ -19,7 +19,6 @@ public sealed record TakeoverStatus(TakeoverState State, string? Problem = null)
     public static readonly TakeoverStatus Untouched = new(TakeoverState.None);
 }
 
-/// <summary>
 /// Turns Windows' own touchpad gestures off while an OmniControl action uses the same gesture, and gives them back. Raw input only
 /// copies the touchpad's reports, so Windows' own action (search on a three-finger tap, task view on a swipe...) cannot be blocked
 /// any other way. Each setting's value from before OmniControl changed it is kept through <c>save</c> (one entry per setting, written
@@ -30,7 +29,6 @@ public sealed record TakeoverStatus(TakeoverState State, string? Problem = null)
 /// Windows still acts on its old one the gesture is <see cref="TakeoverState.Failed"/> with the reason, the original stays kept, and
 /// every later <see cref="Update"/> and <see cref="Check"/> tells Windows again. Thread-safe: <see cref="StatusOf"/> and
 /// <see cref="AnyTurnedOff"/> never wait; every other call touches Windows, so callers keep those off the UI thread.
-/// </summary>
 public sealed class GestureTakeover
 {
     private readonly ITouchpadSettingsStore _store;
@@ -62,19 +60,17 @@ public sealed class GestureTakeover
         Publish();
     }
 
-    /// <summary>Gets one line per write to Windows (with the value read back) and per change of a gesture's state (for the trackpad log).</summary>
+    /// Gets one line per write to Windows (with the value read back) and per change of a gesture's state (for the trackpad log).
     public Action<string>? Log { get; init; }
 
-    /// <summary>What OmniControl has done with this Windows gesture.</summary>
+    /// What OmniControl has done with this Windows gesture.
     public TakeoverStatus StatusOf(WindowsGesture gesture) => _published.GetValueOrDefault(gesture, TakeoverStatus.Untouched);
 
-    /// <summary>True while OmniControl keeps at least one Windows gesture off.</summary>
+    /// True while OmniControl keeps at least one Windows gesture off.
     public bool AnyTurnedOff => _anyTurnedOff;
 
-    /// <summary>
     /// Makes Windows match <paramref name="wanted"/> (the Windows gestures OmniControl's actions replace now): each one that is on is turned
     /// off, each one OmniControl turned off that is no longer wanted is given back. True when any status changed.
-    /// </summary>
     public bool Update(IReadOnlySet<WindowsGesture> wanted)
     {
         lock (_gate)
@@ -86,15 +82,13 @@ public sealed class GestureTakeover
         }
     }
 
-    /// <summary>Gives back every gesture OmniControl turned off (remapping switched off, exit).</summary>
+    /// Gives back every gesture OmniControl turned off (remapping switched off, exit).
     public bool RestoreAll() => Update(new HashSet<WindowsGesture>());
 
-    /// <summary>
     /// Turns off again any gesture OmniControl keeps off that something turned back on (the user in Settings, a driver, Windows itself),
     /// and tells Windows again when it still acts on its old value although the stored one is off (the shell's own copy), every time,
     /// but at most once per <see cref="CoreTiming.TrackpadTakeoverReapplyGapMs"/> each (the next look catches it then). Cheap when
     /// nothing changed: a few reads, no write. True when any status changed.
-    /// </summary>
     public bool Check()
     {
         lock (_gate)
@@ -118,7 +112,7 @@ public sealed class GestureTakeover
         }
     }
 
-    /// <summary>The stored value is off: when Windows still acts on its old one, it is told again (rate-limited like a re-apply).</summary>
+    /// The stored value is off: when Windows still acts on its old one, it is told again (rate-limited like a re-apply).
     private bool CheckInEffect(WindowsGestureSetting setting)
     {
         var gesture = setting.Gesture;
@@ -178,7 +172,7 @@ public sealed class GestureTakeover
         return SetStatus(gesture, TakeoverStatus.Untouched);
     }
 
-    /// <summary>What one write did: whether the value is stored, what reads back, what Windows acts on afterwards, and why it fell short.</summary>
+    /// What one write did: whether the value is stored, what reads back, what Windows acts on afterwards, and why it fell short.
     private sealed record WriteResult(bool Stored, int? ReadBack, int? InEffect, string? Problem)
     {
         public override string ToString() =>
@@ -186,10 +180,8 @@ public sealed class GestureTakeover
             : $"reads back {Show(ReadBack)}, Windows acts on {Show(InEffect)}{(Problem is null ? "" : $" ({Problem})")}";
     }
 
-    /// <summary>
     /// Writes <paramref name="value"/>, reads it back (a value Windows did not keep is refused), tells Windows to act on it and reads what
     /// Windows acts on (still the old one = a problem, though the value stays stored).
-    /// </summary>
     private WriteResult WriteAndReadBack(WindowsGestureSetting setting, int? value)
     {
         if (_store.Write(setting, value) is { } problem) return new WriteResult(false, null, null, problem);
@@ -200,11 +192,9 @@ public sealed class GestureTakeover
         return new WriteResult(true, readBack, used, setting.IsOn(used) == setting.IsOn(value) ? null : StillActs(setting, used));
     }
 
-    /// <summary>
     /// Makes Windows act on the stored <paramref name="stored"/>: when what it acts on differs, it is told to read the setting again and
     /// asked once more. Null when Windows acts on the stored value, or one plain sentence. <paramref name="logIt"/> false = the log already
     /// had its lines for this gesture this minute.
-    /// </summary>
     private string? EnsureInEffect(WindowsGestureSetting setting, int? stored, bool logIt = true)
     {
         if (_store.ReadInEffect(setting, out var used) is { } problem) return problem;
@@ -225,7 +215,7 @@ public sealed class GestureTakeover
     private static TakeoverStatus StatusAfter(string? problem) =>
         problem is null ? new TakeoverStatus(TakeoverState.TurnedOff) : new TakeoverStatus(TakeoverState.Failed, problem);
 
-    /// <summary>The status after a write to "off": refused = nothing changed (the original is forgotten); stored = OmniControl's, with any problem.</summary>
+    /// The status after a write to "off": refused = nothing changed (the original is forgotten); stored = OmniControl's, with any problem.
     private bool Settle(WindowsGesture gesture, WriteResult result) =>
         result.Stored ? SetStatus(gesture, StatusAfter(result.Problem)) : Fail(gesture, result.Problem!);
 
@@ -241,7 +231,7 @@ public sealed class GestureTakeover
         if (_originals.Remove(gesture)) Persist();
     }
 
-    /// <summary>True when this gesture may be turned off again now; <paramref name="logIt"/> says whether the log still takes a line for it.</summary>
+    /// True when this gesture may be turned off again now; <paramref name="logIt"/> says whether the log still takes a line for it.
     private bool MayReapply(WindowsGesture gesture, out bool logIt)
     {
         var now = _now();
@@ -266,7 +256,7 @@ public sealed class GestureTakeover
 
     private static string Describe(WindowsGestureSetting setting) => $"Windows' {setting.Name} ({setting.RegistryValue})";
 
-    /// <summary>A raw value for the log: the number, or "missing" (Windows' default applies).</summary>
+    /// A raw value for the log: the number, or "missing" (Windows' default applies).
     public static string Show(int? value) => value?.ToString() ?? "missing";
 
     private void Publish()

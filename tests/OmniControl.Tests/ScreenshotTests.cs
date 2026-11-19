@@ -1,12 +1,10 @@
-using OmniControl.App.Screenshot;
+using OmniControl.App.Features.Screenshot;
 using OmniControl.Core.Engine.Screenshot;
 
 namespace OmniControl.Tests;
 
-/// <summary>
 /// The screenshot feature's pure parts: the file name pattern, the formats and their encoding, the selection maths and bar placement, the
 /// undo list, the blur's pixelation, the print fit, the settings switch and which QR texts may be opened. Nothing is captured or shown.
-/// </summary>
 public class ScreenshotTests
 {
     private static readonly DateTime At = new(2026, 11, 16, 9, 5, 7);

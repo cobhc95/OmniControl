@@ -1,11 +1,7 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Native;
 
-/// <summary>
 /// user32 calls for OmniControl's own plain Win32 windows: the window class and the window, painting, the pointer's capture and shape.
 /// Used by the touchpad watcher's message-only window and the screenshot overlay's picture surface.
-/// </summary>
 internal static class WindowNative
 {
     public delegate IntPtr WndProc(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam);

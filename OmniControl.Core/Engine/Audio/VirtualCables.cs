@@ -1,43 +1,37 @@
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// A virtual audio cable: whatever is played into its playback side comes out of its recording side.
-/// </summary>
 /// <param name="Name">Its short name as Windows shows it without the side ("CABLE", "CABLE-A", "Hi-Fi Cable", "Line 1").</param>
 /// <param name="PlaybackId">Endpoint id of its playback side ("CABLE Input"): what is sent to the cable.</param>
 /// <param name="RecordingId">Endpoint id of its recording side ("CABLE Output"), or null when Windows shows none (disabled).</param>
 /// <param name="RecordingName">The recording side's name, the one apps list as a microphone.</param>
 public sealed record VirtualCable(string Name, string PlaybackId, string? RecordingId, string? RecordingName)
 {
-    /// <summary>
     /// The recording side this playback side's sound comes out of: its own, or, for an extra input of a driver that has only one
     /// recording side (VB-CABLE's "CABLE In 16ch" next to "CABLE Input"), that driver's one recording side. Inputs with the same pair
     /// are one cable pair: sound sent to any of them reaches the same recording side. Null = no recording side known.
-    /// </summary>
     public string? PairId { get; init; }
 }
 
-/// <summary>One cable pair: its recording side and every playback side whose sound comes out there (see <see cref="VirtualCable.PairId"/>).</summary>
+/// One cable pair: its recording side and every playback side whose sound comes out there (see <see cref="VirtualCable.PairId"/>).
 public sealed record CablePair(string? RecordingId, IReadOnlyList<string> PlaybackIds);
 
-/// <summary>What a virtual device is: a passive cable OmniControl can route through, or a virtual device of another kind it only lists.</summary>
+/// What a virtual device is: a passive cable OmniControl can route through, or a virtual device of another kind it only lists.
 public enum CableKind
 {
-    /// <summary>A passive cable: what is played into it comes out unchanged (VB-CABLE, Virtual Audio Cable).</summary>
+    /// A passive cable: what is played into it comes out unchanged (VB-CABLE, Virtual Audio Cable).
     Cable,
-    /// <summary>A virtual mixer's inputs and outputs (Voicemeeter): sound sent there goes into that mixer, it does not simply come back out.</summary>
+    /// A virtual mixer's inputs and outputs (Voicemeeter): sound sent there goes into that mixer, it does not simply come back out.
     Mixer,
-    /// <summary>A voice changer's device (Voicemod): its microphone gives the changed voice, not what was played.</summary>
+    /// A voice changer's device (Voicemod): its microphone gives the changed voice, not what was played.
     VoiceChanger,
 }
 
-/// <summary>Which ends of a virtual device Windows shows now.</summary>
+/// Which ends of a virtual device Windows shows now.
 public enum CableEnds { Both, InputOnly, OutputOnly, Missing }
 
-/// <summary>
 /// A cable pair marked by the user: a playback device and a recording device that OmniControl does not recognise but that the user
 /// says carry the same sound. Stored in the mixer settings; its <see cref="RecordingId"/> is its id, as for a recognised pair.
-/// </summary>
 public sealed class CableMark
 {
     public string Name { get; set; } = string.Empty;
@@ -45,16 +39,14 @@ public sealed class CableMark
     public string RecordingId { get; set; } = string.Empty;
 }
 
-/// <summary>
 /// One virtual device as the Wiring tab lists it: a recognised or user-marked cable pair (with every input of the pair), a cable end
 /// with no other end, or a virtual device of another kind. Only a <see cref="IsPair"/> can be used.
-/// </summary>
 /// <param name="Id">Stable id for the settings: the recording side its sound comes out of (a pair), else an endpoint or driver id.</param>
 /// <param name="Maker">Who makes it ("VB-Audio", "Eugene Muzychenko"), or empty for one the user marked.</param>
 /// <param name="Inputs">The pair's playback sides (the usable cables); empty unless <see cref="IsPair"/>.</param>
 public sealed record FoundCable(string Id, string Name, string Maker, CableKind Kind, CableEnds Ends, IReadOnlyList<VirtualCable> Inputs, bool Marked)
 {
-    /// <summary>A whole cable pair: both ends of a passive cable, the only kind OmniControl routes through.</summary>
+    /// A whole cable pair: both ends of a passive cable, the only kind OmniControl routes through.
     public bool IsPair => Kind == CableKind.Cable && Ends == CableEnds.Both;
 
     public bool Equals(FoundCable? other) =>
@@ -64,16 +56,15 @@ public sealed record FoundCable(string Id, string Name, string Maker, CableKind 
     public override int GetHashCode() => HashCode.Combine(Id, Name, Kind, Ends, Inputs.Count);
 }
 
-/// <summary>Finds the virtual cables among the devices Windows has (reads only).</summary>
+/// Finds the virtual cables among the devices Windows has (reads only).
 public static class VirtualCables
 {
-    /// <summary>A known maker's driver: the words in brackets after its devices' names, who makes it and what it is.</summary>
+    /// A known maker's driver: the words in brackets after its devices' names, who makes it and what it is.
     private sealed record Driver(string Match, string Maker, CableKind Kind);
 
-    /// <summary>
     /// The one list of known virtual devices: a device whose name contains <see cref="Driver.Match"/> (case ignored) is that driver's.
     /// Unknown devices are never guessed (the user can mark a pair by hand, <see cref="CableMark"/>). Device names as Windows shows them
-    /// (VB-Audio's pages and forum, Muzychenko's VAC manual "Endpoint names", user reports of Voicemod; checked 14 Nov 2026):
+    /// (VB-Audio's pages and forum, Muzychenko's VAC manual "Endpoint names", user reports of Voicemod):
     /// <list type="bullet">
     /// <item>VB-CABLE: "CABLE Input (VB-Audio Virtual Cable)", "CABLE In 16ch (VB-Audio Virtual Cable)", "CABLE Output (VB-Audio Virtual Cable)".</item>
     /// <item>VB-CABLE A+B, C+D: "CABLE-A Input (VB-Audio Cable A)", "CABLE-A Output (VB-Audio Cable A)" (B, C, D alike).</item>
@@ -84,7 +75,6 @@ public static class VirtualCables
     /// <item>Voicemod: "Microphone (Voicemod Virtual Audio Device (WDM))"; a voice changer, not a cable.</item>
     /// </list>
     /// Order matters: the first match wins ("VB-Audio Cable" is VB-CABLE A to D, never "VB-Audio Virtual Cable").
-    /// </summary>
     private static readonly Driver[] Drivers =
     {
         new("VB-Audio Virtual Cable", "VB-Audio", CableKind.Cable),
@@ -99,28 +89,24 @@ public static class VirtualCables
 
     private static Driver? DriverFor(string deviceName) => Drivers.FirstOrDefault(d => deviceName.Contains(d.Match, StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>The device is one end of a known passive cable (never a real speaker or microphone, never a virtual mixer).</summary>
+    /// The device is one end of a known passive cable (never a real speaker or microphone, never a virtual mixer).
     public static bool IsCable(string deviceName) => DriverFor(deviceName)?.Kind == CableKind.Cable;
 
-    /// <summary>The usable cables of every recognised pair, nothing forbidden, none marked (what a PC offers with no user choices).</summary>
+    /// The usable cables of every recognised pair, nothing forbidden, none marked (what a PC offers with no user choices).
     public static IReadOnlyList<VirtualCable> Find(IEnumerable<AudioDevice> playback, IReadOnlyList<AudioDevice> recording) =>
         Usable(Scan(playback.ToList(), recording, Array.Empty<CableMark>()), new HashSet<string>());
 
-    /// <summary>
     /// The cables OmniControl may give out: every input of each whole pair (<see cref="FoundCable.IsPair"/>) the user has not switched
     /// off, in name order (the master bus takes the first free one).
-    /// </summary>
     public static IReadOnlyList<VirtualCable> Usable(IReadOnlyList<FoundCable> found, IReadOnlySet<string> forbidden) =>
         found.Where(f => f.IsPair && !forbidden.Contains(f.Id))
             .SelectMany(f => f.Inputs)
             .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-    /// <summary>
     /// Every virtual device among <paramref name="playback"/> and <paramref name="recording"/>: the recognised cable pairs (a playback
     /// side and the recording side of the same driver that carries its sound; extra inputs join their pair), the user's marked pairs,
     /// cable ends with no other end, and virtual devices of other kinds, one entry each.
-    /// </summary>
     public static IReadOnlyList<FoundCable> Scan(IReadOnlyList<AudioDevice> playback, IReadOnlyList<AudioDevice> recording, IReadOnlyList<CableMark> marks)
     {
         var found = new List<FoundCable>();
@@ -140,7 +126,7 @@ public static class VirtualCables
         return found.OrderBy(f => f.Kind).ThenBy(f => f.Ends).ThenBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
-    /// <summary>Every passive cable input among <paramref name="playback"/>, paired with its recording side by name.</summary>
+    /// Every passive cable input among <paramref name="playback"/>, paired with its recording side by name.
     private static List<VirtualCable> CablesOf(IReadOnlyList<AudioDevice> playback, IReadOnlyList<AudioDevice> recording) =>
         playback.Where(d => IsCable(d.Name))
             .Select(d =>
@@ -153,7 +139,7 @@ public static class VirtualCables
             .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-    /// <summary>The user's marked pairs; a mark whose devices a recognised cable already has is left out (it is that cable).</summary>
+    /// The user's marked pairs; a mark whose devices a recognised cable already has is left out (it is that cable).
     private static IEnumerable<FoundCable> Marked(IReadOnlyList<AudioDevice> playback, IReadOnlyList<AudioDevice> recording,
         IReadOnlyList<CableMark> marks, IReadOnlyList<FoundCable> recognised)
     {
@@ -176,7 +162,7 @@ public static class VirtualCables
         }
     }
 
-    /// <summary>Virtual devices that are not cables (Voicemeeter, Voicemod): one entry per driver, never used.</summary>
+    /// Virtual devices that are not cables (Voicemeeter, Voicemod): one entry per driver, never used.
     private static IEnumerable<FoundCable> OtherKinds(IReadOnlyList<AudioDevice> playback, IReadOnlyList<AudioDevice> recording)
     {
         var devices = playback.Select(d => (d, Playback: true)).Concat(recording.Select(d => (d, Playback: false)))
@@ -191,16 +177,14 @@ public static class VirtualCables
         }
     }
 
-    /// <summary>The cable pairs of <paramref name="cables"/>, in the cables' order (a cable with no known recording side is a pair of its own).</summary>
+    /// The cable pairs of <paramref name="cables"/>, in the cables' order (a cable with no known recording side is a pair of its own).
     public static IReadOnlyList<CablePair> Pairs(IReadOnlyList<VirtualCable> cables) =>
         cables.GroupBy(c => c.PairId ?? c.PlaybackId)
             .Select(g => new CablePair(g.First().PairId, g.Select(c => c.PlaybackId).ToList()))
             .ToList();
 
-    /// <summary>
     /// The one recording side of the driver named in brackets after <paramref name="playbackName"/> ("(VB-Audio Virtual Cable)"), when
     /// that driver has exactly one; null otherwise (several lines, each its own pair, or none).
-    /// </summary>
     private static string? OnlyRecordingOf(string playbackName, IReadOnlyList<AudioDevice> recording)
     {
         if (DriverOf(playbackName) is not { } driver) return null;
@@ -210,14 +194,14 @@ public static class VirtualCables
 
     private static string DeviceName(IReadOnlyList<AudioDevice> devices, string id) => devices.First(d => d.Id == id).Name;
 
-    /// <summary>"CABLE In 16ch (VB-Audio Virtual Cable)" -> "(VB-Audio Virtual Cable)"; null without brackets.</summary>
+    /// "CABLE In 16ch (VB-Audio Virtual Cable)" -> "(VB-Audio Virtual Cable)"; null without brackets.
     private static string? DriverOf(string deviceName)
     {
         var at = deviceName.IndexOf(" (", StringComparison.Ordinal);
         return at > 0 ? deviceName[(at + 1)..] : null;
     }
 
-    /// <summary>"CABLE-A Input (VB-Audio Cable A)" -> "CABLE-A" (with <paramref name="side"/> " Input").</summary>
+    /// "CABLE-A Input (VB-Audio Cable A)" -> "CABLE-A" (with <paramref name="side"/> " Input").
     private static string ShortName(string deviceName, string side)
     {
         var at = deviceName.IndexOf(" (", StringComparison.Ordinal);

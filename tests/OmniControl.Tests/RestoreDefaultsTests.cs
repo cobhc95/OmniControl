@@ -1,19 +1,15 @@
-using OmniControl.App.AppLists;
-using System.Text.Json;
-using OmniControl.App.Display;
-using OmniControl.App.Gestures;
-using OmniControl.App.Hotkeys;
-using OmniControl.App.Mouse;
-using OmniControl.App.Osd;
-using OmniControl.App.Pages.Gestures;
-using OmniControl.App.Pages.Restore;
-using OmniControl.App.Rules;
-using OmniControl.App.Services;
+using OmniControl.App.Features.AppLists;
+using OmniControl.App.Features.Displays;
+using OmniControl.App.Features.Input.Gestures;
+using OmniControl.App.Features.Input.Mouse;
+using OmniControl.App.Features.Osd;
+using OmniControl.App.Shared.Ui.Restore;
+using OmniControl.App.Features.Input.Rules;
 using OmniControl.Core.Engine.Pointer;
 
 namespace OmniControl.Tests;
 
-/// <summary>"Restore defaults" on every page and "Restore all": what counts as the defaults, the copy taken first, the question, the undo, and the greyed reasons. Fakes only: no file, no Windows setting.</summary>
+/// "Restore defaults" on every page and "Restore all": what counts as the defaults, the copy taken first, the question, the undo, and the greyed reasons. Fakes only: no file, no Windows setting.
 public class RestoreDefaultsTests
 {
     private sealed class FakeStore : ISnapshotStore
@@ -23,7 +19,7 @@ public class RestoreDefaultsTests
         public Dictionary<string, string>? Load(string key) => Files.GetValueOrDefault(key);
     }
 
-    /// <summary>A page whose whole state is one number; 0 is the default. Notes how many files were saved at its first change.</summary>
+    /// A page whose whole state is one number; 0 is the default. Notes how many files were saved at its first change.
     private sealed class Counter : IRestorable
     {
         private readonly FakeStore? _store;
@@ -232,18 +228,18 @@ public class RestoreDefaultsTests
         Assert.Equal("x", second.Blocked);
     }
 
-    // ---- Gestures: custom rules are deleted only after the stronger line ----
+    // ---- Mouse and Trackpad's gestures: custom rules are deleted only after the stronger line ----
 
     [Fact]
     public void Deleting_custom_rules_adds_a_stronger_line_and_a_stronger_button()
     {
-        Assert.Null(GestureRestoreState.WarningOf(0));
-        Assert.Equal("Deletes your custom rule", GestureRestoreState.WarningOf(1));
-        Assert.Equal("Deletes your 3 custom rules", GestureRestoreState.WarningOf(3));
+        Assert.Null(MouseRestoreState.WarningOf(0));
+        Assert.Equal("Deletes your custom rule", MouseRestoreState.WarningOf(1));
+        Assert.Equal("Deletes your 3 custom rules", MouseRestoreState.WarningOf(3));
 
         var log = new List<string>();
         var plain = new Counter("gestures", 1, log);
-        var strong = new Counter("gestures", 1, log) { Alert = GestureRestoreState.WarningOf(2) };
+        var strong = new Counter("gestures", 1, log) { Alert = MouseRestoreState.WarningOf(2) };
         var calm = RestoreWords.Ask(plain);
         var stern = RestoreWords.Ask(strong);
         Assert.Equal("Restore", calm.Button);
@@ -256,19 +252,19 @@ public class RestoreDefaultsTests
     [Fact]
     public void Gestures_are_at_their_defaults_when_every_rule_is_at_its_default_with_its_default_action_and_no_rules_exist()
     {
-        var current = GestureRestoreState.Defaults();
-        Assert.True(GestureRestoreState.Same(current, GestureRestoreState.Defaults()));
+        var current = new MouseRestoreState { Mouse = MouseSettings.Defaults() };
+        Assert.True(MouseRestoreState.Same(current, MouseRestoreState.DefaultsOf(current, null)));
 
         var trigger = GestureCatalog.Triggers[0];
         current.Gestures.RuleFor(trigger); // created lazily by the page: still the defaults
-        Assert.True(GestureRestoreState.Same(current, GestureRestoreState.Defaults()));
+        Assert.True(MouseRestoreState.Same(current, MouseRestoreState.DefaultsOf(current, null)));
 
         current.Gestures.RuleFor(trigger).On = !trigger.DefaultOn;
-        Assert.False(GestureRestoreState.Same(current, GestureRestoreState.Defaults()));
+        Assert.False(MouseRestoreState.Same(current, MouseRestoreState.DefaultsOf(current, null)));
 
-        var withRule = GestureRestoreState.Defaults();
+        var withRule = new MouseRestoreState { Mouse = MouseSettings.Defaults() };
         withRule.Rules.Rules.Add(new Rule { Name = "mine" });
-        Assert.False(GestureRestoreState.Same(withRule, GestureRestoreState.Defaults()));
+        Assert.False(MouseRestoreState.Same(withRule, MouseRestoreState.DefaultsOf(withRule, null)));
     }
 
     [Fact]
@@ -320,14 +316,14 @@ public class RestoreDefaultsTests
     public void Mouse_copy_covers_every_stored_setting()
     {
         var writable = typeof(MouseSettings).GetProperties().Where(p => p.CanWrite && p.GetMethod!.IsPublic).Select(p => p.Name).ToList();
-        Assert.Equal(14, writable.Count); // a new stored setting must be added to CopyFrom (and to this list)
+        Assert.Equal(15, writable.Count); // a new stored setting must be added to CopyFrom (and to this list)
 
         var source = new MouseSettings
         {
             OnlyUsedLayers = false, BlockAutoscroll = false, TrackpadOnlyUsedLayers = false, TrackpadNamesIndependent = true,
             Bindings = { ["2.Back"] = "Copy" }, ExtraActions = { ["2.Back"] = new List<string> { "Paste" } },
             LayerNames = { [2] = "Games" }, TrackpadLayerNames = new() { [3] = "Pad" },
-            ButtonsScope = new(ScopeMode.Only, "list1"), CardScopes = { ["Back"] = new(ScopeMode.Except, "list2") },
+            ButtonsScope = new(ScopeMode.Only, "list1"), TrackpadScope = new(ScopeMode.Except, "list4"), CardScopes = { ["Back"] = new(ScopeMode.Except, "list2") },
             PauseInFullScreen = true, NeverActIn = new(ScopeMode.Only, "list3"), RunAsAdministrator = true,
         };
         var target = MouseSettings.Defaults();
@@ -379,11 +375,11 @@ public class RestoreDefaultsTests
     // ---- App settings ----
 
     [Fact]
-    public void App_settings_defaults_are_theme_system_accent_orange_and_the_rest_off()
+    public void App_settings_defaults_are_theme_system_accent_windows_and_the_rest_off()
     {
         var defaults = AppRestoreState.Defaults();
         Assert.Equal(ThemeChoice.System, defaults.Theme);
-        Assert.Equal("Orange", defaults.Accent);
+        Assert.Equal(AccentService.WindowsName, defaults.Accent);
         Assert.False(defaults.StartWithWindows);
         Assert.False(defaults.StartMinimised);
         Assert.Equal(CloseBehavior.Ask, defaults.CloseBehavior);

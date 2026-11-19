@@ -1,18 +1,15 @@
-using System.Runtime.InteropServices;
 using static OmniControl.Core.Native.ScreenshotNative;
 using static OmniControl.Core.Native.VideoNative;
 
 namespace OmniControl.Core.Engine.Screenshot;
 
-/// <summary>How the pointer shows in a recording: the pointer itself, and a soft circle around it while a mouse button is down.</summary>
+/// How the pointer shows in a recording: the pointer itself, and a soft circle around it while a mouse button is down.
 public sealed record PointerLook(bool ShowCursor, bool HighlightClicks, uint HighlightRgb, int HighlightRadius, double HighlightOpacity);
 
-/// <summary>
 /// Draws the pointer, as set, into a recording's frame through a GDI device context, so the same drawing serves the GDI copy
 /// (<see cref="FrameGrabber"/>) and the graphics-card copy (<see cref="DesktopDuplication"/>, through a GDI-compatible texture): the click
 /// circle (a premultiplied picture made once and blended with AlphaBlend) while a button is down, then the pointer with DrawIconEx. The
 /// pointer's hotspot is asked once per shape. Holds a small bitmap for the circle, released on <see cref="Dispose"/>.
-/// </summary>
 internal sealed unsafe class PointerPainter : IDisposable
 {
     private readonly PointerLook _look;
@@ -41,10 +38,10 @@ internal sealed unsafe class PointerPainter : IDisposable
         }
     }
 
-    /// <summary>True when anything is drawn at all (otherwise the frame is used as copied).</summary>
+    /// True when anything is drawn at all (otherwise the frame is used as copied).
     public bool Draws => _look.ShowCursor || _look.HighlightClicks;
 
-    /// <summary>Draws the pointer into <paramref name="hdc"/>, whose top-left corner is the screen point (area.X, area.Y).</summary>
+    /// Draws the pointer into <paramref name="hdc"/>, whose top-left corner is the screen point (area.X, area.Y).
     public void Paint(IntPtr hdc, ScreenRect area)
     {
         var info = new CursorInfo { Size = Marshal.SizeOf<CursorInfo>() };
@@ -63,10 +60,8 @@ internal sealed unsafe class PointerPainter : IDisposable
         GdiFlush();
     }
 
-    /// <summary>
     /// The click circle as a premultiplied BGRA picture of side 2 x radius + 1: inside, the colour (0xRRGGBB) and alpha at the opacity;
     /// outside, nothing. Blended over a frame this gives frame x (1 - opacity) + colour x opacity inside the circle.
-    /// </summary>
     internal static void Circle(Span<byte> pixels, int radius, uint rgb, double opacity)
     {
         byte r = (byte)(rgb >> 16), g = (byte)(rgb >> 8), b = (byte)rgb;
@@ -86,7 +81,7 @@ internal sealed unsafe class PointerPainter : IDisposable
         }
     }
 
-    /// <summary>Where the pointer's tip is inside its picture (the two bitmaps Windows hands back are released).</summary>
+    /// Where the pointer's tip is inside its picture (the two bitmaps Windows hands back are released).
     private void ReadHotspot(IntPtr cursor)
     {
         _lastCursor = cursor;

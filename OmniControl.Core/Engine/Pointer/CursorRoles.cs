@@ -1,12 +1,10 @@
 namespace OmniControl.Core.Engine.Pointer;
 
-/// <summary>One pointer Windows shows for a purpose: its value name under HKCU\Control Panel\Cursors and the name Windows' Mouse settings give it.</summary>
+/// One pointer Windows shows for a purpose: its value name under HKCU\Control Panel\Cursors and the name Windows' Mouse settings give it.
 public sealed record CursorRole(string RegistryName, string Name);
 
-/// <summary>
 /// The pointers of a cursor scheme, in the fixed order a scheme lists their files (a scheme's value under ...\Cursors\Schemes is these
 /// files separated by commas, an empty entry meaning Windows' built-in pointer).
-/// </summary>
 public static class CursorRoles
 {
     public static readonly IReadOnlyList<CursorRole> All = new CursorRole[]

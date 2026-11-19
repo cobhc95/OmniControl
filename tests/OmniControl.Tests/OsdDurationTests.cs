@@ -1,5 +1,4 @@
-using OmniControl.App.Osd;
-using Xunit;
+using OmniControl.App.Features.Osd;
 
 namespace OmniControl.Tests;
 

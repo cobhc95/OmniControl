@@ -1,0 +1,23 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- MASTER pane splitter (MAP.md "Master UI pieces"): GridSplitter.pane is the draggable gap between two panes of a window
+         (the FX window's effect list and editor, docs/mockups/eq-typing-handles.html part 5). It is PaneSplitterWidth wide, shows the
+         resize cursor, and a faint accent line down its middle on hover and while dragged. Put it in its own Auto column between the
+         panes; the panes' MinWidth (not the splitter) keep either side from clipping. -->
+    <Style Selector="GridSplitter.pane">
+        <Setter Property="Width" Value="{DynamicResource PaneSplitterWidth}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Cursor" Value="SizeWestEast" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Panel Background="{TemplateBinding Background}">
+                    <Rectangle x:Name="Line" Width="2" HorizontalAlignment="Center" Fill="Transparent" />
+                </Panel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="GridSplitter.pane:pointerover /template/ Rectangle#Line, GridSplitter.pane:pressed /template/ Rectangle#Line">
+        <Setter Property="Fill" Value="{DynamicResource BrushAccentEdge}" />
+    </Style>
+</Styles>

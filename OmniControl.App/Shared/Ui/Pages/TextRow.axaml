@@ -1,0 +1,16 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
+             x:Class="OmniControl.App.Shared.Ui.Pages.TextRow"
+             x:DataType="pages:TextItem"
+             Classes="card">
+    <!-- A card with a text box (the master TextBox.field): label at the left, the box fills the rest -->
+    <Grid Margin="0,1">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Classes="cardname" Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,24,0" />
+        <TextBox Grid.Column="1" Classes="field" Text="{Binding Text}" Watermark="{Binding Hint}" />
+    </Grid>
+</UserControl>

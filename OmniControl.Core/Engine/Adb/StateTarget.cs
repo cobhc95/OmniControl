@@ -1,10 +1,8 @@
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// How a taught device's switch is found again: by a text of its card that showed in every look (the device's name, the <see cref="Anchor"/>)
 /// and where the switch sat from it, plus the switch's id and class; its words only when they did not change with the state. So the card is
 /// found when it moved or the list scrolled, and an identical switch in another device's card is never taken for it.
-/// </summary>
 public sealed class StateTarget
 {
     public string Anchor { get; set; } = string.Empty;
@@ -15,11 +13,11 @@ public sealed class StateTarget
     public string Text { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
 
-    /// <summary>Where the switch was on the screen, used only when its card has no text to find it by.</summary>
+    /// Where the switch was on the screen, used only when its card has no text to find it by.
     public int X { get; set; }
     public int Y { get; set; }
 
-    /// <summary>The target as every look agrees on it; the anchor is the card text whose offset moved least between the looks.</summary>
+    /// The target as every look agrees on it; the anchor is the card text whose offset moved least between the looks.
     public static StateTarget From(IReadOnlyList<StateSample> samples)
     {
         string Same(Func<StateSample, string> pick) => samples.Select(pick).Distinct().Count() == 1 ? pick(samples[0]) : string.Empty;
@@ -37,7 +35,7 @@ public sealed class StateTarget
         return target;
     }
 
-    /// <summary>The switch on this screen; null when its card is not on it (scroll and look again).</summary>
+    /// The switch on this screen; null when its card is not on it (scroll and look again).
     public SimNode? Locate(SimScreen screen)
     {
         var candidates = screen.Nodes.Where(n => n.Area > 0

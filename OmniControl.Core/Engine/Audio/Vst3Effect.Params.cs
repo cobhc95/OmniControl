@@ -2,12 +2,10 @@ using NAudio.Vst3;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// The plug-in's settings as a host's own parameter list sees them (IEditController::getParameterInfo) (UI thread only, the thread that loaded it). Changes go through
 /// NAudio.Vst3's parameter path: the controller takes the value at once (IEditController::setParamNormalized) and the sound part gets
 /// it in the next processed block (IParameterChanges), which is how a VST3 host must hand a change to the processor. While no chain
 /// runs the plug-in, nothing processes blocks, so <see cref="FlushIfIdle"/> runs one silent frame before the settings are saved.
-/// </summary>
 internal sealed partial class Vst3Effect
 {
     private const string GroupSeparator = " / ";
@@ -15,10 +13,8 @@ internal sealed partial class Vst3Effect
     private IReadOnlyList<PluginParam>? _parameters;
     private float[]? _flushIn, _flushOut;
 
-    /// <summary>
     /// The settings a user may change, in the plug-in's order: read-only and hidden ones are left out, and so is the plug-in's bypass
     /// (the effect's own On switch in OmniControl does that). Read once.
-    /// </summary>
     public IReadOnlyList<PluginParam> Parameters => _parameters ??= ReadParameters();
 
     private IReadOnlyList<PluginParam> ReadParameters() => PluginCall.Ask(() =>
@@ -31,7 +27,7 @@ internal sealed partial class Vst3Effect
 
     private static string Title(Vst3Parameter p) => string.IsNullOrWhiteSpace(p.Title) ? p.ShortTitle : p.Title;
 
-    /// <summary>The unit's name with the names of the units above it (the root unit, id 0, has none).</summary>
+    /// The unit's name with the names of the units above it (the root unit, id 0, has none).
     private static string GroupOf(int unitId, IReadOnlyDictionary<int, Vst3Unit> units)
     {
         var names = new List<string>();
@@ -41,33 +37,31 @@ internal sealed partial class Vst3Effect
         return string.Join(GroupSeparator, names);
     }
 
-    /// <summary>The setting's current value (normalised), as the plug-in's controller has it.</summary>
+    /// The setting's current value (normalised), as the plug-in's controller has it.
     public double ValueOf(uint id) => PluginCall.Ask(() => _plugin.Parameters.TryGetById(id, out var p) ? p.NormalizedValue : 0, 0);
 
-    /// <summary>Changes a setting (normalised); the plug-in's controller has it at once, its sound part from the next block.</summary>
+    /// Changes a setting (normalised); the plug-in's controller has it at once, its sound part from the next block.
     public void Set(uint id, double value) => PluginCall.Ask(() =>
     {
         if (_plugin.Parameters.TryGetById(id, out var p)) p.NormalizedValue = Math.Clamp(value, 0, 1);
         return true;
     }, false);
 
-    /// <summary>The value as the plug-in's own editor would write it ("8.4 kHz", "Lowpass"); empty when the plug-in gives no text.</summary>
+    /// The value as the plug-in's own editor would write it ("8.4 kHz", "Lowpass"); empty when the plug-in gives no text.
     public string TextOf(uint id, double value) => PluginCall.Ask(() => _plugin.Parameters.TryGetById(id, out var p) ? p.FormatValue(value) : string.Empty, string.Empty);
 
-    /// <summary>The current value in the setting's own units (Hz, dB...), for typing a number.</summary>
+    /// The current value in the setting's own units (Hz, dB...), for typing a number.
     public double PlainOf(uint id) => PluginCall.Ask(() => _plugin.Parameters.TryGetById(id, out var p) ? p.PlainValue : 0, 0);
 
-    /// <summary>Changes a setting by a value in its own units; the plug-in converts it, and a value past either end is held at that end.</summary>
+    /// Changes a setting by a value in its own units; the plug-in converts it, and a value past either end is held at that end.
     public void SetPlain(uint id, double plain) => PluginCall.Ask(() =>
     {
         if (_plugin.Parameters.TryGetById(id, out var p)) p.SetPlainValue(plain);
         return true;
     }, false);
 
-    /// <summary>
     /// Hands setting changes that wait for the next block to the plug-in's sound part when no chain is running it (no block for
     /// <see cref="CoreTiming.PluginIdleMs"/>): one silent frame, processed under the same lock as the audio thread's blocks.
-    /// </summary>
     private void FlushIfIdle()
     {
         if (Environment.TickCount64 - Volatile.Read(ref _lastProcessTicks) < CoreTiming.PluginIdleMs) return;

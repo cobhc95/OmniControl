@@ -1,11 +1,9 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Engine.Mouse;
 
-/// <summary>Sends keyboard and mouse input to Windows (SendInput). Everything sent carries <see cref="Marker"/> so <see cref="MouseHook"/> ignores it.</summary>
+/// Sends keyboard and mouse input to Windows (SendInput). Everything sent carries <see cref="Marker"/> so <see cref="MouseHook"/> ignores it.
 public static class InputSender
 {
-    /// <summary>Tag on every input this class sends ("OMNI"), so the mouse hook never remaps its own output.</summary>
+    /// Tag on every input this class sends ("OMNI"), so the mouse hook never remaps its own output.
     internal static readonly UIntPtr Marker = (UIntPtr)0x4F4D4E49;
 
     private const uint InputMouse = 0, InputKeyboard = 1;
@@ -44,10 +42,8 @@ public static class InputSender
     private static Input RawKey(ushort vk, ushort scan, uint flags) =>
         new() { Type = InputKeyboard, U = new Union { Key = new KeyData { Vk = vk, Scan = scan, Flags = flags, Extra = Marker } } };
 
-    /// <summary>
     /// Presses and releases one key exactly as a keyboard reported it (virtual key and scan code, extended or not) in one call, so it is never
     /// left down. Returns true when Windows accepted both halves; if it took only the press, the release is sent at once.
-    /// </summary>
     public static bool Tap(ushort vk, ushort scan, bool extended)
     {
         var flags = extended ? KeyExtended : 0u;
@@ -57,14 +53,14 @@ public static class InputSender
         return sent == 2;
     }
 
-    /// <summary>Presses all keys in order, then releases them in reverse (a shortcut such as Ctrl+C).</summary>
+    /// Presses all keys in order, then releases them in reverse (a shortcut such as Ctrl+C).
     public static void Chord(IReadOnlyList<ushort> keys) =>
         Send(keys.Select(k => Key(k, true)).Concat(keys.Reverse().Select(k => Key(k, false))).ToArray());
 
-    /// <summary>Presses the keys and keeps them down (until <see cref="Release"/>), for actions that last while a mouse button is held.</summary>
+    /// Presses the keys and keeps them down (until <see cref="Release"/>), for actions that last while a mouse button is held.
     public static void Press(IReadOnlyList<ushort> keys) => Send(keys.Select(k => Key(k, true)).ToArray());
 
-    /// <summary>Lets go of keys held by <see cref="Press"/>, in reverse order.</summary>
+    /// Lets go of keys held by <see cref="Press"/>, in reverse order.
     public static void Release(IReadOnlyList<ushort> keys) => Send(keys.Reverse().Select(k => Key(k, false)).ToArray());
 
     private static (uint Down, uint Up, uint Data) FlagsOf(MouseButton button) => button switch
@@ -76,7 +72,7 @@ public static class InputSender
         _ => (LeftDown, LeftUp, 0u),
     };
 
-    /// <summary>A full click of a button (press and release), once or twice for a double click.</summary>
+    /// A full click of a button (press and release), once or twice for a double click.
     public static void Click(MouseButton button, bool twice = false)
     {
         var (down, up, data) = FlagsOf(button);
@@ -84,7 +80,7 @@ public static class InputSender
         Send(twice ? pair.Concat(pair).ToArray() : pair);
     }
 
-    /// <summary>Presses a button and keeps it down (until <see cref="ButtonUp"/>), for click-drag.</summary>
+    /// Presses a button and keeps it down (until <see cref="ButtonUp"/>), for click-drag.
     public static void ButtonDown(MouseButton button)
     {
         var (down, _, data) = FlagsOf(button);
@@ -97,7 +93,7 @@ public static class InputSender
         Send(Mouse(up, data));
     }
 
-    /// <summary>One wheel notch. Positive is up (or right when <paramref name="horizontal"/>). Returns how many inputs Windows accepted (0 means it refused).</summary>
+    /// One wheel notch. Positive is up (or right when <paramref name="horizontal"/>). Returns how many inputs Windows accepted (0 means it refused).
     public static uint Scroll(int notches, bool horizontal = false) =>
         Send(Mouse(horizontal ? HWheel : Wheel, unchecked((uint)(notches * WheelStep))));
 }

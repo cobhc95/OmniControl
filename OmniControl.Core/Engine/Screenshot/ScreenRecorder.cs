@@ -2,32 +2,27 @@ using static OmniControl.Core.Native.VideoNative;
 
 namespace OmniControl.Core.Engine.Screenshot;
 
-/// <summary>The most a recording may grow: its length, its file size, and the free disk space it must leave.</summary>
+/// The most a recording may grow: its length, its file size, and the free disk space it must leave.
 public sealed record RecordingLimits(TimeSpan MaxLength, long MaxBytes, long MinFreeBytes);
 
-/// <summary>
 /// What to record: the area (physical pixels, already even for MP4), the file, the format and its settings, sound and pointer, and the
 /// way remembered from earlier recordings on this PC (<see cref="RecordingRoute"/>; null = start at the top).
-/// </summary>
 public sealed record RecordingRequest(ScreenRect Area, string Path, VideoFormat Format, int FrameRate, VideoQuality Quality, bool Hardware,
     bool SystemSound, bool Microphone, PointerLook Pointer, RecordingLimits Limits, RecordingRoute? Route = null);
 
-/// <summary>Why a recording ended.</summary>
+/// Why a recording ended.
 public enum RecordingEnd { Stopped, LengthLimit, SizeLimit, DiskFull, Failed, Cancelled }
 
-/// <summary>
 /// How a recording ended: the file (null when nothing was kept), why, a sentence when there is something to say, the way to remember for
 /// the next recording on this PC (the caller stores it when it differs from what it passed), and the recording's log lines ("Copy details").
-/// </summary>
 public sealed record RecordingResult(string? Path, RecordingEnd End, string? Message, RecordingRoute? Route = null, string? Details = null);
 
-/// <summary>A recording that could not start: the sentence for the person, and the recording's log lines for "Copy details".</summary>
+/// A recording that could not start: the sentence for the person, and the recording's log lines for "Copy details".
 public sealed class RecordingFailedException(string message, string details) : InvalidOperationException(message)
 {
     public string Details { get; } = details;
 }
 
-/// <summary>
 /// Records an area of the screen to an MP4 or a GIF, and never hangs or blocks its caller: a watchdog thread (MTA) runs the recording as a
 /// chain of ways (<see cref="RecordingStep"/>: the graphics card's encoder fed by Desktop Duplication on the adapter that drives the monitor;
 /// a graphics card's encoder, another adapter's when there is one, fed by GDI; the software encoder), each a <see cref="RecordingAttempt"/>
@@ -37,7 +32,6 @@ public sealed class RecordingFailedException(string message, string details) : I
 /// <see cref="CoreTiming.RecordFinishWaitMs"/> ends as failed, and the next recording starts at the next way. The way that worked is
 /// handed back to be remembered for this PC's drivers. Every method here only sets a flag or starts a task, so the UI thread never waits
 /// on Windows' encoder, screen copy or sound. Everything it opens is released when it ends, and a file that could not be finished is deleted.
-/// </summary>
 public sealed class ScreenRecorder
 {
     private readonly RecordingRequest _request;
@@ -54,15 +48,15 @@ public sealed class ScreenRecorder
     private volatile bool _stop, _abort, _paused;
     private volatile RecordingAttempt? _attempt;
 
-    /// <summary>Finishes when the recording has ended and its file is complete (or deleted), whatever ended it.</summary>
+    /// Finishes when the recording has ended and its file is complete (or deleted), whatever ended it.
     public Task<RecordingResult> Completion => _done.Task;
 
-    /// <summary>The recording's length so far (pauses not counted; from the start of the way that records now).</summary>
+    /// The recording's length so far (pauses not counted; from the start of the way that records now).
     public TimeSpan Elapsed => _attempt?.Clock?.Elapsed ?? TimeSpan.Zero;
 
     public bool IsPaused => _paused;
 
-    /// <summary>True when the file takes sound (MP4); a GIF has none.</summary>
+    /// True when the file takes sound (MP4); a GIF has none.
     public bool TakesSound => _sound is not null;
 
     private ScreenRecorder(RecordingRequest request, Action<string> log, Action<string>? notice, RecordingWaits waits, RecordingFaults? faults)
@@ -76,11 +70,9 @@ public sealed class ScreenRecorder
         if (VideoMath.IsMp4(request.Format)) _sound = new RecordingSound();
     }
 
-    /// <summary>
     /// Starts recording. The result has the recorder, and a sentence when something was not as asked (sound that could not be opened, another
     /// way used). Throws <see cref="RecordingFailedException"/> when no way could start. <paramref name="log"/> gets the recording's diagnostic
     /// lines (<see cref="RecordingLog"/>) and <paramref name="notice"/> a sentence when the way changes while recording; both on any thread.
-    /// </summary>
     public static Task<(ScreenRecorder Recorder, string? Note)> StartAsync(RecordingRequest request, Action<string> log, Action<string>? notice = null) =>
         StartAsync(request, log, notice, RecordingWaits.Default, null);
 
@@ -123,23 +115,21 @@ public sealed class ScreenRecorder
         Wake();
     }
 
-    /// <summary>Turns recording what the speakers play on or off, off the caller's thread. Null when done, otherwise why not.</summary>
+    /// Turns recording what the speakers play on or off, off the caller's thread. Null when done, otherwise why not.
     public Task<string?> SetSystemSoundAsync(bool on) => _sound is { } sound ? Task.Run(() => sound.SetSystem(on)) : Task.FromResult<string?>(null);
 
-    /// <summary>Turns recording the microphone on or off, off the caller's thread. Null when done, otherwise why not.</summary>
+    /// Turns recording the microphone on or off, off the caller's thread. Null when done, otherwise why not.
     public Task<string?> SetMicrophoneAsync(bool on) => _sound is { } sound ? Task.Run(() => sound.SetMicrophone(on)) : Task.FromResult<string?>(null);
 
-    /// <summary>Asks the recording to end; <see cref="Completion"/> finishes once the file is complete (or the watchdog gives up on it).</summary>
+    /// Asks the recording to end; <see cref="Completion"/> finishes once the file is complete (or the watchdog gives up on it).
     public void Stop()
     {
         _stop = true;
         Wake();
     }
 
-    /// <summary>
     /// Ends the recording at once and keeps nothing: <see cref="Completion"/> finishes now (no file), even when a recording thread is stuck
     /// in the encoder; that thread releases what it holds and deletes its part file whenever it gets free.
-    /// </summary>
     public void Abort()
     {
         _abort = true;
@@ -158,10 +148,10 @@ public sealed class ScreenRecorder
         lock (_signal) Monitor.Wait(_signal, ms);
     }
 
-    /// <summary>The watchdog: opens the sound, lists the adapters, then runs the chain of ways until one ends the recording.</summary>
+    /// The watchdog: opens the sound, lists the adapters, then runs the chain of ways until one ends the recording.
     private void Watch()
     {
-        timeBeginPeriod(1); // frame times to the millisecond; given back below
+        var fineTimers = TimerResolution.Hold(); // frame times to the millisecond; given back below
         try
         {
             var area = _request.Area;
@@ -183,12 +173,12 @@ public sealed class ScreenRecorder
         finally
         {
             if (_sound is { } sound) _log.Step("sound stop", sound.Dispose);
-            timeEndPeriod(1);
+            fineTimers.Dispose();
             _log.Line("recording over");
         }
     }
 
-    /// <summary>Which hardware encoders each real adapter has for the format (Windows' list; the encoder itself does not say its adapter).</summary>
+    /// Which hardware encoders each real adapter has for the format (Windows' list; the encoder itself does not say its adapter).
     private void LogEncoders(IReadOnlyList<GraphicsAdapter> adapters)
     {
         var subtype = _request.Format == VideoFormat.Mp4Hevc ? Native.MediaFoundationNative.Hevc : Native.MediaFoundationNative.H264;
@@ -206,7 +196,7 @@ public sealed class ScreenRecorder
         if (_request.Microphone && _log.Step("microphone open", () => sound.SetMicrophone(true)) is { } mic) _notes.Add(mic);
     }
 
-    /// <summary>Tries each way from <paramref name="index"/> on until one ends the recording, or none is left.</summary>
+    /// Tries each way from <paramref name="index"/> on until one ends the recording, or none is left.
     private void RunChain(IReadOnlyList<RecordingStep> chain, int index, IReadOnlyList<GraphicsAdapter> adapters, string key)
     {
         var tries = 0;
@@ -246,7 +236,7 @@ public sealed class ScreenRecorder
 
     private enum Outcome { Done, Cancelled, Fatal, FinishHung, MoveOn }
 
-    /// <summary>Watches one way until it ends the recording or must be left behind (it is then abandoned here).</summary>
+    /// Watches one way until it ends the recording or must be left behind (it is then abandoned here).
     private (Outcome, string?) Follow(RecordingAttempt attempt)
     {
         var stopSent = false;
@@ -286,7 +276,7 @@ public sealed class ScreenRecorder
         }
     }
 
-    /// <summary>What the watchdog makes of a way now: null while all is well.</summary>
+    /// What the watchdog makes of a way now: null while all is well.
     private (Outcome, string?)? Check(RecordingAttempt attempt)
     {
         switch (attempt.State)
@@ -307,7 +297,7 @@ public sealed class ScreenRecorder
         }
     }
 
-    /// <summary>The finished part file becomes the recording's file; the way is handed back to be remembered.</summary>
+    /// The finished part file becomes the recording's file; the way is handed back to be remembered.
     private void Keep(RecordingAttempt attempt, IReadOnlyList<RecordingStep> chain, string key)
     {
         var route = RecordingSteps.AfterSuccess(chain, attempt.Step, key, _request.Route);
@@ -324,14 +314,14 @@ public sealed class ScreenRecorder
 
     private RecordingResult Failed(string? why) => new(null, RecordingEnd.Failed, why ?? "the recording failed; the details are in the log.", _request.Route, _log.Text);
 
-    /// <summary>Sets the result (a Cancel may already have), then lets a start that was still waiting see it.</summary>
+    /// Sets the result (a Cancel may already have), then lets a start that was still waiting see it.
     private void End(RecordingResult result)
     {
         if (_done.TrySetResult(result)) _log.Line($"ended: {result.End}{(result.Message is { } m ? $" ({m})" : "")}");
         _started.TrySetResult(null); // after the result, so a start that failed is seen as failed
     }
 
-    /// <summary>A sentence for the person: part of the start's note before the recording shows, else said at once.</summary>
+    /// A sentence for the person: part of the start's note before the recording shows, else said at once.
     private void Tell(string sentence)
     {
         _log.Line($"said: {sentence}");

@@ -1,22 +1,17 @@
-using System.ComponentModel;
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// One loaded VST2 effect (a 64-bit .dll) through its plain C interface (<see cref="Vst2Abi"/>; hosting ported from TabForge's
 /// <c>Vst2Plugin</c>, same owner): mono or stereo in and out like the VST3 path, processReplacing (or the old accumulating process)
 /// on channel buffers allocated once in native memory, so <see cref="Process"/> never allocates. It runs inside OmniControl's own
 /// process: a plug-in that crashes natively takes OmniControl with it (the engine journal then restores the sound at the next start).
 /// The module is never unloaded once its code ran (plug-ins crash when unloaded while their own threads still run); it stays mapped
 /// until OmniControl exits. Host callback in Vst2Effect.Host.cs, settings list in Vst2Effect.Params.cs, editor in Vst2Editor.cs.
-/// </summary>
 internal sealed unsafe partial class Vst2Effect : IPluginEffect
 {
-    /// <summary>A plug-in declaring more audio inputs or outputs than this is refused (its pointer arrays are made as declared).</summary>
+    /// A plug-in declaring more audio inputs or outputs than this is refused (its pointer arrays are made as declared).
     private const int MaxChannels = 128;
 
-    /// <summary>A saved program chunk larger than this is refused (a broken plug-in must not make OmniControl copy without end).</summary>
+    /// A saved program chunk larger than this is refused (a broken plug-in must not make OmniControl copy without end).
     private const int MaxChunkBytes = 64 * 1024 * 1024;
 
     // LoadLibraryEx: the plug-in's own folder and the system folders first; a plug-in whose support DLLs sit elsewhere on PATH fails that
@@ -31,7 +26,7 @@ internal sealed unsafe partial class Vst2Effect : IPluginEffect
     private readonly delegate* unmanaged[Cdecl]<Vst2Abi.AEffect*, int, int, IntPtr, IntPtr, float, IntPtr> _dispatch;
     private readonly delegate* unmanaged[Cdecl]<Vst2Abi.AEffect*, float**, float**, int, void> _process;
 
-    /// <summary>The plug-in has only the old process call, which adds into its outputs: they are cleared before each block.</summary>
+    /// The plug-in has only the old process call, which adds into its outputs: they are cleared before each block.
     private readonly bool _accumulates;
 
     private readonly int _sampleRate;
@@ -40,13 +35,13 @@ internal sealed unsafe partial class Vst2Effect : IPluginEffect
     private readonly int _inputCount, _outputCount;
     private readonly Vst2Abi.VstTimeInfo* _time;
 
-    /// <summary>This object, as the plug-in's <see cref="Vst2Abi.AEffect.user"/> field holds it for the host callback.</summary>
+    /// This object, as the plug-in's <see cref="Vst2Abi.AEffect.user"/> field holds it for the host callback.
     private GCHandle _self;
 
-    /// <summary>Held while the plug-in processes, so the UI thread's settings changes and state loads never run beside the audio thread.</summary>
+    /// Held while the plug-in processes, so the UI thread's settings changes and state loads never run beside the audio thread.
     private readonly object _processGate = new();
 
-    /// <summary>The managed id of the thread that last processed (the callback answers "real time" to it).</summary>
+    /// The managed id of the thread that last processed (the callback answers "real time" to it).
     private volatile int _audioThread;
 
     private double _samplePos;
@@ -110,7 +105,7 @@ internal sealed unsafe partial class Vst2Effect : IPluginEffect
 
     private bool HasChunks => (_effect->flags & Vst2Abi.FlagProgramChunks) != 0;
 
-    /// <summary>Loads a 64-bit VST2 .dll and sets it up for the given rate and block size (UI thread).</summary>
+    /// Loads a 64-bit VST2 .dll and sets it up for the given rate and block size (UI thread).
     public static Vst2Effect Load(string path, int sampleRate, int maxBlockFrames)
     {
         if (Vst2File.Problem(path) is { } problem) throw new InvalidOperationException(problem);
@@ -123,7 +118,7 @@ internal sealed unsafe partial class Vst2Effect : IPluginEffect
         return new Vst2Effect(path, entry, sampleRate, maxBlockFrames);
     }
 
-    /// <summary>Loads the module; a refusal by Windows becomes one plain sentence.</summary>
+    /// Loads the module; a refusal by Windows becomes one plain sentence.
     private static IntPtr LoadModule(string path)
     {
         var module = LoadLibraryEx(path, IntPtr.Zero, LoadSearchDefaultDirs | LoadSearchDllLoadDir);
@@ -157,7 +152,7 @@ internal sealed unsafe partial class Vst2Effect : IPluginEffect
 
     private IntPtr Dispatch(int opcode, int index, nint value, IntPtr ptr, float opt) => _dispatch(_effect, opcode, index, value, ptr, opt);
 
-    /// <summary>Audio thread (see <see cref="IPluginEffect.Process"/>): the interleaved frames go into the plug-in's own channel buffers and back.</summary>
+    /// Audio thread (see <see cref="IPluginEffect.Process"/>): the interleaved frames go into the plug-in's own channel buffers and back.
     public void Process(ReadOnlySpan<float> input, Span<float> output, int frames)
     {
         frames = Math.Min(frames, MaxBlockFrames);
@@ -186,7 +181,7 @@ internal sealed unsafe partial class Vst2Effect : IPluginEffect
         }
     }
 
-    /// <summary>The program chunk for a plug-in with chunks, else every parameter's name and value (<see cref="Vst2Settings"/>).</summary>
+    /// The program chunk for a plug-in with chunks, else every parameter's name and value (<see cref="Vst2Settings"/>).
     public byte[] SaveState()
     {
         if (_disposed) throw new InvalidOperationException("The plug-in is closed.");
@@ -197,7 +192,7 @@ internal sealed unsafe partial class Vst2Effect : IPluginEffect
         return new Vst2Settings(new ReadOnlySpan<byte>((void*)data, (int)size).ToArray(), Array.Empty<(string, float)>()).ToBytes();
     }
 
-    /// <summary>Gives back settings from <see cref="SaveState"/>: the chunk, or the values in the plug-in's order.</summary>
+    /// Gives back settings from <see cref="SaveState"/>: the chunk, or the values in the plug-in's order.
     public void LoadState(byte[] state)
     {
         if (Vst2Settings.Read(state) is not { } settings) throw new ArgumentException("The saved settings aren't a VST2 plug-in's.", nameof(state));
@@ -228,7 +223,7 @@ internal sealed unsafe partial class Vst2Effect : IPluginEffect
         Close(opened: true, started: true);
     }
 
-    /// <summary>Stops (when started) and closes the plug-in and frees what this object made (the module stays loaded, see the class notes).</summary>
+    /// Stops (when started) and closes the plug-in and frees what this object made (the module stays loaded, see the class notes).
     private void Close(bool opened, bool started)
     {
         if (_effect is not null && started)

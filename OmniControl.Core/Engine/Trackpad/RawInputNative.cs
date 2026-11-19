@@ -1,8 +1,6 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Engine.Trackpad;
 
-/// <summary>Raw Input (user32), the HID report parser (hid.dll) and the message loop of the touchpad watcher's message-only window (the window itself: <see cref="OmniControl.Core.Native.WindowNative"/>).</summary>
+/// Raw Input (user32), the HID report parser (hid.dll) and the message loop of the touchpad watcher's message-only window (the window itself: <see cref="OmniControl.Core.Native.WindowNative"/>).
 internal static unsafe class RawInputNative
 {
     public const ushort DigitizerPage = 0x0D, GenericDesktopPage = 0x01;
@@ -17,7 +15,7 @@ internal static unsafe class RawInputNative
     public const int HidpStatusSuccess = 0x00110000;
     public static readonly IntPtr HwndMessage = new(-3);
 
-    /// <summary>RAWINPUTHEADER (24 bytes on 64-bit) then RAWHID's two counts: the HID reports start this far into the buffer.</summary>
+    /// RAWINPUTHEADER (24 bytes on 64-bit) then RAWHID's two counts: the HID reports start this far into the buffer.
     public static readonly int HeaderSize = sizeof(RawInputHeader);
     public static readonly int ReportsOffset = HeaderSize + 8;
 
@@ -30,7 +28,7 @@ internal static unsafe class RawInputNative
     [StructLayout(LayoutKind.Sequential)]
     public struct RawInputDeviceListItem { public IntPtr Device; public uint Type; }
 
-    /// <summary>RID_DEVICE_INFO with its HID part (the union is 24 bytes, the keyboard's).</summary>
+    /// RID_DEVICE_INFO with its HID part (the union is 24 bytes, the keyboard's).
     [StructLayout(LayoutKind.Explicit, Size = 32)]
     public struct DeviceInfo
     {
@@ -48,7 +46,7 @@ internal static unsafe class RawInputNative
         [FieldOffset(48)] public ushort NumberInputValueCaps;
     }
 
-    /// <summary>HIDP_VALUE_CAPS (72 bytes); only the fields the touchpad needs. <see cref="Usage"/> is UsageMin when <see cref="IsRange"/>.</summary>
+    /// HIDP_VALUE_CAPS (72 bytes); only the fields the touchpad needs. <see cref="Usage"/> is UsageMin when <see cref="IsRange"/>.
     [StructLayout(LayoutKind.Explicit, Size = 72)]
     public struct HidpValueCaps
     {

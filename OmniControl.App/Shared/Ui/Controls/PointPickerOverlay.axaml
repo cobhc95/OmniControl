@@ -1,0 +1,15 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="OmniControl.App.Shared.Ui.Controls.PointPickerOverlay"
+        Title="Pick a point" SystemDecorations="None" CanResize="False" Topmost="True"
+        Background="Transparent" TransparencyLevelHint="Transparent" Cursor="Cross">
+    <!-- The shared screen point picker's overlay of one monitor (see PointPicker): the dim of the screenshot overlay, a crosshair pointer and one
+         Border.floatbar.label showing x, y under the pointer. Mouse only by design (AGENTS rule 5): click picks, Esc or right click cancels. -->
+    <Panel Background="{DynamicResource BrushCaptureDim}">
+        <Canvas>
+            <Border x:Name="Label" Classes="floatbar label" IsVisible="False" IsHitTestVisible="False">
+                <TextBlock x:Name="LabelText" />
+            </Border>
+        </Canvas>
+    </Panel>
+</Window>

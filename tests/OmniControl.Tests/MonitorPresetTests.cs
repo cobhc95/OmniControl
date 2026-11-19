@@ -1,21 +1,18 @@
-using System.Text.Json;
-using OmniControl.App.Display;
-using OmniControl.App.Pages;
-using OmniControl.App.Pages.Displays;
+using OmniControl.App.Features.Displays;
+using OmniControl.App.Shared.Ui.Pages;
+using OmniControl.App.Features.Displays.Pages;
 using OmniControl.Core.Models;
 
 namespace OmniControl.Tests;
 
-/// <summary>
 /// The Hardware group's monitor presets over fake monitors (no monitor is read or written): what a preset keeps, which connected
 /// monitor an entry belongs to, matching, what applying writes (range, missing features, never power), the per-monitor memory, the
 /// greyed drop-down, loading an older settings file, and the order the page builds its pieces in.
-/// </summary>
 public class MonitorPresetTests
 {
     private const int Brightness = VcpCode.Brightness, Contrast = VcpCode.Contrast, Input = VcpCode.InputSource, Gamma = 0x72, Power = VcpCode.PowerMode;
 
-    /// <summary>A fake display: its features (value, maximum, accepted raw values) and every write it was given.</summary>
+    /// A fake display: its features (value, maximum, accepted raw values) and every write it was given.
     private sealed class FakeMonitor : IMonitorPresetTarget
     {
         private readonly Dictionary<int, LiveFeature> _features = new();

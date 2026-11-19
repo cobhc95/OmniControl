@@ -1,18 +1,16 @@
 namespace OmniControl.Core.Engine.Pointer;
 
-/// <summary>
 /// Reads and writes Windows' mouse settings (<see cref="PointerValue"/>) with SystemParametersInfo, as Windows' own Mouse settings do:
 /// a saved write goes to the user's profile and is announced to every window, so it lasts after a restart. Reads are cheap; a write
 /// broadcasts a settings change to every window, so callers write off the UI thread. Two pairs share one Windows value: the trail
 /// length is the number of pointers while trails are on, and "one screen at a time" is a special number of lines; the last real
 /// length and line count seen are kept here so switching back gives them again.
-/// </summary>
 public sealed class PointerSettings
 {
-    /// <summary>Windows' own mouse settings, which also hold "Scroll inactive windows when I hover over them" (not offered here: see HANDOVER).</summary>
+    /// Windows' own mouse settings, which also hold "Scroll inactive windows when I hover over them" (not offered here).
     public const string WindowsMousePage = "ms-settings:mousetouchpad";
 
-    /// <summary>Windows' pointer size and colour settings (Accessibility), which have no documented way to set them from a program.</summary>
+    /// Windows' pointer size and colour settings (Accessibility), which have no documented way to set them from a program.
     public const string WindowsPointerLookPage = "ms-settings:easeofaccess-mousepointer";
 
     private const int Off = 0, On = 1;
@@ -24,7 +22,7 @@ public sealed class PointerSettings
     private int _lastTrailLength = PointerValues.Info(PointerValue.TrailLength).Default;
     private int _lastLines = PointerValues.Info(PointerValue.ScrollLines).Default;
 
-    /// <summary>The value now in force, or null when Windows won't say.</summary>
+    /// The value now in force, or null when Windows won't say.
     public int? Read(PointerValue value)
     {
         lock (_gate)
@@ -60,10 +58,8 @@ public sealed class PointerSettings
         }
     }
 
-    /// <summary>
     /// Sets a value (clamped to <see cref="PointerValues"/>). <paramref name="persist"/> false changes this session only (it ends at
     /// sign-out); used while a button swap waits to be kept. False when Windows refused.
-    /// </summary>
     public bool Write(PointerValue value, int wanted, bool persist = true)
     {
         var v = PointerValues.Info(value).Clamp(wanted);
@@ -104,14 +100,14 @@ public sealed class PointerSettings
 
     private static int? GetInt(uint action) => SpiNative.GetInt(action, 0, out var value, 0) ? value : null;
 
-    /// <summary>The two acceleration thresholds and the acceleration flag.</summary>
+    /// The two acceleration thresholds and the acceleration flag.
     private static int[]? ReadMouse()
     {
         var mouse = new int[3];
         return SpiNative.Array(SpiNative.GetMouse, 0, mouse, 0) ? mouse : null;
     }
 
-    /// <summary>"Enhance pointer precision": on keeps the user's thresholds (Windows' 6 and 10 when there are none); off is 0, 0, 0 as the control panel writes.</summary>
+    /// "Enhance pointer precision": on keeps the user's thresholds (Windows' 6 and 10 when there are none); off is 0, 0, 0 as the control panel writes.
     private static bool WriteMouse(bool on, uint flags)
     {
         var now = ReadMouse();

@@ -1,13 +1,9 @@
-using System.ComponentModel;
-using System.Diagnostics;
 using OmniControl.Core.Engine.Mouse;
 
 namespace OmniControl.Core.Engine.Trackpad;
 
-/// <summary>
 /// The real <see cref="IShellSurfaceProbe"/>: the window in front, which of Windows' panels it is (its process and class, against
 /// <see cref="ShellSurfaces.All"/>), and closing it with Esc, sent only while that same window is still in front.
-/// </summary>
 public sealed class ShellSurfaceProbe : IShellSurfaceProbe
 {
     private static readonly ushort[] EscapeKeys = KeyChord.TryParse("Esc", out var keys) ? keys : Array.Empty<ushort>();

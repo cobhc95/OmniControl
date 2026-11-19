@@ -1,20 +1,18 @@
-using OmniControl.Core.Models;
 using System.Management;
-using System.Runtime.InteropServices;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// Raises <see cref="Changed"/> (percent, on a worker thread) when the laptop brightness changes, e.g. from the Fn keys.
-/// Uses the WMI brightness event, plus a poll as a fallback because some drivers don't raise the event reliably. The poll stops
-/// once the event has been seen to work, and is never kept up when the first read finds no laptop panel: each read is a WMI
-/// query, and failing ones throw, so a pointless poll was steady work and garbage in the background.
-/// </summary>
+/// Uses the WMI brightness event, plus a read now and then as a check because some drivers don't raise the event reliably: while the
+/// event is listened to, only every <c>checkPoll</c> and for <c>checkFor</c> (or until the event is seen to work); when it cannot be
+/// listened to, every <c>poll</c>. Reading is never kept up when the first read finds no laptop panel: each read is a WMI query, and
+/// failing ones throw, so a pointless poll was steady work and garbage in the background.
 public sealed class BrightnessWatcher : IDisposable
 {
-    private readonly TimeSpan _firstPoll, _poll;
+    private readonly TimeSpan _firstPoll, _poll, _checkPoll, _checkFor;
     private readonly LaptopBrightnessController _laptop = new();
     private readonly object _gate = new();
+    private readonly Stopwatch _since = new();
     private ManagementEventWatcher? _watcher;
     private Timer? _timer;
     private int _last = -1;
@@ -22,9 +20,12 @@ public sealed class BrightnessWatcher : IDisposable
 
     public event Action<int>? Changed;
 
-    /// <param name="firstPoll">Delay before the first fallback read, so it does not add to the start-up work.</param>
-    /// <param name="poll">How often the fallback reads the brightness.</param>
-    public BrightnessWatcher(TimeSpan firstPoll, TimeSpan poll) => (_firstPoll, _poll) = (firstPoll, poll);
+    /// <param name="firstPoll">Delay before the first read, so it does not add to the start-up work.</param>
+    /// <param name="poll">How often the brightness is read when the event cannot be listened to.</param>
+    /// <param name="checkPoll">How often it is read, as a check, while the event is listened to but not yet seen working.</param>
+    /// <param name="checkFor">How long that check goes on.</param>
+    public BrightnessWatcher(TimeSpan firstPoll, TimeSpan poll, TimeSpan checkPoll, TimeSpan checkFor) =>
+        (_firstPoll, _poll, _checkPoll, _checkFor) = (firstPoll, poll, checkPoll, checkFor);
 
     public void Start()
     {
@@ -33,17 +34,20 @@ public sealed class BrightnessWatcher : IDisposable
             _watcher = new ManagementEventWatcher(new ManagementScope(@"root\wmi"), new WqlEventQuery("SELECT * FROM WmiMonitorBrightnessEvent"));
             _watcher.EventArrived += (_, e) =>
             {
-                StopPolling(); // the event works on this machine: the fallback is not needed
-                if (e.NewEvent["Brightness"] is { } b) Report(Convert.ToInt32(b));
+                StopPolling(); // the event works on this machine: the check is not needed
+                using var arrived = e.NewEvent;
+                if (arrived["Brightness"] is { } b) Report(Convert.ToInt32(b));
             };
             _watcher.Start();
         }
         catch (ManagementException)
         {
+            _watcher?.Dispose();
             _watcher = null; // WMI brightness events unavailable: polling covers it
         }
 
-        _timer = new Timer(_ => Poll(), null, _firstPoll, _poll);
+        _since.Start();
+        _timer = new Timer(_ => Poll(), null, _firstPoll, _watcher is null ? _poll : _checkPoll);
     }
 
     private void Poll()
@@ -61,12 +65,13 @@ public sealed class BrightnessWatcher : IDisposable
         var first = !_polled;
         _polled = true;
         if (percent is { } p) Report(p);
-        else if (first) StopPolling(); // nothing to watch on this machine
+        if (percent is null && first) StopPolling(); // nothing to watch on this machine
+        else if (_watcher is not null && _since.Elapsed >= _checkFor) StopPolling(); // the event alone from now on
     }
 
     private void StopPolling() => Interlocked.Exchange(ref _timer, null)?.Dispose();
 
-    /// <summary>Raises Changed only when the value differs from the last one seen (event and poll both feed this).</summary>
+    /// Raises Changed only when the value differs from the last one seen (event and poll both feed this).
     private void Report(int percent)
     {
         lock (_gate)

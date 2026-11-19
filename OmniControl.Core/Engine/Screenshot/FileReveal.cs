@@ -1,12 +1,9 @@
-using System.ComponentModel;
-using System.Diagnostics;
-
 namespace OmniControl.Core.Engine.Screenshot;
 
-/// <summary>Opens File Explorer at a file's folder with the file selected.</summary>
+/// Opens File Explorer at a file's folder with the file selected.
 public static class FileReveal
 {
-    /// <summary>Null when Explorer was started, otherwise why not.</summary>
+    /// Null when Explorer was started, otherwise why not.
     public static string? Show(string file)
     {
         try

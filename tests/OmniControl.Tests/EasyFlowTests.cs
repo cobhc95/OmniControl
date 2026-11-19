@@ -1,55 +1,13 @@
-using OmniControl.App.Audio;
-using OmniControl.App.Audio.Engine;
-using OmniControl.App.Pages.Volume.Easy;
-using OmniControl.App.Pages.Volume.Easy.Flow;
+using OmniControl.App.Features.Volume.Pages.Easy;
+using OmniControl.App.Features.Volume.Pages.Easy.Flow;
 
 namespace OmniControl.Tests;
 
-/// <summary>
 /// Easy mode, phase 2 (the guided setups): every checklist worked out from made-up facts (installed or not, device covered or not, cable free
 /// or not, which mode), the changes each step makes through a fake mixer, the "on" mark, and the flow's screens (Back, Next, a fix that asks
 /// first, ticks that appear when the facts change). Nothing here touches Windows, the mixer's files or an installer.
-/// </summary>
 public class EasyFlowTests
 {
-    // ---- fakes ----
-
-    /// <summary>The mixer's chains, routes and combined devices in memory.</summary>
-    private sealed class FakeMixer : IEasyMixer
-    {
-        private readonly Dictionary<string, List<FxSlot>> _chains = new();
-        private readonly Dictionary<string, bool> _on = new();
-        private readonly Dictionary<string, EffectsRoute> _routes = new();
-        private readonly List<CombinedDevice> _combined = new();
-        public EffectsRoute MasterMethod { get; private set; } = EffectsRules.MasterAutomatic;
-        public List<string> PlaysOn { get; private set; } = new();
-
-        public List<FxSlot> FxChain(string? key) => _chains.TryGetValue(key ?? "master", out var c) ? c : _chains[key ?? "master"] = new List<FxSlot>();
-        public bool IsFxOn(string? key) => _on.GetValueOrDefault(key ?? "master");
-        public void SetFxOn(string? key, bool on) => _on[key ?? "master"] = on;
-        public void SaveFx(string? key) { }
-        public string InputKey(string deviceId, string name) => MixerService.InputPrefix + deviceId;
-        public EffectsRoute FxRouteOf(string key) => _routes.GetValueOrDefault(key, EffectsRules.RouteAutomatic);
-        public void SetFxRoute(string key, EffectsRoute route) => _routes[key] = route;
-        public IReadOnlyList<CombinedDevice> Combined => _combined;
-        public void AddCombined(CombinedDevice device) => _combined.Add(device);
-        public void SetMasterMethod(EffectsRoute route) => MasterMethod = route;
-        public void SetMasterPlaysOn(IEnumerable<string> targets) => PlaysOn = targets.ToList();
-    }
-
-    /// <summary>Records which fixes were carried out, and with what answer.</summary>
-    private sealed class FakeActions : IEasyActions
-    {
-        public List<string> Ran { get; } = new();
-        public Func<EasyFix, string?>? Effect { get; set; }
-
-        public Task<string?> RunAsync(EasyFix fix, EasyAnswers answers, EasyFacts facts)
-        {
-            Ran.Add(fix.Id);
-            return Task.FromResult(Effect?.Invoke(fix));
-        }
-    }
-
     private static EasyCheck Line(IReadOnlyList<EasyCheck> lines, string id) => lines.Single(l => l.Id == id);
 
     private static readonly int[] Bass = EasyEq.Presets.First(p => p.Name == "Bass boost").Gains;
@@ -327,7 +285,7 @@ public class EasyFlowTests
     [Fact]
     public void MasterSound_WritesTheChosenSoundBackAndSwitchesItOn_AFlatOneSwitchesItOff()
     {
-        var mixer = new FakeMixer();
+        var mixer = new EasyFakeMixer();
         EasyEq.Write(mixer.FxChain(null), Bass);
         EasyEq.Find(mixer.FxChain(null))!.Enabled = false;
         EasyApply.MasterSound(mixer);
@@ -342,7 +300,7 @@ public class EasyFlowTests
     [Fact]
     public void ProgramSounds_GiveEachAppAFlatEqualiserSwitchedOn_KeepOneItHas_AndSetTheRouteToAutomatic()
     {
-        var mixer = new FakeMixer();
+        var mixer = new EasyFakeMixer();
         EasyEq.Write(mixer.FxChain("b"), Bass);
         mixer.SetFxRoute("a", EffectsRules.RouteCapture);
         EasyApply.ProgramSounds(mixer, new[] { "a", "b" });
@@ -358,7 +316,7 @@ public class EasyFlowTests
     [Fact]
     public void Microphone_PutsTheLookOnItsOwnKey_AndNormalSwitchesItOff()
     {
-        var mixer = new FakeMixer();
+        var mixer = new EasyFakeMixer();
         var key = MixerService.InputPrefix + "mic1";
         EasyApply.Microphone(mixer, "mic1", "Headset", EasyEq.MicPresets[1].Gains);
         Assert.True(mixer.IsFxOn(key));
@@ -371,7 +329,7 @@ public class EasyFlowTests
     [Fact]
     public void Combine_MakesTheDeviceOfThatKind_AndFreeNameNumbersATakenOne()
     {
-        var mixer = new FakeMixer();
+        var mixer = new EasyFakeMixer();
         var made = EasyApply.Combine(mixer, CombinedKind.Speakers, "  Both speakers ", new[] { "a", "b", "a" });
         Assert.Equal("Both speakers", made.Name);
         Assert.Equal(new[] { "a", "b" }, made.Members);
@@ -384,7 +342,7 @@ public class EasyFlowTests
     [Fact]
     public void MasterSteps_ChangeOnlyTheMethodThatWouldStopThem()
     {
-        var mixer = new FakeMixer();
+        var mixer = new EasyFakeMixer();
         mixer.SetMasterMethod(EffectsRules.MasterApo);
         EasyApply.UseOwnEngine(mixer);
         Assert.Equal(EffectsRules.MasterAutomatic, mixer.MasterMethod);
@@ -402,7 +360,7 @@ public class EasyFlowTests
     [Fact]
     public async Task Actions_CarryOutEachFixIdThroughTheExistingStepsAndTheMixer()
     {
-        var mixer = new FakeMixer();
+        var mixer = new EasyFakeMixer();
         var steps = new List<string>();
         var actions = new EasyActions(mixer, new EasySetupSteps(
             () => { steps.Add("install-apo"); return Task.CompletedTask; }, () => { steps.Add("device-selector"); return Task.CompletedTask; },
@@ -447,34 +405,10 @@ public class EasyFlowTests
 
     // ---- the flow's screens ----
 
-    private sealed class Rig
-    {
-        public EasyFacts Facts { get; set; } = new();
-        public FakeActions Actions { get; } = new();
-        public bool Agree { get; set; } = true;
-        public List<EasyConfirm> Asked { get; } = new();
-        public int ToCards { get; private set; }
-        public int ToPage { get; private set; }
-        public EasyAnswers Answers { get; } = new();
-        public EasyFlowViewModel Flow { get; }
-
-        public Rig(string goalId, EasyFacts? facts = null)
-        {
-            Facts = facts ?? Facts;
-            var services = new EasyFlowServices(() => Facts, Actions, question =>
-            {
-                Asked.Add(question);
-                return Task.FromResult(Agree);
-            });
-            Flow = new EasyFlowViewModel(EasyGoals.All.Single(g => g.Id == goalId), EasyFlows.Of(goalId)!, Answers, services,
-                (kind, changed) => new EasyQuestionViewModel(kind, Answers, changed, null, null), () => ToCards++, () => ToPage++);
-        }
-    }
-
     [Fact]
     public void Flow_StripNamesTheScreens_AndTicksAsItGoes()
     {
-        var rig = new Rig(EasyGoals.Better);
+        var rig = new EasyRig(EasyGoals.Better);
         Assert.Equal(new[] { "Goal", "Sound", "Engine", "Setup", "Done" }, rig.Flow.Strip.Select(s => s.Title));
         Assert.Equal(new[] { true, false, false, false, false }, rig.Flow.Strip.Select(s => s.IsDone));
         Assert.True(rig.Flow.Strip[1].IsCurrent);
@@ -490,7 +424,7 @@ public class EasyFlowTests
     [Fact]
     public void Flow_AQuestionBlocksNextUntilAnswered_AndSaysWhy()
     {
-        var rig = new Rig(EasyGoals.PerApp, new EasyFacts { Programs = new[] { new EasyOption("spotify", "Spotify") } });
+        var rig = new EasyRig(EasyGoals.PerApp, new EasyFacts { Programs = new[] { new EasyOption("spotify", "Spotify") } });
         Assert.False(rig.Flow.CanNext);
         Assert.False(string.IsNullOrEmpty(rig.Flow.NextTip));
         rig.Flow.NextCommand.Execute(null);
@@ -510,7 +444,7 @@ public class EasyFlowTests
     [Fact]
     public void Flow_BackWalksOneScreenAndTheFirstBackLeavesForTheCards_ChangingNothing()
     {
-        var rig = new Rig(EasyGoals.Better, new EasyFacts { SpeakersApoWhy = "x", MasterStoredGains = Bass });
+        var rig = new EasyRig(EasyGoals.Better, new EasyFacts { SpeakersApoWhy = "x", MasterStoredGains = Bass });
         rig.Flow.NextCommand.Execute(null);
         rig.Flow.BackCommand.Execute(null);
         Assert.True(rig.Flow.IsQuestion);
@@ -524,7 +458,7 @@ public class EasyFlowTests
     [Fact]
     public void Flow_SetupCannotBeLeftUntilEveryRequiredLineIsDone()
     {
-        var rig = new Rig(EasyGoals.Better, new EasyFacts { SpeakersApoWhy = "Equalizer APO is not on this device", MasterStoredGains = Bass });
+        var rig = new EasyRig(EasyGoals.Better, new EasyFacts { SpeakersApoWhy = "Equalizer APO is not on this device", MasterStoredGains = Bass });
         rig.Flow.NextCommand.Execute(null);
         rig.Flow.NextCommand.Execute(null);
         Assert.False(rig.Flow.CanNext);
@@ -541,7 +475,7 @@ public class EasyFlowTests
     [Fact]
     public async Task Flow_AFixThatAsksDoesNothingOnNo_AndRunsOnYes_ThenTheLinesTick()
     {
-        var rig = new Rig(EasyGoals.TwoSpeakers, new EasyFacts
+        var rig = new EasyRig(EasyGoals.TwoSpeakers, new EasyFacts
         {
             Speakers = new[] { new EasyOption("s1", "A"), new EasyOption("s2", "B") },
             CableForSpeakers = new EasyCableFact(null, null, StatusKind.Other, "CABLE Input", true),
@@ -575,7 +509,7 @@ public class EasyFlowTests
     [Fact]
     public async Task Flow_AFixThatIsNoLongerOffered_IsNotRun()
     {
-        var rig = new Rig(EasyGoals.Better, new EasyFacts { SpeakersApoWhy = "x", MasterStoredGains = Bass });
+        var rig = new EasyRig(EasyGoals.Better, new EasyFacts { SpeakersApoWhy = "x", MasterStoredGains = Bass });
         rig.Flow.NextCommand.Execute(null);
         rig.Flow.NextCommand.Execute(null);
         rig.Facts = rig.Facts with { ApoInstalled = false }; // removed again after the Engine step let it through
@@ -589,7 +523,7 @@ public class EasyFlowTests
     [Fact]
     public void Flow_WhileThePcIsBeingLookedAt_NothingCanBeDone()
     {
-        var rig = new Rig(EasyGoals.Better, new EasyFacts { Looking = true });
+        var rig = new EasyRig(EasyGoals.Better, new EasyFacts { Looking = true });
         rig.Flow.NextCommand.Execute(null);
         rig.Flow.NextCommand.Execute(null);
         Assert.Equal("looking", rig.Flow.Checks.Single().Id);
@@ -600,7 +534,7 @@ public class EasyFlowTests
     [Fact]
     public void Flow_TheLastScreenLeadsToTheCardsOrThePage()
     {
-        var rig = new Rig(EasyGoals.Better, new EasyFacts { MasterStoredGains = Bass, MasterGains = Bass, MasterFxOn = true });
+        var rig = new EasyRig(EasyGoals.Better, new EasyFacts { MasterStoredGains = Bass, MasterGains = Bass, MasterFxOn = true });
         rig.Flow.NextCommand.Execute(null);
         rig.Flow.NextCommand.Execute(null);
         rig.Flow.NextCommand.Execute(null);
@@ -613,7 +547,7 @@ public class EasyFlowTests
     [Fact]
     public void Flow_TheMicrophoneSetupHasTwoQuestions_AndTheNameKeepsTheSuggestionWhenEmpty()
     {
-        var rig = new Rig(EasyGoals.Microphone, new EasyFacts { Microphones = new[] { new EasyOption("m1", "Headset") } });
+        var rig = new EasyRig(EasyGoals.Microphone, new EasyFacts { Microphones = new[] { new EasyOption("m1", "Headset") } });
         Assert.Equal(new[] { "Goal", "Microphone", "Look", "Engine", "Setup", "Done" }, rig.Flow.Strip.Select(s => s.Title));
         rig.Flow.Question!.Choices.Choose(rig.Flow.Question.Choices.Shown.Single());
         rig.Flow.NextCommand.Execute(null);
@@ -621,7 +555,7 @@ public class EasyFlowTests
         rig.Flow.Question.Looks.Single(l => l.Name == "Warm").PickCommand.Execute(null);
         Assert.Equal("Warm", rig.Answers.MicLook);
 
-        var names = new Rig(EasyGoals.JoinMicrophones, new EasyFacts { SuggestedMicrophoneName = "Combined microphone 2" });
+        var names = new EasyRig(EasyGoals.JoinMicrophones, new EasyFacts { SuggestedMicrophoneName = "Combined microphone 2" });
         Assert.Equal("Combined microphone 2", names.Flow.Question!.NamePlaceholder);
         Assert.Equal(string.Empty, names.Answers.Name);
     }

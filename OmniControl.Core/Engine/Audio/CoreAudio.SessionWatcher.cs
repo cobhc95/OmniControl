@@ -1,14 +1,10 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Engine;
 
 public static partial class CoreAudio
 {
-    /// <summary>
     /// Raises <see cref="Created"/> (on a worker thread) the moment any program opens a new audio session on any playback device, so a
     /// program that starts or opens its first stream is seen at once instead of at the next scan. Watches every active playback
     /// device and follows devices being added, removed, enabled or disabled. Windows calls in; nothing is polled.
-    /// </summary>
     public sealed class SessionWatcher : IDisposable
     {
         private readonly object _gate = new();
@@ -19,10 +15,10 @@ public static partial class CoreAudio
         private IntPtr _sessionSink, _deviceSink;
         private bool _disposed;
 
-        /// <summary>A program opened a new session somewhere (worker thread; the session itself is read by the next scan).</summary>
+        /// A program opened a new session somewhere (worker thread; the session itself is read by the next scan).
         public event Action? Created;
 
-        /// <summary>A playback device was added, removed, enabled or disabled (worker thread): the list of devices is stale.</summary>
+        /// A playback or recording device was added, removed, enabled or disabled, or a default device changed (worker thread): the list of devices is stale.
         public event Action? DevicesChanged;
 
         public SessionWatcher()
@@ -36,7 +32,7 @@ public static partial class CoreAudio
             }));
         }
 
-        /// <summary>Starts watching on a worker thread (Windows wants the registration from a multithreaded apartment; the first call is slow).</summary>
+        /// Starts watching on a worker thread (Windows wants the registration from a multithreaded apartment; the first call is slow).
         public void Start() => Task.Run(() =>
         {
             lock (_gate)
@@ -57,7 +53,7 @@ public static partial class CoreAudio
             Attach();
         });
 
-        /// <summary>Registers on every active playback device (again after a device change).</summary>
+        /// Registers on every active playback device (again after a device change).
         private void Attach()
         {
             lock (_gate)
@@ -87,7 +83,7 @@ public static partial class CoreAudio
             }
         }
 
-        /// <summary>Stops watching every device. Call inside the lock.</summary>
+        /// Stops watching every device. Call inside the lock.
         private void Detach()
         {
             foreach (var manager in _managers)
@@ -161,7 +157,13 @@ public static partial class CoreAudio
                 return 0;
             }
 
-            public int OnDefaultDeviceChanged(int flow, int role, string? id) => 0;
+            // The mixer reads the device lists (with which is default) only when told, so a new default counts as a device change (the
+            // multimedia role only: Windows reports each role on its own).
+            public int OnDefaultDeviceChanged(int flow, int role, string? id)
+            {
+                if (role == Multimedia) _devicesChanged();
+                return 0;
+            }
             public int OnPropertyValueChanged(string id, NotifyKey key) => 0;
         }
     }

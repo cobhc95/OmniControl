@@ -1,0 +1,26 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Features.Volume.Fx"
+             x:Class="OmniControl.App.Features.Volume.Fx.DynamicsRow"
+             x:DataType="vm:DynamicsItem">
+    <!-- The Compressor's and the Limiter's graph card, after TabForge's windows: the compressor's transfer curve at the left (a square
+         plot of DynamicsGraphSize with its axis labels), the gain-reduction and level meters beside it (the limiter has no curve, so its
+         meters take the whole width); the limiter's look-ahead line or the reason the meters are empty under them. -->
+    <StackPanel Spacing="6" Margin="0,4">
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+            <vm:TransferGraph Width="{StaticResource DynamicsGraphSize}" Height="{StaticResource DynamicsGraphSize}" IsVisible="{Binding HasCurve}"
+                              ToolTip.Tip="Output level against input level. The yellow line is the threshold; the dot is the level the compressor hears now" />
+            <Grid Grid.Column="1" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="8" VerticalAlignment="Center"
+                  ToolTip.Tip="Both meters fall back slowly, so a short peak can still be read">
+                <TextBlock Text="Gain reduction" VerticalAlignment="Center" />
+                <vm:DynamicsMeter Grid.Column="1" Kind="GainReduction" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2" Text="{Binding ReductionText}" Classes="muted" MinWidth="64" TextAlignment="Right" VerticalAlignment="Center" />
+                <TextBlock Grid.Row="1" Text="{Binding LevelLabel}" VerticalAlignment="Center" />
+                <vm:DynamicsMeter Grid.Row="1" Grid.Column="1" Kind="Level" VerticalAlignment="Center" />
+                <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding LevelText}" Classes="muted" MinWidth="64" TextAlignment="Right" VerticalAlignment="Center" />
+            </Grid>
+        </Grid>
+        <TextBlock Classes="hint" Text="{Binding LatencyText}" TextWrapping="Wrap" IsVisible="{Binding HasLatency}" />
+        <TextBlock Classes="hint" Text="{Binding Note}" TextWrapping="Wrap" IsVisible="{Binding HasNote}" />
+    </StackPanel>
+</UserControl>

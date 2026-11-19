@@ -1,0 +1,9 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="OmniControl.App.Shared.Ui.Controls.PathField">
+    <!-- The master path field: a text box that still takes a pasted path, and the Browse pill beside it -->
+    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+        <TextBox x:Name="PathBox" Classes="field" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Classes="pill cardaction" Tag="scope" Content="Browse…" Focusable="False" VerticalAlignment="Center" Click="OnBrowseClick" />
+    </Grid>
+</UserControl>

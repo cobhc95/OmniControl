@@ -1,17 +1,11 @@
-using System.Text.Json;
-using OmniControl.App.Audio;
-using OmniControl.App.Audio.Engine;
-using OmniControl.Core.Engine;
 using OmniControl.Core.Engine.Apo;
 using Xunit.Abstractions;
 
 namespace OmniControl.Tests;
 
-/// <summary>
 /// Virtual cables of any maker: detection and pairing (<see cref="VirtualCables.Scan"/>), the user's switches and marked pairs
 /// (<see cref="VirtualCables.Usable"/>, as <see cref="EffectsSupportService"/> applies them), and the planner giving out only allowed cables:
 /// the master bus the first, programs the others, "No free cable" when none is left.
-/// </summary>
 public class VirtualCableTests(ITestOutputHelper output)
 {
     private const string HiFiIn = "{0.0.0.00000000}.{hifi-in}", HiFiOut = "{0.0.1.00000000}.{hifi-out}";
@@ -21,7 +15,7 @@ public class VirtualCableTests(ITestOutputHelper output)
 
     private static readonly IReadOnlySet<string> None = new HashSet<string>();
 
-    /// <summary>The owner's PC plus a VB-Audio Hi-Fi Cable and Virtual Audio Cable's "Line 1" (three makers' cables).</summary>
+    /// The reference PC plus a VB-Audio Hi-Fi Cable and Virtual Audio Cable's "Line 1" (three makers' cables).
     private static readonly AudioDevice[] ThreeMakersPlayback = OwnerPc.Playback.Concat(new[]
     {
         new AudioDevice(HiFiIn, "Hi-Fi Cable Input (VB-Audio Hi-Fi Cable)", false),
@@ -52,7 +46,7 @@ public class VirtualCableTests(ITestOutputHelper output)
 
     // ---- detection ----
 
-    /// <summary>The owner's PC: one VB-CABLE pair, its two inputs ("CABLE Input", "CABLE In 16ch") one cable, identified by "CABLE Output".</summary>
+    /// The reference PC: one VB-CABLE pair, its two inputs ("CABLE Input", "CABLE In 16ch") one cable, identified by "CABLE Output".
     [Fact]
     public void OwnerPc_OneVbCablePair_BothInputsJoinIt()
     {
@@ -66,7 +60,7 @@ public class VirtualCableTests(ITestOutputHelper output)
         Assert.Equal(1, EffectsRules.AllowedPairs(Support(OwnerPc.Playback, OwnerPc.Recording)));
     }
 
-    /// <summary>Three makers' cables are three pairs; the real speaker, Stereo Mix and the microphone are never taken.</summary>
+    /// Three makers' cables are three pairs; the real speaker, Stereo Mix and the microphone are never taken.
     [Fact]
     public void ThreeMakers_ThreePairs_RealDevicesNeverTaken()
     {
@@ -80,7 +74,7 @@ public class VirtualCableTests(ITestOutputHelper output)
         Assert.Equal(3, EffectsRules.AllowedPairs(Support(ThreeMakersPlayback, ThreeMakersRecording)));
     }
 
-    /// <summary>Voicemeeter's input alone: listed as a mixer with one end, never a usable cable.</summary>
+    /// Voicemeeter's input alone: listed as a mixer with one end, never a usable cable.
     [Fact]
     public void VoicemeeterInputOnly_ListedNotUsed()
     {
@@ -91,12 +85,12 @@ public class VirtualCableTests(ITestOutputHelper output)
         Assert.False(vm.IsPair);
         Assert.False(VirtualCables.IsCable("Voicemeeter Input (VB-Audio Voicemeeter VAIO)"));
         Assert.DoesNotContain(support.Cables, c => c.PlaybackId == VmIn);
-        var plan = Plan(support, playback, OwnerPc.Recording, OwnerPc.Settings(), OwnerPc.Spotify);
+        var plan = Plan(support, playback, OwnerPc.Recording, OwnerPc.Settings(), OwnerPc.Player);
         Assert.DoesNotContain(VmIn, plan.CablesInUse);
         Assert.Equal(OwnerPc.CableInput, plan.Runs[MixerService.MasterKey].Cable);
     }
 
-    /// <summary>A VB-CABLE whose output Windows does not show: "Input only", not used (a cable needs both ends).</summary>
+    /// A VB-CABLE whose output Windows does not show: "Input only", not used (a cable needs both ends).
     [Fact]
     public void CableWithoutItsOutput_InputOnly_NotUsed()
     {
@@ -106,7 +100,7 @@ public class VirtualCableTests(ITestOutputHelper output)
         Assert.Equal(EffectsRules.NeedsCable, EffectsRules.CablesMissing(support));
     }
 
-    /// <summary>A pair the user marked by hand is a cable like any other: listed, usable, given out; unknown devices are never guessed.</summary>
+    /// A pair the user marked by hand is a cable like any other: listed, usable, given out; unknown devices are never guessed.
     [Fact]
     public void UserMarkedPair_IsUsedLikeAnyCable()
     {
@@ -119,12 +113,12 @@ public class VirtualCableTests(ITestOutputHelper output)
         var acme = Assert.Single(support.Found);
         Assert.True(acme.IsPair && acme.Marked);
         Assert.Equal(AcmeOut, acme.Id);
-        var plan = Plan(support, playback, recording, OwnerPc.Settings(), OwnerPc.Spotify);
+        var plan = Plan(support, playback, recording, OwnerPc.Settings(), OwnerPc.Player);
         Assert.Equal(AcmeIn, plan.Runs[MixerService.MasterKey].Cable);
         Assert.Equal(OwnerPc.Speaker, Assert.Single(plan.Runs[MixerService.MasterKey].Outputs));
     }
 
-    /// <summary>A mark of a recognised cable's devices is that cable (not listed twice).</summary>
+    /// A mark of a recognised cable's devices is that cable (not listed twice).
     [Fact]
     public void MarkOfARecognisedCable_IsNotListedTwice()
     {
@@ -134,26 +128,26 @@ public class VirtualCableTests(ITestOutputHelper output)
 
     // ---- the planner gives out allowed cables only ----
 
-    /// <summary>Automatic: free cables first; the bus gets the first (by name), the programs the others, each its own pair.</summary>
+    /// Automatic: free cables first; the bus gets the first (by name), the programs the others, each its own pair.
     [Fact]
     public void ThreeMakers_BusGetsTheFirst_ProgramsTheOthers()
     {
         var plan = Plan(Support(ThreeMakersPlayback, ThreeMakersRecording), ThreeMakersPlayback, ThreeMakersRecording, OwnerPc.Settings(),
-            OwnerPc.Spotify, OwnerPc.Helium);
+            OwnerPc.Player, OwnerPc.Browser);
         Assert.Equal(OwnerPc.CableInput, plan.Runs[MixerService.MasterKey].Cable);
-        var programs = new[] { plan.Runs[OwnerPc.Helium], plan.Runs[OwnerPc.Spotify] };
+        var programs = new[] { plan.Runs[OwnerPc.Browser], plan.Runs[OwnerPc.Player] };
         Assert.All(programs, r => Assert.Equal(RunKind.Cable, r.Kind));
         Assert.Equal(new[] { HiFiIn, LineIn }.Order(), programs.Select(r => r.Cable!).Order());
         Assert.Equal(3, plan.CablePairs);
         Assert.False(plan.CableFree);
     }
 
-    /// <summary>A cable switched off is never given out, not even to the bus; the next allowed one takes its place.</summary>
+    /// A cable switched off is never given out, not even to the bus; the next allowed one takes its place.
     [Fact]
     public void ForbiddenCable_IsNeverUsed()
     {
         var support = Support(ThreeMakersPlayback, ThreeMakersRecording, forbidden: new HashSet<string> { OwnerPc.CableOutput });
-        var plan = Plan(support, ThreeMakersPlayback, ThreeMakersRecording, OwnerPc.Settings(), OwnerPc.Spotify, OwnerPc.Helium);
+        var plan = Plan(support, ThreeMakersPlayback, ThreeMakersRecording, OwnerPc.Settings(), OwnerPc.Player, OwnerPc.Browser);
         Assert.Equal(HiFiIn, plan.Runs[MixerService.MasterKey].Cable);
         Assert.DoesNotContain(OwnerPc.CableInput, plan.CablesInUse);
         Assert.DoesNotContain(OwnerPc.Cable16, plan.CablesInUse);
@@ -161,33 +155,33 @@ public class VirtualCableTests(ITestOutputHelper output)
         Assert.Equal(2, plan.CablePairs);
     }
 
-    /// <summary>Every allowed cable in use: a program set to Virtual cable says "No free cable" (and records nothing).</summary>
+    /// Every allowed cable in use: a program set to Virtual cable says "No free cable" (and records nothing).
     [Fact]
     public void NoFreeCable_WhenEveryAllowedCableIsInUse()
     {
         var s = OwnerPc.Settings();
-        s.Apps.First(a => a.Key == OwnerPc.Spotify).FxRoute = EffectsRules.RouteCable.Id;
+        s.Apps.First(a => a.Key == OwnerPc.Player).FxRoute = EffectsRules.RouteCable.Id;
         var support = Support(ThreeMakersPlayback, ThreeMakersRecording, forbidden: new HashSet<string> { HiFiOut, LineOut });
-        var plan = Plan(support, ThreeMakersPlayback, ThreeMakersRecording, s, OwnerPc.Spotify);
+        var plan = Plan(support, ThreeMakersPlayback, ThreeMakersRecording, s, OwnerPc.Player);
         Assert.Equal(OwnerPc.CableInput, plan.Runs[MixerService.MasterKey].Cable);
-        Assert.False(plan.Runs.ContainsKey(OwnerPc.Spotify));
-        Assert.Equal(StatusKind.NoFreeCable, plan.Blocked[OwnerPc.Spotify].Kind);
-        Assert.Equal("No free cable", EffectsRules.Brief(plan.Blocked[OwnerPc.Spotify].Kind));
+        Assert.False(plan.Runs.ContainsKey(OwnerPc.Player));
+        Assert.Equal(StatusKind.NoFreeCable, plan.Blocked[OwnerPc.Player].Kind);
+        Assert.Equal("No free cable", EffectsRules.Brief(plan.Blocked[OwnerPc.Player].Kind));
     }
 
-    /// <summary>Every cable switched off: nothing takes one and the status says so (not "Needs VB-CABLE": it is installed).</summary>
+    /// Every cable switched off: nothing takes one and the status says so (not "Needs VB-CABLE": it is installed).
     [Fact]
     public void EveryCableSwitchedOff_SaysSo()
     {
         var support = Support(OwnerPc.Playback, OwnerPc.Recording, forbidden: new HashSet<string> { OwnerPc.CableOutput });
-        var plan = Plan(support, OwnerPc.Playback, OwnerPc.Recording, OwnerPc.Settings(), OwnerPc.Spotify);
+        var plan = Plan(support, OwnerPc.Playback, OwnerPc.Recording, OwnerPc.Settings(), OwnerPc.Player);
         Assert.Empty(plan.CablesInUse);
         Assert.Equal(StatusKind.CablesOff, plan.Blocked[MixerService.MasterKey].Kind);
         Assert.Equal(EffectsRules.CablesOff, EffectsRules.CablesMissing(support));
         Assert.True(EffectsRules.CableInstalled(support));
     }
 
-    /// <summary>A mixer.json written before cables could be switched off or marked loads unchanged: every cable allowed, none marked.</summary>
+    /// A mixer.json written before cables could be switched off or marked loads unchanged: every cable allowed, none marked.
     [Fact]
     public void OldMixerFile_LoadsWithEveryCableAllowed()
     {

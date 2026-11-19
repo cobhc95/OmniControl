@@ -1,10 +1,8 @@
-using OmniControl.App.Services;
-using OmniControl.App.Hotkeys;
-using OmniControl.App.Picker;
+using OmniControl.App.Features.Hotkeys.Picker;
 
 namespace OmniControl.Tests;
 
-/// <summary>The Actions and hotkeys window's "Suggest" on a scoped action (the display rotation actions).</summary>
+/// The Actions and hotkeys window's "Suggest" on a scoped action (the display rotation actions).
 public class SuggestKeyTests
 {
     private static HotkeyAction Rotate(string id, string key) =>
@@ -16,7 +14,7 @@ public class SuggestKeyTests
     [Fact]
     public void Suggest_OnAScopedAction_GivesItsKeyAndNeverThrows()
     {
-        using var registry = new HotkeyRegistry(new HardwareWatches());
+        using var registry = new HotkeyRegistry(new HardwareWatches(), _ => { });
         var landscape = Rotate("t.rotate.landscape", "Ctrl+Alt+Up");
         var portrait = Rotate("t.rotate.portrait", "Ctrl+Alt+Left");
         registry.Register(landscape);

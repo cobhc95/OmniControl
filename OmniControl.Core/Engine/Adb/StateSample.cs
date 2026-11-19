@@ -2,11 +2,9 @@ using System.Text.RegularExpressions;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// One look at a device's card in its app: every fact and measure a state reading can compare. Facts are words that are there or not, or an
 /// element's attribute ("attr:Switch#app:id/power@0.checked" = "true", "text:on", "word:off", "has:percent", "view:ImageView#app:id/glow");
 /// measures are numbers ("colour:target", "colour:card", "colourful:target", "shape:target"). Saved with the device when it is taught.
-/// </summary>
 public sealed class StateSample
 {
     public const string Present = "1";
@@ -14,10 +12,10 @@ public sealed class StateSample
     public Dictionary<string, string> Facts { get; set; } = new();
     public Dictionary<string, double[]> Measures { get; set; } = new();
 
-    /// <summary>No usable screenshot went with this look (none, blank or the wrong size), so only its dump facts count in a reading.</summary>
+    /// No usable screenshot went with this look (none, blank or the wrong size), so only its dump facts count in a reading.
     public bool PixelsMissing { get; set; }
 
-    /// <summary>The element that was looked at (the device's switch): its words, id and class, and its centre on the screen.</summary>
+    /// The element that was looked at (the device's switch): its words, id and class, and its centre on the screen.
     public string TargetText { get; set; } = string.Empty;
     public string TargetDescription { get; set; } = string.Empty;
     public string TargetId { get; set; } = string.Empty;
@@ -25,13 +23,13 @@ public sealed class StateSample
     public int TargetX { get; set; }
     public int TargetY { get; set; }
 
-    /// <summary>Where the target sat from each text of its card (the target's centre minus the text's centre), so the card can be found again by its name.</summary>
+    /// Where the target sat from each text of its card (the target's centre minus the text's centre), so the card can be found again by its name.
     public Dictionary<string, int[]> Anchors { get; set; } = new();
 
     private static readonly Regex WordPattern = new(@"\p{L}{2,}", RegexOptions.Compiled);
     private static readonly Regex PercentPattern = new(@"\d+\s*%", RegexOptions.Compiled);
 
-    /// <summary>Takes the facts of the target's card from the dump and, when there is a screenshot, the colour and shape measures from its pixels.</summary>
+    /// Takes the facts of the target's card from the dump and, when there is a screenshot, the colour and shape measures from its pixels.
     public static StateSample Take(SimScreen screen, SimNode target, RgbaImage? image)
     {
         var sample = new StateSample
@@ -77,7 +75,7 @@ public sealed class StateSample
         Put("shape:target", ImageStats.ShapeHash(image, Box(target)));
     }
 
-    /// <summary>An element's kind: its short class name and resource id (<c>Switch#app:id/power</c>).</summary>
+    /// An element's kind: its short class name and resource id (<c>Switch#app:id/power</c>).
     private static string KindOf(SimNode node) => $"{node.ClassName[(node.ClassName.LastIndexOf('.') + 1)..]}#{node.ResourceId}";
 
     private static string Bool(bool value) => value ? "true" : "false";

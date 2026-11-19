@@ -1,0 +1,41 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- MASTER scroll bar (MAP.md "Master UI pieces"): every ScrollViewer and ScrollBar in the app. Always shown while there
+         is something to scroll (no auto-hide), beside the content instead of over it (Fluent puts the content under the bars only
+         while they auto-hide), so a bar never covers a card's edge or its rounded accent frame. A visible track, a clear thumb
+         (BrushScrollThumb, the accent under the pointer or while dragged) and the arrows; the thumb is inset by ScrollThumbInset and
+         only changes colour on hover: nothing about its size or position changes under the pointer, so the bar and the content
+         beside it never shift (a hover that resized the thumb made the bar wobble).
+         Its thickness is ScrollBarSize (Fluent's own resource, so the bar, its arrows and thumb follow; the plug-in editor area reads it from its bars). -->
+    <Styles.Resources>
+        <x:Double x:Key="ScrollBarSize">14</x:Double>
+        <Thickness x:Key="ScrollThumbInsetVertical">3,0</Thickness>
+        <Thickness x:Key="ScrollThumbInsetHorizontal">0,3</Thickness>
+        <CornerRadius x:Key="ScrollThumbCornerRadius">4</CornerRadius>
+    </Styles.Resources>
+
+    <Style Selector="ScrollViewer"><Setter Property="AllowAutoHide" Value="False" /></Style>
+    <!-- A ListBox's own scroll viewer is made inside its template and does not take the style above (the bar then sat over the row ends:
+         a right-aligned word was cut at the bar), so the list sets the attached value for it -->
+    <Style Selector="ListBox"><Setter Property="(ScrollViewer.AllowAutoHide)" Value="False" /></Style>
+    <Style Selector="ScrollBar">
+        <Setter Property="AllowAutoHide" Value="False" />
+        <Setter Property="Background" Value="{DynamicResource BrushScrollTrack}" />
+    </Style>
+    <Style Selector="ScrollBar /template/ Grid#Root"><Setter Property="Background" Value="Transparent" /></Style>
+    <Style Selector="ScrollBar /template/ Rectangle#TrackRect">
+        <Setter Property="Fill" Value="{DynamicResource BrushScrollTrack}" />
+        <Setter Property="Stroke" Value="Transparent" />
+    </Style>
+    <Style Selector="ScrollBar /template/ Thumb">
+        <Setter Property="Background" Value="{DynamicResource BrushScrollThumb}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource ScrollThumbCornerRadius}" />
+        <Setter Property="RenderTransform" Value="none" />
+    </Style>
+    <Style Selector="ScrollBar:vertical /template/ Thumb"><Setter Property="Margin" Value="{DynamicResource ScrollThumbInsetVertical}" /></Style>
+    <Style Selector="ScrollBar:horizontal /template/ Thumb"><Setter Property="Margin" Value="{DynamicResource ScrollThumbInsetHorizontal}" /></Style>
+    <Style Selector="ScrollBar /template/ Thumb /template/ Border"><Setter Property="Background" Value="{DynamicResource BrushScrollThumb}" /></Style>
+    <Style Selector="ScrollBar /template/ Thumb:pointerover /template/ Border, ScrollBar /template/ Thumb:pressed /template/ Border">
+        <Setter Property="Background" Value="{DynamicResource BrushAccent}" />
+    </Style>
+</Styles>

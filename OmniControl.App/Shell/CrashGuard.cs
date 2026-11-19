@@ -1,14 +1,8 @@
-using Avalonia.Threading;
-using OmniControl.App.Dialogs;
-using OmniControl.App.Services;
-
 namespace OmniControl.App.Shell;
 
-/// <summary>
 /// The last-chance net: an exception no feature caught (a UI event, an async void handler, a forgotten task) is logged and shown as one
 /// plain sentence with "Copy details", and the app keeps running. Entry points still guard themselves (<see cref="Guard"/>); this is for
 /// what they missed.
-/// </summary>
 public static class CrashGuard
 {
     private static bool _showing;
@@ -23,6 +17,7 @@ public static class CrashGuard
         AppDomain.CurrentDomain.UnhandledException += (_, e) =>
         {
             if (e.ExceptionObject is Exception ex) Guard.Log("Unhandled", ex);
+            AppDataStore.FlushLogs(); // the process may end right after this handler
         };
         TaskScheduler.UnobservedTaskException += (_, e) =>
         {

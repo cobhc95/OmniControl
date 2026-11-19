@@ -1,13 +1,11 @@
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// A VST2 plug-in's own editor (effEditOpen into the host's child window; see <see cref="IPluginEditor"/>). VST2 editors have a fixed
 /// size the plug-in may change (audioMasterSizeWindow, raised as <see cref="Resized"/> from <see cref="Idle"/>), need the host's idle
 /// call while open (effEditIdle), and have no content scale: they draw at their own size, so a scale other than the display's own is refused.
-/// </summary>
 internal sealed class Vst2Editor : IPluginEditor
 {
-    /// <summary>Two content scales closer than this are the same (float rounding).</summary>
+    /// Two content scales closer than this are the same (float rounding).
     private const double ScaleTolerance = 0.001;
 
     private readonly Vst2Effect _effect;
@@ -23,7 +21,7 @@ internal sealed class Vst2Editor : IPluginEditor
 
     public bool IsOpen => !_disposed;
 
-    /// <summary>VST2 has no way for a host to offer an editor a size.</summary>
+    /// VST2 has no way for a host to offer an editor a size.
     public bool CanResize => false;
 
     public void AttachTo(IntPtr parentWindow, double scale)
@@ -43,7 +41,7 @@ internal sealed class Vst2Editor : IPluginEditor
 
     public (int Width, int Height) Offer(int width, int height) => Size;
 
-    /// <summary>A VST2 editor keeps its own size: only the scale it was attached at counts as taken.</summary>
+    /// A VST2 editor keeps its own size: only the scale it was attached at counts as taken.
     public bool TryScale(double scale) => !_disposed && Math.Abs(scale - _scale) < ScaleTolerance;
 
     public void MoveView(int x, int y)
@@ -66,15 +64,15 @@ internal sealed class Vst2Editor : IPluginEditor
     }
 }
 
-/// <summary>The editor calls of a VST2 plug-in (UI thread). A plug-in has one editor window at a time: opening another closes the first.</summary>
+/// The editor calls of a VST2 plug-in (UI thread). A plug-in has one editor window at a time: opening another closes the first.
 internal sealed unsafe partial class Vst2Effect
 {
-    /// <summary>The size used when a plug-in does not say its editor's size (pixels).</summary>
+    /// The size used when a plug-in does not say its editor's size (pixels).
     private const int UnknownEditorWidth = 400, UnknownEditorHeight = 300;
 
     private Vst2Editor? _openEditor;
 
-    /// <summary>The editor's size as the plug-in reports it now (effEditGetRect; many plug-ins know it only once the editor is open).</summary>
+    /// The editor's size as the plug-in reports it now (effEditGetRect; many plug-ins know it only once the editor is open).
     internal (int Width, int Height) EditorSize()
     {
         if (_disposed) return (0, 0);
@@ -99,7 +97,7 @@ internal sealed unsafe partial class Vst2Effect
         if (!_disposed) Dispatch(Vst2Abi.EffEditClose, 0, 0, IntPtr.Zero, 0);
     }
 
-    /// <summary>Closes an editor still open when the plug-in is disposed.</summary>
+    /// Closes an editor still open when the plug-in is disposed.
     private void CloseEditor()
     {
         if (_openEditor is not { } editor) return;

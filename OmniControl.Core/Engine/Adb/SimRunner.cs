@@ -1,32 +1,26 @@
-using System.Diagnostics;
-
 namespace OmniControl.Core.Engine;
 
-/// <summary>How long a step waits for what it needs (given by the app, so the values live in one place).</summary>
+/// How long a step waits for what it needs (given by the app, so the values live in one place).
 public sealed record SimTiming(TimeSpan ElementWait, TimeSpan Poll, TimeSpan Settle, int ScrollTries = 0, Action<string>? Log = null);
 
-/// <summary>What a run is for: a state to reach, or a toggle (which always taps).</summary>
+/// What a run is for: a state to reach, or a toggle (which always taps).
 public enum SimGoal { On, Off, Toggle }
 
-/// <summary>
 /// How a run ended: <see cref="FailedIndex"/> is the step that stopped it (-1 = none), <see cref="Problem"/> a short phrase, <see cref="IsOn"/> the
 /// state read at the end, <see cref="Skipped"/> that the device already was in the wanted state so nothing was tapped, <see cref="Unsure"/> that
 /// its state could not be read (so On and Off tapped nothing), and <see cref="Confidence"/> how sure the readings were (0-1).
-/// </summary>
 public sealed record SimResult(int FailedIndex, string? Problem, bool? IsOn, bool Skipped = false, bool Unsure = false, double Confidence = 0)
 {
     public bool Ok => Problem is null;
 }
 
-/// <summary>
 /// Plays the recorded steps on an Android screen. A step runs only after the one before it worked; the first that fails stops the run.
 /// The last Tap is the device's switch (<see cref="SwitchIndex"/>): the steps before it lead to the device's card, then the taught
 /// <see cref="StateModel"/> reads the state there. On and Off tap only when the state is the other one, Toggle always taps; after the tap the
 /// state is read again and the run counts as working only when it changed. A state that cannot be read means On and Off tap nothing.
-/// </summary>
 public static partial class SimRunner
 {
-    /// <summary>The step that is the device's switch: the last Tap; -1 when the steps have none.</summary>
+    /// The step that is the device's switch: the last Tap; -1 when the steps have none.
     public static int SwitchIndex(IReadOnlyList<SimStep> steps)
     {
         for (var i = steps.Count - 1; i >= 0; i--)
@@ -34,13 +28,13 @@ public static partial class SimRunner
         return -1;
     }
 
-    /// <summary>Runs one step on its own (the step editor's Test step); a Check needs its text on the screen.</summary>
+    /// Runs one step on its own (the step editor's Test step); a Check needs its text on the screen.
     public static async Task<SimResult> TestStepAsync(IAdbScreen adb, SimStep step, int index, SimTiming timing, CancellationToken stop = default) =>
         await StepAsync(adb, step, index, timing, stop) ?? new SimResult(-1, null, null);
 
     private static SimResult Failed(int index, string? problem) => new(index, problem ?? "it failed", null);
 
-    /// <summary>Does one step; null when it worked, otherwise the result that stops the run.</summary>
+    /// Does one step; null when it worked, otherwise the result that stops the run.
     private static async Task<SimResult?> StepAsync(IAdbScreen adb, SimStep step, int index, SimTiming timing, CancellationToken stop)
     {
         if (SimSteps.Missing(step) is { } missing) return Failed(index, missing);
@@ -88,10 +82,8 @@ public static partial class SimRunner
     private static (int X, int Y) PointOf(SimScreen screen, SimStep step) =>
         screen.Find(step) is { } node ? (node.CenterX, node.CenterY) : (step.X, step.Y);
 
-    /// <summary>
     /// Waits until the element is on the screen and gives that screen, or says why not. A step with no text, description or id has nothing
     /// to wait for: it is given the current screen and taps its position.
-    /// </summary>
     private static async Task<(SimScreen? Screen, string? Problem)> WaitForAsync(IAdbScreen adb, SimStep step, SimTiming timing, CancellationToken stop)
     {
         if (!step.HasIdentity) return (await ReadAsync(adb) ?? SimScreen.Parse("<hierarchy></hierarchy>"), null);
@@ -120,7 +112,7 @@ public static partial class SimRunner
 
     private static string Words(SimStep step) => SimSteps.Words(step).Target is { Length: > 0 } target ? target : "the element";
 
-    /// <summary>Waits until a Check's words are on the screen; false when they did not show in time.</summary>
+    /// Waits until a Check's words are on the screen; false when they did not show in time.
     private static async Task<bool> WaitShowsAsync(IAdbScreen adb, SimStep check, SimTiming timing, CancellationToken stop)
     {
         var clock = Stopwatch.StartNew();

@@ -1,0 +1,35 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+             xmlns:vm="using:OmniControl.App.Features.Volume.Pages"
+             x:Class="OmniControl.App.Features.Volume.Pages.PlaysOnButton"
+             x:DataType="vm:VolumeRow">
+    <!-- A Mixer row's Plays on chip (docs/mockups/mixer-rows-knobs.html), shaped like the Method chip (Button.selector): where the row
+         plays ("Speaker (Realtek)", "Master" for a program that follows the master). The master and a program open the shared Plays on
+         menu (PlaysOnMenuView, a FlyoutPresenter.listmenu, the same menu and rules as the Wiring cell's); a combined device's chip opens
+         Wiring at its row, where its members are changed; a microphone's chip only names its device (Border.selector). -->
+    <FlyoutBase.AttachedFlyout>
+        <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft" Opened="OnOpened" Closed="OnClosed">
+            <vm:PlaysOnMenuView KeyDown="OnMenuKeyDown" />
+        </c:ListMenuFlyout>
+    </FlyoutBase.AttachedFlyout>
+
+    <Panel>
+        <Button x:Name="Chip" Tag="scope" Classes="selector" IsVisible="{Binding HasPlaysOnMenu}" ToolTip.Tip="{Binding RouteText}" Click="OnClick">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
+                <TextBlock Text="{Binding RouteText}" />
+                <PathIcon Grid.Column="1" Data="{DynamicResource ChevronDownIcon}" />
+            </Grid>
+        </Button>
+        <Button Tag="scope" Classes="selector" IsVisible="{Binding PlaysOnOpensWiring}" Command="{Binding ShowWiringCommand}"
+                ToolTip.Tip="{Binding RouteText}">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
+                <TextBlock Text="{Binding RouteText}" />
+                <PathIcon Grid.Column="1" Data="{DynamicResource ChevronDownIcon}" />
+            </Grid>
+        </Button>
+        <Border Classes="selector" IsVisible="{Binding PlaysOnIsFixed}" ToolTip.Tip="{Binding RouteText}">
+            <TextBlock Text="{Binding RouteText}" />
+        </Border>
+    </Panel>
+</UserControl>

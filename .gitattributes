@@ -6,3 +6,7 @@
 *.slnx text eol=lf
 *.manifest text eol=crlf
 *.ico binary
+*.dll binary
+*.sys binary
+*.inf binary
+*.cat binary

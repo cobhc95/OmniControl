@@ -1,24 +1,22 @@
 namespace OmniControl.Core.Engine.Mouse;
 
-/// <summary>
 /// Maps where a window's title bar is by asking the window point by point with the gesture hit test's own question
 /// (<see cref="PointerArea.IsCaption"/>), so the drawn title bar is the area the gesture really fires in.
 /// Every row of the window's top is sampled every <see cref="SampleStep"/> pixels and the ends of each title-bar run are then found
 /// to the exact pixel; a gap in the title bar narrower than <see cref="SampleStep"/> that falls between two samples is not seen.
 /// Slow (thousands of questions for a wide window): call it off the UI thread and only when the window moved or changed.
-/// </summary>
 internal static class CaptionArea
 {
-    /// <summary>Pixels between samples along a row (caption buttons and window icons are wider than this).</summary>
+    /// Pixels between samples along a row (caption buttons and window icons are wider than this).
     private const int SampleStep = 16;
 
-    /// <summary>Rows from the window's top searched for the first title-bar row (the resize border sits above it).</summary>
+    /// Rows from the window's top searched for the first title-bar row (the resize border sits above it).
     private const int LeadRows = 24;
 
-    /// <summary>The deepest title bar looked for, in rows from the window's top.</summary>
+    /// The deepest title bar looked for, in rows from the window's top.
     private const int MaxRows = 240;
 
-    /// <summary>The title-bar rectangles of <paramref name="window"/> (outer bounds <paramref name="frame"/>); empty when it has none or stops answering.</summary>
+    /// The title-bar rectangles of <paramref name="window"/> (outer bounds <paramref name="frame"/>); empty when it has none or stops answering.
     public static List<ScreenRect> Of(IntPtr window, ScreenRect frame)
     {
         var rects = new List<ScreenRect>();
@@ -49,7 +47,7 @@ internal static class CaptionArea
         }
     }
 
-    /// <summary>The title-bar runs [From, To) on one row, or null when the window did not answer.</summary>
+    /// The title-bar runs [From, To) on one row, or null when the window did not answer.
     private static List<(int From, int To)>? RunsAt(IntPtr window, ScreenRect frame, int y)
     {
         var runs = new List<(int From, int To)>();
@@ -72,10 +70,8 @@ internal static class CaptionArea
         return runs;
     }
 
-    /// <summary>
     /// Between <paramref name="from"/> (answer: not <paramref name="wantHit"/>) and <paramref name="to"/> (answer: <paramref name="wantHit"/>),
     /// the first pixel whose answer is <paramref name="wantHit"/>; null when the window stopped answering.
-    /// </summary>
     private static int? Edge(IntPtr window, int from, int to, int y, bool wantHit)
     {
         while (to - from > 1)

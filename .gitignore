@@ -23,12 +23,4 @@ Thumbs.db
 *.snupkg
 publish/
 
-## Effects engine: third-party and built binaries never go into git (see native/EqualizerAPO/README.md, third_party/vbcable/README.md)
-native/EqualizerAPO/deps/
-native/EqualizerAPO/build-x64/
-OmniControl.App/apo/
-third_party/vbcable/*
-!third_party/vbcable/README.md
-third_party/equalizerapo/*
-!third_party/equalizerapo/README.md
 

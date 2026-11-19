@@ -1,34 +1,26 @@
-using System.ComponentModel;
-using System.Diagnostics;
-using OmniControl.Core.Native;
-
 namespace OmniControl.Core.Engine;
 
-/// <summary>How much setup an emulator needs before OmniControl can use it.</summary>
+/// How much setup an emulator needs before OmniControl can use it.
 public enum EmulatorEase { Easy, Hard }
 
-/// <summary>
 /// An Android emulator OmniControl knows: how to find it on this PC (candidate program paths, else its Uninstall entry's install folder plus a
 /// relative program path), where its official download page is, the address adb reaches it at and the programs it runs as. UsesGb is the memory it
-/// holds while running, PcGb the memory the PC should have (sources in HANDOVER.md).
-/// </summary>
+/// holds while running, PcGb the memory the PC should have.
 public sealed record EmulatorInfo(string Id, string Name, string DownloadPage, string DefaultAddress, string[] Programs, string[] Processes, string AdbNote, EmulatorEase Ease, int UsesGb, int PcGb, string Summary,
     string[] RegistryNames, string[] RegistryPrograms, string? RegistryAdb)
 {
-    /// <summary>Only Android Studio's emulator window is hidden and shown by OmniControl (<see cref="Emulators.SetWindowVisible"/>); the others always show theirs.</summary>
+    /// Only Android Studio's emulator window is hidden and shown by OmniControl (<see cref="Emulators.SetWindowVisible"/>); the others always show theirs.
     public bool CanHide => Id == Emulators.AndroidStudio;
 
-    /// <summary>Memory the emulator holds while running, as the menu shows it.</summary>
+    /// Memory the emulator holds while running, as the menu shows it.
     public string UsesText => $"~{UsesGb} GB";
 
-    /// <summary>Memory the PC should have, as the menu shows it.</summary>
+    /// Memory the PC should have, as the menu shows it.
     public string PcText => $"PC {PcGb} GB+";
 }
 
-/// <summary>
 /// The master list of known emulators (the Devices page's emulator menu reads it) and the lookups on it. Nothing is ever downloaded:
 /// a missing emulator is only a link to its official page; adb (the Android SDK's platform-tools) is looked up the same way.
-/// </summary>
 public static class Emulators
 {
     public const string AndroidStudio = "studio", BlueStacks = "bluestacks", LdPlayer = "ldplayer", MuMu = "mumu", MEmu = "memu";
@@ -75,7 +67,7 @@ public static class Emulators
 
     public static EmulatorInfo? Of(string id) => All.FirstOrDefault(e => e.Id == id);
 
-    /// <summary>The program that starts the emulator (a candidate path, else its Uninstall entry's install folder), or null when it is not installed.</summary>
+    /// The program that starts the emulator (a candidate path, else its Uninstall entry's install folder), or null when it is not installed.
     public static string? Find(EmulatorInfo emulator) =>
         emulator.Programs.Select(Environment.ExpandEnvironmentVariables).FirstOrDefault(IsFile) ?? InRegistryFolders(emulator, emulator.RegistryPrograms);
 
@@ -84,15 +76,15 @@ public static class Emulators
             ? null
             : UninstallRegistry.InstallLocations(emulator.RegistryNames).SelectMany(folder => relative.Select(r => Path.Combine(folder, r))).FirstOrDefault(IsFile);
 
-    /// <summary>The adb an installed emulator ships with (MuMu's nx_main\adb.exe and the like); null when it is not installed or ships none.</summary>
+    /// The adb an installed emulator ships with (MuMu's nx_main\adb.exe and the like); null when it is not installed or ships none.
     public static string? FindBundledAdb(EmulatorInfo emulator) =>
         emulator.RegistryAdb is { } adb && Find(emulator) is not null ? InRegistryFolders(emulator, new[] { adb }) : null;
 
-    /// <summary>adb from the Android SDK, else the bundled adb of the chosen emulator, else of any installed one; null when there is none.</summary>
+    /// adb from the Android SDK, else the bundled adb of the chosen emulator, else of any installed one; null when there is none.
     public static string? FindAdb(EmulatorInfo? chosen = null) =>
         FindSdkAdb() ?? (chosen is null ? null : FindBundledAdb(chosen)) ?? All.Select(FindBundledAdb).FirstOrDefault(a => a is not null);
 
-    /// <summary>adb from the Android SDK's platform-tools (the SDK folder variables, Android Studio's folder, then the PATH); null when it is not installed.</summary>
+    /// adb from the Android SDK's platform-tools (the SDK folder variables, Android Studio's folder, then the PATH); null when it is not installed.
     private static string? FindSdkAdb()
     {
         var folders = new List<string?>
@@ -119,10 +111,8 @@ public static class Emulators
         }
     }
 
-    /// <summary>
     /// Starts the emulator (Android Studio's with its first virtual device) as the normal user; null when it started, otherwise one plain sentence.
     /// <paramref name="quickBoot"/> lets it load its saved snapshot. It always starts with its window; hiding it is <see cref="SetWindowVisible"/>.
-    /// </summary>
     public static string? Open(EmulatorInfo emulator, bool quickBoot = false)
     {
         if (Find(emulator) is not { } program) return $"{emulator.Name} isn't installed.";
@@ -151,11 +141,9 @@ public static class Emulators
 
     private const string WindowTitlePrefix = "Android Emulator";
 
-    /// <summary>
     /// Hides or shows the emulator's window (the emulator keeps running with full graphics; only the window goes). Only its titled top-level windows are
     /// touched (the toolbar belongs to them); <see cref="Process.MainWindowHandle"/> cannot find a hidden window, so the windows are enumerated.
     /// True when a window was found (a starting emulator has none yet).
-    /// </summary>
     public static bool SetWindowVisible(EmulatorInfo emulator, bool visible)
     {
         var ids = Running(emulator).Select(p => { using (p) return (uint)p.Id; }).ToHashSet();
@@ -175,7 +163,7 @@ public static class Emulators
         return found;
     }
 
-    /// <summary>Brings the emulator's main window to the front (restoring it when minimised); false when it has no window (running hidden, or not running).</summary>
+    /// Brings the emulator's main window to the front (restoring it when minimised); false when it has no window (running hidden, or not running).
     public static bool BringToFront(EmulatorInfo emulator)
     {
         foreach (var process in Running(emulator))
@@ -195,10 +183,10 @@ public static class Emulators
         return false;
     }
 
-    /// <summary>The memory the emulator's programs hold now, in bytes; 0 when none is running.</summary>
+    /// The memory the emulator's programs hold now, in bytes; 0 when none is running.
     public static long MemoryUsed(EmulatorInfo emulator) => Running(emulator).Sum(Measure);
 
-    /// <summary>Stops the emulator's programs hard (only after a clean shutdown did not work).</summary>
+    /// Stops the emulator's programs hard (only after a clean shutdown did not work).
     public static void Kill(EmulatorInfo emulator)
     {
         foreach (var process in Running(emulator))
@@ -222,7 +210,7 @@ public static class Emulators
         }
     }
 
-    /// <summary>The names of the virtual devices Android Studio made (the .ini files in the user's .android\avd folder).</summary>
+    /// The names of the virtual devices Android Studio made (the .ini files in the user's .android\avd folder).
     public static IReadOnlyList<string> VirtualDevices()
     {
         var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".android", "avd");

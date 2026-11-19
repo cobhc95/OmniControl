@@ -106,7 +106,7 @@ Needs the .NET 9 SDK on Windows.
 dotnet run --project OmniControl.App -c Release
 ```
 
-The optional native effects engine (a fork of Equalizer APO, in C++) is built separately; see [native/EqualizerAPO/README.md](native/EqualizerAPO/README.md). If you want to contribute, start with [AGENTS.md](AGENTS.md), [ARCHITECTURE.md](ARCHITECTURE.md) and [HANDOVER.md](HANDOVER.md). See [CHANGELOG.md](CHANGELOG.md) for what changed in each release.
+If you want to contribute, start with [AGENTS.md](AGENTS.md) and [MAP.md](MAP.md). See [CHANGELOG.md](CHANGELOG.md) for what changed in each release.
 
 ## Licence
 

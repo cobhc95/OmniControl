@@ -1,8 +1,6 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Native;
 
-/// <summary>The Windows Magnification API's full-screen colour effect (one 5x5 colour matrix for the whole desktop).</summary>
+/// The Windows Magnification API's full-screen colour effect (one 5x5 colour matrix for the whole desktop).
 internal static class MagnificationNative
 {
     [StructLayout(LayoutKind.Sequential)]

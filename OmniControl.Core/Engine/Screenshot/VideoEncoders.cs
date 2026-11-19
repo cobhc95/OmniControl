@@ -1,12 +1,11 @@
-using System.Runtime.InteropServices;
 using static OmniControl.Core.Native.MediaFoundationNative;
 
 namespace OmniControl.Core.Engine.Screenshot;
 
-/// <summary>Which video encoders Windows has (asked of Media Foundation; nothing is opened or kept).</summary>
+/// Which video encoders Windows has (asked of Media Foundation; nothing is opened or kept).
 public static class VideoEncoders
 {
-    /// <summary>True when Windows has an HEVC encoder (the HEVC Video Extensions or a graphics card's own). Never throws.</summary>
+    /// True when Windows has an HEVC encoder (the HEVC Video Extensions or a graphics card's own). Never throws.
     public static bool HevcAvailable()
     {
         var output = new TypeInfo { Major = Video, Sub = Hevc };

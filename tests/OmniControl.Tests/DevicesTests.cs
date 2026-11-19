@@ -1,8 +1,4 @@
-using System.Text.Json;
-using OmniControl.App.Devices;
-using OmniControl.App.Services;
-using OmniControl.Core.Engine;
-using Xunit;
+using OmniControl.App.Features.Devices;
 
 namespace OmniControl.Tests;
 
@@ -73,36 +69,14 @@ public sealed class DevicesTests
     }
 
     [Fact]
-    public void A_device_saved_before_methods_becomes_a_one_method_device_with_its_id()
-    {
-        const string old = "{\"Devices\":[{\"Id\":\"abc\",\"Name\":\"Lamp\",\"Address\":\"192.168.0.9\",\"Email\":\"a@b.c\",\"Method\":\"Simulation\",\"Verified\":true,\"AdbAddress\":\"127.0.0.1:5555\"}]}";
-        var device = JsonSerializer.Deserialize<DeviceSettings>(old)!.Devices[0];
-        Assert.True(device.Migrate());
-        var method = Assert.Single(device.Methods);
-        Assert.Equal("abc", method.Id); // the password (kept by id) still fits
-        Assert.Equal(DeviceMethods.Simulation, method.Kind);
-        Assert.Equal("192.168.0.9", method.Address);
-        Assert.Equal("127.0.0.1:5555", method.AdbAddress);
-        Assert.True(method.Verified);
-        Assert.Null(device.Legacy);
-        Assert.DoesNotContain("\"Address\":\"192", JsonSerializer.Serialize(device).Split("Methods")[0]);
-        Assert.False(device.Migrate());
-    }
-
-    [Fact]
-    public void Old_fields_merged_into_a_device_that_has_methods_are_dropped()
-    {
-        var device = JsonSerializer.Deserialize<DeviceRecord>("{\"Id\":\"x\",\"Methods\":[{\"Id\":\"m\",\"Address\":\"10.0.0.2\"}],\"Address\":\"10.0.0.1\"}")!;
-        Assert.True(device.Migrate());
-        Assert.Equal("10.0.0.2", Assert.Single(device.Methods).Address);
-    }
-
-    [Fact]
-    public void A_device_with_no_method_gets_one()
+    public void A_device_with_no_method_gets_one_with_its_id()
     {
         var device = new DeviceRecord { Id = "d" };
-        Assert.True(device.Migrate());
-        Assert.Equal(DeviceMethods.Scripts, Assert.Single(device.Methods).Kind);
+        Assert.True(device.EnsureMethod());
+        var method = Assert.Single(device.Methods);
+        Assert.Equal(DeviceMethods.Scripts, method.Kind);
+        Assert.Equal("d", method.Id); // the password (kept by id) still fits
+        Assert.False(device.EnsureMethod());
     }
 
     [Fact]

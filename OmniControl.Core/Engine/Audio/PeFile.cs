@@ -1,11 +1,7 @@
-using System.Text;
-
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// Reads a Windows binary's headers straight from the file, never loading it (ported from TabForge's <c>PeImage</c> and
 /// <c>PeExports</c>, same owner): the machine it is built for and the names it exports. Bounded: small reads, capped counts.
-/// </summary>
 internal static class PeFile
 {
     public const ushort MachineX64 = 0x8664, MachineX86 = 0x014C;
@@ -13,7 +9,7 @@ internal static class PeFile
     private const ushort Pe32 = 0x10B, Pe32Plus = 0x20B;
     private const int MaxSections = 96, MaxExports = 4096, MaxNameBytes = 64;
 
-    /// <summary>The machine type, 0 when the file is not a Windows binary, null when it can't be read now.</summary>
+    /// The machine type, 0 when the file is not a Windows binary, null when it can't be read now.
     public static ushort? Machine(string file)
     {
         try
@@ -27,7 +23,7 @@ internal static class PeFile
         }
     }
 
-    /// <summary>The names the binary exports (empty for a file that is not a readable Windows binary).</summary>
+    /// The names the binary exports (empty for a file that is not a readable Windows binary).
     public static IReadOnlySet<string> Exports(string file)
     {
         var names = new HashSet<string>(StringComparer.Ordinal);
@@ -66,7 +62,7 @@ internal static class PeFile
 
     private sealed record Image(ushort Machine, long DataDirectories, IReadOnlyList<(uint Va, uint Size, uint Raw)> Sections)
     {
-        /// <summary>The file offset of a relative address; throws when no section holds it.</summary>
+        /// The file offset of a relative address; throws when no section holds it.
         public long Offset(uint rva)
         {
             foreach (var (va, size, raw) in Sections)
@@ -75,7 +71,7 @@ internal static class PeFile
         }
     }
 
-    /// <summary>The headers, or null when the file is not a PE image of a known kind.</summary>
+    /// The headers, or null when the file is not a PE image of a known kind.
     private static Image? Header(BinaryReader reader)
     {
         var stream = reader.BaseStream;

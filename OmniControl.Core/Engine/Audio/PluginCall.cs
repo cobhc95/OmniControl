@@ -1,11 +1,9 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Engine;
 
-/// <summary>The one guard around a call into a VST3 plug-in's controller or view that may fail inside the plug-in.</summary>
+/// The one guard around a call into a VST3 plug-in's controller or view that may fail inside the plug-in.
 internal static class PluginCall
 {
-    /// <summary>Runs <paramref name="call"/>; a failure inside the plug-in (or a plug-in already closed) gives <paramref name="fallback"/>.</summary>
+    /// Runs <paramref name="call"/>; a failure inside the plug-in (or a plug-in already closed) gives <paramref name="fallback"/>.
     public static T Ask<T>(Func<T> call, T fallback)
     {
         try

@@ -1,8 +1,6 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Native;
 
-/// <summary>advapi32 Windows Credential Manager calls (generic credentials of the current user).</summary>
+/// advapi32 Windows Credential Manager calls (generic credentials of the current user).
 internal static class CredentialNative
 {
     public const uint TypeGeneric = 1;

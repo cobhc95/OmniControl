@@ -1,9 +1,8 @@
-using OmniControl.App.Audio;
-using OmniControl.App.Audio.Engine.Dsp;
+using OmniControl.App.Features.Volume.Audio.Engine.Dsp;
 
 namespace OmniControl.Tests;
 
-/// <summary>The IR Loader's convolver against direct convolution, and chains saved before its new settings existed.</summary>
+/// The IR Loader's convolver against direct convolution, and chains saved before its new settings existed.
 public class IrLoaderTests
 {
     [Fact]

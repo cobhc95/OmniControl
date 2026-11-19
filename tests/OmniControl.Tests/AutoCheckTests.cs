@@ -1,9 +1,8 @@
-using OmniControl.App.Devices;
-using Xunit;
+using OmniControl.App.Features.Devices;
 
 namespace OmniControl.Tests;
 
-/// <summary>The device auto-check rules: migrating the old per-device values, "Same for every device", and Scripts-only checks (no UI, no devices).</summary>
+/// The device auto-check rules: "Same for every device", and Scripts-only checks (no UI, no devices).
 public class AutoCheckTests
 {
     private static DeviceRecord Plug(AutoCheck? own = null, string kind = DeviceMethods.Scripts) =>
@@ -12,32 +11,9 @@ public class AutoCheckTests
     private static DeviceSettings With(params DeviceRecord[] devices) => new() { Devices = devices.ToList() };
 
     [Fact]
-    public void Migrating_equal_values_makes_them_the_shared_one()
+    public void Old_numbers_keep_their_meaning()
     {
-        var settings = With(Plug(AutoCheck.StartAndEvery15), Plug(AutoCheck.StartAndEvery15), Plug());
-        Assert.True(AutoChecks.Migrate(settings));
-        Assert.Equal(AutoCheck.StartAndEvery15, settings.AutoCheck);
-        Assert.True(settings.AutoCheckSame);
-        Assert.All(settings.Devices, d => Assert.Null(d.AutoCheck));
-    }
-
-    [Fact]
-    public void Migrating_different_values_keeps_each_and_turns_the_switch_off()
-    {
-        var settings = With(Plug(AutoCheck.Off), Plug(AutoCheck.WhenOpens));
-        AutoChecks.Migrate(settings);
-        Assert.False(settings.AutoCheckSame);
-        Assert.Equal(AutoCheck.Off, AutoChecks.Effective(settings, settings.Devices[0]));
-        Assert.Equal(AutoCheck.WhenOpens, AutoChecks.Effective(settings, settings.Devices[1]));
-    }
-
-    [Fact]
-    public void Migrating_runs_once_and_old_numbers_keep_their_meaning()
-    {
-        var settings = With(Plug());
-        Assert.True(AutoChecks.Migrate(settings));
-        Assert.False(AutoChecks.Migrate(settings));
-        Assert.Equal(AutoChecks.Default, settings.AutoCheck);
+        Assert.Equal(AutoChecks.Default, new DeviceSettings().AutoCheck);
         Assert.Equal(AutoCheck.StartAndEvery5, (AutoCheck)2);
         Assert.Equal(AutoCheck.StartAndEvery15, (AutoCheck)3);
     }

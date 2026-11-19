@@ -1,0 +1,14 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
+             x:Class="OmniControl.App.Shared.Ui.Controls.SliderField">
+    <!-- THE slider with its value: a Slider (reset on double-click, wheel and keys from the shared pieces) and the value words beside it that
+         can be typed (NumberText: double-click, or Ctrl+Enter on the slider). The words are Text; the typed number is Value. A page lays it
+         out in one grid cell, so no row retypes the slider's limits, reset or typing. -->
+    <Grid x:Name="Layout" ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource SliderValueGap}">
+        <Slider x:Name="Bar" MinWidth="{DynamicResource SliderBarMinWidth}" />
+        <pages:NumberText x:Name="Typed" Grid.Column="1" Classes="plain" VerticalAlignment="Center" HorizontalAlignment="Right">
+            <TextBlock x:Name="Words" Classes="slidervalue" MinWidth="{DynamicResource SliderValueMinWidth}" />
+        </pages:NumberText>
+    </Grid>
+</UserControl>

@@ -2,13 +2,11 @@ using System.Runtime.ExceptionServices;
 
 namespace OmniControl.Core.Engine.Screenshot;
 
-/// <summary>
 /// Runs a slow sink (the GIF's palette and compression) on a worker thread of its own so copying the screen and encoding overlap. The
 /// queue holds one frame: while the worker is busy and a frame already waits, a new frame is dropped, so the one waiting simply lasts
 /// longer (its end is the next frame that gets through, as with a repeated frame) and nothing ever piles up. A failure on the worker
 /// is thrown again on the recording thread at the next frame or at <see cref="Finish"/>. The worker ends on <see cref="Finish"/> or
 /// <see cref="Dispose"/>; the inner sink is disposed with it.
-/// </summary>
 internal sealed class QueuedVideoSink : IVideoSink
 {
     private readonly IVideoSink _inner;
@@ -62,7 +60,7 @@ internal sealed class QueuedVideoSink : IVideoSink
         _inner.Dispose();
     }
 
-    /// <summary>Lets the worker write the frame still waiting, then ends it.</summary>
+    /// Lets the worker write the frame still waiting, then ends it.
     private void Close()
     {
         lock (_gate)

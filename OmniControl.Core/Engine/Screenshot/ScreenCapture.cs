@@ -1,24 +1,19 @@
-using System.ComponentModel;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
 using OmniControl.Core.Engine.Mouse;
 using static OmniControl.Core.Native.ScreenshotNative;
 
 namespace OmniControl.Core.Engine.Screenshot;
 
-/// <summary>One monitor: where it sits on the virtual desktop, in physical pixels.</summary>
+/// One monitor: where it sits on the virtual desktop, in physical pixels.
 public sealed record ScreenMonitor(ScreenRect Bounds, bool IsPrimary);
 
-/// <summary>The active window: its visible frame on screen and the name of the program that owns it ("chrome").</summary>
+/// The active window: its visible frame on screen and the name of the program that owns it ("chrome").
 public sealed record ActiveWindowInfo(ScreenRect Bounds, string App);
 
-/// <summary>
 /// Copies what is on screen. Every rectangle is in physical pixels on the virtual desktop (the process is per-monitor DPI aware, so
 /// Windows reports real pixels on every monitor whatever its scale). Each copy releases its device contexts and bitmap before it returns.
-/// </summary>
 public static class ScreenCapture
 {
-    /// <summary>Every monitor, the primary one first.</summary>
+    /// Every monitor, the primary one first.
     public static IReadOnlyList<ScreenMonitor> Monitors()
     {
         var found = new List<ScreenMonitor>();
@@ -32,11 +27,11 @@ public static class ScreenCapture
         return found.OrderByDescending(m => m.IsPrimary).ToList();
     }
 
-    /// <summary>The whole virtual desktop: every monitor's area together.</summary>
+    /// The whole virtual desktop: every monitor's area together.
     public static ScreenRect VirtualScreen() => new(GetSystemMetrics(SmXVirtualScreen), GetSystemMetrics(SmYVirtualScreen),
         GetSystemMetrics(SmCxVirtualScreen), GetSystemMetrics(SmCyVirtualScreen));
 
-    /// <summary>The monitor the mouse pointer is on (the nearest one when it is between monitors).</summary>
+    /// The monitor the mouse pointer is on (the nearest one when it is between monitors).
     public static ScreenRect MonitorUnderPointer()
     {
         GetCursorPos(out var point);
@@ -44,7 +39,7 @@ public static class ScreenCapture
         return GetMonitorInfo(MonitorFromPoint(point, MonitorDefaultToNearest), ref info) ? ToRect(info.Monitor) : VirtualScreen();
     }
 
-    /// <summary>The active window's visible frame (without the invisible resize border) and its program's name; null when there is none.</summary>
+    /// The active window's visible frame (without the invisible resize border) and its program's name; null when there is none.
     public static ActiveWindowInfo? ActiveWindow()
     {
         var window = WindowQuery.ActiveWindow();
@@ -56,7 +51,7 @@ public static class ScreenCapture
         return area.IsEmpty ? null : new ActiveWindowInfo(area, ProgramName(WindowQuery.ProcessOf(window)));
     }
 
-    /// <summary>The name of the program that owns the active window ("chrome"), or empty.</summary>
+    /// The name of the program that owns the active window ("chrome"), or empty.
     public static string ActiveApp() => ProgramName(WindowQuery.ProcessOf(WindowQuery.ActiveWindow()));
 
     private static string ProgramName(int? processId)
@@ -73,7 +68,7 @@ public static class ScreenCapture
         }
     }
 
-    /// <summary>A copy of the screen inside <paramref name="area"/> (layered windows included), every pixel opaque.</summary>
+    /// A copy of the screen inside <paramref name="area"/> (layered windows included), every pixel opaque.
     public static ScreenImage Capture(ScreenRect area) => Capture(area, (bits, stride) =>
     {
         var pixels = new byte[stride * area.Height];
@@ -82,11 +77,9 @@ public static class ScreenCapture
         return new ScreenImage(area.Width, area.Height, pixels);
     });
 
-    /// <summary>
     /// Copies the screen inside <paramref name="area"/> (layered windows included) and hands the copy to <paramref name="use"/>: BGRA, top
     /// row first, the given bytes per row, alpha not set. The pixels are valid only while <paramref name="use"/> runs, so a caller that
     /// keeps its own copy (the area overlay's bitmap) makes it straight from Windows' bitmap with no picture in between.
-    /// </summary>
     public static T Capture<T>(ScreenRect area, Func<IntPtr, int, T> use)
     {
         if (area.IsEmpty) throw new ArgumentException("Nothing to capture.", nameof(area));

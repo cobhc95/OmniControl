@@ -4,10 +4,10 @@ using System.Net.Sockets;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>The router's address: the IPv4 default gateway of the first network connection that is up and has one.</summary>
+/// The router's address: the IPv4 default gateway of the first network connection that is up and has one.
 public static class NetworkGateway
 {
-    /// <summary>The gateway's address (<c>192.168.0.1</c>), or null when no connection has one.</summary>
+    /// The gateway's address (<c>192.168.0.1</c>), or null when no connection has one.
     public static string? FindDefault()
     {
         try

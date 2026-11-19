@@ -4,20 +4,20 @@ using System.Text.Json;
 
 namespace OmniControl.Core.Engine.Tailscale;
 
-/// <summary>Where Tailscale's own program says it stands.</summary>
+/// Where Tailscale's own program says it stands.
 public enum TailscaleBackend { Unknown, Stopped, NeedsLogin, Starting, Running }
 
-/// <summary>A PC of the tailnet (a Windows one is what Other PCs can pair with).</summary>
+/// A PC of the tailnet (a Windows one is what Other PCs can pair with).
 public sealed record TailscalePeer(string Name, string Address, string Os, bool Online);
 
-/// <summary>What one read of Tailscale found. Nothing here changes anything.</summary>
+/// What one read of Tailscale found. Nothing here changes anything.
 public sealed record TailscaleStatus(string? CliPath, bool Answered, TailscaleBackend Backend, string Version, string Account, string OwnAddress, IReadOnlyList<TailscalePeer> Peers)
 {
     public static readonly TailscaleStatus NotInstalled = new(null, false, TailscaleBackend.Unknown, string.Empty, string.Empty, string.Empty, Array.Empty<TailscalePeer>());
 
     public bool Installed => CliPath is not null;
 
-    /// <summary>Tailscale's program answered and is not switched off.</summary>
+    /// Tailscale's program answered and is not switched off.
     public bool Running => Answered && Backend != TailscaleBackend.Stopped;
 
     public bool SignedIn => Answered && Backend != TailscaleBackend.NeedsLogin;
@@ -25,12 +25,12 @@ public sealed record TailscaleStatus(string? CliPath, bool Answered, TailscaleBa
     public bool Connected => Answered && Backend == TailscaleBackend.Running && OwnAddress.Length > 0;
 }
 
-/// <summary>Reads <c>tailscale status --json</c> (the one read-only call) into a <see cref="TailscaleStatus"/>.</summary>
+/// Reads <c>tailscale status --json</c> (the one read-only call) into a <see cref="TailscaleStatus"/>.
 public static class TailscaleStatusReader
 {
     private const string WindowsOs = "windows";
 
-    /// <summary>Reads Tailscale's state now. Call off the UI thread.</summary>
+    /// Reads Tailscale's state now. Call off the UI thread.
     public static TailscaleStatus Read()
     {
         if (TailscaleCli.Find() is not { } cli) return TailscaleStatus.NotInstalled;
@@ -38,7 +38,7 @@ public static class TailscaleStatusReader
         return output is null ? TailscaleStatus.NotInstalled with { CliPath = cli } : Parse(cli, output);
     }
 
-    /// <summary>The status JSON as a <see cref="TailscaleStatus"/>; text that is not that gives "not answering".</summary>
+    /// The status JSON as a <see cref="TailscaleStatus"/>; text that is not that gives "not answering".
     public static TailscaleStatus Parse(string cliPath, string json)
     {
         var none = TailscaleStatus.NotInstalled with { CliPath = cliPath };
@@ -57,7 +57,7 @@ public static class TailscaleStatusReader
         }
     }
 
-    /// <summary>True for an address Tailscale hands out (100.64.0.0/10 or its IPv6 range): the only kind a pairing may store to dial.</summary>
+    /// True for an address Tailscale hands out (100.64.0.0/10 or its IPv6 range): the only kind a pairing may store to dial.
     public static bool IsTailscaleAddress(string? text)
     {
         if (!IPAddress.TryParse(text, out var ip)) return false;

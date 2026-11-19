@@ -1,0 +1,103 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Features.OtherPcs.Pages"
+             xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+             xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
+             xmlns:svc="using:OmniControl.App.Shared.Services"
+             x:Class="OmniControl.App.Features.OtherPcs.Pages.PcDetail"
+             x:DataType="vm:PcItem">
+    <!-- One paired PC (docs/mockups/other-pcs.html, other-pcs-browser-tabs.html; template in App.axaml): the header line (docs/mockups/pc-header-tidy.html: its name and real name, at the right the connection chip, the split Wake button and the "..." menu), the address box when it is reached by address, the Tailscale checklist only while a check fails, then,
+         while it is connected, its basic set as groups (Screens, Sound, Power, Smart devices; two independent columns when wide, one when narrow) with real
+         controls and action pills. While it is offline one sentence says so. -->
+    <StackPanel Spacing="8">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <WrapPanel ItemSpacing="8" LineSpacing="4" VerticalAlignment="Center">
+                <TextBlock Classes="strong" Text="{Binding Name}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                <TextBlock Classes="hint small" Text="{Binding RealName}" IsVisible="{Binding HasNickname}" TextWrapping="Wrap" VerticalAlignment="Center" />
+            </WrapPanel>
+            <!-- docs/mockups/pc-header-tidy.html: the connection chip, the split Wake button, then the "..." menu (the tab's right-click rows) -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <ItemsControl ItemsSource="{Binding WakeFailed}" VerticalAlignment="Center">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="svc:TagItem"><c:TagView /></DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <c:ChipMenu Text="{Binding Connection.Text}" Tone="{Binding Connection.Tone}" ChipToolTip="{Binding ConnectTip}" MenuOpened="OnConnectMenuOpened" VerticalAlignment="Center">
+                    <c:ChipMenu.Menu>
+                        <c:MenuRowList x:Name="ConnectRows" />
+                    </c:ChipMenu.Menu>
+                </c:ChipMenu>
+                <vm:WakeSplit Status="{Binding WakeStatus}" SetUpCommand="{Binding SetUpWakeCommand}" WakeCommand="{Binding WakeCommand}" ShowsWake="{Binding ShowsWake}"
+                              Unconfirmed="{Binding WakeUnconfirmed}" IsWaking="{Binding IsWaking}" WakeTip="{Binding WakeTip}" VerticalAlignment="Center" />
+                <Button Classes="pill" ToolTip.Tip="More" VerticalAlignment="Center">
+                    <TextBlock Text="&#x22EF;" />
+                    <Button.Flyout>
+                        <c:ListMenuFlyout Placement="BottomEdgeAlignedRight" Opening="OnMoreOpening">
+                            <c:MenuRowList x:Name="MoreRows" />
+                        </c:ListMenuFlyout>
+                    </Button.Flyout>
+                </Button>
+            </StackPanel>
+        </Grid>
+        <TextBox Classes="field" Text="{Binding Address}" Watermark="Its address, such as 100.64.0.7" IsVisible="{Binding ShowsAddress}"
+                 LostFocus="OnAddressLeft" KeyDown="OnAddressKey" />
+        <Border Classes="stage open" IsVisible="{Binding ShowsChecklist}">
+            <StackPanel Spacing="6">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <TextBlock Classes="strong" Text="Set up Tailscale for this PC" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Classes="pill" Content="{Binding CheckText}" Command="{Binding CheckAgainCommand}" VerticalAlignment="Center" />
+                </Grid>
+                <vm:TailscaleChecklist Items="{Binding Checks}" />
+                <TextBlock Classes="cautiontext" TextWrapping="Wrap" Text="{Binding SwitchProblem}" IsVisible="{Binding HasSwitchProblem}" />
+                <TextBlock Classes="hint small" TextWrapping="Wrap" Text="No new pairing code: this PC is already paired. Once every row is ticked it switches to Tailscale by itself and shows via Tailscale." />
+            </StackPanel>
+        </Border>
+        <TextBlock Classes="hint" Text="{Binding Note}" TextWrapping="Wrap" IsVisible="{Binding HasNote}" />
+
+        <!-- Connected but what the PC shares has not arrived yet: each group's place shows its name and the shared spinner (the tile mark's ring and arc) -->
+        <ItemsControl ItemsSource="{Binding LoadingGroups}" IsVisible="{Binding IsLoading}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><pages:FixedColumnsPanel ColumnMinWidth="{StaticResource FixedColumnMinWidth}" Gap="{StaticResource FixedColumnGap}" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Classes="groupPanel" Margin="0,0,0,6" VerticalAlignment="Top">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                            <c:IconGlyph LibraryId="{Binding Icon}" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Classes="strong" Text="{Binding Name}" VerticalAlignment="Center" />
+                            <Panel Grid.Column="2" Classes="tilemark" Margin="0" HorizontalAlignment="Center" VerticalAlignment="Center" ToolTip.Tip="Loading what this PC shares">
+                                <Ellipse Classes="markring" />
+                                <Path Classes="markarc" />
+                            </Panel>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <ContentControl IsVisible="{Binding ShowsGroups}" Content="{Binding Mirror}">
+          <ContentControl.ContentTemplate>
+            <DataTemplate x:DataType="vm:PcMirror">
+        <StackPanel Spacing="6">
+            <ItemsControl ItemsSource="{Binding Groups}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><pages:FixedColumnsPanel ColumnMinWidth="{StaticResource FixedColumnMinWidth}" Gap="{StaticResource FixedColumnGap}" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:MirrorGroup">
+                        <pages:GroupCard Group="{Binding Group}" Margin="0,0,0,6" VerticalAlignment="Top">
+                            <StackPanel Spacing="4">
+                                <TextBlock Classes="hint" Text="Not available" IsVisible="{Binding IsEmpty}" />
+                                <ListBox Classes="rows compact cards" ItemsSource="{Binding Group.Items}" IsVisible="{Binding !IsEmpty}" />
+                                <c:ChoiceChips ItemsSource="{Binding Actions}" IsVisible="{Binding HasActions}" />
+                            </StackPanel>
+                        </pages:GroupCard>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+            </DataTemplate>
+          </ContentControl.ContentTemplate>
+        </ContentControl>
+    </StackPanel>
+</UserControl>

@@ -1,6 +1,6 @@
 namespace OmniControl.Core.Models;
 
-/// <summary>Success or failure of a call into Windows, with a message to show when it failed.</summary>
+/// Success or failure of a call into Windows, with a message to show when it failed.
 public sealed class OperationResult
 {
     public bool Success { get; set; }

@@ -1,10 +1,8 @@
 namespace OmniControl.Core.Engine.Pointer;
 
-/// <summary>
 /// One of Windows' mouse settings that <see cref="PointerSettings"/> reads and writes. The names are stored in the backup of the
 /// user's original values, so they never change. The order is the order a full restore writes them in: a value that another one
 /// depends on comes first (the trail length before trails on/off, the lines per notch before "one screen at a time").
-/// </summary>
 public enum PointerValue
 {
     Speed,
@@ -22,13 +20,13 @@ public enum PointerValue
     ClickLock,
 }
 
-/// <summary>The values Windows accepts for a setting and the value Windows starts with. A switch is 0 (off) or 1 (on).</summary>
+/// The values Windows accepts for a setting and the value Windows starts with. A switch is 0 (off) or 1 (on).
 public sealed record PointerValueInfo(int Min, int Max, int Default)
 {
     public int Clamp(int value) => Math.Clamp(value, Min, Max);
 }
 
-/// <summary>Windows' ranges and defaults for every <see cref="PointerValue"/>, defined once (from the SystemParametersInfo documentation and the Mouse control panel).</summary>
+/// Windows' ranges and defaults for every <see cref="PointerValue"/>, defined once (from the SystemParametersInfo documentation and the Mouse control panel).
 public static class PointerValues
 {
     private const int Off = 0, On = 1;
@@ -56,6 +54,6 @@ public static class PointerValues
 
     public static PointerValueInfo Info(PointerValue value) => Table[value];
 
-    /// <summary>Every value, in restore order.</summary>
+    /// Every value, in restore order.
     public static IReadOnlyList<PointerValue> All { get; } = Enum.GetValues<PointerValue>();
 }

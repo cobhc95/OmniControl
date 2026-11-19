@@ -3,13 +3,11 @@ using static OmniControl.Core.Native.VideoNative;
 
 namespace OmniControl.Core.Engine.Screenshot;
 
-/// <summary>
 /// Copies one area of the screen again and again for a recording (GDI, one device context and bitmap kept for the whole recording, released
 /// on <see cref="Dispose"/>): the GIF's frames, and the MP4's when the graphics-card copy (<see cref="DesktopDuplication"/>) is not
 /// available. The copy is made without CAPTUREBLT so the real pointer does not flicker; the pointer is drawn in instead
 /// (<see cref="PointerPainter"/>). Windows marked "excluded from capture" (the recording bar and frame) are left out by Windows itself.
 /// Physical pixels.
-/// </summary>
 internal sealed unsafe class FrameGrabber : IDisposable
 {
     private readonly ScreenRect _area;
@@ -36,7 +34,7 @@ internal sealed unsafe class FrameGrabber : IDisposable
         _pointer = new PointerPainter(pointer);
     }
 
-    /// <summary>Copies the area now (with the pointer as set) and returns its pixels: BGRA, top row first, valid until the next grab.</summary>
+    /// Copies the area now (with the pointer as set) and returns its pixels: BGRA, top row first, valid until the next grab.
     public ReadOnlySpan<byte> Grab()
     {
         BitBlt(_memory, 0, 0, _area.Width, _area.Height, _screen, _area.X, _area.Y, SrcCopy);

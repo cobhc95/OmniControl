@@ -1,13 +1,9 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Native;
 
-/// <summary>
 /// The Direct3D 11 and DXGI calls of the screen recorder's graphics-card path: the adapters and their outputs, the device, Desktop
 /// Duplication, textures, copies on the graphics card and a GDI device context on a texture (for the pointer). Raw vtable calls as in
 /// <see cref="MediaFoundationNative"/> (slot numbers count IUnknown's three methods first, checked against the Windows SDK headers);
 /// every object is released by the caller with <see cref="MediaFoundationNative.Release"/>.
-/// </summary>
 internal static unsafe class D3D11Native
 {
     public const int SdkVersion = 7, DriverTypeUnknown = 0;
@@ -37,7 +33,7 @@ internal static unsafe class D3D11Native
         public IntPtr Monitor;
     }
 
-    /// <summary>DXGI_ADAPTER_DESC1; <see cref="Flags"/> with <see cref="AdapterSoftware"/> = Microsoft's Basic Render Driver.</summary>
+    /// DXGI_ADAPTER_DESC1; <see cref="Flags"/> with <see cref="AdapterSoftware"/> = Microsoft's Basic Render Driver.
     [StructLayout(LayoutKind.Sequential)]
     public struct AdapterDesc1
     {
@@ -88,7 +84,7 @@ internal static unsafe class D3D11Native
 
     private static void** Vtbl(IntPtr obj) => *(void***)obj;
 
-    /// <summary>QueryInterface; zero when the object does not have that interface.</summary>
+    /// QueryInterface; zero when the object does not have that interface.
     public static IntPtr As(IntPtr obj, Guid iid) => Marshal.QueryInterface(obj, ref iid, out var result) == 0 ? result : IntPtr.Zero;
 
     // IDXGIFactory1
@@ -117,7 +113,7 @@ internal static unsafe class D3D11Native
         return desc;
     }
 
-    /// <summary>The user-mode driver's version (four 16-bit parts, highest first), or 0 when the adapter will not say.</summary>
+    /// The user-mode driver's version (four 16-bit parts, highest first), or 0 when the adapter will not say.
     public static long DriverVersion(IntPtr adapter)
     {
         var iid = IidDxgiDevice;

@@ -1,12 +1,10 @@
 using System.Text.Json.Nodes;
-using OmniControl.App.Automation;
-using OmniControl.App.Services;
-using OmniControl.App.Services.Backup;
-using Xunit;
+using OmniControl.App.Features.Automation;
+using OmniControl.App.Shared.Services.Backup;
 
 namespace OmniControl.Tests;
 
-/// <summary>The master list of saved stores, and backup, import (replace and merge) and wipe through it, all in a temporary folder.</summary>
+/// The master list of saved stores, and backup, import (replace and merge) and wipe through it, all in a temporary folder.
 public sealed class DataStoreBackupTests : IDisposable
 {
     private readonly string _here = Directory.CreateTempSubdirectory("omni-here").FullName;

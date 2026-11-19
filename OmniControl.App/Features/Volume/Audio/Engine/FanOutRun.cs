@@ -1,0 +1,21 @@
+using OmniControl.App.Features.Volume.Audio.Engine.Dsp;
+
+namespace OmniControl.App.Features.Volume.Audio.Engine;
+
+/// Combined speakers: whatever is sent to the device's cable (by OmniControl or by any app that picked it) is recorded
+/// and played on every member device. No effects: nothing of the user's is changed, so there is nothing to undo.
+internal sealed class FanOutRun : EngineRun
+{
+    public FanOutRun(RunSpec spec, string name, MixerService mixer, EngineJournal journal)
+        : base(spec, name, mixer, journal, new ChainProcessor(level: null, gateOpen: true)) { }
+
+    public override void Start()
+    {
+        ShowWaiting("Starting", StatusKind.Starting);
+        StartPipe(new[] { PipeSource.Playback(Spec.Cable!) }, ShowRunning);
+    }
+
+    protected override string RunningText => $"Playing on {Spec.Outputs.Count} devices";
+
+    protected override void Undo() { }
+}

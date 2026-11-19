@@ -1,9 +1,6 @@
-using System.Runtime.InteropServices;
-using System.Text;
-
 namespace OmniControl.Core.Engine.Mouse;
 
-/// <summary>Acts on the window under the mouse pointer: minimise, maximise, close, keep on top.</summary>
+/// Acts on the window under the mouse pointer: minimise, maximise, close, keep on top.
 public static class WindowCommands
 {
     // Async forms only: the window belongs to another program, and a synchronous call waits for that program's UI thread (a hung app would
@@ -33,10 +30,8 @@ public static class WindowCommands
 
     public static void ToggleMaximize(int x, int y, bool activeWindow = false) => With(x, y, activeWindow, h => ShowWindowAsync(h, IsZoomed(h) ? SwRestore : SwMaximize));
 
-    /// <summary>
     /// Scrolls whatever is under the pointer by one line, or one page (vertical or sideways), with the window's own scroll messages, for
     /// windows that do not react to the wheel. <paramref name="forward"/> is down (or right).
-    /// </summary>
     public static void ScrollWindow(int x, int y, bool vertical, bool forward, bool byPage = false)
     {
         var target = WindowQuery.WindowAt(x, y);
@@ -47,11 +42,9 @@ public static class WindowCommands
         PostMessage(target, vertical ? WmVScroll : WmHScroll, (UIntPtr)request, IntPtr.Zero);
     }
 
-    /// <summary>
     /// Delivers wheel notches to the window under a screen point by posting the wheel message to it, like a real wheel would, but
     /// without going through the system input queue: input sent with SendInput from inside the program that owns the mouse hook
     /// stopped answering (the call never returned), so the scroll never happened. Positive is up (or right). False when no window is there.
-    /// </summary>
     public static bool WheelAt(int x, int y, int notches, bool horizontal)
     {
         const uint WmMouseWheel = 0x020A, WmMouseHWheel = 0x020E;
@@ -68,7 +61,7 @@ public static class WindowCommands
 
     public static void Close(int x, int y, bool activeWindow = false) => With(x, y, activeWindow, h => PostMessage(h, WmClose, UIntPtr.Zero, IntPtr.Zero));
 
-    /// <summary>Makes the window under the pointer more (positive) or less (negative) see-through by <paramref name="percentStep"/> percent, never fully invisible.</summary>
+    /// Makes the window under the pointer more (positive) or less (negative) see-through by <paramref name="percentStep"/> percent, never fully invisible.
     public static void AdjustOpacity(int x, int y, int percentStep) => With(x, y, false, h =>
     {
         var style = (long)GetWindowLongPtr(h, GwlExStyle);
@@ -86,7 +79,7 @@ public static class WindowCommands
         SetWindowPos(h, onTop ? HwndNoTopmost : HwndTopmost, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate | SwpAsyncWindowPos);
     });
 
-    /// <summary>True for the desktop and taskbar windows, which no mouse action should minimise, close, fade or drag.</summary>
+    /// True for the desktop and taskbar windows, which no mouse action should minimise, close, fade or drag.
     internal static bool IsProtected(IntPtr hwnd)
     {
         var name = new StringBuilder(64);

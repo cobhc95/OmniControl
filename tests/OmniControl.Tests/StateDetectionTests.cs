@@ -1,16 +1,13 @@
 using System.Buffers.Binary;
 using System.IO.Compression;
 using OmniControl.Core;
-using OmniControl.Core.Engine;
-using Xunit;
+using StateTarget = OmniControl.Core.Engine.StateTarget;
 
 namespace OmniControl.Tests;
 
-/// <summary>
 /// Reading a simulated device's on/off state on made-up screens (no adb, no emulator): a Tapo-like card whose power button only changes
 /// colour, a Kasa-like card whose words and switch change, a card that moved down the list under another one that looks the same, and the
 /// On / Off / Toggle run that taps only when the reading says so.
-/// </summary>
 public sealed class StateDetectionTests
 {
     // Dumps are in the phone's pixels (1080 x 1920); screenshots are half that, as some emulators scale them.
@@ -38,7 +35,7 @@ public sealed class StateDetectionTests
                "</node></hierarchy>";
     }
 
-    /// <summary>The screenshot: each card grey, its power button coloured while on (Tapo-like) or grey (Kasa-like, whose colour never changes).</summary>
+    /// The screenshot: each card grey, its power button coloured while on (Tapo-like) or grey (Kasa-like, whose colour never changes).
     private static RgbaImage Picture(Card[] cards, (byte R, byte G, byte B)? background = null)
     {
         int w = ScreenW / Scale, h = ScreenH / Scale;
@@ -151,7 +148,7 @@ public sealed class StateDetectionTests
         Assert.True(model.IsDrifting);
     }
 
-    /// <summary>A phone showing the two Tapo cards; a tap on the L530's power button switches it; its screenshot can be made to fail.</summary>
+    /// A phone showing the two Tapo cards; a tap on the L530's power button switches it; its screenshot can be made to fail.
     private sealed class TapoPhone : IAdbScreen
     {
         public bool On;
@@ -223,7 +220,7 @@ public sealed class StateDetectionTests
         Assert.Null(Png.Decode(new byte[] { 1, 2, 3 }));
     }
 
-    /// <summary>An unfiltered RGBA PNG (what Png.Decode reads; the CRCs are left at zero because it does not check them).</summary>
+    /// An unfiltered RGBA PNG (what Png.Decode reads; the CRCs are left at zero because it does not check them).
     internal static byte[] Encode(RgbaImage image)
     {
         using var output = new MemoryStream();

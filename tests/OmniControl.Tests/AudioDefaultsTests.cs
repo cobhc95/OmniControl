@@ -1,10 +1,8 @@
-using System.Text.Json;
-using OmniControl.App.Audio;
-using OmniControl.App.Pages.Volume.Easy;
+using OmniControl.App.Features.Volume.Pages.Easy;
 
 namespace OmniControl.Tests;
 
-/// <summary>"Restore audio defaults": what changes, what stays, the copy taken first, the undo, and the "already at the defaults" test. Fakes only: no file, no Windows setting.</summary>
+/// "Restore audio defaults": what changes, what stays, the copy taken first, the undo, and the "already at the defaults" test. Fakes only: no file, no Windows setting.
 public class AudioDefaultsTests
 {
     private sealed class FakeSnapshot : IDefaultsSnapshot
@@ -15,7 +13,7 @@ public class AudioDefaultsTests
         public MixerSettings? Load() => Json is null ? null : JsonSerializer.Deserialize<MixerSettings>(Json);
     }
 
-    /// <summary>Changes the settings the way <see cref="MixerService"/> does and records every call; the snapshot count is noted at the first change.</summary>
+    /// Changes the settings the way <see cref="MixerService"/> does and records every call; the snapshot count is noted at the first change.
     private sealed class FakeMixer : IAudioDefaultsMixer
     {
         private readonly FakeSnapshot? _snapshot;
@@ -91,7 +89,7 @@ public class AudioDefaultsTests
         return EasyEq.Write(chain, new[] { 6, 0, 0, 0, 0 });
     }
 
-    /// <summary>A busy PC: a bus, effects everywhere, forced methods, routing, cables off, a combined device.</summary>
+    /// A busy PC: a bus, effects everywhere, forced methods, routing, cables off, a combined device.
     private static MixerSettings Busy()
     {
         var s = new MixerSettings

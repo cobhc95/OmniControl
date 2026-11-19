@@ -1,24 +1,22 @@
 namespace OmniControl.Core.Models;
 
-/// <summary>Whether a feature is a level (a number between 0 and the monitor's own maximum) or a choice (one of a list of values).</summary>
+/// Whether a feature is a level (a number between 0 and the monitor's own maximum) or a choice (one of a list of values).
 public enum VcpKind { Level, Choice }
 
-/// <summary>
 /// One monitor feature OmniControl can offer: its VCP code, a stable key (action and gesture ids are made from it, so it never
 /// changes), its name and search words, and the value a double-click returns a level to (null when the standard sets none: the card
 /// then returns to the value the monitor had when it was read).
-/// </summary>
 public sealed record VcpFeature(byte Code, string Key, string Label, string Keywords, VcpKind Kind, int? Default)
 {
-    /// <summary>The part of the monitor's controls it belongs to (one of <see cref="VcpSections"/>): what lists group its actions under.</summary>
+    /// The part of the monitor's controls it belongs to (one of <see cref="VcpSections"/>): what lists group its actions under.
     public string Section { get; init; } = VcpSections.Other;
 
-    /// <summary>The keys "Suggest" offers for a level's Up and Down actions (never bound by default); null: none.</summary>
+    /// The keys "Suggest" offers for a level's Up and Down actions (never bound by default); null: none.
     public string? SuggestedUp { get; init; }
     public string? SuggestedDown { get; init; }
 }
 
-/// <summary>The sections the monitor features are grouped in, in the order lists show them.</summary>
+/// The sections the monitor features are grouped in, in the order lists show them.
 public static class VcpSections
 {
     public const string Other = "Other";
@@ -31,12 +29,10 @@ public static class VcpSections
     public const string PowerMode = "Power and mode";
 }
 
-/// <summary>
 /// The list of monitor features the Displays page can offer, by VESA MCCS (Monitor Control Command Set) VCP code: the ONE place that
 /// knows their names. Codes and names are the continuous and table controls of MCCS 2.2a; written from the standard's feature list as
 /// remembered, with no copy of the document at hand, so a name that looks wrong is a fix here and nowhere else. A monitor reports
 /// which of them it implements (<see cref="MonitorCapabilities"/>); the page offers the ones it reports and lists the rest as not available.
-/// </summary>
 public static class VcpFeatures
 {
     private static VcpFeature Level(byte code, string key, string label, string keywords, int? @default = null) =>
@@ -92,10 +88,8 @@ public static class VcpFeatures
 
     public static IEnumerable<VcpFeature> Choices => All.Where(f => f.Kind == VcpKind.Choice);
 
-    /// <summary>
     /// The codes always asked first: the ones nearly every monitor with DDC/CI answers, so a monitor with DDC/CI off is found quickly.
     /// Anything else is read when the monitor's capabilities string lists it (or when it gave no list).
-    /// </summary>
     public static readonly IReadOnlyList<byte> Core = new[]
     {
         VcpCode.Brightness, VcpCode.Contrast, VcpCode.ColorPreset, VcpCode.InputSource, VcpCode.PowerMode,

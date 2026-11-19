@@ -1,13 +1,11 @@
 using Avalonia;
-using OmniControl.App.Icons;
-using OmniControl.App.Services;
-using OmniControl.App.States;
-using OmniControl.App.Tray;
-using Xunit;
+using OmniControl.App.Features.Icons;
+using OmniControl.App.Features.States;
+using OmniControl.App.Features.Tray;
 
 namespace OmniControl.Tests;
 
-/// <summary>The icon library's search and suggestions, the tray's drag maths and stored-order edits, and the live state re-check throttle (no UI, no Windows).</summary>
+/// The icon library's search and suggestions, the tray's drag maths and stored-order edits, and the live state re-check throttle (no UI, no Windows).
 public class IconLibraryTests
 {
     [Fact]

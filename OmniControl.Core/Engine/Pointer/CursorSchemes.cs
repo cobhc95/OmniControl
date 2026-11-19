@@ -1,30 +1,27 @@
 using System.Security;
-using Microsoft.Win32;
 
 namespace OmniControl.Core.Engine.Pointer;
 
-/// <summary>Where a cursor scheme comes from, as Windows stores it in "Scheme Source": none (Windows' built-in pointers), the user's own, or Windows'.</summary>
+/// Where a cursor scheme comes from, as Windows stores it in "Scheme Source": none (Windows' built-in pointers), the user's own, or Windows'.
 public enum CursorSchemeSource { None = 0, User = 1, System = 2 }
 
-/// <summary>A cursor scheme: its registry name, the name to show, where it comes from, and one file per <see cref="CursorRoles"/> entry ("" = built-in).</summary>
+/// A cursor scheme: its registry name, the name to show, where it comes from, and one file per <see cref="CursorRoles"/> entry ("" = built-in).
 public sealed record CursorScheme(string Key, string Name, CursorSchemeSource Source, IReadOnlyList<string> Files)
 {
-    /// <summary>As Windows' Mouse settings list it: a system scheme is marked so a user scheme of the same name can't be mistaken for it.</summary>
+    /// As Windows' Mouse settings list it: a system scheme is marked so a user scheme of the same name can't be mistaken for it.
     public string Label => Source == CursorSchemeSource.System ? $"{Name} (system scheme)" : Name;
 }
 
-/// <summary>One registry value as it was: its text and whether it was stored with environment names (%SystemRoot%) to expand.</summary>
+/// One registry value as it was: its text and whether it was stored with environment names (%SystemRoot%) to expand.
 public sealed record CursorValue(string Text, bool Expand);
 
-/// <summary>Everything under HKCU\Control Panel\Cursors that OmniControl may change, as it was: the scheme name, its source and every role's file (null = no value).</summary>
+/// Everything under HKCU\Control Panel\Cursors that OmniControl may change, as it was: the scheme name, its source and every role's file (null = no value).
 public sealed record CursorSnapshot(CursorValue? SchemeName, int? SchemeSource, Dictionary<string, CursorValue?> Roles);
 
-/// <summary>
 /// The pointer scheme and the pointer of each role, read and written the way Windows' Mouse control panel does it: the role values,
 /// the scheme's name and "Scheme Source" under HKCU\Control Panel\Cursors, then SPI_SETCURSORS, which makes Windows load them,
 /// saved and announced to every window. Schemes are Windows' (HKLM) and the user's own (HKCU). Nothing here is cached: every call
 /// reads the registry again, so what it returns is what Windows has now.
-/// </summary>
 public static class CursorSchemes
 {
     private const string CursorsKey = @"Control Panel\Cursors";
@@ -33,27 +30,25 @@ public static class CursorSchemes
     private const string SchemeSourceName = "Scheme Source";
     private const string DefaultValueName = "";
 
-    /// <summary>Windows 10 and 11's default scheme (shown by Windows as "Windows Default"); its registry name is not translated.</summary>
+    /// Windows 10 and 11's default scheme (shown by Windows as "Windows Default"); its registry name is not translated.
     private const string WindowsDefaultKey = "Windows Aero";
 
     private const int NameBufferLength = 260;
 
-    /// <summary>The scheme files Windows' pointers can be: anything else is refused before it reaches the registry.</summary>
+    /// The scheme files Windows' pointers can be: anything else is refused before it reaches the registry.
     public static readonly IReadOnlyList<string> FilePatterns = new[] { "*.cur", "*.ani" };
 
-    /// <summary>Windows' schemes, then the user's own, each sorted by name.</summary>
+    /// Windows' schemes, then the user's own, each sorted by name.
     public static IReadOnlyList<CursorScheme> List() =>
         Read(Registry.LocalMachine, SystemSchemesKey, CursorSchemeSource.System)
             .Concat(Read(Registry.CurrentUser, UserSchemesKey, CursorSchemeSource.User)).ToList();
 
-    /// <summary>Windows' default scheme, or null on a Windows that has none (then the default is Windows' built-in pointers).</summary>
+    /// Windows' default scheme, or null on a Windows that has none (then the default is Windows' built-in pointers).
     public static CursorScheme? WindowsDefault(IReadOnlyList<CursorScheme> schemes) =>
         schemes.FirstOrDefault(s => s.Source == CursorSchemeSource.System && s.Key.Equals(WindowsDefaultKey, StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>
     /// The scheme whose files are exactly the pointers in force (the one Windows names first when several match), or null when a
     /// pointer was changed on its own or the scheme is not listed.
-    /// </summary>
     public static CursorScheme? Current(IReadOnlyList<CursorScheme> schemes)
     {
         var files = CursorRoles.All.Select(r => FileOf(r)).ToList();
@@ -62,10 +57,10 @@ public static class CursorSchemes
         return matching.FirstOrDefault(s => s.Name == named || s.Key == named) ?? matching.FirstOrDefault();
     }
 
-    /// <summary>The file of one role now in force, environment names expanded ("" = Windows' built-in pointer).</summary>
+    /// The file of one role now in force, environment names expanded ("" = Windows' built-in pointer).
     public static string FileOf(CursorRole role) => Expand(ReadText(role.RegistryName)?.Text ?? string.Empty);
 
-    /// <summary>Makes <paramref name="scheme"/> the pointers in force. False when the registry or Windows refused.</summary>
+    /// Makes <paramref name="scheme"/> the pointers in force. False when the registry or Windows refused.
     public static bool Apply(CursorScheme scheme) => Write(key =>
     {
         for (var i = 0; i < CursorRoles.All.Count; i++) SetText(key, CursorRoles.All[i].RegistryName, scheme.Files[i]);
@@ -73,7 +68,7 @@ public static class CursorSchemes
         key.SetValue(SchemeSourceName, (int)scheme.Source, RegistryValueKind.DWord);
     });
 
-    /// <summary>Windows' built-in pointers for every role, no scheme ("None" in Windows' Mouse settings).</summary>
+    /// Windows' built-in pointers for every role, no scheme ("None" in Windows' Mouse settings).
     public static bool ApplyNone() => Write(key =>
     {
         foreach (var role in CursorRoles.All) SetText(key, role.RegistryName, string.Empty);
@@ -81,10 +76,10 @@ public static class CursorSchemes
         key.SetValue(SchemeSourceName, (int)CursorSchemeSource.None, RegistryValueKind.DWord);
     });
 
-    /// <summary>Uses <paramref name="file"/> for one role ("" = Windows' built-in pointer); the scheme's name is left as it is, as the control panel does.</summary>
+    /// Uses <paramref name="file"/> for one role ("" = Windows' built-in pointer); the scheme's name is left as it is, as the control panel does.
     public static bool SetRole(CursorRole role, string file) => Write(key => SetText(key, role.RegistryName, file));
 
-    /// <summary>Why <paramref name="file"/> can't be a pointer, or null when Windows loads it as one. Loads it once and lets it go.</summary>
+    /// Why <paramref name="file"/> can't be a pointer, or null when Windows loads it as one. Loads it once and lets it go.
     public static string? Problem(string file)
     {
         if (!File.Exists(file)) return "That file no longer exists.";
@@ -97,7 +92,7 @@ public static class CursorSchemes
         return null;
     }
 
-    /// <summary>What is under HKCU\Control Panel\Cursors now, for putting it back later.</summary>
+    /// What is under HKCU\Control Panel\Cursors now, for putting it back later.
     public static CursorSnapshot Snapshot()
     {
         using var key = Registry.CurrentUser.OpenSubKey(CursorsKey);
@@ -107,7 +102,7 @@ public static class CursorSchemes
             CursorRoles.All.ToDictionary(r => r.RegistryName, r => ReadText(r.RegistryName)));
     }
 
-    /// <summary>Puts every value of <paramref name="snapshot"/> back exactly (a value that did not exist is removed), then reloads the pointers.</summary>
+    /// Puts every value of <paramref name="snapshot"/> back exactly (a value that did not exist is removed), then reloads the pointers.
     public static bool Restore(CursorSnapshot snapshot) => Write(key =>
     {
         Put(key, DefaultValueName, snapshot.SchemeName);
@@ -122,7 +117,7 @@ public static class CursorSchemes
         else key.SetValue(name, value.Text, value.Expand ? RegistryValueKind.ExpandString : RegistryValueKind.String);
     }
 
-    /// <summary>Runs <paramref name="change"/> on the user's Cursors key, then has Windows load the pointers (saved, announced). False when either failed.</summary>
+    /// Runs <paramref name="change"/> on the user's Cursors key, then has Windows load the pointers (saved, announced). False when either failed.
     private static bool Write(Action<RegistryKey> change)
     {
         try
@@ -137,7 +132,7 @@ public static class CursorSchemes
         return SpiNative.Set(SpiNative.SetCursors, 0, IntPtr.Zero, SpiNative.SaveAndBroadcast);
     }
 
-    /// <summary>A file path is stored with its environment names kept (as schemes list them), and marked to be expanded when it has any.</summary>
+    /// A file path is stored with its environment names kept (as schemes list them), and marked to be expanded when it has any.
     private static void SetText(RegistryKey key, string name, string text) =>
         key.SetValue(name, text, text.Contains('%') ? RegistryValueKind.ExpandString : RegistryValueKind.String);
 
@@ -167,7 +162,7 @@ public static class CursorSchemes
         return schemes.OrderBy(s => s.Name, StringComparer.CurrentCultureIgnoreCase);
     }
 
-    /// <summary>The text of a "@file,-id" resource, or null when there is none or Windows can't load it.</summary>
+    /// The text of a "@file,-id" resource, or null when there is none or Windows can't load it.
     private static string? NameOf(string? resource)
     {
         if (resource is null || !resource.StartsWith('@')) return null;

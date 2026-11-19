@@ -1,17 +1,12 @@
-using OmniControl.Core.Models;
-using OmniControl.Core.Native;
-
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// Lists the displays attached to the desktop and names them. Windows answers from what it already knows, without talking to any
 /// monitor, so this is cheap enough to repeat whenever something might have changed.
-/// </summary>
 internal static class DisplayEnumerator
 {
     private const string BuiltInName = "Built-in display";
 
-    /// <summary>Every display with its handle (needed to reach the monitor's DDC/CI), in Windows' order.</summary>
+    /// Every display with its handle (needed to reach the monitor's DDC/CI), in Windows' order.
     public static List<(IntPtr Handle, DisplayInfo Info)> Enumerate()
     {
         var handles = new List<IntPtr>();

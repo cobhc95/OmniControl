@@ -1,16 +1,12 @@
-using System.Runtime.InteropServices;
 using System.Security;
-using Microsoft.Win32;
 using Microsoft.Win32.SafeHandles;
 
 namespace OmniControl.Core.Engine.Trackpad;
 
-/// <summary>
 /// Watches Windows' touchpad settings key (<c>HKCU\...\PrecisionTouchPad</c>, where the Settings app, SPI_SETTOUCHPADPARAMETERS and the
 /// shell keep every gesture setting) on its own thread and raises <see cref="Changed"/>: at once (true) when any value under it is written,
 /// whoever wrote it (the Settings app, a driver, Windows after resume, sign-in or a device reconnect, OmniControl itself), and every
 /// interval (false) as a backstop for a change made without the registry. Nothing here writes. Dispose stops the thread and closes the key.
-/// </summary>
 public sealed class TouchpadSettingsWatcher : IDisposable
 {
     private const uint NotifyName = 0x1, NotifyLastSet = 0x4;
@@ -19,10 +15,10 @@ public sealed class TouchpadSettingsWatcher : IDisposable
     private readonly ManualResetEvent _stop = new(false);
     private Thread? _thread;
 
-    /// <summary>Raised on the watcher's thread: true when the key was written, false for the regular look. Handlers must return at once.</summary>
+    /// Raised on the watcher's thread: true when the key was written, false for the regular look. Handlers must return at once.
     public event Action<bool>? Changed;
 
-    /// <summary>Where the watcher says what it could not do (the key could not be watched). Never called per change.</summary>
+    /// Where the watcher says what it could not do (the key could not be watched). Never called per change.
     public Action<string>? Log { get; init; }
 
     /// <param name="interval">The backstop: how often <see cref="Changed"/> is raised when nothing was written.</param>

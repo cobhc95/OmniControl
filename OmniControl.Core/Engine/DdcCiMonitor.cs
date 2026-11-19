@@ -1,13 +1,8 @@
-using System.ComponentModel;
-using System.Runtime.InteropServices;
-using System.Text;
 using OmniControl.Core.Interfaces;
-using OmniControl.Core.Models;
-using OmniControl.Core.Native;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>Single physical DDC/CI monitor. Isolates all dxva2 calls; throttles rapid SetVCPFeature bursts.</summary>
+/// Single physical DDC/CI monitor. Isolates all dxva2 calls; throttles rapid SetVCPFeature bursts.
 public sealed class DdcCiMonitor : IMonitor
 {
     private readonly Dxva2Native.PHYSICAL_MONITOR _physical;
@@ -67,7 +62,7 @@ public sealed class DdcCiMonitor : IMonitor
         lock (_gate) return _capabilities ??= MonitorProbe.Run(GetVcp, ReadCapabilitiesString);
     }
 
-    /// <summary>The monitor's MCCS capabilities string, or null when it does not answer (many monitors do not, or answer after seconds).</summary>
+    /// The monitor's MCCS capabilities string, or null when it does not answer (many monitors do not, or answer after seconds).
     private string? ReadCapabilitiesString()
     {
         if (!Dxva2Native.GetCapabilitiesStringLength(_physical.hPhysicalMonitor, out var length) || length == 0) return null;

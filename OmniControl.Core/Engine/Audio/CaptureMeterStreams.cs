@@ -1,13 +1,10 @@
-using System.Runtime.InteropServices;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// Windows reports a recording device's peak meter only while something captures from it, so this keeps one quiet shared-mode
 /// capture open per device while its meter is shown (the samples are dropped) and closes them when the meters stop.
-/// </summary>
 public sealed class CaptureMeterStreams : IDisposable
 {
     private readonly Dictionary<string, WasapiCapture?> _open = new();
@@ -15,7 +12,7 @@ public sealed class CaptureMeterStreams : IDisposable
 
     public CaptureMeterStreams(Action<string, Exception> log) => _log = log;
 
-    /// <summary>Keeps exactly these devices open: opens the new ones, closes the rest. A device that failed is not retried until it leaves the list.</summary>
+    /// Keeps exactly these devices open: opens the new ones, closes the rest. A device that failed is not retried until it leaves the list.
     public void Keep(IEnumerable<string> ids)
     {
         var want = ids.ToHashSet();

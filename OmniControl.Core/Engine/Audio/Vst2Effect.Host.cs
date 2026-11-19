@@ -1,28 +1,24 @@
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Text;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// The host side of the VST2 interface: the callback a plug-in calls (audioMaster opcodes, answers as TabForge gives them) and reading
 /// the texts it writes. The callback may run on any thread, the audio thread included, so it allocates nothing and never throws into
 /// native code.
-/// </summary>
 internal sealed unsafe partial class Vst2Effect
 {
-    /// <summary>The name OmniControl gives itself when a plug-in asks for the host's vendor or product (VST2 limits it to 64 bytes).</summary>
+    /// The name OmniControl gives itself when a plug-in asks for the host's vendor or product (VST2 limits it to 64 bytes).
     private const string HostName = "OmniControl";
     private const int HostNameBytes = 64;
 
-    /// <summary>What OmniControl tells a plug-in it can do (audioMasterCanDo): only resize the editor's window. NUL-separated ASCII.</summary>
+    /// What OmniControl tells a plug-in it can do (audioMasterCanDo): only resize the editor's window. NUL-separated ASCII.
     private static ReadOnlySpan<byte> HostCanDo => "sizeWindow\0"u8;
 
-    /// <summary>The editor's size the plug-in asked for (audioMasterSizeWindow, any thread): width high, height low; read by the editor's idle call.</summary>
+    /// The editor's size the plug-in asked for (audioMasterSizeWindow, any thread): width high, height low; read by the editor's idle call.
     private long _pendingSize;
     private int _sizePending;
 
-    /// <summary>Takes the size the plug-in asked for since the last call, if any (UI thread).</summary>
+    /// Takes the size the plug-in asked for since the last call, if any (UI thread).
     internal bool TakePendingSize(out int width, out int height)
     {
         var size = Interlocked.Read(ref _pendingSize);
@@ -69,14 +65,14 @@ internal sealed unsafe partial class Vst2Effect
         }
     }
 
-    /// <summary>The instance whose handle OmniControl put into the plug-in's AEffect.user; null before that or after closing.</summary>
+    /// The instance whose handle OmniControl put into the plug-in's AEffect.user; null before that or after closing.
     private static Vst2Effect? SelfOf(Vst2Abi.AEffect* effect)
     {
         if (effect is null || effect->user == IntPtr.Zero) return null;
         return GCHandle.FromIntPtr(effect->user).Target is Vst2Effect self && self._effect == effect ? self : null;
     }
 
-    /// <summary>audioMasterCanDo: compares the plug-in's ASCII text byte for byte (no allocation on the audio thread).</summary>
+    /// audioMasterCanDo: compares the plug-in's ASCII text byte for byte (no allocation on the audio thread).
     private static bool CanDo(IntPtr ptr)
     {
         if (ptr == IntPtr.Zero) return false;
@@ -93,7 +89,7 @@ internal sealed unsafe partial class Vst2Effect
         return false;
     }
 
-    /// <summary>Writes an ASCII host text into the plug-in's buffer without a managed array (audio-thread safe).</summary>
+    /// Writes an ASCII host text into the plug-in's buffer without a managed array (audio-thread safe).
     private static IntPtr WriteText(IntPtr ptr, string text, int max)
     {
         if (ptr == IntPtr.Zero) return 0;
@@ -104,7 +100,7 @@ internal sealed unsafe partial class Vst2Effect
         return 1;
     }
 
-    /// <summary>A text the plug-in writes for a call (a name, a value's display, a label; UTF-8, as Equalizer APO reads names). UI thread.</summary>
+    /// A text the plug-in writes for a call (a name, a value's display, a label; UTF-8, as Equalizer APO reads names). UI thread.
     private string AskText(int opcode, int index)
     {
         var buffer = stackalloc byte[Vst2Abi.TextBytes];

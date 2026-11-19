@@ -1,18 +1,14 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// Windows' own "Listen to this device" of a recording device (Sound control panel, Listen tab): Windows plays the input on an output
 /// itself, so OmniControl adds no delay. Read and written through the policy config, as the control panel does.
-/// </summary>
 public static partial class CoreAudio
 {
     // The Listen tab's two values on a capture endpoint: pid 1 = listening on (VT_BOOL), pid 0 = the output's endpoint id (VT_LPWSTR, empty = default).
     private static readonly Guid ListenFormat = new("24DBB0FC-9311-4B3D-9CF0-18FF155639D4");
     private const ushort VtBool = 11, VtLpwstr = 31;
 
-    /// <summary>Whether Windows plays <paramref name="captureId"/> on an output, and on which (null = the default output). False when it cannot be read.</summary>
+    /// Whether Windows plays <paramref name="captureId"/> on an output, and on which (null = the default output). False when it cannot be read.
     public static bool GetListen(string captureId, out bool on, out string? outputId)
     {
         bool isOn = false; string? target = null;
@@ -36,7 +32,7 @@ public static partial class CoreAudio
         return ok;
     }
 
-    /// <summary>Turns listening on or off and sets its output (null = the default output). Returns false with a one-sentence reason when Windows refuses.</summary>
+    /// Turns listening on or off and sets its output (null = the default output). Returns false with a one-sentence reason when Windows refuses.
     public static bool TrySetListen(string captureId, bool on, string? outputId, out string error) =>
         WithPolicy(policy =>
         {
@@ -53,7 +49,7 @@ public static partial class CoreAudio
             return policy.SetPropertyValue(captureId, false, ref k, ref v);
         }, out error);
 
-    /// <summary>Runs one call on a policy config object, released afterwards; a non-zero result or a missing interface becomes the reason.</summary>
+    /// Runs one call on a policy config object, released afterwards; a non-zero result or a missing interface becomes the reason.
     private static bool WithPolicy(Func<IPolicyConfig, int> call, out string error)
     {
         error = string.Empty;

@@ -1,9 +1,8 @@
 using System.Runtime.CompilerServices;
-using OmniControl.App.Services;
 
 namespace OmniControl.Tests;
 
-/// <summary>Points the app-data folder (settings, errors log) at a temp folder before any test runs, so tests never touch the owner's real %APPDATA%\OmniControl.</summary>
+/// Points the app-data folder (settings, errors log) at a temp folder before any test runs, so tests never touch the user's real %APPDATA%\OmniControl.
 internal static class IsolatedAppData
 {
     [ModuleInitializer]

@@ -1,14 +1,13 @@
-using OmniControl.Core.Models;
 namespace OmniControl.Core.Engine;
 
-/// <summary>Left/right balance maths shared by sessions and the master. Pan runs from -100 (left) to +100 (right).</summary>
+/// Left/right balance maths shared by sessions and the master. Pan runs from -100 (left) to +100 (right).
 public static class PanMath
 {
     public const int Range = 100;
 
     public static int Clamp(int pan) => Math.Clamp(pan, -Range, Range);
 
-    /// <summary>Channel levels (0-1) for a pan value: the opposite side is turned down, the near side stays at full.</summary>
+    /// Channel levels (0-1) for a pan value: the opposite side is turned down, the near side stays at full.
     public static void ToLevels(int pan, out float left, out float right)
     {
         pan = Clamp(pan);
@@ -16,7 +15,7 @@ public static class PanMath
         right = pan < 0 ? 1 + pan / (float)Range : 1;
     }
 
-    /// <summary>The pan value that the given channel levels amount to (0 when they are equal).</summary>
+    /// The pan value that the given channel levels amount to (0 when they are equal).
     public static int FromLevels(float left, float right)
     {
         if (left <= 0 && right <= 0) return 0;
@@ -26,7 +25,7 @@ public static class PanMath
     }
 }
 
-/// <summary>One audio session (a program's stream on one device). Volume, mute and pan are per session.</summary>
+/// One audio session (a program's stream on one device). Volume, mute and pan are per session.
 public sealed class AudioSession
 {
     private readonly CoreAudio.ISimpleAudioVolume _volume;
@@ -42,11 +41,11 @@ public sealed class AudioSession
 
     public int ProcessId { get; }
     public string DeviceId { get; }
-    /// <summary>0 = open but silent, 1 = playing, as it was when the session was read.</summary>
+    /// 0 = open but silent, 1 = playing, as it was when the session was read.
     public int State { get; }
     public bool IsPlaying => State == 1;
 
-    /// <summary>Whether the session is playing right now (asked of Windows again; one cheap call, for a quick look between scans).</summary>
+    /// Whether the session is playing right now (asked of Windows again; one cheap call, for a quick look between scans).
     public bool IsPlayingNow => _control.GetState(out var state) == 0 ? state == 1 : IsPlaying;
 
     private static Guid _ctx = Guid.NewGuid();
@@ -56,21 +55,19 @@ public sealed class AudioSession
     public void SetVolume(int percent) => _volume.SetMasterVolume(Percent.ToScalar(percent), ref _ctx);
     public void SetMuted(bool muted) => _volume.SetMute(muted, ref _ctx);
 
-    /// <summary>
     /// The session's volume as Windows holds it (0 to 1, finer than a whole percent). It scales the program's sound linearly (measured:
     /// 1e-4 = exactly -80 dB in the endpoint and in process loopback); used to hold a program near silence while it is recorded.
-    /// </summary>
     public float Scalar => _volume.GetMasterVolume(out var v) == 0 ? v : 1f;
     public void SetScalar(float scalar) => _volume.SetMasterVolume(Math.Clamp(scalar, 0f, 1f), ref _ctx);
 
-    /// <summary>The current peak level (0 to 1) of the left and right channels of this program's sound.</summary>
+    /// The current peak level (0 to 1) of the left and right channels of this program's sound.
     public bool Peaks(out float left, out float right)
     {
         left = right = 0;
         return _meter is not null && CoreAudio.ReadPeaks(_meter, out left, out right);
     }
 
-    /// <summary>False when Windows doesn't offer per-channel levels for this session, so pan can't be read or set.</summary>
+    /// False when Windows doesn't offer per-channel levels for this session, so pan can't be read or set.
     public bool CanPan => _channels is not null;
 
     public int Pan

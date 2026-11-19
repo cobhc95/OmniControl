@@ -1,14 +1,10 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Engine.Mouse;
 
-/// <summary>
 /// Where the gesture areas are on the screen right now, for drawing them, built from the same pieces the hit test
 /// (<see cref="PointerArea.At"/>) uses: the edge strips of every monitor (<see cref="PointerArea.Edges"/>), every taskbar window, and
 /// the active window's title bar mapped with the hit test's own question (<see cref="CaptionArea"/>). Where areas overlap, each is cut
 /// by the ones that win over it in <see cref="PointerArea.At"/>'s order (taskbar, then edges, then title bar), so what is drawn is
 /// exactly where each area applies. Keeps the last title-bar map, so use one instance from one thread at a time.
-/// </summary>
 public sealed class AreaMap
 {
     [StructLayout(LayoutKind.Sequential)] private struct Rect { public int Left, Top, Right, Bottom; }
@@ -16,7 +12,6 @@ public sealed class AreaMap
     private delegate bool MonitorEnumProc(IntPtr monitor, IntPtr dc, ref Rect bounds, IntPtr data);
 
     [DllImport("user32.dll")] private static extern bool EnumDisplayMonitors(IntPtr dc, IntPtr clip, MonitorEnumProc callback, IntPtr data);
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr FindWindowEx(IntPtr parent, IntPtr after, string className, string? title);
     [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr window);
     [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr window);
     [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr window, out Rect rect);
@@ -38,14 +33,14 @@ public sealed class AreaMap
             if (pieces.Count > 0) areas.Add(new MappedArea(kind, Bounds(parts), pieces));
         }
 
-        foreach (var taskbar in Taskbars()) Add(PointerAreaKind.Taskbar, new[] { taskbar });
+        foreach (var taskbar in PointerArea.Taskbars().Where(t => IsWindowVisible(t.Window))) Add(PointerAreaKind.Taskbar, new[] { taskbar.Rect });
         foreach (var edge in Monitors().SelectMany(m => PointerArea.Edges(m, edgeStrip))) Add(edge.Kind, new[] { edge.Rect });
         var caption = ActiveCaption();
         if (caption.Count > 0) Add(PointerAreaKind.TitleBar, caption);
         return areas;
     }
 
-    /// <summary>What is left of <paramref name="rect"/> once every rectangle in <paramref name="cuts"/> is taken out.</summary>
+    /// What is left of <paramref name="rect"/> once every rectangle in <paramref name="cuts"/> is taken out.
     private static IEnumerable<ScreenRect> Cut(ScreenRect rect, IEnumerable<ScreenRect> cuts) =>
         cuts.Aggregate((IEnumerable<ScreenRect>)new[] { rect }, (left, cut) => left.SelectMany(r => r.Minus(cut)).ToList());
 
@@ -65,17 +60,7 @@ public sealed class AreaMap
         return monitors;
     }
 
-    private static IEnumerable<ScreenRect> Taskbars()
-    {
-        foreach (var className in PointerArea.TaskbarClasses)
-        {
-            var window = IntPtr.Zero;
-            while ((window = FindWindowEx(IntPtr.Zero, window, className, null)) != IntPtr.Zero)
-                if (IsWindowVisible(window) && GetWindowRect(window, out var rect) && !ToScreen(rect).IsEmpty) yield return ToScreen(rect);
-        }
-    }
-
-    /// <summary>The active window's title bar, mapped again only when another window is active or it moved or changed size.</summary>
+    /// The active window's title bar, mapped again only when another window is active or it moved or changed size.
     private List<ScreenRect> ActiveCaption()
     {
         var window = WindowQuery.ActiveWindow();

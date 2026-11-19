@@ -1,40 +1,15 @@
-using OmniControl.App.Hotkeys;
-using OmniControl.App.Mouse;
-using OmniControl.App.Picker;
+using OmniControl.App.Features.Hotkeys.Actions;
+using OmniControl.App.Features.Input.Mouse;
+using OmniControl.App.Features.Hotkeys.Picker;
 
 namespace OmniControl.Tests;
 
-/// <summary>The Choose-the-action window: sections and groups from the master entries, the settings an entry offers, search across sections, and old stored actions that were merged.</summary>
+/// The Choose-the-action window: sections and groups from the master entries, the settings an entry offers, and search across sections.
 public class ActionPickerTests
 {
     private static readonly HotkeyAction[] None = Array.Empty<HotkeyAction>();
 
     private static HotkeyAction Action(string id, string title, string category, string? group = null) => new(id, title, category, "", _ => { }, group: group);
-
-    [Theory]
-    [InlineData("volume.up", "omni", "volume.up")]
-    [InlineData("volume.mute", "omni", "volume.mute")]
-    [InlineData("desktop.lock", "omni", "automation.power.lock")]
-    [InlineData("omni:automation.open", "omni", "app.show")]
-    [InlineData("browser.home", "launch.browser", "")]
-    [InlineData("keys:Ctrl+C", "keys", "Ctrl+C")]
-    public void AnActionThatWasMerged_IsReadAsTheOneThatReplacedIt(string stored, string id, string parameter)
-    {
-        var action = MouseAction.Parse(stored);
-
-        Assert.Equal(id, action.Id);
-        Assert.Equal(parameter, action.Param);
-        Assert.Equal(MouseActionCatalog.Migrated(stored), MouseAction.Split(stored).Action);
-    }
-
-    [Fact]
-    public void AMergedActionKeepsItsSettings()
-    {
-        var action = MouseAction.Parse("volume.up|times=3");
-
-        Assert.Equal("omni", action.Id);
-        Assert.Equal(3, action.Options.Int(MouseOptions.Times));
-    }
 
     [Fact]
     public void EveryBuiltInEntryHasASectionAndAShortUniqueName()
@@ -172,7 +147,7 @@ public class ActionPickerTests
         Assert.Contains(model.Actions, a => a.IsCommand);
     }
 
-    // ---- Families: the directions of one thing are one line (docs/mockups/grouped-actions.html) ----
+    // ---- Families: the directions of one thing are one line ----
 
     private static HotkeyAction[] PointerActions()
     {

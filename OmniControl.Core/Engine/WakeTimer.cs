@@ -1,12 +1,9 @@
-using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// One Windows wake timer: while set, Windows wakes the PC from sleep or hibernation at that time. It cannot start a PC that is turned
 /// off. Nothing runs when it fires; the caller's own schedule does the work once the PC is awake.
-/// </summary>
 public sealed class WakeTimer : IDisposable
 {
     [DllImport("kernel32.dll", SetLastError = true)] private static extern SafeWaitHandle CreateWaitableTimer(IntPtr attributes, bool manualReset, string? name);
@@ -16,7 +13,7 @@ public sealed class WakeTimer : IDisposable
 
     private SafeWaitHandle? _timer;
 
-    /// <summary>Wakes the PC at <paramref name="when"/> (local time), replacing an earlier time. False when Windows refused (wake timers off).</summary>
+    /// Wakes the PC at <paramref name="when"/> (local time), replacing an earlier time. False when Windows refused (wake timers off).
     public bool Set(DateTime when)
     {
         _timer ??= CreateWaitableTimer(IntPtr.Zero, true, null);

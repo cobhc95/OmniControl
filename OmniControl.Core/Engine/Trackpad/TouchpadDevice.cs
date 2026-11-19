@@ -1,23 +1,20 @@
-using System.Runtime.InteropServices;
 using static OmniControl.Core.Engine.Trackpad.RawInputNative;
 
 namespace OmniControl.Core.Engine.Trackpad;
 
-/// <summary>
 /// One precision touchpad's report layout (from its HID preparsed data) and the reading of its reports into frames of contacts.
 /// A frame may arrive over several reports ("hybrid" touchpads put the contact count in the first and 0 in the rest), so contacts
 /// are gathered until the count is reached. Reading allocates nothing. Contact ids are not read: the recogniser only needs which
 /// fingers touch and where, and the average and spread do not depend on their order.
-/// </summary>
 internal sealed unsafe class TouchpadDevice : IDisposable
 {
-    /// <summary>Most contacts kept per frame (Windows' precision touchpad spec asks for 3 to 5).</summary>
+    /// Most contacts kept per frame (Windows' precision touchpad spec asks for 3 to 5).
     private const int MaxContacts = 10;
 
-    /// <summary>Size of the buffer for the pressed usages of one finger collection (tip switch, confidence...).</summary>
+    /// Size of the buffer for the pressed usages of one finger collection (tip switch, confidence...).
     private const int UsageBufferLength = 16;
 
-    /// <summary>One finger collection of the report: its link collection and the logical ranges of its X and Y.</summary>
+    /// One finger collection of the report: its link collection and the logical ranges of its X and Y.
     private readonly record struct Finger(ushort Link, int XMin, int YMin);
 
     private IntPtr _preparsed;
@@ -37,7 +34,7 @@ internal sealed unsafe class TouchpadDevice : IDisposable
         _longerSide = longerSide;
     }
 
-    /// <summary>Every precision touchpad Windows lists now (raw input handles).</summary>
+    /// Every precision touchpad Windows lists now (raw input handles).
     public static List<IntPtr> ListHandles()
     {
         var found = new List<IntPtr>();
@@ -59,7 +56,7 @@ internal sealed unsafe class TouchpadDevice : IDisposable
             && info.UsagePage == DigitizerPage && info.Usage == TouchpadUsage;
     }
 
-    /// <summary>Reads the touchpad's layout; null when it is not a touchpad or its layout has no finger positions.</summary>
+    /// Reads the touchpad's layout; null when it is not a touchpad or its layout has no finger positions.
     public static TouchpadDevice? Open(IntPtr device)
     {
         if (!IsTouchpad(device)) return null;
@@ -105,12 +102,12 @@ internal sealed unsafe class TouchpadDevice : IDisposable
         return longer <= 0 ? null : (fingers, hasCount, countLink, longer);
     }
 
-    /// <summary>A value's logical range; a range that reads backwards (a 16-bit maximum read as signed) is taken as the field's full unsigned range.</summary>
+    /// A value's logical range; a range that reads backwards (a 16-bit maximum read as signed) is taken as the field's full unsigned range.
     private static (int Min, int Span) RangeOf(HidpValueCaps v) =>
         v.LogicalMax > v.LogicalMin ? (v.LogicalMin, v.LogicalMax - v.LogicalMin)
         : (0, v.BitSize is > 0 and < 31 ? (1 << v.BitSize) - 1 : int.MaxValue);
 
-    /// <summary>Reads one HID report. True when it completes a frame, which is then in <paramref name="frame"/> (valid until the next call).</summary>
+    /// Reads one HID report. True when it completes a frame, which is then in <paramref name="frame"/> (valid until the next call).
     public bool Read(byte* report, uint length, out ReadOnlySpan<TouchContact> frame)
     {
         frame = default;
@@ -142,7 +139,7 @@ internal sealed unsafe class TouchpadDevice : IDisposable
     private bool Value(ushort page, ushort link, ushort usage, byte* report, uint length, out uint value) =>
         HidP_GetUsageValue(HidpInput, page, link, usage, out value, _preparsed, report, length) == HidpStatusSuccess;
 
-    /// <summary>The finger's tip switch. A collection without one (rare) counts as touching; the touch then ends by the gap in reports.</summary>
+    /// The finger's tip switch. A collection without one (rare) counts as touching; the touch then ends by the gap in reports.
     private bool Touching(ushort link, byte* report, uint length, ushort* usages)
     {
         uint count = UsageBufferLength;

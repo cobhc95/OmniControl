@@ -1,14 +1,10 @@
-using OmniControl.App.Audio;
-using OmniControl.App.Audio.Engine;
-using OmniControl.App.Pages.Volume;
+using OmniControl.App.Features.Volume.Pages;
 
 namespace OmniControl.Tests;
 
-/// <summary>
 /// Builds the Volume page's pieces in the order its constructor makes them (see the remarks on <see cref="VolumePageViewModel"/>), with
 /// empty data (no devices, no programs, the engine's facts unknown), and syncs them as the first reads do: nothing may read a piece that
 /// is not made yet (an earlier job crashed the app at start-up that way).
-/// </summary>
 public class VolumeConstructionTests
 {
     [Fact]
@@ -36,7 +32,7 @@ public class VolumeConstructionTests
         master.EngineLine = status.TipFor(EffectsRules.MethodFor(null));
         master.RouteChoice!.Sync(EffectsRules.MasterAutomatic, r => EffectsRules.MasterOfferOf(r, MasterFacts.Unknown, RunMethod.Apo));
         master.RouteChoice.SyncSteps(Array.Empty<CardAction>());
-        master.PlaysOn!.Gate.Sync(OmniControl.App.Audio.Gate.Open);
+        master.PlaysOn!.Gate.Sync(OmniControl.App.Features.Volume.Audio.Gate.Open);
         master.FxRuns = FxSlot.AnyRuns(master.FxOn, Array.Empty<FxSlot>());
 
         // 4. The Wiring row made over it, with its own Plays on menu.

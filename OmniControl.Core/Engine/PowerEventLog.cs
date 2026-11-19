@@ -1,26 +1,22 @@
-using System.ComponentModel;
-using System.Runtime.InteropServices;
 using System.Xml;
 using System.Xml.Linq;
 using static OmniControl.Core.Native.EventLogNative;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>One sleep or wake Windows wrote in its System log, with when it happened.</summary>
+/// One sleep or wake Windows wrote in its System log, with when it happened.
 public sealed record LoggedPowerEvent(DateTime At, PowerSignal Signal);
 
-/// <summary>
 /// Reads the sleeps and wakes Windows wrote in its System event log: Kernel-Power 42 (entering sleep; target state 5 = hibernate),
 /// Kernel-Power 107 (resumed) and Power-Troubleshooter 1 (woke, with the wake source). Used at start-up to see what happened while OmniControl
 /// was not running, and after a wake to label it (sleep or hibernate). Read only; a log Windows will not open gives an empty list and the reason.
-/// </summary>
 public static class PowerEventLog
 {
     private const string Channel = "System", KernelPower = "Microsoft-Windows-Kernel-Power", Troubleshooter = "Microsoft-Windows-Power-Troubleshooter";
     private const int EnteringSleep = 42, Resumed = 107, Woke = 1, HibernateState = 5, Batch = 16;
     private static readonly XNamespace Ns = "http://schemas.microsoft.com/win/2004/08/events/event";
 
-    /// <summary>The events after <paramref name="since"/>, oldest first, at most <paramref name="max"/>; the problem when the log could not be read.</summary>
+    /// The events after <paramref name="since"/>, oldest first, at most <paramref name="max"/>; the problem when the log could not be read.
     public static (IReadOnlyList<LoggedPowerEvent> Events, string? Problem) Since(DateTime since, int max)
     {
         var query = $"*[System[TimeCreated[@SystemTime>'{since.ToUniversalTime():yyyy-MM-ddTHH:mm:ss.fffZ}'] and " +
@@ -60,7 +56,7 @@ public static class PowerEventLog
         finally { Marshal.FreeHGlobal(buffer); }
     }
 
-    /// <summary>One event's XML as a journal event; null when it is not one of ours or cannot be read.</summary>
+    /// One event's XML as a journal event; null when it is not one of ours or cannot be read.
     internal static LoggedPowerEvent? Parse(string xml)
     {
         XElement root;

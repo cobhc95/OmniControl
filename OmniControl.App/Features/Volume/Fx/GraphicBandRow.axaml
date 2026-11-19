@@ -1,0 +1,24 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
+             xmlns:vm="using:OmniControl.App.Features.Volume.Fx"
+             x:Class="OmniControl.App.Features.Volume.Fx.GraphicBandRow"
+             x:DataType="vm:GraphicBandItem">
+    <!-- One graphic-equaliser band as a card of the plain Parameters list: its frequency, the gain slider, and the gain as text that can
+         be typed (double-click it, or Ctrl+Enter on the slider). Columns shared with the Parametric's band cards and the slider cards. -->
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" MinWidth="64" SharedSizeGroup="EqValue" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Classes="cardname" Text="{Binding FreqText}" VerticalAlignment="Center" Margin="0,0,24,0" />
+        <Slider Grid.Column="1" Minimum="{x:Static vm:GraphicBandItem.MinPos}" Maximum="{x:Static vm:GraphicBandItem.MaxPos}"
+                Value="{Binding GainPos}" pages:SliderReset.Value="{x:Static vm:GraphicBandItem.ResetPos}" />
+        <pages:NumberText Grid.Column="2" Classes="plain" Value="{Binding Gain}" Minimum="{x:Static vm:GraphicBandItem.MinGain}"
+                          Maximum="{x:Static vm:GraphicBandItem.MaxGain}" Decimals="1" Margin="8,0,0,0" HorizontalAlignment="Right"
+                          VerticalAlignment="Center" ToolTip.Tip="Double-click to type the gain in dB">
+            <TextBlock Text="{Binding GainText}" Classes="slidervalue" HorizontalAlignment="Right" />
+        </pages:NumberText>
+    </Grid>
+</UserControl>

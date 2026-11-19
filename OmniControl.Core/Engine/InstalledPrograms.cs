@@ -1,18 +1,14 @@
-using System.Runtime.InteropServices;
 using System.Security;
 using Microsoft.CSharp.RuntimeBinder;
-using Microsoft.Win32;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>A program found on this PC that has an .exe to start: its name and the full path of the .exe.</summary>
+/// A program found on this PC that has an .exe to start: its name and the full path of the .exe.
 public sealed record FoundProgram(string Name, string Path);
 
-/// <summary>
 /// The programs installed on this PC, read only: the Start menu's shortcuts (the current user's and all users'; their targets) and
 /// Windows' "App Paths" registry keys. Slow (it reads many files): call it off the UI thread. Setup tools, uninstallers and Windows'
 /// own programs are left out, and a program found twice is listed once.
-/// </summary>
 public static class InstalledPrograms
 {
     private const string ExeEnding = ".exe";
@@ -21,14 +17,14 @@ public static class InstalledPrograms
     private const string AppPathsKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths";
     private const string ShellProgId = "WScript.Shell";
 
-    /// <summary>File names that start like a setup tool's, and Start menu names that say "uninstall".</summary>
+    /// File names that start like a setup tool's, and Start menu names that say "uninstall".
     private static readonly string[] SetupStarts = { "unins", "setup", "install", "update" };
     private const string UninstallWord = "uninstall";
 
     public static IReadOnlyList<FoundProgram> Find() =>
         Clean(FromStartMenu().Concat(FromAppPaths()), Environment.GetFolderPath(Environment.SpecialFolder.Windows));
 
-    /// <summary>Keeps only .exe programs that are not setup tools or Windows' own, once each (by path, ignoring case), the first name found wins.</summary>
+    /// Keeps only .exe programs that are not setup tools or Windows' own, once each (by path, ignoring case), the first name found wins.
     internal static List<FoundProgram> Clean(IEnumerable<FoundProgram> found, string windowsFolder) =>
         Dedupe(found.Where(p => p.Path.EndsWith(ExeEnding, StringComparison.OrdinalIgnoreCase) && !IsSetupTool(p, windowsFolder)));
 
@@ -38,7 +34,7 @@ public static class InstalledPrograms
         return found.Where(p => seen.Add(Normal(p.Path))).ToList();
     }
 
-    /// <summary>An installer, uninstaller or updater by its file or Start menu name, or a program inside Windows' own folder.</summary>
+    /// An installer, uninstaller or updater by its file or Start menu name, or a program inside Windows' own folder.
     internal static bool IsSetupTool(FoundProgram program, string windowsFolder)
     {
         var file = System.IO.Path.GetFileName(program.Path);
@@ -85,7 +81,7 @@ public static class InstalledPrograms
         catch (UnauthorizedAccessException) { return new(); }
     }
 
-    /// <summary>The .exe a shortcut starts, when it exists (a shortcut to a document, a folder or a Store app has none).</summary>
+    /// The .exe a shortcut starts, when it exists (a shortcut to a document, a folder or a Store app has none).
     private static string? TargetOf(object shell, string shortcut)
     {
         object? link = null;
@@ -105,7 +101,7 @@ public static class InstalledPrograms
     private static readonly (RegistryHive Hive, RegistryView View)[] AppPathPlaces =
         { (RegistryHive.LocalMachine, RegistryView.Registry64), (RegistryHive.LocalMachine, RegistryView.Registry32), (RegistryHive.CurrentUser, RegistryView.Default) };
 
-    /// <summary>The program an "App Paths" key names ("chrome.exe"), when it is registered and the file exists.</summary>
+    /// The program an "App Paths" key names ("chrome.exe"), when it is registered and the file exists.
     internal static string? AppPathOf(string exeName)
     {
         foreach (var (hive, view) in AppPathPlaces)

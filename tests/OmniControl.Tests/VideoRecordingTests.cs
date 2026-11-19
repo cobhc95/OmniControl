@@ -1,13 +1,11 @@
-using OmniControl.App.Screenshot;
+using OmniControl.App.Features.Screenshot;
 using OmniControl.Core.Engine.Screenshot;
 using SkiaSharp;
 
 namespace OmniControl.Tests;
 
-/// <summary>
 /// The screen recorder's pure parts: even frame sizes, the bitrate, the frame grid and the recording clock, a GIF's delays, palette and
 /// file (read back with SkiaSharp), the drawing tools' size steps and the recording bar's timer. Nothing is captured, encoded to MP4 or shown.
-/// </summary>
 public class VideoRecordingTests
 {
     private const long Second = VideoMath.TicksPerSecond;
@@ -245,7 +243,7 @@ public class VideoRecordingTests
 
     // ---- GIF worker queue ----
 
-    /// <summary>A sink that records what reaches it and can hold the worker inside its first frame.</summary>
+    /// A sink that records what reaches it and can hold the worker inside its first frame.
     private sealed class SlowSink : IVideoSink
     {
         public readonly List<(long At, byte First)> Frames = new();

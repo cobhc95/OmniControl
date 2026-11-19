@@ -1,9 +1,6 @@
-using System.Text.Json;
-using OmniControl.App.Audio;
-
 namespace OmniControl.Tests;
 
-/// <summary>The effects switch remembers when the user turned it off, so an added effect only switches it on otherwise.</summary>
+/// The effects switch remembers when the user turned it off, so an added effect only switches it on otherwise.
 public class FxUserOffTests
 {
     [Theory]

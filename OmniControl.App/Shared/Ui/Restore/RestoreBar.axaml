@@ -1,0 +1,14 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:restore="using:OmniControl.App.Shared.Ui.Restore"
+             x:Class="OmniControl.App.Shared.Ui.Restore.RestoreBar"
+             x:DataType="restore:PageRestore"
+             IsVisible="{Binding Converter={x:Static ObjectConverters.IsNotNull}}">
+    <!-- The one "Restore defaults" control of every page, at the far right of its title line: the calm line, then the button
+         (Button.pill, like the Volume Easy one; greyed with its reason as the tooltip). -->
+    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+        <restore:RestoreLine HorizontalAlignment="Right" />
+        <Button Grid.Column="1" Tag="grouptool" Classes="pill" Content="{Binding ButtonText}" Command="{Binding RestoreCommand}"
+                VerticalAlignment="Center" ToolTip.Tip="{Binding Tooltip}" ToolTip.ShowOnDisabled="True" />
+    </Grid>
+</UserControl>

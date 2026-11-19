@@ -1,0 +1,38 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Features.Devices.Pages"
+             xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+                          x:Class="OmniControl.App.Features.Devices.Pages.SimulationFields"
+             x:DataType="vm:SimulationViewModel">
+    <!-- The set-up's stage 1 "Emulator and connection" (docs/mockups/smart-devices-setup-vs-ready.html): the emulator (the shared ChipMenu with
+         the emulator menu v3: Installed / Not installed, names never trimmed), the Keep running chip, the state tag, Show and Close now (one row
+         that wraps), then the adb address (the field stretches) with Connect. -->
+    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="6">
+        <TextBlock Classes="muted" Text="Emulator" VerticalAlignment="Center" />
+        <WrapPanel Grid.Column="1" Orientation="Horizontal" ItemSpacing="8" LineSpacing="6">
+            <c:ChipMenu Text="{Binding EmulatorText}" ChipToolTip="{Binding EmulatorTip}" MenuOpened="OnMenuOpened">
+                <c:ChipMenu.Menu>
+                    <c:MenuRowList x:Name="EmulatorRows" />
+                </c:ChipMenu.Menu>
+            </c:ChipMenu>
+            <c:ChipMenu Text="{Binding KeepText}" ChipToolTip="{Binding KeepTip}" MenuOpened="OnKeepOpened">
+                <c:ChipMenu.Menu>
+                    <vm:KeepRunningMenu x:Name="KeepMenu" />
+                </c:ChipMenu.Menu>
+            </c:ChipMenu>
+            <Border Classes="tag" Classes.good="{Binding IsConnected}" VerticalAlignment="Center"><TextBlock Text="{Binding StateText}" /></Border>
+            <Button Classes="pill" Content="Show" Command="{Binding ShowCommand}" IsEnabled="{Binding CanShow}" VerticalAlignment="Center"
+                    ToolTip.Tip="Shows the emulator's window (opens it, or restarts it with its window when it runs hidden). Install the device app there (for example Tapo from its store) and sign in inside it. OmniControl never sees that password."
+                    ToolTip.ShowOnDisabled="True" />
+            <Button Classes="pill" Content="Close now" Command="{Binding CloseNowCommand}" IsEnabled="{Binding CanClose}" VerticalAlignment="Center"
+                    ToolTip.Tip="Shuts the emulator down cleanly so it starts quickly next time." ToolTip.ShowOnDisabled="True" />
+        </WrapPanel>
+
+        <TextBlock Grid.Row="1" Classes="muted" Text="ADB address" VerticalAlignment="Center" />
+        <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <TextBox Classes="field" Text="{Binding AdbAddress, UpdateSourceTrigger=LostFocus}" Watermark="{Binding AddressWatermark}" MinWidth="0"
+                     ToolTip.Tip="Where adb reaches the emulator. It is found for you; type another address only if the emulator uses one." />
+            <Button Grid.Column="1" Classes="pill" Content="Connect" Command="{Binding ConnectCommand}" IsEnabled="{Binding CanConnect}" VerticalAlignment="Center" />
+        </Grid>
+    </Grid>
+</UserControl>

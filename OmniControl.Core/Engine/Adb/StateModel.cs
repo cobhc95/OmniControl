@@ -2,13 +2,13 @@ using System.Text.Json.Serialization;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>What a reading says about a device.</summary>
+/// What a reading says about a device.
 public enum DeviceState { Unknown, On, Off }
 
-/// <summary>A reading: the state and how sure it is (0-1; below <see cref="CoreTiming.StateReadThreshold"/> the state is Unknown).</summary>
+/// A reading: the state and how sure it is (0-1; below <see cref="CoreTiming.StateReadThreshold"/> the state is Unknown).
 public sealed record StateReading(DeviceState State, double Confidence);
 
-/// <summary>One thing that told on from off when the device was taught: a fact's two values, or a measure's two centres; its weight is how cleanly it did.</summary>
+/// One thing that told on from off when the device was taught: a fact's two values, or a measure's two centres; its weight is how cleanly it did.
 public sealed class StateSignal
 {
     public string Key { get; set; } = string.Empty;
@@ -19,13 +19,11 @@ public sealed class StateSignal
     public double Weight { get; set; }
 }
 
-/// <summary>
 /// How a device shows on and off in its app, learned from several looks at each state (<see cref="StateSample"/>). A signal is kept when it is the
 /// same in every look of one state and differs between the states; measures (colours, shape) are kept when the two states are well apart and
 /// weighted by how far. A reading lets every signal vote, averages the votes per family (attributes, words, views, colour, shape) and the
 /// families by their weights in <see cref="CoreTiming"/>, and is Unknown when the result is not clear enough. The card is found again by the
 /// target (<see cref="StateTarget"/>). Saved with the device.
-/// </summary>
 public sealed class StateModel
 {
     public List<StateSample> OnSamples { get; set; } = new();
@@ -33,15 +31,15 @@ public sealed class StateModel
     public List<StateSignal> Signals { get; set; } = new();
     public StateTarget? Target { get; set; }
 
-    /// <summary>How sure the recent readings were (smoothed); low means the app may have changed and the device wants teaching again.</summary>
+    /// How sure the recent readings were (smoothed); low means the app may have changed and the device wants teaching again.
     public double RecentConfidence { get; set; } = 1;
 
     [JsonIgnore] public bool IsTaught => Signals.Count > 0 && Target is not null;
 
-    /// <summary>The recent readings were unsure, so the app's look has probably changed.</summary>
+    /// The recent readings were unsure, so the app's look has probably changed.
     [JsonIgnore] public bool IsDrifting => IsTaught && RecentConfidence < CoreTiming.StateDriftWarn;
 
-    /// <summary>Learns the signals from the looks of both states. Null when it worked, otherwise a short phrase saying why it could not.</summary>
+    /// Learns the signals from the looks of both states. Null when it worked, otherwise a short phrase saying why it could not.
     public string? Derive()
     {
         Signals.Clear();
@@ -76,7 +74,7 @@ public sealed class StateModel
         return new StateSignal { Key = key, On = onCentre, Off = offCentre, Weight = 1 - 2 * spread / between };
     }
 
-    /// <summary>What a look says: On, Off or Unknown, and how sure (the weighted vote of the families, each the weighted vote of its signals).</summary>
+    /// What a look says: On, Off or Unknown, and how sure (the weighted vote of the families, each the weighted vote of its signals).
     public StateReading Read(StateSample? sample)
     {
         if (sample is null || Signals.Count == 0) return new StateReading(DeviceState.Unknown, 0);
@@ -94,11 +92,11 @@ public sealed class StateModel
         return new StateReading(state, Math.Abs(result));
     }
 
-    /// <summary>Adds one reading's confidence to <see cref="RecentConfidence"/>.</summary>
+    /// Adds one reading's confidence to <see cref="RecentConfidence"/>.
     public void Note(double confidence) =>
         RecentConfidence = RecentConfidence * (1 - CoreTiming.StateDriftSmoothing) + Math.Clamp(confidence, 0, 1) * CoreTiming.StateDriftSmoothing;
 
-    /// <summary>The families that tell on from off, as words for the set-up ("switch state, words, colour").</summary>
+    /// The families that tell on from off, as words for the set-up ("switch state, words, colour").
     [JsonIgnore]
     public string Summary => string.Join(", ", Signals.Select(s => FamilyOf(s.Key)).Distinct().OrderBy(f => f).Select(f => f switch
     {
@@ -125,7 +123,7 @@ public sealed class StateModel
     private static double[] Centre(IReadOnlyList<double[]> values) =>
         Enumerable.Range(0, values[0].Length).Select(i => values.Average(v => v[i])).ToArray();
 
-    /// <summary>The shape is compared by the share of its bits that differ; colours by straight distance on the hue-saturation disc.</summary>
+    /// The shape is compared by the share of its bits that differ; colours by straight distance on the hue-saturation disc.
     private static double Distance(string key, double[] a, double[] b) =>
         FamilyOf(key) == SignalFamily.Shape
             ? a.Zip(b, (x, y) => Math.Abs(x - y)).Sum() / a.Length

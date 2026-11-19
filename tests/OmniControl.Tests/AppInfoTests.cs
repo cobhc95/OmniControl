@@ -1,9 +1,8 @@
 using System.Text.RegularExpressions;
-using OmniControl.App.Services;
 
 namespace OmniControl.Tests;
 
-/// <summary>The version has one home (the project file); nothing else may spell it out.</summary>
+/// The version has one home (the project file); nothing else may spell it out.
 public class AppInfoTests
 {
     [Fact]

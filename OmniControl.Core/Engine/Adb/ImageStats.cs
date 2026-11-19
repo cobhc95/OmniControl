@@ -1,26 +1,24 @@
 namespace OmniControl.Core.Engine;
 
-/// <summary>A rectangle of a picture in pixels (right and bottom not included).</summary>
+/// A rectangle of a picture in pixels (right and bottom not included).
 public readonly record struct PixelBox(int Left, int Top, int Right, int Bottom)
 {
     public int Width => Right - Left;
     public int Height => Bottom - Top;
 
-    /// <summary>The box cut to the picture; empty (zero width) when it lies outside.</summary>
+    /// The box cut to the picture; empty (zero width) when it lies outside.
     public PixelBox Within(RgbaImage image) =>
         new(Math.Clamp(Left, 0, image.Width), Math.Clamp(Top, 0, image.Height), Math.Clamp(Right, 0, image.Width), Math.Clamp(Bottom, 0, image.Height));
 }
 
-/// <summary>
 /// The colour measures a state reading compares. Colours are points on the hue-saturation disc (<c>[S·cos H, S·sin H]</c>), never raw RGB,
 /// so a lighter or darker theme moves them little; the shape is a 64-bit difference hash of the brightness. Each region is sampled on a grid
 /// of at most <see cref="CoreTiming.StateSampleBudget"/> points, so a big card costs as little as a small button.
-/// </summary>
 public static class ImageStats
 {
     private const int HueBins = 12, GreyBins = 3;
 
-    /// <summary>Hue in degrees (0-360), saturation and value (0-1).</summary>
+    /// Hue in degrees (0-360), saturation and value (0-1).
     public static (double H, double S, double V) Hsv(byte r, byte g, byte b)
     {
         double rf = r / 255.0, gf = g / 255.0, bf = b / 255.0;
@@ -43,7 +41,7 @@ public static class ImageStats
                 yield return image.At(x, y);
     }
 
-    /// <summary>The region's average colour as a hue-saturation point; null when the region is empty.</summary>
+    /// The region's average colour as a hue-saturation point; null when the region is empty.
     public static double[]? MeanColour(RgbaImage image, PixelBox box)
     {
         long r = 0, g = 0, b = 0, n = 0;
@@ -53,10 +51,8 @@ public static class ImageStats
         return Point(h, s);
     }
 
-    /// <summary>
     /// The region's dominant colour as a hue-saturation point: the most common hue family among its clearly coloured pixels when they are at
     /// least <see cref="CoreTiming.StateDominantMinShare"/> of it, else the grey (the point at the centre); null when the region is empty.
-    /// </summary>
     public static double[]? DominantColour(RgbaImage image, PixelBox box)
     {
         var counts = new int[HueBins + GreyBins];
@@ -78,7 +74,7 @@ public static class ImageStats
         return counts[best] >= total * CoreTiming.StateDominantMinShare ? new[] { sums[best, 0] / counts[best], sums[best, 1] / counts[best] } : new[] { 0.0, 0.0 };
     }
 
-    /// <summary>The share of the region that is clearly coloured (not grey, white or black), as a one-value measure; null when empty.</summary>
+    /// The share of the region that is clearly coloured (not grey, white or black), as a one-value measure; null when empty.
     public static double[]? Colourful(RgbaImage image, PixelBox box)
     {
         int coloured = 0, total = 0;
@@ -93,10 +89,8 @@ public static class ImageStats
 
     private static bool IsColoured(double s, double v) => s >= CoreTiming.StateGreySaturation && v >= CoreTiming.StateDarkValue;
 
-    /// <summary>
     /// A 64-bit difference hash of the region (9 by 8 cells of average brightness, each compared with its right neighbour), as 64 values of 0
     /// or 1; null when the region is too small to cut into cells.
-    /// </summary>
     public static double[]? ShapeHash(RgbaImage image, PixelBox box)
     {
         box = box.Within(image);

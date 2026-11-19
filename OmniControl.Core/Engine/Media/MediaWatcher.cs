@@ -1,18 +1,13 @@
-using System.Runtime.InteropServices;
 using Windows.Media.Control;
 
 namespace OmniControl.Core.Engine.Media;
 
-/// <summary>
 /// What changed in the media that is playing: a new track (with its title and artist), or play/pause. <paramref name="Program"/> is the
 /// program whose session it is (<see cref="ProgramIdentity.Normalize"/>), or empty when Windows names it in a way that is no program file (a Store app).
-/// </summary>
 public sealed record MediaChange(bool IsTrack, bool IsPlaying, string Title, string Artist, string Program);
 
-/// <summary>
 /// Raises <see cref="Changed"/> (on a worker thread) when any app playing media (browser, music player, video player) starts, pauses
 /// or changes track. It listens to Windows' media session list, the same source the volume pop-up's media card uses.
-/// </summary>
 public sealed class MediaWatcher : IDisposable
 {
     private sealed class Tracked
@@ -50,7 +45,7 @@ public sealed class MediaWatcher : IDisposable
 
     private void OnSessionsChanged(GlobalSystemMediaTransportControlsSessionManager sender, object? args) => AttachNewSessions();
 
-    /// <summary>Starts listening to sessions that appeared, and stops listening to ones that closed.</summary>
+    /// Starts listening to sessions that appeared, and stops listening to ones that closed.
     private void AttachNewSessions()
     {
         if (_manager is null) return;
@@ -97,10 +92,8 @@ public sealed class MediaWatcher : IDisposable
         if (change is not null) Changed?.Invoke(change);
     }
 
-    /// <summary>
     /// The program of a session: Windows names a desktop program's session after its file ("Spotify.exe") or its short name ("Chrome",
     /// "MSEdge"), which is the program's identity; a Store app's name ("Microsoft.ZuneMusic_8wekyb3d8bbwe!Microsoft.ZuneMusic") is not, so it is unknown.
-    /// </summary>
     private static string ProgramOf(GlobalSystemMediaTransportControlsSession session)
     {
         try

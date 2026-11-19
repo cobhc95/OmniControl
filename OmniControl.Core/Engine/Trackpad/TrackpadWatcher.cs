@@ -1,16 +1,13 @@
-using System.Runtime.InteropServices;
 using OmniControl.Core.Engine.Mouse;
 using static OmniControl.Core.Engine.Trackpad.RawInputNative;
 using static OmniControl.Core.Native.WindowNative;
 
 namespace OmniControl.Core.Engine.Trackpad;
 
-/// <summary>
 /// Reads every precision touchpad's own reports (Raw Input, also while OmniControl is in the background) on its own thread with a
 /// hidden message-only window, and raises <see cref="Recognised"/> for each gesture the <see cref="GestureRecogniser"/> finds.
 /// Raw input is a copy: Windows still does what it does with the touch. Per report nothing is allocated; the work is a few HID
 /// field reads. Dispose stops the registration, closes the window and frees every touchpad's data.
-/// </summary>
 public sealed unsafe class TrackpadWatcher : IDisposable
 {
     private const string ClassName = "OmniControlTrackpadWatcher";
@@ -26,13 +23,13 @@ public sealed unsafe class TrackpadWatcher : IDisposable
     private IntPtr _window;
     private Thread? _thread;
 
-    /// <summary>A gesture was recognised (raised on the watcher's thread; handlers must return at once).</summary>
+    /// A gesture was recognised (raised on the watcher's thread; handlers must return at once).
     public event Action<MouseButton>? Recognised;
 
-    /// <summary>A touchpad was plugged in or removed (raised on the watcher's thread).</summary>
+    /// A touchpad was plugged in or removed (raised on the watcher's thread).
     public event Action? DevicesChanged;
 
-    /// <summary>Where the watcher writes what it did (started, touchpads found, errors). Never called per report.</summary>
+    /// Where the watcher writes what it did (started, touchpads found, errors). Never called per report.
     public Action<string>? Log { get; set; }
 
     /// <param name="cooldown">Least time between two recognised gestures.</param>
@@ -42,10 +39,10 @@ public sealed unsafe class TrackpadWatcher : IDisposable
         _recogniser = new GestureRecogniser(cooldown);
     }
 
-    /// <summary>True when Windows lists a precision touchpad now.</summary>
+    /// True when Windows lists a precision touchpad now.
     public static bool IsPresent() => TouchpadDevice.ListHandles().Count > 0;
 
-    /// <summary>Starts reading on a new thread. Returns null when running, or one plain sentence saying why it could not start.</summary>
+    /// Starts reading on a new thread. Returns null when running, or one plain sentence saying why it could not start.
     public string? Start()
     {
         string? problem = null;
@@ -56,10 +53,8 @@ public sealed unsafe class TrackpadWatcher : IDisposable
         return problem;
     }
 
-    /// <summary>
     /// Stops reading: the window unregisters and closes on its own thread, which then frees everything and ends. Waits for that (briefly),
     /// so a watcher started right after this one is never unregistered by this one's late clean-up (registration is per process).
-    /// </summary>
     public void Dispose()
     {
         var window = _window;
@@ -83,7 +78,7 @@ public sealed unsafe class TrackpadWatcher : IDisposable
         Log?.Invoke(problem is null ? "touchpad watcher stopped" : $"touchpad watcher not started: {problem}");
     }
 
-    /// <summary>Creates the window, reads the touchpads' layouts and registers for their reports; the reason when that fails.</summary>
+    /// Creates the window, reads the touchpads' layouts and registers for their reports; the reason when that fails.
     private string? Open(IntPtr instance)
     {
         var wc = new WndClassEx { Size = (uint)Marshal.SizeOf<WndClassEx>(), WndProc = Marshal.GetFunctionPointerForDelegate(_proc), Instance = instance, ClassName = ClassName };

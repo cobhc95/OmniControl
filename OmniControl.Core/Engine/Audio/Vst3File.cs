@@ -1,12 +1,10 @@
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// Checks whether a .vst3 file or bundle has a binary OmniControl (64-bit Windows) can load, by reading the file header only: the
 /// plug-in's code is never loaded or run, so the plug-in scan stays safe.
-/// </summary>
 public static class Vst3File
 {
-    /// <summary>The one sentence saying why the plug-in can't run here, or null when it can be loaded.</summary>
+    /// The one sentence saying why the plug-in can't run here, or null when it can be loaded.
     public static string? Problem(string path)
     {
         if (Directory.Exists(path))

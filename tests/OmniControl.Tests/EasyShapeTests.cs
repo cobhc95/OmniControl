@@ -1,14 +1,10 @@
-using OmniControl.App.Audio;
-using OmniControl.App.Audio.Engine;
-using OmniControl.App.Fx;
+using OmniControl.App.Features.Volume.Fx;
 
 namespace OmniControl.Tests;
 
-/// <summary>
 /// The Easy sliders against an effect shaped in the full effects window: when the five sliders still describe it (<see cref="EasyEq.Matches"/>),
 /// when they are greyed (<see cref="EasyEq.IsCustom"/>), the closest five-slider sound (<see cref="EasyEq.BestFit"/>), and that the
 /// Easy chart is drawn by the same function as the FX window's.
-/// </summary>
 public class EasyShapeTests
 {
     private static FxSlot EqSlot(IEnumerable<EqBand>? bands = null)
@@ -151,17 +147,17 @@ public class EasyShapeTests
     [Fact]
     public void MasterSound_KeepsACustomShape_AndOnlySwitchesItOn()
     {
-        var mixer = new FakeMixer();
+        var mixer = new EasyFakeMixer();
         var custom = EqSlot();
         custom.Bands![1].Freq = 504.6;
         custom.Bands[1].Gain = 17;
         custom.Enabled = false;
-        mixer.Chain.Add(custom);
+        mixer.FxChain(null).Add(custom);
         EasyApply.MasterSound(mixer);
         Assert.True(custom.Enabled);
         Assert.Equal(504.6, custom.Bands[1].Freq);
         Assert.Equal(17, custom.Bands[1].Gain);
-        Assert.True(mixer.On);
+        Assert.True(mixer.IsFxOn(null));
     }
 
     [Fact]
@@ -185,23 +181,5 @@ public class EasyShapeTests
         owner.Bands[1].Gain = 0; // an edit in the FX window: showing again follows it
         chart.Show(chain, FxEngines.Program, true, true);
         Assert.Equal(ChainResponse.Of(chain, FxEngines.Program, true, FxAnalysisViewModel.Freqs).Db, chart.Curve);
-    }
-
-    private sealed class FakeMixer : IEasyMixer
-    {
-        public List<FxSlot> Chain { get; } = new();
-        public bool On { get; private set; }
-        public List<FxSlot> FxChain(string? key) => Chain;
-        public bool IsFxOn(string? key) => On;
-        public void SetFxOn(string? key, bool on) => On = on;
-        public void SaveFx(string? key) { }
-        public string InputKey(string deviceId, string name) => throw new NotSupportedException();
-        public EffectsRoute FxRouteOf(string key) => throw new NotSupportedException();
-        public void SetFxRoute(string key, EffectsRoute route) => throw new NotSupportedException();
-        public IReadOnlyList<CombinedDevice> Combined => throw new NotSupportedException();
-        public void AddCombined(CombinedDevice device) => throw new NotSupportedException();
-        public EffectsRoute MasterMethod => throw new NotSupportedException();
-        public void SetMasterMethod(EffectsRoute route) => throw new NotSupportedException();
-        public void SetMasterPlaysOn(IEnumerable<string> targets) => throw new NotSupportedException();
     }
 }

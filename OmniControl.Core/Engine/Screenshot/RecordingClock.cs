@@ -1,12 +1,8 @@
-using System.Diagnostics;
-
 namespace OmniControl.Core.Engine.Screenshot;
 
-/// <summary>
 /// A recording's own time: it runs from the start, stands still while paused, and goes on from where it stopped on resume, so the video
 /// has no gap for a pause. In 100-nanosecond units. Thread-safe. The real time comes from <paramref name="now"/> (the stopwatch by default,
 /// a fake one in tests).
-/// </summary>
 public sealed class RecordingClock
 {
     private readonly Func<long> _now;
@@ -27,7 +23,7 @@ public sealed class RecordingClock
         get { lock (_gate) return _paused; }
     }
 
-    /// <summary>The recording's time now (not counting pauses).</summary>
+    /// The recording's time now (not counting pauses).
     public long Ticks
     {
         get

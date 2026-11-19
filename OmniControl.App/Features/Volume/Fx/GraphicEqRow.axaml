@@ -1,0 +1,56 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
+             xmlns:vm="using:OmniControl.App.Features.Volume.Fx"
+             x:Class="OmniControl.App.Features.Volume.Fx.GraphicEqRow"
+             x:DataType="vm:GraphicEqItem">
+    <!-- A graphic equaliser: the total response above, one vertical slider per band (the master Slider.vband) with its short label
+         under it, the dB scale at the left; Flat and the range under them. The curve, sliders and labels share one set of equal columns
+         and scroll sideways together when the editor is narrower than the sliders' least width; the scale stays put. The outer and inner
+         grids use the same row heights, so the scale lines up with the sliders. -->
+    <StackPanel Spacing="8" Margin="0,4">
+        <Grid ColumnDefinitions="Auto,*">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="{StaticResource GraphicEqCurveHeight}" />
+                <RowDefinition Height="{StaticResource GraphicEqSliderHeight}" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <vm:GainScale Grid.Row="1" />
+            <ScrollViewer Grid.Column="1" Grid.RowSpan="3" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="{StaticResource GraphicEqCurveHeight}" />
+                        <RowDefinition Height="{StaticResource GraphicEqSliderHeight}" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <vm:GraphicEqCurve Margin="0,0,0,6" />
+                    <ItemsControl x:Name="BandList" Grid.Row="1" ItemsSource="{Binding Bands}" vm:SliderPaint.IsEnabled="True">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:GraphicBandItem">
+                                <Slider Classes="vband"
+                                        Minimum="{x:Static vm:GraphicBandItem.MinPos}" Maximum="{x:Static vm:GraphicBandItem.MaxPos}"
+                                        SmallChange="{x:Static vm:GraphicBandItem.SmallChange}" LargeChange="{x:Static vm:GraphicBandItem.LargeChange}"
+                                        Value="{Binding GainPos}" pages:SliderReset.Value="{x:Static vm:GraphicBandItem.ResetPos}"
+                                        ToolTip.Tip="{Binding FreqText}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <vm:BandLabels Grid.Row="2" />
+                </Grid>
+            </ScrollViewer>
+        </Grid>
+
+        <WrapPanel Orientation="Horizontal">
+            <Button Classes="pill" Tag="scope" Content="Flat" Command="{Binding FlatCommand}" Margin="0,0,16,4" VerticalAlignment="Center"
+                    ToolTip.Tip="Every band back to 0 dB" />
+            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,12,4">
+                <TextBlock Text="Range" VerticalAlignment="Center" />
+                <ToggleSwitch IsChecked="{Binding WideRange}" OnContent="±24 dB" OffContent="±12 dB" VerticalAlignment="Center"
+                              ToolTip.Tip="How far the sliders reach; no gain changes when you switch" />
+            </StackPanel>
+        </WrapPanel>
+    </StackPanel>
+</UserControl>

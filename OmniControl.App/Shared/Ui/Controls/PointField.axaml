@@ -1,0 +1,9 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="OmniControl.App.Shared.Ui.Controls.PointField">
+    <!-- The master point field: the chosen "x, y" (or a muted "Not picked yet") and the Pick pill beside it -->
+    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+        <TextBlock x:Name="ShownText" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+        <Button Grid.Column="1" Classes="pill cardaction" Content="Pick…" Focusable="False" VerticalAlignment="Center" Click="OnPickClick" />
+    </Grid>
+</UserControl>

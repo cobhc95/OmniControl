@@ -1,18 +1,14 @@
-using System.Text;
-
 namespace OmniControl.Core.Engine.Wake;
 
-/// <summary>
 /// Turns on the settings a wake needs, on this PC, behind Windows' own administrator prompt (the user can refuse it). The script is built from
 /// fixed text and the card's own address, never from text another PC sent. Each fix tries its sources in order inside the one elevated step
 /// (Windows' own API, then powercfg with the exact device name, then the driver's registry keyword) and checks after each that it took.
 /// Call off the UI thread; it waits for the prompt and the script.
-/// </summary>
 public static class WakeFixer
 {
     public static bool TryParse(string? text, out WakeFix fix) => Enum.TryParse(text, out fix) && Enum.IsDefined(fix);
 
-    /// <summary>True when the setting is off now, so turning it on changes something (and is worth recording to put back).</summary>
+    /// True when the setting is off now, so turning it on changes something (and is worth recording to put back).
     public static bool Changes(WakeFix fix, WakeFacts facts) => fix switch
     {
         WakeFix.MagicPacket => !facts.MagicPacketOn,
@@ -23,7 +19,7 @@ public static class WakeFixer
 
     public static HelperResult Apply(IReadOnlyCollection<WakeFix> fixes, string mac) => Run(fixes, mac, Command);
 
-    /// <summary>Puts the given settings back to what they were before OmniControl turned them on (one elevated step).</summary>
+    /// Puts the given settings back to what they were before OmniControl turned them on (one elevated step).
     public static HelperResult Revert(IReadOnlyCollection<WakeFix> fixes, string mac) => Run(fixes, mac, Undo);
 
     private static HelperResult Run(IReadOnlyCollection<WakeFix> fixes, string mac, Func<WakeFix, string> command)

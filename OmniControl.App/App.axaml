@@ -1,49 +1,11 @@
-<Application xmlns="https://github.com/avaloniaui"
+﻿<Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:pages="using:OmniControl.App.Pages"
-             xmlns:displays="using:OmniControl.App.Pages.Displays"
-             xmlns:osd="using:OmniControl.App.Pages.Osd"
-             xmlns:volume="using:OmniControl.App.Pages.Volume"
-             xmlns:mouse="using:OmniControl.App.Pages.Mouse"
-             xmlns:gestures="using:OmniControl.App.Pages.Gestures"
-             xmlns:automation="using:OmniControl.App.Pages.Automation"
-             xmlns:devices="using:OmniControl.App.Pages.Devices"
-             xmlns:otherpcs="using:OmniControl.App.Pages.OtherPcs"
-             xmlns:fx="using:OmniControl.App.Fx"
-             xmlns:hk="using:OmniControl.App.Hotkeys"
-             xmlns:appsettings="using:OmniControl.App.Pages.AppSettingsPage"
+             xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
              x:Class="OmniControl.App.App"
              RequestedThemeVariant="Dark">
 
-    <!-- Each page view-model maps to its view here. Adding a page = one line. -->
+    <!-- The shared card rows' views; each feature module adds its own pages' and rows' templates at start-up (IFeatureModule.Templates). -->
     <Application.DataTemplates>
-        <DataTemplate DataType="displays:DisplaysPageViewModel"><displays:DisplaysPage /></DataTemplate>
-        <DataTemplate DataType="osd:OsdPageViewModel"><osd:OsdPage /></DataTemplate>
-        <DataTemplate DataType="appsettings:AppSettingsPageViewModel"><appsettings:AppSettingsPage /></DataTemplate>
-        <DataTemplate DataType="volume:VolumePageViewModel"><volume:VolumePage /></DataTemplate>
-        <DataTemplate DataType="mouse:MousePageViewModel"><mouse:MousePage /></DataTemplate>
-        <DataTemplate DataType="mouse:MouseButtonItem"><mouse:MouseButtonRow /></DataTemplate>
-        <DataTemplate DataType="gestures:GesturesPageViewModel"><gestures:GesturesPage /></DataTemplate>
-        <DataTemplate DataType="gestures:GestureItem"><gestures:GestureRow /></DataTemplate>
-        <DataTemplate DataType="gestures:RuleItem"><gestures:RuleRow /></DataTemplate>
-        <DataTemplate DataType="automation:AutomationPageViewModel"><automation:AutomationPage /></DataTemplate>
-        <DataTemplate DataType="devices:DevicesPageViewModel"><devices:DevicesPage /></DataTemplate>
-        <DataTemplate DataType="devices:DeviceItem"><devices:DeviceDetail /></DataTemplate>
-        <DataTemplate DataType="otherpcs:OtherPcsPageViewModel"><otherpcs:OtherPcsPage /></DataTemplate>
-        <DataTemplate DataType="otherpcs:PcItem"><otherpcs:PcDetail /></DataTemplate>
-        <DataTemplate DataType="otherpcs:SetupTabItem"><otherpcs:PairPcPanel /></DataTemplate>
-        <DataTemplate DataType="automation:AutomationItem"><automation:AutomationRuleRow /></DataTemplate>
-        <DataTemplate DataType="automation:CustomActionItem"><automation:CustomActionRow /></DataTemplate>
-        <DataTemplate DataType="volume:VolumeRow"><volume:VolumeRowView /></DataTemplate>
-        <DataTemplate DataType="volume:WiringRow"><volume:WiringRowView /></DataTemplate>
-        <DataTemplate DataType="volume:CableRow"><volume:CableRowView /></DataTemplate>
-        <DataTemplate DataType="fx:EqPanelItem"><fx:EqPanelRow /></DataTemplate>
-        <DataTemplate DataType="fx:EqBandItem"><fx:EqBandRow /></DataTemplate>
-        <DataTemplate DataType="fx:GraphicEqItem"><fx:GraphicEqRow /></DataTemplate>
-        <DataTemplate DataType="fx:GraphicBandItem"><fx:GraphicBandRow /></DataTemplate>
-        <DataTemplate DataType="fx:PluginParamGroup"><fx:PluginParamGroupRow /></DataTemplate>
-        <DataTemplate DataType="fx:DynamicsItem"><fx:DynamicsRow /></DataTemplate>
-        <DataTemplate DataType="fx:IrFileItem"><fx:IrFileRow /></DataTemplate>
         <DataTemplate DataType="pages:SliderItem"><pages:SliderRow /></DataTemplate>
         <DataTemplate DataType="pages:ChoiceItem"><pages:ChoiceRow /></DataTemplate>
         <DataTemplate DataType="pages:ToggleItem"><pages:ToggleRow /></DataTemplate>
@@ -55,7 +17,7 @@
         <DataTemplate DataType="pages:MenuChoiceItem"><pages:MenuChoiceRow /></DataTemplate>
         <DataTemplate DataType="pages:AnchorItem"><pages:AnchorRow /></DataTemplate>
         <DataTemplate DataType="pages:TextItem"><pages:TextRow /></DataTemplate>
-        <DataTemplate DataType="hk:SuggestedKeysSwitch"><hk:SuggestedKeysView /></DataTemplate>
+        <DataTemplate DataType="pages:ChoiceChipsItem"><pages:ChoiceChipsRow /></DataTemplate>
     </Application.DataTemplates>
 
     <!-- The app's base text size (Fluent's default is 14); windows and controls take it from here -->
@@ -90,13 +52,26 @@
         <x:Double x:Key="EqFontSize">13</x:Double>
         <x:Double x:Key="BandListWidth">104</x:Double>
         <x:Double x:Key="EqGainColumnWidth">56</x:Double>
-        <!-- Thick sliders (Slider.thick, Styles/Sliders.axaml): the track's thickness and the knob's size -->
-        <x:Double x:Key="SliderThickTrack">8</x:Double>
-        <x:Double x:Key="SliderThickKnob">20</x:Double>
-        <Thickness x:Key="SliderThickRing">2</Thickness>
-        <!-- The grip lines on a thick slider's knob: how many are drawn is in the style; their length, thickness and spacing -->
-        <x:Double x:Key="SliderGripLength">8</x:Double>
-        <x:Double x:Key="SliderGripGap">3</x:Double>
+        <!-- THE slider (Styles/Sliders.axaml, Controls/SliderBar), both orientations: the control's height (no taller than a toolbar
+             control, so a card keeps its height), the track, the round knob and its accent dot at rest, under the pointer and while dragged,
+             how fast the dot changes, the focus ring around the knob (3 px out: a 1 px gap and the 2 px ring), the centre mark, and the
+             least width of a vertical slider's column (the knob with its ring). Track, knob, edge and dot are Windows 11's own (4, 20 with a
+             1 px edge, a 12 px dot scaled 0.86 / 1.167 / 0.71 at rest, under the pointer and pressed) -->
+        <x:Double x:Key="SliderHeight">22</x:Double>
+        <x:Double x:Key="SliderTrackHeight">4</x:Double>
+        <x:Double x:Key="SliderKnobSize">20</x:Double>
+        <x:Double x:Key="SliderDotSize">10</x:Double>
+        <x:Double x:Key="SliderDotHover">14</x:Double>
+        <x:Double x:Key="SliderDotPressed">8</x:Double>
+        <x:TimeSpan x:Key="SliderDotTime">0:0:0.1</x:TimeSpan>
+        <Thickness x:Key="SliderRingInset">-3</Thickness>
+        <x:Double x:Key="SliderRingThickness">2</x:Double>
+        <x:Double x:Key="SliderKnobEdge">1</x:Double>
+        <!-- The bar and its travel start this far in from a horizontal slider's ends, so the knob's focus ring stays inside it and a host's clip never cuts it -->
+        <Thickness x:Key="SliderEndInset">3,0</Thickness>
+        <x:Double x:Key="SliderMarkWidth">2</x:Double>
+        <x:Double x:Key="SliderMarkHeight">12</x:Double>
+        <x:Double x:Key="SliderColumnWidth">26</x:Double>
         <!-- A typeable value's field box (Pages/NumberText): the space between its frame and the value, and its corners -->
         <Thickness x:Key="TypeableInset">8,2</Thickness>
         <CornerRadius x:Key="TypeableCornerRadius">4</CornerRadius>
@@ -169,17 +144,33 @@
         <Thickness x:Key="FxGraphPanelPadding">9</Thickness>
         <x:Double x:Key="FxGraphHeight">170</x:Double>
         <x:Double x:Key="FxGraphPanelSpacing">4</x:Double>
+        <!-- The Resources page: a card's sparkline (c|Sparkline) height and line; the taskbar gadget's inset (Grid.gadgetcells); on its
+             Taskbar gadget tab the least width of a reading's label field, the preview strip's and a layout tile's preview height -->
+        <x:Double x:Key="SparklineHeight">18</x:Double>
+        <x:Double x:Key="SparklineThickness">1.5</x:Double>
+        <Thickness x:Key="GadgetInset">6,2,0,2</Thickness>
+        <x:Double x:Key="GadgetLabelWidth">64</x:Double>
+        <x:Double x:Key="GadgetPreviewHeight">44</x:Double>
+        <x:Double x:Key="GadgetThumbHeight">34</x:Double>
+        <!-- The room under a section of the unfolded Layouts gallery -->
+        <Thickness x:Key="GadgetSectionInset">0,0,0,6</Thickness>
+        <!-- A choice card's inner space and corners (Button.optioncard, and the dashed Button.blockadd.card that ends a gallery of them) -->
+        <Thickness x:Key="OptionCardPadding">8,4</Thickness>
+        <CornerRadius x:Key="OptionCardCornerRadius">8</CornerRadius>
+        <!-- The Resources views' spaces: between the parts of a line, between lines of a group, between groups and columns -->
+        <x:Double x:Key="GapSmall">4</x:Double>
+        <x:Double x:Key="Gap">6</x:Double>
+        <x:Double x:Key="GapLarge">8</x:Double>
         <!-- The Compressor's transfer curve (Fx/DynamicsRow): the side of its square plot, with its axis labels -->
         <x:Double x:Key="DynamicsGraphSize">240</x:Double>
         <!-- The IR Loader's picture (Fx/IrFileRow): its height -->
         <x:Double x:Key="IrGraphHeight">150</x:Double>
         <!-- A plug-in's plain settings list: the widest a setting's value text gets before it ends in "..." -->
         <x:Double x:Key="ParamValueMaxWidth">110</x:Double>
-        <!-- A graphic equaliser (Fx/GraphicEqRow): the height of the response curve above the sliders and of the sliders, and the
-             height of a band slider's knob (Slider.vband), which the dB scale beside the sliders reads to line its marks up -->
+        <!-- A graphic equaliser (Fx/GraphicEqRow): the height of the response curve above the sliders and of the sliders (the dB scale
+             beside them reads SliderKnobSize to line its marks up with the knobs' travel) -->
         <GridLength x:Key="GraphicEqCurveHeight">96</GridLength>
         <GridLength x:Key="GraphicEqSliderHeight">170</GridLength>
-        <x:Double x:Key="VBandThumbHeight">12</x:Double>
         <!-- The longest a word-control in a row's sentence ("Speakers + Headphones") gets before it ends in "..." -->
         <x:Double x:Key="SentenceLinkMaxWidth">220</x:Double>
         <!-- The tallest an option list (Controls/OptionList) grows before it scrolls -->
@@ -210,11 +201,22 @@
         <x:Double x:Key="ListMenuMaxWidth">300</x:Double>
         <!-- Menu-like pop-downs (Styles/Menus.axaml): the pop-down's inner padding, its rows (Controls/OptionList's list and
              Button.menurow) and their inset, the gap between a row's mark or glyph and its words, the glyph, the small text (base - 1) -->
-        <Thickness x:Key="MenuPadding">6</Thickness>
+        <Thickness x:Key="MenuPadding">4</Thickness>
         <x:Double x:Key="CaptureMenuWidth">250</x:Double>
-        <x:Double x:Key="MenuRowHeight">26</x:Double>
-        <Thickness x:Key="MenuRowPadding">8,0</Thickness>
+        <x:Double x:Key="MenuRowHeight">32</x:Double>
+        <Thickness x:Key="MenuRowPadding">12,0</Thickness>
         <CornerRadius x:Key="MenuRowCornerRadius">4</CornerRadius>
+        <!-- A menu's surface (Windows 11 style): its corners, and the see-through room around it where its shadow (MenuShadow) is drawn;
+             ListMenuFlyout and the ComboBox list shift by that room (MenuShadowShift* = minus its left and top) so the visible menu sits on its opener -->
+        <CornerRadius x:Key="MenuCornerRadius">8</CornerRadius>
+        <Thickness x:Key="MenuShadowRoom">8,4,8,12</Thickness>
+        <x:Double x:Key="MenuShadowShiftX">-8</x:Double>
+        <x:Double x:Key="MenuShadowShiftY">-4</x:Double>
+        <!-- The chosen row's accent bar at its left (single-choice menus), and a menu's thin line between parts -->
+        <x:Double x:Key="MenuBarWidth">3</x:Double>
+        <x:Double x:Key="MenuBarHeight">16</x:Double>
+        <CornerRadius x:Key="MenuBarCornerRadius">1.5</CornerRadius>
+        <Thickness x:Key="MenuRuleMargin">4</Thickness>
         <!-- A Controls/MenuRowList row: its inset above and below (rows of two or three lines), the height of its first line (the tick sits
              there), the gap between its tags and the space above a line of tags -->
         <Thickness x:Key="MenuRowInset">0,4</Thickness>
@@ -228,6 +230,7 @@
         <!-- The sidebar's one left inset (8 px to the text; items take 7 plus their 1 px outline): item padding, heading padding and the title above them line up on it -->
         <Thickness x:Key="NavPadding">7,7,16,7</Thickness>
         <Thickness x:Key="NavHeadingPadding">7,10,16,2</Thickness>
+        <x:Double x:Key="NavIconBox">18</x:Double>
         <Thickness x:Key="NavTitleMargin">8,0,0,10</Thickness>
         <Thickness x:Key="NavPillMargin">8,0,8,6</Thickness>
         <Thickness x:Key="NavRuleMargin">8,6,8,6</Thickness>
@@ -240,6 +243,11 @@
         <x:Double x:Key="IconGlyphSize">16</x:Double>
         <!-- The optional icon before a card's label or a chip's words (Controls/IconText): a little under the base text so a card keeps its height -->
         <x:Double x:Key="CardIconSize">14</x:Double>
+    <!-- A search box (SearchClear): its magnifier, and the quiet pill naming the key that focuses it -->
+    <x:Double x:Key="SearchIconSize">13</x:Double>
+    <x:Double x:Key="SearchPillFontSize">10</x:Double>
+    <CornerRadius x:Key="SearchPillRadius">12</CornerRadius>
+    <Thickness x:Key="SearchPillPadding">8,1</Thickness>
         <x:Double x:Key="IconPickerWidth">384</x:Double>
         <x:Double x:Key="IconPickerHeight">520</x:Double>
         <x:Double x:Key="IconCellSize">34</x:Double>
@@ -247,9 +255,11 @@
         <x:Double x:Key="MenuRowLine">18</x:Double>
         <x:Double x:Key="MenuTagGap">4</x:Double>
         <Thickness x:Key="MenuTagLineMargin">0,3,0,0</Thickness>
-        <Thickness x:Key="MenuTextInset">8,2</Thickness>
+        <Thickness x:Key="MenuTextInset">12,4,12,2</Thickness>
         <x:Double x:Key="MenuGap">8</x:Double>
         <x:Double x:Key="MenuGlyphSize">12</x:Double>
+        <!-- The gap after a menu row's glyph column (MenuGap) -->
+        <Thickness x:Key="MenuGlyphMargin">0,0,8,0</Thickness>
         <x:Double x:Key="MenuSmallFontSize">10.5</x:Double>
         <!-- An option list's tick: a 14 px box, its check 9 px (14 - 2 x 2.5) -->
         <x:Double x:Key="TickBoxSize">14</x:Double>
@@ -268,6 +278,11 @@
         <x:Double x:Key="ChipSpacing">4</x:Double>
         <!-- A Volume row's program picture inside its 24 px icon tile (Border.rowicon) -->
         <x:Double x:Key="RowPictureSize">18</x:Double>
+        <!-- A row's pin (Button.pin, Styles/RowControls.axaml): the button, its glyph, and how faint the glyph is while not pinned and the row not hovered -->
+        <x:Double x:Key="PinSize">20</x:Double>
+        <x:Double x:Key="PinGlyphSize">12</x:Double>
+        <x:Double x:Key="PinFaintOpacity">0.35</x:Double>
+        <CornerRadius x:Key="PinCornerRadius">4</CornerRadius>
         <!-- The gap between a control and the menu pop-down it opens -->
         <x:Double x:Key="MenuOffset">2</x:Double>
         <!-- A small drop-down arrow beside words (a Wiring row's one-device choice, a Mixer row's pickers) -->
@@ -303,21 +318,39 @@
         <x:Double x:Key="KnobColumnWidth">38</x:Double>
         <!-- A chip-shaped picker (Button.selector / Border.selector, Styles/RowControls.axaml): the words' inset (its height and rounding are the chip's) -->
         <Thickness x:Key="SelectorPadding">8,0,6,0</Thickness>
+        <!-- The same picker drawn as a Windows drop-down box (c|ChipMenu.dropbox, Styles/RowControls.axaml): its height and rounding -->
+        <x:Double x:Key="DropBoxHeight">26</x:Double>
+        <CornerRadius x:Key="DropBoxCornerRadius">4</CornerRadius>
         <!-- The Mixer rows' columns (Pages/Volume/VolumeRowView, MixerHeadings): the gap between them -->
         <x:Double x:Key="MixerColumnGap">6</x:Double>
-        <!-- The tray flyout (Tray/TrayFlyoutWindow, Styles/Tray.axaml, docs/mockups/tray-flyout.html): its panel's width, rounding and inset,
-             its gap to the screen's working area, a slider row's name column and value column, the tiles' size, rounding and gap, their
-             glyph, and the gap between the flyout's parts -->
-        <x:Double x:Key="TrayFlyoutWidth">300</x:Double>
-        <CornerRadius x:Key="TrayFlyoutCornerRadius">10</CornerRadius>
-        <Thickness x:Key="TrayFlyoutPadding">10</Thickness>
-        <x:Double x:Key="TrayFlyoutGap">12</x:Double>
-        <x:Double x:Key="TrayNameMaxWidth">96</x:Double>
+        <!-- The tray flyout (Tray/TrayFlyoutWindow, Styles/Tray.axaml): its panel's width and rounding (outer, and inner for the bands it
+             clips), the room kept for its drop shadow (which is also its gap to the screen's working area, so TrayFlyoutGap adds nothing),
+             the insets of its three bands (tiles, sliders, foot), a slider row's name (or drop-down) column, value column and the gap between
+             its columns, the tiles per row, a tile button's height (its width is the row's share), rounding, the gap between tiles and the gap
+             to the name under it, their glyph, and the foot's buttons (gap, inset, rounding, glyph) -->
+        <x:Double x:Key="TrayFlyoutWidth">360</x:Double>
+        <CornerRadius x:Key="TrayFlyoutCornerRadius">8</CornerRadius>
+        <CornerRadius x:Key="TrayFlyoutInnerRadius">7</CornerRadius>
+        <Thickness x:Key="TrayShadowInset">12</Thickness>
+        <x:Double x:Key="TrayFlyoutGap">0</x:Double>
+        <Thickness x:Key="TrayTilesPadding">16,16</Thickness>
+        <Thickness x:Key="TraySlidersPadding">16,14</Thickness>
+        <x:Double x:Key="TraySliderRowHeight">36</x:Double>
+        <x:Double x:Key="TraySliderRowGap">8</x:Double>
+        <Thickness x:Key="TrayFootPadding">12,8</Thickness>
+        <x:Double x:Key="TrayNameWidth">112</x:Double>
         <x:Double x:Key="TrayValueWidth">26</x:Double>
-        <x:Double x:Key="TrayTileSize">62</x:Double>
+        <x:Double x:Key="TrayColumnGap">8</x:Double>
+        <x:Int32 x:Key="TrayTileColumns">4</x:Int32>
+        <x:Double x:Key="TrayTileHeight">56</x:Double>
         <x:Double x:Key="TrayTileFitFontSize">9</x:Double>
-        <CornerRadius x:Key="TrayTileCornerRadius">8</CornerRadius>
-        <x:Double x:Key="TrayTileGap">8</x:Double>
+        <CornerRadius x:Key="TrayTileCornerRadius">5</CornerRadius>
+        <x:Double x:Key="TrayTileGap">10</x:Double>
+        <x:Double x:Key="TrayTileRowGap">12</x:Double>
+        <x:Double x:Key="TrayTileNameGap">7</x:Double>
+        <x:Double x:Key="TrayFootGap">4</x:Double>
+        <Thickness x:Key="TrayFootButtonPadding">8,5</Thickness>
+        <CornerRadius x:Key="TrayFootButtonRadius">4</CornerRadius>
         <x:Double x:Key="TrayGlyphSize">16</x:Double>
         <Thickness x:Key="TrayTileCross">0,-5,-5,0</Thickness>
         <!-- The remove badge (Button.removebadge, Styles/Tray.axaml, docs/mockups/remove-badge.html): round chip, its drawn cross, the clickable square around it -->
@@ -325,15 +358,13 @@
         <x:Double x:Key="RemoveBadgeCross">9</x:Double>
         <x:Double x:Key="RemoveBadgeHit">20</x:Double>
         <CornerRadius x:Key="RemoveBadgeRadius">8</CornerRadius>
-        <x:Double x:Key="TrayPartGap">10</x:Double>
         <x:Double x:Key="PillIconWidth">32</x:Double>
         <x:Double x:Key="PillGlyphSize">17</x:Double>
-        <x:Double x:Key="FxFolderPillGlyph">17</x:Double>
         <x:Double x:Key="DialogButtonHeight">28</x:Double>
         <!-- The round X pill (Button.pill.closex, Styles/ThemeButtons.axaml, docs/mockups/device-close-x.html) -->
         <x:Double x:Key="CloseXSize">18</x:Double>
         <!-- Tooltip timing for the whole app, ms (owner, 18 Nov): the wait before the first tooltip, and before the next while one shows -->
-        <x:Int32 x:Key="TooltipShowDelay">1000</x:Int32>
+        <x:Int32 x:Key="TooltipShowDelay">2500</x:Int32>
         <x:Int32 x:Key="TooltipBetweenDelay">250</x:Int32>
         <x:Double x:Key="CloseXCross">9</x:Double>
         <x:Double x:Key="TrayFadedOpacity">0.55</x:Double>
@@ -349,22 +380,23 @@
 
     <Application.Styles>
         <FluentTheme />
-        <StyleInclude Source="/Styles/Brushes.axaml" />
-        <StyleInclude Source="/Styles/Icons.axaml" />
-        <StyleInclude Source="/Styles/Theme.axaml" />
-        <StyleInclude Source="/Styles/ThemeLists.axaml" />
-        <StyleInclude Source="/Styles/ThemeButtons.axaml" />
-        <StyleInclude Source="/Styles/BrowserTabs.axaml" />
-        <StyleInclude Source="/Styles/Sliders.axaml" />
-        <StyleInclude Source="/Styles/Splitters.axaml" />
-        <StyleInclude Source="/Styles/Blocks.axaml" />
-        <StyleInclude Source="/Styles/Graphs.axaml" />
-        <StyleInclude Source="/Styles/Bars.axaml" />
-        <StyleInclude Source="/Styles/Tables.axaml" />
-        <StyleInclude Source="/Styles/Menus.axaml" />
-        <StyleInclude Source="/Styles/Knobs.axaml" />
-        <StyleInclude Source="/Styles/RowControls.axaml" />
-        <StyleInclude Source="/Styles/ScrollBars.axaml" />
-        <StyleInclude Source="/Styles/Tray.axaml" />
+        <StyleInclude Source="/Shared/Ui/Styles/Brushes.axaml" />
+        <StyleInclude Source="/Shared/Ui/Styles/Icons.axaml" />
+        <StyleInclude Source="/Shared/Ui/Styles/Theme.axaml" />
+        <StyleInclude Source="/Shared/Ui/Styles/ThemeLists.axaml" />
+        <StyleInclude Source="/Shared/Ui/Styles/ThemeButtons.axaml" />
+        <StyleInclude Source="/Shared/Ui/Styles/BrowserTabs.axaml" />
+        <StyleInclude Source="/Shared/Ui/Styles/Sliders.axaml" />
+        <StyleInclude Source="/Shared/Ui/Styles/Splitters.axaml" />
+        <StyleInclude Source="/Shared/Ui/Styles/Blocks.axaml" />
+        <StyleInclude Source="/Shared/Ui/Styles/Graphs.axaml" />
+        <StyleInclude Source="/Shared/Ui/Styles/Bars.axaml" />
+        <StyleInclude Source="/Shared/Ui/Styles/Tables.axaml" />
+        <StyleInclude Source="/Shared/Ui/Styles/Menus.axaml" />
+        <StyleInclude Source="/Shared/Ui/Styles/Knobs.axaml" />
+        <StyleInclude Source="/Shared/Ui/Styles/RowControls.axaml" />
+        <StyleInclude Source="/Shared/Ui/Styles/ScrollBars.axaml" />
+        <StyleInclude Source="/Shared/Ui/Styles/Tray.axaml" />
     </Application.Styles>
 </Application>
+

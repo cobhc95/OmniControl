@@ -1,10 +1,8 @@
-using OmniControl.Core.Engine;
 using OmniControl.Core.Interfaces;
-using Xunit;
 
 namespace OmniControl.Tests;
 
-/// <summary>The orientation mapping between OmniControl's choices and Windows' DEVMODE values (DMDO_*).</summary>
+/// The orientation mapping between OmniControl's choices and Windows' DEVMODE values (DMDO_*).
 public class DisplayRotationTests
 {
     [Theory]

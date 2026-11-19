@@ -1,10 +1,10 @@
-using OmniControl.App.Hotkeys;
-using OmniControl.App.Mouse;
+using OmniControl.App.Features.Hotkeys.Actions;
+using OmniControl.App.Features.Input.Mouse;
 using OmniControl.Core.Engine.Mouse;
 
 namespace OmniControl.Tests;
 
-/// <summary>When a trackpad gesture's action replaces Windows' own gesture, and how the "also keep the original" setting reads per input.</summary>
+/// When a trackpad gesture's action replaces Windows' own gesture, and how the "also keep the original" setting reads per input.
 public class GestureOptionTests
 {
     private static MouseSettings With(string key, string spec) => new() { Bindings = { [key] = spec } };
@@ -37,8 +37,8 @@ public class GestureOptionTests
     [Fact]
     public void TheOptionIsOneSetting_WordedByTheKindOfInput()
     {
-        var gesture = MouseActionCatalog.Choices(Array.Empty<OmniControl.App.Hotkeys.HotkeyAction>(), hasRelease: false, gesture: true);
-        var button = MouseActionCatalog.Choices(Array.Empty<OmniControl.App.Hotkeys.HotkeyAction>());
+        var gesture = MouseActionCatalog.Choices(Array.Empty<OmniControl.App.Features.Hotkeys.HotkeyAction>(), hasRelease: false, gesture: true);
+        var button = MouseActionCatalog.Choices(Array.Empty<OmniControl.App.Features.Hotkeys.HotkeyAction>());
 
         foreach (var choice in gesture.Where(c => c.Spec != MouseActionCatalog.Default && c.Spec != MouseActionCatalog.Disabled && c.Options is not null))
             Assert.Contains(choice.Options!, o => o.Key == MouseOptions.KeepOriginal.Key && o.Label == MouseOptions.KeepWindowsGesture.Label);

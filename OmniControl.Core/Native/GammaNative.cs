@@ -1,11 +1,9 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Native;
 
-/// <summary>gdi32 gamma ramps (per display device) and user32 display queries for them.</summary>
+/// gdi32 gamma ramps (per display device) and user32 display queries for them.
 internal static class GammaNative
 {
-    /// <summary>A ramp is 256 red, then 256 green, then 256 blue entries of 16 bits.</summary>
+    /// A ramp is 256 red, then 256 green, then 256 blue entries of 16 bits.
     public const int RampLength = 3 * 256;
 
     [DllImport("gdi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]

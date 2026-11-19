@@ -1,0 +1,118 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:OmniControl.App.Shared.Ui.Controls">
+    <!-- THE master slider (MAP.md "Master UI pieces"), one design for every slider of either orientation, like Windows' own: a
+         SliderTrackHeight rounded track (BrushSliderTrack) with the accent fill from the minimum to the knob's middle (Controls/SliderBar draws
+         both; a range through zero gets a centre mark at zero and the fill from it), and a round SliderKnobSize knob in the control colour with
+         a thin edge (BrushSliderKnobEdge) and an accent dot in its middle that grows under the pointer (SliderDotHover) and shrinks while
+         dragged (SliderDotPressed).
+         Keyboard focus (and adjusting from the keyboard, .active) draws an accent ring around the knob. A horizontal slider is SliderHeight high,
+         so a card keeps its height, and its bar is inset by SliderEndInset so the ring is whole at both ends; a vertical one (Slider.vband, the
+         equalisers) fills its column, at least SliderColumnWidth wide. A press anywhere on the bar moves the value there and the drag carries on
+         (Avalonia's Slider does this for presses on PART_DecreaseButton / PART_IncreaseButton, which cover the whole bar here); double-click
+         resets (Pages/SliderReset), the value beside it types (Pages/NumberText). Every slider steps in whole positions (the view-model says
+         what a position is worth). Included after Theme.axaml. -->
+    <Style Selector="Slider">
+        <Setter Property="TickFrequency" Value="1" />
+        <Setter Property="IsSnapToTickEnabled" Value="True" />
+    </Style>
+    <!-- Fluent sets its template under ^:horizontal / ^:vertical, and a theme setter behind a pseudo-class outranks a plain style, so the
+         master template must sit behind the same pseudo-classes or Fluent's solid raw-accent slider shows instead -->
+    <Style Selector="Slider:horizontal, Slider:vertical">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Panel Background="Transparent">
+                    <c:SliderBar x:Name="Bar" Orientation="{TemplateBinding Orientation}" Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}"
+                                 Value="{TemplateBinding Value}" TrackHeight="{DynamicResource SliderTrackHeight}" KnobSize="{DynamicResource SliderKnobSize}"
+                                 MarkWidth="{DynamicResource SliderMarkWidth}" MarkHeight="{DynamicResource SliderMarkHeight}" />
+                    <Track x:Name="PART_Track" Orientation="{TemplateBinding Orientation}" Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}"
+                           Value="{TemplateBinding Value, Mode=TwoWay}" IsDirectionReversed="{TemplateBinding IsDirectionReversed}">
+                        <!-- The two halves of the bar either side of the knob: see-through, they only take the press -->
+                        <Track.DecreaseButton>
+                            <RepeatButton x:Name="PART_DecreaseButton" Focusable="False" Classes="slidertrack" />
+                        </Track.DecreaseButton>
+                        <Track.IncreaseButton>
+                            <RepeatButton x:Name="PART_IncreaseButton" Focusable="False" Classes="slidertrack" />
+                        </Track.IncreaseButton>
+                        <Thumb x:Name="thumb" Width="{DynamicResource SliderKnobSize}" Height="{DynamicResource SliderKnobSize}">
+                            <Thumb.Template>
+                                <ControlTemplate>
+                                    <Panel>
+                                        <Ellipse x:Name="Ring" Margin="{DynamicResource SliderRingInset}" StrokeThickness="{DynamicResource SliderRingThickness}"
+                                                 Stroke="{DynamicResource BrushAccent}" />
+                                        <Ellipse x:Name="Knob" Fill="{DynamicResource BrushControlFill}" Stroke="{DynamicResource BrushSliderKnobEdge}"
+                                                 StrokeThickness="{DynamicResource SliderKnobEdge}" />
+                                        <Ellipse x:Name="Dot" Fill="{DynamicResource BrushAccent}" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <Ellipse.Transitions>
+                                                <Transitions>
+                                                    <DoubleTransition Property="Width" Duration="{StaticResource SliderDotTime}" />
+                                                    <DoubleTransition Property="Height" Duration="{StaticResource SliderDotTime}" />
+                                                </Transitions>
+                                            </Ellipse.Transitions>
+                                        </Ellipse>
+                                    </Panel>
+                                </ControlTemplate>
+                            </Thumb.Template>
+                        </Thumb>
+                    </Track>
+                </Panel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="Slider:horizontal">
+        <Setter Property="MinHeight" Value="{DynamicResource SliderHeight}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Slider:horizontal /template/ c|SliderBar, Slider:horizontal /template/ Track">
+        <Setter Property="Margin" Value="{DynamicResource SliderEndInset}" />
+    </Style>
+    <Style Selector="Slider /template/ RepeatButton.slidertrack">
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+        <Setter Property="Template"><ControlTemplate><Border Background="Transparent" /></ControlTemplate></Setter>
+    </Style>
+    <Style Selector="Slider /template/ c|SliderBar">
+        <Setter Property="TrackBrush" Value="{DynamicResource BrushSliderTrack}" />
+        <Setter Property="Fill" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="MarkBrush" Value="{DynamicResource BrushMuted}" />
+    </Style>
+    <Style Selector="Slider:disabled /template/ c|SliderBar"><Setter Property="Fill" Value="{DynamicResource BrushMuted}" /></Style>
+    <Style Selector="Slider:disabled /template/ Thumb /template/ Ellipse#Dot"><Setter Property="Fill" Value="{DynamicResource BrushMuted}" /></Style>
+    <!-- The dot: at rest, under the pointer (or adjusted from the keyboard), while dragged (a press on the knob or on the bar); later wins -->
+    <Style Selector="Slider /template/ Thumb /template/ Ellipse#Dot">
+        <Setter Property="Width" Value="{DynamicResource SliderDotSize}" />
+        <Setter Property="Height" Value="{DynamicResource SliderDotSize}" />
+    </Style>
+    <Style Selector="Slider:pointerover /template/ Thumb /template/ Ellipse#Dot, Slider.active /template/ Thumb /template/ Ellipse#Dot">
+        <Setter Property="Width" Value="{DynamicResource SliderDotHover}" />
+        <Setter Property="Height" Value="{DynamicResource SliderDotHover}" />
+    </Style>
+    <Style Selector="Slider:pressed /template/ Thumb /template/ Ellipse#Dot, Slider /template/ Thumb:pressed /template/ Ellipse#Dot">
+        <Setter Property="Width" Value="{DynamicResource SliderDotPressed}" />
+        <Setter Property="Height" Value="{DynamicResource SliderDotPressed}" />
+    </Style>
+    <Style Selector="Slider /template/ Thumb /template/ Ellipse#Ring"><Setter Property="IsVisible" Value="False" /></Style>
+    <Style Selector="Slider:focus-visible /template/ Thumb /template/ Ellipse#Ring, Slider.active /template/ Thumb /template/ Ellipse#Ring">
+        <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <!-- The value beside a horizontal slider: a plain number in the text colour, right-aligned in its column, no box (its Pages/NumberText
+         takes .plain, Theme.axaml, and stays typeable). Tabular figures, so a changing number never jiggles and 20 and 100 line up. -->
+    <Style Selector="TextBlock.slidervalue">
+        <Setter Property="TextAlignment" Value="Right" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="FontFeatures">
+            <FontFeatureCollection>
+                <FontFeature Tag="tnum" Value="1" />
+            </FontFeatureCollection>
+        </Setter>
+    </Style>
+
+    <!-- A vertical slider (the graphic equalisers' bands, the parametric equaliser's overall gain): the same slider upright, filling its
+         column and the row's height (the view gives both); the dB scale beside a graphic equaliser reads SliderKnobSize to line its marks up -->
+    <Style Selector="Slider.vband">
+        <Setter Property="Orientation" Value="Vertical" />
+        <Setter Property="MinWidth" Value="{DynamicResource SliderColumnWidth}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+    </Style>
+</Styles>

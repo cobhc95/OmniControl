@@ -1,9 +1,7 @@
 namespace OmniControl.Core.Engine.Wake;
 
-/// <summary>
 /// The driver keywords that hold a card's wake settings, in one place for the reader and the fixer. The standard names come first; vendors that use
 /// their own are found by what the keyword's description under Ndi\Params says ("Wake on Magic Packet"), so no brand is special-cased.
-/// </summary>
 internal static class WakeKeywords
 {
     public static readonly string[] MagicNames = ["*WakeOnMagicPacket", "WakeOnMagicPacket", "WakeOnLan", "*WakeOnLan", "WolMagicPacket", "EnableWakeOnLan", "WakeFromS5", "S5WakeOnLan"];

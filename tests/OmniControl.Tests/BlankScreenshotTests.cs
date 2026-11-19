@@ -1,10 +1,8 @@
 using OmniControl.Core;
-using OmniControl.Core.Engine;
-using Xunit;
 
 namespace OmniControl.Tests;
 
-/// <summary>A hidden emulator may answer with no screenshot, a black one or one of the wrong size: that is detected, and the state is then read from the screen dump alone.</summary>
+/// A hidden emulator may answer with no screenshot, a black one or one of the wrong size: that is detected, and the state is then read from the screen dump alone.
 public sealed class BlankScreenshotTests
 {
     private static RgbaImage Flat(int width, int height, byte value, Action<byte[], int>? paint = null)

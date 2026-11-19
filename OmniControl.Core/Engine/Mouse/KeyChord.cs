@@ -1,6 +1,6 @@
 namespace OmniControl.Core.Engine.Mouse;
 
-/// <summary>Turns text such as "Ctrl+Shift+T" into Windows virtual-key codes. One place owns the key names.</summary>
+/// Turns text such as "Ctrl+Shift+T" into Windows virtual-key codes. One place owns the key names.
 public static class KeyChord
 {
     private static readonly Dictionary<string, ushort> Names = new(StringComparer.OrdinalIgnoreCase)
@@ -17,7 +17,7 @@ public static class KeyChord
         ["Plus"] = 0xBB, ["Comma"] = 0xBC, ["Minus"] = 0xBD, ["Period"] = 0xBE,
     };
 
-    /// <summary>True when the text names at least one key and every key is known. Keys are separated by "+".</summary>
+    /// True when the text names at least one key and every key is known. Keys are separated by "+".
     public static bool TryParse(string text, out ushort[] keys)
     {
         var parsed = new List<ushort>();
@@ -32,13 +32,11 @@ public static class KeyChord
         return keys.Length > 0;
     }
 
-    /// <summary>
     /// True when the shortcut can open one of Windows' own panels: it holds the Windows key (Win+S, Win+N, Win+Tab...) or is Alt+Tab
     /// (the window switcher, shown in the same kind of window as Task view).
-    /// </summary>
     public static bool OpensWindowsPanel(string text) =>
         TryParse(text, out var keys) && (keys.Contains(Names["Win"]) || keys.Contains(Names["Alt"]) && keys.Contains(Names["Tab"]));
 
-    /// <summary>Navigation, Windows and browser keys need the "extended" flag or Windows reads them as the number pad.</summary>
+    /// Navigation, Windows and browser keys need the "extended" flag or Windows reads them as the number pad.
     internal static bool IsExtended(ushort vk) => vk is >= 0x21 and <= 0x2E or 0x5B or 0x5C || vk is >= 0xA6 and <= 0xB4;
 }

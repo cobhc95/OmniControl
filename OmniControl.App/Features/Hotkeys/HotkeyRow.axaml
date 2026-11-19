@@ -1,0 +1,37 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:hk="using:OmniControl.App.Features.Hotkeys"
+             xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+             x:Class="OmniControl.App.Features.Hotkeys.HotkeyRow"
+             x:DataType="hk:HotkeyAction">
+    <!-- The devices an action works on (Button.selector, a ticked list menu), beside its keys in the Actions and hotkeys window -->
+    <Grid ColumnDefinitions="190">
+        <Button Tag="scope" Classes="selector" IsVisible="{Binding HasDevices}" ToolTip.Tip="The devices this action works on">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
+                <TextBlock Text="{Binding ScopeSummary}" TextTrimming="CharacterEllipsis" />
+                <PathIcon Grid.Column="1" Data="{DynamicResource ChevronDownIcon}" />
+            </Grid>
+            <Button.Flyout>
+                <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft" Opened="OnFlyoutOpened" Closed="OnFlyoutClosed">
+                    <StackPanel x:DataType="hk:HotkeyAction">
+                        <ItemsControl ItemsSource="{Binding Chips}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="hk:ScopeChip">
+                                    <ToggleButton Classes="menurow" IsChecked="{Binding IsOn}">
+                                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource MenuGap}">
+                                            <Panel Width="{StaticResource MenuGlyphSize}">
+                                                <Path Classes="glyph" Data="{StaticResource TickIcon}" IsVisible="{Binding IsOn}" />
+                                            </Panel>
+                                            <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                        </Grid>
+                                    </ToggleButton>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Classes="menutext" Text="No devices detected." IsVisible="{Binding ShowEmptyNote}" />
+                    </StackPanel>
+                </c:ListMenuFlyout>
+            </Button.Flyout>
+        </Button>
+    </Grid>
+</UserControl>

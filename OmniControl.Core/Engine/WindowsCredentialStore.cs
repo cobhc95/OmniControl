@@ -1,14 +1,9 @@
-using System.Runtime.InteropServices;
-using System.Text;
 using OmniControl.Core.Interfaces;
-using OmniControl.Core.Native;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// <see cref="ICredentialStore"/> in the Windows Credential Manager (the current user's, kept on this PC only): a password lives there and
 /// nowhere else, never in a json file, a backup or a log.
-/// </summary>
 public sealed class WindowsCredentialStore : ICredentialStore
 {
     // The Credential Manager shows this as the saved entry's user name; the secret is the blob.

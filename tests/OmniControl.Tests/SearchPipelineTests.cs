@@ -1,11 +1,10 @@
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
-using OmniControl.App.Services;
 
 namespace OmniControl.Tests;
 
-/// <summary>The shared search pipeline: the one match rule, the index, the runner (newest wins, cancel, flush), the row diff and the progressive fill.</summary>
+/// The shared search pipeline: the one match rule, the index, the runner (newest wins, cancel, flush), the row diff and the progressive fill.
 public class SearchPipelineTests
 {
     private sealed record Item(string Name, string Group);
@@ -43,14 +42,14 @@ public class SearchPipelineTests
         Assert.Throws<OperationCanceledException>(() => index.Match("a", cancel.Token));
     }
 
-    /// <summary>Runs posted UI work on the test thread, as the dispatcher would.</summary>
+    /// Runs posted UI work on the test thread, as the dispatcher would.
     private sealed class Posts
     {
         private readonly BlockingCollection<Action> _queue = new();
 
         public void Post(Action action) => _queue.Add(action);
 
-        /// <summary>Runs what arrives until <paramref name="done"/> holds or the time is up.</summary>
+        /// Runs what arrives until <paramref name="done"/> holds or the time is up.
         public void RunUntil(Func<bool> done, TimeSpan within)
         {
             var end = DateTime.UtcNow + within;

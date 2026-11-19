@@ -1,0 +1,74 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:OmniControl.App.Shared.Ui.Controls">
+    <!-- MASTER design of browser-style tabs (docs/mockups/other-pcs-browser-tabs.html; Controls/BrowserTabStrip): rounded top corners; the open tab is
+         raised (the panel's own surface, a 2 px accent top edge, no bottom edge so it joins the Border.pane.tabbed under it); the others are flatter
+         and muted. The strip's thin baseline is drawn by Border.tabbaseline behind the tabs and covered by the open one. Hover and keyboard focus are
+         washes only (nothing moves). Included after Theme.axaml. -->
+    <Style Selector="ListBox.browsertabs">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="ItemsPanel"><ItemsPanelTemplate><c:TabFitPanel Spacing="{DynamicResource BrowserTabGap}" MinTabWidth="{DynamicResource BrowserTabMinWidth}" /></ItemsPanelTemplate></Setter>
+    </Style>
+    <Style Selector="ListBox.browsertabs > ListBoxItem">
+        <Setter Property="Padding" Value="{DynamicResource BrowserTabPadding}" />
+        <Setter Property="MaxWidth" Value="{DynamicResource BrowserTabMaxWidth}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid>
+                    <Border x:Name="Shape" Background="Transparent" BorderBrush="{DynamicResource BrushDivider}" BorderThickness="1,1,1,0"
+                            CornerRadius="{DynamicResource BrowserTabCornerRadius}" />
+                    <Border x:Name="TopEdge" Height="{DynamicResource TabUnderlineHeight}" VerticalAlignment="Top" Margin="1,0" Background="Transparent"
+                            CornerRadius="{DynamicResource BrowserTabCornerRadius}" />
+                    <ContentPresenter x:Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      Padding="{TemplateBinding Padding}" />
+                    <Border x:Name="Join" Height="1" VerticalAlignment="Bottom" Margin="1,0" Background="Transparent" />
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <!-- The tab draws its own washes on Shape: Fluent's list-item wash on the words' presenter is switched off in every state -->
+    <Style Selector="ListBox.browsertabs > ListBoxItem /template/ ContentPresenter#PART_ContentPresenter, ListBox.browsertabs > ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter, ListBox.browsertabs > ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter, ListBox.browsertabs > ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter, ListBox.browsertabs > ListBoxItem:pressed /template/ ContentPresenter#PART_ContentPresenter, ListBox.browsertabs > ListBoxItem:selected:focus /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <!-- Only the open tab takes focus (as Pages/PageTabsView); the strip's code walks Left/Right -->
+    <Style Selector="ListBox.browsertabs > ListBoxItem:not(:selected)"><Setter Property="Focusable" Value="False" /></Style>
+    <Style Selector="ListBox.browsertabs > ListBoxItem:pointerover /template/ Border#Shape"><Setter Property="Background" Value="{DynamicResource BrushHover}" /></Style>
+    <Style Selector="ListBox.browsertabs > ListBoxItem:focus-visible /template/ Border#Shape"><Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" /></Style>
+    <Style Selector="ListBox.browsertabs > ListBoxItem:selected /template/ Border#Shape"><Setter Property="Background" Value="{DynamicResource BrushSidebar}" /></Style>
+    <Style Selector="ListBox.browsertabs > ListBoxItem:selected /template/ Border#Join"><Setter Property="Background" Value="{DynamicResource BrushSidebar}" /></Style>
+    <Style Selector="ListBox.browsertabs > ListBoxItem:selected /template/ Border#TopEdge"><Setter Property="Background" Value="{DynamicResource BrushAccent}" /></Style>
+    <Style Selector="ListBox.browsertabs > ListBoxItem TextBlock"><Setter Property="Foreground" Value="{DynamicResource BrushMuted}" /></Style>
+    <Style Selector="ListBox.browsertabs > ListBoxItem:pointerover TextBlock"><Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" /></Style>
+    <Style Selector="ListBox.browsertabs > ListBoxItem:selected TextBlock.tabname"><Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" /></Style>
+    <Style Selector="ListBox.browsertabs > ListBoxItem Grid.tabcontent.dim"><Setter Property="Opacity" Value="0.6" /></Style>
+
+    <!-- A tab's status dot: grey; .online = green -->
+    <Style Selector="Ellipse.tabdot">
+        <Setter Property="Width" Value="{DynamicResource BrowserTabDotSize}" />
+        <Setter Property="Height" Value="{DynamicResource BrowserTabDotSize}" />
+        <Setter Property="Fill" Value="{DynamicResource BrushMuted}" />
+    </Style>
+    <Style Selector="Ellipse.tabdot.online"><Setter Property="Fill" Value="{DynamicResource BrushOn}" /></Style>
+
+    <Style Selector="Border.tabbaseline">
+        <Setter Property="Height" Value="1" />
+        <Setter Property="VerticalAlignment" Value="Bottom" />
+        <Setter Property="Background" Value="{DynamicResource BrushDivider}" />
+    </Style>
+
+    <!-- The "+" at the strip's end: a quiet square pill, muted; hover is the master wash -->
+    <Style Selector="Button.browsertabadd">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="{DynamicResource BrowserTabPadding}" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+    </Style>
+
+    <!-- The panel under the tabs: the pane without its top edge, so the open tab joins it -->
+    <Style Selector="Border.pane.tabbed">
+        <Setter Property="BorderThickness" Value="1,0,1,1" />
+        <Setter Property="CornerRadius" Value="0,0,6,6" />
+    </Style>
+</Styles>

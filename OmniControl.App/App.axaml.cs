@@ -1,19 +1,14 @@
-using OmniControl.App.Pages;
-using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using Avalonia.Threading;
-using OmniControl.Core.Engine;
-using OmniControl.App.Services;
 using OmniControl.App.Shell;
 
 namespace OmniControl.App;
 
-/// <summary>Start-up only: load settings and the accent, create the window, hand its lifetime to <see cref="WindowLifecycle"/>.</summary>
+/// Start-up only: load settings, the background colour and the accent, create the window, hand its lifetime to <see cref="WindowLifecycle"/>.
 public partial class App : Application
 {
     private readonly SingleInstance? _instance;
-    private UiWatchdog? _watchdog; // logs every thread's stack once when the UI thread stops answering
+    private UiWatchdog? _watchdog; // logs once when the UI thread stops answering
 
     public App() { }
 
@@ -27,6 +22,7 @@ public partial class App : Application
         CrashGuard.Install();
         _watchdog = new UiWatchdog();
         var settings = AppSettings.Current;
+        SurfaceService.Initialize(settings.Background); // first: the accent's washes are blended into its page colour
         AccentService.Initialize(settings.Accent);
         ValueWheel.Register();
         NumberText.Register();
@@ -39,21 +35,17 @@ public partial class App : Application
         {
             desktop.Exit += (_, _) => _watchdog?.Dispose();
             var shell = new ShellViewModel();
+            DataTemplates.AddRange(shell.Templates);
             var window = new MainWindow { DataContext = shell };
             desktop.MainWindow = window;
-#if DEBUG
-            Showcase.ShowcaseRun.AttachChord(window);
-            if (!Showcase.ShowcaseRun.TryStart(desktop, window, shell))
-#endif
-            {
-                WindowLifecycle.Attach(this, desktop, window, shell, settings, StartupRegistration.IsBackgroundStart(desktop.Args ?? Array.Empty<string>()));
-                StartupRegistration.RepairIfMoved();
-                _instance?.Listen(() => Dispatcher.UIThread.Post(() => AppLifecycle.RequestShow("another start of OmniControl (it ended and handed over)")));
-            }
+            WindowLifecycle.Attach(this, desktop, window, shell, settings, StartupRegistration.IsBackgroundStart(desktop.Args ?? Array.Empty<string>()));
+            StartupRegistration.RepairIfMoved();
+            _instance?.Listen(() => Dispatcher.UIThread.Post(() => AppLifecycle.RequestShow("another start of OmniControl (it ended and handed over)")),
+                () => Dispatcher.UIThread.Post(AppLifecycle.RequestQuit));
         }
-        // Once start-up has built the pages and drawn the pop-up (its warm-up spans several frames, so "idle" can come too early),
-        // keep that memory resident so an idle spell can't page it out.
-        DispatcherTimer.RunOnce(ProcessPower.KeepResident, Timing.KeepResidentAfterStart);
+        // Once start-up has built the pages and drawn the pop-up (its warm-up spans several frames, so "idle" can come too early), give
+        // what start-up needed only back to Windows.
+        DispatcherTimer.RunOnce(() => Guard.Run("Give memory back", ProcessPower.Compact), Timing.CompactAfterStart);
         base.OnFrameworkInitializationCompleted();
     }
 }

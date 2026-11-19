@@ -1,0 +1,30 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Features.Volume.Pages"
+             x:Class="OmniControl.App.Features.Volume.Pages.MixerHeadings"
+             x:DataType="vm:VolumeGroup">
+    <!-- The small column headings above a Mixer group's rows (Plays on or Records from, Method, Pan, Volume, Mute, FX), in the rows' own
+         columns (VolumeRowView: the same stars and shared Mixer* columns), set in by a compact row's padding and border -->
+    <Grid ColumnSpacing="{StaticResource MixerColumnGap}" Margin="{StaticResource RowHeadingInset}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" SharedSizeGroup="MixerIcon" />
+            <ColumnDefinition Width="10*" />
+            <ColumnDefinition Width="11*" />
+            <ColumnDefinition Width="11*" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="MixerPan" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="MixerVolume" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="MixerMute" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="MixerListen" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="MixerFx" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="MixerRemove" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="MixerMeter" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Grid.Column="2" Classes="muted small" Text="{Binding RouteColumn}" TextTrimming="CharacterEllipsis" />
+        <TextBlock Grid.Column="3" Classes="muted small" Text="Method" TextTrimming="CharacterEllipsis" />
+        <TextBlock Grid.Column="4" Classes="muted small" Text="Pan" HorizontalAlignment="Center" IsVisible="{Binding ShowsPan}" />
+        <TextBlock Grid.Column="5" Classes="muted small" Text="Volume" HorizontalAlignment="Center" />
+        <TextBlock Grid.Column="6" Classes="muted small" Text="Mute" HorizontalAlignment="Center" />
+        <TextBlock Grid.Column="7" Classes="muted small" Text="Listen" HorizontalAlignment="Center" IsVisible="{Binding ShowsListen}" />
+        <TextBlock Grid.Column="8" Classes="muted small" Text="FX" HorizontalAlignment="Center" />
+    </Grid>
+</UserControl>

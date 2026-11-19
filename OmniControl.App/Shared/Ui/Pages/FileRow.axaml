@@ -1,0 +1,40 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
+             xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+             x:Class="OmniControl.App.Shared.Ui.Pages.FileRow"
+             x:DataType="pages:FileItem"
+             Classes="card" IsEnabled="{Binding Availability.IsAvailable}"
+             ToolTip.Tip="{Binding Availability.Reason}" ToolTip.ShowOnDisabled="True">
+    <Panel>
+        <!-- Full width: label, the path field (the file in use, typed or browsed), and the optional Default -->
+        <Grid Margin="0,1" ColumnSpacing="8" IsVisible="{Binding !Half}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Classes="cardname" Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,16,0" />
+            <c:PathField Grid.Column="1" Grid.ColumnSpan="2" x:Name="PathBoxFull" Text="{Binding Path, Mode=OneWay}" Kind="{Binding PathKind}"
+                         PickerTitle="{Binding Kind.PickerTitle}" Chosen="OnChosen" />
+            <Button Grid.Column="3" Classes="pill" Tag="scope" Content="{Binding ResetText}" Command="{Binding ResetCommand}"
+                    IsVisible="{Binding HasReset}" VerticalAlignment="Center" />
+        </Grid>
+
+        <!-- Half width: the label (wraps to two lines), the file name (trims), then the buttons -->
+        <Grid Margin="0,1" ColumnSpacing="6" IsVisible="{Binding Half}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="56" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Classes="cardlabel" Text="{Binding Label}" />
+            <c:PathField Grid.Column="1" Grid.ColumnSpan="2" x:Name="PathBoxHalf" Text="{Binding Path, Mode=OneWay}" Kind="{Binding PathKind}"
+                         PickerTitle="{Binding Kind.PickerTitle}" Chosen="OnChosen" />
+            <Button Grid.Column="3" Classes="pill" Tag="scope" Content="{Binding ResetText}" Command="{Binding ResetCommand}"
+                    IsVisible="{Binding HasReset}" VerticalAlignment="Center" />
+        </Grid>
+    </Panel>
+</UserControl>

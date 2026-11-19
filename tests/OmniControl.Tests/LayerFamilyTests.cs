@@ -1,12 +1,11 @@
-using System.Text.Json;
-using OmniControl.App.Hotkeys;
-using OmniControl.App.Mouse;
-using OmniControl.App.Rules;
+using OmniControl.App.Features.Hotkeys.Actions;
+using OmniControl.App.Features.Input.Mouse;
+using OmniControl.App.Features.Input.Rules;
 using OmniControl.Core.Engine.Mouse;
 
 namespace OmniControl.Tests;
 
-/// <summary>The mouse and the trackpad each have their own layers: storage, the upgrade of an old mouse.json, the layer in force, the action lists.</summary>
+/// The mouse and the trackpad each have their own layers: storage, the upgrade of an old mouse.json, the layer in force, the action lists.
 public class LayerFamilyTests
 {
     private const string OldFile = """

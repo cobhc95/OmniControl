@@ -1,0 +1,81 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Features.Input.Pages.Mouse"
+             xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
+             xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+             x:Class="OmniControl.App.Features.Input.Pages.Mouse.MousePage"
+             x:DataType="vm:MousePageViewModel">
+    <StackPanel Spacing="6">
+        <StackPanel x:Name="CardsHost" Grid.IsSharedSizeScope="True">
+            <!-- Mouse Buttons and Trackpad: the Apps chip and the layer picker on the title line, hidden with the rest while the group is collapsed -->
+            <pages:GroupCard Group="{Binding ButtonsGroup}">
+                <pages:GroupCard.Tools>
+                    <c:AppScopeChip DataContext="{Binding ButtonsScope}" />
+                    <c:PresetPicker DataContext="{Binding MouseLayer}" />
+                </pages:GroupCard.Tools>
+                <ListBox Classes="rows compact cards" ItemsSource="{Binding ButtonsGroup.Items}"></ListBox>
+            </pages:GroupCard>
+
+            <pages:GroupCard Group="{Binding TrackpadGroup}">
+                <pages:GroupCard.Tools>
+                    <c:AppScopeChip DataContext="{Binding TrackpadScope}" />
+                    <c:PresetPicker DataContext="{Binding TrackpadLayer}" />
+                </pages:GroupCard.Tools>
+                <ListBox Classes="rows compact cards" ItemsSource="{Binding TrackpadGroup.Items}"></ListBox>
+            </pages:GroupCard>
+
+            <!-- The gesture groups, each with its Apps chip -->
+            <pages:GroupCard Group="{Binding Gestures.Areas}">
+                <pages:GroupCard.Tools>
+                    <c:AppScopeChip DataContext="{Binding Gestures.AreasScope}" />
+                </pages:GroupCard.Tools>
+                <ListBox Classes="rows compact cards" ItemsSource="{Binding Gestures.Areas.Items}"></ListBox>
+            </pages:GroupCard>
+
+            <pages:GroupCard Group="{Binding Gestures.Middle}">
+                <pages:GroupCard.Tools>
+                    <c:AppScopeChip DataContext="{Binding Gestures.MiddleScope}" />
+                </pages:GroupCard.Tools>
+                <ListBox Classes="rows compact cards" ItemsSource="{Binding Gestures.Middle.Items}"></ListBox>
+            </pages:GroupCard>
+
+            <pages:GroupCard Group="{Binding Gestures.Keys}">
+                <pages:GroupCard.Tools>
+                    <c:AppScopeChip DataContext="{Binding Gestures.KeysScope}" />
+                </pages:GroupCard.Tools>
+                <ListBox Classes="rows compact cards" ItemsSource="{Binding Gestures.Keys.Items}"></ListBox>
+            </pages:GroupCard>
+
+            <!-- Custom gesture rules: one line per rule; "Add rule" at the right end of the header line -->
+            <pages:GroupCard Group="{Binding Gestures.Rules}">
+                <pages:GroupCard.Tools>
+                    <Button Classes="pill" Tag="grouptool" Content="Add rule" Click="OnAddRule"
+                            ToolTip.Tip="A new rule: If something happens (where, with which keys), then do one or more things" />
+                </pages:GroupCard.Tools>
+                <ListBox Classes="rows compact" ItemsSource="{Binding Gestures.Rules.Rules}" />
+            </pages:GroupCard>
+
+            <!-- All mouse and trackpad features: Enable gestures and pause in full-screen games, never in these apps and run as administrator (half-width pairs) -->
+            <pages:GroupCard Group="{Binding WhereGroup}">
+                <pages:GroupCard.Tools>
+                    <pages:GroupRestorePill DataContext="{Binding WhereGroup}" />
+                </pages:GroupCard.Tools>
+                <ListBox Classes="rows compact cards" ItemsSource="{Binding WhereGroup.Items}"></ListBox>
+            </pages:GroupCard>
+
+            <!-- Pointer settings: Windows' own mouse settings, changed live; the pointers of the scheme as an inner group; reset and restore last -->
+            <pages:GroupCard Group="{Binding PointerGroup}">
+                <StackPanel Spacing="4">
+                    <ListBox Classes="rows compact cards" ItemsSource="{Binding PointerGroup.Items}"></ListBox>
+                    <ItemsControl ItemsSource="{Binding PointerGroup.Subgroups}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="pages:ItemGroup"><pages:SubgroupPanel /></DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <ListBox Classes="rows compact cards" ItemsSource="{Binding PointerFooter}"></ListBox>
+                </StackPanel>
+            </pages:GroupCard>
+
+        </StackPanel>
+    </StackPanel>
+</UserControl>

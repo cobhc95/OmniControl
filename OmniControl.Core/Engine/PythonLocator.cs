@@ -1,13 +1,10 @@
 using System.Security;
-using Microsoft.Win32;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// Finds an installed Python interpreter, read only: the installs registered with Windows (PEP 514, the current user's then all users'),
 /// then the Python launcher, then python.exe on the PATH. Windows' "App execution alias" stub in WindowsApps only opens the Store, so it
 /// does not count. Null when there is none.
-/// </summary>
 public static class PythonLocator
 {
     private const string RegistryRoot = @"SOFTWARE\Python\PythonCore";
@@ -53,7 +50,7 @@ public static class PythonLocator
             .Select(folder => SafeCombine(folder, PythonExe))
             .FirstOrDefault(path => path is not null && File.Exists(path));
 
-    /// <summary>A PATH entry with characters a path cannot hold is skipped.</summary>
+    /// A PATH entry with characters a path cannot hold is skipped.
     private static string? SafeCombine(string folder, string file)
     {
         try { return Path.Combine(folder, file); }

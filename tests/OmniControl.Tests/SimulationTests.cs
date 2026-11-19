@@ -1,11 +1,8 @@
-using System.Text.Json;
-using OmniControl.App.Devices;
-using OmniControl.Core.Engine;
-using Xunit;
+using OmniControl.App.Features.Devices;
 
 namespace OmniControl.Tests;
 
-/// <summary>The simulation method: step words and checks, reading a uiautomator dump, adb's text answers, touches, and single steps on a made-up phone (no adb, no emulator). Reading the state and the On / Off run are in <see cref="StateDetectionTests"/>.</summary>
+/// The simulation method: step words and checks, reading a uiautomator dump, adb's text answers, touches, and single steps on a made-up phone (no adb, no emulator). Reading the state and the On / Off run are in <see cref="StateDetectionTests"/>.
 public sealed class SimulationTests
 {
     private static string Dump(bool on) =>
@@ -17,7 +14,7 @@ public sealed class SimulationTests
         (on ? "<node text=\"On\" resource-id=\"app:id/state\" content-desc=\"\" clickable=\"false\" bounds=\"[400,900][680,960]\" />" : "") +
         "</node></hierarchy>\nUI hierarchy dumped to: /dev/tty";
 
-    /// <summary>A phone whose one screen has a Power button that flips "On" on and off.</summary>
+    /// A phone whose one screen has a Power button that flips "On" on and off.
     private sealed class FakePhone : IAdbScreen
     {
         public bool On;

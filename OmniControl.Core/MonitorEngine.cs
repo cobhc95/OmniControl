@@ -1,10 +1,9 @@
 using OmniControl.Core.Engine;
 using OmniControl.Core.Interfaces;
-using OmniControl.Core.Models;
 
 namespace OmniControl.Core;
 
-/// <summary>Facade that owns the monitor and laptop backlight controllers.</summary>
+/// Facade that owns the monitor and laptop backlight controllers.
 public sealed class MonitorEngine : IMonitorEngine
 {
     private readonly IMonitorEnumerator _enumerator;

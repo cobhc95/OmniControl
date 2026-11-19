@@ -1,0 +1,133 @@
+<Window Classes="trayflyout" xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+        xmlns:t="using:OmniControl.App.Features.Tray"
+        x:Class="OmniControl.App.Features.Tray.TrayFlyoutWindow"
+        x:DataType="t:TrayFlyoutModel"
+        Title="OmniControl">
+    <!-- The tray flyout. Layout only; the model is Tray/TrayFlyoutModel. Three bands, top to bottom:
+         the tiles (TrayTileColumns per row, even gaps; a tile is a button with its glyph and its name under it; a last row's empty cells stay
+         empty), the slider rows (icon, name or a drop-down, slider, value, each in a shared column so the sliders line up), and the foot:
+         "+ Tile", "+ Slider" and Edit/Done at the left, "Open OmniControl" at the right. In edit mode every slider and tile shows a remove
+         cross. Any slider or tile can be dragged to another place (Controls/PanelDragReorder) unless the layout is locked, and has a
+         right-click menu: Remove from panel, Change action…, Change icon…, Lock layout, Show in OmniControl.
+         A tile shows its real or last-read state and one corner mark (Panel.tilemark): a spinning ring while an action runs, a pulsing dot
+         while it is read, a clock (and faded) when only the last known value, a red warning when it failed. -->
+    <Border Classes="flyoutpanel">
+        <Border Classes="flyoutbody">
+            <StackPanel>
+                <Border Classes="traytiles" IsVisible="{Binding !!Tiles.Count}">
+                    <ItemsControl x:Name="TileItems" ItemsSource="{Binding Tiles}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="{StaticResource TrayTileColumns}" ColumnSpacing="{StaticResource TrayTileGap}" RowSpacing="{StaticResource TrayTileRowGap}" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.DataTemplates>
+                            <DataTemplate DataType="t:TrayTileItem">
+                                <StackPanel Classes="traytile">
+                                    <Panel>
+                                        <Button Classes="tile" Classes.on="{Binding IsOn}" Classes.faded="{Binding IsNotSure}" Command="{Binding RunCommand}"
+                                                ToolTip.Tip="{Binding Reason}" AutomationProperties.Name="{Binding Name}">
+                                            <Button.ContextFlyout>
+                                                <c:ListMenuFlyout Placement="Pointer" Opening="OnItemMenuOpening">
+                                                    <c:MenuRowList />
+                                                </c:ListMenuFlyout>
+                                            </Button.ContextFlyout>
+                                            <c:IconGlyph Source="{Binding Icon}" IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        </Button>
+                                        <Panel Classes="tilemark" Classes.on="{Binding IsOn}">
+                                            <Ellipse Classes="markring" IsVisible="{Binding IsActing}" />
+                                            <Path Classes="markarc" IsVisible="{Binding IsActing}" />
+                                            <Ellipse Classes="markdot" IsVisible="{Binding IsReading}" />
+                                            <c:IconGlyph Classes="marknotsure" LibraryId="clock" IsVisible="{Binding IsNotSure}" />
+                                            <c:IconGlyph Classes="markfailed" LibraryId="alert" IsVisible="{Binding IsFailed}" />
+                                        </Panel>
+                                        <!-- Overlaps the button's top-right corner (TrayTileCross) and stays within the band's inset, so nothing clips -->
+                                        <Button Classes="removebadge" Click="OnRemoveClick" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                Margin="{StaticResource TrayTileCross}" IsVisible="{Binding $parent[Window].DataContext.IsEditing}">
+                                            <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+                                        </Button>
+                                    </Panel>
+                                    <c:WordText Text="{Binding Name}" Classes.faded="{Binding IsNotSure}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.DataTemplates>
+                    </ItemsControl>
+                </Border>
+
+                <Border Classes="traysliders" IsVisible="{Binding !!Sliders.Count}">
+                    <ItemsControl x:Name="SliderItems" ItemsSource="{Binding Sliders}" Grid.IsSharedSizeScope="True">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="{StaticResource TraySliderRowGap}" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="t:TraySliderItem">
+                                <Grid Classes="trayslider" Background="Transparent">
+                                    <Grid.ContextFlyout>
+                                        <c:ListMenuFlyout Placement="Pointer" Opening="OnItemMenuOpening">
+                                            <c:MenuRowList />
+                                        </c:ListMenuFlyout>
+                                    </Grid.ContextFlyout>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="TrayIcon" />
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="TrayName" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="TrayValue" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <c:IconGlyph Source="{Binding Icon}" IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                    <TextBlock Grid.Column="1" Classes="trayname" Text="{Binding Name}" IsVisible="{Binding HasName}" />
+                                    <c:ChipMenu Grid.Column="1" Classes="dropbox" Text="{Binding ChoiceText}" IsVisible="{Binding HasChoice}" ChipAlignment="Stretch"
+                                                MenuOpened="OnChoiceMenuOpened" VerticalAlignment="Center">
+                                        <c:ChipMenu.Menu>
+                                            <c:MenuRowList />
+                                        </c:ChipMenu.Menu>
+                                    </c:ChipMenu>
+                                    <Slider Grid.Column="2" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Value}"
+                                            IsEnabled="{Binding CanSet}" />
+                                    <TextBlock Grid.Column="3" Classes="trayvalue slidervalue" Text="{Binding ValueText}" />
+                                    <Button Grid.Column="4" Classes="removebadge" Click="OnRemoveClick"
+                                            IsVisible="{Binding $parent[Window].DataContext.IsEditing}">
+                                        <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+                                    </Button>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+
+                <Border Classes="trayfoot">
+                    <Grid ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="{StaticResource TrayFootGap}">
+                        <Button x:Name="AddTileButton" Classes="trayfootbutton" Click="OnAddTileClick">
+                            <StackPanel>
+                                <c:IconGlyph LibraryId="square-plus" />
+                                <TextBlock Text="Tile" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="AddSliderButton" Grid.Column="1" Classes="trayfootbutton" Click="OnAddSliderClick">
+                            <StackPanel>
+                                <c:IconGlyph LibraryId="adjustments-plus" />
+                                <TextBlock Text="Slider" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="EditButton" Grid.Column="2" Classes="trayfootbutton" Classes.on="{Binding IsEditing}" Command="{Binding ToggleEditCommand}" AutomationProperties.Name="Edit">
+                            <Panel>
+                                <c:IconGlyph LibraryId="pencil" IsVisible="{Binding !IsEditing}" />
+                                <c:IconGlyph LibraryId="check" IsVisible="{Binding IsEditing}" />
+                            </Panel>
+                        </Button>
+                        <Button x:Name="OpenButton" Grid.Column="3" Classes="trayfootbutton quiet" Command="{Binding OpenAppCommand}" HorizontalAlignment="Right">
+                            <StackPanel>
+                                <c:IconGlyph LibraryId="window" />
+                                <TextBlock Text="Open OmniControl" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </Border>
+            </StackPanel>
+        </Border>
+    </Border>
+</Window>

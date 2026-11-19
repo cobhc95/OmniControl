@@ -1,15 +1,12 @@
-using System.Runtime.InteropServices;
 using Windows.Media.Control;
 
 namespace OmniControl.Core.Engine.Media;
 
-/// <summary>What the current media session of Windows is doing: the app's name, the track's title and artist (empty when the app gives none) and whether it plays.</summary>
+/// What the current media session of Windows is doing: the app's name, the track's title and artist (empty when the app gives none) and whether it plays.
 public sealed record NowPlayingInfo(string App, string Title, string Artist, bool IsPlaying);
 
-/// <summary>
 /// Windows' current media session (the one the volume pop-up's media card shows): what it plays, and play/pause, next and previous on it.
 /// <see cref="Changed"/> is raised on a worker thread when the session, its track or its play state changes.
-/// </summary>
 public sealed class NowPlaying : IDisposable
 {
     private readonly object _gate = new();
@@ -19,7 +16,7 @@ public sealed class NowPlaying : IDisposable
 
     public event Action? Changed;
 
-    /// <summary>What plays now, or null when no app has a media session.</summary>
+    /// What plays now, or null when no app has a media session.
     public NowPlayingInfo? Current => _current;
 
     public void Start() => _ = Task.Run(StartAsync);
@@ -105,7 +102,7 @@ public sealed class NowPlaying : IDisposable
         }
     }
 
-    /// <summary>A player's name from its app id: "Spotify.exe" is Spotify, "Microsoft.ZuneMusic_8wekyb3d8bbwe!App" is ZuneMusic.</summary>
+    /// A player's name from its app id: "Spotify.exe" is Spotify, "Microsoft.ZuneMusic_8wekyb3d8bbwe!App" is ZuneMusic.
     internal static string AppName(string appId)
     {
         var name = appId.Split((char)92).Last();

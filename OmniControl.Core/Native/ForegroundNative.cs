@@ -1,8 +1,6 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Native;
 
-/// <summary>user32 calls that bring windows of another program to the front, or hide and show them.</summary>
+/// user32 calls that bring windows of another program to the front, or hide and show them.
 internal static class ForegroundNative
 {
     public const int SwRestore = 9, SwHide = 0, SwShow = 5;

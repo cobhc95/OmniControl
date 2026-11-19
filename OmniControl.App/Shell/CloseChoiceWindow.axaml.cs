@@ -1,14 +1,11 @@
-﻿using Avalonia.Controls;
-using Avalonia.Input;
-using Avalonia.Interactivity;
-using OmniControl.App.Services;
+﻿using Avalonia.Input;
 
 namespace OmniControl.App.Shell;
 
-/// <summary>What the user picked in <see cref="CloseChoiceWindow"/>.</summary>
+/// What the user picked in <see cref="CloseChoiceWindow"/>.
 public sealed record CloseChoice(CloseBehavior Behavior, bool Remember);
 
-/// <summary>Wiring only: asks whether to exit or minimise to the tray. Closes with a <see cref="CloseChoice"/>, or null for Esc / the window's X.</summary>
+/// Wiring only: asks whether to exit or minimise to the tray. Closes with a <see cref="CloseChoice"/>, or null for Esc / the window's X.
 public partial class CloseChoiceWindow : Window
 {
     public CloseChoiceWindow()

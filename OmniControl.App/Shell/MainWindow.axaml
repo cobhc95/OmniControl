@@ -1,9 +1,9 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="using:OmniControl.App.Shell"
-        xmlns:pages="using:OmniControl.App.Pages"
-        xmlns:c="using:OmniControl.App.Controls"
-        xmlns:restore="using:OmniControl.App.Pages.Restore"
+        xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
+        xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+        xmlns:restore="using:OmniControl.App.Shared.Ui.Restore"
         x:Class="OmniControl.App.Shell.MainWindow"
         x:DataType="shell:ShellViewModel"
         Title="OmniControl" ShowInTaskbar="True" Width="860" Height="620" MinWidth="680" MinHeight="460"
@@ -34,7 +34,8 @@
                 <c:GroupsOpenChip Grid.Column="1" VerticalAlignment="Center" Margin="14,0,0,0" />
                 <TextBlock Grid.Column="2" Text="{Binding Status}" Classes="muted" TextTrimming="CharacterEllipsis"
                            HorizontalAlignment="Right" VerticalAlignment="Center" Margin="12,0,16,0" ToolTip.Tip="{Binding StatusTip}" />
-                <TextBlock Grid.Column="3" Text="{Binding ActiveLayer}" Classes="muted" VerticalAlignment="Center" Margin="0,0,14,0" IsVisible="{Binding ShowsActiveLayer}" />
+                <TextBlock Grid.Column="3" Text="{Binding CurrentPage.FooterStatus}" Classes="muted" VerticalAlignment="Center" Margin="0,0,14,0"
+                           IsVisible="{Binding CurrentPage.FooterStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}, FallbackValue=False}" />
                 <Button Grid.Column="4" Content="Close" Classes="primary close"
                         Click="OnCloseClick" />
             </Grid>
@@ -65,7 +66,7 @@
                         <c:NavList.DataTemplates>
                             <DataTemplate DataType="shell:NavLauncher">
                                 <StackPanel Orientation="Horizontal" Spacing="14">
-                                    <PathIcon Data="{Binding Icon}" Width="18" Height="18" />
+                                    <Panel Classes="navicon"><PathIcon Classes="navicon" Data="{Binding Icon}" /></Panel>
                                     <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
                                 </StackPanel>
                             </DataTemplate>
@@ -81,7 +82,7 @@
                         </DataTemplate>
                         <DataTemplate DataType="pages:PageViewModel">
                             <StackPanel Orientation="Horizontal" Spacing="14">
-                                <PathIcon Data="{Binding Icon}" Width="18" Height="18" />
+                                <Panel Classes="navicon"><PathIcon Classes="navicon" Data="{Binding Icon}" /></Panel>
                                 <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
                             </StackPanel>
                         </DataTemplate>
@@ -95,7 +96,7 @@
             <!-- Top bar: global search on the right -->
             <Border DockPanel.Dock="Top" Padding="12,12,12,0">
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                    <TextBox x:Name="SearchBox" Classes="bar search" Text="{Binding SearchText}" Watermark="Search settings…" ToolTip.Tip="Search (Ctrl+F)" />
+                    <TextBox x:Name="SearchBox" Classes="bar search" Text="{Binding SearchText}" pages:SearchClear.Shortcut="{Binding SearchShortcut}" Watermark="Search settings…" ToolTip.Tip="Search (Ctrl+F)" />
                     <ComboBox Grid.Column="1" Classes="bar" ItemsSource="{Binding Categories}"
                               SelectedItem="{Binding SelectedCategory}" Width="200" />
                 </Grid>
@@ -108,7 +109,7 @@
                             <TextBlock Text="{Binding CurrentPage.Title}" Classes="title" VerticalAlignment="Center" />
                             <restore:RestoreBar Grid.Column="1" DataContext="{Binding CurrentPage.Restorer}" />
                         </Grid>
-                        <ContentControl Content="{Binding CurrentPage}" />
+                        <ContentControl Content="{Binding ShownPage}" />
                     </StackPanel>
 
                     <StackPanel IsVisible="{Binding IsSearching}" Spacing="12">

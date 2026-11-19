@@ -1,9 +1,8 @@
 using System.Security;
-using Microsoft.Win32;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>Reads Windows' Uninstall keys (read only) to find where a program says it was installed.</summary>
+/// Reads Windows' Uninstall keys (read only) to find where a program says it was installed.
 public static class UninstallRegistry
 {
     private const string UninstallKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall";
@@ -11,7 +10,7 @@ public static class UninstallRegistry
     private static readonly (RegistryHive Hive, RegistryView View)[] Places =
         { (RegistryHive.LocalMachine, RegistryView.Registry64), (RegistryHive.LocalMachine, RegistryView.Registry32), (RegistryHive.CurrentUser, RegistryView.Default) };
 
-    /// <summary>The install folders (that exist) of every entry whose DisplayName starts with one of the given names, ignoring case.</summary>
+    /// The install folders (that exist) of every entry whose DisplayName starts with one of the given names, ignoring case.
     public static IReadOnlyList<string> InstallLocations(IReadOnlyList<string> displayNameStarts)
     {
         var found = new List<string>();

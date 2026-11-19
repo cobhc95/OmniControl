@@ -1,9 +1,8 @@
-using OmniControl.App.Dialogs;
-using Xunit;
+using OmniControl.App.Shared.Dialogs;
 
 namespace OmniControl.Tests;
 
-/// <summary>"Don't ask again": only a confirmed, ticked, simple confirmation is remembered; Cancel never is; every choice can be reset.</summary>
+/// "Don't ask again": only a confirmed, ticked, simple confirmation is remembered; Cancel never is; every choice can be reset.
 public sealed class ConfirmationMemoryTests
 {
     private static ConfirmationMemory Make(out List<ConfirmationData> saves)

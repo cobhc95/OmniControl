@@ -2,17 +2,17 @@ using OmniControl.Core.Engine.Apo;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>What this PC offers the effects engine, as found by <see cref="IAudioEffectsSupport.Check"/>.</summary>
+/// What this PC offers the effects engine, as found by <see cref="IAudioEffectsSupport.Check"/>.
 /// <param name="ProcessLoopback">Windows can record one program's sound on its own (process loopback capture).</param>
 /// <param name="Cables">The virtual cables OmniControl may use (<see cref="VirtualCables.Usable"/>), in name order; empty when there is none.</param>
-/// <param name="Apo">What is in place for Equalizer APO / OmniControl APO (the master's and a cable's effects).</param>
+/// <param name="Apo">What is in place for Equalizer APO (the master's and a cable's effects).</param>
 /// <param name="DefaultDeviceId">The default playback device; null when there is none.</param>
 public sealed record AudioEffectsSupport(bool ProcessLoopback, IReadOnlyList<VirtualCable> Cables, ApoState Apo, string? DefaultDeviceId)
 {
-    /// <summary>Every virtual device found (<see cref="VirtualCables.Scan"/>), usable or not, for the Wiring tab's Virtual cables list.</summary>
+    /// Every virtual device found (<see cref="VirtualCables.Scan"/>), usable or not, for the Wiring tab's Virtual cables list.
     public IReadOnlyList<FoundCable> Found { get; init; } = Array.Empty<FoundCable>();
 
-    /// <summary>Record equality compares the cable lists by content, so a re-check that found the same cables raises no change.</summary>
+    /// Record equality compares the cable lists by content, so a re-check that found the same cables raises no change.
     public bool Equals(AudioEffectsSupport? other) =>
         other is not null && ProcessLoopback == other.ProcessLoopback && Cables.SequenceEqual(other.Cables) && Found.SequenceEqual(other.Found)
         && Apo == other.Apo && DefaultDeviceId == other.DefaultDeviceId;
@@ -20,24 +20,20 @@ public sealed record AudioEffectsSupport(bool ProcessLoopback, IReadOnlyList<Vir
     public override int GetHashCode() => HashCode.Combine(ProcessLoopback, Cables.Count, Found.Count, Apo, DefaultDeviceId);
 }
 
-/// <summary>Looks at what this PC offers for sound effects. Reads only: nothing is installed or changed.</summary>
+/// Looks at what this PC offers for sound effects. Reads only: nothing is installed or changed.
 public interface IAudioEffectsSupport
 {
-    /// <summary>
     /// A few cheap Windows look-ups (version, device names, registry keys); call it off the UI thread. <paramref name="marks"/> are the
     /// pairs the user marked as cables; every pair found is in <see cref="AudioEffectsSupport.Cables"/> (the caller leaves out the ones
     /// the user switched off).
-    /// </summary>
     AudioEffectsSupport Check(IReadOnlyList<CableMark> marks);
 }
 
 /// <inheritdoc />
 public sealed class AudioEffectsProbe : IAudioEffectsSupport
 {
-    /// <summary>
     /// Process loopback capture arrived with Windows 10 version 2004 (build 19041; NAudio and community projects use it from
     /// there, Microsoft's reference page names build 20348 as the documented minimum).
-    /// </summary>
     public const int ProcessLoopbackBuild = 19041;
 
     public AudioEffectsSupport Check(IReadOnlyList<CableMark> marks)

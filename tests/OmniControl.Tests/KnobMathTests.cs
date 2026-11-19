@@ -1,13 +1,11 @@
 using Avalonia.Input;
-using OmniControl.App.Controls;
-using OmniControl.App.Pages.Volume;
+using OmniControl.App.Shared.Ui.Controls;
+using OmniControl.App.Features.Volume.Pages;
 
 namespace OmniControl.Tests;
 
-/// <summary>
 /// The knob's pure maths (<see cref="KnobMath"/>): the 270 degree sweep and back, the arcs of a volume and a pan knob, the drag, the
-/// owner's click rule (one click types, a double-click resets, a drag turns), the key steps, and the reset values the rows declare.
-/// </summary>
+/// click rule (one click types, a double-click resets, a drag turns), the key steps, and the reset values the rows declare.
 public class KnobMathTests
 {
     [Theory]

@@ -1,16 +1,11 @@
-using OmniControl.Core.Models;
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Engine;
 
 public static partial class CoreAudio
 {
-    /// <summary>
     /// Raises <see cref="Changed"/> (percent, muted; on a Windows audio thread) when the master volume or mute of the default playback
     /// device changes, from anywhere. Windows calls in when it happens, so nothing is polled: a poll asked Windows twice per 16 ms and
     /// left a trail of COM objects for the garbage collector. When the default device changes, the watch moves to the new device.
     /// Made with <c>recording: true</c> it watches the default recording device (the microphone) the same way.
-    /// </summary>
     public sealed class MasterWatcher : IDisposable
     {
         private readonly object _gate = new();
@@ -25,10 +20,10 @@ public static partial class CoreAudio
 
         public event Action<int, bool>? Changed;
 
-        /// <summary>Which device to watch (null result = the default playback device); asked at every attach, on a worker thread.</summary>
+        /// Which device to watch (null result = the default playback device); asked at every attach, on a worker thread.
         public Func<string?>? Device { get; set; }
 
-        /// <summary>Looks again at which device to watch (the answer of <see cref="Device"/> changed); a level that differs is not reported.</summary>
+        /// Looks again at which device to watch (the answer of <see cref="Device"/> changed); a level that differs is not reported.
         public void Retarget() => ThreadPool.QueueUserWorkItem(_ => Attach(report: false));
 
         public MasterWatcher(bool recording = false)
@@ -39,7 +34,7 @@ public static partial class CoreAudio
             _deviceCallback = new DeviceCallback(_flow, () => ThreadPool.QueueUserWorkItem(_ => Attach(report: true)));
         }
 
-        /// <summary>Starts watching on a worker thread (the first Core Audio call is slow).</summary>
+        /// Starts watching on a worker thread (the first Core Audio call is slow).
         public void Start() => Task.Run(() =>
         {
             lock (_gate)
@@ -59,7 +54,7 @@ public static partial class CoreAudio
             Attach(report: false);
         });
 
-        /// <summary>Watches the current default device; reports its level when it differs from the last one seen and <paramref name="report"/> is set.</summary>
+        /// Watches the current default device; reports its level when it differs from the last one seen and <paramref name="report"/> is set.
         private void Attach(bool report)
         {
             int percent;
@@ -92,7 +87,7 @@ public static partial class CoreAudio
             Changed?.Invoke(percent, muted);
         }
 
-        /// <summary>True when the level differs from the last one seen (also the first time). Call inside the lock.</summary>
+        /// True when the level differs from the last one seen (also the first time). Call inside the lock.
         private bool Remember(int percent, bool muted)
         {
             var changed = percent != _last || muted != _lastMuted;
@@ -110,7 +105,7 @@ public static partial class CoreAudio
             Changed?.Invoke(percent, muted);
         }
 
-        /// <summary>Stops watching the current device. Call inside the lock.</summary>
+        /// Stops watching the current device. Call inside the lock.
         private void Detach()
         {
             if (_endpoint is not null)
@@ -145,7 +140,7 @@ public static partial class CoreAudio
             }
         }
 
-        /// <summary>IAudioEndpointVolumeCallback. Public only because Windows can only call interfaces that are visible to COM.</summary>
+        /// IAudioEndpointVolumeCallback. Public only because Windows can only call interfaces that are visible to COM.
         [ComVisible(true), Guid("657804FA-D6AD-4496-8A60-352752AF4F89"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
         public interface IVolumeNotify
         {

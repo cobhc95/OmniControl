@@ -1,23 +1,16 @@
-using OmniControl.App.Dialogs;
-using Avalonia.Threading;
-using OmniControl.App.Audio.Engine;
-using OmniControl.App.Hotkeys;
-using OmniControl.App.Pages;
-using OmniControl.App.Pages.AppSettingsPage;
-using OmniControl.App.Pages.Restore;
-using OmniControl.App.Services;
+using OmniControl.App.Features.Volume.Audio.Engine;
+using OmniControl.App.Features.Hotkeys;
+using OmniControl.App.Features.Settings.Pages;
+using OmniControl.App.Shared.Ui.Restore;
 
 namespace OmniControl.App.Shell;
 
-/// <summary>
 /// "Restore defaults" for every page: each page that offers one (<see cref="PageViewModel.Restorable"/>) gets its button and its action
 /// ("Restore Displays defaults"...), and App settings gets "Restore all", which restores every page with one question and one copy.
-/// </summary>
 public sealed partial class ShellViewModel
 {
     private readonly DispatcherTimer _restoreCheck = new() { Interval = Timing.RestoreStateCheck };
     private PageRestore? _restoreAll;
-    private Screenshot.WindowsKeysSwitch? _windowsKeys;
 
     private void WireRestore()
     {
@@ -37,10 +30,7 @@ public sealed partial class ShellViewModel
         // The Actions and hotkeys window is not a page; its "Restore defaults" is wired the same way.
         var keys = _actionsWindow.Restorable;
         // It also puts back Windows' own screenshot keys, which that window's screenshot settings can turn off.
-        var windowsKeys = new SettingsRestore<Screenshot.WindowsKeysState>("screenshot-keys", keys.Name,
-            () => "Puts Windows' own screenshot keys (Print Screen, Win+Shift+S) back as they were.",
-            () => new Screenshot.WindowsKeysState(_windowsKeys!.IsOn), () => new Screenshot.WindowsKeysState(false),
-            state => { _windowsKeys!.Set(state.Off); return Task.FromResult(true); });
+        var windowsKeys = _screenshot.KeysRestore(keys.Name);
         var keysRestorer = new PageRestore(new RestoreRunner(keys.Key, keys.Name, new IRestorable[] { keys, windowsKeys }, false, Confirm, store));
         _actionsWindow.Restorer = keysRestorer;
         // Filed under App settings (its "Restore all" lives there): the window is not a section of its own in the pickers.
@@ -52,13 +42,18 @@ public sealed partial class ShellViewModel
         _restoreAll = new PageRestore(new RestoreRunner("all", "All", parts, true, Confirm, store), all: true);
         _allFooter.OfType<AppSettingsPageViewModel>().FirstOrDefault()?.ShowRestoreAll(_restoreAll);
         _restoreCheck.Tick += (_, _) => RefreshRestore();
-        _restoreCheck.Start();
     }
 
-    /// <summary>The open page's button looks again at whether the page is at its defaults (only while the window can be seen).</summary>
+    /// The restore check runs only while the window can be seen (<see cref="SetWindowShown"/>); showing it looks at once.
+    private void FollowRestoreCheck(bool shown)
+    {
+        _restoreCheck.IsEnabled = shown;
+        if (shown) RefreshRestore();
+    }
+
+    /// The open page's button looks again at whether the page is at its defaults.
     private void RefreshRestore()
     {
-        if (!_windowShown) return;
         CurrentPage?.Restorer?.Refresh();
         if (CurrentPage is AppSettingsPageViewModel) _restoreAll?.Refresh();
     }

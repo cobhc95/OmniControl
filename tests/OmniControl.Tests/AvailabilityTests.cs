@@ -1,23 +1,18 @@
-using OmniControl.App.Audio;
-using OmniControl.App.Audio.Engine;
-using OmniControl.App.Pages.Volume;
-using OmniControl.Core.Engine;
+using OmniControl.App.Features.Volume.Pages;
 
 namespace OmniControl.Tests;
 
-/// <summary>
-/// The owner's rule for the Volume page: only what works is selectable, the rest is greyed out with the reason. Every pure rule behind a
+/// The Volume page's rule: only what works is selectable, the rest is greyed out with the reason. Every pure rule behind a
 /// greyed control (<c>EffectsRules.Availability.cs</c> and the Method menus, the setup table, the gates): combining
 /// devices, device choices, cable switches, the Test and the hotkeys.
-/// </summary>
 public class AvailabilityTests
 {
     private static readonly IReadOnlyList<CableMark> NoMarks = Array.Empty<CableMark>();
 
-    /// <summary>The owner's PC with VB-CABLE allowed (one pair).</summary>
+    /// The reference PC with VB-CABLE allowed (one pair).
     private static AudioEffectsSupport OnePair => OwnerPc.Support;
 
-    /// <summary>VB-CABLE installed but switched off in the Virtual cables list.</summary>
+    /// VB-CABLE installed but switched off in the Virtual cables list.
     private static AudioEffectsSupport Switched => OwnerPc.Support with
     {
         Cables = Array.Empty<VirtualCable>(),
@@ -149,11 +144,11 @@ public class AvailabilityTests
         var s = OwnerPc.Settings(); // one pair that the master bus takes: a combined speaker gets no cable
         var combo = new CombinedDevice { Name = "Living room", Kind = CombinedKind.Speakers, Members = { OwnerPc.Speaker } };
         s.Combined.Add(combo);
-        s.Apps.Single(a => a.Key == OwnerPc.Claude).PlaysOn.Add(combo.Key);
+        s.Apps.Single(a => a.Key == OwnerPc.Chat).PlaysOn.Add(combo.Key);
         var plan = RoutePlanner.Make(new PlanInput(OwnerPc.Support, true, s, new HashSet<string>(), new HashSet<string>(), new HashSet<string>(),
             OwnerPc.Playback, OwnerPc.Recording, new HashSet<string>()));
 
-        var status = plan.Blocked[OwnerPc.Claude];
+        var status = plan.Blocked[OwnerPc.Chat];
         Assert.Equal(StatusKind.NeedsAnotherCable, status.Kind);
         Assert.Contains("Living room has no cable", status.Text);
         Assert.Contains("Playing on the master instead", status.Text);

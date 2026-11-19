@@ -3,7 +3,7 @@ using OmniControl.Core.Engine.Trackpad;
 
 namespace OmniControl.Tests;
 
-/// <summary>Taps, double taps and swipes read from synthetic touchpad frames (no touchpad needed).</summary>
+/// Taps, double taps and swipes read from synthetic touchpad frames (no touchpad needed).
 public class GestureRecogniserTests
 {
     private static TouchContact[] Fingers(int count, float dx = 0, float dy = 0)

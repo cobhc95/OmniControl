@@ -2,13 +2,11 @@ using OmniControl.Core.Engine.Trackpad;
 
 namespace OmniControl.Tests;
 
-/// <summary>Turning Windows' own touchpad gestures off and giving them back, against a fake settings store (nothing on the PC is touched).</summary>
+/// Turning Windows' own touchpad gestures off and giving them back, against a fake settings store (nothing on the PC is touched).
 public class GestureTakeoverTests
 {
-    /// <summary>
     /// Windows' settings in memory: registry values (missing = absent key) and the parameter bits, with a write log, plus the shell's own
-    /// copy of the registry-route values, which (as on the owner's PC) follows the stored value only when it is told to (Announce).
-    /// </summary>
+    /// copy of the registry-route values, which (as on the reference PC) follows the stored value only when it is told to (Announce).
     private sealed class FakeStore : ITouchpadSettingsStore
     {
         public readonly Dictionary<WindowsGesture, int?> Values = new();
@@ -21,7 +19,7 @@ public class GestureTakeoverTests
 
         public FakeStore()
         {
-            // As on the owner's PC: the swipe and three-finger tap values missing (Windows' defaults), taps and zoom on.
+            // As on the reference PC: the swipe and three-finger tap values missing (Windows' defaults), taps and zoom on.
             foreach (var s in WindowsGestureSettings.All) Values[s.Gesture] = Shell[s.Gesture] = s.Route == SettingRoute.Registry ? null : 1;
         }
 
@@ -350,7 +348,7 @@ public class GestureTakeoverTests
     [Fact]
     public void AStoredOffTheShellNeverTook_IsAnnouncedAtTheNextStart_WithoutAWrite()
     {
-        // The owner's PC: the previous run stored 0, but the shell still acted on its own copy (Open search).
+        // The reference PC: the previous run stored 0, but the shell still acted on its own copy (Open search).
         var store = new FakeStore();
         store.Values[WindowsGesture.ThreeFingerTap] = 0;
         var saved = new Dictionary<string, int?> { [nameof(WindowsGesture.ThreeFingerTap)] = null };

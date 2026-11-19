@@ -1,28 +1,10 @@
-using OmniControl.Core.Models;
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Engine;
 
-/// <summary>Recording devices (microphones and other inputs): list, volume and mute.</summary>
+/// Recording devices (microphones and other inputs): list, volume and mute.
 public static partial class CoreAudio
 {
-    /// <summary>Recording devices that are plugged in and enabled right now.</summary>
-    public static IReadOnlyList<AudioDevice> InputDevices()
-    {
-        var result = new List<AudioDevice>();
-        try
-        {
-            var e = NewEnumerator();
-            var defaultId = e.GetDefaultAudioEndpoint(Capture, Multimedia, out var def) == 0 ? DeviceId(def) : string.Empty;
-            foreach (var d in ActiveDevices(e, Capture))
-            {
-                var id = DeviceId(d);
-                result.Add(new AudioDevice(id, DeviceName(d), id == defaultId));
-            }
-        }
-        catch (Exception ex) when (ex is COMException or InvalidCastException) { /* no audio service */ }
-        return result;
-    }
+    /// Recording devices that are plugged in and enabled right now.
+    public static IReadOnlyList<AudioDevice> InputDevices() => DeviceList(Capture);
 
     private static IAudioEndpointVolume? EndpointVolume(string id)
     {

@@ -1,12 +1,8 @@
-using System.Text;
-
 namespace OmniControl.Core.Engine.Screenshot;
 
-/// <summary>
 /// Writes an animated GIF straight to a file, frame by frame, so a long recording never sits in memory: each frame gets its own palette
 /// (<see cref="GifPalette"/>) and its delay from the real time of the frame after it (<see cref="VideoMath.GifDelay"/>), so one frame is
 /// always held back. A frame the same as the one before only makes that one last longer. The animation loops for ever.
-/// </summary>
 internal sealed class GifWriter : IVideoSink
 {
     private readonly FileStream _file;
@@ -96,11 +92,9 @@ internal sealed class GifWriter : IVideoSink
     }
 }
 
-/// <summary>
 /// GIF's LZW compression of a frame's palette indices, written as the format's sub-blocks of at most 255 bytes. The code table is an
 /// open-addressed hash of two small arrays (the classic GIF encoders' table: a prime size a little over 4096, double hashing), several
 /// times faster than a dictionary on every pixel of a large frame and cleared in a moment when the table fills.
-/// </summary>
 internal static class GifLzw
 {
     private const int MaxCodes = 4096, MaxCodeSize = 12;
@@ -152,7 +146,7 @@ internal static class GifLzw
         bits.Finish();
     }
 
-    /// <summary>The string table: "prefix code followed by index k" to its code, keyed by both packed in one number.</summary>
+    /// The string table: "prefix code followed by index k" to its code, keyed by both packed in one number.
     private sealed class CodeTable
     {
         private readonly int[] _keys = new int[TableSize];
@@ -162,7 +156,7 @@ internal static class GifLzw
 
         public void Clear() => Array.Fill(_keys, -1);
 
-        /// <summary>The slot that holds (prefix, k), or the empty slot where it would go.</summary>
+        /// The slot that holds (prefix, k), or the empty slot where it would go.
         public int Find(int prefix, int k)
         {
             var key = k << MaxCodeSize | prefix;
@@ -177,7 +171,7 @@ internal static class GifLzw
             }
         }
 
-        /// <summary>The code in a slot <see cref="Find"/> gave, or -1 when the slot is empty.</summary>
+        /// The code in a slot <see cref="Find"/> gave, or -1 when the slot is empty.
         public int Code(int slot) => _keys[slot] < 0 ? -1 : _codes[slot];
 
         public void Add(int slot, int prefix, int k, int code)
@@ -187,7 +181,7 @@ internal static class GifLzw
         }
     }
 
-    /// <summary>Packs codes least significant bit first into sub-blocks.</summary>
+    /// Packs codes least significant bit first into sub-blocks.
     private sealed class BitPacker
     {
         private readonly Stream _output;

@@ -1,20 +1,17 @@
-using OmniControl.Core.Native;
 using static OmniControl.Core.Native.MediaFoundationNative;
 
 namespace OmniControl.Core.Engine.Screenshot;
 
-/// <summary>
 /// The video encoder the Sink Writer chose for a recording, read back after it started writing (IMFSinkWriterEx): its name, whether it is
 /// a graphics card's (hardware) and asynchronous, the adapter it is bound to when it says (<c>MFT_ENUM_ADAPTER_LUID</c>), and the formats
 /// and size it was set to. The Sink Writer drives the encoder itself, asynchronous hardware encoders included (it unlocks and feeds them
 /// on their events), so OmniControl never calls the encoder; these facts are for the log and for the same-adapter check.
-/// </summary>
 internal sealed record EncoderFacts(string Name, bool Hardware, bool Async, long? Luid, string Input, string Output)
 {
     public override string ToString() =>
         $"encoder \"{Name}\" {(Hardware ? "hardware" : "software")}, {(Async ? "async" : "sync")}, adapter LUID {(Luid is { } l ? $"{(uint)(l >> 32):X8}:{(uint)l:X8}" : "not given")}, in {Input}, out {Output}";
 
-    /// <summary>The encoder of <paramref name="stream"/>, or null when Windows will not say (an older Windows, or no encoder in the chain).</summary>
+    /// The encoder of <paramref name="stream"/>, or null when Windows will not say (an older Windows, or no encoder in the chain).
     public static EncoderFacts? Read(IntPtr writer, uint stream)
     {
         var writerEx = D3D11Native.As(writer, IidSinkWriterEx);
@@ -59,7 +56,7 @@ internal sealed record EncoderFacts(string Name, bool Hardware, bool Async, long
         }
     }
 
-    /// <summary>"NV12 3840x2160 @60" for a current media type, or "not set".</summary>
+    /// "NV12 3840x2160 @60" for a current media type, or "not set".
     private static string TypeText(IntPtr transform, bool output)
     {
         var type = TransformCurrentType(transform, output);
@@ -77,7 +74,7 @@ internal sealed record EncoderFacts(string Name, bool Hardware, bool Async, long
         }
     }
 
-    /// <summary>A video subtype's four letters (NV12, H264, HEVC), or its number for the RGB ones Media Foundation numbers (21 = ARGB32, 22 = RGB32).</summary>
+    /// A video subtype's four letters (NV12, H264, HEVC), or its number for the RGB ones Media Foundation numbers (21 = ARGB32, 22 = RGB32).
     private static string FourCc(Guid subtype)
     {
         var code = BitConverter.ToUInt32(subtype.ToByteArray(), 0);

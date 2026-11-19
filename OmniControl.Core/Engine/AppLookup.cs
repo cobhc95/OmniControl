@@ -1,45 +1,42 @@
 using System.Security;
-using Microsoft.Win32;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>A place an app's program may be, with the arguments that start it (Discord and the old Teams start through their updater).</summary>
+/// A place an app's program may be, with the arguments that start it (Discord and the old Teams start through their updater).
 public sealed record KnownPath(string Path, string Arguments = "");
 
-/// <summary>How to find one app on this PC. Any list may be empty; they are tried in the order of the properties below.</summary>
+/// How to find one app on this PC. Any list may be empty; they are tried in the order of the properties below.
 public sealed record AppLocator
 {
-    /// <summary>Program names Windows' "App Paths" registry keys know ("chrome.exe").</summary>
+    /// Program names Windows' "App Paths" registry keys know ("chrome.exe").
     public IReadOnlyList<string> AppPaths { get; init; } = Array.Empty<string>();
 
-    /// <summary>Install folders (environment variables allowed) to look in.</summary>
+    /// Install folders (environment variables allowed) to look in.
     public IReadOnlyList<KnownPath> KnownPaths { get; init; } = Array.Empty<KnownPath>();
 
-    /// <summary>Start menu shortcut names (without ".lnk") whose target is the app.</summary>
+    /// Start menu shortcut names (without ".lnk") whose target is the app.
     public IReadOnlyList<string> StartMenuNames { get; init; } = Array.Empty<string>();
 
-    /// <summary>A Microsoft Store app: its package name ("SpotifyAB.SpotifyMusic") and the id of its app inside the package.</summary>
+    /// A Microsoft Store app: its package name ("SpotifyAB.SpotifyMusic") and the id of its app inside the package.
     public string? StorePackage { get; init; }
     public string StoreAppId { get; init; } = "App";
 
-    /// <summary>A command or protocol that is part of Windows ("calc.exe", "ms-settings:"); found when it exists.</summary>
+    /// A command or protocol that is part of Windows ("calc.exe", "ms-settings:"); found when it exists.
     public string? Direct { get; init; }
 }
 
-/// <summary>What starting an app means: the program (or shell address), its arguments and the folder to start in. <see cref="IsFile"/> is false for a Store app or a protocol.</summary>
+/// What starting an app means: the program (or shell address), its arguments and the folder to start in. <see cref="IsFile"/> is false for a Store app or a protocol.
 public sealed record AppTarget(string Path, string Arguments, string StartIn, bool IsFile);
 
-/// <summary>
 /// Finds installed apps by their <see cref="AppLocator"/>: App Paths registry, known install folders, Start menu shortcuts, Store packages,
 /// then Windows' own commands. Read only and slow (it may read the whole Start menu): call it off the UI thread.
-/// </summary>
 public static class AppLookup
 {
     private const string StorePackagesKey = @"Software\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\Repository\Packages";
     private const string AppsFolder = @"shell:AppsFolder\";
     private const string ExeEnding = ".exe";
 
-    /// <summary>The target of each locator that is installed (by the id it was given); the others are left out.</summary>
+    /// The target of each locator that is installed (by the id it was given); the others are left out.
     public static IReadOnlyDictionary<string, AppTarget> Find(IReadOnlyDictionary<string, AppLocator> locators)
     {
         var found = new Dictionary<string, AppTarget>();
@@ -67,7 +64,7 @@ public static class AppLookup
     private static AppTarget Program(string path, string arguments = "") =>
         new(path, arguments, System.IO.Path.GetDirectoryName(path) ?? string.Empty, IsFile: true);
 
-    /// <summary>A Windows command that is there (a program in Windows' folders), or a protocol such as "ms-settings:", which has no file to check.</summary>
+    /// A Windows command that is there (a program in Windows' folders), or a protocol such as "ms-settings:", which has no file to check.
     private static AppTarget? DirectTarget(string direct)
     {
         if (!direct.EndsWith(ExeEnding, StringComparison.OrdinalIgnoreCase)) return new AppTarget(direct, string.Empty, string.Empty, IsFile: false);
@@ -75,7 +72,7 @@ public static class AppLookup
         return folders.Select(f => System.IO.Path.Combine(f, direct)).FirstOrDefault(File.Exists) is { } path ? Program(path) : null;
     }
 
-    /// <summary>The Store apps registered for this user, as the package folder names Windows keeps ("SpotifyAB.SpotifyMusic_1.2.3.0_x64__zpdnekdrzrea0").</summary>
+    /// The Store apps registered for this user, as the package folder names Windows keeps ("SpotifyAB.SpotifyMusic_1.2.3.0_x64__zpdnekdrzrea0").
     private static List<string> InstalledStorePackages()
     {
         try
@@ -88,7 +85,7 @@ public static class AppLookup
         catch (IOException) { return new List<string>(); }
     }
 
-    /// <summary>"shell:AppsFolder\Name_PublisherId!AppId" for an installed package: the folder name is Name_Version_Architecture_ResourceId_PublisherId.</summary>
+    /// "shell:AppsFolder\Name_PublisherId!AppId" for an installed package: the folder name is Name_Version_Architecture_ResourceId_PublisherId.
     private static string? StoreAddress(string package, string appId, List<string> installed)
     {
         var folder = installed.FirstOrDefault(n => n.StartsWith(package + "_", StringComparison.OrdinalIgnoreCase));

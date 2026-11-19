@@ -1,14 +1,8 @@
-using OmniControl.App.Audio;
-using OmniControl.App.Audio.Engine;
-using OmniControl.App.Services;
-
 namespace OmniControl.Tests;
 
-/// <summary>
 /// The short words a Mixer row, the Wiring tab and the footer use for the effects engine (<see cref="EffectsRules.Brief"/>), the steady
 /// delay figure (<see cref="StableDelay"/>), the Method menu's enabled and disabled entries (<see cref="EffectsRules.OfferOf"/>), the
 /// footer's two sizes of message and the planner's answer for a program set to Virtual cable.
-/// </summary>
 public class StatusWordsTests
 {
     [Fact]
@@ -222,7 +216,7 @@ public class StatusWordsTests
     public void ADisabledCard_CannotBePicked()
     {
         EffectsRoute? picked = null;
-        var card = new OmniControl.App.Pages.Volume.RouteCard(EffectsRules.RouteCable, r => picked = r);
+        var card = new OmniControl.App.Features.Volume.Pages.RouteCard(EffectsRules.RouteCable, r => picked = r);
         card.Sync(false, EffectsRules.OfferOf(EffectsRules.RouteCable, Facts(1, false, true)));
         card.PickCommand.Execute(null);
         Assert.Null(picked);
@@ -235,7 +229,7 @@ public class StatusWordsTests
     public void UseRecording_SetsTheMethodToRecording_InOneClick()
     {
         EffectsRoute? picked = null;
-        var choice = OmniControl.App.Pages.Volume.RouteChoice.ForProgram(r => picked = r, () => { });
+        var choice = OmniControl.App.Features.Volume.Pages.RouteChoice.ForProgram(r => picked = r, () => { });
         choice.SyncProgram(EffectsRules.RouteCable, Facts(1, false, true));
         Assert.True(choice.RecordingAvailable);
         choice.UseRecording!.Command.Execute(null);
@@ -248,12 +242,12 @@ public class StatusWordsTests
     public void Planner_ProgramOnVirtualCable_WithNoFreePair_SaysNoFreeCable_EvenWhileSilent()
     {
         var s = OwnerPc.Settings();
-        s.Apps.First(a => a.Key == OwnerPc.Spotify).FxRoute = EffectsRules.RouteCable.Id;
-        var playing = new HashSet<string> { OwnerPc.Spotify };
+        s.Apps.First(a => a.Key == OwnerPc.Player).FxRoute = EffectsRules.RouteCable.Id;
+        var playing = new HashSet<string> { OwnerPc.Player };
         var none = new HashSet<string>();
         var plan = RoutePlanner.Make(new PlanInput(OwnerPc.Support, true, s, playing, none, none, OwnerPc.Playback,
             OwnerPc.Recording, none));
-        var status = plan.Blocked[OwnerPc.Spotify];
+        var status = plan.Blocked[OwnerPc.Player];
         Assert.Equal(EngineState.Unavailable, status.State);
         Assert.Equal(StatusKind.NoFreeCable, status.Kind);
         Assert.Equal("No free cable", status.Brief);

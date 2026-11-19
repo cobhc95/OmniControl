@@ -1,13 +1,10 @@
 using OmniControl.Core.Interfaces;
-using OmniControl.Core.Native;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// Opens the DDC/CI monitors: every display that has a physical monitor handle (a laptop's own panel has none). Windows is asked first how
 /// many physical monitors a display has: a display that mirrors two would refuse a request for one, and the whole display would be lost.
 /// The first is kept (the display is one entry); the others are released at once.
-/// </summary>
 public sealed class MonitorEnumerator : IMonitorEnumerator
 {
     public List<IMonitor> Enumerate()

@@ -1,0 +1,67 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Features.Resources.Pages"
+             xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+             x:Class="OmniControl.App.Features.Resources.Pages.AppNetRow"
+             x:DataType="vm:AppNetItem">
+    <!-- One Network by app row: Pin | App (icon, name, technical name muted, "not running") | Down | Up | Upload limit | Download limit | On,
+         columns shared with the group's headings; dimmed while a pinned program is not running (its controls stay usable). -->
+    <Grid ColumnSpacing="{StaticResource MenuGap}" Classes.unavailable="{Binding NotRunning}" ContextRequested="OnRowContext">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" SharedSizeGroup="NetPin" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="NetDown" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="NetUp" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="NetUpLimit" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="NetDownLimit" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="NetOn" />
+        </Grid.ColumnDefinitions>
+        <Button Classes="pin" Classes.on="{Binding IsPinned}" Tag="scope" Command="{Binding TogglePinCommand}" ToolTip.Tip="{Binding PinTip}">
+            <Path Classes="glyph" Data="{StaticResource Icon.pinned}" />
+        </Button>
+        <Grid Grid.Column="1" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource MenuGap}">
+            <Border Classes="rowicon">
+                <Panel>
+                    <Image Source="{Binding Picture}" IsVisible="{Binding HasPicture}" />
+                    <c:IconGlyph LibraryId="app" IsVisible="{Binding !HasPicture}" />
+                </Panel>
+            </Border>
+            <TextBlock Grid.Column="1" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding NameTip}" VerticalAlignment="Center">
+                <Run Text="{Binding Name}" />
+                <Run Text="{Binding Technical}" Foreground="{DynamicResource BrushMuted}" FontSize="{DynamicResource MenuSmallFontSize}" />
+            </TextBlock>
+            <Border Grid.Column="2" Classes="tag" IsVisible="{Binding NotRunning}" VerticalAlignment="Center"
+                    ToolTip.Tip="Not seen using the network since OmniControl started; its limits and block apply when it does.">
+                <TextBlock Text="not running" />
+            </Border>
+        </Grid>
+        <TextBlock Grid.Column="2" Text="{Binding Down}" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="3" Text="{Binding Up}" VerticalAlignment="Center" />
+        <Button Grid.Column="4" x:Name="UploadChip" Classes="selector" Classes.running="{Binding UploadSet}" Tag="scope" HorizontalAlignment="Left"
+                ToolTip.Tip="Upload limit (a Windows throttle rule)">
+            <Button.Flyout>
+                <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft" Opened="OnUploadOpened">
+                    <c:MenuRowList x:Name="UploadMenu" Title="Upload limit" />
+                </c:ListMenuFlyout>
+            </Button.Flyout>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapSmall}">
+                <TextBlock Text="{Binding Upload}" TextTrimming="CharacterEllipsis" />
+                <PathIcon Grid.Column="1" Data="{DynamicResource ChevronDownIcon}" />
+            </Grid>
+        </Button>
+        <Button Grid.Column="5" x:Name="DownloadChip" Classes="selector" Classes.running="{Binding DownloadSet}" Tag="scope" HorizontalAlignment="Left"
+                IsEnabled="{Binding DownloadUsable}" ToolTip.Tip="{Binding DownloadTip}" ToolTip.ShowOnDisabled="True">
+            <Button.Flyout>
+                <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft" Opened="OnDownloadOpened">
+                    <c:MenuRowList x:Name="DownloadMenu" Title="Download limit" />
+                </c:ListMenuFlyout>
+            </Button.Flyout>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapSmall}">
+                <TextBlock Text="{Binding Download}" TextTrimming="CharacterEllipsis" />
+                <PathIcon Grid.Column="1" Data="{DynamicResource ChevronDownIcon}" />
+            </Grid>
+        </Button>
+        <ToggleSwitch Grid.Column="6" Classes="plain" Tag="scope" IsChecked="{Binding IsOn}" VerticalAlignment="Center"
+                      ToolTip.Tip="On: the program may use the network. Off: Windows Firewall blocks it." />
+    </Grid>
+</UserControl>

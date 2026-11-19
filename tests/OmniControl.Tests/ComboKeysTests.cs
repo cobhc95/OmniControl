@@ -1,6 +1,5 @@
 using Avalonia.Input;
-using OmniControl.App.Pages;
-using Xunit;
+using OmniControl.App.Shared.Ui.Pages;
 
 namespace OmniControl.Tests;
 

@@ -1,13 +1,10 @@
-﻿using System.Runtime.InteropServices;
+﻿namespace OmniControl.Core.Engine;
 
-namespace OmniControl.Core.Engine;
-
-/// <summary>Choosing the playback device per program.</summary>
+/// Choosing the playback device per program.
 public static partial class CoreAudio
 {
     // ---- per-program output device (undocumented Windows 10/11 policy-config interface; the same one Settings uses) ----
 
-    /// <summary>
     /// Sends a program's audio to <paramref name="endpointId"/> (its playback endpoint id), or back to the default device when it is
     /// null or empty, through the processes that own its sound sessions. Windows applies it to streams the program opens afterwards
     /// (measured on build 26300: a stream already open stays where it is). A process that is no longer running is skipped: Windows
@@ -15,7 +12,6 @@ public static partial class CoreAudio
     /// program (.exe), so when it refuses the process that plays (a browser plays from a child process) the topmost process of the
     /// same .exe is asked instead; such a refusal has not been seen with the correct path.
     /// Returns false with a short reason (no final full stop) only when a running process was refused both ways.
-    /// </summary>
     public static bool TrySetProgramDevice(IEnumerable<int> processIds, string? endpointId, out string error)
     {
         error = string.Empty;
@@ -31,16 +27,14 @@ public static partial class CoreAudio
         return true;
     }
 
-    /// <summary>DEVINTERFACE_AUDIO_RENDER (KSCATEGORY_RENDER), the device interface class of every playback endpoint.</summary>
+    /// DEVINTERFACE_AUDIO_RENDER (KSCATEGORY_RENDER), the device interface class of every playback endpoint.
     private const string AudioRenderInterface = "{e6327cad-dcec-4949-ae8a-991e976a79d2}";
 
-    /// <summary>
     /// The playback endpoint's device interface path, the form the per-program policy takes. A wrong path (the class id once ended in
     /// ...79d4 here) makes Windows answer 0x80070057 for every device while clearing still works.
-    /// </summary>
     public static string RenderInterfacePath(string endpointId) => $@"\\?\SWD#MMDEVAPI#{endpointId}#{AudioRenderInterface}";
 
-    /// <summary>One process; false with a short reason (no final full stop) when Windows doesn't support it or refuses.</summary>
+    /// One process; false with a short reason (no final full stop) when Windows doesn't support it or refuses.
     private static unsafe bool TrySetAppDevice(int pid, string? endpointId, out string error)
     {
         error = string.Empty;

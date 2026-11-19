@@ -1,10 +1,10 @@
-using OmniControl.App.Display;
-using OmniControl.App.Pages;
-using OmniControl.App.Pages.Displays;
+using OmniControl.App.Features.Displays;
+using OmniControl.App.Shared.Ui.Pages;
+using OmniControl.App.Features.Displays.Pages;
 
 namespace OmniControl.Tests;
 
-/// <summary>The Software group's preset drop-down (the shared <see cref="ProviderChoice"/> over its <see cref="PicturePresetBook"/>): what it lists and reads (pure), and that picking applies through the given function (a fake; no display is touched).</summary>
+/// The Software group's preset drop-down (the shared <see cref="ProviderChoice"/> over its <see cref="PicturePresetBook"/>): what it lists and reads (pure), and that picking applies through the given function (a fake; no display is touched).
 public class DisplayPresetPickerTests
 {
     private static DisplayPreset Preset(string name, int brightness = 100, int saturation = 100, bool invert = false)

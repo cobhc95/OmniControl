@@ -1,39 +1,35 @@
-using System.ComponentModel;
-using System.Diagnostics;
-
 namespace OmniControl.Core.Engine;
 
-/// <summary>Why a helper program did not finish normally.</summary>
+/// Why a helper program did not finish normally.
 public enum HelperFailure
 {
-    /// <summary>It ran and ended; look at the exit code.</summary>
+    /// It ran and ended; look at the exit code.
     None,
-    /// <summary>The user said No to the administrator prompt.</summary>
+    /// The user said No to the administrator prompt.
     Cancelled,
-    /// <summary>Windows App Control (Smart App Control, WDAC, AppLocker) refused to start the file.</summary>
+    /// Windows App Control (Smart App Control, WDAC, AppLocker) refused to start the file.
     Blocked,
-    /// <summary>It could not be started for another reason (missing file, ...).</summary>
+    /// It could not be started for another reason (missing file, ...).
     NotStarted,
-    /// <summary>It is still running after the wait (an installer the user is still clicking through).</summary>
+    /// It is still running after the wait (an installer the user is still clicking through).
     StillRunning,
 }
 
-/// <summary>How a helper program ended: its exit code, or why it did not end normally, and the technical detail for the log.</summary>
+/// How a helper program ended: its exit code, or why it did not end normally, and the technical detail for the log.
 public sealed record HelperResult(int ExitCode, HelperFailure Failure, string Detail);
 
-/// <summary>Starts a helper program (OmniControl's own elevated setup mode, an installer) and waits for it. Call off the UI thread.</summary>
+/// Starts a helper program (Equalizer APO's Configurator, Windows' netcfg) elevated and waits for it. Call off the UI thread.
 public static class HelperProcess
 {
-    /// <summary>Windows' "the user said No to the administrator prompt" error.</summary>
+    /// Windows' "the user said No to the administrator prompt" error.
     private const int Cancelled = 1223;
 
-    /// <summary>
-    /// Runs a program with the administrator prompt (UAC) and waits for it; the user may refuse. It starts in its own folder:
-    /// Equalizer APO's Qt programs find their "qt" plugin folder relative to the current folder and otherwise fail with
-    /// "no Qt platform plugin could be initialized".
-    /// </summary>
+    /// Runs a program as administrator and waits for it: Windows asks (UAC) unless OmniControl already runs as administrator; the user may
+    /// refuse. It starts in its own folder: Equalizer APO's Qt programs find their "qt" plugin folder relative to the current folder and
+    /// otherwise fail with "no Qt platform plugin could be initialized".
     /// <param name="waitMs">How long to wait for it to end (<see cref="HelperFailure.StillRunning"/> after that).</param>
-    public static HelperResult RunElevated(string exe, string arguments, int waitMs = CoreTiming.ElevatedHelperTimeoutMs)
+    /// <param name="hidden">A console tool: no window is shown.</param>
+    public static HelperResult RunElevated(string exe, string arguments, int waitMs = CoreTiming.ElevatedHelperTimeoutMs, bool hidden = false)
     {
         var name = Path.GetFileName(exe);
         try
@@ -43,6 +39,7 @@ public static class HelperProcess
                 UseShellExecute = true,
                 Verb = "runas",
                 WorkingDirectory = Path.GetDirectoryName(Path.GetFullPath(exe)) ?? string.Empty,
+                WindowStyle = hidden ? ProcessWindowStyle.Hidden : ProcessWindowStyle.Normal,
             });
             if (process is null) return new HelperResult(-1, HelperFailure.NotStarted, $"{name} did not start.");
             if (!process.WaitForExit(waitMs))

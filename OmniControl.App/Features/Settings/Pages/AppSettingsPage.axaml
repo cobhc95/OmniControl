@@ -1,0 +1,34 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Features.Settings.Pages"
+             xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
+             xmlns:restore="using:OmniControl.App.Shared.Ui.Restore"
+             x:Class="OmniControl.App.Features.Settings.Pages.AppSettingsPage"
+             x:DataType="vm:AppSettingsPageViewModel">
+    <StackPanel Spacing="6">
+        <StackPanel x:Name="CardsHost" Grid.IsSharedSizeScope="True">
+            <pages:GroupCard x:Name="AppearanceCard" Group="{Binding Appearance}">
+                <ListBox Classes="rows compact cards" ItemsSource="{Binding AppearanceItems}"></ListBox>
+            </pages:GroupCard>
+            <pages:GroupCard x:Name="StartCard" Group="{Binding StartAndClose}">
+                <ListBox Classes="rows compact cards" ItemsSource="{Binding StartItems}"></ListBox>
+            </pages:GroupCard>
+            <pages:GroupCard x:Name="DataCard" Group="{Binding YourData}">
+                <ListBox Classes="rows compact cards" ItemsSource="{Binding DataItems}"></ListBox>
+            </pages:GroupCard>
+            <pages:GroupCard x:Name="PluginsCard" Group="{Binding PlugIns}">
+                <ListBox Classes="rows compact cards" ItemsSource="{Binding PluginItems}"></ListBox>
+            </pages:GroupCard>
+            <!-- Updates and about: "Check now" is the pill at the right of the title line (the master group-tool pill) -->
+            <pages:GroupCard x:Name="UpdatesCard" Group="{Binding UpdatesAndAbout}">
+                <pages:GroupCard.Tools>
+                    <Button Classes="pill" Tag="grouptool" Content="Check now" Command="{Binding CheckNowCommand}" VerticalAlignment="Center"
+                            ToolTip.Tip="Look for a newer version now" />
+                </pages:GroupCard.Tools>
+                <ListBox Classes="rows compact cards" ItemsSource="{Binding UpdateItems}"></ListBox>
+            </pages:GroupCard>
+        </StackPanel>
+        <restore:RestoreLine DataContext="{Binding RestoreAll}" HorizontalAlignment="Left" />
+        <TextBlock Classes="hint" Text="{Binding StartupNote}" IsVisible="{Binding StartupNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
+    </StackPanel>
+</UserControl>

@@ -1,20 +1,18 @@
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// A VST2 plug-in's settings as a host's own parameter list sees them (ported from TabForge's <c>Vst2Plugin.Parameters</c>): every
 /// parameter by its index with the plug-in's name, its own display text and label, and a 0..1 value. VST2 has no steps, units of
 /// its own, groups or defaults: the list is continuous, a typed number is a percent of the range, and the default is the value the
 /// plug-in had when it was loaded. Changes are made under the audio lock, so they never run beside the plug-in's processing.
-/// </summary>
 internal sealed unsafe partial class Vst2Effect
 {
-    /// <summary>More parameters than this are not listed or saved (the plug-in's count is not trusted blindly).</summary>
+    /// More parameters than this are not listed or saved (the plug-in's count is not trusted blindly).
     private const int MaxParameters = 65536;
 
-    /// <summary>A stored value further from 0..1 than this is skipped when loading (some plug-ins keep values past 0..1; absurd ones are damage).</summary>
+    /// A stored value further from 0..1 than this is skipped when loading (some plug-ins keep values past 0..1; absurd ones are damage).
     private const float MaxStoredValue = 1e6f;
 
-    /// <summary>Every parameter's value right after loading, before saved settings were given back: the plug-in's own defaults.</summary>
+    /// Every parameter's value right after loading, before saved settings were given back: the plug-in's own defaults.
     private readonly float[] _defaults = Array.Empty<float>();
 
     private IReadOnlyList<PluginParam>? _parameters;
@@ -44,7 +42,7 @@ internal sealed unsafe partial class Vst2Effect
         }
     }
 
-    /// <summary>VST2 can only describe the current value: its display text with its label ("-6.0 dB"); <paramref name="value"/> is the one just set.</summary>
+    /// VST2 can only describe the current value: its display text with its label ("-6.0 dB"); <paramref name="value"/> is the one just set.
     public string TextOf(uint id, double value)
     {
         if (id >= ParameterCount) return string.Empty;
@@ -53,7 +51,7 @@ internal sealed unsafe partial class Vst2Effect
         return label.Length > 0 && shown.Length > 0 && !shown.EndsWith(label, StringComparison.Ordinal) ? $"{shown} {label}" : shown;
     }
 
-    /// <summary>VST2 has no values in units of their own: typing uses the percent of the range (0-100).</summary>
+    /// VST2 has no values in units of their own: typing uses the percent of the range (0-100).
     public double PlainOf(uint id) => ValueOf(id) * Models.Percent.Max;
 
     public void SetPlain(uint id, double plain) => Set(id, plain / Models.Percent.Max);
@@ -68,7 +66,7 @@ internal sealed unsafe partial class Vst2Effect
 
     private static double Finite(float value) => float.IsFinite(value) ? value : 0;
 
-    /// <summary>Every parameter's value as the plug-in has it now.</summary>
+    /// Every parameter's value as the plug-in has it now.
     private float[] ReadValues()
     {
         var values = new float[ParameterCount];
@@ -76,7 +74,7 @@ internal sealed unsafe partial class Vst2Effect
         return values;
     }
 
-    /// <summary>The values with the parameters' names, as they are saved (Equalizer APO finds them by name).</summary>
+    /// The values with the parameters' names, as they are saved (Equalizer APO finds them by name).
     private IReadOnlyList<(string Name, float Value)> Named(float[] values)
     {
         var named = new (string, float)[values.Length];

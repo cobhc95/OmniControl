@@ -1,12 +1,12 @@
-using OmniControl.App.Automation;
-using OmniControl.App.Hotkeys;
-using OmniControl.App.Mouse;
-using OmniControl.App.States;
-using Xunit;
+using OmniControl.App.Features.Hotkeys.Actions;
+using OmniControl.App.Features.Automation;
+using OmniControl.App.Shared.Contracts;
+using OmniControl.App.Features.Input.Mouse;
+using OmniControl.App.Features.States;
 
 namespace OmniControl.Tests;
 
-/// <summary>The master list of states, the "When a state changes" / "When an action runs" triggers and the loop limits (no UI, no Windows).</summary>
+/// The master list of states, the "When a state changes" / "When an action runs" triggers and the loop limits (no UI, no Windows).
 public class StateTriggerTests
 {
     private static StateRegistry NewRegistry(RunChain? chain = null) => new(work => work(), () => chain);

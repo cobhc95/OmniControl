@@ -1,18 +1,15 @@
-using OmniControl.Core.Models;
-using OmniControl.Core.Native;
-
 namespace OmniControl.Core.Engine;
 
-/// <summary>The arithmetic of a gamma ramp (pure, no Windows calls): the picture settings of <see cref="SoftwareColor"/> as three 256-entry curves.</summary>
+/// The arithmetic of a gamma ramp (pure, no Windows calls): the picture settings of <see cref="SoftwareColor"/> as three 256-entry curves.
 internal static class RampMath
 {
     private const int Steps = 256, Last = Steps - 1;
     private const double Full = ushort.MaxValue;
 
-    /// <summary>A colour channel is never dimmed below this share of itself by the temperature, so no channel can vanish.</summary>
+    /// A colour channel is never dimmed below this share of itself by the temperature, so no channel can vanish.
     private const double LeastChannel = 0.2;
 
-    /// <summary>The ramp that changes nothing: entry i is i/255 of full scale.</summary>
+    /// The ramp that changes nothing: entry i is i/255 of full scale.
     public static ushort[] Identity()
     {
         var ramp = new ushort[GammaNative.RampLength];
@@ -22,10 +19,8 @@ internal static class RampMath
         return ramp;
     }
 
-    /// <summary>
     /// True when a ramp read from a display looks like a real one (rising, and reaching most of full scale). A driver that returns
     /// zeros must not be taken as the picture to go back to.
-    /// </summary>
     public static bool IsSane(ushort[] ramp)
     {
         if (ramp.Length != GammaNative.RampLength) return false;
@@ -38,12 +33,10 @@ internal static class RampMath
         return true;
     }
 
-    /// <summary>
     /// The ONE computation of a display's ramp, laid over <paramref name="original"/> so a calibration the display already has is kept.
     /// Each colour of the picture goes through these steps in this order, so no two settings fight: contrast about mid-grey, gamma,
     /// black and white level (lift and limit), brightness, then per channel the colour temperature and the channel's gain, and last
     /// the display's own curve. Every neutral value leaves its step out of the way, so the neutral picture is the original ramp.
-    /// </summary>
     public static ushort[] Build(SoftwareColor color, ushort[] original)
     {
         color = color.Clamped();
@@ -66,10 +59,10 @@ internal static class RampMath
         return ramp;
     }
 
-    /// <summary>The curve exponent of a gamma step (see <see cref="SoftwareColor.GammaMin"/>): 1 is neutral.</summary>
+    /// The curve exponent of a gamma step (see <see cref="SoftwareColor.GammaMin"/>): 1 is neutral.
     public static double GammaOf(int step) => 1 + step / 100.0;
 
-    /// <summary>The original curve at a fractional position (0-1), by linear interpolation.</summary>
+    /// The original curve at a fractional position (0-1), by linear interpolation.
     private static ushort Lookup(ushort[] original, int channel, double position)
     {
         var at = Math.Clamp(position, 0, 1) * Last;
@@ -80,7 +73,7 @@ internal static class RampMath
         return (ushort)Math.Round(a + (b - a) * (at - low));
     }
 
-    /// <summary>How much of each channel (red, green, blue) a colour temperature lets through, relative to the neutral white point.</summary>
+    /// How much of each channel (red, green, blue) a colour temperature lets through, relative to the neutral white point.
     public static double[] Tint(int kelvin)
     {
         var target = WhitePoint(kelvin);
@@ -90,7 +83,7 @@ internal static class RampMath
         return share.Select(s => Math.Max(s / peak, LeastChannel)).ToArray();
     }
 
-    /// <summary>Approximate colour of a black body at <paramref name="kelvin"/> as red, green, blue shares (0-1); the usual curve fit (Tanner Helland).</summary>
+    /// Approximate colour of a black body at <paramref name="kelvin"/> as red, green, blue shares (0-1); the usual curve fit (Tanner Helland).
     private static double[] WhitePoint(int kelvin)
     {
         var t = kelvin / 100.0;

@@ -1,0 +1,34 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Features.Volume.Pages"
+             xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
+             x:Class="OmniControl.App.Features.Volume.Pages.WiringTable"
+             x:DataType="vm:VolumeGroup">
+    <!-- One Wiring table (Outputs or Microphones): the group's header with its action at the right (Microphones: "+ Combine
+         microphones", Button.pill.cardaction.main; dimmed with its reason while it can't work), the column titles (Source | Plays on or Records from | Cable, in the rows' shared
+         columns, set in by a compact row's padding and border), then the rows (WiringRowView) -->
+    <Border Classes="groupPanel">
+        <StackPanel Spacing="6">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource WiringColumnGap}">
+                <pages:GroupHeader />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource MenuGap}" VerticalAlignment="Center" IsVisible="{Binding HasTool}">
+                    <!-- Dimmed (with the reason as its tooltip) while a new combined device can't work now -->
+                    <Button Tag="grouptool" Classes="pill cardaction main" IsEnabled="{Binding ToolGate.IsAvailable}"
+                            Content="{Binding Tool.Label}" Command="{Binding Tool.Command}" ToolTip.Tip="{Binding ToolTipText}" ToolTip.ShowOnDisabled="True" />
+                </StackPanel>
+            </Grid>
+            <Grid ColumnSpacing="{StaticResource WiringColumnGap}" Margin="{StaticResource RowHeadingInset}" IsVisible="{Binding IsExpanded}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="WiringSource" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="WiringCable" />
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="WiringRemove" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Classes="muted small" Text="Source" />
+                <TextBlock Grid.Column="1" Classes="muted small" Text="{Binding RouteColumn}" />
+                <TextBlock Grid.Column="2" Classes="muted small" Text="Cable" />
+            </Grid>
+            <ListBox Classes="rows compact" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}" />
+        </StackPanel>
+    </Border>
+</UserControl>

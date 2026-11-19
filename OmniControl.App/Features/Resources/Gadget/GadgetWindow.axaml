@@ -1,0 +1,18 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+        xmlns:g="using:OmniControl.App.Features.Resources.Gadget"
+        x:Class="OmniControl.App.Features.Resources.Gadget.GadgetWindow"
+        Classes="taskbargadget" Title="OmniControl gadget" ShowActivated="False">
+    <!-- The taskbar gadget: its cells, the dashed edge on hover when "Outline on hover" is on, and the right-click menu (mouse first). -->
+    <Panel x:Name="Root" Classes="gadgethit" PointerEntered="OnPointerEntered" PointerExited="OnPointerExited" Tapped="OnTapped" DoubleTapped="OnDoubleTapped"
+           ContextRequested="OnContextRequested">
+        <FlyoutBase.AttachedFlyout>
+            <c:ListMenuFlyout Placement="Top">
+                <c:MenuRowList x:Name="Menu" />
+            </c:ListMenuFlyout>
+        </FlyoutBase.AttachedFlyout>
+        <g:GadgetCells x:Name="Cells" />
+        <Rectangle x:Name="Frame" Classes="osdframe" IsVisible="False" />
+    </Panel>
+</Window>

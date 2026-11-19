@@ -1,9 +1,9 @@
 using Avalonia.Controls;
-using OmniControl.App.Pages;
+using OmniControl.App.Shared.Ui.Pages;
 
 namespace OmniControl.Tests;
 
-/// <summary>The wheel changes a ‹ value › selector only while the pointer is over the selector, never over the label or empty space.</summary>
+/// The wheel changes a ‹ value › selector only while the pointer is over the selector, never over the label or empty space.
 public class ValueWheelSelectorTests
 {
     private static (Panel row, TextBlock label, Border selector, TextBlock value, Panel empty) Row()

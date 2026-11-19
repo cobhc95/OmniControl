@@ -1,0 +1,55 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ctl="using:OmniControl.App.Shared.Ui.Controls"
+        xmlns:pages="using:OmniControl.App.Shared.Ui.Pages">
+    <!-- MASTER knob (Controls/Knob, MAP.md "Master UI pieces"): the drawn face (Controls/KnobFace: a 270 degree grey track, the
+         accent value arc, a pointer line, a pan knob's centre mark) and the value words under it, which a click or double-click on them
+         (or the face's single or right click) turns into a small box for typing (Pages/NumberText; the box never resets the knob). Same size everywhere: Knob* in
+         App.axaml. Hover lightens the track; keyboard focus draws the accent ring (no default outline); adjusting (.active, Enter in a card
+         list) keeps the ring; disabled = dimmed. Included after Theme.axaml. -->
+    <Style Selector="ctl|Knob">
+        <Setter Property="MinWidth" Value="{DynamicResource KnobColumnWidth}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="FocusAdorner" Value="{x:Null}" />
+        <Setter Property="Cursor" Value="Arrow" />
+        <Setter Property="TrackBrush" Value="{DynamicResource BrushControlTrack}" />
+        <Setter Property="ValueBrush" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="PointerBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <!-- The background takes the press over the whole knob, its words included -->
+                <StackPanel Background="{TemplateBinding Background}" Spacing="{DynamicResource KnobTextGap}">
+                    <ctl:KnobFace Width="{DynamicResource KnobSize}" Height="{DynamicResource KnobSize}" HorizontalAlignment="Center"
+                                  Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}" Value="{TemplateBinding Value}"
+                                  FromCentre="{TemplateBinding FromCentre}" TrackBrush="{TemplateBinding TrackBrush}"
+                                  ValueBrush="{TemplateBinding ValueBrush}" PointerBrush="{TemplateBinding PointerBrush}"
+                                  RingBrush="{TemplateBinding RingBrush}"
+                                  ArcThickness="{DynamicResource KnobArcThickness}" PointerThickness="{DynamicResource KnobPointerThickness}" />
+                    <pages:NumberText HorizontalAlignment="Center"
+                                      Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}"
+                                      Value="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                        <TextBlock Classes="knobvalue" Text="{TemplateBinding Text}" />
+                    </pages:NumberText>
+                </StackPanel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="ctl|Knob TextBlock.knobvalue">
+        <Setter Property="FontSize" Value="{DynamicResource KnobFontSize}" />
+        <Setter Property="Foreground" Value="{DynamicResource BrushMuted}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <!-- The typing box takes the knob's width, so the row does not move while a value is typed -->
+    <Style Selector="ctl|Knob TextBox.typednumber">
+        <Setter Property="MinWidth" Value="{DynamicResource KnobColumnWidth}" />
+        <Setter Property="Width" Value="{DynamicResource KnobColumnWidth}" />
+        <Setter Property="FontSize" Value="{DynamicResource KnobFontSize}" />
+        <Setter Property="Padding" Value="2,0" />
+        <Setter Property="TextAlignment" Value="Center" />
+    </Style>
+    <Style Selector="ctl|Knob:pointerover"><Setter Property="TrackBrush" Value="{DynamicResource BrushHoverEdge}" /></Style>
+    <Style Selector="ctl|Knob:focus-visible, ctl|Knob.active"><Setter Property="RingBrush" Value="{DynamicResource BrushAccent}" /></Style>
+    <Style Selector="ctl|Knob:disabled"><Setter Property="Opacity" Value="0.45" /></Style>
+</Styles>

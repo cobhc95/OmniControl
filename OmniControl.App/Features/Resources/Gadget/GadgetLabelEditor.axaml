@@ -1,0 +1,56 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+             xmlns:g="using:OmniControl.App.Features.Resources.Gadget"
+             x:Class="OmniControl.App.Features.Resources.Gadget.GadgetLabelEditor"
+             x:DataType="g:GadgetRowItem">
+    <!-- The label editor (a listmenu pop-down, mouse first; it takes the pop-down's width, so the chips wrap): the label line and "+ icon", the
+         icon colour dots (the token clicked into, else every icon), the icon grids drawn in that colour (the reading's suggested grid first; even lines, no lone icon), the quick chips, Gap after, the gadget's line now. -->
+    <StackPanel Spacing="{StaticResource Gap}">
+        <TextBlock Classes="menutext" Text="{Binding EditorTitle}" TextWrapping="Wrap" />
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}">
+            <TextBox x:Name="LabelBox" Classes="field" Text="{Binding Label}" ToolTip.Tip="Words as typed; an icon is written {name}" />
+            <Button Grid.Column="1" Classes="pill" Content="+ icon" Click="OnChooseIcon" ToolTip.Tip="Any icon of the library" />
+        </Grid>
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource GapLarge}">
+            <TextBlock Text="Icon colour" VerticalAlignment="Center" ToolTip.Tip="The icon clicked in the label, or every icon when none is" />
+            <c:SwatchList Grid.Column="1" ItemsSource="{Binding IconColours}" />
+        </Grid>
+        <ItemsControl ItemsSource="{Binding IconGrids}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><StackPanel Spacing="{StaticResource Gap}" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="g:LabelIconGroup">
+                    <StackPanel Spacing="{StaticResource GapSmall}">
+                        <TextBlock Classes="menutext" Text="{Binding Name}" />
+                        <ItemsControl ItemsSource="{Binding Icons}" HorizontalAlignment="Left">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><UniformGrid Columns="{Binding Columns}" /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="g:LabelIconItem">
+                                    <Button Classes="iconcell" Classes.selected="{Binding IsSelected}" Command="{Binding Pick}" ToolTip.Tip="{Binding Name}">
+                                        <c:IconGlyph LibraryId="{Binding Id}" Foreground="{Binding Ink}" />
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Border Classes="hrule" />
+        <c:ChoiceChips ItemsSource="{Binding QuickChips}" />
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource GapLarge}">
+            <TextBlock Text="Gap after" VerticalAlignment="Center" />
+            <c:SliderField Grid.Column="1" Minimum="0" Maximum="{Binding GapMax}" Value="{Binding GapAfter}" ResetValue="0" Text="{Binding GapText}" />
+        </Grid>
+        <Border Classes="hrule" />
+        <Border Background="{Binding LineBackground}" CornerRadius="{DynamicResource TypeableCornerRadius}" ClipToBounds="True">
+            <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Left">
+                <g:GadgetCells Cells="{Binding Line}" Layout="{Binding LineLayout}" />
+            </Viewbox>
+        </Border>
+    </StackPanel>
+</UserControl>

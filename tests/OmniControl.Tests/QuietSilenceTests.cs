@@ -1,14 +1,8 @@
-using OmniControl.App.Audio;
-using OmniControl.App.Audio.Engine;
-using OmniControl.Core.Engine;
-
 namespace OmniControl.Tests;
 
-/// <summary>
 /// The quiet way of silencing a recorded program (<see cref="SilenceMethod.Quiet"/>): the stored Test results, the check, and the pipe's
-/// make-up gain with its ceiling. Live on the owner's PC (own test process, see HANDOVER) the session volume scaled the program's
+/// make-up gain with its ceiling. Live on the reference PC (own test process) the session volume scaled the program's
 /// recording linearly (1e-4 = -80.00 dB) and the made-up recording came back at -26.03 dBFS from a -26.02 dBFS tone.
-/// </summary>
 public class QuietSilenceTests
 {
     private static float[] Tone(float peak, int frames = 4800)

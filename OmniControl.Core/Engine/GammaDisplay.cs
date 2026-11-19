@@ -1,32 +1,25 @@
-using System.ComponentModel;
-using System.Runtime.InteropServices;
-using OmniControl.Core.Models;
-using OmniControl.Core.Native;
-
 namespace OmniControl.Core.Engine;
 
-/// <summary>One display's gamma ramp as the software picture needs it; <see cref="GammaDisplay"/> is the Windows one, a test has its own.</summary>
+/// One display's gamma ramp as the software picture needs it; <see cref="GammaDisplay"/> is the Windows one, a test has its own.
 public interface IGammaDisplay
 {
-    /// <summary>The display's ramp as it was before OmniControl changed it; null until captured.</summary>
+    /// The display's ramp as it was before OmniControl changed it; null until captured.
     ushort[]? Original { get; }
 
-    /// <summary>True once the driver has shown it does not give or take ramps from programs (its own ramp could not be read, or the last good one written again was refused too).</summary>
+    /// True once the driver has shown it does not give or take ramps from programs (its own ramp could not be read, or the last good one written again was refused too).
     bool DriverRefuses { get; }
 
     OperationResult Capture();
     OperationResult Apply(SoftwareColor color);
 }
 
-/// <summary>
 /// The software picture of one display (brightness, contrast, gamma, black and white level, channel gains, colour temperature) by
 /// setting its gamma ramp. Before the first change the display's own ramp is captured (<see cref="Capture"/>) so a neutral
 /// <see cref="Apply"/> can put exactly that back; a caller that must survive a crash saves <see cref="Original"/> first and writes it back with
 /// <see cref="Write"/> at the next start.
-/// </summary>
 public sealed class GammaDisplay : IGammaDisplay
 {
-    /// <summary>What a driver that takes no ramps from programs is called, in a card's tooltip.</summary>
+    /// What a driver that takes no ramps from programs is called, in a card's tooltip.
     public const string DriverRefusal = "Not supported by this display's driver";
 
     private ushort[]? _lastGood;
@@ -39,7 +32,7 @@ public sealed class GammaDisplay : IGammaDisplay
 
     public GammaDisplay(string deviceName) => DeviceName = deviceName;
 
-    /// <summary>Reads and keeps the display's current ramp (once). Fails when Windows will not give it.</summary>
+    /// Reads and keeps the display's current ramp (once). Fails when Windows will not give it.
     public OperationResult Capture()
     {
         if (Original is not null) return OperationResult.Ok();
@@ -55,11 +48,9 @@ public sealed class GammaDisplay : IGammaDisplay
         return OperationResult.Ok();
     }
 
-    /// <summary>
     /// Applies <paramref name="color"/> (its values limited to the safe ranges). Capture first; neutral puts the original back. When
     /// Windows refuses a ramp, the ramp that worked last is written again: if even that is refused the driver takes no ramps at all
     /// (<see cref="DriverRefuses"/>), otherwise only this value was too far from normal.
-    /// </summary>
     public OperationResult Apply(SoftwareColor color)
     {
         if (Original is null) return OperationResult.Fail("The display's own colour curve was not captured.");
@@ -77,7 +68,7 @@ public sealed class GammaDisplay : IGammaDisplay
         return OperationResult.Fail(DriverRefuses ? DriverRefusal : "Windows refused this setting for this display. Try a value closer to normal.");
     }
 
-    /// <summary>Sets a ramp on a display by its device name.</summary>
+    /// Sets a ramp on a display by its device name.
     public static OperationResult Write(string deviceName, ushort[] ramp)
     {
         if (ramp.Length != GammaNative.RampLength) return OperationResult.Fail("That is not a colour curve.");
@@ -92,7 +83,7 @@ public sealed class GammaDisplay : IGammaDisplay
         finally { GammaNative.DeleteDC(dc); }
     }
 
-    /// <summary>The ramp a display has now, or null when Windows will not say.</summary>
+    /// The ramp a display has now, or null when Windows will not say.
     public static ushort[]? Read(string deviceName)
     {
         var dc = GammaNative.CreateDC(null, deviceName, null, IntPtr.Zero);

@@ -1,13 +1,11 @@
-using System.ComponentModel;
-using System.Diagnostics;
 using System.Security.Principal;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>Whether the program runs as administrator, and starting it again as administrator (Windows asks the user once).</summary>
+/// Whether the program runs as administrator, and starting it again as administrator (Windows asks the user once).
 public static class Elevation
 {
-    /// <summary>Windows' "the user said No to the administrator prompt" error.</summary>
+    /// Windows' "the user said No to the administrator prompt" error.
     private const int Cancelled = 1223;
 
     public static bool IsElevated()
@@ -16,12 +14,12 @@ public static class Elevation
         return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
     }
 
-    /// <summary>Starts <paramref name="exe"/> as administrator without waiting for it. None: it started; Cancelled: the user refused the prompt.</summary>
+    /// Starts <paramref name="exe"/> as administrator without waiting for it. None: it started; Cancelled: the user refused the prompt.
     public static HelperFailure StartElevated(string exe, IEnumerable<string> arguments)
     {
         try
         {
-            using var process = Process.Start(new ProcessStartInfo(exe, string.Join(' ', arguments.Select(a => $"\"{a}\""))) { UseShellExecute = true, Verb = "runas" });
+            using var process = Process.Start(new ProcessStartInfo(exe, Quoted(arguments)) { UseShellExecute = true, Verb = "runas" });
             return process is null ? HelperFailure.NotStarted : HelperFailure.None;
         }
         catch (Win32Exception ex) when (ex.NativeErrorCode == Cancelled)
@@ -37,4 +35,7 @@ public static class Elevation
             return HelperFailure.NotStarted;
         }
     }
+
+    /// The arguments as one command line, each in quotes.
+    internal static string Quoted(IEnumerable<string> arguments) => string.Join(' ', arguments.Select(a => $"\"{a}\""));
 }

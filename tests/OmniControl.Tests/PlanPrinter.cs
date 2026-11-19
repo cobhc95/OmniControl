@@ -1,8 +1,6 @@
-using OmniControl.App.Audio.Engine;
-
 namespace OmniControl.Tests;
 
-/// <summary>A plan as text, names instead of endpoint ids, for the test output (the evidence the owner's report quotes).</summary>
+/// A plan as text, names instead of endpoint ids, for the test output.
 internal static class PlanPrinter
 {
     private static string N(string? id) => id switch
@@ -12,9 +10,9 @@ internal static class PlanPrinter
         OwnerPc.Cable16 => "CABLE In 16ch",
         OwnerPc.Speaker => "Speaker",
         OwnerPc.CableA => "CABLE-A Input",
-        OwnerPc.Helium => "Helium",
-        OwnerPc.Spotify => "Spotify",
-        OwnerPc.Claude => "Claude",
+        OwnerPc.Browser => "Browser",
+        OwnerPc.Player => "Player",
+        OwnerPc.Chat => "Chat",
         _ => id,
     };
 

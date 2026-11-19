@@ -3,22 +3,19 @@ using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Numerics;
-using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
-using Microsoft.Win32;
 using OmniControl.Core;
-using OmniControl.Core.Native;
 
 namespace OmniControl.Core.Engine.Wake;
 
-/// <summary>Reads <see cref="WakeFacts"/> from Windows (network connections, the card's power management through WMI, the Fast Startup setting). Reading changes nothing. Call off the UI thread.</summary>
+/// Reads <see cref="WakeFacts"/> from Windows (network connections, the card's power management through WMI, the Fast Startup setting). Reading changes nothing. Call off the UI thread.
 public static class WakeReader
 {
     private const string PowerKey = @"SYSTEM\CurrentControlSet\Control\Session Manager\Power";
 
     private const string AdapterClassKey = @"SYSTEM\CurrentControlSet\Control\Class\" + WakeKeywords.AdapterClass;
 
-    /// <summary>A part of the read failed (text for the log), raised once per distinct text, on the calling thread.</summary>
+    /// A part of the read failed (text for the log), raised once per distinct text, on the calling thread.
     public static event Action<string>? Failed;
 
     private static readonly HashSet<string> Told = new();
@@ -105,7 +102,7 @@ public static class WakeReader
 
     private readonly record struct PermissionRead(bool Found, bool Enabled);
 
-    /// <summary>One line per read saying which source answered each fact (raised once per distinct text), for the log.</summary>
+    /// One line per read saying which source answered each fact (raised once per distinct text), for the log.
     public static event Action<string>? Answered;
 
     private static void Say(string text)
@@ -114,10 +111,10 @@ public static class WakeReader
         Answered?.Invoke(text);
     }
 
-    /// <summary>The card's name as a device in one of Windows' wake lists (the list holds the friendly name, which is the card's interface description).</summary>
+    /// The card's name as a device in one of Windows' wake lists (the list holds the friendly name, which is the card's interface description).
     private static bool Names(HashSet<string> list, NetworkInterface card) => list.Contains(card.Description) || list.Contains(card.Name);
 
-    /// <summary>Runs one source off the calling thread and waits at most <paramref name="waitMs"/>; a source that is slower or fails gives its default (a source is never waited on twice).</summary>
+    /// Runs one source off the calling thread and waits at most <paramref name="waitMs"/>; a source that is slower or fails gives its default (a source is never waited on twice).
     private static T? Bounded<T>(string what, int waitMs, Func<T> read)
     {
         var task = Task.Run(() =>
@@ -156,7 +153,7 @@ public static class WakeReader
         return key?.GetValue("HiberbootEnabled") is int value && value != 0;
     }
 
-    /// <summary>The wired or wireless card that is up and has an IPv4 gateway (the one the PC uses to reach its network).</summary>
+    /// The wired or wireless card that is up and has an IPv4 gateway (the one the PC uses to reach its network).
     private static NetworkInterface? ActiveCard() => NetworkInterface.GetAllNetworkInterfaces().FirstOrDefault(n =>
         n.OperationalStatus == OperationalStatus.Up && n.NetworkInterfaceType is NetworkInterfaceType.Ethernet or NetworkInterfaceType.Wireless80211
         && n.GetIPProperties().GatewayAddresses.Any(g => g.Address.AddressFamily == AddressFamily.InterNetwork && !g.Address.Equals(IPAddress.Any)));
@@ -253,7 +250,7 @@ public static class WakeReader
         _ => int.TryParse(Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture), out var number) ? number : 0,
     };
 
-    /// <summary>The card's plug-and-play device id (what the wake permission is keyed by), from its connection id.</summary>
+    /// The card's plug-and-play device id (what the wake permission is keyed by), from its connection id.
     private static string PnpId(string connectionId)
     {
         using var search = new ManagementObjectSearcher($"SELECT PNPDeviceID FROM Win32_NetworkAdapter WHERE GUID = '{Escape(connectionId)}'");

@@ -1,0 +1,14 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:restore="using:OmniControl.App.Shared.Ui.Restore"
+             x:Class="OmniControl.App.Shared.Ui.Restore.RestoreLine"
+             x:DataType="restore:PageRestore">
+    <!-- What a restore or an undo did, in one calm line, with "Undo" beside it while it can be undone. Nothing shows while the line is empty. -->
+    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" VerticalAlignment="Center">
+        <TextBlock Classes="hint" Text="{Binding Confirmation}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Confirmation}" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Tag="grouptool" Classes="link small" Command="{Binding UndoCommand}" IsVisible="{Binding CanUndo}" VerticalAlignment="Center"
+                ToolTip.Tip="Put the earlier settings back">
+            <TextBlock Text="Undo" />
+        </Button>
+    </Grid>
+</UserControl>

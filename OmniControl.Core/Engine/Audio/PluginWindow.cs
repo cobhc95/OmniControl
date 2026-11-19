@@ -1,8 +1,6 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Engine;
 
-/// <summary>The Windows calls both plug-in editors share: moving a plug-in's own window inside the host window the app gives it.</summary>
+/// The Windows calls both plug-in editors share: moving a plug-in's own window inside the host window the app gives it.
 internal static class PluginWindow
 {
     private const uint GwChild = 5;
@@ -11,10 +9,8 @@ internal static class PluginWindow
     [DllImport("user32.dll")] private static extern IntPtr GetWindow(IntPtr hwnd, uint command);
     [DllImport("user32.dll")] private static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
 
-    /// <summary>
     /// Moves the plug-in's window (the first child of <paramref name="parent"/>) to <paramref name="x"/>, <paramref name="y"/> (pixels;
     /// zero or negative), so a part of an editor larger than its space can be scrolled into view. The parent window clips the rest.
-    /// </summary>
     public static void MoveFirstChild(IntPtr parent, int x, int y)
     {
         if (parent == IntPtr.Zero) return;

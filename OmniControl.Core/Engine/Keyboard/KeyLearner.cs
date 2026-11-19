@@ -1,15 +1,11 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Engine.Keyboard;
 
-/// <summary>One key as the keyboard reports it: its virtual key, its scan code and whether it is an extended key.</summary>
+/// One key as the keyboard reports it: its virtual key, its scan code and whether it is an extended key.
 public sealed record LearnedKey(ushort Vk, ushort Scan, bool Extended);
 
-/// <summary>
 /// Learns one key by listening for it: a low-level keyboard hook on its own message-loop thread, installed only while it waits (the key is
 /// never swallowed, and keys OmniControl itself sent are ignored). It answers with the first key pressed after a short settle time (so the
 /// repeat of the key that started the learning is not taken), or null when none arrives in time or Windows refuses the hook.
-/// </summary>
 public static class KeyLearner
 {
     private const int WhKeyboardLl = 13;
@@ -34,7 +30,7 @@ public static class KeyLearner
     [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr GetModuleHandle(string? name);
 
-    /// <summary>Waits up to <paramref name="timeout"/> for a key; keys pressed in the first <paramref name="settle"/> are ignored.</summary>
+    /// Waits up to <paramref name="timeout"/> for a key; keys pressed in the first <paramref name="settle"/> are ignored.
     public static Task<LearnedKey?> LearnAsync(TimeSpan timeout, TimeSpan settle)
     {
         var done = new TaskCompletionSource<LearnedKey?>(TaskCreationOptions.RunContinuationsAsynchronously);

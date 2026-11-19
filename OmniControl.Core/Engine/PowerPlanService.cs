@@ -1,51 +1,46 @@
-using System.ComponentModel;
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Engine;
 
-/// <summary>One Windows power plan.</summary>
+/// One Windows power plan.
 public sealed record PowerPlan(Guid Id, string Name, bool IsActive);
 
-/// <summary>One entry of a choice setting: the value Windows stores and its friendly name.</summary>
+/// One entry of a choice setting: the value Windows stores and its friendly name.
 public sealed record PowerChoice(uint Index, string Name);
 
-/// <summary>
 /// One setting of a plan as Windows describes it: a number (<see cref="Choices"/> empty; <see cref="Units"/> as Windows names them, such as
 /// "Seconds", "Minutes", "Percentage") with its limits, or a choice among <see cref="Choices"/>.
-/// </summary>
 public sealed record PowerSetting(Guid Id, string Name, string Units, uint Minimum, uint Maximum, uint Increment, IReadOnlyList<PowerChoice> Choices)
 {
     public bool IsChoice => Choices.Count > 0;
 }
 
-/// <summary>A subgroup of settings (Display, Sleep, Processor power management...) and its visible settings.</summary>
+/// A subgroup of settings (Display, Sleep, Processor power management...) and its visible settings.
 public sealed record PowerSubgroup(Guid Id, string Name, IReadOnlyList<PowerSetting> Settings);
 
-/// <summary>The value of one setting on mains power and on battery.</summary>
+/// The value of one setting on mains power and on battery.
 public readonly record struct PowerValue(uint PluggedIn, uint OnBattery);
 
-/// <summary>What the power plan editor needs from Windows; the App talks to this, never to powrprof.</summary>
+/// What the power plan editor needs from Windows; the App talks to this, never to powrprof.
 public interface IPowerPlans
 {
     bool HasBattery { get; }
     IReadOnlyList<PowerPlan> Plans();
     IReadOnlyList<PowerSubgroup> Describe(Guid plan);
 
-    /// <summary>Makes the plan the active one; throws <see cref="Win32Exception"/> when Windows refuses.</summary>
+    /// Makes the plan the active one; throws <see cref="Win32Exception"/> when Windows refuses.
     void Activate(Guid plan);
     PowerValue Read(Guid plan, Guid subgroup, Guid setting);
 
-    /// <summary>Writes the value (and re-applies the plan when it is the active one so it takes effect); throws <see cref="Win32Exception"/> when Windows refuses.</summary>
+    /// Writes the value (and re-applies the plan when it is the active one so it takes effect); throws <see cref="Win32Exception"/> when Windows refuses.
     void Write(Guid plan, Guid subgroup, Guid setting, bool onBattery, uint value);
 
-    /// <summary>True for the plans Windows ships (Windows keeps their defaults; a plan someone made has none to go back to).</summary>
+    /// True for the plans Windows ships (Windows keeps their defaults; a plan someone made has none to go back to).
     bool CanRestoreDefaults(Guid plan);
 
-    /// <summary>Puts every visible setting of the plan back to Windows' default; throws <see cref="Win32Exception"/> when Windows refuses.</summary>
+    /// Puts every visible setting of the plan back to Windows' default; throws <see cref="Win32Exception"/> when Windows refuses.
     void RestoreDefaults(Guid plan);
 }
 
-/// <summary>Lists power plans and reads and writes their settings through powrprof, the way Windows' own power options dialog does (hidden settings are left out).</summary>
+/// Lists power plans and reads and writes their settings through powrprof, the way Windows' own power options dialog does (hidden settings are left out).
 public sealed class PowerPlanService : IPowerPlans
 {
     // The three plans Windows ships; each is also the "personality" its defaults are read by.
@@ -139,7 +134,7 @@ public sealed class PowerPlanService : IPowerPlans
         return new PowerSetting(id, name, units, min, max, step, Array.Empty<PowerChoice>());
     }
 
-    /// <summary>The friendly name of a plan (no subgroup), a subgroup (no setting) or a setting.</summary>
+    /// The friendly name of a plan (no subgroup), a subgroup (no setting) or a setting.
     private static string? NameOf(Guid plan, Guid? group, Guid? setting)
     {
         using var p = new Pinned(plan);
@@ -153,7 +148,7 @@ public sealed class PowerPlanService : IPowerPlans
         if (code != 0) throw new Win32Exception((int)code);
     }
 
-    /// <summary>A GUID in unmanaged memory for the calls that take an optional GUID pointer (zero when there is none).</summary>
+    /// A GUID in unmanaged memory for the calls that take an optional GUID pointer (zero when there is none).
     private sealed class Pinned : IDisposable
     {
         public IntPtr Pointer { get; }

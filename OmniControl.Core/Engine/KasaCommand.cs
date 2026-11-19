@@ -1,27 +1,23 @@
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// python-kasa's command line (<c>kasa</c>): where its program is, how a command template becomes arguments, and how its answers read. The
 /// password is never put in the arguments (they show in process lists): the caller hands it over in <see cref="PasswordVariable"/> (and the
 /// email in <see cref="UserVariable"/>), which kasa reads itself.
-/// </summary>
 public static class KasaCommand
 {
     public const string UserVariable = "KASA_USERNAME", PasswordVariable = "KASA_PASSWORD";
 
-    /// <summary>The placeholders of a command template, filled in at run time.</summary>
+    /// The placeholders of a command template, filled in at run time.
     public const string IpField = "{ip}", EmailField = "{email}", PasswordField = "{password}";
 
-    /// <summary>The email as kasa gets it: trimmed, and in lower case when the template asks (Tapo compares it exactly); the field keeps what was typed.</summary>
+    /// The email as kasa gets it: trimmed, and in lower case when the template asks (Tapo compares it exactly); the field keeps what was typed.
     public static string EmailFor(string email, bool lowerCase) => lowerCase ? email.Trim().ToLowerInvariant() : email.Trim();
 
-    /// <summary>A template's first word that means "the kasa program that was found" (kasa.exe, or python -m kasa).</summary>
+    /// A template's first word that means "the kasa program that was found" (kasa.exe, or python -m kasa).
     public const string Program = "kasa";
 
-    /// <summary>
     /// A template ("kasa --host {ip} on") as its words: quotes group words, {ip} and {email} are filled in, and {password} is never put in:
     /// the word and the option before it ("--password") are left out, because the password travels in <see cref="PasswordVariable"/>.
-    /// </summary>
     public static IReadOnlyList<string> Fill(string template, string ip, string email)
     {
         var words = Split(template);
@@ -38,7 +34,7 @@ public static class KasaCommand
         return filled;
     }
 
-    /// <summary>The words of a command line; double quotes keep spaces inside one word.</summary>
+    /// The words of a command line; double quotes keep spaces inside one word.
     public static IReadOnlyList<string> Split(string line)
     {
         var words = new List<string>();
@@ -58,7 +54,7 @@ public static class KasaCommand
         return words;
     }
 
-    /// <summary>The on/off state in kasa's <c>state</c> answer ("Device state: True", "State: ON"); null when it does not say.</summary>
+    /// The on/off state in kasa's <c>state</c> answer ("Device state: True", "State: ON"); null when it does not say.
     public static bool? StateOf(string printed)
     {
         var m = System.Text.RegularExpressions.Regex.Match(printed, @"(?im)^\s*(device\s+)?state\s*:\s*(true|on|false|off)\b");
@@ -72,15 +68,13 @@ public static class KasaCommand
 
     private const string RaisedError = "Raised error:";
 
-    /// <summary>kasa's output without its noise lines (see <see cref="NoiseMarkers"/>).</summary>
+    /// kasa's output without its noise lines (see <see cref="NoiseMarkers"/>).
     public static IReadOnlyList<string> Meaningful(string printed) =>
         printed.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Where(l => !NoiseMarkers.Any(n => l.Contains(n, StringComparison.OrdinalIgnoreCase))).ToList();
 
-    /// <summary>
     /// The line of kasa's output that says what went wrong, noise dropped: the first "Raised error:" line, else the last line naming an error
     /// or exception (Python ends a traceback with it), else the last line; empty when it printed nothing.
-    /// </summary>
     public static string ProblemLine(string printed)
     {
         var lines = Meaningful(printed);
@@ -90,20 +84,18 @@ public static class KasaCommand
             ?? lines.LastOrDefault() ?? string.Empty;
     }
 
-    /// <summary>Python code that prints the real python.exe (the <c>py</c> launcher and the Store alias only point at it).</summary>
+    /// Python code that prints the real python.exe (the <c>py</c> launcher and the Store alias only point at it).
     public const string ExecutableQuery = "import sys;print(sys.executable)";
 
-    /// <summary>Python code that prints the folders its programs (kasa.exe) are installed in: the main one and the user's own.</summary>
+    /// Python code that prints the folders its programs (kasa.exe) are installed in: the main one and the user's own.
     public const string ScriptsQuery = "import sysconfig,os;print(sysconfig.get_path('scripts'));print(sysconfig.get_path('scripts', os.name + '_user'))";
 
-    /// <summary>The module that runs kasa when its program is not found (<c>python -m kasa</c> does not work: kasa is a package).</summary>
+    /// The module that runs kasa when its program is not found (<c>python -m kasa</c> does not work: kasa is a package).
     public static readonly string[] ModuleLead = { "-m", "kasa.cli" };
 
-    /// <summary>
     /// The kasa program installed with <paramref name="python"/>: <c>kasa.exe</c> in the folders Python named (<paramref name="scriptFolders"/>),
     /// its Scripts folder or its own folder (a virtual environment), the user's Scripts folders of any Python, or a Python of the Python install
     /// manager (<c>%LOCALAPPDATA%\Python\pythoncore-*\Scripts</c>); null when there is none yet.
-    /// </summary>
     public static string? FindExe(string python, IEnumerable<string>? scriptFolders = null)
     {
         var home = Path.GetDirectoryName(python);
@@ -125,7 +117,7 @@ public static class KasaCommand
         return candidates.FirstOrDefault(c => { try { return File.Exists(c); } catch (ArgumentException) { return false; } });
     }
 
-    /// <summary>True when <paramref name="python"/> is only the <c>py</c> launcher or the Microsoft Store alias, not python.exe itself.</summary>
+    /// True when <paramref name="python"/> is only the <c>py</c> launcher or the Microsoft Store alias, not python.exe itself.
     public static bool IsLauncher(string python) =>
         Path.GetFileName(python).Equals("py.exe", StringComparison.OrdinalIgnoreCase) || python.Contains(@"\WindowsApps\", StringComparison.OrdinalIgnoreCase);
 }

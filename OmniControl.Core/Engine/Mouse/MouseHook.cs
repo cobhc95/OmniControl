@@ -1,19 +1,20 @@
 using System.Collections.Concurrent;
-using System.Runtime.InteropServices;
 
 namespace OmniControl.Core.Engine.Mouse;
 
-/// <summary>
 /// System-wide low-level mouse hook on its own message-loop thread. Each handler (<see cref="AddHandler"/>) runs inside the hook, so it must return
 /// quickly (Windows drops slow hooks); it returns true to swallow the input. Input made by <see cref="InputSender"/> is never reported back.
 /// Inputs from other sources (trackpad gestures) are run through the same handlers on the same thread by <see cref="Raise"/>.
-/// </summary>
+/// The low-level hook itself is installed only while something needs it: a handler's own "needs the hook" (its owner's mappings, gestures,
+/// rules, autoscroll...) or a move handler; the owners call <see cref="Recheck"/> when that may have changed. The thread stays, so
+/// <see cref="Raise"/> works either way, and with no hook Windows' mouse input never passes through OmniControl.
 public sealed class MouseHook : IDisposable
 {
     private const int WhMouseLl = 14;
     private const uint WmQuit = 0x0012, WmMouseMove = 0x200;
     private const uint WmRaise = 0x8000 + 1; // WM_APP + 1: an input from another source (a trackpad gesture), run on this thread
     private const uint WmReinstall = 0x8000 + 2; // WM_APP + 2: the watchdog found the hook dropped; put it back on this thread
+    private const uint WmRecheck = 0x8000 + 3; // WM_APP + 3: install or remove the hook as the owners need it now, on this thread
     private const uint WmLButtonDown = 0x201, WmLButtonUp = 0x202, WmRButtonDown = 0x204, WmRButtonUp = 0x205;
     private const uint WmMButtonDown = 0x207, WmMButtonUp = 0x208, WmMouseWheel = 0x20A, WmXButtonDown = 0x20B, WmXButtonUp = 0x20C, WmMouseHWheel = 0x20E;
 
@@ -38,9 +39,11 @@ public sealed class MouseHook : IDisposable
     private readonly HookProc _proc;
     private readonly object _handlerLock = new();
     private volatile Func<MouseEvent, bool>[] _handlers = Array.Empty<Func<MouseEvent, bool>>();
+    private volatile Func<bool>[] _needs = Array.Empty<Func<bool>>();
     private volatile Func<int, int, bool>? _moveHandler;
     private uint _threadId;
     private bool _started;
+    private volatile bool _installed; // the low-level hook is in place now (the watchdog only looks then)
     private long _lastCallback = Environment.TickCount64; // when Windows last called the hook; written by every call, read by the watchdog
     private readonly ManualResetEventSlim _stopWatchdog = new();
 
@@ -56,19 +59,15 @@ public sealed class MouseHook : IDisposable
     private int _problemsSince;
     private string? _slowestHandler; // hook thread only: the handler that was slow during the current call
 
-    /// <summary>Where the hook writes what it did (installed or refused, first inputs, errors, slow handlers); set before <see cref="Start"/>. Called on a background thread.</summary>
+    /// Where the hook writes what it did (installed or refused, first inputs, errors, slow handlers); set before <see cref="Start"/>. Called on a background thread.
     public Action<string>? Log { get; set; }
 
-    /// <summary>
     /// Where a problem the owner should hear about goes (a hook call slower than <see cref="CoreTiming.HookSlowMs"/>, Windows dropping the
     /// hook), at most once per <see cref="CoreTiming.HookReportGapMs"/>; set before <see cref="Start"/>. Called on a background thread.
-    /// </summary>
     public Action<string>? Problem { get; set; }
 
-    /// <summary>
     /// Windows had dropped the hook and it was put back: any release that came meanwhile was never seen, so whoever holds keys or buttons
     /// for a pressed input lets them go. Raised on a pool thread (input sent from the hook's own thread would wait on this very hook).
-    /// </summary>
     public event Action? Reinstalled;
 
     public MouseHook() => _proc = Callback;
@@ -80,7 +79,7 @@ public sealed class MouseHook : IDisposable
         _logReady.Release();
     }
 
-    /// <summary>Tells a problem (any thread, never waits on anything slow): to <see cref="Problem"/> and the hook log, at most once per gap.</summary>
+    /// Tells a problem (any thread, never waits on anything slow): to <see cref="Problem"/> and the hook log, at most once per gap.
     private void ReportProblem(string line)
     {
         if (Problem is null) return;
@@ -101,7 +100,7 @@ public sealed class MouseHook : IDisposable
         _logReady.Release();
     }
 
-    /// <summary>Lets the layers above add a line about what they did with an input (its own budget of lines per run). Never blocks.</summary>
+    /// Lets the layers above add a line about what they did with an input (its own budget of lines per run). Never blocks.
     public void Diagnose(string line) => Note(line, ref _diagnosed);
 
     // Buttons have their own budget so a burst of wheel notches (or gestures) cannot use up the log before a button is pressed.
@@ -114,35 +113,38 @@ public sealed class MouseHook : IDisposable
     // Reads the hook's data in place: Marshal.PtrToStructure boxes a copy on every input.
     private static unsafe HookData Read(IntPtr lParam) => *(HookData*)lParam;
 
-    /// <summary>
     /// Asked about every pointer movement (x, y), but only while it is set, so an idle hook costs nothing on movement.
     /// Return true to swallow the movement: the pointer then stays where it is. Runs inside the hook, so it must only record what it
     /// needs and hand any real work to another thread. Set it to null when no longer needed.
-    /// </summary>
     public Func<int, int, bool>? MoveHandler
     {
         get => _moveHandler;
-        set => _moveHandler = value;
+        set
+        {
+            _moveHandler = value;
+            if (value is not null) Recheck(); // a mode started from a hotkey needs the hook too
+        }
     }
 
-    /// <summary>
     /// Asked before the handlers for every press, wheel step and raised input; true passes the input untouched (no handler sees it). A
     /// release still reaches the handlers, so what a handler swallowed on press is never left held. Runs on the hook thread: it must only read
     /// what is already known.
-    /// </summary>
     public Func<bool>? PassAll { get; set; }
 
-    /// <summary>
     /// Adds a handler that decides what happens to an input: return true to swallow it, false to let it go on to the next handler and
     /// then to Windows. Handlers are asked in the order they were added (one added with <paramref name="first"/> ahead of all the
-    /// others); the first to return true wins.
-    /// </summary>
-    public void AddHandler(Func<MouseEvent, bool> handler, bool first = false)
+    /// others); the first to return true wins. <paramref name="needsHook"/> says whether its owner needs Windows' real mouse input now
+    /// (any thread; it must only read what is already known); the owner calls <see cref="Recheck"/> when the answer may have changed.
+    public void AddHandler(Func<MouseEvent, bool> handler, Func<bool> needsHook, bool first = false)
     {
-        lock (_handlerLock) _handlers = first ? _handlers.Prepend(handler).ToArray() : _handlers.Append(handler).ToArray();
+        lock (_handlerLock)
+        {
+            _handlers = first ? _handlers.Prepend(handler).ToArray() : _handlers.Append(handler).ToArray();
+            _needs = _needs.Append(needsHook).ToArray();
+        }
     }
 
-    /// <summary>Installs the hook. Returns false when Windows refuses it.</summary>
+    /// Starts the hook's thread and installs the hook if anything needs it now. Returns false when Windows refuses the hook.
     public bool Start()
     {
         if (_started) return true;
@@ -152,9 +154,34 @@ public sealed class MouseHook : IDisposable
         // Highest priority: Windows holds back all mouse input while the callback runs, and gestures must be seen at once.
         new Thread(() => Loop(ready, v => ok = v)) { IsBackground = true, Name = "MouseHook", Priority = ThreadPriority.Highest }.Start();
         ready.Wait();
-        _started = ok;
-        if (ok) new Thread(Watchdog) { IsBackground = true, Name = "MouseHookWatchdog", Priority = ThreadPriority.BelowNormal }.Start();
+        _started = _threadId != 0;
+        if (_started) new Thread(Watchdog) { IsBackground = true, Name = "MouseHookWatchdog", Priority = ThreadPriority.BelowNormal }.Start();
         return ok;
+    }
+
+    /// Installs or removes the hook as its owners need it now (any thread; done on the hook's thread).
+    public void Recheck()
+    {
+        if (_started) PostThreadMessage(_threadId, WmRecheck, UIntPtr.Zero, IntPtr.Zero);
+    }
+
+    /// Whether anything needs Windows' real mouse input now. A need that throws counts as needed (better a hook nobody uses than a mapping that stops).
+    private bool Needed()
+    {
+        if (_moveHandler is not null) return true;
+        foreach (var needs in _needs)
+        {
+            try
+            {
+                if (needs()) return true;
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                Note($"a hook need failed: {ex.Message}", ref _diagnosed);
+                return true;
+            }
+        }
+        return false;
     }
 
     public void Dispose()
@@ -165,7 +192,7 @@ public sealed class MouseHook : IDisposable
         PostThreadMessage(_threadId, WmQuit, UIntPtr.Zero, IntPtr.Zero);
     }
 
-    /// <summary>Writes queued log lines; a background thread, so it simply ends with the program.</summary>
+    /// Writes queued log lines; a background thread, so it simply ends with the program.
     private void WriteLog()
     {
         while (true)
@@ -177,44 +204,64 @@ public sealed class MouseHook : IDisposable
         }
     }
 
-    private void Loop(ManualResetEventSlim ready, Action<bool> installed)
+    private void Loop(ManualResetEventSlim ready, Action<bool> started)
     {
         PeekMessage(out _, IntPtr.Zero, 0, 0, 0); // creates this thread's message queue
         _threadId = GetCurrentThreadId();
-        var hook = Install("hook installed");
-        installed(hook != IntPtr.Zero);
+        var hook = Needed() ? Install("hook installed") : IntPtr.Zero;
+        started(hook != IntPtr.Zero || !Needed());
         ready.Set();
-        if (hook == IntPtr.Zero) return;
 
-        // The hook is driven by this loop; the only message to handle is an input raised from another source.
+        // The hook is driven by this loop; the messages to handle are an input raised from another source, a reinstall and a recheck.
         while (GetMessage(out var msg, IntPtr.Zero, 0, 0) > 0)
         {
             if (msg.Message == WmRaise && SystemCommands.GetCursorPos() is { } at) RunHandlers(new MouseEvent((MouseButton)msg.WParam, true, at.X, at.Y));
-            else if (msg.Message == WmReinstall)
+            else if (msg.Message == WmReinstall && hook != IntPtr.Zero)
             {
-                if (hook != IntPtr.Zero) UnhookWindowsHookEx(hook);
+                Remove(ref hook);
                 hook = Install("hook reinstalled (Windows had dropped it)");
                 ReportProblem("Windows had dropped the mouse hook (it saw no input while the pointer moved; a call was too slow, or a program run as administrator was in front); it was put back");
                 if (Reinstalled is { } reinstalled) ThreadPool.QueueUserWorkItem(_ => reinstalled());
             }
+            else if (msg.Message == WmRecheck)
+            {
+                var needed = Needed();
+                if (needed && hook == IntPtr.Zero)
+                {
+                    hook = Install("hook installed (something needs it now)");
+                    if (hook == IntPtr.Zero) ReportProblem("Windows refused the mouse hook, so mouse mappings, gestures and rules do not act; it is tried again at the next change");
+                }
+                else if (!needed && hook != IntPtr.Zero)
+                {
+                    Remove(ref hook);
+                    Note("hook removed (nothing needs it now)", ref _logged);
+                }
+            }
         }
-        if (hook != IntPtr.Zero) UnhookWindowsHookEx(hook);
+        if (hook != IntPtr.Zero) Remove(ref hook);
     }
 
-    /// <summary>Installs the hook on the calling (hook) thread and logs the outcome; zero when Windows refuses.</summary>
+    /// Installs the hook on the calling (hook) thread and logs the outcome; zero when Windows refuses.
     private IntPtr Install(string successLine)
     {
         var hook = SetWindowsHookEx(WhMouseLl, _proc, GetModuleHandle(null), 0);
         Note(hook == IntPtr.Zero ? $"hook refused, error {Marshal.GetLastWin32Error()}" : successLine, ref _logged);
         Volatile.Write(ref _lastCallback, Environment.TickCount64);
+        _installed = hook != IntPtr.Zero;
         return hook;
     }
 
-    /// <summary>
+    /// Takes the hook out (hook thread).
+    private void Remove(ref IntPtr hook)
+    {
+        _installed = false;
+        UnhookWindowsHookEx(hook);
+        hook = IntPtr.Zero;
+    }
+
     /// Windows silently removes a hook whose callback was too slow. Every <see cref="CoreTiming.HookWatchdogMs"/> this checks whether the
     /// pointer moved and input happened since the last look while the hook was never called; if so the hook is reinstalled on its thread.
     /// It only reads the pointer and the idle time; it never sends input.
-    /// </summary>
     private void Watchdog()
     {
         var lastLook = Environment.TickCount64;
@@ -228,24 +275,20 @@ public sealed class MouseHook : IDisposable
             var silent = Volatile.Read(ref _lastCallback) < lastLook;
             lastLook = now;
             lastAt = at;
-            if (moved && inputSince && silent && _started) PostThreadMessage(_threadId, WmReinstall, UIntPtr.Zero, IntPtr.Zero);
+            if (moved && inputSince && silent && _started && _installed) PostThreadMessage(_threadId, WmReinstall, UIntPtr.Zero, IntPtr.Zero);
         }
     }
 
-    /// <summary>
     /// Passes an input that does not come through the hook (a recognised trackpad gesture) to the same handlers, in the same order and
     /// on the hook's own thread, with the pointer where it is then. It cannot be swallowed (Windows has already had it); a handler that
     /// takes it only stops the handlers after it. Never blocks: the input is posted to the hook thread.
-    /// </summary>
     public void Raise(MouseButton button)
     {
         if (_started) PostThreadMessage(_threadId, WmRaise, (UIntPtr)(uint)button, IntPtr.Zero);
     }
 
-    /// <summary>
     /// Windows' call for every mouse input. Windows holds all mouse input (the taskbar's too) while it runs, so a call slower than
     /// <see cref="CoreTiming.HookSlowMs"/> is reported with the handler that took the time.
-    /// </summary>
     private IntPtr Callback(int code, IntPtr wParam, IntPtr lParam)
     {
         var started = Environment.TickCount64;
@@ -258,7 +301,7 @@ public sealed class MouseHook : IDisposable
         return swallow ? (IntPtr)1 : CallNextHookEx(IntPtr.Zero, code, wParam, lParam);
     }
 
-    /// <summary>True to swallow the input. Hook thread only.</summary>
+    /// True to swallow the input. Hook thread only.
     private bool Swallows(uint message, IntPtr lParam)
     {
         if (message == WmMouseMove)
@@ -283,7 +326,7 @@ public sealed class MouseHook : IDisposable
         return data.ExtraInfo != InputSender.Marker && Translate(message, data) is { } ev && RunHandlers(ev);
     }
 
-    /// <summary>Asks the handlers in order; true when one took the input. Runs on the hook thread only.</summary>
+    /// Asks the handlers in order; true when one took the input. Runs on the hook thread only.
     private bool RunHandlers(MouseEvent ev)
     {
         if (ev.IsDown && PassAll?.Invoke() == true) return false;

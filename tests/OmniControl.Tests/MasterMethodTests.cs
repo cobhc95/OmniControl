@@ -1,23 +1,18 @@
-using OmniControl.App.Audio;
-using OmniControl.App.Audio.Engine;
-using OmniControl.Core.Engine;
 using OmniControl.Core.Engine.Apo;
 using Xunit.Abstractions;
 
 namespace OmniControl.Tests;
 
-/// <summary>
-/// The master's method (cable bus or Equalizer APO on the speakers) on the owner's PC: the plans of the help table's
+/// The master's method (cable bus or Equalizer APO on the speakers) on the reference PC: the plans of the help table's
 /// setups (the free cable for a program, a combined microphone, combined speakers, a program with Equalizer APO on a second cable),
 /// what goes to Equalizer APO (through a fake store: nothing is written), the default-device rule, and the Method pop-down's entries.
-/// </summary>
 public class MasterMethodTests(ITestOutputHelper output)
 {
     private static readonly IReadOnlySet<string> None = new HashSet<string>();
 
     private static HashSet<string> Set(params string[] keys) => keys.ToHashSet();
 
-    /// <summary>The owner's settings with the master's method set to <paramref name="method"/>.</summary>
+    /// The reference settings with the master's method set to <paramref name="method"/>.
     private static MixerSettings Settings(EffectsRoute method)
     {
         var s = OwnerPc.Settings();
@@ -41,7 +36,7 @@ public class MasterMethodTests(ITestOutputHelper output)
         return plan;
     }
 
-    /// <summary>No run plays into the cable it uses; without the bus no program run takes the cable that is Windows' default; "CABLE In 16ch" is never used.</summary>
+    /// No run plays into the cable it uses; without the bus no program run takes the cable that is Windows' default; "CABLE In 16ch" is never used.
     private static void NoLoops(RoutePlan plan, IReadOnlyList<AudioDevice> playback)
     {
         var defaultId = playback.First(d => d.IsDefault).Id;
@@ -55,11 +50,11 @@ public class MasterMethodTests(ITestOutputHelper output)
 
     // ---- the plans of the setups ----
 
-    /// <summary>Setup 2: the master in Equalizer APO on the speakers frees the cable; the program that plays takes it and plays on the speakers.</summary>
+    /// Setup 2: the master in Equalizer APO on the speakers frees the cable; the program that plays takes it and plays on the speakers.
     [Fact]
     public void Setup2_MasterApo_TheCableGoesToTheProgramThatPlays()
     {
-        var plan = Plan(Settings(EffectsRules.MasterApo), Set(OwnerPc.Spotify, OwnerPc.Helium));
+        var plan = Plan(Settings(EffectsRules.MasterApo), Set(OwnerPc.Player, OwnerPc.Browser));
         Assert.Equal(RunMethod.Apo, plan.MasterMethod);
         Assert.Null(plan.Bus);
         Assert.False(plan.Runs.ContainsKey(MixerService.MasterKey));
@@ -73,48 +68,48 @@ public class MasterMethodTests(ITestOutputHelper output)
         Assert.Equal(new[] { OwnerPc.Speaker }, other.Outputs); // the other program by recording, also on the speakers
     }
 
-    /// <summary>The moment after the bus let go the cable is still Windows' default: no program run may take it until the speakers are the default again.</summary>
+    /// The moment after the bus let go the cable is still Windows' default: no program run may take it until the speakers are the default again.
     [Fact]
     public void MasterApo_TheCableStillTheDefault_IsGivenToNoProgram()
     {
-        var plan = Plan(Settings(EffectsRules.MasterApo), Set(OwnerPc.Spotify), speakerDefault: false);
+        var plan = Plan(Settings(EffectsRules.MasterApo), Set(OwnerPc.Player), speakerDefault: false);
         Assert.DoesNotContain(plan.Runs.Values, r => r.Kind == RunKind.Cable);
-        Assert.Equal(RunKind.Capture, plan.Runs[OwnerPc.Spotify].Kind);
-        Assert.Equal(new[] { OwnerPc.Speaker }, plan.Runs[OwnerPc.Spotify].Outputs);
+        Assert.Equal(RunKind.Capture, plan.Runs[OwnerPc.Player].Kind);
+        Assert.Equal(new[] { OwnerPc.Speaker }, plan.Runs[OwnerPc.Player].Outputs);
     }
 
-    /// <summary>Setup 3: a combined microphone takes the free cable (apps record "CABLE Output"); the programs are recorded.</summary>
+    /// Setup 3: a combined microphone takes the free cable (apps record "CABLE Output"); the programs are recorded.
     [Fact]
     public void Setup3_MasterApo_CombinedMicrophoneOnTheFreeCable()
     {
         var s = Settings(EffectsRules.MasterApo);
         var mic = new CombinedDevice { Name = "Both mics", Kind = CombinedKind.Microphones, Members = { OwnerPc.MicArray, OwnerPc.StereoMix } };
         s.Combined.Add(mic);
-        var plan = Plan(s, Set(OwnerPc.Spotify));
+        var plan = Plan(s, Set(OwnerPc.Player));
         Assert.Equal(RunKind.Mic, plan.Runs[mic.Key].Kind);
         Assert.Equal(OwnerPc.CableInput, plan.Runs[mic.Key].Cable);
-        Assert.Equal(RunKind.Capture, plan.Runs[OwnerPc.Spotify].Kind);
+        Assert.Equal(RunKind.Capture, plan.Runs[OwnerPc.Player].Kind);
     }
 
-    /// <summary>Setup 4: combined speakers take the free cable and play it on their members; the master stays on one speaker in Equalizer APO.</summary>
+    /// Setup 4: combined speakers take the free cable and play it on their members; the master stays on one speaker in Equalizer APO.
     [Fact]
     public void Setup4_MasterApo_CombinedSpeakerOnTheFreeCable()
     {
         var s = Settings(EffectsRules.MasterApo);
         var room = new CombinedDevice { Name = "Room", Kind = CombinedKind.Speakers, Members = { OwnerPc.Speaker } };
         s.Combined.Add(room);
-        s.Apps.First(a => a.Key == OwnerPc.Spotify).PlaysOn.Add(room.Key);
-        var plan = Plan(s, Set(OwnerPc.Spotify));
+        s.Apps.First(a => a.Key == OwnerPc.Player).PlaysOn.Add(room.Key);
+        var plan = Plan(s, Set(OwnerPc.Player));
         var fan = plan.Runs[room.Key];
         Assert.Equal(RunKind.FanOut, fan.Kind);
         Assert.Equal(OwnerPc.CableInput, fan.Cable);
         Assert.Equal(new[] { OwnerPc.Speaker }, fan.Outputs);
-        Assert.Equal(OwnerPc.CableInput, plan.Direct[OwnerPc.Spotify]); // the program that picked it plays into its cable
-        Assert.Equal(RunKind.Capture, plan.Runs[OwnerPc.Spotify].Kind); // its effects by recording, replayed into the combined device
+        Assert.Equal(OwnerPc.CableInput, plan.Direct[OwnerPc.Player]); // the program that picked it plays into its cable
+        Assert.Equal(RunKind.Capture, plan.Runs[OwnerPc.Player].Kind); // its effects by recording, replayed into the combined device
         Assert.Contains(MixerService.MasterKey, plan.ToApo);
     }
 
-    /// <summary>Setup 5: nothing uses the cable (no program with effects plays); the master without effects plays straight on the speakers.</summary>
+    /// Setup 5: nothing uses the cable (no program with effects plays); the master without effects plays straight on the speakers.
     [Fact]
     public void Setup5_MasterApo_NothingOnTheCable_NoEffects_IsDirect()
     {
@@ -126,17 +121,17 @@ public class MasterMethodTests(ITestOutputHelper output)
         Assert.Equal("Direct", plan.Blocked[MixerService.MasterKey].Brief);
     }
 
-    /// <summary>Setup 1: Automatic with a cable allowed is today's cable bus.</summary>
+    /// Setup 1: Automatic with a cable allowed is today's cable bus.
     [Fact]
     public void Setup1_Automatic_IsTheCableBus()
     {
-        var plan = Plan(Settings(EffectsRules.MasterAutomatic), Set(OwnerPc.Spotify), speakerDefault: false);
+        var plan = Plan(Settings(EffectsRules.MasterAutomatic), Set(OwnerPc.Player), speakerDefault: false);
         Assert.Equal(RunMethod.Bus, plan.MasterMethod);
         Assert.Equal(RunKind.Bus, plan.Runs[MixerService.MasterKey].Kind);
         Assert.DoesNotContain(MixerService.MasterKey, plan.ToApo);
     }
 
-    /// <summary>Setup 6: the bus on the first cable, a combined microphone on the second pair.</summary>
+    /// Setup 6: the bus on the first cable, a combined microphone on the second pair.
     [Fact]
     public void Setup6_Bus_SecondPairForACombinedMicrophone()
     {
@@ -148,31 +143,31 @@ public class MasterMethodTests(ITestOutputHelper output)
         Assert.Equal(OwnerPc.CableA, plan.Runs[mic.Key].Cable);
     }
 
-    /// <summary>Setup 7: a program set to "Equalizer APO on a cable" gets the second pair that has Equalizer APO on it; its chain goes to that cable's Device section.</summary>
+    /// Setup 7: a program set to "Equalizer APO on a cable" gets the second pair that has Equalizer APO on it; its chain goes to that cable's Device section.
     [Fact]
     public void Setup7_ProgramOnACableWithEqualizerApo()
     {
         var s = Settings(EffectsRules.MasterApo);
-        s.Apps.First(a => a.Key == OwnerPc.Spotify).FxRoute = EffectsRules.RouteApoCable.Id;
-        var plan = Plan(s, Set(OwnerPc.Spotify), twoPairs: true, apo: OwnerPc.ApoOnSpeaker(onCableA: true));
-        var run = plan.Runs[OwnerPc.Spotify];
+        s.Apps.First(a => a.Key == OwnerPc.Player).FxRoute = EffectsRules.RouteApoCable.Id;
+        var plan = Plan(s, Set(OwnerPc.Player), twoPairs: true, apo: OwnerPc.ApoOnSpeaker(onCableA: true));
+        var run = plan.Runs[OwnerPc.Player];
         Assert.Equal(RunKind.ApoCable, run.Kind);
         Assert.Equal(OwnerPc.CableA, run.Cable);
         Assert.Equal(new[] { OwnerPc.CableAOutput }, run.Sources); // Equalizer APO's output arrives on the recording side
         Assert.Equal(new[] { OwnerPc.Speaker }, run.Outputs);
-        Assert.Contains(OwnerPc.Spotify, plan.ToApo);
+        Assert.Contains(OwnerPc.Player, plan.ToApo);
     }
 
-    /// <summary>"Equalizer APO on a cable" is honest when it can't run: one pair = needs a second pair; no Equalizer APO on a cable = says so.</summary>
+    /// "Equalizer APO on a cable" is honest when it can't run: one pair = needs a second pair; no Equalizer APO on a cable = says so.
     [Fact]
     public void ApoCable_SaysWhatIsMissing()
     {
         var s = Settings(EffectsRules.MasterApo);
-        s.Apps.First(a => a.Key == OwnerPc.Spotify).FxRoute = EffectsRules.RouteApoCable.Id;
-        var one = Plan(s, Set(OwnerPc.Spotify));
-        Assert.Equal("Needs a second cable pair. Playing without effects.", one.Blocked[OwnerPc.Spotify].Text);
-        var two = Plan(s, Set(OwnerPc.Spotify), twoPairs: true);
-        Assert.Equal("Equalizer APO is not on a cable. Playing without effects.", two.Blocked[OwnerPc.Spotify].Text);
+        s.Apps.First(a => a.Key == OwnerPc.Player).FxRoute = EffectsRules.RouteApoCable.Id;
+        var one = Plan(s, Set(OwnerPc.Player));
+        Assert.Equal("Needs a second cable pair. Playing without effects.", one.Blocked[OwnerPc.Player].Text);
+        var two = Plan(s, Set(OwnerPc.Player), twoPairs: true);
+        Assert.Equal("Equalizer APO is not on a cable. Playing without effects.", two.Blocked[OwnerPc.Player].Text);
         Assert.False(EffectsRules.OfferOf(EffectsRules.RouteApoCable, new RouteFacts(CableOffer.None, null, RunMethod.None, two.ApoCableWhy)).Available);
     }
 
@@ -205,7 +200,7 @@ public class MasterMethodTests(ITestOutputHelper output)
         Assert.Equal("Currently: cable bus", EffectsRules.MasterOfferOf(EffectsRules.MasterAutomatic, facts, RunMethod.Bus).Description);
     }
 
-    /// <summary>The planner's master facts on the owner's PC: Equalizer APO is checked on the real speakers, not on the cable that is the default while the bus runs.</summary>
+    /// The planner's master facts on the reference PC: Equalizer APO is checked on the real speakers, not on the cable that is the default while the bus runs.
     [Fact]
     public void MasterFacts_CheckTheRealSpeakers_NotTheBusCable()
     {
@@ -252,8 +247,8 @@ public class MasterMethodTests(ITestOutputHelper output)
         var store = new FakeStore();
         var chains = new ApoChains(_ => { }, () => { }, store);
         var s = Settings(EffectsRules.MasterApo);
-        s.Apps.First(a => a.Key == OwnerPc.Spotify).FxRoute = EffectsRules.RouteApoCable.Id;
-        var plan = Plan(s, Set(OwnerPc.Spotify), twoPairs: true, apo: apo);
+        s.Apps.First(a => a.Key == OwnerPc.Player).FxRoute = EffectsRules.RouteApoCable.Id;
+        var plan = Plan(s, Set(OwnerPc.Player), twoPairs: true, apo: apo);
 
         var statuses = Send(chains, plan, s, apo);
         var text = store.Files[OwnerPc.ApoFolder];

@@ -1,16 +1,10 @@
-﻿using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Threading;
-using OmniControl.App.Services;
-using OmniControl.App.Tray;
+﻿using Avalonia.Controls.ApplicationLifetimes;
+using OmniControl.App.Features.Tray;
 
 namespace OmniControl.App.Shell;
 
-/// <summary>
 /// How the main window comes and goes: the tray icon, what the X button does, starting hidden, and exiting.
 /// Everything here is about the window's lifetime; what the window shows is <see cref="ShellViewModel"/>.
-/// </summary>
 public static class WindowLifecycle
 {
     /// <param name="startHidden">Start in the tray: the window is built but not shown (started by the start-up entry).</param>

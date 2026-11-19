@@ -1,0 +1,31 @@
+<Window Classes="dialog" xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shot="using:OmniControl.App.Features.Screenshot"
+        xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+        x:Class="OmniControl.App.Features.Screenshot.SaveFileWindow"
+        x:DataType="shot:SaveFileModel"
+        Title="{Binding Title}" Width="460" MinWidth="360" SizeToContent="Height" CanResize="False"
+        WindowStartupLocation="CenterScreen">
+    <!-- THE save dialog of screenshots and recordings (docs/mockups/recording-save-and-cancel.html): Name (TextBox.field, the action's
+         file name pattern with the format's ending), Folder (Controls/PathField, the action's own "Save folder"), the tick "Always save here,
+         don't ask" (writes that folder and turns the action's "Ask where to save" off); foot: Discard (Button.pill.danger, asks first) and
+         Save (Button.primary). Enter saves, Esc or the window's X counts as Discard. -->
+    <DockPanel>
+        <Border DockPanel.Dock="Bottom" Classes="footer">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <Button Classes="pill danger" Content="Discard" VerticalAlignment="Center" Click="OnDiscardClick" />
+                <Button Grid.Column="2" x:Name="SaveButton" Classes="primary close" Content="Save" IsEnabled="{Binding CanSave}" Click="OnSaveClick" />
+            </Grid>
+        </Border>
+        <StackPanel Margin="12" Spacing="10">
+            <TextBlock Classes="title" Text="{Binding Title}" />
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8">
+                <TextBlock Text="Name" VerticalAlignment="Center" />
+                <TextBox Grid.Column="1" x:Name="NameBox" Classes="field" Text="{Binding Name}" KeyDown="OnFieldKey" />
+                <TextBlock Grid.Row="1" Text="Folder" VerticalAlignment="Center" />
+                <c:PathField Grid.Row="1" Grid.Column="1" x:Name="FolderField" Kind="Folder" PickerTitle="Choose a folder" Text="{Binding Folder}" />
+            </Grid>
+            <CheckBox Content="Always save here, don't ask" IsChecked="{Binding AlwaysHere}" />
+        </StackPanel>
+    </DockPanel>
+</Window>

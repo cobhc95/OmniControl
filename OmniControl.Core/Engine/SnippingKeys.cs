@@ -1,15 +1,11 @@
-using Microsoft.Win32;
-
 namespace OmniControl.Core.Engine;
 
-/// <summary>What the two Windows values held before OmniControl changed them (null = the value did not exist), so turning the switch off puts them back as they were.</summary>
+/// What the two Windows values held before OmniControl changed them (null = the value did not exist), so turning the switch off puts them back as they were.
 public sealed record SnippingKeysBackup(int? PrintScreen, string? DisabledHotkeys);
 
-/// <summary>
 /// Windows' own screenshot keys, in the current user's registry (no administrator rights needed): Print Screen opening Snipping Tool
 /// (Control Panel\Keyboard, takes effect at once) and Win+Shift+S (Explorer's DisabledHotkeys list, which Explorer reads when it starts,
 /// so it applies after Explorer restarts or the next sign-in). Every call returns false when the registry could not be read or written.
-/// </summary>
 public static class SnippingKeys
 {
     private const string KeyboardKey = @"Control Panel\Keyboard";
@@ -18,7 +14,7 @@ public static class SnippingKeys
     private const string DisabledValue = "DisabledHotkeys";
     private const string ShiftS = "S";
 
-    /// <summary>The values as they are now; null when they can't be read.</summary>
+    /// The values as they are now; null when they can't be read.
     public static SnippingKeysBackup? Capture()
     {
         try
@@ -33,7 +29,7 @@ public static class SnippingKeys
         }
     }
 
-    /// <summary>True when Explorer (which reads Win+Shift+S's setting when it starts) was started after <paramref name="changedUtc"/>; unknown reads as true so no tag is left hanging.</summary>
+    /// True when Explorer (which reads Win+Shift+S's setting when it starts) was started after <paramref name="changedUtc"/>; unknown reads as true so no tag is left hanging.
     public static bool ExplorerStartedSince(DateTime changedUtc)
     {
         try
@@ -47,11 +43,11 @@ public static class SnippingKeys
         }
     }
 
-    /// <summary>True when Print Screen no longer opens Snipping Tool and Win+Shift+S is released.</summary>
+    /// True when Print Screen no longer opens Snipping Tool and Win+Shift+S is released.
     public static bool IsOff(SnippingKeysBackup? now) =>
         now is { PrintScreen: 0, DisabledHotkeys: { } keys } && keys.Contains(ShiftS, StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>Turns both Windows keys off.</summary>
+    /// Turns both Windows keys off.
     public static bool TurnOff()
     {
         try
@@ -69,10 +65,8 @@ public static class SnippingKeys
         }
     }
 
-    /// <summary>
     /// Puts the values back as <paramref name="before"/> had them: the Print Screen value is set or removed as it was; of the hotkey letters only
     /// the S OmniControl added is taken out again, so a letter the user added meanwhile stays.
-    /// </summary>
     public static bool Restore(SnippingKeysBackup before)
     {
         try

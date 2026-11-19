@@ -1,53 +1,12 @@
-using OmniControl.App.Audio;
-using OmniControl.App.Pages.Volume.Easy;
-using OmniControl.App.Pages.Volume.Easy.Flow;
+using OmniControl.App.Features.Volume.Pages.Easy;
+using OmniControl.App.Features.Volume.Pages.Easy.Flow;
 
 namespace OmniControl.Tests;
 
-/// <summary>
-/// The Easy guided setups' Engine step (docs/mockups/easy-engine-choice.html): which way each goal allows, the two cards' live state, the
+/// The Easy guided setups' Engine step: which way each goal allows, the two cards' live state, the
 /// pre-selection, when Next waits, what the choice does to the checklists, and the remembered choice. Fakes only; nothing touches Windows.
-/// </summary>
 public class EasyEngineTests
 {
-    private sealed class Actions : IEasyActions
-    {
-        public List<string> Ran { get; } = new();
-
-        public Task<string?> RunAsync(EasyFix fix, EasyAnswers answers, EasyFacts facts)
-        {
-            Ran.Add(fix.Id);
-            return Task.FromResult<string?>(null);
-        }
-    }
-
-    private sealed class Rig
-    {
-        public EasyFacts Facts { get; set; }
-        public Actions Actions { get; } = new();
-        public EasyAnswers Answers { get; } = new();
-        public List<EasyEngine> Chosen { get; } = new();
-        public EasyFlowViewModel Flow { get; }
-
-        public Rig(string goalId, EasyFacts? facts = null, EasyEngine? remembered = null)
-        {
-            Facts = facts ?? new EasyFacts();
-            Answers.Engine = remembered;
-            var services = new EasyFlowServices(() => Facts, Actions, _ => Task.FromResult(true));
-            Flow = new EasyFlowViewModel(EasyGoals.All.Single(g => g.Id == goalId), EasyFlows.Of(goalId)!, Answers, services,
-                (kind, changed) => new EasyQuestionViewModel(kind, Answers, changed, null, null), () => { }, () => { }, Chosen.Add);
-        }
-
-        /// <summary>Gets to the Engine step of a goal whose questions are already answered enough.</summary>
-        public Rig AtEngine()
-        {
-            while (!Flow.IsEngine) Flow.NextCommand.Execute(null);
-            return this;
-        }
-
-        public EasyEngineItem Card(EasyEngine engine) => Flow.EngineCards.Single(c => c.Engine == engine);
-    }
-
     private static EasyFacts Neither => new() { ApoInstalled = false, CablesReady = 0, CableInstalled = false };
 
     private static EasyRule Rule(string goalId) => new(EasyGoals.All.Single(g => g.Id == goalId).Engine);
@@ -87,13 +46,13 @@ public class EasyEngineTests
             Assert.Equal("Setup", titles[^2]);
             if (goal.Engine is not null) Assert.Equal("Engine", titles[^3]);
         }
-        Assert.Equal(new[] { "Goal", "Microphones", "Engine", "Setup", "Done" }, new Rig(EasyGoals.JoinMicrophones).Flow.Strip.Select(s => s.Title));
+        Assert.Equal(new[] { "Goal", "Microphones", "Engine", "Setup", "Done" }, new EasyRig(EasyGoals.JoinMicrophones).Flow.Strip.Select(s => s.Title));
     }
 
     [Fact]
     public void CardsForJoiningMicrophones_GreyTheApoCardWithItsReason_AndDoNotOfferItsInstaller()
     {
-        var rig = new Rig(EasyGoals.JoinMicrophones, Neither with { Microphones = new[] { new EasyOption("a", "A"), new EasyOption("b", "B") } });
+        var rig = new EasyRig(EasyGoals.JoinMicrophones, Neither with { Microphones = new[] { new EasyOption("a", "A"), new EasyOption("b", "B") } });
         rig.Answers.Devices.AddRange(new[] { "a", "b" });
         rig.Flow.Reevaluate();
         rig.AtEngine();
@@ -128,7 +87,7 @@ public class EasyEngineTests
     [Fact]
     public void WhenAnInstallFinishes_TheTagTurnsGoodAndTheButtonGreysByItself()
     {
-        var rig = new Rig(EasyGoals.Better, Neither).AtEngine();
+        var rig = new EasyRig(EasyGoals.Better, Neither).AtEngine();
         var apo = rig.Card(EasyEngine.Apo);
         Assert.Equal("Not installed", apo.Tag);
         Assert.True(apo.GetCommand.CanExecute(null));
@@ -145,7 +104,7 @@ public class EasyEngineTests
     [Fact]
     public async Task TheGetButton_RunsTheExistingInstallerStep_OnlyWhenPressed()
     {
-        var rig = new Rig(EasyGoals.Better, Neither).AtEngine();
+        var rig = new EasyRig(EasyGoals.Better, Neither).AtEngine();
         Assert.Empty(rig.Actions.Ran);
         await rig.Card(EasyEngine.Apo).GetCommand.ExecuteAsync(null);
         await rig.Card(EasyEngine.Cable).GetCommand.ExecuteAsync(null);
@@ -169,7 +128,7 @@ public class EasyEngineTests
     [Fact]
     public void TheStep_PreSelectsOnce_AndAnInstallLaterDoesNotMoveThePick()
     {
-        var rig = new Rig(EasyGoals.Better, new EasyFacts { ApoInstalled = false }).AtEngine();
+        var rig = new EasyRig(EasyGoals.Better, new EasyFacts { ApoInstalled = false }).AtEngine();
         Assert.True(rig.Card(EasyEngine.Cable).IsSelected);
         Assert.Empty(rig.Chosen); // a pre-selection is not a choice, so it is not remembered
         rig.Facts = rig.Facts with { ApoInstalled = true };
@@ -182,7 +141,7 @@ public class EasyEngineTests
     [Fact]
     public void Next_IsOffWhileTheChosenWayIsNotThere_WithOneLineWhy_AndEitherWayCanStillBePicked()
     {
-        var rig = new Rig(EasyGoals.Better, new EasyFacts { ApoInstalled = false, CablesReady = 0, CableInstalled = true }).AtEngine();
+        var rig = new EasyRig(EasyGoals.Better, new EasyFacts { ApoInstalled = false, CablesReady = 0, CableInstalled = true }).AtEngine();
         Assert.False(rig.Flow.CanNext);
         Assert.Equal("Install Equalizer APO first.", rig.Flow.NextTip);
         Assert.Equal(rig.Flow.NextTip, rig.Flow.EngineProblem);
@@ -272,13 +231,13 @@ public class EasyEngineTests
     [Fact]
     public void ThePick_IsReportedForMemory_AndAGoalOpenedAgainStartsOnIt()
     {
-        var first = new Rig(EasyGoals.Better).AtEngine();
+        var first = new EasyRig(EasyGoals.Better).AtEngine();
         first.Card(EasyEngine.Cable).PickCommand.Execute(null);
         Assert.Equal(new[] { EasyEngine.Cable }, first.Chosen);
         Assert.True(first.Card(EasyEngine.Cable).IsSelected);
         Assert.False(first.Card(EasyEngine.Apo).IsSelected);
 
-        var again = new Rig(EasyGoals.Better, remembered: first.Chosen[^1]).AtEngine();
+        var again = new EasyRig(EasyGoals.Better, remembered: first.Chosen[^1]).AtEngine();
         Assert.True(again.Card(EasyEngine.Cable).IsSelected);
         Assert.Empty(again.Chosen);
     }
@@ -286,7 +245,7 @@ public class EasyEngineTests
     [Fact]
     public void BackFromSetup_ReturnsToTheEngineStepWithTheChoiceKept()
     {
-        var rig = new Rig(EasyGoals.Better).AtEngine();
+        var rig = new EasyRig(EasyGoals.Better).AtEngine();
         rig.Card(EasyEngine.Cable).PickCommand.Execute(null);
         rig.Flow.NextCommand.Execute(null);
         Assert.True(rig.Flow.IsSetup);

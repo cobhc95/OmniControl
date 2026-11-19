@@ -1,21 +1,16 @@
 using System.Collections.Concurrent;
-using OmniControl.App.Pages.Displays;
-using OmniControl.App.Services;
-using OmniControl.Core.Engine;
-using Xunit;
+using OmniControl.App.Features.Displays.Pages;
 
 namespace OmniControl.Tests;
 
-/// <summary>
 /// The hardware watches' retry after an announcement, with fake signals and a fake monitor source (nothing of Windows is touched): a source that
 /// is ready only on the third look is found on the third try, and the schedule stops there.
-/// </summary>
 public class HardwareRetryTests
 {
     private static readonly TimeSpan[] FastSchedule = [TimeSpan.FromMilliseconds(20), TimeSpan.FromMilliseconds(60), TimeSpan.FromMilliseconds(120), TimeSpan.FromMilliseconds(200)];
     private static readonly TimeSpan Settle = TimeSpan.FromSeconds(5);
 
-    /// <summary>A monitor source that answers only from its <c>readyOn</c>-th refresh.</summary>
+    /// A monitor source that answers only from its <c>readyOn</c>-th refresh.
     private sealed class FakeMonitors(int readyOn)
     {
         private int _refreshes;

@@ -1,13 +1,9 @@
-using OmniControl.App.Audio;
-using OmniControl.App.Audio.Engine;
-using OmniControl.App.Pages.Volume;
+using OmniControl.App.Features.Volume.Pages;
 
 namespace OmniControl.Tests;
 
-/// <summary>
-/// The Mixer row's columns (docs/mockups/mixer-rows-knobs.html): the Method chip for every kind of row and state
+/// The Mixer row's columns: the Method chip for every kind of row and state
 /// (<see cref="EffectsRules.ChipMethodOf"/>), the short fact under it, the Plays on column per row kind, the FX button's glow, the "Next sound setup" hotkey (its order and its old id), and a pick on a Sound setup card.
-/// </summary>
 public class MixerRowTests
 {
     private static RowMethodFacts Program(bool runs, RunMethod running = RunMethod.None, RunMethod master = RunMethod.Apo,

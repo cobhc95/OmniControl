@@ -1,25 +1,20 @@
-using System.Runtime.InteropServices;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// The effects, as the playback thread calls them: change <paramref name="samples"/> in place (interleaved floats). Called on the
 /// audio thread for every block: must not allocate, lock or block.
-/// </summary>
 public interface IAudioBlockProcessor
 {
     void Process(Span<float> samples, int channels, int sampleRate);
 }
 
-/// <summary>
 /// Capture, effects, playback: records one or more sources (<see cref="PipeSource"/>) on their own threads, mixes them on the
 /// playback thread of the first output device (each capture read through a <see cref="DriftReader"/> at its own gain,
 /// <see cref="SetSourceGain"/>), runs the <see cref="IAudioBlockProcessor"/> and plays the result on that device and on every further
 /// one (<see cref="ExtraOutput"/>: each keeps step with the first through the same drift correction). Nothing here touches
 /// the original program's sound: silencing or routing it is the caller's job. Dispose stops everything.
-/// </summary>
 public sealed class AudioPipe : IDisposable
 {
     private readonly List<PipeCapture> _captures;
@@ -27,7 +22,7 @@ public sealed class AudioPipe : IDisposable
     private readonly PipeOutput _output;
     private int _failed;
 
-    /// <summary>Raised once, from an audio or worker thread, when a capture or a playback stopped with an error.</summary>
+    /// Raised once, from an audio or worker thread, when a capture or a playback stopped with an error.
     public event Action<string>? Failed;
 
     private AudioPipe(List<PipeCapture> captures, List<WasapiPlayer> players, PipeOutput output)
@@ -40,10 +35,8 @@ public sealed class AudioPipe : IDisposable
         output.Failed += Fail;
     }
 
-    /// <summary>
     /// Starts the captures and the playback on every device of <paramref name="renderDeviceIds"/> (at least one; null = the default
     /// playback device). Throws <see cref="InvalidOperationException"/> with a reason when Windows refuses; nothing is left running then.
-    /// </summary>
     public static async Task<AudioPipe> StartAsync(IReadOnlyList<PipeSource> sources, IReadOnlyList<string?> renderDeviceIds, IAudioBlockProcessor processor)
     {
         if (renderDeviceIds.Count == 0) throw new InvalidOperationException("There is no playback device to play on.");
@@ -83,7 +76,7 @@ public sealed class AudioPipe : IDisposable
             .WithMmcssThreadPriority("Audio")
             .Build();
 
-    /// <summary>The loudest raw captured sample (before effects) since the last call; 0 = silence.</summary>
+    /// The loudest raw captured sample (before effects) since the last call; 0 = silence.
     public float TakeCapturePeak()
     {
         var peak = 0f;
@@ -91,20 +84,16 @@ public sealed class AudioPipe : IDisposable
         return peak;
     }
 
-    /// <summary>
     /// The gain the mix gives source <paramref name="index"/> (in the order the sources were given; 1 = as recorded, 0 = muted).
     /// Any thread; the playback thread picks it up with the next block.
-    /// </summary>
     /// <param name="rawCeiling">
     /// A block of this source whose recorded samples (before the gain) go above this is left out of the mix: a large make-up gain on a
     /// source that should arrive turned down (<c>Quiet</c> silencing) must never amplify full-level sound.
     /// </param>
     public void SetSourceGain(int index, float gain, float rawCeiling = float.PositiveInfinity) => _output.SetGain(index, gain, rawCeiling);
 
-    /// <summary>
     /// Estimated extra delay of the processed sound on its slowest device: capture packet + what waits in the queue + the playback
     /// buffer, plus an extra device's own queue.
-    /// </summary>
     public int DelayMs
     {
         get
@@ -116,10 +105,8 @@ public sealed class AudioPipe : IDisposable
         }
     }
 
-    /// <summary>
     /// Adds one source's block to the mix at <paramref name="gain"/>; false (nothing added) when the gain is 0 or a recorded sample goes
     /// above <paramref name="rawCeiling"/>. Playback thread: no allocation.
-    /// </summary>
     internal static bool MixInto(Span<float> mix, ReadOnlySpan<float> part, float gain, float rawCeiling)
     {
         if (gain == 0f) return false;
@@ -145,7 +132,7 @@ public sealed class AudioPipe : IDisposable
         }
     }
 
-    /// <summary>The first device's playback side: its playback thread pulls blocks from here and hands a copy to every extra device.</summary>
+    /// The first device's playback side: its playback thread pulls blocks from here and hands a copy to every extra device.
     private sealed class PipeOutput : IWaveProvider
     {
         private readonly DriftReader[] _sources;
@@ -200,7 +187,7 @@ public sealed class AudioPipe : IDisposable
             return done * sizeof(float);
         }
 
-        /// <summary>Mixes what each capture has queued, each at its own gain (see <see cref="DriftReader"/> for priming and trimming).</summary>
+        /// Mixes what each capture has queued, each at its own gain (see <see cref="DriftReader"/> for priming and trimming).
         private void Fill(Span<float> block)
         {
             block.Clear();
@@ -212,7 +199,7 @@ public sealed class AudioPipe : IDisposable
             }
         }
 
-        /// <summary>Runs the effects; a processor that throws is left out from then on (the sound plays dry) and reported once.</summary>
+        /// Runs the effects; a processor that throws is left out from then on (the sound plays dry) and reported once.
         private void Process(Span<float> block)
         {
             if (Volatile.Read(ref _processorBroken) != 0) return;

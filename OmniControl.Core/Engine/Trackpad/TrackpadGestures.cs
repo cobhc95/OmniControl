@@ -2,29 +2,23 @@ using OmniControl.Core.Engine.Mouse;
 
 namespace OmniControl.Core.Engine.Trackpad;
 
-/// <summary>How the fingers move in a trackpad gesture.</summary>
+/// How the fingers move in a trackpad gesture.
 public enum GestureMotion { Up, Down, Left, Right, PinchIn, PinchOut, Tap, DoubleTap }
 
-/// <summary>
 /// Windows' own touchpad settings that also act on a gesture (Settings > Bluetooth &amp; devices > Touchpad); each one's details are in
 /// <see cref="WindowsGestureSettings"/>. The names are the keys of <c>trackpad-settings-original.json</c>: never rename them.
-/// </summary>
 public enum WindowsGesture { ThreeFingerSwipes, FourFingerSwipes, PinchToZoom, OneFingerTap, TwoFingerTap, ThreeFingerTap }
 
-/// <summary>
 /// One trackpad gesture: the input value it arrives as (<see cref="Button"/>, also its stored key), a stable <see cref="Id"/> (rule
 /// triggers store it), the card's <see cref="Name"/>, how it reads in a rule's sentence (<see cref="Phrase"/>), what the fingers do,
 /// which Windows setting also acts on it, and which of Windows' own panels Windows' action on it opens (<see cref="Opens"/>, for the
 /// safety net that closes one Windows opened although its gesture is off: <see cref="ShellSurfaceGuard"/>).
-/// </summary>
 public sealed record TrackpadGesture(MouseButton Button, string Id, string Name, string Phrase, int Fingers, GestureMotion Motion, WindowsGesture AlsoWindows,
     ShellSurface Opens = ShellSurface.None);
 
-/// <summary>
 /// The master list of trackpad gestures: one registration per gesture, read by the recogniser, the Mouse and Trackpad page (one card
 /// each), the custom rules' triggers and the "Windows also does this" check. Two-finger scroll is not here on purpose: it reaches
 /// OmniControl as wheel and tilt input, which the mouse button cards already handle.
-/// </summary>
 public static class TrackpadGestures
 {
     public static readonly IReadOnlyList<TrackpadGesture> All = new TrackpadGesture[]
@@ -49,7 +43,7 @@ public static class TrackpadGestures
             ShellSurface.Search | ShellSurface.NotificationCentre),
     };
 
-    /// <summary>The gesture made with this many fingers and this motion, or null (the recogniser asks; a loop, so nothing is allocated).</summary>
+    /// The gesture made with this many fingers and this motion, or null (the recogniser asks; a loop, so nothing is allocated).
     public static TrackpadGesture? Find(int fingers, GestureMotion motion)
     {
         for (var i = 0; i < All.Count; i++)
@@ -57,7 +51,7 @@ public static class TrackpadGestures
         return null;
     }
 
-    /// <summary>The gesture that arrives as <paramref name="button"/>, or null for a mouse input.</summary>
+    /// The gesture that arrives as <paramref name="button"/>, or null for a mouse input.
     public static TrackpadGesture? Of(MouseButton button)
     {
         for (var i = 0; i < All.Count; i++)

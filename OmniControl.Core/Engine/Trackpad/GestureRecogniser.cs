@@ -1,35 +1,33 @@
 namespace OmniControl.Core.Engine.Trackpad;
 
-/// <summary>One finger of a touchpad frame: its place as a share of the pad's longer side (so both axes use the same unit), and whether it touches.</summary>
+/// One finger of a touchpad frame: its place as a share of the pad's longer side (so both axes use the same unit), and whether it touches.
 public struct TouchContact
 {
     public float X, Y;
     public bool Touching;
 }
 
-/// <summary>
 /// Turns touchpad frames into gestures of <see cref="TrackpadGestures"/>. Pure (no Windows calls) and allocation-free: called for every
 /// frame while fingers are on the pad. One gesture per touch: once one is recognised, nothing more until every finger has lifted;
 /// a cooldown keeps a bouncing contact from counting as a new touch. When more fingers land, the start is taken again with all of
 /// them; when fingers lift, nothing more is recognised for that touch (lifting is not a swipe).
 /// A touch that stays put and lifts quickly is a tap; a second tap with the same fingers soon after is a double tap (it replaces that
 /// second tap).
-/// </summary>
 public sealed class GestureRecogniser
 {
-    /// <summary>How far the fingers' average must travel for a swipe, as a share of the pad's longer side.</summary>
+    /// How far the fingers' average must travel for a swipe, as a share of the pad's longer side.
     public const float SwipeDistance = 0.12f;
 
-    /// <summary>A swipe must go this many times further along its axis than across it (a diagonal is not a swipe).</summary>
+    /// A swipe must go this many times further along its axis than across it (a diagonal is not a swipe).
     public const float SwipeDominance = 1.5f;
 
-    /// <summary>A pinch changes the distance between the two fingers by at least this share (in: to 1 / 1.25 of it, out: to 1.25 times).</summary>
+    /// A pinch changes the distance between the two fingers by at least this share (in: to 1 / 1.25 of it, out: to 1.25 times).
     public const float PinchChange = 0.25f;
 
-    /// <summary>Two fingers closer than this at the start (share of the longer side) are too close to measure a pinch from.</summary>
+    /// Two fingers closer than this at the start (share of the longer side) are too close to measure a pinch from.
     public const float PinchMinSpread = 0.04f;
 
-    /// <summary>A tap's fingers may drift this far (share of the pad's longer side), and two fingers may change their distance this much.</summary>
+    /// A tap's fingers may drift this far (share of the pad's longer side), and two fingers may change their distance this much.
     public const float TapMoveDistance = 0.03f;
 
     private readonly long _cooldownMs;
@@ -43,7 +41,7 @@ public sealed class GestureRecogniser
 
     public GestureRecogniser(TimeSpan cooldown) => _cooldownMs = (long)cooldown.TotalMilliseconds;
 
-    /// <summary>Takes one complete frame (every contact the pad reported for one moment); returns the gesture it completes, or null.</summary>
+    /// Takes one complete frame (every contact the pad reported for one moment); returns the gesture it completes, or null.
     public TrackpadGesture? Feed(ReadOnlySpan<TouchContact> contacts, long nowMs)
     {
         if (nowMs - _lastFrameMs > CoreTiming.TrackpadTouchGapMs) Reset();
@@ -86,7 +84,7 @@ public sealed class GestureRecogniser
         MathF.Sqrt((x - _startX) * (x - _startX) + (y - _startY) * (y - _startY)) > TapMoveDistance
         || (_fingers == 2 && MathF.Abs(spread - _startSpread) > TapMoveDistance);
 
-    /// <summary>All fingers have lifted: the tap (or double tap) this touch was, or null. Taps skip the cooldown: their own timing paces them.</summary>
+    /// All fingers have lifted: the tap (or double tap) this touch was, or null. Taps skip the cooldown: their own timing paces them.
     private TrackpadGesture? TapEnded(long nowMs)
     {
         if (_fingers == 0 || _tapSpoiled || nowMs - _touchStartMs > CoreTiming.TrackpadTapMaxMs) return null;
@@ -101,7 +99,7 @@ public sealed class GestureRecogniser
         _done = false;
     }
 
-    /// <summary>The touching fingers: how many, their average place, and (for exactly two) the distance between them.</summary>
+    /// The touching fingers: how many, their average place, and (for exactly two) the distance between them.
     private static (int Fingers, float X, float Y, float Spread) Measure(ReadOnlySpan<TouchContact> contacts)
     {
         int fingers = 0;
@@ -118,7 +116,7 @@ public sealed class GestureRecogniser
         return fingers == 0 ? (0, 0, 0, 0) : (fingers, sumX / fingers, sumY / fingers, fingers == 2 ? spread : 0);
     }
 
-    /// <summary>The swipe's direction once it has gone far enough along one axis; a touchpad's Y grows downwards.</summary>
+    /// The swipe's direction once it has gone far enough along one axis; a touchpad's Y grows downwards.
     private static GestureMotion? Swipe(float dx, float dy)
     {
         float ax = MathF.Abs(dx), ay = MathF.Abs(dy);

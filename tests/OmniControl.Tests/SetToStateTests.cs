@@ -1,10 +1,9 @@
-using OmniControl.App.Hotkeys;
-using OmniControl.App.Services;
-using OmniControl.App.States;
+using OmniControl.App.Shared.Contracts;
+using OmniControl.App.Features.States;
 
 namespace OmniControl.Tests;
 
-/// <summary>"Set to state": an On or Off action does nothing when its thing is already there (HotkeyRegistry.SkipsOrWaitsForState).</summary>
+/// "Set to state": an On or Off action does nothing when its thing is already there (HotkeyRegistry.SkipsOrWaitsForState).
 public class SetToStateTests
 {
     private sealed class FakeStates : IStateReader
@@ -31,9 +30,8 @@ public class SetToStateTests
 
     private static (HotkeyRegistry Registry, List<string> Said, List<string> Ran) Setup(FakeStates states)
     {
-        var registry = new HotkeyRegistry(new HardwareWatches()) { StateReader = states };
         var said = new List<string>();
-        registry.Report = said.Add;
+        var registry = new HotkeyRegistry(new HardwareWatches(), said.Add, states: () => states);
         return (registry, said, new List<string>());
     }
 

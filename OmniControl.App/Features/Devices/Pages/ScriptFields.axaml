@@ -1,0 +1,95 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Features.Devices.Pages"
+             xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+             x:Class="OmniControl.App.Features.Devices.Pages.ScriptFields"
+             x:DataType="vm:MethodItem">
+    <!-- A scripts method's rows (docs/mockups/device-icons.html, script-templates.html): Address (with the Reserved switch and the Router guide
+         under it), Sign-in and Template on a shared label column, each shown or not (ShowAddress, ShowSignIn, ShowProfile: each set-up stage
+         shows one, and the set-up's foot the Template row with Advanced…). Every field stretches; tags, pills and chips stay whole and move
+         under the field when the row is narrow. -->
+    <FlyoutBase.AttachedFlyout>
+        <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft" FlyoutPresenterClasses="optionmenu" Opened="OnGuideOpened">
+            <StackPanel x:DataType="vm:MethodItem" Spacing="6">
+                <TextBlock Classes="strong" Text="Give the device a fixed address" />
+                <TextBlock Classes="hint small" TextWrapping="Wrap"
+                           Text="1. Open your router's page and sign in.&#10;2. Find DHCP, LAN or Address reservation.&#10;3. Pick the device (it shows as Tapo or by its name) and reserve its current address.&#10;4. Save, then type that address in the Address box and switch Reserved on." />
+                <Button Classes="link small" Command="{Binding OpenRouterCommand}" HorizontalAlignment="Left">
+                    <TextBlock Text="{Binding RouterLinkText}" />
+                </Button>
+            </StackPanel>
+        </c:ListMenuFlyout>
+    </FlyoutBase.AttachedFlyout>
+
+    <StackPanel Spacing="6" Grid.IsSharedSizeScope="True">
+        <Grid x:Name="AddressRow" ColumnSpacing="10">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" SharedSizeGroup="DeviceFieldLabel" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+            <TextBlock Classes="muted" Text="Address" VerticalAlignment="Center" />
+            <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto" RowSpacing="4">
+                <TextBox Classes="field" Text="{Binding Address, UpdateSourceTrigger=LostFocus}" Watermark="IP address" MinWidth="0"
+                         ToolTip.Tip="The device's IP address on your home network (your router's list of devices, or the Tapo or Kasa app, shows it)." />
+                <WrapPanel Grid.Row="1" ItemSpacing="8" LineSpacing="4">
+                    <ToggleSwitch Classes="plain" IsChecked="{Binding Reserved}" VerticalAlignment="Center"
+                                  ToolTip.Tip="Switch on once the address is reserved in your router, so it never changes." />
+                    <TextBlock Text="Reserved in my router" VerticalAlignment="Center" />
+                    <Button Classes="pill" Content="Router guide" Click="OnGuideClick" ToolTip.Tip="Steps to give the device a fixed address." />
+                </WrapPanel>
+                <TextBlock Grid.Row="2" Classes="cautiontext" Text="Not an IP address" IsVisible="{Binding AddressLooksWrong}" />
+            </Grid>
+        </Grid>
+
+        <StackPanel IsVisible="{Binding NeedsSignIn}">
+        <Grid x:Name="SignInRow" ColumnSpacing="10">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" SharedSizeGroup="DeviceFieldLabel" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+            <TextBlock Classes="muted" Text="Sign-in" VerticalAlignment="Top" Margin="0,6,0,0" />
+            <Grid Grid.Column="1" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="4">
+                <TextBox Grid.ColumnSpan="2" Classes="field" Text="{Binding Email, UpdateSourceTrigger=LostFocus}" Watermark="{Binding SignInWatermark}" MinWidth="0" />
+                <c:PasswordField Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Password}" Watermark="{Binding PasswordWatermark}"
+                                 SaveCommand="{Binding SavePasswordCommand}" SavedAt="{Binding PasswordSavedAt}" HasSaved="{Binding HasPassword}"
+                                 ToolTip.Tip="Kept in the Windows Credential Manager on this PC, never in OmniControl's files, a backup or a log." />
+            </Grid>
+        </Grid>
+        </StackPanel>
+
+        <StackPanel x:Name="ProfileRow" Spacing="6">
+            <Grid ColumnSpacing="10">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" SharedSizeGroup="DeviceFieldLabel" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <TextBlock Classes="muted" Text="Template" VerticalAlignment="Center" />
+                <WrapPanel Grid.Column="1" ItemSpacing="6" LineSpacing="4" VerticalAlignment="Center">
+                    <TextBlock Classes="strong" Text="{Binding ProfileText}" VerticalAlignment="Center" />
+                    <ItemsControl ItemsSource="{Binding ProfileTags}" VerticalAlignment="Center">
+                        <ItemsControl.ItemTemplate><DataTemplate><c:TagView /></DataTemplate></ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Classes="hint small" Text="{Binding ProfileNote}" VerticalAlignment="Center" />
+                </WrapPanel>
+                <Button Grid.Column="2" Classes="pill" Classes.custom="{Binding ShowsAdvanced}" Content="Advanced…" Command="{Binding ToggleAdvancedCommand}"
+                        ToolTip.Tip="The command templates this template runs." VerticalAlignment="Center" />
+            </Grid>
+
+            <Border Classes="stage open" IsVisible="{Binding ShowsAdvanced}">
+                <StackPanel Spacing="6">
+                    <TextBlock Classes="hint small" Text="{Binding AdvancedTitle}" TextWrapping="Wrap" />
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="4">
+                        <TextBlock Classes="hint small" Text="Name" VerticalAlignment="Center" IsVisible="{Binding IsOwnProfile}" />
+                        <TextBox Grid.Column="1" Classes="field" Text="{Binding OwnName, UpdateSourceTrigger=LostFocus}" IsVisible="{Binding IsOwnProfile}" MinWidth="0" />
+                        <TextBlock Grid.Row="1" Classes="hint small" Text="On" VerticalAlignment="Center" />
+                        <TextBox Grid.Row="1" Grid.Column="1" Classes="field code" AcceptsReturn="False" Text="{Binding DraftOn, UpdateSourceTrigger=LostFocus}" MinWidth="0" />
+                        <TextBlock Grid.Row="2" Classes="hint small" Text="Off" VerticalAlignment="Center" />
+                        <TextBox Grid.Row="2" Grid.Column="1" Classes="field code" AcceptsReturn="False" Text="{Binding DraftOff, UpdateSourceTrigger=LostFocus}" MinWidth="0" />
+                        <TextBlock Grid.Row="3" Classes="hint small" Text="State" VerticalAlignment="Center" />
+                        <TextBox Grid.Row="3" Grid.Column="1" Classes="field code" AcceptsReturn="False" Text="{Binding DraftState, UpdateSourceTrigger=LostFocus}" MinWidth="0" />
+                    </Grid>
+                    <TextBlock Classes="hint small" Text="{Binding AdvancedNote}" TextWrapping="Wrap" />
+                    <WrapPanel ItemSpacing="6" LineSpacing="4">
+                        <Button Classes="pill" Content="Test" Command="{Binding TestTemplatesCommand}" ToolTip.Tip="Runs Off, then On, with these templates." />
+                        <Button Classes="pill" Content="Save as my template…" Command="{Binding SaveAsOwnCommand}" ToolTip.Tip="Keeps these templates as a template of your own, which updates never change." />
+                        <Button Classes="pill" Content="Reset to built-in" Command="{Binding ResetProfileCommand}" IsEnabled="{Binding CanResetProfile}" ToolTip.ShowOnDisabled="True"
+                                ToolTip.Tip="Back to the built-in template (your own templates are kept)." />
+                        <Button Classes="pill" Content="Export" Click="OnExport" ToolTip.Tip="Saves this template as a file." />
+                        <Button Classes="pill" Content="Import" Click="OnImport" ToolTip.Tip="Reads a template file as one of your own." />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

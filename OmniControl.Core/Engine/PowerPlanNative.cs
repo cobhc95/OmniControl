@@ -1,9 +1,6 @@
-using System.Runtime.InteropServices;
-using System.Text;
-
 namespace OmniControl.Core.Engine;
 
-/// <summary>The powrprof calls of <see cref="PowerPlanService"/>; every call returns a Win32 error code (0 = success) and nothing else in the program calls them.</summary>
+/// The powrprof calls of <see cref="PowerPlanService"/>; every call returns a Win32 error code (0 = success) and nothing else in the program calls them.
 internal static class PowerPlanNative
 {
     public const uint AccessScheme = 16, AccessSubgroup = 17, AccessIndividualSetting = 18;
@@ -30,10 +27,10 @@ internal static class PowerPlanNative
     [DllImport("kernel32.dll")] private static extern IntPtr LocalFree(IntPtr memory);
     [DllImport("shlwapi.dll", CharSet = CharSet.Unicode)] private static extern int SHLoadIndirectString(string source, StringBuilder output, uint length, IntPtr reserved);
 
-    /// <summary>Windows' own "hide this setting" mark (the control panel dialog leaves such settings out).</summary>
+    /// Windows' own "hide this setting" mark (the control panel dialog leaves such settings out).
     public static bool IsHidden(in Guid subgroup, in Guid setting) => (PowerReadSettingAttributes(subgroup, setting) & AttributeHide) != 0;
 
-    /// <summary>The GUID at index <paramref name="index"/> of an enumeration; null when there is no more (or it failed).</summary>
+    /// The GUID at index <paramref name="index"/> of an enumeration; null when there is no more (or it failed).
     public static Guid? EnumerateGuid(IntPtr scheme, IntPtr subgroup, uint flags, uint index)
     {
         var buffer = new byte[16];
@@ -41,7 +38,7 @@ internal static class PowerPlanNative
         return PowerEnumerate(IntPtr.Zero, scheme, subgroup, flags, index, buffer, ref size) == 0 ? new Guid(buffer) : null;
     }
 
-    /// <summary>The scheme that is active now.</summary>
+    /// The scheme that is active now.
     public static Guid? ActiveScheme()
     {
         if (PowerGetActiveScheme(IntPtr.Zero, out var pointer) != 0 || pointer == IntPtr.Zero) return null;
@@ -49,7 +46,7 @@ internal static class PowerPlanNative
         finally { LocalFree(pointer); }
     }
 
-    /// <summary>Reads a UTF-16 text with the usual ask-for-the-size-then-read pair; null when there is none.</summary>
+    /// Reads a UTF-16 text with the usual ask-for-the-size-then-read pair; null when there is none.
     public static string? ReadText(ReadBytes read)
     {
         uint size = 0;

@@ -1,29 +1,23 @@
-using OmniControl.App.Audio;
-using OmniControl.App.Audio.Engine;
-using static OmniControl.App.Audio.Engine.RecordingCheck;
+using static OmniControl.App.Features.Volume.Audio.Engine.RecordingCheck;
 
 namespace OmniControl.Tests;
 
-/// <summary>
 /// The check a recorded program's run makes once it is armed (original silenced, replay open), on a made-up clock with the engine's
 /// 100 ms tick: what the row shows, and when it gives up and puts the original back.
-/// </summary>
 public class RecordingCheckTests
 {
     private static readonly TimeSpan Tick = TimeSpan.FromMilliseconds(100);
     private static readonly TimeSpan Probe = TimeSpan.FromMilliseconds(1500), Idle = TimeSpan.FromSeconds(2);
     private static readonly DateTime T0 = new(2026, 11, 14, 12, 0, 0, DateTimeKind.Utc);
 
-    /// <summary>A program at -26 dBFS as the recording sees it with its session held at the quiet level (-80 dB).</summary>
+    /// A program at -26 dBFS as the recording sees it with its session held at the quiet level (-80 dB).
     private const float QuietRecording = 0.05f * QuietLevel.Scalar;
     private const float ProgramMeter = 0.05f;
 
     private static RecordingCheck New(SilenceMethod method = SilenceMethod.Quiet) => new(method, Probe, Idle);
 
-    /// <summary>
     /// The start-up budget: an armed run needs no look at all before sound passes (the replay is open from the moment the pipe is up),
     /// and the very first look that sees sound says Running; no step waits for a tick, a scan or a probe time.
-    /// </summary>
     [Fact]
     public void Armed_FirstSound_IsRunningAtTheFirstLook()
     {
@@ -44,7 +38,7 @@ public class RecordingCheckTests
         Assert.Equal(Verdict.Running, check.Look(T0 + Idle + Tick, QuietRecording, ProgramMeter));
     }
 
-    /// <summary>The program plays (Windows' meter) but the recording stays silent: checking, then failed after the probe time.</summary>
+    /// The program plays (Windows' meter) but the recording stays silent: checking, then failed after the probe time.
     [Fact]
     public void RecordingSilent_WhileTheProgramPlays_FailsAfterTheProbe()
     {
@@ -56,7 +50,7 @@ public class RecordingCheckTests
         Assert.Contains("went silent", check.FailReason);
     }
 
-    /// <summary>A recording that stays loud is taken before the session's volume: never made up, and the reason says so.</summary>
+    /// A recording that stays loud is taken before the session's volume: never made up, and the reason says so.
     [Fact]
     public void RecordingStaysLoud_FailsWithTheVolumeReason()
     {
@@ -66,7 +60,7 @@ public class RecordingCheckTests
         Assert.Contains("did not follow", check.FailReason);
     }
 
-    /// <summary>Armed while it already played: loud blocks recorded before the silencing reached the stream, then passing sound.</summary>
+    /// Armed while it already played: loud blocks recorded before the silencing reached the stream, then passing sound.
     [Fact]
     public void LoudBlocksBeforeTheSilencing_ThenQuiet_Runs()
     {
@@ -75,7 +69,7 @@ public class RecordingCheckTests
         Assert.Equal(Verdict.Running, check.Look(T0 + Tick, QuietRecording, ProgramMeter));
     }
 
-    /// <summary>Silence everywhere never fails (a paused or silent program is not a failed recording).</summary>
+    /// Silence everywhere never fails (a paused or silent program is not a failed recording).
     [Fact]
     public void SilentProgram_StaysReadyForever()
     {
@@ -83,7 +77,7 @@ public class RecordingCheckTests
         for (var t = T0; t - T0 < TimeSpan.FromMinutes(1); t += Tick) Assert.Equal(Verdict.Ready, check.Look(t, 0, 0));
     }
 
-    /// <summary>With the mute or volume-0 way the recording is not made up: full-level sound passes.</summary>
+    /// With the mute or volume-0 way the recording is not made up: full-level sound passes.
     [Theory]
     [InlineData(SilenceMethod.Mute)]
     [InlineData(SilenceMethod.ZeroVolume)]

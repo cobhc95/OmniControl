@@ -1,6 +1,6 @@
 namespace OmniControl.Core.Models;
 
-/// <summary>Names for the values of the table-type VCP codes (input source, colour preset), from the MCCS standard.</summary>
+/// Names for the values of the table-type VCP codes (input source, colour preset), from the MCCS standard.
 public static class VcpNames
 {
     private static readonly Dictionary<uint, string> Inputs = new()
@@ -28,7 +28,7 @@ public static class VcpNames
 
     private static readonly Dictionary<uint, string> Mutes = new() { [0x01] = "Muted", [0x02] = "Not muted" };
 
-    /// <summary>The name of one value of a choice feature (<see cref="VcpKind.Choice"/>), by its VCP code.</summary>
+    /// The name of one value of a choice feature (<see cref="VcpKind.Choice"/>), by its VCP code.
     public static string Of(byte code, uint value) => code switch
     {
         VcpCode.InputSource => Input(value),

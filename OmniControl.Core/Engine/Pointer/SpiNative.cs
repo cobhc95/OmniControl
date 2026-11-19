@@ -1,12 +1,8 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Engine.Pointer;
 
-/// <summary>
 /// The one declaration of SystemParametersInfo and the mouse-related Windows calls around it, with the action codes OmniControl uses
 /// (the touchpad's settings too, <c>Trackpad/TouchpadSettingsStore</c>). Each overload matches how the documentation says that action
 /// passes its value: in uiParam, in pvParam itself, or through a pointer (a structure as bytes).
-/// </summary>
 internal static class SpiNative
 {
     [DllImport("user32.dll", EntryPoint = "SystemParametersInfoW", SetLastError = true)]
@@ -32,10 +28,10 @@ internal static class SpiNative
     [DllImport("shlwapi.dll", CharSet = CharSet.Unicode)]
     public static extern int SHLoadIndirectString(string source, char[] buffer, uint size, IntPtr reserved);
 
-    /// <summary>Save to the user's profile and tell every window, as Windows' own mouse settings do.</summary>
+    /// Save to the user's profile and tell every window, as Windows' own mouse settings do.
     public const uint SaveAndBroadcast = UpdateIniFile | SendChange;
 
-    /// <summary>Tell every window but do not save: the change ends at sign-out.</summary>
+    /// Tell every window but do not save: the change ends at sign-out.
     public const uint BroadcastOnly = SendChange;
 
     private const uint UpdateIniFile = 0x01, SendChange = 0x02;
@@ -47,6 +43,7 @@ internal static class SpiNative
     public const uint GetSnapToDefButton = 0x005F, SetSnapToDefButton = 0x0060;
     public const uint GetWheelScrollLines = 0x0068, SetWheelScrollLines = 0x0069;
     public const uint GetWheelScrollChars = 0x006C, SetWheelScrollChars = 0x006D;
+    public const uint GetMenuShowDelay = 0x006A;
     public const uint GetMouseSpeed = 0x0070, SetMouseSpeed = 0x0071;
     public const uint GetMouseSonar = 0x101C, SetMouseSonar = 0x101D;
     public const uint GetMouseClickLock = 0x101E, SetMouseClickLock = 0x101F;
@@ -55,6 +52,6 @@ internal static class SpiNative
 
     public const int SmSwapButton = 23;
 
-    /// <summary>WHEEL_PAGESCROLL: the wheel scrolls one screen per notch instead of a number of lines.</summary>
+    /// WHEEL_PAGESCROLL: the wheel scrolls one screen per notch instead of a number of lines.
     public const uint WheelPageScroll = uint.MaxValue;
 }

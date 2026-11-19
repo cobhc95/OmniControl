@@ -1,17 +1,13 @@
-using System.Runtime.InteropServices;
-using OmniControl.Core.Native;
 using static OmniControl.Core.Native.PrintNative;
 
 namespace OmniControl.Core.Engine.Screenshot;
 
-/// <summary>How a print ended.</summary>
+/// How a print ended.
 public enum PrintOutcome { Printed, Cancelled, Failed }
 
-/// <summary>
 /// Prints one picture: Windows' own print dialog chooses the printer and copies, then the picture is printed centred on one page at its
 /// screen size (96 pixels per inch), made smaller only when it does not fit. Blocks until the dialog closes; call it on the UI thread.
 /// The printer's device context and the dialog's printer settings are released before it returns.
-/// </summary>
 public static class ImagePrinter
 {
     private const double ScreenPixelsPerInch = 96;
@@ -64,7 +60,7 @@ public static class ImagePrinter
         return EndDoc(hdc) > 0 ? PrintOutcome.Printed : PrintOutcome.Failed;
     }
 
-    /// <summary>Where the picture goes on the page, in printer dots: its screen size at the printer's resolution, shrunk to fit, centred.</summary>
+    /// Where the picture goes on the page, in printer dots: its screen size at the printer's resolution, shrunk to fit, centred.
     internal static ScreenRect Fit(int imageWidth, int imageHeight, int pageWidth, int pageHeight, int dotsPerInchX, int dotsPerInchY)
     {
         var width = imageWidth * dotsPerInchX / ScreenPixelsPerInch;

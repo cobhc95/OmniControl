@@ -1,17 +1,16 @@
-using System.Runtime.InteropServices;
 using SkiaSharp;
 
 namespace OmniControl.Core.Engine.Screenshot;
 
-/// <summary>The file formats a screenshot can be saved in (stored by number in the settings: never reorder).</summary>
+/// The file formats a screenshot can be saved in (stored by number in the settings: never reorder).
 public enum ImageFormat { Png, Jpg, WebP, Bmp }
 
-/// <summary>The one table of the formats: their names, file endings and whether a quality applies.</summary>
+/// The one table of the formats: their names, file endings and whether a quality applies.
 public static class ImageFormats
 {
     public static IReadOnlyList<ImageFormat> All { get; } = new[] { ImageFormat.Png, ImageFormat.Jpg, ImageFormat.WebP, ImageFormat.Bmp };
 
-    /// <summary>What a list shows ("PNG", "WebP").</summary>
+    /// What a list shows ("PNG", "WebP").
     public static string Name(ImageFormat format) => format switch
     {
         ImageFormat.Jpg => "JPG",
@@ -20,22 +19,22 @@ public static class ImageFormats
         _ => "PNG",
     };
 
-    /// <summary>The file ending, with its dot (".png").</summary>
+    /// The file ending, with its dot (".png").
     public static string Extension(ImageFormat format) => "." + Name(format).ToLowerInvariant();
 
-    /// <summary>The format a shown name stands for; PNG for anything else.</summary>
+    /// The format a shown name stands for; PNG for anything else.
     public static ImageFormat Parse(string name) => All.FirstOrDefault(f => string.Equals(Name(f), name, StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>True for the formats that lose detail by a chosen quality (JPG, WebP).</summary>
+    /// True for the formats that lose detail by a chosen quality (JPG, WebP).
     public static bool UsesQuality(ImageFormat format) => format is ImageFormat.Jpg or ImageFormat.WebP;
 
     public const int MinQuality = 1, MaxQuality = 100, DefaultQuality = 80;
 
-    /// <summary>The format a screenshot is saved and copied in until the person picks another (the owner's choice: JPG at <see cref="DefaultQuality"/>).</summary>
+    /// The format a screenshot is saved and copied in until the person picks another (JPG at <see cref="DefaultQuality"/>).
     public const ImageFormat DefaultFormat = ImageFormat.Jpg;
 }
 
-/// <summary>Turns a <see cref="ScreenImage"/> into the bytes of an image file. PNG, JPG and WebP through SkiaSharp; BMP is written here (Skia has no BMP encoder).</summary>
+/// Turns a <see cref="ScreenImage"/> into the bytes of an image file. PNG, JPG and WebP through SkiaSharp; BMP is written here (Skia has no BMP encoder).
 public static class ImageEncoder
 {
     private const int BmpFileHeader = 14, BmpInfoHeader = 40, BmpBytesPerPixel = 3;
@@ -66,7 +65,7 @@ public static class ImageEncoder
         }
     }
 
-    /// <summary>A 24-bit BMP file (bottom row first, rows padded to four bytes).</summary>
+    /// A 24-bit BMP file (bottom row first, rows padded to four bytes).
     internal static byte[] Bmp(ScreenImage image)
     {
         var row = (image.Width * BmpBytesPerPixel + 3) & ~3;

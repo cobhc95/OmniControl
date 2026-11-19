@@ -1,0 +1,26 @@
+using OmniControl.Core.Engine.Pointer;
+
+namespace OmniControl.App.Features.Input.Mouse;
+
+/// The user's own pointer settings as they were before OmniControl first changed one: every value (by <see cref="PointerValue"/> name) and the pointers.
+public sealed record PointerOriginal(Dictionary<string, int> Values, CursorSnapshot Cursors, DateTime SavedAt);
+
+/// Owns <c>pointer-settings-original.json</c>: written once, just before OmniControl's first change to a Windows pointer setting, and
+/// never overwritten, so "Restore my original values" always means the values the user had before OmniControl touched them.
+internal sealed class PointerBackup
+{
+    private static readonly DataStore Store = DataStores.PointerOriginal;
+
+    private PointerOriginal? _original = AppDataStore.Load<PointerOriginal>(Store);
+
+    /// The saved originals, or null when OmniControl has changed nothing yet.
+    public PointerOriginal? Original => _original;
+
+    /// Saves <paramref name="capture"/>'s answer unless an original is already kept. Call before the first write.
+    public void EnsureSaved(Func<PointerOriginal> capture)
+    {
+        if (_original is not null) return;
+        _original = capture();
+        AppDataStore.Save(Store, _original);
+    }
+}

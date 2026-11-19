@@ -1,14 +1,11 @@
-using System.Runtime.InteropServices;
 using OmniControl.Core.Engine.Mouse;
 
 namespace OmniControl.Core.Engine.Keyboard;
 
-/// <summary>
 /// Takes one Windows-key shortcut (Win plus a letter) from Windows: a low-level keyboard hook on its own message-loop thread that swallows the
 /// letter's press (and its repeats) and release and raises <see cref="Pressed"/> once per press. The Win key itself always passes through, so it
 /// can never stay down; because Windows would then open the Start menu when Win is let go alone, one unassigned key is tapped (down and up in one
 /// call) at the moment the letter is swallowed. Keys OmniControl sent itself are ignored. The callback only classifies; the answer is raised on the pool.
-/// </summary>
 public sealed class WinKeyHook : IDisposable
 {
     private const int WhKeyboardLl = 13;
@@ -39,21 +36,21 @@ public sealed class WinKeyHook : IDisposable
     /// <param name="letterVk">The virtual key of the letter taken with Win (0x41 = A).</param>
     public WinKeyHook(ushort letterVk) => _vk = letterVk;
 
-    /// <summary>Raised on a pool thread each time Win+letter is pressed (not for its repeats).</summary>
+    /// Raised on a pool thread each time Win+letter is pressed (not for its repeats).
     public event Action? Pressed;
 
-    /// <summary>Installs the hook; false when Windows refuses it. Does nothing when it is already running.</summary>
+    /// Installs the hook; false when Windows refuses it. Does nothing when it is already running.
     public bool Start()
     {
         if (_thread != 0) return true;
         var ready = new ManualResetEventSlim();
         var installed = false;
-        new Thread(() => Loop(ready, ok => installed = ok)) { IsBackground = true, Name = "Win key hook" }.Start();
+        new Thread(() => Loop(ready, ok => installed = ok)) { IsBackground = true, Name = "Win key hook", Priority = ThreadPriority.Highest }.Start();
         ready.Wait();
         return installed;
     }
 
-    /// <summary>Removes the hook; keys then reach Windows as usual.</summary>
+    /// Removes the hook; keys then reach Windows as usual.
     public void Stop()
     {
         var thread = _thread;

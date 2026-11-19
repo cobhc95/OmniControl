@@ -1,6 +1,6 @@
 namespace OmniControl.Core.Engine.Mouse;
 
-/// <summary>A rectangle on the screen in physical pixels; <see cref="Right"/> and <see cref="Bottom"/> are just outside it.</summary>
+/// A rectangle on the screen in physical pixels; <see cref="Right"/> and <see cref="Bottom"/> are just outside it.
 public readonly record struct ScreenRect(int Left, int Top, int Right, int Bottom)
 {
     public int Width => Right - Left;
@@ -11,11 +11,11 @@ public readonly record struct ScreenRect(int Left, int Top, int Right, int Botto
     public bool Intersects(ScreenRect other) =>
         !IsEmpty && !other.IsEmpty && other.Left < Right && Left < other.Right && other.Top < Bottom && Top < other.Bottom;
 
-    /// <summary>The part both rectangles share (empty when they do not meet).</summary>
+    /// The part both rectangles share (empty when they do not meet).
     public ScreenRect Intersect(ScreenRect other) =>
         new(Math.Max(Left, other.Left), Math.Max(Top, other.Top), Math.Min(Right, other.Right), Math.Min(Bottom, other.Bottom));
 
-    /// <summary>What is left of this rectangle once <paramref name="other"/> is cut out of it: up to four non-overlapping pieces.</summary>
+    /// What is left of this rectangle once <paramref name="other"/> is cut out of it: up to four non-overlapping pieces.
     public IEnumerable<ScreenRect> Minus(ScreenRect other)
     {
         if (!Intersects(other)) { if (!IsEmpty) yield return this; yield break; }
@@ -33,11 +33,9 @@ public readonly record struct ScreenRect(int Left, int Top, int Right, int Botto
     }
 }
 
-/// <summary>One rectangle where a gesture area applies.</summary>
+/// One rectangle where a gesture area applies.
 public readonly record struct ScreenArea(PointerAreaKind Kind, ScreenRect Rect);
 
-/// <summary>
 /// One gesture area as drawn: <see cref="Bounds"/> is the whole area, <see cref="Pieces"/> the parts of it where it really applies
 /// once the areas that win over it (<see cref="PointerArea.At"/>'s order) are cut out.
-/// </summary>
 public sealed record MappedArea(PointerAreaKind Kind, ScreenRect Bounds, IReadOnlyList<ScreenRect> Pieces);

@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:flow="using:OmniControl.App.Features.Volume.Pages.Easy.Flow"
+             x:Class="OmniControl.App.Features.Volume.Pages.Easy.Flow.EasyCheckLineView"
+             x:DataType="flow:EasyCheckItem">
+    <!-- One line of a checklist (a setup's Setup screen, the extra lines of All set) and of the "What you will need" box on the goal cards: its mark
+         (none for a plain sentence), words with a muted second line, an optional live word at the right and an optional fix button. -->
+    <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" Margin="0,2">
+        <TextBlock Classes="strong" Text="{Binding Mark}" Classes.accenttext="{Binding IsDone}" Classes.cautiontext="{Binding IsTodo}" Classes.muted="{Binding IsBlocked}"
+                   IsVisible="{Binding IsMarked}" MinWidth="12" TextAlignment="Center" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+            <TextBlock Text="{Binding Title}" TextWrapping="Wrap" Classes.muted="{Binding IsOptional}" />
+            <TextBlock Text="{Binding Subtitle}" Classes="hint small" TextWrapping="Wrap" />
+        </StackPanel>
+        <TextBlock Grid.Column="2" Text="{Binding Live}" IsVisible="{Binding HasLive}" Classes="hint small" VerticalAlignment="Center" />
+        <Button Grid.Column="3" Tag="grouptool" Classes="pill" Classes.custom="{Binding IsTodo}" IsVisible="{Binding HasFix}" Content="{Binding FixLabel}"
+                Command="{Binding FixCommand}" VerticalAlignment="Center" />
+    </Grid>
+</UserControl>

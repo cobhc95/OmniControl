@@ -1,0 +1,9 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
+             x:Class="OmniControl.App.Shared.Ui.Pages.GroupRestorePill"
+             x:DataType="pages:CardGroup">
+    <!-- The one "Restore defaults" pill of a group's header line (data context: the CardGroup; shown only when the group has a Restore) -->
+    <Button Classes="pill" Tag="grouptool" Content="{Binding RestoreText}" Command="{Binding RestoreCommand}" IsVisible="{Binding HasRestore}"
+            VerticalAlignment="Center" ToolTip.Tip="{Binding RestoreTip}" />
+</UserControl>

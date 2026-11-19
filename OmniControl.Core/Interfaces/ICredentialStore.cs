@@ -1,14 +1,14 @@
 namespace OmniControl.Core.Interfaces;
 
-/// <summary>Keeps one secret (a password) under a name, outside every OmniControl file.</summary>
+/// Keeps one secret (a password) under a name, outside every OmniControl file.
 public interface ICredentialStore
 {
-    /// <summary>Saves the secret; false when Windows refused.</summary>
+    /// Saves the secret; false when Windows refused.
     bool Write(string target, string secret);
 
-    /// <summary>The saved secret, or null when there is none.</summary>
+    /// The saved secret, or null when there is none.
     string? Read(string target);
 
-    /// <summary>Removes the secret; a missing one is not a problem.</summary>
+    /// Removes the secret; a missing one is not a problem.
     void Delete(string target);
 }

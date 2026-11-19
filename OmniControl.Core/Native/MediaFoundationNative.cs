@@ -1,13 +1,10 @@
-using System.Runtime.InteropServices;
 using NAudio.MediaFoundation;
 
 namespace OmniControl.Core.Native;
 
-/// <summary>
 /// The Media Foundation calls of the screen recorder: the Sink Writer, media types, samples and buffers, and the encoder lookup. The COM
 /// objects are raw pointers called through their vtables (NAudio keeps its own wrappers internal), so every one is released by the caller
 /// with <see cref="Release"/>. Slot numbers count IUnknown's three methods first. GUIDs that NAudio publishes are taken from NAudio.
-/// </summary>
 internal static unsafe class MediaFoundationNative
 {
     public const int MfVersion = 0x00020070, MfStartupFull = 0;
@@ -52,7 +49,7 @@ internal static unsafe class MediaFoundationNative
     public static readonly Guid TransformAsync = new("f81a699a-649a-497d-8c73-29f8fed6ad7a");
     public static readonly Guid AdapterLuid = new("1d39518c-e220-4da8-a07f-ba172552d6b1");
 
-    /// <summary>The sample allocator has no free sample (the encoder still holds them all).</summary>
+    /// The sample allocator has no free sample (the encoder still holds them all).
     public const int SampleAllocatorEmpty = unchecked((int)0xC00D4A3E);
 
     [StructLayout(LayoutKind.Sequential)]
@@ -74,7 +71,7 @@ internal static unsafe class MediaFoundationNative
     [DllImport("mfreadwrite.dll", CharSet = CharSet.Unicode)] public static extern int MFCreateSinkWriterFromURL(string url, IntPtr byteStream, IntPtr attributes, out IntPtr writer);
     [DllImport("ole32.dll")] public static extern void CoTaskMemFree(IntPtr memory);
 
-    /// <summary>Throws a <see cref="COMException"/> for a failed HRESULT.</summary>
+    /// Throws a <see cref="COMException"/> for a failed HRESULT.
     public static void Check(int hr) => Marshal.ThrowExceptionForHR(hr);
 
     private static void** Vtbl(IntPtr obj) => *(void***)obj;
@@ -97,7 +94,7 @@ internal static unsafe class MediaFoundationNative
     public static void SetUnknown(IntPtr obj, Guid key, IntPtr value) =>
         Check(((delegate* unmanaged[Stdcall]<IntPtr, Guid*, IntPtr, int>)Vtbl(obj)[27])(obj, &key, value));
 
-    /// <summary>Two 32-bit numbers in one 64-bit attribute (a frame size, a frame rate, a pixel aspect ratio).</summary>
+    /// Two 32-bit numbers in one 64-bit attribute (a frame size, a frame rate, a pixel aspect ratio).
     public static void SetPair(IntPtr obj, Guid key, uint high, uint low) => SetUInt64(obj, key, (ulong)high << 32 | low);
 
     public static int TryGetUInt32(IntPtr obj, Guid key, out uint value)
@@ -124,7 +121,7 @@ internal static unsafe class MediaFoundationNative
         return hr;
     }
 
-    /// <summary>A string attribute, or null when the object does not have it.</summary>
+    /// A string attribute, or null when the object does not have it.
     public static string? TryGetString(IntPtr obj, Guid key)
     {
         char* text;
@@ -140,7 +137,7 @@ internal static unsafe class MediaFoundationNative
         }
     }
 
-    /// <summary>An 8-byte blob attribute (an adapter LUID), or null when the object does not have it.</summary>
+    /// An 8-byte blob attribute (an adapter LUID), or null when the object does not have it.
     public static long? TryGetLuid(IntPtr obj, Guid key)
     {
         long value;
@@ -220,7 +217,7 @@ internal static unsafe class MediaFoundationNative
 
     public static int UninitializeSampleAllocator(IntPtr allocator) => ((delegate* unmanaged[Stdcall]<IntPtr, int>)Vtbl(allocator)[4])(allocator);
 
-    /// <summary>A free sample, or the failure (<see cref="SampleAllocatorEmpty"/> when the encoder holds them all).</summary>
+    /// A free sample, or the failure (<see cref="SampleAllocatorEmpty"/> when the encoder holds them all).
     public static int AllocateSample(IntPtr allocator, out IntPtr sample)
     {
         IntPtr found;
@@ -248,7 +245,7 @@ internal static unsafe class MediaFoundationNative
     public static void WriteSample(IntPtr writer, uint stream, IntPtr sample) =>
         Check(((delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr, int>)Vtbl(writer)[6])(writer, stream, sample));
 
-    /// <summary>What the Sink Writer has done with one stream so far (MF_SINK_WRITER_STATISTICS; <see cref="Size"/> is set before the call).</summary>
+    /// What the Sink Writer has done with one stream so far (MF_SINK_WRITER_STATISTICS; <see cref="Size"/> is set before the call).
     [StructLayout(LayoutKind.Sequential)]
     public struct SinkWriterStatistics
     {
@@ -268,7 +265,7 @@ internal static unsafe class MediaFoundationNative
     }
 
     // IMFSinkWriterEx
-    /// <summary>The <paramref name="index"/>th transform the Sink Writer put on a stream (colour converter, encoder), or the failure when there is none.</summary>
+    /// The <paramref name="index"/>th transform the Sink Writer put on a stream (colour converter, encoder), or the failure when there is none.
     public static int GetTransformForStream(IntPtr writerEx, uint stream, uint index, out Guid category, out IntPtr transform)
     {
         Guid found;
@@ -286,7 +283,7 @@ internal static unsafe class MediaFoundationNative
         return ((delegate* unmanaged[Stdcall]<IntPtr, IntPtr*, int>)Vtbl(transform)[8])(transform, &attributes) >= 0 ? attributes : IntPtr.Zero;
     }
 
-    /// <summary>The transform's current input (or output) media type on stream 0; zero when it has none or will not say.</summary>
+    /// The transform's current input (or output) media type on stream 0; zero when it has none or will not say.
     public static IntPtr TransformCurrentType(IntPtr transform, bool output)
     {
         IntPtr type;

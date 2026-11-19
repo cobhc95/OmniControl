@@ -2,13 +2,10 @@ using OmniControl.Core.Engine.Screenshot;
 
 namespace OmniControl.Tests;
 
-/// <summary>
 /// The recorder's chain of ways and its watchdog, for real on this PC: a small corner of the screen is recorded into the temp folder while
 /// test faults make a way fail, hang (when opening, on the first frame, when finishing) or encode nothing, and the next way must take over,
 /// the result must say what to remember, and the log must say why. Also the 4K writer, the frame-rate cap, the forced adapter and the
 /// encoder facts. Nothing on the PC is changed; the files are deleted and every hung test thread is let go.
-/// </summary>
-[Collection(nameof(RecordingFileTests))] // one recording at a time: they share the screen copy and the encoder
 public class RecordingChainTests
 {
     private static readonly RecordingWaits Short = new(OpenMs: 4000, FirstFrameMs: 3000, StuckMs: 2500, FinishMs: 3000);

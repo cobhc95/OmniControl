@@ -1,11 +1,8 @@
-using OmniControl.App.Hotkeys;
-using OmniControl.Core.Engine;
 using OmniControl.Core.Models;
-using Xunit;
 
 namespace OmniControl.Tests;
 
-/// <summary>A display is found again by its device path, so a renumbering never sends a turn to another screen; and the screen power actions keep their ids.</summary>
+/// A display is found again by its device path, so a renumbering never sends a turn to another screen; and the screen power actions keep their ids.
 public class DisplayIdentityTests
 {
     private static DisplayInfo Info(string name, string model, string path) => new(name, model, path, false, false);

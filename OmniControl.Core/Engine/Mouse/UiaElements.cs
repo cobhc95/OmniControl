@@ -1,12 +1,8 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Engine.Mouse;
 
-/// <summary>
 /// Reads what is under a screen point through UI Automation (raw COM, since only a few calls are needed): the control type of the
 /// element and of its parents. One instance per worker thread (a multithreaded-apartment thread, never the UI or hook thread) keeps one
 /// automation object for its life; every element and walker a lookup gets is released at once, so nothing is held in the other app.
-/// </summary>
 internal sealed class UiaElements : IDisposable
 {
     private const int ControlTypePropertyId = 30003;
@@ -40,7 +36,7 @@ internal sealed class UiaElements : IDisposable
 
     private IUIAutomation? _automation;
 
-    /// <summary>The control types of the element at the point and up to <paramref name="parentLevels"/> parents; null when it can't be read.</summary>
+    /// The control types of the element at the point and up to <paramref name="parentLevels"/> parents; null when it can't be read.
     public IReadOnlyList<int>? ControlTypesAt(int x, int y, int parentLevels)
     {
         _automation ??= Activator.CreateInstance(Type.GetTypeFromCLSID(AutomationClass)!) as IUIAutomation;

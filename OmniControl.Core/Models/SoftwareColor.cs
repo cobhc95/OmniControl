@@ -1,10 +1,8 @@
 namespace OmniControl.Core.Models;
 
-/// <summary>
 /// The picture changes OmniControl makes in software on one display (a gamma ramp), as slider values. The ranges are limited so the
 /// screen can never go black (and so Windows accepts the ramp); the neutral values leave the picture as it was. Saturation, grayscale
 /// and invert are not here: a ramp treats each colour channel alone, so those are one colour matrix for the whole desktop (<c>ColorMatrix</c>).
-/// </summary>
 public readonly record struct SoftwareColor(
     int Brightness, int Contrast, int Temperature,
     int Red = SoftwareColor.GainNeutral, int Green = SoftwareColor.GainNeutral, int Blue = SoftwareColor.GainNeutral,
@@ -13,25 +11,25 @@ public readonly record struct SoftwareColor(
     public const int BrightnessMin = 40, BrightnessMax = 100, BrightnessNeutral = 100;
     public const int ContrastMin = 50, ContrastMax = 150, ContrastNeutral = 100;
 
-    /// <summary>Colour temperature in kelvin; the neutral value is the usual white point of a screen (D65).</summary>
+    /// Colour temperature in kelvin; the neutral value is the usual white point of a screen (D65).
     public const int TemperatureMin = 3000, TemperatureMax = 10000, TemperatureNeutral = 6500;
 
-    /// <summary>The slider form of the temperature: 0 is neutral, negative warmer (towards 3000 K), positive cooler (towards 10000 K).</summary>
+    /// The slider form of the temperature: 0 is neutral, negative warmer (towards 3000 K), positive cooler (towards 10000 K).
     public const int WarmthMin = -100, WarmthMax = 100;
 
-    /// <summary>Red, green and blue gain in percent of the channel; 100 leaves it as it is, no channel goes below a fifth.</summary>
+    /// Red, green and blue gain in percent of the channel; 100 leaves it as it is, no channel goes below a fifth.
     public const int GainMin = 20, GainMax = 100, GainNeutral = 100;
 
-    /// <summary>Gamma as a signed step: the curve's exponent is 1 + step / 100, so plus lifts the midtones and minus darkens them; 0 is neutral.</summary>
+    /// Gamma as a signed step: the curve's exponent is 1 + step / 100, so plus lifts the midtones and minus darkens them; 0 is neutral.
     public const int GammaMin = -50, GammaMax = 50, GammaNeutral = 0;
 
-    /// <summary>Black level: how far the darkest colour is lifted, in percent of full scale (0 = as it is). With <see cref="WhiteMin"/> it leaves at least 40 percent of the range.</summary>
+    /// Black level: how far the darkest colour is lifted, in percent of full scale (0 = as it is). With <see cref="WhiteMin"/> it leaves at least 40 percent of the range.
     public const int BlackMin = 0, BlackMax = 30, BlackNeutral = 0;
 
-    /// <summary>White level: the brightest colour's limit in percent of full scale (100 = as it is).</summary>
+    /// White level: the brightest colour's limit in percent of full scale (100 = as it is).
     public const int WhiteMin = 70, WhiteMax = 100, WhiteNeutral = 100;
 
-    /// <summary>Kelvin for a slider position between <see cref="WarmthMin"/> and <see cref="WarmthMax"/>.</summary>
+    /// Kelvin for a slider position between <see cref="WarmthMin"/> and <see cref="WarmthMax"/>.
     public static int KelvinOfWarmth(int warmth)
     {
         warmth = Math.Clamp(warmth, WarmthMin, WarmthMax);

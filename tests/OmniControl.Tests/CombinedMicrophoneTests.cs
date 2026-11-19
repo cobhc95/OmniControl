@@ -1,12 +1,8 @@
-using System.Text.Json;
-using OmniControl.App.Audio;
-using OmniControl.App.Audio.Engine;
-using OmniControl.Core.Engine;
 using Xunit.Abstractions;
 
 namespace OmniControl.Tests;
 
-/// <summary>Combined microphones on the owner's PC (one VB-CABLE pair): the planner, cable pairs, member lists, stored levels.</summary>
+/// Combined microphones on the reference PC (one VB-CABLE pair): the planner, cable pairs, member lists, stored levels.
 public class CombinedMicrophoneTests(ITestOutputHelper output)
 {
     private static readonly IReadOnlySet<string> None = new HashSet<string>();
@@ -37,7 +33,7 @@ public class CombinedMicrophoneTests(ITestOutputHelper output)
     public void CombinedMicrophone_WithTheMasterInApo_RunsIntoCableInputWithBothMics_ProgramsUnchanged()
     {
         var (s, mic) = WithCombinedMic(masterApo: true);
-        var plan = Plan(s, Set(OwnerPc.Helium, OwnerPc.Spotify));
+        var plan = Plan(s, Set(OwnerPc.Browser, OwnerPc.Player));
 
         var run = plan.Runs[mic.Key];
         Assert.Equal(RunKind.Mic, run.Kind);
@@ -49,8 +45,8 @@ public class CombinedMicrophoneTests(ITestOutputHelper output)
 
         var without = OwnerPc.Settings();
         without.MasterMethod = EffectsRules.MasterApo.Id;
-        var before = Plan(without, Set(OwnerPc.Helium, OwnerPc.Spotify));
-        foreach (var key in new[] { OwnerPc.Helium, OwnerPc.Spotify })
+        var before = Plan(without, Set(OwnerPc.Browser, OwnerPc.Player));
+        foreach (var key in new[] { OwnerPc.Browser, OwnerPc.Player })
             Assert.True(plan.Runs[key].SameAs(before.Runs[key]));
         Assert.Equal(before.ToApo, plan.ToApo);
     }
@@ -59,7 +55,7 @@ public class CombinedMicrophoneTests(ITestOutputHelper output)
     public void Full_CombinedMicrophone_WaitsForAnotherCable_TheBusKeepsCableInput()
     {
         var (s, mic) = WithCombinedMic();
-        var plan = Plan(s, Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify));
+        var plan = Plan(s, Set(OwnerPc.Player), sounding: Set(OwnerPc.Player));
 
         var blocked = plan.Blocked[mic.Key];
         Assert.Equal(EngineState.Unavailable, blocked.State);
@@ -68,8 +64,8 @@ public class CombinedMicrophoneTests(ITestOutputHelper output)
         Assert.Equal(OwnerPc.CableInput, plan.Runs[MixerService.MasterKey].Cable);
         // The bus holds the whole pair: "CABLE In 16ch" could be neither played into nor recorded while "CABLE Input" was in use (measured).
         // Spotify (Automatic) is recorded instead and plays into the bus; it takes no cable.
-        Assert.Equal(RunKind.Capture, plan.Runs[OwnerPc.Spotify].Kind);
-        Assert.Null(plan.Runs[OwnerPc.Spotify].Cable);
+        Assert.Equal(RunKind.Capture, plan.Runs[OwnerPc.Player].Kind);
+        Assert.Null(plan.Runs[OwnerPc.Player].Cable);
         Assert.False(plan.Runs.ContainsKey(mic.Key));
     }
 
@@ -77,14 +73,14 @@ public class CombinedMicrophoneTests(ITestOutputHelper output)
     public void Full_BusGivenUp_MicrophoneHoldsThePair_NothingElseUsesCable16()
     {
         var (s, mic) = WithCombinedMic();
-        var plan = Plan(s, Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify), failed: Set(MixerService.MasterKey));
+        var plan = Plan(s, Set(OwnerPc.Player), sounding: Set(OwnerPc.Player), failed: Set(MixerService.MasterKey));
 
         Assert.Equal(OwnerPc.CableInput, plan.Runs[mic.Key].Cable);
         Assert.Contains(OwnerPc.Cable16, plan.CablesInUse);
         Assert.DoesNotContain(plan.Runs.Values, r => r.Cable == OwnerPc.Cable16);
         // Spotify is recorded and plays on the real speakers by id: never "CABLE In 16ch", which would leak into the microphone.
-        Assert.Equal(RunKind.Capture, plan.Runs[OwnerPc.Spotify].Kind);
-        Assert.Equal(new[] { OwnerPc.Speaker }, plan.Runs[OwnerPc.Spotify].Outputs);
+        Assert.Equal(RunKind.Capture, plan.Runs[OwnerPc.Player].Kind);
+        Assert.Equal(new[] { OwnerPc.Speaker }, plan.Runs[OwnerPc.Player].Outputs);
     }
 
     [Fact]
@@ -155,12 +151,12 @@ public class CombinedMicrophoneTests(ITestOutputHelper output)
         var (s, mic) = WithCombinedMic();
         var second = new CombinedDevice { Name = "Other mics", Kind = CombinedKind.Microphones, Members = { OwnerPc.MicArray } };
         s.Combined.Add(second);
-        var before = Plan(s, Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify));
+        var before = Plan(s, Set(OwnerPc.Player), sounding: Set(OwnerPc.Player));
         Assert.Equal(EffectsRules.NeedsAnotherCable, before.Blocked[mic.Key].Text);
         Assert.Equal(EffectsRules.NeedsAnotherCable, before.Blocked[second.Key].Text);
 
         s.Combined.Remove(mic); // MixerService.RemoveCombined
-        var after = Plan(s, Set(OwnerPc.Spotify), sounding: Set(OwnerPc.Spotify));
+        var after = Plan(s, Set(OwnerPc.Player), sounding: Set(OwnerPc.Player));
         Assert.DoesNotContain(mic.Key, after.Blocked.Keys); // nothing of the removed one is left in the plan
         Assert.Equal(OwnerPc.CableInput, after.Runs[MixerService.MasterKey].Cable); // the bus, not the microphone, held the only pair
         Assert.Equal(EffectsRules.NeedsAnotherCable, after.Blocked[second.Key].Text); // and still does: that answer is true

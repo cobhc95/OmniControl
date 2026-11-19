@@ -1,17 +1,14 @@
-using System.ComponentModel;
-using System.Diagnostics;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>What an adb command printed and whether it worked.</summary>
+/// What an adb command printed and whether it worked.
 public sealed record AdbResult(bool Ok, string Text);
 
-/// <summary>The screen and input of one Android device or emulator, as a simulated device needs them (a fake of it runs the steps in tests).</summary>
+/// The screen and input of one Android device or emulator, as a simulated device needs them (a fake of it runs the steps in tests).
 public interface IAdbScreen
 {
-    /// <summary>The screen as uiautomator XML (<see cref="AdbResult.Text"/>).</summary>
+    /// The screen as uiautomator XML (<see cref="AdbResult.Text"/>).
     Task<AdbResult> DumpAsync();
     Task<AdbResult> TapAsync(int x, int y);
     Task<AdbResult> SwipeAsync(int fromX, int fromY, int toX, int toY);
@@ -19,17 +16,15 @@ public interface IAdbScreen
     Task<AdbResult> BackAsync();
     Task<AdbResult> OpenAppAsync(string package);
 
-    /// <summary>The screen's size in pixels (<see cref="AdbResult.Text"/> is <c>1080x1920</c>).</summary>
+    /// The screen's size in pixels (<see cref="AdbResult.Text"/> is <c>1080x1920</c>).
     Task<AdbResult> SizeAsync();
 
-    /// <summary>A screenshot as PNG bytes (<c>screencap -p</c>); null when adb could not take one.</summary>
+    /// A screenshot as PNG bytes (<c>screencap -p</c>); null when adb could not take one.
     Task<byte[]?> ScreenshotAsync();
 }
 
-/// <summary>
 /// adb for one device: every call starts <c>adb -s &lt;serial&gt; ...</c> hidden and stopped after <see cref="CoreTiming.AdbCommandTimeoutMs"/>.
 /// Anything put into the device's shell is a number or a package name that passed <see cref="SimSteps.IsPackage"/>, or typed text that is quoted.
-/// </summary>
 public sealed class AdbClient : IAdbScreen
 {
     private const string DumpFile = "/sdcard/omnicontrol-ui.xml";
@@ -45,7 +40,7 @@ public sealed class AdbClient : IAdbScreen
         _serial = serial;
     }
 
-    /// <summary>Joins the emulator at <c>127.0.0.1:5555</c> to adb. A serial without a colon (<c>emulator-5554</c>) needs no connecting.</summary>
+    /// Joins the emulator at <c>127.0.0.1:5555</c> to adb. A serial without a colon (<c>emulator-5554</c>) needs no connecting.
     public static async Task<AdbResult> ConnectAsync(string adbPath, string address)
     {
         if (!address.Contains(':')) return new AdbResult(true, "no connect needed");
@@ -54,7 +49,7 @@ public sealed class AdbClient : IAdbScreen
         return result with { Ok = result.Ok && result.Text.Contains("connected to", StringComparison.OrdinalIgnoreCase) && !result.Text.Contains("cannot", StringComparison.OrdinalIgnoreCase) };
     }
 
-    /// <summary>The serials adb lists as ready (<c>adb devices</c>); empty when adb could not be asked.</summary>
+    /// The serials adb lists as ready (<c>adb devices</c>); empty when adb could not be asked.
     public static async Task<IReadOnlySet<string>> OnlineSerialsAsync(string adbPath)
     {
         var result = await RunAsync(adbPath, new[] { "devices" });
@@ -63,10 +58,8 @@ public sealed class AdbClient : IAdbScreen
             .Where(p => p.Length == 2 && p[1] == "device").Select(p => p[0]).ToHashSet();
     }
 
-    /// <summary>
     /// Waits until the device is up and Android says it finished starting (<c>sys.boot_completed</c>), looking again every <paramref name="poll"/>;
     /// false when <paramref name="timeout"/> passed or <paramref name="cancel"/> was raised first.
-    /// </summary>
     public static async Task<bool> WaitForBootAsync(string adbPath, string serial, TimeSpan timeout, TimeSpan poll, CancellationToken cancel)
     {
         var until = DateTime.UtcNow + timeout;
@@ -80,9 +73,7 @@ public sealed class AdbClient : IAdbScreen
         return false;
     }
 
-    /// <summary>
     /// Shuts the emulator down cleanly so Android saves its state: <c>adb emu kill</c> (Android Studio's), else Android's own power off.
-    /// </summary>
     public static async Task<AdbResult> ShutDownAsync(string adbPath, string serial)
     {
         var killed = await RunAsync(adbPath, new[] { "-s", serial, "emu", "kill" });
@@ -103,7 +94,7 @@ public sealed class AdbClient : IAdbScreen
 
     public Task<AdbResult> TypeAsync(string text) => ShellAsync($"input text '{EscapeForInput(text)}'");
 
-    /// <summary>Wakes the screen and lifts the lock screen; a hidden emulator comes up asleep and a sleeping screen answers with a black picture.</summary>
+    /// Wakes the screen and lifts the lock screen; a hidden emulator comes up asleep and a sleeping screen answers with a black picture.
     public async Task<AdbResult> WakeScreenAsync()
     {
         var woken = await ShellAsync("input keyevent KEYCODE_WAKEUP");
@@ -123,17 +114,15 @@ public sealed class AdbClient : IAdbScreen
         return ok && output.Length > 0 ? output : null;
     }
 
-    /// <summary>The app that has the screen now (<c>dumpsys window</c>); empty when it cannot be told.</summary>
+    /// The app that has the screen now (<c>dumpsys window</c>); empty when it cannot be told.
     public async Task<string> CurrentPackageAsync()
     {
         var result = await ShellAsync("dumpsys window");
         return result.Ok ? CurrentPackageOf(result.Text) : string.Empty;
     }
 
-    /// <summary>
     /// The name the app shows under its icon, as Android's package dump states it (<c>application-label</c> or <c>nonLocalizedLabel</c>);
     /// else the maker's part of the package made readable (<see cref="LabelFallback"/>). The recorder prefers the words under the icon tapped.
-    /// </summary>
     public async Task<string> AppLabelAsync(string package)
     {
         if (!SimSteps.IsPackage(package)) return package;
@@ -148,24 +137,24 @@ public sealed class AdbClient : IAdbScreen
         return label.Length > 0 && label != "null" ? label : LabelFallback(package);
     }
 
-    /// <summary>A readable name when the app's own is not known: the package's second part ("com.tplink.iot" = "Tplink"), not its last word, which is often generic.</summary>
+    /// A readable name when the app's own is not known: the package's second part ("com.tplink.iot" = "Tplink"), not its last word, which is often generic.
     public static string LabelFallback(string package)
     {
         var parts = package.Split('.', StringSplitOptions.RemoveEmptyEntries);
         return SimSteps.Humanise(parts.Length >= 2 ? parts[1] : package);
     }
 
-    /// <summary>The package in <c>mCurrentFocus=Window{... u0 com.example/com.example.Main}</c>; empty when there is none.</summary>
+    /// The package in <c>mCurrentFocus=Window{... u0 com.example/com.example.Main}</c>; empty when there is none.
     public static string CurrentPackageOf(string dumpsys) => Focus.Match(dumpsys) is { Success: true } m ? m.Groups[1].Value : string.Empty;
 
-    /// <summary>The width and height in <c>Physical size: 1080x1920</c>; null when it is not there.</summary>
+    /// The width and height in <c>Physical size: 1080x1920</c>; null when it is not there.
     public static (int Width, int Height)? SizeOf(string wmSize)
     {
         var m = Size.Match(wmSize);
         return m.Success ? (int.Parse(m.Groups[1].Value), int.Parse(m.Groups[2].Value)) : null;
     }
 
-    /// <summary>Text for <c>input text</c>: spaces become %s and anything the device's shell would read is escaped, inside single quotes.</summary>
+    /// Text for <c>input text</c>: spaces become %s and anything the device's shell would read is escaped, inside single quotes.
     public static string EscapeForInput(string text) => text.Replace("'", "'\\''").Replace(" ", "%s");
 
     private Task<AdbResult> ShellAsync(string command) => RunAsync(_adb, new[] { "-s", _serial, "shell", command });
@@ -177,7 +166,7 @@ public sealed class AdbClient : IAdbScreen
         return new AdbResult(ok, ok || problem.Length == 0 ? text : problem);
     }
 
-    /// <summary>Runs adb and gives what it printed as bytes (a screenshot is binary), its error text, and whether it exited with 0.</summary>
+    /// Runs adb and gives what it printed as bytes (a screenshot is binary), its error text, and whether it exited with 0.
     private static async Task<(bool Ok, byte[] Output, string Problem)> RunRawAsync(string adb, IReadOnlyList<string> arguments)
     {
         var start = new ProcessStartInfo(adb)

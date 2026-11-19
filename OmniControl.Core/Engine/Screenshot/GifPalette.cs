@@ -1,10 +1,8 @@
 namespace OmniControl.Core.Engine.Screenshot;
 
-/// <summary>
 /// One GIF frame's colours, made the light way: every pixel falls into one of 32,768 boxes (5 bits per colour), the busiest boxes become
 /// the palette (each as the average of the colours in it), and every other box takes its nearest palette colour. A frame with no more
 /// distinct colours than the palette allows keeps them exactly. The tables are reused frame after frame; not thread-safe.
-/// </summary>
 public sealed class GifPalette
 {
     private const int Boxes = 1 << 15;
@@ -14,16 +12,14 @@ public sealed class GifPalette
     private readonly short[] _indexOf = new short[Boxes];
     private readonly List<int> _used = new();
 
-    /// <summary>The palette of the last frame: red, green, blue for each colour, its length a power of two (the GIF table's size).</summary>
+    /// The palette of the last frame: red, green, blue for each colour, its length a power of two (the GIF table's size).
     public byte[] Colours { get; private set; } = Array.Empty<byte>();
 
-    /// <summary>log2 of the table's size (1 to 8).</summary>
+    /// log2 of the table's size (1 to 8).
     public int Bits { get; private set; }
 
-    /// <summary>
     /// Makes the palette of a BGRA frame (top row first, <paramref name="stride"/> bytes per row) with at most <paramref name="maxColours"/>
     /// colours and writes each pixel's palette index into <paramref name="indices"/> (width x height).
-    /// </summary>
     public void Build(ReadOnlySpan<byte> bgra, int width, int height, int stride, int maxColours, Span<byte> indices)
     {
         Array.Clear(_count);

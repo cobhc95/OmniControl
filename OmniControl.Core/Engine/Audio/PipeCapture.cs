@@ -1,13 +1,10 @@
-﻿using System.Runtime.InteropServices;
-using NAudio.CoreAudioApi;
+﻿using NAudio.CoreAudioApi;
 using NAudio.Wave;
 
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// Where an effects pipe takes its sound from: one program's process tree, everything played on one playback device (a cable's
 /// playing side, by loopback), or a recording device (a microphone, or a cable's recording side).
-/// </summary>
 public sealed record PipeSource(int ProcessId, string? DeviceId, bool Loopback)
 {
     public static PipeSource Program(int processId) => new(processId, null, false);
@@ -15,10 +12,8 @@ public sealed record PipeSource(int ProcessId, string? DeviceId, bool Loopback)
     public static PipeSource Recording(string deviceId) => new(0, deviceId, false);
 }
 
-/// <summary>
 /// One capture of an effects pipe: records its source in the pipe's format on its own thread and pushes the samples into a ring
 /// for the playback thread. Also keeps the loudest raw sample seen, so the engine can tell whether the capture went silent.
-/// </summary>
 internal sealed class PipeCapture : IDisposable
 {
     private readonly WasapiRecorder _recorder;
@@ -28,7 +23,7 @@ internal sealed class PipeCapture : IDisposable
 
     public AudioRing Ring { get; }
 
-    /// <summary>Raised (on the capture thread) when the capture stopped with an error, e.g. the program closed or the device went away.</summary>
+    /// Raised (on the capture thread) when the capture stopped with an error, e.g. the program closed or the device went away.
     public event Action<string>? Failed;
 
     private PipeCapture(WasapiRecorder recorder)
@@ -42,14 +37,14 @@ internal sealed class PipeCapture : IDisposable
         _recorder.RecordingStopped += (_, e) => { if (e.Exception is { } ex) Failed?.Invoke(ex.Message); };
     }
 
-    /// <summary>Formats asked for in order: float first (no conversion), then 16-bit PCM like Microsoft's process loopback sample.</summary>
+    /// Formats asked for in order: float first (no conversion), then 16-bit PCM like Microsoft's process loopback sample.
     private static readonly WaveFormat[] Formats =
     {
         WaveFormat.CreateIeeeFloatWaveFormat(CoreTiming.PipeSampleRate, CoreTiming.PipeChannels),
         new(CoreTiming.PipeSampleRate, 16, CoreTiming.PipeChannels),
     };
 
-    /// <summary>Starts recording <paramref name="source"/>. Throws (COM or invalid operation) when Windows refuses every format.</summary>
+    /// Starts recording <paramref name="source"/>. Throws (COM or invalid operation) when Windows refuses every format.
     public static async Task<PipeCapture> StartAsync(PipeSource source)
     {
         Exception? last = null;
@@ -90,7 +85,7 @@ internal sealed class PipeCapture : IDisposable
         return builder.WithProcessLoopback((uint)source.ProcessId).BuildAsync();
     }
 
-    /// <summary>Capture thread: converts the packet to float, notes its peak and queues it. No allocation, no lock.</summary>
+    /// Capture thread: converts the packet to float, notes its peak and queues it. No allocation, no lock.
     private void OnData(ReadOnlySpan<byte> buffer, AudioClientBufferFlags flags, long devicePosition, long qpcPosition)
     {
         ReadOnlySpan<float> samples;
@@ -124,7 +119,7 @@ internal sealed class PipeCapture : IDisposable
         while (Interlocked.CompareExchange(ref _peakBits, bits, seen) != seen);
     }
 
-    /// <summary>The loudest raw sample since the last call (0 = digital silence or nothing arrived).</summary>
+    /// The loudest raw sample since the last call (0 = digital silence or nothing arrived).
     public float TakePeak() => BitConverter.Int32BitsToSingle(Interlocked.Exchange(ref _peakBits, 0));
 
     public void Dispose()

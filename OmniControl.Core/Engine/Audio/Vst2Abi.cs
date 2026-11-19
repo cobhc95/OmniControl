@@ -1,24 +1,20 @@
-using System.Runtime.InteropServices;
-
 namespace OmniControl.Core.Engine;
 
-/// <summary>
 /// The parts of the VST 2.4 plug-in interface (the plain C ABI a VST2 .dll exposes) that OmniControl uses, as OmniControl's own
 /// definitions: taken from TabForge (Vst2Plugin.cs, same owner, MIT), which match the public clean-room descriptions of the interface
 /// (VeSTige-style headers). No file of Steinberg's discontinued VST2 SDK is used or copied. Numbers are fixed by the ABI.
-/// </summary>
 internal static class Vst2Abi
 {
-    /// <summary>'VstP', the first field of every AEffect.</summary>
+    /// 'VstP', the first field of every AEffect.
     public const int Magic = 0x56737450;
 
-    /// <summary>The host's answer to audioMasterVersion: VST 2.4.</summary>
+    /// The host's answer to audioMasterVersion: VST 2.4.
     public const int HostVersionNumber = 2400;
 
-    /// <summary>A name or text the plug-in writes; real plug-ins write more than the interface's own short limits, so the buffer is generous.</summary>
+    /// A name or text the plug-in writes; real plug-ins write more than the interface's own short limits, so the buffer is generous.
     public const int TextBytes = 256;
 
-    /// <summary>The program chunk (effGetChunk / effSetChunk index 1): one program's settings, which Equalizer APO also applies.</summary>
+    /// The program chunk (effGetChunk / effSetChunk index 1): one program's settings, which Equalizer APO also applies.
     public const int ProgramChunk = 1;
 
     // Plug-in flags (AEffect.flags).
@@ -35,13 +31,13 @@ internal static class Vst2Abi
         HostGetBlockSize = 17, HostGetCurrentProcessLevel = 23, HostGetVendorString = 32, HostGetProductString = 33, HostGetVendorVersion = 34,
         HostCanDo = 37, HostGetLanguage = 38, HostUpdateDisplay = 42;
 
-    /// <summary>audioMasterGetCurrentProcessLevel answers: called from the UI thread, from the audio thread.</summary>
+    /// audioMasterGetCurrentProcessLevel answers: called from the UI thread, from the audio thread.
     public const int ProcessLevelUser = 1, ProcessLevelRealtime = 2;
 
-    /// <summary>audioMasterGetLanguage: English (0 means none, and some plug-ins index a table with it).</summary>
+    /// audioMasterGetLanguage: English (0 means none, and some plug-ins index a table with it).
     public const int LanguageEnglish = 1;
 
-    /// <summary>The plug-in's description of itself (VST 2.4 AEffect, 64-bit layout).</summary>
+    /// The plug-in's description of itself (VST 2.4 AEffect, 64-bit layout).
     [StructLayout(LayoutKind.Sequential)]
     public struct AEffect
     {
@@ -51,22 +47,22 @@ internal static class Vst2Abi
         public IntPtr resvd1, resvd2;
         public int initialDelay, realQualities, offQualities;
         public float ioRatio;
-        /// <summary>The plug-in's own object; never touched.</summary>
+        /// The plug-in's own object; never touched.
         public IntPtr obj;
-        /// <summary>Left to the host: OmniControl keeps a handle to its <see cref="Vst2Effect"/> here, so the callback finds it.</summary>
+        /// Left to the host: OmniControl keeps a handle to its <see cref="Vst2Effect"/> here, so the callback finds it.
         public IntPtr user;
         public int uniqueID, version;
         public IntPtr processReplacing, processDoubleReplacing;
     }
 
-    /// <summary>An editor's rectangle (effEditGetRect), in pixels.</summary>
+    /// An editor's rectangle (effEditGetRect), in pixels.
     [StructLayout(LayoutKind.Sequential)]
     public struct ERect
     {
         public short top, left, bottom, right;
     }
 
-    /// <summary>What audioMasterGetTime hands out. OmniControl plays a live stream: only the rate and the sample position are valid.</summary>
+    /// What audioMasterGetTime hands out. OmniControl plays a live stream: only the rate and the sample position are valid.
     [StructLayout(LayoutKind.Sequential)]
     public struct VstTimeInfo
     {
