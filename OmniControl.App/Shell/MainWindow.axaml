@@ -121,7 +121,7 @@
                                     <Grid ColumnSpacing="12">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" MinWidth="{StaticResource SearchEditorMinWidth}" SharedSizeGroup="SearchEditor" />
+                                            <ColumnDefinition Width="{StaticResource SearchEditorShare}" MinWidth="{StaticResource SearchEditorMinWidth}" />
                                         </Grid.ColumnDefinitions>
                                         <StackPanel VerticalAlignment="Center" Spacing="2">
                                             <TextBlock Classes="strong" Text="{Binding Title}" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" />

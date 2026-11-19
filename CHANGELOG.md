@@ -5,6 +5,11 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+## 0.2.1 (19 Nov 2026)
+
+- Changed: the screen rotation suggested keys swap Left and Right: Ctrl+Alt+Right = Portrait, Ctrl+Alt+Left = Portrait (flipped). The Window title bar scroll gesture stays off by default.
+- Fixed: searching could show "Something went wrong" and freeze the window (an endless layout loop in the results list); the results' editor column now takes a fixed share of the row instead of sizing itself from every result.
+
 ## 0.2.0 (18 Nov 2026)
 
 - Fixed: an FX device folder's Mix (and an effect's own Mix, an IR Loader's Mix) below 100 % no longer turns its effects off in Equalizer APO: it blends dry x (1 - Mix) + processed x Mix, written with Equalizer APO's virtual channels and Copy lines (Equalizer APO 1.2 or newer; an older one keeps the folder's Mix at 100 % and says so).

@@ -11,6 +11,10 @@
     <!-- No profile-guided tier: it re-compiles hot code (the pop-up, the hooks) a second time, with slower instrumented code in
          between, during the first minutes of use. Plain tiering stays: quick start-up, optimised after 30 calls. -->
     <TieredPGO>false</TieredPGO>
+    <!-- Every build carries its own .NET, so the app runs on a PC with nothing installed; the output stays in the standard folder. -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
   </PropertyGroup>
 
   <ItemGroup>

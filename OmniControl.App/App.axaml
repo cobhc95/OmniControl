@@ -64,6 +64,8 @@
         <x:Double x:Key="TextControlThemeMinHeight">26</x:Double>
         <!-- Least width of the editor column in the search results; the title column gets the rest -->
         <x:Double x:Key="SearchEditorMinWidth">300</x:Double>
+        <!-- The search results' editor column: a fixed share of the row, never sized from its content (an Auto column shared by every result looped layout forever) -->
+        <GridLength x:Key="SearchEditorShare">1.6*</GridLength>
         <!-- The hotkey capture box (Hotkeys/HotkeyBox): the Actions and hotkeys window's keys and the preset manager's shortcut column -->
         <x:Double x:Key="HotkeyBoxWidth">150</x:Double>
         <!-- The master path field (Controls/PathField) where it sits in a pop-down's settings page: text box and Browse -->

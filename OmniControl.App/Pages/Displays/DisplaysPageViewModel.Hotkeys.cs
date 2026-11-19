@@ -25,9 +25,9 @@ public sealed partial class DisplaysPageViewModel
     private static readonly (DisplayOrientation Orientation, string Key)[] RotationKeys =
     {
         (DisplayOrientation.Landscape, "Ctrl+Alt+Up"),
-        (DisplayOrientation.Portrait, "Ctrl+Alt+Left"),
+        (DisplayOrientation.Portrait, "Ctrl+Alt+Right"),
         (DisplayOrientation.LandscapeFlipped, "Ctrl+Alt+Down"),
-        (DisplayOrientation.PortraitFlipped, "Ctrl+Alt+Right"),
+        (DisplayOrientation.PortraitFlipped, "Ctrl+Alt+Left"),
     };
 
     private const string DisplaysOffId = "displays.screens.off";
