@@ -52,16 +52,16 @@
     <!-- A card that cannot be used right now (a monitor that does not report the control): greyed out; its tooltip says why -->
     <Style Selector="UserControl.card:disabled"><Setter Property="Opacity" Value="0.45" /></Style>
 
-    <!-- A group inside a group (a monitor inside "Hardware"): a lighter panel, set in from the left -->
+    <!-- A group inside a group (a monitor inside "Hardware"): a panel one step darker than its group on the dark theme (its cards darker again), set in from the left -->
     <Style Selector="Border.subgroupPanel">
-        <Setter Property="Background" Value="{DynamicResource BrushHover}" />
+        <Setter Property="Background" Value="{DynamicResource BrushSubgroup}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="10" />
         <Setter Property="Padding" Value="6,2,6,2" />
         <Setter Property="Margin" Value="14,0,0,4" />
     </Style>
-    <!-- The panel is already tinted with the hover brush, so its header's hover needs the stronger one to show -->
+    <!-- The panel's own fill is close to the hover brush, so its header's hover needs the stronger one to show -->
     <Style Selector="Border.subgroupPanel Button.groupHeader:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
     </Style>

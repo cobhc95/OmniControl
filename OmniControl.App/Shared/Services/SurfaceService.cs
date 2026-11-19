@@ -111,6 +111,8 @@ public static class SurfaceService
         Put("BrushCard", s.Item);
         Put("BrushCardEdge", s.ItemEdge);
         Put("BrushCardSelected", s.ItemSelected);
+        // A group inside a group: dark steps half way from the group to its cards, so the cards inside still read; light keeps its raised panel
+        Put("BrushSubgroup", variant == ThemeVariant.Dark ? ColorMath.Mix(s.Card, s.Item, 0.5) : s.Raised);
         if (variant == ThemeVariant.Dark) Put("BrushCardFocusFill", s.ItemSelected);
         // A band inside a panel (the tray panel's sliders): the dark theme's card fill, the light theme's panel a step towards the page
         Put("BrushCardShade", variant == ThemeVariant.Dark ? s.Item : ColorMath.Mix(s.Card, s.Page, 0.5));

@@ -7,6 +7,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## 0.2.3
 
+- Fixed: a group inside a group (a monitor on the Displays page, a PC on Other PCs) follows the dark theme's darker card steps instead of a lighter grey panel.
 - Fixed: buttons with accent-coloured words (Open OmniControl, accent pills, the accent menu row) show a subtle hover and press wash, so their words stay readable.
 - Fixed: tray tile names are centred under their tiles (their style never applied before).
 - Changed: the tray panel's footer buttons (Tile, Slider, Open OmniControl) no longer show tooltips; the Edit button's accessible name is "Edit".
