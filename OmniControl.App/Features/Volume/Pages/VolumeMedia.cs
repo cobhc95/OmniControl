@@ -26,16 +26,16 @@ internal sealed class VolumeMedia : IDisposable
             Keywords: "media music song track playing spotify", Short: "Now playing", SuggestedIcons: new[] { "music", "player-play" }, Common: CommonGroups.Sound));
         hotkeys.Register(new[]
         {
-            Media(NowPlayingText.PreviousId, "Previous track", "previous back song", playing.PreviousAsync, new[] { "player-track-prev", "prev" }),
-            Media(NowPlayingText.PlayPauseId, "Play or pause media", "play pause toggle", playing.PlayPauseAsync, new[] { "player-play", "player-pause" }),
-            Media(NowPlayingText.NextId, "Next track", "next skip forward song", playing.NextAsync, new[] { "player-track-next", "next" }),
+            Media(NowPlayingText.PreviousId, "Previous track", "previous back song", playing.PreviousAsync, new[] { "player-track-prev", "prev" }, "MediaPrevious"),
+            Media(NowPlayingText.PlayPauseId, "Play or pause media", "play pause toggle", playing.PlayPauseAsync, new[] { "player-play", "player-pause" }, "MediaPlayPause"),
+            Media(NowPlayingText.NextId, "Next track", "next skip forward song", playing.NextAsync, new[] { "player-track-next", "next" }, "MediaNext"),
         });
         playing.Changed += OnNowPlayingChanged;
         playing.Start();
     }
 
-    private HotkeyAction Media(string id, string title, string words, Func<Task> run, string[] icons) =>
-        new(id, title, _title, "media music player " + words, ids => { _ = Guard.RunAsync(title, run); }) { SuggestedIcons = icons, Common = CommonGroups.Sound };
+    private HotkeyAction Media(string id, string title, string words, Func<Task> run, string[] icons, string key) =>
+        new(id, title, _title, "media music player " + words, ids => { _ = Guard.RunAsync(title, run); }) { SuggestedIcons = icons, Common = CommonGroups.Sound, KeyEquivalent = key };
 
     private void OnNowPlayingChanged() => Dispatcher.UIThread.Post(() => _states.Notify(NowPlayingId));
 

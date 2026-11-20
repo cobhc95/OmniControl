@@ -62,12 +62,17 @@ public sealed class MouseSettings
     /// True: OmniControl starts as administrator (Windows asks at each start), so mouse features also work over programs run as administrator.
     public bool RunAsAdministrator { get; set; }
 
+    /// True: while a remote-input window is in front (Remote Desktop, a virtual machine...), a button's or trackpad gesture's action that has a
+    /// standard shortcut is sent as that shortcut, so the other computer acts (<c>MouseActionRunner</c>).
+    public bool SendToRemoteAsKeys { get; set; } = true;
+
     /// Puts the "Where mouse features work" group's settings back to their defaults.
     public void RestoreWhereDefaults()
     {
         PauseInFullScreen = false;
         NeverActIn = null;
         RunAsAdministrator = false;
+        SendToRemoteAsKeys = true;
     }
 
     private static readonly DataStore Store = DataStores.Mouse;
@@ -130,6 +135,7 @@ public sealed class MouseSettings
         PauseInFullScreen = other.PauseInFullScreen;
         NeverActIn = other.NeverActIn;
         RunAsAdministrator = other.RunAsAdministrator;
+        SendToRemoteAsKeys = other.SendToRemoteAsKeys;
     }
 
     /// The apps scope in force for a mouse button or trackpad gesture: its own, else its group's; null when it works in every app.

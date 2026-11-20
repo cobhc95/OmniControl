@@ -89,6 +89,10 @@ public sealed partial class HotkeyAction : HotkeyTarget, Shared.Ui.Pages.IEditor
     /// (never again once the user has given or cleared its keys, and not when another action already has it); "Restore defaults" puts it back.
     public string? DefaultKey { get; init; }
 
+    /// The standard Windows shortcut that does the same in the window in front ("VolumeUp", "MediaPlayPause"; <c>KeyChord</c>'s names), or null.
+    /// A mouse button or trackpad gesture sends it instead while a remote-input window is in front, so the other computer acts (<see cref="Actions.MouseActionRunner"/>).
+    public string? KeyEquivalent { get; init; }
+
     /// True for the actions that keep the user in control (lock, open OmniControl, pause all rules): no automation block rule may stop
     /// them. A flag on the master entry, so there is no second list of ids.
     public bool NeverBlock { get; init; }
@@ -291,12 +295,13 @@ public sealed partial class HotkeyAction : HotkeyTarget, Shared.Ui.Pages.IEditor
     /// Declaring the level here is all it takes for the gestures to offer it.
     public static HotkeyAction ForLevel(string id, string title, string category, string keywords, HotkeyLevel level, int direction,
         Action<IReadOnlyList<string>?, int> step, string? deviceNoun = null, Func<IReadOnlyList<HotkeyDevice>>? devices = null,
-        string? group = null, string? subgroup = null, string? icon = null, string? suggestedKey = null) =>
+        string? group = null, string? subgroup = null, string? icon = null, string? suggestedKey = null, string? keyEquivalent = null) =>
         new(id, title, category, keywords, ids => step(ids, direction * DefaultStep), deviceNoun, devices,
             (ids, percent) => step(ids, direction * percent), group, subgroup)
         {
             Icon = icon,
             SuggestedKey = suggestedKey,
+            KeyEquivalent = keyEquivalent,
             Level = level,
             LevelDirection = direction,
         };

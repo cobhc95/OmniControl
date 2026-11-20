@@ -11,7 +11,7 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
 {
     /// The settings as the hook reads them: the first action per key, the others in order, and the apps scope of each limited button.
     private sealed record Snapshot(Dictionary<string, MouseAction> Actions, Dictionary<string, MouseAction[]> Extras, Dictionary<MouseButton, AppScopeSetting> Scopes, bool BlockAutoscroll,
-        bool PauseInFullScreen, AppScopeSetting? NeverActIn)
+        bool PauseInFullScreen, AppScopeSetting? NeverActIn, bool SendToRemoteAsKeys)
     {
         public MouseAction[] ExtrasOf(string key) => Extras.TryGetValue(key, out var extras) ? extras : NoExtras;
 
@@ -76,17 +76,19 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
     /// Buttons and Trackpad groups and their cards).</param>
     /// <param name="holdOmniAction">Starts an OmniControl action that lasts while the button is held and returns what ends it (null: it does not last).</param>
     /// <param name="states">The master list of states: the mouse's and the trackpad's layer in force are registered there.</param>
+    /// <param name="keyEquivalentOf">The master action's <see cref="HotkeyAction.KeyEquivalent"/> by id, or null.</param>
     public MouseService(MouseHook hook, Func<string, RunSettings?, bool> runOmniAction, Func<string, RunSettings, Action?> holdOmniAction, Action<string> report, Func<MouseEvent, MouseAction?> gestureAt, AppScopeGate scopes,
-        States.IStateRegistry states)
+        States.IStateRegistry states, Func<string, string?> keyEquivalentOf)
     {
         _scopes = scopes;
         _holdOmniAction = holdOmniAction;
         _report = report;
         _log = hook.Diagnose;
         _gestureAt = gestureAt;
-        _runner = new MouseActionRunner(runOmniAction, Say, hook.Diagnose);
-        _modes = new MouseModes(hook);
         _snapshot = TakeSnapshot();
+        _runner = new MouseActionRunner(runOmniAction, Say, hook.Diagnose, action => !_snapshot.SendToRemoteAsKeys ? null
+            : action.Id == MouseActionCatalog.Omni ? keyEquivalentOf(action.Param) : MouseActionCatalog.KeyEquivalentOf(action.Id));
+        _modes = new MouseModes(hook);
         ApplyWatchers();
         hook.PassAll = PassesEverything;
         hook.AddHandler(Handle, NeedsHook);
@@ -205,7 +207,7 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
             Settings.ExtraActions.ToDictionary(e => e.Key, e => e.Value.Take(MouseSettings.MaxActions - 1).Select(MouseAction.Parse).ToArray()),
             Enum.GetValues<MouseButton>().Where(b => Settings.ScopeOf(b) is not null)
                 .ToDictionary(b => b, b => Settings.ScopeOf(b)!),
-            Settings.BlockAutoscroll, Settings.PauseInFullScreen, Settings.NeverActIn is { IsLimited: true } never ? never : null);
+            Settings.BlockAutoscroll, Settings.PauseInFullScreen, Settings.NeverActIn is { IsLimited: true } never ? never : null, Settings.SendToRemoteAsKeys);
 
     private void ApplyWatchers()
     {

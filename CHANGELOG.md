@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- New: while Remote Desktop, a virtual machine or another remote-control app is in front, a mouse button's or trackpad gesture's volume, mute, play or pause, next or previous track and Close window action is sent to it as the standard key, so the remote PC acts instead of this one (Mouse page, "Send actions to remote PCs as keys", on by default; the mouse log names each one). Media and volume keys always carry their standard scan code.
 - Fix: Setup adds the Windows Firewall rule that lets your other PCs reach OmniControl over Tailscale (and the uninstaller removes it), so no PC is left "not reachable" on Tailscale after installing.
 - Fix: the Other PCs page no longer shows a narrow jumble of the Volume page's Easy view in place of its PC tabs; a PC with no power countdown shows no tag again.
 - New: the taskbar gadget's readings list has two rows for each physical disk, its activity and its temperature (named "Disk 0 activity (model)" and "Disk 0 temperature (model)"); a disk added or removed joins or leaves the list by itself and keeps its settings, and a drive that reports no temperature shows "—".

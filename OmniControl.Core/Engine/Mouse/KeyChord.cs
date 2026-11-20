@@ -39,4 +39,11 @@ public static class KeyChord
 
     /// Navigation, Windows and browser keys need the "extended" flag or Windows reads them as the number pad.
     internal static bool IsExtended(ushort vk) => vk is >= 0x21 and <= 0x2E or 0x5B or 0x5C || vk is >= 0xA6 and <= 0xB4;
+
+    // The standard keyboard's (E0-prefixed) scan codes of the browser, volume, media and mail keys, VK_BROWSER_BACK (0xA6) to VK_LAUNCH_MAIL (0xB4),
+    // for a layout that maps them to none: Remote Desktop and virtual machines pass on only the scan code.
+    private static readonly byte[] MediaScans = { 0x6A, 0x69, 0x67, 0x68, 0x65, 0x66, 0x32, 0x20, 0x2E, 0x30, 0x19, 0x10, 0x24, 0x22, 0x6C };
+
+    /// The standard scan code of a browser, volume, media or mail key; 0 for any other key.
+    internal static ushort MediaScanOf(ushort vk) => vk is >= 0xA6 and <= 0xB4 ? MediaScans[vk - 0xA6] : (ushort)0;
 }

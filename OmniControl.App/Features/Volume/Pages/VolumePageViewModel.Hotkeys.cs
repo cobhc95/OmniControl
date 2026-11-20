@@ -45,10 +45,10 @@ public sealed partial class VolumePageViewModel
             "sound audio input combined microphone mic mics mix quieter", combo, -1, (ids, delta) => OnUi(() => _actions.StepCombos(ids, delta)), ComboNoun, ComboDevices, icon: MicIcon));
         hotkeys.Register(_comboHotkeys);
 
-        hotkeys.Register(HotkeyAction.ForLevel("volume.up", "Volume up", Title, "sound audio master louder", volume, +1, (_, delta) => _actions.StepMaster(delta)));
-        hotkeys.Register(HotkeyAction.ForLevel("volume.down", "Volume down", Title, "sound audio master quieter", volume, -1, (_, delta) => _actions.StepMaster(delta)));
+        hotkeys.Register(HotkeyAction.ForLevel("volume.up", "Volume up", Title, "sound audio master louder", volume, +1, (_, delta) => _actions.StepMaster(delta), keyEquivalent: "VolumeUp"));
+        hotkeys.Register(HotkeyAction.ForLevel("volume.down", "Volume down", Title, "sound audio master quieter", volume, -1, (_, delta) => _actions.StepMaster(delta), keyEquivalent: "VolumeDown"));
         var mute = new HotkeyAction("volume.mute", "Toggle mute", Title, "sound audio master mute silence", _ => _actions.ToggleMasterMute())
-            { SuggestedIcons = new[] { "mute", "volume" }, Family = VolumeStates.MuteFamily.Family, FamilyRole = OnOffFamily.ToggleRole };
+            { SuggestedIcons = new[] { "mute", "volume" }, Family = VolumeStates.MuteFamily.Family, FamilyRole = OnOffFamily.ToggleRole, KeyEquivalent = "VolumeMute" };
         hotkeys.Register(VolumeStates.MuteFamily.Siblings(mute, muted => _actions.ToggleMasterMute(muted)).Prepend(mute));
         hotkeys.Register(new HotkeyAction("volume.closed.toggle", "Show or hide closed programs", Title, "sound audio mixer programs apps closed not open remembered list show hide",
             _ => OnUi(() => { if (Outputs.ProgramTools is { } tools) tools.ShowClosed = !tools.ShowClosed; })));

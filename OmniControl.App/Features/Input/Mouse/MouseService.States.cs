@@ -60,6 +60,14 @@ public sealed partial class MouseService
 
     public void TogglePauseInFullScreen() => SetPauseInFullScreen(!Settings.PauseInFullScreen);
 
+    /// Turns "Send actions to remote PCs as keys" on or off.
+    public void SetSendToRemoteAsKeys(bool on)
+    {
+        if (Settings.SendToRemoteAsKeys == on) return;
+        Settings.SendToRemoteAsKeys = on;
+        Apply();
+    }
+
     /// Turns "Run as administrator" on or off (the sign-in task follows). Turning it on while not elevated starts OmniControl again as
     /// administrator (the window then closes); the plain sentence it returns says why that did not happen (the setting is then put back to
     /// off), null otherwise. UI thread.

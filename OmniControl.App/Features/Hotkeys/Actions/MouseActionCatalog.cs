@@ -41,8 +41,9 @@ public static class MouseActionCatalog
     // A search word that finds every OmniControl action (they are listed under their own features' headings).
     private const string OmniControl = "OmniControl";
 
-    /// What an action does: send a keystroke, run a program or folder, or neither (the runner or the modes handle it by id).
-    private sealed record Def(string Id, Home Where, string Name, string? KeyText = null, string? RunText = null, string Keywords = "");
+    /// What an action does: send a keystroke, run a program or folder, or neither (the runner or the modes handle it by id); an action that
+    /// is not a keystroke may name its <see cref="HotkeyAction.KeyEquivalent"/>, sent instead while a remote-input window is in front.
+    private sealed record Def(string Id, Home Where, string Name, string? KeyText = null, string? RunText = null, string Keywords = "", string? KeyEquivalent = null);
 
     private static readonly Def[] Fixed =
     {
@@ -98,7 +99,7 @@ public static class MouseActionCatalog
         new("desktop.zoomin", MagnifierGroup, "Magnifier zoom in", "Win+Plus"), new("desktop.zoomout", MagnifierGroup, "Magnifier zoom out", "Win+Minus"),
 
         new("window.minimize", WindowControl, "Minimise window", Keywords: "minimize"), new("window.maximize", WindowControl, "Maximise or restore window", Keywords: "maximize"),
-        new("window.restore", WindowControl, "Restore window"), new("window.close", WindowControl, "Close window", Keywords: "quit"),
+        new("window.restore", WindowControl, "Restore window"), new("window.close", WindowControl, "Close window", Keywords: "quit", KeyEquivalent: "Alt+F4"),
         new("window.altf4", WindowControl, "Close with Alt+F4", "Alt+F4", Keywords: "quit exit"),
         new("window.topmost", WindowControl, "Keep window on top", Keywords: "always on top pin"),
         new(WindowMove, WindowControl, "Drag to move window", Keywords: "alt drag hold"), new(WindowSize, WindowControl, "Drag to size window", Keywords: "resize hold"),
@@ -279,6 +280,9 @@ public static class MouseActionCatalog
 
     /// The keystroke an action sends: a built-in one's, or a "keys:" action's own; null when it sends none.
     public static string? KeystrokeOf(MouseAction action) => action.Id == Keys ? action.Param : KeyTextOf(action.Id);
+
+    /// The shortcut a built-in action that is not a keystroke is sent as while a remote-input window is in front, or null.
+    public static string? KeyEquivalentOf(string id) => Fixed.FirstOrDefault(d => d.Id == id)?.KeyEquivalent;
 
     /// The program or folder a built-in action opens, or null when it does not open one.
     public static string? RunTextOf(string id) => Fixed.FirstOrDefault(d => d.Id == id)?.RunText;

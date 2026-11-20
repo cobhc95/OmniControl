@@ -28,7 +28,8 @@ public sealed class InputModule(Func<IEnumerable<string>> rememberedPrograms) : 
         // Gestures are asked first, so a scroll or middle click they take never reaches the button mappings: the wheel gestures have
         // their own hook handler ahead of the mouse service's, and the mouse service asks for a middle-click gesture before its mapping.
         var gestures = _gestures = new GestureService(_hook, context.Runner.RunLevel, context.Report, context.AppScopeGate);
-        var mouse = _mouse = new MouseService(_hook, context.Runner.Run, context.Runner.RunHeld, context.Report, gestures.MiddleClickAt, context.AppScopeGate, context.States);
+        var mouse = _mouse = new MouseService(_hook, context.Runner.Run, context.Runner.RunHeld, context.Report, gestures.MiddleClickAt, context.AppScopeGate, context.States,
+            id => context.Actions.Find(id)?.KeyEquivalent);
         context.Actions.Moved += mouse.FollowMoved;
         context.Actions.Moved += gestures.FollowMoved;
         // Custom rules are asked before both (their handler goes first on the hook), so a rule that matches wins.

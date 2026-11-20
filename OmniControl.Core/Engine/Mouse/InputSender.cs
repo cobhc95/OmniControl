@@ -43,6 +43,7 @@ public static class InputSender
     private static Input Key(ushort vk, bool down, IntPtr layout)
     {
         var scan = MapVirtualKeyEx(vk, VkToScanEx, layout);
+        if (scan == 0) scan = KeyChord.MediaScanOf(vk);
         var extended = scan >> 8 == ExtendedPrefix || KeyChord.IsExtended(vk);
         return RawKey(vk, (ushort)(scan & 0xFF), (down ? 0u : KeyUp) | (extended ? KeyExtended : 0u));
     }

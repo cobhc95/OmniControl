@@ -22,16 +22,20 @@ public sealed class MouseActionRunner
     private readonly Func<string, RunSettings?, bool> _runOmniAction;
     private readonly Action<string> _report;
     private readonly Action<string> _log;
+    private readonly Func<MouseAction, string?>? _remoteKeysOf;
     private readonly LaunchLimiter _launches = new();   // the latest programs or folders started
 
     /// <param name="runOmniAction">Runs the OmniControl hotkey action with this id (with the settings the input chose: a program to start, how far a level moves, a power countdown); false when there is none.</param>
     /// <param name="report">Shows a short problem message to the user.</param>
     /// <param name="log">Writes a line to the mouse log (what was started, and what was refused).</param>
-    public MouseActionRunner(Func<string, RunSettings?, bool> runOmniAction, Action<string> report, Action<string> log)
+    /// <param name="remoteKeysOf">The shortcut an action is sent as instead while a remote-input window is in front (<see cref="RemoteInputApps"/>),
+    /// or null when it runs here; null: every action runs here (rules).</param>
+    public MouseActionRunner(Func<string, RunSettings?, bool> runOmniAction, Action<string> report, Action<string> log, Func<MouseAction, string?>? remoteKeysOf = null)
     {
         _runOmniAction = runOmniAction;
         _report = report;
         _log = log;
+        _remoteKeysOf = remoteKeysOf;
     }
 
     /// Runs the action as many times as its "times" option says (once unless the action has that option set).
@@ -50,6 +54,7 @@ public sealed class MouseActionRunner
             return;
         }
         if (MouseActionCatalog.RunTextOf(id) is { } target) { Launch(target); return; }
+        if (SentToRemote(action)) return;
 
         var activeWindow = action.Options.Text(MouseOptions.Target) == MouseOptions.ActiveWindow;
         var pages = action.Options.Bool(MouseOptions.ByPages);
@@ -90,6 +95,15 @@ public sealed class MouseActionRunner
                 if (!_runOmniAction(action.Param, MouseOptions.RunOf(action.Options))) _report("That OmniControl action is no longer available. Pick another for this button, gesture or rule.");
                 break;
         }
+    }
+
+    /// Sends the action as its shortcut when it has one and a remote-input window is in front, so the other computer acts on it. True when sent.
+    private bool SentToRemote(MouseAction action)
+    {
+        if (_remoteKeysOf?.Invoke(action) is not { } keys || RemoteInputApps.InFront() is not { } app) return false;
+        _log($"{(action.Id == MouseActionCatalog.Omni ? action.Param : action.Id)} sent as {keys} to {app.Name}, in front");
+        SendKeys(keys);
+        return true;
     }
 
     /// Windows' Magnifier has no on/off call: Win+Plus starts it and Win+Esc closes it, so look at whether it is running.
