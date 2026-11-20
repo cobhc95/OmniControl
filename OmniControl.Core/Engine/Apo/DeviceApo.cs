@@ -16,7 +16,8 @@ public sealed record ApoInstallState(ApoInstallMode Mode, bool PreMix, bool Post
 /// DeviceAPOInfo::load, getOriginalAPOPreMix/PostMix, install and uninstall (Equalizer APO 1.4.2, DeviceAPOInfo.cpp, GPL-2.0-or-later,
 /// Copyright (C) 2012 Jonas Thedering), so a device OmniControl attaches is attached exactly as Device Selector would do it and Equalizer APO's
 /// own Device Selector (and APO) read it the same way. Windows 8.1 or later is assumed (OmniControl needs Windows 10), so the branches for
-/// older Windows are left out; the APO's class ids are compared without regard to case.
+/// older Windows are left out. Where Device Selector's registry read would throw and empty its whole list (a value that is not text, a
+/// newer install's record) only that device is left out here, and a missing name or state value reads as empty.
 public sealed class DeviceApo
 {
     private DeviceApo(string guid, bool input) => (Guid, Input) = (guid, input);
@@ -39,6 +40,12 @@ public sealed class DeviceApo
     /// The version of the record under Child APOs ("0" when not installed, "1" for an old one without the Version value).
     public string Version { get; private set; } = "0";
 
+    /// canBeUpgraded: installed by an older Device Selector, so its record is written again.
+    public bool CanBeUpgraded => Installed && Version != ApoIds.InstallVersion;
+
+    /// isExperimental: the driver gave the device no FxProperties key, so Device Selector's own key is made for it.
+    public bool Experimental => !Installed && Original[0] == ApoIds.NoKey;
+
     /// LFX, GFX, SFX, MFX, EFX as they were before Equalizer APO: a class id, <see cref="ApoIds.NoValue"/> or <see cref="ApoIds.NoKey"/>.
     public string[] Original { get; } = new string[ApoIds.FxSlots.Count];
 
@@ -54,7 +61,7 @@ public sealed class DeviceApo
     private string FxKey => KeyPath + @"\FxProperties";
     private string ChildKey => $@"{ApoIds.ChildApoKey}\{Guid}";
 
-    /// Every device under Render (or Capture) that is present (DeviceAPOInfo::loadAllInfos); one a newer Equalizer APO attached is left out.
+    /// Every device under Render (or Capture) that is present, disabled and unplugged ones included (DeviceAPOInfo::loadAllInfos).
     internal static IReadOnlyList<DeviceApo> LoadAll(IApoRegistry reg, bool input) =>
         reg.SubKeys(input ? ApoIds.CaptureKey : ApoIds.RenderKey).Select(guid => LoadKnown(reg, guid)).OfType<DeviceApo>().ToList();
 
@@ -98,10 +105,11 @@ public sealed class DeviceApo
         }
         else
         {
+            // Device Selector compares the kept value as text with its own spelling, but finds itself by the parsed class id.
             for (var i = 0; i < ApoIds.FxSlots.Count; i++)
             {
                 var value = reg.ReadString(d.FxKey, ApoIds.FxSlots[i]);
-                d.Original[i] = value is null || ApoIds.IsUpstream(value) ? ApoIds.NoValue : value;
+                d.Original[i] = value is null or ApoIds.UpstreamPreMixClsid or ApoIds.UpstreamPostMixClsid ? ApoIds.NoValue : value;
             }
 
             var foundAt = ApoIds.FxSlots.Select(slot => ApoIds.IsUpstream(reg.ReadString(d.FxKey, slot))).ToArray();
@@ -179,56 +187,27 @@ public sealed class DeviceApo
 
     private static string Kept(string? guid) => guid is null or ApoIds.NoKey or ApoIds.NoValue ? string.Empty : guid;
 
-    /// DeviceAPOInfo::install with <paramref name="s"/> as the selected state. Returns the backup of the slots that were there (Device
-    /// Selector's .reg file text), or null when there was nothing to back up. A registry failure part-way puts the device back as it was
-    /// (<see cref="Uninstall"/> with the slots read before) and is thrown on.
-    internal string? Install(IApoRegistry reg, ApoInstallState s)
+    /// DeviceAPOInfo::install with <paramref name="s"/> as the selected state, step for step: a failure stops it where it is and is thrown
+    /// on, as Device Selector's RegistryException is. <paramref name="saveBackup"/> writes Device Selector's .reg backup of the slots that
+    /// were there (file name, text) at the point its saveToFile does; a failure to write it stops the install there too.
+    internal void Install(IApoRegistry reg, ApoInstallState s, Action<string, string> saveBackup)
     {
-        if (!s.PreMix && !s.PostMix) return null;
-        try
-        {
-            return Attach(reg, s);
-        }
-        catch (Exception ex) when (MachineRegistry.IsRegistryFailure(ex))
+        if (!s.PreMix && !s.PostMix) return;
+        reg.CreateKey(ApoIds.ChildApoKey);
+        reg.CreateKey(ChildKey);
+        if (!reg.KeyExists(FxKey))
         {
             try
             {
-                Uninstall(reg);
-            }
-            catch (Exception undo) when (MachineRegistry.IsRegistryFailure(undo))
-            {
-                throw new IOException($"{ex.Message} Putting the device back failed too: {undo.Message}", ex);
-            }
-            throw;
-        }
-    }
-
-    /// A change to a key of the device's driver; when Windows refuses it to administrators, it is made again as the key's owner for that
-    /// moment (Device Selector's takeOwnership + makeWritable). Every change here can safely run twice.
-    private static void AsAdministrator(IApoRegistry reg, string key, Action change)
-    {
-        try
-        {
-            change();
-        }
-        catch (Exception ex) when (MachineRegistry.IsRegistryFailure(ex))
-        {
-            reg.AsOwner(key, change);
-        }
-    }
-
-    private string? Attach(IApoRegistry reg, ApoInstallState s)
-    {
-        reg.CreateKey(ApoIds.ChildApoKey);
-        reg.CreateKey(ChildKey);
-        string? backup = null;
-        if (!reg.KeyExists(FxKey))
-        {
-            AsAdministrator(reg, KeyPath, () => // the driver's key may not let administrators add to it
-            {
                 reg.CreateKey(FxKey);
-                reg.WriteString(FxKey, ApoIds.FxTitleValue, "Equalizer APO");
-            });
+            }
+            catch (Exception ex) when (MachineRegistry.IsRegistryFailure(ex))
+            {
+                reg.TakeOwnership(KeyPath); // permissions were not sufficient, so change them (Device Selector's own words)
+                reg.MakeWritable(KeyPath);
+                reg.CreateKey(FxKey);
+            }
+            reg.WriteString(FxKey, ApoIds.FxTitleValue, "Equalizer APO");
             foreach (var slot in ApoIds.FxSlots) reg.WriteString(ChildKey, slot, ApoIds.NoKey);
         }
         else
@@ -240,7 +219,7 @@ public sealed class DeviceApo
                 if (value is not null) present.Add((slot, value));
                 reg.WriteString(ChildKey, slot, value ?? ApoIds.NoValue);
             }
-            if (present.Count > 0) backup = BackupText(FxKey, present);
+            if (present.Count > 0) saveBackup(BackupFileName, BackupText(FxKey, present));
         }
 
         reg.WriteString(ChildKey, ApoIds.PreMixChild, s.OriginalPreMix ? OriginalPreMix(s.Mode) : string.Empty);
@@ -249,8 +228,16 @@ public sealed class DeviceApo
         if (s.AutoAdjust) reg.DeleteValue(ChildKey, ApoIds.DisableAutoAdjust);
         else reg.WriteString(ChildKey, ApoIds.DisableAutoAdjust, "true");
         reg.WriteString(ChildKey, ApoIds.InstallVersionValue, ApoIds.InstallVersion);
-        AsAdministrator(reg, FxKey, () => WriteSlots(reg, s));
-        return backup;
+        WriteSlots(reg, s);
+    }
+
+    /// DeviceAPOInfo::reinstall: back to the original slots, read again, then installed with <paramref name="s"/>; the device as it is now.
+    internal DeviceApo Reinstall(IApoRegistry reg, ApoInstallState s, Action<string, string> saveBackup)
+    {
+        Uninstall(reg);
+        var again = Load(reg, Guid) ?? throw new InvalidDataException("The device is not plugged in.");
+        again.Install(reg, s, saveBackup);
+        return again;
     }
 
     private void WriteSlots(IApoRegistry reg, ApoInstallState s)
@@ -288,30 +275,29 @@ public sealed class DeviceApo
     /// DeviceAPOInfo::uninstall: the slots go back to what they were (the key is deleted when the device had none), and its record goes.
     internal void Uninstall(IApoRegistry reg)
     {
-        AsAdministrator(reg, FxKey, () =>
+        if (Original[0] == ApoIds.NoKey)
         {
-            if (Original[0] == ApoIds.NoKey)
-            {
-                reg.DeleteKey(FxKey);
-                return;
-            }
+            reg.DeleteKey(FxKey);
+        }
+        else
+        {
             for (var i = 0; i < ApoIds.FxSlots.Count; i++)
             {
                 if (Original[i] == ApoIds.NoValue) reg.DeleteValue(FxKey, ApoIds.FxSlots[i]);
                 else if (Original[i].Length > 0) reg.WriteString(FxKey, ApoIds.FxSlots[i], Original[i]);
             }
-        });
+        }
         if (reg.KeyExists(ApoIds.ChildApoKey)) reg.DeleteValue(ApoIds.ChildApoKey, Guid);
         if (reg.KeyExists(ChildKey)) reg.DeleteKey(ChildKey);
         if (reg.KeyExists(ApoIds.ChildApoKey) && reg.KeyEmpty(ApoIds.ChildApoKey)) reg.DeleteKey(ApoIds.ChildApoKey);
     }
 
-    /// RegistryHelper::saveToFile's text: the slots that were there, as a .reg file.
+    /// RegistryHelper::saveToFile's text: the slots that were there, as a .reg file (its wofstream in text mode writes each line end as CR LF).
     internal static string BackupText(string key, IEnumerable<(string Name, string Value)> values) =>
-        $"Windows Registry Editor Version 5.00\n\n[HKEY_LOCAL_MACHINE\\{key}]\n" + string.Concat(values.Select(v => $"\"{v.Name}\"=\"{v.Value}\"\n")) + "\n";
+        $"Windows Registry Editor Version 5.00\r\n\r\n[HKEY_LOCAL_MACHINE\\{key}]\r\n" + string.Concat(values.Select(v => $"\"{v.Name}\"=\"{v.Value}\"\r\n")) + "\r\n";
 
-    /// The name of Device Selector's backup file for this device ("backup_<name>_<connection>.reg", unsafe characters replaced).
-    internal string BackupFileName => $"backup_{Safe(Name)}_{Safe(Connection)}.reg";
+    /// The name of Device Selector's backup file for this device ("backup_<name>_<connection>.reg", StringHelper::replaceIllegalCharacters).
+    private string BackupFileName => $"backup_{Safe(Name)}_{Safe(Connection)}.reg";
 
-    private static string Safe(string text) => string.Concat(text.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
+    private static string Safe(string text) => string.Concat(text.Select(c => "<>:\"/\\|?*".Contains(c) ? '_' : c));
 }

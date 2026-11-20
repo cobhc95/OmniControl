@@ -38,7 +38,7 @@
                         <TextBlock Classes="navheading" Text="{Binding Text}" Margin="8,6,0,2" />
                     </DataTemplate>
                     <DataTemplate DataType="ad:ApoDeviceRow">
-                        <Button Classes="menurow" Classes.chosen="{Binding IsSelected}" Focusable="False" Command="{Binding SelectCommand}" Opacity="{Binding RowOpacity}">
+                        <Button Classes="menurow" Classes.chosen="{Binding IsSelected}" Focusable="False" Command="{Binding SelectCommand}">
                             <Grid ColumnSpacing="{StaticResource MenuGap}">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" SharedSizeGroup="Tick" />
@@ -46,7 +46,7 @@
                                     <ColumnDefinition Width="Auto" SharedSizeGroup="Device" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <CheckBox IsChecked="{Binding IsChecked}" IsEnabled="{Binding CanAttach}" Focusable="False" MinWidth="0" VerticalAlignment="Center" />
+                                <CheckBox IsChecked="{Binding IsChecked}" Focusable="False" MinWidth="0" VerticalAlignment="Center" />
                                 <TextBlock Grid.Column="1" Text="{Binding Connector}" VerticalAlignment="Center" />
                                 <TextBlock Grid.Column="2" Text="{Binding Device}" VerticalAlignment="Center" />
                                 <Panel Grid.Column="3" VerticalAlignment="Center">
@@ -86,7 +86,7 @@
         <Border Grid.Row="4" Classes="footer">
             <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
                 <CheckBox Content="Troubleshooting options" IsChecked="{Binding Troubleshooting}" />
-                <TextBlock Grid.Column="1" Classes="hint small" Text="Ticking restarts Windows audio for a moment" TextWrapping="Wrap" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Classes="hint small" Text="Each change restarts Windows audio and checks every device Equalizer APO is on" TextWrapping="Wrap" VerticalAlignment="Center" />
                 <Button Grid.Column="2" Classes="pill" Content="Close" Click="OnCloseClick" />
             </Grid>
         </Border>

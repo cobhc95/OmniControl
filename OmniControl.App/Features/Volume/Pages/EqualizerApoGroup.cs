@@ -82,6 +82,10 @@ public sealed class EqualizerApoGroup : IDisposable
         if (apo.Ownership.Owner == ApoOwner.Ours && !await _ask(new DialogMessage("Remove OmniControl's Equalizer APO?",
                 "Every device it is on gets its own effects back, and Windows audio restarts for a moment.", "Remove", Danger: true)))
             return;
+        if (apo.Ownership.Owner == ApoOwner.None && apo.Bundled && !await _ask(new DialogMessage("Install Equalizer APO?",
+                "OmniControl installs its copy of Equalizer APO on no device yet; Windows audio then restarts (all sound stops for a few seconds). "
+                + "Windows asks once for administrator rights.", "Install")))
+            return;
         if (_busy) return;
         _busy = true;
         try

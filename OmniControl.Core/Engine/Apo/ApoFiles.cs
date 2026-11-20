@@ -32,12 +32,14 @@ internal static class ApoFiles
     public static bool Bundled => File.Exists(Path.Combine(AppContext.BaseDirectory, BundledFolder, ApoIds.UpstreamDllName));
 
     /// Copies the files that differ from the shipped ones: a file in use (audiodg holds the DLLs) is renamed first and deleted when it can
-    /// be (Equalizer APO's installer does the same). Null when every file is in place, else why not.
-    public static string? Place()
+    /// be (Equalizer APO's installer does the same). Null when every file is in place, else why not; <paramref name="changed"/> = a file
+    /// was copied.
+    public static string? Place(out bool changed)
     {
         var source = Path.Combine(AppContext.BaseDirectory, BundledFolder);
         var held = new List<FileStream>();
         var renamed = new List<string>();
+        changed = false;
         try
         {
             Directory.CreateDirectory(InstallFolder);
@@ -52,6 +54,7 @@ internal static class ApoFiles
                 file.Position = 0;
                 using var copy = new FileStream(target, FileMode.CreateNew, FileAccess.Write, FileShare.None);
                 file.CopyTo(copy);
+                changed = true;
             }
             Directory.CreateDirectory(ConfigFolder);
             LetUsersWrite(ConfigFolder);
@@ -81,18 +84,9 @@ internal static class ApoFiles
             DeleteOrLater(parent);
     }
 
-    /// Device Selector's backup of a device's slots, kept beside the files as it keeps it beside its own.
-    public static void SaveBackup(string fileName, string text)
-    {
-        try
-        {
-            File.WriteAllText(Path.Combine(InstallFolder, fileName), text, Encoding.Unicode);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            // only a convenience copy: the slots are kept under Child APOs, which is what restores them
-        }
-    }
+    /// Device Selector's backup of a device's slots, kept beside the files as it keeps it beside its own (8-bit text, as its wofstream
+    /// writes); a failure to write it stops the install, as its saveToFile's does.
+    public static void SaveBackup(string fileName, string text) => File.WriteAllText(Path.Combine(InstallFolder, fileName), text, new UTF8Encoding(false));
 
     private static string HashOf(string path)
     {
@@ -108,12 +102,13 @@ internal static class ApoFiles
         return aside;
     }
 
-    /// Users may change the config folder (OmniControl writes its chain there without administrator rights), as Equalizer APO's installer allows.
+    /// Users get full access to the config folder (OmniControl writes its chain there without administrator rights), as Equalizer APO's
+    /// installer grants it (AccessControl::GrantOnFile "(S-1-5-32-545)" "FullAccess").
     private static void LetUsersWrite(string folder)
     {
         var info = new DirectoryInfo(folder);
         var acl = info.GetAccessControl();
-        acl.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null), FileSystemRights.Modify,
+        acl.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null), FileSystemRights.FullControl,
             InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, AccessControlType.Allow));
         info.SetAccessControl(acl);
     }

@@ -49,7 +49,8 @@ public sealed record ApoState(
     /// This build ships OmniControl's own copy, so it can be installed when there is none.
     public bool Bundled { get; init; }
 
-    /// While OmniControl's copy is installed: every device it can be put on (present ones, and any it is on), playback first. Empty otherwise.
+    /// While OmniControl's copy is installed: every present device, disabled and unplugged ones included (Device Selector's list), playback
+    /// first. Empty otherwise.
     public IReadOnlyList<ApoDeviceEntry> OwnDevices { get; init; } = Array.Empty<ApoDeviceEntry>();
 
     /// The entry of the device with this endpoint id, or null.
@@ -95,20 +96,30 @@ public sealed record ApoState(
 /// <param name="Connector">Device Selector's Connector column ("Speakers").</param>
 /// <param name="Device">Its Device column ("Realtek(R) Audio").</param>
 /// <param name="Attached">Equalizer APO is in one of its slots.</param>
-/// <param name="Check">How OmniControl's last change of it ended (<see cref="ApoSetup.Running"/>, ...; "" = OmniControl never changed it).</param>
+/// <param name="Check">How the last check of it ended (<see cref="ApoSetup.Running"/>, ...); "" = never checked. Meaningful only while attached.</param>
 /// <param name="State">How it is installed now, or how it would be.</param>
 /// <param name="Originals">Which install modes keep a driver APO to run inside Equalizer APO: bit 2 × mode = pre-mix, the next bit post-mix.</param>
 public sealed record ApoDeviceEntry(string Guid, string Connector, string Device, bool Input, bool Disabled, bool Unplugged, bool Attached, bool EnhancementsOff, string Check, ApoInstallState State, int Originals)
 {
-    /// "Realtek(R) Audio (Speakers)" for sentences.
-    public string Name => Connector.Length > 0 ? $"{Device} ({Connector})" : Device;
+    /// Device Selector's canBeUpgraded: attached by an older Device Selector.
+    public bool CanBeUpgraded { get; init; }
+
+    /// Device Selector's isExperimental: the driver gave it no FxProperties key.
+    public bool Experimental { get; init; }
+
+    /// "Speaker (Realtek(R) Audio)", as Windows names it, for sentences.
+    public string Name => Connector.Length > 0 ? $"{Connector} ({Device})" : Device;
 
     public bool HasOriginalPreMix(ApoInstallMode mode) => (Originals & (1 << (2 * (int)mode))) != 0;
     public bool HasOriginalPostMix(ApoInstallMode mode) => (Originals & (2 << (2 * (int)mode))) != 0;
 
     internal static ApoDeviceEntry Of(DeviceApo d, string check) => new(d.Guid,
         d.Connection, d.Name, d.Input, d.Disabled, d.Unplugged, d.Installed, d.EnhancementsOff, check, d.Current,
-        Enum.GetValues<ApoInstallMode>().Sum(m => (d.OriginalPreMix(m).Length > 0 ? 1 << (2 * (int)m) : 0) + (d.OriginalPostMix(m).Length > 0 ? 2 << (2 * (int)m) : 0)));
+        Enum.GetValues<ApoInstallMode>().Sum(m => (d.OriginalPreMix(m).Length > 0 ? 1 << (2 * (int)m) : 0) + (d.OriginalPostMix(m).Length > 0 ? 2 << (2 * (int)m) : 0)))
+    {
+        CanBeUpgraded = d.CanBeUpgraded,
+        Experimental = d.Experimental,
+    };
 }
 
 /// Reads <see cref="ApoState"/> from the registry (64-bit view). Never writes.
@@ -166,14 +177,20 @@ public static class ApoStatus
             dll, dll is not null && File.Exists(dll), ApoFiles.InstallFolder, marker?.GetValue(ApoIds.OwnPathValue) as string);
     }
 
-    /// Every device OmniControl's copy may be put on (the present ones and any it is on), with how OmniControl's last change of it ended.
+    /// Device Selector's list (every present device) with how the last check of each ended.
     private static IReadOnlyList<ApoDeviceEntry> OwnDevicesOf(RegistryKey machine)
     {
         using var checks = machine.OpenSubKey(ApoIds.OwnDevicesKey);
         var reg = new MachineRegistry();
         return DeviceApo.LoadAll(reg, input: false).Concat(DeviceApo.LoadAll(reg, input: true))
-            .Where(d => d.Installed || !d.Disabled && !d.Unplugged)
             .Select(d => ApoDeviceEntry.Of(d, checks?.GetValue(d.Guid) as string ?? string.Empty)).ToList();
+    }
+
+    /// Device Selector's checkAPORegistration without its fix (the elevated helper fixes it).
+    internal static bool Registered()
+    {
+        using var machine = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
+        return IsRegistered(machine, ApoIds.UpstreamPreMixClsid, ApoIds.UpstreamPostMixClsid);
     }
 
     /// One endpoint's slots and enhancements value, the same checks for playback and recording devices.

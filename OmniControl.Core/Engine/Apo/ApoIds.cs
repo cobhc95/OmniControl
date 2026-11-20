@@ -121,6 +121,7 @@ public static class ApoIds
         return at < 0 ? endpointId : endpointId[(at + 2)..];
     }
 
+    /// Device Selector's test: the text parses as a braced class id (CLSIDFromString) equal to one of Equalizer APO's.
     public static bool IsUpstream(string? clsid) =>
-        string.Equals(clsid, UpstreamPreMixClsid, StringComparison.OrdinalIgnoreCase) || string.Equals(clsid, UpstreamPostMixClsid, StringComparison.OrdinalIgnoreCase);
+        Guid.TryParseExact(clsid, "B", out var id) && (id == Guid.Parse(UpstreamPreMixClsid) || id == Guid.Parse(UpstreamPostMixClsid));
 }

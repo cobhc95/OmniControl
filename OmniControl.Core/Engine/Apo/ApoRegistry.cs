@@ -22,9 +22,10 @@ internal interface IApoRegistry
     void DeleteKey(string key);
     bool KeyEmpty(string key);
     IReadOnlyList<string> SubKeys(string key);
-    /// Device Selector's takeOwnership + makeWritable around <paramref name="change"/>: Administrators own the key and get full access to it
-    /// (and to keys made under it meanwhile), then its owner and access list are put back exactly, also when the change fails.
-    void AsOwner(string key, Action change);
+    /// RegistryHelper::takeOwnership: Administrators become the key's owner (kept, as Device Selector keeps it).
+    void TakeOwnership(string key);
+    /// RegistryHelper::makeWritable: Administrators get full access to the key and what is made under it (kept).
+    void MakeWritable(string key);
 }
 
 /// <see cref="IApoRegistry"/> on Windows' registry. Writes need administrator rights (the elevated helper, <see cref="ApoSetup"/>). Each key
@@ -71,11 +72,14 @@ internal sealed class MachineRegistry : IApoRegistry
         return k?.GetValue(name) is not null;
     }
 
+    /// RegistryHelper::readValue: a REG_SZ; a value of another type is refused as it refuses it (null when the value is missing).
     public string? ReadString(string key, string name)
     {
         using var machine = Machine();
         using var k = machine.OpenSubKey(key);
-        return k?.GetValue(name) switch { string s => s, string[] { Length: > 0 } multi => multi[0], _ => null };
+        if (k?.GetValue(name, null, RegistryValueOptions.DoNotExpandEnvironmentNames) is not { } value) return null;
+        return k.GetValueKind(name) == RegistryValueKind.String ? (string)value
+            : throw new InvalidDataException($"Registry value HKLM\\{key}\\{name} has wrong type");
     }
 
     public uint? ReadDword(string key, string name)
@@ -129,40 +133,33 @@ internal sealed class MachineRegistry : IApoRegistry
         return k?.GetSubKeyNames() ?? Array.Empty<string>();
     }
 
-    public void AsOwner(string key, Action change)
+    public void TakeOwnership(string key) => At("Couldn't take ownership of", key, () =>
     {
         Privileges.Enable(Privileges.TakeOwnership);
-        Privileges.Enable(Privileges.Restore); // giving the key back to SYSTEM or TrustedInstaller needs it
-        using var machine = Machine();
-        byte[] before = Array.Empty<byte>();
-        At("Couldn't take ownership of", key, () =>
-        {
-            using var k = Open(machine, key, RegistryRights.ReadPermissions | RegistryRights.TakeOwnership) ?? throw new IOException("The key is missing.");
-            var security = k.GetAccessControl(AccessControlSections.Owner | AccessControlSections.Access);
-            before = security.GetSecurityDescriptorBinaryForm();
-            security.SetOwner(Administrators);
-            SetSecurity(k, OwnerInfo, security.GetSecurityDescriptorBinaryForm());
-        });
         try
         {
-            At("Couldn't give administrators full access to", key, () =>
-            {
-                using var k = Open(machine, key, RegistryRights.ReadPermissions | RegistryRights.ChangePermissions) ?? throw new IOException("The key is missing.");
-                var security = k.GetAccessControl(AccessControlSections.Access);
-                security.AddAccessRule(new RegistryAccessRule(Administrators, RegistryRights.FullControl, InheritanceFlags.ContainerInherit, PropagationFlags.None, AccessControlType.Allow));
-                SetSecurity(k, DaclInfo, security.GetSecurityDescriptorBinaryForm());
-            });
-            change();
+            using var machine = Machine();
+            using var k = Open(machine, key, RegistryRights.TakeOwnership) ?? throw new IOException("The key is missing.");
+            var security = new RegistrySecurity();
+            security.SetOwner(Administrators);
+            SetSecurity(k, OwnerInfo, security.GetSecurityDescriptorBinaryForm());
         }
         finally
         {
-            At("Couldn't give back the owner and access of", key, () =>
-            {
-                using var k = Open(machine, key, RegistryRights.ChangePermissions | RegistryRights.TakeOwnership);
-                if (k is not null) SetSecurity(k, OwnerInfo | DaclInfo, before); // gone when the change deleted it
-            });
+            Privileges.Enable(Privileges.TakeOwnership, on: false);
         }
-    }
+    });
+
+    // SetEntriesInAcl with SET_ACCESS: Administrators' own entries are replaced by one full-access entry inherited by everything under the key.
+    public void MakeWritable(string key) => At("Couldn't give administrators full access to", key, () =>
+    {
+        using var machine = Machine();
+        using var k = Open(machine, key, RegistryRights.ReadPermissions | RegistryRights.ChangePermissions) ?? throw new IOException("The key is missing.");
+        var security = k.GetAccessControl(AccessControlSections.Access);
+        security.SetAccessRule(new RegistryAccessRule(Administrators, RegistryRights.FullControl,
+            InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, AccessControlType.Allow));
+        SetSecurity(k, DaclInfo, security.GetSecurityDescriptorBinaryForm());
+    });
 
     private static void SetSecurity(RegistryKey key, int information, byte[] descriptor)
     {

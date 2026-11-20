@@ -112,7 +112,13 @@ public sealed partial class VolumePageViewModel
     /// The same step from outside the page (an FX window's device menu): one install path.
     public Task InstallEqualizerApoStepAsync() => InstallEqualizerApoAsync();
 
-    /// Install for Equalizer APO (<see cref="EngineInstaller.SetUpEqualizerApoAsync"/>: its Configurator when it is installed, else its download page).
-    private Task InstallEqualizerApoAsync() => RunSetupAsync(null, _installer.SetUpEqualizerApoAsync());
+    /// Install for Equalizer APO (<see cref="EngineInstaller.SetUpEqualizerApoAsync"/>: its Configurator when it is installed, OmniControl's
+    /// own copy after asking, else its download page).
+    private async Task InstallEqualizerApoAsync()
+    {
+        var question = _installer.SetUpQuestion();
+        if (question is not null && !await _ask(question)) return;
+        await RunSetupAsync(question is null ? null : "Setting up Equalizer APO; Windows audio restarts for a moment…", _installer.SetUpEqualizerApoAsync());
+    }
 
 }

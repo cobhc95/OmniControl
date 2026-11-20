@@ -91,6 +91,8 @@ public class BundledApoTests
 
     private static DeviceApo Load(FakeRegistry reg) => DeviceApo.Load(reg, Guid) ?? throw new InvalidOperationException("not present");
 
+    private static void NoBackup(string file, string text) { }
+
     [Fact]
     public void LfxGfxDriver_InstallsAsLfxGfx_KeepsOriginalsAndRestoresExactly()
     {
@@ -100,7 +102,8 @@ public class BundledApoTests
         Assert.False(device.Installed);
         Assert.Equal(ApoInstallMode.LfxGfx, device.Current.Mode);
 
-        var backup = device.Install(reg, device.Current);
+        string? backup = null;
+        device.Install(reg, device.Current, (file, text) => backup = file + text);
         Assert.Equal(ApoIds.UpstreamPreMixClsid, reg.Get(Fx(Render), ApoIds.Lfx));
         Assert.Equal(ApoIds.UpstreamPostMixClsid, reg.Get(Fx(Render), ApoIds.Gfx));
         Assert.Equal(DriverLfx, reg.Get(Child, ApoIds.Lfx));
@@ -133,7 +136,7 @@ public class BundledApoTests
         Assert.True(device.EnhancementsOff);
         Assert.Equal(ApoInstallMode.SfxEfx, device.Current.Mode);
 
-        device.Install(reg, device.Current);
+        device.Install(reg, device.Current, NoBackup);
         Assert.Equal(ApoIds.UpstreamPreMixClsid, reg.Get(Fx(Render), ApoIds.Sfx));
         Assert.Equal(DriverMfx, reg.Get(Fx(Render), ApoIds.Mfx)); // MFX is left as it is
         Assert.Equal(ApoIds.UpstreamPostMixClsid, reg.Get(Fx(Render), ApoIds.Efx));
@@ -165,8 +168,10 @@ public class BundledApoTests
         var device = Load(reg);
         Assert.Equal(Enumerable.Repeat(ApoIds.NoKey, 5), device.Original);
 
-        Assert.Null(device.Install(reg, device.Current));
-        Assert.True(reg.MadeWritable); // the driver's key refused the new key until administrators could write it
+        var backedUp = false;
+        device.Install(reg, device.Current, (_, _) => backedUp = true);
+        Assert.False(backedUp); // no slots were there to back up
+        Assert.True(reg.MadeWritable); // the driver's key refused the new key until administrators owned it and could write it
         Assert.Equal("Equalizer APO", reg.Get(Fx(Render), ApoIds.FxTitleValue));
         Assert.Equal(ApoIds.NoKey, reg.Get(Child, ApoIds.Lfx));
         Assert.Equal(string.Empty, reg.Get(Child, ApoIds.PreMixChild)); // no driver APO to run inside
@@ -177,32 +182,45 @@ public class BundledApoTests
     }
 
     [Fact]
-    public void LockedFxProperties_IsChangedAsItsOwnerAndRestored()
+    public void LockedFxProperties_FailsAsInDeviceSelector()
     {
         var reg = Device(Render, new() { [ApoIds.Sfx] = DriverSfx, [ApoIds.Efx] = DriverEfx });
-        var before = reg.Values(Fx(Render));
         reg.FxLocked = true;
         var device = Load(reg);
-        device.Install(reg, device.Current);
-        Assert.True(reg.MadeWritable);
-        Assert.Equal(ApoIds.UpstreamPreMixClsid, reg.Get(Fx(Render), ApoIds.Sfx));
-
-        Load(reg).Uninstall(reg);
+        Assert.Throws<UnauthorizedAccessException>(() => device.Install(reg, device.Current, NoBackup));
+        Assert.False(reg.MadeWritable); // only a refused new FxProperties key makes Device Selector take ownership
         Assert.Equal(DriverSfx, reg.Get(Fx(Render), ApoIds.Sfx));
-        Assert.Equal(DriverEfx, reg.Get(Fx(Render), ApoIds.Efx));
-        Assert.Equal(before.Keys.Where(k => k is not (ApoIds.SfxModes or ApoIds.EfxModes)), reg.Values(Fx(Render)).Keys.Where(k => k is not (ApoIds.SfxModes or ApoIds.EfxModes)));
     }
 
     [Fact]
-    public void RefusedPartWay_PutsTheDeviceBackExactly()
+    public void RefusedPartWay_StopsWhereItIs()
     {
         var reg = Device(Render, new() { [ApoIds.Sfx] = DriverSfx, [ApoIds.Efx] = DriverEfx, [ApoIds.SfxModes] = new[] { "{mode}" }, [ApoIds.EfxModes] = new[] { "{mode}" } });
-        var before = reg.Values(Fx(Render));
         reg.Refused = ApoIds.UpstreamPostMixClsid; // SFX is written, then EFX is refused
         var device = Load(reg);
-        Assert.Throws<UnauthorizedAccessException>(() => device.Install(reg, device.Current));
-        Assert.Equal(before, reg.Values(Fx(Render)));
+        Assert.Throws<UnauthorizedAccessException>(() => device.Install(reg, device.Current, NoBackup));
+        Assert.Equal(ApoIds.UpstreamPreMixClsid, reg.Get(Fx(Render), ApoIds.Sfx));
+
+        var half = Load(reg); // Device Selector then lists it as installed, and unticking it restores the driver's slots
+        Assert.True(half.Installed);
+        half.Uninstall(reg);
+        Assert.Equal(DriverSfx, reg.Get(Fx(Render), ApoIds.Sfx));
+        Assert.Equal(DriverEfx, reg.Get(Fx(Render), ApoIds.Efx));
         Assert.False(reg.KeyExists(ApoIds.ChildApoKey));
+    }
+
+    [Fact]
+    public void Statuses_FollowDeviceSelector()
+    {
+        Assert.True(Load(Device(Render, fx: null)).Experimental);
+        var reg = Device(Render, new() { [ApoIds.Sfx] = DriverSfx });
+        Assert.False(Load(reg).Experimental);
+        Load(reg).Install(reg, Load(reg).Current, NoBackup);
+        Assert.False(Load(reg).CanBeUpgraded);
+        reg.DeleteValue(Child, ApoIds.InstallVersionValue);
+        Assert.True(Load(reg).CanBeUpgraded); // a record without its Version is Device Selector's version 1
+        reg.Set(Child, ApoIds.InstallVersionValue, "3");
+        Assert.Throws<InvalidDataException>(() => Load(reg)); // a newer record is refused, as Device Selector refuses it
     }
 
     [Fact]
@@ -212,7 +230,7 @@ public class BundledApoTests
         var device = Load(reg);
         Assert.True(device.Input);
         Assert.False(device.Current.PostMix);
-        device.Install(reg, device.Current with { PostMix = true });
+        device.Install(reg, device.Current with { PostMix = true }, NoBackup);
         Assert.Equal(ApoIds.UpstreamPreMixClsid, reg.Get(Fx(Capture), ApoIds.Sfx));
         Assert.False(reg.ValueExists(Fx(Capture), ApoIds.Efx));
         Assert.False(reg.ValueExists(Fx(Capture), ApoIds.Mfx));
@@ -224,11 +242,11 @@ public class BundledApoTests
         var reg = Device(Render, new() { [ApoIds.Sfx] = DriverSfx, [ApoIds.Efx] = DriverEfx });
         var before = reg.Values(Fx(Render));
         var device = Load(reg);
-        device.Install(reg, device.Current);
+        device.Install(reg, device.Current, NoBackup);
         var installed = Load(reg);
         installed.Uninstall(reg); // Device Selector's reinstall: back to the originals, read again, installed with the new options
         var again = Load(reg);
-        again.Install(reg, again.Current with { Mode = ApoInstallMode.LfxGfx });
+        again.Install(reg, again.Current with { Mode = ApoInstallMode.LfxGfx }, NoBackup);
         Assert.Equal(ApoIds.UpstreamPreMixClsid, reg.Get(Fx(Render), ApoIds.Lfx));
         Assert.Equal(DriverSfx, reg.Get(Child, ApoIds.PreMixChild)); // LFX/GFX with no LFX/GFX original runs the SFX one inside
 
@@ -267,18 +285,17 @@ public class BundledApoTests
         private readonly Dictionary<string, Dictionary<string, object>> _keys = new(StringComparer.OrdinalIgnoreCase);
 
         public bool DenyFirstCreate { get; set; }
-        /// FxProperties refuses every change until it is made as its owner.
+        /// FxProperties refuses every change.
         public bool FxLocked { get; set; }
         /// A value no write may put anywhere (a refusal part-way through an install).
         public string? Refused { get; set; }
         public bool MadeWritable { get; private set; }
-        private bool _owning;
 
         public void Set(string key, string name, object value) => Open(key)[name] = value;
 
         private void Check(string key, object? value = null)
         {
-            if (FxLocked && !_owning && key.EndsWith(@"\FxProperties", StringComparison.Ordinal) || value is not null && Equals(value, Refused))
+            if (FxLocked && key.EndsWith(@"\FxProperties", StringComparison.Ordinal) || value is not null && Equals(value, Refused))
                 throw new UnauthorizedAccessException();
         }
         public object? Get(string key, string name) => _keys.TryGetValue(key, out var k) && k.TryGetValue(name, out var v) ? v : null;
@@ -326,18 +343,8 @@ public class BundledApoTests
             .Where(k => k.StartsWith(key + @"\", StringComparison.OrdinalIgnoreCase) && !k[(key.Length + 1)..].Contains('\\'))
             .Select(k => k[(key.Length + 1)..]).ToList();
 
-        public void AsOwner(string key, Action change)
-        {
-            MadeWritable = true;
-            _owning = true;
-            try
-            {
-                change();
-            }
-            finally
-            {
-                _owning = false;
-            }
-        }
+        public void TakeOwnership(string key) { }
+
+        public void MakeWritable(string key) => MadeWritable = true;
     }
 }

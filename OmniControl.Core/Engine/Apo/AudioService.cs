@@ -92,11 +92,10 @@ internal static class AudioService
     private static uint State(IntPtr service) =>
         QueryServiceStatusEx(service, StatusProcessInfo, out var status, Marshal.SizeOf<ServiceStatusProcess>(), out _) ? status.State : throw new Win32Exception();
 
-    /// A start that is refused because it is already starting is fine: the loop waits for it to run.
+    /// Service::start: any refusal ends the restart, as in Equalizer APO.
     private static void Start(IntPtr service)
     {
-        const int alreadyRunning = 1056;
-        if (!StartService(service, 0, IntPtr.Zero) && Marshal.GetLastWin32Error() is var error and not alreadyRunning) throw new Win32Exception(error);
+        if (!StartService(service, 0, IntPtr.Zero)) throw new Win32Exception();
     }
 
     private static IReadOnlyList<string> Dependents(IntPtr service)

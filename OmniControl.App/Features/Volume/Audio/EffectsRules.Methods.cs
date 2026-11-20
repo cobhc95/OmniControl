@@ -15,6 +15,9 @@ public sealed record EffectsRoute(string Id, string Name, string Description, st
 public sealed record MasterFacts(int CablePairs, StatusKind NoCable, string? ApoWhy, bool SeveralOutputs, bool HasEffects)
 {
     public static readonly MasterFacts Unknown = new(0, StatusKind.NeedsCable, null, false, false);
+
+    /// Where Equalizer APO stands on the master's speakers (<see cref="EffectsRules.ApoNowOn"/>); null = not read yet.
+    public string? ApoNow { get; init; }
 }
 
 /// How effects run per row: a program's method (<see cref="ProgramRoutes"/>) and the master's
@@ -89,7 +92,7 @@ public static partial class EffectsRules
     /// The master in Equalizer APO on the real speakers: the cable stays free and Windows' default is the speakers.
     public static readonly EffectsRoute MasterApo = new("apo", "Equalizer APO",
         "In Windows: frees the cable. No VST3, one speaker.",
-        "The master's effects run in Equalizer APO on the real speakers, which stay Windows' default device, so the volume keys work as usual and the cable is free for a program, a combined microphone or a combined speaker. Equalizer APO runs the equaliser, gain, IR loader and VST2 plug-ins; VST3 plug-ins are kept but not run. If the master has no effects, nothing needs installing.");
+        "The master's effects run in Equalizer APO on the real speakers, which stay Windows' default device, so the volume keys work as usual and the cable is free for a program, a combined microphone or a combined speaker. Equalizer APO runs the equaliser, gain, IR loader and VST2 plug-ins; VST3 plug-ins are kept but not run.");
 
     /// Every way the master can run, in the order its pop-down lists them.
     public static IReadOnlyList<EffectsRoute> MasterRoutes { get; } = new[] { MasterAutomatic, MasterBus, MasterApo };
@@ -115,15 +118,12 @@ public static partial class EffectsRules
         if (route == MasterApo)
         {
             if (facts.SeveralOutputs) return Unavailable(route, "the master plays on several devices");
-            if (facts.ApoWhy is { } why)
-                return facts.HasEffects ? Unavailable(route, why) : new RouteOffer(true, NothingToInstall, $"{route.Tip} {why}.");
-            return new RouteOffer(true, route.Description, route.Tip);
+            if (facts.ApoWhy is { } why && facts.HasEffects) return Unavailable(route, why);
+            // The card says where Equalizer APO really stands on the speakers; what the method does moves to its tooltip.
+            return new RouteOffer(true, facts.ApoNow ?? route.Description, $"{route.Description} {route.Tip}");
         }
         return new RouteOffer(true, current == RunMethod.Apo ? "Currently: Equalizer APO" : "Currently: cable bus", route.Tip);
     }
-
-    /// Equalizer APO for a master with no effects: nothing runs, so nothing is missing.
-    private const string NothingToInstall = "The master has no effects now, so nothing needs installing.";
 
     private static RouteOffer Unavailable(EffectsRoute route, string why)
     {

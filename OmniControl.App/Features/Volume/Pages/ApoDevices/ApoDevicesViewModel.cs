@@ -5,8 +5,8 @@ using OmniControl.Core.Engine.Apo;
 namespace OmniControl.App.Features.Volume.Pages.ApoDevices;
 
 /// OmniControl's own Equalizer APO device window (Equalizer APO 1.4.2's Device Selector for the bundled copy): every playback and
-/// recording device with its tick and status; a tick attaches, an untick detaches, live (one prompt and one audio restart each, then
-/// checked, <see cref="EngineInstaller"/>). "Troubleshooting options" shows Device Selector's troubleshooting panel for the selected
+/// recording device with its tick and Device Selector's status words; a tick attaches, an untick detaches, live (one prompt each, then
+/// Device Selector's check: an audio restart and every attached device checked, <see cref="EngineInstaller"/>). "Troubleshooting options" shows Device Selector's troubleshooting panel for the selected
 /// attached device (DeviceSelector.ui/.cpp: Install APO and Use original APO for pre-mix and post-mix, Auto, the install mode, Allow
 /// silent buffer modification), each change putting it on again with that option as Device Selector's reinstall does. Reads the
 /// effects support on open and whenever it changes (devices come or go), never by a timer.
@@ -81,7 +81,7 @@ public sealed partial class ApoDevicesViewModel : ObservableObject, IDisposable
     /// Space: ticks or unticks the selected device.
     public void ToggleSelected()
     {
-        if (Selected is { CanAttach: true } row) row.IsChecked = !row.IsChecked;
+        if (Selected is { } row) row.IsChecked = !row.IsChecked;
     }
 
     private void Pick(ApoDeviceRow row)
@@ -130,29 +130,34 @@ public sealed partial class ApoDevicesViewModel : ObservableObject, IDisposable
 
     private sealed record Wanted(string Key, bool Input, Action<ApoDeviceRow> Show);
 
-    /// One group's rows: the devices OmniControl's copy can be put on, then the remote ones Windows gives no effect slots.
-    private IEnumerable<Wanted> Group(ApoState apo, HashSet<string> defaults, bool input)
+    /// One group's rows: Device Selector's list (every device under Windows' Render or Capture key that is present).
+    private static IEnumerable<Wanted> Group(ApoState apo, HashSet<string> defaults, bool input)
     {
         foreach (var e in apo.OwnDevices.Where(d => d.Input == input))
         {
             var (status, tone) = StatusOf(e);
-            var suffix = (defaults.Contains(e.Guid) ? " · Default" : string.Empty) + (e.Unplugged ? " · Unplugged" : string.Empty) + (e.Disabled ? " · Disabled" : string.Empty);
-            yield return new(e.Guid, input, row => row.Show(e, e.Connector, e.Device, status + suffix, tone));
+            var suffix = (defaults.Contains(e.Guid) ? ", Default device" : string.Empty) + (e.Disabled ? ", Disabled" : string.Empty) + (e.Unplugged ? ", Unplugged" : string.Empty);
+            yield return new(e.Guid, input, row => row.Show(e, status + suffix, tone));
         }
-        var names = (input ? _mixer.RecordingDevices : _mixer.Devices).ToDictionary(d => d.Id, d => d.Name, StringComparer.OrdinalIgnoreCase);
-        foreach (var remote in (input ? apo.Microphones : apo.Playback).Where(p => !p.Attachable))
-            yield return new(remote.EndpointId, input, row => row.Show(null, string.Empty, names.GetValueOrDefault(remote.EndpointId, remote.EndpointId),
-                "Can't be attached: remote device", ApoRowTone.Plain));
     }
 
-    private static (string Status, ApoRowTone Tone) StatusOf(ApoDeviceEntry e) => (e.Attached, e.Check) switch
+    /// Device Selector's state words (getStateText for a row as it is), then how the last check of an attached device ended; only a
+    /// check that really failed is said in red.
+    private static (string Status, ApoRowTone Tone) StatusOf(ApoDeviceEntry e)
     {
-        (true, ApoSetup.Running) => ("Attached · running", ApoRowTone.Good),
-        (true, ApoSetup.NeedsRestart) => ("Attached · needs an audio restart", ApoRowTone.Caution),
-        (true, _) => ("Attached", ApoRowTone.Plain),
-        (false, ApoSetup.Blocked) => ("This device's driver blocks it", ApoRowTone.Bad),
-        _ => ("Can be attached", ApoRowTone.Plain),
-    };
+        if (!e.Attached) return (e.Experimental ? "APO can be installed (experimental)" : "APO can be installed", ApoRowTone.Plain);
+        var state = e.CanBeUpgraded ? "APO is already installed by an older version"
+            : e.EnhancementsOff ? "APO is already installed, audio enhancements are off"
+            : "APO is already installed";
+        return e.Check switch
+        {
+            ApoSetup.Running => (state + ", check passed", e.EnhancementsOff ? ApoRowTone.Caution : ApoRowTone.Good),
+            ApoSetup.OriginalFailed => (state + ", original APO didn't start", ApoRowTone.Caution),
+            ApoSetup.Failed => (state + ", check failed: it didn't start", ApoRowTone.Bad),
+            ApoSetup.NeedsRestart => (state + ", needs an audio restart", ApoRowTone.Caution),
+            _ => (state, e.EnhancementsOff || e.CanBeUpgraded ? ApoRowTone.Caution : ApoRowTone.Plain),
+        };
+    }
 
     private void OnToggled(ApoDeviceRow row, bool on)
     {
@@ -160,18 +165,13 @@ public sealed partial class ApoDevicesViewModel : ObservableObject, IDisposable
         if (row.Entry is { } e) Run("Equalizer APO: device tick", () => on ? _installer.AttachAsync(e, e.State) : _installer.DetachAsync(e));
     }
 
-    /// A troubleshooting option of the selected device: put on again with it (Device Selector's reinstall).
+    /// A troubleshooting option of the selected device: put on again with it (Device Selector's reinstall; with neither APO ticked its
+    /// install writes nothing, so the device ends up without Equalizer APO, as in Device Selector).
     private void Change(Func<ApoInstallState, ApoInstallState> edit)
     {
         if (Chosen is not { } e) return;
         var state = edit(e.State);
-        if (state == e.State) return;
-        if (state.PreMix || state.PostMix) Run("Equalizer APO: device option", () => _installer.AttachAsync(e, state));
-        else
-        {
-            Show();
-            _ = Guard.RunAsync("Equalizer APO: device option", () => _runSetup(null, Task.FromResult(new SetupResult("Keep the pre-mix or the post-mix APO installed, or untick the device."))));
-        }
+        if (state != e.State) Run("Equalizer APO: device option", () => _installer.AttachAsync(e, state));
     }
 
     /// One step at a time: a change while one runs is not started and the rows show what is in place again.
