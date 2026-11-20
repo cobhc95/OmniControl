@@ -124,8 +124,9 @@ public sealed partial class OtherPcsService
         if (_disposed || beacon.Id == OwnId) return;
         var before = Nearby.Count;
         _seen[beacon.Id] = new Seen(beacon, address, DateTime.UtcNow);
-        if (Nearby.Count != before) RaiseChanged();
-        if (Find(beacon.Id) is { Route: not PcRoute.Address } pair && !_links.ContainsKey(pair.Id)) DialIfMine(pair);
+        var paired = Find(beacon.Id);
+        if (Nearby.Count != before || (paired is not null && Wake.HeardAgain(paired))) RaiseChanged();
+        if (paired is { Route: not PcRoute.Address } && !_links.ContainsKey(paired.Id)) DialIfMine(paired);
     }
 
     // ---- Links ----
@@ -135,7 +136,7 @@ public sealed partial class OtherPcsService
     // that Tailscale has not reached (yet, or any more) is found on the network meanwhile, as a PC on LAN is.
     private void DialIfMine(PairedPc pair)
     {
-        if (!_secrets.ContainsKey(pair.Id) || _dialing.Contains(pair.Id)) return;
+        if (!_secrets.ContainsKey(pair.Id) || _dialing.Contains(pair.Id) || Resting(pair)) return;
         if (pair.Route == PcRoute.Address)
         {
             if (pair.Address.Length > 0) Dial(pair, pair.Address);
@@ -144,6 +145,10 @@ public sealed partial class OtherPcsService
         else if (string.CompareOrdinal(OwnId, pair.Id) < 0 && _seen.TryGetValue(pair.Id, out var seen) && DateTime.UtcNow - seen.At < Timing.PcBeaconEvery * 3)
             Dial(pair, $"{seen.Address}:{seen.Beacon.Port}");
     }
+
+    // A PC reached by an address that said it sleeps or shuts down gets no dial, probe or keep-alive until it is heard again or a wake was sent:
+    // with its card's pattern wake on, that traffic could wake it. It may still connect here. A LAN PC is dialled only after its beacon anyway.
+    private bool Resting(PairedPc pair) => pair.Route != PcRoute.Lan && pair.Away is not null && !Wake.WakeStatusOf(pair.Id).Sent;
 
     private void CheckLinksSoon() => PcWork.Post(CheckLinks);
 
@@ -166,7 +171,7 @@ public sealed partial class OtherPcsService
         foreach (var link in _links.Values.ToList())
         {
             if (DateTime.UtcNow - link.LastReceived > Timing.PcLinkSilence) link.Close();
-            else _ = link.SendAsync(new PcMsg { T = PcMsgType.Ping });
+            else if (Find(link.PeerId) is not { } pair || !Resting(pair)) _ = link.SendAsync(new PcMsg { T = PcMsgType.Ping }); // a resting PC's old link just falls silent
         }
         foreach (var pair in _settings.Pairs.Where(p => !_links.ContainsKey(p.Id)).ToList()) DialIfMine(pair);
         RecheckTailscalePairs();

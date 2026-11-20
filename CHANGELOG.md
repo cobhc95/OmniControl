@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Fix: on Other PCs, a PC reached over Tailscale or another address that said it went to sleep, hibernated or shut down is no longer called, checked or pinged until you press Wake, press Check now, or it shows up again (it connects to this PC or is seen on the network), so that traffic can't wake it. Its tag says "Asleep" or "Shut down" meanwhile, also after a restart of OmniControl.
+
 - Security: Other PCs sends a wake signal only when you press Wake (or Test wake) for that PC, or its "Wake <PC>" key, button or tile: one signal per press, never sent again by itself, never from a rule, a chain or another PC's request, and nothing is kept across a restart. A PC asked to pass the signal on does so only for a press made on the PC that asks (an older OmniControl's request is refused). If the signal can't be sent, the status line says so once; press Wake again.
 
 - New: the FX window has an Edit menu with Undo and Redo (Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z), named after the step ("Undo Remove Compressor", "Undo Change Gain"). Adding, removing, moving, pasting and switching effects, the Effects on switch, presets, loading a chain and every setting are undone; a whole knob or slider drag is one step. The history is cleared when the window closes.

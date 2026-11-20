@@ -247,6 +247,5 @@ Mouse first (rule 5; the control that opens each stays keyboard reachable, Esc c
 - About 100 `.axaml` comments still name deleted `docs/mockups/*.html` files: drop them when the file is next touched.
 - NAudio's obsolete `WasapiCapture` is still used (`CaptureMeterStreams`, `RecordingSound`).
 - The rule step pickers still offer `PersonOnly` actions ("Wake <PC>"); the run path refuses them with one line.
-- Other PCs keeps dialling (`Timing.PcLinkCheck`) and probing (`Timing.PcProbeEvery`) a PC on the Tailscale or Other address route while it sleeps; with its card's pattern wake on ("Only a magic packet can wake it" off) that traffic may wake it. Owner to decide whether to pause both after its sleep notice.
 - Mouse "Pause in full-screen apps" (`FullScreenWatcher`) also pauses over a full-screen Remote Desktop or virtual machine console (Windows reports them as full-screen apps): owner to decide whether those are left out.
 

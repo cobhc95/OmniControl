@@ -142,15 +142,23 @@ public sealed class PcWake : IDisposable
     /// A link came up: the PC is on (any earlier notice and failed wake are over), and this PC tells it how it can be woken.
     internal void LinkUp(PcLink link, PairedPc pair)
     {
-        if (pair.Away is not null)
-        {
-            pair.Away = null;
-            pair.AwayAt = null;
-            _book.Save();
-        }
+        ClearAway(pair);
         _wake.Remove(pair.Id);
         if (_ownWake is { } facts) _ = link.SendAsync(new PcMsg { T = PcMsgType.WakeInfo, Wake = facts });
         RefreshOwnWake();
+    }
+
+    /// The PC was heard by other means (its beacon, an answered check) while it has no link: it is on, so its notice is over; true when one was
+    /// cleared. While its old link is open the notice is newer than what was heard (a PC still beacons for a moment after it said it sleeps).
+    internal bool HeardAgain(PairedPc pair) => !_book.IsOnline(pair.Id) && ClearAway(pair);
+
+    private bool ClearAway(PairedPc pair)
+    {
+        if (pair.Away is null) return false;
+        pair.Away = null;
+        pair.AwayAt = null;
+        _book.Save();
+        return true;
     }
 
     internal void HandleInfo(string pcId, PcMsg message)

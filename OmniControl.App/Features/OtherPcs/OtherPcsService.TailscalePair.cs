@@ -16,8 +16,9 @@ public sealed partial class OtherPcsService
     /// True while the PC's link really runs over Tailscale (what the "via Tailscale" tag says).
     public bool IsViaTailscale(string id) => _links.TryGetValue(id, out var link) && link.ViaTailscale;
 
-    /// True when the PC is set to Tailscale and Tailscale does not carry its link (yet, or any more): its detail shows the checklist.
-    public bool NeedsTailscaleSetup(string id) => Find(id) is { Route: PcRoute.Tailscale } && !RouteConnected(id);
+    /// True when the PC is set to Tailscale and Tailscale does not carry its link (yet, or any more): its detail shows the checklist. Not while it
+    /// rests: it said it sleeps or shut down, which is what its tag says then.
+    public bool NeedsTailscaleSetup(string id) => Find(id) is { Route: PcRoute.Tailscale } pair && !Resting(pair) && !RouteConnected(id);
 
     // The link itself (not the probe) still has to be moved onto Tailscale: what the periodic checks work on, so a passing probe on a LAN link still switches it.
     private bool LinkNeedsTailscale(string id) => Find(id) is { Route: PcRoute.Tailscale } && !IsViaTailscale(id);
@@ -133,11 +134,12 @@ public sealed partial class OtherPcsService
     }
 
     // Called with every link check: a PC set to Tailscale that Tailscale does not carry gets the checks again now and then (this is what
-    // switches it over once Tailscale works, and what brings the checklist back if it stops); other PCs lose their stale results.
+    // switches it over once Tailscale works, and what brings the checklist back if it stops); other PCs lose their stale results. A resting PC
+    // keeps its results but is not checked (the check dials it).
     private void RecheckTailscalePairs()
     {
-        var waiting = _settings.Pairs.Where(p => LinkNeedsTailscale(p.Id) || NeedsTailscaleSetup(p.Id)).Select(p => p.Id).ToList();
-        var stale = _pairChecks.Keys.Except(waiting).ToList();
+        var waiting = _settings.Pairs.Where(p => LinkNeedsTailscale(p.Id) || NeedsTailscaleSetup(p.Id)).ToList();
+        var stale = _pairChecks.Keys.Except(waiting.Select(p => p.Id)).ToList();
         foreach (var id in stale)
         {
             _pairChecks.Remove(id);
@@ -145,7 +147,7 @@ public sealed partial class OtherPcsService
             _switchFailedAt.Remove(id);
         }
         if (stale.Count > 0) RaiseChanged();
-        foreach (var id in waiting)
-            if (!_pairChecking.Contains(id) && DateTime.UtcNow - _pairCheckedAt.GetValueOrDefault(id) >= Timing.PcTailscaleRecheck) CheckPairTailscale(id);
+        foreach (var pair in waiting)
+            if (!Resting(pair) && !_pairChecking.Contains(pair.Id) && DateTime.UtcNow - _pairCheckedAt.GetValueOrDefault(pair.Id) >= Timing.PcTailscaleRecheck) CheckPairTailscale(pair.Id);
     }
 }

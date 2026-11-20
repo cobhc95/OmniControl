@@ -24,12 +24,12 @@ public sealed partial class OtherPcsService
     public bool RouteConnected(string id) => Find(id) is { } pair && _probes.TryGetValue(id, out var probe)
         && probe.Route == pair.Route && probe.Result.Ok && DateTime.UtcNow - probe.At < Timing.PcProbeFresh;
 
-    /// "Check now": forgets the last probe of a PC and measures its chosen route again at once.
+    /// "Check now": forgets the last probe of a PC and measures its chosen route again at once, also while it rests (the person asked).
     public void CheckRouteNow(string id)
     {
         if (_disposed || Find(id) is null) return;
         _probes.Remove(id);
-        StartProbes();
+        StartProbes(id);
         RaiseChanged();
     }
 
@@ -44,16 +44,19 @@ public sealed partial class OtherPcsService
     private void RecordProbe(string id, PcRoute route, string address, ProbeResult result)
     {
         _probes[id] = new RouteProbe(route, address, DateTime.UtcNow, result);
+        if (result.Ok && Find(id) is { } pair) Wake.HeardAgain(pair); // it answered: awake, so a resting PC is dialled again
         if (route != PcRoute.Tailscale) return;
         if (result.Ok) _tailscaleFailed.Remove(id);
         else _tailscaleFailed.Add(id); // Tailscale does not answer: the PC is found on the network meanwhile, as before
     }
 
-    // Runs with every link check: each PC whose last probe is older than PcProbeEvery (or was made over another route) is probed again.
-    private void StartProbes()
+    // Runs with every link check: each PC whose last probe is older than PcProbeEvery (or was made over another route) is probed again;
+    // a resting PC only when the person asked (<paramref name="asked"/>).
+    private void StartProbes(string? asked = null)
     {
         foreach (var pair in _settings.Pairs.ToList())
         {
+            if (Resting(pair) && pair.Id != asked) continue;
             var address = ProbeAddress(pair);
             var due = !_probes.TryGetValue(pair.Id, out var last) || last.Route != pair.Route || DateTime.UtcNow - last.At >= Timing.PcProbeEvery;
             if (!due || _probing.Contains(pair.Id) || !_secrets.ContainsKey(pair.Id)) continue;
