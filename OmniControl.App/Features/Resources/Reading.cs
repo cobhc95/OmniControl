@@ -5,6 +5,18 @@ namespace OmniControl.App.Features.Resources;
 
 public enum ReadingKind { Percent, Speed, Temperature }
 
+/// THE live list of readings: the built-in ones (<see cref="Reading.All"/>) and each physical disk's (<see cref="Reading.OfDisk"/>), owned by the
+/// poller (UI thread).
+public interface IReadingList
+{
+    IReadOnlyList<Reading> Readings { get; }
+
+    Reading? Find(string id);
+
+    /// A disk was added or removed (UI thread).
+    event Action? ReadingsChanged;
+}
+
 /// THE master list of readings: each is a state, a card value, a gadget row and a menu line, and carries its gadget defaults, its read part, its page card,
 /// what it is read from (the adapter or sensor's name, when the read names one) and the icons its label editor and icon picker suggest first.
 public sealed record Reading(string Id, string Name, string Chip, string Icon, ReadingKind Kind, SampleParts Part, Func<ResourceSample, double?> Read, string GadgetLabel,
@@ -53,7 +65,21 @@ public sealed record Reading(string Id, string Name, string Chip, string Icon, R
             Card: ("Hottest sensor", 3), Source: s => s.HottestName) { SuggestedIcons = Thermometers.Prepend("flame").ToArray() },
     };
 
+    /// A built-in reading; with each physical disk's own: <see cref="IReadingList.Find"/>.
     public static Reading? Find(string id) => All.FirstOrDefault(r => r.Id == id);
+
+    /// A physical disk's own readings, after the built-in ones in the live list (<see cref="IReadingList"/>): its active time and its temperature
+    /// (unknown, "—", when the drive reports none). Their ids follow the disk, not its number, so a row keeps its settings.
+    public static IEnumerable<Reading> OfDisk(PhysicalDisk disk)
+    {
+        DiskSample? Of(ResourceSample s) => s.Disks.FirstOrDefault(d => d.Number == disk.Number);
+        var name = $"Disk {disk.Number}";
+        yield return new($"disk.{disk.Id}", $"{name} activity ({disk.Model})", name, "disc", ReadingKind.Percent, SampleParts.Disk, s => Of(s)?.Activity,
+            $"D{disk.Number}:", "{disc}") { SuggestedIcons = new[] { "disc", "database" } };
+        yield return new($"disktemp.{disk.Id}", $"{name} temperature ({disk.Model})", name + " °C", "temperature", ReadingKind.Temperature, SampleParts.Disk,
+            s => Of(s)?.Temperature, $"T{disk.Number}:", "{disc}" + Gadget.GadgetLabel.Token("temperature", Gadget.GadgetLabel.WarmColour), WarnDefault: WarmCelsius)
+            { SuggestedIcons = Thermometers.Append("disc").ToArray() };
+    }
 
     /// The parts of a read these readings need together.
     public static SampleParts PartsOf(IEnumerable<Reading> readings) => readings.Aggregate(SampleParts.None, (all, r) => all | r.Part);

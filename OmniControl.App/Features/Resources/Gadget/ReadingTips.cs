@@ -18,7 +18,7 @@ internal static class ReadingTips
         var lines = new List<GadgetTipLine>();
         foreach (var row in rows)
         {
-            if (Reading.Find(row.Id) is not { } reading) continue;
+            if (monitor.Find(row.Id) is not { } reading) continue;
             var part = Of(monitor, row, reading, shows).ToList();
             if (part.Count == 0) continue;
             if (lines.Count > 0) part[0] = part[0] with { StartsPart = true };

@@ -6,6 +6,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 ## Unreleased
 
 - Fix: the Other PCs page no longer shows a narrow jumble of the Volume page's Easy view in place of its PC tabs; a PC with no power countdown shows no tag again.
+- New: the taskbar gadget's readings list has two rows for each physical disk, its activity and its temperature (named "Disk 0 activity (model)" and "Disk 0 temperature (model)"); a disk added or removed joins or leaves the list by itself and keeps its settings, and a drive that reports no temperature shows "—".
 
 ## 0.2.4 (20 Nov 2026)
 

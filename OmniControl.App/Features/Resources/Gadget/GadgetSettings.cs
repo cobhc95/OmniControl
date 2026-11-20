@@ -154,15 +154,17 @@ public sealed class GadgetSettings
     /// The weather's row, or null in a file that lost it (<see cref="Complete"/> puts it back).
     [JsonIgnore] public GadgetReading? WeatherShown => Readings.FirstOrDefault(r => r.Id == WeatherId && r.Shown);
 
-    /// Adds the readings a saved file does not have yet (a newer version's) and keeps the shown ones first, in their order.
-    public void Complete()
+    /// Adds the readings a saved file does not have yet (a newer version's, or of <paramref name="readings"/>: the live list with this PC's
+    /// disks) and keeps the shown ones first, in their order.
+    public void Complete(IEnumerable<Reading>? readings = null)
     {
-        Readings.AddRange(Reading.All.Where(r => Readings.All(g => g.Id != r.Id)).Select(Default));
+        Readings.AddRange((readings ?? Reading.All).Where(r => Readings.All(g => g.Id != r.Id)).Select(Default));
         if (Readings.All(g => g.Id != WeatherId)) Readings.Add(WeatherRow());
         Readings = Readings.OrderBy(r => !r.Shown).ToList();
     }
 
-    /// The look of <paramref name="from"/> (a layout) put into these settings, keeping shown or not, the click actions, the hover details, the space to the tray and the weather's place.
+    /// The look of <paramref name="from"/> (a layout) put into these settings, keeping shown or not, the click actions, the hover details, the space to the tray,
+    /// the weather's place and, hidden, the rows the layout lacks (this PC's disks).
     public void TakeLook(GadgetSettings from)
     {
         var keep = Copy();
@@ -170,6 +172,11 @@ public sealed class GadgetSettings
         (Shown, ClickAction, ClickDefaultMoved, DoubleClickAction, Hover, SpaceToTray) = (keep.Shown, keep.ClickAction, keep.ClickDefaultMoved, keep.DoubleClickAction, keep.Hover, keep.SpaceToTray);
         (keep.Weather.Shows, keep.Weather.Temperatures) = (Weather.Shows, Weather.Temperatures);
         Weather = keep.Weather;
+        foreach (var row in keep.Readings.Where(k => Readings.All(r => r.Id != k.Id)))
+        {
+            row.Shown = false;
+            Readings.Add(row);
+        }
         Complete();
     }
 

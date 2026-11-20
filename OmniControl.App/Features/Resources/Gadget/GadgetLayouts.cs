@@ -53,7 +53,7 @@ public sealed class GadgetLayouts : ListPresetProvider<GadgetLayoutPreset>
         new("gadget.classic", "Classic text", "Letters, no icons", Everyday, false, Made(g =>
         {
             Show(g, "upload", "download", "cpu", "cputemp");
-            Labels(g, LabelStyle.Text);
+            Labels(g, LabelStyle.Text, Reading.Find);
             g.ColumnGap = 14;
         })),
         new("gadget.workstation", "Workstation", "CPU, memory, disk and heat", Everyday, false, Made(g =>
@@ -214,10 +214,10 @@ public sealed class GadgetLayouts : ListPresetProvider<GadgetLayoutPreset>
         Label(look, "cputemp", GadgetLabel.Token("temperature"));
     }
 
-    /// Gives every reading's row its label in this style.
-    public static void Labels(GadgetSettings look, LabelStyle style)
+    /// Gives every reading's row its label in this style (<paramref name="find"/>: the built-in readings, or the live list with the disks).
+    public static void Labels(GadgetSettings look, LabelStyle style, Func<string, Reading?> find)
     {
         foreach (var row in look.Readings)
-            if (Reading.Find(row.Id) is { } reading) row.Label = GadgetLabel.Of(style, reading);
+            if (find(row.Id) is { } reading) row.Label = GadgetLabel.Of(style, reading);
     }
 }

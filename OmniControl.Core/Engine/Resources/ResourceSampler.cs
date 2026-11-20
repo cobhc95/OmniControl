@@ -1,5 +1,6 @@
 using System.Net.NetworkInformation;
 using LibreHardwareMonitor.Hardware;
+using LibreHardwareMonitor.Hardware.Storage;
 
 namespace OmniControl.Core.Engine.Resources;
 
@@ -17,6 +18,9 @@ public sealed record ResourceSample(double? Cpu, double? Gpu, double? MemoryUsed
 
     public double? MemoryPercent => MemoryTotalGb > 0 ? MemoryUsedGb / MemoryTotalGb * 100 : null;
 
+    /// Each physical disk's activity and temperature (only when <see cref="SampleParts.Disk"/> was wanted).
+    public IReadOnlyList<DiskSample> Disks { get; init; } = Array.Empty<DiskSample>();
+
     /// Every adapter (not loopback or tunnel) with its speed now, for the network adapter menu.
     public IReadOnlyList<AdapterSpeed> Adapters { get; init; } = Array.Empty<AdapterSpeed>();
 
@@ -26,6 +30,10 @@ public sealed record ResourceSample(double? Cpu, double? Gpu, double? MemoryUsed
     /// The parts this sample was read with (CPU and memory always are); a part left out is null.
     public SampleParts Parts { get; init; }
 }
+
+/// One physical disk as the sensor library read it: Windows' disk <paramref name="Number"/> (<see cref="PhysicalDisk.Number"/>), its active
+/// time in percent and its hottest temperature in °C (null when the drive reports none).
+public sealed record DiskSample(int Number, double? Activity, double? Temperature);
 
 /// Where a temperature sensor sits, in the order a menu lists them.
 public enum SensorGroup { Cpu, Gpu, Storage, Board }
@@ -61,6 +69,7 @@ public sealed class ResourceSampler : IDisposable
     private double _lastNetAt;
     private Computer? _sensors;
     private bool _sensorsTried;
+    private volatile bool _rescanStorage;
     private TimeSpan? _sensedAt, _storageAt; // when the library and the drives were last updated (null: update at the next read)
     private ResourceSample _sensed = ResourceSample.None; // the sensor values of that update
     private List<ISensor> _temps = new(); // the temperature sensors of that update
@@ -164,6 +173,14 @@ public sealed class ResourceSampler : IDisposable
             Any(SampleParts.Disk | SampleParts.Hottest), Any(SampleParts.Hottest));
         if (_sensors is { } open)
         {
+            // The library lists the drives only when its storage group is made: a disk added or removed needs the group made again.
+            if (_rescanStorage && open.IsStorageEnabled)
+            {
+                open.IsStorageEnabled = false;
+                open.IsStorageEnabled = true;
+                (_sensedAt, _storageAt) = (null, null);
+            }
+            _rescanStorage = false;
             if ((open.IsCpuEnabled, open.IsGpuEnabled, open.IsStorageEnabled, open.IsMotherboardEnabled) != (cpu, gpu, storage, board))
             {
                 (open.IsCpuEnabled, open.IsGpuEnabled, open.IsStorageEnabled, open.IsMotherboardEnabled) = (cpu, gpu, storage, board);
@@ -206,6 +223,7 @@ public sealed class ResourceSampler : IDisposable
         {
             Gpu = If(SampleParts.Gpu, _sensed.Gpu),
             Disk = If(SampleParts.Disk, _sensed.Disk),
+            Disks = (wanted & SampleParts.Disk) != 0 ? _sensed.Disks : Array.Empty<DiskSample>(),
             CpuTemp = If(SampleParts.CpuTemp, _sensed.CpuTemp),
             GpuTemp = If(SampleParts.GpuTemp, _sensed.GpuTemp),
             Hottest = hottest?.Value,
@@ -242,16 +260,22 @@ public sealed class ResourceSampler : IDisposable
         static bool Gpu(ISensor s) => s.Hardware.HardwareType is HardwareType.GpuNvidia or HardwareType.GpuAmd or HardwareType.GpuIntel;
         var temps = all.Where(s => s.SensorType == SensorType.Temperature && s.Value is > 0 and < (float)HottestMax && !NotTemperatures.Any(s.Name.Contains)).ToList();
         _temps = temps;
+        static bool Activity(ISensor s) => s.SensorType == SensorType.Load && s.Name == "Total Activity";
         return ResourceSample.None with
         {
+            Disks = computer.Hardware.OfType<StorageDevice>().Where(d => d.Storage is not null)
+                .Select(d => new DiskSample(d.Storage.DriveNumber, Max(d.Sensors.Where(Activity)), Max(temps.Where(t => t.Hardware == d)))).ToList(),
             Gpu = Max(all.Where(s => Gpu(s) && s.SensorType == SensorType.Load && s.Name is "GPU Core" or "D3D 3D")),
-            Disk = Max(all.Where(s => s.Hardware.HardwareType == HardwareType.Storage && s.SensorType == SensorType.Load && s.Name == "Total Activity")),
+            Disk = Max(all.Where(s => s.Hardware.HardwareType == HardwareType.Storage && Activity(s))),
             CpuTemp = Max(temps.Where(s => s.Hardware.HardwareType == HardwareType.Cpu)),
             GpuTemp = Max(temps.Where(Gpu)),
         };
     }
 
     private static double? Max(IEnumerable<ISensor> sensors) => sensors.Select(s => s.Value).Where(v => v is not null).Max();
+
+    /// A disk was added or removed: the next read that has the drives open lists them again (any thread).
+    public void RescanStorage() => _rescanStorage = true;
 
     /// Closes the sensor library to give back its memory and driver handles; the next <see cref="Read"/> that needs it opens it again (a
     /// library that failed to start is not retried).

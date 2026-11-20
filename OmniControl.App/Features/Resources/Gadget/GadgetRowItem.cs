@@ -45,15 +45,17 @@ public sealed partial class GadgetRowItem : ObservableObject
 
     private const double HiddenOpacity = 0.6;
     private readonly ResourcesSettings _settings;
+    private readonly IReadingList _readings;
     private readonly Reading? _reading;
     private readonly Func<Visual, IconRequest, Task<IconPick?>> _chooseIcon;
     private readonly Func<Color> _ink;
     private bool _loading;
 
+    /// <param name="readings">THE live list of readings (the disks' included).</param>
     /// <param name="ink">The taskbar's own text colour (the "" colour).</param>
-    public GadgetRowItem(GadgetReading entry, ResourcesSettings settings, Func<Visual, IconRequest, Task<IconPick?>> chooseIcon, Func<Color> ink)
+    public GadgetRowItem(GadgetReading entry, ResourcesSettings settings, IReadingList readings, Func<Visual, IconRequest, Task<IconPick?>> chooseIcon, Func<Color> ink)
     {
-        (Entry, _settings, _reading, _chooseIcon, _ink) = (entry, settings, Reading.Find(entry.Id), chooseIcon, ink);
+        (Entry, _settings, _readings, _reading, _chooseIcon, _ink) = (entry, settings, readings, readings.Find(entry.Id), chooseIcon, ink);
         Colours = GadgetSettings.Colours.Select((c, i) => new SwatchItem(new SolidColorBrush(TaskbarGadget.ColourOf(c, ink())), new RelayCommand(() => SetColour(c)), GadgetSettings.ColourNames[i])).ToList();
         // The grid holding the reading's best suggestion comes first (network for speeds, components for loads, thermometers for temperatures).
         var suggested = _reading?.SuggestedIcons ?? Array.Empty<string>();
@@ -73,6 +75,9 @@ public sealed partial class GadgetRowItem : ObservableObject
         new(name, new RelayCommand(() => Label = _reading is null ? string.Empty : GadgetLabel.Of(style, _reading)), null) { Key = style.ToString() };
 
     public GadgetReading Entry { get; }
+
+    /// The reading this row was made for (null: the weather); a disk renumbered or gone makes the tab make the row again.
+    public Reading? Reading => _reading;
     public string Name => _reading?.Name ?? (Entry.Id == GadgetSettings.WeatherId ? "Weather" : Entry.Id);
     public string EditorTitle => $"Label for {Name}: type text, insert icons anywhere";
     public int WarnMax => _reading?.Max ?? 0;
@@ -237,7 +242,7 @@ public sealed partial class GadgetRowItem : ObservableObject
         if (_reading is null) return;
         var style = GadgetLabel.StyleOf(Label, _reading);
         foreach (var row in _settings.Setup.Gadget.Readings)
-            if (Reading.Find(row.Id) is { } other && other.Kind == _reading.Kind) row.Label = style is { } s ? GadgetLabel.Of(s, other) : Label;
+            if (_readings.Find(row.Id) is { } other && other.Kind == _reading.Kind) row.Label = style is { } s ? GadgetLabel.Of(s, other) : Label;
         _settings.Commit();
     }
 

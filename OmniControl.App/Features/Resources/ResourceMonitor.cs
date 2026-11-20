@@ -4,7 +4,8 @@ using OmniControl.Core.Engine.Resources;
 namespace OmniControl.App.Features.Resources;
 
 /// THE poller of the readings: one worker timer at the shortest interval needed, reading only the parts asked for, and stopped when nobody needs it.
-public sealed class ResourceMonitor : IDisposable
+/// It owns the live list of readings, the physical disks' included (<see cref="RefreshDisks"/>, through the hardware watches).
+public sealed class ResourceMonitor : IReadingList, IDisposable
 {
     public const string PageNeed = "page", GadgetNeed = "gadget", AppsNeed = "apps";
     private const string RulesNeed = "rules";
@@ -13,9 +14,11 @@ public sealed class ResourceMonitor : IDisposable
     private readonly Func<TimeSpan> _ruleInterval;
     private readonly Func<string?> _adapterChoice, _sensorChoice;
     private readonly Func<ITrafficSession> _startTraffic;
+    private readonly string _category;
     private readonly Dictionary<string, (TimeSpan Every, SampleParts Parts)> _needs = new();
     private readonly Dictionary<string, string> _seen = new(); // program id -> its path, every program seen with traffic this session
-    private readonly Dictionary<string, Queue<double>> _history = Reading.All.ToDictionary(r => r.Id, _ => new Queue<double>());
+    private readonly Dictionary<string, Queue<double>> _history = new();
+    private volatile IReadOnlyList<PhysicalDisk>? _disks; // as last listed (worker); null until the first look
     private readonly Dictionary<string, (double Low, double High)> _today = new(); // each reading's lowest and highest read since midnight (memory only)
     private DateTime _day = DateTime.Today;
     private readonly object _work = new(); // one read at a time, and none while disposing
@@ -34,12 +37,56 @@ public sealed class ResourceMonitor : IDisposable
     /// <param name="startTraffic">Starts the per-program traffic session where the network work runs (a worker; throws an <see cref="IOException"/> saying why).</param>
     public ResourceMonitor(IStateRegistry states, Func<TimeSpan> ruleInterval, Func<string?> adapterChoice, Func<string?> sensorChoice, Func<ITrafficSession> startTraffic, string category)
     {
-        (_states, _ruleInterval, _adapterChoice, _sensorChoice, _startTraffic) = (states, ruleInterval, adapterChoice, sensorChoice, startTraffic);
+        (_states, _ruleInterval, _adapterChoice, _sensorChoice, _startTraffic, _category) = (states, ruleInterval, adapterChoice, sensorChoice, startTraffic, category);
         _timer = new Timer(_ => Tick());
         _idleClose = new Timer(_ => Release(sensors: true));
-        states.Register(Reading.All.Select(r => new StateEntry(r.StateId, r.Name, category, StateKind.Level, () => r.InUnit(Latest) is { } v ? StateValue.Of(Math.Round(v), DateTime.Now) : null,
-            "Read by OmniControl's Resources poller while the page, the taskbar gadget or a rule needs it.", Max: r.Max, Unit: r.Unit, Icon: r.Icon, Keywords: "resources usage load monitor")));
+        states.Register(Reading.All.Select(StateOf));
         states.WatchedChanged += FollowRules;
+        FollowRules();
+    }
+
+    private StateEntry StateOf(Reading r) => new(r.StateId, r.Name, _category, StateKind.Level, () => r.InUnit(Latest) is { } v ? StateValue.Of(Math.Round(v), DateTime.Now) : null,
+        "Read by OmniControl's Resources poller while the page, the taskbar gadget or a rule needs it.", Max: r.Max, Unit: r.Unit, Icon: r.Icon, Keywords: "resources usage load monitor");
+
+    public IReadOnlyList<Reading> Readings { get; private set; } = Reading.All;
+
+    public Reading? Find(string id) => Readings.FirstOrDefault(r => r.Id == id);
+
+    public event Action? ReadingsChanged;
+
+    private IReadOnlyList<Reading> DiskReadings => Readings.Skip(Reading.All.Count).ToList();
+
+    /// True once the physical disks were listed (the hardware watch's stale check: the first look at start-up).
+    public bool DisksKnown => _disks is not null;
+
+    /// The disks as last listed, for the hardware log.
+    public string DisksText() => string.Join(", ", _disks?.Select(d => $"Disk {d.Number} {d.Model}") ?? Array.Empty<string>());
+
+    /// Lists the physical disks again (the hardware watch's refresh: start-up, a device added or removed, a wake); a changed list makes the
+    /// sensor library list its drives again and the disks' readings and states follow. Worker.
+    public void RefreshDisks()
+    {
+        var disks = PhysicalDisks.List();
+        if (_disks is { } before && before.SequenceEqual(disks)) return;
+        _disks = disks;
+        _sampler.RescanStorage();
+        Dispatcher.UIThread.Post(() => TakeDisks(disks));
+    }
+
+    private void TakeDisks(IReadOnlyList<PhysicalDisk> disks)
+    {
+        if (_disposed) return;
+        var before = DiskReadings;
+        Readings = Reading.All.Concat(disks.SelectMany(Reading.OfDisk)).ToList();
+        var left = before.Where(r => Find(r.Id) is null).ToList();
+        foreach (var reading in left)
+        {
+            _history.Remove(reading.Id);
+            _today.Remove(reading.Id);
+        }
+        _states.Unregister(left.Select(r => r.StateId));
+        _states.Register(DiskReadings.Select(StateOf)); // a renumbered disk's states are replaced: their names say its number
+        ReadingsChanged?.Invoke();
         FollowRules();
     }
 
@@ -61,7 +108,7 @@ public sealed class ResourceMonitor : IDisposable
     public event Action? Updated;
 
     /// The recent values of a reading in its unit, oldest first (NaN where it was not known).
-    public IReadOnlyList<double> History(string readingId) => _history[readingId].ToList();
+    public IReadOnlyList<double> History(string readingId) => _history.TryGetValue(readingId, out var history) ? history.ToList() : Array.Empty<double>();
 
     /// The lowest and highest value of a reading read since midnight (as <see cref="Reading.Read"/> gives them), or null when none was read today. UI thread.
     public (double Low, double High)? Today(string readingId) => _day == DateTime.Today && _today.TryGetValue(readingId, out var range) ? range : null;
@@ -108,7 +155,7 @@ public sealed class ResourceMonitor : IDisposable
 
     private void FollowRules()
     {
-        var watched = Reading.All.Where(r => _states.IsWatched(r.StateId)).ToList();
+        var watched = Readings.Where(r => _states.IsWatched(r.StateId)).ToList();
         Need(RulesNeed, watched.Count > 0 ? _ruleInterval() : null, Reading.PartsOf(watched));
     }
 
@@ -174,7 +221,7 @@ public sealed class ResourceMonitor : IDisposable
         if (sensor != _sensor)
         {
             _sensor = sensor; // another sensor is another line: its graph and today's range start afresh
-            _history[Reading.HottestId].Clear();
+            _history.Remove(Reading.HottestId);
             _today.Remove(Reading.HottestId);
         }
         if (apps is not null && _wantApps)
@@ -187,9 +234,9 @@ public sealed class ResourceMonitor : IDisposable
             _day = DateTime.Today;
             _today.Clear();
         }
-        foreach (var reading in Reading.All.Where(r => (sample.Parts & r.Part) == r.Part)) // a part nobody asked for leaves its history and state alone
+        foreach (var reading in Readings.Where(r => (sample.Parts & r.Part) == r.Part)) // a part nobody asked for leaves its history and state alone
         {
-            var history = _history[reading.Id];
+            if (!_history.TryGetValue(reading.Id, out var history)) _history[reading.Id] = history = new Queue<double>();
             history.Enqueue(reading.InUnit(sample) ?? double.NaN);
             while (history.Count > Timing.ResourcesHistory) history.Dequeue();
             if (reading.Read(sample) is { } value)
@@ -210,6 +257,6 @@ public sealed class ResourceMonitor : IDisposable
             _apps?.Dispose();
             _sampler.Dispose();
         }
-        _states.Unregister(Reading.All.Select(r => r.StateId));
+        _states.Unregister(Readings.Select(r => r.StateId));
     }
 }
