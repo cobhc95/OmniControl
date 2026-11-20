@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -58,10 +58,10 @@
     <AvaloniaResource Include="..\NOTICE.txt" Link="Assets\NOTICE.txt" />
     <None Include="..\NOTICE.txt;..\LICENSE" CopyToOutputDirectory="PreserveNewest" Link="%(Filename)%(Extension)" />
     <!-- Windows Packet Filter's official Windows 10+ x64 driver files, unmodified, with their licence: Setup's optional task and the app's
-         "Install Windows Packet Filterâ€¦" install them (Core/Engine/Resources/PacketFilterSetup). -->
+         "Install Windows Packet Filter…" install them (Core/Engine/Resources/PacketFilterSetup). -->
     <None Include="..\third_party\windows-packet-filter\driver\*" CopyToOutputDirectory="PreserveNewest" Link="windows-packet-filter\%(Filename)%(Extension)" />
     <!-- Equalizer APO's official 1.4.2 x64 installer, unmodified, with its licences: run by Setup's task or the app's "Install Equalizer
-         APOâ€¦" (Core/Engine/Apo/ApoInstaller, which retypes the folder and file name). -->
+         APO…" (Core/Engine/Apo/ApoInstaller, which retypes the folder and file name). -->
     <None Include="..\third_party\equalizer-apo\*" CopyToOutputDirectory="PreserveNewest" Link="equalizer-apo\%(Filename)%(Extension)" />
   </ItemGroup>
 
