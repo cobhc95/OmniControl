@@ -42,7 +42,7 @@ public sealed partial class MousePageViewModel
         _administratorCard = new ToggleItem("Run as administrator", Settings.RunAsAdministrator, OnAdministratorPicked)
         {
             Half = true,
-            Note = "Needed over admin windows and for network limits",
+            Note = "Needed over admin windows",
             Tip = "Turning it on starts OmniControl again as administrator (Windows asks once) and adds its sign-in task, so later starts need no prompt.",
         };
 

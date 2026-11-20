@@ -1,7 +1,7 @@
 namespace OmniControl.App.Shared.Services;
 
 /// Running as administrator. With "Run as administrator" on (Mouse and Trackpad: Windows passes no mouse input to administrator programs
-/// otherwise; network limits need it too), a start that is not elevated starts OmniControl again through its sign-in task
+/// otherwise; network limits use the network service instead, <see cref="NetworkServiceMode"/>), a start that is not elevated starts OmniControl again through its sign-in task
 /// (<see cref="SignInTask"/>, no prompt) or, without the task, with Windows' administrator prompt, and ends itself; when the user refuses, it
 /// carries on as it is. An elevated copy keeps the task in step with the setting. A restart as administrator starts the same way.
 public static class AdministratorMode

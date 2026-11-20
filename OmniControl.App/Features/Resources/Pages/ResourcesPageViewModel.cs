@@ -48,23 +48,30 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     public ObservableCollection<AppNetItem> AppRows { get; } = new();
     public bool HasApps => AppRows.Count > 0;
 
-    /// The one status line under the programs: what really runs for each kind of rule (red while download limits have failed).
-    public string Status => $"{_limits.Download.Line} · Upload limits use Windows' throttle rules · Blocks use Windows Firewall"
+    /// The one status line under the programs: the network service, then what really runs for each kind of rule (red while the service or
+    /// download limits have failed).
+    public string Status => $"{_limits.Service.Line} · {_limits.Download.Line} · Upload limits use Windows' throttle rules · Blocks use Windows Firewall"
         + (_monitor.AppsProblem is { } problem ? $" · {problem}" : string.Empty);
 
-    public string StatusTip => _limits.Download.Tip;
+    public string StatusTip => $"{_limits.Service.Tip} {_limits.Download.Tip}".Trim();
 
-    public bool StatusFailed => _limits.Download.Failed;
+    public bool StatusFailed => _limits.Service.Failed || _limits.Download.Failed;
 
     /// The status line's "Install Windows Packet Filter…" link shows only after its install failed, as a retry.
     public bool OffersInstall => _limits.Download.OffersInstall;
 
     public IRelayCommand InstallPacketFilterCommand { get; }
 
-    /// Not run as administrator: the group shows only <see cref="NeedsAdministratorLine"/> and "Restart as administrator".
-    public bool NeedsAdministrator => NetworkLimits.NeedsAdministrator;
-    public string NeedsAdministratorLine => NetworkLimits.NeedsAdministratorLine;
-    public IRelayCommand RestartAsAdministratorCommand { get; }
+    /// The status line's network service "Install…" link: not installed, or failing.
+    public bool OffersServiceInstall => _limits.Service.OffersInstall;
+
+    /// Neither the network service nor OmniControl as administrator can do the work: the group shows only <see cref="UnavailableLine"/> and,
+    /// on an installed copy, Install….
+    public bool Unavailable => !_limits.Available;
+    public string UnavailableLine => _limits.UnavailableLine;
+    public bool CanInstallService => _limits.CanInstallService;
+    public IRelayCommand InstallServiceCommand { get; }
+    public string InstallServiceTip => NetworkLimits.InstallServiceTip;
 
     public override IEnumerable<SearchEntry> SearchEntries =>
         new[] { Entry(ReadEvery, ReadEvery.Label, "resources readings") }
@@ -82,7 +89,8 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
             limits.InstallPacketFilter();
             ShowStatus();
         });
-        RestartAsAdministratorCommand = new AsyncRelayCommand(() => Guard.RunAsync("Restart as administrator", limits.RestartAsAdministratorAsync));
+        InstallServiceCommand = new AsyncRelayCommand(() => Guard.RunAsync("Install the network service", limits.InstallServiceAsync));
+        limits.Changed += OnLimitsChanged;
 
         _adapter = new NetworkAdapterMenu(monitor, settings, open =>
         {
@@ -183,7 +191,9 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
         _onScreen = onScreen;
         if (!onScreen && ShowsReadings) SetGadgetBuilt(false); // let the hidden gadget view go with the page
         Need();
-        if (onScreen) OnUpdated();
+        if (!onScreen) return;
+        OnUpdated();
+        _limits.Recheck();
     }
 
     /// The readings tab asks the poller at the page's interval while it is on screen; the gadget tab holds the gadget's own reads.
@@ -191,7 +201,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     {
         var every = _onScreen && ShowsReadings ? TimeSpan.FromSeconds(_settings.Setup.ReadEverySeconds) : (TimeSpan?)null;
         _monitor.Need(ResourceMonitor.PageNeed, every, SampleParts.All | (_listAdapters ? SampleParts.Adapters : 0) | (_listSensors ? SampleParts.SensorList : 0));
-        _monitor.Need(ResourceMonitor.AppsNeed, Apps.IsExpanded && !NeedsAdministrator ? every : null);
+        _monitor.Need(ResourceMonitor.AppsNeed, Apps.IsExpanded && !Unavailable ? every : null);
         _gadget.SetOnScreen(_onScreen && !ShowsReadings);
     }
 
@@ -277,10 +287,22 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
         OnPropertyChanged(nameof(StatusTip));
         OnPropertyChanged(nameof(StatusFailed));
         OnPropertyChanged(nameof(OffersInstall));
+        OnPropertyChanged(nameof(OffersServiceInstall));
     }
+
+    /// Where the network work runs, or the service's state, changed (a worker): the group and its status line follow.
+    private void OnLimitsChanged() => Dispatcher.UIThread.Post(() =>
+    {
+        OnPropertyChanged(nameof(Unavailable));
+        OnPropertyChanged(nameof(UnavailableLine));
+        OnPropertyChanged(nameof(CanInstallService));
+        Need();
+        ShowStatus();
+    });
 
     public void Dispose()
     {
+        _limits.Changed -= OnLimitsChanged;
         _settings.Changed -= OnSettingsChanged;
         _monitor.Updated -= OnUpdated;
         Tabs.PropertyChanged -= OnTabChanged;

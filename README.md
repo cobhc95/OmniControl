@@ -88,6 +88,8 @@ One Windows app that controls your displays, sound, mouse, trackpad, smart plugs
 
 Download **Setup** (installer) or **Portable** (zip) from [GitHub Releases](https://github.com/cobhc95/OmniControl/releases). All releases are pre-releases. Both builds are self-contained, so you don't need to install .NET.
 
+Setup installs OmniControl for all users into Program Files (Windows asks for administrator rights once); your settings stay your own, in `%APPDATA%\OmniControl`. It replaces an older per-user install (0.2.3 and earlier) by itself and keeps its settings. The network service (per-app network limits without running OmniControl as administrator) comes only with Setup: it runs as SYSTEM, so it runs only from a folder that only administrators can change. The Portable version does everything else, and does the network limits itself while it runs as administrator.
+
 ## Requirements
 
 - Windows 10 or 11, x64. Recording a single app's sound needs Windows 10 version 2004 or later.
