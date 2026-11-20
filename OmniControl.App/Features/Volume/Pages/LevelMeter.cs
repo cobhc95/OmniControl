@@ -54,11 +54,11 @@ public sealed class LevelMeter : Control
         var frame = Bounds.Height;
         if (frame < 4 + Pad * 2) return;
         var height = frame - Pad * 2;
-        var edge = this.TryFindResource("BrushControlEdge", ActualThemeVariant, out var e) && e is IBrush eb ? eb : Brushes.Gray;
+        var edge = Fx.DrawKit.Brush(this, "BrushControlEdge");
         context.DrawRectangle(null, new Pen(edge, 1), new RoundedRect(new Rect(0.5, 0.5, Bounds.Width - 1, frame - 1), FrameRadius));
         using var _ = context.PushTransform(Matrix.CreateTranslation(Pad, Pad));
-        var track = this.TryFindResource("BrushControlTrack", ActualThemeVariant, out var t) && t is IBrush b ? b : Brushes.Gray;
-        var hold = this.TryFindResource("BrushMuted", ActualThemeVariant, out var h) && h is IBrush hb ? hb : Brushes.Silver;
+        var track = Fx.DrawKit.Brush(this, "BrushControlTrack");
+        var hold = Fx.DrawKit.Brush(this, "BrushMuted");
         var m = Model;
         var clip = m?.ClipLit == true;
         DrawBar(context, track, hold, 0, height, m?.LeftDb ?? MeterModel.FloorDb, m?.HoldLeftDb ?? MeterModel.FloorDb, clip);

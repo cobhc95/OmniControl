@@ -13,7 +13,7 @@ public static class DeviceIcons
         new DeviceColour("amber", "Amber", Palette.Caution),
         new DeviceColour("blue", "Blue", Palette.Cable),
         new DeviceColour("green", "Green", Palette.On),
-        new DeviceColour("grey", "Grey", Palette.OsdGrey),
+        new DeviceColour("grey", "Grey", Palette.Grey),
     };
 
     /// The colour with this id; the first (amber) when it is not known.

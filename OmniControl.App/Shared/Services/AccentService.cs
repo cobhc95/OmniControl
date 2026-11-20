@@ -79,7 +79,11 @@ public static class AccentService
         ("Purple", "#8764B8"), ("Red", "#E81123"), ("Yellow", "#FFB900"), ("Teal", "#038387"), ("White", Palette.LightHex),
     };
 
-    private static readonly Color[] PresetColours = Presets.Select(p => Color.Parse(p.Hex)).ToArray();
+    /// Choices only the OSD offers after <see cref="Names"/>; resolved and shaded like the presets.
+    public static readonly IReadOnlyList<(string Name, string Hex)> OsdExtras = new[] { ("Grey", Palette.GreyHex) };
+
+    private static readonly (string Name, string Hex)[] AllPresets = Presets.Concat(OsdExtras).ToArray();
+    private static readonly Color[] PresetColours = AllPresets.Select(p => Color.Parse(p.Hex)).ToArray();
 
     /// The custom colour before the user has made one: the first preset.
     public static string DefaultCustomHex => Presets[0].Hex;
@@ -113,7 +117,7 @@ public static class AccentService
     {
         if (name == WindowsName) return WindowsAccent();
         if (name == CustomName) return Custom;
-        for (var i = 0; i < Presets.Count; i++) if (Presets[i].Name == name) return PresetColours[i];
+        for (var i = 0; i < AllPresets.Length; i++) if (AllPresets[i].Name == name) return PresetColours[i];
         return PresetColours[0];
     }
 

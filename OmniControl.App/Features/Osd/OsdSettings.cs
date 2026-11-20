@@ -35,13 +35,7 @@ public sealed class OsdSettings
     public Color ResolveAccent() => ResolveAccent(Accent);
 
     /// The colour of an accent choice. Asked on every pop-up step, so it is a plain loop that allocates nothing.
-    public static Color ResolveAccent(string name)
-    {
-        if (name == MatchProgram) return AccentService.Current;
-        for (var i = 0; i < OsdPalette.ExtraAccents.Count; i++)
-            if (OsdPalette.ExtraAccents[i].Name == name) return OsdPalette.ExtraAccents[i].Color;
-        return AccentService.Resolve(name);
-    }
+    public static Color ResolveAccent(string name) => name == MatchProgram ? AccentService.Current : AccentService.Resolve(name);
 
     public string Background { get; set; } = Palette.CharcoalHex;
 

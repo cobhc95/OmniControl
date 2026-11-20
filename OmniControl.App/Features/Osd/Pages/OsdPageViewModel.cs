@@ -74,7 +74,7 @@ public sealed class OsdPageViewModel : PageViewModel
         // Accent: "Match program" first, then the same presets the whole program offers.
         var accentNames = new List<string> { OsdSettings.MatchProgram };
         accentNames.AddRange(AccentService.Names);
-        accentNames.AddRange(OsdPalette.ExtraAccents.Select(a => a.Name));
+        accentNames.AddRange(AccentService.OsdExtras.Select(a => a.Name));
         int AccentIndex() => Math.Max(0, accentNames.IndexOf(osd.Settings.Accent));
         var accent = new GalleryItem("Accent colour", accentNames, AccentIndex(),
             i => (new SolidColorBrush(OsdSettings.ResolveAccent(accentNames[i])), AccentSwatch.Mark(accentNames[i])),

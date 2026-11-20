@@ -9,7 +9,7 @@ public static class Palette
     public static readonly Color Danger = Color.Parse(DangerHex);
 
     /// The "on" green (an FX chain switched on) and the "good" tag colour (theme brush <c>BrushOn</c>).
-    public static readonly Color On = Color.Parse("#3FB950");
+    public static readonly Color On = Color.Parse("#3FB950"), OnHover = Color.Parse("#6BE07A");
 
     /// The caution yellow (a "caution" tag, a setup that is missing); <see cref="CautionInk"/> is its darker form for text on the light theme.
     public static readonly Color Caution = Color.Parse("#D29922");
@@ -19,8 +19,9 @@ public static class Palette
     public static readonly Color Cable = Color.Parse("#4A9BE6");
     public static readonly Color CableInk = Color.Parse("#1F6FB8");
 
-    /// The OSD's grey accent.
-    public static readonly Color OsdGrey = Color.Parse("#9A9A9A");
+    /// The neutral grey: the OSD's Grey accent (an <see cref="AccentService.OsdExtras"/> entry) and a device icon's grey.
+    public const string GreyHex = "#9A9A9A";
+    public static readonly Color Grey = Color.Parse(GreyHex);
 
     /// The drawing colours with the names a saved text may call them by (a gadget label's coloured icon, "{upload:green}").
     public static readonly IReadOnlyList<(string Name, Color Colour)> DrawingNamed = new[]
@@ -66,8 +67,11 @@ public static class Palette
     /// still shows as an edge on the white page; the usual accents are already below it after the light theme's own shade.
     public const double LightAccentMaxLuminance = 0.56;
 
-    /// Dark text on a light background (the OSD on its light background choice).
-    public static readonly Color Ink = Color.Parse("#1A1A1A");
+    /// Dark text on a light background (the OSD on its light background choice, the gadget on a light taskbar) and light text on a dark one.
+    public static readonly Color Ink = Color.Parse("#1A1A1A"), InkOnDark = Colors.White;
+
+    /// A nearly invisible fill that still takes the mouse (a window region must not be fully transparent to be hit).
+    public static readonly Color HitTest = Color.FromArgb(1, 0, 0, 0);
 
     /// The light choice: the "White" accent (the program's and the OSD's) and the OSD's "Light" background.
     public const string LightHex = "#F2F2F2";

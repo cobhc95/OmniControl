@@ -35,18 +35,10 @@ public enum OsdStyle { Classic, Pill, BigNumber, Ring, Vertical }
 /// Named colour choices for the OSD, browsed in the settings page.
 public static class OsdPalette
 {
-    /// Extra OSD-only accents after the program's own (White is one of those, AccentService.Presets).
-    public static readonly IReadOnlyList<(string Name, Color Color)> ExtraAccents = new[]
-    {
-        ("Grey", Palette.OsdGrey),
-    };
-
     /// The program's background colour choices (their dark page tone, <see cref="SurfaceService"/>), then Light; a saved colour not on the list still shows.
     public static readonly IReadOnlyList<(string Name, string Hex)> Backgrounds = SurfaceService.Names
         .Where(n => n != SurfaceService.FollowName)
-        .Select(n => (n, Hex(SurfaceService.Swatch(n))))
+        .Select(n => (n, ColorMath.Hex(SurfaceService.Swatch(n))))
         .Append(("Light", Palette.LightHex))
         .ToList();
-
-    private static string Hex(Color c) => $"#{c.R:X2}{c.G:X2}{c.B:X2}";
 }

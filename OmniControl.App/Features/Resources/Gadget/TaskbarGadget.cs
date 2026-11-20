@@ -142,7 +142,7 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
     public Color Background => Color.Parse(TaskbarLight ? Palette.LightHex : Palette.CharcoalHex);
 
     /// The taskbar's own text colour: dark on a light taskbar.
-    public Color Ink => TaskbarLight ? Palette.Ink : Colors.White;
+    public Color Ink => TaskbarLight ? Palette.Ink : Palette.InkOnDark;
 
     public IDisposable Hold() => _preview.Take();
 

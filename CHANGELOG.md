@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Changed: every colour comes from one place; the OSD's Grey accent is one of the accent choices and shaded at Windows' strength like the rest.
 - New: OmniControl's own Equalizer APO has its own device window ("Choose devices" in the master's Method menu): every playback and recording device with a tick, its connector, name and status, and Equalizer APO 1.4.2 Device Selector's troubleshooting options for the selected device. It replaces the per-device switches and "Advanced…" menus in the Wiring tab's Equalizer APO group.
 
 - Fix: the OSD's bar, ring and icon use the same accent shade as the rest of the app (Windows' own, following the accent, intensity and the pop-up's dark or light background) instead of the raw, deeper accent colour.

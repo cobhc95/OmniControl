@@ -198,7 +198,7 @@ public sealed class TrayService : IDisposable
 
     /// The muted edge of the theme in use, so a white or black dot shows on either menu.
     private IBrush MutedBrush() =>
-        _app.TryFindResource("BrushMuted", _app.ActualThemeVariant, out var found) && found is IBrush brush ? brush : Brushes.Gray;
+        _app.TryFindResource("BrushMuted", _app.ActualThemeVariant, out var found) && found is IBrush brush ? brush : Brushes.Transparent;
 
     private static NativeMenuItem Item(string text, Action run, NativeMenuItemToggleType toggle = NativeMenuItemToggleType.None, bool ticked = false)
     {

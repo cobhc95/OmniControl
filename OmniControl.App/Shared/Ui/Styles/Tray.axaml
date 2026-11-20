@@ -304,7 +304,7 @@
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
     <Style Selector="Grid.trayslider > c|ChipMenu"><Setter Property="Width" Value="{DynamicResource TrayNameWidth}" /></Style>
-    <Style Selector="Panel.gadgethit"><Setter Property="Background" Value="#01000000" /></Style>
+    <Style Selector="Panel.gadgethit"><Setter Property="Background" Value="{DynamicResource BrushHitTest}" /></Style>
     <!-- Grid.gadgetcells = THE gadget's cells (Resources/Gadget/GadgetCells: the taskbar gadget, the settings preview, the layout cards); its gaps are settings -->
     <Style Selector="Grid.gadgetcells">
         <Setter Property="Margin" Value="{DynamicResource GadgetInset}" />

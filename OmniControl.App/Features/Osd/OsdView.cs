@@ -254,7 +254,7 @@ public static class OsdView
         public static Scheme From(OsdSettings s)
         {
             var bg = Color.Parse(s.Background);
-            var fg = ColorMath.Luminance(bg) > LightBackground ? Palette.Ink : Colors.White;
+            var fg = ColorMath.Luminance(bg) > LightBackground ? Palette.Ink : Palette.InkOnDark;
             return new Scheme(bg, AccentFor(s), fg, ColorMath.Mix(bg, fg, MutedMix), ColorMath.Mix(bg, fg, TrackMix), ColorMath.Mix(bg, fg, EdgeMix));
         }
     }
