@@ -82,8 +82,19 @@ public static partial class EffectsRules
         return "Equalizer APO is not installed";
     }
 
-    /// Equalizer APO's Device Selector is what fixes a device it is missing on (registers it, puts it on the device, turns enhancements on).
-    public static bool DeviceSelectorFixes(ApoState apo) => apo.UpstreamInstalled && apo.UpstreamConfigFolder is not null;
+    /// A separate Equalizer APO's Device Selector is what fixes a device it is missing on (registers it, puts it on the device, turns
+    /// enhancements on); OmniControl's own copy has none (<see cref="BundledFixes"/>).
+    public static bool DeviceSelectorFixes(ApoState apo) => apo.UpstreamDeviceSelector is not null && apo.UpstreamConfigFolder is not null;
+
+    /// OmniControl's own Equalizer APO would make a chain run on <paramref name="endpoint"/>: none is installed and this build ships one, or
+    /// OmniControl's copy is not on that device yet. A device whose driver blocked it is not tried again by itself.
+    public static bool BundledFixes(ApoState apo, ApoEndpoint? endpoint) =>
+        endpoint is not null && apo.FolderFor(endpoint) is null && apo.Ownership.Owner switch
+        {
+            ApoOwner.None => apo.Bundled,
+            ApoOwner.Ours => apo.OwnDevice(endpoint.EndpointId) is { Check: not ApoSetup.Blocked },
+            _ => false,
+        };
 
     /// A row's status once its chain is written: all OmniControl can know is that the chain was sent, not that Windows applied it.
     public const string ApoSent = "Chain sent to your Equalizer APO";

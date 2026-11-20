@@ -49,7 +49,8 @@ public sealed class VolumeModule : IFeatureModule
         var displayFeeds = new DisplayFeeds(plugins, effects, context.Report);
         context.Osd.WatchVolumeOf(() => mixer.MasterDeviceId); // the pop-up for outside volume changes follows the master's real device
         mixer.MasterDeviceChanged += context.Osd.RetargetVolume;
-        var installer = _installer = new EngineInstaller(support);
+        var installer = _installer = new EngineInstaller(support, mixer);
+        effects.ApoWanted += device => _ = Guard.RunAsync("Equalizer APO: first use", () => installer.FirstUseAsync(device, context.Report));
         var fxWindows = _fxWindows = new FxWindowService(mixer, effects, support, plugins, displayFeeds, Library, _presets, context.Report, context.OpenPresetManager,
             new FxMixerLinks(ShowMixerFor, () => _page?.InstallEqualizerApoStepAsync() ?? Task.CompletedTask, () => installer.SetUpTip), context.AskAsync, view);
 
@@ -59,6 +60,7 @@ public sealed class VolumeModule : IFeatureModule
         context.Shutdown.Add(ShutdownStage.OsdLinks, "OSD volume link", () => mixer.MasterDeviceChanged -= context.Osd.RetargetVolume);
         context.Shutdown.Add(ShutdownStage.Effects, "effect windows", fxWindows.CloseAll); // plug-in editors close (and save) before the plug-ins are unloaded
         context.Shutdown.Add(ShutdownStage.Effects, "effects", effects.Dispose); // plug-in settings are saved
+        context.Shutdown.Add(ShutdownStage.Mixer, "effects setup", installer.Dispose);
         context.Shutdown.Add(ShutdownStage.Mixer, "effects support", support.Dispose);
         context.Shutdown.Add(ShutdownStage.Mixer, "volume presets", volumePresets.Dispose);
         context.Shutdown.Add(ShutdownStage.Mixer, "mixer", mixer.Dispose);

@@ -9,24 +9,6 @@ public enum PowerMode { BestEfficiency, Balanced, BestPerformance }
 public static class PowerCommands
 {
     [DllImport("powrprof.dll")] private static extern bool SetSuspendState(bool hibernate, bool forceCritical, bool disableWakeEvent);
-    [DllImport("advapi32.dll", SetLastError = true)] private static extern bool OpenProcessToken(IntPtr process, uint access, out IntPtr token);
-    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)] private static extern bool LookupPrivilegeValue(string? system, string name, out long luid);
-    [DllImport("advapi32.dll", SetLastError = true)] private static extern bool AdjustTokenPrivileges(IntPtr token, bool disableAll, ref TokenPrivilege state, int length, IntPtr previous, IntPtr returnLength);
-    [DllImport("kernel32.dll")] private static extern IntPtr GetCurrentProcess();
-    [DllImport("kernel32.dll")] private static extern bool CloseHandle(IntPtr handle);
-
-    // TOKEN_PRIVILEGES with one entry: count, LUID, attributes.
-    [StructLayout(LayoutKind.Sequential, Pack = 4)]
-    private struct TokenPrivilege
-    {
-        public int Count;
-        public long Luid;
-        public int Attributes;
-    }
-
-    private const uint TokenAdjustPrivileges = 0x20, TokenQuery = 0x8;
-    private const int PrivilegeEnabled = 2;
-
     [DllImport("user32.dll")] private static extern bool LockWorkStation();
     [DllImport("user32.dll")] private static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
     [DllImport("powrprof.dll")] private static extern uint PowerSetActiveOverlayScheme(in Guid overlay);
@@ -99,21 +81,7 @@ public static class PowerCommands
     // If switching it on fails, Windows is still asked: it then says no and the caller reports that.
     private static bool Suspend(bool hibernate)
     {
-        if (OpenProcessToken(GetCurrentProcess(), TokenAdjustPrivileges | TokenQuery, out var token))
-        {
-            try
-            {
-                if (LookupPrivilegeValue(null, "SeShutdownPrivilege", out var luid))
-                {
-                    var state = new TokenPrivilege { Count = 1, Luid = luid, Attributes = PrivilegeEnabled };
-                    AdjustTokenPrivileges(token, false, ref state, 0, IntPtr.Zero, IntPtr.Zero);
-                }
-            }
-            finally
-            {
-                CloseHandle(token);
-            }
-        }
+        Privileges.Enable(Privileges.Shutdown);
         return SetSuspendState(hibernate, false, false);
     }
 }

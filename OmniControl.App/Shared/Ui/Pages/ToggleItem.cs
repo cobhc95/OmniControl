@@ -21,6 +21,17 @@ public sealed partial class ToggleItem : ObservableObject, IEditorItem, IHalfWid
     /// True: the card takes half the width and may share a row with the next half-width card.
     public bool Half { get; init; }
 
+    /// Small facts after the switch (a device's status, <c>Border.tag</c>); empty: none. Full-width cards only.
+    public IReadOnlyList<TagItem> Tags { get; init; } = Array.Empty<TagItem>();
+
+    /// A link after the switch that opens a small menu of further options ("Advanced…"; the shared <see cref="MenuRowList"/>, rows asked
+    /// each time it opens); null: none. Full-width cards only.
+    public string? MenuText { get; init; }
+
+    public Func<IReadOnlyList<MenuRowItem>>? Menu { get; init; }
+
+    public bool HasExtras => Tags.Count > 0 || Menu is not null;
+
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(StateWords))] private bool _isOn;
 
     /// What the switch acts on ("Default microphone: Blue Yeti"), put before On/Off in a half-width card's tooltip; empty: none. May change while shown.
