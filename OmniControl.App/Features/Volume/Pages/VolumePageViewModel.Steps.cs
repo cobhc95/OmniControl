@@ -32,9 +32,8 @@ public sealed partial class VolumePageViewModel
     private IAsyncRelayCommand? _chooseDevices;
     private CardAction? _cableDevices;
 
-    /// The master's step when Equalizer APO does not run on its speakers (<see cref="EqualizerApoGroup.Devices"/>); null when it runs there.
-    private CardAction? MasterApoFix() =>
-        _engine.MasterFacts.ApoWhy is null && _engine.MasterFacts.ApoStand == ApoStand.Running ? null : Apo.Devices;
+    /// The master's or a microphone's step when Equalizer APO does not run on its device (<see cref="EqualizerApoGroup.Devices"/>); null when it runs there.
+    private CardAction? ApoFixFor(MasterFacts facts) => facts.ApoWhy is null && facts.ApoStand == ApoStand.Running ? null : Apo.Devices;
 
     /// The Test on a playing program: records it, silences the original each way in turn, measures the delay; always restores.
     private async Task TestCaptureAsync(VolumeRow row)

@@ -99,7 +99,7 @@ internal sealed class ApoChains
     /// Some folder's config no longer includes OmniControl's effects and is left so.
     public bool AnyDisplaced => _displaced.Count > 0;
     /// The rows a plan sends to Equalizer APO (<see cref="RoutePlan.ToApo"/>), each on its own device: the master on the real speakers
-    /// (<see cref="RoutePlan.MasterApoDevice"/>); a program on the cable its run uses (<see cref="RunKind.ApoCable"/>). Pure: the chains and names come from the callers.
+    /// (<see cref="RoutePlan.MasterApoDevice"/>); a microphone on itself; a program on the cable its run uses (<see cref="RunKind.ApoCable"/>). Pure: the chains and names come from the callers.
     /// <param name="chainOf">A row's chain (null key = the master).</param>
     /// <param name="nameOf">A row's name for the section's comment.</param>
     public static IReadOnlyList<ApoRow> RowsFor(RoutePlan plan, ApoState apo, Func<string?, IReadOnlyList<FxSlot>> chainOf, Func<string, string> nameOf)
@@ -112,6 +112,11 @@ internal sealed class ApoChains
             {
                 var speakers = plan.MasterApoDevice is { } id ? apo.PlaybackOf(id) : null;
                 rows.Add(new ApoRow(key, nameOf(key), FxFolders.PartsFor(chainOf(null), plan.MasterApoDevice), speakers, EffectsRules.ApoMissingOn(apo, speakers), Silent, StatusKind.ApoNotApplied));
+            }
+            else if (MixerService.IsInput(key))
+            {
+                var mic = apo.MicrophoneOf(MixerService.InputIdOf(key));
+                rows.Add(new ApoRow(key, $"Microphone: {nameOf(key)}", new[] { new FxPart(null, chainOf(key)) }, mic, EffectsRules.ApoMissingOn(apo, mic), "Recorded without effects.", StatusKind.ApoNotApplied));
             }
             else if (plan.Runs.GetValueOrDefault(key)?.Cable is { } cable)
             {

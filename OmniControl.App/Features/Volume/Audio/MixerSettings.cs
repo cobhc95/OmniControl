@@ -144,6 +144,9 @@ public sealed class InputFxEntry
     public bool FxUserOff { get; set; }
     public List<FxSlot> Fx { get; set; } = new();
 
+    /// How its effects run (<see cref="EffectsRules.MicRoutes"/> id): empty = Automatic, "bus" = its cable, "apo" = Equalizer APO on it.
+    public string Method { get; set; } = string.Empty;
+
     /// The cable its processed sound last went to so apps that picked that cable keep finding it; empty = none yet.
     public string Cable { get; set; } = string.Empty;
 }

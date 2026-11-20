@@ -56,6 +56,10 @@ public sealed record ApoState(
         : Playback.FirstOrDefault(p => string.Equals(p.EndpointId, endpointId, StringComparison.OrdinalIgnoreCase))
           ?? (string.Equals(Output?.EndpointId, endpointId, StringComparison.OrdinalIgnoreCase) ? Output : null);
 
+    /// The slots of the recording device <paramref name="endpointId"/> (<see cref="Microphones"/>); null when not looked at.
+    public ApoEndpoint? MicrophoneOf(string? endpointId) =>
+        Microphones.FirstOrDefault(m => string.Equals(m.EndpointId, endpointId, StringComparison.OrdinalIgnoreCase));
+
     /// "Audio enhancements" are off on the default playback device.
     public bool EnhancementsOff => Output?.EnhancementsOff == true;
 

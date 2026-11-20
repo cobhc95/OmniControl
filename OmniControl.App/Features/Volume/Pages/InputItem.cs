@@ -3,7 +3,7 @@ using OmniControl.App.Features.Volume.Audio;
 
 namespace OmniControl.App.Features.Volume.Pages;
 
-/// A Microphones row: one recording device (its Windows level and mute; its effects run through its own cable).
+/// A Microphones row: one recording device (its Windows level and mute; its effects run through its cable or in Equalizer APO on it).
 public sealed partial class InputItem : VolumeRow
 {
     public InputItem(string id) : base(MixerService.InputPrefix + id) => Id = id;

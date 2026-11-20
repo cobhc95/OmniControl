@@ -5,13 +5,13 @@ namespace OmniControl.App.Features.Volume.Audio;
 /// the Method pop-down and its tooltip.
 public sealed record EffectsRoute(string Id, string Name, string Description, string Tip);
 
-/// What the master's Method pop-down and the planner need to know about the master on this PC (the planner makes it,
+/// What the master's or a microphone's Method pop-down and the planner need to know about that device on this PC (the planner makes it,
 /// <see cref="Engine.RoutePlanner"/>).
 /// <param name="CablePairs">How many cable pairs OmniControl may use.</param>
 /// <param name="NoCable">Why no cable can be given out when <paramref name="CablePairs"/> is 0 (<see cref="EffectsRules.NoCableKind"/>).</param>
-/// <param name="ApoWhy">Why Equalizer APO can't run on the master's real speakers (null = it can).</param>
+/// <param name="ApoWhy">Why Equalizer APO can't run on the master's real speakers or the microphone (null = it can).</param>
 /// <param name="SeveralOutputs">The master is set to play on several devices or a combined device (only the cable bus does that).</param>
-/// <param name="HasEffects">The master has effects to run.</param>
+/// <param name="HasEffects">The master or microphone has effects to run.</param>
 public sealed record MasterFacts(int CablePairs, StatusKind NoCable, string? ApoWhy, bool SeveralOutputs, bool HasEffects)
 {
     public static readonly MasterFacts Unknown = new(0, StatusKind.NeedsCable, null, false, false);
@@ -111,21 +111,25 @@ public static partial class EffectsRules
     /// otherwise Equalizer APO.
     public static RunMethod MasterMethodOf(EffectsRoute chosen, MasterFacts facts)
     {
-        if (chosen == MasterBus) return RunMethod.Bus;
-        if (chosen == MasterApo) return RunMethod.Apo;
+        if (chosen.Id == MasterBus.Id) return RunMethod.Bus;
+        if (chosen.Id == MasterApo.Id) return RunMethod.Apo;
         return facts.CablePairs > 0 || facts.SeveralOutputs || facts.ApoWhy is not null && facts.HasEffects ? RunMethod.Bus : RunMethod.Apo;
     }
 
     /// How the master's Method pop-down entry for <paramref name="route"/> stands now (a disabled entry cannot be chosen; its tip says why).
-    public static RouteOffer MasterOfferOf(EffectsRoute route, MasterFacts facts, RunMethod current)
+    public static RouteOffer MasterOfferOf(EffectsRoute route, MasterFacts facts, RunMethod current) =>
+        route == MasterApo && facts.SeveralOutputs ? Unavailable(route, "the master plays on several devices")
+        : DeviceOfferOf(route, facts, current, "these speakers");
+
+    /// The master's and a microphone's entries (their ids are the same): the cable needs an allowed pair, Equalizer APO says where it
+    /// really stands on the device (what the method does moves to its tooltip), Automatic says what runs now.
+    private static RouteOffer DeviceOfferOf(EffectsRoute route, MasterFacts facts, RunMethod current, string where)
     {
-        if (route == MasterBus)
+        if (route.Id == MasterBus.Id)
             return facts.CablePairs == 0 ? Unavailable(route, Brief(facts.NoCable)) : new RouteOffer(true, route.Description, route.Tip);
-        if (route == MasterApo)
+        if (route.Id == MasterApo.Id)
         {
-            if (facts.SeveralOutputs) return Unavailable(route, "the master plays on several devices");
             if (facts.ApoWhy is { } why && facts.HasEffects) return Unavailable(route, why);
-            // The card says where Equalizer APO really stands on the speakers; what the method does moves to its tooltip.
             return new RouteOffer(true, facts.ApoCard?.Facts ?? route.Description, $"{facts.ApoNow} {route.Description} {route.Tip}".TrimStart(),
                 facts.ApoCard?.Label ?? string.Empty);
         }
@@ -133,9 +137,46 @@ public static partial class EffectsRules
         {
             ApoStand.Running => "Currently: Equalizer APO",
             ApoStand.NotRunning => "Currently: Equalizer APO, but it isn't running, so effects are off",
-            _ => "Currently: Equalizer APO, but it isn't on these speakers yet, so effects are off",
+            _ => $"Currently: Equalizer APO, but it isn't on {where} yet, so effects are off",
         }, route.Tip);
     }
+
+    // ---- a microphone's method (the same ids as the master's) ----
+
+    /// The default for a microphone: its cable while a cable pair is allowed, otherwise Equalizer APO on the microphone.
+    public static readonly EffectsRoute MicAutomatic = new("", "Automatic",
+        "Cable bus if a cable is allowed, else Equalizer APO.",
+        "Uses the cable bus whenever a virtual cable is allowed (any effects); with none, or when only Equalizer APO can run them, Equalizer APO on the microphone.");
+
+    /// A microphone through its cable: OmniControl records it, runs its effects and plays the result into a cable apps record from.
+    public static readonly EffectsRoute MicCable = new("bus", "Cable bus",
+        "Through a cable: any effects. Needs VB-CABLE.",
+        "OmniControl records the microphone, runs its effects (VST3 too) and plays the result into a virtual cable; apps record from that cable's output instead of the microphone. Adds a little delay and holds one cable pair.");
+
+    /// A microphone in Equalizer APO on the microphone itself: no cable, apps keep recording from the microphone.
+    public static readonly EffectsRoute MicApo = new("apo", "Equalizer APO",
+        "In Windows: no cable, no delay. No VST3.",
+        "The microphone's effects run in Equalizer APO on the microphone itself, so apps keep recording from it and no cable is used. Equalizer APO runs the equaliser, gain, IR loader and VST2 plug-ins; VST3 plug-ins are kept but not run.");
+
+    /// Every way a microphone's effects can run, in the order its pop-down lists them; a combined microphone's (OmniControl mixes it, so only its cable runs it).
+    public static IReadOnlyList<EffectsRoute> MicRoutes { get; } = new[] { MicAutomatic, MicCable, MicApo };
+    public static IReadOnlyList<EffectsRoute> CombinedMicRoutes { get; } = new[] { MicCable, MicApo };
+
+    /// A microphone's stored method (an unknown or empty id = <see cref="MicAutomatic"/>).
+    public static EffectsRoute MicRouteOf(string? id) => MicRoutes.FirstOrDefault(r => r.Id == id) ?? MicAutomatic;
+
+    /// How a microphone runs: <see cref="RunMethod.Cable"/> or <see cref="RunMethod.Apo"/>, by the master's rule (<see cref="MasterMethodOf"/>).
+    public static RunMethod MicMethodOf(EffectsRoute chosen, MasterFacts facts) =>
+        MasterMethodOf(chosen, facts) == RunMethod.Bus ? RunMethod.Cable : RunMethod.Apo;
+
+    /// How a microphone's Method pop-down entry stands now.
+    public static RouteOffer MicOfferOf(EffectsRoute route, MasterFacts facts, RunMethod current) => DeviceOfferOf(route, facts, current, "this microphone");
+
+    /// A combined microphone's facts: its cables, and Equalizer APO never (it runs on one device; OmniControl mixes the members first).
+    public static MasterFacts CombinedMicFacts(CableOffer cables) => new(cables.Pairs, cables.NoCable, CombinedMicNoApo, false, true);
+
+    /// Why a combined microphone can't run in Equalizer APO.
+    public const string CombinedMicNoApo = "OmniControl mixes a combined microphone, so its effects run on its cable";
 
     private static RouteOffer Unavailable(EffectsRoute route, string why)
     {
