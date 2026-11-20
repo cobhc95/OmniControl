@@ -67,7 +67,7 @@ public sealed partial class VolumePageViewModel
         row.RouteText = RouteTextOf(row);
         row.FxRuns = FxSlot.AnyRuns(row.FxOn, _mixer.FxChain(row.ChainKey));
         var method = EffectsRules.ChipMethodOf(MethodFactsOf(row, row.FxRuns));
-        // only the master's chip says how Equalizer APO stands on its speakers (green only after a passed check)
+        // only the master's chip says how Equalizer APO stands on its speakers (green only while it is on them and Windows loads it)
         var stand = row is MixerItem { IsMaster: true } && method == RunMethod.Apo ? _engine.MasterFacts.ApoStand : ApoStand.Running;
         row.Method = MethodChip.Of(method, stand);
         row.Fact = EffectsRules.ApoStandFact(stand) ?? status.Fact(method);
@@ -126,7 +126,7 @@ public sealed partial class VolumePageViewModel
         var apo = _support.Current?.Apo ?? Core.Engine.Apo.ApoState.None;
         return facts.ApoCableWhy == EffectsRules.ApoNotOnCable && EffectsRules.DeviceSelectorFixes(apo)
             ? _cableDevices ??= new CardAction("Choose devices",
-                "Opens Equalizer APO's Configurator: tick the virtual cable on its Playback tab (administrator). A restart may be needed.",
+                "Opens Equalizer APO's Device Selector: tick the virtual cable there (administrator). A restart may be needed.",
                 ChooseDevicesCommand)
             : null;
     }

@@ -60,8 +60,8 @@
     <!-- Windows Packet Filter's official Windows 10+ x64 driver files, unmodified, with their licence: Setup's optional task and the app's
          "Install Windows Packet Filter…" install them (Core/Engine/Resources/PacketFilterSetup). -->
     <None Include="..\third_party\windows-packet-filter\driver\*" CopyToOutputDirectory="PreserveNewest" Link="windows-packet-filter\%(Filename)%(Extension)" />
-    <!-- Equalizer APO 1.4.2 x64's audio-processing part, official and unmodified, with its licences: OmniControl's own copy, installed into
-         Program Files by Setup's task or the app's first use (Core/Engine/Apo/ApoFiles, which retypes the folder name). -->
+    <!-- Equalizer APO's official 1.4.2 x64 installer, unmodified, with its licences: run by Setup's task or the app's "Install Equalizer
+         APO…" (Core/Engine/Apo/ApoInstaller, which retypes the folder and file name). -->
     <None Include="..\third_party\equalizer-apo\*" CopyToOutputDirectory="PreserveNewest" Link="equalizer-apo\%(Filename)%(Extension)" />
   </ItemGroup>
 

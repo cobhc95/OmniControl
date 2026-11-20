@@ -81,7 +81,7 @@
                 <vm:WiringTable DataContext="{Binding WiringOutputs}" />
                 <vm:WiringTable DataContext="{Binding WiringInputs}" />
                 <vm:CableTable DataContext="{Binding WiringCables}" />
-                <!-- Equalizer APO: whose it is and the one link about it (its devices are chosen in ApoDevicesWindow) -->
+                <!-- Equalizer APO: whether it is installed and the one link about it (its own Device Selector, or its installer) -->
                 <pages:GroupCard Group="{Binding Apo.Group}">
                     <ListBox Classes="rows compact cards" ItemsSource="{Binding Apo.Items}" />
                 </pages:GroupCard>

@@ -127,11 +127,15 @@ public sealed partial class FxFolderViewModel : ObservableObject
     }
 
     /// The device menu's rows: every playback device with its tags, the chosen one ticked.
-    private IReadOnlyList<MenuRowItem> DeviceRows() => _devices.Devices()
-        .Select(d => new MenuRowItem(d.Name, string.Empty, d.Id == _slot.DeviceId, d.Name, new RelayCommand(() => Choose(d)), d.Tags))
-        .Prepend(MenuRowItem.Header("Playback devices"))
-        .Append(new MenuRowItem(EffectsRules.ApoDevicesLabel, string.Empty, false, _mixer.InstallApoTip(), new AsyncRelayCommand(_mixer.InstallApo), RuleAbove: true))
-        .ToList();
+    private IReadOnlyList<MenuRowItem> DeviceRows()
+    {
+        var (label, tip) = _mixer.ApoStepText();
+        return _devices.Devices()
+            .Select(d => new MenuRowItem(d.Name, string.Empty, d.Id == _slot.DeviceId, d.Name, new RelayCommand(() => Choose(d)), d.Tags))
+            .Prepend(MenuRowItem.Header("Playback devices"))
+            .Append(new MenuRowItem(label, string.Empty, false, tip, new AsyncRelayCommand(_mixer.ApoStep), RuleAbove: true))
+            .ToList();
+    }
 
     private void Choose(FolderDevice device)
     {
@@ -160,5 +164,5 @@ public sealed record FxChainTies(Func<FxSlot, DynamicsReading?> Readings, Func<F
     Func<DialogMessage, Task<bool>> Ask, Action<FolderPreset> SaveFolderPreset, FxViewSettings View);
 
 /// What the FX window asks of the Volume page (given by the shell, so the FX window never knows the page): open its Mixer at a device,
-/// and its one Equalizer APO step (the Configurator when it is installed, else its setup) with that step's tooltip.
-public sealed record FxMixerLinks(Action<string> OpenMixer, Func<Task> InstallApo, Func<string> InstallApoTip);
+/// and its one Equalizer APO step (its Device Selector when it is installed, else its installer) with that step's words and tooltip.
+public sealed record FxMixerLinks(Action<string> OpenMixer, Func<Task> ApoStep, Func<(string Label, string Tip)> ApoStepText);

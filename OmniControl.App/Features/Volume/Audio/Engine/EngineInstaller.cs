@@ -7,134 +7,94 @@ namespace OmniControl.App.Features.Volume.Audio.Engine;
 public sealed record SetupResult(string Text, bool Failed = false, string? Details = null);
 
 /// The setup steps the effects engine offers (the master's Method menu, a Mixer row's fix, the Equalizer APO group, the first use of a
-/// master effect). Equalizer APO: OmniControl's own copy (<see cref="ApoSetup"/>, one administrator prompt per step, each device change
-/// restarts Windows audio and checks every device it is on, as Device Selector does) unless one is installed separately, which only its own Configurator changes; a build without the bundled
-/// copy opens the download page. VB-CABLE through its page. One step runs at a time, off the UI thread; failures come back as one plain
-/// sentence, with the detail in <see cref="LogPath"/>.
+/// master effect). Equalizer APO is its own program: its official installer (shipped by OmniControl, <see cref="ApoInstaller"/>) installs
+/// it and its own Device Selector chooses its devices; OmniControl runs either on request and then says where it stands on the master's
+/// speakers. VB-CABLE through its page. One step runs at a time, off the UI thread; failures come back as one plain sentence, with the
+/// detail in <see cref="LogPath"/>.
 public sealed class EngineInstaller : IDisposable
 {
-    private const string LogName = "effects-setup-log.txt";
+    private const string LogName = "effects-setup-log.txt", CablePage = "https://vb-audio.com/Cable/", SetupFailedTitle = "The setup step didn't finish";
 
-    /// The download pages a setup opens.
-    private const string EqualizerApoPage = "https://sourceforge.net/projects/equalizerapo/", CablePage = "https://vb-audio.com/Cable/";
+    /// The status line while Equalizer APO's installer runs.
+    public const string Installing = "Installing Equalizer APO: tick your speakers in its Device Selector when it opens…";
 
     private readonly EffectsSupportService _support;
     private readonly MixerService _mixer;
     private readonly SemaphoreSlim _oneStep = new(1, 1);
-    /// The devices the first use of a master effect already tried this run (UI thread): a refused prompt is not asked again by itself.
-    private readonly HashSet<string> _firstUseTried = new(StringComparer.OrdinalIgnoreCase);
-    private bool _cleaned;
+    /// The first use of a master effect offered the install this run (UI thread): it is not offered again by itself.
+    private bool _firstUseOffered;
 
     public EngineInstaller(EffectsSupportService support, MixerService mixer)
     {
         _support = support;
         _mixer = mixer;
-        support.Changed += OnSupportChanged;
     }
 
     /// The setup log: what OmniControl's setup steps did and why one failed.
     public static string LogPath => AppDataStore.PathOf(LogName);
 
-    private ApoState Apo => _support.Current?.Apo ?? ApoState.None;
-
-    /// A build without the bundled copy and no Equalizer APO: its download page.
-    public Task<SetupResult> OpenDownloadPageAsync() => Task.Run(() =>
-        PageResult(EqualizerApoPage, "Opened Equalizer APO's download page. After installing it, tick your speakers in its Configurator (and microphones on its Capture tab)."));
-
-    /// Equalizer APO is installed separately: its own Configurator puts it on playback devices and, on its Capture tab, on microphones.
-    public Task<SetupResult> ChooseEqualizerApoDevicesAsync() => Task.Run(() =>
-        ApoStatus.UpstreamConfigurator() is { } configurator
-            ? RunConfigurator(configurator)
-            : new SetupResult("Equalizer APO's Configurator wasn't found; open it from the Start menu."));
-
-    /// The first use of a master effect that Equalizer APO should run on a device it is not on: OmniControl's copy is installed (when
-    /// none is) and put on that device, behind one administrator prompt; tried once per device per run, so a refusal is not asked again.
-    public async Task FirstUseAsync(string deviceId, Action<string> report)
+    /// Shows how a step ended in the status line; a failure also opens a small message with "Copy details" and where the log is.
+    public static async Task ShowAsync(SetupResult result, Action<string> report, Func<DialogMessage, Task<bool>> ask)
     {
-        if (!_firstUseTried.Add(deviceId)) return;
-        report($"Setting up Equalizer APO for the master's effects on {NameOf(deviceId)}…");
-        report((await PutOnAsync(deviceId)).Text);
+        report(result.Text);
+        if (result.Failed) await ask(new DialogMessage(SetupFailedTitle, $"{result.Text}\nDetails: {LogPath}", Details: result.Details));
     }
 
-    /// Puts OmniControl's copy on a device (installing it first when there is none).
-    private Task<SetupResult> PutOnAsync(string? deviceId)
+    /// "Install Equalizer APO…": its official installer, silently (one administrator prompt); its Device Selector opens at the end.
+    public Task<SetupResult> InstallAsync() => OneStepAsync(speakers =>
     {
-        if (deviceId is null) return Task.FromResult(new SetupResult("No speakers are plugged in to put Equalizer APO on."));
-        var guid = ApoIds.DeviceKeyOf(deviceId);
-        return StepAsync(Apo.Ownership.Owner == ApoOwner.Ours ? ApoSetup.Attach(guid) : ApoSetup.Install(guid), Runs(NameOf(deviceId)), NameOf(deviceId));
+        var result = ApoInstaller.Run();
+        if (result.Failure != HelperFailure.None)
+            return Outcome(result, "Equalizer APO's installer", "get Equalizer APO from sourceforge.net/projects/equalizerapo");
+        var apo = FreshLook(speakers);
+        return !apo.UpstreamInstalled
+            ? Fail("Equalizer APO's installer ended without installing it.", result.Detail)
+            : new SetupResult($"{EffectsRules.ApoNowOn(apo, apo.PlaybackOf(speakers))} If its check showed a device that didn't start, restart Windows.");
+    });
+
+    /// "Equalizer APO devices…": its own Device Selector (administrator), where it is put on playback devices and microphones.
+    public Task<SetupResult> ChooseEqualizerApoDevicesAsync() => OneStepAsync(speakers =>
+    {
+        if (ApoStatus.UpstreamConfigurator() is not { } selector) return new SetupResult("Equalizer APO's Device Selector wasn't found; open it from the Start menu.");
+        var result = HelperProcess.RunElevated(selector, string.Empty, CoreTiming.ConfiguratorWaitMs);
+        if (result.Failure != HelperFailure.None) return Outcome(result, "Equalizer APO's Device Selector", "open it from the Start menu");
+        var apo = FreshLook(speakers);
+        return new SetupResult($"Equalizer APO's Device Selector closed. {EffectsRules.ApoNowOn(apo, apo.PlaybackOf(speakers))}");
+    });
+
+    /// The first use of a master effect that Equalizer APO should run while it is not installed: the install is offered once per run,
+    /// never run without the user's yes.
+    public async Task FirstUseAsync(Func<DialogMessage, Task<bool>> ask, Action<string> report)
+    {
+        if (_firstUseOffered) return;
+        _firstUseOffered = true;
+        if (!await ask(new DialogMessage("Install Equalizer APO?",
+                "The master's effects run in Equalizer APO, which isn't installed.\nOmniControl brings its official installer: Windows asks once for administrator rights, then its Device Selector opens so you tick your speakers.",
+                "Install")))
+            return;
+        report(Installing);
+        await ShowAsync(await InstallAsync(), report, ask);
     }
 
-    /// A device's Install in the Equalizer APO device window: OmniControl's copy put on it as Device Selector would (the copy installed
-    /// first when there is none).
-    public Task<SetupResult> InstallOnAsync(ApoDeviceEntry device) =>
-        StepAsync(Apo.Ownership.Owner == ApoOwner.Ours ? ApoSetup.Attach(device.Guid, device.State) : ApoSetup.Install(device.Guid), Runs(device.Name), device.Name);
-
-    /// A troubleshooting option in the Equalizer APO device window: puts OmniControl's copy on the device again with these options.
-    public Task<SetupResult> AttachAsync(ApoDeviceEntry device, ApoInstallState state) => StepAsync(ApoSetup.Attach(device.Guid, state), Runs(device.Name), device.Name);
-
-    /// A device's Uninstall: takes OmniControl's copy off the device; its own effects come back.
-    public Task<SetupResult> DetachAsync(ApoDeviceEntry device) =>
-        StepAsync(ApoSetup.Detach(device.Guid), $"Equalizer APO is off {device.Name}; its own effects are back (Windows audio restarted and the other devices were checked).", device.Name);
-
-    private static string Runs(string device) => $"Equalizer APO runs on {device}: Windows audio restarted and its check passed.";
-
-    /// One step of OmniControl's copy, as administrator, then a fresh look at what is in place; the outcome in one sentence.
-    /// <param name="done">The sentence when it worked.</param>
-    /// <param name="device">The device the step is about.</param>
-    private async Task<SetupResult> StepAsync(string arguments, string done, string? device)
+    /// Runs one Equalizer APO step on a worker (one at a time), then asks for a fresh look; <paramref name="step"/> gets the master's speakers.
+    private async Task<SetupResult> OneStepAsync(Func<string?, SetupResult> step)
     {
+        var speakers = _mixer.MasterDeviceId ?? _mixer.DefaultDeviceId;
         await _oneStep.WaitAsync().ConfigureAwait(false);
         try
         {
-            var outcome = await Task.Run(() => ApoSetup.Run(arguments)).ConfigureAwait(false);
-            _support.Refresh();
-            return Says(outcome, done, device, arguments);
+            return await Task.Run(() => step(speakers)).ConfigureAwait(false);
         }
         finally
         {
             _oneStep.Release();
+            _support.Refresh();
         }
     }
 
-    private static SetupResult Says(ApoOutcome outcome, string done, string? device, string arguments) => outcome switch
-    {
-        ApoOutcome.Done => new SetupResult(done),
-        ApoOutcome.NotStarted => Fail($"Equalizer APO is on {device}, but its check failed: it didn't start there in any install mode tried.",
-            $"OmniControl.exe {arguments}: no answer from Equalizer APO on {device} after the audio restart.{(ApoSetup.LastResult() is { } why ? $" {why}" : string.Empty)} Uninstall it from the device in Equalizer APO devices to give it its own effects back, or try its troubleshooting options."),
-        ApoOutcome.OriginalNotStarted => new SetupResult($"Equalizer APO runs on {device}, but the device's own effects didn't start inside it (troubleshooting: untick Use original APO)."),
-        ApoOutcome.NotChecked => new SetupResult($"Equalizer APO is on {device}; it couldn't be checked because the device is disabled or unplugged."),
-        ApoOutcome.NothingInstalled => new SetupResult($"Equalizer APO is off {device}: with neither the pre-mix nor the post-mix APO ticked nothing is installed."),
-        ApoOutcome.Unchanged =>new SetupResult(device is null ? "Equalizer APO is already in place; nothing was changed." : $"Equalizer APO is already set up this way on {device}; nothing was changed."),
-        ApoOutcome.NeedsRestart => Fail("Done, but Windows audio didn't restart: it applies after the next restart of Windows.", ApoSetup.LastResult() ?? $"OmniControl.exe {arguments}: the audio restart failed."),
-        ApoOutcome.Separate => new SetupResult("Equalizer APO is installed separately, so OmniControl leaves it as it is."),
-        ApoOutcome.NotOurs => new SetupResult("OmniControl's Equalizer APO isn't installed, so nothing was changed."),
-        ApoOutcome.NotRun => new SetupResult("Windows didn't run the step, so nothing was changed."),
-        ApoOutcome.Unsupported => new SetupResult($"{device} can't use Equalizer APO: Windows gives remote devices no effect slots, so it was left as it is."),
-        _ => Fail("Equalizer APO couldn't be set up.", ApoSetup.LastResult() ?? $"OmniControl.exe {arguments} failed."),
-    };
-
-    /// A separate Equalizer APO took over from OmniControl's copy: while OmniControl runs as administrator its leftovers (files and marker)
-    /// go at once, without a prompt; otherwise Setup's next install or uninstall takes them.
-    private void OnSupportChanged()
-    {
-        if (_cleaned || !AdministratorMode.IsElevated || Apo.Ownership is not { Owner: ApoOwner.Separate, Cleanup: not ApoCleanup.None }) return;
-        _cleaned = true;
-        _ = Guard.RunAsync("Equalizer APO: OmniControl's leftovers", () => StepAsync(ApoSetup.Clean(), string.Empty, null));
-    }
-
-    private string NameOf(string deviceId) =>
-        _mixer.Devices.Concat(_mixer.RecordingDevices).FirstOrDefault(d => d.Id == deviceId)?.Name ?? "the speakers";
-
-    /// Runs the Configurator and waits until it is closed (<see cref="CoreTiming.ConfiguratorWaitMs"/>), then reads again which devices
-    /// have Equalizer APO, so every row and folder follows what was ticked there.
-    private SetupResult RunConfigurator(string configurator)
-    {
-        var result = HelperProcess.RunElevated(configurator, string.Empty, CoreTiming.ConfiguratorWaitMs);
-        _support.Refresh();
-        return result.Failure != HelperFailure.None
-            ? Outcome(result, "Equalizer APO's Configurator", "open it from the Start menu")
-            : new SetupResult("Equalizer APO's Configurator closed. If the device isn't found yet, restart Windows.");
-    }
+    /// Where Equalizer APO stands now on the master's speakers, read at once (the support service's next look comes later).
+    private static ApoState FreshLook(string? speakers) =>
+        ApoStatus.Read(speakers, speakers is null ? Array.Empty<string>() : new[] { speakers }, Array.Empty<string>());
 
     /// VB-CABLE: its download page (VB-CABLE is installed with VB-Audio's own installer).
     public Task<SetupResult> InstallCableAsync() => Task.Run(() =>
@@ -166,9 +126,5 @@ public sealed class EngineInstaller : IDisposable
         return new SetupResult(text, Failed: true, details);
     }
 
-    public void Dispose()
-    {
-        _support.Changed -= OnSupportChanged;
-        _oneStep.Dispose();
-    }
+    public void Dispose() => _oneStep.Dispose();
 }

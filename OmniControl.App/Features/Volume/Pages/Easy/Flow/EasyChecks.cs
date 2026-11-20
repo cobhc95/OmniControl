@@ -31,7 +31,7 @@ public static class EasyChecks
         if (why is null) return Line(id, done, "Equalizer APO is on it.", CheckState.Done);
         if (!f.ApoInstalled) return Line(id, todo, "Install Equalizer APO first.", CheckState.Blocked);
         return f.DeviceSelectorFixes
-            ? Line(id, todo, $"{why}. Its Configurator fixes this.", CheckState.Todo, new EasyFix(EasyFixes.ChooseDevices, fixLabel))
+            ? Line(id, todo, $"{why}. Its Device Selector fixes this.", CheckState.Todo, new EasyFix(EasyFixes.ChooseDevices, fixLabel))
             : Line(id, todo, $"{why}.", CheckState.Blocked);
     }
 

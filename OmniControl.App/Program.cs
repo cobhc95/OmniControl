@@ -9,13 +9,11 @@ internal static class Program
     public static int Main(string[] args)
     {
         // The network service (started by Windows) and its install or removal run nothing else. Setup's --quit only asks the running copy to
-        // quit, its --sign-in-task only adds or removes the task, --equalizer-apo (also the app's own elevated helper) only does one step of
-        // OmniControl's Equalizer APO. A second start only asks the running copy to open its window (a start-up entry's start asks nothing),
-        // before it can touch any file (a staged import, settings).
+        // quit, its --sign-in-task only adds or removes the task. A second start only asks the running copy to open its window (a start-up
+        // entry's start asks nothing), before it can touch any file (a staged import, settings).
         if (NetworkServiceMode.FromArguments(args) is { } served) return served;
         if (SingleInstance.IsQuit(args)) return SingleInstance.AskToQuit();
         if (AdministratorMode.FromSetup(args) is { } done) return done;
-        if (OmniControl.Core.Engine.Apo.ApoSetup.FromCommandLine(args) is { } apo) return apo;
         var restart = AppRestart.IsRestart(args);
         var askToOpen = !StartupRegistration.IsBackgroundStart(args);
         if (!restart && SingleInstance.HandOff(askToOpen)) return 0;

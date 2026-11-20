@@ -19,28 +19,35 @@ Version: 1.4.2 (source commit bbfcc3e5024cbb9d61ba75fc88d78605cc4c9687)
 Licence: GPL-2.0-or-later
 Copyright: Copyright (C) 2012-2025 Jonas Thedering and contributors
 Website: https://sourceforge.net/projects/equalizerapo/
-Used for: The master effects run in Equalizer APO (OmniControl adds its chain through its config language). OmniControl ships Equalizer APO's audio-processing part unmodified: EqualizerAPO.dll with the libraries it loads (fftw3f.dll, sndfile.dll, msvcp140.dll, vcruntime140.dll, vcruntime140_1.dll), taken without installing from the official installer EqualizerAPO-x64-1.4.2.exe (SHA-256 7403BE7427BBE1936A40DDED082829B6E217FC4F5990FEE5CBA501F0AE055AFA, MD5 as published on SourceForge) and kept with its licence text (LICENSE-GPL-2.0.txt) in the equalizer-apo folder next to OmniControl; its exact source code is the official EqualizerAPO-src-1.4.2.zip at the website above. Setup's "Equalizer APO" task or the first use of a master effect copies these files into Program Files\OmniControl\EqualizerAPO and registers them; a separately installed Equalizer APO is never changed. OmniControl's own device code is a C# port of Equalizer APO's Device Selector logic (DeviceAPOInfo.cpp: the device checks, the default install mode, keeping and restoring the original effects under Child APOs, the install modes and troubleshooting options; DeviceTestThread.cpp and ReceiveThread.cpp: the check that the APO started; helpers/ServiceHelper.cpp: restarting Windows audio; helpers/RegistryHelper.cpp: taking a device key over when it refuses a new key; Setup/Setup.nsi: what an install writes; Core/Engine/Apo/DeviceApo, AudioService, ApoDeviceTest, ApoSetup), used under GPL-3.0-or-later through the licence's "or any later version" option.
+Used for: The master effects run in Equalizer APO (OmniControl adds its chain through its config language). OmniControl ships Equalizer APO's official installer unmodified, EqualizerAPO-x64-1.4.2.exe (11,980,366 bytes, SHA-256 7403BE7427BBE1936A40DDED082829B6E217FC4F5990FEE5CBA501F0AE055AFA, MD5 410AAB9749AE4673B950BC29A4EB226F as published on SourceForge), with its licence texts (LICENSE-GPL-2.0.txt, LICENSE-libsndfile-LGPL-2.1.txt) in the equalizer-apo folder next to OmniControl; its exact source code is the official EqualizerAPO-src-1.4.2.zip at the website above. Setup's "Equalizer APO" task and the app's "Install Equalizer APO…" run that installer as it is, so Equalizer APO is installed as its own program, with its own Device Selector, uninstaller and Installed apps entry; OmniControl never changes its files and does not remove it.
 
 Name: FFTW (through Equalizer APO)
 Version: 3.3.9 (its version string; single precision, as shipped in Equalizer APO 1.4.2)
 Licence: GPL-2.0-or-later
 Copyright: Copyright (c) 2003, 2007-14 Matteo Frigo; Copyright (c) 2003, 2007-14 Massachusetts Institute of Technology
 Website: https://www.fftw.org/
-Used for: Equalizer APO's convolution and filters (fftw3f.dll, unmodified, in the equalizer-apo folder; licence text LICENSE-GPL-2.0.txt).
+Used for: Equalizer APO's convolution and filters (fftw3f.dll, unmodified, inside Equalizer APO's installer; licence text LICENSE-GPL-2.0.txt).
 
 Name: libsndfile (through Equalizer APO)
 Version: 1.2.2
 Licence: LGPL-2.1-or-later
 Copyright: Copyright (C) 1999-2023 Erik de Castro Lopo and the libsndfile contributors
 Website: https://github.com/libsndfile/libsndfile
-Used for: Equalizer APO reading impulse response files (sndfile.dll, unmodified, in the equalizer-apo folder; licence text LICENSE-libsndfile-LGPL-2.1.txt). Its source is at the website above.
+Used for: Equalizer APO reading impulse response files (sndfile.dll, unmodified, inside Equalizer APO's installer; licence text LICENSE-libsndfile-LGPL-2.1.txt). Its source is at the website above.
+
+Name: Qt (through Equalizer APO)
+Version: 6 (as built into Equalizer APO 1.4.2's installer)
+Licence: LGPL-3.0-only
+Copyright: Copyright (C) The Qt Company Ltd. and other contributors
+Website: https://www.qt.io/
+Used for: The windows of Equalizer APO's own programs (Device Selector, Configuration Editor): Qt6Core, Qt6Gui, Qt6Network, Qt6Svg, Qt6Widgets and their plug-ins, unmodified, inside Equalizer APO's installer. Their source is at the website above.
 
 Name: Microsoft Visual C++ Redistributable (through Equalizer APO)
 Version: 14.40.33810.0
 Licence: Microsoft Software License Terms (redistributable files of Visual Studio)
 Copyright: Copyright (c) Microsoft Corporation
 Website: https://learn.microsoft.com/cpp/windows/latest-supported-vc-redist
-Used for: The C++ runtime Equalizer APO needs (msvcp140.dll, vcruntime140.dll, vcruntime140_1.dll, signed by Microsoft, as shipped in Equalizer APO 1.4.2), placed beside EqualizerAPO.dll.
+Used for: The C++ runtime Equalizer APO needs (msvcp140.dll, msvcp140_1.dll, msvcp140_2.dll, vcruntime140.dll, vcruntime140_1.dll, signed by Microsoft), inside Equalizer APO's installer, which places them beside EqualizerAPO.dll.
 
 Name: NAudio (NAudio.Core, NAudio.Wasapi, NAudio.Vst3, NAudio.Midi)
 Version: 3.3.0

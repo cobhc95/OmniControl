@@ -50,9 +50,10 @@ public sealed class VolumeModule : IFeatureModule
         context.Osd.WatchVolumeOf(() => mixer.MasterDeviceId); // the pop-up for outside volume changes follows the master's real device
         mixer.MasterDeviceChanged += context.Osd.RetargetVolume;
         var installer = _installer = new EngineInstaller(support, mixer);
-        effects.ApoWanted += device => _ = Guard.RunAsync("Equalizer APO: first use", () => installer.FirstUseAsync(device, context.Report));
+        effects.ApoWanted += () => _ = Guard.RunAsync("Equalizer APO: first use", () => installer.FirstUseAsync(context.AskAsync, context.Report));
         var fxWindows = _fxWindows = new FxWindowService(mixer, effects, support, plugins, displayFeeds, Library, _presets, context.Report, context.OpenPresetManager,
-            new FxMixerLinks(ShowMixerFor, () => _page?.Apo.DevicesAsync() ?? Task.CompletedTask, () => _page?.Apo.Devices.Tip ?? string.Empty), context.AskAsync, view);
+            new FxMixerLinks(ShowMixerFor, () => _page?.Apo.DevicesAsync() ?? Task.CompletedTask,
+                () => _page?.Apo.Devices is { } step ? (step.Label, step.Tip) : (EffectsRules.ApoDevicesLabel, string.Empty)), context.AskAsync, view);
 
         context.Imports.OnReload(DataStores.Mixer, mixer.ReloadFromDisk);
         context.Imports.OnReload(DataStores.EffectPresets, _presets.ReloadFromDisk);

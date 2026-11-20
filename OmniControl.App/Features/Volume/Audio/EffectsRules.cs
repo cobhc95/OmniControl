@@ -75,8 +75,7 @@ public static partial class EffectsRules
 
     private static string? EndpointMissing(ApoState apo, ApoEndpoint? endpoint, string where)
     {
-        if (endpoint is not null && apo.FolderFor(endpoint) is not null)
-            return apo.OwnDevice(endpoint.EndpointId) is { Check: ApoSetup.Failed } ? $"Equalizer APO didn't start on {where} (its check failed)" : null;
+        if (endpoint is not null && apo.FolderFor(endpoint) is not null) return null;
         if (endpoint is { Attachable: false }) return $"Equalizer APO can't run on {where}: Windows gives remote devices no effect slots";
         if (apo.UpstreamInstalled)
             return !apo.UpstreamRegistered ? "Equalizer APO is not registered"
@@ -87,74 +86,52 @@ public static partial class EffectsRules
         return "Equalizer APO is not installed";
     }
 
-    /// A separate Equalizer APO's Device Selector is what fixes a device it is missing on (registers it, puts it on the device, turns
-    /// enhancements on); OmniControl's own copy has none (<see cref="BundledFixes"/>).
+    /// Equalizer APO's own Device Selector is what fixes a device it is missing on (registers it, puts it on the device, turns
+    /// enhancements on); OmniControl only opens it.
     public static bool DeviceSelectorFixes(ApoState apo) => apo.UpstreamDeviceSelector is not null && apo.UpstreamConfigFolder is not null;
 
-    /// OmniControl's own Equalizer APO would make a chain run on <paramref name="endpoint"/>: none is installed and this build ships one, or
-    /// OmniControl's copy is not on that device yet (Device Selector: "APO can be installed"). A device without effect slots is never tried.
-    public static bool BundledFixes(ApoState apo, ApoEndpoint? endpoint) =>
-        endpoint is { Attachable: true } && apo.FolderFor(endpoint) is null && apo.Ownership.Owner switch
-        {
-            ApoOwner.None => apo.Bundled,
-            ApoOwner.Ours => apo.OwnDevice(endpoint.EndpointId) is { Attached: false },
-            _ => false,
-        };
+    /// Installing Equalizer APO (its official installer, which OmniControl ships) is the step that would make a chain run on
+    /// <paramref name="endpoint"/>: it is not installed and the device has effect slots. Never run by itself: it is offered.
+    public static bool InstallFixes(ApoState apo, ApoEndpoint? endpoint) => endpoint is { Attachable: true } && !apo.UpstreamInstalled;
 
-    /// Where Equalizer APO stands on the master's speakers, in one sentence (the master's Method menu, its Equalizer APO card): installed
-    /// or not, on the speakers or not, and how its last check there ended. A separate install is not checked by OmniControl, so only
-    /// whether it is on them is said.
+    /// Where Equalizer APO stands on the master's speakers, in one sentence (the master's Method menu, its Equalizer APO card): installed or
+    /// not, on the speakers or not, and why Windows doesn't run it there when the registry says so. Whether it really started is not checked.
     public static string ApoNowOn(ApoState apo, ApoEndpoint? speakers)
     {
-        var own = apo.OwnDevice(speakers?.EndpointId);
-        var name = own?.Name ?? "the master's speakers";
+        var name = speakers?.Name is { Length: > 0 } connector ? connector : "the master's speakers";
         if (speakers is { Attachable: false }) return $"Equalizer APO can't run on {name}: Windows gives remote devices no effect slots.";
-        return apo.Ownership.Owner switch
+        return ApoStandOn(apo, speakers) switch
         {
-            ApoOwner.Ours when own is null => "OmniControl's Equalizer APO is installed; no speakers are plugged in for it.",
-            ApoOwner.Ours when !own.Attached => $"OmniControl's Equalizer APO is installed, not on {name} yet.",
-            ApoOwner.Ours when own.EnhancementsOff => $"Equalizer APO is on {name}, but audio enhancements are off there.",
-            ApoOwner.Ours => own.Check switch
-            {
-                ApoSetup.Running => $"Equalizer APO is on {name} and its check passed.",
-                ApoSetup.OriginalFailed => $"Equalizer APO runs on {name}; the device's own effects didn't start inside it.",
-                ApoSetup.Failed => $"Equalizer APO is on {name}, but its check failed: it didn't start there.",
-                ApoSetup.NeedsRestart => $"Equalizer APO is on {name}; it starts after Windows audio restarts.",
-                _ => $"Equalizer APO is on {name}; it hasn't been checked there.",
-            },
-            ApoOwner.Separate => ApoMissingOn(apo, speakers) is { } why ? $"{why}." : $"Equalizer APO (installed separately) is on {name}.",
-            _ => apo.Bundled ? "Equalizer APO is not installed; OmniControl brings its own copy." : "Equalizer APO is not installed.",
+            ApoStand.NotInstalled => "Equalizer APO is not installed; OmniControl brings its official installer.",
+            ApoStand.NotOn => $"Equalizer APO is installed, not on {name} yet.",
+            ApoStand.NotRunning => $"{ApoMissingOn(apo, speakers)}.",
+            _ => $"Equalizer APO is on {name}.",
         };
     }
 
-    /// THE step that installs or uninstalls Equalizer APO on devices, wherever it is offered.
-    public const string ApoDevicesLabel = "Equalizer APO devices…";
+    /// THE step that opens Equalizer APO's own Device Selector, and the one offered instead while it is not installed.
+    public const string ApoDevicesLabel = "Equalizer APO devices…", ApoInstallLabel = "Install Equalizer APO…";
 
-    /// How Equalizer APO stands on the master's speakers: OmniControl's copy runs there only after a passed check; a separate install
-    /// (which OmniControl does not check) counts as running where Windows loads it.
-    public static ApoStand ApoStandOn(ApoState apo, ApoEndpoint? speakers)
-    {
-        if (apo.Ownership.Owner == ApoOwner.None && !apo.UpstreamInstalled) return ApoStand.NotInstalled;
-        if (apo.Ownership.Owner == ApoOwner.Ours)
-            return apo.OwnDevice(speakers?.EndpointId) is not { Attached: true } own ? ApoStand.NotOn
-                : own.Check is ApoSetup.Running or ApoSetup.OriginalFailed && speakers is not null && apo.FolderFor(speakers) is not null ? ApoStand.Running
-                : ApoStand.NotRunning;
-        return speakers?.UpstreamOn != true ? ApoStand.NotOn : apo.FolderFor(speakers) is not null ? ApoStand.Running : ApoStand.NotRunning;
-    }
+    /// How Equalizer APO stands on the master's speakers, from the registry only (Device Selector's own facts): on them and loaded by
+    /// Windows counts as running; its check that it really started is Device Selector's, which OmniControl does not run.
+    public static ApoStand ApoStandOn(ApoState apo, ApoEndpoint? speakers) =>
+        !apo.UpstreamInstalled ? ApoStand.NotInstalled
+        : speakers?.UpstreamOn != true ? ApoStand.NotOn
+        : apo.FolderFor(speakers) is not null ? ApoStand.Running
+        : ApoStand.NotRunning;
 
-    /// The Equalizer APO card's facts in the master's Method menu ("✓ Installed on Speakers · ✕ Not running") and the small label after its
-    /// name (whose copy it is).
+    /// The Equalizer APO card's facts in the master's Method menu ("✓ On Speakers", "✕ Not on Speakers") and the small label after its
+    /// name ("installed separately": it is its own program).
     public static (string Facts, string Label) ApoCardOf(ApoState apo, ApoEndpoint? speakers)
     {
-        var label = apo.Ownership.Owner switch { ApoOwner.Ours => "managed by OmniControl", ApoOwner.Separate => "installed separately", _ => string.Empty };
-        var name = apo.OwnDevice(speakers?.EndpointId)?.Connector is { Length: > 0 } connector ? connector : "these speakers";
+        var name = speakers?.Name is { Length: > 0 } connector ? connector : "these speakers";
         return (ApoStandOn(apo, speakers) switch
         {
             ApoStand.NotInstalled => "Not installed",
             ApoStand.NotOn => $"✕ Not on {name}",
-            ApoStand.NotRunning => $"✓ Installed on {name} · ✕ Not running",
-            _ => $"✓ Installed on {name} · ✓ Running",
-        }, label);
+            ApoStand.NotRunning => $"✓ On {name} · ✕ Not running",
+            _ => $"✓ On {name}",
+        }, apo.UpstreamInstalled ? "installed separately" : string.Empty);
     }
 
     /// The fact under the master's chip while it is set to Equalizer APO and that does not run (null = the engine's own fact).

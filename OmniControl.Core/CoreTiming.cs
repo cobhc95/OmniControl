@@ -122,19 +122,12 @@ public static class CoreTiming
     /// gesture within <see cref="TrackpadTakeoverReapplyLogWindowMs"/>.
     public const int TrackpadTakeoverReapplyGapMs = 1000, TrackpadTakeoverReapplyLogLimit = 5, TrackpadTakeoverReapplyLogWindowMs = 60_000;
 
-    /// How long an elevated helper (the APO installer) may run before OmniControl stops waiting for it.
+    /// How long an elevated helper (Windows' netcfg) may run before OmniControl stops waiting for it.
     public const int ElevatedHelperTimeoutMs = 120_000;
 
-    /// How long OmniControl waits for Equalizer APO's Configurator (Device Selector) to be closed before it reads the devices again: the
-    /// user ticks devices there at their own pace, so the wait is long; a worker waits, never the UI.
+    /// How long OmniControl waits for Equalizer APO's Device Selector (alone, or opened by its installer) to be closed before it reads the
+    /// devices again: the user ticks devices there at their own pace, so the wait is long; a worker waits, never the UI.
     public const int ConfiguratorWaitMs = 30 * 60_000;
-
-    /// Restarting Windows audio (Equalizer APO's ServiceHelper): the whole stop and start may take this long, a start that has not
-    /// happened is asked again after <see cref="AudioRestartRetryMs"/>, the state is read every <see cref="AudioRestartPollMs"/>.
-    public const int AudioRestartLimitMs = 30_000, AudioRestartRetryMs = 5_000, AudioRestartPollMs = 100;
-
-    /// After the audio restart, how long Equalizer APO has to say it started on the devices being checked (DeviceTestThread's 3 s).
-    public const int ApoCheckWaitMs = 3_000;
 
     /// How long a Tailscale or netsh read may take, and how long a plain connect test waits (Other PCs over Tailscale).
     public const int TailscaleCliWaitMs = 5_000, TcpReachWaitMs = 3_000;

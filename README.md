@@ -97,7 +97,7 @@ Setup installs OmniControl for all users into Program Files (Windows asks for ad
 - Optional:
   - **Python and python-kasa**, for Tapo and Kasa through Scripts.
   - **An Android emulator**, for Simulation.
-  - **Equalizer APO**, for master effects on the real speakers.
+  - **Equalizer APO**, for master effects on the real speakers. OmniControl ships its official installer: Setup installs it (a tick box), or "Install Equalizer APO…" in the app.
   - **A virtual audio cable**, for per-app and microphone effects.
 
 ## Build from source

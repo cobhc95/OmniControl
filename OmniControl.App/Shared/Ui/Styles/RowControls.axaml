@@ -88,7 +88,7 @@
         <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" />
     </Style>
-    <!-- .risk = a method set but not running (Equalizer APO on the speakers whose check failed): red words and edge -->
+    <!-- .risk = a method set but not running (Equalizer APO on the speakers, but Windows doesn't load it there): red words and edge -->
     <Style Selector="Button.selector.method.risk /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Foreground" Value="{DynamicResource BrushDanger}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushTagRisk}" />

@@ -43,20 +43,40 @@ Filename: "{app}\OmniControl.exe"; Description: "Start OmniControl"; Flags: nowa
 ; The network blocks a crashed run may have left (OmniControl's own firewall rule group; upload limits end with a restart).
 Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -NonInteractive -Command ""Remove-NetFirewallRule -Group 'OmniControl' -ErrorAction SilentlyContinue"""; Flags: runhidden waituntilterminated; RunOnceId: "RemoveFirewallGroup"
 
-; ---- OmniControl's own Equalizer APO (Core/Engine/Apo/ApoSetup): installed after the files, removed by uninstall ----
+; ---- Equalizer APO: its official installer (Core/Engine/Apo/ApoInstaller, in {app}\equalizer-apo), run after the files ----
+; It is its own program with its own uninstaller and Apps entry, so OmniControl's uninstall leaves it.
 [Tasks]
-Name: equalizerapo; Description: "Equalizer APO (master effects on your speakers; skipped automatically if already installed)"
+Name: equalizerapo; Description: "Equalizer APO (master effects on your speakers; skipped if already installed)"
 [Code]
-// One step of the app's elevated helper ("--equalizer-apo install|remove"); the app itself never changes a separately installed Equalizer APO.
-function EqualizerApo(Verb: String): String;
+var EqualizerApoNote: String;
+
+// Its Uninstall entry, or its InstallPath holding EqualizerAPO.dll (retyped from Core/Engine/Apo/ApoIds): its uninstaller leaves
+// HKLM\SOFTWARE\EqualizerAPO behind, so the key alone does not count.
+function EqualizerApoInstalled(): Boolean;
+var Folder: String;
 begin
-  Result := '("' + ExpandConstant('{app}\OmniControl.exe') + '" --equalizer-apo ' + Verb + ')';
+  Result := RegKeyExists(HKLM64, 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\EqualizerAPO')
+    or (RegQueryStringValue(HKLM64, 'SOFTWARE\EqualizerAPO', 'InstallPath', Folder) and FileExists(AddBackslash(Folder) + 'EqualizerAPO.dll'));
 end;
 
-// OmniControl's marker (retyped from Core/Engine/Apo/ApoIds OwnMarkerKey and OwnPathValue): only then does uninstall need the removal.
-function EqualizerApoOurs(): Boolean;
+// NSIS /S skips its pages (its default folder, its update check ticked as its own installer ticks it) but still opens its Device Selector
+// and waits for it; a restart its check asks for is never done by a silent NSIS installer, so the finish page says when one may be needed.
+procedure InstallEqualizerApo();
+var Code: Integer;
 begin
-  Result := RegValueExists(HKLM64, 'SOFTWARE\OmniControl\EqualizerApo', 'Path');
+  if not WizardIsTaskSelected('equalizerapo') or EqualizerApoInstalled() then Exit;
+  WizardForm.StatusLabel.Caption := 'Installing Equalizer APO: tick your speakers in its Device Selector when it opens...';
+  Exec(ExpandConstant('{app}\equalizer-apo\EqualizerAPO-x64-1.4.2.exe'), '/S', '', SW_SHOWNORMAL, ewWaitUntilTerminated, Code);
+  if EqualizerApoInstalled() then
+    EqualizerApoNote := 'Equalizer APO is installed. If its check showed a device that didn''t start, restart Windows; its Device Selector (Start menu) changes its devices.'
+  else
+    EqualizerApoNote := 'Equalizer APO was not installed. OmniControl offers it again when you first use a master effect.';
+end;
+
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  if (CurPageID = wpFinished) and (EqualizerApoNote <> '') then
+    WizardForm.FinishedLabel.Caption := WizardForm.FinishedLabel.Caption + #13#10#13#10 + EqualizerApoNote;
 end;
 // ---- end of Equalizer APO ----
 
@@ -224,12 +244,12 @@ begin
   Steps := '';
   if Driver then Steps := NetCfg('-v -l "' + ExpandConstant(PacketFilterInf) + '" -c s -i ' + PacketFilterComponent);
   if RunsAsAdministrator() then Steps := AddStep(Steps, SignInTask('on'));
-  if WizardIsTaskSelected('equalizerapo') then Steps := AddStep(Steps, EqualizerApo('install'));
   if WizardIsTaskSelected('networkservice') then
     Steps := AddStep(Steps, NetworkService('install "' + GetEnv('USERDOMAIN') + '\' + GetUserNameString() + '"'))
   else if NetworkServiceInstalled() then
     Steps := AddStep(Steps, NetworkService('remove'));
   RunSteps(Steps);
+  InstallEqualizerApo();
   if not Driver then Exit;
   if PacketFilterInstalled() then
     RegWriteDWordValue(HKCU, PacketFilterRecordKey, PacketFilterRecordValue, 1)
@@ -249,7 +269,6 @@ begin
   if RunsAsAdministrator() then Steps := SignInTask('off');
   if NetworkServiceInstalled() then Steps := AddStep(Steps, NetworkService('remove'));
   if Driver and PacketFilterInstalled() then Steps := AddStep(Steps, NetCfg('-v -u ' + PacketFilterComponent));
-  if EqualizerApoOurs() then Steps := AddStep(Steps, EqualizerApo('remove'));
   RunSteps(Steps);
   if not Driver then Exit;
   if PacketFilterInstalled() then

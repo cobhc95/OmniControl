@@ -18,7 +18,7 @@ public enum HelperFailure
 /// How a helper program ended: its exit code, or why it did not end normally, and the technical detail for the log.
 public sealed record HelperResult(int ExitCode, HelperFailure Failure, string Detail);
 
-/// Starts a helper program (Equalizer APO's Configurator, Windows' netcfg) elevated and waits for it. Call off the UI thread.
+/// Starts a helper program (Equalizer APO's installer and Device Selector, Windows' netcfg) elevated and waits for it. Call off the UI thread.
 public static class HelperProcess
 {
     /// Windows' "the user said No to the administrator prompt" error.

@@ -55,7 +55,7 @@ public sealed record CableOffer(int Pairs, bool Free, bool BusHolds, StatusKind 
 public sealed record RouteFacts(CableOffer Cables, string? RecordingWhy, RunMethod Current, string? ApoCableWhy = EffectsRules.NeedsSecondCable);
 
 /// One entry of a Method menu as it stands now: whether it can be chosen, its live description, its tooltip (the reason when it can't)
-/// and a small muted label after its name ("managed by OmniControl"; "" = none).
+/// and a small muted label after its name ("installed separately"; "" = none).
 public sealed record RouteOffer(bool Available, string Description, string Tip, string Label = "");
 
 /// A test's result in two sizes: one short line for the row and the footer, the full explanation for their tooltips.

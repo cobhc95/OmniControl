@@ -3,12 +3,12 @@ using OmniControl.App.Features.Volume.Audio.Engine;
 
 namespace OmniControl.App.Features.Volume.Pages;
 
-/// The steps at the foot of the master's Method menu ("Equalizer APO devices…", VB-CABLE), the master's and a cable's Equalizer APO
-/// fixes, and the per-program Test.
+/// The steps at the foot of the master's Method menu ("Equalizer APO devices…" or "Install Equalizer APO…", VB-CABLE), the master's and
+/// a cable's Equalizer APO fixes, and the per-program Test.
 public sealed partial class VolumePageViewModel
 {
-    /// The steps at the foot of the master's Method menu: "Equalizer APO devices…" (installing and uninstalling Equalizer APO happens only
-    /// there), then the virtual cable's (Install VB-CABLE, or More cables and Remove VB-CABLE once one is installed).
+    /// The steps at the foot of the master's Method menu: Equalizer APO's one step (its Device Selector, or its installer while it is not
+    /// installed), then the virtual cable's (Install VB-CABLE, or More cables and Remove VB-CABLE once one is installed).
     private IReadOnlyList<CardAction> SetupSteps()
     {
         var steps = new List<CardAction> { Apo.Devices };
@@ -25,14 +25,14 @@ public sealed partial class VolumePageViewModel
 
     private CardAction? _removeCable;
 
-    /// A separate Equalizer APO's Configurator (administrator): where it is put on a cable (a program's Method menu, Easy).
+    /// Equalizer APO's Device Selector (administrator): where it is put on a cable (a program's Method menu, Easy).
     private IAsyncRelayCommand ChooseDevicesCommand => _chooseDevices ??=
         new AsyncRelayCommand(() => RunSetupAsync(null, _installer.ChooseEqualizerApoDevicesAsync()));
 
     private IAsyncRelayCommand? _chooseDevices;
     private CardAction? _cableDevices;
 
-    /// The master's step when Equalizer APO does not run on its speakers: "Equalizer APO devices…"; null when it runs there.
+    /// The master's step when Equalizer APO does not run on its speakers (<see cref="EqualizerApoGroup.Devices"/>); null when it runs there.
     private CardAction? MasterApoFix() =>
         _engine.MasterFacts.ApoWhy is null && _engine.MasterFacts.ApoStand == ApoStand.Running ? null : Apo.Devices;
 
@@ -53,12 +53,6 @@ public sealed partial class VolumePageViewModel
     private async Task RunSetupAsync(string? progress, Task<SetupResult> work)
     {
         if (progress is not null) _report(progress);
-        var result = await work;
-        _report(result.Text);
-        if (result.Failed)
-            await _ask(new DialogMessage(SetupFailedTitle, $"{result.Text}\nDetails: {EngineInstaller.LogPath}", Details: result.Details));
+        await EngineInstaller.ShowAsync(await work, _report, _ask);
     }
-
-    private const string SetupFailedTitle = "The setup step didn't finish";
-
 }
