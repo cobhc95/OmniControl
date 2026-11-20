@@ -70,11 +70,16 @@ public sealed class DeviceApo
         }
     }
 
-    /// DeviceAPOInfo::load: null when the device is not present.
+    /// The device's MMDevices key: under Render, else under Capture (DeviceAPOInfo::load's order); null when it has neither, as Remote
+    /// Audio and other remote endpoints (under RemoteRender/RemoteCapture) have no effect slots, so Equalizer APO can't be put on them.
+    internal static string? KeyOf(IApoRegistry reg, string deviceGuid) =>
+        new[] { ApoIds.RenderKey, ApoIds.CaptureKey }.Select(root => $@"{root}\{deviceGuid}").FirstOrDefault(reg.KeyExists);
+
+    /// DeviceAPOInfo::load: null when the device is not present or has no key (<see cref="KeyOf"/>; Device Selector's registry read throws there).
     internal static DeviceApo? Load(IApoRegistry reg, string deviceGuid)
     {
-        var input = !reg.KeyExists($@"{ApoIds.RenderKey}\{deviceGuid}");
-        var d = new DeviceApo(deviceGuid, input);
+        if (KeyOf(reg, deviceGuid) is not { } key) return null;
+        var d = new DeviceApo(deviceGuid, key.StartsWith(ApoIds.CaptureKey, StringComparison.Ordinal));
         var state = reg.ReadDword(d.KeyPath, ApoIds.DeviceStateValue) ?? 0;
         if ((state & ApoIds.StateNotPresent) != 0) return null;
         d.Disabled = (state & ApoIds.StateDisabled) != 0 || (state & ApoIds.StateDisabledInRegistry) != 0;
@@ -85,7 +90,7 @@ public sealed class DeviceApo
         d.EnhancementsOff = reg.KeyExists(d.FxKey) && reg.ReadDword(d.FxKey, ApoIds.DisableEnhancements) is { } off && off != 0;
 
         var mode = ApoInstallMode.LfxGfx;
-        bool preMix = true, postMix = !input, originalPre = true, originalPost = !input, silent = false, auto = true;
+        bool preMix = true, postMix = !d.Input, originalPre = true, originalPost = !d.Input, silent = false, auto = true;
 
         if (!reg.KeyExists(d.FxKey))
         {

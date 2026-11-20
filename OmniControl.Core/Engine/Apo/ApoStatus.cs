@@ -11,6 +11,9 @@ namespace OmniControl.Core.Engine.Apo;
 public sealed record ApoEndpoint(string EndpointId, bool UpstreamOn, bool EnhancementsOff, int Channels = ApoEndpoint.Stereo)
 {
     public const int Stereo = 2;
+
+    /// Windows keeps effect slots for it, so Equalizer APO can be put on it; false for Remote Audio and other remote devices.
+    public bool Attachable { get; init; } = true;
 }
 
 /// What is in place for effects in Windows' audio engine on this PC (read only): the user's own Equalizer APO (upstream), the
@@ -173,7 +176,8 @@ public static class ApoStatus
     /// One endpoint's slots and enhancements value, the same checks for playback and recording devices.
     private static ApoEndpoint EndpointOf(RegistryKey machine, string endpointId)
     {
-        var key = EndpointKey(machine, ApoIds.DeviceKeyOf(endpointId));
+        if (DeviceApo.KeyOf(new MachineRegistry(), ApoIds.DeviceKeyOf(endpointId)) is not { } key)
+            return new ApoEndpoint(endpointId, false, false) { Attachable = false };
         var slots = SlotsOf(machine, key);
         return new ApoEndpoint(endpointId, slots.Any(ApoIds.IsUpstream), EnhancementsOffOn(machine, key), ChannelsOf(machine, key));
     }
@@ -193,14 +197,6 @@ public static class ApoStatus
     {
         var info = FileVersionInfo.GetVersionInfo(file);
         return info.FileMajorPart == 0 && info.FileMinorPart == 0 && info.FileBuildPart == 0 ? null : new Version(info.FileMajorPart, info.FileMinorPart, info.FileBuildPart);
-    }
-
-    /// The MMDevices key of a device ({guid}): under Render when it is a playback device, else under Capture (Equalizer APO's own
-    /// rule, DeviceAPOInfo::load: the Render key is tried first, a device that is not there is a recording device).
-    internal static string EndpointKey(RegistryKey machine, string deviceGuid)
-    {
-        using var render = machine.OpenSubKey($@"{ApoIds.RenderKey}\{deviceGuid}");
-        return render is not null ? $@"{ApoIds.RenderKey}\{deviceGuid}" : $@"{ApoIds.CaptureKey}\{deviceGuid}";
     }
 
     /// Equalizer APO's install folder when its program files are really there (EqualizerAPO.dll in its InstallPath, else in its usual
@@ -249,7 +245,7 @@ public static class ApoStatus
         return fx?.GetValue(ApoIds.DisableEnhancements) is int off && off != 0;
     }
 
-    /// The class ids in a device's five effect slots (null where a slot is empty); <paramref name="endpointKey"/> from <see cref="EndpointKey"/>.
+    /// The class ids in a device's five effect slots (null where a slot is empty); <paramref name="endpointKey"/> from <see cref="DeviceApo.KeyOf"/>.
     internal static string?[] SlotsOf(RegistryKey machine, string endpointKey)
     {
         using var fx = machine.OpenSubKey($@"{endpointKey}\FxProperties");

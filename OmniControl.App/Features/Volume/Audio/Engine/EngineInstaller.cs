@@ -124,6 +124,7 @@ public sealed class EngineInstaller : IDisposable
         ApoOutcome.Separate => new SetupResult("Equalizer APO is installed separately, so OmniControl leaves it as it is."),
         ApoOutcome.NotOurs => new SetupResult("OmniControl's Equalizer APO isn't installed, so nothing was changed."),
         ApoOutcome.NotRun => new SetupResult("Windows didn't run the step, so nothing was changed."),
+        ApoOutcome.Unsupported => new SetupResult($"{device} can't use Equalizer APO: Windows gives remote devices no effect slots, so it was left as it is."),
         _ => Fail("Equalizer APO couldn't be set up.", ApoSetup.LastResult() ?? $"OmniControl.exe {arguments} failed."),
     };
 

@@ -216,6 +216,14 @@ public class BundledApoTests
     }
 
     [Fact]
+    public void RemoteDevice_HasNoKeyAndIsNotTakenForAMicrophone()
+    {
+        var reg = Device(Render.Replace(@"\Render\", @"\RemoteRender\"), null);
+        Assert.Null(DeviceApo.KeyOf(reg, Guid));
+        Assert.Null(DeviceApo.Load(reg, Guid));
+    }
+
+    [Fact]
     public void InstallState_RoundTripsThroughTheHelperArguments()
     {
         var state = new ApoInstallState(ApoInstallMode.SfxMfx, true, false, true, false, true, false);

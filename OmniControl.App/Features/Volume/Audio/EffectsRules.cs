@@ -73,6 +73,7 @@ public static partial class EffectsRules
     private static string? EndpointMissing(ApoState apo, ApoEndpoint? endpoint, string where)
     {
         if (endpoint is not null && apo.FolderFor(endpoint) is not null) return null;
+        if (endpoint is { Attachable: false }) return $"Equalizer APO can't run on {where}: Windows gives remote devices no effect slots";
         if (apo.UpstreamInstalled)
             return !apo.UpstreamRegistered ? "Equalizer APO is not registered"
                 : endpoint?.UpstreamOn != true ? $"Equalizer APO is not on {where}"
@@ -87,9 +88,9 @@ public static partial class EffectsRules
     public static bool DeviceSelectorFixes(ApoState apo) => apo.UpstreamDeviceSelector is not null && apo.UpstreamConfigFolder is not null;
 
     /// OmniControl's own Equalizer APO would make a chain run on <paramref name="endpoint"/>: none is installed and this build ships one, or
-    /// OmniControl's copy is not on that device yet. A device whose driver blocked it is not tried again by itself.
+    /// OmniControl's copy is not on that device yet. A device whose driver blocked it, or that has no effect slots, is not tried by itself.
     public static bool BundledFixes(ApoState apo, ApoEndpoint? endpoint) =>
-        endpoint is not null && apo.FolderFor(endpoint) is null && apo.Ownership.Owner switch
+        endpoint is { Attachable: true } && apo.FolderFor(endpoint) is null && apo.Ownership.Owner switch
         {
             ApoOwner.None => apo.Bundled,
             ApoOwner.Ours => apo.OwnDevice(endpoint.EndpointId) is { Check: not ApoSetup.Blocked },

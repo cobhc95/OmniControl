@@ -16,6 +16,8 @@ public enum ApoOutcome
     NotOurs = 5,
     /// The administrator prompt was refused, or Windows blocked or did not start the helper.
     NotRun = 6,
+    /// The device has no effect slots in Windows (Remote Audio and other remote devices), so it was left alone; an install before it still happened.
+    Unsupported = 7,
 }
 
 /// OmniControl's own Equalizer APO: install, attach a device, detach one, remove all, take away leftovers. Every step needs administrator
@@ -133,6 +135,7 @@ public static class ApoSetup
     private static ApoOutcome AttachDevice(string guid, ApoInstallState? wanted)
     {
         if (ApoStatus.Ownership().Owner != ApoOwner.Ours) return ApoOutcome.NotOurs;
+        if (DeviceApo.KeyOf(Reg, guid) is null) return ApoOutcome.Unsupported;
         if (FixWindows() is { } problem) return Fail(problem);
         var device = DeviceApo.Load(Reg, guid) ?? throw new InvalidDataException("The device is not plugged in.");
         if (device.Installed)
