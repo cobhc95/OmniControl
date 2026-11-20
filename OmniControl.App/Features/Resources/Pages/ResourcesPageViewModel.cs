@@ -64,9 +64,11 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     /// The status line's network service "Install…" link: not installed, or failing.
     public bool OffersServiceInstall => _limits.Service.OffersInstall;
 
-    /// Neither the network service nor OmniControl as administrator can do the work: the group shows only <see cref="UnavailableLine"/> and Install….
+    /// Neither the network service nor OmniControl as administrator can do the work: the group shows only <see cref="UnavailableLine"/> and,
+    /// on an installed copy, Install….
     public bool Unavailable => !_limits.Available;
-    public string UnavailableLine => NetworkLimits.UnavailableLine;
+    public string UnavailableLine => _limits.UnavailableLine;
+    public bool CanInstallService => _limits.CanInstallService;
     public IRelayCommand InstallServiceCommand { get; }
     public string InstallServiceTip => NetworkLimits.InstallServiceTip;
 
@@ -279,6 +281,8 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     private void OnLimitsChanged() => Dispatcher.UIThread.Post(() =>
     {
         OnPropertyChanged(nameof(Unavailable));
+        OnPropertyChanged(nameof(UnavailableLine));
+        OnPropertyChanged(nameof(CanInstallService));
         Need();
         ShowStatus();
     });

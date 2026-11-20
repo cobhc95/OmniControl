@@ -14,7 +14,8 @@ public sealed class NetworkLimits : IDisposable
     public const int DefaultKbps = 1024;
 
     /// The one line the Network by app group shows instead of its programs while no one can do the work.
-    public const string UnavailableLine = "Per-app limits and speeds need the network service, which is not installed";
+    public string UnavailableLine => _canHost ? "Per-app limits and speeds need the network service, which is not installed"
+        : "Per-app limits and speeds need OmniControl as administrator; the network service needs the installed version";
 
     /// The tooltip of every Install… of the network service.
     public const string InstallServiceTip = "Installs OmniControl's network service (Windows asks once), so per-app limits work without running OmniControl as administrator.";
@@ -29,8 +30,8 @@ public sealed class NetworkLimits : IDisposable
     private NetworkWork? _local; // OmniControl's own work while it runs as administrator and the service is not installed
     private volatile IReadOnlyList<NetworkRule> _wanted; // made on the UI thread, read by the worker
     private volatile DownloadState _download = DownloadState.Checking;
-    private volatile bool _serviceInstalled;
-    private bool _stopped, _ruled, _installTried;
+    private volatile bool _serviceInstalled, _canHost = true; // _canHost: this copy may install the service (not portable), known after the first sync
+    private bool _stopped, _ruled, _installTried, _hostChecked;
     private string? _toldFailure; // the download failure last told (worker or packet thread), told once
     private string? _toldRules; // the rules' problems last told (worker, under the lock), told once until they change or clear
     private volatile string? _installFailure; // why the last install of Windows Packet Filter failed, until one works
@@ -53,9 +54,12 @@ public sealed class NetworkLimits : IDisposable
     /// True when limits and per-program speeds can work: the service is installed or OmniControl runs as administrator (any thread).
     public bool Available => _serviceInstalled || AdministratorMode.IsElevated;
 
+    /// True when this copy may offer the network service's Install… (an installed copy, not a portable one).
+    public bool CanInstallService => _canHost;
+
     /// What the network service does now: the status line's first part, its tooltip, a real failure, the Install… link.
-    public ServiceState Service => !_serviceInstalled ? ServiceState.NotInstalled
-        : _service.Problem is { } problem ? ServiceState.Failure(problem)
+    public ServiceState Service => !_serviceInstalled ? _canHost ? ServiceState.NotInstalled : ServiceState.NeedsInstalledVersion
+        : _service.Problem is { } problem ? ServiceState.Failure(problem, _canHost)
         : _service.Connected ? ServiceState.Running : ServiceState.Ready;
 
     /// What download limits really do now (any thread).
@@ -140,10 +144,11 @@ public sealed class NetworkLimits : IDisposable
     /// administrator, else nowhere. Work left where it ran before is taken out of Windows.
     private INetworkWork? Runner()
     {
-        var installed = NetworkServiceSetup.Installed;
-        if (installed != _serviceInstalled)
+        var (installed, canHost) = (NetworkServiceSetup.Installed, _canHost);
+        if (!_hostChecked) (_hostChecked, canHost) = (true, NetworkServiceMode.CanInstall());
+        if (installed != _serviceInstalled || canHost != _canHost)
         {
-            _serviceInstalled = installed;
+            (_serviceInstalled, _canHost) = (installed, canHost);
             Changed?.Invoke();
         }
         INetworkWork? work = installed ? _service : AdministratorMode.IsElevated ? _local ??= new NetworkWork(Timing.ResourcesShaping, Failed) : null;
@@ -267,8 +272,13 @@ public sealed class NetworkLimits : IDisposable
 
         public static readonly ServiceState Running = new("Network service: running", $"{Why} It takes every rule out of Windows when OmniControl closes.");
 
-        /// It could not be reached or answered (one plain sentence); installing it again points it at this copy of OmniControl.
-        public static ServiceState Failure(string reason) => new(reason, $"{Why} Installing it again may help; the details are in the errors log.", Failed: true, OffersInstall: true);
+        /// A portable copy: the service runs as SYSTEM, so only from a folder only administrators can change.
+        public static readonly ServiceState NeedsInstalledVersion = new("Network service needs the installed version",
+            $"{Why} It runs only from OmniControl installed by Setup in Program Files, whose files only administrators can change.");
+
+        /// It could not be reached or answered (one plain sentence); installing it again (an installed copy) points it at this copy of OmniControl.
+        public static ServiceState Failure(string reason, bool offersInstall) =>
+            new(reason, $"{Why} Installing it again may help; the details are in the errors log.", Failed: true, OffersInstall: offersInstall);
     }
 
     /// What download limits really do now: the status line, the chips' tooltip, a real failure (red), usable chips, the install offer.

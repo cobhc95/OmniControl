@@ -10,7 +10,7 @@ internal sealed class SingleInstance : IDisposable
     private const string OpenEventName = @"Local\OmniControl.Open", QuitEventName = @"Local\OmniControl.Quit";
     private const string QuitArg = "--quit";
 
-    /// <c>--quit</c>'s exit codes (read by tools\setup.iss): asked, or nothing runs; a running copy that cannot be asked (an older version);
+    /// <c>--quit</c>'s exit codes: asked, or nothing runs; a running copy that cannot be asked (an older version);
     /// a copy run as administrator, which only an elevated <c>--quit</c> may ask (Windows keeps a normal process from its events).
     private const int Asked = 0, CannotAsk = 1, NeedsAdministrator = 2;
 

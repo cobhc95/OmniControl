@@ -25,10 +25,12 @@ public static class NetworkServiceSetup
         }
     }
 
-    /// Adds the service, or points it at <paramref name="commandLine"/> again, as demand-start LocalSystem; only <paramref name="user"/> (with
-    /// SYSTEM and administrators) may start and stop it. Null when done, else one plain sentence.
-    public static string? Install(string commandLine, SecurityIdentifier user)
+    /// Adds the service, or points it at <paramref name="exe"/> again, as demand-start LocalSystem; only <paramref name="user"/> (with
+    /// SYSTEM and administrators) may start and stop it. Refused unless <see cref="CanServeFrom"/>. Null when done, else one plain sentence.
+    public static string? Install(string exe, string arguments, SecurityIdentifier user)
     {
+        if (!CanServeFrom(exe)) return "The network service needs the installed version of OmniControl (a folder only administrators can change)";
+        var commandLine = $"\"{exe}\" {arguments}";
         using var manager = OpenSCManagerW(null, null, ScConnect | ScCreate);
         if (manager.IsInvalid) return Failed("open Windows' service list");
         var service = OpenServiceW(manager, Name, AllAccess);
@@ -84,6 +86,52 @@ public static class NetworkServiceSetup
         };
         return StartServiceW(service, 0, IntPtr.Zero) || Marshal.GetLastWin32Error() == AlreadyRunning ? null : Failed("start the network service");
     }
+
+    /// True when, by their access lists, only SYSTEM, administrators and TrustedInstaller may change <paramref name="exe"/>'s folder, what it
+    /// holds, or the folders above it (Program Files): the service runs that exe as SYSTEM, so a folder its user may write (a profile, a
+    /// portable copy) would let anything running as them swap it.
+    public static bool CanServeFrom(string exe)
+    {
+        var folder = Path.GetDirectoryName(Path.GetFullPath(exe));
+        if (folder is null) return false;
+        var own = true;
+        for (var dir = new DirectoryInfo(folder); dir is not null; dir = dir.Parent, own = false)
+            if (!AdminOnly(dir, own)) return false;
+        return true;
+    }
+
+    /// <paramref name="own"/>: the exe's folder, where what its files and subfolders inherit counts too; above it only the folder itself.
+    private static bool AdminOnly(DirectoryInfo dir, bool own)
+    {
+        RawSecurityDescriptor sd;
+        try { sd = new RawSecurityDescriptor(dir.GetAccessControl(AccessControlSections.Access | AccessControlSections.Owner).GetSecurityDescriptorBinaryForm(), 0); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or PrivilegeNotHeldException or ArgumentException)
+        {
+            return false; // unreadable: not shown to be safe
+        }
+        if (sd.Owner is not { } owner || !Trusted(owner) || sd.DiscretionaryAcl is not { } acl) return false; // no list at all lets everyone in
+        var changes = own ? ChangesContent : ChangesChildren;
+        foreach (var ace in acl)
+        {
+            if (ace is not CommonAce allow) return false; // object or compound entries never belong on a file folder
+            if (allow.AceQualifier != AceQualifier.AccessAllowed || (!own && (allow.AceFlags & AceFlags.InheritOnly) != 0)) continue;
+            if ((allow.AccessMask & changes) != 0 && !Trusted(allow.SecurityIdentifier)) return false;
+        }
+        return true;
+    }
+
+    private static bool Trusted(SecurityIdentifier sid) => Array.IndexOf(Admins, sid) >= 0;
+
+    // CREATOR OWNER stands for whoever creates a child, which in such a folder only an administrator can.
+    private static readonly SecurityIdentifier[] Admins =
+    {
+        new(WellKnownSidType.LocalSystemSid, null), new(WellKnownSidType.BuiltinAdministratorsSid, null), new(WellKnownSidType.CreatorOwnerSid, null),
+        new("S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464"), // TrustedInstaller
+    };
+
+    // Write, append or add, extended attributes, delete children, delete, change permissions, take ownership, generic all and write.
+    private const int ChangesContent = 0x2 | 0x4 | 0x10 | ChangesChildren;
+    private const int ChangesChildren = 0x40 | 0x10000 | 0x40000 | 0x80000 | 0x10000000 | 0x40000000;
 
     private static string Failed(string what) => Says(what, Marshal.GetLastWin32Error());
 

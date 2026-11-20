@@ -2,14 +2,18 @@
 #ifndef AppVersion
   #error Run through tools\release.ps1
 #endif
+#define AppGuid "{6F7E1C8A-3B5D-4E2F-9A61-0C0D3B7E5A21}"
 [Setup]
-AppId={{6F7E1C8A-3B5D-4E2F-9A61-0C0D3B7E5A21}
+AppId={#"{" + AppGuid}
 AppName=OmniControl
 AppVersion={#AppVersion}
 AppPublisher=OmniControl
-DefaultDirName={localappdata}\Programs\OmniControl
+; For all users in Program Files, where only administrators can change the files: the network service runs OmniControl.exe as SYSTEM.
+DefaultDirName={autopf}\OmniControl
 DefaultGroupName=OmniControl
-PrivilegesRequired=lowest
+PrivilegesRequired=admin
+; The settings, the "Start with Windows" entry and the driver's record stay the installing user's own (HKCU, %APPDATA%) on purpose.
+UsedUserAreasWarning=no
 OutputDir={#OutDir}
 OutputBaseFilename=OmniControl-{#AppVersion}-Setup
 SetupIconFile={#Root}\OmniControl.App\Assets\OmniControl.ico
@@ -19,27 +23,27 @@ Compression=lzma2/ultra64
 SolidCompression=yes
 LZMAUseSeparateProcess=yes
 ArchitecturesInstallIn64BitMode=x64compatible
-; OmniControl may run as admin, so this non-admin setup cannot close it through Restart Manager; [Code] asks it to quit instead.
+; [Code] asks OmniControl to quit instead of Restart Manager, so its shut-down steps put Windows back.
 CloseApplications=no
 [Files]
 Source: "{#PubDir}\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
 [Icons]
 Name: "{group}\OmniControl"; Filename: "{app}\OmniControl.exe"
-Name: "{userdesktop}\OmniControl"; Filename: "{app}\OmniControl.exe"; Tasks: desktopicon
+Name: "{autodesktop}\OmniControl"; Filename: "{app}\OmniControl.exe"; Tasks: desktopicon
 [Tasks]
 Name: desktopicon; Description: "Create a desktop shortcut"; Flags: unchecked
-; Installs the bundled driver after the files ([Code] InstallElevated); uninstall removes it only if OmniControl installed it.
+; Installs the bundled driver after the files ([Code] InstallSteps); uninstall removes it only if OmniControl installed it.
 Name: packetfilter; Description: "Install Windows Packet Filter (for per-app download limits)"
-; Added in the same admin step (the app's --network-service install); uninstall removes it.
+; Added after the files (the app's --network-service install); left unticked, a service from before is removed; uninstall removes it.
 Name: networkservice; Description: "Network service (per-app limits without admin)"
 [Run]
-; shellexec: the app asks for admin, which a plain CreateProcess from a non-admin setup cannot start.
-Filename: "{app}\OmniControl.exe"; Description: "Start OmniControl"; Flags: nowait postinstall skipifsilent shellexec
+; As the person who started Setup, not elevated: the app's own "Run as administrator" decides.
+Filename: "{app}\OmniControl.exe"; Description: "Start OmniControl"; Flags: nowait postinstall skipifsilent runasoriginaluser
 [UninstallRun]
-; The network blocks a crashed run may have left (OmniControl's own firewall rule group; upload limits end with a restart). Admin prompt.
-Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -NonInteractive -Command ""Remove-NetFirewallRule -Group 'OmniControl' -ErrorAction SilentlyContinue"""; Flags: shellexec runhidden waituntilterminated; Verb: "runas"; RunOnceId: "RemoveFirewallGroup"
+; The network blocks a crashed run may have left (OmniControl's own firewall rule group; upload limits end with a restart).
+Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -NonInteractive -Command ""Remove-NetFirewallRule -Group 'OmniControl' -ErrorAction SilentlyContinue"""; Flags: runhidden waituntilterminated; RunOnceId: "RemoveFirewallGroup"
 
-; ---- OmniControl's own Equalizer APO (Core/Engine/Apo/ApoSetup): installed in Setup's one admin step, removed by uninstall ----
+; ---- OmniControl's own Equalizer APO (Core/Engine/Apo/ApoSetup): installed after the files, removed by uninstall ----
 [Tasks]
 Name: equalizerapo; Description: "Equalizer APO (master effects on your speakers; skipped automatically if already installed)"
 [Code]
@@ -57,6 +61,11 @@ end;
 // ---- end of Equalizer APO ----
 
 [Code]
+// The per-user install of 0.2.3 and earlier: its folder and its uninstall entry (Inno's, under HKCU, same AppId).
+const
+  PerUserFolder = '{localappdata}\Programs\OmniControl';
+  PerUserUninstallKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{#AppGuid}_is1';
+
 function IsRunning(): Boolean;
 var Code: Integer;
 begin
@@ -78,7 +87,7 @@ begin
   Result := RegKeyExists(HKLM, 'SYSTEM\CurrentControlSet\Services\' + NetworkServiceName);
 end;
 
-// Stops the service (its user may, no prompt) and waits a bounded time until it has, so its process is not taken for the app's.
+// Stops the service and waits a bounded time until it has, so its process is not taken for the app's.
 procedure StopNetworkService();
 var Code, Tries: Integer;
 begin
@@ -92,10 +101,10 @@ begin
   end;
 end;
 
-// Asks OmniControl to quit (elevated, one admin prompt: it usually runs as administrator), so its shut-down steps put Windows back.
-// The network service (also OmniControl.exe) is stopped first; it takes its rules out as it stops.
+// Asks OmniControl to quit (this copy's or, on the move from a per-user install, the old one's --quit), so its shut-down steps put Windows
+// back. The network service (also OmniControl.exe) is stopped first; it takes its rules out as it stops.
 // Never waits on the helper itself: an older installed copy does not know --quit and would sit as a second, hidden copy, so Setup only
-// waits a bounded time for the app to go, then ends every OmniControl.exe by force (one admin prompt), the helper included.
+// waits a bounded time for the app to go, then ends every OmniControl.exe by force, the helper included.
 function EndOmniControl(): String;
 var Code: Integer;
     Exe: String;
@@ -104,14 +113,10 @@ begin
   StopNetworkService();
   if not IsRunning() then Exit;
   Exe := ExpandConstant('{app}\OmniControl.exe');
-  if FileExists(Exe) and ShellExec('runas', Exe, '--quit', '', SW_HIDE, ewNoWait, Code) and GoneWithin(60) then Exit;
-  ShellExec('runas', 'taskkill.exe', '/F /IM OmniControl.exe', '', SW_HIDE, ewWaitUntilTerminated, Code);
+  if not FileExists(Exe) then Exe := ExpandConstant(PerUserFolder + '\OmniControl.exe');
+  if FileExists(Exe) and Exec(Exe, '--quit', '', SW_HIDE, ewNoWait, Code) and GoneWithin(60) then Exit;
+  Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /IM OmniControl.exe', '', SW_HIDE, ewWaitUntilTerminated, Code);
   if not GoneWithin(20) then Result := 'OmniControl is still running. Close it from its tray icon, then run Setup again.';
-end;
-
-function PrepareToInstall(var NeedsRestart: Boolean): String;
-begin
-  Result := EndOmniControl();
 end;
 
 // Windows Packet Filter's names, retyped from Core/Engine/Resources/PacketFilterSetup and PacketFilter (Inno's script cannot read C#).
@@ -120,7 +125,36 @@ const
   PacketFilterComponent = 'nt_ndisrd';
   PacketFilterRecordKey = 'Software\OmniControl';
   PacketFilterRecordValue = 'PacketFilterInstalled';
-  AdminPromptRefused = 1223;
+
+// The move from a per-user install: its own uninstaller runs silently (the settings in %APPDATA%\OmniControl stay) with the driver's record
+// set aside, so it leaves Windows Packet Filter installed, then its folder goes. Only the usual folder is deleted, never a folder the person
+// chose. The sign-in task, the network service and the start-up entry are pointed at this install after the files (InstallSteps).
+procedure RemovePerUserCopy();
+var Uninstaller, Folder: String;
+    Code, Tries: Integer;
+    Mine: Cardinal;
+    HadRecord: Boolean;
+begin
+  if not RegQueryStringValue(HKCU, PerUserUninstallKey, 'UninstallString', Uninstaller) then Exit;
+  HadRecord := RegQueryDWordValue(HKCU, PacketFilterRecordKey, PacketFilterRecordValue, Mine);
+  if HadRecord then RegDeleteValue(HKCU, PacketFilterRecordKey, PacketFilterRecordValue);
+  Exec(RemoveQuotes(Uninstaller), '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART', '', SW_HIDE, ewWaitUntilTerminated, Code);
+  if HadRecord then RegWriteDWordValue(HKCU, PacketFilterRecordKey, PacketFilterRecordValue, Mine);
+  RegDeleteKeyIncludingSubkeys(HKCU, PerUserUninstallKey);
+  Folder := ExpandConstant(PerUserFolder);
+  Tries := 20; // the old uninstaller removes its own exe a moment after it ends
+  while DirExists(Folder) and not DelTree(Folder, True, True, True) and (Tries > 0) do
+  begin
+    Sleep(250);
+    Tries := Tries - 1;
+  end;
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  Result := EndOmniControl();
+  if Result = '' then RemovePerUserCopy();
+end;
 
 // Removing the filter may leave its file behind, so the service must be there too.
 function PacketFilterInstalled(): Boolean;
@@ -128,8 +162,8 @@ begin
   Result := FileExists(ExpandConstant('{sys}\drivers\ndisrd.sys')) and RegKeyExists(HKLM, 'SYSTEM\CurrentControlSet\Services\ndisrd');
 end;
 
-// Windows' own netcfg (as the driver's own MSI runs it), as one step of RunElevated. ShellExec never turns WOW64 redirection off, so the
-// elevated cmd picks the 64-bit netcfg: Sysnative exists only when cmd itself is 32-bit.
+// Windows' own netcfg (as the driver's own MSI runs it), as one step of RunSteps. The cmd may be 32-bit or 64-bit: Sysnative exists only
+// when it is 32-bit, and then picks the 64-bit netcfg.
 function NetCfg(Args: String): String;
 var Exe: String;
 begin
@@ -144,7 +178,7 @@ begin
 end;
 
 // The network service, added (for this Windows user, named so an administrator's prompt still serves them) or removed by the app itself,
-// which owns its definition; the switch is retyped from the app's Shared/Services/NetworkServiceMode.
+// which owns its definition and refuses a folder others may change; the switch is retyped from the app's Shared/Services/NetworkServiceMode.
 function NetworkService(Verb: String): String;
 begin
   Result := '("' + ExpandConstant('{app}\OmniControl.exe') + '" --network-service ' + Verb + ')';
@@ -157,35 +191,46 @@ begin
   Result := LoadStringFromFile(ExpandConstant('{userappdata}\OmniControl\mouse.json'), Text) and (Pos('"RunAsAdministrator":true', Text) > 0);
 end;
 
-// Joins the elevated steps (each in brackets) into one cmd line.
+// "Start with Windows" (entry name and argument retyped from the app's Shared/Services/StartupRegistration): an entry that is there is
+// pointed at this install, so a moved install still starts at sign-in; none is added.
+procedure PointStartupEntry();
+var Command: String;
+begin
+  if RegQueryStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'OmniControl', Command) then
+    RegWriteStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'OmniControl', '"' + ExpandConstant('{app}\OmniControl.exe') + '" --background');
+end;
+
+// Joins the steps (each in brackets) into one cmd line.
 function AddStep(Steps, Step: String): String;
 begin
   if Steps = '' then Result := Step else Result := Steps + ' & ' + Step;
 end;
 
-// Every elevated step of one run behind one visible admin prompt, waited for; the ShellExec error code, 0 when it ran (nothing to do: 0).
-function RunElevated(Steps: String): Integer;
+// Every step of one run in one hidden cmd, waited for (Setup and uninstall already run as administrator).
+procedure RunSteps(Steps: String);
+var Code: Integer;
 begin
-  Result := 0;
-  if Steps = '' then Exit;
-  if not ShellExec('runas', ExpandConstant('{cmd}'), '/S /C "' + Steps + '"', '', SW_HIDE, ewWaitUntilTerminated, Result) then Exit;
-  Result := 0;
+  if Steps <> '' then Exec(ExpandConstant('{cmd}'), '/S /C "' + Steps + '"', '', SW_HIDE, ewWaitUntilTerminated, Code);
 end;
 
-// A driver install that fails leaves OmniControl installed and says so in one line; a refused prompt says nothing. The record lets uninstall
-// remove only this copy. A sign-in task that fails is added by OmniControl's first start as administrator.
-procedure InstallElevated();
+// A driver install that fails leaves OmniControl installed and says so in one line. The record lets uninstall remove only this copy. A
+// sign-in task that fails is added by OmniControl's first start as administrator.
+procedure InstallSteps();
 var Steps: String;
     Driver: Boolean;
 begin
+  PointStartupEntry();
   Driver := WizardIsTaskSelected('packetfilter') and not PacketFilterInstalled();
   Steps := '';
   if Driver then Steps := NetCfg('-v -l "' + ExpandConstant(PacketFilterInf) + '" -c s -i ' + PacketFilterComponent);
   if RunsAsAdministrator() then Steps := AddStep(Steps, SignInTask('on'));
   if WizardIsTaskSelected('equalizerapo') then Steps := AddStep(Steps, EqualizerApo('install'));
   if WizardIsTaskSelected('networkservice') then
-    Steps := AddStep(Steps, NetworkService('install "' + GetEnv('USERDOMAIN') + '\' + GetUserNameString() + '"'));
-  if (RunElevated(Steps) = AdminPromptRefused) or not Driver then Exit;
+    Steps := AddStep(Steps, NetworkService('install "' + GetEnv('USERDOMAIN') + '\' + GetUserNameString() + '"'))
+  else if NetworkServiceInstalled() then
+    Steps := AddStep(Steps, NetworkService('remove'));
+  RunSteps(Steps);
+  if not Driver then Exit;
   if PacketFilterInstalled() then
     RegWriteDWordValue(HKCU, PacketFilterRecordKey, PacketFilterRecordValue, 1)
   else
@@ -193,8 +238,8 @@ begin
 end;
 
 // Only a driver OmniControl installed (the record) is removed, so another program's is never taken away; a copy that stays keeps its record.
-// The sign-in task and the network service go in the same prompt (the app removed the task already when the setting was turned off).
-procedure UninstallElevated();
+// The sign-in task and the network service go in the same step (the app removed the task already when the setting was turned off).
+procedure UninstallSteps();
 var Mine: Cardinal;
     Steps: String;
     Driver: Boolean;
@@ -205,7 +250,7 @@ begin
   if NetworkServiceInstalled() then Steps := AddStep(Steps, NetworkService('remove'));
   if Driver and PacketFilterInstalled() then Steps := AddStep(Steps, NetCfg('-v -u ' + PacketFilterComponent));
   if EqualizerApoOurs() then Steps := AddStep(Steps, EqualizerApo('remove'));
-  RunElevated(Steps);
+  RunSteps(Steps);
   if not Driver then Exit;
   if PacketFilterInstalled() then
     SuppressibleMsgBox('Windows Packet Filter was not removed. Installing and uninstalling OmniControl again removes it.', mbInformation, MB_OK, IDOK)
@@ -218,12 +263,12 @@ end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
-  if CurStep = ssPostInstall then InstallElevated();
+  if CurStep = ssPostInstall then InstallSteps();
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
-  if CurUninstallStep = usUninstall then UninstallElevated();
+  if CurUninstallStep = usUninstall then UninstallSteps();
 end;
 
 function InitializeUninstall(): Boolean;
