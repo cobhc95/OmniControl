@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -6,7 +6,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <RootNamespace>OmniControl.App</RootNamespace>
     <AssemblyName>OmniControl</AssemblyName>
-    <Version>0.2.4</Version>
+    <Version>0.2.5</Version>
     <ApplicationIcon>Assets\OmniControl.ico</ApplicationIcon>
     <!-- No profile-guided tier: it re-compiles hot code (the pop-up, the hooks) a second time, with slower instrumented code in
          between, during the first minutes of use. Plain tiering stays: quick start-up, optimised after 30 calls. -->
@@ -58,10 +58,10 @@
     <AvaloniaResource Include="..\NOTICE.txt" Link="Assets\NOTICE.txt" />
     <None Include="..\NOTICE.txt;..\LICENSE" CopyToOutputDirectory="PreserveNewest" Link="%(Filename)%(Extension)" />
     <!-- Windows Packet Filter's official Windows 10+ x64 driver files, unmodified, with their licence: Setup's optional task and the app's
-         "Install Windows Packet Filter…" install them (Core/Engine/Resources/PacketFilterSetup). -->
+         "Install Windows Packet Filterâ€¦" install them (Core/Engine/Resources/PacketFilterSetup). -->
     <None Include="..\third_party\windows-packet-filter\driver\*" CopyToOutputDirectory="PreserveNewest" Link="windows-packet-filter\%(Filename)%(Extension)" />
     <!-- Equalizer APO's official 1.4.2 x64 installer, unmodified, with its licences: run by Setup's task or the app's "Install Equalizer
-         APO…" (Core/Engine/Apo/ApoInstaller, which retypes the folder and file name). -->
+         APOâ€¦" (Core/Engine/Apo/ApoInstaller, which retypes the folder and file name). -->
     <None Include="..\third_party\equalizer-apo\*" CopyToOutputDirectory="PreserveNewest" Link="equalizer-apo\%(Filename)%(Extension)" />
   </ItemGroup>
 
