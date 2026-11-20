@@ -49,8 +49,10 @@ public sealed partial class AppListManagerViewModel : ObservableObject, IDisposa
     public ObservableCollection<AppListItem> Lists { get; } = new();
     public ObservableCollection<AppChipItem> Apps { get; } = new();
     public ObservableCollection<string> UsedBy { get; } = new();
-    public ObservableCollection<RunningProgram> Running { get; } = new();
-    public ObservableCollection<InstalledApp> Installed { get; } = new();
+
+    /// The "+ Running app" and "+ Installed app" pop-downs' rows (<c>Controls/MenuRowList</c>); a row adds its program.
+    [ObservableProperty] private IReadOnlyList<MenuRowItem> _runningRows = Array.Empty<MenuRowItem>();
+    [ObservableProperty] private IReadOnlyList<MenuRowItem> _installedRows = Array.Empty<MenuRowItem>();
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelection), nameof(HasNoSelection), nameof(Heading))]
@@ -142,17 +144,18 @@ public sealed partial class AppListManagerViewModel : ObservableObject, IDisposa
     public async Task RefreshRunningAsync()
     {
         var found = await Task.Run(ProgramIdentity.Running);
-        Running.Clear();
-        foreach (var program in found) Running.Add(program);
+        RunningRows = found.Select(p => AddRow(p.Name, p.Id)).ToList();
     }
 
     /// The "+ Installed app" pop-down opened: the installed programs the app knows.
     public async Task RefreshInstalledAsync()
     {
         var found = await Task.Run(_installed);
-        Installed.Clear();
-        foreach (var app in found) Installed.Add(app);
+        InstalledRows = found.Select(a => AddRow(a.Name, a.Program)).ToList();
     }
+
+    private MenuRowItem AddRow(string name, string program) =>
+        new(name, string.Empty, false, program, new RelayCommand(() => AddProgram(program, name)));
 
     // ---- showing the store ----
 

@@ -19,12 +19,15 @@ public sealed partial class AddProgramMenuViewModel : ObservableObject, IDisposa
         discovery.Changed += OnDiscovered;
     }
 
-    public ObservableCollection<ProgramChoice> Choices { get; } = new();
+    private List<ProgramChoice> _choices = new();
 
     [ObservableProperty] private string _query = string.Empty;
 
-    /// Nothing matches the search: the menu says so and points at Browse.
-    public bool HasNoMatch => Choices.Count == 0;
+    /// The menu's rows (<c>Controls/MenuRowList</c>): each matching program with where it comes from, else a note pointing at Browse.
+    [ObservableProperty] private IReadOnlyList<MenuRowItem> _rows = Array.Empty<MenuRowItem>();
+
+    /// The first match (Enter in the search box chooses it); null when nothing matches.
+    public ProgramChoice? First => _choices.FirstOrDefault();
 
     partial void OnQueryChanged(string value) => Refresh();
 
@@ -50,12 +53,11 @@ public sealed partial class AddProgramMenuViewModel : ObservableObject, IDisposa
     private void Refresh()
     {
         var wanted = ProgramListing.Choices(_mixer.Settings.Apps, _discovery.Installed, Query.Trim());
-        if (!wanted.SequenceEqual(Choices))
-        {
-            Choices.Clear();
-            foreach (var c in wanted) Choices.Add(c);
-        }
-        OnPropertyChanged(nameof(HasNoMatch));
+        if (Rows.Count > 0 && wanted.SequenceEqual(_choices)) return;
+        _choices = wanted;
+        Rows = wanted.Count == 0
+            ? new[] { MenuRowItem.Header("No match. Browse for a program…") }
+            : wanted.Select(c => new MenuRowItem(c.Name, string.Empty, false, c.Path, new RelayCommand(() => _add(c.Path)), Trailing: c.Source)).ToList();
     }
 
     public void Dispose() => _discovery.Changed -= OnDiscovered;

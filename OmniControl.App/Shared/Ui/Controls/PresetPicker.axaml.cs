@@ -15,8 +15,6 @@ public partial class PresetPicker : UserControl
     public PresetPicker()
     {
         InitializeComponent();
-        Menu.Picked += OnPicked;
-        Menu.ManageRequested += OnManage;
         AddHandler(PointerWheelChangedEvent, OnWheel, RoutingStrategies.Bubble);
         AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Bubble);
     }
@@ -41,24 +39,15 @@ public partial class PresetPicker : UserControl
 
     private void OnOpened(object? sender, Flyout flyout)
     {
-        if (_choice is null) return;
+        if (_choice is not { } choice) return;
         _flyout = flyout;
-        Menu.Show(_choice.Options, _choice.Selected);
+        Menu.ItemsSource = PresetMenu.Rows(choice.Options, choice.Selected, name => { if (name != choice.Selected) choice.Selected = name; },
+            new MenuRowItem("Manage presets…", string.Empty, false, string.Empty, new RelayCommand(() => choice.Manage?.Invoke()), IsMuted: true));
     }
 
     private void OnClosed(object? sender, EventArgs e) => _flyout = null;
 
-    private void OnPicked(object? sender, string name)
-    {
-        _flyout?.Hide();
-        if (_choice is not null && name != _choice.Selected) _choice.Selected = name;
-    }
-
-    private void OnManage(object? sender, EventArgs e)
-    {
-        _flyout?.Hide();
-        _choice?.Manage?.Invoke();
-    }
+    private void OnPicked(object? sender, EventArgs e) => _flyout?.Hide();
 
     private void OnWheel(object? sender, PointerWheelEventArgs e)
     {

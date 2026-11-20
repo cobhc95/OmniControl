@@ -1,7 +1,6 @@
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.VisualTree;
-using OmniControl.App.Features.Volume.Audio;
 
 namespace OmniControl.App.Features.Volume.Pages;
 
@@ -12,7 +11,11 @@ public partial class AddProgramButton : UserControl
     private Flyout? _menu;
     private Control? _opener;
 
-    public AddProgramButton() => InitializeComponent();
+    public AddProgramButton()
+    {
+        InitializeComponent();
+        BrowseRow.ItemsSource = new[] { new MenuRowItem("Browse for a program…", string.Empty, false, string.Empty, new AsyncRelayCommand(BrowseAsync), RuleAbove: true) };
+    }
 
     private void OnOpenClick(object? sender, RoutedEventArgs e)
     {
@@ -31,10 +34,8 @@ public partial class AddProgramButton : UserControl
 
     private void OnMenuClosed(object? sender, EventArgs e) => (DataContext as AddProgramMenuViewModel)?.Closed();
 
-    private void OnChoiceClick(object? sender, RoutedEventArgs e)
-    {
-        if (sender is Button { DataContext: ProgramChoice choice } && DataContext is AddProgramMenuViewModel menu) Choose(menu, choice.Path);
-    }
+    // A program row was clicked: its own command adds it.
+    private void OnPicked(object? sender, EventArgs e) => _menu?.Hide();
 
     /// Enter in the search box chooses the first match; Esc closes the pop-down and gives the keyboard back to the button.
     private void OnMenuKeyDown(object? sender, KeyEventArgs e)
@@ -45,20 +46,15 @@ public partial class AddProgramButton : UserControl
             _opener?.Focus(NavigationMethod.Directional);
             e.Handled = true;
         }
-        else if (e.Key == Key.Enter && e.Source is TextBox && DataContext is AddProgramMenuViewModel { Choices: [var first, ..] } menu)
+        else if (e.Key == Key.Enter && e.Source is TextBox && DataContext is AddProgramMenuViewModel { First: { } first } menu)
         {
-            Choose(menu, first.Path);
+            _menu?.Hide();
+            menu.Add(first.Path);
             e.Handled = true;
         }
     }
 
-    private void Choose(AddProgramMenuViewModel menu, string path)
-    {
-        _menu?.Hide();
-        menu.Add(path);
-    }
-
-    private async void OnBrowseClick(object? sender, RoutedEventArgs e)
+    private async Task BrowseAsync()
     {
         _menu?.Hide();
         if (DataContext is not AddProgramMenuViewModel menu) return;

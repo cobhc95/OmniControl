@@ -51,19 +51,8 @@
                         <Button.Flyout>
                             <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft">
                                 <StackPanel x:DataType="pages:SentenceLink">
-                                    <ItemsControl ItemsSource="{Binding Options}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="pages:SentenceLinkOption">
-                                                <Button Classes="menurow" Click="OnLinkOptionClick">
-                                                    <Grid ColumnDefinitions="*,Auto">
-                                                        <TextBlock Text="{Binding Text}" />
-                                                        <Border Grid.Column="1" Classes="tag selected" IsVisible="{Binding IsOn}"><TextBlock Text="now" /></Border>
-                                                    </Grid>
-                                                </Button>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                    <Border Classes="hrule" IsVisible="{Binding HasAmount}" />
+                                    <c:MenuRowList ItemsSource="{Binding Rows}" Picked="OnLinkPicked" />
+                                    <Border Classes="hrule" Margin="{StaticResource MenuRuleMargin}" IsVisible="{Binding HasAmount}" />
                                     <Grid IsVisible="{Binding HasAmount}" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8"
                                           Margin="{StaticResource MenuTextInset}">
                                         <TextBlock Text="{Binding Amount.Label}" Classes="menutext" Margin="0" VerticalAlignment="Center" />

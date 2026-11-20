@@ -2,12 +2,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
              x:Class="OmniControl.App.Shared.Ui.Controls.PresetPicker">
-    <!-- THE master preset picker (docs/mockups/preset-picker-chip.html): the same chip and menu as the Apps scope chip (ChipMenu), "Preset: name",
-         opening PresetMenuView (title, tick on the current preset, the others, a thin line, "Manage presets..."). Its data context is the group's
-         ChoiceItem; greyed with its reason as the tooltip while the list cannot be used. Used by every group that has presets. -->
+    <!-- THE master preset picker: the same chip and menu as the Apps scope chip (ChipMenu + MenuRowList), "Preset: name", its menu the
+         title, the accent bar on the current preset, the others, a thin line, the muted "Manage presets..." (PresetMenu). Its data context is
+         the group's ChoiceItem; greyed with its reason as the tooltip while the list cannot be used. Used by every group that has presets. -->
     <c:ChipMenu x:Name="Chip" Margin="8,0,0,0" MenuOpened="OnOpened" MenuClosed="OnClosed">
         <c:ChipMenu.Menu>
-            <c:PresetMenuView x:Name="Menu" />
+            <c:MenuRowList x:Name="Menu" Title="Preset" Picked="OnPicked" />
         </c:ChipMenu.Menu>
     </c:ChipMenu>
 </UserControl>

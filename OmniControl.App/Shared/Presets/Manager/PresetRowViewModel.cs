@@ -54,6 +54,18 @@ public sealed partial class PresetRowViewModel : ObservableObject
     public bool CanExport => _canExport;
     public bool HasMore => _canDuplicate || _canExport;
 
+    /// The "…" menu's rows (<c>Controls/MenuRowList</c>): Duplicate and Export where the group allows them.
+    public IReadOnlyList<MenuRowItem> MoreRows
+    {
+        get
+        {
+            var rows = new List<MenuRowItem>();
+            if (_canDuplicate) rows.Add(new MenuRowItem("Duplicate", string.Empty, false, string.Empty, DuplicateCommand));
+            if (_canExport) rows.Add(new MenuRowItem("Export to a file…", string.Empty, false, string.Empty, ExportCommand));
+            return rows;
+        }
+    }
+
     public string NameTip => _entry.BuiltIn ? "Comes with the app: it can be applied, copied and given a shortcut" : _entry.CanRename ? "Double-click to rename" : _entry.Name;
 
     /// The longest name the rename box takes (<see cref="PresetRules.MaxNameLength"/>).

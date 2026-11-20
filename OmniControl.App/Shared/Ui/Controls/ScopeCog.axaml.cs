@@ -13,7 +13,11 @@ public partial class ScopeCog : UserControl
     public static readonly StyledProperty<bool> ShowsSettingsProperty = AvaloniaProperty.Register<ScopeCog, bool>(nameof(ShowsSettings));
     public static readonly StyledProperty<string> CogTipProperty = AvaloniaProperty.Register<ScopeCog, string>(nameof(CogTip), string.Empty);
 
-    public ScopeCog() => InitializeComponent();
+    public ScopeCog()
+    {
+        InitializeComponent();
+        SettingsRow.ItemsSource = new[] { new MenuRowItem("Action settings…", string.Empty, false, string.Empty, new RelayCommand(OpenSettings)) };
+    }
 
     /// The card's scope; null for a card that has none.
     public AppScopeModel? Scope { get => GetValue(ScopeProperty); set => SetValue(ScopeProperty, value); }
@@ -36,10 +40,10 @@ public partial class ScopeCog : UserControl
         else FlyoutBase.ShowAttachedFlyout(this);
     }
 
-    private void OnSettingsRowClick(object? sender, RoutedEventArgs e)
+    private void OpenSettings()
     {
         FlyoutBase.GetAttachedFlyout(this)?.Hide();
-        SettingsClicked?.Invoke(this, e);
+        SettingsClicked?.Invoke(this, new RoutedEventArgs());
     }
 
     private void OnOpened(object? sender, EventArgs e)

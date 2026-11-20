@@ -2,11 +2,11 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
              x:Class="OmniControl.App.Features.Volume.Pages.Easy.SoundChip">
-    <!-- A row's Sound chip ("Sound: Bass boost", docs/audit-unify.md #27): the shared chip and menu (ChipMenu + PresetMenuView), the sound
-         presets as its rows and "Show the sliders" at its foot, which opens or closes the row's drawer of five sliders. Its data context is the EasyRow. -->
+    <!-- A row's Sound chip ("Sound: Bass boost"): the shared chip and menu (ChipMenu + MenuRowList, rows by PresetMenu), the sound presets
+         as its rows and "Show the sliders" at its foot, which opens or closes the row's drawer of five sliders. Its data context is the EasyRow. -->
     <c:ChipMenu x:Name="Chip" MenuOpened="OnOpened" MenuClosed="OnClosed">
         <c:ChipMenu.Menu>
-            <c:PresetMenuView x:Name="Menu" Title="Sound" />
+            <c:MenuRowList x:Name="Menu" Title="Sound" Picked="OnPicked" />
         </c:ChipMenu.Menu>
     </c:ChipMenu>
 </UserControl>

@@ -119,12 +119,12 @@ public partial class AutomationRuleRow : UserControl
     }, DispatcherPriority.Background);
 
     /// A choice in a join word's pop-down: closes it and says it; the sentence is rebuilt, so the keyboard goes back to the same word.
-    private void OnLinkOptionClick(object? sender, RoutedEventArgs e)
+    // An option row was clicked (its own command then changes the link): close the pop-down and put the keyboard back on the link's place.
+    private void OnLinkPicked(object? sender, EventArgs e)
     {
-        if (sender is not Control { DataContext: SentenceLinkOption option } row || row.FindLogicalAncestorOfType<Button>() is not { } join) return;
+        if ((sender as Control)?.FindLogicalAncestorOfType<Button>() is not { } join) return;
         var at = SentenceFocus.IndexOf(SentenceHost, join);
         join.Flyout?.Hide();
-        option.Choose();
         SentenceFocus.FocusLater(SentenceHost, at);
     }
 

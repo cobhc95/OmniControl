@@ -79,6 +79,10 @@ public sealed partial class SentenceLink : ObservableObject
     [ObservableProperty] private string _text;
 
     public IReadOnlyList<SentenceLinkOption> Options { get; }
+
+    /// The options as the shared menu's rows, the accent bar at the one it says now.
+    public IReadOnlyList<MenuRowItem> Rows => Options.Select(o => new MenuRowItem(o.Text, string.Empty, o.IsOn, string.Empty, new RelayCommand(o.Choose))).ToList();
+
     public SentenceLinkAmount? Amount { get; }
     public bool HasAmount => Amount is not null;
 }

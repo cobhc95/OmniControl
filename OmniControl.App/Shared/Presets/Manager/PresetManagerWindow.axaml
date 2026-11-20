@@ -103,14 +103,7 @@
                                                         <Panel IsVisible="{Binding HasMore}">
                                                             <FlyoutBase.AttachedFlyout>
                                                                 <c:ListMenuFlyout Placement="BottomEdgeAlignedRight">
-                                                                    <StackPanel>
-                                                                        <Button Classes="menurow" Command="{Binding DuplicateCommand}" IsVisible="{Binding CanDuplicate}" Click="OnMenuRowClick">
-                                                                            <TextBlock Text="Duplicate" />
-                                                                        </Button>
-                                                                        <Button Classes="menurow" Command="{Binding ExportCommand}" IsVisible="{Binding CanExport}" Click="OnMenuRowClick">
-                                                                            <TextBlock Text="Export to a file…" />
-                                                                        </Button>
-                                                                    </StackPanel>
+                                                                    <c:MenuRowList ItemsSource="{Binding MoreRows}" Picked="OnMenuRowPicked" />
                                                                 </c:ListMenuFlyout>
                                                             </FlyoutBase.AttachedFlyout>
                                                             <Button Classes="pill glyph" Tag="scope" Content="…" Click="OnMoreClick" ToolTip.Tip="Duplicate, export" />

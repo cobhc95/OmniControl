@@ -9,12 +9,7 @@ public partial class SoundChip : UserControl
     private EasySound? _sound;
     private Flyout? _flyout;
 
-    public SoundChip()
-    {
-        InitializeComponent();
-        Menu.Picked += OnPicked;
-        Menu.ManageRequested += OnSliders;
-    }
+    public SoundChip() => InitializeComponent();
 
     protected override void OnDataContextChanged(EventArgs e)
     {
@@ -31,23 +26,18 @@ public partial class SoundChip : UserControl
 
     private void OnOpened(object? sender, Flyout flyout)
     {
-        if (_sound is null) return;
+        if (_sound is not { } sound) return;
         _flyout = flyout;
-        Menu.FooterText = _sound.IsOpen ? "Hide the sliders" : "Show the sliders";
-        Menu.Show(_sound.Chips.Select(c => c.Name), _sound.Chips.FirstOrDefault(c => c.IsSelected)?.Name ?? string.Empty);
+        Menu.ItemsSource = PresetMenu.Rows(sound.Chips.Select(c => c.Name), sound.Chips.FirstOrDefault(c => c.IsSelected)?.Name ?? string.Empty, Pick,
+            new MenuRowItem(sound.IsOpen ? "Hide the sliders" : "Show the sliders", string.Empty, false, string.Empty, sound.ToggleCommand));
     }
 
     private void OnClosed(object? sender, EventArgs e) => _flyout = null;
 
-    private void OnPicked(object? sender, string name)
-    {
-        _flyout?.Hide();
-        if (_sound?.Chips.FirstOrDefault(c => c.Name == name) is { } chip && chip.PickCommand.CanExecute(null)) chip.PickCommand.Execute(null);
-    }
+    private void OnPicked(object? sender, EventArgs e) => _flyout?.Hide();
 
-    private void OnSliders(object? sender, EventArgs e)
+    private void Pick(string name)
     {
-        _flyout?.Hide();
-        _sound?.ToggleCommand.Execute(null);
+        if (_sound?.Chips.FirstOrDefault(c => c.Name == name) is { } chip && chip.PickCommand.CanExecute(null)) chip.PickCommand.Execute(null);
     }
 }

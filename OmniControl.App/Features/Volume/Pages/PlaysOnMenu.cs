@@ -16,6 +16,8 @@ public sealed partial class PlaysOnMenu : ObservableObject
         Gate = gate;
         _opening = opening;
         MarksCurrent = marksCurrent;
+        // The gate lives as long as this menu, so the subscription needs no undoing.
+        gate.PropertyChanged += (_, _) => OnPropertyChanged(nameof(Rows));
     }
 
     public ControlGate Gate { get; }
@@ -27,9 +29,20 @@ public sealed partial class PlaysOnMenu : ObservableObject
     [ObservableProperty] private string _title = string.Empty;
 
     /// The menu's entries (filled when it opens).
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasNoChoices))] private IReadOnlyList<WiringChoice> _choices = Array.Empty<WiringChoice>();
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(Rows))] private IReadOnlyList<WiringChoice> _choices = Array.Empty<WiringChoice>();
 
-    public bool HasNoChoices => Choices.Count == 0;
+    /// The menu's rows (<c>Controls/MenuRowList</c>): the entries, "All devices are chosen." when there are none, and the gate's note under a thin line.
+    public IReadOnlyList<MenuRowItem> Rows
+    {
+        get
+        {
+            var rows = Choices.Select(c => new MenuRowItem(c.Label, string.Empty, c.IsCurrent, c.Tip ?? string.Empty, c.ChooseCommand,
+                Tags: c.Tag is { } tag ? new[] { new TagItem(tag, c.IsCaution ? TagTone.Caution : TagTone.Neutral) } : null, IsEnabled: c.IsEnabled)).ToList();
+            if (rows.Count == 0) rows.Add(MenuRowItem.Header("All devices are chosen."));
+            if (!Gate.IsAvailable) rows.Add(MenuRowItem.Header(Gate.Note ?? string.Empty, ruleAbove: true));
+            return rows;
+        }
+    }
 
     /// The menu is opening.
     public void Open() => _opening(this);

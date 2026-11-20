@@ -10,8 +10,8 @@
         <c:ListMenuFlyout Placement="BottomEdgeAlignedRight" Opened="OnOpened" Closed="OnClosed">
             <StackPanel x:DataType="c:ScopeCog">
                 <StackPanel IsVisible="{Binding ShowsSettings}">
-                    <Button Classes="menurow" Click="OnSettingsRowClick"><TextBlock Text="Action settings…" /></Button>
-                    <Border Classes="hrule" Margin="0,4" />
+                    <c:MenuRowList x:Name="SettingsRow" />
+                    <Border Classes="hrule" Margin="{StaticResource MenuRuleMargin}" />
                 </StackPanel>
                 <c:AppScopeMenuView />
             </StackPanel>

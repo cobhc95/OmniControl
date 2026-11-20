@@ -2,43 +2,44 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
              x:Class="OmniControl.App.Shared.Ui.Controls.MenuRowList">
-    <!-- The content of a small menu pop-down (the content of a ChipMenu): a column of Button.menurow rows. A row: the accent bar at the
-         one that is on now (a tick, in the accent, at each ticked row of a multi-choice menu), its full name (it wraps, never trimmed), its
-         tags after the name or on their own line under it, an optional "Get it" link at the right and a muted line under it. A header row is
-         a muted section title with an optional thin line above. The glyph column is shown only when a row has an icon or a tick
-         (MenuRowList.noglyphs). Mouse first (AGENTS.md rule 5). -->
+    <!-- THE content of every menu pop-down (a ChipMenu's, a right-click menu's, a field's results): a column of Button.menurow rows. A row:
+         the accent bar at the one that is on now (a tick, in the accent, at each ticked row of a multi-choice menu), its full name (it wraps,
+         never trimmed), its tags after the name or on their own line under it, an optional "Get it" link or a muted fact at the right and a
+         muted line under it. A header row is a muted section title with an optional thin line above. The glyph column is shown only when a
+         row has an icon or a tick (MenuRowList.noglyphs). Each place keeps its row control when the rows are asked again (MenuRowSlot), so
+         live values never take the hover or the keyboard away. Mouse first (AGENTS.md rule 5). -->
     <StackPanel>
         <TextBlock Classes="menutext" Text="{Binding Title, RelativeSource={RelativeSource AncestorType=c:MenuRowList}}" IsVisible="{Binding Title, RelativeSource={RelativeSource AncestorType=c:MenuRowList}, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
         <ItemsControl x:Name="Rows">
             <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="c:MenuRowItem">
+                <DataTemplate x:DataType="c:MenuRowSlot">
                     <StackPanel>
-                        <Border Classes="hrule" Margin="{StaticResource MenuRuleMargin}" IsVisible="{Binding RuleAbove}" />
-                        <TextBlock Classes="menutext" Text="{Binding Text}" IsVisible="{Binding IsHeader}" />
-                        <Button Classes="menurow" Classes.chosen="{Binding ShowsBar}" Classes.accent="{Binding IsAccent}" Classes.muted="{Binding IsMuted}" Classes.danger="{Binding IsDanger}" Command="{Binding Command}" Click="OnRowClick" PointerEntered="OnRowEnter" PointerExited="OnRowExit" KeyDown="OnRowKey" ToolTip.Tip="{Binding Tip}" IsVisible="{Binding IsRow}" Opacity="{Binding RowOpacity}">
+                        <Border Classes="hrule" Margin="{StaticResource MenuRuleMargin}" IsVisible="{Binding Row.RuleAbove}" />
+                        <TextBlock Classes="menutext" Text="{Binding Row.Text}" IsVisible="{Binding Row.IsHeader}" />
+                        <Button Classes="menurow" Classes.chosen="{Binding Row.ShowsBar}" Classes.accent="{Binding Row.IsAccent}" Classes.muted="{Binding Row.IsMuted}" Classes.danger="{Binding Row.IsDanger}" Command="{Binding Row.Command}" IsEnabled="{Binding Row.IsEnabled}" Click="OnRowClick" PointerEntered="OnRowEnter" PointerExited="OnRowExit" KeyDown="OnRowKey" ToolTip.Tip="{Binding Row.Tip}" ToolTip.ShowOnDisabled="True" IsVisible="{Binding Row.IsRow}" Opacity="{Binding Row.RowOpacity}">
                             <DockPanel Margin="{StaticResource MenuRowInset}">
                                 <Panel Classes="glyphslot" DockPanel.Dock="Left" Width="{StaticResource MenuGlyphSize}" Margin="{StaticResource MenuGlyphMargin}" VerticalAlignment="Top" Height="{StaticResource MenuRowLine}">
-                                    <Path Classes="glyph menutick" Data="{StaticResource TickIcon}" IsVisible="{Binding ShowsTick}" />
-                                    <c:IconGlyph LibraryId="{Binding Icon}" Width="{StaticResource MenuGlyphSize}" Height="{StaticResource MenuGlyphSize}" VerticalAlignment="Center" IsVisible="{Binding HasIcon}" />
+                                    <Path Classes="glyph menutick" Data="{StaticResource TickIcon}" IsVisible="{Binding Row.ShowsTick}" />
+                                    <c:IconGlyph LibraryId="{Binding Row.Icon}" Width="{StaticResource MenuGlyphSize}" Height="{StaticResource MenuGlyphSize}" VerticalAlignment="Center" IsVisible="{Binding Row.HasIcon}" />
                                 </Panel>
                                 <Grid ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="{StaticResource MenuGap}">
-                                    <WrapPanel IsVisible="{Binding NotOneLine}" ItemSpacing="{StaticResource MenuTagGap}" LineSpacing="{StaticResource MenuTagGap}" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Text}" TextWrapping="Wrap" VerticalAlignment="Center" />
-                                        <ItemsControl ItemsSource="{Binding InlineTags}" VerticalAlignment="Center">
+                                    <WrapPanel IsVisible="{Binding Row.NotOneLine}" ItemSpacing="{StaticResource MenuTagGap}" LineSpacing="{StaticResource MenuTagGap}" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Row.Text}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                        <ItemsControl ItemsSource="{Binding Row.InlineTags}" VerticalAlignment="Center">
                                             <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="{StaticResource MenuTagGap}" LineSpacing="{StaticResource MenuTagGap}" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                             <ItemsControl.ItemTemplate><DataTemplate><c:TagView /></DataTemplate></ItemsControl.ItemTemplate>
                                         </ItemsControl>
                                     </WrapPanel>
-                                    <TextBlock Text="{Binding Text}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{Binding OneLine}" />
-                                    <TextBlock Grid.Column="1" Classes="menutext" Classes.warm="{Binding TrailingWarm}" Margin="0" Text="{Binding Trailing}" VerticalAlignment="Center" IsVisible="{Binding OneLine}" />
-                                    <Button Grid.Column="1" Classes="link" Content="{Binding Link}" IsVisible="{Binding HasLink}" IsHitTestVisible="False" Focusable="False" VerticalAlignment="Top" />
-                                    <ToggleSwitch Grid.Column="1" Classes="plain" IsChecked="{Binding IsOn, Mode=OneWay}" IsVisible="{Binding IsSwitch}" IsHitTestVisible="False" Focusable="False" VerticalAlignment="Center" />
-                                    <PathIcon Grid.Column="2" Data="{DynamicResource ChevronRightIcon}" Width="{StaticResource ChevronSize}" Height="{StaticResource ChevronSize}" Foreground="{DynamicResource BrushMuted}" VerticalAlignment="Center" IsVisible="{Binding HasSubmenu}" />
-                                    <ItemsControl Grid.Row="1" Grid.ColumnSpan="3" ItemsSource="{Binding OwnLineTags}" IsVisible="{Binding HasOwnLineTags}" Margin="{StaticResource MenuTagLineMargin}">
+                                    <TextBlock Text="{Binding Row.Text}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{Binding Row.OneLine}" />
+                                    <TextBlock Grid.Column="1" Classes="menutext" Classes.warm="{Binding Row.TrailingWarm}" Margin="0" Text="{Binding Row.Trailing}" VerticalAlignment="Center" IsVisible="{Binding Row.OneLine}" />
+                                    <Button Grid.Column="1" Classes="link" Content="{Binding Row.Link}" IsVisible="{Binding Row.HasLink}" IsHitTestVisible="False" Focusable="False" VerticalAlignment="Top" />
+                                    <ToggleSwitch Grid.Column="1" Classes="plain" IsChecked="{Binding Row.IsOn, Mode=OneWay}" IsVisible="{Binding Row.IsSwitch}" IsHitTestVisible="False" Focusable="False" VerticalAlignment="Center" />
+                                    <PathIcon Grid.Column="2" Data="{DynamicResource ChevronRightIcon}" Width="{StaticResource ChevronSize}" Height="{StaticResource ChevronSize}" Foreground="{DynamicResource BrushMuted}" VerticalAlignment="Center" IsVisible="{Binding Row.HasChevron}" />
+                                    <ItemsControl Grid.Row="1" Grid.ColumnSpan="3" ItemsSource="{Binding Row.OwnLineTags}" IsVisible="{Binding Row.HasOwnLineTags}" Margin="{StaticResource MenuTagLineMargin}">
                                         <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="{StaticResource MenuTagGap}" LineSpacing="{StaticResource MenuTagGap}" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate><DataTemplate><c:TagView /></DataTemplate></ItemsControl.ItemTemplate>
                                     </ItemsControl>
-                                    <TextBlock Grid.Row="2" Grid.ColumnSpan="3" Classes="menutext" Margin="0" Text="{Binding Detail}" IsVisible="{Binding HasDetail}" />
+                                    <TextBlock Grid.Row="2" Grid.ColumnSpan="3" Classes="menutext" Margin="0" Text="{Binding Row.Detail}" IsVisible="{Binding Row.HasDetail}" />
                                 </Grid>
                             </DockPanel>
                         </Button>

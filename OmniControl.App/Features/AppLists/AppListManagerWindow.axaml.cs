@@ -73,17 +73,10 @@ public partial class AppListManagerWindow : Window
         if (sender is Flyout { Content: Control panel }) panel.DataContext = _vm;
     }
 
-    private void OnRunningClick(object? sender, RoutedEventArgs e)
-    {
-        if (sender is Button { DataContext: RunningProgram program }) _vm?.AddProgram(program.Id, program.Name);
-        FlyoutBase.GetAttachedFlyout(RunningHolder)?.Hide();
-    }
+    // A row was clicked (its own command adds the program).
+    private void OnRunningPicked(object? sender, EventArgs e) => FlyoutBase.GetAttachedFlyout(RunningHolder)?.Hide();
 
-    private void OnInstalledClick(object? sender, RoutedEventArgs e)
-    {
-        if (sender is Button { DataContext: InstalledApp app }) _vm?.AddProgram(app.Program, app.Name);
-        FlyoutBase.GetAttachedFlyout(InstalledHolder)?.Hide();
-    }
+    private void OnInstalledPicked(object? sender, EventArgs e) => FlyoutBase.GetAttachedFlyout(InstalledHolder)?.Hide();
 
     private async void OnBrowseClick(object? sender, RoutedEventArgs e)
     {

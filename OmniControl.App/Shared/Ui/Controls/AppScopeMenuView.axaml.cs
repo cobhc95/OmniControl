@@ -38,8 +38,6 @@ public partial class AppScopeMenuView : UserControl
 
     private void Close() => _flyout?.Hide();
 
-    private void OnManageClick(object? sender, RoutedEventArgs e) => _model?.OpenManager();
-
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Key != Key.Escape) return;

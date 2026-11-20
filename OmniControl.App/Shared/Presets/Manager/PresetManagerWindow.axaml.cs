@@ -132,7 +132,7 @@ public partial class PresetManagerWindow : Window
         FlyoutBase.ShowAttachedFlyout(holder);
     }
 
-    private void OnMenuRowClick(object? sender, RoutedEventArgs e)
+    private void OnMenuRowPicked(object? sender, EventArgs e)
     {
         if (_menuHolder is { } holder) FlyoutBase.GetAttachedFlyout(holder)?.Hide();
     }

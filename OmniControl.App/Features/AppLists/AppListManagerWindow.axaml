@@ -3,7 +3,6 @@
         xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
         xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
         xmlns:apps="using:OmniControl.App.Features.AppLists"
-        xmlns:core="using:OmniControl.Core.Engine"
         x:Class="OmniControl.App.Features.AppLists.AppListManagerWindow"
         x:DataType="apps:AppListManagerViewModel"
         Title="App lists" Width="760" Height="480" MinWidth="560" MinHeight="360"
@@ -77,15 +76,7 @@
                                     <StackPanel>
                                         <TextBlock Classes="menutext" Text="Apps with a window now" />
                                         <ScrollViewer MaxHeight="{StaticResource OptionListMaxHeight}" HorizontalScrollBarVisibility="Disabled">
-                                            <ItemsControl ItemsSource="{Binding Running}">
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate x:DataType="core:RunningProgram">
-                                                        <Button Classes="menurow" Click="OnRunningClick" ToolTip.Tip="{Binding Id}">
-                                                            <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
-                                                        </Button>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
+                                            <c:MenuRowList ItemsSource="{Binding RunningRows}" Picked="OnRunningPicked" />
                                         </ScrollViewer>
                                     </StackPanel>
                                 </c:ListMenuFlyout>
@@ -98,15 +89,7 @@
                                     <StackPanel>
                                         <TextBlock Classes="menutext" Text="Installed apps OmniControl knows" />
                                         <ScrollViewer MaxHeight="{StaticResource OptionListMaxHeight}" HorizontalScrollBarVisibility="Disabled">
-                                            <ItemsControl ItemsSource="{Binding Installed}">
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate x:DataType="apps:InstalledApp">
-                                                        <Button Classes="menurow" Click="OnInstalledClick" ToolTip.Tip="{Binding Program}">
-                                                            <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
-                                                        </Button>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
+                                            <c:MenuRowList ItemsSource="{Binding InstalledRows}" Picked="OnInstalledPicked" />
                                         </ScrollViewer>
                                         <TextBlock Classes="menutext" Text="Any other app: use “+ Browse…”." />
                                     </StackPanel>

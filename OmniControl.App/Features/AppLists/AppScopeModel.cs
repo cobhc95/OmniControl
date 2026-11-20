@@ -21,8 +21,8 @@ public sealed partial class AppScopeModel : ObservableObject, IAppScopeUser
 
     [ObservableProperty] private string _menuTitle = string.Empty;
 
-    /// True while the page of lists has none: the menu says so and points at "Manage app lists…".
-    [ObservableProperty] private bool _hasNoLists;
+    /// Rows of the menu's current page, ending with "Manage app lists…".
+    [ObservableProperty] private IReadOnlyList<MenuRowItem> _rows = Array.Empty<MenuRowItem>();
 
     public AppScopeModel(AppListStore store, string where, Func<AppScopeSetting?> read, Action<AppScopeSetting?> write, Action manage, AppScopeModel? group = null,
         bool excludes = false)
@@ -52,9 +52,6 @@ public sealed partial class AppScopeModel : ObservableObject, IAppScopeUser
     /// The card's tag: its own scope, shown only while that differs from its group's.
     public bool ShowsTag => _group is not null && _read() is not null && Text != _group.Text;
 
-    /// Rows of the menu's current page.
-    public ObservableCollection<ScopeMenuRow> Rows { get; } = new();
-
     /// The menu should close (a choice was made, or the manager was asked for).
     public event Action? CloseRequested;
 
@@ -72,7 +69,7 @@ public sealed partial class AppScopeModel : ObservableObject, IAppScopeUser
     /// The menu was opened: its first page.
     public void OpenMenu() => ShowMain();
 
-    public void OpenManager()
+    private void OpenManager()
     {
         CloseRequested?.Invoke();
         _manage();
@@ -84,47 +81,58 @@ public sealed partial class AppScopeModel : ObservableObject, IAppScopeUser
     private void ShowMain()
     {
         var stored = _read();
-        Rows.Clear();
+        var rows = new List<MenuRowItem>();
         if (_excludes)
         {
             MenuTitle = "Never in";
-            Rows.Add(new ScopeMenuRow(NoneWord, string.Empty, stored is not { IsLimited: true }, false, () => Choose(null)));
-            AddListRows(ScopeMode.Except, stored);
-            return;
+            rows.Add(Row(NoneWord, string.Empty, stored is not { IsLimited: true }, () => Choose(null)));
+            AddListRows(rows, ScopeMode.Except, stored);
         }
-        MenuTitle = "Works in";
-        HasNoLists = false;
-        if (_group is not null) Rows.Add(new ScopeMenuRow("Same as the group", Describe(_group.Effective), stored is null, false, () => Choose(null)));
-        var isAll = _group is null ? stored is not { IsLimited: true } : stored is { IsLimited: false };
-        Rows.Add(new ScopeMenuRow("All apps", string.Empty, isAll, false, () => Choose(AllChoice())));
-        Rows.Add(PageRow("Only in…", ScopeMode.Only, stored));
-        Rows.Add(PageRow("All except…", ScopeMode.Except, stored));
+        else
+        {
+            MenuTitle = "Works in";
+            if (_group is not null) rows.Add(Row("Same as the group", Describe(_group.Effective), stored is null, () => Choose(null)));
+            var isAll = _group is null ? stored is not { IsLimited: true } : stored is { IsLimited: false };
+            rows.Add(Row("All apps", string.Empty, isAll, () => Choose(AllChoice())));
+            rows.Add(PageRow("Only in…", ScopeMode.Only, stored));
+            rows.Add(PageRow("All except…", ScopeMode.Except, stored));
+        }
+        Show(rows);
     }
 
-    private ScopeMenuRow PageRow(string label, ScopeMode mode, AppScopeSetting? stored)
+    private MenuRowItem PageRow(string label, ScopeMode mode, AppScopeSetting? stored)
     {
         var current = stored is { IsLimited: true } && stored.Mode == mode;
         var hint = current && _store.Find(stored!.ListId) is { } list ? list.Name : "pick a list";
-        return new ScopeMenuRow(label, hint, current, true, () => ShowLists(mode));
+        return Row(label, hint, current, () => ShowLists(mode)) with { OpensPage = true };
     }
 
     private void ShowLists(ScopeMode mode)
     {
         MenuTitle = mode == ScopeMode.Only ? "Works only in the apps of…" : "Works everywhere except the apps of…";
-        Rows.Clear();
-        Rows.Add(new ScopeMenuRow("‹ Works in", string.Empty, false, false, ShowMain));
-        AddListRows(mode, _read());
+        var rows = new List<MenuRowItem> { Row("‹ Works in", string.Empty, false, ShowMain) with { OpensPage = true } };
+        AddListRows(rows, mode, _read());
+        Show(rows);
     }
 
-    private void AddListRows(ScopeMode mode, AppScopeSetting? stored)
+    private void AddListRows(List<MenuRowItem> rows, ScopeMode mode, AppScopeSetting? stored)
     {
         foreach (var list in _store.Lists)
         {
             var scope = new AppScopeSetting(mode, list.Id);
-            Rows.Add(new ScopeMenuRow(list.Name, list.Apps.Count == 1 ? "1 app" : $"{list.Apps.Count} apps", stored == scope, false, () => Choose(scope)));
+            rows.Add(Row(list.Name, list.Apps.Count == 1 ? "1 app" : $"{list.Apps.Count} apps", stored == scope, () => Choose(scope)));
         }
-        HasNoLists = _store.Lists.Count == 0;
+        if (_store.Lists.Count == 0) rows.Add(MenuRowItem.Header("No app lists yet."));
     }
+
+    private void Show(List<MenuRowItem> rows)
+    {
+        rows.Add(new MenuRowItem("Manage app lists…", string.Empty, false, string.Empty, new RelayCommand(OpenManager), RuleAbove: true, IsMuted: true));
+        Rows = rows;
+    }
+
+    private static MenuRowItem Row(string label, string hint, bool current, Action run) =>
+        new(label, string.Empty, current, string.Empty, new RelayCommand(run), Trailing: hint);
 
     private void Choose(AppScopeSetting? scope)
     {
