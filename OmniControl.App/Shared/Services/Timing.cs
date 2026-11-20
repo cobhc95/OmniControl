@@ -19,7 +19,7 @@ public static partial class Timing
     /// After start-up, wait this long (pages built, pop-up warm-up drawn), then give the memory start-up needed back to Windows (one full collection).
     public static readonly TimeSpan CompactAfterStart = TimeSpan.FromSeconds(10);
 
-    /// Once the main window has been hidden (or not yet shown) this long, its page views are let go and the freed memory given back to Windows.
+    /// Once the main window has been hidden (or not yet shown) this long, the memory its use left behind is given back to Windows (its page views stay).
     public static readonly TimeSpan HiddenSettle = TimeSpan.FromSeconds(30);
 
     /// The UI watchdog (<c>UiWatchdog</c>) posts a heartbeat this often; when the UI thread has not run one for <see cref="UiStuckAfter"/>,

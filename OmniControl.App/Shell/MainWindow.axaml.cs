@@ -19,38 +19,13 @@ public partial class MainWindow : Window
         Opened += (_, _) => Dispatcher.UIThread.Post(() => FocusSidebar()?.Focus(NavigationMethod.Tab), DispatcherPriority.Loaded);
         DataContextChanged += (_, _) =>
         {
-            if (_shell is not null)
-            {
-                _shell.PropertyChanged -= OnShellChanged;
-                _shell.SearchFocusRequested -= OnSearchFocusRequested;
-            }
+            if (_shell is not null) _shell.SearchFocusRequested -= OnSearchFocusRequested;
             _shell = DataContext as ShellViewModel;
-            if (_shell is not null)
-            {
-                _shell.PropertyChanged += OnShellChanged;
-                _shell.SearchFocusRequested += OnSearchFocusRequested;
-            }
+            if (_shell is not null) _shell.SearchFocusRequested += OnSearchFocusRequested;
         };
     }
 
     private ShellViewModel? _shell;
-
-    /// Where the page was scrolled when its view was let go while the window was hidden (<see cref="ShellViewModel.ShownPage"/>).
-    private (PageViewModel Page, Vector Offset)? _keptScroll;
-
-    /// The page view went while the window was hidden, or came back: the same page comes back where it was scrolled.
-    private void OnShellChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName != nameof(ShellViewModel.ShownPage) || sender is not ShellViewModel shell) return;
-        if (shell.ShownPage is null)
-        {
-            if (shell.CurrentPage is { } page) _keptScroll = (page, ContentHost.Offset);
-            return;
-        }
-        if (_keptScroll is { } kept && kept.Page == shell.ShownPage)
-            Dispatcher.UIThread.Post(() => ContentHost.Offset = kept.Offset, DispatcherPriority.Loaded);
-        _keptScroll = null;
-    }
 
     /// A click anywhere except the hotkey box that is listening cancels listening.
     private void OnPointerPressedTunnel(object? sender, PointerPressedEventArgs e)

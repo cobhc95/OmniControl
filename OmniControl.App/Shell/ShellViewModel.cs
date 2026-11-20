@@ -76,15 +76,9 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     public string VersionText => AppInfo.VersionText;
 
     /// The page shown on the right. Set via the two sidebar lists below.
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShownPage))] private PageViewModel? _currentPage;
-
-    /// The page whose view the window shows (<see cref="PageHost"/>, which keeps the views of the pages visited since): <see cref="CurrentPage"/>,
-    /// or null once the window has been hidden for <see cref="Timing.HiddenSettle"/> (every view is let go to give the memory back; the pages
-    /// themselves stay and the open one's view is built again on show).
-    public PageViewModel? ShownPage => _viewReleased ? null : CurrentPage;
+    [ObservableProperty] private PageViewModel? _currentPage;
 
     private readonly DispatcherTimer _hiddenSettle = new() { Interval = Timing.HiddenSettle };
-    private bool _viewReleased;
     [ObservableProperty] private PageViewModel? _selectedMainPage;
     [ObservableProperty] private PageViewModel? _selectedFooterPage;
     [ObservableProperty] private string _searchText = string.Empty;
@@ -159,14 +153,12 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _hiddenSettle.Start(); // the window is not shown yet (it may start in the tray)
     }
 
-    /// The window has stayed hidden a while: its page views go, then one full collection gives the freed memory back to Windows.
+    /// The window has stayed hidden a while: one full collection gives what its use left behind back to Windows. The page views stay
+    /// (<see cref="PageHost"/>), so showing it again from the tray rebuilds nothing.
     private void OnHiddenSettled(object? sender, EventArgs e)
     {
         _hiddenSettle.Stop();
-        _viewReleased = true;
-        OnPropertyChanged(nameof(ShownPage));
-        // After the view has really left (layout and its detach handlers run first).
-        Dispatcher.UIThread.Post(() => Guard.Run("Give memory back", ProcessPower.Compact), DispatcherPriority.Background);
+        Guard.Run("Give memory back", ProcessPower.Compact);
     }
 
     /// Every feature's view templates and those of what the shell itself makes (App settings, the suggested keys switch); added to the app's at start-up.
@@ -263,11 +255,6 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _windowShown = shown;
         _hiddenSettle.IsEnabled = !shown;
         FollowRestoreCheck(shown);
-        if (shown && _viewReleased)
-        {
-            _viewReleased = false;
-            OnPropertyChanged(nameof(ShownPage));
-        }
         if (shown) _apps.Refresh();
         _wired?.OnOnScreenChanged(shown); // a page not wired yet comes on screen when it is
         foreach (var page in _allPages) page.OnWindowShownChanged(shown);

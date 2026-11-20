@@ -3,9 +3,9 @@ using Avalonia.Controls.Templates;
 namespace OmniControl.App.Shell;
 
 /// The main window's page area. A page's view is built the first time the page is laid out (so a window started in the tray builds
-/// nothing) and then kept, hidden while another page shows, so going back to a page is a visibility flip instead of a rebuild (the
-/// Resources page keeps its gadget tab the same way). A null <see cref="Page"/> (<see cref="ShellViewModel.ShownPage"/>: the window has
-/// been hidden a while) lets every view go.
+/// nothing) and then kept for the run, also while the window is hidden, so going back to a page or showing the window from the tray is
+/// a visibility flip instead of a rebuild (the Resources page keeps its gadget tab the same way). A hidden view runs nothing: the page
+/// stops its work when it leaves the screen (<see cref="PageViewModel.OnOnScreenChanged"/>).
 public sealed class PageHost : Panel
 {
     public static readonly StyledProperty<object?> PageProperty = AvaloniaProperty.Register<PageHost, object?>(nameof(Page));
@@ -18,12 +18,6 @@ public sealed class PageHost : Panel
 
     private void Follow()
     {
-        if (Page is null)
-        {
-            Children.Clear();
-            _views.Clear();
-            return;
-        }
         foreach (var (page, view) in _views) view.IsVisible = ReferenceEquals(page, Page);
         InvalidateMeasure();
     }
