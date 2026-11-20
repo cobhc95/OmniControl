@@ -36,26 +36,48 @@ public partial class PickerWindow : Window
         {
             if (_model is not null) Menu.Show(_model);
         };
-        Closed += (_, _) => Menu.Release();
-
+        Closed += (_, _) => Leave();
     }
 
-    /// The Actions and hotkeys window (non-modal; <see cref="ActionsWindowService"/> shows it): <paramref name="model"/> in manage mode.
-    internal static PickerWindow Manage(string title, PickerModel model, ActionsWindowService bar)
+    /// The Actions and hotkeys window (non-modal, kept while hidden; <see cref="ActionsWindowService"/> shows it and gives it a model in
+    /// manage mode before each showing through <see cref="Use"/>).
+    internal static PickerWindow Manage(string title, ActionsWindowService bar)
     {
-        var window = new PickerWindow { Title = title, _model = model };
+        var window = new PickerWindow { Title = title };
         window.ManageBar.DataContext = bar;
         window.ManageBar.IsVisible = true;
         window.WireKeys();
         return window;
     }
 
+    /// The model the window shows when it opens next; its keycaps follow every save of the bindings until <see cref="Leave"/>.
+    internal void Use(PickerModel model)
+    {
+        _model = model;
+        if (_keys is not { } keys) return;
+        model.UseKeys(keys);
+        keys.Registry.BindingsSaved += model.RefreshKeys;
+    }
+
+    /// Lets go of the model (the window closed, or was hidden to be shown again), so nothing of it runs meanwhile.
+    internal void Leave()
+    {
+        Menu.Release();
+        if (_keys is { } keys)
+        {
+            if (_model is not null) keys.Registry.BindingsSaved -= _model.RefreshKeys;
+            keys.Registry.Hold(false);
+        }
+        _model = null;
+    }
+
     /// Opens the window over <paramref name="owner"/> and returns the chosen entry and settings, or null when cancelled.
     /// <param name="clock">Started at the click that opens it (the timing log); started here when null.</param>
     public static Task<PickResult?> ChooseAsync(Window owner, string title, PickerModel model, Stopwatch? clock = null)
     {
-        var window = new PickerWindow { Title = title, _model = model };
+        var window = new PickerWindow { Title = title };
         UiTiming.WhenOpened(window, "Choose", clock ?? Stopwatch.StartNew());
+        window.Use(model);
         window.WireKeys();
         // Over a topmost owner (the tray panel) it must be topmost too, or it sits behind it, looks inactive and cannot be dragged.
         window.Topmost = owner.Topmost;
@@ -63,24 +85,16 @@ public partial class PickerWindow : Window
         return window.ShowDialog<PickResult?>(owner);
     }
 
-    /// The keys part: the model shows the keys, the keycaps follow every save of the bindings, and the other keys are held from Windows
-    /// while this window is in front and its search box or a hotkey box has the keys, so a pressed key reaches it.
+    /// The keys part: the other keys are held from Windows while this window is in front and its search box or a hotkey box has the keys,
+    /// so a pressed key reaches it (<see cref="Use"/> gives the model the keys).
     private void WireKeys()
     {
-        if (_keys is not { } keys || _model is not { } model) return;
-        model.UseKeys(keys);
-        var registry = keys.Registry;
+        if (_keys is not { } keys) return;
         void Update(object? sender, EventArgs e) =>
-            registry.Hold(IsActive && FocusManager?.GetFocusedElement() is TextBox box && (box == Menu.SearchBox || HotkeyCapture.IsHotkeyBox(box)));
+            keys.Registry.Hold(IsActive && FocusManager?.GetFocusedElement() is TextBox box && (box == Menu.SearchBox || HotkeyCapture.IsHotkeyBox(box)));
         AddHandler(GotFocusEvent, Update);
         Activated += Update;
         Deactivated += Update;
-        registry.BindingsSaved += model.RefreshKeys;
-        Closed += (_, _) =>
-        {
-            registry.BindingsSaved -= model.RefreshKeys;
-            registry.Hold(false);
-        };
     }
 
     /// What a card's pill (<paramref name="startInSettings"/> false) or cogwheel (true) does: opens the window over the card's window;

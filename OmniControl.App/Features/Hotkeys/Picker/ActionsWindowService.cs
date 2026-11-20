@@ -6,7 +6,8 @@ using OmniControl.App.Shared.Presets;
 namespace OmniControl.App.Features.Hotkeys.Picker;
 
 /// The Actions and hotkeys window: the Choose-the-action window in its manage mode over every master
-/// action, opened from the sidebar's bottom entry and from search results; one non-modal window, brought to the front when asked for again.
+/// action, opened from the sidebar's bottom entry and from search results; one non-modal window, brought to the front when asked for again,
+/// hidden rather than closed (<see cref="SingleWindow{T}"/> keep), so it opens again at once with a fresh model.
 /// It owns what the window's top bar shows: the shortcut sets (a preset group of the master list, with the shared preset picker), Clear all
 /// and Restore defaults. Everything it lists is read live from <see cref="HotkeyRegistry"/>.
 public sealed class ActionsWindowService : IDisposable
@@ -41,7 +42,7 @@ public sealed class ActionsWindowService : IDisposable
     {
         (_registry, _openPresets, _ask, _showPage, _changeIcon) = (registry, openPresets, ask, showPage, changeIcon);
         HotkeysSwitch = hotkeysSwitch;
-        _window = new SingleWindow<PickerWindow>(report);
+        _window = new SingleWindow<PickerWindow>(report, keep: true);
         _sets = new HotkeySets(registry);
         var setPresets = new HotkeySetPresets(_sets);
         _setChoice = new ProviderChoice("Shortcut sets", setPresets, () => _openPresets(Title, SetsGroupId));
@@ -88,18 +89,19 @@ public sealed class ActionsWindowService : IDisposable
     /// Opens the window (or brings it to the front), at the action with this id when one is given.
     public void Open(string? actionId = null)
     {
-        if (_window.Current is null)
-            _window.Show(() =>
-            {
-                _model = new PickerModel(PickChoice.Group(MouseActionCatalog.ManageChoices(_registry.PickerActions)), null, new Dictionary<string, string>(),
-                    manage: Keys);
-                return PickerWindow.Manage(Title, _model, this);
-            }, _ => Closed(), $"Couldn't open {Title}");
-        else _window.Current.Activate();
+        _window.Show(() => PickerWindow.Manage(Title, this), Left, $"Couldn't open {Title}", Opening);
         if (actionId is not null) _model?.ShowEntry($"{MouseActionCatalog.Omni}:{actionId}");
     }
 
-    private void Closed() => _model = null;
+    /// Each showing starts fresh, as a newly made window did: a new model over the live master list (search empty, first section).
+    private void Opening(PickerWindow window) => window.Use(_model = new PickerModel(
+        PickChoice.Group(MouseActionCatalog.ManageChoices(_registry.PickerActions)), null, new Dictionary<string, string>(), manage: Keys));
+
+    private void Left(PickerWindow window)
+    {
+        window.Leave();
+        _model = null;
+    }
 
     /// The keys part every Choose-the-action window shows, read from the live master list (pick mode gets it from the window).
     public ManageMode Keys => new(KeysOf, PaneFor, ActionOf, _registry);
