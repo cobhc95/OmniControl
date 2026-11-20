@@ -28,6 +28,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 - Changed: "Run as administrator" is needed only over administrator windows; without the service, OmniControl as administrator still does the network work itself.
 - Changed: Setup installs OmniControl for all users into Program Files (one administrator prompt for the whole install, no more prompts for its steps); settings stay per user in %APPDATA%\OmniControl. An older per-user install is closed, uninstalled silently (settings and Windows Packet Filter kept) and its folder removed; the shortcuts, "Start with Windows", the sign-in task and the network service follow the new folder.
 - Security: the network service, which runs OmniControl.exe as SYSTEM, is installed only from a folder that only administrators can change (checked from the folder's access rights), so nothing running as the user can swap the program it starts. The Portable version offers no service and says "Network service needs the installed version"; as administrator it still does the network work itself.
+- Fixed: shortcuts sent by mouse buttons, gestures and rules carry the key's real scan code, so they reach Remote Desktop, virtual machine consoles and games that read scan codes.
 
 ## 0.2.3
 

@@ -10,6 +10,7 @@ public static class WindowQuery
     [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetClassName(IntPtr hwnd, StringBuilder name, int max);
+    [DllImport("user32.dll")] private static extern IntPtr GetKeyboardLayout(uint thread);
 
     private const uint GaRoot = 2;
 
@@ -22,6 +23,9 @@ public static class WindowQuery
         var foreground = GetForegroundWindow();
         return foreground == IntPtr.Zero ? IntPtr.Zero : GetAncestor(foreground, GaRoot);
     }
+
+    /// The keyboard layout of the window the user types in (layouts can differ per app); the calling thread's when no window is active.
+    internal static IntPtr ActiveKeyboardLayout() => GetKeyboardLayout(GetWindowThreadProcessId(GetForegroundWindow(), out _));
 
     /// The exact window (possibly a child control) under the point, or zero.
     internal static IntPtr WindowAt(int x, int y) => WindowFromPoint(new Point { X = x, Y = y });

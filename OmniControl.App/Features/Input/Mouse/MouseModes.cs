@@ -113,9 +113,7 @@ public sealed class MouseModes : IDisposable
                 });
             }
 
-            case MouseActionCatalog.Reveal:
-                _queue.Post(() => InputSender.Press(RevealKeys));
-                return () => _queue.Post(() => InputSender.Release(RevealKeys));
+            case MouseActionCatalog.Reveal: return HoldDown(RevealKeys);
         }
 
         if (action.Id.StartsWith(MouseActionCatalog.StickyPrefix, StringComparison.Ordinal)) ToggleSticky(action, at);
@@ -123,11 +121,14 @@ public sealed class MouseModes : IDisposable
     }
 
     /// Holds a shortcut's keys down; returns what lets them go (the "keys held down while the button is held" trigger).
-    public Action? HoldKeys(string shortcut)
+    public Action? HoldKeys(string shortcut) => KeyChord.TryParse(shortcut, out var keys) ? HoldDown(keys) : null;
+
+    // Press and release run in order on the queue's one thread, so the release always finds what the press returned.
+    private Action HoldDown(IReadOnlyList<ushort> keys)
     {
-        if (!KeyChord.TryParse(shortcut, out var keys)) return null;
-        _queue.Post(() => InputSender.Press(keys));
-        return () => _queue.Post(() => InputSender.Release(keys));
+        Action? release = null;
+        _queue.Post(() => release = InputSender.Press(keys));
+        return () => _queue.Post(() => release?.Invoke());
     }
 
     private Action? StartMoveAsScroll(OptionValues options, MouseEvent at, bool heldBack)

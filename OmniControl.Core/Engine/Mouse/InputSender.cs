@@ -27,17 +27,25 @@ public static class InputSender
     [DllImport("user32.dll", SetLastError = true)]
     private static extern uint SendInput(uint count, Input[] inputs, int size);
 
+    [DllImport("user32.dll")]
+    private static extern uint MapVirtualKeyEx(uint code, uint mapType, IntPtr layout);
+
+    private const uint VkToScanEx = 4; // MAPVK_VK_TO_VSC_EX: the high byte is 0xE0 for an extended key
+    private const uint ExtendedPrefix = 0xE0;
+
     private static uint Send(params Input[] inputs) => SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<Input>());
 
     private static Input Mouse(uint flags, uint data = 0) =>
         new() { Type = InputMouse, U = new Union { Mouse = new MouseData { Flags = flags, Data = data, Extra = Marker } } };
 
-    private static Input Key(ushort vk, bool down) =>
-        new()
-        {
-            Type = InputKeyboard,
-            U = new Union { Key = new KeyData { Vk = vk, Flags = (down ? 0u : KeyUp) | (KeyChord.IsExtended(vk) ? KeyExtended : 0u), Extra = Marker } },
-        };
+    // The virtual key and its real scan code: Remote Desktop, virtual machine consoles and raw-input games pass on the scan code only,
+    // so a key sent with scan code 0 (a virtual key alone) never reaches them.
+    private static Input Key(ushort vk, bool down, IntPtr layout)
+    {
+        var scan = MapVirtualKeyEx(vk, VkToScanEx, layout);
+        var extended = scan >> 8 == ExtendedPrefix || KeyChord.IsExtended(vk);
+        return RawKey(vk, (ushort)(scan & 0xFF), (down ? 0u : KeyUp) | (extended ? KeyExtended : 0u));
+    }
 
     private static Input RawKey(ushort vk, ushort scan, uint flags) =>
         new() { Type = InputKeyboard, U = new Union { Key = new KeyData { Vk = vk, Scan = scan, Flags = flags, Extra = Marker } } };
@@ -54,14 +62,21 @@ public static class InputSender
     }
 
     /// Presses all keys in order, then releases them in reverse (a shortcut such as Ctrl+C).
-    public static void Chord(IReadOnlyList<ushort> keys) =>
-        Send(keys.Select(k => Key(k, true)).Concat(keys.Reverse().Select(k => Key(k, false))).ToArray());
+    public static void Chord(IReadOnlyList<ushort> keys)
+    {
+        var layout = WindowQuery.ActiveKeyboardLayout();
+        Send(keys.Select(k => Key(k, true, layout)).Concat(keys.Reverse().Select(k => Key(k, false, layout))).ToArray());
+    }
 
-    /// Presses the keys and keeps them down (until <see cref="Release"/>), for actions that last while a mouse button is held.
-    public static void Press(IReadOnlyList<ushort> keys) => Send(keys.Select(k => Key(k, true)).ToArray());
-
-    /// Lets go of keys held by <see cref="Press"/>, in reverse order.
-    public static void Release(IReadOnlyList<ushort> keys) => Send(keys.Reverse().Select(k => Key(k, false)).ToArray());
+    /// Presses the keys and keeps them down, for actions that last while a mouse button is held. Returns what lets go of exactly those keys
+    /// in reverse order, with the scan codes they were pressed with even if the layout in front changed meanwhile.
+    public static Action Press(IReadOnlyList<ushort> keys)
+    {
+        var layout = WindowQuery.ActiveKeyboardLayout();
+        Send(keys.Select(k => Key(k, true, layout)).ToArray());
+        var release = keys.Reverse().Select(k => Key(k, false, layout)).ToArray();
+        return () => Send(release);
+    }
 
     private static (uint Down, uint Up, uint Data) FlagsOf(MouseButton button) => button switch
     {
