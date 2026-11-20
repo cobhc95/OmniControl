@@ -59,10 +59,11 @@ public static partial class Timing
     /// How often a Tailscale-paired PC that is offline gets the Tailscale checks again, how long to wait after a fix (start, sign in) before reading Tailscale again, and how long to wait before trying to open a Tailscale link again after one failed.
     public static readonly TimeSpan PcTailscaleRecheck = TimeSpan.FromSeconds(30), PcTailscaleAfterFix = TimeSpan.FromSeconds(3), PcTailscaleSwitchBackoff = TimeSpan.FromMinutes(2);
 
-    /// Waking another PC: the wake signal is sent up to <see cref="WakeTries"/> times, each followed by up to <see cref="WakeWaitEach"/> of waiting for the PC to be reachable; a relay answers within <see cref="WakeAskWait"/>.
-    public const int WakeTries = 3;
+    /// Waking another PC: one wake signal per press, then up to <see cref="WakeWait"/> of waiting for the PC to be reachable (never sent again by itself); a relay answers within <see cref="WakeAskWait"/>.
+    public static readonly TimeSpan WakeWait = TimeSpan.FromSeconds(120), WakeAskWait = TimeSpan.FromSeconds(6), WakePoll = TimeSpan.FromMilliseconds(500);
 
-    public static readonly TimeSpan WakeWaitEach = TimeSpan.FromSeconds(40), WakeAskWait = TimeSpan.FromSeconds(6), WakePoll = TimeSpan.FromMilliseconds(500);
+    /// How long a press of Wake (its button or key) may take to reach the signal before it no longer counts.
+    public static readonly TimeSpan WakeGrantLife = TimeSpan.FromSeconds(5);
 
     /// How long a PC about to sleep or shut down waits for its "going away" notice to be sent, and how often it re-reads its own wake facts.
     public static readonly TimeSpan WakeNoticeWait = TimeSpan.FromMilliseconds(1500), WakeFactsEvery = TimeSpan.FromMinutes(5);
@@ -74,4 +75,7 @@ public static partial class Timing
 
     /// How long the PC that asked waits for another PC's answer to a wake fix (its own prompt and the Windows prompt wait for a person), and for a test: the sleep, then the wake.
     public static readonly TimeSpan WakeFixWait = TimeSpan.FromMinutes(3), WakeSleepWait = TimeSpan.FromSeconds(90), WakeTestDelay = TimeSpan.FromSeconds(2);
+
+    /// A press of Test wake counts for its one wake until the other PC answered and went to sleep (the longest those take), and no longer.
+    public static readonly TimeSpan WakeTestGrantLife = WakeFixWait + WakeSleepWait + WakeGrantLife;
 }

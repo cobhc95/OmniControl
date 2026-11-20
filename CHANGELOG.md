@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Security: Other PCs sends a wake signal only when you press Wake (or Test wake) for that PC, or its "Wake <PC>" key, button or tile: one signal per press, never sent again by itself, never from a rule, a chain or another PC's request, and nothing is kept across a restart. A PC asked to pass the signal on does so only for a press made on the PC that asks (an older OmniControl's request is refused). If the signal can't be sent, the status line says so once; press Wake again.
+
 - New: the FX window has an Edit menu with Undo and Redo (Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z), named after the step ("Undo Remove Compressor", "Undo Change Gain"). Adding, removing, moving, pasting and switching effects, the Effects on switch, presets, loading a chain and every setting are undone; a whole knob or slider drag is one step. The history is cleared when the window closes.
 
 - New: on Other PCs, a PC's Sleep, Restart, Shut down and Sign out pills show the countdown that PC will use ("in 30 s", its own setting). Once it accepts, the pill reads "Sleeping in 0:25" with the accent fill growing, a Cancel pill beside it cancels there, and a "Sleep in 0:25" tag shows on its tab and header, then "Going to sleep…" and "Asleep" or "Off". A PC on an older OmniControl shows the pills as before. "Cancel power countdown" is a new action (never blocked).

@@ -96,6 +96,10 @@ public sealed partial class HotkeyAction : HotkeyTarget, Shared.Ui.Pages.IEditor
     /// True for an action another PC must confirm before it is run on this one (Restart, Shut down). A flag on the master entry, so there is no second list of ids.
     public bool ConfirmRun { get; init; }
 
+    /// True for an action that may run only when a person presses its key, mouse button, tile or Run now ("Wake PC"): the run path refuses it
+    /// from a rule, a chain or another PC (<see cref="HotkeyRegistry.Chain"/> set). A flag on the master entry, so there is no second list of ids.
+    public bool PersonOnly { get; init; }
+
     /// True for the action that turns every screen off at once ("Turn off displays"): the all-screens master switch (here and on another PC's view) uses it when a screen has no power control of its own. A flag on the master entry, so there is no second list of ids.
     public bool ScreensOff { get; init; }
 

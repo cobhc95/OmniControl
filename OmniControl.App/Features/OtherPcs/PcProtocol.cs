@@ -70,8 +70,10 @@ internal static class PcMsgType
         WakeInfo = "wake-info", Leaving = "leaving", WakeAsk = "wake-ask", WakeAnswer = "wake-answer",
         ImportList = "import-list", ImportGet = "import-get", ImportAnswer = "import-answer", Route = "route", Countdown = "countdown";
 
-    /// What a <c>wake-ask</c> wants (its <see cref="PcMsg.Id"/>): send a magic packet for a PC on this PC's network, read the wake facts again, turn settings on or put back what was turned on (behind this PC's own prompt), or put this PC to sleep as a test (behind its prompt).
-    public const string WakeRelay = "relay", WakeCheck = "check", WakeFix = "fix", WakeUndo = "undo", WakeTest = "test";
+    /// What a <c>wake-ask</c> wants (its <see cref="PcMsg.Id"/>): send a magic packet for a PC on this PC's network (asked only for a person's press of Wake there; the
+    /// older "relay", which retries and rules also sent, is refused), read the wake facts again, turn settings on or put back what was turned on (behind this PC's own
+    /// prompt), or put this PC to sleep as a test (behind its prompt).
+    public const string WakeRelay = "relay-pressed", WakeCheck = "check", WakeFix = "fix", WakeUndo = "undo", WakeTest = "test";
 }
 
 /// One state a PC shares: what a PC that listens needs to show it and to register it (its current value comes with it). <see cref="Group"/> is the

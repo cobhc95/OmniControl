@@ -108,7 +108,7 @@ public sealed partial class PcItem : ObservableObject
     public event Action<PcItem>? SetupWakeRequested;
 
     [RelayCommand]
-    private void Wake() => _ = _wake.WakeAsync(Id);
+    private void Wake() => _ = Guard.RunAsync("Other PCs: wake", () => _wake.WakeAsync(Id, _wake.GrantWake(Id)));
 
     [RelayCommand]
     private void SetUpWake() => SetupWakeRequested?.Invoke(this);

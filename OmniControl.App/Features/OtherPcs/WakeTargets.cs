@@ -77,7 +77,7 @@ public sealed class PairedWakeTarget : IWakeTarget
 
     public Task<WakeReply> UndoAsync() => _wake.UndoWakeAsync(_id);
 
-    public Task<string> TestAsync() => _wake.TestWakeAsync(_id);
+    public Task<string> TestAsync() => _wake.TestWakeAsync(_id, _wake.GrantTest(_id));
 }
 
 /// This PC: read and fixed here, behind Windows' own administrator prompt (the same fixer a paired PC's ask ends in).

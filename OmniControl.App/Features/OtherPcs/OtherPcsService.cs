@@ -52,7 +52,7 @@ public sealed partial class OtherPcsService : IPairedPcs, IPcBook, IDisposable
         {
             if (ReadSecret(pair.Id) is { } secret) _secrets[pair.Id] = secret;
         }
-        Wake = new PcWake(this, _requests, hotkeys, report, ask, _ownName);
+        Wake = new PcWake(this, _requests, hotkeys, report, ask, _ownName, new WakeGate());
         Tailscale = new TailscaleLink(report, RaiseChanged, _stop.Token);
         WatchShares();
         RestoreCatalogs();

@@ -3,29 +3,33 @@ using OmniControl.Core.Engine.Wake;
 
 namespace OmniControl.App.Features.OtherPcs;
 
-/// Where a wake of a paired PC stands: nothing running, the signal being sent and waited for (<see cref="WakeStatus.Tries"/> sent so far), or given up.
+/// Where a wake of a paired PC stands: nothing running, the signal being sent and waited for, or given up.
 public enum WakePhase { Idle, Waking, Failed }
 
-/// The state of a wake: <see cref="Why"/> is the one plain sentence (a tooltip) when it failed.
-public sealed record WakeStatus(WakePhase Phase, int Tries, string? Why);
+/// The state of a wake: whether its one signal was <see cref="Sent"/>; <see cref="Why"/> is the one plain sentence (a tooltip) when it failed.
+public sealed record WakeStatus(WakePhase Phase, bool Sent, string? Why);
 
 /// What another PC answered to a wake request: whether it did it and, when not, one plain sentence why.
 public sealed record WakeReply(bool Ok, string Why);
 
 /// Waking paired PCs over the network, both sides. As the PC that wants another one on: what each PC reports about being wakeable (kept on
-/// its pair), the notice it sends before it sleeps or shuts down, the "Wake PC" master action and the wake itself (the magic packet from here
-/// when this PC is on its network, else relayed by another online paired PC there; retried; honest on failure), and the requests for a check,
-/// a fix or a test. As the PC asked: relaying, reading its facts again, fixing and the sleep test, at most Timing.WakeAskBurstMax times per
-/// window; a fix and a test change this PC, so each shows this PC's own prompt first (and Windows asks for administrator rights once more for
-/// a fix): nothing changes unless a person here says yes. UI thread, like the rest of Other PCs.
+/// its pair), the notice it sends before it sleeps or shuts down, the "Wake PC" master action and the wake itself (one signal per person's press,
+/// through <see cref="WakeGate"/>: the magic packet from here when this PC is on its network, else relayed by another online paired PC there;
+/// honest on failure), and the requests for a check, a fix or a test. As the PC asked: relaying a press made there, reading its facts again, fixing
+/// and the sleep test, at most Timing.WakeAskBurstMax times per window; a fix and a test change this PC, so each shows this PC's own prompt first
+/// (and Windows asks for administrator rights once more for a fix): nothing changes unless a person here says yes. UI thread, like the rest of Other PCs.
 public sealed class PcWake : IDisposable
 {
+    private const string NotPressed = "Only pressing Wake sends the wake signal.";
+
     private readonly IPcBook _book;
     private readonly PcRequests _requests;
     private readonly IActionRegistry _actions;
     private readonly Action<string> _report;
     private readonly Func<DialogMessage, Task<bool>> _askHere;
     private readonly string _ownName;
+    private readonly WakeGate _gate;
+    private readonly Func<WakeFacts> _readOwn;
     private readonly Dictionary<string, WakeStatus> _wake = new();
     private readonly PcLimits _askLimits = new(Timing.WakeAskBurstMax, Timing.WakeAskBurstWindow);
     private readonly WakeUndoLog _undo = new();
@@ -36,7 +40,8 @@ public sealed class PcWake : IDisposable
     private long _lastLeaving;
     private bool _disposed;
 
-    internal PcWake(IPcBook book, PcRequests requests, IActionRegistry actions, Action<string> report, Func<DialogMessage, Task<bool>> askHere, string ownName)
+    /// <param name="readOwn">Reads this PC's own wake facts from Windows (slow: called off the UI thread).</param>
+    internal PcWake(IPcBook book, PcRequests requests, IActionRegistry actions, Action<string> report, Func<DialogMessage, Task<bool>> askHere, string ownName, WakeGate gate, Func<WakeFacts>? readOwn = null)
     {
         _book = book;
         _requests = requests;
@@ -44,6 +49,8 @@ public sealed class PcWake : IDisposable
         _report = report;
         _askHere = askHere;
         _ownName = ownName;
+        _gate = gate;
+        _readOwn = readOwn ?? WakeReader.Read;
         WakeReader.Failed += LogWakeRead;
         WakeReader.Answered += LogWakeRead;
     }
@@ -51,7 +58,7 @@ public sealed class PcWake : IDisposable
     private static string ActionId(string pcId) => $"otherpcs.wake.{pcId}";
 
     /// Where the wake of a PC stands.
-    public WakeStatus WakeStatusOf(string id) => _wake.GetValueOrDefault(id) ?? new WakeStatus(WakePhase.Idle, 0, null);
+    public WakeStatus WakeStatusOf(string id) => _wake.GetValueOrDefault(id) ?? new WakeStatus(WakePhase.Idle, false, null);
 
     /// What can honestly be said about waking the PC now (its header's tag and pill).
     internal WakeAdvice WakeAdviceOf(string id) => _book.Find(id) is { } pair
@@ -112,14 +119,21 @@ public sealed class PcWake : IDisposable
 
     // ---- The "Wake <PC>" master action, one per paired PC ----
 
-    /// Registers (or registers again under a new name) the master action that wakes the PC; its id stays, so keys bound to it stay.
+    /// Registers (or registers again under a new name) the master action that wakes the PC; its id stays, so keys bound to it stay. It is
+    /// <see cref="HotkeyAction.PersonOnly"/>: the run path lets only a person's key, button or click through, so its run is that person's press.
     internal void Register(PairedPc pair)
     {
         var id = pair.Id;
         _actions.Unregister(ActionId(id));
-        _actions.Register(new HotkeyAction(ActionId(id), $"Wake {pair.DisplayName}", OtherPcsService.Category, $"wake turn on power start boot wol {pair.DisplayName}", keys => { _ = Guard.RunAsync("Other PCs: wake", () => WakeAsync(id)); }, group: pair.DisplayName)
-            { RemotePc = OtherPcsService.LabelOf(pair), SuggestedIcons = new[] { "power" } });
+        _actions.Register(new HotkeyAction(ActionId(id), $"Wake {pair.DisplayName}", OtherPcsService.Category, $"wake turn on power start boot wol {pair.DisplayName}", keys => { _ = Guard.RunAsync("Other PCs: wake", () => WakeAsync(id, GrantWake(id))); }, group: pair.DisplayName)
+            { RemotePc = OtherPcsService.LabelOf(pair), SuggestedIcons = new[] { "power" }, PersonOnly = true });
     }
+
+    /// A person pressed Wake for this PC (its button, or its key): the one-shot go-ahead its wake needs.
+    public WakeGrant GrantWake(string pcId) => _gate.Grant(pcId, Timing.WakeGrantLife);
+
+    /// A person pressed Test wake for this PC: the go-ahead for the one wake that ends the test.
+    public WakeGrant GrantTest(string pcId) => _gate.Grant(pcId, Timing.WakeTestGrantLife);
 
     internal void Unregister(string pcId) => _actions.Unregister(ActionId(pcId));
 
@@ -231,17 +245,19 @@ public sealed class PcWake : IDisposable
 
     private WakeFacts ReadWakeFacts()
     {
-        var facts = WakeReader.Read();
+        var facts = _readOwn();
         facts.CanUndo = _undo.Any;
         return facts;
     }
 
     // ---- Waking ----
 
-    /// Wakes a PC that is off and wakeable; says one plain sentence when it is already on or cannot be. Returns how it ended.
-    public async Task<WakeStatus> WakeAsync(string pcId)
+    /// Wakes a PC that is off and wakeable with ONE signal for the person's press (<paramref name="grant"/>), then waits up to
+    /// <see cref="Timing.WakeWait"/> for it to connect; says one plain sentence when it is already on or cannot be. Nothing is sent again by
+    /// itself: after a failure the person presses Wake again. Returns how it ended.
+    public async Task<WakeStatus> WakeAsync(string pcId, WakeGrant? grant)
     {
-        if (_book.Find(pcId) is not { } pair) return new WakeStatus(WakePhase.Failed, 0, "That PC is not paired.");
+        if (_book.Find(pcId) is not { } pair) return new WakeStatus(WakePhase.Failed, false, "That PC is not paired.");
         if (_book.IsOnline(pcId))
         {
             _report($"{pair.DisplayName} is already on.");
@@ -254,30 +270,25 @@ public sealed class PcWake : IDisposable
             _report(advice.Reason.Length > 0 ? advice.Reason : $"{pair.DisplayName} can't be woken remotely.");
             return WakeStatusOf(pcId);
         }
-        var sent = 0;
-        var why = string.Empty;
-        while (sent < Timing.WakeTries)
+        SetWake(pcId, new WakeStatus(WakePhase.Waking, false, null));
+        if (await SendWakeSignalAsync(pair, grant) is { } problem)
         {
-            SetWake(pcId, new WakeStatus(WakePhase.Waking, sent, null));
-            if (_book.Find(pcId) is not { } now) return WakeStatusOf(pcId);
-            var problem = await SendWakeSignalAsync(now);
-            if (problem is not null)
-            {
-                why = problem;
-                break;
-            }
-            sent++;
-            SetWake(pcId, new WakeStatus(WakePhase.Waking, sent, null));
-            if (await WaitOnlineAsync(pcId, true, Timing.WakeWaitEach))
-            {
-                SetWake(pcId, new WakeStatus(WakePhase.Idle, sent, null));
-                _report($"{pair.DisplayName} is on.");
-                return WakeStatusOf(pcId);
-            }
-            why = $"It did not answer within {Timing.WakeWaitEach.TotalSeconds:0} seconds.";
+            Guard.Log("Other PCs: wake", new IOException($"The wake signal for {pair.DisplayName} was not sent: {problem}"));
+            _report($"Couldn't wake {pair.DisplayName}: {problem}");
+            var notSent = new WakeStatus(WakePhase.Failed, false, problem);
+            SetWake(pcId, notSent);
+            return notSent;
         }
-        Guard.Log("Other PCs: wake", new IOException($"{pair.DisplayName} did not wake after {sent} tries: {why}"));
-        var failed = new WakeStatus(WakePhase.Failed, sent, why);
+        SetWake(pcId, new WakeStatus(WakePhase.Waking, true, null));
+        if (await WaitOnlineAsync(pcId, true, Timing.WakeWait))
+        {
+            SetWake(pcId, new WakeStatus(WakePhase.Idle, true, null));
+            _report($"{pair.DisplayName} is on.");
+            return WakeStatusOf(pcId);
+        }
+        var why = $"It did not answer within {Timing.WakeWait.TotalSeconds:0} seconds.";
+        Guard.Log("Other PCs: wake", new IOException($"{pair.DisplayName} did not wake: {why}"));
+        var failed = new WakeStatus(WakePhase.Failed, true, why);
         SetWake(pcId, failed);
         return failed;
     }
@@ -294,25 +305,16 @@ public sealed class PcWake : IDisposable
         return _book.IsOnline(pcId) == online;
     }
 
-    /// Sends one wake signal: from this PC when it is on the PC's network, else through another online paired PC there. Null = sent; else one plain sentence why not.
-    private async Task<string?> SendWakeSignalAsync(PairedPc pair)
+    /// THE dispatch of every wake this PC starts: the person's grant for exactly this PC is used up first, then one signal goes, from this PC when
+    /// it is on the PC's network, else through another online paired PC there. Null = sent; else one plain sentence why not.
+    private async Task<string?> SendWakeSignalAsync(PairedPc pair, WakeGrant? grant)
     {
+        if (!_gate.TryUse(grant, pair.Id)) return NotPressed;
         if (pair.Wake is not { Known: true } facts) return "It has not told this PC its network card yet.";
-        if (OwnWakeSubnet == facts.Subnet) return await SendMagicPacketAsync(facts.Mac, facts.Subnet);
+        if (OwnWakeSubnet == facts.Subnet) return await _gate.SendPacketAsync(facts.Mac, facts.Subnet);
         if (RelayFor(pair) is not { } relay) return "No PC on its network is on to send the wake signal.";
         var reply = await AskAsync(relay.Id, new PcMsg { T = PcMsgType.WakeAsk, Id = PcMsgType.WakeRelay, Text = facts.Mac, Payload = facts.Subnet }, Timing.WakeAskWait);
         return reply is { Ok: true } ? null : PcProtocol.Clip(reply?.Why, 200) is { Length: > 0 } text ? text : $"{relay.DisplayName} did not answer.";
-    }
-
-    /// Sends the magic packet from this PC: null = sent, else why not.
-    private static async Task<string?> SendMagicPacketAsync(string mac, string subnet)
-    {
-        var (ok, why) = await Task.Run(() =>
-        {
-            var sent = MagicPacket.Send(mac, subnet, out var reason);
-            return (sent, reason);
-        });
-        return ok ? null : why;
     }
 
     // ---- Asking another PC (check, fix, test, relay) ----
@@ -343,20 +345,20 @@ public sealed class PcWake : IDisposable
     public async Task<WakeReply> UndoWakeAsync(string pcId) =>
         ReplyOf(await AskAsync(pcId, new PcMsg { T = PcMsgType.WakeAsk, Id = PcMsgType.WakeUndo }, Timing.WakeFixWait), NameOf(pcId));
 
-    /// The test: asks the PC to go to sleep (it shows its own prompt), waits for it to go, then wakes it from here. The words say what really happened at each step.
-    public async Task<string> TestWakeAsync(string pcId)
+    /// The test (<paramref name="grant"/>: the person's press of Test wake): asks the PC to go to sleep (it shows its own prompt), waits for it to go,
+    /// then wakes it from here. The words say what really happened at each step.
+    public async Task<string> TestWakeAsync(string pcId, WakeGrant grant)
     {
         var name = NameOf(pcId);
         var reply = ReplyOf(await AskAsync(pcId, new PcMsg { T = PcMsgType.WakeAsk, Id = PcMsgType.WakeTest }, Timing.WakeFixWait), name);
         if (!reply.Ok) return reply.Why;
         if (!await WaitOnlineAsync(pcId, false, Timing.WakeSleepWait)) return $"{name} did not go to sleep.";
-        var status = await WakeAsync(pcId);
+        var status = await WakeAsync(pcId, grant);
         return status.Phase == WakePhase.Failed ? $"The test failed: {FailedWords(status)}." : _book.IsOnline(pcId) ? $"The test worked: {name} slept and woke." : status.Why ?? $"{name} did not wake.";
     }
 
-    /// The words of a failed wake: "Didn't wake (tried 3 times)", or that the signal could not be sent at all.
-    public static string FailedWords(WakeStatus status) => status.Tries == 0 ? "Couldn't send the wake signal"
-        : $"Didn't wake (tried {status.Tries} {(status.Tries == 1 ? "time" : "times")})";
+    /// The words of a failed wake: "Didn't wake" after its signal went, or that the signal could not be sent at all.
+    public static string FailedWords(WakeStatus status) => status.Sent ? "Didn't wake" : "Couldn't send the wake signal";
 
     // ---- This PC asked by a paired PC ----
 
@@ -404,7 +406,8 @@ public sealed class PcWake : IDisposable
         await Task.Run(() => Guard.Run("Other PCs: sleeping for the wake test", () => PowerCommands.Sleep()));
     }
 
-    // A wake signal for a PC on this PC's own network (its network and address must be well formed, and the network must be this one).
+    // A wake signal for a PC on this PC's own network, asked by a paired PC after its person pressed Wake there (only that dispatch sends this
+    // ask; the old "relay" of retries and rules is refused); its network and address must be well formed, and the network must be this one.
     private async Task RelayAsync(PcMsg message, PcMsg reply)
     {
         var mac = PcProtocol.Clip(message.Text, 17);
@@ -415,7 +418,7 @@ public sealed class PcWake : IDisposable
             reply.Why = "This PC is not on that network.";
             return;
         }
-        var why = await SendMagicPacketAsync(mac, subnet);
+        var why = await _gate.SendPacketAsync(mac, subnet);
         reply.Ok = why is null;
         reply.Why = why;
     }

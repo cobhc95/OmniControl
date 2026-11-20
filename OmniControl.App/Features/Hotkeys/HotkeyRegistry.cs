@@ -184,9 +184,9 @@ public sealed partial class HotkeyRegistry : IActionRegistry, IActionRunner, IDi
     public Action? RunHeld(string id, RunSettings settings)
     {
         if (Find(id) is not { RunHeld: { } start } action) return null;
-        // A refused action still answers "it lasts" with nothing to end, so the input does not fall back to running it once.
-        if (!PermittedFromAnyThread(action)) return () => { };
         var chain = _chain.Value;
+        // A refused action still answers "it lasts" with nothing to end, so the input does not fall back to running it once.
+        if (!PermittedFromAnyThread(action, chain)) return () => { };
         Action? stop = null;
         var resolved = Resolve(action, settings)!;
         if (Guard.Run($"Action {action.Id}", () => stop = start(resolved)) is not null)
@@ -199,10 +199,10 @@ public sealed partial class HotkeyRegistry : IActionRegistry, IActionRunner, IDi
     }
 
     /// The gate's answer for a caller that may be on the mouse hook's thread: asked on the UI thread, waiting only <see cref="Timing.GateAskWait"/> (no answer in time means no).
-    private bool PermittedFromAnyThread(HotkeyAction action)
+    private bool PermittedFromAnyThread(HotkeyAction action, RunChain? chain)
     {
-        if (Dispatcher.UIThread.CheckAccess()) return Permitted(action);
-        var ask = Dispatcher.UIThread.InvokeAsync(() => Permitted(action), DispatcherPriority.Send).GetTask();
+        if (Dispatcher.UIThread.CheckAccess()) return Permitted(action, chain);
+        var ask = Dispatcher.UIThread.InvokeAsync(() => Permitted(action, chain), DispatcherPriority.Send).GetTask();
         return ask.Wait(Timing.GateAskWait) && ask.Result;
     }
 
@@ -234,7 +234,7 @@ public sealed partial class HotkeyRegistry : IActionRegistry, IActionRunner, IDi
         // (at the same priority as the refresh's own posts to the window, so it follows them).
         if (!retried && action.HasMissingPick
             && _hardware.RefreshThen(action.HardwareWatch!, () => Dispatcher.UIThread.Post(() => RunNow(action, chain, run, retried: true)))) return;
-        if (!Permitted(action)) return;
+        if (!Permitted(action, chain)) return;
         if (SkipsOrWaitsForState(action, chain, run, stateRead)) return;
         var outer = _chain.Value;
         _chain.Value = chain;
@@ -301,10 +301,14 @@ public sealed partial class HotkeyRegistry : IActionRegistry, IActionRunner, IDi
         if (moved.Count > 0) Moved?.Invoke(moved);
     }
 
-    /// The one gate every run passes: false (and one line in the status) when a block rule forbids the action now.
-    private bool Permitted(HotkeyAction action)
+    /// The one gate every run passes: false (and one line in the status) when a block rule forbids the action now, or a rule, a chain or another
+    /// PC (<paramref name="chain"/> set) runs a <see cref="HotkeyAction.PersonOnly"/> action.
+    internal bool Permitted(HotkeyAction action, RunChain? chain)
     {
-        if (_gate?.BlockReason(action) is not { } reason) return true;
+        var reason = action.PersonOnly && chain is not null
+            ? $"{action.Title} runs only from a key, a mouse button or a click, not from a rule or another PC."
+            : _gate?.BlockReason(action);
+        if (reason is null) return true;
         _report(reason);
         return false;
     }
