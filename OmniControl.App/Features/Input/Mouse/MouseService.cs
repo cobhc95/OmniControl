@@ -86,8 +86,7 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
         _log = hook.Diagnose;
         _gestureAt = gestureAt;
         _snapshot = TakeSnapshot();
-        _runner = new MouseActionRunner(runOmniAction, Say, hook.Diagnose, action => !_snapshot.SendToRemoteAsKeys ? null
-            : action.Id == MouseActionCatalog.Omni ? keyEquivalentOf(action.Param) : MouseActionCatalog.KeyEquivalentOf(action.Id));
+        _runner = new MouseActionRunner(runOmniAction, Say, hook.Diagnose, () => _snapshot.SendToRemoteAsKeys, keyEquivalentOf);
         _modes = new MouseModes(hook);
         ApplyWatchers();
         hook.PassAll = PassesEverything;

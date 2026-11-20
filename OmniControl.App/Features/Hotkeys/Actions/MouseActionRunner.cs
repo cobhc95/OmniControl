@@ -22,20 +22,24 @@ public sealed class MouseActionRunner
     private readonly Func<string, RunSettings?, bool> _runOmniAction;
     private readonly Action<string> _report;
     private readonly Action<string> _log;
-    private readonly Func<MouseAction, string?>? _remoteKeysOf;
+    private readonly Func<bool>? _toRemote;
+    private readonly Func<string, string?>? _keyEquivalentOf;
     private readonly LaunchLimiter _launches = new();   // the latest programs or folders started
+    private int _winKeyNoted;                            // the mouse log said once that a windowed Remote Desktop may keep Windows-key shortcuts here
 
     /// <param name="runOmniAction">Runs the OmniControl hotkey action with this id (with the settings the input chose: a program to start, how far a level moves, a power countdown); false when there is none.</param>
     /// <param name="report">Shows a short problem message to the user.</param>
     /// <param name="log">Writes a line to the mouse log (what was started, and what was refused).</param>
-    /// <param name="remoteKeysOf">The shortcut an action is sent as instead while a remote-input window is in front (<see cref="RemoteInputApps"/>),
-    /// or null when it runs here; null: every action runs here (rules).</param>
-    public MouseActionRunner(Func<string, RunSettings?, bool> runOmniAction, Action<string> report, Action<string> log, Func<MouseAction, string?>? remoteKeysOf = null)
+    /// <param name="toRemote">True while actions go to a remote-input window in front as keys (<see cref="RemoteInputApps"/>); null: every action runs here (rules).</param>
+    /// <param name="keyEquivalentOf">The master action's <see cref="HotkeyAction.KeyEquivalent"/> by id, or null.</param>
+    public MouseActionRunner(Func<string, RunSettings?, bool> runOmniAction, Action<string> report, Action<string> log,
+        Func<bool>? toRemote = null, Func<string, string?>? keyEquivalentOf = null)
     {
         _runOmniAction = runOmniAction;
         _report = report;
         _log = log;
-        _remoteKeysOf = remoteKeysOf;
+        _toRemote = toRemote;
+        _keyEquivalentOf = keyEquivalentOf;
     }
 
     /// Runs the action as many times as its "times" option says (once unless the action has that option set).
@@ -100,7 +104,9 @@ public sealed class MouseActionRunner
     /// Sends the action as its shortcut when it has one and a remote-input window is in front, so the other computer acts on it. True when sent.
     private bool SentToRemote(MouseAction action)
     {
-        if (_remoteKeysOf?.Invoke(action) is not { } keys || RemoteInputApps.InFront() is not { } app) return false;
+        if (_toRemote?.Invoke() != true) return false;
+        var keys = action.Id == MouseActionCatalog.Omni ? _keyEquivalentOf?.Invoke(action.Param) : MouseActionCatalog.KeyEquivalentOf(action.Id);
+        if (keys is null || RemoteInputApps.InFront() is not { } app) return false;
         _log($"{(action.Id == MouseActionCatalog.Omni ? action.Param : action.Id)} sent as {keys} to {app.Name}, in front");
         SendKeys(keys);
         return true;
@@ -135,8 +141,22 @@ public sealed class MouseActionRunner
 
     private void SendKeys(string text)
     {
-        if (KeyChord.TryParse(text, out var keys)) InputSender.Chord(keys);
-        else _report($"Couldn't read the shortcut \"{text}\". Use names like Ctrl+Shift+T.");
+        if (!KeyChord.TryParse(text, out var keys))
+        {
+            _report($"Couldn't read the shortcut \"{text}\". Use names like Ctrl+Shift+T.");
+            return;
+        }
+        InputSender.Chord(_toRemote?.Invoke() == true && RemoteInputApps.WindowedKeysFor(keys) is { } remote ? ForWindowed(remote, text) : keys);
+    }
+
+    /// The keys for a windowed remote session that would keep <paramref name="text"/> on this PC: its replacement, logged; a Windows-key
+    /// shortcut has none and is sent as it is, said once in the mouse log.
+    private ushort[] ForWindowed(RemoteInputApps.RemoteKeys remote, string text)
+    {
+        if (remote.SentAs is { } swapped) _log($"{text} sent as {swapped} to {remote.App.Name} (not full screen: its own replacement)");
+        else if (Interlocked.Exchange(ref _winKeyNoted, 1) == 0)
+            _log($"{text} sent to {remote.App.Name} as it is: not full screen, it keeps Windows-key shortcuts on this PC unless its \"Apply Windows key combinations\" is \"On the remote computer\"");
+        return remote.Keys;
     }
 
     /// Allows at most <see cref="Timing.LaunchBurstMax"/> launches (programs, folders, and keystrokes that open a window) per

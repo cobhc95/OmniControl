@@ -53,8 +53,11 @@ public sealed partial class MousePageViewModel
             Half = true,
             Note = "Remote Desktop, virtual machines",
             Tip = "While a remote desktop or virtual machine window is in front, a button's or trackpad gesture's action that has a standard shortcut "
-                + "(volume, play or pause, next track, close window) is sent as that shortcut, so the other PC acts. Shortcuts with the Windows key or "
-                + "Alt+Tab reach a Remote Desktop only with its \"Apply Windows key combinations: On the remote computer\". Works in: "
+                + "(volume, play or pause, next track, close window) is sent as that shortcut, so the other PC acts. In a Remote Desktop that is not "
+                + "full screen, shortcuts it keeps on this PC go as its own replacements ("
+                + string.Join(", ", RemoteInputApps.All.SelectMany(a => a.WindowedSwaps ?? Array.Empty<RemoteInputApps.KeySwap>()).Distinct().Select(s => $"{s.Keys} as {s.SentAs}"))
+                + "); Windows-key shortcuts (Task view, Show desktop, snap, virtual desktops) have none and reach it only with its \"Apply Windows key "
+                + "combinations: On the remote computer\". Works in: "
                 + string.Join(", ", RemoteInputApps.All.Select(a => a.Name)) + ".",
         };
 

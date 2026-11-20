@@ -11,8 +11,17 @@ public static class WindowQuery
     [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetClassName(IntPtr hwnd, StringBuilder name, int max);
     [DllImport("user32.dll")] private static extern IntPtr GetKeyboardLayout(uint thread);
+    [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hwnd, out Rect rect);
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")] private static extern IntPtr GetWindowLongPtr(IntPtr hwnd, int index);
+    [DllImport("user32.dll")] private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
+    [DllImport("user32.dll")] private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo info);
 
-    private const uint GaRoot = 2;
+    [StructLayout(LayoutKind.Sequential)] private struct Rect { public int Left, Top, Right, Bottom; }
+    [StructLayout(LayoutKind.Sequential)] private struct MonitorInfo { public int Size; public Rect Monitor, Work; public uint Flags; }
+
+    private const uint GaRoot = 2, MonitorDefaultToNull = 0;
+    private const int GwlStyle = -16;
+    private const long WsCaption = 0x00C00000;
 
     /// The programs that draw Windows' own shell (taskbar, Start, pop-ups, File Explorer windows).
     private static readonly string[] ShellPrograms = { "explorer.exe", "ShellExperienceHost.exe", "StartMenuExperienceHost.exe", "SearchHost.exe" };
@@ -43,6 +52,17 @@ public static class WindowQuery
         var name = new StringBuilder(64);
         GetClassName(window, name, name.Capacity);
         return name.ToString();
+    }
+
+    /// True when the window is full screen: no title bar and it covers its whole monitor (or more, a session spanning monitors). A maximised
+    /// window keeps its title bar, so it never counts even where it reaches past the monitor's edges.
+    internal static bool CoversItsMonitor(IntPtr window)
+    {
+        if ((GetWindowLongPtr(window, GwlStyle).ToInt64() & WsCaption) == WsCaption || !GetWindowRect(window, out var r)) return false;
+        var info = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
+        if (!GetMonitorInfo(MonitorFromWindow(window, MonitorDefaultToNull), ref info)) return false;
+        var m = info.Monitor;
+        return r.Left <= m.Left && r.Top <= m.Top && r.Right >= m.Right && r.Bottom >= m.Bottom;
     }
 
     /// The class name of the top-level window under the point, or empty. Cheap enough for the mouse hook.
