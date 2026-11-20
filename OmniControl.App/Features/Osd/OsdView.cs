@@ -44,6 +44,10 @@ public static class OsdView
     // The level shown for a muted or zero volume: its icon and number turn red so the state reads at a glance.
     private static readonly SolidColorBrush Silent = new(Palette.Danger);
 
+    /// The colour of the bar, ring and icon: the shade the app paints its accent with on a surface as dark or light as the pop-up's.
+    public static Color AccentFor(OsdSettings s) =>
+        AccentService.Shade(s.ResolveAccent(), ColorMath.Luminance(Color.Parse(s.Background)) <= LightBackground);
+
     public static Control Build(OsdSettings s, string label, OsdLevelIcon icon, int value) => Build(s, label, icon, value, out _);
 
     /// Builds the level pop-up and hands back <paramref name="setValue"/>, which changes the shown value in place. Re-using the built
@@ -251,7 +255,7 @@ public static class OsdView
         {
             var bg = Color.Parse(s.Background);
             var fg = ColorMath.Luminance(bg) > LightBackground ? Palette.Ink : Colors.White;
-            return new Scheme(bg, s.ResolveAccent(), fg, ColorMath.Mix(bg, fg, MutedMix), ColorMath.Mix(bg, fg, TrackMix), ColorMath.Mix(bg, fg, EdgeMix));
+            return new Scheme(bg, AccentFor(s), fg, ColorMath.Mix(bg, fg, MutedMix), ColorMath.Mix(bg, fg, TrackMix), ColorMath.Mix(bg, fg, EdgeMix));
         }
     }
 

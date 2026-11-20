@@ -128,6 +128,14 @@ public static class AccentService
         return ColorMath.Contrast(ink, fill) >= ColorMath.Contrast(Colors.White, fill) ? Palette.OnAccentInk : Colors.White;
     }
 
+    private static Color shadeDark, shadeLight;
+
+    /// The fill the styles paint <paramref name="picked"/> with on a dark or light surface (BrushAccent's colour; for the program's own accent
+    /// Windows' own shade). For drawing outside the themed styles, such as the OSD.
+    public static Color Shade(Color picked, bool darkTheme) =>
+        picked == Current ? (darkTheme ? shadeDark : shadeLight)
+        : darkTheme ? ColorMath.AccentShade(picked, darkTheme: true, ShadeScale) : ForLightTheme(picked);
+
     /// Applies the saved choice and starts listening to Windows' colour change notice and to a new background (once, for the program's life).
     public static void Initialize(string name, string? customHex, int intensity)
     {
@@ -194,6 +202,7 @@ public static class AccentService
             && Application.Current.PlatformSettings?.GetColorValues().AccentColor1 is { A: > 0 } ? AccentShades.Read() : null;
         var dark = windows is { } w ? Color.FromUInt32(w.ForDark) : ColorMath.AccentShade(picked, darkTheme: true, ShadeScale);
         var light = windows is { } v ? Color.FromUInt32(v.ForLight) : ForLightTheme(picked);
+        (shadeDark, shadeLight) = (dark, light);
 
         Update(app, ThemeVariant.Dark, SurfaceService.PageOf(ThemeVariant.Dark), dark, 0.10, 0.18, Colors.White, 0.15);
         Update(app, ThemeVariant.Light, SurfaceService.PageOf(ThemeVariant.Light), light, 0.09, 0.20, Colors.White, 0.12);

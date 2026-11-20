@@ -39,7 +39,7 @@ public sealed class OsdWindow : Window
     /// Draws a level pop-up. True when its look changed (a new visual or opacity, whose frame is not drawn yet); false when only the value changed in place.
     public bool Render(OsdSettings settings, string label, OsdLevelIcon icon, int value)
     {
-        var look = (settings.Style, settings.Background, settings.ResolveAccent(), label, icon);
+        var look = (settings.Style, settings.Background, OsdView.AccentFor(settings), label, icon);
         var changed = SetOpacity(settings);
         if (_built != look || _setValue is null)
         {
