@@ -150,6 +150,7 @@ public sealed partial class OtherPcsService : IPairedPcs, IPcBook, IDisposable
         if (Find(id) is not { } pair) return;
         CloseLink(id);
         ForgetRemote(id);
+        ClearCountdown(id);
         _credentials.Delete(CredentialTarget(id));
         _secrets.TryRemove(id, out _);
         Wake.Unregister(id);

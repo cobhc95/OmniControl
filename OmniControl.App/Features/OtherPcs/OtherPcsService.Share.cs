@@ -17,6 +17,7 @@ public sealed partial class OtherPcsService
         _states.ListChanged += ScheduleShare;
         _states.ValueChanged += OnStateChanged;
         _hotkeys.Actions.CollectionChanged += OnActionsChanged;
+        _hotkeys.BindingsSaved += ScheduleShare; // an action's defaults (its countdown) are saved with its keys
     }
 
     private void UnwatchShares()
@@ -24,6 +25,7 @@ public sealed partial class OtherPcsService
         _states.ListChanged -= ScheduleShare;
         _states.ValueChanged -= OnStateChanged;
         _hotkeys.Actions.CollectionChanged -= OnActionsChanged;
+        _hotkeys.BindingsSaved -= ScheduleShare;
         _settle?.Stop();
     }
 
@@ -58,7 +60,7 @@ public sealed partial class OtherPcsService
 
     private List<SharedAction> SharedActions() => _hotkeys.Actions
         .Where(a => a.Common is not null && !PcProtocol.IsRemote(a.Id))
-        .Select(a => new SharedAction(a.Id, a.Title, SharedIcon(a.ShownIcon), a.Common!, a.ScreensOff, a.ConfirmRun)).ToList();
+        .Select(a => new SharedAction(a.Id, a.Title, SharedIcon(a.ShownIcon), a.Common!, a.ScreensOff, a.ConfirmRun, a.CountdownSeconds)).ToList();
 
     /// The icon as the other PC can draw it: a library icon travels, a user's own picture does not (the other PC does not have it).
     private static string? SharedIcon(string? icon) => icon is null || icon.StartsWith(Icons.IconStore.UserPrefix, StringComparison.Ordinal) ? null : icon;

@@ -17,8 +17,8 @@ public partial class CountdownWindow : Window
         Closed += (_, _) => _timer.Stop();
     }
 
-    /// Shows the countdown; true when the time ran out or "Do it now" was pressed, false when it was cancelled.
-    public static Task<bool> ConfirmAsync(string title, string text, TimeSpan time)
+    /// Shows the countdown; true when the time ran out or "Do it now" was pressed, false when it was cancelled (here or through <paramref name="cancel"/>).
+    public static Task<bool> ConfirmAsync(string title, string text, TimeSpan time, CancellationToken cancel)
     {
         var window = new CountdownWindow { Title = title, _left = time };
         window.TitleText.Text = title;
@@ -26,7 +26,12 @@ public partial class CountdownWindow : Window
         window.ShowSeconds();
         window._timer.Start();
         var done = new TaskCompletionSource<bool>();
-        window.Closed += (_, _) => done.TrySetResult(window._go);
+        var cancelled = cancel.Register(() => Dispatcher.UIThread.Post(window.Close));
+        window.Closed += (_, _) =>
+        {
+            cancelled.Dispose();
+            done.TrySetResult(window._go);
+        };
         window.Show();
         return done.Task;
     }

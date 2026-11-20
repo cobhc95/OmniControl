@@ -61,7 +61,7 @@ public sealed partial class AutomationService : IActionGate, IDisposable
     /// <param name="report">Shows one plain sentence in the status line.</param>
     /// <param name="states">The master list of states: the "When a state changes" triggers watch it, and the power states are registered in it.</param>
     /// <param name="power">The power journal: a confirmed wake starts the "wakes from sleep" rules, and it says whether this start-up is a new log-in.</param>
-    public AutomationService(IActionRegistry hotkeys, IActionRunner run, ActionGateSlot gate, IStateRegistry states, Func<string, string, TimeSpan, Task<bool>> countdown,
+    public AutomationService(IActionRegistry hotkeys, IActionRunner run, ActionGateSlot gate, IStateRegistry states, Func<string, string, TimeSpan, CancellationToken, Task<bool>> countdown,
         Func<IEnumerable<string>> remembered, bool startedByWindows, Action<string> report, IPowerEvents power)
     {
         _hotkeys = hotkeys;
@@ -77,7 +77,7 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         _runner = new RuleRunner(actions, IsApproved, Log, id => hotkeys.Find(id)?.Reach);
         _custom = new CustomActionRunner(actions, Log);
 
-        _guard = new PowerGuard(countdown, _report, () => run.Chain);
+        _guard = new PowerGuard(countdown, _report, () => run.Chain, power.Counting);
         hotkeys.Register(PowerActions.Make(_guard, TogglePause));
         _keepAwake = new KeepAwakeEntries(hotkeys, states);
         hotkeys.Register(Settings.Rules.Where(r => r.Kind == AutomationKind.Do).Select(MakeRuleAction));

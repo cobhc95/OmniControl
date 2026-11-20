@@ -158,6 +158,7 @@ Made by the shell, not modules: `Hotkeys` (master action list, Actions and hotke
 | `Controls/PasswordField`; `CopyDetails` | THE password field; every "Copy details" |
 | `Controls/IconGlyph`, `IconText`; `Icons/IconPicker` | drawing an icon; icon before a name; THE icon picker |
 | `Controls/ChoiceChips`, `ChoiceChip`; `Pages/ChoiceChipsItem` | row of choice pills (`ChipTag` "scope" in a card); a chip + menu leading a slider row; a card of choice pills with a muted note and an optional chip menu after them (`ChoiceChipsItem.Menu`) |
+| `ChipItem.Note` / `.Progress` → `Button.pill.counting` over `Controls/ProgressFill` | a pill's muted note after its name ("in 30 s"); a pill whose action runs: accent edge, the fill growing from the left (Other PCs' power countdown, `PcCountdown`; the other PC says start, run-out and end through `PcMsgType.Countdown`, its Cancel is the `CancelsCountdown` action) |
 | `Controls/OptionList`, `Border.tickbox` (`.mixed`) | ticked option list |
 | `Controls/StatusDot`; `RemoteSectionTag` + `TextBlock.remotesection` | green/yellow/red/grey status dot; "Other PCs Â· name" mark of a remote entry |
 | `Controls/PanelDragReorder`, `ListDragReorder`; `AnchorPicker` | drag reorder in a panel / a ListBox; 3 x 3 place grid |

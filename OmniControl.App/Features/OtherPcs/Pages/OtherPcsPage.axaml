@@ -29,11 +29,16 @@
                         <ContentControl Content="{Binding}">
                             <ContentControl.DataTemplates>
                                 <DataTemplate DataType="vm:PcItem">
-                                    <Grid Classes="tabcontent" Classes.dim="{Binding !IsOnline}" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="6" ToolTip.Tip="{Binding TabTip}">
+                                    <Grid Classes="tabcontent" Classes.dim="{Binding !IsOnline}" ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="6" ToolTip.Tip="{Binding TabTip}">
                                         <c:IconGlyph LibraryId="device-desktop" VerticalAlignment="Center" />
                                         <TextBlock Grid.Column="1" Classes="tabname" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                                         <Ellipse Grid.Column="2" Classes="tabdot" Classes.online="{Binding IsOnline}" VerticalAlignment="Center" />
                                         <TextBlock Grid.Column="3" Classes="hint small" Text="{Binding TabRoute}" VerticalAlignment="Center" />
+                                        <ContentControl Grid.Column="4" Content="{Binding PowerTag}" VerticalAlignment="Center">
+                                            <ContentControl.ContentTemplate>
+                                                <DataTemplate x:DataType="svc:TagItem"><c:TagView /></DataTemplate>
+                                            </ContentControl.ContentTemplate>
+                                        </ContentControl>
                                     </Grid>
                                 </DataTemplate>
                                 <DataTemplate DataType="vm:SetupTabItem">

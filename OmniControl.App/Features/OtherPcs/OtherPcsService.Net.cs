@@ -265,6 +265,7 @@ public sealed partial class OtherPcsService
             old.Dispose();
         }
         _links[pair.Id] = link;
+        if (old is null) ClearCountdown(pair.Id); // back after the action: nothing of its countdown is true any more
         if (link.ViaTailscale)
         {
             _tailscaleFailed.Remove(pair.Id);

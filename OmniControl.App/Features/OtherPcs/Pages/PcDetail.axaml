@@ -17,6 +17,12 @@
             </WrapPanel>
             <!-- docs/mockups/pc-header-tidy.html: the connection chip, the split Wake button, then the "..." menu (the tab's right-click rows) -->
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <!-- The power countdown tag ("Sleep in 0:25", then "Asleep"): visible from any section -->
+                <ContentControl Content="{Binding PowerTag}" VerticalAlignment="Center">
+                    <ContentControl.ContentTemplate>
+                        <DataTemplate x:DataType="svc:TagItem"><c:TagView /></DataTemplate>
+                    </ContentControl.ContentTemplate>
+                </ContentControl>
                 <ItemsControl ItemsSource="{Binding WakeFailed}" VerticalAlignment="Center">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="svc:TagItem"><c:TagView /></DataTemplate>

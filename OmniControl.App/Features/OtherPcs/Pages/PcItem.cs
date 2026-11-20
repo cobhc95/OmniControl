@@ -140,6 +140,33 @@ public sealed partial class PcItem : ObservableObject
         return _wake.AwayOf(Id) is { } gone ? new TagItem(WakeAdvices.AwayWords(gone.Away, gone.At), TagTone.Neutral, tip) : new TagItem("Offline", TagTone.Neutral, tip);
     }
 
+    // ---- Power countdown ----
+
+    /// The power tag on the tab and the header, from any section: "Sleep in 0:25" while that PC counts down an action asked from here, "Going to sleep…"
+    /// once it ran out, "Asleep" or "Off" once it went away; null otherwise.
+    [ObservableProperty] private TagItem? _powerTag;
+
+    private DispatcherTimer? _tick;
+
+    /// Shows that PC's countdown again (it changed, or a second passed); the tick runs only while a countdown does.
+    public void RefreshCountdown()
+    {
+        var now = _service.CountdownOf(Id);
+        var left = now is null ? TimeSpan.Zero : now.Ends - DateTime.UtcNow;
+        var counting = now is not null && IsOnline && left > TimeSpan.Zero;
+        PowerTag = now is null ? null
+            : !IsOnline ? new TagItem(WakeAdvices.AwayWord(_wake.AwayOf(Id)?.Away), TagTone.Neutral)
+            : counting ? new TagItem($"{now.Action.Action.Title} in {PcCountdown.Clock(left)}", TagTone.Selected)
+            : new TagItem(now.Words.Going, TagTone.Selected);
+        Mirror.ShowCountdown(IsOnline ? now : null, left);
+        if (!counting) _tick?.Stop();
+        else
+        {
+            _tick ??= new DispatcherTimer(Timing.CountdownTick, DispatcherPriority.Background, (_, _) => Guard.Run("Other PCs: countdown", RefreshCountdown));
+            _tick.Start();
+        }
+    }
+
     // ---- Connect ----
 
     private PcRoute Route => _service.Find(Id)?.Route ?? PcRoute.Lan;
@@ -214,6 +241,7 @@ public sealed partial class PcItem : ObservableObject
         else state = IsOnline ? new TagItem("Checking…", TagTone.Neutral, "Waiting for the first check over this route.") : OfflineTag(null);
         Connection = state;
         RefreshWake();
+        RefreshCountdown();
         TabRoute = connected ? word : IsOnline ? "LAN" : "offline";
         TabTip = state.Tip is { Length: > 0 } tip ? $"{Name}: {state.Text}. {tip}" : $"{Name}: {state.Text}";
         Checks.Clear();
@@ -238,6 +266,7 @@ public sealed partial class PcItem : ObservableObject
     {
         Mirror.Rebuild();
         IsLoading = IsOnline && !_service.HasLiveCatalog(Id);
+        RefreshCountdown();
     }
 
     /// One state's value changed: its card shows it at once.

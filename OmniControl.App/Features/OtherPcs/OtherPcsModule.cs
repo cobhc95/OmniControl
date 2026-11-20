@@ -22,10 +22,12 @@ public sealed class OtherPcsModule(Func<bool, string> shareDevices) : IFeatureMo
         var service = _service = new OtherPcsService(context.Actions, context.Runner, context.States, new WindowsCredentialStore(), context.Report, shareDevices,
             context.AskAsync, new SettingsShare());
         context.Power.Leaving += service.Wake.AnnounceLeaving; // paired PCs are told before this one sleeps or shuts down
+        context.Power.Countdown += service.AnnounceCountdown; // and when a power countdown here starts, runs out or ends
         ImportFrom = new ImportFromPcService(service, context.Imports, context.Report);
         context.Shutdown.Add(ShutdownStage.OtherPcs, "other PCs", () =>
         {
             context.Power.Leaving -= service.Wake.AnnounceLeaving;
+            context.Power.Countdown -= service.AnnounceCountdown;
             service.Dispose(); // its link ends and what other PCs shared leaves the master lists
         });
     }

@@ -52,6 +52,9 @@ public static class WakeAdvices
         return new WakeAdvice(WakeState.Wakeable, string.Empty);
     }
 
+    /// One word for how a PC went away after its power countdown: "Asleep", "Off", or "Offline" when it sent no notice.
+    public static string AwayWord(string? away) => away switch { Sleep or Hibernate => "Asleep", Shutdown => "Off", _ => "Offline" };
+
     /// The words of the status tag of an offline PC that sent a notice: "Asleep since 09:12" (a date first when it was not today).
     public static string AwayWords(string away, DateTime at)
     {

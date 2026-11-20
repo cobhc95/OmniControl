@@ -12,6 +12,9 @@ public sealed record StoredHotkey(string Gesture, bool UseSelected, List<string>
 /// A name the user may change in the pickers: what it is now, and what to do with the new one (returns the action's new title, or null when nothing changed).
 public sealed record Renaming(string Current, Func<string, string?> Apply);
 
+/// The words of a power action's countdown: while it counts down ("Sleeping") and once it ran out ("Going to sleep…").
+public sealed record CountdownWords(string Doing, string Going);
+
 /// A level that a pair of actions moves up and down (volume, brightness...). <see cref="Id"/> is stored by the gestures that drive it
 /// (gestures.json), so it never changes; <see cref="Name"/> is what the gesture picker calls it.
 public sealed record HotkeyLevel(string Id, string Name);
@@ -154,6 +157,17 @@ public sealed partial class HotkeyAction : HotkeyTarget, Shared.Ui.Pages.IEditor
 
     /// How to run the action with the settings an input chose; null: it takes none beyond a level action's step.
     public Action<RunSettings>? RunConfigured { get; init; }
+
+    /// A power action with a countdown: what is said while it counts down ("Sleeping") and once it ran out ("Going to sleep…"); a paired PC shows it.
+    public CountdownWords? CountdownWords { get; init; }
+
+    /// The action that cancels the power countdown showing now (another PC offers it beside its countdown).
+    public bool CancelsCountdown { get; init; }
+
+    /// The countdown, in seconds, this action runs with by its defaults (what a run from another PC uses); null when it takes none.
+    public int? CountdownSeconds => Takes.HasFlag(ActionSettings.Countdown)
+        ? (int)Timing.PowerCountdownOf(new OptionValues(Defaults).Int(Hotkeys.Actions.MouseOptions.Countdown)).TotalSeconds
+        : null;
 
     /// For an action that can last while its input is held (repeated clicking): starts it with the settings the input chose and returns what ends it, or null when the settings say it does not last. Called on the input's thread, so it must return at once.
     public Func<RunSettings, Action?>? RunHeld { get; init; }

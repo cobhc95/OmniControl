@@ -60,6 +60,10 @@ public static partial class Timing
     /// The shortest and longest countdown an input may ask for (never none: the user must always be able to cancel).
     public const int PowerCountdownMinSeconds = 5, PowerCountdownMaxSeconds = 300;
 
+    /// The countdown a power action really uses: the one asked for, held within the limits, or <see cref="PowerCountdown"/> when none was.
+    public static TimeSpan PowerCountdownOf(double? seconds) =>
+        seconds is { } asked ? TimeSpan.FromSeconds(Math.Clamp(asked, PowerCountdownMinSeconds, PowerCountdownMaxSeconds)) : PowerCountdown;
+
     /// A custom action's command or script is stopped (with everything it started) after this long.
     public static readonly TimeSpan CustomActionTimeout = TimeSpan.FromSeconds(60);
 }

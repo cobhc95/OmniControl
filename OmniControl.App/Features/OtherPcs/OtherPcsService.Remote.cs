@@ -7,8 +7,9 @@ namespace OmniControl.App.Features.OtherPcs;
 /// One state another PC shares, as the Other PCs page draws it: the master-list entry (live value, and a way to set it when <see cref="Settable"/>), the card it is in, the part of the page ("LG 27"), its name without that part, and whether it is a screen's power switch.
 public sealed record RemoteState(StateEntry Entry, string Common, string Section, string Name, bool Settable, bool ScreenPower, string? Compact = null, OnOffIcons? StateIcons = null);
 
-/// One action another PC shares: the master-list entry (running it asks that PC), the card it is in, whether it turns every screen off and whether it is confirmed first.
-public sealed record RemoteAction(HotkeyAction Action, string Common, bool ScreensOff, bool ConfirmRun);
+/// One action another PC shares: the master-list entry (running it asks that PC), the card it is in, whether it turns every screen off, whether it is confirmed first,
+/// the seconds of its power countdown there (null: none, or that PC does not say) and whether it cancels that PC's countdown.
+public sealed record RemoteAction(HotkeyAction Action, string Common, bool ScreensOff, bool ConfirmRun, int? Countdown = null, bool CancelsCountdown = false);
 
 // What other PCs share: each PC's catalog is registered in this PC's master lists as "PC: item" (so hotkeys, the mouse, gestures,
 // automation and search use them like any other), kept up to date while the link lives and removed when it ends or the PC is unpaired.
@@ -80,7 +81,10 @@ public sealed partial class OtherPcsService
         return _hotkeys.Actions.Where(a => a.Id.StartsWith(prefix, StringComparison.Ordinal)).OrderBy(a => a.Id, StringComparer.Ordinal)
             .Select(a => (Action: a, Info: set.ActionInfo.GetValueOrDefault(a.Id[prefix.Length..])))
             .Where(x => x.Info is not null)
-            .Select(x => new RemoteAction(x.Action, PcProtocol.Clip(x.Info!.Common, 40), x.Info.ScreensOff, x.Info.ConfirmRun)).ToList();
+            .Select(x => new RemoteAction(x.Action, PcProtocol.Clip(x.Info!.Common, 40), x.Info.ScreensOff, x.Info.ConfirmRun,
+                x.Info.Countdown is { } seconds ? (int)Timing.PowerCountdownOf(seconds).TotalSeconds : null,
+                _hotkeys.Find(x.Info.Id)?.CancelsCountdown == true)).ToList(); // what this PC's own entry of the same id is
+
     }
 
     private void OnMessage(PcLink link, PcMsg message)
@@ -105,6 +109,7 @@ public sealed partial class OtherPcsService
             case PcMsgType.WakeAnswer: Wake.HandleAnswer(link, message); break;
             case PcMsgType.TailscaleAddress: HandleTailscaleAddress(link.PeerId, message.Text); break;
             case PcMsgType.Route: HandleRoute(link.PeerId, message.Text); break;
+            case PcMsgType.Countdown: HandleCountdown(link.PeerId, message); break;
             // A ping only keeps the link from looking silent; anything else is ignored.
         }
     }
@@ -201,7 +206,7 @@ public sealed partial class OtherPcsService
     private static string StructureOf(SharedState s) =>
         string.Join('\u001f', s.Name, s.Group, s.Heading, s.Icon, s.Settable, s.ScreenPower, s.Common, s.Kind, s.Min, s.Max, s.Unit, string.Join('\u001e', s.Choices ?? new List<string>()));
 
-    private static string StructureOf(SharedAction a) => string.Join('\u001f', PcProtocol.Clip(a.Title), a.Icon, a.ScreensOff, a.ConfirmRun, a.Common);
+    private static string StructureOf(SharedAction a) => string.Join('\u001f', PcProtocol.Clip(a.Title), a.Icon, a.ScreensOff, a.ConfirmRun, a.Common, a.Countdown);
 
     private StateEntry MakeState(PairedPc pair, string remoteId, SharedState s) =>
         new(remoteId, PcProtocol.Clip(s.Name), Category, (StateKind)s.Kind, () => _remoteValues.GetValueOrDefault(remoteId),
@@ -257,6 +262,7 @@ public sealed partial class OtherPcsService
         if (_pending.Count >= 64) _pending.Clear(); // answers that never came
         var rid = _requests.Next();
         _pending[rid] = pair.DisplayName;
+        AskedPower(pcId, actionId);
         _ = link.SendAsync(new PcMsg { T = PcMsgType.Run, Id = actionId, Rid = rid, Chain = _run.Chain?.Rules.ToList() });
     }
 

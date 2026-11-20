@@ -26,6 +26,8 @@ public sealed partial class PcMirror : ObservableObject
     private readonly Dictionary<string, Action<StateEntry>> _updaters = new();
     private readonly Dictionary<string, List<CardGroup>> _switches = new();
     private readonly Dictionary<string, DateTime> _edited = new();
+    private readonly List<(ChipItem Chip, RemoteAction Action, ObservableCollection<ChipItem> Row)> _counting = new(); // the pills of actions with a countdown
+    private ChipItem? _cancel;
 
     public PcMirror(string pcId, OtherPcsService service, Func<DialogMessage, Task<bool>> ask, Action<string> report) =>
         (_pcId, _service, _ask, _report) = (pcId, service, ask, report);
@@ -37,13 +39,24 @@ public sealed partial class PcMirror : ObservableObject
     {
         _updaters.Clear();
         _switches.Clear();
+        _counting.Clear();
         Groups.Clear();
         var states = _service.StatesOf(_pcId);
         var actions = _service.ActionsOf(_pcId);
+        // That PC's Cancel shows only beside a countdown, never as a pill of its own.
+        _cancel = actions.Any(a => a.CancelsCountdown)
+            ? new ChipItem("Cancel", new RelayCommand(() => Guard.Run("Other PCs: cancelling a countdown", () => _service.CancelCountdown(_pcId))), null)
+            : null;
         foreach (var common in CommonGroups.All)
         {
             var own = states.Where(s => s.Common == common.Name).ToList();
-            var chips = actions.Where(a => a.Common == common.Name && !a.ScreensOff).Select(Chip).ToList();
+            var chips = new ObservableCollection<ChipItem>();
+            foreach (var action in actions.Where(a => a.Common == common.Name && !a.ScreensOff && !a.CancelsCountdown))
+            {
+                var chip = Chip(action);
+                chips.Add(chip);
+                if (action.Countdown is not null) _counting.Add((chip, action, chips));
+            }
             Groups.Add(Make(common, own, chips, actions.FirstOrDefault(a => a.Common == common.Name && a.ScreensOff)));
         }
     }
@@ -58,7 +71,7 @@ public sealed partial class PcMirror : ObservableObject
 
     // ---- Groups ----
 
-    private MirrorGroup Make(CommonGroup common, IReadOnlyList<RemoteState> states, List<ChipItem> chips, RemoteAction? screensOff)
+    private MirrorGroup Make(CommonGroup common, IReadOnlyList<RemoteState> states, ObservableCollection<ChipItem> chips, RemoteAction? screensOff)
     {
         var (name, icon) = (common.Name, common.Icon);
         var empty = states.Count == 0 && chips.Count == 0;
@@ -112,7 +125,7 @@ public sealed partial class PcMirror : ObservableObject
     /// The group's cards; a drop-down beside a slider (Sound's output and volume) becomes the slider's leading chip, the on/off states
     /// that have state-button words and icons (Sound's and the mic's mute) become the slider's state buttons,
     /// and the media actions join the Now playing card.
-    private List<IEditorItem> Cards(List<RemoteState> states, List<ChipItem> chips)
+    private List<IEditorItem> Cards(List<RemoteState> states, ObservableCollection<ChipItem> chips)
     {
         var level = states.FirstOrDefault(s => s.Settable && s.Entry.Kind == StateKind.Level && !IsPerScreen(s));
         var lead = level is null ? null : states.FirstOrDefault(s => s.Settable && s.Entry.Kind == StateKind.Choice && !IsNowPlaying(s.Entry));
@@ -235,7 +248,7 @@ public sealed partial class PcMirror : ObservableObject
     }
 
     /// Now playing as one row inside Sound: the title and its state tag over the muted "artist · app" line and the PC's three media actions as icon pills at the right, Play/Pause in the accent while it plays; "Nothing playing" in the same row, with the pills, when no app plays.
-    private FactItem NowPlayingCard(StateEntry entry, List<ChipItem> chips)
+    private FactItem NowPlayingCard(StateEntry entry, ObservableCollection<ChipItem> chips)
     {
         var own = NowPlayingText.ActionIds.Select(id => chips.FirstOrDefault(c => c.Key.EndsWith(":" + id, StringComparison.Ordinal))).OfType<ChipItem>().ToList();
         foreach (var chip in own) chips.Remove(chip); // the card holds them: the group shows no second row for them
@@ -267,10 +280,36 @@ public sealed partial class PcMirror : ObservableObject
     // ---- Actions ----
 
     private ChipItem Chip(RemoteAction action) =>
-        new(action.Action.Title, new RelayCommand(() => _ = Guard.RunAsync($"Other PCs: {action.Action.Title}", () => RunAsync(action))), action.Action.ShownIcon) { Key = action.Action.Id };
+        new(action.Action.Title, new RelayCommand(() => _ = Guard.RunAsync($"Other PCs: {action.Action.Title}", () => RunAsync(action))), action.Action.ShownIcon)
+            { Key = action.Action.Id, Note = DelayOf(action) };
+
+    /// The pill's muted delay: the countdown that PC will use ("in 30 s"); none when it does not say.
+    private static string? DelayOf(RemoteAction action) => action.Countdown is { } seconds ? $"in {seconds} s" : null;
+
+    /// That PC counts down an action asked from here: its pill says "Sleeping in 0:25" (then "Going to sleep…") with the accent fill growing as time
+    /// passes and the Cancel pill beside it; null puts every pill back as it was.
+    public void ShowCountdown(PcCountdown? now, TimeSpan left)
+    {
+        (ChipItem Chip, ObservableCollection<ChipItem> Row)? shown = null;
+        foreach (var (chip, action, row) in _counting)
+        {
+            var counting = now is not null && now.Action.Action.Id == action.Action.Id;
+            chip.Name = !counting ? action.Action.Title : left > TimeSpan.Zero ? $"{now!.Words.Doing} in {PcCountdown.Clock(left)}" : now!.Words.Going;
+            chip.Note = counting ? null : DelayOf(action);
+            chip.Progress = !counting ? null : now!.Length <= TimeSpan.Zero ? 1 : Math.Clamp(1 - left / now.Length, 0, 1);
+            if (counting) shown = (chip, row);
+        }
+        if (_cancel is null) return;
+        // Moved only when its place changes, so a Cancel pill that has the keyboard keeps it while the time runs.
+        foreach (var (_, _, row) in _counting)
+            if (row.Contains(_cancel) && (shown is not { } at || at.Row != row || row.IndexOf(_cancel) != row.IndexOf(at.Chip) + 1)) row.Remove(_cancel);
+        if (shown is { } place && !place.Row.Contains(_cancel)) place.Row.Insert(place.Row.IndexOf(place.Chip) + 1, _cancel);
+    }
 
     private async Task RunAsync(RemoteAction action)
     {
+        if (_service.CountdownOf(_pcId)?.Action.Action.Id == action.Action.Id) return; // its Cancel pill is beside it
+
         var pc = _service.Find(_pcId)?.Name ?? "That PC";
         var title = action.Action.Title;
         if (action.ConfirmRun && !await _ask(new DialogMessage($"{title} {pc}?", $"{title} will be done on \"{pc}\" now.", title))) return;

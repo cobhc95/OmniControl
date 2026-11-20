@@ -77,7 +77,10 @@ public sealed partial class OtherPcsPageViewModel : PageViewModel, IDisposable
         service.Changed += OnServiceChanged;
         service.RemoteChanged += OnRemoteChanged;
         service.RemoteValueChanged += OnRemoteValue;
+        service.CountdownChanged += OnCountdown;
     }
+
+    private void OnCountdown(string pcId) => Pcs.FirstOrDefault(p => p.Id == pcId)?.RefreshCountdown();
 
     private PcItem Make(PairedPc pair)
     {
@@ -193,6 +196,7 @@ public sealed partial class OtherPcsPageViewModel : PageViewModel, IDisposable
         _service.Changed -= OnServiceChanged;
         _service.RemoteChanged -= OnRemoteChanged;
         _service.RemoteValueChanged -= OnRemoteValue;
+        _service.CountdownChanged -= OnCountdown;
         foreach (var tab in Items.OfType<SetupTabItem>()) tab.Dispose();
         foreach (var window in _wakeWindows.Values) window.Close();
     }

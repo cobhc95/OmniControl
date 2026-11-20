@@ -5,8 +5,8 @@ namespace OmniControl.App.Features.Automation;
 
 /// The built-in actions of the Automation feature, registered once in the master list so they appear in the Shortcuts page, the mouse
 /// and gesture pickers, search and rules: Sleep, Hibernate, Shut down, Restart, Sign out (through <see cref="PowerGuard"/>, each with the
-/// countdown an input may set, and Force close where programs may be closed), Lock, the three power modes and Pause all rules. They are
-/// listed under the Power section of the Choose-the-action window; Pause all rules and Lock are <see cref="HotkeyAction.NeverBlock"/>.
+/// countdown an input may set, and Force close where programs may be closed), Cancel power countdown, Lock, the three power modes and Pause all rules. They are
+/// listed under the Power section of the Choose-the-action window; Pause all rules, Cancel power countdown and Lock are <see cref="HotkeyAction.NeverBlock"/>.
 public static class PowerActions
 {
     /// The Choose-the-action section (and the states' heading) of the power actions.
@@ -24,25 +24,29 @@ public static class PowerActions
     public static IEnumerable<HotkeyAction> Make(PowerGuard guard, Action togglePause)
     {
         // The countdown and Force close an input chose arrive as run settings; a shortcut runs with the defaults.
-        HotkeyAction Guarded(string id, string title, string keywords, Func<bool, bool> doIt, ActionSettings takes, bool basic = false, bool confirm = false, string? icon = null) =>
-            new(id, title, ActionSections.Automation, $"{Words} {keywords}", ids => _ = guard.RequestAsync(title, () => doIt(false)), group: ActionSections.Power)
+        HotkeyAction Guarded(string id, string title, string doing, string going, string keywords, Func<bool, bool> doIt, ActionSettings takes, bool basic = false, bool confirm = false, string? icon = null) =>
+            new(id, title, ActionSections.Automation, $"{Words} {keywords}", ids => _ = guard.RequestAsync(id, title, () => doIt(false)), group: ActionSections.Power)
             {
                 PickerSection = ActionSections.Power,
                 Common = basic ? CommonGroups.Power : null,
                 ConfirmRun = confirm,
                 SuggestedIcons = icon is null ? null : new[] { icon },
                 Accepts = takes,
-                RunConfigured = settings => _ = guard.RequestAsync(title, () => doIt(settings.Force),
+                CountdownWords = new CountdownWords(doing, going),
+                RunConfigured = settings => _ = guard.RequestAsync(id, title, () => doIt(settings.Force),
                     settings.CountdownSeconds is { } seconds ? TimeSpan.FromSeconds(seconds) : null),
             };
 
         const ActionSettings Closes = ActionSettings.Countdown | ActionSettings.Force;
         yield return Make("automation.power.lock", "Lock", ActionSections.Power, ActionSections.Power, "lock screen workstation win+l", () => PowerCommands.Lock(), neverBlock: true, basic: true, icon: "lock");
-        yield return Guarded("automation.power.signout", "Sign out", "log off logoff", PowerCommands.SignOut, Closes, basic: true, icon: "logout");
-        yield return Guarded("automation.power.sleep", "Sleep", "suspend standby", _ => PowerCommands.Sleep(), ActionSettings.Countdown, basic: true, icon: "moon");
-        yield return Guarded("automation.power.hibernate", "Hibernate", "suspend hibernation", _ => PowerCommands.Hibernate(), ActionSettings.Countdown);
-        yield return Guarded("automation.power.restart", "Restart", "reboot", PowerCommands.Restart, Closes, basic: true, confirm: true, icon: "refresh");
-        yield return Guarded("automation.power.shutdown", "Shut down", "turn off power off", PowerCommands.ShutDown, Closes, basic: true, confirm: true, icon: "power");
+        yield return Guarded("automation.power.signout", "Sign out", "Signing out", "Signing out…", "log off logoff", PowerCommands.SignOut, Closes, basic: true, icon: "logout");
+        yield return Guarded("automation.power.sleep", "Sleep", "Sleeping", "Going to sleep…", "suspend standby", _ => PowerCommands.Sleep(), ActionSettings.Countdown, basic: true, icon: "moon");
+        yield return Guarded("automation.power.hibernate", "Hibernate", "Hibernating", "Hibernating…", "suspend hibernation", _ => PowerCommands.Hibernate(), ActionSettings.Countdown);
+        yield return Guarded("automation.power.restart", "Restart", "Restarting", "Restarting…", "reboot", PowerCommands.Restart, Closes, basic: true, confirm: true, icon: "refresh");
+        yield return Guarded("automation.power.shutdown", "Shut down", "Shutting down", "Shutting down…", "turn off power off", PowerCommands.ShutDown, Closes, basic: true, confirm: true, icon: "power");
+        // Never blocked: a countdown must always be cancellable, also from a paired PC (which offers it beside its countdown, not as a pill of its own).
+        yield return new HotkeyAction("automation.power.cancel", "Cancel power countdown", ActionSections.Automation, $"{Words} cancel stop abort countdown sleep shut down restart",
+            _ => guard.Cancel(), group: ActionSections.Power) { PickerSection = ActionSections.Power, Common = CommonGroups.Power, NeverBlock = true, CancelsCountdown = true, SuggestedIcons = new[] { "timer" } };
         foreach (var (mode, id, name, keywords) in Modes) yield return Make(id, $"{name} mode", Mode, ActionSections.Power, keywords, () => PowerCommands.SetMode(mode));
         yield return Make("automation.pause", "Pause all rules", Control, null, "resume stop disable automation emergency", togglePause, neverBlock: true);
     }

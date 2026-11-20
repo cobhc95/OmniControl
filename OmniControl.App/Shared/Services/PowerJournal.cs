@@ -11,9 +11,18 @@ public interface IPowerEvents
     /// This PC is about to sleep, hibernate or shut down (on the listener's thread, while there is still a moment).
     event Action<PowerEventKind>? Leaving;
 
+    /// A power action's cancellable countdown on this PC started (<see cref="PowerCountdown.Left"/> its length), ran out (zero) or was cancelled or failed (null).
+    event Action<PowerCountdown?>? Countdown;
+
+    /// Says a change of the countdown (the power guard, the one place that runs it).
+    void Counting(PowerCountdown? now);
+
     /// True once per sign-in when OmniControl was started by its start-up entry; false for a second start in the same sign-in.
     bool TakeLogin(bool startedByWindows);
 }
+
+/// A power action's countdown: the action's id and the time left.
+public sealed record PowerCountdown(string ActionId, TimeSpan Left);
 
 /// One line of the power journal: what happened, when, and which channels told it.
 public sealed class PowerJournalEntry
@@ -62,6 +71,10 @@ public sealed class PowerJournal : IPowerEvents, IDisposable
 
     /// This PC is about to sleep, hibernate or shut down (the event that says so, on the listener's thread, while there is still a moment): other paired PCs are told so their tag is exact.
     public event Action<PowerEventKind>? Leaving;
+
+    public event Action<PowerCountdown?>? Countdown;
+
+    public void Counting(PowerCountdown? now) => Countdown?.Invoke(now);
 
     /// The app's journal: listens to <paramref name="hardware"/>'s power events, saved in <see cref="DataStores.PowerJournal"/>.
     public PowerJournal(IHardwareWatches hardware)

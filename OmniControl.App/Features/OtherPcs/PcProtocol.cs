@@ -68,7 +68,7 @@ internal static class PcMsgType
     public const string Catalog = "catalog", State = "state", Set = "set", Run = "run", Ran = "ran", Ping = "ping", Pong = "pong",
         Devices = "devices", DevicesAnswer = "devices-answer", TailscaleAddress = "ts-address",
         WakeInfo = "wake-info", Leaving = "leaving", WakeAsk = "wake-ask", WakeAnswer = "wake-answer",
-        ImportList = "import-list", ImportGet = "import-get", ImportAnswer = "import-answer", Route = "route";
+        ImportList = "import-list", ImportGet = "import-get", ImportAnswer = "import-answer", Route = "route", Countdown = "countdown";
 
     /// What a <c>wake-ask</c> wants (its <see cref="PcMsg.Id"/>): send a magic packet for a PC on this PC's network, read the wake facts again, turn settings on or put back what was turned on (behind this PC's own prompt), or put this PC to sleep as a test (behind its prompt).
     public const string WakeRelay = "relay", WakeCheck = "check", WakeFix = "fix", WakeUndo = "undo", WakeTest = "test";
@@ -80,15 +80,17 @@ internal static class PcMsgType
 public sealed record SharedState(string Id, string Name, string Group, int Kind, int Min, int Max, string Unit, List<string>? Choices, double? Number, string? Text,
     string? Heading = null, string? Icon = null, bool Settable = false, bool ScreenPower = false, string? Common = null, string? Subject = null);
 
-/// One action a PC shares and lets the other run: its title, its icon, the card (<see cref="Common"/>) it belongs to, whether it turns every screen off and whether the other PC must confirm it first.
-public sealed record SharedAction(string Id, string Title, string? Icon, string Common, bool ScreensOff = false, bool ConfirmRun = false);
+/// One action a PC shares and lets the other run: its title, its icon, the card (<see cref="Common"/>) it belongs to, whether it turns every screen off, whether the other PC must confirm it first
+/// and the seconds of the power countdown it runs with (null: none, or a PC on an older build).
+public sealed record SharedAction(string Id, string Title, string? Icon, string Common, bool ScreensOff = false, bool ConfirmRun = false, int? Countdown = null);
 
 /// The one message shape (only the fields its <see cref="T"/> uses are set). <c>catalog</c>: everything shared with the receiver now;
 /// <c>state</c>: one state's new value; <c>set</c>: set the shared state <see cref="Id"/> to <see cref="Number"/> / <see cref="Text"/> (answered with <c>ran</c>);
 /// <c>ts-address</c>: the sender's Tailscale address in <see cref="Text"/>, so the receiver can dial it once Tailscale works between the two;
 /// <c>run</c>: start the action <see cref="Id"/> (<see cref="Rid"/> numbers the request, <see cref="Chain"/>
 /// is the chain of rules that caused it); <c>ran</c>: its answer; <c>route</c>: the route the sender now uses for this pair (<see cref="PcRoute"/> name in
-/// <see cref="Text"/>), which the receiver takes too.
+/// <see cref="Text"/>), which the receiver takes too; <c>countdown</c>: the sender's power countdown of the action <see cref="Id"/> started or ran out
+/// (<see cref="LeftMs"/>, the time left, so the two clocks never need to agree) or ended (both null). A PC on an older build ignores it.
 internal sealed class PcMsg
 {
     public string T { get; set; } = string.Empty;
@@ -102,6 +104,9 @@ internal sealed class PcMsg
     public bool? Ok { get; set; }
     public string? Why { get; set; }
     public List<string>? Chain { get; set; }
+
+    /// <c>countdown</c>: the milliseconds left (zero: it ran out and the action is being done).
+    public int? LeftMs { get; set; }
 
     /// <c>devices</c>: the request includes the user's own script templates. <c>devices-answer</c>: the device set-ups as text (what <see cref="Payload"/> holds is not this layer's business).
     public bool? Scripts { get; set; }
