@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Fixed: shortcuts sent by mouse buttons, gestures and rules carry the key's real scan code, so they reach Remote Desktop, virtual machine consoles and games that read scan codes.
+
 ## 0.2.3
 
 - Fixed: a group inside a group (a monitor on the Displays page, a PC on Other PCs) follows the dark theme's darker card steps instead of a lighter grey panel.
