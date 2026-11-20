@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Fix: the Other PCs page no longer shows a narrow jumble of the Volume page's Easy view in place of its PC tabs; a PC with no power countdown shows no tag again.
+
 ## 0.2.4 (20 Nov 2026)
 
 - Fix: on Other PCs, a PC reached over Tailscale or another address that said it went to sleep, hibernated or shut down is no longer called, checked or pinged until you press Wake, press Check now, or it shows up again (it connects to this PC or is seen on the network), so that traffic can't wake it. Its tag says "Asleep" or "Shut down" meanwhile, also after a restart of OmniControl.
