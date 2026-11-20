@@ -1,0 +1,49 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+             xmlns:p="using:OmniControl.App.Features.Settings.Pages"
+             x:Class="OmniControl.App.Features.Settings.Pages.AccentEditor"
+             x:DataType="p:AccentEditorModel">
+    <!-- The accent colour editor (an optionmenu pop-down under the Accent colour gallery, mouse first): left, the saturation and brightness
+         square, the hue bar, the hex box and a swatch of the colour; right, the Hue, Saturation and Brightness master sliders (typeable values),
+         then Intensity with its muted caption; under a thin line, a live preview of accent pieces. Every change is used at once. -->
+    <StackPanel Spacing="{StaticResource GapLarge}">
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource GapLarge}">
+            <StackPanel Spacing="{StaticResource GapSmall}">
+                <c:ColorSquare Width="{StaticResource ColorSquareWidth}" Height="{StaticResource ColorSquareHeight}"
+                               Hue="{Binding Hue}" Saturation="{Binding Saturation}" Brightness="{Binding Brightness}"
+                               ToolTip.Tip="Saturation (left to right) and brightness (bottom to top)" />
+                <c:HueBar Width="{StaticResource ColorSquareWidth}" Height="{StaticResource HueBarHeight}" Hue="{Binding Hue}" ToolTip.Tip="Hue" />
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}" Width="{StaticResource ColorSquareWidth}">
+                    <TextBox Classes="field" Text="{Binding Hex}" MaxLength="7" ToolTip.Tip="The colour as #RRGGBB" />
+                    <Border Grid.Column="1" Width="{StaticResource ColorSwatchSize}" Height="{StaticResource ColorSwatchSize}" VerticalAlignment="Center"
+                            CornerRadius="{DynamicResource TypeableCornerRadius}" BorderThickness="1" BorderBrush="{DynamicResource BrushControlEdge}"
+                            Background="{Binding Swatch}" />
+                </Grid>
+            </StackPanel>
+            <Grid Grid.Column="1" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="{StaticResource Gap}"
+                  ColumnSpacing="{StaticResource GapLarge}" VerticalAlignment="Top">
+                <TextBlock Text="Hue" VerticalAlignment="Center" />
+                <c:SliderField Grid.Column="1" Minimum="0" Maximum="360" Value="{Binding Hue}" ResetValue="{Binding HueReset}" Text="{Binding HueText}" />
+                <TextBlock Grid.Row="1" Text="Saturation" VerticalAlignment="Center" />
+                <c:SliderField Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Saturation}" ResetValue="{Binding SaturationReset}" Text="{Binding SaturationText}" />
+                <TextBlock Grid.Row="2" Text="Brightness" VerticalAlignment="Center" />
+                <c:SliderField Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Brightness}" ResetValue="{Binding BrightnessReset}" Text="{Binding BrightnessText}" />
+                <TextBlock Grid.Row="3" Text="Intensity" VerticalAlignment="Center" ToolTip.Tip="For every accent choice: softer, Windows' own, or stronger" />
+                <c:SliderField Grid.Row="3" Grid.Column="1" Minimum="0" Maximum="{Binding IntensityMax}" Value="{Binding Intensity}" ResetValue="{Binding IntensityReset}" Text="{Binding IntensityText}" />
+                <TextBlock Grid.Row="4" Grid.ColumnSpan="2" Classes="menutext" TextWrapping="Wrap"
+                           Text="How much the colour is lightened on the dark theme and darkened on the light one." />
+            </Grid>
+        </Grid>
+        <Border Classes="hrule" />
+        <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*" ColumnSpacing="{StaticResource Gap}" ToolTip.Tip="Preview">
+            <Button Classes="primary close" Content="Close" Command="{Binding CloseCommand}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" Classes="plain" IsChecked="True" Focusable="False" VerticalAlignment="Center" />
+            <Button Grid.Column="2" Classes="tile on" Width="{StaticResource TrayTileHeight}" Focusable="False">
+                <c:IconGlyph LibraryId="home" />
+            </Button>
+            <Button Grid.Column="3" Classes="pill accentline" Content="Open OmniControl" Focusable="False" VerticalAlignment="Center" />
+            <Slider Grid.Column="4" Minimum="0" Maximum="100" Value="60" Focusable="False" VerticalAlignment="Center" />
+        </Grid>
+    </StackPanel>
+</UserControl>

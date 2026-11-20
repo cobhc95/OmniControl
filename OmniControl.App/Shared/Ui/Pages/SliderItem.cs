@@ -71,7 +71,10 @@ public sealed partial class SliderItem : ObservableObject, IEditorItem, IHalfWid
     [NotifyPropertyChangedFor(nameof(ValueText))]
     private int _value;
 
-    public string ValueText => Minimum < 0 && Value > 0 ? $"+{Number}{Unit}" : $"{Number}{Unit}";
+    /// The value in words instead of the number and unit (App settings' Accent intensity: "Windows", "Softer 30"); null: the number.
+    public Func<int, string>? Words { get; init; }
+
+    public string ValueText => Words is { } words ? words(Value) : Minimum < 0 && Value > 0 ? $"+{Number}{Unit}" : $"{Number}{Unit}";
 
     private string Number => Decimals == 0
         ? Value.ToString(CultureInfo.CurrentCulture)

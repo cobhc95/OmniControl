@@ -19,6 +19,25 @@ public sealed partial class GalleryItem : ObservableObject, IEditorItem, IHalfWi
     /// Something shown at the card's right end beside the gallery (a <see cref="Features.Hotkeys.SuggestedKeysSwitch"/>), drawn by the data template of its type; null: nothing.
     public object? Extra { get; init; }
 
+    /// The option whose dot opens a pop-down editor (the accent gallery's "Custom…"): a click on it, or Enter while it is chosen, opens
+    /// <see cref="Editor"/> under the gallery; -1: none.
+    public int EditorIndex { get; init; } = -1;
+
+    /// Makes the pop-down editor's content, fresh at each opening; it is given the action that closes the pop-down. Null: no editor.
+    public Func<Action, Control>? Editor { get; init; }
+
+    /// The chosen option opens the editor.
+    public bool OpensEditor => Editor is not null && Index == EditorIndex;
+
+    /// Raised when the editor should open; the gallery's view opens it under itself.
+    public event Action? EditorRequested;
+
+    /// Opens the editor when the chosen option has one.
+    public void OpenEditor()
+    {
+        if (OpensEditor) EditorRequested?.Invoke();
+    }
+
     /// Greyed out, with a reason, while the choice cannot be made or read (a display Windows would not report on).
     public Availability Availability { get; } = new();
 

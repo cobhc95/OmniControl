@@ -10,7 +10,7 @@
             <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
         <TextBlock x:Name="LabelText" Classes="cardname" Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,24,0" />
-        <Border Classes="gallery" Classes.half="{Binding Half}" Tag="gallery" Focusable="True" pages:ValueWheel.Selector="True" PointerPressed="OnPressed" PointerWheelChanged="OnWheel">
+        <Border x:Name="Gallery" Classes="gallery" Classes.half="{Binding Half}" Tag="gallery" Focusable="True" pages:ValueWheel.Selector="True" PointerPressed="OnPressed" PointerWheelChanged="OnWheel">
             <Grid ColumnDefinitions="Auto,*,Auto">
                 <Button Classes="step" Focusable="False" Click="OnPrevious">
                     <PathIcon Data="{StaticResource ChevronLeftIcon}" Width="10" Height="10" />

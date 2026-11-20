@@ -54,7 +54,8 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
     public override IEnumerable<SearchEntry> SearchEntries => new[]
     {
         Entry(Theme, AppearanceName, "light dark color mode system"),
-        Entry(Accent, AppearanceName, "accent color colour highlight orange blue green white windows follow system"),
+        Entry(Accent, AppearanceName, "accent color colour highlight orange blue green white windows follow system custom picker hex hue saturation brightness"),
+        Entry(_accentIntensity, AppearanceName, "accent intensity strength softer stronger lighter darker shade vivid"),
         Entry(Background, AppearanceName, "background colour color surface carbon slate blue black oled plum dark grey gray windows follow"),
         Entry(_trayIcon, AppearanceName, "tray icon notification area logo outline sliders command key look choose"),
         Entry(_trayColour, AppearanceName, "tray icon colour color white black follow windows taskbar accent"),
@@ -95,20 +96,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
         Theme = new GalleryItem("Theme", themes, (int)_settings.Theme, () => ThemeSwatches.Build((int)_settings.Theme), i => OnThemeChosen(themes[i])) { Half = true };
         Apply(_settings.Theme);
 
-        var names = AccentService.Names;
-        Accent = new GalleryItem("Accent colour", names, Math.Max(0, names.ToList().IndexOf(_settings.Accent)),
-            () => AccentSwatches.Build(names, AccentService.Resolve, names.ToList().IndexOf(AccentService.Name)),
-            i =>
-            {
-                AccentService.Set(names[i]);
-                _settings.Accent = names[i];
-                _settings.Save();
-            })
-        {
-            Tip = "Used everywhere; the OSD can match it. Windows accent follows the colour chosen in Windows.",
-            Half = true,
-        };
-        AccentService.Changed += Accent.Refresh;
+        Accent = MakeAccentCards(report);
 
         var backgrounds = SurfaceService.Names;
         Background = new GalleryItem("Background colour", backgrounds, SurfaceService.IndexOf(_settings.Background),
@@ -170,7 +158,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
         MakeUpdateCards(updates, report);
 
         // Each group is made from its fixed cards (its closed header lists their names), then the cards that come and go are added.
-        Appearance = Fill(AppearanceItems, "AppSettings/Appearance", AppearanceName, Theme, Accent, Background, _groupsOpen, _trayIcon, _trayColour);
+        Appearance = Fill(AppearanceItems, "AppSettings/Appearance", AppearanceName, Theme, Background, Accent, _accentIntensity, _groupsOpen, _trayIcon, _trayColour);
         StartAndClose = Fill(StartItems, "AppSettings/Start", StartName, _startWithWindows, _startMinimised, _whenClosing, _hardwareCheck);
         YourData = Fill(DataItems, "AppSettings/Data", DataName, _presets, _backup, _importFromPc, _resetAllConfirmations, _restoreAllCard);
         PlugIns = Fill(PluginItems, "AppSettings/Plugins", PluginsName, _addFolder, _scan, _keepFx);
@@ -242,11 +230,9 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
         SettingsCopy.Into(_settings, AppSettings.Load());
         Apply(_settings.Theme);
         Theme.Load((int)_settings.Theme);
-        var names = AccentService.Names.ToList();
-        if (names.Contains(_settings.Accent)) AccentService.Set(_settings.Accent);
         SurfaceService.Set(_settings.Background);
         Background.Load(SurfaceService.IndexOf(_settings.Background));
-        Accent.Load(Math.Max(0, names.IndexOf(_settings.Accent)));
+        ReloadAccent();
         ShowGroupsOpen();
         _startMinimised.Load(_settings.StartMinimised);
         _whenClosing.Load(_whenClosing.Options, CloseBehaviors.LabelOf(_settings.CloseBehavior));

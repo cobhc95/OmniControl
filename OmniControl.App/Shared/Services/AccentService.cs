@@ -15,12 +15,26 @@ public static class ColorMath
     public static double RelativeLuminance(Color c) => 0.2126 * Linear(c.R) + 0.7152 * Linear(c.G) + 0.0722 * Linear(c.B);
 
     /// The shade Windows paints controls with for an accent: lighter on the dark theme, darker on the light theme (HSL lightness moved
-    /// <see cref="Palette.AccentLightenDark"/> of the way to white, or by <see cref="Palette.AccentDarkenLight"/> towards black).
-    public static Color AccentShade(Color accent, bool darkTheme)
+    /// <see cref="Palette.AccentLightenDark"/> of the way to white, or by <see cref="Palette.AccentDarkenLight"/> towards black), both times
+    /// <paramref name="scale"/> (1 = Windows' own amount, 0 = the accent as it is).
+    public static Color AccentShade(Color accent, bool darkTheme, double scale = 1)
     {
         var hsl = accent.ToHsl();
-        var lightness = darkTheme ? hsl.L + (1 - hsl.L) * Palette.AccentLightenDark : hsl.L * (1 - Palette.AccentDarkenLight);
+        var lightness = darkTheme
+            ? hsl.L + (1 - hsl.L) * Math.Min(1, Palette.AccentLightenDark * scale)
+            : hsl.L * (1 - Math.Min(1, Palette.AccentDarkenLight * scale));
         return new HslColor(hsl.A, hsl.H, hsl.S, lightness).ToRgb();
+    }
+
+    /// "#RRGGBB" of an opaque colour (how a custom accent is typed and saved).
+    public static string Hex(Color c) => $"#{c.R:X2}{c.G:X2}{c.B:X2}";
+
+    /// The opaque colour of "#RRGGBB" or "RRGGBB" (spaces ignored); null when it is not one.
+    public static Color? ParseHex(string? text)
+    {
+        var t = text?.Trim().TrimStart('#');
+        if (t is not { Length: 6 } || !uint.TryParse(t, System.Globalization.NumberStyles.HexNumber, null, out var rgb)) return null;
+        return Color.FromRgb((byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb);
     }
 
     /// WCAG contrast ratio of two opaque colours (1 to 21).
@@ -42,37 +56,72 @@ public static class ColorMath
 /// or knob drawn ON an accent fill) is derived for both themes from the shade Windows paints with (Accent Light 2 on the dark theme, Accent
 /// Dark 1 on the light one: Windows' own for "Windows accent", <see cref="ColorMath.AccentShade"/> for the others), and updates live.
 /// "Windows accent" follows Windows' own accent colour (read through Avalonia's platform settings, which hear Windows' colour change notice);
-/// when Windows reports none, it is Blue. Nothing else in the program hard-codes an accent colour: use <see cref="Current"/> (the colour as
-/// picked) in code or the DynamicResource brushes in XAML.
+/// when Windows reports none, it is Blue. "Custom" is the user's own colour (<see cref="Custom"/>, made in App settings' colour editor), kept
+/// while another choice is in use. <see cref="Intensity"/> scales the shade for every choice: at <see cref="DefaultIntensity"/> it is Windows'
+/// own amount (and Windows' own shades for "Windows accent"). Nothing else in the program hard-codes an accent colour: use <see cref="Current"/>
+/// (the colour as picked) in code or the DynamicResource brushes in XAML.
 public static class AccentService
 {
     /// The choice that follows Windows' accent colour; first in <see cref="Names"/>.
     public const string WindowsName = "Windows accent";
 
+    /// The user's own colour; last in <see cref="Choices"/>, shown as <see cref="CustomLabel"/> (its dot opens the colour editor).
+    public const string CustomName = "Custom", CustomLabel = "Custom…";
+
     /// The choice "Windows accent" falls back to when Windows reports no accent.
     private const string FallbackName = "Blue";
 
+    /// Windows' own accent palette (its saturated base colours, which it shades for painting as it does its own accent); the names are the
+    /// saved ids, so older settings files keep their choice. White is the program's own light choice.
     public static readonly IReadOnlyList<(string Name, string Hex)> Presets = new[]
     {
-        ("Orange", "#F28C48"), ("Blue", "#4C9BE8"), ("Green", "#5DBE7A"), ("Pink", "#E86FA6"),
-        ("Purple", "#9B7BE8"), ("Red", Palette.DangerHex), ("Yellow", "#E8C547"), ("Teal", "#3FB8B0"), ("White", Palette.LightHex),
+        ("Orange", "#F7630C"), ("Blue", "#0078D4"), ("Green", "#10893E"), ("Pink", "#E3008C"),
+        ("Purple", "#8764B8"), ("Red", "#E81123"), ("Yellow", "#FFB900"), ("Teal", "#038387"), ("White", Palette.LightHex),
     };
 
-    /// Every choice in the order the galleries show it: Windows accent, then the fixed colours.
+    private static readonly Color[] PresetColours = Presets.Select(p => Color.Parse(p.Hex)).ToArray();
+
+    /// The custom colour before the user has made one: the first preset.
+    public static string DefaultCustomHex => Presets[0].Hex;
+
+    /// Intensity: 0 = softest (twice Windows' shade), <see cref="DefaultIntensity"/> = Windows' own, <see cref="MaxIntensity"/> = the colour unshaded.
+    public const int DefaultIntensity = 50, MaxIntensity = 100;
+
+    /// Windows accent, then the fixed colours (the galleries that offer no custom colour, such as the OSD's).
     public static IReadOnlyList<string> Names { get; } = Presets.Select(p => p.Name).Prepend(WindowsName).ToList();
+
+    /// Every choice in the order App settings' gallery shows it: <see cref="Names"/>, then <see cref="CustomName"/>.
+    public static IReadOnlyList<string> Choices { get; } = Names.Append(CustomName).ToList();
 
     private static readonly ThemeBrushes Written = new();
 
     public static string Name { get; private set; } = WindowsName;
+
+    /// The user's own colour, kept while another choice is in use.
+    public static Color Custom { get; private set; } = Color.Parse(DefaultCustomHex);
+
+    /// How strongly every accent choice is shaded (see <see cref="DefaultIntensity"/>).
+    public static int Intensity { get; private set; } = DefaultIntensity;
 
     /// The chosen accent as picked (before the theme's shade).
     public static Color Current => Resolve(Name);
 
     public static event Action? Changed;
 
-    public static Color Resolve(string name) => name == WindowsName
-        ? WindowsAccent()
-        : Color.Parse((Presets.FirstOrDefault(p => p.Name == name) is { Hex: not null } p ? p : Presets[0]).Hex);
+    /// The colour of a choice as picked. Asked on every OSD step, so it allocates nothing.
+    public static Color Resolve(string name)
+    {
+        if (name == WindowsName) return WindowsAccent();
+        if (name == CustomName) return Custom;
+        for (var i = 0; i < Presets.Count; i++) if (Presets[i].Name == name) return PresetColours[i];
+        return PresetColours[0];
+    }
+
+    /// The words a gallery shows for a choice.
+    public static string Label(string name) => name == CustomName ? CustomLabel : name;
+
+    /// The intensity in words: "Windows" at the default, else which way and how far ("Softer 30", "Stronger 70").
+    public static string IntensityWords(int value) => value == DefaultIntensity ? "Windows" : $"{(value < DefaultIntensity ? "Softer" : "Stronger")} {value}";
 
     /// The words or glyph drawn on a fill of <paramref name="fill"/>, as Windows does: near-black ink (<see cref="Palette.OnAccentInk"/>) or
     /// white, whichever reads better on it (so dark ink on the dark theme's light shades, white on the light theme's darker ones).
@@ -83,11 +132,26 @@ public static class AccentService
     }
 
     /// Applies the saved choice and starts listening to Windows' colour change notice and to a new background (once, for the program's life).
-    public static void Initialize(string name)
+    public static void Initialize(string name, string? customHex, int intensity)
     {
+        Take(customHex, intensity);
         Apply(name);
         if (Application.Current?.PlatformSettings is { } platform) platform.ColorValuesChanged += OnWindowsColours;
         SurfaceService.Changed += () => Apply(Name); // the washes are blended into the page colour
+    }
+
+    /// Uses a saved choice, custom colour and intensity read again (an import wrote the settings): a custom colour that is not "#RRGGBB"
+    /// falls back to the default one, an intensity out of range is clamped.
+    public static void Load(string name, string? customHex, int intensity)
+    {
+        Take(customHex, intensity);
+        Set(name);
+    }
+
+    private static void Take(string? customHex, int intensity)
+    {
+        Custom = ColorMath.ParseHex(customHex) ?? Color.Parse(DefaultCustomHex);
+        Intensity = Math.Clamp(intensity, 0, MaxIntensity);
     }
 
     public static void Set(string name)
@@ -95,6 +159,23 @@ public static class AccentService
         Apply(name);
         Changed?.Invoke();
     }
+
+    /// Makes <paramref name="colour"/> the custom colour and uses it.
+    public static void SetCustom(Color colour)
+    {
+        Custom = Color.FromRgb(colour.R, colour.G, colour.B);
+        Set(CustomName);
+    }
+
+    /// Sets how strongly every choice is shaded (clamped to 0 to <see cref="MaxIntensity"/>).
+    public static void SetIntensity(int intensity)
+    {
+        Intensity = Math.Clamp(intensity, 0, MaxIntensity);
+        Set(Name);
+    }
+
+    /// The share of Windows' shade amount the intensity gives (1 at the default, 2 at the softest, 0 at the strongest).
+    private static double ShadeScale => (MaxIntensity - Intensity) / (double)DefaultIntensity;
 
     /// Windows' accent (or its theme) changed: the Windows accent choice and its gallery dot follow.
     private static void OnWindowsColours(object? sender, PlatformColorValues e) =>
@@ -108,12 +189,13 @@ public static class AccentService
 
     private static void Apply(string name)
     {
-        Name = Names.Contains(name) ? name : WindowsName;
+        Name = Choices.Contains(name) ? name : WindowsName;
         if (Application.Current is not { } app) return;
         var picked = Current;
-        // Windows' own shades of its accent when it can say them (a cheap in-process WinRT call), else the same shades worked out.
-        var windows = Name == WindowsName && Application.Current.PlatformSettings?.GetColorValues().AccentColor1 is { A: > 0 } ? AccentShades.Read() : null;
-        var dark = windows is { } w ? Color.FromUInt32(w.ForDark) : ColorMath.AccentShade(picked, darkTheme: true);
+        // Windows' own shades of its accent when it can say them (a cheap in-process WinRT call) at Windows' own intensity, else the same shades worked out.
+        var windows = Name == WindowsName && Intensity == DefaultIntensity
+            && Application.Current.PlatformSettings?.GetColorValues().AccentColor1 is { A: > 0 } ? AccentShades.Read() : null;
+        var dark = windows is { } w ? Color.FromUInt32(w.ForDark) : ColorMath.AccentShade(picked, darkTheme: true, ShadeScale);
         var light = windows is { } v ? Color.FromUInt32(v.ForLight) : ForLightTheme(picked);
 
         Update(app, ThemeVariant.Dark, SurfaceService.PageOf(ThemeVariant.Dark), dark, 0.10, 0.18, Colors.White, 0.15);
@@ -123,7 +205,7 @@ public static class AccentService
     /// The light theme's accent: Windows' darker shade, and darker still for a very light accent (White) so it shows on a light page.
     private static Color ForLightTheme(Color accent)
     {
-        var shade = ColorMath.AccentShade(accent, darkTheme: false);
+        var shade = ColorMath.AccentShade(accent, darkTheme: false, ShadeScale);
         var luminance = ColorMath.Luminance(shade);
         return luminance > Palette.LightAccentMaxLuminance ? ColorMath.Mix(shade, Colors.Black, 1 - Palette.LightAccentMaxLuminance / luminance) : shade;
     }

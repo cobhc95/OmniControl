@@ -4,6 +4,9 @@
     <!-- MASTER designs of menus and pop-downs, moved out of Theme.axaml (700-line limit) and included after it and Blocks.axaml, so these
          win as they did at the end of Theme.axaml: Avalonia has no selector specificity, the later style wins (a glyph size set before
          Theme's Path.glyph would be overwritten by its 14 px). Sizes: Menu*, TickBox*, Chip* in App.axaml. -->
+    <!-- The colour editor's drawn areas (Controls/ColorSquare, HueBar): the accent focus ring on keyboard focus, never the default outline -->
+    <Style Selector="c|ColorSquare:focus-visible, c|HueBar:focus-visible"><Setter Property="RingBrush" Value="{DynamicResource BrushAccent}" /></Style>
+    <Style Selector="c|ColorSquare, c|HueBar"><Setter Property="FocusAdorner" Value="{x:Null}" /></Style>
     <!-- The pop-down that captures a shortcut under a rule's "I press" block: a fixed width so the live keycaps do not move it -->
     <Style Selector="FlyoutPresenter.capturemenu">
         <Setter Property="Padding" Value="{DynamicResource MenuPadding}" />

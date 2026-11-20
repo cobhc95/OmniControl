@@ -23,7 +23,7 @@ public partial class App : Application
         _watchdog = new UiWatchdog();
         var settings = AppSettings.Current;
         SurfaceService.Initialize(settings.Background); // first: the accent's washes are blended into its page colour
-        AccentService.Initialize(settings.Accent);
+        AccentService.Initialize(settings.Accent, settings.AccentCustom, settings.AccentIntensity);
         ValueWheel.Register();
         NumberText.Register();
         SearchClear.Register();

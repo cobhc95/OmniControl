@@ -219,8 +219,10 @@ public static class RowEditing
                 e.Handled = true;
                 break;
 
+            // Enter steps a gallery; on an option with a pop-down editor (Custom…) it opens the editor.
             case Key.Enter when src is Border { Tag: "gallery", DataContext: GalleryItem gallery2 }:
-                gallery2.Step(1);
+                if (gallery2.OpensEditor) gallery2.OpenEditor();
+                else gallery2.Step(1);
                 e.Handled = true;
                 break;
 

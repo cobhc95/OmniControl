@@ -13,6 +13,12 @@ public sealed class AppSettings
     /// Name of the program-wide accent choice (see <see cref="AccentService.Names"/>); Windows' own accent by default.
     public string Accent { get; set; } = AccentService.WindowsName;
 
+    /// The user's own accent colour ("#RRGGBB"), kept while another accent choice is in use.
+    public string AccentCustom { get; set; } = AccentService.DefaultCustomHex;
+
+    /// How strongly every accent choice is shaded (<see cref="AccentService.Intensity"/>); Windows' own amount by default.
+    public int AccentIntensity { get; set; } = AccentService.DefaultIntensity;
+
     /// Name of the background colour choice (see <see cref="SurfaceService.Names"/>); Windows' own tones by default.
     public string Background { get; set; } = SurfaceService.FollowName;
 
@@ -88,6 +94,9 @@ public sealed class AppSettings
     }
 
     public void Save() => AppDataStore.Save(Store, this);
+
+    /// Saves after <see cref="Timing.SaveSoonDelay"/>, for a value that changes many times a second (a colour being dragged).
+    public void SaveSoon() => AppDataStore.SaveSoon(Store, this);
 
     /// One field of these settings for the feature that owns it (<see cref="ISettingSlot{T}"/>).
     public ISettingSlot<T> Slot<T>(Func<AppSettings, T> read, Action<AppSettings, T> write) => new SettingSlot<T>(this, read, write);

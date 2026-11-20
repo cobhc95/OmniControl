@@ -5,7 +5,7 @@ public static class Palette
 {
     public const string DangerHex = "#E5534B", CharcoalHex = "#202020";
 
-    /// Muted or clipping state (OSD at zero, meter clip mark) and the red accent choice; the "risk" tag colour.
+    /// Muted or clipping state (OSD at zero, meter clip mark); the "risk" tag colour.
     public static readonly Color Danger = Color.Parse(DangerHex);
 
     /// The "on" green (an FX chain switched on) and the "good" tag colour (theme brush <c>BrushOn</c>).
@@ -52,7 +52,12 @@ public static class Palette
 
     /// How Windows shades an accent for painting (<see cref="ColorMath.AccentShade"/>): the share of the way to white its HSL lightness moves on
     /// the dark theme (Accent Light 2), and the share it loses on the light theme (Accent Dark 1); matched to Windows' blue #0078D4.
+    /// The accent's Intensity setting scales both (<see cref="AccentService.Intensity"/>).
     public const double AccentLightenDark = 0.4, AccentDarkenLight = 0.25;
+
+    /// The handle of the colour editor's saturation square and hue bar (Controls/ColorSquare, HueBar): a white ring with a dark outer edge, so it
+    /// shows on every colour it can sit on (picture content, the same in both themes).
+    public static readonly Color PickerHandle = Colors.White, PickerHandleEdge = Color.FromArgb(0x99, 0, 0, 0);
 
     /// The light theme darkens an accent until its luminance (<see cref="ColorMath.Luminance"/>) is at most this, so a very light accent (White)
     /// still shows as an edge on the white page; the usual accents are already below it after the light theme's own shade.

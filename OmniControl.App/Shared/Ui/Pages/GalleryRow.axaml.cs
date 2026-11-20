@@ -1,3 +1,4 @@
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.VisualTree;
 
@@ -5,10 +6,16 @@ namespace OmniControl.App.Shared.Ui.Pages;
 
 public partial class GalleryRow : UserControl
 {
+    private GalleryItem? _hooked;
+
     public GalleryRow()
     {
         InitializeComponent();
-        DataContextChanged += (_, _) => FitHalf();
+        DataContextChanged += (_, _) =>
+        {
+            FitHalf();
+            Hook(VisualRoot is not null);
+        };
     }
 
     /// A half-width card has no room for the page-wide label column: its label takes only its own width (it leaves the shared column
@@ -22,6 +29,38 @@ public partial class GalleryRow : UserControl
         LabelText.Margin = new Thickness(0, 0, 8, 0);
     }
 
+    // The item's editor request is heard only while this row is on screen and shows that item.
+    private void Hook(bool onScreen)
+    {
+        var item = onScreen ? DataContext as GalleryItem : null;
+        if (item == _hooked) return;
+        if (_hooked is not null) _hooked.EditorRequested -= OpenEditor;
+        _hooked = item;
+        if (_hooked is not null) _hooked.EditorRequested += OpenEditor;
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        Hook(onScreen: true);
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        Hook(onScreen: false);
+    }
+
+    /// The option's editor in the master card pop-down (ListMenuFlyout, optionmenu) under the gallery, made fresh each time.
+    private void OpenEditor()
+    {
+        if (_hooked?.Editor is not { } make) return;
+        var flyout = new ListMenuFlyout { Placement = PlacementMode.BottomEdgeAlignedLeft };
+        flyout.FlyoutPresenterClasses.Add("optionmenu");
+        flyout.Content = make(flyout.Hide);
+        flyout.ShowAt(Gallery);
+    }
+
     private void OnPrevious(object? sender, RoutedEventArgs e) => (DataContext as GalleryItem)?.Step(-1);
     private void OnNext(object? sender, RoutedEventArgs e) => (DataContext as GalleryItem)?.Step(1);
 
@@ -33,7 +72,7 @@ public partial class GalleryRow : UserControl
         e.Handled = true;
     }
 
-    /// A click on one of the card's colour dots picks that dot; a click anywhere else on the card just focuses it.
+    /// A click on one of the card's colour dots picks that dot (and opens its editor when it has one); a click anywhere else on the card just focuses it.
     private void OnPressed(object? sender, PointerPressedEventArgs e)
     {
         if (sender is not Control card || DataContext is not GalleryItem item) return;
@@ -43,6 +82,7 @@ public partial class GalleryRow : UserControl
             if (visual is not Border { Tag: int index } dot || !dot.Classes.Contains(Swatches.Clickable)) continue;
             card.Focus();
             item.Index = index;
+            item.OpenEditor();
             return;
         }
     }

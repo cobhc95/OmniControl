@@ -27,7 +27,8 @@ public sealed partial class AppSettingsPageViewModel
     private Task<bool> ApplyState(AppRestoreState target)
     {
         Theme.Index = (int)target.Theme;
-        Accent.Index = Math.Max(0, AccentService.Names.ToList().IndexOf(target.Accent));
+        Accent.Index = AccentIndex(target.Accent);
+        _accentIntensity.Value = target.AccentIntensity;
         Background.Index = SurfaceService.IndexOf(target.Background);
         SetTrayLook((target.TrayIcon, target.TrayIconColour));
         _startMinimised.IsOn = target.StartMinimised;
