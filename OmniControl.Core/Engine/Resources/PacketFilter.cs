@@ -4,7 +4,7 @@ namespace OmniControl.Core.Engine.Resources;
 
 /// Windows Packet Filter (WinpkFilter, the NDIS lightweight filter ndisrd.sys installed system-wide, <see cref="PacketFilterSetup"/>)
 /// as the shaper's packet port, through its device \\.\NDISRD and the IOCTLs and packed structs of ndisapi's Common.h. While open, every
-/// adapter tunnels received frames (MSTCP_FLAG_RECV_TUNNEL), but the driver's static filter table hands OmniControl only those to the limited
+/// Ethernet-style adapter (not WinTun, <see cref="Refresh"/>) tunnels received frames (MSTCP_FLAG_RECV_TUNNEL), but the driver's static filter table hands OmniControl only those to the limited
 /// programs' ports and passes the rest itself (<see cref="Redirect"/>); the shaper sends each handed-over frame on to Windows' stack. Closing
 /// sets every adapter back to mode 0, clears the table, sends on what is still queued and closes the handle (the driver also lets go of an
 /// adapter's mode when the handle closes, so a crash does not leave traffic held). A record is the INTERMEDIATE_BUFFER: its header, then the frame.
@@ -19,8 +19,9 @@ internal sealed unsafe class PacketFilter : IDisposable
     // network selector 80, its IPv4/IPv6 filter's valid fields 84 and protocol 112 / 160, transport selector 164, its valid fields 168, destination port range 176.
     private const int TableHeader = 8, FilterSize = 184;
     private const uint OnSend = 1, OnReceive = 2, Pass = 1, Redirected = 3, NetworkLayer = 2, TransportLayer = 4, Ipv4 = 1, Ipv6 = 2, ProtocolField = 4, TcpUdp = 1, DestPort = 2;
-    // TCP_AdapterList under pack(1): count, 32 names of 256 bytes, 32 handles, mediums, addresses, MTUs.
-    private const int AdapterListSize = 8836, AdapterHandlesAt = 4 + 32 * 256, MaxAdapters = 32;
+    // TCP_AdapterList under pack(1): count, 32 names of 256 bytes, 32 handles, 32 mediums (NDIS_MEDIUM), addresses, MTUs.
+    private const int AdapterListSize = 8836, AdapterHandlesAt = 4 + 32 * 256, AdapterMediumsAt = AdapterHandlesAt + 32 * 8, MaxAdapters = 32;
+    private const uint MediumIp = 19; // NdisMediumIP: WinTun tunnels (Tailscale, WireGuard), whose frames carry no Ethernet header
     // INTERMEDIATE_BUFFER under pack(1): the adapter / list link (16), device flags, length at 20, flags, 802.1q, filter id, 4 reserved, the frame.
     private const int HeaderSize = 52, LengthAt = 20, MaxFrame = 1514;
 
@@ -78,9 +79,10 @@ internal sealed unsafe class PacketFilter : IDisposable
     /// Set when packets may be waiting.
     public WaitHandle Arrived => _arrived;
 
-    /// Reads the adapter list again: every adapter the driver is bound to (Wi-Fi, Ethernet, VPN and other virtual adapters) gets the one
-    /// "packets waiting" event and tunnels its received frames, so a limit holds on whichever adapter a program's traffic arrives; an adapter
-    /// that has gone is forgotten.
+    /// Reads the adapter list again: every adapter the driver is bound to with Ethernet-style frames (Wi-Fi, Ethernet, TAP-style VPNs) gets
+    /// the one "packets waiting" event and tunnels its received frames, so a limit holds on whichever of them a program's traffic arrives; an
+    /// adapter that has gone is forgotten. IP-medium tunnels (WinTun) are left alone: <see cref="IpAt"/> cannot read their frames, so
+    /// tunnelling them shapes nothing and only puts their traffic at risk (Tailscale peers became unreachable).
     public void Refresh()
     {
         var now = new List<IntPtr>();
@@ -90,7 +92,8 @@ internal sealed unsafe class PacketFilter : IDisposable
             if (!Control(GetAdapters, list, AdapterListSize, list, AdapterListSize)) throw new Win32Exception(Marshal.GetLastWin32Error());
             var count = Math.Min(*(int*)list, MaxAdapters);
             for (var i = 0; i < count; i++)
-                if (((IntPtr*)(list + AdapterHandlesAt))[i] is var adapter && adapter != IntPtr.Zero) now.Add(adapter);
+                if (((IntPtr*)(list + AdapterHandlesAt))[i] is var adapter && adapter != IntPtr.Zero && ((uint*)(list + AdapterMediumsAt))[i] != MediumIp)
+                    now.Add(adapter);
         }
         finally { NativeMemory.Free(list); }
         _adapters.RemoveAll(adapter => !now.Contains(adapter));

@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Fix: while a download limit is active, Windows Packet Filter no longer takes over Tailscale's (WinTun) adapter, so other PCs over Tailscale stay reachable. Download limits do not apply to traffic arriving through a WinTun VPN (Tailscale, WireGuard).
+
 ## 0.2.4 (20 Nov 2026)
 
 - Fix: on Other PCs, a PC reached over Tailscale or another address that said it went to sleep, hibernated or shut down is no longer called, checked or pinged until you press Wake, press Check now, or it shows up again (it connects to this PC or is seen on the network), so that traffic can't wake it. Its tag says "Asleep" or "Shut down" meanwhile, also after a restart of OmniControl.
