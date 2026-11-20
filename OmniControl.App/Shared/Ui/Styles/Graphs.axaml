@@ -61,6 +61,7 @@
          SparklineThickness in App.axaml. It stretches across the room its card gives it -->
     <Style Selector="c|Sparkline">
         <Setter Property="Stroke" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="WarnStroke" Value="{DynamicResource BrushCaution}" />
         <Setter Property="StrokeThickness" Value="{DynamicResource SparklineThickness}" />
         <Setter Property="Height" Value="{DynamicResource SparklineHeight}" />
         <Setter Property="VerticalAlignment" Value="Center" />

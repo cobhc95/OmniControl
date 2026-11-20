@@ -18,10 +18,11 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     private readonly ProviderChoice _presets;
     private readonly IReadOnlyList<(ReadingCard Card, Reading Reading)> _cards;
     private readonly NetworkAdapterMenu _adapter;
+    private readonly SensorMenu _sensor;
     private readonly GadgetSettingsModel _gadget;
     private readonly ProcessIcons _icons = new();
     private readonly Action<string> _report;
-    private bool _onScreen, _listAdapters;
+    private bool _onScreen, _listAdapters, _listSensors;
     private int _seenShown = -1;
     private NetworkLimits.DownloadState? _downloadShown;
 
@@ -88,8 +89,13 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
             _listAdapters = open;
             Need();
         });
+        _sensor = new SensorMenu(monitor, settings, open =>
+        {
+            _listSensors = open;
+            Need();
+        });
         _cards = Reading.All.Where(r => r.Card is not null).OrderBy(r => r.Card!.Value.Order)
-            .Select(r => (new ReadingCard(r.Card!.Value.Label, r.Icon, r.GraphMax) { Adapter = r.Kind == ReadingKind.Speed ? _adapter.Item : null }, r))
+            .Select(r => (Card(r), r))
             .ToList();
         Live = new ItemGroup("Resources/Live", "Live readings", _cards.Select(c => (object)c.Card).ToList())
         {
@@ -119,9 +125,13 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
         ShowApps();
     }
 
+    private ReadingCard Card(Reading r) => r.Id == Reading.HottestId
+        ? new ReadingCard(r.Card!.Value.Label, r.Icon, Reading.TemperatureGraphMax, Reading.TemperatureGraphMin) { Sensor = _sensor.Item, WarnAt = Reading.WarmCelsius }
+        : new ReadingCard(r.Card!.Value.Label, r.Icon, r.GraphMax) { Adapter = r.Kind == ReadingKind.Speed ? _adapter.Item : null };
+
     private static string Every(double seconds) => $"Read every {seconds.ToString("0.#", CultureInfo.CurrentCulture)} s";
 
-    /// A card's value, sparkline and fact (CPU and GPU temperature, memory used of total, the hottest sensor's name and Warm tag).
+    /// A card's value, sparkline and fact (CPU and GPU temperature, memory used of total, the hottest sensor's title and hardware).
     private void Show(ReadingCard card, Reading reading, ResourceSample s)
     {
         static TagItem? Celsius(double? c) => c is { } v ? new TagItem(Reading.Celsius(v)) : null;
@@ -132,16 +142,18 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
             "cpu" => Celsius(s.CpuTemp),
             "gpu" => Celsius(s.GpuTemp),
             "memory" => s.MemoryPercent is { } p ? new TagItem(reading.Words(p)) : null,
-            "hottest" => s.Hottest >= Reading.WarmCelsius ? new TagItem("Warm", TagTone.Caution, "Above " + Reading.Celsius(Reading.WarmCelsius)) : null,
-            _ => null,
+                        _ => null,
         };
-        if (reading.Id == "hottest") card.Note = s.HottestName ?? _monitor.SensorProblem ?? string.Empty;
+        if (reading.Id != Reading.HottestId) return;
+        card.Label = s.ChosenSensor ?? reading.Card!.Value.Label;
+        card.Note = s.HottestName is { } hardware && hardware != s.ChosenSensor ? hardware : _monitor.SensorProblem ?? string.Empty;
     }
 
     private void OnSettingsChanged()
     {
         ReadEvery.Load(ReadEvery.Options, Every(_settings.Setup.ReadEverySeconds));
         _adapter.Refresh();
+        _sensor.Refresh();
         Need();
         ShowApps();
     }
@@ -178,7 +190,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     private void Need()
     {
         var every = _onScreen && ShowsReadings ? TimeSpan.FromSeconds(_settings.Setup.ReadEverySeconds) : (TimeSpan?)null;
-        _monitor.Need(ResourceMonitor.PageNeed, every, _listAdapters ? SampleParts.All | SampleParts.Adapters : SampleParts.All);
+        _monitor.Need(ResourceMonitor.PageNeed, every, SampleParts.All | (_listAdapters ? SampleParts.Adapters : 0) | (_listSensors ? SampleParts.SensorList : 0));
         _monitor.Need(ResourceMonitor.AppsNeed, Apps.IsExpanded && !NeedsAdministrator ? every : null);
         _gadget.SetOnScreen(_onScreen && !ShowsReadings);
     }
@@ -188,6 +200,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
         if (!_onScreen || !ShowsReadings) return;
         foreach (var (card, reading) in _cards) Show(card, reading, _monitor.Latest);
         _adapter.Refresh();
+        _sensor.Refresh();
         if (Apps.IsExpanded) ShowTraffic();
         ShowStatus();
     }

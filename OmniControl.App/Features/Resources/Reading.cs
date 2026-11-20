@@ -14,6 +14,10 @@ public sealed record Reading(string Id, string Name, string Chip, string Icon, R
     /// A temperature from which a sensor is called warm (the Hottest sensor card's caution tag).
     public const double WarmCelsius = 70;
 
+    /// The Hottest sensor reading's id (the only one whose source can be chosen) and the fixed range of its small graph, in Celsius.
+    public const string HottestId = "hottest";
+    public const double TemperatureGraphMin = 25, TemperatureGraphMax = 100;
+
     private const double Kilo = 1024;
 
     /// The most whole digits a speed shows before Auto moves to the next unit, so its widest value is "999".
@@ -45,7 +49,7 @@ public sealed record Reading(string Id, string Name, string Chip, string Icon, R
             Gpu + Gadget.GadgetLabel.Token("temperature", Gadget.GadgetLabel.HotColour), GadgetDefault: true, WarnDefault: 85) { SuggestedIcons = Thermometers.Append("device-desktop-analytics").ToArray() },
         new("disk", "Disk activity", "Disk", "disc", ReadingKind.Percent, SampleParts.Disk, s => s.Disk, "D:", "{disc}")
             { SuggestedIcons = new[] { "disc", "database" } },
-        new("hottest", "Hottest sensor", "Hottest", "flame", ReadingKind.Temperature, SampleParts.Hottest, s => s.Hottest, "H:", "{flame}",
+        new(HottestId, "Hottest sensor", "Hottest", "flame", ReadingKind.Temperature, SampleParts.Hottest, s => s.Hottest, "H:", "{flame}",
             Card: ("Hottest sensor", 3), Source: s => s.HottestName) { SuggestedIcons = Thermometers.Prepend("flame").ToArray() },
     };
 

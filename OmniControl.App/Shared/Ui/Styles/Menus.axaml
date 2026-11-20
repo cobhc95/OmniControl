@@ -209,6 +209,8 @@
         <Setter Property="TextWrapping" Value="Wrap" />
         <Setter Property="Margin" Value="{DynamicResource MenuTextInset}" />
     </Style>
+    <!-- .warm = the muted fact at a row's right in the caution colour (the hottest sensor's value) -->
+    <Style Selector="TextBlock.menutext.warm"><Setter Property="Foreground" Value="{DynamicResource BrushCaution}" /></Style>
 
     <!-- Chip: a chosen value that can be taken away (Button.chipx: its words and an x; a Wiring row's devices). A quiet neutral pill (no
          accent edge), the x right after the words; a click anywhere on it takes it away. Mouse only, it never takes focus: the keyboard

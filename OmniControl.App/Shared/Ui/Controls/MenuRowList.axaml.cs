@@ -6,8 +6,8 @@ namespace OmniControl.App.Shared.Ui.Controls;
 /// One row of a <see cref="MenuRowList"/>: its words (shown whole, wrapping), a "Get it" style link at the right (may be empty), whether it is the
 /// one that is on now, a tooltip and what it does; optionally tags (after the words, or on their own line under them with
 /// <see cref="TagsOnOwnLine"/>), one muted line of detail, a dimmed look, a row that keeps the menu open when clicked (a ticked list where
-/// several can be ticked), an accent row (the one that opens something bigger) or a muted row (a way out to a manager), or a header row (a muted section title) with a thin line above it.
-public sealed record MenuRowItem(string Text, string Link, bool IsOn, string Tip, ICommand Command, IReadOnlyList<TagItem>? Tags = null, string Detail = "", bool Dim = false, bool IsHeader = false, bool RuleAbove = false, bool TagsOnOwnLine = false, bool IsSwitch = false, bool KeepsOpen = false, bool IsAccent = false, bool IsMuted = false, string? Icon = null, bool IsDanger = false, string Trailing = "", Func<IReadOnlyList<MenuRowItem>>? Submenu = null)
+/// several can be ticked), a <see cref="Trailing"/> fact in the warm colour (<see cref="TrailingWarm"/>), an accent row (the one that opens something bigger) or a muted row (a way out to a manager), or a header row (a muted section title) with a thin line above it.
+public sealed record MenuRowItem(string Text, string Link, bool IsOn, string Tip, ICommand Command, IReadOnlyList<TagItem>? Tags = null, string Detail = "", bool Dim = false, bool IsHeader = false, bool RuleAbove = false, bool TagsOnOwnLine = false, bool IsSwitch = false, bool KeepsOpen = false, bool IsAccent = false, bool IsMuted = false, string? Icon = null, bool IsDanger = false, string Trailing = "", Func<IReadOnlyList<MenuRowItem>>? Submenu = null, bool TrailingWarm = false)
 {
     /// A row that opens a nested menu at its side (a chevron at its right) when the pointer rests on it, on a click or on Right; the rows are asked each time the menu opens and again after a
     /// <see cref="KeepsOpen"/> row of it is clicked, so its ticks follow.

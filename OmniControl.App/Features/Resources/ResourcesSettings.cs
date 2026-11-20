@@ -28,6 +28,9 @@ public sealed class ResourcesSetup
 
     /// The network adapter the Download and Upload readings come from: null = Auto (the busiest), <c>AdapterSpeed.All</c> = all together, else an adapter's id.
     public string? Adapter { get; set; }
+
+    /// The temperature sensor the Hottest sensor reading follows (a sensor's id from the sensor library): null = the hottest of all (Auto); one that is gone reads as Auto.
+    public string? Sensor { get; set; }
     public GadgetSettings Gadget { get; set; } = GadgetLayouts.NewLook();
     public List<AppNetRule> Apps { get; set; } = new();
 

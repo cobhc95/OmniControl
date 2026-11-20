@@ -9,6 +9,12 @@ public sealed record ResourceSample(double? Cpu, double? Gpu, double? MemoryUsed
 {
     public static readonly ResourceSample None = new(null, null, null, null, null, null, null, null, null, null, null, null);
 
+    /// The name of the temperature sensor the Hottest reading follows when one was chosen and still exists; null: the hottest of all.
+    public string? ChosenSensor { get; init; }
+
+    /// Every temperature sensor with its value now (only when <see cref="SampleParts.SensorList"/> was wanted).
+    public IReadOnlyList<TemperatureSensor> TemperatureSensors { get; init; } = Array.Empty<TemperatureSensor>();
+
     public double? MemoryPercent => MemoryTotalGb > 0 ? MemoryUsedGb / MemoryTotalGb * 100 : null;
 
     /// Every adapter (not loopback or tunnel) with its speed now, for the network adapter menu.
@@ -21,12 +27,22 @@ public sealed record ResourceSample(double? Cpu, double? Gpu, double? MemoryUsed
     public SampleParts Parts { get; init; }
 }
 
+/// Where a temperature sensor sits, in the order a menu lists them.
+public enum SensorGroup { Cpu, Gpu, Storage, Board }
+
+/// One temperature sensor of the library: a stable <paramref name="Id"/>, its <paramref name="Name"/>, the (top-level) <paramref name="Hardware"/> it belongs to and its value in Celsius.
+public sealed record TemperatureSensor(string Id, string Name, string Hardware, SensorGroup Group, double Value)
+{
+    /// The name without the "CPU " or "GPU " that the group heading already says.
+    public string Short => Group is SensorGroup.Cpu or SensorGroup.Gpu && Name.Length > 4 && Name[3] == ' ' && Name[..3] is "CPU" or "GPU" ? Name[4..] : Name;
+}
+
 /// The parts of a read a caller wants, beyond CPU load and memory (two cheap calls, always read): the network speeds, the adapter list (only
 /// for the adapter menu), and each reading of the sensor library, which is opened, and given only the hardware groups it needs, only for these.
 [Flags]
 public enum SampleParts
 {
-    None = 0, Network = 1, Adapters = 2, Gpu = 4, Disk = 8, CpuTemp = 16, GpuTemp = 32, Hottest = 64,
+    None = 0, Network = 1, Adapters = 2, Gpu = 4, Disk = 8, CpuTemp = 16, GpuTemp = 32, Hottest = 64, SensorList = 128,
     Sensors = Gpu | Disk | CpuTemp | GpuTemp | Hottest,
     All = Network | Sensors,
 }
@@ -47,13 +63,15 @@ public sealed class ResourceSampler : IDisposable
     private bool _sensorsTried;
     private TimeSpan? _sensedAt, _storageAt; // when the library and the drives were last updated (null: update at the next read)
     private ResourceSample _sensed = ResourceSample.None; // the sensor values of that update
+    private List<ISensor> _temps = new(); // the temperature sensors of that update
 
     /// Why the sensor library could not start (null: it runs, or has not been asked yet).
     public string? SensorProblem { get; private set; }
 
     /// <param name="adapter">Which adapter the network speeds are read from: null = the busiest one (Auto), <see cref="AdapterSpeed.All"/> = all
     /// added together, else an adapter's id; a chosen adapter that is gone or not connected reads as Auto.</param>
-    public ResourceSample Read(SampleParts wanted, string? adapter)
+    /// <param name="sensor">The temperature sensor the Hottest reading follows (its <see cref="TemperatureSensor.Id"/>); null or gone = the hottest of all.</param>
+    public ResourceSample Read(SampleParts wanted, string? adapter, string? sensor = null)
     {
         var net = (wanted & SampleParts.Network) != 0 ? Network(adapter, (wanted & SampleParts.Adapters) != 0) : NoNetwork();
         var (used, total) = Memory();
@@ -63,7 +81,7 @@ public sealed class ResourceSampler : IDisposable
             AdapterIsAuto = net.Auto,
             Parts = wanted,
         };
-        return (wanted & SampleParts.Sensors) != 0 && Sensors(wanted) is { } computer ? WithSensors(sample, computer, wanted) : sample;
+        return (wanted & SampleParts.Sensors) != 0 && Sensors(wanted) is { } computer ? WithSensors(sample, computer, wanted, sensor) : sample;
     }
 
     /// The network is not wanted: its counters are forgotten, so the first read after it is wanted again starts afresh (never a rate over the gap).
@@ -170,7 +188,7 @@ public sealed class ResourceSampler : IDisposable
 
     /// The sample with the wanted sensor readings: the library is updated at most every <see cref="CoreTiming.SensorEvery"/> (the drives every
     /// <see cref="CoreTiming.StorageSensorEvery"/>), so a fast read (the gadget's 100 ms) costs only CPU, memory and network.
-    private ResourceSample WithSensors(ResourceSample sample, Computer computer, SampleParts wanted)
+    private ResourceSample WithSensors(ResourceSample sample, Computer computer, SampleParts wanted, string? sensor)
     {
         var now = _clock.Elapsed;
         if (_sensedAt is not { } sensed || now - sensed >= CoreTiming.SensorEvery)
@@ -181,18 +199,39 @@ public sealed class ResourceSampler : IDisposable
             _sensed = Sense(computer, readStorage);
         }
         double? If(SampleParts part, double? value) => (wanted & part) != 0 ? value : null;
+        var chosen = sensor is null ? null : _temps.FirstOrDefault(s => s.Identifier.ToString() == sensor);
+        var hot = chosen ?? _temps.MaxBy(s => s.Value);
+        var hottest = (wanted & SampleParts.Hottest) != 0 && hot is not null ? Describe(hot) : null;
         return sample with
         {
             Gpu = If(SampleParts.Gpu, _sensed.Gpu),
             Disk = If(SampleParts.Disk, _sensed.Disk),
             CpuTemp = If(SampleParts.CpuTemp, _sensed.CpuTemp),
             GpuTemp = If(SampleParts.GpuTemp, _sensed.GpuTemp),
-            Hottest = If(SampleParts.Hottest, _sensed.Hottest),
-            HottestName = (wanted & SampleParts.Hottest) != 0 ? _sensed.HottestName : null,
+            Hottest = hottest?.Value,
+            HottestName = hottest?.Hardware,
+            ChosenSensor = chosen is not null ? hottest?.Name : null,
+            TemperatureSensors = (wanted & SampleParts.SensorList) != 0 ? _temps.Select(Describe).OrderBy(t => t.Group).ToList() : Array.Empty<TemperatureSensor>(),
         };
     }
 
-    private static ResourceSample Sense(Computer computer, bool readStorage)
+    /// A sensor as a menu lists it: its group and (top-level) hardware; a drive is named by its model.
+    private static TemperatureSensor Describe(ISensor s)
+    {
+        var top = s.Hardware;
+        while (top.Parent is { } parent) top = parent;
+        var group = top.HardwareType switch
+        {
+            HardwareType.Cpu => SensorGroup.Cpu,
+            HardwareType.GpuNvidia or HardwareType.GpuAmd or HardwareType.GpuIntel => SensorGroup.Gpu,
+            HardwareType.Storage => SensorGroup.Storage,
+            _ => SensorGroup.Board,
+        };
+        var name = group == SensorGroup.Storage ? (s.Name == "Temperature" ? top.Name : $"{top.Name} · {s.Name}") : s.Name;
+        return new TemperatureSensor(s.Identifier.ToString(), name, top.Name, group, s.Value ?? 0);
+    }
+
+    private ResourceSample Sense(Computer computer, bool readStorage)
     {
         var all = new List<ISensor>();
         foreach (var hardware in computer.Hardware.SelectMany(h => h.SubHardware.Prepend(h)))
@@ -202,15 +241,13 @@ public sealed class ResourceSampler : IDisposable
         }
         static bool Gpu(ISensor s) => s.Hardware.HardwareType is HardwareType.GpuNvidia or HardwareType.GpuAmd or HardwareType.GpuIntel;
         var temps = all.Where(s => s.SensorType == SensorType.Temperature && s.Value is > 0 and < (float)HottestMax && !NotTemperatures.Any(s.Name.Contains)).ToList();
-        var hottest = temps.MaxBy(s => s.Value);
+        _temps = temps;
         return ResourceSample.None with
         {
             Gpu = Max(all.Where(s => Gpu(s) && s.SensorType == SensorType.Load && s.Name is "GPU Core" or "D3D 3D")),
             Disk = Max(all.Where(s => s.Hardware.HardwareType == HardwareType.Storage && s.SensorType == SensorType.Load && s.Name == "Total Activity")),
             CpuTemp = Max(temps.Where(s => s.Hardware.HardwareType == HardwareType.Cpu)),
             GpuTemp = Max(temps.Where(Gpu)),
-            Hottest = hottest?.Value,
-            HottestName = hottest?.Hardware.Name,
         };
     }
 
@@ -223,6 +260,7 @@ public sealed class ResourceSampler : IDisposable
         if (_sensors is null) return;
         _sensors.Close();
         _sensors = null;
+        _temps = new();
         _sensorsTried = false;
         (_sensedAt, _storageAt) = (null, null);
     }

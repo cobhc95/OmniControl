@@ -30,7 +30,7 @@
                                         </ItemsControl>
                                     </WrapPanel>
                                     <TextBlock Text="{Binding Text}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{Binding OneLine}" />
-                                    <TextBlock Grid.Column="1" Classes="menutext" Margin="0" Text="{Binding Trailing}" VerticalAlignment="Center" IsVisible="{Binding OneLine}" />
+                                    <TextBlock Grid.Column="1" Classes="menutext" Classes.warm="{Binding TrailingWarm}" Margin="0" Text="{Binding Trailing}" VerticalAlignment="Center" IsVisible="{Binding OneLine}" />
                                     <Button Grid.Column="1" Classes="link" Content="{Binding Link}" IsVisible="{Binding HasLink}" IsHitTestVisible="False" Focusable="False" VerticalAlignment="Top" />
                                     <ToggleSwitch Grid.Column="1" Classes="plain" IsChecked="{Binding IsOn, Mode=OneWay}" IsVisible="{Binding IsSwitch}" IsHitTestVisible="False" Focusable="False" VerticalAlignment="Center" />
                                     <PathIcon Grid.Column="2" Data="{DynamicResource ChevronRightIcon}" Width="{StaticResource ChevronSize}" Height="{StaticResource ChevronSize}" Foreground="{DynamicResource BrushMuted}" VerticalAlignment="Center" IsVisible="{Binding HasSubmenu}" />

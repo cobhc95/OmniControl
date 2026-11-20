@@ -5,14 +5,17 @@
              x:Class="OmniControl.App.Features.Resources.Pages.ReadingRow"
              x:DataType="vm:ReadingCard"
              Classes="card">
-    <!-- A Live readings card: icon and name, the value; under them the sparkline (or the muted note) and the fact tag. -->
-    <Grid Margin="0,1" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="{StaticResource GapLarge}" RowSpacing="2">
+    <!-- A Live readings card: icon and name, the value; under them the sparkline (or the muted note) and the fact tag or chip. -->
+    <Grid Margin="0,1" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="{StaticResource GapLarge}" RowSpacing="2">
         <c:IconText Icon="{Binding Icon}" Text="{Binding Label}" />
         <TextBlock Grid.Column="1" Classes="strong" Text="{Binding Value}" VerticalAlignment="Center" />
-        <c:Sparkline Grid.Row="1" Values="{Binding History}" Maximum="{Binding Maximum}" IsVisible="{Binding !HasNote}" />
+        <c:Sparkline Grid.Row="1" Values="{Binding History}" Maximum="{Binding Maximum}" IsVisible="{Binding InlineGraph}" />
         <TextBlock Grid.Row="1" Classes="cardlabel muted" Text="{Binding Note}" ToolTip.Tip="{Binding Note}" IsVisible="{Binding HasNote}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
         <c:TagView Grid.Row="1" Grid.Column="1" DataContext="{Binding Tag}" HorizontalAlignment="Right" VerticalAlignment="Center"
                    IsVisible="{Binding $self.DataContext, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        <!-- The Hottest sensor card: the temperature sensor chip in the tag's place, its graph (fixed 25-100 range, caution colour past the warn point) along the foot -->
+        <c:ChipMenu x:Name="SensorChip" Grid.Row="1" Grid.Column="1" ChipTag="scope" Text="{Binding Sensor.Text}" IsVisible="{Binding HasSensor}" VerticalAlignment="Center" />
+        <c:Sparkline Grid.Row="2" Grid.ColumnSpan="2" Values="{Binding History}" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" WarnAt="{Binding WarnAt}" IsVisible="{Binding HasSensor}" />
         <!-- The Download and Upload cards: the network adapter chip (the shared ChipMenu + MenuRowList) in the tag's place -->
         <c:ChipMenu x:Name="AdapterChip" Grid.Row="1" Grid.Column="1" ChipTag="scope" Text="{Binding Adapter.Text}" IsVisible="{Binding HasAdapter}" VerticalAlignment="Center" />
     </Grid>
