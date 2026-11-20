@@ -24,6 +24,7 @@
        only the Windows SDK projection is trimmed to the members used. COM interop and reflection JSON stay on (trimming turns them off);
        trim warnings are silenced (thousands, about member trimming that is not done). LeaveOutOfPublish = files nothing loads: the
        alternative garbage collectors, HTTP/3, debugger and dump helpers, LibreHardwareMonitor's Linux helpers and symbol files.
+       Precompiled (ReadyToRun, less JIT at start) only ReadyToRunOnly: the app and Avalonia.Base, about 4.8 MB more in the Setup.
        Memory: the workstation garbage collector, collecting in the background, told to keep the heap small (ConserveMemory 5 of 9). -->
   <PropertyGroup>
     <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
@@ -35,12 +36,21 @@
     <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
     <ServerGarbageCollection>false</ServerGarbageCollection>
     <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <ReadyToRunOnly>^(OmniControl|Avalonia\.Base)$</ReadyToRunOnly>
     <LeaveOutOfPublish>^(clrgc|clrgcexp|msquic|Microsoft\.DiaSymReader\.Native\.amd64|mscordbi|mscordaccore.*|libMonoPosixHelper|MonoPosixHelper)\.dll$|^createdump\.exe$|\.pdb$</LeaveOutOfPublish>
   </PropertyGroup>
 
   <Target Name="KeepUsedAssembliesWhole" AfterTargets="PrepareForILLink">
     <ItemGroup>
       <ManagedAssemblyToLink Condition="'%(Filename)' != 'Microsoft.Windows.SDK.NET'" TrimMode="copyused" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="ReadyToRunOnlyChosen" BeforeTargets="_PrepareForReadyToRunCompilation">
+    <ItemGroup>
+      <_R2RCandidate Include="@(ResolvedFileToPublish->WithMetadataValue('PostprocessAssembly', 'true'))" />
+      <PublishReadyToRunExclude Include="%(_R2RCandidate.Filename)%(_R2RCandidate.Extension)" Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('%(_R2RCandidate.Filename)', '$(ReadyToRunOnly)'))" />
     </ItemGroup>
   </Target>
 
