@@ -354,9 +354,10 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
         var trigger = isPressable ? action.Options.Text(MouseOptions.Trigger) : MouseOptions.OnPress; // wheel and tilt have no "held" or "released"
         Action? undo = null;
 
-        if (trigger == MouseOptions.KeysHeld && action.Id == MouseActionCatalog.Keys)
+        // Only one combination can be held; a sequence ("Ctrl+K, Ctrl+C") is typed once on the press instead.
+        if (trigger == MouseOptions.KeysHeld && action.Id == MouseActionCatalog.Keys && _modes.HoldKeys(action.Param) is { } release)
         {
-            undo = _modes.HoldKeys(action.Param);
+            undo = release;
             RunInOrder(ev, null, extras);
         }
         else if (isPressable && action.Id == MouseActionCatalog.Omni && _holdOmniAction(action.Param, MouseOptions.RunOf(action.Options)) is { } held)

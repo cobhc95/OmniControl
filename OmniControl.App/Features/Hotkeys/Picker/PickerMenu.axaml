@@ -145,6 +145,7 @@
                                                 <TextBlock Classes="hint small" Text="{Binding Hint}" IsVisible="{Binding HasHeadingNote}" />
                                                 <TextBox Classes="field" Text="{Binding Value, UpdateSourceTrigger=LostFocus}" Watermark="{Binding Hint}"
                                                          IsVisible="{Binding IsText}" />
+                                                <Border Classes="tag caution" IsVisible="{Binding HasTag}" HorizontalAlignment="Left"><TextBlock Text="{Binding Tag}" TextWrapping="Wrap" /></Border>
                                                 <ctl:PathField Text="{Binding Value}" Kind="{Binding PathKind}" Hint="{Binding Hint}" PickerTitle="{Binding PickerTitle}"
                                                                IsVisible="{Binding IsPath}" />
                                                 <ctl:PointField Value="{Binding Value}" IsVisible="{Binding IsPoint}" />

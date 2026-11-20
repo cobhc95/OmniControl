@@ -1,4 +1,5 @@
 using OmniControl.App.Features.Hotkeys;
+using OmniControl.App.Features.Hotkeys.Actions;
 
 namespace OmniControl.App.Features.Automation;
 
@@ -9,9 +10,9 @@ public static class CustomFields
     public const string Name = "name", Kind = "kind", Arguments = "arguments";
 
     // One target setting per way it is picked (typed words, a file, a program), all stored as the action's one target.
-    public const string TargetText = "target.text", TargetFile = "target.file", TargetProgram = "target.program";
+    public const string TargetText = "target.text", TargetFile = "target.file", TargetProgram = "target.program", TargetSendKeys = "target.keys";
 
-    private static readonly string[] TargetKeys = { TargetText, TargetFile, TargetProgram };
+    private static readonly string[] TargetKeys = { TargetText, TargetFile, TargetProgram, TargetSendKeys };
 
     private static readonly ActionOption NameOption = ActionOption.Text(Name, "Name");
     private static readonly ActionOption KindOption = ActionOption.Choice(Kind, "Type", CustomKinds.Names);
@@ -23,6 +24,8 @@ public static class CustomFields
         ActionOption.Text(TargetText, "Target", hint: "Command or address").ShownWhen(KindOption, CustomKinds.NamesOf(CustomKinds.Typed)),
         ActionOption.Path(TargetFile, "Target", PathKind.File, "File or folder").ShownWhen(KindOption, CustomKinds.NamesOf(CustomKinds.Files)),
         ActionOption.Path(TargetProgram, "Target", PathKind.Program, "Program").ShownWhen(KindOption, CustomKinds.NamesOf(CustomKinds.Programs)),
+        ActionOption.Text(TargetSendKeys, "Keys to send", hint: CustomKinds.HintOf(CustomKind.Keys)).CheckedBy(MouseOptions.KeysProblem)
+            .ShownWhen(KindOption, CustomKinds.NameOf(CustomKind.Keys)),
         ActionOption.Text(Arguments, "Arguments").ShownWhen(KindOption, CustomKinds.NamesOf(CustomKinds.WithArguments)),
     };
 

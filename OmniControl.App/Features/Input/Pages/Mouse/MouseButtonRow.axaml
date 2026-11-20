@@ -87,6 +87,9 @@
         <StackPanel Grid.Row="1" Spacing="4">
             <TextBox x:Name="ParameterBox" Classes="field" Text="{Binding Parameter, UpdateSourceTrigger=LostFocus}"
                      Watermark="{Binding Hint}" IsVisible="{Binding NeedsParameter}" />
+            <Border Classes="tag caution" HorizontalAlignment="Left" IsVisible="{Binding ParameterProblem, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <TextBlock Text="{Binding ParameterProblem}" TextWrapping="Wrap" />
+            </Border>
             <ctl:PathField x:Name="PathBox" Text="{Binding Parameter}" Kind="{Binding PathKind}" Hint="{Binding Hint}" PickerTitle="Choose what to open"
                            IsVisible="{Binding NeedsPath}" />
             <Border Classes="tag" HorizontalAlignment="Left" IsVisible="{Binding ShowsScopeTag}" ToolTip.Tip="Works in different apps than its group">

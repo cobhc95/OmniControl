@@ -44,8 +44,8 @@ public sealed partial class OptionItem : ObservableObject
     /// A muted line under a switch's label.
     public bool HasNote => IsToggle && Option.Hint.Length > 0;
 
-    /// A caution tag shown on the row while its option says so (<see cref="ActionOption.TaggedWhen"/>).
-    public string? Tag => Option.TagNow?.Invoke();
+    /// A caution tag shown on the row while its option says so (<see cref="ActionOption.TaggedWhen"/>), or what is wrong with its text (<see cref="ActionOption.CheckedBy"/>).
+    public string? Tag => Option.Check?.Invoke(Value) ?? Option.TagNow?.Invoke();
     public bool HasTag => Tag is { Length: > 0 };
 
     /// False while the setting this row needs is off: the row is dimmed and its tooltip says why.

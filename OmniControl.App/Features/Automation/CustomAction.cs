@@ -4,7 +4,7 @@ namespace OmniControl.App.Features.Automation;
 
 /// What a custom action does with its target.
 [JsonConverter(typeof(JsonStringEnumConverter))]
-public enum CustomKind { Command, ScriptFile, Program, Path, Url }
+public enum CustomKind { Command, ScriptFile, Program, Path, Url, Keys }
 
 /// A user-made action: a name, what kind it is, its target and (for a script or program) its arguments. It registers once in the master list.
 public sealed class CustomAction
@@ -31,6 +31,7 @@ public static class CustomKinds
         (CustomKind.Program, "Open program", @"C:\Path\App.exe", true),
         (CustomKind.Path, "Open file or folder", @"C:\Users\Me\Documents", false),
         (CustomKind.Url, "Open URL", "https://example.com", false),
+        (CustomKind.Keys, "Send keys", "Ctrl+Shift+S, or Ctrl+K, Ctrl+C", false),
     };
 
     public static IReadOnlyList<string> Names { get; } = All.Select(k => k.Name).ToList();

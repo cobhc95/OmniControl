@@ -90,11 +90,14 @@ public static class InputSender
         return sent == 2;
     }
 
-    /// Presses all keys in order, then releases them in reverse (a shortcut such as Ctrl+C).
+    /// Presses all keys in order, then releases them in reverse (a shortcut such as Ctrl+C). When Windows takes only part of it (a program
+    /// with higher rights came to the front), the releases are sent again so no key is left down.
     public static void Chord(IReadOnlyList<ushort> keys)
     {
         var layout = WindowQuery.ActiveKeyboardLayout();
-        Send(keys.Select(k => Key(k, true, layout)).Concat(keys.Reverse().Select(k => Key(k, false, layout))).ToArray());
+        var releases = keys.Reverse().Select(k => Key(k, false, layout)).ToArray();
+        var all = keys.Select(k => Key(k, true, layout)).Concat(releases).ToArray();
+        if (Send(all) < all.Length) Send(releases);
     }
 
     /// Presses the keys and keeps them down, for actions that last while a mouse button is held. Returns what lets go of exactly those keys

@@ -7,8 +7,12 @@ public enum OptionKind { Number, Choice, Toggle, Text, Heading, Point, Panel }
 public sealed record ActionOption(string Key, string Label, OptionKind Kind, string Default,
     int Min = 0, int Max = 0, int Step = 1, string Unit = "", IReadOnlyList<string>? Choices = null, string Hint = "",
     string? ShowKey = null, IReadOnlyList<string>? ShowValues = null, PathKind? Browse = null,
-    bool Shared = false, string? NeedsKey = null, string NeedsReason = "", Func<ISettingsPanel>? MakePanel = null, Func<string?>? TagNow = null)
+    bool Shared = false, string? NeedsKey = null, string NeedsReason = "", Func<ISettingsPanel>? MakePanel = null, Func<string?>? TagNow = null,
+    Func<string, string?>? Check = null)
 {
+    /// A text whose value <paramref name="problemOf"/> judges: the one sentence it returns shows as a caution tag beside the field (null = fine).
+    public ActionOption CheckedBy(Func<string, string?> problemOf) => this with { Check = problemOf };
+
     /// The value lives once, outside the action (<see cref="ISharedOptions"/>), and is the same for every action that offers it.
     public ActionOption SharedSetting() => this with { Shared = true };
 

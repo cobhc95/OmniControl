@@ -18,11 +18,11 @@ public sealed partial class ActionSlot : ObservableObject, IPickerCard
     private string? _missing; // the stored text of an action no list entry matches now, kept as it is
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(Name), nameof(HasOptions))]
+    [NotifyPropertyChangedFor(nameof(Name), nameof(HasOptions), nameof(HasDetail))]
     private PickChoice _choice;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasDetail))]
+    [NotifyPropertyChangedFor(nameof(HasDetail), nameof(Name))]
     private string _parameter = string.Empty;
 
     /// Position in the list, from 0.
@@ -43,8 +43,8 @@ public sealed partial class ActionSlot : ObservableObject, IPickerCard
     public IReadOnlyDictionary<string, string> Values { get; private set; } = new Dictionary<string, string>();
 
     public int Number => Index + 1;
-    public string Name => _missing is null ? Choice.Name : MissingName;
-    public bool HasDetail => Parameter.Length > 0;
+    public string Name => _missing is null ? Choice.ShownName(Parameter) : MissingName;
+    public bool HasDetail => Choice.ShowsParameter(Parameter);
     public bool HasOptions => _missing is null && Choice.HasOptions;
 
     /// The id of the stored action ("keys", "layer.next"...), which decides where in the list it may stand.

@@ -25,6 +25,7 @@ public sealed class MouseActionRunner
     private readonly Func<bool>? _toRemote;
     private readonly Func<string, string?>? _keyEquivalentOf;
     private readonly LaunchLimiter _launches = new();   // the latest programs or folders started
+    private readonly LaunchLimiter _keySends = new(Timing.KeySendBurstMax, Timing.KeySendBurstWindow);
     private int _winKeyNoted;                            // the mouse log said once that a windowed Remote Desktop may keep Windows-key shortcuts here
 
     /// <param name="runOmniAction">Runs the OmniControl hotkey action with this id (with the settings the input chose: a program to start, how far a level moves, a power countdown); false when there is none.</param>
@@ -139,15 +140,28 @@ public sealed class MouseActionRunner
         if (text.Length > 0) SendKeys(text);
     }
 
+    /// Sends one shortcut or a short sequence of them ("Ctrl+K, Ctrl+C"), in order, <see cref="Timing.MouseActionGap"/> apart; each one is
+    /// pressed and released in one go, so nothing is left down.
     private void SendKeys(string text)
     {
-        if (!KeyChord.TryParse(text, out var keys))
+        if (!KeyChord.TryParseSequence(text, out var chords))
         {
-            _report($"Couldn't read the shortcut \"{text}\". Use names like Ctrl+Shift+T.");
+            _report(MouseOptions.KeysProblem(text) ?? "A button, gesture or rule has no keys to send: type them in its box.");
             return;
         }
-        if (_toRemote?.Invoke() == true && RemoteInputApps.KeysFor(keys) is { } remote) TypeToRemote(remote, text);
-        else InputSender.Chord(keys);
+        var steps = KeyChord.Steps(text);
+        for (var i = 0; i < chords.Count; i++)
+        {
+            if (i > 0) Thread.Sleep(Timing.MouseActionGap); // a worker thread: the runner never runs on the hook or UI thread
+            if (!_keySends.TryAcquire())
+            {
+                _log($"refused to send \"{text}\": too many shortcuts in a row");
+                _report("Stopped a button, gesture or rule from sending keys again and again. Check its settings.");
+                return;
+            }
+            if (_toRemote?.Invoke() == true && RemoteInputApps.KeysFor(chords[i]) is { } remote) TypeToRemote(remote, steps[i]);
+            else InputSender.Chord(chords[i]);
+        }
     }
 
     /// Types the keys into the remote-input window in front, as a keyboard would, and logs exactly what was sent; a Windows-key shortcut

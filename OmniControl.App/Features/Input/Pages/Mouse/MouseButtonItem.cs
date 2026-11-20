@@ -92,8 +92,12 @@ public sealed partial class MouseButtonItem : ObservableObject, IEditorItem, IHa
             if (First is not { } first || first.Parameter == value) return;
             first.Parameter = value;
             Save();
+            OnPropertyChanged(nameof(ParameterProblem));
         }
     }
+
+    /// What is wrong with the first action's text (an unknown key name), shown as a caution tag under its box; null when fine.
+    public string? ParameterProblem => First?.Choice.ParamCheck?.Invoke(Parameter);
 
     /// The first action's text is a plain one (a shortcut): a text box.
     public bool NeedsParameter => First?.Choice is { ParamHint: not null, ParamBrowse: null };
@@ -199,6 +203,7 @@ public sealed partial class MouseButtonItem : ObservableObject, IEditorItem, IHa
             : "Add an action that runs after the others, each time the input fires.";
         OnPropertyChanged(nameof(IsCustom));
         OnPropertyChanged(nameof(Parameter));
+        OnPropertyChanged(nameof(ParameterProblem));
         OnPropertyChanged(nameof(NeedsParameter));
         OnPropertyChanged(nameof(NeedsPath));
         OnPropertyChanged(nameof(PathKind));

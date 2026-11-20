@@ -28,8 +28,8 @@ public sealed partial class GestureItem : ObservableObject, IEditorItem, IHalfWi
     [NotifyPropertyChangedFor(nameof(Summary), nameof(HasOptions))]
     private PickChoice _choice;
 
-    /// The name of the action, as shown on the card's pill.
-    public string Summary => Choice.Name;
+    /// The name of the action, as shown on the card's pill (the keys themselves for "Send keys").
+    public string Summary => Choice.ShownName(_parameter);
 
     /// True when the action has settings (the card shows a cogwheel).
     public bool HasOptions => Choice.HasOptions;
@@ -76,9 +76,11 @@ public sealed partial class GestureItem : ObservableObject, IEditorItem, IHalfWi
         _choices = _choiceSource();
         Scope.Refresh();
         _loading = true;
-        Choice = ChoiceOfRule();
-        _parameter = Choice.ParameterOf(_rule.Action);
+        var choice = ChoiceOfRule();
+        _parameter = choice.ParameterOf(_rule.Action);
+        Choice = choice;
         _loading = false;
+        OnPropertyChanged(nameof(Summary));
     }
 
     private PickChoice ChoiceOfRule() => _choices.FirstOrDefault(c => c.Matches(_rule.Action)) ?? _choices[0];
@@ -99,6 +101,7 @@ public sealed partial class GestureItem : ObservableObject, IEditorItem, IHalfWi
             return;
         }
         _rule.Action = Choice.WithParameter(_parameter); // same action, new settings or text
+        OnPropertyChanged(nameof(Summary));
         _changed();
     }
 

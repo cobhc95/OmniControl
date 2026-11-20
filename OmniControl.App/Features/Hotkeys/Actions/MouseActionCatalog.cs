@@ -125,8 +125,9 @@ public static class MouseActionCatalog
 
     private static readonly IReadOnlyList<PickChoice> Parameterised = new PickChoice[]
     {
-        new(Keys + ":", ActionSections.Keys, "Send a shortcut", "Ctrl+Shift+T", "simulated keys keystroke",
-            new[] { MouseOptions.TriggerWithHold, MouseOptions.Times, MouseOptions.RepeatDelay, MouseOptions.RepeatEvery }, "Shortcut to send", Heading: Edit.Heading),
+        new(Keys + ":", ActionSections.Keys, "Send keys", "Ctrl+Shift+S, or Ctrl+K, Ctrl+C", "send a shortcut remap key combination keystroke sequence simulated",
+            new[] { MouseOptions.TriggerWithHold, MouseOptions.Times, MouseOptions.RepeatDelay, MouseOptions.RepeatEvery }, "Keys to send", Heading: Edit.Heading,
+            ParamCheck: MouseOptions.KeysProblem, NamedByParam: true),
         new(Run + ":", Programs.Section, "Open a program, file or link", @"C:\Path\App.exe", "run application launch file url website address",
             new[] { MouseOptions.Arguments, MouseOptions.StartIn, MouseOptions.WindowStyle, MouseOptions.Administrator }, "Program, file or link", ParamBrowse: PathKind.File, Heading: Programs.Heading),
         new(Folder + ":", Programs.Section, "Open a folder", @"C:\Users\Me\Documents", "explorer at specified folder", ParamLabel: "Folder", ParamBrowse: PathKind.Folder, Heading: Programs.Heading),
@@ -174,7 +175,7 @@ public static class MouseActionCatalog
         if (id is Default or Disabled) return own;
         var original = MouseOptions.OriginalFor(gesture);
         if (IsLayerAction(id)) return gesture ? (own ?? Array.Empty<ActionOption>()).Append(original).ToList() : own;
-        // "Send a shortcut" is already a shortcut: a second one to send alongside it would only be a longer shortcut.
+        // "Send keys" already sends keys: more to send alongside them belong in its own text.
         var extras = id.StartsWith(Keys, StringComparison.Ordinal) ? new[] { original } : new[] { original, MouseOptions.AlsoSend };
         if (id == MoveAsScroll && !gesture) extras = new[] { original, MouseOptions.AllowAutoscroll, MouseOptions.AlsoSend };
         return own is null ? extras : own.Concat(extras).ToList();
@@ -216,7 +217,11 @@ public static class MouseActionCatalog
         // The layer actions follow the rest of the Mouse and Trackpad section's built-in actions.
         list.InsertRange(list.FindIndex(c => c.Category != ActionSections.Mouse),
             layerChoices.Select(c => c with { Options = WithAlongside(c.Spec, c.Options, gesture), Unavailable = unavailable(c.Spec) }));
-        list.AddRange(Parameterised.Select(c => c with { Options = WithAlongside(c.Spec, c.Options, gesture), Place = ActionSections.Find(c.Category) }));
+        var parameterised = Parameterised.Select(c => c with { Options = WithAlongside(c.Spec, c.Options, gesture), Place = ActionSections.Find(c.Category) }).ToList();
+        // "Send keys" leads its group: any key or combination is the most general of the keys actions.
+        var sendKeys = parameterised.Single(c => c.Spec == Keys + ":");
+        list.Insert(list.FindIndex(c => c.Heading == Edit.Heading), sendKeys);
+        list.AddRange(parameterised.Where(c => c != sendKeys));
         list.AddRange(omniActions.Where(a => !a.CoveredByMousePicker).Select(a => OmniChoice(a, b => WithAlongside(Omni, OmniOptions(b), gesture))));
         // The Power section lists OmniControl's own power actions first; the two built-in screen actions follow them.
         return list.OrderBy(c => c.Category == Screen.Section && c.Heading == Screen.Heading ? 1 : 0).ToList();

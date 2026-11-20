@@ -9,9 +9,15 @@ public static partial class Timing
     /// The web search action sends Ctrl+C, then waits this long for the program to put the selection on the clipboard.
     public static readonly TimeSpan MouseCopyWait = TimeSpan.FromMilliseconds(150);
 
-    /// The pause between one action and the next when a button or gesture has several, so a program has taken the first keystroke
-    /// or window change before the next one arrives.
+    /// The pause between one action and the next when a button or gesture has several (and between the shortcuts of one "Send keys"
+    /// sequence), so a program has taken the first keystroke or window change before the next one arrives.
     public static readonly TimeSpan MouseActionGap = TimeSpan.FromMilliseconds(40);
+
+    /// Each action runner (buttons and gestures, gesture rules, automation) may send at most <see cref="KeySendBurstMax"/> shortcuts per this time; more is a runaway
+    /// (a repeating or looping mapping) and is refused.
+    public static readonly TimeSpan KeySendBurstWindow = TimeSpan.FromSeconds(1);
+
+    public const int KeySendBurstMax = 100;
 
     /// Repeated clicking: the hard ceiling on its speed, whatever is set (clicks per second).
     public const int ClickSpeedMax = 50;

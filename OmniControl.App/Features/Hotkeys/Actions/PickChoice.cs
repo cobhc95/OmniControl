@@ -7,7 +7,7 @@ namespace OmniControl.App.Features.Hotkeys.Actions;
 /// <see cref="Keywords"/> are extra words the search matches (the shortcut, or what it is called elsewhere). <see cref="Options"/> are
 /// the settings it offers (behind the cogwheel); <see cref="ParamLabel"/> names the text a ParamHint entry takes, in those settings.
 /// <see cref="Unavailable"/> is why the entry can't be picked here (it is shown greyed with that reason); null = it can.
-/// <see cref="ParamBrowse"/>: the text is a path, so its box has the Browse button for that kind of path.
+/// <see cref="ParamBrowse"/>: the text is a path, so its box has the Browse button for that kind of path. <see cref="ParamCheck"/> judges the text (one sentence beside its box, null = fine).
 /// <see cref="AskFirst"/>: the entry is not complete without its settings (a command to run), so a picker that asks for them opens its settings page when it is picked.
 /// <see cref="Remove"/>: the user may take the entry out of the list (it shows a remove cross). <see cref="Command"/>: the line is a button of its list (add a
 /// program), not an action: picking it runs the command, which returns the entries to add. <see cref="Opened"/>: called each time a picker listing the entry opens.
@@ -21,9 +21,16 @@ public sealed record PickChoice(string Spec, string Category, string Name, strin
     Action? Remove = null, Func<Visual, Task<IReadOnlyList<PickChoice>>>? Command = null, Action? Opened = null,
     string? Heading = null, ActionSection? Place = null, string RemoveText = "Remove", Renaming? Renaming = null, Func<bool>? IsListed = null,
     ActionEditor? Editor = null, Func<IReadOnlyDictionary<string, string>, PickChoice>? Create = null, string? Icon = null,
-    ActionFamily? Family = null, string? FamilyRole = null, string? Tag = null, Shared.Services.RemotePcLabel? Remote = null)
+    ActionFamily? Family = null, string? FamilyRole = null, string? Tag = null, Shared.Services.RemotePcLabel? Remote = null,
+    Func<string, string?>? ParamCheck = null, bool NamedByParam = false)
 {
     public bool HasOptions => Options is { Count: > 0 };
+
+    /// The name a card shows for this entry with that text: the text itself for an entry <see cref="NamedByParam"/> (the keys it sends), else <see cref="Name"/>.
+    public string ShownName(string parameter) => NamedByParam && parameter.Trim() is { Length: > 0 } text ? text : Name;
+
+    /// True when a card shows the entry's text under its name (it is not already the name).
+    public bool ShowsParameter(string parameter) => parameter.Length > 0 && !NamedByParam;
 
     /// True when a stored entry ("id" or "id:parameter", without options) is this choice.
     public bool Matches(string stored) => ParamHint is null ? Spec == stored : stored.StartsWith(Spec, StringComparison.Ordinal);

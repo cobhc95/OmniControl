@@ -22,7 +22,15 @@ public static class MouseOptions
     public static readonly ActionOption AllowAutoscroll = ActionOption.Toggle("autoscroll", "Let the app's own autoscroll start").SharedSetting()
         .NeedsOn(KeepOriginal, "Only matters while the button's normal click is also sent.");
     public static readonly ActionOption KeepWindowsGesture = KeepOriginal with { Label = "Also let Windows do its own gesture" };
-    public static readonly ActionOption AlsoSend = ActionOption.Text("also", "Also send this shortcut", "", "Ctrl+C");
+    public static readonly ActionOption AlsoSend = ActionOption.Text("also", "Also send this shortcut", "", "Ctrl+C").CheckedBy(KeysProblem);
+
+    /// What is wrong with keys to send ("Ctrl+K, Ctrl+C"), in one sentence; null when every key is known (or nothing is typed yet).
+    public static string? KeysProblem(string text)
+    {
+        var steps = KeyChord.Steps(text);
+        if (steps.Count > KeyChord.MaxSequence) return $"At most {KeyChord.MaxSequence} shortcuts in a row.";
+        return steps.FirstOrDefault(s => !KeyChord.TryParse(s, out _)) is { } unknown ? $"Unknown key \"{unknown}\": use names like Ctrl+Shift+S or F13." : null;
+    }
 
     /// The "also keep the original" setting as it reads for this kind of input.
     public static ActionOption OriginalFor(bool trackpadGesture) => trackpadGesture ? KeepWindowsGesture : KeepOriginal;

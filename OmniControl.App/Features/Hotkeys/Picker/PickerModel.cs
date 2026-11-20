@@ -356,7 +356,7 @@ public sealed partial class PickerModel : ObservableObject
         _allOptions = (choice.Options ?? Array.Empty<ActionOption>())
             .Select(o => new OptionItem(o, o.Shared && _shared is not null ? _shared.Read(o) : values.TryGetValue(o.Key, out var v) ? v : o.Default)).ToList();
         if (choice.ParamHint is not null)
-            _allOptions.Insert(0, new OptionItem(ActionOption.Text(ParameterKey, choice.ParamLabel, "", choice.ParamHint) with { Browse = choice.ParamBrowse }, choice == _current ? _currentParameter : string.Empty));
+            _allOptions.Insert(0, new OptionItem(ActionOption.Text(ParameterKey, choice.ParamLabel, "", choice.ParamHint) with { Browse = choice.ParamBrowse, Check = choice.ParamCheck }, choice == _current ? _currentParameter : string.Empty));
         if (choice.Renaming is { } renaming)
             _allOptions.Insert(0, new OptionItem(ActionOption.Text(NameKey, "Name"), renaming.Current));
         AddDefaultsRow();

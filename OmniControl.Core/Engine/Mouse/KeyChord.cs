@@ -32,10 +32,30 @@ public static class KeyChord
         return keys.Length > 0;
     }
 
+    /// The most shortcuts one "send keys" text may hold in a row.
+    public const int MaxSequence = 8;
+
+    /// The shortcuts of a text such as "Ctrl+K, Ctrl+C" or "Ctrl+K Ctrl+C", in order: separated by commas or spaces ("Ctrl + C" is still one).
+    public static IReadOnlyList<string> Steps(string text) =>
+        System.Text.RegularExpressions.Regex.Replace(text, @"\s*\+\s*", "+").Split(new[] { ',', ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+
+    /// True when the text holds one to <see cref="MaxSequence"/> shortcuts (<see cref="Steps"/>) and every key is known.
+    public static bool TryParseSequence(string text, out IReadOnlyList<ushort[]> chords)
+    {
+        var parsed = new List<ushort[]>();
+        foreach (var step in Steps(text))
+        {
+            if (!TryParse(step, out var keys)) { chords = Array.Empty<ushort[]>(); return false; }
+            parsed.Add(keys);
+        }
+        chords = parsed;
+        return parsed.Count is > 0 and <= MaxSequence;
+    }
+
     /// True when the shortcut can open one of Windows' own panels: it holds the Windows key (Win+S, Win+N, Win+Tab...) or is Alt+Tab
-    /// (the window switcher, shown in the same kind of window as Task view).
+    /// (the window switcher, shown in the same kind of window as Task view); for a sequence, when any of its shortcuts can.
     public static bool OpensWindowsPanel(string text) =>
-        TryParse(text, out var keys) && (HasWinKey(keys) || keys.Contains(Names["Alt"]) && keys.Contains(Names["Tab"]));
+        Steps(text).Any(step => TryParse(step, out var keys) && (HasWinKey(keys) || keys.Contains(Names["Alt"]) && keys.Contains(Names["Tab"])));
 
     /// True when the keys hold the Windows key.
     public static bool HasWinKey(IReadOnlyList<ushort> keys) => keys.Contains(Names["Win"]);

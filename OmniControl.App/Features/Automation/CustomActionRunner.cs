@@ -98,6 +98,10 @@ public sealed class CustomActionRunner
                 if (!Uri.TryCreate(target, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https")) return "the address must start with http:// or https://";
                 Open(target, string.Empty);
                 return null;
+            case CustomKind.Keys:
+                // Off the UI thread: a sequence waits between its shortcuts. The runner reports unknown keys and its rate limit itself.
+                await Task.Run(() => _launcher.Run(MouseAction.From($"{MouseActionCatalog.Keys}:{target}", new Dictionary<string, string>()), new MouseEvent(MouseButton.Left, true, 0, 0)));
+                return null;
             default:
                 Open(target, action.Kind == CustomKind.Program ? action.Arguments : string.Empty);
                 return null;
