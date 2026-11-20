@@ -6,23 +6,37 @@ public sealed record TaskbarPlace(IntPtr Taskbar, int X, int Y);
 /// THE placement of a small window over the Windows taskbar (Windows 11 has no taskbar toolbars): left of the tray icons, centred in
 /// the taskbar's height (the left end would overlap the taskbar's program icons). <see cref="Attach"/> makes it a child of the taskbar, so it is drawn as part of the taskbar
 /// and moves with it into whatever layer Windows 11 lifts the taskbar to (an owned or topmost window is covered then). Explorer restarting
-/// destroys the old taskbar and its children: find and attach again.
+/// destroys the old taskbar (a new <see cref="TaskbarPlace.Taskbar"/>) and its children: the owner makes its window anew and attaches it.
 public static class TaskbarSpot
 {
     private const double BaseDpi = 96;
+    private const string TaskbarClass = "Shell_TrayWnd";
 
     /// The place for a <paramref name="width"/> x <paramref name="height"/> window, <paramref name="gap"/> device-independent pixels left of the tray (negative: over the tray's own
-    /// padding by that much), kept inside the taskbar; null when there is no taskbar (Explorer is not running).
+    /// padding by that much), kept inside the taskbar; on a taskbar at the left or right edge (Windows 10) above the tray, centred in its width
+    /// (from its left end when wider). Null when there is no taskbar (Explorer is not running).
     public static TaskbarPlace? Find(int width, int height, double gap)
     {
-        var bar = FindWindow("Shell_TrayWnd", null);
+        var bar = FindWindow(TaskbarClass, null);
         if (bar == IntPtr.Zero || !GetWindowRect(bar, out var b)) return null;
         var tray = FindWindowEx(bar, IntPtr.Zero, "TrayNotifyWnd", null);
-        var right = tray != IntPtr.Zero && GetWindowRect(tray, out var t) && t.Right > t.Left ? t.Left : b.Right;
+        var t = default(Rect);
+        var hasTray = tray != IntPtr.Zero && GetWindowRect(tray, out t) && t.Right > t.Left && t.Bottom > t.Top;
         var space = (int)Math.Round(gap * GetDpiForWindow(bar) / BaseDpi);
-        var x = Math.Clamp(right - width - space, b.Left, Math.Max(b.Left, b.Right - width));
+        if (b.Bottom - b.Top > b.Right - b.Left)
+        {
+            var y = Math.Clamp((hasTray ? t.Top : b.Bottom) - height - space, b.Top, Math.Max(b.Top, b.Bottom - height));
+            return new TaskbarPlace(bar, Math.Max(b.Left, b.Left + (b.Right - b.Left - width) / 2), y);
+        }
+        var x = Math.Clamp((hasTray ? t.Left : b.Right) - width - space, b.Left, Math.Max(b.Left, b.Right - width));
         return new TaskbarPlace(bar, x, b.Top + (b.Bottom - b.Top - height) / 2);
     }
+
+    /// True while Explorer's taskbar exists (false before Explorer has started, or while it restarts).
+    public static bool Exists => FindWindow(TaskbarClass, null) != IntPtr.Zero;
+
+    /// True once <paramref name="window"/> no longer exists (the taskbar that held it was destroyed with it).
+    public static bool IsGone(IntPtr window) => !IsWindow(window);
 
     /// Makes <paramref name="window"/> a child of the taskbar (true); where Windows refuses that, the taskbar owns it instead (false: it is
     /// not hidden with the taskbar, see <see cref="FullScreenOn"/>). Either way it never takes focus and stays out of Alt+Tab.
@@ -94,6 +108,7 @@ public static class TaskbarSpot
     [DllImport("user32.dll")] private static extern bool ScreenToClient(IntPtr window, ref Point point);
     [DllImport("user32.dll")] private static extern bool SetWindowPos(IntPtr window, IntPtr after, int x, int y, int width, int height, uint flags);
     [DllImport("user32.dll")] private static extern IntPtr GetWindow(IntPtr window, uint relation);
+    [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr window);
     [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr window);
     [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] private static extern IntPtr MonitorFromWindow(IntPtr window, uint flags);

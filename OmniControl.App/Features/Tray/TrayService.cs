@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using Avalonia.Media.Imaging;
-using Avalonia.Platform;
 using OmniControl.App.Features.Icons;
 using OmniControl.Core.Engine.Mouse;
 
@@ -23,7 +22,8 @@ public sealed class TrayService : IDisposable
     /// <param name="open">Shows the main window.</param>
     /// <param name="flyout">What the flyout and the menu show.</param>
     /// <param name="run">Runs a master action by id (the menu's items).</param>
-    public TrayService(Application app, Action open, TrayFlyoutModel flyout, Func<string, bool> run)
+    /// <param name="hardware">Where its watch of the taskbar's mode goes (Avalonia itself adds the icon again when Explorer restarts).</param>
+    public TrayService(Application app, Action open, TrayFlyoutModel flyout, Func<string, bool> run, IHardwareWatches hardware)
     {
         (_app, _open, _flyout, _run) = (app, open, flyout, run);
         _icon = new TrayIcon { ToolTipText = "OmniControl", IsVisible = true };
@@ -35,14 +35,21 @@ public sealed class TrayService : IDisposable
         _flyout.ToggleRequested += OnToggleRequested;
         _flyout.TrayIconChanged += OnLookChanged;
         AccentService.Changed += OnLookChanged;
-        if (app.PlatformSettings is { } platform) platform.ColorValuesChanged += OnWindowsColours;
+        // Windows' mode alone (the taskbar's colour) changes no app colour, so Avalonia does not tell it: the setting change does.
+        hardware.Register(new HardwareWatch(WatchId, "Tray icon", HardwareSignal.TaskbarSettings, () =>
+        {
+            var light = TaskbarSpot.IsLight(); // the registry is read here, off the UI thread
+            Dispatcher.UIThread.Post(() => OnTaskbarMode(light));
+        }));
         app.ActualThemeVariantChanged += OnThemeChanged;
         TrayIcon.SetIcons(app, new TrayIcons { _icon });
         Dispatcher.UIThread.Post(Prebuild, DispatcherPriority.Background);
     }
 
+    private const string WatchId = "tray.icon";
     private readonly Application _app;
-    private bool? _taskbarLight; // read once, and again when Windows' colours change
+    private bool? _taskbarLight; // read once, and again after each change of Windows' mode
+    private bool _disposed;
     private (string? Icon, Color? Ink)? _drawn;
     private List<Bitmap>? _dots; // the colour menu's dots, drawn when the menu is first built after a change
 
@@ -66,9 +73,10 @@ public sealed class TrayService : IDisposable
         FillMenu();
     }
 
-    private void OnWindowsColours(object? sender, PlatformColorValues e)
+    private void OnTaskbarMode(bool light)
     {
-        _taskbarLight = null;
+        if (_disposed) return;
+        _taskbarLight = light;
         DrawIcon();
     }
 
@@ -220,8 +228,8 @@ public sealed class TrayService : IDisposable
     public void Dispose()
     {
         _flyout.TrayIconChanged -= OnLookChanged;
+        _disposed = true;
         AccentService.Changed -= OnLookChanged;
-        if (_app.PlatformSettings is { } platform) platform.ColorValuesChanged -= OnWindowsColours;
         _app.ActualThemeVariantChanged -= OnThemeChanged;
         _flyout.MenuChanged -= FillMenu;
         _flyout.ToggleRequested -= OnToggleRequested;

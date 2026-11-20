@@ -13,6 +13,9 @@ public sealed partial class ShellViewModel
     /// What the tray flyout and menu show.
     public TrayFlyoutModel TrayFlyout { get; private set; }
 
+    /// The master list of hardware watches, where the tray icon registers its own.
+    public IHardwareWatches Hardware => _hardware;
+
     private WinAKey _winA = null!;
 
     private const string SearchActionId = "app.search.focus";

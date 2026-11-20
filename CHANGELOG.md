@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Fix: the taskbar gadget comes back after Windows Explorer restarts (Task Manager's Restart or a crash), and appears once the taskbar is there when OmniControl starts before it. Its text colour and the tray icon follow a change of Windows' light or dark mode even when the app mode stays the same, and on a Windows 10 taskbar at the left or right edge the gadget sits above the tray instead of in the middle of the bar.
+
 ## 0.2.4 (20 Nov 2026)
 
 - Fix: on Other PCs, a PC reached over Tailscale or another address that said it went to sleep, hibernated or shut down is no longer called, checked or pinged until you press Wake, press Check now, or it shows up again (it connects to this PC or is seen on the network), so that traffic can't wake it. Its tag says "Asleep" or "Shut down" meanwhile, also after a restart of OmniControl.

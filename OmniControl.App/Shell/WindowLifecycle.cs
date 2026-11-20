@@ -63,7 +63,7 @@ public static class WindowLifecycle
             finally { asking = false; }
         }
 
-        var tray = new TrayService(app, () => Show("a double-click on the tray icon"), shell.TrayFlyout, shell.RunAction);
+        var tray = new TrayService(app, () => Show("a double-click on the tray icon"), shell.TrayFlyout, shell.RunAction, shell.Hardware);
 
         // X does what the setting says (a real exit, from any path, is not intercepted).
         window.Closing += (_, e) =>
