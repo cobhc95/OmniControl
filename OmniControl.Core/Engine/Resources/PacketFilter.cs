@@ -1,4 +1,5 @@
 using Microsoft.Win32.SafeHandles;
+using static OmniControl.Core.Native.DeviceIoNative;
 
 namespace OmniControl.Core.Engine.Resources;
 
@@ -244,10 +245,4 @@ internal sealed unsafe class PacketFilter : IDisposable
         5 => "Windows Packet Filter's driver needs administrator rights",
         _ => new Win32Exception(error).Message.TrimEnd('.'),
     };
-
-    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode, EntryPoint = "CreateFileW")]
-    private static extern SafeFileHandle CreateFile(string name, uint access, FileShare share, IntPtr security, FileMode mode, uint flags, IntPtr template);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern bool DeviceIoControl(SafeFileHandle device, uint code, void* input, int inputSize, void* output, int outputSize, out int returned, IntPtr overlapped);
 }

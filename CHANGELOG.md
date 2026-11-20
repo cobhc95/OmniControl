@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- New: the taskbar gadget's readings list has two rows for each physical disk, its activity and its temperature (named "Disk 0 activity (model)" and "Disk 0 temperature (model)"); a disk added or removed joins or leaves the list by itself and keeps its settings, and a drive that reports no temperature shows "—".
+
 ## 0.2.4 (20 Nov 2026)
 
 - Fix: on Other PCs, a PC reached over Tailscale or another address that said it went to sleep, hibernated or shut down is no longer called, checked or pinged until you press Wake, press Check now, or it shows up again (it connects to this PC or is seen on the network), so that traffic can't wake it. Its tag says "Asleep" or "Shut down" meanwhile, also after a restart of OmniControl.

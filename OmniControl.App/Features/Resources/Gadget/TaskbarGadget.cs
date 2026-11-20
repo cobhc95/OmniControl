@@ -24,6 +24,9 @@ public interface IGadgetPreview
     IDisposable Hold();
 
     event Action? Changed;
+
+    /// THE live list of readings (the disks' included), whose rows the tab lists.
+    IReadingList Readings { get; }
 }
 
 /// The taskbar gadget: the chosen readings and the weather left of the tray (<see cref="GadgetWindow"/>), placed after every read and on taskbar changes.
@@ -51,6 +54,7 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
     {
         (_monitor, _weather, _settings, _layouts, _runner, _states, _report, _windows) = (monitor, weather, settings, layouts, runner, states, report, windows);
         monitor.Updated += Draw;
+        monitor.ReadingsChanged += AddRows;
         weather.Updated += Draw;
         settings.Changed += Apply;
         _preview.Changed += NeedReadings;
@@ -89,6 +93,16 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
 
     private GadgetSettings Look => _settings.Setup.Gadget;
 
+    public IReadingList Readings => _monitor;
+
+    /// A disk came or went: a new disk's rows join the list (hidden) and are saved, and the gadget reads and draws what is shown now.
+    private void AddRows()
+    {
+        var rows = Look.Readings.Count;
+        Apply();
+        if (Look.Readings.Count != rows) _settings.Save();
+    }
+
     private bool TaskbarLight => _taskbarLight ??= TaskbarSpot.IsLight();
 
     public bool IsShown => Look.Shown;
@@ -103,6 +117,7 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
     /// Shows, hides or redraws the gadget after a change of its settings.
     public void Apply()
     {
+        Look.Complete(_monitor.Readings); // this PC's disks keep their rows whatever a preset, layout or import brought
         _states.Notify(StateId);
         NeedReadings();
         if (!Look.Shown) CloseWindow();
@@ -124,7 +139,7 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
     /// Reads at the gadget's interval while shown (its shown readings) or previewed (every reading: the layout cards show other looks).
     private void NeedReadings() =>
         _monitor.Need(ResourceMonitor.GadgetNeed, Look.Shown || _preview.Held ? TimeSpan.FromSeconds(Math.Max(Look.ReadEverySeconds, Timing.ResourcesGadgetReadMin.TotalSeconds)) : null,
-            _preview.Held ? SampleParts.All : Reading.PartsOf(Look.Readings.Where(r => r.Shown).Select(r => Reading.Find(r.Id)).OfType<Reading>()));
+            _preview.Held ? SampleParts.All : Reading.PartsOf(Look.Readings.Where(r => r.Shown).Select(r => _monitor.Find(r.Id)).OfType<Reading>()));
 
     private void CloseWindow()
     {
@@ -163,7 +178,7 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
                 cells.AddRange(_weather.Cells(shown, look.Weather.Shows, text, hover, sampleUnknown));
                 continue;
             }
-            if (Reading.Find(shown.Id) is not { } reading) continue;
+            if (_monitor.Find(shown.Id) is not { } reading) continue;
             var warm = shown.WarnAt is { } at && reading.InUnit(_monitor.Latest) >= at;
             var value = sampleUnknown ? reading.SampleOr(reading.Read(_monitor.Latest)) : reading.Read(_monitor.Latest);
             cells.Add(new GadgetCell(shown.Label, reading.GadgetWords(value, look), warm ? ColourOf(shown.Colour, text) : text,
@@ -247,7 +262,7 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
     private IReadOnlyList<MenuRowItem> ShowRows()
     {
         var rows = new List<MenuRowItem>();
-        foreach (var reading in Reading.All)
+        foreach (var reading in _monitor.Readings)
         {
             var shown = Look.Readings.FirstOrDefault(r => r.Id == reading.Id);
             rows.Add(new MenuRowItem(reading.Name, string.Empty, shown?.Shown == true, string.Empty, new RelayCommand(() =>
@@ -264,6 +279,7 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
     public void Dispose()
     {
         _monitor.Updated -= Draw;
+        _monitor.ReadingsChanged -= AddRows;
         _weather.Updated -= Draw;
         _settings.Changed -= Apply;
         _preview.Changed -= NeedReadings;

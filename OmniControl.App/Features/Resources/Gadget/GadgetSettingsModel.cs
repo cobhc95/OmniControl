@@ -36,10 +36,14 @@ public sealed partial class GadgetSettingsModel : ObservableObject, IDisposable
         Hover = new GadgetHoverCards(settings);
         LabelChoice = new ChoiceItem("Labels", LabelWords.Select(l => l.Words).ToList(), MixedLabels,
             words => SetLabels(LabelWords.FirstOrDefault(l => l.Words == words).Style));
-        Rows = new ObservableCollection<GadgetRowItem>(Look.Readings.Select(Row));
+        Rows = new ObservableCollection<GadgetRowItem>(Listed.Select(Row));
         settings.Changed += OnChanged;
+        preview.Readings.ReadingsChanged += OnChanged;
         OnChanged();
     }
+
+    /// The rows the list shows: every reading's and the weather's; a disk that is not connected keeps its row, unlisted, until it is back.
+    private IReadOnlyList<GadgetReading> Listed => Look.Readings.Where(r => r.Id == GadgetSettings.WeatherId || _preview.Readings.Find(r.Id) is not null).ToList();
 
     private GadgetSettings Look => _settings.Setup.Gadget;
 
@@ -89,29 +93,35 @@ public sealed partial class GadgetSettingsModel : ObservableObject, IDisposable
         _hold = null;
     }
 
-    private GadgetRowItem Row(GadgetReading entry) => new(entry, _settings, _chooseIcon, () => _preview.Ink);
+    private GadgetRowItem Row(GadgetReading entry) => new(entry, _settings, _preview.Readings, _chooseIcon, () => _preview.Ink);
 
     private void SetLabels(LabelStyle style)
     {
-        GadgetLayouts.Labels(Look, style);
+        GadgetLayouts.Labels(Look, style, _preview.Readings.Find);
         _settings.Commit();
     }
 
-    /// Puts the dragged rows at their new place (<see cref="ListDragReorder"/>).
+    /// Puts the dragged rows at their new place (<see cref="ListDragReorder"/>): in front of the <paramref name="at"/>-th listed row that stays,
+    /// so an unlisted disk's row keeps its place among the rest.
     public void Move(IReadOnlyList<int> rows, int at)
     {
-        Look.Readings = Reorder.Moved(Look.Readings, rows, at);
+        var all = Look.Readings;
+        var moved = rows.Where(i => i >= 0 && i < Rows.Count).Select(i => Rows[i].Entry).ToList();
+        var staying = all.Except(moved).ToList();
+        var before = Rows.Select(r => r.Entry).Except(moved).ElementAtOrDefault(at);
+        Look.Readings = Reorder.Moved(all, moved.Select(e => all.IndexOf(e)).ToList(), before is null ? staying.Count : staying.IndexOf(before));
         _settings.Commit();
     }
 
-    // A change here, from the gadget's right-click menu, a layout, a preset or an import: the switch, rows and cards show it again.
+    // A change here, from the gadget's right-click menu, a layout, a preset, an import or a disk that came or went: the switch, rows and cards show it again.
     private void OnChanged()
     {
         OnPropertyChanged(nameof(Shown));
-        ListDiff.Apply(Rows, Look.Readings.Select(r => Rows.FirstOrDefault(row => row.Entry == r) ?? Row(r)).ToList(), row => row.Entry.Id);
+        var listed = Listed;
+        ListDiff.Apply(Rows, listed.Select(r => Rows.FirstOrDefault(row => row.Entry == r && ReferenceEquals(row.Reading, _preview.Readings.Find(r.Id))) ?? Row(r)).ToList(), row => row.Entry.Id);
         foreach (var row in Rows) row.Load();
-        ReadingsGroup.Summary = $"{Look.Readings.Count(r => r.Shown)} of {Look.Readings.Count} shown";
-        var styles = Look.Readings.Where(g => Reading.Find(g.Id) is not null).Select(g => GadgetLabel.StyleOf(g.Label, Reading.Find(g.Id)!)).Distinct().ToList();
+        ReadingsGroup.Summary = $"{listed.Count(r => r.Shown)} of {listed.Count} shown";
+        var styles = Rows.Where(row => row.Reading is not null).Select(row => GadgetLabel.StyleOf(row.Entry.Label, row.Reading!)).Distinct().ToList();
         var one = styles.Count == 1 ? LabelWords.FirstOrDefault(l => l.Style == styles[0]).Words : null;
         LabelChoice.Load(LabelChoice.Options, one ?? MixedLabels);
         Display.Load();
@@ -135,6 +145,7 @@ public sealed partial class GadgetSettingsModel : ObservableObject, IDisposable
         SetOnScreen(false);
         Gallery.Dispose();
         _settings.Changed -= OnChanged;
+        _preview.Readings.ReadingsChanged -= OnChanged;
         _layoutChoice.Dispose();
         Display.Dispose();
         Weather.Dispose();

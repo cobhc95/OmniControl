@@ -46,6 +46,8 @@ public sealed class ResourcesModule : IFeatureModule, IResourcesWindows
         limits.RegisterActions(context.Actions, Title, () => monitor.Seen.Keys.Concat(_settings.Setup.Apps.Select(r => r.Id)).Distinct().Select(id => new HotkeyDevice(id, id)).ToList());
         context.Hardware.Register(new HardwareWatch("resources.download-adapters", "Network adapters (download limits)",
             HardwareSignal.Device | HardwareSignal.Resume, limits.RefreshAdapters));
+        context.Hardware.Register(new HardwareWatch("resources.disks", "Physical disks (gadget readings)", HardwareSignal.Device | HardwareSignal.Resume,
+            monitor.RefreshDisks, LooksStale: () => !monitor.DisksKnown, Describe: monitor.DisksText));
         monitor.Updated += () =>
         {
             if (monitor.Seen.Count == _programs) return;
