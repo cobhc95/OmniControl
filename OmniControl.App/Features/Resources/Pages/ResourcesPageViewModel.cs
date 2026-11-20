@@ -7,7 +7,7 @@ using OmniControl.Core.Engine.Resources;
 
 namespace OmniControl.App.Features.Resources.Pages;
 
-/// The Resources page: preset picker and two tabs, Readings (Live readings, Network by app) and Taskbar gadget (<see cref="GadgetSettingsModel"/>);
+/// The Resources page: preset picker and two tabs, Readings (Live readings, Network by app, Packet filter) and Taskbar gadget (<see cref="GadgetSettingsModel"/>);
 /// it asks the poller for readings only while on screen.
 public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
 {
@@ -32,7 +32,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     public override string? NavGroup => NavGroups.System;
     public override bool ShowsOwnHeader => true; // the preset picker sits on the title line
     public override string Icon => "M4,20 H20 V22 H4 Z M5,12 H8 V19 H5 Z M10.5,6 H13.5 V19 H10.5 Z M16,9 H19 V19 H16 Z";
-    public override string Keywords => "resources cpu gpu memory ram disk temperature network upload download speed traffic taskbar gadget limit throttle block firewall";
+    public override string Keywords => "resources cpu gpu memory ram disk temperature network upload download speed traffic taskbar gadget limit throttle block firewall packet filter";
 
     public ChoiceItem PresetChoice => _presets.Choice;
     public override PageTabs Tabs { get; } = new(ReadingsTab, GadgetTab);
@@ -47,6 +47,11 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     public AppScopeModel AppsScope { get; }
     public ObservableCollection<AppNetItem> AppRows { get; } = new();
     public bool HasApps => AppRows.Count > 0;
+
+    /// The Packet filter group: its one switch, which takes Windows Packet Filter out of all traffic (for a conflict with other software).
+    public ItemGroup Filter { get; }
+    private readonly ToggleItem _filter;
+    private const string FilterKeywords = "packet filter windows packet filter winpkfilter ndisrd driver network adapter download limit conflict vpn tailscale off";
 
     /// The one status line under the programs: the network service, then what really runs for each kind of rule (red while the service or
     /// download limits have failed).
@@ -74,7 +79,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     public string InstallServiceTip => NetworkLimits.InstallServiceTip;
 
     public override IEnumerable<SearchEntry> SearchEntries =>
-        new[] { Entry(ReadEvery, ReadEvery.Label, "resources readings") }
+        new[] { Entry(ReadEvery, ReadEvery.Label, "resources readings"), Entry(_filter, _filter.Label, FilterKeywords, Filter.Name) }
             .Concat(_gadget.SearchItems.Select(i => Entry(i, i.Label, "resources taskbar gadget", GadgetTab)));
 
     /// <param name="presets">The title line's preset picker (the page disposes it).</param>
@@ -128,6 +133,19 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
             Need(); // per-program traffic is read only while the group is open
             if (Apps.IsExpanded) ShowApps();
         };
+        _filter = new ToggleItem("Windows Packet Filter", limits.PacketFilterOn, limits.SetPacketFilter)
+        {
+            Note = "Download limits use it",
+            Tip = "Off takes its driver out of every network adapter's traffic (Windows asks unless OmniControl is administrator; the network blinks once), "
+                + "for a conflict with other software. Download limits are then kept but not applied; upload limits (Windows' throttle rules) and blocks (Windows Firewall) still work.",
+        };
+        Filter = new ItemGroup("Resources/Filter", "Packet filter", new object[] { _filter })
+        {
+            NoMasterSwitch = true,
+            Restore = () => limits.SetPacketFilter(true),
+            RestoreTip = "Turns Windows Packet Filter back on.",
+        };
+
         settings.Changed += OnSettingsChanged;
         monitor.Updated += OnUpdated;
         ShowApps();
@@ -293,6 +311,8 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     /// Where the network work runs, or the service's state, changed (a worker): the group and its status line follow.
     private void OnLimitsChanged() => Dispatcher.UIThread.Post(() =>
     {
+        _filter.Load(_limits.PacketFilterOn);
+        foreach (var row in AppRows) row.Load(); // the download chips follow the switch
         OnPropertyChanged(nameof(Unavailable));
         OnPropertyChanged(nameof(UnavailableLine));
         OnPropertyChanged(nameof(CanInstallService));
@@ -310,6 +330,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
         _monitor.Need(ResourceMonitor.AppsNeed, null);
         _presets.Dispose();
         Live.Dispose();
+        Filter.Dispose();
         _gadget.Dispose();
     }
 }
