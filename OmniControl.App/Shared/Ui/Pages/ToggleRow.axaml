@@ -6,25 +6,33 @@
              x:DataType="pages:ToggleItem">
     <Panel ToolTip.Tip="{Binding Tip}">
         <!-- Full-width card: label column shared with the other cards so the switches line up -->
-        <Grid Margin="0,1" IsVisible="{Binding !Half}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
-                <c:IconText Classes="cardname" Icon="{Binding Icon}" Text="{Binding Label}" HorizontalAlignment="Left" />
-                <TextBlock Classes="muted" Text="{Binding Note}" IsVisible="{Binding HasNote}" TextWrapping="Wrap" />
-            </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding IsOn}" OnContent="On" OffContent="Off" />
-        </Grid>
+        <pages:CardLayout IsVisible="{Binding !Half}">
+            <DataTemplate x:DataType="pages:ToggleItem">
+                <Grid Margin="0,1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                        <c:IconText Classes="cardname" Icon="{Binding Icon}" Text="{Binding Label}" HorizontalAlignment="Left" />
+                        <TextBlock Classes="muted" Text="{Binding Note}" IsVisible="{Binding HasNote}" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ToggleSwitch Grid.Column="1" IsChecked="{Binding IsOn}" OnContent="On" OffContent="Off" />
+                </Grid>
+            </DataTemplate>
+        </pages:CardLayout>
 
         <!-- Half-width card: the label (and its muted note) takes what is left and wraps, the switch sits at the right without its On/Off words (they are its tooltip) -->
-        <Grid Margin="0,1" ColumnDefinitions="*,Auto" ColumnSpacing="12" IsVisible="{Binding Half}">
-            <StackPanel VerticalAlignment="Center">
-                <c:IconText Icon="{Binding Icon}" Text="{Binding Label}" />
-                <TextBlock Classes="muted" Text="{Binding Note}" IsVisible="{Binding HasNote}" TextWrapping="Wrap" />
-            </StackPanel>
-            <ToggleSwitch Grid.Column="1" Classes="plain" IsChecked="{Binding IsOn}" ToolTip.Tip="{Binding StateWords}" VerticalAlignment="Center" />
-        </Grid>
+        <pages:CardLayout IsVisible="{Binding Half}">
+            <DataTemplate x:DataType="pages:ToggleItem">
+                <Grid Margin="0,1" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                    <StackPanel VerticalAlignment="Center">
+                        <c:IconText Icon="{Binding Icon}" Text="{Binding Label}" />
+                        <TextBlock Classes="muted" Text="{Binding Note}" IsVisible="{Binding HasNote}" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ToggleSwitch Grid.Column="1" Classes="plain" IsChecked="{Binding IsOn}" ToolTip.Tip="{Binding StateWords}" VerticalAlignment="Center" />
+                </Grid>
+            </DataTemplate>
+        </pages:CardLayout>
     </Panel>
 </UserControl>

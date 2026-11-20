@@ -78,8 +78,9 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     /// The page shown on the right. Set via the two sidebar lists below.
     [ObservableProperty, NotifyPropertyChangedFor(nameof(ShownPage))] private PageViewModel? _currentPage;
 
-    /// The page whose view the window holds: <see cref="CurrentPage"/>, or null once the window has been hidden for
-    /// <see cref="Timing.HiddenSettle"/> (its view is let go to give the memory back; the page itself stays and its view is built again on show).
+    /// The page whose view the window shows (<see cref="PageHost"/>, which keeps the views of the pages visited since): <see cref="CurrentPage"/>,
+    /// or null once the window has been hidden for <see cref="Timing.HiddenSettle"/> (every view is let go to give the memory back; the pages
+    /// themselves stay and the open one's view is built again on show).
     public PageViewModel? ShownPage => _viewReleased ? null : CurrentPage;
 
     private readonly DispatcherTimer _hiddenSettle = new() { Interval = Timing.HiddenSettle };
@@ -158,7 +159,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _hiddenSettle.Start(); // the window is not shown yet (it may start in the tray)
     }
 
-    /// The window has stayed hidden a while: its page view goes, then one full collection gives the freed memory back to Windows.
+    /// The window has stayed hidden a while: its page views go, then one full collection gives the freed memory back to Windows.
     private void OnHiddenSettled(object? sender, EventArgs e)
     {
         _hiddenSettle.Stop();

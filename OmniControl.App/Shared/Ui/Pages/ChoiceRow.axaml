@@ -7,23 +7,31 @@
              Classes="card" IsEnabled="{Binding Availability.IsAvailable}"
              ToolTip.Tip="{Binding Availability.Reason}" ToolTip.ShowOnDisabled="True">
     <Panel>
-        <Grid Margin="0,1" IsVisible="{Binding !Half}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <c:IconText Classes="cardname" Icon="{Binding Icon}" Text="{Binding Label}" Margin="0,0,24,0" />
-            <ComboBox Classes="choice" ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}" />
-        </Grid>
+        <pages:CardLayout IsVisible="{Binding !Half}">
+            <DataTemplate x:DataType="pages:ChoiceItem">
+                <Grid Margin="0,1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <c:IconText Classes="cardname" Icon="{Binding Icon}" Text="{Binding Label}" Margin="0,0,24,0" />
+                    <ComboBox Classes="choice" ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}" />
+                </Grid>
+            </DataTemplate>
+        </pages:CardLayout>
 
         <!-- Half-width card: the label (wraps to two lines) and a drop-down that fills the rest -->
-        <Grid Margin="0,1" ColumnSpacing="8" IsVisible="{Binding Half}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" MinWidth="{StaticResource CardLabelMinWidth}" />
-                <ColumnDefinition Width="1.6*" />
-            </Grid.ColumnDefinitions>
-            <c:IconText Compact="True" Icon="{Binding Icon}" Text="{Binding Label}" />
-            <ComboBox Grid.Column="1" Classes="choice half" ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}" />
-        </Grid>
+        <pages:CardLayout IsVisible="{Binding Half}">
+            <DataTemplate x:DataType="pages:ChoiceItem">
+                <Grid Margin="0,1" ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MinWidth="{StaticResource CardLabelMinWidth}" />
+                        <ColumnDefinition Width="1.6*" />
+                    </Grid.ColumnDefinitions>
+                    <c:IconText Compact="True" Icon="{Binding Icon}" Text="{Binding Label}" />
+                    <ComboBox Grid.Column="1" Classes="choice half" ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}" />
+                </Grid>
+            </DataTemplate>
+        </pages:CardLayout>
     </Panel>
 </UserControl>

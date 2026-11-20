@@ -7,6 +7,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 - Fix: the Other PCs page no longer shows a narrow jumble of the Volume page's Easy view in place of its PC tabs; a PC with no power countdown shows no tag again.
 - New: the taskbar gadget's readings list has two rows for each physical disk, its activity and its temperature (named "Disk 0 activity (model)" and "Disk 0 temperature (model)"); a disk added or removed joins or leaves the list by itself and keeps its settings, and a drive that reports no temperature shows "—".
+- Faster: going back to a page of the main window is instant (each page is built the first time it opens and kept while the window is in use, let go as before once it has been hidden a while), and every page builds faster the first time (a card builds only the layout it shows, not its full, half-width and knob layouts all at once).
 
 ## 0.2.4 (20 Nov 2026)
 
