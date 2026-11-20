@@ -1,12 +1,15 @@
+using System.Management;
 using System.Security;
 using System.Security.Cryptography;
+using System.Text;
 
 namespace OmniControl.Core.Engine.Resources;
 
 /// Installs Windows Packet Filter's driver when a download limit first needs it or the person retries (Setup's optional task does the same):
 /// the official, unmodified Windows 10+ x64 driver files in the app folder are checked against their pinned SHA-256 while held open, Windows'
 /// own netcfg adds the filter (as the driver's own MSI does; Windows asks only when OmniControl is not already administrator), and
-/// OmniControl's key records that it did, so its uninstall removes only its own copy. Call off the UI thread.
+/// OmniControl's key records that it did, so its uninstall removes only its own copy. <see cref="Attach"/> takes it out of (or puts it back
+/// into) every adapter's traffic path for the "Packet filter" switch. Call off the UI thread.
 public static class PacketFilterSetup
 {
     // Retyped in OmniControl.App.csproj (the copy into the app folder) and tools/setup.iss (install, uninstall and the record).
@@ -50,6 +53,40 @@ public static class PacketFilterSetup
     }
 
     private static string NotInstalled(string why) => $"Windows Packet Filter was not installed: {why}.";
+
+    /// Attaches Windows Packet Filter's filter to every network adapter or detaches it from all (Windows' own binding switch, as
+    /// Enable/Disable-NetAdapterBinding; a detached filter is out of the adapter's traffic path), then reads Windows back. Windows asks only
+    /// when OmniControl is not administrator; nothing runs when Windows already has it so. Null when done, else one plain sentence. Call off the UI thread.
+    public static string? Attach(bool on)
+    {
+        string? why;
+        try
+        {
+            if (!PacketFilter.Installed || IsAttached(on)) return null;
+            var script = $"{(on ? "Enable" : "Disable")}-NetAdapterBinding -Name '*' -ComponentID {ComponentId} -IncludeHidden -AllBindings -ErrorAction SilentlyContinue";
+            var result = HelperProcess.RunElevated("powershell.exe",
+                $"-NoProfile -NonInteractive -EncodedCommand {Convert.ToBase64String(Encoding.Unicode.GetBytes(script))}", hidden: true);
+            why = result.Failure != HelperFailure.None ? Says(result) : IsAttached(on) ? null : "some network adapters still have it the other way";
+        }
+        catch (Exception ex) when (ex is ManagementException or COMException or UnauthorizedAccessException)
+        {
+            why = "Windows' list of network adapter bindings could not be read";
+        }
+        return why is null ? null : $"Windows Packet Filter was not switched {(on ? "on" : "off")}: {why}.";
+    }
+
+    /// True when every network adapter Windows lists has the filter attached (<paramref name="on"/>) or detached; a read, no rights needed.
+    /// Throws a <see cref="ManagementException"/> or <see cref="COMException"/> when Windows' list cannot be read.
+    private static bool IsAttached(bool on)
+    {
+        using var searcher = new ManagementObjectSearcher(@"\\.\root\StandardCimv2", $"SELECT Enabled FROM MSFT_NetAdapterBindingSettingData WHERE ComponentID = '{ComponentId}'");
+        using var found = searcher.Get();
+        var all = true;
+        foreach (var binding in found.OfType<ManagementObject>())
+            using (binding)
+                all &= binding["Enabled"] is bool enabled && enabled == on;
+        return all;
+    }
 
     private static string Says(HelperResult result) => result.Failure switch
     {

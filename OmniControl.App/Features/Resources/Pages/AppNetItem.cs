@@ -53,7 +53,7 @@ public sealed partial class AppNetItem : ObservableObject
     /// What download limits really do now (the chip's tooltip).
     public string DownloadTip => _limits.Download.Tip;
 
-    /// False only while OmniControl is still looking for the driver (the chip is greyed out; a saved limit is kept).
+    /// False while OmniControl is still looking for the driver or the packet filter is switched off (the chip is greyed out; a saved limit is kept).
     public bool DownloadUsable => _limits.Download.Usable;
 
     private bool _loading;

@@ -6,7 +6,8 @@ namespace OmniControl.App.Features.Resources;
 
 /// The programs' network rules (upload limit, download limit, block): saved, made what Windows holds on a worker (throttled; each sync reads
 /// Windows, so a crashed run's rules go at the next start), all taken out at shut-down. The work runs in the network service when it is
-/// installed, else in OmniControl itself while it runs as administrator, else nowhere (the page says so).
+/// installed, else in OmniControl itself while it runs as administrator, else nowhere (the page says so). The "Packet filter" switch keeps
+/// Windows Packet Filter out of all traffic while off.
 public sealed class NetworkLimits : IDisposable
 {
     /// The limits a chip offers, in KB/s (and the limit an "On" action uses when none was chosen).
@@ -36,16 +37,67 @@ public sealed class NetworkLimits : IDisposable
     private string? _toldRules; // the rules' problems last told (worker, under the lock), told once until they change or clear
     private volatile string? _installFailure; // why the last install of Windows Packet Filter failed, until one works
     private volatile bool _installing;
+    private readonly object _filterGate = new(); // one attach or detach of Windows Packet Filter at a time
+    private bool _filterSeen; // the packet filter switch as last applied (an import may change it)
 
     /// <param name="pathOf">Where a program the poller saw lives (the firewall and the service name a program by its path).</param>
     public NetworkLimits(ResourcesSettings settings, Action<string> report, Func<string, string?> pathOf)
     {
         (_settings, _report, _pathOf) = (settings, report, pathOf);
         _wanted = Wanted();
+        _filterSeen = settings.PacketFilterOn;
         _service = new NetworkServiceClient(Failed, () => Changed?.Invoke(), () => _sync!.Request());
         _sync = new ThrottledRun(Timing.ResourcesRulesGap, Sync);
         _sync.Request(); // finds where the work runs and the download driver, then makes Windows hold the saved rules (taking out what a crashed run left)
         settings.Changed += Reapply; // a chip, an action, a preset or an import
+        if (!_filterSeen) _ = Guard.RunAsync("Keep Windows Packet Filter off", () => Task.Run(KeepFilterOut)); // an adapter added while OmniControl was closed
+    }
+
+    /// The "Packet filter" switch: false keeps Windows Packet Filter out of all traffic (any thread).
+    public bool PacketFilterOn => _settings.PacketFilterOn;
+
+    /// The switch and its Restore defaults (UI thread): off stops download limits, then detaches the filter from every network adapter; on
+    /// attaches it again. Windows asks only when OmniControl is not administrator; a refusal or failure turns the switch back and says why.
+    public void SetPacketFilter(bool on)
+    {
+        if (on == _settings.PacketFilterOn) return;
+        _settings.PacketFilterOn = on;
+        _settings.Save();
+        ApplyFilter();
+    }
+
+    /// Makes Windows follow the switch as it is now (a worker); the download rules follow first, so an open driver is let go before it is detached.
+    private void ApplyFilter()
+    {
+        _filterSeen = _settings.PacketFilterOn;
+        _ = Guard.RunAsync("Switch Windows Packet Filter", () => Task.Run(() =>
+        {
+            lock (_filterGate)
+            {
+                var on = _settings.PacketFilterOn;
+                Sync();
+                if (PacketFilterSetup.Attach(on) is { } problem)
+                {
+                    if (on == _settings.PacketFilterOn)
+                    {
+                        _settings.PacketFilterOn = _filterSeen = !on;
+                        _settings.Save();
+                        Sync();
+                    }
+                    _report(problem);
+                }
+                else if (on) RefreshAdapters();
+            }
+            Changed?.Invoke();
+        }));
+    }
+
+    /// While the switch is off and OmniControl is administrator (no prompt), detaches the filter from an adapter Windows added since (a worker).
+    private void KeepFilterOut()
+    {
+        if (_settings.PacketFilterOn || !AdministratorMode.IsElevated) return;
+        lock (_filterGate)
+            if (!_settings.PacketFilterOn && PacketFilterSetup.Attach(false) is { } problem) Log(new[] { problem });
     }
 
     /// Where the work runs changed, or the service's state (a worker).
@@ -112,6 +164,7 @@ public sealed class NetworkLimits : IDisposable
     /// The setup changed: Windows follows only when the rules themselves did.
     private void Reapply()
     {
+        if (_settings.PacketFilterOn != _filterSeen) ApplyFilter();
         var wanted = Wanted();
         if (wanted.SequenceEqual(_wanted)) return;
         _wanted = wanted;
@@ -129,14 +182,16 @@ public sealed class NetworkLimits : IDisposable
         {
             if (Runner() is not { } work) return; // nobody may change Windows' rules, and the group says so
             var wanted = _wanted;
+            var filterOn = _settings.PacketFilterOn;
             var downloads = !_stopped && wanted.Any(r => r.DownloadBytes is not null);
             var installed = DownloadShaper.Installed;
-            if (downloads && !installed && !_installTried) InstallPacketFilter();
+            if (filterOn && downloads && !installed && !_installTried) InstallPacketFilter();
             // Before the limits reach the shaper, so a failure to open the driver is never written over.
-            if (downloads && installed) _download = DownloadState.Running;
+            if (!filterOn) (_download, _toldFailure) = (DownloadState.Off, null);
+            else if (downloads && installed) _download = DownloadState.Running;
             else (_download, _toldFailure) = (!installed && _installFailure is { } failure ? DownloadState.InstallFailed(failure) : DownloadState.Idle(installed), null);
             _ruled |= wanted.Count > 0;
-            Tell(work.Sync(installed ? wanted : wanted.Select(r => r with { DownloadBytes = null }).ToList()));
+            Tell(work.Sync(installed && filterOn ? wanted : wanted.Select(r => r with { DownloadBytes = null }).ToList()));
         }
     }
 
@@ -232,9 +287,11 @@ public sealed class NetworkLimits : IDisposable
         foreach (var action in _actions) action.RefreshDevices();
     }
 
-    /// Windows' devices changed or the PC woke (a worker): running download limits pick up new adapters, so a limit holds on every adapter.
+    /// Windows' devices changed or the PC woke (a worker): running download limits pick up new adapters, so a limit holds on every adapter;
+    /// with the packet filter off, a new adapter has it detached.
     public void RefreshAdapters()
     {
+        KeepFilterOut();
         lock (_gate) (_local ?? (INetworkWork)_service).RefreshAdapters();
     }
 
@@ -304,6 +361,10 @@ public sealed class NetworkLimits : IDisposable
         public static DownloadState Idle(bool installed) => installed
             ? new($"Download limits use {Driver}", $"Download limits run through {Driver}, which is opened only while a limited program has network connections.")
             : Missing;
+
+        /// The "Packet filter" switch is off: limits are kept, not applied; the chips are greyed.
+        public static readonly DownloadState Off = new("Packet filter is off",
+            $"{Driver} is switched off and out of all traffic, so download limits are kept but not applied. Upload limits and blocks still work.", Usable: false);
 
         public static DownloadState Failure(string reason) => new($"Download limits failed: {reason}",
             $"Download limits are not applied ({reason}); traffic passes without a limit.", Failed: true);

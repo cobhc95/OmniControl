@@ -60,11 +60,16 @@ public sealed class GadgetLayoutPreset : INamedPreset
     public DateTime? Saved { get; set; }
 }
 
-/// The Resources page's settings (resources.json): the live setup, the Network by app group's Apps scope, the presets and the gadget's own layouts.
+/// The Resources page's settings (resources.json): the live setup, the Network by app group's Apps scope, the packet filter switch, the presets
+/// and the gadget's own layouts.
 public sealed class ResourcesSettings
 {
     public ResourcesSetup Setup { get; set; } = new();
     public AppScopeSetting? Scope { get; set; }
+
+    /// The "Packet filter" switch (<see cref="NetworkLimits.SetPacketFilter"/>): off keeps Windows Packet Filter out of all traffic. Not in
+    /// presets: it is about this PC's drivers, not a setup.
+    public bool PacketFilterOn { get; set; } = true;
     public List<ResourcesPreset> Presets { get; set; } = new();
     public List<GadgetLayoutPreset> Layouts { get; set; } = new();
 
