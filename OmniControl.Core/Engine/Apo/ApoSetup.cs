@@ -52,7 +52,6 @@ public static class ApoSetup
     /// No state: as Device Selector would put it on that device.
     public static string Attach(string guid, ApoInstallState? state = null) => $"{Argument} {AttachVerb} {guid} {(state is null ? null : Encode(state))}".TrimEnd();
     public static string Detach(string guid) => $"{Argument} {DetachVerb} {guid}";
-    public static string Remove() => $"{Argument} {RemoveVerb}";
     public static string Clean() => $"{Argument} {CleanVerb}";
 
     /// Runs a step as administrator (Windows asks unless OmniControl already is) and waits. Call off the UI thread.
@@ -198,8 +197,10 @@ public static class ApoSetup
         var on = DeviceApo.LoadAll(Reg, input: false).Concat(DeviceApo.LoadAll(Reg, input: true)).Where(d => d.Installed).Select(d => d.Guid)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var gone in OwnDevices().Where(g => !on.Contains(g))) Reg.DeleteValue(ApoIds.OwnDevicesKey, gone);
+        var now = DateTime.UtcNow;
         foreach (var device in on)
-            Reg.WriteString(ApoIds.OwnDevicesKey, device, result.Checks.GetValueOrDefault(device) ?? (result.RestartFailed is null ? Attached : NeedsRestart));
+            Reg.WriteString(ApoIds.OwnDevicesKey, device, new ApoCheckRecord(result.Checks.GetValueOrDefault(device) ?? (result.RestartFailed is null ? Attached : NeedsRestart),
+                result.Tries.GetValueOrDefault(device) ?? Array.Empty<(ApoInstallMode, string)>(), now).Format());
         // What Device Selector would have shown on the way, for "Copy details".
         if (result.Errors.Append(result.RestartFailed).OfType<string>().ToList() is { Count: > 0 } problems) Fail(string.Join(" ", problems));
         if (result.RestartFailed is not null) return ApoOutcome.NeedsRestart;

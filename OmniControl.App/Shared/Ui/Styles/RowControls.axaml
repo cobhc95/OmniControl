@@ -88,6 +88,13 @@
         <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" />
     </Style>
+    <!-- .risk = a method set but not running (Equalizer APO on the speakers whose check failed): red words and edge -->
+    <Style Selector="Button.selector.method.risk /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource BrushDanger}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushTagRisk}" />
+    </Style>
+    <Style Selector="Border.selector.method.risk"><Setter Property="BorderBrush" Value="{DynamicResource BrushTagRisk}" /></Style>
+    <Style Selector="Border.selector.method.risk > TextBlock"><Setter Property="Foreground" Value="{DynamicResource BrushDanger}" /></Style>
     <Style Selector="Border.selector.method.recording"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" /></Style>
     <Style Selector="Border.selector.method.recording > TextBlock"><Setter Property="Foreground" Value="{DynamicResource BrushAccent}" /></Style>
     <!-- A chip with a status dot (Controls/ChipMenu.Tone, docs/mockups/pc-header-tidy.html): .good = green words and edge (connected), .caution = yellow edge; the dot is c|StatusDot -->

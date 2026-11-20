@@ -54,8 +54,9 @@ public sealed record CableOffer(int Pairs, bool Free, bool BusHolds, StatusKind 
 /// <param name="ApoCableWhy">Why the program can't use Equalizer APO on a cable now (null = it can).</param>
 public sealed record RouteFacts(CableOffer Cables, string? RecordingWhy, RunMethod Current, string? ApoCableWhy = EffectsRules.NeedsSecondCable);
 
-/// One entry of a program's Method menu as it stands now: whether it can be chosen, its live description, and its tooltip (the reason when it can't).
-public sealed record RouteOffer(bool Available, string Description, string Tip);
+/// One entry of a Method menu as it stands now: whether it can be chosen, its live description, its tooltip (the reason when it can't)
+/// and a small muted label after its name ("managed by OmniControl"; "" = none).
+public sealed record RouteOffer(bool Available, string Description, string Tip, string Label = "");
 
 /// A test's result in two sizes: one short line for the row and the footer, the full explanation for their tooltips.
 public sealed record TestOutcome(string Brief, string Full);
@@ -127,7 +128,7 @@ public static partial class EffectsRules
             _ => null,
         },
         StatusKind.NoFreeCable => "Every virtual cable pair is in use. Use Recording for this program, or free a cable.",
-        StatusKind.ApoNotApplied => "Choose devices in Equalizer APO, or choose Cable bus as the master's method.",
+        StatusKind.ApoNotApplied => "Put it on the speakers in Equalizer APO devices, or choose Cable bus as the master's method.",
         StatusKind.ApoDisplaced => "Put back in the FX window, or switch on Keep OmniControl's effects in place.",
         StatusKind.Direct => "The cable is free for a program, a combined microphone or a combined speaker.",
         StatusKind.NeedsCable => "Install VB-CABLE to use a virtual cable.",

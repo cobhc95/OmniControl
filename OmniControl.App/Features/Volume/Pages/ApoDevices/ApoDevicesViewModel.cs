@@ -4,11 +4,12 @@ using OmniControl.Core.Engine.Apo;
 
 namespace OmniControl.App.Features.Volume.Pages.ApoDevices;
 
-/// OmniControl's own Equalizer APO device window (Equalizer APO 1.4.2's Device Selector for the bundled copy): every playback and
-/// recording device with its tick and Device Selector's status words; a tick attaches, an untick detaches, live (one prompt each, then
-/// Device Selector's check: an audio restart and every attached device checked, <see cref="EngineInstaller"/>). "Troubleshooting options" shows Device Selector's troubleshooting panel for the selected
-/// attached device (DeviceSelector.ui/.cpp: Install APO and Use original APO for pre-mix and post-mix, Auto, the install mode, Allow
-/// silent buffer modification), each change putting it on again with that option as Device Selector's reinstall does. Reads the
+/// OmniControl's own Equalizer APO device window, the one place it is installed or uninstalled: every playback and recording device with
+/// its status from the last check (running only after a passed check) and Install or Uninstall, each confirmed inline under its row, then
+/// done as Equalizer APO's Device Selector does (one prompt, an audio restart and every device it is on checked, <see cref="EngineInstaller"/>);
+/// the first Install installs the copy itself. Details shows a device's record. "Troubleshooting options" shows Device Selector's
+/// troubleshooting panel for the selected installed device (DeviceSelector.ui/.cpp: Install APO and Use original APO for pre-mix and
+/// post-mix, Auto, the install mode, Allow silent buffer modification), each change putting it on again with that option. Reads the
 /// effects support on open and whenever it changes (devices come or go), never by a timer.
 public sealed partial class ApoDevicesViewModel : ObservableObject, IDisposable
 {
@@ -18,12 +19,16 @@ public sealed partial class ApoDevicesViewModel : ObservableObject, IDisposable
     private readonly EngineInstaller _installer;
     private readonly MixerService _mixer;
     private readonly Func<string?, Task<SetupResult>, Task> _runSetup;
+    private readonly Func<DialogMessage, Task<bool>> _ask;
+    private readonly ApoRowHost _host;
     private readonly List<ApoDeviceRow> _rows = new();
     private bool _busy;
 
-    public ApoDevicesViewModel(EffectsSupportService support, EngineInstaller installer, MixerService mixer, Func<string?, Task<SetupResult>, Task> runSetup)
+    public ApoDevicesViewModel(EffectsSupportService support, EngineInstaller installer, MixerService mixer, Func<string?, Task<SetupResult>, Task> runSetup,
+        Func<DialogMessage, Task<bool>> ask)
     {
-        (_support, _installer, _mixer, _runSetup) = (support, installer, mixer, runSetup);
+        (_support, _installer, _mixer, _runSetup, _ask) = (support, installer, mixer, runSetup, ask);
+        _host = new ApoRowHost(Pick, Ask, Confirm, row => _ = Guard.RunAsync("Equalizer APO: device details", () => DetailsAsync(row)));
         support.Changed += Sync;
         support.Refresh();
         Sync();
@@ -41,7 +46,7 @@ public sealed partial class ApoDevicesViewModel : ObservableObject, IDisposable
     private ApoDeviceEntry? Chosen => Selected?.Entry is { Attached: true } e ? e : null;
     private ApoInstallState? State => Chosen?.State;
 
-    /// Device Selector's page 1 (the options) when exactly one attached device is selected, else page 0 (its hint).
+    /// Device Selector's page 1 (the options) when an installed device is selected, else page 0 (its hint).
     public bool ShowsOptions => Troubleshooting && Chosen is not null;
     public bool ShowsPick => Troubleshooting && Chosen is null;
 
@@ -63,11 +68,13 @@ public sealed partial class ApoDevicesViewModel : ObservableObject, IDisposable
         .Select(mode => new MenuRowItem(ModeName(mode), string.Empty, State?.Mode == mode, Restarting, new RelayCommand(() => Change(s => s with { Mode = mode }))))
         .ToList();
 
-    private static string ModeName(ApoInstallMode mode) => mode switch
+    private static string ModeName(ApoInstallMode mode) => $"Install as {ModeShort(mode)}";
+
+    private static string ModeShort(ApoInstallMode mode) => mode switch
     {
-        ApoInstallMode.LfxGfx => "Install as LFX/GFX",
-        ApoInstallMode.SfxMfx => "Install as SFX/MFX",
-        _ => "Install as SFX/EFX",
+        ApoInstallMode.LfxGfx => "LFX/GFX",
+        ApoInstallMode.SfxMfx => "SFX/MFX",
+        _ => "SFX/EFX",
     };
 
     /// Up/Down: the next or previous device, wrapping at both ends.
@@ -78,10 +85,20 @@ public sealed partial class ApoDevicesViewModel : ObservableObject, IDisposable
         Pick(_rows[Wrap.Index(at + direction, _rows.Count)]);
     }
 
-    /// Space: ticks or unticks the selected device.
-    public void ToggleSelected()
+    /// Enter: opens the selected device's confirmation, or confirms it when open.
+    public void ActOnSelected()
     {
-        if (Selected is { } row) row.IsChecked = !row.IsChecked;
+        if (Selected is not { CanAct: true } row) return;
+        if (row.IsConfirming) Confirm(row);
+        else Ask(row, true);
+    }
+
+    /// Esc: closes an open confirmation; false when none was open (the window then closes).
+    public bool CancelConfirm()
+    {
+        if (_rows.FirstOrDefault(r => r.IsConfirming) is not { } open) return false;
+        open.IsConfirming = false;
+        return true;
     }
 
     private void Pick(ApoDeviceRow row)
@@ -91,6 +108,47 @@ public sealed partial class ApoDevicesViewModel : ObservableObject, IDisposable
         Selected = row;
         OptionsChanged();
     }
+
+    /// One confirmation open at a time, under the row it is for.
+    private void Ask(ApoDeviceRow row, bool open)
+    {
+        Pick(row);
+        foreach (var r in _rows) r.IsConfirming = open && r == row && !_busy;
+    }
+
+    private void Confirm(ApoDeviceRow row)
+    {
+        row.IsConfirming = false;
+        if (row.Entry is not { } e) return;
+        var install = !e.Attached;
+        Run("Equalizer APO: device " + (install ? "install" : "uninstall"), row,
+            install ? ("Installing…", "Install · Restart audio · Check") : ("Uninstalling…", "Uninstall · Restart audio · Check the others"),
+            () => install ? _installer.InstallOnAsync(e) : _installer.DetachAsync(e));
+    }
+
+    /// The device's record: what the last check tried and found. Changes nothing.
+    private Task DetailsAsync(ApoDeviceRow row)
+    {
+        if (row.Entry is not { } e) return Task.CompletedTask;
+        var check = e.LastCheck;
+        var lines = new List<string> { $"Device: {e.Name}", $"Status: {row.Status}", $"Install mode now: {ModeShort(e.State.Mode)}" };
+        lines.AddRange(check.Tries.Count == 0 ? new[] { "Install modes tried: none recorded" }
+            : check.Tries.Select((t, i) => $"Try {i + 1}: {ModeShort(t.Mode)}, {ResultWords(t.Result)}"));
+        lines.Add($"Last check: {(check.Result.Length == 0 ? "never" : ResultWords(check.Result))}{(check.At is { } at ? $", {at.ToLocalTime():g}" : string.Empty)}");
+        if (ApoSetup.LastResult() is { } why) lines.Add($"Last step's problem: {why}");
+        lines.Add($"Log: {EngineInstaller.LogPath}");
+        var record = string.Join(Environment.NewLine, lines);
+        return _ask(new DialogMessage($"Equalizer APO on {e.Name}", record, Details: record));
+    }
+
+    private static string ResultWords(string result) => result switch
+    {
+        ApoSetup.Running => "running",
+        ApoSetup.OriginalFailed => "running, the device's own effects didn't start inside it",
+        ApoSetup.Failed => "didn't start",
+        ApoSetup.NeedsRestart => "waiting for an audio restart",
+        _ => "not checked (disabled or unplugged)",
+    };
 
     /// While a step runs the rows keep showing it; its end shows what is in place.
     private void Sync()
@@ -103,8 +161,8 @@ public sealed partial class ApoDevicesViewModel : ObservableObject, IDisposable
         if (_support.Current?.Apo is not { } apo) return;
         ManagedTag = apo.UpstreamVersion is { } v ? $"Managed by OmniControl · {v.ToString(3)}" : "Managed by OmniControl";
         var defaults = _mixer.Devices.Concat(_mixer.RecordingDevices).Where(d => d.IsDefault).Select(d => ApoIds.DeviceKeyOf(d.Id)).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var wanted = Group(apo, defaults, input: false).Concat(Group(apo, defaults, input: true)).ToList();
-        if (!wanted.Select(w => w.Key).SequenceEqual(_rows.Select(r => r.Key), StringComparer.OrdinalIgnoreCase))
+        var wanted = apo.OwnDevices.Where(d => !d.Input).Concat(apo.OwnDevices.Where(d => d.Input)).ToList();
+        if (!wanted.Select(w => w.Guid).SequenceEqual(_rows.Select(r => r.Key), StringComparer.OrdinalIgnoreCase))
         {
             var selected = Selected?.Key;
             _rows.Clear();
@@ -117,65 +175,57 @@ public sealed partial class ApoDevicesViewModel : ObservableObject, IDisposable
                 Items.Add(new ApoDeviceHeading(input ? "Recording devices" : "Playback devices"));
                 foreach (var w in group)
                 {
-                    var row = new ApoDeviceRow(w.Key, OnToggled, Pick);
+                    var row = new ApoDeviceRow(w.Guid, _host);
                     _rows.Add(row);
                     Items.Add(row);
-                    if (string.Equals(w.Key, selected, StringComparison.OrdinalIgnoreCase)) Pick(row);
+                    if (string.Equals(w.Guid, selected, StringComparison.OrdinalIgnoreCase)) Pick(row);
                 }
             }
         }
-        for (var i = 0; i < wanted.Count; i++) wanted[i].Show(_rows[i]);
+        for (var i = 0; i < wanted.Count; i++)
+        {
+            var (status, detail, tone) = StatusOf(wanted[i], defaults.Contains(wanted[i].Guid));
+            _rows[i].Show(wanted[i], status, detail, tone);
+            _rows[i].CanAct = true;
+        }
         OptionsChanged();
     }
 
-    private sealed record Wanted(string Key, bool Input, Action<ApoDeviceRow> Show);
-
-    /// One group's rows: Device Selector's list (every device under Windows' Render or Capture key that is present).
-    private static IEnumerable<Wanted> Group(ApoState apo, HashSet<string> defaults, bool input)
+    /// One main line and one detail line from what is in place and the last check: "running" only after a passed check.
+    private static (string Status, string Detail, ApoRowTone Tone) StatusOf(ApoDeviceEntry e, bool isDefault)
     {
-        foreach (var e in apo.OwnDevices.Where(d => d.Input == input))
+        var facts = new List<string>();
+        if (isDefault) facts.Add("Default device");
+        if (e.Unplugged) facts.Add("Unplugged");
+        if (e.Disabled) facts.Add("Disabled");
+        if (!e.Attached) return ("Not installed", string.Join(" · ", facts), ApoRowTone.Plain);
+        var check = e.LastCheck;
+        if (check.Result is ApoSetup.Running or ApoSetup.OriginalFailed && !e.EnhancementsOff)
         {
-            var (status, tone) = StatusOf(e);
-            var suffix = (defaults.Contains(e.Guid) ? ", Default device" : string.Empty) + (e.Disabled ? ", Disabled" : string.Empty) + (e.Unplugged ? ", Unplugged" : string.Empty);
-            yield return new(e.Guid, input, row => row.Show(e, status + suffix, tone));
+            var good = new List<string> { ModeShort(e.State.Mode) };
+            if (check.Result == ApoSetup.OriginalFailed) good.Add("device's own effects didn't start");
+            if (check.At is { } at) good.Add($"checked {at.ToLocalTime():t}");
+            return ("Installed · running", string.Join(" · ", good), ApoRowTone.Good);
         }
-    }
-
-    /// Device Selector's state words (getStateText for a row as it is), then how the last check of an attached device ended; only a
-    /// check that really failed is said in red.
-    private static (string Status, ApoRowTone Tone) StatusOf(ApoDeviceEntry e)
-    {
-        if (!e.Attached) return (e.Experimental ? "APO can be installed (experimental)" : "APO can be installed", ApoRowTone.Plain);
-        var state = e.CanBeUpgraded ? "APO is already installed by an older version"
-            : e.EnhancementsOff ? "APO is already installed, audio enhancements are off"
-            : "APO is already installed";
-        return e.Check switch
-        {
-            ApoSetup.Running => (state + ", check passed", e.EnhancementsOff ? ApoRowTone.Caution : ApoRowTone.Good),
-            ApoSetup.OriginalFailed => (state + ", original APO didn't start", ApoRowTone.Caution),
-            ApoSetup.Failed => (state + ", check failed: it didn't start", ApoRowTone.Bad),
-            ApoSetup.NeedsRestart => (state + ", needs an audio restart", ApoRowTone.Caution),
-            _ => (state, e.EnhancementsOff || e.CanBeUpgraded ? ApoRowTone.Caution : ApoRowTone.Plain),
-        };
-    }
-
-    private void OnToggled(ApoDeviceRow row, bool on)
-    {
-        Pick(row);
-        if (row.Entry is { } e) Run("Equalizer APO: device tick", () => on ? _installer.AttachAsync(e, e.State) : _installer.DetachAsync(e));
+        var why = e.EnhancementsOff ? "Audio enhancements are off"
+            : check.Tries.Count > 0 ? $"Tried {string.Join(", ", check.Tries.Select(t => ModeShort(t.Mode)))}"
+            : check.Result == ApoSetup.NeedsRestart ? "Waits for an audio restart"
+            : check.Result == ApoSetup.Failed ? "Check failed"
+            : "Not checked";
+        return ("Installed, not running", string.Join(" · ", facts.Prepend(why)), ApoRowTone.Bad);
     }
 
     /// A troubleshooting option of the selected device: put on again with it (Device Selector's reinstall; with neither APO ticked its
     /// install writes nothing, so the device ends up without Equalizer APO, as in Device Selector).
     private void Change(Func<ApoInstallState, ApoInstallState> edit)
     {
-        if (Chosen is not { } e) return;
+        if (Chosen is not { } e || Selected is not { } row) return;
         var state = edit(e.State);
-        if (state != e.State) Run("Equalizer APO: device option", () => _installer.AttachAsync(e, state));
+        if (state != e.State) Run("Equalizer APO: device option", row, ("Installing again…", "Install · Restart audio · Check"), () => _installer.AttachAsync(e, state));
     }
 
-    /// One step at a time: a change while one runs is not started and the rows show what is in place again.
-    private void Run(string what, Func<Task<SetupResult>> step)
+    /// One step at a time: every row's buttons wait while it runs and the row shows it; a change while one runs is not started.
+    private void Run(string what, ApoDeviceRow row, (string Status, string Steps) working, Func<Task<SetupResult>> step)
     {
         if (_busy)
         {
@@ -183,6 +233,8 @@ public sealed partial class ApoDevicesViewModel : ObservableObject, IDisposable
             return;
         }
         _busy = true;
+        foreach (var r in _rows) r.CanAct = false;
+        row.Working(working.Status, working.Steps);
         _ = Guard.RunAsync(what, async () =>
         {
             try

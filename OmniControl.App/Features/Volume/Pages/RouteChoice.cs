@@ -59,12 +59,11 @@ public sealed partial class RouteChoice : ObservableObject
 
     [ObservableProperty, NotifyPropertyChangedFor(nameof(ButtonText), nameof(Tip))] private EffectsRoute _current;
 
-    /// The step under the cards that fixes what a disabled card lacks (the master's Equalizer APO: Choose devices); null = none.
+    /// The step under the cards that fixes what a disabled card lacks (the master's Equalizer APO: Equalizer APO devices…); null = none.
     [ObservableProperty, NotifyPropertyChangedFor(nameof(HasFix))] private CardAction? _fix;
     public bool HasFix => Fix is not null;
 
-    /// The install and remove steps under the fix step (the master's menu only: Install Equalizer APO, Choose devices, Install VB-CABLE
-    /// or More cables, Remove VB-CABLE); empty = none.
+    /// The steps under the fix step (the master's menu only: Equalizer APO devices…, Install VB-CABLE or More cables, Remove VB-CABLE); empty = none.
     [ObservableProperty, NotifyPropertyChangedFor(nameof(HasSteps))] private IReadOnlyList<CardAction> _steps = Array.Empty<CardAction>();
     public bool HasSteps => Steps.Count > 0;
 
@@ -108,7 +107,10 @@ public sealed partial class RouteCard : ObservableObject
 
     [ObservableProperty] private string _description;
     [ObservableProperty] private string _tip;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasLabel))] private string _label = string.Empty;
     [ObservableProperty] private bool _isSelected;
+
+    public bool HasLabel => Label.Length > 0;
 
     /// False = it cannot work on this PC now: greyed out, its description and tooltip say why.
     [ObservableProperty] private bool _isAvailable = true;
@@ -119,6 +121,7 @@ public sealed partial class RouteCard : ObservableObject
         IsAvailable = offer.Available;
         Description = offer.Description;
         Tip = offer.Tip;
+        Label = offer.Label;
     }
 
     [RelayCommand] private void Pick()

@@ -130,7 +130,7 @@ public sealed partial class FxFolderViewModel : ObservableObject
     private IReadOnlyList<MenuRowItem> DeviceRows() => _devices.Devices()
         .Select(d => new MenuRowItem(d.Name, string.Empty, d.Id == _slot.DeviceId, d.Name, new RelayCommand(() => Choose(d)), d.Tags))
         .Prepend(MenuRowItem.Header("Playback devices"))
-        .Append(new MenuRowItem("Install Equalizer APO on a device…", string.Empty, false, _mixer.InstallApoTip(), new AsyncRelayCommand(_mixer.InstallApo), RuleAbove: true))
+        .Append(new MenuRowItem(EffectsRules.ApoDevicesLabel, string.Empty, false, _mixer.InstallApoTip(), new AsyncRelayCommand(_mixer.InstallApo), RuleAbove: true))
         .ToList();
 
     private void Choose(FolderDevice device)

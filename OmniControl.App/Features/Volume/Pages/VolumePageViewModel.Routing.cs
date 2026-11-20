@@ -67,8 +67,10 @@ public sealed partial class VolumePageViewModel
         row.RouteText = RouteTextOf(row);
         row.FxRuns = FxSlot.AnyRuns(row.FxOn, _mixer.FxChain(row.ChainKey));
         var method = EffectsRules.ChipMethodOf(MethodFactsOf(row, row.FxRuns));
-        row.Method = MethodChip.Of(method);
-        row.Fact = status.Fact(method);
+        // only the master's chip says how Equalizer APO stands on its speakers (green only after a passed check)
+        var stand = row is MixerItem { IsMaster: true } && method == RunMethod.Apo ? _engine.MasterFacts.ApoStand : ApoStand.Running;
+        row.Method = MethodChip.Of(method, stand);
+        row.Fact = EffectsRules.ApoStandFact(stand) ?? status.Fact(method);
         switch (row)
         {
             case MixerItem { IsMaster: true } master:

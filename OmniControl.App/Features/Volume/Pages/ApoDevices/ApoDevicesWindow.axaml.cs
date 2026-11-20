@@ -1,8 +1,10 @@
 using Avalonia.Input;
+using Avalonia.Interactivity;
 
 namespace OmniControl.App.Features.Volume.Pages.ApoDevices;
 
-/// Wiring only: shows an <see cref="ApoDevicesViewModel"/>; Up/Down and Space go to it, Esc (the dialog style) and Close shut it.
+/// Wiring only: shows an <see cref="ApoDevicesViewModel"/>; Up/Down and Enter go to it, Esc closes an open confirmation first (seen
+/// before the dialog style's Esc closes the window), Close shuts it.
 public partial class ApoDevicesWindow : Window
 {
     private Flyout? _modeMenu;
@@ -10,17 +12,23 @@ public partial class ApoDevicesWindow : Window
     public ApoDevicesWindow()
     {
         InitializeComponent();
-        KeyDown += OnKeyDown;
+        AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
     }
 
     private ApoDevicesViewModel? Model => DataContext as ApoDevicesViewModel;
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
-        // a focused button or tick box (footer, options) keeps its own Space and arrows
-        if (e.Handled || e.Source is Button || Model is not { } model || e.KeyModifiers != KeyModifiers.None) return;
+        if (e.Handled || Model is not { } model || e.KeyModifiers != KeyModifiers.None) return;
+        if (e.Key == Key.Escape)
+        {
+            e.Handled = model.CancelConfirm();
+            return;
+        }
+        // a focused button or tick box (row actions, footer, options) keeps its own Enter, Space and arrows
+        if (e.Source is Button or CheckBox) return;
         if (e.Key is Key.Up or Key.Down) model.Move(Wrap.Direction(e.Key));
-        else if (e.Key == Key.Space) model.ToggleSelected();
+        else if (e.Key == Key.Enter) model.ActOnSelected();
         else return;
         e.Handled = true;
     }

@@ -18,6 +18,12 @@ public sealed record MasterFacts(int CablePairs, StatusKind NoCable, string? Apo
 
     /// Where Equalizer APO stands on the master's speakers (<see cref="EffectsRules.ApoNowOn"/>); null = not read yet.
     public string? ApoNow { get; init; }
+
+    /// The same as a state (<see cref="EffectsRules.ApoStandOn"/>): the master's chip and the Automatic card read it.
+    public ApoStand ApoStand { get; init; } = ApoStand.Running;
+
+    /// The Equalizer APO card's facts and label (<see cref="EffectsRules.ApoCardOf"/>); null = not read yet.
+    public (string Facts, string Label)? ApoCard { get; init; }
 }
 
 /// How effects run per row: a program's method (<see cref="ProgramRoutes"/>) and the master's
@@ -120,9 +126,15 @@ public static partial class EffectsRules
             if (facts.SeveralOutputs) return Unavailable(route, "the master plays on several devices");
             if (facts.ApoWhy is { } why && facts.HasEffects) return Unavailable(route, why);
             // The card says where Equalizer APO really stands on the speakers; what the method does moves to its tooltip.
-            return new RouteOffer(true, facts.ApoNow ?? route.Description, $"{route.Description} {route.Tip}");
+            return new RouteOffer(true, facts.ApoCard?.Facts ?? route.Description, $"{facts.ApoNow} {route.Description} {route.Tip}".TrimStart(),
+                facts.ApoCard?.Label ?? string.Empty);
         }
-        return new RouteOffer(true, current == RunMethod.Apo ? "Currently: Equalizer APO" : "Currently: cable bus", route.Tip);
+        return new RouteOffer(true, current != RunMethod.Apo ? "Currently: cable bus" : facts.ApoStand switch
+        {
+            ApoStand.Running => "Currently: Equalizer APO",
+            ApoStand.NotRunning => "Currently: Equalizer APO, but it isn't running, so effects are off",
+            _ => "Currently: Equalizer APO, but it isn't on these speakers yet, so effects are off",
+        }, route.Tip);
     }
 
     private static RouteOffer Unavailable(EffectsRoute route, string why)

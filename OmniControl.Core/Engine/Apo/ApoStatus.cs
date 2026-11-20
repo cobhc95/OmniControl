@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security;
 
 namespace OmniControl.Core.Engine.Apo;
@@ -49,8 +50,8 @@ public sealed record ApoState(
     /// This build ships OmniControl's own copy, so it can be installed when there is none.
     public bool Bundled { get; init; }
 
-    /// While OmniControl's copy is installed: every present device, disabled and unplugged ones included (Device Selector's list), playback
-    /// first. Empty otherwise.
+    /// While OmniControl's copy is installed, or none is and this build ships it: every present device, disabled and unplugged ones
+    /// included (Device Selector's list), playback first. Empty otherwise.
     public IReadOnlyList<ApoDeviceEntry> OwnDevices { get; init; } = Array.Empty<ApoDeviceEntry>();
 
     /// The entry of the device with this endpoint id, or null.
@@ -91,6 +92,30 @@ public sealed record ApoState(
     public override int GetHashCode() => HashCode.Combine(ProtectedAudioDisabled, UpstreamConfigFolder, UpstreamInstalled, Output, Microphones.Count);
 }
 
+/// A device's last check as kept in the marker's Devices key: "result|Mode=result,Mode=result|UTC time" (a bare result from before is read too).
+/// <param name="Result">How it ended (<see cref="ApoSetup.Running"/>, ...); "" = never checked.</param>
+/// <param name="Tries">Each install mode tried, in order, with how that try ended.</param>
+/// <param name="At">When it was checked (UTC); null when not known.</param>
+public sealed record ApoCheckRecord(string Result, IReadOnlyList<(ApoInstallMode Mode, string Result)> Tries, DateTime? At)
+{
+    public static readonly ApoCheckRecord None = new(string.Empty, Array.Empty<(ApoInstallMode, string)>(), null);
+
+    internal string Format() =>
+        $"{Result}|{string.Join(',', Tries.Select(t => $"{t.Mode}={t.Result}"))}|{At?.ToString("o", CultureInfo.InvariantCulture)}";
+
+    internal static ApoCheckRecord Parse(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return None;
+        var parts = text.Split('|');
+        var tries = parts.Length > 1
+            ? parts[1].Split(',', StringSplitOptions.RemoveEmptyEntries).Select(t => t.Split('='))
+                .Where(p => p.Length == 2 && Enum.TryParse<ApoInstallMode>(p[0], out _)).Select(p => (Enum.Parse<ApoInstallMode>(p[0]), p[1])).ToList()
+            : new List<(ApoInstallMode, string)>();
+        DateTime? at = parts.Length > 2 && DateTime.TryParse(parts[2], CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var when) ? when : null;
+        return new ApoCheckRecord(parts[0], tries, at);
+    }
+}
+
 /// A device OmniControl's own Equalizer APO can be put on (Device Selector's row for it).
 /// <param name="Guid">Its key name under MMDevices.</param>
 /// <param name="Connector">Device Selector's Connector column ("Speakers").</param>
@@ -107,18 +132,25 @@ public sealed record ApoDeviceEntry(string Guid, string Connector, string Device
     /// Device Selector's isExperimental: the driver gave it no FxProperties key.
     public bool Experimental { get; init; }
 
+    /// The last check as kept (<see cref="ApoCheckRecord"/>'s text, so entries compare by value).
+    public string CheckText { get; init; } = string.Empty;
+
+    /// The last check: its result, the install modes tried and when.
+    public ApoCheckRecord LastCheck => ApoCheckRecord.Parse(CheckText);
+
     /// "Speaker (Realtek(R) Audio)", as Windows names it, for sentences.
     public string Name => Connector.Length > 0 ? $"{Connector} ({Device})" : Device;
 
     public bool HasOriginalPreMix(ApoInstallMode mode) => (Originals & (1 << (2 * (int)mode))) != 0;
     public bool HasOriginalPostMix(ApoInstallMode mode) => (Originals & (2 << (2 * (int)mode))) != 0;
 
-    internal static ApoDeviceEntry Of(DeviceApo d, string check) => new(d.Guid,
-        d.Connection, d.Name, d.Input, d.Disabled, d.Unplugged, d.Installed, d.EnhancementsOff, check, d.Current,
+    internal static ApoDeviceEntry Of(DeviceApo d, string checkText) => new(d.Guid,
+        d.Connection, d.Name, d.Input, d.Disabled, d.Unplugged, d.Installed, d.EnhancementsOff, ApoCheckRecord.Parse(checkText).Result, d.Current,
         Enum.GetValues<ApoInstallMode>().Sum(m => (d.OriginalPreMix(m).Length > 0 ? 1 << (2 * (int)m) : 0) + (d.OriginalPostMix(m).Length > 0 ? 2 << (2 * (int)m) : 0)))
     {
         CanBeUpgraded = d.CanBeUpgraded,
         Experimental = d.Experimental,
+        CheckText = checkText,
     };
 }
 
@@ -150,7 +182,8 @@ public static class ApoStatus
                 UpstreamVersion = installFolder is null ? null : VersionOf(Path.Combine(installFolder, ApoIds.UpstreamDllName)),
                 Ownership = ownership,
                 Bundled = ApoFiles.Bundled,
-                OwnDevices = ownership.Owner == ApoOwner.Ours ? OwnDevicesOf(machine) : Array.Empty<ApoDeviceEntry>(),
+                // with none installed the bundled copy can still be put on a device, so its window lists them too
+                OwnDevices = ownership.Owner == ApoOwner.Ours || ownership.Owner == ApoOwner.None && ApoFiles.Bundled ? OwnDevicesOf(machine) : Array.Empty<ApoDeviceEntry>(),
             };
         }
         catch (Exception ex) when (ex is SecurityException or UnauthorizedAccessException or IOException)

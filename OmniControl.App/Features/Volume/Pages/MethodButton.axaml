@@ -7,7 +7,7 @@
     <!-- A Mixer row's Method chip (docs/mockups/mixer-rows-knobs.html): the method its sound goes through now, coloured
          (Button.selector.method + .apo / .cable / .recording), its tooltip the row's long line. On the master and a program it opens the
          Method pop-down: one card per way the effects can run (greyed with the reason where it can't work now; every
-         card), the one step that fixes what a greyed card lacks, on the master the install and remove steps (Equalizer APO, VB-CABLE)
+         card), the one step that fixes what a greyed card lacks, on the master "Equalizer APO devices…" and the VB-CABLE steps
          under a Border.hrule, and a program's recording Test
          with its result. A row with no choice (a microphone, a combined device) shows the chip as words only (Border.selector.method). -->
     <FlyoutBase.AttachedFlyout>
@@ -23,7 +23,10 @@
                             <Button Classes="optioncard" Classes.selected="{Binding IsSelected}" Command="{Binding PickCommand}" IsEnabled="{Binding IsAvailable}"
                                     ToolTip.Tip="{Binding Tip}" ToolTip.ShowOnDisabled="True">
                                 <StackPanel Spacing="3">
-                                    <TextBlock Classes="strong" Text="{Binding Name}" />
+                                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource MenuGap}">
+                                        <TextBlock Classes="strong" Text="{Binding Name}" />
+                                        <TextBlock Classes="hint small" Text="{Binding Label}" IsVisible="{Binding HasLabel}" VerticalAlignment="Center" />
+                                    </StackPanel>
                                     <TextBlock Classes="hint small" Text="{Binding Description}" />
                                 </StackPanel>
                             </Button>
@@ -60,14 +63,14 @@
 
     <Panel>
         <Button x:Name="Chip" Tag="scope" Classes="selector method" Classes.apo="{Binding Method.IsApo}" Classes.cable="{Binding Method.IsCable}"
-                Classes.recording="{Binding Method.IsRecording}" IsVisible="{Binding HasMethodMenu}" ToolTip.Tip="{Binding EngineLine}" Click="OnClick">
+                Classes.risk="{Binding Method.IsRisk}" Classes.recording="{Binding Method.IsRecording}" IsVisible="{Binding HasMethodMenu}" ToolTip.Tip="{Binding EngineLine}" Click="OnClick">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
                 <TextBlock Text="{Binding Method.Label}" />
                 <PathIcon Grid.Column="1" Data="{DynamicResource ChevronDownIcon}" />
             </Grid>
         </Button>
         <Border Classes="selector method" Classes.apo="{Binding Method.IsApo}" Classes.cable="{Binding Method.IsCable}"
-                Classes.recording="{Binding Method.IsRecording}" IsVisible="{Binding !HasMethodMenu}" ToolTip.Tip="{Binding EngineLine}">
+                Classes.risk="{Binding Method.IsRisk}" Classes.recording="{Binding Method.IsRecording}" IsVisible="{Binding !HasMethodMenu}" ToolTip.Tip="{Binding EngineLine}">
             <TextBlock Text="{Binding Method.Label}" />
         </Border>
     </Panel>

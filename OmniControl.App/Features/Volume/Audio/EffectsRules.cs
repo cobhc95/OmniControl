@@ -20,6 +20,9 @@ public sealed record ModeMethod(string How, string Delay, FxEngines Engine)
     public override string ToString() => $"{How} · {Delay}";
 }
 
+/// How Equalizer APO stands on a device (<see cref="EffectsRules.ApoStandOn"/>).
+public enum ApoStand { Running, NotRunning, NotOn, NotInstalled }
+
 /// The home of the effects engine's rules and words: how each kind of row runs its effects, the checks
 /// and wording for Equalizer APO and the virtual cables. Pure; the pages and the engine read it.
 public static partial class EffectsRules
@@ -123,6 +126,44 @@ public static partial class EffectsRules
             _ => apo.Bundled ? "Equalizer APO is not installed; OmniControl brings its own copy." : "Equalizer APO is not installed.",
         };
     }
+
+    /// THE step that installs or uninstalls Equalizer APO on devices, wherever it is offered.
+    public const string ApoDevicesLabel = "Equalizer APO devices…";
+
+    /// How Equalizer APO stands on the master's speakers: OmniControl's copy runs there only after a passed check; a separate install
+    /// (which OmniControl does not check) counts as running where Windows loads it.
+    public static ApoStand ApoStandOn(ApoState apo, ApoEndpoint? speakers)
+    {
+        if (apo.Ownership.Owner == ApoOwner.None && !apo.UpstreamInstalled) return ApoStand.NotInstalled;
+        if (apo.Ownership.Owner == ApoOwner.Ours)
+            return apo.OwnDevice(speakers?.EndpointId) is not { Attached: true } own ? ApoStand.NotOn
+                : own.Check is ApoSetup.Running or ApoSetup.OriginalFailed && speakers is not null && apo.FolderFor(speakers) is not null ? ApoStand.Running
+                : ApoStand.NotRunning;
+        return speakers?.UpstreamOn != true ? ApoStand.NotOn : apo.FolderFor(speakers) is not null ? ApoStand.Running : ApoStand.NotRunning;
+    }
+
+    /// The Equalizer APO card's facts in the master's Method menu ("✓ Installed on Speakers · ✕ Not running") and the small label after its
+    /// name (whose copy it is).
+    public static (string Facts, string Label) ApoCardOf(ApoState apo, ApoEndpoint? speakers)
+    {
+        var label = apo.Ownership.Owner switch { ApoOwner.Ours => "managed by OmniControl", ApoOwner.Separate => "installed separately", _ => string.Empty };
+        var name = apo.OwnDevice(speakers?.EndpointId)?.Connector is { Length: > 0 } connector ? connector : "these speakers";
+        return (ApoStandOn(apo, speakers) switch
+        {
+            ApoStand.NotInstalled => "Not installed",
+            ApoStand.NotOn => $"✕ Not on {name}",
+            ApoStand.NotRunning => $"✓ Installed on {name} · ✕ Not running",
+            _ => $"✓ Installed on {name} · ✓ Running",
+        }, label);
+    }
+
+    /// The fact under the master's chip while it is set to Equalizer APO and that does not run (null = the engine's own fact).
+    public static string? ApoStandFact(ApoStand stand) => stand switch
+    {
+        ApoStand.NotRunning => "sound plays without effects",
+        ApoStand.NotOn or ApoStand.NotInstalled => "not on this speaker yet",
+        _ => null,
+    };
 
     /// A row's status once its chain is written: all OmniControl can know is that the chain was sent, not that Windows applied it.
     public const string ApoSent = "Chain sent to your Equalizer APO";

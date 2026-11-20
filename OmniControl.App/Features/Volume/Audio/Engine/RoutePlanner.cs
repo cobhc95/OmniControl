@@ -176,7 +176,11 @@ internal static class RoutePlanner
         var speakers = apo.PlaybackOf(real.Id);
         var why = EffectsRules.BundledFixes(apo, speakers) ? null : EffectsRules.ApoMissingOn(apo, speakers);
         var several = p.Settings.MasterPlaysOn.Count > 1 || p.Settings.MasterPlaysOn.Any(CombinedDevice.IsKey);
-        return new MasterFacts(cables.Pairs, EffectsRules.NoCableKind(p.Support), why, several, masterFx) { ApoNow = EffectsRules.ApoNowOn(apo, speakers) };
+        return new MasterFacts(cables.Pairs, EffectsRules.NoCableKind(p.Support), why, several, masterFx)         {
+            ApoNow = EffectsRules.ApoNowOn(apo, speakers),
+            ApoStand = EffectsRules.ApoStandOn(apo, speakers),
+            ApoCard = EffectsRules.ApoCardOf(apo, speakers),
+        };
     }
 
     /// The master in Equalizer APO: its chain goes to Equalizer APO on the real speakers when it has effects (whether

@@ -11,7 +11,9 @@ namespace OmniControl.Core.Engine.Apo;
 /// <param name="RestartFailed">Why Windows audio did not restart (the check then stopped), or null.</param>
 /// <param name="Errors">What Device Selector would have shown in a message box or its log on the way (a test stream that failed, an
 /// unreadable answer, the pipe), in its own words.</param>
-internal sealed record ApoCheckResult(IReadOnlyDictionary<string, string> Checks, string? RestartFailed, IReadOnlyList<string> Errors);
+/// <param name="Tries">Each checked device's install modes in the order tried, with how each try ended (<see cref="ApoCheckRecord.Tries"/>).</param>
+internal sealed record ApoCheckResult(IReadOnlyDictionary<string, string> Checks, string? RestartFailed, IReadOnlyList<string> Errors,
+    IReadOnlyDictionary<string, IReadOnlyList<(ApoInstallMode Mode, string Result)>> Tries);
 
 /// Equalizer APO's Device Selector check, line for line (DeviceTestDialog.cpp, DeviceTestThread.cpp, ReceiveThread.cpp and
 /// DeviceAPOInfo::testAPOInstallation of Equalizer APO 1.4.2, GPL-2.0-or-later, Copyright (C) 2024 Jonas Thedering): Windows audio
@@ -30,7 +32,9 @@ internal static class ApoDeviceTest
             .ToDictionary(d => d.Guid.ToLowerInvariant(), d => new TestInfo(d));
         var checks = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var errors = new List<string>();
-        if (AudioService.Restart() is { } why) return new ApoCheckResult(checks, why, errors);
+        ApoCheckResult Result(string? restartFailed) => new(checks, restartFailed, errors,
+            infos.Values.ToDictionary(i => i.Device.Guid, i => (IReadOnlyList<(ApoInstallMode, string)>)i.Tries, StringComparer.OrdinalIgnoreCase));
+        if (AudioService.Restart() is { } why) return Result(why);
 
         var remaining = infos.Keys.ToHashSet();
         while (remaining.Count > 0)
@@ -55,12 +59,12 @@ internal static class ApoDeviceTest
                     if (Parse(message) is not { } parsed)
                     {
                         errors.Add($"Unreadable answer from Equalizer APO: {message}");
-                        return new ApoCheckResult(checks, null, errors);
+                        return Result(null);
                     }
                     if (!infos.TryGetValue(parsed.DeviceGuid.ToLowerInvariant(), out var info))
                     {
                         errors.Add($"Received unknown device GUID {parsed.DeviceGuid}.");
-                        return new ApoCheckResult(checks, null, errors);
+                        return Result(null);
                     }
                     var (deviceGuid, stage, phase) = parsed;
                     var result = info.Current;
@@ -76,7 +80,11 @@ internal static class ApoDeviceTest
                     }
                     if ((result.Pre && result.ChildPre || !info.Selected.PreMix) && (result.Post && result.ChildPost || !info.Selected.PostMix || info.Device.Input))
                     {
-                        if (remaining.Remove(deviceGuid.ToLowerInvariant())) checks[info.Device.Guid] = ApoSetup.Running;
+                        if (remaining.Remove(deviceGuid.ToLowerInvariant()))
+                        {
+                            checks[info.Device.Guid] = ApoSetup.Running;
+                            info.Tries.Add((info.Selected.Mode, ApoSetup.Running));
+                        }
                         if (remaining.Count == 0) break;
                     }
                 }
@@ -86,11 +94,12 @@ internal static class ApoDeviceTest
                 if (receiver.Failure is { } broken)
                 {
                     errors.Add(broken);
-                    return new ApoCheckResult(checks, null, errors);
+                    return Result(null);
                 }
                 foreach (var guid in remaining.ToList())
                 {
                     var info = infos[guid];
+                    info.Tries.Add((info.Selected.Mode, CheckOf(info.Current, info)));
                     if (info.Current.Score > info.Best.Score)
                     {
                         info.BestMode = info.Selected.Mode;
@@ -119,14 +128,14 @@ internal static class ApoDeviceTest
                     };
                     info.Device = info.Device.Reinstall(reg, info.Selected, saveBackup);
                 }
-                if (AudioService.Restart() is { } restartFailed) return new ApoCheckResult(checks, restartFailed, errors);
+                if (AudioService.Restart() is { } restartFailed) return Result(restartFailed);
             }
             finally
             {
                 reg.DeleteValue(ApoIds.UpstreamAppKey, ApoIds.DeviceTestPipeValue);
             }
         }
-        return new ApoCheckResult(checks, null, errors);
+        return Result(null);
     }
 
     /// The icons Device Selector's check shows for a device it gave up on: any red cross is a failure, a warning sign alone means Equalizer
@@ -182,6 +191,7 @@ internal static class ApoDeviceTest
         public readonly List<ApoInstallMode> Remaining;
         public ApoInstallMode BestMode;
         public TestResult Current = new(), Best = new();
+        public readonly List<(ApoInstallMode, string)> Tries = new();
         public readonly bool WantsOriginalPreMix, WantsOriginalPostMix;
     }
 
