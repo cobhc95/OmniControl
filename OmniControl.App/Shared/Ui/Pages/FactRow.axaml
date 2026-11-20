@@ -8,54 +8,62 @@
              Classes="card">
     <!-- A fact card: name and value, then the muted note (wraps to a second line), then the tags and the one pill; works at full and half width -->
     <Panel>
-    <!-- Stacked (a media line, docs/mockups/sound-group-compact.html): ONE row = icon | value with its tags over the muted note (both trim) | the pills, icon-only, at the right, names in tooltips -->
-    <Grid Margin="0,1" ColumnSpacing="8" ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding Stacked}">
-        <c:IconText Icon="{Binding Icon}" VerticalAlignment="Center" />
-        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
-                <TextBlock Classes="strong cardlabel" Text="{Binding Value}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Value}" VerticalAlignment="Center" IsVisible="{Binding HasValue}" />
-                <ItemsControl Grid.Column="1" ItemsSource="{Binding Tags}" IsVisible="{Binding HasTags}" VerticalAlignment="Center">
+    <!-- Stacked (a media line): ONE row = icon | value with its tags over the muted note (both trim) | the pills, icon-only, at the right, names in tooltips -->
+    <pages:CardLayout IsVisible="{Binding Stacked}">
+        <DataTemplate x:DataType="pages:FactItem">
+            <Grid Margin="0,1" ColumnSpacing="8" ColumnDefinitions="Auto,*,Auto">
+                <c:IconText Icon="{Binding Icon}" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                        <TextBlock Classes="strong cardlabel" Text="{Binding Value}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Value}" VerticalAlignment="Center" IsVisible="{Binding HasValue}" />
+                        <ItemsControl Grid.Column="1" ItemsSource="{Binding Tags}" IsVisible="{Binding HasTags}" VerticalAlignment="Center">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="svc:TagItem"><c:TagView /></DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Grid>
+                    <TextBlock Classes="cardlabel muted" Text="{Binding Note}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Note}" />
+                </StackPanel>
+                <ItemsControl Grid.Column="2" ItemsSource="{Binding Pills}" IsVisible="{Binding HasPills}" VerticalAlignment="Center">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="svc:TagItem"><c:TagView /></DataTemplate>
+                        <DataTemplate>
+                            <Button Tag="grouptool" Classes="pill icon" Classes.custom="{Binding IsSelected}" Command="{Binding PickCommand}" ToolTip.Tip="{Binding Name}">
+                                <c:IconGlyph LibraryId="{Binding Icon}" />
+                            </Button>
+                        </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </Grid>
-            <TextBlock Classes="cardlabel muted" Text="{Binding Note}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Note}" />
-        </StackPanel>
-        <ItemsControl Grid.Column="2" ItemsSource="{Binding Pills}" IsVisible="{Binding HasPills}" VerticalAlignment="Center">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <Button Tag="grouptool" Classes="pill icon" Classes.custom="{Binding IsSelected}" Command="{Binding PickCommand}" ToolTip.Tip="{Binding Name}">
-                        <c:IconGlyph LibraryId="{Binding Icon}" />
-                    </Button>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-    </Grid>
-    <Grid Margin="0,1" ColumnSpacing="8" ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding IsPlain}">
-        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <c:IconText Icon="{Binding Icon}" Text="{Binding Label}" />
-            <TextBlock Classes="strong" Text="{Binding Value}" VerticalAlignment="Center" IsVisible="{Binding Value, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-        </StackPanel>
-        <TextBlock Grid.Column="1" Classes="cardlabel muted" Text="{Binding Note}" ToolTip.Tip="{Binding Note}" />
-        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <ItemsControl ItemsSource="{Binding Tags}" IsVisible="{Binding HasTags}">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="svc:TagItem"><c:TagView /></DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <Button Classes="pill accentline" Tag="scope" Content="{Binding ActionText}" Command="{Binding Command}" IsVisible="{Binding HasPillAction}" VerticalAlignment="Center" />
-            <Button Classes="link" Content="{Binding ActionText}" Command="{Binding Command}" IsVisible="{Binding HasLinkAction}" VerticalAlignment="Center" />
-        </StackPanel>
-    </Grid>
+        </DataTemplate>
+    </pages:CardLayout>
+    <pages:CardLayout IsVisible="{Binding IsPlain}">
+        <DataTemplate x:DataType="pages:FactItem">
+            <Grid Margin="0,1" ColumnSpacing="8" ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <c:IconText Icon="{Binding Icon}" Text="{Binding Label}" />
+                    <TextBlock Classes="strong" Text="{Binding Value}" VerticalAlignment="Center" IsVisible="{Binding Value, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                </StackPanel>
+                <TextBlock Grid.Column="1" Classes="cardlabel muted" Text="{Binding Note}" ToolTip.Tip="{Binding Note}" />
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <ItemsControl ItemsSource="{Binding Tags}" IsVisible="{Binding HasTags}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="svc:TagItem"><c:TagView /></DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Button Classes="pill accentline" Tag="scope" Content="{Binding ActionText}" Command="{Binding Command}" IsVisible="{Binding HasPillAction}" VerticalAlignment="Center" />
+                    <Button Classes="link" Content="{Binding ActionText}" Command="{Binding Command}" IsVisible="{Binding HasLinkAction}" VerticalAlignment="Center" />
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+    </pages:CardLayout>
     </Panel>
 </UserControl>

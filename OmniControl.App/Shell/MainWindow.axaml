@@ -109,7 +109,7 @@
                             <TextBlock Text="{Binding CurrentPage.Title}" Classes="title" VerticalAlignment="Center" />
                             <restore:RestoreBar Grid.Column="1" DataContext="{Binding CurrentPage.Restorer}" />
                         </Grid>
-                        <ContentControl Content="{Binding ShownPage}" />
+                        <shell:PageHost Page="{Binding ShownPage}" />
                     </StackPanel>
 
                     <StackPanel IsVisible="{Binding IsSearching}" Spacing="12">

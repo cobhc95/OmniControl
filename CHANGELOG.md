@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Faster: going back to a page of the main window is instant (each page is built the first time it opens and kept while the window is in use, let go as before once it has been hidden a while), and every page builds faster the first time (a card builds only the layout it shows, not its full, half-width and knob layouts all at once).
+
 ## 0.2.4 (20 Nov 2026)
 
 - Fix: on Other PCs, a PC reached over Tailscale or another address that said it went to sleep, hibernated or shut down is no longer called, checked or pinged until you press Wake, press Check now, or it shows up again (it connects to this PC or is seen on the network), so that traffic can't wake it. Its tag says "Asleep" or "Shut down" meanwhile, also after a restart of OmniControl.
