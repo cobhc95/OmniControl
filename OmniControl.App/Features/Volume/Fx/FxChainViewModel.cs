@@ -44,6 +44,7 @@ public sealed partial class FxChainViewModel : ObservableObject, IDisposable, IP
         editors.Changed += RefreshEditor;
         if (ties.Devices is { } devices) devices.Changed += OnDevicesChanged;
         Selected = Slots.FirstOrDefault();
+        _now = Capture();
     }
 
     public ObservableCollection<FxSlotViewModel> Slots { get; } = new();
@@ -238,6 +239,7 @@ public sealed partial class FxChainViewModel : ObservableObject, IDisposable, IP
     private void SaveChain()
     {
         _mixer.SaveFx(_key);
+        RecordStep();
         Edited?.Invoke();
     }
 
@@ -349,6 +351,7 @@ public sealed partial class FxChainViewModel : ObservableObject, IDisposable, IP
     public void Dispose()
     {
         _disposed = true;
+        History.Clear();
         _editors.Changed -= RefreshEditor;
         if (_ties.Devices is { } devices)
         {

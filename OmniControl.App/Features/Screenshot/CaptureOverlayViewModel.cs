@@ -20,7 +20,8 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
     private readonly ScreenRect _monitor;
     private readonly bool _recordAtOnce;
     private readonly ToolSizes _sizes;
-    private readonly UndoList<Mark> _marks = new();
+    private readonly List<Mark> _marks = new();
+    private readonly UndoHistory _history = new();
     private Drag _drag;
     private Grip _grip;
     private Point _dragStart;
@@ -38,7 +39,7 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
     /// The monitor's scale (1 = 96 dpi), set by the view: drawings are as thick on every monitor.
     public double Scale { get; set; } = 1;
 
-    public IReadOnlyList<Mark> Marks => _marks.Items;
+    public IReadOnlyList<Mark> Marks => _marks;
 
     /// The drawing being made, shown until the press ends.
     public Mark? Preview { get; private set; }
@@ -119,7 +120,6 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
         _currentBrush = new ImmutableSolidColorBrush(_color);
         Colours = Palette.Drawing.Select((c, i) => new SwatchItem(new ImmutableSolidColorBrush(c), new RelayCommand(() => PickColour(c)), Palette.DrawingTitles[i])
             { IsSelected = c == _color }).ToList();
-        _marks.Dropped += mark => mark.Dispose();
     }
 
     /// Another monitor's overlay took the selection.
@@ -221,9 +221,9 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
         {
             var area = SelectionMath.FromDrag((int)box.From.X, (int)box.From.Y, (int)box.To.X, (int)box.To.Y, _pictureBounds);
             if (area.IsEmpty) return;
-            _marks.Add(new BlurMark(ImageBitmaps.Crop(Picture, area), area, Math.Max(1, (int)Math.Round(MarkLook.BlurBlock * Scale))));
+            AddMark(new BlurMark(ImageBitmaps.Crop(Picture, area), area, Math.Max(1, (int)Math.Round(MarkLook.BlurBlock * Scale))));
         }
-        else _marks.Add(preview);
+        else AddMark(preview);
         Changed();
     }
 
@@ -231,7 +231,7 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
     public void AddText(Point at, string text)
     {
         if (string.IsNullOrWhiteSpace(text)) return;
-        _marks.Add(new TextMark(at, text, _color, TextSize * Scale));
+        AddMark(new TextMark(at, text, _color, TextSize * Scale));
         Changed();
     }
 
@@ -244,15 +244,17 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
         var ctrl = modifiers.HasFlag(KeyModifiers.Control);
         var shift = modifiers.HasFlag(KeyModifiers.Shift);
         if (HandleSizeKey(key, modifiers)) return true;
+        if (_history.HandleKey(key, modifiers))
+        {
+            Changed();
+            return true;
+        }
         switch (key)
         {
             case Key.Escape: Close(); return true;
             case Key.C when ctrl: Copy(); return true;
             case Key.S when ctrl: Save(); return true;
             case Key.P when ctrl: Print(); return true;
-            case Key.Z when ctrl && shift: Redo(); return true;
-            case Key.Z when ctrl: Undo(); return true;
-            case Key.Y when ctrl: Redo(); return true;
             case Key.Left: return Nudge(-1, 0, shift);
             case Key.Right: return Nudge(1, 0, shift);
             case Key.Up: return Nudge(0, -1, shift);
@@ -303,14 +305,18 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
     [RelayCommand(CanExecute = nameof(CanUndo))]
     private void Undo()
     {
-        if (_marks.Undo()) Changed();
+        if (!_history.CanUndo) return;
+        _history.Undo();
+        Changed();
     }
 
-    private bool CanUndo() => _marks.CanUndo;
+    private bool CanUndo() => _history.CanUndo;
 
-    private void Redo()
+    /// Each finished drawing is one step; one undone and then replaced by a new drawing is released.
+    private void AddMark(Mark mark)
     {
-        if (_marks.Redo()) Changed();
+        _marks.Add(mark);
+        _history.Record("drawing", () => _marks.Remove(mark), () => _marks.Add(mark), forget: mark.Dispose);
     }
 
     private void Changed()
@@ -376,6 +382,8 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
 
     public void Dispose()
     {
+        _history.Clear();
+        foreach (var mark in _marks) mark.Dispose();
         _marks.Clear();
         Preview?.Dispose();
         Picture.Dispose();

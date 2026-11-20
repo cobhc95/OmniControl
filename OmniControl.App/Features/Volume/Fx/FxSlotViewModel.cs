@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using OmniControl.App.Features.Volume.Audio;
 using OmniControl.App.Features.Volume.Audio.Engine;
 
@@ -186,6 +187,15 @@ public sealed partial class FxSlotViewModel : ObservableObject, IFxPresetTarget
 
     /// Lets go of what the preset pull-down subscribed to (the effect leaves the chain, or the window closes).
     public void ReleasePresets() => _presets?.Dispose();
+
+    /// The slot's settings were put back (undo, redo): the editor is made again from them when next shown.
+    internal void Reload()
+    {
+        ReleasePresets();
+        if (_eqEditor?.BandCards is INotifyCollectionChanged changing) changing.CollectionChanged -= OnEqBandsChanged;
+        (_presets, _presetChoice, _editorItems, _eqEditor, _eqSettings, _eqParameters, _dynamics) = (null, null, null, null, null, null, null);
+        OnPropertyChanged(string.Empty);
+    }
 
     // The preset manager reads and applies through the effect's own preset box, so the editor on screen shows the change.
     PresetContent IFxPresetTarget.Read()

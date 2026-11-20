@@ -4,7 +4,7 @@ using OmniControl.Core.Engine.Screenshot;
 namespace OmniControl.Tests;
 
 /// The screenshot feature's pure parts: the file name pattern, the formats and their encoding, the selection maths and bar placement, the
-/// undo list, the blur's pixelation, the print fit, the settings switch and which QR texts may be opened. Nothing is captured or shown.
+/// blur's pixelation, the print fit, the settings switch and which QR texts may be opened. Nothing is captured or shown.
 public class ScreenshotTests
 {
     private static readonly DateTime At = new(2026, 11, 16, 9, 5, 7);
@@ -138,25 +138,7 @@ public class ScreenshotTests
     public void ActionBar_GoesBelowThenAbove() =>
         Assert.Equal((60.0, 664.0), SelectionMath.PlaceBar(BarSide.Below, 10, 700, 100, 100, 50, 30, 1000, 800, 6));
 
-    // ---- Undo, blur, print, settings, links ----
-
-    [Fact]
-    public void Undo_RedoAndDropAfterNewStep()
-    {
-        var list = new UndoList<string>();
-        var dropped = new List<string>();
-        list.Dropped += dropped.Add;
-        list.Add("a");
-        list.Add("b");
-        Assert.True(list.Undo());
-        Assert.Equal(new[] { "a" }, list.Items);
-        Assert.True(list.Redo());
-        Assert.Equal(new[] { "a", "b" }, list.Items);
-        list.Undo();
-        list.Add("c");
-        Assert.Equal(new[] { "b" }, dropped);
-        Assert.False(list.Redo());
-    }
+    // ---- Blur, print, settings, links ----
 
     [Fact]
     public void Pixelation_AveragesEachSquare()

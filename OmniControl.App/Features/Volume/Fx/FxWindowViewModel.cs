@@ -66,6 +66,7 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
         "Enter gives the editor the keyboard; Tab or F6 switch between the list and the editor; Shift+Tab from the list goes to the response graph.",
         "Space switches the selected effects on or off; Delete removes them; Alt+Up / Alt+Down (or drag) move them; Ctrl+C / Ctrl+V copy and paste.",
         "Ctrl+S saves the chain to a file, Ctrl+O loads one. Ctrl+N adds an effect. A double-click on a row puts its editor in its own window, and back.",
+        "Ctrl+Z undoes the last change, Ctrl+Y or Ctrl+Shift+Z redoes it (Edit menu).",
         "Ctrl+- / Ctrl+= make the editor smaller or larger, Ctrl+0 puts it back to 100 %.",
         "Esc first leaves one effect selected, then closes the window.",
         "",
@@ -89,7 +90,12 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
     public bool FxOn
     {
         get => _mixer.IsFxOn(_key);
-        set { if (_mixer.IsFxOn(_key) != value) _mixer.SetFxByUser(_key, value); }
+        set
+        {
+            if (_mixer.IsFxOn(_key) == value) return;
+            _mixer.SetFxByUser(_key, value);
+            Chain.History.Record($"Turn effects {(value ? "on" : "off")}", () => FxOn = !value, () => FxOn = value);
+        }
     }
 
     /// Options > Keep OmniControl's effects in place (one setting for every chain Equalizer APO runs).

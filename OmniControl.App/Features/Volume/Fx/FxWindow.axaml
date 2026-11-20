@@ -42,6 +42,7 @@
                     <Separator />
                     <MenuItem Header="Close" Command="{Binding CloseWindowCommand}" InputGesture="Escape" />
                 </MenuItem>
+                <c:EditMenu History="{Binding Chain.History}" />
                 <MenuItem Header="_Options">
                     <MenuItem Header="Chain on" ToggleType="CheckBox" IsChecked="{Binding FxOn}" />
                     <!-- A program's output device: one radio entry per device (the Volume page's Wiring tab offers several) -->

@@ -238,6 +238,7 @@ public sealed partial class FxChainViewModel
         Selected = Slots.FirstOrDefault();
         if (Selected is { } first) ReselectRequested?.Invoke(new[] { first });
         if (_chain.Count > 0) _mixer.EffectsAdded(_key);
+        _nextName = "Load chain";
         Changed();
         return null;
     }

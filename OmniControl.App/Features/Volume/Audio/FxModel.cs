@@ -43,6 +43,14 @@ public sealed class FxSlot
         Kind = Kind, Name = Name, DeviceId = DeviceId, Enabled = Enabled, Wet = Wet, Values = new List<double>(Values),
         Bands = Bands?.Select(b => b.Copy()).ToList(), Path = Path, State = State, Custom = Custom?.Copy(),
     };
+
+    /// Takes every setting of <paramref name="from"/> (undo and redo in the FX window), staying the same effect for the engine.
+    public void Assign(FxSlot from)
+    {
+        var copy = from.Copy();
+        (Kind, Name, DeviceId, Enabled, Wet, Values, Bands, Path, State, Custom) =
+            (copy.Kind, copy.Name, copy.DeviceId, copy.Enabled, copy.Wet, copy.Values, copy.Bands, copy.Path, copy.State, copy.Custom);
+    }
 }
 
 /// Which effects engines can run an effect kind.

@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- New: the FX window has an Edit menu with Undo and Redo (Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z), named after the step ("Undo Remove Compressor", "Undo Change Gain"). Adding, removing, moving, pasting and switching effects, the Effects on switch, presets, loading a chain and every setting are undone; a whole knob or slider drag is one step. The history is cleared when the window closes.
+
 - New: on Other PCs, a PC's Sleep, Restart, Shut down and Sign out pills show the countdown that PC will use ("in 30 s", its own setting). Once it accepts, the pill reads "Sleeping in 0:25" with the accent fill growing, a Cancel pill beside it cancels there, and a "Sleep in 0:25" tag shows on its tab and header, then "Going to sleep…" and "Asleep" or "Off". A PC on an older OmniControl shows the pills as before. "Cancel power countdown" is a new action (never blocked).
 - New: each microphone on the Mixer tab has the same Method menu as the master: Automatic, Cable bus (needs VB-CABLE) or Equalizer APO on that microphone (no cable, no delay; its chain is written into Equalizer APO's config for that device only), with the same box colours, line under it and "Equalizer APO devices…" step. A combined microphone's menu shows Cable bus and says why Equalizer APO can't run it. Restore audio defaults puts microphones back to Automatic.
 - Changed: the line under the master's or a microphone's Method box says "no delay" while Equalizer APO is on that device and working (it said "on the speakers").

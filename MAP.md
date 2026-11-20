@@ -164,6 +164,7 @@ Made by the shell, not modules: `Hotkeys` (master action list, Actions and hotke
 | `Controls/PanelDragReorder`, `ListDragReorder`; `AnchorPicker` | drag reorder in a panel / a ListBox; 3 x 3 place grid |
 | `Pages/FactItem`, `MenuChoiceItem`, `TextItem`, `AnchorItem`, `StateButtonItem`, `SliderItem`, `ChoiceItem`, `ChoiceChipsItem`, `ToggleItem`, `GalleryItem`, `ButtonItem`, `FileItem`, `ScopeItem` | the card kinds |
 | `Pages/EmptyListRow`; `DialogKeys` (`Classes="dialog"`); `EmptyToolTips` | every list that can be empty; Esc closes a window; blank tool tips dropped |
+| `Shared/Services/UndoHistory`; `Controls/EditMenu` | THE undo and redo: named steps, a repeated change of one thing within `Timing.UndoMergeWindow` is one step, at most `Timing.UndoLimit` steps, THE keys (`HandleKey`: Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z); THE "Edit" menu of a menu bar with "Undo <step>" / "Redo <step>" and those keys for its window (a focused text box keeps its own); users: FX window (`FxChainViewModel.Undo.cs`), screenshot overlay |
 | `Shared/Services/SingleWindow<T>`; `Dialogs/DialogService.AskAsync` + `DialogMessage` (`Confirm.Delete`, `RememberKey`) | a window that exists once; every question or confirmation |
 | `ActionOption` (`.Heading`, `.Toggle`, `.Point`, `.Path`, `.Panel`) | an action's settings rows in the action window |
 | `Pages/ProviderChoice` | a group header's preset drop-down from its `IPresetProvider` |
@@ -181,6 +182,7 @@ Made by the shell, not modules: `Hotkeys` (master action list, Actions and hotke
 - **Data store:** a `DataStore` line in `DataStores` (with `Import`/`MachineSpecific`/`NotImported`); the settings class loads and saves only through `AppDataStore`; reload on import via `context.Imports.OnReload`.
 - **Setting slot:** a field in `AppSettings` read and written by the feature through `context.Settings.Slot(s => s.X, (s, v) => s.X = v)` (`ISettingSlot<T>`), never `AppSettings.Current`.
 - **Timing:** a named value in `Features/<X>/Timing.<X>.cs` (`public static partial class Timing`, namespace `OmniControl.App.Shared.Services`, so calls stay `Timing.X`); Core values in `Core/CoreTiming.cs`.
+- **Undo in a window:** its view-model owns an `UndoHistory`, calls `Record(name, undo, redo, mergeKey)` after each change (undo and redo through the same paths as the UI; recording during them is ignored) and `Clear()` when the window closes; the window's `Menu` gets `<c:EditMenu History="{Binding ...}" />`.
 - **Restore defaults:** the page implements `IRestorable` (`Shared/Ui/Restore`), the pill sits at the right of the section title.
 - **Apps scope:** store an `AppScopeSetting?`, make the model with `AppScopes.Group`/`.Card`, ask `AppScopeGate.Allows` before acting.
 

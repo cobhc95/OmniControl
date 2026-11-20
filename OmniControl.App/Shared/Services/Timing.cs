@@ -7,6 +7,12 @@ public static partial class Timing
     /// A program icon cache (<c>ProcessIcons</c>: the Mixer's, Network by app's) keeps the icons of at most this many programs (the ones asked for last).
     public const int ProcessIconCacheMax = 64;
 
+    /// A window's undo history (<c>UndoHistory</c>) keeps at most this many steps; the oldest go first.
+    public const int UndoLimit = 100;
+
+    /// Changes of the same thing (a knob drag, typing a value) this close together are one undo step.
+    public static readonly TimeSpan UndoMergeWindow = TimeSpan.FromSeconds(1);
+
     /// How long a pause ends the letters typed to jump to an entry of an open drop-down list.
     public static readonly TimeSpan TypeAheadReset = TimeSpan.FromSeconds(1);
 
