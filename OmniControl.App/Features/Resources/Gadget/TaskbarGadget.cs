@@ -45,6 +45,7 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
     private readonly GadgetLayouts _layouts;
     private readonly HoldCount _preview = new();
     private GadgetWindow? _window;
+    private GadgetClicks? _clicks;
     private TaskbarPlace? _placed;
 
     /// <param name="layouts">The layouts the right-click menu lists and applies.</param>
@@ -132,8 +133,10 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
         else if (_window is null && !_disposed && TaskbarSpot.Exists)
         {
             var window = _window = new GadgetWindow(MenuRows);
-            window.Clicked += () => Run(Look.ClickAction);
-            window.DoubleClicked += () => Run(Look.DoubleClickAction);
+            var clicks = _clicks = new GadgetClicks(() => Look, () => window.DoubleClickTime, Run);
+            window.Pressed += clicks.Pressed;
+            window.Clicked += clicks.Released;
+            window.DoubleClicked += clicks.DoubleClicked;
             // A child window is destroyed with the taskbar when Explorer restarts; TaskbarCreated then opens a new one through Place.
             window.Closed += (_, _) =>
             {
@@ -155,7 +158,11 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
         Forget();
     }
 
-    private void Forget() => (_window, _placed, _hidden) = (null, null, false);
+    private void Forget()
+    {
+        _clicks?.Dispose();
+        (_window, _clicks, _placed, _hidden) = (null, null, null, false);
+    }
 
     private void Run(string actionId)
     {

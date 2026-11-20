@@ -5,7 +5,7 @@
         x:Class="OmniControl.App.Features.Resources.Gadget.GadgetWindow"
         Classes="taskbargadget" Title="OmniControl gadget" ShowActivated="False">
     <!-- The taskbar gadget: its cells, the dashed edge on hover when "Outline on hover" is on, and the right-click menu (mouse first). -->
-    <Panel x:Name="Root" Classes="gadgethit" PointerEntered="OnPointerEntered" PointerExited="OnPointerExited" Tapped="OnTapped" DoubleTapped="OnDoubleTapped"
+    <Panel x:Name="Root" Classes="gadgethit" PointerEntered="OnPointerEntered" PointerExited="OnPointerExited" PointerPressed="OnPointerPressed" Tapped="OnTapped" DoubleTapped="OnDoubleTapped"
            ContextRequested="OnContextRequested">
         <FlyoutBase.AttachedFlyout>
             <c:ListMenuFlyout Placement="Top">
