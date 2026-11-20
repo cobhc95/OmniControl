@@ -67,17 +67,20 @@ public sealed partial class VolumePageViewModel
         row.RouteText = RouteTextOf(row);
         row.FxRuns = FxSlot.AnyRuns(row.FxOn, _mixer.FxChain(row.ChainKey));
         var method = EffectsRules.ChipMethodOf(MethodFactsOf(row, row.FxRuns));
-        // only the master's chip says how Equalizer APO stands on its speakers (green only while it is on them and Windows loads it)
-        var stand = row is MixerItem { IsMaster: true } && method == RunMethod.Apo ? _engine.MasterFacts.ApoStand : ApoStand.Running;
+        // the master's and a microphone's chip say how Equalizer APO stands on their device (green only while it is on it and Windows loads it)
+        var stand = method != RunMethod.Apo ? ApoStand.Running
+            : row is MixerItem { IsMaster: true } ? _engine.MasterFacts.ApoStand
+            : row is InputItem ? _engine.MicFactsOf(row.Key).ApoStand
+            : ApoStand.Running;
         row.Method = MethodChip.Of(method, stand);
-        row.Fact = EffectsRules.ApoStandFact(stand) ?? status.Fact(method);
+        row.Fact = EffectsRules.ApoStandFact(stand, row is InputItem ? "microphone" : "speaker") ?? status.Fact(method);
         switch (row)
         {
             case MixerItem { IsMaster: true } master:
                 var targets = MasterTargets();
                 master.VolumeTipText = targets.Count > 1 && (_mixer.MasterDeviceId ?? _mixer.DefaultDeviceId) is { } volumeDevice
                     ? $"Volume of {NameOf(volumeDevice)}; the other devices keep their own level" : "Volume";
-                var fix = MasterApoFix();
+                var fix = ApoFixFor(_engine.MasterFacts);
                 master.PlaysOn?.Gate.Sync(OutputsGateOf(master));
                 master.RouteChoice?.Sync(_mixer.MasterMethod, r => EffectsRules.MasterOfferOf(r, _engine.MasterFacts, _engine.MasterMethod), fix);
                 master.RouteChoice?.SyncSteps(SetupSteps());
@@ -101,6 +104,17 @@ public sealed partial class VolumePageViewModel
                     && program.RouteChoice is { RecordingAvailable: true } choice
                     ? choice.UseRecording : null;
                 break;
+            case InputItem input:
+                var micFacts = _engine.MicFactsOf(input.Key);
+                var micMethod = _engine.MicMethodOf(input.Key);
+                input.RouteChoice?.Sync(_mixer.MicMethodOf(input.Key), r => EffectsRules.MicOfferOf(r, micFacts, micMethod), ApoFixFor(micFacts));
+                input.RouteChoice?.SyncSteps(SetupSteps());
+                break;
+            case ComboItem { RouteChoice: { } combined }:
+                var cables = _engine.CablesFor(row.Key);
+                combined.Sync(EffectsRules.MicCable, r => EffectsRules.MicOfferOf(r, EffectsRules.CombinedMicFacts(cables), RunMethod.Cable),
+                    cables.Pairs == 0 && cables.NoCable == StatusKind.NeedsCable ? CableSetupAction() : null);
+                break;
         }
     }
 
@@ -110,7 +124,7 @@ public sealed partial class VolumePageViewModel
         MixerItem { IsMaster: true } => new(RowKind.Master, runs, _engine.MethodOf(null), _engine.MasterMethod),
         MixerItem program => new(RowKind.Program, runs, _engine.MethodOf(program.Key), _engine.MasterMethod,
             FollowsMaster: _mixer.PlaysOnOf(program.Key).Count == 0, Route: _mixer.FxRouteOf(program.Key), CableFree: _engine.CablesFor(program.Key).Free),
-        InputItem input => new(RowKind.Microphone, runs, _engine.MethodOf(input.Key), _engine.MasterMethod),
+        InputItem input => new(RowKind.Microphone, runs, _engine.MethodOf(input.Key), _engine.MasterMethod, Own: _engine.MicMethodOf(input.Key)),
         _ => new(RowKind.Combined, runs, _engine.MethodOf(row.Key), _engine.MasterMethod),
     };
 

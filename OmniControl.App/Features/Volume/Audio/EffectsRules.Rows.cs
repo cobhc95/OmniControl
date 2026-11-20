@@ -10,8 +10,9 @@ public enum RowKind { Master, Program, Microphone, Combined }
 /// <param name="FollowsMaster">A program that plays where the master plays (its own "plays on" list is empty).</param>
 /// <param name="Route">A program's chosen method.</param>
 /// <param name="CableFree">A cable pair is free for this program now (Automatic then takes it).</param>
+/// <param name="Own">How a microphone runs (<see cref="Engine.EffectsEngine.MicMethodOf"/>).</param>
 public sealed record RowMethodFacts(RowKind Kind, bool Runs, RunMethod Running, RunMethod Master, bool FollowsMaster = false,
-    EffectsRoute? Route = null, bool CableFree = false);
+    EffectsRoute? Route = null, bool CableFree = false, RunMethod Own = RunMethod.Cable);
 
 /// The one home of a Mixer row's Method chip and the short fact under it: which method the row's
 /// sound really goes through (what runs now, else what will run when it plays), its words, and the fact ("70 ms", "no delay", "on the
@@ -20,7 +21,7 @@ public static partial class EffectsRules
 {
     /// The chip's method: what the engine runs now; otherwise the master on the cable bus or in Equalizer APO; a program without effects
     /// passes through the cable bus when it follows a master on it, else plays direct; a program with effects takes its chosen method
-    /// (Automatic: a free cable, else recording); a microphone's effects run on its cable; a combined device always uses its cable.
+    /// (Automatic: a free cable, else recording); a microphone's chip is its method, as the master's; a combined device always uses its cable.
     public static RunMethod ChipMethodOf(RowMethodFacts f)
     {
         if (f.Running != RunMethod.None) return f.Running;
@@ -30,7 +31,7 @@ public static partial class EffectsRules
             RowKind.Master => f.Master == RunMethod.Bus ? RunMethod.Bus : RunMethod.Apo,
             RowKind.Program when !f.Runs => f.Master == RunMethod.Bus && f.FollowsMaster ? RunMethod.Bus : RunMethod.None,
             RowKind.Program => ProgramRouteMethod(f.Route ?? RouteAutomatic, f.CableFree),
-            RowKind.Microphone => !f.Runs ? RunMethod.None : RunMethod.Cable,
+            RowKind.Microphone => f.Own,
             _ => RunMethod.Cable,
         };
     }
@@ -58,19 +59,16 @@ public static partial class EffectsRules
     /// The fact of a row whose effects are off while its sound still goes through a cable.
     public const string NoEffects = "no effects";
 
-    /// The fact of the master in Equalizer APO with no effects (<see cref="StatusKind.Direct"/>).
-    public const string OnTheSpeakers = "on the speakers";
-
-    /// The short fact under the chip: the delay while the effects run ("70 ms"), "no delay" for Equalizer APO and for sound nothing
-    /// processes, "ready", "on the speakers"; any other state in the row's own short words (<paramref name="brief"/>: "Starts when it
-    /// plays", "No free cable"...).
+    /// The short fact under the chip: the delay while the effects run ("70 ms"), "no delay" for Equalizer APO working on its device
+    /// (with or without effects) and for sound nothing processes, "ready"; any other state in the row's own short words
+    /// (<paramref name="brief"/>: "Starts when it plays", "No free cable"...).
     /// <param name="kind">The status's fact (a running state with no other fact counts as <see cref="StatusKind.Running"/>).</param>
     public static string FactOf(StatusKind kind, RunMethod chip, int? delayMs, string brief) => kind switch
     {
         StatusKind.Running => delayMs is { } d ? $"{d}{DelayUnit}" : chip == RunMethod.Apo ? NoDelay : Brief(StatusKind.Running),
         StatusKind.Ready => Brief(StatusKind.Ready),
-        StatusKind.Direct => OnTheSpeakers,
-        StatusKind.Other when brief.Length == 0 => chip == RunMethod.None ? NoDelay : NoEffects,
+        StatusKind.Direct => NoDelay,
+        StatusKind.Other when brief.Length == 0 => chip is RunMethod.None or RunMethod.Apo ? NoDelay : NoEffects,
         _ => brief,
     };
 }

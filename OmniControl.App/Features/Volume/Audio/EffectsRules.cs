@@ -41,8 +41,8 @@ public static partial class EffectsRules
     /// A recorded program that is open but silent: its original is already turned down and the recording waits, so the effects apply from its first sound.
     public const string EffectsReady = "Effects ready for when it plays";
 
-    /// How a row runs when its chain is in Equalizer APO: the master on the speakers (method Equalizer APO).
-    public static ModeMethod ApoOnSpeakers { get; } = new("in Windows (Equalizer APO)", "no extra delay", FxEngines.Apo);
+    /// How a row runs when its chain is in Equalizer APO on its own device: the master on the speakers, a microphone on itself.
+    public static ModeMethod ApoOnDevice { get; } = new("in Windows (Equalizer APO)", "no extra delay", FxEngines.Apo);
 
     /// A program on a cable with Equalizer APO on it (<see cref="RouteApoCable"/>): Equalizer APO runs the chain, the cable adds its own short delay.
     public static ModeMethod ApoOnCable { get; } = new("in Equalizer APO on its cable", "a cable's short delay", FxEngines.Apo);
@@ -96,9 +96,10 @@ public static partial class EffectsRules
 
     /// Where Equalizer APO stands on the master's speakers, in one sentence (the master's Method menu, its Equalizer APO card): installed or
     /// not, on the speakers or not, and why Windows doesn't run it there when the registry says so. Whether it really started is not checked.
-    public static string ApoNowOn(ApoState apo, ApoEndpoint? speakers)
+    /// <param name="unnamed">The device's words when Windows keeps no connector name for it.</param>
+    public static string ApoNowOn(ApoState apo, ApoEndpoint? speakers, string unnamed = "the master's speakers")
     {
-        var name = speakers?.Name is { Length: > 0 } connector ? connector : "the master's speakers";
+        var name = speakers?.Name is { Length: > 0 } connector ? connector : unnamed;
         if (speakers is { Attachable: false }) return $"Equalizer APO can't run on {name}: Windows gives remote devices no effect slots.";
         return ApoStandOn(apo, speakers) switch
         {
@@ -122,9 +123,9 @@ public static partial class EffectsRules
 
     /// The Equalizer APO card's facts in the master's Method menu ("✓ On Speakers", "✕ Not on Speakers") and the small label after its
     /// name ("installed separately": it is its own program).
-    public static (string Facts, string Label) ApoCardOf(ApoState apo, ApoEndpoint? speakers)
+    public static (string Facts, string Label) ApoCardOf(ApoState apo, ApoEndpoint? speakers, string unnamed = "these speakers")
     {
-        var name = speakers?.Name is { Length: > 0 } connector ? connector : "these speakers";
+        var name = speakers?.Name is { Length: > 0 } connector ? connector : unnamed;
         return (ApoStandOn(apo, speakers) switch
         {
             ApoStand.NotInstalled => "Not installed",
@@ -134,11 +135,11 @@ public static partial class EffectsRules
         }, apo.UpstreamInstalled ? "installed separately" : string.Empty);
     }
 
-    /// The fact under the master's chip while it is set to Equalizer APO and that does not run (null = the engine's own fact).
-    public static string? ApoStandFact(ApoStand stand) => stand switch
+    /// The fact under the master's or a microphone's chip while it is set to Equalizer APO and that does not run (null = the engine's own fact).
+    public static string? ApoStandFact(ApoStand stand, string device = "speaker") => stand switch
     {
         ApoStand.NotRunning => "sound plays without effects",
-        ApoStand.NotOn or ApoStand.NotInstalled => "not on this speaker yet",
+        ApoStand.NotOn or ApoStand.NotInstalled => $"not on this {device} yet",
         _ => null,
     };
 

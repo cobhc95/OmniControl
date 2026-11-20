@@ -18,6 +18,7 @@ public interface IAudioDefaultsMixer
     void SetPlaysOn(string key, IEnumerable<string> targets);
     void SetMasterPlaysOn(IEnumerable<string> targets);
     void SetMasterMethod(EffectsRoute route);
+    void SetMicMethod(string key, EffectsRoute route);
     void SetCables(IEnumerable<string> forbidden);
     void SetMarkedCables(IEnumerable<CableMark> marks);
     void Save();
@@ -50,6 +51,7 @@ public sealed class MixerDefaultsStore : IAudioDefaultsMixer
     public void SetPlaysOn(string key, IEnumerable<string> targets) => _mixer.SetPlaysOn(key, targets);
     public void SetMasterPlaysOn(IEnumerable<string> targets) => _mixer.SetMasterPlaysOn(targets);
     public void SetMasterMethod(EffectsRoute route) => _mixer.SetMasterMethod(route);
+    public void SetMicMethod(string key, EffectsRoute route) => _mixer.SetMicMethod(key, route);
     public void SetCables(IEnumerable<string> forbidden) => _mixer.SetCables(forbidden);
     public void SetMarkedCables(IEnumerable<CableMark> marks) => _mixer.SetMarkedCables(marks);
     public void Save() => _mixer.Save();
@@ -93,7 +95,7 @@ public static class AudioDefaults
             app.PlaysOn = new();
             app.Added = false;
         }
-        foreach (var input in target.Inputs) (input.FxOn, input.FxUserOff, input.Fx) = (false, false, new());
+        foreach (var input in target.Inputs) (input.FxOn, input.FxUserOff, input.Fx, input.Method) = (false, false, new(), EffectsRules.MicAutomatic.Id);
         return target;
     }
 
@@ -144,7 +146,11 @@ public static class AudioDefaults
             if (have.Added != app.Added) mixer.SetAdded(app.Key, app.Added);
         }
         foreach (var input in target.Inputs)
-            if (now.Inputs.Any(i => i.Id == input.Id)) SyncChain(mixer, MixerService.InputPrefix + input.Id, input.Fx, input.FxOn, input.FxUserOff);
+            if (now.Inputs.FirstOrDefault(i => i.Id == input.Id) is { } have)
+            {
+                SyncChain(mixer, MixerService.InputPrefix + input.Id, input.Fx, input.FxOn, input.FxUserOff);
+                if (EffectsRules.MicRouteOf(have.Method) != EffectsRules.MicRouteOf(input.Method)) mixer.SetMicMethod(MixerService.InputPrefix + input.Id, EffectsRules.MicRouteOf(input.Method));
+            }
         foreach (var combined in target.Combined)
             if (now.Combined.Any(c => c.Key == combined.Key)) SyncChain(mixer, combined.Key, combined.Fx, combined.FxOn, combined.FxUserOff);
 
@@ -197,7 +203,7 @@ public static class AudioDefaults
         s.ForbiddenCables,
         Marked = Json(s.MarkedCables),
         Apps = s.Apps.Select(a => new { a.Key, a.FxOn, a.FxUserOff, Chain = Json(a.Fx), Route = EffectsRules.RouteOf(a.FxRoute).Id, a.PlaysOn, a.Added }),
-        Inputs = s.Inputs.Select(i => new { i.Id, i.FxOn, i.FxUserOff, Chain = Json(i.Fx) }),
+        Inputs = s.Inputs.Select(i => new { i.Id, i.FxOn, i.FxUserOff, Chain = Json(i.Fx), Method = EffectsRules.MicRouteOf(i.Method).Id }),
         Combined = Json(s.Combined),
     });
 

@@ -48,6 +48,17 @@ public sealed partial class MixerService
         Changed();
     }
 
+    /// How a microphone's effects run (<see cref="EffectsRules.MicRoutes"/>); <paramref name="key"/> = its input key.
+    public EffectsRoute MicMethodOf(string key) => EffectsRules.MicRouteOf(InputEntry(key).Method);
+
+    public void SetMicMethod(string key, EffectsRoute route)
+    {
+        var entry = InputEntry(key);
+        if (entry.Method == route.Id) return;
+        entry.Method = route.Id;
+        Changed();
+    }
+
     /// The master's chosen devices (several, or a combined device); empty = one real device alone (<see cref="MasterDeviceId"/>).
     public IReadOnlyList<string> MasterPlaysOn => Settings.MasterPlaysOn;
 

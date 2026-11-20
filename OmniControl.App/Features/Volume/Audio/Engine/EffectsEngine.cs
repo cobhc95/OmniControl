@@ -43,6 +43,7 @@ public sealed class EffectsEngine : IDisposable
     private string? _masterApoDevice;
     private MasterFacts _masterFacts = MasterFacts.Unknown;
     private RunMethod _masterMethod = RunMethod.Apo;
+    private IReadOnlyDictionary<string, (MasterFacts Facts, RunMethod Method)> _mics = new Dictionary<string, (MasterFacts, RunMethod)>();
     private CableUse _cableUses;
     private string? _apoCableWhy = EffectsRules.NeedsSecondCable;
     private bool _disposed;
@@ -119,15 +120,22 @@ public sealed class EffectsEngine : IDisposable
     /// How the master runs now: <see cref="RunMethod.Bus"/> or <see cref="RunMethod.Apo"/>.
     public RunMethod MasterMethod => _masterMethod;
 
+    /// What a microphone's method depends on now (its Method pop-down), from the last plan; key = its input key.
+    public MasterFacts MicFactsOf(string key) => _mics.TryGetValue(key, out var mic) ? mic.Facts : MasterFacts.Unknown;
+
+    /// How a microphone runs now: <see cref="RunMethod.Cable"/> or <see cref="RunMethod.Apo"/>.
+    public RunMethod MicMethodOf(string key) => _mics.TryGetValue(key, out var mic) ? mic.Method : RunMethod.Cable;
+
     /// What the cables are used for now besides the master bus.
     public CableUse CableUses => _cableUses;
 
-    /// How the row's effects run, as the FX window and the tooltips name it: through a cable, except the master in Equalizer APO and a
+    /// How the row's effects run, as the FX window and the tooltips name it: through a cable, except the master or a microphone in Equalizer APO and a
     /// program on a cable with Equalizer APO on it. Key null = the master.
     public ModeMethod MethodFor(string? key)
     {
         if (key is null || key == MixerService.MasterKey)
-            return _masterMethod == RunMethod.Apo ? EffectsRules.ApoOnSpeakers : EffectsRules.MethodFor(key);
+            return _masterMethod == RunMethod.Apo ? EffectsRules.ApoOnDevice : EffectsRules.MethodFor(key);
+        if (MixerService.IsInput(key) && MicMethodOf(key) == RunMethod.Apo) return EffectsRules.ApoOnDevice;
         return _runs.GetValueOrDefault(key)?.Spec.Kind == RunKind.ApoCable ? EffectsRules.ApoOnCable : EffectsRules.MethodFor(key);
     }
 
@@ -254,9 +262,11 @@ public sealed class EffectsEngine : IDisposable
         _bus = plan.Bus;
         _masterFacts = plan.Master;
         _masterMethod = plan.MasterMethod;
+        var micsChanged = !_mics.OrderBy(m => m.Key).SequenceEqual(plan.Mics.OrderBy(m => m.Key));
+        _mics = plan.Mics;
         _cableUses = plan.CableUses;
         _apoCableWhy = plan.ApoCableWhy;
-        var offerChanged = offered != (_cables, _masterFacts, _masterMethod, _cableUses, _apoCableWhy) || !inUse.SetEquals(_cablesInUse);
+        var offerChanged = offered != (_cables, _masterFacts, _masterMethod, _cableUses, _apoCableWhy) || !inUse.SetEquals(_cablesInUse) || micsChanged;
         RememberCables(plan.NewCables);
         foreach (var (key, device) in plan.Direct) _mixer.SetDirectRoute(key, device);
 

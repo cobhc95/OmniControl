@@ -1,4 +1,4 @@
-﻿namespace OmniControl.App.Features.Volume.Audio.Engine;
+namespace OmniControl.App.Features.Volume.Audio.Engine;
 
 /// The kinds of engine runs (what <see cref="EffectsEngine"/> starts for a row).
 internal enum RunKind
@@ -75,13 +75,16 @@ internal sealed class RoutePlan
     public Dictionary<string, string> ComboCables { get; } = new();
 
     /// The rows whose chain goes to Equalizer APO, each limited to its own device: the master (<see cref="MixerService.MasterKey"/>) when
-    /// it has effects to run and its method is Equalizer APO, and each program run on a cable with Equalizer APO on it
+    /// it has effects to run and its method is Equalizer APO, each microphone with effects whose method is Equalizer APO, and each program run on a cable with Equalizer APO on it
     /// (<see cref="RunKind.ApoCable"/>, written for that run's cable).
     public List<string> ToApo { get; } = new();
 
     /// What the master's method depends on (its Method pop-down reads it), and how the master runs (<see cref="RunMethod.Bus"/> or <see cref="RunMethod.Apo"/>).
     public MasterFacts Master { get; set; } = MasterFacts.Unknown;
     public RunMethod MasterMethod { get; set; }
+
+    /// Each plugged-in microphone's facts and how it runs (<see cref="RunMethod.Cable"/> or <see cref="RunMethod.Apo"/>), by its input key.
+    public Dictionary<string, (MasterFacts Facts, RunMethod Method)> Mics { get; } = new();
 
     /// The real speakers the master's Equalizer APO chain is written for (null = none plugged in).
     public string? MasterApoDevice { get; set; }
@@ -130,7 +133,14 @@ internal static class RoutePlanner
         var onBus = plan.MasterMethod == RunMethod.Bus;
         var busCable = onBus && !p.BusGivenUp ? cables.TakeAny() : null;
 
-        var mics = PluggedInMics(p).ToList();
+        foreach (var input in p.Settings.Inputs.Where(i => p.Recording.Any(d => d.Id == i.Id)))
+        {
+            var facts = MicFactsOf(p, cables, input);
+            plan.Mics[MixerService.InputPrefix + input.Id] = (facts, EffectsRules.MicMethodOf(EffectsRules.MicRouteOf(input.Method), facts));
+        }
+        // A microphone in Equalizer APO takes no cable: its chain goes to Equalizer APO on the microphone itself.
+        var mics = PluggedInMics(p).Where(i => plan.Mics[MixerService.InputPrefix + i.Id].Method == RunMethod.Cable).ToList();
+        plan.ToApo.AddRange(PluggedInMics(p).Select(i => MixerService.InputPrefix + i.Id).Where(k => plan.Mics[k].Method == RunMethod.Apo));
         TakeRememberedCables(plan, p.Settings.Combined, cables);
         var micCables = mics.Where(i => cables.TakeRemembered(i.Cable)).ToDictionary(i => i.Id, i => i.Cable);
         TakeNewCables(plan, p.Settings.Combined, cables);
@@ -180,6 +190,21 @@ internal static class RoutePlanner
             ApoNow = EffectsRules.ApoNowOn(apo, speakers),
             ApoStand = EffectsRules.ApoStandOn(apo, speakers),
             ApoCard = EffectsRules.ApoCardOf(apo, speakers),
+        };
+    }
+
+    /// What decides a microphone's method, as for the master: the cables allowed and whether Equalizer APO runs on the microphone (or would once installed).
+    private static MasterFacts MicFactsOf(PlanInput p, CableBox cables, InputFxEntry input)
+    {
+        var apo = p.Support.Apo;
+        var mic = apo.MicrophoneOf(input.Id);
+        const string Unnamed = "this microphone";
+        var why = EffectsRules.InstallFixes(apo, mic) ? null : EffectsRules.ApoMissingOn(apo, mic);
+        return new MasterFacts(cables.Pairs, EffectsRules.NoCableKind(p.Support), why, false, FxSlot.AnyRuns(input.FxOn, input.Fx))
+        {
+            ApoNow = EffectsRules.ApoNowOn(apo, mic, Unnamed),
+            ApoStand = EffectsRules.ApoStandOn(apo, mic),
+            ApoCard = EffectsRules.ApoCardOf(apo, mic, Unnamed),
         };
     }
 

@@ -38,6 +38,14 @@ public sealed partial class RouteChoice : ObservableObject
             UseApo = new CardAction(EffectsRules.UseApoLabel, EffectsRules.UseApoTip, new RelayCommand(() => chosen(EffectsRules.MasterApo))),
         };
 
+    /// A microphone's method: its cable or Equalizer APO on the microphone.
+    public static RouteChoice ForMicrophone(Action<EffectsRoute> chosen, Action refresh) =>
+        new("How the effects run", "How this microphone's effects run.", EffectsRules.MicRoutes, chosen) { Refresh = refresh };
+
+    /// A combined microphone's method: only its cable runs it (Equalizer APO is shown greyed with the reason), so there is nothing to store.
+    public static RouteChoice ForCombinedMicrophone(Action refresh) =>
+        new("How the effects run", "How this combined microphone's effects run.", EffectsRules.CombinedMicRoutes, _ => refresh()) { Refresh = refresh };
+
     public string Title { get; }
 
     /// Asks the page to read the cables and the engine again; called as the pop-down opens, so it never shows a stale state.

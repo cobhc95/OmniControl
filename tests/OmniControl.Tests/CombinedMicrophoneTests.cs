@@ -30,6 +30,35 @@ public class CombinedMicrophoneTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void Microphone_SetToEqualizerApo_TakesNoCable_AndGoesToEqualizerApo()
+    {
+        var s = OwnerPc.Settings();
+        s.MasterMethod = EffectsRules.MasterApo.Id;
+        var mic = new InputFxEntry { Id = OwnerPc.MicArray, FxOn = true, Fx = { EasyEq.Write(new List<FxSlot>(), new[] { 6, 0, 0, 0, 0 }) } };
+        s.Inputs.Add(mic);
+        var key = MixerService.InputPrefix + OwnerPc.MicArray;
+
+        var onCable = Plan(s, None);
+        Assert.Equal(RunKind.Mic, onCable.Runs[key].Kind); // Automatic with a cable allowed: its cable
+        Assert.Equal(RunMethod.Cable, onCable.Mics[key].Method);
+
+        mic.Method = EffectsRules.MicApo.Id;
+        var inApo = Plan(s, None);
+        Assert.False(inApo.Runs.ContainsKey(key));
+        Assert.Contains(key, inApo.ToApo);
+        Assert.Equal(RunMethod.Apo, inApo.Mics[key].Method);
+        Assert.DoesNotContain(OwnerPc.CableInput, inApo.CablesInUse);
+    }
+
+    [Fact]
+    public void CombinedMicrophone_OffersOnlyItsCable()
+    {
+        var facts = EffectsRules.CombinedMicFacts(new CableOffer(1, true, false, StatusKind.Other));
+        Assert.True(EffectsRules.MicOfferOf(EffectsRules.MicCable, facts, RunMethod.Cable).Available);
+        Assert.False(EffectsRules.MicOfferOf(EffectsRules.MicApo, facts, RunMethod.Cable).Available);
+    }
+
+    [Fact]
     public void CombinedMicrophone_WithTheMasterInApo_RunsIntoCableInputWithBothMics_ProgramsUnchanged()
     {
         var (s, mic) = WithCombinedMic(masterApo: true);

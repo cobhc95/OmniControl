@@ -45,13 +45,13 @@ public class VolumeConstructionTests
         microphone.Method = MethodChip.Of(EffectsRules.ChipMethodOf(new RowMethodFacts(RowKind.Microphone, false, RunMethod.None, RunMethod.Apo)));
 
         Assert.Equal("Equalizer APO", master.Method.Label);
-        Assert.Equal(EffectsRules.NoEffects, master.FactLine);
+        Assert.Equal(EffectsRules.NoDelay, master.FactLine); // Equalizer APO with nothing wrong: no delay
         Assert.StartsWith("Effects off", master.EngineLine);
         Assert.False(master.RouteChoice.HasSteps);
         Assert.False(master.FxRuns);
         Assert.Equal(2, opened);
         Assert.True(combineSpeakers.IsAvailable && combineMicrophones.IsAvailable);
-        Assert.Equal("Direct", microphone.Method.Label);
+        Assert.Equal("Cable", microphone.Method.Label); // its method, as the master's chip, also with no effects
         Assert.True(microphone.PlaysOnIsFixed);
     }
 }

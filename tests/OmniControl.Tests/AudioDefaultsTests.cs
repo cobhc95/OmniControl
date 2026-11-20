@@ -73,6 +73,7 @@ public class AudioDefaultsTests
             Note("method");
             Settings.MasterMethod = route.Id;
         }
+        public void SetMicMethod(string key, EffectsRoute route) { Note($"micmethod:{key}"); Settings.Inputs.First(i => i.Id == MixerService.InputIdOf(key)).Method = route.Id; }
         public void SetCables(IEnumerable<string> forbidden)
         {
             var off = forbidden.ToList();

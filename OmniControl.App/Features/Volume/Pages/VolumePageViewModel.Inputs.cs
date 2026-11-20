@@ -59,6 +59,7 @@ public sealed partial class VolumePageViewModel
             MuteChanged = m => { _actions.NoteInputChange(); CoreAudio.SetDeviceMute(id, m); },
             FxToggled = on => _mixer.SetFxByUser(key, on),
             FxWindowToggled = () => _toggleFx(key),
+            RouteChoice = RouteChoice.ForMicrophone(route => { _mixer.SetMicMethod(key, route); SyncRow(row!); }, () => SyncRow(row!)),
         };
     }
 
@@ -94,6 +95,7 @@ public sealed partial class VolumePageViewModel
             FxWindowToggled = () => _toggleFx(key),
             WiringRequested = () => ShowWiring(key),
             Forget = () => _ = ForgetComboAsync(key),
+            RouteChoice = device.Kind == CombinedKind.Microphones ? RouteChoice.ForCombinedMicrophone(() => SyncRow(row!)) : null,
         };
         return row;
     }
