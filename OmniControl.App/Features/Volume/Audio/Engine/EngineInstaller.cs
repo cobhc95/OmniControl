@@ -140,7 +140,7 @@ public sealed class EngineInstaller : IDisposable
     {
         ApoOutcome.Done => new SetupResult(done),
         ApoOutcome.NotStarted => Fail($"Equalizer APO is on {device}, but its check failed: it didn't start there in any install mode tried.",
-            $"OmniControl.exe {arguments}: no answer from Equalizer APO on {device} after the audio restart. Untick the device under Choose devices to give it its own effects back, or try its troubleshooting options."),
+            $"OmniControl.exe {arguments}: no answer from Equalizer APO on {device} after the audio restart.{(ApoSetup.LastResult() is { } why ? $" {why}" : string.Empty)} Untick the device under Choose devices to give it its own effects back, or try its troubleshooting options."),
         ApoOutcome.OriginalNotStarted => new SetupResult($"Equalizer APO runs on {device}, but the device's own effects didn't start inside it (troubleshooting: untick Use original APO)."),
         ApoOutcome.NotChecked => new SetupResult($"Equalizer APO is on {device}; it couldn't be checked because the device is disabled or unplugged."),
         ApoOutcome.NothingInstalled => new SetupResult($"Equalizer APO is off {device}: with neither the pre-mix nor the post-mix APO ticked nothing is installed."),

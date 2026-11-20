@@ -200,11 +200,9 @@ public static class ApoSetup
         foreach (var gone in OwnDevices().Where(g => !on.Contains(g))) Reg.DeleteValue(ApoIds.OwnDevicesKey, gone);
         foreach (var device in on)
             Reg.WriteString(ApoIds.OwnDevicesKey, device, result.Checks.GetValueOrDefault(device) ?? (result.RestartFailed is null ? Attached : NeedsRestart));
-        if (result.RestartFailed is { } why)
-        {
-            Fail(why);
-            return ApoOutcome.NeedsRestart;
-        }
+        // What Device Selector would have shown on the way, for "Copy details".
+        if (result.Errors.Append(result.RestartFailed).OfType<string>().ToList() is { Count: > 0 } problems) Fail(string.Join(" ", problems));
+        if (result.RestartFailed is not null) return ApoOutcome.NeedsRestart;
         if (guid is null) return ApoOutcome.Done;
         if (!on.Contains(guid)) return ApoOutcome.NothingInstalled;
         return result.Checks.GetValueOrDefault(guid) switch

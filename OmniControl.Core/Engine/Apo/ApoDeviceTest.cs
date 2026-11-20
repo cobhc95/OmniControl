@@ -9,7 +9,9 @@ namespace OmniControl.Core.Engine.Apo;
 /// <param name="Checks">Each checked device's result (<see cref="ApoSetup.Running"/>, <see cref="ApoSetup.OriginalFailed"/>,
 /// <see cref="ApoSetup.Failed"/>) by its key name; disabled and unplugged devices are not checked, so they are not here.</param>
 /// <param name="RestartFailed">Why Windows audio did not restart (the check then stopped), or null.</param>
-internal sealed record ApoCheckResult(IReadOnlyDictionary<string, string> Checks, string? RestartFailed);
+/// <param name="Errors">What Device Selector would have shown in a message box or its log on the way (a test stream that failed, an
+/// unreadable answer, the pipe), in its own words.</param>
+internal sealed record ApoCheckResult(IReadOnlyDictionary<string, string> Checks, string? RestartFailed, IReadOnlyList<string> Errors);
 
 /// Equalizer APO's Device Selector check, line for line (DeviceTestDialog.cpp, DeviceTestThread.cpp, ReceiveThread.cpp and
 /// DeviceAPOInfo::testAPOInstallation of Equalizer APO 1.4.2, GPL-2.0-or-later, Copyright (C) 2024 Jonas Thedering): Windows audio
@@ -27,7 +29,8 @@ internal static class ApoDeviceTest
             .Where(d => d.Installed && !d.Disabled && !d.Unplugged)
             .ToDictionary(d => d.Guid.ToLowerInvariant(), d => new TestInfo(d));
         var checks = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        if (AudioService.Restart() is { } why) return new ApoCheckResult(checks, why);
+        var errors = new List<string>();
+        if (AudioService.Restart() is { } why) return new ApoCheckResult(checks, why, errors);
 
         var remaining = infos.Keys.ToHashSet();
         while (remaining.Count > 0)
@@ -42,15 +45,23 @@ internal static class ApoDeviceTest
                     info.Remaining.Remove(info.Selected.Mode);
                     info.Current.ChildPre = !info.Selected.OriginalPreMix || info.Device.OriginalPreMix(info.Selected.Mode).Length == 0;
                     info.Current.ChildPost = !info.Selected.OriginalPostMix || info.Device.OriginalPostMix(info.Selected.Mode).Length == 0;
-                    Open(info.Device);
+                    if (Open(info.Device) is { } failed) errors.Add(failed);
                 }
 
                 var until = DateTime.UtcNow.AddMilliseconds(CoreTiming.ApoCheckWaitMs);
                 while (receiver.Next(until) is { } message)
                 {
                     // Device Selector logs a message it can't read, or one from a device it isn't checking, and ends its check there.
-                    if (Parse(message) is not { } parsed || !infos.TryGetValue(parsed.DeviceGuid.ToLowerInvariant(), out var info))
-                        return new ApoCheckResult(checks, null);
+                    if (Parse(message) is not { } parsed)
+                    {
+                        errors.Add($"Unreadable answer from Equalizer APO: {message}");
+                        return new ApoCheckResult(checks, null, errors);
+                    }
+                    if (!infos.TryGetValue(parsed.DeviceGuid.ToLowerInvariant(), out var info))
+                    {
+                        errors.Add($"Received unknown device GUID {parsed.DeviceGuid}.");
+                        return new ApoCheckResult(checks, null, errors);
+                    }
                     var (deviceGuid, stage, phase) = parsed;
                     var result = info.Current;
                     if (stage == "PreMix")
@@ -71,6 +82,12 @@ internal static class ApoDeviceTest
                 }
 
                 if (remaining.Count == 0) continue;
+                // ReceiveThread's failure ends Device Selector's check with a message box.
+                if (receiver.Failure is { } broken)
+                {
+                    errors.Add(broken);
+                    return new ApoCheckResult(checks, null, errors);
+                }
                 foreach (var guid in remaining.ToList())
                 {
                     var info = infos[guid];
@@ -102,14 +119,14 @@ internal static class ApoDeviceTest
                     };
                     info.Device = info.Device.Reinstall(reg, info.Selected, saveBackup);
                 }
-                if (AudioService.Restart() is { } failed) return new ApoCheckResult(checks, failed);
+                if (AudioService.Restart() is { } restartFailed) return new ApoCheckResult(checks, restartFailed, errors);
             }
             finally
             {
                 reg.DeleteValue(ApoIds.UpstreamAppKey, ApoIds.DeviceTestPipeValue);
             }
         }
-        return new ApoCheckResult(checks, null);
+        return new ApoCheckResult(checks, null, errors);
     }
 
     /// The icons Device Selector's check shows for a device it gave up on: any red cross is a failure, a warning sign alone means Equalizer
@@ -169,46 +186,100 @@ internal static class ApoDeviceTest
     }
 
     /// ReceiveThread: one pipe instance after another, no access list (audiodg's restricted token must be able to write; local only, it lives
-    /// a few seconds), each message queued for <see cref="Next"/>.
+    /// a few seconds), each message queued for <see cref="Next"/>. The first instance is made before the APO is told the pipe's name: an
+    /// APO that finds no instance at all gives up at once (WaitNamedPipe fails without waiting), and a worker thread starts later than
+    /// Device Selector's.
     private sealed class Receiver : IDisposable
     {
+        private const int BufferSize = 1024;
         private readonly CancellationTokenSource _stop = new();
         private readonly BlockingCollection<string> _messages = new();
         private readonly Task _loop;
+        private volatile string? _failure;
 
-        public Receiver() => _loop = Task.Run(Loop);
+        public Receiver()
+        {
+            try
+            {
+                var first = NewPipe();
+                _loop = Task.Run(() => Loop(first));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Fail($"Could not create named pipe: {ex.Message}");
+                _loop = Task.CompletedTask;
+            }
+        }
 
-        /// The next message, or null when none came before <paramref name="until"/> (UTC).
+        /// Why receiving stopped (ReceiveThread's caughtException), or null.
+        public string? Failure => _failure;
+
+        /// The next message, or null when none came before <paramref name="until"/> (UTC) or receiving stopped.
         public string? Next(DateTime until)
         {
             var wait = until - DateTime.UtcNow;
             return wait > TimeSpan.Zero && _messages.TryTake(out var message, wait) ? message : null;
         }
 
-        private void Loop()
+        private static NamedPipeServerStream NewPipe()
         {
             var security = new PipeSecurity();
             security.SetSecurityDescriptorSddlForm("D:NO_ACCESS_CONTROL");
-            var buffer = new byte[1024];
-            while (!_stop.IsCancellationRequested)
+            return NamedPipeServerStreamAcl.Create(PipeName, PipeDirection.In, NamedPipeServerStream.MaxAllowedServerInstances,
+                PipeTransmissionMode.Message, PipeOptions.Asynchronous, BufferSize, 0, security);
+        }
+
+        private void Loop(NamedPipeServerStream first)
+        {
+            var buffer = new byte[BufferSize];
+            var pipe = first;
+            var doing = "read from";
+            try
             {
-                using var pipe = NamedPipeServerStreamAcl.Create(PipeName, PipeDirection.In, NamedPipeServerStream.MaxAllowedServerInstances,
-                    PipeTransmissionMode.Message, PipeOptions.Asynchronous, buffer.Length, 0, security);
-                try
+                while (true)
                 {
-                    pipe.WaitForConnectionAsync(_stop.Token).GetAwaiter().GetResult();
-                    var read = pipe.ReadAsync(buffer, _stop.Token).AsTask().GetAwaiter().GetResult();
-                    if (read > 0) _messages.Add(Encoding.UTF8.GetString(buffer, 0, read));
-                }
-                catch (OperationCanceledException)
-                {
-                    return;
-                }
-                catch (IOException)
-                {
-                    // the APO closed its end early; the next one connects to a new instance
+                    using (pipe)
+                    {
+                        if (Connect(pipe))
+                        {
+                            var read = pipe.ReadAsync(buffer, _stop.Token).AsTask().GetAwaiter().GetResult();
+                            if (read == 0) throw new IOException("nothing was written.");
+                            _messages.Add(Encoding.UTF8.GetString(buffer, 0, read));
+                        }
+                    }
+                    doing = "create";
+                    pipe = NewPipe();
+                    doing = "read from";
                 }
             }
+            catch (OperationCanceledException)
+            {
+                // the check is over
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Fail($"Could not {doing} named pipe: {ex.Message}");
+            }
+        }
+
+        /// ConnectNamedPipe; a failed connection is skipped and a new instance made, as Device Selector does.
+        private bool Connect(NamedPipeServerStream pipe)
+        {
+            try
+            {
+                pipe.WaitForConnectionAsync(_stop.Token).GetAwaiter().GetResult();
+                return true;
+            }
+            catch (IOException)
+            {
+                return false;
+            }
+        }
+
+        private void Fail(string why)
+        {
+            _failure = why;
+            _messages.CompleteAdding();
         }
 
         public void Dispose()
@@ -221,20 +292,29 @@ internal static class ApoDeviceTest
     }
 
     /// DeviceAPOInfo::testAPOInstallation: a 100 ms shared stream in the device's mix format makes Windows start its effects; a disabled or
-    /// unplugged device is skipped.
-    private static void Open(DeviceApo device)
+    /// unplugged device is skipped. Null, or the failed call in DeviceAPOInfo::fail's words (Device Selector shows it and goes on; no APO
+    /// starts there, so the device fails the check).
+    private static string? Open(DeviceApo device)
     {
+        var call = "CoCreateInstance for IMMDeviceEnumerator";
         try
         {
             using var devices = new MMDeviceEnumerator();
+            call = "GetDevice";
             using var endpoint = devices.GetDevice((device.Input ? "{0.0.1.00000000}." : "{0.0.0.00000000}.") + device.Guid);
-            if ((endpoint.State & (NAudio.CoreAudioApi.DeviceState.Disabled | NAudio.CoreAudioApi.DeviceState.Unplugged)) != 0) return;
+            call = "GetState";
+            if ((endpoint.State & (NAudio.CoreAudioApi.DeviceState.Disabled | NAudio.CoreAudioApi.DeviceState.Unplugged)) != 0) return null;
+            call = "Activate";
             using var client = endpoint.CreateAudioClient();
-            client.Initialize(AudioClientShareMode.Shared, AudioClientStreamFlags.None, 1_000_000, 0, client.MixFormat, Guid.Empty);
+            call = "GetMixFormat";
+            var format = client.MixFormat;
+            call = "Initialize";
+            client.Initialize(AudioClientShareMode.Shared, AudioClientStreamFlags.None, 1_000_000, 0, format, Guid.Empty);
+            return null;
         }
         catch (Exception ex) when (ex is COMException or ArgumentException or InvalidCastException)
         {
-            // Device Selector shows the failed call in a message box and goes on: no APO starts there, so the device fails the check
+            return $"{call} failed for device \"{device.Name}\" ({ex.Message})";
         }
     }
 }
