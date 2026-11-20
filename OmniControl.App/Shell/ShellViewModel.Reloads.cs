@@ -13,6 +13,7 @@ public sealed partial class ShellViewModel
         Reload(DataStores.Hotkeys, _hotkeys.ReloadFromDisk);
         Reload(DataStores.HotkeySets, _actionsWindow.ReloadShortcutSets);
         Reload(DataStores.RecentActions, () => true); // read from the file every time it is used
+        Reload(DataStores.FavouriteActions, _actionsWindow.ReloadFavourites);
         Reload(DataStores.Tray, () => TrayFlyout.ReloadFromDisk());
         Reload(DataStores.Icons, _icons.ReloadFromDisk);
         Reload(DataStores.Confirmations, _dialogs.Confirmations.Reload);

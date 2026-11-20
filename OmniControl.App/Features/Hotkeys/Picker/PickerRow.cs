@@ -6,8 +6,8 @@ namespace OmniControl.App.Features.Hotkeys.Picker;
 /// What the picker returns: the chosen entry, the values of its settings, and (for an entry that takes text, such as a shortcut) that text; null when the entry takes none. ApplyToAll is true when the "apply to every gesture" switch was left on.
 public sealed record PickResult(PickChoice Choice, IReadOnlyDictionary<string, string> Values, string? Parameter = null, bool ApplyToAll = false);
 
-/// One entry of the sections pane: its name and its icon (a page's own; null where the list has none).
-public sealed record SectionRow(string Name, string? Icon)
+/// One entry of the sections pane: its name and its icon (a page's own; null where the list has none); <paramref name="IsFavourites"/> draws the star.
+public sealed record SectionRow(string Name, string? Icon, bool IsFavourites = false)
 {
     public bool HasIcon => Icon is not null;
 }
@@ -73,6 +73,17 @@ public sealed class PickerRow
     /// The entry is in the panel the picker was opened from (the tray flyout): the row says so in place of "no key".
     public bool InPanel { get; }
 
+    /// The row has a favourite star (an entry of a list of actions); <see cref="IsFavourite"/> fills it.
+    public bool CanStar { get; init; }
+    public bool IsFavourite { get; init; }
+    public string StarTip => StarTipFor(IsFavourite);
+
+    /// The row repeats a starred entry under the Favourites heading at the top of its section.
+    public bool IsCopy { get; init; }
+
+    /// What a favourite star does when clicked.
+    public static string StarTipFor(bool on) => on ? "Remove from favourites" : "Add to favourites";
+
     /// A line for a family: its title, its directions and their keys in <paramref name="summary"/>.
     public PickerRow(string familyKey, string title, IReadOnlyList<PickChoice> members, string? hint, string summary, bool inPanel)
         : this(members[0], title, hint, null, inPanel)
@@ -98,15 +109,16 @@ public sealed class PickerRow
 
     public static PickerRow HeadingOf(string heading) => new(heading);
 
-    // A heading's key: its text behind a mark no entry's spec starts with.
-    private const string HeadingKey = "\u0001heading:";
+    // A heading's key: its text behind a mark no entry's spec starts with; a favourite's copy: its spec behind another such mark.
+    private const string HeadingKey = "\u0001heading:", CopyKey = "\u0001favourite:";
 
-    /// What makes two rows the same line of the list (<see cref="ListDiff"/>): the entry, or a heading's text.
-    public static object KeyOf(PickerRow row) => row.Choice?.Spec ?? HeadingKey + row.Text;
+    /// What makes two rows the same line of the list (<see cref="ListDiff"/>): the entry (or its favourite's copy), or a heading's text.
+    public static object KeyOf(PickerRow row) => row.Choice is { } choice ? (row.IsCopy ? CopyKey : string.Empty) + choice.Spec : HeadingKey + row.Text;
 
     /// True when the two rows draw the same (the shown row is kept as it is).
     public static bool Same(PickerRow shown, PickerRow wanted) =>
         ReferenceEquals(shown.Choice, wanted.Choice) && shown.Text == wanted.Text && shown.Hint == wanted.Hint && shown.Tag == wanted.Tag
+        && shown.CanStar == wanted.CanStar && shown.IsFavourite == wanted.IsFavourite
         && shown.InPanel == wanted.InPanel && shown.ShowsNoKey == wanted.ShowsNoKey && shown._keys.SequenceEqual(wanted._keys)
         && shown.Summary == wanted.Summary && (shown.Members ?? Array.Empty<PickChoice>()).SequenceEqual(wanted.Members ?? Array.Empty<PickChoice>());
 }

@@ -82,6 +82,7 @@ public static class DataStores
     public static readonly DataStore AppActions = new("app-actions.json", "App actions", StoreKind.Saved, Mergeable: true, Import: Places.Automation);
     public static readonly DataStore PowerPlans = new("power-plans.json", "Power plan actions", StoreKind.Saved, Mergeable: true, Import: Places.Automation);
     public static readonly DataStore RecentActions = new("recent-actions.json", "Recent actions", StoreKind.Saved, Mergeable: true, Import: Places.AppSettings);
+    public static readonly DataStore FavouriteActions = new("favourite-actions.json", "Favourite actions", StoreKind.Saved, Mergeable: true, Import: Places.AppSettings);
     public static readonly DataStore Devices = new("devices.json", "Smart devices (never their passwords)", StoreKind.Saved, Mergeable: true, Import: Places.SmartDevices);
     public static readonly DataStore Screenshots = new("screenshots.json", "Screenshot settings", StoreKind.Saved,
         NotImported: new[] { "TurnOffWindowsKeys", "WindowsKeysBackup", "WindowsKeysChangedUtc", "RecordingRoute" },
@@ -111,7 +112,7 @@ public static class DataStores
     public static IReadOnlyList<DataStore> All { get; } = new[]
     {
         App, Mixer, EffectPresets, VolumePresets, Plugins, Automation, GestureRules, Gestures, Hotkeys, HotkeySets, Mouse, Displays, Osd,
-        AppLists, AppActions, PowerPlans, RecentActions, Devices, Screenshots, Tray, Icons, Resources, MicMuteKey, OtherPcs, Confirmations, MixerBeforeRestore, BeforeRestore, EngineJournal, SoftwareDisplay, PointerOriginal,
+        AppLists, AppActions, PowerPlans, RecentActions, FavouriteActions, Devices, Screenshots, Tray, Icons, Resources, MicMuteKey, OtherPcs, Confirmations, MixerBeforeRestore, BeforeRestore, EngineJournal, SoftwareDisplay, PointerOriginal,
         PointerSwapTrial, TrackpadOriginal, WindowsOsdHidden, WakeUndo, PowerJournal,
     };
 

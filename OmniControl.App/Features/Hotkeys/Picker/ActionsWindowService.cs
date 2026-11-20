@@ -28,6 +28,7 @@ public sealed class ActionsWindowService : IDisposable
     private readonly Action<string> _showPage;
     private readonly Func<Avalonia.Visual, HotkeyAction, Task> _changeIcon;
     private readonly SingleWindow<PickerWindow> _window;
+    private readonly FavouriteActions _favourites;
     private PickerModel? _model;
 
     /// <param name="presets">The master list of preset groups: the shortcut sets register in it, so the preset manager lists them.</param>
@@ -44,6 +45,7 @@ public sealed class ActionsWindowService : IDisposable
         HotkeysSwitch = hotkeysSwitch;
         _window = new SingleWindow<PickerWindow>(report, keep: true);
         _sets = new HotkeySets(registry);
+        _favourites = new FavouriteActions(registry);
         var setPresets = new HotkeySetPresets(_sets);
         _setChoice = new ProviderChoice("Shortcut sets", setPresets, () => _openPresets(Title, SetsGroupId));
         presets.Register(new PresetGroup(SetsGroupId, Title, "Shortcut sets", setPresets));
@@ -104,7 +106,7 @@ public sealed class ActionsWindowService : IDisposable
     }
 
     /// The keys part every Choose-the-action window shows, read from the live master list (pick mode gets it from the window).
-    public ManageMode Keys => new(KeysOf, PaneFor, ActionOf, _registry);
+    public ManageMode Keys => new(KeysOf, PaneFor, ActionOf, _registry, _favourites);
 
     private HotkeyAction? ActionOf(PickChoice choice) => MouseActionCatalog.OmniIdOf(choice.Spec) is { } id ? _registry.Find(id) : null;
 
@@ -124,11 +126,15 @@ public sealed class ActionsWindowService : IDisposable
     /// Takes the shortcut sets from disk as they are now (an import wrote them); false when the file holds none.
     public bool ReloadShortcutSets() => _sets.ReloadFromDisk();
 
+    /// Takes the favourite actions from disk as they are now (an import wrote them).
+    public bool ReloadFavourites() => _favourites.ReloadFromDisk();
+
     public void Dispose()
     {
         _registry.BindingsSaved -= OnBindingsSaved;
         _window.Close();
         _setChoice.Dispose();
         _sets.Dispose();
+        _favourites.Dispose();
     }
 }

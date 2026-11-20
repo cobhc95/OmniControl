@@ -5,8 +5,9 @@ namespace OmniControl.App.Features.Hotkeys.Picker;
 
 /// The keys and defaults part of the Choose-the-action window, in both modes: the keys of an entry (null when the entry is not a master
 /// action, so it can have none), the hotkey part of the settings pane for an entry, the master action an entry stands for (whose defaults the
-/// settings pane edits), and the live master list (its saves refresh the keycaps; its hold lets a pressed key reach the window).
-public sealed record ManageMode(Func<PickChoice, IReadOnlyList<string>?> KeysOf, Func<PickChoice, ActionHotkeys?> PaneFor, Func<PickChoice, HotkeyAction?> ActionOf, HotkeyRegistry Registry);
+/// settings pane edits), the live master list (its saves refresh the keycaps; its hold lets a pressed key reach the window) and the favourites.
+public sealed record ManageMode(Func<PickChoice, IReadOnlyList<string>?> KeysOf, Func<PickChoice, ActionHotkeys?> PaneFor, Func<PickChoice, HotkeyAction?> ActionOf, HotkeyRegistry Registry,
+    FavouriteActions Favourites);
 
 /// The manage mode of the picker (<see cref="ManageMode"/>): keycaps on the rows, "Only with a hotkey", search by key, the hotkey pane.
 public sealed partial class PickerModel
@@ -29,6 +30,7 @@ public sealed partial class PickerModel
         OnPropertyChanged(nameof(ShowsKeyFilter));
         OnPropertyChanged(nameof(SearchHint));
         OnPropertyChanged(nameof(SearchTip));
+        ReadFavouritesAgain();
         RefreshKeys();
         SyncSettings();
     }
@@ -47,7 +49,8 @@ public sealed partial class PickerModel
 
     private IReadOnlyList<string>? KeysOf(PickChoice choice) => _manage?.KeysOf(choice);
 
-    private PickerRow Row(PickChoice choice, string? hint) => new(choice, choice.Name, hint, choice.Command is null ? KeysOf(choice) : null, IsInPanel(choice));
+    private PickerRow Row(PickChoice choice, string? hint, bool copy = false) =>
+        new(choice, choice.Name, hint, choice.Command is null ? KeysOf(choice) : null, IsInPanel(choice)) { CanStar = CanStar(choice), IsFavourite = IsFavourite(choice), IsCopy = copy };
 
     private bool PassesKeyFilter(PickChoice choice) =>
         (!OnlyWithKey || !ListsActions || KeysOf(choice) is { Count: > 0 }) && (!OnlyInPanel || IsInPanel(choice));
@@ -79,9 +82,10 @@ public sealed partial class PickerModel
     public void RefreshKeys()
     {
         var keep = ActiveChoice;
+        var copy = ActiveRow?.IsCopy == true;
         _index = null; // the keys are searched too
         var rows = Build();
-        var at = keep is null ? -1 : IndexIn(rows, keep.Spec);
+        var at = keep is null ? -1 : IndexIn(rows, keep.Spec, copy);
         ShowRows(rows, () => at >= 0 ? at : FirstEntry(), sync: at < 0); // the same entry keeps its settings pane (a key may be being typed there)
     }
 
@@ -94,7 +98,7 @@ public sealed partial class PickerModel
         Query = string.Empty;
         var family = _groups[section].Choices.FirstOrDefault(c => c.Spec == spec) is { } entry ? FamilyKeyOf(entry) : null;
         if (family is not null) _memberPicked[family] = spec; // a direction of a family opens its line with that direction shown
-        SectionIndex = section;
+        SectionHighlight = section + FavouritesLead;
         var at = IndexIn(Actions, spec);
         if (at >= 0) ActionIndex = at;
         if (family is not null) SyncSettings();

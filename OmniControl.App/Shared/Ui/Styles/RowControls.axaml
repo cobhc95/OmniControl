@@ -194,6 +194,9 @@
         <Setter Property="Opacity" Value="{DynamicResource PinFaintOpacity}" />
     </Style>
     <Style Selector="ListBoxItem:pointerover Button.pin > Path.glyph, Button.pin:pointerover > Path.glyph, Button.pin:focus-visible > Path.glyph"><Setter Property="Opacity" Value="1" /></Style>
+    <!-- .star (a Path.glyph of Icon.star, the action picker's favourites): in a list row the empty star shows only while its row is hovered or highlighted -->
+    <Style Selector="ListBoxItem Button.pin.star > Path.glyph"><Setter Property="Opacity" Value="0" /></Style>
+    <Style Selector="ListBoxItem:pointerover Button.pin.star > Path.glyph, ListBoxItem:selected Button.pin.star > Path.glyph"><Setter Property="Opacity" Value="1" /></Style>
     <Style Selector="Button.pin.on > Path.glyph">
         <Setter Property="Stroke" Value="{DynamicResource BrushAccent}" />
         <Setter Property="Fill" Value="{DynamicResource BrushAccent}" />

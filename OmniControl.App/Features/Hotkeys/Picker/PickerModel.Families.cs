@@ -39,7 +39,7 @@ public sealed partial class PickerModel
 
     /// One line per entry, and one per family (at the place of its first direction in <paramref name="candidates"/>). With <paramref name="preselect"/>
     /// (a search's matches, Recent) the direction that came first in the list is the one shown.
-    private List<PickerRow> Rows(IEnumerable<PickChoice> candidates, Func<PickChoice, string?> hintOf, bool preselect)
+    private List<PickerRow> Rows(IEnumerable<PickChoice> candidates, Func<PickChoice, string?> hintOf, bool preselect, bool copy = false)
     {
         var rows = new List<PickerRow>();
         var seen = new HashSet<string>();
@@ -50,12 +50,12 @@ public sealed partial class PickerModel
             if (key is not null) families ??= AllFamilies();
             if (key is null || families![key].Count < 2)
             {
-                rows.Add(Row(choice, hintOf(choice)));
+                rows.Add(Row(choice, hintOf(choice), copy));
                 continue;
             }
             if (!seen.Add(key)) continue;
             if (preselect) _memberPicked[key] = choice.Spec;
-            rows.Add(FamilyRow(key, families[key], hintOf(choice)));
+            rows.Add(FamilyRow(key, families[key], hintOf(choice), copy));
         }
         return rows;
     }
@@ -64,8 +64,11 @@ public sealed partial class PickerModel
     private Dictionary<string, List<PickChoice>> AllFamilies() =>
         _groups.SelectMany(g => g.Choices).Where(c => FamilyKeyOf(c) is not null).GroupBy(c => FamilyKeyOf(c)!).ToDictionary(g => g.Key, g => g.ToList());
 
-    private PickerRow FamilyRow(string key, IReadOnlyList<PickChoice> members, string? hint) =>
-        new(key, members[0].Family!.Title, members, hint, SummaryOf(members), members.Any(IsInPanel));
+    private PickerRow FamilyRow(string key, IReadOnlyList<PickChoice> members, string? hint, bool copy) =>
+        new(key, members[0].Family!.Title, members, hint, SummaryOf(members), members.Any(IsInPanel))
+        {
+            CanStar = CanStar(members[0]), IsFavourite = members.Any(IsFavourite), IsCopy = copy,
+        };
 
     private string SummaryOf(IReadOnlyList<PickChoice> members)
     {

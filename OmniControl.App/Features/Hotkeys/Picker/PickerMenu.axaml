@@ -30,6 +30,7 @@
                         <DataTemplate DataType="picker:SectionRow">
                             <StackPanel Orientation="Horizontal" Spacing="10">
                                 <PathIcon Data="{Binding Icon}" Width="16" Height="16" VerticalAlignment="Center" IsVisible="{Binding HasIcon}" />
+                                <PathIcon Data="{StaticResource Icon.star}" Width="16" Height="16" VerticalAlignment="Center" IsVisible="{Binding IsFavourites}" />
                                 <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
                             </StackPanel>
                         </DataTemplate>
@@ -56,7 +57,7 @@
                             <StackPanel Background="Transparent" ToolTip.Tip="{Binding Unavailable}">
                                 <TextBlock Classes="hint small" Text="{Binding Text}" IsVisible="{Binding IsHeading}" Margin="0,4,0,2" />
                                 <!-- A greyed entry (Grid.unavailable) says why under its name and cannot be picked -->
-                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" IsVisible="{Binding !IsHeading}" Classes.unavailable="{Binding !IsAvailable}">
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" IsVisible="{Binding !IsHeading}" Classes.unavailable="{Binding !IsAvailable}">
                                     <!-- The entry's own glyph, else its section's icon -->
                                     <ctl:IconGlyph Source="{Binding Icon}" IsVisible="{Binding HasIcon}" />
                                     <!-- The name takes its room first: the hint and the keycaps follow it on the line, or drop to a second line when it is short of room -->
@@ -84,6 +85,11 @@
                                         </StackPanel>
                                     </WrapPanel>
                                     <Border Grid.Column="2" Classes="tag selected" IsVisible="{Binding InPanel}" VerticalAlignment="Center"><TextBlock Text="In panel ✓" /></Border>
+                                    <!-- The favourite star: filled in the accent when starred, else shown only on the hovered or highlighted row; a click toggles it without picking -->
+                                    <Button Grid.Column="3" Classes="pin star" Classes.on="{Binding IsFavourite}" IsVisible="{Binding CanStar}" Focusable="False"
+                                            ToolTip.Tip="{Binding StarTip}" Click="OnRowStarClick">
+                                        <Path Classes="glyph" Data="{StaticResource Icon.star}" />
+                                    </Button>
                                 </Grid>
                             </StackPanel>
                         </DataTemplate>
@@ -95,7 +101,14 @@
             <Border Grid.Column="2" MinWidth="{DynamicResource PickerSettingsMinWidth}" BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,1,0,0">
                 <Grid RowDefinitions="Auto,*" Margin="0,10,0,0">
                     <Border x:Name="SettingsFocus" Width="1" Height="1" Focusable="True" HorizontalAlignment="Left" Opacity="0" />
-                    <TextBlock Classes="strong" Text="{Binding SettingsTitle}" Margin="14,0,14,6" HorizontalAlignment="Left" TextWrapping="Wrap" />
+                    <!-- The title and the entry's favourite star (Up from the first setting reaches it; Enter or Space toggles) -->
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="14,0,14,6">
+                        <TextBlock Classes="strong" Text="{Binding SettingsTitle}" HorizontalAlignment="Left" VerticalAlignment="Center" TextWrapping="Wrap" />
+                        <Button x:Name="TitleStar" Grid.Column="1" Classes="pin star" Classes.on="{Binding ActiveIsFavourite}" IsVisible="{Binding ShowsTitleStar}"
+                                ToolTip.Tip="{Binding ActiveStarTip}" Click="OnTitleStarClick">
+                            <Path Classes="glyph" Data="{StaticResource Icon.star}" />
+                        </Button>
+                    </Grid>
                     <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel>
                             <!-- The Actions and hotkeys window: the action's keys first, then Run now and Show on its page, then its settings -->

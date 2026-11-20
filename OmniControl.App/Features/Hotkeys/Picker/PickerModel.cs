@@ -14,11 +14,14 @@ public sealed partial class PickerModel : ObservableObject
     /// The picker's keys (handled by PickerMenu), listed in the Keyboard shortcuts window of the pages that open it.
     public const string KeyHelp =
         "Type to search all sections; Up/Down choose an entry; Left/Right switch section; Tab moves into the entry's settings; Enter uses the entry; Esc clears the search, then closes. "
-        + "In the settings: Up/Down choose a setting, Left/Right change it (Space flips a switch), Enter on a text setting edits it, Ctrl+Enter or a double-click types a number, "
+        + "In the settings: Up/Down choose a setting (or the title's star, which Enter or Space turns on and off), Left/Right change it (Space flips a switch), Enter on a text setting edits it, Ctrl+Enter or a double-click types a number, "
         + "Enter anywhere else uses the entry; Esc, Tab or Shift+Tab go back to the list.";
 
     /// The last section: the entries used most recently, newest first.
     public const string RecentName = "Recent";
+
+    /// The first section, and the heading over a section's starred entries.
+    public const string FavouritesName = "Favourites";
     private const string RecentIcon = "M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 Z M12,5 A7,7 0 1 1 12,19 A7,7 0 1 1 12,5 Z M11,7 H13 V12.4 L16.2,14.3 L15.2,16 L11,13.5 Z";
 
     private const string ParameterKey = "$param"; // the text an entry takes (a shortcut, a program) is edited as one more setting, but is stored apart from them
@@ -57,7 +60,7 @@ public sealed partial class PickerModel : ObservableObject
     public string? SearchTip => !HasKeys ? null : "Type a name or a key such as ctrl+o, or press the key combination (Ctrl+F)";
     public string UseText => ActiveInPanel ? AddAgainText : Target is { } target ? $"Use for {target}" : $"Use this {Noun}";
 
-    /// The sections in pane 1: the list's own, then Recent when an action list has entries used before.
+    /// The sections in pane 1: Favourites when an action list has starred entries, the list's own, then Recent when it has entries used before.
     public IReadOnlyList<SectionRow> Sections => _sections ??= BuildSections();
 
     // Read on first use, when Noun has been set (Recent is for action lists only).
@@ -70,16 +73,29 @@ public sealed partial class PickerModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(SectionHighlight))]
     private int _sectionIndex;
 
-    /// The section the list shows as selected: none while a search runs (its matches come from every section), the open section otherwise.
-    /// Choosing one leaves the search and opens it.
+    /// The section the list shows as selected: none while a search runs (its matches come from every section), the open section otherwise
+    /// (after Favourites, which <see cref="SectionIndex"/> does not count). Choosing one leaves the search and opens it.
     public int SectionHighlight
     {
-        get => IsSearching ? -1 : SectionIndex;
+        get => IsSearching ? -1 : InFavourites ? 0 : SectionIndex + FavouritesLead;
         set
         {
             if (value < 0) return; // the list reports "nothing selected" while it is reloading
-            if (value == SectionIndex && IsSearching) Query = string.Empty;
-            else SectionIndex = value;
+            var favourites = value < FavouritesLead;
+            var index = favourites ? SectionIndex : value - FavouritesLead;
+            if (favourites == InFavourites && index == SectionIndex)
+            {
+                if (IsSearching) Query = string.Empty;
+                return;
+            }
+            var replacing = _replacing;
+            _replacing = true;
+            InFavourites = favourites;
+            SectionIndex = index;
+            _replacing = replacing;
+            if (IsSearching) Query = string.Empty; // a click on a section leaves the search: its entries show again
+            else Reload();
+            OnPropertyChanged(nameof(SectionHighlight));
         }
     }
     [ObservableProperty] private int _actionIndex;
@@ -159,6 +175,7 @@ public sealed partial class PickerModel : ObservableObject
     private List<SectionRow> BuildSections()
     {
         var sections = _groups.Select(g => new SectionRow(g.Name, g.Place?.Icon)).ToList();
+        if (FavouritesLead > 0) sections.Insert(0, new SectionRow(FavouritesName, null, IsFavourites: true));
         if (RecentChoices.Count > 0) sections.Add(new SectionRow(RecentName, RecentIcon));
         return sections;
     }
@@ -209,12 +226,18 @@ public sealed partial class PickerModel : ObservableObject
     /// A search still waiting (typed within <see cref="Timing.SearchDebounce"/>) is shown now: a key that acts on the list sees the newest matches.
     public void Settle() => _search.Flush();
 
-    /// The line of the entry with this <see cref="PickChoice.Spec"/> in <paramref name="rows"/>; -1 when it is not there.
-    private static int IndexIn(IReadOnlyList<PickerRow> rows, string spec)
+    /// The line of the entry with this <see cref="PickChoice.Spec"/> in <paramref name="rows"/>, its favourite's copy when <paramref name="copy"/>
+    /// and the entry's own line otherwise (either when only one is there); -1 when it is not there.
+    private static int IndexIn(IReadOnlyList<PickerRow> rows, string spec, bool copy = false)
     {
+        var found = -1;
         for (var i = 0; i < rows.Count; i++)
-            if (rows[i].Choice?.Spec == spec || rows[i].Members?.Any(m => m.Spec == spec) == true) return i;
-        return -1;
+        {
+            if (rows[i].Choice?.Spec != spec && rows[i].Members?.Any(m => m.Spec == spec) != true) continue;
+            if (rows[i].IsCopy == copy) return i;
+            if (found < 0) found = i;
+        }
+        return found;
     }
 
     /// The first line that is an entry (headings are skipped); 0 when the list is empty.
@@ -240,7 +263,7 @@ public sealed partial class PickerModel : ObservableObject
     /// Moves to the next or previous section (wrapping round); a search covers every section, so there it does nothing.
     public void MoveSection(int direction)
     {
-        if (!IsSearching && Sections.Count > 0) SectionIndex = Wrap.Index(SectionIndex + direction, Sections.Count);
+        if (!IsSearching && Sections.Count > 0) SectionHighlight = Wrap.Index(SectionHighlight + direction, Sections.Count);
     }
 
     /// The result of "Use this ...": the highlighted entry with the values on the settings pane (settings that are hidden stay at their defaults).
@@ -330,8 +353,10 @@ public sealed partial class PickerModel : ObservableObject
         OptionItems.Clear();
         OptionIndex = -1;
         OnFootButton = false;
+        OnStar = false;
         OnPropertyChanged(nameof(CanUse));
         NotifyPanelChanged();
+        NotifyStarChanged();
         if (ActiveChoice is not { } choice)
         {
             SettingsTitle = string.Empty;
@@ -426,7 +451,7 @@ public sealed partial class PickerModel : ObservableObject
         _groups = _groups.Select(g => g with { Choices = g.Choices.Select(c => c == choice ? renamed : c).ToList() }).ToList();
         _index = null;
         SettingsTitle = renamed.Name;
-        var rows = Actions.Select(r => r.Choice == choice ? Row(renamed, r.Hint) : r).ToList();
+        var rows = Actions.Select(r => r.Choice == choice ? Row(renamed, r.Hint, r.IsCopy) : r).ToList();
         var keep = ActionIndex;
         ShowRows(rows, () => keep, sync: false);
     }
@@ -445,17 +470,18 @@ public sealed partial class PickerModel : ObservableObject
             else if (!shown && present) OptionItems.RemoveAt(at);
             if (shown) at++;
         }
-        if (selected is not null && OptionItems.IndexOf(selected) is var index and >= 0 && index != OptionIndex && !OnFootButton) OptionIndex = index;
+        if (selected is not null && OptionItems.IndexOf(selected) is var index and >= 0 && index != OptionIndex && !OnFootButton && !OnStar) OptionIndex = index;
         RaiseSettingsChanged();
     }
 
-    /// The keyboard moves into the settings (Tab); false when there is nothing to set.
+    /// The keyboard moves into the settings (Tab): the first setting, else the button after them, else the title's star; false when there is nothing to reach.
     public bool EnterSettings()
     {
-        if (OptionItems.Count == 0 && !HasFootButton) return false;
+        if (OptionItems.Count == 0 && !HasFootButton && !ShowsTitleStar) return false;
         InSettings = true;
-        OnFootButton = OptionItems.Count == 0;
-        OptionIndex = OnFootButton ? -1 : Math.Max(0, OptionIndex);
+        OnFootButton = OptionItems.Count == 0 && HasFootButton;
+        OnStar = OptionItems.Count == 0 && !HasFootButton;
+        OptionIndex = OptionItems.Count == 0 ? -1 : Math.Max(0, OptionIndex);
         return true;
     }
 
@@ -467,21 +493,26 @@ public sealed partial class PickerModel : ObservableObject
         return -1;
     }
 
-    /// Up/Down walk the settings and then the remove button (when there is one), and loop.
+    /// Up/Down walk the title's star (when there is one), the settings and then the remove button (when there is one), and loop.
     public void MoveOption(int direction)
     {
-        var stops = OptionItems.Count + (HasFootButton ? 1 : 0);
+        var lead = ShowsTitleStar ? 1 : 0;
+        var stops = lead + OptionItems.Count + (HasFootButton ? 1 : 0);
         if (stops == 0) return;
-        var at = OnFootButton ? OptionItems.Count : OptionIndex;
+        var at = OnStar ? 0 : OnFootButton ? lead + OptionItems.Count : lead + OptionIndex;
         var next = Wrap.Index(at + direction, stops);
-        while (next < OptionItems.Count && OptionItems[next].IsHeading && next != at) next = Wrap.Index(next + direction, stops); // a heading holds no value: the keys pass it
-        OnFootButton = next == OptionItems.Count;
-        OptionIndex = OnFootButton ? -1 : next;
+        bool IsHeading(int stop) => stop >= lead && stop - lead < OptionItems.Count && OptionItems[stop - lead].IsHeading;
+        while (IsHeading(next) && next != at) next = Wrap.Index(next + direction, stops); // a heading holds no value: the keys pass it
+        OnStar = next < lead;
+        OnFootButton = next == lead + OptionItems.Count;
+        OptionIndex = OnStar || OnFootButton ? -1 : next - lead;
     }
 
     partial void OnOptionIndexChanged(int value)
     {
-        if (value >= 0) OnFootButton = false; // a click on a setting takes the keyboard off the button
+        if (value < 0) return;
+        OnFootButton = false; // a click on a setting takes the keyboard off the button and the star
+        OnStar = false;
     }
 
     // ---- The list ----
@@ -490,9 +521,11 @@ public sealed partial class PickerModel : ObservableObject
     {
         if (_groups.Count == 0) return new List<PickerRow>();
         if (IsSearching) return SearchRows(Index.Match(Query));
+        if (InFavourites) return Rows(FavouriteChoices.Where(IsShown), c => c.Category, preselect: true);
         if (InRecent) return Rows(RecentChoices, c => c.Category, preselect: true);
         if (SectionIndex >= _groups.Count) return new List<PickerRow>();
-        return InGroups(_groups[SectionIndex].Choices.Where(IsShown));
+        var shown = _groups[SectionIndex].Choices.Where(IsShown).ToList();
+        return FavouritesFirst(shown, InGroups(shown));
     }
 
     /// The entries of one section, those without a group heading first, then each group together under its heading row, the groups by name (one PC's group of Other PCs after another's); entries keep their registration order.

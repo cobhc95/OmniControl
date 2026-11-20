@@ -43,7 +43,7 @@ public partial class PickerMenu : UserControl
         {
             if (model.StartInSettings) model.EnterSettings();
             FocusCurrentPane();
-            SectionList.ScrollIntoView(model.SectionIndex);
+            SectionList.ScrollIntoView(Math.Max(0, model.SectionHighlight));
             ActionList.ScrollIntoView(model.ActionIndex);
         }, DispatcherPriority.Loaded);
     }
@@ -58,7 +58,8 @@ public partial class PickerMenu : UserControl
 
     private void FocusCurrentPane()
     {
-        if (_model?.InSettings == true) SettingsFocus.Focus(NavigationMethod.Directional);
+        if (_model?.OnStar == true) TitleStar.Focus(NavigationMethod.Directional);
+        else if (_model?.InSettings == true) SettingsFocus.Focus(NavigationMethod.Directional);
         else Search.Focus(NavigationMethod.Directional);
     }
 
@@ -68,9 +69,9 @@ public partial class PickerMenu : UserControl
         switch (e.PropertyName)
         {
             case nameof(PickerModel.ActionIndex) when _model.ActionIndex >= 0: ActionList.ScrollIntoView(_model.ActionIndex); break;
-            case nameof(PickerModel.SectionIndex) when _model.SectionIndex >= 0: SectionList.ScrollIntoView(_model.SectionIndex); break;
+            case nameof(PickerModel.SectionHighlight) when _model.SectionHighlight >= 0: SectionList.ScrollIntoView(_model.SectionHighlight); break;
             case nameof(PickerModel.OptionIndex) when _model.OptionIndex >= 0: OptionList.ScrollIntoView(_model.OptionIndex); break;
-            case nameof(PickerModel.InSettings): Dispatcher.UIThread.Post(FocusCurrentPane, DispatcherPriority.Loaded); break;
+            case nameof(PickerModel.InSettings) or nameof(PickerModel.OnStar): Dispatcher.UIThread.Post(FocusCurrentPane, DispatcherPriority.Loaded); break;
         }
     }
 
@@ -162,10 +163,12 @@ public partial class PickerMenu : UserControl
                 return true;
             case Key.Space when !inText:
                 if (model.OnFootButton) model.RunFootButton();
+                else if (model.OnStar) model.ToggleActiveFavourite();
                 else model.SelectedOption?.Flip();
                 return true;
             case Key.Enter:
                 if (model.OnFootButton) model.RunFootButton();
+                else if (model.OnStar) model.ToggleActiveFavourite();
                 else if (inText) SettingsFocus.Focus(NavigationMethod.Directional); // done typing (a typed number is taken when the box loses focus)
                 else if (model.SelectedOption is { IsPoint: true }) PickPoint();
                 else if (model.SelectedOption is { IsText: true } or { IsPath: true } && e.KeyModifiers != KeyModifiers.Control) EditText();
@@ -259,6 +262,19 @@ public partial class PickerMenu : UserControl
     private void OnRemoveFromPanelClick(object? sender, RoutedEventArgs e) => _model?.RemoveFromPanel();
 
     private void OnFootButtonClick(object? sender, RoutedEventArgs e) => _model?.RunFootButton();
+
+    private void OnRowStarClick(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is PickerRow row) _model?.ToggleFavourite(row);
+        e.Handled = true;
+    }
+
+    private void OnTitleStarClick(object? sender, RoutedEventArgs e)
+    {
+        _model?.ToggleActiveFavourite();
+        FocusCurrentPane(); // a click leaves the keys where they were
+        e.Handled = true;
+    }
 
     private void OnActionDoubleTapped(object? sender, TappedEventArgs e)
     {
