@@ -25,6 +25,10 @@
                     <ListBox Classes="rows compact cards" ItemsSource="{Binding Live.Items}" />
                 </pages:GroupCard>
 
+                <pages:GroupCard Group="{Binding Filter}">
+                    <ListBox Classes="rows compact cards" ItemsSource="{Binding Filter.Items}" />
+                </pages:GroupCard>
+
                 <pages:GroupCard Group="{Binding Apps}">
                     <pages:GroupCard.Tools>
                         <c:AppScopeChip DataContext="{Binding AppsScope}" />
@@ -70,10 +74,6 @@
                             </Border>
                         </StackPanel>
                     </Panel>
-                </pages:GroupCard>
-
-                <pages:GroupCard Group="{Binding Filter}">
-                    <ListBox Classes="rows compact cards" ItemsSource="{Binding Filter.Items}" />
                 </pages:GroupCard>
             </StackPanel>
 
