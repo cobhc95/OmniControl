@@ -57,8 +57,8 @@ public static class ColorMath
 /// Dark 1 on the light one: Windows' own for "Windows accent", <see cref="ColorMath.AccentShade"/> for the others), and updates live.
 /// "Windows accent" follows Windows' own accent colour (read through Avalonia's platform settings, which hear Windows' colour change notice);
 /// when Windows reports none, it is Blue. "Custom" is the user's own colour (<see cref="Custom"/>, made in App settings' colour editor), kept
-/// while another choice is in use. <see cref="Intensity"/> scales the shade for every choice: at <see cref="DefaultIntensity"/> it is Windows'
-/// own amount (and Windows' own shades for "Windows accent"). Nothing else in the program hard-codes an accent colour: use <see cref="Current"/>
+/// while another choice is in use. <see cref="Intensity"/> scales the shade for every choice: at <see cref="WindowsIntensity"/> it is Windows'
+/// own amount (and Windows' own shades for "Windows accent"); the default is stronger. Nothing else in the program hard-codes an accent colour: use <see cref="Current"/>
 /// (the colour as picked) in code or the DynamicResource brushes in XAML.
 public static class AccentService
 {
@@ -88,8 +88,9 @@ public static class AccentService
     /// The custom colour before the user has made one: the first preset.
     public static string DefaultCustomHex => Presets[0].Hex;
 
-    /// Intensity: 0 = softest (twice Windows' shade), <see cref="DefaultIntensity"/> = Windows' own, <see cref="MaxIntensity"/> = the colour unshaded.
-    public const int DefaultIntensity = 50, MaxIntensity = 100;
+    /// Intensity: 0 = softest (twice Windows' shade), <see cref="WindowsIntensity"/> = Windows' own shade, <see cref="MaxIntensity"/> = the colour
+    /// unshaded; <see cref="DefaultIntensity"/> is close to the raw colour, as Windows' toggles look.
+    public const int WindowsIntensity = 50, DefaultIntensity = 85, MaxIntensity = 100;
 
     /// Windows accent, then the fixed colours (the galleries that offer no custom colour, such as the OSD's).
     public static IReadOnlyList<string> Names { get; } = Presets.Select(p => p.Name).Prepend(WindowsName).ToList();
@@ -122,7 +123,7 @@ public static class AccentService
     }
 
     /// The intensity in words: "Windows" at the default, else which way and how far ("Softer 30", "Stronger 70").
-    public static string IntensityWords(int value) => value == DefaultIntensity ? "Windows" : $"{(value < DefaultIntensity ? "Softer" : "Stronger")} {value}";
+    public static string IntensityWords(int value) => value == WindowsIntensity ? "Windows" : $"{(value < WindowsIntensity ? "Softer" : "Stronger")} {value}";
 
     /// The words or glyph drawn on a fill of <paramref name="fill"/>, as Windows does: near-black ink (<see cref="Palette.OnAccentInk"/>) or
     /// white, whichever reads better on it (so dark ink on the dark theme's light shades, white on the light theme's darker ones).
@@ -143,7 +144,8 @@ public static class AccentService
     /// Applies the saved choice and starts listening to Windows' colour change notice and to a new background (once, for the program's life).
     public static void Initialize(string name, string? customHex, int intensity)
     {
-        Take(customHex, intensity);
+        // 50 was the old default, saved by everyone who never moved the slider; it now means "the new default" at start-up.
+        Take(customHex, intensity == WindowsIntensity ? DefaultIntensity : intensity);
         Apply(name);
         if (Application.Current?.PlatformSettings is { } platform) platform.ColorValuesChanged += OnWindowsColours;
         SurfaceService.Changed += () => Apply(Name); // the washes are blended into the page colour
@@ -184,7 +186,7 @@ public static class AccentService
     }
 
     /// The share of Windows' shade amount the intensity gives (1 at the default, 2 at the softest, 0 at the strongest).
-    private static double ShadeScale => (MaxIntensity - Intensity) / (double)DefaultIntensity;
+    private static double ShadeScale => (MaxIntensity - Intensity) / (double)WindowsIntensity;
 
     /// Windows' accent (or its theme) changed: the Windows accent choice and its gallery dot follow.
     private static void OnWindowsColours(object? sender, PlatformColorValues e) =>
@@ -202,7 +204,7 @@ public static class AccentService
         if (Application.Current is not { } app) return;
         var picked = Current;
         // Windows' own shades of its accent when it can say them (a cheap in-process WinRT call) at Windows' own intensity, else the same shades worked out.
-        var windows = Name == WindowsName && Intensity == DefaultIntensity
+        var windows = Name == WindowsName && Intensity == WindowsIntensity
             && Application.Current.PlatformSettings?.GetColorValues().AccentColor1 is { A: > 0 } ? AccentShades.Read() : null;
         var dark = windows is { } w ? Color.FromUInt32(w.ForDark) : ColorMath.AccentShade(picked, darkTheme: true, ShadeScale);
         var light = windows is { } v ? Color.FromUInt32(v.ForLight) : ForLightTheme(picked);

@@ -16,7 +16,7 @@ public sealed class AppSettings
     /// The user's own accent colour ("#RRGGBB"), kept while another accent choice is in use.
     public string AccentCustom { get; set; } = AccentService.DefaultCustomHex;
 
-    /// How strongly every accent choice is shaded (<see cref="AccentService.Intensity"/>); Windows' own amount by default.
+    /// How strongly every accent choice is shaded (<see cref="AccentService.Intensity"/>); close to the raw colour by default (a saved 50, the old default, counts as the default at start-up).
     public int AccentIntensity { get; set; } = AccentService.DefaultIntensity;
 
     /// Name of the background colour choice (see <see cref="SurfaceService.Names"/>); Windows' own tones by default.
