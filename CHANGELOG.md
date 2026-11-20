@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Fix: Setup adds the Windows Firewall rule that lets your other PCs reach OmniControl over Tailscale (and the uninstaller removes it), so no PC is left "not reachable" on Tailscale after installing.
 - Fix: the Other PCs page no longer shows a narrow jumble of the Volume page's Easy view in place of its PC tabs; a PC with no power countdown shows no tag again.
 - New: the taskbar gadget's readings list has two rows for each physical disk, its activity and its temperature (named "Disk 0 activity (model)" and "Disk 0 temperature (model)"); a disk added or removed joins or leaves the list by itself and keeps its settings, and a drive that reports no temperature shows "—".
 - Faster: going back to a page of the main window is instant (each page is built the first time it opens and kept, also while the window is hidden, so opening it from the tray is instant too), and the Actions and hotkeys window opens again at once (it is hidden, not closed, and still starts fresh each time); the app's screens bind to their data without run-time lookups (compiled bindings), so windows and pages build a little faster; the app and its UI core come precompiled, so it starts and opens things with less waiting (the Setup is about 5 MB larger), and every page builds faster the first time (a card builds only the layout it shows, not its full, half-width and knob layouts all at once).

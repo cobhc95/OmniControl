@@ -37,11 +37,15 @@ Name: packetfilter; Description: "Install Windows Packet Filter (for per-app dow
 ; Added after the files (the app's --network-service install); left unticked, a service from before is removed; uninstall removes it.
 Name: networkservice; Description: "Network service (per-app limits without admin)"
 [Run]
+; Other PCs reach OmniControl over Tailscale only through this rule (Core/Engine/Tailscale/TailscaleFirewall: same name, port and ranges); Setup is elevated, so no later prompt.
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""OmniControl on Tailscale"""; Flags: runhidden waituntilterminated
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""OmniControl on Tailscale"" dir=in action=allow protocol=TCP localport=47810 remoteip=100.64.0.0/10,fd7a:115c:a1e0::/48 profile=any"; Flags: runhidden waituntilterminated
 ; As the person who started Setup, not elevated: the app's own "Run as administrator" decides.
 Filename: "{app}\OmniControl.exe"; Description: "Start OmniControl"; Flags: nowait postinstall skipifsilent runasoriginaluser
 [UninstallRun]
 ; The network blocks a crashed run may have left (OmniControl's own firewall rule group; upload limits end with a restart).
 Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -NonInteractive -Command ""Remove-NetFirewallRule -Group 'OmniControl' -ErrorAction SilentlyContinue"""; Flags: runhidden waituntilterminated; RunOnceId: "RemoveFirewallGroup"
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""OmniControl on Tailscale"""; Flags: runhidden waituntilterminated; RunOnceId: "RemoveTailscaleRule"
 
 ; ---- Equalizer APO: its official installer (Core/Engine/Apo/ApoInstaller, in {app}\equalizer-apo), run after the files ----
 ; It is its own program with its own uninstaller and Apps entry, so OmniControl's uninstall leaves it.
