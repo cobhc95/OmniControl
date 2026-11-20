@@ -8,7 +8,7 @@
          a muted section title with an optional thin line above. The glyph column is shown only when a row has an icon or a tick
          (MenuRowList.noglyphs). Mouse first (AGENTS.md rule 5). -->
     <StackPanel>
-        <TextBlock Classes="menutext" Text="{Binding Title, RelativeSource={RelativeSource AncestorType=UserControl}}" IsVisible="{Binding Title, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+        <TextBlock Classes="menutext" Text="{Binding Title, RelativeSource={RelativeSource AncestorType=c:MenuRowList}}" IsVisible="{Binding Title, RelativeSource={RelativeSource AncestorType=c:MenuRowList}, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
         <ItemsControl x:Name="Rows">
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="c:MenuRowItem">

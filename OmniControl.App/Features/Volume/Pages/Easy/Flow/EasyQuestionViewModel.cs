@@ -23,14 +23,14 @@ public sealed partial class EasyQuestionViewModel : ObservableObject, IDisposabl
         Sound = sound;
         AddProgram = addProgram;
         Choices = new OptionListModel(Toggle);
-        Looks = EasyEq.MicPresets.Select(p => new EasyChip(p.Name, () => PickLook(p.Name))).ToList();
+        Looks = EasyEq.MicPresets.Select(p => new ChipItem(p.Name, new RelayCommand(() => PickLook(p.Name)), null)).ToList();
         SyncLooks();
     }
 
     public OptionListModel Choices { get; }
     public EasySound? Sound { get; }
     public AddProgramMenuViewModel? AddProgram { get; }
-    public IReadOnlyList<EasyChip> Looks { get; }
+    public IReadOnlyList<ChipItem> Looks { get; }
 
     public bool ShowsChoices => _kind is EasyQuestionKind.Programs or EasyQuestionKind.Microphone or EasyQuestionKind.Microphones or EasyQuestionKind.Speakers;
     public bool ShowsAddProgram => _kind == EasyQuestionKind.Programs && AddProgram is not null;

@@ -8,7 +8,7 @@
          menu hangs on this control, not on the pill, so the pill's styles do not reach into it. -->
     <FlyoutBase.AttachedFlyout>
         <c:ListMenuFlyout Placement="BottomEdgeAlignedRight" Opened="OnOpened" Closed="OnClosed">
-            <StackPanel>
+            <StackPanel x:DataType="c:ScopeCog">
                 <StackPanel IsVisible="{Binding ShowsSettings}">
                     <Button Classes="menurow" Click="OnSettingsRowClick"><TextBlock Text="Action settings…" /></Button>
                     <Border Classes="hrule" Margin="0,4" />
@@ -17,7 +17,7 @@
             </StackPanel>
         </c:ListMenuFlyout>
     </FlyoutBase.AttachedFlyout>
-    <Button x:Name="Cog" Classes="pill cog" Tag="scope" Click="OnClick" ToolTip.Tip="{Binding $parent[UserControl].CogTip}">
+    <Button x:Name="Cog" Classes="pill cog" Tag="scope" Click="OnClick" ToolTip.Tip="{Binding CogTip, RelativeSource={RelativeSource AncestorType=c:ScopeCog}}">
         <PathIcon Data="{DynamicResource CogIcon}" />
     </Button>
 </UserControl>

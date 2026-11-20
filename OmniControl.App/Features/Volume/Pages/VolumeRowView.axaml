@@ -62,9 +62,10 @@
         <Button Grid.Column="6" Grid.RowSpan="2" Tag="scope" Classes="scope mute" Classes.on="{Binding Muted}" Content="M" Command="{Binding ToggleMuteCommand}"
                 ToolTip.Tip="Mute" IsVisible="{Binding HasVolume}" />
 
-        <!-- Listen (microphones only, docs/mockups/mic-listen.html): Windows' own "Listen to this device"; click toggles, right-click picks the output -->
-        <Button Grid.Column="7" Grid.RowSpan="2" Tag="scope" Classes="scope mute listen" Classes.on="{Binding Listening}" Command="{Binding ToggleListenCommand}"
-                ToolTip.Tip="{Binding ListenTip}" IsVisible="{Binding HasListen}" ContextRequested="OnListenContext">
+        <!-- Listen (microphones only): Windows' own "Listen to this device"; click toggles, right-click picks the output. Reflection
+             bindings: only a microphone row (InputItem) has these members, and this view draws every kind of row -->
+        <Button Grid.Column="7" Grid.RowSpan="2" Tag="scope" Classes="scope mute listen" Classes.on="{ReflectionBinding Listening}" Command="{ReflectionBinding ToggleListenCommand}"
+                ToolTip.Tip="{ReflectionBinding ListenTip}" IsVisible="{Binding HasListen}" ContextRequested="OnListenContext">
             <Path Classes="glyph" Data="{DynamicResource Icon.headphones}" />
         </Button>
 

@@ -52,7 +52,7 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <Button Classes="pill" Content="{Binding Name}" ToolTip.Tip="{Binding Address}"
-                                Command="{Binding DataContext.PairWithNearbyCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
+                                Command="{Binding $parent[ItemsControl].DataContext.PairWithNearbyCommand}" CommandParameter="{Binding}" />
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>

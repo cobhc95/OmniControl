@@ -2,22 +2,22 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
              x:Class="OmniControl.App.Shared.Ui.Controls.ChoiceChips">
-    <!-- THE row of choice chips ("one of a few", the chosen one `.custom` = the accent pill): each item brings Name, IsSelected, PickCommand and Icon (null: none; code-made ones are `ChipItem`) (the Easy sound and look chips); ChipTag "scope" makes them the parts of a card (Pages/ChoiceChipsItem). Wraps onto the next line instead of growing.
+    <!-- THE row of choice chips ("one of a few", the chosen one `.custom` = the accent pill): each item is a `ChipItem` (Name, IsSelected, PickCommand, Icon or null); ChipTag "scope" makes them the parts of a card (Pages/ChoiceChipsItem). Wraps onto the next line instead of growing.
          A `ChipItem` may also bring a muted Note and a Progress (Button.pill.counting over Controls/ProgressFill: Other PCs' power countdown). -->
     <ItemsControl x:Name="Items">
         <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
-            <DataTemplate>
+            <DataTemplate x:DataType="c:ChipItem">
                 <!-- A ChipItem may add a muted note after its name ("in 30 s") and, while what it started runs, the accent outline with the fill growing behind it (Progress) -->
                 <Panel Margin="0,0,4,4" HorizontalAlignment="Left">
-                    <c:ProgressFill Fill="{DynamicResource BrushAccentSoft}" Radius="13" Fraction="{Binding Progress, FallbackValue=0}" IsVisible="{Binding IsCounting, FallbackValue=False}" />
-                    <Button Tag="{Binding $parent[UserControl].ChipTag}" Classes="pill" Classes.custom="{Binding IsSelected}" Classes.counting="{Binding IsCounting, FallbackValue=False}"
+                    <c:ProgressFill Fill="{DynamicResource BrushAccentSoft}" Radius="13" Fraction="{Binding Progress, TargetNullValue=0}" IsVisible="{Binding IsCounting}" />
+                    <Button Tag="{Binding ChipTag, RelativeSource={RelativeSource AncestorType=c:ChoiceChips}}" Classes="pill" Classes.custom="{Binding IsSelected}" Classes.counting="{Binding IsCounting}"
                             Command="{Binding PickCommand}" HorizontalAlignment="Left">
                         <StackPanel Orientation="Horizontal">
                             <c:IconText Icon="{Binding Icon}" Text="{Binding Name}" />
-                            <TextBlock Classes="hint small" Margin="4,0,0,0" Text="{Binding Note, FallbackValue=''}" IsVisible="{Binding HasNote, FallbackValue=False}" />
+                            <TextBlock Classes="hint small" Margin="4,0,0,0" Text="{Binding Note}" IsVisible="{Binding HasNote}" />
                         </StackPanel>
                     </Button>
                 </Panel>

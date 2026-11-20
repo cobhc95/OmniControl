@@ -46,7 +46,7 @@
                     <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
                     <!-- A group heading is its own row: no hover, no highlight, no click -->
                     <ListBox.Styles>
-                        <Style Selector="ListBoxItem">
+                        <Style Selector="ListBoxItem" x:DataType="picker:PickerRow">
                             <Setter Property="IsHitTestVisible" Value="{Binding !IsHeading}" />
                             <Setter Property="Focusable" Value="{Binding !IsHeading}" />
                         </Style>

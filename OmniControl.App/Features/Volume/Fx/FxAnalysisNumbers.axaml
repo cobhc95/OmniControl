@@ -10,7 +10,7 @@
         <StackPanel Classes="stat" ToolTip.Tip="{Binding PeakTip}">
             <TextBlock Classes="statlabel" Text="Peak" />
             <TextBlock Classes="statvalue" Classes.caution="{Binding PeakIsHigh}" Text="{Binding PeakText}" />
-            <TextBlock Classes="statvalue" Text="{Binding PeakAtText}" IsVisible="{Binding $parent[UserControl].ShowsPeakFrequency}" />
+            <TextBlock Classes="statvalue" Text="{Binding PeakAtText}" IsVisible="{Binding ShowsPeakFrequency, RelativeSource={RelativeSource AncestorType=fx:FxAnalysisNumbers}}" />
         </StackPanel>
         <StackPanel Classes="stat" ToolTip.Tip="{Binding LatencyTip}">
             <TextBlock Classes="statlabel" Text="Latency" />

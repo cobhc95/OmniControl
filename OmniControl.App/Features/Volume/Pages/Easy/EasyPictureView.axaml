@@ -1,7 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:easy="using:OmniControl.App.Features.Volume.Pages.Easy"
-             x:Class="OmniControl.App.Features.Volume.Pages.Easy.EasyPictureView">
+             xmlns:col="using:System.Collections"
+             x:Class="OmniControl.App.Features.Volume.Pages.Easy.EasyPictureView"
+             x:DataType="col:IEnumerable">
     <!-- A tiny flow picture ("All apps → One EQ → Speakers"): its DataContext is the list of PictureStep. Green = Equalizer APO, accent =
          OmniControl's own engine. Used by the goal cards and by the setup screens, so every picture is drawn alike. -->
     <ItemsControl ItemsSource="{Binding}">

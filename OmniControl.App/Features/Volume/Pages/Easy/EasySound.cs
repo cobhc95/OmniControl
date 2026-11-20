@@ -19,7 +19,7 @@ public sealed partial class EasySound : ObservableObject, IDisposable
     private readonly Action _openFull;
     private readonly Func<string?> _whyNot;
     private readonly Func<EasyConfirm, Task<bool>> _confirm;
-    private readonly List<EasyChip> _presetChips;
+    private readonly List<ChipItem> _presetChips;
     private int[] _own = EasyEq.Flat();
     private bool _hasOwn;
 
@@ -36,8 +36,9 @@ public sealed partial class EasySound : ObservableObject, IDisposable
         _whyNot = whyNot;
         _confirm = confirm;
         Bands = EasyEq.Parts.Select((p, i) => new EasyBandItem(i, p.Name, OnBandMoved)).ToList();
-        _presetChips = EasyEq.Presets.Select(p => new EasyChip(p.Name, () => _ = ApplyAsync(p.Gains))).ToList();
-        OwnChip = new EasyChip("My own", () => _ = ApplyAsync(_own)) { CanPick = false };
+        _presetChips = EasyEq.Presets.Select(p => new ChipItem(p.Name, new RelayCommand(() => _ = ApplyAsync(p.Gains)), null)).ToList();
+        // "My own" brings back the last shape made here: it can be clicked only once there is one and a preset is on instead.
+        OwnChip = new ChipItem("My own", new RelayCommand(() => _ = ApplyAsync(_own), () => _hasOwn && !OwnChip!.IsSelected), null);
         Chips = _presetChips.Append(OwnChip).ToList();
         Refresh();
         mixer.FxChanged += OnFxChanged;
@@ -47,9 +48,9 @@ public sealed partial class EasySound : ObservableObject, IDisposable
     public IReadOnlyList<EasyBandItem> Bands { get; }
 
     /// The preset chips, then "My own".
-    public IReadOnlyList<EasyChip> Chips { get; }
+    public IReadOnlyList<ChipItem> Chips { get; }
 
-    private EasyChip OwnChip { get; }
+    private ChipItem OwnChip { get; }
 
     /// Whether the sound can be applied now; when not, the drawer is greyed and says why.
     public Availability Availability { get; } = new();
@@ -172,7 +173,7 @@ public sealed partial class EasySound : ObservableObject, IDisposable
         }
         foreach (var chip in _presetChips) chip.IsSelected = preset is not null && chip.Name == preset.Name;
         OwnChip.IsSelected = preset is null;
-        OwnChip.CanPick = _hasOwn && preset is not null;
+        OwnChip.PickCommand.NotifyCanExecuteChanged();
         Name = preset?.Name ?? OwnChip.Name;
         IsActive = !EasyEq.IsFlat(gains) && _mixer.IsFxOn(_key);
         Note = !EasyEq.IsFlat(gains) && !_mixer.IsFxOn(_key) ? "Effects are off; moving a slider turns them on."

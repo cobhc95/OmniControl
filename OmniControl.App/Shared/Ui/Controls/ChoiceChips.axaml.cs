@@ -14,7 +14,7 @@ public partial class ChoiceChips : UserControl
     /// The chips' Tag: "grouptool" on a header line or in a panel, "scope" in a card (the card's parts for Left/Right and Enter).
     public string ChipTag { get => GetValue(ChipTagProperty); set => SetValue(ChipTagProperty, value); }
 
-    /// The choices: each has Name, IsSelected and PickCommand.
+    /// The choices (<see cref="ChipItem"/>).
     public IEnumerable? ItemsSource { get => GetValue(ItemsSourceProperty); set => SetValue(ItemsSourceProperty, value); }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)

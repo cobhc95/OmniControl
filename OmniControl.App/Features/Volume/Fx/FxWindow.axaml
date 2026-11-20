@@ -51,7 +51,7 @@
                             <DataTemplate x:DataType="fx:OutputChoice"><TextBlock Text="{Binding Name}" /></DataTemplate>
                         </MenuItem.ItemTemplate>
                         <MenuItem.ItemContainerTheme>
-                            <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+                            <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="fx:OutputChoice">
                                 <Setter Property="ToggleType" Value="Radio" />
                                 <Setter Property="IsChecked" Value="{Binding IsChosen, Mode=OneWay}" />
                                 <Setter Property="Command" Value="{Binding Choose}" />
@@ -119,7 +119,7 @@
         <fx:FxChainPanel x:Name="FxView" Grid.Row="2" Margin="{DynamicResource FxPanesMargin}" DataContext="{Binding Chain}"
                       ListWidth="{Binding $parent[Window].DataContext.ChainListWidth, Mode=TwoWay}">
             <fx:FxChainPanel.ListTools>
-                <Button x:Name="ForgetButton" Classes="pill" Content="Forget" Command="{Binding ForgetCommand}" IsVisible="{Binding CanForget}"
+                <Button x:Name="ForgetButton" x:DataType="fx:FxWindowViewModel" Classes="pill" Content="Forget" Command="{Binding ForgetCommand}" IsVisible="{Binding CanForget}"
                         ToolTip.Tip="Forget this program (row, effects and settings)" />
             </fx:FxChainPanel.ListTools>
         </fx:FxChainPanel>

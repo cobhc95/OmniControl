@@ -7,7 +7,7 @@
     <UserControl.Styles>
         <Style Selector="CheckBox"><Setter Property="FontSize" Value="12" /></Style>
         <Style Selector="CheckBox /template/ ContentPresenter"><Setter Property="FontSize" Value="12" /></Style>
-        <Style Selector="ListBox.fxlist > ListBoxItem"><Setter Property="IsVisible" Value="{Binding Shown}" /></Style>
+        <Style Selector="ListBox.fxlist > ListBoxItem" x:DataType="vm:FxSlotViewModel"><Setter Property="IsVisible" Value="{Binding Shown}" /></Style>
         <Style Selector="Border.pane"><Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" /></Style>
     </UserControl.Styles>
     <!-- The FX window's two panes (TabForge style): the chain on the left, the selected effect's editor on the right -->

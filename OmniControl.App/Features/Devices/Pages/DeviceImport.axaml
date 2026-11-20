@@ -31,7 +31,7 @@
                         </StackPanel>
                         <ListBox x:Name="Rows" Classes="pick compact" ItemsSource="{Binding Devices}" KeyDown="OnRowsKeyDown">
                             <ListBox.Styles>
-                                <Style Selector="ListBox.pick > ListBoxItem"><Setter Property="IsEnabled" Value="{Binding CanTick}" /></Style>
+                                <Style Selector="ListBox.pick > ListBoxItem" x:DataType="vm:ImportDeviceItem"><Setter Property="IsEnabled" Value="{Binding CanTick}" /></Style>
                             </ListBox.Styles>
                             <ListBox.ItemTemplate>
                                 <DataTemplate x:DataType="vm:ImportDeviceItem">
