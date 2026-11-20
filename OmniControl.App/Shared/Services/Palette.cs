@@ -32,6 +32,9 @@ public static class Palette
     /// The screenshot overlay's drawing colours (its colour pop-down), the first one the default: picture content, the same in both themes.
     public static readonly IReadOnlyList<Color> Drawing = DrawingNamed.Select(d => d.Colour).ToArray();
 
+    /// The drawing colours' names as shown on screen (a colour dot's tooltip, a gallery's words): "Red", "Orange"...
+    public static readonly IReadOnlyList<string> DrawingTitles = DrawingNamed.Select(d => System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(d.Name)).ToArray();
+
     /// The accent's soft glow around a lit button (AccentGlow, made by <see cref="AccentService"/>): its strength, blur and spread in pixels.
     public const double GlowOpacity = 0.55, GlowBlur = 8, GlowSpread = 1;
 

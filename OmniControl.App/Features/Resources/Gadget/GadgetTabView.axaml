@@ -81,29 +81,22 @@
                                             </c:ListMenuFlyout>
                                         </Button.Flyout>
                                     </Button>
-                                    <Button Grid.Column="4" Classes="swatch" Tag="scope" ToolTip.Tip="Icon colour: every icon of the label" VerticalAlignment="Center" IsEnabled="{Binding HasIcon}">
-                                        <Panel>
-                                            <Ellipse Classes="swatch" Classes.follow="{Binding IconFollows}" Fill="{Binding IconDot}" />
-                                            <TextBlock Classes="swatchletter" Text="A" IsVisible="{Binding IconFollows}" />
-                                        </Panel>
-                                        <Button.Flyout>
-                                            <c:ListMenuFlyout Placement="BottomEdgeAlignedRight">
-                                                <c:SwatchList ItemsSource="{Binding AllIconColours}" Picked="OnPicked" />
-                                            </c:ListMenuFlyout>
-                                        </Button.Flyout>
-                                    </Button>
+                                    <c:ChipMenu Grid.Column="4" Classes="dropbox" ChipTag="scope" ChipAlignment="Left" VerticalAlignment="Center" Swatch="{Binding IconSwatch}"
+                                                ChipToolTip="Icon colour: every icon of the label" IsEnabled="{Binding HasIcon}" MenuOpened="OnSwatchMenuOpened">
+                                        <c:ChipMenu.Menu>
+                                            <c:SwatchList IsMenu="True" ItemsSource="{Binding AllIconColours}" />
+                                        </c:ChipMenu.Menu>
+                                    </c:ChipMenu>
                                     <pages:NumberText Grid.Column="5" Value="{Binding WarnAt}" Minimum="0" Maximum="{Binding WarnMax}" VerticalAlignment="Center"
                                                       IsVisible="{Binding HasWarn}" ToolTip.Tip="Past this value the reading takes its warn colour; 0 = never">
                                         <TextBlock Classes="muted" Text="{Binding WarnText}" MinWidth="{DynamicResource SliderValueMinWidth}" TextAlignment="Right" />
                                     </pages:NumberText>
-                                    <Button Grid.Column="6" Classes="swatch" Tag="scope" ToolTip.Tip="Warn colour" VerticalAlignment="Center" IsVisible="{Binding HasWarn}">
-                                        <Ellipse Classes="swatch" Fill="{Binding Colour}" />
-                                        <Button.Flyout>
-                                            <c:ListMenuFlyout Placement="BottomEdgeAlignedRight">
-                                                <c:SwatchList ItemsSource="{Binding Colours}" Picked="OnPicked" />
-                                            </c:ListMenuFlyout>
-                                        </Button.Flyout>
-                                    </Button>
+                                    <c:ChipMenu Grid.Column="6" Classes="dropbox" ChipTag="scope" ChipAlignment="Left" VerticalAlignment="Center" Swatch="{Binding WarnSwatch}"
+                                                ChipToolTip="{Binding WarnSwatch.Tip, StringFormat='Warn colour: {0}'}" IsVisible="{Binding HasWarn}" MenuOpened="OnSwatchMenuOpened">
+                                        <c:ChipMenu.Menu>
+                                            <c:SwatchList IsMenu="True" ItemsSource="{Binding Colours}" />
+                                        </c:ChipMenu.Menu>
+                                    </c:ChipMenu>
                                 </Grid>
                             </DataTemplate>
                         </ListBox.ItemTemplate>

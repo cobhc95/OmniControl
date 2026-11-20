@@ -1,6 +1,6 @@
 namespace OmniControl.App.Features.Settings.Pages;
 
-/// The accent colour editor behind the Accent colour gallery's "Custom…" dot (AccentEditor.axaml, made fresh at each opening): the custom
+/// The accent colour editor behind the Accent colour gallery's "Custom colour…" row (AccentEditor.axaml, made fresh at each opening): the custom
 /// colour as hue, saturation and brightness (HSV; the square, the hue bar and the three sliders all edit these) and as "#RRGGBB" text, plus
 /// the one Intensity setting of every accent choice. Every change is used at once through the page's callbacks (no Apply step).
 public sealed partial class AccentEditorModel : ObservableObject

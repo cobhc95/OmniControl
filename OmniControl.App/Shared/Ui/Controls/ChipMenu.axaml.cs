@@ -18,6 +18,7 @@ public partial class ChipMenu : UserControl
         AvaloniaProperty.Register<ChipMenu, HorizontalAlignment>(nameof(ChipAlignment), HorizontalAlignment.Right);
 
     public static readonly StyledProperty<TagTone?> ToneProperty = AvaloniaProperty.Register<ChipMenu, TagTone?>(nameof(Tone));
+    public static readonly StyledProperty<SwatchItem?> SwatchProperty = AvaloniaProperty.Register<ChipMenu, SwatchItem?>(nameof(Swatch));
 
     public ChipMenu()
     {
@@ -33,6 +34,9 @@ public partial class ChipMenu : UserControl
 
     /// A status dot before the words, and the chip's edge for Good (green) and Caution (yellow); null = no dot, the plain chip.
     public TagTone? Tone { get => GetValue(ToneProperty); set => SetValue(ToneProperty, value); }
+
+    /// The colour dot before the words (the swatch button of a colour choice); null = none.
+    public SwatchItem? Swatch { get => GetValue(SwatchProperty); set => SetValue(SwatchProperty, value); }
 
     /// The chip's words.
     public string? Text { get => GetValue(TextProperty); set => SetValue(TextProperty, value); }
@@ -65,6 +69,12 @@ public partial class ChipMenu : UserControl
             Chip.Classes.Set("good", Tone == TagTone.Good);
             Chip.Classes.Set("caution", Tone == TagTone.Caution);
         }
+        else if (change.Property == SwatchProperty)
+        {
+            ColourDot.IsVisible = Swatch is not null;
+            (ColourDot.Fill, ColourDot.Mark) = (Swatch?.Brush, Swatch?.Mark ?? SwatchMark.None);
+            Words.Classes.Set("withswatch", Swatch is not null);
+        }
         else if (change.Property == ChipTagProperty) Chip.Tag = ChipTag;
         else if (change.Property == ChipAlignmentProperty) Chip.HorizontalAlignment = ChipAlignment;
         else if (change.Property == ChipToolTipProperty)
@@ -76,6 +86,14 @@ public partial class ChipMenu : UserControl
 
     // Shown at the chip itself, not this control, which may be wider than the chip (a header line's chip sits at its right).
     private void OnClick(object? sender, RoutedEventArgs e) => Popup?.ShowAt(Chip);
+
+    // Alt+Down opens the menu, as it opens a drop-down (Enter and Space click the chip).
+    private void OnChipKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Down || e.KeyModifiers != KeyModifiers.Alt) return;
+        Popup?.ShowAt(Chip);
+        e.Handled = true;
+    }
 
     private void OnOpened(object? sender, EventArgs e)
     {

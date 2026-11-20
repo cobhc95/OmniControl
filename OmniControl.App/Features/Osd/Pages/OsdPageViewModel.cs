@@ -77,14 +77,14 @@ public sealed class OsdPageViewModel : PageViewModel
         accentNames.AddRange(OsdPalette.ExtraAccents.Select(a => a.Name));
         int AccentIndex() => Math.Max(0, accentNames.IndexOf(osd.Settings.Accent));
         var accent = new GalleryItem("Accent colour", accentNames, AccentIndex(),
-            () => AccentSwatches.Build(accentNames, OsdSettings.ResolveAccent, AccentIndex()),
+            i => (new SolidColorBrush(OsdSettings.ResolveAccent(accentNames[i])), AccentSwatch.Mark(accentNames[i])),
             i => osd.SetAccent(accentNames[i]));
 
         var backgrounds = OsdPalette.Backgrounds;
         var backgroundHexes = backgrounds.Select(b => b.Hex).ToList();
         int BackgroundIndex() => Math.Max(0, backgroundHexes.IndexOf(osd.Settings.Background));
         var background = new GalleryItem("Background", backgrounds.Select(b => b.Name).ToList(), BackgroundIndex(),
-            () => Swatches.Build(backgroundHexes.Select(Color.Parse).ToList(), BackgroundIndex()),
+            i => (new SolidColorBrush(Color.Parse(backgroundHexes[i])), SwatchMark.None),
             i => osd.SetBackground(backgrounds[i].Hex));
 
         // Previews that depend on other settings (the OSD sample, the match-program swatch) redraw when anything changes.

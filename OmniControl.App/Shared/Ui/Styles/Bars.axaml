@@ -106,8 +106,8 @@
 
     <!-- MASTER designs of the screenshot overlay (Screenshot/CaptureOverlay): Border.floatbar = a small bar floating over a picture (the
          drawing toolbar, the action bar; .label = the selection's size), Button.toolicon = a square icon button of such a bar (.selected =
-         the tool in use: accent wash and accent glyph; hover and press only change the wash, nothing moves), Button.swatch + Ellipse.swatch =
-         one colour of a colour pop-down (the Ellipse is also the colour button's dot), shot|CaptureCanvas = the overlay's dim, frame and
+         the tool in use: accent wash and accent glyph; hover and press only change the wash, nothing moves), Button.swatch + c:SwatchDot =
+         one colour of every colour pop-down (the dot is also the overlay's colour button's), shot|CaptureCanvas = the overlay's dim, frame and
          handles (drawn natively by Core's PictureSurface from these values), TextBox.shottext = the text tool's box, StackPanel.qrcode = one code of the QR pop-down. Sizes Capture*, ToolIcon*, Swatch*
          in App.axaml. -->
     <Style Selector="Border.floatbar">
@@ -132,11 +132,12 @@
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="CornerRadius" Value="{DynamicResource ToolIconRadius}" />
-        <!-- mouse first (AGENTS rule 5): the overlay keeps the keyboard, so its shortcuts and the arrow-key nudge always work -->
-        <Setter Property="Focusable" Value="False" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
+    <!-- mouse first (AGENTS rule 5): the overlay keeps the keyboard, so its shortcuts and the arrow-key nudge always work (its tool buttons,
+         and the dots of its colour pop-down, c:SwatchList IsMouseOnly) -->
+    <Style Selector="Button.toolicon, ItemsControl.swatches.mouseonly Button.swatch"><Setter Property="Focusable" Value="False" /></Style>
     <Style Selector="Button.toolicon">
         <Setter Property="Width" Value="{DynamicResource ToolIconSize}" />
         <Setter Property="Height" Value="{DynamicResource ToolIconSize}" />
@@ -155,19 +156,13 @@
     </Style>
     <Style Selector="Button.toolicon.selected > Path.glyph"><Setter Property="Stroke" Value="{DynamicResource BrushAccent}" /></Style>
     <Style Selector="Button.toolicon:disabled > Path.glyph"><Setter Property="Opacity" Value="0.4" /></Style>
-    <Style Selector="Ellipse.swatch">
-        <Setter Property="Width" Value="{DynamicResource SwatchSize}" />
-        <Setter Property="Height" Value="{DynamicResource SwatchSize}" />
-        <Setter Property="Stroke" Value="{DynamicResource BrushHoverEdge}" />
-        <Setter Property="StrokeThickness" Value="1" />
-    </Style>
-    <!-- Ellipse.swatch.follow + TextBlock.swatchletter = the "follow the text colour" dot (a dashed ring with an A); ItemsControl.swatches =
-         THE row of colour dots (c:SwatchList gives itself the class: a type selector would match its style key, ItemsControl, not
-         SwatchList), each a Button.swatch (SwatchItem; a null brush is the follow dot) -->
-    <Style Selector="Ellipse.swatch.follow">
-        <Setter Property="Stroke" Value="{DynamicResource BrushMuted}" />
-        <Setter Property="StrokeDashArray" Value="2,2" />
-    </Style>
+    <!-- A dot keyed to by the arrows in a colour pop-down shows the accent wash behind it -->
+    <Style Selector="Button.swatch:focus-visible /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" /></Style>
+    <!-- c:SwatchDot = THE colour dot (SwatchSize; a Button.selector chip's is ChipSwatchSize, RowControls.axaml); TextBlock.swatchletter =
+         the A of its "follow the text colour" dot; ItemsControl.swatches = THE grid of colour dots (c:SwatchList gives itself the class: a
+         type selector would match its style key, ItemsControl, not SwatchList), each a Button.swatch holding the dot of a SwatchItem
+         (a null brush is the follow dot; the chosen one is ringed in the accent; its name is the tooltip) -->
+    <Style Selector="c|SwatchDot"><Setter Property="Size" Value="{DynamicResource SwatchSize}" /></Style>
     <Style Selector="TextBlock.swatchletter">
         <Setter Property="FontSize" Value="{DynamicResource ToolFontSize}" />
         <Setter Property="Foreground" Value="{DynamicResource BrushMuted}" />
@@ -175,16 +170,10 @@
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
     <Style Selector="ItemsControl.swatches">
-        <Setter Property="ItemsPanel">
-            <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
-        </Setter>
         <Setter Property="ItemTemplate">
             <DataTemplate x:DataType="c:SwatchItem">
                 <Button Classes="swatch" Command="{Binding Pick}" ToolTip.Tip="{Binding Tip}">
-                    <Panel>
-                        <Ellipse Classes="swatch" Classes.follow="{Binding Follows}" Fill="{Binding Brush}" />
-                        <TextBlock Classes="swatchletter" Text="A" IsVisible="{Binding Follows}" />
-                    </Panel>
+                    <c:SwatchDot Fill="{Binding Brush}" Mark="{Binding Mark}" IsChosen="{Binding IsSelected}" />
                 </Button>
             </DataTemplate>
         </Setter>

@@ -6,14 +6,14 @@
              x:DataType="vm:DeviceItem">
     <!-- A device's icon square (docs/mockups/device-icons.html): its icon (Controls/IconGlyph, from the icon library or the user's own) or a
          picture picked before the library, lit in its colour while the device reads on. With Pickable (the detail header) a click opens the
-         pop-down: the colour dots (Pages/Swatches) and "Change icon…", which opens the shared icon picker (docs/mockups/icon-library.html).
+         pop-down: the colour dots (the shared grid, c:SwatchList) and "Change icon…", which opens the shared icon picker (docs/mockups/icon-library.html).
          Mouse first (AGENTS.md rule 5); the square itself is reachable and opens the pop-down with Enter or Space. -->
     <FlyoutBase.AttachedFlyout>
         <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft" Opened="OnMenuOpened">
             <StackPanel x:Name="Menu" x:DataType="vm:DeviceItem" Spacing="6">
                 <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
                     <TextBlock Classes="menutext" Text="Colour" VerticalAlignment="Center" />
-                    <ContentControl x:Name="Dots" Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                    <c:SwatchList x:Name="Dots" Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Center" />
                     <Button Grid.Column="2" Classes="pill" Content="Change icon…" Click="OnChangeIcon" ToolTip.Tip="Pick an icon from the library, or one of your own" />
                 </Grid>
             </StackPanel>

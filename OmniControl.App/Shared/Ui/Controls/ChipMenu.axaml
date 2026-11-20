@@ -4,13 +4,15 @@
              x:Class="OmniControl.App.Shared.Ui.Controls.ChipMenu">
     <!-- THE chip + menu base: a Button.selector chip on a group's header line (its words and a chevron) that opens a FlyoutPresenter.listmenu
          holding whatever menu content the owner gives it, directly under the chip (ListMenuFlyout). The Apps scope chip and the preset picker
-         are both this control, so they cannot drift apart. -->
+         are both this control, so they cannot drift apart. With a Swatch it is THE swatch button of a colour choice (its dot before the words,
+         or the dot alone without words): Pages/GalleryRow's colour galleries, the gadget's warn and icon colours. -->
     <FlyoutBase.AttachedFlyout>
         <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft" Opened="OnOpened" Closed="OnClosed" />
     </FlyoutBase.AttachedFlyout>
-    <Button x:Name="Chip" Classes="selector" Click="OnClick">
+    <Button x:Name="Chip" Classes="selector" Click="OnClick" KeyDown="OnChipKeyDown">
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
             <c:StatusDot x:Name="Dot" HorizontalAlignment="Left" />
+            <c:SwatchDot x:Name="ColourDot" HorizontalAlignment="Left" VerticalAlignment="Center" IsVisible="False" />
             <TextBlock x:Name="Words" />
             <PathIcon Grid.Column="1" Data="{DynamicResource ChevronDownIcon}" />
         </Grid>

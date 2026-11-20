@@ -47,8 +47,8 @@ public sealed class GadgetDisplayCards : IDisposable
         _lineGap = Number("Space between lines", (int)look.LineGap, 0, GadgetSettings.MaxLineGap, " px", (int)defaults.LineGap, (g, v) => g.LineGap = v);
         _spaceToTray = Number("Space to the tray", (int)look.SpaceToTray, GadgetSettings.MinSpaceToTray, GadgetSettings.MaxSpaceToTray, " px", (int)defaults.SpaceToTray, (g, v) => g.SpaceToTray = v,
             "Below 0 tucks into Windows' space by the ^ button");
-        _colour = new GalleryItem("Text colour", GadgetSettings.Colours.Select(c => c.Length == 0 ? "Taskbar text" : c).ToList(), ColourIndex(look.TextColour),
-            () => Swatches.Build(GadgetSettings.Colours.Select(c => TaskbarGadget.ColourOf(c, ink())).ToList(), ColourIndex(Look.TextColour)),
+        _colour = new GalleryItem("Text colour", GadgetSettings.ColourNames, ColourIndex(look.TextColour),
+            i => (new SolidColorBrush(TaskbarGadget.ColourOf(GadgetSettings.Colours[i], ink())), SwatchMark.None),
             i => Change(g => g.TextColour = GadgetSettings.Colours[i]));
         Layout = Group("Resources/GadgetLayout", "Size and spacing", _lines, _odd, _size, _outline, _columnGap, _lineGap, _spaceToTray, _colour);
 

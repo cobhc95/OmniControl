@@ -58,7 +58,7 @@
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
     </Style>
 
-    <!-- Gallery cards (style, colours): no box of their own, the card around them shows hover and keyboard focus; the arrow buttons are flat -->
+    <!-- Picture gallery cards (the OSD style, a display's orientation; colour galleries are the swatch button, Pages/GalleryRow): no box of their own, the card around them shows hover and keyboard focus; the arrow buttons are flat -->
     <Style Selector="Border.gallery"><Setter Property="Padding" Value="4,2" /></Style>
     <!-- Placement of the centred editors on a page: the control sits in the middle of its card, over the label column -->
     <Style Selector="pages|GalleryRow Border.gallery">
@@ -130,8 +130,8 @@
     <Style Selector="ListBox.results pages|ToggleRow">
         <Setter Property="HorizontalAlignment" Value="Right" />
     </Style>
-    <!-- Colour dots in a gallery card can be clicked: the one under the pointer grows a little -->
-    <Style Selector="Border.swatch:pointerover"><Setter Property="RenderTransform" Value="scale(1.25)" /></Style>
+    <!-- The pictures of a picture gallery (Pages/GalleryStrip) can be clicked: the one under the pointer grows a little -->
+    <Style Selector="Border.gallerypick:pointerover"><Setter Property="RenderTransform" Value="scale(1.25)" /></Style>
     <!-- MASTER CONTROLS (MAP.md "Master UI pieces"): a control picks one of these classes and styles nothing by hand.
          Buttons:
            primary        the one accent action of a window (Close, Done)

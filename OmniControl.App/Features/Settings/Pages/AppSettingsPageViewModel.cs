@@ -93,15 +93,14 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
         _confirmations = confirmations;
         _hardware = hardware;
         var themes = Enum.GetNames<ThemeChoice>();
-        Theme = new GalleryItem("Theme", themes, (int)_settings.Theme, () => ThemeSwatches.Build((int)_settings.Theme), i => OnThemeChosen(themes[i])) { Half = true };
+        Theme = new GalleryItem("Theme", themes, (int)_settings.Theme, i => (ThemeSwatch.Fill(i), SwatchMark.None), i => OnThemeChosen(themes[i])) { Half = true };
         Apply(_settings.Theme);
 
         Accent = MakeAccentCards(report);
 
         var backgrounds = SurfaceService.Names;
         Background = new GalleryItem("Background colour", backgrounds, SurfaceService.IndexOf(_settings.Background),
-            () => Swatches.Build(backgrounds.Select(n => (IBrush)new SolidColorBrush(SurfaceService.Swatch(n))).ToList(), SurfaceService.IndexOf(SurfaceService.Name),
-                edged: true, marked: SurfaceService.IndexOf(SurfaceService.FollowName)),
+            i => (new SolidColorBrush(SurfaceService.Swatch(backgrounds[i])), backgrounds[i] == SurfaceService.FollowName ? SwatchMark.Windows : SwatchMark.None),
             i =>
             {
                 SurfaceService.Set(backgrounds[i]);

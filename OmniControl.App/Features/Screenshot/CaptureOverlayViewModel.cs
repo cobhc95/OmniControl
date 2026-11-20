@@ -117,7 +117,8 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
         _recordAtOnce = recordAtOnce;
         _sizes = sizes;
         _currentBrush = new ImmutableSolidColorBrush(_color);
-        Colours = Palette.Drawing.Select(c => new SwatchItem(new ImmutableSolidColorBrush(c), new RelayCommand(() => PickColour(c)))).ToList();
+        Colours = Palette.Drawing.Select((c, i) => new SwatchItem(new ImmutableSolidColorBrush(c), new RelayCommand(() => PickColour(c)), Palette.DrawingTitles[i])
+            { IsSelected = c == _color }).ToList();
         _marks.Dropped += mark => mark.Dispose();
     }
 
@@ -296,6 +297,7 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
     {
         _color = color;
         CurrentBrush = new ImmutableSolidColorBrush(color);
+        foreach (var dot in Colours) dot.IsSelected = dot.Brush is ISolidColorBrush { Color: var c } && c == color;
     }
 
     [RelayCommand(CanExecute = nameof(CanUndo))]

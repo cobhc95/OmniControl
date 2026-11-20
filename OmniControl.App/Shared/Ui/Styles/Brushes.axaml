@@ -74,7 +74,17 @@
             <StreamGeometry x:Key="ChevronRightIcon">M9,5 L16,12 L9,19 Z</StreamGeometry>
             <!-- A tick: an option list's checked entry, the entry in use in a "Plays on" menu -->
             <StreamGeometry x:Key="TickIcon">M5,12 L10,17 L19,7</StreamGeometry>
-            <!-- Four small panes: the mark inside a colour dot that follows Windows (the "Windows accent" choice, Pages/Swatches) -->
+            <!-- Every hue round a circle: the ring of a custom colour's dot (Controls/SwatchDot), so it never looks like a preset -->
+            <ConicGradientBrush x:Key="BrushHueRing">
+                <GradientStop Color="#FF0000" Offset="0" />
+                <GradientStop Color="#FFFF00" Offset="0.1667" />
+                <GradientStop Color="#00FF00" Offset="0.3333" />
+                <GradientStop Color="#00FFFF" Offset="0.5" />
+                <GradientStop Color="#0000FF" Offset="0.6667" />
+                <GradientStop Color="#FF00FF" Offset="0.8333" />
+                <GradientStop Color="#FF0000" Offset="1" />
+            </ConicGradientBrush>
+            <!-- Four small panes: the mark inside a colour dot that follows Windows (the "Windows accent" choice, Controls/SwatchDot) -->
             <StreamGeometry x:Key="WindowsMarkIcon">M0,0 H4 V4 H0 Z M5,0 H9 V4 H5 Z M0,5 H4 V9 H0 Z M5,5 H9 V9 H5 Z</StreamGeometry>
             <!-- A cross: take this away (remove chips and buttons) -->
             <StreamGeometry x:Key="CrossIcon">M6,6 L18,18 M18,6 L6,18</StreamGeometry>

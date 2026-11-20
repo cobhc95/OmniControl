@@ -100,6 +100,9 @@ public sealed class GadgetSettings
     /// The colours the gadget offers: "" (the taskbar's own text colour) then the drawing colours.
     public static readonly IReadOnlyList<string> Colours = Palette.Drawing.Select(c => c.ToString()).Prepend(string.Empty).ToList();
 
+    /// The names of <see cref="Colours"/>, in the same order ("Taskbar text", then the drawing colours' names).
+    public static readonly IReadOnlyList<string> ColourNames = Palette.DrawingTitles.Prepend("Taskbar text").ToList();
+
     public bool Shown { get; set; }
     public int Lines { get; set; } = 2;
     public OddReading Odd { get; set; } = OddReading.Centre;

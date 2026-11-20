@@ -30,8 +30,18 @@ public sealed partial class DeviceItem
     public bool ShowsGlyph => IconBitmap is null && !IsLit;
     public bool IsLitGlyph => IconBitmap is null && IsLit;
 
-    public IReadOnlyList<Color> IconColours => DeviceIcons.Colours.Select(c => c.Color).ToList();
-    public int IconColourIndex => DeviceIcons.Colours.ToList().IndexOf(DeviceIcons.ColourOf(Record.IconColour));
+    /// The icon pop-down's colour dots (<see cref="DeviceIcons.Colours"/>, the device's own ringed), fresh at each opening; a dot's pick colours the icon.
+    public IReadOnlyList<SwatchItem> IconColourDots()
+    {
+        var chosen = DeviceIcons.ColourOf(Record.IconColour);
+        List<SwatchItem> dots = null!;
+        dots = DeviceIcons.Colours.Select((c, i) => new SwatchItem(new SolidColorBrush(c.Color), new RelayCommand(() =>
+        {
+            PickColour(c);
+            for (var j = 0; j < dots.Count; j++) dots[j].IsSelected = j == i; // the pop-down stays open: the ring moves to the pick
+        }), c.Name) { IsSelected = c == chosen }).ToList();
+        return dots;
+    }
 
     private string _shownImage = string.Empty;
 
@@ -52,7 +62,7 @@ public sealed partial class DeviceItem
                 }
             }
         }
-        foreach (var property in new[] { nameof(IconShape), nameof(IconName), nameof(IsLit), nameof(IconInk), nameof(IconWash), nameof(IconBitmap), nameof(HasImage), nameof(ShowsGlyph), nameof(IsLitGlyph), nameof(IconColourIndex) })
+        foreach (var property in new[] { nameof(IconShape), nameof(IconName), nameof(IsLit), nameof(IconInk), nameof(IconWash), nameof(IconBitmap), nameof(HasImage), nameof(ShowsGlyph), nameof(IsLitGlyph) })
             OnPropertyChanged(property);
     }
 
@@ -68,11 +78,9 @@ public sealed partial class DeviceItem
         RefreshIcon();
     }
 
-    /// The colour dot at <paramref name="index"/> of <see cref="DeviceIcons.Colours"/> was picked.
-    public void PickColour(int index)
+    private void PickColour(DeviceColour colour)
     {
-        if (index < 0 || index >= DeviceIcons.Colours.Count) return;
-        Record.IconColour = DeviceIcons.Colours[index].Id;
+        Record.IconColour = colour.Id;
         _service.Edited();
         RefreshIcon();
     }

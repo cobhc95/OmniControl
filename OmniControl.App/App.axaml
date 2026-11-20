@@ -109,6 +109,12 @@
         <Thickness x:Key="FloatSepAlong">3,4</Thickness>
         <x:Double x:Key="SwatchSize">18</x:Double>
         <Thickness x:Key="SwatchPadding">4</Thickness>
+        <!-- THE colour dot (Controls/SwatchDot): the chosen dot's accent ring (outside the dot, inside SwatchPadding) and its width; the dot
+             before the words of a swatch chip (c|ChipMenu.Swatch) and the words' inset after it (the dot plus a gap) -->
+        <Thickness x:Key="SwatchRingInset">-3</Thickness>
+        <x:Double x:Key="SwatchRingThickness">2</x:Double>
+        <x:Double x:Key="ChipSwatchSize">14</x:Double>
+        <Thickness x:Key="ChipSwatchInset">20,0,0,0</Thickness>
         <x:Double x:Key="CaptureHandleSize">8</x:Double>
         <x:Double x:Key="CaptureHandleReach">8</x:Double>
         <x:Double x:Key="CaptureBarGap">6</x:Double>

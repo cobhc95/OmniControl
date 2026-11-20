@@ -6,6 +6,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 ## Unreleased
 
 - New: the accent colours are Windows' own accent palette, so they look as rich as "Windows accent"; a "Custom…" dot opens a colour editor (saturation square, hue bar, hex box, Hue, Saturation and Brightness sliders, live preview), and one Accent intensity setting makes every accent softer or stronger than Windows' own shade.
+- Changed: every colour choice (Theme, Accent colour, Background colour, Tray icon colour, the OSD's Accent and Background, the gadget's Text, warn and icon colours) is now a compact swatch button showing the chosen colour and its name; it opens a grid of all the colours (arrow keys move, Enter picks), Left/Right and the mouse wheel still step the choice, and the accent's "Custom colour…" row opens the colour editor. The custom colour's dot has a rainbow ring so it never looks like a preset.
 
 ## 0.2.3
 

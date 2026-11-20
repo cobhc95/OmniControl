@@ -97,6 +97,9 @@
     </Style>
     <Style Selector="Button.selector.caution /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="BorderBrush" Value="{DynamicResource BrushTagCaution}" /></Style>
     <Style Selector="Button.selector > Grid > TextBlock.withdot"><Setter Property="Margin" Value="{DynamicResource ChipDotInset}" /></Style>
+    <!-- THE swatch button (c|ChipMenu.Swatch, usually .dropbox): the colour dot before the words, smaller than a pop-down's dots -->
+    <Style Selector="Button.selector > Grid > c|SwatchDot"><Setter Property="Size" Value="{DynamicResource ChipSwatchSize}" /></Style>
+    <Style Selector="Button.selector > Grid > TextBlock.withswatch"><Setter Property="Margin" Value="{DynamicResource ChipSwatchInset}" /></Style>
     <Style Selector="c|StatusDot">
         <Setter Property="Width" Value="{DynamicResource BrowserTabDotSize}" />
         <Setter Property="Height" Value="{DynamicResource BrowserTabDotSize}" />

@@ -14,8 +14,8 @@ internal static class OrientationPreview
 
     public static Control Build(int selected)
     {
-        var row = Swatches.Row(Spacing, selected);
-        row.Margin = new Thickness(HoverRoom); // the hovered screen grows (Border.swatch), so it needs room to stay unclipped
+        var row = new GalleryStrip { Spacing = Spacing, Selected = selected };
+        row.Margin = new Thickness(HoverRoom); // the hovered screen grows (Border.gallerypick), so it needs room to stay unclipped
         foreach (var orientation in Enum.GetValues<DisplayOrientation>())
             row.Children.Add(Screen(orientation, (int)orientation == selected));
         return row;
@@ -37,7 +37,7 @@ internal static class OrientationPreview
             Cursor = new Cursor(StandardCursorType.Hand),
             Child = TopEdge(orientation, key),
         };
-        screen.Classes.Add(Swatches.Clickable);
+        screen.Classes.Add(GalleryStrip.Clickable);
         screen.Bind(Border.BorderBrushProperty, screen.GetResourceObservable(key));
         ToolTip.SetTip(screen, DisplayOrientationCard.Title(orientation));
         return screen;

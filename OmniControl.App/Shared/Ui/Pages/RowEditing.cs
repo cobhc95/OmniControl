@@ -213,16 +213,20 @@ public static class RowEditing
                 e.Handled = true;
                 break;
 
-            // A lone gallery (style, colours): Left/Right browse the options.
+            // A lone gallery (a picture gallery, or a colour gallery's closed swatch button): Left/Right browse the options.
             case Key.Left or Key.Right when src is Border { Tag: "gallery", DataContext: GalleryItem gallery } && parts.Count == 1:
                 gallery.Step(e.Key == Key.Right ? 1 : -1);
                 e.Handled = true;
                 break;
 
-            // Enter steps a gallery; on an option with a pop-down editor (Custom…) it opens the editor.
+            case Key.Left or Key.Right when src is Button { Tag: "scope", DataContext: GalleryItem { HasDots: true } dots } && parts.Count == 1:
+                dots.Step(e.Key == Key.Right ? 1 : -1);
+                e.Handled = true;
+                break;
+
+            // Enter steps a picture gallery (a swatch button opens its pop-down by itself).
             case Key.Enter when src is Border { Tag: "gallery", DataContext: GalleryItem gallery2 }:
-                if (gallery2.OpensEditor) gallery2.OpenEditor();
-                else gallery2.Step(1);
+                gallery2.Step(1);
                 e.Handled = true;
                 break;
 

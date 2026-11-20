@@ -33,7 +33,7 @@ public sealed partial class AppSettingsPageViewModel
             Half = true,
         };
         _trayColour = new GalleryItem(TrayIconChoices.ColourWords, colours.Select(c => c.Name).ToList(), ColourIndex(),
-            () => Swatches.Build(colours.Select(c => TrayIconChoices.Fill(c.Colour)).ToList(), ColourIndex(), edged: true),
+            i => (TrayIconChoices.Fill(colours[i].Colour), SwatchMark.None),
             i => look.SetTrayIconColour(colours[i].Colour))
         {
             Tip = "Follow Windows draws an icon white on a dark taskbar and black on a light one; the logo keeps its own tile and dial colours.",

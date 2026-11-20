@@ -65,8 +65,8 @@ public static class AccentService
     /// The choice that follows Windows' accent colour; first in <see cref="Names"/>.
     public const string WindowsName = "Windows accent";
 
-    /// The user's own colour; last in <see cref="Choices"/>, shown as <see cref="CustomLabel"/> (its dot opens the colour editor).
-    public const string CustomName = "Custom", CustomLabel = "Custom…";
+    /// The user's own colour; last in <see cref="Choices"/>. <see cref="CustomEditorLabel"/> = the words of the row that opens its colour editor.
+    public const string CustomName = "Custom", CustomEditorLabel = "Custom colour…";
 
     /// The choice "Windows accent" falls back to when Windows reports no accent.
     private const string FallbackName = "Blue";
@@ -116,9 +116,6 @@ public static class AccentService
         for (var i = 0; i < Presets.Count; i++) if (Presets[i].Name == name) return PresetColours[i];
         return PresetColours[0];
     }
-
-    /// The words a gallery shows for a choice.
-    public static string Label(string name) => name == CustomName ? CustomLabel : name;
 
     /// The intensity in words: "Windows" at the default, else which way and how far ("Softer 30", "Stronger 70").
     public static string IntensityWords(int value) => value == DefaultIntensity ? "Windows" : $"{(value < DefaultIntensity ? "Softer" : "Stronger")} {value}";

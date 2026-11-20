@@ -45,10 +45,10 @@
                     </Button>
                     <Border Classes="floatsep across" />
                     <Button x:Name="ColourButton" Classes="toolicon" ToolTip.Tip="Colour (the wheel here changes the size)">
-                        <Ellipse Classes="swatch" Fill="{Binding CurrentBrush}" />
+                        <c:SwatchDot Fill="{Binding CurrentBrush}" />
                         <Button.Flyout>
                             <c:ListMenuFlyout Placement="LeftEdgeAlignedTop">
-                                <c:SwatchList ItemsSource="{Binding Colours}" Picked="OnSwatchPicked" />
+                                <c:SwatchList IsMouseOnly="True" ItemsSource="{Binding Colours}" Picked="OnSwatchPicked" />
                             </c:ListMenuFlyout>
                         </Button.Flyout>
                     </Button>

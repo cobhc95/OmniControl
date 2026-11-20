@@ -1,6 +1,6 @@
 namespace OmniControl.App.Features.Settings.Pages;
 
-// Appearance's Accent colour gallery (Windows accent, Windows' palette, then "Custom…", whose dot opens the colour editor) and the Accent
+// Appearance's Accent colour gallery (Windows accent, Windows' palette, then "Custom"; its pop-down's "Custom colour…" row opens the colour editor) and the Accent
 // intensity card beside it; both apply live through AccentService and are kept in settings.json.
 public sealed partial class AppSettingsPageViewModel
 {
@@ -13,13 +13,14 @@ public sealed partial class AppSettingsPageViewModel
     private GalleryItem MakeAccentCards(Action<string> report)
     {
         var choices = AccentChoices;
-        var accent = new GalleryItem("Accent colour", choices.Select(AccentService.Label).ToList(), AccentIndex(_settings.Accent),
-            () => AccentSwatches.Build(choices, AccentService.Resolve, AccentIndex(AccentService.Name)),
+        var accent = new GalleryItem("Accent colour", choices, AccentIndex(_settings.Accent),
+            i => (new SolidColorBrush(AccentService.Resolve(choices[i])), AccentSwatch.Mark(choices[i])),
             i => UseAccent(choices[i]))
         {
-            Tip = "Used everywhere; the OSD can match it. Windows accent follows the colour chosen in Windows; Custom… opens a colour editor.",
+            Tip = "Used everywhere; the OSD can match it. Windows accent follows the colour chosen in Windows; Custom colour… opens a colour editor.",
             Half = true,
-            EditorIndex = choices.Count - 1,
+            EditorIndex = AccentIndex(AccentService.CustomName),
+            EditorText = AccentService.CustomEditorLabel,
             Editor = close => new AccentEditor
             {
                 DataContext = new AccentEditorModel(AccentService.Custom, AccentService.Intensity, UseCustomAccent, UseAccentIntensity, close),

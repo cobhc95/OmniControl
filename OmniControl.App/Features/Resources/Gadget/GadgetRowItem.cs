@@ -54,7 +54,7 @@ public sealed partial class GadgetRowItem : ObservableObject
     public GadgetRowItem(GadgetReading entry, ResourcesSettings settings, Func<Visual, IconRequest, Task<IconPick?>> chooseIcon, Func<Color> ink)
     {
         (Entry, _settings, _reading, _chooseIcon, _ink) = (entry, settings, Reading.Find(entry.Id), chooseIcon, ink);
-        Colours = GadgetSettings.Colours.Select(c => new SwatchItem(new SolidColorBrush(TaskbarGadget.ColourOf(c, ink())), new RelayCommand(() => Set(e => e.Colour = c)))).ToList();
+        Colours = GadgetSettings.Colours.Select((c, i) => new SwatchItem(new SolidColorBrush(TaskbarGadget.ColourOf(c, ink())), new RelayCommand(() => SetColour(c)), GadgetSettings.ColourNames[i])).ToList();
         // The grid holding the reading's best suggestion comes first (network for speeds, components for loads, thermometers for temperatures).
         var suggested = _reading?.SuggestedIcons ?? Array.Empty<string>();
         int Rank(string[] ids) => suggested.Select((id, i) => ids.Contains(id) ? i : int.MaxValue).DefaultIfEmpty(int.MaxValue).Min();
@@ -84,9 +84,47 @@ public sealed partial class GadgetRowItem : ObservableObject
     public IReadOnlyList<SwatchItem> IconColours { get; }
     public IReadOnlyList<SwatchItem> AllIconColours { get; }
 
+    /// The icon colours' names in the order of the dots (null = follow the text colour).
+    private static readonly IReadOnlyList<string?> IconColourNames = GadgetLabel.IconColours.Cast<string?>().Prepend(null).ToList();
+
     private IReadOnlyList<SwatchItem> Dots(Func<int?> at) =>
-        GadgetLabel.IconColours.Cast<string?>().Prepend(null).Select(n => new SwatchItem(GadgetLabel.InkOf(n) is { } c ? new SolidColorBrush(c) : null,
-            new RelayCommand(() => ColourIcons(n, at())), n ?? "Follow the text colour")).ToList();
+        IconColourNames.Select(n => new SwatchItem(GadgetLabel.InkOf(n) is { } c ? new SolidColorBrush(c) : null,
+            new RelayCommand(() => ColourIcons(n, at())), n is null ? "Follow the text colour" : Palette.DrawingTitles[Palette.DrawingNamed.ToList().FindIndex(d => d.Name == n)])).ToList();
+
+    /// The Readings table's swatch buttons: the warn colour, and the label's one icon colour (null: no icon, or icons of several colours).
+    [ObservableProperty] private SwatchItem? _warnSwatch;
+    [ObservableProperty] private SwatchItem? _iconSwatch;
+
+    private void SetColour(string colour)
+    {
+        Set(e => e.Colour = colour);
+        ShowWarnColour();
+    }
+
+    private void ShowWarnColour()
+    {
+        var at = Math.Max(0, GadgetSettings.Colours.ToList().FindIndex(c => string.Equals(c, Entry.Colour, StringComparison.OrdinalIgnoreCase)));
+        Choose(Colours, at);
+        // Drawn fresh: "Taskbar text" follows the taskbar's text colour now.
+        WarnSwatch = new SwatchItem(new SolidColorBrush(TaskbarGadget.ColourOf(Entry.Colour, _ink())), Colours[at].Pick, Colours[at].Tip);
+    }
+
+    /// Rings dot <paramref name="at"/> (none when null).
+    private static void Choose(IReadOnlyList<SwatchItem> dots, int? at)
+    {
+        for (var i = 0; i < dots.Count; i++) dots[i].IsSelected = i == at;
+    }
+
+    /// The index among the icon colour dots of the colour of the icon token at <paramref name="start"/> (null: the one colour every icon
+    /// shares); null when the label has no such icon or its icons differ.
+    private int? IconColourAt(int? start)
+    {
+        var icons = GadgetLabel.Parts(Label).Where(p => p.Icon is not null).ToList();
+        if (icons.Count == 0) return null;
+        if (GadgetLabel.ColourOf(Label, start) is { } name) return IconColourNames.ToList().IndexOf(name);
+        // No one named colour: the icon (or every icon) follows the text colour, else they are mixed.
+        return start is not null || icons.All(p => p.Colour is null) ? 0 : null;
+    }
     public IReadOnlyList<ChipItem> QuickChips { get; }
     public int GapMax => GadgetSettings.MaxGapAfter;
 
@@ -94,7 +132,6 @@ public sealed partial class GadgetRowItem : ObservableObject
     [ObservableProperty] private string _label = string.Empty;
     [ObservableProperty] private double _warnAt;
     [ObservableProperty] private string _warnText = Reading.Unknown;
-    [ObservableProperty] private IBrush? _colour;
     [ObservableProperty] private double _gapAfter;
     [ObservableProperty] private string _gapText = string.Empty;
     [ObservableProperty] private double _opacity = 1;
@@ -110,9 +147,7 @@ public sealed partial class GadgetRowItem : ObservableObject
     /// Where the selected icon token starts in the label (clicked into in the label box), or null: the icon colour then goes to every icon.
     [ObservableProperty] private int? _selectedIcon;
 
-    /// The Readings table's icon colour dot: the label's one icon colour (null: none or mixed), whether its icons follow the text colour, whether it has any.
-    [ObservableProperty] private IBrush? _iconDot;
-    [ObservableProperty] private bool _iconFollows;
+    /// The label has an icon (the Readings table's icon colour button is greyed without one).
     [ObservableProperty] private bool _hasIcon;
 
     public bool HasLabel => Label.Length > 0;
@@ -124,7 +159,7 @@ public sealed partial class GadgetRowItem : ObservableObject
         (Shown, Label, WarnAt, GapAfter) = (Entry.Shown, Entry.Label, Entry.WarnAt ?? 0, Entry.GapAfter);
         WarnText = Entry.WarnAt is { } at && _reading is not null ? _reading.UnitWords(at) : Reading.Unknown;
         GapText = $"{Entry.GapAfter:0} px";
-        Colour = new SolidColorBrush(TaskbarGadget.ColourOf(Entry.Colour, _ink()));
+        ShowWarnColour();
         Opacity = Entry.Shown ? 1 : HiddenOpacity;
         _loading = false;
         ShowLabelState();
@@ -187,6 +222,7 @@ public sealed partial class GadgetRowItem : ObservableObject
     {
         object ink = GadgetLabel.InkOf(GadgetLabel.ColourOf(Label, SelectedIcon)) is { } c ? new SolidColorBrush(c) : AvaloniaProperty.UnsetValue;
         foreach (var icon in IconGrids.SelectMany(g => g.Icons)) icon.Ink = ink;
+        Choose(IconColours, IconColourAt(SelectedIcon));
     }
 
     /// "+ icon": THE icon picker over the window that holds <paramref name="from"/>; the chosen icon goes in at the caret.
@@ -210,10 +246,10 @@ public sealed partial class GadgetRowItem : ObservableObject
         foreach (var icon in IconGrids.SelectMany(g => g.Icons)) icon.IsSelected = GadgetLabel.Holds(Label, icon.Id);
         var style = _reading is null ? (Label.Length == 0 ? LabelStyle.None : (LabelStyle?)null) : GadgetLabel.StyleOf(Label, _reading);
         foreach (var chip in QuickChips) chip.IsSelected = chip.Key == style?.ToString();
-        var icons = GadgetLabel.Parts(Label).Where(p => p.Icon is not null).ToList();
-        HasIcon = icons.Count > 0;
-        IconFollows = HasIcon && icons.All(p => p.Colour is null);
-        IconDot = GadgetLabel.InkOf(GadgetLabel.ColourOf(Label, null)) is { } c ? new SolidColorBrush(c) : null;
+        HasIcon = GadgetLabel.Parts(Label).Any(p => p.Icon is not null);
+        var shared = IconColourAt(null);
+        Choose(AllIconColours, shared);
+        IconSwatch = shared is { } at ? AllIconColours[at] : null;
         ShowInk();
     }
 

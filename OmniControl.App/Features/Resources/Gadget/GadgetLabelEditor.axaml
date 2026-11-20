@@ -14,7 +14,7 @@
         </Grid>
         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource GapLarge}">
             <TextBlock Text="Icon colour" VerticalAlignment="Center" ToolTip.Tip="The icon clicked in the label, or every icon when none is" />
-            <c:SwatchList Grid.Column="1" ItemsSource="{Binding IconColours}" />
+            <c:SwatchList Grid.Column="1" ItemsSource="{Binding IconColours}" HorizontalAlignment="Left" />
         </Grid>
         <ItemsControl ItemsSource="{Binding IconGrids}">
             <ItemsControl.ItemsPanel>
