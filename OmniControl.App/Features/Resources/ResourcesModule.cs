@@ -40,7 +40,8 @@ public sealed class ResourcesModule : IFeatureModule, IResourcesWindows
         _context = context;
         _settings.Setup.Gadget.MoveOldClickDefault();
         _settings.Setup.Gadget.Complete();
-        var monitor = _monitor = new ResourceMonitor(context.States, () => TimeSpan.FromSeconds(_settings.Setup.ReadEverySeconds), () => _settings.Setup.Adapter, Title);
+        var monitor = _monitor = new ResourceMonitor(context.States, () => TimeSpan.FromSeconds(_settings.Setup.ReadEverySeconds), () => _settings.Setup.Adapter,
+            () => _limits!.StartTraffic(), Title);
         var limits = _limits = new NetworkLimits(_settings, context.Report, id => monitor.Seen.GetValueOrDefault(id));
         limits.RegisterActions(context.Actions, Title, () => monitor.Seen.Keys.Concat(_settings.Setup.Apps.Select(r => r.Id)).Distinct().Select(id => new HotkeyDevice(id, id)).ToList());
         context.Hardware.Register(new HardwareWatch("resources.download-adapters", "Network adapters (download limits)",

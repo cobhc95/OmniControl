@@ -30,6 +30,8 @@ Name: "{userdesktop}\OmniControl"; Filename: "{app}\OmniControl.exe"; Tasks: des
 Name: desktopicon; Description: "Create a desktop shortcut"; Flags: unchecked
 ; Installs the bundled driver after the files ([Code] InstallElevated); uninstall removes it only if OmniControl installed it.
 Name: packetfilter; Description: "Install Windows Packet Filter (for per-app download limits)"
+; Added in the same admin step (the app's --network-service install); uninstall removes it.
+Name: networkservice; Description: "Network service (per-app limits without admin)"
 [Run]
 ; shellexec: the app asks for admin, which a plain CreateProcess from a non-admin setup cannot start.
 Filename: "{app}\OmniControl.exe"; Description: "Start OmniControl"; Flags: nowait postinstall skipifsilent shellexec
@@ -67,7 +69,31 @@ begin
   Result := not IsRunning();
 end;
 
+// The network service's name, retyped from Core/Engine/Resources/NetworkServiceSetup (Inno's script cannot read C#).
+const
+  NetworkServiceName = 'OmniControlNetwork';
+
+function NetworkServiceInstalled(): Boolean;
+begin
+  Result := RegKeyExists(HKLM, 'SYSTEM\CurrentControlSet\Services\' + NetworkServiceName);
+end;
+
+// Stops the service (its user may, no prompt) and waits a bounded time until it has, so its process is not taken for the app's.
+procedure StopNetworkService();
+var Code, Tries: Integer;
+begin
+  if not NetworkServiceInstalled() then Exit;
+  Exec(ExpandConstant('{sys}\sc.exe'), 'stop ' + NetworkServiceName, '', SW_HIDE, ewWaitUntilTerminated, Code);
+  Tries := 60;
+  while (Tries > 0) and not (Exec(ExpandConstant('{cmd}'), '/C sc query ' + NetworkServiceName + ' | find "STOPPED"', '', SW_HIDE, ewWaitUntilTerminated, Code) and (Code = 0)) do
+  begin
+    Sleep(250);
+    Tries := Tries - 1;
+  end;
+end;
+
 // Asks OmniControl to quit (elevated, one admin prompt: it usually runs as administrator), so its shut-down steps put Windows back.
+// The network service (also OmniControl.exe) is stopped first; it takes its rules out as it stops.
 // Never waits on the helper itself: an older installed copy does not know --quit and would sit as a second, hidden copy, so Setup only
 // waits a bounded time for the app to go, then ends every OmniControl.exe by force (one admin prompt), the helper included.
 function EndOmniControl(): String;
@@ -75,6 +101,7 @@ var Code: Integer;
     Exe: String;
 begin
   Result := '';
+  StopNetworkService();
   if not IsRunning() then Exit;
   Exe := ExpandConstant('{app}\OmniControl.exe');
   if FileExists(Exe) and ShellExec('runas', Exe, '--quit', '', SW_HIDE, ewNoWait, Code) and GoneWithin(60) then Exit;
@@ -116,6 +143,13 @@ begin
   Result := '("' + ExpandConstant('{app}\OmniControl.exe') + '" --sign-in-task ' + OnOff + ')';
 end;
 
+// The network service, added (for this Windows user, named so an administrator's prompt still serves them) or removed by the app itself,
+// which owns its definition; the switch is retyped from the app's Shared/Services/NetworkServiceMode.
+function NetworkService(Verb: String): String;
+begin
+  Result := '("' + ExpandConstant('{app}\OmniControl.exe') + '" --network-service ' + Verb + ')';
+end;
+
 // The saved "Run as administrator" (Mouse and Trackpad, retyped from the app's settings file); off for a new install, its default.
 function RunsAsAdministrator(): Boolean;
 var Text: AnsiString;
@@ -149,6 +183,8 @@ begin
   if Driver then Steps := NetCfg('-v -l "' + ExpandConstant(PacketFilterInf) + '" -c s -i ' + PacketFilterComponent);
   if RunsAsAdministrator() then Steps := AddStep(Steps, SignInTask('on'));
   if WizardIsTaskSelected('equalizerapo') then Steps := AddStep(Steps, EqualizerApo('install'));
+  if WizardIsTaskSelected('networkservice') then
+    Steps := AddStep(Steps, NetworkService('install "' + GetEnv('USERDOMAIN') + '\' + GetUserNameString() + '"'));
   if (RunElevated(Steps) = AdminPromptRefused) or not Driver then Exit;
   if PacketFilterInstalled() then
     RegWriteDWordValue(HKCU, PacketFilterRecordKey, PacketFilterRecordValue, 1)
@@ -157,7 +193,7 @@ begin
 end;
 
 // Only a driver OmniControl installed (the record) is removed, so another program's is never taken away; a copy that stays keeps its record.
-// The sign-in task goes in the same prompt (the app removed it already when the setting was turned off).
+// The sign-in task and the network service go in the same prompt (the app removed the task already when the setting was turned off).
 procedure UninstallElevated();
 var Mine: Cardinal;
     Steps: String;
@@ -166,6 +202,7 @@ begin
   Driver := RegQueryDWordValue(HKCU, PacketFilterRecordKey, PacketFilterRecordValue, Mine) and (Mine = 1);
   Steps := '';
   if RunsAsAdministrator() then Steps := SignInTask('off');
+  if NetworkServiceInstalled() then Steps := AddStep(Steps, NetworkService('remove'));
   if Driver and PacketFilterInstalled() then Steps := AddStep(Steps, NetCfg('-v -u ' + PacketFilterComponent));
   if EqualizerApoOurs() then Steps := AddStep(Steps, EqualizerApo('remove'));
   RunElevated(Steps);

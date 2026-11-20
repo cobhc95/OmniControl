@@ -5,47 +5,58 @@ using OmniControl.Core.Engine.Resources;
 namespace OmniControl.App.Features.Resources;
 
 /// The programs' network rules (upload limit, download limit, block): saved, made what Windows holds on a worker (throttled; each sync reads
-/// Windows, so a crashed run's rules go at the next start), all taken out at shut-down.
+/// Windows, so a crashed run's rules go at the next start), all taken out at shut-down. The work runs in the network service when it is
+/// installed, else in OmniControl itself while it runs as administrator, else nowhere (the page says so).
 public sealed class NetworkLimits : IDisposable
 {
     /// The limits a chip offers, in KB/s (and the limit an "On" action uses when none was chosen).
     public static readonly IReadOnlyList<int> Choices = new[] { 64, 128, 256, 512, 1024, 2048, 5120, 10240 };
     public const int DefaultKbps = 1024;
 
-    private static readonly ShapingTimes Shaping = new(Timing.ResourcesShapeBurst, Timing.ResourcesShapeQueue, Timing.ResourcesShapePorts,
-        Timing.ResourcesShapePortsIdle, Timing.ResourcesShapeStopWait);
+    /// The one line the Network by app group shows instead of its programs while no one can do the work.
+    public const string UnavailableLine = "Per-app limits and speeds need the network service, which is not installed";
+
+    /// The tooltip of every Install… of the network service.
+    public const string InstallServiceTip = "Installs OmniControl's network service (Windows asks once), so per-app limits work without running OmniControl as administrator.";
 
     private readonly ResourcesSettings _settings;
     private readonly Action<string> _report;
     private readonly Func<string, string?> _pathOf;
-    private readonly NetworkRules _windows = new();
+    private readonly NetworkServiceClient _service;
     private readonly ThrottledRun _sync;
     private readonly List<HotkeyAction> _actions = new();
+    private readonly object _gate = new(); // the runner and its syncs
+    private NetworkWork? _local; // OmniControl's own work while it runs as administrator and the service is not installed
     private volatile IReadOnlyList<NetworkRule> _wanted; // made on the UI thread, read by the worker
-    private volatile IReadOnlyList<DownloadLimit> _downloads;
     private volatile DownloadState _download = DownloadState.Checking;
-    private DownloadShaper? _shaper; // the worker's, under the lock
+    private volatile bool _serviceInstalled;
     private bool _stopped, _ruled, _installTried;
     private string? _toldFailure; // the download failure last told (worker or packet thread), told once
     private string? _toldRules; // the rules' problems last told (worker, under the lock), told once until they change or clear
     private volatile string? _installFailure; // why the last install of Windows Packet Filter failed, until one works
     private volatile bool _installing;
 
-    /// The one line the Network by app group shows instead of its programs while OmniControl does not run as administrator.
-    public const string NeedsAdministratorLine = "Network limits need OmniControl to run as administrator";
-
-    /// True while OmniControl does not run as administrator: no limit, block, download limit or per-program speed is read or put into Windows.
-    public static bool NeedsAdministrator => !AdministratorMode.IsElevated;
-
-    /// <param name="pathOf">Where a program the poller saw lives (the firewall names a program by its path).</param>
+    /// <param name="pathOf">Where a program the poller saw lives (the firewall and the service name a program by its path).</param>
     public NetworkLimits(ResourcesSettings settings, Action<string> report, Func<string, string?> pathOf)
     {
         (_settings, _report, _pathOf) = (settings, report, pathOf);
-        (_wanted, _downloads) = (Wanted(), Downloads());
+        _wanted = Wanted();
+        _service = new NetworkServiceClient(Failed, () => Changed?.Invoke(), () => _sync!.Request());
         _sync = new ThrottledRun(Timing.ResourcesRulesGap, Sync);
-        _sync.Request(); // finds the download driver, then makes Windows hold the saved rules (taking out what a crashed run left)
+        _sync.Request(); // finds where the work runs and the download driver, then makes Windows hold the saved rules (taking out what a crashed run left)
         settings.Changed += Reapply; // a chip, an action, a preset or an import
     }
+
+    /// Where the work runs changed, or the service's state (a worker).
+    public event Action? Changed;
+
+    /// True when limits and per-program speeds can work: the service is installed or OmniControl runs as administrator (any thread).
+    public bool Available => _serviceInstalled || AdministratorMode.IsElevated;
+
+    /// What the network service does now: the status line's first part, its tooltip, a real failure, the Install… link.
+    public ServiceState Service => !_serviceInstalled ? ServiceState.NotInstalled
+        : _service.Problem is { } problem ? ServiceState.Failure(problem)
+        : _service.Connected ? ServiceState.Running : ServiceState.Ready;
 
     /// What download limits really do now (any thread).
     public DownloadState Download => _installing ? DownloadState.Installing : _download;
@@ -70,11 +81,15 @@ public sealed class NetworkLimits : IDisposable
         });
     }
 
-    /// "Restart as administrator" of the Network by app group; a refused prompt is said in one line.
-    public async Task RestartAsAdministratorAsync()
+    /// The Install… link and pill: installs the network service (one Windows prompt); a failure is said in one line. Then the work moves there.
+    public async Task InstallServiceAsync()
     {
-        if (await AdministratorMode.RestartElevatedAsync() is { } problem) _report(problem);
+        if (await NetworkServiceMode.InstallAsync() is { } problem) _report(problem);
+        _sync.Request();
     }
+
+    /// The page came on screen: where the work runs and what the service holds are looked at again (the service may have been removed).
+    public void Recheck() => _sync.Request();
 
     public AppNetRule? Rule(string appId) => _settings.Setup.Apps.FirstOrDefault(r => r.Id == appId);
 
@@ -93,28 +108,61 @@ public sealed class NetworkLimits : IDisposable
     /// The setup changed: Windows follows only when the rules themselves did.
     private void Reapply()
     {
-        var (wanted, downloads) = (Wanted(), Downloads());
-        if (wanted.SequenceEqual(_wanted) && downloads.SequenceEqual(_downloads)) return;
-        (_wanted, _downloads) = (wanted, downloads);
+        var wanted = Wanted();
+        if (wanted.SequenceEqual(_wanted)) return;
+        _wanted = wanted;
         _sync.Request();
     }
 
-    private IReadOnlyList<NetworkRule> Wanted() => _settings.Setup.Apps.Where(r => (r.UploadOn && r.UploadKbps > 0) || r.Blocked)
-        .Select(r => new NetworkRule(r.Id, r.Path, r.UploadOn && r.UploadKbps > 0 ? (ulong)r.UploadKbps * 1024 * 8 : null, r.Blocked)).ToList();
-
-    private IReadOnlyList<DownloadLimit> Downloads() => _settings.Setup.Apps.Where(r => r.DownloadOn && r.DownloadKbps > 0)
-        .Select(r => new DownloadLimit(r.Id, r.DownloadKbps * 1024L)).ToList();
+    private IReadOnlyList<NetworkRule> Wanted() => _settings.Setup.Apps
+        .Where(r => (r.UploadOn && r.UploadKbps > 0) || r.Blocked || (r.DownloadOn && r.DownloadKbps > 0))
+        .Select(r => new NetworkRule(r.Id, r.Path, r.UploadOn && r.UploadKbps > 0 ? (ulong)r.UploadKbps * 1024 * 8 : null, r.Blocked,
+            r.DownloadOn && r.DownloadKbps > 0 ? r.DownloadKbps * 1024L : null)).ToList();
 
     private void Sync()
     {
-        if (NeedsAdministrator) return; // Windows would refuse every rule, and the group says so
-        lock (_windows)
+        lock (_gate)
         {
-            ShapeDownloads(); // first: it is quick, and the page's chips wait for it
+            if (Runner() is not { } work) return; // nobody may change Windows' rules, and the group says so
             var wanted = _wanted;
+            var downloads = !_stopped && wanted.Any(r => r.DownloadBytes is not null);
+            var installed = DownloadShaper.Installed;
+            if (downloads && !installed && !_installTried) InstallPacketFilter();
+            // Before the limits reach the shaper, so a failure to open the driver is never written over.
+            if (downloads && installed) _download = DownloadState.Running;
+            else (_download, _toldFailure) = (!installed && _installFailure is { } failure ? DownloadState.InstallFailed(failure) : DownloadState.Idle(installed), null);
             _ruled |= wanted.Count > 0;
-            Tell(_windows.Sync(wanted));
+            Tell(work.Sync(installed ? wanted : wanted.Select(r => r with { DownloadBytes = null }).ToList()));
         }
+    }
+
+    /// Where the work runs now (under the lock, on a worker): the network service when installed, else OmniControl itself while it runs as
+    /// administrator, else nowhere. Work left where it ran before is taken out of Windows.
+    private INetworkWork? Runner()
+    {
+        var installed = NetworkServiceSetup.Installed;
+        if (installed != _serviceInstalled)
+        {
+            _serviceInstalled = installed;
+            Changed?.Invoke();
+        }
+        INetworkWork? work = installed ? _service : AdministratorMode.IsElevated ? _local ??= new NetworkWork(Timing.ResourcesShaping, Failed) : null;
+        if (work != _service) _service.RemoveAll();
+        if (work != _local && _local is not null)
+        {
+            _local.StopDownloads();
+            Log(_local.RemoveAll());
+            _local = null;
+        }
+        return work;
+    }
+
+    /// Starts reading traffic per program where the work runs (the poller's worker); throws an <see cref="IOException"/> saying why when it cannot.
+    public ITrafficSession StartTraffic()
+    {
+        INetworkWork? work;
+        lock (_gate) work = Runner();
+        return work?.StartTraffic() ?? throw new IOException(UnavailableLine + ".");
     }
 
     /// Logs the rules' problems and tells them once (until they change or clear); before any rule was set this run (only a crashed run's to
@@ -128,42 +176,13 @@ public sealed class NetworkLimits : IDisposable
         if (words is not null && _ruled) _report(words);
     }
 
-    /// Runs the shaper while a download limit is set and Windows Packet Filter is installed (worker, under the lock); a shaper that ended is
-    /// let go. The first limit set without the driver (or one saved from before) installs it, once a run; after a failure only the retry does.
-    private void ShapeDownloads()
-    {
-        if (_stopped) return;
-        if (_shaper is { Running: false }) StopShaper();
-        var limits = _downloads;
-        var installed = DownloadShaper.Installed;
-        if (limits.Count == 0 || !installed)
-        {
-            StopShaper();
-            if (limits.Count > 0 && !installed && !_installTried) InstallPacketFilter();
-            (_download, _toldFailure) = (!installed && _installFailure is { } failure ? DownloadState.InstallFailed(failure) : DownloadState.Idle(installed), null);
-            return;
-        }
-        if (_shaper is null)
-        {
-            _download = DownloadState.Running; // before the limits reach it, so a failure to open the driver is never written over
-            _shaper = DownloadShaper.Start(Shaping, Failed);
-        }
-        _shaper.SetLimits(limits);
-    }
-
-    /// Shaping ended by itself (the packet thread; the driver could not open or failed, traffic already passes untouched).
+    /// Shaping ended by itself (the packet thread, or an answer of the service; the driver could not open or failed, traffic already passes untouched).
     private void Failed(string reason)
     {
         _download = DownloadState.Failure(reason);
         if (reason == _toldFailure) return; // the same failure again (another change retried): told once
         _toldFailure = reason;
         _report($"Download limits not applied: {reason}. Traffic passes without a limit.");
-    }
-
-    private void StopShaper()
-    {
-        _shaper?.Dispose();
-        _shaper = null;
     }
 
     private static void Log(IReadOnlyList<string> problems)
@@ -187,9 +206,9 @@ public sealed class NetworkLimits : IDisposable
         var family = new ActionFamily(id, name);
         void Run(IReadOnlyList<string>? ids, bool? on)
         {
-            if (NeedsAdministrator)
+            if (!Available)
             {
-                _report(NeedsAdministratorLine + ".");
+                _report(UnavailableLine + ".");
                 return;
             }
             foreach (var app in ids ?? programs().Select(p => p.Id).ToList())
@@ -208,31 +227,48 @@ public sealed class NetworkLimits : IDisposable
         foreach (var action in _actions) action.RefreshDevices();
     }
 
-    /// Windows' devices changed or the PC woke (a worker): a running shaper picks up new adapters, so a limit holds on every adapter.
+    /// Windows' devices changed or the PC woke (a worker): running download limits pick up new adapters, so a limit holds on every adapter.
     public void RefreshAdapters()
     {
-        lock (_windows) _shaper?.RefreshAdapters();
+        lock (_gate) (_local ?? (INetworkWork)_service).RefreshAdapters();
     }
 
     /// Shut-down, on its own and first: download shaping ends (held packets go on, the driver closes) and nothing starts it again.
     public void StopDownloads()
     {
-        lock (_windows)
+        lock (_gate)
         {
             _stopped = true;
-            StopShaper();
+            _local?.StopDownloads();
+            _service.StopDownloads();
         }
     }
 
-    /// Shut-down: no rule is left in Windows (runs on its own at the stage that puts Windows back); skipped when the last sync proved none.
+    /// Shut-down: no rule is left in Windows (runs on its own at the stage that puts Windows back).
     public void Dispose()
     {
         _settings.Changed -= Reapply;
         _sync.Dispose();
-        lock (_windows)
+        lock (_gate)
         {
-            if (!NeedsAdministrator && !_windows.HoldsNone) Log(_windows.RemoveAll());
+            if (_local is not null) Log(_local.RemoveAll());
+            _service.RemoveAll();
         }
+    }
+
+    /// What the network service does now (the first part of the status line).
+    public sealed record ServiceState(string Line, string Tip, bool Failed = false, bool OffersInstall = false)
+    {
+        private const string Why = "The network service lets OmniControl set per-app limits and read per-app speeds without running as administrator.";
+
+        public static readonly ServiceState NotInstalled = new("Network service not installed", $"{Why} Installing it asks Windows once.", OffersInstall: true);
+
+        public static readonly ServiceState Ready = new("Network service ready", $"{Why} Windows starts it when a limit or the speeds need it; it stops itself when idle.");
+
+        public static readonly ServiceState Running = new("Network service: running", $"{Why} It takes every rule out of Windows when OmniControl closes.");
+
+        /// It could not be reached or answered (one plain sentence); installing it again points it at this copy of OmniControl.
+        public static ServiceState Failure(string reason) => new(reason, $"{Why} Installing it again may help; the details are in the errors log.", Failed: true, OffersInstall: true);
     }
 
     /// What download limits really do now: the status line, the chips' tooltip, a real failure (red), usable chips, the install offer.
@@ -256,7 +292,7 @@ public sealed class NetworkLimits : IDisposable
             $"{Driver} holds each limited program's incoming packets back to its limit; other traffic passes unchanged.");
 
         public static DownloadState Idle(bool installed) => installed
-            ? new($"Download limits use {Driver}", $"Download limits run through {Driver}, which OmniControl opens only while a limited program has network connections.")
+            ? new($"Download limits use {Driver}", $"Download limits run through {Driver}, which is opened only while a limited program has network connections.")
             : Missing;
 
         public static DownloadState Failure(string reason) => new($"Download limits failed: {reason}",

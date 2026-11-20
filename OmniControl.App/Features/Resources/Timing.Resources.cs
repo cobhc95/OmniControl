@@ -1,3 +1,5 @@
+using OmniControl.Core.Engine.Resources;
+
 namespace OmniControl.App.Shared.Services;
 
 // The intervals of the Resources page, its taskbar gadget and its network limits; a part of Timing in Shared/Services, so every call stays Timing.X.
@@ -34,6 +36,14 @@ public static partial class Timing
     public static readonly TimeSpan ResourcesRulesGap = TimeSpan.FromSeconds(1);
 
     /// Download limits: burst, longest hold (then TCP slows), port table age while a limited program owns ports and while none does, stop wait.
-    public static readonly TimeSpan ResourcesShapeBurst = TimeSpan.FromMilliseconds(50), ResourcesShapeQueue = TimeSpan.FromMilliseconds(500),
-        ResourcesShapePorts = TimeSpan.FromSeconds(1), ResourcesShapePortsIdle = TimeSpan.FromSeconds(5), ResourcesShapeStopWait = TimeSpan.FromSeconds(2);
+    public static readonly ShapingTimes ResourcesShaping = new(TimeSpan.FromMilliseconds(50), TimeSpan.FromMilliseconds(500), TimeSpan.FromSeconds(1),
+        TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(2));
+
+    /// The network service stops itself after this long with no client, and ends its traffic session after this long with no read.
+    public static readonly TimeSpan NetworkServiceIdle = TimeSpan.FromSeconds(60), NetworkServiceSpeedsIdle = TimeSpan.FromSeconds(30);
+
+    /// How long OmniControl waits for the network service to take the connection after asking Windows to start it, for one answer
+    /// (a change of Windows' rules can take a few seconds), and for it to stop when it is removed.
+    public static readonly TimeSpan NetworkServiceConnectWait = TimeSpan.FromSeconds(5), NetworkServiceReplyWait = TimeSpan.FromSeconds(20),
+        NetworkServiceStopWait = TimeSpan.FromSeconds(15);
 }
