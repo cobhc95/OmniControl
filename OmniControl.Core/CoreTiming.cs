@@ -29,6 +29,10 @@ public static class CoreTiming
     /// foreground notice, which program the user is working in (<c>ForegroundProgram</c>); the mouse hook only reads what they found.
     public const int FullScreenWatchMs = 500, ForegroundWatchMs = 100;
 
+    /// The gap between the key events of a shortcut sent to a remote-input window (<c>InputSender.Type</c>): a remote desktop's keyboard
+    /// hook takes keys like typing, not a whole shortcut in one instant.
+    public const int RemoteKeyGapMs = 15;
+
     /// The size and place Windows' own volume and brightness pop-up may have (<c>WindowsOsdWindows.HasFlyoutShape</c>), as shares of its
     /// monitor: at most this wide and tall, its centre this close to the monitor's centre line, its edge this close to the monitor's bottom
     /// or top; and at least <see cref="WindowsOsdMinSidePx"/> on each side. A screen-sized Explorer host or a thumbnail preview fails.

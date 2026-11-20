@@ -1,13 +1,14 @@
 namespace OmniControl.Core.Engine.Mouse;
 
-/// Sends keyboard and mouse input to Windows (SendInput). Everything sent carries <see cref="Marker"/> so <see cref="MouseHook"/> ignores it.
+/// Sends keyboard and mouse input to Windows (SendInput). Everything sent carries <see cref="Marker"/> so <see cref="MouseHook"/> ignores it
+/// (except <see cref="Type"/>'s keys: no hook of OmniControl's reads the tag on keys).
 public static class InputSender
 {
     /// Tag on every input this class sends ("OMNI"), so the mouse hook never remaps its own output.
     internal static readonly UIntPtr Marker = (UIntPtr)0x4F4D4E49;
 
     private const uint InputMouse = 0, InputKeyboard = 1;
-    private const uint KeyUp = 0x2, KeyExtended = 0x1;
+    private const uint KeyUp = 0x2, KeyExtended = 0x1, ByScanCode = 0x8;
     private const uint LeftDown = 0x2, LeftUp = 0x4, RightDown = 0x8, RightUp = 0x10, MiddleDown = 0x20, MiddleUp = 0x40;
     private const uint XDown = 0x80, XUp = 0x100, Wheel = 0x800, HWheel = 0x1000;
     private const int WheelStep = 120;
@@ -42,10 +43,37 @@ public static class InputSender
     // so a key sent with scan code 0 (a virtual key alone) never reaches them.
     private static Input Key(ushort vk, bool down, IntPtr layout)
     {
+        var (scan, extended) = ScanOf(vk, layout);
+        return RawKey(vk, scan, (down ? 0u : KeyUp) | (extended ? KeyExtended : 0u));
+    }
+
+    private static (ushort Scan, bool Extended) ScanOf(ushort vk, IntPtr layout)
+    {
         var scan = MapVirtualKeyEx(vk, VkToScanEx, layout);
         if (scan == 0) scan = KeyChord.MediaScanOf(vk);
-        var extended = scan >> 8 == ExtendedPrefix || KeyChord.IsExtended(vk);
-        return RawKey(vk, (ushort)(scan & 0xFF), (down ? 0u : KeyUp) | (extended ? KeyExtended : 0u));
+        return ((ushort)(scan & 0xFF), scan >> 8 == ExtendedPrefix || KeyChord.IsExtended(vk));
+    }
+
+    /// Types a shortcut the way a keyboard does, for a window that passes keys on to another computer: each press, then each release in
+    /// reverse, as its own event <see cref="CoreTiming.RemoteKeyGapMs"/> apart, named by scan code only (Windows works out the key, left Alt
+    /// or Ctrl as a keyboard gives) and without OmniControl's tag. Remote Desktop's own keyboard hook forwards real keystrokes but not the
+    /// same shortcut sent in one instant as virtual keys. Waits between the events: never on the hook or UI thread. Returns what was sent,
+    /// for the log ("38 down, 0F down, 0F up, 38 up").
+    public static string Type(IReadOnlyList<ushort> keys)
+    {
+        var layout = WindowQuery.ActiveKeyboardLayout();
+        var sent = new List<string>();
+        foreach (var (vk, down) in keys.Select(k => (k, true)).Concat(keys.Reverse().Select(k => (k, false))))
+        {
+            if (sent.Count > 0) Thread.Sleep(CoreTiming.RemoteKeyGapMs);
+            var (scan, extended) = ScanOf(vk, layout);
+            var flags = (down ? 0u : KeyUp) | (extended ? KeyExtended : 0u);
+            // A key without a scan code (none of the named ones) can only go as its virtual key.
+            var input = scan == 0 ? RawKey(vk, 0, flags) : new Input { Type = InputKeyboard, U = new Union { Key = new KeyData { Scan = scan, Flags = flags | ByScanCode } } };
+            var accepted = Send(input) == 1;
+            sent.Add($"{(scan == 0 ? $"vk {vk:X2}" : $"{(extended ? "E0 " : string.Empty)}{scan:X2}")} {(down ? "down" : "up")}{(accepted ? string.Empty : " (refused)")}");
+        }
+        return string.Join(", ", sent);
     }
 
     private static Input RawKey(ushort vk, ushort scan, uint flags) =>

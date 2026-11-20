@@ -107,7 +107,7 @@ public sealed class MouseActionRunner
         if (_toRemote?.Invoke() != true) return false;
         var keys = action.Id == MouseActionCatalog.Omni ? _keyEquivalentOf?.Invoke(action.Param) : MouseActionCatalog.KeyEquivalentOf(action.Id);
         if (keys is null || RemoteInputApps.InFront() is not { } app) return false;
-        _log($"{(action.Id == MouseActionCatalog.Omni ? action.Param : action.Id)} sent as {keys} to {app.Name}, in front");
+        _log($"{(action.Id == MouseActionCatalog.Omni ? action.Param : action.Id)} goes as {keys} to {app.Name}, in front");
         SendKeys(keys);
         return true;
     }
@@ -146,17 +146,18 @@ public sealed class MouseActionRunner
             _report($"Couldn't read the shortcut \"{text}\". Use names like Ctrl+Shift+T.");
             return;
         }
-        InputSender.Chord(_toRemote?.Invoke() == true && RemoteInputApps.WindowedKeysFor(keys) is { } remote ? ForWindowed(remote, text) : keys);
+        if (_toRemote?.Invoke() == true && RemoteInputApps.KeysFor(keys) is { } remote) TypeToRemote(remote, text);
+        else InputSender.Chord(keys);
     }
 
-    /// The keys for a windowed remote session that would keep <paramref name="text"/> on this PC: its replacement, logged; a Windows-key
-    /// shortcut has none and is sent as it is, said once in the mouse log.
-    private ushort[] ForWindowed(RemoteInputApps.RemoteKeys remote, string text)
+    /// Types the keys into the remote-input window in front, as a keyboard would, and logs exactly what was sent; a Windows-key shortcut
+    /// the window keeps on this PC has no replacement and is typed as it is, said once in the mouse log.
+    private void TypeToRemote(RemoteInputApps.RemoteKeys remote, string text)
     {
-        if (remote.SentAs is { } swapped) _log($"{text} sent as {swapped} to {remote.App.Name} (not full screen: its own replacement)");
-        else if (Interlocked.Exchange(ref _winKeyNoted, 1) == 0)
-            _log($"{text} sent to {remote.App.Name} as it is: not full screen, it keeps Windows-key shortcuts on this PC unless its \"Apply Windows key combinations\" is \"On the remote computer\"");
-        return remote.Keys;
+        var sent = InputSender.Type(remote.Keys);
+        _log($"{text}{(remote.SentAs is { } swapped ? $" as its replacement {swapped}" : string.Empty)} typed into {remote.App.Name}: {sent}");
+        if (remote.KeptHere && Interlocked.Exchange(ref _winKeyNoted, 1) == 0)
+            _log($"{remote.App.Name} keeps Windows-key shortcuts on this PC now (not full screen, or \"Apply Windows key combinations\" is not \"On the remote computer\"): {text} acts here");
     }
 
     /// Allows at most <see cref="Timing.LaunchBurstMax"/> launches (programs, folders, and keystrokes that open a window) per
