@@ -8,8 +8,10 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
-        // Setup's --quit only asks the running copy to quit, its --sign-in-task only adds or removes the task. A second start only asks the
-        // running copy to open its window (a start-up entry's start asks nothing), before it can touch any file (a staged import, settings).
+        // The network service (started by Windows) and its install or removal run nothing else. Setup's --quit only asks the running copy to
+        // quit, its --sign-in-task only adds or removes the task. A second start only asks the running copy to open its window (a start-up
+        // entry's start asks nothing), before it can touch any file (a staged import, settings).
+        if (NetworkServiceMode.FromArguments(args) is { } served) return served;
         if (SingleInstance.IsQuit(args)) return SingleInstance.AskToQuit();
         if (AdministratorMode.FromSetup(args) is { } done) return done;
         var restart = AppRestart.IsRestart(args);

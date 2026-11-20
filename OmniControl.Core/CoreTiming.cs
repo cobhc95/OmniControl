@@ -191,6 +191,9 @@ public static class CoreTiming
     /// How long stopping the per-program traffic session waits for its reader thread.
     public static readonly TimeSpan NetworkByAppStopWait = TimeSpan.FromSeconds(2);
 
+    /// How often removing the network service looks whether it has stopped yet; the start-up and stop time the service tells Windows to allow.
+    public const int NetworkServicePollMs = 200, NetworkServiceWaitHintMs = 15_000;
+
     /// How long Windows' shutdown.exe may take to accept or refuse a shut down, restart or sign out; still running then counts as accepted.
     public const int ShutdownExeWaitMs = 5000;
 

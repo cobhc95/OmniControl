@@ -7,8 +7,8 @@ using OmniControl.App.Shared.Services.Updates;
 
 namespace OmniControl.App.Features.Settings.Pages;
 
-/// The App settings page, five collapsible groups: Appearance; Start and close; Your data (presets, backup and restore, the Confirmations,
-/// Restore all defaults); Plug-ins (AppSettingsPageViewModel.Plugins.cs, with Keep OmniControl's effects in place); Updates and about (AppSettingsPageViewModel.Updates.cs).
+/// The App settings page, five collapsible groups: Appearance; Start and close; Your data (presets, backup and restore, import, removing
+/// the network service, the Confirmations, Restore all defaults); Plug-ins (AppSettingsPageViewModel.Plugins.cs, with Keep OmniControl's effects in place); Updates and about (AppSettingsPageViewModel.Updates.cs).
 public sealed partial class AppSettingsPageViewModel : PageViewModel
 {
     private readonly AppSettings _settings;
@@ -23,6 +23,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
     private readonly ButtonItem _presets;
     private readonly ButtonItem _backup;
     private readonly MenuChoiceItem _importFromPc;
+    private readonly ButtonItem _networkService;
     private bool _readingStartup;
 
     /// One plain sentence under the list when Windows has the start-up entry switched off or refused a change; empty otherwise.
@@ -68,6 +69,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
         Entry(_backup, DataName, "backup restore export import save load move computer wipe reset factory delete all settings"),
         Entry(_importFromPc, DataName, "import settings another pc computer laptop copy paired other pcs move"),
         Entry(_restoreAllCard, DataName, "reset default restore every page all settings"),
+        Entry(_networkService, DataName, "network service remove uninstall per app limits administrator admin"),
     }.Concat(ConfirmationSearchEntries()).Concat(PluginSearchEntries()).Concat(UpdateSearchEntries())
      .Append(Entry(_about, UpdatesName, "about credits licence license gpl open source version notice"));
 
@@ -155,12 +157,14 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
         _scanResult = scanResult;
         _resetAllConfirmations = new ButtonItem("Confirmations", "Reset all", string.Empty, confirmations.ResetAll);
         _restoreAllCard = new ButtonItem("Restore all defaults", "Restore all", "Puts every page back to its defaults after one question; you can undo it", () => _ = RestoreAll?.RestoreAsync());
+        _networkService = new ButtonItem("Network service", "Remove…", "Lets per-app network limits work without running OmniControl as administrator",
+            () => _ = Guard.RunAsync("Remove the network service", async () => report(await NetworkServiceMode.RemoveAsync() ?? "The network service was removed.")));
         MakeUpdateCards(updates, report);
 
         // Each group is made from its fixed cards (its closed header lists their names), then the cards that come and go are added.
         Appearance = Fill(AppearanceItems, "AppSettings/Appearance", AppearanceName, Theme, Background, Accent, _accentIntensity, _groupsOpen, _trayIcon, _trayColour);
         StartAndClose = Fill(StartItems, "AppSettings/Start", StartName, _startWithWindows, _startMinimised, _whenClosing, _hardwareCheck);
-        YourData = Fill(DataItems, "AppSettings/Data", DataName, _presets, _backup, _importFromPc, _resetAllConfirmations, _restoreAllCard);
+        YourData = Fill(DataItems, "AppSettings/Data", DataName, _presets, _backup, _importFromPc, _networkService, _resetAllConfirmations, _restoreAllCard);
         PlugIns = Fill(PluginItems, "AppSettings/Plugins", PluginsName, _addFolder, _scan, _keepFx);
         UpdatesAndAbout = Fill(UpdateItems, "AppSettings/Updates", UpdatesName, _updateDaily, _version, _latest, _about);
         foreach (var folder in _settings.PluginFolders) PluginItems.Insert(PluginItems.IndexOf(_scan), FolderRow(folder));

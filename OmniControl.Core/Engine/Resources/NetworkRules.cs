@@ -3,9 +3,9 @@ using Microsoft.CSharp.RuntimeBinder;
 
 namespace OmniControl.Core.Engine.Resources;
 
-/// What OmniControl asks Windows to do with one program's traffic: an upload cap in bits per second (null: none) and whether it is blocked
-/// (download limits are <see cref="DownloadShaper"/>'s).
-public sealed record NetworkRule(string AppId, string Path, ulong? UploadBits, bool Blocked);
+/// What OmniControl asks Windows to do with one program's traffic: an upload cap in bits per second (null: none), whether it is blocked,
+/// and a download limit in bytes per second (null: none; <see cref="DownloadShaper"/>'s, the rest is <see cref="NetworkRules"/>').
+public sealed record NetworkRule(string AppId, string Path, ulong? UploadBits, bool Blocked, long? DownloadBytes = null);
 
 /// One of OmniControl's rules as Windows holds it (or should): a throttle policy when <see cref="Bits"/> is set, else one direction of a
 /// firewall block. <see cref="Program"/> is the policy's program name or the firewall rule's path.

@@ -6,6 +6,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 ## Unreleased
 
 - New: the accent colours are Windows' own accent palette, so they look as rich as "Windows accent"; a "Custom…" dot opens a colour editor (saturation square, hue bar, hex box, Hue, Saturation and Brightness sliders, live preview), and one Accent intensity setting makes every accent softer or stronger than Windows' own shade.
+- New: per-app network limits, blocks and speeds work without running OmniControl as administrator, through the small OmniControl Network service (Setup's task "Network service", on by default, or "Install…" on Network by app; one Windows prompt). Windows starts it when a limit or the speeds need it and it stops itself when idle; every rule leaves Windows when OmniControl closes. The status line says whether it runs; App settings › Your data › Network service › "Remove…" takes it away, and uninstall removes it.
+- Changed: "Run as administrator" is needed only over administrator windows; without the service, OmniControl as administrator still does the network work itself.
 
 ## 0.2.3
 

@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using OmniControl.App.Features.States;
 using OmniControl.Core.Engine.Resources;
 
@@ -13,6 +12,7 @@ public sealed class ResourceMonitor : IDisposable
     private readonly IStateRegistry _states;
     private readonly Func<TimeSpan> _ruleInterval;
     private readonly Func<string?> _adapterChoice;
+    private readonly Func<ITrafficSession> _startTraffic;
     private readonly Dictionary<string, (TimeSpan Every, SampleParts Parts)> _needs = new();
     private readonly Dictionary<string, string> _seen = new(); // program id -> its path, every program seen with traffic this session
     private readonly Dictionary<string, Queue<double>> _history = Reading.All.ToDictionary(r => r.Id, _ => new Queue<double>());
@@ -21,7 +21,7 @@ public sealed class ResourceMonitor : IDisposable
     private readonly object _work = new(); // one read at a time, and none while disposing
     private readonly ResourceSampler _sampler = new();
     private readonly Timer _timer, _idleClose;
-    private NetworkByApp? _apps;
+    private ITrafficSession? _apps;
     private volatile bool _wantApps;
     private volatile SampleParts _wanted;
     private bool _disposed, _sensorsWanted;
@@ -29,9 +29,10 @@ public sealed class ResourceMonitor : IDisposable
 
     /// <param name="ruleInterval">How often to read while only a rule follows a reading (the page's interval).</param>
     /// <param name="adapterChoice">The network adapter the speeds are read from (the setup's choice), asked at every read.</param>
-    public ResourceMonitor(IStateRegistry states, Func<TimeSpan> ruleInterval, Func<string?> adapterChoice, string category)
+    /// <param name="startTraffic">Starts the per-program traffic session where the network work runs (a worker; throws an <see cref="IOException"/> saying why).</param>
+    public ResourceMonitor(IStateRegistry states, Func<TimeSpan> ruleInterval, Func<string?> adapterChoice, Func<ITrafficSession> startTraffic, string category)
     {
-        (_states, _ruleInterval, _adapterChoice) = (states, ruleInterval, adapterChoice);
+        (_states, _ruleInterval, _adapterChoice, _startTraffic) = (states, ruleInterval, adapterChoice, startTraffic);
         _timer = new Timer(_ => Tick());
         _idleClose = new Timer(_ => Release(sensors: true));
         states.Register(Reading.All.Select(r => new StateEntry(r.StateId, r.Name, category, StateKind.Level, () => r.InUnit(Latest) is { } v ? StateValue.Of(Math.Round(v), DateTime.Now) : null,
@@ -138,12 +139,12 @@ public sealed class ResourceMonitor : IDisposable
         {
             try
             {
-                _apps = NetworkByApp.Start();
+                _apps = _startTraffic();
                 AppsProblem = null;
             }
-            catch (Win32Exception ex)
+            catch (IOException ex)
             {
-                AppsProblem = $"Windows won't report traffic per program: {ex.Message}";
+                AppsProblem = ex.Message;
                 _wantApps = false;
                 return null;
             }

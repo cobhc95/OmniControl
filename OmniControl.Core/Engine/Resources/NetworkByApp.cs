@@ -7,7 +7,7 @@ public sealed record AppTraffic(string Id, string Path, long Received, long Sent
 /// IPv4 and IPv6) in a real-time session of its own. Needs administrator rights (the app has them). The event callback only adds bytes up;
 /// <see cref="Take"/> hands the totals over and starts again. <see cref="Dispose"/> stops the session; a session left by a crashed run
 /// (same name) is stopped before a new one starts, so none is ever left behind for long.
-public sealed class NetworkByApp : IDisposable
+public sealed class NetworkByApp : ITrafficSession
 {
     private const string SessionName = "OmniControl-NetworkByApp";
     private static readonly Guid Provider = new("7DD42A49-5329-4832-8DFD-43D979153A88");
