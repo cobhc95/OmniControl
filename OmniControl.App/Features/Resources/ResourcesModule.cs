@@ -11,7 +11,7 @@ namespace OmniControl.App.Features.Resources;
 /// The windows the taskbar gadget's menu and the page open (the module owns them).
 public interface IResourcesWindows
 {
-    /// Opens the page at its Readings tab, at its Network by app group.
+    /// Opens the page at its Readings tab, at its App traffic control group.
     void OpenApps();
 
     /// Opens the page at its Taskbar gadget tab.

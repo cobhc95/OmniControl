@@ -7,7 +7,7 @@ using OmniControl.Core.Engine.Resources;
 
 namespace OmniControl.App.Features.Resources.Pages;
 
-/// The Resources page: preset picker and two tabs, Readings (Live readings, Network by app, Packet filter) and Taskbar gadget (<see cref="GadgetSettingsModel"/>);
+/// The Resources page: preset picker and two tabs, Readings (Live readings, App traffic control, Packet filter) and Taskbar gadget (<see cref="GadgetSettingsModel"/>);
 /// it asks the poller for readings only while on screen.
 public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
 {
@@ -43,7 +43,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     private bool _gadgetBuilt;
     public ItemGroup Live { get; }
     public ChoiceItem ReadEvery { get; }
-    public CardGroup Apps { get; } = new("Resources/Apps", "Network by app", string.Empty) { ExpandedByDefault = true };
+    public CardGroup Apps { get; } = new("Resources/Apps", "App traffic control", string.Empty) { ExpandedByDefault = true };
     public AppScopeModel AppsScope { get; }
     public ObservableCollection<AppNetItem> AppRows { get; } = new();
     public bool HasApps => AppRows.Count > 0;
@@ -121,7 +121,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
             settings.Commit();
         });
 
-        AppsScope = scopes.Group("Network by app", () => settings.Scope, scope =>
+        AppsScope = scopes.Group("App traffic control", () => settings.Scope, scope =>
         {
             settings.Scope = scope;
             settings.Save();
@@ -233,7 +233,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
         ShowStatus();
     }
 
-    /// Opens the Network by app group (the gadget's "Network by app…").
+    /// Opens the App traffic control group (the gadget's "App traffic control…").
     public void RevealApps()
     {
         Apps.IsExpanded = true;
@@ -281,7 +281,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
         _settings.Commit();
     }
 
-    /// Every read while Network by app is open: new programs get rows, rows their speeds, download chips follow a change of what limits really do.
+    /// Every read while App traffic control is open: new programs get rows, rows their speeds, download chips follow a change of what limits really do.
     private void ShowTraffic()
     {
         if (_monitor.Seen.Count != _seenShown) ListRows();

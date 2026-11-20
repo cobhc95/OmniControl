@@ -5,7 +5,7 @@
              xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
              x:Class="OmniControl.App.Features.Resources.Pages.ResourcesPage"
              x:DataType="vm:ResourcesPageViewModel">
-    <!-- The title line with the preset picker, the tabs, then Readings (Live readings, Network by app: its headings, rows and the one status
+    <!-- The title line with the preset picker, the tabs, then Readings (Live readings, App traffic control: its headings, rows and the one status
          line, and Packet filter's one switch) or the Taskbar gadget tab (Gadget/GadgetTabView, built after the tab's first opening and then kept, hidden with the tab). -->
     <StackPanel Spacing="{StaticResource Gap}">
         <pages:PageTitleLine Title="{Binding Title}">

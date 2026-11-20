@@ -4,7 +4,7 @@ namespace OmniControl.App.Shared.Services;
 /// feature's in its own <c>Timing.&lt;Feature&gt;.cs</c> part in that feature's folder (one class, so every call stays <c>Timing.X</c>).
 public static partial class Timing
 {
-    /// A program icon cache (<c>ProcessIcons</c>: the Mixer's, Network by app's) keeps the icons of at most this many programs (the ones asked for last).
+    /// A program icon cache (<c>ProcessIcons</c>: the Mixer's, App traffic control's) keeps the icons of at most this many programs (the ones asked for last).
     public const int ProcessIconCacheMax = 64;
 
     /// A window's undo history (<c>UndoHistory</c>) keeps at most this many steps; the oldest go first.

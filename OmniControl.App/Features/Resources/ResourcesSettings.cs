@@ -34,7 +34,7 @@ public sealed class ResourcesSetup
     public GadgetSettings Gadget { get; set; } = GadgetLayouts.NewLook();
     public List<AppNetRule> Apps { get; set; } = new();
 
-    /// The programs pinned to the top of Network by app, by path (or identity when the path was not known), in pin order.
+    /// The programs pinned to the top of App traffic control, by path (or identity when the path was not known), in pin order.
     public List<string> Pinned { get; set; } = new();
 
     public ResourcesSetup Copy() => JsonSerializer.Deserialize<ResourcesSetup>(JsonSerializer.Serialize(this))!;
@@ -60,7 +60,7 @@ public sealed class GadgetLayoutPreset : INamedPreset
     public DateTime? Saved { get; set; }
 }
 
-/// The Resources page's settings (resources.json): the live setup, the Network by app group's Apps scope, the packet filter switch, the presets
+/// The Resources page's settings (resources.json): the live setup, the App traffic control group's Apps scope, the packet filter switch, the presets
 /// and the gadget's own layouts.
 public sealed class ResourcesSettings
 {
