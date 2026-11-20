@@ -3,7 +3,7 @@ namespace OmniControl.Core.Engine;
 /// Switches on a privilege the process's token holds switched off (Windows' calls that need one fail until it is on).
 internal static class Privileges
 {
-    public const string Shutdown = "SeShutdownPrivilege", TakeOwnership = "SeTakeOwnershipPrivilege";
+    public const string Shutdown = "SeShutdownPrivilege", TakeOwnership = "SeTakeOwnershipPrivilege", Restore = "SeRestorePrivilege";
 
     [DllImport("advapi32.dll", SetLastError = true)] private static extern bool OpenProcessToken(IntPtr process, uint access, out IntPtr token);
     [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)] private static extern bool LookupPrivilegeValue(string? system, string name, out long luid);

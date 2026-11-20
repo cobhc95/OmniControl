@@ -177,6 +177,35 @@ public class BundledApoTests
     }
 
     [Fact]
+    public void LockedFxProperties_IsChangedAsItsOwnerAndRestored()
+    {
+        var reg = Device(Render, new() { [ApoIds.Sfx] = DriverSfx, [ApoIds.Efx] = DriverEfx });
+        var before = reg.Values(Fx(Render));
+        reg.FxLocked = true;
+        var device = Load(reg);
+        device.Install(reg, device.Current);
+        Assert.True(reg.MadeWritable);
+        Assert.Equal(ApoIds.UpstreamPreMixClsid, reg.Get(Fx(Render), ApoIds.Sfx));
+
+        Load(reg).Uninstall(reg);
+        Assert.Equal(DriverSfx, reg.Get(Fx(Render), ApoIds.Sfx));
+        Assert.Equal(DriverEfx, reg.Get(Fx(Render), ApoIds.Efx));
+        Assert.Equal(before.Keys.Where(k => k is not (ApoIds.SfxModes or ApoIds.EfxModes)), reg.Values(Fx(Render)).Keys.Where(k => k is not (ApoIds.SfxModes or ApoIds.EfxModes)));
+    }
+
+    [Fact]
+    public void RefusedPartWay_PutsTheDeviceBackExactly()
+    {
+        var reg = Device(Render, new() { [ApoIds.Sfx] = DriverSfx, [ApoIds.Efx] = DriverEfx, [ApoIds.SfxModes] = new[] { "{mode}" }, [ApoIds.EfxModes] = new[] { "{mode}" } });
+        var before = reg.Values(Fx(Render));
+        reg.Refused = ApoIds.UpstreamPostMixClsid; // SFX is written, then EFX is refused
+        var device = Load(reg);
+        Assert.Throws<UnauthorizedAccessException>(() => device.Install(reg, device.Current));
+        Assert.Equal(before, reg.Values(Fx(Render)));
+        Assert.False(reg.KeyExists(ApoIds.ChildApoKey));
+    }
+
+    [Fact]
     public void Microphone_GetsOnlyThePreMixApo()
     {
         var reg = Device(Capture, new() { [ApoIds.Sfx] = DriverSfx });
@@ -238,9 +267,20 @@ public class BundledApoTests
         private readonly Dictionary<string, Dictionary<string, object>> _keys = new(StringComparer.OrdinalIgnoreCase);
 
         public bool DenyFirstCreate { get; set; }
+        /// FxProperties refuses every change until it is made as its owner.
+        public bool FxLocked { get; set; }
+        /// A value no write may put anywhere (a refusal part-way through an install).
+        public string? Refused { get; set; }
         public bool MadeWritable { get; private set; }
+        private bool _owning;
 
         public void Set(string key, string name, object value) => Open(key)[name] = value;
+
+        private void Check(string key, object? value = null)
+        {
+            if (FxLocked && !_owning && key.EndsWith(@"\FxProperties", StringComparison.Ordinal) || value is not null && Equals(value, Refused))
+                throw new UnauthorizedAccessException();
+        }
         public object? Get(string key, string name) => _keys.TryGetValue(key, out var k) && k.TryGetValue(name, out var v) ? v : null;
         public SortedDictionary<string, string> Values(string key) =>
             new(_keys[key].ToDictionary(v => v.Key, v => v.Value is string[] m ? string.Join("|", m) : v.Value.ToString()!));
@@ -255,10 +295,21 @@ public class BundledApoTests
         public bool ValueExists(string key, string name) => Get(key, name) is not null;
         public string? ReadString(string key, string name) => Get(key, name) as string;
         public uint? ReadDword(string key, string name) => Get(key, name) is uint v ? v : null;
-        public void WriteString(string key, string name, string value) => Set(key, name, value);
-        public void WriteMulti(string key, string name, string value) => Set(key, name, new[] { value });
+        public void WriteString(string key, string name, string value)
+        {
+            Check(key, value);
+            Set(key, name, value);
+        }
+
+        public void WriteMulti(string key, string name, string value)
+        {
+            Check(key);
+            Set(key, name, new[] { value });
+        }
+
         public void DeleteValue(string key, string name)
         {
+            Check(key);
             if (_keys.TryGetValue(key, out var k)) k.Remove(name);
         }
 
@@ -275,6 +326,18 @@ public class BundledApoTests
             .Where(k => k.StartsWith(key + @"\", StringComparison.OrdinalIgnoreCase) && !k[(key.Length + 1)..].Contains('\\'))
             .Select(k => k[(key.Length + 1)..]).ToList();
 
-        public void MakeWritable(string key) => MadeWritable = true;
+        public void AsOwner(string key, Action change)
+        {
+            MadeWritable = true;
+            _owning = true;
+            try
+            {
+                change();
+            }
+            finally
+            {
+                _owning = false;
+            }
+        }
     }
 }

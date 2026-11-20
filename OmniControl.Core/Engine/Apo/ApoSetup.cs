@@ -78,7 +78,7 @@ public static class ApoSetup
         }
         catch (Exception ex) when (MachineRegistry.IsRegistryFailure(ex) || ex is InvalidDataException or Win32Exception)
         {
-            return (int)Fail(ex.Message);
+            return (int)Fail($"{string.Join(' ', args[(at + 1)..])}: {ex.Message}"); // the step, then the call and key that stopped it
         }
     }
 

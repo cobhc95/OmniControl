@@ -180,25 +180,55 @@ public sealed class DeviceApo
     private static string Kept(string? guid) => guid is null or ApoIds.NoKey or ApoIds.NoValue ? string.Empty : guid;
 
     /// DeviceAPOInfo::install with <paramref name="s"/> as the selected state. Returns the backup of the slots that were there (Device
-    /// Selector's .reg file text), or null when there was nothing to back up.
+    /// Selector's .reg file text), or null when there was nothing to back up. A registry failure part-way puts the device back as it was
+    /// (<see cref="Uninstall"/> with the slots read before) and is thrown on.
     internal string? Install(IApoRegistry reg, ApoInstallState s)
     {
         if (!s.PreMix && !s.PostMix) return null;
+        try
+        {
+            return Attach(reg, s);
+        }
+        catch (Exception ex) when (MachineRegistry.IsRegistryFailure(ex))
+        {
+            try
+            {
+                Uninstall(reg);
+            }
+            catch (Exception undo) when (MachineRegistry.IsRegistryFailure(undo))
+            {
+                throw new IOException($"{ex.Message} Putting the device back failed too: {undo.Message}", ex);
+            }
+            throw;
+        }
+    }
+
+    /// A change to a key of the device's driver; when Windows refuses it to administrators, it is made again as the key's owner for that
+    /// moment (Device Selector's takeOwnership + makeWritable). Every change here can safely run twice.
+    private static void AsAdministrator(IApoRegistry reg, string key, Action change)
+    {
+        try
+        {
+            change();
+        }
+        catch (Exception ex) when (MachineRegistry.IsRegistryFailure(ex))
+        {
+            reg.AsOwner(key, change);
+        }
+    }
+
+    private string? Attach(IApoRegistry reg, ApoInstallState s)
+    {
         reg.CreateKey(ApoIds.ChildApoKey);
         reg.CreateKey(ChildKey);
         string? backup = null;
         if (!reg.KeyExists(FxKey))
         {
-            try
+            AsAdministrator(reg, KeyPath, () => // the driver's key may not let administrators add to it
             {
                 reg.CreateKey(FxKey);
-            }
-            catch (Exception ex) when (MachineRegistry.IsRegistryFailure(ex))
-            {
-                reg.MakeWritable(KeyPath); // the driver's key may not let administrators add to it
-                reg.CreateKey(FxKey);
-            }
-            reg.WriteString(FxKey, ApoIds.FxTitleValue, "Equalizer APO");
+                reg.WriteString(FxKey, ApoIds.FxTitleValue, "Equalizer APO");
+            });
             foreach (var slot in ApoIds.FxSlots) reg.WriteString(ChildKey, slot, ApoIds.NoKey);
         }
         else
@@ -219,7 +249,12 @@ public sealed class DeviceApo
         if (s.AutoAdjust) reg.DeleteValue(ChildKey, ApoIds.DisableAutoAdjust);
         else reg.WriteString(ChildKey, ApoIds.DisableAutoAdjust, "true");
         reg.WriteString(ChildKey, ApoIds.InstallVersionValue, ApoIds.InstallVersion);
+        AsAdministrator(reg, FxKey, () => WriteSlots(reg, s));
+        return backup;
+    }
 
+    private void WriteSlots(IApoRegistry reg, ApoInstallState s)
+    {
         var postMix = s.PostMix && !Input;
         switch (s.Mode)
         {
@@ -242,7 +277,6 @@ public sealed class DeviceApo
                 break; // MFX is left as it is
         }
         reg.DeleteValue(FxKey, ApoIds.DisableEnhancements); // enhancements are switched on, or Windows loads no APO
-        return backup;
     }
 
     private void Put(IApoRegistry reg, string slot, string clsid, string modes)
@@ -254,18 +288,19 @@ public sealed class DeviceApo
     /// DeviceAPOInfo::uninstall: the slots go back to what they were (the key is deleted when the device had none), and its record goes.
     internal void Uninstall(IApoRegistry reg)
     {
-        if (Original[0] == ApoIds.NoKey)
+        AsAdministrator(reg, FxKey, () =>
         {
-            reg.DeleteKey(FxKey);
-        }
-        else
-        {
+            if (Original[0] == ApoIds.NoKey)
+            {
+                reg.DeleteKey(FxKey);
+                return;
+            }
             for (var i = 0; i < ApoIds.FxSlots.Count; i++)
             {
                 if (Original[i] == ApoIds.NoValue) reg.DeleteValue(FxKey, ApoIds.FxSlots[i]);
                 else if (Original[i].Length > 0) reg.WriteString(FxKey, ApoIds.FxSlots[i], Original[i]);
             }
-        }
+        });
         if (reg.KeyExists(ApoIds.ChildApoKey)) reg.DeleteValue(ApoIds.ChildApoKey, Guid);
         if (reg.KeyExists(ChildKey)) reg.DeleteKey(ChildKey);
         if (reg.KeyExists(ApoIds.ChildApoKey) && reg.KeyEmpty(ApoIds.ChildApoKey)) reg.DeleteKey(ApoIds.ChildApoKey);
