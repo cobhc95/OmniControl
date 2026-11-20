@@ -129,6 +129,13 @@ public static class CoreTiming
     /// user ticks devices there at their own pace, so the wait is long; a worker waits, never the UI.
     public const int ConfiguratorWaitMs = 30 * 60_000;
 
+    /// Restarting Windows audio (Equalizer APO's ServiceHelper): the whole stop and start may take this long, a start that has not
+    /// happened is asked again after <see cref="AudioRestartRetryMs"/>, the state is read every <see cref="AudioRestartPollMs"/>.
+    public const int AudioRestartLimitMs = 30_000, AudioRestartRetryMs = 5_000, AudioRestartPollMs = 100;
+
+    /// After the audio restart, how long Equalizer APO has to say it started on the devices being checked (DeviceTestThread's 3 s).
+    public const int ApoCheckWaitMs = 3_000;
+
     /// How long a Tailscale or netsh read may take, and how long a plain connect test waits (Other PCs over Tailscale).
     public const int TailscaleCliWaitMs = 5_000, TcpReachWaitMs = 3_000;
 

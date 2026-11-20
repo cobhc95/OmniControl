@@ -18,8 +18,8 @@ public sealed record ApoEndpoint(string EndpointId, bool UpstreamOn, bool Enhanc
 /// Equalizer APO on a device where it is active. The checks are Equalizer APO's own (Device Selector): the protected audio path
 /// value, both classes registered, the device's effect slots and its "enhancements off" value.
 /// <param name="ProtectedAudioDisabled">DisableProtectedAudioDG is 1, so Windows loads an APO without a Microsoft signature.</param>
-/// <param name="UpstreamInstalled">Equalizer APO itself is installed: its InstallPath holds EqualizerAPO.dll (a key or config folder left
-/// behind by an uninstall does not count).</param>
+/// <param name="UpstreamInstalled">Equalizer APO itself is installed: its InstallPath holds EqualizerAPO.dll, or OmniControl's own copy is
+/// in place (a key or config folder left behind by an uninstall does not count).</param>
 /// <param name="UpstreamRegistered">Equalizer APO's two classes are registered with COM and the audio engine (Device Selector's checkAPORegistration).</param>
 /// <param name="UpstreamConfigFolder">Equalizer APO's config folder (its ConfigPath) when that folder exists; also read when only an
 /// uninstall's leftovers remain, so OmniControl can take its own line out of it.</param>
@@ -39,6 +39,19 @@ public sealed record ApoState(
 
     /// Equalizer APO's version (its EqualizerAPO.dll); null when it is not installed or the file has none.
     public Version? UpstreamVersion { get; init; }
+
+    /// Whose Equalizer APO this is (<see cref="ApoOwnership.Decide"/>).
+    public ApoOwnership Ownership { get; init; } = ApoOwnership.Nothing;
+
+    /// This build ships OmniControl's own copy, so it can be installed when there is none.
+    public bool Bundled { get; init; }
+
+    /// While OmniControl's copy is installed: every device it can be put on (present ones, and any it is on), playback first. Empty otherwise.
+    public IReadOnlyList<ApoDeviceEntry> OwnDevices { get; init; } = Array.Empty<ApoDeviceEntry>();
+
+    /// The entry of the device with this endpoint id, or null.
+    public ApoDeviceEntry? OwnDevice(string? endpointId) =>
+        endpointId is null ? null : OwnDevices.FirstOrDefault(d => string.Equals(d.Guid, ApoIds.DeviceKeyOf(endpointId), StringComparison.OrdinalIgnoreCase));
 
     /// Equalizer APO can blend an effect's result with the sound before it (a Mix below 100 %, see <see cref="ApoIds.BlendVersion"/>):
     /// from that version on, or when its version can't be read.
@@ -68,9 +81,28 @@ public sealed record ApoState(
         other is not null && ProtectedAudioDisabled == other.ProtectedAudioDisabled
         && UpstreamInstalled == other.UpstreamInstalled && UpstreamRegistered == other.UpstreamRegistered
         && UpstreamConfigFolder == other.UpstreamConfigFolder && UpstreamDeviceSelector == other.UpstreamDeviceSelector && UpstreamVersion == other.UpstreamVersion
-        && Output == other.Output && Microphones.SequenceEqual(other.Microphones) && Playback.SequenceEqual(other.Playback);
+        && Output == other.Output && Microphones.SequenceEqual(other.Microphones) && Playback.SequenceEqual(other.Playback)
+        && Ownership == other.Ownership && Bundled == other.Bundled && OwnDevices.SequenceEqual(other.OwnDevices);
 
     public override int GetHashCode() => HashCode.Combine(ProtectedAudioDisabled, UpstreamConfigFolder, UpstreamInstalled, Output, Microphones.Count);
+}
+
+/// A device OmniControl's own Equalizer APO can be put on (Device Selector's row for it).
+/// <param name="Guid">Its key name under MMDevices.</param>
+/// <param name="Name">"Speakers (Realtek(R) Audio)".</param>
+/// <param name="Active">Plugged in and enabled.</param>
+/// <param name="Attached">Equalizer APO is in one of its slots.</param>
+/// <param name="Check">How OmniControl's last change of it ended (<see cref="ApoSetup.Running"/>, ...; "" = OmniControl never changed it).</param>
+/// <param name="State">How it is installed now, or how it would be.</param>
+/// <param name="Originals">Which install modes keep a driver APO to run inside Equalizer APO: bit 2 × mode = pre-mix, the next bit post-mix.</param>
+public sealed record ApoDeviceEntry(string Guid, string Name, bool Input, bool Active, bool Attached, bool EnhancementsOff, string Check, ApoInstallState State, int Originals)
+{
+    public bool HasOriginalPreMix(ApoInstallMode mode) => (Originals & (1 << (2 * (int)mode))) != 0;
+    public bool HasOriginalPostMix(ApoInstallMode mode) => (Originals & (2 << (2 * (int)mode))) != 0;
+
+    internal static ApoDeviceEntry Of(DeviceApo d, string check) => new(d.Guid,
+        d.Connection.Length > 0 ? $"{d.Name} ({d.Connection})" : d.Name, d.Input, !d.Disabled && !d.Unplugged, d.Installed, d.EnhancementsOff, check, d.Current,
+        Enum.GetValues<ApoInstallMode>().Sum(m => (d.OriginalPreMix(m).Length > 0 ? 1 << (2 * (int)m) : 0) + (d.OriginalPostMix(m).Length > 0 ? 2 << (2 * (int)m) : 0)));
 }
 
 /// Reads <see cref="ApoState"/> from the registry (64-bit view). Never writes.
@@ -86,24 +118,56 @@ public static class ApoStatus
             using var machine = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
             using var audio = machine.OpenSubKey(ApoIds.AudioKey);
             var dg = audio?.GetValue(ApoIds.ProtectedAudioValue) is int v && v == 1;
-            var installFolder = UpstreamInstallFolder(machine);
+            var ownership = ApoOwnership.Decide(FactsOf(machine));
+            var separateFolder = UpstreamInstallFolder(machine);
+            var installFolder = separateFolder ?? (ownership.Owner == ApoOwner.Ours ? ApoFiles.InstallFolder : null);
             using var upstream = machine.OpenSubKey(ApoIds.UpstreamAppKey);
             var upstreamConfig = upstream?.GetValue("ConfigPath") is string path && Directory.Exists(path) ? path : null;
-            var selector = ConfiguratorIn(installFolder);
             return new ApoState(dg,
                 installFolder is not null, IsRegistered(machine, ApoIds.UpstreamPreMixClsid, ApoIds.UpstreamPostMixClsid),
-                upstreamConfig, selector,
+                upstreamConfig, ConfiguratorIn(separateFolder),
                 defaultEndpointId is null ? null : EndpointOf(machine, defaultEndpointId),
                 microphoneIds.Select(id => EndpointOf(machine, id)).ToList())
             {
                 Playback = playbackIds.Select(id => EndpointOf(machine, id)).ToList(),
                 UpstreamVersion = installFolder is null ? null : VersionOf(Path.Combine(installFolder, ApoIds.UpstreamDllName)),
+                Ownership = ownership,
+                Bundled = ApoFiles.Bundled,
+                OwnDevices = ownership.Owner == ApoOwner.Ours ? OwnDevicesOf(machine) : Array.Empty<ApoDeviceEntry>(),
             };
         }
         catch (Exception ex) when (ex is SecurityException or UnauthorizedAccessException or IOException)
         {
             return ApoState.None; // not allowed to read: reported as not installed, which only offers the install flow
         }
+    }
+
+    /// Whose Equalizer APO is on this PC now (the elevated helper decides with it before every step).
+    public static ApoOwnership Ownership()
+    {
+        using var machine = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
+        return ApoOwnership.Decide(FactsOf(machine));
+    }
+
+    /// The signs of an install: Equalizer APO's Uninstall entry and key, a separate install's files, the DLL registered for its class
+    /// (pre-mix) and OmniControl's marker.
+    private static ApoInstallFacts FactsOf(RegistryKey machine)
+    {
+        using var server = machine.OpenSubKey($@"{ApoIds.ClsidKey}\{ApoIds.UpstreamPreMixClsid}\InprocServer32");
+        var dll = server?.GetValue(null) is string registered && registered.Length > 0 ? Environment.ExpandEnvironmentVariables(registered.Trim('"')) : null;
+        using var marker = machine.OpenSubKey(ApoIds.OwnMarkerKey);
+        return new ApoInstallFacts(HasKey(machine, ApoIds.UpstreamUninstallKey), HasKey(machine, ApoIds.UpstreamAppKey), UpstreamInstallFolder(machine),
+            dll, dll is not null && File.Exists(dll), ApoFiles.InstallFolder, marker?.GetValue(ApoIds.OwnPathValue) as string);
+    }
+
+    /// Every device OmniControl's copy may be put on (the present ones and any it is on), with how OmniControl's last change of it ended.
+    private static IReadOnlyList<ApoDeviceEntry> OwnDevicesOf(RegistryKey machine)
+    {
+        using var checks = machine.OpenSubKey(ApoIds.OwnDevicesKey);
+        var reg = new MachineRegistry();
+        return DeviceApo.LoadAll(reg, input: false).Concat(DeviceApo.LoadAll(reg, input: true))
+            .Where(d => d.Installed || !d.Disabled && !d.Unplugged)
+            .Select(d => ApoDeviceEntry.Of(d, checks?.GetValue(d.Guid) as string ?? string.Empty)).ToList();
     }
 
     /// One endpoint's slots and enhancements value, the same checks for playback and recording devices.

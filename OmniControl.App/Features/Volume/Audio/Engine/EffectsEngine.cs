@@ -57,6 +57,14 @@ public sealed class EffectsEngine : IDisposable
     /// Equalizer APO's config was found without OmniControl's effects, or with them again, or with effects of its own (<see cref="ApoDisplaced"/>, <see cref="ApoOwnEffects"/>). UI thread.
     public event Action? ApoPlacementChanged;
 
+    /// The master's effects are planned in Equalizer APO on a device (its endpoint id) where OmniControl's own copy would make them run
+    /// (<see cref="EffectsRules.BundledFixes"/>), after the user changed the master's effects or the routing in this run (never at start-up):
+    /// raised on every such plan until it runs there; the listener decides whether to act. UI thread.
+    public event Action<string>? ApoWanted;
+
+    /// The user changed the master's effects or the routing since the start (the first use of a master effect).
+    private bool _masterTouched;
+
     public EffectsEngine(MixerService mixer, EffectsSupportService support, EngineJournal journal, PluginChainHost plugins, Action<string> report)
     {
         _mixer = mixer;
@@ -182,6 +190,7 @@ public sealed class EffectsEngine : IDisposable
     /// The first edit applies at once; edits inside the following gap are gathered and the latest applied when it ends.
     private void OnFxChanged(string? key)
     {
+        _masterTouched |= key is null or MixerService.MasterKey;
         _fxPending.Add(key ?? MixerService.MasterKey);
         if (_fxGap.IsEnabled) return;
         ApplyPendingFx();
@@ -220,6 +229,7 @@ public sealed class EffectsEngine : IDisposable
 
     private void OnRoutingChanged()
     {
+        _masterTouched = true;
         _failed.Clear(); // the user changed the routing: every failed run may try again
         Reconcile();
     }
@@ -393,6 +403,8 @@ public sealed class EffectsEngine : IDisposable
         _watchInput = new ApoWatchInput(_apo.Target, IrFilesInUse());
         _watch.Follow(_apo.Target.Folders);
         _watch.Request(); // every change, device change and support change is checked against the real files
+        if (_masterTouched && plan.ToApo.Contains(MixerService.MasterKey) && plan.MasterApoDevice is { } device && EffectsRules.BundledFixes(apo, apo.PlaybackOf(device)))
+            ApoWanted?.Invoke(device);
     }
 
     /// The IR files of every chain whose effects are on, with the version each was loaded at: a file already known keeps the version it was

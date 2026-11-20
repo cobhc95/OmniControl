@@ -168,11 +168,13 @@ internal static class RoutePlanner
         _ => CableUse.None,
     });
 
-    /// What decides the master's method: the cables allowed, whether Equalizer APO runs on the master's real speakers, whether the master is set to several devices, and whether it has effects.
+    /// What decides the master's method: the cables allowed, whether Equalizer APO runs on the master's real speakers (or OmniControl's own
+    /// copy would, on first use), whether the master is set to several devices, and whether it has effects.
     private static MasterFacts MasterFactsOf(PlanInput p, CableBox cables, MasterDevice.Choice real, bool masterFx)
     {
         var apo = p.Support.Apo;
-        var why = EffectsRules.ApoMissingOn(apo, apo.PlaybackOf(real.Id));
+        var speakers = apo.PlaybackOf(real.Id);
+        var why = EffectsRules.BundledFixes(apo, speakers) ? null : EffectsRules.ApoMissingOn(apo, speakers);
         var several = p.Settings.MasterPlaysOn.Count > 1 || p.Settings.MasterPlaysOn.Any(CombinedDevice.IsKey);
         return new MasterFacts(cables.Pairs, EffectsRules.NoCableKind(p.Support), why, several, masterFx);
     }

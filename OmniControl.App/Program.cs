@@ -8,10 +8,12 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
-        // Setup's --quit only asks the running copy to quit, its --sign-in-task only adds or removes the task. A second start only asks the
-        // running copy to open its window (a start-up entry's start asks nothing), before it can touch any file (a staged import, settings).
+        // Setup's --quit only asks the running copy to quit, its --sign-in-task only adds or removes the task, --equalizer-apo (also the app's
+        // own elevated helper) only does one step of OmniControl's Equalizer APO. A second start only asks the running copy to open its
+        // window (a start-up entry's start asks nothing), before it can touch any file (a staged import, settings).
         if (SingleInstance.IsQuit(args)) return SingleInstance.AskToQuit();
         if (AdministratorMode.FromSetup(args) is { } done) return done;
+        if (OmniControl.Core.Engine.Apo.ApoSetup.FromCommandLine(args) is { } apo) return apo;
         var restart = AppRestart.IsRestart(args);
         var askToOpen = !StartupRegistration.IsBackgroundStart(args);
         if (!restart && SingleInstance.HandOff(askToOpen)) return 0;

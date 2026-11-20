@@ -14,7 +14,7 @@ namespace OmniControl.App.Features.Volume.Pages;
 /// Sound state lives in <see cref="MixerService"/>; what can run in <see cref="EffectsSupportService"/>; what runs in
 /// <see cref="EffectsEngine"/>. This class turns those into rows and keeps them up to date. Partial files: rows (.Rows), microphones
 /// and combined devices (.Inputs), the routing model, the rows' columns and gates (.Routing), the Wiring tab and the Plays on menus
-/// (.Wiring), its Virtual cables group (.Cables), the install steps (.Steps), the presets (.Presets), combining (.Combine), hotkeys and meters (.Hotkeys).
+/// (.Wiring), its Virtual cables group (.Cables) and Equalizer APO group (<see cref="EqualizerApoGroup"/>), the install steps (.Steps), the presets (.Presets), combining (.Combine), hotkeys and meters (.Hotkeys).
 /// What the level actions do to Windows is <see cref="VolumeActions"/>; the states are <see cref="VolumeStates"/>, the media ones <see cref="VolumeMedia"/>.
 public sealed partial class VolumePageViewModel : PageViewModel, IVolumeRows, IDisposable
 {
@@ -89,10 +89,14 @@ public sealed partial class VolumePageViewModel : PageViewModel, IVolumeRows, ID
     /// The search card for combining, next to every row.
     private readonly ButtonItem _combineCard;
 
+    /// The Wiring tab's Equalizer APO group (set in the constructor).
+    public EqualizerApoGroup Apo { get; }
+
     public override IEnumerable<SearchEntry> SearchEntries =>
         new SearchEntry[]
         {
             Entry(_combineCard, "Combine devices", "combine merge speakers microphones mic mics mix several devices together cable stereo mix", WiringTab),
+            Entry(Apo.Status, "Equalizer APO", "equalizer apo eq effects install remove device selector attach speakers microphone driver", WiringTab),
         }
         .Concat(AllRows().Select(r => Entry(r, Title, "sound audio mixer app program pan fx effects method cable capture replay recording output device microphone", MixerTab)))
         .Concat(WiringRows().Select(w => Entry(w, (WiringInputs.Items.Contains(w) ? WiringInputs : WiringOutputs).RouteColumn,
@@ -130,6 +134,7 @@ public sealed partial class VolumePageViewModel : PageViewModel, IVolumeRows, ID
         WiringOutputs = NewWiringOutputs();
         WiringInputs = NewWiringInputs();
         WiringCables = NewWiringCables();
+        Apo = new EqualizerApoGroup(_support, _installer, RunSetupAsync, _ask);
         _combineCard = new ButtonItem("Combine devices", "Combine…", "Joins speakers or microphones into one",
             () => _ = CombineAsync(null, Array.Empty<string>()));
         _master = NewMaster();
@@ -216,6 +221,7 @@ public sealed partial class VolumePageViewModel : PageViewModel, IVolumeRows, ID
         _mixer.MasterDeviceChanged -= OnMasterDeviceChanged;
         _engine.PlanChanged -= OnPlanChanged;
         _presetChoice?.Dispose();
+        Apo.Dispose();
         Easy.Dispose();
         _volumeStates.Dispose();
         _media.Dispose();

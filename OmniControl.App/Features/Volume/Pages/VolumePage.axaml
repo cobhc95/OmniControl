@@ -81,6 +81,10 @@
                 <vm:WiringTable DataContext="{Binding WiringOutputs}" />
                 <vm:WiringTable DataContext="{Binding WiringInputs}" />
                 <vm:CableTable DataContext="{Binding WiringCables}" />
+                <!-- Equalizer APO: whose it is and the one link about it, then (OmniControl's own copy only) a switch per device with its status and "Advanced…" -->
+                <pages:GroupCard Group="{Binding Apo.Group}">
+                    <ListBox Classes="rows compact cards" ItemsSource="{Binding Apo.Items}" />
+                </pages:GroupCard>
             </StackPanel>
         </StackPanel>
     </StackPanel>

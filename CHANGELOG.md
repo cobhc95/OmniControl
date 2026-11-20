@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- New: OmniControl brings its own Equalizer APO (the official 1.4.2 audio-processing part, unchanged): Setup installs it (a tick box, on by default, skipped when Equalizer APO is already installed), the Portable version installs it on the first use of a master effect (one administrator prompt), and the Volume page's Wiring tab has an Equalizer APO group that says whose Equalizer APO it is and, for OmniControl's copy, puts it on or takes it off each speaker and microphone exactly as Equalizer APO's own Device Selector does (one Windows audio restart per change, checked per device, undone when a driver blocks it; install mode and troubleshooting options under "Advanced…"). A separately installed Equalizer APO is never changed; uninstalling OmniControl removes only its own copy and gives every device its own effects back.
 - New: the accent colours are Windows' own accent palette, so they look as rich as "Windows accent"; a "Custom…" dot opens a colour editor (saturation square, hue bar, hex box, Hue, Saturation and Brightness sliders, live preview), and one Accent intensity setting makes every accent softer or stronger than Windows' own shade.
 
 ## 0.2.3

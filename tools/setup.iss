@@ -36,6 +36,24 @@ Filename: "{app}\OmniControl.exe"; Description: "Start OmniControl"; Flags: nowa
 [UninstallRun]
 ; The network blocks a crashed run may have left (OmniControl's own firewall rule group; upload limits end with a restart). Admin prompt.
 Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -NonInteractive -Command ""Remove-NetFirewallRule -Group 'OmniControl' -ErrorAction SilentlyContinue"""; Flags: shellexec runhidden waituntilterminated; Verb: "runas"; RunOnceId: "RemoveFirewallGroup"
+
+; ---- OmniControl's own Equalizer APO (Core/Engine/Apo/ApoSetup): installed in Setup's one admin step, removed by uninstall ----
+[Tasks]
+Name: equalizerapo; Description: "Equalizer APO (master effects on your speakers; skipped automatically if already installed)"
+[Code]
+// One step of the app's elevated helper ("--equalizer-apo install|remove"); the app itself never changes a separately installed Equalizer APO.
+function EqualizerApo(Verb: String): String;
+begin
+  Result := '("' + ExpandConstant('{app}\OmniControl.exe') + '" --equalizer-apo ' + Verb + ')';
+end;
+
+// OmniControl's marker (retyped from Core/Engine/Apo/ApoIds OwnMarkerKey and OwnPathValue): only then does uninstall need the removal.
+function EqualizerApoOurs(): Boolean;
+begin
+  Result := RegValueExists(HKLM64, 'SOFTWARE\OmniControl\EqualizerApo', 'Path');
+end;
+// ---- end of Equalizer APO ----
+
 [Code]
 function IsRunning(): Boolean;
 var Code: Integer;
@@ -130,6 +148,7 @@ begin
   Steps := '';
   if Driver then Steps := NetCfg('-v -l "' + ExpandConstant(PacketFilterInf) + '" -c s -i ' + PacketFilterComponent);
   if RunsAsAdministrator() then Steps := AddStep(Steps, SignInTask('on'));
+  if WizardIsTaskSelected('equalizerapo') then Steps := AddStep(Steps, EqualizerApo('install'));
   if (RunElevated(Steps) = AdminPromptRefused) or not Driver then Exit;
   if PacketFilterInstalled() then
     RegWriteDWordValue(HKCU, PacketFilterRecordKey, PacketFilterRecordValue, 1)
@@ -148,6 +167,7 @@ begin
   Steps := '';
   if RunsAsAdministrator() then Steps := SignInTask('off');
   if Driver and PacketFilterInstalled() then Steps := AddStep(Steps, NetCfg('-v -u ' + PacketFilterComponent));
+  if EqualizerApoOurs() then Steps := AddStep(Steps, EqualizerApo('remove'));
   RunElevated(Steps);
   if not Driver then Exit;
   if PacketFilterInstalled() then
