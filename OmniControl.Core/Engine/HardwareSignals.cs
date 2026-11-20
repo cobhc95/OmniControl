@@ -29,12 +29,16 @@ public enum HardwareSignal
     /// The screens came back on (after the display-off timeout or Modern Standby): monitors that slept may not have answered DDC/CI meanwhile.
     DisplayPower = 32,
 
-    /// Explorer made the taskbar again (it restarted): what sits on the taskbar must find it anew.
+    /// Explorer made the taskbar again (it restarted, or started after OmniControl): what sits on the taskbar must find it anew.
     Taskbar = 64,
+
+    /// The taskbar changed without being made again: Windows' light or dark mode, its own settings (size, alignment, auto-hide) or the
+    /// screen area it leaves free.
+    TaskbarSettings = 128,
 }
 
 /// Raises <see cref="Raised"/> for Windows' hardware announcements that need no registration of a device kind: a device change, a display
-/// change, a session that moved or came back (Remote Desktop, unlock) and a wake from sleep. They are only signals: they carry no detail and
+/// change, a session that moved or came back (Remote Desktop, unlock), a wake from sleep and the taskbar made again or changed. They are only signals: they carry no detail and
 /// arrive in bursts, so the one that listens decides what to look at again and when.
 /// Two independent listeners, so one that Windows starves still leaves the other: a hidden top-level window on its own thread (broadcasts
 /// such as device and display changes are not sent to message-only windows; it registers for the session notice and the monitor interface
@@ -46,7 +50,8 @@ public enum HardwareSignal
 public sealed class HardwareSignals : IDisposable
 {
     private const string ClassName = "OmniControlHardwareSignals";
-    private const uint WmDeviceChange = 0x0219, WmDisplayChange = 0x007E, AllowMessage = 1;
+    private const uint WmDeviceChange = 0x0219, WmDisplayChange = 0x007E, WmSettingChange = 0x001A, AllowMessage = 1;
+    private const int SpiSetWorkArea = 0x002F;
     private static readonly uint WmTaskbarCreated = RegisterWindowMessage("TaskbarCreated");
     private const int DbtDevNodesChanged = 0x0007, DbtDeviceArrival = 0x8000, DbtDeviceRemoveComplete = 0x8004;
 
@@ -234,8 +239,10 @@ public sealed class HardwareSignals : IDisposable
             Failed?.Invoke($"Windows refused the hardware listener (error {Marshal.GetLastWin32Error()}).");
             return false;
         }
-        // Explorer runs without administrator rights: its "TaskbarCreated" broadcast reaches this (elevated) window only when let through.
-        ChangeWindowMessageFilterEx(_window, WmTaskbarCreated, AllowMessage, IntPtr.Zero);
+        // Explorer runs without administrator rights: its broadcasts reach this (elevated) window only when let through.
+        foreach (var message in new[] { WmTaskbarCreated, WmSettingChange })
+            if (!ChangeWindowMessageFilterEx(_window, message, AllowMessage, IntPtr.Zero))
+                Failed?.Invoke($"Windows refused to let Explorer's message {message} through (error {Marshal.GetLastWin32Error()}); the taskbar gadget then follows a new taskbar on its next read.");
         if (!WTSRegisterSessionNotification(_window, NotifyForThisSession))
             Failed?.Invoke($"Windows refused the session notice (error {Marshal.GetLastWin32Error()}); a return from Remote Desktop is then seen through SystemEvents and the display change.");
         foreach (var setting in new[] { ConsoleDisplayState, MonitorPowerOn })
@@ -296,6 +303,9 @@ public sealed class HardwareSignals : IDisposable
                 case var taskbar when taskbar == WmTaskbarCreated && taskbar != 0:
                     Raise(HardwareSignal.Taskbar, "TaskbarCreated");
                     break;
+                case WmSettingChange when TaskbarSetting((int)wParam, lParam) is { } setting:
+                    Raise(HardwareSignal.TaskbarSettings, $"WM_SETTINGCHANGE {setting}");
+                    break;
                 case WmClose:
                     DestroyWindow(hwnd);
                     _window = IntPtr.Zero;
@@ -311,6 +321,15 @@ public sealed class HardwareSignals : IDisposable
             Failed?.Invoke($"hardware listener failed on message {message}: {ex}");
         }
         return DefWindowProc(hwnd, message, wParam, lParam);
+    }
+
+    /// The setting changes that touch the taskbar (every other setting change is ignored): the light or dark mode, Explorer's own taskbar
+    /// settings and the work area a taskbar leaves free.
+    private static string? TaskbarSetting(int action, IntPtr name)
+    {
+        if (action == SpiSetWorkArea) return "work area";
+        var section = name == IntPtr.Zero ? null : Marshal.PtrToStringUni(name);
+        return section is "ImmersiveColorSet" or "TraySettings" ? section : null;
     }
 
     private void OnPowerBroadcast(int kind, IntPtr lParam)
@@ -352,5 +371,5 @@ public sealed class HardwareSignals : IDisposable
     }
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern uint RegisterWindowMessage(string name);
-    [DllImport("user32.dll")] private static extern bool ChangeWindowMessageFilterEx(IntPtr window, uint message, uint action, IntPtr status);
+    [DllImport("user32.dll", SetLastError = true)] private static extern bool ChangeWindowMessageFilterEx(IntPtr window, uint message, uint action, IntPtr status);
 }

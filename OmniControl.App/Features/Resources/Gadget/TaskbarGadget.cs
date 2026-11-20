@@ -58,8 +58,6 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
         weather.Updated += Draw;
         settings.Changed += Apply;
         _preview.Changed += NeedReadings;
-        _platform = Application.Current?.PlatformSettings;
-        if (_platform is not null) _platform.ColorValuesChanged += OnWindowsColours;
         Apply();
     }
 
@@ -74,21 +72,30 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
             Family = family.Family, FamilyRole = OnOffFamily.ToggleRole, SuggestedIcons = new[] { "device-desktop-analytics" },
         };
         actions.Register(family.Siblings(toggle, SetShown).Prepend(toggle));
-        hardware.Register(new HardwareWatch(WatchId, "Taskbar gadget", HardwareSignal.Taskbar | HardwareSignal.Display | HardwareSignal.Session,
-            () => Dispatcher.UIThread.Invoke(Place),
+        hardware.Register(new HardwareWatch(WatchId, "Taskbar gadget", HardwareSignal.Taskbar | HardwareSignal.TaskbarSettings | HardwareSignal.Display
+                | HardwareSignal.Session | HardwareSignal.Resume | HardwareSignal.DisplayPower,
+            () =>
+            {
+                var light = TaskbarSpot.IsLight(); // the registry is read here, off the UI thread
+                Dispatcher.UIThread.Invoke(() => Refresh(light));
+            },
             LooksStale: () => IsShown && (_placed is not { } placed || (_size is var (w, h) && TaskbarSpot.Find(w, h, Look.SpaceToTray) != placed))));
     }
 
     private (int, int) _size;
     private int _dpi; // the taskbar's DPI when last placed: a child window is not told when its screen's scale changes
-    private bool _owned, _hidden; // the window is owned by the taskbar, not its child; hidden over a full-screen app
-    private readonly Avalonia.Platform.IPlatformSettings? _platform;
-    private bool? _taskbarLight; // read once, and again when Windows' colours change (the taskbar's own text colour follows its theme)
+    private bool _owned, _hidden, _disposed; // the window is owned by the taskbar, not its child; hidden over a full-screen app; no window after Dispose
+    private bool? _taskbarLight; // read once, and again after each taskbar announcement (the taskbar's own text colour follows Windows' mode)
 
-    private void OnWindowsColours(object? sender, Avalonia.Platform.PlatformColorValues e)
+    /// After a taskbar, display or session announcement: draws again when Windows' mode changed the taskbar's colour, then puts the gadget back.
+    private void Refresh(bool light)
     {
-        _taskbarLight = null;
-        Draw();
+        if (_taskbarLight != light)
+        {
+            _taskbarLight = light;
+            Draw();
+        }
+        Place();
     }
 
     private GadgetSettings Look => _settings.Setup.Gadget;
@@ -121,7 +128,8 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
         _states.Notify(StateId);
         NeedReadings();
         if (!Look.Shown) CloseWindow();
-        else if (_window is null)
+        // Before Explorer has made the taskbar (OmniControl started first) no window opens: TaskbarCreated opens it through Place.
+        else if (_window is null && !_disposed && TaskbarSpot.Exists)
         {
             var window = _window = new GadgetWindow(MenuRows);
             window.Clicked += () => Run(Look.ClickAction);
@@ -201,12 +209,13 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
     /// A stored gadget colour; "" is <paramref name="text"/> (the text colour, or the taskbar's own <see cref="Ink"/>).
     public static Color ColourOf(string stored, Color text) => stored.Length > 0 ? Color.Parse(stored) : text;
 
-    /// Puts the gadget into the taskbar left of the tray (again after Explorer restarts or the scale changes); moves nothing while nothing changed. UI thread.
+    /// Puts the gadget into the taskbar left of the tray (again after Explorer restarts or the scale changes); moves nothing while nothing changed.
+    /// Runs after every read too, so a tray area that grew or shrank is followed at the next read. UI thread.
     private void Place()
     {
         if (_window is null)
         {
-            if (IsShown && TaskbarSpot.Find(0, 0, 0) is not null) Apply();
+            if (IsShown && TaskbarSpot.Exists) Apply();
             return;
         }
         if (_window.TryGetPlatformHandle() is not { } handle) return;
@@ -214,14 +223,17 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
         var (w, h) = _size;
         if (TaskbarSpot.Find(w, h, Look.SpaceToTray) is not { } place) return;
         var dpi = TaskbarSpot.Dpi(place.Taskbar);
-        if (dpi != _dpi && _placed is not null && Math.Abs(_window.RenderScaling * 96 - dpi) >= 1)
+        // A new window, put into the taskbar like the first: Explorer restarted (a new taskbar; the old one destroyed the window, or let go
+        // of it without Avalonia being told), or the scale changed (a window opened now takes the new scale).
+        var anew = TaskbarSpot.IsGone(handle.Handle) || _placed is { } old
+            && (old.Taskbar != place.Taskbar || (dpi != _dpi && Math.Abs(_window.RenderScaling * 96 - dpi) >= 1));
+        _dpi = dpi;
+        if (anew)
         {
-            _dpi = dpi;
-            CloseWindow(); // a window opened now takes the new scale; it is put into the taskbar like the first
+            CloseWindow();
             Apply();
             return;
         }
-        _dpi = dpi;
         if (_placed?.Taskbar != place.Taskbar) _owned = !TaskbarSpot.Attach(handle.Handle, place.Taskbar);
         if (_placed != place || TaskbarSpot.IsCovered(handle.Handle)) TaskbarSpot.Put(handle.Handle, place);
         _placed = place;
@@ -283,7 +295,7 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
         _weather.Updated -= Draw;
         _settings.Changed -= Apply;
         _preview.Changed -= NeedReadings;
-        if (_platform is not null) _platform.ColorValuesChanged -= OnWindowsColours;
+        _disposed = true;
         CloseWindow();
     }
 }
