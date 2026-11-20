@@ -23,6 +23,9 @@ public sealed record TailscaleStatus(string? CliPath, bool Answered, TailscaleBa
     public bool SignedIn => Answered && Backend != TailscaleBackend.NeedsLogin;
 
     public bool Connected => Answered && Backend == TailscaleBackend.Running && OwnAddress.Length > 0;
+
+    /// Windows gives Tailscale's adapter that address; null when not read (Tailscale not connected).
+    public bool? AddressOnAdapter { get; init; }
 }
 
 /// Reads <c>tailscale status --json</c> (the one read-only call) into a <see cref="TailscaleStatus"/>.
@@ -35,7 +38,9 @@ public static class TailscaleStatusReader
     {
         if (TailscaleCli.Find() is not { } cli) return TailscaleStatus.NotInstalled;
         var output = TailscaleCli.Run(cli, "status --json");
-        return output is null ? TailscaleStatus.NotInstalled with { CliPath = cli } : Parse(cli, output);
+        if (output is null) return TailscaleStatus.NotInstalled with { CliPath = cli };
+        var status = Parse(cli, output);
+        return status.Connected ? status with { AddressOnAdapter = TailscaleAdapter.HasAddress(status.OwnAddress) } : status;
     }
 
     /// The status JSON as a <see cref="TailscaleStatus"/>; text that is not that gives "not answering".

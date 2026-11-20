@@ -76,7 +76,7 @@ public sealed partial class OtherPcsService
             // The last row is the probe itself: its measured time when it passed, its real reason when it did not.
             if (pair.Route == PcRoute.Tailscale) RecordProbe(id, PcRoute.Tailscale, peer.Address, probe);
             var at = checks.FindIndex(c => c.Id == TailscaleChecks.Reachable);
-            if (at >= 0) checks[at] = probe.Ok ? checks[at] with { Tag = $"{probe.Ms} ms", TagTip = "Round trip of an authenticated ping over Tailscale." } : checks[at] with { Sentence = probe.Reason };
+            if (at >= 0) checks[at] = probe.Ok ? checks[at] with { Tag = $"{probe.Ms} ms", TagTip = "Round trip of an authenticated ping over Tailscale." } : checks[at] with { Sentence = checks.Take(at).All(c => c.State == CheckState.Ok) ? $"{probe.Reason} {TailscaleChecks.ReachHint}" : probe.Reason };
         }
         _pairChecks[id] = checks;
         if (pair.Route == PcRoute.Tailscale && peer is not null && TailscaleChecks.AllOk(checks)) TailscaleWorks(id, peer.Address);

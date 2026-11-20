@@ -11,7 +11,10 @@ public sealed record TailscaleCheck(string Id, string Words, CheckState State, s
 /// THE checklist of "Over the internet": the order, the words, the sentence and the fix of each check, made from what was read. Pure.
 public static class TailscaleChecks
 {
-    public const string Installed = "installed", Running = "running", SignedIn = "signedin", Connected = "connected", Firewall = "firewall", Peer = "peer", Reachable = "reachable";
+    public const string Installed = "installed", Running = "running", SignedIn = "signedin", Connected = "connected", Address = "address", Firewall = "firewall", Peer = "peer", Reachable = "reachable";
+
+    /// Added to the reach row's sentence when it is the only row that fails.
+    public const string ReachHint = "That PC may need Tailscale restarted: open OmniControl there.";
 
     /// <param name="firewallOk">The OmniControl rule is there; null = not read.</param>
     /// <param name="reachable">The other PC answered; null = no PC picked or not tried yet.</param>
@@ -34,10 +37,12 @@ public static class TailscaleChecks
         Add(Running, "Running", status.Running, string.Empty, string.Empty, "Tailscale is not running.", "Start Tailscale");
         Add(SignedIn, "Signed in", status.SignedIn, string.Empty, status.Account, "Tailscale is not signed in.", "Sign in");
         Add(Connected, "Connected", status.Connected, status.OwnAddress, string.Empty, "Tailscale is not connected to your network yet.", string.Empty);
+        Add(Address, "Tailscale has its address on this PC", status.AddressOnAdapter, string.Empty, string.Empty, "Windows lost Tailscale's address on this PC, so other PCs can't reach OmniControl.", "Restart Tailscale");
         Add(Firewall, "OmniControl allowed through Windows Firewall on Tailscale", firewallOk, string.Empty, string.Empty, "Windows Firewall blocks other PCs from reaching OmniControl on Tailscale.", "Allow");
         if (peerName is not null)
             Add(Peer, $"{peerName} on your Tailscale", peerFound, string.Empty, string.Empty, $"{peerName} is not on your Tailscale network. Install Tailscale on it and sign in with the same account.", "How to add it");
-        Add(Reachable, peerName is null ? "Other PC reachable" : "Reaches OmniControl on it", reachable, string.Empty, string.Empty, $"{(target.Length > 0 ? target : "The other PC")} can't be reached. Check that it is on, signed in to Tailscale and has OmniControl open.", string.Empty);
+        var hint = peerName is not null && !blocked ? $" {ReachHint}" : string.Empty;
+        Add(Reachable, peerName is null ? "Other PC reachable" : "Reaches OmniControl on it", reachable, string.Empty, string.Empty, $"{(target.Length > 0 ? target : "The other PC")} can't be reached. Check that it is on, signed in to Tailscale and has OmniControl open.{hint}", string.Empty);
         return checks;
     }
 

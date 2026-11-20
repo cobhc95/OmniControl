@@ -28,8 +28,8 @@ public sealed class TailscaleCheckItem
 
     public string FixText => _check.Fix;
 
-    /// The firewall fix is a pill (it asks Windows' administrator prompt); the others are links.
-    public bool FixIsPill => _check.Fix.Length > 0 && _check.Id == TailscaleChecks.Firewall;
+    /// The firewall and restart fixes are pills (they ask Windows' administrator prompt); the others are links.
+    public bool FixIsPill => _check.Fix.Length > 0 && _check.Id is TailscaleChecks.Firewall or TailscaleChecks.Address;
 
     public bool FixIsLink => _check.Fix.Length > 0 && !FixIsPill;
 

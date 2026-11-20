@@ -101,6 +101,23 @@ public sealed class TailscaleLink
             case TailscaleChecks.SignedIn:
                 Start("Other PCs: Tailscale sign-in", TailscaleCli.SignIn, "Tailscale's sign-in could not be opened. Open Tailscale from the Start menu and sign in there.", recheck);
                 return;
+            case TailscaleChecks.Address:
+                PcWork.OffUi("Other PCs: restarting Tailscale", async () =>
+                {
+                    var result = TailscaleAdapter.Restart();
+                    if (result.Failure == HelperFailure.None && result.ExitCode == 0) await Task.Delay(Timing.PcTailscaleAfterFix, _stop).ConfigureAwait(false); // the adapter needs a moment to get its address
+                    PcWork.Post(() =>
+                    {
+                        if (result.Failure == HelperFailure.Cancelled) _report("Windows' permission prompt was closed, so Tailscale was not restarted.");
+                        else if (result.Failure != HelperFailure.None || result.ExitCode != 0)
+                        {
+                            Guard.Log("Other PCs: restarting Tailscale", new IOException(result.Detail));
+                            _report("Tailscale could not be restarted. Restart it from Windows' Services instead.");
+                        }
+                        recheck();
+                    });
+                });
+                return;
             case TailscaleChecks.Firewall:
                 PcWork.OffUi("Other PCs: firewall rule", () =>
                 {
