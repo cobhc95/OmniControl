@@ -92,19 +92,22 @@ public sealed record ApoState(
 
 /// A device OmniControl's own Equalizer APO can be put on (Device Selector's row for it).
 /// <param name="Guid">Its key name under MMDevices.</param>
-/// <param name="Name">"Speakers (Realtek(R) Audio)".</param>
-/// <param name="Active">Plugged in and enabled.</param>
+/// <param name="Connector">Device Selector's Connector column ("Speakers").</param>
+/// <param name="Device">Its Device column ("Realtek(R) Audio").</param>
 /// <param name="Attached">Equalizer APO is in one of its slots.</param>
 /// <param name="Check">How OmniControl's last change of it ended (<see cref="ApoSetup.Running"/>, ...; "" = OmniControl never changed it).</param>
 /// <param name="State">How it is installed now, or how it would be.</param>
 /// <param name="Originals">Which install modes keep a driver APO to run inside Equalizer APO: bit 2 × mode = pre-mix, the next bit post-mix.</param>
-public sealed record ApoDeviceEntry(string Guid, string Name, bool Input, bool Active, bool Attached, bool EnhancementsOff, string Check, ApoInstallState State, int Originals)
+public sealed record ApoDeviceEntry(string Guid, string Connector, string Device, bool Input, bool Disabled, bool Unplugged, bool Attached, bool EnhancementsOff, string Check, ApoInstallState State, int Originals)
 {
+    /// "Realtek(R) Audio (Speakers)" for sentences.
+    public string Name => Connector.Length > 0 ? $"{Device} ({Connector})" : Device;
+
     public bool HasOriginalPreMix(ApoInstallMode mode) => (Originals & (1 << (2 * (int)mode))) != 0;
     public bool HasOriginalPostMix(ApoInstallMode mode) => (Originals & (2 << (2 * (int)mode))) != 0;
 
     internal static ApoDeviceEntry Of(DeviceApo d, string check) => new(d.Guid,
-        d.Connection.Length > 0 ? $"{d.Name} ({d.Connection})" : d.Name, d.Input, !d.Disabled && !d.Unplugged, d.Installed, d.EnhancementsOff, check, d.Current,
+        d.Connection, d.Name, d.Input, d.Disabled, d.Unplugged, d.Installed, d.EnhancementsOff, check, d.Current,
         Enum.GetValues<ApoInstallMode>().Sum(m => (d.OriginalPreMix(m).Length > 0 ? 1 << (2 * (int)m) : 0) + (d.OriginalPostMix(m).Length > 0 ? 2 << (2 * (int)m) : 0)));
 }
 

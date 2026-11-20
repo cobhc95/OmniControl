@@ -1,4 +1,4 @@
-﻿using OmniControl.App.Features.Volume.Audio;
+using OmniControl.App.Features.Volume.Audio;
 using OmniControl.App.Features.Volume.Audio.Engine;
 using OmniControl.Core.Engine.Apo;
 
@@ -9,12 +9,12 @@ namespace OmniControl.App.Features.Volume.Pages;
 public sealed partial class VolumePageViewModel
 {
     /// The install and remove steps at the foot of the master's Method menu: Equalizer APO's install (when it is missing), the virtual
-    /// cable's (Install VB-CABLE, or More cables once one is installed), Choose devices (Equalizer APO's Configurator), Remove VB-CABLE.
+    /// cable's (Install VB-CABLE, or More cables once one is installed), Choose devices (Equalizer APO's Configurator, or for OmniControl's own copy its device window), Remove VB-CABLE.
     private IReadOnlyList<CardAction> SetupSteps()
     {
         var apo = ApoActions();
         var steps = apo.Where(a => a == InstallApoAction).ToList();
-        var choose = apo.Where(a => a.Command == ChooseDevicesCommand);
+        var choose = apo.Where(IsChoose);
         if (_support.Current is { } support)
         {
             var installed = EffectsRules.CableInstalled(support);
@@ -23,7 +23,7 @@ public sealed partial class VolumePageViewModel
             if (installed) steps.Add(RemoveCableAction);
         }
         else steps.AddRange(choose);
-        steps.AddRange(apo.Where(a => a != InstallApoAction && a.Command != ChooseDevicesCommand));
+        steps.AddRange(apo.Where(a => a != InstallApoAction && !IsChoose(a)));
         return steps;
     }
 
@@ -45,6 +45,9 @@ public sealed partial class VolumePageViewModel
         if (EffectsRules.DeviceSelectorFixes(apo))
             actions.Add(new("Choose devices", "Opens Equalizer APO's Configurator (administrator)",
                 ChooseDevicesCommand, Main: missing));
+        else if (apo.Ownership.Owner == ApoOwner.Ours)
+            actions.Add(new("Choose devices", "Chooses the devices OmniControl's Equalizer APO runs on",
+                _openApoDevices ??= new RelayCommand(Apo.OpenDevices)));
         if (missing && (!apo.UpstreamInstalled || apo.UpstreamConfigFolder is null || apo.Ownership.Owner == ApoOwner.Ours))
             actions.Add(InstallApoAction);
         return actions;
@@ -55,6 +58,9 @@ public sealed partial class VolumePageViewModel
         new AsyncRelayCommand(() => RunSetupAsync(null, _installer.ChooseEqualizerApoDevicesAsync()));
 
     private IAsyncRelayCommand? _chooseDevices;
+    private IRelayCommand? _openApoDevices;
+
+    private bool IsChoose(CardAction a) => a.Command == ChooseDevicesCommand || a.Command == _openApoDevices;
     private CardAction? _speakerDevices;
     private CardAction? _cableDevices;
     private IAsyncRelayCommand? _installApo;

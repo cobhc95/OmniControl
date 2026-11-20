@@ -5,33 +5,17 @@
              x:Class="OmniControl.App.Shared.Ui.Pages.ToggleRow"
              x:DataType="pages:ToggleItem">
     <Panel ToolTip.Tip="{Binding Tip}">
-        <!-- Full-width card: label column shared with the other cards so the switches line up; then, when the card has them, its tags
-             and a link that opens a small menu (a device's status and "Advanced…"), wrapping before the card grows -->
+        <!-- Full-width card: label column shared with the other cards so the switches line up -->
         <Grid Margin="0,1" IsVisible="{Binding !Half}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
                 <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
             <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
                 <c:IconText Classes="cardname" Icon="{Binding Icon}" Text="{Binding Label}" HorizontalAlignment="Left" />
                 <TextBlock Classes="muted" Text="{Binding Note}" IsVisible="{Binding HasNote}" TextWrapping="Wrap" />
             </StackPanel>
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding IsOn}" OnContent="On" OffContent="Off" />
-            <WrapPanel Grid.Column="2" Margin="12,0,0,0" ItemSpacing="{StaticResource MenuGap}" LineSpacing="{StaticResource MenuTagGap}"
-                       VerticalAlignment="Center" IsVisible="{Binding HasExtras}">
-                <ItemsControl ItemsSource="{Binding Tags}" VerticalAlignment="Center">
-                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="{StaticResource MenuTagGap}" LineSpacing="{StaticResource MenuTagGap}" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate><DataTemplate><c:TagView /></DataTemplate></ItemsControl.ItemTemplate>
-                </ItemsControl>
-                <Button Classes="link" Content="{Binding MenuText}" IsVisible="{Binding Menu, Converter={x:Static ObjectConverters.IsNotNull}}" VerticalAlignment="Center">
-                    <Button.Flyout>
-                        <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft" Opening="OnMenuOpening">
-                            <c:MenuRowList Picked="OnMenuPicked" />
-                        </c:ListMenuFlyout>
-                    </Button.Flyout>
-                </Button>
-            </WrapPanel>
         </Grid>
 
         <!-- Half-width card: the label (and its muted note) takes what is left and wraps, the switch sits at the right without its On/Off words (they are its tooltip) -->

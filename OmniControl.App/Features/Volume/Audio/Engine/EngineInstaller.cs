@@ -82,7 +82,7 @@ public sealed class EngineInstaller : IDisposable
         return StepAsync(Apo.Ownership.Owner == ApoOwner.Ours ? ApoSetup.Attach(guid) : ApoSetup.Install(guid), Runs(NameOf(deviceId)), NameOf(deviceId));
     }
 
-    /// The Equalizer APO group's switch and its Advanced menu: puts OmniControl's copy on the device with these options (again, when it is on).
+    /// A tick or a troubleshooting option in the Equalizer APO device window: puts OmniControl's copy on the device with these options (again, when it is on).
     public Task<SetupResult> AttachAsync(ApoDeviceEntry device, ApoInstallState state) => StepAsync(ApoSetup.Attach(device.Guid, state), Runs(device.Name), device.Name);
 
     /// Takes OmniControl's copy off the device; its own effects come back.
@@ -90,7 +90,7 @@ public sealed class EngineInstaller : IDisposable
         StepAsync(ApoSetup.Detach(device.Guid), $"Equalizer APO is off {device.Name}; its own effects are back (Windows audio restarted for a moment).", device.Name);
 
     /// The group's install link: OmniControl's copy, on no device yet.
-    public Task<SetupResult> InstallAsync() => StepAsync(ApoSetup.Install(), "Equalizer APO is installed; switch it on for a device below.", null);
+    public Task<SetupResult> InstallAsync() => StepAsync(ApoSetup.Install(), "Equalizer APO is installed; Choose devices in the master's Method menu puts it on devices.", null);
 
     /// "Remove OmniControl's Equalizer APO…": every device it is on gets its own effects back and the copy goes.
     public Task<SetupResult> RemoveAsync() =>

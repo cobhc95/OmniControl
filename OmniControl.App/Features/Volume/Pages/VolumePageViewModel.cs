@@ -134,7 +134,7 @@ public sealed partial class VolumePageViewModel : PageViewModel, IVolumeRows, ID
         WiringOutputs = NewWiringOutputs();
         WiringInputs = NewWiringInputs();
         WiringCables = NewWiringCables();
-        Apo = new EqualizerApoGroup(_support, _installer, RunSetupAsync, _ask);
+        Apo = new EqualizerApoGroup(_support, _installer, _mixer, RunSetupAsync, _ask, _report);
         _combineCard = new ButtonItem("Combine devices", "Combine…", "Joins speakers or microphones into one",
             () => _ = CombineAsync(null, Array.Empty<string>()));
         _master = NewMaster();

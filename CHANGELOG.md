@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- New: OmniControl's own Equalizer APO has its own device window ("Choose devices" in the master's Method menu): every playback and recording device with a tick, its connector, name and status, and Equalizer APO 1.4.2 Device Selector's troubleshooting options for the selected device. It replaces the per-device switches and "Advanced…" menus in the Wiring tab's Equalizer APO group.
+
 - Fix: the OSD's bar, ring and icon use the same accent shade as the rest of the app (Windows' own, following the accent, intensity and the pop-up's dark or light background) instead of the raw, deeper accent colour.
 
 - New: OmniControl brings its own Equalizer APO (the official 1.4.2 audio-processing part, unchanged): Setup installs it (a tick box, on by default, skipped when Equalizer APO is already installed), the Portable version installs it on the first use of a master effect (one administrator prompt), and the Volume page's Wiring tab has an Equalizer APO group that says whose Equalizer APO it is and, for OmniControl's copy, puts it on or takes it off each speaker and microphone exactly as Equalizer APO's own Device Selector does (one Windows audio restart per change, checked per device, undone when a driver blocks it; install mode and troubleshooting options under "Advanced…"). A separately installed Equalizer APO is never changed; uninstalling OmniControl removes only its own copy and gives every device its own effects back.

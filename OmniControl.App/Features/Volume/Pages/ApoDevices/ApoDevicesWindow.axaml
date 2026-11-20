@@ -1,0 +1,94 @@
+<Window Classes="dialog" xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ad="using:OmniControl.App.Features.Volume.Pages.ApoDevices"
+        xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+        x:Class="OmniControl.App.Features.Volume.Pages.ApoDevices.ApoDevicesWindow"
+        x:DataType="ad:ApoDevicesViewModel"
+        Title="Equalizer APO devices" Width="660" Height="460" MinWidth="460" MinHeight="300"
+        CanResize="True" WindowStartupLocation="CenterOwner">
+    <!-- Equalizer APO's Device Selector for OmniControl's own copy: title and tag; Connector | Device | Status headings; the devices grouped
+         Playback then Recording, each a tick, its connector, device and status; Device Selector's troubleshooting panel for the selected
+         attached device; the footer's switch for it, the restart note and Close. -->
+    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" Margin="12" RowSpacing="8" Grid.IsSharedSizeScope="True">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Classes="title" Text="Equalizer APO devices" VerticalAlignment="Center" />
+            <Border Classes="tag" VerticalAlignment="Center">
+                <TextBlock Text="{Binding ManagedTag}" />
+            </Border>
+        </StackPanel>
+
+        <Button Grid.Row="1" Classes="menurow" Focusable="False" IsHitTestVisible="False">
+            <Grid ColumnSpacing="{StaticResource MenuGap}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="Tick" />
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="Connector" />
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="Device" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="1" Classes="hint small" Text="Connector" />
+                <TextBlock Grid.Column="2" Classes="hint small" Text="Device" />
+                <TextBlock Grid.Column="3" Classes="hint small" Text="Status" />
+            </Grid>
+        </Button>
+
+        <ScrollViewer Grid.Row="2">
+            <ItemsControl ItemsSource="{Binding Items}">
+                <ItemsControl.DataTemplates>
+                    <DataTemplate DataType="ad:ApoDeviceHeading">
+                        <TextBlock Classes="navheading" Text="{Binding Text}" Margin="8,6,0,2" />
+                    </DataTemplate>
+                    <DataTemplate DataType="ad:ApoDeviceRow">
+                        <Button Classes="menurow" Classes.chosen="{Binding IsSelected}" Focusable="False" Command="{Binding SelectCommand}" Opacity="{Binding RowOpacity}">
+                            <Grid ColumnSpacing="{StaticResource MenuGap}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="Tick" />
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="Connector" />
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="Device" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <CheckBox IsChecked="{Binding IsChecked}" IsEnabled="{Binding CanAttach}" Focusable="False" MinWidth="0" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{Binding Connector}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2" Text="{Binding Device}" VerticalAlignment="Center" />
+                                <Panel Grid.Column="3" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Status}" TextWrapping="Wrap" IsVisible="{Binding IsPlain}" />
+                                    <TextBlock Classes="goodtext" Text="{Binding Status}" TextWrapping="Wrap" IsVisible="{Binding IsGood}" />
+                                    <TextBlock Classes="cautiontext" Text="{Binding Status}" TextWrapping="Wrap" IsVisible="{Binding IsCaution}" />
+                                    <TextBlock Classes="badtext" Text="{Binding Status}" TextWrapping="Wrap" IsVisible="{Binding IsBad}" />
+                                </Panel>
+                            </Grid>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.DataTemplates>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <Panel Grid.Row="3">
+            <TextBlock Classes="hint" Text="Select an attached device to see its options." IsVisible="{Binding ShowsPick}" Margin="8,0,0,0" />
+            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="4" Margin="8,0,0,0" IsVisible="{Binding ShowsOptions}">
+                <TextBlock Text="Pre-mix:" VerticalAlignment="Center" />
+                <CheckBox Grid.Column="1" Content="Install APO" IsChecked="{Binding InstallPreMix}" />
+                <CheckBox Grid.Column="2" Content="Use original APO" IsChecked="{Binding UseOriginalPreMix}" IsEnabled="{Binding CanOriginalPreMix}" />
+                <CheckBox Grid.Column="3" Content="Auto:" IsChecked="{Binding AutoAdjust}"
+                          ToolTip.Tip="Automatically adjust install mode if problems with current mode are detected" />
+                <c:ChipMenu Grid.Column="4" Classes="dropbox" ChipAlignment="Left" Text="{Binding ModeText}" MenuOpened="OnModeMenuOpened" VerticalAlignment="Center">
+                    <c:ChipMenu.Menu>
+                        <c:MenuRowList />
+                    </c:ChipMenu.Menu>
+                </c:ChipMenu>
+                <TextBlock Grid.Row="1" Text="Post-mix:" VerticalAlignment="Center" IsEnabled="{Binding CanPostMix}" />
+                <CheckBox Grid.Row="1" Grid.Column="1" Content="Install APO" IsChecked="{Binding InstallPostMix}" IsEnabled="{Binding CanPostMix}" />
+                <CheckBox Grid.Row="1" Grid.Column="2" Content="Use original APO" IsChecked="{Binding UseOriginalPostMix}" IsEnabled="{Binding CanOriginalPostMix}" />
+                <CheckBox Grid.Row="1" Grid.Column="3" Grid.ColumnSpan="2" Content="Allow silent buffer modification" IsChecked="{Binding AllowSilentBuffer}"
+                          ToolTip.Tip="Allows to change silent input buffers to audible output buffers, so that delayed audio can be played. CAUTION: Some sound card drivers can produce unwanted sounds when this is enabled." />
+            </Grid>
+        </Panel>
+
+        <Border Grid.Row="4" Classes="footer">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                <CheckBox Content="Troubleshooting options" IsChecked="{Binding Troubleshooting}" />
+                <TextBlock Grid.Column="1" Classes="hint small" Text="Ticking restarts Windows audio for a moment" TextWrapping="Wrap" VerticalAlignment="Center" />
+                <Button Grid.Column="2" Classes="pill" Content="Close" Click="OnCloseClick" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
