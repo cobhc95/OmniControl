@@ -49,7 +49,7 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
     private TaskbarPlace? _placed;
 
     /// <param name="layouts">The layouts the right-click menu lists and applies.</param>
-    /// <param name="windows">Opens the page at its App traffic control group and at its Taskbar gadget tab (the right-click menu's links).</param>
+    /// <param name="windows">Opens the page at its Network traffic control group and at its Taskbar gadget tab (the right-click menu's links).</param>
     public TaskbarGadget(ResourceMonitor monitor, WeatherService weather, ResourcesSettings settings, GadgetLayouts layouts, IActionRunner runner,
         IStateRegistry states, Action<string> report, IResourcesWindows windows)
     {
@@ -252,14 +252,14 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
         TaskbarSpot.Show(handle.Handle, !hide);
     }
 
-    /// The right-click menu: Layout (the favourite layouts) and Show (every reading, ticked) as sub-menus, the gadget's settings, App traffic control
+    /// The right-click menu: Layout (the favourite layouts) and Show (every reading, ticked) as sub-menus, the gadget's settings, Network traffic control
     /// and Hide.
     private IReadOnlyList<MenuRowItem> MenuRows() => new[]
     {
         MenuRowItem.Sub("Layout", "layout-dashboard", LayoutRows, _layouts.CurrentName),
         MenuRowItem.Sub("Show", "eye", ShowRows),
         Link("Gadget settings…", "settings", _windows.OpenGadgetSettings, ruleAbove: true),
-        Link("App traffic control…", "network", _windows.OpenApps),
+        Link("Network traffic control…", "network", _windows.OpenApps),
         new MenuRowItem("Hide gadget", string.Empty, false, string.Empty, new RelayCommand(() => SetShown(false)), RuleAbove: true, IsMuted: true, Icon: "eye-off"),
     };
 

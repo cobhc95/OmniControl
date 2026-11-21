@@ -5,8 +5,8 @@
              xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
              x:Class="OmniControl.App.Features.Resources.Pages.ResourcesPage"
              x:DataType="vm:ResourcesPageViewModel">
-    <!-- The title line with the preset picker, the tabs, then Readings (Live readings, App traffic control: its headings, rows and the one status
-         line, and Packet filter's one switch) or the Taskbar gadget tab (Gadget/GadgetTabView, built after the tab's first opening and then kept, hidden with the tab). -->
+    <!-- The title line with the preset picker, the tabs, then Readings (Live readings, Network traffic control: its Packet filter switch, headings, rows and the one status
+         line) or the Taskbar gadget tab (Gadget/GadgetTabView, built after the tab's first opening and then kept, hidden with the tab). -->
     <StackPanel Spacing="{StaticResource Gap}">
         <pages:PageTitleLine Title="{Binding Title}">
             <pages:PageTitleLine.Right>
@@ -25,12 +25,13 @@
                     <ListBox Classes="rows compact cards" ItemsSource="{Binding Live.Items}" />
                 </pages:GroupCard>
 
-                <pages:GroupCard Group="{Binding Filter}">
-                    <ListBox Classes="rows compact cards" ItemsSource="{Binding Filter.Items}" />
-                </pages:GroupCard>
-
                 <pages:GroupCard Group="{Binding Apps}">
                     <pages:GroupCard.Tools>
+                        <StackPanel DataContext="{Binding PacketFilter}" x:DataType="pages:ToggleItem" Orientation="Horizontal" Spacing="{StaticResource GapSmall}"
+                                    VerticalAlignment="Center" ToolTip.Tip="{Binding Tip}">
+                            <TextBlock Classes="muted small" Text="{Binding Label}" VerticalAlignment="Center" />
+                            <ToggleSwitch Classes="plain" IsChecked="{Binding IsOn}" VerticalAlignment="Center" />
+                        </StackPanel>
                         <c:AppScopeChip DataContext="{Binding AppsScope}" />
                     </pages:GroupCard.Tools>
                     <Panel>

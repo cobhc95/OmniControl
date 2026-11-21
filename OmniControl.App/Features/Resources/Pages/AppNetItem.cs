@@ -3,7 +3,7 @@ using OmniControl.Core.Engine.Screenshot;
 
 namespace OmniControl.App.Features.Resources.Pages;
 
-/// One App traffic control row: its pin, the program (icon, friendly name, the technical name muted when it differs), its traffic, its upload and
+/// One Network traffic control row: its pin, the program (icon, friendly name, the technical name muted when it differs), its traffic, its upload and
 /// download limit chips and its On switch (off blocks it), through <see cref="NetworkLimits"/>.
 public sealed partial class AppNetItem : ObservableObject
 {
@@ -79,7 +79,7 @@ public sealed partial class AppNetItem : ObservableObject
         if (Path.Length > 0 || path.Length == 0) return;
         Path = path;
         OnPropertyChanged(nameof(NameTip));
-        _ = Guard.RunAsync("App traffic control program name", async () =>
+        _ = Guard.RunAsync("Network traffic control program name", async () =>
         {
             Name = await Task.Run(() => ProgramFile.NameOf(path));
             Picture = await _icons.GetAsync(path);

@@ -6,7 +6,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 ## Unreleased
 
 - Changed: tool tips no longer repeat the words already on screen (menu rows, chips, names, notes); a trimmed text shows its full words as a tip only while it is really cut off.
-- Changed: on Resources, "Network by app" is now "App traffic control", and the Packet filter group sits above it.
+- Changed: on Resources, "Network by app" is now "Network traffic control", and the Packet filter switch sits on its header line (Restore defaults of the group turns it back on).
 - Fix: a click on the taskbar gadget runs sooner: it waits Windows' double-click time counted from the press rather than from the release, so a double-click (Task Manager) is still recognised; with no double-click action every click runs on the press.
 - New: favourite actions. Star an action in any Choose-an-action window (on its row, or beside its name in the settings pane); starred actions get a Favourites section at the top of the sidebar and show first in their own section, in every place that picks an action.
 - Fix: the hover in pop-down menus no longer drops out while the mouse rests on a row: menus with live values (the Resources temperature sensor and network adapter menus, Plays on, Add program) update their rows in place instead of redrawing them every second. The preset, Sound, Apps scope ("Works in"), Plays on, Add program, rule link ("and" / "then wait"), app list manager and preset manager "…" menus now use the one shared menu, so they look and behave the same everywhere: the accent bar marks the current choice (the rule link's "now" tag is gone), a value sits at the row's right, "Manage …" rows are muted, and a device that can't be used is greyed with its reason as tooltip.
