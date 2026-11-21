@@ -12,6 +12,7 @@ public sealed class ScreenshotModule : IFeatureModule
     {
         (_windowsKeys, _service) = ScreenshotActions.Register(context.Actions, context.Osd, context.Report, context.AskAsync);
         context.Imports.OnReload(DataStores.Screenshots, _windowsKeys.ReloadFromDisk);
+        Guard.OffUi("Screen recording: recordings left unsaved", RecordingStage.CleanUp);
     }
 
     /// A screen recording (with its sound) runs now.

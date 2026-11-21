@@ -149,31 +149,45 @@ public sealed class ScreenshotService
         if (options.ShowNote) Note(title, Path.GetFileName(path), Path.GetDirectoryName(path));
     }
 
-    /// A finished recording: where it goes (the save dialog when the action asks), moved there, or deleted when discarded.
+    /// A finished recording: where it goes (the save dialog when the action asks), moved there, or deleted when discarded. One waiting in
+    /// the private stage (<see cref="RecordingStage"/>) never stays there: a failed move puts it in the action's save folder instead.
     private async Task KeepRecordingAsync(string recorded, ScreenshotOptions options)
     {
-        var target = await _places.ChooseAsync(SaveKind.Recording, options, Path.GetFileNameWithoutExtension(recorded), Path.GetExtension(recorded), recorded);
+        var staged = RecordingStage.Holds(recorded);
+        var name = Path.GetFileNameWithoutExtension(recorded);
+        var extension = Path.GetExtension(recorded);
+        var target = await _places.ChooseAsync(SaveKind.Recording, options, name, extension, staged ? null : recorded);
+        if (target is null)
+        {
+            try { File.Delete(recorded); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { _report($"The recording could not be deleted: {ex.Message}"); }
+            return;
+        }
+        if (!string.Equals(Path.GetFullPath(target), Path.GetFullPath(recorded), StringComparison.OrdinalIgnoreCase)
+            && await Task.Run(() => MoveTo(recorded, () => target)) is { Problem: { } problem })
+        {
+            var kept = staged ? (await Task.Run(() => MoveTo(recorded, () => FileNamePattern.UniquePath(options.VideoFolderInUse, name, extension, File.Exists)))).Path : null;
+            target = kept ?? recorded;
+            _report(kept is not null ? $"The recording could not be saved there ({problem}), so it is in {Path.GetDirectoryName(kept)}."
+                : $"The recording stayed in {Path.GetDirectoryName(recorded)}: {problem}");
+        }
+        Saved(target, options, "Video saved");
+    }
+
+    /// Moves the file to the path <paramref name="to"/> gives, its folder made first: where it went, or why not.
+    private static (string? Path, string? Problem) MoveTo(string from, Func<string> to)
+    {
         try
         {
-            if (target is null)
-            {
-                File.Delete(recorded);
-                return;
-            }
-            if (!string.Equals(Path.GetFullPath(target), Path.GetFullPath(recorded), StringComparison.OrdinalIgnoreCase))
-                await Task.Run(() =>
-                {
-                    Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-                    File.Move(recorded, target);
-                });
+            var path = to();
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.Move(from, path);
+            return (path, null);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
-            _report(target is null ? $"The recording could not be deleted: {ex.Message}" : $"The recording stayed in {Path.GetDirectoryName(recorded)}: {ex.Message}");
-            if (target is null) return;
-            target = recorded;
+            return (null, ex.Message);
         }
-        Saved(target, options, "Video saved");
     }
 
     private void StartRecording(ScreenRect area, ScreenRect monitor, double scale, ScreenshotOptions options, string app)

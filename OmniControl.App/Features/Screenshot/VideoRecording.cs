@@ -146,7 +146,7 @@ public sealed class VideoRecording
 
     private string NewPath(VideoFormat format)
     {
-        var folder = _options.VideoFolderInUse;
+        var folder = _options.AskVideoFolder ? RecordingStage.Make() : _options.VideoFolderInUse;
         Directory.CreateDirectory(folder);
         var name = FileNamePattern.Make(_options.Pattern, DateTime.Now, _app);
         return FileNamePattern.UniquePath(folder, name, VideoMath.Extension(format), File.Exists);
