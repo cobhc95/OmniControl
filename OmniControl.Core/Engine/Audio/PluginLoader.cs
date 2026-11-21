@@ -68,7 +68,7 @@ public static class PluginLoader
         try
         {
             if (new DriveInfo(path[..1]).DriveType == DriveType.Network) return NotLocal; // a mapped share
-            return Elevated && !Resources.NetworkServiceSetup.CanServeFrom(path) ? UserFolder : null;
+            return Elevated && !Resources.NetworkServiceSetup.CanServeFrom(Vst3File.BinaryOf(path)) ? UserFolder : null;
         }
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException or IOException or UnauthorizedAccessException)
         {

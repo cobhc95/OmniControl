@@ -43,7 +43,7 @@ public static class NetworkServiceMode
 
     /// True when this copy may host the service: installed where only administrators can change its files (not a portable copy). Reads the
     /// folders' access lists, so off the UI thread.
-    public static bool CanInstall() => NetworkServiceSetup.CanServeFrom(Self);
+    public static bool CanInstall() => NetworkServiceSetup.CanServeFrom(Self, wholeFolder: true);
 
     private static int Done(string what, string? problem)
     {

@@ -144,6 +144,11 @@ internal sealed class NetworkServiceClient : INetworkWork
             pipe.Dispose();
             return Fail(ex is UnauthorizedAccessException ? "The network service serves another Windows user" : "The network service did not answer", problems);
         }
+        if (NetworkServiceSetup.ServerProblem(pipe.SafePipeHandle) is { } impostor)
+        {
+            pipe.Dispose(); // nothing was sent to it
+            return Fail(impostor, problems);
+        }
         _pipe = pipe;
         if (!ReadRules(problems)) return false;
         State(true, null);

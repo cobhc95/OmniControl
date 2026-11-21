@@ -58,7 +58,7 @@ public static class SignInTask
     {
         try
         {
-            return exe.Length > 0 && Resources.NetworkServiceSetup.CanServeFrom(exe);
+            return exe.Length > 0 && Resources.NetworkServiceSetup.CanServeFrom(exe, wholeFolder: true);
         }
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
         {

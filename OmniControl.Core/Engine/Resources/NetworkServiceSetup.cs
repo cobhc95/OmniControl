@@ -29,7 +29,7 @@ public static class NetworkServiceSetup
     /// SYSTEM and administrators) may start and stop it. Refused unless <see cref="CanServeFrom"/>. Null when done, else one plain sentence.
     public static string? Install(string exe, string arguments, SecurityIdentifier user)
     {
-        if (!CanServeFrom(exe)) return "The network service needs the installed version of OmniControl (a folder only administrators can change)";
+        if (!CanServeFrom(exe, wholeFolder: true)) return "The network service needs the installed version of OmniControl (a folder only administrators can change)";
         var commandLine = $"\"{exe}\" {arguments}";
         using var manager = OpenSCManagerW(null, null, ScConnect | ScCreate);
         if (manager.IsInvalid) return Failed("open Windows' service list");
@@ -87,24 +87,54 @@ public static class NetworkServiceSetup
         return StartServiceW(service, 0, IntPtr.Zero) || Marshal.GetLastWin32Error() == AlreadyRunning ? null : Failed("start the network service");
     }
 
-    /// True when, by their access lists, only SYSTEM, administrators and TrustedInstaller may change <paramref name="exe"/>'s folder, what it
-    /// holds, or the folders above it (Program Files): the service runs that exe as SYSTEM, so a folder its user may write (a profile, a
-    /// portable copy) would let anything running as them swap it.
-    public static bool CanServeFrom(string exe)
+    /// Null when the process at the other end of <paramref name="pipe"/> is the running network service (the process id Windows' service
+    /// list gives it), else one plain sentence (no full stop): anything else running as the user could have taken the pipe's name first.
+    public static string? ServerProblem(SafePipeHandle pipe)
     {
-        var folder = Path.GetDirectoryName(Path.GetFullPath(exe));
-        if (folder is null) return false;
+        if (!GetNamedPipeServerProcessId(pipe, out var server)) return Failed("tell which program answers on the network service's connection");
+        using var manager = OpenSCManagerW(null, null, ScConnect);
+        if (manager.IsInvalid) return Failed("open Windows' service list");
+        using var service = OpenServiceW(manager, Name, QueryStatus);
+        if (service.IsInvalid) return Failed("open the network service");
+        var status = new ServiceStatusProcess();
+        if (!QueryServiceStatusEx(service, StatusProcessInfo, ref status, Marshal.SizeOf<ServiceStatusProcess>(), out _)) return Failed("read the network service's state");
+        return status.ProcessId != 0 && status.ProcessId == server ? null : "Another program, not the network service, answered on its connection";
+    }
+
+    /// True when, by their access lists, only SYSTEM, administrators and TrustedInstaller may change <paramref name="exe"/> itself, its folder,
+    /// what it holds, or the folders above it (Program Files): the service runs that exe as SYSTEM, so a folder its user may write (a profile, a
+    /// portable copy) would let anything running as them swap it. <paramref name="wholeFolder"/>: every file and folder under the exe's
+    /// folder too (each may carry an access list of its own), since the exe loads its libraries from there.
+    public static bool CanServeFrom(string exe, bool wholeFolder = false)
+    {
+        var path = Path.GetFullPath(exe);
+        var folder = Path.GetDirectoryName(path);
+        if (folder is null || !AdminOnly(Directory.Exists(path) ? new DirectoryInfo(path) : new FileInfo(path), own: true)) return false;
         var own = true;
         for (var dir = new DirectoryInfo(folder); dir is not null; dir = dir.Parent, own = false)
             if (!AdminOnly(dir, own)) return false;
-        return true;
+        try
+        {
+            return !wholeFolder || new DirectoryInfo(folder).EnumerateFileSystemInfos("*", SearchOption.AllDirectories).All(item => AdminOnly(item, own: true));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false; // not all readable: not shown to be safe
+        }
     }
 
-    /// <paramref name="own"/>: the exe's folder, where what its files and subfolders inherit counts too; above it only the folder itself.
-    private static bool AdminOnly(DirectoryInfo dir, bool own)
+    /// <paramref name="own"/>: the exe, its folder or what is under it, where what its files and subfolders inherit counts too; above it only
+    /// the folder itself.
+    private static bool AdminOnly(FileSystemInfo item, bool own)
     {
+        const AccessControlSections sections = AccessControlSections.Access | AccessControlSections.Owner;
         RawSecurityDescriptor sd;
-        try { sd = new RawSecurityDescriptor(dir.GetAccessControl(AccessControlSections.Access | AccessControlSections.Owner).GetSecurityDescriptorBinaryForm(), 0); }
+        try
+        {
+            var binary = item is DirectoryInfo dir ? dir.GetAccessControl(sections).GetSecurityDescriptorBinaryForm()
+                : ((FileInfo)item).GetAccessControl(sections).GetSecurityDescriptorBinaryForm();
+            sd = new RawSecurityDescriptor(binary, 0);
+        }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or PrivilegeNotHeldException or ArgumentException)
         {
             return false; // unreadable: not shown to be safe
@@ -141,7 +171,7 @@ public static class NetworkServiceSetup
 
     private const uint ScConnect = 0x1, ScCreate = 0x2;
     private const uint QueryStatus = 0x4, StartAccess = 0x10, Stop = 0x20, Delete = 0x10000, AllAccess = 0xF01FF, DaclInformation = 4;
-    private const uint OwnProcess = 0x10, DemandStart = 3, ErrorNormal = 1, NoChange = 0xFFFFFFFF, ConfigDescription = 1, ControlStop = 1, Stopped = 1;
+    private const uint StatusProcessInfo = 0, OwnProcess = 0x10, DemandStart = 3, ErrorNormal = 1, NoChange = 0xFFFFFFFF, ConfigDescription = 1, ControlStop = 1, Stopped = 1;
     private const int AccessDenied = 5, AlreadyRunning = 1056, DoesNotExist = 1060, NotActive = 1062, MarkedForDelete = 1072;
 
     internal sealed class ScHandle : SafeHandleZeroOrMinusOneIsInvalid
@@ -155,6 +185,12 @@ public static class NetworkServiceSetup
     internal struct ServiceStatus
     {
         public uint ServiceType, CurrentState, ControlsAccepted, Win32ExitCode, ServiceSpecificExitCode, CheckPoint, WaitHint;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ServiceStatusProcess
+    {
+        public uint ServiceType, CurrentState, ControlsAccepted, Win32ExitCode, ServiceSpecificExitCode, CheckPoint, WaitHint, ProcessId, ServiceFlags;
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -178,4 +214,7 @@ public static class NetworkServiceSetup
     [DllImport("advapi32.dll", SetLastError = true)] private static extern bool DeleteService(ScHandle service);
     [DllImport("advapi32.dll", SetLastError = true)] private static extern bool StartServiceW(ScHandle service, uint count, IntPtr arguments);
     [DllImport("advapi32.dll", SetLastError = true)] private static extern bool CloseServiceHandle(IntPtr handle);
+    [DllImport("advapi32.dll", SetLastError = true)]
+    private static extern bool QueryServiceStatusEx(ScHandle service, uint level, ref ServiceStatusProcess status, int size, out int needed);
+    [DllImport("kernel32.dll", SetLastError = true)] private static extern bool GetNamedPipeServerProcessId(SafePipeHandle pipe, out uint processId);
 }
