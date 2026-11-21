@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+## 0.2.5 (21 Nov 2026)
+
 - Changed: tool tips no longer repeat the words already on screen (menu rows, chips, names, notes); a trimmed text shows its full words as a tip only while it is really cut off.
 - Changed: on Resources, "Network by app" is now "Network traffic control", and the Packet filter switch sits on its header line (Restore defaults of the group turns it back on).
 - Fix: a click on the taskbar gadget runs sooner: it waits Windows' double-click time counted from the press rather than from the release, so a double-click (Task Manager) is still recognised; with no double-click action every click runs on the press.
