@@ -10,6 +10,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 - Lighter memory: OmniControl uses Windows' newer segment heap for its native memory, which gives freed memory back to Windows sooner.
 - Changed: before the main window is let go after a long hide it closes its tooltips and pop-ups and gives up the keyboard focus, which may have kept it in memory (timing-log.txt still says whether it was collected).
 - Lighter start: when OmniControl starts in the tray (with Windows, or "Start minimised"), the main window is built only when it is first opened (that first opening takes a moment longer, as after a long hide).
+- Lighter idle: on a PC without a laptop screen the OSD no longer listens to Windows' brightness event; one read a moment after start decides.
 - Faster sensors: the hardware sensor library ships precompiled, so the first temperature reading needs less start-up work (the download is about 0.5 MB larger).
 - Lighter memory: at most 6 MB is allocated between two of the runtime's quick collections (PCs with a large processor cache used to allow tens of MB).
 
