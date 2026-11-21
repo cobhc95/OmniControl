@@ -273,6 +273,11 @@
         <Setter Property="ToolTip.ShowDelay" Value="{StaticResource TooltipShowDelay}" />
         <Setter Property="ToolTip.BetweenShowDelay" Value="{StaticResource TooltipBetweenDelay}" />
     </Style>
+    <!-- Pop-downs and menus live in their own popup root, not the window, so they need the same wait or Avalonia's short default applies -->
+    <Style Selector="PopupRoot, OverlayPopupHost">
+        <Setter Property="ToolTip.ShowDelay" Value="{StaticResource TooltipShowDelay}" />
+        <Setter Property="ToolTip.BetweenShowDelay" Value="{StaticResource TooltipBetweenDelay}" />
+    </Style>
 
     <!-- The page title line: the name, a slot beside it, a slot at the right -->
     <Style Selector="pages|PageTitleLine">

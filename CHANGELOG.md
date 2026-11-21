@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Fixed: tooltips inside pop-down menus (Method, Plays on, presets and others) showed almost at once; every tooltip in the app, menus included, now waits 1 second of resting the pointer.
 ## 0.2.7 (21 Nov 2026)
 
 - Important: Other PCs uses a new connection protocol in this version (safer pairing and fresh keys for every connection). Update every PC you pair to 0.2.7 or later; until both PCs run it, existing pairs show offline and new pairing is refused with one sentence. (This comes from the protocol change, not from the move to .NET 10, which needs nothing from you: the app still brings its own .NET.)
