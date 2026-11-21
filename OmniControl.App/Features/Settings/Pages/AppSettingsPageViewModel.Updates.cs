@@ -27,7 +27,7 @@ public sealed partial class AppSettingsPageViewModel
         _version = new FactItem("Version") { Half = true, Value = AppInfo.Version };
         _latest = new FactItem("Latest release", () => OpenLatest(report));
         CheckNowCommand = new RelayCommand(CheckNow, () => !_updates.Checking);
-        updates.Changed += () => Dispatcher.UIThread.Post(RefreshUpdates); // the check runs on a worker thread
+        Follow(h => updates.Changed += h, h => updates.Changed -= h, () => Dispatcher.UIThread.Post(RefreshUpdates)); // the check runs on a worker thread
         RefreshUpdates();
     }
 

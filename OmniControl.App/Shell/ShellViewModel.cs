@@ -297,7 +297,12 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _hiddenSettle.Tick -= OnHiddenSettled;
         void Step(ShutdownStage stage, string what, Action step) => _shutdown.Add(stage, what, step);
         Step(ShutdownStage.Search, "search", () => _search?.Dispose());
-        Step(ShutdownStage.Search, "search key", () => _searchKeyTip?.Dispose());
+        Step(ShutdownStage.Search, "search key", () =>
+        {
+            if (_searchKeyTip is null) return;
+            _searchKeyTip.PropertyChanged -= OnSearchKeyChanged;
+            _searchKeyTip.Dispose();
+        });
         Step(ShutdownStage.Restore, "restore", DisposeRestore);
         Step(ShutdownStage.HardwareWatches, "hardware watches", _hardware.Dispose);
         Step(ShutdownStage.PowerJournal, "power journal", _power.Dispose);
@@ -308,7 +313,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         Step(ShutdownStage.HotkeysSwitch, "hotkeys switch", _hotkeysSwitch.Dispose);
         Step(ShutdownStage.PresetShortcuts, "preset shortcuts", _presetShortcuts.Dispose);
         Step(ShutdownStage.PresetGroups, "preset groups", _presetGroups.Dispose);
-        foreach (var page in _allPages.OfType<IDisposable>()) Step(ShutdownStage.Pages, page.GetType().Name, page.Dispose);
+        foreach (var page in _allPages.Concat(_allFooter).OfType<IDisposable>()) Step(ShutdownStage.Pages, page.GetType().Name, page.Dispose);
         Step(ShutdownStage.Icons, "icons", _icons.Dispose);
         Step(ShutdownStage.Hotkeys, "hotkeys", _hotkeys.Dispose);
         Step(ShutdownStage.AppWindows, "about window", _about.Close);

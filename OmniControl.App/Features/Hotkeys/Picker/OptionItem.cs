@@ -1,5 +1,4 @@
 ﻿using OmniControl.App.Features.Hotkeys;
-using OmniControl.App.Features.Input.Mouse;
 
 namespace OmniControl.App.Features.Hotkeys.Picker;
 

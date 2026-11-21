@@ -4,7 +4,7 @@ using LibreHardwareMonitor.Hardware.Storage;
 
 namespace OmniControl.Core.Engine.Resources;
 
-/// One reading of the PC's resources (null where it could not be read): load in percent, memory in GB, network in bytes per second, temperatures in Â°C.
+/// One reading of the PC's resources (null where it could not be read): load in percent, memory in GB, network in bytes per second, temperatures in °C.
 public sealed record ResourceSample(double? Cpu, double? Gpu, double? MemoryUsedGb, double? MemoryTotalGb, double? Download, double? Upload, string? Adapter,
     double? Disk, double? CpuTemp, double? GpuTemp, double? Hottest, string? HottestName)
 {

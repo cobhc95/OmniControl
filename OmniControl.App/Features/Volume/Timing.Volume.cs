@@ -7,7 +7,7 @@ public static partial class Timing
     /// tray panel), and while none is (<see cref="MixerRefreshIdle"/>). Both are backstops: a program opening a new session is seen at once
     /// through Windows' session event, one starting or stopping its sound through <see cref="ProgramSoundPoll"/>, and the devices through
     /// Windows' device notices.
-    public static readonly TimeSpan MixerRefresh = TimeSpan.FromSeconds(2), MixerRefreshIdle = TimeSpan.FromSeconds(10);
+    public static readonly TimeSpan MixerRefresh = TimeSpan.FromSeconds(2), MixerRefreshIdle = TimeSpan.FromSeconds(60);
 
     /// How often the mixer asks Windows whether the sessions of programs with effects started or stopped playing (one cheap call per
     /// session); a change starts a full scan at once, so a run that waits for sound (a cable) starts within this time.

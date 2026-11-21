@@ -59,13 +59,16 @@ internal sealed class MarginArea : Control
 }
 
 /// The small name label of a gesture area and the edge strip pill, in the app's base text size. Edge strips and the pill: accent
-/// background, dark text. Window-owned areas (<paramref name="outlined"/>): dark background, accent outline and text, matching their outlined look.
+/// background, the ink drawn on the accent. Window-owned areas (<paramref name="outlined"/>): the app's page colour in its theme now, accent
+/// outline and text, matching their outlined look.
 internal static class MarginLabel
 {
+    private static Color Page => SurfaceService.PageOf(Application.Current?.ActualThemeVariant ?? Avalonia.Styling.ThemeVariant.Dark);
+
     public static Control Build(string text, Color accent, bool outlined) => new Border
     {
         IsHitTestVisible = false,
-        Background = new SolidColorBrush(outlined ? SurfaceService.PageOf(Avalonia.Styling.ThemeVariant.Dark) : accent),
+        Background = new SolidColorBrush(outlined ? Page : accent),
         BorderBrush = new SolidColorBrush(accent),
         BorderThickness = new Thickness(outlined ? 1 : 0),
         CornerRadius = new CornerRadius(3),
@@ -75,7 +78,7 @@ internal static class MarginLabel
             Text = text,
             FontSize = BaseFontSize(),
             FontWeight = FontWeight.SemiBold,
-            Foreground = new SolidColorBrush(outlined ? accent : SurfaceService.PageOf(Avalonia.Styling.ThemeVariant.Dark)),
+            Foreground = new SolidColorBrush(outlined ? accent : AccentService.OnAccent(accent)),
         },
     };
 

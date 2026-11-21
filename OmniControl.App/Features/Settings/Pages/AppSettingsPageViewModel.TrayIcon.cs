@@ -39,12 +39,12 @@ public sealed partial class AppSettingsPageViewModel
             Tip = "Follow Windows draws an icon white on a dark taskbar and black on a light one; the logo keeps its own tile and dial colours.",
             Half = true,
         };
-        look.TrayIconChanged += () =>
+        Follow(h => look.TrayIconChanged += h, h => look.TrayIconChanged -= h, () =>
         {
             _trayIcon.Refresh();
             _trayColour.Load(ColourIndex());
-        };
-        AccentService.Changed += _trayColour.Refresh;
+        });
+        Follow(h => AccentService.Changed += h, h => AccentService.Changed -= h, _trayColour.Refresh);
     }
 
     // The menu closes first (its row was clicked), then THE icon picker opens over the main window.

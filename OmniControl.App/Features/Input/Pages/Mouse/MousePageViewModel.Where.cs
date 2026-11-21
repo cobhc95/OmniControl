@@ -71,7 +71,7 @@ public sealed partial class MousePageViewModel
             RestoreTip = "Turns gestures on and puts pause in full-screen games, the apps to never act in, run as administrator and sending actions to remote PCs as keys back to their defaults.",
         };
 
-        _mouse.Applied += ShowWhereSettings;
+        _followed.Follow<Action>(h => _mouse.Applied += h, h => _mouse.Applied -= h, ShowWhereSettings);
         var pauseFamily = new OnOffFamily(MouseService.PauseFullScreenId, "Pause in full-screen games", MouseService.PauseFullScreenId);
         var pause = new HotkeyAction(MouseService.PauseFullScreenId, "Toggle pause in full-screen games", Title, "full screen fullscreen game pause mouse buttons gestures",
             _ => _mouse.TogglePauseInFullScreen()) { Family = pauseFamily.Family, FamilyRole = OnOffFamily.ToggleRole };

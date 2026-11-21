@@ -41,6 +41,6 @@ public sealed class KeepAwake : IDisposable
     {
         _stop = true;
         _signal.Release();
-        _thread.Join(TimeSpan.FromSeconds(2));
+        _thread.Join(CoreTiming.KeepAwakeStopWaitMs);
     }
 }

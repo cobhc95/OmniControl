@@ -67,8 +67,8 @@ public sealed partial class MousePageViewModel
         };
         PointerGroup.Subgroups.Add(shapes);
 
-        _pointer.WriteFailed += OnPointerWriteFailed;
-        _pointer.SwapChanged += LoadSwap;
+        _followed.Follow<Action<PointerValue>>(h => _pointer.WriteFailed += h, h => _pointer.WriteFailed -= h, OnPointerWriteFailed);
+        _followed.Follow<Action>(h => _pointer.SwapChanged += h, h => _pointer.SwapChanged -= h, LoadSwap);
         LoadPointerSettings();
     }
 

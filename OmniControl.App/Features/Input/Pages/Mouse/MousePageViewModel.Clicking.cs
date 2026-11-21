@@ -14,10 +14,10 @@ public sealed partial class MousePageViewModel
     {
         var clicking = _mouse.Clicking;
         _osd.DeclareText(ClickBadgeElement);
-        clicking.Progress += clicks => Dispatcher.UIThread.Post(() =>
+        _followed.Follow<Action<long?>>(h => clicking.Progress += h, h => clicking.Progress -= h, clicks => Dispatcher.UIThread.Post(() =>
         {
             if (clicks is { } count) _osd.ShowMessage(ClickBadgeElement, new OsdMessage(OsdIcon.Play, "Clicking...", count.ToString()));
-        });
+        }));
         hotkeys.Register(new HotkeyAction("mouse.repeatclick", "Repeated clicking", Title, "auto clicker autoclicker click repeat button hold toggle",
             _ => clicking.Toggle(OptionValues.None), group: "Clicks and wheel")
         {

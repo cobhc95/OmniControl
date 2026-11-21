@@ -10,7 +10,7 @@ namespace OmniControl.App.Features.Displays.Pages;
 /// Windows says the display is now.
 internal sealed class DisplayOrientationCard
 {
-    private const string LogFile = "display-log.txt";
+    private const string LogFile = LogFiles.Display;
     private const string CardReason = "chosen on the Orientation card";
     private const string Unknown = "Windows would not say how this display is turned";
 

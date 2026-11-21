@@ -13,7 +13,7 @@ public sealed record SetupResult(string Text, bool Failed = false, string? Detai
 /// detail in <see cref="LogPath"/>.
 public sealed class EngineInstaller : IDisposable
 {
-    private const string LogName = "effects-setup-log.txt", CablePage = "https://vb-audio.com/Cable/", SetupFailedTitle = "The setup step didn't finish";
+    private const string LogName = LogFiles.EffectsSetup, CablePage = "https://vb-audio.com/Cable/", SetupFailedTitle = "The setup step didn't finish";
 
     /// The status line while Equalizer APO's installer runs.
     public const string Installing = "Installing Equalizer APO: tick your speakers in its Device Selector when it opens…";

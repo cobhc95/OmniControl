@@ -30,7 +30,7 @@ public sealed partial class MousePageViewModel
             () => { if (WebPage.Open(WindowsTouchpad.SettingsPage) is { } problem) report(problem); }) { Half = true };
 
         _gestureCards = cards.Zip(TrackpadGestures.All).ToList();
-        _trackpad.Changed += ShowTrackpadState;
+        _followed.Follow<Action>(h => _trackpad.Changed += h, h => _trackpad.Changed -= h, ShowTrackpadState);
         ShowTrackpadState();
 
         // Last, so the gesture cards keep their pairs from the first row.

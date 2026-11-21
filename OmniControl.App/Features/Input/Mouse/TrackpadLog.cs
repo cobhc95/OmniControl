@@ -6,7 +6,7 @@ namespace OmniControl.App.Features.Input.Mouse;
 /// <see cref="Timing.TrackpadLogGestureWindow"/>; every other line is always written. Safe from any thread.
 public sealed class TrackpadLog
 {
-    private const string FileName = "trackpad-log.txt";
+    private const string FileName = LogFiles.Trackpad;
 
     private readonly object _gate = new();
     private readonly Queue<DateTime> _gestureLines = new();

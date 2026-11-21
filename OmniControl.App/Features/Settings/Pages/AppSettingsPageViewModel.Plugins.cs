@@ -25,10 +25,10 @@ public sealed partial class AppSettingsPageViewModel
     private static bool IsFolderRow(ButtonItem item) => item.Label == FolderLabel;
 
     /// The switch card of "Keep OmniControl's effects in place"; it follows changes made elsewhere (an FX window, a rule).
-    private static ToggleItem KeepFxCard(Features.Volume.Audio.MixerService mixer)
+    private ToggleItem KeepFxCard(Features.Volume.Audio.MixerService mixer)
     {
         var card = new ToggleItem(Features.Volume.Audio.EffectsRules.KeepInPlace, mixer.KeepFxInPlace, mixer.SetKeepFxInPlace) { Tip = Features.Volume.Audio.EffectsRules.KeepInPlaceTip };
-        mixer.KeepFxInPlaceChanged += () => card.Load(mixer.KeepFxInPlace); // the page lives as long as the mixer
+        Follow(h => mixer.KeepFxInPlaceChanged += h, h => mixer.KeepFxInPlaceChanged -= h, () => card.Load(mixer.KeepFxInPlace));
         return card;
     }
 

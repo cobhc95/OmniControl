@@ -4,12 +4,8 @@
              xmlns:ctl="using:OmniControl.App.Shared.Ui.Controls"
              xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
              xmlns:hk="using:OmniControl.App.Features.Hotkeys"
-             xmlns:power="using:OmniControl.App.Features.Automation.Power"
              x:Class="OmniControl.App.Features.Hotkeys.Picker.PickerMenu"
              x:DataType="picker:PickerModel">
-    <UserControl.DataTemplates>
-        <DataTemplate DataType="power:PowerPlanViewModel"><power:PowerPlanEditor /></DataTemplate>
-    </UserControl.DataTemplates>
     <!-- Three panes (docs/mockups/action-picker-three-pane.html): sections | entries | settings of the highlighted entry (always shown, live).
          Keyboard focus stays in the search box, or in the focus holder while the keys are in the settings; the lists only show the highlight, which the model moves. -->
     <Grid RowDefinitions="Auto,*,Auto">

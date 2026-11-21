@@ -10,7 +10,7 @@ namespace OmniControl.App.Shared.Services;
 public static class AppRestart
 {
     public const string AfterArgument = "--after";
-    private const string LogName = "backup-log.txt";
+    private const string LogName = LogFiles.Backup;
 
     /// Starts the next run of OmniControl; false when Windows refused (the user then starts it again by hand).
     public static bool StartNext()

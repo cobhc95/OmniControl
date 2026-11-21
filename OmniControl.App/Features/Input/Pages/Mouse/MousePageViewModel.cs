@@ -16,7 +16,7 @@ namespace OmniControl.App.Features.Input.Pages.Mouse;
 /// (<see cref="GestureGroups"/>), "All mouse and trackpad features" (<c>.Where.cs</c>) and the Pointer settings group
 /// (<c>MousePageViewModel.Pointer.cs</c>, its actions in <c>.PointerActions.cs</c>). Buttons and trackpad share the action list and the
 /// mappings file, each with its own layers (<see cref="InputFamily"/>); the pointer settings change Windows' own mouse settings.
-public sealed partial class MousePageViewModel : PageViewModel
+public sealed partial class MousePageViewModel : PageViewModel, IDisposable
 {
     public override string Title => ActionSections.Mouse;
 
@@ -118,11 +118,11 @@ public sealed partial class MousePageViewModel : PageViewModel
             laterGestures = MouseActionCatalog.ExtraChoices(hotkeys.PickerActions, gesture: true);
         }
         BuildLists();
-        hotkeys.Actions.CollectionChanged += (_, _) =>
+        _followed.Follow<System.Collections.Specialized.NotifyCollectionChangedEventHandler>(h => hotkeys.Actions.CollectionChanged += h, h => hotkeys.Actions.CollectionChanged -= h, (_, _) =>
         {
             BuildLists();
             ReloadButtons();
-        };
+        });
         ButtonsScope = scopes.Group($"{Title} › {ButtonsGroupName}", () => Settings.ButtonsScope, scope =>
         {
             Settings.ButtonsScope = scope;
@@ -159,12 +159,12 @@ public sealed partial class MousePageViewModel : PageViewModel
         BuildWhereGroup(scopes, hotkeys);
         BuildPointerGroup();
 
-        mouse.LayerChanged += (family, layer) =>
+        _followed.Follow<Action<InputFamily, int>>(h => mouse.LayerChanged += h, h => mouse.LayerChanged -= h, (family, layer) =>
         {
             PickerOf(family).Follow(layer);
             ShowMouseLayer();
-        };
-        mouse.LayersChanged += () =>
+        });
+        _followed.Follow<Action>(h => mouse.LayersChanged += h, h => mouse.LayersChanged -= h, () =>
         {
             _mouseLayers.Refresh();
             _trackpadLayers.Refresh();
@@ -172,10 +172,11 @@ public sealed partial class MousePageViewModel : PageViewModel
             TrackpadScope.Refresh();
             ReloadButtons();
             ShowMouseLayer();
-        };
+        });
         ShowMouseLayer();
-        mouse.Applied += Gestures.RefreshRules; // a changed mapping can start or end a custom rule's conflict
-        mouse.ButtonPressed += button => Dispatcher.UIThread.Post(() => _buttonItems.FirstOrDefault(i => i.Button == button)?.Flash());
+        _followed.Follow<Action>(h => mouse.Applied += h, h => mouse.Applied -= h, Gestures.RefreshRules); // a changed mapping can start or end a custom rule's conflict
+        _followed.Follow<Action<MouseButton>>(h => mouse.ButtonPressed += h, h => mouse.ButtonPressed -= h,
+            button => Dispatcher.UIThread.Post(() => _buttonItems.FirstOrDefault(i => i.Button == button)?.Flash()));
 
         hotkeys.Register(new HotkeyAction("mouse.layer.next", "Next mouse layer", Title, "mouse layer preset switch next",
             _ => mouse.StepLayer(InputFamily.Mouse)) { CoveredByMousePicker = true });
@@ -216,6 +217,13 @@ public sealed partial class MousePageViewModel : PageViewModel
     }
 
     private IDisposable? _pressWatch;
+    private readonly Subscriptions _followed = new(); // the services' events this page follows, given back at Dispose
+
+    public void Dispose()
+    {
+        _followed.Dispose();
+        _pressWatch?.Dispose();
+    }
 
     private LayerPicker PickerOf(InputFamily family) => family == InputFamily.Trackpad ? _trackpadLayers : _mouseLayers;
 

@@ -211,7 +211,7 @@ public sealed class WindowsOsd : IDisposable
     private void Log(string line)
     {
         if (_logged++ > MaxLogLines) return;
-        AppDataStore.AppendLog("osd-log.txt", line);
+        AppDataStore.AppendLog(LogFiles.Osd, line);
     }
 
     public void Dispose() => Hidden = false;

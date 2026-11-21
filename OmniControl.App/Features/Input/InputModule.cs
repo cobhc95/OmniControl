@@ -74,7 +74,7 @@ public sealed class InputModule(Func<IEnumerable<string>> rememberedPrograms) : 
 
     private void StartHook(Action<string> report)
     {
-        _hook.Log = line => AppDataStore.AppendLog("mouse-log.txt", line);
+        _hook.Log = line => AppDataStore.AppendLog(LogFiles.Mouse, line);
         _hook.Problem = line => AppDataStore.AppendLog(Guard.LogFile, $"Mouse hook: {line}");
         var started = true;
         if (Guard.Run("Start-up: mouse hook", () => started = _hook.Start()) is not null) started = false;

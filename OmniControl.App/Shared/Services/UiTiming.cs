@@ -6,7 +6,7 @@ namespace OmniControl.App.Shared.Services;
 /// panel), from the click or key to it being shown and to its first frame. A debugging aid, only in the log.
 public static class UiTiming
 {
-    private const string FileName = "timing-log.txt";
+    private const string FileName = LogFiles.Timing;
 
     /// Logs "<paramref name="what"/>: shown after N ms, first frame after M ms", N now and M once the frame is drawn.
     public static void Shown(string what, Stopwatch clock)

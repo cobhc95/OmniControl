@@ -1,4 +1,3 @@
-using OmniControl.App.Features.Volume.Audio;
 using OmniControl.App.Features.Hotkeys;
 using OmniControl.App.Shared.Presets;
 

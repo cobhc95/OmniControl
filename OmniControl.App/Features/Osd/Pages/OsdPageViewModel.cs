@@ -5,7 +5,7 @@ using OmniControl.App.Shared.Presets;
 
 namespace OmniControl.App.Features.Osd.Pages;
 
-public sealed class OsdPageViewModel : PageViewModel
+public sealed class OsdPageViewModel : PageViewModel, IDisposable
 {
     private readonly OsdService _osd;
     private readonly IRestorable _restorable;
@@ -98,13 +98,13 @@ public sealed class OsdPageViewModel : PageViewModel
             Cog = new RelayCommand(OpenDuration),
             CogTip = "Duration per app or event…",
         };
-        osd.SettingsChanged += () =>
+        _followed.Follow<Action>(h => osd.SettingsChanged += h, h => osd.SettingsChanged -= h, () =>
         {
             style.Refresh(); accent.Refresh(); background.Refresh(); position.Refresh(); showOn.Refresh();
             duration.Load(Tenths(osd.Durations.EverythingElse)); // the OSD duration window changed it
-        };
+        });
         // The settings were read from disk again (an import): the cards the service does not redraw itself show the new values without applying them.
-        osd.Reloaded += () =>
+        _followed.Follow<Action>(h => osd.Reloaded += h, h => osd.Reloaded -= h, () =>
         {
             show.Load(osd.Settings.Enabled);
             windows.Load(osd.Settings.HideWindowsOsd);
@@ -113,13 +113,13 @@ public sealed class OsdPageViewModel : PageViewModel
             style.Load(Math.Max(0, Array.IndexOf(styles, osd.Settings.Style)));
             accent.Load(AccentIndex());
             background.Load(BackgroundIndex());
-        };
+        });
 
         // The page: the master switch and Windows' own OSD, then the collapsible "Customize OSD" and "Show in OSD" groups.
         Primary = new object[] { show, windows };
         Customize = new ItemGroup("OSD/Customize", "Customize OSD", new object[] { style, accent, background, position, showOn, opacity, duration });
         _elements = BuildElements();
-        osd.ElementsChanged += () => Elements = BuildElements();
+        _followed.Follow<Action>(h => osd.ElementsChanged += h, h => osd.ElementsChanged -= h, () => Elements = BuildElements());
 
         // "Restore defaults": every setting goes through the cards, so the service and the page follow at once (the position through the service
         // alone, so no preview pop-up appears).
@@ -216,4 +216,8 @@ public sealed class OsdPageViewModel : PageViewModel
 
     private ItemGroup BuildElements() => new("OSD/Elements", "Show in OSD",
         _osd.Elements.Select(e => (object)new ToggleItem(e.Name, _osd.IsShown(e.Name), on => _osd.SetShown(e.Name, on)) { Half = true }).ToList());
+
+    private readonly Subscriptions _followed = new(); // the OSD service's events this page follows, given back at Dispose
+
+    public void Dispose() => _followed.Dispose();
 }

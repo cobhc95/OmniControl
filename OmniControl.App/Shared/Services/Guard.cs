@@ -4,7 +4,7 @@ namespace OmniControl.App.Shared.Services;
 /// logged to <see cref="LogFile"/> and never reaches the next one. Only the code that calls it decides what to tell the person.
 public static class Guard
 {
-    public const string LogFile = "errors-log.txt";
+    public const string LogFile = LogFiles.Errors;
 
     /// Runs <paramref name="step"/>; a failure is logged with <paramref name="what"/> and returned (null when it worked).
     public static Exception? Run(string what, Action step)

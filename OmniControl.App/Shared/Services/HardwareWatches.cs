@@ -74,7 +74,7 @@ public sealed class HardwareWatches : IHardwareWatches, IDisposable
     }
 
     /// The hardware diagnostics log: announcements and what each refresh found.
-    public const string LogFile = "hardware-log.txt";
+    public const string LogFile = LogFiles.Hardware;
 
     private const string StartTrigger = "start", PeriodicTrigger = "periodic check", ActionTrigger = "an action's device was missing", OwnTrigger = "its own notice";
 

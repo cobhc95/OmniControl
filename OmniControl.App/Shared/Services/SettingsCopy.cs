@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Text.Json.Serialization;
 
@@ -10,7 +11,9 @@ namespace OmniControl.App.Shared.Services;
 /// replaced by the new one. Pure: it reads and writes properties only.
 public static class SettingsCopy
 {
-    public static void Into<T>(T target, T source) where T : class => CopyObject(target, source);
+    // The settings classes' public properties are read by reflection: the annotation keeps them in a trimmed build (the App assembly is
+    // also kept whole, see the csproj), so a nested settings object's properties stay too.
+    public static void Into<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(T target, T source) where T : class => CopyObject(target, source);
 
     private static void CopyObject(object target, object source)
     {

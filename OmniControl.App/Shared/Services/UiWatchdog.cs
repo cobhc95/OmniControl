@@ -6,7 +6,7 @@ namespace OmniControl.App.Shared.Services;
 /// <see cref="Timing.UiStuckLogsPerRun"/> per run; it never acts on the stall, it only records it.
 public sealed class UiWatchdog : IDisposable
 {
-    public const string LogFile = "hang-log.txt";
+    public const string LogFile = LogFiles.Hang;
 
     private readonly Thread _worker;
     private readonly CancellationTokenSource _stop = new();

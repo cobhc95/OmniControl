@@ -35,8 +35,8 @@ public sealed partial class AppSettingsPageViewModel
             Words = AccentService.IntensityWords,
             Half = true,
         };
-        AccentService.Changed += accent.Refresh;
-        AccentService.Changed += () => _accentIntensity.Load(AccentService.Intensity);
+        Follow(h => AccentService.Changed += h, h => AccentService.Changed -= h, accent.Refresh);
+        Follow(h => AccentService.Changed += h, h => AccentService.Changed -= h, () => _accentIntensity.Load(AccentService.Intensity));
         return accent;
     }
 

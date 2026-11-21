@@ -50,7 +50,7 @@ public sealed class PowerJournalData
 public sealed class PowerJournal : IPowerEvents, IDisposable
 {
     /// The power diagnostics log: every event, every wake decision.
-    public const string LogFile = "power-log.txt";
+    public const string LogFile = LogFiles.Power;
 
     private const int Kept = 300, EventLogMax = 50;
 

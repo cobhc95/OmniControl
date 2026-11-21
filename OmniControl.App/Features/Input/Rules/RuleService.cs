@@ -13,7 +13,7 @@ namespace OmniControl.App.Features.Input.Rules;
 /// trigger or the editor's Test. Rules follow the "Enable gestures" switch and edge strip.
 public sealed class RuleService : IDisposable
 {
-    private const string LogFile = "rules-log.txt";
+    private const string LogFile = LogFiles.Rules;
 
     private readonly GestureService _gestures;
     private readonly MouseService _mouse;

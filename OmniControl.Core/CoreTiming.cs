@@ -28,6 +28,9 @@ public static class CoreTiming
     /// A meter of the default playback or recording device is opened again this often, so a changed default device is followed.
     public const long DefaultMeterRefreshMs = 1500;
 
+    /// How long closing waits for the keep-awake thread to let go of its request.
+    public const int KeepAwakeStopWaitMs = 2000;
+
     /// How many parents above the element under the pointer the link lookup also checks.
     public const int AutoscrollParentLevels = 4;
 

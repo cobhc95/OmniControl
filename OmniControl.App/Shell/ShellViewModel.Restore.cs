@@ -1,4 +1,3 @@
-using OmniControl.App.Features.Volume.Audio.Engine;
 using OmniControl.App.Features.Hotkeys;
 using OmniControl.App.Features.Settings.Pages;
 using OmniControl.App.Shared.Ui.Restore;

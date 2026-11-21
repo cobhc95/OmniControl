@@ -53,7 +53,7 @@ public sealed partial class ShellViewModel
                 SearchFocusRequested?.Invoke();
             }) { NeverBlock = true, SuggestedIcons = new[] { "search" } });
         _searchKeyTip = new ActionKeyTip(_hotkeys, SearchActionId, "Search settings");
-        _searchKeyTip.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(ActionKeyTip.Keys)) OnPropertyChanged(nameof(SearchShortcut)); };
+        _searchKeyTip.PropertyChanged += OnSearchKeyChanged;
         const string toggleId = TrayFlyoutModel.ToggleActionId;
         _winA = new WinAKey(toggleId, _hotkeys.Run, Report, _settings.Slot(s => s.WinAForPanel, (s, on) => s.WinAForPanel = on));
         _hotkeys.Register(new HotkeyAction(toggleId, "Show or hide quick panel", home, "tray panel flyout quick settings show hide toggle win a",
@@ -69,6 +69,11 @@ public sealed partial class ShellViewModel
                     return null;
                 }),
         });
+    }
+
+    private void OnSearchKeyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ActionKeyTip.Keys)) OnPropertyChanged(nameof(SearchShortcut));
     }
 
     /// "Show in OmniControl" of a tray slider or tile: an action opens the Actions and hotkeys window at it; a state alone opens the main

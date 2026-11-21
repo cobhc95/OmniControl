@@ -15,7 +15,7 @@ public enum DevicePower { On, Off, Toggle }
 public sealed partial class DeviceService
 {
     public const string Category = "Smart Devices";
-    public const string LogFile = "devices-log.txt";
+    public const string LogFile = LogFiles.Devices;
 
     private readonly IActionRegistry _hotkeys;
     private readonly IStateRegistry _states;

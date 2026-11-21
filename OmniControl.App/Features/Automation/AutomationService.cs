@@ -20,7 +20,7 @@ public sealed partial class AutomationService : IActionGate, IDisposable
     private readonly PowerGuard _guard;
 
     private const string NewCustomId = "automation.newcustom";
-    private const string LogFile = "automation-log.txt";
+    private const string LogFile = LogFiles.Automation;
 
     private readonly IActionRegistry _hotkeys;
     private readonly IActionRunner _run;

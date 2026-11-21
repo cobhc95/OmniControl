@@ -103,9 +103,13 @@ public sealed partial class MixerService
         var playback = devices ? CoreAudio.Devices() : null;
         var recording = devices ? CoreAudio.InputDevices() : null;
         var sessions = SessionKey.Sorted(CoreAudio.SessionFacts().Where(s => s.ProcessId != Environment.ProcessId).Select(SessionKey.Of));
-        var paths = sessions.Select(s => s.ProcessId).Distinct().ToDictionary(pid => pid, CoreAudio.ProcessPath);
+        var paths = sessions.Select(s => s.ProcessId).Distinct().ToDictionary(pid => pid, pid => _knownPaths.GetOrAdd(pid, CoreAudio.ProcessPath));
+        foreach (var gone in _knownPaths.Keys.Where(pid => !paths.ContainsKey(pid)).ToList()) _knownPaths.TryRemove(gone, out _); // a process with no session any more
         return new ScanRead(ticket, playback, recording, sessions, paths, announce);
     }
+
+    // Each program's path is read once while it has a session (a process id is not reused while its process lives); workers only.
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<int, string?> _knownPaths = new();
 
     private bool SameSessions(IReadOnlyList<SessionKey> read) => read.SequenceEqual(_heldSessions);
 }

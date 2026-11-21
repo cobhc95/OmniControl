@@ -9,7 +9,7 @@ namespace OmniControl.App.Features.Settings.Pages;
 
 /// The App settings page, five collapsible groups: Appearance; Start and close; Your data (presets, backup and restore, import, removing
 /// the network service, the Confirmations, Restore all defaults); Plug-ins (AppSettingsPageViewModel.Plugins.cs, with Keep OmniControl's effects in place); Updates and about (AppSettingsPageViewModel.Updates.cs).
-public sealed partial class AppSettingsPageViewModel : PageViewModel
+public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposable
 {
     private readonly AppSettings _settings;
     private readonly ToggleItem _startWithWindows;
@@ -113,14 +113,14 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
             Tip = "The colour of pages, cards, windows, pop-downs and the tray panel. Follow Windows uses Windows' own tones.",
             Half = true,
         };
-        SurfaceService.Changed += Background.Refresh;
+        Follow(h => SurfaceService.Changed += h, h => SurfaceService.Changed -= h, Background.Refresh);
 
         var groupLabels = GroupsOpen.All.Select(e => e.Label).ToList();
         _groupsOpen = new ChoiceItem("Groups when a page opens", groupLabels, GroupsOpen.LabelOf(_settings.GroupsOpen), label => GroupsOpen.Set(GroupsOpen.Find(label)))
         {
             Half = true,
         };
-        GroupsOpen.Changed += ShowGroupsOpen;
+        Follow(h => GroupsOpen.Changed += h, h => GroupsOpen.Changed -= h, ShowGroupsOpen);
         MakeTrayIconCards(trayIcon);
 
         _startWithWindows = new ToggleItem("Start with Windows", StartupRegistration.State == StartupState.On, OnStartWithWindowsChosen) { Half = true };
@@ -168,7 +168,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
         UpdatesAndAbout = Fill(UpdateItems, "AppSettings/Updates", UpdatesName, _updateDaily, _version, _latest, _about);
         foreach (var folder in _settings.PluginFolders) PluginItems.Insert(PluginItems.IndexOf(_scan), FolderRow(folder));
         ReloadConfirmations();
-        confirmations.Changed += ReloadConfirmations;
+        Follow(h => confirmations.Changed += h, h => confirmations.Changed -= h, ReloadConfirmations);
         ReadStartup();
         hotkeys.Register(new HotkeyAction("app.show", "Open OmniControl", Title, "show window open tray restore", _ => AppLifecycle.RequestShow($"the action Open OmniControl, run by {RunChain.Describe(chainNow())}")) { NeverBlock = true, SuggestedIcons = new[] { "app", "home" } });
         hotkeys.Register(new HotkeyAction("app.toggle", "Show or hide OmniControl", Title, "show hide toggle window tray minimise",
@@ -265,4 +265,10 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel
                 _ => ThemeVariant.Default,
             };
     }
+
+    private readonly Subscriptions _followed = new(); // the services' events this page follows, given back at Dispose
+
+    private void Follow(Action<Action> add, Action<Action> remove, Action handler) => _followed.Follow(add, remove, handler);
+
+    public void Dispose() => _followed.Dispose();
 }
