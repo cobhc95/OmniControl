@@ -11,10 +11,10 @@
          each a tick box, its name and a muted note and count. Step 2 (progress) and 3 (result) share the list: "Backup of this PC" then one row per area
          with its mark (tick, spinner, open circle, red cross), its words (checked / importing / saved, restart to finish / not applied, kept yours) and an
          optional yellow fact; a long result folds the plain checked ones into "+ N more checked". -->
-    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" Margin="12" RowSpacing="8">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" Margin="12" RowSpacing="{StaticResource GapLarge}">
         <TextBlock Classes="title" Text="{Binding Title}" TextWrapping="Wrap" />
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsLoading}">
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="{StaticResource GapLarge}" IsVisible="{Binding IsLoading}">
             <Panel Classes="tilemark" Margin="0" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Ellipse Classes="markring" />
                 <Path Classes="markarc" Classes.spinning="{Binding IsLoading}" />
@@ -72,7 +72,7 @@
         <ItemsControl Grid.Row="2" ItemsSource="{Binding Progress}" IsVisible="{Binding ShowsProgress}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="si:ImportProgressRow">
-                    <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" MinHeight="24" Margin="6,2" ToolTip.Tip="{Binding Why}">
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="{StaticResource GapLarge}" MinHeight="24" Margin="6,2" ToolTip.Tip="{Binding Why}">
                         <Panel Width="{DynamicResource MenuGlyphSize}" VerticalAlignment="Center">
                             <Path Classes="glyph tickmark" Data="{StaticResource TickIcon}" IsVisible="{Binding IsChecked}" />
                             <Path Classes="glyph failmark" Data="{StaticResource CrossIcon}" IsVisible="{Binding IsFailed}" />
@@ -101,11 +101,11 @@
         <TextBlock Grid.Row="3" Classes="statusline" Text="{Binding Status}" IsVisible="{Binding HasStatus}" TextWrapping="Wrap" />
 
         <Border Grid.Row="4" Classes="footer">
-            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="8">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="{StaticResource GapLarge}">
                 <Button Classes="pill" Content="Copy details" Click="OnCopyClick" IsVisible="{Binding IsDone}" />
                 <Button Grid.Column="1" Classes="pill" Content="Undo import" Command="{Binding UndoCommand}" IsVisible="{Binding CanUndo}"
                         ToolTip.Tip="Puts this PC's settings back from the backup made before the import." />
-                <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="8">
+                <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="{StaticResource GapLarge}">
                     <Button Classes="pill" Content="Cancel" Click="OnCloseClick" IsVisible="{Binding IsAsking}" />
                     <Button Classes="primary" Content="{Binding ImportText}" Command="{Binding ImportCommand}" IsVisible="{Binding IsChoosing}" />
                     <Button Classes="pill" Content="Stop" Command="{Binding StopCommand}" IsVisible="{Binding IsRunning}" />

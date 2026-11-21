@@ -85,8 +85,8 @@ public sealed class MouseActionRunner
             case "window.restore": WindowCommands.Restore(at.X, at.Y, activeWindow); break;
             case "window.close": WindowCommands.Close(at.X, at.Y, activeWindow); break;
             case "window.topmost": WindowCommands.ToggleTopmost(at.X, at.Y, activeWindow); break;
-            case "power.monitoroff": SystemCommands.TurnMonitorsOff(); break;
-            case "power.screensaver": SystemCommands.StartScreensaver(); break;
+            case MouseActionCatalog.MonitorsOff: SystemCommands.TurnMonitorsOff(); break;
+            case MouseActionCatalog.Screensaver: SystemCommands.StartScreensaver(); break;
             case MouseActionCatalog.CycleCursor: CursorSpeed.Cycle(action.Options.Text(MouseOptions.CycleSpeeds)); break;
             case MouseActionCatalog.Magnifier: ToggleMagnifier(); break;
             case MouseActionCatalog.WebSearch: SearchSelectedText(action.Options); break;

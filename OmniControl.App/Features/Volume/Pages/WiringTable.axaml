@@ -8,7 +8,7 @@
          microphones", Button.pill.cardaction.main; dimmed with its reason while it can't work), the column titles (Source | Plays on or Records from | Cable, in the rows' shared
          columns, set in by a compact row's padding and border), then the rows (WiringRowView) -->
     <Border Classes="groupPanel">
-        <StackPanel Spacing="6">
+        <StackPanel Spacing="{StaticResource Gap}">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource WiringColumnGap}">
                 <pages:GroupHeader />
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource MenuGap}" VerticalAlignment="Center" IsVisible="{Binding HasTool}">

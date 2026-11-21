@@ -9,7 +9,7 @@
         <TextBlock x:Name="TitleText" Classes="section" Margin="0" />
         <TextBlock x:Name="BodyText" TextWrapping="Wrap" />
         <TextBlock x:Name="SecondsText" Classes="muted" />
-        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource GapLarge}">
             <Button Classes="pill cardaction" Content="Do it now" Click="OnNowClick" />
             <Button Grid.Column="2" Classes="primary" Content="Cancel" Click="OnCancelClick" IsDefault="True" />
         </Grid>

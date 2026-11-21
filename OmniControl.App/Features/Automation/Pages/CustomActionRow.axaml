@@ -6,7 +6,7 @@
              x:DataType="vm:CustomActionItem">
     <!-- One custom action on two lines: name, type, Run and delete; then its target (a command, a file, a program, a folder or an
          address) and, for a script or program, its arguments. Changes apply when a box is left. -->
-    <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="4" Margin="0,2,0,4">
+    <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="{StaticResource GapLarge}" RowSpacing="{StaticResource GapSmall}" Margin="0,2,0,4">
         <TextBox Classes="field" Text="{Binding Name, UpdateSourceTrigger=LostFocus}" Watermark="Name" MinWidth="120" />
         <ComboBox Grid.Column="1" Classes="choice half" ItemsSource="{Binding KindNames}" SelectedItem="{Binding KindName}" />
         <Button Grid.Column="2" Classes="pill" Content="Run" Click="OnRunClick" ToolTip.Tip="Run it once now, as you (never as administrator)" />

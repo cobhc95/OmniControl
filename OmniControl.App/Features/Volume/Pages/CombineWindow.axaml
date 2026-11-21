@@ -12,7 +12,7 @@
     <StackPanel Margin="12" Spacing="10">
         <TextBlock Classes="title" Text="{Binding Heading}" />
         <TextBox x:Name="NameBox" Classes="field" Watermark="Name (e.g. Living room)" Text="{Binding Name}" />
-        <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding ShowsKind}">
+        <StackPanel Orientation="Horizontal" Spacing="{StaticResource GapSmall}" IsVisible="{Binding ShowsKind}">
             <Button Classes="pill" Classes.custom="{Binding IsSpeakers}" Content="Speakers" Command="{Binding ChooseSpeakersCommand}"
                           IsEnabled="{Binding CanChooseSpeakers}" ToolTip.Tip="{Binding SpeakersReason}" ToolTip.ShowOnDisabled="True" />
             <Button Classes="pill" Classes.custom="{Binding IsMicrophones}" Content="Microphones" Command="{Binding ChooseMicrophonesCommand}"
@@ -21,12 +21,12 @@
         <TextBlock Classes="hint" Text="{Binding Hint}" TextWrapping="Wrap" />
         <TextBlock Classes="hint" Text="{Binding TickNote}" IsVisible="{Binding HasTickNote}" />
         <c:OptionList x:Name="MemberList" DataContext="{Binding Members}" />
-        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}">
             <TextBlock Text="{Binding Cable.Text}" TextWrapping="Wrap" VerticalAlignment="Center" />
             <Button Grid.Column="1" Classes="pill cardaction" Classes.main="{Binding Cable.Setup.Main}" Content="{Binding Cable.Setup.Label}"
                     Command="{Binding Cable.Setup.Command}" ToolTip.Tip="{Binding Cable.Setup.Tip}" IsVisible="{Binding HasCableSetup}" />
         </Grid>
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="{StaticResource GapLarge}">
             <Button Classes="usebtn scope" Tag="scope" Content="{Binding ConfirmText}" IsEnabled="{Binding CanCreate}" Click="OnCreateClick" />
             <Button Classes="primary close" Content="Cancel" Click="OnCancelClick" />
         </StackPanel>

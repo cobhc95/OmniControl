@@ -5,7 +5,7 @@
              x:DataType="flow:EasyCheckItem">
     <!-- One line of a checklist (a setup's Setup screen, the extra lines of All set) and of the "What you will need" box on the goal cards: its mark
          (none for a plain sentence), words with a muted second line, an optional live word at the right and an optional fix button. -->
-    <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" Margin="0,2">
+    <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="{StaticResource GapLarge}" Margin="0,2">
         <TextBlock Classes="strong" Text="{Binding Mark}" Classes.accenttext="{Binding IsDone}" Classes.cautiontext="{Binding IsTodo}" Classes.muted="{Binding IsBlocked}"
                    IsVisible="{Binding IsMarked}" MinWidth="12" TextAlignment="Center" VerticalAlignment="Center" />
         <StackPanel Grid.Column="1" VerticalAlignment="Center">

@@ -4,7 +4,7 @@
              xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
              x:Class="OmniControl.App.Features.Osd.Pages.OsdPage"
              x:DataType="vm:OsdPageViewModel">
-    <StackPanel Spacing="6">
+    <StackPanel Spacing="{StaticResource Gap}">
         <StackPanel x:Name="CardsHost" Grid.IsSharedSizeScope="True">
             <ListBox Classes="rows compact cards" ItemsSource="{Binding Primary}"></ListBox>
 

@@ -1,4 +1,3 @@
-using Avalonia.Controls.Primitives;
 
 namespace OmniControl.App.Features.Resources.Pages;
 
@@ -6,8 +5,7 @@ namespace OmniControl.App.Features.Resources.Pages;
 /// opens the row's menu in the shared menu style at the pointer.
 public partial class AppNetRow : UserControl
 {
-    private Flyout? _menu;
-    private MenuRowList? _menuRows;
+    private readonly PointerMenu _menu = new();
 
     public AppNetRow()
     {
@@ -23,14 +21,7 @@ public partial class AppNetRow : UserControl
     private void OnRowContext(object? sender, ContextRequestedEventArgs e)
     {
         if (DataContext is not AppNetItem row) return;
-        if (_menu is null)
-        {
-            _menuRows = new MenuRowList();
-            _menuRows.Picked += (_, _) => _menu?.Hide();
-            _menu = new ListMenuFlyout { Placement = PlacementMode.Pointer, Content = _menuRows };
-        }
-        _menuRows!.ItemsSource = row.MenuRows();
-        _menu.ShowAt(this, showAtPointer: true);
+        _menu.Show(this, row.MenuRows());
         e.Handled = true;
     }
 }

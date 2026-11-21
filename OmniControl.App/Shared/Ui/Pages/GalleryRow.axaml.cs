@@ -120,7 +120,7 @@ public partial class GalleryRow : UserControl
     private void OnWheel(object? sender, PointerWheelEventArgs e)
     {
         if (DataContext is not GalleryItem item || !ValueWheel.IsOverSelector(e.Source as Visual)) return;
-        item.Step(e.Delta.Y > 0 ? 1 : -1);
+        item.Step(ValueWheel.Direction(e));
         e.Handled = true;
     }
 
@@ -128,7 +128,7 @@ public partial class GalleryRow : UserControl
     private void OnChipWheel(object? sender, PointerWheelEventArgs e)
     {
         if (DataContext is not GalleryItem item || _open is not null) return;
-        item.Step(e.Delta.Y > 0 ? -1 : 1);
+        item.Step(ValueWheel.ListDirection(e));
         e.Handled = true;
     }
 

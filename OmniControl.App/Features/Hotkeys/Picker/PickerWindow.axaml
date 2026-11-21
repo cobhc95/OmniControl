@@ -16,13 +16,13 @@
                 <StackPanel Orientation="Horizontal" Spacing="12">
                     <TextBlock Classes="strong" Text="{Binding $parent[Window].Title}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                     <!-- docs/mockups/hotkeys-master-switch.html: muted name and a switch with the On/Off words, left of the preset picker -->
-                    <StackPanel Orientation="Horizontal" Spacing="6" DataContext="{Binding HotkeysSwitch}"
+                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource Gap}" DataContext="{Binding HotkeysSwitch}"
                                 ToolTip.Tip="Off pauses every keyboard hotkey; the keys are kept. Mouse buttons, gestures and rules keep working.">
                         <TextBlock Classes="muted" Text="{Binding Label}" VerticalAlignment="Center" />
                         <ToggleSwitch IsChecked="{Binding IsOn}" OnContent="On" OffContent="Off" VerticalAlignment="Center" />
                     </StackPanel>
                 </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource Gap}">
                     <c:PresetPicker DataContext="{Binding SetChoice}" />
                     <Button Classes="pill" Content="Clear all" Command="{Binding ClearAllCommand}" VerticalAlignment="Center"
                             ToolTip.Tip="Remove every shortcut in the set now in use (it asks first)" />

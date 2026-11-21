@@ -143,13 +143,7 @@ public sealed class EffectsEngine : IDisposable
     public RunMethod MethodOf(string? key)
     {
         var id = key ?? MixerService.MasterKey;
-        if (_runs.TryGetValue(id, out var run)) return run.Spec.Kind switch
-        {
-            RunKind.Capture => RunMethod.Recording,
-            RunKind.Bus => RunMethod.Bus,
-            RunKind.ApoCable => RunMethod.ApoCable,
-            _ => RunMethod.Cable,
-        };
+        if (_runs.TryGetValue(id, out var run)) return run.Method;
         return _sentToApo.Contains(id) ? RunMethod.Apo : RunMethod.None;
     }
 
@@ -493,8 +487,7 @@ public sealed class EffectsEngine : IDisposable
         {
             var test = new CaptureTest(_mixer, _journal, BuildChain(key));
             var (result, outcome) = await test.RunAsync(key);
-            _mixer.Settings.CaptureSilence = result;
-            _mixer.Save();
+            _mixer.KeepCaptureSilence(result);
             _support.NotifyTested();
             return outcome;
         }

@@ -17,12 +17,12 @@
             <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
                 <!-- App-level pages (App settings) as pills at the footer's left; the open one takes the pill's accent look -->
                 <ItemsControl x:Name="FooterNav" ItemsSource="{Binding FooterPages}" VerticalAlignment="Center">
-                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="8" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="{StaticResource GapLarge}" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Button Classes="pill" Classes.custom="{Binding IsOpen}" Tag="footernav" HorizontalAlignment="Left"
                                     Command="{Binding $parent[ItemsControl].DataContext.OpenFooterPageCommand}" CommandParameter="{Binding}">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource Gap}">
                                     <PathIcon Data="{Binding Icon}" Width="12" Height="12" />
                                     <TextBlock Text="{Binding Title}" />
                                 </StackPanel>
@@ -56,7 +56,7 @@
                     <!-- Only while a newer version exists (the update check): a click opens App settings at the Updates group -->
                     <Button Classes="pill accentline" Command="{Binding OpenUpdatesCommand}" IsVisible="{Binding HasUpdate}" HorizontalAlignment="Left"
                             Margin="{DynamicResource NavPillMargin}" ToolTip.Tip="Open the Updates group in App settings">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
+                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource Gap}">
                             <c:IconGlyph LibraryId="download" />
                             <TextBlock Text="{Binding UpdateNotice}" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
@@ -126,7 +126,7 @@
                                         </Grid.ColumnDefinitions>
                                         <StackPanel VerticalAlignment="Center" Spacing="2">
                                             <TextBlock Classes="strong" Text="{Binding Title}" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="{Binding Heading}" Classes="muted" FontSize="12" TextTrimming="CharacterEllipsis" IsVisible="{Binding ShowsHeading}" />
+                                            <TextBlock Text="{Binding Heading}" Classes="muted" FontSize="{StaticResource SummaryFontSize}" TextTrimming="CharacterEllipsis" IsVisible="{Binding ShowsHeading}" />
                                             <c:RemoteSectionTag Label="{Binding RemotePc}" />
                                         </StackPanel>
                                         <ContentControl Grid.Column="1" Content="{Binding Editor}" VerticalAlignment="Center" />

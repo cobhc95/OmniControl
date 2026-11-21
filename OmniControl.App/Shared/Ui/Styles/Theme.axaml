@@ -2,8 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:svc="using:OmniControl.App.Shared.Services"
         xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
-        xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
-        xmlns:vol="using:OmniControl.App.Features.Volume.Pages">
+        xmlns:c="using:OmniControl.App.Shared.Ui.Controls">
 
 
     <!-- The card list: a list of setting cards that pairs half-width cards two per row (used with "rows compact") -->

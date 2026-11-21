@@ -7,7 +7,7 @@
              xmlns:easy="using:OmniControl.App.Features.Volume.Pages.Easy"
              x:Class="OmniControl.App.Features.Volume.Pages.VolumePage"
              x:DataType="vm:VolumePageViewModel">
-    <StackPanel Spacing="6">
+    <StackPanel Spacing="{StaticResource Gap}">
         <!-- The title line: the page's name and the Easy | Advanced switch (the choice is kept between tabs and runs) -->
         <pages:PageTitleLine Title="{Binding Title}">
             <pages:PageTitleLine.Middle>
@@ -35,7 +35,7 @@
         </Panel>
 
         <!-- ADVANCED: the Mixer and Wiring tabs -->
-        <StackPanel x:Name="CardsHost" Grid.IsSharedSizeScope="True" Spacing="6" IsVisible="{Binding IsAdvanced}">
+        <StackPanel x:Name="CardsHost" Grid.IsSharedSizeScope="True" Spacing="{StaticResource Gap}" IsVisible="{Binding IsAdvanced}">
             <!-- The tabs, and the Volume presets' preset picker at the right (the same control on both tabs, one view-model; the shared Controls/PresetPicker, as on the Mouse and Displays group lines) -->
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource WiringColumnGap}">
                 <pages:PageTabsView DataContext="{Binding Tabs}" />
@@ -51,7 +51,7 @@
             </Grid>
 
             <!-- MIXER: one row per source in columns (docs/mockups/mixer-rows-knobs.html), the small column headings above each group's rows -->
-            <StackPanel Spacing="6" IsVisible="{Binding ShowsMixer}">
+            <StackPanel Spacing="{StaticResource Gap}" IsVisible="{Binding ShowsMixer}">
                 <!-- The Outputs header: name and the programs' count (trimmed first when narrow), then "Show closed" and "Add program" -->
                 <pages:GroupCard Group="{Binding Outputs}">
                     <pages:GroupCard.Tools>
@@ -62,14 +62,14 @@
                             <vm:AddProgramButton DataContext="{Binding Outputs.ProgramTools.Add}" />
                         </StackPanel>
                     </pages:GroupCard.Tools>
-                    <StackPanel Spacing="6" x:DataType="vm:VolumeGroup" DataContext="{Binding Outputs}">
+                    <StackPanel Spacing="{StaticResource Gap}" x:DataType="vm:VolumeGroup" DataContext="{Binding Outputs}">
                         <vm:MixerHeadings />
                         <ListBox Classes="rows compact" ItemsSource="{Binding Items}" />
                     </StackPanel>
                 </pages:GroupCard>
 
                 <pages:GroupCard Group="{Binding Inputs}">
-                    <StackPanel Spacing="6" x:DataType="vm:VolumeGroup" DataContext="{Binding Inputs}">
+                    <StackPanel Spacing="{StaticResource Gap}" x:DataType="vm:VolumeGroup" DataContext="{Binding Inputs}">
                         <vm:MixerHeadings />
                         <ListBox Classes="rows compact" ItemsSource="{Binding Items}" />
                     </StackPanel>
@@ -77,7 +77,7 @@
             </StackPanel>
 
             <!-- WIRING: where each source plays and the cable it uses (combined devices are rows, "+ Combine ..." in a table header); the cable status sits in the tab row above -->
-            <StackPanel Spacing="6" IsVisible="{Binding ShowsWiring}">
+            <StackPanel Spacing="{StaticResource Gap}" IsVisible="{Binding ShowsWiring}">
                 <vm:WiringTable DataContext="{Binding WiringOutputs}" />
                 <vm:WiringTable DataContext="{Binding WiringInputs}" />
                 <vm:CableTable DataContext="{Binding WiringCables}" />

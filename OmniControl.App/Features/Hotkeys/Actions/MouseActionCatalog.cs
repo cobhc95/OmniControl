@@ -17,6 +17,7 @@ public static class MouseActionCatalog
 {
     public const string Default = "default", Disabled = "disabled", Keys = "keys", Run = "run", Folder = "folder", Omni = "omni";
     public const string CycleCursor = "cursor.cycle", WebSearch = "edit.websearch", Magnifier = "desktop.magnifier";
+    public const string MonitorsOff = "power.monitoroff", Screensaver = "power.screensaver", MediaPlayPause = "media.playpause", MediaNext = "media.next";
     private const string LayerPrefix = "layer.", TrackpadPrefix = "trackpad.";
     private const string NextMove = "next", PreviousMove = "previous", ResetMove = "reset", SwitchMove = "set.", HoldMove = "hold.";
 
@@ -106,7 +107,7 @@ public static class MouseActionCatalog
         new("snap.left", WindowControl, "Snap window left", "Win+Left", Keywords: "tile half"), new("snap.right", WindowControl, "Snap window right", "Win+Right", Keywords: "tile half"),
         new("snap.up", WindowControl, "Snap window up", "Win+Up", Keywords: "tile maximise"), new("snap.down", WindowControl, "Snap window down", "Win+Down", Keywords: "tile minimise"),
 
-        new("media.playpause", Media, "Play or pause", "MediaPlayPause"), new("media.next", Media, "Next track", "MediaNext"),
+        new(MediaPlayPause, Media, "Play or pause", "MediaPlayPause"), new(MediaNext, Media, "Next track", "MediaNext"),
         new("media.prev", Media, "Previous track", "MediaPrevious", Keywords: "last"), new("media.stop", Media, "Stop playing", "MediaStop"),
 
         new("browser.back", Browser, "Browser back", "BrowserBack"), new("browser.forward", Browser, "Browser forward", "BrowserForward"),
@@ -120,7 +121,7 @@ public static class MouseActionCatalog
         new("launch.control", Open, "Control Panel", RunText: "control.exe"), new("launch.calculator", Open, "Calculator", RunText: "calc.exe"),
         new("launch.rundialog", Open, "Run dialog", "Win+R", Keywords: "open run command"),
 
-        new("power.monitoroff", Screen, "Turn monitors off", Keywords: "monitor power saving display sleep"), new("power.screensaver", Screen, "Start screensaver"),
+        new(MonitorsOff, Screen, "Turn monitors off", Keywords: "monitor power saving display sleep"), new(Screensaver, Screen, "Start screensaver"),
     };
 
     private static readonly IReadOnlyList<PickChoice> Parameterised = new PickChoice[]

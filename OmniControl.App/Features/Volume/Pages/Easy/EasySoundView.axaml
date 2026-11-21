@@ -9,9 +9,9 @@
     <!-- The sound controls of one row: preset chips, the small live response curve (the FX window's own drawing) and five friendly sliders.
          Greyed as a whole while the sound cannot be applied (the drawer above it says why); the five sliders alone are greyed while the effect was shaped in the full effects window (the line says so). Sliders: double-click resets to 0 dB, the value
          can be typed, the wheel and keys work as on every slider. -->
-    <StackPanel Spacing="6" IsEnabled="{Binding Availability.IsAvailable}" Grid.IsSharedSizeScope="True">
+    <StackPanel Spacing="{StaticResource Gap}" IsEnabled="{Binding Availability.IsAvailable}" Grid.IsSharedSizeScope="True">
         <c:ChoiceChips ItemsSource="{Binding Chips}" IsVisible="{Binding ShowsChips, RelativeSource={RelativeSource AncestorType=easy:EasySoundView}}" />
-        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" IsVisible="{Binding IsCustom}">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}" IsVisible="{Binding IsCustom}">
             <TextBlock Classes="hint small" Text="Shaped in the full effects window" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
                        ToolTip.Tip="{Binding CustomWhy}" />
             <Button Grid.Column="1" Tag="grouptool" Classes="link small" Command="{Binding BackToSimpleCommand}" VerticalAlignment="Center">
@@ -25,7 +25,7 @@
         <ItemsControl ItemsSource="{Binding Bands}" IsEnabled="{Binding SlidersAvailability.IsAvailable}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="easy:EasyBandItem">
-                    <Grid ColumnSpacing="8">
+                    <Grid ColumnSpacing="{StaticResource GapLarge}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" SharedSizeGroup="EasyBandName" />
                             <ColumnDefinition Width="*" />

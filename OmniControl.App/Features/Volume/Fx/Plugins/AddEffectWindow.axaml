@@ -9,7 +9,7 @@
     <DockPanel Grid.IsSharedSizeScope="True">
         <!-- The window's foot: the scan and load pills at the left, Add and Cancel at the right (the master foot and button widths) -->
         <Border DockPanel.Dock="Bottom" Classes="footer">
-            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="6">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="{StaticResource Gap}">
                 <Button x:Name="ScanButton" Tag="scope" Classes="pill cardaction" Content="{Binding ScanText}" Command="{Binding ScanCommand}" VerticalAlignment="Center" />
                 <Button Grid.Column="1" x:Name="LoadButton" Tag="scope" Classes="pill cardaction" Content="Load VST file…" Click="OnLoadClick" VerticalAlignment="Center" />
                 <Button Grid.Column="3" x:Name="AddButton" Tag="scope" Classes="scope usebtn" Content="Add" Click="OnAddClick" IsEnabled="{Binding CanAdd}" />
@@ -17,9 +17,9 @@
             </Grid>
         </Border>
         <TextBlock DockPanel.Dock="Bottom" Text="{Binding Status}" Classes="muted" TextWrapping="Wrap" MinHeight="16" Margin="12,0,12,6" />
-    <Grid RowDefinitions="Auto,*" RowSpacing="8" Margin="12,12,12,6" Grid.IsSharedSizeScope="True">
+    <Grid RowDefinitions="Auto,*" RowSpacing="{StaticResource GapLarge}" Margin="12,12,12,6" Grid.IsSharedSizeScope="True">
 
-        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}">
             <TextBox x:Name="SearchBox" Classes="field search" Text="{Binding Query}" Watermark="Search effects and plug-ins" VerticalContentAlignment="Center" />
             <ComboBox Grid.Column="1" ItemsSource="{Binding Kinds}" SelectedItem="{Binding Kind}" Width="120" VerticalAlignment="Center" />
         </Grid>
@@ -35,7 +35,7 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="{Binding Format}" Classes="muted small" VerticalAlignment="Center" />
-                                <Grid Grid.Column="1" ColumnDefinitions="Auto,*" ColumnSpacing="6">
+                                <Grid Grid.Column="1" ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource Gap}">
                                     <c:IconGlyph LibraryId="{Binding Icon}" Width="16" Height="16" IsVisible="{Binding Icon, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" VerticalAlignment="Center" />
                                     <StackPanel Grid.Column="1">
                                         <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />

@@ -40,7 +40,7 @@
             <pages:EmptyListRow VerticalAlignment="Top" Text="No app lists yet." LinkText="New list" Command="{Binding NewListCommand}" IsVisible="{Binding HasNoSelection}" />
             <ScrollViewer IsVisible="{Binding HasSelection}">
                 <StackPanel Spacing="10">
-                    <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
+                    <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="{StaticResource GapLarge}">
                         <Panel VerticalAlignment="Center">
                             <TextBlock Classes="title" Text="{Binding Heading}" IsVisible="{Binding !IsRenaming}" TextTrimming="CharacterEllipsis" />
                             <TextBox x:Name="NameBox" Classes="field" Text="{Binding EditText}" IsVisible="{Binding IsRenaming}" MaxLength="40"

@@ -6,12 +6,12 @@
              x:DataType="g:RuleItem">
     <!-- One rule, one line: the switch (an incomplete rule can be switched on but does nothing; its tags say what is missing), the rule as a sentence (muted while off;
          two lines at most, then "..."), its facts as tags (the full sentence in each tooltip), and the Edit pill that opens the editor. -->
-    <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" Margin="0,1">
+    <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="{StaticResource GapLarge}" Margin="0,1">
         <ToggleSwitch Classes="plain" IsChecked="{Binding IsOn}" VerticalAlignment="Center" />
         <TextBlock Grid.Column="1" Classes="cardlabel" Classes.muted="{Binding !IsOn}" Text="{Binding Line}" />
         <ItemsControl Grid.Column="2" ItemsSource="{Binding Tags}" VerticalAlignment="Center">
             <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="4" /></ItemsPanelTemplate>
+                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="{StaticResource GapSmall}" /></ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate>

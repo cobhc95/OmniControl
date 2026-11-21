@@ -83,7 +83,7 @@ internal abstract class EngineRun : IDisposable
     }
 
     /// How this run's effects run, as its row's short status names it.
-    protected RunMethod Method => Spec.Kind switch
+    internal RunMethod Method => Spec.Kind switch
     {
         RunKind.Capture => RunMethod.Recording,
         RunKind.Bus => RunMethod.Bus,

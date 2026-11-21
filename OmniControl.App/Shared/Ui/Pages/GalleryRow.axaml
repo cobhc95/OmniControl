@@ -44,7 +44,7 @@
             <ContentControl Grid.Column="2" Content="{Binding Extra}" Margin="12,0,0,0" VerticalAlignment="Center" />
         </Grid>
 
-        <Grid Margin="0,1" ColumnSpacing="8" IsVisible="{Binding HalfDots}">
+        <Grid Margin="0,1" ColumnSpacing="{StaticResource GapLarge}" IsVisible="{Binding HalfDots}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" MinWidth="{StaticResource CardLabelMinWidth}" />
                 <ColumnDefinition Width="1.6*" />

@@ -10,8 +10,8 @@
          the reason a step failed or what it still needs on a line under it. Click a block to edit it; Delete or the cross removes it,
          right-click opens Copy, Cut, Paste below, Duplicate and Delete; drag the grip to reorder. "+ add step" lists the step kinds. A failed
          step is outlined red (Border.steprow.failed). The last Tap is the device's switch. -->
-    <StackPanel Spacing="6">
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+    <StackPanel Spacing="{StaticResource Gap}">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}">
                 <TextBlock Classes="hint small" TextWrapping="Wrap" Text="{Binding Help}" IsVisible="{Binding HasHelp}" VerticalAlignment="Center" />
                 <Button Grid.Column="1" Classes="pill" Content="{Binding RecordLabel}" Command="{Binding RecordCommand}" ToolTip.ShowOnDisabled="True"
                         ToolTip.Tip="{Binding RecordTip}" />
@@ -21,15 +21,15 @@
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:SimStepItem">
                         <Border Classes="steprow" Classes.failed="{Binding IsFailed}">
-                            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8">
+                            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="{StaticResource GapLarge}">
                                 <PathIcon Classes="grip" Data="{DynamicResource GripIcon}" VerticalAlignment="Center" ToolTip.Tip="Drag to reorder" />
                                 <TextBlock Grid.Column="1" Classes="muted" Text="{Binding NumberText}" VerticalAlignment="Center" />
-                                <WrapPanel Grid.Column="2" ItemSpacing="6" LineSpacing="4" VerticalAlignment="Center">
+                                <WrapPanel Grid.Column="2" ItemSpacing="{StaticResource Gap}" LineSpacing="{StaticResource GapSmall}" VerticalAlignment="Center">
                                     <TextBlock Classes="blockword" Text="{Binding Lead}" VerticalAlignment="Center" />
                                     <Button Classes="block" ToolTip.Tip="Change it. Right-click for more; Delete removes the step.">
                                         <Button.Flyout>
                                             <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft" FlyoutPresenterClasses="optionmenu">
-                                                <StackPanel x:DataType="vm:SimStepItem" Spacing="6">
+                                                <StackPanel x:DataType="vm:SimStepItem" Spacing="{StaticResource Gap}">
                                                     <ItemsControl ItemsSource="{Binding Fields}">
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate x:DataType="vm:StepFieldItem">

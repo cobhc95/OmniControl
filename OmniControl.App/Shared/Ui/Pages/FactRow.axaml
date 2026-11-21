@@ -11,14 +11,14 @@
     <!-- Stacked (a media line): ONE row = icon | value with its tags over the muted note (both trim) | the pills, icon-only, at the right, names in tooltips -->
     <pages:CardLayout IsVisible="{Binding Stacked}">
         <DataTemplate x:DataType="pages:FactItem">
-            <Grid Margin="0,1" ColumnSpacing="8" ColumnDefinitions="Auto,*,Auto">
+            <Grid Margin="0,1" ColumnSpacing="{StaticResource GapLarge}" ColumnDefinitions="Auto,*,Auto">
                 <c:IconText Icon="{Binding Icon}" VerticalAlignment="Center" />
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}">
                         <TextBlock Classes="strong cardlabel" Text="{Binding Value}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{Binding HasValue}" />
                         <ItemsControl Grid.Column="1" ItemsSource="{Binding Tags}" IsVisible="{Binding HasTags}" VerticalAlignment="Center">
                             <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate>
+                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="{StaticResource Gap}" /></ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="svc:TagItem"><c:TagView /></DataTemplate>
@@ -29,7 +29,7 @@
                 </StackPanel>
                 <ItemsControl Grid.Column="2" ItemsSource="{Binding Pills}" IsVisible="{Binding HasPills}" VerticalAlignment="Center">
                     <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate>
+                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="{StaticResource Gap}" /></ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -44,16 +44,16 @@
     </pages:CardLayout>
     <pages:CardLayout IsVisible="{Binding IsPlain}">
         <DataTemplate x:DataType="pages:FactItem">
-            <Grid Margin="0,1" ColumnSpacing="8" ColumnDefinitions="Auto,*,Auto">
-                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <Grid Margin="0,1" ColumnSpacing="{StaticResource GapLarge}" ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Orientation="Horizontal" Spacing="{StaticResource Gap}" VerticalAlignment="Center">
                     <c:IconText Icon="{Binding Icon}" Text="{Binding Label}" />
                     <TextBlock Classes="strong" Text="{Binding Value}" VerticalAlignment="Center" IsVisible="{Binding Value, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                 </StackPanel>
                 <TextBlock Grid.Column="1" Classes="cardlabel muted" Text="{Binding Note}" />
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="{StaticResource Gap}" VerticalAlignment="Center">
                     <ItemsControl ItemsSource="{Binding Tags}" IsVisible="{Binding HasTags}">
                         <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate>
+                            <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="{StaticResource Gap}" /></ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="svc:TagItem"><c:TagView /></DataTemplate>

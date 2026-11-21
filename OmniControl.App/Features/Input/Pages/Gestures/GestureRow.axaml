@@ -7,7 +7,7 @@
     <!-- Half-width card, one line: the switch, the trigger's name (muted while off), a pill with the action (opens the action window)
          and a cogwheel (the apps it works in, and the action's settings). As on the mouse button card, the pill takes the space left
          after the name, so a long action name wraps inside the pill instead of squeezing the name. -->
-    <Grid ColumnDefinitions="Auto,Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="4" Margin="0,1">
+    <Grid ColumnDefinitions="Auto,Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="{StaticResource GapLarge}" RowSpacing="{StaticResource GapSmall}" Margin="0,1">
         <ToggleSwitch Classes="plain" IsChecked="{Binding IsOn}" VerticalAlignment="Center" />
         <TextBlock Grid.Column="1" Classes="cardlabel" Classes.muted="{Binding !IsOn}" Text="{Binding Label}" />
         <Button x:Name="Picker" Grid.Column="2" Classes="pill" Classes.custom="{Binding IsOn}" Tag="scope" Click="OnPickerClick">

@@ -8,7 +8,7 @@
          (EasyGoals.All). Each card is a tick card (the master Button.optioncard, .selected = ticked; the tick box at its top right is Border.tickbox):
          title, a tiny flow picture, one muted fact line; clicking anywhere on it ticks it. Under them the "What you will need" box (worked out
          from the ticks and the PC by EasyNeeds), then "Skip, just show my volume" at the left and Next at the right (off until a goal is ticked). -->
-    <StackPanel Spacing="8">
+    <StackPanel Spacing="{StaticResource GapLarge}">
         <WrapPanel>
             <TextBlock Classes="strong" Text="What do you want to do?" Margin="0,0,8,0" />
             <TextBlock Text="Pick as many as you like." Classes="hint" />
@@ -21,7 +21,7 @@
                 <DataTemplate x:DataType="easy:GoalCard">
                     <Button Tag="grouptool" Classes="optioncard" Classes.selected="{Binding IsSelected}" Command="{Binding ToggleCommand}"
                             VerticalAlignment="Stretch" Margin="0,0,6,6">
-                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="4" ColumnSpacing="6">
+                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="{StaticResource GapSmall}" ColumnSpacing="{StaticResource Gap}">
                             <TextBlock Classes="strong" Text="{Binding Goal.Title}" TextWrapping="Wrap" />
                             <Border Grid.Column="1" Classes="tickbox" Classes.checked="{Binding IsSelected}" VerticalAlignment="Top">
                                 <Path Classes="tick" Data="{StaticResource TickIcon}" IsVisible="{Binding IsSelected}" />
@@ -37,7 +37,7 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
         <Border Classes="groupPanel">
-            <StackPanel Spacing="4">
+            <StackPanel Spacing="{StaticResource GapSmall}">
                 <TextBlock Classes="strong" Text="What you will need" />
                 <ItemsControl ItemsSource="{Binding Needs}">
                     <ItemsControl.ItemTemplate>

@@ -12,9 +12,9 @@
         <StackPanel IsVisible="{Binding IsSimulation}">
             <vm:SetupStage Stage="{Binding SimulationStageItems[0]}">
                 <vm:SetupStage.Body>
-                    <StackPanel Spacing="6">
+                    <StackPanel Spacing="{StaticResource Gap}">
                         <vm:SimulationFields DataContext="{Binding Simulation}" />
-                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" IsVisible="{Binding NeedsAdb}">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}" IsVisible="{Binding NeedsAdb}">
                             <TextBlock Classes="cautiontext" Text="adb (the Android platform-tools) isn't installed." TextWrapping="Wrap" VerticalAlignment="Center" />
                             <Button Grid.Column="1" Classes="pill" Content="Get adb" Command="{Binding GetAdbCommand}"
                                     ToolTip.Tip="Opens the official Android page for platform-tools. Unpack it and add its folder to the PATH, or put it in your Android SDK folder." />
@@ -24,7 +24,7 @@
             </vm:SetupStage>
             <vm:SetupStage Stage="{Binding SimulationStageItems[1]}">
                 <vm:SetupStage.Body>
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}">
                         <TextBlock Classes="hint small" TextWrapping="Wrap" VerticalAlignment="Center"
                                    Text="Install the device's app in the emulator (for example Tapo) and sign in there. OmniControl never sees that password." />
                         <Button Grid.Column="1" Classes="pill" Content="Mark done" Command="{Binding MarkAppReadyCommand}" VerticalAlignment="Center" />
@@ -38,18 +38,18 @@
             </vm:SetupStage>
             <vm:SetupStage Stage="{Binding SimulationStageItems[3]}">
                 <vm:SetupStage.Body>
-                    <StackPanel Spacing="6" DataContext="{Binding Simulation}">
+                    <StackPanel Spacing="{StaticResource Gap}" DataContext="{Binding Simulation}">
                         <TextBlock Classes="hint small" TextWrapping="Wrap"
                                    Text="Turn the device on in the emulator, then press &quot;It's on now&quot;. Then off, and &quot;It's off now&quot;." />
-                        <WrapPanel ItemSpacing="6" LineSpacing="4">
+                        <WrapPanel ItemSpacing="{StaticResource Gap}" LineSpacing="{StaticResource GapSmall}">
                             <Button Classes="pill" Command="{Binding TeachOnCommand}" ToolTip.ShowOnDisabled="True" ToolTip.Tip="Looks at the device's card a few times while it is on.">
-                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource GapSmall}">
                                     <TextBlock Text="It's on now" />
                                     <Path Classes="glyph tickmark" Data="{StaticResource TickIcon}" IsVisible="{Binding OnTaught}" />
                                 </StackPanel>
                             </Button>
                             <Button Classes="pill" Command="{Binding TeachOffCommand}" ToolTip.ShowOnDisabled="True" ToolTip.Tip="Looks at the device's card a few times while it is off.">
-                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource GapSmall}">
                                     <TextBlock Text="It's off now" />
                                     <Path Classes="glyph tickmark" Data="{StaticResource TickIcon}" IsVisible="{Binding OffTaught}" />
                                 </StackPanel>
@@ -61,16 +61,16 @@
             </vm:SetupStage>
             <vm:SetupStage Stage="{Binding SimulationStageItems[4]}">
                 <vm:SetupStage.Body>
-                    <StackPanel Spacing="6">
-                        <WrapPanel ItemSpacing="6" LineSpacing="4">
+                    <StackPanel Spacing="{StaticResource Gap}">
+                        <WrapPanel ItemSpacing="{StaticResource Gap}" LineSpacing="{StaticResource GapSmall}">
                             <Button Classes="pill" Command="{Binding TestOnCommand}" ToolTip.Tip="Turns it on (only taps when it reads off) and checks it reads on afterwards.">
-                                <StackPanel Orientation="Horizontal" Spacing="4"><TextBlock Text="On" /><Path Classes="glyph tickmark" Data="{StaticResource TickIcon}" IsVisible="{Binding OnPassed}" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource GapSmall}"><TextBlock Text="On" /><Path Classes="glyph tickmark" Data="{StaticResource TickIcon}" IsVisible="{Binding OnPassed}" /></StackPanel>
                             </Button>
                             <Button Classes="pill" Command="{Binding TestOffCommand}" ToolTip.Tip="Turns it off (only taps when it reads on) and checks it reads off afterwards.">
-                                <StackPanel Orientation="Horizontal" Spacing="4"><TextBlock Text="Off" /><Path Classes="glyph tickmark" Data="{StaticResource TickIcon}" IsVisible="{Binding OffPassed}" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource GapSmall}"><TextBlock Text="Off" /><Path Classes="glyph tickmark" Data="{StaticResource TickIcon}" IsVisible="{Binding OffPassed}" /></StackPanel>
                             </Button>
                             <Button Classes="pill" Command="{Binding TestToggleCommand}" ToolTip.Tip="Taps the switch and checks the state changed.">
-                                <StackPanel Orientation="Horizontal" Spacing="4"><TextBlock Text="Toggle" /><Path Classes="glyph tickmark" Data="{StaticResource TickIcon}" IsVisible="{Binding TogglePassed}" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource GapSmall}"><TextBlock Text="Toggle" /><Path Classes="glyph tickmark" Data="{StaticResource TickIcon}" IsVisible="{Binding TogglePassed}" /></StackPanel>
                             </Button>
                         </WrapPanel>
                         <TextBlock Classes="cautiontext" Text="{Binding TestNote}" TextWrapping="Wrap" IsVisible="{Binding HasTestNote}" />
@@ -82,7 +82,7 @@
         <StackPanel IsVisible="{Binding IsScripts}">
             <vm:SetupStage Stage="{Binding PythonStage}">
                 <vm:SetupStage.Body>
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}">
                         <TextBlock Classes="hint small" TextWrapping="Wrap" VerticalAlignment="Center" Text="OmniControl runs python-kasa, which needs Python on this PC." />
                         <Button Grid.Column="1" Classes="pill" Content="Get Python" Command="{Binding OpenPythonPageCommand}" IsVisible="{Binding !PythonStage.IsDone}"
                                 ToolTip.Tip="Opens the page where Python can be downloaded. Install it, then come back." VerticalAlignment="Center" />
@@ -91,7 +91,7 @@
             </vm:SetupStage>
             <vm:SetupStage Stage="{Binding KasaStage}">
                 <vm:SetupStage.Body>
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}">
                         <TextBlock Classes="hint small" TextWrapping="Wrap" VerticalAlignment="Center" Text="python-kasa is the program that talks to Tapo and Kasa devices." />
                         <Button Grid.Column="1" Classes="pill" Content="{Binding InstallLabel}" Command="{Binding InstallCommand}" IsVisible="{Binding !KasaStage.IsDone}"
                                 ToolTip.Tip="Installs python-kasa for you with pip (no administrator needed). The output goes to the devices log." VerticalAlignment="Center" />
@@ -108,7 +108,7 @@
                     <DataTemplate>
                         <vm:SetupStage Stage="{Binding}">
                             <vm:SetupStage.Body>
-                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}">
                                     <TextBlock Classes="hint small" TextWrapping="Wrap" VerticalAlignment="Center" Text="{Binding Text}" />
                                     <Button Grid.Column="1" Classes="pill" Content="{Binding ConfirmLabel}" Command="{Binding ConfirmCommand}" IsVisible="{Binding !IsDone}" VerticalAlignment="Center" />
                                 </Grid>
@@ -124,10 +124,10 @@
             </vm:SetupStage>
             <vm:SetupStage Stage="{Binding TestStage}">
                 <vm:SetupStage.Body>
-                    <StackPanel Spacing="6">
-                        <WrapPanel ItemSpacing="6" LineSpacing="4">
+                    <StackPanel Spacing="{StaticResource Gap}">
+                        <WrapPanel ItemSpacing="{StaticResource Gap}" LineSpacing="{StaticResource GapSmall}">
                             <Button Classes="pill" Command="{Binding TestScriptCommand}" ToolTip.Tip="Turns the device off, then on again.">
-                                <StackPanel Orientation="Horizontal" Spacing="4"><TextBlock Text="Test" /><Path Classes="glyph tickmark" Data="{StaticResource TickIcon}" IsVisible="{Binding ScriptPassed}" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource GapSmall}"><TextBlock Text="Test" /><Path Classes="glyph tickmark" Data="{StaticResource TickIcon}" IsVisible="{Binding ScriptPassed}" /></StackPanel>
                             </Button>
                             <TextBlock Text="Did it switch?" VerticalAlignment="Center" IsVisible="{Binding AsksIfSwitched}" />
                             <Button Classes="pill" Content="Yes" Command="{Binding SwitchedYesCommand}" IsVisible="{Binding AsksIfSwitched}" />

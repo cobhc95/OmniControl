@@ -12,9 +12,9 @@
          the muted heading, then one row per exception: grip (drag to reorder), the chip choosing "App: ..." or "Event: ..." (the shared ChipMenu and
          its listmenu, filled when it opens), the typeable seconds and the remove cross; "+ add exception" under them; the foot: Close only.
          Every change applies at once. -->
-    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" Margin="12" RowSpacing="8">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" Margin="12" RowSpacing="{StaticResource GapLarge}">
         <TextBlock Classes="title" Text="OSD duration" />
-        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}">
             <TextBlock Classes="strong" Text="Everything else" VerticalAlignment="Center" />
             <pages:NumberText Grid.Column="1" Value="{Binding EverythingElse}" Minimum="{x:Static osd:OsdDuration.MinSeconds}" Maximum="{x:Static osd:OsdDuration.MaxSeconds}"
                               Decimals="{x:Static osd:OsdDuration.Decimals}" VerticalAlignment="Center" ToolTip.Tip="How long a pop-up stays when no exception matches it">
@@ -27,7 +27,7 @@
             <ListBox x:Name="ExceptionRows" Classes="rows compact" ItemsSource="{Binding Rows}" IsVisible="{Binding !HasNoRows}">
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:OsdDurationRowItem">
-                        <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+                        <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="{StaticResource GapLarge}">
                             <PathIcon Classes="grip" Data="{DynamicResource GripIcon}" VerticalAlignment="Center" ToolTip.Tip="Drag to change the order" />
                             <c:ChipMenu Grid.Column="1" ChipTag="scope" ChipAlignment="Stretch" Text="{Binding Text}" MenuOpened="OnChipMenuOpened"
                                         ChipToolTip="The app that caused the pop-up, or what it shows" VerticalAlignment="Center" />

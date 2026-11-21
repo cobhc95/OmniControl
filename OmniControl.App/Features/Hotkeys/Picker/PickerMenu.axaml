@@ -53,11 +53,11 @@
                             <StackPanel Background="Transparent" ToolTip.Tip="{Binding Unavailable}">
                                 <TextBlock Classes="hint small" Text="{Binding Text}" IsVisible="{Binding IsHeading}" Margin="0,4,0,2" />
                                 <!-- A greyed entry (Grid.unavailable) says why under its name and cannot be picked -->
-                                <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" IsVisible="{Binding !IsHeading}" Classes.unavailable="{Binding !IsAvailable}">
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="{StaticResource GapLarge}" IsVisible="{Binding !IsHeading}" Classes.unavailable="{Binding !IsAvailable}">
                                     <!-- The entry's own glyph, else its section's icon -->
                                     <ctl:IconGlyph Source="{Binding Icon}" IsVisible="{Binding HasIcon}" />
                                     <!-- The name takes its room first: the hint and the keycaps follow it on the line, or drop to a second line when it is short of room -->
-                                    <WrapPanel Grid.Column="1" ItemSpacing="8" LineSpacing="2" VerticalAlignment="Center">
+                                    <WrapPanel Grid.Column="1" ItemSpacing="{StaticResource GapLarge}" LineSpacing="2" VerticalAlignment="Center">
                                         <StackPanel VerticalAlignment="Center" IsVisible="{Binding IsEntry}">
                                             <TextBlock Text="{Binding Text}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
                                             <TextBlock Classes="hint small" Text="{Binding Unavailable}" IsVisible="{Binding !IsAvailable}" TextWrapping="Wrap" />
@@ -70,9 +70,9 @@
                                         <!-- A family's directions and their keys in a few words (one line for Up and Down, Next and Previous...) -->
                                         <TextBlock Text="{Binding Summary}" Classes="muted small" VerticalAlignment="Center" IsVisible="{Binding HasSummary}" />
                                         <!-- The entry's keys as keycaps, or a muted "no key" (the Actions and hotkeys window) -->
-                                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource Gap}" VerticalAlignment="Center">
                                             <ItemsControl ItemsSource="{Binding Keycaps}">
-                                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="6" LineSpacing="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="{StaticResource Gap}" LineSpacing="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate><hk:KeycapRow Classes="small" Parts="{Binding}" /></DataTemplate>
                                                 </ItemsControl.ItemTemplate>
@@ -98,7 +98,7 @@
                 <Grid RowDefinitions="Auto,*" Margin="0,10,0,0">
                     <Border x:Name="SettingsFocus" Width="1" Height="1" Focusable="True" HorizontalAlignment="Left" Opacity="0" />
                     <!-- The title and the entry's favourite star (Up from the first setting reaches it; Enter or Space toggles) -->
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="14,0,14,6">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}" Margin="14,0,14,6">
                         <TextBlock Classes="strong" Text="{Binding SettingsTitle}" HorizontalAlignment="Left" VerticalAlignment="Center" TextWrapping="Wrap" />
                         <Button x:Name="TitleStar" Grid.Column="1" Classes="pin star" Classes.on="{Binding ActiveIsFavourite}" IsVisible="{Binding ShowsTitleStar}"
                                 ToolTip.Tip="{Binding ActiveStarTip}" Click="OnTitleStarClick">
@@ -130,7 +130,7 @@
                                                     <TextBlock Classes="hint small" Text="{Binding Hint}" IsVisible="{Binding HasNote}" TextWrapping="Wrap" />
                                                     <Border Classes="tag caution" IsVisible="{Binding HasTag}" HorizontalAlignment="Left"><TextBlock Text="{Binding Tag}" /></Border>
                                                 </StackPanel>
-                                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" IsVisible="{Binding IsStepper}" pages:ValueWheel.Selector="True">
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource Gap}" VerticalAlignment="Center" IsVisible="{Binding IsStepper}" pages:ValueWheel.Selector="True">
                                                     <Button Classes="pill glyph" Tag="-1" Focusable="False" Click="OnOptionStepClick"><Path Classes="glyph" Data="{StaticResource ChevronLeftIcon}" /></Button>
                                                     <Panel MinWidth="100" VerticalAlignment="Center">
                                                         <TextBlock Text="{Binding Display}" TextAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !IsTyping}"
@@ -147,7 +147,7 @@
                                         </picker:OptionTemplateSelector.Inline>
                                         <picker:OptionTemplateSelector.Block>
                                             <DataTemplate DataType="picker:OptionItem">
-                                            <StackPanel Spacing="4" Margin="0,2">
+                                            <StackPanel Spacing="{StaticResource GapSmall}" Margin="0,2">
                                                 <TextBlock Text="{Binding Label}" TextWrapping="Wrap" IsVisible="{Binding IsLabel}" />
                                                 <!-- a group's heading (ActionOption.Heading), as the entries' group headings; its note a muted line under it -->
                                                 <TextBlock Classes="hint small strong" Text="{Binding Label}" IsVisible="{Binding IsHeading}" Margin="0,6,0,0" />
@@ -167,7 +167,7 @@
                                 </ListBox.ItemTemplate>
                             </ListBox>
                             <TextBlock Classes="muted small" Text="{Binding Note}" IsVisible="{Binding HasNote}" TextWrapping="Wrap" Margin="14,4" />
-                            <StackPanel Margin="14,4,14,8" Spacing="6" IsVisible="{Binding ActiveInPanel}">
+                            <StackPanel Margin="14,4,14,8" Spacing="{StaticResource Gap}" IsVisible="{Binding ActiveInPanel}">
                                 <TextBlock Classes="muted small" Text="{Binding PanelNote}" TextWrapping="Wrap" />
                                 <Button Classes="pill" Content="Remove from panel" HorizontalAlignment="Left" Focusable="False" Click="OnRemoveFromPanelClick" />
                             </StackPanel>
@@ -182,7 +182,7 @@
         <!-- The foot: the only confirm, "Use for <target>", when a button, gesture or rule step is being given its action; Close in both modes.
              The picker's keys are in the Keyboard shortcuts of the pages that open it (PickerModel.KeyHelp) -->
         <Border Grid.Row="2" Classes="footer">
-            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource GapLarge}" HorizontalAlignment="Right">
                 <Button Classes="scope usebtn" Tag="scope" Content="{Binding UseText}" IsEnabled="{Binding CanUse}" IsVisible="{Binding IsPicking}" Focusable="False" Click="OnUseClick" />
                 <Button Classes="primary close" Content="Close" Focusable="False" Click="OnCloseClick" />
             </StackPanel>

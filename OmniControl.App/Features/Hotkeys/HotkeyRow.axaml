@@ -7,7 +7,7 @@
     <!-- The devices an action works on (Button.selector, a ticked list menu), beside its keys in the Actions and hotkeys window -->
     <Grid ColumnDefinitions="190">
         <Button Tag="scope" Classes="selector" IsVisible="{Binding HasDevices}" ToolTip.Tip="The devices this action works on">
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapSmall}">
                 <TextBlock Text="{Binding ScopeSummary}" TextTrimming="CharacterEllipsis" />
                 <PathIcon Grid.Column="1" Data="{DynamicResource ChevronDownIcon}" />
             </Grid>

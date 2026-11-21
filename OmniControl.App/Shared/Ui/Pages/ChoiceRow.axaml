@@ -23,7 +23,7 @@
         <!-- Half-width card: the label (wraps to two lines) and a drop-down that fills the rest -->
         <pages:CardLayout IsVisible="{Binding Half}">
             <DataTemplate x:DataType="pages:ChoiceItem">
-                <Grid Margin="0,1" ColumnSpacing="8">
+                <Grid Margin="0,1" ColumnSpacing="{StaticResource GapLarge}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" MinWidth="{StaticResource CardLabelMinWidth}" />
                         <ColumnDefinition Width="1.6*" />

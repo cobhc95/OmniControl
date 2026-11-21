@@ -14,8 +14,8 @@
          when it needs one; a trackpad gesture with an action shows one plain tag underneath when its settings keep Windows' own gesture
          running, or a caution tag when turning Windows' one off failed. Greyed out with the reason when the input can't be seen. -->
     <Border Classes="flash" Classes.lit="{Binding IsFlashing}" CornerRadius="8" BorderThickness="1" Padding="0">
-    <Grid RowDefinitions="Auto,Auto" RowSpacing="4" Margin="0,1">
-        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6">
+    <Grid RowDefinitions="Auto,Auto" RowSpacing="{StaticResource GapSmall}" Margin="0,1">
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource Gap}">
             <TextBlock Classes="cardlabel" Text="{Binding Label}" Margin="0,0,4,0" VerticalAlignment="Top" />
             <Button x:Name="Picker" Grid.Column="1" Classes="pill" Tag="scope" Click="OnPickerClick" IsVisible="{Binding !IsCustom}">
                 <TextBlock Text="{x:Static mouse:MouseButtonItem.Summary}" VerticalAlignment="Center" />
@@ -84,7 +84,7 @@
             <ctl:ScopeCog x:Name="CogPart" Grid.Column="2" Scope="{Binding Scope}" ShowsSettings="{Binding HasOptions}"
                           CogTip="Which apps this works in, and the first action's settings" SettingsClicked="OnCogClick" VerticalAlignment="Top" />
         </Grid>
-        <StackPanel Grid.Row="1" Spacing="4">
+        <StackPanel Grid.Row="1" Spacing="{StaticResource GapSmall}">
             <TextBox x:Name="ParameterBox" Classes="field" Text="{Binding Parameter, UpdateSourceTrigger=LostFocus}"
                      Watermark="{Binding Hint}" IsVisible="{Binding NeedsParameter}" />
             <Border Classes="tag caution" HorizontalAlignment="Left" IsVisible="{Binding ParameterProblem, Converter={x:Static ObjectConverters.IsNotNull}}">

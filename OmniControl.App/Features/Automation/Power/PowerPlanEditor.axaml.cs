@@ -47,7 +47,7 @@ public partial class PowerPlanEditor : UserControl
     {
         if (!ValueWheel.IsOverSelector(e.Source as Visual)) return;
         if ((e.Source as Visual)?.FindAncestorOfType<StackPanel>() is not { DataContext: PowerValueCell cell } || cell.IsTyping) return;
-        cell.Step(e.Delta.Y > 0 ? 1 : -1);
+        cell.Step(ValueWheel.Direction(e));
         e.Handled = true;
     }
 

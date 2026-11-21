@@ -10,11 +10,11 @@
          docs/mockups/other-pcs-browser-tabs.html: icon, name, status dot, route word) followed by the unfinished "New PC" tabs (docs/mockups/pair-pc-in-tab.html:
          plus icon, name, a small x); the "+" opens a New PC tab. They are joined to one boxed pane (Border.pane.edged.tabbed) with the chosen tab: a PC (PcDetail)
          or the pairing flow of a New PC tab (PairPcPanel), templates in App.axaml. With no tab, one dashed row says so. -->
-    <StackPanel Spacing="6">
+    <StackPanel Spacing="{StaticResource Gap}">
         <pages:PageTitleLine Title="{Binding Title}">
             <pages:PageTitleLine.Right>
                 <!-- This PC's wake (docs/mockups/this-pc-wake.html, pc-header-tidy.html): muted "This PC" and the split Wake button (status half, cogwheel) -->
-                <StackPanel Orientation="Horizontal" Spacing="6" DataContext="{Binding ThisPc}" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="{StaticResource Gap}" DataContext="{Binding ThisPc}" VerticalAlignment="Center">
                     <TextBlock Classes="hint" Text="{Binding Name}" VerticalAlignment="Center" />
                     <vm:WakeSplit Status="{Binding Status}" SetUpCommand="{Binding SetUpCommand}" VerticalAlignment="Center" />
                 </StackPanel>
@@ -29,7 +29,7 @@
                         <ContentControl Content="{Binding}">
                             <ContentControl.DataTemplates>
                                 <DataTemplate DataType="vm:PcItem">
-                                    <Grid Classes="tabcontent" Classes.dim="{Binding !IsOnline}" ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="6" ToolTip.Tip="{Binding TabTip}">
+                                    <Grid Classes="tabcontent" Classes.dim="{Binding !IsOnline}" ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="{StaticResource Gap}" ToolTip.Tip="{Binding TabTip}">
                                         <c:IconGlyph LibraryId="device-desktop" VerticalAlignment="Center" />
                                         <TextBlock Grid.Column="1" Classes="tabname" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                                         <Ellipse Grid.Column="2" Classes="tabdot" Classes.online="{Binding IsOnline}" VerticalAlignment="Center" />
@@ -42,7 +42,7 @@
                                     </Grid>
                                 </DataTemplate>
                                 <DataTemplate DataType="vm:SetupTabItem">
-                                    <Grid Classes="tabcontent" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6" ToolTip.Tip="{Binding TabTip}">
+                                    <Grid Classes="tabcontent" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource Gap}" ToolTip.Tip="{Binding TabTip}">
                                         <c:IconGlyph LibraryId="plus" VerticalAlignment="Center" />
                                         <TextBlock Grid.Column="1" Classes="tabname" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                                         <Button Grid.Column="2" Classes="removebadge" Focusable="False" Command="{Binding CloseCommand}" ToolTip.Tip="Close this tab" VerticalAlignment="Center">

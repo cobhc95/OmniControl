@@ -283,7 +283,7 @@ public sealed class EqGraph : ItemDrawing<EqPanelItem>
         var hit = PointAt(e.GetPosition(this));
         if (hit < 0 || Item is null) return;
         Item.SelectedIndex = hit;
-        Item.Bands[hit].NudgeWidth(e.Delta.Y > 0 ? 1 : -1);
+        Item.Bands[hit].NudgeWidth(ValueWheel.Direction(e));
         e.Handled = true;
     }
 }

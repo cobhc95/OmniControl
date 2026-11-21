@@ -54,7 +54,7 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="8">
+        <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="{StaticResource GapLarge}">
             <Button Classes="pill cardaction" Content="Test" IsEnabled="{Binding CanTest}" Click="OnTestClick" ToolTip.Tip="Run it once now, at the pointer" />
             <Button Grid.Column="1" Classes="pill cardaction" Content="Copy details" IsVisible="{Binding HasFailure}" Click="OnCopyClick" />
             <Button Grid.Column="2" Classes="pill cardaction" Content="Delete rule" Click="OnDeleteClick" />

@@ -8,11 +8,11 @@
     <!-- The top of the settings pane in the Actions and hotkeys window (docs/mockups/actions-and-hotkeys.html): "Hotkey" and one shared
          HotkeyBox per key, each with its remove cross and, when the key pressed is another action's, the caution tag "Also on: ..." with
          "Move here"; then "+ add key", "Suggest" and the action's devices; the one sentence of a refused key; then Run now, Show on its page and Change icon…. -->
-    <StackPanel Spacing="6" Margin="14,0,14,8">
+    <StackPanel Spacing="{StaticResource Gap}" Margin="14,0,14,8">
         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
             <TextBlock Text="{Binding Label}" VerticalAlignment="Top" Margin="0,6,0,0" />
             <ItemsControl Grid.Column="1" ItemsSource="{Binding Slots}">
-                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="{StaticResource GapSmall}" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="picker:HotkeyKeySlot">
                         <WrapPanel>
@@ -20,7 +20,7 @@
                             <Button Classes="pill glyph closex" Command="{Binding RemoveCommand}" VerticalAlignment="Center" Margin="0,0,6,0" ToolTip.Tip="Remove this key">
                                 <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
                             </Button>
-                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" IsVisible="{Binding HasConflict}">
+                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Gap}" VerticalAlignment="Center" IsVisible="{Binding HasConflict}">
                                 <Border Classes="tag caution"><TextBlock Text="{Binding Conflict}" /></Border>
                                 <Button Classes="link" Content="Move here" Command="{Binding MoveHereCommand}" VerticalAlignment="Center"
                                         ToolTip.Tip="Take this key from the other action and give it to this one" />

@@ -17,7 +17,7 @@
             <c:ChipMenu x:Name="FullChip" Classes="choice" ChipTag="scope" ChipAlignment="Stretch" Text="{Binding Text}" ChipToolTip="{Binding Tip}" />
         </Grid>
 
-        <Grid Margin="0,1" ColumnSpacing="8" IsVisible="{Binding Half}">
+        <Grid Margin="0,1" ColumnSpacing="{StaticResource GapLarge}" IsVisible="{Binding Half}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" MinWidth="{StaticResource CardLabelMinWidth}" />
                 <ColumnDefinition Width="1.6*" />

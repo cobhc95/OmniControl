@@ -10,15 +10,15 @@
          two lines, then trims), and a plain switch showing the last known state that switches the device, or a "set-up" tag when the device
          is not set up. With no device, one dashed row says so. Several rows can be chosen (Ctrl, Shift, Ctrl+A); a right-click opens Copy, Cut,
          Paste, Duplicate, Merge into… and Delete for them (docs/mockups/device-multiple-methods.html), and the keys Ctrl+C, X, V, D and Delete do the same. -->
-    <StackPanel Spacing="6">
+    <StackPanel Spacing="{StaticResource Gap}">
         <Border Classes="pane edged" IsVisible="{Binding !NoDevices}">
             <Grid ColumnDefinitions="Auto,*">
                 <Border Classes="sidebarpanel" BorderThickness="0,0,1,0" Padding="{StaticResource DeviceListPadding}">
-                    <StackPanel Spacing="8" MinWidth="{StaticResource DeviceListMinWidth}" MaxWidth="{StaticResource DeviceListMaxWidth}">
+                    <StackPanel Spacing="{StaticResource GapLarge}" MinWidth="{StaticResource DeviceListMinWidth}" MaxWidth="{StaticResource DeviceListMaxWidth}">
                         <ListBox x:Name="DeviceList" Classes="nav compact" SelectionMode="Multiple" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}" KeyDown="OnListKeyDown">
                             <ListBox.ItemTemplate>
                                 <DataTemplate x:DataType="vm:DeviceItem">
-                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource Gap}">
                                         <vm:DeviceIconView />
                                         <TextBlock Grid.Column="1" Text="{Binding Name}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                                         <ToggleSwitch Grid.Column="2" Classes="plain" IsChecked="{Binding ListOn}" IsEnabled="{Binding CanSwitch}" IsVisible="{Binding IsReady}"
@@ -28,7 +28,7 @@
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
-                        <StackPanel Orientation="Horizontal" Spacing="6">
+                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource Gap}">
                             <Button Classes="blockadd small" Content="+ Add device" Command="{Binding AddDeviceCommand}" VerticalAlignment="Center" />
                             <Button Classes="pill" Content="Import…" Command="{Binding OpenImportCommand}" ToolTip.Tip="Copy devices from another paired PC" VerticalAlignment="Center" />
                         </StackPanel>

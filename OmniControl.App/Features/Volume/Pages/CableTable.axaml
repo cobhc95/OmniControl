@@ -10,9 +10,9 @@
          pop-down marks a pair by hand, then one muted hint line with "Get more cables" (Button.link.small) and, while no cable is
          installed, Install VB-CABLE. The pop-down is mouse first (AGENTS.md rule 5): the chip is keyboard reachable, Esc closes it. -->
     <Border Classes="groupPanel">
-        <StackPanel Spacing="6">
+        <StackPanel Spacing="{StaticResource Gap}">
             <pages:GroupHeader />
-            <StackPanel Spacing="6" IsVisible="{Binding IsExpanded}">
+            <StackPanel Spacing="{StaticResource Gap}" IsVisible="{Binding IsExpanded}">
                 <ListBox Classes="rows compact" ItemsSource="{Binding Items}" />
                 <Button x:Name="MarkChip" Classes="blockadd small" Tag="grouptool" HorizontalAlignment="Left" Content="{x:Static vm:CableMarkMenu.Label}"
                         ToolTip.Tip="{x:Static vm:CableMarkMenu.LabelTip}" Click="OnMarkClick">

@@ -8,7 +8,7 @@
              ToolTip.Tip="{Binding Availability.Reason}" ToolTip.ShowOnDisabled="True">
     <Panel>
         <!-- Full width: label, the path field (the file in use, typed or browsed), and the optional Default -->
-        <Grid Margin="0,1" ColumnSpacing="8" IsVisible="{Binding !Half}">
+        <Grid Margin="0,1" ColumnSpacing="{StaticResource GapLarge}" IsVisible="{Binding !Half}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
                 <ColumnDefinition Width="*" />
@@ -23,7 +23,7 @@
         </Grid>
 
         <!-- Half width: the label (wraps to two lines), the file name (trims), then the buttons -->
-        <Grid Margin="0,1" ColumnSpacing="6" IsVisible="{Binding Half}">
+        <Grid Margin="0,1" ColumnSpacing="{StaticResource Gap}" IsVisible="{Binding Half}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" MinWidth="56" />
                 <ColumnDefinition Width="*" />

@@ -4,7 +4,11 @@ using OmniControl.App.Features.Icons;
 namespace OmniControl.App.Features.Hotkeys.Picker;
 
 /// What the picker returns: the chosen entry, the values of its settings, and (for an entry that takes text, such as a shortcut) that text; null when the entry takes none. ApplyToAll is true when the "apply to every gesture" switch was left on.
-public sealed record PickResult(PickChoice Choice, IReadOnlyDictionary<string, string> Values, string? Parameter = null, bool ApplyToAll = false);
+public sealed record PickResult(PickChoice Choice, IReadOnlyDictionary<string, string> Values, string? Parameter = null, bool ApplyToAll = false)
+{
+    /// The pick as a rule stores it: the entry with its text and the values of its settings.
+    public string Stored => MouseAction.Compose(Choice.WithParameter(Parameter?.Trim() ?? string.Empty), Choice.Options, Values);
+}
 
 /// One entry of the sections pane: its name and its icon (a page's own; null where the list has none); <paramref name="IsFavourites"/> draws the star.
 public sealed record SectionRow(string Name, string? Icon, bool IsFavourites = false)

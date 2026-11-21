@@ -1,4 +1,3 @@
-using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.VisualTree;
 
@@ -8,8 +7,7 @@ namespace OmniControl.App.Features.Devices.Pages;
 /// Ctrl+C, X, V, D and Delete on the chosen rows (the same pattern as a simulation's step list, <see cref="SimulationSteps"/>).
 public partial class DevicesPage : UserControl
 {
-    private Flyout? _menu;
-    private MenuRowList? _menuRows;
+    private readonly PointerMenu _menu = new();
 
     public DevicesPage()
     {
@@ -32,18 +30,7 @@ public partial class DevicesPage : UserControl
         e.Handled = true;
     }
 
-    private void ShowMenu(Control at, IReadOnlyList<MenuRowItem> rows, string? title)
-    {
-        if (_menu is null)
-        {
-            _menuRows = new MenuRowList();
-            _menuRows.Picked += (_, _) => _menu?.Hide();
-            _menu = new ListMenuFlyout { Placement = PlacementMode.Pointer, Content = _menuRows };
-        }
-        _menuRows!.Title = title;
-        _menuRows.ItemsSource = rows;
-        _menu.ShowAt(at, showAtPointer: true);
-    }
+    private void ShowMenu(Control at, IReadOnlyList<MenuRowItem> rows, string? title) => _menu.Show(at, rows, title);
 
     private void OnListKeyDown(object? sender, KeyEventArgs e)
     {

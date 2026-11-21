@@ -310,7 +310,7 @@ public partial class PickerMenu : UserControl
         if (_model is null || !ValueWheel.IsOverSelector(e.Source as Visual)) return;
         if ((e.Source as Visual)?.FindAncestorOfType<ListBoxItem>()?.DataContext is not OptionItem { IsStepper: true, IsTyping: false } item) return;
         _model.OptionIndex = _model.OptionItems.IndexOf(item);
-        item.Step(e.Delta.Y > 0 ? 1 : -1);
+        item.Step(ValueWheel.Direction(e));
         e.Handled = true;
     }
 

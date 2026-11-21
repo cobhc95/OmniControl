@@ -8,10 +8,10 @@
              x:DataType="easy:EasyViewModel">
     <!-- The Easy page (docs/mockups/easy-mode.html section 5): the "Everything" card (big master level, Mute, Sound drawer), one card with the
          apps and microphones and "Add program", and the footer (what is set up, Set up again, Fix it). No cables, methods or wiring here. -->
-    <StackPanel Spacing="6" Grid.IsSharedSizeScope="True">
+    <StackPanel Spacing="{StaticResource Gap}" Grid.IsSharedSizeScope="True">
         <pages:GroupCard Group="{Binding EverythingGroup}">
-            <StackPanel Spacing="6" Margin="0,4">
-                <Grid ColumnSpacing="8" DataContext="{Binding Master}">
+            <StackPanel Spacing="{StaticResource Gap}" Margin="0,4">
+                <Grid ColumnSpacing="{StaticResource GapLarge}" DataContext="{Binding Master}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" SharedSizeGroup="EasyMute" />
@@ -31,11 +31,11 @@
             <pages:GroupCard.Tools>
                 <vm:AddProgramButton DataContext="{Binding AddProgram}" />
             </pages:GroupCard.Tools>
-            <StackPanel Spacing="6" Margin="0,4">
+            <StackPanel Spacing="{StaticResource Gap}" Margin="0,4">
                 <pages:EmptyListRow Text="Nothing is playing. Apps appear here when they do." IsVisible="{Binding !HasApps}" />
                 <ItemsControl ItemsSource="{Binding Apps}">
                     <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate><StackPanel Spacing="6" /></ItemsPanelTemplate>
+                        <ItemsPanelTemplate><StackPanel Spacing="{StaticResource Gap}" /></ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="easy:EasyRow">

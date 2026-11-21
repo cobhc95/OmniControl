@@ -11,8 +11,7 @@ public partial class SimulationSteps : UserControl
 {
     private Flyout? _menu;
     private MenuRowList? _kinds;
-    private Flyout? _rowMenu;
-    private MenuRowList? _rowRows;
+    private readonly PointerMenu _rowMenu = new();
 
     public SimulationSteps()
     {
@@ -24,15 +23,8 @@ public partial class SimulationSteps : UserControl
     private void OnStepContext(object? sender, ContextRequestedEventArgs e)
     {
         if (DataContext is not SimulationViewModel vm || (e.Source as Visual)?.FindAncestorOfType<ListBoxItem>(includeSelf: true) is not { DataContext: SimStepItem } item) return;
-        if (_rowMenu is null)
-        {
-            _rowRows = new MenuRowList();
-            _rowRows.Picked += (_, _) => _rowMenu?.Hide();
-            _rowMenu = new ListMenuFlyout { Placement = PlacementMode.Pointer, Content = _rowRows };
-        }
         if (!item.IsSelected) { StepList.SelectedItems?.Clear(); item.IsSelected = true; }
-        _rowRows!.ItemsSource = vm.RowMenu(Selected());
-        _rowMenu.ShowAt(item, showAtPointer: true);
+        _rowMenu.Show(item, vm.RowMenu(Selected()));
         e.Handled = true;
     }
 

@@ -16,7 +16,7 @@
                 <Button x:Name="CopyButton" Classes="pill" Content="Copy details" VerticalAlignment="Center" Click="OnCopyClick" />
                 <CheckBox x:Name="DontAsk" Content="Don't ask again" VerticalAlignment="Center" />
             </StackPanel>
-            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="{StaticResource GapLarge}">
                 <Button x:Name="OtherButton" Classes="usebtn scope" Tag="scope" Click="OnOtherClick" />
                 <Button x:Name="NoButton" Classes="usebtn scope" Tag="scope" IsVisible="False" Click="OnCloseClick" />
                 <Button x:Name="ConfirmButton" Classes="usebtn scope" Tag="scope" Click="OnConfirmClick" />

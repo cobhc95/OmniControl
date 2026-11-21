@@ -19,7 +19,7 @@
                 </StackPanel>
             </Button>
             <Button x:Name="ActionHalf" Classes="pill splitleft accentline custom" Click="OnWake" IsVisible="False">
-                <StackPanel Orientation="Horizontal" Spacing="4">
+                <StackPanel Orientation="Horizontal" Spacing="{StaticResource GapSmall}">
                     <c:IconGlyph LibraryId="power" VerticalAlignment="Center" />
                     <TextBlock Text="Wake" VerticalAlignment="Center" />
                     <c:IconGlyph x:Name="Caution" Classes="cautionmark" LibraryId="alert" VerticalAlignment="Center" IsVisible="False" />

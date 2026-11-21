@@ -20,7 +20,7 @@
         </Grid.ColumnDefinitions>
 
         <!-- Left: the chain in signal order -->
-        <Grid RowDefinitions="*,Auto" RowSpacing="8">
+        <Grid RowDefinitions="*,Auto" RowSpacing="{StaticResource GapLarge}">
             <Border Grid.Row="0" Classes="pane">
                 <Grid>
                     <ListBox x:Name="SlotList" Classes="fxlist" SelectionMode="Multiple" ItemsSource="{Binding Slots}" SelectedItem="{Binding Selected}">
@@ -28,7 +28,7 @@
                             <DataTemplate x:DataType="vm:FxSlotViewModel">
                                 <Panel>
                                     <!-- An effect: inside a folder it is indented under the folder's accent bar; outside every folder (while folders exist) it says "all devices" -->
-                                    <Grid ColumnSpacing="8" VerticalAlignment="Center" IsVisible="{Binding IsEffect}"
+                                    <Grid ColumnSpacing="{StaticResource GapLarge}" VerticalAlignment="Center" IsVisible="{Binding IsEffect}"
                                           ToolTip.Tip="{Binding Name, StringFormat='{}{0}: double-click for its own window, drag to reorder'}">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" SharedSizeGroup="FxSlotNumber" />
@@ -48,7 +48,7 @@
                                                    ToolTip.Tip="Runs for every device (it is outside every device folder)" />
                                     </Grid>
                                     <!-- A device folder (docs/mockups/fx-device-folders.html): chevron, on tick, glyph, device name over its method tag, effect count -->
-                                    <Grid Classes="chainfolder" Classes.dim="{Binding Folder.Dim, FallbackValue=False}" ColumnSpacing="8" VerticalAlignment="Center"
+                                    <Grid Classes="chainfolder" Classes.dim="{Binding Folder.Dim, FallbackValue=False}" ColumnSpacing="{StaticResource GapLarge}" VerticalAlignment="Center"
                                           IsVisible="{Binding IsFolder}" ToolTip.Tip="Device folder: its effects run only while this device plays">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" SharedSizeGroup="FxSlotNumber" />
@@ -94,7 +94,7 @@
                 <Button x:Name="AddButton" Classes="pill" Content="Add…" Click="OnAddClick" ToolTip.Tip="Add an effect to the end of the chain (Ctrl+N)" />
                 <Button Classes="pill" Command="{Binding AddFolderCommand}" IsVisible="{Binding CanAddFolder}"
                         ToolTip.Tip="Add a device folder: the effects in it run only while that device plays">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
+                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource Gap}">
                         <c:IconGlyph Classes="pillglyph" LibraryId="device-speaker-plus" VerticalAlignment="Center" />
                         <TextBlock Text="Device folder" VerticalAlignment="Center" />
                     </StackPanel>
@@ -116,7 +116,7 @@
                 </Panel>
                 <vm:PluginEditorArea x:Name="PluginArea" Editor="{Binding PluginEditor}" IsVisible="{Binding ShowsPluginEditor}"
                                      UserScale="{Binding Selected.ScaleFactor, FallbackValue=1}" />
-                <StackPanel IsVisible="{Binding HasHint}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" MaxWidth="360">
+                <StackPanel IsVisible="{Binding HasHint}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="{StaticResource GapLarge}" MaxWidth="360">
                     <TextBlock Text="{Binding Hint}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" />
                     <Button Classes="pill" Content="Put back" Command="{Binding PutBackCommand}" IsVisible="{Binding CanPutBack}"
                             HorizontalAlignment="Center" ToolTip.Tip="Closes the effect's own window and shows its editor here" />

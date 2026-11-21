@@ -52,7 +52,7 @@ public partial class PresetPicker : UserControl
     private void OnWheel(object? sender, PointerWheelEventArgs e)
     {
         if (_flyout is not null) return;
-        Step(e.Delta.Y > 0 ? -1 : 1);
+        Step(ValueWheel.ListDirection(e));
         e.Handled = true;
     }
 

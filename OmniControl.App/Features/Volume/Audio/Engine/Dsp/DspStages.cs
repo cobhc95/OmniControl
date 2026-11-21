@@ -46,6 +46,23 @@ internal struct Glide
 
     public bool Moving => _left > 0;
 
+    /// Multiplies interleaved <paramref name="samples"/> by the value, gliding frame by frame while it moves (a settled 1 leaves them alone).
+    public void Apply(Span<float> samples, int channels)
+    {
+        if (!Moving)
+        {
+            var gain = Now;
+            if (gain == 1) return;
+            for (var i = 0; i < samples.Length; i++) samples[i] *= gain;
+            return;
+        }
+        for (var at = 0; at + channels <= samples.Length; at += channels)
+        {
+            var gain = Next();
+            for (var ch = 0; ch < channels; ch++) samples[at + ch] *= gain;
+        }
+    }
+
     /// The value for the next frame.
     public float Next()
     {
@@ -62,20 +79,7 @@ internal sealed class GainStage : IDspStage
 
     public GainStage(double db) => _gain = new Glide((float)Math.Pow(10, db / 20));
 
-    public void Process(Span<float> samples, int channels)
-    {
-        if (!_gain.Moving)
-        {
-            var gain = _gain.Now;
-            for (var i = 0; i < samples.Length; i++) samples[i] *= gain;
-            return;
-        }
-        for (var at = 0; at + channels <= samples.Length; at += channels)
-        {
-            var gain = _gain.Next();
-            for (var ch = 0; ch < channels; ch++) samples[at + ch] *= gain;
-        }
-    }
+    public void Process(Span<float> samples, int channels) => _gain.Apply(samples, channels);
 
     public void TakeStateFrom(IDspStage previous)
     {

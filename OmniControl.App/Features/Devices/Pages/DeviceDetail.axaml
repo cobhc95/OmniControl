@@ -13,15 +13,15 @@
          READY: the methods (MethodList); the drift sentence with Re-teach. On / Off / Toggle and Show emulator are registered actions only.
          SETUP: the method's numbered stages (SetupView), then Cancel | Finish setup.
          Both: the foot line with the last command and Copy details. -->
-    <StackPanel Spacing="8">
-        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+    <StackPanel Spacing="{StaticResource GapLarge}">
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource GapLarge}">
             <vm:DeviceIconView Pickable="True" VerticalAlignment="Center" />
             <TextBox Grid.Column="1" Classes="field" Text="{Binding Name}" Watermark="Name" MinWidth="0" VerticalAlignment="Center" />
             <Button Grid.Column="2" Classes="pill glyph closex" Command="{Binding RemoveCommand}" ToolTip.Tip="{Binding RemoveTip}" VerticalAlignment="Center">
                 <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
             </Button>
         </Grid>
-        <WrapPanel ItemSpacing="6" LineSpacing="4">
+        <WrapPanel ItemSpacing="{StaticResource Gap}" LineSpacing="{StaticResource GapSmall}">
             <c:ChipMenu Text="{Binding Editing.MethodLabel}" ChipToolTip="{Binding Editing.MethodTip}" MenuOpened="OnMethodMenuOpened" IsVisible="{Binding InSetup}" VerticalAlignment="Center">
                 <c:ChipMenu.Menu>
                     <c:MenuRowList x:Name="MethodRows" Title="Method" />
@@ -50,17 +50,17 @@
             </c:ChipMenu>
         </WrapPanel>
 
-        <StackPanel Spacing="8" IsVisible="{Binding !InSetup}">
+        <StackPanel Spacing="{StaticResource GapLarge}" IsVisible="{Binding !InSetup}">
             <vm:MethodList />
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" IsVisible="{Binding HasDrift}">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}" IsVisible="{Binding HasDrift}">
                 <TextBlock Classes="cautiontext" Text="{Binding DriftText}" TextWrapping="Wrap" VerticalAlignment="Center" />
                 <Button Grid.Column="1" Classes="pill" Content="Re-teach" Command="{Binding ReTeachCommand}" VerticalAlignment="Center" />
             </Grid>
         </StackPanel>
 
-        <StackPanel Spacing="8" IsVisible="{Binding InSetup}">
+        <StackPanel Spacing="{StaticResource GapLarge}" IsVisible="{Binding InSetup}">
             <vm:SetupView DataContext="{Binding Editing}" />
-            <WrapPanel ItemSpacing="6" LineSpacing="4" HorizontalAlignment="Right">
+            <WrapPanel ItemSpacing="{StaticResource Gap}" LineSpacing="{StaticResource GapSmall}" HorizontalAlignment="Right">
                 <Button Classes="pill" Content="Cancel" Command="{Binding CancelCommand}" ToolTip.Tip="Puts the device back as it was (a device that was never set up is removed)." />
                 <Button Classes="pill cardaction main" Content="Finish setup" Command="{Binding FinishCommand}" ToolTip.ShowOnDisabled="True"
                         ToolTip.Tip="Every stage must be done. The method is then ready." />
@@ -68,7 +68,7 @@
         </StackPanel>
 
         <Border Classes="statusstrip" IsVisible="{Binding HasLastLine}">
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}">
                 <TextBlock Classes="statusline" Classes.failed="{Binding LastFailed}" Text="{Binding LastLine}" VerticalAlignment="Center" />
                 <Button Grid.Column="1" Classes="pill" Content="Copy details" IsVisible="{Binding HasDetails}" Click="OnCopyDetails" VerticalAlignment="Center"
                         ToolTip.Tip="Copies the last command's log lines (email and password masked)." />

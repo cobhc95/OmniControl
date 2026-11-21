@@ -6,13 +6,13 @@
         Title="About and credits" Width="640" Height="600" MinWidth="440" MinHeight="360"
         WindowStartupLocation="CenterScreen">
     <!-- OmniControl's notice, then one card per credited project (from NOTICE.txt), then Close. Up/Down walk the cards, Esc closes. -->
-    <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="8" Margin="12">
+    <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="{StaticResource GapLarge}" Margin="12">
         <TextBlock Classes="title" Text="{Binding Version}" />
         <TextBlock Grid.Row="1" Classes="hint" Text="{Binding Notice}" />
         <ListBox Grid.Row="2" x:Name="CreditList" Classes="rows compact" ItemsSource="{Binding Entries}">
             <ListBox.ItemTemplate>
                 <DataTemplate DataType="about:CreditCard">
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}">
                         <StackPanel Spacing="2">
                             <WrapPanel>
                                 <TextBlock Classes="strong" Text="{Binding Name}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,6,0" />

@@ -6,15 +6,15 @@
              x:DataType="easy:EasyRow">
     <!-- One app or microphone of the Easy page: icon, name and state ("playing", "not open"), the level (slider and value), Mute and Sound.
          The Sound drawer opens under the line. The row's own VolumeRow is the data of the first four, so Advanced shows the same values. -->
-    <StackPanel Spacing="4" Opacity="{Binding Row.RowOpacity}">
-        <Grid ColumnSpacing="8">
+    <StackPanel Spacing="{StaticResource GapSmall}" Opacity="{Binding Row.RowOpacity}">
+        <Grid ColumnSpacing="{StaticResource GapLarge}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="*" MinWidth="110" MaxWidth="220" />
                 <ColumnDefinition Width="Auto" SharedSizeGroup="EasyMute" />
                 <ColumnDefinition Width="Auto" SharedSizeGroup="EasySound" />
             </Grid.ColumnDefinitions>
-            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" VerticalAlignment="Center">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource GapLarge}" VerticalAlignment="Center">
                 <vm:RowIcon DataContext="{Binding Row}" />
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" MinWidth="0">
                     <TextBlock Classes="strong" Text="{Binding Row.Name}" TextTrimming="CharacterEllipsis" />

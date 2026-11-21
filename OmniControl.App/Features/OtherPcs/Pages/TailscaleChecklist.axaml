@@ -9,7 +9,7 @@
     <ItemsControl x:Name="List">
         <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:TailscaleCheckItem">
-                <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="6" MinHeight="24">
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="{StaticResource Gap}" MinHeight="24">
                     <Panel Width="{DynamicResource MenuGlyphSize}" VerticalAlignment="Center">
                         <Path Classes="glyph tickmark" Data="{StaticResource TickIcon}" IsVisible="{Binding IsOk}" />
                         <c:IconGlyph Classes="cautionmark" LibraryId="alert" IsVisible="{Binding IsFailed}" />

@@ -12,11 +12,11 @@
          with its result. A row with no choice (combined speakers) shows the chip as words only (Border.selector.method). -->
     <FlyoutBase.AttachedFlyout>
         <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft" FlyoutPresenterClasses="optionmenu" Opened="OnOpened" Closed="OnClosed">
-            <StackPanel x:DataType="vm:VolumeRow" Spacing="6">
+            <StackPanel x:DataType="vm:VolumeRow" Spacing="{StaticResource Gap}">
                 <TextBlock Classes="strong" Text="{Binding RouteChoice.Title}" />
                 <ItemsControl ItemsSource="{Binding RouteChoice.Cards}">
                     <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate><StackPanel Spacing="4" /></ItemsPanelTemplate>
+                        <ItemsPanelTemplate><StackPanel Spacing="{StaticResource GapSmall}" /></ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="vm:RouteCard">
@@ -36,7 +36,7 @@
                 <Button Classes="pill cardaction" Classes.main="{Binding RouteChoice.Fix.Main}" Content="{Binding RouteChoice.Fix.Label}"
                         Command="{Binding RouteChoice.Fix.Command}" ToolTip.Tip="{Binding RouteChoice.Fix.Tip}" IsVisible="{Binding RouteChoice.HasFix}"
                         HorizontalAlignment="Left" />
-                <StackPanel Spacing="6" IsVisible="{Binding RouteChoice.HasSteps}">
+                <StackPanel Spacing="{StaticResource Gap}" IsVisible="{Binding RouteChoice.HasSteps}">
                     <Border Classes="hrule" />
                     <ItemsControl ItemsSource="{Binding RouteChoice.Steps}">
                         <ItemsControl.ItemsPanel>
@@ -64,7 +64,7 @@
     <Panel>
         <Button x:Name="Chip" Tag="scope" Classes="selector method" Classes.apo="{Binding Method.IsApo}" Classes.cable="{Binding Method.IsCable}"
                 Classes.risk="{Binding Method.IsRisk}" Classes.recording="{Binding Method.IsRecording}" IsVisible="{Binding HasMethodMenu}" ToolTip.Tip="{Binding EngineLine}" Click="OnClick">
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapSmall}">
                 <TextBlock Text="{Binding Method.Label}" />
                 <PathIcon Grid.Column="1" Data="{DynamicResource ChevronDownIcon}" />
             </Grid>

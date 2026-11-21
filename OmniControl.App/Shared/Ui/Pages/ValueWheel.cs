@@ -33,10 +33,16 @@ public static class ValueWheel
         InputElement.PointerWheelChangedEvent.AddClassHandler<ComboBox>(OnComboWheel);
         InputElement.PointerWheelChangedEvent.AddClassHandler<AnchorPicker>((picker, e) =>
         {
-            picker.Step(e.Delta.Y > 0 ? -1 : 1);
+            picker.Step(ListDirection(e));
             e.Handled = true;
         });
     }
+
+    /// THE direction of one wheel notch for a value: up (away from the user) is +1, down -1.
+    public static int Direction(PointerWheelEventArgs e) => e.Delta.Y > 0 ? 1 : -1;
+
+    /// The same for a list read top to bottom (a drop-down, a preset list, a picture strip): up is the entry before (-1).
+    public static int ListDirection(PointerWheelEventArgs e) => -Direction(e);
 
     /// How far one wheel notch moves a value with this range (also used by controls that are not sliders, such as an EQ band point).
     public static double StepOf(double minimum, double maximum) => Percent.StepOf(minimum, maximum);
@@ -44,14 +50,14 @@ public static class ValueWheel
     private static void OnRangeWheel(RangeBase range, PointerWheelEventArgs e)
     {
         var step = StepOf(range.Minimum, range.Maximum);
-        range.Value = Math.Clamp(range.Value + (e.Delta.Y > 0 ? step : -step), range.Minimum, range.Maximum);
+        range.Value = Math.Clamp(range.Value + Direction(e) * step, range.Minimum, range.Maximum);
         e.Handled = true;
     }
 
     private static void OnComboWheel(ComboBox combo, PointerWheelEventArgs e)
     {
         if (combo.IsDropDownOpen || combo.ItemCount == 0) return;
-        ComboKeys.Step(combo, e.Delta.Y > 0 ? -1 : 1);
+        ComboKeys.Step(combo, ListDirection(e));
         e.Handled = true;
     }
 }

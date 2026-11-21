@@ -1,4 +1,3 @@
-using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.VisualTree;
 
@@ -7,8 +6,7 @@ namespace OmniControl.App.Features.OtherPcs.Pages;
 /// Wiring only: a right-click on a PC's tab opens its menu (Give nickname…, Set up wake…, Import settings from… while the PC is online, Unpair) in the shared menu style; a dragged tab is handed to the view-model; Ctrl+Tab switches tabs, Ctrl+T opens a New PC tab, Ctrl+W closes the open one; Esc on an open New PC tab closes it.
 public partial class OtherPcsPage : UserControl
 {
-    private Flyout? _rowMenu;
-    private MenuRowList? _rowRows;
+    private readonly PointerMenu _rowMenu = new();
 
     public OtherPcsPage()
     {
@@ -21,14 +19,7 @@ public partial class OtherPcsPage : UserControl
     private void OnPcContext(object? sender, ContextRequestedEventArgs e)
     {
         if ((e.Source as Visual)?.FindAncestorOfType<ListBoxItem>(includeSelf: true) is not { DataContext: PcItem pc } item) return;
-        if (_rowMenu is null)
-        {
-            _rowRows = new MenuRowList();
-            _rowRows.Picked += (_, _) => _rowMenu?.Hide();
-            _rowMenu = new ListMenuFlyout { Placement = PlacementMode.Pointer, Content = _rowRows };
-        }
-        _rowRows!.ItemsSource = pc.MenuRows;
-        _rowMenu.ShowAt(item, showAtPointer: true);
+        _rowMenu.Show(item, pc.MenuRows);
         e.Handled = true;
     }
 

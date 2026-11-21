@@ -16,13 +16,13 @@
 
     <Panel>
         <Button x:Name="Chip" Tag="scope" Classes="selector" IsVisible="{Binding HasPlaysOnMenu}" Click="OnClick">
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapSmall}">
                 <TextBlock Text="{Binding RouteText}" />
                 <PathIcon Grid.Column="1" Data="{DynamicResource ChevronDownIcon}" />
             </Grid>
         </Button>
         <Button Tag="scope" Classes="selector" IsVisible="{Binding PlaysOnOpensWiring}" Command="{Binding ShowWiringCommand}">
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapSmall}">
                 <TextBlock Text="{Binding RouteText}" />
                 <PathIcon Grid.Column="1" Data="{DynamicResource ChevronDownIcon}" />
             </Grid>

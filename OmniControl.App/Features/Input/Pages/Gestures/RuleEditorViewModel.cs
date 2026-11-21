@@ -163,13 +163,11 @@ public sealed partial class RuleEditorViewModel : ObservableObject
         return ($"Choose {(slot.IsNew ? "a" : "the")} {noun}", model);
     }
 
-    private static string Compose(PickResult pick) =>
-        MouseAction.Compose(pick.Choice.WithParameter(pick.Parameter?.Trim() ?? string.Empty), pick.Choice.Options, pick.Values);
 
     /// A setting of the block's current entry changed in the picker: applied at once, except a command, which waits for "Use this action" and the confirm window.
     public void TakeLive(RuleSlot slot, PickResult pick)
     {
-        var stored = Compose(pick);
+        var stored = pick.Stored;
         if (slot.Kind == RuleSlotKind.Step && RuleSteps.NeedsApproval(stored)) return;
         Set(slot, stored);
     }
@@ -178,7 +176,7 @@ public sealed partial class RuleEditorViewModel : ObservableObject
     public async Task TakeAsync(RuleSlot slot, PickResult pick)
     {
         if (pick.Choice.ParamHint is not null && (pick.Parameter ?? string.Empty).Trim().Length == 0) return;
-        var stored = Compose(pick);
+        var stored = pick.Stored;
         if (slot.Kind == RuleSlotKind.Step && RuleSteps.NeedsApproval(stored)
             && !await _rules.Approvals.AskAsync(stored, new DialogMessage("Allow this command?", "The rule runs this command each time it triggers. Changing it later asks again.",
                 "Allow", RuleSteps.Describe(stored), ShowDetails: true))) return;

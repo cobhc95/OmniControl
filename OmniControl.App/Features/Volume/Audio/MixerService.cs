@@ -321,6 +321,29 @@ public sealed partial class MixerService : IDisposable
 
     public void Save() => Settings.Save();
 
+    /// The real speakers the master bus plays on now (kept so a crash or an exit can put them back); saved only when it changed.
+    internal void KeepRealMasterDevice(string id)
+    {
+        if (Settings.RealMasterDevice == id) return;
+        Settings.RealMasterDevice = id;
+        Save();
+    }
+
+    /// The cable the master bus owns now (empty: none); saved only when it changed.
+    internal void KeepBusCable(string cable)
+    {
+        if (Settings.BusCable == cable) return;
+        Settings.BusCable = cable;
+        Save();
+    }
+
+    /// What the last capture test found (saved).
+    internal void KeepCaptureSilence(string result)
+    {
+        Settings.CaptureSilence = result;
+        Save();
+    }
+
     /// "Keep OmniControl's effects in place" (<see cref="MixerSettings.KeepFxInPlace"/>).
     public bool KeepFxInPlace => Settings.KeepFxInPlace;
 

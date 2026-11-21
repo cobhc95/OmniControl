@@ -8,7 +8,7 @@
          selected band under the graph (EqPanelRow; the vertical slider beside the graph is the equaliser's overall gain) and as one card per band in the
          equaliser's plain settings list. Every row is its
          own grid (so Ctrl+Enter on a slider types the value beside it) on shared columns. -->
-    <StackPanel Spacing="4" TextElement.FontSize="{StaticResource EqFontSize}">
+    <StackPanel Spacing="{StaticResource GapSmall}" TextElement.FontSize="{StaticResource EqFontSize}">
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />

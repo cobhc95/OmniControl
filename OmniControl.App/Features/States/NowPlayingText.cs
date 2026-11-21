@@ -7,7 +7,7 @@ namespace OmniControl.App.Features.States;
 /// and no number with the words "Nothing playing" when no app has a media session. Plain printable characters, because they travel to other PCs.
 public static class NowPlayingText
 {
-    public const string StateId = "media.nowplaying", PreviousId = "media.previous", PlayPauseId = "media.playpause", NextId = "media.next", NothingWords = "Nothing playing";
+    public const string StateId = "media.nowplaying", PreviousId = "media.previous", PlayPauseId = Hotkeys.Actions.MouseActionCatalog.MediaPlayPause, NextId = Hotkeys.Actions.MouseActionCatalog.MediaNext, NothingWords = "Nothing playing";
 
     /// The media actions in the order the card's pills show them.
     public static IReadOnlyList<string> ActionIds { get; } = new[] { PreviousId, PlayPauseId, NextId };

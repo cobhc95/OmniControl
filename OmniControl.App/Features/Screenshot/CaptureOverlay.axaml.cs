@@ -72,7 +72,7 @@ public partial class CaptureOverlay : Window
     private void OnColourWheel(object? sender, PointerWheelEventArgs e)
     {
         if (e.Delta.Y == 0) return;
-        _model.StepSize(e.Delta.Y > 0 ? 1 : -1);
+        _model.StepSize(ValueWheel.Direction(e));
         e.Handled = true;
     }
 

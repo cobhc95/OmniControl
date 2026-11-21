@@ -9,7 +9,7 @@
     <!-- Set up wake (docs/mockups/set-up-wake.html): one row per thing a wake needs, each with its mark, words, muted detail and note and a Fix pill
          (accent-outlined when needed, plain when optional); the BIOS row is the person's own job (no button); the dashed Test wake row starts only on a click;
          the foot: Check again, Fix all (one prompt on that PC), Close. Fixes run on the other PC behind its own prompt. While it is off the last report shows, read-only. -->
-    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" Margin="12" RowSpacing="8">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" Margin="12" RowSpacing="{StaticResource GapLarge}">
         <TextBlock Classes="title" Text="{Binding Heading}" />
         <TextBlock Grid.Row="1" Classes="hint" TextWrapping="Wrap" Text="{Binding OfflineNote}" IsVisible="{Binding IsOffline}" />
         <ItemsControl Grid.Row="2" ItemsSource="{Binding Rows}">
@@ -17,7 +17,7 @@
                 <DataTemplate x:DataType="vm:WakeRowItem">
                     <Panel ToolTip.Tip="{Binding Tip}" Margin="0,2">
                         <Rectangle Classes="emptydash" IsVisible="{Binding IsTest}" />
-                        <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="6" MinHeight="24" Margin="6,2">
+                        <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="{StaticResource Gap}" MinHeight="24" Margin="6,2">
                             <Panel Width="{DynamicResource MenuGlyphSize}" VerticalAlignment="Top" Margin="0,4,0,0">
                                 <Path Classes="glyph tickmark" Data="{StaticResource TickIcon}" IsVisible="{Binding IsDone}" />
                                 <c:IconGlyph Classes="cautionmark" LibraryId="circle" IsVisible="{Binding IsNeeded}" />
@@ -39,7 +39,7 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
-        <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" IsVisible="{Binding HasStatus}">
+        <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource GapLarge}" IsVisible="{Binding HasStatus}">
             <Panel Classes="tilemark" Margin="0" VerticalAlignment="Center" IsVisible="{Binding Busy}">
                 <Ellipse Classes="markring" />
                 <Path Classes="markarc" Classes.spinning="{Binding Busy}" />
@@ -48,7 +48,7 @@
             <Button Grid.Column="2" Classes="pill" Content="Stop" Command="{Binding StopCommand}" IsVisible="{Binding Busy}" ToolTip.Tip="Stops and puts back anything half-done." />
         </Grid>
         <Border Grid.Row="4" Classes="footer">
-            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="8">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="{StaticResource GapLarge}">
                 <Button Classes="pill" Content="Check again" Command="{Binding CheckAgainCommand}" IsVisible="{Binding IsOnline}" ToolTip.Tip="Asks that PC to read its network card again." />
                 <Button Grid.Column="1" Classes="pill" Content="Undo my changes" Command="{Binding UndoCommand}" IsVisible="{Binding CanUndo}" ToolTip.Tip="Puts back exactly the settings OmniControl turned on, with one prompt on that PC." />
                 <Button Grid.Column="2" Classes="pill accentline" Content="Fix all" Command="{Binding FixAllCommand}" IsVisible="{Binding IsOnline}" ToolTip.Tip="Turns on every needed row with one prompt on that PC." />

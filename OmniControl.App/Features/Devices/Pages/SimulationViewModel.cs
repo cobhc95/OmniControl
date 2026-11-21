@@ -148,8 +148,7 @@ public sealed partial class SimulationViewModel : ObservableObject, IDisposable
         get => Keeper.Settings.IdleMinutes;
         set
         {
-            Keeper.Settings.IdleMinutes = (int)value;
-            Keeper.Edited();
+            Keeper.SetIdleMinutes((int)value);
             OnPropertyChanged();
         }
     }

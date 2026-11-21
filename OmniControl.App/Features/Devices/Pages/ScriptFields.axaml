@@ -10,7 +10,7 @@
          under the field when the row is narrow. -->
     <FlyoutBase.AttachedFlyout>
         <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft" FlyoutPresenterClasses="optionmenu" Opened="OnGuideOpened">
-            <StackPanel x:DataType="vm:MethodItem" Spacing="6">
+            <StackPanel x:DataType="vm:MethodItem" Spacing="{StaticResource Gap}">
                 <TextBlock Classes="strong" Text="Give the device a fixed address" />
                 <TextBlock Classes="hint small" TextWrapping="Wrap"
                            Text="1. Open your router's page and sign in.&#10;2. Find DHCP, LAN or Address reservation.&#10;3. Pick the device (it shows as Tapo or by its name) and reserve its current address.&#10;4. Save, then type that address in the Address box and switch Reserved on." />
@@ -21,14 +21,14 @@
         </c:ListMenuFlyout>
     </FlyoutBase.AttachedFlyout>
 
-    <StackPanel Spacing="6" Grid.IsSharedSizeScope="True">
+    <StackPanel Spacing="{StaticResource Gap}" Grid.IsSharedSizeScope="True">
         <Grid x:Name="AddressRow" ColumnSpacing="10">
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" SharedSizeGroup="DeviceFieldLabel" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
             <TextBlock Classes="muted" Text="Address" VerticalAlignment="Center" />
-            <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto" RowSpacing="4">
+            <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto" RowSpacing="{StaticResource GapSmall}">
                 <TextBox Classes="field" Text="{Binding Address, UpdateSourceTrigger=LostFocus}" Watermark="IP address" MinWidth="0"
                          ToolTip.Tip="The device's IP address on your home network (your router's list of devices, or the Tapo or Kasa app, shows it)." />
-                <WrapPanel Grid.Row="1" ItemSpacing="8" LineSpacing="4">
+                <WrapPanel Grid.Row="1" ItemSpacing="{StaticResource GapLarge}" LineSpacing="{StaticResource GapSmall}">
                     <ToggleSwitch Classes="plain" IsChecked="{Binding Reserved}" VerticalAlignment="Center"
                                   ToolTip.Tip="Switch on once the address is reserved in your router, so it never changes." />
                     <TextBlock Text="Reserved in my router" VerticalAlignment="Center" />
@@ -42,7 +42,7 @@
         <Grid x:Name="SignInRow" ColumnSpacing="10">
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" SharedSizeGroup="DeviceFieldLabel" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
             <TextBlock Classes="muted" Text="Sign-in" VerticalAlignment="Top" Margin="0,6,0,0" />
-            <Grid Grid.Column="1" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="4">
+            <Grid Grid.Column="1" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="{StaticResource GapLarge}" RowSpacing="{StaticResource GapSmall}">
                 <TextBox Grid.ColumnSpan="2" Classes="field" Text="{Binding Email, UpdateSourceTrigger=LostFocus}" Watermark="{Binding SignInWatermark}" MinWidth="0" />
                 <c:PasswordField Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Password}" Watermark="{Binding PasswordWatermark}"
                                  SaveCommand="{Binding SavePasswordCommand}" SavedAt="{Binding PasswordSavedAt}" HasSaved="{Binding HasPassword}"
@@ -51,11 +51,11 @@
         </Grid>
         </StackPanel>
 
-        <StackPanel x:Name="ProfileRow" Spacing="6">
+        <StackPanel x:Name="ProfileRow" Spacing="{StaticResource Gap}">
             <Grid ColumnSpacing="10">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" SharedSizeGroup="DeviceFieldLabel" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <TextBlock Classes="muted" Text="Template" VerticalAlignment="Center" />
-                <WrapPanel Grid.Column="1" ItemSpacing="6" LineSpacing="4" VerticalAlignment="Center">
+                <WrapPanel Grid.Column="1" ItemSpacing="{StaticResource Gap}" LineSpacing="{StaticResource GapSmall}" VerticalAlignment="Center">
                     <TextBlock Classes="strong" Text="{Binding ProfileText}" VerticalAlignment="Center" />
                     <ItemsControl ItemsSource="{Binding ProfileTags}" VerticalAlignment="Center">
                         <ItemsControl.ItemTemplate><DataTemplate><c:TagView /></DataTemplate></ItemsControl.ItemTemplate>
@@ -67,9 +67,9 @@
             </Grid>
 
             <Border Classes="stage open" IsVisible="{Binding ShowsAdvanced}">
-                <StackPanel Spacing="6">
+                <StackPanel Spacing="{StaticResource Gap}">
                     <TextBlock Classes="hint small" Text="{Binding AdvancedTitle}" TextWrapping="Wrap" />
-                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="4">
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="{StaticResource GapLarge}" RowSpacing="{StaticResource GapSmall}">
                         <TextBlock Classes="hint small" Text="Name" VerticalAlignment="Center" IsVisible="{Binding IsOwnProfile}" />
                         <TextBox Grid.Column="1" Classes="field" Text="{Binding OwnName, UpdateSourceTrigger=LostFocus}" IsVisible="{Binding IsOwnProfile}" MinWidth="0" />
                         <TextBlock Grid.Row="1" Classes="hint small" Text="On" VerticalAlignment="Center" />
@@ -80,7 +80,7 @@
                         <TextBox Grid.Row="3" Grid.Column="1" Classes="field code" AcceptsReturn="False" Text="{Binding DraftState, UpdateSourceTrigger=LostFocus}" MinWidth="0" />
                     </Grid>
                     <TextBlock Classes="hint small" Text="{Binding AdvancedNote}" TextWrapping="Wrap" />
-                    <WrapPanel ItemSpacing="6" LineSpacing="4">
+                    <WrapPanel ItemSpacing="{StaticResource Gap}" LineSpacing="{StaticResource GapSmall}">
                         <Button Classes="pill" Content="Test" Command="{Binding TestTemplatesCommand}" ToolTip.Tip="Runs Off, then On, with these templates." />
                         <Button Classes="pill" Content="Save as my template…" Command="{Binding SaveAsOwnCommand}" ToolTip.Tip="Keeps these templates as a template of your own, which updates never change." />
                         <Button Classes="pill" Content="Reset to built-in" Command="{Binding ResetProfileCommand}" IsEnabled="{Binding CanResetProfile}" ToolTip.ShowOnDisabled="True"

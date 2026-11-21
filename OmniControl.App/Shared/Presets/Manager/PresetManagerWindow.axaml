@@ -59,13 +59,13 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:PresetCardViewModel">
                             <Border Classes="groupPanel" Classes.target="{Binding IsTarget}">
-                                <StackPanel Spacing="4" Margin="4">
+                                <StackPanel Spacing="{StaticResource GapSmall}" Margin="4">
                                     <TextBlock Classes="strong" Text="{Binding Title}" TextTrimming="CharacterEllipsis" Margin="6,2,0,0" />
                                     <pages:EmptyListRow Text="No presets yet." IsVisible="{Binding IsEmpty}" />
                                     <ListBox Classes="rows compact" ItemsSource="{Binding Rows}" IsVisible="{Binding !IsEmpty}" Loaded="OnCardListLoaded">
                                         <ListBox.ItemTemplate>
                                             <DataTemplate x:DataType="vm:PresetRowViewModel">
-                                                <Grid ColumnSpacing="8">
+                                                <Grid ColumnSpacing="{StaticResource GapLarge}">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="Auto" SharedSizeGroup="PresetGrip" />
                                                         <ColumnDefinition Width="*" />
@@ -74,17 +74,17 @@
                                                     </Grid.ColumnDefinitions>
                                                     <PathIcon Classes="grip" Data="{DynamicResource GripIcon}" VerticalAlignment="Center" IsVisible="{Binding CanMove}"
                                                               ToolTip.Tip="Drag to move (or Alt+Up / Alt+Down)" />
-                                                    <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="6" VerticalAlignment="Center">
+                                                    <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}" VerticalAlignment="Center">
                                                         <Panel VerticalAlignment="Center">
                                                             <TextBlock Text="{Binding Name}" IsVisible="{Binding !IsEditing}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
                                                                        ToolTip.Tip="{Binding NameTip}" DoubleTapped="OnNameDoubleTapped" />
                                                             <TextBox Classes="field" Text="{Binding EditText}" IsVisible="{Binding IsEditing}" MaxLength="{Binding NameMaxLength}"
                                                                      KeyDown="OnRenameKey" LostFocus="OnRenameLostFocus" />
                                                         </Panel>
-                                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource GapSmall}" VerticalAlignment="Center">
                                                             <Border Classes="tag selected" IsVisible="{Binding InUse}" VerticalAlignment="Center"><TextBlock Text="in use" /></Border>
                                                             <ItemsControl ItemsSource="{Binding Tags}" VerticalAlignment="Center">
-                                                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="{StaticResource GapSmall}" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                                                 <ItemsControl.ItemTemplate>
                                                                     <DataTemplate>
                                                                         <c:TagView VerticalAlignment="Center" />
@@ -95,7 +95,7 @@
                                                     </Grid>
                                                     <hk:HotkeyBox Grid.Column="2" DataContext="{Binding Shortcut}"
                                                                   ToolTip.Tip="The shortcut that applies this preset from anywhere: double-click, then press the keys; Backspace removes it" />
-                                                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="{StaticResource GapSmall}" VerticalAlignment="Center">
                                                         <Button Classes="pill" Tag="scope" Content="{Binding ApplyText}" Command="{Binding ApplyCommand}" IsVisible="{Binding CanApply}" />
                                                         <Button Classes="pill" Tag="scope" Content="Rename" Command="{Binding BeginRenameCommand}" IsVisible="{Binding CanRename}" />
                                                         <Button Classes="pill" Tag="scope" Content="{Binding DeleteText}" Command="{Binding DeleteCommand}" IsVisible="{Binding CanDelete}" />
@@ -113,7 +113,7 @@
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>
                                     </ListBox>
-                                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="6,2,0,4">
+                                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource GapLarge}" Margin="6,2,0,4">
                                         <Button Classes="blockadd small" Content="{Binding AddText}" Command="{Binding AddCommand}" IsEnabled="{Binding CanAdd}"
                                                 IsVisible="{Binding !IsFiltering}" ToolTip.Tip="{Binding AddTip}" ToolTip.ShowOnDisabled="True" />
                                         <Button Classes="pill" Tag="scope" Content="Import…" Command="{Binding ImportCommand}" IsVisible="{Binding CanImport}"

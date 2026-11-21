@@ -5,7 +5,7 @@
     <!-- The one empty-list row (master look: Rectangle.emptydash in Styles/Blocks.axaml): one sentence and a link that does what the group's header pill does -->
     <Panel>
         <Rectangle Classes="emptydash" />
-        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" Margin="10,8">
+        <StackPanel Orientation="Horizontal" Spacing="{StaticResource GapLarge}" HorizontalAlignment="Center" Margin="10,8">
             <TextBlock Classes="cardlabel" Foreground="{DynamicResource BrushMuted}" VerticalAlignment="Center" TextWrapping="Wrap"
                        Text="{Binding Text, RelativeSource={RelativeSource AncestorType=pages:EmptyListRow}}" />
             <Button Classes="link small" VerticalAlignment="Center" Command="{Binding Command, RelativeSource={RelativeSource AncestorType=pages:EmptyListRow}}"

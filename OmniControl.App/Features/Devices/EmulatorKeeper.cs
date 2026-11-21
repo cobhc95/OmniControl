@@ -27,6 +27,13 @@ public sealed class EmulatorKeeper : IDisposable
 
     public EmulatorKeepSettings Settings { get; }
 
+    /// How long the emulator may sit idle before it is closed ("until idle"); saved and followed at once.
+    public void SetIdleMinutes(int minutes)
+    {
+        Settings.IdleMinutes = minutes;
+        Edited();
+    }
+
     /// True when OmniControl hid the running emulator's window, false when it is shown; null when it is not running or its window is not OmniControl's to hide.
     public bool? Hidden { get; private set; }
 

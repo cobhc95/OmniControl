@@ -5,7 +5,7 @@
              xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
              x:Class="OmniControl.App.Features.Input.Pages.Mouse.MousePage"
              x:DataType="vm:MousePageViewModel">
-    <StackPanel Spacing="6">
+    <StackPanel Spacing="{StaticResource Gap}">
         <StackPanel x:Name="CardsHost" Grid.IsSharedSizeScope="True">
             <!-- Mouse Buttons and Trackpad: the Apps chip and the layer picker on the title line, hidden with the rest while the group is collapsed -->
             <pages:GroupCard Group="{Binding ButtonsGroup}">
@@ -65,7 +65,7 @@
 
             <!-- Pointer settings: Windows' own mouse settings, changed live; the pointers of the scheme as an inner group; reset and restore last -->
             <pages:GroupCard Group="{Binding PointerGroup}">
-                <StackPanel Spacing="4">
+                <StackPanel Spacing="{StaticResource GapSmall}">
                     <ListBox Classes="rows compact cards" ItemsSource="{Binding PointerGroup.Items}"></ListBox>
                     <ItemsControl ItemsSource="{Binding PointerGroup.Subgroups}">
                         <ItemsControl.ItemTemplate>

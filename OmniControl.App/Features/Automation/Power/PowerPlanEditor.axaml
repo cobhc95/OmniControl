@@ -9,7 +9,7 @@
     <UserControl.DataTemplates>
         <!-- One ‹ value › selector; a typed number replaces the value while the box is open -->
         <DataTemplate DataType="power:PowerValueCell">
-            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" IsVisible="{Binding Visible}" pages:ValueWheel.Selector="True">
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource GapSmall}" VerticalAlignment="Center" IsVisible="{Binding Visible}" pages:ValueWheel.Selector="True">
                 <Button Classes="pill glyph" Focusable="False" Command="{Binding StepDownCommand}"><Path Classes="glyph" Data="{StaticResource ChevronLeftIcon}" /></Button>
                 <Panel MinWidth="64" VerticalAlignment="Center">
                     <TextBlock Text="{Binding Text}" TextAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" IsVisible="{Binding !IsTyping}"
@@ -21,13 +21,13 @@
             </StackPanel>
         </DataTemplate>
     </UserControl.DataTemplates>
-    <StackPanel Spacing="4" Grid.IsSharedSizeScope="True" Margin="0,2">
-        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+    <StackPanel Spacing="{StaticResource GapSmall}" Grid.IsSharedSizeScope="True" Margin="0,2">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}">
             <TextBlock Classes="hint small strong" Text="{Binding Status}" VerticalAlignment="Center" Margin="0,6,0,0" />
             <Button Grid.Column="1" Classes="pill" Content="Restore plan defaults" IsVisible="{Binding CanRestore}" Focusable="False" Command="{Binding RestoreCommand}" />
         </Grid>
         <TextBlock Classes="cautiontext" Text="{Binding Problem}" IsVisible="{Binding HasProblem}" TextWrapping="Wrap" />
-        <Grid ColumnSpacing="8">
+        <Grid ColumnSpacing="{StaticResource GapLarge}">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" SharedSizeGroup="Plugged" /><ColumnDefinition Width="Auto" SharedSizeGroup="Battery" /></Grid.ColumnDefinitions>
             <TextBlock Grid.Column="1" Classes="muted small" Text="Plugged in" HorizontalAlignment="Center" />
             <TextBlock Grid.Column="2" Classes="muted small" Text="On battery" HorizontalAlignment="Center" IsVisible="{Binding HasBattery}" />
@@ -46,7 +46,7 @@
                         <ItemsControl ItemsSource="{Binding Rows}" IsVisible="{Binding IsOpen}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="power:PowerSettingRow">
-                                    <Grid ColumnSpacing="8" MinHeight="30">
+                                    <Grid ColumnSpacing="{StaticResource GapLarge}" MinHeight="30">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" SharedSizeGroup="Plugged" /><ColumnDefinition Width="Auto" SharedSizeGroup="Battery" /></Grid.ColumnDefinitions>
                                         <TextBlock Text="{Binding Name}" Margin="22,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap" />
                                         <ContentControl Grid.Column="1" Content="{Binding PluggedIn}" />

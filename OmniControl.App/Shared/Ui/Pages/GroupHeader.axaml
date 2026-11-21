@@ -12,14 +12,14 @@
             <TextBlock Classes="strong" Grid.Column="2" Text="{Binding Name}" VerticalAlignment="Center" />
             <!-- The summary either follows the name (a group that wants it beside the title) or sits at the right edge -->
             <Panel x:Name="SummaryHost" Grid.Column="3">
-                <TextBlock Text="{Binding ShownSummary}" Classes="muted" FontSize="12" Margin="12,0,0,0" VerticalAlignment="Center"
+                <TextBlock Text="{Binding ShownSummary}" Classes="muted" FontSize="{StaticResource SummaryFontSize}" Margin="12,0,0,0" VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis" IsVisible="{Binding SummaryBesideName}" />
-                <TextBlock Text="{Binding ShownSummary}" Classes="muted" FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center"
+                <TextBlock Text="{Binding ShownSummary}" Classes="muted" FontSize="{StaticResource SummaryFontSize}" HorizontalAlignment="Right" VerticalAlignment="Center"
                            IsVisible="{Binding !SummaryBesideName}" />
                 <StackPanel Classes="groupbadge" Classes.good="{Binding Badge.IsGood}" Classes.caution="{Binding Badge.IsCaution}" Orientation="Horizontal" Spacing="5"
                             HorizontalAlignment="Right" VerticalAlignment="Center" IsVisible="{Binding HasBadge}" ToolTip.Tip="{Binding Badge.Tip}">
                     <c:IconGlyph LibraryId="{Binding Badge.Icon}" />
-                    <TextBlock Text="{Binding Badge.Text}" FontSize="12" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Badge.Text}" FontSize="{StaticResource SummaryFontSize}" VerticalAlignment="Center" />
                 </StackPanel>
             </Panel>
         </Grid>

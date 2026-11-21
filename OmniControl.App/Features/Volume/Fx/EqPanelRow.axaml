@@ -7,8 +7,8 @@
     <!-- Parametric equaliser editor (design C, docs/mockups/eq-design-c.html): the band list at the left (tab-like rows that share the
          graph's height, at least BandRowsPanel.MinRowHeight each, scrolling beyond that; "+ Add band" under it), the graph in the middle,
          the equaliser's OVERALL gain as a vertical slider at the right; under them the selected band's Type, Frequency, Bandwidth and Gain, then the buttons and view switches. -->
-    <StackPanel Spacing="8" Margin="0,4" TextElement.FontSize="{StaticResource EqFontSize}">
-        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" RowDefinitions="230">
+    <StackPanel Spacing="{StaticResource GapLarge}" Margin="0,4" TextElement.FontSize="{StaticResource EqFontSize}">
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource GapLarge}" RowDefinitions="230">
             <Grid RowDefinitions="*,Auto" RowSpacing="3" Width="{StaticResource BandListWidth}">
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                     <ItemsControl x:Name="BandList" ItemsSource="{Binding Bands}">
@@ -21,7 +21,7 @@
                             <DataTemplate DataType="vm:EqBandItem">
                                 <Button Classes="bandrow" Classes.on="{Binding IsSelected}" Classes.off="{Binding IsBypassed}"
                                         Command="{Binding SelectCommand}">
-                                    <Grid ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="6">
+                                    <Grid ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="{StaticResource Gap}">
                                         <Border Classes="bandbar" Margin="0,2" />
                                         <vm:BandDot Grid.Column="1" VerticalAlignment="Center" />
                                         <TextBlock Grid.Column="2" Text="{Binding Number}" FontSize="{StaticResource EqFontSize}" VerticalAlignment="Center" />
@@ -63,11 +63,11 @@
         <WrapPanel Orientation="Horizontal">
             <Button Classes="pill cardaction" Tag="scope" Content="Remove band" Command="{Binding RemoveBandCommand}" Margin="0,0,6,4" VerticalAlignment="Center" />
             <Button Classes="pill cardaction" Tag="scope" Content="Reset defaults" Command="{Binding ResetDefaultsCommand}" Margin="0,0,16,4" VerticalAlignment="Center" />
-            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,12,4">
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Gap}" Margin="0,0,12,4">
                 <TextBlock Text="Grid" VerticalAlignment="Center" />
                 <ToggleSwitch FontSize="{StaticResource EqFontSize}" IsChecked="{Binding ShowGrid}" OnContent="On" OffContent="Off" VerticalAlignment="Center" />
             </StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,12,4">
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Gap}" Margin="0,0,12,4">
                 <TextBlock Text="Phase" VerticalAlignment="Center" />
                 <ToggleSwitch FontSize="{StaticResource EqFontSize}" IsChecked="{Binding ShowPhase}" OnContent="On" OffContent="Off" VerticalAlignment="Center" />
             </StackPanel>

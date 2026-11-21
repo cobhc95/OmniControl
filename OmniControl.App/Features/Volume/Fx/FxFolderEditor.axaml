@@ -9,8 +9,8 @@
          the folder's glyph, device and On switch, then cards (Device menu, the device's method read only, Mix), then its effects and
          "Add effect here..". The method is only shown here: the Mixer owns it. -->
     <ScrollViewer>
-        <StackPanel Spacing="8">
-            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="4,2,4,0">
+        <StackPanel Spacing="{StaticResource GapLarge}">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource GapLarge}" Margin="4,2,4,0">
                 <Grid.Resources><x:Double x:Key="ToggleSwitchThemeMinWidth">0</x:Double></Grid.Resources>
                 <c:IconGlyph Classes="chainfolder" Classes.playing="{Binding Folder.Playing}" Classes.cable="{Binding Folder.IsCable}"
                              LibraryId="device-speaker" VerticalAlignment="Center" />

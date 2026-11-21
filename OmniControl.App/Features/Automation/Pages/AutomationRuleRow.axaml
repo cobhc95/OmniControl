@@ -8,7 +8,7 @@
              x:DataType="vm:AutomationItem">
     <!-- One rule: its switch, its name and a delete cross on the first line; the sentence of blocks (Styles/Blocks.axaml) on the second;
          its facts as tags (Border.tag) on the third, with the one fix link a tag may need under them. Every block opens the shared picker; a hotkey block opens its capture pop-down (the Popup below). -->
-    <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" Margin="0,2,0,4">
+    <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="{StaticResource GapLarge}" Margin="0,2,0,4">
         <ToggleSwitch Classes="plain" IsChecked="{Binding IsOn}" VerticalAlignment="Center" />
         <TextBox Grid.Column="1" Classes="field" Text="{Binding Name, UpdateSourceTrigger=LostFocus}" Watermark="Name" MaxWidth="320"
                  HorizontalAlignment="Left" MinWidth="160" />
@@ -37,7 +37,7 @@
                 <DataTemplate DataType="pages:SentenceHotkey">
                     <Button Classes="block" Classes.capturing="{Binding Capturing}" Click="OnHotkeyClick" Loaded="OnHotkeyBlockLoaded"
                             ToolTip.Tip="Set the keys; Delete removes it">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
+                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource Gap}">
                             <TextBlock Text="I press" />
                             <hk:KeycapRow Parts="{Binding Keys}" VerticalAlignment="Center" />
                             <Button Classes="blockx" Click="OnRemoveClick" ToolTip.Tip="Remove">
@@ -53,7 +53,7 @@
                                 <StackPanel x:DataType="pages:SentenceLink">
                                     <c:MenuRowList ItemsSource="{Binding Rows}" Picked="OnLinkPicked" />
                                     <Border Classes="hrule" Margin="{StaticResource MenuRuleMargin}" IsVisible="{Binding HasAmount}" />
-                                    <Grid IsVisible="{Binding HasAmount}" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8"
+                                    <Grid IsVisible="{Binding HasAmount}" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource GapLarge}"
                                           Margin="{StaticResource MenuTextInset}">
                                         <TextBlock Text="{Binding Amount.Label}" Classes="menutext" Margin="0" VerticalAlignment="Center" />
                                         <Slider Grid.Column="1" MinWidth="140" Minimum="{Binding Amount.Minimum}" Maximum="{Binding Amount.Maximum}"
@@ -97,13 +97,13 @@
              so the keys reach the row (HotkeyCapture). -->
         <Popup x:Name="CapturePopup" Placement="BottomEdgeAlignedLeft" VerticalOffset="{DynamicResource MenuOffset}" IsLightDismissEnabled="False">
             <FlyoutPresenter Classes="capturemenu">
-                <StackPanel Spacing="8">
+                <StackPanel Spacing="{StaticResource GapLarge}">
                     <Panel>
                         <Border Classes="capturebox" />
                         <hk:KeycapRow Parts="{Binding CaptureKeys}" HorizontalAlignment="Center" Margin="0,14" />
                     </Panel>
                     <TextBlock Classes="menutext" Text="{Binding CaptureNote}" HorizontalAlignment="Center" Margin="0" />
-                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource Gap}" HorizontalAlignment="Center">
                         <Button Classes="pill cardaction" Content="Clear" Focusable="False" Click="OnCaptureClearClick" />
                         <Button Classes="pill cardaction" Content="Cancel" Focusable="False" Click="OnCaptureCancelClick" />
                     </StackPanel>

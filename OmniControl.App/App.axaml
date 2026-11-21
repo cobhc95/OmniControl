@@ -55,6 +55,8 @@
         <x:Double x:Key="ToolRowHeight">30</x:Double>
         <Thickness x:Key="ToolRowPadding">8,4</Thickness>
         <x:Double x:Key="ToolFontSize">11</x:Double>
+    <!-- A group header's summary and badge, a subgroup's summary, a search result's heading: one size -->
+    <x:Double x:Key="SummaryFontSize">12</x:Double>
         <x:Double x:Key="EqFontSize">13</x:Double>
         <x:Double x:Key="BandListWidth">104</x:Double>
         <x:Double x:Key="EqGainColumnWidth">56</x:Double>

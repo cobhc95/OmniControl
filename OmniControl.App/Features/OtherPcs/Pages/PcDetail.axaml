@@ -9,14 +9,14 @@
     <!-- One paired PC (docs/mockups/other-pcs.html, other-pcs-browser-tabs.html; template in App.axaml): the header line (docs/mockups/pc-header-tidy.html: its name and real name, at the right the connection chip, the split Wake button and the "..." menu), the address box when it is reached by address, the Tailscale checklist only while a check fails, then,
          while it is connected, its basic set as groups (Screens, Sound, Power, Smart devices; two independent columns when wide, one when narrow) with real
          controls and action pills. While it is offline one sentence says so. -->
-    <StackPanel Spacing="8">
-        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-            <WrapPanel ItemSpacing="8" LineSpacing="4" VerticalAlignment="Center">
+    <StackPanel Spacing="{StaticResource GapLarge}">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}">
+            <WrapPanel ItemSpacing="{StaticResource GapLarge}" LineSpacing="{StaticResource GapSmall}" VerticalAlignment="Center">
                 <TextBlock Classes="strong" Text="{Binding Name}" TextWrapping="Wrap" VerticalAlignment="Center" />
                 <TextBlock Classes="hint small" Text="{Binding RealName}" IsVisible="{Binding HasNickname}" TextWrapping="Wrap" VerticalAlignment="Center" />
             </WrapPanel>
             <!-- docs/mockups/pc-header-tidy.html: the connection chip, the split Wake button, then the "..." menu (the tab's right-click rows) -->
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource Gap}" VerticalAlignment="Center">
                 <!-- The power countdown tag ("Sleep in 0:25", then "Asleep"): visible from any section -->
                 <ContentControl Content="{Binding PowerTag}" VerticalAlignment="Center">
                     <ContentControl.ContentTemplate>
@@ -48,8 +48,8 @@
         <TextBox Classes="field" Text="{Binding Address}" Watermark="Its address, such as 100.64.0.7" IsVisible="{Binding ShowsAddress}"
                  LostFocus="OnAddressLeft" KeyDown="OnAddressKey" />
         <Border Classes="stage open" IsVisible="{Binding ShowsChecklist}">
-            <StackPanel Spacing="6">
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <StackPanel Spacing="{StaticResource Gap}">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}">
                     <TextBlock Classes="strong" Text="Set up Tailscale for this PC" VerticalAlignment="Center" />
                     <Button Grid.Column="1" Classes="pill" Content="{Binding CheckText}" Command="{Binding CheckAgainCommand}" VerticalAlignment="Center" />
                 </Grid>
@@ -68,7 +68,7 @@
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
                     <Border Classes="groupPanel" Margin="0,0,0,6" VerticalAlignment="Top">
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource GapLarge}">
                             <c:IconGlyph LibraryId="{Binding Icon}" VerticalAlignment="Center" />
                             <TextBlock Grid.Column="1" Classes="strong" Text="{Binding Name}" VerticalAlignment="Center" />
                             <Panel Grid.Column="2" Classes="tilemark" Margin="0" HorizontalAlignment="Center" VerticalAlignment="Center" ToolTip.Tip="Loading what this PC shares">
@@ -84,7 +84,7 @@
         <ContentControl IsVisible="{Binding ShowsGroups}" Content="{Binding Mirror}">
           <ContentControl.ContentTemplate>
             <DataTemplate x:DataType="vm:PcMirror">
-        <StackPanel Spacing="6">
+        <StackPanel Spacing="{StaticResource Gap}">
             <ItemsControl ItemsSource="{Binding Groups}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate><pages:FixedColumnsPanel ColumnMinWidth="{StaticResource FixedColumnMinWidth}" Gap="{StaticResource FixedColumnGap}" /></ItemsPanelTemplate>
@@ -92,7 +92,7 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:MirrorGroup">
                         <pages:GroupCard Group="{Binding Group}" Margin="0,0,0,6" VerticalAlignment="Top">
-                            <StackPanel Spacing="4">
+                            <StackPanel Spacing="{StaticResource GapSmall}">
                                 <TextBlock Classes="hint" Text="Not available" IsVisible="{Binding IsEmpty}" />
                                 <ListBox Classes="rows compact cards" ItemsSource="{Binding Group.Items}" IsVisible="{Binding !IsEmpty}" />
                                 <c:ChoiceChips ItemsSource="{Binding Actions}" IsVisible="{Binding HasActions}" />

@@ -6,8 +6,8 @@
              x:DataType="easy:EasyViewModel">
     <!-- The Easy view of the Volume page: the welcome, one goal's guided setup, or the Easy page. The line
          under the title confirms a finished setup and fades by itself (its space stays, so the page does not jump). -->
-    <StackPanel Spacing="6">
-        <StackPanel Orientation="Horizontal" Spacing="8" MinHeight="16" IsVisible="{Binding IsPage}">
+    <StackPanel Spacing="{StaticResource Gap}">
+        <StackPanel Orientation="Horizontal" Spacing="{StaticResource GapLarge}" MinHeight="16" IsVisible="{Binding IsPage}">
             <TextBlock Classes="hint" Text="{Binding Confirmation}" Opacity="{Binding ConfirmationOpacity}" VerticalAlignment="Center">
                 <TextBlock.Transitions>
                     <Transitions><DoubleTransition Property="Opacity" Duration="{StaticResource EasyFadeTime}" /></Transitions>

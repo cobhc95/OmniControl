@@ -13,7 +13,7 @@
     <DockPanel>
         <TextBox x:Name="SearchBox" DockPanel.Dock="Top" Classes="field search" Text="{Binding Search}" Watermark="Search icons…" Margin="12,12,12,6" />
         <Border DockPanel.Dock="Bottom" Classes="footer">
-            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="8">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="{StaticResource GapLarge}">
                 <Button Classes="pill" Content="Default" Click="OnDefaultClick" VerticalAlignment="Center" ToolTip.Tip="Show its own icon again" />
                 <Button Grid.Column="1" Classes="pill" Content="Own image…" Click="OnOwnImageClick" VerticalAlignment="Center"
                         ToolTip.Tip="Use a picture of your own (SVG or PNG) for this; it is also kept in Your icons" />
@@ -23,7 +23,7 @@
                 <Button Grid.Column="4" Classes="primary close" Content="Use" Click="OnUseClick" IsEnabled="{Binding HasSelection}" />
             </Grid>
         </Border>
-        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="12,0,12,8" IsVisible="{Binding SelectedIsMine}">
+        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource GapLarge}" Margin="12,0,12,8" IsVisible="{Binding SelectedIsMine}">
             <TextBlock Text="Name" VerticalAlignment="Center" />
             <TextBox Grid.Column="1" Classes="field" Text="{Binding SelectedName, UpdateSourceTrigger=LostFocus}" />
             <Button Grid.Column="2" Classes="pill danger" Content="Remove" Click="OnRemoveClick" VerticalAlignment="Center"
@@ -33,7 +33,7 @@
             <ItemsControl ItemsSource="{Binding Sections}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="i:IconSection">
-                        <StackPanel Spacing="4" Margin="0,0,0,8">
+                        <StackPanel Spacing="{StaticResource GapSmall}" Margin="0,0,0,8">
                             <TextBlock Classes="hint small" Text="{Binding Title}" />
                             <ItemsControl ItemsSource="{Binding Cells}">
                                 <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="8" HorizontalAlignment="Left" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>

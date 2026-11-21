@@ -19,7 +19,7 @@
         </pages:CardLayout>
         <pages:CardLayout IsVisible="{Binding Half}">
             <DataTemplate x:DataType="pages:ScopeItem">
-                <Grid Margin="0,1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <Grid Margin="0,1" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}">
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Classes="cardlabel" Text="{Binding Label}" />
                         <TextBlock Classes="muted" Text="{Binding Note}" IsVisible="{Binding HasNote}" TextWrapping="Wrap" />

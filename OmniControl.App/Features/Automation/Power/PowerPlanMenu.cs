@@ -1,4 +1,3 @@
-using Avalonia.Controls.Primitives;
 
 namespace OmniControl.App.Features.Automation.Power;
 
@@ -19,11 +18,9 @@ public static class PowerPlanMenu
         var rows = plans.Count == 0
             ? new[] { MenuRowItem.Header(NoneLeft) }
             : plans.Select(p => new MenuRowItem(p.Name, string.Empty, false, string.Empty, new RelayCommand(() => answer.TrySetResult(p)))).ToArray();
-        var list = new MenuRowList { Title = Title, ItemsSource = rows };
-        var menu = new ListMenuFlyout { Placement = PlacementMode.Pointer, Content = list };
-        list.Picked += (_, _) => menu.Hide();
-        menu.Closed += (_, _) => answer.TrySetResult(null); // closed without a pick: no plan (a pick has set its answer by now)
-        menu.ShowAt(anchor, showAtPointer: true);
+        var menu = new PointerMenu();
+        menu.Closed += () => answer.TrySetResult(null); // closed without a pick: no plan (a pick has set its answer by now)
+        menu.Show(anchor, rows, Title);
         return answer.Task;
     }
 }

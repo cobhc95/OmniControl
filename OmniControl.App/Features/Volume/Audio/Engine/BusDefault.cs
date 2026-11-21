@@ -67,11 +67,7 @@ internal sealed class BusDefault
         if (!real.FellBack)
         {
             _fellBackTo = string.Empty;
-            if (_mixer.Settings.RealMasterDevice != real.Id)
-            {
-                _mixer.Settings.RealMasterDevice = real.Id!;
-                _mixer.Save();
-            }
+            _mixer.KeepRealMasterDevice(real.Id!);
         }
         else if (_fellBackTo != real.Id)
         {
@@ -143,12 +139,7 @@ internal sealed class BusDefault
         return seen;
     }
 
-    private void Own(string cable)
-    {
-        if (_mixer.Settings.BusCable == cable) return;
-        _mixer.Settings.BusCable = cable;
-        _mixer.Save();
-    }
+    private void Own(string cable) => _mixer.KeepBusCable(cable);
 
     private void Disown() => Own(string.Empty);
 

@@ -1,8 +1,7 @@
 ﻿<Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:svc="using:OmniControl.App.Shared.Services"
-        xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
-        xmlns:vol="using:OmniControl.App.Features.Volume.Pages">
+        xmlns:pages="using:OmniControl.App.Shared.Ui.Pages">
     <!-- Lists, rows and cards of the pages, moved out of Theme.axaml (700-line limit); included straight after it, so the later-wins order is unchanged. -->
 
     <!-- Sidebar navigation items -->

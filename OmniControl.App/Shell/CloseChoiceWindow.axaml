@@ -12,7 +12,7 @@
             <TextBlock Text="Remember my choice" VerticalAlignment="Center" TextWrapping="Wrap" />
             <ToggleSwitch x:Name="RememberSwitch" Grid.Column="1" OnContent="On" OffContent="Off" VerticalAlignment="Center" />
         </Grid>
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="{StaticResource GapLarge}">
             <Button Classes="primary close" Content="Cancel" Click="OnCancelClick" />
             <Button x:Name="ExitButton" Classes="usebtn scope" Tag="scope" Click="OnExitClick" />
             <Button x:Name="TrayButton" Classes="primary" Click="OnTrayClick" />

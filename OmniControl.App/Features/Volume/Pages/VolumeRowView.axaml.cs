@@ -1,11 +1,9 @@
-using Avalonia.Controls.Primitives;
 
 namespace OmniControl.App.Features.Volume.Pages;
 
 public partial class VolumeRowView : UserControl
 {
-    private Flyout? _listenMenu;
-    private MenuRowList? _listenRows;
+    private readonly PointerMenu _listenMenu = new();
 
     public VolumeRowView() => InitializeComponent();
 
@@ -13,14 +11,7 @@ public partial class VolumeRowView : UserControl
     private void OnListenContext(object? sender, ContextRequestedEventArgs e)
     {
         if (sender is not Button button || DataContext is not InputItem { ListenMenu: { } rows }) return;
-        if (_listenMenu is null)
-        {
-            _listenRows = new MenuRowList();
-            _listenRows.Picked += (_, _) => _listenMenu?.Hide();
-            _listenMenu = new ListMenuFlyout { Placement = PlacementMode.Pointer, Content = _listenRows };
-        }
-        _listenRows!.ItemsSource = rows();
-        _listenMenu.ShowAt(button, showAtPointer: true);
+        _listenMenu.Show(button, rows());
         e.Handled = true;
     }
 }

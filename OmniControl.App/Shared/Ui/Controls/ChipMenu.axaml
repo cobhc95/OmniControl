@@ -10,7 +10,7 @@
         <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft" Opened="OnOpened" Closed="OnClosed" />
     </FlyoutBase.AttachedFlyout>
     <Button x:Name="Chip" Classes="selector" Click="OnClick" KeyDown="OnChipKeyDown">
-        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapSmall}">
             <c:StatusDot x:Name="Dot" HorizontalAlignment="Left" />
             <c:SwatchDot x:Name="ColourDot" HorizontalAlignment="Left" VerticalAlignment="Center" IsVisible="False" />
             <TextBlock x:Name="Words" />

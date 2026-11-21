@@ -293,13 +293,11 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
     private IReadOnlyList<PickChoice> TriggerChoicesFor(RuleSlot slot) =>
         slot.Index == 0 ? _service.TriggerChoices() : _service.TriggerChoices().Where(c => c.Spec != AutomationTriggers.Hotkey).ToList();
 
-    private static string Compose(PickResult pick) =>
-        MouseAction.Compose(pick.Choice.WithParameter(pick.Parameter?.Trim() ?? string.Empty), pick.Choice.Options, pick.Values);
 
     /// A setting of the block's current entry changed in the picker: applied at once, except a program step, which waits for "Use this action" and the confirm window.
     public void TakeLive(RuleSlot slot, PickResult pick)
     {
-        var stored = Compose(pick);
+        var stored = pick.Stored;
         if (slot.Kind == RuleSlotKind.Step && !IsBlock && AutomationSteps.NeedsApproval(stored)) return;
         Set(slot, stored);
     }
@@ -308,7 +306,7 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
     public async Task TakeAsync(RuleSlot slot, PickResult pick)
     {
         if (pick.Choice.ParamHint is not null && (pick.Parameter ?? string.Empty).Trim().Length == 0 && !AutomationTriggers.AllowsEmptyText(pick.Choice.Spec)) return;
-        var stored = Compose(pick);
+        var stored = pick.Stored;
         if (slot.Kind == RuleSlotKind.Step && !IsBlock && AutomationSteps.NeedsApproval(stored)
             && !await _service.Approvals.AskAsync(stored, new DialogMessage("Allow this program?", "The rule opens this each time it runs. Changing it later asks again.",
                 "Allow", RuleSteps.Describe(stored), ShowDetails: true))) return;

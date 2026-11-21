@@ -6,7 +6,7 @@
              x:DataType="vm:IrFileItem">
     <!-- The IR Loader's file card, after TabForge's window: the file row (name, its path trimmed at the start, Browse), the picture of the
          impulse response (waveform above, frequency response below; also the place to drop a file) and the file's facts under it. -->
-    <StackPanel Spacing="6" Margin="0,4">
+    <StackPanel Spacing="{StaticResource Gap}" Margin="0,4">
         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
             <TextBlock Text="IR file" VerticalAlignment="Center" />
             <c:PathField Grid.Column="1" Grid.ColumnSpan="2" x:Name="PathBox" Text="{Binding Path, Mode=OneWay}" Hint="(none)" Kind="File"

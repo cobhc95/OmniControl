@@ -7,7 +7,7 @@
     <!-- docs/mockups/suggested-keys-switch.html: a small stacked block at a card's right: the muted label and a plain switch, the keys as keycaps
          under it (tooltip: each key and what it does), a caution tag for a key another action holds. -->
     <StackPanel Spacing="3" HorizontalAlignment="Right" VerticalAlignment="Center" ToolTip.Tip="{Binding Tip}">
-        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
+        <StackPanel Orientation="Horizontal" Spacing="{StaticResource Gap}" HorizontalAlignment="Right">
             <TextBlock Classes="muted small" Text="{Binding Label}" VerticalAlignment="Center" />
             <ToggleSwitch Classes="plain" IsChecked="{Binding IsOn}" VerticalAlignment="Center" />
         </StackPanel>

@@ -5,7 +5,7 @@
              xmlns:restore="using:OmniControl.App.Shared.Ui.Restore"
              x:Class="OmniControl.App.Features.Settings.Pages.AppSettingsPage"
              x:DataType="vm:AppSettingsPageViewModel">
-    <StackPanel Spacing="6">
+    <StackPanel Spacing="{StaticResource Gap}">
         <StackPanel x:Name="CardsHost" Grid.IsSharedSizeScope="True">
             <pages:GroupCard x:Name="AppearanceCard" Group="{Binding Appearance}">
                 <ListBox Classes="rows compact cards" ItemsSource="{Binding AppearanceItems}"></ListBox>

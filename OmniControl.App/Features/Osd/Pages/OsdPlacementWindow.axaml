@@ -13,7 +13,7 @@
         <StackPanel Grid.IsSharedSizeScope="True">
             <ListBox x:Name="CardList" Classes="rows compact cards" ItemsSource="{Binding Cards}" />
         </StackPanel>
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="{StaticResource GapLarge}">
             <Button Classes="usebtn scope" Tag="scope" Content="OK" IsEnabled="{Binding CanSave}" ToolTip.Tip="{Binding Problem}" ToolTip.ShowOnDisabled="True" Click="OnOkClick" />
             <Button Classes="primary close" Content="Cancel" Click="OnCancelClick" />
         </StackPanel>

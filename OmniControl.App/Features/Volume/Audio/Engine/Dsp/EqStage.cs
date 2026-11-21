@@ -61,21 +61,7 @@ internal sealed class EqStage : IDspStage
         ApplyGain(samples, channels);
     }
 
-    private void ApplyGain(Span<float> samples, int channels)
-    {
-        if (!_gain.Moving)
-        {
-            var gain = _gain.Now;
-            if (gain == 1) return;
-            for (var i = 0; i < samples.Length; i++) samples[i] *= gain;
-            return;
-        }
-        for (var at = 0; at + channels <= samples.Length; at += channels)
-        {
-            var gain = _gain.Next();
-            for (var ch = 0; ch < channels; ch++) samples[at + ch] *= gain;
-        }
-    }
+    private void ApplyGain(Span<float> samples, int channels) => _gain.Apply(samples, channels);
 
     private void Filter(Span<float> samples, int channels, int slot, int ch, int glide)
     {
