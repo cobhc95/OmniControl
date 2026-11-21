@@ -172,7 +172,17 @@ public sealed partial class GadgetRowItem : ObservableObject
     [ObservableProperty] private bool _shown;
     [ObservableProperty] private string _label = string.Empty;
     [ObservableProperty] private double _warnAt;
-    [ObservableProperty] private string _warnText = Reading.Unknown;
+    /// The Warn at box's words while no warn point is set.
+    private const string WarnOff = "off";
+
+    /// The Warn at box: the number (or "off", muted) and its unit, muted at the box's right end.
+    [ObservableProperty] private string _warnText = WarnOff;
+    [ObservableProperty] private string _warnUnit = string.Empty;
+    [ObservableProperty] private bool _isWarnOff = true;
+
+    /// How the Warn at box is typed (a speed in KB or MB, empty = off) and its tooltip.
+    public ITypedValue? WarnTyping => _reading;
+    public string? WarnTip => _reading?.WarnTip;
     [ObservableProperty] private double _gapAfter;
     [ObservableProperty] private string _gapText = string.Empty;
     [ObservableProperty] private double _opacity = 1;
@@ -198,7 +208,8 @@ public sealed partial class GadgetRowItem : ObservableObject
     {
         _loading = true;
         (Shown, Label, WarnAt, GapAfter) = (Entry.Shown, Entry.Label, Entry.WarnAt ?? 0, Entry.GapAfter);
-        WarnText = Entry.WarnAt is { } at && _reading is not null ? _reading.UnitWords(at) : Reading.Unknown;
+        (WarnText, WarnUnit) = Entry.WarnAt is { } at && _reading is not null ? _reading.UnitParts(at) : (WarnOff, string.Empty);
+        IsWarnOff = WarnUnit.Length == 0;
         GapText = $"{Entry.GapAfter:0} px";
         ShowWarnColour();
         ShowTextColour();

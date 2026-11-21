@@ -21,6 +21,9 @@ public sealed class NumberText : Panel
     /// How many decimals a typed value keeps (0 = whole numbers, the usual case; the equaliser's Hz, dB and Q use more).
     public static readonly StyledProperty<int> DecimalsProperty = AvaloniaProperty.Register<NumberText, int>(nameof(Decimals));
 
+    /// A typed form with words of its own (a unit, empty = off); null: a plain number by <see cref="TypedNumber"/>.
+    public static readonly StyledProperty<ITypedValue?> TypingProperty = AvaloniaProperty.Register<NumberText, ITypedValue?>(nameof(Typing));
+
     /// The field box's fill and edge at rest (styles: the faint box, none for <c>.plain</c>, the value beside a horizontal slider).
     public static readonly StyledProperty<IBrush?> FieldProperty = AvaloniaProperty.Register<NumberText, IBrush?>(nameof(Field));
     public static readonly StyledProperty<IBrush?> FieldEdgeProperty = AvaloniaProperty.Register<NumberText, IBrush?>(nameof(FieldEdge));
@@ -60,6 +63,7 @@ public sealed class NumberText : Panel
     public double Minimum { get => GetValue(MinimumProperty); set => SetValue(MinimumProperty, value); }
     public double Maximum { get => GetValue(MaximumProperty); set => SetValue(MaximumProperty, value); }
     public int Decimals { get => GetValue(DecimalsProperty); set => SetValue(DecimalsProperty, value); }
+    public ITypedValue? Typing { get => GetValue(TypingProperty); set => SetValue(TypingProperty, value); }
     public IBrush? Field { get => GetValue(FieldProperty); set => SetValue(FieldProperty, value); }
     public IBrush? FieldEdge { get => GetValue(FieldEdgeProperty); set => SetValue(FieldEdgeProperty, value); }
 
@@ -158,7 +162,7 @@ public sealed class NumberText : Panel
 
     private void BeginTyping()
     {
-        _box.Text = TypedNumber.Show(Value, Decimals);
+        _box.Text = Typing?.Show(Value) ?? TypedNumber.Show(Value, Decimals);
         ShowBox(true);
         _watching = TopLevel.GetTopLevel(this);
         _watching?.AddHandler(PointerPressedEvent, OnAnyPress, RoutingStrategies.Tunnel, handledEventsToo: true);
@@ -174,7 +178,8 @@ public sealed class NumberText : Panel
     private void CommitTyping()
     {
         if (!IsTyping) return;
-        if (TypedNumber.TryRead(_box.Text, Minimum, Maximum, Decimals, out var number)) Value = number;
+        var read = Typing is { } typing ? typing.TryRead(_box.Text, out var number) : TypedNumber.TryRead(_box.Text, Minimum, Maximum, Decimals, out number);
+        if (read) Value = number;
         EndTyping();
     }
 

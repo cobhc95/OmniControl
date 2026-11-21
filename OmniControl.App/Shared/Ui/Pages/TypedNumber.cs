@@ -2,6 +2,16 @@ using System.Globalization;
 
 namespace OmniControl.App.Shared.Ui.Pages;
 
+/// A value whose typed form has words of its own (a unit, empty = off): how it is offered for typing and read back. A
+/// <see cref="NumberText"/> with one uses it instead of <see cref="TypedNumber"/>.
+public interface ITypedValue
+{
+    string Show(double value);
+
+    /// False: refused, the value stays as it was.
+    bool TryRead(string? typed, out double value);
+}
+
 /// The one rule for a number typed into a box (a slider's value, a number setting of an action): a whole number, or a number with
 /// up to the allowed decimals, held within the limits; anything else is refused and the value stays as it was.
 public static class TypedNumber

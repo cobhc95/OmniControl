@@ -107,8 +107,11 @@
                                         </c:ChipMenu.Menu>
                                     </c:ChipMenu>
                                     <pages:NumberText Grid.Column="6" Value="{Binding WarnAt}" Minimum="0" Maximum="{Binding WarnMax}" VerticalAlignment="Center"
-                                                      IsVisible="{Binding HasWarn}" ToolTip.Tip="Past this value the reading takes its warn colour; 0 = never">
-                                        <TextBlock Classes="muted" Text="{Binding WarnText}" MinWidth="{StaticResource SliderValueMinWidth}" TextAlignment="Right" />
+                                                      Typing="{Binding WarnTyping}" IsVisible="{Binding HasWarn}" ToolTip.Tip="{Binding WarnTip}">
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapSmall}" MinWidth="{StaticResource SliderValueMinWidth}">
+                                            <TextBlock Text="{Binding WarnText}" Classes.muted="{Binding IsWarnOff}" TextAlignment="Right" />
+                                            <TextBlock Grid.Column="1" Classes="muted" Text="{Binding WarnUnit}" IsVisible="{Binding !IsWarnOff}" />
+                                        </Grid>
                                     </pages:NumberText>
                                     <c:ChipMenu Grid.Column="7" Classes="dropbox" ChipTag="scope" ChipAlignment="Left" VerticalAlignment="Center" Swatch="{Binding WarnSwatch}"
                                                 ChipToolTip="{Binding WarnSwatch.Tip, StringFormat='Warn colour: {0}'}" IsVisible="{Binding HasWarn}" MenuOpened="OnSwatchMenuOpened">

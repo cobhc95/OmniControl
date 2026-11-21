@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Changed: Resources > Taskbar gadget > What it shows: each "Warn at" box shows its unit at its right (KB/s or MB/s, %, °C) and "off" when empty; a network warning can be typed as 500 KB, 5 MB or 5MB/s (a plain number is KB/s), and clearing the box turns the warning off.
 - New: Resources > Taskbar gadget: each reading (and the weather) has its own "Text colour" in What it shows (Automatic, the colour dots or Custom colour…; a reading over its warning still shows the warn colour), seen on the gadget, the Preview and the layout tiles. A "Font" card beside Position lists every installed font, each in its own typeface, for every layout; the gadget's right-click menu has "Font ›" with the default, the fonts picked before and "More fonts…".
 - Fixed: tooltips inside pop-down menus (Method, Plays on, presets and others) showed almost at once; every tooltip in the app, menus included, now waits 1 second of resting the pointer.
 - New: Resources > Taskbar gadget > What it shows: every temperature row (CPU temperature, GPU temperature, Hottest sensor and each disk's temperature) has a chip under its name with the sensor it reads ("Auto · Core (Tctl/Tdie)", or the chosen sensor and its value); it opens the same sensor menu as the Readings tab. Each temperature reading has one sensor choice, used alike by the Readings tab, the gadget, its tooltips, its state and rules; a disk's temperature can now be read from any sensor too. Choices made before are kept.

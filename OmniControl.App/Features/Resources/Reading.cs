@@ -27,7 +27,7 @@ public interface IReadingList
 /// what it is read from (the adapter or sensor's name, when the read names one) and the icons its label editor and icon picker suggest first.
 public sealed record Reading(string Id, string Name, string Chip, string Icon, ReadingKind Kind, SampleParts Part, Func<ResourceSample, double?> Read, string GadgetLabel,
     string GadgetIcons, bool GadgetDefault = false, double? WarnDefault = null, (string Label, int Order)? Card = null,
-    Func<ResourceSample, string?>? Source = null)
+    Func<ResourceSample, string?>? Source = null) : ITypedValue
 {
     /// A temperature from which a sensor is called warm (the Hottest sensor card's caution tag).
     public const double WarmCelsius = 70;
@@ -109,8 +109,52 @@ public sealed record Reading(string Id, string Name, string Chip, string Icon, R
     /// The value in its <see cref="Unit"/> (a speed's bytes per second as KB/s).
     public double? InUnit(ResourceSample sample) => Read(sample) is { } v ? Kind == ReadingKind.Speed ? v / Kilo : v : null;
 
-    /// A value in its <see cref="Unit"/> as words: "90 %", "500 KB/s" (a warn point).
-    public string UnitWords(double value) => $"{value:0} {Unit}";
+    /// A value in its <see cref="Unit"/> as words: "90 %", "500 KB/s", "1.5 MB/s" (a warn point).
+    public string UnitWords(double value)
+    {
+        var (number, unit) = UnitParts(value);
+        return $"{number} {unit}";
+    }
+
+    /// A value in its <see cref="Unit"/> as a number and the unit it reads naturally in: a speed of 1000 KB/s and more in MB/s with up to one decimal.
+    public (string Number, string Unit) UnitParts(double value) => Kind == ReadingKind.Speed && value >= SpeedDigitsTop
+        ? ((value / Kilo).ToString("0.#", CultureInfo.CurrentCulture), "MB/s")
+        : (value.ToString("0", CultureInfo.CurrentCulture), Unit);
+
+    /// The warn box's tooltip: what it does and how to type it.
+    public string WarnTip => Kind == ReadingKind.Speed
+        ? "Turns the reading its warn colour above this speed. Type 500 KB or 5 MB; empty = off."
+        : $"Turns the reading its warn colour above this value. Type a number in {Unit}; empty = off.";
+
+    /// Offered for typing as shown: "500", or "1.5 MB" for a speed shown in MB/s.
+    string ITypedValue.Show(double value)
+    {
+        var (number, unit) = UnitParts(value);
+        return unit == Unit ? number : $"{number} MB";
+    }
+
+    /// Empty = 0 (off). A speed is KB/s unless it says MB ("500 KB", "5 MB", "5MB/s"); other readings take a number, their unit may follow.
+    bool ITypedValue.TryRead(string? typed, out double value)
+    {
+        value = 0;
+        var text = typed?.Trim() ?? string.Empty;
+        if (text.Length == 0) return true;
+        var cut = 0;
+        while (cut < text.Length && (char.IsDigit(text[cut]) || text[cut] is '.' or ',')) cut++;
+        var unit = text[cut..].Replace(" ", string.Empty).ToLowerInvariant();
+        double scale = 1;
+        if (Kind == ReadingKind.Speed)
+        {
+            if (unit.EndsWith("/s", StringComparison.Ordinal)) unit = unit[..^2];
+            if (unit.EndsWith('b')) unit = unit[..^1];
+            if (unit is "m") scale = Kilo;
+            else if (unit is not ("" or "k")) return false;
+        }
+        else if (unit.Length > 0 && !Unit.Replace(" ", string.Empty).Contains(unit, StringComparison.OrdinalIgnoreCase)) return false;
+        if (!TypedNumber.TryRead(text[..cut], 0, double.MaxValue, 1, out var number)) return false;
+        value = Math.Clamp(Math.Round(number * scale), 0, Max);
+        return true;
+    }
 
     /// The top of its small graph: a load's 100; 0 (the largest value shown) for speeds and temperatures.
     public double GraphMax => Kind == ReadingKind.Percent ? Max : 0;
