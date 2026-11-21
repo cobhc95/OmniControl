@@ -36,6 +36,18 @@ public sealed class PresetGroups : IPresetGroups, IDisposable
         foreach (var group in groups) Register(group);
     }
 
+    /// A group was taken out (its feature was switched off).
+    public event Action<PresetGroup>? Removed;
+
+    /// Takes the group out; its presets stay saved by their owner.
+    public void Unregister(string id)
+    {
+        if (Find(id) is not { } group) return;
+        _all.Remove(group);
+        Removed?.Invoke(group);
+        (group.Provider as IDisposable)?.Dispose();
+    }
+
     public PresetGroup? Find(string id) => _all.FirstOrDefault(g => g.Id == id);
 
     /// The groups of one section (page title), in their order.

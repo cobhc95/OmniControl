@@ -26,8 +26,13 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
 
     [ObservableProperty, NotifyPropertyChangedFor(nameof(HasSelected))] private DeviceItem? _selected;
 
-    /// The "Import from another PC" group under the devices.
-    public DeviceImportViewModel Import { get; }
+    /// The "Import from another PC" group under the devices; null while Other PCs is off.
+    public DeviceImportViewModel? Import { get; }
+
+    public bool HasImport => Import is not null;
+
+    /// The empty list's second link (empty, so hidden, while there is no import).
+    public string ImportLinkText => HasImport ? "Import from another PC" : string.Empty;
 
     /// The group was asked for (the empty row's link, the Import pill): the view scrolls to it.
     public event Action? ImportOpened;
@@ -36,10 +41,10 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
     public bool HasSelected => Selected is not null;
 
     /// <param name="chooseIcon">The shared icon picker (a device's "Change icon…").</param>
-    /// <param name="otherPcs">The paired PCs the import group asks.</param>
+    /// <param name="otherPcs">The paired PCs the import group asks; null while Other PCs is off (no import group).</param>
     /// <param name="openOtherPcs">Opens the Other PCs page (the import group's way to pair one).</param>
     public DevicesPageViewModel(DeviceService service, Func<DialogMessage, Task<bool>> ask, Action<string> report,
-        Func<Avalonia.Visual, Icons.IconRequest, Task<Icons.IconPick?>> chooseIcon, IPairedPcs otherPcs, Action openOtherPcs) : base(Info)
+        Func<Avalonia.Visual, Icons.IconRequest, Task<Icons.IconPick?>> chooseIcon, IPairedPcs? otherPcs, Action openOtherPcs) : base(Info)
     {
         _service = service;
         _ask = ask;
@@ -48,6 +53,7 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
         foreach (var record in service.Records) Items.Add(Make(record));
         Selected = Items.FirstOrDefault();
         Items.CollectionChanged += (_, _) => OnPropertyChanged(nameof(NoDevices));
+        if (otherPcs is null) return;
         Import = new DeviceImportViewModel(service, otherPcs, report, openOtherPcs);
         Import.Imported += OnImported;
     }
@@ -55,6 +61,7 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
     [RelayCommand]
     private void OpenImport()
     {
+        if (Import is null) return;
         Import.Open();
         ImportOpened?.Invoke();
     }
@@ -77,7 +84,7 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
     // The checks of Python, python-kasa, adb and the emulators run when the page is shown, not at start-up.
     public override void OnShown()
     {
-        Import.Refresh();
+        Import?.Refresh();
         _ = ProbeThenCheckAsync();
     }
 
@@ -241,8 +248,11 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
 
     public void Dispose()
     {
-        Import.Imported -= OnImported;
-        Import.Dispose();
+        if (Import is not null)
+        {
+            Import.Imported -= OnImported;
+            Import.Dispose();
+        }
         foreach (var item in Items) item.Dispose();
     }
 }

@@ -25,6 +25,28 @@ LZMAUseSeparateProcess=yes
 ArchitecturesInstallIn64BitMode=x64compatible
 ; [Code] asks OmniControl to quit instead of Restart Manager, so its shut-down steps put Windows back.
 CloseApplications=no
+[Messages]
+WizardSelectComponents=Choose features
+SelectComponentsDesc=Pick what OmniControl should do on this PC. You can change this later in App settings.
+SelectComponentsLabel2=Ready-made choice:
+; "Choose features": every file is installed whatever is ticked; a feature left unticked does not run. The component names are the app's feature
+; ids (retyped from OmniControl.App/Features/FeatureList, also in [Code] FeatureIds); the choice is written for the app ([Code] WriteFeatures).
+[Types]
+Name: everything; Description: "Everything"
+Name: sound; Description: "Sound only"
+Name: monitoring; Description: "Monitoring only"
+Name: custom; Description: "Custom"; Flags: iscustom
+[Components]
+Name: volume; Description: "Sound and effects: volume, mixer, effects (Equalizer APO)"; Types: everything sound
+Name: displays; Description: "Displays: brightness, colour, rotation"; Types: everything
+Name: input; Description: "Mouse and trackpad: button remapping, gestures"; Types: everything
+Name: automation; Description: "Hotkeys and automation: keys, rules, custom actions"; Types: everything
+Name: osd; Description: "On-screen display (OSD)"; Types: everything
+Name: resources; Description: "Resources and taskbar gadget: CPU, GPU, network, temperatures"; Types: everything monitoring
+Name: traffic; Description: "Network traffic control: per-app limits (Windows Packet Filter)"; Types: everything
+Name: otherpcs; Description: "Other PCs: pairing, wake, remote control"; Types: everything
+Name: devices; Description: "Smart devices: plugs and bulbs"; Types: everything
+Name: screenshot; Description: "Screenshot tool"; Types: everything
 [Files]
 Source: "{#PubDir}\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
 [Icons]
@@ -33,17 +55,19 @@ Name: "{autodesktop}\OmniControl"; Filename: "{app}\OmniControl.exe"; Tasks: des
 [Tasks]
 Name: desktopicon; Description: "Create a desktop shortcut"; Flags: unchecked
 ; Installs the bundled driver after the files ([Code] InstallSteps); uninstall removes it only if OmniControl's receipt says it installed it.
-Name: packetfilter; Description: "Install Windows Packet Filter (for per-app download limits)"
-; Added after the files (the app's --network-service install); left unticked, a service from before is removed; uninstall removes it.
-Name: networkservice; Description: "Network service (per-app limits without admin)"
+; Only with Network traffic control, as is the network service.
+Name: packetfilter; Description: "Install Windows Packet Filter (for per-app download limits)"; Components: traffic
+; Added after the files (the app's --network-service install); left unticked (or without Network traffic control), a service from before is
+; removed; uninstall removes it.
+Name: networkservice; Description: "Network service (per-app limits without admin)"; Components: traffic
 ; The only way the sign-in task is added (the app's --sign-in-task on, for the user signed in here); ticked on the Tasks page when that
 ; user's "Run as administrator" is on ([Code] PresetSignInTask).
 Name: signintask; Description: "Start OmniControl as administrator at sign-in"; Flags: unchecked
 [Run]
 ; Other PCs reach OmniControl over Tailscale only through this rule (Core/Engine/Tailscale/TailscaleFirewall: same name, port and ranges), added
-; only when Tailscale is installed (else the app's Tailscale checklist adds it when needed); Setup is elevated, so no later prompt.
+; only with Other PCs and when Tailscale is installed (else the app's Tailscale checklist adds it when needed); Setup is elevated, so no later prompt.
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""OmniControl on Tailscale"""; Flags: runhidden waituntilterminated
-Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""OmniControl on Tailscale"" dir=in action=allow program=""{app}\OmniControl.exe"" protocol=TCP localport=47810 remoteip=100.64.0.0/10,fd7a:115c:a1e0::/48 profile=any"; Flags: runhidden waituntilterminated; Check: TailscaleInstalled
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""OmniControl on Tailscale"" dir=in action=allow program=""{app}\OmniControl.exe"" protocol=TCP localport=47810 remoteip=100.64.0.0/10,fd7a:115c:a1e0::/48 profile=any"; Flags: runhidden waituntilterminated; Check: TailscaleInstalled; Components: otherpcs
 ; As the person who started Setup, not elevated: the app's own "Run as administrator" decides.
 Filename: "{app}\OmniControl.exe"; Description: "Start OmniControl"; Flags: nowait postinstall skipifsilent runasoriginaluser
 [UninstallRun]
@@ -55,7 +79,7 @@ Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=
 ; It is its own program with its own uninstaller and Apps entry; OmniControl's uninstall runs that uninstaller when Setup's receipt says
 ; Setup installed it and its box stays ticked.
 [Tasks]
-Name: equalizerapo; Description: "Equalizer APO (master effects on your speakers; skipped if already installed)"
+Name: equalizerapo; Description: "Equalizer APO (master effects on your speakers; skipped if already installed)"; Components: volume
 [Code]
 // Receipts: what Setup (or the app, for Windows Packet Filter) installed itself, never what was there before, so uninstall offers to remove
 // only that. Under HKLM\SOFTWARE, whose access list lets only administrators and SYSTEM change it (the key and Windows Packet Filter's value
@@ -345,10 +369,92 @@ begin
   RegDeleteKeyIfEmpty(HKCU, PacketFilterRecordKey);
 end;
 
+// "Choose features": the components are the app's feature ids, in the order of its FeatureList (retyped, also as [Components] names). The ids
+// left unticked are written beside the receipts as FeaturesOff (Core/Engine/SetupFeatures reads it), which every user may read; the app takes a
+// choice it has not taken before into its own settings once, and App settings owns it afterwards.
+const
+  FeatureIds = 'volume,displays,input,automation,osd,resources,traffic,otherpcs,devices,screenshot';
+  FeaturesValue = 'FeaturesOff';
+
+// The person who started Setup chose these in App settings (settings.json's FeaturesOff, read as that person by Windows' PowerShell and
+// handed back as a bit per feature in the exit code); False when no choice is saved there or it cannot be read.
+function OriginalUserFeaturesOff(var Mask: Integer): Boolean;
+var Code: Integer;
+    Quoted: String;
+begin
+  Quoted := FeatureIds;
+  StringChangeEx(Quoted, ',', ''',''', True);
+  Result := ExecAsOriginalUser(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+    '-NoProfile -NonInteractive -Command "try { $o = (Get-Content -LiteralPath (Join-Path $env:APPDATA ''OmniControl\settings.json'') -Raw '
+    + '| ConvertFrom-Json).FeaturesOff; if ($o -eq $null) { exit 2 }; $m = 0; $i = 0; foreach ($f in ''' + Quoted + ''') '
+    + '{ if ($o -contains $f) { $m = $m -bor (1 -shl $i) }; $i++ }; exit (4096 + $m) } catch { exit 3 }"', '', SW_HIDE, ewWaitUntilTerminated, Code)
+    and (Code >= 4096);
+  Mask := Code - 4096;
+end;
+
+// An upgrade shows the features as they are now: the choice in App settings, else the one an earlier Setup wrote, else Inno's own (its
+// previous components, or Everything).
+var FeaturesPreset: Boolean;
+
+procedure PresetFeatures();
+var Ids: TArrayOfString;
+    Mask, I: Integer;
+    Known: Boolean;
+    Off, Pick: String;
+begin
+  if FeaturesPreset then Exit;
+  FeaturesPreset := True;
+  Ids := StringSplit(FeatureIds, [','], stAll);
+  Known := OriginalUserFeaturesOff(Mask);
+  if not Known and RegQueryStringValue(HKLM64, ReceiptKey, FeaturesValue, Off) then
+  begin
+    Known := True;
+    Mask := 0;
+    for I := 0 to GetArrayLength(Ids) - 1 do
+      if Pos(',' + Ids[I] + ',', ',' + Off + ',') > 0 then Mask := Mask or (1 shl I);
+  end;
+  if not Known then Exit;
+  Pick := '';
+  for I := 0 to GetArrayLength(Ids) - 1 do
+  begin
+    if Pick <> '' then Pick := Pick + ',';
+    if (Mask and (1 shl I)) <> 0 then Pick := Pick + '!';
+    Pick := Pick + Ids[I];
+  end;
+  WizardSelectComponents(Pick);
+end;
+
+// A silent Setup changes the app's choice only when its command line names one (/COMPONENTS or /TYPE).
+function ChoiceGiven(): Boolean;
+var I: Integer;
+begin
+  Result := not WizardSilent();
+  for I := 1 to ParamCount do
+    if (CompareText(Copy(ParamStr(I), 1, 12), '/COMPONENTS=') = 0) or (CompareText(Copy(ParamStr(I), 1, 6), '/TYPE=') = 0) then Result := True;
+end;
+
+procedure WriteFeatures();
+var Ids: TArrayOfString;
+    I: Integer;
+    Off: String;
+begin
+  if not ChoiceGiven() then Exit;
+  Ids := StringSplit(FeatureIds, [','], stAll);
+  Off := '';
+  for I := 0 to GetArrayLength(Ids) - 1 do
+    if not WizardIsComponentSelected(Ids[I]) then
+    begin
+      if Off <> '' then Off := Off + ',';
+      Off := Off + Ids[I];
+    end;
+  RegWriteStringValue(HKLM64, ReceiptKey, FeaturesValue, Off);
+end;
+
 // A driver install that fails leaves OmniControl installed and says so in one line. The receipt lets uninstall remove only this copy.
 procedure InstallSteps();
 var Driver: Boolean;
 begin
+  WriteFeatures();
   PointStartupEntry();
   MovePacketFilterRecord();
   Driver := WizardIsTaskSelected('packetfilter') and not PacketFilterInstalled();
@@ -486,10 +592,12 @@ begin
     SuppressibleMsgBox('Windows Packet Filter was not removed. Installing and uninstalling OmniControl again removes it.', mbInformation, MB_OK, IDOK);
   if not PacketFilterInstalled() then DropReceipt(PacketFilterReceipt);
   if not EqualizerApoInstalled() then DropReceipt(EqualizerApoReceipt);
+  DropReceipt(FeaturesValue);
 end;
 
 procedure CurPageChanged(CurPageID: Integer);
 begin
+  if (CurPageID = wpSelectComponents) and not WizardSilent() then PresetFeatures();
   if (CurPageID = wpSelectTasks) and not WizardSilent() then PresetSignInTask();
   if (CurPageID = wpFinished) and (EqualizerApoNote <> '') then
     WizardForm.FinishedLabel.Caption := WizardForm.FinishedLabel.Caption + #13#10#13#10 + EqualizerApoNote;

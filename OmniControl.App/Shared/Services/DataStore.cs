@@ -69,7 +69,7 @@ public static class DataStores
     // An effect's file (plug-in or impulse response) and the plug-in's saved state, as mixer.json and presets.json name them.
     private static readonly string[] PluginFiles = { "Path", "State" };
 
-    public static readonly DataStore App = new("settings.json", "App settings", StoreKind.Saved, NotImported: new[] { "PluginFolders", "Updates" }, Import: Places.AppSettings);
+    public static readonly DataStore App = new("settings.json", "App settings", StoreKind.Saved, NotImported: new[] { "PluginFolders", "Updates", "FeaturesOff", "FeaturesFromSetup" }, Import: Places.AppSettings);
     public static readonly DataStore Mixer = new("mixer.json", "Volume mixer and wiring", StoreKind.Saved,
         NotImported: new[] { "BusCable", "RealMasterDevice", "CaptureSilence" }, Import: Places.Volume, NotImportedInside: PluginFiles);
     public static readonly DataStore EffectPresets = new("presets.json", "Effect presets", StoreKind.Saved, Mergeable: true, Import: Places.Volume, NotImportedInside: PluginFiles);

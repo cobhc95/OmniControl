@@ -24,22 +24,25 @@ public sealed class VolumeModule : IFeatureModule
     private VolumePageSettings? _pageSettings;
     private FeatureContext? _context;
 
-    /// The plug-ins found on this PC (App settings scans for them).
-    public PluginLibrary Library { get; private set; } = null!;
+    public IReadOnlyList<string> Features { get; } = new[] { FeatureList.Volume };
 
-    public MixerService Mixer { get; private set; } = null!;
+    /// The plug-ins found on this PC (App settings scans for them); null while Sound and effects is off.
+    public PluginLibrary? Library { get; private set; }
+
+    /// The mixer; null while Sound and effects is off.
+    public MixerService? Mixer { get; private set; }
 
     /// Sound runs through OmniControl's own effects engine now (a blocking memory collection would be heard).
     public bool StreamsAudio => _effects?.Streams == true;
 
-    /// The program paths the mixer remembers (the rule and automation pickers offer them as programs to choose).
-    public IEnumerable<string> RememberedPrograms() => Mixer.RememberedPaths();
+    /// The program paths the mixer remembers (the rule and automation pickers offer them as programs to choose); none while it is off.
+    public IEnumerable<string> RememberedPrograms() => Mixer?.RememberedPaths() ?? Enumerable.Empty<string>();
 
     public void Register(FeatureContext context)
     {
         _context = context;
         var settings = context.Settings;
-        Library = new PluginLibrary(settings.Slot(s => s.PluginFolders, (s, folders) => s.PluginFolders = folders));
+        var library = Library = new PluginLibrary(settings.Slot(s => s.PluginFolders, (s, folders) => s.PluginFolders = folders));
         var view = new FxViewSettings(settings.Slot(s => s.FxKeepOnTop, (s, on) => s.FxKeepOnTop = on),
             settings.Slot(s => s.FxChainListWidth, (s, width) => s.FxChainListWidth = width), settings.Slot(s => s.EqShowGrid, (s, on) => s.EqShowGrid = on),
             settings.Slot(s => s.EqShowPhase, (s, on) => s.EqShowPhase = on), settings.Slot(s => s.EffectEditors, (s, editors) => s.EffectEditors = editors));
@@ -57,7 +60,7 @@ public sealed class VolumeModule : IFeatureModule
         effects.ApoWanted += () => _ = Guard.RunAsync("Equalizer APO: first use", () => installer.FirstUseAsync(context.AskAsync, context.Report));
         var apo = _apo = new EqualizerApoGroup(support, installer, (progress, work) => EngineInstaller.RunAsync(progress, work, context.Report, context.AskAsync));
         _controls = new VolumeControls(mixer, context.Osd, context.States, context.Actions, context.Presets, volumePresets, context.Report, VolumePageViewModel.Info.Title);
-        var fxWindows = _fxWindows = new FxWindowService(mixer, effects, support, plugins, displayFeeds, Library, _presets, context.Report, context.OpenPresetManager,
+        var fxWindows = _fxWindows = new FxWindowService(mixer, effects, support, plugins, displayFeeds, library, _presets, context.Report, context.OpenPresetManager,
             new FxMixerLinks(ShowMixerFor, apo.DevicesAsync, () => (apo.Devices.Label, apo.Devices.Tip)), context.AskAsync, view);
 
         context.Imports.OnReload(DataStores.Mixer, mixer.ReloadFromDisk);
@@ -83,7 +86,7 @@ public sealed class VolumeModule : IFeatureModule
     }
 
     /// The page, made now when it was not yet: the shell's first use and an action only the page can do get the same one.
-    private VolumePageViewModel Page() => _page ??= new VolumePageViewModel(new VolumePageServices(Mixer, _controls!, _apo!, _support!, _effects!, _installer!,
+    private VolumePageViewModel Page() => _page ??= new VolumePageViewModel(new VolumePageServices(Mixer!, _controls!, _apo!, _support!, _effects!, _installer!,
         _context!.Report, _fxWindows!.Open, _fxWindows.Toggle, _context.AskAsync, CombineWindow.AskAsync, _context.OpenPresetManager, _pageSettings!));
 
     public IReadOnlyList<FeaturePage> Pages => new[]

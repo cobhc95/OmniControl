@@ -18,7 +18,7 @@ public sealed partial class TrayFlyoutModel : ObservableObject, IDisposable
     private readonly Action<TrayTarget> _showInApp;
     private readonly IconPicker _icons;
     private readonly TraySettings _settings = TraySettings.Load();
-    private readonly Func<IDisposable> _watchWhileShown;
+    private readonly Func<IDisposable?> _watchWhileShown;
     private IDisposable? _watch;
     private bool _shown;
     private bool _stale = true; // the lists differ from the master lists: made again when next shown
@@ -26,9 +26,9 @@ public sealed partial class TrayFlyoutModel : ObservableObject, IDisposable
     /// <param name="icons">The shared icon picker ("Change icon…"); its changes (a user icon renamed or removed) redraw the panel.</param>
     /// <param name="openApp">Shows the main window (the foot's "Open OmniControl").</param>
     /// <param name="showInApp">"Show in OmniControl": the main window at the page that owns the item, or the Actions and hotkeys window at its action.</param>
-    /// <param name="watchWhileShown">Asks what the panel shows to stay fresh while it is shown (the mixer's close watch); the handle is given back when it hides.</param>
+    /// <param name="watchWhileShown">Asks what the panel shows to stay fresh while it is shown (the mixer's close watch; null: nothing to watch); the handle is given back when it hides.</param>
     public TrayFlyoutModel(IActionCatalogue hotkeys, Func<string, bool> run, IStateCatalogue states, IconPicker icons, Action openApp, Action<TrayTarget> showInApp,
-        Func<IDisposable> watchWhileShown)
+        Func<IDisposable?> watchWhileShown)
     {
         (_hotkeys, _run, _states, _icons, _openApp, _showInApp, _watchWhileShown) = (hotkeys, run, states, icons, openApp, showInApp, watchWhileShown);
         _icons.Changed += OnListsChanged;

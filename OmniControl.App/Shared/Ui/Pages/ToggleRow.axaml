@@ -13,7 +13,7 @@
                         <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,24,0" Classes.unavailable="{Binding Dimmed}">
                         <c:IconText Classes="cardname" Icon="{Binding Icon}" Text="{Binding Label}" HorizontalAlignment="Left" />
                         <TextBlock Classes="muted" Text="{Binding Note}" IsVisible="{Binding HasNote}" TextWrapping="Wrap" />
                     </StackPanel>
@@ -26,7 +26,7 @@
         <pages:CardLayout IsVisible="{Binding Half}">
             <DataTemplate x:DataType="pages:ToggleItem">
                 <Grid Margin="0,1" ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                    <StackPanel VerticalAlignment="Center">
+                    <StackPanel VerticalAlignment="Center" Classes.unavailable="{Binding Dimmed}">
                         <c:IconText Icon="{Binding Icon}" Text="{Binding Label}" />
                         <TextBlock Classes="muted" Text="{Binding Note}" IsVisible="{Binding HasNote}" TextWrapping="Wrap" />
                     </StackPanel>

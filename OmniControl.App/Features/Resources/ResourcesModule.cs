@@ -16,9 +16,13 @@ public interface IResourcesWindows
 
     /// Opens the page at its Taskbar gadget tab.
     void OpenGadgetSettings();
+
+    /// Network traffic control runs (the gadget's menu offers it).
+    bool HasTraffic { get; }
 }
 
-/// Resources: the poller and its states, network limits, the taskbar gadget with its weather and layouts, presets, the Open action and the page.
+/// Resources: the poller and its states, network limits (the Network traffic control feature, which runs inside this one), the taskbar
+/// gadget with its weather and layouts, presets, the Open action and the page.
 public sealed class ResourcesModule : IFeatureModule, IResourcesWindows
 {
     public const string OpenActionId = "resources.open";
@@ -35,25 +39,20 @@ public sealed class ResourcesModule : IFeatureModule, IResourcesWindows
     private ResourcesPageViewModel? _page;
     private int _programs;
 
+    public IReadOnlyList<string> Features { get; } = new[] { FeatureList.Resources, FeatureList.Traffic };
+
+    public bool HasTraffic => _limits is not null;
+
     public void Register(FeatureContext context)
     {
-        _context = context;
+        (_context, _page, _programs) = (context, null, 0);
         _settings.Setup.Gadget.MoveOldClickDefault();
         _settings.Setup.Gadget.Complete();
         var monitor = _monitor = new ResourceMonitor(context.States, () => TimeSpan.FromSeconds(_settings.Setup.ReadEverySeconds), () => _settings.Setup.Adapter,
-            () => _settings.Setup.Sensors, () => _limits!.StartTraffic(), Title);
-        var limits = _limits = new NetworkLimits(_settings, context.Report, id => monitor.Seen.GetValueOrDefault(id));
-        limits.RegisterActions(context.Actions, Title, () => monitor.Seen.Keys.Concat(_settings.Setup.Apps.Select(r => r.Id)).Distinct().Select(id => new HotkeyDevice(id, id)).ToList());
-        context.Hardware.Register(new HardwareWatch("resources.download-adapters", "Network adapters (download limits)",
-            HardwareSignal.Device | HardwareSignal.Resume, limits.RefreshAdapters));
+            () => _settings.Setup.Sensors, () => _limits?.StartTraffic() ?? throw new IOException("Network traffic control is off."), Title);
         context.Hardware.Register(new HardwareWatch("resources.disks", "Physical disks (gadget readings)", HardwareSignal.Device | HardwareSignal.Resume,
             monitor.RefreshDisks, LooksStale: () => !monitor.DisksKnown, Describe: monitor.DisksText));
-        monitor.Updated += () =>
-        {
-            if (monitor.Seen.Count == _programs) return;
-            _programs = monitor.Seen.Count;
-            limits.RefreshPrograms(); // a program seen for the first time joins the actions' list
-        };
+        _limits = context.Features.Wanted(FeatureList.Traffic) ? StartLimits(context, monitor) : null;
         var weather = _weather = new WeatherService(_settings, context.Actions, context.States, new WindowsCredentialStore(), Title);
         var layouts = _layouts = new GadgetLayouts(_settings);
         var gadget = _gadget = new TaskbarGadget(monitor, weather, _settings, layouts, context.Runner, context.States, context.Report, this);
@@ -79,18 +78,34 @@ public sealed class ResourcesModule : IFeatureModule, IResourcesWindows
             _settings.Commit();
             return true;
         });
-        // Each on its own at the stage that puts Windows back: download shaping ends and the rules leave Windows first, then the traffic
-        // session stops, then the gadget closes.
-        context.Shutdown.Add(ShutdownStage.Resources, "download limits", limits.StopDownloads);
-        context.Shutdown.Add(ShutdownStage.Resources, "network limits", limits.Dispose);
+        // Each on its own at the stage that puts Windows back: download shaping ends and the rules leave Windows first (StartLimits), then the
+        // traffic session stops, then the gadget closes.
         context.Shutdown.Add(ShutdownStage.Resources, "resources poller", monitor.Dispose);
         context.Shutdown.Add(ShutdownStage.Resources, "taskbar gadget", gadget.Dispose);
         context.Shutdown.Add(ShutdownStage.Resources, "gadget weather", weather.Dispose);
     }
 
+    /// Network traffic control: the limits and blocks, their actions and the adapters' watch; a program the poller sees for the first time joins the actions' list.
+    private NetworkLimits StartLimits(FeatureContext context, ResourceMonitor monitor)
+    {
+        var limits = new NetworkLimits(_settings, context.Report, id => monitor.Seen.GetValueOrDefault(id));
+        limits.RegisterActions(context.Actions, Title, () => monitor.Seen.Keys.Concat(_settings.Setup.Apps.Select(r => r.Id)).Distinct().Select(id => new HotkeyDevice(id, id)).ToList());
+        context.Hardware.Register(new HardwareWatch("resources.download-adapters", "Network adapters (download limits)",
+            HardwareSignal.Device | HardwareSignal.Resume, limits.RefreshAdapters));
+        monitor.Updated += () =>
+        {
+            if (monitor.Seen.Count == _programs) return;
+            _programs = monitor.Seen.Count;
+            limits.RefreshPrograms();
+        };
+        context.Shutdown.Add(ShutdownStage.Resources, "download limits", limits.StopDownloads);
+        context.Shutdown.Add(ShutdownStage.Resources, "network limits", limits.Dispose);
+        return limits;
+    }
+
     public IReadOnlyList<FeaturePage> Pages => new[]
     {
-        new FeaturePage(ResourcesPageViewModel.Info, () => _page = new ResourcesPageViewModel(_monitor!, _settings, _limits!,
+        new FeaturePage(ResourcesPageViewModel.Info, () => _page = new ResourcesPageViewModel(_monitor!, _settings, _limits,
             new ProviderChoice("Resources presets", _presets!, () => _context!.OpenPresetManager(Title, ResourcePresets.GroupId), withCustom: true),
             _context!.AppScopes, _context.AppScopeGate,
             new GadgetSettingsModel(_settings, _context.Actions, _gadget!, _layouts!, () => _context.OpenPresetManager(Title, GadgetLayouts.GroupId), _weather!,

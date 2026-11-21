@@ -13,10 +13,13 @@ public sealed class OtherPcsModule(Func<bool, string> shareDevices) : IFeatureMo
     private FeatureContext? _context;
     private OtherPcsPageViewModel? _page;
 
-    public IPairedPcs Paired => _service!;
+    public IReadOnlyList<string> Features { get; } = new[] { FeatureList.OtherPcs };
 
-    /// Imports settings from a paired PC (App settings' backup offers it too).
-    public ImportFromPcService ImportFrom { get; private set; } = null!;
+    /// The paired PCs; null while Other PCs is off.
+    public IPairedPcs? Paired => _service;
+
+    /// Imports settings from a paired PC (App settings' backup offers it too); null while Other PCs is off.
+    public ImportFromPcService? ImportFrom { get; private set; }
 
     public void Register(FeatureContext context)
     {
@@ -36,7 +39,7 @@ public sealed class OtherPcsModule(Func<bool, string> shareDevices) : IFeatureMo
 
     public IReadOnlyList<FeaturePage> Pages => new[]
     {
-        new FeaturePage(OtherPcsPageViewModel.Info, () => _page = new OtherPcsPageViewModel(_service!, _context!.AskAsync, _context.AskTextAsync, _context.Report, ImportFrom))
+        new FeaturePage(OtherPcsPageViewModel.Info, () => _page = new OtherPcsPageViewModel(_service!, _context!.AskAsync, _context.AskTextAsync, _context.Report, ImportFrom!))
         {
             Registers = RegisterPageActions,
         },

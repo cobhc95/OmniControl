@@ -54,6 +54,13 @@ public sealed class DeviceAutoChecks
         }
     }
 
+    /// Smart devices was switched off: the timer stops and the start-up check, if still waiting, does nothing.
+    public void Stop()
+    {
+        _started = false;
+        FollowNeed();
+    }
+
     private void OnTick(object? sender, EventArgs e) => _ = RunAsync(atStart: false);
 
     /// The choice a device follows now (null = manual only).
@@ -112,7 +119,7 @@ public sealed class DeviceAutoChecks
 
     private async Task RunAsync(bool atStart)
     {
-        if (_running) return;
+        if (_running || !_started) return;
         _running = true;
         try
         {

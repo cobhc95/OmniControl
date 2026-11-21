@@ -29,8 +29,15 @@ internal static partial class Shots
     }
 
     private static ActionsWindowService ActionsService(Rig rig) => _actionsWindow ??= new ActionsWindowService(rig.Actions, rig.Presets, Rig.OpenPresets, Rig.Ask, _ => { },
-        (_, _) => Task.CompletedTask, new HotkeysSwitch(rig.Actions, rig.States, AppSettingsPageViewModel.Name, Rig.Report,
-            AppSettings.Current.Slot(s => s.HotkeysOn, (s, on) => s.HotkeysOn = on)), Rig.Report);
+        (_, _) => Task.CompletedTask, HotkeysOn(rig), Rig.Report);
+
+    /// The hotkeys switch as the running "Hotkeys and automation" feature shows it.
+    private static HotkeysSwitch HotkeysOn(Rig rig)
+    {
+        var hotkeys = new HotkeysSwitch(rig.Actions, rig.States, AppSettingsPageViewModel.Name, Rig.Report, AppSettings.Current.Slot(s => s.HotkeysOn, (s, on) => s.HotkeysOn = on));
+        hotkeys.Use(true);
+        return hotkeys;
+    }
 
     /// The Choose-the-action window as a mouse button's card opens it (pick mode: "Use this action").
     private static void ActionPicker(Rig rig, Camera camera)

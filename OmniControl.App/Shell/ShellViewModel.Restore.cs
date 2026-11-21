@@ -12,20 +12,14 @@ public sealed partial class ShellViewModel
     private readonly DispatcherTimer _restoreCheck = new() { Interval = Timing.RestoreStateCheck };
     private readonly FileSnapshotStore _snapshots = new();
     private PageRestore? _restoreAll;
+    private readonly List<IRestorable> _restoreParts = new(); // what "Restore all" restores: the pages there are now, then the Actions and hotkeys window's parts
+    private IReadOnlyList<IRestorable> _windowParts = Array.Empty<IRestorable>();
 
     private Task<bool> ConfirmRestore(RestoreQuestion q) => _dialogs.AskAsync(new DialogMessage(q.Title, q.Text, q.Button));
 
     private void WireRestore()
     {
-        var parts = new List<IRestorable>();
-        foreach (var slot in AllSlots)
-        {
-            if (slot.Info.RestoreKey is not { } key) continue;
-            if (slot.IfMade?.Restorable?.HasOwnHotkey != true)
-                _hotkeys.Register(new HotkeyAction($"{key}.restore", $"Restore {slot.Title} defaults", slot.Title, "reset default restore",
-                    devices => { if (slot.Page?.Restorer is { } restorer) _ = restorer.RestoreAsync(); }));
-            parts.Add(new SlotRestorable(slot, key));
-        }
+        foreach (var slot in AllSlots) AddRestoreAction(slot);
         // The Actions and hotkeys window is not a page; its "Restore defaults" is wired the same way.
         var keys = _actionsWindow.Restorable;
         // It also puts back Windows' own screenshot keys, which that window's screenshot settings can turn off.
@@ -35,10 +29,33 @@ public sealed partial class ShellViewModel
         // Filed under App settings (its "Restore all" lives there): the window is not a section of its own in the pickers.
         _hotkeys.Register(new HotkeyAction($"{keys.Key}.restore", $"Restore {keys.Name} defaults", AppSettingsPageViewModel.Name, "reset default restore shortcuts keys",
             devices => { _ = keysRestorer.RestoreAsync(); }));
-        parts.Add(keys);
-        parts.Add(windowsKeys);
-        _restoreAll = new PageRestore(new RestoreRunner("all", "All", parts, true, ConfirmRestore, _snapshots), all: true);
+        _windowParts = new IRestorable[] { keys, windowsKeys };
+        RefreshRestoreParts();
+        _restoreAll = new PageRestore(new RestoreRunner("all", "All", _restoreParts, true, ConfirmRestore, _snapshots), all: true);
         _restoreCheck.Tick += (_, _) => RefreshRestore();
+    }
+
+    /// A page's "Restore <page> defaults" action (it makes the page when run).
+    private void AddRestoreAction(PageSlot slot)
+    {
+        if (slot.Info.RestoreKey is not { } key || slot.IfMade?.Restorable?.HasOwnHotkey == true) return;
+        _hotkeys.Register(new HotkeyAction($"{key}.restore", $"Restore {slot.Title} defaults", slot.Title, "reset default restore",
+            devices => { if (slot.Page?.Restorer is { } restorer) _ = restorer.RestoreAsync(); }));
+    }
+
+    /// A page went with its feature: its restore action and button go too.
+    private void DropRestore(PageSlot slot)
+    {
+        if (slot.Info.RestoreKey is { } key) _hotkeys.Unregister($"{key}.restore");
+        slot.IfMade?.Restorer?.Dispose();
+    }
+
+    /// "Restore all" follows the pages there are now.
+    private void RefreshRestoreParts()
+    {
+        _restoreParts.Clear();
+        _restoreParts.AddRange(AllSlots.Where(s => s.Info.RestoreKey is not null).Select(s => new SlotRestorable(s, s.Info.RestoreKey!)));
+        _restoreParts.AddRange(_windowParts);
     }
 
     /// A page just made gets its own Restore defaults button.

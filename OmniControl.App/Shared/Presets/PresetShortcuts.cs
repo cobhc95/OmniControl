@@ -26,6 +26,7 @@ public sealed class PresetShortcuts : IDisposable
         (_actions, _groups, _report) = (actions, groups, report);
         foreach (var group in groups.All) Watch(group);
         groups.Registered += Watch;
+        groups.Removed += Unwatch;
     }
 
     public static string ActionId(string groupId, string presetId) => $"{Prefix}{groupId}.{presetId}";
@@ -63,6 +64,17 @@ public sealed class PresetShortcuts : IDisposable
         group.Provider.Changed += Sync;
         _watched.Add((group.Provider, Sync));
         Sync();
+    }
+
+    /// The group was taken out: its preset actions go with it (their saved keys stay, so they come back with it).
+    private void Unwatch(PresetGroup group)
+    {
+        foreach (var (provider, sync) in _watched.Where(w => w.Provider == group.Provider).ToList())
+        {
+            provider.Changed -= sync;
+            _watched.Remove((provider, sync));
+        }
+        foreach (var id in _mine.Where(m => m.Value == group).Select(m => m.Key).ToList()) Drop(id);
     }
 
     /// Brings the group's actions in line with its presets: an action for every preset with a saved key, the title following a rename, and
@@ -118,6 +130,7 @@ public sealed class PresetShortcuts : IDisposable
     public void Dispose()
     {
         _groups.Registered -= Watch;
+        _groups.Removed -= Unwatch;
         foreach (var (provider, sync) in _watched) provider.Changed -= sync;
         foreach (var id in _mine.Keys.ToList())
             if (_actions.Find(id) is { } action) action.Changed -= OnActionChanged;

@@ -6,6 +6,12 @@ namespace OmniControl.App.Features;
 /// shut-down steps (modules register in the shell's start-up order); then each of the <see cref="Pages"/> registers its entries in sidebar order.
 public interface IFeatureModule
 {
+    /// The features (<see cref="FeatureList"/> ids) this module runs for: it runs while the first is wanted (<see cref="FeatureSwitches.Wanted"/>),
+    /// reads the others from <see cref="FeatureContext.Features"/> when it starts, and is started again when one of them changes. None: it always runs.
+    IReadOnlyList<string> Features => Array.Empty<string>();
+
+    /// Makes the feature's services and registers what it adds through the context. Called again when the feature is switched on after being
+    /// off (a live feature, <see cref="FeatureInfo.Live"/>), so it makes everything anew each time.
     void Register(FeatureContext context);
 
     /// The feature's sidebar pages (one that fails to be made is logged and said once).

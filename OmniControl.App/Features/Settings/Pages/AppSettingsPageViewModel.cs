@@ -4,7 +4,7 @@ using OmniControl.App.Shared.Services.Updates;
 
 namespace OmniControl.App.Features.Settings.Pages;
 
-/// The App settings page, five collapsible groups: Appearance; Start and close; Your data (presets, backup and restore, import, removing
+/// The App settings page, six collapsible groups: Appearance; Start and close; Features (AppSettingsPageViewModel.Features.cs); Your data (presets, backup and restore, import, removing
 /// the network service, the Confirmations, Restore all defaults); Plug-ins (AppSettingsPageViewModel.Plugins.cs, with Keep OmniControl's effects in place); Updates and about (AppSettingsPageViewModel.Updates.cs).
 public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposable
 {
@@ -49,6 +49,9 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
     public ItemGroup PlugIns { get; }
     public ItemGroup UpdatesAndAbout { get; }
 
+    /// Sound and effects runs: the Plug-ins group shows.
+    public bool HasPlugins => _plugins is not null;
+
     public override IEnumerable<SearchEntry> SearchEntries => new[]
     {
         Entry(Theme, AppearanceName, "light dark color mode system"),
@@ -64,33 +67,35 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
         Entry(_hardwareCheck, StartName, "hardware check refresh monitors displays sound devices touchpad undetected missing remote desktop safety periodic every minutes"),
         Entry(_presets, DataName, "presets manage layers display monitor equaliser compressor shortcut order rename"),
         Entry(_backup, DataName, "backup restore export import save load move computer wipe reset factory delete all settings"),
-        Entry(_importFromPc, DataName, "import settings another pc computer laptop copy paired other pcs move"),
         Entry(_restoreAllCard, DataName, "reset default restore every page all settings"),
         Entry(_networkService, DataName, "network service remove uninstall per app limits administrator admin"),
-    }.Concat(ConfirmationSearchEntries()).Concat(PluginSearchEntries()).Concat(UpdateSearchEntries())
+    }.Concat(DataItems.Contains(_importFromPc) ? new[] { Entry(_importFromPc, DataName, "import settings another pc computer laptop copy paired other pcs move") } : Array.Empty<SearchEntry>())
+     .Concat(FeatureSearchEntries()).Concat(ConfirmationSearchEntries()).Concat(PluginSearchEntries()).Concat(UpdateSearchEntries())
      .Append(Entry(_about, UpdatesName, "about credits licence license gpl open source version notice"));
 
     private const string AppearanceName = "Appearance", StartName = "Start and close", DataName = "Your data", PluginsName = "Plug-ins", UpdatesName = "Updates and about";
 
     /// <param name="openAbout">Opens the About and credits window.</param>
-    /// <param name="scanPlugins">Scans the plug-in folders (the user's own included) and remembers what it found; gives the number found.</param>
-    /// <param name="scanResult">The sentence saying what the last scan found.</param>
+    /// <param name="plugins">The plug-ins found on this PC: Scan now scans the folders (the user's own included) and says what it found; null while
+    /// Sound and effects is off (no Plug-ins group).</param>
     /// <param name="openPresets">Opens the preset manager at its first section with presets.</param>
     /// <param name="confirmations">The prompts the user chose not to be asked about again (the Confirmations cards of Your data).</param>
     /// <param name="backup">Export, import and wipe of every saved store (the Backup and restore card).</param>
     /// <param name="updates">The update check (the Updates and about group).</param>
     /// <param name="report">Says one plain sentence in the window's footer (a web page that would not open).</param>
-
-    /// <param name="mixer">Holds "Keep OmniControl's effects in place" (the Plug-ins group's switch, also in every FX window's Options).</param>
+    /// <param name="mixer">Holds "Keep OmniControl's effects in place" (the Plug-ins group's switch, also in every FX window's Options); null with <paramref name="plugins"/>.</param>
     /// <param name="hardware">The master list of hardware watches: the "Check hardware every" card sets how often its periodic safety check runs.</param>
     /// <param name="settings">The app's settings in use, which this page edits.</param>
-    public AppSettingsPageViewModel(Action openAbout, Func<IProgress<int>?, CancellationToken, Task<int>> scanPlugins,
-        Func<string> scanResult, Action openPresets, BackupService backup, ConfirmationMemory confirmations, UpdateService updates, Action<string> report,
-        Features.Volume.Audio.MixerService mixer, HardwareWatches hardware, AppSettings settings, ITrayIconLook trayIcon) : base(Info)
+    /// <param name="features">THE feature switch (the Features group).</param>
+    public AppSettingsPageViewModel(Action openAbout, Features.Volume.Fx.Plugins.PluginLibrary? plugins, Action openPresets, BackupService backup,
+        ConfirmationMemory confirmations, UpdateService updates, Action<string> report, Features.Volume.Audio.MixerService? mixer, HardwareWatches hardware,
+        AppSettings settings, ITrayIconLook trayIcon, FeatureSwitches features) : base(Info)
     {
         _settings = settings;
         _confirmations = confirmations;
         _hardware = hardware;
+        _features = features;
+        _plugins = plugins;
         var themes = Enum.GetNames<ThemeChoice>();
         Theme = new GalleryItem("Theme", themes, (int)_settings.Theme, i => (ThemeSwatch.Fill(i), SwatchMark.None), i => OnThemeChosen(themes[i])) { Half = true };
 
@@ -147,24 +152,33 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
 
         _addFolder = new FileItem("Plug-in folders", FileKind.OfFolder("Choose a folder with plug-ins"), AddFolder) { EmptyText = "Add a folder to scan" };
         _scan = new ButtonItem("Plug-in scan", "Scan now", ScanIdleText, StartScan);
-        _scanPlugins = scanPlugins;
-        _keepFx = KeepFxCard(mixer);
-        _scanResult = scanResult;
+        _keepFx = mixer is null ? null : KeepFxCard(mixer);
         _resetAllConfirmations = new ButtonItem("Confirmations", "Reset all", string.Empty, confirmations.ResetAll);
         _restoreAllCard = new ButtonItem("Restore all defaults", "Restore all", "Puts every page back to its defaults after one question; you can undo it", () => _ = RestoreAll?.RestoreAsync());
         _networkService = new ButtonItem("Network service", "Remove…", "Lets per-app network limits work without running OmniControl as administrator",
             () => _ = Guard.RunAsync("Remove the network service", async () => report(await NetworkServiceMode.RemoveAsync() ?? "The network service was removed.")));
         MakeUpdateCards(updates, report);
+        _featureCards = MakeFeatureCards();
+        ReadyMade = new MenuChoiceItem("Ready-made", () => $"Ready-made: {FeatureList.ReadyMadeOf(_features.Off)}", ReadyMadeRows)
+        {
+            Tip = "The same choices as Setup's Choose features page.",
+        };
+        TurnAllOnCommand = new RelayCommand(() => _features.SetOff(Array.Empty<string>()), () => _features.Off.Count > 0);
 
         // Each group is made from its fixed cards (its closed header lists their names), then the cards that come and go are added.
         Appearance = Fill(AppearanceItems, "AppSettings/Appearance", AppearanceName, Theme, Background, Accent, _accentIntensity, _groupsOpen, _trayIcon, _trayColour);
         StartAndClose = Fill(StartItems, "AppSettings/Start", StartName, _startWithWindows, _startMinimised, _whenClosing, _hardwareCheck);
-        YourData = Fill(DataItems, "AppSettings/Data", DataName, _presets, _backup, _importFromPc, _networkService, _resetAllConfirmations, _restoreAllCard);
-        PlugIns = Fill(PluginItems, "AppSettings/Plugins", PluginsName, _addFolder, _scan, _keepFx);
+        foreach (var (_, card) in _featureCards) FeatureItems.Add(card);
+        FeatureGroup = new ItemGroup("AppSettings/Features", FeaturesName, FeatureItems) { NoMasterSwitch = true };
+        YourData = Fill(DataItems, "AppSettings/Data", DataName, new object?[] { _presets, _backup, backup.CanImportFromPc ? _importFromPc : null, _networkService,
+            _resetAllConfirmations, _restoreAllCard }.OfType<object>().ToArray());
+        PlugIns = Fill(PluginItems, "AppSettings/Plugins", PluginsName, new object?[] { _addFolder, _scan, _keepFx }.OfType<object>().ToArray());
         UpdatesAndAbout = Fill(UpdateItems, "AppSettings/Updates", UpdatesName, _updateDaily, _version, _latest, _about);
         foreach (var folder in _settings.PluginFolders) PluginItems.Insert(PluginItems.IndexOf(_scan), FolderRow(folder));
         ReloadConfirmations();
         Follow(h => confirmations.Changed += h, h => confirmations.Changed -= h, ReloadConfirmations);
+        ShowFeatures();
+        Follow(h => features.Changed += h, h => features.Changed -= h, ShowFeatures);
         ReadStartup();
     }
 

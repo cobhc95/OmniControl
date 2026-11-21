@@ -28,7 +28,7 @@ namespace OmniControl.App.Shell;
 
 public sealed partial class ShellViewModel : ObservableObject, IDisposable
 {
-    private readonly DisplaysModule _displays = new(); // made first: the monitors' engine and the software displays
+    private readonly DisplaysModule _displays = new(); // made first: the software displays put back a picture a crashed run left changed
     private readonly HardwareWatches _hardware = new(); // the master list of hardware watches, made first: the registry and the features that depend on hardware are given it
     private readonly PowerJournal _power; // the power journal: hears sleeps, wakes and log-ins through the hardware watches' listeners
     private readonly HotkeyRegistry _hotkeys;
@@ -55,7 +55,8 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     private readonly DevicesModule _devices;
     private readonly OtherPcsModule _otherPcs;
     private readonly IReadOnlyList<IFeatureModule> _modules; // in start-up order
-    private readonly IReadOnlyList<PageSlot> _allPages;
+    private readonly IReadOnlyList<IFeatureModule> _sidebar; // the modules with pages, in sidebar order
+    private IReadOnlyList<PageSlot> _allPages = Array.Empty<PageSlot>(); // the running modules' pages, in sidebar order
     private readonly PageSlot _appSettings;
     private bool _syncing;
     private bool _windowShown; // the main window is showing and not minimised
@@ -102,6 +103,8 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
 
     public ShellViewModel()
     {
+        _features = new FeatureSwitches(_settings.Slot(s => s.FeaturesOff, (s, off) => s.FeaturesOff = off),
+            _settings.Slot(s => s.FeaturesFromSetup, (s, chosen) => s.FeaturesFromSetup = chosen));
         _input = new InputModule(_volume.RememberedPrograms); // its pointer settings put back a button swap a crashed run left on trial
         _osd = new OsdModule(() => _apps.ListedPrograms());
         _hotkeys = new HotkeyRegistry(_hardware, Report, new OmniActionSettings(), () => _states, _actionGate);
@@ -121,33 +124,32 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _power = new PowerJournal(_hardware);
         _devices = new DevicesModule(() => _otherPcs.Paired, () => OpenPage(OtherPcsService.Category));
         _otherPcs = new OtherPcsModule(_devices.ShareSetups);
-        var context = new FeatureContext(_hotkeys, _hotkeys, _states, _hardware, _osd.Osd, _presetGroups, _presetManager.Open, _dialogs.AskAsync, _dialogs.AskTextAsync,
-            Report, OpenPage, _apps.Scopes, _apps.Gate, _iconPicker, _actionGate, _power, setId => new SuggestedKeysSwitch(_hotkeys, setId), _settings, _importHooks, _shutdown);
-        var automation = new AutomationModule(_volume.RememberedPrograms);
+        _context = new FeatureContext(_hotkeys, _hotkeys, _states, _hardware, _osd.Osd, _presetGroups, _presetManager.Open, _dialogs.AskAsync, _dialogs.AskTextAsync,
+            Report, OpenPage, _apps.Scopes, _apps.Gate, _iconPicker, _actionGate, _power, setId => new SuggestedKeysSwitch(_hotkeys, setId), _settings, _importHooks, _shutdown,
+            _features);
+        var automation = new AutomationModule(_volume.RememberedPrograms, _hotkeysSwitch.Use);
         var resources = new ResourcesModule();
 
         // Every feature, in start-up order: it decides the order of the master lists (actions, states, hardware watches) and of the
-        // mouse hook's handlers (inside the Input module), so keep it.
+        // mouse hook's handlers (inside the Input module), so keep it. Only the features switched on start (ShellViewModel.Features.cs).
         _modules = new IFeatureModule[] { _volume, _apps, new PowerModule(), _screenshot, _input, automation, _devices, _otherPcs, _osd, _displays, resources };
-        foreach (var module in _modules) module.Register(context);
+        foreach (var module in _modules.Where(Wanted)) Begin(module);
         // What an import from another PC may reload live of what the shell itself owns; each module says so for its own.
         RegisterReloads();
 
         // The sidebar, in order (a page's NavGroup decides its heading; keep the pages of a group together). Each page registers its
         // entries here, in this order; its view-model is made when it is first needed.
-        _allPages = new IFeatureModule[] { _displays, _volume, _devices, _otherPcs, _input, automation, _osd, resources }
-            .SelectMany(m => m.Pages).Select(Slot).ToArray();
-        foreach (var module in _modules) module.PagesMade();
-        _presetManager.UseSections(_allPages.Select(p => new PresetSection(p.Title, p.Icon))
-            .Append(new PresetSection(ActionsWindowService.Title, ActionsWindowService.Icon)).ToList());
+        _sidebar = new IFeatureModule[] { _displays, _volume, _devices, _otherPcs, _input, automation, _osd, resources };
+        foreach (var module in _sidebar.Where(_running.ContainsKey)) MakePages(module);
+        foreach (var module in _modules.Where(_running.ContainsKey)) module.PagesMade();
+        _allPages = RunningPages();
         TrayFlyout = MakeTray();
-        _appSettings = new PageSlot(AppSettingsPageViewModel.Info, () => new AppSettingsPageViewModel(_about.Open, _volume.Library.ScanAsync, _volume.Library.FoundText,
+        _appSettings = new PageSlot(AppSettingsPageViewModel.Info, () => new AppSettingsPageViewModel(_about.Open, _volume.Library,
             () => _presetManager.Open(null, null), new BackupService(_dialogs.ChooseAsync, Report, _otherPcs.ImportFrom), _dialogs.Confirmations, _updates, Report,
-            _volume.Mixer, _hardware, _settings, TrayFlyout), OnPageMade, Report);
+            _volume.Mixer, _hardware, _settings, TrayFlyout, _features), OnPageMade, Report);
         RegisterAppActions();
         _allFooter = new[] { _appSettings };
-        // The Choose-the-action window's sections are the sidebar pages, in the sidebar's order, with their icons.
-        _hotkeys.UseSections(AllSlots.Select((p, i) => new ActionSection(p.Title, p.Icon, i + 1)).ToList());
+        UseSections();
 
         Guard.Run("Start-up: power journal", _power.Start);
         _hardware.Start();
@@ -156,8 +158,9 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         RegisterTray(TrayFlyout);
         WatchUpdates();
 
-        Categories = new[] { AllCategories }.Concat(AllSlots.Select(p => p.Title)).ToArray();
         _selectedCategory = AllCategories;
+        Categories = CategoriesNow();
+        _features.Changed += ApplyFeatures;
 
         ApplyFilter();
         _hiddenSettle.Tick += OnHiddenSettled;
@@ -230,8 +233,10 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
 
     private const string AllCategories = "All categories";
 
-    /// Entries of the category filter next to the search box.
-    public IReadOnlyList<string> Categories { get; }
+    /// Entries of the category filter next to the search box: every page there is now.
+    [ObservableProperty] private IReadOnlyList<string> _categories = Array.Empty<string>();
+
+    private IReadOnlyList<string> CategoriesNow() => new[] { AllCategories }.Concat(AllSlots.Select(p => p.Title)).ToArray();
 
     [ObservableProperty] private string _selectedCategory;
 
@@ -344,6 +349,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         // The shell's own steps join the modules' at their stages (ShutdownStage); every step runs on its own.
+        _features.Changed -= ApplyFeatures;
         _hiddenSettle.Stop();
         _hiddenSettle.Tick -= OnHiddenSettled;
         _releaseUi.Stop();
@@ -368,6 +374,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         Step(ShutdownStage.PresetGroups, "preset groups", _presetGroups.Dispose);
         foreach (var page in AllSlots.Select(s => s.IfMade).OfType<IDisposable>()) Step(ShutdownStage.Pages, page.GetType().Name, page.Dispose);
         Step(ShutdownStage.Icons, "icons", _icons.Dispose);
+        Step(ShutdownStage.Osd, "OSD", _osd.Dispose);
         Step(ShutdownStage.Hotkeys, "hotkeys", _hotkeys.Dispose);
         Step(ShutdownStage.AppWindows, "about window", _about.Close);
         Step(ShutdownStage.AppWindows, "update check", _updates.Dispose);

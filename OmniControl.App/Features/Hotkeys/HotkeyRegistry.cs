@@ -129,6 +129,7 @@ public sealed partial class HotkeyRegistry : IActionRegistry, IActionRunner, IDi
 
     public void Unregister(string id)
     {
+        _pickerCommands.RemoveAll(c => c.Id == id);
         if (Find(id) is not { } action) return;
         action.Changed -= OnChanged;
         Actions.Remove(action);
@@ -384,7 +385,16 @@ public sealed partial class HotkeyRegistry : IActionRegistry, IActionRunner, IDi
         Rebind();
     }
 
-    private bool _held, _paused;
+    private bool _held, _paused, _stopped;
+
+    /// "Hotkeys and automation" switched off (<see cref="HotkeysSwitch.Use"/>): no key at all is registered with Windows, not even a
+    /// <see cref="HotkeyAction.NeverBlock"/> one. The keys stay saved and on their actions.
+    public void StopKeys(bool stopped)
+    {
+        if (stopped == _stopped) return;
+        _stopped = stopped;
+        Rebind();
+    }
 
     /// The hotkeys master switch (<see cref="HotkeysSwitch"/>): while paused, no key is registered with Windows except those of
     /// <see cref="HotkeyAction.NeverBlock"/> actions. The keys stay saved and on their actions. Mouse buttons and rules run through other paths and are not paused.
@@ -406,7 +416,7 @@ public sealed partial class HotkeyRegistry : IActionRegistry, IActionRunner, IDi
     }
 
     private void Rebind() =>
-        _service.Apply(Actions.Where(a => !(_held || _paused) || a.NeverBlock).SelectMany(a => a.Keys.Where(k => ReservedKeys.ProblemWith(k) is null).Select(k => (k, (Action)(() => RunSoon(a))))));
+        _service.Apply(Actions.Where(a => !_stopped && (!(_held || _paused) || a.NeverBlock)).SelectMany(a => a.Keys.Where(k => ReservedKeys.ProblemWith(k) is null).Select(k => (k, (Action)(() => RunSoon(a))))));
 
     private static Dictionary<string, StoredHotkey> Load() =>
         Unique(AppDataStore.Load<Dictionary<string, StoredHotkey>>(Store) ?? new());

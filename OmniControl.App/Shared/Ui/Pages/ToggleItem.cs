@@ -13,10 +13,13 @@ public sealed partial class ToggleItem : ObservableObject, IEditorItem, IHalfWid
     /// A fact about the setting the label does not say (a limit), shown as the card's tooltip; null: none.
     public string? Tip { get; init; }
 
-    /// A muted line under the label (what the setting does or costs); null: none.
-    public string? Note { get; init; }
+    /// A muted line under the label (what the setting does or costs); null: none. May change while shown.
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasNote))] private string? _note;
 
     public bool HasNote => !string.IsNullOrEmpty(Note);
+
+    /// The label and note drawn greyed (<c>.unavailable</c>), the switch still usable: what it switches does not run now (App settings' Features).
+    [ObservableProperty] private bool _dimmed;
 
     /// True: the card takes half the width and may share a row with the next half-width card.
     public bool Half { get; init; }

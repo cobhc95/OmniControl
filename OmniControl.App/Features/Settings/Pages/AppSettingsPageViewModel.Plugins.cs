@@ -8,13 +8,12 @@ public sealed partial class AppSettingsPageViewModel
     private const string ScanIdleText = "Searches the standard folders and yours, with subfolders.";
 
     private readonly FileItem _addFolder;
-    private readonly ToggleItem _keepFx;
+    private readonly ToggleItem? _keepFx;
     private readonly ButtonItem _scan;
-    private readonly Func<IProgress<int>?, CancellationToken, Task<int>> _scanPlugins;
-    private readonly Func<string> _scanResult;
+    private readonly Features.Volume.Fx.Plugins.PluginLibrary? _plugins;
     private bool _scanning;
 
-    private IEnumerable<SearchEntry> PluginSearchEntries() =>
+    private IEnumerable<SearchEntry> PluginSearchEntries() => _keepFx is null ? Array.Empty<SearchEntry>() :
         new[]
         {
             Entry(_addFolder, PluginsName, "plug-in plugin vst vst2 vst3 folder directory path add other places"),
@@ -66,13 +65,13 @@ public sealed partial class AppSettingsPageViewModel
 
     private async Task ScanAsync()
     {
-        if (_scanning) return;
+        if (_scanning || _plugins is not { } plugins) return;
         _scanning = true;
         try
         {
             _scan.Description = "Scanning…";
-            await _scanPlugins(new Progress<int>(n => _scan.Description = $"Scanning… {n} found"), CancellationToken.None);
-            _scan.Description = _scanResult();
+            await plugins.ScanAsync(new Progress<int>(n => _scan.Description = $"Scanning… {n} found"), CancellationToken.None);
+            _scan.Description = plugins.FoundText();
         }
         catch (IOException ex)
         {

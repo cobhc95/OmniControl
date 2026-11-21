@@ -12,7 +12,7 @@ public interface IActionRegistry : IActionCatalogue
     /// Adds a button to a picker list (see <see cref="IActionCatalogue.PickerActions"/>); it is not an action and never gets a key.
     void RegisterPickerCommand(HotkeyAction command);
 
-    /// Takes the action out of the master list; its saved shortcut stays in hotkeys.json (a deleted preset that is put back gets it again).
+    /// Takes the action (or a picker button) out of the master list; its saved shortcut stays in hotkeys.json (a deleted preset that is put back gets it again).
     void Unregister(string id);
 
     /// The ids starting with <paramref name="prefix"/> that hotkeys.json keeps a shortcut for (registered or not).

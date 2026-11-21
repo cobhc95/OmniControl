@@ -13,7 +13,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
 {
     private readonly ResourceMonitor _monitor;
     private readonly ResourcesSettings _settings;
-    private readonly NetworkLimits _limits;
+    private readonly NetworkLimits? _limits; // null while Network traffic control is off: no Network traffic control group
     private readonly AppScopeGate _gate;
     private readonly ProviderChoice _presets;
     private readonly IReadOnlyList<(ReadingCard Card, Reading Reading)> _cards;
@@ -47,53 +47,59 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     public ObservableCollection<AppNetItem> AppRows { get; } = new();
     public bool HasApps => AppRows.Count > 0;
 
+    /// Network traffic control runs: its group shows.
+    public bool ShowsTraffic => _limits is not null;
+
     /// The Packet filter switch on the Network traffic control group's header: off takes Windows Packet Filter out of all traffic (for a conflict with other software).
     public ToggleItem PacketFilter { get; }
     private const string FilterKeywords = "packet filter windows packet filter winpkfilter ndisrd driver network adapter download limit conflict vpn tailscale off";
 
     /// The one status line under the programs: the network service, then what really runs for each kind of rule (red while the service or
     /// download limits have failed).
-    public string Status => $"{_limits.Service.Line} · {_limits.Download.Line} · Upload limits use Windows' throttle rules · Blocks use Windows Firewall"
+    public string Status => _limits is not { } limits ? string.Empty
+        : $"{limits.Service.Line} · {limits.Download.Line} · Upload limits use Windows' throttle rules · Blocks use Windows Firewall"
         + (_monitor.AppsProblem is { } problem ? $" · {problem}" : string.Empty);
 
-    public string StatusTip => $"{_limits.Service.Tip} {_limits.Download.Tip}".Trim();
+    public string StatusTip => _limits is { } limits ? $"{limits.Service.Tip} {limits.Download.Tip}".Trim() : string.Empty;
 
-    public bool StatusFailed => _limits.Service.Failed || _limits.Download.Failed;
+    public bool StatusFailed => _limits is { } limits && (limits.Service.Failed || limits.Download.Failed);
 
     /// The status line's "Install Windows Packet Filter…" link shows only after its install failed, as a retry.
-    public bool OffersInstall => _limits.Download.OffersInstall;
+    public bool OffersInstall => _limits?.Download.OffersInstall == true;
 
     public IRelayCommand InstallPacketFilterCommand { get; }
 
     /// The status line's network service "Install…" link: not installed, or failing.
-    public bool OffersServiceInstall => _limits.Service.OffersInstall;
+    public bool OffersServiceInstall => _limits?.Service.OffersInstall == true;
 
     /// Neither the network service nor OmniControl as administrator can do the work: the group shows only <see cref="UnavailableLine"/> and,
     /// on an installed copy, Install….
-    public bool Unavailable => !_limits.Available;
-    public string UnavailableLine => _limits.UnavailableLine;
-    public bool CanInstallService => _limits.CanInstallService;
+    public bool Unavailable => _limits is { Available: false };
+    public string UnavailableLine => _limits?.UnavailableLine ?? string.Empty;
+    public bool CanInstallService => _limits?.CanInstallService == true;
     public IRelayCommand InstallServiceCommand { get; }
     public string InstallServiceTip => NetworkLimits.InstallServiceTip;
 
     public override IEnumerable<SearchEntry> SearchEntries =>
-        new[] { Entry(ReadEvery, ReadEvery.Label, "resources readings"), Entry(PacketFilter, PacketFilter.Label, FilterKeywords, Apps.Name) }
+        new[] { Entry(ReadEvery, ReadEvery.Label, "resources readings") }
+            .Concat(ShowsTraffic ? new[] { Entry(PacketFilter, PacketFilter.Label, FilterKeywords, Apps.Name) } : Array.Empty<SearchEntry>())
             .Concat(_gadget.SearchItems.Select(i => Entry(i, i.Label, "resources taskbar gadget", GadgetTab)));
 
     /// <param name="presets">The title line's preset picker (the page disposes it).</param>
     /// <param name="gadget">The Taskbar gadget tab (the page disposes it).</param>
-    internal ResourcesPageViewModel(ResourceMonitor monitor, ResourcesSettings settings, NetworkLimits limits, ProviderChoice presets,
+    /// <param name="limits">Network traffic control; null while it is off.</param>
+    internal ResourcesPageViewModel(ResourceMonitor monitor, ResourcesSettings settings, NetworkLimits? limits, ProviderChoice presets,
         AppScopes scopes, AppScopeGate gate, GadgetSettingsModel gadget, Action<string> report) : base(Info)
     {
         (_monitor, _settings, _limits, _gate, _presets, _gadget, _report) = (monitor, settings, limits, gate, presets, gadget, report);
         Tabs.PropertyChanged += OnTabChanged;
         InstallPacketFilterCommand = new RelayCommand(() =>
         {
-            limits.InstallPacketFilter();
+            limits?.InstallPacketFilter();
             ShowStatus();
         });
-        InstallServiceCommand = new AsyncRelayCommand(() => Guard.RunAsync("Install the network service", limits.InstallServiceAsync));
-        limits.Changed += OnLimitsChanged;
+        InstallServiceCommand = new AsyncRelayCommand(() => limits is null ? Task.CompletedTask : Guard.RunAsync("Install the network service", limits.InstallServiceAsync));
+        if (limits is not null) limits.Changed += OnLimitsChanged;
 
         _adapter = new NetworkAdapterMenu(monitor, settings, open =>
         {
@@ -124,7 +130,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
         Apps = new CardGroup("Resources/Apps", NetworkGroupName, string.Empty)
         {
             ExpandedByDefault = true,
-            Restore = () => limits.SetPacketFilter(true),
+            Restore = () => limits?.SetPacketFilter(true),
             RestoreTip = "Turns Windows Packet Filter back on.",
         };
         AppsScope = scopes.Group(NetworkGroupName,() => settings.Scope, scope =>
@@ -139,7 +145,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
             Need(); // per-program traffic is read only while the group is open
             if (Apps.IsExpanded) ShowApps();
         };
-        PacketFilter = new ToggleItem("Packet filter", limits.PacketFilterOn, limits.SetPacketFilter)
+        PacketFilter = new ToggleItem("Packet filter", limits?.PacketFilterOn == true, on => limits?.SetPacketFilter(on))
         {
             Tip = "Download limits use Windows Packet Filter. Turn it off if another program has network trouble.",
         };
@@ -210,7 +216,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
         Need();
         if (!onScreen) return;
         OnUpdated();
-        _limits.Recheck();
+        _limits?.Recheck();
     }
 
     /// The readings tab asks the poller at the page's interval while it is on screen; the gadget tab holds the gadget's own reads.
@@ -218,7 +224,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     {
         var every = _onScreen && ShowsReadings ? TimeSpan.FromSeconds(_settings.Setup.ReadEverySeconds) : (TimeSpan?)null;
         _monitor.Need(ResourceMonitor.PageNeed, every, SampleParts.All | (_listAdapters ? SampleParts.Adapters : 0));
-        _monitor.Need(ResourceMonitor.AppsNeed, Apps.IsExpanded && !Unavailable ? every : null);
+        _monitor.Need(ResourceMonitor.AppsNeed, ShowsTraffic && Apps.IsExpanded && !Unavailable ? every : null);
         _gadget.SetOnScreen(_onScreen && !ShowsReadings);
     }
 
@@ -228,7 +234,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
         foreach (var (card, reading) in _cards) Show(card, reading, _monitor.Latest);
         _adapter.Refresh();
         foreach (var menu in SensorMenus) menu.Refresh();
-        if (Apps.IsExpanded) ShowTraffic();
+        if (ShowsTraffic && Apps.IsExpanded) ShowTraffic();
         ShowStatus();
     }
 
@@ -243,6 +249,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     /// in the order first seen, each showing its rule as saved.
     private void ShowApps()
     {
+        if (_limits is null) return;
         ListRows();
         foreach (var row in AppRows) row.Load();
         _downloadShown = _limits.Download;
@@ -257,7 +264,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
         var ids = pins.Select(p => p.Key).Concat(_monitor.Seen.Keys).Concat(_settings.Setup.Apps.Select(r => r.Id)).Distinct()
             .Where(id => _gate.Allows(_settings.Scope, id)).ToList();
         var known = AppRows.ToDictionary(r => r.Id);
-        ListDiff.Apply(AppRows, ids.Select(id => known.GetValueOrDefault(id) ?? new AppNetItem(id, _limits, _icons, TogglePin, _report)).ToList(), r => r.Id);
+        ListDiff.Apply(AppRows, ids.Select(id => known.GetValueOrDefault(id) ?? new AppNetItem(id, _limits!, _icons, TogglePin, _report)).ToList(), r => r.Id);
         foreach (var row in AppRows)
         {
             row.IsPinned = pins.Contains(row.Id);
@@ -269,7 +276,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     /// Where a program lives: as the poller saw it, else as its rule or its pin keeps it; empty when not known.
     private string PathOf(string id, IEnumerable<string> pinned) =>
         _monitor.Seen.GetValueOrDefault(id) is { Length: > 0 } seen ? seen
-        : _limits.Rule(id)?.Path is { Length: > 0 } ruled ? ruled
+        : _limits?.Rule(id)?.Path is { Length: > 0 } ruled ? ruled
         : pinned.FirstOrDefault(Path.IsPathFullyQualified) ?? string.Empty;
 
     /// Pins a row to the top by its program's path (its identity while the path is not known), or unpins it.
@@ -284,7 +291,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     private void ShowTraffic()
     {
         if (_monitor.Seen.Count != _seenShown) ListRows();
-        if (_limits.Download != _downloadShown)
+        if (_limits!.Download != _downloadShown)
         {
             _downloadShown = _limits.Download;
             foreach (var row in AppRows) row.Load();
@@ -310,7 +317,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     /// Where the network work runs, or the service's state, changed (a worker): the group and its status line follow.
     private void OnLimitsChanged() => Dispatcher.UIThread.Post(() =>
     {
-        PacketFilter.Load(_limits.PacketFilterOn);
+        PacketFilter.Load(_limits!.PacketFilterOn);
         foreach (var row in AppRows) row.Load(); // the download chips follow the switch
         OnPropertyChanged(nameof(Unavailable));
         OnPropertyChanged(nameof(UnavailableLine));
@@ -321,7 +328,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
 
     public void Dispose()
     {
-        _limits.Changed -= OnLimitsChanged;
+        if (_limits is not null) _limits.Changed -= OnLimitsChanged;
         _settings.Changed -= OnSettingsChanged;
         _monitor.Updated -= OnUpdated;
         Tabs.PropertyChanged -= OnTabChanged;

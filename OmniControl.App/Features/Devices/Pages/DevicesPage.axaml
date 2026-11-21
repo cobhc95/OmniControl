@@ -30,7 +30,8 @@
                         </ListBox>
                         <StackPanel Orientation="Horizontal" Spacing="{StaticResource Gap}">
                             <Button Classes="blockadd small" Content="+ Add device" Command="{Binding AddDeviceCommand}" VerticalAlignment="Center" />
-                            <Button Classes="pill" Content="Import…" Command="{Binding OpenImportCommand}" ToolTip.Tip="Copy devices from another paired PC" VerticalAlignment="Center" />
+                            <Button Classes="pill" Content="Import…" Command="{Binding OpenImportCommand}" ToolTip.Tip="Copy devices from another paired PC" VerticalAlignment="Center"
+                                    IsVisible="{Binding HasImport}" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -38,8 +39,8 @@
             </Grid>
         </Border>
         <pages:EmptyListRow IsVisible="{Binding NoDevices}" Text="No devices yet. A device is a smart plug or bulb OmniControl can switch on and off." LinkText="Add device" Command="{Binding AddDeviceCommand}"
-                         SecondLinkText="Import from another PC" SecondCommand="{Binding OpenImportCommand}" />
-        <pages:GroupCard x:Name="ImportCard" Group="{Binding Import.Group}">
+                         SecondLinkText="{Binding ImportLinkText}" SecondCommand="{Binding OpenImportCommand}" />
+        <pages:GroupCard x:Name="ImportCard" Group="{Binding Import.Group}" IsVisible="{Binding HasImport}">
             <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:DevicesPageViewModel">
                 <vm:DeviceImport DataContext="{Binding Import}" />
             </DataTemplate></pages:GroupCard.ContentTemplate>

@@ -34,9 +34,11 @@ public sealed partial class ShellViewModel
     /// Runs a master action by id through the one run path (the tray menu). False when no such action is registered.
     public bool RunAction(string id) => _hotkeys.Run(id);
 
-    /// Made before App settings, whose Tray icon cards read its look; its actions are registered later by <see cref="RegisterTray"/>.
+    /// Made before App settings, whose Tray icon cards read its look; its actions are registered later by <see cref="RegisterTray"/>. While it
+    /// shows, the mixer's levels are kept fresh (when Sound and effects runs).
     private TrayFlyoutModel MakeTray() =>
-        new(_hotkeys, _hotkeys.Run, _states, _iconPicker, () => AppLifecycle.RequestShow("the quick panel's Open OmniControl"), ShowInApp, _volume.Mixer.WatchClosely);
+        new(_hotkeys, _hotkeys.Run, _states, _iconPicker, () => AppLifecycle.RequestShow("the quick panel's Open OmniControl"), ShowInApp,
+            () => _volume.Mixer?.WatchClosely());
 
     private void RegisterTray(TrayFlyoutModel flyout)
     {

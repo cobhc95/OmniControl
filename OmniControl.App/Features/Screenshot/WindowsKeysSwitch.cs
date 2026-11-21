@@ -35,6 +35,13 @@ public sealed class WindowsKeysSwitch
         return true;
     }
 
+    /// The Screenshot tool was switched off: Windows' own keys are put back while the switch stays on, so <see cref="Reapply"/> turns them off
+    /// again when the tool is back. Says one line when Windows refused.
+    public void GiveBack()
+    {
+        if (IsOn && _settings.WindowsKeysBackup is { } before && !SnippingKeys.Restore(before)) _report("Couldn't put Windows' screenshot keys back.");
+    }
+
     public void Toggle() => Set(!IsOn);
 
     /// Turns the switch on or off at once and says in one line when something could not be done or only applies later.

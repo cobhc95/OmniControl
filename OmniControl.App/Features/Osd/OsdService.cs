@@ -75,6 +75,39 @@ public sealed class OsdService : IOsd, IDisposable
         if (_elements.Any(e => e.Name == element.Name)) return;
         _elements.Add(element);
         ElementsChanged?.Invoke();
+        SyncWatchers();
+    }
+
+    /// Takes back a declared element (the feature that shows it was switched off): its switch goes and nothing watches for it.
+    public void Forget(string name)
+    {
+        if (_elements.RemoveAll(e => e.Name == name) == 0) return;
+        ElementsChanged?.Invoke();
+        SyncWatchers();
+    }
+
+    private bool IsDeclared(string element) => _elements.Any(e => e.Name == element);
+
+    private bool _featureOn;
+
+    /// The On-screen display feature runs (App settings > Features): off, nothing pops up, no window or watcher is kept and Windows' own OSD is
+    /// left as it is, while the features that show through this service keep calling it. Off until the OSD module starts.
+    public void UseFeature(bool on)
+    {
+        if (on == _featureOn) return;
+        _featureOn = on;
+        ApplyWindowsOsd();
+        SyncWatchers();
+        Dispatcher.UIThread.Post(SyncWindows, DispatcherPriority.Send);
+    }
+
+    /// Pop-ups show: the feature runs and "Show OSD" is on.
+    private bool Active => _featureOn && Settings.Enabled;
+
+    private void ApplyWindowsOsd()
+    {
+        _windowsOsd.Hidden = _featureOn && Settings.HideWindowsOsd;
+        if (!_windowsOsd.Hidden) _windowsOsd.Restore(); // undo a hide left over from an earlier run or from the feature being on
     }
 
     // A level shown under a name nobody declared gets the neutral disc, never another feature's picture.
@@ -88,7 +121,6 @@ public sealed class OsdService : IOsd, IDisposable
         DeclareText(UsbElement);
         DeclareText(PlayPauseElement);
         DeclareText(TrackElement);
-        DeclareText(SmartDevicesElement);
         _hide.Tick += (_, _) =>
         {
             _hide.Stop();
@@ -98,12 +130,11 @@ public sealed class OsdService : IOsd, IDisposable
         };
         _keepWarm.Tick += (_, _) => { foreach (var window in _windows) window.KeepWarm(); };
         AccentService.Changed += OnAccentChanged;
-        _windowsOsd.Hidden = Settings.HideWindowsOsd;
-        if (!Settings.HideWindowsOsd) _windowsOsd.Restore(); // undo a hide left over from an earlier run
+        ApplyWindowsOsd();
 
         // Volume changed outside OmniControl (volume keys, another app). OmniControl's own steps already showed their value; the
         // echo would show it again, or briefly show an older value between two quick steps. The keys act for the program in front,
-        // so that is taken as the program that caused it.
+        // so that is taken as the program that caused it. Both watchers start when the Volume feature names its device (WatchVolumeOf).
         _volume.Changed += (value, muted) =>
         {
             VolumeWatched?.Invoke(value, muted);
@@ -111,7 +142,6 @@ public sealed class OsdService : IOsd, IDisposable
             _windowsOsd.Trigger();
             Show(VolumeElement, muted ? 0 : value, VolumeLabel(muted), _programs.Foreground());
         };
-        _volume.Start();
 
         // The microphone changed outside OmniControl (the laptop's mic-mute key, Windows settings, another app).
         _mic.Changed += (value, muted) =>
@@ -121,19 +151,15 @@ public sealed class OsdService : IOsd, IDisposable
             _windowsOsd.Trigger();
             Show(MicrophoneElement, muted ? 0 : value, muted ? "Microphone muted" : MicrophoneElement, _programs.Foreground());
         };
-        _mic.Start();
 
         _usb.Changed += OnUsbChanged;
-        SyncWatchers();
-
-        // As soon as the dispatcher runs, ahead of building the main window's pages, so even the first pop-up is ready.
-        Dispatcher.UIThread.Post(SyncWindows, DispatcherPriority.Send);
     }
 
     /// The pop-up windows and their keep-warm redraw exist only while the OSD is on (a preview makes one on demand); off, they are closed.
+    /// Made as soon as the dispatcher runs after the feature starts, ahead of building the main window's pages, so even the first pop-up is ready.
     private void SyncWindows()
     {
-        if (Settings.Enabled)
+        if (Active)
         {
             Prepare();
             _keepWarm.Start();
@@ -155,10 +181,11 @@ public sealed class OsdService : IOsd, IDisposable
 
     private void OnAccentChanged() => SettingsChanged?.Invoke();
 
-    /// Brightness, USB devices and media are watched only while the OSD and that element are on (nothing else uses what they hear).
+    /// Brightness, USB devices and media are watched only while the OSD and that element are on (nothing else uses what they hear), and
+    /// brightness only while the Displays feature declares it.
     private void SyncWatchers()
     {
-        var media = Settings.Enabled && (IsShown(PlayPauseElement) || IsShown(TrackElement));
+        var media = Active && (IsShown(PlayPauseElement) || IsShown(TrackElement));
         if (media && _media is null)
         {
             _media = new MediaWatcher(Timing.OsdTrackQuiet);
@@ -171,7 +198,7 @@ public sealed class OsdService : IOsd, IDisposable
             playing.Dispose();
             _media = null;
         }
-        var brightness = Settings.Enabled && IsShown(BrightnessElement);
+        var brightness = Active && IsShown(BrightnessElement) && IsDeclared(BrightnessElement);
         if (brightness && _brightness is null)
         {
             _brightness = new BrightnessWatcher(Timing.OsdBrightnessFirstPoll, Timing.OsdBrightnessPoll, Timing.OsdBrightnessCheckPoll, Timing.OsdBrightnessCheckFor);
@@ -184,7 +211,7 @@ public sealed class OsdService : IOsd, IDisposable
             watcher.Dispose();
             _brightness = null;
         }
-        var usb = Settings.Enabled && IsShown(UsbElement);
+        var usb = Active && IsShown(UsbElement);
         if (usb == _usbOn) return;
         _usbOn = usb;
         if (usb) _usb.Start();
@@ -210,6 +237,8 @@ public sealed class OsdService : IOsd, IDisposable
     /// playback device); <see cref="RetargetVolume"/> looks again when the answer changes.
     public void WatchVolumeOf(Func<string?> device)
     {
+        _volume.Start();
+        _mic.Start();
         _volume.Device = device;
         RetargetVolume();
     }
@@ -313,8 +342,7 @@ public sealed class OsdService : IOsd, IDisposable
     public bool ReloadFromDisk()
     {
         SettingsCopy.Into(Settings, OsdSettings.Load());
-        _windowsOsd.Hidden = Settings.HideWindowsOsd;
-        if (!Settings.HideWindowsOsd) _windowsOsd.Restore();
+        ApplyWindowsOsd();
         SettingsChanged?.Invoke();
         Reloaded?.Invoke();
         ElementsChanged?.Invoke(); // the elements shown may differ
@@ -347,7 +375,7 @@ public sealed class OsdService : IOsd, IDisposable
     public void SetHideWindowsOsd(bool on)
     {
         Settings.HideWindowsOsd = on;
-        _windowsOsd.Hidden = on;
+        ApplyWindowsOsd();
         Settings.Save();
     }
 
@@ -385,7 +413,7 @@ public sealed class OsdService : IOsd, IDisposable
     {
         if (Dispatcher.UIThread.CheckAccess())
         {
-            if (Settings.Enabled && IsShown(element)) Display(label, IconOf(element), value, Durations.For(element, program));
+            if (Active && IsShown(element)) Display(label, IconOf(element), value, Durations.For(element, program));
             return;
         }
         // Callers on other threads (slow display writes, hotkey steps) must not wait for the UI thread.
@@ -444,7 +472,7 @@ public sealed class OsdService : IOsd, IDisposable
     /// <paramref name="program"/> is the program that caused it when known (the duration's per-app exceptions). UI thread.
     public void ShowMessage(string element, OsdMessage message, string? program = null)
     {
-        if (!Settings.Enabled || !IsShown(element)) return;
+        if (!Active || !IsShown(element)) return;
         Present(window => { window.RenderMessage(Settings, message); return true; }, Durations.For(element, program));
     }
 

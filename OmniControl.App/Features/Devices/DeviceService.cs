@@ -12,7 +12,7 @@ public enum DevicePower { On, Off, Toggle }
 /// (<c>DeviceService.Methods.cs</c>) and the commands themselves, tried method by method in the device's order (<c>DeviceService.Run.cs</c>;
 /// scripts: <see cref="ScriptMethod"/>; simulation: <see cref="SimulationMethod"/>; reading on its own: <see cref="DeviceAutoChecks"/>). A burst of commands is cut by the shared
 /// <see cref="LaunchLimiter"/>, and a device that is still being told something is not told again.
-public sealed partial class DeviceService
+public sealed partial class DeviceService : IDisposable
 {
     public const string Category = "Smart Devices";
     public const string LogFile = LogFiles.Devices;
@@ -241,6 +241,19 @@ public sealed partial class DeviceService
         var number = Settings.Devices.Count + 1;
         while (Settings.Devices.Any(d => d.Name == $"Plug {number}")) number++;
         return $"Plug {number}";
+    }
+
+    /// Smart devices was switched off: a waiting name is saved, the auto-checks and the emulator watches stop (an emulator
+    /// that runs is left running). Its actions, states and watch leave the master lists with its feature (<see cref="FeatureScope"/>).
+    public void Dispose()
+    {
+        if (_saveSoon.IsEnabled)
+        {
+            _saveSoon.Stop();
+            Settings.Save();
+        }
+        AutoChecking.Stop();
+        Simulation.Dispose();
     }
 
     /// One line of devices-log.txt: what identifies the home or a device is masked and the line is cut (kasa prints whole state dumps).

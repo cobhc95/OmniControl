@@ -96,5 +96,6 @@ internal static partial class Shots
     {
         public void OpenApps() { }
         public void OpenGadgetSettings() { }
+        public bool HasTraffic => true;
     }
 }

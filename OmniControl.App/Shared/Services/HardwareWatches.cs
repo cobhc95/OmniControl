@@ -139,6 +139,18 @@ public sealed class HardwareWatches : IHardwareWatches, IDisposable
         old?.Dispose();
     }
 
+    /// Takes a watch out (its feature was switched off).
+    public void Unregister(string id)
+    {
+        Slot? old;
+        lock (_gate)
+        {
+            old = _slots.FirstOrDefault(s => s.Watch.Id == id);
+            if (old is not null) _slots.Remove(old);
+        }
+        old?.Dispose();
+    }
+
     /// Starts listening to Windows and gives every watch that can tell when it looks wrong its retry schedule once, each try only when it
     /// does (at log-on the monitors may not answer yet when the program first reads them).
     public void Start()

@@ -38,17 +38,34 @@ public enum ShutdownStage
     Plugins,
 }
 
-/// The shut-down steps of every owner, run once in <see cref="ShutdownStage"/> order.
+/// The shut-down steps of every owner, run once in <see cref="ShutdownStage"/> order. A feature that can be switched off adds its steps through
+/// its own view (<see cref="Owned"/>): they keep their places in the one order at exit, and run alone, in the same order, when it is switched off.
 public sealed class ShutdownSteps
 {
-    private readonly List<(ShutdownStage Stage, string What, Action Step)> _steps = new();
+    private readonly List<(ShutdownStage Stage, string What, Action Step, ShutdownSteps Owner, bool OffOnly)> _steps;
 
-    public void Add(ShutdownStage stage, string what, Action step) => _steps.Add((stage, what, step));
+    public ShutdownSteps() => _steps = new();
 
-    /// Runs every step, each guarded; OrderBy is stable, so a stage keeps the order its steps were added in.
-    public void Run()
+    private ShutdownSteps(List<(ShutdownStage, string, Action, ShutdownSteps, bool)> steps) => _steps = steps;
+
+    public void Add(ShutdownStage stage, string what, Action step) => _steps.Add((stage, what, step, this, false));
+
+    /// A step only for the feature being switched off while the app runs (giving back what the app keeps over a restart), never at exit.
+    public void AddWhenOff(ShutdownStage stage, string what, Action step) => _steps.Add((stage, what, step, this, true));
+
+    /// A view of the same order whose own steps <see cref="RunOwn"/> runs.
+    public ShutdownSteps Owned() => new(_steps);
+
+    /// Runs every step but the switch-off ones, each guarded; OrderBy is stable, so a stage keeps the order its steps were added in.
+    public void Run() => RunWhere(s => !s.OffOnly);
+
+    /// Runs and drops only the steps added through this view.
+    public void RunOwn() => RunWhere(s => s.Owner == this);
+
+    private void RunWhere(Func<(ShutdownStage Stage, string What, Action Step, ShutdownSteps Owner, bool OffOnly), bool> mine)
     {
-        foreach (var (_, what, step) in _steps.OrderBy(s => s.Stage).ToList()) Guard.Run($"Shut-down: {what}", step);
-        _steps.Clear();
+        var steps = _steps.Where(mine).OrderBy(s => s.Stage).ToList();
+        _steps.RemoveAll(steps.Contains);
+        foreach (var (_, what, step, _, _) in steps) Guard.Run($"Shut-down: {what}", step);
     }
 }

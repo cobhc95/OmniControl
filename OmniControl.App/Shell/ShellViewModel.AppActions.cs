@@ -24,7 +24,8 @@ public sealed partial class ShellViewModel
         {
             SuggestedIcons = new[] { "download", "refresh" },
         });
-        _hotkeys.Register(new HotkeyAction("app.plugins.scan", "Scan for plug-ins", home, "plug-in plugin vst vst2 vst3 scan search folders",
-            _ => (_appSettings.Page as AppSettingsPageViewModel)?.StartScan()));
+        if (_volume.Library is not null) // Sound and effects runs (it starts only with the app)
+            _hotkeys.Register(new HotkeyAction("app.plugins.scan", "Scan for plug-ins", home, "plug-in plugin vst vst2 vst3 scan search folders",
+                _ => (_appSettings.Page as AppSettingsPageViewModel)?.StartScan()));
     }
 }

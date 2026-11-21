@@ -23,6 +23,8 @@ public sealed class InputModule(Func<IEnumerable<string>> rememberedPrograms) : 
     private InputActions? _actions;
     private FeatureContext? _context;
 
+    public IReadOnlyList<string> Features { get; } = new[] { FeatureList.Input };
+
     public void Register(FeatureContext context)
     {
         _context = context;

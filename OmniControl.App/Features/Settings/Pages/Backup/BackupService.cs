@@ -12,12 +12,12 @@ public sealed class BackupService
 
     private readonly Func<DialogMessage, Task<DialogAnswer>> _choose;
     private readonly Action<string> _report;
-    private readonly Features.OtherPcs.SettingsImport.ImportFromPcService _importFromPc;
+    private readonly Features.OtherPcs.SettingsImport.ImportFromPcService? _importFromPc;
 
     /// <param name="choose">Shows a message with up to two answers (the shared <see cref="DialogService"/>).</param>
     /// <param name="report">Shows one plain sentence in the status line.</param>
-    /// <param name="importFromPc">Opens "Import settings from a PC" (the Import from another PC card).</param>
-    public BackupService(Func<DialogMessage, Task<DialogAnswer>> choose, Action<string> report, Features.OtherPcs.SettingsImport.ImportFromPcService importFromPc)
+    /// <param name="importFromPc">Opens "Import settings from a PC" (the Import from another PC card); null while Other PCs is off.</param>
+    public BackupService(Func<DialogMessage, Task<DialogAnswer>> choose, Action<string> report, Features.OtherPcs.SettingsImport.ImportFromPcService? importFromPc)
     {
         _choose = choose;
         _report = report;
@@ -61,10 +61,13 @@ public sealed class BackupService
     }
 
     /// The paired PCs that are connected now: the only ones a settings import can read from.
-    public IReadOnlyList<(string Id, string Name)> OnlinePcs() => _importFromPc.OnlinePcs();
+    public IReadOnlyList<(string Id, string Name)> OnlinePcs() => _importFromPc?.OnlinePcs() ?? Array.Empty<(string, string)>();
+
+    /// A settings import from a paired PC can be offered (Other PCs runs).
+    public bool CanImportFromPc => _importFromPc is not null;
 
     /// Opens "Import settings from a PC" for the paired PC.
-    public void ImportFromPc(string pcId) => _importFromPc.Open(pcId);
+    public void ImportFromPc(string pcId) => _importFromPc?.Open(pcId);
 
     public async Task WipeAsync()
     {

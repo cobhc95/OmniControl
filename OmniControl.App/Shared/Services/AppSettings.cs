@@ -74,6 +74,12 @@ public sealed class AppSettings
     /// How groups start when a page opens (see <see cref="GroupsOpen"/>); the remembered lists above are used only for "Remember last state".
     public GroupsOpenChoice GroupsOpen { get; set; } = GroupsOpenChoice.Remember;
 
+    /// The features switched off (<see cref="Features.FeatureSwitches"/>, App settings > Features); none by default.
+    public List<string> FeaturesOff { get; set; } = new();
+
+    /// Setup's feature choice as it was last taken into <see cref="FeaturesOff"/>; null: none taken yet.
+    public string? FeaturesFromSetup { get; set; }
+
     /// The settings in use by the running program (one shared instance).
     public static AppSettings Current => Shared.Value;
 

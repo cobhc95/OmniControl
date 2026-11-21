@@ -27,7 +27,7 @@
                     </DataTemplate></pages:GroupCard.ContentTemplate>
                 </pages:GroupCard>
 
-                <pages:GroupCard Group="{Binding Apps}">
+                <pages:GroupCard Group="{Binding Apps}" IsVisible="{Binding ShowsTraffic}">
                     <pages:GroupCard.Tools>
                         <pages:HeaderSwitch Label="{Binding PacketFilter.Label}" IsOn="{Binding PacketFilter.IsOn}" ToolTip.Tip="{Binding PacketFilter.Tip}" />
                         <c:AppScopeChip DataContext="{Binding AppsScope}" />

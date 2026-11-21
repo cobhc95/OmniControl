@@ -3,6 +3,7 @@
              xmlns:vm="using:OmniControl.App.Features.Settings.Pages"
              xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
              xmlns:restore="using:OmniControl.App.Shared.Ui.Restore"
+             xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
              x:Class="OmniControl.App.Features.Settings.Pages.AppSettingsPage"
              x:DataType="vm:AppSettingsPageViewModel">
     <StackPanel Spacing="{StaticResource Gap}">
@@ -17,12 +18,26 @@
                     <ListBox Classes="rows compact cards" ItemsSource="{Binding StartItems}"></ListBox>
                 </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>
+            <!-- Features: the header's "Ready-made" chip (the shared menu-choice chip) and Turn all on pill; half-width switch cards, then one muted line -->
+            <pages:GroupCard Group="{Binding FeatureGroup}">
+                <pages:GroupCard.Tools>
+                    <c:ChipMenu Text="{Binding ReadyMade.Text}" ChipToolTip="{Binding ReadyMade.Tip}" pages:MenuChoiceLink.Item="{Binding ReadyMade}" VerticalAlignment="Center" />
+                    <Button Classes="pill" Tag="grouptool" Content="Turn all on" Command="{Binding TurnAllOnCommand}" VerticalAlignment="Center"
+                            ToolTip.Tip="Switch every feature on" />
+                </pages:GroupCard.Tools>
+                <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:AppSettingsPageViewModel">
+                    <StackPanel Spacing="{StaticResource GapSmall}">
+                        <ListBox Classes="rows compact cards" ItemsSource="{Binding FeatureItems}"></ListBox>
+                        <TextBlock Classes="hint" Text="{Binding FeaturesNote}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </DataTemplate></pages:GroupCard.ContentTemplate>
+            </pages:GroupCard>
             <pages:GroupCard Group="{Binding YourData}">
                 <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:AppSettingsPageViewModel">
                     <ListBox Classes="rows compact cards" ItemsSource="{Binding DataItems}"></ListBox>
                 </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>
-            <pages:GroupCard Group="{Binding PlugIns}">
+            <pages:GroupCard Group="{Binding PlugIns}" IsVisible="{Binding HasPlugins}">
                 <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:AppSettingsPageViewModel">
                     <ListBox Classes="rows compact cards" ItemsSource="{Binding PluginItems}"></ListBox>
                 </DataTemplate></pages:GroupCard.ContentTemplate>

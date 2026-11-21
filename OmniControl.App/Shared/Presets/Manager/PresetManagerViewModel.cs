@@ -26,6 +26,7 @@ public sealed partial class PresetManagerViewModel : ObservableObject, IPresetCa
         foreach (var group in groups.All) _allCards.Add(new PresetCardViewModel(group, shortcuts, this));
         BuildSections();
         groups.Registered += OnRegistered;
+        groups.Removed += OnRemoved;
         Navigate(null, null);
     }
 
@@ -116,6 +117,15 @@ public sealed partial class PresetManagerViewModel : ObservableObject, IPresetCa
         ShowCards();
     }
 
+    private void OnRemoved(PresetGroup group)
+    {
+        if (_allCards.FirstOrDefault(c => c.Id == group.Id) is not { } card) return;
+        _allCards.Remove(card);
+        card.Dispose();
+        BuildSections();
+        ShowCards();
+    }
+
     // ---------------------------------------------------------------- what the cards ask
 
     void IPresetCardHost.Say(string? problem) => Message = problem ?? string.Empty;
@@ -163,6 +173,7 @@ public sealed partial class PresetManagerViewModel : ObservableObject, IPresetCa
     public void Dispose()
     {
         _groups.Registered -= OnRegistered;
+        _groups.Removed -= OnRemoved;
         _undoTimer?.Stop();
         foreach (var card in _allCards) card.Dispose();
     }
