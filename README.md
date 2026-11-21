@@ -1,4 +1,4 @@
-﻿# OmniControl
+# OmniControl
 
 One Windows app for your displays, sound, smart plugs, mouse, trackpad, other PCs and screenshots, where every feature is an action you can put on a hotkey, a button, a gesture, a tray tile or a rule.
 
@@ -47,6 +47,11 @@ One Windows app for your displays, sound, smart plugs, mouse, trackpad, other PC
 <td><a href="docs/screenshots/app-settings.png"><img src="docs/screenshots/app-settings.png" alt="App settings page"></a><br><sub>App settings</sub></td>
 <td><a href="docs/screenshots/displays-light.png"><img src="docs/screenshots/displays-light.png" alt="Displays page in the light theme"></a><br><sub>Light theme</sub></td>
 <td><a href="docs/screenshots/screenshot-tool.png"><img src="docs/screenshots/screenshot-tool.png" alt="Screenshot tool"></a><br><sub>Screenshot tool (illustration)</sub></td>
+</tr>
+<tr>
+<td><a href="docs/screenshots/network-traffic-control.png"><img src="docs/screenshots/network-traffic-control.png" alt="Resources page: live readings and Network traffic control"></a><br><sub>Resources: live readings and network traffic control</sub></td>
+<td></td>
+<td></td>
 </tr>
 </table>
 
