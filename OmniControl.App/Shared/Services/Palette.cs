@@ -59,6 +59,9 @@ public static class Palette
     /// The accent's Intensity setting scales both (<see cref="AccentService.Intensity"/>).
     public const double AccentLightenDark = 0.4, AccentDarkenLight = 0.25;
 
+    /// The step between Fluent's accent shades (SystemAccentColorDark1-3, Light1-3) around the accent the styles paint with.
+    public const double AccentShadeStep = 0.12;
+
     /// The handle of the colour editor's saturation square and hue bar (Controls/ColorSquare, HueBar): a white ring with a dark outer edge, so it
     /// shows on every colour it can sit on (picture content, the same in both themes).
     public static readonly Color PickerHandle = Colors.White, PickerHandleEdge = Color.FromArgb(0x99, 0, 0, 0);

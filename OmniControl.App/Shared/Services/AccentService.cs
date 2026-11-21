@@ -245,12 +245,30 @@ public static class AccentService
         }
         // The switch's knob sits on the accent fill, so it takes the on-accent colour (white, dark on a light accent).
         foreach (var state in new[] { "", "PointerOver", "Pressed" }) Put($"ToggleSwitchKnobFillOn{state}", onAccent);
+        PutFluentAccent(app, variant, accent);
         ThemeBrushes.DictionaryOf(app, variant)[GlowKey] = new BoxShadows(new BoxShadow
         {
             Blur = Palette.GlowBlur,
             Spread = Palette.GlowSpread,
             Color = Color.FromArgb((byte)(Palette.GlowOpacity * byte.MaxValue), accent.R, accent.G, accent.B),
         });
+    }
+
+    /// Fluent paints its own controls (CheckBox, RadioButton, Slider, ProgressBar, focus lines...) from SystemAccentColor and its six shades, which
+    /// default to Windows' accent; they are written here so those controls follow the program's accent. Fluent reads Light2 on the dark theme and
+    /// Dark1 on the light one, so those two are the accent itself and the rest step lighter or darker from it.
+    private static void PutFluentAccent(Application app, ThemeVariant variant, Color accent)
+    {
+        var dict = ThemeBrushes.DictionaryOf(app, variant);
+        Color Step(Color to, int n) => ColorMath.Mix(accent, to, Palette.AccentShadeStep * n);
+        var dark = variant == ThemeVariant.Dark;
+        dict["SystemAccentColor"] = accent;
+        dict["SystemAccentColorDark1"] = dark ? Step(Colors.Black, 2) : accent;
+        dict["SystemAccentColorDark2"] = Step(Colors.Black, dark ? 3 : 1);
+        dict["SystemAccentColorDark3"] = Step(Colors.Black, dark ? 4 : 2);
+        dict["SystemAccentColorLight1"] = dark ? Step(Colors.Black, 1) : Step(Colors.White, 1);
+        dict["SystemAccentColorLight2"] = dark ? accent : Step(Colors.White, 2);
+        dict["SystemAccentColorLight3"] = Step(Colors.White, dark ? 1 : 3);
     }
 
     /// The soft accent glow around a lit button (Button.pill.glow, the Mixer's FX button while effects run).

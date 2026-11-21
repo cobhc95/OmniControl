@@ -8,6 +8,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 - Fixed: tooltips inside pop-down menus (Method, Plays on, presets and others) showed almost at once; every tooltip in the app, menus included, now waits 1 second of resting the pointer.
 - New: Resources > Taskbar gadget > What it shows: every temperature row (CPU temperature, GPU temperature, Hottest sensor and each disk's temperature) has a chip under its name with the sensor it reads ("Auto · Core (Tctl/Tdie)", or the chosen sensor and its value); it opens the same sensor menu as the Readings tab. Each temperature reading has one sensor choice, used alike by the Readings tab, the gadget, its tooltips, its state and rules; a disk's temperature can now be read from any sensor too. Choices made before are kept.
 - New: the taskbar gadget can sit on the left of the taskbar: "Position" (Right / Left) beside "Show on taskbar", and "Position" in the gadget's right-click menu. Left puts it after the Widgets button (or at the taskbar's left edge), or, with the taskbar icons left-aligned, after the last app button; it follows app buttons as they come and go within a few seconds. One position for every layout.
+- Check boxes, radio buttons, sliders, progress bars and other standard controls follow OmniControl's accent instead of Windows' own accent colour.
+
 ## 0.2.7 (21 Nov 2026)
 
 - Important: Other PCs uses a new connection protocol in this version (safer pairing and fresh keys for every connection). Update every PC you pair to 0.2.7 or later; until both PCs run it, existing pairs show offline and new pairing is refused with one sentence. (This comes from the protocol change, not from the move to .NET 10, which needs nothing from you: the app still brings its own .NET.)
