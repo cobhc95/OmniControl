@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+## 0.2.8 (21 Nov 2026)
+
 - Changed: Resources > Taskbar gadget: the small "Preview" strip at the top is gone; the top line is "Show on taskbar", Position and Font (the Ready-made layouts tiles still show each look).
 - Fixed: Resources > Taskbar gadget > Font: clicking a font closed the menu but kept "Default (Segoe UI)"; the picked font is now used and remembered (the same for every card menu that refreshes its rows when it closes).
 - Changed: Resources > Taskbar gadget > What it shows: each "Warn at" box shows its unit at its right (KB/s or MB/s, %, °C) and "off" when empty; a network warning can be typed as 500 KB, 5 MB or 5MB/s (a plain number is KB/s), and clearing the box turns the warning off.
