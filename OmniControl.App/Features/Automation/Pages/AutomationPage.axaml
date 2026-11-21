@@ -31,19 +31,23 @@
                 <pages:GroupCard.Tools>
                     <Button Classes="pill" Tag="grouptool" Content="+ New automation" Command="{Binding AddAutomationCommand}" />
                 </pages:GroupCard.Tools>
-                <StackPanel Spacing="{StaticResource Gap}">
-                    <ItemsControl ItemsSource="{Binding Automations}" />
-                    <pages:EmptyListRow IsVisible="{Binding NoAutomations}" Text="No automations yet. An automation does something when something happens." LinkText="New automation" Command="{Binding AddAutomationCommand}" />
-                </StackPanel>
+                <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:AutomationPageViewModel">
+                    <StackPanel Spacing="{StaticResource Gap}">
+                        <ItemsControl ItemsSource="{Binding Automations}" />
+                        <pages:EmptyListRow IsVisible="{Binding NoAutomations}" Text="No automations yet. An automation does something when something happens." LinkText="New automation" Command="{Binding AddAutomationCommand}" />
+                    </StackPanel>
+                </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>
             <pages:GroupCard Group="{Binding BlocksGroup}">
                 <pages:GroupCard.Tools>
                     <Button Classes="pill" Tag="grouptool" Content="+ New block" Command="{Binding AddBlockCommand}" />
                 </pages:GroupCard.Tools>
-                <StackPanel Spacing="{StaticResource Gap}">
-                    <ItemsControl ItemsSource="{Binding Blocks}" />
-                    <pages:EmptyListRow IsVisible="{Binding NoBlocks}" Text="No blocks yet. A block stops an action while something is true." LinkText="New block" Command="{Binding AddBlockCommand}" />
-                </StackPanel>
+                <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:AutomationPageViewModel">
+                    <StackPanel Spacing="{StaticResource Gap}">
+                        <ItemsControl ItemsSource="{Binding Blocks}" />
+                        <pages:EmptyListRow IsVisible="{Binding NoBlocks}" Text="No blocks yet. A block stops an action while something is true." LinkText="New block" Command="{Binding AddBlockCommand}" />
+                    </StackPanel>
+                </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>
         </StackPanel>
 
@@ -51,10 +55,12 @@
             <pages:GroupCard.Tools>
                 <Button Classes="pill" Tag="grouptool" Content="+ New custom action" Command="{Binding AddCustomCommand}" />
             </pages:GroupCard.Tools>
-            <StackPanel Spacing="{StaticResource Gap}">
-                <ItemsControl ItemsSource="{Binding Customs}" />
-                <pages:EmptyListRow IsVisible="{Binding NoCustoms}" Text="No custom actions yet. A custom action runs your own command, script or program." LinkText="New custom action" Command="{Binding AddCustomCommand}" />
-            </StackPanel>
+            <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:AutomationPageViewModel">
+                <StackPanel Spacing="{StaticResource Gap}">
+                    <ItemsControl ItemsSource="{Binding Customs}" />
+                    <pages:EmptyListRow IsVisible="{Binding NoCustoms}" Text="No custom actions yet. A custom action runs your own command, script or program." LinkText="New custom action" Command="{Binding AddCustomCommand}" />
+                </StackPanel>
+            </DataTemplate></pages:GroupCard.ContentTemplate>
         </pages:GroupCard>
 
         <!-- Scripts: the saved scripts on the left (name, language), the chosen one on the right: one toolbar line (name, language,
@@ -63,41 +69,43 @@
             <pages:GroupCard.Tools>
                 <Button Classes="pill" Tag="grouptool" Content="+ New script" Command="{Binding AddScriptCommand}" />
             </pages:GroupCard.Tools>
-            <StackPanel Spacing="{StaticResource Gap}">
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" IsVisible="{Binding !NoScripts}">
-                    <ListBox Classes="nav" ItemsSource="{Binding Scripts}" SelectedItem="{Binding SelectedScript}" MinWidth="120" MaxWidth="200">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate x:DataType="vm:ScriptItem">
-                                <StackPanel>
-                                    <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Classes="muted" Text="{Binding LanguageTag}" TextTrimming="CharacterEllipsis" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                    <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto" RowSpacing="{StaticResource Gap}" IsVisible="{Binding HasSelectedScript}">
-                        <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="{StaticResource GapLarge}">
-                            <TextBox Classes="field" Text="{Binding SelectedScript.Name, UpdateSourceTrigger=LostFocus}" Watermark="Name" MinWidth="100" />
-                            <ComboBox Grid.Column="1" Classes="choice half" ItemsSource="{Binding SelectedScript.LanguageNames}" SelectedItem="{Binding SelectedScript.LanguageName}" />
-                            <Button Grid.Column="2" Classes="pill" Content="Run" Command="{Binding RunScriptCommand}" ToolTip.Tip="Run it once now, as you (never as administrator)" />
-                            <Button Grid.Column="3" Classes="pill" Content="Import..." Click="OnImportScriptClick" ToolTip.Tip="Load a .ps1, .bat, .cmd or .py file's text into a new script" />
-                            <Button Grid.Column="4" Classes="pill" Content="Export..." Click="OnExportScriptClick" ToolTip.Tip="Save this script to a file" />
-                            <Button Grid.Column="5" Classes="pill glyph closex" Command="{Binding DeleteScriptCommand}" ToolTip.Tip="Delete">
-                                <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
-                            </Button>
+            <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:AutomationPageViewModel">
+                <StackPanel Spacing="{StaticResource Gap}">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" IsVisible="{Binding !NoScripts}">
+                        <ListBox Classes="nav" ItemsSource="{Binding Scripts}" SelectedItem="{Binding SelectedScript}" MinWidth="120" MaxWidth="200">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ScriptItem">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Classes="muted" Text="{Binding LanguageTag}" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto" RowSpacing="{StaticResource Gap}" IsVisible="{Binding HasSelectedScript}">
+                            <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="{StaticResource GapLarge}">
+                                <TextBox Classes="field" Text="{Binding SelectedScript.Name, UpdateSourceTrigger=LostFocus}" Watermark="Name" MinWidth="100" />
+                                <ComboBox Grid.Column="1" Classes="choice half" ItemsSource="{Binding SelectedScript.LanguageNames}" SelectedItem="{Binding SelectedScript.LanguageName}" />
+                                <Button Grid.Column="2" Classes="pill" Content="Run" Command="{Binding RunScriptCommand}" ToolTip.Tip="Run it once now, as you (never as administrator)" />
+                                <Button Grid.Column="3" Classes="pill" Content="Import..." Click="OnImportScriptClick" ToolTip.Tip="Load a .ps1, .bat, .cmd or .py file's text into a new script" />
+                                <Button Grid.Column="4" Classes="pill" Content="Export..." Click="OnExportScriptClick" ToolTip.Tip="Save this script to a file" />
+                                <Button Grid.Column="5" Classes="pill glyph closex" Command="{Binding DeleteScriptCommand}" ToolTip.Tip="Delete">
+                                    <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+                                </Button>
+                            </Grid>
+                            <TextBox Grid.Row="1" Classes="field code" Text="{Binding SelectedScript.Body}" MinHeight="240" MaxHeight="420"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                            <TextBlock Grid.Row="2" Classes="statusline" Classes.caution="{Binding SelectedScript.LastRunFailed}" Text="{Binding SelectedScript.LastRun}"
+                                       IsVisible="{Binding SelectedScript.HasLastRun}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding SelectedScript.LastRun}" />
                         </Grid>
-                        <TextBox Grid.Row="1" Classes="field code" Text="{Binding SelectedScript.Body}" MinHeight="240" MaxHeight="420"
-                                 ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" />
-                        <TextBlock Grid.Row="2" Classes="statusline" Classes.caution="{Binding SelectedScript.LastRunFailed}" Text="{Binding SelectedScript.LastRun}"
-                                   IsVisible="{Binding SelectedScript.HasLastRun}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding SelectedScript.LastRun}" />
                     </Grid>
-                </Grid>
-                <pages:EmptyListRow IsVisible="{Binding NoScripts}" Text="No scripts yet. A script is PowerShell, CMD or Python kept inside OmniControl." LinkText="New script" Command="{Binding AddScriptCommand}" />
-                <TextBlock Classes="statusline" Text="{Binding ScriptNote}" IsVisible="{Binding HasScriptNote}" TextWrapping="Wrap" />
-                <Button Classes="link small" Click="OnImportScriptClick" IsVisible="{Binding NoScripts}" HorizontalAlignment="Left">
-                    <TextBlock Text="Import a script file..." />
-                </Button>
-            </StackPanel>
+                    <pages:EmptyListRow IsVisible="{Binding NoScripts}" Text="No scripts yet. A script is PowerShell, CMD or Python kept inside OmniControl." LinkText="New script" Command="{Binding AddScriptCommand}" />
+                    <TextBlock Classes="statusline" Text="{Binding ScriptNote}" IsVisible="{Binding HasScriptNote}" TextWrapping="Wrap" />
+                    <Button Classes="link small" Click="OnImportScriptClick" IsVisible="{Binding NoScripts}" HorizontalAlignment="Left">
+                        <TextBlock Text="Import a script file..." />
+                    </Button>
+                </StackPanel>
+            </DataTemplate></pages:GroupCard.ContentTemplate>
         </pages:GroupCard>
     </StackPanel>
 </UserControl>

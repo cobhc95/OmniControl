@@ -17,18 +17,24 @@
                             Content="{Binding Tool.Label}" Command="{Binding Tool.Command}" ToolTip.Tip="{Binding ToolTipText}" ToolTip.ShowOnDisabled="True" />
                 </StackPanel>
             </Grid>
-            <Grid ColumnSpacing="{StaticResource WiringColumnGap}" Margin="{StaticResource RowHeadingInset}" IsVisible="{Binding IsExpanded}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="WiringSource" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="WiringCable" />
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="WiringRemove" />
-                </Grid.ColumnDefinitions>
-                <TextBlock Classes="muted small" Text="Source" />
-                <TextBlock Grid.Column="1" Classes="muted small" Text="{Binding RouteColumn}" />
-                <TextBlock Grid.Column="2" Classes="muted small" Text="Cable" />
-            </Grid>
-            <ListBox Classes="rows compact" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}" />
+            <pages:CardLayout IsVisible="{Binding IsExpanded}">
+                <DataTemplate x:DataType="vm:VolumeGroup">
+                    <StackPanel Spacing="{StaticResource Gap}">
+                        <Grid ColumnSpacing="{StaticResource WiringColumnGap}" Margin="{StaticResource RowHeadingInset}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="WiringSource" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="WiringCable" />
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="WiringRemove" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Classes="muted small" Text="Source" />
+                            <TextBlock Grid.Column="1" Classes="muted small" Text="{Binding RouteColumn}" />
+                            <TextBlock Grid.Column="2" Classes="muted small" Text="Cable" />
+                        </Grid>
+                        <ListBox Classes="rows compact" ItemsSource="{Binding Items}" />
+                    </StackPanel>
+                </DataTemplate>
+            </pages:CardLayout>
         </StackPanel>
     </Border>
 </UserControl>

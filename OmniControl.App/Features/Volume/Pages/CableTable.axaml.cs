@@ -7,9 +7,17 @@ namespace OmniControl.App.Features.Volume.Pages;
 /// Add or Esc closes it and the keyboard goes back to the chip.
 public partial class CableTable : UserControl
 {
+    // The chip is built only while the group is open, so the one that opened the pop-down is kept to close it and get the keyboard back.
+    private Control? _chip;
+
     public CableTable() => InitializeComponent();
 
-    private void OnMarkClick(object? sender, RoutedEventArgs e) => FlyoutBase.ShowAttachedFlyout(MarkChip);
+    private void OnMarkClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Control chip) return;
+        _chip = chip;
+        FlyoutBase.ShowAttachedFlyout(chip);
+    }
 
     private void OnMarkOpened(object? sender, EventArgs e)
     {
@@ -29,7 +37,8 @@ public partial class CableTable : UserControl
 
     private void CloseMark()
     {
-        FlyoutBase.GetAttachedFlyout(MarkChip)?.Hide();
-        MarkChip.Focus(NavigationMethod.Directional);
+        if (_chip is not { } chip) return;
+        FlyoutBase.GetAttachedFlyout(chip)?.Hide();
+        chip.Focus(NavigationMethod.Directional);
     }
 }

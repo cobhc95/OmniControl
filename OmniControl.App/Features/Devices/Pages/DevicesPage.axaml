@@ -40,7 +40,9 @@
         <pages:EmptyListRow IsVisible="{Binding NoDevices}" Text="No devices yet. A device is a smart plug or bulb OmniControl can switch on and off." LinkText="Add device" Command="{Binding AddDeviceCommand}"
                          SecondLinkText="Import from another PC" SecondCommand="{Binding OpenImportCommand}" />
         <pages:GroupCard x:Name="ImportCard" Group="{Binding Import.Group}">
-            <vm:DeviceImport DataContext="{Binding Import}" />
+            <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:DevicesPageViewModel">
+                <vm:DeviceImport DataContext="{Binding Import}" />
+            </DataTemplate></pages:GroupCard.ContentTemplate>
         </pages:GroupCard>
     </StackPanel>
 </UserControl>

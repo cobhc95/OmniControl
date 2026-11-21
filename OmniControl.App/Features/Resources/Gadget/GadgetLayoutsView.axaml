@@ -33,46 +33,54 @@
     </UserControl.DataTemplates>
 
     <Panel>
-        <StackPanel Spacing="{StaticResource Gap}" IsVisible="{Binding !IsExpanded}">
-            <ItemsControl ItemsSource="{Binding Favourites}">
-                <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="2" ColumnSpacing="{StaticResource Gap}" RowSpacing="{StaticResource Gap}" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-            </ItemsControl>
-            <Button Classes="blockadd card" Command="{Binding ShowMoreCommand}" ToolTip.Tip="More layouts, and your own">
-                <StackPanel Orientation="Horizontal" Spacing="{StaticResource GapSmall}" HorizontalAlignment="Center">
-                    <c:IconGlyph Classes="cardicon" LibraryId="layout-grid-add" />
-                    <TextBlock Text="{Binding MoreText}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                </StackPanel>
-            </Button>
-        </StackPanel>
-
-        <StackPanel Spacing="{StaticResource Gap}" IsVisible="{Binding IsExpanded}">
-            <c:ChoiceChips ItemsSource="{Binding Filters}" />
-            <ItemsControl ItemsSource="{Binding Sections}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="g:LayoutSection">
-                        <StackPanel Spacing="{StaticResource GapSmall}" Margin="{StaticResource GadgetSectionInset}" IsVisible="{Binding IsShown}">
-                            <TextBlock Classes="navheading" Text="{Binding Heading}" />
-                            <ItemsControl ItemsSource="{Binding Cards}" IsVisible="{Binding !IsEmpty}">
-                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="2" ColumnSpacing="{StaticResource Gap}" RowSpacing="{StaticResource Gap}" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                            </ItemsControl>
-                            <pages:EmptyListRow IsVisible="{Binding IsEmpty}" Text="No layouts of your own yet." LinkText="Save current as a layout" Command="{Binding Add}" />
+        <pages:CardLayout IsVisible="{Binding !IsExpanded}">
+            <DataTemplate x:DataType="g:GadgetLayoutGallery">
+                <StackPanel Spacing="{StaticResource Gap}">
+                    <ItemsControl ItemsSource="{Binding Favourites}">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="2" ColumnSpacing="{StaticResource Gap}" RowSpacing="{StaticResource Gap}" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                    <Button Classes="blockadd card" Command="{Binding ShowMoreCommand}" ToolTip.Tip="More layouts, and your own">
+                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource GapSmall}" HorizontalAlignment="Center">
+                            <c:IconGlyph Classes="cardicon" LibraryId="layout-grid-add" />
+                            <TextBlock Text="{Binding MoreText}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                         </StackPanel>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <Border Classes="hrule" />
-            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource GapSmall}">
-                <Button Classes="pill accentline" Content="{Binding SaveText}" Command="{Binding Save}" VerticalAlignment="Center" />
-                <Button Grid.Column="1" Classes="menurow muted" Command="{Binding Manage}" HorizontalAlignment="Right" ToolTip.Tip="Open the preset manager at the gadget's layouts">
-                    <TextBlock Text="Manage layouts…" TextTrimming="CharacterEllipsis" />
-                </Button>
-                <Button Grid.Column="2" Classes="menurow muted" Command="{Binding ShowFewerCommand}">
-                    <StackPanel>
-                        <Path Classes="glyph" Data="{StaticResource ChevronUpIcon}" />
-                        <TextBlock Text="Fewer layouts" />
-                    </StackPanel>
-                </Button>
-            </Grid>
-        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </DataTemplate>
+        </pages:CardLayout>
+
+        <pages:CardLayout IsVisible="{Binding IsExpanded}">
+            <DataTemplate x:DataType="g:GadgetLayoutGallery">
+                <StackPanel Spacing="{StaticResource Gap}">
+                    <c:ChoiceChips ItemsSource="{Binding Filters}" />
+                    <ItemsControl ItemsSource="{Binding Sections}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="g:LayoutSection">
+                                <StackPanel Spacing="{StaticResource GapSmall}" Margin="{StaticResource GadgetSectionInset}" IsVisible="{Binding IsShown}">
+                                    <TextBlock Classes="navheading" Text="{Binding Heading}" />
+                                    <ItemsControl ItemsSource="{Binding Cards}" IsVisible="{Binding !IsEmpty}">
+                                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="2" ColumnSpacing="{StaticResource Gap}" RowSpacing="{StaticResource Gap}" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                    </ItemsControl>
+                                    <pages:EmptyListRow IsVisible="{Binding IsEmpty}" Text="No layouts of your own yet." LinkText="Save current as a layout" Command="{Binding Add}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Border Classes="hrule" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource GapSmall}">
+                        <Button Classes="pill accentline" Content="{Binding SaveText}" Command="{Binding Save}" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Classes="menurow muted" Command="{Binding Manage}" HorizontalAlignment="Right" ToolTip.Tip="Open the preset manager at the gadget's layouts">
+                            <TextBlock Text="Manage layouts…" TextTrimming="CharacterEllipsis" />
+                        </Button>
+                        <Button Grid.Column="2" Classes="menurow muted" Command="{Binding ShowFewerCommand}">
+                            <StackPanel>
+                                <Path Classes="glyph" Data="{StaticResource ChevronUpIcon}" />
+                                <TextBlock Text="Fewer layouts" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </StackPanel>
+            </DataTemplate>
+        </pages:CardLayout>
     </Panel>
 </UserControl>
