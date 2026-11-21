@@ -117,7 +117,7 @@ public static class ApoConfigFiles
         if (placed == text) return;
         var backup = Path.Combine(folder, ApoIds.ConfigBackupFileName);
         var users = Without(text);
-        if (users.Length > 0 && !File.Exists(backup)) File.WriteAllBytes(backup, Bytes.GetBytes(users));
+        if (users.Length > 0 && !File.Exists(backup)) WriteShut(backup, Bytes.GetBytes(users));
         WriteShut(config, Bytes.GetBytes(placed));
     }
 
@@ -171,7 +171,7 @@ public static class ApoConfigFiles
         {
             try
             {
-                using var file = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
+                using var file = PlainFile.OpenToWrite(path, FileShare.None); // checked through the handle it writes with: never through a link
                 file.Write(bytes);
                 return;
             }

@@ -16,6 +16,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 - Security: a mouse button or middle-click gesture that starts a program, opens a path, or searches a custom address that is not a web page runs only once it is allowed on this PC: choosing it on the Mouse page allows it, one that came by an import or a restore asks "Allow this button or gesture?" at its first press. Your mappings from before this version stay allowed. Importing mouse settings no longer brings "Run as administrator" (starting OmniControl elevated).
 - Security: plug-ins load their own DLLs only from their own folder and Windows' System32 (a plug-in that needs a DLL found through PATH no longer loads) and never from a mapped network drive; restoring a backup leaves out effects' plug-in and impulse-response files and their saved state, as an import from another PC does: choose them again after a restore.
 - Security: OmniControl talks to the network service only after checking that the program answering on its connection is the service itself, and says so in one line otherwise; the network service and the sign-in task are set up only when every file in OmniControl's folder (not only the folder) can be changed by administrators alone.
+- Security: Equalizer APO's config files are checked and written through the same open file, so a file swapped for a link in between is never followed.
 - Changed: OmniControl now runs on .NET 10 (long-term support, still carried inside the app; nothing to install). The Setup is about 0.2 MB larger.
 
 ## 0.2.6 (21 Nov 2026)
