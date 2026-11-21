@@ -31,7 +31,9 @@ public sealed class EqualizerApoGroup : IDisposable
 
     /// THE Equalizer APO step (the master's Method menu, its fix link, the FX device menu, Easy, this group's link): its Device Selector,
     /// or its installer while it is not installed.
-    public CardAction Devices => Apo.UpstreamInstalled ? _choose : _install;
+    public CardAction Devices => Installed ? _choose : _install;
+
+    public bool Installed => Apo.UpstreamInstalled;
 
     /// <param name="runSetup">Runs a setup step and says how it ended (the page's status line; a failure opens the message window).</param>
     public EqualizerApoGroup(EffectsSupportService support, EngineInstaller installer, Func<string?, Task<SetupResult>, Task> runSetup)

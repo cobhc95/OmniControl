@@ -7,8 +7,8 @@
     <!-- A Mixer row's Method chip (docs/mockups/mixer-rows-knobs.html): the method its sound goes through now, coloured
          (Button.selector.method + .apo / .cable / .recording), its tooltip the row's long line. On the master, a program and a microphone it opens the
          Method pop-down: one card per way the effects can run (greyed with the reason where it can't work now; every
-         card), the one step that fixes what a greyed card lacks, on the master and a microphone "Equalizer APO devices…" and the VB-CABLE steps
-         under a Border.hrule, and a program's recording Test
+         card), the one step that fixes what a greyed card lacks (on the master and a microphone "Equalizer APO devices…"), under one
+         Border.hrule the install row ("Install Equalizer APO…", "Install VB-CABLE…", each only while missing), and a program's recording Test
          with its result. A row with no choice (combined speakers) shows the chip as words only (Border.selector.method). -->
     <FlyoutBase.AttachedFlyout>
         <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft" FlyoutPresenterClasses="optionmenu" Opened="OnOpened" Closed="OnClosed">

@@ -71,7 +71,7 @@ public sealed partial class RouteChoice : ObservableObject
     [ObservableProperty, NotifyPropertyChangedFor(nameof(HasFix))] private CardAction? _fix;
     public bool HasFix => Fix is not null;
 
-    /// The steps under the fix step (the master's menu only: Equalizer APO devices…, Install VB-CABLE or More cables, Remove VB-CABLE); empty = none.
+    /// The steps under the fix step (the master's and a microphone's menu: Install Equalizer APO…, Install VB-CABLE…, each only while missing); empty = none.
     [ObservableProperty, NotifyPropertyChangedFor(nameof(HasSteps))] private IReadOnlyList<CardAction> _steps = Array.Empty<CardAction>();
     public bool HasSteps => Steps.Count > 0;
 

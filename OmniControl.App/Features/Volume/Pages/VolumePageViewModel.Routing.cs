@@ -84,7 +84,7 @@ public sealed partial class VolumePageViewModel
                     ? $"Volume of {NameOf(volumeDevice)}; the other devices keep their own level" : "Volume";
                 var fix = ApoFixFor(_engine.MasterFacts);
                 master.PlaysOn?.Gate.Sync(OutputsGateOf(master));
-                master.RouteChoice?.Sync(_mixer.MasterMethod, r => EffectsRules.MasterOfferOf(r, _engine.MasterFacts, _engine.MasterMethod), fix);
+                master.RouteChoice?.Sync(_mixer.MasterMethod, r => EffectsRules.MasterOfferOf(r, _engine.MasterFacts, _engine.MasterMethod), MenuFixOf(fix));
                 master.RouteChoice?.SyncSteps(SetupSteps());
                 // A master set to the cable bus whose cable is gone is never left silently without effects: the row says so and offers Equalizer APO.
                 master.Fix = status.Kind == StatusKind.ApoNotApplied ? fix
@@ -109,7 +109,7 @@ public sealed partial class VolumePageViewModel
             case InputItem input:
                 var micFacts = _engine.MicFactsOf(input.Key);
                 var micMethod = _engine.MicMethodOf(input.Key);
-                input.RouteChoice?.Sync(_mixer.MicMethodOf(input.Key), r => EffectsRules.MicOfferOf(r, micFacts, micMethod), ApoFixFor(micFacts));
+                input.RouteChoice?.Sync(_mixer.MicMethodOf(input.Key), r => EffectsRules.MicOfferOf(r, micFacts, micMethod), MenuFixOf(ApoFixFor(micFacts)));
                 input.RouteChoice?.SyncSteps(SetupSteps());
                 break;
             case ComboItem { RouteChoice: { } combined }:
