@@ -5,7 +5,7 @@ namespace OmniControl.App.Features.Displays.Pages;
 // Each attached display's hardware levels (brightness, contrast... every level of DisplayControls.Hardware) in the master list of states,
 // registered while the display is attached and read from its cards; notified whenever the display was read or a value changed. Also the
 // warm-light schedule's on/off. Each can be set from outside the page (the tray flyout) the way its card does.
-public sealed partial class DisplaysPageViewModel
+public sealed partial class DisplaysService
 {
     private const string LevelWords = "What the monitor reported when it was read, and every change made here since (a change on the monitor's own buttons is seen at the next read).";
     private const string WarmLightId = WarmLightItem.StateId, WarmWords = "The page's Warm light at night switch.";

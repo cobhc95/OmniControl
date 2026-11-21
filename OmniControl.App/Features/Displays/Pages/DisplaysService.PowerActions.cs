@@ -7,7 +7,7 @@ namespace OmniControl.App.Features.Displays.Pages;
 // The On / Off / Toggle families of screen power: one for the screens picked in the action's scope, one for all screens. The Off actions keep
 // their old ids ("displays.power.off", "displays.screens.off"). The set-to-state check of a scoped action is made per display here (the
 // state is one per display, an action's scope is many), so a screen already in the asked state is left alone.
-public sealed partial class DisplaysPageViewModel
+public sealed partial class DisplaysService
 {
     private const string ScreenPowerId = "displays.power", AllScreensId = "displays.screens";
 

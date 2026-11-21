@@ -3,7 +3,7 @@ using OmniControl.Core.Interfaces;
 namespace OmniControl.App.Features.Displays.Pages;
 
 /// The page's two entries in the master list of hardware watches (<see cref="HardwareWatches"/>): the monitors and the list of displays.
-public sealed partial class DisplaysPageViewModel
+public sealed partial class DisplaysService
 {
     /// The monitors the hardware controls talk to (DDC/CI): opened again whole, because after Remote Desktop, sleep or a driver reset the old handles can be dead while the displays look the same.
     public const string HardwareWatchId = "displays.hardware";

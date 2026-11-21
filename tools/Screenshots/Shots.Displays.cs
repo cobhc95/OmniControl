@@ -11,8 +11,8 @@ internal static partial class Shots
     {
         Use(ViewTemplate.For<DisplaysPageViewModel, DisplaysPage>());
         var software = new SoftwareDisplayService(_ => new FakeGamma(), keepRecovery: false);
-        var page = new DisplaysPageViewModel(new FakeEngine(), rig.Actions, set => new SuggestedKeysSwitch(rig.Actions, set), rig.Osd, software, Rig.Report,
-            rig.Presets, Rig.OpenPresets, rig.States, rig.Hardware);
+        var page = new DisplaysPageViewModel(new DisplaysService(new FakeEngine(), rig.Actions, set => new SuggestedKeysSwitch(rig.Actions, set), rig.Osd, software, Rig.Report,
+            rig.Presets, Rig.OpenPresets, rig.States, rig.Hardware, DisplaysPageViewModel.Info.Title));
         rig.Pages.Add(page);
         Camera.Pump(1500); // each monitor and its orientation are read on workers
         page.Software.IsExpanded = false;
