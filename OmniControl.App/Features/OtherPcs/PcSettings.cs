@@ -60,9 +60,9 @@ public sealed class PairedPc
     /// The device set-ups it last handed over (without scripts), so they can be imported while it is offline; null = never asked.
     public string? DeviceSetups { get; set; }
 
-    /// What it may do on this PC (its menu's "Allowed here"): run the power actions this PC shares (each still behind this PC's own
-    /// countdown) and ask it to relay a wake (off for a new pair until allowed; true here keeps pairs saved before that), run the other shared
-    /// actions and set shared states, and read this PC's settings and device set-ups (off until allowed).
+    /// What it may do on this PC (<see cref="PcAllowances"/>; a new pair gets what was chosen while pairing): run the power actions this PC
+    /// shares (each still behind this PC's own countdown) and ask it to relay a wake (true here keeps pairs saved before it was asked), run the
+    /// other shared actions and set shared states, and read this PC's settings and device set-ups.
     public bool MayRunPower { get; set; } = true;
     public bool MayRunActions { get; set; } = true;
     public bool MayReadSettings { get; set; }

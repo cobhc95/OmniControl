@@ -62,7 +62,7 @@ public sealed partial class OtherPcsService : ISettingsTransport
     // A PC not allowed to read is refused, and the person here is told it asked; the sentence goes back to that PC.
     private string RefuseReading(PairedPc pair, string what)
     {
-        _report($"{pair.DisplayName} asked to read this PC's {what}; it is not allowed (its ⋯ menu, Allowed here).");
-        return $"{_ownName} doesn't allow reading its {what}. Allow it on {_ownName}: this PC's ⋯ menu, Allowed here.";
+        _report($"{pair.DisplayName} asked to read this PC's {what}; it is not allowed (its ⋯ menu, {PcAllowances.Title(pair.DisplayName)}).");
+        return $"{_ownName} doesn't allow reading its {what}. Allow it on {_ownName}: this PC's ⋯ menu there, {PcAllowances.Title(pair.Name)}.";
     }
 }

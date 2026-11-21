@@ -150,8 +150,8 @@ internal static class PcPairing
     private const string Initiator = "initiator", Responder = "responder", Confirmed = "confirmed";
 
     /// What both PCs said before the keys, initiator first (the names as sent, so a name changed on the way fails the proofs): the context the
-    /// code's generator, the keys and the proofs are bound to.
-    private sealed record Exchange(string InitiatorId, string ResponderId, string? InitiatorName, string? ResponderName, string? InitiatorAddress, string? ResponderAddress,
+    /// code's generator, the keys and the proofs are bound to. Internal for the protocol's test vectors.
+    internal sealed record Exchange(string InitiatorId, string ResponderId, string? InitiatorName, string? ResponderName, string? InitiatorAddress, string? ResponderAddress,
         byte[] InitiatorNonce, byte[] ResponderNonce)
     {
         private byte[] Context => PcCrypto.Hash(PcCrypto.Text($"omnicontrol/pair/{Version}"), PcCrypto.Text(InitiatorId), PcCrypto.Text(ResponderId),
@@ -167,7 +167,7 @@ internal static class PcPairing
         }
     }
 
-    private sealed record Keys(byte[] Secret, byte[] Confirm, byte[] Transcript)
+    internal sealed record Keys(byte[] Secret, byte[] Confirm, byte[] Transcript)
     {
         public byte[] Tag(string role) => PcCrypto.Mac(Confirm, PcCrypto.Text(role), Transcript);
     }

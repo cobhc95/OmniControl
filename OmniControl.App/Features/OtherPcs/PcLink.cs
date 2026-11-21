@@ -150,17 +150,22 @@ internal static class PcSession
     }
 
     // Everything said, dialler first; the connection's kind (session or probe) is part of it, so one can never be passed off as the other.
-    private static byte[] Said(byte kind, byte[] diallerNonce, byte[] listenerNonce, byte[] diallerPoint, byte[] listenerPoint, string diallerId, string listenerId) =>
+    internal static byte[] Said(byte kind, byte[] diallerNonce, byte[] listenerNonce, byte[] diallerPoint, byte[] listenerPoint, string diallerId, string listenerId) =>
         PcCrypto.Hash(PcCrypto.Text($"omnicontrol/session/{PcProtocol.Version}"), new[] { kind }, diallerNonce, listenerNonce, diallerPoint, listenerPoint,
             PcCrypto.Text(diallerId), PcCrypto.Text(listenerId));
 
     private static byte[] Join(params byte[][] parts) => parts.SelectMany(p => p).ToArray();
 
-    private static PcLink Link(string peerId, Stream stream, byte[] secret, byte[] shared, byte[] said, bool dialling)
+    /// One key per direction from the fresh keys' shared secret and the pairing key, bound to everything said.
+    internal static (byte[] ToListener, byte[] ToDialler) DirectionKeys(byte[] shared, byte[] secret, byte[] said)
     {
         var both = Join(shared, secret);
-        var toListener = PcCrypto.Derive(both, said, "omnicontrol/session/dialler-to-listener");
-        var toDialler = PcCrypto.Derive(both, said, "omnicontrol/session/listener-to-dialler");
+        return (PcCrypto.Derive(both, said, "omnicontrol/session/dialler-to-listener"), PcCrypto.Derive(both, said, "omnicontrol/session/listener-to-dialler"));
+    }
+
+    private static PcLink Link(string peerId, Stream stream, byte[] secret, byte[] shared, byte[] said, bool dialling)
+    {
+        var (toListener, toDialler) = DirectionKeys(shared, secret, said);
         return dialling ? new PcLink(peerId, stream, toListener, toDialler, dialled: true) : new PcLink(peerId, stream, toDialler, toListener, dialled: false);
     }
 }

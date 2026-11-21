@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Changed: Other PCs: while a pairing code is shown or typed, the switches Power actions (off), Other actions and settings (on) and Read settings and devices (off) sit under it, so what the other PC may do here is chosen before pairing; the PC's ⋯ menu calls them "What <PC> may do here", and each switch's tooltip says what happens when it is off.
+
 ## 0.2.8 (21 Nov 2026)
 
 - Changed: Resources > Taskbar gadget: the small "Preview" strip at the top is gone; the top line is "Show on taskbar", Position and Font (the Ready-made layouts tiles still show each look).
