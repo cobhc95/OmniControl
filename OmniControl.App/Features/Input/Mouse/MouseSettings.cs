@@ -66,6 +66,11 @@ public sealed class MouseSettings
     /// standard shortcut is sent as that shortcut, so the other computer acts (<c>MouseActionRunner</c>).
     public bool SendToRemoteAsKeys { get; set; } = true;
 
+    /// What buttons and gestures may start on this PC (<see cref="MouseActionCatalog.StartTextOf"/>, kept by <c>CommandApprovals</c>): this
+    /// PC's own, never imported or copied by <see cref="CopyFrom"/>. Null only before <c>MouseService</c> first set it (a new install, or a
+    /// file from a version without it, whose mappings it then allows as they are).
+    public HashSet<string>? Approved { get; set; }
+
     /// Puts the "Where mouse features work" group's settings back to their defaults.
     public void RestoreWhereDefaults()
     {
@@ -118,7 +123,7 @@ public sealed class MouseSettings
         return settings;
     }
 
-    /// Takes every value of <paramref name="other"/> (this object stays, so whatever holds it sees the change).
+    /// Takes every value of <paramref name="other"/> but this PC's approvals (this object stays, so whatever holds it sees the change).
     public void CopyFrom(MouseSettings other)
     {
         Bindings = other.Bindings;

@@ -132,7 +132,7 @@ public sealed partial class MousePageViewModel : PageViewModel, IDisposable
             () => button.IsTrackpadGesture() ? gestures : button.HasRelease() ? pressed : fired,
             () => button.IsTrackpadGesture() ? laterGestures : laterButtons,
             () => Settings.ActionsOf(PickerOf(button.FamilyOf()).Layer, button),
-            specs => { Settings.SetActions(PickerOf(button.FamilyOf()).Layer, button, specs); _mouse.Apply(); },
+            specs => _mouse.SetActions(PickerOf(button.FamilyOf()).Layer, button, specs),
             scopes.Card($"{Title} › {groupName} › {label}", group, () => Settings.CardScopes.GetValueOrDefault(button.ToString()), scope =>
             {
                 Settings.SetCardScope(button, scope);

@@ -24,6 +24,7 @@ public sealed class MouseActionRunner
     private readonly Action<string> _log;
     private readonly Func<bool>? _toRemote;
     private readonly Func<string, string?>? _keyEquivalentOf;
+    private readonly Func<MouseAction, MouseEvent, bool>? _mayStart;
     private readonly LaunchLimiter _launches = new();   // the latest programs or folders started
     private readonly LaunchLimiter _keySends = new(Timing.KeySendBurstMax, Timing.KeySendBurstWindow);
     private int _winKeyNoted;                            // the mouse log said once that a windowed Remote Desktop may keep Windows-key shortcuts here
@@ -33,19 +34,23 @@ public sealed class MouseActionRunner
     /// <param name="log">Writes a line to the mouse log (what was started, and what was refused).</param>
     /// <param name="toRemote">True while actions go to a remote-input window in front as keys (<see cref="RemoteInputApps"/>); null: every action runs here (rules).</param>
     /// <param name="keyEquivalentOf">The master action's <see cref="HotkeyAction.KeyEquivalent"/> by id, or null.</param>
+    /// <param name="mayStart">Asked before an action with a <see cref="MouseActionCatalog.StartTextOf"/> runs: false holds it back (its owner
+    /// asks the person and runs it again once allowed); null: the caller has checked already (rules).</param>
     public MouseActionRunner(Func<string, RunSettings?, bool> runOmniAction, Action<string> report, Action<string> log,
-        Func<bool>? toRemote = null, Func<string, string?>? keyEquivalentOf = null)
+        Func<bool>? toRemote = null, Func<string, string?>? keyEquivalentOf = null, Func<MouseAction, MouseEvent, bool>? mayStart = null)
     {
         _runOmniAction = runOmniAction;
         _report = report;
         _log = log;
         _toRemote = toRemote;
         _keyEquivalentOf = keyEquivalentOf;
+        _mayStart = mayStart;
     }
 
     /// Runs the action as many times as its "times" option says (once unless the action has that option set).
     public void Run(MouseAction action, MouseEvent at)
     {
+        if (_mayStart is not null && !_mayStart(action, at)) return;
         for (var i = action.Options.Int(MouseOptions.Times); i > 0; i--) RunOnce(action, at);
     }
 

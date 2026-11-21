@@ -53,10 +53,7 @@ public static class RuleSteps
     public static string Describe(string stored)
     {
         var step = MouseAction.Parse(stored);
-        if (step.Id == Command) return ScriptRunner.Describe(step.Options.Text(Shell), step.Options.Text(CommandText));
-        var arguments = step.Options.Text(MouseOptions.Arguments);
-        var folder = step.Options.Text(MouseOptions.StartIn);
-        return step.Param + (arguments.Length > 0 ? " " + arguments : string.Empty) + (folder.Length > 0 ? $" (in {folder})" : string.Empty);
+        return step.Id == Command ? ScriptRunner.Describe(step.Options.Text(Shell), step.Options.Text(CommandText)) : MouseActionCatalog.StartTextOf(step) ?? step.Param;
     }
 
     /// How a stored step reads in the rule's sentence ("Lock workstation", "wait 500 ms", "run Start-Process notepad").

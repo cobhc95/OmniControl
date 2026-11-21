@@ -80,7 +80,7 @@ public static class DataStores
     public static readonly DataStore Gestures = new("gestures.json", "Gestures", StoreKind.Saved, Import: Places.Gestures);
     public static readonly DataStore Hotkeys = new("hotkeys.json", "Shortcuts", StoreKind.Saved, Mergeable: true, Import: Places.Shortcuts);
     public static readonly DataStore HotkeySets = new("hotkey-sets.json", "Shortcut sets", StoreKind.Saved, Mergeable: true, Import: Places.Shortcuts);
-    public static readonly DataStore Mouse = new("mouse.json", "Mouse and trackpad", StoreKind.Saved, Import: Places.Mouse);
+    public static readonly DataStore Mouse = new("mouse.json", "Mouse and trackpad", StoreKind.Saved, NotImported: new[] { "Approved", "RunAsAdministrator" }, Import: Places.Mouse);
     public static readonly DataStore Displays = new("display-settings.json", "Displays", StoreKind.Saved, Import: Places.Displays);
     public static readonly DataStore Osd = new("osd.json", "On-screen display", StoreKind.Saved, Import: Places.Osd);
     public static readonly DataStore AppLists = new("app-lists.json", "App lists", StoreKind.Saved, Mergeable: true, Import: Places.IconsAndLists);

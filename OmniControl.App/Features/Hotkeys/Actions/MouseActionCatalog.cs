@@ -293,6 +293,29 @@ public static class MouseActionCatalog
     /// The program or folder a built-in action opens, or null when it does not open one.
     public static string? RunTextOf(string id) => Fixed.FirstOrDefault(d => d.Id == id)?.RunText;
 
+    /// Exactly what an action the person typed starts on this PC, in one text (a program with its arguments, folder and "as administrator",
+    /// a path opened through the shell, a search address that is not a web page, an app's own program or arguments); null when it starts
+    /// nothing of the person's choosing. A button or gesture with such a text runs only once it is allowed on this PC (an import never allows).
+    public static string? StartTextOf(MouseAction action)
+    {
+        var options = action.Options;
+        var arguments = options.Text(MouseOptions.Arguments);
+        return action.Id switch
+        {
+            Run => $"{action.Param} {arguments}".Trim() + In(options.Text(MouseOptions.StartIn))
+                + (options.Bool(MouseOptions.Administrator) ? " (as administrator)" : string.Empty),
+            Folder => action.Param,
+            WebSearch when options.Text(MouseOptions.Engine) == MouseOptions.CustomEngine && !IsWebAddress(options.Text(MouseOptions.CustomAddress)) =>
+                options.Text(MouseOptions.CustomAddress),
+            Omni when options.Text(MouseOptions.AppProgram) is var program && (program.Length > 0 || arguments.Length > 0) =>
+                $"{(program.Length > 0 ? program : action.Param)} {arguments}".Trim() + In(options.Text(MouseOptions.StartIn)),
+            _ => null,
+        };
+
+        static string In(string folder) => folder.Length > 0 ? $" (in {folder})" : string.Empty;
+        static bool IsWebAddress(string address) => Uri.TryCreate(address, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp);
+    }
+
     /// True for the built-in actions that open a program or folder window, whether by a keystroke (Win+E) or by running it.
     public static bool OpensWindow(string id) => Fixed.FirstOrDefault(d => d.Id == id)?.Where.Section == ActionSections.Launch;
 

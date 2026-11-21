@@ -1,6 +1,7 @@
 ﻿using OmniControl.App.Features.Hotkeys.Actions;
 using OmniControl.App.Features.AppLists;
 using OmniControl.App.Features.Hotkeys;
+using OmniControl.App.Shared.Scripts;
 using OmniControl.Core.Engine.Mouse;
 
 namespace OmniControl.App.Features.Input.Mouse;
@@ -81,16 +82,19 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
     /// <param name="holdOmniAction">Starts an OmniControl action that lasts while the button is held and returns what ends it (null: it does not last).</param>
     /// <param name="states">The master list of states: the mouse's and the trackpad's layer in force are registered there.</param>
     /// <param name="keyEquivalentOf">The master action's <see cref="HotkeyAction.KeyEquivalent"/> by id, or null.</param>
+    /// <param name="ask">Asks the person at this PC (UI thread): whether a button or gesture may start what it names.</param>
     public MouseService(MouseHook hook, Func<string, RunSettings?, bool> runOmniAction, Func<string, RunSettings, Action?> holdOmniAction, Action<string> report, Func<MouseEvent, MouseAction?> gestureAt, AppScopeGate scopes,
-        States.IStateRegistry states, Func<string, string?> keyEquivalentOf)
+        States.IStateRegistry states, Func<string, string?> keyEquivalentOf, Func<DialogMessage, Task<bool>> ask)
     {
         _scopes = scopes;
         _holdOmniAction = holdOmniAction;
         _report = report;
         _log = hook.Diagnose;
         _gestureAt = gestureAt;
+        Approvals = new CommandApprovals(() => Settings.Approved!, Settings.Save, ask);
+        AllowMappingsOnce();
         _snapshot = TakeSnapshot();
-        _runner = new MouseActionRunner(runOmniAction, Say, hook.Diagnose, () => _snapshot.SendToRemoteAsKeys, keyEquivalentOf);
+        _runner = new MouseActionRunner(runOmniAction, Say, hook.Diagnose, () => _snapshot.SendToRemoteAsKeys, keyEquivalentOf, MayStart);
         _modes = new MouseModes(hook);
         ApplyWatchers();
         hook.PassAll = PassesEverything;

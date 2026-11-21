@@ -32,7 +32,7 @@ internal static partial class Shots
 
         var hook = new MouseHook(); // never started
         var gestures = new GestureService(hook, rig.Runner.RunLevel, Rig.Report, rig.ScopeGate);
-        var mouse = new MouseService(hook, rig.Runner.Run, rig.Runner.RunHeld, Rig.Report, gestures.MiddleClickAt, rig.ScopeGate, rig.States, _ => null);
+        var mouse = new MouseService(hook, rig.Runner.Run, rig.Runner.RunHeld, Rig.Report, gestures.MiddleClickAt, rig.ScopeGate, rig.States, _ => null, Rig.Ask);
         var rules = new RuleService(hook, gestures, mouse, rig.Actions, rig.Runner, Array.Empty<string>, Rig.Report, Rig.Ask);
         var trackpad = new TrackpadService(hook, mouse, rig.Hardware, () => false);
         var pointer = new PointerSettingsService();

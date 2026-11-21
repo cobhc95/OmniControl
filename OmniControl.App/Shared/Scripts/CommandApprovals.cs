@@ -32,10 +32,16 @@ public sealed class CommandApprovals
     {
         if (IsApproved(stored)) return true;
         if (!await _ask(question)) return false;
+        Allow(stored);
+        _save();
+        return true;
+    }
+
+    /// Approves without asking: the person chose it on this PC just now. The caller saves the store.
+    public void Allow(string stored)
+    {
         var hash = HashOf(stored);
         var approved = _approved();
         lock (approved) approved.Add(hash);
-        _save();
-        return true;
     }
 }
