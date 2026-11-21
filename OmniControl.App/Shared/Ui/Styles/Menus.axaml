@@ -31,7 +31,7 @@
         <Setter Property="HorizontalAlignment" Value="Stretch" />
     </Style>
 
-    <!-- Option list (Controls/OptionList): the tick of an entry (1 px edge; .checked filled in the accent); Grid.unavailable / StackPanel.unavailable = a greyed entry (the master picker, a Shortcuts action that does nothing now) -->
+    <!-- Option list (Controls/OptionList): the tick of an entry (1 px edge; .checked filled in the accent); .unavailable = a greyed entry or control (the master picker, a Shortcuts action that does nothing now, a microphone row's parts while Use microphones is off) -->
     <Style Selector="Border.tickbox">
         <Setter Property="Width" Value="{DynamicResource TickBoxSize}" />
         <Setter Property="Height" Value="{DynamicResource TickBoxSize}" />
@@ -50,7 +50,7 @@
         <Setter Property="Stretch" Value="Uniform" />
         <Setter Property="Margin" Value="{DynamicResource TickMargin}" />
     </Style>
-    <Style Selector="Grid.unavailable, StackPanel.unavailable"><Setter Property="Opacity" Value="0.45" /></Style>
+    <Style Selector=":is(Control).unavailable"><Setter Property="Opacity" Value="0.45" /></Style>
 
     <!-- Every menu and pop-down list has one surface (Windows 11 style): the card colour, a 1 px soft edge, 8 px corners, 4 px inside;
          listmenu and optionmenu (both ListMenuFlyout) add a soft shadow drawn in MenuShadowRoom, which ListMenuFlyout shifts away.

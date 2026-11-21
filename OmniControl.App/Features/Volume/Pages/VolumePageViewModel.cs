@@ -94,6 +94,7 @@ public sealed partial class VolumePageViewModel : PageViewModel, IVolumeRows, ID
         {
             Entry(_combineCard, "Combine devices", "combine merge speakers microphones mic mics mix several devices together cable stereo mix", WiringTab),
             Entry(Apo.Status, "Equalizer APO", "equalizer apo eq effects install remove device selector attach speakers microphone driver", WiringTab),
+            Entry(UseMicrophones, UseMicrophones.Label, UseMicrophonesKeywords, MixerTab),
         }
         .Concat(AllRows().Select(r => Entry(r, Title, "sound audio mixer app program pan fx effects method cable capture replay recording output device microphone", MixerTab)))
         .Concat(WiringRows().Select(w => Entry(w, (WiringInputs.Items.Contains(w) ? WiringInputs : WiringOutputs).RouteColumn,
@@ -128,6 +129,7 @@ public sealed partial class VolumePageViewModel : PageViewModel, IVolumeRows, ID
         _actions = new VolumeActions(s.Mixer, s.Osd, s.States, s.Report, this);
         CombineSpeakersGate = new ControlGate();
         CombineMicrophonesGate = new ControlGate();
+        UseMicrophones = NewUseMicrophones();
         WiringOutputs = NewWiringOutputs();
         WiringInputs = NewWiringInputs();
         WiringCables = NewWiringCables();
@@ -147,9 +149,11 @@ public sealed partial class VolumePageViewModel : PageViewModel, IVolumeRows, ID
         _engine.StatusChanged += OnEngineStatus;
         _mixer.MasterDeviceChanged += OnMasterDeviceChanged;
         _engine.PlanChanged += OnPlanChanged;
+        _mixer.MicrophonesChanged += OnMicrophonesChanged;
         _meterTimer.Tick += (_, _) => FeedMeters();
         RegisterHotkeys(s.Hotkeys);
         RegisterListen(s.Hotkeys);
+        RegisterMicrophones(s.Hotkeys);
         RegisterPresets(s.PresetGroups);
         CreateEasy(s.Hotkeys);
         _volumeStates = new VolumeStates(s.States, s.Mixer, s.Osd, _actions, this, Title);
@@ -217,6 +221,7 @@ public sealed partial class VolumePageViewModel : PageViewModel, IVolumeRows, ID
         _engine.StatusChanged -= OnEngineStatus;
         _mixer.MasterDeviceChanged -= OnMasterDeviceChanged;
         _engine.PlanChanged -= OnPlanChanged;
+        _mixer.MicrophonesChanged -= OnMicrophonesChanged;
         _presetChoice?.Dispose();
         Apo.Dispose();
         Easy.Dispose();

@@ -1,5 +1,6 @@
 using OmniControl.App.Features.Hotkeys;
 using OmniControl.App.Features.States;
+using OmniControl.App.Features.Volume.Audio;
 
 namespace OmniControl.App.Features.Volume.Pages;
 
@@ -28,6 +29,11 @@ public sealed partial class VolumePageViewModel
     /// Turns listening on or off, keeping the output (<paramref name="keepOutput"/>) or setting a new one; says once when Windows refuses.
     private void SetListen(InputItem item, bool on, string? outputId, bool keepOutput)
     {
+        if (!_mixer.MicrophonesOn)
+        {
+            _report($"{EffectsRules.MicrophonesOffLine}.");
+            return;
+        }
         if (keepOutput) CoreAudio.GetListen(item.Id, out _, out outputId);
         if (!CoreAudio.TrySetListen(item.Id, on, outputId, out var error))
         {

@@ -54,7 +54,7 @@ public sealed class DeviceMeters : IDisposable
     public bool Peaks(string? id, bool recording, out float left, out float right)
     {
         left = right = 0;
-        var key = (recording ? "c:" : "r:") + (id ?? string.Empty);
+        var key = (recording ? RecordingPrefix : PlaybackPrefix) + (id ?? string.Empty);
         var now = Environment.TickCount64;
         lock (_gate)
         {
@@ -70,6 +70,21 @@ public sealed class DeviceMeters : IDisposable
             return false;
         }
     }
+
+    /// Lets go of every recording device's meter (the owner stopped reading microphones).
+    public void ReleaseRecording()
+    {
+        lock (_gate)
+        {
+            foreach (var key in _meters.Keys.Where(k => k.StartsWith(RecordingPrefix, StringComparison.Ordinal)).ToList())
+            {
+                Release(_meters[key].Meter);
+                _meters.Remove(key);
+            }
+        }
+    }
+
+    private const string RecordingPrefix = "c:", PlaybackPrefix = "r:";
 
     private static void Release(object? meter)
     {

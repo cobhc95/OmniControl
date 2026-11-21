@@ -10,7 +10,8 @@
          The Plays on and Method chips share row 1 (one line); the fact line is row 2 under the Method chip; every other cell spans both rows and centres.
          The name and the two pickers share the spare width (trimmed); the knobs, meter, mute, FX and remove keep their sizes in shared
          columns (Mixer*, the same in MixerHeadings), so nothing is squeezed at the narrowest window and every row lines up. Controls are
-         declared left to right, which is also the keyboard order (Left/Right walk them; Enter opens a picker or starts turning a knob). -->
+         declared left to right, which is also the keyboard order (Left/Right walk them; Enter opens a picker or starts turning a knob).
+         A microphone row while "Use microphones" is off greys Method, Listen, FX and the meter (.unavailable); level and mute still work. -->
     <Grid ColumnSpacing="{StaticResource MixerColumnGap}" Opacity="{Binding RowOpacity}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" SharedSizeGroup="MixerIcon" />
@@ -41,7 +42,7 @@
         <vm:PlaysOnButton Grid.Column="2" VerticalAlignment="Top" />
 
         <!-- The Method chip and the one short fact under it (with its one link: the step that fixes what is missing) -->
-        <vm:MethodButton Grid.Column="3" VerticalAlignment="Top" />
+        <vm:MethodButton Grid.Column="3" VerticalAlignment="Top" IsEnabled="{Binding !MicrophonesOff}" Classes.unavailable="{Binding MicrophonesOff}" />
         <Grid Grid.Column="3" Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapSmall}">
                 <TextBlock Classes="muted small" Text="{Binding FactLine}" ToolTip.Tip="{Binding FactTip}" TextTrimming="CharacterEllipsis"
                            VerticalAlignment="Center" />
@@ -57,7 +58,7 @@
         <ctl:Knob Grid.Column="5" Grid.RowSpan="2" Minimum="0" Maximum="100" Value="{Binding Volume}" Text="{Binding Volume}"
                   pages:SliderReset.Value="{x:Static vm:VolumeRow.VolumeReset}" ToolTip.Tip="{Binding VolumeValueTip}" IsVisible="{Binding HasVolume}" />
 
-        <vm:LevelMeter Grid.Column="10" Grid.RowSpan="2" Model="{Binding Meter}" VerticalAlignment="Center" ToolTip.Tip="Level" />
+        <vm:LevelMeter Grid.Column="10" Grid.RowSpan="2" Model="{Binding Meter}" VerticalAlignment="Center" ToolTip.Tip="Level" Classes.unavailable="{Binding MicrophonesOff}" />
 
         <Button Grid.Column="6" Grid.RowSpan="2" Tag="scope" Classes="scope mute" Classes.on="{Binding Muted}" Content="M" Command="{Binding ToggleMuteCommand}"
                 ToolTip.Tip="Mute" IsVisible="{Binding HasVolume}" />
@@ -65,14 +66,15 @@
         <!-- Listen (microphones only): Windows' own "Listen to this device"; click toggles, right-click picks the output. Reflection
              bindings: only a microphone row (InputItem) has these members, and this view draws every kind of row -->
         <Button Grid.Column="7" Grid.RowSpan="2" Tag="scope" Classes="scope mute listen" Classes.on="{ReflectionBinding Listening}" Command="{ReflectionBinding ToggleListenCommand}"
-                ToolTip.Tip="{ReflectionBinding ListenTip}" IsVisible="{Binding HasListen}" ContextRequested="OnListenContext">
+                ToolTip.Tip="{ReflectionBinding ListenTip}" IsVisible="{Binding HasListen}" ContextRequested="OnListenContext"
+                IsEnabled="{Binding !MicrophonesOff}" Classes.unavailable="{Binding MicrophonesOff}" ToolTip.ShowOnDisabled="True">
             <Path Classes="glyph" Data="{DynamicResource Icon.headphones}" />
         </Button>
 
         <!-- FX: lit (Button.pill.glow) while effects run; opens the row's FX window, or closes it when it is open -->
         <Button Grid.Column="8" Grid.RowSpan="2" Tag="scope" Classes="pill" Classes.glow="{Binding FxRuns}" Content="FX" Command="{Binding ToggleWindowCommand}"
                 IsVisible="{Binding HasEffects}" ToolTip.Tip="{Binding FxTip}" ToolTip.ShowOnDisabled="True"
-                VerticalAlignment="Center" />
+                IsEnabled="{Binding !MicrophonesOff}" Classes.unavailable="{Binding MicrophonesOff}" VerticalAlignment="Center" />
 
         <Button Grid.Column="9" Grid.RowSpan="2" Tag="scope" Classes="removebadge" Command="{Binding RemoveCommand}" IsVisible="{Binding CanForget}"
                 ToolTip.Tip="Remove (forgets its settings)" VerticalAlignment="Center">

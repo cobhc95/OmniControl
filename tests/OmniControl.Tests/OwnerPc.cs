@@ -75,7 +75,13 @@ internal static class OwnerPc
         };
 
     /// A fresh copy of the settings (the tests may change it).
-    public static MixerSettings Settings() => JsonSerializer.Deserialize<MixerSettings>(Json)!;
+    /// The reference settings with "Use microphones" on (the microphone plans need it).
+    public static MixerSettings Settings()
+    {
+        var s = JsonSerializer.Deserialize<MixerSettings>(Json)!;
+        s.UseMicrophones = true;
+        return s;
+    }
 
     private const string Json = """
     {"Apps":[

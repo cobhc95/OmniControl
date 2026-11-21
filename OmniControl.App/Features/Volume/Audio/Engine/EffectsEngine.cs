@@ -85,6 +85,7 @@ public sealed class EffectsEngine : IDisposable
         mixer.ProgramChanged += OnProgramChanged;
         mixer.RoutingChanged += OnRoutingChanged;
         mixer.KeepFxInPlaceChanged += OnKeepFxInPlaceChanged;
+        mixer.MicrophonesChanged += OnMicrophonesChanged;
         support.Changed += OnSupportChanged;
         // Equalizer APO runs a VST2 from its saved settings: a newly saved state is written into its line (files change only when the text does).
         plugins.StatesSaved += Reconcile;
@@ -229,6 +230,14 @@ public sealed class EffectsEngine : IDisposable
     private void OnSupportChanged()
     {
         _failed.Remove(MixerService.MasterKey);
+        Reconcile();
+    }
+
+    /// "Use microphones" changed: off stops every microphone run and takes the microphones' chains out of Equalizer APO at once; either
+    /// way a microphone's failed run may try again.
+    private void OnMicrophonesChanged()
+    {
+        foreach (var key in _failed.Keys.Where(k => MixerService.IsInput(k) || _mixer.CombinedOf(k)?.Kind == CombinedKind.Microphones).ToList()) _failed.Remove(key);
         Reconcile();
     }
 
@@ -516,6 +525,7 @@ public sealed class EffectsEngine : IDisposable
         _mixer.ProgramChanged -= OnProgramChanged;
         _mixer.RoutingChanged -= OnRoutingChanged;
         _mixer.KeepFxInPlaceChanged -= OnKeepFxInPlaceChanged;
+        _mixer.MicrophonesChanged -= OnMicrophonesChanged;
         _support.Changed -= OnSupportChanged;
         _plugins.StatesSaved -= Reconcile;
         foreach (var key in _runs.Keys.ToList()) StopRun(key);

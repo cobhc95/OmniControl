@@ -22,6 +22,7 @@ public sealed class VolumePresets : IDisposable
         mixer.Updated += Capture;
         mixer.FxChanged += OnFxChanged;
         mixer.CablesChanged += Capture;
+        mixer.MicrophonesChanged += Capture;
         Capture();
     }
 
@@ -97,5 +98,6 @@ public sealed class VolumePresets : IDisposable
         _mixer.Updated -= Capture;
         _mixer.FxChanged -= OnFxChanged;
         _mixer.CablesChanged -= Capture;
+        _mixer.MicrophonesChanged -= Capture;
     }
 }

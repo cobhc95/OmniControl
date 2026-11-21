@@ -358,6 +358,21 @@ public sealed partial class MixerService : IDisposable
         KeepFxInPlaceChanged?.Invoke();
     }
 
+    /// "Use microphones" (<see cref="MixerSettings.UseMicrophones"/>): off, nothing of OmniControl opens a recording device.
+    public bool MicrophonesOn => Settings.MicrophonesOn;
+
+    /// The switch changed: every owner of a microphone capture (the engine, the page's meters) stops or may start at once. UI thread.
+    public event Action? MicrophonesChanged;
+
+    public void SetMicrophones(bool on)
+    {
+        if (Settings.MicrophonesOn == on) return;
+        Settings.UseMicrophones = on;
+        Settings.Save();
+        if (!on) _meters.ReleaseRecording();
+        MicrophonesChanged?.Invoke();
+    }
+
     /// Saves after an edit of a chain (or of one of its effects) and tells the running engine at once.
     public void SaveFx(string? key)
     {
@@ -417,6 +432,10 @@ public sealed partial class MixerService : IDisposable
         _meters.Dispose();
     }
 
-    /// Live peak levels (0 to 1) of a recording device; false when there is nothing to read.
-    public bool InputPeaks(string deviceId, out float left, out float right) => _meters.Peaks(deviceId, true, out left, out right);
+    /// Live peak levels (0 to 1) of a recording device; false when there is nothing to read or "Use microphones" is off.
+    public bool InputPeaks(string deviceId, out float left, out float right)
+    {
+        left = right = 0;
+        return MicrophonesOn && _meters.Peaks(deviceId, true, out left, out right);
+    }
 }

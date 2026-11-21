@@ -38,6 +38,8 @@ public enum StatusKind
     /// Windows refused to move the program to its cable.
     CouldNotMove,
     Stopped,
+    /// "Use microphones" is off: OmniControl opens no microphone, so a microphone's effects and a combined microphone do not run.
+    MicrophonesOff,
 }
 
 /// What a program's Method menu needs to know about the virtual cables: how many pairs OmniControl may use, whether one is free for it,
@@ -108,6 +110,7 @@ public static partial class EffectsRules
             StatusKind.NotMoved => "Not on its cable yet",
             StatusKind.CouldNotMove => "Windows would not move it",
             StatusKind.Stopped => "Engine stopped",
+            StatusKind.MicrophonesOff => "Microphones off",
             _ => string.Empty,
         };
     }
@@ -138,8 +141,15 @@ public static partial class EffectsRules
         StatusKind.NotMoved => "Pause and play the program, or restart it.",
         StatusKind.CouldNotMove => "The original sound was put back.",
         StatusKind.Stopped => "The original sound was put back.",
+        StatusKind.MicrophonesOff => UseMicrophonesTip,
         _ => null,
     };
+
+    /// The Microphones group's "Use microphones" switch: its words, its tooltip and the line under a microphone's Method chip while it is off.
+    public const string UseMicrophonesLabel = "Use microphones",
+        UseMicrophonesTip = "Lets OmniControl open your microphones for effects, the level meter and Listen.",
+        MicrophonesOffFact = "microphones off",
+        MicrophonesOffLine = "Use microphones is off: OmniControl opens no microphone";
 
     // ---- how a program's effects run: the Method menu ----
 

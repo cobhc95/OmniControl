@@ -27,7 +27,13 @@ public sealed partial class InputItem : VolumeRow
     /// Whether Windows plays this input now, as Windows reports it.
     public bool Listening { get => _listening; private set { if (SetProperty(ref _listening, value)) OnPropertyChanged(nameof(ListenTip)); } }
 
-    public string ListenTip => Listening ? $"Listening on {_listenOutput}" : $"Listen to this mic on {_listenOutput}";
+    public string ListenTip => MicrophonesOff ? EffectsRules.MicrophonesOffLine : Listening ? $"Listening on {_listenOutput}" : $"Listen to this mic on {_listenOutput}";
+
+    protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        if (e.PropertyName == nameof(MicrophonesOff)) OnPropertyChanged(nameof(ListenTip));
+    }
 
     /// The page's scan: what Windows says now (<paramref name="output"/> = the output's name).
     public void SyncListen(bool on, string output)
