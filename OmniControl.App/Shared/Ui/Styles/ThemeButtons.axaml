@@ -184,8 +184,8 @@
         <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
     </Style>
+    <!-- Focus changes only the edge: the pop-down puts the keyboard on the selected card, whose fill must still mark it as the current choice -->
     <Style Selector="Button.optioncard:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
     </Style>
 

@@ -123,10 +123,11 @@ public sealed partial class VolumePageViewModel
     /// What a row's Method chip is worked out from (<see cref="EffectsRules.ChipMethodOf"/>).
     private RowMethodFacts MethodFactsOf(VolumeRow row, bool runs) => row switch
     {
-        MixerItem { IsMaster: true } => new(RowKind.Master, runs, _engine.MethodOf(null), _engine.MasterMethod, Off: row.MethodOff),
+        MixerItem { IsMaster: true } => new(RowKind.Master, runs, _engine.MethodOf(null), _engine.MasterMethod, Route: _mixer.MasterMethod, Off: row.MethodOff),
         MixerItem program => new(RowKind.Program, runs, _engine.MethodOf(program.Key), _engine.MasterMethod,
             FollowsMaster: _mixer.PlaysOnOf(program.Key).Count == 0, Route: _mixer.FxRouteOf(program.Key), CableFree: _engine.CablesFor(program.Key).Free, Off: row.MethodOff),
-        InputItem input => new(RowKind.Microphone, runs, _engine.MethodOf(input.Key), _engine.MasterMethod, Own: _engine.MicMethodOf(input.Key), Off: row.MethodOff),
+        InputItem input => new(RowKind.Microphone, runs, _engine.MethodOf(input.Key), _engine.MasterMethod, Route: _mixer.MicMethodOf(input.Key),
+            Own: _engine.MicMethodOf(input.Key), Off: row.MethodOff),
         _ => new(RowKind.Combined, runs, _engine.MethodOf(row.Key), _engine.MasterMethod),
     };
 

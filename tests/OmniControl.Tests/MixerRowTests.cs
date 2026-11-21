@@ -22,16 +22,24 @@ public class MixerRowTests
     [Theory]
     [InlineData(RunMethod.Bus, true, RunMethod.Bus)]   // master on the cable bus
     [InlineData(RunMethod.Apo, true, RunMethod.Apo)]   // master in Equalizer APO with effects
-    [InlineData(RunMethod.Apo, false, RunMethod.None)] // ... with no effects: nothing processes or routes it
+    [InlineData(RunMethod.Apo, false, RunMethod.Apo)]  // ... with no effects: still the method it is set to, never "Direct"
     public void TheMaster(RunMethod master, bool runs, RunMethod chip) =>
         Assert.Equal(chip, EffectsRules.ChipMethodOf(new RowMethodFacts(RowKind.Master, runs, RunMethod.None, master)));
 
     [Fact]
-    public void AProgramWithoutEffects_PassesThroughTheBus_OrPlaysDirect()
+    public void TheMasterOnAutomatic_WithNothingToRun_SaysAutomatic()
     {
-        Assert.Equal(RunMethod.Bus, EffectsRules.ChipMethodOf(Program(false, master: RunMethod.Bus, follows: true)));
-        Assert.Equal(RunMethod.None, EffectsRules.ChipMethodOf(Program(false, master: RunMethod.Bus, follows: false)));
-        Assert.Equal(RunMethod.None, EffectsRules.ChipMethodOf(Program(false)));
+        Assert.Equal(RunMethod.Automatic, EffectsRules.ChipMethodOf(new RowMethodFacts(RowKind.Master, false, RunMethod.None, RunMethod.Apo, Route: EffectsRules.MasterAutomatic)));
+        Assert.Equal(RunMethod.Apo, EffectsRules.ChipMethodOf(new RowMethodFacts(RowKind.Master, true, RunMethod.None, RunMethod.Apo, Route: EffectsRules.MasterAutomatic)));
+        Assert.Equal(RunMethod.Bus, EffectsRules.ChipMethodOf(new RowMethodFacts(RowKind.Master, false, RunMethod.None, RunMethod.Bus, Route: EffectsRules.MasterAutomatic)));
+    }
+
+    [Fact]
+    public void AProgramWithoutEffects_PassesThroughTheBus_OrShowsItsChosenMethod()
+    {
+        Assert.Equal(RunMethod.Bus, EffectsRules.ChipMethodOf(Program(false, master: RunMethod.Bus, follows: true, route: EffectsRules.RouteCable)));
+        Assert.Equal(RunMethod.Automatic, EffectsRules.ChipMethodOf(Program(false, master: RunMethod.Bus, follows: false, route: EffectsRules.RouteAutomatic)));
+        Assert.Equal(RunMethod.Cable, EffectsRules.ChipMethodOf(Program(false, route: EffectsRules.RouteCable)));
     }
 
     [Fact]
@@ -49,7 +57,7 @@ public class MixerRowTests
     {
         Assert.Equal(RunMethod.Cable, EffectsRules.ChipMethodOf(new RowMethodFacts(RowKind.Microphone, true, RunMethod.None, RunMethod.Bus)));
         Assert.Equal(RunMethod.Cable, EffectsRules.ChipMethodOf(new RowMethodFacts(RowKind.Microphone, true, RunMethod.None, RunMethod.Apo)));
-        Assert.Equal(RunMethod.None, EffectsRules.ChipMethodOf(new RowMethodFacts(RowKind.Microphone, false, RunMethod.None, RunMethod.Bus)));
+        Assert.Equal(RunMethod.Apo, EffectsRules.ChipMethodOf(new RowMethodFacts(RowKind.Microphone, false, RunMethod.None, RunMethod.Bus, Own: RunMethod.Apo)));
         Assert.Equal(RunMethod.Cable, EffectsRules.ChipMethodOf(new RowMethodFacts(RowKind.Combined, false, RunMethod.None, RunMethod.Bus)));
     }
 
@@ -61,6 +69,7 @@ public class MixerRowTests
         Assert.Equal(("Cable bus", false, true, false), Look(RunMethod.Bus));
         Assert.Equal(("Recording", false, false, true), Look(RunMethod.Recording));
         Assert.Equal(("Direct", false, false, false), Look(RunMethod.None));
+        Assert.Equal(("Automatic", false, false, false), Look(RunMethod.Automatic));
         Assert.True(MethodChip.Of(RunMethod.ApoCable).IsApo);
 
         static (string, bool, bool, bool) Look(RunMethod m)
@@ -79,7 +88,7 @@ public class MixerRowTests
         Assert.Equal("70 ms", running.Fact(RunMethod.Recording));
         Assert.Equal("no delay", new EngineStatus(EngineState.Running, "x", null, StatusKind.Running, RunMethod.Apo).Fact(RunMethod.Apo));
         Assert.Equal("70 ms", new EngineStatus(EngineState.Running, "x", DelayMs: 70).Fact(RunMethod.Cable)); // a running state with no fact of its own
-        Assert.Equal("on the speakers", new EngineStatus(EngineState.Off, "x", null, StatusKind.Direct).Fact(RunMethod.None));
+        Assert.Equal(EffectsRules.NoEffects, new EngineStatus(EngineState.Off, "x", null, StatusKind.Direct).Fact(RunMethod.Apo));
         Assert.Equal("Starts when it plays", new EngineStatus(EngineState.Waiting, "x", null, StatusKind.StartsWhenPlays).Fact(RunMethod.Recording));
         Assert.Equal("No free cable", new EngineStatus(EngineState.Unavailable, "x", null, StatusKind.NoFreeCable).Fact(RunMethod.Cable));
         Assert.Equal(EffectsRules.NoDelay, EngineStatus.Off.Fact(RunMethod.None));

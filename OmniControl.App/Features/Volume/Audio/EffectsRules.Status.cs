@@ -1,8 +1,9 @@
 namespace OmniControl.App.Features.Volume.Audio;
 
 /// The way a row's effects really run, as the Mixer row's short status names it ("Recording", "Cable", "Bus", "APO", "APO cable"); None =
-/// nothing processes the sound now (its method could), Off = its method is Off (<see cref="EffectsRules.MethodOff"/>).
-public enum RunMethod { None, Recording, Cable, Bus, Apo, ApoCable, Off }
+/// nothing processes the sound now (its method could), Off = its method is Off (<see cref="EffectsRules.MethodOff"/>), Automatic = its method
+/// is Automatic and it has nothing to run yet, so no way is picked (the Method chip only).
+public enum RunMethod { None, Recording, Cable, Bus, Apo, ApoCable, Off, Automatic }
 
 /// What a row's effects are doing or why not (the fact behind its short status, <see cref="EffectsRules.Brief"/>).
 public enum StatusKind
