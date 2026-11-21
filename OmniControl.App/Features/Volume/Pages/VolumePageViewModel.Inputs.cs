@@ -1,6 +1,5 @@
 using OmniControl.App.Features.Volume.Audio.Engine;
 using OmniControl.App.Features.Volume.Audio;
-using OmniControl.App.Features.Osd;
 
 namespace OmniControl.App.Features.Volume.Pages;
 
@@ -13,11 +12,6 @@ public sealed partial class VolumePageViewModel
     /// The word under the default recording device's name.
     private const string DefaultWord = "default";
 
-    private const string MicrophoneElement = OsdService.MicrophoneElement;
-
-    /// The own glyphs (Styles/Brushes.axaml) of the microphone and effects actions and states.
-    private const string MicIcon = Icons.IconLibrary.Mic, FxIcon = Icons.IconLibrary.Sliders;
-
     private void RefreshInputs()
     {
         var seen = new HashSet<string>();
@@ -28,7 +22,7 @@ public sealed partial class VolumePageViewModel
             if (!_inputs.TryGetValue(d.Id, out var item)) _inputs[d.Id] = item = NewInput(d);
             item.Name = d.Name;
             item.StateWord = d.IsDefault ? DefaultWord : string.Empty;
-            if (!_actions.InputJustChanged && CoreAudio.GetDeviceVolume(d.Id, out var v, out var muted))
+            if (!_controls.InputJustChanged && CoreAudio.GetDeviceVolume(d.Id, out var v, out var muted))
                 item.Sync(v, muted, _mixer.IsFxOn(item.Key), FxSlot.EffectCount(_mixer.FxChain(item.Key)));
             SyncListen(item);
             SyncRow(item);
@@ -52,11 +46,11 @@ public sealed partial class VolumePageViewModel
         InputItem? row = null;
         return row = new InputItem(id)
         {
-            ListenToggled = on => SetListen(row!, on, null, keepOutput: true),
-            ListenMenu = () => ListenRows(row!),
+            ListenToggled = on => _controls.SetListen(id, row!.Name, on, null, keepOutput: true),
+            ListenMenu = () => _controls.ListenRows(id, row!.Name),
             Name = d.Name,
-            VolumeChanged = v => { _actions.NoteInputChange(); CoreAudio.SetDeviceVolume(id, v); },
-            MuteChanged = m => { _actions.NoteInputChange(); CoreAudio.SetDeviceMute(id, m); },
+            VolumeChanged = v => _controls.SetInputVolume(id, v),
+            MuteChanged = m => _controls.SetInputMute(id, m),
             FxToggled = on => _mixer.SetFxByUser(key, on),
             FxWindowToggled = () => _toggleFx(key),
             RouteChoice = RouteChoice.ForMicrophone(route => { _mixer.SetMicMethod(key, route); SyncRow(row!); }, () => SyncRow(row!)),
@@ -78,8 +72,18 @@ public sealed partial class VolumePageViewModel
             rows.Add(row);
         }
         RemoveMissing(_combos, seen);
-        SyncHotkeyAvailability();
         return rows;
+    }
+
+    /// A level action or Windows' own report changed a microphone or a combined microphone: its row shows it.
+    private void OnInputShown(string deviceId, int level, bool muted)
+    {
+        if (_inputs.TryGetValue(deviceId, out var row)) row.Sync(level, muted, row.FxOn, row.FxCount);
+    }
+
+    private void OnComboShown(string key, int level, bool muted)
+    {
+        if (_combos.TryGetValue(key, out var row)) row.Sync(level, muted, row.FxOn, row.FxCount);
     }
 
     private ComboItem NewCombo(CombinedDevice device)

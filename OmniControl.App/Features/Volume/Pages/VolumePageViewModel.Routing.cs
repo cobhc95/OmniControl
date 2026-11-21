@@ -48,12 +48,11 @@ public sealed partial class VolumePageViewModel
         SyncCables();
     }
 
-    /// The gates that depend on what is free: the two "+ Combine" pills and the hotkeys that need something.
+    /// The gates that depend on what is free: the two "+ Combine" pills.
     private void SyncAvailability()
     {
         CombineSpeakersGate.Sync(CreateGateFor(false));
         CombineMicrophonesGate.Sync(CreateGateFor(true));
-        SyncHotkeyAvailability();
     }
 
     /// A Mixer row's columns from the live state: where it plays, its Method chip and the fact under it, the long line behind them, the
@@ -213,26 +212,11 @@ public sealed partial class VolumePageViewModel
         if (list.Count == 1 && !(MasterOnBus && CombinedDevice.IsKey(list[0])))
         {
             _mixer.SetMasterPlaysOn(Array.Empty<string>());
-            MakeMasterDevice(list[0]);
+            _controls.MakeMasterDevice(list[0]);
             return;
         }
         _mixer.SetMasterPlaysOn(list);
         if ((_mixer.MasterDeviceId ?? _mixer.DefaultDeviceId) is not { } current || !list.Contains(current))
-            if (list.FirstOrDefault(t => !CombinedDevice.IsKey(t)) is { } first) MakeMasterDevice(first);
-    }
-
-    /// The master's real device becomes this device: the bus's output while it owns Windows' default, else Windows' default itself.
-    private void MakeMasterDevice(string target)
-    {
-        if (_mixer.MasterBusOwnsDefault && !CombinedDevice.IsKey(target)) _mixer.SetRealMasterDevice(target);
-        else MakeDefault(target);
-    }
-
-    /// Windows' default device becomes this device, or a combined device's cable (everything sent there plays on its members).
-    private void MakeDefault(string target)
-    {
-        if (_mixer.CombinedOf(target) is not { } combo) _mixer.SetDefaultDevice(target);
-        else if (combo.Cable.Length > 0) _mixer.SetDefaultDevice(combo.Cable);
-        else _report($"{combo.Name} has no virtual cable yet ({EffectsRules.NeedsAnotherCable.ToLowerInvariant()}).");
+            if (list.FirstOrDefault(t => !CombinedDevice.IsKey(t)) is { } first) _controls.MakeMasterDevice(first);
     }
 }

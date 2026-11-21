@@ -18,7 +18,7 @@ internal sealed class VolumeActions
     private readonly MixerService _mixer;
     private readonly IOsd _osd;
     private readonly IStateRegistry _states;
-    private readonly IVolumeRows _rows;
+    private readonly IVolumeLevels _levels;
     private readonly MicMuteKey _micKey;
     private readonly LevelStepper _steps = new();
     private readonly object _inputStep = new();
@@ -26,12 +26,12 @@ internal sealed class VolumeActions
     private int _micChecking;
     private bool _fallbackLogged;
 
-    public VolumeActions(MixerService mixer, IOsd osd, IStateRegistry states, Action<string> report, IVolumeRows rows)
+    public VolumeActions(MixerService mixer, IOsd osd, IStateRegistry states, Action<string> report, IVolumeLevels levels)
     {
         _mixer = mixer;
         _osd = osd;
         _states = states;
-        _rows = rows;
+        _levels = levels;
         _micKey = new MicMuteKey(report);
     }
 
@@ -83,11 +83,7 @@ internal sealed class VolumeActions
         SyncMaster(level, false);
     }
 
-    private void SyncMaster(int level, bool muted) => Dispatcher.UIThread.Post(() =>
-    {
-        var master = _rows.Master;
-        master.Sync(true, level, master.Pan, muted, master.FxOn, master.FxCount);
-    });
+    private void SyncMaster(int level, bool muted) => Dispatcher.UIThread.Post(() => _levels.ShowMaster(level, muted));
 
     /// Mutes or unmutes the master (<paramref name="to"/>: true = muted), or flips it when null. The pop-up shows before the change is written.
     public void ToggleMasterMute(bool? to = null) => Guard.OffUi("Volume: master mute", () =>
@@ -129,7 +125,7 @@ internal sealed class VolumeActions
 
     private void SyncInput(string deviceId, int level, bool muted) => Dispatcher.UIThread.Post(() =>
     {
-        if (_rows.Input(deviceId) is { } item) item.Sync(level, muted, item.FxOn, item.FxCount);
+        _levels.ShowInput(deviceId, level, muted);
         _states.Notify(VolumeStates.MicMutedId);
     });
 
@@ -203,7 +199,7 @@ internal sealed class VolumeActions
             var level = Percent.Clamp(c.Volume + delta);
             _osd.NoteOwnChange(MicrophoneElement);
             _mixer.SetCombinedLevel(c.Key, level, muted);
-            if (_rows.Combo(c.Key) is { } row) row.Sync(level, muted, row.FxOn, row.FxCount);
+            _levels.ShowCombo(c.Key, level, muted);
             if (shown) continue;
             _osd.Show(MicrophoneElement, muted ? 0 : level, toggleMute ? $"{c.Name} {(muted ? "muted" : "on")}" : c.Name);
             shown = true;
