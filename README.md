@@ -46,7 +46,7 @@ One Windows app for your displays, sound, smart plugs, mouse, trackpad, other PC
 <tr>
 <td><a href="docs/screenshots/app-settings.png"><img src="docs/screenshots/app-settings.png" alt="App settings page"></a><br><sub>App settings</sub></td>
 <td><a href="docs/screenshots/displays-light.png"><img src="docs/screenshots/displays-light.png" alt="Displays page in the light theme"></a><br><sub>Light theme</sub></td>
-<td></td>
+<td><a href="docs/screenshots/screenshot-tool.png"><img src="docs/screenshots/screenshot-tool.png" alt="Screenshot tool"></a><br><sub>Screenshot tool (illustration)</sub></td>
 </tr>
 </table>
 
