@@ -5,6 +5,10 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+## 0.2.7 (21 Nov 2026)
+
+- Important: Other PCs uses a new connection protocol in this version (safer pairing and fresh keys for every connection). Update every PC you pair to 0.2.7 or later; until both PCs run it, existing pairs show offline and new pairing is refused with one sentence. (This comes from the protocol change, not from the move to .NET 10, which needs nothing from you: the app still brings its own .NET.)
+
 - Fixed (GitHub issue #2): OmniControl no longer takes over your sound. With no effects it routes nothing: it never makes a virtual cable Windows' default device and never sends programs through one, so a mixer of your own on VB-CABLE (or Voicemeeter) keeps working without an echo. On upgrade, a setup with no effects anywhere is put back as Windows had it (default device and every program's device).
 - New: every row's Method menu starts with "Off — no effects", the default for the master, programs and microphones (also for rows with no effects after the upgrade; rows with effects keep Automatic). Off routes and processes nothing; the line under the Method chip says "pick a method to use effects", the FX button is greyed and opens the Method menu, and adding an effect while Off opens it too. Easy view's sound steps pick Automatic for the row they set up.
 - Changed: virtual cables are used only once you switch them on under Volume > Wiring > Virtual cables (a cable already on the PC may be another program's); a cable you mark yourself is switched on. Existing setups with effects keep the cables they used. A cable that is Windows' default or that a program plays on is never taken for effects.
