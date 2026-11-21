@@ -48,18 +48,21 @@ Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""OmniControl on Tailscale"""; Flags: runhidden waituntilterminated; RunOnceId: "RemoveTailscaleRule"
 
 ; ---- Equalizer APO: its official installer (Core/Engine/Apo/ApoInstaller, in {app}\equalizer-apo), run after the files ----
-; It is its own program with its own uninstaller and Apps entry, so OmniControl's uninstall leaves it.
+; It is its own program with its own uninstaller and Apps entry; OmniControl's uninstall runs that uninstaller when its box stays ticked.
 [Tasks]
 Name: equalizerapo; Description: "Equalizer APO (master effects on your speakers; skipped if already installed)"
 [Code]
 var EqualizerApoNote: String;
+
+const
+  EqualizerApoUninstallKey = 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\EqualizerAPO';
 
 // Its Uninstall entry, or its InstallPath holding EqualizerAPO.dll (retyped from Core/Engine/Apo/ApoIds): its uninstaller leaves
 // HKLM\SOFTWARE\EqualizerAPO behind, so the key alone does not count.
 function EqualizerApoInstalled(): Boolean;
 var Folder: String;
 begin
-  Result := RegKeyExists(HKLM64, 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\EqualizerAPO')
+  Result := RegKeyExists(HKLM64, EqualizerApoUninstallKey)
     or (RegQueryStringValue(HKLM64, 'SOFTWARE\EqualizerAPO', 'InstallPath', Folder) and FileExists(AddBackslash(Folder) + 'EqualizerAPO.dll'));
 end;
 
@@ -81,6 +84,32 @@ procedure CurPageChanged(CurPageID: Integer);
 begin
   if (CurPageID = wpFinished) and (EqualizerApoNote <> '') then
     WizardForm.FinishedLabel.Caption := WizardForm.FinishedLabel.Caption + #13#10#13#10 + EqualizerApoNote;
+end;
+
+// Its own uninstaller, named by its Uninstall entry (else its InstallPath), run only from inside 64-bit Program Files, where only
+// administrators can change files (this runs elevated). NSIS's _?= (last, unquoted) runs it in place and waited for: without it NSIS
+// copies itself to the user-writable %TEMP% and returns at once; in place it leaves its own exe, so that and the emptied folder go after.
+procedure UninstallEqualizerApo();
+var Uninstaller, ProgramFiles: String;
+    Code: Integer;
+begin
+  if RegQueryStringValue(HKLM64, EqualizerApoUninstallKey, 'UninstallString', Uninstaller) then
+    Uninstaller := RemoveQuotes(Uninstaller)
+  else if RegQueryStringValue(HKLM64, 'SOFTWARE\EqualizerAPO', 'InstallPath', Uninstaller) then
+    Uninstaller := AddBackslash(Uninstaller) + 'Uninstall.exe';
+  if Uninstaller <> '' then Uninstaller := ExpandFileName(Uninstaller);
+  ProgramFiles := AddBackslash(ExpandConstant('{commonpf64}'));
+  if (Uninstaller <> '') and (CompareText(Copy(Uninstaller, 1, Length(ProgramFiles)), ProgramFiles) = 0) and FileExists(Uninstaller) then
+  begin
+    Exec(Uninstaller, '/S _?=' + ExtractFileDir(Uninstaller), ExtractFileDir(Uninstaller), SW_HIDE, ewWaitUntilTerminated, Code);
+    if not EqualizerApoInstalled() then
+    begin
+      DeleteFile(Uninstaller);
+      RemoveDir(ExtractFileDir(Uninstaller));
+    end;
+  end;
+  if EqualizerApoInstalled() then
+    SuppressibleMsgBox('Equalizer APO was not removed. Its own uninstaller is in Windows'' Apps list.', mbInformation, MB_OK, IDOK);
 end;
 // ---- end of Equalizer APO ----
 
@@ -269,15 +298,117 @@ begin
     SuppressibleMsgBox('Windows Packet Filter was not installed. OmniControl installs it when you first set a download limit.', mbInformation, MB_OK, IDOK);
 end;
 
-// Only a driver OmniControl installed (the record) is removed, so another program's is never taken away; a copy that stays keeps its record.
-// The sign-in task and the network service go first (the app removed the task already when the setting was turned off).
-procedure UninstallSteps();
+// Only a driver OmniControl installed (the record) is removed, so another program's is never taken away.
+function PacketFilterIsOurs(): Boolean;
 var Mine: Cardinal;
-    Driver: Boolean;
 begin
-  Driver := RegQueryDWordValue(HKCU, PacketFilterRecordKey, PacketFilterRecordValue, Mine) and (Mine = 1);
+  Result := RegQueryDWordValue(HKCU, PacketFilterRecordKey, PacketFilterRecordValue, Mine) and (Mine = 1);
+end;
+
+// The uninstall choices; both on unless /KEEPDRIVERS is passed, also for a silent uninstall, which shows no form.
+var RemovingPacketFilter, RemovingEqualizerApo: Boolean;
+
+function KeepsDrivers(): Boolean;
+var I: Integer;
+begin
+  Result := False;
+  for I := 1 to ParamCount do
+    if CompareText(ParamStr(I), '/KEEPDRIVERS') = 0 then Result := True;
+end;
+
+function AddLine(Form: TSetupForm; Text: String; Box: Boolean; var Top: Integer): TControl;
+var Line: TNewStaticText;
+    Check: TNewCheckBox;
+begin
+  if Box then
+  begin
+    Check := TNewCheckBox.Create(Form);
+    Check.Caption := Text;
+    Check.Height := ScaleY(17);
+    Result := Check;
+  end else
+  begin
+    Line := TNewStaticText.Create(Form);
+    Line.AutoSize := True;
+    Line.WordWrap := True;
+    Line.Width := Form.ClientWidth - ScaleX(2 * 12);
+    Line.Caption := Text;
+    Result := Line;
+  end;
+  Result.Parent := Form;
+  Result.Left := ScaleX(12);
+  Result.Top := Top;
+  Result.Width := Form.ClientWidth - ScaleX(2 * 12);
+  Top := Top + Result.Height + ScaleY(8);
+end;
+
+// Inno's uninstaller has no Tasks page, so a small form of its own asks before Inno's confirmation, one box for each part that is there.
+// False when it is cancelled.
+function ChooseWhatToRemove(): Boolean;
+var Form: TSetupForm;
+    PacketBox, ApoBox: TNewCheckBox;
+    Next, Cancel: TNewButton;
+    Top: Integer;
+begin
+  Result := True;
+  RemovingPacketFilter := not KeepsDrivers();
+  RemovingEqualizerApo := RemovingPacketFilter;
+  PacketBox := nil;
+  ApoBox := nil;
+  if UninstallSilent() or not ((PacketFilterIsOurs() and PacketFilterInstalled()) or EqualizerApoInstalled()) then Exit;
+  Form := CreateCustomForm(ScaleX(360), ScaleY(160), False, True);
+  try
+    Form.Caption := FmtMessage(SetupMessage(msgUninstallAppFullTitle), ['OmniControl']);
+    Top := ScaleY(12);
+    AddLine(Form, 'Untick anything you want to keep on this PC.', False, Top);
+    if PacketFilterIsOurs() and PacketFilterInstalled() then
+    begin
+      PacketBox := TNewCheckBox(AddLine(Form, 'Also remove Windows Packet Filter', True, Top));
+      PacketBox.Checked := RemovingPacketFilter;
+    end;
+    if EqualizerApoInstalled() then
+    begin
+      ApoBox := TNewCheckBox(AddLine(Form, 'Also remove Equalizer APO', True, Top));
+      ApoBox.Checked := RemovingEqualizerApo;
+      AddLine(Form, 'Sound may need a restart of Windows before it is as it was.', False, Top);
+    end;
+    Form.ClientHeight := Top + ScaleY(4 + 23 + 12);
+    Next := TNewButton.Create(Form);
+    Next.Parent := Form;
+    Next.Caption := SetupMessage(msgButtonNext);
+    Next.ModalResult := mrOk;
+    Next.Default := True;
+    Cancel := TNewButton.Create(Form);
+    Cancel.Parent := Form;
+    Cancel.Caption := SetupMessage(msgButtonCancel);
+    Cancel.ModalResult := mrCancel;
+    Cancel.Cancel := True;
+    Next.Width := Form.CalculateButtonWidth([Next.Caption, Cancel.Caption]);
+    Cancel.Width := Next.Width;
+    Next.Height := ScaleY(23);
+    Cancel.Height := ScaleY(23);
+    Next.Top := Form.ClientHeight - ScaleY(23 + 12);
+    Cancel.Top := Next.Top;
+    Cancel.Left := Form.ClientWidth - ScaleX(12) - Cancel.Width;
+    Next.Left := Cancel.Left - ScaleX(6) - Next.Width;
+    Form.ActiveControl := Next;
+    Result := Form.ShowModal() = mrOk;
+    if PacketBox <> nil then RemovingPacketFilter := PacketBox.Checked;
+    if ApoBox <> nil then RemovingEqualizerApo := ApoBox.Checked;
+  finally
+    Form.Free();
+  end;
+end;
+
+// A copy that stays keeps its record. The sign-in task and the network service go first (the app removed the task already when the
+// setting was turned off).
+procedure UninstallSteps();
+var Driver: Boolean;
+begin
+  Driver := RemovingPacketFilter and PacketFilterIsOurs();
   if RunsAsAdministrator() then RunApp('--sign-in-task off');
   if NetworkServiceInstalled() then RunApp('--network-service remove');
+  if RemovingEqualizerApo and EqualizerApoInstalled() then UninstallEqualizerApo();
   if Driver and PacketFilterInstalled() then RunNetCfg('-v -u ' + PacketFilterComponent);
   if not Driver then Exit;
   if PacketFilterInstalled() then
@@ -302,6 +433,8 @@ end;
 function InitializeUninstall(): Boolean;
 var Msg: String;
 begin
+  Result := ChooseWhatToRemove();
+  if not Result then Exit;
   Msg := EndOmniControl();
   if Msg <> '' then MsgBox(Msg, mbError, MB_OK);
   Result := Msg = '';
