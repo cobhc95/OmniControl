@@ -399,7 +399,6 @@
         <StyleInclude Source="/Shared/Ui/Styles/Theme.axaml" />
         <StyleInclude Source="/Shared/Ui/Styles/ThemeLists.axaml" />
         <StyleInclude Source="/Shared/Ui/Styles/ThemeButtons.axaml" />
-        <StyleInclude Source="/Shared/Ui/Styles/BrowserTabs.axaml" />
         <StyleInclude Source="/Shared/Ui/Styles/Sliders.axaml" />
         <StyleInclude Source="/Shared/Ui/Styles/Splitters.axaml" />
         <StyleInclude Source="/Shared/Ui/Styles/Blocks.axaml" />

@@ -5,6 +5,9 @@
     <!-- THE browser-style tab strip (docs/mockups/other-pcs-browser-tabs.html; styles Styles/BrowserTabs.axaml): the tabs (a ListBox, so Left/Right walk and open
          them), the "+" directly after the last tab, and a thin baseline behind the tabs that the open tab covers. The page gives the items, the
          tab's content (TabContent) and what "+" does; drag-to-reorder, Ctrl+Tab and Esc are wired in the code. -->
+    <UserControl.Styles>
+        <StyleInclude Source="/Shared/Ui/Styles/BrowserTabs.axaml" />
+    </UserControl.Styles>
     <Grid>
         <Border Classes="tabbaseline" />
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">

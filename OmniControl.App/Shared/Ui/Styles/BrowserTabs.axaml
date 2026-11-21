@@ -4,7 +4,7 @@
     <!-- MASTER design of browser-style tabs (docs/mockups/other-pcs-browser-tabs.html; Controls/BrowserTabStrip): rounded top corners; the open tab is
          raised (the panel's own surface, a 2 px accent top edge, no bottom edge so it joins the Border.pane.tabbed under it); the others are flatter
          and muted. The strip's thin baseline is drawn by Border.tabbaseline behind the tabs and covered by the open one. Hover and keyboard focus are
-         washes only (nothing moves). Included after Theme.axaml. -->
+         washes only (nothing moves). Included by the strip itself, so no control outside it is matched against these; Border.pane.tabbed is in Theme.axaml. -->
     <Style Selector="ListBox.browsertabs">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
@@ -64,11 +64,5 @@
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Padding" Value="{StaticResource BrowserTabPadding}" />
         <Setter Property="VerticalAlignment" Value="Stretch" />
-    </Style>
-
-    <!-- The panel under the tabs: the pane without its top edge, so the open tab joins it -->
-    <Style Selector="Border.pane.tabbed">
-        <Setter Property="BorderThickness" Value="1,0,1,1" />
-        <Setter Property="CornerRadius" Value="0,0,6,6" />
     </Style>
 </Styles>
