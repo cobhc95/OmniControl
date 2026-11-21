@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 
 namespace OmniControl.App.Shared.Services;
@@ -154,24 +155,39 @@ public static class AppDataStore
     /// Writes the file atomically (call inside the write gate).
     private static bool Write(DataStore store, string text)
     {
-        string? temp = null;
         try
         {
             Directory.CreateDirectory(Folder);
-            // Temp file then move: a crash or power cut mid-write leaves the old file whole, never a truncated one. The temp file's name is
-            // unique per call, so a temp file is never shared.
-            var path = PathOf(store.FileName);
-            temp = $"{path}.{Guid.NewGuid():N}.tmp";
-            File.WriteAllText(temp, text);
-            File.Move(temp, path, overwrite: true);
+            WriteAtomically(PathOf(store.FileName), Encoding.UTF8.GetBytes(text));
             return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             // Read-only or locked folder: keep running with the values in memory, and say so in the log.
             AppendLog(Guard.LogFile, $"Couldn't save {store.FileName}: {ex.Message}");
-            if (temp is not null) TryDelete(temp);
             return false;
+        }
+    }
+
+    /// Writes a temp file then moves it over <paramref name="path"/>, so a crash or power cut mid-write leaves the old file whole, never a
+    /// truncated one (the temp name is unique per call, so never shared). <paramref name="toDisk"/> waits until the bytes are on the disk
+    /// before the move (a restore's journal and the files it names must outlive a power cut). Throws on an I/O failure, the temp file removed.
+    public static void WriteAtomically(string path, byte[] bytes, bool toDisk = false)
+    {
+        var temp = $"{path}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            using (var file = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                file.Write(bytes);
+                if (toDisk) file.Flush(flushToDisk: true);
+            }
+            File.Move(temp, path, overwrite: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            TryDelete(temp);
+            throw;
         }
     }
 

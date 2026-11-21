@@ -29,7 +29,7 @@ public static class BackupFile
     private const int Format = 1;
 
     /// A backup, or all it holds unpacked together, larger than this is not one OmniControl made.
-    private const long MaxBytes = 64L * 1024 * 1024;
+    internal const long MaxBytes = 64L * 1024 * 1024;
 
     private const string BadFile = "That file is not an OmniControl backup, or it is damaged.";
 

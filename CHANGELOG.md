@@ -5,14 +5,12 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
-<<<<<<< HEAD
 - Fixed: Actions and hotkeys: typing a new key into a hotkey box while a search was shown (for example Brightness Up) could end in "Something went wrong" (Invalid Arrange rectangle); the changed row now updates in place and the list scrolls only after it has laid out its rows.
 - Changed: Setup has a "Start OmniControl as administrator at sign-in" box, ticked when your "Run as administrator" (Mouse and Trackpad) is on; only it adds the sign-in task that starts OmniControl as administrator without Windows' prompt, for the user signed in to the PC (also when another account answers the prompt). OmniControl itself no longer adds the task: with "Run as administrator" on and no task, Windows asks at each start. A task from before is kept by a silent Setup only when it is exactly Setup's own.
 - Changed: uninstall offers to remove Windows Packet Filter and Equalizer APO only when OmniControl installed them (a record only administrators can change, kept by Setup, and by OmniControl for the driver); a copy that was there before stays and no box is shown for it. A silent uninstall removes only those, unless /KEEPDRIVERS.
 - Changed: Setup adds the "OmniControl on Tailscale" firewall rule only when Tailscale is installed; Other PCs' Tailscale checklist adds it later when needed.
-=======
 - Changed: Other PCs: while a pairing code is shown or typed, the switches Power actions (off), Other actions and settings (on) and Read settings and devices (off) sit under it, so what the other PC may do here is chosen before pairing; the PC's ⋯ menu calls them "What <PC> may do here", and each switch's tooltip says what happens when it is off.
->>>>>>> worktree-agent-aa772ea33c52a3b4e
+- Fixed: App settings > Backup and restore: importing a backup or wiping is now all or nothing. Everything is checked and a copy of each changed file kept before any setting changes; if OmniControl or the PC stops part way, the next start finishes the restore (or puts everything back when the kept files are damaged), so settings are never left half restored.
 
 ## 0.2.8 (21 Nov 2026)
 
