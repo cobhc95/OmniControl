@@ -397,7 +397,7 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         var runChain = chain ?? RunChain.Start(id);
         var run = new RunReport { WaitForReady = waitForReady, Waiting = target => Dispatcher.UIThread.Post(() => SetWaiting(id, target)) };
         if (waitForReady) Log($"rule \"{name}\" started by a wake or a log-in: steps that need the network or a device wait for them first");
-        Task.Run(async () =>
+        Guard.OffUi("Automation: running a rule", async () =>
         {
             _run.RunWithin(runChain);
             var problem = await _runner.RunAsync(name, steps, new MouseEvent(MouseButton.Left, true, 0, 0), i => waits[i], stop, run);

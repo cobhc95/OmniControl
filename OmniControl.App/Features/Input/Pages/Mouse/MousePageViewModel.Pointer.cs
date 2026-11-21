@@ -181,12 +181,12 @@ public sealed partial class MousePageViewModel
         if (_schemes.FirstOrDefault(s => s.Label == label) is { } scheme) ApplyScheme(scheme);
     }
 
-    private async void ApplyScheme(CursorScheme scheme)
+    private void ApplyScheme(CursorScheme scheme) => Guard.Fire("Mouse: pointer scheme", async () =>
     {
         if (!await _pointer.ApplyScheme(scheme)) _report($"Windows didn't accept the pointer scheme {scheme.Name}, so the pointers stay as before.");
         LoadPointers();
         UpdateRestoreCard();
-    }
+    }, _report);
 
     private void ChoosePointer(CursorRole role, string path)
     {
@@ -195,12 +195,12 @@ public sealed partial class MousePageViewModel
     }
 
     /// Uses <paramref name="path"/> for one pointer, or Windows' default pointer for it when null.
-    private async void SetPointer(CursorRole role, string? path)
+    private void SetPointer(CursorRole role, string? path) => Guard.Fire("Mouse: pointer", async () =>
     {
         if (!await _pointer.SetPointer(role, path)) _report($"Windows didn't accept the new {role.Name} pointer, so it stays as before.");
         LoadPointers();
         UpdateRestoreCard();
-    }
+    }, _report);
 
     private void OpenWindowsPage(string page)
     {

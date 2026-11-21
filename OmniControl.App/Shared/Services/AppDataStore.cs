@@ -3,7 +3,8 @@ using System.Text.Json;
 namespace OmniControl.App.Shared.Services;
 
 /// The one place that reads and writes OmniControl's json files under %APPDATA%\OmniControl, each by its entry in <see cref="DataStores"/>.
-/// A missing or damaged file gives defaults and a failed save is ignored: settings are never worth stopping the app for.
+/// A missing or damaged file gives defaults (a damaged one is kept as <c>name.bad.json</c> and said once) and a failed save is logged:
+/// settings are never worth stopping the app for.
 /// A store changed often (a slider) saves with <see cref="SaveSoon{T}"/>: the text is taken at once and written by a worker
 /// <see cref="Timing.SaveSoonDelay"/> after the last change of a burst; a read of that store, a direct save or delete of it, and
 /// <see cref="FlushSaves"/> (exit, backup, import) write or drop the waiting text first, so nothing reads an older file or overwrites a newer one.
@@ -27,16 +28,56 @@ public static class AppDataStore
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return false; } // unreadable folder: treated as new, nothing is lost by opening in Easy
     }
 
-    /// The saved value, or null when the file is missing, unreadable or damaged.
+    /// The saved value, or null when the file is missing, unreadable or damaged. A damaged file is copied to <c>name.bad.json</c> first (the
+    /// next save replaces it), logged and listed once for <see cref="TakeDamaged"/>.
     public static T? Load<T>(DataStore store) where T : class
     {
+        string? text = null;
         try
         {
-            return LoadText(store) is { } text ? JsonSerializer.Deserialize<T>(text) : null;
+            return (text = LoadText(store)) is null ? null : JsonSerializer.Deserialize<T>(text);
         }
-        catch (JsonException)
+        catch (JsonException ex)
         {
+            KeepDamaged(store, text!, ex);
             return null;
+        }
+    }
+
+    // File names found damaged this run, and those not yet said (under WriteGate).
+    private static readonly HashSet<string> Damaged = new();
+    private static readonly List<string> Unsaid = new();
+
+    private static void KeepDamaged(DataStore store, string text, JsonException ex)
+    {
+        lock (WriteGate)
+        {
+            if (!Damaged.Add(store.FileName)) return;
+            Unsaid.Add(store.FileName);
+            var copy = BadCopyOf(store.FileName);
+            try
+            {
+                File.WriteAllText(PathOf(copy), text);
+                AppendLog(Guard.LogFile, $"{store.FileName} was damaged ({ex.Message}); its defaults are used and the file is kept as {copy}.");
+            }
+            catch (Exception io) when (io is IOException or UnauthorizedAccessException)
+            {
+                AppendLog(Guard.LogFile, $"{store.FileName} was damaged ({ex.Message}) and couldn't be kept as {copy}: {io.Message}");
+            }
+        }
+    }
+
+    /// The copy a damaged file is kept as: settings.json -> settings.bad.json.
+    public static string BadCopyOf(string fileName) => Path.ChangeExtension(fileName, ".bad.json");
+
+    /// The settings files found damaged since the last call (each said once), for one sentence in the status line.
+    public static IReadOnlyList<string> TakeDamaged()
+    {
+        lock (WriteGate)
+        {
+            var taken = Unsaid.ToList();
+            Unsaid.Clear();
+            return taken;
         }
     }
 
@@ -79,6 +120,7 @@ public static class AppDataStore
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
+            AppendLog(Guard.LogFile, $"Couldn't read {store.FileName}: {ex.Message}");
             return null;
         }
     }
@@ -139,6 +181,7 @@ public static class AppDataStore
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             // Left behind: a store is read again, harmlessly, at the next start; a temp file is never read.
+            AppendLog(Guard.LogFile, $"Couldn't delete {Path.GetFileName(path)}: {ex.Message}");
         }
     }
 

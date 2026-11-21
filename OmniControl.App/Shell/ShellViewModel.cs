@@ -151,6 +151,8 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         ApplyFilter();
         _hiddenSettle.Tick += OnHiddenSettled;
         _hiddenSettle.Start(); // the window is not shown yet (it may start in the tray)
+        if (AppDataStore.TakeDamaged() is { Count: > 0 } damaged)
+            Report(Guard.SeeLog($"Damaged settings were reset to their defaults; the damaged files are kept as {string.Join(", ", damaged.Select(AppDataStore.BadCopyOf))}."));
     }
 
     /// The window has stayed hidden a while: one full collection gives what its use left behind back to Windows. The page views stay

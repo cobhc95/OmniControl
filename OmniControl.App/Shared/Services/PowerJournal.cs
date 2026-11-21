@@ -80,10 +80,16 @@ public sealed class PowerJournal : IPowerEvents, IDisposable
     public PowerJournal(IHardwareWatches hardware)
         : this(AppDataStore.Load<PowerJournalData>(DataStores.PowerJournal) ?? new(), data => AppDataStore.Save(DataStores.PowerJournal, data),
             line => AppDataStore.AppendLog(LogFile, line), () => DateTime.Now, () => Environment.TickCount64,
-            () => DateTime.Now - TimeSpan.FromMilliseconds(Environment.TickCount64), Process.GetCurrentProcess().SessionId)
+            () => DateTime.Now - TimeSpan.FromMilliseconds(Environment.TickCount64), OwnSession())
     {
         _hardware = hardware;
         hardware.Power += Record;
+    }
+
+    private static int OwnSession()
+    {
+        using var self = Process.GetCurrentProcess();
+        return self.SessionId;
     }
 
     /// A journal with its time, store and log given (tests replay signals with a fake clock).

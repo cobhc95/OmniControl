@@ -5,13 +5,13 @@ public partial class CustomActionRow : UserControl
 {
     public CustomActionRow() => InitializeComponent();
 
-    private async void OnRunClick(object? sender, RoutedEventArgs e)
+    private void OnRunClick(object? sender, RoutedEventArgs e) => Guard.Fire("Automation: run a custom action", async () =>
     {
         if (DataContext is CustomActionItem item) await item.RunAsync();
-    }
+    });
 
-    private async void OnDeleteClick(object? sender, RoutedEventArgs e)
+    private void OnDeleteClick(object? sender, RoutedEventArgs e) => Guard.Fire("Automation: delete a custom action", async () =>
     {
         if (DataContext is CustomActionItem item) await item.DeleteAsync();
-    }
+    });
 }

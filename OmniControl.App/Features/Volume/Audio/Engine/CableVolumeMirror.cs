@@ -21,8 +21,8 @@ internal sealed class CableVolumeMirror : IDisposable
         _mixer = mixer;
         _cableWatch.Device = () => Volatile.Read(ref _cable);
         _realWatch.Device = () => Volatile.Read(ref _real);
-        _cableWatch.Changed += (percent, muted) => Task.Run(() => Follow(true, percent, muted));
-        _realWatch.Changed += (percent, muted) => Task.Run(() => Follow(false, percent, muted));
+        _cableWatch.Changed += (percent, muted) => Guard.OffUi("Cable volume: following the cable", () => Follow(true, percent, muted));
+        _realWatch.Changed += (percent, muted) => Guard.OffUi("Cable volume: following the speakers", () => Follow(false, percent, muted));
     }
 
     /// Mirrors <paramref name="cable"/> and <paramref name="real"/> from now on; the cable first takes the real device's level.
@@ -33,7 +33,7 @@ internal sealed class CableVolumeMirror : IDisposable
         Volatile.Write(ref _cable, cable);
         Volatile.Write(ref _real, real);
         if (same) return;
-        Task.Run(() => Adopt(cable, real));
+        Guard.OffUi("Cable volume: taking the level", () => Adopt(cable, real));
         if (!_started)
         {
             _started = true;
@@ -53,7 +53,7 @@ internal sealed class CableVolumeMirror : IDisposable
         var cable = Interlocked.Exchange(ref _cable, null);
         Volatile.Write(ref _real, null);
         if (cable is null) return;
-        Task.Run(() =>
+        Guard.OffUi("Cable volume: writing the level", () =>
         {
             lock (_gate)
             {

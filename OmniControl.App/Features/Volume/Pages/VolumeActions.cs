@@ -61,7 +61,7 @@ internal sealed class VolumeActions
     // ---- master ----
 
     /// A hotkey or wheel step of the master.
-    public void StepMaster(int delta) => Task.Run(() =>
+    public void StepMaster(int delta) => Guard.OffUi("Volume: stepping the master", () =>
     {
         if (_steps.Step(MixerService.MasterKey, delta, ReadMaster, level => WriteMaster(level, delta), ShowMaster) is { } level) ShowMaster(level);
     });
@@ -90,7 +90,7 @@ internal sealed class VolumeActions
     });
 
     /// Mutes or unmutes the master (<paramref name="to"/>: true = muted), or flips it when null. The pop-up shows before the change is written.
-    public void ToggleMasterMute(bool? to = null) => Task.Run(() =>
+    public void ToggleMasterMute(bool? to = null) => Guard.OffUi("Volume: master mute", () =>
     {
         var device = _mixer.MasterDeviceId;
         if (!CoreAudio.GetMaster(out var v, out var muted, device)) return;
@@ -106,7 +106,7 @@ internal sealed class VolumeActions
 
     /// Changes the level of, or mutes, the default recording device. Listing the recording devices and changing one are slow Windows calls
     /// that held up drawing the pop-up, so this runs off the UI thread, one step at a time, in order.
-    public void StepInput(int delta, bool toggleMute = false, bool? muteTo = null) => Task.Run(() =>
+    public void StepInput(int delta, bool toggleMute = false, bool? muteTo = null) => Guard.OffUi("Volume: stepping the microphone", () =>
     {
         lock (_inputStep)
         {

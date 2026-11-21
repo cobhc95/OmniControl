@@ -180,7 +180,7 @@ public sealed class SimulationMethod
     internal void WakeAtStart(DeviceSettings settings)
     {
         if (!settings.Emulator.StartWithWindows || settings.Devices.SelectMany(d => d.Methods).FirstOrDefault(m => m.IsSimulation) is not { } method) return;
-        _ = Task.Run(async () =>
+        Guard.OffUi("Smart Devices: waking the emulator", async () =>
         {
             await _setup.RefreshAsync();
             if (_setup.EmulatorOf(method) is { } emulator) await _setup.Keeper.WakeAtStartAsync(emulator, _setup.AddressOf(method));

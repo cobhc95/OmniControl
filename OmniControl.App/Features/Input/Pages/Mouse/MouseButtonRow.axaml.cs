@@ -76,12 +76,12 @@ public partial class MouseButtonRow : UserControl
 
     private async void OnCogClick(object? sender, RoutedEventArgs e) => await PickerWindow.ChooseForAsync(this, startInSettings: true, CogPart.Opener, FirstPart());
 
-    private async void OnAddClick(object? sender, RoutedEventArgs e)
+    private void OnAddClick(object? sender, RoutedEventArgs e) => Guard.Fire("Mouse: add an action", async () =>
     {
         if (sender is Button add) await PickerWindow.ChooseForAsync(add, startInSettings: false, add, FirstPart());
-    }
+    });
 
-    private async void OnChipClick(object? sender, RoutedEventArgs e)
+    private void OnChipClick(object? sender, RoutedEventArgs e) => Guard.Fire("Mouse: open an action", async () =>
     {
         if (sender is not Button { DataContext: ActionSlot slot } chip) return;
         var remove = _pressedOnRemove;
@@ -89,7 +89,7 @@ public partial class MouseButtonRow : UserControl
         if (_justDragged) _justDragged = false; // a drag that ended on its own chip is not a click
         else if (remove) slot.RemoveCommand.Execute(null);
         else await PickerWindow.ChooseForAsync(chip, startInSettings: true, chip, FirstPart());
-    }
+    });
 
     // The keyboard goes back to the first chip (or the Default pill) when the part it came from is gone.
     private Control FirstPart() =>
@@ -103,9 +103,9 @@ public partial class MouseButtonRow : UserControl
         FlyoutBase.ShowAttachedFlyout(ChipHolder);
     }
 
-    private async void OnListRowClick(object? sender, RoutedEventArgs e) => await OpenFromList(sender, startInSettings: false);
+    private void OnListRowClick(object? sender, RoutedEventArgs e) => Guard.Fire("Mouse: open an action", () => OpenFromList(sender, startInSettings: false));
 
-    private async void OnListCogClick(object? sender, RoutedEventArgs e) => await OpenFromList(sender, startInSettings: true);
+    private void OnListCogClick(object? sender, RoutedEventArgs e) => Guard.Fire("Mouse: open an action's settings", () => OpenFromList(sender, startInSettings: true));
 
     private async Task OpenFromList(object? sender, bool startInSettings)
     {

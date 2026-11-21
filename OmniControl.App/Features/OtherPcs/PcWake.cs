@@ -218,7 +218,7 @@ public sealed class PcWake : IDisposable
     {
         if (_readingWake || _disposed || DateTime.UtcNow - _ownWakeAt < Timing.WakeFactsEvery) return;
         _readingWake = true;
-        PcWork.OffUi("Other PCs: reading wake facts", async () =>
+        Guard.OffUi("Other PCs: reading wake facts", async () =>
         {
             try
             {

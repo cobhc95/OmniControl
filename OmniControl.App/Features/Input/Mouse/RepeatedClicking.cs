@@ -68,7 +68,7 @@ public sealed class RepeatedClicking : IDisposable
             _running = run;
         }
         RunningChanged?.Invoke();
-        _ = Task.Run(() => Loop(options, run));
+        Guard.OffUi("Mouse: repeated clicking", () => Loop(options, run));
         return run;
     }
 

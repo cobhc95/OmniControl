@@ -71,9 +71,9 @@ public partial class IconPickerWindow : Window
 
     private void OnRemoveClick(object? sender, RoutedEventArgs e) => _model?.RemoveSelected();
 
-    private async void OnAddClick(object? sender, RoutedEventArgs e) => await AddAsync(useAtOnce: false);
+    private void OnAddClick(object? sender, RoutedEventArgs e) => Guard.Fire("Icons: add an icon", () => AddAsync(useAtOnce: false));
 
-    private async void OnOwnImageClick(object? sender, RoutedEventArgs e) => await AddAsync(useAtOnce: true);
+    private void OnOwnImageClick(object? sender, RoutedEventArgs e) => Guard.Fire("Icons: use an own image", () => AddAsync(useAtOnce: true));
 
     /// Asks for an SVG or PNG and adds it to Your icons, selected; "Own image…" then uses it at once.
     private async Task AddAsync(bool useAtOnce)

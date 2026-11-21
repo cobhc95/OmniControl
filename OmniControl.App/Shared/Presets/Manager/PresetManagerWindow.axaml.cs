@@ -139,7 +139,7 @@ public partial class PresetManagerWindow : Window
 
     private void OnCloseClick(object? sender, RoutedEventArgs e) => Close();
 
-    private async void ExportAsync(PresetCardViewModel card, PresetRowViewModel row)
+    private void ExportAsync(PresetCardViewModel card, PresetRowViewModel row) => Guard.Fire("Presets: export", async () =>
     {
         if (_vm is not { } vm || card.ExportOf(row) is not { } bytes) return;
         var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
@@ -159,9 +159,9 @@ public partial class PresetManagerWindow : Window
         {
             vm.ReportFile("The preset could not be exported: " + ex.Message);
         }
-    }
+    });
 
-    private async void ImportAsync(PresetCardViewModel card)
+    private void ImportAsync(PresetCardViewModel card) => Guard.Fire("Presets: import", async () =>
     {
         if (_vm is not { } vm) return;
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
@@ -183,7 +183,7 @@ public partial class PresetManagerWindow : Window
                 vm.ReportFile($"\"{file.Name}\" could not be read.");
             }
         }
-    }
+    });
 
     private static FilePickerFileType PresetFileType { get; } = new("Preset") { Patterns = new[] { "*." + UserPresetStore.FileExtension } };
 }

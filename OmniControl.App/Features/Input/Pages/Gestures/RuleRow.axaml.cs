@@ -7,10 +7,10 @@ public partial class RuleRow : UserControl
 {
     public RuleRow() => InitializeComponent();
 
-    private async void OnEditClick(object? sender, RoutedEventArgs e)
+    private void OnEditClick(object? sender, RoutedEventArgs e) => Guard.Fire("Gesture rules: edit a rule", async () =>
     {
         if (DataContext is not RuleItem item || TopLevel.GetTopLevel(this) is not Window owner) return;
         await RuleEditorWindow.ShowAsync(owner, item.Editor());
         if (Edit.IsEffectivelyVisible) Edit.Focus(NavigationMethod.Directional);
-    }
+    });
 }

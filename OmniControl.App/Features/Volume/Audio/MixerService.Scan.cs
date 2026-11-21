@@ -56,7 +56,7 @@ public sealed partial class MixerService
             }
             _scanRunning = true;
         }
-        _ = Task.Run(ScanOnWorker);
+        Guard.OffUi("Mixer: scan", ScanOnWorker);
     }
 
     /// Worker: one read, its result posted to the UI thread, then the read asked for meanwhile (if any).
@@ -79,7 +79,7 @@ public sealed partial class MixerService
                 _scanAgain = false;
                 _scanRunning = again;
             }
-            if (again) _ = Task.Run(ScanOnWorker);
+            if (again) Guard.OffUi("Mixer: scan", ScanOnWorker);
         });
     }
 

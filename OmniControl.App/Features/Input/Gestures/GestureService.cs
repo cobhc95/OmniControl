@@ -160,7 +160,7 @@ public sealed class GestureService
         if (active is null || !_scopes.Allows(active.Scope)) return false; // outside its apps the scroll goes to the window as usual
 
         var wheelUp = ev.Button == MouseButton.WheelUp;
-        Task.Run(() => _runner.Run(active.Step, active.Options, wheelUp, ev));
+        Guard.OffUi("Gestures: running a step", () => _runner.Run(active.Step, active.Options, wheelUp, ev));
         return true;
     }
 }

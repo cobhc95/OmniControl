@@ -85,11 +85,11 @@ public partial class AutomationRuleRow : UserControl
         SentenceFocus.FocusLater(SentenceHost, focusAfter);
     }
 
-    private async void OnBlockClick(object? sender, RoutedEventArgs e)
+    private void OnBlockClick(object? sender, RoutedEventArgs e) => Guard.Fire("Automation: pick a rule part", async () =>
     {
         if (sender is not Control { DataContext: SentenceBlock block }) return;
         await PickAsync(block.Slot, SentenceFocus.IndexOf(SentenceHost, sender));
-    }
+    });
 
     /// The "I press" block: starts listening (its pop-down opens when the block is drawn again).
     private void OnHotkeyClick(object? sender, RoutedEventArgs e)
@@ -128,10 +128,10 @@ public partial class AutomationRuleRow : UserControl
         SentenceFocus.FocusLater(SentenceHost, at);
     }
 
-    private async void OnAddClick(object? sender, RoutedEventArgs e)
+    private void OnAddClick(object? sender, RoutedEventArgs e) => Guard.Fire("Automation: add a rule part", async () =>
     {
         if (sender is Control { DataContext: SentenceAdd add }) await PickAsync(add.Slot, SentenceFocus.IndexOf(SentenceHost, sender));
-    }
+    });
 
     private void OnRemoveClick(object? sender, RoutedEventArgs e)
     {
@@ -139,8 +139,8 @@ public partial class AutomationRuleRow : UserControl
         if (Item is { } item && SlotOf(sender) is { } slot) item.Remove(slot);
     }
 
-    private async void OnDeleteClick(object? sender, RoutedEventArgs e)
+    private void OnDeleteClick(object? sender, RoutedEventArgs e) => Guard.Fire("Automation: delete a rule", async () =>
     {
         if (Item is { } item) await item.DeleteAsync();
-    }
+    });
 }

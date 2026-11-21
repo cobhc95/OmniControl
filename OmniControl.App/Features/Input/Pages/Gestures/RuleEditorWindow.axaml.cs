@@ -64,15 +64,15 @@ public partial class RuleEditorWindow : Window
         FocusSentence(focusAfter);
     }
 
-    private async void OnBlockClick(object? sender, RoutedEventArgs e)
+    private void OnBlockClick(object? sender, RoutedEventArgs e) => Guard.Fire("Gesture rules: pick a rule part", async () =>
     {
         if (sender is Control { DataContext: SentenceBlock block }) await PickAsync(block.Slot, SentenceIndexOf(sender));
-    }
+    });
 
-    private async void OnAddClick(object? sender, RoutedEventArgs e)
+    private void OnAddClick(object? sender, RoutedEventArgs e) => Guard.Fire("Gesture rules: add a rule part", async () =>
     {
         if (sender is Control { DataContext: SentenceAdd add }) await PickAsync(add.Slot, SentenceIndexOf(sender));
-    }
+    });
 
     private void OnRemoveClick(object? sender, RoutedEventArgs e)
     {
@@ -89,10 +89,10 @@ public partial class RuleEditorWindow : Window
 
     private void OnTestClick(object? sender, RoutedEventArgs e) => Model?.Test();
 
-    private async void OnDeleteClick(object? sender, RoutedEventArgs e)
+    private void OnDeleteClick(object? sender, RoutedEventArgs e) => Guard.Fire("Gesture rules: delete a rule", async () =>
     {
         if (Model is { } model && await model.DeleteAsync()) Close();
-    }
+    });
 
     private void OnCloseClick(object? sender, RoutedEventArgs e) => Close();
 

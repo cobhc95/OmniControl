@@ -35,7 +35,7 @@ internal sealed class LevelStepper
             if (_writing) return;
             _writing = true;
         }
-        Task.Run(WriteAll);
+        Guard.OffUi("Level steps: writing", WriteAll);
     }
 
     /// The level after a step of <paramref name="delta"/>, or null when the display does not report one. <paramref name="read"/> is
@@ -66,7 +66,7 @@ internal sealed class LevelStepper
             if (_writing) return level;
             _writing = true;
         }
-        Task.Run(WriteAll);
+        Guard.OffUi("Level steps: writing", WriteAll);
         return level;
     }
 

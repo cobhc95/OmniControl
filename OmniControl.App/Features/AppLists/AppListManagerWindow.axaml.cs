@@ -78,8 +78,8 @@ public partial class AppListManagerWindow : Window
 
     private void OnInstalledPicked(object? sender, EventArgs e) => FlyoutBase.GetAttachedFlyout(InstalledHolder)?.Hide();
 
-    private async void OnBrowseClick(object? sender, RoutedEventArgs e)
+    private void OnBrowseClick(object? sender, RoutedEventArgs e) => Guard.Fire("App lists: add a program", async () =>
     {
         if (await PathPicker.PickProgramAsync(this) is { } path) _vm?.AddFile(path);
-    }
+    });
 }

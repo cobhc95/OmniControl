@@ -26,7 +26,7 @@ internal sealed class IrStage : IDspStage
         _gain = new Glide((float)DspMath.DbToLin(values[IrParams.Gain]));
         _mix = new Glide((float)(values[IrParams.Mix] / Core.Models.Percent.Max));
         var key = _key;
-        _ = Task.Run(() => Volatile.Write(ref _ready, Load(key)));
+        Guard.OffUi("Impulse response: loading", () => Volatile.Write(ref _ready, Load(key)));
     }
 
     /// Worker: the prepared impulse response; an empty kernel (pass-through) when there is no usable file. Every failure ends in a kernel,

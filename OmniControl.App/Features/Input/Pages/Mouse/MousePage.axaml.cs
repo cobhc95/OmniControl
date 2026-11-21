@@ -12,10 +12,10 @@ public partial class MousePage : UserControl
     }
 
     /// "Add rule": the gesture groups make the rule, this opens its editor; focus comes back to the button.
-    private async void OnAddRule(object? sender, RoutedEventArgs e)
+    private void OnAddRule(object? sender, RoutedEventArgs e) => Guard.Fire("Mouse: add a gesture rule", async () =>
     {
         if (DataContext is not MousePageViewModel page || TopLevel.GetTopLevel(this) is not Window owner) return;
         await RuleEditorWindow.ShowAsync(owner, page.Gestures.AddRule());
         (sender as Control)?.Focus(NavigationMethod.Directional);
-    }
+    });
 }

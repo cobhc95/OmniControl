@@ -54,7 +54,7 @@ internal sealed class DisplayOrientationCard
     }
 
     /// Asks Windows how the display is turned now, off the UI thread, and fills the card in.
-    public void Start() => Task.Run(() =>
+    public void Start() => Guard.OffUi("Displays: reading the orientation", () =>
     {
         var now = CurrentName() is { } name ? _rotation.Read(name) : null;
         Dispatcher.UIThread.Post(() => Show(now));
@@ -94,7 +94,7 @@ internal sealed class DisplayOrientationCard
         if (_display is null) return;
         var reason = _reason;
         _reason = CardReason;
-        Task.Run(() =>
+        Guard.OffUi("Displays: turning a display", () =>
         {
             var deviceName = CurrentName();
             if (deviceName is null)

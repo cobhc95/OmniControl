@@ -37,9 +37,9 @@ public partial class DeviceIconView : UserControl
         Dots.ItemsSource = (DataContext as DeviceItem)?.IconColourDots();
     }
 
-    private async void OnChangeIcon(object? sender, RoutedEventArgs e)
+    private void OnChangeIcon(object? sender, RoutedEventArgs e) => Guard.Fire("Smart Devices: change an icon", async () =>
     {
         FlyoutBase.GetAttachedFlyout(this)?.Hide();
         if (DataContext is DeviceItem item) await item.ChangeIconAsync(this);
-    }
+    });
 }

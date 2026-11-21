@@ -12,9 +12,11 @@ public static class CopyDetails
         {
             await clipboard.SetTextAsync(details);
         }
-        catch (Exception ex) when (ex is TimeoutException or ExternalException)
+        catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            // Another program holds the clipboard: the details are still in the log, whose path the message or status line names.
+            // Another program holds the clipboard (or it failed otherwise): the details are still in the log, whose path the message or
+            // status line names. Never thrown: the callers are click handlers.
+            Guard.Log("Copy details", ex);
         }
     }
 }

@@ -31,7 +31,7 @@ public sealed class SimRecorder : IDisposable
     public async Task<string?> StartAsync()
     {
         if (await _touches.StartAsync() is { } problem) return problem;
-        _ = Task.Run(ReadScreensAsync);
+        Guard.OffUi("Smart Devices: recording the screens", ReadScreensAsync);
         return null;
     }
 

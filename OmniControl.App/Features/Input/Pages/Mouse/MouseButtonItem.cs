@@ -34,13 +34,13 @@ public sealed partial class MouseButtonItem : ObservableObject, IEditorItem, IHa
     private int _flashId;
 
     /// Lights the card for <see cref="Timing.MouseFlash"/>; a press during the flash restarts it.
-    public async void Flash()
+    public void Flash() => Guard.Fire("Mouse: flash a button", async () =>
     {
         var mine = ++_flashId;
         IsFlashing = true;
         await Task.Delay(Timing.MouseFlash);
         if (mine == _flashId) IsFlashing = false;
-    }
+    });
 
     /// Two buttons share a row.
     public bool Half => true;

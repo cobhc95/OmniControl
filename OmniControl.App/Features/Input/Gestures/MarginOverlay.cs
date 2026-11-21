@@ -46,18 +46,27 @@ public sealed class MarginOverlay : IDisposable
     private void OnTick(object? sender, EventArgs e) => Refresh();
 
     /// Looks the areas up again (off the UI thread) and redraws what changed. Does nothing while hidden.
-    public async void Refresh()
+    public void Refresh()
     {
         if (_timer is null) return;
         if (_busy) { _again = true; return; }
         _busy = true;
-        var strip = _settings.ClampedEdgeStrip();
-        var areas = await Task.Run(() => _map.Areas(strip));
-        _busy = false;
-        if (_timer is not null) Draw(areas, strip);
-        if (!_again) return;
-        _again = false;
-        Refresh();
+        Guard.Fire("Margins overlay", async () =>
+        {
+            var strip = _settings.ClampedEdgeStrip();
+            try
+            {
+                var areas = await Task.Run(() => _map.Areas(strip));
+                if (_timer is not null) Draw(areas, strip);
+            }
+            finally
+            {
+                _busy = false;
+            }
+            if (!_again) return;
+            _again = false;
+            Refresh();
+        });
     }
 
     private void Draw(IReadOnlyList<MappedArea> areas, int strip)

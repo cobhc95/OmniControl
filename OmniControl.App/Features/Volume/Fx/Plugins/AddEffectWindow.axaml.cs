@@ -35,9 +35,9 @@ public partial class AddEffectWindow : Window
 
     private void OnCancelClick(object? sender, RoutedEventArgs e) => Close(null);
 
-    private async void OnLoadClick(object? sender, RoutedEventArgs e)
+    private void OnLoadClick(object? sender, RoutedEventArgs e) => Guard.Fire("FX: load a plug-in", async () =>
     {
         if (DataContext is not AddEffectViewModel vm) return;
         if (await PathPicker.PickAsync(this, PathKind.File, "Load a plug-in", typeName: "VST plug-ins", patterns: vm.FilePatterns) is { } path) vm.LoadFile(path);
-    }
+    });
 }

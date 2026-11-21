@@ -134,7 +134,7 @@ internal abstract class EngineRun : IDisposable
     }
 
     /// Starts the pipe off the UI thread (Windows calls are slow), playing on the spec's outputs, and calls <paramref name="started"/> back on it.
-    protected async void StartPipe(IReadOnlyList<PipeSource> sources, Action started)
+    protected void StartPipe(IReadOnlyList<PipeSource> sources, Action started) => Guard.Fire("Effects: starting the audio pipe", async () =>
     {
         AudioPipe pipe;
         try
@@ -154,7 +154,7 @@ internal abstract class EngineRun : IDisposable
         Pipe = pipe;
         pipe.Failed += reason => Dispatcher.UIThread.Post(() => { if (!_stopped) Fail(reason); });
         started();
-    }
+    });
 
     /// Stops only the pipe (to start a new one for changed streams); the program stays held.
     protected void StopPipe()

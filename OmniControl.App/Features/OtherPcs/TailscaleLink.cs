@@ -52,7 +52,7 @@ public sealed class TailscaleLink
         _busy = true;
         _again = null;
         _changed();
-        PcWork.OffUi("Other PCs: Tailscale checks", async () =>
+        Guard.OffUi("Other PCs: Tailscale checks", async () =>
         {
             TailscaleStatus status = TailscaleStatus.NotInstalled;
             bool? firewall = null, reach = null;
@@ -102,7 +102,7 @@ public sealed class TailscaleLink
                 Start("Other PCs: Tailscale sign-in", TailscaleCli.SignIn, "Tailscale's sign-in could not be opened. Open Tailscale from the Start menu and sign in there.", recheck);
                 return;
             case TailscaleChecks.Address:
-                PcWork.OffUi("Other PCs: restarting Tailscale", async () =>
+                Guard.OffUi("Other PCs: restarting Tailscale", async () =>
                 {
                     var result = TailscaleAdapter.Restart();
                     if (result.Failure == HelperFailure.None && result.ExitCode == 0) await Task.Delay(Timing.PcTailscaleAfterFix, _stop).ConfigureAwait(false); // the adapter needs a moment to get its address
@@ -119,7 +119,7 @@ public sealed class TailscaleLink
                 });
                 return;
             case TailscaleChecks.Firewall:
-                PcWork.OffUi("Other PCs: firewall rule", () =>
+                Guard.OffUi("Other PCs: firewall rule", () =>
                 {
                     var result = TailscaleFirewall.Allow(PcProtocol.TcpPort);
                     PcWork.Post(() =>
@@ -140,7 +140,7 @@ public sealed class TailscaleLink
 
     private void Start(string what, Func<bool> start, string failed, Action recheck)
     {
-        PcWork.OffUi(what, async () =>
+        Guard.OffUi(what, async () =>
         {
             var started = start();
             if (!started) _report(failed);

@@ -136,7 +136,7 @@ internal sealed class RuleEngine : IDisposable
         if (Interlocked.Exchange(ref _holds[button], null) is { } hold)
         {
             hold.Dispose();
-            if (hold.TryCancel()) Task.Run(() => InputSender.Click((MouseButton)button));
+            if (hold.TryCancel()) Guard.OffUi("Gesture rules: passing a click on", () => InputSender.Click((MouseButton)button));
         }
         var taken = _swallowed[button];
         _swallowed[button] = false;

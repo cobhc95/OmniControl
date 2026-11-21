@@ -83,7 +83,7 @@ public sealed partial class MousePageViewModel
 
     /// Swaps the buttons (or swaps them back) on trial and asks whether to keep it. The message has Keep focused, so Enter keeps it
     /// even when the clicking button is the unfamiliar one; anything else, or no answer within <see cref="Timing.PointerSwapKeep"/>, puts it back.
-    private async void AskKeepSwap(bool swapped)
+    private void AskKeepSwap(bool swapped) => Guard.Fire("Mouse: button swap", async () =>
     {
         if (_pointer.ChangeSwap(swapped) is not { } trial)
         {
@@ -97,21 +97,21 @@ public sealed partial class MousePageViewModel
             $"{now} It goes back in {seconds} seconds unless you keep it.", "Keep", Dismiss: trial));
         if (keep) _pointer.KeepSwap();
         else _pointer.PutBackSwap();
-    }
+    }, _report);
 
-    private async void ResetPointerDefaults()
+    private void ResetPointerDefaults() => Guard.Fire("Mouse: pointer defaults", async () =>
     {
         var ok = await _pointer.ResetToDefaults();
         LoadPointerSettings();
         if (!ok) _report("Windows didn't accept every default, so the cards show what it has now.");
         AskKeepSwap(PointerValues.Info(PointerValue.Swap).Default == 1);
-    }
+    }, _report);
 
-    private async void RestorePointerOriginal()
+    private void RestorePointerOriginal() => Guard.Fire("Mouse: original pointer settings", async () =>
     {
         if (!_pointer.HasOriginal) return;
         var ok = await _pointer.RestoreOriginal();
         LoadPointerSettings();
         if (!ok) _report("Windows didn't accept every original value, so the cards show what it has now.");
-    }
+    }, _report);
 }

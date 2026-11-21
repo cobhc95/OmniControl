@@ -99,7 +99,7 @@ public sealed partial class AutomationService
             return;
         }
         _readingPrograms = true;
-        Task.Run(() =>
+        Guard.OffUi("Automation: reading the running programs", () =>
         {
             HashSet<string>? programs = null;
             Guard.Run("Automation: reading the running programs", () => programs = AutomationWatcher.RunningPrograms());

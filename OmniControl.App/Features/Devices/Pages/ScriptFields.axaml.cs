@@ -42,15 +42,15 @@ public partial class ScriptFields : UserControl
         if (sender is Flyout { Content: Control panel }) panel.DataContext = DataContext;
     }
 
-    private async void OnExport(object? sender, RoutedEventArgs e)
+    private void OnExport(object? sender, RoutedEventArgs e) => Guard.Fire("Smart Devices: export a template", async () =>
     {
         if (DataContext is MethodItem item && await PathPicker.PickSaveAsync(this, "Export the template", item.ProfileFileName, ".json", "Templates", ProfilePatterns) is { } path)
             item.ExportProfile(path);
-    }
+    });
 
-    private async void OnImport(object? sender, RoutedEventArgs e)
+    private void OnImport(object? sender, RoutedEventArgs e) => Guard.Fire("Smart Devices: import a template", async () =>
     {
         if (DataContext is MethodItem item && await PathPicker.PickAsync(this, Shared.Services.PathKind.File, "Import a template", typeName: "Templates", patterns: ProfilePatterns) is { } path)
             item.ImportProfile(path);
-    }
+    });
 }

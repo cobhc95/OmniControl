@@ -71,7 +71,7 @@ public sealed partial class IrFileItem : ObservableObject, IEditorItem, IRedrawS
         }
         Hint = ReadingHint;
         Redraw?.Invoke();
-        _ = Task.Run(() =>
+        Guard.OffUi("Impulse response: reading the file", () =>
         {
             float[] peaks = Array.Empty<float>(), curve = Array.Empty<float>();
             string hint = string.Empty, facts = string.Empty;

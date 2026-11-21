@@ -104,7 +104,7 @@ public sealed class TrackpadService : IDisposable
     {
         if (TrackpadGestures.Of(button) is not { Opens: not ShellSurface.None } gesture) return;
         if (!Guards(_mouse.Settings, _mouse.LayerOf(InputFamily.Trackpad), button) || !_guard.Arm(gesture.Name, gesture.Opens)) return;
-        Task.Run(async () =>
+        Guard.OffUi("Trackpad: watching the shell panels", async () =>
         {
             while (_guard.Look()) await Task.Delay(Timing.TrackpadSurfaceLook);
         });
@@ -144,7 +144,7 @@ public sealed class TrackpadService : IDisposable
     private void NoteGesture(MouseButton button)
     {
         if (TrackpadGestures.Of(button) is not { } gesture || !_log.TakeGestureLine()) return;
-        Task.Run(() =>
+        Guard.OffUi("Trackpad: logging a gesture", () =>
         {
             var setting = WindowsGestureSettings.Of(gesture.AlsoWindows);
             var stored = Describe(setting, _store.Read(setting, out var value), value);

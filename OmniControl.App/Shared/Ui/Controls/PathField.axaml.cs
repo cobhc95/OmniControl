@@ -55,8 +55,8 @@ public partial class PathField : UserControl
         else if (change.Property == HintProperty) PathBox.Watermark = Hint;
     }
 
-    private async void OnBrowseClick(object? sender, RoutedEventArgs e)
+    private void OnBrowseClick(object? sender, RoutedEventArgs e) => Guard.Fire("Browse for a path", async () =>
     {
         if (await PathPicker.PickAsync(this, Kind, PickerTitle, PathBox.Text, TypeName.Length > 0 ? TypeName : null, Patterns) is { } path) Commit(path);
-    }
+    });
 }

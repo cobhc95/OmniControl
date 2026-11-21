@@ -128,7 +128,7 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
         _scheduler.Changed += ShowRefusals;
         RegisterPageStates();
         _scheduler.Start();
-        Task.Run(RefreshNow);
+        Guard.OffUi("Displays: reading the displays", RefreshNow);
     }
 
     private void RefreshPictureChoice() => _presets.Refresh();

@@ -104,15 +104,23 @@ public partial class PickerWindow : Window
         row.DataContext is IPickerCard card ? ChooseForAsync(row, card, startInSettings, returnFocusTo, picker) : Task.CompletedTask;
 
     /// The same for <paramref name="card"/>, opened over the window <paramref name="at"/> is in (a control of a pop-down's owner, since a pop-down is not a window).
-    public static async Task ChooseForAsync(Control at, IPickerCard card, bool startInSettings, Control returnFocusTo, Control picker)
-    {
-        if (TopLevel.GetTopLevel(at) is not Window owner) return;
-        var clock = Stopwatch.StartNew();
-        var model = card.MenuFor(startInSettings);
-        model.Target = card.Label;
-        model.Live += card.Pick;
-        if (await ChooseAsync(owner, $"Choose an action for {card.Label}", model, clock) is { } picked) card.Pick(picked);
-        model.Live -= card.Pick;
-        (returnFocusTo.IsEffectivelyVisible ? returnFocusTo : picker).Focus(NavigationMethod.Directional);
-    }
+    /// Never throws: its callers are click handlers (<c>async void</c>), so a failure is logged instead.
+    public static Task ChooseForAsync(Control at, IPickerCard card, bool startInSettings, Control returnFocusTo, Control picker) =>
+        Guard.RunAsync("Choose an action", async () =>
+        {
+            if (TopLevel.GetTopLevel(at) is not Window owner) return;
+            var clock = Stopwatch.StartNew();
+            var model = card.MenuFor(startInSettings);
+            model.Target = card.Label;
+            model.Live += card.Pick;
+            try
+            {
+                if (await ChooseAsync(owner, $"Choose an action for {card.Label}", model, clock) is { } picked) card.Pick(picked);
+            }
+            finally
+            {
+                model.Live -= card.Pick;
+            }
+            (returnFocusTo.IsEffectivelyVisible ? returnFocusTo : picker).Focus(NavigationMethod.Directional);
+        });
 }

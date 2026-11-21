@@ -158,14 +158,14 @@ public sealed class RuleService : IDisposable
         var (x, y) = SystemCommands.GetCursorPos() ?? (0, 0);
         var steps = rule.Steps.ToArray();
         var name = rule.Name.Trim() is { Length: > 0 } named ? named : CompiledRule.UnnamedRule;
-        Task.Run(async () => Finish(rule.Id, await _runner.RunAsync(name, steps, new MouseEvent(MouseButton.Left, true, x, y))));
+        Guard.OffUi("Gesture rules: testing a rule", async () => Finish(rule.Id, await _runner.RunAsync(name, steps, new MouseEvent(MouseButton.Left, true, x, y))));
     }
 
     /// Called on the hook or hotkey thread for a matching rule: starts its steps on a worker unless its rate limit holds it back.
     private void Start(CompiledRule rule, MouseEvent at)
     {
         if (!rule.TryStart()) return;
-        Task.Run(async () =>
+        Guard.OffUi("Gesture rules: running a rule", async () =>
         {
             try
             {

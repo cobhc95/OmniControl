@@ -67,7 +67,7 @@ public sealed partial class OtherPcsService
             }
             _probing.Add(pair.Id);
             var (id, route) = (pair.Id, pair.Route);
-            PcWork.OffUi("Other PCs: probing a route", async () =>
+            Guard.OffUi("Other PCs: probing a route", async () =>
             {
                 var result = await ProbeAddressAsync(id, address).ConfigureAwait(false);
                 PcWork.Post(() =>

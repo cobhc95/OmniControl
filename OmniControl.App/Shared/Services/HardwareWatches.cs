@@ -193,7 +193,7 @@ public sealed class HardwareWatches : IHardwareWatches, IDisposable
             if (_disposed || slot is null || Grace.Within(slot.LastOnDemand, Timing.HardwareOnDemandGap)) return false;
             slot.LastOnDemand = DateTime.UtcNow;
         }
-        Task.Run(() =>
+        Guard.OffUi("Hardware watch: retry", () =>
         {
             Refresh(slot, ActionTrigger);
             Guard.Run($"Hardware retry after {slot.Watch.Name}", then);

@@ -36,7 +36,7 @@ public sealed partial class OtherPcsService
         _pairCheckedAt[id] = DateTime.UtcNow;
         var (name, known) = (pair.Name, pair.TailscaleAddress);
         RaiseChanged();
-        PcWork.OffUi("Other PCs: Tailscale checks of a PC", async () =>
+        Guard.OffUi("Other PCs: Tailscale checks of a PC", async () =>
         {
             TailscaleStatus status = TailscaleStatus.NotInstalled;
             bool? firewall = null, reach = null;

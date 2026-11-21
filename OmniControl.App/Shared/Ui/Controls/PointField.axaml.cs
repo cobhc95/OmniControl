@@ -28,5 +28,5 @@ public partial class PointField : UserControl
         if (await PointPicker.PickAsync() is { } point) Value = ScreenPointText.Write(point.X, point.Y);
     }
 
-    private async void OnPickClick(object? sender, RoutedEventArgs e) => await PickAsync();
+    private void OnPickClick(object? sender, RoutedEventArgs e) => Guard.Fire("Pick a point", () => PickAsync());
 }

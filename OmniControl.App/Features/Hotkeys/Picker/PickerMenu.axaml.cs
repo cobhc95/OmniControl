@@ -246,11 +246,11 @@ public partial class PickerMenu : UserControl
         row.GetVisualDescendants().OfType<TextBox>().FirstOrDefault(t => t.IsEffectivelyVisible)?.Focus(NavigationMethod.Directional);
     }
 
-    private async void PickPoint()
+    private void PickPoint() => Guard.Fire("Choose an action: pick a point", async () =>
     {
         if (OptionList.ContainerFromIndex(OptionList.SelectedIndex) is not Control row) return;
         if (row.GetVisualDescendants().OfType<PointField>().FirstOrDefault(f => f.IsEffectivelyVisible) is { } field) await field.PickAsync();
-    }
+    });
 
     private void OnUseClick(object? sender, RoutedEventArgs e)
     {

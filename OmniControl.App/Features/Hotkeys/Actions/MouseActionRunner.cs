@@ -114,7 +114,12 @@ public sealed class MouseActionRunner
     }
 
     /// Windows' Magnifier has no on/off call: Win+Plus starts it and Win+Esc closes it, so look at whether it is running.
-    private void ToggleMagnifier() => SendKeys(Process.GetProcessesByName(MagnifierProcess).Length > 0 ? "Win+Esc" : "Win+Plus");
+    private void ToggleMagnifier()
+    {
+        var running = Process.GetProcessesByName(MagnifierProcess);
+        foreach (var process in running) process.Dispose();
+        SendKeys(running.Length > 0 ? "Win+Esc" : "Win+Plus");
+    }
 
     /// Copies the selected text, then opens a web search for it in the default browser.
     private void SearchSelectedText(OptionValues options)

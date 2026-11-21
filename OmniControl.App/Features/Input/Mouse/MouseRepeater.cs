@@ -7,7 +7,7 @@ public static class MouseRepeater
     public static Action Start(Action step, TimeSpan delay, TimeSpan every)
     {
         var stop = new CancellationTokenSource();
-        _ = Task.Run(async () =>
+        Guard.OffUi("Mouse: repeating an action", async () =>
         {
             try
             {

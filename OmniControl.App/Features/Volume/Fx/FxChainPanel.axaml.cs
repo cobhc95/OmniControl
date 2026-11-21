@@ -139,12 +139,12 @@ public partial class FxChainPanel : UserControl
     public void FocusEditor() => EditorView.FocusCards();
 
     /// Opens the Add effect window; what it returns goes on the end of the chain.
-    public async void AddEffect()
+    public void AddEffect() => Guard.Fire("FX: add an effect", async () =>
     {
         if (_vm is not { } vm || TopLevel.GetTopLevel(this) is not Window owner) return;
         var picked = await new AddEffectWindow { DataContext = new AddEffectViewModel(vm.Library, vm.CanAddFolder) }.ShowDialog<PluginEntry?>(owner);
         if (picked is not null) vm.AddEntry(picked);
-    }
+    });
 
     private void OnAddClick(object? sender, RoutedEventArgs e) => AddEffect();
 }

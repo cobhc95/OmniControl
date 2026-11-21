@@ -45,22 +45,25 @@ public static class WindowLifecycle
             else Hide("the X button (When closing: keep running in the tray)");
         }
 
-        async void Ask()
+        void Ask()
         {
             if (asking) return;
             asking = true;
-            try
+            Guard.Fire("Close choice", async () =>
             {
-                var choice = await new CloseChoiceWindow().ShowDialog<CloseChoice?>(window);
-                if (choice is null) return;
-                if (choice.Remember)
+                try
                 {
-                    settings.CloseBehavior = choice.Behavior;
-                    settings.Save();
+                    var choice = await new CloseChoiceWindow().ShowDialog<CloseChoice?>(window);
+                    if (choice is null) return;
+                    if (choice.Remember)
+                    {
+                        settings.CloseBehavior = choice.Behavior;
+                        settings.Save();
+                    }
+                    Apply(choice.Behavior);
                 }
-                Apply(choice.Behavior);
-            }
-            finally { asking = false; }
+                finally { asking = false; }
+            });
         }
 
         var tray = new TrayService(app, () => Show("a double-click on the tray icon"), shell.TrayFlyout, shell.RunAction, shell.Hardware);

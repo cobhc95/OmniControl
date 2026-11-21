@@ -9,17 +9,17 @@ public partial class AutomationPage : UserControl
         PageTabsView.Attach(this);
     }
 
-    private async void OnImportScriptClick(object? sender, RoutedEventArgs e)
+    private void OnImportScriptClick(object? sender, RoutedEventArgs e) => Guard.Fire("Automation: import a script", async () =>
     {
         if (DataContext is not AutomationPageViewModel vm) return;
         if (await PathPicker.PickAsync(this, PathKind.File, "Import a script", typeName: "Scripts", patterns: AutomationPageViewModel.ScriptPatterns) is { } path)
             await vm.ImportScriptAsync(path);
-    }
+    });
 
-    private async void OnExportScriptClick(object? sender, RoutedEventArgs e)
+    private void OnExportScriptClick(object? sender, RoutedEventArgs e) => Guard.Fire("Automation: export a script", async () =>
     {
         if (DataContext is not AutomationPageViewModel { ExportSuggestion: { } suggested } vm) return;
         if (await PathPicker.PickSaveAsync(this, "Export the script", suggested.Name, suggested.Extension, "Scripts", AutomationPageViewModel.ScriptPatterns) is { } path)
             await vm.ExportScriptAsync(path);
-    }
+    });
 }

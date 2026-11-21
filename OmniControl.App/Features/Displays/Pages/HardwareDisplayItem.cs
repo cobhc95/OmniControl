@@ -108,7 +108,7 @@ internal sealed partial class HardwareDisplayItem
     public void Start()
     {
         _orientation.Start();
-        Task.Run(() =>
+        Guard.OffUi("Displays: reading a monitor's features", () =>
         {
             var capabilities = _access.Probe();
             Dispatcher.UIThread.Post(() => ShowCapabilities(capabilities));
@@ -202,7 +202,7 @@ internal sealed partial class HardwareDisplayItem
         if (!result.Success) _report(result.Message);
     }
 
-    private void WriteRaw(byte code, uint value) => Task.Run(() => Fail(_access.WriteRaw(code, value)));
+    private void WriteRaw(byte code, uint value) => Guard.OffUi("Displays: writing a monitor setting", () => Fail(_access.WriteRaw(code, value)));
 
     private void Pick(HardwareChoice choice, string name)
     {
@@ -223,7 +223,7 @@ internal sealed partial class HardwareDisplayItem
         var before = _screenOn;
         _screenOn = on;
         if (on && _screens.IsOff) _screens.WakeUp();
-        else Task.Run(() =>
+        else Guard.OffUi("Displays: monitor power", () =>
         {
             var result = _access.WriteRaw(VcpCode.PowerMode, on ? VcpCode.Power.On : VcpCode.Power.Off);
             if (result.Success) return;
@@ -242,7 +242,7 @@ internal sealed partial class HardwareDisplayItem
     public void ScreensChanged()
     {
         _main?.RefreshMaster();
-        if (HasScreenPower && !_screens.IsOff) Task.Run(ReadScreenPower);
+        if (HasScreenPower && !_screens.IsOff) Guard.OffUi("Displays: reading monitor power", ReadScreenPower);
     }
 
     /// Asks the monitor its power mode (VCP 0xD6) and shows the answer; an unanswered read keeps what is known (worker thread).

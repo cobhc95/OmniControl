@@ -30,7 +30,7 @@ public sealed partial class DisplaysPageViewModel
     private readonly List<HotkeyAction> _scopedActions = new();
 
     /// Waits a moment (so the input that started it is over), then asks Windows to switch every screen off.
-    private static void TurnOffDisplays() => Task.Run(async () =>
+    private static void TurnOffDisplays() => Guard.OffUi("Displays: turning the displays off", async () =>
     {
         await Task.Delay(Timing.DisplaysOffGrace);
         Guard.Run("Turning the displays off", () => PowerCommands.TurnOffDisplays());
@@ -108,7 +108,7 @@ public sealed partial class DisplaysPageViewModel
     private void StepHardware(HardwareLevel level, IReadOnlyList<string>? ids, int delta)
     {
         var targets = _hardware.Where(h => (ids is null || ids.Contains(h.Id)) && h.Supports(level)).ToList();
-        Task.Run(() =>
+        Guard.OffUi("Displays: stepping a level", () =>
         {
             var shown = false;
             void Show(int value) => _osd.Show(level.Spec.Osd, value);

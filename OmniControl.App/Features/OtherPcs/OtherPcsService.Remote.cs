@@ -356,7 +356,7 @@ public sealed partial class OtherPcsService
         {
             reply.Ok = true;
             // On a worker, so the chain set for this one run never stays on the UI thread; Run reads it on the calling thread.
-            _ = Task.Run(() =>
+            Guard.OffUi("Other PCs: running an asked action", () =>
             {
                 _run.RunWithin(chain!);
                 _run.Run(action!.Id);

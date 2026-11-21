@@ -294,7 +294,7 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
             return true;
         }
 
-        if (action.Options.Text(MouseOptions.AlsoSend).Length > 0) Task.Run(() => _runner.SendAlongside(action));
+        if (action.Options.Text(MouseOptions.AlsoSend).Length > 0) Guard.OffUi("Mouse: sending the extra shortcut", () => _runner.SendAlongside(action));
 
         if (MouseActionCatalog.IsMode(id))
         {
@@ -388,7 +388,7 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
         lock (_gate) claimed = extras.Length > 0 && _sequenceRunning.Add(ev.Button);
         if (claimed) steps.AddRange(extras.Select(extra => (Action)(() => RunLater(extra, ev))));
         if (steps.Count == 0) return;
-        Task.Run(async () =>
+        Guard.OffUi("Mouse: running actions in order", async () =>
         {
             try
             {
