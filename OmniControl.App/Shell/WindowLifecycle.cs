@@ -122,6 +122,7 @@ public static class WindowLifecycle
             if (seen) left = hidden.Placed;
             window = null;
             desktop.MainWindow = null;
+            hidden.LetGo();
             releasing = true;
             try { hidden.Close(); }
             finally { releasing = false; }
