@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using OmniControl.App.Features.AppLists;
 using OmniControl.App.Features.Resources.Gadget;
 using OmniControl.App.Shared.Presets;
+using OmniControl.Core.Engine.Resources;
 
 namespace OmniControl.App.Features.Resources;
 
@@ -31,6 +32,23 @@ public sealed class ResourcesSetup
 
     /// The temperature sensor the Hottest sensor reading follows (a sensor's id: Windows' own, starting "win/", or the sensor library's): null = the hottest of all (Auto); one that is gone reads as Auto.
     public string? Sensor { get; set; }
+
+    /// The temperature sensor the CPU and GPU temperature readings follow, as <see cref="Sensor"/>; null = Auto (<c>TemperaturePick</c>).
+    public string? CpuSensor { get; set; }
+    public string? GpuSensor { get; set; }
+
+    /// The sensor a reading follows (<see cref="Reading.HottestId"/>, <see cref="Reading.CpuTempId"/> or <see cref="Reading.GpuTempId"/>).
+    public string? SensorOf(string readingId) => readingId switch { Reading.CpuTempId => CpuSensor, Reading.GpuTempId => GpuSensor, _ => Sensor };
+
+    public void SetSensor(string readingId, string? id)
+    {
+        if (readingId == Reading.CpuTempId) CpuSensor = id;
+        else if (readingId == Reading.GpuTempId) GpuSensor = id;
+        else Sensor = id;
+    }
+
+    public SensorChoices SensorChoices() => new(Sensor, CpuSensor, GpuSensor);
+
     public GadgetSettings Gadget { get; set; } = GadgetLayouts.NewLook();
     public List<AppNetRule> Apps { get; set; } = new();
 

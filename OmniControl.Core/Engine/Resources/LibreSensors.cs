@@ -13,11 +13,11 @@ internal readonly record struct LibreGroups(bool Cpu, bool Gpu, bool Storage, bo
     public static LibreGroups operator |(LibreGroups a, LibreGroups b) => new(a.Cpu || b.Cpu, a.Gpu || b.Gpu, a.Storage || b.Storage, a.Board || b.Board);
 }
 
-/// What one update of the library gave: the graphics card's load, the drives' activity and temperature, the CPU's and graphics card's
-/// hottest temperature and every temperature sensor.
-internal sealed record LibreReading(double? Gpu, double? Disk, IReadOnlyList<DiskSample> Disks, double? CpuTemp, double? GpuTemp, IReadOnlyList<TemperatureSensor> Temperatures)
+/// What one update of the library gave: the graphics card's load, the drives' activity and temperature and every temperature sensor (the CPU
+/// and GPU temperature are picked from these, <see cref="TemperaturePick"/>).
+internal sealed record LibreReading(double? Gpu, double? Disk, IReadOnlyList<DiskSample> Disks, IReadOnlyList<TemperatureSensor> Temperatures)
 {
-    public static readonly LibreReading None = new(null, null, Array.Empty<DiskSample>(), null, null, Array.Empty<TemperatureSensor>());
+    public static readonly LibreReading None = new(null, null, Array.Empty<DiskSample>(), Array.Empty<TemperatureSensor>());
 }
 
 /// LibreHardwareMonitor (PawnIO build: no WinRing0; without the PawnIO driver the CPU's own temperature is not readable), kept only for what
@@ -99,8 +99,6 @@ internal sealed class LibreSensors : IDisposable
             Max(all.Where(s => s.Hardware.HardwareType == HardwareType.Storage && Activity(s))),
             computer.Hardware.OfType<StorageDevice>().Where(d => d.Storage is not null)
                 .Select(d => new DiskSample(d.Storage.DriveNumber, Max(d.Sensors.Where(Activity)), Max(temps.Where(t => t.Hardware == d)))).ToList(),
-            Max(temps.Where(s => s.Hardware.HardwareType == HardwareType.Cpu)),
-            Max(temps.Where(Gpu)),
             temps.Select(Describe).ToList());
     }
 

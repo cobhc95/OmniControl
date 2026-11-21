@@ -14,6 +14,9 @@ internal sealed unsafe class WindowsSensors : IDisposable
     /// The ids of these sensors start with this, so a chosen Hottest sensor tells which source it needs.
     public const string IdPrefix = "win/";
 
+    /// The id start of each of Windows' sources (a chosen sensor opens only its own).
+    public const string ZoneIds = IdPrefix + "zone/", GpuIds = IdPrefix + "gpu/", DiskIds = IdPrefix + "disk/";
+
     private const uint QueryProperty = 0x2D1400; // IOCTL_STORAGE_QUERY_PROPERTY
     private const int DeviceTemperatureProperty = 52; // StorageDeviceTemperatureProperty
     private const int TemperatureBufferSize = 512, InfoCountAt = 12, InfoAt = 24, InfoSize = 16, InfoTemperatureAt = 2; // STORAGE_TEMPERATURE_DATA_DESCRIPTOR
@@ -81,7 +84,7 @@ internal sealed unsafe class WindowsSensors : IDisposable
             var celsius = (_precise ? value / 10 : value) - Kelvin;
             if (celsius is <= 0 or >= HottestMax) continue;
             var name = instance.StartsWith(@"\_TZ.", StringComparison.Ordinal) ? instance[5..] : instance;
-            sensors.Add(new TemperatureSensor($"{IdPrefix}zone/{name}", $"Thermal zone {name}", "ACPI", SensorGroup.Board, celsius));
+            sensors.Add(new TemperatureSensor(ZoneIds + name, $"Thermal zone {name}", "ACPI", SensorGroup.Board, celsius));
         }
         return sensors;
     }
@@ -115,7 +118,7 @@ internal sealed unsafe class WindowsSensors : IDisposable
                 fixed (char* text = registry)
                     name = Query(handle, AdapterRegistryInfo, text, RegistryInfoSize) ? new string(text).Trim() : string.Empty;
                 if (name.Length == 0) name = "Graphics card";
-                sensors.Add(new TemperatureSensor($"{IdPrefix}gpu/{adapter.LuidHigh:x8}{adapter.LuidLow:x8}", "GPU Temperature", name, SensorGroup.Gpu, celsius));
+                sensors.Add(new TemperatureSensor($"{GpuIds}{adapter.LuidHigh:x8}{adapter.LuidLow:x8}", "GPU Temperature", name, SensorGroup.Gpu, celsius));
             }
             finally
             {
@@ -142,7 +145,7 @@ internal sealed unsafe class WindowsSensors : IDisposable
         {
             using var handle = CreateFile($@"\\.\PhysicalDrive{disk.Number}", 0, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, 0, IntPtr.Zero);
             if (!handle.IsInvalid && DriveTemperature(handle, buffer) is { } celsius)
-                sensors.Add(new TemperatureSensor($"{IdPrefix}disk/{disk.Id}", disk.Model, disk.Model, SensorGroup.Storage, celsius) { DiskNumber = disk.Number });
+                sensors.Add(new TemperatureSensor(DiskIds + disk.Id, disk.Model, disk.Model, SensorGroup.Storage, celsius) { DiskNumber = disk.Number });
             else without.Add(disk.Number);
         }
         DisksWithoutTemperature = without;

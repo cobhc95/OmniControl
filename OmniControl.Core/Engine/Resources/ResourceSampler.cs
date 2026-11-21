@@ -8,8 +8,10 @@ public sealed record ResourceSample(double? Cpu, double? Gpu, double? MemoryUsed
 {
     public static readonly ResourceSample None = new(null, null, null, null, null, null, null, null, null, null, null, null);
 
-    /// The name of the temperature sensor the Hottest reading follows when one was chosen and still exists; null: the hottest of all.
-    public string? ChosenSensor { get; init; }
+    /// The sensor each temperature reading came from (the chosen one, or Auto's pick); null when that reading was not wanted or found none.
+    public TemperatureSensor? HottestSensor { get; init; }
+    public TemperatureSensor? CpuTempSensor { get; init; }
+    public TemperatureSensor? GpuTempSensor { get; init; }
 
     /// Every temperature sensor with its value now (only when <see cref="SampleParts.SensorList"/> was wanted).
     public IReadOnlyList<TemperatureSensor> TemperatureSensors { get; init; } = Array.Empty<TemperatureSensor>();
@@ -47,6 +49,9 @@ public sealed record TemperatureSensor(string Id, string Name, string Hardware, 
     public string Short => Group is SensorGroup.Cpu or SensorGroup.Gpu && Name.Length > 4 && Name[3] == ' ' && Name[..3] is "CPU" or "GPU" ? Name[4..] : Name;
 }
 
+/// The temperature sensor each reading that can follow one was set to (a <see cref="TemperatureSensor.Id"/>); null, or one that is gone, = Auto.
+public readonly record struct SensorChoices(string? Hottest, string? Cpu, string? Gpu);
+
 /// The parts of a read a caller wants, beyond CPU load and memory (two cheap calls, always read): the network speeds, the adapter list (only
 /// for the adapter menu), and each sensor reading (disk activity and the disks' temperatures apart), whose sources open only for these.
 [Flags]
@@ -75,8 +80,8 @@ public sealed class ResourceSampler : IDisposable
 
     /// <param name="adapter">Which adapter the network speeds are read from: null = the busiest one (Auto), <see cref="AdapterSpeed.All"/> = all
     /// added together, else an adapter's id; a chosen adapter that is gone or not connected reads as Auto.</param>
-    /// <param name="sensor">The temperature sensor the Hottest reading follows (its <see cref="TemperatureSensor.Id"/>); null or gone = the hottest of all.</param>
-    public ResourceSample Read(SampleParts wanted, string? adapter, string? sensor = null)
+    /// <param name="sensors">The temperature sensor the Hottest, CPU and GPU temperature readings follow.</param>
+    public ResourceSample Read(SampleParts wanted, string? adapter, SensorChoices sensors = default)
     {
         var net = (wanted & SampleParts.Network) != 0 ? Network(adapter, (wanted & SampleParts.Adapters) != 0) : NoNetwork();
         var (used, total) = Memory();
@@ -86,7 +91,7 @@ public sealed class ResourceSampler : IDisposable
             AdapterIsAuto = net.Auto,
             Parts = wanted,
         };
-        return (wanted & SampleParts.Sensors) != 0 ? _sensors.Add(sample, wanted, sensor) : sample;
+        return (wanted & SampleParts.Sensors) != 0 ? _sensors.Add(sample, wanted, sensors) : sample;
     }
 
     /// The network is not wanted: its counters are forgotten, so the first read after it is wanted again starts afresh (never a rate over the gap).

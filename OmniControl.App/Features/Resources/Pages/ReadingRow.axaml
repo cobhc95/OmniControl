@@ -13,9 +13,9 @@
         <TextBlock Grid.Row="1" Classes="cardlabel muted" Text="{Binding Note}" IsVisible="{Binding HasNote}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
         <c:TagView Grid.Row="1" Grid.Column="1" DataContext="{Binding Tag}" HorizontalAlignment="Right" VerticalAlignment="Center"
                    IsVisible="{Binding $self.DataContext, Converter={x:Static ObjectConverters.IsNotNull}}" />
-        <!-- The Hottest sensor card: the temperature sensor chip in the tag's place, its graph (fixed 25-100 range, caution colour past the warn point) along the foot -->
-        <c:ChipMenu x:Name="SensorChip" Grid.Row="1" Grid.Column="1" ChipTag="scope" Text="{Binding Sensor.Text}" IsVisible="{Binding HasSensor}" VerticalAlignment="Center" />
-        <c:Sparkline Grid.Row="2" Grid.ColumnSpan="2" Values="{Binding History}" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" WarnAt="{Binding WarnAt}" IsVisible="{Binding HasSensor}" />
+        <!-- The Hottest sensor, CPU and GPU cards: the temperature sensor chip in the tag's place; the Hottest card's graph (fixed 25-100 range, caution colour past the warn point) along the foot -->
+        <c:ChipMenu x:Name="SensorChip" Grid.Row="1" Grid.Column="1" ChipTag="scope" Text="{Binding Sensor.Text}" ChipToolTip="{Binding Sensor.Tip}" IsVisible="{Binding HasSensor}" VerticalAlignment="Center" />
+        <c:Sparkline Grid.Row="2" Grid.ColumnSpan="2" Values="{Binding History}" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" WarnAt="{Binding WarnAt}" IsVisible="{Binding FootGraph}" />
         <!-- The Download and Upload cards: the network adapter chip (the shared ChipMenu + MenuRowList) in the tag's place -->
         <c:ChipMenu x:Name="AdapterChip" Grid.Row="1" Grid.Column="1" ChipTag="scope" Text="{Binding Adapter.Text}" IsVisible="{Binding HasAdapter}" VerticalAlignment="Center" />
     </Grid>

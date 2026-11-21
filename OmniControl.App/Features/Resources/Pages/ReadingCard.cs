@@ -13,10 +13,13 @@ public sealed partial class ReadingCard : ObservableObject, IEditorItem, IHalfWi
 
     public bool HasAdapter => Adapter is not null;
 
-    /// The temperature sensor chip shown where the fact tag would be (the Hottest sensor card); that card draws its sparkline along its foot.
+    /// The temperature sensor chip shown where the fact tag would be (the Hottest sensor card; the CPU and GPU cards' temperature).
     public MenuChoiceItem? Sensor { get; init; }
 
     public bool HasSensor => Sensor is not null;
+
+    /// True: the sparkline runs along the card's foot with its fixed range (the Hottest sensor card).
+    public bool FootGraph { get; init; }
 
     /// The sparkline's range: its bottom, and its top (0: the largest value shown).
     public double Minimum { get; }
@@ -35,5 +38,5 @@ public sealed partial class ReadingCard : ObservableObject, IEditorItem, IHalfWi
     public bool HasNote => Note.Length > 0;
 
     /// The sparkline sits beside the value's row (every card but the hottest sensor's, whose graph is along its foot).
-    public bool InlineGraph => !HasNote && !HasSensor;
+    public bool InlineGraph => !HasNote && !FootGraph;
 }

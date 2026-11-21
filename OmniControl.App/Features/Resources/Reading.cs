@@ -26,8 +26,9 @@ public sealed record Reading(string Id, string Name, string Chip, string Icon, R
     /// A temperature from which a sensor is called warm (the Hottest sensor card's caution tag).
     public const double WarmCelsius = 70;
 
-    /// The Hottest sensor reading's id (the only one whose source can be chosen) and the fixed range of its small graph, in Celsius.
-    public const string HottestId = "hottest";
+    /// The ids of the readings whose temperature sensor can be chosen (<see cref="ResourcesSetup.SensorOf"/>), and the fixed range of the Hottest
+    /// sensor's small graph, in Celsius.
+    public const string HottestId = "hottest", CpuTempId = "cputemp", GpuTempId = "gputemp";
     public const double TemperatureGraphMin = 25, TemperatureGraphMax = 100;
 
     private const double Kilo = 1024;
@@ -37,6 +38,9 @@ public sealed record Reading(string Id, string Name, string Chip, string Icon, R
 
     /// The icons suggested first for its label, best first (the label editor puts the group holding the first one at the top).
     public IReadOnlyList<string> SuggestedIcons { get; init; } = Array.Empty<string>();
+
+    /// The temperature sensor the value came from, for a reading whose sensor can be chosen (<see cref="ResourcesSetup.SensorOf"/>); null: it cannot.
+    public Func<ResourceSample, TemperatureSensor?>? Sensor { get; init; }
 
     private static readonly string[] Thermometers = { "temperature", "thermometer", "temperature-celsius" };
 
@@ -55,14 +59,15 @@ public sealed record Reading(string Id, string Name, string Chip, string Icon, R
             Card: ("GPU", 1)) { SuggestedIcons = new[] { "device-desktop-analytics", "cpu-2" } },
         new("memory", "Memory", "Memory", "memory-stick", ReadingKind.Percent, SampleParts.None, s => s.MemoryPercent, "M:", "{memory-stick}", Card: ("Memory", 2))
             { SuggestedIcons = new[] { "memory-stick", "brain", "database" } },
-        new("cputemp", "CPU temperature", "CPU °C", "temperature", ReadingKind.Temperature, SampleParts.CpuTemp, s => s.CpuTemp, "T:", "{cpu}" + Gadget.GadgetLabel.Token("temperature", Gadget.GadgetLabel.WarmColour),
-            GadgetDefault: true, WarnDefault: 85) { SuggestedIcons = Thermometers.Append("cpu").ToArray() },
-        new("gputemp", "GPU temperature", "GPU °C", "temperature", ReadingKind.Temperature, SampleParts.GpuTemp, s => s.GpuTemp, "T:",
-            Gpu + Gadget.GadgetLabel.Token("temperature", Gadget.GadgetLabel.HotColour), GadgetDefault: true, WarnDefault: 85) { SuggestedIcons = Thermometers.Append("device-desktop-analytics").ToArray() },
+        new(CpuTempId, "CPU temperature", "CPU °C", "temperature", ReadingKind.Temperature, SampleParts.CpuTemp, s => s.CpuTemp, "T:", "{cpu}" + Gadget.GadgetLabel.Token("temperature", Gadget.GadgetLabel.WarmColour),
+            GadgetDefault: true, WarnDefault: 85, Source: s => s.CpuTempSensor?.Name) { SuggestedIcons = Thermometers.Append("cpu").ToArray(), Sensor = s => s.CpuTempSensor },
+        new(GpuTempId, "GPU temperature", "GPU °C", "temperature", ReadingKind.Temperature, SampleParts.GpuTemp, s => s.GpuTemp, "T:",
+            Gpu + Gadget.GadgetLabel.Token("temperature", Gadget.GadgetLabel.HotColour), GadgetDefault: true, WarnDefault: 85, Source: s => s.GpuTempSensor?.Name)
+            { SuggestedIcons = Thermometers.Append("device-desktop-analytics").ToArray(), Sensor = s => s.GpuTempSensor },
         new("disk", "Disk activity", "Disk", "disc", ReadingKind.Percent, SampleParts.Disk, s => s.Disk, "D:", "{disc}")
             { SuggestedIcons = new[] { "disc", "database" } },
         new(HottestId, "Hottest sensor", "Hottest", "flame", ReadingKind.Temperature, SampleParts.Hottest, s => s.Hottest, "H:", "{flame}",
-            Card: ("Hottest sensor", 3), Source: s => s.HottestName) { SuggestedIcons = Thermometers.Prepend("flame").ToArray() },
+            Card: ("Hottest sensor", 3), Source: s => s.HottestName) { SuggestedIcons = Thermometers.Prepend("flame").ToArray(), Sensor = s => s.HottestSensor },
     };
 
     /// A built-in reading; with each physical disk's own: <see cref="IReadingList.Find"/>.

@@ -12,7 +12,8 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
 
     private readonly IStateRegistry _states;
     private readonly Func<TimeSpan> _ruleInterval;
-    private readonly Func<string?> _adapterChoice, _sensorChoice;
+    private readonly Func<string?> _adapterChoice;
+    private readonly Func<SensorChoices> _sensorChoices;
     private readonly Func<ITrafficSession> _startTraffic;
     private readonly string _category;
     private readonly Dictionary<string, (TimeSpan Every, SampleParts Parts)> _needs = new();
@@ -29,15 +30,15 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
     private volatile SampleParts _wanted;
     private bool _disposed, _sensorsWanted;
     private DateTime _lastAppsTake;
-    private string? _sensor;
+    private SensorChoices _sensors;
 
     /// <param name="ruleInterval">How often to read while only a rule follows a reading (the page's interval).</param>
     /// <param name="adapterChoice">The network adapter the speeds are read from (the setup's choice), asked at every read.</param>
-    /// <param name="sensorChoice">The temperature sensor the Hottest reading follows (null: the hottest of all), asked at every read.</param>
+    /// <param name="sensorChoices">The temperature sensors the Hottest, CPU and GPU temperature readings follow (the setup's choices), asked at every read.</param>
     /// <param name="startTraffic">Starts the per-program traffic session where the network work runs (a worker; throws an <see cref="IOException"/> saying why).</param>
-    public ResourceMonitor(IStateRegistry states, Func<TimeSpan> ruleInterval, Func<string?> adapterChoice, Func<string?> sensorChoice, Func<ITrafficSession> startTraffic, string category)
+    public ResourceMonitor(IStateRegistry states, Func<TimeSpan> ruleInterval, Func<string?> adapterChoice, Func<SensorChoices> sensorChoices, Func<ITrafficSession> startTraffic, string category)
     {
-        (_states, _ruleInterval, _adapterChoice, _sensorChoice, _startTraffic, _category) = (states, ruleInterval, adapterChoice, sensorChoice, startTraffic, category);
+        (_states, _ruleInterval, _adapterChoice, _sensorChoices, _startTraffic, _category) = (states, ruleInterval, adapterChoice, sensorChoices, startTraffic, category);
         _timer = new Timer(_ => Tick());
         _idleClose = new Timer(_ => Release(sensors: true));
         states.Register(Reading.All.Select(StateOf));
@@ -167,10 +168,10 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
             if (_disposed) return;
             Guard.Run("Resources read", () =>
             {
-                var sensor = _sensorChoice();
-                var sample = _sampler.Read(_wanted, _adapterChoice(), sensor);
+                var sensors = _sensorChoices();
+                var sample = _sampler.Read(_wanted, _adapterChoice(), sensors);
                 var apps = ReadApps();
-                Dispatcher.UIThread.Post(() => Arrived(sample, apps, sensor));
+                Dispatcher.UIThread.Post(() => Arrived(sample, apps, sensors));
             });
         }
         finally { Monitor.Exit(_work); }
@@ -214,16 +215,15 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
         return _apps.Take().Select(a => a with { Received = (long)(a.Received / seconds), Sent = (long)(a.Sent / seconds) }).ToList();
     }
 
-    private void Arrived(ResourceSample sample, IReadOnlyList<AppTraffic>? apps, string? sensor)
+    private void Arrived(ResourceSample sample, IReadOnlyList<AppTraffic>? apps, SensorChoices sensors)
     {
         if (_disposed) return;
         Latest = sample;
-        if (sensor != _sensor)
-        {
-            _sensor = sensor; // another sensor is another line: its graph and today's range start afresh
-            _history.Remove(Reading.HottestId);
-            _today.Remove(Reading.HottestId);
-        }
+        // Another sensor is another line: its reading's graph and today's range start afresh.
+        if (sensors.Hottest != _sensors.Hottest) Forget(Reading.HottestId);
+        if (sensors.Cpu != _sensors.Cpu) Forget(Reading.CpuTempId);
+        if (sensors.Gpu != _sensors.Gpu) Forget(Reading.GpuTempId);
+        _sensors = sensors;
         if (apps is not null && _wantApps)
         {
             Apps = apps;
@@ -246,6 +246,12 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
         }
         _states.Notify(read); // one look for every reading of this sample
         Updated?.Invoke();
+    }
+
+    private void Forget(string readingId)
+    {
+        _history.Remove(readingId);
+        _today.Remove(readingId);
     }
 
     public void Dispose()
