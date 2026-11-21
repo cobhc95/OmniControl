@@ -16,12 +16,13 @@
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="CornerRadius" Value="13" />
             <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
-                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Background" Value="{DynamicResource BrushControlFill}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="Foreground" Value="{DynamicResource BrushMuted}" />
+                <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
                 <Setter Property="CornerRadius" Value="13" />
             </Style>
+            <Style Selector="^:disabled"><Setter Property="Opacity" Value="0.45" /></Style>
             <Style Selector="^.custom /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" />
@@ -69,27 +70,14 @@
             <Style Selector="^.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushDanger}" />
             </Style>
-            <!-- Action inside a pop-down card (.cardaction: Install, Remove, Preview changes, Test): the quiet pill is too faint on a tinted
-                 card, so the text takes the normal colour and the edge a clear grey; .main (the one action that does the job, Install) is outlined in the accent -->
-            <Style Selector="^.cardaction /template/ ContentPresenter#PART_ContentPresenter">
-                <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
-            </Style>
+            <!-- Action inside a pop-down card (.cardaction: Install, Remove, Preview changes, Test) is the plain pill; .main (the one action that does the job, Install) is outlined in the accent -->
             <Style Selector="^.cardaction.main /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
                 <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
             </Style>
-            <Style Selector="^.cardaction:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-                <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-            </Style>
             <Style Selector="^.cardaction.main:pointerover /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
-            </Style>
-            <Style Selector="^.cardaction:focus-visible /template/ ContentPresenter#PART_ContentPresenter, ^.cardaction:focus-visible:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-                <Setter Property="BorderThickness" Value="2" />
             </Style>
         </ControlTheme>
 

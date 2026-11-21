@@ -18,6 +18,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 - Fixed: the main window was sometimes never let go after 5 minutes in the tray: the wait now counts only while it is hidden (a minimised window keeps its taskbar button), and when an FX window or the close question was open it tries again later instead of giving up; timing-log.txt says why it was kept, and the visuals before and after.
 - Fixed: Up and Down reach the next row of a long list that is out of view (search results, mixer rows) instead of stopping or skipping it.
 - New: uninstalling OmniControl asks first, with two ticked boxes, whether to also remove Windows Packet Filter (only the copy OmniControl installed) and Equalizer APO (through its own uninstaller; sound may need a restart of Windows afterwards); each box shows only when that part is installed. A silent uninstall removes both unless `/KEEPDRIVERS` is passed.
+- Fixed: action buttons such as Add, Device folder and Remove in the FX window looked disabled (grey words on a grey fill) though they worked. Every small outlined button now has the control fill, a visible edge and normal words, and is dimmed only when it really is disabled.
 
 ## 0.2.7 (21 Nov 2026)
 
