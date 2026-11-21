@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Lighter memory: windows are drawn in software, so the graphics driver and ANGLE are no longer loaded (about 50 to 100 MB less, and no graphics-card memory); the download is about 2 MB smaller.
 - Diagnostics: timing-log.txt records the app's memory (managed heap, private bytes, working set) two minutes after start and each time the window has settled hidden.
 
 ## 0.2.6 (21 Nov 2026)

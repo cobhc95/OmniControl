@@ -34,15 +34,13 @@ internal static class Program
     /// For the designer.
     public static AppBuilder BuildAvaloniaApp() => BuildAvaloniaApp(null);
 
-    /// Windows only, drawn by Skia in Avalonia's default Win32 rendering order (ANGLE over Direct3D first, then software). Text uses the
-    /// system font (Segoe UI), so no font is bundled. Avalonia's own trace log keeps errors only.
+    /// Windows only, drawn by Skia in software: ANGLE, Direct3D and the GPU driver are never loaded (about 50 to 100 MB of private memory and
+    /// as much GPU memory for windows this small; transparent windows use Windows' blur-behind with an empty region). Text uses the system
+    /// font (Segoe UI), so no font is bundled. Avalonia's own trace log keeps errors only.
     private static AppBuilder BuildAvaloniaApp(SingleInstance? instance) =>
         AppBuilder.Configure(() => new App(instance))
             .UseWin32()
             .UseSkia()
-            .With(new SkiaOptions { MaxGpuResourceSizeBytes = GpuCacheBytes })
+            .With(new Win32PlatformOptions { RenderingMode = new[] { Win32RenderingMode.Software } })
             .LogToTrace(LogEventLevel.Error);
-
-    // Skia's GPU cache: its default (hundreds of MB) is far more than a settings window and its pop-ups draw.
-    private const long GpuCacheBytes = 16 * 1024 * 1024;
 }

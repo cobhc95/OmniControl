@@ -23,7 +23,8 @@
        Cautious trim: unused assemblies are dropped, used ones kept whole (copyused, so run-time bindings and reflection keep working);
        only the Windows SDK projection is trimmed to the members used. COM interop and reflection JSON stay on (trimming turns them off);
        trim warnings are silenced (thousands, about member trimming that is not done). LeaveOutOfPublish = files nothing loads: the
-       alternative garbage collectors, HTTP/3, debugger and dump helpers, LibreHardwareMonitor's Linux helpers and symbol files.
+       alternative garbage collectors, HTTP/3, debugger and dump helpers, LibreHardwareMonitor's Linux helpers, ANGLE (rendering is
+       software, Program.cs) and symbol files.
        Precompiled (ReadyToRun, less JIT at start) only ReadyToRunOnly: the app and Avalonia.Base, about 4.8 MB more in the Setup.
        Memory: the workstation garbage collector, collecting in the background, told to keep the heap small (ConserveMemory 5 of 9). -->
   <PropertyGroup>
@@ -38,7 +39,7 @@
     <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
     <PublishReadyToRun>true</PublishReadyToRun>
     <ReadyToRunOnly>^(OmniControl|Avalonia\.Base)$</ReadyToRunOnly>
-    <LeaveOutOfPublish>^(clrgc|clrgcexp|msquic|Microsoft\.DiaSymReader\.Native\.amd64|mscordbi|mscordaccore.*|libMonoPosixHelper|MonoPosixHelper)\.dll$|^createdump\.exe$|\.pdb$</LeaveOutOfPublish>
+    <LeaveOutOfPublish>^(clrgc|clrgcexp|msquic|Microsoft\.DiaSymReader\.Native\.amd64|mscordbi|mscordaccore.*|libMonoPosixHelper|MonoPosixHelper|av_libglesv2)\.dll$|^createdump\.exe$|\.pdb$</LeaveOutOfPublish>
   </PropertyGroup>
 
   <Target Name="KeepUsedAssembliesWhole" AfterTargets="PrepareForILLink">
