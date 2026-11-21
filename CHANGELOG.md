@@ -5,6 +5,9 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Fixed: since 0.2.8 the small outlined buttons (Restore defaults, Add, Remove…), field-like pickers and confirm buttons, state buttons, and the cards of the Method menu and the gadget's Ready-made layouts showed Windows' plain button fill instead of their own fill and edge; they look as designed again.
+- Lighter memory: every button, and tags, panes, group cards, tick boxes, set-up stages and status lines, carry their looks in themes of their own, so a button checks about 40 styles instead of about 160; nothing else looks different.
+
 ## 0.2.8 (21 Nov 2026)
 
 - Changed: Resources > Taskbar gadget: the small "Preview" strip at the top is gone; the top line is "Show on taskbar", Position and Font (the Ready-made layouts tiles still show each look).

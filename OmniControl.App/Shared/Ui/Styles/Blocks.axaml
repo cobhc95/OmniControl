@@ -2,7 +2,7 @@
         xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <!-- MASTER designs of a sentence made of blocks (the custom rule editor: "If [right click] [over the taskbar] [and] [Ctrl held] [+], then [...] [+]").
-         Included after Theme.axaml (which is near its 700-line limit), so these win over its general button hover; Menus.axaml follows.
+         Included after ButtonThemes.axaml (their themes are BasedOn its ButtonBase); Menus.axaml follows.
            Button.block      one picked part of the sentence: a tinted rounded block; click changes it. Holds its text and a Button.blockx.
            Button.blockx     the small cross inside a block that removes it (mouse only; Delete does the same from the keyboard)
            Button.blockjoin  the word between parts that can be flipped ("and" / "or")

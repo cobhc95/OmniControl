@@ -1,7 +1,7 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:c="using:OmniControl.App.Shared.Ui.Controls">
-    <!-- MASTER designs of a row's pickers and its lit button (docs/mockups/mixer-rows-knobs.html; MAP.md "Master UI pieces"),
+    <!-- MASTER designs of a row's pickers (docs/mockups/mixer-rows-knobs.html; MAP.md "Master UI pieces"; the lit FX button is Button.pill.glow),
          included after Theme.axaml and Menus.axaml so these win (Avalonia has no specificity: the later style wins). Sizes: Chip* and
          Selector* in App.axaml.
          Button.selector  a chip-shaped picker that opens a menu: its value, trimmed, and a small chevron at the right (a Mixer row's Plays
