@@ -86,7 +86,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     private readonly DispatcherTimer _hiddenSettle = new() { Interval = Timing.HiddenSettle };
     private readonly DispatcherTimer _releaseUi = new() { Interval = Timing.UiReleaseAfterHidden };
 
-    /// The main window has stayed hidden <see cref="Timing.UiReleaseAfterHidden"/>: whoever owns the main window and the tray panel lets them go.
+    /// The main window has stayed hidden <see cref="Timing.UiReleaseAfterHidden"/>: whoever owns the main window lets it go (never the tray panel).
     public event Action? ReleaseWindows;
     [ObservableProperty] private PageSlot? _selectedMainPage;
     [ObservableProperty] private PageSlot? _selectedFooterPage;
@@ -187,13 +187,13 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         DispatcherTimer.RunOnce(CompactAfterRelease, Timing.UiReleaseCompactAfter);
     }
 
-    // A blocking collection pauses every thread, the audio's too: skipped while OmniControl itself plays or records sound.
+    // A background collection, never a blocking one (ProcessPower.CompactAfterRelease); still skipped while OmniControl itself plays or records sound.
     private void CompactAfterRelease()
     {
         if (_windowShown) return;
         var busy = _volume.StreamsAudio || _screenshot.Records;
-        if (!busy) Guard.Run("Give memory back", ProcessPower.CompactNow);
-        UiTiming.Memory(busy ? "windows let go (sound running, not compacted)" : "windows let go and compacted");
+        if (!busy) Guard.Run("Give memory back", ProcessPower.CompactAfterRelease);
+        UiTiming.Memory(busy ? "windows let go (sound running, not collected)" : "windows let go and collected");
     }
 
     /// Every feature's view templates and those of what the shell itself makes (App settings, the suggested keys switch); added to the app's at start-up.

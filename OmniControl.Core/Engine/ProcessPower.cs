@@ -31,12 +31,12 @@ public static class ProcessPower
     /// collection stops every thread, the mouse hook's and the audio thread's too, so the pointer and the sound would stall.
     public static void Compact() => GC.Collect(2, GCCollectionMode.Forced, blocking: false, compacting: false);
 
-    /// Compacts the whole heap, large objects too, and gives every free page back to Windows at once. Blocking: every thread stops for
-    /// the moment it takes (the mouse hook's and the audio thread's too), so only right after big parts were let go (the windows after a
-    /// long hide), on the UI thread, while nothing plays or records through this process (the caller checks).
-    public static void CompactNow()
+    /// After big parts were let go (the windows after a long hide): one full background collection, and the large objects are marked to be
+    /// compacted at the runtime's own next full blocking collection. Never a forced blocking compaction: its pause (hundreds of ms on a
+    /// large heap) would stall the mouse hook and the audio thread. Working sets are never trimmed.
+    public static void CompactAfterRelease()
     {
         GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
-        GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+        Compact();
     }
 }

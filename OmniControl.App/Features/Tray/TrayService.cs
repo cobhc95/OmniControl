@@ -5,8 +5,8 @@ using OmniControl.Core.Engine.Mouse;
 
 namespace OmniControl.App.Features.Tray;
 
-/// The notification-area icon: a single click opens the flyout beside it (<see cref="TrayFlyoutWindow"/>, built at the first click and
-/// let go after a long hide), a second press or click within the double-click time closes it and opens OmniControl (<see cref="TrayClicks"/>), and a
+/// The notification-area icon: a single click opens the flyout beside it at once (<see cref="TrayFlyoutWindow"/>, built hidden
+/// after start-up and kept for the run, so it is always instant), a second press or click within the double-click time closes it and opens OmniControl (<see cref="TrayClicks"/>), and a
 /// right click opens its menu, whose items are master actions by id (<see cref="TrayDefaults.Menu"/>, a toggle ticked by its state) and the
 /// icon's look (<see cref="ITrayIconLook"/>), drawn again on a change of the look, the accent or the taskbar's theme.
 public sealed class TrayService : IDisposable
@@ -43,6 +43,7 @@ public sealed class TrayService : IDisposable
         }));
         app.ActualThemeVariantChanged += OnThemeChanged;
         TrayIcon.SetIcons(app, new TrayIcons { _icon });
+        Dispatcher.UIThread.Post(Prebuild, DispatcherPriority.Background);
     }
 
     private const string WatchId = "tray.icon";
@@ -112,7 +113,7 @@ public sealed class TrayService : IDisposable
         if (_window is { IsOpen: false } && _clicks.IsSecond(SystemCommands.GetCursorPos())) Dispatcher.UIThread.Post(_open);
     }
 
-    /// The flyout is made at its first showing and kept hidden between showings, so a click only shows it again.
+    /// The flyout is made once, hidden, so a click only shows it again.
     private TrayFlyoutWindow Window()
     {
         if (_window is null)
@@ -123,14 +124,7 @@ public sealed class TrayService : IDisposable
         return _window;
     }
 
-    /// Lets the hidden flyout go (OmniControl has sat in the tray a long while): its views use no memory until the next showing makes it again.
-    public void Release()
-    {
-        if (_window is not { IsOpen: false } window) return;
-        window.Deactivated -= OnPanelDeactivated;
-        window.CloseForGood();
-        _window = null;
-    }
+    private void Prebuild() => Window().Warm();
 
     private void ShowFlyout(Stopwatch timer)
     {

@@ -1,4 +1,4 @@
-﻿using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls.ApplicationLifetimes;
 using OmniControl.App.Features.Tray;
 
 namespace OmniControl.App.Shell;
@@ -127,11 +127,7 @@ public static class WindowLifecycle
 
         var first = Make();
         var tray = new TrayService(app, () => Show("a double-click on the tray icon"), shell.TrayFlyout, shell.RunAction, shell.Hardware);
-        shell.ReleaseWindows += () =>
-        {
-            Release();
-            tray.Release();
-        };
+        shell.ReleaseWindows += Release; // the tray panel is never let go: it must open at once
 
         if (startHidden || settings.StartMinimised)
         {
