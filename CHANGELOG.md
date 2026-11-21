@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+## 0.2.6 (21 Nov 2026)
+
 - Security: pairing a PC now asks "Pair with <name>?" on the PC that shows the code too, a PC that is already paired must be unpaired before it can pair again, and the PC names are part of what both PCs prove (a name with hidden direction marks is cleaned). Both PCs need this version to pair.
 - Security: while OmniControl runs as administrator, everything it starts (programs, files, web pages, commands, scripts, custom actions, Python and pip, adb, Tailscale) runs with your normal rights; only a step's own "Run as administrator" elevates. Windows' own tools are started from the Windows folder by their full path.
 - Security: custom actions that start something and scripts ask "Allow …?" once the first time you run them (again after they are changed); a rule or another PC can run them only once allowed.
