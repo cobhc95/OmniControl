@@ -6,16 +6,8 @@
         xmlns:c="using:OmniControl.App.Shared.Ui.Controls">
     <!-- Pills, tags, links, tabs and the other button and row masters, moved out of Theme.axaml (700-line limit); included straight after ThemeLists, so the later-wins order is unchanged. -->
 
-    <!-- Action pill on a mouse button's card: quiet outline for "Default", accent tint once remapped -->
-    <Style Selector="Button.pill">
-        <Setter Property="Padding" Value="12,0" />
-        <Setter Property="MinHeight" Value="24" />
-        <Setter Property="FontSize" Value="11" />
-        <Setter Property="HorizontalAlignment" Value="Right" />
-        <Setter Property="HorizontalContentAlignment" Value="Center" />
-        <Setter Property="VerticalContentAlignment" Value="Center" />
-        <Setter Property="CornerRadius" Value="13" />
-    </Style>
+    <!-- Button.pill, .statetoggle, .optioncard: their looks are control themes (Styles/ButtonThemes.axaml); a theme cannot hold a child selector, so those stay here.
+         The master hover below stays a global style: it came after these variants' own styles, so it still wins over their themes as before. -->
     <!-- Long action names wrap to two lines inside the pill (two lines of 11 plus the 1px borders fit the 24px height); the text block is centred itself because a plain-string Content is stretched by its presenter and would otherwise sit at the top -->
     <Style Selector="Button.pill TextBlock">
         <Setter Property="TextWrapping" Value="Wrap" />
@@ -25,27 +17,7 @@
         <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         <Setter Property="TextAlignment" Value="Center" />
     </Style>
-    <Style Selector="Button.pill /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Foreground" Value="{DynamicResource BrushMuted}" />
-        <Setter Property="CornerRadius" Value="13" />
-    </Style>
-    <Style Selector="Button.pill.custom /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" />
-        <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
-    </Style>
-    <Style Selector="Button.pill:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-    </Style>
-    <!-- The cogwheel beside an action: a round version of the pill; lit while the keyboard is on it -->
-    <Style Selector="Button.pill.cog"><Setter Property="Padding" Value="7,0" /><Setter Property="MinWidth" Value="24" /></Style>
     <Style Selector="Button.pill.cog > PathIcon"><Setter Property="Width" Value="12" /><Setter Property="Height" Value="12" /></Style>
-    <!-- A one-character pill (the - and + arrows of a number setting) -->
-    <Style Selector="Button.pill.glyph"><Setter Property="Padding" Value="9,0" /></Style>
     <!-- The drawn cross of a remove button takes the button's own text colour (so it greys, hovers and focuses with it) -->
     <Style Selector="Button.pill.glyph > Path.glyph">
         <Setter Property="Width" Value="10" />
@@ -53,104 +25,9 @@
         <Setter Property="StrokeThickness" Value="1.6" />
         <Setter Property="Stroke" Value="{Binding $parent[ContentPresenter].Foreground}" />
     </Style>
-    <!-- The round X pill (remove / delete beside a row or name box): an 18 px circle holding a 9 px drawn cross; after pill.glyph so it wins -->
-    <Style Selector="Button.pill.closex">
-        <Setter Property="Padding" Value="0" />
-        <Setter Property="Width" Value="{StaticResource CloseXSize}" />
-        <Setter Property="Height" Value="{StaticResource CloseXSize}" />
-    </Style>
     <Style Selector="Button.pill.closex > Path.glyph">
         <Setter Property="Width" Value="{StaticResource CloseXCross}" />
         <Setter Property="Height" Value="{StaticResource CloseXCross}" />
-    </Style>
-    <Style Selector="Button.pill.cog.active /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-        <Setter Property="BorderThickness" Value="2" />
-        <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
-    </Style>
-    <Style Selector="Button.pill.custom:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.pill.cog.active:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
-    </Style>
-    <Style Selector="Button.pill:focus-visible /template/ ContentPresenter#PART_ContentPresenter, Button.pill:focus-visible:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-        <Setter Property="BorderThickness" Value="2" />
-    </Style>
-    <!-- A pill whose action runs (Button.pill.counting, Controls/ChoiceChips): accent edge and words, see-through so the ProgressFill behind it shows; hover thickens the edge instead of hiding the fill -->
-    <Style Selector="Button.pill.counting /template/ ContentPresenter#PART_ContentPresenter, Button.pill.counting:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-        <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
-    </Style>
-    <Style Selector="Button.pill.counting:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="BorderThickness" Value="2" /></Style>
-
-    <!-- A destructive action pill (Button.pill.danger: Wipe all...): red words and edge, so it never looks like a routine action; hover and focus as every pill -->
-    <Style Selector="Button.pill.danger /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushDanger}" />
-        <Setter Property="Foreground" Value="{DynamicResource BrushDanger}" />
-    </Style>
-    <Style Selector="Button.pill.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushDanger}" />
-    </Style>
-
-    <!-- Action inside a pop-down card (Button.pill.cardaction: Install, Remove, Preview changes, Test): the quiet pill is too faint on a tinted
-         card, so the text takes the normal colour and the edge a clear grey; .main (the one action that does the job, Install) is outlined in the accent -->
-    <Style Selector="Button.pill.cardaction /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
-    </Style>
-    <Style Selector="Button.pill.cardaction.main /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-        <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
-    </Style>
-    <Style Selector="Button.pill.cardaction:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-    </Style>
-    <Style Selector="Button.pill.cardaction.main:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
-    </Style>
-    <Style Selector="Button.pill.cardaction:focus-visible /template/ ContentPresenter#PART_ContentPresenter, Button.pill.cardaction:focus-visible:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-        <Setter Property="BorderThickness" Value="2" />
-    </Style>
-
-
-    <!-- State button (Button.statetoggle, Pages/StateButtonItem, docs/mockups/sound-mute-buttons.html): an on/off state shown as its icon and words
-         on a card's extras line, filling its share of the line; the plain control fill and edge while live; .muted = red words, edge and a faint red wash.
-         The words stay on one line and trim; hover and focus as every pill (the edge only, so nothing moves) -->
-    <Style Selector="Button.statetoggle">
-        <Setter Property="MinHeight" Value="24" />
-        <Setter Property="Padding" Value="8,0" />
-        <Setter Property="FontSize" Value="11" />
-        <Setter Property="HorizontalAlignment" Value="Stretch" />
-        <Setter Property="HorizontalContentAlignment" Value="Center" />
-        <Setter Property="VerticalContentAlignment" Value="Center" />
-        <Setter Property="CornerRadius" Value="6" />
-    </Style>
-    <Style Selector="Button.statetoggle /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushControlFill}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="6" />
-    </Style>
-    <Style Selector="Button.statetoggle.muted /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushTagRiskSoft}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushDanger}" />
-        <Setter Property="Foreground" Value="{DynamicResource BrushDanger}" />
-    </Style>
-    <Style Selector="Button.statetoggle:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-    </Style>
-    <Style Selector="Button.statetoggle.muted:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushDanger}" />
-        <Setter Property="Foreground" Value="{DynamicResource BrushDanger}" />
-    </Style>
-    <Style Selector="Button.statetoggle:focus-visible /template/ ContentPresenter#PART_ContentPresenter, Button.statetoggle:focus-visible:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
     </Style>
     <Style Selector="Button.statetoggle > Grid > c|IconGlyph">
         <Setter Property="Width" Value="{StaticResource CardIconSize}" />
@@ -165,29 +42,6 @@
 
     <!-- The smaller text of a pop-down card (its description and notes) -->
     <Style Selector="TextBlock.small"><Setter Property="FontSize" Value="11" /></Style>
-    <Style Selector="Button.optioncard">
-        <Setter Property="Padding" Value="{StaticResource OptionCardPadding}" />
-        <Setter Property="CornerRadius" Value="{StaticResource OptionCardCornerRadius}" />
-        <Setter Property="HorizontalAlignment" Value="Stretch" />
-        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-    </Style>
-    <Style Selector="Button.optioncard /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
-        <Setter Property="BorderThickness" Value="2" />
-    </Style>
-    <Style Selector="Button.optioncard.selected /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" />
-    </Style>
-    <Style Selector="Button.optioncard.selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-    </Style>
-    <Style Selector="Button.optioncard:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-    </Style>
 
     <!-- Tag: a small fact pill. The colour is on the wash and the edge; the text keeps the normal colour so it reads in both themes. -->
     <Style Selector="Border.tag">
@@ -258,7 +112,6 @@
     <Style Selector="c|IconGlyph.chainfolder"><Setter Property="Width" Value="14" /><Setter Property="Height" Value="14" /><Setter Property="Foreground" Value="{DynamicResource BrushMuted}" /></Style>
     <Style Selector="c|IconGlyph.chainfolder.playing"><Setter Property="Foreground" Value="{DynamicResource BrushAccent}" /></Style>
     <Style Selector="c|IconGlyph.chainfolder.cable"><Setter Property="Foreground" Value="{DynamicResource BrushCable}" /></Style>
-    <Style Selector="Button.step.chainchevron"><Setter Property="Padding" Value="2" /><Setter Property="MinWidth" Value="0" /><Setter Property="MinHeight" Value="0" /></Style>
     <Style Selector="c|IconGlyph.pillglyph"><Setter Property="Width" Value="{StaticResource PillGlyphSize}" /><Setter Property="Height" Value="{StaticResource PillGlyphSize}" /></Style>
     <Style Selector="Border.chainindent"><Setter Property="Width" Value="2" /><Setter Property="Margin" Value="6,-5,0,-5" /><Setter Property="Background" Value="{DynamicResource BrushAccent}" /></Style>
     <Style Selector="TextBlock.chainhint"><Setter Property="FontSize" Value="10.5" /><Setter Property="Foreground" Value="{DynamicResource BrushMuted}" /></Style>
@@ -274,11 +127,6 @@
     </Style>
     <Style Selector="Button:not(.scope):not(.groupHeader):not(.step):not(.primary):pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-    </Style>
-    <!-- Lit (on) buttons keep their lit look but still react to the mouse -->
-    <Style Selector="Button.scope.mute.on:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
     </Style>
 
