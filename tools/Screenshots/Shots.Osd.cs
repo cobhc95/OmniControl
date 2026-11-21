@@ -10,7 +10,7 @@ internal static partial class Shots
     private static void OsdPage(Rig rig, Camera camera)
     {
         Use(ViewTemplate.For<OsdPageViewModel, OsdPage>());
-        var page = new OsdPageViewModel(rig.Osd, rig.Actions, rig.Presets, Rig.OpenPresets, _ => Task.FromResult(false),
+        var page = new OsdPageViewModel(rig.Osd, Rig.OpenPresets, _ => Task.FromResult(false),
             Array.Empty<RunningProgram>, Rig.Report);
         rig.Pages.Add(page);
         page.Customize.IsExpanded = true;

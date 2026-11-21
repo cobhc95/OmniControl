@@ -55,27 +55,32 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     private readonly DevicesModule _devices;
     private readonly OtherPcsModule _otherPcs;
     private readonly IReadOnlyList<IFeatureModule> _modules; // in start-up order
-    private readonly IReadOnlyList<PageViewModel> _allPages;
+    private readonly IReadOnlyList<PageSlot> _allPages;
+    private readonly PageSlot _appSettings;
     private bool _syncing;
     private bool _windowShown; // the main window is showing and not minimised
+    private PageSlot? _openSlot; // the sidebar or footer entry shown on the right
     private PageViewModel? _wired; // the open page once it has been wired (DrawFirst); null until then
 
     /// Feature pages in the sidebar (after search filtering).
-    public ObservableCollection<PageViewModel> Pages { get; } = new();
+    public ObservableCollection<PageSlot> Pages { get; } = new();
 
     /// What the sidebar list shows: the <see cref="Pages"/> with a <see cref="NavHeading"/> before the first page of each group.
     public ObservableCollection<object> NavItems { get; } = new();
 
     /// Pages pinned to the bottom of the sidebar (app-level, not features).
-    public ObservableCollection<PageViewModel> FooterPages { get; } = new();
+    public ObservableCollection<PageSlot> FooterPages { get; } = new();
 
     /// The entries at the bottom of the sidebar under a divider that open a window, not a page (Actions and hotkeys).
     public IReadOnlyList<NavLauncher> PinnedEntries { get; }
-    private readonly IReadOnlyList<PageViewModel> _allFooter;
+    private readonly IReadOnlyList<PageSlot> _allFooter;
+
+    /// Every page, sidebar then footer.
+    private IEnumerable<PageSlot> AllSlots => _allPages.Concat(_allFooter);
 
     public string VersionText => AppInfo.VersionText;
 
-    /// The page shown on the right. Set via the two sidebar lists below.
+    /// The page shown on the right (null while its view-model could not be made). Set via the two sidebar lists below.
     [ObservableProperty] private PageViewModel? _currentPage;
 
     private readonly DispatcherTimer _hiddenSettle = new() { Interval = Timing.HiddenSettle };
@@ -83,8 +88,8 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
 
     /// The main window has stayed hidden <see cref="Timing.UiReleaseAfterHidden"/>: whoever owns the main window and the tray panel lets them go.
     public event Action? ReleaseWindows;
-    [ObservableProperty] private PageViewModel? _selectedMainPage;
-    [ObservableProperty] private PageViewModel? _selectedFooterPage;
+    [ObservableProperty] private PageSlot? _selectedMainPage;
+    [ObservableProperty] private PageSlot? _selectedFooterPage;
     [ObservableProperty] private string _searchText = string.Empty;
     [ObservableProperty] private string _status = string.Empty;
 
@@ -124,23 +129,22 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         // What an import from another PC may reload live of what the shell itself owns; each module says so for its own.
         RegisterReloads();
 
-        // The sidebar, in order (a page's NavGroup decides its heading; keep the pages of a group together). Pages that list actions
-        // (Mouse and Trackpad) follow the master list's changes, so the order does not decide which actions they offer. Each page starts on
-        // its own: one that fails is logged and left out, and the window still opens.
+        // The sidebar, in order (a page's NavGroup decides its heading; keep the pages of a group together). Each page registers its
+        // entries here, in this order; its view-model is made when it is first needed, except for the pages that still serve their own
+        // actions (FeaturePage.AtStart): one of those that fails is logged and left out, and the window still opens.
         _allPages = new IFeatureModule[] { _displays, _volume, _devices, _otherPcs, _input, automation, _osd, resources }
-            .SelectMany(m => m.Pages).Select(p => TryMake(p.Name, p.Make)).OfType<PageViewModel>().ToArray();
+            .SelectMany(m => m.Pages).Select(Slot).OfType<PageSlot>().ToArray();
         foreach (var module in _modules) module.PagesMade();
         _presetManager.UseSections(_allPages.Select(p => new PresetSection(p.Title, p.Icon))
             .Append(new PresetSection(ActionsWindowService.Title, ActionsWindowService.Icon)).ToList());
         TrayFlyout = MakeTray();
-        _allFooter = new[]
-        {
-            TryMake("App settings", () => new AppSettingsPageViewModel(_hotkeys, () => _hotkeys.Chain, _about.Open, _volume.Library.ScanAsync, _volume.Library.FoundText,
-                () => _presetManager.Open(null, null), new BackupService(_dialogs.ChooseAsync, Report, _otherPcs.ImportFrom), _dialogs.Confirmations, _updates, Report,
-                ShowKeyboardShortcuts, _volume.Mixer, _hardware, _settings, TrayFlyout)),
-        }.OfType<PageViewModel>().ToArray();
+        _appSettings = new PageSlot(AppSettingsPageViewModel.Info, () => new AppSettingsPageViewModel(_about.Open, _volume.Library.ScanAsync, _volume.Library.FoundText,
+            () => _presetManager.Open(null, null), new BackupService(_dialogs.ChooseAsync, Report, _otherPcs.ImportFrom), _dialogs.Confirmations, _updates, Report,
+            _volume.Mixer, _hardware, _settings, TrayFlyout), OnPageMade, Report);
+        RegisterAppActions();
+        _allFooter = new[] { _appSettings };
         // The Choose-the-action window's sections are the sidebar pages, in the sidebar's order, with their icons.
-        _hotkeys.UseSections(_allPages.Concat(_allFooter).Select((p, i) => new ActionSection(p.Title, p.Icon, i + 1)).ToList());
+        _hotkeys.UseSections(AllSlots.Select((p, i) => new ActionSection(p.Title, p.Icon, i + 1)).ToList());
 
         Guard.Run("Start-up: power journal", _power.Start);
         _hardware.Start();
@@ -149,7 +153,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         RegisterTray(TrayFlyout);
         WatchUpdates();
 
-        Categories = new[] { AllCategories }.Concat(_allPages.Concat(_allFooter).Select(p => p.Title)).ToArray();
+        Categories = new[] { AllCategories }.Concat(AllSlots.Select(p => p.Title)).ToArray();
         _selectedCategory = AllCategories;
 
         ApplyFilter();
@@ -196,19 +200,23 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     public IEnumerable<IDataTemplate> Templates => _modules.SelectMany(m => m.Templates)
         .Append(ViewTemplate.For<AppSettingsPageViewModel, AppSettingsPage>()).Append(ViewTemplate.For<SuggestedKeysSwitch, SuggestedKeysView>());
 
-    /// Makes one page; a page that fails to start is logged, said in one plain sentence and left out.
-    private PageViewModel? TryMake(string name, Func<PageViewModel> make)
+    /// A feature page's place in the sidebar: a page made at start-up is made now (left out when that fails); any other registers its
+    /// entries now and is made at its first use.
+    private PageSlot? Slot(FeaturePage page)
     {
-        try
-        {
-            return make();
-        }
-        catch (Exception ex) when (ex is not OutOfMemoryException)
-        {
-            Guard.Log($"Start-up: {name} page", ex);
-            Report(Guard.SeeLog($"The {name} page couldn't start."));
-            return null;
-        }
+        var slot = new PageSlot(page.Info, page.Make, OnPageMade, Report);
+        if (page.AtStart) return slot.Page is null ? null : slot;
+        if (page.Registers is { } register && Guard.Run($"Start-up: {page.Info.Title} page's actions", register) is not null)
+            Report(Guard.SeeLog($"The {page.Info.Title} page's actions couldn't start."));
+        return slot;
+    }
+
+    /// A page was just made (at start-up, or at its first opening, search, restore or reveal): it gets its Restore defaults button, and
+    /// App settings the combined restore.
+    private void OnPageMade(PageViewModel page)
+    {
+        AttachRestore(page);
+        if (page is AppSettingsPageViewModel settings && _restoreAll is { } all) settings.ShowRestoreAll(all);
     }
 
     private const string AllCategories = "All categories";
@@ -222,7 +230,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
 
     partial void OnSearchTextChanged(string value) => ApplyFilter();
 
-    partial void OnSelectedMainPageChanged(PageViewModel? value)
+    partial void OnSelectedMainPageChanged(PageSlot? value)
     {
         if (value is null || _syncing) return;
         _syncing = true;
@@ -239,10 +247,12 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     {
         if (Pages.FirstOrDefault(p => p.Title == title) is { } page) SelectedMainPage = page;
         else if (FooterPages.FirstOrDefault(p => p.Title == title) is { } footer) SelectedFooterPage = footer;
-        if (tab is not null) _allPages.Concat(_allFooter).FirstOrDefault(p => p.Title == title)?.Tabs?.Select(tab);
+        if (tab is not null) SlotOf(title)?.Page?.Tabs?.Select(tab);
     }
 
-    partial void OnSelectedFooterPageChanged(PageViewModel? value)
+    private PageSlot? SlotOf(string title) => AllSlots.FirstOrDefault(p => p.Title == title);
+
+    partial void OnSelectedFooterPageChanged(PageSlot? value)
     {
         if (value is null || _syncing) return;
         _syncing = true;
@@ -253,20 +263,21 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
 
     /// The footer's App settings button: opens the page it stands for.
     [RelayCommand]
-    private void OpenFooterPage(PageViewModel? page) => SelectedFooterPage = page;
+    private void OpenFooterPage(PageSlot? page) => SelectedFooterPage = page;
 
     // Draw first, wire later (DrawFirst): the page is drawn at once from what it holds, then it reads the machine and comes on screen.
-    private void Show(PageViewModel page)
+    private void Show(PageSlot slot)
     {
-        if (page == CurrentPage) return;
+        if (slot == _openSlot) return;
         var clock = System.Diagnostics.Stopwatch.StartNew();
         if (_windowShown) _wired?.OnOnScreenChanged(false);
         _wired = null;
-        if (CurrentPage is not null) CurrentPage.IsOpen = false;
-        CurrentPage = page;
-        page.IsOpen = true;
-        UiTiming.Shown($"Page {page.Title}", clock);
-        DrawFirst.ThenWire(() => Wire(page, clock));
+        if (_openSlot is not null) _openSlot.IsOpen = false;
+        _openSlot = slot;
+        slot.IsOpen = true;
+        CurrentPage = slot.Page; // made here at its first opening
+        UiTiming.Shown($"Page {slot.Title}", clock);
+        if (CurrentPage is { } page) DrawFirst.ThenWire(() => Wire(page, clock));
     }
 
     private void Wire(PageViewModel page, System.Diagnostics.Stopwatch clock)
@@ -289,7 +300,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         FollowRestoreCheck(shown);
         if (shown) _apps.Refresh();
         _wired?.OnOnScreenChanged(shown); // a page not wired yet comes on screen when it is
-        foreach (var page in _allPages) page.OnWindowShownChanged(shown);
+        foreach (var slot in _allPages) slot.IfMade?.OnWindowShownChanged(shown);
     }
 
     /// The one way anything reports to the screen; safe from any thread, so services never post it themselves.
@@ -345,7 +356,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         Step(ShutdownStage.HotkeysSwitch, "hotkeys switch", _hotkeysSwitch.Dispose);
         Step(ShutdownStage.PresetShortcuts, "preset shortcuts", _presetShortcuts.Dispose);
         Step(ShutdownStage.PresetGroups, "preset groups", _presetGroups.Dispose);
-        foreach (var page in _allPages.Concat(_allFooter).OfType<IDisposable>()) Step(ShutdownStage.Pages, page.GetType().Name, page.Dispose);
+        foreach (var page in AllSlots.Select(s => s.IfMade).OfType<IDisposable>()) Step(ShutdownStage.Pages, page.GetType().Name, page.Dispose);
         Step(ShutdownStage.Icons, "icons", _icons.Dispose);
         Step(ShutdownStage.Hotkeys, "hotkeys", _hotkeys.Dispose);
         Step(ShutdownStage.AppWindows, "about window", _about.Close);

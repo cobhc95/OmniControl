@@ -1,7 +1,5 @@
-using OmniControl.App.Features.Hotkeys;
 using OmniControl.App.Features.Osd;
 using OmniControl.App.Shared.Ui.Restore;
-using OmniControl.App.Shared.Presets;
 
 namespace OmniControl.App.Features.Osd.Pages;
 
@@ -14,15 +12,13 @@ public sealed class OsdPageViewModel : PageViewModel, IDisposable
     private readonly Func<IReadOnlyList<RunningProgram>> _listedApps;
     private readonly SingleWindow<OsdDurationWindow> _durationWindow;
 
-    public override string Title => "OSD";
-
-    public override string? NavGroup => NavGroups.System;
+    public static readonly PageInfo Info = new("OSD", "M3,5 H21 A1,1 0 0 1 22,6 V18 A1,1 0 0 1 21,19 H3 A1,1 0 0 1 2,18 V6 A1,1 0 0 1 3,5 Z M4,7 V17 H20 V7 Z M6,13 H14 V15 H6 Z", NavGroups.System,
+        "osd on-screen display overlay popup position place places custom screen screens monitor style color colour accent opacity duration time seconds how long exceptions volume brightness windows",
+        "osd");
 
     public override IRestorable? Restorable => _restorable;
 
     public override string KeyHelp => "Enter on Position or Show on opens its menu.";
-    public override string Icon => "M3,5 H21 A1,1 0 0 1 22,6 V18 A1,1 0 0 1 21,19 H3 A1,1 0 0 1 2,18 V6 A1,1 0 0 1 3,5 Z M4,7 V17 H20 V7 Z M6,13 H14 V15 H6 Z";
-    public override string Keywords => "osd on-screen display overlay popup position place places custom screen screens monitor style color colour accent opacity duration time seconds how long exceptions volume brightness windows";
 
     /// Every setting as a card: master switch, position, look, colours, opacity, one switch per element, Windows' own OSD.
     public IReadOnlyList<object> Primary { get; }
@@ -48,12 +44,11 @@ public sealed class OsdPageViewModel : PageViewModel, IDisposable
 
     private readonly SliderItem _duration;
 
-    /// <param name="presets">The master list of preset groups: the page registers its named places.</param>
     /// <param name="openPresets">Opens the preset manager at a section and group (the Position menu's "Manage places...").</param>
     /// <param name="askPlacement">Shows the placement window and answers whether OK was pressed.</param>
     /// <param name="listedApps">The programs of the app lists, offered by the OSD duration window's exceptions.</param>
-    public OsdPageViewModel(OsdService osd, IActionRegistry hotkeys, IPresetGroups presets, Action<string?, string?> openPresets,
-        Func<OsdPlacementViewModel, Task<bool>> askPlacement, Func<IReadOnlyList<RunningProgram>> listedApps, Action<string> report)
+    public OsdPageViewModel(OsdService osd, Action<string?, string?> openPresets,
+        Func<OsdPlacementViewModel, Task<bool>> askPlacement, Func<IReadOnlyList<RunningProgram>> listedApps, Action<string> report) : base(Info)
     {
         (_osd, _openPresets, _askPlacement, _listedApps) = (osd, openPresets, askPlacement, listedApps);
         _durationWindow = new SingleWindow<OsdDurationWindow>(report);
@@ -98,10 +93,14 @@ public sealed class OsdPageViewModel : PageViewModel, IDisposable
             Cog = new RelayCommand(OpenDuration),
             CogTip = "Duration per app or event…",
         };
+        int StyleIndex() => Math.Max(0, Array.IndexOf(styles, osd.Settings.Style));
         _followed.Follow<Action>(h => osd.SettingsChanged += h, h => osd.SettingsChanged -= h, () =>
         {
             style.Refresh(); accent.Refresh(); background.Refresh(); position.Refresh(); showOn.Refresh();
             duration.Load(Tenths(osd.Durations.EverythingElse)); // the OSD duration window changed it
+            show.Load(osd.Settings.Enabled); // the module's actions changed these
+            windows.Load(osd.Settings.HideWindowsOsd);
+            style.Load(StyleIndex());
         });
         // The settings were read from disk again (an import): the cards the service does not redraw itself show the new values without applying them.
         _followed.Follow<Action>(h => osd.Reloaded += h, h => osd.Reloaded -= h, () =>
@@ -110,7 +109,7 @@ public sealed class OsdPageViewModel : PageViewModel, IDisposable
             windows.Load(osd.Settings.HideWindowsOsd);
             opacity.Value = osd.Settings.Opacity;
             duration.Load(Tenths(osd.Durations.EverythingElse));
-            style.Load(Math.Max(0, Array.IndexOf(styles, osd.Settings.Style)));
+            style.Load(StyleIndex());
             accent.Load(AccentIndex());
             background.Load(BackgroundIndex());
         });
@@ -123,7 +122,7 @@ public sealed class OsdPageViewModel : PageViewModel, IDisposable
 
         // "Restore defaults": every setting goes through the cards, so the service and the page follow at once (the position through the service
         // alone, so no preview pop-up appears).
-        _restorable = new SettingsRestore<OsdSettings>("osd", Title,
+        _restorable = new SettingsRestore<OsdSettings>(Info.RestoreKey!, Title,
             () => "Turns Show OSD on, shows Windows' own OSD again, and puts the style, accent, background, position, the screens it shows on, opacity, duration and the Show in OSD switches back to their defaults. Your named places and duration exceptions are kept.",
             () => osd.Settings, () => new OsdSettings(),
             target =>
@@ -141,16 +140,6 @@ public sealed class OsdPageViewModel : PageViewModel, IDisposable
                 Elements = BuildElements();
                 return Task.FromResult(true);
             });
-
-        // The named places are presets (the same provider pattern as the layers): the preset manager lists, renames and reorders them.
-        presets.Register(new PresetGroup(OsdPlacePresets.GroupId, Title, "Places", new OsdPlacePresets(osd)));
-
-        hotkeys.Register(new HotkeyAction("osd.toggle", "Toggle OSD", Title, "osd on-screen display overlay popup",
-            _ => show.IsOn = !show.IsOn));
-        hotkeys.Register(new HotkeyAction("osd.style.next", "Next OSD style", Title, "osd on-screen display style look",
-            _ => style.Step(1)));
-        hotkeys.Register(new HotkeyAction("osd.windows.toggle", "Toggle hiding Windows' OSD", Title, "osd windows volume brightness popup",
-            _ => windows.IsOn = !windows.IsOn));
     }
 
     // The Position menu: the seven built-in places, the user's named places, "Custom position..." and "Manage places...".

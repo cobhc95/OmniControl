@@ -81,8 +81,11 @@ public sealed class VolumeModule : IFeatureModule
 
     public IReadOnlyList<FeaturePage> Pages => new[]
     {
-        new FeaturePage("Volume", () => _page = new VolumePageViewModel(new VolumePageServices(Mixer, _support!, _effects!, _installer!, _context!.Actions, _context.Osd, _context.Report,
-            _fxWindows!.Open, _fxWindows.Toggle, _context.AskAsync, CombineWindow.AskAsync, _volumePresets!, _context.Presets, _context.OpenPresetManager, _context.States, _pageSettings!))),
+        new FeaturePage(VolumePageViewModel.Info, () => _page = new VolumePageViewModel(new VolumePageServices(Mixer, _support!, _effects!, _installer!, _context!.Actions, _context.Osd, _context.Report,
+            _fxWindows!.Open, _fxWindows.Toggle, _context.AskAsync, CombineWindow.AskAsync, _volumePresets!, _context.Presets, _context.OpenPresetManager, _context.States, _pageSettings!)))
+        {
+            AtStart = true,
+        },
     };
 
     /// The effects' preset groups belong to the Volume page; they are made by the FX windows, which know how a preset reaches an effect.

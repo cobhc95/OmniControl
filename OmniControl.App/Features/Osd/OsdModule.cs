@@ -1,5 +1,7 @@
 using Avalonia.Controls.Templates;
+using OmniControl.App.Features.Hotkeys;
 using OmniControl.App.Features.Osd.Pages;
+using OmniControl.App.Shared.Presets;
 
 namespace OmniControl.App.Features.Osd;
 
@@ -25,8 +27,22 @@ public sealed class OsdModule(Func<IReadOnlyList<RunningProgram>> listedApps) : 
 
     public IReadOnlyList<FeaturePage> Pages => new[]
     {
-        new FeaturePage("OSD", () => new OsdPageViewModel(_service, _context!.Actions, _context.Presets, _context.OpenPresetManager, OsdPlacementWindow.AskAsync, listedApps, _context.Report)),
+        new FeaturePage(OsdPageViewModel.Info, () => new OsdPageViewModel(_service, _context!.OpenPresetManager, OsdPlacementWindow.AskAsync, listedApps, _context.Report))
+        {
+            Registers = RegisterPageEntries,
+        },
     };
+
+    /// The page's named places (presets, the same provider pattern as the layers: the preset manager lists, renames and reorders them) and actions.
+    private void RegisterPageEntries()
+    {
+        var title = OsdPageViewModel.Info.Title;
+        _context!.Presets.Register(new PresetGroup(OsdPlacePresets.GroupId, title, "Places", new OsdPlacePresets(_service)));
+        var actions = _context.Actions;
+        actions.Register(new HotkeyAction("osd.toggle", "Toggle OSD", title, "osd on-screen display overlay popup", _ => _service.ToggleEnabled()));
+        actions.Register(new HotkeyAction("osd.style.next", "Next OSD style", title, "osd on-screen display style look", _ => _service.StepStyle()));
+        actions.Register(new HotkeyAction("osd.windows.toggle", "Toggle hiding Windows' OSD", title, "osd windows volume brightness popup", _ => _service.ToggleHideWindowsOsd()));
+    }
 
     public IReadOnlyList<IDataTemplate> Templates { get; } = new[] { ViewTemplate.For<OsdPageViewModel, OsdPage>() };
 }

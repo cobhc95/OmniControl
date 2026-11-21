@@ -90,7 +90,7 @@ public sealed class ResourcesModule : IFeatureModule, IResourcesWindows
 
     public IReadOnlyList<FeaturePage> Pages => new[]
     {
-        new FeaturePage(Title, () => _page = new ResourcesPageViewModel(_monitor!, _settings, _limits!,
+        new FeaturePage(ResourcesPageViewModel.Info, () => _page = new ResourcesPageViewModel(_monitor!, _settings, _limits!,
             new ProviderChoice("Resources presets", _presets!, () => _context!.OpenPresetManager(Title, ResourcePresets.GroupId), withCustom: true),
             _context!.AppScopes, _context.AppScopeGate,
             new GadgetSettingsModel(_settings, _context.Actions, _gadget!, _layouts!, () => _context.OpenPresetManager(Title, GadgetLayouts.GroupId), _weather!,

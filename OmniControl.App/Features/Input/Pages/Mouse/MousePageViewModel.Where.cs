@@ -1,6 +1,4 @@
 using OmniControl.App.Features.AppLists;
-using OmniControl.App.Features.Hotkeys;
-using OmniControl.App.Features.Input.Mouse;
 using OmniControl.Core.Engine.Mouse;
 
 namespace OmniControl.App.Features.Input.Pages.Mouse;
@@ -22,7 +20,7 @@ public sealed partial class MousePageViewModel
     /// The group: Enable gestures and pause in full-screen games side by side, then the apps to never act in and run as administrator, then sending actions to remote PCs as keys.
     public ItemGroup WhereGroup { get; private set; } = null!;
 
-    private void BuildWhereGroup(AppScopes scopes, IActionRegistry hotkeys)
+    private void BuildWhereGroup(AppScopes scopes)
     {
         _pauseCard = new ToggleItem("Pause in full-screen games", Settings.PauseInFullScreen, _mouse.SetPauseInFullScreen)
         {
@@ -72,10 +70,6 @@ public sealed partial class MousePageViewModel
         };
 
         _followed.Follow<Action>(h => _mouse.Applied += h, h => _mouse.Applied -= h, ShowWhereSettings);
-        var pauseFamily = new OnOffFamily(MouseService.PauseFullScreenId, "Pause in full-screen games", MouseService.PauseFullScreenId);
-        var pause = new HotkeyAction(MouseService.PauseFullScreenId, "Toggle pause in full-screen games", Title, "full screen fullscreen game pause mouse buttons gestures",
-            _ => _mouse.TogglePauseInFullScreen()) { Family = pauseFamily.Family, FamilyRole = OnOffFamily.ToggleRole };
-        hotkeys.Register(pauseFamily.Siblings(pause, _mouse.SetPauseInFullScreen).Prepend(pause));
     }
 
     private void OnAdministratorPicked(bool on) => _ = Guard.RunAsync("Run as administrator", async () =>

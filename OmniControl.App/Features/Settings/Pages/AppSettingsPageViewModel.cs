@@ -1,6 +1,3 @@
-using Avalonia.Styling;
-using OmniControl.App.Shared.Contracts;
-using OmniControl.App.Features.Hotkeys;
 using OmniControl.App.Features.Settings.Pages.Backup;
 using OmniControl.App.Features.Tray;
 using OmniControl.App.Shared.Services.Updates;
@@ -31,9 +28,9 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
 
     public const string Name = "App settings";
 
-    public override string Title => Name;
-    public override string Icon => "M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8 Z M10,2 H14 L14.6,4.6 L16.6,5.6 L19,4.3 L21.7,7 L20.4,9.4 L21.4,11.4 L24,12 V16 L21.4,16.6 L20.4,18.6 L21.7,21 L19,23.7 L16.6,22.4 L14.6,23.4 L14,26 H10 L9.4,23.4 L7.4,22.4 L5,23.7 L2.3,21 L3.6,18.6 L2.6,16.6 L0,16 V12 L2.6,11.4 L3.6,9.4 L2.3,7 L5,4.3 L7.4,5.6 L9.4,4.6 Z";
-    public override string Keywords => "settings appearance color colour mode theme accent tray icon plug-in plugin folders vst backup restore export import wipe confirm confirmation ask again";
+    public static readonly PageInfo Info = new(Name,
+        "M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8 Z M10,2 H14 L14.6,4.6 L16.6,5.6 L19,4.3 L21.7,7 L20.4,9.4 L21.4,11.4 L24,12 V16 L21.4,16.6 L20.4,18.6 L21.7,21 L19,23.7 L16.6,22.4 L14.6,23.4 L14,26 H10 L9.4,23.4 L7.4,22.4 L5,23.7 L2.3,21 L3.6,18.6 L2.6,16.6 L0,16 V12 L2.6,11.4 L3.6,9.4 L2.3,7 L5,4.3 L7.4,5.6 L9.4,4.6 Z",
+        Keywords: "settings appearance color colour mode theme accent tray icon plug-in plugin folders vst backup restore export import wipe confirm confirmation ask again", RestoreKey: "app");
 
     public GalleryItem Theme { get; }
     public GalleryItem Accent { get; }
@@ -83,20 +80,19 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
     /// <param name="backup">Export, import and wipe of every saved store (the Backup and restore card).</param>
     /// <param name="updates">The update check (the Updates and about group).</param>
     /// <param name="report">Says one plain sentence in the window's footer (a web page that would not open).</param>
-    /// <param name="showShortcuts">Opens the Keyboard shortcuts window (F1); registered as an action so it stays reachable from search and the Actions and hotkeys window.</param>
+
     /// <param name="mixer">Holds "Keep OmniControl's effects in place" (the Plug-ins group's switch, also in every FX window's Options).</param>
     /// <param name="hardware">The master list of hardware watches: the "Check hardware every" card sets how often its periodic safety check runs.</param>
     /// <param name="settings">The app's settings in use, which this page edits.</param>
-    public AppSettingsPageViewModel(IActionRegistry hotkeys, Func<RunChain?> chainNow, Action openAbout, Func<IProgress<int>?, CancellationToken, Task<int>> scanPlugins,
-        Func<string> scanResult, Action openPresets, BackupService backup, ConfirmationMemory confirmations, UpdateService updates, Action<string> report, Action showShortcuts,
-        Features.Volume.Audio.MixerService mixer, HardwareWatches hardware, AppSettings settings, ITrayIconLook trayIcon)
+    public AppSettingsPageViewModel(Action openAbout, Func<IProgress<int>?, CancellationToken, Task<int>> scanPlugins,
+        Func<string> scanResult, Action openPresets, BackupService backup, ConfirmationMemory confirmations, UpdateService updates, Action<string> report,
+        Features.Volume.Audio.MixerService mixer, HardwareWatches hardware, AppSettings settings, ITrayIconLook trayIcon) : base(Info)
     {
         _settings = settings;
         _confirmations = confirmations;
         _hardware = hardware;
         var themes = Enum.GetNames<ThemeChoice>();
         Theme = new GalleryItem("Theme", themes, (int)_settings.Theme, i => (ThemeSwatch.Fill(i), SwatchMark.None), i => OnThemeChosen(themes[i])) { Half = true };
-        Apply(_settings.Theme);
 
         Accent = MakeAccentCards(report);
 
@@ -170,18 +166,6 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
         ReloadConfirmations();
         Follow(h => confirmations.Changed += h, h => confirmations.Changed -= h, ReloadConfirmations);
         ReadStartup();
-        hotkeys.Register(new HotkeyAction("app.show", "Open OmniControl", Title, "show window open tray restore", _ => AppLifecycle.RequestShow($"the action Open OmniControl, run by {RunChain.Describe(chainNow())}")) { NeverBlock = true, SuggestedIcons = new[] { "app", "home" } });
-        hotkeys.Register(new HotkeyAction("app.toggle", "Show or hide OmniControl", Title, "show hide toggle window tray minimise",
-            _ => AppLifecycle.RequestToggle($"the action Show or hide OmniControl, run by {RunChain.Describe(chainNow())}"))
-            { NeverBlock = true, DefaultKey = "Alt+X", SuggestedIcons = new[] { "app", "home" } });
-        hotkeys.Register(new HotkeyAction("app.shortcuts", "Keyboard shortcuts", Title, "keyboard shortcuts keys help list f1", _ => showShortcuts()) { SuggestedIcons = new[] { "keyboard", "help" } });
-        hotkeys.Register(new HotkeyAction("app.quit", "Quit OmniControl", Title, "exit quit close stop tray", _ => AppLifecycle.RequestQuit()) { SuggestedIcons = new[] { "power", "lock" } });
-        hotkeys.Register(new HotkeyAction("app.updates.check", "Check for updates", Title, "update updates upgrade new version release github check", _ => CheckNow())
-        {
-            SuggestedIcons = new[] { "download", "refresh" },
-        });
-        hotkeys.Register(new HotkeyAction("app.plugins.scan", "Scan for plug-ins", Title, "plug-in plugin vst vst2 vst3 scan search folders",
-            _ => StartScan()));
     }
 
     /// The menu of the Import from another PC card: the paired PCs that are connected now (asked every time it opens), each opens the import window.
@@ -226,22 +210,16 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
             : string.Empty;
     }
 
-    /// Takes settings.json from disk as it is now (an import wrote it): the theme, accent and background colour are applied, the cards show the values and the
-    /// hardware check runs as chosen. The features' setting slots read the same settings, so they follow.
-    public bool ReloadFromDisk()
+    /// settings.json was taken from disk again and applied (an import, <c>ShellViewModel.ReloadAppSettings</c>): the cards show the values without applying them again.
+    public void ShowReloaded()
     {
-        SettingsCopy.Into(_settings, AppSettings.Load());
-        Apply(_settings.Theme);
         Theme.Load((int)_settings.Theme);
-        SurfaceService.Set(_settings.Background);
         Background.Load(SurfaceService.IndexOf(_settings.Background));
-        ReloadAccent();
+        Accent.Load(AccentIndex(AccentService.Name));
         ShowGroupsOpen();
         _startMinimised.Load(_settings.StartMinimised);
         _whenClosing.Load(_whenClosing.Options, CloseBehaviors.LabelOf(_settings.CloseBehavior));
-        _hardware.ApplyCheck();
         _hardwareCheck.Load(_hardwareCheck.Options, HardwareChecks.LabelOf(_hardware.Check));
-        return true;
     }
 
     /// The choice was changed elsewhere (the sidebar chip, Restore defaults): the card shows it without applying it again.
@@ -250,20 +228,9 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
     private void OnThemeChosen(string name)
     {
         var choice = Enum.Parse<ThemeChoice>(name);
-        Apply(choice);
+        ThemeChoices.Apply(choice);
         _settings.Theme = choice;
         _settings.Save();
-    }
-
-    private static void Apply(ThemeChoice choice)
-    {
-        if (Application.Current is { } app)
-            app.RequestedThemeVariant = choice switch
-            {
-                ThemeChoice.Light => ThemeVariant.Light,
-                ThemeChoice.Dark => ThemeVariant.Dark,
-                _ => ThemeVariant.Default,
-            };
     }
 
     private readonly Subscriptions _followed = new(); // the services' events this page follows, given back at Dispose

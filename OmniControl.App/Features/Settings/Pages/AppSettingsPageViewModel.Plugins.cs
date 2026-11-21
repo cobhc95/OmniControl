@@ -61,8 +61,8 @@ public sealed partial class AppSettingsPageViewModel
         _scan.Description = "Scan now to drop its plug-ins from the list.";
     }
 
-    /// Scan now (and its hotkey): one scan at a time; the card's line says how far it got, then what it found.
-    private void StartScan() => _ = ScanAsync();
+    /// Scan now (and the shell's "Scan for plug-ins" action): one scan at a time; the card's line says how far it got, then what it found.
+    public void StartScan() => _ = ScanAsync();
 
     private async Task ScanAsync()
     {

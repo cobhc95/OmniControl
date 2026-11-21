@@ -10,7 +10,7 @@ public sealed partial class VolumePageViewModel
 {
     private IRestorable? _restorable;
 
-    public override IRestorable? Restorable => _restorable ??= new SettingsRestore<MixerSettings>("volume", Title,
+    public override IRestorable? Restorable => _restorable ??= new SettingsRestore<MixerSettings>(Info.RestoreKey!, Title,
         () => AudioDefaults.Scope,
         () => _mixer.Settings, () => AudioDefaults.DefaultsOf(_mixer.Settings),
         target =>

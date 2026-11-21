@@ -22,6 +22,7 @@ public partial class App : Application
         CrashGuard.Install();
         _watchdog = new UiWatchdog();
         var settings = AppSettings.Current;
+        ThemeChoices.Apply(settings.Theme);
         SurfaceService.Initialize(settings.Background); // first: the accent's washes are blended into its page colour
         AccentService.Initialize(settings.Accent, settings.AccentCustom, settings.AccentIntensity);
         ValueWheel.Register();

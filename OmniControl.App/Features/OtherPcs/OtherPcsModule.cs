@@ -1,4 +1,5 @@
 using Avalonia.Controls.Templates;
+using OmniControl.App.Features.Hotkeys;
 using OmniControl.App.Features.OtherPcs.Pages;
 using OmniControl.App.Features.OtherPcs.SettingsImport;
 
@@ -10,6 +11,7 @@ public sealed class OtherPcsModule(Func<bool, string> shareDevices) : IFeatureMo
 {
     private OtherPcsService? _service;
     private FeatureContext? _context;
+    private OtherPcsPageViewModel? _page;
 
     public IPairedPcs Paired => _service!;
 
@@ -34,8 +36,21 @@ public sealed class OtherPcsModule(Func<bool, string> shareDevices) : IFeatureMo
 
     public IReadOnlyList<FeaturePage> Pages => new[]
     {
-        new FeaturePage(OtherPcsService.Category, () => new OtherPcsPageViewModel(_service!, _context!.Actions, _context.AskAsync, _context.AskTextAsync, _context.Report, ImportFrom)),
+        new FeaturePage(OtherPcsPageViewModel.Info, () => _page = new OtherPcsPageViewModel(_service!, _context!.AskAsync, _context.AskTextAsync, _context.Report, ImportFrom))
+        {
+            Registers = RegisterPageActions,
+        },
     };
+
+    /// The page's tab actions: they act only while the page is on screen, so a page not made yet does nothing.
+    private void RegisterPageActions()
+    {
+        var actions = _context!.Actions;
+        actions.Register(new HotkeyAction("otherpcs.tab.new", "New PC tab", OtherPcsService.Category, "new pc tab pair another computer plus add", _ => _page?.RunTabAction(newTab: true))
+            { SuggestedIcons = new[] { "plus" } });
+        actions.Register(new HotkeyAction("otherpcs.tab.close", "Close PC tab", OtherPcsService.Category, "close pc tab unpair remove computer", _ => _page?.RunTabAction(newTab: false))
+            { SuggestedIcons = new[] { "trash" } });
+    }
 
     public IReadOnlyList<IDataTemplate> Templates { get; } = new[]
     {

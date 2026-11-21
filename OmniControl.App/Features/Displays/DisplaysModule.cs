@@ -22,8 +22,11 @@ public sealed class DisplaysModule : IFeatureModule
 
     public IReadOnlyList<FeaturePage> Pages => new[]
     {
-        new FeaturePage("Displays", () => _page = new DisplaysPageViewModel(_engine, _context!.Actions, _context.SuggestedKeys, _context.Osd, _software, _context.Report,
-            _context.Presets, _context.OpenPresetManager, _context.States, _context.Hardware)),
+        new FeaturePage(DisplaysPageViewModel.Info, () => _page = new DisplaysPageViewModel(_engine, _context!.Actions, _context.SuggestedKeys, _context.Osd, _software, _context.Report,
+            _context.Presets, _context.OpenPresetManager, _context.States, _context.Hardware))
+        {
+            AtStart = true,
+        },
     };
 
     public IReadOnlyList<IDataTemplate> Templates { get; } = new[] { ViewTemplate.For<DisplaysPageViewModel, DisplaysPage>() };

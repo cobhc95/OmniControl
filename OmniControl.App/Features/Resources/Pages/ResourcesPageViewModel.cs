@@ -28,11 +28,10 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
 
     public const string PageTitle = "Resources", ReadingsTab = "Readings", GadgetTab = "Taskbar gadget", NetworkGroupName = "Network traffic control";
 
-    public override string Title => PageTitle;
-    public override string? NavGroup => NavGroups.System;
+    public static readonly PageInfo Info = new(PageTitle, "M4,20 H20 V22 H4 Z M5,12 H8 V19 H5 Z M10.5,6 H13.5 V19 H10.5 Z M16,9 H19 V19 H16 Z", NavGroups.System,
+        "resources cpu gpu memory ram disk temperature network upload download speed traffic taskbar gadget limit throttle block firewall packet filter");
+
     public override bool ShowsOwnHeader => true; // the preset picker sits on the title line
-    public override string Icon => "M4,20 H20 V22 H4 Z M5,12 H8 V19 H5 Z M10.5,6 H13.5 V19 H10.5 Z M16,9 H19 V19 H16 Z";
-    public override string Keywords => "resources cpu gpu memory ram disk temperature network upload download speed traffic taskbar gadget limit throttle block firewall packet filter";
 
     public ChoiceItem PresetChoice => _presets.Choice;
     public override PageTabs Tabs { get; } = new(ReadingsTab, GadgetTab);
@@ -84,7 +83,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     /// <param name="presets">The title line's preset picker (the page disposes it).</param>
     /// <param name="gadget">The Taskbar gadget tab (the page disposes it).</param>
     internal ResourcesPageViewModel(ResourceMonitor monitor, ResourcesSettings settings, NetworkLimits limits, ProviderChoice presets,
-        AppScopes scopes, AppScopeGate gate, GadgetSettingsModel gadget, Action<string> report)
+        AppScopes scopes, AppScopeGate gate, GadgetSettingsModel gadget, Action<string> report) : base(Info)
     {
         (_monitor, _settings, _limits, _gate, _presets, _gadget, _report) = (monitor, settings, limits, gate, presets, gadget, report);
         Tabs.PropertyChanged += OnTabChanged;

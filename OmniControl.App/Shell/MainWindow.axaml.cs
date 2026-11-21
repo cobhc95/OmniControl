@@ -1,4 +1,4 @@
-﻿using Avalonia.Input;
+using Avalonia.Input;
 using Avalonia.VisualTree;
 using OmniControl.App.Features.Hotkeys;
 
@@ -157,7 +157,7 @@ public partial class MainWindow : Window
             return next.FindAncestorOfType<ListBox>() != list && Select(next);
         }
         if (at < 0) return false;
-        if (footer[0].DataContext is PageViewModel page) (DataContext as ShellViewModel)?.OpenFooterPageCommand.Execute(page);
+        if (footer[0].DataContext is PageSlot page) (DataContext as ShellViewModel)?.OpenFooterPageCommand.Execute(page);
         footer[0].Focus(NavigationMethod.Directional);
         return true;
 

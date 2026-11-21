@@ -1,4 +1,3 @@
-using OmniControl.App.Features.Hotkeys;
 using OmniControl.App.Features.OtherPcs;
 using OmniControl.App.Features.OtherPcs.SettingsImport;
 using OmniControl.App.Features.States;
@@ -18,15 +17,11 @@ public sealed partial class OtherPcsPageViewModel : PageViewModel, IDisposable
     private readonly Action<string> _report;
     private readonly ImportFromPcService _importFrom;
 
-    public override string Title => OtherPcsService.Category;
-
-    public override string? NavGroup => NavGroups.Devices;
-
-    public override string Icon => "M3,4 H17 V14 H3 Z M5,6 V12 H15 V6 Z M7,16 H13 V18 H7 Z M19,8 H22 V20 H19 Z M20,9.5 V10.5 H21 V9.5 Z";
+    public static readonly PageInfo Info = new(OtherPcsService.Category,
+        "M3,4 H17 V14 H3 Z M5,6 V12 H15 V6 Z M7,16 H13 V18 H7 Z M19,8 H22 V20 H19 Z M20,9.5 V10.5 H21 V9.5 Z", NavGroups.Devices,
+        "other pcs computers pair pairing code lan network tailscale zeroTier remote share shared states actions run another pc laptop");
 
     public override bool ShowsOwnHeader => true;
-
-    public override string Keywords => "other pcs computers pair pairing code lan network tailscale zeroTier remote share shared states actions run another pc laptop";
 
     /// The tabs: the paired PCs (<see cref="PcItem"/>) and the unfinished New PC tabs (<see cref="SetupTabItem"/>), in the one saved order.
     public ObservableCollection<object> Items { get; } = new();
@@ -39,8 +34,6 @@ public sealed partial class OtherPcsPageViewModel : PageViewModel, IDisposable
 
     public bool HasSelected => Selected is not null;
 
-    private const string NewTabActionId = "otherpcs.tab.new", CloseTabActionId = "otherpcs.tab.close";
-    private readonly IActionRegistry _hotkeys;
     private const string ThisPcWindowKey = "this-pc"; // cannot clash with a PC's id
     private readonly Dictionary<string, SingleWindow<WakeSetupWindow>> _wakeWindows = new();
 
@@ -49,13 +42,12 @@ public sealed partial class OtherPcsPageViewModel : PageViewModel, IDisposable
     private bool _ready;
     private bool _onScreen;
 
-    public OtherPcsPageViewModel(OtherPcsService service, IActionRegistry hotkeys, Func<DialogMessage, Task<bool>> ask, Func<DialogMessage, Task<string?>> askText, Action<string> report, ImportFromPcService importFrom)
+    public OtherPcsPageViewModel(OtherPcsService service, Func<DialogMessage, Task<bool>> ask, Func<DialogMessage, Task<string?>> askText, Action<string> report, ImportFromPcService importFrom)
+        : base(Info)
     {
         _service = service;
         _wake = service.Wake;
         _tailscale = service.Tailscale;
-        _hotkeys = hotkeys;
-        RegisterActions(hotkeys);
         _ask = ask;
         _askText = askText;
         _report = report;
@@ -172,26 +164,16 @@ public sealed partial class OtherPcsPageViewModel : PageViewModel, IDisposable
         else if (Selected is PcItem pc) pc.UnpairCommand.Execute(null);
     }
 
-    // The actions work only while this page is on screen, so a key bound to them never acts from another page.
-    private void RegisterActions(IActionRegistry hotkeys)
+    /// The module's "New PC tab" and "Close PC tab" actions (any thread): they work only while this page is on screen, so a key bound to them never acts from another page.
+    public void RunTabAction(bool newTab) => Dispatcher.UIThread.Post(() =>
     {
-        hotkeys.Register(new HotkeyAction(NewTabActionId, "New PC tab", Title, "new pc tab pair another computer plus add", _ => RunOnScreen(NewPcCommand))
-            { SuggestedIcons = new[] { "plus" } });
-        hotkeys.Register(new HotkeyAction(CloseTabActionId, "Close PC tab", Title, "close pc tab unpair remove computer", _ => RunOnScreen(CloseCurrentCommand))
-            { SuggestedIcons = new[] { "trash" } });
-    }
-
-    private void RunOnScreen(IRelayCommand command) => Dispatcher.UIThread.Post(() =>
-    {
-        if (_onScreen) command.Execute(null);
+        if (_onScreen) (newTab ? NewPcCommand : CloseCurrentCommand).Execute(null);
     });
 
     public override void OnOnScreenChanged(bool onScreen) => _onScreen = onScreen;
 
     public void Dispose()
     {
-        _hotkeys.Unregister(NewTabActionId);
-        _hotkeys.Unregister(CloseTabActionId);
         ThisPc.Dispose();
         _service.Changed -= OnServiceChanged;
         _service.RemoteChanged -= OnRemoteChanged;

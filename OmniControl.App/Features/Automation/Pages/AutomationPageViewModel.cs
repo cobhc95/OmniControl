@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using OmniControl.App.Features.Automation;
 using OmniControl.App.Features.Hotkeys;
 
@@ -14,13 +14,11 @@ public sealed partial class AutomationPageViewModel : PageViewModel, IDisposable
     private readonly AutomationService _service;
     private readonly Func<DialogMessage, Task<bool>> _ask;
 
-    public override string Title => ActionSections.Automation;
+    public static readonly PageInfo Info = new(ActionSections.Automation,
+        "M12,2 A10,10 0 1 1 12,22 A10,10 0 1 1 12,2 Z M12,4 A8,8 0 1 0 12,20 A8,8 0 1 0 12,4 Z M11,7 H13 V11.6 L16.2,13.4 L15.2,15.1 L11,12.7 Z", NavGroups.System,
+        "automation schedule scheduler timer task rules when time startup login log in sleep hibernate shut down restart sign out lock power mode wake battery idle script command custom action block powershell cmd batch python");
 
-    public override string? NavGroup => NavGroups.System;
-    public override string Icon => "M12,2 A10,10 0 1 1 12,22 A10,10 0 1 1 12,2 Z M12,4 A8,8 0 1 0 12,20 A8,8 0 1 0 12,4 Z M11,7 H13 V11.6 L16.2,13.4 L15.2,15.1 L11,12.7 Z";
     public override bool ShowsOwnHeader => true; // the tabs and the pause button sit on the title line
-    public override string Keywords =>
-        "automation schedule scheduler timer task rules when time startup login log in sleep hibernate shut down restart sign out lock power mode wake battery idle script command custom action block powershell cmd batch python";
 
     public override string KeyHelp => string.Join(Environment.NewLine,
         "Tab moves through a rule's name and blocks; Enter on a block changes it; Delete removes it. On a hotkey block, Enter then press the keys (Esc cancels).",
@@ -73,7 +71,7 @@ public sealed partial class AutomationPageViewModel : PageViewModel, IDisposable
             .Concat(ScriptSearchEntries);
 
     /// <param name="ask">Shows a short message with a confirm button; true when confirmed.</param>
-    public AutomationPageViewModel(AutomationService service, Func<DialogMessage, Task<bool>> ask)
+    public AutomationPageViewModel(AutomationService service, Func<DialogMessage, Task<bool>> ask) : base(Info)
     {
         _service = service;
         _ask = ask;

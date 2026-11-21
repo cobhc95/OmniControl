@@ -63,11 +63,4 @@ public sealed partial class AppSettingsPageViewModel
         _settings.AccentIntensity = AccentService.Intensity;
         _settings.Save();
     }
-
-    /// The accent as settings.json has it now (an import wrote it): the custom colour, the intensity and the choice are applied and shown.
-    private void ReloadAccent()
-    {
-        AccentService.Load(_settings.Accent, _settings.AccentCustom, _settings.AccentIntensity);
-        Accent.Load(AccentIndex(AccentService.Name));
-    }
 }

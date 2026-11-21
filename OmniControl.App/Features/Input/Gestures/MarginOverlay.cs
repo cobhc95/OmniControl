@@ -24,6 +24,19 @@ public sealed class MarginOverlay : IDisposable
 
     public MarginOverlay(GestureSettings settings) => _settings = settings;
 
+    /// The "Show margins" switch (the Mouse and Trackpad page's card and the module's action); off at start-up. The page shows the areas
+    /// only while it is on and the page can be seen.
+    public bool Wanted { get; private set; }
+
+    public event Action? WantedChanged;
+
+    public void SetWanted(bool on)
+    {
+        if (on == Wanted) return;
+        Wanted = on;
+        WantedChanged?.Invoke();
+    }
+
     public void Show()
     {
         if (_timer is not null) return;

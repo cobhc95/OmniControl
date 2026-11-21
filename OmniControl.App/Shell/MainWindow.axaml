@@ -80,7 +80,7 @@
                         <DataTemplate DataType="pages:NavHeading">
                             <TextBlock Classes="navheading" Text="{Binding Text}" />
                         </DataTemplate>
-                        <DataTemplate DataType="pages:PageViewModel">
+                        <DataTemplate DataType="shell:PageSlot">
                             <StackPanel Orientation="Horizontal" Spacing="14">
                                 <Panel Classes="navicon"><PathIcon Classes="navicon" Data="{Binding Icon}" /></Panel>
                                 <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />

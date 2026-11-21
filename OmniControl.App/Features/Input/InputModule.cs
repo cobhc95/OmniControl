@@ -1,5 +1,4 @@
 using Avalonia.Controls.Templates;
-using OmniControl.App.Features.Hotkeys;
 using OmniControl.App.Features.Input.Gestures;
 using OmniControl.App.Features.Input.Mouse;
 using OmniControl.App.Features.Input.Pages.Gestures;
@@ -20,6 +19,8 @@ public sealed class InputModule(Func<IEnumerable<string>> rememberedPrograms) : 
     private RuleService? _rules;
     private TrackpadService? _trackpad;
     private MarginOverlay? _margins;
+    private PointerActions? _pointerActions;
+    private InputActions? _actions;
     private FeatureContext? _context;
 
     public void Register(FeatureContext context)
@@ -40,6 +41,8 @@ public sealed class InputModule(Func<IEnumerable<string>> rememberedPrograms) : 
         // Last handler: Back and Forward over OmniControl or the desktop that nothing took are swallowed. It needs the hook at all times.
         _ = new BackForwardGuard(_hook);
         var margins = _margins = new MarginOverlay(gestures.Settings);
+        var pointerActions = _pointerActions = new PointerActions(_pointer, context.Osd, context.AskAsync, context.Report);
+        var actions = _actions = new InputActions(mouse, gestures, margins, pointerActions, context.Osd);
         StartHook(context.Report);
         void Recheck()
         {
@@ -53,6 +56,11 @@ public sealed class InputModule(Func<IEnumerable<string>> rememberedPrograms) : 
         context.Imports.OnReload(DataStores.GestureRules, rules.ReloadFromDisk);
         context.Imports.OnReload(DataStores.Gestures, gestures.ReloadFromDisk);
         context.Imports.OnReload(DataStores.Mouse, mouse.ReloadFromDisk);
+        context.Shutdown.Add(ShutdownStage.Pointer, "input actions", () =>
+        {
+            actions.Dispose();
+            pointerActions.Dispose();
+        });
         context.Shutdown.Add(ShutdownStage.Pointer, "margins", margins.Dispose);
         context.Shutdown.Add(ShutdownStage.Pointer, "trackpad", trackpad.Dispose);
         context.Shutdown.Add(ShutdownStage.Pointer, "pointer", _pointer.Dispose); // a button swap that was never kept goes back
@@ -83,9 +91,11 @@ public sealed class InputModule(Func<IEnumerable<string>> rememberedPrograms) : 
 
     public IReadOnlyList<FeaturePage> Pages => new[]
     {
-        new FeaturePage(ActionSections.Mouse, () => new MousePageViewModel(_mouse!, _trackpad!, _pointer, _context!.Actions, _context.Osd, _context.AskAsync, _context.Report,
-            _context.Presets, _context.OpenPresetManager, _context.AppScopes,
-            new GestureGroups(_gestures!, _rules!, _margins!, _context.Actions, _context.AskAsync, _context.AppScopes))),
+        new FeaturePage(MousePageViewModel.Info, () => new MousePageViewModel(_mouse!, _trackpad!, _pointer, _pointerActions!, _context!.Actions, _context.Report,
+            _context.OpenPresetManager, _context.AppScopes, new GestureGroups(_gestures!, _rules!, _margins!, _context.Actions, _context.AskAsync, _context.AppScopes)))
+        {
+            Registers = () => _actions!.Register(_context!.Actions, _context.Presets),
+        },
     };
 
     public IReadOnlyList<IDataTemplate> Templates { get; } = new[]

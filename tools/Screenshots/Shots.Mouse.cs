@@ -1,4 +1,5 @@
 using OmniControl.App.Features.Hotkeys.Picker;
+using OmniControl.App.Features.Input;
 using OmniControl.App.Features.Input.Gestures;
 using OmniControl.App.Features.Input.Mouse;
 using OmniControl.App.Features.Input.Pages.Gestures;
@@ -32,11 +33,13 @@ internal static partial class Shots
         var hook = new MouseHook(); // never started
         var gestures = new GestureService(hook, rig.Runner.RunLevel, Rig.Report, rig.ScopeGate);
         var mouse = new MouseService(hook, rig.Runner.Run, rig.Runner.RunHeld, Rig.Report, gestures.MiddleClickAt, rig.ScopeGate, rig.States, _ => null);
-        var rules = new RuleService(hook, gestures, mouse, rig.Actions, rig.Runner, Array.Empty<string>, Rig.Report);
+        var rules = new RuleService(hook, gestures, mouse, rig.Actions, rig.Runner, Array.Empty<string>, Rig.Report, Rig.Ask);
         var trackpad = new TrackpadService(hook, mouse, rig.Hardware, () => false);
         var pointer = new PointerSettingsService();
         var margins = new MarginOverlay(gestures.Settings);
-        var page = _mouse = new MousePageViewModel(mouse, trackpad, pointer, rig.Actions, rig.Osd, Rig.Ask, Rig.Report, rig.Presets, Rig.OpenPresets, rig.Scopes,
+        var pointerActions = new PointerActions(pointer, rig.Osd, Rig.Ask, Rig.Report);
+        new InputActions(mouse, gestures, margins, pointerActions, rig.Osd).Register(rig.Actions, rig.Presets);
+        var page = _mouse = new MousePageViewModel(mouse, trackpad, pointer, pointerActions, rig.Actions, Rig.Report, Rig.OpenPresets, rig.Scopes,
             new GestureGroups(gestures, rules, margins, rig.Actions, Rig.Ask, rig.Scopes));
         rig.Pages.Add(page);
         Camera.Pump();

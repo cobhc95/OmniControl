@@ -1,11 +1,9 @@
-﻿using OmniControl.App.Features.Hotkeys.Actions;
+using OmniControl.App.Features.Hotkeys.Actions;
 using OmniControl.App.Features.AppLists;
 using OmniControl.App.Features.Hotkeys;
 using OmniControl.App.Features.Input.Mouse;
 using OmniControl.App.Features.Input.Pages.Gestures;
 using OmniControl.App.Features.Hotkeys.Picker;
-using OmniControl.App.Features.Osd;
-using OmniControl.App.Shared.Presets;
 using OmniControl.Core.Engine.Mouse;
 using OmniControl.Core.Engine.Trackpad;
 
@@ -18,18 +16,16 @@ namespace OmniControl.App.Features.Input.Pages.Mouse;
 /// mappings file, each with its own layers (<see cref="InputFamily"/>); the pointer settings change Windows' own mouse settings.
 public sealed partial class MousePageViewModel : PageViewModel, IDisposable
 {
-    public override string Title => ActionSections.Mouse;
-
-    public override string? NavGroup => NavGroups.Devices;
+    public static readonly PageInfo Info = new(ActionSections.Mouse,
+        "M12,2 C8.13,2 5,5.13 5,9 V15 C5,18.87 8.13,22 12,22 C15.87,22 19,18.87 19,15 V9 C19,5.13 15.87,2 12,2 Z M11,5 H13 V10 H11 Z M5,11.5 H19 V13 H5 Z", NavGroups.Devices,
+        "mouse buttons remap layer wheel tilt x-mouse button control side button middle click " + TrackpadKeywords + " " + GestureKeywords
+        + " " + PointerActions.Keywords + " " + WhereKeywords, "mouse");
 
     public override string KeyHelp => string.Join(Environment.NewLine,
         "A pair of half-width cards reads left, then right. Enter on an action (or its cogwheel) opens the action picker.",
         GestureGroups.KeyHelp,
         "Rule editor: " + RuleEditorViewModel.KeyHelp,
         "Action picker: " + PickerModel.KeyHelp);
-    public override string Icon => "M12,2 C8.13,2 5,5.13 5,9 V15 C5,18.87 8.13,22 12,22 C15.87,22 19,18.87 19,15 V9 C19,5.13 15.87,2 12,2 Z M11,5 H13 V10 H11 Z M5,11.5 H19 V13 H5 Z";
-    public override string Keywords => "mouse buttons remap layer wheel tilt x-mouse button control side button middle click " + TrackpadKeywords + " " + GestureKeywords
-        + " " + PointerKeywords + " " + WhereKeywords;
 
     private const string GestureKeywords = "gestures wheel scroll taskbar edge title bar desktop hold key volume brightness opacity zoom custom rules";
 
@@ -46,7 +42,8 @@ public sealed partial class MousePageViewModel : PageViewModel, IDisposable
 
     private readonly MouseService _mouse;
     private const string ButtonKeywords = "mouse buttons remap layer preset apps scope";
-    private const string ButtonsGroupName = "Mouse Buttons";
+    /// The Mouse Buttons group's name, also its layer preset group's card (<see cref="InputActions"/>).
+    public const string ButtonsGroupName = "Mouse Buttons";
 
     private readonly List<MouseButtonItem> _buttonItems = new(); // every input's card: mouse buttons, then trackpad gestures
     private readonly LayerPicker _mouseLayers;
@@ -83,22 +80,20 @@ public sealed partial class MousePageViewModel : PageViewModel, IDisposable
 
     private readonly Action<string?, string?> _openPresets;
 
-    /// <param name="ask">Shows a short message with a confirm button (the button-swap "Keep" question).</param>
-    /// <param name="presets">The master list of preset groups: the page registers its mouse and trackpad layers.</param>
+    /// <param name="hotkeys">The master action list, whose actions the cards offer (they follow its changes).</param>
+    /// <param name="pointerActions">The pointer settings' actions and the steps the Pointer settings cards share with them.</param>
     /// <param name="openPresets">Opens the preset manager at a section and group (the header cogwheels).</param>
     /// <param name="scopes">Makes the apps scope models of the Mouse Buttons and Trackpad groups and their cards.</param>
     /// <param name="gestureGroups">The gesture groups and custom gesture rules this page shows.</param>
-    public MousePageViewModel(MouseService mouse, TrackpadService trackpad, PointerSettingsService pointer, IActionRegistry hotkeys, IOsd osd,
-        Func<DialogMessage, Task<bool>> ask, Action<string> report, IPresetGroups presets, Action<string?, string?> openPresets, AppScopes scopes,
-        GestureGroups gestureGroups)
+    public MousePageViewModel(MouseService mouse, TrackpadService trackpad, PointerSettingsService pointer, PointerActions pointerActions, IActionRegistry hotkeys,
+        Action<string> report, Action<string?, string?> openPresets, AppScopes scopes, GestureGroups gestureGroups) : base(Info)
     {
         Gestures = gestureGroups;
         _openPresets = openPresets;
         _mouse = mouse;
         _trackpad = trackpad;
         _pointer = pointer;
-        _osd = osd;
-        _ask = ask;
+        _pointerActions = pointerActions;
         _report = report;
 
         _mouseLayers = new LayerPicker(mouse, InputFamily.Mouse, "Mouse layer", () => ReloadCards(InputFamily.Mouse), ManageMouseLayers);
@@ -156,7 +151,7 @@ public sealed partial class MousePageViewModel : PageViewModel, IDisposable
                   + "not pass mouse input to programs running as administrator unless OmniControl runs as administrator too.",
         };
         TrackpadGroup = BuildTrackpadGroup(gestureCards, report);
-        BuildWhereGroup(scopes, hotkeys);
+        BuildWhereGroup(scopes);
         BuildPointerGroup();
 
         _followed.Follow<Action<InputFamily, int>>(h => mouse.LayerChanged += h, h => mouse.LayerChanged -= h, (family, layer) =>
@@ -177,21 +172,6 @@ public sealed partial class MousePageViewModel : PageViewModel, IDisposable
         _followed.Follow<Action>(h => mouse.Applied += h, h => mouse.Applied -= h, Gestures.RefreshRules); // a changed mapping can start or end a custom rule's conflict
         _followed.Follow<Action<MouseButton>>(h => mouse.ButtonPressed += h, h => mouse.ButtonPressed -= h,
             button => Dispatcher.UIThread.Post(() => _buttonItems.FirstOrDefault(i => i.Button == button)?.Flash()));
-
-        hotkeys.Register(new HotkeyAction("mouse.layer.next", "Next mouse layer", Title, "mouse layer preset switch next",
-            _ => mouse.StepLayer(InputFamily.Mouse)) { CoveredByMousePicker = true });
-        hotkeys.Register(new HotkeyAction("mouse.trackpad.layer.next", "Next trackpad layer", Title, "trackpad touchpad gestures layer preset switch next",
-            _ => mouse.StepLayer(InputFamily.Trackpad)) { CoveredByMousePicker = true });
-        var autoscrollFamily = new OnOffFamily(MouseService.AutoscrollId, "App autoscroll block", MouseService.AutoscrollId);
-        var autoscroll = new HotkeyAction(MouseService.AutoscrollId, "Toggle app autoscroll", Title, "middle click autoscroll scroll browser block apps",
-            _ => _mouse.ToggleBlockAutoscroll()) { Family = autoscrollFamily.Family, FamilyRole = OnOffFamily.ToggleRole };
-        hotkeys.Register(autoscrollFamily.Siblings(autoscroll, _mouse.SetBlockAutoscroll).Prepend(autoscroll));
-        RegisterPointerActions(hotkeys);
-        RegisterClickingAction(hotkeys);
-        // Last: a preset group's card is named after the page group it belongs to, and a layer with a saved shortcut gets its action
-        // after the page's own actions.
-        presets.Register(new PresetGroup(MouseLayersId, Title, ButtonsGroup.Name, new LayerPresets(mouse, InputFamily.Mouse)) { MovesLayer = true });
-        presets.Register(new PresetGroup(TrackpadLayersId, Title, TrackpadGroup.Name, new LayerPresets(mouse, InputFamily.Trackpad)) { MovesLayer = true });
     }
 
     /// The page was opened: Windows' touchpad and pointer settings may have been changed meanwhile.
@@ -222,6 +202,7 @@ public sealed partial class MousePageViewModel : PageViewModel, IDisposable
     public void Dispose()
     {
         _followed.Dispose();
+        Gestures.Dispose();
         _pressWatch?.Dispose();
     }
 

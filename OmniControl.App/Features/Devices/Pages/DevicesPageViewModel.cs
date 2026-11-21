@@ -18,13 +18,9 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
     private readonly List<DeviceRecord> _clipboard = new();
     private bool _clipboardIsCut;
 
-    public override string Title => DeviceService.Category;
-
-    public override string? NavGroup => NavGroups.Devices;
-
-    public override string Icon => "M8,2 H10 V7 H8 Z M14,2 H16 V7 H14 Z M6,7 H18 V13 A6,6 0 0 1 13,18.9 V22 H11 V18.9 A6,6 0 0 1 6,13 Z M8,9 V13 A4,4 0 0 0 16,13 V9 Z";
-
-    public override string Keywords => "devices smart plug bulb socket outlet tapo tp-link p100 p110 l530 kasa python-kasa profile template switch power on off lamp router ip address simulation emulator android adb bluestacks ldplayer mumu memu app steps record teach icon method methods merge";
+    public static readonly PageInfo Info = new(DeviceService.Category,
+        "M8,2 H10 V7 H8 Z M14,2 H16 V7 H14 Z M6,7 H18 V13 A6,6 0 0 1 13,18.9 V22 H11 V18.9 A6,6 0 0 1 6,13 Z M8,9 V13 A4,4 0 0 0 16,13 V9 Z", NavGroups.Devices,
+        "devices smart plug bulb socket outlet tapo tp-link p100 p110 l530 kasa python-kasa profile template switch power on off lamp router ip address simulation emulator android adb bluestacks ldplayer mumu memu app steps record teach icon method methods merge");
 
     public ObservableCollection<DeviceItem> Items { get; } = new();
 
@@ -43,7 +39,7 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
     /// <param name="otherPcs">The paired PCs the import group asks.</param>
     /// <param name="openOtherPcs">Opens the Other PCs page (the import group's way to pair one).</param>
     public DevicesPageViewModel(DeviceService service, Func<DialogMessage, Task<bool>> ask, Action<string> report,
-        Func<Avalonia.Visual, Icons.IconRequest, Task<Icons.IconPick?>> chooseIcon, IPairedPcs otherPcs, Action openOtherPcs)
+        Func<Avalonia.Visual, Icons.IconRequest, Task<Icons.IconPick?>> chooseIcon, IPairedPcs otherPcs, Action openOtherPcs) : base(Info)
     {
         _service = service;
         _ask = ask;

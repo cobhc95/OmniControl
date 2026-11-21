@@ -10,7 +10,7 @@ namespace OmniControl.App.Features.Input.Pages.Gestures;
 /// The gesture groups of the Mouse and Trackpad page (as the Devices page holds its import group): scroll over a screen area, middle
 /// click over one, scroll while holding a key, each with its Apps chip, then the custom gesture rules. Also owns the "Enable gestures"
 /// card the page's "All mouse and trackpad features" group shows, and the on-screen margins.
-public sealed class GestureGroups
+public sealed class GestureGroups : IDisposable
 {
     private const string Where = ActionSections.Mouse;
     private const string AdminNote = "Programs running as administrator are not affected unless OmniControl runs as administrator too.";
@@ -42,10 +42,11 @@ public sealed class GestureGroups
     private readonly RuleService _rules;
     private readonly Func<DialogMessage, Task<bool>> _ask;
 
-    // The gesture areas drawn on the screen: only while "Show margins" is on and the page can be seen. Always off at start-up.
+    // The gesture areas drawn on the screen: only while "Show margins" is on (MarginOverlay.Wanted) and the page can be seen.
     private readonly MarginOverlay _margins;
     private readonly ToggleItem _showMargins;
     private readonly SliderItem _edgeStrip;
+    private readonly Subscriptions _followed = new(); // the services' events these groups follow, given back at Dispose
     private bool _onScreen;
 
     /// <param name="ask">Shows a short message with a confirm button (a rule's command, deleting a rule); true when confirmed.</param>
@@ -56,7 +57,12 @@ public sealed class GestureGroups
         _rules = rules;
         _ask = ask;
         _margins = margins;
-        _showMargins = new ToggleItem("Show margins", false, _ => UpdateMargins());
+        _showMargins = new ToggleItem("Show margins", margins.Wanted, margins.SetWanted);
+        _followed.Follow<Action>(h => margins.WantedChanged += h, h => margins.WantedChanged -= h, () =>
+        {
+            _showMargins.Load(margins.Wanted); // the module's action changed it
+            UpdateMargins();
+        });
         var settings = gestures.Settings;
         Enabled = new ToggleItem("Enable gestures", settings.Enabled, gestures.SetEnabled)
         {
@@ -67,13 +73,13 @@ public sealed class GestureGroups
         // The action lists follow the master list: a level or action a feature registers later appears in every gesture's list.
         var steps = GestureCatalog.Choices(hotkeys.PickerActions);
         var clicks = GestureCatalog.ClickChoices(hotkeys.PickerActions);
-        hotkeys.Actions.CollectionChanged += (_, _) =>
+        _followed.Follow<System.Collections.Specialized.NotifyCollectionChangedEventHandler>(h => hotkeys.Actions.CollectionChanged += h, h => hotkeys.Actions.CollectionChanged -= h, (_, _) =>
         {
             steps = GestureCatalog.Choices(hotkeys.PickerActions);
             clicks = GestureCatalog.ClickChoices(hotkeys.PickerActions);
             foreach (var item in _gestureItems) item.Reload();
             RefreshRules(); // a rule's sentence names its actions
-        };
+        });
         AppScopeModel ScopeOf(string group) => scopes.Group($"{Where} › {group}", () => settings.GroupScopeOf(group), s => gestures.SetGroupScope(group, s));
         List<object> CardsFor(string group, AppScopeModel groupScope, Func<IReadOnlyList<PickChoice>> choices) => GestureCatalog.Triggers.Where(t => t.Group == group)
             .Select(t =>
@@ -111,13 +117,13 @@ public sealed class GestureGroups
         Groups = new[] { Areas, Middle, Keys };
 
         foreach (var rule in rules.Settings.Rules) AddItem(rule);
-        rules.ProblemsChanged += RefreshRules;
-        gestures.Applied += RefreshRules; // a gesture switched on or off can start or end a rule's conflict
-
-        hotkeys.Register(new HotkeyAction("gestures.toggle", "Toggle gestures", Where, "gestures mouse wheel scroll on off custom rules",
-            _ => Enabled.IsOn = !Enabled.IsOn));
-        hotkeys.Register(new HotkeyAction("gestures.margins", "Toggle gesture margins", Where, "gestures show margins edge strip width areas screen",
-            _ => _showMargins.IsOn = !_showMargins.IsOn));
+        _followed.Follow<Action>(h => rules.ProblemsChanged += h, h => rules.ProblemsChanged -= h, RefreshRules);
+        // A gesture switched on or off can start or end a rule's conflict; the module's "Toggle gestures" action may have changed the switch.
+        _followed.Follow<Action>(h => gestures.Applied += h, h => gestures.Applied -= h, () =>
+        {
+            Enabled.Load(gestures.Settings.Enabled);
+            RefreshRules();
+        });
     }
 
     public GestureSettings CurrentGestures => _gestures.Settings;
@@ -160,7 +166,7 @@ public sealed class GestureGroups
 
     private void UpdateMargins()
     {
-        if (_showMargins.IsOn && _onScreen) _margins.Show();
+        if (_margins.Wanted && _onScreen) _margins.Show();
         else _margins.Hide();
     }
 
@@ -190,4 +196,6 @@ public sealed class GestureGroups
         foreach (var item in _gestureItems.Where(i => i != source)) item.TakeSettingsOf(pick);
         _gestures.Apply();
     }
+
+    public void Dispose() => _followed.Dispose();
 }

@@ -40,7 +40,7 @@ public sealed partial class ShellViewModel
 
     private void RegisterTray(TrayFlyoutModel flyout)
     {
-        var home = _allFooter.OfType<AppSettingsPageViewModel>().First().Title;
+        const string home = AppSettingsPageViewModel.Name;
         _hotkeys.Register(new HotkeyAction("app.settings.open", $"Open {home}", home, "settings preferences options open window",
             _ => ShowPage(home)) { NeverBlock = true });
         _hotkeys.Register(new HotkeyAction("app.actions.open", $"Open {ActionsWindowService.Title}", home, "actions hotkeys shortcuts keys list open window",
@@ -84,7 +84,7 @@ public sealed partial class ShellViewModel
         else if (target.State is { } state)
         {
             ShowPage(state.Group);
-            _allPages.Concat(_allFooter).FirstOrDefault(p => p.Title == state.Group)?.Reveal(state.Id);
+            SlotOf(state.Group)?.Page?.Reveal(state.Id);
         }
     }
 

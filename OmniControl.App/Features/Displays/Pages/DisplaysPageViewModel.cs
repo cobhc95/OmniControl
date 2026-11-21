@@ -44,13 +44,11 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
     private IReadOnlyList<IMonitor> _shownMonitors = Array.Empty<IMonitor>();
     private bool _hasLaptop;
 
-    public override string Title => "Displays";
-
-    public override string? NavGroup => NavGroups.Devices;
+    public static readonly PageInfo Info = new("Displays",
+        "M4,4 H20 A2,2 0 0 1 22,6 V16 A2,2 0 0 1 20,18 H14 V20 H17 V22 H7 V20 H10 V18 H4 A2,2 0 0 1 2,16 V6 A2,2 0 0 1 4,4 Z M4,6 V16 H20 V6 Z", NavGroups.Devices,
+        "monitor display screen brightness contrast ddc laptop panel gamma digital saturation temperature warm cool input source colour color", "displays");
 
     public override string KeyHelp => "F5 looks at the monitors again (Refresh).";
-    public override string Icon => "M4,4 H20 A2,2 0 0 1 22,6 V16 A2,2 0 0 1 20,18 H14 V20 H17 V22 H7 V20 H10 V18 H4 A2,2 0 0 1 2,16 V6 A2,2 0 0 1 4,4 Z M4,6 V16 H20 V6 Z";
-    public override string Keywords => "monitor display screen brightness contrast ddc laptop panel gamma digital saturation temperature warm cool input source colour color";
 
     /// What the monitors themselves can do (DDC/CI and the laptop panel): one inner group per display.
     public ParentGroup Hardware { get; } = new("Displays/Hardware", DisplayControls.HardwareGroup, NoMonitors)
@@ -86,7 +84,7 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
     /// <param name="states">The master list of states: each display's levels are registered there while it is attached.</param>
     /// <param name="hardware">The master list of hardware watches: the page registers its two (the monitors, and the list of displays).</param>
     public DisplaysPageViewModel(IMonitorEngine engine, IActionRegistry hotkeys, Func<string, SuggestedKeysSwitch> suggestedKeys, IOsd osd, SoftwareDisplayService software, Action<string> report,
-        IPresetGroups presets, Action<string?, string?> openPresets, IStateRegistry states, IHardwareWatches hardware)
+        IPresetGroups presets, Action<string?, string?> openPresets, IStateRegistry states, IHardwareWatches hardware) : base(Info)
     {
         (_engine, _hotkeys, _suggestedKeys, _osd, _software, _report, _openPresets, _states) = (engine, hotkeys, suggestedKeys, osd, software, report, openPresets, states);
         _rescan = new ThrottledRun(Timing.DisplayRescanGap, RescanNow);

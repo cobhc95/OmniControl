@@ -39,16 +39,13 @@ public sealed partial class VolumePageViewModel : PageViewModel, IVolumeRows, ID
     private readonly VolumeStates _volumeStates;
     private readonly VolumeMedia _media;
 
-    public override string Title => "Volume";
-
-    public override string? NavGroup => NavGroups.Devices;
+    public static readonly PageInfo Info = new("Volume", "M3,9 H7 L12,4 V20 L7,15 H3 Z M15,8.5 A5,5 0 0 1 15,15.5 L16.2,17 A7,7 0 0 0 16.2,7 Z", NavGroups.Devices,
+        "volume sound audio mixer wiring master apps programs pan balance mute fx effects chain equaliser eq compressor plays on output device microphone combine method cable preset presets", "volume");
 
     public override string KeyHelp => string.Join(Environment.NewLine,
         "Ctrl+Tab / Ctrl+Shift+Tab switch between Mixer and Wiring.",
         "Mixer: Left/Right choose a part of a row (Plays on, Method, pan, volume, mute, FX); Enter opens it or starts turning a knob, Enter or Esc ends; Home resets a knob.",
         "Wiring: Enter opens a row's menu; Esc closes it.");
-    public override string Icon => "M3,9 H7 L12,4 V20 L7,15 H3 Z M15,8.5 A5,5 0 0 1 15,15.5 L16.2,17 A7,7 0 0 0 16.2,7 Z";
-    public override string Keywords => "volume sound audio mixer wiring master apps programs pan balance mute fx effects chain equaliser eq compressor plays on output device microphone combine method cable preset presets";
 
     /// The page's tabs (their names are also the search groups of what each shows).
     private const string MixerTab = "Mixer", WiringTab = "Wiring";
@@ -111,7 +108,7 @@ public sealed partial class VolumePageViewModel : PageViewModel, IVolumeRows, ID
     /// wraps the rows. Every step reads only what an earlier step made; <c>VolumeConstructionTests</c> builds the pieces in this order
     /// with no devices and no programs.
     /// </remarks>
-    public VolumePageViewModel(VolumePageServices s)
+    public VolumePageViewModel(VolumePageServices s) : base(Info)
     {
         _settings = s.Settings;
         _isEasy = s.Settings.View.Value == VolumeView.Easy;

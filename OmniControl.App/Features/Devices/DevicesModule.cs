@@ -26,7 +26,7 @@ public sealed class DevicesModule(Func<IPairedPcs> pairedPcs, Action openOtherPc
 
     public IReadOnlyList<FeaturePage> Pages => new[]
     {
-        new FeaturePage("Devices", () => new DevicesPageViewModel(_service!, _context!.AskAsync, _context.Report, _context.IconPicker.ChooseAsync, pairedPcs(), openOtherPcs)),
+        new FeaturePage(DevicesPageViewModel.Info, () => new DevicesPageViewModel(_service!, _context!.AskAsync, _context.Report, _context.IconPicker.ChooseAsync, pairedPcs(), openOtherPcs)),
     };
 
     public IReadOnlyList<IDataTemplate> Templates { get; } = new[]

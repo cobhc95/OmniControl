@@ -3,20 +3,29 @@ using Avalonia.Controls.Templates;
 namespace OmniControl.App.Features;
 
 /// One feature's wiring, listed once by the shell. <see cref="Register"/> makes the feature's services and adds its actions, states, reloads and
-/// shut-down steps (modules register in the shell's start-up order); <see cref="Pages"/> are made after every module registered, in sidebar order.
+/// shut-down steps (modules register in the shell's start-up order); then each of the <see cref="Pages"/> registers its entries in sidebar order.
 public interface IFeatureModule
 {
     void Register(FeatureContext context);
 
-    /// The feature's sidebar pages, each made on its own (one that fails is left out).
+    /// The feature's sidebar pages (one that fails to be made is logged and said once).
     IReadOnlyList<FeaturePage> Pages => Array.Empty<FeaturePage>();
 
-    /// Runs once every page is made (for wiring that follows the pages, such as preset groups made from a page).
+    /// Runs once every page has registered (for wiring that follows the pages, such as preset groups made from a page).
     void PagesMade() { }
 
     /// Maps the feature's view-models to their views; added to the app's templates at start-up.
     IReadOnlyList<IDataTemplate> Templates => Array.Empty<IDataTemplate>();
 }
 
-/// A sidebar page a module offers: its name (for the start-up log) and how it is made.
-public sealed record FeaturePage(string Name, Func<PageViewModel> Make);
+/// A sidebar page a module offers: what the shell shows of it without making it, and how its view-model is made: the first time the page is
+/// opened, searched, restored or asked to reveal a state, then kept for the run.
+public sealed record FeaturePage(PageInfo Info, Func<PageViewModel> Make)
+{
+    /// The view-model is made at start-up instead: it still serves the page's actions and states itself (MAP.md open item).
+    public bool AtStart { get; init; }
+
+    /// What the page puts in the master lists, through the module's own services, at start-up and at its place in the sidebar order (so the
+    /// lists keep the order they had when every page was made at start-up).
+    public Action? Registers { get; init; }
+}

@@ -8,7 +8,7 @@ public sealed partial class DisplaysPageViewModel
 {
     private IRestorable? _restorable;
 
-    public override IRestorable? Restorable => _restorable ??= new SettingsRestore<DisplayRestoreState>("displays", Title,
+    public override IRestorable? Restorable => _restorable ??= new SettingsRestore<DisplayRestoreState>(Info.RestoreKey!, Title,
         () => DisplayRestoreState.Scope,
         () => new DisplayRestoreState { Picture = CapturePicture(), WarmLight = _store.WarmLight.Enabled },
         () => DisplayRestoreState.DefaultsOf(new DisplayRestoreState { Picture = CapturePicture() }),

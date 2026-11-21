@@ -25,7 +25,7 @@ public sealed class AutomationModule(Func<IEnumerable<string>> rememberedProgram
 
     public IReadOnlyList<FeaturePage> Pages => new[]
     {
-        new FeaturePage("Automation", () => new AutomationPageViewModel(_service!, _context!.AskAsync)),
+        new FeaturePage(AutomationPageViewModel.Info, () => new AutomationPageViewModel(_service!, _context!.AskAsync)),
     };
 
     public IReadOnlyList<IDataTemplate> Templates { get; } = new[]

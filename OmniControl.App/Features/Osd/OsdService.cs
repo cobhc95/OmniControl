@@ -351,6 +351,29 @@ public sealed class OsdService : IOsd, IDisposable
         Settings.Save();
     }
 
+    // The OSD page's actions (OsdModule), which run whether or not the page exists; its cards follow SettingsChanged.
+
+    /// "Toggle OSD": Show OSD flipped.
+    public void ToggleEnabled()
+    {
+        SetEnabled(!Settings.Enabled);
+        SettingsChanged?.Invoke();
+    }
+
+    /// "Toggle hiding Windows' OSD".
+    public void ToggleHideWindowsOsd()
+    {
+        SetHideWindowsOsd(!Settings.HideWindowsOsd);
+        SettingsChanged?.Invoke();
+    }
+
+    /// "Next OSD style": the next style, round at the end.
+    public void StepStyle()
+    {
+        var styles = Enum.GetValues<OsdStyle>();
+        SetStyle(styles[Wrap.Index(Array.IndexOf(styles, Settings.Style) + 1, styles.Length)]);
+    }
+
     /// Shows <paramref name="element"/> at <paramref name="value"/> (0-100) unless the OSD or that element is switched off. Any thread.
     public void Show(string element, int value) => Show(element, value, element);
 

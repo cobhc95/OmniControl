@@ -12,7 +12,8 @@ namespace OmniControl.App.Features.Input.Pages.Mouse;
 public sealed partial class MousePageViewModel
 {
     private const string TrackpadKeywords = "trackpad touchpad gestures swipe fingers pinch tap double tap layer preset apps scope";
-    private const string TrackpadGroupName = "Trackpad";
+    /// The Trackpad group's name, also its layer preset group's card (<see cref="InputActions"/>).
+    public const string TrackpadGroupName = "Trackpad";
 
     /// The apps the Trackpad group works in: the "Apps: ..." chip on its title line, left of the layer picker.
     public AppScopeModel TrackpadScope { get; }

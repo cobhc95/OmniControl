@@ -1,5 +1,4 @@
 using OmniControl.App.Features.Input.Mouse;
-using OmniControl.App.Features.Osd;
 using OmniControl.Core.Engine.Pointer;
 
 namespace OmniControl.App.Features.Input.Pages.Mouse;
@@ -10,14 +9,12 @@ namespace OmniControl.App.Features.Input.Pages.Mouse;
 /// read again when the page opens or comes back on screen, after OmniControl's own changes, and after a write Windows refused.
 public sealed partial class MousePageViewModel
 {
-    private const string PointerKeywords = "pointer cursor mouse settings";
     private const string CustomScheme = "Custom";
     private const string WindowsPageButton = "Open";
     private static readonly FileKind PointerFiles = new("Choose a pointer", "Pointers", CursorSchemes.FilePatterns);
 
     private readonly PointerSettingsService _pointer;
-    private readonly Func<DialogMessage, Task<bool>> _ask;
-    private readonly IOsd _osd;
+    private readonly PointerActions _pointerActions;
     private readonly Action<string> _report;
     private readonly Dictionary<PointerValue, SliderItem> _pointerSliders = new();
     private readonly Dictionary<PointerValue, ToggleItem> _pointerSwitches = new();
@@ -50,10 +47,10 @@ public sealed partial class MousePageViewModel
         var shapes = new ItemGroup("Mouse/Pointer/Shapes", "Pointers", _pointerFiles.Select(f => (object)f.Card).ToList());
 
         _restoreCard = new ButtonItem("Restore my original values", "Restore",
-            "Back to before OmniControl changed them.", RestorePointerOriginal) { Half = true };
+            "Back to before OmniControl changed them.", _pointerActions.RestoreOriginal) { Half = true };
         PointerFooter = new object[]
         {
-            new ButtonItem("Reset to Windows defaults", "Reset", "Back to how Windows starts.", ResetPointerDefaults) { Half = true },
+            new ButtonItem("Reset to Windows defaults", "Reset", "Back to how Windows starts.", _pointerActions.ResetToDefaults) { Half = true },
             _restoreCard,
         };
 
@@ -67,7 +64,7 @@ public sealed partial class MousePageViewModel
         };
         PointerGroup.Subgroups.Add(shapes);
 
-        _followed.Follow<Action<PointerValue>>(h => _pointer.WriteFailed += h, h => _pointer.WriteFailed -= h, OnPointerWriteFailed);
+        _followed.Follow<Action>(h => _pointerActions.Changed += h, h => _pointerActions.Changed -= h, LoadPointerSettings);
         _followed.Follow<Action>(h => _pointer.SwapChanged += h, h => _pointer.SwapChanged -= h, LoadSwap);
         LoadPointerSettings();
     }
@@ -94,7 +91,7 @@ public sealed partial class MousePageViewModel
 
     /// The search entries of the group: its cards, the pointers and the two cards at the bottom.
     private IEnumerable<SearchEntry> PointerSearchEntries() =>
-        _pointerSearch.Select(e => Entry(e.Card, Title, $"{PointerKeywords} {e.Keywords}", PointerControls.GroupName));
+        _pointerSearch.Select(e => Entry(e.Card, Title, $"{PointerActions.Keywords} {e.Keywords}", PointerControls.GroupName));
 
     /// Reads every setting and pointer from Windows and shows it, without writing anything.
     private void LoadPointerSettings()
@@ -160,7 +157,7 @@ public sealed partial class MousePageViewModel
     {
         if (control.Value == PointerValue.Swap)
         {
-            AskKeepSwap(on);
+            _pointerActions.AskKeepSwap(on);
             return;
         }
         _pointer.Set(control.Value!.Value, on ? 1 : 0);
@@ -168,25 +165,10 @@ public sealed partial class MousePageViewModel
         UpdateRestoreCard();
     }
 
-    /// Windows refused a write: say so in one sentence and show what Windows really has.
-    private void OnPointerWriteFailed(PointerValue value)
-    {
-        var name = PointerControls.All.First(c => c.Value == value).ActionName;
-        _report($"Windows didn't accept the change to {name}, so it stays as before.");
-        LoadPointerSettings();
-    }
-
     private void OnSchemePicked(string label)
     {
-        if (_schemes.FirstOrDefault(s => s.Label == label) is { } scheme) ApplyScheme(scheme);
+        if (_schemes.FirstOrDefault(s => s.Label == label) is { } scheme) _pointerActions.ApplyScheme(scheme);
     }
-
-    private void ApplyScheme(CursorScheme scheme) => Guard.Fire("Mouse: pointer scheme", async () =>
-    {
-        if (!await _pointer.ApplyScheme(scheme)) _report($"Windows didn't accept the pointer scheme {scheme.Name}, so the pointers stay as before.");
-        LoadPointers();
-        UpdateRestoreCard();
-    }, _report);
 
     private void ChoosePointer(CursorRole role, string path)
     {

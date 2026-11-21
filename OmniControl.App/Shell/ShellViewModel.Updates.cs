@@ -25,8 +25,7 @@ public sealed partial class ShellViewModel
     [RelayCommand]
     private void OpenUpdates()
     {
-        if (_allFooter.OfType<AppSettingsPageViewModel>().FirstOrDefault() is not { } settings) return;
-        ShowPage(settings.Title);
-        settings.ShowUpdates();
+        ShowPage(AppSettingsPageViewModel.Name);
+        (_appSettings.Page as AppSettingsPageViewModel)?.ShowUpdates();
     }
 }

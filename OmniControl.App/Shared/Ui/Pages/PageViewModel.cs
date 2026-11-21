@@ -6,17 +6,14 @@ namespace OmniControl.App.Shared.Ui.Pages;
 /// bound to its view-model by its feature module's template (<see cref="ViewTemplate"/>).
 public abstract class PageViewModel : ObservableObject
 {
-    public abstract string Title { get; }
+    private readonly PageInfo _info;
 
-    /// The sidebar group this page sits under (one of <see cref="NavGroups"/>); null: no group (a footer page).
-    public virtual string? NavGroup => null;
+    /// <param name="info">The page's sidebar facts, a static of the page the module also hands the shell (<see cref="PageInfo"/>).</param>
+    protected PageViewModel(PageInfo info) => _info = info;
 
-    /// SVG path data (24x24 viewbox) shown next to the title in the sidebar.
-    public abstract string Icon { get; }
+    public string Title => _info.Title;
 
-    /// True while this is the page shown on the right (set by the shell; a footer button uses it for its selected look).
-    public bool IsOpen { get => _isOpen; set => SetProperty(ref _isOpen, value); }
-    private bool _isOpen;
+    public string Icon => _info.Icon;
 
     /// A short fact the main window's footer shows while this page is open (the Mouse page's layer in force); empty: none.
     public string FooterStatus { get => _footerStatus; protected set => SetProperty(ref _footerStatus, value); }
@@ -44,9 +41,6 @@ public abstract class PageViewModel : ObservableObject
     public PageRestore? Restorer { get; private set; }
 
     public void AttachRestorer(PageRestore restorer) => Restorer = restorer;
-
-    /// Extra words the sidebar search matches besides the title.
-    public virtual string Keywords => string.Empty;
 
     /// Individual settings this page offers to global search (live, editable). Build each with <see cref="Entry"/>.
     public virtual IEnumerable<SearchEntry> SearchEntries => Enumerable.Empty<SearchEntry>();

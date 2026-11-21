@@ -9,6 +9,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 - Lighter memory: after OmniControl has sat in the tray for 5 minutes, its main window, the Actions and hotkeys window and the quick panel are let go and their memory given back (sound playing through OmniControl's effects or a screen recording is never paused for it); the next opening takes a moment longer and comes back at the same place, page and scroll. The quick panel is built at its first click instead of at start-up.
 - Lighter sensors: temperatures (CPU, graphics card, board, Hottest sensor) are read every 5 seconds, also while the gadget shows other readings every second; with a chosen Hottest sensor only its own hardware group is kept open (the board's only when the sensor is on it).
 - Privacy: devices-log.txt no longer keeps MAC addresses, the Wi-Fi name, device ids or the place a smart plug reports, and each line is cut to 600 characters instead of kasa's whole answer.
+- Lighter start-up and memory: the Mouse and Trackpad, Smart Devices, Other PCs, Automation, OSD, Resources and App settings pages are made the first time they are opened or searched instead of at start-up (their actions, presets and OSD pop-ups work from the start as before); the first opening of each, or the first search, takes a moment longer.
 - Diagnostics: timing-log.txt records the app's memory (managed heap, private bytes, working set) two minutes after start, each time the window has settled hidden and after the windows are let go.
 
 ## 0.2.6 (21 Nov 2026)
