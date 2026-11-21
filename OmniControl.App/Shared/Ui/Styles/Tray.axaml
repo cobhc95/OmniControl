@@ -3,7 +3,108 @@
         xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
         xmlns:g="using:OmniControl.App.Features.Resources.Gadget">
     <!-- MASTER designs the tray flyout (Tray/TrayFlyoutWindow) shares with other windows: its tile, corner mark and remove badge, the gadget's
-         cells. The panel's own pieces are in Features/Tray/TrayFlyoutStyles.axaml, styled only in its window. Sizes: Tray* in App.axaml. Included last. -->
+         cells. The panel's own pieces are in Features/Tray/TrayFlyoutStyles.axaml, styled only in its window. Sizes: Tray* in App.axaml. Included last.
+         The Button looks here (removebadge, tile, statepower) are control themes (the rules: Styles/ButtonThemes.axaml); their notes and child
+         selectors are below. -->
+    <Styles.Resources>
+        <ControlTheme x:Key="RemoveBadgeButton" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
+            <Style Selector="^.removebadge">
+                <Setter Property="Width" Value="{StaticResource RemoveBadgeHit}" />
+                <Setter Property="Height" Value="{StaticResource RemoveBadgeHit}" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Foreground" Value="{DynamicResource BrushMuted}" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="Template">
+                    <ControlTemplate>
+                        <Panel Background="Transparent">
+                            <Border Name="PART_Badge" Width="{StaticResource RemoveBadgeSize}" Height="{StaticResource RemoveBadgeSize}"
+                                    CornerRadius="{StaticResource RemoveBadgeRadius}" BorderThickness="1"
+                                    Background="{DynamicResource BrushControlFill}" BorderBrush="{DynamicResource BrushControlEdge}" />
+                            <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Panel>
+                    </ControlTemplate>
+                </Setter>
+            </Style>
+            <Style Selector="^.removebadge:pointerover, ^.removebadge:focus-visible"><Setter Property="Foreground" Value="{DynamicResource BrushDanger}" /></Style>
+            <Style Selector="^.removebadge:pointerover /template/ Border#PART_Badge"><Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" /></Style>
+            <Style Selector="^.removebadge:focus-visible /template/ Border#PART_Badge"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
+        </ControlTheme>
+
+        <ControlTheme x:Key="TileButton" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
+            <Style Selector="^.tile">
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="Height" Value="{StaticResource TrayTileHeight}" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Margin" Value="0" />
+                <Setter Property="VerticalAlignment" Value="Top" />
+                <Setter Property="CornerRadius" Value="{StaticResource TrayTileCornerRadius}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
+                <Setter Property="Background" Value="{DynamicResource BrushControlFill}" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+            </Style>
+            <Style Selector="^.tile:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" />
+            </Style>
+            <Style Selector="^.tile.on /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushAccent}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+            </Style>
+            <Style Selector="^.tile.on:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushAccentBright}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentBright}" />
+            </Style>
+            <Style Selector="^.tile:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+            </Style>
+            <Style Selector="^.tile.on:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushOnAccent}" />
+            </Style>
+        </ControlTheme>
+
+        <ControlTheme x:Key="StatePowerButton" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
+            <Style Selector="^.statepower">
+                <Setter Property="Width" Value="{StaticResource StatePowerSize}" />
+                <Setter Property="Height" Value="{StaticResource StatePowerSize}" />
+                <Setter Property="MinHeight" Value="0" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="CornerRadius" Value="{StaticResource StatePowerRadius}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="Foreground" Value="{DynamicResource BrushMuted}" />
+            </Style>
+            <Style Selector="^.statepower /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
+                <Setter Property="CornerRadius" Value="{StaticResource StatePowerRadius}" />
+            </Style>
+            <Style Selector="^.statepower:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+            </Style>
+            <Style Selector="^.statepower.on"><Setter Property="Foreground" Value="{DynamicResource BrushAccent}" /></Style>
+            <Style Selector="^.statepower.on /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" />
+            </Style>
+            <Style Selector="^.statepower.on:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+            </Style>
+            <Style Selector="^.statepower:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+            </Style>
+        </ControlTheme>
+    </Styles.Resources>
+    <Style Selector="Button.removebadge"><Setter Property="Theme" Value="{StaticResource RemoveBadgeButton}" /></Style>
+    <Style Selector="Button.tile"><Setter Property="Theme" Value="{StaticResource TileButton}" /></Style>
+    <Style Selector="Button.statepower"><Setter Property="Theme" Value="{StaticResource StatePowerButton}" /></Style>
 
     <!-- The flyout's window: no frame of its own and see-through, so only the rounded panel inside it shows -->
     <!-- Window.taskbargadget = the Resources taskbar gadget (Features/Resources/Gadget/GadgetWindow): borderless and see-through like the tray
@@ -19,67 +120,18 @@
 
     <!-- The remove badge: THE small remove cross of a tile or a row. A round raised chip with a thin edge
          (RemoveBadgeSize) inside a clickable square (RemoveBadgeHit); the drawn cross (RemoveBadgeCross) is muted and turns red on hover. -->
-    <Style Selector="Button.removebadge">
-        <Setter Property="Width" Value="{StaticResource RemoveBadgeHit}" />
-        <Setter Property="Height" Value="{StaticResource RemoveBadgeHit}" />
-        <Setter Property="Padding" Value="0" />
-        <Setter Property="Foreground" Value="{DynamicResource BrushMuted}" />
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="Template">
-            <ControlTemplate>
-                <Panel Background="Transparent">
-                    <Border Name="PART_Badge" Width="{StaticResource RemoveBadgeSize}" Height="{StaticResource RemoveBadgeSize}"
-                            CornerRadius="{StaticResource RemoveBadgeRadius}" BorderThickness="1"
-                            Background="{DynamicResource BrushControlFill}" BorderBrush="{DynamicResource BrushControlEdge}" />
-                    <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
-                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
-                </Panel>
-            </ControlTemplate>
-        </Setter>
-    </Style>
     <Style Selector="Button.removebadge > Path.glyph">
         <Setter Property="Width" Value="{StaticResource RemoveBadgeCross}" />
         <Setter Property="Height" Value="{StaticResource RemoveBadgeCross}" />
         <Setter Property="StrokeThickness" Value="1.5" />
         <Setter Property="Stroke" Value="{Binding $parent[Button].Foreground}" />
     </Style>
-    <Style Selector="Button.removebadge:pointerover, Button.removebadge:focus-visible"><Setter Property="Foreground" Value="{DynamicResource BrushDanger}" /></Style>
-    <Style Selector="Button.removebadge:pointerover /template/ Border#PART_Badge"><Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" /></Style>
-    <Style Selector="Button.removebadge:focus-visible /template/ Border#PART_Badge"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
-
-
     <!-- A tile: a Windows-style button (TrayTileHeight high, as wide as its cell of the tile grid: TrayTileColumns, even TrayTileGap gaps)
          holding its glyph, with its name UNDER it (StackPanel.traytile > TextBlock.wordtext). The 1 px edge is always there, so lighting, hover and
          focus change colours only. .on = its state is on (filled accent, the glyph in BrushOnAccent) -->
-    <Style Selector="Button.tile">
-        <Setter Property="HorizontalAlignment" Value="Stretch" />
-        <Setter Property="Height" Value="{StaticResource TrayTileHeight}" />
-        <Setter Property="Padding" Value="0" />
-        <Setter Property="Margin" Value="0" />
-        <Setter Property="VerticalAlignment" Value="Top" />
-        <Setter Property="CornerRadius" Value="{StaticResource TrayTileCornerRadius}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
-        <Setter Property="Background" Value="{DynamicResource BrushControlFill}" />
-        <Setter Property="HorizontalContentAlignment" Value="Center" />
-        <Setter Property="VerticalContentAlignment" Value="Center" />
-    </Style>
     <Style Selector="Button.tile > c|IconGlyph">
         <Setter Property="Width" Value="{StaticResource TrayGlyphSize}" />
         <Setter Property="Height" Value="{StaticResource TrayGlyphSize}" />
-    </Style>
-    <Style Selector="Button.tile:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" />
-    </Style>
-    <Style Selector="Button.tile.on /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccent}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-    </Style>
-    <Style Selector="Button.tile.on:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccentBright}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentBright}" />
     </Style>
     <Style Selector="Button.tile.on > c|IconGlyph"><Setter Property="Foreground" Value="{DynamicResource BrushOnAccent}" /></Style>
     <!-- The tile's corner mark (top-right, TrayMarkSize): holds ONE of a spinning ring (an action runs), a pulsing grey dot (the state is read),
@@ -119,39 +171,6 @@
          device's state (grey = off, accent edge and wash = on); its Panel holds ONE of the power glyph, the spinner (an inner Panel with the tile
          mark's Ellipse.markring + Path.markarc) while this method runs, or the red warning glyph (.markfailed) when this method failed.
          Sizes: StatePower* in App.axaml. -->
-    <Style Selector="Button.statepower">
-        <Setter Property="Width" Value="{StaticResource StatePowerSize}" />
-        <Setter Property="Height" Value="{StaticResource StatePowerSize}" />
-        <Setter Property="MinHeight" Value="0" />
-        <Setter Property="Padding" Value="0" />
-        <Setter Property="CornerRadius" Value="{StaticResource StatePowerRadius}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="HorizontalContentAlignment" Value="Center" />
-        <Setter Property="VerticalContentAlignment" Value="Center" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="Foreground" Value="{DynamicResource BrushMuted}" />
-    </Style>
-    <Style Selector="Button.statepower /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
-        <Setter Property="CornerRadius" Value="{StaticResource StatePowerRadius}" />
-    </Style>
-    <Style Selector="Button.statepower:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-    </Style>
-    <Style Selector="Button.statepower.on"><Setter Property="Foreground" Value="{DynamicResource BrushAccent}" /></Style>
-    <Style Selector="Button.statepower.on /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" />
-    </Style>
-    <Style Selector="Button.statepower.on:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-    </Style>
-    <Style Selector="Button.statepower:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-    </Style>
     <!-- Hover or keyboard focus on a running method's button turns the spinner into a stop square (a click stops that method). -->
     <Style Selector="Button.statepower > Panel > Panel > Path.markstop">
         <Setter Property="IsVisible" Value="False" />
@@ -168,13 +187,6 @@
     <Style Selector="Button.statepower > Panel > c|IconGlyph">
         <Setter Property="Width" Value="{StaticResource StatePowerGlyph}" />
         <Setter Property="Height" Value="{StaticResource StatePowerGlyph}" />
-    </Style>
-
-    <Style Selector="Button.tile:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-    </Style>
-    <Style Selector="Button.tile.on:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushOnAccent}" />
     </Style>
 
     <!-- The glyph of a Button.pill.icon or .accentline (their looks are in the pill's theme, Styles/ButtonThemes.axaml); it takes the button's
