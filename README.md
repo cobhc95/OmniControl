@@ -61,7 +61,7 @@ The pictures are drawn from the app's own views with sample data by `tools/Scree
 
 Get **Setup** (installer) or **Portable** (zip) from [Releases](../../releases). Both are self-contained (no .NET to install) and run on Windows 10 and 11, x64. Setup installs for all users and can add Equalizer APO, Windows Packet Filter (download limits) and the network service (network limits without running as administrator). Optional: Python with python-kasa for Tapo and Kasa, an Android emulator for the simulation method, a virtual audio cable for per-app and microphone effects.
 
-To build it yourself: `dotnet run --project OmniControl.App -c Release` with the .NET 9 SDK. Contributors start with [AGENTS.md](AGENTS.md) and [MAP.md](MAP.md); [CHANGELOG.md](CHANGELOG.md) lists what changed.
+To build it yourself: `dotnet run --project OmniControl.App -c Release` with the .NET 10 SDK. Contributors start with [AGENTS.md](AGENTS.md) and [MAP.md](MAP.md); [CHANGELOG.md](CHANGELOG.md) lists what changed.
 
 ## Licence
 

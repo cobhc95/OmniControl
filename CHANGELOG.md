@@ -13,6 +13,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 - Lighter start-up and memory: the Mouse and Trackpad, Smart Devices, Other PCs, Automation, OSD, Resources and App settings pages are made the first time they are opened or searched instead of at start-up (their actions, presets and OSD pop-ups work from the start as before); the first opening of each, or the first search, takes a moment longer.
 - Diagnostics: timing-log.txt records the app's memory (managed heap, private bytes, working set) two minutes after start, each time the window has settled hidden and after the windows are let go.
 - Security: Setup and uninstall no longer start cmd while elevated (it would run your AutoRun command as administrator): they ask OmniControl to quit through its own quit signal instead of running OmniControl.exe, look for it and the network service with Windows' own tools by full path, and run netcfg directly; the old per-user copy's uninstaller (0.2.3 and earlier) runs with your normal rights, never as administrator. "Restart Tailscale" restarts the service through PowerShell instead of cmd.
+- Changed: OmniControl now runs on .NET 10 (long-term support, still carried inside the app; nothing to install). The Setup is about 0.2 MB larger.
 
 ## 0.2.6 (21 Nov 2026)
 

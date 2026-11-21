@@ -2,7 +2,6 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <RootNamespace>OmniControl.App</RootNamespace>
     <AssemblyName>OmniControl</AssemblyName>
