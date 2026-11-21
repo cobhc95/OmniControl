@@ -28,7 +28,7 @@ public static class BackupFile
     public const string BeforeImportName = "import-backup." + Extension;
     private const int Format = 1;
 
-    /// A backup or a store in it larger than this is not one OmniControl made.
+    /// A backup, or all it holds unpacked together, larger than this is not one OmniControl made.
     private const long MaxBytes = 64L * 1024 * 1024;
 
     private const string BadFile = "That file is not an OmniControl backup, or it is damaged.";
@@ -73,9 +73,9 @@ public static class BackupFile
         {
             if (new FileInfo(path).Length > MaxBytes) return (null, BadFile);
             using var zip = ZipFile.OpenRead(path);
-            if (zip.GetEntry(ManifestName) is not { } manifestEntry || manifestEntry.Length > MaxBytes) return (null, BadFile);
-            Manifest? manifest;
-            using (var stream = manifestEntry.Open()) manifest = JsonSerializer.Deserialize<Manifest>(stream);
+            if (zip.GetEntry(ManifestName) is not { } manifestEntry) return (null, BadFile);
+            var budget = MaxBytes; // for everything unpacked together, counted as it unpacks (an entry's stated size may lie)
+            var manifest = JsonSerializer.Deserialize<Manifest>(new MemoryStream(Unpack(manifestEntry, ref budget)));
             if (manifest is null) return (null, BadFile);
             if (manifest.Format > Format) return (null, "That backup was made by a newer OmniControl; update OmniControl to use it.");
 
@@ -84,8 +84,8 @@ public static class BackupFile
             foreach (var entry in zip.Entries)
             {
                 if (DataStores.BackedUpByName(entry.FullName) is not { } store) continue; // the manifest, or a store this version does not know
-                if (entry.Length > MaxBytes) return (null, BadFile);
-                using var reader = new StreamReader(entry.Open());
+                if (files.ContainsKey(store.FileName)) return (null, BadFile); // one store twice: OmniControl never writes that
+                using var reader = new StreamReader(new MemoryStream(Unpack(entry, ref budget)));
                 var text = reader.ReadToEnd();
                 if (!TryParse(text, out var node)) return (null, BadFile);
                 files[store.FileName] = text;
@@ -102,6 +102,22 @@ public static class BackupFile
         {
             return (null, BadFile);
         }
+    }
+
+    /// An entry's bytes, unpacked at most up to what is left of <paramref name="budget"/> (which it uses up); more is a bad file.
+    private static byte[] Unpack(ZipArchiveEntry entry, ref long budget)
+    {
+        if (entry.Length > budget) throw new InvalidDataException("too large");
+        using var stream = entry.Open();
+        using var bytes = new MemoryStream();
+        var chunk = new byte[81920];
+        int read;
+        while ((read = stream.Read(chunk, 0, chunk.Length)) > 0)
+        {
+            if ((budget -= read) < 0) throw new InvalidDataException("too large");
+            bytes.Write(chunk, 0, read);
+        }
+        return bytes.ToArray();
     }
 
     /// The entries of the list store whose text this is (null for plain settings or damaged text): what an import window counts.

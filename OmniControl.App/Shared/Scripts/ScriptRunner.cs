@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Text;
 
 namespace OmniControl.App.Shared.Scripts;
 
@@ -51,8 +52,8 @@ public static class ScriptRunner
         using (started)
         {
             var process = started.Process;
-            var errors = started.Errors?.ReadToEndAsync() ?? Task.FromResult(string.Empty);
-            var printed = started.Output?.ReadToEndAsync() ?? Task.FromResult(string.Empty); // read so a full pipe never blocks it
+            var errors = ReadKeepingStart(started.Errors);
+            var printed = ReadKeepingStart(started.Output);
             using var limit = CancellationTokenSource.CreateLinkedTokenSource(stop);
             limit.CancelAfter(timeout);
             try
@@ -75,6 +76,18 @@ public static class ScriptRunner
     }
 
     private static string Shortened(string text) => text.Length > ErrorTextLimit ? text[..ErrorTextLimit] : text;
+
+    /// Reads to the end, so a full pipe never blocks the program, but keeps only the start (room for <see cref="Shortened"/> after a trim):
+    /// a hidden command printing without end never fills memory.
+    private static async Task<string> ReadKeepingStart(StreamReader? reader)
+    {
+        if (reader is null) return string.Empty;
+        var kept = new StringBuilder();
+        var buffer = new char[4096];
+        for (int read; (read = await reader.ReadAsync(buffer, 0, buffer.Length)) > 0;)
+            if (kept.Length < 2 * ErrorTextLimit) kept.Append(buffer, 0, Math.Min(read, 2 * ErrorTextLimit - kept.Length));
+        return kept.ToString();
+    }
 
     /// Lets the output readers finish; a pipe broken by stopping the command only means there is no more to read.
     private static async Task Drain(params Task<string>[] readers)

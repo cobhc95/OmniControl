@@ -17,6 +17,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 - Security: plug-ins load their own DLLs only from their own folder and Windows' System32 (a plug-in that needs a DLL found through PATH no longer loads) and never from a mapped network drive; restoring a backup leaves out effects' plug-in and impulse-response files and their saved state, as an import from another PC does: choose them again after a restore.
 - Security: OmniControl talks to the network service only after checking that the program answering on its connection is the service itself, and says so in one line otherwise; the network service and the sign-in task are set up only when every file in OmniControl's folder (not only the folder) can be changed by administrators alone.
 - Security: Equalizer APO's config files are checked and written through the same open file, so a file swapped for a link in between is never followed.
+- Security: memory limits on outside data: a backup is refused when all it holds unpacks to more than 64 MB or it holds a settings file twice; an Android screenshot larger than 16 million pixels is not read, and only the rows its header promises are unpacked; a hidden command's output is kept only up to what the log needs while it prints.
 - Changed: OmniControl now runs on .NET 10 (long-term support, still carried inside the app; nothing to install). The Setup is about 0.2 MB larger.
 
 ## 0.2.6 (21 Nov 2026)

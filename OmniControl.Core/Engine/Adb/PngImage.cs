@@ -19,6 +19,9 @@ public static class Png
 {
     private static readonly byte[] Signature = { 137, 80, 78, 71, 13, 10, 26, 10 };
 
+    /// A picture larger than this (a 4K tablet has 8.3 million pixels) is not read: its pixels alone would take 64 MB and more.
+    private const long MaxPixels = 16L * 1024 * 1024;
+
     public static RgbaImage? Decode(byte[]? data)
     {
         if (data is null || data.Length < 33 || !data.AsSpan(0, 8).SequenceEqual(Signature)) return null;
@@ -43,14 +46,16 @@ public static class Png
             else if (type == "IEND") break;
             at = body + length + 4; // the chunk's CRC is not checked: adb's pipe either delivers the file or cuts it short
         }
-        if (channels == 0) return null;
+        if (channels == 0 || (long)width * height > MaxPixels) return null;
         try
         {
             packed.Position = 0;
             using var inflate = new ZLibStream(packed, CompressionMode.Decompress);
-            using var raw = new MemoryStream();
-            inflate.CopyTo(raw);
-            return Unfilter(raw.GetBuffer().AsSpan(0, (int)raw.Length), width, height, channels);
+            // Only the rows the header promises are unpacked (a filter byte per row), never what a stream may hold beyond them.
+            var raw = new byte[((long)width * channels + 1) * height];
+            var filled = 0;
+            for (int read; filled < raw.Length && (read = inflate.Read(raw, filled, raw.Length - filled)) > 0;) filled += read;
+            return Unfilter(raw.AsSpan(0, filled), width, height, channels);
         }
         catch (InvalidDataException)
         {
