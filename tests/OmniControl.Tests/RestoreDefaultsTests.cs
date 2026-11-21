@@ -316,7 +316,7 @@ public class RestoreDefaultsTests
     public void Mouse_copy_covers_every_stored_setting()
     {
         var writable = typeof(MouseSettings).GetProperties().Where(p => p.CanWrite && p.GetMethod!.IsPublic).Select(p => p.Name).ToList();
-        Assert.Equal(15, writable.Count); // a new stored setting must be added to CopyFrom (and to this list)
+        Assert.Equal(16, writable.Count); // a new stored setting must be added to CopyFrom (and to this list); Approved is this PC's own, never copied
 
         var source = new MouseSettings
         {
