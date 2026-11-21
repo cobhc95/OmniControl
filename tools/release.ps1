@@ -16,6 +16,10 @@ $iscc = @("$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe", "${env:ProgramFile
 if ($LASTEXITCODE) { throw 'setup build failed' }
 $log = Get-Content (Join-Path $root 'CHANGELOG.md') -Raw
 $notes = [regex]::Match($log, "(?ms)^## $([regex]::Escape($version))[^\n]*\n(.*?)(?=^## |\z)").Groups[1].Value.Trim()
-$files = Get-ChildItem $out -File | Where-Object { $_.Name -match 'Setup\.exe$|Portable\.zip$' } | ForEach-Object FullName
+$files = @(Get-ChildItem $out -File | Where-Object { $_.Name -match 'Setup\.exe$|Portable\.zip$' } | ForEach-Object FullName)
+# The downloads are not code-signed (no certificate): their SHA-256 sums go up beside them, in the format sha256sum -c reads.
+$sums = Join-Path $out "OmniControl-$version-SHA256SUMS.txt"
+$files | ForEach-Object { "{0}  {1}" -f (Get-FileHash $_ -Algorithm SHA256).Hash.ToLowerInvariant(), (Split-Path $_ -Leaf) } | Set-Content -Path $sums -Encoding ascii
+$files += $sums
 $notesFile = Join-Path $out "notes.md"; Set-Content -Path $notesFile -Value $notes -Encoding utf8
 gh release create "v$version" @files --prerelease --title "OmniControl $version" --notes-file $notesFile
