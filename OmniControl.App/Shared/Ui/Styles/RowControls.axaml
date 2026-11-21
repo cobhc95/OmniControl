@@ -140,6 +140,33 @@
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
             </Style>
         </ControlTheme>
+
+        <!-- Border.selector: the chip when there is nothing to pick, with the Method colours' edges (its words are child selectors below) -->
+        <ControlTheme x:Key="SelectorBorder" TargetType="Border">
+            <Style Selector="^.selector">
+                <Setter Property="Height" Value="{StaticResource ChipHeight}" />
+                <Setter Property="Padding" Value="{StaticResource SelectorPadding}" />
+                <Setter Property="CornerRadius" Value="{StaticResource ChipCornerRadius}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+            <Style Selector="^.selector.method.apo"><Setter Property="BorderBrush" Value="{DynamicResource BrushTagGood}" /></Style>
+            <Style Selector="^.selector.method.cable"><Setter Property="BorderBrush" Value="{DynamicResource BrushTagCable}" /></Style>
+            <Style Selector="^.selector.method.risk"><Setter Property="BorderBrush" Value="{DynamicResource BrushTagRisk}" /></Style>
+            <Style Selector="^.selector.method.recording"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" /></Style>
+        </ControlTheme>
+
+        <!-- Border.anchorframe (notes below) -->
+        <ControlTheme x:Key="AnchorFrameBorder" TargetType="Border">
+            <Style Selector="^.anchorframe">
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="BorderBrush" Value="Transparent" />
+                <Setter Property="CornerRadius" Value="{StaticResource AnchorFrameCornerRadius}" />
+                <Setter Property="Padding" Value="{StaticResource AnchorFramePadding}" />
+            </Style>
+            <Style Selector="^.anchorframe.focused"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
+        </ControlTheme>
     </Styles.Resources>
     <Style Selector="Button.selector"><Setter Property="Theme" Value="{StaticResource SelectorButton}" /></Style>
     <Style Selector="Button.reveal"><Setter Property="Theme" Value="{StaticResource RevealButton}" /></Style>
@@ -154,14 +181,7 @@
     <Style Selector="c|ChipMenu.dropbox > Button.selector:not(:pointerover):not(:focus-visible) /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushControlFill}" />
     </Style>
-    <Style Selector="Border.selector">
-        <Setter Property="Height" Value="{StaticResource ChipHeight}" />
-        <Setter Property="Padding" Value="{StaticResource SelectorPadding}" />
-        <Setter Property="CornerRadius" Value="{StaticResource ChipCornerRadius}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
+    <Style Selector="Border.selector"><Setter Property="Theme" Value="{StaticResource SelectorBorder}" /></Style>
     <!-- The words of either: one line, trimmed; the chevron after them -->
     <Style Selector="Button.selector > Grid > TextBlock, Border.selector > TextBlock">
         <Setter Property="TextTrimming" Value="CharacterEllipsis" />
@@ -177,13 +197,9 @@
 
     <!-- The Method chip's colours (direct = the plain look above with muted words) -->
     <Style Selector="Border.selector.method > TextBlock"><Setter Property="Foreground" Value="{DynamicResource BrushMuted}" /></Style>
-    <Style Selector="Border.selector.method.apo"><Setter Property="BorderBrush" Value="{DynamicResource BrushTagGood}" /></Style>
     <Style Selector="Border.selector.method.apo > TextBlock"><Setter Property="Foreground" Value="{DynamicResource BrushOn}" /></Style>
-    <Style Selector="Border.selector.method.cable"><Setter Property="BorderBrush" Value="{DynamicResource BrushTagCable}" /></Style>
     <Style Selector="Border.selector.method.cable > TextBlock"><Setter Property="Foreground" Value="{DynamicResource BrushCable}" /></Style>
-    <Style Selector="Border.selector.method.risk"><Setter Property="BorderBrush" Value="{DynamicResource BrushTagRisk}" /></Style>
     <Style Selector="Border.selector.method.risk > TextBlock"><Setter Property="Foreground" Value="{DynamicResource BrushDanger}" /></Style>
-    <Style Selector="Border.selector.method.recording"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" /></Style>
     <Style Selector="Border.selector.method.recording > TextBlock"><Setter Property="Foreground" Value="{DynamicResource BrushAccent}" /></Style>
     <!-- A chip with a status dot (Controls/ChipMenu.Tone, docs/mockups/pc-header-tidy.html): .good = green words and edge (connected), .caution = yellow edge; the dot is c|StatusDot -->
     <Style Selector="Button.selector > Grid > TextBlock.withdot"><Setter Property="Margin" Value="{StaticResource ChipDotInset}" /></Style>
@@ -231,11 +247,5 @@
     <!-- Controls/AnchorPicker (docs/mockups/osd-custom-position.html): Border.anchorframe = its frame (an invisible 1 px edge that turns accent
          while it has the keyboard, so nothing moves); Button.anchorcell = one small square of its 3 x 3 grid (raised and quiet; the chosen one
          .selected = accent; hover = the master hover edge). Sizes AnchorCell* in App.axaml. -->
-    <Style Selector="Border.anchorframe">
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="BorderBrush" Value="Transparent" />
-        <Setter Property="CornerRadius" Value="{StaticResource AnchorFrameCornerRadius}" />
-        <Setter Property="Padding" Value="{StaticResource AnchorFramePadding}" />
-    </Style>
-    <Style Selector="Border.anchorframe.focused"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
+    <Style Selector="Border.anchorframe"><Setter Property="Theme" Value="{StaticResource AnchorFrameBorder}" /></Style>
 </Styles>

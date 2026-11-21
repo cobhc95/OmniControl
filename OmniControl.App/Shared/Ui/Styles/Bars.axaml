@@ -24,6 +24,18 @@
             <!-- A dot keyed to by the arrows in a colour pop-down shows the accent wash behind it -->
             <Style Selector="^.swatch:focus-visible /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" /></Style>
         </ControlTheme>
+        <!-- TextBlock.statusline: the one thin status line (notes above) -->
+        <ControlTheme x:Key="StatusLineText" TargetType="TextBlock">
+            <Style Selector="^.statusline">
+                <Setter Property="FontSize" Value="{StaticResource StatusFontSize}" />
+                <Setter Property="Foreground" Value="{DynamicResource BrushMuted}" />
+                <Setter Property="TextWrapping" Value="NoWrap" />
+                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+            <Style Selector="^.statusline.caution"><Setter Property="Foreground" Value="{DynamicResource BrushCaution}" /></Style>
+            <Style Selector="^.statusline.failed"><Setter Property="Foreground" Value="{DynamicResource BrushDanger}" /></Style>
+        </ControlTheme>
     </Styles.Resources>
 
     <Style Selector="Border.toolrow">
@@ -96,15 +108,7 @@
         <Setter Property="BorderThickness" Value="0,1,0,0" />
         <Setter Property="Padding" Value="{StaticResource StatusStripPadding}" />
     </Style>
-    <Style Selector="TextBlock.statusline">
-        <Setter Property="FontSize" Value="{StaticResource StatusFontSize}" />
-        <Setter Property="Foreground" Value="{DynamicResource BrushMuted}" />
-        <Setter Property="TextWrapping" Value="NoWrap" />
-        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
-    <Style Selector="TextBlock.statusline.caution"><Setter Property="Foreground" Value="{DynamicResource BrushCaution}" /></Style>
-    <Style Selector="TextBlock.statusline.failed"><Setter Property="Foreground" Value="{DynamicResource BrushDanger}" /></Style>
+    <Style Selector="TextBlock.statusline"><Setter Property="Theme" Value="{StaticResource StatusLineText}" /></Style>
 
     <!-- Button.swatch + c:SwatchDot = one colour of every colour pop-down (the dot is also the screenshot overlay's colour button's). The
          floating bars over a picture (Border.floatbar, Button.toolicon) are in FloatBars.axaml, the screenshot overlay's own pieces in

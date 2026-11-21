@@ -83,6 +83,20 @@
             <!-- A chip being dragged to a new place -->
             <Style Selector="^.chipx.dragging"><Setter Property="Opacity" Value="0.5" /></Style>
         </ControlTheme>
+
+        <!-- Border.tickbox: the tick of an option list's entry (notes below); .mixed = some of what it stands for is ticked (the import
+             window's "Everything"): accent edge, Border.masterdash inside -->
+        <ControlTheme x:Key="TickBoxBorder" TargetType="Border">
+            <Style Selector="^.tickbox">
+                <Setter Property="Width" Value="{StaticResource TickBoxSize}" />
+                <Setter Property="Height" Value="{StaticResource TickBoxSize}" />
+                <Setter Property="CornerRadius" Value="{StaticResource TickBoxCornerRadius}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" />
+            </Style>
+            <Style Selector="^.tickbox.checked"><Setter Property="Background" Value="{DynamicResource BrushAccent}" /><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
+            <Style Selector="^.tickbox.mixed"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
+        </ControlTheme>
     </Styles.Resources>
     <!-- The colour editor's drawn areas (Controls/ColorSquare, HueBar): the accent focus ring on keyboard focus, never the default outline -->
     <Style Selector="c|ColorSquare:focus-visible, c|HueBar:focus-visible"><Setter Property="RingBrush" Value="{DynamicResource BrushAccent}" /></Style>
@@ -112,16 +126,7 @@
     </Style>
 
     <!-- Option list (Controls/OptionList): the tick of an entry (1 px edge; .checked filled in the accent); .unavailable = a greyed entry or control (the master picker, a Shortcuts action that does nothing now, a microphone row's parts while Use microphones is off) -->
-    <Style Selector="Border.tickbox">
-        <Setter Property="Width" Value="{StaticResource TickBoxSize}" />
-        <Setter Property="Height" Value="{StaticResource TickBoxSize}" />
-        <Setter Property="CornerRadius" Value="{StaticResource TickBoxCornerRadius}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" />
-    </Style>
-    <Style Selector="Border.tickbox.checked"><Setter Property="Background" Value="{DynamicResource BrushAccent}" /><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
-    <!-- .mixed = some of what it stands for is ticked (the import window's "Everything"): accent edge, Border.masterdash inside -->
-    <Style Selector="Border.tickbox.mixed"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
+    <Style Selector="Border.tickbox"><Setter Property="Theme" Value="{StaticResource TickBoxBorder}" /></Style>
     <Style Selector="Path.tick">
         <Setter Property="Stroke" Value="{DynamicResource BrushBackground}" />
         <Setter Property="StrokeThickness" Value="1.75" />

@@ -8,6 +8,22 @@
 
     <!-- Every Button's looks (the master hover, pill, statetoggle, optioncard, primary, link, tab...) are control themes (Styles/ButtonThemes.axaml);
          a theme cannot hold a child selector, so those stay here. -->
+    <Styles.Resources>
+        <!-- Border.tag (a small fact pill, below), the same rules as the button themes: every selector names the class -->
+        <ControlTheme x:Key="TagBorder" TargetType="Border">
+            <Style Selector="^.tag">
+                <Setter Property="CornerRadius" Value="9" />
+                <Setter Property="Padding" Value="5,0" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
+            </Style>
+            <Style Selector="^.tag.good"><Setter Property="Background" Value="{DynamicResource BrushTagGoodSoft}" /><Setter Property="BorderBrush" Value="{DynamicResource BrushTagGood}" /></Style>
+            <Style Selector="^.tag.caution"><Setter Property="Background" Value="{DynamicResource BrushTagCautionSoft}" /><Setter Property="BorderBrush" Value="{DynamicResource BrushTagCaution}" /></Style>
+            <Style Selector="^.tag.risk"><Setter Property="Background" Value="{DynamicResource BrushTagRiskSoft}" /><Setter Property="BorderBrush" Value="{DynamicResource BrushTagRisk}" /></Style>
+            <Style Selector="^.tag.cable"><Setter Property="BorderBrush" Value="{DynamicResource BrushCable}" /></Style>
+            <Style Selector="^.tag.selected"><Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" /><Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" /></Style>
+        </ControlTheme>
+    </Styles.Resources>
     <!-- Long action names wrap to two lines inside the pill (two lines of 11 plus the 1px borders fit the 24px height); the text block is centred itself because a plain-string Content is stretched by its presenter and would otherwise sit at the top -->
     <Style Selector="Button.pill TextBlock">
         <Setter Property="TextWrapping" Value="Wrap" />
@@ -43,19 +59,10 @@
     <!-- The smaller text of a pop-down card (its description and notes) -->
     <Style Selector="TextBlock.small"><Setter Property="FontSize" Value="11" /></Style>
 
-    <!-- Tag: a small fact pill. The colour is on the wash and the edge; the text keeps the normal colour so it reads in both themes. -->
-    <Style Selector="Border.tag">
-        <Setter Property="CornerRadius" Value="9" />
-        <Setter Property="Padding" Value="5,0" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
-    </Style>
+    <!-- Tag: a small fact pill. The colour is on the wash and the edge; the text keeps the normal colour so it reads in both themes.
+         Its looks are a control theme (TagBorder, above), its words a child selector. -->
+    <Style Selector="Border.tag"><Setter Property="Theme" Value="{StaticResource TagBorder}" /></Style>
     <Style Selector="Border.tag TextBlock"><Setter Property="FontSize" Value="10.5" /><Setter Property="TextWrapping" Value="Wrap" /><Setter Property="VerticalAlignment" Value="Center" /><Setter Property="TextAlignment" Value="Center" /></Style>
-    <Style Selector="Border.tag.good"><Setter Property="Background" Value="{DynamicResource BrushTagGoodSoft}" /><Setter Property="BorderBrush" Value="{DynamicResource BrushTagGood}" /></Style>
-    <Style Selector="Border.tag.caution"><Setter Property="Background" Value="{DynamicResource BrushTagCautionSoft}" /><Setter Property="BorderBrush" Value="{DynamicResource BrushTagCaution}" /></Style>
-    <Style Selector="Border.tag.risk"><Setter Property="Background" Value="{DynamicResource BrushTagRiskSoft}" /><Setter Property="BorderBrush" Value="{DynamicResource BrushTagRisk}" /></Style>
-    <Style Selector="Border.tag.cable"><Setter Property="BorderBrush" Value="{DynamicResource BrushCable}" /></Style>
-    <Style Selector="Border.tag.selected"><Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" /><Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" /></Style>
 
 
 

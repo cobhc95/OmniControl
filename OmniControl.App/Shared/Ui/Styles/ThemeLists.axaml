@@ -66,9 +66,8 @@
     </Style>
 
 
-    <!-- The preset manager (Pages/Presets): the group card it was opened at is outlined in the accent (the 1 px edge stays, so nothing
-         moves); a section with no presets is dimmed in its left pane; a row's drag grip is muted -->
-    <Style Selector="Border.groupPanel.target"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
+    <!-- The preset manager (Pages/Presets): the group card it was opened at is outlined in the accent (Border.groupPanel.target, its theme
+         in Theme.axaml); a section with no presets is dimmed in its left pane; a row's drag grip is muted -->
     <Style Selector="ListBox.nav > ListBoxItem:disabled"><Setter Property="Opacity" Value="0.45" /></Style>
     <Style Selector="PathIcon.grip"><Setter Property="Foreground" Value="{DynamicResource BrushMuted}" /><Setter Property="Width" Value="10" /><Setter Property="Height" Value="14" /></Style>
     <Style Selector="TextBlock.accenttext"><Setter Property="Foreground" Value="{DynamicResource BrushAccent}" /></Style>
