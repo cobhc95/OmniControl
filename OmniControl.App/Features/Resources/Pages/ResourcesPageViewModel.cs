@@ -111,7 +111,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
         Live = new ItemGroup("Resources/Live", "Live readings", _cards.Select(c => (object)c.Card).ToList())
         {
             ExpandedByDefault = true, Summary = string.Empty,
-            Tip = "Load, memory and network come from Windows; GPU, disks and temperatures from LibreHardwareMonitor. The CPU's own temperature needs the PawnIO driver.",
+            Tip = "Readings come from Windows itself (GPU and disk load as Task Manager shows them, the graphics card's and drives' own temperatures, the ACPI thermal zone as CPU temperature); LibreHardwareMonitor only for what Windows does not give. Its CPU package temperature needs the PawnIO driver.",
         };
         ReadEvery = new ChoiceItem("Read every", Timing.ResourcesReadChoices.Select(Every).ToList(), Every(settings.Setup.ReadEverySeconds), picked =>
         {

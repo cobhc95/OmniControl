@@ -76,7 +76,7 @@ public sealed record Reading(string Id, string Name, string Chip, string Icon, R
         var name = $"Disk {disk.Number}";
         yield return new($"disk.{disk.Id}", $"{name} activity ({disk.Model})", name, "disc", ReadingKind.Percent, SampleParts.Disk, s => Of(s)?.Activity,
             $"D{disk.Number}:", "{disc}") { SuggestedIcons = new[] { "disc", "database" } };
-        yield return new($"disktemp.{disk.Id}", $"{name} temperature ({disk.Model})", name + " °C", "temperature", ReadingKind.Temperature, SampleParts.Disk,
+        yield return new($"disktemp.{disk.Id}", $"{name} temperature ({disk.Model})", name + " °C", "temperature", ReadingKind.Temperature, SampleParts.DiskTemp,
             s => Of(s)?.Temperature, $"T{disk.Number}:", "{disc}" + Gadget.GadgetLabel.Token("temperature", Gadget.GadgetLabel.WarmColour), WarnDefault: WarmCelsius)
             { SuggestedIcons = Thermometers.Append("disc").ToArray() };
     }

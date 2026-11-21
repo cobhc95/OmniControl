@@ -26,7 +26,7 @@ public static partial class Timing
     /// After a weather request that could not get through (no network yet at sign-in, just after waking), the first retry; each next one waits twice as long, up to the update interval.
     public static readonly TimeSpan WeatherRetryFirst = TimeSpan.FromSeconds(30);
 
-    /// With no sensor reading needed for this long the sensor library closes (memory and driver handles back); the next need opens it again.
+    /// With no sensor reading needed for this long the sensor sources close (the sensor library's memory and driver handles back); the next need opens it again.
     public static readonly TimeSpan ResourcesIdleClose = TimeSpan.FromSeconds(60);
 
     /// How many readings each sparkline shows.

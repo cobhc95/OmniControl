@@ -63,7 +63,7 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
     public string DisksText() => string.Join(", ", _disks?.Select(d => $"Disk {d.Number} {d.Model}") ?? Array.Empty<string>());
 
     /// Lists the physical disks again (the hardware watch's refresh: start-up, a device added or removed, a wake); a changed list makes the
-    /// sensor library list its drives again and the disks' readings and states follow. Worker.
+    /// sensor sources list their drives again and the disks' readings and states follow. Worker.
     public void RefreshDisks()
     {
         var disks = PhysicalDisks.List();
@@ -135,7 +135,7 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
         _timer.Change(shortest is null ? Timeout.InfiniteTimeSpan : TimeSpan.Zero, shortest ?? Timeout.InfiniteTimeSpan);
     }
 
-    /// Gives back the per-program session when unwanted, and the sensor library when no sensor reading was wanted for a while. Worker; waits for a read.
+    /// Gives back the per-program session when unwanted, and the sensor sources (the sensor library too) when no sensor reading was wanted for a while. Worker; waits for a read.
     private void Release(bool sensors)
     {
         lock (_work)

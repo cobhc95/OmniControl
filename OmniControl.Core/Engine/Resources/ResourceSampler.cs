@@ -1,6 +1,4 @@
 using System.Net.NetworkInformation;
-using LibreHardwareMonitor.Hardware;
-using LibreHardwareMonitor.Hardware.Storage;
 
 namespace OmniControl.Core.Engine.Resources;
 
@@ -31,53 +29,49 @@ public sealed record ResourceSample(double? Cpu, double? Gpu, double? MemoryUsed
     public SampleParts Parts { get; init; }
 }
 
-/// One physical disk as the sensor library read it: Windows' disk <paramref name="Number"/> (<see cref="PhysicalDisk.Number"/>), its active
-/// time in percent and its hottest temperature in °C (null when the drive reports none).
+/// One physical disk: Windows' disk <paramref name="Number"/> (<see cref="PhysicalDisk.Number"/>), its active time in percent and its hottest
+/// temperature in °C (null when the drive reports none, or that part was not wanted).
 public sealed record DiskSample(int Number, double? Activity, double? Temperature);
 
 /// Where a temperature sensor sits, in the order a menu lists them.
 public enum SensorGroup { Cpu, Gpu, Storage, Board }
 
-/// One temperature sensor of the library: a stable <paramref name="Id"/>, its <paramref name="Name"/>, the (top-level) <paramref name="Hardware"/> it belongs to and its value in Celsius.
+/// One temperature sensor (Windows' own, whose ids start with <c>win/</c>, or the sensor library's): a stable <paramref name="Id"/>, its
+/// <paramref name="Name"/>, the (top-level) <paramref name="Hardware"/> it belongs to and its value in Celsius.
 public sealed record TemperatureSensor(string Id, string Name, string Hardware, SensorGroup Group, double Value)
 {
+    /// The physical disk a drive's sensor belongs to (Windows' disk number); null for any other sensor.
+    public int? DiskNumber { get; init; }
+
     /// The name without the "CPU " or "GPU " that the group heading already says.
     public string Short => Group is SensorGroup.Cpu or SensorGroup.Gpu && Name.Length > 4 && Name[3] == ' ' && Name[..3] is "CPU" or "GPU" ? Name[4..] : Name;
 }
 
 /// The parts of a read a caller wants, beyond CPU load and memory (two cheap calls, always read): the network speeds, the adapter list (only
-/// for the adapter menu), and each reading of the sensor library, which is opened, and given only the hardware groups it needs, only for these.
+/// for the adapter menu), and each sensor reading (disk activity and the disks' temperatures apart), whose sources open only for these.
 [Flags]
 public enum SampleParts
 {
-    None = 0, Network = 1, Adapters = 2, Gpu = 4, Disk = 8, CpuTemp = 16, GpuTemp = 32, Hottest = 64, SensorList = 128,
-    Sensors = Gpu | Disk | CpuTemp | GpuTemp | Hottest,
+    None = 0, Network = 1, Adapters = 2, Gpu = 4, Disk = 8, CpuTemp = 16, GpuTemp = 32, Hottest = 64, SensorList = 128, DiskTemp = 256,
+    Sensors = Gpu | Disk | CpuTemp | GpuTemp | Hottest | DiskTemp,
     All = Network | Sensors,
 }
 
 /// Reads the PC's resources, one <see cref="Read"/> per tick on one worker thread (not thread-safe): CPU load from GetSystemTimes, memory from
-/// GlobalMemoryStatusEx, network totals from Windows' adapter counters, and GPU load, disk activity and temperatures from LibreHardwareMonitor
-/// (PawnIO build: no WinRing0; without the PawnIO driver the CPU's own temperature is not readable and stays null). Rates are the change since the previous read.
+/// GlobalMemoryStatusEx, network totals from Windows' adapter counters, and GPU load, disk activity and temperatures through
+/// <see cref="SensorReader"/> (Windows' own sources, the sensor library only for what Windows does not give). Rates are the change since the previous read.
 public sealed class ResourceSampler : IDisposable
 {
-    private const double Gigabyte = 1024d * 1024 * 1024, HottestMax = 150; // a sensor above this is a misread, not a temperature
-    private static readonly string[] NotTemperatures = { "Distance", "Limit", "Critical", "Warning", "TjMax" };
+    private const double Gigabyte = 1024d * 1024 * 1024;
 
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private readonly Dictionary<string, (long Received, long Sent)> _adapters = new();
+    private readonly SensorReader _sensors = new();
     private (ulong Idle, ulong Busy)? _cpu;
     private double _lastNetAt;
-    private Computer? _sensors;
-    private bool _sensorsTried;
-    private volatile bool _rescanStorage;
-    // When the library, the drives and the temperature-only hardware were last updated (null: update at the next read).
-    private TimeSpan? _sensedAt, _storageAt, _tempsAt;
-    private ResourceSample _sensed = ResourceSample.None; // the sensor values of that update
-    private List<ISensor> _temps = new(); // the temperature sensors of that update
-    private (string Id, SensorGroup Group)? _chosen; // the chosen Hottest sensor and the group it was last found in
 
-    /// Why the sensor library could not start (null: it runs, or has not been asked yet).
-    public string? SensorProblem { get; private set; }
+    /// Why the sensor library could not start (null: it runs, is not needed, or has not been asked yet).
+    public string? SensorProblem => _sensors.Problem;
 
     /// <param name="adapter">Which adapter the network speeds are read from: null = the busiest one (Auto), <see cref="AdapterSpeed.All"/> = all
     /// added together, else an adapter's id; a chosen adapter that is gone or not connected reads as Auto.</param>
@@ -92,7 +86,7 @@ public sealed class ResourceSampler : IDisposable
             AdapterIsAuto = net.Auto,
             Parts = wanted,
         };
-        return (wanted & SampleParts.Sensors) != 0 && Sensors(wanted, sensor) is { } computer ? WithSensors(sample, computer, wanted, sensor) : sample;
+        return (wanted & SampleParts.Sensors) != 0 ? _sensors.Add(sample, wanted, sensor) : sample;
     }
 
     /// The network is not wanted: its counters are forgotten, so the first read after it is wanted again starts afresh (never a rate over the gap).
@@ -178,157 +172,12 @@ public sealed class ResourceSampler : IDisposable
             .Select(n => new Nic(n.Id, n.Name, n.NetworkInterfaceType, n.Description)).ToList();
     }
 
-    /// The sensor library with exactly the hardware groups <paramref name="wanted"/> needs (the library adds and drops a group when its switch
-    /// changes while open), opened on the first read that needs it (it takes a moment); null when it cannot start. The Hottest reading needs
-    /// every group while it is Auto or the sensor list is wanted, else only the group its chosen <paramref name="sensor"/> was last found in.
-    private Computer? Sensors(SampleParts wanted, string? sensor)
-    {
-        bool Any(SampleParts parts) => (wanted & parts) != 0;
-        var hottest = Any(SampleParts.Hottest);
-        var only = hottest && !Any(SampleParts.SensorList) && sensor is not null && _chosen is { } c && c.Id == sensor ? c.Group : (SensorGroup?)null;
-        bool Hot(SensorGroup group) => hottest && (only is null || only == group);
-        var (cpu, gpu, storage, board) = (Any(SampleParts.CpuTemp) || Hot(SensorGroup.Cpu), Any(SampleParts.Gpu | SampleParts.GpuTemp) || Hot(SensorGroup.Gpu),
-            Any(SampleParts.Disk) || Hot(SensorGroup.Storage), Hot(SensorGroup.Board));
-        if (_sensors is { } open)
-        {
-            // The library lists the drives only when its storage group is made: a disk added or removed needs the group made again.
-            if (_rescanStorage && open.IsStorageEnabled)
-            {
-                open.IsStorageEnabled = false;
-                open.IsStorageEnabled = true;
-                (_sensedAt, _storageAt, _tempsAt) = (null, null, null);
-            }
-            _rescanStorage = false;
-            if ((open.IsCpuEnabled, open.IsGpuEnabled, open.IsStorageEnabled, open.IsMotherboardEnabled) != (cpu, gpu, storage, board))
-            {
-                (open.IsCpuEnabled, open.IsGpuEnabled, open.IsStorageEnabled, open.IsMotherboardEnabled) = (cpu, gpu, storage, board);
-                (_sensedAt, _storageAt, _tempsAt) = (null, null, null); // a group just added is read at once
-            }
-            return open;
-        }
-        if (_sensorsTried) return null;
-        _sensorsTried = true;
-        try
-        {
-            var computer = new Computer { IsCpuEnabled = cpu, IsGpuEnabled = gpu, IsStorageEnabled = storage, IsMotherboardEnabled = board };
-            computer.Open();
-            _sensors = computer;
-        }
-        catch (Exception ex) when (ex is not OutOfMemoryException) // a third-party library over drivers and vendor DLLs: any failure means "no sensors", never a crash
-        {
-            SensorProblem = ex.Message;
-        }
-        return _sensors;
-    }
-
-    /// The sample with the wanted sensor readings: the library is updated at most every <see cref="CoreTiming.SensorEvery"/> (the drives every
-    /// <see cref="CoreTiming.StorageSensorEvery"/> or <see cref="CoreTiming.StorageTempEvery"/>, the hardware that gives only temperatures
-    /// every <see cref="CoreTiming.TemperatureEvery"/>), so a fast read (the gadget's 100 ms) costs only CPU, memory and network.
-    private ResourceSample WithSensors(ResourceSample sample, Computer computer, SampleParts wanted, string? sensor)
-    {
-        var now = _clock.Elapsed;
-        if (_sensedAt is not { } sensed || now - sensed >= CoreTiming.SensorEvery)
-        {
-            var storageEvery = (wanted & SampleParts.Disk) != 0 ? CoreTiming.StorageSensorEvery : CoreTiming.StorageTempEvery;
-            bool Due(ref TimeSpan? at, TimeSpan every)
-            {
-                if (at is { } last && now - last < every) return false;
-                at = now;
-                return true;
-            }
-            var readStorage = Due(ref _storageAt, storageEvery);
-            var readTemps = Due(ref _tempsAt, CoreTiming.TemperatureEvery);
-            _sensedAt = now;
-            _sensed = Sense(computer, readStorage, readTemps, gpuLoad: (wanted & SampleParts.Gpu) != 0);
-        }
-        double? If(SampleParts part, double? value) => (wanted & part) != 0 ? value : null;
-        var chosen = sensor is null ? null : _temps.FirstOrDefault(s => s.Identifier.ToString() == sensor);
-        var hot = chosen ?? _temps.MaxBy(s => s.Value);
-        var hottest = (wanted & SampleParts.Hottest) != 0 && hot is not null ? Describe(hot) : null;
-        // Remembered so the next reads open only that sensor's group; a chosen sensor that is gone (not one only out of range now) opens every group again.
-        if ((wanted & SampleParts.Hottest) != 0)
-        {
-            if (chosen is not null) _chosen = (sensor!, hottest!.Group);
-            else if (sensor is null || !computer.Hardware.SelectMany(h => h.SubHardware.Prepend(h)).SelectMany(h => h.Sensors).Any(s => s.Identifier.ToString() == sensor)) _chosen = null;
-        }
-        return sample with
-        {
-            Gpu = If(SampleParts.Gpu, _sensed.Gpu),
-            Disk = If(SampleParts.Disk, _sensed.Disk),
-            Disks = (wanted & SampleParts.Disk) != 0 ? _sensed.Disks : Array.Empty<DiskSample>(),
-            CpuTemp = If(SampleParts.CpuTemp, _sensed.CpuTemp),
-            GpuTemp = If(SampleParts.GpuTemp, _sensed.GpuTemp),
-            Hottest = hottest?.Value,
-            HottestName = hottest?.Hardware,
-            ChosenSensor = chosen is not null ? hottest?.Name : null,
-            TemperatureSensors = (wanted & SampleParts.SensorList) != 0 ? _temps.Select(Describe).OrderBy(t => t.Group).ToList() : Array.Empty<TemperatureSensor>(),
-        };
-    }
-
-    /// A sensor as a menu lists it: its group and (top-level) hardware; a drive is named by its model.
-    private static TemperatureSensor Describe(ISensor s)
-    {
-        var top = s.Hardware;
-        while (top.Parent is { } parent) top = parent;
-        var group = top.HardwareType switch
-        {
-            HardwareType.Cpu => SensorGroup.Cpu,
-            HardwareType.GpuNvidia or HardwareType.GpuAmd or HardwareType.GpuIntel => SensorGroup.Gpu,
-            HardwareType.Storage => SensorGroup.Storage,
-            _ => SensorGroup.Board,
-        };
-        var name = group == SensorGroup.Storage ? (s.Name == "Temperature" ? top.Name : $"{top.Name} · {s.Name}") : s.Name;
-        return new TemperatureSensor(s.Identifier.ToString(), name, top.Name, group, s.Value ?? 0);
-    }
-
-    /// <param name="readTemps">Update the hardware that gives only temperatures here (the CPU's load comes from Windows; the board), and a
-    /// graphics card unless <paramref name="gpuLoad"/> is shown.</param>
-    private ResourceSample Sense(Computer computer, bool readStorage, bool readTemps, bool gpuLoad)
-    {
-        var all = new List<ISensor>();
-        foreach (var hardware in computer.Hardware.SelectMany(h => h.SubHardware.Prepend(h)))
-        {
-            var update = hardware.HardwareType switch
-            {
-                HardwareType.Storage => readStorage,
-                HardwareType.GpuNvidia or HardwareType.GpuAmd or HardwareType.GpuIntel => gpuLoad || readTemps,
-                _ => readTemps,
-            };
-            if (update) hardware.Update();
-            all.AddRange(hardware.Sensors);
-        }
-        static bool Gpu(ISensor s) => s.Hardware.HardwareType is HardwareType.GpuNvidia or HardwareType.GpuAmd or HardwareType.GpuIntel;
-        var temps = all.Where(s => s.SensorType == SensorType.Temperature && s.Value is > 0 and < (float)HottestMax && !NotTemperatures.Any(s.Name.Contains)).ToList();
-        _temps = temps;
-        static bool Activity(ISensor s) => s.SensorType == SensorType.Load && s.Name == "Total Activity";
-        return ResourceSample.None with
-        {
-            Disks = computer.Hardware.OfType<StorageDevice>().Where(d => d.Storage is not null)
-                .Select(d => new DiskSample(d.Storage.DriveNumber, Max(d.Sensors.Where(Activity)), Max(temps.Where(t => t.Hardware == d)))).ToList(),
-            Gpu = Max(all.Where(s => Gpu(s) && s.SensorType == SensorType.Load && s.Name is "GPU Core" or "D3D 3D")),
-            Disk = Max(all.Where(s => s.Hardware.HardwareType == HardwareType.Storage && Activity(s))),
-            CpuTemp = Max(temps.Where(s => s.Hardware.HardwareType == HardwareType.Cpu)),
-            GpuTemp = Max(temps.Where(Gpu)),
-        };
-    }
-
-    private static double? Max(IEnumerable<ISensor> sensors) => sensors.Select(s => s.Value).Where(v => v is not null).Max();
-
     /// A disk was added or removed: the next read that has the drives open lists them again (any thread).
-    public void RescanStorage() => _rescanStorage = true;
+    public void RescanStorage() => _sensors.RescanStorage();
 
-    /// Closes the sensor library to give back its memory and driver handles; the next <see cref="Read"/> that needs it opens it again (a
-    /// library that failed to start is not retried).
-    public void CloseSensors()
-    {
-        if (_sensors is null) return;
-        _sensors.Close();
-        _sensors = null;
-        _temps = new();
-        _sensorsTried = false;
-        (_sensedAt, _storageAt, _tempsAt) = (null, null, null);
-    }
-
+    /// Gives back the sensor sources' memory and handles (the sensor library's too); the next <see cref="Read"/> that needs one opens it again
+    /// (a library that failed to start is not retried).
+    public void CloseSensors() => _sensors.Close();
     public void Dispose() => CloseSensors();
 
     [StructLayout(LayoutKind.Sequential)]
