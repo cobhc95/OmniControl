@@ -268,24 +268,4 @@
     <Style Selector="Button.chipx.dragging"><Setter Property="Opacity" Value="0.5" /></Style>
     <!-- A chip's or a menu row's small muted parts: its number in the running order, and a value after its name (a shortcut) -->
     <Style Selector="TextBlock.chipnum, TextBlock.chipdetail"><Setter Property="Foreground" Value="{DynamicResource BrushMuted}" /></Style>
-
-    <!-- The dashed "+ add" chip at the end of a row of chips (Button.blockadd.small: the dashed master of Blocks.axaml at chip size) -->
-    <Style Selector="Button.blockadd.small">
-        <Setter Property="MinHeight" Value="0" />
-        <Setter Property="Height" Value="{StaticResource ChipHeight}" />
-        <Setter Property="Padding" Value="{StaticResource ChipAddPadding}" />
-        <Setter Property="Margin" Value="0" />
-        <Setter Property="CornerRadius" Value="{StaticResource ChipCornerRadius}" />
-        <Setter Property="FontSize" Value="{StaticResource MenuSmallFontSize}" />
-    </Style>
-    <!-- The dashed card that ends a gallery of option cards and shows the rest (Button.blockadd.card: the gadget's "More layouts"): an option card's
-         size and corners, accent words and glyph -->
-    <Style Selector="Button.blockadd.card">
-        <Setter Property="Margin" Value="0" />
-        <Setter Property="Padding" Value="{StaticResource OptionCardPadding}" />
-        <Setter Property="CornerRadius" Value="{StaticResource OptionCardCornerRadius}" />
-        <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
-        <Setter Property="HorizontalAlignment" Value="Stretch" />
-        <Setter Property="VerticalAlignment" Value="Stretch" />
-    </Style>
 </Styles>

@@ -2,38 +2,41 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:c="using:OmniControl.App.Shared.Ui.Controls">
     <!-- MASTER designs of a small graph that is a control (the FX window toolbar's analysis, Fx/FxAnalysisBar; the live numbers beside it
-         are styled in Fx/FxAnalysisNumbers itself). Included after Theme.axaml, so the thumbnail's own hover wins over the master button
-         hover there. Sizes in App.axaml (FxThumb*, FxStats*); the larger graph's pop-down is FlyoutPresenter.graphmenu in Menus.axaml. -->
-
-    <!-- Button.graphthumb: a drawn graph that opens a larger one (the response thumbnail). A quiet frame on the card surface; hover and
-         keyboard focus change only the frame's colour (never its thickness), so the graph inside never moves -->
-    <Style Selector="Button.graphthumb">
-        <Setter Property="Width" Value="{StaticResource FxThumbWidth}" />
-        <Setter Property="Height" Value="{StaticResource FxThumbHeight}" />
-        <Setter Property="MinHeight" Value="0" />
-        <Setter Property="Padding" Value="0" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="6" />
-        <Setter Property="ClipToBounds" Value="True" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-        <Setter Property="VerticalContentAlignment" Value="Stretch" />
-        <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
-    </Style>
-    <Style Selector="Button.graphthumb /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
-    </Style>
-    <Style Selector="Button.graphthumb:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" />
-    </Style>
-    <Style Selector="Button.graphthumb:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.graphthumb:focus-visible /template/ ContentPresenter#PART_ContentPresenter, Button.graphthumb:focus-visible:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-    </Style>
-
+         are styled in Fx/FxAnalysisNumbers itself). Sizes in App.axaml (FxThumb*, FxStats*); the larger graph's pop-down is
+         FlyoutPresenter.graphmenu in Menus.axaml. -->
+    <Styles.Resources>
+        <!-- Button.graphthumb: a drawn graph that opens a larger one (the response thumbnail). A quiet frame on the card surface; hover and
+             keyboard focus change only the frame's colour (never its thickness), so the graph inside never moves -->
+        <ControlTheme x:Key="GraphThumbButton" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
+            <Style Selector="^.graphthumb">
+                <Setter Property="Width" Value="{StaticResource FxThumbWidth}" />
+                <Setter Property="Height" Value="{StaticResource FxThumbHeight}" />
+                <Setter Property="MinHeight" Value="0" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="6" />
+                <Setter Property="ClipToBounds" Value="True" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="VerticalContentAlignment" Value="Stretch" />
+                <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
+            </Style>
+            <Style Selector="^.graphthumb /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
+            </Style>
+            <Style Selector="^.graphthumb:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" />
+            </Style>
+            <Style Selector="^.graphthumb:pressed /template/ ContentPresenter#PART_ContentPresenter, ^.graphthumb:focus-visible /template/ ContentPresenter#PART_ContentPresenter, ^.graphthumb:focus-visible:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+            </Style>
+        </ControlTheme>
+    </Styles.Resources>
+    <Style Selector="Button.graphthumb"><Setter Property="Theme" Value="{StaticResource GraphThumbButton}" /></Style>
 
     <!-- c|Sparkline: THE small line of recent values (Controls/Sparkline; a Resources card's history), in the accent; SparklineHeight and
          SparklineThickness in App.axaml. It stretches across the room its card gives it -->
