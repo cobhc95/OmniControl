@@ -66,7 +66,7 @@ public sealed partial class PresetRowViewModel : ObservableObject
         }
     }
 
-    public string NameTip => _entry.BuiltIn ? "Comes with the app: it can be applied, copied and given a shortcut" : _entry.CanRename ? "Double-click to rename" : _entry.Name;
+    public string NameTip => _entry.BuiltIn ? "Comes with the app: it can be applied, copied and given a shortcut" : _entry.CanRename ? "Double-click to rename" : string.Empty;
 
     /// The longest name the rename box takes (<see cref="PresetRules.MaxNameLength"/>).
     public int NameMaxLength => PresetRules.MaxNameLength;

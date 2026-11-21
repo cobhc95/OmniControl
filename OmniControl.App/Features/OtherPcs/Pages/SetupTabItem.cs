@@ -162,7 +162,7 @@ public sealed partial class SetupTabItem : ObservableObject, IDisposable
         {
             var peers = _tailscale.Peers.Where(p => p.Online).ToList();
             if (peers.Count == 0) return new[] { MenuRowItem.Header("No other Windows PC is online in Tailscale.") };
-            return peers.Select(p => new MenuRowItem(p.Name, string.Empty, p.Address == TailscaleTarget, p.Address, new RelayCommand(() => PickPeer(p.Address)), Detail: p.Address)).ToList();
+            return peers.Select(p => new MenuRowItem(p.Name, string.Empty, p.Address == TailscaleTarget, string.Empty, new RelayCommand(() => PickPeer(p.Address)), Detail: p.Address)).ToList();
         }
     }
 

@@ -20,7 +20,7 @@
                                 <DataTemplate x:DataType="vm:DeviceItem">
                                     <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6">
                                         <vm:DeviceIconView />
-                                        <TextBlock Grid.Column="1" Text="{Binding Name}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Name}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                                         <ToggleSwitch Grid.Column="2" Classes="plain" IsChecked="{Binding ListOn}" IsEnabled="{Binding CanSwitch}" IsVisible="{Binding IsReady}"
                                                       ToolTip.Tip="{Binding SwitchTip}" ToolTip.ShowOnDisabled="True" VerticalAlignment="Center" />
                                         <Border Grid.Column="2" Classes="tag caution" IsVisible="{Binding !IsReady}" VerticalAlignment="Center"><TextBlock Text="set-up" /></Border>

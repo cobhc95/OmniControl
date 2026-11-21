@@ -131,7 +131,7 @@ public sealed partial class FxFolderViewModel : ObservableObject
     {
         var (label, tip) = _mixer.ApoStepText();
         return _devices.Devices()
-            .Select(d => new MenuRowItem(d.Name, string.Empty, d.Id == _slot.DeviceId, d.Name, new RelayCommand(() => Choose(d)), d.Tags))
+            .Select(d => new MenuRowItem(d.Name, string.Empty, d.Id == _slot.DeviceId, string.Empty, new RelayCommand(() => Choose(d)), d.Tags))
             .Prepend(MenuRowItem.Header("Playback devices"))
             .Append(new MenuRowItem(label, string.Empty, false, tip, new AsyncRelayCommand(_mixer.ApoStep), RuleAbove: true))
             .ToList();

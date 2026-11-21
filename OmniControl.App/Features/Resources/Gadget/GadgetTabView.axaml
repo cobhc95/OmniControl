@@ -107,8 +107,7 @@
                 <StackPanel Spacing="{StaticResource GapSmall}">
                     <ListBox Classes="rows compact cards" ItemsSource="{Binding Weather.Group.Items}" />
                     <Border Classes="statusstrip">
-                        <TextBlock Classes="statusline" Classes.failed="{Binding Weather.Failed}" Text="{Binding Weather.Status}" TextTrimming="CharacterEllipsis"
-                                   ToolTip.Tip="{Binding Weather.Status}" />
+                        <TextBlock Classes="statusline" Classes.failed="{Binding Weather.Failed}" Text="{Binding Weather.Status}" TextTrimming="CharacterEllipsis" />
                     </Border>
                 </StackPanel>
             </pages:GroupCard>

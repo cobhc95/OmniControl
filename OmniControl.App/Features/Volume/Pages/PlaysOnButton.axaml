@@ -15,20 +15,19 @@
     </FlyoutBase.AttachedFlyout>
 
     <Panel>
-        <Button x:Name="Chip" Tag="scope" Classes="selector" IsVisible="{Binding HasPlaysOnMenu}" ToolTip.Tip="{Binding RouteText}" Click="OnClick">
+        <Button x:Name="Chip" Tag="scope" Classes="selector" IsVisible="{Binding HasPlaysOnMenu}" Click="OnClick">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
                 <TextBlock Text="{Binding RouteText}" />
                 <PathIcon Grid.Column="1" Data="{DynamicResource ChevronDownIcon}" />
             </Grid>
         </Button>
-        <Button Tag="scope" Classes="selector" IsVisible="{Binding PlaysOnOpensWiring}" Command="{Binding ShowWiringCommand}"
-                ToolTip.Tip="{Binding RouteText}">
+        <Button Tag="scope" Classes="selector" IsVisible="{Binding PlaysOnOpensWiring}" Command="{Binding ShowWiringCommand}">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
                 <TextBlock Text="{Binding RouteText}" />
                 <PathIcon Grid.Column="1" Data="{DynamicResource ChevronDownIcon}" />
             </Grid>
         </Button>
-        <Border Classes="selector" IsVisible="{Binding PlaysOnIsFixed}" ToolTip.Tip="{Binding RouteText}">
+        <Border Classes="selector" IsVisible="{Binding PlaysOnIsFixed}">
             <TextBlock Text="{Binding RouteText}" />
         </Border>
     </Panel>

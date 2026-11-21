@@ -60,7 +60,7 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.DataTemplates>
                         <DataTemplate DataType="mouse:ActionSlot">
-                            <Button Classes="chipx walk" Tag="scope" Click="OnChipClick" ToolTip.Tip="{Binding Name}">
+                            <Button Classes="chipx walk" Tag="scope" Click="OnChipClick">
                                 <StackPanel>
                                     <TextBlock Classes="chipnum" Text="{Binding Number}" IsVisible="{Binding ShowsNumber}" />
                                     <TextBlock Text="{Binding Name}" />

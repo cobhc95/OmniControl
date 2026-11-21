@@ -129,7 +129,7 @@
              line, a tag when that config runs effects of its own, and the selected effect's "Runs in ..." note when it fits -->
         <Border Grid.Row="3" Classes="statusstrip">
             <fx:FoldingRow Spacing="{DynamicResource StatusStripGap}">
-                <TextBlock Classes="statusline" Text="{Binding EngineText}" ToolTip.Tip="{Binding EngineText}" fx:FoldingRow.Fill="True" />
+                <TextBlock Classes="statusline" Text="{Binding EngineText}" fx:FoldingRow.Fill="True" />
                 <Button Classes="link small" Content="Put back" Command="{Binding PutBackCommand}" IsVisible="{Binding ShowsPutBack}" VerticalAlignment="Center"
                         ToolTip.Tip="Put OmniControl's line back into Equalizer APO's config" />
                 <c:TagView DataContext="{Binding OwnApoEffects}" IsVisible="{Binding $parent[Window].DataContext.OwnApoEffects, Converter={x:Static ObjectConverters.IsNotNull}}"

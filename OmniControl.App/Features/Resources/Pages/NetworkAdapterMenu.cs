@@ -77,7 +77,7 @@ public sealed class NetworkAdapterMenu
     }
 
     private MenuRowItem Row(string text, bool on, string? choice, string? icon = null, bool dim = false, string trailing = "") =>
-        new(text, string.Empty, on, text, new RelayCommand(() => Choose(choice)), Dim: dim, Icon: icon, Trailing: trailing);
+        new(text, string.Empty, on, string.Empty, new RelayCommand(() => Choose(choice)), Dim: dim, Icon: icon, Trailing: trailing);
     private void Choose(string? choice)
     {
         if (_settings.Setup.Adapter == choice) return;

@@ -68,7 +68,7 @@
                     <ListBox Classes="nav" ItemsSource="{Binding Scripts}" SelectedItem="{Binding SelectedScript}" MinWidth="120" MaxWidth="200">
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="vm:ScriptItem">
-                                <StackPanel ToolTip.Tip="{Binding Label}">
+                                <StackPanel>
                                     <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
                                     <TextBlock Classes="muted" Text="{Binding LanguageTag}" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>

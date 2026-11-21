@@ -48,7 +48,7 @@ public sealed class SensorMenu
     };
 
     private MenuRowItem Row(string text, bool on, string? id, string value, bool warm) =>
-        new(text, string.Empty, on, text, new RelayCommand(() => Choose(id)), Trailing: value, TrailingWarm: warm);
+        new(text, string.Empty, on, string.Empty, new RelayCommand(() => Choose(id)), Trailing: value, TrailingWarm: warm);
 
     private void Choose(string? id)
     {

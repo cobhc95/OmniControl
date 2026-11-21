@@ -28,6 +28,7 @@ public partial class App : Application
         NumberText.Register();
         SearchClear.Register();
         EmptyToolTips.Register();
+        TrimToolTips.Register();
         ComboKeys.Register();
         DialogKeys.Register();
 

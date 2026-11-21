@@ -8,7 +8,7 @@
     <StackPanel Orientation="Horizontal" Spacing="{StaticResource MenuGap}">
         <vm:RowIcon />
         <TextBlock Classes="strong" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                   MaxWidth="{StaticResource WiringSourceMaxWidth}" ToolTip.Tip="{Binding Name}" />
+                   MaxWidth="{StaticResource WiringSourceMaxWidth}" />
         <Border Classes="tag" IsVisible="{Binding HasSourceTag}" VerticalAlignment="Center">
             <TextBlock Text="{Binding SourceTag}" />
         </Border>

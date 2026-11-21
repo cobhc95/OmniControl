@@ -16,7 +16,7 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Classes="cardname" Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,12,0" />
-                <TextBlock Grid.Column="1" Classes="cardlabel muted" Text="{Binding Description}" ToolTip.Tip="{Binding Description}" />
+                <TextBlock Grid.Column="1" Classes="cardlabel muted" Text="{Binding Description}" />
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                     <Button Classes="pill" Tag="scope" Content="{Binding ButtonText}" Command="{Binding Command}" VerticalAlignment="Center" />
                     <ItemsControl ItemsSource="{Binding Extra}">

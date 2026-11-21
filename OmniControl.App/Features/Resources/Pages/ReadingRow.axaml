@@ -10,7 +10,7 @@
         <c:IconText Icon="{Binding Icon}" Text="{Binding Label}" />
         <TextBlock Grid.Column="1" Classes="strong" Text="{Binding Value}" VerticalAlignment="Center" />
         <c:Sparkline Grid.Row="1" Values="{Binding History}" Maximum="{Binding Maximum}" IsVisible="{Binding InlineGraph}" />
-        <TextBlock Grid.Row="1" Classes="cardlabel muted" Text="{Binding Note}" ToolTip.Tip="{Binding Note}" IsVisible="{Binding HasNote}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+        <TextBlock Grid.Row="1" Classes="cardlabel muted" Text="{Binding Note}" IsVisible="{Binding HasNote}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
         <c:TagView Grid.Row="1" Grid.Column="1" DataContext="{Binding Tag}" HorizontalAlignment="Right" VerticalAlignment="Center"
                    IsVisible="{Binding $self.DataContext, Converter={x:Static ObjectConverters.IsNotNull}}" />
         <!-- The Hottest sensor card: the temperature sensor chip in the tag's place, its graph (fixed 25-100 range, caution colour past the warn point) along the foot -->

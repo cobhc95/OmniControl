@@ -17,7 +17,7 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" MinWidth="64" SharedSizeGroup="ParamValue" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Classes="cardname" Text="{Binding Title}" VerticalAlignment="Center" Margin="0,0,24,0" ToolTip.Tip="{Binding Title}" />
+                        <TextBlock Classes="cardname" Text="{Binding Title}" VerticalAlignment="Center" Margin="0,0,24,0" />
                         <Slider Grid.Column="1" Minimum="0" Maximum="{Binding Maximum}" Value="{Binding Position}"
                                 pages:SliderReset.Value="{Binding ResetPosition}" />
                         <pages:NumberText Grid.Column="2" Classes="plain" Value="{Binding Plain}" Minimum="{x:Static vm:PluginParamItem.TypedMin}"

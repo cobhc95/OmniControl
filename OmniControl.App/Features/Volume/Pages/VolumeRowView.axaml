@@ -34,7 +34,7 @@
 
         <!-- The name and the small state word under it ("playing", "not open", "default") -->
         <StackPanel Grid.Column="1" Grid.RowSpan="2" VerticalAlignment="Center" MinWidth="0">
-            <TextBlock Classes="strong" Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}" />
+            <TextBlock Classes="strong" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
             <TextBlock Classes="muted small" Text="{Binding StateWord}" IsVisible="{Binding HasStateWord}" TextTrimming="CharacterEllipsis" />
         </StackPanel>
 

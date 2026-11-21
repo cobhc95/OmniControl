@@ -15,7 +15,7 @@
                 <c:IconText Icon="{Binding Icon}" VerticalAlignment="Center" />
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
-                        <TextBlock Classes="strong cardlabel" Text="{Binding Value}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Value}" VerticalAlignment="Center" IsVisible="{Binding HasValue}" />
+                        <TextBlock Classes="strong cardlabel" Text="{Binding Value}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{Binding HasValue}" />
                         <ItemsControl Grid.Column="1" ItemsSource="{Binding Tags}" IsVisible="{Binding HasTags}" VerticalAlignment="Center">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate>
@@ -25,7 +25,7 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </Grid>
-                    <TextBlock Classes="cardlabel muted" Text="{Binding Note}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Note}" />
+                    <TextBlock Classes="cardlabel muted" Text="{Binding Note}" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
                 <ItemsControl Grid.Column="2" ItemsSource="{Binding Pills}" IsVisible="{Binding HasPills}" VerticalAlignment="Center">
                     <ItemsControl.ItemsPanel>
@@ -49,7 +49,7 @@
                     <c:IconText Icon="{Binding Icon}" Text="{Binding Label}" />
                     <TextBlock Classes="strong" Text="{Binding Value}" VerticalAlignment="Center" IsVisible="{Binding Value, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                 </StackPanel>
-                <TextBlock Grid.Column="1" Classes="cardlabel muted" Text="{Binding Note}" ToolTip.Tip="{Binding Note}" />
+                <TextBlock Grid.Column="1" Classes="cardlabel muted" Text="{Binding Note}" />
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                     <ItemsControl ItemsSource="{Binding Tags}" IsVisible="{Binding HasTags}">
                         <ItemsControl.ItemsPanel>

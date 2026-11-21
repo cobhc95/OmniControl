@@ -17,7 +17,7 @@
             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" VerticalAlignment="Center">
                 <vm:RowIcon DataContext="{Binding Row}" />
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" MinWidth="0">
-                    <TextBlock Classes="strong" Text="{Binding Row.Name}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Row.Name}" />
+                    <TextBlock Classes="strong" Text="{Binding Row.Name}" TextTrimming="CharacterEllipsis" />
                     <WrapPanel Classes="sentence">
                         <TextBlock Text="{Binding State}" Classes="hint small" />
                         <TextBlock Text=" · " Classes="hint small" IsVisible="{Binding Sound.IsActive}" />
