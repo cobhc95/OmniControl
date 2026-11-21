@@ -9,7 +9,7 @@
         <Button Tag="scope" Classes="selector" IsVisible="{Binding HasDevices}" ToolTip.Tip="The devices this action works on">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapSmall}">
                 <TextBlock Text="{Binding ScopeSummary}" TextTrimming="CharacterEllipsis" />
-                <PathIcon Grid.Column="1" Data="{DynamicResource ChevronDownIcon}" />
+                <PathIcon Grid.Column="1" Data="{StaticResource ChevronDownIcon}" />
             </Grid>
             <Button.Flyout>
                 <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft" Opened="OnFlyoutOpened" Closed="OnFlyoutClosed">

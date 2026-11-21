@@ -18,6 +18,6 @@
         </c:ListMenuFlyout>
     </FlyoutBase.AttachedFlyout>
     <Button x:Name="Cog" Classes="pill cog" Tag="scope" Click="OnClick" ToolTip.Tip="{Binding CogTip, RelativeSource={RelativeSource AncestorType=c:ScopeCog}}">
-        <PathIcon Data="{DynamicResource CogIcon}" />
+        <PathIcon Data="{StaticResource CogIcon}" />
     </Button>
 </UserControl>

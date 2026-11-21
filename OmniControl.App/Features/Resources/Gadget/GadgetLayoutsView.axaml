@@ -68,7 +68,7 @@
                 </Button>
                 <Button Grid.Column="2" Classes="menurow muted" Command="{Binding ShowFewerCommand}">
                     <StackPanel>
-                        <Path Classes="glyph" Data="{DynamicResource ChevronUpIcon}" />
+                        <Path Classes="glyph" Data="{StaticResource ChevronUpIcon}" />
                         <TextBlock Text="Fewer layouts" />
                     </StackPanel>
                 </Button>

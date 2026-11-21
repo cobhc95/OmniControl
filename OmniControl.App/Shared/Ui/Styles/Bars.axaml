@@ -190,7 +190,7 @@
         <Setter Property="WindowManagerAddShadowHint" Value="False" />
     </Style>
     <Style Selector="shot|CaptureCanvas">
-        <Setter Property="Dim" Value="{DynamicResource BrushCaptureDim}" />
+        <Setter Property="Dim" Value="{StaticResource BrushCaptureDim}" />
         <Setter Property="Edge" Value="{DynamicResource BrushAccent}" />
         <Setter Property="HandleSize" Value="{StaticResource CaptureHandleSize}" />
         <Setter Property="HandleReach" Value="{StaticResource CaptureHandleReach}" />

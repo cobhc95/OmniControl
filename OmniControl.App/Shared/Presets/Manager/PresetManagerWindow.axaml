@@ -72,7 +72,7 @@
                                                         <ColumnDefinition Width="Auto" SharedSizeGroup="PresetShortcut" />
                                                         <ColumnDefinition Width="Auto" SharedSizeGroup="PresetActions" />
                                                     </Grid.ColumnDefinitions>
-                                                    <PathIcon Classes="grip" Data="{DynamicResource GripIcon}" VerticalAlignment="Center" IsVisible="{Binding CanMove}"
+                                                    <PathIcon Classes="grip" Data="{StaticResource GripIcon}" VerticalAlignment="Center" IsVisible="{Binding CanMove}"
                                                               ToolTip.Tip="Drag to move (or Alt+Up / Alt+Down)" />
                                                     <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}" VerticalAlignment="Center">
                                                         <Panel VerticalAlignment="Center">

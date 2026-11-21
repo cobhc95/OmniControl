@@ -62,9 +62,9 @@
                                                    ToolTip.Tip="Order in the chain, top to bottom" />
                                         <Button Grid.Column="1" Classes="step chainchevron" Command="{Binding Folder.ToggleExpandedCommand}" ToolTip.Tip="Show or hide the folder's effects">
                                             <Panel>
-                                                <PathIcon Data="{DynamicResource ChevronDownIcon}" Width="{StaticResource ChipGlyphSize}" Height="{StaticResource ChipGlyphSize}"
+                                                <PathIcon Data="{StaticResource ChevronDownIcon}" Width="{StaticResource ChipGlyphSize}" Height="{StaticResource ChipGlyphSize}"
                                                           IsVisible="{Binding Folder.Expanded, FallbackValue=True}" />
-                                                <PathIcon Data="{DynamicResource ChevronRightIcon}" Width="{StaticResource ChipGlyphSize}" Height="{StaticResource ChipGlyphSize}"
+                                                <PathIcon Data="{StaticResource ChevronRightIcon}" Width="{StaticResource ChipGlyphSize}" Height="{StaticResource ChipGlyphSize}"
                                                           IsVisible="{Binding !Folder.Expanded, FallbackValue=False}" />
                                             </Panel>
                                         </Button>

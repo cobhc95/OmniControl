@@ -28,7 +28,7 @@
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:OsdDurationRowItem">
                         <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="{StaticResource GapLarge}">
-                            <PathIcon Classes="grip" Data="{DynamicResource GripIcon}" VerticalAlignment="Center" ToolTip.Tip="Drag to change the order" />
+                            <PathIcon Classes="grip" Data="{StaticResource GripIcon}" VerticalAlignment="Center" ToolTip.Tip="Drag to change the order" />
                             <c:ChipMenu Grid.Column="1" ChipTag="scope" ChipAlignment="Stretch" Text="{Binding Text}" MenuOpened="OnChipMenuOpened"
                                         ChipToolTip="The app that caused the pop-up, or what it shows" VerticalAlignment="Center" />
                             <pages:NumberText Grid.Column="2" Value="{Binding Seconds}" Minimum="{x:Static osd:OsdDuration.MinSeconds}" Maximum="{x:Static osd:OsdDuration.MaxSeconds}"

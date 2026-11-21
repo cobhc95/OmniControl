@@ -37,7 +37,7 @@
                                                     </StackPanel>
                                                 </Button>
                                                 <Button Grid.Column="1" Classes="pill cog" IsVisible="{Binding HasOptions}" Click="OnListCogClick" ToolTip.Tip="Settings for this action">
-                                                    <PathIcon Data="{DynamicResource CogIcon}" />
+                                                    <PathIcon Data="{StaticResource CogIcon}" />
                                                 </Button>
                                                 <Button Grid.Column="2" Classes="pill glyph" Content="↑" Command="{Binding MoveUpCommand}" IsEnabled="{Binding CanMoveUp}" ToolTip.Tip="Run earlier" />
                                                 <Button Grid.Column="3" Classes="pill glyph" Content="↓" Command="{Binding MoveDownCommand}" IsEnabled="{Binding CanMoveDown}" ToolTip.Tip="Run later" />

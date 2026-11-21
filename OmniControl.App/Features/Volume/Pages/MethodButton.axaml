@@ -66,7 +66,7 @@
                 Classes.risk="{Binding Method.IsRisk}" Classes.recording="{Binding Method.IsRecording}" IsVisible="{Binding HasMethodMenu}" ToolTip.Tip="{Binding EngineLine}" Click="OnClick">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapSmall}">
                 <TextBlock Text="{Binding Method.Label}" />
-                <PathIcon Grid.Column="1" Data="{DynamicResource ChevronDownIcon}" />
+                <PathIcon Grid.Column="1" Data="{StaticResource ChevronDownIcon}" />
             </Grid>
         </Button>
         <Border Classes="selector method" Classes.apo="{Binding Method.IsApo}" Classes.cable="{Binding Method.IsCable}"

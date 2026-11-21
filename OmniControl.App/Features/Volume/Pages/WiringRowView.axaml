@@ -67,7 +67,7 @@
                         <Button Classes="selector" Tag="scope" HorizontalAlignment="Left" Click="OnOpenMenuClick" ToolTip.Tip="Choose the device">
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapSmall}">
                                 <TextBlock Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
-                                <PathIcon Grid.Column="1" Data="{DynamicResource ChevronDownIcon}" />
+                                <PathIcon Grid.Column="1" Data="{StaticResource ChevronDownIcon}" />
                             </Grid>
                         </Button>
                     </DataTemplate>

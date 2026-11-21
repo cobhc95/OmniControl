@@ -24,7 +24,7 @@
                                            Decimals="{Binding Decimals}" Text="{Binding ValueText}" />
                         </c:LeadFitPanel>
                         <Button Grid.Column="1" Classes="pill cog" Tag="scope" IsVisible="{Binding HasCog}" Command="{Binding Cog}" ToolTip.Tip="{Binding CogTip}" VerticalAlignment="Center">
-                            <PathIcon Data="{DynamicResource CogIcon}" />
+                            <PathIcon Data="{StaticResource CogIcon}" />
                         </Button>
                     </Grid>
                 </Grid>
@@ -67,7 +67,7 @@
                                            Decimals="{Binding Decimals}" Text="{Binding ValueText}" />
                         </c:LeadFitPanel>
                         <Button Grid.Column="1" Classes="pill cog" Tag="scope" IsVisible="{Binding HasCog}" Command="{Binding Cog}" ToolTip.Tip="{Binding CogTip}" VerticalAlignment="Center">
-                            <PathIcon Data="{DynamicResource CogIcon}" />
+                            <PathIcon Data="{StaticResource CogIcon}" />
                         </Button>
                     </Grid>
                 </c:LabelFitPanel>
