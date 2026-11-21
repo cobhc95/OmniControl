@@ -9,7 +9,7 @@ public static class ListScroll
 {
     /// Scrolls to line <paramref name="index"/> now (a virtualizing list builds its row) and gives its row; null when there is no such
     /// line or the list is not on screen.
-    public static Control? Show(ListBox list, int index)
+    public static Control? Show(ItemsControl list, int index)
     {
         if (index < 0 || index >= list.ItemCount || list.GetVisualRoot() is null) return null;
         list.UpdateLayout();
@@ -18,6 +18,6 @@ public static class ListScroll
     }
 
     /// Scrolls to the line <paramref name="index"/> gives once the list has laid out its changed rows (read then, so the newest wins).
-    public static void ShowSoon(ListBox list, Func<int> index) =>
+    public static void ShowSoon(ItemsControl list, Func<int> index) =>
         Dispatcher.UIThread.Post(() => Guard.Run("Scroll a list", () => Show(list, index())), DispatcherPriority.Loaded);
 }

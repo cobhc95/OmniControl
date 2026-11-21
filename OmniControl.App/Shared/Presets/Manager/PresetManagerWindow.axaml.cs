@@ -58,10 +58,7 @@ public partial class PresetManagerWindow : Window
         _drags.Add(ListDragReorder.Attach(list, (rows, at) => (list.DataContext as PresetCardViewModel)?.MoveRows(rows, at)));
     }
 
-    private void ScrollTo(PresetCardViewModel card) => Dispatcher.UIThread.Post(() =>
-    {
-        if (CardList.ContainerFromItem(card) is Control container) container.BringIntoView();
-    }, DispatcherPriority.Loaded);
+    private void ScrollTo(PresetCardViewModel card) => ListScroll.ShowSoon(CardList, () => CardList.Items.IndexOf(card));
 
     private void FocusRenameBox(PresetRowViewModel row) => Dispatcher.UIThread.Post(() =>
     {

@@ -56,6 +56,8 @@
             <TextBlock DockPanel.Dock="Top" Classes="hint" Text="No preset matches." IsVisible="{Binding NothingFound}" Margin="4,0,0,8" />
             <ScrollViewer>
                 <ItemsControl x:Name="CardList" ItemsSource="{Binding Cards}" Grid.IsSharedSizeScope="True" Margin="0,0,0,12">
+                    <!-- Cards are built only near the screen; a screen more each way, so Tab always finds the next card built -->
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel CacheLength="1" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:PresetCardViewModel">
                             <Border Classes="groupPanel" Classes.target="{Binding IsTarget}">

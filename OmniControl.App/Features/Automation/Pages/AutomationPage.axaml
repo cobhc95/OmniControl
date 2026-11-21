@@ -7,6 +7,10 @@
     <!-- The Automation page: the title line (name, Pause all rules at the right), the tabs, the one status line, then the open tab.
          Rules: "When ... do ..." automations and "While ... don't allow ..." blocks, one row each, a "+ New" pill on each group's title line and a dashed row while a group is empty.
          Custom actions: one row each. Scripts: a list and an editor (see its comment). The rows are AutomationRuleRow and CustomActionRow (templates in App.axaml). -->
+    <!-- Rule and custom action rows are built only near the screen; a screen more each way, so Tab always finds the next row built -->
+    <UserControl.Resources>
+        <ItemsPanelTemplate x:Key="RowsPanel"><VirtualizingStackPanel CacheLength="1" /></ItemsPanelTemplate>
+    </UserControl.Resources>
     <StackPanel Spacing="{StaticResource Gap}">
         <pages:PageTitleLine Title="{Binding Title}">
             <pages:PageTitleLine.Right>
@@ -33,7 +37,7 @@
                 </pages:GroupCard.Tools>
                 <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:AutomationPageViewModel">
                     <StackPanel Spacing="{StaticResource Gap}">
-                        <ItemsControl ItemsSource="{Binding Automations}" />
+                        <ItemsControl ItemsSource="{Binding Automations}" ItemsPanel="{StaticResource RowsPanel}" />
                         <pages:EmptyListRow IsVisible="{Binding NoAutomations}" Text="No automations yet. An automation does something when something happens." LinkText="New automation" Command="{Binding AddAutomationCommand}" />
                     </StackPanel>
                 </DataTemplate></pages:GroupCard.ContentTemplate>
@@ -44,7 +48,7 @@
                 </pages:GroupCard.Tools>
                 <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:AutomationPageViewModel">
                     <StackPanel Spacing="{StaticResource Gap}">
-                        <ItemsControl ItemsSource="{Binding Blocks}" />
+                        <ItemsControl ItemsSource="{Binding Blocks}" ItemsPanel="{StaticResource RowsPanel}" />
                         <pages:EmptyListRow IsVisible="{Binding NoBlocks}" Text="No blocks yet. A block stops an action while something is true." LinkText="New block" Command="{Binding AddBlockCommand}" />
                     </StackPanel>
                 </DataTemplate></pages:GroupCard.ContentTemplate>
@@ -57,7 +61,7 @@
             </pages:GroupCard.Tools>
             <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:AutomationPageViewModel">
                 <StackPanel Spacing="{StaticResource Gap}">
-                    <ItemsControl ItemsSource="{Binding Customs}" />
+                    <ItemsControl ItemsSource="{Binding Customs}" ItemsPanel="{StaticResource RowsPanel}" />
                     <pages:EmptyListRow IsVisible="{Binding NoCustoms}" Text="No custom actions yet. A custom action runs your own command, script or program." LinkText="New custom action" Command="{Binding AddCustomCommand}" />
                 </StackPanel>
             </DataTemplate></pages:GroupCard.ContentTemplate>
