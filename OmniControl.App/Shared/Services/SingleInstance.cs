@@ -2,45 +2,19 @@ namespace OmniControl.App.Shared.Services;
 
 /// One OmniControl per Windows session (two copies were seen running at once: two mouse hooks, two sets of pop-ups and saves fighting over
 /// the same files). The running copy holds a named mutex and listens on two named events; a later start sets the open event, so the running
-/// copy opens its window, and ends at once; <c>OmniControl.exe --quit</c> (Setup and uninstall) sets the quit event, so the running copy
-/// quits through its normal exit (every shut-down step runs). A restart (<c>--after</c>) instead waits for the copy before it to let go.
+/// copy opens its window, and ends at once; Setup and uninstall set the quit event themselves (its name is retyped in tools/setup.iss), so
+/// the running copy quits through its normal exit (every shut-down step runs). A restart (<c>--after</c>) instead waits for the copy before
+/// it to let go.
 internal sealed class SingleInstance : IDisposable
 {
     private const string MutexName = @"Local\OmniControl.Running";
     private const string OpenEventName = @"Local\OmniControl.Open", QuitEventName = @"Local\OmniControl.Quit";
-    private const string QuitArg = "--quit";
-
-    /// <c>--quit</c>'s exit codes: asked, or nothing runs; a running copy that cannot be asked (an older version);
-    /// a copy run as administrator, which only an elevated <c>--quit</c> may ask (Windows keeps a normal process from its events).
-    private const int Asked = 0, CannotAsk = 1, NeedsAdministrator = 2;
 
     private readonly Mutex _mutex;
     private readonly EventWaitHandle? _open, _quit;
     private RegisteredWaitHandle? _listening, _quitting;
 
     private SingleInstance(Mutex mutex, EventWaitHandle? open, EventWaitHandle? quit) => (_mutex, _open, _quit) = (mutex, open, quit);
-
-    public static bool IsQuit(string[] args) => args.Contains(QuitArg, StringComparer.OrdinalIgnoreCase);
-
-    /// <c>--quit</c>: asks the running copy to quit; the exit code says how it went.
-    public static int AskToQuit()
-    {
-        try
-        {
-            if (EventWaitHandle.TryOpenExisting(QuitEventName, out var quit))
-            {
-                using (quit) quit.Set();
-                return Asked;
-            }
-            if (!Mutex.TryOpenExisting(MutexName, out var running)) return Asked; // nothing runs
-            running.Dispose();
-            return CannotAsk;
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return NeedsAdministrator;
-        }
-    }
 
     /// When another copy runs: asks it to open its window (unless <paramref name="askToOpen"/> is false: a start in the background, the
     /// start-up entry, only ends) and returns true (this start then ends). A copy run as administrator cannot be asked by one that is not;
@@ -119,7 +93,7 @@ internal sealed class SingleInstance : IDisposable
         }
     }
 
-    /// From now on a later start runs <paramref name="open"/> instead of starting a second copy, and <c>--quit</c> runs <paramref name="quit"/>
+    /// From now on a later start runs <paramref name="open"/> instead of starting a second copy, and Setup's quit event runs <paramref name="quit"/>
     /// (both on a pool thread).
     public void Listen(Action open, Action quit)
     {

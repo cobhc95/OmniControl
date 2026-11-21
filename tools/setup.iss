@@ -90,10 +90,21 @@ const
   PerUserFolder = '{localappdata}\Programs\OmniControl';
   PerUserUninstallKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{#AppGuid}_is1';
 
-function IsRunning(): Boolean;
-var Code: Integer;
+// Windows' own tool in System32 run straight and its output searched: never through cmd, whose elevated start would run the person's
+// AutoRun command (HKCU\Software\Microsoft\Command Processor).
+function ToolSays(Tool, Args, Text: String): Boolean;
+var Code, I: Integer;
+    Output: TExecOutput;
 begin
-  Result := Exec(ExpandConstant('{cmd}'), '/C tasklist /FI "IMAGENAME eq OmniControl.exe" /NH | find /I "OmniControl.exe"', '', SW_HIDE, ewWaitUntilTerminated, Code) and (Code = 0);
+  Result := False;
+  if not ExecAndCaptureOutput(ExpandConstant('{sys}\' + Tool), Args, '', SW_HIDE, ewWaitUntilTerminated, Code, Output) then Exit;
+  for I := 0 to GetArrayLength(Output.StdOut) - 1 do
+    if Pos(Uppercase(Text), Uppercase(Output.StdOut[I])) > 0 then begin Result := True; Exit; end;
+end;
+
+function IsRunning(): Boolean;
+begin
+  Result := ToolSays('tasklist.exe', '/FI "IMAGENAME eq OmniControl.exe" /NH /FO CSV', '"OmniControl.exe"');
 end;
 
 function GoneWithin(Tries: Integer): Boolean;
@@ -118,27 +129,41 @@ begin
   if not NetworkServiceInstalled() then Exit;
   Exec(ExpandConstant('{sys}\sc.exe'), 'stop ' + NetworkServiceName, '', SW_HIDE, ewWaitUntilTerminated, Code);
   Tries := 60;
-  while (Tries > 0) and not (Exec(ExpandConstant('{cmd}'), '/C sc query ' + NetworkServiceName + ' | find "STOPPED"', '', SW_HIDE, ewWaitUntilTerminated, Code) and (Code = 0)) do
+  while (Tries > 0) and NetworkServiceInstalled() and not ToolSays('sc.exe', 'query ' + NetworkServiceName, 'STOPPED') do
   begin
     Sleep(250);
     Tries := Tries - 1;
   end;
 end;
 
-// Asks OmniControl to quit (this copy's or, on the move from a per-user install, the old one's --quit), so its shut-down steps put Windows
-// back. The network service (also OmniControl.exe) is stopped first; it takes its rules out as it stops.
-// Never waits on the helper itself: an older installed copy does not know --quit and would sit as a second, hidden copy, so Setup only
-// waits a bounded time for the app to go, then ends every OmniControl.exe by force, the helper included.
+// The running copy's quit event, retyped from the app's Shared/Services/SingleInstance: set here directly, so no OmniControl.exe (least of
+// all one in the old per-user folder, which anything running as the user could replace) is run elevated to ask.
+const
+  QuitEventName = 'Local\OmniControl.Quit';
+  EventModifyState = $0002;
+
+function OpenEvent(Access: Cardinal; Inherit: Integer; Name: String): THandle; external 'OpenEventW@kernel32.dll stdcall';
+function SetEvent(Event: THandle): Integer; external 'SetEvent@kernel32.dll stdcall';
+function CloseHandle(Handle: THandle): Integer; external 'CloseHandle@kernel32.dll stdcall';
+
+function AskToQuit(): Boolean;
+var Event: THandle;
+begin
+  Event := OpenEvent(EventModifyState, 0, QuitEventName);
+  Result := (Event <> 0) and (SetEvent(Event) <> 0);
+  if Event <> 0 then CloseHandle(Event);
+end;
+
+// Asks OmniControl to quit through its quit event, so its shut-down steps put Windows back. The network service (also OmniControl.exe) is
+// stopped first; it takes its rules out as it stops. A copy without the event (an older version) or one that does not go within a bounded
+// time is ended by force.
 function EndOmniControl(): String;
 var Code: Integer;
-    Exe: String;
 begin
   Result := '';
   StopNetworkService();
   if not IsRunning() then Exit;
-  Exe := ExpandConstant('{app}\OmniControl.exe');
-  if not FileExists(Exe) then Exe := ExpandConstant(PerUserFolder + '\OmniControl.exe');
-  if FileExists(Exe) and Exec(Exe, '--quit', '', SW_HIDE, ewNoWait, Code) and GoneWithin(60) then Exit;
+  if AskToQuit() and GoneWithin(60) then Exit;
   Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /IM OmniControl.exe', '', SW_HIDE, ewWaitUntilTerminated, Code);
   if not GoneWithin(20) then Result := 'OmniControl is still running. Close it from its tray icon, then run Setup again.';
 end;
@@ -152,9 +177,9 @@ const
 
 // The move from a per-user install: its own uninstaller runs silently (the settings in %APPDATA%\OmniControl stay) with the driver's record
 // set aside, so it leaves Windows Packet Filter installed, then its folder goes. Only the usual folder is deleted, never a folder the person
-// chose, and only the uninstaller in that folder is run (never the per-user Uninstall entry's command, which anything running as the user
-// could change and Setup would run as administrator). The sign-in task, the network service and the start-up entry are pointed at this
-// install after the files (InstallSteps).
+// chose, and only the uninstaller in that folder is run, and only with the token of the person who started Setup, never elevated: that
+// folder and the per-user Uninstall entry are the person's own, so anything running as them could have replaced it. The sign-in task, the
+// network service and the start-up entry are pointed at this install after the files (InstallSteps).
 procedure RemovePerUserCopy();
 var Uninstaller, Folder: String;
     Code, Tries: Integer;
@@ -166,7 +191,7 @@ begin
   Uninstaller := Folder + '\unins000.exe';
   HadRecord := RegQueryDWordValue(HKCU, PacketFilterRecordKey, PacketFilterRecordValue, Mine);
   if HadRecord then RegDeleteValue(HKCU, PacketFilterRecordKey, PacketFilterRecordValue);
-  if FileExists(Uninstaller) then Exec(Uninstaller, '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART', '', SW_HIDE, ewWaitUntilTerminated, Code);
+  if FileExists(Uninstaller) then ExecAsOriginalUser(Uninstaller,'/VERYSILENT /SUPPRESSMSGBOXES /NORESTART', '', SW_HIDE, ewWaitUntilTerminated, Code);
   if HadRecord then RegWriteDWordValue(HKCU, PacketFilterRecordKey, PacketFilterRecordValue, Mine);
   RegDeleteKeyIncludingSubkeys(HKCU, PerUserUninstallKey);
   Tries := 20; // the old uninstaller removes its own exe a moment after it ends
@@ -187,15 +212,6 @@ end;
 function PacketFilterInstalled(): Boolean;
 begin
   Result := FileExists(ExpandConstant('{sys}\drivers\ndisrd.sys')) and RegKeyExists(HKLM, 'SYSTEM\CurrentControlSet\Services\ndisrd');
-end;
-
-// Windows' own netcfg (as the driver's own MSI runs it), as one step of RunSteps. The cmd may be 32-bit or 64-bit: Sysnative exists only
-// when it is 32-bit, and then picks the 64-bit netcfg.
-function NetCfg(Args: String): String;
-var Exe: String;
-begin
-  Exe := '"%SystemRoot%\Sysnative\netcfg.exe"';
-  Result := '(if exist ' + Exe + ' (' + Exe + ' ' + Args + ') else ("%SystemRoot%\System32\netcfg.exe" ' + Args + '))';
 end;
 
 // Runs the installed app with these arguments, hidden and waited for, straight (no cmd, so a user or folder name is never read as cmd syntax):
@@ -224,11 +240,12 @@ begin
     RegWriteStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'OmniControl', '"' + ExpandConstant('{app}\OmniControl.exe') + '" --background');
 end;
 
-// One netcfg step in a hidden cmd (it picks the 64-bit netcfg), waited for (Setup and uninstall already run as administrator).
+// Windows' own netcfg (as the driver's own MSI runs it), hidden and waited for (Setup and uninstall already run as administrator). Setup
+// runs in 64-bit mode, so {sys} is the 64-bit System32 and Exec starts the 64-bit netcfg.
 procedure RunNetCfg(Args: String);
 var Code: Integer;
 begin
-  Exec(ExpandConstant('{cmd}'), '/S /C "' + NetCfg(Args) + '"', '', SW_HIDE, ewWaitUntilTerminated, Code);
+  Exec(ExpandConstant('{sys}\netcfg.exe'), Args, '', SW_HIDE, ewWaitUntilTerminated, Code);
 end;
 
 // A driver install that fails leaves OmniControl installed and says so in one line. The record lets uninstall remove only this copy. A

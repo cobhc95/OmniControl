@@ -26,7 +26,8 @@ public static class TailscaleAdapter
         }
     }
 
-    /// Restarts Tailscale's Windows service (Windows' administrator prompt unless OmniControl already is one). Call off the UI thread.
+    /// Restarts Tailscale's Windows service (Windows' administrator prompt unless OmniControl already is one). PowerShell without its
+    /// profile, never cmd: an elevated cmd runs the person's AutoRun command. Call off the UI thread.
     public static HelperResult Restart() =>
-        HelperProcess.RunElevated(SystemTools.Cmd, $"/c net stop {ServiceName} & net start {ServiceName}", hidden: true);
+        HelperProcess.RunElevated(SystemTools.PowerShell, $"-NoProfile -NonInteractive -WindowStyle Hidden -Command \"Restart-Service -Name {ServiceName} -Force -ErrorAction Stop\"", hidden: true);
 }
