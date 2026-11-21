@@ -14,14 +14,6 @@ internal sealed unsafe partial class Vst2Effect : IPluginEffect
     /// A saved program chunk larger than this is refused (a broken plug-in must not make OmniControl copy without end).
     private const int MaxChunkBytes = 64 * 1024 * 1024;
 
-    // LoadLibraryEx: the plug-in's own folder and the system folders first; a plug-in whose support DLLs sit elsewhere on PATH fails that
-    // with error 126 and gets one retry in the standard order other hosts use (TabForge's rule).
-    private const uint LoadSearchDefaultDirs = 0x00001000, LoadSearchDllLoadDir = 0x00000100, LoadAlteredSearchPath = 0x00000008;
-    private const int ErrorModuleNotFound = 126;
-
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true, EntryPoint = "LoadLibraryExW")]
-    private static extern IntPtr LoadLibraryEx(string fileName, IntPtr reserved, uint flags);
-
     private readonly Vst2Abi.AEffect* _effect;
     private readonly delegate* unmanaged[Cdecl]<Vst2Abi.AEffect*, int, int, IntPtr, IntPtr, float, IntPtr> _dispatch;
     private readonly delegate* unmanaged[Cdecl]<Vst2Abi.AEffect*, float**, float**, int, void> _process;
@@ -109,31 +101,13 @@ internal sealed unsafe partial class Vst2Effect : IPluginEffect
     public static Vst2Effect Load(string path, int sampleRate, int maxBlockFrames)
     {
         if (Vst2File.Problem(path) is { } problem) throw new InvalidOperationException(problem);
-        var module = LoadModule(path);
+        var module = PluginLoader.LoadLibrary(path);
         if (!NativeLibrary.TryGetExport(module, Vst2File.Entry, out var entry) && !NativeLibrary.TryGetExport(module, Vst2File.OldEntry, out entry))
         {
             NativeLibrary.Free(module); // none of its code ran yet
             throw new InvalidOperationException("This DLL isn't a VST2 plug-in.");
         }
         return new Vst2Effect(path, entry, sampleRate, maxBlockFrames);
-    }
-
-    /// Loads the module; a refusal by Windows becomes one plain sentence.
-    private static IntPtr LoadModule(string path)
-    {
-        var module = LoadLibraryEx(path, IntPtr.Zero, LoadSearchDefaultDirs | LoadSearchDllLoadDir);
-        if (module != IntPtr.Zero) return module;
-        var error = Marshal.GetLastPInvokeError();
-        if (error == ErrorModuleNotFound)
-        {
-            module = LoadLibraryEx(path, IntPtr.Zero, LoadAlteredSearchPath);
-            if (module != IntPtr.Zero) return module;
-            error = Marshal.GetLastPInvokeError();
-        }
-        if (AppControl.IsBlock(error)) throw new InvalidOperationException(PluginLoader.Blocked);
-        throw new InvalidOperationException(error == ErrorModuleNotFound
-            ? "Couldn't load the plug-in: a file it needs is missing."
-            : $"Couldn't load the plug-in: {new Win32Exception(error).Message}");
     }
 
     private static float** Buffers(int channels, int frames)

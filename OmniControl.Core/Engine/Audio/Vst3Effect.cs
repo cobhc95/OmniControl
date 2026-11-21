@@ -35,7 +35,17 @@ internal sealed partial class Vst3Effect : IPluginEffect
     internal static Vst3Effect Load(string path, int sampleRate, int maxBlockFrames)
     {
         if (Vst3File.Problem(path) is { } problem) throw new InvalidOperationException(problem);
-        var module = Open(() => Vst3Module.Load(path));
+        // Loaded first with the plug-in search order (its own folder and System32), so NAudio's load below finds it and its DLLs in place.
+        var held = PluginLoader.LoadLibrary(Vst3File.BinaryOf(path));
+        Vst3Module module;
+        try
+        {
+            module = Open(() => Vst3Module.Load(path));
+        }
+        finally
+        {
+            NativeLibrary.Free(held);
+        }
         try
         {
             var classes = Open(module.GetClasses);

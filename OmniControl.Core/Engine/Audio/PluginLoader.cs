@@ -22,6 +22,26 @@ public static class PluginLoader
 
     private static readonly bool Elevated = Elevation.IsElevated();
 
+    // A plug-in's own DLLs are looked for only in its folder and System32, never on PATH or in the current folder, so no library of a
+    // known name elsewhere is loaded into OmniControl (elevated when it is).
+    private const uint LoadSearchSystem32 = 0x00000800, LoadSearchDllLoadDir = 0x00000100;
+    private const int ErrorModuleNotFound = 126;
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true, EntryPoint = "LoadLibraryExW")]
+    private static extern IntPtr LoadLibraryEx(string fileName, IntPtr reserved, uint flags);
+
+    /// Loads a plug-in's library (its DllMain runs) with that search order; a refusal by Windows becomes one plain sentence.
+    internal static IntPtr LoadLibrary(string binary)
+    {
+        var module = LoadLibraryEx(binary, IntPtr.Zero, LoadSearchSystem32 | LoadSearchDllLoadDir);
+        if (module != IntPtr.Zero) return module;
+        var error = Marshal.GetLastPInvokeError();
+        if (AppControl.IsBlock(error)) throw new InvalidOperationException(Blocked);
+        throw new InvalidOperationException(error == ErrorModuleNotFound
+            ? "Couldn't load the plug-in: a file it needs is missing."
+            : $"Couldn't load the plug-in: {new Win32Exception(error).Message}");
+    }
+
     /// Loads the plug-in and sets it up for the given rate and block size (UI thread: its editor belongs to this thread).
     public static IPluginEffect Load(PluginFormat format, string path, int sampleRate, int maxBlockFrames)
     {
@@ -47,9 +67,10 @@ public static class PluginLoader
         if (path.Length < 3 || !char.IsAsciiLetter(path[0]) || path[1] != ':' || path[2] is not ('\\' or '/') || !Path.IsPathFullyQualified(path)) return NotLocal;
         try
         {
+            if (new DriveInfo(path[..1]).DriveType == DriveType.Network) return NotLocal; // a mapped share
             return Elevated && !Resources.NetworkServiceSetup.CanServeFrom(path) ? UserFolder : null;
         }
-        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException or IOException or UnauthorizedAccessException)
         {
             return NotLocal;
         }

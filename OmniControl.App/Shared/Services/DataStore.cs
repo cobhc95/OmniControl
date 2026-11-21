@@ -35,8 +35,8 @@ public static class ImportGroups
 /// <param name="NotImported">Top-level properties an import never takes from a file (the approvals of commands: a file must not pre-approve them).</param>
 /// <param name="Import">Where the store sits in the import from another PC; null: that import does not offer it.</param>
 /// <param name="MachineSpecific">Belongs to this PC alone (its pairing list, the key its keyboard sends, paths of plug-ins): never sent to another PC.</param>
-/// <param name="NotImportedInside">Properties an import from another PC takes out of every object inside the file (an effect's plug-in or
-/// impulse response file and its saved state: another PC must never make this one load a library or feed a plug-in its data).</param>
+/// <param name="NotImportedInside">Properties an import from another PC or a restore from a backup takes out of every object inside the file
+/// (an effect's plug-in or impulse response file and its saved state: a file must never make this PC load a library or feed a plug-in its data).</param>
 public sealed record DataStore(string FileName, string Area, StoreKind Kind, bool Mergeable = false, string[]? NotImported = null,
     ImportPlace? Import = null, bool MachineSpecific = false, string[]? NotImportedInside = null)
 {

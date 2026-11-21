@@ -9,12 +9,19 @@ public static class Vst3File
     {
         if (Directory.Exists(path))
         {
-            var name = Path.GetFileNameWithoutExtension(path.TrimEnd('\\', '/'));
-            var binary = Path.Combine(path, "Contents", "x86_64-win", name + ".vst3");
+            var binary = BinaryOf(path);
             if (File.Exists(binary)) return ProblemOf(binary);
-            return File.Exists(Path.Combine(path, "Contents", "x86-win", name + ".vst3")) ? PluginLoader.Not64Bit : NotForWindows;
+            return File.Exists(Path.Combine(path, "Contents", "x86-win", Path.GetFileName(binary))) ? PluginLoader.Not64Bit : NotForWindows;
         }
         return File.Exists(path) ? ProblemOf(path) : PluginLoader.Missing;
+    }
+
+    /// The 64-bit Windows library a .vst3 file or bundle loads (the file itself when it is not a bundle).
+    internal static string BinaryOf(string path)
+    {
+        if (!Directory.Exists(path)) return path;
+        var name = Path.GetFileNameWithoutExtension(path.TrimEnd('\\', '/'));
+        return Path.Combine(path, "Contents", "x86_64-win", name + ".vst3");
     }
 
     private const string NotForWindows = "This plug-in has no 64-bit Windows version in it.";

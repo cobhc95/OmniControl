@@ -18,8 +18,9 @@ public enum RestoreMode
 
 /// An import or a wipe is only staged while OmniControl runs (its pages hold the settings and save them as they close), and carried out
 /// at the next start, before anything is loaded (<see cref="ApplyPending"/>). The staged files sit in a folder of their own beside the
-/// stores, with a plan saying how to apply them. Safety journals (<see cref="StoreKind.Safety"/>) are never touched, and what a backup
-/// may not set (<see cref="DataStore.NotImported"/>) keeps the value here. Works on any folder, so tests use a temporary one.
+/// stores, with a plan saying how to apply them. Safety journals (<see cref="StoreKind.Safety"/>) are never touched, what a backup
+/// may not set (<see cref="DataStore.NotImported"/>) keeps the value here, and effects' plug-in files and states are left out as an import
+/// from another PC leaves them (<see cref="DataStore.NotImportedInside"/>). Works on any folder, so tests use a temporary one.
 public static class PendingRestore
 {
     private const string PendingFolder = "pending-restore";
@@ -84,7 +85,9 @@ public static class PendingRestore
         if (!File.Exists(incomingPath)) return;
         var target = Path.Combine(folder, store.FileName);
         var here = File.Exists(target) ? Parse(File.ReadAllText(target)) : null;
-        var incoming = JsonMerge.KeepOwn(Parse(File.ReadAllText(incomingPath)), here, store.NotImported ?? Array.Empty<string>());
+        var backup = Parse(File.ReadAllText(incomingPath));
+        if (store.NotImportedInside is { } inside) JsonMerge.StripInside(backup, inside); // a backup file never makes this PC load a library
+        var incoming = JsonMerge.KeepOwn(backup, here, store.NotImported ?? Array.Empty<string>());
         var result = mode == RestoreMode.Merge && store.Mergeable && here is not null ? JsonMerge.Merge(here, incoming) : incoming;
         if (result is not null) File.WriteAllText(target, result.ToJsonString());
     }
