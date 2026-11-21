@@ -31,15 +31,10 @@ public sealed partial class GalleryItem : ObservableObject, IEditorItem, IHalfWi
     /// The words of the muted row under a colour gallery's dots that opens <see cref="Editor"/> ("Custom colour…").
     public string? EditorText { get; init; }
 
-    /// Raised when the editor should open; the gallery's view opens it under itself.
-    public event Action? EditorRequested;
-
-    /// Picks the editor's option (its colour applies at once) and opens the editor.
-    public void OpenEditor()
+    /// Picks the editor's option (its colour applies at once) as the gallery's view opens the editor.
+    public void PickEditorOption()
     {
-        if (Editor is null) return;
         if (EditorIndex >= 0) Index = EditorIndex;
-        EditorRequested?.Invoke();
     }
 
     /// Greyed out, with a reason, while the choice cannot be made or read (a display Windows would not report on).
