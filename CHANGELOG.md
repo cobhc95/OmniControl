@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Lighter memory: every control carries less styling (fixed sizes and icons no longer follow the theme they never change with; the tray panel's, the screenshot overlay's, the browser tabs' and the FX window's own styles are matched only in their own windows), about 15 to 20 MB less with the main window open; nothing looks different. A slider being adjusted from the keyboard, a level meter and a choice chip no longer keep a let-go main window in memory, and timing-log.txt says after each let-go whether the window really left memory.
 - Fixed: the taskbar gadget was invisible on Windows 11 since windows are drawn in software (Windows 11's taskbar covered it); it is drawn as its own see-through window in the taskbar again, looking as before.
 - Changed: when the sign-in task is removed because something in OmniControl's folder can be changed without administrator rights, the errors log names that file or folder.
 - Lighter memory: windows are drawn in software, so the graphics driver and ANGLE are no longer loaded (about 50 to 100 MB less, and no graphics-card memory); the download is about 2 MB smaller.
