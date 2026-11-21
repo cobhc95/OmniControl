@@ -1,176 +1,204 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <!-- Button variants as control themes: a global style per variant class is tried on every Button of every window, so each variant's
-         looks live in its ControlTheme and one style per class only picks the theme. A button keeps its class (Classes="pill"), which still
-         carries the variant's child selectors (Button.pill TextBlock, in the master style files) and the later pill variants there.
-         A theme's styles rank below every global style: only variants whose styles all came before the master hover in ThemeButtons.axaml
-         (or that it leaves out) are here, in their old order, so the master hover and the later variant styles still win as before. -->
+    <!-- Buttons as control themes: a global style is tried on every Button of every window, matching or not, so a variant's looks live in
+         its ControlTheme and one style per class picks the theme. Rules that keep the looks of the global styles they replaced:
+         - Every selector names the variant's class (^.pill, never a bare ^): a class or state is what puts a setter above the template's
+           own bindings and above Fluent's state styles, as the global Button.pill styles were.
+         - A theme ranks below every global style, so a theme's styles keep their old order and the master hover is part of the chain:
+           ButtonBase holds it, and a variant whose styles came after it in the old files is BasedOn ButtonBase; one whose styles came
+           before it (and so lost to it) states the hover last itself; one the hover left out (scope, step, groupHeader, primary) is BasedOn
+           Fluent's Button theme.
+         - Child selectors (Button.pill TextBlock) cannot be in a theme; they stay in the master files beside the variant's notes.
+         The variants of a feature's own pieces have their themes in that file (Blocks, Graphs, Bars, Menus, RowControls, Tray). -->
     <Styles.Resources>
-        <!-- Button.pill (Styles/ThemeButtons.axaml has its child selectors) -->
+        <!-- Every Button: Fluent's, with the master hover (a raised wash and the accent edge) -->
+        <ControlTheme x:Key="ButtonBase" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+            </Style>
+        </ControlTheme>
+
+        <!-- Button.pill: small outlined action beside a card's name (its child selectors are in Styles/ThemeButtons.axaml) -->
         <ControlTheme x:Key="PillButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Padding" Value="12,0" />
-            <Setter Property="MinHeight" Value="24" />
-            <Setter Property="FontSize" Value="11" />
-            <Setter Property="HorizontalAlignment" Value="Right" />
-            <Setter Property="HorizontalContentAlignment" Value="Center" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Setter Property="CornerRadius" Value="13" />
-            <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+            <Style Selector="^.pill">
+                <Setter Property="Padding" Value="12,0" />
+                <Setter Property="MinHeight" Value="24" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="HorizontalAlignment" Value="Right" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="CornerRadius" Value="13" />
+            </Style>
+            <Style Selector="^.pill /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="Background" Value="{DynamicResource BrushControlFill}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
                 <Setter Property="CornerRadius" Value="13" />
             </Style>
-            <Style Selector="^:disabled"><Setter Property="Opacity" Value="0.45" /></Style>
-            <Style Selector="^.custom /template/ ContentPresenter#PART_ContentPresenter">
+            <Style Selector="^.pill:disabled"><Setter Property="Opacity" Value="0.45" /></Style>
+            <!-- .custom = a toggle that is on -->
+            <Style Selector="^.pill.custom /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" />
                 <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
             </Style>
-            <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-                <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-            </Style>
             <!-- The cogwheel beside an action: a round version of the pill; lit while the keyboard is on it -->
-            <Style Selector="^.cog"><Setter Property="Padding" Value="7,0" /><Setter Property="MinWidth" Value="24" /></Style>
+            <Style Selector="^.pill.cog"><Setter Property="Padding" Value="7,0" /><Setter Property="MinWidth" Value="24" /></Style>
             <!-- A one-character pill (the - and + arrows of a number setting) -->
-            <Style Selector="^.glyph"><Setter Property="Padding" Value="9,0" /></Style>
+            <Style Selector="^.pill.glyph"><Setter Property="Padding" Value="9,0" /></Style>
             <!-- The round X pill (remove / delete beside a row or name box): an 18 px circle holding a 9 px drawn cross; after .glyph so it wins -->
-            <Style Selector="^.closex">
+            <Style Selector="^.pill.closex">
                 <Setter Property="Padding" Value="0" />
                 <Setter Property="Width" Value="{StaticResource CloseXSize}" />
                 <Setter Property="Height" Value="{StaticResource CloseXSize}" />
             </Style>
-            <Style Selector="^.cog.active /template/ ContentPresenter#PART_ContentPresenter">
+            <Style Selector="^.pill.cog.active /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
                 <Setter Property="BorderThickness" Value="2" />
                 <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
             </Style>
-            <Style Selector="^.custom:pointerover /template/ ContentPresenter#PART_ContentPresenter, ^.cog.active:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-                <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
-            </Style>
-            <Style Selector="^:focus-visible /template/ ContentPresenter#PART_ContentPresenter, ^:focus-visible:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Style Selector="^.pill:focus-visible /template/ ContentPresenter#PART_ContentPresenter, ^.pill:focus-visible:pointerover /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
                 <Setter Property="BorderThickness" Value="2" />
             </Style>
-            <!-- A pill whose action runs (.counting, Controls/ChoiceChips): accent edge and words, see-through so the ProgressFill behind it shows; hover thickens the edge instead of hiding the fill -->
-            <Style Selector="^.counting /template/ ContentPresenter#PART_ContentPresenter, ^.counting:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <!-- A pill whose action runs (.counting, Controls/ChoiceChips): accent edge and words, see-through so the ProgressFill behind it shows; hover thickens the edge -->
+            <Style Selector="^.pill.counting /template/ ContentPresenter#PART_ContentPresenter, ^.pill.counting:pointerover /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
                 <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
             </Style>
-            <Style Selector="^.counting:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="BorderThickness" Value="2" /></Style>
-            <!-- A destructive action pill (.danger: Wipe all...): red words and edge, so it never looks like a routine action; hover and focus as every pill -->
-            <Style Selector="^.danger /template/ ContentPresenter#PART_ContentPresenter">
+            <Style Selector="^.pill.counting:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="BorderThickness" Value="2" /></Style>
+            <!-- A destructive action pill (.danger: Wipe all...): red words and edge, so it never looks like a routine action -->
+            <Style Selector="^.pill.danger /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushDanger}" />
                 <Setter Property="Foreground" Value="{DynamicResource BrushDanger}" />
             </Style>
-            <Style Selector="^.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-                <Setter Property="BorderBrush" Value="{DynamicResource BrushDanger}" />
-            </Style>
             <!-- Action inside a pop-down card (.cardaction: Install, Remove, Preview changes, Test) is the plain pill; .main (the one action that does the job, Install) is outlined in the accent -->
-            <Style Selector="^.cardaction.main /template/ ContentPresenter#PART_ContentPresenter">
+            <Style Selector="^.pill.cardaction.main /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
                 <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
             </Style>
-            <Style Selector="^.cardaction.main:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-                <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
+            <!-- The master hover, here because it came after the looks above (a .custom, .danger or .counting pill hovers like any pill) -->
+            <Style Selector="^.pill:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
             </Style>
+            <!-- A pill in two halves (the Wake split button): .splitleft + .splitright side by side with the right one's Margin -1,0,0,0 so the shared edge is one line -->
+            <Style Selector="^.pill.splitleft"><Setter Property="CornerRadius" Value="13,0,0,13" /></Style>
+            <Style Selector="^.pill.splitleft /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="CornerRadius" Value="13,0,0,13" /></Style>
+            <Style Selector="^.pill.splitright"><Setter Property="CornerRadius" Value="0,13,13,0" /></Style>
+            <Style Selector="^.pill.splitright /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="CornerRadius" Value="0,13,13,0" /></Style>
+            <Style Selector="^.pill.splitleft:pointerover, ^.pill.splitright:pointerover, ^.pill.splitleft:focus-visible, ^.pill.splitright:focus-visible"><Setter Property="ZIndex" Value="1" /></Style>
+            <!-- .glow = the FX button while effects run: the pill's look in the accent, with a soft glow (AccentGlow, made from the accent by AccentService); hover keeps the glow -->
+            <Style Selector="^.pill.glow /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+                <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
+                <Setter Property="BoxShadow" Value="{DynamicResource AccentGlow}" />
+            </Style>
+            <Style Selector="^.pill.glow:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+            </Style>
+            <!-- .icon = a square-ish pill holding only a drawn glyph; .accentline = accent words and edge (their glyphs' sizes are child selectors in Styles/Tray.axaml) -->
+            <Style Selector="^.pill.icon"><Setter Property="Padding" Value="0" /><Setter Property="Width" Value="{StaticResource PillIconWidth}" /></Style>
+            <Style Selector="^.pill.accentline /template/ ContentPresenter#PART_ContentPresenter, ^.pill.accentline:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+                <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
+            </Style>
+            <!-- Accent words keep their contrast on hover and press: the subtle wash (a .custom pill keeps its accent wash) -->
+            <Style Selector="^.pill.accentline:not(.custom):pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushHoverSubtle}" /></Style>
+            <Style Selector="^.pill.accentline:not(.custom):pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushPressedSubtle}" /></Style>
         </ControlTheme>
 
         <!-- Button.statetoggle (Pages/StateButtonItem): an on/off state shown as its icon and words on a card's extras line, filling its share
              of the line; the plain control fill and edge while live; .muted = red words, edge and a faint red wash. Hover and focus as every
              pill (the edge only, so nothing moves); its child selectors are in Styles/ThemeButtons.axaml -->
         <ControlTheme x:Key="StateToggleButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="MinHeight" Value="24" />
-            <Setter Property="Padding" Value="8,0" />
-            <Setter Property="FontSize" Value="11" />
-            <Setter Property="HorizontalAlignment" Value="Stretch" />
-            <Setter Property="HorizontalContentAlignment" Value="Center" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Setter Property="CornerRadius" Value="6" />
-            <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+            <Style Selector="^.statetoggle">
+                <Setter Property="MinHeight" Value="24" />
+                <Setter Property="Padding" Value="8,0" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="CornerRadius" Value="6" />
+            </Style>
+            <Style Selector="^.statetoggle /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="Background" Value="{DynamicResource BrushControlFill}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="CornerRadius" Value="6" />
             </Style>
-            <Style Selector="^.muted /template/ ContentPresenter#PART_ContentPresenter">
+            <Style Selector="^.statetoggle.muted /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="Background" Value="{DynamicResource BrushTagRiskSoft}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushDanger}" />
                 <Setter Property="Foreground" Value="{DynamicResource BrushDanger}" />
             </Style>
-            <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-                <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
+            <Style Selector="^.statetoggle:focus-visible /template/ ContentPresenter#PART_ContentPresenter, ^.statetoggle:focus-visible:pointerover /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
             </Style>
-            <Style Selector="^.muted:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <!-- The master hover, here because it came after the looks above -->
+            <Style Selector="^.statetoggle:pointerover /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource BrushDanger}" />
-                <Setter Property="Foreground" Value="{DynamicResource BrushDanger}" />
-            </Style>
-            <Style Selector="^:focus-visible /template/ ContentPresenter#PART_ContentPresenter, ^:focus-visible:pointerover /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
             </Style>
         </ControlTheme>
 
         <!-- Button.optioncard: a selectable card of a wide pop-down (the Method menu); .selected = the one in force -->
         <ControlTheme x:Key="OptionCardButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Padding" Value="{StaticResource OptionCardPadding}" />
-            <Setter Property="CornerRadius" Value="{StaticResource OptionCardCornerRadius}" />
-            <Setter Property="HorizontalAlignment" Value="Stretch" />
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+            <Style Selector="^.optioncard">
+                <Setter Property="Padding" Value="{StaticResource OptionCardPadding}" />
+                <Setter Property="CornerRadius" Value="{StaticResource OptionCardCornerRadius}" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            </Style>
+            <Style Selector="^.optioncard /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
                 <Setter Property="BorderThickness" Value="2" />
             </Style>
-            <Style Selector="^.selected /template/ ContentPresenter#PART_ContentPresenter">
+            <Style Selector="^.optioncard.selected /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" />
             </Style>
-            <Style Selector="^.selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-                <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
+            <!-- Focus changes only the edge: the pop-down puts the keyboard on the selected card, whose fill must still mark it as the current choice -->
+            <Style Selector="^.optioncard:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
             </Style>
-            <!-- Focus changes only the edge: the pop-down puts the keyboard on the selected card, whose fill must still mark it as the current choice -->
-            <Style Selector="^:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <!-- The master hover, here because it came after the looks above -->
+            <Style Selector="^.optioncard:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
             </Style>
         </ControlTheme>
 
         <!-- Button.scope: a field-like picker or action button (device picker, Add program, Choose...); .mute = the Volume row's small square
-             mute button ("M", lit in the accent while .on), .usebtn = the confirm of a window's foot (its hover and .danger stay in
-             Styles/ThemeLists.axaml, as a confirm without .scope uses them too). The master hover leaves it out. -->
+             mute button ("M", lit in the accent while .on), .usebtn = the confirm of a window's foot. Its fill and edge come after a hover,
+             so only its edge shows focus (the master hover leaves it out). -->
         <ControlTheme x:Key="ScopeButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Padding" Value="8,2" />
-            <Setter Property="MinHeight" Value="24" />
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="CornerRadius" Value="6" />
-            <Setter Property="HorizontalAlignment" Value="Stretch" />
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Style Selector="^:focus-visible /template/ ContentPresenter#PART_ContentPresenter, ^:focus-visible:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-                <Setter Property="BorderThickness" Value="2" />
-                <Setter Property="Background" Value="{DynamicResource BrushBackground}" />
+            <Style Selector="^.scope">
+                <Setter Property="Padding" Value="8,2" />
+                <Setter Property="MinHeight" Value="24" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="CornerRadius" Value="6" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             </Style>
-            <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-                <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-            </Style>
-            <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+            <Style Selector="^.scope /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="Background" Value="{DynamicResource BrushControlFill}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
                 <Setter Property="BorderThickness" Value="1" />
             </Style>
-            <Style Selector="^:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Style Selector="^.scope:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
                 <Setter Property="BorderThickness" Value="2" />
             </Style>
-            <Style Selector="^.mute">
+            <Style Selector="^.scope.mute">
                 <Setter Property="HorizontalContentAlignment" Value="Center" />
                 <Setter Property="VerticalContentAlignment" Value="Center" />
                 <Setter Property="VerticalAlignment" Value="Center" />
@@ -180,13 +208,26 @@
                 <Setter Property="Padding" Value="0" />
             </Style>
             <!-- The window foot's two buttons (this confirm and Button.primary.close) share one height, font and minimum width -->
-            <Style Selector="^.usebtn"><Setter Property="Padding" Value="12,0" /><Setter Property="VerticalContentAlignment" Value="Center" /><Setter Property="HorizontalContentAlignment" Value="Center" /><Setter Property="HorizontalAlignment" Value="Right" /><Setter Property="Height" Value="{StaticResource DialogButtonHeight}" /><Setter Property="MinWidth" Value="{StaticResource DialogCloseWidth}" /></Style>
-            <Style Selector="^.mute.on /template/ ContentPresenter#PART_ContentPresenter">
+            <Style Selector="^.scope.usebtn"><Setter Property="Padding" Value="12,0" /><Setter Property="VerticalContentAlignment" Value="Center" /><Setter Property="HorizontalContentAlignment" Value="Center" /><Setter Property="HorizontalAlignment" Value="Right" /><Setter Property="Height" Value="{StaticResource DialogButtonHeight}" /><Setter Property="MinWidth" Value="{StaticResource DialogCloseWidth}" /></Style>
+            <!-- "Use this action": the mouse hover and the keyboard highlight share the master hover look (no border change, so the text never moves) -->
+            <Style Selector="^.usebtn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+            </Style>
+            <!-- A confirm that loses or undoes something (.usebtn.danger: Yes, close / Yes, unpair): red words and edge, hover as every confirm -->
+            <Style Selector="^.usebtn.danger /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushDanger}" />
+                <Setter Property="Foreground" Value="{DynamicResource BrushDanger}" />
+            </Style>
+            <Style Selector="^.usebtn.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushDanger}" />
+            </Style>
+            <Style Selector="^.scope.mute.on /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
             </Style>
             <!-- Lit (on) buttons keep their lit look but still react to the mouse -->
-            <Style Selector="^.mute.on:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Style Selector="^.scope.mute.on:pointerover /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
             </Style>
@@ -195,58 +236,138 @@
         <!-- Button.bandrow: a Parametric EQ band row (a tab-like row of the band list), outlined and flat; .on = the selected band (its
              accent bar and .off's dimming are child selectors in Styles/ThemeLists.axaml) -->
         <ControlTheme x:Key="BandRowButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Padding" Value="0,0,8,0" />
-            <Setter Property="MinHeight" Value="0" />
-            <Setter Property="HorizontalAlignment" Value="Stretch" />
-            <Setter Property="VerticalAlignment" Value="Stretch" />
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Style Selector="^.on /template/ ContentPresenter#PART_ContentPresenter">
+            <Style Selector="^.bandrow">
+                <Setter Property="Padding" Value="0,0,8,0" />
+                <Setter Property="MinHeight" Value="0" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="VerticalAlignment" Value="Stretch" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="8" />
+            </Style>
+            <Style Selector="^.bandrow.on /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="Background" Value="{DynamicResource BrushHover}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" />
             </Style>
-            <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter, ^:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Style Selector="^.bandrow:pointerover /template/ ContentPresenter#PART_ContentPresenter, ^.bandrow:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
             </Style>
         </ControlTheme>
 
-        <!-- Button.step: a flat arrow beside a gallery; .chainchevron = the FX chain list's folder chevron. The master hover leaves it out. -->
+        <!-- Button.step: a flat arrow beside a gallery; .chainchevron = the FX chain list's folder chevron -->
         <ControlTheme x:Key="StepButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Padding" Value="8,4" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Style Selector="^.step">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Padding" Value="8,4" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+            <Style Selector="^.step:pointerover /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
             </Style>
-            <Style Selector="^.chainchevron"><Setter Property="Padding" Value="2" /><Setter Property="MinWidth" Value="0" /><Setter Property="MinHeight" Value="0" /></Style>
+            <Style Selector="^.step.chainchevron"><Setter Property="Padding" Value="2" /><Setter Property="MinWidth" Value="0" /><Setter Property="MinHeight" Value="0" /></Style>
         </ControlTheme>
 
-        <!-- Button.groupHeader: the clickable header of a group panel (a subgroup's hover is a child selector in Styles/ThemeLists.axaml). The master hover leaves it out. -->
+        <!-- Button.groupHeader: the clickable header of a group panel (a subgroup's hover is a child selector in Styles/ThemeLists.axaml) -->
         <ControlTheme x:Key="GroupHeaderButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="2" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="Padding" Value="6,3" />
-            <Setter Property="HorizontalAlignment" Value="Stretch" />
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Style Selector="^.groupHeader">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderBrush" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="2" />
+                <Setter Property="CornerRadius" Value="8" />
+                <Setter Property="Padding" Value="6,3" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            </Style>
+            <Style Selector="^.groupHeader:pointerover /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="Background" Value="{DynamicResource BrushHover}" />
                 <Setter Property="BorderBrush" Value="Transparent" />
             </Style>
-            <Style Selector="^:focus /template/ ContentPresenter#PART_ContentPresenter, ^:focus:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Style Selector="^.groupHeader:focus /template/ ContentPresenter#PART_ContentPresenter, ^.groupHeader:focus:pointerover /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
                 <Setter Property="BorderThickness" Value="2" />
                 <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
             </Style>
         </ControlTheme>
+
+        <!-- Button.primary: the one accent action of a window; .close = the one Close/Cancel size of a window's foot -->
+        <ControlTheme x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Style Selector="^.primary"><Setter Property="Background" Value="{DynamicResource BrushAccent}" /><Setter Property="Foreground" Value="{DynamicResource BrushOnAccent}" /></Style>
+            <Style Selector="^.primary:pointerover /template/ ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushAccent}" /><Setter Property="Foreground" Value="{DynamicResource BrushOnAccent}" /><Setter Property="Opacity" Value="0.88" /></Style>
+            <Style Selector="^.primary.close">
+                <Setter Property="Width" Value="{StaticResource DialogCloseWidth}" />
+                <Setter Property="Height" Value="{StaticResource DialogButtonHeight}" />
+                <Setter Property="Padding" Value="12,0" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="CornerRadius" Value="6" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+            </Style>
+        </ControlTheme>
+
+        <!-- Button.link: a control inside a sentence that looks like underlined words, its size never changes; hover and keyboard focus
+             colour it in the accent. Its content is always a TextBlock (never a string): a string is drawn by the ContentPresenter itself and
+             the underline (Button.link > TextBlock, Styles/ThemeButtons.axaml) could not reach it, and a ContentTemplate would turn a
+             TextBlock content into its type name -->
+        <ControlTheme x:Key="LinkButton" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
+            <Style Selector="^.link">
+                <Setter Property="Padding" Value="1,0" />
+                <Setter Property="MinHeight" Value="0" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="CornerRadius" Value="3" />
+            </Style>
+            <Style Selector="^.link /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+            </Style>
+            <Style Selector="^.link.small"><Setter Property="FontSize" Value="11" /></Style>
+            <Style Selector="^.link:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderBrush" Value="Transparent" />
+                <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
+            </Style>
+            <Style Selector="^.link:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
+                <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
+            </Style>
+            <Style Selector="^.link:disabled"><Setter Property="Opacity" Value="0.45" /></Style>
+            <Style Selector="^.link:disabled /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="Transparent" /></Style>
+        </ControlTheme>
+
+        <!-- Button.tab (Pages/PageTabsView): a page's tab, muted words with a 2 px line under them that is transparent until the tab is open;
+             open = accent words on an accent line. The weight never changes, so the tabs never move; hover is the master button hover (its
+             wash on the words' presenter), keyboard focus the accent wash. Hover comes before .selected so an open tab keeps its accent. -->
+        <ControlTheme x:Key="TabButton" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
+            <Style Selector="^.tab">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Padding" Value="{StaticResource TabPadding}" />
+                <Setter Property="CornerRadius" Value="{StaticResource TabCornerRadius}" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Template">
+                    <ControlTemplate>
+                        <StackPanel>
+                            <ContentPresenter x:Name="PART_ContentPresenter" Content="{TemplateBinding Content}" Padding="{TemplateBinding Padding}"
+                                              Background="{TemplateBinding Background}"
+                                              CornerRadius="{TemplateBinding CornerRadius}" />
+                            <Border x:Name="Underline" Height="{StaticResource TabUnderlineHeight}" Background="Transparent" />
+                        </StackPanel>
+                    </ControlTemplate>
+                </Setter>
+            </Style>
+            <!-- The words' colours are set on the presenter: Fluent's button theme colours it there on hover and press, after the template -->
+            <Style Selector="^.tab /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Foreground" Value="{DynamicResource BrushMuted}" /></Style>
+            <Style Selector="^.tab:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" /></Style>
+            <Style Selector="^.tab.selected /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Foreground" Value="{DynamicResource BrushAccent}" /></Style>
+            <Style Selector="^.tab.selected /template/ Border#Underline"><Setter Property="Background" Value="{DynamicResource BrushAccent}" /></Style>
+            <Style Selector="^.tab:focus-visible /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" /></Style>
+            <Style Selector="^.tab.selected:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" /></Style>
+        </ControlTheme>
     </Styles.Resources>
 
+    <Style Selector="Button"><Setter Property="Theme" Value="{StaticResource ButtonBase}" /></Style>
     <Style Selector="Button.pill"><Setter Property="Theme" Value="{StaticResource PillButton}" /></Style>
     <Style Selector="Button.statetoggle"><Setter Property="Theme" Value="{StaticResource StateToggleButton}" /></Style>
     <Style Selector="Button.optioncard"><Setter Property="Theme" Value="{StaticResource OptionCardButton}" /></Style>
@@ -254,4 +375,7 @@
     <Style Selector="Button.bandrow"><Setter Property="Theme" Value="{StaticResource BandRowButton}" /></Style>
     <Style Selector="Button.step"><Setter Property="Theme" Value="{StaticResource StepButton}" /></Style>
     <Style Selector="Button.groupHeader"><Setter Property="Theme" Value="{StaticResource GroupHeaderButton}" /></Style>
+    <Style Selector="Button.primary"><Setter Property="Theme" Value="{StaticResource PrimaryButton}" /></Style>
+    <Style Selector="Button.link"><Setter Property="Theme" Value="{StaticResource LinkButton}" /></Style>
+    <Style Selector="Button.tab"><Setter Property="Theme" Value="{StaticResource TabButton}" /></Style>
 </Styles>

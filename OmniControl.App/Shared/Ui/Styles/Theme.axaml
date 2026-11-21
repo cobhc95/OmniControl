@@ -3,7 +3,36 @@
         xmlns:svc="using:OmniControl.App.Shared.Services"
         xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
         xmlns:c="using:OmniControl.App.Shared.Ui.Controls">
-
+    <!-- Border looks with several styles are control themes, picked by one style per class (the rules: Styles/ButtonThemes.axaml) -->
+    <Styles.Resources>
+        <!-- Border.pane: a boxed pane inside a window (the FX chain list and editor, the add-effect list); .edged draws its divider outline;
+             .tabbed = the panel under browser-style tabs (Controls/BrowserTabStrip): the pane without its top edge, so the open tab joins it -->
+        <ControlTheme x:Key="PaneBorder" TargetType="Border">
+            <Style Selector="^.pane">
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="6" />
+                <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
+            </Style>
+            <Style Selector="^.pane.edged"><Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" /></Style>
+            <Style Selector="^.pane.tabbed">
+                <Setter Property="BorderThickness" Value="1,0,1,1" />
+                <Setter Property="CornerRadius" Value="0,0,6,6" />
+            </Style>
+        </ControlTheme>
+        <!-- Border.groupPanel: a page's group card (Pages/GroupCard); .target = the one the preset manager was opened at, outlined in the
+             accent (the 1 px edge stays, so nothing moves) -->
+        <ControlTheme x:Key="GroupPanelBorder" TargetType="Border">
+            <Style Selector="^.groupPanel">
+                <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="Padding" Value="8,3,8,2" />
+                <Setter Property="Margin" Value="0,0,0,4" />
+            </Style>
+            <Style Selector="^.groupPanel.target"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
+        </ControlTheme>
+    </Styles.Resources>
 
     <!-- The card list: a list of setting cards that pairs half-width cards two per row (used with "rows compact") -->
     <Style Selector="ListBox.cards">
@@ -15,18 +44,7 @@
         <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
     </Style>
-    <!-- A boxed pane inside a window (the FX chain list and editor, the add-effect list); .edged draws its divider outline -->
-    <Style Selector="Border.pane">
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="6" />
-        <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
-    </Style>
-    <Style Selector="Border.pane.edged"><Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" /></Style>
-    <!-- The panel under browser-style tabs (Controls/BrowserTabStrip): the pane without its top edge, so the open tab joins it -->
-    <Style Selector="Border.pane.tabbed">
-        <Setter Property="BorderThickness" Value="1,0,1,1" />
-        <Setter Property="CornerRadius" Value="0,0,6,6" />
-    </Style>
+    <Style Selector="Border.pane"><Setter Property="Theme" Value="{StaticResource PaneBorder}" /></Style>
 
     <!-- Focus is shown with the accent colour, not the default white outline -->
     <Style Selector="Slider, Slider:focus, Slider:focus-visible, ToggleSwitch, ToggleSwitch:focus, ToggleSwitch:focus-visible, Button, ToggleButton, ListBoxItem, ComboBoxItem, ComboBox, TextBox, CheckBox, Button:focus-visible, ToggleButton:focus-visible, ListBoxItem:focus-visible, ComboBoxItem:focus-visible, ComboBox:focus-visible, TextBox:focus-visible, CheckBox:focus-visible, Button:focus, ToggleButton:focus">
@@ -163,15 +181,7 @@
          Fields:  TextBox.field (in a card or window; .code = monospace several-line code, a saved script), TextBox.bar + ComboBox.bar (top search bar), TextBox.typednumber (a typed slider value),
                   ComboBox.choice (centred in a card), ComboBox.tool (on a group header's line). -->
 
-    <!-- Shortcut groups: one panel per feature with a clickable header that collapses it -->
-    <Style Selector="Border.groupPanel">
-        <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="12" />
-        <Setter Property="Padding" Value="8,3,8,2" />
-        <Setter Property="Margin" Value="0,0,0,4" />
-    </Style>
+    <Style Selector="Border.groupPanel"><Setter Property="Theme" Value="{StaticResource GroupPanelBorder}" /></Style>
     <!-- The group card: the panel, its header line with the master switch and the tools at the right, the body (both tools and body follow the group's open/closed state) -->
     <Style Selector="pages|GroupCard">
         <Setter Property="Template">

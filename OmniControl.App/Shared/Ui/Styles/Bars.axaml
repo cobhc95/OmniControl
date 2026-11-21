@@ -7,6 +7,36 @@
          Theme.axaml, Sliders.axaml and Graphs.axaml, so the toolbar sizes win over the controls' own masters (pill, ComboBox.tool)
          while their colours, hover and focus stay theirs (the master slider needs nothing here: it is already SliderHeight high). The selectors name control types only (no TextBlock), so they
          never reach into a pop-down that hangs under a toolbar control. -->
+    <Styles.Resources>
+        <!-- Button.swatch: one colour of every colour pop-down (notes below) -->
+        <ControlTheme x:Key="SwatchButton" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
+            <Style Selector="^.swatch">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="CornerRadius" Value="{StaticResource ToolIconRadius}" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="Padding" Value="{StaticResource SwatchPadding}" />
+            </Style>
+            <Style Selector="^.swatch:pointerover /template/ ContentPresenter#PART_ContentPresenter, ^.swatch:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
+            </Style>
+            <!-- A dot keyed to by the arrows in a colour pop-down shows the accent wash behind it -->
+            <Style Selector="^.swatch:focus-visible /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" /></Style>
+        </ControlTheme>
+        <!-- TextBlock.statusline: the one thin status line (notes above) -->
+        <ControlTheme x:Key="StatusLineText" TargetType="TextBlock">
+            <Style Selector="^.statusline">
+                <Setter Property="FontSize" Value="{StaticResource StatusFontSize}" />
+                <Setter Property="Foreground" Value="{DynamicResource BrushMuted}" />
+                <Setter Property="TextWrapping" Value="NoWrap" />
+                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+            <Style Selector="^.statusline.caution"><Setter Property="Foreground" Value="{DynamicResource BrushCaution}" /></Style>
+            <Style Selector="^.statusline.failed"><Setter Property="Foreground" Value="{DynamicResource BrushDanger}" /></Style>
+        </ControlTheme>
+    </Styles.Resources>
 
     <Style Selector="Border.toolrow">
         <Setter Property="MinHeight" Value="{StaticResource ToolRowHeight}" />
@@ -59,12 +89,6 @@
         <Setter Property="FontSize" Value="{StaticResource ToolFontSize}" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
-    <Style Selector="Border.toolrow Button.selector">
-        <Setter Property="MinHeight" Value="{StaticResource ToolControlHeight}" />
-        <Setter Property="Height" Value="{StaticResource ToolControlHeight}" />
-        <Setter Property="FontSize" Value="{StaticResource ToolFontSize}" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
     <Style Selector="Border.toolrow Button.pill">
         <Setter Property="MinHeight" Value="{StaticResource ToolControlHeight}" />
         <Setter Property="Height" Value="{StaticResource ToolControlHeight}" />
@@ -78,47 +102,18 @@
         <Setter Property="BorderThickness" Value="0,1,0,0" />
         <Setter Property="Padding" Value="{StaticResource FooterPadding}" />
     </Style>
-    <Style Selector="Button.primary.close">
-        <Setter Property="Width" Value="{StaticResource DialogCloseWidth}" />
-        <Setter Property="Height" Value="{StaticResource DialogButtonHeight}" />
-        <Setter Property="Padding" Value="12,0" />
-        <Setter Property="FontSize" Value="12" />
-        <Setter Property="CornerRadius" Value="6" />
-        <Setter Property="VerticalContentAlignment" Value="Center" />
-        <Setter Property="HorizontalContentAlignment" Value="Center" />
-    </Style>
     <Style Selector="Border.statusstrip">
         <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
         <Setter Property="BorderThickness" Value="0,1,0,0" />
         <Setter Property="Padding" Value="{StaticResource StatusStripPadding}" />
     </Style>
-    <Style Selector="TextBlock.statusline">
-        <Setter Property="FontSize" Value="{StaticResource StatusFontSize}" />
-        <Setter Property="Foreground" Value="{DynamicResource BrushMuted}" />
-        <Setter Property="TextWrapping" Value="NoWrap" />
-        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
-    <Style Selector="TextBlock.statusline.caution"><Setter Property="Foreground" Value="{DynamicResource BrushCaution}" /></Style>
-    <Style Selector="TextBlock.statusline.failed"><Setter Property="Foreground" Value="{DynamicResource BrushDanger}" /></Style>
+    <Style Selector="TextBlock.statusline"><Setter Property="Theme" Value="{StaticResource StatusLineText}" /></Style>
 
     <!-- Button.swatch + c:SwatchDot = one colour of every colour pop-down (the dot is also the screenshot overlay's colour button's). The
          floating bars over a picture (Border.floatbar, Button.toolicon) are in FloatBars.axaml, the screenshot overlay's own pieces in
          Features/Screenshot/ScreenshotStyles.axaml, each included only by the windows that show them. Sizes Swatch* in App.axaml. -->
-    <Style Selector="Button.swatch">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="CornerRadius" Value="{StaticResource ToolIconRadius}" />
-        <Setter Property="HorizontalContentAlignment" Value="Center" />
-        <Setter Property="VerticalContentAlignment" Value="Center" />
-    </Style>
-    <Style Selector="Button.swatch"><Setter Property="Padding" Value="{StaticResource SwatchPadding}" /></Style>
-    <Style Selector="Button.swatch:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.swatch:pressed /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
-    </Style>
-    <!-- A dot keyed to by the arrows in a colour pop-down shows the accent wash behind it -->
-    <Style Selector="Button.swatch:focus-visible /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" /></Style>
+    <Style Selector="Button.swatch"><Setter Property="Theme" Value="{StaticResource SwatchButton}" /></Style>
     <!-- c:SwatchDot = THE colour dot (SwatchSize; a Button.selector chip's is ChipSwatchSize, RowControls.axaml); TextBlock.swatchletter =
          the A of its "follow the text colour" dot; ItemsControl.swatches = THE grid of colour dots (c:SwatchList gives itself the class: a
          type selector would match its style key, ItemsControl, not SwatchList), each a Button.swatch holding the dot of a SwatchItem

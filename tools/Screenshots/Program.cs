@@ -8,20 +8,30 @@ namespace OmniControl.Screenshots;
 /// (<see cref="Sandbox"/>), no action is ever run (<see cref="NoRunner"/>), the master list's keys are never registered, and no mouse
 /// hook, device read, resource poll, audio stream, effects engine or network link is started; what still listens or tries is said where it
 /// is made (the OSD's listeners, the Automation service's pause key, which fails while OmniControl runs). Each shot's notes say what it
-/// fakes. Usage: dotnet run -c Debug [-- output-folder]; default docs/screenshots.
+/// fakes. Usage: dotnet run -c Debug [-- output-folder] [--light] [--probe combos.txt]; default docs/screenshots. --light draws every shot
+/// in the light theme; --probe writes only the styles' results (<see cref="StyleProbe"/>); --compare a b lists the PNGs that differ.
 internal static class Program
 {
     [STAThread]
     private static int Main(string[] args)
     {
-        var output = args.Length > 0 ? Path.GetFullPath(args[0]) : RepoScreenshots();
+        if (args is ["--compare", var before, var after]) return ShotCompare.Run(before, after);
+        var light = args.Contains("--light");
+        var probe = Array.IndexOf(args, "--probe") is >= 0 and var at && at + 1 < args.Length ? args[at + 1] : null;
+        var output = args.FirstOrDefault(a => !a.StartsWith("--") && a != probe) is { } given ? Path.GetFullPath(given) : RepoScreenshots();
         Directory.CreateDirectory(output);
         using var sandbox = Sandbox.Enter();
         AppBuilder.Configure<App.App>()
             .UseSkia()
             .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })
             .SetupWithoutStarting();
-        AppSettings.Current.Theme = ThemeChoice.Dark; // App settings applies the saved theme when it is made
+        AppSettings.Current.Theme = light ? ThemeChoice.Light : ThemeChoice.Dark; // App settings applies the saved theme when it is made
+        Application.Current!.RequestedThemeVariant = light ? Avalonia.Styling.ThemeVariant.Light : Avalonia.Styling.ThemeVariant.Dark;
+        if (probe is not null)
+        {
+            StyleProbe.Run(probe, Path.Combine(output, light ? "probe-light.txt" : "probe-dark.txt"));
+            return 0;
+        }
 
         var camera = new Camera(output);
         var rig = new Rig();

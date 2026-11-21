@@ -30,9 +30,10 @@ internal static partial class Shots
     /// A page again in the light theme (the app's own theme switch: the theme variant; the surfaces and accent shades follow it).
     private static void Light(PageViewModel page, Camera camera, string name)
     {
-        Application.Current!.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light;
+        var was = Application.Current!.RequestedThemeVariant;
+        Application.Current.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light;
         camera.Page(page, name);
-        Application.Current.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Dark;
+        Application.Current.RequestedThemeVariant = was;
     }
 
     /// Adds the feature's view templates as its module would (the modules themselves are not made: they start Windows-facing services).
