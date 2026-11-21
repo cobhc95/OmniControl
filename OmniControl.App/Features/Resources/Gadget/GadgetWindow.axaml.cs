@@ -1,5 +1,6 @@
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Media.Imaging;
 
 namespace OmniControl.App.Features.Resources.Gadget;
 
@@ -35,9 +36,29 @@ public partial class GadgetWindow : Window
 
     public void Draw(IReadOnlyList<GadgetCell> cells, GadgetLayout layout) => Cells.Draw(cells, layout);
 
-    private void OnPointerEntered(object? sender, PointerEventArgs e) => Frame.IsVisible = HoverOutline;
+    /// The hover edge came or went (the layered window shows a new picture only when given one).
+    public event Action? EdgeChanged;
 
-    private void OnPointerExited(object? sender, PointerEventArgs e) => Frame.IsVisible = false;
+    /// Draws the window into <paramref name="bits"/>: premultiplied BGRA, <paramref name="width"/> x <paramref name="height"/> physical pixels,
+    /// rows of width * 4 bytes (the layered taskbar window's picture).
+    public void DrawInto(IntPtr bits, int width, int height)
+    {
+        var dpi = 96 * RenderScaling;
+        using var picture = new RenderTargetBitmap(new PixelSize(width, height), new Vector(dpi, dpi));
+        picture.Render(this);
+        picture.CopyPixels(new PixelRect(0, 0, width, height), bits, width * height * 4, width * 4);
+    }
+
+    private void OnPointerEntered(object? sender, PointerEventArgs e) => ShowEdge(HoverOutline);
+
+    private void OnPointerExited(object? sender, PointerEventArgs e) => ShowEdge(false);
+
+    private void ShowEdge(bool on)
+    {
+        if (Frame.IsVisible == on) return;
+        Frame.IsVisible = on;
+        EdgeChanged?.Invoke();
+    }
 
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {

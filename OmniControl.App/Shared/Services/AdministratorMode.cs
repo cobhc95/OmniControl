@@ -70,7 +70,11 @@ public static class AdministratorMode
         {
             var removed = SignInTask.RemoveUnsafe();
             var problem = on ? SignInTask.IsFor(self) ? null : SignInTask.Set(self) : SignInTask.Remove();
-            if (removed) report(SignInTask.RemovedUnsafe);
+            if (removed is not null)
+            {
+                AppDataStore.AppendLog(Guard.LogFile, $"Sign-in task removed: someone other than an administrator may change {removed}");
+                report(Guard.SeeLog(SignInTask.RemovedUnsafe));
+            }
             else if (problem is not null && !(atStart && problem == SignInTask.NeedsInstalled)) report(problem);
         }));
     }

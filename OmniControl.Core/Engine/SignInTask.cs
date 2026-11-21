@@ -36,33 +36,39 @@ public static class SignInTask
             : null;
     }
 
-    /// Removes the task when the program it starts sits in a folder its user may change (made by an older version); true when it did.
-    public static bool RemoveUnsafe()
+    /// Removes the task when the program it starts, or a file or folder beside or under it, may be changed by its user (a copy made by an older
+    /// version, or something written into the install folder later); the file or folder that did it when it removed the task, else null.
+    public static string? RemoveUnsafe()
     {
-        var removed = false;
+        string? removed = null;
         With(folder =>
         {
             if (Find(folder) is not { } task) return;
+            string? found;
             try
             {
-                if (Command(task) is { } command && AdminOnly(command)) return;
+                found = Command(task) is { } command ? Unsafe(command) : string.Empty;
             }
             finally { Release(task); }
+            if (found is null) return;
             ((dynamic)folder).DeleteTask(Name, 0);
-            removed = true;
+            removed = found;
         });
         return removed;
     }
 
-    private static bool AdminOnly(string exe)
+    private static bool AdminOnly(string exe) => Unsafe(exe) is null;
+
+    /// The first file or folder of <paramref name="exe"/>'s install its user may change, null when only administrators can change them all.
+    private static string? Unsafe(string exe)
     {
         try
         {
-            return exe.Length > 0 && Resources.NetworkServiceSetup.CanServeFrom(exe, wholeFolder: true);
+            return exe.Length > 0 ? Resources.NetworkServiceSetup.Unsafe(exe, wholeFolder: true) : exe;
         }
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
         {
-            return false; // not a path that can be shown to be safe
+            return exe; // not a path that can be shown to be safe
         }
     }
 

@@ -39,7 +39,8 @@ public static class TaskbarSpot
     public static bool IsGone(IntPtr window) => !IsWindow(window);
 
     /// Makes <paramref name="window"/> a child of the taskbar (true); where Windows refuses that, the taskbar owns it instead (false: it is
-    /// not hidden with the taskbar, see <see cref="FullScreenOn"/>). Either way it never takes focus and stays out of Alt+Tab.
+    /// not hidden with the taskbar, see <see cref="FullScreenOn"/>). Either way it never takes focus, stays out of Alt+Tab and is layered:
+    /// it shows only what <see cref="Paint"/> gives it.
     public static bool Attach(IntPtr window, IntPtr taskbar)
     {
         var style = GetWindowLongPtr(window, StyleIndex).ToInt64();
@@ -50,8 +51,37 @@ public static class TaskbarSpot
             SetWindowLongPtr(window, StyleIndex, new IntPtr(style));
             SetWindowLongPtr(window, OwnerIndex, taskbar);
         }
-        SetWindowLongPtr(window, ExStyleIndex, new IntPtr(GetWindowLongPtr(window, ExStyleIndex).ToInt64() | ToolWindow | NoActivate));
+        SetWindowLongPtr(window, ExStyleIndex, new IntPtr(GetWindowLongPtr(window, ExStyleIndex).ToInt64() | ToolWindow | NoActivate | Layered));
         return child;
+    }
+
+    /// Gives <paramref name="window"/> (layered by <see cref="Attach"/>) its picture with per-pixel alpha: <paramref name="fill"/> writes its
+    /// client area's premultiplied BGRA pixels (bits, width, height; rows of width * 4 bytes, top row first). A software-drawn child paints into
+    /// the taskbar's own surface, which Windows 11's taskbar covers with its XAML content; a layered child is composed above it as itself.
+    public static void Paint(IntPtr window, Action<IntPtr, int, int> fill)
+    {
+        if (!GetClientRect(window, out var client) || client.Right <= 0 || client.Bottom <= 0) return;
+        var size = new Size { Cx = client.Right, Cy = client.Bottom };
+        var header = new BitmapHeader { Size = Marshal.SizeOf<BitmapHeader>(), Width = size.Cx, Height = -size.Cy, Planes = 1, BitCount = 32 };
+        var screen = GetDC(IntPtr.Zero);
+        var memory = CreateCompatibleDC(screen);
+        var bitmap = CreateDIBSection(screen, ref header, 0, out var bits, IntPtr.Zero, 0);
+        try
+        {
+            if (memory == IntPtr.Zero || bitmap == IntPtr.Zero) return;
+            fill(bits, size.Cx, size.Cy);
+            var old = SelectObject(memory, bitmap);
+            var origin = default(Point);
+            var blend = new Blend { Alpha = 255, Format = SourceAlpha };
+            UpdateLayeredWindow(window, screen, IntPtr.Zero, ref size, memory, ref origin, 0, ref blend, UseAlpha);
+            SelectObject(memory, old);
+        }
+        finally
+        {
+            if (bitmap != IntPtr.Zero) DeleteObject(bitmap);
+            if (memory != IntPtr.Zero) DeleteDC(memory);
+            ReleaseDC(IntPtr.Zero, screen);
+        }
     }
 
     /// True when a full-screen app (Windows' own answer, <see cref="Mouse.FullScreenWatcher.AppInFront"/>) is in front on the monitor of
@@ -82,9 +112,10 @@ public static class TaskbarSpot
         Registry.GetValue(@"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "SystemUsesLightTheme", 0) is 1;
 
     private const int OwnerIndex = -8, StyleIndex = -16, ExStyleIndex = -20;
-    private const long Child = 0x40000000, Popup = 0x80000000, ToolWindow = 0x80, NoActivate = 0x08000000;
-    private const uint NoSize = 0x0001, NoActivateOnMove = 0x0010, AncestorParent = 1, PreviousSibling = 3, DefaultToNearest = 2;
+    private const long Child = 0x40000000, Popup = 0x80000000, ToolWindow = 0x80, NoActivate = 0x08000000, Layered = 0x80000;
+    private const uint NoSize = 0x0001, NoActivateOnMove = 0x0010, AncestorParent = 1, PreviousSibling = 3, DefaultToNearest = 2, UseAlpha = 2;
     private const int Hide = 0, ShowNoActivate = 4;
+    private const byte SourceAlpha = 1;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct Rect
@@ -96,6 +127,26 @@ public static class TaskbarSpot
     private struct Point
     {
         public int X, Y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Size
+    {
+        public int Cx, Cy;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Blend
+    {
+        public byte Op, Flags, Alpha, Format;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct BitmapHeader
+    {
+        public int Size, Width, Height;
+        public short Planes, BitCount;
+        public int Compression, SizeImage, XPelsPerMeter, YPelsPerMeter, ClrUsed, ClrImportant;
     }
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr FindWindow(string className, string? title);
@@ -113,4 +164,14 @@ public static class TaskbarSpot
     [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] private static extern IntPtr MonitorFromWindow(IntPtr window, uint flags);
     [DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr window, int command);
+    [DllImport("user32.dll")] private static extern bool GetClientRect(IntPtr window, out Rect rect);
+    [DllImport("user32.dll")] private static extern IntPtr GetDC(IntPtr window);
+    [DllImport("user32.dll")] private static extern int ReleaseDC(IntPtr window, IntPtr dc);
+    [DllImport("user32.dll")]
+    private static extern bool UpdateLayeredWindow(IntPtr window, IntPtr screen, IntPtr at, ref Size size, IntPtr source, ref Point from, uint key, ref Blend blend, uint flags);
+    [DllImport("gdi32.dll")] private static extern IntPtr CreateCompatibleDC(IntPtr dc);
+    [DllImport("gdi32.dll")] private static extern IntPtr CreateDIBSection(IntPtr dc, ref BitmapHeader header, uint usage, out IntPtr bits, IntPtr section, uint offset);
+    [DllImport("gdi32.dll")] private static extern IntPtr SelectObject(IntPtr dc, IntPtr item);
+    [DllImport("gdi32.dll")] private static extern bool DeleteObject(IntPtr item);
+    [DllImport("gdi32.dll")] private static extern bool DeleteDC(IntPtr dc);
 }

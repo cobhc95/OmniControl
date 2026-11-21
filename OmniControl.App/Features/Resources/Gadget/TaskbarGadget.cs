@@ -137,6 +137,7 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
             window.Pressed += clicks.Pressed;
             window.Clicked += clicks.Released;
             window.DoubleClicked += clicks.DoubleClicked;
+            window.EdgeChanged += () => Dispatcher.UIThread.Post(Paint, DispatcherPriority.Loaded); // after the edge's layout
             // A child window is destroyed with the taskbar when Explorer restarts; TaskbarCreated then opens a new one through Place.
             window.Closed += (_, _) =>
             {
@@ -244,12 +245,19 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
         if (_placed?.Taskbar != place.Taskbar) _owned = !TaskbarSpot.Attach(handle.Handle, place.Taskbar);
         if (_placed != place || TaskbarSpot.IsCovered(handle.Handle)) TaskbarSpot.Put(handle.Handle, place);
         _placed = place;
+        Paint(); // Place follows every Draw, so the layered window gets each new look here
         // A child hides with the taskbar; an owned window (Windows refused the child) hides itself while a full-screen app is on the
         // taskbar's monitor, looked at on every read (no poll of its own).
         var hide = _owned && TaskbarSpot.FullScreenOn(place.Taskbar);
         if (hide == _hidden) return;
         _hidden = hide;
         TaskbarSpot.Show(handle.Handle, !hide);
+    }
+
+    /// Gives the layered window its picture (<see cref="TaskbarSpot.Paint"/>): software rendering cannot draw a child of Windows 11's taskbar.
+    private void Paint()
+    {
+        if (_window is { } window && window.TryGetPlatformHandle() is { } handle) TaskbarSpot.Paint(handle.Handle, window.DrawInto);
     }
 
     /// The right-click menu: Layout (the favourite layouts) and Show (every reading, ticked) as sub-menus, the gadget's settings, Network traffic control

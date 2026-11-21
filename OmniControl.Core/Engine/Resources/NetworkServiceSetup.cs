@@ -105,21 +105,25 @@ public static class NetworkServiceSetup
     /// what it holds, or the folders above it (Program Files): the service runs that exe as SYSTEM, so a folder its user may write (a profile, a
     /// portable copy) would let anything running as them swap it. <paramref name="wholeFolder"/>: every file and folder under the exe's
     /// folder too (each may carry an access list of its own), since the exe loads its libraries from there.
-    public static bool CanServeFrom(string exe, bool wholeFolder = false)
+    public static bool CanServeFrom(string exe, bool wholeFolder = false) => Unsafe(exe, wholeFolder) is null;
+
+    /// The first file or folder that fails <see cref="CanServeFrom"/> (someone else may change it, or its list can't be read), null when none does.
+    public static string? Unsafe(string exe, bool wholeFolder = false)
     {
         var path = Path.GetFullPath(exe);
         var folder = Path.GetDirectoryName(path);
-        if (folder is null || !AdminOnly(Directory.Exists(path) ? new DirectoryInfo(path) : new FileInfo(path), own: true)) return false;
+        if (folder is null || !AdminOnly(Directory.Exists(path) ? new DirectoryInfo(path) : new FileInfo(path), own: true)) return path;
         var own = true;
         for (var dir = new DirectoryInfo(folder); dir is not null; dir = dir.Parent, own = false)
-            if (!AdminOnly(dir, own)) return false;
+            if (!AdminOnly(dir, own)) return dir.FullName;
+        if (!wholeFolder) return null;
         try
         {
-            return !wholeFolder || new DirectoryInfo(folder).EnumerateFileSystemInfos("*", SearchOption.AllDirectories).All(item => AdminOnly(item, own: true));
+            return new DirectoryInfo(folder).EnumerateFileSystemInfos("*", SearchOption.AllDirectories).FirstOrDefault(item => !AdminOnly(item, own: true))?.FullName;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            return false; // not all readable: not shown to be safe
+            return folder; // not all readable: not shown to be safe
         }
     }
 
