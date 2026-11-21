@@ -1,7 +1,8 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:c="using:OmniControl.App.Shared.Ui.Controls">
-    <!-- MASTER designs of the tray flyout (Tray/TrayFlyoutWindow). Sizes: Tray* in App.axaml. Included last. -->
+    <!-- MASTER designs the tray flyout (Tray/TrayFlyoutWindow) shares with other windows: its tile, corner mark and remove badge, the gadget's
+         cells. The panel's own pieces are in Features/Tray/TrayFlyoutStyles.axaml, styled only in its window. Sizes: Tray* in App.axaml. Included last. -->
 
     <!-- The flyout's window: no frame of its own and see-through, so only the rounded panel inside it shows -->
     <!-- Window.taskbargadget = the Resources taskbar gadget (Features/Resources/Gadget/GadgetWindow): borderless and see-through like the tray
@@ -46,41 +47,10 @@
     <Style Selector="Button.removebadge:pointerover /template/ Border#PART_Badge"><Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" /></Style>
     <Style Selector="Button.removebadge:focus-visible /template/ Border#PART_Badge"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
 
-    <!-- The flyout's panel, with a Windows 11 finish: a fixed width, rounded, one soft edge and a soft drop shadow (TrayShadowInset keeps
-         room for the shadow inside the see-through window). Border.flyoutbody clips its bands to the rounded corners; the bands are
-         Border.traytiles (the panel's own surface, the card colour), Border.traysliders (BrushCardShade, a step towards the page, a line above) and
-         Border.trayfoot (the page colour, a line above): the background colour choice's surfaces (SurfaceService). -->
-    <Style Selector="Border.flyoutpanel">
-        <Setter Property="Width" Value="{StaticResource TrayFlyoutWidth}" />
-        <Setter Property="Margin" Value="{StaticResource TrayShadowInset}" />
-        <Setter Property="CornerRadius" Value="{StaticResource TrayFlyoutCornerRadius}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
-        <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
-        <Setter Property="BoxShadow" Value="{DynamicResource TrayPanelShadow}" />
-    </Style>
-    <Style Selector="Border.flyoutbody">
-        <Setter Property="CornerRadius" Value="{StaticResource TrayFlyoutInnerRadius}" />
-        <Setter Property="ClipToBounds" Value="True" />
-    </Style>
-    <Style Selector="Border.traytiles"><Setter Property="Padding" Value="{StaticResource TrayTilesPadding}" /></Style>
-    <Style Selector="Border.traysliders, Border.trayfoot">
-        <Setter Property="BorderThickness" Value="0,1,0,0" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
-    </Style>
-    <Style Selector="Border.traysliders">
-        <Setter Property="Padding" Value="{StaticResource TraySlidersPadding}" />
-        <Setter Property="Background" Value="{DynamicResource BrushCardShade}" />
-    </Style>
-    <Style Selector="Border.trayfoot">
-        <Setter Property="Padding" Value="{StaticResource TrayFootPadding}" />
-        <Setter Property="Background" Value="{DynamicResource BrushBackground}" />
-    </Style>
 
     <!-- A tile: a Windows-style button (TrayTileHeight high, as wide as its cell of the tile grid: TrayTileColumns, even TrayTileGap gaps)
          holding its glyph, with its name UNDER it (StackPanel.traytile > TextBlock.wordtext). The 1 px edge is always there, so lighting, hover and
          focus change colours only. .on = its state is on (filled accent, the glyph in BrushOnAccent) -->
-    <Style Selector="StackPanel.traytile"><Setter Property="Spacing" Value="{StaticResource TrayTileNameGap}" /></Style>
     <Style Selector="Button.tile">
         <Setter Property="HorizontalAlignment" Value="Stretch" />
         <Setter Property="Height" Value="{StaticResource TrayTileHeight}" />
@@ -98,15 +68,6 @@
         <Setter Property="Width" Value="{StaticResource TrayGlyphSize}" />
         <Setter Property="Height" Value="{StaticResource TrayGlyphSize}" />
     </Style>
-    <Style Selector="StackPanel.traytile > TextBlock.wordtext">
-        <Setter Property="FontSize" Value="{StaticResource MenuSmallFontSize}" />
-        <Setter Property="(c:WordText.FitFontSize)" Value="{StaticResource TrayTileFitFontSize}" />
-        <Setter Property="HorizontalAlignment" Value="Stretch" />
-        <Setter Property="TextAlignment" Value="Center" />
-        <Setter Property="TextWrapping" Value="Wrap" />
-        <Setter Property="MaxLines" Value="2" />
-        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-    </Style>
     <Style Selector="Button.tile:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" />
@@ -120,8 +81,6 @@
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentBright}" />
     </Style>
     <Style Selector="Button.tile.on > c|IconGlyph"><Setter Property="Foreground" Value="{DynamicResource BrushOnAccent}" /></Style>
-    <!-- .faded = its state is only the last one known: the button and its name are dimmed, lit or not -->
-    <Style Selector="Button.tile.faded, StackPanel.traytile > TextBlock.wordtext.faded"><Setter Property="Opacity" Value="{StaticResource TrayFadedOpacity}" /></Style>
     <!-- The tile's corner mark (top-right, TrayMarkSize): holds ONE of a spinning ring (an action runs), a pulsing grey dot (the state is read),
          a clock (only the last known value) or a red warning (the last action or read failed). It never takes the mouse. -->
     <Style Selector="Panel.tilemark">
@@ -154,20 +113,6 @@
             </Animation>
         </Style.Animations>
     </Style>
-    <Style Selector="Panel.tilemark > Ellipse.markdot">
-        <Setter Property="Width" Value="{StaticResource TrayMarkDot}" />
-        <Setter Property="Height" Value="{StaticResource TrayMarkDot}" />
-        <Setter Property="Fill" Value="{DynamicResource BrushMuted}" />
-    </Style>
-    <Style Selector="Panel.tilemark > Ellipse.markdot.spinning">
-        <Style.Animations>
-            <Animation Duration="0:0:0.8" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="SineEaseInOut">
-                <KeyFrame Cue="0%"><Setter Property="Opacity" Value="1" /></KeyFrame>
-                <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.35" /></KeyFrame>
-            </Animation>
-        </Style.Animations>
-    </Style>
-    <Style Selector="Panel.tilemark > c|IconGlyph.marknotsure"><Setter Property="Foreground" Value="{DynamicResource BrushMuted}" /></Style>
     <Style Selector="Panel.tilemark > c|IconGlyph.markfailed, Button.statepower > Panel > c|IconGlyph.markfailed"><Setter Property="Foreground" Value="{DynamicResource BrushDanger}" /></Style>
     <!-- Button.statepower: the small round power button at the right of a Smart Devices method row. It shows the
          device's state (grey = off, accent edge and wash = on); its Panel holds ONE of the power glyph, the spinner (an inner Panel with the tile
@@ -230,49 +175,7 @@
     <Style Selector="Button.tile.on:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="BorderBrush" Value="{DynamicResource BrushOnAccent}" />
     </Style>
-    <!-- On a lit tile the corner mark is drawn in the glyph's colour, so it shows on the accent fill (a failure stays red) -->
-    <Style Selector="Panel.tilemark.on > Ellipse.markring, Panel.tilemark.on > Path.markarc"><Setter Property="Stroke" Value="{DynamicResource BrushOnAccent}" /></Style>
-    <Style Selector="Panel.tilemark.on > Ellipse.markdot"><Setter Property="Fill" Value="{DynamicResource BrushOnAccent}" /></Style>
-    <Style Selector="Panel.tilemark.on > c|IconGlyph.marknotsure"><Setter Property="Foreground" Value="{DynamicResource BrushOnAccent}" /></Style>
 
-    <!-- Button.trayfootbutton: a plain button of the flyout's foot (+ Tile, + Slider, Edit, Open OmniControl): a glyph and optional words, no
-         edge, a hover square. .on = its mode is on (Edit while editing: accent glyph and wash); .quiet = a quiet link (accent words, no wash
-         until hovered). -->
-    <Style Selector="Button.trayfootbutton">
-        <Setter Property="Padding" Value="{StaticResource TrayFootButtonPadding}" />
-        <Setter Property="CornerRadius" Value="{StaticResource TrayFootButtonRadius}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="MinHeight" Value="0" />
-        <Setter Property="FontSize" Value="{StaticResource MenuSmallFontSize}" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="VerticalContentAlignment" Value="Center" />
-    </Style>
-    <!-- The edge is always there (transparent) so keyboard focus only colours it -->
-    <Style Selector="Button.trayfootbutton /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderBrush" Value="Transparent" />
-    </Style>
-    <Style Selector="Button.trayfootbutton.quiet /template/ ContentPresenter#PART_ContentPresenter, Button.trayfootbutton.on /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
-    </Style>
-    <Style Selector="Button.trayfootbutton.on /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" /></Style>
-    <Style Selector="Button.trayfootbutton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
-    </Style>
-    <Style Selector="Button.trayfootbutton.on:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushAccentHover}" /></Style>
-    <!-- Accent words keep their contrast: the subtle wash, never the stronger grey -->
-    <Style Selector="Button.trayfootbutton.quiet:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushHoverSubtle}" /></Style>
-    <Style Selector="Button.trayfootbutton.quiet:pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushPressedSubtle}" /></Style>
-    <Style Selector="Button.trayfootbutton:focus-visible /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
-    <Style Selector="Button.trayfootbutton > StackPanel"><Setter Property="Orientation" Value="Horizontal" /><Setter Property="Spacing" Value="{StaticResource TrayFootGap}" /></Style>
-    <Style Selector="Button.trayfootbutton c|IconGlyph">
-        <Setter Property="Width" Value="{StaticResource TrayGlyphSize}" />
-        <Setter Property="Height" Value="{StaticResource TrayGlyphSize}" />
-    </Style>
-    <Style Selector="Button.trayfootbutton > StackPanel > TextBlock">
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-    </Style>
     <!-- Shared pill variants (any Button.pill): .icon = a square-ish pill holding only a drawn glyph; .accentline = accent words and edge.
          A glyph in either takes the button's own text colour (so it hovers and focuses with it). -->
     <Style Selector="Button.pill.icon"><Setter Property="Padding" Value="0" /><Setter Property="Width" Value="{StaticResource PillIconWidth}" /></Style>
@@ -288,27 +191,6 @@
     <Style Selector="Button.pill.accentline:not(.custom):pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushHoverSubtle}" /></Style>
     <Style Selector="Button.pill.accentline:not(.custom):pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushPressedSubtle}" /></Style>
 
-    <!-- A slider row of the flyout: shared columns for the icon, the name or chip, the slider and the value, so every slider starts and ends
-         at the same x whatever the names. The name and the chip are one fixed width (TrayNameWidth) and trim with an ellipsis (the chip
-         fills it, its chevron at the right); the value is a fixed column, right aligned in tabular figures (TextBlock.slidervalue). -->
-    <Style Selector="Grid.trayslider">
-        <Setter Property="ColumnSpacing" Value="{StaticResource TrayColumnGap}" />
-        <Setter Property="MinHeight" Value="{StaticResource TraySliderRowHeight}" />    </Style>
-    <Style Selector="Grid.trayslider > Control"><Setter Property="VerticalAlignment" Value="Center" /></Style>
-    <Style Selector="Grid.trayslider > TextBlock.trayname">
-        <Setter Property="Width" Value="{StaticResource TrayNameWidth}" />
-        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
-    <Style Selector="Grid.trayslider > TextBlock.trayvalue">
-        <Setter Property="Width" Value="{StaticResource TrayValueWidth}" />
-    </Style>
-    <Style Selector="Grid.trayslider > c|IconGlyph">
-        <Setter Property="Width" Value="{StaticResource TrayGlyphSize}" />
-        <Setter Property="Height" Value="{StaticResource TrayGlyphSize}" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
-    <Style Selector="Grid.trayslider > c|ChipMenu"><Setter Property="Width" Value="{StaticResource TrayNameWidth}" /></Style>
     <Style Selector="Panel.gadgethit"><Setter Property="Background" Value="{StaticResource BrushHitTest}" /></Style>
     <!-- Grid.gadgetcells = THE gadget's cells (Resources/Gadget/GadgetCells: the taskbar gadget, the settings preview, the layout cards); its gaps are settings -->
     <Style Selector="Grid.gadgetcells">

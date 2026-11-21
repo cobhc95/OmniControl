@@ -13,6 +13,9 @@
          right-click menu: Remove from panel, Change action…, Change icon…, Lock layout, Show in OmniControl.
          A tile shows its real or last-read state and one corner mark (Panel.tilemark): a spinning ring while an action runs, a pulsing dot
          while it is read, a clock (and faded) when only the last known value, a red warning when it failed. -->
+    <Window.Styles>
+        <StyleInclude Source="/Features/Tray/TrayFlyoutStyles.axaml" />
+    </Window.Styles>
     <Border Classes="flyoutpanel">
         <Border Classes="flyoutbody">
             <StackPanel>
