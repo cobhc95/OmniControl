@@ -76,6 +76,17 @@ public sealed partial class SetupTabItem : ObservableObject, IDisposable
 
     public bool ShowsCode => Owns && Pairing.IsShowing;
 
+    /// While the code is typed or shown: what the other PC will be allowed to do here, chosen before it is paired.
+    public bool ShowsAllowed => ShowsAsking || ShowsCode;
+
+    public string AllowedTitle => PcAllowances.Title(Pairing.PeerName);
+
+    private ToggleItem[]? _allowed;
+
+    /// The switches of <see cref="ShowsAllowed"/>, in the order and words of the paired PC's ⋯ menu (<see cref="PcAllowances.All"/>).
+    public IReadOnlyList<ToggleItem> Allowed => _allowed ??= PcAllowances.All
+        .Select(a => new ToggleItem(a.Label, Pairing.Allows(a.What), on => Pairing.SetAllows(a.What, on)) { Tip = a.Tip }).ToArray();
+
     public bool ShowsMessage => Owns && Pairing.Message.Length > 0;
 
     /// Pairing is not open for this tab (the time ran out, or it ended): one link opens it again.
@@ -127,8 +138,10 @@ public sealed partial class SetupTabItem : ObservableObject, IDisposable
 
     private void RaiseState()
     {
-        foreach (var name in new[] { nameof(Owns), nameof(ShowsSetup), nameof(ShowsLan), nameof(ShowsInternet), nameof(ShowsAsking), nameof(ShowsCode), nameof(ShowsMessage), nameof(ShowsReopen), nameof(OtherBusy), nameof(CheckText) })
+        foreach (var name in new[] { nameof(Owns), nameof(ShowsSetup), nameof(ShowsLan), nameof(ShowsInternet), nameof(ShowsAsking), nameof(ShowsCode), nameof(ShowsAllowed), nameof(AllowedTitle), nameof(ShowsMessage), nameof(ShowsReopen), nameof(OtherBusy), nameof(CheckText) })
             OnPropertyChanged(name);
+        // Each attempt starts from a new pair's defaults (the service sets them again).
+        for (var i = 0; i < (_allowed?.Length ?? 0); i++) _allowed![i].Load(Pairing.Allows(PcAllowances.All[i].What));
     }
 
     /// Reads what the service knows again: the PCs open to pairing, the Tailscale checklist, the pairing state.

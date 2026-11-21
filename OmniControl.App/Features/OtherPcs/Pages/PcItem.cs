@@ -281,12 +281,7 @@ public sealed partial class PcItem : ObservableObject
             {
                 new("Give nickname…", string.Empty, false, "Name this PC here; the other PC is never told.", new AsyncRelayCommand(GiveNicknameAsync), Icon: "pencil"),
                 new("Set up wake…", string.Empty, false, "Check and turn on what waking this PC over the network needs.", SetUpWakeCommand, Icon: "power"),
-                MenuRowItem.Sub("Allowed here", "lock", () => new[]
-                {
-                    AllowRow(PcAllowance.Power, "Power actions", $"{Name} may sleep, shut down or restart this PC; each waits for this PC's own countdown, which you can cancel."),
-                    AllowRow(PcAllowance.Actions, "Other actions and settings", $"{Name} may run this PC's other shared actions and change shared settings such as the volume."),
-                    AllowRow(PcAllowance.ReadSettings, "Read settings and devices", $"{Name} may copy this PC's settings and device set-ups (off until you allow it); each read is said in the status line."),
-                }),
+                MenuRowItem.Sub(PcAllowances.Title(Name), "lock", () => PcAllowances.All.Select(a => AllowRow(a.What, a.Label, a.Tip)).ToList()),
             };
             if (IsOnline)
                 rows.Add(new MenuRowItem($"Import settings from {Name}…", string.Empty, false, "Copy chosen areas of that PC's settings here, after a backup of this PC. No passwords are sent.", ImportSettingsCommand, Icon: "download"));

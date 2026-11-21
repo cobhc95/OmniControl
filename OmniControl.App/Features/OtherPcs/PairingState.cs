@@ -49,6 +49,23 @@ public sealed partial class PairingState : ObservableObject
 
     /// The panel is shown.
     public bool IsActive => Phase != PairingPhase.Closed;
+
+    private readonly Dictionary<PcAllowance, bool> _allowed = new();
+
+    public PairingState() => ResetAllowed();
+
+    /// What the PC being paired will be allowed to do here (<see cref="PcAllowances"/>), chosen while its code is typed or shown.
+    public bool Allows(PcAllowance what) => _allowed[what];
+
+    public void SetAllows(PcAllowance what, bool on) => _allowed[what] = on;
+
+    /// A new pair's defaults, set again for each attempt: power actions off, other actions on, reading off.
+    public void ResetAllowed()
+    {
+        _allowed[PcAllowance.Power] = false;
+        _allowed[PcAllowance.Actions] = true;
+        _allowed[PcAllowance.ReadSettings] = false;
+    }
 }
 
 /// A PC on the network that is open to pairing now.

@@ -5,9 +5,10 @@
              xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
              x:Class="OmniControl.App.Features.OtherPcs.Pages.PairPcPanel"
              x:DataType="vm:SetupTabItem">
-    <!-- The whole pairing flow of one New PC tab (docs/mockups/pair-pc-in-tab.html; template in App.axaml): "Pair a PC", the choice pills On this network / Over the
+    <!-- The whole pairing flow of one New PC tab: "Pair a PC", the choice pills On this network / Over the
          internet (with Check again beside them for the internet), then the sentence, the PCs open to pairing or the one empty row, the address box and Pair (or,
-         over the internet, the Tailscale checklist, the online-PCs menu, the typed name and Pair); while a pairing runs, the code to type or to read out. -->
+         over the internet, the Tailscale checklist, the online-PCs menu, the typed name and Pair); while a pairing runs, the code to type or to read out
+         and under it what the other PC will be allowed to do here (the message window cannot hold switches, so they sit here before its question). -->
     <StackPanel Spacing="{StaticResource Gap}">
         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" IsVisible="{Binding ShowsSetup}">
             <TextBlock Classes="strong" Text="Pair a PC" VerticalAlignment="Center" />
@@ -82,6 +83,11 @@
         <StackPanel Spacing="{StaticResource GapSmall}" IsVisible="{Binding ShowsCode}">
             <TextBlock TextWrapping="Wrap" Text="{Binding Pairing.PeerName, StringFormat='Type this code on {0}:'}" />
             <TextBlock Classes="strong" Text="{Binding Pairing.Code}" />
+        </StackPanel>
+
+        <StackPanel Spacing="{StaticResource GapSmall}" IsVisible="{Binding ShowsAllowed}">
+            <TextBlock Classes="hint small" TextWrapping="Wrap" Text="{Binding AllowedTitle}" />
+            <ListBox Classes="rows compact cards" ItemsSource="{Binding Allowed}" />
         </StackPanel>
 
         <TextBlock Classes="hint" TextWrapping="Wrap" Text="{Binding Pairing.Message}" IsVisible="{Binding ShowsMessage}" />

@@ -198,7 +198,7 @@ public sealed partial class OtherPcsService : IPairedPcs, IPcBook, IDisposable
         RaiseChanged();
     }
 
-    /// Whether a paired PC may do <paramref name="what"/> on this PC (its menu's Allowed here).
+    /// Whether a paired PC may do <paramref name="what"/> on this PC (<see cref="PcAllowances"/>).
     public bool Allows(string id, PcAllowance what) => Find(id) is { } pair && what switch
     {
         PcAllowance.Power => pair.MayRunPower,

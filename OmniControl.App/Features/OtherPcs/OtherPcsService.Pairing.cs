@@ -147,6 +147,7 @@ public sealed partial class OtherPcsService
         {
             if (!_attempts.Counts(attempt)) return;
             _codeWait = wait;
+            Pairing.ResetAllowed();
             Pairing.PeerName = peerName;
             Pairing.Message = string.Empty;
             Pairing.Phase = PairingPhase.AskingCode;
@@ -195,7 +196,7 @@ public sealed partial class OtherPcsService
         {
             try
             {
-                answer.TrySetResult(await _ask(new DialogMessage($"Pair with {peerName}?", $"The code shown here was typed on {peerName}. Once paired, each PC can use what the other shares.", "Yes, pair", Dismiss: dismiss, YesNo: true)));
+                answer.TrySetResult(await _ask(new DialogMessage($"Pair with {peerName}?", $"The code shown here was typed on {peerName}. Once paired, each PC can use what the other shares; {peerName} may do here what the switches under the code allow.", "Yes, pair", Dismiss: dismiss, YesNo: true)));
             }
             finally
             {
@@ -215,8 +216,9 @@ public sealed partial class OtherPcsService
     private void ShowCode(long attempt, string peerName, string code)
     {
         if (!_attempts.Counts(attempt)) return;
+        Pairing.ResetAllowed();
         Pairing.PeerName = peerName;
-        Pairing.Code = $"{code[..3]} {code[3..]}";
+        Pairing.Code =$"{code[..3]} {code[3..]}";
         Pairing.Phase = PairingPhase.ShowingCode;
         RaiseChanged();
     }
@@ -236,7 +238,7 @@ public sealed partial class OtherPcsService
             Interlocked.Exchange(ref _pairingOpenUntil, 0);
             TakePlace(Pairing.TabId, id);
             DropSetupTab(Pairing.TabId); // the New PC tab becomes the PC's own tab
-            _report($"Paired with {name}. Choose what it shares on its tab; it may run this PC's power actions only once you allow it in its menu.");
+            _report($"Paired with {name}. Choose what it shares on its tab; what it may do here can be changed in its ⋯ menu.");
             Pairing.Message = string.Empty;
             Pairing.Phase = PairingPhase.Ended;
         }
@@ -265,8 +267,12 @@ public sealed partial class OtherPcsService
             return false;
         }
         _secrets[id] = secret;
-        // A new pair may not run power actions here until the person allows it (pairs saved before keep what they had).
-        var added = new PairedPc { Id = id, Name = name, Route = route, Address = address, TailscaleAddress = tailscale, MayRunPower = false };
+        // A new pair gets what the person chose while pairing (pairs saved before keep what they had).
+        var added = new PairedPc
+        {
+            Id = id, Name = name, Route = route, Address = address, TailscaleAddress = tailscale,
+            MayRunPower = Pairing.Allows(PcAllowance.Power), MayRunActions = Pairing.Allows(PcAllowance.Actions), MayReadSettings = Pairing.Allows(PcAllowance.ReadSettings),
+        };
         _settings.Pairs.Add(added);
         Wake.Register(added);
         _settings.TabOrder.Add(id);
