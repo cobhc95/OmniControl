@@ -2,7 +2,7 @@
 
 One Windows app for your displays, sound, smart plugs, mouse, trackpad, other PCs and screenshots, where every feature is an action you can put on a hotkey, a button, a gesture, a tray tile or a rule.
 
-> Pre-release: expect rough edges. Much of it has been tested on one PC only.
+<p align="center"><img src="docs/screenshots/hero.png" alt="OmniControl's main window on the Volume page" width="820"></p>
 
 ## What it does
 
