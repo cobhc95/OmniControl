@@ -61,7 +61,8 @@ public sealed class PairedPc
     public string? DeviceSetups { get; set; }
 
     /// What it may do on this PC (its menu's "Allowed here"): run the power actions this PC shares (each still behind this PC's own
-    /// countdown), run the other shared actions and set shared states, and read this PC's settings and device set-ups (off until allowed).
+    /// countdown) and ask it to relay a wake (off for a new pair until allowed; true here keeps pairs saved before that), run the other shared
+    /// actions and set shared states, and read this PC's settings and device set-ups (off until allowed).
     public bool MayRunPower { get; set; } = true;
     public bool MayRunActions { get; set; } = true;
     public bool MayReadSettings { get; set; }

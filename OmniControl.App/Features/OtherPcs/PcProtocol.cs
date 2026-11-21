@@ -11,11 +11,16 @@ internal static class PcProtocol
 {
     public const int TcpPort = 47810;
     public const int UdpPort = 47811;
-    /// The protocol's version is in the tag: PCs on another version neither see nor are seen (version 2 binds a connection's kind into its proof).
-    public const string BeaconTag = "omnicontrol-pc/2";
+    /// The protocol's one version (pairing, session proof and messages); both PCs need the same one.
+    public const int Version = 3;
 
-    /// First byte of a connection: a pairing (only answered while pairing is open), a session of an already paired PC, or a probe (the same proof as a session, then one sealed ping answered with a pong, and the connection ends).
-    public const byte WantsPairing = 0x50, WantsSession = 0x53, WantsProbe = 0x51;
+    /// The version is in the tag: PCs on another version neither see nor are seen.
+    public static readonly string BeaconTag = $"omnicontrol-pc/{Version}";
+
+    /// First byte of a connection: a pairing (only answered while pairing is open), a session of an already paired PC, or a probe (the same proof
+    /// as a session, then one sealed ping answered with a pong, and the connection ends). Session and probe bytes change with the version, so a
+    /// PC on another version is dropped at once instead of after a step's wait.
+    public const byte WantsPairing = 0x50, WantsSession = 0x54, WantsProbe = 0x52;
 
     /// The largest message accepted: before a PC proved who it is, <see cref="MaxOpenFrame"/>; after, <see cref="MaxFrame"/>.
     public const int MaxOpenFrame = 4096, MaxFrame = 1 << 20;
@@ -67,7 +72,7 @@ internal static class PcMsgType
         WakeInfo = "wake-info", Leaving = "leaving", WakeAsk = "wake-ask", WakeAnswer = "wake-answer",
         ImportList = "import-list", ImportGet = "import-get", ImportAnswer = "import-answer", Route = "route", Countdown = "countdown";
 
-    /// What a <c>wake-ask</c> wants (its <see cref="PcMsg.Id"/>): send a magic packet for a PC on this PC's network (asked only for a person's press of Wake there; the
+    /// What a <c>wake-ask</c> wants (its <see cref="PcMsg.Id"/>): send a magic packet for the paired PC whose id is in <see cref="PcMsg.Text"/> (asked only for a person's press of Wake there; the
     /// older "relay", which retries and rules also sent, is refused), read the wake facts again, turn settings on or put back what was turned on (behind this PC's own
     /// prompt), or put this PC to sleep as a test (behind its prompt).
     public const string WakeRelay = "relay-pressed", WakeCheck = "check", WakeFix = "fix", WakeUndo = "undo", WakeTest = "test";
@@ -110,7 +115,7 @@ internal sealed class PcMsg
     /// <c>devices</c>: the request includes the user's own script templates. <c>devices-answer</c>: the device set-ups as text (what <see cref="Payload"/> holds is not this layer's business).
     public bool? Scripts { get; set; }
 
-    /// <c>wake-info</c> and <c>wake-answer</c>: how this PC can be woken. <c>leaving</c>: <see cref="Text"/> is "sleep", "hibernate" or "shutdown". <c>wake-ask</c>: <see cref="Id"/> is what is wanted (<see cref="PcMsgType.WakeRelay"/>...), <see cref="Text"/> its address or the fixes, <see cref="Payload"/> the network.
+    /// <c>wake-info</c> and <c>wake-answer</c>: how this PC can be woken. <c>leaving</c>: <see cref="Text"/> is "sleep", "hibernate" or "shutdown". <c>wake-ask</c>: <see cref="Id"/> is what is wanted (<see cref="PcMsgType.WakeRelay"/>...), <see cref="Text"/> the PC to wake (its id) or the fixes.
     public WakeFacts? Wake { get; set; }
     public string? Payload { get; set; }
     public List<SharedState>? States { get; set; }

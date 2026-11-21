@@ -30,7 +30,7 @@ public sealed partial class OtherPcsService
     private readonly Dictionary<string, RemoteSet> _remote = new();
     private readonly HashSet<string> _liveCatalogs = new(); // PCs whose catalog arrived over the link now up (not the saved one)
     private readonly Dictionary<string, StateValue?> _remoteValues = new();
-    private readonly Dictionary<int, string> _pending = new();
+    private readonly Dictionary<(string PcId, int Rid), string> _pending = new(); // a run or set sent, by the PC it went to and its number: only that PC's answer is taken
     private readonly PcLimits _runLimits = new(Timing.PcRunBurstMax, Timing.PcRunBurstWindow);
     private readonly PcLimits _setLimits = new(Timing.PcSetBurstMax, Timing.PcSetBurstWindow);
     private readonly Dictionary<string, (string PcId, string ItemId, StateValue Value)> _setQueue = new();
@@ -99,7 +99,7 @@ public sealed partial class OtherPcsService
             case PcMsgType.State: ApplyState(link.PeerId, message); break;
             case PcMsgType.Set: HandleSet(link, message); break;
             case PcMsgType.Run: HandleRun(link, message); break;
-            case PcMsgType.Ran: HandleRan(message); break;
+            case PcMsgType.Ran: HandleRan(link, message); break;
             case PcMsgType.Devices: HandleDevicesRequest(link, message); break;
             case PcMsgType.ImportList or PcMsgType.ImportGet: HandleImportRequest(link, message); break;
             case PcMsgType.DevicesAnswer or PcMsgType.ImportAnswer: _requests.Answer(link, message); break;
@@ -261,7 +261,7 @@ public sealed partial class OtherPcsService
         }
         if (_pending.Count >= 64) _pending.Clear(); // answers that never came
         var rid = _requests.Next();
-        _pending[rid] = pair.DisplayName;
+        _pending[(pcId, rid)] = pair.DisplayName;
         AskedPower(pcId, actionId);
         _ = link.SendAsync(new PcMsg { T = PcMsgType.Run, Id = actionId, Rid = rid, Chain = _run.Chain?.Rules.ToList() });
     }
@@ -294,7 +294,7 @@ public sealed partial class OtherPcsService
             if (Find(pcId) is not { } pair || !_links.TryGetValue(pcId, out var link)) continue;
             if (_pending.Count >= 64) _pending.Clear();
             var rid = _requests.Next();
-            _pending[rid] = pair.DisplayName;
+            _pending[(pcId, rid)] = pair.DisplayName;
             _ = link.SendAsync(new PcMsg { T = PcMsgType.Set, Id = itemId, Number = value.Number, Text = value.Text, Rid = rid });
         }
     }
@@ -336,9 +336,9 @@ public sealed partial class OtherPcsService
     /// Runs one of another PC's shared actions as any action runs here (the gate, the chain), which sends it to that PC.
     public void Run(HotkeyAction action) => _run.Run(action.Id);
 
-    private void HandleRan(PcMsg message)
+    private void HandleRan(PcLink link, PcMsg message)
     {
-        if (message.Rid is { } rid && _pending.Remove(rid, out var name) && message.Ok == false)
+        if (message.Rid is { } rid && _pending.Remove((link.PeerId, rid), out var name) && message.Ok == false)
             _report($"{name}: {PcProtocol.Clip(message.Why, 200)}");
     }
 

@@ -9,6 +9,13 @@ public static partial class Timing
     /// How long "Pair a PC" keeps this PC open to a pairing (then it closes by itself).
     public static readonly TimeSpan PcPairingOpen = TimeSpan.FromMinutes(2);
 
+    /// After this many wrong codes typed for this PC (each one a PC's one guess) pairing closes until the person opens it again.
+    public const int PcPairingWrongCodesMax = 5;
+
+    /// At most this many messages of one paired PC wait for the UI thread (catalogs and state values coalesce, so this is requests and answers);
+    /// while they do, its link stops reading (TCP slows that PC).
+    public const int PcInboxMax = 64;
+
     /// Each step of a connection's start (a pairing's messages, a session's proof) must arrive within this time, or the connection is dropped.
     public static readonly TimeSpan PcHandshakeStep = TimeSpan.FromSeconds(8);
 

@@ -323,9 +323,9 @@ public sealed partial class OtherPcsService
             _switchProblems.Remove(pair.Id);
         }
         _catalogKey.Remove(pair.Id);
-        link.Received += message => PcWork.Post(() => OnMessage(link, message));
         link.Closed += () => PcWork.Post(() => OnLinkClosed(link));
-        _ = Guard.RunAsync("Other PCs: link", link.RunAsync);
+        var inbox = new PcInbox(Timing.PcInboxMax, message => Guard.Run("Other PCs: a message", () => OnMessage(link, message)), PcWork.Post);
+        _ = Guard.RunAsync("Other PCs: link", () => link.RunAsync(inbox.PutAsync));
         SendCatalog(link, force: true);
         Wake.LinkUp(link, pair);
         SendPendingRoute(link, pair);

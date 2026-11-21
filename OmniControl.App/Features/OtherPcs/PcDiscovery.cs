@@ -140,7 +140,7 @@ internal sealed class PcDiscovery : IDisposable
         try
         {
             var beacon = JsonSerializer.Deserialize<PcBeacon>(bytes, PcProtocol.Json);
-            return beacon is { M: PcProtocol.BeaconTag } && PcIds.IsValid(beacon.Id) && beacon.Port is > 0 and < 65536 ? beacon with { Name = PcIds.CleanName(beacon.Name) } : null;
+            return beacon is not null && beacon.M == PcProtocol.BeaconTag && PcIds.IsValid(beacon.Id) && beacon.Port is > 0 and < 65536 ? beacon with { Name = PcIds.CleanName(beacon.Name) } : null;
         }
         catch (JsonException)
         {
