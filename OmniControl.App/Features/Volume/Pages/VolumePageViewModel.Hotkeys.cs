@@ -129,9 +129,11 @@ public sealed partial class VolumePageViewModel
                 row.Meter.Feed(l, r, now);
             }
         }
-        // A recording device's meter only moves while something captures from it, so the open input rows keep a quiet capture.
-        _captures.Keep(Inputs.IsExpanded ? _inputs.Keys : Array.Empty<string>());
-        if (Inputs.IsExpanded)
+        // A recording device's meter only moves while something captures from it, so the open input rows keep a quiet capture
+        // ("Use microphones" on only: the capture lights Windows' microphone-in-use icon).
+        var micMeters = Inputs.IsExpanded && _mixer.MicrophonesOn;
+        _captures.Keep(micMeters ? _inputs.Keys : Array.Empty<string>());
+        if (micMeters)
         {
             foreach (var row in _inputs.Values)
             {

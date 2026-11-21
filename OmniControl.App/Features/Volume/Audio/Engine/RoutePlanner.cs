@@ -138,16 +138,23 @@ internal static class RoutePlanner
             var facts = MicFactsOf(p, cables, input);
             plan.Mics[MixerService.InputPrefix + input.Id] = (facts, EffectsRules.MicMethodOf(EffectsRules.MicRouteOf(input.Method), facts));
         }
+        // "Use microphones" off: no microphone is recorded or sent to Equalizer APO, and no cable is taken for one.
+        var micsOn = p.Settings.MicrophonesOn;
+        var combos = p.Settings.Combined.Where(c => micsOn || !IsMicrophones(c)).ToList();
+        if (!micsOn)
+            foreach (var key in p.Settings.Inputs.Select(i => MixerService.InputPrefix + i.Id).Concat(p.Settings.Combined.Except(combos).Select(c => c.Key)))
+                plan.Blocked[key] = MicrophonesOff;
         // A microphone in Equalizer APO takes no cable: its chain goes to Equalizer APO on the microphone itself.
-        var mics = PluggedInMics(p).Where(i => plan.Mics[MixerService.InputPrefix + i.Id].Method == RunMethod.Cable).ToList();
-        plan.ToApo.AddRange(PluggedInMics(p).Select(i => MixerService.InputPrefix + i.Id).Where(k => plan.Mics[k].Method == RunMethod.Apo));
-        TakeRememberedCables(plan, p.Settings.Combined, cables);
+        var plugged = micsOn ? PluggedInMics(p).ToList() : new List<InputFxEntry>();
+        var mics = plugged.Where(i => plan.Mics[MixerService.InputPrefix + i.Id].Method == RunMethod.Cable).ToList();
+        plan.ToApo.AddRange(plugged.Select(i => MixerService.InputPrefix + i.Id).Where(k => plan.Mics[k].Method == RunMethod.Apo));
+        TakeRememberedCables(plan, combos, cables);
         var micCables = mics.Where(i => cables.TakeRemembered(i.Cable)).ToDictionary(i => i.Id, i => i.Cable);
-        TakeNewCables(plan, p.Settings.Combined, cables);
+        TakeNewCables(plan, combos, cables);
         foreach (var i in mics.Where(i => !micCables.ContainsKey(i.Id)))
             if (cables.TakeRecordable() is { } cable) Remember(plan, micCables, i.Id, cable, MixerService.InputPrefix + i.Id);
 
-        foreach (var c in p.Settings.Combined) PlanCombined(p, plan, c, cables, busCable);
+        foreach (var c in combos) PlanCombined(p, plan, c, cables, busCable);
         foreach (var i in mics) PlanMic(plan, MixerService.InputPrefix + i.Id, micCables.GetValueOrDefault(i.Id), new[] { i.Id }, cables, busCable);
         if (!onBus) PlanMasterApo(plan, real.Id, masterFx);
         else if (!p.BusGivenUp) PlanMaster(p, plan, busCable, cables); // a given-up bus keeps the status of its failure (the engine's)
@@ -265,6 +272,8 @@ internal static class RoutePlanner
 
     /// A closed program: its effects start when it plays.
     private static readonly EngineStatus ProgramClosed = new(EngineState.Waiting, "Starts when the program plays", Kind: StatusKind.StartsWhenPlays);
+
+    private static readonly EngineStatus MicrophonesOff = new(EngineState.Off, EffectsRules.MicrophonesOffLine, Kind: StatusKind.MicrophonesOff);
 
     /// An open but silent program that waits for sound before it takes a cable.
     private static readonly EngineStatus WaitingForSound = new(EngineState.Waiting, "Starts when the program plays", Kind: StatusKind.WaitingForSound);

@@ -93,11 +93,18 @@ public sealed class MixerSettings
     /// Device pairs the user marked as cables (Wiring > Virtual cables > "This device is a cable..."); files without it load as none.
     public List<Core.Engine.CableMark> MarkedCables { get; set; } = new();
 
+    /// "Use microphones" (the Microphones group's switch): off, OmniControl opens no recording device (no meter, no effects, no Listen).
+    /// Null only in a file written before the switch existed (and in presets taken then): <see cref="Load"/> turns it on when a microphone already had effects.
+    public bool? UseMicrophones { get; set; }
+
+    internal bool MicrophonesOn => UseMicrophones == true;
+
     private static readonly DataStore Store = DataStores.Mixer;
 
     public static MixerSettings Load()
     {
         var s = AppDataStore.Load<MixerSettings>(Store) ?? new();
+        s.UseMicrophones ??= s.Inputs.Any(i => FxSlot.AnyRuns(i.FxOn, i.Fx)) || s.Combined.Any(c => c.Kind == CombinedKind.Microphones);
         s.Apps = MergeDuplicates(s.Apps);
         UpgradeBuiltIns(s.MasterFx.Concat(s.Apps.SelectMany(a => a.Fx)).Concat(s.Inputs.SelectMany(i => i.Fx)).Concat(s.Combined.SelectMany(c => c.Fx)));
         return s;

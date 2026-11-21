@@ -1,0 +1,12 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
+             x:Class="OmniControl.App.Shared.Ui.Pages.HeaderSwitch"
+             VerticalAlignment="Center">
+    <!-- A setting's compact switch on a group's header line: its name small and muted, then a switch without On/Off words (a keyboard
+         stop of the header); its tooltip is the control's own. -->
+    <StackPanel Orientation="Horizontal" Spacing="{StaticResource GapSmall}">
+        <TextBlock Classes="muted small" Text="{Binding Label, RelativeSource={RelativeSource AncestorType=pages:HeaderSwitch}}" VerticalAlignment="Center" />
+        <ToggleSwitch Classes="tool plain" Tag="grouptool" IsChecked="{Binding IsOn, RelativeSource={RelativeSource AncestorType=pages:HeaderSwitch}, Mode=TwoWay}" />
+    </StackPanel>
+</UserControl>

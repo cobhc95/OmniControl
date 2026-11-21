@@ -27,11 +27,7 @@
 
                 <pages:GroupCard Group="{Binding Apps}">
                     <pages:GroupCard.Tools>
-                        <StackPanel DataContext="{Binding PacketFilter}" x:DataType="pages:ToggleItem" Orientation="Horizontal" Spacing="{StaticResource GapSmall}"
-                                    VerticalAlignment="Center" ToolTip.Tip="{Binding Tip}">
-                            <TextBlock Classes="muted small" Text="{Binding Label}" VerticalAlignment="Center" />
-                            <ToggleSwitch Classes="plain" IsChecked="{Binding IsOn}" VerticalAlignment="Center" />
-                        </StackPanel>
+                        <pages:HeaderSwitch Label="{Binding PacketFilter.Label}" IsOn="{Binding PacketFilter.IsOn}" ToolTip.Tip="{Binding PacketFilter.Tip}" />
                         <c:AppScopeChip DataContext="{Binding AppsScope}" />
                     </pages:GroupCard.Tools>
                     <Panel>

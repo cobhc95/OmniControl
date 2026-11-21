@@ -68,6 +68,7 @@ public static partial class EffectsRules
         StatusKind.Running => delayMs is { } d ? $"{d}{DelayUnit}" : chip == RunMethod.Apo ? NoDelay : Brief(StatusKind.Running),
         StatusKind.Ready => Brief(StatusKind.Ready),
         StatusKind.Direct => NoDelay,
+        StatusKind.MicrophonesOff => MicrophonesOffFact,
         StatusKind.Other when brief.Length == 0 => chip is RunMethod.None or RunMethod.Apo ? NoDelay : NoEffects,
         _ => brief,
     };

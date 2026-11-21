@@ -56,9 +56,8 @@
                 <pages:GroupCard Group="{Binding Outputs}">
                     <pages:GroupCard.Tools>
                         <StackPanel Orientation="Horizontal" Spacing="{StaticResource MenuGap}" VerticalAlignment="Center" IsVisible="{Binding Outputs.HasProgramTools}">
-                            <TextBlock Classes="muted small" Text="Show closed" VerticalAlignment="Center" />
-                            <ToggleSwitch Classes="tool plain" Tag="grouptool" IsChecked="{Binding Outputs.ProgramTools.ShowClosed}"
-                                          ToolTip.Tip="List remembered programs that are not open. Hidden ones keep their effects and return when opened." />
+                            <pages:HeaderSwitch Label="Show closed" IsOn="{Binding Outputs.ProgramTools.ShowClosed}"
+                                                ToolTip.Tip="List remembered programs that are not open. Hidden ones keep their effects and return when opened." />
                             <vm:AddProgramButton DataContext="{Binding Outputs.ProgramTools.Add}" />
                         </StackPanel>
                     </pages:GroupCard.Tools>
@@ -68,7 +67,11 @@
                     </StackPanel>
                 </pages:GroupCard>
 
+                <!-- The Microphones header: name and the devices' count, then "Use microphones" (off: OmniControl opens no microphone) -->
                 <pages:GroupCard Group="{Binding Inputs}">
+                    <pages:GroupCard.Tools>
+                        <pages:HeaderSwitch Label="{Binding UseMicrophones.Label}" IsOn="{Binding UseMicrophones.IsOn}" ToolTip.Tip="{Binding UseMicrophones.Tip}" />
+                    </pages:GroupCard.Tools>
                     <StackPanel Spacing="{StaticResource Gap}" x:DataType="vm:VolumeGroup" DataContext="{Binding Inputs}">
                         <vm:MixerHeadings />
                         <ListBox Classes="rows compact" ItemsSource="{Binding Items}" />

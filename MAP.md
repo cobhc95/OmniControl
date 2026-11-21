@@ -145,6 +145,8 @@ Made by the shell, not modules: `Hotkeys` (master action list, Actions and hotke
 | `Border.tag` (`.good`, `.caution`, `.risk`, `.selected`) via `TagItem` + `Controls/TagView` | a small fact pill |
 | `Border.groupPanel` (`.target`) via `Pages/GroupCard`; `Pages/PageTitleLine` | a page's group card; the title line |
 | `ToggleSwitch.master` + `Pages/GroupMasterSwitch` / `GroupSwitch`; `ToggleSwitch.plain` | a group header's master switch; a switch without On/Off words |
+| `Pages/HeaderSwitch` | THE compact switch of one setting on a group's header line (muted name, `ToggleSwitch.tool.plain`, a header keyboard stop): Packet filter, Use microphones, Show closed |
+| `.unavailable` (`Styles/Menus.axaml`) | any greyed entry or control (the master picker's entries, a Shortcuts action, a microphone row's Method, Listen, FX and meter while Use microphones is off) |
 | `ListBox.cards` (`rows compact`) + `HalfPanel` | the card list (half-width cards pair) |
 | `ListBox.nav` (`.compact`), `TextBlock.navheading`; `ListBox.pick` | sidebar and pane navigation lists and headings; picker lists |
 | `Border.sidebarpanel`, `Border.barstrip`, `Border.pane` (`.edged`), `Border.footer` | a window's side panel, top bar, boxed pane, foot |
@@ -264,5 +266,6 @@ Mouse first (rule 5; the control that opens each stays keyboard reachable, Esc c
 - NAudio's obsolete `WasapiCapture` is still used (`CaptureMeterStreams`, `RecordingSound`).
 - The rule step pickers still offer `PersonOnly` actions ("Wake <PC>"); the run path refuses them with one line.
 - `tools/Screenshots` cannot draw these with their real view-models, because making them starts Windows-facing work: the Volume page, its Easy view and the FX window (`MixerService` scans write saved levels and routes to programs' sessions; `EffectsEngine` writes Equalizer APO's config), the Resources Readings tab (`NetworkLimits` syncs the firewall rules and the network service at once), Other PCs and its pairing panel (`PcWake` runs powercfg and WMI for this PC's network card; a saved pair starts the network link), the screenshot editor (its picture is a native Win32 child window). Seams that would allow it: narrow interfaces (or a do-nothing mode) for those services, a wake reader given to `OtherPcsService`.
+- "Use microphones" (`MixerSettings.UseMicrophones`, `MixerService.SetMicrophones`; gates the page's meter captures `CaptureMeterStreams`, the recording meters `DeviceMeters`, Listen, and the planner's microphone runs and Equalizer APO chains) does not gate: a program on "Equalizer APO on a cable" (`CableRoute`, `RunKind.ApoCable`, records the cable's recording side, which may show Windows' microphone-in-use icon), the screenshot recording's own microphone choice (`Core/Engine/Screenshot/RecordingSound`), and a Windows Listen that is already on (left as Windows has it): owner to decide.
 - Mouse "Pause in full-screen apps" (`FullScreenWatcher`) also pauses over a full-screen Remote Desktop or virtual machine console (Windows reports them as full-screen apps): owner to decide whether those are left out.
 

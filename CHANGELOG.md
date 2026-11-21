@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Volume: a "Use microphones" switch on the Microphones group (off by default; on after the update if a microphone already had effects or a combined microphone exists). Off, OmniControl opens no microphone: no level meter capture, no microphone effects or combined microphones, no Listen, so Windows' microphone-in-use icon does not appear because of OmniControl; level and mute still work. Restore defaults turns it off; it is searchable and has a toggle action.
+
 ## 0.2.6 (21 Nov 2026)
 
 - Security: pairing a PC now asks "Pair with <name>?" on the PC that shows the code too, a PC that is already paired must be unpaired before it can pair again, and the PC names are part of what both PCs prove (a name with hidden direction marks is cleaned). Both PCs need this version to pair.

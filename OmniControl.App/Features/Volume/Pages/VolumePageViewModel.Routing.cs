@@ -61,6 +61,7 @@ public sealed partial class VolumePageViewModel
     private void SyncRow(VolumeRow row)
     {
         var status = _engine.StatusOf(row.Key == MixerService.MasterKey ? null : row.Key);
+        row.MicrophonesOff = !_mixer.MicrophonesOn && IsRecordingRow(row.Key);
         // A row whose effects are off says nothing, unless the state carries a fact (the master playing straight on the speakers).
         row.Status = status.State == Audio.Engine.EngineState.Off && status.Kind == StatusKind.Other ? string.Empty : status.Brief;
         row.EngineLine = status.TipFor(_engine.MethodFor(row.ChainKey));
@@ -73,7 +74,7 @@ public sealed partial class VolumePageViewModel
             : row is InputItem ? _engine.MicFactsOf(row.Key).ApoStand
             : ApoStand.Running;
         row.Method = MethodChip.Of(method, stand);
-        row.Fact = EffectsRules.ApoStandFact(stand, row is InputItem ? "microphone" : "speaker") ?? status.Fact(method);
+        row.Fact = (row.MicrophonesOff ? null : EffectsRules.ApoStandFact(stand, row is InputItem ? "microphone" : "speaker")) ?? status.Fact(method);
         switch (row)
         {
             case MixerItem { IsMaster: true } master:

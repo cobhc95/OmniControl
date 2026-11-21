@@ -127,8 +127,12 @@ public abstract partial class VolumeRow : ObservableObject, IEditorItem
     [ObservableProperty] private string _fact = string.Empty;
 
     public virtual bool HasEffects => true;
-    /// The FX button's tooltip: what it does.
-    public string FxTip => FxRuns ? FxRunningTip : FxOpenTip;
+
+    /// A row that records from microphones while "Use microphones" is off: its Method, Listen, FX and meter are greyed.
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(FxTip))] private bool _microphonesOff;
+
+    /// The FX button's tooltip: what it does, or why it is greyed.
+    public string FxTip => MicrophonesOff ? EffectsRules.MicrophonesOffLine : FxRuns ? FxRunningTip : FxOpenTip;
     private const string FxRunningTip = "Effects on. Opens or closes this row's FX window", FxOpenTip = "Opens or closes this row's FX window";
 
     [ObservableProperty] private bool _fxOn;
