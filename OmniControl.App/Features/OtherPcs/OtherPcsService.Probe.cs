@@ -97,11 +97,11 @@ public sealed partial class OtherPcsService
             if (link is null) return new ProbeResult(false, 0, "Authentication failed: that PC did not prove it holds the pairing key. Unpair it on both PCs and pair again.");
             var nonce = Convert.ToBase64String(PcCrypto.Random(16));
             var answered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            link.Received += message =>
+            _ = Guard.RunAsync("Other PCs: probe link", () => link.RunAsync((message, _) =>
             {
                 if (message.T == PcMsgType.Pong && message.Text == nonce) answered.TrySetResult(true);
-            };
-            _ = Guard.RunAsync("Other PCs: probe link", link.RunAsync);
+                return Task.CompletedTask;
+            }));
             var clock = Stopwatch.StartNew();
             if (!await link.SendAsync(new PcMsg { T = PcMsgType.Ping, Text = nonce }).ConfigureAwait(false)) return new ProbeResult(false, 0, "The connection closed before it answered.");
             await answered.Task.WaitAsync(Timing.PcProbeTimeout, _stop.Token).ConfigureAwait(false);
@@ -127,10 +127,9 @@ public sealed partial class OtherPcsService
     {
         using var link = await PcSession.AcceptAsync(stream, PcProtocol.WantsProbe, OwnId, id => _secrets.GetValueOrDefault(id), _stop.Token).ConfigureAwait(false);
         if (link is null) return;
-        link.Received += message =>
-        {
-            if (message.T == PcMsgType.Ping && message.Text is { Length: > 0 and <= 64 } nonce) _ = link.SendAsync(new PcMsg { T = PcMsgType.Pong, Text = nonce });
-        };
-        await Task.WhenAny(Guard.RunAsync("Other PCs: probe answer", link.RunAsync), Task.Delay(Timing.PcProbeTimeout, _stop.Token)).ConfigureAwait(false);
+        // Each pong is sent before the next message is read, so a flood of pings is answered at the pace it is read.
+        var answering = Guard.RunAsync("Other PCs: probe answer", () => link.RunAsync((message, _) =>
+            message.T == PcMsgType.Ping && message.Text is { Length: > 0 and <= 64 } nonce ? link.SendAsync(new PcMsg { T = PcMsgType.Pong, Text = nonce }) : Task.CompletedTask));
+        await Task.WhenAny(answering, Task.Delay(Timing.PcProbeTimeout, _stop.Token)).ConfigureAwait(false);
     }
 }

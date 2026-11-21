@@ -209,25 +209,58 @@ public class WakeGateTests
         var stream = new MemoryStream();
         using var link = new PcLink("lap", stream, key, key, dialled: false);
 
-        rig.Wake.HandleAsk(link, new PcMsg { T = PcMsgType.WakeAsk, Id = "relay", Rid = 1, Text = DeskMac, Payload = Subnet });
+        rig.Wake.HandleAsk(link, new PcMsg { T = PcMsgType.WakeAsk, Id = "relay", Rid = 1, Text = "desk" });
         for (var i = 0; i < 100 && stream.Length == 0; i++) await Task.Delay(20); // the refusal was written back
 
         Assert.True(stream.Length > 0);
         Assert.Empty(rig.Sent);
     }
 
-    [Fact]
-    public async Task RelayOfAPressMadeThere_SendsOnePacket()
+    // A paired PC ("lap") asks this one to relay a wake; the answer is written back to its link (a stream here).
+    private static async Task AskRelayAsync(Rig rig, string target)
     {
-        using var rig = new Rig();
-        await rig.ReadOwnAsync();
         var key = new byte[32];
         var stream = new MemoryStream();
         using var link = new PcLink("lap", stream, key, key, dialled: false);
-
-        rig.Wake.HandleAsk(link, new PcMsg { T = PcMsgType.WakeAsk, Id = PcMsgType.WakeRelay, Rid = 1, Text = DeskMac, Payload = Subnet });
+        rig.Wake.HandleAsk(link, new PcMsg { T = PcMsgType.WakeAsk, Id = PcMsgType.WakeRelay, Rid = 1, Text = target });
         for (var i = 0; i < 100 && stream.Length == 0; i++) await Task.Delay(20);
+        Assert.True(stream.Length > 0);
+    }
+
+    [Fact]
+    public async Task RelayOfAPressMadeThere_SendsOnePacket_ToTheCardThisPcKnows()
+    {
+        using var rig = new Rig();
+        await rig.ReadOwnAsync();
+
+        await AskRelayAsync(rig, "desk");
 
         Assert.Equal(new[] { DeskMac }, rig.Sent);
+    }
+
+    [Fact]
+    public async Task Relay_FromAPcWithoutPowerPermission_SendsNothing()
+    {
+        using var rig = new Rig();
+        await rig.ReadOwnAsync();
+        rig.Book.Find("lap")!.MayRunPower = false;
+
+        await AskRelayAsync(rig, "desk");
+
+        Assert.Empty(rig.Sent);
+    }
+
+    [Theory]
+    [InlineData(DeskMac)] // an address instead of a paired PC
+    [InlineData("tv")] // a PC this one is not paired with
+    [InlineData("lap")] // the asking PC itself
+    public async Task Relay_OnlyForAnotherPairedPc(string target)
+    {
+        using var rig = new Rig();
+        await rig.ReadOwnAsync();
+
+        await AskRelayAsync(rig, target);
+
+        Assert.Empty(rig.Sent);
     }
 }

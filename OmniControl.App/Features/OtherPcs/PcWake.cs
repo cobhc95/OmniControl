@@ -109,7 +109,9 @@ public sealed class PcWake : IDisposable
 
     private string? OwnWakeSubnet => _ownWake is { Known: true } own ? own.Subnet : null;
 
-    private PairedPc? RelayFor(PairedPc pair) => _book.Pairs.FirstOrDefault(p => p.Id != pair.Id && _book.IsOnline(p.Id) && p.Wake is { Known: true } w && w.Subnet == pair.Wake?.Subnet);
+    private PairedPc? RelayFor(PairedPc pair) => RelaysFor(pair).FirstOrDefault();
+
+    private IEnumerable<PairedPc> RelaysFor(PairedPc pair) => _book.Pairs.Where(p => p.Id != pair.Id && _book.IsOnline(p.Id) && p.Wake is { Known: true } w && w.Subnet == pair.Wake?.Subnet);
 
     private void SetWake(string pcId, WakeStatus status)
     {
@@ -314,15 +316,22 @@ public sealed class PcWake : IDisposable
     }
 
     /// THE dispatch of every wake this PC starts: the person's grant for exactly this PC is used up first, then one signal goes, from this PC when
-    /// it is on the PC's network, else through another online paired PC there. Null = sent; else one plain sentence why not.
+    /// it is on the PC's network, else through another online paired PC there (the next one only when one plainly refused, so never two signals).
+    /// Null = sent; else one plain sentence why not.
     private async Task<string?> SendWakeSignalAsync(PairedPc pair, WakeGrant? grant)
     {
         if (!_gate.TryUse(grant, pair.Id)) return NotPressed;
         if (pair.Wake is not { Known: true } facts) return "It has not told this PC its network card yet.";
         if (OwnWakeSubnet == facts.Subnet) return await _gate.SendPacketAsync(facts.Mac, facts.Subnet);
-        if (RelayFor(pair) is not { } relay) return "No PC on its network is on to send the wake signal.";
-        var reply = await AskAsync(relay.Id, new PcMsg { T = PcMsgType.WakeAsk, Id = PcMsgType.WakeRelay, Text = facts.Mac, Payload = facts.Subnet }, Timing.WakeAskWait);
-        return reply is { Ok: true } ? null : PcProtocol.Clip(reply?.Why, 200) is { Length: > 0 } text ? text : $"{relay.DisplayName} did not answer.";
+        string? problem = null;
+        foreach (var relay in RelaysFor(pair).ToList())
+        {
+            var reply = await AskAsync(relay.Id, new PcMsg { T = PcMsgType.WakeAsk, Id = PcMsgType.WakeRelay, Text = pair.Id }, Timing.WakeAskWait);
+            if (reply is { Ok: true }) return null;
+            if (reply is null) return $"{relay.DisplayName} did not answer.";
+            problem = PcProtocol.Clip(reply.Why, 200) is { Length: > 0 } text ? text : $"{relay.DisplayName} did not send it.";
+        }
+        return problem ?? "No PC on its network is on to send the wake signal.";
     }
 
     // ---- Asking another PC (check, fix, test, relay) ----
@@ -393,7 +402,7 @@ public sealed class PcWake : IDisposable
                 reply.Ok = true;
                 break;
             case PcMsgType.WakeRelay:
-                await RelayAsync(message, reply);
+                await RelayAsync(pair, message, reply);
                 break;
             case PcMsgType.WakeFix:
                 await FixAskedAsync(pair, message, reply);
@@ -414,19 +423,28 @@ public sealed class PcWake : IDisposable
         await Task.Run(() => Guard.Run("Other PCs: sleeping for the wake test", () => PowerCommands.Sleep()));
     }
 
-    // A wake signal for a PC on this PC's own network, asked by a paired PC after its person pressed Wake there (only that dispatch sends this
-    // ask; the old "relay" of retries and rules is refused); its network and address must be well formed, and the network must be this one.
-    private async Task RelayAsync(PcMsg message, PcMsg reply)
+    // A wake signal for another PC paired with this one, asked by a paired PC (the asker) after its person pressed Wake there (only that dispatch
+    // sends this ask; the old "relay" of retries and rules is refused). It goes only when the asker may run power actions here, and only to the card
+    // this PC itself was told by that PC (its own pairing, never an address the asker gives), on this PC's own network.
+    private async Task RelayAsync(PairedPc asker, PcMsg message, PcMsg reply)
     {
-        var mac = PcProtocol.Clip(message.Text, 17);
-        var subnet = PcProtocol.Clip(message.Payload, 20);
-        var own = _ownWake ?? await ReadOwnWakeAsync();
-        if (MagicPacket.ParseMac(mac) is null || !own.Known || own.Subnet != subnet)
+        if (!asker.MayRunPower)
         {
-            reply.Why = "This PC is not on that network.";
+            reply.Why = $"{_ownName} does not allow {asker.DisplayName} to run power actions, so it did not send the wake signal.";
             return;
         }
-        var why = await _gate.SendPacketAsync(mac, subnet);
+        if (PcProtocol.Clip(message.Text, 64) is not { Length: > 0 } targetId || targetId == asker.Id || _book.Find(targetId) is not { Wake: { Known: true } facts } target)
+        {
+            reply.Why = $"{_ownName} is not paired with that PC, or it has not told {_ownName} its network card.";
+            return;
+        }
+        var own = _ownWake ?? await ReadOwnWakeAsync();
+        if (!own.Known || own.Subnet != facts.Subnet)
+        {
+            reply.Why = $"{_ownName} is not on {target.Name}'s network."; // its own name: a nickname given here stays here
+            return;
+        }
+        var why = await _gate.SendPacketAsync(facts.Mac, facts.Subnet);
         reply.Ok = why is null;
         reply.Why = why;
     }

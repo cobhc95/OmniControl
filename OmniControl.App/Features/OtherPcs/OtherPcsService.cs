@@ -50,6 +50,7 @@ public sealed partial class OtherPcsService : IPairedPcs, IPcBook, IDisposable
         _credentials = credentials;
         _report = report;
         _settings = Load();
+        _attempts = new PairAttempts(_stop.Token);
         foreach (var pair in _settings.Pairs)
         {
             if (ReadSecret(pair.Id) is { } secret) _secrets[pair.Id] = secret;

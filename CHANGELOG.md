@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Security: Other PCs speaks protocol 3: update every PC to this version, or they no longer see or reach each other (already paired PCs stay paired and reconnect once both are updated). Pairing: the PC that is asked makes a new code for each attempt and the code is checked without ever being sent (CPace), so "Pair with <name>?" now means the code shown there really was typed on that PC; a wrong code or a PC that is not pairing no longer closes pairing (five wrong codes do); closing the panel stops a running pairing at once. Every connection gets fresh keys, so a pairing key that leaks later does not open recorded traffic. A newly paired PC may run this PC's power actions only once you allow it (its menu, Allowed here). A paired PC can relay a wake only for another PC this PC is paired with, and only when it may run power actions here. A flood of messages from a paired PC is held back instead of queuing up; an answer from one PC can no longer be taken for another's.
+
 ## 0.2.6 (21 Nov 2026)
 
 - Security: pairing a PC now asks "Pair with <name>?" on the PC that shows the code too, a PC that is already paired must be unpaired before it can pair again, and the PC names are part of what both PCs prove (a name with hidden direction marks is cleaned). Both PCs need this version to pair.
