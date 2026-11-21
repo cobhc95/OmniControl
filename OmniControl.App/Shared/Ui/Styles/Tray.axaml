@@ -18,8 +18,8 @@
     <!-- The remove badge: THE small remove cross of a tile or a row. A round raised chip with a thin edge
          (RemoveBadgeSize) inside a clickable square (RemoveBadgeHit); the drawn cross (RemoveBadgeCross) is muted and turns red on hover. -->
     <Style Selector="Button.removebadge">
-        <Setter Property="Width" Value="{DynamicResource RemoveBadgeHit}" />
-        <Setter Property="Height" Value="{DynamicResource RemoveBadgeHit}" />
+        <Setter Property="Width" Value="{StaticResource RemoveBadgeHit}" />
+        <Setter Property="Height" Value="{StaticResource RemoveBadgeHit}" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="Foreground" Value="{DynamicResource BrushMuted}" />
         <Setter Property="Background" Value="Transparent" />
@@ -27,8 +27,8 @@
         <Setter Property="Template">
             <ControlTemplate>
                 <Panel Background="Transparent">
-                    <Border Name="PART_Badge" Width="{DynamicResource RemoveBadgeSize}" Height="{DynamicResource RemoveBadgeSize}"
-                            CornerRadius="{DynamicResource RemoveBadgeRadius}" BorderThickness="1"
+                    <Border Name="PART_Badge" Width="{StaticResource RemoveBadgeSize}" Height="{StaticResource RemoveBadgeSize}"
+                            CornerRadius="{StaticResource RemoveBadgeRadius}" BorderThickness="1"
                             Background="{DynamicResource BrushControlFill}" BorderBrush="{DynamicResource BrushControlEdge}" />
                     <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -37,8 +37,8 @@
         </Setter>
     </Style>
     <Style Selector="Button.removebadge > Path.glyph">
-        <Setter Property="Width" Value="{DynamicResource RemoveBadgeCross}" />
-        <Setter Property="Height" Value="{DynamicResource RemoveBadgeCross}" />
+        <Setter Property="Width" Value="{StaticResource RemoveBadgeCross}" />
+        <Setter Property="Height" Value="{StaticResource RemoveBadgeCross}" />
         <Setter Property="StrokeThickness" Value="1.5" />
         <Setter Property="Stroke" Value="{Binding $parent[Button].Foreground}" />
     </Style>
@@ -51,43 +51,43 @@
          Border.traytiles (the panel's own surface, the card colour), Border.traysliders (BrushCardShade, a step towards the page, a line above) and
          Border.trayfoot (the page colour, a line above): the background colour choice's surfaces (SurfaceService). -->
     <Style Selector="Border.flyoutpanel">
-        <Setter Property="Width" Value="{DynamicResource TrayFlyoutWidth}" />
-        <Setter Property="Margin" Value="{DynamicResource TrayShadowInset}" />
-        <Setter Property="CornerRadius" Value="{DynamicResource TrayFlyoutCornerRadius}" />
+        <Setter Property="Width" Value="{StaticResource TrayFlyoutWidth}" />
+        <Setter Property="Margin" Value="{StaticResource TrayShadowInset}" />
+        <Setter Property="CornerRadius" Value="{StaticResource TrayFlyoutCornerRadius}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
         <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
         <Setter Property="BoxShadow" Value="{DynamicResource TrayPanelShadow}" />
     </Style>
     <Style Selector="Border.flyoutbody">
-        <Setter Property="CornerRadius" Value="{DynamicResource TrayFlyoutInnerRadius}" />
+        <Setter Property="CornerRadius" Value="{StaticResource TrayFlyoutInnerRadius}" />
         <Setter Property="ClipToBounds" Value="True" />
     </Style>
-    <Style Selector="Border.traytiles"><Setter Property="Padding" Value="{DynamicResource TrayTilesPadding}" /></Style>
+    <Style Selector="Border.traytiles"><Setter Property="Padding" Value="{StaticResource TrayTilesPadding}" /></Style>
     <Style Selector="Border.traysliders, Border.trayfoot">
         <Setter Property="BorderThickness" Value="0,1,0,0" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
     </Style>
     <Style Selector="Border.traysliders">
-        <Setter Property="Padding" Value="{DynamicResource TraySlidersPadding}" />
+        <Setter Property="Padding" Value="{StaticResource TraySlidersPadding}" />
         <Setter Property="Background" Value="{DynamicResource BrushCardShade}" />
     </Style>
     <Style Selector="Border.trayfoot">
-        <Setter Property="Padding" Value="{DynamicResource TrayFootPadding}" />
+        <Setter Property="Padding" Value="{StaticResource TrayFootPadding}" />
         <Setter Property="Background" Value="{DynamicResource BrushBackground}" />
     </Style>
 
     <!-- A tile: a Windows-style button (TrayTileHeight high, as wide as its cell of the tile grid: TrayTileColumns, even TrayTileGap gaps)
          holding its glyph, with its name UNDER it (StackPanel.traytile > TextBlock.wordtext). The 1 px edge is always there, so lighting, hover and
          focus change colours only. .on = its state is on (filled accent, the glyph in BrushOnAccent) -->
-    <Style Selector="StackPanel.traytile"><Setter Property="Spacing" Value="{DynamicResource TrayTileNameGap}" /></Style>
+    <Style Selector="StackPanel.traytile"><Setter Property="Spacing" Value="{StaticResource TrayTileNameGap}" /></Style>
     <Style Selector="Button.tile">
         <Setter Property="HorizontalAlignment" Value="Stretch" />
-        <Setter Property="Height" Value="{DynamicResource TrayTileHeight}" />
+        <Setter Property="Height" Value="{StaticResource TrayTileHeight}" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="Margin" Value="0" />
         <Setter Property="VerticalAlignment" Value="Top" />
-        <Setter Property="CornerRadius" Value="{DynamicResource TrayTileCornerRadius}" />
+        <Setter Property="CornerRadius" Value="{StaticResource TrayTileCornerRadius}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
         <Setter Property="Background" Value="{DynamicResource BrushControlFill}" />
@@ -95,12 +95,12 @@
         <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
     <Style Selector="Button.tile > c|IconGlyph">
-        <Setter Property="Width" Value="{DynamicResource TrayGlyphSize}" />
-        <Setter Property="Height" Value="{DynamicResource TrayGlyphSize}" />
+        <Setter Property="Width" Value="{StaticResource TrayGlyphSize}" />
+        <Setter Property="Height" Value="{StaticResource TrayGlyphSize}" />
     </Style>
     <Style Selector="StackPanel.traytile > TextBlock.wordtext">
-        <Setter Property="FontSize" Value="{DynamicResource MenuSmallFontSize}" />
-        <Setter Property="(c:WordText.FitFontSize)" Value="{DynamicResource TrayTileFitFontSize}" />
+        <Setter Property="FontSize" Value="{StaticResource MenuSmallFontSize}" />
+        <Setter Property="(c:WordText.FitFontSize)" Value="{StaticResource TrayTileFitFontSize}" />
         <Setter Property="HorizontalAlignment" Value="Stretch" />
         <Setter Property="TextAlignment" Value="Center" />
         <Setter Property="TextWrapping" Value="Wrap" />
@@ -121,27 +121,27 @@
     </Style>
     <Style Selector="Button.tile.on > c|IconGlyph"><Setter Property="Foreground" Value="{DynamicResource BrushOnAccent}" /></Style>
     <!-- .faded = its state is only the last one known: the button and its name are dimmed, lit or not -->
-    <Style Selector="Button.tile.faded, StackPanel.traytile > TextBlock.wordtext.faded"><Setter Property="Opacity" Value="{DynamicResource TrayFadedOpacity}" /></Style>
+    <Style Selector="Button.tile.faded, StackPanel.traytile > TextBlock.wordtext.faded"><Setter Property="Opacity" Value="{StaticResource TrayFadedOpacity}" /></Style>
     <!-- The tile's corner mark (top-right, TrayMarkSize): holds ONE of a spinning ring (an action runs), a pulsing grey dot (the state is read),
          a clock (only the last known value) or a red warning (the last action or read failed). It never takes the mouse. -->
     <Style Selector="Panel.tilemark">
-        <Setter Property="Width" Value="{DynamicResource TrayMarkSize}" />
-        <Setter Property="Height" Value="{DynamicResource TrayMarkSize}" />
+        <Setter Property="Width" Value="{StaticResource TrayMarkSize}" />
+        <Setter Property="Height" Value="{StaticResource TrayMarkSize}" />
         <Setter Property="HorizontalAlignment" Value="Right" />
         <Setter Property="VerticalAlignment" Value="Top" />
-        <Setter Property="Margin" Value="{DynamicResource TrayMarkMargin}" />
+        <Setter Property="Margin" Value="{StaticResource TrayMarkMargin}" />
         <Setter Property="IsHitTestVisible" Value="False" />
     </Style>
     <Style Selector="Panel.tilemark > Ellipse.markring, Button.statepower > Panel > Panel > Ellipse.markring">
         <Setter Property="Stroke" Value="{DynamicResource BrushMuted}" />
-        <Setter Property="StrokeThickness" Value="{DynamicResource TrayMarkStroke}" />
+        <Setter Property="StrokeThickness" Value="{StaticResource TrayMarkStroke}" />
     </Style>
     <Style Selector="Panel.tilemark > Path.markarc, Button.statepower > Panel > Panel > Path.markarc">
         <Setter Property="Stroke" Value="{DynamicResource BrushAccent}" />
-        <Setter Property="StrokeThickness" Value="{DynamicResource TrayMarkStroke}" />
+        <Setter Property="StrokeThickness" Value="{StaticResource TrayMarkStroke}" />
         <Setter Property="StrokeLineCap" Value="Round" />
-        <Setter Property="Width" Value="{DynamicResource TrayMarkSize}" />
-        <Setter Property="Height" Value="{DynamicResource TrayMarkSize}" />
+        <Setter Property="Width" Value="{StaticResource TrayMarkSize}" />
+        <Setter Property="Height" Value="{StaticResource TrayMarkSize}" />
         <Setter Property="Data" Value="M5.5,0.75 A4.75,4.75 0 0 1 10.25,5.5" />
         <Setter Property="RenderTransform" Value="rotate(0deg)" />
     </Style>
@@ -155,8 +155,8 @@
         </Style.Animations>
     </Style>
     <Style Selector="Panel.tilemark > Ellipse.markdot">
-        <Setter Property="Width" Value="{DynamicResource TrayMarkDot}" />
-        <Setter Property="Height" Value="{DynamicResource TrayMarkDot}" />
+        <Setter Property="Width" Value="{StaticResource TrayMarkDot}" />
+        <Setter Property="Height" Value="{StaticResource TrayMarkDot}" />
         <Setter Property="Fill" Value="{DynamicResource BrushMuted}" />
     </Style>
     <Style Selector="Panel.tilemark > Ellipse.markdot.spinning">
@@ -174,11 +174,11 @@
          mark's Ellipse.markring + Path.markarc) while this method runs, or the red warning glyph (.markfailed) when this method failed.
          Sizes: StatePower* in App.axaml. -->
     <Style Selector="Button.statepower">
-        <Setter Property="Width" Value="{DynamicResource StatePowerSize}" />
-        <Setter Property="Height" Value="{DynamicResource StatePowerSize}" />
+        <Setter Property="Width" Value="{StaticResource StatePowerSize}" />
+        <Setter Property="Height" Value="{StaticResource StatePowerSize}" />
         <Setter Property="MinHeight" Value="0" />
         <Setter Property="Padding" Value="0" />
-        <Setter Property="CornerRadius" Value="{DynamicResource StatePowerRadius}" />
+        <Setter Property="CornerRadius" Value="{StaticResource StatePowerRadius}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
@@ -188,7 +188,7 @@
     <Style Selector="Button.statepower /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
-        <Setter Property="CornerRadius" Value="{DynamicResource StatePowerRadius}" />
+        <Setter Property="CornerRadius" Value="{StaticResource StatePowerRadius}" />
     </Style>
     <Style Selector="Button.statepower:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
@@ -211,8 +211,8 @@
         <Setter Property="IsVisible" Value="False" />
         <Setter Property="Fill" Value="{DynamicResource BrushAccent}" />
         <Setter Property="Stretch" Value="Uniform" />
-        <Setter Property="Width" Value="{DynamicResource StatePowerStop}" />
-        <Setter Property="Height" Value="{DynamicResource StatePowerStop}" />
+        <Setter Property="Width" Value="{StaticResource StatePowerStop}" />
+        <Setter Property="Height" Value="{StaticResource StatePowerStop}" />
     </Style>
     <Style Selector="Button.statepower:pointerover > Panel > Panel > Path.markstop, Button.statepower:focus-visible > Panel > Panel > Path.markstop"><Setter Property="IsVisible" Value="True" /></Style>
     <Style Selector="Button.statepower:pointerover > Panel > Panel > Ellipse.markring, Button.statepower:focus-visible > Panel > Panel > Ellipse.markring, Button.statepower:pointerover > Panel > Panel > Path.markarc, Button.statepower:focus-visible > Panel > Panel > Path.markarc">
@@ -220,8 +220,8 @@
     </Style>
     <Style Selector="Button.statepower > Panel"><Setter Property="IsHitTestVisible" Value="False" /></Style>
     <Style Selector="Button.statepower > Panel > c|IconGlyph">
-        <Setter Property="Width" Value="{DynamicResource StatePowerGlyph}" />
-        <Setter Property="Height" Value="{DynamicResource StatePowerGlyph}" />
+        <Setter Property="Width" Value="{StaticResource StatePowerGlyph}" />
+        <Setter Property="Height" Value="{StaticResource StatePowerGlyph}" />
     </Style>
 
     <Style Selector="Button.tile:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
@@ -239,11 +239,11 @@
          edge, a hover square. .on = its mode is on (Edit while editing: accent glyph and wash); .quiet = a quiet link (accent words, no wash
          until hovered). -->
     <Style Selector="Button.trayfootbutton">
-        <Setter Property="Padding" Value="{DynamicResource TrayFootButtonPadding}" />
-        <Setter Property="CornerRadius" Value="{DynamicResource TrayFootButtonRadius}" />
+        <Setter Property="Padding" Value="{StaticResource TrayFootButtonPadding}" />
+        <Setter Property="CornerRadius" Value="{StaticResource TrayFootButtonRadius}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="MinHeight" Value="0" />
-        <Setter Property="FontSize" Value="{DynamicResource MenuSmallFontSize}" />
+        <Setter Property="FontSize" Value="{StaticResource MenuSmallFontSize}" />
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
@@ -264,10 +264,10 @@
     <Style Selector="Button.trayfootbutton.quiet:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushHoverSubtle}" /></Style>
     <Style Selector="Button.trayfootbutton.quiet:pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushPressedSubtle}" /></Style>
     <Style Selector="Button.trayfootbutton:focus-visible /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
-    <Style Selector="Button.trayfootbutton > StackPanel"><Setter Property="Orientation" Value="Horizontal" /><Setter Property="Spacing" Value="{DynamicResource TrayFootGap}" /></Style>
+    <Style Selector="Button.trayfootbutton > StackPanel"><Setter Property="Orientation" Value="Horizontal" /><Setter Property="Spacing" Value="{StaticResource TrayFootGap}" /></Style>
     <Style Selector="Button.trayfootbutton c|IconGlyph">
-        <Setter Property="Width" Value="{DynamicResource TrayGlyphSize}" />
-        <Setter Property="Height" Value="{DynamicResource TrayGlyphSize}" />
+        <Setter Property="Width" Value="{StaticResource TrayGlyphSize}" />
+        <Setter Property="Height" Value="{StaticResource TrayGlyphSize}" />
     </Style>
     <Style Selector="Button.trayfootbutton > StackPanel > TextBlock">
         <Setter Property="VerticalAlignment" Value="Center" />
@@ -275,7 +275,7 @@
     </Style>
     <!-- Shared pill variants (any Button.pill): .icon = a square-ish pill holding only a drawn glyph; .accentline = accent words and edge.
          A glyph in either takes the button's own text colour (so it hovers and focuses with it). -->
-    <Style Selector="Button.pill.icon"><Setter Property="Padding" Value="0" /><Setter Property="Width" Value="{DynamicResource PillIconWidth}" /></Style>
+    <Style Selector="Button.pill.icon"><Setter Property="Padding" Value="0" /><Setter Property="Width" Value="{StaticResource PillIconWidth}" /></Style>
     <Style Selector="Button.pill.icon > c|IconGlyph, Button.pill.icon > Panel > c|IconGlyph, Button.pill.accentline > StackPanel > c|IconGlyph">
         <Setter Property="Width" Value="14" />
         <Setter Property="Height" Value="14" />
@@ -292,27 +292,27 @@
          at the same x whatever the names. The name and the chip are one fixed width (TrayNameWidth) and trim with an ellipsis (the chip
          fills it, its chevron at the right); the value is a fixed column, right aligned in tabular figures (TextBlock.slidervalue). -->
     <Style Selector="Grid.trayslider">
-        <Setter Property="ColumnSpacing" Value="{DynamicResource TrayColumnGap}" />
-        <Setter Property="MinHeight" Value="{DynamicResource TraySliderRowHeight}" />    </Style>
+        <Setter Property="ColumnSpacing" Value="{StaticResource TrayColumnGap}" />
+        <Setter Property="MinHeight" Value="{StaticResource TraySliderRowHeight}" />    </Style>
     <Style Selector="Grid.trayslider > Control"><Setter Property="VerticalAlignment" Value="Center" /></Style>
     <Style Selector="Grid.trayslider > TextBlock.trayname">
-        <Setter Property="Width" Value="{DynamicResource TrayNameWidth}" />
+        <Setter Property="Width" Value="{StaticResource TrayNameWidth}" />
         <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
     <Style Selector="Grid.trayslider > TextBlock.trayvalue">
-        <Setter Property="Width" Value="{DynamicResource TrayValueWidth}" />
+        <Setter Property="Width" Value="{StaticResource TrayValueWidth}" />
     </Style>
     <Style Selector="Grid.trayslider > c|IconGlyph">
-        <Setter Property="Width" Value="{DynamicResource TrayGlyphSize}" />
-        <Setter Property="Height" Value="{DynamicResource TrayGlyphSize}" />
+        <Setter Property="Width" Value="{StaticResource TrayGlyphSize}" />
+        <Setter Property="Height" Value="{StaticResource TrayGlyphSize}" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
-    <Style Selector="Grid.trayslider > c|ChipMenu"><Setter Property="Width" Value="{DynamicResource TrayNameWidth}" /></Style>
+    <Style Selector="Grid.trayslider > c|ChipMenu"><Setter Property="Width" Value="{StaticResource TrayNameWidth}" /></Style>
     <Style Selector="Panel.gadgethit"><Setter Property="Background" Value="{DynamicResource BrushHitTest}" /></Style>
     <!-- Grid.gadgetcells = THE gadget's cells (Resources/Gadget/GadgetCells: the taskbar gadget, the settings preview, the layout cards); its gaps are settings -->
     <Style Selector="Grid.gadgetcells">
-        <Setter Property="Margin" Value="{DynamicResource GadgetInset}" />
+        <Setter Property="Margin" Value="{StaticResource GadgetInset}" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
     <!-- Its numbers keep one width per digit (tabular), and TextBlock.reserve is the unseen widest words that keep a value's width -->

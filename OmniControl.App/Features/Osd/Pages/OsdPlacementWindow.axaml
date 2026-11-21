@@ -3,7 +3,7 @@
         xmlns:vm="using:OmniControl.App.Features.Osd.Pages"
         x:Class="OmniControl.App.Features.Osd.Pages.OsdPlacementWindow"
         x:DataType="vm:OsdPlacementViewModel"
-        Title="{Binding Heading}" Width="{DynamicResource OsdPlacementWidth}" SizeToContent="Height"
+        Title="{Binding Heading}" Width="{StaticResource OsdPlacementWidth}" SizeToContent="Height"
         CanResize="False" WindowStartupLocation="CenterOwner">
     <!-- docs/mockups/osd-custom-position.html part 2: the cards Screen, Anchor, Across, Up/Down from the anchor and Name, then Cancel and OK.
          While this window is open the OSD is shown live on the chosen screen (Osd/OsdPreview): drag it, or nudge it with the arrow keys

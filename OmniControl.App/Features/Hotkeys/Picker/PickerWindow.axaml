@@ -4,8 +4,8 @@
         xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
         xmlns:restore="using:OmniControl.App.Shared.Ui.Restore"
         x:Class="OmniControl.App.Features.Hotkeys.Picker.PickerWindow"
-        Title="Choose" Width="{DynamicResource PickerWindowWidth}" Height="{DynamicResource PickerWindowHeight}"
-        MinWidth="{DynamicResource PickerWindowMinWidth}" MinHeight="400"
+        Title="Choose" Width="{StaticResource PickerWindowWidth}" Height="{StaticResource PickerWindowHeight}"
+        MinWidth="{StaticResource PickerWindowMinWidth}" MinHeight="400"
         WindowStartupLocation="CenterOwner">
     <DockPanel>
         <!-- The Actions and hotkeys window only (docs/mockups/actions-and-hotkeys.html): one thin top bar with its name, the shortcut set

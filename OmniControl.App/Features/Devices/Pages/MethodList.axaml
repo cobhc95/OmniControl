@@ -36,7 +36,7 @@
                                 <Panel>
                                     <c:IconGlyph LibraryId="power" IsVisible="{Binding PowerNormal}" />
                                     <c:IconGlyph Classes="markfailed" LibraryId="alert" IsVisible="{Binding PowerFailed}" />
-                                    <Panel IsVisible="{Binding PowerRunning}" Width="{DynamicResource TrayMarkSize}" Height="{DynamicResource TrayMarkSize}">
+                                    <Panel IsVisible="{Binding PowerRunning}" Width="{StaticResource TrayMarkSize}" Height="{StaticResource TrayMarkSize}">
                                         <Ellipse Classes="markring" />
                                         <Path Classes="markarc" Classes.spinning="{Binding PowerRunning}" />
                                         <Path Classes="markstop" Data="{DynamicResource StopIcon}" />

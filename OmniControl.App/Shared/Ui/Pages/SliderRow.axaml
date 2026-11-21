@@ -18,7 +18,7 @@
                     </Grid.ColumnDefinitions>
                     <c:IconText Classes="cardname" Icon="{Binding Icon}" Text="{Binding Label}" Margin="0,0,24,0" />
                     <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}">
-                        <c:LeadFitPanel Spacing="{StaticResource GapLarge}" LeadMinWidth="{DynamicResource ChipMinWidth}" MainMinWidth="{DynamicResource SliderFieldMinWidth}">
+                        <c:LeadFitPanel Spacing="{StaticResource GapLarge}" LeadMinWidth="{StaticResource ChipMinWidth}" MainMinWidth="{StaticResource SliderFieldMinWidth}">
                             <c:ChoiceChip DataContext="{Binding Lead}" IsVisible="{Binding $parent[UserControl].DataContext.HasLead}" />
                             <c:SliderField Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Value}" ResetValue="{Binding ResetValue}"
                                            Decimals="{Binding Decimals}" Text="{Binding ValueText}" />
@@ -58,10 +58,10 @@
              shrinks to SliderFieldMinWidth, the value never clips; the optional cogwheel after the value); when even that does not fit, the slider and value wrap under the label inside the same card -->
         <pages:CardLayout IsVisible="{Binding IsHalfSlider}">
             <DataTemplate x:DataType="pages:SliderItem">
-                <c:LabelFitPanel Margin="0,1" Spacing="{StaticResource GapLarge}" LabelMinWidth="{DynamicResource CardLabelMinWidth}" MainMinWidth="{DynamicResource SliderFieldMinWidth}">
+                <c:LabelFitPanel Margin="0,1" Spacing="{StaticResource GapLarge}" LabelMinWidth="{StaticResource CardLabelMinWidth}" MainMinWidth="{StaticResource SliderFieldMinWidth}">
                     <c:IconText Compact="True" Icon="{Binding Icon}" Text="{Binding Label}" />
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}">
-                        <c:LeadFitPanel Spacing="{StaticResource GapLarge}" LeadMinWidth="{DynamicResource ChipMinWidth}" MainMinWidth="{DynamicResource SliderFieldMinWidth}">
+                        <c:LeadFitPanel Spacing="{StaticResource GapLarge}" LeadMinWidth="{StaticResource ChipMinWidth}" MainMinWidth="{StaticResource SliderFieldMinWidth}">
                             <c:ChoiceChip DataContext="{Binding Lead}" IsVisible="{Binding $parent[UserControl].DataContext.HasLead}" />
                             <c:SliderField Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Value}" ResetValue="{Binding ResetValue}"
                                            Decimals="{Binding Decimals}" Text="{Binding ValueText}" />
@@ -78,7 +78,7 @@
              knob (its words trim with ... when they do not fit; the name keeps its whole width first, LabelFirst), the master knob at the right; the value words are under the knob -->
         <pages:CardLayout IsVisible="{Binding AsKnob}">
             <DataTemplate x:DataType="pages:SliderItem">
-                <c:LabelFitPanel Margin="0,1" Spacing="{StaticResource GapLarge}" LabelFirst="True" LabelMinWidth="{DynamicResource CardLabelMinWidth}" MainMinWidth="{DynamicResource SliderFieldMinWidth}">
+                <c:LabelFitPanel Margin="0,1" Spacing="{StaticResource GapLarge}" LabelFirst="True" LabelMinWidth="{StaticResource CardLabelMinWidth}" MainMinWidth="{StaticResource SliderFieldMinWidth}">
                     <c:IconText Compact="True" Icon="{Binding Icon}" Text="{Binding Label}" VerticalAlignment="Center" />
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}">
                         <c:ChoiceChip DataContext="{Binding Lead}" IsVisible="{Binding $parent[UserControl].DataContext.HasLead}" HorizontalAlignment="Right" VerticalAlignment="Center" />

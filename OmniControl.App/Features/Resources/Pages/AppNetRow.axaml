@@ -28,7 +28,7 @@
             </Border>
             <TextBlock Grid.Column="1" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding NameTip}" VerticalAlignment="Center">
                 <Run Text="{Binding Name}" />
-                <Run Text="{Binding Technical}" Foreground="{DynamicResource BrushMuted}" FontSize="{DynamicResource MenuSmallFontSize}" />
+                <Run Text="{Binding Technical}" Foreground="{DynamicResource BrushMuted}" FontSize="{StaticResource MenuSmallFontSize}" />
             </TextBlock>
             <Border Grid.Column="2" Classes="tag" IsVisible="{Binding NotRunning}" VerticalAlignment="Center"
                     ToolTip.Tip="Not seen using the network since OmniControl started; its limits and block apply when it does.">

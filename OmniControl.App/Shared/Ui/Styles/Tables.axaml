@@ -10,8 +10,8 @@
     <Style Selector="TextBlock.badtext"><Setter Property="Foreground" Value="{DynamicResource BrushDanger}" /></Style>
     <Style Selector="Path.glyph.failmark">
         <Setter Property="Stroke" Value="{DynamicResource BrushDanger}" />
-        <Setter Property="Width" Value="{DynamicResource MenuGlyphSize}" />
-        <Setter Property="Height" Value="{DynamicResource MenuGlyphSize}" />
+        <Setter Property="Width" Value="{StaticResource MenuGlyphSize}" />
+        <Setter Property="Height" Value="{StaticResource MenuGlyphSize}" />
         <Setter Property="StrokeThickness" Value="1.75" />
     </Style>
     <!-- The marks of a checklist line (Other PCs' Tailscale checks): c|IconGlyph.cautionmark = a failing check, Ellipse.pendingdot = not known yet; a passing one is Path.glyph.tickmark. -->

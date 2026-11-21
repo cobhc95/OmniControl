@@ -18,7 +18,7 @@
             <TextBlock Classes="strong" Text="Everything else" VerticalAlignment="Center" />
             <pages:NumberText Grid.Column="1" Value="{Binding EverythingElse}" Minimum="{x:Static osd:OsdDuration.MinSeconds}" Maximum="{x:Static osd:OsdDuration.MaxSeconds}"
                               Decimals="{x:Static osd:OsdDuration.Decimals}" VerticalAlignment="Center" ToolTip.Tip="How long a pop-up stays when no exception matches it">
-                <TextBlock Classes="muted" Text="{Binding EverythingElseText}" MinWidth="{DynamicResource SliderValueMinWidth}" TextAlignment="Right" />
+                <TextBlock Classes="muted" Text="{Binding EverythingElseText}" MinWidth="{StaticResource SliderValueMinWidth}" TextAlignment="Right" />
             </pages:NumberText>
         </Grid>
         <TextBlock Grid.Row="2" Classes="navheading" Text="EXCEPTIONS · first match wins" Margin="0,4,0,0" />
@@ -33,7 +33,7 @@
                                         ChipToolTip="The app that caused the pop-up, or what it shows" VerticalAlignment="Center" />
                             <pages:NumberText Grid.Column="2" Value="{Binding Seconds}" Minimum="{x:Static osd:OsdDuration.MinSeconds}" Maximum="{x:Static osd:OsdDuration.MaxSeconds}"
                                               Decimals="{x:Static osd:OsdDuration.Decimals}" VerticalAlignment="Center">
-                                <TextBlock Classes="muted" Text="{Binding SecondsText}" MinWidth="{DynamicResource SliderValueMinWidth}" TextAlignment="Right" />
+                                <TextBlock Classes="muted" Text="{Binding SecondsText}" MinWidth="{StaticResource SliderValueMinWidth}" TextAlignment="Right" />
                             </pages:NumberText>
                             <Button Grid.Column="3" Tag="scope" Classes="removebadge" Command="{Binding RemoveCommand}" ToolTip.Tip="Remove this exception" VerticalAlignment="Center">
                                 <Path Classes="glyph" Data="{StaticResource CrossIcon}" />

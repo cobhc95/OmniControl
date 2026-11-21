@@ -8,7 +8,7 @@
          App.axaml. Hover lightens the track; keyboard focus draws the accent ring (no default outline); adjusting (.active, Enter in a card
          list) keeps the ring; disabled = dimmed. Included after Theme.axaml. -->
     <Style Selector="ctl|Knob">
-        <Setter Property="MinWidth" Value="{DynamicResource KnobColumnWidth}" />
+        <Setter Property="MinWidth" Value="{StaticResource KnobColumnWidth}" />
         <Setter Property="HorizontalAlignment" Value="Center" />
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="Background" Value="Transparent" />
@@ -20,13 +20,13 @@
         <Setter Property="Template">
             <ControlTemplate>
                 <!-- The background takes the press over the whole knob, its words included -->
-                <StackPanel Background="{TemplateBinding Background}" Spacing="{DynamicResource KnobTextGap}">
-                    <ctl:KnobFace Width="{DynamicResource KnobSize}" Height="{DynamicResource KnobSize}" HorizontalAlignment="Center"
+                <StackPanel Background="{TemplateBinding Background}" Spacing="{StaticResource KnobTextGap}">
+                    <ctl:KnobFace Width="{StaticResource KnobSize}" Height="{StaticResource KnobSize}" HorizontalAlignment="Center"
                                   Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}" Value="{TemplateBinding Value}"
                                   FromCentre="{TemplateBinding FromCentre}" TrackBrush="{TemplateBinding TrackBrush}"
                                   ValueBrush="{TemplateBinding ValueBrush}" PointerBrush="{TemplateBinding PointerBrush}"
                                   RingBrush="{TemplateBinding RingBrush}"
-                                  ArcThickness="{DynamicResource KnobArcThickness}" PointerThickness="{DynamicResource KnobPointerThickness}" />
+                                  ArcThickness="{StaticResource KnobArcThickness}" PointerThickness="{StaticResource KnobPointerThickness}" />
                     <pages:NumberText HorizontalAlignment="Center"
                                       Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}"
                                       Value="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
@@ -37,15 +37,15 @@
         </Setter>
     </Style>
     <Style Selector="ctl|Knob TextBlock.knobvalue">
-        <Setter Property="FontSize" Value="{DynamicResource KnobFontSize}" />
+        <Setter Property="FontSize" Value="{StaticResource KnobFontSize}" />
         <Setter Property="Foreground" Value="{DynamicResource BrushMuted}" />
         <Setter Property="HorizontalAlignment" Value="Center" />
     </Style>
     <!-- The typing box takes the knob's width, so the row does not move while a value is typed -->
     <Style Selector="ctl|Knob TextBox.typednumber">
-        <Setter Property="MinWidth" Value="{DynamicResource KnobColumnWidth}" />
-        <Setter Property="Width" Value="{DynamicResource KnobColumnWidth}" />
-        <Setter Property="FontSize" Value="{DynamicResource KnobFontSize}" />
+        <Setter Property="MinWidth" Value="{StaticResource KnobColumnWidth}" />
+        <Setter Property="Width" Value="{StaticResource KnobColumnWidth}" />
+        <Setter Property="FontSize" Value="{StaticResource KnobFontSize}" />
         <Setter Property="Padding" Value="2,0" />
         <Setter Property="TextAlignment" Value="Center" />
     </Style>

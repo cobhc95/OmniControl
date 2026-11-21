@@ -5,7 +5,7 @@
          resize cursor, and a faint accent line down its middle on hover and while dragged. Put it in its own Auto column between the
          panes; the panes' MinWidth (not the splitter) keep either side from clipping. -->
     <Style Selector="GridSplitter.pane">
-        <Setter Property="Width" Value="{DynamicResource PaneSplitterWidth}" />
+        <Setter Property="Width" Value="{StaticResource PaneSplitterWidth}" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Focusable" Value="False" />
         <Setter Property="Cursor" Value="SizeWestEast" />

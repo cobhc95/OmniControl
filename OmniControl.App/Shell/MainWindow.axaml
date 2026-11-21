@@ -45,7 +45,7 @@
         <!-- No fixed width: the sidebar is as wide as its longest page name, so no empty strip sits before the divider -->
         <Border x:Name="Sidebar" DockPanel.Dock="Left" Classes="sidebarpanel" BorderThickness="0,0,1,0">
             <DockPanel Margin="0,14,0,8">
-                <StackPanel DockPanel.Dock="Top" Margin="{DynamicResource NavTitleMargin}" Spacing="2">
+                <StackPanel DockPanel.Dock="Top" Margin="{StaticResource NavTitleMargin}" Spacing="2">
                     <TextBlock Text="OmniControl" Classes="title" />
                     <TextBlock Text="{Binding VersionText}" Classes="muted" />
                 </StackPanel>
@@ -55,13 +55,13 @@
                 <StackPanel DockPanel.Dock="Bottom">
                     <!-- Only while a newer version exists (the update check): a click opens App settings at the Updates group -->
                     <Button Classes="pill accentline" Command="{Binding OpenUpdatesCommand}" IsVisible="{Binding HasUpdate}" HorizontalAlignment="Left"
-                            Margin="{DynamicResource NavPillMargin}" ToolTip.Tip="Open the Updates group in App settings">
+                            Margin="{StaticResource NavPillMargin}" ToolTip.Tip="Open the Updates group in App settings">
                         <StackPanel Orientation="Horizontal" Spacing="{StaticResource Gap}">
                             <c:IconGlyph LibraryId="download" />
                             <TextBlock Text="{Binding UpdateNotice}" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
                     </Button>
-                    <Border Classes="hrule" Margin="{DynamicResource NavRuleMargin}" />
+                    <Border Classes="hrule" Margin="{StaticResource NavRuleMargin}" />
                     <c:NavList x:Name="PinnedNav" Classes="nav" ItemsSource="{Binding PinnedEntries}">
                         <c:NavList.DataTemplates>
                             <DataTemplate DataType="shell:NavLauncher">

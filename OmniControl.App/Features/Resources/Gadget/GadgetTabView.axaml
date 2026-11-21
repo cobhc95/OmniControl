@@ -89,7 +89,7 @@
                                     </c:ChipMenu>
                                     <pages:NumberText Grid.Column="5" Value="{Binding WarnAt}" Minimum="0" Maximum="{Binding WarnMax}" VerticalAlignment="Center"
                                                       IsVisible="{Binding HasWarn}" ToolTip.Tip="Past this value the reading takes its warn colour; 0 = never">
-                                        <TextBlock Classes="muted" Text="{Binding WarnText}" MinWidth="{DynamicResource SliderValueMinWidth}" TextAlignment="Right" />
+                                        <TextBlock Classes="muted" Text="{Binding WarnText}" MinWidth="{StaticResource SliderValueMinWidth}" TextAlignment="Right" />
                                     </pages:NumberText>
                                     <c:ChipMenu Grid.Column="6" Classes="dropbox" ChipTag="scope" ChipAlignment="Left" VerticalAlignment="Center" Swatch="{Binding WarnSwatch}"
                                                 ChipToolTip="{Binding WarnSwatch.Tip, StringFormat='Warn colour: {0}'}" IsVisible="{Binding HasWarn}" MenuOpened="OnSwatchMenuOpened">

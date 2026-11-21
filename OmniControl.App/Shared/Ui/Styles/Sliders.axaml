@@ -23,8 +23,8 @@
             <ControlTemplate>
                 <Panel Background="Transparent">
                     <c:SliderBar x:Name="Bar" Orientation="{TemplateBinding Orientation}" Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}"
-                                 Value="{TemplateBinding Value}" TrackHeight="{DynamicResource SliderTrackHeight}" KnobSize="{DynamicResource SliderKnobSize}"
-                                 MarkWidth="{DynamicResource SliderMarkWidth}" MarkHeight="{DynamicResource SliderMarkHeight}" />
+                                 Value="{TemplateBinding Value}" TrackHeight="{StaticResource SliderTrackHeight}" KnobSize="{StaticResource SliderKnobSize}"
+                                 MarkWidth="{StaticResource SliderMarkWidth}" MarkHeight="{StaticResource SliderMarkHeight}" />
                     <Track x:Name="PART_Track" Orientation="{TemplateBinding Orientation}" Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}"
                            Value="{TemplateBinding Value, Mode=TwoWay}" IsDirectionReversed="{TemplateBinding IsDirectionReversed}">
                         <!-- The two halves of the bar either side of the knob: see-through, they only take the press -->
@@ -34,14 +34,14 @@
                         <Track.IncreaseButton>
                             <RepeatButton x:Name="PART_IncreaseButton" Focusable="False" Classes="slidertrack" />
                         </Track.IncreaseButton>
-                        <Thumb x:Name="thumb" Width="{DynamicResource SliderKnobSize}" Height="{DynamicResource SliderKnobSize}">
+                        <Thumb x:Name="thumb" Width="{StaticResource SliderKnobSize}" Height="{StaticResource SliderKnobSize}">
                             <Thumb.Template>
                                 <ControlTemplate>
                                     <Panel>
-                                        <Ellipse x:Name="Ring" Margin="{DynamicResource SliderRingInset}" StrokeThickness="{DynamicResource SliderRingThickness}"
+                                        <Ellipse x:Name="Ring" Margin="{StaticResource SliderRingInset}" StrokeThickness="{StaticResource SliderRingThickness}"
                                                  Stroke="{DynamicResource BrushAccent}" />
                                         <Ellipse x:Name="Knob" Fill="{DynamicResource BrushControlFill}" Stroke="{DynamicResource BrushSliderKnobEdge}"
-                                                 StrokeThickness="{DynamicResource SliderKnobEdge}" />
+                                                 StrokeThickness="{StaticResource SliderKnobEdge}" />
                                         <Ellipse x:Name="Dot" Fill="{DynamicResource BrushAccent}" HorizontalAlignment="Center" VerticalAlignment="Center">
                                             <Ellipse.Transitions>
                                                 <Transitions>
@@ -60,11 +60,11 @@
         </Setter>
     </Style>
     <Style Selector="Slider:horizontal">
-        <Setter Property="MinHeight" Value="{DynamicResource SliderHeight}" />
+        <Setter Property="MinHeight" Value="{StaticResource SliderHeight}" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
     <Style Selector="Slider:horizontal /template/ c|SliderBar, Slider:horizontal /template/ Track">
-        <Setter Property="Margin" Value="{DynamicResource SliderEndInset}" />
+        <Setter Property="Margin" Value="{StaticResource SliderEndInset}" />
     </Style>
     <Style Selector="Slider /template/ RepeatButton.slidertrack">
         <Setter Property="HorizontalAlignment" Value="Stretch" />
@@ -80,16 +80,16 @@
     <Style Selector="Slider:disabled /template/ Thumb /template/ Ellipse#Dot"><Setter Property="Fill" Value="{DynamicResource BrushMuted}" /></Style>
     <!-- The dot: at rest, under the pointer (or adjusted from the keyboard), while dragged (a press on the knob or on the bar); later wins -->
     <Style Selector="Slider /template/ Thumb /template/ Ellipse#Dot">
-        <Setter Property="Width" Value="{DynamicResource SliderDotSize}" />
-        <Setter Property="Height" Value="{DynamicResource SliderDotSize}" />
+        <Setter Property="Width" Value="{StaticResource SliderDotSize}" />
+        <Setter Property="Height" Value="{StaticResource SliderDotSize}" />
     </Style>
     <Style Selector="Slider:pointerover /template/ Thumb /template/ Ellipse#Dot, Slider.active /template/ Thumb /template/ Ellipse#Dot">
-        <Setter Property="Width" Value="{DynamicResource SliderDotHover}" />
-        <Setter Property="Height" Value="{DynamicResource SliderDotHover}" />
+        <Setter Property="Width" Value="{StaticResource SliderDotHover}" />
+        <Setter Property="Height" Value="{StaticResource SliderDotHover}" />
     </Style>
     <Style Selector="Slider:pressed /template/ Thumb /template/ Ellipse#Dot, Slider /template/ Thumb:pressed /template/ Ellipse#Dot">
-        <Setter Property="Width" Value="{DynamicResource SliderDotPressed}" />
-        <Setter Property="Height" Value="{DynamicResource SliderDotPressed}" />
+        <Setter Property="Width" Value="{StaticResource SliderDotPressed}" />
+        <Setter Property="Height" Value="{StaticResource SliderDotPressed}" />
     </Style>
     <Style Selector="Slider /template/ Thumb /template/ Ellipse#Ring"><Setter Property="IsVisible" Value="False" /></Style>
     <Style Selector="Slider:focus-visible /template/ Thumb /template/ Ellipse#Ring, Slider.active /template/ Thumb /template/ Ellipse#Ring">
@@ -111,7 +111,7 @@
          column and the row's height (the view gives both); the dB scale beside a graphic equaliser reads SliderKnobSize to line its marks up -->
     <Style Selector="Slider.vband">
         <Setter Property="Orientation" Value="Vertical" />
-        <Setter Property="MinWidth" Value="{DynamicResource SliderColumnWidth}" />
+        <Setter Property="MinWidth" Value="{StaticResource SliderColumnWidth}" />
         <Setter Property="HorizontalAlignment" Value="Stretch" />
         <Setter Property="VerticalAlignment" Value="Stretch" />
     </Style>
