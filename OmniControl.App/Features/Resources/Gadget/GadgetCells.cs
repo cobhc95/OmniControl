@@ -40,10 +40,6 @@ public sealed class GadgetCells : Grid
     private readonly List<(string Label, string Widest, double GapAfter)> _laid = new(); // what the cells were laid out for
     private readonly Dictionary<Control, Func<IReadOnlyList<GadgetTipLine>>> _tips = new();
 
-    public GadgetCells() => Classes.Add("gadgetcells");
-
-    protected override Type StyleKeyOverride => typeof(Grid); // so Grid.gadgetcells (Styles/Tray.axaml) styles it
-
     public void Draw(IReadOnlyList<GadgetCell> cells, GadgetLayout layout)
     {
         if (!LaidFor(cells, layout)) Lay(cells, layout);

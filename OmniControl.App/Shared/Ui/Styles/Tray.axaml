@@ -1,12 +1,13 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:c="using:OmniControl.App.Shared.Ui.Controls">
+        xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+        xmlns:g="using:OmniControl.App.Features.Resources.Gadget">
     <!-- MASTER designs the tray flyout (Tray/TrayFlyoutWindow) shares with other windows: its tile, corner mark and remove badge, the gadget's
          cells. The panel's own pieces are in Features/Tray/TrayFlyoutStyles.axaml, styled only in its window. Sizes: Tray* in App.axaml. Included last. -->
 
     <!-- The flyout's window: no frame of its own and see-through, so only the rounded panel inside it shows -->
     <!-- Window.taskbargadget = the Resources taskbar gadget (Features/Resources/Gadget/GadgetWindow): borderless and see-through like the tray
-         flyout; its Panel.gadgethit is all but invisible so a click between the numbers still reaches it, Grid.gadgetcells holds the lines -->
+         flyout; its Panel.gadgethit is all but invisible so a click between the numbers still reaches it, g|GadgetCells holds the lines -->
     <Style Selector="Window.trayflyout, Window.taskbargadget">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="TransparencyLevelHint" Value="Transparent" />
@@ -192,14 +193,15 @@
     <Style Selector="Button.pill.accentline:not(.custom):pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushPressedSubtle}" /></Style>
 
     <Style Selector="Panel.gadgethit"><Setter Property="Background" Value="{StaticResource BrushHitTest}" /></Style>
-    <!-- Grid.gadgetcells = THE gadget's cells (Resources/Gadget/GadgetCells: the taskbar gadget, the settings preview, the layout cards); its gaps are settings -->
-    <Style Selector="Grid.gadgetcells">
+    <!-- g|GadgetCells = THE gadget's cells (the taskbar gadget, the settings preview, the layout cards); its gaps are settings. Selected by its
+         type, not a class: a type-only ancestor costs other text nothing, where a class ancestor is watched on every text in every grid. -->
+    <Style Selector="g|GadgetCells">
         <Setter Property="Margin" Value="{StaticResource GadgetInset}" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
     <!-- Its numbers keep one width per digit (tabular), and TextBlock.reserve is the unseen widest words that keep a value's width -->
-    <Style Selector="Grid.gadgetcells TextBlock"><Setter Property="FontFeatures" Value="+tnum" /></Style>
-    <Style Selector="Grid.gadgetcells TextBlock.reserve">
+    <Style Selector="g|GadgetCells TextBlock"><Setter Property="FontFeatures" Value="+tnum" /></Style>
+    <Style Selector="g|GadgetCells TextBlock.reserve">
         <Setter Property="Opacity" Value="0" />
         <Setter Property="IsHitTestVisible" Value="False" />
     </Style>
