@@ -16,6 +16,9 @@ public interface IGadgetPreview
     /// The taskbar's right or left end (one setting for every layout).
     void SetPosition(GadgetPosition position);
 
+    /// The font of every layout ("" = the default), remembered among the fonts picked before.
+    void SetFont(string font);
+
     /// <param name="sampleUnknown">A reading or weather value that is unknown or 0 shows a sample (<see cref="Reading.SampleOr"/>,
     /// <see cref="Weather.WeatherWords.Sampled"/>; the preview and the layout tiles), never "—" or "0".</param>
     IReadOnlyList<GadgetCell> Cells(GadgetSettings look, bool sampleUnknown = false);
@@ -170,6 +173,13 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
         _settings.Commit();
     }
 
+    public void SetFont(string font)
+    {
+        if (font == Look.Font) return;
+        Look.UseFont(font);
+        _settings.Commit();
+    }
+
     /// Shows, hides or redraws the gadget after a change of its settings.
     public void Apply()
     {
@@ -237,15 +247,16 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
         var cells = new List<GadgetCell>();
         foreach (var shown in look.Readings.Where(r => r.Shown))
         {
+            var words = ColourOf(shown.TextColour, text);
             if (shown.Id == GadgetSettings.WeatherId)
             {
-                cells.AddRange(_weather.Cells(shown, look.Weather.Shows, text, hover, sampleUnknown));
+                cells.AddRange(_weather.Cells(shown, look.Weather.Shows, words, hover, sampleUnknown));
                 continue;
             }
             if (_monitor.Find(shown.Id) is not { } reading) continue;
             var warm = shown.WarnAt is { } at && reading.InUnit(_monitor.Latest) >= at;
             var value = sampleUnknown ? reading.SampleOr(reading.Read(_monitor.Latest)) : reading.Read(_monitor.Latest);
-            cells.Add(new GadgetCell(shown.Label, reading.GadgetWords(value, look), warm ? ColourOf(shown.Colour, text) : text,
+            cells.Add(new GadgetCell(shown.Label, reading.GadgetWords(value, look), warm ? ColourOf(shown.Colour, text) : words,
                 reading.GadgetWidest(look), shown.GapAfter,
                 hover.Readings ? () => ReadingTips.Lines(_monitor, hover.AllReadings ? shownReadings : new[] { shown }, hover.ReadingShows) : null, warm));
         }
@@ -308,13 +319,14 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
         if (_window is { } window && window.TryGetPlatformHandle() is { } handle) TaskbarSpot.Paint(handle.Handle, window.DrawInto);
     }
 
-    /// The right-click menu: Layout (the favourite layouts), Show (every reading, ticked) and Position (right or left) as sub-menus, the gadget's
-    /// settings, Network traffic control and Hide.
+    /// The right-click menu: Layout (the favourite layouts), Show (every reading, ticked), Position (right or left) and Font (the default and the fonts
+    /// picked before) as sub-menus, the gadget's settings, Network traffic control and Hide.
     private IReadOnlyList<MenuRowItem> MenuRows() => new[]
     {
         MenuRowItem.Sub("Layout", "layout-dashboard", LayoutRows, _layouts.CurrentName),
         MenuRowItem.Sub("Show", "eye", ShowRows),
         MenuRowItem.Sub("Position", "arrows-left-right", PositionRows, GadgetSettings.PositionNames[(int)Look.Position]),
+        MenuRowItem.Sub("Font", "cursor-text", FontRows, GadgetSettings.FontName(Look.Font)),
         Link("Gadget settings…", "settings", _windows.OpenGadgetSettings, ruleAbove: true),
         Link("Network traffic control…", "network", _windows.OpenApps),
         new MenuRowItem("Hide gadget", string.Empty, false, string.Empty, new RelayCommand(() => SetShown(false)), RuleAbove: true, IsMuted: true, Icon: "eye-off"),
@@ -337,6 +349,14 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
     /// Right and Left, the one in force chosen.
     private IReadOnlyList<MenuRowItem> PositionRows() => Enum.GetValues<GadgetPosition>().Select(p => new MenuRowItem(GadgetSettings.PositionNames[(int)p], string.Empty,
         p == Look.Position, string.Empty, new RelayCommand(() => SetPosition(p)))).ToList();
+
+    /// The default font and the fonts picked before, each in its own typeface, the one in force chosen; then the way to every installed font.
+    private IReadOnlyList<MenuRowItem> FontRows()
+    {
+        var rows = GadgetFontCard.Rows(Look.RecentFonts.Prepend(string.Empty), Look.Font, SetFont).ToList();
+        rows.Add(new MenuRowItem("More fonts…", string.Empty, false, string.Empty, new RelayCommand(_windows.OpenGadgetSettings), RuleAbove: true, IsMuted: true));
+        return rows;
+    }
 
     /// Every reading and the weather, ticked while shown; a click toggles it and keeps the menu open.
     private IReadOnlyList<MenuRowItem> ShowRows()

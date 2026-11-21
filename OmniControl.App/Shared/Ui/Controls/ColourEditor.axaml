@@ -1,0 +1,38 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+             x:Class="OmniControl.App.Shared.Ui.Controls.ColourEditor"
+             x:DataType="c:ColourEditorModel">
+    <!-- THE colour editor (an optionmenu pop-down at a colour choice's swatch button, mouse first): left, the saturation and brightness square,
+         the hue bar, the hex box and a swatch of the colour; right, the Hue, Saturation and Brightness master sliders (typeable values), then the
+         owner's Extra rows (their label column shares ColourEditorLabel). Every change is used at once. -->
+    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource GapLarge}" Grid.IsSharedSizeScope="True">
+        <StackPanel Spacing="{StaticResource GapSmall}">
+            <c:ColorSquare Width="{StaticResource ColorSquareWidth}" Height="{StaticResource ColorSquareHeight}"
+                           Hue="{Binding Hue}" Saturation="{Binding Saturation}" Brightness="{Binding Brightness}"
+                           ToolTip.Tip="Saturation (left to right) and brightness (bottom to top)" />
+            <c:HueBar Width="{StaticResource ColorSquareWidth}" Height="{StaticResource HueBarHeight}" Hue="{Binding Hue}" ToolTip.Tip="Hue" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}" Width="{StaticResource ColorSquareWidth}">
+                <TextBox Classes="field" Text="{Binding Hex}" MaxLength="7" ToolTip.Tip="The colour as #RRGGBB" />
+                <Border Grid.Column="1" Width="{StaticResource ColorSwatchSize}" Height="{StaticResource ColorSwatchSize}" VerticalAlignment="Center"
+                        CornerRadius="{StaticResource TypeableCornerRadius}" BorderThickness="1" BorderBrush="{DynamicResource BrushControlEdge}"
+                        Background="{Binding Swatch}" />
+            </Grid>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Spacing="{StaticResource Gap}" VerticalAlignment="Top">
+            <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="{StaticResource Gap}" ColumnSpacing="{StaticResource GapLarge}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="ColourEditorLabel" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Hue" VerticalAlignment="Center" />
+                <c:SliderField Grid.Column="1" Minimum="0" Maximum="360" Value="{Binding Hue}" ResetValue="{Binding HueReset}" Text="{Binding HueText}" />
+                <TextBlock Grid.Row="1" Text="Saturation" VerticalAlignment="Center" />
+                <c:SliderField Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Saturation}" ResetValue="{Binding SaturationReset}" Text="{Binding SaturationText}" />
+                <TextBlock Grid.Row="2" Text="Brightness" VerticalAlignment="Center" />
+                <c:SliderField Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Brightness}" ResetValue="{Binding BrightnessReset}" Text="{Binding BrightnessText}" />
+            </Grid>
+            <ContentPresenter x:Name="ExtraPresenter" IsVisible="False" />
+        </StackPanel>
+    </Grid>
+</UserControl>

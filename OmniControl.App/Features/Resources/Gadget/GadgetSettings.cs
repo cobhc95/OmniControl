@@ -65,6 +65,9 @@ public sealed class GadgetReading
     public string Label { get; set; } = string.Empty;
     public double? WarnAt { get; set; }
     public string Colour { get; set; } = string.Empty;
+
+    /// Its words' colour; "" = automatic (the gadget's text colour, the taskbar's own unless chosen); the warn colour wins past the warn point.
+    public string TextColour { get; set; } = string.Empty;
     public double GapAfter { get; set; }
 }
 
@@ -110,6 +113,15 @@ public sealed class GadgetSettings
     /// The names of <see cref="Colours"/>, in the same order ("Taskbar text", then the drawing colours' names).
     public static readonly IReadOnlyList<string> ColourNames = Palette.DrawingTitles.Prepend("Taskbar text").ToList();
 
+    /// The names of a reading's text colours: <see cref="ColourNames"/> with "" as automatic.
+    public static readonly IReadOnlyList<string> TextColourNames = ColourNames.Skip(1).Prepend("Automatic (taskbar text)").ToList();
+
+    /// The font menus' name of <see cref="Font"/> "" (the app's own font).
+    public const string DefaultFontName = "Default (Segoe UI)";
+
+    /// How many fonts the gadget's right-click Font menu remembers.
+    public const int MaxRecentFonts = 5;
+
     public bool Shown { get; set; }
     public int Lines { get; set; } = 2;
     public OddReading Odd { get; set; } = OddReading.Centre;
@@ -122,6 +134,26 @@ public sealed class GadgetSettings
 
     /// Which end of the taskbar; one for every layout (a layout keeps it, as it keeps shown or not).
     public GadgetPosition Position { get; set; }
+
+    /// The font family's name, "" = <see cref="DefaultFontName"/>; one for every layout, like the position.
+    public string Font { get; set; } = string.Empty;
+
+    /// The fonts picked before, latest first (at most <see cref="MaxRecentFonts"/>; the right-click Font menu).
+    public List<string> RecentFonts { get; set; } = new();
+
+    /// The menus' name of <paramref name="font"/>.
+    public static string FontName(string font) => font.Length > 0 ? font : DefaultFontName;
+
+    /// Uses <paramref name="font"/> and remembers it first among <see cref="RecentFonts"/>.
+    public void UseFont(string font)
+    {
+        Font = font;
+        if (font.Length == 0) return;
+        RecentFonts.RemoveAll(f => string.Equals(f, font, StringComparison.OrdinalIgnoreCase));
+        RecentFonts.Insert(0, font);
+        if (RecentFonts.Count > MaxRecentFonts) RecentFonts.RemoveRange(MaxRecentFonts, RecentFonts.Count - MaxRecentFonts);
+    }
+
     public bool HoverOutline { get; set; }
     public SpeedUnit Units { get; set; } = SpeedUnit.Auto;
     public bool Bits { get; set; }
@@ -173,14 +205,14 @@ public sealed class GadgetSettings
         Readings = Readings.OrderBy(r => !r.Shown).ToList();
     }
 
-    /// The look of <paramref name="from"/> (a layout) put into these settings, keeping shown or not, the position, the click actions, the hover details,
-    /// the space to the tray, the weather's place and, hidden, the rows the layout lacks (this PC's disks).
+    /// The look of <paramref name="from"/> (a layout) put into these settings, keeping shown or not, the position, the font, the click actions, the hover
+    /// details, the space to the tray, the weather's place and, hidden, the rows the layout lacks (this PC's disks).
     public void TakeLook(GadgetSettings from)
     {
         var keep = Copy();
         SettingsCopy.Into(this, from.Copy());
-        (Shown, Position, ClickAction, ClickDefaultMoved, DoubleClickAction, Hover, SpaceToTray) =
-            (keep.Shown, keep.Position, keep.ClickAction, keep.ClickDefaultMoved, keep.DoubleClickAction, keep.Hover, keep.SpaceToTray);
+        (Shown, Position, Font, RecentFonts, ClickAction, ClickDefaultMoved, DoubleClickAction, Hover, SpaceToTray) =
+            (keep.Shown, keep.Position, keep.Font, keep.RecentFonts, keep.ClickAction, keep.ClickDefaultMoved, keep.DoubleClickAction, keep.Hover, keep.SpaceToTray);
         (keep.Weather.Shows, keep.Weather.Temperatures) = (Weather.Shows, Weather.Temperatures);
         Weather = keep.Weather;
         foreach (var row in keep.Readings.Where(k => Readings.All(r => r.Id != k.Id)))

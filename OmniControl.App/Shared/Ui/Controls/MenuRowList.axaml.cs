@@ -9,8 +9,11 @@ namespace OmniControl.App.Shared.Ui.Controls;
 /// several can be ticked), a <see cref="Trailing"/> fact in the warm colour (<see cref="TrailingWarm"/>), an accent row (the one that opens something bigger) or a muted row (a way out to a manager), or a header row (a muted section title) with a thin line above it.
 /// A row that cannot be used now (<see cref="IsEnabled"/> false) is greyed and keeps its tooltip, which says why. A row that shows another page of
 /// the same menu in place (<see cref="OpensPage"/>; its command turns the page and it does not close the menu) has the chevron a sub-menu row has.
-public sealed record MenuRowItem(string Text, string Link, bool IsOn, string Tip, ICommand Command, IReadOnlyList<TagItem>? Tags = null, string Detail = "", bool Dim = false, bool IsHeader = false, bool RuleAbove = false, bool TagsOnOwnLine = false, bool IsSwitch = false, bool KeepsOpen = false, bool IsAccent = false, bool IsMuted = false, string? Icon = null, bool IsDanger = false, string Trailing = "", Func<IReadOnlyList<MenuRowItem>>? Submenu = null, bool TrailingWarm = false, bool IsEnabled = true, bool OpensPage = false)
+public sealed record MenuRowItem(string Text, string Link, bool IsOn, string Tip, ICommand Command, IReadOnlyList<TagItem>? Tags = null, string Detail = "", bool Dim = false, bool IsHeader = false, bool RuleAbove = false, bool TagsOnOwnLine = false, bool IsSwitch = false, bool KeepsOpen = false, bool IsAccent = false, bool IsMuted = false, string? Icon = null, bool IsDanger = false, string Trailing = "", Func<IReadOnlyList<MenuRowItem>>? Submenu = null, bool TrailingWarm = false, bool IsEnabled = true, bool OpensPage = false, string? Font = null)
 {
+    /// The name drawn in <see cref="Font"/> (a font menu's rows), else in the menu's own font.
+    public object NameFont => Font is { } font ? new FontFamily(font) : AvaloniaProperty.UnsetValue;
+
     /// A row that opens a nested menu at its side (a chevron at its right) when the pointer rests on it, on a click or on Right; the rows are asked each time the menu opens and again after a
     /// <see cref="KeepsOpen"/> row of it is clicked, so its ticks follow.
     public static MenuRowItem Sub(string text, string icon, Func<IReadOnlyList<MenuRowItem>> rows, string trailing = "") =>

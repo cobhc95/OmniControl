@@ -119,11 +119,12 @@ public sealed partial class GadgetLayoutGallery : ObservableObject, IDisposable
         _redraw();
     }
 
-    /// Draws the previews of the tiles on screen with <paramref name="cellsOf"/> (sample values for what is unknown) on the taskbar's colour.
-    public void Draw(Func<GadgetSettings, IReadOnlyList<GadgetCell>> cellsOf, IBrush? background)
+    /// Draws the previews of the tiles on screen with <paramref name="cellsOf"/> (sample values for what is unknown) on the taskbar's colour, in the
+    /// gadget's <paramref name="font"/> (one for every layout).
+    public void Draw(Func<GadgetSettings, IReadOnlyList<GadgetCell>> cellsOf, IBrush? background, string font)
     {
         foreach (var card in OnScreen)
-            if (_layouts.LookOf(card.Id) is { } look) (card.Cells, card.Layout, card.Background) = (cellsOf(look), GadgetLayout.Of(look), background);
+            if (_layouts.LookOf(card.Id) is { } look) (card.Cells, card.Layout, card.Background) = (cellsOf(look), GadgetLayout.Of(look) with { Font = font }, background);
     }
 
     public void Dispose() => _layouts.Changed -= Show;

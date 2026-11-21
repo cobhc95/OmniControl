@@ -4,12 +4,13 @@
              xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
              xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
              xmlns:p="using:OmniControl.App.Features.Resources.Pages"
+             xmlns:s="using:OmniControl.App.Shared.Services"
              x:Class="OmniControl.App.Features.Resources.Gadget.GadgetTabView"
              x:DataType="g:GadgetSettingsModel">
-    <!-- The Resources page's Taskbar gadget tab: the live preview with "Show on taskbar" and the Position card at its right, then the Ready-made layouts,
-         What it shows, Weather, Size and spacing, Numbers and units, Hover details and Clicks group cards. -->
+    <!-- The Resources page's Taskbar gadget tab: the live preview with "Show on taskbar" and the Position and Font cards at its right, then the Ready-made
+         layouts, What it shows, Weather, Size and spacing, Numbers and units, Hover details and Clicks group cards. -->
     <StackPanel Spacing="{StaticResource Gap}" Grid.IsSharedSizeScope="True">
-        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{StaticResource GapLarge}">
+        <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="{StaticResource GapLarge}">
             <Border Classes="pane" Background="{Binding PreviewBackground}" Height="{StaticResource GadgetPreviewHeight}" ClipToBounds="True">
                 <Grid ColumnDefinitions="Auto,*">
                     <TextBlock Classes="muted small" Text="Preview" VerticalAlignment="Center" Margin="{StaticResource RowHeadingInset}" />
@@ -23,6 +24,8 @@
                 <ToggleSwitch Tag="grouptool" IsChecked="{Binding Shown}" OnContent="On" OffContent="Off" VerticalAlignment="Center" />
             </StackPanel>
             <ListBox Grid.Column="2" Classes="rows compact" ItemsSource="{Binding PositionCard}" VerticalAlignment="Center" />
+            <!-- A long font name trims in the chip rather than widening the line -->
+            <ListBox Grid.Column="3" Classes="rows compact" ItemsSource="{Binding FontCard}" VerticalAlignment="Center" MaxWidth="{StaticResource ChoiceMaxWidth}" />
         </Grid>
 
         <StackPanel>
@@ -46,14 +49,16 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" SharedSizeGroup="GadgetLabel" />
                             <ColumnDefinition Width="Auto" SharedSizeGroup="GadgetIconColour" />
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="GadgetTextColour" />
                             <ColumnDefinition Width="Auto" SharedSizeGroup="GadgetWarn" />
                             <ColumnDefinition Width="Auto" SharedSizeGroup="GadgetColour" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="2" Classes="muted small" Text="Reading" />
                         <TextBlock Grid.Column="3" Classes="muted small" Text="Label" />
                         <TextBlock Grid.Column="4" Classes="muted small" Text="Icon colour" />
-                        <TextBlock Grid.Column="5" Classes="muted small" Text="Warn at" />
-                        <TextBlock Grid.Column="6" Classes="muted small" Text="Warn colour" />
+                        <TextBlock Grid.Column="5" Classes="muted small" Text="Text colour" />
+                        <TextBlock Grid.Column="6" Classes="muted small" Text="Warn at" />
+                        <TextBlock Grid.Column="7" Classes="muted small" Text="Warn colour" />
                     </Grid>
                     <ListBox x:Name="ReadingRows" Grid.Row="1" Classes="rows compact" ItemsSource="{Binding Rows}">
                         <ListBox.ItemTemplate>
@@ -65,6 +70,7 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" SharedSizeGroup="GadgetLabel" />
                                         <ColumnDefinition Width="Auto" SharedSizeGroup="GadgetIconColour" />
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="GadgetTextColour" />
                                         <ColumnDefinition Width="Auto" SharedSizeGroup="GadgetWarn" />
                                         <ColumnDefinition Width="Auto" SharedSizeGroup="GadgetColour" />
                                     </Grid.ColumnDefinitions>
@@ -94,11 +100,17 @@
                                             <c:SwatchList IsMenu="True" ItemsSource="{Binding AllIconColours}" />
                                         </c:ChipMenu.Menu>
                                     </c:ChipMenu>
-                                    <pages:NumberText Grid.Column="5" Value="{Binding WarnAt}" Minimum="0" Maximum="{Binding WarnMax}" VerticalAlignment="Center"
+                                    <c:ChipMenu Grid.Column="5" Classes="dropbox" ChipTag="scope" ChipAlignment="Left" VerticalAlignment="Center" Swatch="{Binding TextSwatch}"
+                                                ChipToolTip="{Binding TextSwatch.Tip, StringFormat='Text colour: {0}'}" MenuOpened="OnSwatchMenuOpened">
+                                        <c:ChipMenu.Menu>
+                                            <c:SwatchMenu ItemsSource="{Binding TextColours}" EditorText="{x:Static s:AccentService.CustomEditorLabel}" EditorClicked="OnCustomTextColour" />
+                                        </c:ChipMenu.Menu>
+                                    </c:ChipMenu>
+                                    <pages:NumberText Grid.Column="6" Value="{Binding WarnAt}" Minimum="0" Maximum="{Binding WarnMax}" VerticalAlignment="Center"
                                                       IsVisible="{Binding HasWarn}" ToolTip.Tip="Past this value the reading takes its warn colour; 0 = never">
                                         <TextBlock Classes="muted" Text="{Binding WarnText}" MinWidth="{StaticResource SliderValueMinWidth}" TextAlignment="Right" />
                                     </pages:NumberText>
-                                    <c:ChipMenu Grid.Column="6" Classes="dropbox" ChipTag="scope" ChipAlignment="Left" VerticalAlignment="Center" Swatch="{Binding WarnSwatch}"
+                                    <c:ChipMenu Grid.Column="7" Classes="dropbox" ChipTag="scope" ChipAlignment="Left" VerticalAlignment="Center" Swatch="{Binding WarnSwatch}"
                                                 ChipToolTip="{Binding WarnSwatch.Tip, StringFormat='Warn colour: {0}'}" IsVisible="{Binding HasWarn}" MenuOpened="OnSwatchMenuOpened">
                                         <c:ChipMenu.Menu>
                                             <c:SwatchList IsMenu="True" ItemsSource="{Binding Colours}" />

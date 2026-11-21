@@ -24,13 +24,13 @@
                                 </Panel>
                                 <Grid ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="{StaticResource MenuGap}">
                                     <WrapPanel IsVisible="{Binding Row.NotOneLine}" ItemSpacing="{StaticResource MenuTagGap}" LineSpacing="{StaticResource MenuTagGap}" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Row.Text}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding Row.Text}" FontFamily="{Binding Row.NameFont}" TextWrapping="Wrap" VerticalAlignment="Center" />
                                         <ItemsControl ItemsSource="{Binding Row.InlineTags}" VerticalAlignment="Center">
                                             <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="{StaticResource MenuTagGap}" LineSpacing="{StaticResource MenuTagGap}" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                             <ItemsControl.ItemTemplate><DataTemplate><c:TagView /></DataTemplate></ItemsControl.ItemTemplate>
                                         </ItemsControl>
                                     </WrapPanel>
-                                    <TextBlock Text="{Binding Row.Text}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{Binding Row.OneLine}" />
+                                    <TextBlock Text="{Binding Row.Text}" FontFamily="{Binding Row.NameFont}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{Binding Row.OneLine}" />
                                     <TextBlock Grid.Column="1" Classes="menutext" Classes.warm="{Binding Row.TrailingWarm}" Margin="0" Text="{Binding Row.Trailing}" VerticalAlignment="Center" IsVisible="{Binding Row.OneLine}" />
                                     <Button Grid.Column="1" Classes="link" Content="{Binding Row.Link}" IsVisible="{Binding Row.HasLink}" IsHitTestVisible="False" Focusable="False" VerticalAlignment="Top" />
                                     <ToggleSwitch Grid.Column="1" Classes="plain" IsChecked="{Binding Row.IsOn, Mode=OneWay}" IsVisible="{Binding Row.IsSwitch}" IsHitTestVisible="False" Focusable="False" VerticalAlignment="Center" />

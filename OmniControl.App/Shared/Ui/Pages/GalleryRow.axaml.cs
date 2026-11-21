@@ -1,6 +1,4 @@
-using Avalonia.Controls.Primitives;
 using Avalonia.Input;
-using Avalonia.Layout;
 using Avalonia.VisualTree;
 
 namespace OmniControl.App.Shared.Ui.Pages;
@@ -24,42 +22,20 @@ public partial class GalleryRow : UserControl
         };
     }
 
-    /// The pop-down of a swatch button: the grid of dots, then a thin line and the muted editor row (shown only for a gallery with an editor).
-    private StackPanel DotsMenu(ChipMenu chip)
+    /// The pop-down of a swatch button: THE colour pop-down (its editor row shown only for a gallery with an editor).
+    private SwatchMenu DotsMenu(ChipMenu chip)
     {
-        var list = new SwatchList { IsMenu = true, HorizontalAlignment = HorizontalAlignment.Center };
-        var rule = new Border();
-        rule.Classes.Add("hrule");
-        var words = new TextBlock();
-        var row = new Button { Content = words };
-        row.Classes.AddRange(new[] { "menurow", "muted" });
-        row.Click += (_, _) => OpenEditorFromMenu();
-        row.KeyDown += (_, e) =>
-        {
-            if (e.Key != Key.Up || e.KeyModifiers != KeyModifiers.None) return;
-            list.FocusChosen();
-            e.Handled = true;
-        };
-        list.PastEnd += () => { if (row.IsVisible) row.Focus(NavigationMethod.Directional); };
+        var menu = new SwatchMenu();
+        menu.EditorClicked += (_, _) => (DataContext as GalleryItem)?.OpenEditor();
         chip.MenuOpened += (_, flyout) =>
         {
             _open = flyout;
             if (DataContext is not GalleryItem item) return;
-            list.ItemsSource = item.DotItems();
-            words.Text = item.EditorText;
-            rule.IsVisible = row.IsVisible = item.Editor is not null && item.EditorText is not null;
+            menu.ItemsSource = item.DotItems();
+            menu.EditorText = item.Editor is not null ? item.EditorText : null;
         };
         chip.MenuClosed += (_, _) => _open = null;
-        var menu = new StackPanel { Children = { list, rule, row } };
-        menu.Bind(StackPanel.SpacingProperty, menu.GetResourceObservable("Gap"));
         return menu;
-    }
-
-    // The menu closes first; the editor then opens at the same button.
-    private void OpenEditorFromMenu()
-    {
-        _open?.Hide();
-        Dispatcher.UIThread.Post(() => (DataContext as GalleryItem)?.OpenEditor());
     }
 
     /// A half-width picture gallery has no room for the page-wide label column: its label takes only its own width (it leaves the shared
@@ -98,11 +74,7 @@ public partial class GalleryRow : UserControl
     /// The option's editor in the master card pop-down (ListMenuFlyout, optionmenu) under the gallery, made fresh each time.
     private void OpenEditor()
     {
-        if (_hooked?.Editor is not { } make) return;
-        var flyout = new ListMenuFlyout { Placement = PlacementMode.BottomEdgeAlignedLeft };
-        flyout.FlyoutPresenterClasses.Add("optionmenu");
-        flyout.Content = make(flyout.Hide);
-        flyout.ShowAt(Opener());
+        if (_hooked?.Editor is { } make) SwatchMenu.OpenEditor(Opener(), make);
     }
 
     // Where the editor opens: the swatch button shown, else the picture gallery.

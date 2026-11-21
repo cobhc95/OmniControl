@@ -31,8 +31,8 @@ public sealed record LabelIconGroup(string Name, IReadOnlyList<LabelIconItem> Ic
     private int Lines => (Icons.Count + MaxColumns - 1) / MaxColumns;
 }
 
-/// One row of the Taskbar gadget tab's readings list (the weather too): shown, a temperature's sensor chip, its label and editor, its warn point
-/// and colour; saved at once.
+/// One row of the Taskbar gadget tab's readings list (the weather too): shown, a temperature's sensor chip, its label and editor, its text colour,
+/// its warn point and colour; saved at once.
 public sealed partial class GadgetRowItem : ObservableObject
 {
     /// The icon grids the label editor offers (up/down pairs side by side); "+ icon" opens THE icon picker for any other.
@@ -59,6 +59,7 @@ public sealed partial class GadgetRowItem : ObservableObject
     {
         (Entry, _settings, _readings, _reading, _chooseIcon, _ink) = (entry, settings, readings, readings.Find(entry.Id), chooseIcon, ink);
         Colours = GadgetSettings.Colours.Select((c, i) => new SwatchItem(new SolidColorBrush(TaskbarGadget.ColourOf(c, ink())), new RelayCommand(() => SetColour(c)), GadgetSettings.ColourNames[i])).ToList();
+        TextColours = GadgetSettings.Colours.Select((c, i) => new SwatchItem(new SolidColorBrush(TaskbarGadget.ColourOf(c, Text)), new RelayCommand(() => SetTextColour(c)), GadgetSettings.TextColourNames[i])).ToList();
         // The grid holding the reading's best suggestion comes first (network for speeds, components for loads, thermometers for temperatures).
         var suggested = _reading?.SuggestedIcons ?? Array.Empty<string>();
         int Rank(string[] ids) => suggested.Select((id, i) => ids.Contains(id) ? i : int.MaxValue).DefaultIfEmpty(int.MaxValue).Min();
@@ -121,6 +122,34 @@ public sealed partial class GadgetRowItem : ObservableObject
         WarnSwatch = new SwatchItem(new SolidColorBrush(TaskbarGadget.ColourOf(Entry.Colour, _ink())), Colours[at].Pick, Colours[at].Tip);
     }
 
+    /// The text colour dots: automatic (the gadget's text colour) first, then the drawing colours.
+    public IReadOnlyList<SwatchItem> TextColours { get; }
+
+    /// The Readings table's text colour button: the chosen dot, or the user's own colour in its hue ring.
+    [ObservableProperty] private SwatchItem? _textSwatch;
+
+    /// The gadget's text colour (a reading's automatic one).
+    private Color Text => TaskbarGadget.ColourOf(_settings.Setup.Gadget.TextColour, _ink());
+
+    private void SetTextColour(string colour)
+    {
+        Set(e => e.TextColour = colour);
+        ShowTextColour();
+    }
+
+    private void ShowTextColour()
+    {
+        var at = GadgetSettings.Colours.ToList().FindIndex(c => string.Equals(c, Entry.TextColour, StringComparison.OrdinalIgnoreCase));
+        Choose(TextColours, at < 0 ? null : at);
+        TextSwatch = at >= 0
+            ? new SwatchItem(new SolidColorBrush(TaskbarGadget.ColourOf(Entry.TextColour, Text)), TextColours[at].Pick, TextColours[at].Tip)
+            : new SwatchItem(new SolidColorBrush(TaskbarGadget.ColourOf(Entry.TextColour, Text)), TextColours[0].Pick, AccentService.CustomName, SwatchMark.Custom);
+    }
+
+    /// "Custom colour…": THE colour editor on this reading's text colour (its own colour, else the one in force), used at once.
+    public ColourEditorModel CustomTextColour() =>
+        new(TaskbarGadget.ColourOf(Entry.TextColour, Text), _ink(), c => SetTextColour(c.ToString()));
+
     /// Rings dot <paramref name="at"/> (none when null).
     private static void Choose(IReadOnlyList<SwatchItem> dots, int? at)
     {
@@ -172,6 +201,7 @@ public sealed partial class GadgetRowItem : ObservableObject
         WarnText = Entry.WarnAt is { } at && _reading is not null ? _reading.UnitWords(at) : Reading.Unknown;
         GapText = $"{Entry.GapAfter:0} px";
         ShowWarnColour();
+        ShowTextColour();
         Opacity = Entry.Shown ? 1 : HiddenOpacity;
         _loading = false;
         ShowLabelState();

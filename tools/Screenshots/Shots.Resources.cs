@@ -83,6 +83,7 @@ internal static partial class Shots
         public bool IsShown => settings.Setup.Gadget.Shown;
         public void SetShown(bool on) { }
         public void SetPosition(GadgetPosition position) { }
+        public void SetFont(string font) { }
         public IReadOnlyList<GadgetCell> Cells(GadgetSettings look, bool sampleUnknown = false) => gadget.Cells(look, sampleUnknown: true);
         public Color Background => gadget.Background;
         public Color Ink => gadget.Ink;

@@ -10,10 +10,10 @@ public sealed record GadgetCell(string Label, string Value, Color Colour, string
 /// One line of a gadget tooltip: words (muted for a detail), or with <see cref="Graph"/> the small line of recent values; <see cref="StartsPart"/> puts a thin line above it.
 public sealed record GadgetTipLine(string Text, bool Muted = false, bool StartsPart = false, IReadOnlyList<double>? Graph = null, double GraphMax = 0);
 
-/// How the cells are laid out: lines, text size in points, the gaps in pixels and where an odd last reading goes.
-public sealed record GadgetLayout(int Lines, double TextPoints, double ColumnGap, double LineGap, OddReading Odd)
+/// How the cells are laid out: lines, text size in points, the gaps in pixels, where an odd last reading goes and the font ("" = the app's own).
+public sealed record GadgetLayout(int Lines, double TextPoints, double ColumnGap, double LineGap, OddReading Odd, string Font)
 {
-    public static GadgetLayout Of(GadgetSettings look) => new(look.Lines, look.TextSize, look.ColumnGap, look.LineGap, look.Odd);
+    public static GadgetLayout Of(GadgetSettings look) => new(look.Lines, look.TextSize, look.ColumnGap, look.LineGap, look.Odd, look.Font);
 }
 
 /// THE drawing of the gadget's cells, column by column; an unchanged layout keeps its parts and each value keeps its widest width, so nothing jiggles.
@@ -77,6 +77,8 @@ public sealed class GadgetCells : Grid
         var inLast = cells.Count - (columns - 1) * rows;
         var odd = inLast < rows && layout.Odd != OddReading.FillTop;
         (RowSpacing, ColumnSpacing) = (layout.LineGap, layout.ColumnGap);
+        if (layout.Font.Length > 0) TextElement.SetFontFamily(this, new FontFamily(layout.Font));
+        else ClearValue(TextElement.FontFamilyProperty);
         RowDefinitions = new RowDefinitions(string.Join(",", Enumerable.Repeat("Auto", rows)));
         ColumnDefinitions = new ColumnDefinitions(string.Join(",", Enumerable.Repeat("Auto", columns)));
         var size = layout.TextPoints * DipsPerPoint;

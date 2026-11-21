@@ -38,6 +38,7 @@ public sealed partial class GadgetSettingsModel : ObservableObject, IDisposable
         {
             Half = true, Tip = "Right: left of the tray icons. Left: after the Widgets button, or after the app buttons when they sit at the left.",
         };
+        Font = new GadgetFontCard(() => Look.Font, preview.SetFont);
         LabelChoice = new ChoiceItem("Labels", LabelWords.Select(l => l.Words).ToList(), MixedLabels,
             words => SetLabels(LabelWords.FirstOrDefault(l => l.Words == words).Style));
         Rows = new ObservableCollection<GadgetRowItem>(Listed.Select(Row));
@@ -62,6 +63,10 @@ public sealed partial class GadgetSettingsModel : ObservableObject, IDisposable
     public GalleryItem Position { get; }
     public IReadOnlyList<object> PositionCard => new object[] { Position };
 
+    /// "Font" beside "Position": the gadget's font, one for every layout.
+    public GadgetFontCard Font { get; }
+    public IReadOnlyList<object> FontCard => new object[] { Font.Item };
+
     public ChoiceItem LayoutChoice => _layoutChoice.Choice;
     /// The Ready-made layouts group's tiles, folded or unfolded in place.
     public GadgetLayoutGallery Gallery { get; }
@@ -77,9 +82,9 @@ public sealed partial class GadgetSettingsModel : ObservableObject, IDisposable
     public WeatherCards Weather { get; }
     public GadgetHoverCards Hover { get; }
 
-    /// The settings global search offers (Position and the cards of the Weather, Size and spacing, Numbers and units, Hover details and Clicks groups).
+    /// The settings global search offers (Position, Font and the cards of the Weather, Size and spacing, Numbers and units, Hover details and Clicks groups).
     public IEnumerable<IEditorItem> SearchItems => new[] { Weather.Group, Display.Layout, Display.Numbers, Hover.Group, Display.Behaviour }
-        .SelectMany(g => g.Items).OfType<IEditorItem>().Prepend(Position);
+        .SelectMany(g => g.Items).OfType<IEditorItem>().Prepend(Font.Item).Prepend(Position);
 
     [ObservableProperty] private IReadOnlyList<GadgetCell>? _previewCells;
     [ObservableProperty] private GadgetLayout? _previewLayout;
@@ -126,6 +131,7 @@ public sealed partial class GadgetSettingsModel : ObservableObject, IDisposable
     {
         OnPropertyChanged(nameof(Shown));
         Position.Load((int)Look.Position);
+        Font.Item.Refresh();
         var listed = Listed;
         ListDiff.Apply(Rows, listed.Select(r => Rows.FirstOrDefault(row => row.Entry == r && ReferenceEquals(row.Reading, _preview.Readings.Find(r.Id))) ?? Row(r)).ToList(), row => row.Entry.Id);
         foreach (var row in Rows) row.Load();
@@ -150,7 +156,7 @@ public sealed partial class GadgetSettingsModel : ObservableObject, IDisposable
             (row.Line, row.LineLayout, row.LineBackground) = (PreviewCells, line, PreviewBackground);
             row.Sensor?.Refresh();
         }
-        Gallery.Draw(layout => _preview.Cells(layout, sampleUnknown: true), PreviewBackground);
+        Gallery.Draw(layout => _preview.Cells(layout, sampleUnknown: true), PreviewBackground, look.Font);
     }
 
     public void Dispose()
