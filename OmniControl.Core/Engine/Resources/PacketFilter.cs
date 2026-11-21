@@ -41,13 +41,16 @@ internal sealed unsafe class PacketFilter : IDisposable
 
     private PacketFilter(SafeFileHandle device) => _device = device;
 
+    /// The driver's service under HKLM (<see cref="PacketFilterSetup"/>'s receipt is written only once it is there).
+    internal const string ServiceKey = @"SYSTEM\CurrentControlSet\Services\ndisrd";
+
     /// True when the driver is installed: its file is in Windows' drivers folder and its service is registered (removing the filter
     /// may leave the file behind); nothing is opened.
     public static bool Installed
     {
         get
         {
-            using var service = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services\ndisrd");
+            using var service = Registry.LocalMachine.OpenSubKey(ServiceKey);
             return service is not null && File.Exists(Path.Combine(Environment.SystemDirectory, "drivers", "ndisrd.sys"));
         }
     }

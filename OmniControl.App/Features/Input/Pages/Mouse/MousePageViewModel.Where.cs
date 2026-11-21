@@ -43,7 +43,7 @@ public sealed partial class MousePageViewModel
         {
             Half = true,
             Note = "Needed over admin windows",
-            Tip = "Turning it on starts OmniControl again as administrator (Windows asks once) and adds its sign-in task, so later starts need no prompt.",
+            Tip = "Turning it on starts OmniControl again as administrator. Windows asks at each start unless Setup's \"Start OmniControl as administrator at sign-in\" was ticked.",
         };
 
         _remoteCard = new ToggleItem("Send actions to remote PCs as keys", Settings.SendToRemoteAsKeys, _mouse.SetSendToRemoteAsKeys)

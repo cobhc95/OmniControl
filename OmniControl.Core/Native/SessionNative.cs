@@ -1,6 +1,7 @@
 namespace OmniControl.Core.Native;
 
-/// wtsapi32: the notice Windows sends a window when the user's session connects, disconnects, logs on or unlocks (Remote Desktop included).
+/// wtsapi32: the notice Windows sends a window when the user's session connects, disconnects, logs on or unlocks (Remote Desktop included),
+/// and the user signed in to a session.
 internal static class SessionNative
 {
     public const uint WmWtsSessionChange = 0x02B1;
@@ -15,4 +16,12 @@ internal static class SessionNative
 
     [DllImport("wtsapi32.dll", SetLastError = true)] public static extern bool WTSRegisterSessionNotification(IntPtr hwnd, int flags);
     [DllImport("wtsapi32.dll", SetLastError = true)] public static extern bool WTSUnRegisterSessionNotification(IntPtr hwnd);
+
+    /// <c>WTSQuerySessionInformationW</c>'s this process's session and the user and domain name it reads.
+    public const int CurrentSession = -1, InfoUserName = 5, InfoDomainName = 7;
+
+    [DllImport("wtsapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern bool WTSQuerySessionInformationW(IntPtr server, int sessionId, int infoClass, out IntPtr buffer, out int bytes);
+
+    [DllImport("wtsapi32.dll")] public static extern void WTSFreeMemory(IntPtr memory);
 }

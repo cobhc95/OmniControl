@@ -68,7 +68,7 @@ public sealed partial class MouseService
         Apply();
     }
 
-    /// Turns "Run as administrator" on or off (the sign-in task follows). Turning it on while not elevated starts OmniControl again as
+    /// Turns "Run as administrator" on or off (off removes the sign-in task). Turning it on while not elevated starts OmniControl again as
     /// administrator (the window then closes); the plain sentence it returns says why that did not happen (the setting is then put back to
     /// off), null otherwise. UI thread.
     public async Task<string?> SetRunAsAdministratorAsync(bool on)

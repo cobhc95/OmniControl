@@ -7,14 +7,15 @@ namespace OmniControl.Core.Engine.Resources;
 
 /// Installs Windows Packet Filter's driver when a download limit first needs it or the person retries (Setup's optional task does the same):
 /// the official, unmodified Windows 10+ x64 driver files in the app folder are checked against their pinned SHA-256 while held open, Windows'
-/// own netcfg adds the filter (as the driver's own MSI does; Windows asks only when OmniControl is not already administrator), and
-/// OmniControl's key records that it did, so its uninstall removes only its own copy. <see cref="Attach"/> takes it out of (or puts it back
-/// into) every adapter's traffic path for the "Packet filter" switch. Call off the UI thread.
+/// own netcfg adds the filter (as the driver's own MSI does; Windows asks only when OmniControl is not already administrator), and the
+/// same elevated step records that it did under HKLM (whose access list lets only administrators and SYSTEM change it), so OmniControl's
+/// uninstall removes only its own copy. <see cref="Attach"/> takes it out of (or puts it back into) every adapter's traffic path for the
+/// "Packet filter" switch. Call off the UI thread.
 public static class PacketFilterSetup
 {
     // Retyped in OmniControl.App.csproj (the copy into the app folder) and tools/setup.iss (install, uninstall and the record).
     private const string Folder = "windows-packet-filter", Inf = "ndisrd_lwf.inf", ComponentId = "nt_ndisrd";
-    private const string RecordKey = @"Software\OmniControl", RecordValue = "PacketFilterInstalled";
+    private const string RecordKey = @"SOFTWARE\OmniControl", RecordValue = "PacketFilterInstalled";
 
     private static readonly (string File, string Sha256)[] Files =
     {
@@ -37,8 +38,10 @@ public static class PacketFilterSetup
                 held.Add(file);
                 if (Convert.ToHexString(SHA256.HashData(file)) != sha256) return NotInstalled("its driver files are not the expected ones");
             }
-            var result = HelperProcess.RunElevated(SystemTools.NetCfg,
-                $"-v -l \"{Path.Combine(folder, Inf)}\" -c s -i {ComponentId}", hidden: true);
+            // netcfg's exit code is not only 0 on success (a restart it asks for), so the driver's service key decides the receipt.
+            var result = Elevated($"& {Quoted(SystemTools.NetCfg)} -v -l {Quoted(Path.Combine(folder, Inf))} -c s -i {ComponentId}; $code = $LASTEXITCODE; "
+                + $"if (Test-Path -LiteralPath {Quoted(DriverPath)}) {{ New-Item -Path {Quoted(RecordPath)} -ErrorAction SilentlyContinue | Out-Null; "
+                + $"Set-ItemProperty -Path {Quoted(RecordPath)} -Name {RecordValue} -Value 1 -Type DWord }}; exit $code");
             if (result.Failure != HelperFailure.None || !PacketFilter.Installed) return NotInstalled(Says(result));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -49,7 +52,7 @@ public static class PacketFilterSetup
         {
             foreach (var file in held) file.Dispose();
         }
-        return Record();
+        return Recorded();
     }
 
     private static string NotInstalled(string why) => $"Windows Packet Filter was not installed: {why}.";
@@ -63,9 +66,7 @@ public static class PacketFilterSetup
         try
         {
             if (!PacketFilter.Installed || IsAttached(on)) return null;
-            var script = $"{(on ? "Enable" : "Disable")}-NetAdapterBinding -Name '*' -ComponentID {ComponentId} -IncludeHidden -AllBindings -ErrorAction SilentlyContinue";
-            var result = HelperProcess.RunElevated(SystemTools.PowerShell,
-                $"-NoProfile -NonInteractive -EncodedCommand {Convert.ToBase64String(Encoding.Unicode.GetBytes(script))}", hidden: true);
+            var result = Elevated($"{(on ? "Enable" : "Disable")}-NetAdapterBinding -Name '*' -ComponentID {ComponentId} -IncludeHidden -AllBindings -ErrorAction SilentlyContinue");
             why = result.Failure != HelperFailure.None ? Says(result) : IsAttached(on) ? null : "some network adapters still have it the other way";
         }
         catch (Exception ex) when (ex is ManagementException or COMException or UnauthorizedAccessException)
@@ -98,17 +99,25 @@ public static class PacketFilterSetup
         _ => $"Windows' network set-up ended with code {result.ExitCode}",
     };
 
-    private static string? Record()
+    private const string RecordPath = $@"HKLM:\{RecordKey}", DriverPath = $@"HKLM:\{PacketFilter.ServiceKey}";
+
+    /// Runs a PowerShell script as administrator (Windows asks only when OmniControl is not already) and waits.
+    private static HelperResult Elevated(string script) => HelperProcess.RunElevated(SystemTools.PowerShell,
+        $"-NoProfile -NonInteractive -EncodedCommand {Convert.ToBase64String(Encoding.Unicode.GetBytes(script))}", hidden: true);
+
+    private static string Quoted(string text) => $"'{text.Replace("'", "''")}'";
+
+    private static string? Recorded()
     {
+        const string Unrecorded = "Windows Packet Filter was installed, but uninstalling OmniControl will leave it.";
         try
         {
-            using var key = Registry.CurrentUser.CreateSubKey(RecordKey);
-            key.SetValue(RecordValue, 1, RegistryValueKind.DWord);
-            return null;
+            using var key = Registry.LocalMachine.OpenSubKey(RecordKey);
+            return key?.GetValue(RecordValue) is 1 ? null : Unrecorded;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
         {
-            return "Windows Packet Filter was installed, but uninstalling OmniControl will leave it.";
+            return Unrecorded;
         }
     }
 }

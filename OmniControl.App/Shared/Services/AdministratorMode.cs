@@ -3,24 +3,35 @@ namespace OmniControl.App.Shared.Services;
 /// Running as administrator. With "Run as administrator" on (Mouse and Trackpad: Windows passes no mouse input to administrator programs
 /// otherwise; network limits use the network service instead, <see cref="NetworkServiceMode"/>), a start that is not elevated starts OmniControl again through its sign-in task
 /// (<see cref="SignInTask"/>, no prompt) or, without the task, with Windows' administrator prompt, and ends itself; when the user refuses, it
-/// carries on as it is. An elevated copy keeps the task in step with the setting. A restart as administrator starts the same way.
+/// carries on as it is. Only Setup adds the task; an elevated copy removes it when the setting is off or the task is not OmniControl's own.
+/// A restart as administrator starts the same way.
 public static class AdministratorMode
 {
-    private const string SetupArgument = "--sign-in-task", SetupOn = "on";
+    // Retyped in tools/setup.iss.
+    private const string SetupArgument = "--sign-in-task", SetupOn = "on", SetupKeep = "keep";
 
     /// Whether this copy runs as administrator (it cannot change while it runs).
     public static bool IsElevated { get; } = Elevation.IsElevated();
 
     private static string Self => Environment.ProcessPath ?? string.Empty;
 
-    /// Setup's <c>--sign-in-task on|off</c> (run elevated): adds or removes the task for this copy; the exit code (0 done, 1 not), or null
-    /// when the arguments ask something else. A failed add is tried again by the app's first elevated start.
+    /// Setup's <c>--sign-in-task on|keep|off</c> (run elevated): adds the task for this copy and the user signed in here, keeps one from
+    /// before only when it is exactly that, or removes it; the exit code (0 done, 1 when it logged what failed or what it removed), or null
+    /// when the arguments ask something else.
     public static int? FromSetup(string[] args)
     {
         var at = Array.IndexOf(args, SetupArgument);
         if (at < 0) return null;
-        var on = at + 1 < args.Length && args[at + 1] == SetupOn;
-        return (on ? SignInTask.Set(Self) : SignInTask.Remove()) is null ? 0 : 1;
+        var problem = args.ElementAtOrDefault(at + 1) switch
+        {
+            SetupOn => SignInTask.Set(Self),
+            SetupKeep => SignInTask.RemoveInvalid(Self) is ({ } wrong, var failed) ? $"removed ({wrong}){(failed is null ? null : $", but Windows didn't remove it ({failed})")}" : null,
+            _ => SignInTask.Remove(),
+        };
+        if (problem is null) return 0;
+        AppDataStore.AppendLog(Guard.LogFile, $"Sign-in task: {problem}");
+        AppDataStore.FlushLogs();
+        return 1;
     }
 
     /// The arguments this copy may act on. Anything running as the user may run the sign-in task with arguments of its choosing, so a copy
@@ -60,22 +71,20 @@ public static class AdministratorMode
     }
 
     /// Makes the sign-in task follow the setting, on a worker; only an elevated copy may change it (one that is not leaves it as it is).
-    /// A task that starts a copy its user could swap is removed first. <paramref name="atStart"/>: a portable copy's refusal is said only
-    /// when the setting is changed, not at every start.
-    public static void FollowSetting(bool on, Action<string> report, bool atStart = false)
+    /// Off removes it; on keeps it only while it is OmniControl's own (never adds one: only Setup does, with the person's tick).
+    public static void FollowSetting(bool on, Action<string> report)
     {
         if (!IsElevated) return;
-        var self = Self;
         Task.Run(() => Guard.Run("Sign-in task", () =>
         {
-            var removed = SignInTask.RemoveUnsafe();
-            var problem = on ? SignInTask.IsFor(self) ? null : SignInTask.Set(self) : SignInTask.Remove();
-            if (removed is not null)
+            if (!on)
             {
-                AppDataStore.AppendLog(Guard.LogFile, $"Sign-in task removed: someone other than an administrator may change {removed}");
-                report(Guard.SeeLog(SignInTask.RemovedUnsafe));
+                if (SignInTask.Remove() is { } problem) report(problem);
+                return;
             }
-            else if (problem is not null && !(atStart && problem == SignInTask.NeedsInstalled)) report(problem);
+            if (SignInTask.RemoveInvalid(null) is not ({ } wrong, var failed)) return;
+            AppDataStore.AppendLog(Guard.LogFile, failed is null ? $"Sign-in task removed: {wrong}" : $"Sign-in task not removed ({failed}): {wrong}");
+            report(Guard.SeeLog(failed is null ? SignInTask.Removed : "OmniControl's sign-in task isn't the one Setup makes, and Windows didn't remove it."));
         }));
     }
 
