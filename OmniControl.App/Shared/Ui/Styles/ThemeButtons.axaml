@@ -26,12 +26,13 @@
         <Setter Property="TextAlignment" Value="Center" />
     </Style>
     <Style Selector="Button.pill /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Background" Value="{DynamicResource BrushControlFill}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Foreground" Value="{DynamicResource BrushMuted}" />
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
         <Setter Property="CornerRadius" Value="13" />
     </Style>
+    <Style Selector="Button.pill:disabled"><Setter Property="Opacity" Value="0.45" /></Style>
     <Style Selector="Button.pill.custom /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" />
@@ -93,27 +94,14 @@
         <Setter Property="BorderBrush" Value="{DynamicResource BrushDanger}" />
     </Style>
 
-    <!-- Action inside a pop-down card (Button.pill.cardaction: Install, Remove, Preview changes, Test): the quiet pill is too faint on a tinted
-         card, so the text takes the normal colour and the edge a clear grey; .main (the one action that does the job, Install) is outlined in the accent -->
-    <Style Selector="Button.pill.cardaction /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
-    </Style>
+    <!-- Action inside a pop-down card (Button.pill.cardaction: Install, Remove, Preview changes, Test) is the plain pill; .main (the one action that does the job, Install) is outlined in the accent -->
     <Style Selector="Button.pill.cardaction.main /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
         <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
     </Style>
-    <Style Selector="Button.pill.cardaction:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-    </Style>
     <Style Selector="Button.pill.cardaction.main:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
-    </Style>
-    <Style Selector="Button.pill.cardaction:focus-visible /template/ ContentPresenter#PART_ContentPresenter, Button.pill.cardaction:focus-visible:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-        <Setter Property="BorderThickness" Value="2" />
     </Style>
 
 

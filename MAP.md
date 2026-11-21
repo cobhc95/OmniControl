@@ -114,7 +114,7 @@ Made by the shell, not modules: `Hotkeys` (master action list, Actions and hotke
 |---|---|
 | `Button.primary` (`.close`) | the one accent action of a window (Close); `.close` = the one Close/Cancel width |
 | `Button.usebtn` | confirm in a window ("Use for ..."); `.danger` for a destructive confirm |
-| `Button.pill` | small outlined action beside a card's name (Refresh, Clear); `.custom` = a toggle that is on |
+| `Button.pill` | small outlined action beside a card's name (Refresh, Clear, the FX window's Add / Remove): control fill, control edge, normal words, accent edge on hover, dimmed only while disabled; `.custom` = a toggle that is on |
 | `Button.pill` `.cog` / `.danger` / `.cardaction` (`.main`) / `.glyph` / `.icon` / `.accentline` / `.glow` | action settings / destructive / action inside a pop-down card / one-character / drawn glyph only / accent words and edge / FX button while effects run |
 | `Button.pill.closex` + `glyph`; `Button.removebadge` | THE round X remove pill (`CloseXSize`, `CrossIcon`); THE small remove cross chip (tray tiles, rows, search boxes) |
 | `Button.pill.splitleft` + `.splitright` | one pill in two halves (Wake split button) |
