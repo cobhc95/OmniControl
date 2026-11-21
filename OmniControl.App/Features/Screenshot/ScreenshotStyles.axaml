@@ -1,0 +1,84 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shot="using:OmniControl.App.Features.Screenshot">
+    <!-- The screenshot overlay's and the recording's own pieces (after Shared/Ui/Styles/FloatBars.axaml, which their windows include first):
+         shot|CaptureCanvas = the overlay's dim, frame and handles (drawn natively by Core's PictureSurface from these values), TextBox.shottext
+         = the text tool's box, StackPanel.qrcode = one code of the QR pop-down. Sizes Capture*, Record* in App.axaml. -->
+    <!-- Popup.floating = a pop-up placed at a point of its window by its HorizontalOffset/VerticalOffset (from the window's top-left),
+         never slid or flipped by Avalonia, never closed by a click elsewhere and without a window shadow: the overlay's size label, bars
+         and text box, which float above its picture (a native window, see shot:CaptureCanvas) and are placed by CaptureOverlay. -->
+    <Style Selector="Popup.floating">
+        <Setter Property="Placement" Value="AnchorAndGravity" />
+        <Setter Property="PlacementAnchor" Value="TopLeft" />
+        <Setter Property="PlacementGravity" Value="BottomRight" />
+        <Setter Property="PlacementConstraintAdjustment" Value="None" />
+        <Setter Property="IsLightDismissEnabled" Value="False" />
+        <Setter Property="WindowManagerAddShadowHint" Value="False" />
+    </Style>
+    <Style Selector="shot|CaptureCanvas">
+        <Setter Property="Dim" Value="{StaticResource BrushCaptureDim}" />
+        <Setter Property="Edge" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="HandleSize" Value="{StaticResource CaptureHandleSize}" />
+        <Setter Property="HandleReach" Value="{StaticResource CaptureHandleReach}" />
+    </Style>
+    <!-- The text tool's box: quiet (see-through, a 1 px accent edge in every state, no thicker focus edge), its words in the drawing's
+         colour and size (bound in CaptureOverlay), and selected words on the theme's selection wash in the same colour -->
+    <Style Selector="TextBox.shottext">
+        <Setter Property="MinWidth" Value="{StaticResource CaptureTextMinWidth}" />
+        <Setter Property="SelectionBrush" Value="{DynamicResource BrushAccentSoft}" />
+        <Setter Property="SelectionForegroundBrush" Value="{Binding Foreground, RelativeSource={RelativeSource Self}}" />
+        <Setter Property="CaretBrush" Value="{Binding Foreground, RelativeSource={RelativeSource Self}}" />
+    </Style>
+    <Style Selector="TextBox.shottext /template/ Border#PART_BorderElement, TextBox.shottext:pointerover /template/ Border#PART_BorderElement, TextBox.shottext:focus /template/ Border#PART_BorderElement, TextBox.shottext:focus:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+
+    <!-- Screen recording (docs/mockups/area-video-recording.html): Button.toolicon.danger = a red action of a floating bar (Record, Stop:
+         a smaller glyph, drawn and filled in BrushDanger); the recording bar's StackPanel.recclock holds Ellipse.recdot (the red dot) and
+         TextBlock.rectimer (the timer, figures of one width so the bar never jiggles); Rectangle.recordframe = the dashed red frame around
+         the recorded area (Screenshot/RecordingFrame). Sizes ToolIconDangerGlyph, RecordDotSize, RecordClock*, RecordFrameThickness in App.axaml. -->
+    <Style Selector="Button.toolicon.danger > Path.glyph">
+        <Setter Property="Width" Value="{StaticResource ToolIconDangerGlyph}" />
+        <Setter Property="Height" Value="{StaticResource ToolIconDangerGlyph}" />
+        <Setter Property="Stroke" Value="{DynamicResource BrushDanger}" />
+        <Setter Property="Fill" Value="{DynamicResource BrushDanger}" />
+    </Style>
+    <!-- .outline = a stroked glyph (the video camera of Record): no fill, larger -->
+    <Style Selector="Button.toolicon.danger.outline > Path.glyph">
+        <Setter Property="Width" Value="{StaticResource ToolIconOutlineGlyph}" />
+        <Setter Property="Height" Value="{StaticResource ToolIconOutlineGlyph}" />
+        <Setter Property="Fill" Value="Transparent" />
+        <Setter Property="StrokeThickness" Value="1.6" />
+        <Setter Property="StrokeJoin" Value="Round" />
+    </Style>
+    <Style Selector="StackPanel.recclock">
+        <Setter Property="Margin" Value="{StaticResource RecordClockInset}" />
+        <Setter Property="Spacing" Value="{StaticResource RecordClockGap}" />
+    </Style>
+    <Style Selector="Ellipse.recdot">
+        <Setter Property="Width" Value="{StaticResource RecordDotSize}" />
+        <Setter Property="Height" Value="{StaticResource RecordDotSize}" />
+        <Setter Property="Fill" Value="{DynamicResource BrushDanger}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.rectimer">
+        <Setter Property="FontSize" Value="{StaticResource ToolFontSize}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="FontFeatures">
+            <FontFeatureCollection>
+                <FontFeature Tag="tnum" Value="1" />
+            </FontFeatureCollection>
+        </Setter>
+    </Style>
+    <Style Selector="Rectangle.recordframe">
+        <Setter Property="Stroke" Value="{DynamicResource BrushDanger}" />
+        <Setter Property="StrokeThickness" Value="{StaticResource RecordFrameThickness}" />
+        <Setter Property="StrokeDashArray" Value="3,2" />
+    </Style>
+    <Style Selector="StackPanel.qrcode">
+        <Setter Property="Spacing" Value="{StaticResource MenuTagGap}" />
+        <Setter Property="Margin" Value="{StaticResource MenuRowInset}" />
+    </Style>
+</Styles>

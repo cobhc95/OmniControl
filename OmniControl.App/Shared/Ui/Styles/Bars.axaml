@@ -1,6 +1,5 @@
-﻿<Styles xmlns="https://github.com/avaloniaui"
+<Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:shot="using:OmniControl.App.Features.Screenshot"
         xmlns:c="using:OmniControl.App.Shared.Ui.Controls">
     <!-- MASTER designs of a window's thin bars (the FX window): Border.toolrow = ONE toolbar row of small controls (about 30 px high,
          ToolFontSize type, ToolControlHeight controls); Border.statusstrip = ONE thin status line at the bottom (StatusFontSize, muted,
@@ -104,58 +103,20 @@
     <Style Selector="TextBlock.statusline.caution"><Setter Property="Foreground" Value="{DynamicResource BrushCaution}" /></Style>
     <Style Selector="TextBlock.statusline.failed"><Setter Property="Foreground" Value="{DynamicResource BrushDanger}" /></Style>
 
-    <!-- MASTER designs of the screenshot overlay (Screenshot/CaptureOverlay): Border.floatbar = a small bar floating over a picture (the
-         drawing toolbar, the action bar; .label = the selection's size), Button.toolicon = a square icon button of such a bar (.selected =
-         the tool in use: accent wash and accent glyph; hover and press only change the wash, nothing moves), Button.swatch + c:SwatchDot =
-         one colour of every colour pop-down (the dot is also the overlay's colour button's), shot|CaptureCanvas = the overlay's dim, frame and
-         handles (drawn natively by Core's PictureSurface from these values), TextBox.shottext = the text tool's box, StackPanel.qrcode = one code of the QR pop-down. Sizes Capture*, ToolIcon*, Swatch*
-         in App.axaml. -->
-    <Style Selector="Border.floatbar">
-        <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="{StaticResource FloatBarRadius}" />
-        <Setter Property="Padding" Value="{StaticResource FloatBarPadding}" />
-    </Style>
-    <Style Selector="Border.floatbar > StackPanel"><Setter Property="Spacing" Value="{StaticResource FloatBarGap}" /></Style>
-    <Style Selector="Border.floatsep"><Setter Property="Background" Value="{DynamicResource BrushDivider}" /></Style>
-    <Style Selector="Border.floatsep.across">
-        <Setter Property="Height" Value="1" />
-        <Setter Property="Margin" Value="{StaticResource FloatSepAcross}" />
-    </Style>
-    <Style Selector="Border.floatsep.along">
-        <Setter Property="Width" Value="1" />
-        <Setter Property="Margin" Value="{StaticResource FloatSepAlong}" />
-    </Style>
-    <Style Selector="Border.floatbar.label > TextBlock"><Setter Property="FontSize" Value="{StaticResource ToolFontSize}" /></Style>
-    <Style Selector="Button.toolicon, Button.swatch">
+    <!-- Button.swatch + c:SwatchDot = one colour of every colour pop-down (the dot is also the screenshot overlay's colour button's). The
+         floating bars over a picture (Border.floatbar, Button.toolicon) are in FloatBars.axaml, the screenshot overlay's own pieces in
+         Features/Screenshot/ScreenshotStyles.axaml, each included only by the windows that show them. Sizes Swatch* in App.axaml. -->
+    <Style Selector="Button.swatch">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="CornerRadius" Value="{StaticResource ToolIconRadius}" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
-    <!-- mouse first (AGENTS rule 5): the overlay keeps the keyboard, so its shortcuts and the arrow-key nudge always work (its tool buttons,
-         and the dots of its colour pop-down, c:SwatchList IsMouseOnly) -->
-    <Style Selector="Button.toolicon, ItemsControl.swatches.mouseonly Button.swatch"><Setter Property="Focusable" Value="False" /></Style>
-    <Style Selector="Button.toolicon">
-        <Setter Property="Width" Value="{StaticResource ToolIconSize}" />
-        <Setter Property="Height" Value="{StaticResource ToolIconSize}" />
-        <Setter Property="Padding" Value="0" />
-    </Style>
     <Style Selector="Button.swatch"><Setter Property="Padding" Value="{StaticResource SwatchPadding}" /></Style>
-    <Style Selector="Button.toolicon:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.toolicon:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.swatch:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.swatch:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Style Selector="Button.swatch:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.swatch:pressed /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
     </Style>
-    <Style Selector="Button.toolicon.selected /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" /></Style>
-    <Style Selector="Button.toolicon.selected:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.toolicon.selected:pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushAccentHover}" /></Style>
-    <Style Selector="Button.toolicon:disabled /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="Transparent" /></Style>
-    <Style Selector="Button.toolicon > Path.glyph">
-        <Setter Property="Width" Value="{StaticResource ToolIconGlyph}" />
-        <Setter Property="Height" Value="{StaticResource ToolIconGlyph}" />
-    </Style>
-    <Style Selector="Button.toolicon.selected > Path.glyph"><Setter Property="Stroke" Value="{DynamicResource BrushAccent}" /></Style>
-    <Style Selector="Button.toolicon:disabled > Path.glyph"><Setter Property="Opacity" Value="0.4" /></Style>
     <!-- A dot keyed to by the arrows in a colour pop-down shows the accent wash behind it -->
     <Style Selector="Button.swatch:focus-visible /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" /></Style>
     <!-- c:SwatchDot = THE colour dot (SwatchSize; a Button.selector chip's is ChipSwatchSize, RowControls.axaml); TextBlock.swatchletter =
@@ -178,79 +139,6 @@
             </DataTemplate>
         </Setter>
     </Style>
-    <!-- Popup.floating = a pop-up placed at a point of its window by its HorizontalOffset/VerticalOffset (from the window's top-left),
-         never slid or flipped by Avalonia, never closed by a click elsewhere and without a window shadow: the overlay's size label, bars
-         and text box, which float above its picture (a native window, see shot:CaptureCanvas) and are placed by CaptureOverlay. -->
-    <Style Selector="Popup.floating">
-        <Setter Property="Placement" Value="AnchorAndGravity" />
-        <Setter Property="PlacementAnchor" Value="TopLeft" />
-        <Setter Property="PlacementGravity" Value="BottomRight" />
-        <Setter Property="PlacementConstraintAdjustment" Value="None" />
-        <Setter Property="IsLightDismissEnabled" Value="False" />
-        <Setter Property="WindowManagerAddShadowHint" Value="False" />
-    </Style>
-    <Style Selector="shot|CaptureCanvas">
-        <Setter Property="Dim" Value="{StaticResource BrushCaptureDim}" />
-        <Setter Property="Edge" Value="{DynamicResource BrushAccent}" />
-        <Setter Property="HandleSize" Value="{StaticResource CaptureHandleSize}" />
-        <Setter Property="HandleReach" Value="{StaticResource CaptureHandleReach}" />
-    </Style>
-    <!-- The text tool's box: quiet (see-through, a 1 px accent edge in every state, no thicker focus edge), its words in the drawing's
-         colour and size (bound in CaptureOverlay), and selected words on the theme's selection wash in the same colour -->
-    <Style Selector="TextBox.shottext">
-        <Setter Property="MinWidth" Value="{StaticResource CaptureTextMinWidth}" />
-        <Setter Property="SelectionBrush" Value="{DynamicResource BrushAccentSoft}" />
-        <Setter Property="SelectionForegroundBrush" Value="{Binding Foreground, RelativeSource={RelativeSource Self}}" />
-        <Setter Property="CaretBrush" Value="{Binding Foreground, RelativeSource={RelativeSource Self}}" />
-    </Style>
-    <Style Selector="TextBox.shottext /template/ Border#PART_BorderElement, TextBox.shottext:pointerover /template/ Border#PART_BorderElement, TextBox.shottext:focus /template/ Border#PART_BorderElement, TextBox.shottext:focus:pointerover /template/ Border#PART_BorderElement">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-        <Setter Property="BorderThickness" Value="1" />
-    </Style>
-
-    <!-- Screen recording (docs/mockups/area-video-recording.html): Button.toolicon.danger = a red action of a floating bar (Record, Stop:
-         a smaller glyph, drawn and filled in BrushDanger); the recording bar's StackPanel.recclock holds Ellipse.recdot (the red dot) and
-         TextBlock.rectimer (the timer, figures of one width so the bar never jiggles); Rectangle.recordframe = the dashed red frame around
-         the recorded area (Screenshot/RecordingFrame). Sizes ToolIconDangerGlyph, RecordDotSize, RecordClock*, RecordFrameThickness in App.axaml. -->
-    <Style Selector="Button.toolicon.danger > Path.glyph">
-        <Setter Property="Width" Value="{StaticResource ToolIconDangerGlyph}" />
-        <Setter Property="Height" Value="{StaticResource ToolIconDangerGlyph}" />
-        <Setter Property="Stroke" Value="{DynamicResource BrushDanger}" />
-        <Setter Property="Fill" Value="{DynamicResource BrushDanger}" />
-    </Style>
-    <!-- .outline = a stroked glyph (the video camera of Record): no fill, larger -->
-    <Style Selector="Button.toolicon.danger.outline > Path.glyph">
-        <Setter Property="Width" Value="{StaticResource ToolIconOutlineGlyph}" />
-        <Setter Property="Height" Value="{StaticResource ToolIconOutlineGlyph}" />
-        <Setter Property="Fill" Value="Transparent" />
-        <Setter Property="StrokeThickness" Value="1.6" />
-        <Setter Property="StrokeJoin" Value="Round" />
-    </Style>
-    <Style Selector="StackPanel.recclock">
-        <Setter Property="Margin" Value="{StaticResource RecordClockInset}" />
-        <Setter Property="Spacing" Value="{StaticResource RecordClockGap}" />
-    </Style>
-    <Style Selector="Ellipse.recdot">
-        <Setter Property="Width" Value="{StaticResource RecordDotSize}" />
-        <Setter Property="Height" Value="{StaticResource RecordDotSize}" />
-        <Setter Property="Fill" Value="{DynamicResource BrushDanger}" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
-    <Style Selector="TextBlock.rectimer">
-        <Setter Property="FontSize" Value="{StaticResource ToolFontSize}" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="FontFeatures">
-            <FontFeatureCollection>
-                <FontFeature Tag="tnum" Value="1" />
-            </FontFeatureCollection>
-        </Setter>
-    </Style>
-    <Style Selector="Rectangle.recordframe">
-        <Setter Property="Stroke" Value="{DynamicResource BrushDanger}" />
-        <Setter Property="StrokeThickness" Value="{StaticResource RecordFrameThickness}" />
-        <Setter Property="StrokeDashArray" Value="3,2" />
-    </Style>
     <!-- Rectangle.osdframe = the dashed accent edge of the OSD placement preview (Osd/OsdPreview); OsdFrameThickness / OsdFrameRadius in App.axaml -->
     <Style Selector="Rectangle.osdframe">
         <Setter Property="Stroke" Value="{DynamicResource BrushAccent}" />
@@ -258,10 +146,6 @@
         <Setter Property="StrokeDashArray" Value="3,2" />
         <Setter Property="RadiusX" Value="{StaticResource OsdFrameRadius}" />
         <Setter Property="RadiusY" Value="{StaticResource OsdFrameRadius}" />
-    </Style>
-    <Style Selector="StackPanel.qrcode">
-        <Setter Property="Spacing" Value="{StaticResource MenuTagGap}" />
-        <Setter Property="Margin" Value="{StaticResource MenuRowInset}" />
     </Style>
     <!-- Search boxes (Pages/SearchClear): the magnifier at the left and the pill naming the key that focuses the box (shown only while it is empty and unfocused) -->
     <Style Selector="Path.glyph.searchicon">
