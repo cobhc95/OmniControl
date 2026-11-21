@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Check boxes, radio buttons, sliders, progress bars and other standard controls follow OmniControl's accent instead of Windows' own accent colour.
+
 ## 0.2.7 (21 Nov 2026)
 
 - Important: Other PCs uses a new connection protocol in this version (safer pairing and fresh keys for every connection). Update every PC you pair to 0.2.7 or later; until both PCs run it, existing pairs show offline and new pairing is refused with one sentence. (This comes from the protocol change, not from the move to .NET 10, which needs nothing from you: the app still brings its own .NET.)
