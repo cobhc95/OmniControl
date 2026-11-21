@@ -22,9 +22,6 @@ public interface IFeatureModule
 /// opened, searched, restored or asked to reveal a state, then kept for the run.
 public sealed record FeaturePage(PageInfo Info, Func<PageViewModel> Make)
 {
-    /// The view-model is made at start-up instead: it still serves the page's actions and states itself (MAP.md open item).
-    public bool AtStart { get; init; }
-
     /// What the page puts in the master lists, through the module's own services, at start-up and at its place in the sidebar order (so the
     /// lists keep the order they had when every page was made at start-up).
     public Action? Registers { get; init; }

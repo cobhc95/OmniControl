@@ -2,8 +2,8 @@ namespace OmniControl.App.Shared.Ui.Pages;
 
 /// THE group card (look in Styles/Theme.axaml): a rounded panel with the group's header line (<see cref="GroupHeader"/>), a row of
 /// <see cref="Tools"/> at the header's right end (shown only while the group is open, always the same spacing) and the body, shown only
-/// while the group is open: a <see cref="ContentControl.ContentTemplate"/> (built when the group opens, let go when it closes; it reads the
-/// page's model) or, where a body still is one, a <see cref="ContentControl.Content"/> control (made with the page). Every page's group is this one control.
+/// while the group is open: its <see cref="ContentControl.ContentTemplate"/> (built when the group opens, let go when it closes; it reads the
+/// page's model). Every page's group is this one control.
 public class GroupCard : ContentControl
 {
     public static readonly StyledProperty<CardGroup?> GroupProperty = AvaloniaProperty.Register<GroupCard, CardGroup?>(nameof(Group));

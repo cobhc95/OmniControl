@@ -198,12 +198,9 @@
                                 </ItemsControl.ItemsPanel>
                             </ItemsControl>
                         </Grid>
-                        <!-- The body: a ContentTemplate is built when the group opens and let go when it closes; a Content control is built with the page -->
-                        <Panel IsVisible="{Binding Group.IsExpanded, RelativeSource={RelativeSource TemplatedParent}}">
-                            <pages:CardLayout Layout="{TemplateBinding ContentTemplate}"
-                                              IsVisible="{Binding Group.IsExpanded, RelativeSource={RelativeSource TemplatedParent}}" />
-                            <ContentPresenter Content="{TemplateBinding Content}" />
-                        </Panel>
+                        <!-- The body: its ContentTemplate is built when the group opens and let go when it closes -->
+                        <pages:CardLayout Layout="{TemplateBinding ContentTemplate}"
+                                          IsVisible="{Binding Group.IsExpanded, RelativeSource={RelativeSource TemplatedParent}}" />
                     </StackPanel>
                 </Border>
             </ControlTemplate>

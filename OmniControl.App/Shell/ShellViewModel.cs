@@ -134,10 +134,9 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         RegisterReloads();
 
         // The sidebar, in order (a page's NavGroup decides its heading; keep the pages of a group together). Each page registers its
-        // entries here, in this order; its view-model is made when it is first needed, except for the pages that still serve their own
-        // actions (FeaturePage.AtStart): one of those that fails is logged and left out, and the window still opens.
+        // entries here, in this order; its view-model is made when it is first needed.
         _allPages = new IFeatureModule[] { _displays, _volume, _devices, _otherPcs, _input, automation, _osd, resources }
-            .SelectMany(m => m.Pages).Select(Slot).OfType<PageSlot>().ToArray();
+            .SelectMany(m => m.Pages).Select(Slot).ToArray();
         foreach (var module in _modules) module.PagesMade();
         _presetManager.UseSections(_allPages.Select(p => new PresetSection(p.Title, p.Icon))
             .Append(new PresetSection(ActionsWindowService.Title, ActionsWindowService.Icon)).ToList());
@@ -212,12 +211,10 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     public IEnumerable<IDataTemplate> Templates => _modules.SelectMany(m => m.Templates)
         .Append(ViewTemplate.For<AppSettingsPageViewModel, AppSettingsPage>()).Append(ViewTemplate.For<SuggestedKeysSwitch, SuggestedKeysView>());
 
-    /// A feature page's place in the sidebar: a page made at start-up is made now (left out when that fails); any other registers its
-    /// entries now and is made at its first use.
-    private PageSlot? Slot(FeaturePage page)
+    /// A feature page's place in the sidebar: it registers its entries now and is made at its first use.
+    private PageSlot Slot(FeaturePage page)
     {
         var slot = new PageSlot(page.Info, page.Make, OnPageMade, Report);
-        if (page.AtStart) return slot.Page is null ? null : slot;
         if (page.Registers is { } register && Guard.Run($"Start-up: {page.Info.Title} page's actions", register) is not null)
             Report(Guard.SeeLog($"The {page.Info.Title} page's actions couldn't start."));
         return slot;
