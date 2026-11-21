@@ -22,6 +22,9 @@ public static partial class Timing
     /// Once the main window has been hidden (or not yet shown) this long, the memory its use left behind is given back to Windows (its page views stay).
     public static readonly TimeSpan HiddenSettle = TimeSpan.FromSeconds(30);
 
+    /// The process's memory goes to timing-log.txt this long after start-up (<c>UiTiming.Memory</c>; also at <see cref="HiddenSettle"/>).
+    public static readonly TimeSpan MemoryLineAfterStart = TimeSpan.FromMinutes(2);
+
     /// The UI watchdog (<c>UiWatchdog</c>) posts a heartbeat this often; when the UI thread has not run one for <see cref="UiStuckAfter"/>,
     /// the stall goes to hang-log.txt, once per stall and at most <see cref="UiStuckLogsPerRun"/> times per run.
     public static readonly TimeSpan UiHeartbeatEvery = TimeSpan.FromSeconds(5), UiStuckAfter = TimeSpan.FromSeconds(2);

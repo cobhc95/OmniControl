@@ -47,6 +47,7 @@ public partial class App : Application
         // Once start-up has built the pages and drawn the pop-up (its warm-up spans several frames, so "idle" can come too early), give
         // what start-up needed only back to Windows.
         DispatcherTimer.RunOnce(() => Guard.Run("Give memory back", ProcessPower.Compact), Timing.CompactAfterStart);
+        DispatcherTimer.RunOnce(() => UiTiming.Memory("2 min after start"), Timing.MemoryLineAfterStart);
         base.OnFrameworkInitializationCompleted();
     }
 }

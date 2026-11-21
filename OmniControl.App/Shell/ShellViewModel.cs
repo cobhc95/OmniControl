@@ -160,6 +160,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     private void OnHiddenSettled(object? sender, EventArgs e)
     {
         _hiddenSettle.Stop();
+        UiTiming.Memory("hidden settle");
         Guard.Run("Give memory back", ProcessPower.Compact);
     }
 

@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Diagnostics: timing-log.txt records the app's memory (managed heap, private bytes, working set) two minutes after start and each time the window has settled hidden.
+
 ## 0.2.6 (21 Nov 2026)
 
 - Security: pairing a PC now asks "Pair with <name>?" on the PC that shows the code too, a PC that is already paired must be unpaired before it can pair again, and the PC names are part of what both PCs prove (a name with hidden direction marks is cleaned). Both PCs need this version to pair.

@@ -3,9 +3,21 @@ using System.Diagnostics;
 namespace OmniControl.App.Shared.Services;
 
 /// <c>timing-log.txt</c> in the data folder: how long the user waited for something to show (a window, a page, search results, the tray
-/// panel), from the click or key to it being shown and to its first frame. A debugging aid, only in the log.
+/// panel), from the click or key to it being shown and to its first frame, and the process's memory at a few quiet moments. A debugging aid, only in the log.
 public static class UiTiming
 {
+    /// Logs the process's memory <paramref name="when"/>, read on a worker (the process figures come from Windows' process list): the
+    /// managed heap after the last collection (size, fragmented, committed), the live managed bytes, private bytes and working set.
+    public static void Memory(string when) => Guard.OffUi("Memory line", () =>
+    {
+        var gc = GC.GetGCMemoryInfo();
+        using var self = Process.GetCurrentProcess();
+        Write($"Memory {when}: heap {Mb(gc.HeapSizeBytes)}, fragmented {Mb(gc.FragmentedBytes)}, committed {Mb(gc.TotalCommittedBytes)}, "
+            + $"live {Mb(GC.GetTotalMemory(false))}, private {Mb(self.PrivateMemorySize64)}, working set {Mb(self.WorkingSet64)} (MB)");
+    });
+
+    private static string Mb(long bytes) => (bytes / 1048576.0).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
+
     private const string FileName = LogFiles.Timing;
 
     /// Logs "<paramref name="what"/>: shown after N ms, first frame after M ms", N now and M once the frame is drawn.
