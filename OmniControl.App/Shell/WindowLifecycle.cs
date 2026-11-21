@@ -8,7 +8,7 @@ namespace OmniControl.App.Shell;
 public static class WindowLifecycle
 {
     /// <param name="make">Makes a main window (the first one at start-up, a new one after a release).</param>
-    /// <param name="startHidden">Start in the tray: the window is built but not shown (started by the start-up entry).</param>
+    /// <param name="startHidden">Start in the tray (started by the start-up entry): no window is made until it is first asked for.</param>
     public static void Attach(Application app, IClassicDesktopStyleApplicationLifetime desktop,
         Func<MainWindow> make, ShellViewModel shell, AppSettings settings, bool startHidden)
     {
@@ -132,24 +132,12 @@ public static class WindowLifecycle
             return null;
         }
 
-        var first = Make();
+        // Starting in the tray builds no main window: the first request to show it makes it, as after a release.
+        if (startHidden || settings.StartMinimised)
+            Log($"Main window not made: starting in the tray ({(startHidden ? "the start-up entry" : "Start minimised")}); made at its first opening.");
+        else Make();
         var tray = new TrayService(app, () => Show("a double-click on the tray icon"), shell.TrayFlyout, shell.RunAction, shell.Hardware);
         shell.ReleaseWindows += Release; // the tray panel is never let go: it must open at once
-
-        if (startHidden || settings.StartMinimised)
-        {
-            // Avalonia raises Opened on EVERY show, not only the first: a handler that stayed subscribed hid the window again each time
-            // it was opened (from the tray, a hotkey or another start), so it showed and at once went away. It runs once and lets go.
-            var startSource = startHidden ? "starting in the tray (the start-up entry)" : "starting in the tray (Start minimised)";
-            Log($"Main window minimised by {startSource}.");
-            first.WindowState = WindowState.Minimized;
-            void HideOnFirstOpen(object? sender, EventArgs e)
-            {
-                first.Opened -= HideOnFirstOpen;
-                Hide(startSource);
-            }
-            first.Opened += HideOnFirstOpen;
-        }
 
         AppLifecycle.ShowRequested += Show;
         // A held hotkey repeats: each repeat is a request, and without this the window flipped shown, hidden, shown... while the key was down.
