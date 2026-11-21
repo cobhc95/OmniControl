@@ -3,27 +3,21 @@ using OmniControl.App.Features.Volume.Audio.Engine;
 
 namespace OmniControl.App.Features.Volume.Pages;
 
-/// The steps at the foot of the master's Method menu ("Equalizer APO devices…" or "Install Equalizer APO…", VB-CABLE), the master's and
-/// a cable's Equalizer APO fixes, and the per-program Test.
+/// The install row of the master's and a microphone's Method menu, the master's and a cable's Equalizer APO fixes, and the per-program Test.
 public sealed partial class VolumePageViewModel
 {
-    /// The steps at the foot of the master's Method menu: Equalizer APO's one step (its Device Selector, or its installer while it is not
-    /// installed), then the virtual cable's (Install VB-CABLE, or More cables and Remove VB-CABLE once one is installed).
+    /// The install row at the foot of a Method menu: Install Equalizer APO… and Install VB-CABLE…, each only while its program is missing
+    /// (none left = no row). The menu's fix step above the cards is never the installer (<see cref="MenuFixOf"/>).
     private IReadOnlyList<CardAction> SetupSteps()
     {
-        var steps = new List<CardAction> { Apo.Devices };
-        if (_support.Current is not { } support) return steps;
-        var installed = EffectsRules.CableInstalled(support);
-        steps.Add(installed ? MoreCablesAction() : CableSetupAction());
-        if (installed) steps.Add(RemoveCableAction);
+        var steps = new List<CardAction>();
+        if (!Apo.Installed) steps.Add(Apo.Devices with { Main = true });
+        if (_support.Current is { } support && !EffectsRules.CableInstalled(support)) steps.Add(CableSetupAction());
         return steps;
     }
 
-    /// Remove VB-CABLE: where to remove it.
-    private CardAction RemoveCableAction => _removeCable ??= new CardAction("Remove VB-CABLE",
-        "Tells where to remove VB-CABLE and opens VB-Audio's page",new AsyncRelayCommand(() => RunSetupAsync(null, _installer.RemoveCableAsync())));
-
-    private CardAction? _removeCable;
+    /// The fix step a Method menu shows above its cards: only Equalizer APO's Device Selector; its installer sits in <see cref="SetupSteps"/>.
+    private CardAction? MenuFixOf(CardAction? fix) => Apo.Installed ? fix : null;
 
     /// Equalizer APO's Device Selector (administrator): where it is put on a cable (a program's Method menu, Easy).
     private IAsyncRelayCommand ChooseDevicesCommand => _chooseDevices ??=

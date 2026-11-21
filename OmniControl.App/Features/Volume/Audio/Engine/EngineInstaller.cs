@@ -100,10 +100,6 @@ public sealed class EngineInstaller : IDisposable
     public Task<SetupResult> InstallCableAsync() => Task.Run(() =>
         PageResult(CablePage, "Opened VB-CABLE's download page (VB-CABLE is donationware by VB-Audio, www.vb-cable.com)."));
 
-    /// VB-CABLE is removed with its own setup program or from Windows' Installed apps; VB-Audio's page opens.
-    public Task<SetupResult> RemoveCableAsync() => Task.Run(() =>
-        PageResult(CablePage, "Remove VB-CABLE with its own setup program (Remove Driver) or from Windows' Installed apps."));
-
     /// VB-Audio's page for more cables (VB-CABLE A+B and C+D are sold there).
     public static SetupResult OpenCablePage() => PageResult(CablePage, "Opened VB-Audio's cable page (more cables: VB-CABLE A+B, C+D).");
 

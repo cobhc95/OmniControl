@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Changed: the Volume Method pop-down (master and microphones) has one install row under one divider, "Install Equalizer APO…" and "Install VB-CABLE…" side by side in the same pill style, each shown only while that program is missing; the separate install line above the divider, "More cables" and "Remove VB-CABLE" are gone from it.
+
 ## 0.2.7 (21 Nov 2026)
 
 - Important: Other PCs uses a new connection protocol in this version (safer pairing and fresh keys for every connection). Update every PC you pair to 0.2.7 or later; until both PCs run it, existing pairs show offline and new pairing is refused with one sentence. (This comes from the protocol change, not from the move to .NET 10, which needs nothing from you: the app still brings its own .NET.)
