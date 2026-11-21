@@ -8,33 +8,41 @@
              ToolTip.Tip="{Binding Availability.Reason}" ToolTip.ShowOnDisabled="True">
     <Panel>
         <!-- Full width: label, the path field (the file in use, typed or browsed), and the optional Default -->
-        <Grid Margin="0,1" ColumnSpacing="{StaticResource GapLarge}" IsVisible="{Binding !Half}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <TextBlock Classes="cardname" Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,16,0" />
-            <c:PathField Grid.Column="1" Grid.ColumnSpan="2" x:Name="PathBoxFull" Text="{Binding Path, Mode=OneWay}" Kind="{Binding PathKind}"
-                         PickerTitle="{Binding Kind.PickerTitle}" Chosen="OnChosen" />
-            <Button Grid.Column="3" Classes="pill" Tag="scope" Content="{Binding ResetText}" Command="{Binding ResetCommand}"
-                    IsVisible="{Binding HasReset}" VerticalAlignment="Center" />
-        </Grid>
+        <pages:CardLayout IsVisible="{Binding !Half}">
+            <DataTemplate x:DataType="pages:FileItem">
+                <Grid Margin="0,1" ColumnSpacing="{StaticResource GapLarge}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Classes="cardname" Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,16,0" />
+                    <c:PathField Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Path, Mode=OneWay}" Kind="{Binding PathKind}"
+                                 PickerTitle="{Binding Kind.PickerTitle}" TypeName="{Binding Kind.TypeName}" Patterns="{Binding Kind.Patterns}" />
+                    <Button Grid.Column="3" Classes="pill" Tag="scope" Content="{Binding ResetText}" Command="{Binding ResetCommand}"
+                            IsVisible="{Binding HasReset}" VerticalAlignment="Center" />
+                </Grid>
+            </DataTemplate>
+        </pages:CardLayout>
 
         <!-- Half width: the label (wraps to two lines), the file name (trims), then the buttons -->
-        <Grid Margin="0,1" ColumnSpacing="{StaticResource Gap}" IsVisible="{Binding Half}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" MinWidth="56" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <TextBlock Classes="cardlabel" Text="{Binding Label}" />
-            <c:PathField Grid.Column="1" Grid.ColumnSpan="2" x:Name="PathBoxHalf" Text="{Binding Path, Mode=OneWay}" Kind="{Binding PathKind}"
-                         PickerTitle="{Binding Kind.PickerTitle}" Chosen="OnChosen" />
-            <Button Grid.Column="3" Classes="pill" Tag="scope" Content="{Binding ResetText}" Command="{Binding ResetCommand}"
-                    IsVisible="{Binding HasReset}" VerticalAlignment="Center" />
-        </Grid>
+        <pages:CardLayout IsVisible="{Binding Half}">
+            <DataTemplate x:DataType="pages:FileItem">
+                <Grid Margin="0,1" ColumnSpacing="{StaticResource Gap}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MinWidth="56" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Classes="cardlabel" Text="{Binding Label}" />
+                    <c:PathField Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Path, Mode=OneWay}" Kind="{Binding PathKind}"
+                                 PickerTitle="{Binding Kind.PickerTitle}" TypeName="{Binding Kind.TypeName}" Patterns="{Binding Kind.Patterns}" />
+                    <Button Grid.Column="3" Classes="pill" Tag="scope" Content="{Binding ResetText}" Command="{Binding ResetCommand}"
+                            IsVisible="{Binding HasReset}" VerticalAlignment="Center" />
+                </Grid>
+            </DataTemplate>
+        </pages:CardLayout>
     </Panel>
 </UserControl>

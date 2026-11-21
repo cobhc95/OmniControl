@@ -24,8 +24,8 @@ public static class UiTiming
         });
     }
 
-    // Every window the app has open (shown or hidden), with all its visuals: what the main window's release should take away.
-    private static string Visuals()
+    /// Every window the app has open (shown or hidden), with all its visuals: what the main window's release should take away. Call on the UI thread.
+    public static string Visuals()
     {
         var windows = (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Windows ?? Array.Empty<Window>();
         return $"{windows.Sum(w => 1 + w.GetVisualDescendants().Count())} visuals in {windows.Count} windows";

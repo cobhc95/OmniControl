@@ -9,11 +9,15 @@
             <ListBox Classes="rows compact cards" ItemsSource="{Binding Primary}"></ListBox>
 
             <pages:GroupCard Group="{Binding Customize}">
-                <ListBox Classes="rows compact cards" ItemsSource="{Binding Customize.Items}"></ListBox>
+                <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:OsdPageViewModel">
+                    <ListBox Classes="rows compact cards" ItemsSource="{Binding Customize.Items}"></ListBox>
+                </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>
 
             <pages:GroupCard Group="{Binding Elements}">
-                <ListBox Classes="rows compact cards" ItemsSource="{Binding Elements.Items}"></ListBox>
+                <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:OsdPageViewModel">
+                    <ListBox Classes="rows compact cards" ItemsSource="{Binding Elements.Items}"></ListBox>
+                </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>
 
         </StackPanel>

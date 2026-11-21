@@ -81,13 +81,17 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     public string VersionText => AppInfo.VersionText;
 
     /// The page shown on the right (null while its view-model could not be made). Set via the two sidebar lists below.
-    [ObservableProperty] private PageViewModel? _currentPage;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShownPage))] private PageViewModel? _currentPage;
+
+    /// The page whose view the page area holds: none while the search results show, so their view and a page's are never both built.
+    public PageViewModel? ShownPage => IsSearching ? null : CurrentPage;
 
     private readonly DispatcherTimer _hiddenSettle = new() { Interval = Timing.HiddenSettle };
     private readonly DispatcherTimer _releaseUi = new() { Interval = Timing.UiReleaseAfterHidden };
 
-    /// The main window has stayed hidden <see cref="Timing.UiReleaseAfterHidden"/>: whoever owns the main window lets it go (never the tray panel).
-    public event Action? ReleaseWindows;
+    /// The main window has stayed hidden <see cref="Timing.UiReleaseAfterHidden"/>: whoever owns the main window lets it go (never the tray
+    /// panel) and gives null, or gives why it stays (a window it owns is open), and is asked again after another wait.
+    public event Func<string?>? ReleaseWindows;
     [ObservableProperty] private PageSlot? _selectedMainPage;
     [ObservableProperty] private PageSlot? _selectedFooterPage;
     [ObservableProperty] private string _searchText = string.Empty;
@@ -165,8 +169,8 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
             Report(Guard.SeeLog($"Damaged settings were reset to their defaults; the damaged files are kept as {string.Join(", ", damaged.Select(AppDataStore.BadCopyOf))}."));
     }
 
-    /// The window has stayed hidden a while: one full collection gives what its use left behind back to Windows. The page views stay
-    /// (<see cref="PageHost"/>) until <see cref="OnReleaseDue"/>, so showing it again soon rebuilds nothing.
+    /// The window has stayed hidden a while: one full collection gives what its use left behind back to Windows. The open page's view
+    /// stays (<see cref="PageHost"/>) until <see cref="OnReleaseDue"/>, so showing it again soon rebuilds nothing.
     private void OnHiddenSettled(object? sender, EventArgs e)
     {
         _hiddenSettle.Stop();
@@ -179,21 +183,29 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     private void OnReleaseDue(object? sender, EventArgs e)
     {
         _releaseUi.Stop();
+        var before = UiTiming.Visuals();
+        string? kept = null;
         Guard.Run("Let the windows go", () =>
         {
-            ReleaseWindows?.Invoke();
+            kept = ReleaseWindows?.Invoke();
             _actionsWindow.Release();
         });
-        DispatcherTimer.RunOnce(CompactAfterRelease, Timing.UiReleaseCompactAfter);
+        if (kept is not null)
+        {
+            UiTiming.Write($"Main window kept after its long hide: {kept}; asked again after the same wait");
+            _releaseUi.Start();
+            return;
+        }
+        DispatcherTimer.RunOnce(() => CompactAfterRelease(before), Timing.UiReleaseCompactAfter);
     }
 
     // A background collection, never a blocking one (ProcessPower.CompactAfterRelease); still skipped while OmniControl itself plays or records sound.
-    private void CompactAfterRelease()
+    private void CompactAfterRelease(string before)
     {
         if (_windowShown) return;
         var busy = _volume.StreamsAudio || _screenshot.Records;
         if (!busy) Guard.Run("Give memory back", ProcessPower.CompactAfterRelease);
-        UiTiming.Memory(busy ? "windows let go (sound running, not collected)" : "windows let go and collected");
+        UiTiming.Memory(busy ? "windows let go (sound running, not collected)" : "windows let go and collected", $"before the release {before}");
     }
 
     /// Every feature's view templates and those of what the shell itself makes (App settings, the suggested keys switch); added to the app's at start-up.
@@ -290,13 +302,14 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         UiTiming.Write($"Page {page.Title}: wired {clock.ElapsedMilliseconds} ms");
     }
 
-    /// The main window was shown, hidden, minimised or restored: the open page comes on or goes off screen with it.
-    public void SetWindowShown(bool shown)
+    /// The main window was shown, hidden, minimised or restored: the open page comes on or goes off screen with it. The release waits only
+    /// while it is <paramref name="hidden"/> (a minimised window keeps its taskbar button, so it is never let go), counted from the hide.
+    public void SetWindowShown(bool shown, bool hidden)
     {
+        _releaseUi.IsEnabled = hidden;
         if (shown == _windowShown) return;
         _windowShown = shown;
         _hiddenSettle.IsEnabled = !shown;
-        _releaseUi.IsEnabled = !shown;
         FollowRestoreCheck(shown);
         if (shown) _apps.Refresh();
         _wired?.OnOnScreenChanged(shown); // a page not wired yet comes on screen when it is

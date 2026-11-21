@@ -30,12 +30,18 @@
         </pages:PageTitleLine>
 
         <!-- EASY: the welcome, the Sound screen and the Easy page (new; reads and writes through the Advanced rows and the same services) -->
+        <!-- Easy and Advanced, and Advanced's two tabs, are each built only while shown (Pages/CardLayout) -->
         <Panel x:Name="EasyHost" IsVisible="{Binding IsEasy}">
-            <easy:EasyView DataContext="{Binding Easy}" />
+            <pages:CardLayout IsVisible="{Binding IsEasy}">
+                <DataTemplate x:DataType="vm:VolumePageViewModel"><easy:EasyView DataContext="{Binding Easy}" /></DataTemplate>
+            </pages:CardLayout>
         </Panel>
 
         <!-- ADVANCED: the Mixer and Wiring tabs -->
-        <StackPanel x:Name="CardsHost" Grid.IsSharedSizeScope="True" Spacing="{StaticResource Gap}" IsVisible="{Binding IsAdvanced}">
+        <Panel x:Name="CardsHost" IsVisible="{Binding IsAdvanced}">
+        <pages:CardLayout IsVisible="{Binding IsAdvanced}">
+        <DataTemplate x:DataType="vm:VolumePageViewModel">
+        <StackPanel Grid.IsSharedSizeScope="True" Spacing="{StaticResource Gap}">
             <!-- The tabs, and the Volume presets' preset picker at the right (the same control on both tabs, one view-model; the shared Controls/PresetPicker, as on the Mouse and Displays group lines) -->
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource WiringColumnGap}">
                 <pages:PageTabsView DataContext="{Binding Tabs}" />
@@ -51,7 +57,9 @@
             </Grid>
 
             <!-- MIXER: one row per source in columns (docs/mockups/mixer-rows-knobs.html), the small column headings above each group's rows -->
-            <StackPanel Spacing="{StaticResource Gap}" IsVisible="{Binding ShowsMixer}">
+            <pages:CardLayout IsVisible="{Binding ShowsMixer}">
+            <DataTemplate x:DataType="vm:VolumePageViewModel">
+            <StackPanel Spacing="{StaticResource Gap}">
                 <!-- The Outputs header: name and the programs' count (trimmed first when narrow), then "Show closed" and "Add program" -->
                 <pages:GroupCard Group="{Binding Outputs}">
                     <pages:GroupCard.Tools>
@@ -78,9 +86,13 @@
                     </StackPanel>
                 </pages:GroupCard>
             </StackPanel>
+            </DataTemplate>
+            </pages:CardLayout>
 
             <!-- WIRING: where each source plays and the cable it uses (combined devices are rows, "+ Combine ..." in a table header); the cable status sits in the tab row above -->
-            <StackPanel Spacing="{StaticResource Gap}" IsVisible="{Binding ShowsWiring}">
+            <pages:CardLayout IsVisible="{Binding ShowsWiring}">
+            <DataTemplate x:DataType="vm:VolumePageViewModel">
+            <StackPanel Spacing="{StaticResource Gap}">
                 <vm:WiringTable DataContext="{Binding WiringOutputs}" />
                 <vm:WiringTable DataContext="{Binding WiringInputs}" />
                 <vm:CableTable DataContext="{Binding WiringCables}" />
@@ -89,6 +101,11 @@
                     <ListBox Classes="rows compact cards" ItemsSource="{Binding Apo.Items}" />
                 </pages:GroupCard>
             </StackPanel>
+            </DataTemplate>
+            </pages:CardLayout>
         </StackPanel>
+        </DataTemplate>
+        </pages:CardLayout>
+        </Panel>
     </StackPanel>
 </UserControl>

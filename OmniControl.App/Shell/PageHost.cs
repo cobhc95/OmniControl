@@ -1,17 +1,19 @@
 using Avalonia.Controls.Templates;
+using Avalonia.VisualTree;
 
 namespace OmniControl.App.Shell;
 
-/// The main window's page area. A page's view is built the first time the page is laid out (so a window started in the tray builds
-/// nothing) and then kept with the window, also while it is hidden, so going back to a page or showing the window from the tray soon is
-/// a visibility flip instead of a rebuild (the Resources page keeps its gadget tab the same way); the views go with the window when it is
-/// let go after a long hide (<see cref="WindowLifecycle"/>). A hidden view runs nothing: the page stops its work when it leaves the screen
-/// (<see cref="PageViewModel.OnOnScreenChanged"/>).
+/// The main window's page area: it holds the open page's view only. The view is built when the page is laid out (so a window started in
+/// the tray builds nothing) and let go as soon as another page or the search results show, so the window carries one page's visuals;
+/// what makes a page look the same when it comes back (its tab, open groups, scroll <see cref="PageViewModel.Scroll"/>) is kept in its
+/// view-model. A page stops its work when it leaves the screen (<see cref="PageViewModel.OnOnScreenChanged"/>).
 public sealed class PageHost : Panel
 {
     public static readonly StyledProperty<object?> PageProperty = AvaloniaProperty.Register<PageHost, object?>(nameof(Page));
 
-    private readonly Dictionary<object, Control> _views = new();
+    private object? _built; // the page whose view the host holds
+    private ScrollViewer? _scroll; // the window's page scroller
+    private bool _settling; // a view was just built: the scroller's moves are not the page's until its scroll is put back
 
     static PageHost() => PageProperty.Changed.AddClassHandler<PageHost>((host, _) => host.Follow());
 
@@ -19,18 +21,47 @@ public sealed class PageHost : Panel
 
     private void Follow()
     {
-        foreach (var (page, view) in _views) view.IsVisible = ReferenceEquals(page, Page);
+        if (ReferenceEquals(_built, Page)) return;
+        _built = null;
+        Children.Clear();
         InvalidateMeasure();
     }
 
     protected override Size MeasureOverride(Size availableSize)
     {
-        if (Page is { } page && !_views.ContainsKey(page) && (this.FindDataTemplate(page) ?? FuncDataTemplate.Default).Build(page) is { } view)
+        if (_built is null && Page is { } page && (this.FindDataTemplate(page) ?? FuncDataTemplate.Default).Build(page) is { } view)
         {
             view.DataContext = page;
-            _views[page] = view;
+            _built = page;
             Children.Add(view);
+            _settling = true;
+            Dispatcher.UIThread.Post(PutScrollBack, DispatcherPriority.Loaded);
         }
         return base.MeasureOverride(availableSize);
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        _scroll = this.FindAncestorOfType<ScrollViewer>();
+        if (_scroll is not null) _scroll.ScrollChanged += OnScrolled;
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        if (_scroll is not null) _scroll.ScrollChanged -= OnScrolled;
+        _scroll = null;
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    private void OnScrolled(object? sender, ScrollChangedEventArgs e)
+    {
+        if (!_settling && _built is PageViewModel page && _scroll is { } scroll) page.Scroll = scroll.Offset;
+    }
+
+    private void PutScrollBack()
+    {
+        _settling = false;
+        if (_built is PageViewModel page && _scroll is { } scroll) scroll.Offset = page.Scroll;
     }
 }

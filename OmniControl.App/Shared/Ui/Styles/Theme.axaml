@@ -49,11 +49,6 @@
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
         <Setter Property="BorderThickness" Value="2" />
     </Style>
-    <Style Selector="Button.scope:focus-visible /template/ ContentPresenter#PART_ContentPresenter, Button.scope:focus-visible:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-        <Setter Property="BorderThickness" Value="2" />
-        <Setter Property="Background" Value="{DynamicResource BrushBackground}" />
-    </Style>
     <Style Selector="ToggleSwitch:focus /template/ Border#OuterBorder">
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
         <Setter Property="BorderThickness" Value="2" />
@@ -167,14 +162,6 @@
                   FlyoutPresenter.graphmenu = a pop-down holding a larger graph (Menus.axaml)
          Fields:  TextBox.field (in a card or window; .code = monospace several-line code, a saved script), TextBox.bar + ComboBox.bar (top search bar), TextBox.typednumber (a typed slider value),
                   ComboBox.choice (centred in a card), ComboBox.tool (on a group header's line). -->
-    <Style Selector="Button.step">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Padding" Value="8,4" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
-    <Style Selector="Button.step:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
-    </Style>
 
     <!-- Shortcut groups: one panel per feature with a clickable header that collapses it -->
     <Style Selector="Border.groupPanel">
@@ -201,30 +188,16 @@
                                 </ItemsControl.ItemsPanel>
                             </ItemsControl>
                         </Grid>
-                        <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
-                                          IsVisible="{Binding Group.IsExpanded, RelativeSource={RelativeSource TemplatedParent}}" />
+                        <!-- The body: a ContentTemplate is built when the group opens and let go when it closes; a Content control is built with the page -->
+                        <Panel IsVisible="{Binding Group.IsExpanded, RelativeSource={RelativeSource TemplatedParent}}">
+                            <pages:CardLayout Layout="{TemplateBinding ContentTemplate}"
+                                              IsVisible="{Binding Group.IsExpanded, RelativeSource={RelativeSource TemplatedParent}}" />
+                            <ContentPresenter Content="{TemplateBinding Content}" />
+                        </Panel>
                     </StackPanel>
                 </Border>
             </ControlTemplate>
         </Setter>
-    </Style>
-    <Style Selector="Button.groupHeader">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderBrush" Value="Transparent" />
-        <Setter Property="BorderThickness" Value="2" />
-        <Setter Property="CornerRadius" Value="8" />
-        <Setter Property="Padding" Value="6,3" />
-        <Setter Property="HorizontalAlignment" Value="Stretch" />
-        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-    </Style>
-    <Style Selector="Button.groupHeader:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushHover}" />
-        <Setter Property="BorderBrush" Value="Transparent" />
-    </Style>
-    <Style Selector="Button.groupHeader:focus /template/ ContentPresenter#PART_ContentPresenter, Button.groupHeader:focus:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-        <Setter Property="BorderThickness" Value="2" />
-        <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
     </Style>
     <Style Selector="PathIcon.chev">
         <Setter Property="Foreground" Value="{DynamicResource BrushMuted}" />
@@ -254,10 +227,6 @@
     </Style>
     <Style Selector="ListBox.rows > ListBoxItem:focus-within:pointerover /template/ ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
-    </Style>
-    <Style Selector="Button.scope:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
     </Style>
     <Style Selector="ComboBox:pointerover /template/ Border#Background, TextBox:pointerover /template/ Border#PART_BorderElement">
         <Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" />

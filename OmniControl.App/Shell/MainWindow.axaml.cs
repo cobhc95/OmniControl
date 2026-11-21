@@ -30,13 +30,13 @@ public partial class MainWindow : Window
         if (_shell is not null) _shell.SearchFocusRequested += OnSearchFocusRequested;
     }
 
-    /// Where a window stood (its position and size unless maximised) and how far its page was scrolled.
-    internal sealed record Placement(PixelPoint Position, Size Size, bool Maximised, Vector Scroll);
+    /// Where a window stood: its position and size unless maximised (its page's scroll is the page's own, <see cref="PageViewModel.Scroll"/>).
+    internal sealed record Placement(PixelPoint Position, Size Size, bool Maximised);
 
     /// This window's <see cref="Placement"/>, for the window made after it is let go.
-    internal Placement Placed => new(Position, ClientSize, WindowState == WindowState.Maximized, ContentHost.Offset);
+    internal Placement Placed => new(Position, ClientSize, WindowState == WindowState.Maximized);
 
-    /// Opens as <paramref name="placed"/> says (call before it is first shown); the page scrolls back once it is laid out.
+    /// Opens as <paramref name="placed"/> says (call before it is first shown).
     internal void PlaceAs(Placement placed)
     {
         if (placed.Maximised) WindowState = WindowState.Maximized;
@@ -46,12 +46,6 @@ public partial class MainWindow : Window
             Position = placed.Position;
             (Width, Height) = (placed.Size.Width, placed.Size.Height);
         }
-        void Scroll(object? sender, EventArgs e)
-        {
-            Opened -= Scroll;
-            Dispatcher.UIThread.Post(() => ContentHost.Offset = placed.Scroll, DispatcherPriority.Loaded);
-        }
-        Opened += Scroll;
     }
 
     /// A click anywhere except the hotkey box that is listening cancels listening.

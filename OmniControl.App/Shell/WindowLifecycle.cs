@@ -97,7 +97,7 @@ public static class WindowLifecycle
                 {
                     var onScreen = made.IsVisible && made.WindowState != WindowState.Minimized;
                     seen |= onScreen;
-                    shell.SetWindowShown(onScreen);
+                    shell.SetWindowShown(onScreen, hidden: !made.IsVisible);
                 }
                 // Shown, hidden or minimised by anything but Show and Hide above (and the start-up itself): logged too, so the next report says
                 // what did it (the minimise button and Windows' own Win+D or Win+M are the expected ones).
@@ -111,11 +111,14 @@ public static class WindowLifecycle
             return made;
         }
 
-        // Hidden a long while (the shell's timer): the window and its page views go, unless it or a window it owns (an FX window) is on
-        // screen or a question is open. Seen at least once, the next window opens where this one stood.
-        void Release()
+        // Hidden a long while (the shell's timer): the window and its page view go, unless it or a window it owns (an FX window) is on
+        // screen or a question is open; then it says why, and the shell asks again later. Seen at least once, the next window opens where this one stood.
+        string? Release()
         {
-            if (window is not { IsVisible: false } hidden || asking || quitting || hidden.OwnedWindows.Any(w => w.IsVisible)) return;
+            if (window is not { } hidden || quitting) return null;
+            if (hidden.IsVisible) return "it is on screen or minimised";
+            if (asking) return "the close question is open";
+            if (hidden.OwnedWindows.FirstOrDefault(w => w.IsVisible) is { } owned) return $"a window it owns is open ({owned.Title})";
             if (seen) left = hidden.Placed;
             window = null;
             desktop.MainWindow = null;
@@ -126,6 +129,7 @@ public static class WindowLifecycle
             var gone = new WeakReference<MainWindow>(hidden);
             DispatcherTimer.RunOnce(() => UiTiming.Memory("after the main window was let go", gone.TryGetTarget(out _)
                 ? "the let-go main window is still in memory (held by something, or not collected yet)" : "the let-go main window was collected"), Timing.UiReleaseLeakCheck);
+            return null;
         }
 
         var first = Make();

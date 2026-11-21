@@ -15,7 +15,7 @@ public sealed partial class ShellViewModel
     /// Editable settings matching the search text.
     public ObservableCollection<SearchEntry> SearchResults { get; } = new();
 
-    [ObservableProperty] private bool _isSearching;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShownPage))] private bool _isSearching;
 
     private SearchRunner<List<SearchEntry>> Search => _search ??= new SearchRunner<List<SearchEntry>>(ShowResults, "settings");
 

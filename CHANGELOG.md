@@ -11,6 +11,10 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 - Check boxes, radio buttons, sliders, progress bars and other standard controls follow OmniControl's accent instead of Windows' own accent colour.
 - Changed: the Volume Method pop-down (master and microphones) has one install row under one divider, "Install Equalizer APO…" and "Install VB-CABLE…" side by side in the same pill style, each shown only while that program is missing; the separate install line above the divider, "More cables" and "Remove VB-CABLE" are gone from it.
 - Fixed: the Method chip shows the method you picked, also while there are no effects to run (the master set to Equalizer APO said "Direct", so picking it looked like it did nothing); Automatic with nothing to run says "Automatic", and the line under the chip says "no effects". In the Method menu the current method keeps its selected look while it has the keyboard.
+- Lighter memory: the main window keeps only the page you are on (none while search results show); a page you go back to is built again, a moment slower, and comes back at the same tab, open groups and scroll. A group's cards are built when it opens and let go when it closes (Mouse and Trackpad, OSD, Displays, inner groups), and the Volume page builds only the view and tab shown (Easy or Advanced, Mixer or Wiring).
+- Lighter memory: seven kinds of button (pills, state buttons, option cards, field-like pickers, EQ band rows, gallery arrows, group headers) carry their looks in a theme of their own, so every other button checks far fewer styles; nothing looks different.
+- Fixed: the main window was sometimes never let go after 5 minutes in the tray: the wait now counts only while it is hidden (a minimised window keeps its taskbar button), and when an FX window or the close question was open it tries again later instead of giving up; timing-log.txt says why it was kept, and the visuals before and after.
+- Fixed: Up and Down reach the next row of a long list that is out of view (search results, mixer rows) instead of stopping or skipping it.
 
 ## 0.2.7 (21 Nov 2026)
 
