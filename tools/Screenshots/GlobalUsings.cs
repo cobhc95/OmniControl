@@ -1,0 +1,13 @@
+global using Avalonia;
+global using Avalonia.Controls;
+global using Avalonia.Media;
+global using Avalonia.Threading;
+global using System.Collections.ObjectModel;
+global using OmniControl.Core.Engine;
+global using OmniControl.Core.Models;
+global using OmniControl.App.Features.Hotkeys;
+global using OmniControl.App.Shared.Contracts;
+global using OmniControl.App.Shared.Dialogs;
+global using OmniControl.App.Shared.Services;
+global using OmniControl.App.Shared.Ui.Controls;
+global using OmniControl.App.Shared.Ui.Pages;

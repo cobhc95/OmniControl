@@ -90,8 +90,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The headless tests (tests/OmniControl.Tests) check the route planner and the effects chain, which are internal. -->
+    <!-- The headless tests (tests/OmniControl.Tests) check the route planner and the effects chain, which are internal; the README
+         screenshot tool (tools/Screenshots) makes internal view-models with sample data. -->
     <InternalsVisibleTo Include="OmniControl.Tests" />
+    <InternalsVisibleTo Include="OmniControl.Screenshots" />
   </ItemGroup>
 
 </Project>

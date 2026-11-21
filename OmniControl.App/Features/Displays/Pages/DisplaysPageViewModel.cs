@@ -4,7 +4,6 @@ using OmniControl.App.Features.Hotkeys;
 using OmniControl.App.Features.Osd;
 using OmniControl.App.Shared.Presets;
 using OmniControl.App.Features.States;
-using OmniControl.Core;
 using OmniControl.Core.Interfaces;
 
 namespace OmniControl.App.Features.Displays.Pages;
@@ -21,7 +20,7 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
     /// What a worker thread found out about the displays, to be shown on the UI thread.
     private sealed record Snapshot(IReadOnlyList<DisplayInfo> Displays, IReadOnlyList<IMonitor> Monitors, bool HasLaptop);
 
-    private readonly MonitorEngine _engine;
+    private readonly IMonitorEngine _engine;
     private readonly IActionRegistry _hotkeys;
     private readonly Func<string, SuggestedKeysSwitch> _suggestedKeys;
     private readonly IStateRegistry _states;
@@ -86,7 +85,7 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
     /// <param name="openPresets">Opens the preset manager at a section and group (the header cogwheels).</param>
     /// <param name="states">The master list of states: each display's levels are registered there while it is attached.</param>
     /// <param name="hardware">The master list of hardware watches: the page registers its two (the monitors, and the list of displays).</param>
-    public DisplaysPageViewModel(MonitorEngine engine, IActionRegistry hotkeys, Func<string, SuggestedKeysSwitch> suggestedKeys, IOsd osd, SoftwareDisplayService software, Action<string> report,
+    public DisplaysPageViewModel(IMonitorEngine engine, IActionRegistry hotkeys, Func<string, SuggestedKeysSwitch> suggestedKeys, IOsd osd, SoftwareDisplayService software, Action<string> report,
         IPresetGroups presets, Action<string?, string?> openPresets, IStateRegistry states, IHardwareWatches hardware)
     {
         (_engine, _hotkeys, _suggestedKeys, _osd, _software, _report, _openPresets, _states) = (engine, hotkeys, suggestedKeys, osd, software, report, openPresets, states);

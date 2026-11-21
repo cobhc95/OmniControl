@@ -1,119 +1,63 @@
 ﻿# OmniControl
 
-One Windows app that controls your displays, sound, mouse, trackpad, smart plugs and screenshots, and wires any of them to any other.
+One Windows app for your displays, sound, smart plugs, mouse, trackpad, other PCs and screenshots, where every feature is an action you can put on a hotkey, a button, a gesture, a tray tile or a rule.
 
-**Everything is an action. Everything has a state.** Every feature registers its actions (brightness up, toggle a plug, rotate a screen, run a script) and its states (a plug is on, the master volume, on battery, the mouse layer) in one master list. Every action can get a hotkey in one **Actions and hotkeys** window, or be put on a mouse button, a trackpad gesture, a tray tile or an automation rule. Rules can start when a state changes or when another action runs, and the lists update as you add devices, scripts and custom actions.
+> Pre-release: expect rough edges. Much of it has been tested on one PC only.
 
-> **Status: pre-release (0.1.x).** Expect rough edges. Much of it has been tested only on the developer's own PC. Where a feature is partial or experimental, this page says so.
+## What it does
 
-![Volume page](docs/screenshots/volume.png)
+- **Displays**: each monitor's own controls over DDC/CI (brightness, contrast, RGB gain, input source, colour preset and more) and the laptop backlight; a software picture per display (brightness, contrast, gamma, colour temperature); saturation, grayscale and invert for the whole desktop; warm light on a schedule; rotation; monitor and picture presets.
+- **Volume**: per-app volume, pan, mute and output device, microphones, live meters; an Easy view with guided goals and an Advanced Mixer and Wiring view; volume presets.
+- **Effects**: parametric and graphic EQs, compressor, limiter, gain, an impulse-response loader and VST3/VST2 plug-ins, per app, on the master and on microphones; they run in Equalizer APO (its official installer is included), through a virtual cable or by recording the app; combined speakers and microphones.
+- **Smart devices**: Tapo and Kasa plugs and bulbs on your network through python-kasa, or (experimental) by tapping through the device's own phone app in an Android emulator; several methods per device, tried in order; automatic state checks.
+- **Other PCs**: pair PCs on your network or over Tailscale, then run each other's shared actions, see their states and sound, wake them, and see and cancel a sleep or shut-down countdown; import settings or device set-ups from a paired PC.
+- **Mouse and trackpad**: actions per button, wheel and tilt in 10 layers, limited to chosen apps; precision-touchpad gestures (three- and four-finger swipes, pinch, taps) with Windows' own gesture given back when unused; wheel and middle-click gestures over screen edges, the taskbar or title bars; custom gesture rules; pointer settings; actions sent as keys to a remote desktop.
+- **Actions and hotkeys**: one window lists every action of every feature; system-wide hotkeys, shortcut sets, favourites and "Run now"; the same actions on buttons, gestures, tray tiles and rules.
+- **Automation**: "When ... and ... do ..." rules (time, timer, idle, wake, battery, programs, USB devices, a hotkey, any state change, any action) and blocks that forbid actions while a condition holds; custom actions (command, script file, program, file, web address, keys); saved PowerShell, CMD and Python scripts; power actions with a cancellable countdown; keep awake.
+- **OSD**: its own pop-up for volume, brightness and more, in five styles, on the screens and place you choose; it can hide Windows' own (best effort).
+- **Resources**: live CPU, GPU, memory, disk, network and temperature readings; a taskbar gadget with ready-made layouts and the weather; network traffic control (per-app download and upload limits and blocks).
+- **Screenshots**: a Lightshot-style area editor (pen, line, arrow, box, marker, text, blur) with copy, save and print; read a QR code; search the picture online; record an area to MP4 or GIF.
+- **Tray panel**: brightness and volume sliders and tiles for smart devices, effects, night light, microphone mute, rotation or any action; optionally on Win+A.
+- **App**: themes, accent and background colours, a preset manager, backup and restore, update check.
 
-## Features
+## Screenshots
 
-### Smart home
-- **Tapo and Kasa** plugs and bulbs over your local network through [python-kasa](https://github.com/python-kasa/python-kasa) (the *Scripts* method), with built-in Tapo and Kasa templates, Check now and Auto-check. Tapo was tested first.
-- **Simulation** (experimental): drives the device's own phone app in an Android emulator (Android Studio, BlueStacks, LDPlayer, MuMu Player, MEmu). You record the taps, then *teach on and off* so OmniControl can read the state from the app's screen. The emulator runs hidden.
-- One device can have **several methods** (for example Scripts, then Simulation). OmniControl tries them in order and falls through if one fails.
+<table>
+<tr>
+<td width="33%"><a href="docs/screenshots/displays.png"><img src="docs/screenshots/displays.png" alt="Displays page"></a><br><sub>Displays: each monitor over DDC/CI</sub></td>
+<td width="33%"><a href="docs/screenshots/volume.png"><img src="docs/screenshots/volume.png" alt="Volume mixer"></a><br><sub>Volume: mixer with effects per app</sub></td>
+<td width="33%"><a href="docs/screenshots/smart-devices.png"><img src="docs/screenshots/smart-devices.png" alt="Smart Devices page"></a><br><sub>Smart Devices</sub></td>
+</tr>
+<tr>
+<td><a href="docs/screenshots/mouse.png"><img src="docs/screenshots/mouse.png" alt="Mouse and Trackpad page"></a><br><sub>Mouse and Trackpad</sub></td>
+<td><a href="docs/screenshots/automation.png"><img src="docs/screenshots/automation.png" alt="Automation page"></a><br><sub>Automation: rules and blocks</sub></td>
+<td><a href="docs/screenshots/actions-hotkeys.png"><img src="docs/screenshots/actions-hotkeys.png" alt="Actions and hotkeys window"></a><br><sub>Actions and hotkeys</sub></td>
+</tr>
+<tr>
+<td><a href="docs/screenshots/action-picker.png"><img src="docs/screenshots/action-picker.png" alt="Choose an action window"></a><br><sub>Choosing an action for a button</sub></td>
+<td><a href="docs/screenshots/osd.png"><img src="docs/screenshots/osd.png" alt="OSD page"></a><br><sub>OSD settings</sub></td>
+<td><a href="docs/screenshots/osd-styles.png"><img src="docs/screenshots/osd-styles.png" alt="OSD styles"></a><br><sub>The OSD's five styles</sub></td>
+</tr>
+<tr>
+<td><a href="docs/screenshots/resources-gadget-tab.png"><img src="docs/screenshots/resources-gadget-tab.png" alt="Resources page, Taskbar gadget tab"></a><br><sub>Resources: taskbar gadget settings</sub></td>
+<td><a href="docs/screenshots/taskbar-gadget.png"><img src="docs/screenshots/taskbar-gadget.png" alt="Taskbar gadget layouts"></a><br><sub>Taskbar gadget layouts</sub></td>
+<td><a href="docs/screenshots/tray-panel.png"><img src="docs/screenshots/tray-panel.png" alt="Tray quick panel"></a><br><sub>Tray quick panel</sub></td>
+</tr>
+<tr>
+<td><a href="docs/screenshots/app-settings.png"><img src="docs/screenshots/app-settings.png" alt="App settings page"></a><br><sub>App settings</sub></td>
+<td><a href="docs/screenshots/displays-light.png"><img src="docs/screenshots/displays-light.png" alt="Displays page in the light theme"></a><br><sub>Light theme</sub></td>
+<td></td>
+</tr>
+</table>
 
-![Smart Devices](docs/screenshots/smart-devices.png)
+The pictures are drawn from the app's own views with sample data by `tools/Screenshots`.
 
-### Custom scripts and custom actions
-- **Scripts**: PowerShell, CMD or Python saved inside OmniControl. Each one becomes a "Run script" action.
-- **Custom actions**: run a command, script file, program, file, folder or web address. Every one is a normal action, so it can have a hotkey, a mouse button or a rule.
+## Download
 
-### Audio
-- **Volume mixer**: per-app volume, pan and mute, an output device per app, input devices, live meters and knobs. There is an **Easy** view of guided goals and an **Advanced** view.
-- **Per-app effects** run through a virtual cable or by recording the app. **Master effects** run through Equalizer APO, which OmniControl drives, or through a cable bus. **Combined devices** let you play on two speakers at once or join two microphones.
-- **Effects**: parametric equaliser plus 32- and 16-band graphic EQs, compressor, limiter, gain, an IR loader, and **VST3 and VST2** plug-ins. Delay, noise gate and reverb can be added to a chain, but they are not processed yet, and the app says so. Works with virtual cables such as VB-CABLE, Hi-Fi Cable and Virtual Audio Cable.
+Get **Setup** (installer) or **Portable** (zip) from [Releases](../../releases). Both are self-contained (no .NET to install) and run on Windows 10 and 11, x64. Setup installs for all users and can add Equalizer APO, Windows Packet Filter (download limits) and the network service (network limits without running as administrator). Optional: Python with python-kasa for Tapo and Kasa, an Android emulator for the simulation method, a virtual audio cable for per-app and microphone effects.
 
-![Volume wiring](docs/screenshots/volume-wiring.png)
-
-![Effects window](docs/screenshots/effects.png)
-
-### Displays
-- **DDC/CI hardware controls** for each monitor: brightness, contrast, RGB gain, gamma, hue, saturation, colour preset, input source and more. Controls a monitor doesn't report are greyed out. Laptop backlight is included.
-- **Software picture** for each display: brightness, contrast, gamma, colour temperature and RGB gain. Saturation, grayscale and invert apply to all displays. **Warm light at night** follows a schedule.
-- **Rotation**: four "Rotate to…" actions with suggested Ctrl+Alt+arrow keys (bound only when you press "Suggest" on the action in Actions and hotkeys). **Presets** for hardware and for the software picture.
-
-![Displays](docs/screenshots/displays.png)
-
-### Mouse and trackpad
-- **X-Mouse-style remapping**: per-button, wheel and tilt actions, 10 layers, and **app scopes** (Only in… / All except… app lists) for a group or a single button.
-- **Trackpad gestures** on a precision touchpad: three- and four-finger swipes, pinch, taps and double taps, with their own layers. While a gesture has an action, Windows' own gesture is turned off, and it is given back afterwards.
-- **Wheel and middle-click gestures** over the taskbar, screen edges, title bars or desktop, plus "if … then …" custom rules.
-
-![Mouse and Trackpad](docs/screenshots/mouse.png)
-
-### Screenshots and recording
-- **Area editor in the style of Lightshot**: freezes every monitor and lets you resize the selection and draw on it (pen, arrow, rectangle, marker, text, blur). Then copy, save or print it.
-- **Read QR code** on your PC. **Search image online** copies the picture and opens Google Lens; OmniControl uploads nothing itself.
-- **Record an area** to MP4 (H.264/HEVC through Windows Media Foundation) or GIF, with optional system sound and microphone.
-
-![Screenshot editor](docs/screenshots/screenshot-editor.png)
-
-### Actions and hotkeys
-- One three-pane window lists every action in the app. Search it by name or by pressing a key combination. An action can have several keys, keys can be grouped into shortcut sets, and each action has "Run now".
-
-![Actions and hotkeys](docs/screenshots/actions-hotkeys.png)
-
-### Automation, OSD, tray, backup
-- **Automation rules**: "When [trigger] and [condition] do [actions]". Triggers include time of day, a timer, idle, wake, battery, program start or close, USB connect, a hotkey, **any state change**, and **any action running**. **Blocks** stop an action while a condition holds. "Pause all rules" is always available.
-- **OSD**: your own pop-up for volume, brightness and more. It can hide Windows' own OSD (best effort).
-- **Tray quick panel**: a brightness slider for each screen and a volume slider with a speaker picker, plus tiles for smart devices, effects, night light, area screenshot, microphone mute, rotate and any action you add.
-- **Backup and restore**: export or import settings, presets, shortcuts, rules, scripts and app lists, or wipe everything. There is also a preset manager for every preset group.
-
-<img src="docs/screenshots/tray-panel.png" alt="Tray quick panel" width="300">
-
-![Automation](docs/screenshots/automation.png)
-
-## One app instead of…
-
-| Instead of | OmniControl does |
-|---|---|
-| Equalizer APO | **Doesn't replace it; it drives it.** OmniControl writes its master effects chain into your Equalizer APO setup. |
-| Volume2 | Volume hotkeys, a custom OSD, and the wheel over the taskbar or screen edges |
-| EarTrumpet | Per-app volume, mute and output device |
-| SoundSwitch | *Partial*: pick the default speaker from the tray panel. There's no hotkey to cycle devices yet. |
-| Lightshot | Area capture with an editor, then copy, save, print or search |
-| ShareX / Snipping Tool | *Partial*: area, window, full-screen and all-screens capture, plus area recording to MP4 or GIF. No upload destinations or OCR. |
-| QR code readers | Read QR code from a screen area, on the PC |
-| Home Assistant | *Partial*: local control of Tapo and Kasa only (python-kasa), plus experimental app-driven control through an emulator |
-| X-Mouse Button Control | Per-button actions, layers and app scopes |
-| ClickMonitorDDC / Monitorian | DDC/CI brightness, contrast and colour for each monitor, with hotkeys and presets |
-| f.lux / Night light | *Partial*: a scheduled warm-light colour temperature. No sunrise or sunset times. |
-| iRotate | Rotate each display, with optional Ctrl+Alt+arrow keys |
-| AutoHotkey | *Partial*: global hotkeys, scripts, custom actions and rules. No scripting language of its own. |
-
-## Install
-
-Download **Setup** (installer) or **Portable** (zip) from [GitHub Releases](https://github.com/cobhc95/OmniControl/releases). All releases are pre-releases. Both builds are self-contained, so you don't need to install .NET.
-
-Setup installs OmniControl for all users into Program Files (Windows asks for administrator rights once); your settings stay your own, in `%APPDATA%\OmniControl`. It replaces an older per-user install (0.2.3 and earlier) by itself and keeps its settings. The network service (per-app network limits without running OmniControl as administrator) comes only with Setup: it runs as SYSTEM, so it runs only from a folder that only administrators can change. The Portable version does everything else, and does the network limits itself while it runs as administrator.
-
-## Requirements
-
-- Windows 10 or 11, x64. Recording a single app's sound needs Windows 10 version 2004 or later.
-- Monitors need DDC/CI turned on in their own on-screen menu.
-- Optional:
-  - **Python and python-kasa**, for Tapo and Kasa through Scripts.
-  - **An Android emulator**, for Simulation.
-  - **Equalizer APO**, for master effects on the real speakers. OmniControl ships its official installer: Setup installs it (a tick box), or "Install Equalizer APO…" in the app.
-  - **A virtual audio cable**, for per-app and microphone effects.
-
-## Build from source
-
-Needs the .NET 9 SDK on Windows.
-
-```powershell
-dotnet run --project OmniControl.App -c Release
-```
-
-If you want to contribute, start with [AGENTS.md](AGENTS.md) and [MAP.md](MAP.md). See [CHANGELOG.md](CHANGELOG.md) for what changed in each release.
+To build it yourself: `dotnet run --project OmniControl.App -c Release` with the .NET 9 SDK. Contributors start with [AGENTS.md](AGENTS.md) and [MAP.md](MAP.md); [CHANGELOG.md](CHANGELOG.md) lists what changed.
 
 ## Licence
 
-GPL-3.0-or-later. See [LICENSE](LICENSE) and, for third-party components, [NOTICE.txt](NOTICE.txt).
-
----
-
-Product names are trademarks of their owners; OmniControl is not affiliated with them.
+GPL-3.0-or-later ([LICENSE](LICENSE)); third-party components in [NOTICE.txt](NOTICE.txt). Product names are trademarks of their owners; OmniControl is not affiliated with them.
