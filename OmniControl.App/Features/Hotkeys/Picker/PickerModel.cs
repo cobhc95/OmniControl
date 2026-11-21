@@ -217,7 +217,7 @@ public sealed partial class PickerModel : ObservableObject
         var replacing = _replacing;
         _replacing = true;
         ActionIndex = -1;
-        ListDiff.Apply(Actions, rows, PickerRow.KeyOf, PickerRow.Same);
+        ListDiff.Apply(Actions, rows, PickerRow.KeyOf, PickerRow.Same, PickerRow.TakeKeys);
         ActionIndex = highlight();
         _replacing = replacing;
         if (sync) SyncSettings();

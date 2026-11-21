@@ -17,7 +17,7 @@ public sealed record SectionRow(string Name, string? Icon, bool IsFavourites = f
 }
 
 /// One line of the list: an entry (its text, and while searching or in Recent the section it belongs to, and why it can't be picked when it can't) or a group heading, which has no choice and is never highlighted.
-public sealed class PickerRow
+public sealed class PickerRow : ObservableObject
 {
     public PickChoice? Choice { get; }
     public string Text { get; }
@@ -42,10 +42,10 @@ public sealed class PickerRow
     public string? FamilyKey { get; }
 
     /// A family's keys in a few words, one per direction ("Up Ctrl+F7 · Down no key"; the directions alone while none has a key); empty for a single entry.
-    public string Summary { get; } = string.Empty;
+    public string Summary { get; private set; } = string.Empty;
     public bool HasSummary => Summary.Length > 0;
 
-    private readonly IReadOnlyList<string> _keys;
+    private IReadOnlyList<string> _keys;
     private IReadOnlyList<IReadOnlyList<KeycapPart>>? _keycaps;
     private IconImage? _icon;
     private bool _iconRead;
@@ -72,10 +72,10 @@ public sealed class PickerRow
     public IReadOnlyList<IReadOnlyList<KeycapPart>> Keycaps => _keycaps ??= _keys.Select(k => Hotkeys.Keycaps.From(k, string.Empty)).ToList();
 
     /// The entry can have keys but has none: the row says "no key".
-    public bool ShowsNoKey { get; }
+    public bool ShowsNoKey { get; private set; }
 
     /// The entry is in the panel the picker was opened from (the tray flyout): the row says so in place of "no key".
-    public bool InPanel { get; }
+    public bool InPanel { get; private set; }
 
     /// The row has a favourite star (an entry of a list of actions); <see cref="IsFavourite"/> fills it.
     public bool CanStar { get; init; }
@@ -120,10 +120,26 @@ public sealed class PickerRow
     public static object KeyOf(PickerRow row) => row.Choice is { } choice ? (row.IsCopy ? CopyKey : string.Empty) + choice.Spec : HeadingKey + row.Text;
 
     /// True when the two rows draw the same (the shown row is kept as it is).
-    public static bool Same(PickerRow shown, PickerRow wanted) =>
+    public static bool Same(PickerRow shown, PickerRow wanted) => SameEntry(shown, wanted) && SameKeys(shown, wanted);
+
+    /// The shown row takes the keys of <paramref name="wanted"/> in place when only they differ: a key typed for one action changes
+    /// its row's drawing, never the list's rows (a row taken out and put back under a hotkey box moved the virtualizing list's layout).
+    public static bool TakeKeys(PickerRow shown, PickerRow wanted)
+    {
+        if (!SameEntry(shown, wanted)) return false;
+        (shown._keys, shown._keycaps, shown.ShowsNoKey, shown.InPanel, shown.Summary) = (wanted._keys, null, wanted.ShowsNoKey, wanted.InPanel, wanted.Summary);
+        foreach (var name in KeyParts) shown.OnPropertyChanged(name);
+        return true;
+    }
+
+    private static readonly string[] KeyParts = { nameof(Keycaps), nameof(ShowsNoKey), nameof(InPanel), nameof(Summary), nameof(HasSummary) };
+
+    private static bool SameEntry(PickerRow shown, PickerRow wanted) =>
         ReferenceEquals(shown.Choice, wanted.Choice) && shown.Text == wanted.Text && shown.Hint == wanted.Hint && shown.Tag == wanted.Tag
         && shown.CanStar == wanted.CanStar && shown.IsFavourite == wanted.IsFavourite
-        && shown.InPanel == wanted.InPanel && shown.ShowsNoKey == wanted.ShowsNoKey && shown._keys.SequenceEqual(wanted._keys)
-        && shown.Summary == wanted.Summary && (shown.Members ?? Array.Empty<PickChoice>()).SequenceEqual(wanted.Members ?? Array.Empty<PickChoice>());
+        && (shown.Members ?? Array.Empty<PickChoice>()).SequenceEqual(wanted.Members ?? Array.Empty<PickChoice>());
+
+    private static bool SameKeys(PickerRow shown, PickerRow wanted) =>
+        shown.InPanel == wanted.InPanel && shown.ShowsNoKey == wanted.ShowsNoKey && shown._keys.SequenceEqual(wanted._keys) && shown.Summary == wanted.Summary;
 }
 

@@ -77,8 +77,7 @@ public static class GroupedCards
         var at = list.IndexFromContainer(card);
         var next = at + step;
         if (at < 0 || next < 0 || next >= list.ItemCount || list.ContainerFromIndex(next) is not null) return null;
-        list.ScrollIntoView(next);
-        return list.ContainerFromIndex(next) as ListBoxItem;
+        return ListScroll.Show(list, next) as ListBoxItem;
     }
 
     /// Moves the keyboard to the card that shows <paramref name="item"/> (as Up/Down would) and scrolls it into view; false when no

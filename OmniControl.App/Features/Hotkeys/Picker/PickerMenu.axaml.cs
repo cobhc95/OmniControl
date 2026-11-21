@@ -43,8 +43,8 @@ public partial class PickerMenu : UserControl
         {
             if (model.StartInSettings) model.EnterSettings();
             FocusCurrentPane();
-            SectionList.ScrollIntoView(Math.Max(0, model.SectionHighlight));
-            ActionList.ScrollIntoView(model.ActionIndex);
+            ListScroll.Show(SectionList, Math.Max(0, model.SectionHighlight));
+            ListScroll.Show(ActionList, model.ActionIndex);
         }, DispatcherPriority.Loaded);
     }
 
@@ -65,12 +65,13 @@ public partial class PickerMenu : UserControl
 
     private void OnModelChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (_model is null) return;
+        if (_model is not { } model) return;
+        // Raised while the rows are being changed (a key typed into a hotkey box saves and refreshes the list): the scroll waits for the layout.
         switch (e.PropertyName)
         {
-            case nameof(PickerModel.ActionIndex) when _model.ActionIndex >= 0: ActionList.ScrollIntoView(_model.ActionIndex); break;
-            case nameof(PickerModel.SectionHighlight) when _model.SectionHighlight >= 0: SectionList.ScrollIntoView(_model.SectionHighlight); break;
-            case nameof(PickerModel.OptionIndex) when _model.OptionIndex >= 0: OptionList.ScrollIntoView(_model.OptionIndex); break;
+            case nameof(PickerModel.ActionIndex) when model.ActionIndex >= 0: ListScroll.ShowSoon(ActionList, () => model.ActionIndex); break;
+            case nameof(PickerModel.SectionHighlight) when model.SectionHighlight >= 0: ListScroll.ShowSoon(SectionList, () => model.SectionHighlight); break;
+            case nameof(PickerModel.OptionIndex) when model.OptionIndex >= 0: ListScroll.ShowSoon(OptionList, () => model.OptionIndex); break;
             case nameof(PickerModel.InSettings) or nameof(PickerModel.OnStar): Dispatcher.UIThread.Post(FocusCurrentPane, DispatcherPriority.Loaded); break;
         }
     }

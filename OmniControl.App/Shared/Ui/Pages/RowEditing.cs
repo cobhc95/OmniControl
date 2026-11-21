@@ -279,8 +279,7 @@ public static class RowEditing
             // Up/Down: previous or next card, landing on its first part.
             case Key.Up or Key.Down when e.KeyModifiers == KeyModifiers.None:
                 var next = list.ItemCount == 0 ? -1 : Services.Wrap.Index(list.IndexFromContainer(card) + Services.Wrap.Direction(e.Key), list.ItemCount);
-                if (next >= 0) list.ScrollIntoView(next); // a virtualizing list builds the card first when it is out of view
-                if (next >= 0 && list.ContainerFromIndex(next) is ListBoxItem target)
+                if (ListScroll.Show(list, next) is ListBoxItem target) // a virtualizing list builds the card first when it is out of view
                 {
                     list.SelectedIndex = next;
                     CardTarget(target).Focus(NavigationMethod.Directional);

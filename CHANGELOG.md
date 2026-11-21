@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Fixed: Actions and hotkeys: typing a new key into a hotkey box while a search was shown (for example Brightness Up) could end in "Something went wrong" (Invalid Arrange rectangle); the changed row now updates in place and the list scrolls only after it has laid out its rows.
+
 ## 0.2.8 (21 Nov 2026)
 
 - Changed: Resources > Taskbar gadget: the small "Preview" strip at the top is gone; the top line is "Show on taskbar", Position and Font (the Ready-made layouts tiles still show each look).

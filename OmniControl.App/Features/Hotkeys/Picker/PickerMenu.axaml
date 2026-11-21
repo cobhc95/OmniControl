@@ -20,7 +20,7 @@
                     <CheckBox Content="Only with a hotkey" IsChecked="{Binding OnlyWithKey}" IsVisible="{Binding ShowsKeyFilter}" Focusable="False" />
                     <CheckBox Content="In panel only" IsChecked="{Binding OnlyInPanel}" IsVisible="{Binding HasPanel}" Focusable="False" />
                 </StackPanel>
-                <ListBox x:Name="SectionList" Classes="nav" Focusable="False" Margin="0,8,4,8" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                <ListBox x:Name="SectionList" Classes="nav" Focusable="False" AutoScrollToSelectedItem="False" Margin="0,8,4,8" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                          ItemsSource="{Binding Sections}" SelectedIndex="{Binding SectionHighlight}">
                     <ListBox.ItemTemplate>
                         <DataTemplate DataType="picker:SectionRow">
@@ -37,7 +37,7 @@
 
             <!-- Pane 2: the entries of the section (or the matches of the search), a small heading above each group -->
             <Border Grid.Column="1" MinWidth="{StaticResource PickerEntriesMinWidth}" BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,1,1,0">
-                <ListBox x:Name="ActionList" Classes="pick active" Focusable="False" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ItemsSource="{Binding Actions}" SelectedIndex="{Binding ActionIndex}">
+                <ListBox x:Name="ActionList" Classes="pick active" Focusable="False" AutoScrollToSelectedItem="False" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ItemsSource="{Binding Actions}" SelectedIndex="{Binding ActionIndex}">
                     <!-- Virtualised: only the rows on screen are made. The model keeps one collection and changes it row by row (ListDiff),
                          never swapping it, so a recycled row always draws the entry it holds now (a swapped list left a ghost row) -->
                     <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
@@ -114,7 +114,7 @@
                                     <DataTemplate><picker:ActionHotkeysView /></DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                            <ListBox x:Name="OptionList" Classes="pick" Classes.active="{Binding InSettings}" Focusable="False"
+                            <ListBox x:Name="OptionList" Classes="pick" Classes.active="{Binding InSettings}" Focusable="False" AutoScrollToSelectedItem="False"
                                      ItemsSource="{Binding OptionItems}" SelectedIndex="{Binding OptionIndex}">
                                 <!-- Not virtualised: a handful of rows inside the pane's own scroll viewer. A virtualised list reuses the previous
                                      action's rows when the settings are cleared and refilled, and two actions' settings drew on top of each other -->

@@ -7,7 +7,9 @@ public static class ListDiff
 {
     /// <param name="keyOf">What makes two items the same row (an entry, a heading's text); keys are unique within a list.</param>
     /// <param name="same">True when an item with the same key needs no new row (its shown content is equal); reference equality when null.</param>
-    public static void Apply<T>(ObservableCollection<T> target, IReadOnlyList<T> wanted, Func<T, object> keyOf, Func<T, T, bool>? same = null)
+    /// <param name="update">Lets the shown item take the wanted one's content in place, keeping its row; true when it could.</param>
+    public static void Apply<T>(ObservableCollection<T> target, IReadOnlyList<T> wanted, Func<T, object> keyOf, Func<T, T, bool>? same = null,
+        Func<T, T, bool>? update = null)
     {
         same ??= (a, b) => ReferenceEquals(a, b);
         var keep = new HashSet<object>(wanted.Select(keyOf));
@@ -24,7 +26,7 @@ public static class ListDiff
                 continue;
             }
             if (at != i) target.Move(at, i);
-            if (same(target[i], wanted[i])) continue;
+            if (same(target[i], wanted[i]) || update?.Invoke(target[i], wanted[i]) == true) continue;
             // Remove and insert, never a replace: a replace keeps the list's container for the row and only rebinds it, and a
             // virtualised panel then kept the old row's measured size and drawing under the new one (two layouts on top of each other).
             target.RemoveAt(i);
