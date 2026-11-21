@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Changed: releases are built by a GitHub Actions workflow from a verified version tag and carry build provenance attestations beside the SHA-256 sums; `tools\release.ps1` now only creates and pushes the tag.
+
 ## 0.2.8 (21 Nov 2026)
 
 - Changed: Resources > Taskbar gadget: the small "Preview" strip at the top is gone; the top line is "Show on taskbar", Position and Font (the Ready-made layouts tiles still show each look).
