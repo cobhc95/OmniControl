@@ -22,6 +22,9 @@ public abstract class PageViewModel : ObservableObject
     /// True when the page draws its own title row (to put a control beside the title); the shell then skips its title.
     public virtual bool ShowsOwnHeader => false;
 
+    /// How far the page was scrolled when it was last shown: the shell's page host builds the page's view anew at each showing and puts this back.
+    public Vector Scroll { get; set; }
+
     /// The page's own tabs, which the shell selects when something opens the page at a tab (<c>FeatureContext.OpenPage</c>); null: no tabs.
     public virtual PageTabs? Tabs => null;
 
