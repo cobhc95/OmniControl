@@ -10,7 +10,6 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 - New: the taskbar gadget can sit on the left of the taskbar: "Position" (Right / Left) beside "Show on taskbar", and "Position" in the gadget's right-click menu. Left puts it after the Widgets button (or at the taskbar's left edge), or, with the taskbar icons left-aligned, after the last app button; it follows app buttons as they come and go within a few seconds. One position for every layout.
 - Check boxes, radio buttons, sliders, progress bars and other standard controls follow OmniControl's accent instead of Windows' own accent colour.
 - Changed: the Volume Method pop-down (master and microphones) has one install row under one divider, "Install Equalizer APO…" and "Install VB-CABLE…" side by side in the same pill style, each shown only while that program is missing; the separate install line above the divider, "More cables" and "Remove VB-CABLE" are gone from it.
->>>>>>> worktree-agent-a44a294824656e805
 - Fixed: the Method chip shows the method you picked, also while there are no effects to run (the master set to Equalizer APO said "Direct", so picking it looked like it did nothing); Automatic with nothing to run says "Automatic", and the line under the chip says "no effects". In the Method menu the current method keeps its selected look while it has the keyboard.
 
 ## 0.2.7 (21 Nov 2026)
