@@ -234,6 +234,7 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
             _day = DateTime.Today;
             _today.Clear();
         }
+        var read = new List<string>();
         foreach (var reading in Readings.Where(r => (sample.Parts & r.Part) == r.Part)) // a part nobody asked for leaves its history and state alone
         {
             if (!_history.TryGetValue(reading.Id, out var history)) _history[reading.Id] = history = new Queue<double>();
@@ -241,8 +242,9 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
             while (history.Count > Timing.ResourcesHistory) history.Dequeue();
             if (reading.Read(sample) is { } value)
                 _today[reading.Id] = _today.TryGetValue(reading.Id, out var range) ? (Math.Min(range.Low, value), Math.Max(range.High, value)) : (value, value);
-            _states.Notify(reading.StateId);
+            read.Add(reading.StateId);
         }
+        _states.Notify(read); // one look for every reading of this sample
         Updated?.Invoke();
     }
 

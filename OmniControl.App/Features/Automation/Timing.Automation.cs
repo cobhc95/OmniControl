@@ -9,17 +9,23 @@ public static partial class Timing
     /// How often the automations look at the clock, the battery, the idle time, the running programs and the devices.
     public static readonly TimeSpan AutomationTick = TimeSpan.FromSeconds(5);
 
+    /// How often that look runs while no rule is on (it then only keeps the power states fresh).
+    public static readonly TimeSpan AutomationIdleTick = TimeSpan.FromSeconds(60);
+
     /// The battery charge (percent) at or below which the Power header's battery fact turns to the caution colour.
     public const int BatteryLowPercent = 20;
 
-    /// How often the clock check samples (and a waiting wake candidate is looked at again).
-    public static readonly TimeSpan PowerClockTick = TimeSpan.FromSeconds(2);
+    /// How often the clock check samples (a gap of <see cref="PowerClockGap"/> is a stop, so a slow sample costs nothing in what is found).
+    public static readonly TimeSpan PowerClockTick = TimeSpan.FromSeconds(10);
 
     /// A clock sample this much later than asked means the program was stopped (the PC slept, or Modern Standby froze it): one piece of wake evidence.
     public static readonly TimeSpan PowerClockGap = TimeSpan.FromSeconds(20);
 
     /// A wake told by one channel waits this long for a second one (<see cref="Core.Engine.WakeDetector"/>).
     public static readonly TimeSpan WakeConfirmWindow = TimeSpan.FromSeconds(20);
+
+    /// A waiting wake candidate is decided this long after the last power event (once its confirm window surely passed); one look, not a tick.
+    public static readonly TimeSpan WakeDecideAfter = WakeConfirmWindow + TimeSpan.FromSeconds(1);
 
     /// After a confirmed wake, more wake evidence within this time is the same wake told again, unless the PC went down in between.
     public static readonly TimeSpan WakeQuiet = TimeSpan.FromMinutes(2);

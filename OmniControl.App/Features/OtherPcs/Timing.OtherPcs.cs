@@ -72,7 +72,7 @@ public static partial class Timing
     public static readonly TimeSpan WakeGrantLife = TimeSpan.FromSeconds(5);
 
     /// How long a PC about to sleep or shut down waits for its "going away" notice to be sent, and how often it re-reads its own wake facts.
-    public static readonly TimeSpan WakeNoticeWait = TimeSpan.FromMilliseconds(1500), WakeFactsEvery = TimeSpan.FromMinutes(5);
+    public static readonly TimeSpan WakeNoticeWait = TimeSpan.FromMilliseconds(1500), WakeFactsEvery = TimeSpan.FromMinutes(30);
 
     /// A paired PC may ask this one for wake help (relay, check, fix, test) at most <see cref="WakeAskBurstMax"/> times per window.
     public static readonly TimeSpan WakeAskBurstWindow = TimeSpan.FromSeconds(30);

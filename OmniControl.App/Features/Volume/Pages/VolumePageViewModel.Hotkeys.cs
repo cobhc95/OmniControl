@@ -97,7 +97,7 @@ public sealed partial class VolumePageViewModel
     }
 
     private bool _viewAttached, _onScreen;
-    private IDisposable? _closeWatch, _fineTimers;
+    private IDisposable? _closeWatch;
 
     private void SyncLive()
     {
@@ -106,7 +106,6 @@ public sealed partial class VolumePageViewModel
         if (live)
         {
             _closeWatch = _mixer.WatchClosely();
-            _fineTimers = TimerResolution.Hold();
             _meterTimer.Start();
             return;
         }
@@ -114,8 +113,7 @@ public sealed partial class VolumePageViewModel
         _captures.Keep(Array.Empty<string>());
         foreach (var row in AllRows()) row.Meter.Clear();
         _closeWatch?.Dispose();
-        _fineTimers?.Dispose();
-        (_closeWatch, _fineTimers) = (null, null);
+        _closeWatch = null;
     }
 
     private void FeedMeters()
@@ -137,7 +135,7 @@ public sealed partial class VolumePageViewModel
         {
             foreach (var row in _inputs.Values)
             {
-                CoreAudio.DevicePeaks(row.Id, true, out var l, out var r);
+                _mixer.InputPeaks(row.Id, out var l, out var r);
                 row.Meter.Feed(l, r, now); // a muted mic still shows what it hears
             }
         }

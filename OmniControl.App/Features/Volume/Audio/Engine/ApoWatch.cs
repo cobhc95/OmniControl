@@ -15,7 +15,7 @@ internal sealed record ApoFindings(ApoTarget Target, IReadOnlyList<string> OutOf
 
 /// Watches the Equalizer APO config folders and reads them back off the UI thread (<see cref="IApoConfigStore.Read"/>): after every change
 /// notice (once the writer had <see cref="Timing.ApoChangeSettle"/>), whenever the owner asks (<see cref="Request"/>), and on a slow
-/// watchdog (<see cref="Timing.ApoWatchdog"/>) for a missed notice or a folder that could not be watched. Decides nothing: every look is
+/// watchdog for a missed notice (<see cref="Timing.ApoWatchdogWatched"/>) or a folder that could not be watched (<see cref="Timing.ApoWatchdog"/>), only while there are folders. Decides nothing: every look is
 /// handed to <c>found</c> on a worker thread. A watchdog look much later than due means the PC slept (<see cref="ApoFindings.Resumed"/>).
 /// Every callback is guarded; <see cref="Dispose"/> stops the watchers and the timers.
 internal sealed class ApoWatch : IDisposable
@@ -40,7 +40,7 @@ internal sealed class ApoWatch : IDisposable
         _input = input;
         _found = found;
         _check = new ThrottledRun(Timing.ApoCheckGap, Check);
-        _watchdog = new Timer(_ => Guard.Run("Effects: Equalizer APO watchdog", OnWatchdog), null, Timing.ApoWatchdog, Timing.ApoWatchdog);
+        _watchdog = new Timer(_ => Guard.Run("Effects: Equalizer APO watchdog", OnWatchdog), null, Timeout.Infinite, Timeout.Infinite); // runs only while there are folders (Follow)
     }
 
     /// Asks for a look at the disk soon (a change was made, the devices changed).
@@ -58,7 +58,14 @@ internal sealed class ApoWatch : IDisposable
         }
         foreach (var folder in wanted.Where(f => !_watchers.ContainsKey(f)))
             if (Watcher(folder) is { } watcher) _watchers[folder] = watcher;
+        // No folder: no look. Every folder watched: the watchdog only covers a missed notice; one that could not be watched: it looks often.
+        var period = wanted.Count == 0 ? Timeout.InfiniteTimeSpan : _watchers.Count == wanted.Count ? Timing.ApoWatchdogWatched : Timing.ApoWatchdog;
+        if (period == _period) return;
+        lock (_gate) (_period, _lastLook) = (period, DateTime.MinValue);
+        _watchdog.Change(period, period);
     }
+
+    private TimeSpan _period = Timeout.InfiniteTimeSpan;
 
     private FileSystemWatcher? Watcher(string folder)
     {
@@ -94,7 +101,7 @@ internal sealed class ApoWatch : IDisposable
         var now = DateTime.UtcNow;
         lock (_gate)
         {
-            if (_lastLook != DateTime.MinValue && now - _lastLook > Timing.ApoResumeGap) _resumed = true;
+            if (_lastLook != DateTime.MinValue && now - _lastLook > _period * Timing.ApoResumeLooks) _resumed = true;
             _lastLook = now;
         }
         _check.Request();

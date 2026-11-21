@@ -16,6 +16,7 @@ public sealed partial class MixerService : IDisposable
     private readonly HoldCount _closeWatch = new();
     private readonly IHardwareWatches _hardware;
     private readonly Dictionary<string, List<AudioSession>> _sessions = new();
+    private readonly DeviceMeters _meters = new(); // the devices' meter objects, kept between reads and released with the mixer
     private readonly Dictionary<int, string?> _paths = new();
     private readonly HashSet<int> _applied = new();
     private readonly Dictionary<string, DateTime> _userChange = new();
@@ -80,7 +81,7 @@ public sealed partial class MixerService : IDisposable
     public bool Peaks(string? key, out float left, out float right)
     {
         left = right = 0;
-        if (key is null) return CoreAudio.DevicePeaks(MasterDeviceId, false, out left, out right);
+        if (key is null) return _meters.Peaks(MasterDeviceId, false, out left, out right);
         if (!_sessions.TryGetValue(key, out var list)) return false;
         foreach (var s in list)
             if (s.Peaks(out var l, out var r)) { left = Math.Max(left, l); right = Math.Max(right, r); }
@@ -390,5 +391,9 @@ public sealed partial class MixerService : IDisposable
         _timer.Stop();
         _closeWatch.Changed -= OnCloseWatchChanged;
         StopWatching();
+        _meters.Dispose();
     }
+
+    /// Live peak levels (0 to 1) of a recording device; false when there is nothing to read.
+    public bool InputPeaks(string deviceId, out float left, out float right) => _meters.Peaks(deviceId, true, out left, out right);
 }

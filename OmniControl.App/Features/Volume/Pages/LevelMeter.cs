@@ -14,6 +14,7 @@ public sealed class LevelMeter : Control
     private static readonly IBrush Amber = new SolidColorBrush(Palette.MeterAmber);
     private static readonly IBrush Red = new SolidColorBrush(Palette.Danger);
     private MeterModel? _watching;
+    private Pen? _frame; // made again only when the theme gives another edge brush, not every frame
 
     static LevelMeter()
     {
@@ -55,7 +56,8 @@ public sealed class LevelMeter : Control
         if (frame < 4 + Pad * 2) return;
         var height = frame - Pad * 2;
         var edge = Fx.DrawKit.Brush(this, "BrushControlEdge");
-        context.DrawRectangle(null, new Pen(edge, 1), new RoundedRect(new Rect(0.5, 0.5, Bounds.Width - 1, frame - 1), FrameRadius));
+        if (_frame?.Brush != edge) _frame = new Pen(edge, 1);
+        context.DrawRectangle(null, _frame, new RoundedRect(new Rect(0.5, 0.5, Bounds.Width - 1, frame - 1), FrameRadius));
         using var _ = context.PushTransform(Matrix.CreateTranslation(Pad, Pad));
         var track = Fx.DrawKit.Brush(this, "BrushControlTrack");
         var hold = Fx.DrawKit.Brush(this, "BrushMuted");

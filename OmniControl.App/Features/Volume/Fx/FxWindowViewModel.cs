@@ -40,12 +40,11 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
         support.Changed += OnSupportChanged;
         feeds.Changed += OnDisplayFeedChanged;
         chain.PropertyChanged += OnChainChanged;
-        // While the window is open: the mixer keeps its row fresh, and its live graphs get fine timers.
+        // While the window is open the mixer keeps its row fresh (its meters need no fine timer resolution).
         _closeWatch = mixer.WatchClosely();
-        _fineTimers = TimerResolution.Hold();
     }
 
-    private readonly IDisposable _closeWatch, _fineTimers;
+    private readonly IDisposable _closeWatch;
 
     public FxChainViewModel Chain { get; }
 
@@ -233,7 +232,6 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
         Analysis.Dispose();
         Chain.Dispose();
         _closeWatch.Dispose();
-        _fineTimers.Dispose();
     }
 }
 

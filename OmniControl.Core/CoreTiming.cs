@@ -25,11 +25,14 @@ public static class CoreTiming
     /// The autoscroll worker goes back to sleep (until the hook sees the pointer move) after this many looks with the pointer still.
     public const int AutoscrollRestLooks = 10;
 
+    /// A meter of the default playback or recording device is opened again this often, so a changed default device is followed.
+    public const long DefaultMeterRefreshMs = 1500;
+
     /// How many parents above the element under the pointer the link lookup also checks.
     public const int AutoscrollParentLevels = 4;
 
-    /// How often a worker looks whether a full-screen app is in front (<c>FullScreenWatcher</c>) and, only where Windows refuses its
-    /// foreground notice, which program the user is working in (<c>ForegroundProgram</c>); the mouse hook only reads what they found.
+    /// Only where Windows refuses its window notices: how often a worker looks whether a full-screen app is in front (<c>FullScreenWatcher</c>)
+    /// and which program the user is working in (<c>ForegroundProgram</c>); the mouse hook only reads what they found.
     public const int FullScreenWatchMs = 500, ForegroundWatchMs = 100;
 
     /// The gap between the key events of a shortcut sent to a remote-input window (<c>InputSender.Type</c>): a remote desktop's keyboard
@@ -189,8 +192,9 @@ public static class CoreTiming
         RecordWatchMs = 100, RecordStatsMs = 500, RecordLogFramesMs = 5000, RecordStartWaitMs = 45000;
 
     /// The Resources sampler updates the sensor library at most this often however fast it is read (reads in between keep the last values),
-    /// and the drives (their SMART and activity read is the slowest sensor) at most every <see cref="StorageSensorEvery"/>.
-    public static readonly TimeSpan SensorEvery = TimeSpan.FromSeconds(1), StorageSensorEvery = TimeSpan.FromSeconds(5);
+    /// and the drives (their SMART and activity read is the slowest sensor) at most every <see cref="StorageSensorEvery"/> while a disk's
+    /// activity is shown, else (only their temperatures are wanted) every <see cref="StorageTempEvery"/>.
+    public static readonly TimeSpan SensorEvery = TimeSpan.FromSeconds(1), StorageSensorEvery = TimeSpan.FromSeconds(5), StorageTempEvery = TimeSpan.FromSeconds(30);
 
     /// How often (seconds) Windows hands the per-program traffic session's events over even when its buffers are not full.
     public const uint NetworkByAppFlushSeconds = 1;

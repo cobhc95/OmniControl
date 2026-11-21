@@ -117,7 +117,7 @@ public static partial class CoreAudio
     {
         [PreserveSig] int GetPeakValue(out float peak);
         [PreserveSig] int GetMeteringChannelCount(out uint count);
-        [PreserveSig] int GetChannelsPeakValues(uint count, [Out, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 0)] float[] values);
+        [PreserveSig] unsafe int GetChannelsPeakValues(uint count, float* values);
         [PreserveSig] int QueryHardwareSupport(out uint mask);
     }
 

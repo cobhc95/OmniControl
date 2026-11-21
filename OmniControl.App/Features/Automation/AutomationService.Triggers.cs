@@ -38,8 +38,8 @@ public sealed partial class AutomationService
     {
         _lastLook = DateTime.Now;
         _power.Woke += OnWoke;
-        SyncTriggers();
         _tick = new DispatcherTimer(Timing.AutomationTick, DispatcherPriority.Background, (_, _) => Look());
+        SyncTriggers();
         _tick.Start();
     }
 
@@ -67,6 +67,8 @@ public sealed partial class AutomationService
     {
         if (SessionOff) return;
         if (Settings.Rules.Any(r => IsActive(r) && IsTrigger(r, AutomationTriggers.DeviceConnect, AutomationTriggers.DeviceDisconnect))) _watcher.StartDevices();
+        // With no rule to look for, the look only keeps the power states fresh: much less often.
+        if (_tick is not null) _tick.Interval = Settings.Rules.Any(IsActive) ? Timing.AutomationTick : Timing.AutomationIdleTick;
         UpdateWake();
     }
 

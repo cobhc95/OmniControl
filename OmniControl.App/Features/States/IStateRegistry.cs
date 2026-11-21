@@ -43,6 +43,9 @@ public interface IStateRegistry : IStateCatalogue
     /// The state's value may have changed (any thread).
     void Notify(string id);
 
+    /// These states' values may have changed (any thread): one look on the UI thread for all of them (a reader of many values at once).
+    void Notify(IReadOnlyList<string> ids);
+
     /// The state's <see cref="StateEntry.Liveness"/> changed.
     void NotifyLiveness(string id);
 

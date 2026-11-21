@@ -65,11 +65,29 @@ public sealed class BrightnessWatcher : IDisposable
         var first = !_polled;
         _polled = true;
         if (percent is { } p) Report(p);
-        if (percent is null && first) StopPolling(); // nothing to watch on this machine
+        if (percent is null && first)
+        {
+            StopPolling(); // nothing to watch on this machine (no laptop panel): the event subscription goes too
+            StopWatching();
+        }
         else if (_watcher is not null && _since.Elapsed >= _checkFor) StopPolling(); // the event alone from now on
     }
 
     private void StopPolling() => Interlocked.Exchange(ref _timer, null)?.Dispose();
+
+    private void StopWatching()
+    {
+        if (Interlocked.Exchange(ref _watcher, null) is not { } watcher) return;
+        try
+        {
+            watcher.Stop();
+        }
+        catch (ManagementException)
+        {
+            // Already gone (WMI restarted): nothing more to stop.
+        }
+        watcher.Dispose();
+    }
 
     /// Raises Changed only when the value differs from the last one seen (event and poll both feed this).
     private void Report(int percent)
@@ -87,6 +105,6 @@ public sealed class BrightnessWatcher : IDisposable
     public void Dispose()
     {
         StopPolling();
-        try { _watcher?.Stop(); _watcher?.Dispose(); } catch (ManagementException) { /* the watcher may already be gone at shutdown */ }
+        StopWatching();
     }
 }

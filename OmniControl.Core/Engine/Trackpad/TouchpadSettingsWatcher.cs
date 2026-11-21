@@ -36,13 +36,18 @@ public sealed class TouchpadSettingsWatcher : IDisposable
         using var written = new AutoResetEvent(false);
         RegistryKey? key = null;
         var reported = false;
+        var armed = false;
         try
         {
             while (true)
             {
-                // The notification is one-shot and tied to this thread, so it is asked for again before every wait.
-                key ??= Open();
-                var armed = key is not null && Arm(key, written);
+                // The notification is one-shot and tied to this thread: it is asked for again only after it fired (or could not be asked),
+                // never on top of one still waiting.
+                if (!armed)
+                {
+                    key ??= Open();
+                    armed = key is not null && Arm(key, written);
+                }
                 if (!armed)
                 {
                     key?.Dispose(); // a key that was deleted is opened again on the next look
@@ -52,6 +57,7 @@ public sealed class TouchpadSettingsWatcher : IDisposable
                 }
                 var woke = WaitHandle.WaitAny(new WaitHandle[] { _stop, written }, _interval);
                 if (woke == 0) return;
+                if (woke == 1) armed = false;
                 Changed?.Invoke(woke == 1);
             }
         }

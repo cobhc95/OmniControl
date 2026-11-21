@@ -24,7 +24,7 @@ public static partial class Timing
 
     /// The UI watchdog (<c>UiWatchdog</c>) posts a heartbeat this often; when the UI thread has not run one for <see cref="UiStuckAfter"/>,
     /// the stall goes to hang-log.txt, once per stall and at most <see cref="UiStuckLogsPerRun"/> times per run.
-    public static readonly TimeSpan UiHeartbeatEvery = TimeSpan.FromSeconds(1), UiStuckAfter = TimeSpan.FromSeconds(2);
+    public static readonly TimeSpan UiHeartbeatEvery = TimeSpan.FromSeconds(5), UiStuckAfter = TimeSpan.FromSeconds(2);
 
     /// <inheritdoc cref="UiHeartbeatEvery"/>
     public const int UiStuckLogsPerRun = 5;

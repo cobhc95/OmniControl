@@ -38,7 +38,7 @@ public sealed partial class MixerService
     /// The loudest level now playing on a playback device (what is sent to it), for a device that is not the master's.
     internal bool DevicePeak(string deviceId, out float peak)
     {
-        var ok = CoreAudio.DevicePeaks(deviceId, false, out var left, out var right);
+        var ok = _meters.Peaks(deviceId, false, out var left, out var right);
         peak = Math.Max(left, right);
         return ok;
     }

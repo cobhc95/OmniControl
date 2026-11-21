@@ -9,11 +9,12 @@ public sealed class MeterModel
 
     private double _lastMs;
     private double _holdLeftAt, _holdRightAt, _clipAt;
+    private double _left = FloorDb, _right = FloorDb, _holdLeft = FloorDb, _holdRight = FloorDb;
 
-    public double LeftDb { get; private set; } = FloorDb;
-    public double RightDb { get; private set; } = FloorDb;
-    public double HoldLeftDb { get; private set; } = FloorDb;
-    public double HoldRightDb { get; private set; } = FloorDb;
+    public double LeftDb => _left;
+    public double RightDb => _right;
+    public double HoldLeftDb => _holdLeft;
+    public double HoldRightDb => _holdRight;
     public bool ClipLit { get; private set; }
 
     /// Raised when the picture changed (the control repaints).
@@ -30,8 +31,8 @@ public sealed class MeterModel
         var dt = _lastMs == 0 ? 0 : Math.Min(MaxFrameMs, nowMs - _lastMs) / MsPerSecond;
         _lastMs = nowMs;
         var changed = false;
-        changed |= Move(ToDb(left), dt, nowMs, ref _holdLeftAt, v => LeftDb = v, LeftDb, v => HoldLeftDb = v, HoldLeftDb);
-        changed |= Move(ToDb(right), dt, nowMs, ref _holdRightAt, v => RightDb = v, RightDb, v => HoldRightDb = v, HoldRightDb);
+        changed |= Move(ToDb(left), dt, nowMs, ref _holdLeftAt, ref _left, ref _holdLeft); // by ref: nothing is allocated per frame
+        changed |= Move(ToDb(right), dt, nowMs, ref _holdRightAt, ref _right, ref _holdRight);
 
         var clip = left >= 0.999f || right >= 0.999f;
         if (clip) _clipAt = nowMs;
@@ -44,21 +45,21 @@ public sealed class MeterModel
     /// Back to silence (the row went away or the page is hidden).
     public void Clear()
     {
-        LeftDb = RightDb = HoldLeftDb = HoldRightDb = FloorDb;
+        _left = _right = _holdLeft = _holdRight = FloorDb;
         ClipLit = false;
         _lastMs = 0;
         Changed?.Invoke();
     }
 
-    private static bool Move(double db, double dt, double now, ref double holdAt, Action<double> setShown, double shown, Action<double> setHold, double hold)
+    private static bool Move(double db, double dt, double now, ref double holdAt, ref double shown, ref double hold)
     {
         var newShown = db >= shown ? db : Math.Max(db, shown - FallDbPerSecond * dt);
         var newHold = hold;
         if (newShown >= hold) { newHold = newShown; holdAt = now; }
         else if (now - holdAt > HoldMs) newHold = Math.Max(newShown, hold - FallDbPerSecond * dt);
         var changed = Math.Abs(newShown - shown) > 0.05 || Math.Abs(newHold - hold) > 0.05;
-        setShown(newShown);
-        setHold(newHold);
+        shown = newShown;
+        hold = newHold;
         return changed;
     }
 }

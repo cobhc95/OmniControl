@@ -106,11 +106,12 @@ public sealed class PowerJournal : IPowerEvents, IDisposable
             (long)Timing.StandbyDisplayOffMin.TotalMilliseconds);
     }
 
-    /// Starts the confirm timer and, off the UI thread, the look at what happened while OmniControl was not running.
+    /// Makes the confirm timer (it runs once, after a power event: <see cref="Timing.WakeDecideAfter"/>) and, off the UI thread, the look
+    /// at what happened while OmniControl was not running.
     public void Start()
     {
         if (_expire is not null) return;
-        _expire = new Timer(_ => Guard.Run("Power journal: wake check", Tick), null, Timing.PowerClockTick, Timing.PowerClockTick);
+        _expire = new Timer(_ => Guard.Run("Power journal: wake check", Tick), null, Timeout.Infinite, Timeout.Infinite);
         Task.Run(() => Guard.Run("Power journal: start-up look", LookBack));
     }
 
@@ -128,6 +129,7 @@ public sealed class PowerJournal : IPowerEvents, IDisposable
             foreach (var handler in leaving.GetInvocationList().Cast<Action<PowerEventKind>>())
                 Guard.Run("Power journal: leaving handler", () => handler(signal.Kind));
         Decided(decision);
+        _expire?.Change(Timing.WakeDecideAfter, Timeout.InfiniteTimeSpan); // a candidate left waiting is decided once its window passed
         if (signal.Kind is PowerEventKind.Shutdown or PowerEventKind.Logoff) Save(); // the process may end before a queued save runs
         else Task.Run(() => Guard.Run("Power journal: save", Save));
     }

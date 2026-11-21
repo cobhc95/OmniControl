@@ -14,7 +14,7 @@ public static partial class Timing
     public static readonly TimeSpan OsdOwnChangeGrace = TimeSpan.FromSeconds(1);
 
     /// How often the laptop brightness is read as a fallback when Windows' brightness event cannot be listened to (each read is a WMI query).
-    public static readonly TimeSpan OsdBrightnessPoll = TimeSpan.FromMilliseconds(100);
+    public static readonly TimeSpan OsdBrightnessPoll = TimeSpan.FromSeconds(2);
 
     /// While the brightness event is listened to but not yet seen working, the brightness is also read this often, for this long after
     /// the watch starts, then the event alone is trusted.

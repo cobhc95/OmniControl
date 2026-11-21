@@ -40,5 +40,9 @@ internal static class Program
         AppBuilder.Configure(() => new App(instance))
             .UseWin32()
             .UseSkia()
+            .With(new SkiaOptions { MaxGpuResourceSizeBytes = GpuCacheBytes })
             .LogToTrace(LogEventLevel.Error);
+
+    // Skia's GPU cache: its default (hundreds of MB) is far more than a settings window and its pop-ups draw.
+    private const long GpuCacheBytes = 16 * 1024 * 1024;
 }

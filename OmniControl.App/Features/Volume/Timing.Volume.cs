@@ -89,10 +89,10 @@ public static partial class Timing
 
     public static readonly TimeSpan ApoCheckGap = TimeSpan.FromMilliseconds(250);
 
-    public static readonly TimeSpan ApoWatchdog = TimeSpan.FromSeconds(10);
+    public static readonly TimeSpan ApoWatchdog = TimeSpan.FromSeconds(10), ApoWatchdogWatched = TimeSpan.FromSeconds(60);
 
-    /// Two watchdog looks this far apart mean the PC slept in between: what the PC offers and the config files are looked at again.
-    public static readonly TimeSpan ApoResumeGap = TimeSpan.FromSeconds(30);
+    /// Two watchdog looks more than this many periods apart mean the PC slept in between: what the PC offers and the config files are looked at again.
+    public const int ApoResumeLooks = 3;
 
     /// OmniControl's include line or file is put back at most once per <see cref="ApoRestoreGap"/> (a later one waits for the gap, so it is
     /// never lost); <see cref="ApoRestoreLoopCount"/> put-backs inside <see cref="ApoRestoreLoopWindow"/> mean another program keeps taking

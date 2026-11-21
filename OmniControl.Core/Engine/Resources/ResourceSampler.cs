@@ -222,7 +222,8 @@ public sealed class ResourceSampler : IDisposable
         var now = _clock.Elapsed;
         if (_sensedAt is not { } sensed || now - sensed >= CoreTiming.SensorEvery)
         {
-            var readStorage = _storageAt is not { } stored || now - stored >= CoreTiming.StorageSensorEvery;
+            var storageEvery = (wanted & SampleParts.Disk) != 0 ? CoreTiming.StorageSensorEvery : CoreTiming.StorageTempEvery;
+            var readStorage = _storageAt is not { } stored || now - stored >= storageEvery;
             if (readStorage) _storageAt = now;
             _sensedAt = now;
             _sensed = Sense(computer, readStorage);

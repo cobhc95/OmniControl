@@ -36,7 +36,8 @@ public sealed class GadgetCells : Grid
     }
 
     private readonly List<(Panel Cell, GadgetLabelView Label, TextBlock Reserve, TextBlock Value)> _cells = new();
-    private string _key = string.Empty;
+    private GadgetLayout? _laidLayout;
+    private readonly List<(string Label, string Widest, double GapAfter)> _laid = new(); // what the cells were laid out for
     private readonly Dictionary<Control, Func<IReadOnlyList<GadgetTipLine>>> _tips = new();
 
     public GadgetCells() => Classes.Add("gadgetcells");
@@ -45,8 +46,7 @@ public sealed class GadgetCells : Grid
 
     public void Draw(IReadOnlyList<GadgetCell> cells, GadgetLayout layout)
     {
-        var key = $"{layout}|{string.Join("|", cells.Select(c => $"{c.Label}\u0001{c.Widest}\u0001{c.GapAfter}"))}";
-        if (key != _key) Lay(cells, layout, key);
+        if (!LaidFor(cells, layout)) Lay(cells, layout);
         for (var i = 0; i < cells.Count; i++)
         {
             var (cell, label, reserve, value) = _cells[i];
@@ -59,9 +59,20 @@ public sealed class GadgetCells : Grid
         }
     }
 
-    private void Lay(IReadOnlyList<GadgetCell> cells, GadgetLayout layout, string key)
+    // Compared part by part, so a draw with the same layout and cells (every read) builds no text to compare.
+    private bool LaidFor(IReadOnlyList<GadgetCell> cells, GadgetLayout layout)
     {
-        _key = key;
+        if (layout != _laidLayout || cells.Count != _laid.Count) return false;
+        for (var i = 0; i < cells.Count; i++)
+            if (_laid[i] != (cells[i].Label, cells[i].Widest, cells[i].GapAfter)) return false;
+        return true;
+    }
+
+    private void Lay(IReadOnlyList<GadgetCell> cells, GadgetLayout layout)
+    {
+        _laidLayout = layout;
+        _laid.Clear();
+        _laid.AddRange(cells.Select(c => (c.Label, c.Widest, c.GapAfter)));
         Children.Clear();
         _cells.Clear();
         _tips.Clear();

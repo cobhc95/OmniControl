@@ -114,6 +114,16 @@ public sealed class StateRegistry : IStateRegistry, IStateReader
         _post(() => Compare(id, chain));
     }
 
+    public void Notify(IReadOnlyList<string> ids)
+    {
+        if (ids.Count == 0) return;
+        var chain = _chainNow();
+        _post(() =>
+        {
+            foreach (var id in ids) Compare(id, chain);
+        });
+    }
+
     /// What the owner is doing with the state, or how far it can be trusted, changed (its <see cref="StateEntry.Liveness"/>); the value itself may not have.
     public event Action<StateEntry>? LivenessChanged;
 
