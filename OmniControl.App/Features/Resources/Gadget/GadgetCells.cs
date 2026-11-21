@@ -21,7 +21,7 @@ public sealed class GadgetCells : Grid
 {
     private const double DipsPerPoint = 96d / 72;
 
-    /// The cells and layout to draw when bound (the settings window's preview and layout cards); the taskbar gadget calls <see cref="Draw"/>.
+    /// The cells and layout to draw when bound (the layout tiles and the label editor's line); the taskbar gadget calls <see cref="Draw"/>.
     public static readonly StyledProperty<IReadOnlyList<GadgetCell>?> CellsProperty = AvaloniaProperty.Register<GadgetCells, IReadOnlyList<GadgetCell>?>(nameof(Cells));
     public static readonly StyledProperty<GadgetLayout?> LayoutProperty = AvaloniaProperty.Register<GadgetCells, GadgetLayout?>(nameof(Layout));
 

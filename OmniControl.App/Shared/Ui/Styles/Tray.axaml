@@ -193,7 +193,7 @@
     <Style Selector="Button.pill.accentline:not(.custom):pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushPressedSubtle}" /></Style>
 
     <Style Selector="Panel.gadgethit"><Setter Property="Background" Value="{StaticResource BrushHitTest}" /></Style>
-    <!-- g|GadgetCells = THE gadget's cells (the taskbar gadget, the settings preview, the layout cards); its gaps are settings. Selected by its
+    <!-- g|GadgetCells = THE gadget's cells (the taskbar gadget, the layout tiles, the label editor's line); its gaps are settings. Selected by its
          type, not a class: a type-only ancestor costs other text nothing, where a class ancestor is watched on every text in every grid. -->
     <Style Selector="g|GadgetCells">
         <Setter Property="Margin" Value="{StaticResource GadgetInset}" />

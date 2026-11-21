@@ -20,7 +20,7 @@ public interface IGadgetPreview
     void SetFont(string font);
 
     /// <param name="sampleUnknown">A reading or weather value that is unknown or 0 shows a sample (<see cref="Reading.SampleOr"/>,
-    /// <see cref="Weather.WeatherWords.Sampled"/>; the preview and the layout tiles), never "—" or "0".</param>
+    /// <see cref="Weather.WeatherWords.Sampled"/>; the layout tiles), never "—" or "0".</param>
     IReadOnlyList<GadgetCell> Cells(GadgetSettings look, bool sampleUnknown = false);
 
     Color Background { get; }

@@ -14,7 +14,7 @@ public sealed class WeatherWords(WeatherNow? now, bool imperial, TemperatureSign
     /// The place a sample names while none is set.
     public const string SamplePlace = "Oslo";
 
-    /// A typical day (metric), the sample of the preview and the layout tiles.
+    /// A typical day (metric), the sample of the layout tiles.
     private static readonly WeatherNow Sample = new(12, 10, 10, 14, 70, 15, 8, WeatherSky.PartlyCloudy, true);
 
     /// <paramref name="now"/> with every value it does not have taken from <see cref="Sample"/>; the sample when there is no answer.

@@ -192,7 +192,7 @@ public sealed record Reading(string Id, string Name, string Chip, string Icon, R
 
     public const string Unknown = "—";
 
-    /// A typical value as <see cref="Read"/> gives it, shown by the preview and the layout tiles while the reading is unknown or 0 (never "—" or "0" in a sample).
+    /// A typical value as <see cref="Read"/> gives it, shown by the layout tiles while the reading is unknown or 0 (never "—" or "0" in a sample).
     public double Sample => Kind switch { ReadingKind.Speed => 1.2 * Kilo, ReadingKind.Temperature => 54, _ => 4 };
 
     /// The value a sample look shows: the latest when it is known and not 0, else <see cref="Sample"/>.

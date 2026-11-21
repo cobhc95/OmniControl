@@ -5,9 +5,9 @@ using OmniControl.App.Features.Resources.Weather;
 
 namespace OmniControl.App.Features.Resources.Gadget;
 
-/// The Resources page's Taskbar gadget tab: preview and "Show on taskbar", layout tiles, readings list and the Weather, Size and spacing, Numbers and units,
+/// The Resources page's Taskbar gadget tab: "Show on taskbar", Position and Font, layout tiles, readings list and the Weather, Size and spacing, Numbers and units,
 /// Hover details and Clicks groups; it holds the readings and redraws only while it is on screen (<see cref="SetOnScreen"/>).
-public sealed partial class GadgetSettingsModel : ObservableObject, IDisposable
+public sealed class GadgetSettingsModel : ObservableObject, IDisposable
 {
     private static readonly (LabelStyle Style, string Words)[] LabelWords =
         { (LabelStyle.Text, "Labels: Text"), (LabelStyle.Icons, "Labels: Icons"), (LabelStyle.Both, "Labels: Both") };
@@ -86,11 +86,10 @@ public sealed partial class GadgetSettingsModel : ObservableObject, IDisposable
     public IEnumerable<IEditorItem> SearchItems => new[] { Weather.Group, Display.Layout, Display.Numbers, Hover.Group, Display.Behaviour }
         .SelectMany(g => g.Items).OfType<IEditorItem>().Prepend(Font.Item).Prepend(Position);
 
-    [ObservableProperty] private IReadOnlyList<GadgetCell>? _previewCells;
-    [ObservableProperty] private GadgetLayout? _previewLayout;
-    [ObservableProperty] private IBrush? _previewBackground;
+    /// The taskbar's colour behind the label editor's line and the layout tiles (kept, so a read draws on the same brush).
+    private SolidColorBrush? _background;
 
-    /// The tab came on or left the screen: the readings are held (every part, for the layout tiles) and the preview follows them only while it shows.
+    /// The tab came on or left the screen: the readings are held (every part, for the layout tiles) and the tiles and lines follow them only while it shows.
     public void SetOnScreen(bool onScreen)
     {
         if (onScreen == _hold is not null) return;
@@ -143,20 +142,19 @@ public sealed partial class GadgetSettingsModel : ObservableObject, IDisposable
         Hover.Load();
     }
 
-    /// Draws the preview, the layout tiles, the label editor's line and the rows' sensor chips with the latest reading (every read while the tab is on screen).
+    /// Draws the layout tiles, the label editor's line and the rows' sensor chips with the latest reading (every read while the tab is on screen).
     private void Redraw()
     {
         var look = Look;
-        PreviewCells = _preview.Cells(look, sampleUnknown: true);
-        PreviewLayout = GadgetLayout.Of(look);
-        if ((PreviewBackground as ISolidColorBrush)?.Color != _preview.Background) PreviewBackground = new SolidColorBrush(_preview.Background);
-        var line = PreviewLayout with { Lines = 1 };
+        var cells = _preview.Cells(look, sampleUnknown: true);
+        if (_background?.Color != _preview.Background) _background = new SolidColorBrush(_preview.Background);
+        var line = GadgetLayout.Of(look) with { Lines = 1 };
         foreach (var row in Rows)
         {
-            (row.Line, row.LineLayout, row.LineBackground) = (PreviewCells, line, PreviewBackground);
+            (row.Line, row.LineLayout, row.LineBackground) = (cells, line, _background);
             row.Sensor?.Refresh();
         }
-        Gallery.Draw(layout => _preview.Cells(layout, sampleUnknown: true), PreviewBackground, look.Font);
+        Gallery.Draw(layout => _preview.Cells(layout, sampleUnknown: true), _background, look.Font);
     }
 
     public void Dispose()

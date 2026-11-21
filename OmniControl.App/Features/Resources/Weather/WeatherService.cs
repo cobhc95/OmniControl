@@ -114,7 +114,7 @@ public sealed class WeatherService : IDisposable
 
     /// The weather row's cells: the <paramref name="shows"/> parts (live place and units), the row's label first, its gap after the last; each with the
     /// hover tooltip of the chosen details, none while the weather's hover switch is off. <paramref name="sample"/>: what is unknown (no answer yet,
-    /// no place) shows a sample (the preview and the layout tiles).
+    /// no place) shows a sample (the layout tiles).
     public IEnumerable<GadgetCell> Cells(GadgetReading row, IReadOnlyCollection<WeatherPart> shows, Color text, GadgetHover hover, bool sample = false)
     {
         var real = new WeatherWords(Latest, Setup.Imperial, Setup.Temperatures);

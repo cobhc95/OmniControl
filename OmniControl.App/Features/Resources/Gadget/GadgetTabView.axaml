@@ -7,25 +7,17 @@
              xmlns:s="using:OmniControl.App.Shared.Services"
              x:Class="OmniControl.App.Features.Resources.Gadget.GadgetTabView"
              x:DataType="g:GadgetSettingsModel">
-    <!-- The Resources page's Taskbar gadget tab: the live preview with "Show on taskbar" and the Position and Font cards at its right, then the Ready-made
-         layouts, What it shows, Weather, Size and spacing, Numbers and units, Hover details and Clicks group cards. -->
+    <!-- The Resources page's Taskbar gadget tab: "Show on taskbar", then the Position and Font cards, then the Ready-made layouts, What it shows,
+         Weather, Size and spacing, Numbers and units, Hover details and Clicks group cards. -->
     <StackPanel Spacing="{StaticResource Gap}" Grid.IsSharedSizeScope="True">
-        <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="{StaticResource GapLarge}">
-            <Border Classes="pane" Background="{Binding PreviewBackground}" Height="{StaticResource GadgetPreviewHeight}" ClipToBounds="True">
-                <Grid ColumnDefinitions="Auto,*">
-                    <TextBlock Classes="muted small" Text="Preview" VerticalAlignment="Center" Margin="{StaticResource RowHeadingInset}" />
-                    <Viewbox Grid.Column="1" StretchDirection="DownOnly" HorizontalAlignment="Right">
-                        <g:GadgetCells Cells="{Binding PreviewCells}" Layout="{Binding PreviewLayout}" />
-                    </Viewbox>
-                </Grid>
-            </Border>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource MenuGap}" VerticalAlignment="Center">
+        <Grid ColumnDefinitions="Auto,Auto,Auto" ColumnSpacing="{StaticResource GapLarge}">
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource MenuGap}" VerticalAlignment="Center">
                 <TextBlock Classes="muted" Text="Show on taskbar" VerticalAlignment="Center" />
                 <ToggleSwitch Tag="grouptool" IsChecked="{Binding Shown}" OnContent="On" OffContent="Off" VerticalAlignment="Center" />
             </StackPanel>
-            <ListBox Grid.Column="2" Classes="rows compact" ItemsSource="{Binding PositionCard}" VerticalAlignment="Center" />
+            <ListBox Grid.Column="1" Classes="rows compact" ItemsSource="{Binding PositionCard}" VerticalAlignment="Center" />
             <!-- A long font name trims in the chip rather than widening the line -->
-            <ListBox Grid.Column="3" Classes="rows compact" ItemsSource="{Binding FontCard}" VerticalAlignment="Center" MaxWidth="{StaticResource ChoiceMaxWidth}" />
+            <ListBox Grid.Column="2" Classes="rows compact" ItemsSource="{Binding FontCard}" VerticalAlignment="Center" MaxWidth="{StaticResource ChoiceMaxWidth}" />
         </Grid>
 
         <StackPanel>
