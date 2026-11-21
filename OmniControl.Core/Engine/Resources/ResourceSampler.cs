@@ -33,7 +33,11 @@ public sealed record ResourceSample(double? Cpu, double? Gpu, double? MemoryUsed
 
 /// One physical disk: Windows' disk <paramref name="Number"/> (<see cref="PhysicalDisk.Number"/>), its active time in percent and its hottest
 /// temperature in °C (null when the drive reports none, or that part was not wanted).
-public sealed record DiskSample(int Number, double? Activity, double? Temperature);
+public sealed record DiskSample(int Number, double? Activity, double? Temperature)
+{
+    /// The sensor the temperature came from (the chosen one, or the drive's own); null when none was read.
+    public TemperatureSensor? Sensor { get; init; }
+}
 
 /// Where a temperature sensor sits, in the order a menu lists them.
 public enum SensorGroup { Cpu, Gpu, Storage, Board }
@@ -49,8 +53,20 @@ public sealed record TemperatureSensor(string Id, string Name, string Hardware, 
     public string Short => Group is SensorGroup.Cpu or SensorGroup.Gpu && Name.Length > 4 && Name[3] == ' ' && Name[..3] is "CPU" or "GPU" ? Name[4..] : Name;
 }
 
-/// The temperature sensor each reading that can follow one was set to (a <see cref="TemperatureSensor.Id"/>); null, or one that is gone, = Auto.
-public readonly record struct SensorChoices(string? Hottest, string? Cpu, string? Gpu);
+/// The temperature sensor each temperature reading was set to (a <see cref="TemperatureSensor.Id"/>; each disk's by its number); null, absent
+/// or gone = Auto. Equal when every choice is.
+public sealed record SensorChoices(string? Hottest, string? Cpu, string? Gpu, IReadOnlyDictionary<int, string> Disks)
+{
+    public static readonly SensorChoices Auto = new(null, null, null, new Dictionary<int, string>());
+
+    /// Every chosen sensor.
+    public IEnumerable<string> Ids => new[] { Hottest, Cpu, Gpu }.OfType<string>().Concat(Disks.Values);
+
+    public bool Equals(SensorChoices? other) => other is not null && (Hottest, Cpu, Gpu) == (other.Hottest, other.Cpu, other.Gpu)
+        && Disks.Count == other.Disks.Count && Disks.All(d => other.Disks.TryGetValue(d.Key, out var id) && id == d.Value);
+
+    public override int GetHashCode() => HashCode.Combine(Hottest, Cpu, Gpu, Disks.Count);
+}
 
 /// The parts of a read a caller wants, beyond CPU load and memory (two cheap calls, always read): the network speeds, the adapter list (only
 /// for the adapter menu), and each sensor reading (disk activity and the disks' temperatures apart), whose sources open only for these.
@@ -80,8 +96,8 @@ public sealed class ResourceSampler : IDisposable
 
     /// <param name="adapter">Which adapter the network speeds are read from: null = the busiest one (Auto), <see cref="AdapterSpeed.All"/> = all
     /// added together, else an adapter's id; a chosen adapter that is gone or not connected reads as Auto.</param>
-    /// <param name="sensors">The temperature sensor the Hottest, CPU and GPU temperature readings follow.</param>
-    public ResourceSample Read(SampleParts wanted, string? adapter, SensorChoices sensors = default)
+    /// <param name="sensors">The temperature sensor each temperature reading follows (null: all on Auto).</param>
+    public ResourceSample Read(SampleParts wanted, string? adapter, SensorChoices? sensors = null)
     {
         var net = (wanted & SampleParts.Network) != 0 ? Network(adapter, (wanted & SampleParts.Adapters) != 0) : NoNetwork();
         var (used, total) = Memory();
@@ -91,7 +107,7 @@ public sealed class ResourceSampler : IDisposable
             AdapterIsAuto = net.Auto,
             Parts = wanted,
         };
-        return (wanted & SampleParts.Sensors) != 0 ? _sensors.Add(sample, wanted, sensors) : sample;
+        return (wanted & SampleParts.Sensors) != 0 ? _sensors.Add(sample, wanted, sensors ?? SensorChoices.Auto) : sample;
     }
 
     /// The network is not wanted: its counters are forgotten, so the first read after it is wanted again starts afresh (never a rate over the gap).

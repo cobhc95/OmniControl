@@ -1,4 +1,5 @@
 using OmniControl.App.Features.Icons;
+using OmniControl.App.Features.Resources.Pages;
 
 namespace OmniControl.App.Features.Resources.Gadget;
 
@@ -30,7 +31,8 @@ public sealed record LabelIconGroup(string Name, IReadOnlyList<LabelIconItem> Ic
     private int Lines => (Icons.Count + MaxColumns - 1) / MaxColumns;
 }
 
-/// One row of the Taskbar gadget tab's readings list (the weather too): shown, its label and editor, its warn point and colour; saved at once.
+/// One row of the Taskbar gadget tab's readings list (the weather too): shown, a temperature's sensor chip, its label and editor, its warn point
+/// and colour; saved at once.
 public sealed partial class GadgetRowItem : ObservableObject
 {
     /// The icon grids the label editor offers (up/down pairs side by side); "+ icon" opens THE icon picker for any other.
@@ -64,6 +66,7 @@ public sealed partial class GadgetRowItem : ObservableObject
             .Select(g => new LabelIconGroup(g.Name, g.Ids.Select(id => new LabelIconItem(id, new RelayCommand(() => ToggleIcon(id)))).ToList())).ToList();
         (IconColours, AllIconColours) = (Dots(() => SelectedIcon), Dots(() => null));
         var kind = _reading?.Kind == ReadingKind.Temperature ? "Apply to all temperatures" : "Apply to all of this kind";
+        Sensor = _reading?.Sensor is null ? null : new SensorMenu(readings, settings, _reading, "Auto", m => m.Summary, SensorMenu.TipFor(_reading)).Item;
         QuickChips = _reading is null
             ? new[] { Quick("No label", LabelStyle.None) }
             : new[] { Quick("Text only", LabelStyle.Text), Quick("Icon only", LabelStyle.Icons), Quick("Icon + text", LabelStyle.Both), Quick("No label", LabelStyle.None),
@@ -80,6 +83,10 @@ public sealed partial class GadgetRowItem : ObservableObject
     public Reading? Reading => _reading;
     public string Name => _reading?.Name ?? (Entry.Id == GadgetSettings.WeatherId ? "Weather" : Entry.Id);
     public string EditorTitle => $"Label for {Name}: type text, insert icons anywhere";
+
+    /// The temperature sensor chip under the name (THE reading's one choice, <see cref="SensorMenu"/>); null: not a temperature.
+    public MenuChoiceItem? Sensor { get; }
+    public bool HasSensor => Sensor is not null;
     public int WarnMax => _reading?.Max ?? 0;
     public bool HasWarn => _reading is not null;
     public IReadOnlyList<SwatchItem> Colours { get; }

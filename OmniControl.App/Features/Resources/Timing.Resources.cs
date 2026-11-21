@@ -19,6 +19,10 @@ public static partial class Timing
         ResourcesGadgetReadCostly = TimeSpan.FromMilliseconds(500);
     public static readonly IReadOnlyList<TimeSpan> ResourcesGadgetQuickReads = new[] { 250, 500, 1000, 2000 }.Select(ms => TimeSpan.FromMilliseconds(ms)).ToList();
 
+    /// On Left, the least time between two looks at where the taskbar's left buttons end (UI Automation into Explorer, at the gadget's reads):
+    /// a program button that came or went is followed within this.
+    public static readonly TimeSpan ResourcesGadgetLeftLook = TimeSpan.FromSeconds(5);
+
     /// The gadget's weather: the default, shortest and longest interval, one request's limit, and the pause after typing before a place search.
     public static readonly TimeSpan WeatherUpdateEvery = TimeSpan.FromMinutes(30), WeatherUpdateMin = TimeSpan.FromMinutes(5),
         WeatherUpdateMax = TimeSpan.FromHours(3), WeatherRequestTimeout = TimeSpan.FromSeconds(15), WeatherSearchPause = TimeSpan.FromMilliseconds(500);

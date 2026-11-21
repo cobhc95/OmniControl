@@ -16,6 +16,10 @@ public enum TemperatureSign { None, Degree, Unit }
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum OddReading { Centre, Larger, FillTop }
 
+/// Where on the taskbar the gadget sits: left of the tray, or after the buttons at the taskbar's left end (<see cref="Core.Engine.TaskbarButtons"/>).
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum GadgetPosition { Right, Left }
+
 /// One part of the weather the gadget can show, in the order the gadget shows them.
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum WeatherPart { Icon, Temperature, FeelsLike, RainChance, Wind, Humidity, PlaceName, HighLow }
@@ -91,6 +95,9 @@ public sealed class GadgetSettings
 {
     public const int MinLines = 1, MaxLines = 3,MinTextSize = 6, MaxTextSize = 16, MaxColumnGap = 40, MaxLineGap = 12, MaxGapAfter = 40, MinSpaceToTray = -16, MaxSpaceToTray = 40;
 
+    /// The positions' words, in <see cref="GadgetPosition"/> order (the tab's Position card and the gadget's menu).
+    public static readonly IReadOnlyList<string> PositionNames = Enum.GetNames<GadgetPosition>();
+
     /// The weather's row among the readings (it is not a reading of the PC, so it is not in <see cref="Reading.All"/>).
     public const string WeatherId = "weather";
 
@@ -112,6 +119,9 @@ public sealed class GadgetSettings
 
     /// The free space between the gadget's right edge and the tray, in pixels; below 0 it tucks into the padding Windows leaves around the tray's "^" button.
     public double SpaceToTray { get; set; }
+
+    /// Which end of the taskbar; one for every layout (a layout keeps it, as it keeps shown or not).
+    public GadgetPosition Position { get; set; }
     public bool HoverOutline { get; set; }
     public SpeedUnit Units { get; set; } = SpeedUnit.Auto;
     public bool Bits { get; set; }
@@ -163,13 +173,14 @@ public sealed class GadgetSettings
         Readings = Readings.OrderBy(r => !r.Shown).ToList();
     }
 
-    /// The look of <paramref name="from"/> (a layout) put into these settings, keeping shown or not, the click actions, the hover details, the space to the tray,
-    /// the weather's place and, hidden, the rows the layout lacks (this PC's disks).
+    /// The look of <paramref name="from"/> (a layout) put into these settings, keeping shown or not, the position, the click actions, the hover details,
+    /// the space to the tray, the weather's place and, hidden, the rows the layout lacks (this PC's disks).
     public void TakeLook(GadgetSettings from)
     {
         var keep = Copy();
         SettingsCopy.Into(this, from.Copy());
-        (Shown, ClickAction, ClickDefaultMoved, DoubleClickAction, Hover, SpaceToTray) = (keep.Shown, keep.ClickAction, keep.ClickDefaultMoved, keep.DoubleClickAction, keep.Hover, keep.SpaceToTray);
+        (Shown, Position, ClickAction, ClickDefaultMoved, DoubleClickAction, Hover, SpaceToTray) =
+            (keep.Shown, keep.Position, keep.ClickAction, keep.ClickDefaultMoved, keep.DoubleClickAction, keep.Hover, keep.SpaceToTray);
         (keep.Weather.Shows, keep.Weather.Temperatures) = (Weather.Shows, Weather.Temperatures);
         Weather = keep.Weather;
         foreach (var row in keep.Readings.Where(k => Readings.All(r => r.Id != k.Id)))

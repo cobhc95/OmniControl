@@ -3,7 +3,6 @@ using System.Text.Json.Serialization;
 using OmniControl.App.Features.AppLists;
 using OmniControl.App.Features.Resources.Gadget;
 using OmniControl.App.Shared.Presets;
-using OmniControl.Core.Engine.Resources;
 
 namespace OmniControl.App.Features.Resources;
 
@@ -30,24 +29,31 @@ public sealed class ResourcesSetup
     /// The network adapter the Download and Upload readings come from: null = Auto (the busiest), <c>AdapterSpeed.All</c> = all together, else an adapter's id.
     public string? Adapter { get; set; }
 
-    /// The temperature sensor the Hottest sensor reading follows (a sensor's id: Windows' own, starting "win/", or the sensor library's): null = the hottest of all (Auto); one that is gone reads as Auto.
-    public string? Sensor { get; set; }
+    /// THE one choice of each temperature reading (<see cref="Reading.Sensor"/>), by reading id: the sensor it is read from (Windows' own, ids
+    /// starting "win/", or the sensor library's). A reading not listed is on Auto; a sensor that is gone reads as Auto. Replaced whole on each
+    /// change, so the poller's worker always reads one whole map.
+    public SortedDictionary<string, string> Sensors { get; set; } = new();
 
-    /// The temperature sensor the CPU and GPU temperature readings follow, as <see cref="Sensor"/>; null = Auto (<c>TemperaturePick</c>).
-    public string? CpuSensor { get; set; }
-    public string? GpuSensor { get; set; }
+    /// The Hottest sensor's, CPU and GPU temperature's choices in files from before <see cref="Sensors"/> (read only).
+    [JsonPropertyName("Sensor"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? OldHottestSensor { get => null; set { if (value is not null) SetSensor(Reading.HottestId, value); } }
 
-    /// The sensor a reading follows (<see cref="Reading.HottestId"/>, <see cref="Reading.CpuTempId"/> or <see cref="Reading.GpuTempId"/>).
-    public string? SensorOf(string readingId) => readingId switch { Reading.CpuTempId => CpuSensor, Reading.GpuTempId => GpuSensor, _ => Sensor };
+    [JsonPropertyName("CpuSensor"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? OldCpuSensor { get => null; set { if (value is not null) SetSensor(Reading.CpuTempId, value); } }
+
+    [JsonPropertyName("GpuSensor"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? OldGpuSensor { get => null; set { if (value is not null) SetSensor(Reading.GpuTempId, value); } }
+
+    /// The sensor a temperature reading follows; null = Auto.
+    public string? SensorOf(string readingId) => Sensors.GetValueOrDefault(readingId);
 
     public void SetSensor(string readingId, string? id)
     {
-        if (readingId == Reading.CpuTempId) CpuSensor = id;
-        else if (readingId == Reading.GpuTempId) GpuSensor = id;
-        else Sensor = id;
+        var next = new SortedDictionary<string, string>(Sensors);
+        if (id is null) next.Remove(readingId);
+        else next[readingId] = id;
+        Sensors = next;
     }
-
-    public SensorChoices SensorChoices() => new(Sensor, CpuSensor, GpuSensor);
 
     public GadgetSettings Gadget { get; set; } = GadgetLayouts.NewLook();
     public List<AppNetRule> Apps { get; set; } = new();

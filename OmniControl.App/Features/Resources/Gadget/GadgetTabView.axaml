@@ -3,12 +3,13 @@
              xmlns:g="using:OmniControl.App.Features.Resources.Gadget"
              xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
              xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+             xmlns:p="using:OmniControl.App.Features.Resources.Pages"
              x:Class="OmniControl.App.Features.Resources.Gadget.GadgetTabView"
              x:DataType="g:GadgetSettingsModel">
-    <!-- The Resources page's Taskbar gadget tab: the live preview with "Show on taskbar" at its right, then the Ready-made layouts, What it shows, Weather,
-         Size and spacing, Numbers and units, Hover details and Clicks group cards. -->
+    <!-- The Resources page's Taskbar gadget tab: the live preview with "Show on taskbar" and the Position card at its right, then the Ready-made layouts,
+         What it shows, Weather, Size and spacing, Numbers and units, Hover details and Clicks group cards. -->
     <StackPanel Spacing="{StaticResource Gap}" Grid.IsSharedSizeScope="True">
-        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}">
+        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{StaticResource GapLarge}">
             <Border Classes="pane" Background="{Binding PreviewBackground}" Height="{StaticResource GadgetPreviewHeight}" ClipToBounds="True">
                 <Grid ColumnDefinitions="Auto,*">
                     <TextBlock Classes="muted small" Text="Preview" VerticalAlignment="Center" Margin="{StaticResource RowHeadingInset}" />
@@ -21,6 +22,7 @@
                 <TextBlock Classes="muted" Text="Show on taskbar" VerticalAlignment="Center" />
                 <ToggleSwitch Tag="grouptool" IsChecked="{Binding Shown}" OnContent="On" OffContent="Off" VerticalAlignment="Center" />
             </StackPanel>
+            <ListBox Grid.Column="2" Classes="rows compact" ItemsSource="{Binding PositionCard}" VerticalAlignment="Center" />
         </Grid>
 
         <StackPanel>
@@ -68,7 +70,12 @@
                                     </Grid.ColumnDefinitions>
                                     <PathIcon Classes="grip" Data="{StaticResource GripIcon}" VerticalAlignment="Center" ToolTip.Tip="Drag to change the order" />
                                     <CheckBox Grid.Column="1" Tag="scope" IsChecked="{Binding Shown}" VerticalAlignment="Center" ToolTip.Tip="Show on the taskbar" />
-                                    <TextBlock Grid.Column="2" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                    <!-- A temperature's sensor chip under its name (THE sensor chip and menu of the Readings tab) -->
+                                    <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                        <c:ChipMenu ChipTag="scope" ChipAlignment="Left" Text="{Binding Sensor.Text}" ChipToolTip="{Binding Sensor.Tip}" IsVisible="{Binding HasSensor}"
+                                                    pages:MenuChoiceLink.Title="{x:Static p:SensorMenu.Title}" pages:MenuChoiceLink.Item="{Binding Sensor}" />
+                                    </StackPanel>
                                     <Button Grid.Column="3" Classes="scope" Tag="scope" MinWidth="{StaticResource GadgetLabelWidth}" VerticalAlignment="Center"
                                             ToolTip.Tip="Edit the label: words and icons, and the gap after it">
                                         <Panel>

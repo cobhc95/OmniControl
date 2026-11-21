@@ -65,7 +65,7 @@ internal sealed class SensorReader : IDisposable
             }
             return found;
         }
-        foreach (var id in _chosen.Keys.Where(id => id != choices.Hottest && id != choices.Cpu && id != choices.Gpu).ToList()) _chosen.Remove(id);
+        foreach (var id in _chosen.Keys.Except(choices.Ids).ToList()) _chosen.Remove(id);
         var hot = Any(SampleParts.Hottest) ? Find(SampleParts.Hottest, choices.Hottest) ?? all.MaxBy(s => s.Value) : null;
         var cpu = Any(SampleParts.CpuTemp) ? Find(SampleParts.CpuTemp, choices.Cpu) ?? TemperaturePick.Cpu(all.Where(IsCpuCandidate)) : null;
         var gpu = Any(SampleParts.GpuTemp)
@@ -76,7 +76,9 @@ internal sealed class SensorReader : IDisposable
         {
             Gpu = Any(SampleParts.Gpu) ? _gpuLoad ?? _libreRead.Gpu : null,
             Disk = Any(SampleParts.Disk) ? _activity is { } activity ? (activity.Count > 0 ? activity.Values.Max() : null) : _libreRead.Disk : null,
-            Disks = Any(SampleParts.Disk | SampleParts.DiskTemp) ? Disks(Any(SampleParts.Disk), Any(SampleParts.DiskTemp)) : Array.Empty<DiskSample>(),
+            Disks = Any(SampleParts.Disk | SampleParts.DiskTemp)
+                ? Disks(Any(SampleParts.Disk), Any(SampleParts.DiskTemp), choices.Disks, id => Find(SampleParts.DiskTemp, id))
+                : Array.Empty<DiskSample>(),
             CpuTemp = cpu?.Value,
             GpuTemp = gpu?.Value,
             Hottest = hot?.Value,
@@ -106,6 +108,8 @@ internal sealed class SensorReader : IDisposable
         if ((wanted & SampleParts.Hottest) != 0 && choices.Hottest is { } hottest) yield return hottest;
         if ((wanted & SampleParts.CpuTemp) != 0 && choices.Cpu is { } cpu) yield return cpu;
         if ((wanted & SampleParts.GpuTemp) != 0 && choices.Gpu is { } gpu) yield return gpu;
+        if ((wanted & SampleParts.DiskTemp) != 0)
+            foreach (var disk in choices.Disks.Values) yield return disk;
     }
 
     private void Sense(SampleParts wanted, SensorChoices choices, bool tempsDue, bool drivesDue)
@@ -164,17 +168,18 @@ internal sealed class SensorReader : IDisposable
         return groups;
     }
 
-    /// Each physical disk's activity and temperature: Windows' own, else the library's.
-    private IReadOnlyList<DiskSample> Disks(bool activity, bool temperature)
+    /// Each physical disk's activity and temperature: Windows' own, else the library's; a disk's chosen sensor (by its number, looked up by
+    /// <paramref name="find"/>) gives its temperature while it is found.
+    private IReadOnlyList<DiskSample> Disks(bool activity, bool temperature, IReadOnlyDictionary<int, string> chosen, Func<string, TemperatureSensor?> find)
     {
         var numbers = (_activity?.Keys ?? Enumerable.Empty<int>()).Concat(_driveTemps.Select(t => t.DiskNumber).OfType<int>())
-            .Concat(_libreRead.Disks.Select(d => d.Number)).Distinct().Order();
+            .Concat(_libreRead.Disks.Select(d => d.Number)).Concat(temperature ? chosen.Keys : Enumerable.Empty<int>()).Distinct().Order();
         return numbers.Select(n =>
         {
-            var libre = _libreRead.Disks.FirstOrDefault(d => d.Number == n);
-            double? active = _activity is { } a ? (a.TryGetValue(n, out var v) ? v : null) : libre?.Activity;
-            var hot = _driveTemps.FirstOrDefault(t => t.DiskNumber == n)?.Value ?? libre?.Temperature;
-            return new DiskSample(n, activity ? active : null, temperature ? hot : null);
+            double? active = _activity is { } a ? (a.TryGetValue(n, out var v) ? v : null) : _libreRead.Disks.FirstOrDefault(d => d.Number == n)?.Activity;
+            var hot = !temperature ? null : (chosen.TryGetValue(n, out var id) ? find(id) : null) ?? _driveTemps.FirstOrDefault(t => t.DiskNumber == n)
+                ?? _libreRead.Temperatures.Where(t => t.DiskNumber == n).MaxBy(t => t.Value);
+            return new DiskSample(n, activity ? active : null, hot?.Value) { Sensor = hot };
         }).ToList();
     }
 

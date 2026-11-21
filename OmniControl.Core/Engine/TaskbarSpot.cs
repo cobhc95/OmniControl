@@ -3,8 +3,8 @@ namespace OmniControl.Core.Engine;
 /// Where a gadget of a given size sits on the taskbar (physical pixels, screen), and the taskbar window it is put into.
 public sealed record TaskbarPlace(IntPtr Taskbar, int X, int Y);
 
-/// THE placement of a small window over the Windows taskbar (Windows 11 has no taskbar toolbars): left of the tray icons, centred in
-/// the taskbar's height (the left end would overlap the taskbar's program icons). <see cref="Attach"/> makes it a child of the taskbar, so it is drawn as part of the taskbar
+/// THE placement of a small window over the Windows taskbar (Windows 11 has no taskbar toolbars): left of the tray icons, or after the buttons
+/// at the taskbar's left end, centred in the taskbar's height. <see cref="Attach"/> makes it a child of the taskbar, so it is drawn as part of the taskbar
 /// and moves with it into whatever layer Windows 11 lifts the taskbar to (an owned or topmost window is covered then). Explorer restarting
 /// destroys the old taskbar (a new <see cref="TaskbarPlace.Taskbar"/>) and its children: the owner makes its window anew and attaches it.
 public static class TaskbarSpot
@@ -14,10 +14,11 @@ public static class TaskbarSpot
 
     /// The place for a <paramref name="width"/> x <paramref name="height"/> window, <paramref name="gap"/> device-independent pixels left of the tray (negative: over the tray's own
     /// padding by that much), kept inside the taskbar; on a taskbar at the left or right edge (Windows 10) above the tray, centred in its width
-    /// (from its left end when wider). Null when there is no taskbar (Explorer is not running).
-    public static TaskbarPlace? Find(int width, int height, double gap)
+    /// (from its left end when wider). With <paramref name="after"/> (a screen position along the taskbar, <see cref="TaskbarButtons.RunEnd"/>)
+    /// it sits <paramref name="gap"/> after that, at the taskbar's left (top) end, instead. Null when there is no taskbar (Explorer is not running).
+    public static TaskbarPlace? Find(int width, int height, double gap, int? after = null)
     {
-        var bar = FindWindow(TaskbarClass, null);
+        var bar = Main;
         if (bar == IntPtr.Zero || !GetWindowRect(bar, out var b)) return null;
         var tray = FindWindowEx(bar, IntPtr.Zero, "TrayNotifyWnd", null);
         var t = default(Rect);
@@ -25,15 +26,18 @@ public static class TaskbarSpot
         var space = (int)Math.Round(gap * GetDpiForWindow(bar) / BaseDpi);
         if (b.Bottom - b.Top > b.Right - b.Left)
         {
-            var y = Math.Clamp((hasTray ? t.Top : b.Bottom) - height - space, b.Top, Math.Max(b.Top, b.Bottom - height));
+            var y = Math.Clamp(after is { } top ? top + space : (hasTray ? t.Top : b.Bottom) - height - space, b.Top, Math.Max(b.Top, b.Bottom - height));
             return new TaskbarPlace(bar, Math.Max(b.Left, b.Left + (b.Right - b.Left - width) / 2), y);
         }
-        var x = Math.Clamp((hasTray ? t.Left : b.Right) - width - space, b.Left, Math.Max(b.Left, b.Right - width));
+        var x = Math.Clamp(after is { } left ? left + space : (hasTray ? t.Left : b.Right) - width - space, b.Left, Math.Max(b.Left, b.Right - width));
         return new TaskbarPlace(bar, x, b.Top + (b.Bottom - b.Top - height) / 2);
     }
 
     /// True while Explorer's taskbar exists (false before Explorer has started, or while it restarts).
-    public static bool Exists => FindWindow(TaskbarClass, null) != IntPtr.Zero;
+    public static bool Exists => Main != IntPtr.Zero;
+
+    /// The main taskbar's window (zero while there is none).
+    public static IntPtr Main => FindWindow(TaskbarClass, null);
 
     /// True once <paramref name="window"/> no longer exists (the taskbar that held it was destroyed with it).
     public static bool IsGone(IntPtr window) => !IsWindow(window);

@@ -5,13 +5,16 @@ using OmniControl.Core.Engine.Resources;
 
 namespace OmniControl.App.Features.Resources.Gadget;
 
-/// The gadget as the Taskbar gadget tab sees it: shown or not, the cells of any look, the taskbar's colour and text colour (read once per Windows
+/// The gadget as the Taskbar gadget tab sees it: shown or not, its position, the cells of any look, the taskbar's colour and text colour (read once per Windows
 /// colour change), a hold, a change.
 public interface IGadgetPreview
 {
     bool IsShown { get; }
 
     void SetShown(bool on);
+
+    /// The taskbar's right or left end (one setting for every layout).
+    void SetPosition(GadgetPosition position);
 
     /// <param name="sampleUnknown">A reading or weather value that is unknown or 0 shows a sample (<see cref="Reading.SampleOr"/>,
     /// <see cref="Weather.WeatherWords.Sampled"/>; the preview and the layout tiles), never "—" or "0".</param>
@@ -80,7 +83,43 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
                 var light = TaskbarSpot.IsLight(); // the registry is read here, off the UI thread
                 Dispatcher.UIThread.Invoke(() => Refresh(light));
             },
-            LooksStale: () => IsShown && (_placed is not { } placed || (_size is var (w, h) && TaskbarSpot.Find(w, h, Look.SpaceToTray) != placed))));
+            LooksStale: () => IsShown && (_placed is not { } placed || (_size is var (w, h) && TaskbarSpot.Find(w, h, Look.SpaceToTray, KnownLeftEnd(placed.Taskbar)) != placed))));
+    }
+
+    /// Where the buttons at the taskbar's left end stopped at the last look, and on which taskbar (<see cref="TaskbarButtons.RunEnd"/>).
+    private sealed record LeftEnd(IntPtr Taskbar, int End);
+
+    private LeftEnd? _leftEnd;
+    private bool _lookingLeft;
+    private DateTime _leftLookedAt;
+
+    private int? KnownLeftEnd(IntPtr taskbar) => Look.Position == GadgetPosition.Left && _leftEnd is { } left && left.Taskbar == taskbar ? left.End : null;
+
+    /// On Left: the end of the taskbar's left buttons, as last looked at (null until the first look: placed on the right meanwhile); a placement
+    /// looks again, off the UI thread (UI Automation into Explorer), at most every <see cref="Timing.ResourcesGadgetLeftLook"/> (program
+    /// buttons come and go), at once after a taskbar announcement or a change of position. UI thread.
+    private int? LeftEndFor(IntPtr taskbar)
+    {
+        if (Look.Position != GadgetPosition.Left) return null;
+        var known = KnownLeftEnd(taskbar);
+        if (_lookingLeft || DateTime.UtcNow - _leftLookedAt < Timing.ResourcesGadgetLeftLook) return known;
+        (_lookingLeft, _leftLookedAt) = (true, DateTime.UtcNow);
+        Guard.OffUi("Taskbar gadget: the taskbar's left buttons", () =>
+        {
+            int? end = null;
+            try { end = TaskbarButtons.RunEnd(taskbar); }
+            finally
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    _lookingLeft = false;
+                    if (end is not { } found || _leftEnd == new LeftEnd(taskbar, found)) return;
+                    _leftEnd = new LeftEnd(taskbar, found);
+                    Place();
+                });
+            }
+        });
+        return known;
     }
 
     private (int, int) _size;
@@ -96,6 +135,7 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
             _taskbarLight = light;
             Draw();
         }
+        _leftLookedAt = default; // the taskbar changed (its alignment too): look at its left buttons again
         Place();
     }
 
@@ -119,6 +159,14 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
     {
         if (on == IsShown) return;
         Look.Shown = on;
+        _settings.Commit();
+    }
+
+    public void SetPosition(GadgetPosition position)
+    {
+        if (position == Look.Position) return;
+        Look.Position = position;
+        _leftLookedAt = default; // look at the left buttons now, not at the next interval
         _settings.Commit();
     }
 
@@ -217,8 +265,8 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
     /// A stored gadget colour; "" is <paramref name="text"/> (the text colour, or the taskbar's own <see cref="Ink"/>).
     public static Color ColourOf(string stored, Color text) => stored.Length > 0 ? Color.Parse(stored) : text;
 
-    /// Puts the gadget into the taskbar left of the tray (again after Explorer restarts or the scale changes); moves nothing while nothing changed.
-    /// Runs after every read too, so a tray area that grew or shrank is followed at the next read. UI thread.
+    /// Puts the gadget into the taskbar left of the tray, or after its left buttons (again after Explorer restarts or the scale changes); moves
+    /// nothing while nothing changed. Runs after every read too, so a tray area that grew or shrank is followed at the next read. UI thread.
     private void Place()
     {
         if (_window is null)
@@ -229,7 +277,7 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
         if (_window.TryGetPlatformHandle() is not { } handle) return;
         _size = _window.PixelSize;
         var (w, h) = _size;
-        if (TaskbarSpot.Find(w, h, Look.SpaceToTray) is not { } place) return;
+        if (TaskbarSpot.Find(w, h, Look.SpaceToTray, LeftEndFor(TaskbarSpot.Main)) is not { } place) return;
         var dpi = TaskbarSpot.Dpi(place.Taskbar);
         // A new window, put into the taskbar like the first: Explorer restarted (a new taskbar; the old one destroyed the window, or let go
         // of it without Avalonia being told), or the scale changed (a window opened now takes the new scale).
@@ -260,12 +308,13 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
         if (_window is { } window && window.TryGetPlatformHandle() is { } handle) TaskbarSpot.Paint(handle.Handle, window.DrawInto);
     }
 
-    /// The right-click menu: Layout (the favourite layouts) and Show (every reading, ticked) as sub-menus, the gadget's settings, Network traffic control
-    /// and Hide.
+    /// The right-click menu: Layout (the favourite layouts), Show (every reading, ticked) and Position (right or left) as sub-menus, the gadget's
+    /// settings, Network traffic control and Hide.
     private IReadOnlyList<MenuRowItem> MenuRows() => new[]
     {
         MenuRowItem.Sub("Layout", "layout-dashboard", LayoutRows, _layouts.CurrentName),
         MenuRowItem.Sub("Show", "eye", ShowRows),
+        MenuRowItem.Sub("Position", "arrows-left-right", PositionRows, GadgetSettings.PositionNames[(int)Look.Position]),
         Link("Gadget settings…", "settings", _windows.OpenGadgetSettings, ruleAbove: true),
         Link("Network traffic control…", "network", _windows.OpenApps),
         new MenuRowItem("Hide gadget", string.Empty, false, string.Empty, new RelayCommand(() => SetShown(false)), RuleAbove: true, IsMuted: true, Icon: "eye-off"),
@@ -284,6 +333,10 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
         rows.Add(new MenuRowItem("More layouts…", string.Empty, false, string.Empty, new RelayCommand(_windows.OpenGadgetSettings), RuleAbove: true, IsMuted: true));
         return rows;
     }
+
+    /// Right and Left, the one in force chosen.
+    private IReadOnlyList<MenuRowItem> PositionRows() => Enum.GetValues<GadgetPosition>().Select(p => new MenuRowItem(GadgetSettings.PositionNames[(int)p], string.Empty,
+        p == Look.Position, string.Empty, new RelayCommand(() => SetPosition(p)))).ToList();
 
     /// Every reading and the weather, ticked while shown; a click toggles it and keeps the menu open.
     private IReadOnlyList<MenuRowItem> ShowRows()

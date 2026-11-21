@@ -4,7 +4,7 @@
              xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
              x:Class="OmniControl.App.Shared.Ui.Pages.GalleryRow"
              x:DataType="pages:GalleryItem">
-    <!-- A gallery card. A picture gallery: the preview and its name between arrow buttons. A colour gallery: THE swatch button (a ChipMenu
+    <!-- A gallery card. A picture gallery: the preview and its name between arrow buttons (a words gallery: the name alone). A colour gallery: THE swatch button (a ChipMenu
          drawn as a drop-down box: the chosen dot and its name, a chevron), placed like a drop-down card (centred at the master width when
          full, filling the room when half); it opens the grid of every dot (Controls/SwatchList) and, with an editor, the muted "Custom colour…" row. -->
     <Panel IsEnabled="{Binding Availability.IsAvailable}" ToolTip.Tip="{Binding Hint}" ToolTip.ShowOnDisabled="True">
@@ -21,8 +21,8 @@
                         <PathIcon Data="{StaticResource ChevronLeftIcon}" Width="10" Height="10" />
                     </Button>
                     <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center" HorizontalAlignment="Center">
-                        <ContentControl Content="{Binding Preview}" HorizontalAlignment="Center" />
-                        <TextBlock Text="{Binding Name}" Classes="muted small" HorizontalAlignment="Center" />
+                        <ContentControl Content="{Binding Preview}" IsVisible="{Binding HasPreview}" HorizontalAlignment="Center" />
+                        <TextBlock Text="{Binding Name}" Classes.muted="{Binding HasPreview}" Classes.small="{Binding HasPreview}" HorizontalAlignment="Center" />
                     </StackPanel>
                     <Button Grid.Column="2" Classes="step" Focusable="False" Click="OnNext">
                         <PathIcon Data="{StaticResource ChevronRightIcon}" Width="10" Height="10" />

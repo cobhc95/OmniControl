@@ -23,7 +23,6 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     private readonly ProcessIcons _icons = new();
     private readonly Action<string> _report;
     private bool _onScreen, _listAdapters;
-    private int _sensorMenusOpen;
     private int _seenShown = -1;
     private NetworkLimits.DownloadState? _downloadShown;
 
@@ -101,18 +100,12 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
             _listAdapters = open;
             Need();
         });
-        void Listing(bool open)
-        {
-            _sensorMenusOpen = Math.Max(0, _sensorMenusOpen + (open ? 1 : -1));
-            Need();
-        }
         SensorMenu TemperatureOf(string id)
         {
             var reading = Reading.Find(id)!;
-            return new SensorMenu(monitor, settings, reading, "Auto", () => reading.Words(reading.Read(monitor.Latest)), Listing,
-                $"{reading.Name}: the sensor it is read from");
+            return new SensorMenu(monitor, settings, reading, "Auto", _ => reading.Words(reading.Read(monitor.Latest)), SensorMenu.TipFor(reading));
         }
-        _hottest = new SensorMenu(monitor, settings, Reading.Find(Reading.HottestId)!, "Hottest (auto)", null, Listing);
+        _hottest = new SensorMenu(monitor, settings, Reading.Find(Reading.HottestId)!, "Hottest (auto)", null);
         (_cpuTemp, _gpuTemp) = (TemperatureOf(Reading.CpuTempId), TemperatureOf(Reading.GpuTempId));
         _cards = Reading.All.Where(r => r.Card is not null).OrderBy(r => r.Card!.Value.Order)
             .Select(r => (Card(r), r))
@@ -224,7 +217,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     private void Need()
     {
         var every = _onScreen && ShowsReadings ? TimeSpan.FromSeconds(_settings.Setup.ReadEverySeconds) : (TimeSpan?)null;
-        _monitor.Need(ResourceMonitor.PageNeed, every, SampleParts.All | (_listAdapters ? SampleParts.Adapters : 0) | (_sensorMenusOpen > 0 ? SampleParts.SensorList : 0));
+        _monitor.Need(ResourceMonitor.PageNeed, every, SampleParts.All | (_listAdapters ? SampleParts.Adapters : 0));
         _monitor.Need(ResourceMonitor.AppsNeed, Apps.IsExpanded && !Unavailable ? every : null);
         _gadget.SetOnScreen(_onScreen && !ShowsReadings);
     }

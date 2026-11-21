@@ -5,8 +5,8 @@ namespace OmniControl.App.Features.Resources;
 
 public enum ReadingKind { Percent, Speed, Temperature }
 
-/// THE live list of readings: the built-in ones (<see cref="Reading.All"/>) and each physical disk's (<see cref="Reading.OfDisk"/>), owned by the
-/// poller (UI thread).
+/// THE live list of readings: the built-in ones (<see cref="Reading.All"/>) and each physical disk's (<see cref="Reading.OfDisk"/>), and their latest
+/// values, owned by the poller (UI thread).
 public interface IReadingList
 {
     IReadOnlyList<Reading> Readings { get; }
@@ -15,6 +15,12 @@ public interface IReadingList
 
     /// A disk was added or removed (UI thread).
     event Action? ReadingsChanged;
+
+    /// The latest read (UI thread).
+    ResourceSample Latest { get; }
+
+    /// A sensor menu opened (true) or closed: the reads list every temperature sensor while one is open.
+    void ListSensors(bool open);
 }
 
 /// THE master list of readings: each is a state, a card value, a gadget row and a menu line, and carries its gadget defaults, its read part, its page card,
@@ -26,8 +32,7 @@ public sealed record Reading(string Id, string Name, string Chip, string Icon, R
     /// A temperature from which a sensor is called warm (the Hottest sensor card's caution tag).
     public const double WarmCelsius = 70;
 
-    /// The ids of the readings whose temperature sensor can be chosen (<see cref="ResourcesSetup.SensorOf"/>), and the fixed range of the Hottest
-    /// sensor's small graph, in Celsius.
+    /// The ids of the built-in temperature readings, and the fixed range of the Hottest sensor's small graph, in Celsius.
     public const string HottestId = "hottest", CpuTempId = "cputemp", GpuTempId = "gputemp";
     public const double TemperatureGraphMin = 25, TemperatureGraphMax = 100;
 
@@ -39,7 +44,7 @@ public sealed record Reading(string Id, string Name, string Chip, string Icon, R
     /// The icons suggested first for its label, best first (the label editor puts the group holding the first one at the top).
     public IReadOnlyList<string> SuggestedIcons { get; init; } = Array.Empty<string>();
 
-    /// The temperature sensor the value came from, for a reading whose sensor can be chosen (<see cref="ResourcesSetup.SensorOf"/>); null: it cannot.
+    /// The temperature sensor the value came from, for every temperature reading (its sensor can be chosen, <see cref="ResourcesSetup.SensorOf"/>); null: not a temperature.
     public Func<ResourceSample, TemperatureSensor?>? Sensor { get; init; }
 
     private static readonly string[] Thermometers = { "temperature", "thermometer", "temperature-celsius" };
@@ -81,10 +86,13 @@ public sealed record Reading(string Id, string Name, string Chip, string Icon, R
         var name = $"Disk {disk.Number}";
         yield return new($"disk.{disk.Id}", $"{name} activity ({disk.Model})", name, "disc", ReadingKind.Percent, SampleParts.Disk, s => Of(s)?.Activity,
             $"D{disk.Number}:", "{disc}") { SuggestedIcons = new[] { "disc", "database" } };
-        yield return new($"disktemp.{disk.Id}", $"{name} temperature ({disk.Model})", name + " °C", "temperature", ReadingKind.Temperature, SampleParts.DiskTemp,
-            s => Of(s)?.Temperature, $"T{disk.Number}:", "{disc}" + Gadget.GadgetLabel.Token("temperature", Gadget.GadgetLabel.WarmColour), WarnDefault: WarmCelsius)
-            { SuggestedIcons = Thermometers.Append("disc").ToArray() };
+        yield return new(TemperatureIdOf(disk), $"{name} temperature ({disk.Model})", name + " °C", "temperature", ReadingKind.Temperature, SampleParts.DiskTemp,
+            s => Of(s)?.Temperature, $"T{disk.Number}:", "{disc}" + Gadget.GadgetLabel.Token("temperature", Gadget.GadgetLabel.WarmColour), WarnDefault: WarmCelsius,
+            Source: s => Of(s)?.Sensor?.Name) { SuggestedIcons = Thermometers.Append("disc").ToArray(), Sensor = s => Of(s)?.Sensor };
     }
+
+    /// The id of a physical disk's temperature reading (it follows the disk, not its number).
+    public static string TemperatureIdOf(PhysicalDisk disk) => $"disktemp.{disk.Id}";
 
     /// The parts of a read these readings need together.
     public static SampleParts PartsOf(IEnumerable<Reading> readings) => readings.Aggregate(SampleParts.None, (all, r) => all | r.Part);

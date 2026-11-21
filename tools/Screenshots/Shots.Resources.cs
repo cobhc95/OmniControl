@@ -65,7 +65,7 @@ internal static partial class Shots
         var settings = ResourcesSettings.Load();
         settings.Setup.Gadget.Complete();
         settings.Setup.Gadget.Shown = false;
-        var monitor = new ResourceMonitor(rig.States, () => TimeSpan.FromSeconds(2), () => null, () => default,
+        var monitor = new ResourceMonitor(rig.States, () => TimeSpan.FromSeconds(2), () => null, () => new Dictionary<string, string>(),
             () => throw new IOException("Not read in the screenshot tool."), title);
         var weather = new WeatherService(settings, rig.Actions, rig.States, new MemoryCredentials(), title);
         var layouts = new GadgetLayouts(settings);
@@ -82,6 +82,7 @@ internal static partial class Shots
     {
         public bool IsShown => settings.Setup.Gadget.Shown;
         public void SetShown(bool on) { }
+        public void SetPosition(GadgetPosition position) { }
         public IReadOnlyList<GadgetCell> Cells(GadgetSettings look, bool sampleUnknown = false) => gadget.Cells(look, sampleUnknown: true);
         public Color Background => gadget.Background;
         public Color Ink => gadget.Ink;

@@ -1,6 +1,6 @@
 namespace OmniControl.App.Shared.Ui.Pages;
 
-/// A pick-one setting browsed with Left/Right (or the wheel), in one of two forms. A picture gallery (<see cref="GalleryItem(string, IReadOnlyList{string}, int, Func{Control}, Action{int})"/>:
+/// A pick-one setting browsed with Left/Right (or the wheel). A words gallery is the ‹ value › selector of a few named choices. A picture gallery (<see cref="GalleryItem(string, IReadOnlyList{string}, int, Func{Control}, Action{int})"/>:
 /// the OSD style, a display's orientation) shows a live preview between arrow buttons, rebuilt whenever the choice changes or
 /// <see cref="Refresh"/> is called. A colour gallery (<see cref="GalleryItem(string, IReadOnlyList{string}, int, Func{int, ValueTuple{IBrush, SwatchMark}}, Action{int})"/>: Theme, Accent, Background, the tray icon's, the OSD's and the
 /// gadget's colours) is THE swatch button: the chosen dot and its name, opening a pop-down grid of every dot (Pages/GalleryRow).
@@ -54,8 +54,11 @@ public sealed partial class GalleryItem : ObservableObject, IEditorItem, IHalfWi
 
     public string Name => Options[Index];
 
-    /// A fresh visual for the current choice (a picture gallery); null for a colour gallery.
+    /// A fresh visual for the current choice (a picture gallery); null for a colour or words gallery.
     public Control? Preview => _preview?.Invoke();
+
+    /// A picture gallery: its name is the small muted caption under the picture (a words gallery shows it as the value itself).
+    public bool HasPreview => _preview is not null;
 
     /// A colour gallery: drawn as the swatch button (full or half width) instead of the picture between arrows.
     public bool HasDots => _dot is not null;
@@ -70,6 +73,12 @@ public sealed partial class GalleryItem : ObservableObject, IEditorItem, IHalfWi
 
     public GalleryItem(string label, IReadOnlyList<string> options, int index, Func<Control> preview, Action<int> apply)
         : this(label, options, index, apply, preview, null)
+    {
+    }
+
+    /// A words gallery: the choice's name alone between the arrows (the gadget's Position).
+    public GalleryItem(string label, IReadOnlyList<string> options, int index, Action<int> apply)
+        : this(label, options, index, apply, null, null)
     {
     }
 
