@@ -79,21 +79,9 @@
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
     </Style>
 
-    <!-- "Use this action": the mouse hover and the keyboard highlight share the master hover look (no border change, so the text never moves) -->
-    <!-- Button.scope's looks (.mute, .usebtn's size) are a control theme (Styles/ButtonThemes.axaml); a confirm's hover and .danger stay here, as one without .scope uses them too -->
+    <!-- Button.scope's looks (.mute, .usebtn and its hover and .danger) are a control theme (Styles/ButtonThemes.axaml); a .usebtn without
+         .scope is a plain button -->
     <Style Selector="Button.scope.usebtn TextBlock"><Setter Property="VerticalAlignment" Value="Center" /></Style>
-    <Style Selector="Button.usebtn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-    </Style>
-    <!-- A confirm that loses or undoes something (Button.usebtn.danger: Yes, close / Yes, unpair): red words and edge, hover as every confirm -->
-    <Style Selector="Button.usebtn.danger /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushDanger}" />
-        <Setter Property="Foreground" Value="{DynamicResource BrushDanger}" />
-    </Style>
-    <Style Selector="Button.usebtn.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushDanger}" />
-    </Style>
 
     <!-- A lit row button holding a glyph (a microphone's Listen) draws it in the accent -->
     <Style Selector="Button.scope.mute.on > Path.glyph"><Setter Property="Stroke" Value="{DynamicResource BrushAccent}" /></Style>

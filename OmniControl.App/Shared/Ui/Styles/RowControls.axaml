@@ -116,27 +116,9 @@
     <Style Selector="c|StatusDot.good"><Setter Property="Fill" Value="{DynamicResource BrushOn}" /></Style>
     <Style Selector="c|StatusDot.caution"><Setter Property="Fill" Value="{DynamicResource BrushCaution}" /></Style>
     <Style Selector="c|StatusDot.risk"><Setter Property="Fill" Value="{DynamicResource BrushDanger}" /></Style>
-    <!-- A pill in two halves (the Wake split button): Button.pill.splitleft + Button.pill.splitright side by side with the right one's Margin -1,0,0,0 so the shared edge is one line -->
-    <Style Selector="Button.pill.splitleft"><Setter Property="CornerRadius" Value="13,0,0,13" /></Style>
-    <Style Selector="Button.pill.splitleft /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="CornerRadius" Value="13,0,0,13" /></Style>
-    <Style Selector="Button.pill.splitright"><Setter Property="CornerRadius" Value="0,13,13,0" /></Style>
-    <Style Selector="Button.pill.splitright /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="CornerRadius" Value="0,13,13,0" /></Style>
-    <Style Selector="Button.pill.splitleft:pointerover, Button.pill.splitright:pointerover, Button.pill.splitleft:focus-visible, Button.pill.splitright:focus-visible"><Setter Property="ZIndex" Value="1" /></Style>
     <!-- Hover and focus keep the chip's colour words; only the wash and the edge take the master hover and focus -->
     <Style Selector="Button.selector:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-    </Style>
-
-    <!-- The lit FX button: the pill's look in the accent, with a soft glow; hover keeps the glow -->
-    <Style Selector="Button.pill.glow /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-        <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
-        <Setter Property="BoxShadow" Value="{DynamicResource AccentGlow}" />
-    </Style>
-    <Style Selector="Button.pill.glow:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
     </Style>
     <Style Selector="Button.reveal">
