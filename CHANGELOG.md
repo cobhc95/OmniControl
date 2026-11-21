@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Fixed: App settings > Backup and restore: importing a backup or wiping is now all or nothing. Everything is checked and a copy of each changed file kept before any setting changes; if OmniControl or the PC stops part way, the next start finishes the restore (or puts everything back when the kept files are damaged), so settings are never left half restored.
+
 ## 0.2.8 (21 Nov 2026)
 
 - Changed: Resources > Taskbar gadget: the small "Preview" strip at the top is gone; the top line is "Show on taskbar", Position and Font (the Ready-made layouts tiles still show each look).
