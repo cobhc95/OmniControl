@@ -33,7 +33,7 @@ public sealed class InputModule(Func<IEnumerable<string>> rememberedPrograms) : 
         context.Actions.Moved += mouse.FollowMoved;
         context.Actions.Moved += gestures.FollowMoved;
         // Custom rules are asked before both (their handler goes first on the hook), so a rule that matches wins.
-        var rules = _rules = new RuleService(_hook, gestures, mouse, context.Actions, context.Runner, rememberedPrograms, context.Report);
+        var rules = _rules = new RuleService(_hook, gestures, mouse, context.Actions, context.Runner, rememberedPrograms, context.Report, context.AskAsync);
         // Trackpad gestures are handed to the same hook, so rules and mappings treat them like button presses. The touchpad watcher runs
         // while a mapping, a rule or the Mouse page acts on a gesture; the low-level hook while a handler's owner needs it (its own answer).
         var trackpad = _trackpad = new TrackpadService(_hook, mouse, context.Hardware, () => mouse.NeedsTrackpad || rules.NeedsTrackpad);

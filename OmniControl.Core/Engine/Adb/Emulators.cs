@@ -116,21 +116,19 @@ public static class Emulators
     public static string? Open(EmulatorInfo emulator, bool quickBoot = false)
     {
         if (Find(emulator) is not { } program) return $"{emulator.Name} isn't installed.";
-        var start = new ProcessStartInfo(program) { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = Path.GetDirectoryName(program) ?? string.Empty };
+        var arguments = new List<string>();
         if (emulator.Id == AndroidStudio)
         {
             if (VirtualDevices().FirstOrDefault() is not { } device) return "Android Studio has no virtual device yet. Create one in its Device Manager.";
-            start.ArgumentList.Add("-avd");
-            start.ArgumentList.Add(device);
+            arguments.AddRange(new[] { "-avd", device });
             // A broken quick-boot snapshot leaves a black screen ("error while loading state"), so the snapshot is loaded only after one good cold boot.
             // 2 GB is enough for a home app and keeps the emulator usable on PCs with less memory than Android Studio suggests.
-            if (!quickBoot) start.ArgumentList.Add("-no-snapshot-load");
-            start.ArgumentList.Add("-memory");
-            start.ArgumentList.Add("2048");
+            if (!quickBoot) arguments.Add("-no-snapshot-load");
+            arguments.AddRange(new[] { "-memory", "2048" });
         }
         try
         {
-            using var _ = Process.Start(start);
+            using var _ = NormalRights.Start(program, arguments, hidden: true, readOutput: false, directory: Path.GetDirectoryName(program));
             return null;
         }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)

@@ -96,7 +96,7 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
         hook.Reinstalled += ReleaseAllHeld;
         _states = states;
         RegisterStates();
-        if (_taskFollows = Settings.RunAsAdministrator) AdministratorMode.FollowSetting(true, report); // an elevated start makes sure the task starts this copy
+        if (_taskFollows = Settings.RunAsAdministrator) AdministratorMode.FollowSetting(true, report, atStart: true); // an elevated start makes sure the task starts this copy
     }
 
     /// Raised on the UI thread after <see cref="Apply"/>: a mapping or a switch may have changed.

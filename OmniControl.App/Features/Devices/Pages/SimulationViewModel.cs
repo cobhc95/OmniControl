@@ -277,7 +277,7 @@ public sealed partial class SimulationViewModel : ObservableObject, IDisposable
         try
         {
             var setup = _service.Simulation;
-            if (await setup.ConnectAsync(setup.AddressOf(_record), setup.EmulatorOf(_record), _report, show: true) is { } problem) _report($"{problem} Details are in {DeviceService.LogFile}.");
+            if (await setup.ConnectAsync(setup.AddressOf(_record), setup.EmulatorOf(_record), _report, show: true) is { } problem) _report(Guard.SeeLog(problem, DeviceService.LogFile));
         }
         finally
         {
@@ -400,7 +400,7 @@ public sealed partial class SimulationViewModel : ObservableObject, IDisposable
         var problem = await _service.SimulationMethod.TestStepAsync(_device, _record, row.Step, Rows.IndexOf(row));
         row.TestFailure = problem ?? string.Empty;
         row.Notify();
-        if (problem is not null) _report($"{problem} Details are in {DeviceService.LogFile}.");
+        if (problem is not null) _report(Guard.SeeLog(problem, DeviceService.LogFile));
     }
 
     // ---- Recording and picking again ----

@@ -61,8 +61,9 @@ public sealed partial class AutomationService : IActionGate, IDisposable
     /// <param name="report">Shows one plain sentence in the status line.</param>
     /// <param name="states">The master list of states: the "When a state changes" triggers watch it, and the power states are registered in it.</param>
     /// <param name="power">The power journal: a confirmed wake starts the "wakes from sleep" rules, and it says whether this start-up is a new log-in.</param>
+    /// <param name="ask">Asks the person at this PC (approving a program step, a custom action or a script).</param>
     public AutomationService(IActionRegistry hotkeys, IActionRunner run, ActionGateSlot gate, IStateRegistry states, Func<string, string, TimeSpan, CancellationToken, Task<bool>> countdown,
-        Func<IEnumerable<string>> remembered, bool startedByWindows, Action<string> report, IPowerEvents power)
+        Func<IEnumerable<string>> remembered, bool startedByWindows, Action<string> report, IPowerEvents power, Func<DialogMessage, Task<bool>> ask)
     {
         _hotkeys = hotkeys;
         _run = run;
@@ -74,7 +75,8 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         _report = report;
         SessionOff = KeyboardState.Held().HasFlag(Modifiers.Shift);
         var actions = new MouseActionRunner(run.Run, _report, Log);
-        _runner = new RuleRunner(actions, IsApproved, Log, id => hotkeys.Find(id)?.Reach);
+        Approvals = new CommandApprovals(() => Settings.Approved, Settings.Save, ask);
+        _runner = new RuleRunner(actions, Approvals.IsApproved, Log, id => hotkeys.Find(id)?.Reach);
         _custom = new CustomActionRunner(actions, Log);
 
         _guard = new PowerGuard(countdown, _report, () => run.Chain, power.Counting);
@@ -272,14 +274,23 @@ public sealed partial class AutomationService : IActionGate, IDisposable
     /// Why the rule was paused for starting too often, or null.
     public string? PausedWhyOf(AutomationRule rule) => _pausedWhy.GetValueOrDefault(rule.Id);
 
-    // ---- Approvals (a program step is allowed once, like a gesture rule's) ----
+    // ---- Approvals (a program step, a custom action that starts something and a script are each allowed once, like a gesture rule's command) ----
 
-    public bool IsApproved(string step) => CommandApproval.IsIn(Settings.Approved, step);
+    /// The program steps, custom actions and scripts the person allowed on this PC.
+    public CommandApprovals Approvals { get; }
 
-    public void Approve(string step)
+    // A custom action or script runs only once allowed: a person running it is asked (once per content), anything else (a rule, another PC) is refused.
+    private async Task<bool> AllowedAsync(string stored, string what, string details, bool byPerson)
     {
-        CommandApproval.AddTo(Settings.Approved, step);
-        Settings.Save();
+        if (Approvals.IsApproved(stored)) return true;
+        if (!byPerson)
+        {
+            Log($"{what} not run: it is not allowed on this PC yet");
+            _report($"{what} isn't allowed on this PC yet. Run it once yourself and choose Allow.");
+            return false;
+        }
+        return await Dispatcher.UIThread.InvokeAsync(() => Approvals.AskAsync(stored,
+            new DialogMessage($"Allow {what}?", "It runs this each time. Changing it later asks again.", "Allow", details, ShowDetails: true)));
     }
 
     // ---- The gate ----
@@ -310,7 +321,7 @@ public sealed partial class AutomationService : IActionGate, IDisposable
 
     private HotkeyAction MakeCustomAction(CustomAction custom) =>
         new(custom.ActionId, custom.Name.Length > 0 ? custom.Name : "Custom action", ActionSections.Automation,
-            $"custom action script command program file url powershell {custom.Name}", ids => _ = RunCustomAsync(custom), group: "Custom actions")
+            $"custom action script command program file url powershell {custom.Name}", ids => _ = RunCustomAsync(custom, byPerson: _run.Chain is null), group: "Custom actions")
         {
             PickerSection = ActionSections.CustomActions,
             Editor = new ActionEditor(CustomFields.Options, () => CustomFields.Read(custom), (key, value) => EditCustom(custom, key, value)),
@@ -329,9 +340,12 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         };
 
     /// Runs a custom action now (its Run pill, or the action itself); one plain sentence in the status line when it failed.
-    public async Task RunCustomAsync(CustomAction custom)
+    /// <paramref name="byPerson"/>: a person asked (its pill, a key, a button), so a custom action not yet allowed is asked about; otherwise it is refused.
+    public async Task RunCustomAsync(CustomAction custom, bool byPerson = true)
     {
-        if (await _custom.RunAsync(custom) is { } problem) _report($"{problem} Details are in {LogFile}.");
+        if (CustomFields.Starts(custom) is { } stored
+            && !await AllowedAsync(stored, custom.Name.Length > 0 ? $"\"{custom.Name}\"" : "this custom action", CustomFields.Describe(custom), byPerson)) return;
+        if (await _custom.RunAsync(custom) is { } problem) _report(Guard.SeeLog(problem, LogFile));
     }
 
     /// The rule's own action was run (its shortcut, a mouse button, a gesture): it runs its steps if it is on and its conditions hold.
@@ -408,7 +422,7 @@ public sealed partial class AutomationService : IActionGate, IDisposable
             _problems[ruleId] = problem;
             if (run.Short is { } words) _failedShort[ruleId] = words;
             else _failedShort.Remove(ruleId);
-            _report($"\"{name}\" didn't finish: {problem}. Details are in {LogFile}.");
+            _report(Guard.SeeLog($"\"{name}\" didn't finish: {problem}.", LogFile));
         }
         Changed?.Invoke();
     }

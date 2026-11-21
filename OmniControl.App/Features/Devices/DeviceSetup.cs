@@ -85,5 +85,5 @@ public sealed class DeviceSetup
     public string? OpenPythonPage() => WebPage.Open(PythonDownloadPage);
 
     /// Opens the router's page; null when it opened, otherwise the problem.
-    public string? OpenRouterPage() => RouterPage is { } page ? WebPage.Open(page) : "Couldn't find your router's address.";
+    public string? OpenRouterPage() => RouterPage is { } page ? WebPage.Open(page, allowHttp: true) : "Couldn't find your router's address.";
 }

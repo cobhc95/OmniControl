@@ -37,7 +37,7 @@ public static class TailscaleStatusReader
     public static TailscaleStatus Read()
     {
         if (TailscaleCli.Find() is not { } cli) return TailscaleStatus.NotInstalled;
-        var output = TailscaleCli.Run(cli, "status --json");
+        var output = TailscaleCli.Run(cli, "status", "--json");
         if (output is null) return TailscaleStatus.NotInstalled with { CliPath = cli };
         var status = Parse(cli, output);
         return status.Connected ? status with { AddressOnAdapter = TailscaleAdapter.HasAddress(status.OwnAddress) } : status;

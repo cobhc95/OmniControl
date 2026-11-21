@@ -276,7 +276,7 @@ public sealed class ScreenshotService
         public void OpenLink(string url)
         {
             if (!IsWebLink(url) || !_owner._launches.TryAcquire()) return;
-            if (WebPage.Open(url.Trim()) is { } problem) _owner._report(problem);
+            if (WebPage.Open(url.Trim(), allowHttp: true) is { } problem) _owner._report(problem);
         }
     }
 }

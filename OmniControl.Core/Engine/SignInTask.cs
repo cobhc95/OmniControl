@@ -20,11 +20,51 @@ public static class SignInTask
     private const int CreateOrUpdate = 6, InteractiveToken = 3, NoSuchTask = unchecked((int)0x80070002);
     private static readonly XNamespace Schema = "http://schemas.microsoft.com/windows/2004/02/mit/task";
 
-    /// Adds the task for <paramref name="exe"/>, or points it there; null when done, else one plain sentence.
-    public static string? Set(string exe) =>
-        With(folder => Release(((dynamic)folder).RegisterTask(Name, Definition(exe), CreateOrUpdate, null, null, InteractiveToken, null))) is { } why
+    /// What <see cref="Set"/> says for a copy in a folder its user may change (a portable or per-user copy).
+    public const string NeedsInstalled = "OmniControl's sign-in task needs the installed version (a folder only administrators can change), so Windows asks for administrator rights at each start.";
+
+    /// What to say after <see cref="RemoveUnsafe"/> removed a task.
+    public const string RemovedUnsafe = "OmniControl's sign-in task was removed: it started a copy in a folder others can change. Windows asks for administrator rights at each start instead.";
+
+    /// Adds the task for <paramref name="exe"/>, or points it there; null when done, else one plain sentence. Refused unless only
+    /// administrators can change <paramref name="exe"/> (the task runs it elevated without a prompt, so a swappable exe would be a free elevation).
+    public static string? Set(string exe)
+    {
+        if (!AdminOnly(exe)) return NeedsInstalled;
+        return With(folder => Release(((dynamic)folder).RegisterTask(Name, Definition(exe), CreateOrUpdate, null, null, InteractiveToken, null))) is { } why
             ? $"Windows didn't add OmniControl's sign-in task ({why}), so it asks for administrator rights at each start."
             : null;
+    }
+
+    /// Removes the task when the program it starts sits in a folder its user may change (made by an older version); true when it did.
+    public static bool RemoveUnsafe()
+    {
+        var removed = false;
+        With(folder =>
+        {
+            if (Find(folder) is not { } task) return;
+            try
+            {
+                if (Command(task) is { } command && AdminOnly(command)) return;
+            }
+            finally { Release(task); }
+            ((dynamic)folder).DeleteTask(Name, 0);
+            removed = true;
+        });
+        return removed;
+    }
+
+    private static bool AdminOnly(string exe)
+    {
+        try
+        {
+            return exe.Length > 0 && Resources.NetworkServiceSetup.CanServeFrom(exe);
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return false; // not a path that can be shown to be safe
+        }
+    }
 
     /// Removes the task (nothing when there is none); null when done, else one plain sentence.
     public static string? Remove() =>
@@ -38,8 +78,8 @@ public static class SignInTask
     /// True when the task is there and starts <paramref name="exe"/> (another copy's task is not this one's).
     public static bool IsFor(string exe) => Mine(exe, _ => { });
 
-    /// Runs the task with these arguments when it starts <paramref name="exe"/>; false when there is none for it or Windows refused.
-    public static bool Run(string exe, IEnumerable<string> arguments) => Mine(exe, task => Release(((dynamic)task).Run(Elevation.Quoted(arguments))));
+    /// Runs the task with these arguments when it starts <paramref name="exe"/> and only administrators can change that; false when there is none for it or Windows refused.
+    public static bool Run(string exe, IEnumerable<string> arguments) => AdminOnly(exe) && Mine(exe, task => Release(((dynamic)task).Run(Elevation.Quoted(arguments))));
 
     /// Does <paramref name="use"/> with the task when it starts <paramref name="exe"/>; true when that went through.
     private static bool Mine(string exe, Action<object> use)
@@ -72,11 +112,9 @@ public static class SignInTask
         }
     }
 
-    private static bool Starts(object task, string exe)
-    {
-        var command = XDocument.Parse((string)((dynamic)task).Xml).Descendants(Schema + "Command").FirstOrDefault()?.Value.Trim('"');
-        return string.Equals(command, exe, StringComparison.OrdinalIgnoreCase);
-    }
+    private static bool Starts(object task, string exe) => string.Equals(Command(task), exe, StringComparison.OrdinalIgnoreCase);
+
+    private static string? Command(object task) => XDocument.Parse((string)((dynamic)task).Xml).Descendants(Schema + "Command").FirstOrDefault()?.Value.Trim('"');
 
     /// Runs <paramref name="work"/> on the scheduler's root folder; null when it went through, else Windows' reason.
     private static string? With(Action<object> work)

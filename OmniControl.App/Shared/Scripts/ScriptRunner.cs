@@ -3,7 +3,7 @@ using System.Diagnostics;
 
 namespace OmniControl.App.Shared.Scripts;
 
-/// Runs a rule's PowerShell or CMD command, a custom action's script or a saved script: never elevated, hidden unless asked otherwise, stopped (with everything it started) after
+/// Runs a rule's PowerShell or CMD command, a custom action's script or a saved script: never elevated (<see cref="NormalRights"/>), hidden unless asked otherwise, stopped (with everything it started) after
 /// its timeout. Output is discarded; the error text of a failure is kept (shortened) for the rules log.
 public static class ScriptRunner
 {
@@ -14,14 +14,14 @@ public static class ScriptRunner
 
     /// The program and arguments a command runs as: what the confirm window shows and what is started.
     public static (string File, string[] Arguments) CommandLine(string shell, string command) => shell == Cmd
-        ? ("cmd.exe", new[] { "/d", "/c", command })
-        : ("powershell.exe", new[] { "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", command });
+        ? (SystemTools.Cmd, new[] { "/d", "/c", command })
+        : (SystemTools.PowerShell, new[] { "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", command });
 
     /// The command line as one readable line.
     public static string Describe(string shell, string command)
     {
         var (file, arguments) = CommandLine(shell, command);
-        return $"{file} {string.Join(' ', arguments)}";
+        return $"{Path.GetFileName(file)} {string.Join(' ', arguments)}";
     }
 
     /// Runs the command and waits for it; null when it ended well, otherwise one line saying what went wrong.
@@ -38,31 +38,21 @@ public static class ScriptRunner
     public static async Task<string?> RunAsync(string file, IReadOnlyList<string> arguments, bool hidden, TimeSpan timeout,
         IReadOnlyDictionary<string, string>? environment = null, Action<string>? output = null, CancellationToken stop = default)
     {
-        var start = new ProcessStartInfo(file)
-        {
-            UseShellExecute = false,
-            CreateNoWindow = hidden,
-            RedirectStandardError = hidden, // a visible window shows its own errors
-            RedirectStandardOutput = hidden,
-        };
-        foreach (var argument in arguments) start.ArgumentList.Add(argument);
-        if (environment is not null)
-            foreach (var (name, value) in environment) start.Environment[name] = value;
-
-        Process process;
+        NormalRights.Started started;
         try
         {
-            process = Process.Start(start) ?? throw new InvalidOperationException("Windows did not start it.");
+            started = NormalRights.Start(file, arguments, hidden, readOutput: hidden, environment); // a visible window shows its own errors
         }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
         {
             return $"couldn't start {file}: {ex.Message}";
         }
 
-        using (process)
+        using (started)
         {
-            var errors = hidden ? process.StandardError.ReadToEndAsync() : Task.FromResult(string.Empty);
-            var printed = hidden ? process.StandardOutput.ReadToEndAsync() : Task.FromResult(string.Empty); // read so a full pipe never blocks it
+            var process = started.Process;
+            var errors = started.Errors?.ReadToEndAsync() ?? Task.FromResult(string.Empty);
+            var printed = started.Output?.ReadToEndAsync() ?? Task.FromResult(string.Empty); // read so a full pipe never blocks it
             using var limit = CancellationTokenSource.CreateLinkedTokenSource(stop);
             limit.CancelAfter(timeout);
             try

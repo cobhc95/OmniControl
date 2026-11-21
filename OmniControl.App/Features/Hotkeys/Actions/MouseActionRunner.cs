@@ -191,22 +191,18 @@ public sealed class MouseActionRunner
     private void Launch(string path, string arguments = "", string startIn = "", string windowStyle = "Normal", bool administrator = false)
     {
         if (!MayLaunch(path)) return;
+        var style = windowStyle switch
+        {
+            "Minimised" => ProcessWindowStyle.Minimized,
+            "Maximised" => ProcessWindowStyle.Maximized,
+            "Hidden" => ProcessWindowStyle.Hidden,
+            _ => ProcessWindowStyle.Normal,
+        };
         try
         {
-            Process.Start(new ProcessStartInfo(path)
-            {
-                UseShellExecute = true,
-                Arguments = arguments,
-                WorkingDirectory = startIn,
-                WindowStyle = windowStyle switch
-                {
-                    "Minimised" => ProcessWindowStyle.Minimized,
-                    "Maximised" => ProcessWindowStyle.Maximized,
-                    "Hidden" => ProcessWindowStyle.Hidden,
-                    _ => ProcessWindowStyle.Normal,
-                },
-                Verb = administrator ? "runas" : string.Empty,
-            });
+            // Only the step's own "Run as administrator" elevates; everything else gets the user's normal rights, also while OmniControl is administrator.
+            if (administrator) Process.Start(new ProcessStartInfo(path) { UseShellExecute = true, Arguments = arguments, WorkingDirectory = startIn, WindowStyle = style, Verb = "runas" })?.Dispose();
+            else NormalRights.Open(path, arguments, startIn, style);
         }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
         {

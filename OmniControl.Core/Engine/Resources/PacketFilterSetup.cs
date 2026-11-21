@@ -37,7 +37,7 @@ public static class PacketFilterSetup
                 held.Add(file);
                 if (Convert.ToHexString(SHA256.HashData(file)) != sha256) return NotInstalled("its driver files are not the expected ones");
             }
-            var result = HelperProcess.RunElevated(Path.Combine(Environment.SystemDirectory, "netcfg.exe"),
+            var result = HelperProcess.RunElevated(SystemTools.NetCfg,
                 $"-v -l \"{Path.Combine(folder, Inf)}\" -c s -i {ComponentId}", hidden: true);
             if (result.Failure != HelperFailure.None || !PacketFilter.Installed) return NotInstalled(Says(result));
         }
@@ -64,7 +64,7 @@ public static class PacketFilterSetup
         {
             if (!PacketFilter.Installed || IsAttached(on)) return null;
             var script = $"{(on ? "Enable" : "Disable")}-NetAdapterBinding -Name '*' -ComponentID {ComponentId} -IncludeHidden -AllBindings -ErrorAction SilentlyContinue";
-            var result = HelperProcess.RunElevated("powershell.exe",
+            var result = HelperProcess.RunElevated(SystemTools.PowerShell,
                 $"-NoProfile -NonInteractive -EncodedCommand {Convert.ToBase64String(Encoding.Unicode.GetBytes(script))}", hidden: true);
             why = result.Failure != HelperFailure.None ? Says(result) : IsAttached(on) ? null : "some network adapters still have it the other way";
         }

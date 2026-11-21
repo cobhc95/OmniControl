@@ -28,6 +28,7 @@ public sealed partial class OtherPcsService : IPairedPcs, IPcBook, IDisposable
     private readonly Action<string> _report;
     private readonly Func<bool, string> _shareDevices;
     private readonly SettingsShare _settingsShare;
+    private readonly Func<DialogMessage, Task<bool>> _ask;
     private readonly OtherPcsSettings _settings;
     private readonly string _ownName = PcIds.CleanName(Environment.MachineName);
     private readonly ConcurrentDictionary<string, byte[]> _secrets = new(); // read by the network tasks; written on the UI thread
@@ -37,11 +38,12 @@ public sealed partial class OtherPcsService : IPairedPcs, IPcBook, IDisposable
 
     /// <param name="shareDevices">Makes the text of this PC's device set-ups for a paired PC that asks (true = with the user's script templates).</param>
     /// <param name="settingsShare">Hands the settings areas to a paired PC that imports them.</param>
-    /// <param name="ask">Asks the person at this PC a yes/no question (a paired PC asking to change a wake setting or to put this PC to sleep).</param>
+    /// <param name="ask">Asks the person at this PC a yes/no question (a pairing to confirm, a paired PC asking to change a wake setting or to put this PC to sleep).</param>
     public OtherPcsService(IActionRegistry hotkeys, IActionRunner run, IStateRegistry states, ICredentialStore credentials, Action<string> report, Func<bool, string> shareDevices, Func<DialogMessage, Task<bool>> ask, SettingsShare settingsShare)
     {
         _shareDevices = shareDevices;
         _settingsShare = settingsShare;
+        _ask = ask;
         _hotkeys = hotkeys;
         _run = run;
         _states = states;
@@ -92,7 +94,7 @@ public sealed partial class OtherPcsService : IPairedPcs, IPcBook, IDisposable
     /// True when the paired PC is connected now (it proved the key and the link is alive).
     public bool IsOnline(string id) => _links.ContainsKey(id);
 
-    /// Whether the pairing key of a pair is held (a pair imported from a backup, or whose key Windows lost, must be paired again).
+    /// Whether the pairing key of a pair is held (a pair imported from a backup, or whose key Windows lost, must be unpaired and paired again).
     public bool HasKey(string id) => _secrets.ContainsKey(id);
 
     /// What an offline PC's tag says: when it was last connected, or just "offline" when it never was.
@@ -156,6 +158,7 @@ public sealed partial class OtherPcsService : IPairedPcs, IPcBook, IDisposable
         Wake.Unregister(id);
         _settings.Pairs.Remove(pair);
         _settings.TabOrder.Remove(id);
+        TakePairedIds();
         Save();
         RaiseChanged();
     }

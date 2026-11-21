@@ -175,7 +175,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             Guard.Log($"Start-up: {name} page", ex);
-            Report($"The {name} page couldn't start. Details are in {Guard.LogFile}.");
+            Report(Guard.SeeLog($"The {name} page couldn't start."));
             return null;
         }
     }

@@ -114,9 +114,5 @@ public static class DeviceShareFormat
     private static bool StartsWithKasa(string template) =>
         KasaCommand.Split(template) is { Count: > 0 } words && words[0].Equals(KasaCommand.Program, StringComparison.OrdinalIgnoreCase);
 
-    private static string Clip(string? text, int max = TextMax)
-    {
-        var clean = new string((text ?? string.Empty).Where(c => !char.IsControl(c)).ToArray()).Trim();
-        return clean.Length > max ? clean[..max] : clean;
-    }
+    private static string Clip(string? text, int max = TextMax) => TextClip.Clean(text, max);
 }

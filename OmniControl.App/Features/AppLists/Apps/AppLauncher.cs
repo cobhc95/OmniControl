@@ -72,7 +72,7 @@ public sealed class AppLauncher
         }
         try
         {
-            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true, Arguments = arguments, WorkingDirectory = startIn });
+            NormalRights.Open(path, arguments, startIn);
         }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
         {

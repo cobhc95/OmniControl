@@ -169,28 +169,21 @@ public sealed class AdbClient : IAdbScreen
     /// Runs adb and gives what it printed as bytes (a screenshot is binary), its error text, and whether it exited with 0.
     private static async Task<(bool Ok, byte[] Output, string Problem)> RunRawAsync(string adb, IReadOnlyList<string> arguments)
     {
-        var start = new ProcessStartInfo(adb)
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-        };
-        foreach (var argument in arguments) start.ArgumentList.Add(argument);
-        Process process;
+        NormalRights.Started started;
         try
         {
-            process = Process.Start(start) ?? throw new InvalidOperationException("Windows did not start adb.");
+            started = NormalRights.Start(adb, arguments, hidden: true, readOutput: true);
         }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
         {
             return (false, Array.Empty<byte>(), $"couldn't start adb: {ex.Message}");
         }
-        using (process)
+        using (started)
         {
+            var process = started.Process;
             using var buffer = new MemoryStream();
-            var output = process.StandardOutput.BaseStream.CopyToAsync(buffer);
-            var errors = process.StandardError.ReadToEndAsync();
+            var output = started.Output!.BaseStream.CopyToAsync(buffer);
+            var errors = started.Errors!.ReadToEndAsync();
             using var limit = new CancellationTokenSource(CoreTiming.AdbCommandTimeoutMs);
             try
             {

@@ -143,7 +143,7 @@ public sealed class TailscaleLink
         PcWork.OffUi(what, async () =>
         {
             var started = start();
-            if (!started) PcWork.Post(() => _report(failed));
+            if (!started) _report(failed);
             await Task.Delay(Timing.PcTailscaleAfterFix, _stop).ConfigureAwait(false); // Tailscale needs a moment to come up or sign in
             PcWork.Post(recheck);
         });

@@ -8,7 +8,7 @@ public static class TailscaleFirewall
     /// Tailscale's own address ranges (IPv4 and IPv6): the rule lets in nothing else.
     private const string TailnetRanges = "100.64.0.0/10,fd7a:115c:a1e0::/48";
 
-    private static string Netsh => Path.Combine(Environment.SystemDirectory, "netsh.exe");
+    private static string Netsh => SystemTools.Netsh;
 
     /// True when the rule exists (netsh's exit code says so in every language). Call off the UI thread.
     public static bool IsAllowed()

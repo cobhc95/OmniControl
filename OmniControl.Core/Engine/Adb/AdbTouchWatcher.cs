@@ -83,7 +83,7 @@ public sealed class AdbTouchWatcher : IDisposable
 {
     private readonly string _adb;
     private readonly string _serial;
-    private Process? _process;
+    private NormalRights.Started? _process;
 
     public AdbTouchWatcher(string adbPath, string serial)
     {
@@ -103,18 +103,16 @@ public sealed class AdbTouchWatcher : IDisposable
         if (TouchReader.RangesOf(info.Text) is not { } range || AdbClient.SizeOf(size.Text) is not { } screen) return "The emulator doesn't report touches to adb, so the taps can't be recorded.";
         var reader = new TouchReader(range.MaxX, range.MaxY, screen.Width, screen.Height);
 
-        var start = new ProcessStartInfo(_adb) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true };
-        foreach (var argument in new[] { "-s", _serial, "shell", "getevent -l" }) start.ArgumentList.Add(argument);
         try
         {
-            _process = Process.Start(start);
+            _process = NormalRights.Start(_adb, new[] { "-s", _serial, "shell", "getevent -l" }, hidden: true, readOutput: true);
         }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
         {
             return $"adb couldn't start: {ex.Message}";
         }
-        if (_process is null) return "adb couldn't start.";
-        var output = _process.StandardOutput;
+        var output = _process.Output!;
+        _ = _process.Errors!.ReadToEndAsync().ContinueWith(t => t.Exception, TaskContinuationOptions.OnlyOnFaulted); // read so a full pipe never blocks it; ends with adb
         _ = Task.Run(async () =>
         {
             try
@@ -135,7 +133,7 @@ public sealed class AdbTouchWatcher : IDisposable
         var process = _process;
         _process = null;
         if (process is null) return;
-        try { process.Kill(entireProcessTree: true); }
+        try { process.Process.Kill(entireProcessTree: true); }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException) { /* it ended already */ }
         process.Dispose();
     }

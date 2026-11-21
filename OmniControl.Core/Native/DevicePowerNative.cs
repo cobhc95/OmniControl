@@ -42,7 +42,7 @@ internal static class DevicePowerNative
     {
         try
         {
-            using var process = Process.Start(new ProcessStartInfo("powercfg.exe", $"/devicequery {query}")
+            using var process = Process.Start(new ProcessStartInfo(OmniControl.Core.Engine.SystemTools.PowerCfg, $"/devicequery {query}")
             {
                 UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true,
             });

@@ -179,14 +179,9 @@ public sealed partial class RuleEditorViewModel : ObservableObject
     {
         if (pick.Choice.ParamHint is not null && (pick.Parameter ?? string.Empty).Trim().Length == 0) return;
         var stored = Compose(pick);
-        if (slot.Kind == RuleSlotKind.Step && RuleSteps.NeedsApproval(stored) && !_rules.IsApproved(stored))
-        {
-            var allowed = await _ask(new DialogMessage("Allow this command?",
-                "The rule runs this command each time it triggers. Changing it later asks again.",
-                "Allow", RuleSteps.Describe(stored), ShowDetails: true));
-            if (!allowed) return;
-            _rules.Approve(stored);
-        }
+        if (slot.Kind == RuleSlotKind.Step && RuleSteps.NeedsApproval(stored)
+            && !await _rules.Approvals.AskAsync(stored, new DialogMessage("Allow this command?", "The rule runs this command each time it triggers. Changing it later asks again.",
+                "Allow", RuleSteps.Describe(stored), ShowDetails: true))) return;
         Set(slot, stored);
     }
 

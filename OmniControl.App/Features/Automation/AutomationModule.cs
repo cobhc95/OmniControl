@@ -17,7 +17,7 @@ public sealed class AutomationModule(Func<IEnumerable<string>> rememberedProgram
     {
         _context = context;
         _service = new AutomationService(context.Actions, context.Runner, context.ActionGate, context.States, CountdownWindow.ConfirmAsync, rememberedPrograms,
-            StartupRegistration.IsBackgroundStart(Environment.GetCommandLineArgs().Skip(1)), context.Report, context.Power);
+            StartupRegistration.IsBackgroundStart(Environment.GetCommandLineArgs().Skip(1)), context.Report, context.Power, context.AskAsync);
         context.Hardware.Register(new HardwareWatch(UsbWatchId, "USB devices (rules)", HardwareSignal.Device, _service.LookAtUsb));
         context.Imports.OnReload(DataStores.Automation, _service.ReloadFromDisk);
         context.Shutdown.Add(ShutdownStage.Automation, "automation", _service.Dispose);

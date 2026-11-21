@@ -37,12 +37,8 @@ internal static class PcProtocol
     /// The longest text taken from another PC for a name or value, unless a shorter limit is given.
     public const int TextMax = 120;
 
-    /// Text another PC sent, without control characters, trimmed and cut to <paramref name="max"/> characters.
-    public static string Clip(string? text, int max = TextMax)
-    {
-        var clean = new string((text ?? string.Empty).Where(c => !char.IsControl(c)).ToArray()).Trim();
-        return clean.Length > max ? clean[..max] : clean;
-    }
+    /// Text another PC sent, without control or format characters (bidirectional overrides), trimmed and cut to <paramref name="max"/> characters.
+    public static string Clip(string? text, int max = TextMax) => TextClip.Clean(text, max);
 
     /// "host" or "host:port" (the default port when none): false when it is not one.
     public static bool TryParseAddress(string text, out string host, out int port)

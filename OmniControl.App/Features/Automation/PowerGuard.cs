@@ -78,7 +78,7 @@ public sealed class PowerGuard
         {
             // Nobody awaits this task: a failure is logged and said here, or it would vanish.
             Guard.Log($"Power action {verb}", ex);
-            _report($"{verb} didn't work. Details are in {Guard.LogFile}.");
+            _report(Guard.SeeLog($"{verb} didn't work."));
         }
         finally
         {

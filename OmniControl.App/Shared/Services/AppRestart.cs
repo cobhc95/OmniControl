@@ -9,7 +9,7 @@ namespace OmniControl.App.Shared.Services;
 /// (<see cref="PendingRestore"/>) before anything is loaded. Every start carries out a staged one, so nothing is lost if the restart fails.
 public static class AppRestart
 {
-    private const string AfterArgument = "--after";
+    public const string AfterArgument = "--after";
     private const string LogName = "backup-log.txt";
 
     /// Starts the next run of OmniControl; false when Windows refused (the user then starts it again by hand).

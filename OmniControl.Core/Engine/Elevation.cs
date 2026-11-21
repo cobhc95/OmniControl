@@ -36,6 +36,21 @@ public static class Elevation
         }
     }
 
-    /// The arguments as one command line, each in quotes.
-    internal static string Quoted(IEnumerable<string> arguments) => string.Join(' ', arguments.Select(a => $"\"{a}\""));
+    /// The arguments as one command line that Windows' own splitting (CommandLineToArgvW) gives back unchanged, quotes and backslashes included.
+    public static string Quoted(IEnumerable<string> arguments) => string.Join(' ', arguments.Select(Quote));
+
+    private static string Quote(string argument)
+    {
+        if (argument.Length > 0 && argument.IndexOfAny(new[] { ' ', '\t', '\n', '\v', '"' }) < 0) return argument;
+        var text = new StringBuilder("\"");
+        for (var i = 0; i < argument.Length; i++)
+        {
+            var slashes = 0;
+            while (i < argument.Length && argument[i] == '\\') (slashes, i) = (slashes + 1, i + 1);
+            if (i == argument.Length) text.Append('\\', slashes * 2); // doubled before the closing quote
+            else if (argument[i] == '"') text.Append('\\', slashes * 2 + 1).Append('"');
+            else text.Append('\\', slashes).Append(argument[i]);
+        }
+        return text.Append('"').ToString();
+    }
 }

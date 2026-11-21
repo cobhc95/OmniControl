@@ -114,7 +114,7 @@ internal sealed class DisplayOrientationCard
             Dispatcher.UIThread.Post(() =>
             {
                 if (_disposed) return;
-                _report($"Windows would not turn {_displayName} to {Names[index].ToLowerInvariant()}. Details are in {LogFile}.");
+                _report(Guard.SeeLog($"Windows would not turn {_displayName} to {Names[index].ToLowerInvariant()}.", LogFile));
                 if (now is { } actual) Card.Load((int)actual);
             });
         });

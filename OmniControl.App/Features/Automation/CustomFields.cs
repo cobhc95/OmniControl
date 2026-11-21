@@ -42,6 +42,15 @@ public static class CustomFields
         return values;
     }
 
+    /// What the action starts, as approved once (<see cref="AutomationService.Approvals"/>): its kind, target and arguments; null for a kind
+    /// that starts nothing of its own (a web address, keys).
+    public static string? Starts(CustomAction custom) => custom.Kind is CustomKind.Url or CustomKind.Keys ? null
+        : $"custom|{custom.Kind}|{custom.Target.Trim()}|{custom.Arguments}";
+
+    /// What the approval question shows: exactly what will be started.
+    public static string Describe(CustomAction custom) =>
+        $"{CustomKinds.NameOf(custom.Kind)}: {custom.Target.Trim()}{(custom.Arguments.Length > 0 ? " " + custom.Arguments : string.Empty)}";
+
     /// Stores one setting on the action. Returns false when the value is not kept (a blank name).
     public static bool Apply(CustomAction custom, string key, string value)
     {

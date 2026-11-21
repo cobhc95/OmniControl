@@ -66,7 +66,7 @@ public static class PowerCommands
     {
         try
         {
-            using var process = Process.Start(new ProcessStartInfo("shutdown.exe", force ? arguments + " /f" : arguments) { UseShellExecute = false, CreateNoWindow = true });
+            using var process = Process.Start(new ProcessStartInfo(SystemTools.Shutdown, force ? arguments + " /f" : arguments) { UseShellExecute = false, CreateNoWindow = true });
             if (process is null) return false;
             // A refusal (a shut down already under way, a policy) is a non-zero exit code; still running after the wait counts as accepted.
             return !process.WaitForExit(CoreTiming.ShutdownExeWaitMs) || process.ExitCode == 0;

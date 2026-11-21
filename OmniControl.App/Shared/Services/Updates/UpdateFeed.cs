@@ -21,8 +21,7 @@ public static class UpdateFeed
             best = new ReleaseInfo
             {
                 Version = tag.Trim().TrimStart('v', 'V'),
-                // Only a link on GitHub is trusted; anything else opens the releases page instead.
-                Url = url.StartsWith("https://github.com/", StringComparison.Ordinal) ? url : AppInfo.ReleasesPageUrl,
+                Url = Trusted(url),
                 Published = item.TryGetProperty("published_at", out var at) && at.ValueKind == JsonValueKind.String && at.TryGetDateTime(out var when) ? when : null,
                 Prerelease = Flag(item, "prerelease"),
             };
@@ -30,6 +29,9 @@ public static class UpdateFeed
         }
         return best;
     }
+
+    /// Only a link on GitHub is trusted (also one read back from disk); anything else opens the releases page instead.
+    public static string Trusted(string url) => url.StartsWith("https://github.com/", StringComparison.Ordinal) ? url : AppInfo.ReleasesPageUrl;
 
     private static string Text(JsonElement item, string name) =>
         item.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() ?? string.Empty : string.Empty;

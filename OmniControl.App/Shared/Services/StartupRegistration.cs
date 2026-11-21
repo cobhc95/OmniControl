@@ -7,7 +7,7 @@ public static class StartupRegistration
     private const string EntryName = "OmniControl";
 
     /// The argument the start-up entry passes: start with the window hidden, everything else running.
-    private const string BackgroundArgument = "--background";
+    public const string BackgroundArgument = "--background";
 
     public static StartupState State => StartupEntry.StateOf(EntryName);
 

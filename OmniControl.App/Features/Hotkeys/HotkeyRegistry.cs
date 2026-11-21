@@ -191,7 +191,7 @@ public sealed partial class HotkeyRegistry : IActionRegistry, IActionRunner, IDi
         var resolved = Resolve(action, settings)!;
         if (Guard.Run($"Action {action.Id}", () => stop = start(resolved)) is not null)
         {
-            Dispatcher.UIThread.Post(() => _report($"Couldn't run {action.Title}. Details are in {Guard.LogFile}."), DispatcherPriority.Send);
+            _report(Guard.SeeLog($"Couldn't run {action.Title}."));
             return () => { };
         }
         if (stop is not null) Dispatcher.UIThread.Post(() => RaiseRan(action, chain), DispatcherPriority.Send);
@@ -243,7 +243,7 @@ public sealed partial class HotkeyRegistry : IActionRegistry, IActionRunner, IDi
             // The one guard for every caller: a broken action is logged and said calmly, and never takes the app down.
             if (Guard.Run($"Action {action.Id}", () => run(action)) is not null)
             {
-                _report($"Couldn't run {action.Title}. Details are in {Guard.LogFile}.");
+                _report(Guard.SeeLog($"Couldn't run {action.Title}."));
                 return;
             }
         }

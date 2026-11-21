@@ -293,7 +293,7 @@ public sealed partial class MethodItem
     [RelayCommand(CanExecute = nameof(CanInstall))]
     private async Task Install()
     {
-        if (await _service.Setup.InstallAsync() is { } problem) _report($"{problem} Details are in {DeviceService.LogFile}.");
+        if (await _service.Setup.InstallAsync() is { } problem) _report(Guard.SeeLog(problem, DeviceService.LogFile));
         AdvanceSetup();
     }
 

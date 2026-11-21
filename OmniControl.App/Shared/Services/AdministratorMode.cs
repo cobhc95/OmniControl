@@ -23,6 +23,20 @@ public static class AdministratorMode
         return (on ? SignInTask.Set(Self) : SignInTask.Remove()) is null ? 0 : 1;
     }
 
+    /// The arguments this copy may act on. Anything running as the user may run the sign-in task with arguments of its choosing, so a copy
+    /// it started (elevated, <see cref="SignInTask.FromTask"/>) keeps only a restart's <c>--after &lt;id&gt;</c> and <c>--background</c>.
+    public static string[] Trusted(string[] args)
+    {
+        if (Array.IndexOf(args, SignInTask.FromTask) < 0) return args;
+        var kept = new List<string> { SignInTask.FromTask };
+        for (var i = 0; i < args.Length; i++)
+        {
+            if (args[i] == StartupRegistration.BackgroundArgument) kept.Add(args[i]);
+            else if (args[i] == AppRestart.AfterArgument && i + 1 < args.Length && int.TryParse(args[i + 1], out _)) kept.AddRange(new[] { args[i], args[++i] });
+        }
+        return kept.ToArray();
+    }
+
     /// At the very start, before anything of the app runs: true when an elevated copy was started and this one must end. A copy the task
     /// started never starts another one.
     public static bool RelaunchIfWanted(string[] args, Func<bool> wanted) =>
@@ -46,13 +60,18 @@ public static class AdministratorMode
     }
 
     /// Makes the sign-in task follow the setting, on a worker; only an elevated copy may change it (one that is not leaves it as it is).
-    public static void FollowSetting(bool on, Action<string> report)
+    /// A task that starts a copy its user could swap is removed first. <paramref name="atStart"/>: a portable copy's refusal is said only
+    /// when the setting is changed, not at every start.
+    public static void FollowSetting(bool on, Action<string> report, bool atStart = false)
     {
         if (!IsElevated) return;
         var self = Self;
         Task.Run(() => Guard.Run("Sign-in task", () =>
         {
-            if ((on ? SignInTask.IsFor(self) ? null : SignInTask.Set(self) : SignInTask.Remove()) is { } problem) report(problem);
+            var removed = SignInTask.RemoveUnsafe();
+            var problem = on ? SignInTask.IsFor(self) ? null : SignInTask.Set(self) : SignInTask.Remove();
+            if (removed) report(SignInTask.RemovedUnsafe);
+            else if (problem is not null && !(atStart && problem == SignInTask.NeedsInstalled)) report(problem);
         }));
     }
 

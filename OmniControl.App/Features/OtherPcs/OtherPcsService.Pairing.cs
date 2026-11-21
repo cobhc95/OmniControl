@@ -3,13 +3,19 @@ using System.Net.Sockets;
 namespace OmniControl.App.Features.OtherPcs;
 
 // Pairing: a New PC tab opens this PC for a while; the person then picks a PC (or types an address) on one PC, the other shows a code,
-// and the person types it on the first (PcPairing has the exchange). Only one pairing runs at a time and a wrong code closes pairing.
+// the person types it on the first and confirms on the second (PcPairing has the exchange). Only one pairing runs at a time and any end of it,
+// paired or not, closes pairing.
 public sealed partial class OtherPcsService
 {
     private long _pairingOpenUntil; // UTC ticks; read by the network tasks
     private int _pairingBusy; // 1 while a pairing runs on this PC (either way round)
     private TaskCompletionSource<string?>? _codeWait;
     private CancellationTokenSource? _openTimer;
+    private volatile IReadOnlySet<string> _pairedIds = new HashSet<string>(); // the paired ids when pairing opened or a pair left, for the network tasks
+
+    private void TakePairedIds() => _pairedIds = _settings.Pairs.Select(p => p.Id).ToHashSet();
+
+    private bool IsPaired(string id) => _pairedIds.Contains(id);
 
     /// What the pairing panel shows.
     public PairingState Pairing { get; } = new();
@@ -21,6 +27,7 @@ public sealed partial class OtherPcsService
     {
         StartNetwork();
         if (Pairing.Phase is PairingPhase.AskingCode or PairingPhase.ShowingCode or PairingPhase.Working) return;
+        TakePairedIds();
         Interlocked.Exchange(ref _pairingOpenUntil, (DateTime.UtcNow + Timing.PcPairingOpen).Ticks);
         Pairing.TabId = tabId;
         Pairing.Message = string.Empty;
@@ -102,6 +109,7 @@ public sealed partial class OtherPcsService
         Pairing.Message = $"Connecting to {host}...";
         Pairing.Phase = PairingPhase.Working;
         RaiseChanged();
+        TakePairedIds();
         var ownAddress = Tailscale.OwnAddress;
         _ = Guard.RunAsync("Other PCs: pairing", async () =>
         {
@@ -111,7 +119,7 @@ public sealed partial class OtherPcsService
                 using var client = new TcpClient();
                 using (var connect = PcWire.Step(_stop.Token)) await client.ConnectAsync(host, port, connect.Token).ConfigureAwait(false);
                 client.NoDelay = true;
-                result = await PcPairing.InitiateAsync(client.GetStream(), OwnId, _ownName, route == PcRoute.Tailscale ? ownAddress : string.Empty, AskCodeAsync, _stop.Token).ConfigureAwait(false);
+                result = await PcPairing.InitiateAsync(client.GetStream(), OwnId, _ownName, route == PcRoute.Tailscale ? ownAddress : string.Empty, IsPaired, AskCodeAsync, _stop.Token).ConfigureAwait(false);
             }
             catch (Exception ex) when (PcWire.IsNetworkError(ex))
             {
@@ -152,13 +160,38 @@ public sealed partial class OtherPcsService
         PairResult result;
         try
         {
-            result = await PcPairing.RespondAsync(stream, OwnId, _ownName, Tailscale.OwnAddress, (name, code) => PcWork.Post(() => ShowCode(name, code)), _stop.Token).ConfigureAwait(false);
+            result = await PcPairing.RespondAsync(stream, OwnId, _ownName, Tailscale.OwnAddress, IsPaired, (name, code) => PcWork.Post(() => ShowCode(name, code)), ConfirmPairAsync, _stop.Token).ConfigureAwait(false);
         }
         catch (Exception ex) when (PcWire.IsNetworkError(ex))
         {
             result = PairResult.Failed("The other PC went away while pairing. Nothing was paired.");
         }
         PcWork.Post(() => FinishPairing(result, PcRoute.Lan, string.Empty));
+    }
+
+    // The person at the PC that showed the code agrees too; the question closes by itself when the step's time runs out.
+    private async Task<bool> ConfirmPairAsync(string peerName, CancellationToken dismiss)
+    {
+        var answer = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        PcWork.Post(() => _ = Guard.RunAsync("Other PCs: confirming a pairing", async () =>
+        {
+            try
+            {
+                answer.TrySetResult(await _ask(new DialogMessage($"Pair with {peerName}?", $"The code was typed on {peerName}. Once paired, each PC can use what the other shares.", "Pair", Dismiss: dismiss)));
+            }
+            finally
+            {
+                answer.TrySetResult(false);
+            }
+        }));
+        try
+        {
+            return await answer.Task.WaitAsync(dismiss).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
+        }
     }
 
     private void ShowCode(string peerName, string code)
@@ -196,28 +229,17 @@ public sealed partial class OtherPcsService
 
     private bool AddPair(string id, string name, byte[] secret, PcRoute route, string address, string tailscale)
     {
-        if (id == OwnId) return false;
+        if (id == OwnId || Find(id) is not null) return false; // a paired PC is paired again only after it was unpaired
         if (!_credentials.Write(CredentialTarget(id), Convert.ToBase64String(secret)))
         {
             _report("Windows would not keep the pairing key, so the PC was not paired.");
             return false;
         }
         _secrets[id] = secret;
-        if (Find(id) is { } known)
-        {
-            known.Name = name; // paired again: the new key replaces the old, what is shared stays
-            LogRoute(known, route, "paired again");
-            known.Route = route;
-            known.Address = address;
-            known.TailscaleAddress = tailscale;
-        }
-        else
-        {
-            var added = new PairedPc { Id = id, Name = name, Route = route, Address = address, TailscaleAddress = tailscale };
-            _settings.Pairs.Add(added);
-            Wake.Register(added);
-            _settings.TabOrder.Add(id);
-        }
+        var added = new PairedPc { Id = id, Name = name, Route = route, Address = address, TailscaleAddress = tailscale };
+        _settings.Pairs.Add(added);
+        Wake.Register(added);
+        _settings.TabOrder.Add(id);
         CloseLink(id);
         Save();
         StartNetwork();

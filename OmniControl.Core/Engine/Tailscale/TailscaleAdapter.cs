@@ -28,5 +28,5 @@ public static class TailscaleAdapter
 
     /// Restarts Tailscale's Windows service (Windows' administrator prompt unless OmniControl already is one). Call off the UI thread.
     public static HelperResult Restart() =>
-        HelperProcess.RunElevated(Path.Combine(Environment.SystemDirectory, "cmd.exe"), $"/c net stop {ServiceName} & net start {ServiceName}", hidden: true);
+        HelperProcess.RunElevated(SystemTools.Cmd, $"/c net stop {ServiceName} & net start {ServiceName}", hidden: true);
 }

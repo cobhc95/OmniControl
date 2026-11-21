@@ -37,7 +37,7 @@ public sealed class RuleService : IDisposable
     /// <param name="remembered">Programs the Volume page remembers (paths), offered in the program condition with the running ones.</param>
     /// <param name="report">Shows one plain sentence in the status line.</param>
     public RuleService(MouseHook hook, GestureService gestures, MouseService mouse, IActionCatalogue hotkeys, IActionRunner run,
-        Func<IEnumerable<string>> remembered, Action<string> report)
+        Func<IEnumerable<string>> remembered, Action<string> report, Func<DialogMessage, Task<bool>> ask)
     {
         _gestures = gestures;
         _mouse = mouse;
@@ -45,7 +45,8 @@ public sealed class RuleService : IDisposable
         _remembered = remembered;
         _report = report;
         var actions = new MouseActionRunner(run.Run, report, Log);
-        _runner = new RuleRunner(actions, IsApproved, Log);
+        Approvals = new CommandApprovals(() => Settings.Approved, Settings.Save, ask);
+        _runner = new RuleRunner(actions, Approvals.IsApproved, Log);
         _engine = new RuleEngine(hook, mouse.LayerOf, Start);
         _shortcuts.Failed += shortcut =>
             report($"Couldn't use {shortcut} for a rule: another program or an OmniControl shortcut already uses it.");
@@ -146,13 +147,8 @@ public sealed class RuleService : IDisposable
 
     // ---- Approvals ----
 
-    public bool IsApproved(string step) => CommandApproval.IsIn(Settings.Approved, step);
-
-    public void Approve(string step)
-    {
-        CommandApproval.AddTo(Settings.Approved, step);
-        Settings.Save();
-    }
+    /// The commands and programs the person allowed on this PC.
+    public CommandApprovals Approvals { get; }
 
     // ---- Running ----
 
@@ -189,7 +185,7 @@ public sealed class RuleService : IDisposable
         else
         {
             _problems[ruleId] = problem;
-            _report($"A rule didn't finish: {problem}. Details are in {LogFile}.");
+            _report(Guard.SeeLog($"A rule didn't finish: {problem}.", LogFile));
         }
         if (had != problem) ProblemsChanged?.Invoke();
     });

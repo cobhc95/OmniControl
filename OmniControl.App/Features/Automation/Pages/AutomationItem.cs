@@ -309,13 +309,9 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
     {
         if (pick.Choice.ParamHint is not null && (pick.Parameter ?? string.Empty).Trim().Length == 0 && !AutomationTriggers.AllowsEmptyText(pick.Choice.Spec)) return;
         var stored = Compose(pick);
-        if (slot.Kind == RuleSlotKind.Step && !IsBlock && AutomationSteps.NeedsApproval(stored) && !_service.IsApproved(stored))
-        {
-            var allowed = await _ask(new DialogMessage("Allow this program?", "The rule opens this each time it runs. Changing it later asks again.",
-                "Allow", RuleSteps.Describe(stored), ShowDetails: true));
-            if (!allowed) return;
-            _service.Approve(stored);
-        }
+        if (slot.Kind == RuleSlotKind.Step && !IsBlock && AutomationSteps.NeedsApproval(stored)
+            && !await _service.Approvals.AskAsync(stored, new DialogMessage("Allow this program?", "The rule opens this each time it runs. Changing it later asks again.",
+                "Allow", RuleSteps.Describe(stored), ShowDetails: true))) return;
         Set(slot, stored);
         if (slot.Kind == RuleSlotKind.Trigger && AutomationTriggers.IsHotkey(stored)) ListenForHotkey();
     }

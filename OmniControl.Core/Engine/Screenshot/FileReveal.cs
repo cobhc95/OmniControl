@@ -8,7 +8,7 @@ public static class FileReveal
     {
         try
         {
-            using var _ = Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{file}\"") { UseShellExecute = true });
+            using var _ = Process.Start(new ProcessStartInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe"), $"/select,\"{file}\"") { UseShellExecute = true });
             return null;
         }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)

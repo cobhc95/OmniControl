@@ -32,7 +32,7 @@ public static class WakeFixer
         foreach (var fix in fixes.Distinct()) script.Append("try { ").Append(command(fix)).Append(" } catch { $failed = $true }; ");
         script.Append("if ($failed) { exit 1 }");
         var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script.ToString()));
-        return HelperProcess.RunElevated("powershell.exe", $"-NoProfile -NonInteractive -WindowStyle Hidden -EncodedCommand {encoded}");
+        return HelperProcess.RunElevated(SystemTools.PowerShell, $"-NoProfile -NonInteractive -WindowStyle Hidden -EncodedCommand {encoded}");
     }
 
     // The checks and the registry fallback every fix shares. The keyword names and descriptions come from WakeKeywords, as the reader's do.

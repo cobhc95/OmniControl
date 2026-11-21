@@ -49,16 +49,19 @@ public sealed partial class AutomationService
     public void ScriptEdited() => Settings.Save();
 
     /// Runs a script now; null when it worked, otherwise the plain sentence that was also shown in the status line.
-    public async Task<string?> RunScriptAsync(Script script)
+    /// <paramref name="byPerson"/>: a person asked (its Run button, a key, a button), so a script not yet allowed is asked about; otherwise it is refused.
+    public async Task<string?> RunScriptAsync(Script script, bool byPerson = true)
     {
+        var name = script.Name.Length > 0 ? $"\"{script.Name}\"" : "this script";
+        if (!await AllowedAsync($"script|{script.Language}|{script.Body}", name, script.Body, byPerson)) return $"{name} was not allowed to run.";
         if (await _custom.RunScriptAsync(script, _python.Value) is not { } problem) return null;
-        _report($"{problem} Details are in {LogFile}.");
+        _report(Guard.SeeLog(problem, LogFile));
         return problem;
     }
 
     private HotkeyAction MakeScriptAction(Script script) =>
         new(script.ActionId, ScriptTitlePrefix + (script.Name.Length > 0 ? script.Name : "Script"), ActionSections.Automation,
-            $"script run powershell cmd batch python {script.Name}", ids => _ = RunScriptAsync(script), group: "Scripts")
+            $"script run powershell cmd batch python {script.Name}", ids => _ = RunScriptAsync(script, byPerson: _run.Chain is null), group: "Scripts")
         {
             PickerSection = ActionSections.CustomActions,
         };

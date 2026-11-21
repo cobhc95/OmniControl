@@ -228,7 +228,7 @@ public sealed partial class DeviceService
         var sentence = $"{name} didn't switch: {problem}";
         runtime.Finished(runtime.IsOn, known: false, $"Failed: {problem}", failed: true, failedStep, failedReason, details: details, failedMethodId: failedMethodId);
         Log($"\"{name}\": {problem.ReplaceLineEndings(" | ")}");
-        _report($"{sentence} Details are in {LogFile}.");
+        _report(Guard.SeeLog(sentence, LogFile));
         return sentence;
     }
 

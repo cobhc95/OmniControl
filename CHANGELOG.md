@@ -5,6 +5,12 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Security: pairing a PC now asks "Pair with <name>?" on the PC that shows the code too, a PC that is already paired must be unpaired before it can pair again, and the PC names are part of what both PCs prove (a name with hidden direction marks is cleaned). Both PCs need this version to pair.
+- Security: while OmniControl runs as administrator, everything it starts (programs, files, web pages, commands, scripts, custom actions, Python and pip, adb, Tailscale) runs with your normal rights; only a step's own "Run as administrator" elevates. Windows' own tools are started from the Windows folder by their full path.
+- Security: custom actions that start something and scripts ask "Allow …?" once the first time you run them (again after they are changed); a rule or another PC can run them only once allowed.
+- Security: the sign-in task (Run as administrator without a prompt) is kept only for the installed version in Program Files; a task left by a portable or per-user copy is removed, and a copy started by the task acts only on its restart and background-start arguments.
+- Security: only https and Settings pages open as web pages (a router's page and a picked screenshot link may be http), and the update link opens only on GitHub.
+
 ## 0.2.5 (21 Nov 2026)
 
 - Changed: tool tips no longer repeat the words already on screen (menu rows, chips, names, notes); a trimmed text shows its full words as a tip only while it is really cut off.

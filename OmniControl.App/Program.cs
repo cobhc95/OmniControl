@@ -8,9 +8,12 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
-        // The network service (started by Windows) and its install or removal run nothing else. Setup's --quit only asks the running copy to
+        // The normal-rights copy that opens one thing for an elevated run, the network service (started by Windows) and its install or removal run nothing else. Setup's --quit only asks the running copy to
         // quit, its --sign-in-task only adds or removes the task. A second start only asks the running copy to open its window (a start-up
-        // entry's start asks nothing), before it can touch any file (a staged import, settings).
+        // entry's start asks nothing), before it can touch any file (a staged import, settings). A copy the sign-in task started reads only
+        // the arguments a start of its own would give it.
+        args = AdministratorMode.Trusted(args);
+        if (NormalRights.FromArguments(args) is { } opened) return opened;
         if (NetworkServiceMode.FromArguments(args) is { } served) return served;
         if (SingleInstance.IsQuit(args)) return SingleInstance.AskToQuit();
         if (AdministratorMode.FromSetup(args) is { } done) return done;
