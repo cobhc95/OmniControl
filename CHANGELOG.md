@@ -5,6 +5,11 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Lighter memory: the main window keeps only the page you are on (none while search results show); a page you go back to is built again, a moment slower, and comes back at the same tab, open groups and scroll. A group's cards are built when it opens and let go when it closes (Mouse and Trackpad, OSD, Displays, inner groups), and the Volume page builds only the view and tab shown (Easy or Advanced, Mixer or Wiring).
+- Lighter memory: seven kinds of button (pills, state buttons, option cards, field-like pickers, EQ band rows, gallery arrows, group headers) carry their looks in a theme of their own, so every other button checks far fewer styles; nothing looks different.
+- Fixed: the main window was sometimes never let go after 5 minutes in the tray: the wait now counts only while it is hidden (a minimised window keeps its taskbar button), and when an FX window or the close question was open it tries again later instead of giving up; timing-log.txt says why it was kept, and the visuals before and after.
+- Fixed: Up and Down reach the next row of a long list that is out of view (search results, mixer rows) instead of stopping or skipping it.
+
 ## 0.2.7 (21 Nov 2026)
 
 - Important: Other PCs uses a new connection protocol in this version (safer pairing and fresh keys for every connection). Update every PC you pair to 0.2.7 or later; until both PCs run it, existing pairs show offline and new pairing is refused with one sentence. (This comes from the protocol change, not from the move to .NET 10, which needs nothing from you: the app still brings its own .NET.)
