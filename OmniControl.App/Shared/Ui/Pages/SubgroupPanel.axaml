@@ -12,7 +12,10 @@
                 <pages:GroupMasterSwitch Grid.Column="2" Margin="0,0,8,0" />
                 <TextBlock Grid.Column="3" Text="{Binding ShownSummary}" Classes="muted" FontSize="{StaticResource SummaryFontSize}" Margin="0,0,8,0" VerticalAlignment="Center" />
             </Grid>
-            <ListBox Classes="rows compact cards" ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}"></ListBox>
+            <!-- Its cards are built when it opens and let go when it closes (Pages/CardLayout) -->
+            <pages:CardLayout IsVisible="{Binding IsExpanded}">
+                <DataTemplate x:DataType="pages:ItemGroup"><ListBox Classes="rows compact cards" ItemsSource="{Binding Items}"></ListBox></DataTemplate>
+            </pages:CardLayout>
         </StackPanel>
     </Border>
 </UserControl>

@@ -14,11 +14,13 @@
                     <Button Classes="pill" Tag="grouptool" Content="Refresh" Click="OnRefresh"
                             ToolTip.Tip="Look at the monitors again and ask each what it supports (F5)" />
                 </pages:GroupCard.Tools>
-                <ItemsControl ItemsSource="{Binding Hardware.Subgroups}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="pages:ItemGroup"><pages:SubgroupPanel /></DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:DisplaysPageViewModel">
+                    <ItemsControl ItemsSource="{Binding Hardware.Subgroups}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="pages:ItemGroup"><pages:SubgroupPanel /></DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>
 
             <!-- Software: what OmniControl does to the picture itself, on any display -->
@@ -27,14 +29,16 @@
                     <pages:GroupRestorePill DataContext="{Binding Software}" />
                     <c:PresetPicker DataContext="{Binding PresetChoice}" />
                 </pages:GroupCard.Tools>
-                <StackPanel Spacing="{StaticResource GapSmall}">
-                    <ListBox Classes="rows compact cards" ItemsSource="{Binding Software.Items}"></ListBox>
-                    <ItemsControl ItemsSource="{Binding Software.Subgroups}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="pages:ItemGroup"><pages:SubgroupPanel /></DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
+                <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:DisplaysPageViewModel">
+                    <StackPanel Spacing="{StaticResource GapSmall}">
+                        <ListBox Classes="rows compact cards" ItemsSource="{Binding Software.Items}"></ListBox>
+                        <ItemsControl ItemsSource="{Binding Software.Subgroups}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="pages:ItemGroup"><pages:SubgroupPanel /></DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>
         </StackPanel>
     </StackPanel>

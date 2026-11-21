@@ -24,11 +24,14 @@ public partial class PathField : UserControl
     /// Raised when the path was typed or browsed and differs from before; <see cref="Text"/> is the new path. A host that applies it (rather than binding two-way) listens here.
     public event EventHandler<RoutedEventArgs> Chosen { add => AddHandler(ChosenEvent, value); remove => RemoveHandler(ChosenEvent, value); }
 
+    public static readonly StyledProperty<string> TypeNameProperty = AvaloniaProperty.Register<PathField, string>(nameof(TypeName), string.Empty);
+    public static readonly StyledProperty<IReadOnlyList<string>?> PatternsProperty = AvaloniaProperty.Register<PathField, IReadOnlyList<string>?>(nameof(Patterns));
+
     /// The name of the file type the picker offers (with <see cref="Patterns"/>); empty: the kind's own.
-    public string TypeName { get; set; } = string.Empty;
+    public string TypeName { get => GetValue(TypeNameProperty); set => SetValue(TypeNameProperty, value); }
 
     /// The file patterns the picker shows ("*.wav"); none: the kind's own.
-    public IReadOnlyList<string>? Patterns { get; set; }
+    public IReadOnlyList<string>? Patterns { get => GetValue(PatternsProperty); set => SetValue(PatternsProperty, value); }
 
     private void Commit(string path)
     {

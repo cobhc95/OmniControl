@@ -48,8 +48,14 @@ public static class GroupedCards
         if (e.Key is Key.Up or Key.Down && e.KeyModifiers == KeyModifiers.None && !RowEditing.IsEditing(focused)
             && src is not ComboBoxItem && src.FindAncestorOfType<ComboBoxItem>() is null)
         {
-            var stops = Stops(host);
             Control? current = IsHeaderStop(src) ? src : src as ListBoxItem ?? src.FindAncestorOfType<ListBoxItem>();
+            if (current is ListBoxItem card && Unbuilt(card, Services.Wrap.Direction(e.Key)) is { } inList)
+            {
+                MoveTo(inList, Stops(host));
+                e.Handled = true;
+                return;
+            }
+            var stops = Stops(host);
             var at = current is null ? -1 : stops.IndexOf(current);
             if (at >= 0)
             {
@@ -61,6 +67,18 @@ public static class GroupedCards
         }
 
         if (src.FindAncestorOfType<ListBox>() is { } list) RowEditing.Handle(list, e);
+    }
+
+    // A list that virtualizes (the default ListBox panel) has built only the cards in view: the card next to this one, when the list has
+    // not built it yet, is built and given back; null when it is built (the stops find it) or the list ends here.
+    private static ListBoxItem? Unbuilt(ListBoxItem card, int step)
+    {
+        if (card.FindAncestorOfType<ListBox>() is not { } list) return null;
+        var at = list.IndexFromContainer(card);
+        var next = at + step;
+        if (at < 0 || next < 0 || next >= list.ItemCount || list.ContainerFromIndex(next) is not null) return null;
+        list.ScrollIntoView(next);
+        return list.ContainerFromIndex(next) as ListBoxItem;
     }
 
     /// Moves the keyboard to the card that shows <paramref name="item"/> (as Up/Down would) and scrolls it into view; false when no
