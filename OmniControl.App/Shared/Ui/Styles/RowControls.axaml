@@ -11,38 +11,148 @@
          .method          the Method chip's colour, one class per method: .apo (Equalizer APO, green), .cable (a cable or the cable bus,
                           blue BrushCable), .recording (the accent), none = direct (muted words, a plain edge).
          Button.selector.running  a chip whose thing is running now (the Simulation row's emulator chip): accent words and edge.
-         Button.pill.glow the FX button while effects run: accent words, accent edge, accent wash and a soft accent glow (AccentGlow,
-                          made from the accent by AccentService).
          Button.reveal    the eye inside a password field's right edge (Controls/PasswordField): flat, muted glyph, hover wash; accent wash and
-                          accent glyph on keyboard focus or while held (no border change, nothing moves). -->
-    <Style Selector="Button.selector">
-        <Setter Property="MinHeight" Value="0" />
-        <Setter Property="Height" Value="{StaticResource ChipHeight}" />
-        <Setter Property="Padding" Value="{StaticResource SelectorPadding}" />
-        <Setter Property="CornerRadius" Value="{StaticResource ChipCornerRadius}" />
-        <Setter Property="FontSize" Value="{StaticResource MenuSmallFontSize}" />
-        <Setter Property="HorizontalAlignment" Value="Stretch" />
-        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-        <Setter Property="VerticalContentAlignment" Value="Center" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
-    <Style Selector="Button.selector /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
-        <Setter Property="BorderThickness" Value="1" />
-    </Style>
+                          accent glyph on keyboard focus or while held (no border change, nothing moves).
+         The Button looks here (selector, reveal, pin, anchorcell) are control themes (the rules: Styles/ButtonThemes.axaml); their child
+         selectors stay below. -->
+    <Styles.Resources>
+        <ControlTheme x:Key="SelectorButton" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
+            <Style Selector="^.selector">
+                <Setter Property="MinHeight" Value="0" />
+                <Setter Property="Height" Value="{StaticResource ChipHeight}" />
+                <Setter Property="Padding" Value="{StaticResource SelectorPadding}" />
+                <Setter Property="CornerRadius" Value="{StaticResource ChipCornerRadius}" />
+                <Setter Property="FontSize" Value="{StaticResource MenuSmallFontSize}" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+            <Style Selector="^.selector /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
+                <Setter Property="BorderThickness" Value="1" />
+            </Style>
+            <Style Selector="^.selector:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+            </Style>
+            <!-- The Method chip's colours (direct = the plain look above with muted words) -->
+            <Style Selector="^.selector.method /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Foreground" Value="{DynamicResource BrushMuted}" /></Style>
+            <Style Selector="^.selector.method.apo /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Foreground" Value="{DynamicResource BrushOn}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushTagGood}" />
+            </Style>
+            <Style Selector="^.selector.method.cable /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Foreground" Value="{DynamicResource BrushCable}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushTagCable}" />
+            </Style>
+            <Style Selector="^.selector.method.recording /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" />
+            </Style>
+            <Style Selector="^.selector.running /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" />
+            </Style>
+            <!-- .risk = a method set but not running (Equalizer APO on the speakers, but Windows doesn't load it there): red words and edge -->
+            <Style Selector="^.selector.method.risk /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Foreground" Value="{DynamicResource BrushDanger}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushTagRisk}" />
+            </Style>
+            <!-- A chip with a status dot (Controls/ChipMenu.Tone): .good = green words and edge (connected), .caution = yellow edge -->
+            <Style Selector="^.selector.good /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Foreground" Value="{DynamicResource BrushOn}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushTagGood}" />
+            </Style>
+            <Style Selector="^.selector.caution /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="BorderBrush" Value="{DynamicResource BrushTagCaution}" /></Style>
+            <!-- Hover and focus keep the chip's colour words; only the wash and the edge take the master hover and focus -->
+            <Style Selector="^.selector:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+            </Style>
+        </ControlTheme>
+
+        <ControlTheme x:Key="RevealButton" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
+            <Style Selector="^.reveal">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Padding" Value="4" />
+                <Setter Property="Margin" Value="0,0,4,0" />
+                <Setter Property="MinHeight" Value="0" />
+                <Setter Property="MinWidth" Value="0" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="CornerRadius" Value="4" />
+            </Style>
+            <Style Selector="^.reveal:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushHover}" />
+            </Style>
+            <Style Selector="^.reveal:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
+            </Style>
+        </ControlTheme>
+
+        <!-- Button.pin (notes below) -->
+        <ControlTheme x:Key="PinButton" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
+            <Style Selector="^.pin">
+                <Setter Property="Width" Value="{StaticResource PinSize}" />
+                <Setter Property="Height" Value="{StaticResource PinSize}" />
+                <Setter Property="MinWidth" Value="0" />
+                <Setter Property="MinHeight" Value="0" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="CornerRadius" Value="{StaticResource PinCornerRadius}" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+            </Style>
+            <Style Selector="^.pin /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="Transparent" /></Style>
+            <Style Selector="^.pin:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" /></Style>
+            <Style Selector="^.pin:focus-visible /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" /></Style>
+        </ControlTheme>
+
+        <!-- Button.anchorcell (notes at Border.anchorframe below) -->
+        <ControlTheme x:Key="AnchorCellButton" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
+            <Style Selector="^.anchorcell">
+                <Setter Property="Width" Value="{StaticResource AnchorCellSize}" />
+                <Setter Property="Height" Value="{StaticResource AnchorCellSize}" />
+                <Setter Property="MinWidth" Value="0" />
+                <Setter Property="MinHeight" Value="0" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Margin" Value="{StaticResource AnchorCellGap}" />
+                <Setter Property="CornerRadius" Value="{StaticResource AnchorCellCornerRadius}" />
+            </Style>
+            <Style Selector="^.anchorcell /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="BorderBrush" Value="Transparent" />
+            </Style>
+            <Style Selector="^.anchorcell:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" /></Style>
+            <Style Selector="^.anchorcell.selected /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushAccent}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+            </Style>
+            <Style Selector="^.anchorcell.selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+            </Style>
+        </ControlTheme>
+    </Styles.Resources>
+    <Style Selector="Button.selector"><Setter Property="Theme" Value="{StaticResource SelectorButton}" /></Style>
+    <Style Selector="Button.reveal"><Setter Property="Theme" Value="{StaticResource RevealButton}" /></Style>
+    <Style Selector="Button.pin"><Setter Property="Theme" Value="{StaticResource PinButton}" /></Style>
+    <Style Selector="Button.anchorcell"><Setter Property="Theme" Value="{StaticResource AnchorCellButton}" /></Style>
     <!-- c|ChipMenu.dropbox: the same chip drawn as a Windows drop-down box (the tray panel's display and speaker pickers): square-ish
-         corners and the control's own fill; hover and focus stay the chip's (declared before them, so they win) -->
+         corners and the control's own fill; hover and focus stay the chip's (so the fill only while neither shows) -->
     <Style Selector="c|ChipMenu.dropbox > Button.selector">
         <Setter Property="Height" Value="{StaticResource DropBoxHeight}" />
         <Setter Property="CornerRadius" Value="{StaticResource DropBoxCornerRadius}" />
     </Style>
-    <Style Selector="c|ChipMenu.dropbox > Button.selector /template/ ContentPresenter#PART_ContentPresenter">
+    <Style Selector="c|ChipMenu.dropbox > Button.selector:not(:pointerover):not(:focus-visible) /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushControlFill}" />
-    </Style>
-    <Style Selector="Button.selector:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
     </Style>
     <Style Selector="Border.selector">
         <Setter Property="Height" Value="{StaticResource ChipHeight}" />
@@ -66,43 +176,16 @@
     </Style>
 
     <!-- The Method chip's colours (direct = the plain look above with muted words) -->
-    <Style Selector="Button.selector.method /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Foreground" Value="{DynamicResource BrushMuted}" /></Style>
     <Style Selector="Border.selector.method > TextBlock"><Setter Property="Foreground" Value="{DynamicResource BrushMuted}" /></Style>
-    <Style Selector="Button.selector.method.apo /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Foreground" Value="{DynamicResource BrushOn}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushTagGood}" />
-    </Style>
     <Style Selector="Border.selector.method.apo"><Setter Property="BorderBrush" Value="{DynamicResource BrushTagGood}" /></Style>
     <Style Selector="Border.selector.method.apo > TextBlock"><Setter Property="Foreground" Value="{DynamicResource BrushOn}" /></Style>
-    <Style Selector="Button.selector.method.cable /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Foreground" Value="{DynamicResource BrushCable}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushTagCable}" />
-    </Style>
     <Style Selector="Border.selector.method.cable"><Setter Property="BorderBrush" Value="{DynamicResource BrushTagCable}" /></Style>
     <Style Selector="Border.selector.method.cable > TextBlock"><Setter Property="Foreground" Value="{DynamicResource BrushCable}" /></Style>
-    <Style Selector="Button.selector.method.recording /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" />
-    </Style>
-    <Style Selector="Button.selector.running /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" />
-    </Style>
-    <!-- .risk = a method set but not running (Equalizer APO on the speakers, but Windows doesn't load it there): red words and edge -->
-    <Style Selector="Button.selector.method.risk /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Foreground" Value="{DynamicResource BrushDanger}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushTagRisk}" />
-    </Style>
     <Style Selector="Border.selector.method.risk"><Setter Property="BorderBrush" Value="{DynamicResource BrushTagRisk}" /></Style>
     <Style Selector="Border.selector.method.risk > TextBlock"><Setter Property="Foreground" Value="{DynamicResource BrushDanger}" /></Style>
     <Style Selector="Border.selector.method.recording"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" /></Style>
     <Style Selector="Border.selector.method.recording > TextBlock"><Setter Property="Foreground" Value="{DynamicResource BrushAccent}" /></Style>
     <!-- A chip with a status dot (Controls/ChipMenu.Tone, docs/mockups/pc-header-tidy.html): .good = green words and edge (connected), .caution = yellow edge; the dot is c|StatusDot -->
-    <Style Selector="Button.selector.good /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Foreground" Value="{DynamicResource BrushOn}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushTagGood}" />
-    </Style>
-    <Style Selector="Button.selector.caution /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="BorderBrush" Value="{DynamicResource BrushTagCaution}" /></Style>
     <Style Selector="Button.selector > Grid > TextBlock.withdot"><Setter Property="Margin" Value="{StaticResource ChipDotInset}" /></Style>
     <!-- THE swatch button (c|ChipMenu.Swatch, usually .dropbox): the colour dot before the words, smaller than a pop-down's dots -->
     <Style Selector="Button.selector > Grid > c|SwatchDot"><Setter Property="Size" Value="{StaticResource ChipSwatchSize}" /></Style>
@@ -116,55 +199,16 @@
     <Style Selector="c|StatusDot.good"><Setter Property="Fill" Value="{DynamicResource BrushOn}" /></Style>
     <Style Selector="c|StatusDot.caution"><Setter Property="Fill" Value="{DynamicResource BrushCaution}" /></Style>
     <Style Selector="c|StatusDot.risk"><Setter Property="Fill" Value="{DynamicResource BrushDanger}" /></Style>
-    <!-- Hover and focus keep the chip's colour words; only the wash and the edge take the master hover and focus -->
-    <Style Selector="Button.selector:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-    </Style>
-    <Style Selector="Button.reveal">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Padding" Value="4" />
-        <Setter Property="Margin" Value="0,0,4,0" />
-        <Setter Property="MinHeight" Value="0" />
-        <Setter Property="MinWidth" Value="0" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="VerticalContentAlignment" Value="Center" />
-        <Setter Property="HorizontalContentAlignment" Value="Center" />
-        <Setter Property="CornerRadius" Value="4" />
-    </Style>
     <Style Selector="Button.reveal > Path.glyph">
         <Setter Property="Width" Value="{StaticResource MenuGlyphSize}" />
         <Setter Property="Height" Value="{StaticResource MenuGlyphSize}" />
         <Setter Property="StrokeThickness" Value="1.5" />
         <Setter Property="Stroke" Value="{DynamicResource BrushMuted}" />
     </Style>
-    <Style Selector="Button.reveal:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushHover}" />
-    </Style>
-    <Style Selector="Button.reveal:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
-    </Style>
     <Style Selector="Button.reveal:focus-visible > Path.glyph, Button.reveal:pressed > Path.glyph"><Setter Property="Stroke" Value="{DynamicResource BrushAccent}" /></Style>
     <!-- Button.pin: a row's pin (Network traffic control) holding a Path.glyph of Icon.pinned. Not pinned = a faint muted outline that brightens
          while its row is hovered; .on = the pin filled in the accent. Hover wash BrushHoverStrong (differs from the row's hover), focus =
          accent wash; nothing moves. Sizes Pin* in App.axaml. -->
-    <Style Selector="Button.pin">
-        <Setter Property="Width" Value="{StaticResource PinSize}" />
-        <Setter Property="Height" Value="{StaticResource PinSize}" />
-        <Setter Property="MinWidth" Value="0" />
-        <Setter Property="MinHeight" Value="0" />
-        <Setter Property="Padding" Value="0" />
-        <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="CornerRadius" Value="{StaticResource PinCornerRadius}" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="HorizontalContentAlignment" Value="Center" />
-        <Setter Property="VerticalContentAlignment" Value="Center" />
-    </Style>
-    <Style Selector="Button.pin /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="Transparent" /></Style>
-    <Style Selector="Button.pin:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" /></Style>
-    <Style Selector="Button.pin:focus-visible /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" /></Style>
     <Style Selector="Button.pin > Path.glyph">
         <Setter Property="Width" Value="{StaticResource PinGlyphSize}" />
         <Setter Property="Height" Value="{StaticResource PinGlyphSize}" />
@@ -194,27 +238,4 @@
         <Setter Property="Padding" Value="{StaticResource AnchorFramePadding}" />
     </Style>
     <Style Selector="Border.anchorframe.focused"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
-    <Style Selector="Button.anchorcell">
-        <Setter Property="Width" Value="{StaticResource AnchorCellSize}" />
-        <Setter Property="Height" Value="{StaticResource AnchorCellSize}" />
-        <Setter Property="MinWidth" Value="0" />
-        <Setter Property="MinHeight" Value="0" />
-        <Setter Property="Padding" Value="0" />
-        <Setter Property="Margin" Value="{StaticResource AnchorCellGap}" />
-        <Setter Property="CornerRadius" Value="{StaticResource AnchorCellCornerRadius}" />
-    </Style>
-    <Style Selector="Button.anchorcell /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="BorderBrush" Value="Transparent" />
-    </Style>
-    <Style Selector="Button.anchorcell:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" /></Style>
-    <Style Selector="Button.anchorcell.selected /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccent}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-    </Style>
-    <Style Selector="Button.anchorcell.selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-    </Style>
 </Styles>
