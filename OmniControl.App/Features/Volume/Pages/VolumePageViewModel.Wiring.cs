@@ -10,7 +10,7 @@ public sealed partial class VolumePageViewModel
 {
     private const string ThisMicrophone = "This microphone", FollowsMasterNote = "Follows the master";
     private const string FollowMasterChoice = "Master (default device)";
-    private const string CableTag = "Cable";
+    private const string CableTag = "Cable", BusCableTag = "Master bus", HeldCableTag = "In use";
     private const string AddTitle = "Add a device", ChooseTitle = "Choose a device";
     private const string AddSecondChoice = "+ Add a second device", AddSecondTip = "Opens Wiring, where this row can play on several devices";
     private const string CombineWithTitle = "Combine with", CombineWithLabel = "Combine with...", CombineWithTip = "Mixes this microphone with others into one";
@@ -222,7 +222,7 @@ public sealed partial class VolumePageViewModel
         if (menu.MarksCurrent) choices.AddRange(targets.Select(t => new WiringChoice(ChipLabelOf(t), null, null, () => Choose(t), isCurrent: true)));
         // The master in Equalizer APO plays on one real speaker: combined speakers are dimmed with that reason.
         var combinedGate = source.IsMaster ? MasterOutputsGate() : Audio.Gate.Open;
-        choices.AddRange(DeviceChoices(targets, cables: !source.IsMaster, combinedGate, Choose));
+        choices.AddRange(DeviceChoices(targets, onlyBusDevice: source.IsMaster && MasterOnBus && !adds, combinedGate, Choose));
         if (menu.MarksCurrent && gate.Allowed) choices.Add(new WiringChoice(AddSecondChoice, null, null, () => ShowWiring(source.Key), tip: AddSecondTip));
         menu.Title = menu.MarksCurrent ? PlaysOnWords : gate.Allowed ? AddTitle : ChooseTitle;
         menu.Choices = choices;
@@ -242,22 +242,34 @@ public sealed partial class VolumePageViewModel
         SyncRow(source);
     }
 
-    /// Playback devices not chosen yet, combined speakers (dimmed with <paramref name="combinedGate"/>'s reason where they can't be
-    /// chosen; dimmed too while one has no cable to play through), and free cables (programs only).
-    private IEnumerable<WiringChoice> DeviceChoices(IReadOnlyList<string> chosen, bool cables, Audio.Gate combinedGate, Action<string> choose)
+    /// Every playback device not chosen yet, virtual cables included (tagged; one OmniControl runs through is dimmed with what uses it), and
+    /// combined speakers (dimmed with <paramref name="combinedGate"/>'s reason where they can't be chosen; dimmed too while one has no cable to play through).
+    /// <param name="onlyBusDevice">The pick becomes the master bus's one device, which must be real speakers (a cable only as a second device).</param>
+    private IEnumerable<WiringChoice> DeviceChoices(IReadOnlyList<string> chosen, bool onlyBusDevice, Audio.Gate combinedGate, Action<string> choose)
     {
-        foreach (var d in _mixer.Devices.Where(d => !VirtualCables.IsCable(d.Name) && !chosen.Contains(d.Id)))
-            yield return new WiringChoice(d.Name, null, null, () => choose(d.Id));
+        foreach (var d in _mixer.Devices.Where(d => !chosen.Contains(d.Id)))
+            yield return VirtualCables.IsCable(d.Name) ? CableChoice(d, onlyBusDevice, choose) : new WiringChoice(d.Name, null, null, () => choose(d.Id));
 
         foreach (var c in _mixer.Combined.Where(c => c.Kind == CombinedKind.Speakers && !chosen.Contains(c.Key) && !(c.Cable.Length > 0 && chosen.Contains(c.Cable))))
         {
             var gate = EffectsRules.CombinedChoiceGate(combinedGate, _engine.StatusOf(c.Key).Kind, c.Name);
             yield return new WiringChoice(c.Name, ComboItem.CombinedTag, gate.Reason, () => choose(c.Key));
         }
+    }
 
-        if (!cables) yield break;
-        foreach (var cable in FreeCables().Where(c => !chosen.Contains(c.PlaybackId)))
-            yield return new WiringChoice(cable.Name, CableTag, null, () => choose(cable.PlaybackId));
+    /// A virtual cable as a Plays on choice: the user's own to play on, unless one of OmniControl's runs goes through it (playing into it
+    /// would join that run's sound) or it would be the master bus's only device.
+    private WiringChoice CableChoice(AudioDevice cable, bool onlyBusDevice, Action<string> choose)
+    {
+        var user = _engine.RowOnCable(new[] { cable.Id });
+        var held = user is not null || _engine.CablesInUse.Contains(cable.Id);
+        var reason = user == MixerService.MasterKey ? "OmniControl's master bus runs through this cable"
+            : user is not null ? $"OmniControl runs {RowOf(user)?.Name ?? user} through this cable"
+            : held ? "OmniControl uses this cable"
+            : onlyBusDevice ? "The master bus plays on real speakers; a cable can be a second device"
+            : null;
+        return new WiringChoice(cable.Name, user == MixerService.MasterKey ? BusCableTag : held ? HeldCableTag : CableTag, reason, () => choose(cable.Id),
+            tip: "A virtual cable: what plays here comes out of its recording side");
     }
 
     /// Recording devices that can join a mix and are not in <paramref name="chosen"/>; one that records the PC's sound carries the caution

@@ -23,6 +23,8 @@ internal sealed class EasyFakeMixer : IEasyMixer
     public IReadOnlyList<CombinedDevice> Combined => _combined;
     public void AddCombined(CombinedDevice device) => _combined.Add(device);
     public void SetMasterMethod(EffectsRoute route) => MasterMethod = route;
+    public EffectsRoute MicMethodOf(string key) => _routes.GetValueOrDefault(key, EffectsRules.MicAutomatic);
+    public void SetMicMethod(string key, EffectsRoute route) => _routes[key] = route;
     public void SetMasterPlaysOn(IEnumerable<string> targets) => PlaysOn = targets.ToList();
 }
 

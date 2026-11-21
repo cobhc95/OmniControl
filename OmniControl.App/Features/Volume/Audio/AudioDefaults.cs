@@ -19,7 +19,7 @@ public interface IAudioDefaultsMixer
     void SetMasterPlaysOn(IEnumerable<string> targets);
     void SetMasterMethod(EffectsRoute route);
     void SetMicMethod(string key, EffectsRoute route);
-    void SetCables(IEnumerable<string> forbidden);
+    void SetCables(IEnumerable<string> allowed);
     void SetMarkedCables(IEnumerable<CableMark> marks);
     void SetMicrophones(bool on);
     void Save();
@@ -53,7 +53,7 @@ public sealed class MixerDefaultsStore : IAudioDefaultsMixer
     public void SetMasterPlaysOn(IEnumerable<string> targets) => _mixer.SetMasterPlaysOn(targets);
     public void SetMasterMethod(EffectsRoute route) => _mixer.SetMasterMethod(route);
     public void SetMicMethod(string key, EffectsRoute route) => _mixer.SetMicMethod(key, route);
-    public void SetCables(IEnumerable<string> forbidden) => _mixer.SetCables(forbidden);
+    public void SetCables(IEnumerable<string> allowed) => _mixer.SetCables(allowed);
     public void SetMarkedCables(IEnumerable<CableMark> marks) => _mixer.SetMarkedCables(marks);
     public void SetMicrophones(bool on) => _mixer.SetMicrophones(on);
     public void Save() => _mixer.Save();
@@ -69,9 +69,9 @@ public sealed class FileDefaultsSnapshot : IDefaultsSnapshot
     public MixerSettings? Load() => AppDataStore.Load<MixerSettings>(Store);
 }
 
-/// "Restore audio defaults": removes every effect chain (master, programs, microphones), every combined device, every method and route
-/// the user set, the hand-marked cables, allows every virtual cable, turns "Use microphones" off, forgets the "added" mark of
-/// programs. Volumes, mutes and balance stay (a program that then holds only defaults is
+/// "Restore audio defaults": removes every effect chain (master, programs, microphones), every combined device and route the user set,
+/// sets every method to Off, removes the hand-marked cables, switches every virtual cable off (so nothing is routed and Windows' default device and every
+/// program's own device go back as they were), turns "Use microphones" off, forgets the "added" mark of programs. Volumes, mutes and balance stay (a program that then holds only defaults is
 /// unlisted by the usual listing rules), and so do the user's saved presets (they are not part of this configuration). The state it
 /// aims for is worked out from the settings (<see cref="DefaultsOf"/>, pure) and one step (<see cref="Apply"/>) brings the mixer to a
 /// given state, which is also how the undo puts the earlier state back, so the two can never disagree about what they touch. Only the
@@ -85,8 +85,8 @@ public static class AudioDefaults
         (target.MasterFxOn, target.MasterFxUserOff) = (false, false);
         target.MasterFx = new();
         target.MasterPlaysOn = new();
-        target.MasterMethod = EffectsRules.MasterAutomatic.Id;
-        target.ForbiddenCables = new();
+        target.MasterMethod = EffectsRules.MethodOff.Id;
+        target.AllowedCables = new();
         target.MarkedCables = new();
         target.Combined = new();
         target.UseMicrophones = false;
@@ -94,11 +94,11 @@ public static class AudioDefaults
         {
             (app.FxOn, app.FxUserOff) = (false, false);
             app.Fx = new();
-            app.FxRoute = EffectsRules.RouteAutomatic.Id;
+            app.FxRoute = EffectsRules.MethodOff.Id;
             app.PlaysOn = new();
             app.Added = false;
         }
-        foreach (var input in target.Inputs) (input.FxOn, input.FxUserOff, input.Fx, input.Method) = (false, false, new(), EffectsRules.MicAutomatic.Id);
+        foreach (var input in target.Inputs) (input.FxOn, input.FxUserOff, input.Fx, input.Method) = (false, false, new(), EffectsRules.MethodOff.Id);
         return target;
     }
 
@@ -106,15 +106,25 @@ public static class AudioDefaults
     public static bool IsAtDefaults(MixerSettings current) => SameSetup(current, DefaultsOf(current));
 
     /// True when the two hold the same setup: every setting <see cref="Apply"/> covers (a Volume preset compares the live settings with its own this way).
-    public static bool SameSetup(MixerSettings a, MixerSettings b) => Slice(a) == Slice(b);
+    /// A copy taken before cables were switched on by hand holds no choice of cables, so theirs is not compared.
+    public static bool SameSetup(MixerSettings a, MixerSettings b) => Slice(Current(a), a.AllowedCables) == Slice(Current(b), b.AllowedCables ?? a.AllowedCables);
+
+    /// A copy taken before Off existed (no cable choice in it) read with today's method ids (<see cref="MixerSettings.UpgradeMethods"/>).
+    private static MixerSettings Current(MixerSettings s)
+    {
+        if (s.AllowedCables is not null) return s;
+        var copy = Copy(s);
+        MixerSettings.UpgradeMethods(copy);
+        return copy;
+    }
 
     /// A deep copy of the settings, to keep as a snapshot (the restore's undo, a Volume preset).
     public static MixerSettings Snapshot(MixerSettings settings) => Copy(settings);
 
     /// What the restore does, in plain words (the question's text and the page's scope).
     public const string Scope =
-        "Removes all effects (master, apps, microphones), all combined devices and every method and route you set, allows all virtual cables "
-        + "and turns Use microphones off. Your volume levels and mutes stay.";
+        "Removes all effects (master, apps, microphones), all combined devices and every route you set, sets every method to Off, stops using "
+        + "virtual cables (Windows' default device and every app's own device go back) and turns Use microphones off. Your volume levels and mutes stay.";
 
     /// Takes a copy of the settings, then restores the defaults. The copy is made before anything changes.
     public static void Restore(IAudioDefaultsMixer mixer, IDefaultsSnapshot snapshot)
@@ -134,6 +144,7 @@ public static class AudioDefaults
     /// Brings every setting the restore covers to the value in <paramref name="target"/>, touching only what differs. Combined devices come first (removing one clears the "plays on" entries that point at it).
     public static void Apply(IAudioDefaultsMixer mixer, MixerSettings target)
     {
+        target = Current(target);
         var now = mixer.Settings;
 
         foreach (var gone in now.Combined.Where(c => target.Combined.All(t => t.Key != c.Key)).ToList()) mixer.RemoveCombined(gone.Key);
@@ -159,7 +170,7 @@ public static class AudioDefaults
 
         mixer.SetMasterPlaysOn(target.MasterPlaysOn);
         mixer.SetMasterMethod(EffectsRules.MasterRouteOf(target.MasterMethod));
-        mixer.SetCables(target.ForbiddenCables);
+        if (target.AllowedCables is { } cables) mixer.SetCables(cables); // a copy taken before cables were switched on by hand leaves them as they are
         mixer.SetMarkedCables(target.MarkedCables);
         if (target.UseMicrophones is { } use && use != mixer.Settings.MicrophonesOn) mixer.SetMicrophones(use); // a preset taken before the switch keeps it as it is
         mixer.Save();
@@ -197,14 +208,14 @@ public static class AudioDefaults
         : s.Apps.FirstOrDefault(a => a.Key == key)?.FxOn ?? false;
 
     /// Exactly the settings the restore covers, normalised (an empty id is Automatic), for comparing.
-    private static string Slice(MixerSettings s) => Json(new
+    private static string Slice(MixerSettings s, List<string>? cables) => Json(new
     {
         s.MasterFxOn,
         s.MasterFxUserOff,
         Chain = Json(s.MasterFx),
         s.MasterPlaysOn,
         Method = EffectsRules.MasterRouteOf(s.MasterMethod).Id,
-        s.ForbiddenCables,
+        Cables = cables ?? new List<string>(),
         Marked = Json(s.MarkedCables),
         Apps = s.Apps.Select(a => new { a.Key, a.FxOn, a.FxUserOff, Chain = Json(a.Fx), Route = EffectsRules.RouteOf(a.FxRoute).Id, a.PlaysOn, a.Added }),
         Inputs = s.Inputs.Select(i => new { i.Id, i.FxOn, i.FxUserOff, Chain = Json(i.Fx), Method = EffectsRules.MicRouteOf(i.Method).Id }),

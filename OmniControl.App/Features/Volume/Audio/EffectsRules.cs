@@ -208,7 +208,9 @@ public static partial class EffectsRules
         var count = AllowedPairs(facts.Support);
         var names = facts.Support.Cables.Where(c => c.RecordingId is not null).Select(c => c.Name); // one per pair: the input with its own recording side
         return CablesMissing(facts.Support) is { } missing
-            ? new TagItem(missing, TagTone.Caution, missing == NeedsCable ? "Install VB-CABLE first." : "Switch a cable on under Virtual cables.")
+            ? missing == NeedsCable ? new TagItem(missing, TagTone.Caution, "Install VB-CABLE first.")
+                // calm: switched off is the default, so a cable another program uses is never taken
+                : new TagItem(missing, TagTone.Neutral, "OmniControl uses no virtual cable until you switch one on under Virtual cables.")
             : new TagItem(count == 1 ? "Ready · 1 virtual cable" : $"Ready · {count} virtual cables", TagTone.Good,
                 "Allowed: " + string.Join(", ", names) + ". Each combined device or processed microphone uses one; a processed program uses one when free, else it is recorded.");
     }

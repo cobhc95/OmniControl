@@ -27,8 +27,8 @@ public sealed class AppAudioEntry
     public bool FxUserOff { get; set; }
     public List<FxSlot> Fx { get; set; } = new();
 
-    /// How the effects run (<see cref="EffectsRules.ProgramRoutes"/> id): empty = Automatic (a free cable, else recording;
-    /// files written before the choice existed load as Automatic), "cable" or "capture".
+    /// How the effects run (<see cref="EffectsRules.ProgramRoutes"/> id): empty = Off (the default: nothing routed), "auto" = Automatic
+    /// (a free cable, else recording), "cable", "capture" or "apo-cable".
     public string FxRoute { get; set; } = string.Empty;
 
     // Store apps live in a folder named after their version (...\WindowsApps\Publisher.App_1.2.3.0_x64__id\), which changes on every update.
@@ -66,8 +66,8 @@ public sealed class MixerSettings
     /// repaired at the next start.
     public string BusCable { get; set; } = string.Empty;
 
-    /// How the master runs (<see cref="EffectsRules.MasterRoutes"/> id): empty = Automatic (files written before the choice
-    /// existed load as Automatic), "bus" = the cable bus, "apo" = Equalizer APO on the speakers.
+    /// How the master runs (<see cref="EffectsRules.MasterRoutes"/> id): empty = Off (the default: nothing routed), "auto" = Automatic,
+    /// "bus" = the cable bus, "apo" = Equalizer APO on the speakers.
     public string MasterMethod { get; set; } = string.Empty;
 
     /// Last known names of devices by endpoint id, so a "plays on" list can name a device that is unplugged now.
@@ -87,8 +87,14 @@ public sealed class MixerSettings
     /// FX chains of recording devices (keyed by endpoint id), kept even while the device is unplugged.
     public List<InputFxEntry> Inputs { get; set; } = new();
 
-    /// Virtual cables the user switched off (<see cref="Core.Engine.FoundCable.Id"/>): OmniControl never gives them out. Empty = every cable allowed.
-    public List<string> ForbiddenCables { get; set; } = new();
+    /// Virtual cables the user switched on (<see cref="Core.Engine.FoundCable.Id"/>): the only ones OmniControl gives out. A cable already on
+    /// the PC is often another program's (a mixer on VB-CABLE), so none is taken until switched on. Null only in a file written before
+    /// (<see cref="Load"/>, <see cref="MixerService.KeepEarlierCables"/>).
+    public List<string>? AllowedCables { get; set; }
+
+    /// Read only from a file written before cables were switched on by hand, when every cable but these was used; never written again.
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public List<string>? ForbiddenCables { get; set; }
 
     /// Device pairs the user marked as cables (Wiring > Virtual cables > "This device is a cable..."); files without it load as none.
     public List<Core.Engine.CableMark> MarkedCables { get; set; } = new();
@@ -99,15 +105,37 @@ public sealed class MixerSettings
 
     internal bool MicrophonesOn => UseMicrophones == true;
 
+    /// Something set here may run through a cable: an effect on any row, a combined device, or the master or a program on several devices.
+    private bool MayNeedCables =>
+        MasterFx.Count > 0 || Apps.Any(a => a.Fx.Count > 0 || a.PlaysOn.Count > 1) || Inputs.Any(i => i.Fx.Count > 0) || Combined.Count > 0 || MasterPlaysOn.Count > 1;
+
     private static readonly DataStore Store = DataStores.Mixer;
 
     public static MixerSettings Load()
     {
         var s = AppDataStore.Load<MixerSettings>(Store) ?? new();
         s.UseMicrophones ??= s.Inputs.Any(i => FxSlot.AnyRuns(i.FxOn, i.Fx)) || s.Combined.Any(c => c.Kind == CombinedKind.Microphones);
+        if (s.AllowedCables is null)
+        {
+            // A file from before: methods move to Off's ids; with nothing set that needs a cable, no cable is kept, otherwise the cables
+            // it used stay on (KeepEarlierCables).
+            UpgradeMethods(s);
+            if (!s.MayNeedCables) (s.AllowedCables, s.ForbiddenCables) = (new(), null);
+        }
         s.Apps = MergeDuplicates(s.Apps);
         UpgradeBuiltIns(s.MasterFx.Concat(s.Apps.SelectMany(a => a.Fx)).Concat(s.Inputs.SelectMany(i => i.Fx)).Concat(s.Combined.SelectMany(c => c.Fx)));
         return s;
+    }
+
+    /// Settings written before Off (its id is the empty one Automatic had; <see cref="AllowedCables"/> null marks them, also an older preset or
+    /// restore copy): a row on Automatic that has effects, or plays on several devices, stays Automatic under its new id; one with nothing
+    /// to run becomes Off, so nothing is routed for it. Chosen methods stay.
+    internal static void UpgradeMethods(MixerSettings s)
+    {
+        static string Upgraded(string id, bool uses) => id.Length == 0 && uses ? EffectsRules.AutomaticId : id;
+        s.MasterMethod = Upgraded(s.MasterMethod, s.MasterFx.Count > 0 || s.MasterPlaysOn.Count > 1 || s.MasterPlaysOn.Any(CombinedDevice.IsKey));
+        foreach (var app in s.Apps) app.FxRoute = Upgraded(app.FxRoute, app.Fx.Count > 0 || app.PlaysOn.Count > 1);
+        foreach (var input in s.Inputs) input.Method = Upgraded(input.Method, input.Fx.Count > 0);
     }
 
     /// Built-in effects are known by their kind, never by their name: each takes today's name from its catalog entry (an "Equaliser"
@@ -151,7 +179,7 @@ public sealed class InputFxEntry
     public bool FxUserOff { get; set; }
     public List<FxSlot> Fx { get; set; } = new();
 
-    /// How its effects run (<see cref="EffectsRules.MicRoutes"/> id): empty = Automatic, "bus" = its cable, "apo" = Equalizer APO on it.
+    /// How its effects run (<see cref="EffectsRules.MicRoutes"/> id): empty = Off (the default), "auto" = Automatic, "bus" = its cable, "apo" = Equalizer APO on it.
     public string Method { get; set; } = string.Empty;
 
     /// The cable its processed sound last went to so apps that picked that cable keep finding it; empty = none yet.

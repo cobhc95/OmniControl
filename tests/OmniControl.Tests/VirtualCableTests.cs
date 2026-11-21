@@ -181,12 +181,12 @@ public class VirtualCableTests(ITestOutputHelper output)
         Assert.True(EffectsRules.CableInstalled(support));
     }
 
-    /// A mixer.json written before cables could be switched off or marked loads unchanged: every cable allowed, none marked.
+    /// A mixer.json written before cables were switched on by hand holds no choice yet (the first look keeps the cables it used), none marked.
     [Fact]
-    public void OldMixerFile_LoadsWithEveryCableAllowed()
+    public void OldMixerFile_HoldsNoCableChoiceYet()
     {
         var s = OwnerPc.Settings();
-        Assert.Empty(s.ForbiddenCables);
+        Assert.Null(s.AllowedCables);
         Assert.Empty(s.MarkedCables);
         var again = JsonSerializer.Deserialize<MixerSettings>(JsonSerializer.Serialize(s))!;
         Assert.Empty(again.MarkedCables);

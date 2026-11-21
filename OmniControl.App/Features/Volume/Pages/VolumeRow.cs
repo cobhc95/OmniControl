@@ -129,11 +129,24 @@ public abstract partial class VolumeRow : ObservableObject, IEditorItem
     public virtual bool HasEffects => true;
 
     /// A row that records from microphones while "Use microphones" is off: its Method, Listen, FX and meter are greyed.
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(FxTip))] private bool _microphonesOff;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(FxTip), nameof(FxGreyed))] private bool _microphonesOff;
+
+    /// The row's method is Off (<see cref="EffectsRules.MethodOff"/>): the FX button is greyed and opens the Method menu instead, so a
+    /// method is picked by the user first.
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(FxTip), nameof(FxGreyed))] private bool _methodOff;
+
+    /// The FX button looks greyed: microphones are off, or the method is Off.
+    public bool FxGreyed => MicrophonesOff || MethodOff;
+
+    /// Asks the row's Method chip on screen to open its menu (the FX button while Off, an effect added while Off).
+    public event Action? MethodMenuRequested;
+
+    public void RequestMethodMenu() => MethodMenuRequested?.Invoke();
 
     /// The FX button's tooltip: what it does, or why it is greyed.
-    public string FxTip => MicrophonesOff ? EffectsRules.MicrophonesOffLine : FxRuns ? FxRunningTip : FxOpenTip;
-    private const string FxRunningTip = "Effects on. Opens or closes this row's FX window", FxOpenTip = "Opens or closes this row's FX window";
+    public string FxTip => MicrophonesOff ? EffectsRules.MicrophonesOffLine : MethodOff ? FxMethodOffTip : FxRuns ? FxRunningTip : FxOpenTip;
+    private const string FxRunningTip = "Effects on. Opens or closes this row's FX window", FxOpenTip = "Opens or closes this row's FX window",
+        FxMethodOffTip = "Method is Off: pick a method to use effects";
 
     [ObservableProperty] private bool _fxOn;
     [ObservableProperty] private int _fxCount;
@@ -211,7 +224,8 @@ public abstract partial class VolumeRow : ObservableObject, IEditorItem
     [RelayCommand]
     private void ToggleWindow()
     {
-        FxWindowToggled?.Invoke();
+        if (MethodOff) RequestMethodMenu();
+        else FxWindowToggled?.Invoke();
     }
 
     [RelayCommand] private void ShowWiring() => WiringRequested?.Invoke();

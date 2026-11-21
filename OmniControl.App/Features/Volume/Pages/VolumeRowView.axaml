@@ -71,10 +71,11 @@
             <Path Classes="glyph" Data="{DynamicResource Icon.headphones}" />
         </Button>
 
-        <!-- FX: lit (Button.pill.glow) while effects run; opens the row's FX window, or closes it when it is open -->
+        <!-- FX: lit (Button.pill.glow) while effects run; opens the row's FX window, or closes it when it is open; greyed while the
+             method is Off, when it opens the Method menu instead -->
         <Button Grid.Column="8" Grid.RowSpan="2" Tag="scope" Classes="pill" Classes.glow="{Binding FxRuns}" Content="FX" Command="{Binding ToggleWindowCommand}"
                 IsVisible="{Binding HasEffects}" ToolTip.Tip="{Binding FxTip}" ToolTip.ShowOnDisabled="True"
-                IsEnabled="{Binding !MicrophonesOff}" Classes.unavailable="{Binding MicrophonesOff}" VerticalAlignment="Center" />
+                IsEnabled="{Binding !MicrophonesOff}" Classes.unavailable="{Binding FxGreyed}" VerticalAlignment="Center" />
 
         <Button Grid.Column="9" Grid.RowSpan="2" Tag="scope" Classes="removebadge" Command="{Binding RemoveCommand}" IsVisible="{Binding CanForget}"
                 ToolTip.Tip="Remove (forgets its settings)" VerticalAlignment="Center">

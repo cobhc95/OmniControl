@@ -75,12 +75,12 @@ public class AudioDefaultsTests
         }
         public void SetMicMethod(string key, EffectsRoute route) { Note($"micmethod:{key}"); Settings.Inputs.First(i => i.Id == MixerService.InputIdOf(key)).Method = route.Id; }
         public void SetMicrophones(bool on) { Note($"mics:{on}"); Settings.UseMicrophones = on; }
-        public void SetCables(IEnumerable<string> forbidden)
+        public void SetCables(IEnumerable<string> allowed)
         {
-            var off = forbidden.ToList();
-            if (off.SequenceEqual(Settings.ForbiddenCables)) return;
+            var on = allowed.ToList();
+            if (Settings.AllowedCables is { } now && on.SequenceEqual(now)) return;
             Note("cables");
-            Settings.ForbiddenCables = off;
+            Settings.AllowedCables = on;
         }
         public void Save() { }
     }
@@ -91,13 +91,13 @@ public class AudioDefaultsTests
         return EasyEq.Write(chain, new[] { 6, 0, 0, 0, 0 });
     }
 
-    /// A busy PC: a bus, effects everywhere, forced methods, routing, cables off, a combined device.
+    /// A busy PC: a bus, effects everywhere, forced methods, routing, cables on, a combined device.
     private static MixerSettings Busy()
     {
         var s = new MixerSettings
         {
             MasterFxOn = true, MasterFx = new() { Boosted() }, MasterMethod = EffectsRules.MasterApo.Id,
-            MasterPlaysOn = new() { "dev-a", "dev-b" }, ForbiddenCables = new() { "cable-1", "cable-2" },
+            MasterPlaysOn = new() { "dev-a", "dev-b" }, AllowedCables = new() { "cable-1", "cable-2" },
         };
         s.Apps.Add(new AppAudioEntry
         {
@@ -129,7 +129,7 @@ public class AudioDefaultsTests
         Assert.Empty(s.MasterPlaysOn);
         Assert.Empty(s.MarkedCables);
         Assert.Equal(string.Empty, s.MasterMethod);
-        Assert.Empty(s.ForbiddenCables);
+        Assert.Empty(s.AllowedCables!); // every cable switched off: nothing routed any more
     }
 
     [Fact]
@@ -240,7 +240,7 @@ public class AudioDefaultsTests
     {
         Assert.False(AudioDefaults.IsAtDefaults(new MixerSettings { MasterFxOn = true }));
         Assert.False(AudioDefaults.IsAtDefaults(new MixerSettings { MasterMethod = EffectsRules.MasterBus.Id }));
-        Assert.False(AudioDefaults.IsAtDefaults(new MixerSettings { ForbiddenCables = new() { "x" } }));
+        Assert.False(AudioDefaults.IsAtDefaults(new MixerSettings { AllowedCables = new() { "x" } }));
         Assert.False(AudioDefaults.IsAtDefaults(new MixerSettings { Combined = new() { new CombinedDevice() } }));
         Assert.False(AudioDefaults.IsAtDefaults(new MixerSettings { MasterFx = new() { Boosted() } }));
         var withChain = new MixerSettings();

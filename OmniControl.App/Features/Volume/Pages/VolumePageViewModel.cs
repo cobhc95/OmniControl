@@ -150,6 +150,7 @@ public sealed partial class VolumePageViewModel : PageViewModel, IVolumeRows, ID
         _mixer.MasterDeviceChanged += OnMasterDeviceChanged;
         _engine.PlanChanged += OnPlanChanged;
         _mixer.MicrophonesChanged += OnMicrophonesChanged;
+        _mixer.MethodWanted += key => RowOf(key ?? MixerService.MasterKey)?.RequestMethodMenu();
         _meterTimer.Tick += (_, _) => FeedMeters();
         RegisterHotkeys(s.Hotkeys);
         RegisterListen(s.Hotkeys);

@@ -80,6 +80,7 @@ internal static class OwnerPc
     {
         var s = JsonSerializer.Deserialize<MixerSettings>(Json)!;
         s.UseMicrophones = true;
+        MixerSettings.UpgradeMethods(s); // as loading a file from before Off does: rows with effects on Automatic
         return s;
     }
 

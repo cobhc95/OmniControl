@@ -15,6 +15,8 @@ public interface IEasyMixer
     void AddCombined(CombinedDevice device);
     EffectsRoute MasterMethod { get; }
     void SetMasterMethod(EffectsRoute route);
+    EffectsRoute MicMethodOf(string key);
+    void SetMicMethod(string key, EffectsRoute route);
     void SetMasterPlaysOn(IEnumerable<string> targets);
 }
 
@@ -36,17 +38,21 @@ public sealed class MixerEasyStore : IEasyMixer
     public void AddCombined(CombinedDevice device) => _mixer.AddCombined(device);
     public EffectsRoute MasterMethod => _mixer.MasterMethod;
     public void SetMasterMethod(EffectsRoute route) => _mixer.SetMasterMethod(route);
+    public EffectsRoute MicMethodOf(string key) => _mixer.MicMethodOf(key);
+    public void SetMicMethod(string key, EffectsRoute route) => _mixer.SetMicMethod(key, route);
     public void SetMasterPlaysOn(IEnumerable<string> targets) => _mixer.SetMasterPlaysOn(targets);
 }
 
 /// What each Easy setup step changes, one method per step. Every method runs only when the user pressed that step's button, changes
-/// exactly what its name says and nothing else, and works through <see cref="IEasyMixer"/>. No UI.
+/// exactly what its name says and nothing else, and works through <see cref="IEasyMixer"/>. No UI. Easy shows no Method menu, so a step
+/// that puts a sound on a row whose method is Off sets it to Automatic: pressing the step is the user's choice to use effects there.
 public static class EasyApply
 {
     /// Turns the master's chosen sound on (writes its equaliser back and switches the effects on); a flat sound needs nothing and switches
     /// them off when nothing else runs. A shape made in the full effects window is only switched on, never rewritten.
     public static void MasterSound(IEasyMixer mixer)
     {
+        if (mixer.MasterMethod == EffectsRules.MethodOff) mixer.SetMasterMethod(EffectsRules.MasterAutomatic);
         var chain = mixer.FxChain(null);
         if (EasyEq.Find(chain) is { } slot && EasyEq.IsCustom(slot))
         {
@@ -73,8 +79,12 @@ public static class EasyApply
     }
 
     /// Puts a look (five gains) on a microphone's chain; effects on, or off for a flat look when nothing else in the chain runs.
-    public static void Microphone(IEasyMixer mixer, string deviceId, string name, IReadOnlyList<int> gains) =>
-        Sound(mixer, mixer.InputKey(deviceId, name), gains);
+    public static void Microphone(IEasyMixer mixer, string deviceId, string name, IReadOnlyList<int> gains)
+    {
+        var key = mixer.InputKey(deviceId, name);
+        if (mixer.MicMethodOf(key) == EffectsRules.MethodOff) mixer.SetMicMethod(key, EffectsRules.MicAutomatic);
+        Sound(mixer, key, gains);
+    }
 
     private static void Sound(IEasyMixer mixer, string? key, IReadOnlyList<int> gains)
     {
@@ -93,10 +103,10 @@ public static class EasyApply
         return device;
     }
 
-    /// OmniControl's own engine through a cable: a master method set to Equalizer APO goes back to Automatic so the cable bus is what runs.
+    /// OmniControl's own engine through a cable: a master method set to Equalizer APO or Off goes to Automatic so the cable bus is what runs.
     public static void UseOwnEngine(IEasyMixer mixer)
     {
-        if (mixer.MasterMethod == EffectsRules.MasterApo) mixer.SetMasterMethod(EffectsRules.MasterAutomatic);
+        if (mixer.MasterMethod == EffectsRules.MasterApo || mixer.MasterMethod == EffectsRules.MethodOff) mixer.SetMasterMethod(EffectsRules.MasterAutomatic);
     }
 
     /// The master runs in Equalizer APO on the speakers, which frees the cable the bus held.

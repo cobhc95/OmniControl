@@ -76,11 +76,13 @@ public sealed class EffectsSupportService : IDisposable
         });
     }
 
-    /// What the look-up found, without the cables the user switched off; raises <see cref="Changed"/> when that differs.
+    /// What the look-up found, with only the cables the user switched on; raises <see cref="Changed"/> when that differs.
     private void Publish(AudioEffectsSupport? found)
     {
         if (found is null) return;
-        var allowed = found with { Cables = VirtualCables.Usable(found.Found, _mixer.ForbiddenCables) };
+        _mixer.KeepEarlierCables(found.Found);
+        var off = found.Found.Where(f => !_mixer.IsCableAllowed(f.Id)).Select(f => f.Id).ToHashSet();
+        var allowed = found with { Cables = VirtualCables.Usable(found.Found, off) };
         if (allowed.Equals(Current)) return;
         Current = allowed;
         Changed?.Invoke();

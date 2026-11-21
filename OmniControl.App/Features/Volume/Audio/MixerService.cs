@@ -288,10 +288,12 @@ public sealed partial class MixerService : IDisposable
         SetFxOn(key, on);
     }
 
-    /// An effect was added to the chain: switches the effects on unless the user switched them off themselves.
+    /// An effect was added to the chain: switches the effects on unless the user switched them off themselves; with the row's method Off
+    /// asks for its Method menu (a method is never picked for the user).
     public void EffectsAdded(string? key)
     {
         if (SwitchesOnWhenAdded(IsFxOn(key), IsFxUserOff(key))) SetFxOn(key, true);
+        if (IsMethodOff(key)) MethodWanted?.Invoke(key);
     }
 
     /// The rule: an added effect switches the effects on when they are off and the user did not switch them off.

@@ -59,6 +59,13 @@ public sealed partial class MixerService
         Changed();
     }
 
+    /// The row's method is Off (key null = the master; a combined device has no Off): nothing is routed or processed for it.
+    public bool IsMethodOff(string? key) =>
+        (key is null ? MasterMethod : IsInput(key) ? MicMethodOf(key) : CombinedOf(key) is not null ? null : FxRouteOf(key)) == EffectsRules.MethodOff;
+
+    /// Effects were added to a row whose method is Off (key null = the master): its Method menu should open so a method is picked (UI thread).
+    public event Action<string?>? MethodWanted;
+
     /// The master's chosen devices (several, or a combined device); empty = one real device alone (<see cref="MasterDeviceId"/>).
     public IReadOnlyList<string> MasterPlaysOn => Settings.MasterPlaysOn;
 

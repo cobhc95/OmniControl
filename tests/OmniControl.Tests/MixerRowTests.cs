@@ -22,7 +22,7 @@ public class MixerRowTests
     [Theory]
     [InlineData(RunMethod.Bus, true, RunMethod.Bus)]   // master on the cable bus
     [InlineData(RunMethod.Apo, true, RunMethod.Apo)]   // master in Equalizer APO with effects
-    [InlineData(RunMethod.Apo, false, RunMethod.Apo)]  // ... with no effects: still the method it is set to
+    [InlineData(RunMethod.Apo, false, RunMethod.None)] // ... with no effects: nothing processes or routes it
     public void TheMaster(RunMethod master, bool runs, RunMethod chip) =>
         Assert.Equal(chip, EffectsRules.ChipMethodOf(new RowMethodFacts(RowKind.Master, runs, RunMethod.None, master)));
 

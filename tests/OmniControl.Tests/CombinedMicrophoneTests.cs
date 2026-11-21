@@ -34,7 +34,7 @@ public class CombinedMicrophoneTests(ITestOutputHelper output)
     {
         var s = OwnerPc.Settings();
         s.MasterMethod = EffectsRules.MasterApo.Id;
-        var mic = new InputFxEntry { Id = OwnerPc.MicArray, FxOn = true, Fx = { EasyEq.Write(new List<FxSlot>(), new[] { 6, 0, 0, 0, 0 }) } };
+        var mic = new InputFxEntry { Id = OwnerPc.MicArray, FxOn = true, Method = EffectsRules.MicAutomatic.Id, Fx = { EasyEq.Write(new List<FxSlot>(), new[] { 6, 0, 0, 0, 0 }) } };
         s.Inputs.Add(mic);
         var key = MixerService.InputPrefix + OwnerPc.MicArray;
 

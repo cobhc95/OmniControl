@@ -3,7 +3,7 @@ using OmniControl.App.Features.Volume.Audio;
 namespace OmniControl.App.Features.Volume.Pages;
 
 /// The Wiring tab's Virtual cables group: every virtual device the PC has (<see cref="AudioEffectsSupport.Found"/>), each cable pair's
-/// switch (stored by the mixer; <see cref="EffectsSupportService"/> then offers only the allowed ones to everything else), what the engine's
+/// switch (off until the user switches it on; stored by the mixer; <see cref="EffectsSupportService"/> then offers only those to everything else), what the engine's
 /// plan uses it for or why it is not used, the user's marked pairs, and the steps that get more cables.
 public sealed partial class VolumePageViewModel
 {
@@ -21,7 +21,7 @@ public sealed partial class VolumePageViewModel
     {
         ExpandedByDefault = true,
         SummaryBesideName = true,
-        Tip = "Virtual cables found on this PC. Switch one off to keep OmniControl from using it.",
+        Tip = "Virtual cables found on this PC. OmniControl uses only the ones you switch on, so a cable another program uses is left alone.",
     };
 
     /// Brings the list in line with what the PC has, the user's switches and the engine's plan.
@@ -111,7 +111,7 @@ public sealed partial class VolumePageViewModel
     {
         var holder = !allowed && _support.Current?.Found.FirstOrDefault(f => f.Id == row.Id) is { } found ? CableHolderOf(found) : null;
         _mixer.SetCableAllowed(row.Id, allowed);
-        _report(allowed ? $"{row.Name} can be used"
+        _report(allowed ? $"{row.Name} switched on: OmniControl may use it for effects"
             : holder is not null ? EffectsRules.CableSwitchedOffStops(row.Name, holder)
             : $"{row.Name} switched off: OmniControl won't use it");
     }

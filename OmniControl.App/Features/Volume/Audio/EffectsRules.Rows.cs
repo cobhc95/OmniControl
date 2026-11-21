@@ -11,24 +11,27 @@ public enum RowKind { Master, Program, Microphone, Combined }
 /// <param name="Route">A program's chosen method.</param>
 /// <param name="CableFree">A cable pair is free for this program now (Automatic then takes it).</param>
 /// <param name="Own">How a microphone runs (<see cref="Engine.EffectsEngine.MicMethodOf"/>).</param>
+/// <param name="Off">The row's method is Off (<see cref="EffectsRules.MethodOff"/>).</param>
 public sealed record RowMethodFacts(RowKind Kind, bool Runs, RunMethod Running, RunMethod Master, bool FollowsMaster = false,
-    EffectsRoute? Route = null, bool CableFree = false, RunMethod Own = RunMethod.Cable);
+    EffectsRoute? Route = null, bool CableFree = false, RunMethod Own = RunMethod.Cable, bool Off = false);
 
 /// The one home of a Mixer row's Method chip and the short fact under it: which method the row's
 /// sound really goes through (what runs now, else what will run when it plays), its words, and the fact ("70 ms", "no delay", "on the
 /// speakers"); the method's word is on the chip, so the fact never repeats it. Pure: the page passes the live facts in.
 public static partial class EffectsRules
 {
-    /// The chip's method: what the engine runs now; otherwise the master on the cable bus or in Equalizer APO; a program without effects
-    /// passes through the cable bus when it follows a master on it, else plays direct; a program with effects takes its chosen method
-    /// (Automatic: a free cable, else recording); a microphone's chip is its method, as the master's; a combined device always uses its cable.
+    /// The chip's method: what the engine runs now; otherwise Off for a row whose method is Off; the master on the cable bus, in Equalizer APO with effects, else direct; a
+    /// program without effects passes through the cable bus when it follows a master on it (the master's effects apply to it), else plays
+    /// direct; a program with effects takes its chosen method (Automatic: a free cable, else recording); a microphone's chip is its method,
+    /// as the master's; a combined device always uses its cable.
     public static RunMethod ChipMethodOf(RowMethodFacts f)
     {
         if (f.Running != RunMethod.None) return f.Running;
+        if (f.Off) return RunMethod.Off;
         return f.Kind switch
         {
-            // The master's chip is the method it is set to (never "Direct": the menu has no such choice), also with no effects.
-            RowKind.Master => f.Master == RunMethod.Bus ? RunMethod.Bus : RunMethod.Apo,
+            // The master without effects and off the bus: nothing processes or routes it, whatever its method.
+            RowKind.Master => f.Master == RunMethod.Bus ? RunMethod.Bus : f.Runs ? RunMethod.Apo : RunMethod.None,
             RowKind.Program when !f.Runs => f.Master == RunMethod.Bus && f.FollowsMaster ? RunMethod.Bus : RunMethod.None,
             RowKind.Program => ProgramRouteMethod(f.Route ?? RouteAutomatic, f.CableFree),
             RowKind.Microphone => f.Own,
@@ -50,6 +53,7 @@ public static partial class EffectsRules
         RunMethod.Bus => "Cable bus",
         RunMethod.Apo => "Equalizer APO",
         RunMethod.ApoCable => "APO on a cable",
+        RunMethod.Off => MethodOffWord,
         _ => "Direct",
     };
 
@@ -69,6 +73,7 @@ public static partial class EffectsRules
         StatusKind.Ready => Brief(StatusKind.Ready),
         StatusKind.Direct => NoDelay,
         StatusKind.MicrophonesOff => MicrophonesOffFact,
+        StatusKind.MethodOff => MethodOffFact,
         StatusKind.Other when brief.Length == 0 => chip is RunMethod.None or RunMethod.Apo ? NoDelay : NoEffects,
         _ => brief,
     };

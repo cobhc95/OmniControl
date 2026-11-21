@@ -66,7 +66,8 @@ public sealed partial class VolumePageViewModel
         row.Status = status.State == Audio.Engine.EngineState.Off && status.Kind == StatusKind.Other ? string.Empty : status.Brief;
         row.EngineLine = status.TipFor(_engine.MethodFor(row.ChainKey));
         row.RouteText = RouteTextOf(row);
-        row.FxRuns = FxSlot.AnyRuns(row.FxOn, _mixer.FxChain(row.ChainKey));
+        row.MethodOff = row.HasMethodMenu && _mixer.IsMethodOff(row.ChainKey);
+        row.FxRuns = !row.MethodOff && FxSlot.AnyRuns(row.FxOn, _mixer.FxChain(row.ChainKey));
         var method = EffectsRules.ChipMethodOf(MethodFactsOf(row, row.FxRuns));
         // the master's and a microphone's chip say how Equalizer APO stands on their device (green only while it is on it and Windows loads it)
         var stand = method != RunMethod.Apo ? ApoStand.Running
@@ -122,10 +123,10 @@ public sealed partial class VolumePageViewModel
     /// What a row's Method chip is worked out from (<see cref="EffectsRules.ChipMethodOf"/>).
     private RowMethodFacts MethodFactsOf(VolumeRow row, bool runs) => row switch
     {
-        MixerItem { IsMaster: true } => new(RowKind.Master, runs, _engine.MethodOf(null), _engine.MasterMethod),
+        MixerItem { IsMaster: true } => new(RowKind.Master, runs, _engine.MethodOf(null), _engine.MasterMethod, Off: row.MethodOff),
         MixerItem program => new(RowKind.Program, runs, _engine.MethodOf(program.Key), _engine.MasterMethod,
-            FollowsMaster: _mixer.PlaysOnOf(program.Key).Count == 0, Route: _mixer.FxRouteOf(program.Key), CableFree: _engine.CablesFor(program.Key).Free),
-        InputItem input => new(RowKind.Microphone, runs, _engine.MethodOf(input.Key), _engine.MasterMethod, Own: _engine.MicMethodOf(input.Key)),
+            FollowsMaster: _mixer.PlaysOnOf(program.Key).Count == 0, Route: _mixer.FxRouteOf(program.Key), CableFree: _engine.CablesFor(program.Key).Free, Off: row.MethodOff),
+        InputItem input => new(RowKind.Microphone, runs, _engine.MethodOf(input.Key), _engine.MasterMethod, Own: _engine.MicMethodOf(input.Key), Off: row.MethodOff),
         _ => new(RowKind.Combined, runs, _engine.MethodOf(row.Key), _engine.MasterMethod),
     };
 

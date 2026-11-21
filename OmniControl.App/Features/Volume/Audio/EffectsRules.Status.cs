@@ -1,7 +1,8 @@
 namespace OmniControl.App.Features.Volume.Audio;
 
-/// The way a row's effects really run, as the Mixer row's short status names it ("Recording", "Cable", "Bus", "APO", "APO cable").
-public enum RunMethod { None, Recording, Cable, Bus, Apo, ApoCable }
+/// The way a row's effects really run, as the Mixer row's short status names it ("Recording", "Cable", "Bus", "APO", "APO cable"); None =
+/// nothing processes the sound now (its method could), Off = its method is Off (<see cref="EffectsRules.MethodOff"/>).
+public enum RunMethod { None, Recording, Cable, Bus, Apo, ApoCable, Off }
 
 /// What a row's effects are doing or why not (the fact behind its short status, <see cref="EffectsRules.Brief"/>).
 public enum StatusKind
@@ -40,6 +41,8 @@ public enum StatusKind
     Stopped,
     /// "Use microphones" is off: OmniControl opens no microphone, so a microphone's effects and a combined microphone do not run.
     MicrophonesOff,
+    /// The row's method is Off: nothing is routed or processed for it.
+    MethodOff,
 }
 
 /// What a program's Method menu needs to know about the virtual cables: how many pairs OmniControl may use, whether one is free for it,
@@ -111,6 +114,7 @@ public static partial class EffectsRules
             StatusKind.CouldNotMove => "Windows would not move it",
             StatusKind.Stopped => "Engine stopped",
             StatusKind.MicrophonesOff => "Microphones off",
+            StatusKind.MethodOff => MethodOffWord,
             _ => string.Empty,
         };
     }
@@ -142,6 +146,7 @@ public static partial class EffectsRules
         StatusKind.CouldNotMove => "The original sound was put back.",
         StatusKind.Stopped => "The original sound was put back.",
         StatusKind.MicrophonesOff => UseMicrophonesTip,
+        StatusKind.MethodOff => MethodOff.Tip,
         _ => null,
     };
 
@@ -156,6 +161,7 @@ public static partial class EffectsRules
     /// How the Method menu's entry for <paramref name="route"/> stands on this PC (a disabled entry cannot be chosen; its tip says why).
     public static RouteOffer OfferOf(EffectsRoute route, RouteFacts facts)
     {
+        if (route == MethodOff) return new RouteOffer(true, route.Description, route.Tip);
         if (route == RouteApoCable)
             return facts.ApoCableWhy is { } missing ? Unavailable(route, missing) : new RouteOffer(true, route.Description, route.Tip);
         if (route == RouteCable)

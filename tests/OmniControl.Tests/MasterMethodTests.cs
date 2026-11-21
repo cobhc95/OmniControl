@@ -182,6 +182,9 @@ public class MasterMethodTests(ITestOutputHelper output)
         Assert.Equal(RunMethod.Apo, EffectsRules.MasterMethodOf(EffectsRules.MasterAutomatic, facts with { ApoWhy = "Equalizer APO is not on this device", HasEffects = false }));
         Assert.Equal(RunMethod.Bus, EffectsRules.MasterMethodOf(EffectsRules.MasterAutomatic, facts with { CablePairs = 1 }));
         Assert.Equal(RunMethod.Bus, EffectsRules.MasterMethodOf(EffectsRules.MasterAutomatic, facts with { SeveralOutputs = true }));
+        // no effects: a cable switched on is never taken, the master plays straight on the speakers (GitHub issue #2)
+        Assert.Equal(RunMethod.Apo, EffectsRules.MasterMethodOf(EffectsRules.MasterAutomatic, facts with { CablePairs = 1, HasEffects = false }));
+        Assert.Equal(EffectsRules.CurrentlyDirect, EffectsRules.MasterOfferOf(EffectsRules.MasterAutomatic, facts with { HasEffects = false }, RunMethod.Apo).Description);
     }
 
     [Fact]

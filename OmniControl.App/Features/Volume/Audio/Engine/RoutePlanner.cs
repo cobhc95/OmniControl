@@ -121,9 +121,10 @@ internal static class RoutePlanner
         var plan = new RoutePlan();
         var cables = new CableBox(p.Support);
         var real = RealDevice(p);
-        // Only what runs for the device playing now counts: a chain of folders for other devices leaves this one direct.
-        var masterFx = FxSlot.AnyRuns(p.Settings.MasterFxOn, FxFolders.ChainFor(p.Settings.MasterFx, real.Id));
-        plan.Master = MasterFactsOf(p, cables, real, masterFx);
+        // Only what runs for the device playing now counts: a chain of folders for other devices leaves this one direct. Off runs nothing.
+        var masterOff = EffectsRules.MasterRouteOf(p.Settings.MasterMethod) == EffectsRules.MethodOff;
+        var masterFx = !masterOff && FxSlot.AnyRuns(p.Settings.MasterFxOn, FxFolders.ChainFor(p.Settings.MasterFx, real.Id));
+        plan.Master = MasterFactsOf(p, cables, real, masterFx, masterOff);
         plan.MasterMethod = EffectsRules.MasterMethodOf(EffectsRules.MasterRouteOf(p.Settings.MasterMethod), plan.Master);
 
         // The master bus first (Windows' default device is the bus, so every program, effect and route passes through
@@ -131,12 +132,15 @@ internal static class RoutePlanner
         // Windows' default again, which is the real device once more. With the master in Equalizer APO there is no bus: the real
         // speakers stay the default and every cable is free for the others.
         var onBus = plan.MasterMethod == RunMethod.Bus;
+        ReserveUsersCables(p, cables, onBus);
         var busCable = onBus && !p.BusGivenUp ? cables.TakeAny() : null;
 
         foreach (var input in p.Settings.Inputs.Where(i => p.Recording.Any(d => d.Id == i.Id)))
         {
             var facts = MicFactsOf(p, cables, input);
-            plan.Mics[MixerService.InputPrefix + input.Id] = (facts, EffectsRules.MicMethodOf(EffectsRules.MicRouteOf(input.Method), facts));
+            var route = EffectsRules.MicRouteOf(input.Method);
+            plan.Mics[MixerService.InputPrefix + input.Id] = (facts, EffectsRules.MicMethodOf(route, facts));
+            if (route == EffectsRules.MethodOff) plan.Blocked[MixerService.InputPrefix + input.Id] = MethodOff;
         }
         // "Use microphones" off: no microphone is recorded or sent to Equalizer APO, and no cable is taken for one.
         var micsOn = p.Settings.MicrophonesOn;
@@ -156,11 +160,8 @@ internal static class RoutePlanner
 
         foreach (var c in combos) PlanCombined(p, plan, c, cables, busCable);
         foreach (var i in mics) PlanMic(plan, MixerService.InputPrefix + i.Id, micCables.GetValueOrDefault(i.Id), new[] { i.Id }, cables, busCable);
-        if (!onBus) PlanMasterApo(plan, real.Id, masterFx);
+        if (!onBus) PlanMasterApo(plan, real.Id, masterFx, masterOff);
         else if (!p.BusGivenUp) PlanMaster(p, plan, busCable, cables); // a given-up bus keeps the status of its failure (the engine's)
-        // Without the bus, a cable pair that is still Windows' default (the moment after the bus let go, or the user's own choice)
-        // carries every program that follows the default: no program run may take it.
-        if (!onBus) cables.Reserve(p.Playback.FirstOrDefault(d => d.IsDefault)?.Id);
         plan.ApoCableWhy = ApoCableWhy(p, cables); // what is left for programs
         foreach (var app in InCableOrder(p)) PlanProgram(p, plan, app, busCable, cables);
         return Finish(p, plan, cables);
@@ -187,12 +188,13 @@ internal static class RoutePlanner
 
     /// What decides the master's method: the cables allowed, whether Equalizer APO runs on the master's real speakers (or would once its
     /// installer, offered on first use, ran), whether the master is set to several devices, and whether it has effects.
-    private static MasterFacts MasterFactsOf(PlanInput p, CableBox cables, MasterDevice.Choice real, bool masterFx)
+    private static MasterFacts MasterFactsOf(PlanInput p, CableBox cables, MasterDevice.Choice real, bool masterFx, bool masterOff)
     {
         var apo = p.Support.Apo;
         var speakers = apo.PlaybackOf(real.Id);
         var why = EffectsRules.InstallFixes(apo, speakers) ? null : EffectsRules.ApoMissingOn(apo, speakers);
-        var several = p.Settings.MasterPlaysOn.Count > 1 || p.Settings.MasterPlaysOn.Any(CombinedDevice.IsKey);
+        // Off routes nothing, so the master plays on its one device.
+        var several = !masterOff && (p.Settings.MasterPlaysOn.Count > 1 || p.Settings.MasterPlaysOn.Any(CombinedDevice.IsKey));
         return new MasterFacts(cables.Pairs, EffectsRules.NoCableKind(p.Support), why, several, masterFx)         {
             ApoNow = EffectsRules.ApoNowOn(apo, speakers),
             ApoStand = EffectsRules.ApoStandOn(apo, speakers),
@@ -207,7 +209,7 @@ internal static class RoutePlanner
         var mic = apo.MicrophoneOf(input.Id);
         const string Unnamed = "this microphone";
         var why = EffectsRules.InstallFixes(apo, mic) ? null : EffectsRules.ApoMissingOn(apo, mic);
-        return new MasterFacts(cables.Pairs, EffectsRules.NoCableKind(p.Support), why, false, FxSlot.AnyRuns(input.FxOn, input.Fx))
+        return new MasterFacts(cables.Pairs, EffectsRules.NoCableKind(p.Support), why, false, RunsFx(input))
         {
             ApoNow = EffectsRules.ApoNowOn(apo, mic, Unnamed),
             ApoStand = EffectsRules.ApoStandOn(apo, mic),
@@ -217,11 +219,13 @@ internal static class RoutePlanner
 
     /// The master in Equalizer APO: its chain goes to Equalizer APO on the real speakers when it has effects (whether
     /// Equalizer APO is there is the engine's status); the speakers stay Windows' default and nothing is routed for the master.
-    private static void PlanMasterApo(RoutePlan plan, string? realId, bool masterFx)
+    private static void PlanMasterApo(RoutePlan plan, string? realId, bool masterFx, bool masterOff)
     {
         plan.MasterApoDevice = realId;
         if (realId is null)
             plan.Blocked[MixerService.MasterKey] = Unavailable("No speakers are plugged in for the master to play on", StatusKind.NothingPluggedIn);
+        else if (masterOff)
+            plan.Blocked[MixerService.MasterKey] = MethodOff;
         else if (masterFx)
             plan.ToApo.Add(MixerService.MasterKey);
         else
@@ -245,6 +249,17 @@ internal static class RoutePlanner
 
     private static bool IsMicrophones(CombinedDevice c) => c.Kind == CombinedKind.Microphones;
 
+    /// Cables the user plays on themselves are never given out: Windows' default device when it is a cable, and every device a program or
+    /// the master is set to play on. OmniControl's own are left to their runs: a combined device's or microphone's remembered cable, and the
+    /// cable the bus made the default while it is planned (the moment after the bus let go that cable still carries every program that follows the default).
+    private static void ReserveUsersCables(PlanInput p, CableBox cables, bool onBus)
+    {
+        var s = p.Settings;
+        var own = s.Combined.Select(c => c.Cable).Concat(s.Inputs.Select(i => i.Cable)).Append(onBus ? s.BusCable : string.Empty).ToHashSet();
+        var users = s.Apps.SelectMany(a => a.PlaysOn).Concat(s.MasterPlaysOn).Append(p.Playback.FirstOrDefault(d => d.IsDefault)?.Id ?? string.Empty);
+        foreach (var target in users.Where(t => t.Length > 0 && !own.Contains(t))) cables.Reserve(target);
+    }
+
     /// Combined devices that remember a cable keep it while it is free (apps point at it).
     private static void TakeRememberedCables(RoutePlan plan, IEnumerable<CombinedDevice> combos, CableBox cables)
     {
@@ -259,8 +274,10 @@ internal static class RoutePlanner
     }
 
     /// The microphones with effects to run that are plugged in now (an unplugged one simply has nothing to process).
-    private static IEnumerable<InputFxEntry> PluggedInMics(PlanInput p) =>
-        p.Settings.Inputs.Where(i => FxSlot.AnyRuns(i.FxOn, i.Fx) && p.Recording.Any(d => d.Id == i.Id));
+    private static IEnumerable<InputFxEntry> PluggedInMics(PlanInput p) => p.Settings.Inputs.Where(i => RunsFx(i) && p.Recording.Any(d => d.Id == i.Id));
+
+    /// A microphone runs effects: some are on and its method is not Off.
+    private static bool RunsFx(InputFxEntry input) => EffectsRules.MicRouteOf(input.Method) != EffectsRules.MethodOff && FxSlot.AnyRuns(input.FxOn, input.Fx);
 
     private static void Remember(RoutePlan plan, Dictionary<string, string> into, string id, string cable, string? key = null)
     {
@@ -274,6 +291,9 @@ internal static class RoutePlanner
     private static readonly EngineStatus ProgramClosed = new(EngineState.Waiting, "Starts when the program plays", Kind: StatusKind.StartsWhenPlays);
 
     private static readonly EngineStatus MicrophonesOff = new(EngineState.Off, EffectsRules.MicrophonesOffLine, Kind: StatusKind.MicrophonesOff);
+
+    /// A row whose method is Off: nothing is routed or processed for it.
+    private static readonly EngineStatus MethodOff = new(EngineState.Off, EffectsRules.MethodOffLine, Kind: StatusKind.MethodOff, Method: RunMethod.Off);
 
     /// An open but silent program that waits for sound before it takes a cable.
     private static readonly EngineStatus WaitingForSound = new(EngineState.Waiting, "Starts when the program plays", Kind: StatusKind.WaitingForSound);
@@ -336,6 +356,13 @@ internal static class RoutePlanner
     {
         var outputs = Resolve(p, plan, app.PlaysOn).ToList();
         plan.Direct[app.Key] = outputs.Count == 1 ? outputs[0] : null;
+        if (EffectsRules.RouteOf(app.FxRoute) == EffectsRules.MethodOff)
+        {
+            // Off routes nothing: no cable, recording or bus routing; it plays where it is set to (its first device), else where Windows sends it.
+            plan.Direct[app.Key] = outputs.FirstOrDefault();
+            plan.Blocked[app.Key] = MethodOff;
+            return;
+        }
         // A combined device chosen earlier whose cable is gone plays nowhere: the program follows the master instead, and its row says so.
         if (app.PlaysOn.FirstOrDefault(t => CombinedDevice.IsKey(t) && !plan.ComboCables.ContainsKey(t)) is { } lost
             && p.Settings.Combined.FirstOrDefault(c => c.Key == lost) is { } lostDevice)
