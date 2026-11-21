@@ -24,6 +24,7 @@ internal static class Program
         if (AdministratorMode.RelaunchIfWanted(args, () => MouseSettings.Load().RunAsAdministrator)) return 0;
         using var instance = SingleInstance.Claim(restart ? Timing.RestartWait : TimeSpan.Zero, askToOpen);
         if (instance is null) return 0;
+        ProcessPower.LimitDrawingCaches();
         var exitCode = BuildAvaloniaApp(instance).StartWithClassicDesktopLifetime(args);
         AppDataStore.FlushSaves();
         AppDataStore.FlushLogs(); // the shut-down's last lines (the plug-ins' teardown)

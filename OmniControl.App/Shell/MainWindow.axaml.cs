@@ -1,3 +1,4 @@
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.VisualTree;
 using OmniControl.App.Features.Hotkeys;
@@ -46,6 +47,20 @@ public partial class MainWindow : Window
             Position = placed.Position;
             (Width, Height) = (placed.Size.Width, placed.Size.Height);
         }
+    }
+
+    /// Before the window is let go: an open tooltip or pop-up is a window of its own holding the control it belongs to, and the keyboard
+    /// keeps its focused control; either would keep the whole closed window in memory.
+    internal void LetGo()
+    {
+        foreach (var control in this.GetVisualDescendants().OfType<Control>())
+        {
+            if (ToolTip.GetIsOpen(control)) ToolTip.SetIsOpen(control, false);
+            if (control is Popup { IsOpen: true } popup) popup.IsOpen = false;
+            if (control is Button { Flyout: { IsOpen: true } flyout }) flyout.Hide();
+            if (FlyoutBase.GetAttachedFlyout(control) is { IsOpen: true } attached) attached.Hide();
+        }
+        if (FocusManager is { } focus && focus.GetFocusedElement() is Visual focused && this.IsVisualAncestorOf(focused)) focus.ClearFocus();
     }
 
     /// A click anywhere except the hotkey box that is listening cancels listening.

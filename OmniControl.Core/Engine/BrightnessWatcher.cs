@@ -3,10 +3,10 @@ using System.Management;
 namespace OmniControl.Core.Engine;
 
 /// Raises <see cref="Changed"/> (percent, on a worker thread) when the laptop brightness changes, e.g. from the Fn keys.
-/// Uses the WMI brightness event, plus a read now and then as a check because some drivers don't raise the event reliably: while the
-/// event is listened to, only every <c>checkPoll</c> and for <c>checkFor</c> (or until the event is seen to work); when it cannot be
-/// listened to, every <c>poll</c>. Reading is never kept up when the first read finds no laptop panel: each read is a WMI query, and
-/// failing ones throw, so a pointless poll was steady work and garbage in the background.
+/// The first read (after <c>firstPoll</c>) decides: no laptop panel answers, and nothing more is done (no event subscription, no poll);
+/// a panel answers, and Windows' brightness event is listened to, plus a read as a check because some drivers don't raise the event
+/// reliably: every <c>checkPoll</c> for <c>checkFor</c> (or until the event is seen to work). When the event cannot be listened to,
+/// it is read every <c>poll</c>. Each read is a WMI query, and failing ones throw, so nothing is kept up without a panel.
 public sealed class BrightnessWatcher : IDisposable
 {
     private readonly TimeSpan _firstPoll, _poll, _checkPoll, _checkFor;
@@ -16,7 +16,7 @@ public sealed class BrightnessWatcher : IDisposable
     private ManagementEventWatcher? _watcher;
     private Timer? _timer;
     private int _last = -1;
-    private bool _polled;
+    private bool _polled, _disposed;
 
     public event Action<int>? Changed;
 
@@ -29,25 +29,8 @@ public sealed class BrightnessWatcher : IDisposable
 
     public void Start()
     {
-        try
-        {
-            _watcher = new ManagementEventWatcher(new ManagementScope(@"root\wmi"), new WqlEventQuery("SELECT * FROM WmiMonitorBrightnessEvent"));
-            _watcher.EventArrived += (_, e) =>
-            {
-                StopPolling(); // the event works on this machine: the check is not needed
-                using var arrived = e.NewEvent;
-                if (arrived["Brightness"] is { } b) Report(Convert.ToInt32(b));
-            };
-            _watcher.Start();
-        }
-        catch (ManagementException)
-        {
-            _watcher?.Dispose();
-            _watcher = null; // WMI brightness events unavailable: polling covers it
-        }
-
         _since.Start();
-        _timer = new Timer(_ => Poll(), null, _firstPoll, _watcher is null ? _poll : _checkPoll);
+        _timer = new Timer(_ => Poll(), null, _firstPoll, _checkPoll);
     }
 
     private void Poll()
@@ -65,12 +48,49 @@ public sealed class BrightnessWatcher : IDisposable
         var first = !_polled;
         _polled = true;
         if (percent is { } p) Report(p);
-        if (percent is null && first)
+        if (first)
         {
-            StopPolling(); // nothing to watch on this machine (no laptop panel): the event subscription goes too
-            StopWatching();
+            if (percent is null) StopPolling(); // nothing to watch on this machine (no laptop panel)
+            else if (!Watch())
+            {
+                try
+                {
+                    Volatile.Read(ref _timer)?.Change(_poll, _poll);
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Stopped meanwhile (Dispose): nothing left to poll.
+                }
+            }
         }
         else if (_watcher is not null && _since.Elapsed >= _checkFor) StopPolling(); // the event alone from now on
+    }
+
+    // Listens to Windows' brightness event; false when it cannot be listened to (polling covers it).
+    private bool Watch()
+    {
+        lock (_gate)
+        {
+            if (_disposed) return true;
+            var watcher = new ManagementEventWatcher(new ManagementScope(@"root\wmi"), new WqlEventQuery("SELECT * FROM WmiMonitorBrightnessEvent"));
+            watcher.EventArrived += (_, e) =>
+            {
+                StopPolling(); // the event works on this machine: the check is not needed
+                using var arrived = e.NewEvent;
+                if (arrived["Brightness"] is { } b) Report(Convert.ToInt32(b));
+            };
+            try
+            {
+                watcher.Start();
+            }
+            catch (ManagementException)
+            {
+                watcher.Dispose();
+                return false;
+            }
+            _watcher = watcher;
+            return true;
+        }
     }
 
     private void StopPolling() => Interlocked.Exchange(ref _timer, null)?.Dispose();
@@ -105,6 +125,7 @@ public sealed class BrightnessWatcher : IDisposable
     public void Dispose()
     {
         StopPolling();
+        lock (_gate) _disposed = true;
         StopWatching();
     }
 }

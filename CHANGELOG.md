@@ -12,6 +12,14 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 - Changed: Other PCs: while a pairing code is shown or typed, the switches Power actions (off), Other actions and settings (on) and Read settings and devices (off) sit under it, so what the other PC may do here is chosen before pairing; the PC's ⋯ menu calls them "What <PC> may do here", and each switch's tooltip says what happens when it is off.
 - Fixed: App settings > Backup and restore: importing a backup or wiping is now all or nothing. Everything is checked and a copy of each changed file kept before any setting changes; if OmniControl or the PC stops part way, the next start finishes the restore (or puts everything back when the kept files are damaged), so settings are never left half restored.
 - Changed: releases are built by a GitHub Actions workflow from a verified version tag and carry build provenance attestations beside the SHA-256 sums; `tools\release.ps1` now only creates and pushes the tag.
+- timing-log.txt's memory lines also give the figure Task Manager shows (the private working set).
+- Lighter memory: the drawing library's image cache is kept small, and its caches are emptied when the windows are let go after a long hide.
+- Lighter memory: OmniControl uses Windows' newer segment heap for its native memory, which gives freed memory back to Windows sooner.
+- Changed: before the main window is let go after a long hide it closes its tooltips and pop-ups and gives up the keyboard focus, which may have kept it in memory (timing-log.txt still says whether it was collected).
+- Lighter start: when OmniControl starts in the tray (with Windows, or "Start minimised"), the main window is built only when it is first opened (that first opening takes a moment longer, as after a long hide).
+- Lighter idle: on a PC without a laptop screen the OSD no longer listens to Windows' brightness event; one read a moment after start decides.
+- Faster sensors: the hardware sensor library ships precompiled, so the first temperature reading needs less start-up work (the download is about 0.5 MB larger).
+- Lighter memory: at most 6 MB is allocated between two of the runtime's quick collections (PCs with a large processor cache used to allow tens of MB).
 
 ## 0.2.8 (21 Nov 2026)
 
