@@ -9,6 +9,9 @@ public static partial class Timing
     /// The longest a step waits for its device's command to end (a simulation can take two minutes).
     public static readonly TimeSpan StepOutcomeWait = TimeSpan.FromMinutes(3);
 
+    /// A line of devices-log.txt keeps at most this many characters (a command's whole answer is in the device's own details).
+    public const int DeviceLogLineMax = 600;
+
     /// A smart plug command (kasa) is stopped after this long.
     public static readonly TimeSpan DeviceCommandTimeout = TimeSpan.FromSeconds(30);
 

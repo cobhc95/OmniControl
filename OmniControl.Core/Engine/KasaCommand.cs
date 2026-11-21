@@ -61,6 +61,23 @@ public static class KasaCommand
         return m.Success ? m.Groups[2].Value.ToLowerInvariant() is "true" or "on" : null;
     }
 
+    /// <paramref name="text"/> (a command and what kasa printed) as a log may keep it: MAC addresses and the values of the fields that name the
+    /// home or the device (Wi-Fi name, device, hardware, OEM and firmware ids, latitude and longitude) masked, at most <paramref name="max"/> characters.
+    public static string ForLog(string text, int max)
+    {
+        var masked = Identifying.Replace(MacAddress.Replace(text, Masked), m => m.Groups["key"].Value + Masked);
+        return masked.Length > max ? masked[..max] + "…" : masked;
+    }
+
+    private const string Masked = "•••";
+
+    private static readonly System.Text.RegularExpressions.Regex MacAddress = new(@"\b[0-9A-Fa-f]{2}([:-])(?:[0-9A-Fa-f]{2}\1){4}[0-9A-Fa-f]{2}\b");
+
+    // A key in kasa's text, Python or JSON output ("SSID: x", "'ssid': 'x'", "\"mic_mac\": \"x\"", "Device ID: x") and its value.
+    private static readonly System.Text.RegularExpressions.Regex Identifying = new(
+        @"(?<key>\b\w*?(?:mac|b?ssid|device[ _]?id|hw[ _]?id|oem[ _]?id|fw[ _]?id|latitude(?:_i)?|longitude(?:_i)?)[""']?\s*[:=]\s*)(?:""[^""]*""|'[^']*'|[^\s,}|]+)",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
     private const string KasaExe = "kasa.exe", ScriptsFolder = "Scripts", PythonFolder = "Python";
 
     // Lines kasa prints that are not the answer: asyncio/aiohttp complaining at exit, the hint to debug, and its progress line.

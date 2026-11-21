@@ -243,5 +243,6 @@ public sealed partial class DeviceService
         return $"Plug {number}";
     }
 
-    internal static void Log(string line) => AppDataStore.AppendLog(LogFile, line);
+    /// One line of devices-log.txt: what identifies the home or a device is masked and the line is cut (kasa prints whole state dumps).
+    internal static void Log(string line) => AppDataStore.AppendLog(LogFile, KasaCommand.ForLog(line, Timing.DeviceLogLineMax));
 }
