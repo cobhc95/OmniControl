@@ -68,5 +68,5 @@ public sealed class PluginLibrary
         return entry;
     }
 
-    private void Write() => AppDataStore.Save(Store, Data);
+    private void Write() => AppDataStore.SaveSoon(Store, Data);
 }

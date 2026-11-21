@@ -125,5 +125,5 @@ public sealed class DeviceSettings
 
     public static DeviceSettings Load() => AppDataStore.Load<DeviceSettings>(Store) ?? new();
 
-    public void Save() => AppDataStore.Save(Store, this);
+    public void Save() => AppDataStore.SaveSoon(Store, this);
 }

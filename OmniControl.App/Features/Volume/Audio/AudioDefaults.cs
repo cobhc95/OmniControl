@@ -62,7 +62,7 @@ public sealed class FileDefaultsSnapshot : IDefaultsSnapshot
 {
     private static readonly DataStore Store = DataStores.MixerBeforeRestore;
 
-    public void Save(MixerSettings settings) => AppDataStore.Save(Store, settings);
+    public void Save(MixerSettings settings) => AppDataStore.SaveSoon(Store, settings);
 
     public MixerSettings? Load() => AppDataStore.Load<MixerSettings>(Store);
 }

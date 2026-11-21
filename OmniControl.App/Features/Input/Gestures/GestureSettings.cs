@@ -62,7 +62,7 @@ public sealed class GestureSettings
 
     public static GestureSettings Load() => AppDataStore.Load<GestureSettings>(Store) ?? new();
 
-    public void Save() => AppDataStore.Save(Store, this);
+    public void Save() => AppDataStore.SaveSoon(Store, this);
 
     /// Takes every value of <paramref name="other"/>. The rule objects stay (the page's cards hold them): each is set to the one in
     /// <paramref name="other"/>, or back to off with its default action when <paramref name="other"/> has none.

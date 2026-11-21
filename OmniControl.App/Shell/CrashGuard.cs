@@ -17,7 +17,8 @@ public static class CrashGuard
         AppDomain.CurrentDomain.UnhandledException += (_, e) =>
         {
             if (e.ExceptionObject is Exception ex) Guard.Log("Unhandled", ex);
-            AppDataStore.FlushLogs(); // the process may end right after this handler
+            Guard.Run("Saving settings before the end", AppDataStore.FlushSaves); // the process may end right after this handler
+            AppDataStore.FlushLogs();
         };
         TaskScheduler.UnobservedTaskException += (_, e) =>
         {

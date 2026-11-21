@@ -14,7 +14,7 @@ public sealed class ConfirmationMemory
     private readonly Action<ConfirmationData> _save;
 
     /// The remembered prompts, from and into the Confirmations store.
-    public ConfirmationMemory() : this(AppDataStore.Load<ConfirmationData>(DataStores.Confirmations) ?? new(), data => AppDataStore.Save(DataStores.Confirmations, data)) { }
+    public ConfirmationMemory() : this(AppDataStore.Load<ConfirmationData>(DataStores.Confirmations) ?? new(), data => AppDataStore.SaveSoon(DataStores.Confirmations, data)) { }
 
     public ConfirmationMemory(ConfirmationData data, Action<ConfirmationData> save)
     {

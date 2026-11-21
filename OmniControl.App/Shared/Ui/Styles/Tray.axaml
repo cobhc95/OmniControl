@@ -144,6 +144,9 @@
         <Setter Property="Height" Value="{DynamicResource TrayMarkSize}" />
         <Setter Property="Data" Value="M5.5,0.75 A4.75,4.75 0 0 1 10.25,5.5" />
         <Setter Property="RenderTransform" Value="rotate(0deg)" />
+    </Style>
+    <!-- The spin and the pulse run only while the mark is shown (.spinning, bound to the same state as its visibility), so a hidden mark never keeps the render clock awake -->
+    <Style Selector="Panel.tilemark > Path.markarc.spinning, Button.statepower > Panel > Panel > Path.markarc.spinning">
         <Style.Animations>
             <Animation Duration="0:0:0.9" IterationCount="INFINITE">
                 <KeyFrame Cue="0%"><Setter Property="RotateTransform.Angle" Value="0" /></KeyFrame>
@@ -155,6 +158,8 @@
         <Setter Property="Width" Value="{DynamicResource TrayMarkDot}" />
         <Setter Property="Height" Value="{DynamicResource TrayMarkDot}" />
         <Setter Property="Fill" Value="{DynamicResource BrushMuted}" />
+    </Style>
+    <Style Selector="Panel.tilemark > Ellipse.markdot.spinning">
         <Style.Animations>
             <Animation Duration="0:0:0.8" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="SineEaseInOut">
                 <KeyFrame Cue="0%"><Setter Property="Opacity" Value="1" /></KeyFrame>

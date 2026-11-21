@@ -181,8 +181,28 @@ public static class Emulators
         return false;
     }
 
-    /// The memory the emulator's programs hold now, in bytes; 0 when none is running.
-    public static long MemoryUsed(EmulatorInfo emulator) => Running(emulator).Sum(Measure);
+    /// The memory each emulator's programs hold now, in bytes by emulator id (0 when none is running), from one look at the process list.
+    public static IReadOnlyDictionary<string, long> MemoryUsed(IReadOnlyList<EmulatorInfo> emulators)
+    {
+        var totals = emulators.ToDictionary(e => e.Id, _ => 0L);
+        if (emulators.Count == 0) return totals;
+        foreach (var process in Process.GetProcesses()) // one list for every emulator
+        {
+            using (process)
+            {
+                try
+                {
+                    var name = process.ProcessName;
+                    foreach (var emulator in emulators.Where(e => e.Processes.Contains(name, StringComparer.OrdinalIgnoreCase))) totals[emulator.Id] += process.WorkingSet64;
+                }
+                catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
+                {
+                    // It ended while the list was read, or Windows refused: it counts nothing.
+                }
+            }
+        }
+        return totals;
+    }
 
     /// Stops the emulator's programs hard (only after a clean shutdown did not work).
     public static void Kill(EmulatorInfo emulator)
@@ -198,15 +218,6 @@ public static class Emulators
     }
 
     private static List<Process> Running(EmulatorInfo emulator) => emulator.Processes.SelectMany(Process.GetProcessesByName).ToList();
-
-    private static long Measure(Process process)
-    {
-        using (process)
-        {
-            try { return process.WorkingSet64; }
-            catch (Exception ex) when (ex is Win32Exception or InvalidOperationException) { return 0; } // it ended just now
-        }
-    }
 
     /// The names of the virtual devices Android Studio made (the .ini files in the user's .android\avd folder).
     public static IReadOnlyList<string> VirtualDevices()

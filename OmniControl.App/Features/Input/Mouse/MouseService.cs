@@ -18,6 +18,10 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
         /// A mouse input has an action on some layer, or the autoscroll block is on: Windows' real mouse input is needed.
         public bool NeedsHook { get; } = BlockAutoscroll || Maps(Actions, Extras, InputFamily.Mouse);
 
+        /// The autoscroll block can swallow a middle press: it is on and the middle button is not mapped on every layer.
+        public bool WatchesAutoscroll { get; } = BlockAutoscroll && !Enumerable.Range(1, MouseSettings.Layers)
+            .All(layer => Actions.TryGetValue(MouseSettings.KeyOf(layer, MouseButton.Middle), out var action) && action.Id != MouseActionCatalog.Default);
+
         /// A trackpad gesture has an action on some layer: the touchpad watcher is needed.
         public bool NeedsTrackpad { get; } = Maps(Actions, Extras, InputFamily.Trackpad);
 
@@ -94,6 +98,7 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
         _hook = hook;
         _pressWatch.Changed += OnPressWatchChanged;
         hook.Reinstalled += ReleaseAllHeld;
+        hook.PointerMoved += _autoscroll.Moved;
         _states = states;
         RegisterStates();
         if (_taskFollows = Settings.RunAsAdministrator) AdministratorMode.FollowSetting(true, report, atStart: true); // an elevated start makes sure the task starts this copy
@@ -210,7 +215,7 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
 
     private void ApplyWatchers()
     {
-        _autoscroll.SetEnabled(Settings.BlockAutoscroll);
+        _autoscroll.SetEnabled(_snapshot.WatchesAutoscroll);
         _fullScreen.SetEnabled(Settings.PauseInFullScreen);
     }
 
@@ -440,6 +445,8 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
     public void Dispose()
     {
         _hook.Reinstalled -= ReleaseAllHeld;
+        _hook.PointerMoved -= _autoscroll.Moved;
+        _autoscroll.Dispose();
         _pressWatch.Changed -= OnPressWatchChanged;
         _modes.BeginClose();
         List<Action> pending;

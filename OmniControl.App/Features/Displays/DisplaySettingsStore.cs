@@ -60,7 +60,7 @@ public sealed class DisplaySettingsStore
 
     /// The store as the program uses it: read from and written to the user's folder.
     public static DisplaySettingsStore OnDisk() =>
-        new(AppDataStore.Load<DisplaySettings>(Store), settings => AppDataStore.Save(Store, settings));
+        new(AppDataStore.Load<DisplaySettings>(Store), settings => AppDataStore.SaveSoon(Store, settings));
 
     public DisplaySettings Data { get; }
 

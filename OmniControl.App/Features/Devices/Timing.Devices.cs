@@ -22,9 +22,6 @@ public static partial class Timing
     public static readonly TimeSpan DeviceSimElementWait = TimeSpan.FromSeconds(10), DeviceSimPoll = TimeSpan.FromMilliseconds(700),
         DeviceSimSettle = TimeSpan.FromMilliseconds(600), DeviceSimRunTimeout = TimeSpan.FromMinutes(2);
 
-    /// How often the Smart Devices page looks again for a newly installed emulator or adb while either is still missing.
-    public static readonly TimeSpan DeviceSimRecheck = TimeSpan.FromSeconds(5);
-
     /// How often adb is asked which emulators are up, so the set-up checklist follows an emulator opening or closing; and how long a tap on a home screen waits for the app to open.
     public static readonly TimeSpan DeviceSimLive = TimeSpan.FromSeconds(3), DeviceSimLaunchWait = TimeSpan.FromSeconds(1.5);
 

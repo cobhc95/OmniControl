@@ -13,7 +13,7 @@ public static class Recents
     public static void Remember(string spec)
     {
         var list = (AppDataStore.Load<List<string>>(Store) ?? new()).Where(s => s != spec).Prepend(spec).Take(Keep).ToList();
-        AppDataStore.Save(Store, list);
+        AppDataStore.SaveSoon(Store, list);
     }
 
     /// The remembered entries that are in <paramref name="choices"/> and can be used now, newest first.

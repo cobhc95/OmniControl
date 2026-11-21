@@ -9,5 +9,5 @@ public sealed class AppListSettings
 
     public static AppListSettings Load() => AppDataStore.Load<AppListSettings>(Store) ?? new();
 
-    public void Save() => AppDataStore.Save(Store, this);
+    public void Save() => AppDataStore.SaveSoon(Store, this);
 }

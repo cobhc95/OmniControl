@@ -16,11 +16,11 @@ public sealed record AdapterSpeed(string Id, string Name, AdapterKind Kind, bool
     /// Wi-Fi, Ethernet or a physical card is "physical"; a VPN or a virtual switch port is not.
     public bool IsPhysical => Kind is AdapterKind.Wifi or AdapterKind.Ethernet;
 
-    public static AdapterKind KindOf(NetworkInterface nic, bool hardware)
+    public static AdapterKind KindOf(NetworkInterfaceType type, string description, bool hardware)
     {
-        if (nic.NetworkInterfaceType == NetworkInterfaceType.Ppp || VpnWords.Any(w => nic.Description.Contains(w, StringComparison.OrdinalIgnoreCase))) return AdapterKind.Vpn;
+        if (type == NetworkInterfaceType.Ppp || VpnWords.Any(w => description.Contains(w, StringComparison.OrdinalIgnoreCase))) return AdapterKind.Vpn;
         if (!hardware) return AdapterKind.Virtual;
-        return nic.NetworkInterfaceType switch
+        return type switch
         {
             NetworkInterfaceType.Wireless80211 => AdapterKind.Wifi,
             NetworkInterfaceType.Ethernet or NetworkInterfaceType.Ethernet3Megabit or NetworkInterfaceType.FastEthernetT or NetworkInterfaceType.FastEthernetFx
@@ -30,16 +30,22 @@ public sealed record AdapterSpeed(string Id, string Name, AdapterKind Kind, bool
     }
 }
 
-/// Windows' own flags per interface (GetIfTable2): which ones are NDIS filter instances (QoS, Hyper-V extensions: never a real adapter) and which are hardware.
-public static class AdapterFlags
+/// One interface as Windows' interface table (GetIfTable2) gives it: NDIS filter instance (QoS, Hyper-V extensions: never a real adapter)
+/// or hardware, connected, and its byte counters since it started.
+public readonly record struct AdapterRow(bool Hardware, bool Filter, bool Up, long Received, long Sent);
+
+/// Windows' interface table, read in one call (GetIfTable2) per look: flags, state and counters of every interface by its id.
+public static class AdapterTable
 {
-    private const int NetioSuccess = 0, RowSize = 1352, RowsOffset = 8, GuidOffset = 12, FlagsOffset = 1152;
+    // MIB_IF_ROW2 (x64): InterfaceGuid at 12, InterfaceAndOperStatusFlags at 1152, OperStatus at 1156, InOctets at 1208, OutOctets at 1280.
+    private const int NetioSuccess = 0, RowSize = 1352, RowsOffset = 8, GuidOffset = 12, FlagsOffset = 1152, OperStatusOffset = 1156,
+        InOctetsOffset = 1208, OutOctetsOffset = 1280, OperUp = 1;
     private const byte HardwareBit = 1, FilterBit = 2;
 
-    /// Interface id (as <see cref="NetworkInterface.Id"/>) to (hardware, filter); empty when Windows cannot list them, so nothing is hidden by mistake.
-    public static Dictionary<string, (bool Hardware, bool Filter)> Read()
+    /// Interface id (as <see cref="NetworkInterface.Id"/>) to its row; empty when Windows cannot list them, so nothing is hidden by mistake.
+    public static Dictionary<string, AdapterRow> Read()
     {
-        var result = new Dictionary<string, (bool, bool)>(StringComparer.OrdinalIgnoreCase);
+        var result = new Dictionary<string, AdapterRow>(StringComparer.OrdinalIgnoreCase);
         if (GetIfTable2(out var table) != NetioSuccess) return result;
         try
         {
@@ -49,7 +55,8 @@ public static class AdapterFlags
                 var row = table + RowsOffset + i * RowSize;
                 var guid = Marshal.PtrToStructure<Guid>(row + GuidOffset);
                 var flags = Marshal.ReadByte(row + FlagsOffset);
-                result["{" + guid.ToString().ToUpperInvariant() + "}"] = ((flags & HardwareBit) != 0, (flags & FilterBit) != 0);
+                result["{" + guid.ToString().ToUpperInvariant() + "}"] = new AdapterRow((flags & HardwareBit) != 0, (flags & FilterBit) != 0,
+                    Marshal.ReadInt32(row + OperStatusOffset) == OperUp, Marshal.ReadInt64(row + InOctetsOffset), Marshal.ReadInt64(row + OutOctetsOffset));
             }
         }
         finally { FreeMibTable(table); }

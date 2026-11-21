@@ -17,7 +17,7 @@
         <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsLoading}">
             <Panel Classes="tilemark" Margin="0" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Ellipse Classes="markring" />
-                <Path Classes="markarc" />
+                <Path Classes="markarc" Classes.spinning="{Binding IsLoading}" />
             </Panel>
             <TextBlock Classes="hint" Text="Asking what it has…" VerticalAlignment="Center" />
         </StackPanel>
@@ -78,7 +78,7 @@
                             <Path Classes="glyph failmark" Data="{StaticResource CrossIcon}" IsVisible="{Binding IsFailed}" />
                             <Panel Classes="tilemark" Margin="0" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsRunning}">
                                 <Ellipse Classes="markring" />
-                                <Path Classes="markarc" />
+                                <Path Classes="markarc" Classes.spinning="{Binding IsRunning}" />
                             </Panel>
                             <c:IconGlyph LibraryId="circle" Opacity="0.5" IsVisible="{Binding IsPending}" />
                         </Panel>

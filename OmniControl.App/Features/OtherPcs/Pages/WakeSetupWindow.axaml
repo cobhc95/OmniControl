@@ -42,7 +42,7 @@
         <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" IsVisible="{Binding HasStatus}">
             <Panel Classes="tilemark" Margin="0" VerticalAlignment="Center" IsVisible="{Binding Busy}">
                 <Ellipse Classes="markring" />
-                <Path Classes="markarc" />
+                <Path Classes="markarc" Classes.spinning="{Binding Busy}" />
             </Panel>
             <TextBlock Grid.Column="1" Classes="statusline" Text="{Binding Status}" TextWrapping="Wrap" VerticalAlignment="Center" />
             <Button Grid.Column="2" Classes="pill" Content="Stop" Command="{Binding StopCommand}" IsVisible="{Binding Busy}" ToolTip.Tip="Stops and puts back anything half-done." />

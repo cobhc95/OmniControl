@@ -427,7 +427,7 @@ public sealed partial class HotkeyRegistry : IActionRegistry, IActionRunner, IDi
 
     private void Save()
     {
-        AppDataStore.Save(Store, _stored);
+        AppDataStore.SaveSoon(Store, _stored);
         BindingsSaved?.Invoke();
     }
 

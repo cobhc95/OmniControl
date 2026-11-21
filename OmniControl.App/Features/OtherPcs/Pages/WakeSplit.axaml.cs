@@ -45,6 +45,7 @@ public partial class WakeSplit : UserControl
             Words.Text = IsWaking ? "Waking…" : Status?.Text;
             Dot.Tone = IsWaking ? null : Status?.Tone;
             Spinner.IsVisible = IsWaking;
+            Arc.Classes.Set("spinning", IsWaking);
             ToolTip.SetTip(StatusHalf, Status?.Tip);
         }
         else if (change.Property == ShowsWakeProperty)

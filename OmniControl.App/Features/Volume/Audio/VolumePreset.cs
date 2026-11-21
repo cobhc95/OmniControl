@@ -37,5 +37,5 @@ public sealed class VolumePresetFile
         return fresh;
     }
 
-    public void Save() => AppDataStore.Save(Store, this);
+    public void Save() => AppDataStore.SaveSoon(Store, this);
 }

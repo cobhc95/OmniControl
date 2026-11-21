@@ -22,6 +22,9 @@ public static class CoreTiming
     /// <see cref="AutoscrollCacheMs"/>, renewed without a new lookup while the pointer rests over the same window. The mouse hook only reads it.
     public const int AutoscrollWatchMs = 60, AutoscrollCachePx = 8, AutoscrollCacheMs = 1500;
 
+    /// The autoscroll worker goes back to sleep (until the hook sees the pointer move) after this many looks with the pointer still.
+    public const int AutoscrollRestLooks = 10;
+
     /// How many parents above the element under the pointer the link lookup also checks.
     public const int AutoscrollParentLevels = 4;
 

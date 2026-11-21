@@ -108,7 +108,7 @@ public sealed class MouseSettings
         TrackpadNamesIndependent = true;
     }
 
-    public void Save() => AppDataStore.Save(Store, this);
+    public void Save() => AppDataStore.SaveSoon(Store, this);
 
     /// What a new install has: no mappings, no layer names, every option at its default (upgraded the way a loaded file is, so the two compare equal).
     public static MouseSettings Defaults()

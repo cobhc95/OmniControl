@@ -113,6 +113,9 @@ public sealed class MouseHook : IDisposable
     // Reads the hook's data in place: Marshal.PtrToStructure boxes a copy on every input.
     private static unsafe HookData Read(IntPtr lParam) => *(HookData*)lParam;
 
+    /// Told of every pointer movement on the hook thread (a signal: it must only set an event, never wait or work).
+    public event Action? PointerMoved;
+
     /// Asked about every pointer movement (x, y), but only while it is set, so an idle hook costs nothing on movement.
     /// Return true to swallow the movement: the pointer then stays where it is. Runs inside the hook, so it must only record what it
     /// needs and hand any real work to another thread. Set it to null when no longer needed.
@@ -306,6 +309,14 @@ public sealed class MouseHook : IDisposable
     {
         if (message == WmMouseMove)
         {
+            try
+            {
+                PointerMoved?.Invoke(); // a signal only (a worker that keeps an answer ready wakes); never waits
+            }
+            catch (ObjectDisposedException ex)
+            {
+                Note($"move notice failed: {ex.Message}", ref _moveLogged);
+            }
             if (MoveHandler is not { } onMove) return false;
             var move = Read(lParam);
             try

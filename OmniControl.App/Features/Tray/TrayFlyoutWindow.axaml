@@ -38,8 +38,8 @@
                                         </Button>
                                         <Panel Classes="tilemark" Classes.on="{Binding IsOn}">
                                             <Ellipse Classes="markring" IsVisible="{Binding IsActing}" />
-                                            <Path Classes="markarc" IsVisible="{Binding IsActing}" />
-                                            <Ellipse Classes="markdot" IsVisible="{Binding IsReading}" />
+                                            <Path Classes="markarc" IsVisible="{Binding IsActing}" Classes.spinning="{Binding IsActing}" />
+                                            <Ellipse Classes="markdot" IsVisible="{Binding IsReading}" Classes.spinning="{Binding IsReading}" />
                                             <c:IconGlyph Classes="marknotsure" LibraryId="clock" IsVisible="{Binding IsNotSure}" />
                                             <c:IconGlyph Classes="markfailed" LibraryId="alert" IsVisible="{Binding IsFailed}" />
                                         </Panel>

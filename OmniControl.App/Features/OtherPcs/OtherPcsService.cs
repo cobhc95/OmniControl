@@ -143,7 +143,7 @@ public sealed partial class OtherPcsService : IPairedPcs, IPcBook, IDisposable
         return clean;
     }
 
-    private void Save() => AppDataStore.Save(Store, _settings);
+    private void Save() => AppDataStore.SaveSoon(Store, _settings);
 
 
     /// Takes a PC out: its link ends, what it shared leaves the master lists, its key is forgotten. The other PC still lists this one until it unpairs too.

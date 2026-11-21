@@ -1,6 +1,6 @@
 namespace OmniControl.App.Shared.Services;
 
-/// One field of the app's settings (settings.json) that a feature reads and writes without knowing the rest; writing saves at once.
+/// One field of the app's settings (settings.json) that a feature reads and writes without knowing the rest; writing saves (to disk a moment later, off the UI thread).
 public interface ISettingSlot<T>
 {
     T Value { get; set; }

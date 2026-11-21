@@ -93,10 +93,8 @@ public sealed class AppSettings
         return settings;
     }
 
-    public void Save() => AppDataStore.Save(Store, this);
-
-    /// Saves after <see cref="Timing.SaveSoonDelay"/>, for a value that changes many times a second (a colour being dragged).
-    public void SaveSoon() => AppDataStore.SaveSoon(Store, this);
+    /// Saves off the UI thread a moment later (<see cref="AppDataStore.SaveSoon{T}"/>; a burst of changes is written once).
+    public void Save() => AppDataStore.SaveSoon(Store, this);
 
     /// One field of these settings for the feature that owns it (<see cref="ISettingSlot{T}"/>).
     public ISettingSlot<T> Slot<T>(Func<AppSettings, T> read, Action<AppSettings, T> write) => new SettingSlot<T>(this, read, write);

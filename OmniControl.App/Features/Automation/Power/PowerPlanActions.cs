@@ -90,7 +90,7 @@ public sealed class PowerPlanActions
     private void Remove(Guid id)
     {
         _settings.Added.Remove(id.ToString());
-        AppDataStore.Save(Store, _settings);
+        AppDataStore.SaveSoon(Store, _settings);
         if (_registered.Remove(id, out var gone)) _hotkeys.Unregister(gone.Action.Id);
     }
 
@@ -99,7 +99,7 @@ public sealed class PowerPlanActions
         var free = (ReadPlans() ?? Array.Empty<PowerPlan>()).Where(p => !_settings.Added.Contains(p.Id.ToString())).ToList();
         if (await PowerPlanMenu.PickAsync(from, free) is not { } plan) return Array.Empty<HotkeyAction>();
         _settings.Added.Add(plan.Id.ToString());
-        AppDataStore.Save(Store, _settings);
+        AppDataStore.SaveSoon(Store, _settings);
         Sync();
         return _registered.TryGetValue(plan.Id, out var made) ? new[] { made.Action } : Array.Empty<HotkeyAction>();
     }

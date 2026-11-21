@@ -14,5 +14,5 @@ public sealed class RuleSettings
 
     public static RuleSettings Load() => AppDataStore.Load<RuleSettings>(Store) ?? new();
 
-    public void Save() => AppDataStore.Save(Store, this);
+    public void Save() => AppDataStore.SaveSoon(Store, this);
 }

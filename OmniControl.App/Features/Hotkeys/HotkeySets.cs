@@ -106,7 +106,7 @@ public sealed class HotkeySets : IDisposable
     private void OnBindingsSaved()
     {
         Current.Bindings = _registry.ExportStored();
-        AppDataStore.Save(Store, _file);
+        AppDataStore.SaveSoon(Store, _file);
     }
 
     /// Reads hotkey-sets.json again (an import from another PC wrote it): the sets and the one in use are replaced and the listeners told.
@@ -122,7 +122,7 @@ public sealed class HotkeySets : IDisposable
 
     private void Saved()
     {
-        AppDataStore.Save(Store, _file);
+        AppDataStore.SaveSoon(Store, _file);
         Changed?.Invoke();
     }
 

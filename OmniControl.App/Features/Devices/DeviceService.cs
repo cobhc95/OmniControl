@@ -69,7 +69,7 @@ public sealed partial class DeviceService
         _note = note;
         Settings = settings ?? DeviceSettings.Load();
         Setup = new DeviceSetup(Log);
-        Simulation = new SimulationSetup(Log, Settings.Emulator, Edited);
+        Simulation = new SimulationSetup(Log, Settings.Emulator, Edited, () => SimulationMethods.Any());
         Scripts = new ScriptMethod(Settings, Setup, credentials, Edited);
         SimulationMethod = new SimulationMethod(Simulation, RuntimeOf, Edited);
         AutoChecking = new DeviceAutoChecks(Settings, Setup, Edited, CheckAutoAsync);
@@ -167,6 +167,8 @@ public sealed partial class DeviceService
     {
         _saveSoon.Stop();
         Settings.Save();
+        Simulation.FollowNeed(); // a simulation method or an auto-check may have come or gone
+        AutoChecking?.FollowNeed();
     }
 
     public bool HasPassword(MethodRecord method) => _credentials.Read(PasswordTarget(method)) is { Length: > 0 };

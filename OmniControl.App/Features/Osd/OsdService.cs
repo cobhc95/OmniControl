@@ -30,7 +30,7 @@ public sealed class OsdService : IOsd, IDisposable
     private bool _usbOn;
     // Fine timers while a pop-up is on screen (its hide is timed to the millisecond); given back when it is parked.
     private IDisposable? _fineTimers;
-    private readonly MediaWatcher _media = new(Timing.OsdTrackQuiet);
+    private MediaWatcher? _media; // only while the OSD and a media element are on
     private readonly Dictionary<string, DateTime> _ownChange = new();
     // One pop-up window per screen it shows on (the first is made at start-up and kept; the others come and go with the "Show on" choice).
     private readonly List<OsdWindow> _windows = new();
@@ -126,23 +126,51 @@ public sealed class OsdService : IOsd, IDisposable
         _usb.Changed += OnUsbChanged;
         SyncWatchers();
 
-        _media.Changed += change =>
-        {
-            _windowsOsd.Trigger(); // a media key opens Windows' media pop-up
-            Dispatcher.UIThread.Post(() => OnMedia(change));
-        };
-        _media.Start();
-
         // As soon as the dispatcher runs, ahead of building the main window's pages, so even the first pop-up is ready.
-        Dispatcher.UIThread.Post(Prepare, DispatcherPriority.Send);
-        _keepWarm.Start();
+        Dispatcher.UIThread.Post(SyncWindows, DispatcherPriority.Send);
+    }
+
+    /// The pop-up windows and their keep-warm redraw exist only while the OSD is on (a preview makes one on demand); off, they are closed.
+    private void SyncWindows()
+    {
+        if (Settings.Enabled)
+        {
+            Prepare();
+            _keepWarm.Start();
+            return;
+        }
+        _keepWarm.Stop();
+        _hide.Stop();
+        _fineTimers?.Dispose();
+        _fineTimers = null;
+        foreach (var window in _windows) window.Close();
+        _windows.Clear();
+    }
+
+    private void OnMediaChanged(MediaChange change)
+    {
+        _windowsOsd.Trigger(); // a media key opens Windows' media pop-up
+        Dispatcher.UIThread.Post(() => OnMedia(change));
     }
 
     private void OnAccentChanged() => SettingsChanged?.Invoke();
 
-    /// Brightness and USB devices are watched only while the OSD and that element are on (nothing else uses what they hear).
+    /// Brightness, USB devices and media are watched only while the OSD and that element are on (nothing else uses what they hear).
     private void SyncWatchers()
     {
+        var media = Settings.Enabled && (IsShown(PlayPauseElement) || IsShown(TrackElement));
+        if (media && _media is null)
+        {
+            _media = new MediaWatcher(Timing.OsdTrackQuiet);
+            _media.Changed += OnMediaChanged;
+            _media.Start();
+        }
+        else if (!media && _media is { } playing)
+        {
+            playing.Changed -= OnMediaChanged;
+            playing.Dispose();
+            _media = null;
+        }
         var brightness = Settings.Enabled && IsShown(BrightnessElement);
         if (brightness && _brightness is null)
         {
@@ -227,6 +255,7 @@ public sealed class OsdService : IOsd, IDisposable
         Settings.Enabled = on;
         Settings.Save();
         SyncWatchers();
+        SyncWindows();
     }
 
     public void SetOpacity(int percent)
@@ -260,7 +289,7 @@ public sealed class OsdService : IOsd, IDisposable
         if (screens is not null) Settings.Screens = screens.ToList();
         Settings.Save();
         SettingsChanged?.Invoke();
-        Prepare();
+        SyncWindows();
     }
 
     /// Ticks or unticks one screen for "Show on"; the first tick turns "Show on" to the chosen screens, the last untick back to all.
@@ -271,7 +300,7 @@ public sealed class OsdService : IOsd, IDisposable
         if (Settings.Screens.Count == 0) Settings.ShowOn = OsdShowOn.AllScreens;
         Settings.Save();
         SettingsChanged?.Invoke();
-        Prepare();
+        SyncWindows();
     }
 
     /// Every screen Windows has now, in its order (the choices of "Show on" and of the placement window).
@@ -290,7 +319,7 @@ public sealed class OsdService : IOsd, IDisposable
         Reloaded?.Invoke();
         ElementsChanged?.Invoke(); // the elements shown may differ
         SyncWatchers();
-        Prepare();
+        SyncWindows();
         return true;
     }
 
@@ -425,7 +454,7 @@ public sealed class OsdService : IOsd, IDisposable
         _volume.Dispose();
         _mic.Dispose();
         _usb.Stop();
-        _media.Dispose();
+        _media?.Dispose();
         _windowsOsd.Dispose();
         foreach (var window in _windows) window.Close();
         _windows.Clear();

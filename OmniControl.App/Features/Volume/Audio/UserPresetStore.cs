@@ -58,7 +58,7 @@ public sealed class UserPresetStore
     }
 
     /// The store as the program uses it: read from and written to the user's folder.
-    public static UserPresetStore OnDisk() => new(AppDataStore.Load<Stored>(Store), data => AppDataStore.Save(Store, data));
+    public static UserPresetStore OnDisk() => new(AppDataStore.Load<Stored>(Store), data => AppDataStore.SaveSoon(Store, data));
 
     /// Takes presets.json from disk as it is now (an import wrote it): the presets and device folders are replaced and the listeners told.
     public bool ReloadFromDisk()

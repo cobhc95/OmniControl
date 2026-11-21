@@ -89,7 +89,7 @@ public sealed class AppActions
         var at = _settings.Added.FindIndex(a => a.Id == app.Id);
         if (name.Length == 0 || at < 0 || _settings.Added[at].Title == name) return null;
         _settings.Added[at] = _settings.Added[at] with { Title = name };
-        AppDataStore.Save(Store, _settings);
+        AppDataStore.SaveSoon(Store, _settings);
         if (_registered.Remove(app.ActionId)) _hotkeys.Unregister(app.ActionId);
         Sync();
         return _registered.TryGetValue(app.ActionId, out var action) ? action.Title : null;
@@ -99,7 +99,7 @@ public sealed class AppActions
     private void Remove(AppEntry app)
     {
         if (_settings.Added.RemoveAll(a => a.Id == app.Id) == 0) _settings.Hidden.Add(app.Id);
-        AppDataStore.Save(Store, _settings);
+        AppDataStore.SaveSoon(Store, _settings);
         Sync();
     }
 
@@ -109,7 +109,7 @@ public sealed class AppActions
         if (path is null || _settings.Added.Any(a => string.Equals(a.Path, path, StringComparison.OrdinalIgnoreCase))) return Array.Empty<HotkeyAction>();
         var app = new UserApp(Guid.NewGuid().ToString("N")[..8], Path.GetFileNameWithoutExtension(path), path);
         _settings.Added.Add(app);
-        AppDataStore.Save(Store, _settings);
+        AppDataStore.SaveSoon(Store, _settings);
         _launcher.Include(new AppEntry(app.Id, app.Title, string.Empty, new AppLocator { KnownPaths = new[] { new KnownPath(path) } }));
         Sync();
         return _registered.TryGetValue(AppCatalogue.ActionPrefix + app.Id, out var action) ? new[] { action } : Array.Empty<HotkeyAction>();
@@ -119,7 +119,7 @@ public sealed class AppActions
     {
         var restored = _settings.Hidden.ToList();
         _settings.Hidden.Clear();
-        AppDataStore.Save(Store, _settings);
+        AppDataStore.SaveSoon(Store, _settings);
         Sync();
         IReadOnlyList<HotkeyAction> made = restored.Select(id => AppCatalogue.ActionPrefix + id).Where(_registered.ContainsKey).Select(id => _registered[id]).ToList();
         return Task.FromResult(made);

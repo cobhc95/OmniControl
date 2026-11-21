@@ -62,7 +62,7 @@ public sealed class TraySettings
 
     public static TraySettings Load() => AppDataStore.Load<TraySettings>(Store) ?? new();
 
-    public void Save() => AppDataStore.Save(Store, this);
+    public void Save() => AppDataStore.SaveSoon(Store, this);
 
     /// The sliders shown: the saved ones, or the defaults.
     public IReadOnlyList<TrayElement> SlidersInUse => Sliders ?? TrayDefaults.Sliders;

@@ -69,6 +69,15 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
         Selected = Items.FirstOrDefault(i => i.Record == added[0]);
     }
 
+    private IDisposable? _simulationWatch;
+
+    /// While the page is on screen the emulators' connections and memory are looked at (<see cref="SimulationSetup.WatchClosely"/>).
+    public override void OnOnScreenChanged(bool onScreen)
+    {
+        _simulationWatch?.Dispose();
+        _simulationWatch = onScreen ? _service.Simulation.WatchClosely() : null;
+    }
+
     // The checks of Python, python-kasa, adb and the emulators run when the page is shown, not at start-up.
     public override void OnShown()
     {

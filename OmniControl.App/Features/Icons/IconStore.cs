@@ -173,7 +173,7 @@ public sealed class IconStore : IDisposable
 
     private void Save()
     {
-        AppDataStore.Save(DataStores.Icons, _settings);
+        AppDataStore.SaveSoon(DataStores.Icons, _settings);
         Changed?.Invoke();
     }
 

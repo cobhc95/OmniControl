@@ -17,7 +17,7 @@ public sealed class MicMuteKeySettings
 
     public static MicMuteKeySettings Load() => AppDataStore.Load<MicMuteKeySettings>(DataStores.MicMuteKey) ?? new();
 
-    public void Save() => AppDataStore.Save(DataStores.MicMuteKey, this);
+    public void Save() => AppDataStore.SaveSoon(DataStores.MicMuteKey, this);
 }
 
 /// "Mute the way your keyboard does": many laptops light their microphone-mute LED only when their own key is pressed, because the maker's

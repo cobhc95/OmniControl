@@ -73,7 +73,7 @@
                             <TextBlock Grid.Column="1" Classes="strong" Text="{Binding Name}" VerticalAlignment="Center" />
                             <Panel Grid.Column="2" Classes="tilemark" Margin="0" HorizontalAlignment="Center" VerticalAlignment="Center" ToolTip.Tip="Loading what this PC shares">
                                 <Ellipse Classes="markring" />
-                                <Path Classes="markarc" />
+                                <Path Classes="markarc" Classes.spinning="{Binding $parent[ItemsControl].IsVisible}" />
                             </Panel>
                         </Grid>
                     </Border>

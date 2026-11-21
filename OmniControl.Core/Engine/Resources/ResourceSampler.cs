@@ -130,28 +130,23 @@ public sealed class ResourceSampler : IDisposable
         var adapters = list ? new List<AdapterSpeed>() : null;
         long down = 0, up = 0, busiest = -1;
         (string Name, double Down, double Up)? busiestAdapter = null, chosen = null;
-        var flags = AdapterFlags.Read();
-        foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
+        var rows = AdapterTable.Read(); // the one look per read: flags, state and counters of every interface
+        foreach (var nic in Adapters(rows))
         {
-            if (nic.NetworkInterfaceType is NetworkInterfaceType.Loopback or NetworkInterfaceType.Tunnel) continue;
-            var hardware = true;
-            if (flags.TryGetValue(nic.Id, out var flag))
+            var row = rows.GetValueOrDefault(nic.Id);
+            if (row.Filter) continue;
+            var hardware = !rows.ContainsKey(nic.Id) || row.Hardware;
+            if (!row.Up)
             {
-                if (flag.Filter) continue;
-                hardware = flag.Hardware;
-            }
-            if (nic.OperationalStatus != OperationalStatus.Up)
-            {
-                adapters?.Add(new AdapterSpeed(nic.Id, nic.Name, AdapterSpeed.KindOf(nic, hardware), false, 0, 0));
+                adapters?.Add(new AdapterSpeed(nic.Id, nic.Name, AdapterSpeed.KindOf(nic.Type, nic.Description, hardware), false, 0, 0));
                 continue;
             }
-            var stats = nic.GetIPStatistics();
-            var total = (stats.BytesReceived, stats.BytesSent);
+            var total = (BytesReceived: row.Received, BytesSent: row.Sent);
             long d = 0, u = 0;
             var known = _adapters.TryGetValue(nic.Id, out var before) && total.BytesReceived >= before.Received && total.BytesSent >= before.Sent;
             if (known) (d, u) = (total.BytesReceived - before.Received, total.BytesSent - before.Sent);
             _adapters[nic.Id] = (total.BytesReceived, total.BytesSent);
-            adapters?.Add(new AdapterSpeed(nic.Id, nic.Name, AdapterSpeed.KindOf(nic, hardware), true, d * scale, u * scale));
+            adapters?.Add(new AdapterSpeed(nic.Id, nic.Name, AdapterSpeed.KindOf(nic.Type, nic.Description, hardware), true, d * scale, u * scale));
             if (!known) continue;
             (down, up) = (down + d, up + u);
             if (d + u > busiest) (busiest, busiestAdapter) = (d + u, (nic.Name, d * scale, u * scale));
@@ -162,6 +157,23 @@ public sealed class ResourceSampler : IDisposable
         if (wanted == AdapterSpeed.All) return (down * scale, up * scale, null, false, shown);
         if (chosen is { } c) return (c.Down, c.Up, c.Name, false, shown);
         return (busiestAdapter?.Down ?? 0, busiestAdapter?.Up ?? 0, busiestAdapter?.Name, true, shown);
+    }
+
+    private sealed record Nic(string Id, string Name, NetworkInterfaceType Type, string Description);
+
+    private IReadOnlyList<Nic>? _nics;
+    private int _upCount = -1;
+
+    /// The adapters Windows lists (not loopback or tunnel), listed again only when the interface table shows a change (an interface came up
+    /// or went down, or a listed one is gone), so a read costs one table look, not a full adapter listing.
+    private IReadOnlyList<Nic> Adapters(Dictionary<string, AdapterRow> rows)
+    {
+        var upCount = rows.Values.Count(r => r.Up && !r.Filter);
+        if (_nics is { } known && upCount == _upCount && known.All(n => rows.ContainsKey(n.Id))) return known;
+        _upCount = upCount;
+        return _nics = NetworkInterface.GetAllNetworkInterfaces()
+            .Where(n => n.NetworkInterfaceType is not (NetworkInterfaceType.Loopback or NetworkInterfaceType.Tunnel))
+            .Select(n => new Nic(n.Id, n.Name, n.NetworkInterfaceType, n.Description)).ToList();
     }
 
     /// The sensor library with exactly the hardware groups <paramref name="wanted"/> needs (the library adds and drops a group when its switch

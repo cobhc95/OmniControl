@@ -11,7 +11,7 @@ public sealed class DeviceAutoChecks
     private readonly Func<DeviceRecord, Task> _check;
     private readonly Dictionary<string, DateTime> _lastAuto = new();
     private DispatcherTimer? _timer;
-    private bool _running;
+    private bool _running, _started;
 
     /// <param name="edited">Saves the device list after a choice changed.</param>
     /// <param name="check">One automatic read of a device (it skips what is not ready or is in its set-up).</param>
@@ -26,15 +26,35 @@ public sealed class DeviceAutoChecks
     /// The device's auto-check changed (a pick or the switch): the page's chips read it again.
     public event Action? Changed;
 
-    /// Starts the start-up check (a few seconds after the window is up) and the timer that keeps the periodic ones; once.
+    /// Starts the start-up check (a few seconds after the window is up) and, while a device has a periodic auto-check, the timer that keeps them; once.
     public void Start()
     {
-        if (_timer is not null) return;
-        _timer = new DispatcherTimer { Interval = Timing.DeviceAutoCheckTick };
-        _timer.Tick += (_, _) => _ = RunAsync(atStart: false);
-        _timer.Start();
+        if (_started) return;
+        _started = true;
+        FollowNeed();
         DispatcherTimer.RunOnce(() => _ = RunAsync(atStart: true), Timing.DeviceStartCheckDelay);
     }
+
+    /// The devices or their choices changed (UI thread): the periodic timer runs only while a device has an auto-check that repeats.
+    public void FollowNeed()
+    {
+        var periodic = _started && _settings.Devices.Any(d => Of(d) is { } choice && AutoChecks.Of(choice).Every is not null);
+        if (periodic == _timer is not null) return;
+        if (periodic)
+        {
+            _timer = new DispatcherTimer { Interval = Timing.DeviceAutoCheckTick };
+            _timer.Tick += OnTick;
+            _timer.Start();
+        }
+        else
+        {
+            _timer!.Stop();
+            _timer.Tick -= OnTick;
+            _timer = null;
+        }
+    }
+
+    private void OnTick(object? sender, EventArgs e) => _ = RunAsync(atStart: false);
 
     /// The choice a device follows now (null = manual only).
     public AutoCheck? Of(DeviceRecord device) => AutoChecks.Effective(_settings, device);
@@ -62,6 +82,7 @@ public sealed class DeviceAutoChecks
     private void Edited()
     {
         _edited();
+        FollowNeed();
         Changed?.Invoke();
     }
 
@@ -95,7 +116,8 @@ public sealed class DeviceAutoChecks
         _running = true;
         try
         {
-            if (atStart) await _setup.RefreshAsync(); // Python and python-kasa are looked for before the first read
+            // Python and python-kasa are looked for at start only when a device uses Scripts (else when the Devices page first opens).
+            if (atStart && _settings.Devices.Any(d => d.Methods.Any(m => !m.IsSimulation))) await _setup.RefreshAsync();
             var now = DateTime.UtcNow;
             foreach (var device in _settings.Devices.ToList())
             {

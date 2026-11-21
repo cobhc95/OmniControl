@@ -6,32 +6,61 @@ namespace OmniControl.App.Features.Devices;
 public sealed class SimulationSetup : IDisposable
 {
     private readonly Action<string> _log;
+    private readonly Func<bool> _hasSimulation;
+    private readonly HoldCount _pageOnScreen = new();
     private IReadOnlySet<string> _connected = new HashSet<string>();
-    private readonly Timer? _live;
+    private Timer? _live, _memoryLook;
+    private bool _looked;
     private int _asking;
-
-    private readonly Timer? _recheck;
-    private readonly Timer? _memoryLook;
     private int _busy;
     private IReadOnlyDictionary<string, long> _memory = new Dictionary<string, long>();
 
-    /// Looks again every <see cref="Timing.DeviceSimRecheck"/>, so installing or uninstalling an emulator shows up without a restart.
-    public SimulationSetup(Action<string> log, EmulatorKeepSettings keep, Action save)
+    /// Nothing runs until it is needed (<see cref="FollowNeed"/>): adb is asked every <see cref="Timing.DeviceSimLive"/> while a device has
+    /// a simulation method or the Devices page is on screen, the emulators' memory is read only while the page is on screen, and the
+    /// installed emulators are looked for once, then again each time the page opens (<see cref="RefreshAsync"/>).
+    /// <param name="hasSimulation">True when a device has a simulation method (its emulator state is then kept fresh).</param>
+    public SimulationSetup(Action<string> log, EmulatorKeepSettings keep, Action save, Func<bool> hasSimulation)
     {
         _log = log;
+        _hasSimulation = hasSimulation;
         Keeper = new EmulatorKeeper(keep, () => AdbPath, save, log, () => Changed?.Invoke());
-        _recheck = new Timer(_ => Recheck(), null, Timing.DeviceSimRecheck, Timing.DeviceSimRecheck);
-        _live = new Timer(_ => _ = LookAtConnectionsAsync(), null, Timing.DeviceSimLive, Timing.DeviceSimLive);
-        _memoryLook = new Timer(_ => LookAtMemory(), null, Timing.EmulatorMemoryRefresh, Timing.EmulatorMemoryRefresh);
+        _pageOnScreen.Changed += FollowNeed;
+        FollowNeed();
     }
 
-    /// The memory each installed emulator's programs hold (Core measures it), read on a gentle timer; <see cref="Changed"/> only when a figure's shown tenth of a GB moves.
+    /// The Devices page is on screen until the handle is disposed (UI thread).
+    public IDisposable WatchClosely() => _pageOnScreen.Take();
+
+    /// The devices or their methods changed, or the page came or went (UI thread): the looks start or stop to match.
+    public void FollowNeed()
+    {
+        var live = _pageOnScreen.Held || _hasSimulation();
+        Switch(ref _live, live, Timing.DeviceSimLive, () => _ = LookAtConnectionsAsync());
+        Switch(ref _memoryLook, live && _pageOnScreen.Held, Timing.EmulatorMemoryRefresh, LookAtMemory);
+        if (!live || _looked) return;
+        _looked = true;
+        Guard.OffUi("Smart Devices: looking for emulators", Recheck);
+    }
+
+    private static void Switch(ref Timer? timer, bool on, TimeSpan every, Action look)
+    {
+        if (on == timer is not null) return;
+        if (on) timer = new Timer(_ => Guard.Run("Smart Devices: emulator look", look), null, TimeSpan.Zero, every);
+        else
+        {
+            timer!.Dispose();
+            timer = null;
+        }
+    }
+
+    /// The memory each installed emulator's programs hold (Core measures it from one process list), read only while the page is on screen;
+    /// <see cref="Changed"/> only when a figure's shown tenth of a GB moves.
     private void LookAtMemory()
     {
-        Dictionary<string, long> now;
+        IReadOnlyDictionary<string, long> now;
         try
         {
-            now = Installed.ToDictionary(e => e.Id, e => Emulators.MemoryUsed(e));
+            now = Emulators.MemoryUsed(Installed);
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
         {
@@ -81,7 +110,7 @@ public sealed class SimulationSetup : IDisposable
 
     public void Dispose()
     {
-        _recheck?.Dispose();
+        _pageOnScreen.Changed -= FollowNeed;
         _live?.Dispose();
         _memoryLook?.Dispose();
         Keeper.Dispose();

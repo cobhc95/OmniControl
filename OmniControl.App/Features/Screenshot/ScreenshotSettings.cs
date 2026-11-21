@@ -108,5 +108,5 @@ public sealed class ScreenshotSettings
 
     public static ScreenshotSettings Load() => AppDataStore.Load<ScreenshotSettings>(Store) ?? new();
 
-    public void Save() => AppDataStore.Save(Store, this);
+    public void Save() => AppDataStore.SaveSoon(Store, this);
 }
