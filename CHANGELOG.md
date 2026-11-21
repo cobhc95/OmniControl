@@ -8,6 +8,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 - timing-log.txt's memory lines also give the figure Task Manager shows (the private working set).
 - Lighter memory: the drawing library's image cache is kept small, and its caches are emptied when the windows are let go after a long hide.
 - Lighter memory: OmniControl uses Windows' newer segment heap for its native memory, which gives freed memory back to Windows sooner.
+- Lighter memory: at most 6 MB is allocated between two of the runtime's quick collections (PCs with a large processor cache used to allow tens of MB).
 
 ## 0.2.8 (21 Nov 2026)
 

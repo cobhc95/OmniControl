@@ -25,7 +25,8 @@
        alternative garbage collectors, HTTP/3, debugger and dump helpers, LibreHardwareMonitor's Linux helpers, ANGLE (rendering is
        software, Program.cs) and symbol files.
        Precompiled (ReadyToRun, less JIT at start) only ReadyToRunOnly: the app and Avalonia.Base, about 4.8 MB more in the Setup.
-       Memory: the workstation garbage collector, collecting in the background, told to keep the heap small (ConserveMemory 5 of 9). -->
+       Memory: the workstation garbage collector, collecting in the background, told to keep the heap small (ConserveMemory 5 of 9,
+       Gen0MaxBudget below). -->
   <PropertyGroup>
     <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
     <PublishTrimmed>true</PublishTrimmed>
@@ -62,6 +63,8 @@
 
   <ItemGroup>
     <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="5" />
+    <!-- At most 6 MB allocated between two young collections (a PC with a large CPU cache otherwise gets tens of MB). -->
+    <RuntimeHostConfigurationOption Include="System.GC.Gen0MaxBudget" Value="6291456" />
   </ItemGroup>
 
   <ItemGroup>
