@@ -7,8 +7,12 @@
         Background="Transparent" TransparencyLevelHint="Transparent">
     <!-- The recording bar under the recorded area (docs/mockups/area-video-recording.html): red dot and timer | Pause/Resume, Stop |
          Microphone, System sound (MP4 only). The same floating bar as the screenshot overlay's (Border.floatbar, Button.toolicon; .danger =
-         red, .selected = a sound switch that is on); the dot and timer are Ellipse.recdot and TextBlock.rectimer in Styles/Bars.axaml.
+         red, .selected = a sound switch that is on); the dot and timer are Ellipse.recdot and TextBlock.rectimer in ScreenshotStyles.axaml.
          Mouse first like the overlay's bars; Esc on the bar stops, twice quickly cancels. Left out of every capture. -->
+    <Window.Styles>
+        <StyleInclude Source="/Shared/Ui/Styles/FloatBars.axaml" />
+        <StyleInclude Source="/Features/Screenshot/ScreenshotStyles.axaml" />
+    </Window.Styles>
     <Border Classes="floatbar">
         <StackPanel Orientation="Horizontal">
             <StackPanel Classes="recclock" Orientation="Horizontal" VerticalAlignment="Center">

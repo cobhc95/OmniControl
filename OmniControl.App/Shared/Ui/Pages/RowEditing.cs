@@ -14,8 +14,9 @@ namespace OmniControl.App.Shared.Ui.Pages;
 /// finish; Home resets it; Ctrl+Enter types its value.
 public static class RowEditing
 {
-    /// The slider or knob being adjusted (Enter on it), whose keys change it until Enter or Esc.
-    private static RangeBase? _activeSlider;
+    // The slider or knob being adjusted (Enter on it) wears this class until Enter, Esc or losing focus; kept on the control, not in a
+    // static, so a released window is never held by it.
+    private const string Active = "active";
 
     public static void Attach(ListBox list) =>
         list.AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
@@ -24,7 +25,7 @@ public static class RowEditing
     /// Up/Down change it), so Esc and Up/Down belong to it.
     public static bool IsEditing(object? focused) =>
         HotkeyCapture.IsListening(focused)
-        || (focused is RangeBase r && r == _activeSlider)
+        || (focused is RangeBase r && IsActive(r))
         || (focused is Slider s && IsVertical(s))
         || NumberText.IsTypingIn(focused)
         || focused is ComboBox { IsDropDownOpen: true } or ComboBoxItem;
@@ -103,22 +104,26 @@ public static class RowEditing
         s.Value = Math.Clamp(s.Value + (e.Key == Key.Right ? step : -step), s.Minimum, s.Maximum);
     }
 
+    private static bool IsActive(RangeBase slider) => slider.Classes.Contains(Active);
+
     private static void Activate(RangeBase slider)
     {
-        _activeSlider = slider;
-        slider.Classes.Set("active", true);
+        if (IsActive(slider)) return;
+        slider.Classes.Set(Active, true);
         slider.LostFocus += OnSliderLostFocus;
     }
 
-    private static void Deactivate()
+    private static void Deactivate(RangeBase slider)
     {
-        if (_activeSlider is null) return;
-        _activeSlider.Classes.Set("active", false);
-        _activeSlider.LostFocus -= OnSliderLostFocus;
-        _activeSlider = null;
+        if (!IsActive(slider)) return;
+        slider.Classes.Set(Active, false);
+        slider.LostFocus -= OnSliderLostFocus;
     }
 
-    private static void OnSliderLostFocus(object? sender, RoutedEventArgs e) => Deactivate();
+    private static void OnSliderLostFocus(object? sender, RoutedEventArgs e)
+    {
+        if (sender is RangeBase slider) Deactivate(slider);
+    }
 
     /// Left/Right past the first or last part of a half-width card goes to the neighbouring half-width card (right: its first part,
     /// left: its last), so a row of two cards can be walked sideways. Full-width cards stay put.
@@ -155,29 +160,29 @@ public static class RowEditing
         // 2. Ctrl+Enter on a slider types its value in (the same as a double-click on the value).
         if (src is Slider typed && e.Key == Key.Enter && e.KeyModifiers == KeyModifiers.Control && NumberText.TryBeginBeside(typed))
         {
-            Deactivate();
+            Deactivate(typed);
             e.Handled = true;
             return;
         }
 
         // 3a. A knob being adjusted: Enter/Esc finish; its own keys turn it (they reach it unhandled).
-        if (src is Knob turning && turning == _activeSlider)
+        if (src is Knob turning && IsActive(turning))
         {
             if (e.Key is not (Key.Enter or Key.Escape) || e.KeyModifiers != KeyModifiers.None) return;
-            Deactivate();
+            Deactivate(turning);
             e.Handled = true;
             return;
         }
 
         // 3b. A slider being adjusted: Left/Right change it, Enter/Esc finish.
-        if (src is Slider active && active == _activeSlider)
+        if (src is Slider active && IsActive(active))
         {
             switch (e.Key)
             {
                 case Key.Left or Key.Right:
                     StepSlider(active, e);
                     break;
-                case Key.Enter or Key.Escape: Deactivate(); break;
+                case Key.Enter or Key.Escape: Deactivate(active); break;
                 case Key.Up or Key.Down: break; // stay on the slider
                 default: return;
             }

@@ -21,7 +21,7 @@
                             <TextBlock Grid.Column="1" Classes="muted small" Text="{Binding Description}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                         </Grid>
                     </StackPanel>
-                    <Border Grid.Column="1" Background="{Binding Background}" Height="{StaticResource GadgetThumbHeight}" CornerRadius="{DynamicResource TypeableCornerRadius}"
+                    <Border Grid.Column="1" Background="{Binding Background}" Height="{StaticResource GadgetThumbHeight}" CornerRadius="{StaticResource TypeableCornerRadius}"
                             ClipToBounds="True" VerticalAlignment="Center">
                         <Viewbox StretchDirection="DownOnly">
                             <g:GadgetCells Cells="{Binding Cells}" Layout="{Binding Layout}" IsHitTestVisible="False" />
@@ -68,7 +68,7 @@
                 </Button>
                 <Button Grid.Column="2" Classes="menurow muted" Command="{Binding ShowFewerCommand}">
                     <StackPanel>
-                        <Path Classes="glyph" Data="{DynamicResource ChevronUpIcon}" />
+                        <Path Classes="glyph" Data="{StaticResource ChevronUpIcon}" />
                         <TextBlock Text="Fewer layouts" />
                     </StackPanel>
                 </Button>

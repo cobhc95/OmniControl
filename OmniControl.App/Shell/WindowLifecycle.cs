@@ -123,6 +123,9 @@ public static class WindowLifecycle
             try { hidden.Close(); }
             finally { releasing = false; }
             Log("Main window let go after a long hide (made again at the next opening).");
+            var gone = new WeakReference<MainWindow>(hidden);
+            DispatcherTimer.RunOnce(() => UiTiming.Memory("after the main window was let go", gone.TryGetTarget(out _)
+                ? "the let-go main window is still in memory (held by something, or not collected yet)" : "the let-go main window was collected"), Timing.UiReleaseLeakCheck);
         }
 
         var first = Make();

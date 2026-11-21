@@ -7,10 +7,14 @@
         Title="Screenshot" SystemDecorations="None" CanResize="False" Topmost="True">
     <!-- The area capture overlay of one monitor (docs/mockups/screenshot-tool.html). Mouse first (AGENTS rule 5): drag to select, handles
          resize, drag inside moves; the bars are clicked. Keys: Esc, Ctrl+C/S/P, Ctrl+Z/Y, Ctrl+Shift+. and , (size), arrows nudge (CaptureOverlayViewModel.HandleKey).
-         Looks: Border.floatbar, Button.toolicon (.selected), Button.swatch, Popup.floating and shot|CaptureCanvas in Styles/Bars.axaml; icons
-         Shot* in Brushes.axaml. The picture (shot:CaptureCanvas, a native window that covers anything Avalonia draws under it) is put first
-         in Root by the code-behind, which needs the view-model to make it; so the label, the bars and the text box are pop-ups above it,
-         each placed at a point of the window by its offsets. -->
+         Looks: Border.floatbar, Button.toolicon (.selected) in Styles/FloatBars.axaml, Button.swatch in Styles/Bars.axaml, Popup.floating and
+         shot|CaptureCanvas in ScreenshotStyles.axaml; icons Shot* in Brushes.axaml. The picture (shot:CaptureCanvas, a native window that covers
+         anything Avalonia draws under it) is put first in Root by the code-behind, which needs the view-model to make it; so the label, the bars
+         and the text box are pop-ups above it, each placed at a point of the window by its offsets. -->
+    <Window.Styles>
+        <StyleInclude Source="/Shared/Ui/Styles/FloatBars.axaml" />
+        <StyleInclude Source="/Features/Screenshot/ScreenshotStyles.axaml" />
+    </Window.Styles>
     <Panel x:Name="Root">
         <Popup x:Name="SizePopup" Classes="floating" IsOpen="{Binding HasSelection, Mode=OneWay}">
             <Border x:Name="SizeLabel" Classes="floatbar label">

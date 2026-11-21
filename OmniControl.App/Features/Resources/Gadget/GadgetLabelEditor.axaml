@@ -47,7 +47,7 @@
             <c:SliderField Grid.Column="1" Minimum="0" Maximum="{Binding GapMax}" Value="{Binding GapAfter}" ResetValue="0" Text="{Binding GapText}" />
         </Grid>
         <Border Classes="hrule" />
-        <Border Background="{Binding LineBackground}" CornerRadius="{DynamicResource TypeableCornerRadius}" ClipToBounds="True">
+        <Border Background="{Binding LineBackground}" CornerRadius="{StaticResource TypeableCornerRadius}" ClipToBounds="True">
             <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Left">
                 <g:GadgetCells Cells="{Binding Line}" Layout="{Binding LineLayout}" />
             </Viewbox>

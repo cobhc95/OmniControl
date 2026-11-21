@@ -68,7 +68,7 @@
         <Button Grid.Column="7" Grid.RowSpan="2" Tag="scope" Classes="scope mute listen" Classes.on="{ReflectionBinding Listening}" Command="{ReflectionBinding ToggleListenCommand}"
                 ToolTip.Tip="{ReflectionBinding ListenTip}" IsVisible="{Binding HasListen}" ContextRequested="OnListenContext"
                 IsEnabled="{Binding !MicrophonesOff}" Classes.unavailable="{Binding MicrophonesOff}" ToolTip.ShowOnDisabled="True">
-            <Path Classes="glyph" Data="{DynamicResource Icon.headphones}" />
+            <Path Classes="glyph" Data="{StaticResource Icon.headphones}" />
         </Button>
 
         <!-- FX: lit (Button.pill.glow) while effects run; opens the row's FX window, or closes it when it is open; greyed while the

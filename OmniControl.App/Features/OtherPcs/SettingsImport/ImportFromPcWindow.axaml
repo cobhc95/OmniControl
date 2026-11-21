@@ -73,7 +73,7 @@
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="si:ImportProgressRow">
                     <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="{StaticResource GapLarge}" MinHeight="24" Margin="6,2" ToolTip.Tip="{Binding Why}">
-                        <Panel Width="{DynamicResource MenuGlyphSize}" VerticalAlignment="Center">
+                        <Panel Width="{StaticResource MenuGlyphSize}" VerticalAlignment="Center">
                             <Path Classes="glyph tickmark" Data="{StaticResource TickIcon}" IsVisible="{Binding IsChecked}" />
                             <Path Classes="glyph failmark" Data="{StaticResource CrossIcon}" IsVisible="{Binding IsFailed}" />
                             <Panel Classes="tilemark" Margin="0" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsRunning}">

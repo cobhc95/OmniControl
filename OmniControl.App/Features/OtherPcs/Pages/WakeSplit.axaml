@@ -15,7 +15,7 @@
                         <Path x:Name="Arc" Classes="markarc" />
                     </Panel>
                     <TextBlock x:Name="Words" VerticalAlignment="Center" />
-                    <PathIcon Data="{DynamicResource CogIcon}" Width="11" Height="11" Margin="2,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource BrushMuted}" />
+                    <PathIcon Data="{StaticResource CogIcon}" Width="11" Height="11" Margin="2,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource BrushMuted}" />
                 </StackPanel>
             </Button>
             <Button x:Name="ActionHalf" Classes="pill splitleft accentline custom" Click="OnWake" IsVisible="False">
@@ -27,7 +27,7 @@
             </Button>
         </Panel>
         <Button x:Name="CogHalf" Classes="pill splitright cog" Margin="-1,0,0,0" Click="OnSetUp" ToolTip.Tip="Set up wake…" IsVisible="False">
-            <PathIcon Data="{DynamicResource CogIcon}" />
+            <PathIcon Data="{StaticResource CogIcon}" />
         </Button>
     </StackPanel>
 </UserControl>

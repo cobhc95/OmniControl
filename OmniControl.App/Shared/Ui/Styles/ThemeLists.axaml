@@ -7,7 +7,7 @@
     <!-- Sidebar navigation items -->
     <Style Selector="ListBox.nav"><Setter Property="Background" Value="Transparent" /></Style>
     <Style Selector="ListBox.nav > ListBoxItem">
-        <Setter Property="Padding" Value="{DynamicResource NavPadding}" />
+        <Setter Property="Padding" Value="{StaticResource NavPadding}" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="Margin" Value="0,0,0,2" />
         <Setter Property="CornerRadius" Value="0" />
@@ -15,19 +15,19 @@
         <Setter Property="BorderBrush" Value="Transparent" />
     </Style>
     <!-- ListBox.nav.compact = the same list inside a page's pane (the Smart Devices list): tighter rows, no sidebar indent -->
-    <Style Selector="ListBox.nav.compact > ListBoxItem"><Setter Property="Padding" Value="{DynamicResource NavCompactPadding}" /></Style>
+    <Style Selector="ListBox.nav.compact > ListBoxItem"><Setter Property="Padding" Value="{StaticResource NavCompactPadding}" /></Style>
     <!-- A sidebar group heading (NavHeading): small, muted capitals; its container is neither clickable nor focusable, so no hover or focus look applies -->
     <Style Selector="ListBox.nav > ListBoxItem.navheading">
-        <Setter Property="Padding" Value="{DynamicResource NavHeadingPadding}" />
+        <Setter Property="Padding" Value="{StaticResource NavHeadingPadding}" />
         <Setter Property="Margin" Value="0" />
     </Style>
     <!-- A nav item's icon: a fixed box (NavIconBox) so names line up, the drawing itself flush left in it, so its left edge sits on the heading's first letter -->
     <Style Selector="Panel.navicon">
-        <Setter Property="Width" Value="{DynamicResource NavIconBox}" />
-        <Setter Property="Height" Value="{DynamicResource NavIconBox}" />
+        <Setter Property="Width" Value="{StaticResource NavIconBox}" />
+        <Setter Property="Height" Value="{StaticResource NavIconBox}" />
     </Style>
     <Style Selector="PathIcon.navicon">
-        <Setter Property="Height" Value="{DynamicResource NavIconBox}" />
+        <Setter Property="Height" Value="{StaticResource NavIconBox}" />
         <Setter Property="HorizontalAlignment" Value="Left" />
     </Style>
     <Style Selector="TextBlock.navheading">
@@ -109,7 +109,7 @@
 
     <!-- "Use this action": the mouse hover and the keyboard highlight share the master hover look (no border change, so the text never moves) -->
     <!-- The window foot's two buttons (this confirm and Button.primary.close) share one height, font and minimum width -->
-    <Style Selector="Button.scope.usebtn"><Setter Property="Padding" Value="12,0" /><Setter Property="VerticalContentAlignment" Value="Center" /><Setter Property="HorizontalContentAlignment" Value="Center" /><Setter Property="HorizontalAlignment" Value="Right" /><Setter Property="Height" Value="{DynamicResource DialogButtonHeight}" /><Setter Property="MinWidth" Value="{DynamicResource DialogCloseWidth}" /></Style>
+    <Style Selector="Button.scope.usebtn"><Setter Property="Padding" Value="12,0" /><Setter Property="VerticalContentAlignment" Value="Center" /><Setter Property="HorizontalContentAlignment" Value="Center" /><Setter Property="HorizontalAlignment" Value="Right" /><Setter Property="Height" Value="{StaticResource DialogButtonHeight}" /><Setter Property="MinWidth" Value="{StaticResource DialogCloseWidth}" /></Style>
     <Style Selector="Button.scope.usebtn TextBlock"><Setter Property="VerticalAlignment" Value="Center" /></Style>
     <Style Selector="Button.usebtn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
@@ -176,9 +176,9 @@
     <!-- Compact rows (Controls/OptionList): flat menu rows (MenuRow* in App.axaml), the same as Button.menurow; hover and the
          highlighted entry share one wash (the list moves the highlight to the row under the pointer), no border, so nothing moves -->
     <Style Selector="ListBox.pick.compact > ListBoxItem">
-        <Setter Property="Padding" Value="{DynamicResource MenuRowPadding}" />
-        <Setter Property="MinHeight" Value="{DynamicResource MenuRowHeight}" />
-        <Setter Property="CornerRadius" Value="{DynamicResource MenuRowCornerRadius}" />
+        <Setter Property="Padding" Value="{StaticResource MenuRowPadding}" />
+        <Setter Property="MinHeight" Value="{StaticResource MenuRowHeight}" />
+        <Setter Property="CornerRadius" Value="{StaticResource MenuRowCornerRadius}" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>

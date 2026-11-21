@@ -22,6 +22,11 @@
         <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
     </Style>
     <Style Selector="Border.pane.edged"><Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" /></Style>
+    <!-- The panel under browser-style tabs (Controls/BrowserTabStrip): the pane without its top edge, so the open tab joins it -->
+    <Style Selector="Border.pane.tabbed">
+        <Setter Property="BorderThickness" Value="1,0,1,1" />
+        <Setter Property="CornerRadius" Value="0,0,6,6" />
+    </Style>
 
     <!-- Focus is shown with the accent colour, not the default white outline -->
     <Style Selector="Slider, Slider:focus, Slider:focus-visible, ToggleSwitch, ToggleSwitch:focus, ToggleSwitch:focus-visible, Button, ToggleButton, ListBoxItem, ComboBoxItem, ComboBox, TextBox, CheckBox, Button:focus-visible, ToggleButton:focus-visible, ListBoxItem:focus-visible, ComboBoxItem:focus-visible, ComboBox:focus-visible, TextBox:focus-visible, CheckBox:focus-visible, Button:focus, ToggleButton:focus">

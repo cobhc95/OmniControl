@@ -17,22 +17,30 @@ public partial class ChoiceChip : UserControl
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
-        if (_item is not null) _item.PropertyChanged -= OnItemChanged;
-        _item = DataContext as ChoiceItem;
-        if (_item is not null) _item.PropertyChanged += OnItemChanged;
-        ShowChosen();
-    }
-
-    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
-    {
-        base.OnDetachedFromVisualTree(e);
-        if (_item is not null) _item.PropertyChanged -= OnItemChanged;
+        Follow();
     }
 
     protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-        if (_item is not null) { _item.PropertyChanged -= OnItemChanged; _item.PropertyChanged += OnItemChanged; ShowChosen(); }
+        Follow();
+    }
+
+    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        Follow();
+    }
+
+    // The item is heard only while the chip is on screen, so a view let go (a released main window) is never held by its model.
+    private void Follow()
+    {
+        var item = VisualRoot is null ? null : DataContext as ChoiceItem;
+        if (item == _item) return;
+        if (_item is not null) _item.PropertyChanged -= OnItemChanged;
+        _item = item;
+        if (_item is not null) _item.PropertyChanged += OnItemChanged;
+        ShowChosen();
     }
 
     private void OnItemChanged(object? sender, PropertyChangedEventArgs e)

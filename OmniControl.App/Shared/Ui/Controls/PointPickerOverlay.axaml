@@ -5,7 +5,10 @@
         Background="Transparent" TransparencyLevelHint="Transparent" Cursor="Cross">
     <!-- The shared screen point picker's overlay of one monitor (see PointPicker): the dim of the screenshot overlay, a crosshair pointer and one
          Border.floatbar.label showing x, y under the pointer. Mouse only by design (AGENTS rule 5): click picks, Esc or right click cancels. -->
-    <Panel Background="{DynamicResource BrushCaptureDim}">
+    <Window.Styles>
+        <StyleInclude Source="/Shared/Ui/Styles/FloatBars.axaml" />
+    </Window.Styles>
+    <Panel Background="{StaticResource BrushCaptureDim}">
         <Canvas>
             <Border x:Name="Label" Classes="floatbar label" IsVisible="False" IsHitTestVisible="False">
                 <TextBlock x:Name="LabelText" />

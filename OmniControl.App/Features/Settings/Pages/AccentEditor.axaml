@@ -17,7 +17,7 @@
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}" Width="{StaticResource ColorSquareWidth}">
                     <TextBox Classes="field" Text="{Binding Hex}" MaxLength="7" ToolTip.Tip="The colour as #RRGGBB" />
                     <Border Grid.Column="1" Width="{StaticResource ColorSwatchSize}" Height="{StaticResource ColorSwatchSize}" VerticalAlignment="Center"
-                            CornerRadius="{DynamicResource TypeableCornerRadius}" BorderThickness="1" BorderBrush="{DynamicResource BrushControlEdge}"
+                            CornerRadius="{StaticResource TypeableCornerRadius}" BorderThickness="1" BorderBrush="{DynamicResource BrushControlEdge}"
                             Background="{Binding Swatch}" />
                 </Grid>
             </StackPanel>

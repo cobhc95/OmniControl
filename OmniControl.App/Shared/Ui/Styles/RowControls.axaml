@@ -17,10 +17,10 @@
                           accent glyph on keyboard focus or while held (no border change, nothing moves). -->
     <Style Selector="Button.selector">
         <Setter Property="MinHeight" Value="0" />
-        <Setter Property="Height" Value="{DynamicResource ChipHeight}" />
-        <Setter Property="Padding" Value="{DynamicResource SelectorPadding}" />
-        <Setter Property="CornerRadius" Value="{DynamicResource ChipCornerRadius}" />
-        <Setter Property="FontSize" Value="{DynamicResource MenuSmallFontSize}" />
+        <Setter Property="Height" Value="{StaticResource ChipHeight}" />
+        <Setter Property="Padding" Value="{StaticResource SelectorPadding}" />
+        <Setter Property="CornerRadius" Value="{StaticResource ChipCornerRadius}" />
+        <Setter Property="FontSize" Value="{StaticResource MenuSmallFontSize}" />
         <Setter Property="HorizontalAlignment" Value="Stretch" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
@@ -34,8 +34,8 @@
     <!-- c|ChipMenu.dropbox: the same chip drawn as a Windows drop-down box (the tray panel's display and speaker pickers): square-ish
          corners and the control's own fill; hover and focus stay the chip's (declared before them, so they win) -->
     <Style Selector="c|ChipMenu.dropbox > Button.selector">
-        <Setter Property="Height" Value="{DynamicResource DropBoxHeight}" />
-        <Setter Property="CornerRadius" Value="{DynamicResource DropBoxCornerRadius}" />
+        <Setter Property="Height" Value="{StaticResource DropBoxHeight}" />
+        <Setter Property="CornerRadius" Value="{StaticResource DropBoxCornerRadius}" />
     </Style>
     <Style Selector="c|ChipMenu.dropbox > Button.selector /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushControlFill}" />
@@ -45,9 +45,9 @@
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
     </Style>
     <Style Selector="Border.selector">
-        <Setter Property="Height" Value="{DynamicResource ChipHeight}" />
-        <Setter Property="Padding" Value="{DynamicResource SelectorPadding}" />
-        <Setter Property="CornerRadius" Value="{DynamicResource ChipCornerRadius}" />
+        <Setter Property="Height" Value="{StaticResource ChipHeight}" />
+        <Setter Property="Padding" Value="{StaticResource SelectorPadding}" />
+        <Setter Property="CornerRadius" Value="{StaticResource ChipCornerRadius}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
         <Setter Property="VerticalAlignment" Value="Center" />
@@ -58,10 +58,10 @@
         <Setter Property="TextWrapping" Value="NoWrap" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
-    <Style Selector="Border.selector > TextBlock"><Setter Property="FontSize" Value="{DynamicResource MenuSmallFontSize}" /></Style>
+    <Style Selector="Border.selector > TextBlock"><Setter Property="FontSize" Value="{StaticResource MenuSmallFontSize}" /></Style>
     <Style Selector="Button.selector > Grid > PathIcon">
-        <Setter Property="Width" Value="{DynamicResource ChevronSize}" />
-        <Setter Property="Height" Value="{DynamicResource ChevronSize}" />
+        <Setter Property="Width" Value="{StaticResource ChevronSize}" />
+        <Setter Property="Height" Value="{StaticResource ChevronSize}" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
@@ -103,13 +103,13 @@
         <Setter Property="BorderBrush" Value="{DynamicResource BrushTagGood}" />
     </Style>
     <Style Selector="Button.selector.caution /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="BorderBrush" Value="{DynamicResource BrushTagCaution}" /></Style>
-    <Style Selector="Button.selector > Grid > TextBlock.withdot"><Setter Property="Margin" Value="{DynamicResource ChipDotInset}" /></Style>
+    <Style Selector="Button.selector > Grid > TextBlock.withdot"><Setter Property="Margin" Value="{StaticResource ChipDotInset}" /></Style>
     <!-- THE swatch button (c|ChipMenu.Swatch, usually .dropbox): the colour dot before the words, smaller than a pop-down's dots -->
-    <Style Selector="Button.selector > Grid > c|SwatchDot"><Setter Property="Size" Value="{DynamicResource ChipSwatchSize}" /></Style>
-    <Style Selector="Button.selector > Grid > TextBlock.withswatch"><Setter Property="Margin" Value="{DynamicResource ChipSwatchInset}" /></Style>
+    <Style Selector="Button.selector > Grid > c|SwatchDot"><Setter Property="Size" Value="{StaticResource ChipSwatchSize}" /></Style>
+    <Style Selector="Button.selector > Grid > TextBlock.withswatch"><Setter Property="Margin" Value="{StaticResource ChipSwatchInset}" /></Style>
     <Style Selector="c|StatusDot">
-        <Setter Property="Width" Value="{DynamicResource BrowserTabDotSize}" />
-        <Setter Property="Height" Value="{DynamicResource BrowserTabDotSize}" />
+        <Setter Property="Width" Value="{StaticResource BrowserTabDotSize}" />
+        <Setter Property="Height" Value="{StaticResource BrowserTabDotSize}" />
         <Setter Property="Fill" Value="{DynamicResource BrushMuted}" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
@@ -152,8 +152,8 @@
         <Setter Property="CornerRadius" Value="4" />
     </Style>
     <Style Selector="Button.reveal > Path.glyph">
-        <Setter Property="Width" Value="{DynamicResource MenuGlyphSize}" />
-        <Setter Property="Height" Value="{DynamicResource MenuGlyphSize}" />
+        <Setter Property="Width" Value="{StaticResource MenuGlyphSize}" />
+        <Setter Property="Height" Value="{StaticResource MenuGlyphSize}" />
         <Setter Property="StrokeThickness" Value="1.5" />
         <Setter Property="Stroke" Value="{DynamicResource BrushMuted}" />
     </Style>
@@ -168,14 +168,14 @@
          while its row is hovered; .on = the pin filled in the accent. Hover wash BrushHoverStrong (differs from the row's hover), focus =
          accent wash; nothing moves. Sizes Pin* in App.axaml. -->
     <Style Selector="Button.pin">
-        <Setter Property="Width" Value="{DynamicResource PinSize}" />
-        <Setter Property="Height" Value="{DynamicResource PinSize}" />
+        <Setter Property="Width" Value="{StaticResource PinSize}" />
+        <Setter Property="Height" Value="{StaticResource PinSize}" />
         <Setter Property="MinWidth" Value="0" />
         <Setter Property="MinHeight" Value="0" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="CornerRadius" Value="{DynamicResource PinCornerRadius}" />
+        <Setter Property="CornerRadius" Value="{StaticResource PinCornerRadius}" />
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
@@ -184,14 +184,14 @@
     <Style Selector="Button.pin:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" /></Style>
     <Style Selector="Button.pin:focus-visible /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" /></Style>
     <Style Selector="Button.pin > Path.glyph">
-        <Setter Property="Width" Value="{DynamicResource PinGlyphSize}" />
-        <Setter Property="Height" Value="{DynamicResource PinGlyphSize}" />
+        <Setter Property="Width" Value="{StaticResource PinGlyphSize}" />
+        <Setter Property="Height" Value="{StaticResource PinGlyphSize}" />
         <Setter Property="StrokeThickness" Value="1.5" />
         <Setter Property="StrokeJoin" Value="Round" />
         <Setter Property="StrokeLineCap" Value="Round" />
         <Setter Property="Stroke" Value="{DynamicResource BrushMuted}" />
         <Setter Property="Fill" Value="Transparent" />
-        <Setter Property="Opacity" Value="{DynamicResource PinFaintOpacity}" />
+        <Setter Property="Opacity" Value="{StaticResource PinFaintOpacity}" />
     </Style>
     <Style Selector="ListBoxItem:pointerover Button.pin > Path.glyph, Button.pin:pointerover > Path.glyph, Button.pin:focus-visible > Path.glyph"><Setter Property="Opacity" Value="1" /></Style>
     <!-- .star (a Path.glyph of Icon.star, the action picker's favourites): in a list row the empty star shows only while its row is hovered or highlighted -->
@@ -208,18 +208,18 @@
     <Style Selector="Border.anchorframe">
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="BorderBrush" Value="Transparent" />
-        <Setter Property="CornerRadius" Value="{DynamicResource AnchorFrameCornerRadius}" />
-        <Setter Property="Padding" Value="{DynamicResource AnchorFramePadding}" />
+        <Setter Property="CornerRadius" Value="{StaticResource AnchorFrameCornerRadius}" />
+        <Setter Property="Padding" Value="{StaticResource AnchorFramePadding}" />
     </Style>
     <Style Selector="Border.anchorframe.focused"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
     <Style Selector="Button.anchorcell">
-        <Setter Property="Width" Value="{DynamicResource AnchorCellSize}" />
-        <Setter Property="Height" Value="{DynamicResource AnchorCellSize}" />
+        <Setter Property="Width" Value="{StaticResource AnchorCellSize}" />
+        <Setter Property="Height" Value="{StaticResource AnchorCellSize}" />
         <Setter Property="MinWidth" Value="0" />
         <Setter Property="MinHeight" Value="0" />
         <Setter Property="Padding" Value="0" />
-        <Setter Property="Margin" Value="{DynamicResource AnchorCellGap}" />
-        <Setter Property="CornerRadius" Value="{DynamicResource AnchorCellCornerRadius}" />
+        <Setter Property="Margin" Value="{StaticResource AnchorCellGap}" />
+        <Setter Property="CornerRadius" Value="{StaticResource AnchorCellCornerRadius}" />
     </Style>
     <Style Selector="Button.anchorcell /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />

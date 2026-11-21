@@ -95,7 +95,7 @@
         <!-- The capture pop-down under the "I press" block (placed on it when the block is drawn): live keycaps of the held keys and
              the dashed slot of the key still to press; the shortcut is saved when the main key is released. Focus stays on the block,
              so the keys reach the row (HotkeyCapture). -->
-        <Popup x:Name="CapturePopup" Placement="BottomEdgeAlignedLeft" VerticalOffset="{DynamicResource MenuOffset}" IsLightDismissEnabled="False">
+        <Popup x:Name="CapturePopup" Placement="BottomEdgeAlignedLeft" VerticalOffset="{StaticResource MenuOffset}" IsLightDismissEnabled="False">
             <FlyoutPresenter Classes="capturemenu">
                 <StackPanel Spacing="{StaticResource GapLarge}">
                     <Panel>

@@ -9,8 +9,8 @@
     <Style Selector="c|ColorSquare, c|HueBar"><Setter Property="FocusAdorner" Value="{x:Null}" /></Style>
     <!-- The pop-down that captures a shortcut under a rule's "I press" block: a fixed width so the live keycaps do not move it -->
     <Style Selector="FlyoutPresenter.capturemenu">
-        <Setter Property="Padding" Value="{DynamicResource MenuPadding}" />
-        <Setter Property="Width" Value="{DynamicResource CaptureMenuWidth}" />
+        <Setter Property="Padding" Value="{StaticResource MenuPadding}" />
+        <Setter Property="Width" Value="{StaticResource CaptureMenuWidth}" />
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
         <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
     </Style>
@@ -18,8 +18,8 @@
     <!-- A pop-down that holds a larger graph (the FX window's total response, opened from Button.graphthumb): a fixed width so the graph
          is drawn at its size, no scrolling -->
     <Style Selector="FlyoutPresenter.graphmenu">
-        <Setter Property="Width" Value="{DynamicResource FxGraphPanelWidth}" />
-        <Setter Property="Padding" Value="{DynamicResource FxGraphPanelPadding}" />
+        <Setter Property="Width" Value="{StaticResource FxGraphPanelWidth}" />
+        <Setter Property="Padding" Value="{StaticResource FxGraphPanelPadding}" />
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
         <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
     </Style>
@@ -33,9 +33,9 @@
 
     <!-- Option list (Controls/OptionList): the tick of an entry (1 px edge; .checked filled in the accent); .unavailable = a greyed entry or control (the master picker, a Shortcuts action that does nothing now, a microphone row's parts while Use microphones is off) -->
     <Style Selector="Border.tickbox">
-        <Setter Property="Width" Value="{DynamicResource TickBoxSize}" />
-        <Setter Property="Height" Value="{DynamicResource TickBoxSize}" />
-        <Setter Property="CornerRadius" Value="{DynamicResource TickBoxCornerRadius}" />
+        <Setter Property="Width" Value="{StaticResource TickBoxSize}" />
+        <Setter Property="Height" Value="{StaticResource TickBoxSize}" />
+        <Setter Property="CornerRadius" Value="{StaticResource TickBoxCornerRadius}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" />
     </Style>
@@ -48,7 +48,7 @@
         <Setter Property="StrokeLineCap" Value="Round" />
         <Setter Property="StrokeJoin" Value="Round" />
         <Setter Property="Stretch" Value="Uniform" />
-        <Setter Property="Margin" Value="{DynamicResource TickMargin}" />
+        <Setter Property="Margin" Value="{StaticResource TickMargin}" />
     </Style>
     <Style Selector=":is(Control).unavailable"><Setter Property="Opacity" Value="0.45" /></Style>
 
@@ -59,15 +59,15 @@
         <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="{DynamicResource MenuCornerRadius}" />
+        <Setter Property="CornerRadius" Value="{StaticResource MenuCornerRadius}" />
         <Setter Property="FontSize" Value="{DynamicResource ControlContentThemeFontSize}" />
         <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
     </Style>
     <Style Selector="FlyoutPresenter.listmenu">
-        <Setter Property="Margin" Value="{DynamicResource MenuShadowRoom}" />
-        <Setter Property="Padding" Value="{DynamicResource MenuPadding}" />
-        <Setter Property="MinWidth" Value="{DynamicResource ListMenuMinWidth}" />
-        <Setter Property="MaxWidth" Value="{DynamicResource ListMenuMaxWidth}" />
+        <Setter Property="Margin" Value="{StaticResource MenuShadowRoom}" />
+        <Setter Property="Padding" Value="{StaticResource MenuPadding}" />
+        <Setter Property="MinWidth" Value="{StaticResource ListMenuMinWidth}" />
+        <Setter Property="MaxWidth" Value="{StaticResource ListMenuMaxWidth}" />
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
         <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
     </Style>
@@ -78,29 +78,29 @@
         <Setter Property="Padding" Value="8,6" />
         <Setter Property="MinWidth" Value="0" />
         <Setter Property="MaxWidth" Value="Infinity" />
-        <Setter Property="Width" Value="{DynamicResource OptionMenuWidth}" />
+        <Setter Property="Width" Value="{StaticResource OptionMenuWidth}" />
     </Style>
 
     <!-- A drop-down list (ComboBox) is the same menu: surface, shadow (shifted by its room so the list sits under the box, at least as wide
          as the box) and rows; its chosen row has the accent bar -->
     <Style Selector="ComboBox /template/ Popup#PART_Popup">
-        <Setter Property="HorizontalOffset" Value="{DynamicResource MenuShadowShiftX}" />
-        <Setter Property="VerticalOffset" Value="{DynamicResource MenuShadowShiftY}" />
+        <Setter Property="HorizontalOffset" Value="{StaticResource MenuShadowShiftX}" />
+        <Setter Property="VerticalOffset" Value="{StaticResource MenuShadowShiftY}" />
     </Style>
     <Style Selector="ComboBox /template/ Border#PopupBorder">
         <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="{DynamicResource MenuCornerRadius}" />
-        <Setter Property="Padding" Value="{DynamicResource MenuPadding}" />
-        <Setter Property="Margin" Value="{DynamicResource MenuShadowRoom}" />
+        <Setter Property="CornerRadius" Value="{StaticResource MenuCornerRadius}" />
+        <Setter Property="Padding" Value="{StaticResource MenuPadding}" />
+        <Setter Property="Margin" Value="{StaticResource MenuShadowRoom}" />
         <Setter Property="BoxShadow" Value="{DynamicResource MenuShadow}" />
         <Setter Property="MinWidth" Value="{Binding Bounds.Width, RelativeSource={RelativeSource TemplatedParent}}" />
     </Style>
     <Style Selector="ComboBoxItem">
-        <Setter Property="MinHeight" Value="{DynamicResource MenuRowHeight}" />
-        <Setter Property="Padding" Value="{DynamicResource MenuRowPadding}" />
-        <Setter Property="CornerRadius" Value="{DynamicResource MenuRowCornerRadius}" />
+        <Setter Property="MinHeight" Value="{StaticResource MenuRowHeight}" />
+        <Setter Property="Padding" Value="{StaticResource MenuRowPadding}" />
+        <Setter Property="CornerRadius" Value="{StaticResource MenuRowCornerRadius}" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Template">
             <ControlTemplate>
@@ -134,9 +134,9 @@
     <Style Selector="Button.menurow, ToggleButton.menurow">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Padding" Value="{DynamicResource MenuRowPadding}" />
-        <Setter Property="MinHeight" Value="{DynamicResource MenuRowHeight}" />
-        <Setter Property="CornerRadius" Value="{DynamicResource MenuRowCornerRadius}" />
+        <Setter Property="Padding" Value="{StaticResource MenuRowPadding}" />
+        <Setter Property="MinHeight" Value="{StaticResource MenuRowHeight}" />
+        <Setter Property="CornerRadius" Value="{StaticResource MenuRowCornerRadius}" />
         <Setter Property="HorizontalAlignment" Value="Stretch" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
@@ -160,9 +160,9 @@
     <Style Selector="Border.menubar">
         <Setter Property="IsVisible" Value="False" />
         <Setter Property="IsHitTestVisible" Value="False" />
-        <Setter Property="Width" Value="{DynamicResource MenuBarWidth}" />
-        <Setter Property="Height" Value="{DynamicResource MenuBarHeight}" />
-        <Setter Property="CornerRadius" Value="{DynamicResource MenuBarCornerRadius}" />
+        <Setter Property="Width" Value="{StaticResource MenuBarWidth}" />
+        <Setter Property="Height" Value="{StaticResource MenuBarHeight}" />
+        <Setter Property="CornerRadius" Value="{StaticResource MenuBarCornerRadius}" />
         <Setter Property="Background" Value="{DynamicResource BrushAccent}" />
         <Setter Property="HorizontalAlignment" Value="Left" />
         <Setter Property="VerticalAlignment" Value="Center" />
@@ -173,10 +173,10 @@
     <Style Selector="c|MenuRowList.noglyphs Panel.glyphslot"><Setter Property="IsVisible" Value="False" /></Style>
     <!-- A multi-choice menu's tick (MenuRowList's KeepsOpen rows, a ToggleButton.menurow) is drawn in the accent -->
     <Style Selector="Path.menutick, ToggleButton.menurow Path.glyph"><Setter Property="Stroke" Value="{DynamicResource BrushAccent}" /></Style>
-    <Style Selector="Button.menurow > StackPanel"><Setter Property="Orientation" Value="Horizontal" /><Setter Property="Spacing" Value="{DynamicResource MenuGap}" /></Style>
+    <Style Selector="Button.menurow > StackPanel"><Setter Property="Orientation" Value="Horizontal" /><Setter Property="Spacing" Value="{StaticResource MenuGap}" /></Style>
     <Style Selector="Button.menurow Path.glyph, ToggleButton.menurow Path.glyph">
-        <Setter Property="Width" Value="{DynamicResource MenuGlyphSize}" />
-        <Setter Property="Height" Value="{DynamicResource MenuGlyphSize}" />
+        <Setter Property="Width" Value="{StaticResource MenuGlyphSize}" />
+        <Setter Property="Height" Value="{StaticResource MenuGlyphSize}" />
         <Setter Property="StrokeThickness" Value="1.5" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
@@ -204,10 +204,10 @@
     <Style Selector="Button.menurow:disabled /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.menurow:disabled /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="Transparent" /></Style>
     <!-- Words in a menu-like pop-down that are not a choice (its title, a note): small and muted, set in to line up with the rows' words -->
     <Style Selector="TextBlock.menutext">
-        <Setter Property="FontSize" Value="{DynamicResource MenuSmallFontSize}" />
+        <Setter Property="FontSize" Value="{StaticResource MenuSmallFontSize}" />
         <Setter Property="Foreground" Value="{DynamicResource BrushMuted}" />
         <Setter Property="TextWrapping" Value="Wrap" />
-        <Setter Property="Margin" Value="{DynamicResource MenuTextInset}" />
+        <Setter Property="Margin" Value="{StaticResource MenuTextInset}" />
     </Style>
     <!-- .warm = the muted fact at a row's right in the caution colour (the hottest sensor's value) -->
     <Style Selector="TextBlock.menutext.warm"><Setter Property="Foreground" Value="{DynamicResource BrushCaution}" /></Style>
@@ -216,32 +216,32 @@
          accent edge), the x right after the words; a click anywhere on it takes it away. Mouse only, it never takes focus: the keyboard
          uses the row's menu instead. -->
     <Style Selector="Button.chipx">
-        <Setter Property="Padding" Value="{DynamicResource ChipPadding}" />
+        <Setter Property="Padding" Value="{StaticResource ChipPadding}" />
         <Setter Property="MinHeight" Value="0" />
-        <Setter Property="Height" Value="{DynamicResource ChipHeight}" />
-        <Setter Property="CornerRadius" Value="{DynamicResource ChipCornerRadius}" />
+        <Setter Property="Height" Value="{StaticResource ChipHeight}" />
+        <Setter Property="CornerRadius" Value="{StaticResource ChipCornerRadius}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Background" Value="{DynamicResource BrushControlFill}" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Focusable" Value="False" />
-        <Setter Property="FontSize" Value="{DynamicResource MenuSmallFontSize}" />
+        <Setter Property="FontSize" Value="{StaticResource MenuSmallFontSize}" />
     </Style>
     <Style Selector="Button.chipx:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
         <Setter Property="BorderBrush" Value="Transparent" />
     </Style>
     <Style Selector="Button.chipx:pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" /></Style>
-    <Style Selector="Button.chipx > StackPanel"><Setter Property="Orientation" Value="Horizontal" /><Setter Property="Spacing" Value="{DynamicResource ChipGap}" /></Style>
+    <Style Selector="Button.chipx > StackPanel"><Setter Property="Orientation" Value="Horizontal" /><Setter Property="Spacing" Value="{StaticResource ChipGap}" /></Style>
     <Style Selector="Button.chipx TextBlock">
         <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-        <Setter Property="MaxWidth" Value="{DynamicResource ChipMaxWidth}" />
+        <Setter Property="MaxWidth" Value="{StaticResource ChipMaxWidth}" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
     <!-- The x: an 8 px cross centred in a 14 px slot (the margin), so it sits tight after the words -->
     <Style Selector="Button.chipx Path.glyph">
-        <Setter Property="Width" Value="{DynamicResource ChipGlyphSize}" />
-        <Setter Property="Height" Value="{DynamicResource ChipGlyphSize}" />
-        <Setter Property="Margin" Value="{DynamicResource ChipGlyphMargin}" />
+        <Setter Property="Width" Value="{StaticResource ChipGlyphSize}" />
+        <Setter Property="Height" Value="{StaticResource ChipGlyphSize}" />
+        <Setter Property="Margin" Value="{StaticResource ChipGlyphMargin}" />
         <Setter Property="StrokeThickness" Value="1.5" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
@@ -272,18 +272,18 @@
     <!-- The dashed "+ add" chip at the end of a row of chips (Button.blockadd.small: the dashed master of Blocks.axaml at chip size) -->
     <Style Selector="Button.blockadd.small">
         <Setter Property="MinHeight" Value="0" />
-        <Setter Property="Height" Value="{DynamicResource ChipHeight}" />
-        <Setter Property="Padding" Value="{DynamicResource ChipAddPadding}" />
+        <Setter Property="Height" Value="{StaticResource ChipHeight}" />
+        <Setter Property="Padding" Value="{StaticResource ChipAddPadding}" />
         <Setter Property="Margin" Value="0" />
-        <Setter Property="CornerRadius" Value="{DynamicResource ChipCornerRadius}" />
-        <Setter Property="FontSize" Value="{DynamicResource MenuSmallFontSize}" />
+        <Setter Property="CornerRadius" Value="{StaticResource ChipCornerRadius}" />
+        <Setter Property="FontSize" Value="{StaticResource MenuSmallFontSize}" />
     </Style>
     <!-- The dashed card that ends a gallery of option cards and shows the rest (Button.blockadd.card: the gadget's "More layouts"): an option card's
          size and corners, accent words and glyph -->
     <Style Selector="Button.blockadd.card">
         <Setter Property="Margin" Value="0" />
-        <Setter Property="Padding" Value="{DynamicResource OptionCardPadding}" />
-        <Setter Property="CornerRadius" Value="{DynamicResource OptionCardCornerRadius}" />
+        <Setter Property="Padding" Value="{StaticResource OptionCardPadding}" />
+        <Setter Property="CornerRadius" Value="{StaticResource OptionCardCornerRadius}" />
         <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
         <Setter Property="HorizontalAlignment" Value="Stretch" />
         <Setter Property="VerticalAlignment" Value="Stretch" />

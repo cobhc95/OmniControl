@@ -7,7 +7,7 @@
              Classes="card">
     <!-- A card of choice pills (Pages/ChoiceChipsItem): the name (two lines at most) beside the wrapping pills and the optional chip menu after
          them (a pick among a few, Controls/ChoiceChip), the optional muted note under them. The pills are the card's parts for Left/Right and Enter. -->
-    <c:LabelFitPanel Margin="0,1" Spacing="{StaticResource GapLarge}" LabelMinWidth="{DynamicResource CardLabelMinWidth}" MainMinWidth="{DynamicResource ChipMinWidth}">
+    <c:LabelFitPanel Margin="0,1" Spacing="{StaticResource GapLarge}" LabelMinWidth="{StaticResource CardLabelMinWidth}" MainMinWidth="{StaticResource ChipMinWidth}">
         <TextBlock Classes="cardlabel" Text="{Binding Label}" />
         <StackPanel VerticalAlignment="Center">
             <WrapPanel HorizontalAlignment="Right">

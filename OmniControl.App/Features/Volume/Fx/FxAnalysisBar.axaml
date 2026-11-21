@@ -11,11 +11,11 @@
             <fx:ResponseThumb />
         </Button>
         <Popup x:Name="Enlarged" PlacementTarget="{Binding #Thumb}" Placement="BottomEdgeAlignedRight"
-               VerticalOffset="{DynamicResource MenuOffset}" IsLightDismissEnabled="False">
+               VerticalOffset="{StaticResource MenuOffset}" IsLightDismissEnabled="False">
             <FlyoutPresenter x:Name="EnlargedPanel" Classes="graphmenu">
-                <StackPanel Spacing="{DynamicResource FxGraphPanelSpacing}">
-                    <fx:ResponseGraph Height="{DynamicResource FxGraphHeight}" />
-                    <fx:FxAnalysisNumbers ShowsPeakFrequency="True" Margin="{DynamicResource MenuTextInset}" />
+                <StackPanel Spacing="{StaticResource FxGraphPanelSpacing}">
+                    <fx:ResponseGraph Height="{StaticResource FxGraphHeight}" />
+                    <fx:FxAnalysisNumbers ShowsPeakFrequency="True" Margin="{StaticResource MenuTextInset}" />
                     <TextBlock Classes="menutext" Text="{x:Static fx:FxAnalysisViewModel.NoteText}" IsVisible="{Binding HasNote}"
                                ToolTip.Tip="{Binding NoteTip}" />
                 </StackPanel>

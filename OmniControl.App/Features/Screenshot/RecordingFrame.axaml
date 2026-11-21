@@ -5,6 +5,9 @@
         Background="Transparent" TransparencyLevelHint="Transparent" IsHitTestVisible="False">
     <!-- The dashed red frame just outside a recorded area (docs/mockups/area-video-recording.html). The window is cut down to the frame's
          line (RecordingWindow.KeepOnly), so the area inside stays usable, and it is left out of every capture. Looks: Rectangle.recordframe in
-         Styles/Bars.axaml (the gaps between the dashes are see-through), its thickness RecordFrameThickness in App.axaml. -->
+         ScreenshotStyles.axaml (the gaps between the dashes are see-through), its thickness RecordFrameThickness in App.axaml. -->
+    <Window.Styles>
+        <StyleInclude Source="/Features/Screenshot/ScreenshotStyles.axaml" />
+    </Window.Styles>
     <Rectangle Classes="recordframe" />
 </Window>

@@ -28,7 +28,7 @@
             </Border>
             <TextBlock Grid.Column="1" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding NameTip}" VerticalAlignment="Center">
                 <Run Text="{Binding Name}" />
-                <Run Text="{Binding Technical}" Foreground="{DynamicResource BrushMuted}" FontSize="{DynamicResource MenuSmallFontSize}" />
+                <Run Text="{Binding Technical}" Foreground="{DynamicResource BrushMuted}" FontSize="{StaticResource MenuSmallFontSize}" />
             </TextBlock>
             <Border Grid.Column="2" Classes="tag" IsVisible="{Binding NotRunning}" VerticalAlignment="Center"
                     ToolTip.Tip="Not seen using the network since OmniControl started; its limits and block apply when it does.">
@@ -46,7 +46,7 @@
             </Button.Flyout>
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapSmall}">
                 <TextBlock Text="{Binding Upload}" TextTrimming="CharacterEllipsis" />
-                <PathIcon Grid.Column="1" Data="{DynamicResource ChevronDownIcon}" />
+                <PathIcon Grid.Column="1" Data="{StaticResource ChevronDownIcon}" />
             </Grid>
         </Button>
         <Button Grid.Column="5" x:Name="DownloadChip" Classes="selector" Classes.running="{Binding DownloadSet}" Tag="scope" HorizontalAlignment="Left"
@@ -58,7 +58,7 @@
             </Button.Flyout>
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapSmall}">
                 <TextBlock Text="{Binding Download}" TextTrimming="CharacterEllipsis" />
-                <PathIcon Grid.Column="1" Data="{DynamicResource ChevronDownIcon}" />
+                <PathIcon Grid.Column="1" Data="{StaticResource ChevronDownIcon}" />
             </Grid>
         </Button>
         <ToggleSwitch Grid.Column="6" Classes="plain" Tag="scope" IsChecked="{Binding IsOn}" VerticalAlignment="Center"

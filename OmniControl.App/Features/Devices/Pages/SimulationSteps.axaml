@@ -22,7 +22,7 @@
                     <DataTemplate x:DataType="vm:SimStepItem">
                         <Border Classes="steprow" Classes.failed="{Binding IsFailed}">
                             <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="{StaticResource GapLarge}">
-                                <PathIcon Classes="grip" Data="{DynamicResource GripIcon}" VerticalAlignment="Center" ToolTip.Tip="Drag to reorder" />
+                                <PathIcon Classes="grip" Data="{StaticResource GripIcon}" VerticalAlignment="Center" ToolTip.Tip="Drag to reorder" />
                                 <TextBlock Grid.Column="1" Classes="muted" Text="{Binding NumberText}" VerticalAlignment="Center" />
                                 <WrapPanel Grid.Column="2" ItemSpacing="{StaticResource Gap}" LineSpacing="{StaticResource GapSmall}" VerticalAlignment="Center">
                                     <TextBlock Classes="blockword" Text="{Binding Lead}" VerticalAlignment="Center" />

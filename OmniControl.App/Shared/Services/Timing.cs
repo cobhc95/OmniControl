@@ -29,6 +29,9 @@ public static partial class Timing
     /// <inheritdoc cref="UiReleaseAfterHidden"/> The wait lets the closed windows' last frames and handles go first.
     public static readonly TimeSpan UiReleaseCompactAfter = TimeSpan.FromSeconds(2);
 
+    /// This long after the main window is let go (its collection long done), timing-log.txt says whether the window is still in memory (something holds it).
+    public static readonly TimeSpan UiReleaseLeakCheck = TimeSpan.FromSeconds(30);
+
     /// The process's memory goes to timing-log.txt this long after start-up (<c>UiTiming.Memory</c>; also at <see cref="HiddenSettle"/>).
     public static readonly TimeSpan MemoryLineAfterStart = TimeSpan.FromMinutes(2);
 

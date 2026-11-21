@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.VisualTree;
 
 namespace OmniControl.App.Shared.Services;
 
@@ -7,14 +9,27 @@ namespace OmniControl.App.Shared.Services;
 public static class UiTiming
 {
     /// Logs the process's memory <paramref name="when"/>, read on a worker (the process figures come from Windows' process list): the
-    /// managed heap after the last collection (size, fragmented, committed), the live managed bytes, private bytes and working set.
-    public static void Memory(string when) => Guard.OffUi("Memory line", () =>
+    /// managed heap after the last collection (size, fragmented, committed), the live managed bytes, private bytes and working set, then
+    /// the visuals in the open windows (counted here, on the UI thread) and <paramref name="note"/>. Call on the UI thread.
+    public static void Memory(string when, string? note = null)
     {
-        var gc = GC.GetGCMemoryInfo();
-        using var self = Process.GetCurrentProcess();
-        Write($"Memory {when}: heap {Mb(gc.HeapSizeBytes)}, fragmented {Mb(gc.FragmentedBytes)}, committed {Mb(gc.TotalCommittedBytes)}, "
-            + $"live {Mb(GC.GetTotalMemory(false))}, private {Mb(self.PrivateMemorySize64)}, working set {Mb(self.WorkingSet64)} (MB)");
-    });
+        var visuals = Visuals();
+        Guard.OffUi("Memory line", () =>
+        {
+            var gc = GC.GetGCMemoryInfo();
+            using var self = Process.GetCurrentProcess();
+            Write($"Memory {when}: heap {Mb(gc.HeapSizeBytes)}, fragmented {Mb(gc.FragmentedBytes)}, committed {Mb(gc.TotalCommittedBytes)}, "
+                + $"live {Mb(GC.GetTotalMemory(false))}, private {Mb(self.PrivateMemorySize64)}, working set {Mb(self.WorkingSet64)} (MB); {visuals}"
+                + (note is null ? string.Empty : $"; {note}"));
+        });
+    }
+
+    // Every window the app has open (shown or hidden), with all its visuals: what the main window's release should take away.
+    private static string Visuals()
+    {
+        var windows = (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Windows ?? Array.Empty<Window>();
+        return $"{windows.Sum(w => 1 + w.GetVisualDescendants().Count())} visuals in {windows.Count} windows";
+    }
 
     private static string Mb(long bytes) => (bytes / 1048576.0).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
 

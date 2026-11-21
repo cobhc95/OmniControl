@@ -14,7 +14,7 @@
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:MethodItem">
                         <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto" ColumnSpacing="{StaticResource GapLarge}" ToolTip.Tip="{Binding RowTip}">
-                            <PathIcon Classes="grip" Data="{DynamicResource GripIcon}" VerticalAlignment="Center" ToolTip.Tip="Drag to change the order" />
+                            <PathIcon Classes="grip" Data="{StaticResource GripIcon}" VerticalAlignment="Center" ToolTip.Tip="Drag to change the order" />
                             <TextBlock Grid.Column="1" Classes="muted" Text="{Binding NumberText}" VerticalAlignment="Center" />
                             <WrapPanel Grid.Column="2" ItemSpacing="{StaticResource Gap}" LineSpacing="{StaticResource GapSmall}" VerticalAlignment="Center">
                                 <TextBlock Text="{Binding RowTitle}" TextWrapping="Wrap" VerticalAlignment="Center" />
@@ -36,10 +36,10 @@
                                 <Panel>
                                     <c:IconGlyph LibraryId="power" IsVisible="{Binding PowerNormal}" />
                                     <c:IconGlyph Classes="markfailed" LibraryId="alert" IsVisible="{Binding PowerFailed}" />
-                                    <Panel IsVisible="{Binding PowerRunning}" Width="{DynamicResource TrayMarkSize}" Height="{DynamicResource TrayMarkSize}">
+                                    <Panel IsVisible="{Binding PowerRunning}" Width="{StaticResource TrayMarkSize}" Height="{StaticResource TrayMarkSize}">
                                         <Ellipse Classes="markring" />
                                         <Path Classes="markarc" Classes.spinning="{Binding PowerRunning}" />
-                                        <Path Classes="markstop" Data="{DynamicResource StopIcon}" />
+                                        <Path Classes="markstop" Data="{StaticResource StopIcon}" />
                                     </Panel>
                                 </Panel>
                             </Button>

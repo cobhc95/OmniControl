@@ -31,9 +31,12 @@ public sealed class MenuChoiceLink
         if (_owner.IsAttachedToVisualTree()) Attach();
     }
 
+    // Never heard twice (a new data context and the attach can both ask), so one Detach always lets the owner go.
     public void Attach()
     {
-        if (_item is not null) _item.PropertyChanged += OnItemChanged;
+        if (_item is null) return;
+        _item.PropertyChanged -= OnItemChanged;
+        _item.PropertyChanged += OnItemChanged;
     }
 
     public void Detach()
