@@ -6,6 +6,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 ## Unreleased
 
 - timing-log.txt's memory lines also give the figure Task Manager shows (the private working set).
+- Lighter memory: the drawing library's image cache is kept small, and its caches are emptied when the windows are let go after a long hide.
 
 ## 0.2.8 (21 Nov 2026)
 
