@@ -28,6 +28,7 @@ public static class ApoConfigFiles
     {
         try
         {
+            if (LinkIn(folder) is { } refused) return refused;
             var chain = Path.Combine(folder, ApoIds.ChainFileName);
             var bytes = Encoding.UTF8.GetBytes(chainText);
             if (!File.Exists(chain) || !File.ReadAllBytes(chain).AsSpan().SequenceEqual(bytes)) WriteShut(chain, bytes);
@@ -59,7 +60,9 @@ public static class ApoConfigFiles
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            return null; // Equalizer APO or its editor holds a file this moment
+            // Equalizer APO or its editor holds a file this moment (asked again later); anything else is logged.
+            if (ex is not IOException busy || !IsSharingViolation(busy)) AppDataStore.AppendLog(Guard.LogFile, $"Equalizer APO's config folder ({folder}) could not be read: {ex.Message}");
+            return null;
         }
     }
 
@@ -84,6 +87,7 @@ public static class ApoConfigFiles
     {
         try
         {
+            if (LinkIn(folder) is { } refused) return refused;
             var config = Path.Combine(folder, ApoIds.ConfigFileName);
             if (File.Exists(config))
             {
@@ -177,6 +181,13 @@ public static class ApoConfigFiles
             }
         }
     }
+
+    /// One sentence when a file OmniControl writes or deletes in the folder (or the folder) is a link: anyone may write this folder, so a
+    /// planted link would make OmniControl change the file it points to. Null when every one is a plain file.
+    private static string? LinkIn(string folder) =>
+        new[] { ApoIds.ConfigFileName, ApoIds.ChainFileName, ApoIds.ConfigBackupFileName }.Any(name => !PlainFile.IsPlain(Path.Combine(folder, name)))
+            ? $"Equalizer APO's config folder ({folder}) holds a link where its config files belong, so OmniControl left it alone."
+            : null;
 
     /// ERROR_SHARING_VIOLATION (32) as an HRESULT.
     private static bool IsSharingViolation(IOException ex) => (ex.HResult & 0xFFFF) == 32;

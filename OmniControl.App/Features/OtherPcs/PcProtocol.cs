@@ -11,7 +11,8 @@ internal static class PcProtocol
 {
     public const int TcpPort = 47810;
     public const int UdpPort = 47811;
-    public const string BeaconTag = "omnicontrol-pc/1";
+    /// The protocol's version is in the tag: PCs on another version neither see nor are seen (version 2 binds a connection's kind into its proof).
+    public const string BeaconTag = "omnicontrol-pc/2";
 
     /// First byte of a connection: a pairing (only answered while pairing is open), a session of an already paired PC, or a probe (the same proof as a session, then one sealed ping answered with a pong, and the connection ends).
     public const byte WantsPairing = 0x50, WantsSession = 0x53, WantsProbe = 0x51;

@@ -35,8 +35,10 @@ public static class ImportGroups
 /// <param name="NotImported">Top-level properties an import never takes from a file (the approvals of commands: a file must not pre-approve them).</param>
 /// <param name="Import">Where the store sits in the import from another PC; null: that import does not offer it.</param>
 /// <param name="MachineSpecific">Belongs to this PC alone (its pairing list, the key its keyboard sends, paths of plug-ins): never sent to another PC.</param>
+/// <param name="NotImportedInside">Properties an import from another PC takes out of every object inside the file (an effect's plug-in or
+/// impulse response file and its saved state: another PC must never make this one load a library or feed a plug-in its data).</param>
 public sealed record DataStore(string FileName, string Area, StoreKind Kind, bool Mergeable = false, string[]? NotImported = null,
-    ImportPlace? Import = null, bool MachineSpecific = false)
+    ImportPlace? Import = null, bool MachineSpecific = false, string[]? NotImportedInside = null)
 {
     public bool IsFamily => FileName.Contains('*');
 
@@ -64,10 +66,13 @@ public static class DataStores
         public static readonly ImportPlace Confirmations = new(ImportGroups.LookAndApp, "Confirmations", "answers you chose not to be asked again");
     }
 
-    public static readonly DataStore App = new("settings.json", "App settings", StoreKind.Saved, Import: Places.AppSettings);
+    // An effect's file (plug-in or impulse response) and the plug-in's saved state, as mixer.json and presets.json name them.
+    private static readonly string[] PluginFiles = { "Path", "State" };
+
+    public static readonly DataStore App = new("settings.json", "App settings", StoreKind.Saved, NotImported: new[] { "PluginFolders", "Updates" }, Import: Places.AppSettings);
     public static readonly DataStore Mixer = new("mixer.json", "Volume mixer and wiring", StoreKind.Saved,
-        NotImported: new[] { "BusCable", "RealMasterDevice", "CaptureSilence" }, Import: Places.Volume);
-    public static readonly DataStore EffectPresets = new("presets.json", "Effect presets", StoreKind.Saved, Mergeable: true, Import: Places.Volume);
+        NotImported: new[] { "BusCable", "RealMasterDevice", "CaptureSilence" }, Import: Places.Volume, NotImportedInside: PluginFiles);
+    public static readonly DataStore EffectPresets = new("presets.json", "Effect presets", StoreKind.Saved, Mergeable: true, Import: Places.Volume, NotImportedInside: PluginFiles);
     public static readonly DataStore VolumePresets = new("volume-presets.json", "Volume presets", StoreKind.Saved, Mergeable: true, Import: Places.Volume);
     public static readonly DataStore Plugins = new("plugins.json", "Plug-in list", StoreKind.Saved, Mergeable: true, MachineSpecific: true);
     public static readonly DataStore Automation = new("automation.json", "Rules, custom actions and scripts", StoreKind.Saved, Mergeable: true, NotImported: new[] { "Approved" }, Import: Places.Automation);

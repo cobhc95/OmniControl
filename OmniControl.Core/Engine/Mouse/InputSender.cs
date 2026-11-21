@@ -63,6 +63,7 @@ public static class InputSender
     {
         var layout = WindowQuery.ActiveKeyboardLayout();
         var sent = new List<string>();
+        var refusedUps = new List<Input>();
         foreach (var (vk, down) in keys.Select(k => (k, true)).Concat(keys.Reverse().Select(k => (k, false))))
         {
             if (sent.Count > 0) Thread.Sleep(CoreTiming.RemoteKeyGapMs);
@@ -71,8 +72,11 @@ public static class InputSender
             // A key without a scan code (none of the named ones) can only go as its virtual key.
             var input = scan == 0 ? RawKey(vk, 0, flags) : new Input { Type = InputKeyboard, U = new Union { Key = new KeyData { Scan = scan, Flags = flags | ByScanCode } } };
             var accepted = Send(input) == 1;
+            if (!accepted && !down) refusedUps.Add(input);
             sent.Add($"{(scan == 0 ? $"vk {vk:X2}" : $"{(extended ? "E0 " : string.Empty)}{scan:X2}")} {(down ? "down" : "up")}{(accepted ? string.Empty : " (refused)")}");
         }
+        // A release Windows refused (a program with higher rights came to the front) is sent once more, so no key is left down.
+        if (refusedUps.Count > 0) sent.Add(Send(refusedUps.ToArray()) == refusedUps.Count ? "refused releases sent again" : "refused releases refused again");
         return string.Join(", ", sent);
     }
 

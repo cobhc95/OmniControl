@@ -121,13 +121,14 @@ internal static class PcSession
         if (await PcWire.ReadExactAsync(stream, PcProtocol.KeyBytes * 2, step.Token).ConfigureAwait(false) is not { } answer) return null;
         var peerNonce = answer[..PcProtocol.KeyBytes];
         var peerProof = answer[PcProtocol.KeyBytes..];
-        if (!PcCrypto.Same(peerProof, Proof(secret, "listener", ownNonce, peerNonce, ownId, peerId))) return null;
-        await stream.WriteAsync(Proof(secret, "dialler", ownNonce, peerNonce, ownId, peerId), ct).ConfigureAwait(false);
+        if (!PcCrypto.Same(peerProof, Proof(secret, "listener", kind, ownNonce, peerNonce, ownId, peerId))) return null;
+        await stream.WriteAsync(Proof(secret, "dialler", kind, ownNonce, peerNonce, ownId, peerId), ct).ConfigureAwait(false);
         return Link(peerId, stream, secret, ownNonce, peerNonce, dialling: true);
     }
 
-    /// Answers a session connection whose first byte was read; null (and nothing sent) when the id is not a paired PC's or a proof fails.
-    public static async Task<PcLink?> AcceptAsync(Stream stream, string ownId, Func<string, byte[]?> secretOf, CancellationToken ct)
+    /// Answers a session or probe connection whose first byte (<paramref name="kind"/>) was read; null (and nothing sent) when the id is not a
+    /// paired PC's or a proof fails.
+    public static async Task<PcLink?> AcceptAsync(Stream stream, byte kind, string ownId, Func<string, byte[]?> secretOf, CancellationToken ct)
     {
         using var step = PcWire.Step(ct);
         if (await PcWire.ReadExactAsync(stream, PcProtocol.IdBytes + PcProtocol.KeyBytes, step.Token).ConfigureAwait(false) is not { } hello) return null;
@@ -135,15 +136,16 @@ internal static class PcSession
         if (secretOf(peerId) is not { } secret) return null;
         var peerNonce = hello[PcProtocol.IdBytes..];
         var ownNonce = PcCrypto.Random(PcProtocol.KeyBytes);
-        var answer = ownNonce.Concat(Proof(secret, "listener", peerNonce, ownNonce, peerId, ownId)).ToArray();
+        var answer = ownNonce.Concat(Proof(secret, "listener", kind, peerNonce, ownNonce, peerId, ownId)).ToArray();
         await stream.WriteAsync(answer, ct).ConfigureAwait(false);
         if (await PcWire.ReadExactAsync(stream, PcProtocol.KeyBytes, step.Token).ConfigureAwait(false) is not { } proof
-            || !PcCrypto.Same(proof, Proof(secret, "dialler", peerNonce, ownNonce, peerId, ownId))) return null;
+            || !PcCrypto.Same(proof, Proof(secret, "dialler", kind, peerNonce, ownNonce, peerId, ownId))) return null;
         return Link(peerId, stream, secret, peerNonce, ownNonce, dialling: false);
     }
 
-    private static byte[] Proof(byte[] secret, string role, byte[] diallerNonce, byte[] listenerNonce, string diallerId, string listenerId) =>
-        PcCrypto.Mac(secret, PcCrypto.Text(role), diallerNonce, listenerNonce, PcCrypto.Text(diallerId), PcCrypto.Text(listenerId));
+    // The connection's kind (session or probe) is part of what both prove, so one can never be passed off as the other (protocol 2).
+    private static byte[] Proof(byte[] secret, string role, byte kind, byte[] diallerNonce, byte[] listenerNonce, string diallerId, string listenerId) =>
+        PcCrypto.Mac(secret, PcCrypto.Text(role), new[] { kind }, diallerNonce, listenerNonce, PcCrypto.Text(diallerId), PcCrypto.Text(listenerId));
 
     private static PcLink Link(string peerId, Stream stream, byte[] secret, byte[] diallerNonce, byte[] listenerNonce, bool dialling)
     {

@@ -26,7 +26,7 @@ public static class TailscaleFirewall
         }
     }
 
-    /// Adds the rule for <paramref name="port"/> (the person answers Windows' administrator prompt). Call off the UI thread.
+    /// Adds the rule for <paramref name="port"/>, for this program only (the person answers Windows' administrator prompt). Call off the UI thread.
     public static HelperResult Allow(int port) =>
-        HelperProcess.RunElevated(Netsh, $"advfirewall firewall add rule name=\"{RuleName}\" dir=in action=allow protocol=TCP localport={port} remoteip={TailnetRanges} profile=any");
+        HelperProcess.RunElevated(Netsh, $"advfirewall firewall add rule name=\"{RuleName}\" dir=in action=allow program=\"{Environment.ProcessPath}\" protocol=TCP localport={port} remoteip={TailnetRanges} profile=any");
 }

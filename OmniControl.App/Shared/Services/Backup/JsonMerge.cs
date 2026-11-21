@@ -44,6 +44,21 @@ public static class JsonMerge
         return incoming;
     }
 
+    /// Removes <paramref name="names"/> from every object inside <paramref name="node"/>, at any depth (in place).
+    public static void StripInside(JsonNode? node, IReadOnlyCollection<string> names)
+    {
+        switch (node)
+        {
+            case JsonObject item:
+                foreach (var name in names) item.Remove(name);
+                foreach (var (_, value) in item.ToList()) StripInside(value, names);
+                break;
+            case JsonArray list:
+                foreach (var entry in list) StripInside(entry, names);
+                break;
+        }
+    }
+
     private static string KeyOf(JsonNode? entry)
     {
         if (entry is JsonObject item)

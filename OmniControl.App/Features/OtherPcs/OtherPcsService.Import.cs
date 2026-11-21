@@ -33,6 +33,7 @@ public sealed partial class OtherPcsService : ISettingsTransport
     {
         var reply = new PcMsg { T = PcMsgType.ImportAnswer, Rid = message.Rid };
         if (Find(link.PeerId) is not { } pair) reply.Why = "This PC is not paired.";
+        else if (!pair.MayReadSettings) reply.Why = RefuseReading(pair, "settings");
         else if (!_importLimits.TryAcquire(pair.Id))
             reply.Why = "Asked too often. Try again in a moment.";
         else
@@ -51,9 +52,17 @@ public sealed partial class OtherPcsService : ISettingsTransport
             {
                 reply.Ok = true;
                 reply.Payload = text;
-                if (message.T == PcMsgType.ImportList) _report($"{pair.DisplayName} is reading this PC's settings to import them.");
+                _report(message.T == PcMsgType.ImportList ? $"{pair.DisplayName} is reading this PC's settings to import them."
+                    : $"{pair.DisplayName} read this PC's settings: {PcProtocol.Clip(message.Text, 40)}.");
             }
         }
         _ = link.SendAsync(reply);
+    }
+
+    // A PC not allowed to read is refused, and the person here is told it asked; the sentence goes back to that PC.
+    private string RefuseReading(PairedPc pair, string what)
+    {
+        _report($"{pair.DisplayName} asked to read this PC's {what}; it is not allowed (its ⋯ menu, Allowed here).");
+        return $"{_ownName} doesn't allow reading its {what}. Allow it on {_ownName}: this PC's ⋯ menu, Allowed here.";
     }
 }

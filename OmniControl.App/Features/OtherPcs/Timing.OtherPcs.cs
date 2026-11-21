@@ -53,8 +53,14 @@ public static partial class Timing
     /// A card of another PC's state ignores that PC's reports for this long after the user moved it here (the echo of the user's own change).
     public static readonly TimeSpan PcEchoGrace = TimeSpan.FromSeconds(1);
 
-    /// At most this many connections may be in their start (before they proved who they are) at once.
-    public const int PcHandshakesMax = 4;
+    /// At most this many connections may be in their start (before they proved who they are) at once, and this many from one address.
+    public const int PcHandshakesMax = 4, PcHandshakesPerAddress = 2;
+
+    /// At most this many PCs heard on the network are remembered (beacons of more are dropped), and this many beacons a second are read.
+    public const int PcSeenMax = 64, PcBeaconsPerSecond = 20;
+
+    /// How long the network addresses the beacons go to are kept before they are listed again.
+    public static readonly TimeSpan PcBroadcastRefresh = TimeSpan.FromMinutes(1);
 
     /// How often a Tailscale-paired PC that is offline gets the Tailscale checks again, how long to wait after a fix (start, sign in) before reading Tailscale again, and how long to wait before trying to open a Tailscale link again after one failed.
     public static readonly TimeSpan PcTailscaleRecheck = TimeSpan.FromSeconds(30), PcTailscaleAfterFix = TimeSpan.FromSeconds(3), PcTailscaleSwitchBackoff = TimeSpan.FromMinutes(2);

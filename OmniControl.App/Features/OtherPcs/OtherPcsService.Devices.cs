@@ -37,6 +37,7 @@ public sealed partial class OtherPcsService
     {
         var reply = new PcMsg { T = PcMsgType.DevicesAnswer, Rid = message.Rid };
         if (Find(link.PeerId) is not { } pair) reply.Why = "This PC is not paired.";
+        else if (!pair.MayReadSettings) reply.Why = RefuseReading(pair, "devices");
         else if (!_deviceLimits.TryAcquire(pair.Id))
             reply.Why = "Asked too often. Try again in a moment.";
         else
@@ -48,6 +49,7 @@ public sealed partial class OtherPcsService
             {
                 reply.Ok = true;
                 reply.Payload = text;
+                _report($"{pair.DisplayName} read this PC's device set-ups{(message.Scripts == true ? " and script templates" : string.Empty)}.");
             }
         }
         _ = link.SendAsync(reply);

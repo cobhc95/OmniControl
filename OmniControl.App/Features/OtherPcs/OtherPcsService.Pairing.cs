@@ -66,6 +66,7 @@ public sealed partial class OtherPcsService
         Pairing.Code = string.Empty;
         Pairing.Phase = PairingPhase.Closed;
         _discovery?.AnnounceNow();
+        StopNetworkIfIdle();
         RaiseChanged();
     }
 
@@ -177,7 +178,7 @@ public sealed partial class OtherPcsService
         {
             try
             {
-                answer.TrySetResult(await _ask(new DialogMessage($"Pair with {peerName}?", $"The code was typed on {peerName}. Once paired, each PC can use what the other shares.", "Pair", Dismiss: dismiss)));
+                answer.TrySetResult(await _ask(new DialogMessage($"Pair with {peerName}?", $"The code was typed on {peerName}. Once paired, each PC can use what the other shares.", "Yes, pair", Dismiss: dismiss, YesNo: true)));
             }
             finally
             {
@@ -224,6 +225,7 @@ public sealed partial class OtherPcsService
             Pairing.Message = result.Problem ?? "Pairing did not finish. Nothing was paired.";
         Pairing.Phase = PairingPhase.Ended;
         _discovery?.AnnounceNow();
+        StopNetworkIfIdle();
         RaiseChanged();
     }
 

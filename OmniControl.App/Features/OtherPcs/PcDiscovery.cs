@@ -62,11 +62,26 @@ internal sealed class PcDiscovery : IDisposable
         }
     }
 
+    private PcBeacon? _lastBeacon;
+    private byte[] _packet = Array.Empty<byte>();
+    private IReadOnlyList<IPAddress> _targets = Array.Empty<IPAddress>();
+    private DateTime _targetsAt = DateTime.MinValue;
+
+    private readonly object _sendGate = new(); // AnnounceNow (UI thread) and the timer (a worker) both send
+
     private void Send()
     {
+        lock (_sendGate) SendNow();
+    }
+
+    private void SendNow()
+    {
         if (_udp is not { } udp) return;
-        var packet = JsonSerializer.SerializeToUtf8Bytes(_own(), PcProtocol.Json);
-        foreach (var target in BroadcastAddresses())
+        var beacon = _own();
+        if (beacon != _lastBeacon) (_lastBeacon, _packet) = (beacon, JsonSerializer.SerializeToUtf8Bytes(beacon, PcProtocol.Json)); // made again only when it changed
+        var packet = _packet;
+        if (DateTime.UtcNow - _targetsAt >= Timing.PcBroadcastRefresh) (_targets, _targetsAt) = (BroadcastAddresses().ToList(), DateTime.UtcNow); // the adapters are listed now and then, not at each beacon
+        foreach (var target in _targets)
         {
             try
             {
@@ -100,11 +115,16 @@ internal sealed class PcDiscovery : IDisposable
     private async Task ListenAsync()
     {
         if (_udp is not { } udp) return;
+        var second = Environment.TickCount64 / 1000;
+        var heardThisSecond = 0;
         try
         {
             while (!_stop.IsCancellationRequested)
             {
                 var received = await udp.ReceiveAsync(_stop.Token).ConfigureAwait(false);
+                var now = Environment.TickCount64 / 1000;
+                if (now != second) (second, heardThisSecond) = (now, 0);
+                if (++heardThisSecond > Timing.PcBeaconsPerSecond) continue; // a flood of beacons is dropped, not handed on
                 if (received.Buffer.Length > BeaconMax || Read(received.Buffer) is not { } beacon) continue;
                 _heard(beacon, received.RemoteEndPoint.Address);
             }

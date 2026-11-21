@@ -431,7 +431,11 @@ public sealed class PcWake : IDisposable
         reply.Why = why;
     }
 
+    // No and the keys Y and N answer (No has the keyboard, so Enter never allows by accident).
     private Task<bool> AllowedHereAsync(string title, string text, string yes) => _askHere(new DialogMessage(title, text, yes, YesNo: true));
+
+    // Said honestly: an elevated OmniControl changes the settings without Windows' prompt.
+    private static string ChangesHow => AdministratorMode.IsElevated ? "OmniControl runs as administrator, so it changes at once." : "Windows will ask once more before it changes.";
 
     private async Task FixAskedAsync(PairedPc pair, PcMsg message, PcMsg reply)
     {
@@ -442,7 +446,7 @@ public sealed class PcWake : IDisposable
             return;
         }
         var list = string.Join(", ", fixes.Select(FixWords));
-        if (!await AllowedHereAsync($"Set up wake for {pair.DisplayName}", $"{pair.DisplayName} asks to turn on: {list}. Windows will ask once more before it changes.", "Allow"))
+        if (!await AllowedHereAsync($"Set up wake for {pair.DisplayName}", $"{pair.DisplayName} asks to turn on: {list}. {ChangesHow}", "Allow"))
         {
             reply.Why = $"{_ownName} did not allow it.";
             return;
@@ -452,7 +456,7 @@ public sealed class PcWake : IDisposable
 
     private async Task UndoAskedAsync(PairedPc pair, PcMsg reply)
     {
-        if (!await AllowedHereAsync($"Set up wake for {pair.DisplayName}", $"{pair.DisplayName} asks to put back the wake settings OmniControl changed on this PC. Windows will ask once more before it changes.", "Allow"))
+        if (!await AllowedHereAsync($"Set up wake for {pair.DisplayName}", $"{pair.DisplayName} asks to put back the wake settings OmniControl changed on this PC. {ChangesHow}", "Allow"))
         {
             reply.Why = $"{_ownName} did not allow it.";
             return;

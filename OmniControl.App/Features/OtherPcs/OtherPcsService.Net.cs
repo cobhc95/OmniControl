@@ -13,17 +13,18 @@ public sealed partial class OtherPcsService
     private readonly HashSet<string> _tailscaleFailed = new(); // PCs set to Tailscale whose Tailscale address did not answer: found on the network until Tailscale works again
     private TcpListener? _listener;
     private PcDiscovery? _discovery;
-    private bool _started;
+    private CancellationTokenSource? _network; // the listener, the beacons and the link checks run until it is cancelled
     private int _handshakes;
+    private readonly Dictionary<IPAddress, int> _handshakesFrom = new(); // connections in their start, per address (locked)
 
     /// A beacon heard from another PC: where it was, and when.
     private sealed record Seen(PcBeacon Beacon, string Address, DateTime At);
 
-    /// Starts listening and announcing (once); nothing happens before a PC is paired or pairing is opened.
+    /// Starts listening and announcing; nothing runs while no PC is paired and pairing is closed (<see cref="StopNetworkIfIdle"/>).
     private void StartNetwork()
     {
-        if (_started || _disposed) return;
-        _started = true;
+        if (_network is not null || _disposed) return;
+        _network = CancellationTokenSource.CreateLinkedTokenSource(_stop.Token);
         StartListener();
         _discovery = new PcDiscovery(OwnBeacon, (beacon, from) => PcWork.Post(() => Heard(beacon, from.ToString())));
         if (!_discovery.Start(out var problem))
@@ -33,14 +34,50 @@ public sealed partial class OtherPcsService
             Guard.Log("Other PCs: discovery", new IOException(problem));
             _report("Other PCs can't look for PCs on the network now (the port is in use). A PC can still be paired or connected by its address.");
         }
-        _ = Guard.RunAsync("Other PCs: link checks", CheckLinksAsync);
+        var running = _network.Token;
+        _ = Guard.RunAsync("Other PCs: link checks", () => CheckLinksAsync(running));
         Wake.RefreshOwnWake();
     }
 
     private void StopNetwork()
     {
+        _network?.Cancel();
+        _network?.Dispose();
+        _network = null;
         _listener?.Stop();
+        _listener = null;
         _discovery?.Dispose();
+        _discovery = null;
+    }
+
+    /// No PC is paired and pairing is closed: the listener and the beacons stop (they start again with a pairing).
+    private void StopNetworkIfIdle()
+    {
+        if (_settings.Pairs.Count > 0 || PairingIsOpen || Pairing.Phase is PairingPhase.AskingCode or PairingPhase.ShowingCode or PairingPhase.Working) return;
+        StopNetwork();
+        _seen.Clear();
+    }
+
+    // At most Timing.PcHandshakesPerAddress connections from one address may be in their start at once, so one host cannot take every place.
+    private bool TakeHandshake(IPAddress? from)
+    {
+        if (from is null) return false;
+        lock (_handshakesFrom)
+        {
+            var now = _handshakesFrom.GetValueOrDefault(from);
+            if (now >= Timing.PcHandshakesPerAddress) return false;
+            _handshakesFrom[from] = now + 1;
+            return true;
+        }
+    }
+
+    private void ReleaseHandshake(IPAddress from)
+    {
+        lock (_handshakesFrom)
+        {
+            if (_handshakesFrom.GetValueOrDefault(from) <= 1) _handshakesFrom.Remove(from);
+            else _handshakesFrom[from]--;
+        }
     }
 
     private PcBeacon OwnBeacon() => new(PcProtocol.BeaconTag, OwnId, _ownName, PcProtocol.TcpPort, PairingIsOpen);
@@ -59,16 +96,17 @@ public sealed partial class OtherPcsService
             _report("Other PCs can't accept connections now (the port is in use). This PC can still connect to the others.");
             return;
         }
-        _ = Guard.RunAsync("Other PCs: accepting connections", () => AcceptAsync(_listener));
+        var (accepting, running) = (_listener, _network!.Token);
+        _ = Guard.RunAsync("Other PCs: accepting connections", () => AcceptAsync(accepting, running));
     }
 
-    private async Task AcceptAsync(TcpListener listener)
+    private async Task AcceptAsync(TcpListener listener, CancellationToken running)
     {
         try
         {
-            while (!_stop.IsCancellationRequested)
+            while (!running.IsCancellationRequested)
             {
-                var client = await listener.AcceptTcpClientAsync(_stop.Token).ConfigureAwait(false);
+                var client = await listener.AcceptTcpClientAsync(running).ConfigureAwait(false);
                 _ = Guard.RunAsync("Other PCs: incoming connection", () => HandleIncomingAsync(client));
             }
         }
@@ -83,10 +121,12 @@ public sealed partial class OtherPcsService
     private async Task HandleIncomingAsync(TcpClient client)
     {
         PcLink? link = null;
+        var from = (client.Client.RemoteEndPoint as IPEndPoint)?.Address;
         var counted = Interlocked.Increment(ref _handshakes) <= Timing.PcHandshakesMax;
+        var mine = counted && TakeHandshake(from);
         try
         {
-            if (!counted) return;
+            if (!mine) return;
             client.NoDelay = true;
             var viaTailscale = TailscaleStatusReader.IsTailscaleAddress((client.Client.RemoteEndPoint as IPEndPoint)?.Address.ToString());
             var stream = new NetworkStream(client.Client, ownsSocket: true);
@@ -96,7 +136,7 @@ public sealed partial class OtherPcsService
             else if (kind[0] == PcProtocol.WantsProbe) await AnswerProbeAsync(stream).ConfigureAwait(false);
             else if (kind[0] == PcProtocol.WantsSession)
             {
-                link = await PcSession.AcceptAsync(stream, OwnId, id => _secrets.GetValueOrDefault(id), _stop.Token).ConfigureAwait(false);
+                link = await PcSession.AcceptAsync(stream, PcProtocol.WantsSession, OwnId, id => _secrets.GetValueOrDefault(id), _stop.Token).ConfigureAwait(false);
                 if (link is not null) link.ViaTailscale = viaTailscale;
             }
         }
@@ -107,6 +147,7 @@ public sealed partial class OtherPcsService
         finally
         {
             Interlocked.Decrement(ref _handshakes);
+            if (mine) ReleaseHandshake(from!);
             if (link is null) client.Dispose();
         }
         if (link is not null) PcWork.Post(() => Attach(link));
@@ -122,6 +163,11 @@ public sealed partial class OtherPcsService
     private void Heard(PcBeacon beacon, string address)
     {
         if (_disposed || beacon.Id == OwnId) return;
+        if (!_seen.ContainsKey(beacon.Id) && _seen.Count >= Timing.PcSeenMax)
+        {
+            foreach (var stale in _seen.Where(s => DateTime.UtcNow - s.Value.At >= Timing.PcBeaconEvery * 3).Select(s => s.Key).ToList()) _seen.Remove(stale);
+            if (_seen.Count >= Timing.PcSeenMax) return; // a flood of made-up PCs: the ones already known are kept
+        }
         var before = Nearby.Count;
         _seen[beacon.Id] = new Seen(beacon, address, DateTime.UtcNow);
         var paired = Find(beacon.Id);
@@ -152,12 +198,12 @@ public sealed partial class OtherPcsService
 
     private void CheckLinksSoon() => PcWork.Post(CheckLinks);
 
-    private async Task CheckLinksAsync()
+    private async Task CheckLinksAsync(CancellationToken running)
     {
         using var timer = new PeriodicTimer(Timing.PcLinkCheck);
         try
         {
-            while (await timer.WaitForNextTickAsync(_stop.Token).ConfigureAwait(false)) PcWork.Post(CheckLinks);
+            while (await timer.WaitForNextTickAsync(running).ConfigureAwait(false)) PcWork.Post(CheckLinks);
         }
         catch (OperationCanceledException)
         {

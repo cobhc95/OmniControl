@@ -3,6 +3,9 @@ using OmniControl.Core.Engine.Wake;
 
 namespace OmniControl.App.Features.OtherPcs;
 
+/// What a paired PC may be allowed to do on this PC (<see cref="PairedPc.MayRunPower"/> and the like).
+public enum PcAllowance { Power, Actions, ReadSettings }
+
 /// How this PC reaches a paired PC: found on the local network (<see cref="Lan"/>), at an address typed for it (<see cref="Address"/>: ZeroTier or any other network that carries it), or at the Tailscale address both PCs gave each other when they paired (<see cref="Tailscale"/>).
 public enum PcRoute { Lan, Address, Tailscale }
 
@@ -56,6 +59,12 @@ public sealed class PairedPc
 
     /// The device set-ups it last handed over (without scripts), so they can be imported while it is offline; null = never asked.
     public string? DeviceSetups { get; set; }
+
+    /// What it may do on this PC (its menu's "Allowed here"): run the power actions this PC shares (each still behind this PC's own
+    /// countdown), run the other shared actions and set shared states, and read this PC's settings and device set-ups (off until allowed).
+    public bool MayRunPower { get; set; } = true;
+    public bool MayRunActions { get; set; } = true;
+    public bool MayReadSettings { get; set; }
 }
 
 /// A "New PC" tab that is not finished: kept with how far it got, so it can be finished after a restart. It becomes the PC's own tab once paired.

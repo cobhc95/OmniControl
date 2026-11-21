@@ -318,6 +318,7 @@ public sealed partial class OtherPcsService
         value = null;
         if (message.Id is not { Length: > 0 and <= IdMax } id || PcProtocol.IsRemote(id) || _states.Find(id) is not { Set: not null, Common: not null } found)
             return "That state is not one that may be changed from another PC.";
+        if (!pair.MayRunActions) return $"{_ownName} does not allow {pair.DisplayName} to change its settings.";
         value = found.Kind switch
         {
             StateKind.OnOff when message.Number is 0 or 1 => StateValue.Of(message.Number == 1),
@@ -372,6 +373,8 @@ public sealed partial class OtherPcsService
         chain = null;
         if (message.Id is not { Length: > 0 and <= IdMax } id || PcProtocol.IsRemote(id) || _hotkeys.Find(id) is not { Common: not null } found)
             return "That action is not one that may be run from another PC.";
+        if (!found.CancelsCountdown && !(found.Common == CommonGroups.Power ? pair.MayRunPower : pair.MayRunActions))
+            return $"{_ownName} does not allow {pair.DisplayName} to run {(found.Common == CommonGroups.Power ? "power actions" : "its actions")}.";
         var peerRule = PcProtocol.RemotePrefix + pair.Id;
         var incoming = message.Chain is { Count: > 0 } rules ? new RunChain(rules.Take(Timing.AutomationChainMax * 2).Select(r => PcProtocol.Clip(r, 80)).ToList()) : null;
         if (!RunChain.MayStart(incoming, peerRule, Timing.AutomationChainMax))
@@ -379,7 +382,7 @@ public sealed partial class OtherPcsService
         if (!_runLimits.TryAcquire(pair.Id))
             return "Too many actions were asked for at once, so this one was not run.";
         action = found;
-        chain = RunChain.After(incoming, peerRule, byPerson: incoming is null); // no chain: a person on that PC asked
+        chain = RunChain.After(incoming, peerRule, byPerson: false); // never a person's request here, whoever asked there (power waits out its grace)
         return null;
     }
 }

@@ -92,7 +92,11 @@ public static class PendingRestore
     private static JsonNode? Parse(string text)
     {
         try { return JsonNode.Parse(text); }
-        catch (JsonException) { return null; } // a damaged store here counts as none: the backup's is used
+        catch (JsonException ex)
+        {
+            AppDataStore.AppendLog(Guard.LogFile, $"Restore: a damaged file counts as none ({ex.Message})"); // the backup's is used
+            return null;
+        }
     }
 
     private static string Clear(string folder)
@@ -112,6 +116,7 @@ public static class PendingRestore
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             // Its plan is already gone, so the files left behind are never applied; the next stage clears them first.
+            AppDataStore.AppendLog(Guard.LogFile, $"Restore: the staging folder stays for now ({ex.Message})");
         }
     }
 }

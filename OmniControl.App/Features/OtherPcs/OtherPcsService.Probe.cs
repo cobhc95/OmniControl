@@ -125,7 +125,7 @@ public sealed partial class OtherPcsService
     // with a pong that repeats its nonce; the dialling PC ends the connection, and a silent one is cut after PcProbeTimeout.
     private async Task AnswerProbeAsync(Stream stream)
     {
-        using var link = await PcSession.AcceptAsync(stream, OwnId, id => _secrets.GetValueOrDefault(id), _stop.Token).ConfigureAwait(false);
+        using var link = await PcSession.AcceptAsync(stream, PcProtocol.WantsProbe, OwnId, id => _secrets.GetValueOrDefault(id), _stop.Token).ConfigureAwait(false);
         if (link is null) return;
         link.Received += message =>
         {

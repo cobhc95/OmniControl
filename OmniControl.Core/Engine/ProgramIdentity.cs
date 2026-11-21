@@ -24,16 +24,8 @@ public sealed class ProgramIdentity
         if (processId == 0) return string.Empty;
         if (_byId.TryGetValue(processId, out var known)) return known;
         if (_byId.Count > CacheLimit) _byId.Clear();
-        var name = string.Empty;
-        try
-        {
-            using var process = Process.GetProcessById(processId);
-            name = Normalize(process.ProcessName);
-        }
-        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or Win32Exception)
-        {
-            // The program ended between the question and the answer, or Windows won't say: it matches no program.
-        }
+        // One handle and one call (no process list): a program that ended, or one Windows won't name, matches no program.
+        var name = CoreAudio.ProcessPath(processId) is { } path ? Normalize(path) : string.Empty;
         _byId[processId] = name;
         return name;
     }

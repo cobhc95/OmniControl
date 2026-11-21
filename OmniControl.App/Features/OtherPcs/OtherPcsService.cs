@@ -160,6 +160,7 @@ public sealed partial class OtherPcsService : IPairedPcs, IPcBook, IDisposable
         _settings.TabOrder.Remove(id);
         TakePairedIds();
         Save();
+        StopNetworkIfIdle();
         RaiseChanged();
     }
 
@@ -193,6 +194,27 @@ public sealed partial class OtherPcsService : IPairedPcs, IPcBook, IDisposable
         pair.Nickname = string.IsNullOrWhiteSpace(nickname) ? string.Empty : PcIds.CleanName(nickname);
         Save();
         Reregister(id);
+        RaiseChanged();
+    }
+
+    /// Whether a paired PC may do <paramref name="what"/> on this PC (its menu's Allowed here).
+    public bool Allows(string id, PcAllowance what) => Find(id) is { } pair && what switch
+    {
+        PcAllowance.Power => pair.MayRunPower,
+        PcAllowance.Actions => pair.MayRunActions,
+        _ => pair.MayReadSettings,
+    };
+
+    public void SetAllows(string id, PcAllowance what, bool on)
+    {
+        if (Find(id) is not { } pair) return;
+        switch (what)
+        {
+            case PcAllowance.Power: pair.MayRunPower = on; break;
+            case PcAllowance.Actions: pair.MayRunActions = on; break;
+            default: pair.MayReadSettings = on; break;
+        }
+        Save();
         RaiseChanged();
     }
 

@@ -17,17 +17,41 @@ public static class PluginLoader
     internal const string Instrument = "This is an instrument, not an effect.";
     internal const string Blocked = "Windows Smart App Control blocked this plug-in.";
 
-    /// Loads the plug-in and sets it up for the given rate and block size (UI thread: its editor belongs to this thread).
-    public static IPluginEffect Load(PluginFormat format, string path, int sampleRate, int maxBlockFrames) => format switch
-    {
-        PluginFormat.Vst2 => Vst2Effect.Load(path, sampleRate, maxBlockFrames),
-        _ => Vst3Effect.Load(path, sampleRate, maxBlockFrames),
-    };
+    internal const string NotLocal = "Plug-ins load only from a folder on this PC's own drives, not from a network share or device path.";
+    internal const string UserFolder = "While OmniControl runs as administrator it loads plug-ins only from folders only administrators can change, such as Program Files.";
 
-    /// The one sentence saying why the file can't run here, or null when it can be loaded (header only).
-    public static string? Problem(PluginFormat format, string path) => format switch
+    private static readonly bool Elevated = Elevation.IsElevated();
+
+    /// Loads the plug-in and sets it up for the given rate and block size (UI thread: its editor belongs to this thread).
+    public static IPluginEffect Load(PluginFormat format, string path, int sampleRate, int maxBlockFrames)
+    {
+        if (PlaceProblem(path) is { } refused) throw new InvalidOperationException(refused);
+        return format switch
+        {
+            PluginFormat.Vst2 => Vst2Effect.Load(path, sampleRate, maxBlockFrames),
+            _ => Vst3Effect.Load(path, sampleRate, maxBlockFrames),
+        };
+    }
+
+    /// The one sentence saying why the file can't run here, or null when it can be loaded (its place and header only).
+    public static string? Problem(PluginFormat format, string path) => PlaceProblem(path) ?? format switch
     {
         PluginFormat.Vst2 => Vst2File.Problem(path),
         _ => Vst3File.Problem(path),
     };
+
+    // A plug-in is a library run inside OmniControl: only from a local drive (never a share, \\?\ or \\.\ path), and while elevated only
+    // from a folder its user cannot change (or anything running as them could swap the library and run elevated).
+    private static string? PlaceProblem(string path)
+    {
+        if (path.Length < 3 || !char.IsAsciiLetter(path[0]) || path[1] != ':' || path[2] is not ('\\' or '/') || !Path.IsPathFullyQualified(path)) return NotLocal;
+        try
+        {
+            return Elevated && !Resources.NetworkServiceSetup.CanServeFrom(path) ? UserFolder : null;
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return NotLocal;
+        }
+    }
 }

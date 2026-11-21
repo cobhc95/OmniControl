@@ -56,6 +56,7 @@ public sealed class SettingsImporter
         {
             if (!incoming.TryGetValue(store.FileName, out var text)) continue; // only this area's own files are ever taken
             if (!BackupFile.TryParse(text, out var node)) return Failed(area, "What arrived could not be read.");
+            if (store.NotImportedInside is { } inside) JsonMerge.StripInside(node, inside);
             var here = AppDataStore.LoadText(store) is { } own && BackupFile.TryParse(own, out var ownNode) ? ownNode : null;
             parts.Add((store, JsonMerge.KeepOwn(node, here, store.NotImported ?? Array.Empty<string>())?.ToJsonString() ?? text));
         }

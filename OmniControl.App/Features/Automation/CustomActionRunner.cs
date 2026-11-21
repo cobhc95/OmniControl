@@ -47,12 +47,24 @@ public sealed class CustomActionRunner
         if (script.Language == ScriptLanguage.Python && python is null) return "no installed Python was found";
         if (!_scripts.TryAcquire()) return "too many runs in a short time, so this one was skipped";
         var path = Path.Combine(Path.GetTempPath(), $"omnicontrol-{Guid.NewGuid():N}{ScriptLanguages.ExtensionOf(script.Language)}");
+        FileStream? hold = null;
         try
         {
             await File.WriteAllTextAsync(path, script.Body);
+            // Held open for reading only while it runs: nothing else may change or delete it between this check and the run.
+            hold = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            using var reader = new StreamReader(hold, leaveOpen: true);
+            if (await reader.ReadToEndAsync() != script.Body)
+            {
+                hold.Dispose();
+                Remove(path);
+                return "its temporary file was changed before it ran";
+            }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
+            hold?.Dispose();
+            Remove(path);
             return $"couldn't write its temporary file: {ex.Message}";
         }
         try
@@ -68,6 +80,7 @@ public sealed class CustomActionRunner
         }
         finally
         {
+            hold?.Dispose();
             Remove(path);
         }
     }
