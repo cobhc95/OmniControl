@@ -31,10 +31,11 @@ public sealed class LevelMeter : Control
 
     public MeterModel? Model { get => GetValue(ModelProperty); set => SetValue(ModelProperty, value); }
 
+    // The model is heard only while the meter is on screen: a binding still sets Model on a released window's meter, which must not be held by it.
     private void Watch()
     {
         if (_watching is not null) _watching.Changed -= InvalidateVisual;
-        _watching = Model;
+        _watching = VisualRoot is null ? null : Model;
         if (_watching is not null) _watching.Changed += InvalidateVisual;
     }
 
@@ -42,6 +43,7 @@ public sealed class LevelMeter : Control
     {
         base.OnDetachedFromVisualTree(e);
         if (_watching is not null) _watching.Changed -= InvalidateVisual;
+        _watching = null;
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
