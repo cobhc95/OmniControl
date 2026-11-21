@@ -5,7 +5,7 @@ namespace OmniControl.App.Shared.Ui.Pages;
 
 /// Wiring only: one chip and its menu fed by a <see cref="MenuChoiceItem"/> (a choice card's chip, the Resources readings' adapter and sensor
 /// chips, the gadget rows' sensor chips). Fills the menu when it opens, follows the item's rows while it is open (live values update the rows
-/// in place), closes it after a pick and tells the item when it opens and closes. A view sets it on a chip in markup:
+/// in place), closes it after a pick, empties it once closed and tells the item when it opens and closes. A view sets it on a chip in markup:
 /// <c>pages:MenuChoiceLink.Item="{Binding X}"</c> (and <c>.Title</c> for the menu's title); the link follows the chip in and out of the visual tree.
 public sealed class MenuChoiceLink
 {
@@ -82,9 +82,16 @@ public sealed class MenuChoiceLink
         _list.ItemsSource = _item.Rows;
     }
 
+    // A pick closes the menu from its row's Click, before Avalonia runs the row's Command: the rows must stay until then, or the clicked row's
+    // place is refilled or removed and its command is lost. So the item is told with the menu already marked closed, and the rows go a tick later.
     private void OnClosed(object? sender, EventArgs e)
     {
-        if (_flyout is not null) _item?.OpenChanged?.Invoke(false);
+        if (_flyout is null) return;
         _flyout = null;
+        _item?.OpenChanged?.Invoke(false);
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_flyout is null) _list.ItemsSource = null;
+        });
     }
 }
