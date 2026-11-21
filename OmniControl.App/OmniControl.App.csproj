@@ -24,7 +24,8 @@
        trim warnings are silenced (thousands, about member trimming that is not done). LeaveOutOfPublish = files nothing loads: the
        alternative garbage collectors, HTTP/3, debugger and dump helpers, LibreHardwareMonitor's Linux helpers, ANGLE (rendering is
        software, Program.cs) and symbol files.
-       Precompiled (ReadyToRun, less JIT at start) only ReadyToRunOnly: the app and Avalonia.Base, about 4.8 MB more in the Setup.
+       Precompiled (ReadyToRun, less JIT at start) only ReadyToRunOnly: the app and Avalonia.Base, about 4.8 MB more in the Setup, and
+       LibreHardwareMonitorLib (less JIT when its sensors open), 1.3 MB more installed, about 0.5 MB in the Setup.
        Memory: the workstation garbage collector, collecting in the background, told to keep the heap small (ConserveMemory 5 of 9,
        Gen0MaxBudget below). -->
   <PropertyGroup>
@@ -38,7 +39,7 @@
     <ServerGarbageCollection>false</ServerGarbageCollection>
     <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
     <PublishReadyToRun>true</PublishReadyToRun>
-    <ReadyToRunOnly>^(OmniControl|Avalonia\.Base)$</ReadyToRunOnly>
+    <ReadyToRunOnly>^(OmniControl|Avalonia\.Base|LibreHardwareMonitorLib)$</ReadyToRunOnly>
     <LeaveOutOfPublish>^(clrgc|clrgcexp|msquic|Microsoft\.DiaSymReader\.Native\.amd64|mscordbi|mscordaccore.*|libMonoPosixHelper|MonoPosixHelper|av_libglesv2)\.dll$|^createdump\.exe$|\.pdb$</LeaveOutOfPublish>
   </PropertyGroup>
 
