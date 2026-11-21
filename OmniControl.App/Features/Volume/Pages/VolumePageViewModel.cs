@@ -1,8 +1,6 @@
 using System.Diagnostics;
 using OmniControl.App.Features.Volume.Audio;
 using OmniControl.App.Features.Volume.Audio.Engine;
-using OmniControl.App.Features.Osd;
-using OmniControl.App.Features.States;
 
 namespace OmniControl.App.Features.Volume.Pages;
 
@@ -14,19 +12,18 @@ namespace OmniControl.App.Features.Volume.Pages;
 /// Sound state lives in <see cref="MixerService"/>; what can run in <see cref="EffectsSupportService"/>; what runs in
 /// <see cref="EffectsEngine"/>. This class turns those into rows and keeps them up to date. Partial files: rows (.Rows), microphones
 /// and combined devices (.Inputs), the routing model, the rows' columns and gates (.Routing), the Wiring tab and the Plays on menus
-/// (.Wiring), its Virtual cables group (.Cables) and Equalizer APO group (<see cref="EqualizerApoGroup"/>), the install steps (.Steps), the presets (.Presets), combining (.Combine), hotkeys and meters (.Hotkeys).
-/// What the level actions do to Windows is <see cref="VolumeActions"/>; the states are <see cref="VolumeStates"/>, the media ones <see cref="VolumeMedia"/>.
-public sealed partial class VolumePageViewModel : PageViewModel, IVolumeRows, IDisposable
+/// (.Wiring), its Virtual cables group (.Cables) and Equalizer APO group (<see cref="EqualizerApoGroup"/>), the install steps (.Steps), the presets (.Presets), combining (.Combine), the meters (.Meters), Listen (.Listen).
+/// Made at its first use: its actions, states and the levels they read are <see cref="VolumeControls"/>, which the module makes at start-up.
+public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
 {
     private readonly MixerService _mixer;
-    private readonly IStateRegistry _states;
+    private readonly VolumeControls _controls;
     private readonly VolumePageSettings _settings;
     private readonly EffectsSupportService _support;
     private readonly EffectsEngine _engine;
     private readonly EngineInstaller _installer;
     private readonly Func<DialogMessage, Task<bool>> _ask;
     private readonly Func<CombineDeviceViewModel, Task<bool>> _combine;
-    private readonly IOsd _osd;
     private readonly ProgramDiscovery _discovery = new();
     private readonly ProcessIcons _icons = new();
     private readonly Action<string> _report;
@@ -35,9 +32,6 @@ public sealed partial class VolumePageViewModel : PageViewModel, IVolumeRows, ID
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private readonly OmniControl.Core.Engine.CaptureMeterStreams _captures = new(Guard.Log);
     private readonly DispatcherTimer _meterTimer = new() { Interval = Timing.MeterFrame };
-    private readonly VolumeActions _actions;
-    private readonly VolumeStates _volumeStates;
-    private readonly VolumeMedia _media;
 
     public static readonly PageInfo Info = new("Volume", "M3,9 H7 L12,4 V20 L7,15 H3 Z M15,8.5 A5,5 0 0 1 15,15.5 L16.2,17 A7,7 0 0 0 16.2,7 Z", NavGroups.Devices,
         "volume sound audio mixer wiring master apps programs pan balance mute fx effects chain equaliser eq compressor plays on output device microphone combine method cable preset presets", "volume");
@@ -94,7 +88,7 @@ public sealed partial class VolumePageViewModel : PageViewModel, IVolumeRows, ID
         {
             Entry(_combineCard, "Combine devices", "combine merge speakers microphones mic mics mix several devices together cable stereo mix", WiringTab),
             Entry(Apo.Status, "Equalizer APO", "equalizer apo eq effects install remove device selector attach speakers microphone driver", WiringTab),
-            Entry(UseMicrophones, UseMicrophones.Label, UseMicrophonesKeywords, MixerTab),
+            Entry(UseMicrophones, UseMicrophones.Label, VolumeControls.UseMicrophonesKeywords, MixerTab),
         }
         .Concat(AllRows().Select(r => Entry(r, Title, "sound audio mixer app program pan fx effects method cable capture replay recording output device microphone", MixerTab)))
         .Concat(WiringRows().Select(w => Entry(w, (WiringInputs.Items.Contains(w) ? WiringInputs : WiringOutputs).RouteColumn,
@@ -105,7 +99,7 @@ public sealed partial class VolumePageViewModel : PageViewModel, IVolumeRows, ID
     /// Creation order (an earlier start-up crash came from a piece used before it was made): first the services and callbacks handed in;
     /// then the gates and the Wiring groups (they
     /// use only the gates); the search cards; the master row (its menus reach the page only when they open); the program list's tools;
-    /// and only then the first reads (Rebuild, RefreshInputs, SyncModes), the event subscriptions, the hotkeys and the Easy view, which
+    /// and only then the first reads (Rebuild, RefreshInputs, SyncModes), the event subscriptions, the preset picker and the Easy view, which
     /// wraps the rows. Every step reads only what an earlier step made; <c>VolumeConstructionTests</c> builds the pieces in this order
     /// with no devices and no programs.
     /// </remarks>
@@ -114,26 +108,23 @@ public sealed partial class VolumePageViewModel : PageViewModel, IVolumeRows, ID
         _settings = s.Settings;
         _isEasy = s.Settings.View.Value == VolumeView.Easy;
         _mixer = s.Mixer;
-        _states = s.States;
+        _controls = s.Controls;
         _support = s.Support;
         _engine = s.Engine;
         _installer = s.Installer;
         _ask = s.Ask;
         _combine = s.Combine;
-        _osd = s.Osd;
         _report = s.Report;
         _openFx = s.OpenFx;
         _toggleFx = s.ToggleFx;
-        _presets = s.Presets;
         _openPresets = s.OpenPresets;
-        _actions = new VolumeActions(s.Mixer, s.Osd, s.States, s.Report, this);
         CombineSpeakersGate = new ControlGate();
         CombineMicrophonesGate = new ControlGate();
         UseMicrophones = NewUseMicrophones();
         WiringOutputs = NewWiringOutputs();
         WiringInputs = NewWiringInputs();
         WiringCables = NewWiringCables();
-        Apo = new EqualizerApoGroup(_support, _installer, RunSetupAsync);
+        Apo = s.Apo;
         _combineCard = new ButtonItem("Combine devices", "Combine…", "Joins speakers or microphones into one",
             () => _ = CombineAsync(null, Array.Empty<string>()));
         _master = NewMaster();
@@ -152,28 +143,13 @@ public sealed partial class VolumePageViewModel : PageViewModel, IVolumeRows, ID
         _mixer.MicrophonesChanged += OnMicrophonesChanged;
         _mixer.MethodWanted += key => RowOf(key ?? MixerService.MasterKey)?.RequestMethodMenu();
         _meterTimer.Tick += (_, _) => FeedMeters();
-        RegisterHotkeys(s.Hotkeys);
-        RegisterListen(s.Hotkeys);
-        RegisterMicrophones(s.Hotkeys);
-        RegisterPresets(s.PresetGroups);
-        CreateEasy(s.Hotkeys);
-        _volumeStates = new VolumeStates(s.States, s.Mixer, s.Osd, _actions, this, Title);
-        _media = new VolumeMedia(s.Hotkeys, s.States, Title);
+        _controls.MasterShown += OnMasterShown;
+        _controls.InputShown += OnInputShown;
+        _controls.ComboShown += OnComboShown;
+        _controls.ListenChanged += OnListenChanged;
+        _presetChoice = new ProviderChoice(VolumeControls.PresetsGroupName, _controls.Presets, ManagePresets);
+        CreateEasy();
     }
-
-    MixerItem IVolumeRows.Master => _master;
-
-    InputItem? IVolumeRows.Input(string deviceId) => _inputs.GetValueOrDefault(deviceId);
-
-    VolumeRow? IVolumeRows.Combo(string key) => _combos.GetValueOrDefault(key);
-
-    void IVolumeRows.MakeMasterDevice(string deviceId) => MakeMasterDevice(deviceId);
-
-    InputItem? IVolumeRows.DefaultInput() => DefaultInput();
-
-    /// The default recording device's row, or null when there is none.
-    private InputItem? DefaultInput() =>
-        _mixer.RecordingDevices.FirstOrDefault(d => d.IsDefault) is { } device && _inputs.TryGetValue(device.Id, out var input) ? input : null;
 
     public override void OnShown()
     {
@@ -223,11 +199,12 @@ public sealed partial class VolumePageViewModel : PageViewModel, IVolumeRows, ID
         _mixer.MasterDeviceChanged -= OnMasterDeviceChanged;
         _engine.PlanChanged -= OnPlanChanged;
         _mixer.MicrophonesChanged -= OnMicrophonesChanged;
-        _presetChoice?.Dispose();
-        Apo.Dispose();
+        _controls.MasterShown -= OnMasterShown;
+        _controls.InputShown -= OnInputShown;
+        _controls.ComboShown -= OnComboShown;
+        _controls.ListenChanged -= OnListenChanged;
+        _presetChoice.Dispose();
         Easy.Dispose();
-        _volumeStates.Dispose();
-        _media.Dispose();
         StopMeters();
     }
 }

@@ -43,11 +43,13 @@ public partial class AutomationRuleRow : UserControl
         Follow();
     }
 
-    // The rule is heard only while the row is on screen, so a view let go (a released main window) is never held by its model.
+    // The rule is heard only while the row is on screen, so a view let go (a released main window) is never held by its model. A row the
+    // list hands to another rule (scrolled far away) first ends the old rule's key capture, which closes its pop-down.
     private void Follow()
     {
         var item = this.IsAttachedToVisualTree() ? Item : null;
         if (item == _watched) return;
+        if (_watched is { IsCapturing: true } capturing) capturing.StopListening();
         if (_watched is not null) _watched.PropertyChanged -= OnItemChanged;
         _watched = item;
         if (_watched is not null) _watched.PropertyChanged += OnItemChanged;

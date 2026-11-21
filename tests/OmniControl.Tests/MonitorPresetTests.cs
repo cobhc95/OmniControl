@@ -367,7 +367,7 @@ public class MonitorPresetTests
     [Fact]
     public void BuildingThePagesPiecesInTheConstructorsOrder_NeedsNothingThatDoesNotExistYet()
     {
-        // DisplaysPageViewModel's constructor makes: the store, then the picture book and its drop-down, then the monitor book and its
+        // DisplaysService's constructor makes: the store, then the picture book and its drop-down, then the monitor book and its
         // drop-down. The drop-downs read their list as soon as they are made, when no display has been read (the list of displays is
         // empty): the monitor drop-down must then be greyed, not crash.
         var hardware = new List<FakeMonitor>();

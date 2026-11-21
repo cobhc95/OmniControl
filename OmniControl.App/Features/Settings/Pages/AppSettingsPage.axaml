@@ -7,25 +7,35 @@
              x:DataType="vm:AppSettingsPageViewModel">
     <StackPanel Spacing="{StaticResource Gap}">
         <StackPanel x:Name="CardsHost" Grid.IsSharedSizeScope="True">
-            <pages:GroupCard x:Name="AppearanceCard" Group="{Binding Appearance}">
-                <ListBox Classes="rows compact cards" ItemsSource="{Binding AppearanceItems}"></ListBox>
+            <pages:GroupCard Group="{Binding Appearance}">
+                <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:AppSettingsPageViewModel">
+                    <ListBox Classes="rows compact cards" ItemsSource="{Binding AppearanceItems}"></ListBox>
+                </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>
-            <pages:GroupCard x:Name="StartCard" Group="{Binding StartAndClose}">
-                <ListBox Classes="rows compact cards" ItemsSource="{Binding StartItems}"></ListBox>
+            <pages:GroupCard Group="{Binding StartAndClose}">
+                <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:AppSettingsPageViewModel">
+                    <ListBox Classes="rows compact cards" ItemsSource="{Binding StartItems}"></ListBox>
+                </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>
-            <pages:GroupCard x:Name="DataCard" Group="{Binding YourData}">
-                <ListBox Classes="rows compact cards" ItemsSource="{Binding DataItems}"></ListBox>
+            <pages:GroupCard Group="{Binding YourData}">
+                <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:AppSettingsPageViewModel">
+                    <ListBox Classes="rows compact cards" ItemsSource="{Binding DataItems}"></ListBox>
+                </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>
-            <pages:GroupCard x:Name="PluginsCard" Group="{Binding PlugIns}">
-                <ListBox Classes="rows compact cards" ItemsSource="{Binding PluginItems}"></ListBox>
+            <pages:GroupCard Group="{Binding PlugIns}">
+                <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:AppSettingsPageViewModel">
+                    <ListBox Classes="rows compact cards" ItemsSource="{Binding PluginItems}"></ListBox>
+                </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>
             <!-- Updates and about: "Check now" is the pill at the right of the title line (the master group-tool pill) -->
-            <pages:GroupCard x:Name="UpdatesCard" Group="{Binding UpdatesAndAbout}">
+            <pages:GroupCard Group="{Binding UpdatesAndAbout}">
                 <pages:GroupCard.Tools>
                     <Button Classes="pill" Tag="grouptool" Content="Check now" Command="{Binding CheckNowCommand}" VerticalAlignment="Center"
                             ToolTip.Tip="Look for a newer version now" />
                 </pages:GroupCard.Tools>
-                <ListBox Classes="rows compact cards" ItemsSource="{Binding UpdateItems}"></ListBox>
+                <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:AppSettingsPageViewModel">
+                    <ListBox Classes="rows compact cards" ItemsSource="{Binding UpdateItems}"></ListBox>
+                </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>
         </StackPanel>
         <restore:RestoreLine DataContext="{Binding RestoreAll}" HorizontalAlignment="Left" />

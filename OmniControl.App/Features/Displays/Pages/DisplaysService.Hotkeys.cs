@@ -9,7 +9,7 @@ namespace OmniControl.App.Features.Displays.Pages;
 /// The same functions are what the page's cards use, through the displays' own items. The displays that come and go are only listed by
 /// the chooser (<see cref="RefreshActionDevices"/>); nothing is registered or removed when a display appears or goes. The list of
 /// controls is <see cref="DisplayControls"/>: adding one there adds its card and actions here.
-public sealed partial class DisplaysPageViewModel
+public sealed partial class DisplaysService
 {
     private const string OrientationSection = "Orientation";
 

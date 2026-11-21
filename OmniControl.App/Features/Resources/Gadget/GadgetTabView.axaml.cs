@@ -5,10 +5,14 @@
 /// a text colour's "Custom colour…" opens THE colour editor at its button.
 public partial class GadgetTabView : UserControl
 {
-    public GadgetTabView()
+    public GadgetTabView() => InitializeComponent();
+
+    // The rows' list is built each time its group opens: each new list gets the drag once.
+    private void OnRowsLoaded(object? sender, RoutedEventArgs e)
     {
-        InitializeComponent();
-        ListDragReorder.Attach(ReadingRows, (rows, at) => (DataContext as GadgetSettingsModel)?.Move(rows, at));
+        if (sender is not ListBox list) return;
+        list.Loaded -= OnRowsLoaded;
+        ListDragReorder.Attach(list, (rows, at) => (DataContext as GadgetSettingsModel)?.Move(rows, at));
     }
 
     private void OnSwatchMenuOpened(object? sender, Flyout flyout)

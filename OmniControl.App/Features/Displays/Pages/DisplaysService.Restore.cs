@@ -4,11 +4,10 @@ using OmniControl.App.Shared.Ui.Restore;
 namespace OmniControl.App.Features.Displays.Pages;
 
 /// "Restore defaults" on the Displays page: the software picture and warm light (<see cref="DisplayRestoreState"/>); the monitors' own settings are never written.
-public sealed partial class DisplaysPageViewModel
+public sealed partial class DisplaysService
 {
-    private IRestorable? _restorable;
-
-    public override IRestorable? Restorable => _restorable ??= new SettingsRestore<DisplayRestoreState>(Info.RestoreKey!, Title,
+    /// The page's Restore defaults (<paramref name="key"/>: its restore key).
+    public IRestorable NewRestorable(string key) => new SettingsRestore<DisplayRestoreState>(key, Title,
         () => DisplayRestoreState.Scope,
         () => new DisplayRestoreState { Picture = CapturePicture(), WarmLight = _store.WarmLight.Enabled },
         () => DisplayRestoreState.DefaultsOf(new DisplayRestoreState { Picture = CapturePicture() }),

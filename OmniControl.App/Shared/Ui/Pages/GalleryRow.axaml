@@ -7,51 +7,68 @@
     <!-- A gallery card. A picture gallery: the preview and its name between arrow buttons (a words gallery: the name alone). A colour gallery: THE swatch button (a ChipMenu
          drawn as a drop-down box: the chosen dot and its name, a chevron), placed like a drop-down card (centred at the master width when
          full, filling the room when half); it opens the grid of every dot (Controls/SwatchList) and, with an editor, the muted "Custom colour…" row. -->
+    <!-- Only the layout the item uses is built (Pages/CardLayout) -->
     <Panel IsEnabled="{Binding Availability.IsAvailable}" ToolTip.Tip="{Binding Hint}" ToolTip.ShowOnDisabled="True">
-        <Grid x:Name="Layout" Margin="0,1" IsVisible="{Binding !HasDots}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <TextBlock x:Name="LabelText" Classes="cardname" Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,24,0" />
-            <Border x:Name="Gallery" Classes="gallery" Classes.half="{Binding Half}" Tag="gallery" Focusable="True" pages:ValueWheel.Selector="True" PointerPressed="OnPressed" PointerWheelChanged="OnWheel">
-                <Grid ColumnDefinitions="Auto,*,Auto">
-                    <Button Classes="step" Focusable="False" Click="OnPrevious">
-                        <PathIcon Data="{StaticResource ChevronLeftIcon}" Width="10" Height="10" />
-                    </Button>
-                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center" HorizontalAlignment="Center">
-                        <ContentControl Content="{Binding Preview}" IsVisible="{Binding HasPreview}" HorizontalAlignment="Center" />
-                        <TextBlock Text="{Binding Name}" Classes.muted="{Binding HasPreview}" Classes.small="{Binding HasPreview}" HorizontalAlignment="Center" />
-                    </StackPanel>
-                    <Button Grid.Column="2" Classes="step" Focusable="False" Click="OnNext">
-                        <PathIcon Data="{StaticResource ChevronRightIcon}" Width="10" Height="10" />
-                    </Button>
+        <pages:CardLayout IsVisible="{Binding !HasDots}">
+            <DataTemplate x:DataType="pages:GalleryItem">
+                <Grid Margin="0,1" AttachedToVisualTree="OnPictureAttached">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Classes="cardname" Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,24,0" />
+                    <Border Classes="gallery" Classes.half="{Binding Half}" Tag="gallery" Focusable="True" pages:ValueWheel.Selector="True" PointerPressed="OnPressed" PointerWheelChanged="OnWheel">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <Button Classes="step" Focusable="False" Click="OnPrevious">
+                                <PathIcon Data="{StaticResource ChevronLeftIcon}" Width="10" Height="10" />
+                            </Button>
+                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <ContentControl Content="{Binding Preview}" IsVisible="{Binding HasPreview}" HorizontalAlignment="Center" />
+                                <TextBlock Text="{Binding Name}" Classes.muted="{Binding HasPreview}" Classes.small="{Binding HasPreview}" HorizontalAlignment="Center" />
+                            </StackPanel>
+                            <Button Grid.Column="2" Classes="step" Focusable="False" Click="OnNext">
+                                <PathIcon Data="{StaticResource ChevronRightIcon}" Width="10" Height="10" />
+                            </Button>
+                        </Grid>
+                    </Border>
+                    <ContentControl Grid.Column="2" Content="{Binding Extra}" Margin="12,0,0,0" VerticalAlignment="Center" />
                 </Grid>
-            </Border>
-            <ContentControl Grid.Column="2" Content="{Binding Extra}" Margin="12,0,0,0" VerticalAlignment="Center" />
-        </Grid>
+            </DataTemplate>
+        </pages:CardLayout>
 
-        <Grid Margin="0,1" IsVisible="{Binding FullDots}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <TextBlock Classes="cardname" Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,24,0" />
-            <c:ChipMenu x:Name="FullChip" Classes="choice dropbox" ChipTag="scope" ChipAlignment="Stretch" Text="{Binding Name}" Swatch="{Binding Current}"
-                        pages:ValueWheel.Selector="True" PointerWheelChanged="OnChipWheel" />
-            <ContentControl Grid.Column="2" Content="{Binding Extra}" Margin="12,0,0,0" VerticalAlignment="Center" />
-        </Grid>
+        <pages:CardLayout IsVisible="{Binding FullDots}">
+            <DataTemplate x:DataType="pages:GalleryItem">
+                <Grid Margin="0,1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="EditorLabel" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Classes="cardname" Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,24,0" />
+                    <c:ChipMenu Classes="choice dropbox" ChipTag="scope" ChipAlignment="Stretch" Text="{Binding Name}" Swatch="{Binding Current}"
+                                pages:ValueWheel.Selector="True" PointerWheelChanged="OnChipWheel" MenuOpened="OnDotsOpened" MenuClosed="OnDotsClosed">
+                        <c:ChipMenu.Menu><c:SwatchMenu EditorClicked="OnEditorClicked" /></c:ChipMenu.Menu>
+                    </c:ChipMenu>
+                    <ContentControl Grid.Column="2" Content="{Binding Extra}" Margin="12,0,0,0" VerticalAlignment="Center" />
+                </Grid>
+            </DataTemplate>
+        </pages:CardLayout>
 
-        <Grid Margin="0,1" ColumnSpacing="{StaticResource GapLarge}" IsVisible="{Binding HalfDots}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" MinWidth="{StaticResource CardLabelMinWidth}" />
-                <ColumnDefinition Width="1.6*" />
-            </Grid.ColumnDefinitions>
-            <TextBlock Classes="cardlabel" Text="{Binding Label}" />
-            <c:ChipMenu x:Name="HalfChip" Grid.Column="1" Classes="choice dropbox half" ChipTag="scope" ChipAlignment="Stretch" Text="{Binding Name}" Swatch="{Binding Current}"
-                        pages:ValueWheel.Selector="True" PointerWheelChanged="OnChipWheel" />
-        </Grid>
+        <pages:CardLayout IsVisible="{Binding HalfDots}">
+            <DataTemplate x:DataType="pages:GalleryItem">
+                <Grid Margin="0,1" ColumnSpacing="{StaticResource GapLarge}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MinWidth="{StaticResource CardLabelMinWidth}" />
+                        <ColumnDefinition Width="1.6*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Classes="cardlabel" Text="{Binding Label}" />
+                    <c:ChipMenu Grid.Column="1" Classes="choice dropbox half" ChipTag="scope" ChipAlignment="Stretch" Text="{Binding Name}" Swatch="{Binding Current}"
+                                pages:ValueWheel.Selector="True" PointerWheelChanged="OnChipWheel" MenuOpened="OnDotsOpened" MenuClosed="OnDotsClosed">
+                        <c:ChipMenu.Menu><c:SwatchMenu EditorClicked="OnEditorClicked" /></c:ChipMenu.Menu>
+                    </c:ChipMenu>
+                </Grid>
+            </DataTemplate>
+        </pages:CardLayout>
     </Panel>
 </UserControl>

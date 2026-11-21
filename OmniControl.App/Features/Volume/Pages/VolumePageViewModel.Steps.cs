@@ -43,9 +43,5 @@ public sealed partial class VolumePageViewModel
 
     /// Runs a setup step and shows how it ended in the main window's status line; a failure also opens a small message with the one
     /// next step, "Copy details" and where the log is.
-    private async Task RunSetupAsync(string? progress, Task<SetupResult> work)
-    {
-        if (progress is not null) _report(progress);
-        await EngineInstaller.ShowAsync(await work, _report, _ask);
-    }
+    private Task RunSetupAsync(string? progress, Task<SetupResult> work) => EngineInstaller.RunAsync(progress, work, _report, _ask);
 }

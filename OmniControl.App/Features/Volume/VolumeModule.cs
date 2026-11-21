@@ -7,7 +7,7 @@ using OmniControl.App.Features.Volume.Pages;
 
 namespace OmniControl.App.Features.Volume;
 
-/// Volume: the mixer, the effects engine with its plug-ins, the FX windows and the page.
+/// Volume: the mixer, the effects engine with its plug-ins, the FX windows, the page's actions and states (<see cref="VolumeControls"/>) and the page.
 public sealed class VolumeModule : IFeatureModule
 {
     // The effects journal is read first: a previous run that ended without putting programs' sound back is undone before the mixer
@@ -15,11 +15,12 @@ public sealed class VolumeModule : IFeatureModule
     private readonly EngineJournal _journal = EngineJournal.Recover();
     private readonly UserPresetStore _presets = UserPresetStore.OnDisk();
     private EffectsSupportService? _support;
-    private VolumePresets? _volumePresets;
     private EffectsEngine? _effects;
     private EngineInstaller? _installer;
     private FxWindowService? _fxWindows;
-    private VolumePageViewModel? _page; // read by the FX windows' links to the Mixer when they are used
+    private VolumeControls? _controls;
+    private EqualizerApoGroup? _apo;
+    private VolumePageViewModel? _page; // made at its first use: by the shell, or by an action only the page can do
     private VolumePageSettings? _pageSettings;
     private FeatureContext? _context;
 
@@ -46,7 +47,7 @@ public sealed class VolumeModule : IFeatureModule
             settings.Slot(s => s.EasyWelcomeDone, (s, done) => s.EasyWelcomeDone = done), settings.Slot(s => s.MixerShowClosed, (s, on) => s.MixerShowClosed = on));
         var mixer = Mixer = new MixerService(context.Hardware, context.Report);
         var support = _support = new EffectsSupportService(new AudioEffectsProbe(), mixer);
-        var volumePresets = _volumePresets = new VolumePresets(mixer);
+        var volumePresets = new VolumePresets(mixer);
         var plugins = new PluginChainHost(mixer.Save);
         var effects = _effects = new EffectsEngine(mixer, support, _journal, plugins, context.Report);
         var displayFeeds = new DisplayFeeds(plugins, effects, context.Report);
@@ -54,13 +55,16 @@ public sealed class VolumeModule : IFeatureModule
         mixer.MasterDeviceChanged += context.Osd.RetargetVolume;
         var installer = _installer = new EngineInstaller(support, mixer);
         effects.ApoWanted += () => _ = Guard.RunAsync("Equalizer APO: first use", () => installer.FirstUseAsync(context.AskAsync, context.Report));
+        var apo = _apo = new EqualizerApoGroup(support, installer, (progress, work) => EngineInstaller.RunAsync(progress, work, context.Report, context.AskAsync));
+        _controls = new VolumeControls(mixer, context.Osd, context.States, context.Actions, context.Presets, volumePresets, context.Report, VolumePageViewModel.Info.Title);
         var fxWindows = _fxWindows = new FxWindowService(mixer, effects, support, plugins, displayFeeds, Library, _presets, context.Report, context.OpenPresetManager,
-            new FxMixerLinks(ShowMixerFor, () => _page?.Apo.DevicesAsync() ?? Task.CompletedTask,
-                () => _page?.Apo.Devices is { } step ? (step.Label, step.Tip) : (EffectsRules.ApoDevicesLabel, string.Empty)), context.AskAsync, view);
+            new FxMixerLinks(ShowMixerFor, apo.DevicesAsync, () => (apo.Devices.Label, apo.Devices.Tip)), context.AskAsync, view);
 
         context.Imports.OnReload(DataStores.Mixer, mixer.ReloadFromDisk);
         context.Imports.OnReload(DataStores.EffectPresets, _presets.ReloadFromDisk);
         context.Imports.OnReload(DataStores.VolumePresets, volumePresets.ReloadFromDisk);
+        context.Shutdown.Add(ShutdownStage.Pages, "volume controls", _controls.Dispose);
+        context.Shutdown.Add(ShutdownStage.Pages, "Equalizer APO group", apo.Dispose);
         context.Shutdown.Add(ShutdownStage.OsdLinks, "OSD volume link", () => mixer.MasterDeviceChanged -= context.Osd.RetargetVolume);
         context.Shutdown.Add(ShutdownStage.Effects, "effect windows", fxWindows.CloseAll); // plug-in editors close (and save) before the plug-ins are unloaded
         context.Shutdown.Add(ShutdownStage.Effects, "effects", effects.Dispose); // plug-in settings are saved
@@ -74,25 +78,38 @@ public sealed class VolumeModule : IFeatureModule
 
     private void ShowMixerFor(string deviceId)
     {
-        if (_page is not { } page) return;
-        _context!.OpenPage(page.Title, null);
-        page.ShowMixerFor(deviceId);
+        _context!.OpenPage(VolumePageViewModel.Info.Title, null);
+        Page().ShowMixerFor(deviceId);
     }
+
+    /// The page, made now when it was not yet: the shell's first use and an action only the page can do get the same one.
+    private VolumePageViewModel Page() => _page ??= new VolumePageViewModel(new VolumePageServices(Mixer, _controls!, _apo!, _support!, _effects!, _installer!,
+        _context!.Report, _fxWindows!.Open, _fxWindows.Toggle, _context.AskAsync, CombineWindow.AskAsync, _context.OpenPresetManager, _pageSettings!));
 
     public IReadOnlyList<FeaturePage> Pages => new[]
     {
-        new FeaturePage(VolumePageViewModel.Info, () => _page = new VolumePageViewModel(new VolumePageServices(Mixer, _support!, _effects!, _installer!, _context!.Actions, _context.Osd, _context.Report,
-            _fxWindows!.Open, _fxWindows.Toggle, _context.AskAsync, CombineWindow.AskAsync, _volumePresets!, _context.Presets, _context.OpenPresetManager, _context.States, _pageSettings!)))
+        new FeaturePage(VolumePageViewModel.Info, Page)
         {
-            AtStart = true,
+            Registers = () => _controls!.Register(new VolumeViewCalls(ToggleView, ToggleClosed,
+                () => _ = Page().Easy.NextMasterPresetAsync(), () => _ = Page().Easy.RestoreDefaultsAsync())),
         },
     };
 
-    /// The effects' preset groups belong to the Volume page; they are made by the FX windows, which know how a preset reaches an effect.
-    public void PagesMade()
+    // The page's view and "Show closed" are settings: while the page is not made, the action changes the setting it reads when made.
+    private void ToggleView()
     {
-        if (_page is { } page) _context!.Presets.Register(_fxWindows!.PresetGroupsFor(page.Title));
+        if (_page is { } page) page.ToggleView();
+        else _pageSettings!.View.Value = _pageSettings.View.Value == VolumeView.Easy ? VolumeView.Advanced : VolumeView.Easy;
     }
+
+    private void ToggleClosed()
+    {
+        if (_page is { } page) page.ToggleShowClosed();
+        else _pageSettings!.ShowClosed.Value = !_pageSettings.ShowClosed.Value;
+    }
+
+    /// The effects' preset groups belong to the Volume page; they are made by the FX windows, which know how a preset reaches an effect.
+    public void PagesMade() => _context!.Presets.Register(_fxWindows!.PresetGroupsFor(VolumePageViewModel.Info.Title));
 
     public IReadOnlyList<IDataTemplate> Templates { get; } = new[]
     {

@@ -33,9 +33,12 @@ public sealed class EngineInstaller : IDisposable
     /// The setup log: what OmniControl's setup steps did and why one failed.
     public static string LogPath => AppDataStore.PathOf(LogName);
 
-    /// Shows how a step ended in the status line; a failure also opens a small message with "Copy details" and where the log is.
-    public static async Task ShowAsync(SetupResult result, Action<string> report, Func<DialogMessage, Task<bool>> ask)
+    /// Runs a setup step (saying <paramref name="progress"/> first, when given) and shows how it ended in the status line; a failure also
+    /// opens a small message with "Copy details" and where the log is.
+    public static async Task RunAsync(string? progress, Task<SetupResult> work, Action<string> report, Func<DialogMessage, Task<bool>> ask)
     {
+        if (progress is not null) report(progress);
+        var result = await work;
         report(result.Text);
         if (result.Failed) await ask(new DialogMessage(SetupFailedTitle, $"{result.Text}\nDetails: {LogPath}", Details: result.Details));
     }
@@ -73,7 +76,7 @@ public sealed class EngineInstaller : IDisposable
                 "Install")))
             return;
         report(Installing);
-        await ShowAsync(await InstallAsync(), report, ask);
+        await RunAsync(null, InstallAsync(), report, ask);
     }
 
     /// Runs one Equalizer APO step on a worker (one at a time), then asks for a fresh look; <paramref name="step"/> gets the master's speakers.

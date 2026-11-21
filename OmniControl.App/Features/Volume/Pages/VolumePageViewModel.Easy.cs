@@ -1,6 +1,5 @@
 using OmniControl.App.Features.Volume.Audio;
 using OmniControl.App.Features.Volume.Audio.Engine;
-using OmniControl.App.Features.Hotkeys;
 using OmniControl.App.Features.Volume.Pages.Easy;
 using OmniControl.App.Features.Volume.Pages.Easy.Flow;
 
@@ -46,16 +45,15 @@ public sealed partial class VolumePageViewModel
             question => _ask(new DialogMessage(question.Title, question.Text, question.Button)));
     }
 
-    private void CreateEasy(IActionRegistry hotkeys)
-    {
+    private void CreateEasy() =>
         Easy = new EasyViewModel(_mixer, _support, _engine, _master, Outputs, Inputs, _openFx, NewEasyFlowServices(), _settings.EasyWelcomeDone);
-        hotkeys.Register(new HotkeyAction("volume.view.toggle", "Switch Volume view (Easy / Advanced)", Title, "sound audio volume easy advanced simple view mode switch",
-            _ => OnUi(() => IsEasy = !IsEasy)));
-        hotkeys.Register(new HotkeyAction("volume.easy.sound.next", "Next sound preset for everything", Title,
-            "sound audio master easy preset bass boost vocal night loud equaliser eq next",
-            devices => OnUi(() => { _ = Easy.NextMasterPresetAsync(); })));
-        hotkeys.Register(new HotkeyAction("volume.easy.restore", "Restore audio defaults", Title,
-            "reset default audio restore sound effects off undo easy",
-            devices => OnUi(() => { _ = Easy.RestoreDefaultsAsync(); })));
+
+    /// The "Switch Volume view" action.
+    public void ToggleView() => IsEasy = !IsEasy;
+
+    /// The "Show or hide closed programs" action.
+    public void ToggleShowClosed()
+    {
+        if (Outputs.ProgramTools is { } tools) tools.ShowClosed = !tools.ShowClosed;
     }
 }

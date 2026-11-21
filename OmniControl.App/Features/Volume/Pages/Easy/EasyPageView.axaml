@@ -10,40 +10,46 @@
          apps and microphones and "Add program", and the footer (what is set up, Set up again, Fix it). No cables, methods or wiring here. -->
     <StackPanel Spacing="{StaticResource Gap}" Grid.IsSharedSizeScope="True">
         <pages:GroupCard Group="{Binding EverythingGroup}">
-            <StackPanel Spacing="{StaticResource Gap}" Margin="0,4">
-                <Grid ColumnSpacing="{StaticResource GapLarge}" DataContext="{Binding Master}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" SharedSizeGroup="EasyMute" />
-                        <ColumnDefinition Width="Auto" SharedSizeGroup="EasySound" />
-                    </Grid.ColumnDefinitions>
-                    <c:SliderField DataContext="{Binding Row}" Minimum="0" Maximum="100" Value="{Binding Volume}" ResetValue="100"
-                                   Text="{Binding Volume}" ValueMinWidth="28" ToolTip.Tip="{Binding VolumeTip}" VerticalAlignment="Center" />
-                    <Button Grid.Column="1" Tag="grouptool" Classes="scope mute" Classes.on="{Binding Row.Muted}" Content="M" Command="{Binding Row.ToggleMuteCommand}"
-                            ToolTip.Tip="Mute" VerticalAlignment="Center" />
-                    <easy:SoundChip Grid.Column="2" ToolTip.Tip="Presets and five sliders for everything" VerticalAlignment="Center" />
-                </Grid>
-                <Panel IsVisible="{Binding Master.Sound.IsOpen}"><easy:EasyDrawerView DataContext="{Binding Master}" /></Panel>
-            </StackPanel>
+            <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="easy:EasyViewModel">
+                <StackPanel Spacing="{StaticResource Gap}" Margin="0,4">
+                    <Grid ColumnSpacing="{StaticResource GapLarge}" DataContext="{Binding Master}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="EasyMute" />
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="EasySound" />
+                        </Grid.ColumnDefinitions>
+                        <c:SliderField DataContext="{Binding Row}" Minimum="0" Maximum="100" Value="{Binding Volume}" ResetValue="100"
+                                       Text="{Binding Volume}" ValueMinWidth="28" ToolTip.Tip="{Binding VolumeTip}" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Tag="grouptool" Classes="scope mute" Classes.on="{Binding Row.Muted}" Content="M" Command="{Binding Row.ToggleMuteCommand}"
+                                ToolTip.Tip="Mute" VerticalAlignment="Center" />
+                        <easy:SoundChip Grid.Column="2" ToolTip.Tip="Presets and five sliders for everything" VerticalAlignment="Center" />
+                    </Grid>
+                    <pages:CardLayout IsVisible="{Binding Master.Sound.IsOpen}">
+                        <DataTemplate x:DataType="easy:EasyViewModel"><easy:EasyDrawerView DataContext="{Binding Master}" /></DataTemplate>
+                    </pages:CardLayout>
+                </StackPanel>
+            </DataTemplate></pages:GroupCard.ContentTemplate>
         </pages:GroupCard>
 
         <pages:GroupCard Group="{Binding AppsGroup}">
             <pages:GroupCard.Tools>
                 <vm:AddProgramButton DataContext="{Binding AddProgram}" />
             </pages:GroupCard.Tools>
-            <StackPanel Spacing="{StaticResource Gap}" Margin="0,4">
-                <pages:EmptyListRow Text="Nothing is playing. Apps appear here when they do." IsVisible="{Binding !HasApps}" />
-                <ItemsControl ItemsSource="{Binding Apps}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate><StackPanel Spacing="{StaticResource Gap}" /></ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="easy:EasyRow">
-                            <easy:EasyRowView />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
+            <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="easy:EasyViewModel">
+                <StackPanel Spacing="{StaticResource Gap}" Margin="0,4">
+                    <pages:EmptyListRow Text="Nothing is playing. Apps appear here when they do." IsVisible="{Binding !HasApps}" />
+                    <ItemsControl ItemsSource="{Binding Apps}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><StackPanel Spacing="{StaticResource Gap}" /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="easy:EasyRow">
+                                <easy:EasyRowView />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </DataTemplate></pages:GroupCard.ContentTemplate>
         </pages:GroupCard>
 
         <!-- The footer: what is set up on the left; Set up again and Fix it on the right (it wraps when the window is narrow) -->

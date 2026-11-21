@@ -18,9 +18,9 @@ public sealed partial class VolumePageViewModel
         new(MixerService.MasterKey, true)
         {
             Name = "Master",
-            VolumeChanged = v => { _actions.NoteMasterChange(v); CoreAudio.SetMasterVolume(v, _mixer.MasterDeviceId); },
-            PanChanged = p => { _actions.NoteMasterChange(); CoreAudio.SetMasterPan(p, _mixer.MasterDeviceId); },
-            MuteChanged = m => { _actions.NoteMasterChange(); CoreAudio.SetMasterMute(m, _mixer.MasterDeviceId); },
+            VolumeChanged = _controls.SetMasterVolume,
+            PanChanged = _controls.SetMasterPan,
+            MuteChanged = _controls.SetMasterMute,
             FxToggled = on => _mixer.SetFxByUser(null, on),
             FxWindowToggled = () => _toggleFx(null),
             PlaysOn = new PlaysOnMenu(new ControlGate(), menu => OpenPlaysOn(menu, _master), marksCurrent: true),
@@ -30,11 +30,13 @@ public sealed partial class VolumePageViewModel
     private void SyncMaster()
     {
         CoreAudio.GetMaster(out var v, out var muted, _mixer.MasterDeviceId);
-        _actions.RememberMaster(v);
         CoreAudio.GetMasterPan(out var pan, _mixer.MasterDeviceId);
         _master.Sync(true, v, pan, muted, _mixer.IsFxOn(null), FxSlot.EffectCount(_mixer.FxChain(null)));
         SyncRow(_master);
     }
+
+    /// A level action or Windows' own report changed the master: its row shows it.
+    private void OnMasterShown() => _master.Sync(true, _controls.MasterVolume, _master.Pan, _controls.MasterMuted, _master.FxOn, _master.FxCount);
 
     private bool IsListed(RunningApp r, AppAudioEntry e) =>
         ProgramListing.IsListed(r.IsOpen, e.KeepsRow, Outputs.ProgramTools?.ShowClosed ?? true);
@@ -128,7 +130,7 @@ public sealed partial class VolumePageViewModel
             SyncCombos();
         }
 
-        if (!_actions.MasterJustChanged) SyncMaster();
+        if (!_controls.MasterJustChanged) SyncMaster();
         else SyncRow(_master);
         RefreshInputs();
     }

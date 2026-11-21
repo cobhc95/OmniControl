@@ -8,82 +8,38 @@ namespace OmniControl.App.Shared.Ui.Pages;
 /// opens the item's editor at the button; the wheel over the button steps the choice as it steps a drop-down.
 public partial class GalleryRow : UserControl
 {
-    private GalleryItem? _hooked;
     private Flyout? _open;
 
-    public GalleryRow()
+    public GalleryRow() => InitializeComponent();
+
+    /// A swatch button's pop-down opens: THE colour pop-down, its editor row shown only for a gallery with an editor.
+    private void OnDotsOpened(object? sender, Flyout flyout)
     {
-        InitializeComponent();
-        foreach (var chip in new[] { FullChip, HalfChip }) chip.Menu = DotsMenu(chip);
-        DataContextChanged += (_, _) =>
-        {
-            FitHalf();
-            Hook(VisualRoot is not null);
-        };
+        _open = flyout;
+        if (flyout.Content is not SwatchMenu menu || DataContext is not GalleryItem item) return;
+        menu.ItemsSource = item.DotItems();
+        menu.EditorText = item.Editor is not null ? item.EditorText : null;
     }
 
-    /// The pop-down of a swatch button: THE colour pop-down (its editor row shown only for a gallery with an editor).
-    private SwatchMenu DotsMenu(ChipMenu chip)
+    private void OnDotsClosed(object? sender, EventArgs e) => _open = null;
+
+    /// The option's editor in the master card pop-down (ListMenuFlyout, optionmenu) at the swatch button, made fresh each time.
+    private void OnEditorClicked(object? sender, Control opener)
     {
-        var menu = new SwatchMenu();
-        menu.EditorClicked += (_, _) => (DataContext as GalleryItem)?.OpenEditor();
-        chip.MenuOpened += (_, flyout) =>
-        {
-            _open = flyout;
-            if (DataContext is not GalleryItem item) return;
-            menu.ItemsSource = item.DotItems();
-            menu.EditorText = item.Editor is not null ? item.EditorText : null;
-        };
-        chip.MenuClosed += (_, _) => _open = null;
-        return menu;
+        if (DataContext is not GalleryItem { Editor: { } make } item) return;
+        item.PickEditorOption();
+        SwatchMenu.OpenEditor(opener, make);
     }
 
     /// A half-width picture gallery has no room for the page-wide label column: its label takes only its own width (it leaves the shared
-    /// column group) and the gallery sits at the right end (the half style in Theme.axaml).
-    private void FitHalf()
+    /// column group) and the gallery sits at the right end (the half style in Theme.axaml). Done as the layout is built, before it is measured.
+    private void OnPictureAttached(object? sender, VisualTreeAttachmentEventArgs e)
     {
-        if (DataContext is not GalleryItem { Half: true }) return;
-        var label = Layout.ColumnDefinitions[0];
+        if (DataContext is not GalleryItem { Half: true } || sender is not Grid { ColumnDefinitions: [var label, ..], Children: [TextBlock text, ..] }) return;
         label.SharedSizeGroup = null;
         label.MinWidth = 0;
-        LabelText.Margin = new Thickness(0, 0, 8, 0);
+        text.Margin = new Thickness(0, 0, 8, 0);
     }
-
-    // The item's editor request is heard only while this row is on screen and shows that item.
-    private void Hook(bool onScreen)
-    {
-        var item = onScreen ? DataContext as GalleryItem : null;
-        if (item == _hooked) return;
-        if (_hooked is not null) _hooked.EditorRequested -= OpenEditor;
-        _hooked = item;
-        if (_hooked is not null) _hooked.EditorRequested += OpenEditor;
-    }
-
-    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
-    {
-        base.OnAttachedToVisualTree(e);
-        Hook(onScreen: true);
-    }
-
-    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
-    {
-        base.OnDetachedFromVisualTree(e);
-        Hook(onScreen: false);
-    }
-
-    /// The option's editor in the master card pop-down (ListMenuFlyout, optionmenu) under the gallery, made fresh each time.
-    private void OpenEditor()
-    {
-        if (_hooked?.Editor is { } make) SwatchMenu.OpenEditor(Opener(), make);
-    }
-
-    // Where the editor opens: the swatch button shown, else the picture gallery.
-    private Control Opener() => _hooked switch
-    {
-        { FullDots: true } => FullChip.ChipButton,
-        { HalfDots: true } => HalfChip.ChipButton,
-        _ => Gallery,
-    };
 
     private void OnPrevious(object? sender, RoutedEventArgs e) => (DataContext as GalleryItem)?.Step(-1);
     private void OnNext(object? sender, RoutedEventArgs e) => (DataContext as GalleryItem)?.Step(1);

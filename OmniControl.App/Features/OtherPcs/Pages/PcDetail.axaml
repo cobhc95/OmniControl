@@ -92,11 +92,13 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:MirrorGroup">
                         <pages:GroupCard Group="{Binding Group}" Margin="0,0,0,6" VerticalAlignment="Top">
-                            <StackPanel Spacing="{StaticResource GapSmall}">
-                                <TextBlock Classes="hint" Text="Not available" IsVisible="{Binding IsEmpty}" />
-                                <ListBox Classes="rows compact cards" ItemsSource="{Binding Group.Items}" IsVisible="{Binding !IsEmpty}" />
-                                <c:ChoiceChips ItemsSource="{Binding Actions}" IsVisible="{Binding HasActions}" />
-                            </StackPanel>
+                            <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:MirrorGroup">
+                                <StackPanel Spacing="{StaticResource GapSmall}">
+                                    <TextBlock Classes="hint" Text="Not available" IsVisible="{Binding IsEmpty}" />
+                                    <ListBox Classes="rows compact cards" ItemsSource="{Binding Group.Items}" IsVisible="{Binding !IsEmpty}" />
+                                    <c:ChoiceChips ItemsSource="{Binding Actions}" IsVisible="{Binding HasActions}" />
+                                </StackPanel>
+                            </DataTemplate></pages:GroupCard.ContentTemplate>
                         </pages:GroupCard>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>

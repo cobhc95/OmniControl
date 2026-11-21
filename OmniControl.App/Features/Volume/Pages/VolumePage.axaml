@@ -69,10 +69,12 @@
                             <vm:AddProgramButton DataContext="{Binding Outputs.ProgramTools.Add}" />
                         </StackPanel>
                     </pages:GroupCard.Tools>
-                    <StackPanel Spacing="{StaticResource Gap}" x:DataType="vm:VolumeGroup" DataContext="{Binding Outputs}">
-                        <vm:MixerHeadings />
-                        <ListBox Classes="rows compact" ItemsSource="{Binding Items}" />
-                    </StackPanel>
+                    <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:VolumePageViewModel">
+                        <StackPanel Spacing="{StaticResource Gap}" x:DataType="vm:VolumeGroup" DataContext="{Binding Outputs}">
+                            <vm:MixerHeadings />
+                            <ListBox Classes="rows compact" ItemsSource="{Binding Items}" />
+                        </StackPanel>
+                    </DataTemplate></pages:GroupCard.ContentTemplate>
                 </pages:GroupCard>
 
                 <!-- The Microphones header: name and the devices' count, then "Use microphones" (off: OmniControl opens no microphone) -->
@@ -80,10 +82,12 @@
                     <pages:GroupCard.Tools>
                         <pages:HeaderSwitch Label="{Binding UseMicrophones.Label}" IsOn="{Binding UseMicrophones.IsOn}" ToolTip.Tip="{Binding UseMicrophones.Tip}" />
                     </pages:GroupCard.Tools>
-                    <StackPanel Spacing="{StaticResource Gap}" x:DataType="vm:VolumeGroup" DataContext="{Binding Inputs}">
-                        <vm:MixerHeadings />
-                        <ListBox Classes="rows compact" ItemsSource="{Binding Items}" />
-                    </StackPanel>
+                    <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:VolumePageViewModel">
+                        <StackPanel Spacing="{StaticResource Gap}" x:DataType="vm:VolumeGroup" DataContext="{Binding Inputs}">
+                            <vm:MixerHeadings />
+                            <ListBox Classes="rows compact" ItemsSource="{Binding Items}" />
+                        </StackPanel>
+                    </DataTemplate></pages:GroupCard.ContentTemplate>
                 </pages:GroupCard>
             </StackPanel>
             </DataTemplate>
@@ -98,7 +102,9 @@
                 <vm:CableTable DataContext="{Binding WiringCables}" />
                 <!-- Equalizer APO: whether it is installed and the one link about it (its own Device Selector, or its installer) -->
                 <pages:GroupCard Group="{Binding Apo.Group}">
-                    <ListBox Classes="rows compact cards" ItemsSource="{Binding Apo.Items}" />
+                    <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:VolumePageViewModel">
+                        <ListBox Classes="rows compact cards" ItemsSource="{Binding Apo.Items}" />
+                    </DataTemplate></pages:GroupCard.ContentTemplate>
                 </pages:GroupCard>
             </StackPanel>
             </DataTemplate>
