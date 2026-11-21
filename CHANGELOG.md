@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Fixed: the Method chip shows the method you picked, also while there are no effects to run (the master set to Equalizer APO said "Direct", so picking it looked like it did nothing); Automatic with nothing to run says "Automatic", and the line under the chip says "no effects". In the Method menu the current method keeps its selected look while it has the keyboard.
+
 ## 0.2.7 (21 Nov 2026)
 
 - Important: Other PCs uses a new connection protocol in this version (safer pairing and fresh keys for every connection). Update every PC you pair to 0.2.7 or later; until both PCs run it, existing pairs show offline and new pairing is refused with one sentence. (This comes from the protocol change, not from the move to .NET 10, which needs nothing from you: the app still brings its own .NET.)

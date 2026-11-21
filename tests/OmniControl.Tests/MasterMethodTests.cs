@@ -1,3 +1,4 @@
+using OmniControl.App.Features.Volume.Pages;
 using OmniControl.Core.Engine.Apo;
 using Xunit.Abstractions;
 
@@ -201,6 +202,35 @@ public class MasterMethodTests(ITestOutputHelper output)
         Assert.False(EffectsRules.MasterOfferOf(EffectsRules.MasterApo, facts with { ApoWhy = null, SeveralOutputs = true }, RunMethod.Bus).Available);
         Assert.Equal("Currently: Equalizer APO", EffectsRules.MasterOfferOf(EffectsRules.MasterAutomatic, facts, RunMethod.Apo).Description);
         Assert.Equal("Currently: cable bus", EffectsRules.MasterOfferOf(EffectsRules.MasterAutomatic, facts, RunMethod.Bus).Description);
+    }
+
+    /// A picked method is saved, read back (JSON as mixer.json, then the upgrade a file from before Off gets) as the same method, and the
+    /// chip names it also with nothing to run; on the master's and a microphone's menus only that card is selected.
+    [Theory]
+    [InlineData("", "Off")]
+    [InlineData("auto", "Automatic")]
+    [InlineData("bus", "Cable bus")]
+    [InlineData("apo", "Equalizer APO")]
+    public void APickedMethod_IsStored_ReadBack_AndNamedOnTheChip(string id, string chip)
+    {
+        var picked = EffectsRules.MasterRoutes.Single(r => r.Id == id);
+        var saved = new MixerSettings { MasterMethod = picked.Id, AllowedCables = new(), Inputs = { new InputFxEntry { Id = "mic", Method = picked.Id } } };
+        var loaded = JsonSerializer.Deserialize<MixerSettings>(JsonSerializer.Serialize(saved))!;
+        MixerSettings.UpgradeMethods(loaded);
+        Assert.Same(picked, EffectsRules.MasterRouteOf(loaded.MasterMethod));
+        Assert.Equal(id, EffectsRules.MicRouteOf(loaded.Inputs[0].Method).Id);
+
+        var facts = new MasterFacts(0, StatusKind.NeedsCable, null, false, false);
+        var master = EffectsRules.MasterMethodOf(picked, facts);
+        var off = picked == EffectsRules.MethodOff;
+        Assert.Equal(chip, EffectsRules.ChipWord(EffectsRules.ChipMethodOf(new RowMethodFacts(RowKind.Master, false, RunMethod.None, master, Route: picked, Off: off))));
+        var mic = EffectsRules.MicRouteOf(id);
+        Assert.Equal(chip == "Cable bus" ? "Cable" : chip, EffectsRules.ChipWord(EffectsRules.ChipMethodOf(new RowMethodFacts(RowKind.Microphone, false,
+            RunMethod.None, master, Route: mic, Own: EffectsRules.MicMethodOf(mic, facts), Off: off))));
+
+        var menu = RouteChoice.ForMaster(_ => { }, () => { });
+        menu.Sync(EffectsRules.MasterRouteOf(loaded.MasterMethod), r => EffectsRules.MasterOfferOf(r, facts, master));
+        Assert.Equal(picked, menu.Cards.Single(c => c.IsSelected).Route);
     }
 
     /// The planner's master facts on the reference PC: Equalizer APO is checked on the real speakers, not on the cable that is the default while the bus runs.
