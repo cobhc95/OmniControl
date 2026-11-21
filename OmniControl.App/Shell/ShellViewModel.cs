@@ -79,6 +79,10 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     [ObservableProperty] private PageViewModel? _currentPage;
 
     private readonly DispatcherTimer _hiddenSettle = new() { Interval = Timing.HiddenSettle };
+    private readonly DispatcherTimer _releaseUi = new() { Interval = Timing.UiReleaseAfterHidden };
+
+    /// The main window has stayed hidden <see cref="Timing.UiReleaseAfterHidden"/>: whoever owns the main window and the tray panel lets them go.
+    public event Action? ReleaseWindows;
     [ObservableProperty] private PageViewModel? _selectedMainPage;
     [ObservableProperty] private PageViewModel? _selectedFooterPage;
     [ObservableProperty] private string _searchText = string.Empty;
@@ -151,17 +155,41 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         ApplyFilter();
         _hiddenSettle.Tick += OnHiddenSettled;
         _hiddenSettle.Start(); // the window is not shown yet (it may start in the tray)
+        _releaseUi.Tick += OnReleaseDue;
+        _releaseUi.Start();
         if (AppDataStore.TakeDamaged() is { Count: > 0 } damaged)
             Report(Guard.SeeLog($"Damaged settings were reset to their defaults; the damaged files are kept as {string.Join(", ", damaged.Select(AppDataStore.BadCopyOf))}."));
     }
 
     /// The window has stayed hidden a while: one full collection gives what its use left behind back to Windows. The page views stay
-    /// (<see cref="PageHost"/>), so showing it again from the tray rebuilds nothing.
+    /// (<see cref="PageHost"/>) until <see cref="OnReleaseDue"/>, so showing it again soon rebuilds nothing.
     private void OnHiddenSettled(object? sender, EventArgs e)
     {
         _hiddenSettle.Stop();
         UiTiming.Memory("hidden settle");
         Guard.Run("Give memory back", ProcessPower.Compact);
+    }
+
+    /// The window has stayed hidden a long while: the windows go (the page view-models stay, so the next showing opens at the same page),
+    /// then one compacting collection gives their memory back.
+    private void OnReleaseDue(object? sender, EventArgs e)
+    {
+        _releaseUi.Stop();
+        Guard.Run("Let the windows go", () =>
+        {
+            ReleaseWindows?.Invoke();
+            _actionsWindow.Release();
+        });
+        DispatcherTimer.RunOnce(CompactAfterRelease, Timing.UiReleaseCompactAfter);
+    }
+
+    // A blocking collection pauses every thread, the audio's too: skipped while OmniControl itself plays or records sound.
+    private void CompactAfterRelease()
+    {
+        if (_windowShown) return;
+        var busy = _volume.StreamsAudio || _screenshot.Records;
+        if (!busy) Guard.Run("Give memory back", ProcessPower.CompactNow);
+        UiTiming.Memory(busy ? "windows let go (sound running, not compacted)" : "windows let go and compacted");
     }
 
     /// Every feature's view templates and those of what the shell itself makes (App settings, the suggested keys switch); added to the app's at start-up.
@@ -257,6 +285,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         if (shown == _windowShown) return;
         _windowShown = shown;
         _hiddenSettle.IsEnabled = !shown;
+        _releaseUi.IsEnabled = !shown;
         FollowRestoreCheck(shown);
         if (shown) _apps.Refresh();
         _wired?.OnOnScreenChanged(shown); // a page not wired yet comes on screen when it is
@@ -296,6 +325,8 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         // The shell's own steps join the modules' at their stages (ShutdownStage); every step runs on its own.
         _hiddenSettle.Stop();
         _hiddenSettle.Tick -= OnHiddenSettled;
+        _releaseUi.Stop();
+        _releaseUi.Tick -= OnReleaseDue;
         void Step(ShutdownStage stage, string what, Action step) => _shutdown.Add(stage, what, step);
         Step(ShutdownStage.Search, "search", () => _search?.Dispose());
         Step(ShutdownStage.Search, "search key", () =>

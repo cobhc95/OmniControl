@@ -6,12 +6,16 @@ namespace OmniControl.App.Features.Screenshot;
 public sealed class ScreenshotModule : IFeatureModule
 {
     private WindowsKeysSwitch? _windowsKeys;
+    private ScreenshotService? _service;
 
     public void Register(FeatureContext context)
     {
-        _windowsKeys = ScreenshotActions.Register(context.Actions, context.Osd, context.Report, context.AskAsync);
+        (_windowsKeys, _service) = ScreenshotActions.Register(context.Actions, context.Osd, context.Report, context.AskAsync);
         context.Imports.OnReload(DataStores.Screenshots, _windowsKeys.ReloadFromDisk);
     }
+
+    /// A screen recording (with its sound) runs now.
+    public bool Records => _service?.IsRecording == true;
 
     /// The Actions and hotkeys window's "Restore defaults" also puts Windows' own screenshot keys back (<paramref name="name"/>: that window's).
     public IRestorable KeysRestore(string name) => new SettingsRestore<WindowsKeysState>("screenshot-keys", name,

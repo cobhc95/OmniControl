@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Avalonia.VisualTree;
 
 namespace OmniControl.App.Features.Volume.Pages.Easy;
 
@@ -14,8 +15,28 @@ public partial class SoundChip : UserControl
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
+        Follow();
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        Follow();
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        Follow();
+    }
+
+    // The sound is heard only while the chip is on screen, so a view let go (a released main window) is never held by its model.
+    private void Follow()
+    {
+        var sound = this.IsAttachedToVisualTree() ? (DataContext as EasyRow)?.Sound : null;
+        if (sound == _sound) return;
         if (_sound is not null) _sound.PropertyChanged -= OnSoundChanged;
-        _sound = (DataContext as EasyRow)?.Sound;
+        _sound = sound;
         if (_sound is not null) _sound.PropertyChanged += OnSoundChanged;
         Show();
     }

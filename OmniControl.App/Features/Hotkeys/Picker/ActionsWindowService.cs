@@ -7,7 +7,7 @@ namespace OmniControl.App.Features.Hotkeys.Picker;
 
 /// The Actions and hotkeys window: the Choose-the-action window in its manage mode over every master
 /// action, opened from the sidebar's bottom entry and from search results; one non-modal window, brought to the front when asked for again,
-/// hidden rather than closed (<see cref="SingleWindow{T}"/> keep), so it opens again at once with a fresh model.
+/// hidden rather than closed (<see cref="SingleWindow{T}"/> keep), so it opens again at once with a fresh model, until it is let go after a long hide.
 /// It owns what the window's top bar shows: the shortcut sets (a preset group of the master list, with the shared preset picker), Clear all
 /// and Restore defaults. Everything it lists is read live from <see cref="HotkeyRegistry"/>.
 public sealed class ActionsWindowService : IDisposable
@@ -96,6 +96,9 @@ public sealed class ActionsWindowService : IDisposable
     }
 
     /// Each showing starts fresh, as a newly made window did: a new model over the live master list (search empty, first section).
+    /// Lets the hidden window go (OmniControl has sat in the tray a long while); the next opening makes it again.
+    public void Release() => _window.Release();
+
     private void Opening(PickerWindow window) => window.Use(_model = new PickerModel(
         PickChoice.Group(MouseActionCatalog.ManageChoices(_registry.PickerActions)), null, new Dictionary<string, string>(), manage: Keys));
 

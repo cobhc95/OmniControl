@@ -4,7 +4,8 @@ namespace OmniControl.App.Shared.Services;
 
 /// The lifecycle of a window that exists at most once (About, the app lists manager, the preset manager): shown through
 /// <see cref="OwnedWindow"/>, brought to the front when asked for again, forgotten when it closes. A kept window (Actions and hotkeys) is
-/// made once and only hidden when closed, so opening it again is instant; it lets go of its content while hidden, so it runs nothing.
+/// only hidden when closed, so opening it again is instant; it lets go of its content while hidden, so it runs nothing, and of the window
+/// itself when <see cref="Release"/>d.
 public sealed class SingleWindow<T> where T : Window
 {
     private readonly Action<string> _report;
@@ -73,6 +74,15 @@ public sealed class SingleWindow<T> where T : Window
             if (e.Property == Visual.IsVisibleProperty && !window.IsVisible) LetGo();
         };
         return window;
+    }
+
+    /// A kept window that is hidden closes for good, so its views go (the app sat in the tray a long while); the next <see cref="Show"/> makes a new one.
+    public void Release()
+    {
+        if (_window is not { IsVisible: false } window) return;
+        _closing = true;
+        try { window.Close(); }
+        finally { _closing = false; }
     }
 
     public void Close()

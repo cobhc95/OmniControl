@@ -45,6 +45,9 @@ public sealed class ScreenshotService
     private CaptureSession? _session;
     private VideoRecording? _recording;
 
+    /// A screen recording runs now.
+    public bool IsRecording => _recording is not null;
+
     /// <param name="hevc">Windows has an HEVC encoder (a recording set to HEVC uses H.264 otherwise).</param>
     /// <param name="ask">The shared confirm (Discard, Force close).</param>
     public ScreenshotService(ScreenshotSettings settings, Action<string> report, Action<OsdMessage> note, bool hevc, Func<DialogMessage, Task<bool>> ask)

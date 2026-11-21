@@ -17,15 +17,42 @@ public partial class MainWindow : Window
         PinnedNav.AddHandler(TappedEvent, (_, _) => OpenPinned());
         PinnedNav.AddHandler(KeyDownEvent, OnPinnedKeyDown);
         Opened += (_, _) => Dispatcher.UIThread.Post(() => FocusSidebar()?.Focus(NavigationMethod.Tab), DispatcherPriority.Loaded);
-        DataContextChanged += (_, _) =>
-        {
-            if (_shell is not null) _shell.SearchFocusRequested -= OnSearchFocusRequested;
-            _shell = DataContext as ShellViewModel;
-            if (_shell is not null) _shell.SearchFocusRequested += OnSearchFocusRequested;
-        };
+        DataContextChanged += (_, _) => Follow(DataContext as ShellViewModel);
+        Closed += (_, _) => Follow(null); // let go after a long hide (WindowLifecycle): the shell no longer holds this window
     }
 
     private ShellViewModel? _shell;
+
+    private void Follow(ShellViewModel? shell)
+    {
+        if (_shell is not null) _shell.SearchFocusRequested -= OnSearchFocusRequested;
+        _shell = shell;
+        if (_shell is not null) _shell.SearchFocusRequested += OnSearchFocusRequested;
+    }
+
+    /// Where a window stood (its position and size unless maximised) and how far its page was scrolled.
+    internal sealed record Placement(PixelPoint Position, Size Size, bool Maximised, Vector Scroll);
+
+    /// This window's <see cref="Placement"/>, for the window made after it is let go.
+    internal Placement Placed => new(Position, ClientSize, WindowState == WindowState.Maximized, ContentHost.Offset);
+
+    /// Opens as <paramref name="placed"/> says (call before it is first shown); the page scrolls back once it is laid out.
+    internal void PlaceAs(Placement placed)
+    {
+        if (placed.Maximised) WindowState = WindowState.Maximized;
+        else
+        {
+            WindowStartupLocation = WindowStartupLocation.Manual;
+            Position = placed.Position;
+            (Width, Height) = (placed.Size.Width, placed.Size.Height);
+        }
+        void Scroll(object? sender, EventArgs e)
+        {
+            Opened -= Scroll;
+            Dispatcher.UIThread.Post(() => ContentHost.Offset = placed.Scroll, DispatcherPriority.Loaded);
+        }
+        Opened += Scroll;
+    }
 
     /// A click anywhere except the hotkey box that is listening cancels listening.
     private void OnPointerPressedTunnel(object? sender, PointerPressedEventArgs e)

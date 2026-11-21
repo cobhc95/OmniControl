@@ -94,6 +94,9 @@ public sealed class EffectsEngine : IDisposable
     /// What the row's effects and routing are doing; key null = the master.
     public EngineStatus StatusOf(string? key) => _status.GetValueOrDefault(key ?? MixerService.MasterKey, EngineStatus.Off);
 
+    /// Sound runs through OmniControl itself now (a run or a test tone; Equalizer APO's work is Windows' audio service's).
+    public bool Streams => _runs.Count > 0 || _testing.Count > 0;
+
     /// The cables OmniControl's runs use now (the Wiring menu does not offer them as plain devices).
     public IReadOnlySet<string> CablesInUse => _cablesInUse;
 

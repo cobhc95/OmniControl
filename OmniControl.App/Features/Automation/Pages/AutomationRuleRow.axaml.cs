@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
+using Avalonia.VisualTree;
 using OmniControl.App.Features.Hotkeys;
 using OmniControl.App.Features.Hotkeys.Picker;
 
@@ -26,15 +27,30 @@ public partial class AutomationRuleRow : UserControl
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
-        if (_watched is not null) _watched.PropertyChanged -= OnItemChanged;
-        _watched = Item;
-        if (_watched is not null) _watched.PropertyChanged += OnItemChanged;
+        Follow();
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        Follow();
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromVisualTree(e);
         CapturePopup.IsOpen = false;
+        Follow();
+    }
+
+    // The rule is heard only while the row is on screen, so a view let go (a released main window) is never held by its model.
+    private void Follow()
+    {
+        var item = this.IsAttachedToVisualTree() ? Item : null;
+        if (item == _watched) return;
+        if (_watched is not null) _watched.PropertyChanged -= OnItemChanged;
+        _watched = item;
+        if (_watched is not null) _watched.PropertyChanged += OnItemChanged;
     }
 
     // The pop-down closes the moment the rule stops listening; it opens when the rebuilt block is drawn (OnHotkeyBlockLoaded).

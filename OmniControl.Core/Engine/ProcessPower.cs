@@ -1,3 +1,5 @@
+using System.Runtime;
+
 namespace OmniControl.Core.Engine;
 
 /// Keeps this process quick to answer while it sits idle in the tray without costing the PC anything while idle: Windows 11 otherwise
@@ -28,4 +30,13 @@ public static class ProcessPower
     /// decides about compacting). For quiet moments (start-up has settled, the window was hidden a while). Never blocking: a blocking
     /// collection stops every thread, the mouse hook's and the audio thread's too, so the pointer and the sound would stall.
     public static void Compact() => GC.Collect(2, GCCollectionMode.Forced, blocking: false, compacting: false);
+
+    /// Compacts the whole heap, large objects too, and gives every free page back to Windows at once. Blocking: every thread stops for
+    /// the moment it takes (the mouse hook's and the audio thread's too), so only right after big parts were let go (the windows after a
+    /// long hide), on the UI thread, while nothing plays or records through this process (the caller checks).
+    public static void CompactNow()
+    {
+        GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+        GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+    }
 }

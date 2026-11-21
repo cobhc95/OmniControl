@@ -4,7 +4,7 @@ using OmniControl.App.Shell;
 
 namespace OmniControl.App;
 
-/// Start-up only: load settings, the background colour and the accent, create the window, hand its lifetime to <see cref="WindowLifecycle"/>.
+/// Start-up only: load settings, the background colour and the accent, hand the main window's making and lifetime to <see cref="WindowLifecycle"/>.
 public partial class App : Application
 {
     private readonly SingleInstance? _instance;
@@ -35,11 +35,12 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             desktop.Exit += (_, _) => _watchdog?.Dispose();
+            // Only the one exit path ends the app: the main window is closed and made again after a long hide (WindowLifecycle).
+            desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             var shell = new ShellViewModel();
             DataTemplates.AddRange(shell.Templates);
-            var window = new MainWindow { DataContext = shell };
-            desktop.MainWindow = window;
-            WindowLifecycle.Attach(this, desktop, window, shell, settings, StartupRegistration.IsBackgroundStart(desktop.Args ?? Array.Empty<string>()));
+            WindowLifecycle.Attach(this, desktop, () => new MainWindow { DataContext = shell }, shell, settings,
+                StartupRegistration.IsBackgroundStart(desktop.Args ?? Array.Empty<string>()));
             StartupRegistration.RepairIfMoved();
             _instance?.Listen(() => Dispatcher.UIThread.Post(() => AppLifecycle.RequestShow("another start of OmniControl (it ended and handed over)")),
                 () => Dispatcher.UIThread.Post(AppLifecycle.RequestQuit));

@@ -22,6 +22,13 @@ public static partial class Timing
     /// Once the main window has been hidden (or not yet shown) this long, the memory its use left behind is given back to Windows (its page views stay).
     public static readonly TimeSpan HiddenSettle = TimeSpan.FromSeconds(30);
 
+    /// Once the main window has been hidden this long, it, the Actions and hotkeys window and the tray panel are let go (made again at their
+    /// next showing, a little slower), then <see cref="UiReleaseCompactAfter"/> later one compacting collection gives their memory back.
+    public static readonly TimeSpan UiReleaseAfterHidden = TimeSpan.FromMinutes(5);
+
+    /// <inheritdoc cref="UiReleaseAfterHidden"/> The wait lets the closed windows' last frames and handles go first.
+    public static readonly TimeSpan UiReleaseCompactAfter = TimeSpan.FromSeconds(2);
+
     /// The process's memory goes to timing-log.txt this long after start-up (<c>UiTiming.Memory</c>; also at <see cref="HiddenSettle"/>).
     public static readonly TimeSpan MemoryLineAfterStart = TimeSpan.FromMinutes(2);
 

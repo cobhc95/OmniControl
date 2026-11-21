@@ -15,7 +15,7 @@ public static class ScreenshotActions
     private const string Words = "screenshot screen capture snip snipping print screen grab picture image";
     private const string RecordWords = "record recording video screen recorder capture mp4 gif clip";
 
-    public static WindowsKeysSwitch Register(IActionRegistry hotkeys, IOsd osd, Action<string> report, Func<DialogMessage, Task<bool>> ask)
+    public static (WindowsKeysSwitch Keys, ScreenshotService Service) Register(IActionRegistry hotkeys, IOsd osd, Action<string> report, Func<DialogMessage, Task<bool>> ask)
     {
         osd.DeclareText(ScreenshotService.OsdElement);
         var settings = ScreenshotSettings.Load();
@@ -35,7 +35,7 @@ public static class ScreenshotActions
             new HotkeyAction(WindowsKeysSwitch.ActionId, "Turn off Windows' screenshot keys: toggle", Category, $"{Words} windows keys snipping tool print screen win shift s disable block",
                 _ => windowsKeys.Toggle()) { PickerSection = ActionSections.Screenshot, Icon = IconLibrary.Screen },
         });
-        return windowsKeys;
+        return (windowsKeys, service);
     }
 
     private static readonly Dictionary<ShotKind, string> ShortNames = new()

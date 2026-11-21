@@ -6,7 +6,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 ## Unreleased
 
 - Lighter memory: windows are drawn in software, so the graphics driver and ANGLE are no longer loaded (about 50 to 100 MB less, and no graphics-card memory); the download is about 2 MB smaller.
-- Diagnostics: timing-log.txt records the app's memory (managed heap, private bytes, working set) two minutes after start and each time the window has settled hidden.
+- Lighter memory: after OmniControl has sat in the tray for 5 minutes, its main window, the Actions and hotkeys window and the quick panel are let go and their memory given back (sound playing through OmniControl's effects or a screen recording is never paused for it); the next opening takes a moment longer and comes back at the same place, page and scroll. The quick panel is built at its first click instead of at start-up.
+- Diagnostics: timing-log.txt records the app's memory (managed heap, private bytes, working set) two minutes after start, each time the window has settled hidden and after the windows are let go.
 
 ## 0.2.6 (21 Nov 2026)
 

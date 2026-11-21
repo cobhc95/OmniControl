@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using Avalonia.Controls.Primitives;
+using Avalonia.VisualTree;
 
 namespace OmniControl.App.Features.Resources.Weather;
 
@@ -27,8 +28,28 @@ public partial class WeatherPlaceRow : UserControl
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
+        Follow();
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        Follow();
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        Follow();
+    }
+
+    // The item is heard only while the row is on screen, so a view let go (a released main window) is never held by its model.
+    private void Follow()
+    {
+        var item = this.IsAttachedToVisualTree() ? DataContext as WeatherPlaceItem : null;
+        if (item == _item) return;
         if (_item is not null) _item.PropertyChanged -= OnItemChanged;
-        _item = DataContext as WeatherPlaceItem;
+        _item = item;
         if (_item is not null) _item.PropertyChanged += OnItemChanged;
     }
 

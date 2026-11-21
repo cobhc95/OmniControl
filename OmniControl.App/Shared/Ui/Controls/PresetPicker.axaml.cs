@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.VisualTree;
 
 namespace OmniControl.App.Shared.Ui.Controls;
 
@@ -22,8 +23,28 @@ public partial class PresetPicker : UserControl
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
+        Follow();
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        Follow();
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        Follow();
+    }
+
+    // The choice is heard only while the picker is on screen, so a view let go (a released main window) is never held by its model.
+    private void Follow()
+    {
+        var choice = this.IsAttachedToVisualTree() ? DataContext as ChoiceItem : null;
+        if (choice == _choice) return;
         if (_choice is not null) { _choice.PropertyChanged -= OnChoiceChanged; _choice.Availability.PropertyChanged -= OnChoiceChanged; }
-        _choice = DataContext as ChoiceItem;
+        _choice = choice;
         if (_choice is not null) { _choice.PropertyChanged += OnChoiceChanged; _choice.Availability.PropertyChanged += OnChoiceChanged; }
         Show();
     }

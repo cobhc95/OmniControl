@@ -6,8 +6,8 @@ namespace OmniControl.App.Features.Tray;
 
 /// Layout and wiring only: the tray flyout's window. It opens beside the tray at the click (<see cref="TrayPlacement"/>, on the screen and
 /// at the DPI of the click, placed again whenever its size or scaling changes), hides when it loses the focus (a click anywhere else) or on
-/// Esc, and is hidden rather than closed until the app ends. Tab and Shift+Tab go round its controls. The pickers it opens are its own
-/// windows, so it stays open while one is up. Sliders and tiles are dragged to another place by the shared <see cref="PanelDragReorder"/>
+/// Esc, and is hidden rather than closed until the app ends or it is let go after a long hide. Tab and Shift+Tab go round its controls.
+/// The pickers it opens are its own windows, so it stays open while one is up. Sliders and tiles are dragged to another place by the shared <see cref="PanelDragReorder"/>
 /// (Esc ends a drag before it hides the panel). Mouse first for the crosses, the drag and the right-click menu.
 public partial class TrayFlyoutWindow : Window
 {
@@ -25,7 +25,8 @@ public partial class TrayFlyoutWindow : Window
         SizeChanged += (_, _) => Place();
         ScalingChanged += (_, _) => Place();
         AddHandler(KeyDownEvent, OnPanelKeyDown, RoutingStrategies.Tunnel);
-        DataContextChanged += OnModelChanged;
+        DataContextChanged += (_, _) => Wire(Model);
+        Closed += (_, _) => Wire(null); // let go for good (released after a long hide): the model no longer holds this window
         _sliderDrag = new PanelDragReorder(SliderItems, vertical: true, CanDrag, item => item is TraySliderItem, (from, to) => Model?.Move(true, from, to));
         _tileDrag = new PanelDragReorder(TileItems, vertical: false, CanDrag, item => item is TrayTileItem, (from, to) => Model?.Move(false, from, to));
     }
@@ -61,10 +62,10 @@ public partial class TrayFlyoutWindow : Window
 
     private TrayFlyoutModel? _wired;
 
-    private void OnModelChanged(object? sender, EventArgs e)
+    private void Wire(TrayFlyoutModel? model)
     {
         if (_wired is not null) _wired.FocusRequested -= OnFocusRequested;
-        _wired = Model;
+        _wired = model;
         if (_wired is not null) _wired.FocusRequested += OnFocusRequested;
     }
 
@@ -108,21 +109,10 @@ public partial class TrayFlyoutWindow : Window
         target?.Focus(NavigationMethod.Tab);
     }
 
-    /// Builds the window's visuals once, unseen, so the first click only shows it.
-    public void Warm()
-    {
-        Model?.Showing();
-        (Opacity, ShowActivated) = (0, false);
-        Show();
-        Hide();
-        (Opacity, ShowActivated) = (1, true);
-        Model?.Hidden();
-    }
-
     /// Hides it as a click elsewhere does.
     public void Dismiss() => HideNow();
 
-    /// Ends it for good (the app is exiting).
+    /// Ends it for good (the app is exiting, or the hidden panel is let go).
     public void CloseForGood()
     {
         _closing = true;

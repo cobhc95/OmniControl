@@ -28,6 +28,9 @@ public sealed class VolumeModule : IFeatureModule
 
     public MixerService Mixer { get; private set; } = null!;
 
+    /// Sound runs through OmniControl's own effects engine now (a blocking memory collection would be heard).
+    public bool StreamsAudio => _effects?.Streams == true;
+
     /// The program paths the mixer remembers (the rule and automation pickers offer them as programs to choose).
     public IEnumerable<string> RememberedPrograms() => Mixer.RememberedPaths();
 

@@ -8,16 +8,28 @@ namespace OmniControl.App.Features.Devices.Pages;
 public partial class DevicesPage : UserControl
 {
     private readonly PointerMenu _menu = new();
+    private DevicesPageViewModel? _wired;
 
     public DevicesPage()
     {
         InitializeComponent();
         DeviceList.ContextRequested += OnDeviceContext;
-        DataContextChanged += (_, _) =>
-        {
-            if (DataContext is DevicesPageViewModel vm) vm.ImportOpened += () => Dispatcher.UIThread.Post(ImportCard.BringIntoView, DispatcherPriority.Background);
-        };
+        DataContextChanged += (_, _) => Follow();
+        AttachedToVisualTree += (_, _) => Follow();
+        DetachedFromVisualTree += (_, _) => Follow();
     }
+
+    // The model is heard only while the page is on screen, so a view let go (a released main window) is never held by its model.
+    private void Follow()
+    {
+        var model = this.IsAttachedToVisualTree() ? DataContext as DevicesPageViewModel : null;
+        if (model == _wired) return;
+        if (_wired is not null) _wired.ImportOpened -= OnImportOpened;
+        _wired = model;
+        if (_wired is not null) _wired.ImportOpened += OnImportOpened;
+    }
+
+    private void OnImportOpened() => Dispatcher.UIThread.Post(ImportCard.BringIntoView, DispatcherPriority.Background);
 
     private IReadOnlyList<DeviceItem> Chosen() => (DeviceList.SelectedItems ?? new List<object>()).OfType<DeviceItem>().ToList();
 
