@@ -5,6 +5,10 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Changed: Setup has a "Start OmniControl as administrator at sign-in" box, ticked when your "Run as administrator" (Mouse and Trackpad) is on; only it adds the sign-in task that starts OmniControl as administrator without Windows' prompt, for the user signed in to the PC (also when another account answers the prompt). OmniControl itself no longer adds the task: with "Run as administrator" on and no task, Windows asks at each start. A task from before is kept by a silent Setup only when it is exactly Setup's own.
+- Changed: uninstall offers to remove Windows Packet Filter and Equalizer APO only when OmniControl installed them (a record only administrators can change, kept by Setup, and by OmniControl for the driver); a copy that was there before stays and no box is shown for it. A silent uninstall removes only those, unless /KEEPDRIVERS.
+- Changed: Setup adds the "OmniControl on Tailscale" firewall rule only when Tailscale is installed; Other PCs' Tailscale checklist adds it later when needed.
+
 ## 0.2.8 (21 Nov 2026)
 
 - Changed: Resources > Taskbar gadget: the small "Preview" strip at the top is gone; the top line is "Show on taskbar", Position and Font (the Ready-made layouts tiles still show each look).
