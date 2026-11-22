@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Fixed: taskbar gadget: clicks, double-clicks and the hover outline now work on its whole area, also between letters, icons and columns (they passed through everywhere but the drawn strokes).
+
 - New: taskbar gadget "Solid background" switch (Size and spacing, off by default): fills the gadget with the taskbar's colour so a taskbar skin behind it can't show through.
 - Fixed: taskbar gadget on a coloured or restyled taskbar (StartAllBack, ExplorerPatcher): coloured readings no longer show a dark halo (grey text smoothing instead of ClearType), and on Left it sits after a classic or StartAllBack Start orb instead of over it, also when the taskbar auto-hides.
 - Changed: uninstalling no longer opens a separate window to ask about Windows Packet Filter and Equalizer APO; the uninstaller's own window shows "Remove Windows Packet Filter" and "Remove Equalizer APO" (ticked, only for what OmniControl installed) before it removes anything. /KEEPDRIVERS works as before.

@@ -74,7 +74,7 @@ public static class Palette
     public static readonly Color Ink = Color.Parse("#1A1A1A"), InkOnDark = Colors.White;
 
     /// A nearly invisible fill that still takes the mouse (a window region must not be fully transparent to be hit).
-    public static readonly Color HitTest = Color.FromArgb(1, 0, 0, 0);
+    public static readonly Color HitTest = Color.FromArgb(4, 0, 0, 0);
 
     /// The light choice: the "White" accent (the program's and the OSD's) and the OSD's "Light" background.
     public const string LightHex = "#F2F2F2";

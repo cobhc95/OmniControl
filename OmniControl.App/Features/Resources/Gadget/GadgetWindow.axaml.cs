@@ -1,3 +1,4 @@
+﻿using System.Runtime.InteropServices;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Media.Imaging;
@@ -46,6 +47,16 @@ public partial class GadgetWindow : Window
         using var picture = new RenderTargetBitmap(new PixelSize(width, height), new Vector(dpi, dpi));
         picture.Render(this);
         picture.CopyPixels(new PixelRect(0, 0, width, height), bits, width * height * 4, width * 4);
+        CatchClicks(bits, width * height);
+    }
+
+    /// Windows passes a click through a layered window's fully clear pixels, and the near-clear fill can round to clear in the picture: every
+    /// clear pixel (the gaps between columns and lines) is given the hit-test alpha, so the whole gadget takes the mouse.
+    private static void CatchClicks(IntPtr bits, int pixels)
+    {
+        var catcher = (int)((uint)Palette.HitTest.A << 24);
+        for (var i = 0; i < pixels; i++)
+            if (Marshal.ReadInt32(bits, i * 4) >>> 24 == 0) Marshal.WriteInt32(bits, i * 4, catcher);
     }
 
     private void OnPointerEntered(object? sender, PointerEventArgs e) => ShowEdge(HoverOutline);
