@@ -32,6 +32,7 @@ public sealed record MenuRowItem(string Text, string Link, bool IsOn, string Tip
     public bool IsRow => !IsHeader;
     public IReadOnlyList<TagItem> InlineTags => TagsOnOwnLine ? Array.Empty<TagItem>() : Tags ?? Array.Empty<TagItem>();
     public IReadOnlyList<TagItem> OwnLineTags => TagsOnOwnLine ? Tags ?? Array.Empty<TagItem>() : Array.Empty<TagItem>();
+    public bool HasInlineTags => InlineTags.Count > 0;
     public bool HasOwnLineTags => OwnLineTags.Count > 0;
     public double RowOpacity => Dim ? 0.6 : 1;
     public bool HasLink => Link.Length > 0;

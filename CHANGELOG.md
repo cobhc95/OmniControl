@@ -6,6 +6,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 ## Unreleased
 
 - Faster: the Displays page (and the Mouse page's inner groups) builds eight cards first and the rest right after, so its first frame shows sooner; looks and keys are the same.
+- Faster: menu rows build their tag lists only when the row has tags (long menus such as the action picker's and the gadget's menus open sooner).
 - README: new screenshots of the Resources Readings tab and the Network traffic control page, drawn with made-up data (the screenshot tool can now draw both pages).
 
 ## 0.2.9 (22 Nov 2026)
