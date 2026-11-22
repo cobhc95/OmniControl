@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- One-off plug-in compatibility check; not in OmniControl.slnx, the build scripts or CI. The plug-in host lives in Core. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>PluginHarness</AssemblyName>
+    <RootNamespace>PluginHarness</RootNamespace>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\OmniControl.Core\OmniControl.Core.csproj" />
+  </ItemGroup>
+
+</Project>
