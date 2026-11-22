@@ -15,6 +15,11 @@ public sealed partial class OtherPcsPageViewModel
             Choices = TailscaleChecks.Build(TailscaleStatus.NotInstalled, null, null, string.Empty, "PC").Select(c => c.Words).ToList(),
             Tip = string.Join(" ", TailscaleChecks.Build(TailscaleStatus.NotInstalled, null, null, string.Empty).Select(c => $"{c.Sentence} {c.Fix}".Trim()).Where(s => s.Length > 0)),
         },
+        ReachCard = new("Can't reach it on this network?", PcWords + " offline not showing private public firewall wifi wi-fi router not found", OtherPcsService.Category)
+        {
+            Choices = NetworkChecks.AllWords(),
+            Tip = OtherPcsService.FindTip,
+        },
         AllowancesCard = new("What a paired PC may do here", PcWords + " allow permission switch power actions read settings devices", OtherPcsService.Category)
         {
             Choices = PcAllowances.All.Select(a => a.Label).ToList(),
@@ -35,7 +40,7 @@ public sealed partial class OtherPcsPageViewModel
     /// Open pill selects the PC's tab and shows the page).
     private static SearchBuilder Cards(OtherPcsService? service, OtherPcsPageViewModel? page)
     {
-        var builder = new SearchBuilder().Add(PairCard).Add(WakeCard).Add(TailscaleCard).Add(AllowancesCard);
+        var builder = new SearchBuilder().Add(PairCard).Add(WakeCard).Add(TailscaleCard).Add(ReachCard).Add(AllowancesCard);
         if (service is null) return builder;
         return builder.AddEach(service.Pairs, PcCard, pair => page?.Pcs.FirstOrDefault(p => p.Id == pair.Id) is { } item ? page.ResultFor(item, PcCard(pair)) : null);
     }

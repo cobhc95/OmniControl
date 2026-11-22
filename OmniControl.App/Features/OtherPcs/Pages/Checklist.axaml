@@ -3,12 +3,12 @@
              xmlns:vm="using:OmniControl.App.Features.OtherPcs.Pages"
              xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
              xmlns:svc="using:OmniControl.App.Shared.Services"
-             x:Class="OmniControl.App.Features.OtherPcs.Pages.TailscaleChecklist">
-    <!-- THE Tailscale checklist (docs/mockups/other-pcs-tailscale.html, other-pcs-tailscale-connect.html): one row per check with its mark, words, right-side tag
-         and its one fix. Used by the Pair a PC panel and by a paired PC's "Set up Tailscale for this PC" stage; Items are TailscaleCheckItems. -->
+             x:Class="OmniControl.App.Features.OtherPcs.Pages.Checklist">
+    <!-- THE checklist: one row per check with its mark (tick, caution, or a dot for a reminder), words, right-side tag and its one fix. Used by the Pair a PC
+         panel, a paired PC's "Set up Tailscale for this PC" stage and "Can't reach it on this network?" (ReachChecklist); Items are CheckItems. -->
     <ItemsControl x:Name="List">
         <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:TailscaleCheckItem">
+            <DataTemplate x:DataType="vm:CheckItem">
                 <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="{StaticResource Gap}" MinHeight="24">
                     <Panel Width="{StaticResource MenuGlyphSize}" VerticalAlignment="Center">
                         <Path Classes="glyph tickmark" Data="{StaticResource TickIcon}" IsVisible="{Binding IsOk}" />

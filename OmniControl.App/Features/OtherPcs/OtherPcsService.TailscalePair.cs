@@ -7,7 +7,7 @@ namespace OmniControl.App.Features.OtherPcs;
 // tailnet's peers by name, ours is handed over the current link, and when every row passes the link is redialled over Tailscale.
 public sealed partial class OtherPcsService
 {
-    private readonly Dictionary<string, IReadOnlyList<TailscaleCheck>> _pairChecks = new();
+    private readonly Dictionary<string, IReadOnlyList<CheckRow>> _pairChecks = new();
     private readonly HashSet<string> _pairChecking = new();
     private readonly Dictionary<string, (DateTime At, string Address)> _switchFailedAt = new();
     private readonly Dictionary<string, string> _switchProblems = new();
@@ -24,7 +24,7 @@ public sealed partial class OtherPcsService
     private bool LinkNeedsTailscale(string id) => Find(id) is { Route: PcRoute.Tailscale } && !IsViaTailscale(id);
 
     /// The checklist of one paired PC as last read (empty until the first read).
-    public IReadOnlyList<TailscaleCheck> PairChecklist(string id) => _pairChecks.GetValueOrDefault(id) ?? Array.Empty<TailscaleCheck>();
+    public IReadOnlyList<CheckRow> PairChecklist(string id) => _pairChecks.GetValueOrDefault(id) ?? Array.Empty<CheckRow>();
 
     /// True while the checks of that PC are being read.
     public bool PairCheckBusy(string id) => _pairChecking.Contains(id);

@@ -53,12 +53,15 @@
                     <TextBlock Classes="strong" Text="Set up Tailscale for this PC" VerticalAlignment="Center" />
                     <Button Grid.Column="1" Classes="pill" Content="{Binding CheckText}" Command="{Binding CheckAgainCommand}" VerticalAlignment="Center" />
                 </Grid>
-                <vm:TailscaleChecklist Items="{Binding Checks}" />
+                <vm:Checklist Items="{Binding Checks}" />
                 <TextBlock Classes="cautiontext" TextWrapping="Wrap" Text="{Binding SwitchProblem}" IsVisible="{Binding HasSwitchProblem}" />
                 <TextBlock Classes="hint small" TextWrapping="Wrap" Text="No new pairing code: this PC is already paired. Once every row is ticked it switches to Tailscale by itself and shows via Tailscale." />
             </StackPanel>
         </Border>
         <TextBlock Classes="hint" Text="{Binding Note}" TextWrapping="Wrap" IsVisible="{Binding HasNote}" />
+        <Border Classes="stage open" IsVisible="{Binding ShowsReach}">
+            <vm:ReachChecklist Help="{Binding Reach}" />
+        </Border>
 
         <!-- Connected but what the PC shares has not arrived yet: each group's place shows its name and the shared spinner (the tile mark's ring and arc) -->
         <ItemsControl ItemsSource="{Binding LoadingGroups}" IsVisible="{Binding IsLoading}">

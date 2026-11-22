@@ -26,7 +26,7 @@ public sealed class TailscaleLink
     }
 
     /// The checklist as last read (empty until the first read).
-    public IReadOnlyList<TailscaleCheck> Checklist { get; private set; } = Array.Empty<TailscaleCheck>();
+    public IReadOnlyList<CheckRow> Checklist { get; private set; } = Array.Empty<CheckRow>();
 
     /// The tailnet's Windows PCs, online ones first.
     public IReadOnlyList<TailscalePeer> Peers => _status.Peers;

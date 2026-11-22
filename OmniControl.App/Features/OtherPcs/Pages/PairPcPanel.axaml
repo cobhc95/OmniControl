@@ -27,7 +27,7 @@
 
         <StackPanel Spacing="{StaticResource Gap}" IsVisible="{Binding ShowsInternet}">
             <TextBlock Classes="hint small" Text="Tailscale on this PC" />
-            <vm:TailscaleChecklist Items="{Binding Checks}" />
+            <vm:Checklist Items="{Binding Checks}" />
             <TextBlock Classes="hint small" Text="Pick the other PC" />
             <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource Gap}">
                 <c:ChipMenu Text="Online PCs" ChipToolTip="The PCs of your Tailscale network that are online now." MenuOpened="OnPeerMenuOpened" VerticalAlignment="Center">
@@ -59,6 +59,7 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
             <pages:EmptyListRow IsVisible="{Binding NoNearby}" Text="No other PC is open to pairing on this network yet." ToolTip.Tip="{x:Static op:OtherPcsService.FindTip}" />
+            <vm:ReachChecklist Help="{Binding Reach}" IsVisible="{Binding ShowsReach}" />
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}">
                 <TextBox Classes="field" Text="{Binding PairAddress}" Watermark="Or the address of a PC on another network, such as ZeroTier" MinWidth="0" VerticalAlignment="Center">
                     <TextBox.KeyBindings>

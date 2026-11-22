@@ -23,6 +23,7 @@ public sealed partial class SetupTabItem : ObservableObject, IDisposable
         _service = service;
         _tailscale = tailscale;
         _ask = ask;
+        Reach = new ReachHelp(RunReachFix);
         _loading = true;
         InternetMode = tab.Internet;
         PairAddress = tab.Address;
@@ -41,7 +42,7 @@ public sealed partial class SetupTabItem : ObservableObject, IDisposable
 
     public ObservableCollection<NearbyPc> Nearby { get; } = new();
 
-    public ObservableCollection<TailscaleCheckItem> Checks { get; } = new();
+    public ObservableCollection<CheckItem> Checks { get; } = new();
 
     [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowsLan), nameof(ShowsInternet))] private bool _internetMode;
 
@@ -99,6 +100,11 @@ public sealed partial class SetupTabItem : ObservableObject, IDisposable
 
     public bool NoNearby => Nearby.Count == 0;
 
+    /// "Not showing? Check:" shows under the empty list of PCs open to pairing.
+    public bool ShowsReach => ShowsLan && NoNearby;
+
+    public ReachHelp Reach { get; }
+
     /// Something was typed or picked: closing the tab asks first.
     public bool HasTyped => InternetMode || PairAddress.Length > 0 || TailscaleTarget.Length > 0;
 
@@ -138,7 +144,7 @@ public sealed partial class SetupTabItem : ObservableObject, IDisposable
 
     private void RaiseState()
     {
-        foreach (var name in new[] { nameof(Owns), nameof(ShowsSetup), nameof(ShowsLan), nameof(ShowsInternet), nameof(ShowsAsking), nameof(ShowsCode), nameof(ShowsAllowed), nameof(AllowedTitle), nameof(ShowsMessage), nameof(ShowsReopen), nameof(OtherBusy), nameof(CheckText) })
+        foreach (var name in new[] { nameof(Owns), nameof(ShowsSetup), nameof(ShowsLan), nameof(ShowsInternet), nameof(ShowsReach), nameof(ShowsAsking), nameof(ShowsCode), nameof(ShowsAllowed), nameof(AllowedTitle), nameof(ShowsMessage), nameof(ShowsReopen), nameof(OtherBusy), nameof(CheckText) })
             OnPropertyChanged(name);
         // Each attempt starts from a new pair's defaults (the service sets them again).
         for (var i = 0; i < (_allowed?.Length ?? 0); i++) _allowed![i].Load(Pairing.Allows(PcAllowances.All[i].What));
@@ -152,7 +158,8 @@ public sealed partial class SetupTabItem : ObservableObject, IDisposable
         OnPropertyChanged(nameof(HasNearby));
         OnPropertyChanged(nameof(NoNearby));
         Checks.Clear();
-        foreach (var check in _tailscale.Checklist) Checks.Add(new TailscaleCheckItem(check, id => _tailscale.RunFix(id, () => _tailscale.Check(TailscaleTarget))));
+        foreach (var check in _tailscale.Checklist) Checks.Add(new CheckItem(check, id => _tailscale.RunFix(id, () => _tailscale.Check(TailscaleTarget))));
+        Reach.Show(NetworkChecks.ForPairing(_service.NetworkIsPrivate));
         RaiseState();
     }
 
@@ -183,6 +190,13 @@ public sealed partial class SetupTabItem : ObservableObject, IDisposable
     {
         TailscaleTarget = address;
         _tailscale.Check(address);
+    }
+
+    // Its Tailscale row switches this tab to Over the internet; the others open the Windows page that holds the fix.
+    private void RunReachFix(string checkId)
+    {
+        if (checkId == NetworkChecks.Tailscale) InternetMode = true;
+        else _service.RunReachFix(checkId);
     }
 
     [RelayCommand]

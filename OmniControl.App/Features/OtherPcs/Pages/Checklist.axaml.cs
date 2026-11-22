@@ -2,12 +2,12 @@ using System.Collections;
 
 namespace OmniControl.App.Features.OtherPcs.Pages;
 
-/// Wiring only: the rows (<see cref="TailscaleCheckItem"/>s) are handed to the list inside.
-public partial class TailscaleChecklist : UserControl
+/// Wiring only: the rows (<see cref="CheckItem"/>s) are handed to the list inside.
+public partial class Checklist : UserControl
 {
-    public static readonly StyledProperty<IEnumerable?> ItemsProperty = AvaloniaProperty.Register<TailscaleChecklist, IEnumerable?>(nameof(Items));
+    public static readonly StyledProperty<IEnumerable?> ItemsProperty = AvaloniaProperty.Register<Checklist, IEnumerable?>(nameof(Items));
 
-    public TailscaleChecklist() => InitializeComponent();
+    public Checklist() => InitializeComponent();
 
     public IEnumerable? Items
     {

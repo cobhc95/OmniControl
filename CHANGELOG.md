@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Other PCs: "Can't reach it on this network? Check:" under a paired PC that is offline, and "Not showing? Check:" under an empty list of PCs open to pairing. It shows whether this PC's network is Public or Private (with "Make it Private"), whether Windows Firewall lets OmniControl in (with "Allow on Private networks"), and what to check on the other PC, and updates by itself when the network changes.
+- Fixed: switching a network from Public to Private in Windows is now noticed at once by Other PCs (it waited for an address change or a restart). Setup also lets OmniControl through Windows Firewall on Private and Domain networks, never Public.
 - Resources > Taskbar gadget: the Position and Font cards sit at the right edge, in line with the groups below, and wrap below (still right-aligned) in a narrow window.
 - Changed: the taskbar gadget's right-click menu is now only Gadget settings…, Network Traffic Control… (while it runs) and Hide gadget; Layout, Show, Position and Font stay on the Resources page's Taskbar gadget tab.
 - Pages open faster: every page builds its first screen of cards at once and the rest just after, between frames; the Mouse and Trackpad page reads Windows' pointer settings, and App settings "Start with Windows", off the UI thread (the pointer settings once instead of three times at the first opening).
