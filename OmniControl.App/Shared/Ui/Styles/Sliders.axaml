@@ -12,71 +12,83 @@
          (Avalonia's Slider does this for presses on PART_DecreaseButton / PART_IncreaseButton, which cover the whole bar here); double-click
          resets (Pages/SliderReset), the value beside it types (Pages/NumberText). Every slider steps in whole positions (the view-model says
          what a position is worth). Included after Theme.axaml. -->
-    <Style Selector="Slider">
-        <Setter Property="TickFrequency" Value="1" />
-        <Setter Property="IsSnapToTickEnabled" Value="True" />
-    </Style>
-    <!-- Fluent sets its template under ^:horizontal / ^:vertical, and a theme setter behind a pseudo-class outranks a plain style, so the
-         master template must sit behind the same pseudo-classes or Fluent's solid raw-accent slider shows instead -->
-    <Style Selector="Slider:horizontal, Slider:vertical">
-        <Setter Property="Template">
-            <ControlTemplate>
-                <Panel Background="Transparent">
-                    <c:SliderBar x:Name="Bar" Orientation="{TemplateBinding Orientation}" Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}"
-                                 Value="{TemplateBinding Value}" TrackHeight="{StaticResource SliderTrackHeight}" KnobSize="{StaticResource SliderKnobSize}"
-                                 MarkWidth="{StaticResource SliderMarkWidth}" MarkHeight="{StaticResource SliderMarkHeight}" />
-                    <Track x:Name="PART_Track" Orientation="{TemplateBinding Orientation}" Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}"
-                           Value="{TemplateBinding Value, Mode=TwoWay}" IsDirectionReversed="{TemplateBinding IsDirectionReversed}">
-                        <!-- The two halves of the bar either side of the knob: see-through, they only take the press -->
-                        <Track.DecreaseButton>
-                            <RepeatButton x:Name="PART_DecreaseButton" Focusable="False" Classes="slidertrack" />
-                        </Track.DecreaseButton>
-                        <Track.IncreaseButton>
-                            <RepeatButton x:Name="PART_IncreaseButton" Focusable="False" Classes="slidertrack" />
-                        </Track.IncreaseButton>
-                        <Thumb x:Name="thumb" Width="{StaticResource SliderKnobSize}" Height="{StaticResource SliderKnobSize}">
-                            <Thumb.Template>
-                                <ControlTemplate>
-                                    <Panel>
-                                        <Ellipse x:Name="Ring" Margin="{StaticResource SliderRingInset}" StrokeThickness="{StaticResource SliderRingThickness}"
-                                                 Stroke="{DynamicResource BrushAccent}" />
-                                        <Ellipse x:Name="Knob" Fill="{DynamicResource BrushControlFill}" Stroke="{DynamicResource BrushSliderKnobEdge}"
-                                                 StrokeThickness="{StaticResource SliderKnobEdge}" />
-                                        <Ellipse x:Name="Dot" Fill="{DynamicResource BrushAccent}" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Ellipse.Transitions>
-                                                <Transitions>
-                                                    <DoubleTransition Property="Width" Duration="{StaticResource SliderDotTime}" />
-                                                    <DoubleTransition Property="Height" Duration="{StaticResource SliderDotTime}" />
-                                                </Transitions>
-                                            </Ellipse.Transitions>
-                                        </Ellipse>
-                                    </Panel>
-                                </ControlTemplate>
-                            </Thumb.Template>
-                        </Thumb>
-                    </Track>
-                </Panel>
-            </ControlTemplate>
-        </Setter>
-    </Style>
-    <Style Selector="Slider:horizontal">
-        <Setter Property="MinHeight" Value="{StaticResource SliderHeight}" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
-    <Style Selector="Slider:horizontal /template/ c|SliderBar, Slider:horizontal /template/ Track">
-        <Setter Property="Margin" Value="{StaticResource SliderEndInset}" />
-    </Style>
-    <Style Selector="Slider /template/ RepeatButton.slidertrack">
-        <Setter Property="HorizontalAlignment" Value="Stretch" />
-        <Setter Property="VerticalAlignment" Value="Stretch" />
-        <Setter Property="Template"><ControlTemplate><Border Background="Transparent" /></ControlTemplate></Setter>
-    </Style>
-    <Style Selector="Slider /template/ c|SliderBar">
-        <Setter Property="TrackBrush" Value="{DynamicResource BrushSliderTrack}" />
-        <Setter Property="Fill" Value="{DynamicResource BrushAccent}" />
-        <Setter Property="MarkBrush" Value="{DynamicResource BrushMuted}" />
-    </Style>
-    <Style Selector="Slider:disabled /template/ c|SliderBar"><Setter Property="Fill" Value="{DynamicResource BrushMuted}" /></Style>
+    <Styles.Resources>
+        <!-- One theme instead of global styles, so other controls never try them; Fluent sets its template under ^:horizontal / ^:vertical
+             and a setter behind a pseudo-class outranks a plain one, so the master template sits behind the same pseudo-classes -->
+        <ControlTheme x:Key="MasterSlider" TargetType="Slider" BasedOn="{StaticResource {x:Type Slider}}">
+            <Setter Property="TickFrequency" Value="1" />
+            <Setter Property="IsSnapToTickEnabled" Value="True" />
+            <Style Selector="^:horizontal, ^:vertical">
+                <Setter Property="Template">
+                    <ControlTemplate>
+                        <Panel Background="Transparent">
+                            <c:SliderBar x:Name="Bar" Orientation="{TemplateBinding Orientation}" Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}"
+                                         Value="{TemplateBinding Value}" TrackHeight="{StaticResource SliderTrackHeight}" KnobSize="{StaticResource SliderKnobSize}"
+                                         MarkWidth="{StaticResource SliderMarkWidth}" MarkHeight="{StaticResource SliderMarkHeight}" />
+                            <Track x:Name="PART_Track" Orientation="{TemplateBinding Orientation}" Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}"
+                                   Value="{TemplateBinding Value, Mode=TwoWay}" IsDirectionReversed="{TemplateBinding IsDirectionReversed}">
+                                <!-- The two halves of the bar either side of the knob: see-through, they only take the press -->
+                                <Track.DecreaseButton>
+                                    <RepeatButton x:Name="PART_DecreaseButton" Focusable="False" Classes="slidertrack" />
+                                </Track.DecreaseButton>
+                                <Track.IncreaseButton>
+                                    <RepeatButton x:Name="PART_IncreaseButton" Focusable="False" Classes="slidertrack" />
+                                </Track.IncreaseButton>
+                                <Thumb x:Name="thumb" Width="{StaticResource SliderKnobSize}" Height="{StaticResource SliderKnobSize}">
+                                    <Thumb.Template>
+                                        <ControlTemplate>
+                                            <Panel>
+                                                <Ellipse x:Name="Ring" Margin="{StaticResource SliderRingInset}" StrokeThickness="{StaticResource SliderRingThickness}"
+                                                         Stroke="{DynamicResource BrushAccent}" />
+                                                <Ellipse x:Name="Knob" Fill="{DynamicResource BrushControlFill}" Stroke="{DynamicResource BrushSliderKnobEdge}"
+                                                         StrokeThickness="{StaticResource SliderKnobEdge}" />
+                                                <Ellipse x:Name="Dot" Fill="{DynamicResource BrushAccent}" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                    <Ellipse.Transitions>
+                                                        <Transitions>
+                                                            <DoubleTransition Property="Width" Duration="{StaticResource SliderDotTime}" />
+                                                            <DoubleTransition Property="Height" Duration="{StaticResource SliderDotTime}" />
+                                                        </Transitions>
+                                                    </Ellipse.Transitions>
+                                                </Ellipse>
+                                            </Panel>
+                                        </ControlTemplate>
+                                    </Thumb.Template>
+                                </Thumb>
+                            </Track>
+                        </Panel>
+                    </ControlTemplate>
+                </Setter>
+            </Style>
+            <Style Selector="^:horizontal">
+                <Setter Property="MinHeight" Value="{StaticResource SliderHeight}" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+            <Style Selector="^:horizontal /template/ c|SliderBar, ^:horizontal /template/ Track">
+                <Setter Property="Margin" Value="{StaticResource SliderEndInset}" />
+            </Style>
+            <Style Selector="^ /template/ RepeatButton.slidertrack">
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="VerticalAlignment" Value="Stretch" />
+                <Setter Property="Template"><ControlTemplate><Border Background="Transparent" /></ControlTemplate></Setter>
+            </Style>
+            <Style Selector="^ /template/ c|SliderBar">
+                <Setter Property="TrackBrush" Value="{DynamicResource BrushSliderTrack}" />
+                <Setter Property="Fill" Value="{DynamicResource BrushAccent}" />
+                <Setter Property="MarkBrush" Value="{DynamicResource BrushMuted}" />
+            </Style>
+            <Style Selector="^:disabled /template/ c|SliderBar"><Setter Property="Fill" Value="{DynamicResource BrushMuted}" /></Style>
+            <!-- A vertical slider (the graphic equalisers' bands, the parametric equaliser's overall gain): the same slider upright, filling its
+                 column and the row's height (the view gives both); the dB scale beside a graphic equaliser reads SliderKnobSize to line its marks up -->
+            <Style Selector="^.vband">
+                <Setter Property="Orientation" Value="Vertical" />
+                <Setter Property="MinWidth" Value="{StaticResource SliderColumnWidth}" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="VerticalAlignment" Value="Stretch" />
+            </Style>
+        </ControlTheme>
+    </Styles.Resources>
+    <Style Selector="Slider"><Setter Property="Theme" Value="{StaticResource MasterSlider}" /></Style>
+    <!-- The knob's dot and ring follow the slider's state through the Thumb's template, which a control theme cannot reach (one /template/ per selector) -->
     <Style Selector="Slider:disabled /template/ Thumb /template/ Ellipse#Dot"><Setter Property="Fill" Value="{DynamicResource BrushMuted}" /></Style>
     <!-- The dot: at rest, under the pointer (or adjusted from the keyboard), while dragged (a press on the knob or on the bar); later wins -->
     <Style Selector="Slider /template/ Thumb /template/ Ellipse#Dot">
@@ -105,14 +117,5 @@
                 <FontFeature Tag="tnum" Value="1" />
             </FontFeatureCollection>
         </Setter>
-    </Style>
-
-    <!-- A vertical slider (the graphic equalisers' bands, the parametric equaliser's overall gain): the same slider upright, filling its
-         column and the row's height (the view gives both); the dB scale beside a graphic equaliser reads SliderKnobSize to line its marks up -->
-    <Style Selector="Slider.vband">
-        <Setter Property="Orientation" Value="Vertical" />
-        <Setter Property="MinWidth" Value="{StaticResource SliderColumnWidth}" />
-        <Setter Property="HorizontalAlignment" Value="Stretch" />
-        <Setter Property="VerticalAlignment" Value="Stretch" />
     </Style>
 </Styles>
