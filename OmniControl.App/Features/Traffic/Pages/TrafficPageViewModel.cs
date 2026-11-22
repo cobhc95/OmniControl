@@ -5,7 +5,7 @@ namespace OmniControl.App.Features.Traffic.Pages;
 
 /// The Network traffic control page: one group with the Packet filter switch and the Apps chip on its header, a row per program (speeds,
 /// limits, block) and the one status line; it reads the programs' traffic only while on screen with the group open.
-public sealed class TrafficPageViewModel : PageViewModel, IDisposable
+public sealed partial class TrafficPageViewModel : PageViewModel, IDisposable
 {
     private readonly TrafficMonitor _monitor;
     private readonly ResourcesSettings _settings;
@@ -30,12 +30,6 @@ public sealed class TrafficPageViewModel : PageViewModel, IDisposable
 
     /// The Packet filter switch on the group's header: off takes Windows Packet Filter out of all traffic (for a conflict with other software).
     public ToggleItem PacketFilter { get; }
-    private static readonly SearchCard FilterCard = new("Packet filter",
-        "packet filter windows packet filter winpkfilter ndisrd driver network adapter download limit conflict vpn tailscale off", PageTitle);
-
-    /// The page's search words (<c>FeaturePage.Words</c>).
-    public static IEnumerable<string> Words() => new[] { FilterCard.Words };
-
     /// The one status line under the programs: the network service, then what really runs for each kind of rule (red while the service or
     /// download limits have failed).
     public string Status => $"{_limits.Service.Line} · {_limits.Download.Line} · Upload limits use Windows' throttle rules · Blocks use Windows Firewall"
@@ -61,8 +55,6 @@ public sealed class TrafficPageViewModel : PageViewModel, IDisposable
     public IRelayCommand InstallServiceCommand { get; }
     public string InstallServiceTip => NetworkLimits.InstallServiceTip;
 
-    public override IEnumerable<SearchEntry> SearchEntries => new[] { Entry(PacketFilter, FilterCard) };
-
     internal TrafficPageViewModel(TrafficMonitor monitor, ResourcesSettings settings, INetworkLimits limits, AppScopes scopes, AppScopeGate gate,
         Action<string> report) : base(Info)
     {
@@ -79,7 +71,7 @@ public sealed class TrafficPageViewModel : PageViewModel, IDisposable
         {
             ExpandedByDefault = true,
             Restore = () => limits.SetPacketFilter(true),
-            RestoreTip = "Turns Windows Packet Filter back on.",
+            RestoreTip = RestoreTipText,
         };
         AppsScope = scopes.Group(PageTitle, () => settings.Scope, scope =>
         {
@@ -93,10 +85,7 @@ public sealed class TrafficPageViewModel : PageViewModel, IDisposable
             Need(); // per-program traffic is read only while the group is open
             if (Apps.IsExpanded) ShowApps();
         };
-        PacketFilter = new ToggleItem(FilterCard.Label, limits.PacketFilterOn, limits.SetPacketFilter)
-        {
-            Tip = "Download limits use Windows Packet Filter. Turn it off if another program has network trouble.",
-        };
+        PacketFilter = new ToggleItem(FilterCard, limits.PacketFilterOn, limits.SetPacketFilter);
 
         settings.Changed += OnSettingsChanged;
         monitor.Updated += OnUpdated;

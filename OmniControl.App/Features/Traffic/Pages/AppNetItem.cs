@@ -6,9 +6,12 @@ namespace OmniControl.App.Features.Traffic.Pages;
 
 /// One Network traffic control row: its pin, the program (icon, friendly name, the technical name muted when it differs), its traffic, its upload and
 /// download limit chips and its On switch (off blocks it), through <see cref="NetworkLimits"/>.
-public sealed partial class AppNetItem : ObservableObject
+public sealed partial class AppNetItem : ObservableObject, IEditorItem
 {
-    private const string NoLimit = "No limit", BlockWord = "Block";
+    internal const string NoLimit = "No limit", BlockWord = "Block";
+
+    /// Every limit a chip offers, in words (the menu's rows).
+    internal static IReadOnlyList<string> LimitWords { get; } = NetworkLimits.Choices.Select(Words).Prepend(NoLimit).Append(BlockWord).ToList();
     private bool _uploadBlocked, _downloadBlocked;
     private readonly INetworkLimits _limits;
     private readonly ProcessIcons _icons;
@@ -45,6 +48,11 @@ public sealed partial class AppNetItem : ObservableObject
 
     /// The technical name beside the friendly one, empty when they are the same.
     public string Technical => string.Equals(Name, Id, StringComparison.OrdinalIgnoreCase) ? string.Empty : Id;
+
+    public string Label => Name;
+
+    /// What the row says now besides its name: both limits and the program's own name.
+    public IEnumerable<string> SearchTexts => new[] { Upload, Download, Technical, UploadTip, DownloadTip }.Where(t => t.Length > 0);
 
     public string NameTip => Path.Length > 0 ? Path : Id;
 
@@ -136,5 +144,5 @@ public sealed partial class AppNetItem : ObservableObject
         return rows;
     }
 
-    private static string Words(int kbps) => Reading.SpeedWords(kbps * 1024d);
+    internal static string Words(int kbps) => Reading.SpeedWords(kbps * 1024d);
 }
