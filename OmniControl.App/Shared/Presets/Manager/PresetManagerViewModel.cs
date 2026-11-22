@@ -64,9 +64,6 @@ public sealed partial class PresetManagerViewModel : ObservableObject, IPresetCa
     /// The window asks which files to read into a card.
     public event Action<PresetCardViewModel>? ImportFileRequested;
 
-    /// The window opens the picker of a trigger for a row (<see cref="PresetCardViewModel.TriggerPicker"/>).
-    public event Action<PresetCardViewModel, PresetRowViewModel, bool>? TriggerPickRequested;
-
     /// Shows a section and outlines one card in it: the group's own section when <paramref name="groupId"/> is known, else
     /// <paramref name="section"/>, else (or when that section has no presets) the first section that has some. The search is cleared.
     public void Navigate(string? section, string? groupId)
@@ -155,8 +152,6 @@ public sealed partial class PresetManagerViewModel : ObservableObject, IPresetCa
     void IPresetCardHost.ExportRequested(PresetCardViewModel card, PresetRowViewModel row) => ExportFileRequested?.Invoke(card, row);
 
     void IPresetCardHost.ImportRequested(PresetCardViewModel card) => ImportFileRequested?.Invoke(card);
-
-    void IPresetCardHost.PickTrigger(PresetCardViewModel card, PresetRowViewModel row, bool state) => TriggerPickRequested?.Invoke(card, row, state);
 
     /// A file problem the window met (reading or writing a preset file).
     public void ReportFile(string text) => Message = text;

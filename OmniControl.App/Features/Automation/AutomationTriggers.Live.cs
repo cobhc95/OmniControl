@@ -153,10 +153,6 @@ public static partial class AutomationTriggers
     private static IEnumerable<PickChoice> StateChoices(ITriggerSources sources, string keep) =>
         Listed(sources, s => StateChoice(s, sources), MouseAction.Parse(keep) is { Id: StateChanges } kept ? kept.Param : null);
 
-    /// The actions as every action picker shows them, each stored as "when it runs".
-    public static IReadOnlyList<PickChoice> ActionChoices(IEnumerable<HotkeyAction> actions) =>
-        actions.Select(a => MouseActionCatalog.OmniEntry(a) with { Spec = $"{ActionRuns}:{a.Id}" }).ToList();
-
     /// A trigger in a chip's few words: "Steam running" (a state turning on), "Volume above 50 %", "Action: Lock PC".
     public static string ChipOf(string stored, ITriggerSources sources)
     {

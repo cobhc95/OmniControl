@@ -1,4 +1,3 @@
-using System.Windows.Input;
 using OmniControl.App.Features.Hotkeys;
 using OmniControl.App.Shared.Presets;
 
@@ -14,20 +13,19 @@ internal interface IPresetRowOwner
     void Duplicate(PresetRowViewModel row);
     void Export(PresetRowViewModel row);
     void SetShortcut(PresetRowViewModel row, string gesture);
-    void PickTrigger(PresetRowViewModel row, bool state);
-    void RemoveTrigger(PresetRowViewModel row, int index);
-    void FlipJoin(PresetRowViewModel row, int index);
+    void EditRule(PresetRowViewModel row);
 }
 
-/// One preset of a card: its name (renamed in place), whether it is in use, its tags, its trigger chips (the shortcut, then the states and
-/// actions of its rule, joined by "or" / "and"; "+ Add" offers Hotkey, State…, Action…) and what can be done with it. The shortcut box edits a draft action that is never registered (<see cref="Shortcut"/>): a captured key goes to the card, which gives it to
-/// the preset through <see cref="PresetShortcuts"/> or refuses it with the reason, and the box shows what is true again.
+/// One preset of a card: its name (renamed in place), whether it is in use, its tags, the shared shortcut box, the muted link to its rule in
+/// Automation, and what can be done with it. The shortcut box edits a draft action that is never registered (<see cref="Shortcut"/>): a
+/// captured key goes to the card, which gives it to the preset through <see cref="PresetShortcuts"/> or refuses it with the reason, and the
+/// box shows what is true again.
 public sealed partial class PresetRowViewModel : ObservableObject
 {
     private readonly IPresetRowOwner _owner;
     private readonly bool _canDuplicate, _canExport;
 
-    internal PresetRowViewModel(PresetEntry entry, string shortcut, PresetRule rule, bool hasRules, string applyText, bool canDuplicate,
+    internal PresetRowViewModel(PresetEntry entry, string shortcut, PresetRule? rule, bool hasRules, string applyText, bool canDuplicate,
         bool canExport, IPresetRowOwner owner)
     {
         _owner = owner;
@@ -38,52 +36,28 @@ public sealed partial class PresetRowViewModel : ObservableObject
         Shortcut = new HotkeyAction(entry.Id, entry.Name, string.Empty, string.Empty, _ => { });
         Shortcut.Restore(new StoredHotkey(shortcut, false, new List<string>()));
         Shortcut.Changed += action => _owner.SetShortcut(this, action.Gesture);
-        Shortcut.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName is nameof(HotkeyTarget.IsListening) or nameof(HotkeyTarget.Gesture)) OnPropertyChanged(nameof(Chips));
-        };
     }
 
-    private PresetRule _rule;
-
-    private IReadOnlyList<PresetTrigger> _triggers => _rule.Triggers;
+    private PresetRule? _rule;
     private bool _hasRules;
 
     /// The words a user can read on a row, for search (the manager's card in App settings' search).
-    public static IReadOnlyList<string> Words { get; } = new[] { "Add", "Hotkey", StateRow, ActionRow, "Rename", "Delete", "trigger", "or", "and", NoRules };
+    public static IReadOnlyList<string> Words { get; } = new[] { "Rename", "Delete", RuleLineItem.EditWords, NoRuleWords };
 
-    private const string StateRow = "State…", ActionRow = "Action…", NoRules = "Needs Hotkeys and automation switched on";
+    private const string NoRuleWords = "More options in Automation";
 
-    /// The chip row: the key box while it listens, else the shortcut's chip, then the triggers, then "+ Add".
-    public IReadOnlyList<object> Chips
-    {
-        get
-        {
-            var chips = new List<object>();
-            if (Shortcut.IsListening) chips.Add(new PresetCaptureChip(Shortcut));
-            else if (Shortcut.Gesture.Length > 0)
-                chips.Add(new PresetChip(Shortcut.Gesture, string.Empty, null, new RelayCommand(() => Shortcut.Gesture = string.Empty), "The shortcut that switches to this preset"));
-            for (var i = 0; i < _triggers.Count; i++)
-            {
-                var at = i;
-                // A key is a moment, so the join after it is always "or"; between triggers a click flips it.
-                var join = i == 0 ? (chips.Count > 0 ? "or" : string.Empty) : _triggers[i].Join;
-                chips.Add(new PresetChip(_triggers[i].Text, join, i == 0 ? null : new RelayCommand(() => _owner.FlipJoin(this, at)),
-                    new RelayCommand(() => _owner.RemoveTrigger(this, at)), _triggers[i].Text));
-            }
-            if (_rule.Extras.Length > 0) chips.Add(PresetMoreMark.Shown);
-            chips.Add(new PresetAddChip(AddRows));
-            return chips;
-        }
-    }
+    /// The link to the preset's rule: "* When … · Edit in Automation", or where one is made; hidden while Automation's page is off.
+    public bool HasRuleLink => _hasRules;
 
-    /// "+ Add": Hotkey listens for keys in place; State… and Action… open the picker (greyed while automation is off).
-    private IReadOnlyList<MenuRowItem> AddRows => new[]
-    {
-        new MenuRowItem("Hotkey", string.Empty, false, string.Empty, new RelayCommand(() => Shortcut.IsListening = true)),
-        new MenuRowItem(StateRow, string.Empty, false, _hasRules ? string.Empty : NoRules, new RelayCommand(() => _owner.PickTrigger(this, true)), IsEnabled: _hasRules),
-        new MenuRowItem(ActionRow, string.Empty, false, _hasRules ? string.Empty : NoRules, new RelayCommand(() => _owner.PickTrigger(this, false)), IsEnabled: _hasRules),
-    };
+    public string RuleLink => _rule is { } rule ? $"* {rule.Words} · {RuleLineItem.EditWords}" : NoRuleWords;
+
+    public string RuleTip => _rule is null ? "Make a rule that switches to this preset when something happens" : RuleLineItem.MoreTip;
+
+    /// The rule's words, for the window's search.
+    public string RuleWords => _rule?.Words ?? string.Empty;
+
+    [RelayCommand]
+    private void EditRule() => _owner.EditRule(this);
 
     private PresetEntry _entry;
 
@@ -130,7 +104,7 @@ public sealed partial class PresetRowViewModel : ObservableObject
     [ObservableProperty] private string _editText = string.Empty;
 
     /// Shows the preset as it is now (after any change of its group).
-    internal void Update(PresetEntry entry, string shortcut, PresetRule rule, bool hasRules)
+    internal void Update(PresetEntry entry, string shortcut, PresetRule? rule, bool hasRules)
     {
         _entry = entry;
         (_rule, _hasRules) = (rule, hasRules);
@@ -179,22 +153,3 @@ public sealed partial class PresetRowViewModel : ObservableObject
     [RelayCommand]
     private void Export() => _owner.Export(this);
 }
-
-/// One chip of a preset row: its words, the join word before it (empty: none), what a click on the join does (null: a fixed "or"), the cross.
-public sealed record PresetChip(string Text, string Join, ICommand? Flip, ICommand Remove, string Tip)
-{
-    public bool HasJoin => Join.Length > 0 && Flip is not null;
-    public bool HasFixedJoin => Join.Length > 0 && Flip is null;
-}
-
-/// The shortcut box in the chip row while it listens for keys.
-public sealed record PresetCaptureChip(HotkeyAction Shortcut);
-
-/// The asterisk after the chips while the preset's rule has more than they show (conditions, more actions; its tooltip: More in Automation).
-public sealed record PresetMoreMark
-{
-    public static readonly PresetMoreMark Shown = new();
-}
-
-/// The dashed "+ Add" at the end of the chip row and its pop-down.
-public sealed record PresetAddChip(IReadOnlyList<MenuRowItem> Rows);

@@ -9,11 +9,11 @@
         x:DataType="vm:PresetManagerViewModel"
         Title="{x:Static vm:PresetManagerService.Title}" Width="900" Height="600" MinWidth="720" MinHeight="400"
         WindowStartupLocation="CenterOwner">
-    <!-- The one preset manager (docs/mockups/unified-preset-manager.html). Left: the app's sidebar sections with their icons (a section
+    <!-- The one preset manager. Left: the app's sidebar sections with their icons (a section
          without presets dimmed, "none"). Right: the search, the section's name, one card per preset group (Border.groupPanel; the card
-         it was opened at outlined, .target), each preset a row: drag grip, name (renamed in place) with its tags, its trigger chips (the
-         shortcut, then states and actions joined by "or" / "and", Button.chipx; the dashed "+ Add" opens Hotkey / State… / Action…; the
-         chips wrap inside the row), the Apply pill, where offered a "more" menu (Duplicate, Export), Rename and Delete icon pills. The card's foot: the dashed add button, the
+         it was opened at outlined, .target), each preset a row: drag grip, name (renamed in place) with its tags, the shared shortcut box,
+         the muted link to its rule in Automation (trims), the Apply pill, where offered a "more" menu (Duplicate, Export), Rename and
+         Delete icon pills (each row's own width, so they always fit). The card's foot: the dashed add button, the
          group's switch, Import. Foot of the window: "Changes apply at once.", a message or the Undo of a delete, Close. Mouse first
          (AGENTS.md rule 5): Tab reaches everything, Esc closes. -->
     <DockPanel>
@@ -72,8 +72,9 @@
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="Auto" SharedSizeGroup="PresetGrip" />
                                                         <ColumnDefinition Width="Auto" SharedSizeGroup="PresetName" />
+                                                        <ColumnDefinition Width="Auto" SharedSizeGroup="PresetShortcut" />
                                                         <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" SharedSizeGroup="PresetActions" />
+                                                        <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
                                                     <PathIcon Classes="grip" Data="{StaticResource GripIcon}" VerticalAlignment="Center" IsVisible="{Binding CanMove}"
                                                               ToolTip.Tip="Drag to move (or Alt+Up / Alt+Down)" />
@@ -96,46 +97,13 @@
                                                             </ItemsControl>
                                                         </StackPanel>
                                                     </Grid>
-                                                    <ItemsControl Grid.Column="2" ItemsSource="{Binding Chips}" VerticalAlignment="Center">
-                                                        <ItemsControl.ItemsPanel>
-                                                            <ItemsPanelTemplate><WrapPanel ItemSpacing="{StaticResource ChipSpacing}" LineSpacing="{StaticResource ChipSpacing}" /></ItemsPanelTemplate>
-                                                        </ItemsControl.ItemsPanel>
-                                                        <ItemsControl.DataTemplates>
-                                                            <DataTemplate DataType="vm:PresetChip">
-                                                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource ChipSpacing}">
-                                                                    <Button Classes="blockjoin" Tag="scope" Margin="0" Content="{Binding Join}" Command="{Binding Flip}" IsVisible="{Binding HasJoin}"
-                                                                            ToolTip.Tip="Click to switch between or and and" />
-                                                                    <TextBlock Classes="blockword" Margin="0" Text="{Binding Join}" IsVisible="{Binding HasFixedJoin}" />
-                                                                    <Button Classes="chipx" Tag="scope" Command="{Binding Remove}" ToolTip.Tip="{Binding Tip}">
-                                                                        <StackPanel>
-                                                                            <TextBlock Text="{Binding Text}" />
-                                                                            <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
-                                                                        </StackPanel>
-                                                                    </Button>
-                                                                </StackPanel>
-                                                            </DataTemplate>
-                                                            <DataTemplate DataType="vm:PresetCaptureChip">
-                                                                <hk:HotkeyBox DataContext="{Binding Shortcut}" Loaded="OnCaptureLoaded"
-                                                                              ToolTip.Tip="Press the keys that switch to this preset; Esc keeps the old ones" />
-                                                            </DataTemplate>
-                                                            <DataTemplate DataType="vm:PresetMoreMark">
-                                                                <TextBlock Classes="muted" Text="*" VerticalAlignment="Center" ToolTip.Tip="{x:Static pages:RuleLineItem.MoreTip}" />
-                                                            </DataTemplate>
-                                                            <DataTemplate DataType="vm:PresetAddChip">
-                                                                <!-- The pop-down hangs on a Panel, not on the button, so the button's styles do not reach into it -->
-                                                                <Panel>
-                                                                    <FlyoutBase.AttachedFlyout>
-                                                                        <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft">
-                                                                            <c:MenuRowList ItemsSource="{Binding Rows}" Picked="OnMenuRowPicked" />
-                                                                        </c:ListMenuFlyout>
-                                                                    </FlyoutBase.AttachedFlyout>
-                                                                    <Button Classes="blockadd small" Tag="scope" Content="+ Add" Click="OnMenuButtonClick"
-                                                                            ToolTip.Tip="Switch to this preset by a hotkey, while a state holds, or when an action runs" />
-                                                                </Panel>
-                                                            </DataTemplate>
-                                                        </ItemsControl.DataTemplates>
-                                                    </ItemsControl>
-                                                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="{StaticResource GapSmall}" VerticalAlignment="Center">
+                                                    <hk:HotkeyBox Grid.Column="2" DataContext="{Binding Shortcut}" VerticalAlignment="Center"
+                                                                  ToolTip.Tip="The shortcut that applies this preset from anywhere: double-click, then press the keys; Backspace removes it" />
+                                                    <Button Grid.Column="3" Classes="link small" Command="{Binding EditRuleCommand}" IsVisible="{Binding HasRuleLink}"
+                                                            HorizontalAlignment="Left" VerticalAlignment="Center" ToolTip.Tip="{Binding RuleTip}">
+                                                        <TextBlock Text="{Binding RuleLink}" TextTrimming="CharacterEllipsis" />
+                                                    </Button>
+                                                    <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="{StaticResource GapSmall}" VerticalAlignment="Center">
                                                         <Button Classes="pill" Tag="scope" Content="{Binding ApplyText}" Command="{Binding ApplyCommand}" IsVisible="{Binding CanApply}" />
                                                         <!-- The "more" menu hangs on a Panel, not on the pill, so the pill's styles do not reach into it -->
                                                         <Panel IsVisible="{Binding HasMore}">
