@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Displays: the page's cards are made only when the page is first opened, so OmniControl uses less memory until then.
+
 - Menus with many rows (the gadget's Font list) build only the rows in view, so opening them is lighter.
 
 - Settings changed quickly (a slider, a plug-in's window) are turned into file text once per pause instead of at every change.

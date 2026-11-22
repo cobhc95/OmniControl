@@ -79,7 +79,7 @@ internal sealed partial class HardwareDisplayModel
         Guard.OffUi("Displays: reading a monitor's features", () =>
         {
             var capabilities = _access.Probe();
-            Dispatcher.UIThread.Post(() => ShowCapabilities(capabilities));
+            Dispatcher.UIThread.Post(() => Answered(capabilities));
         });
     }
 
@@ -90,7 +90,8 @@ internal sealed partial class HardwareDisplayModel
         Orientation.Dispose();
     }
 
-    private void ShowCapabilities(MonitorCapabilities capabilities)
+    /// The display answered what it supports: each control takes its value, or the reason it cannot be used.
+    public void Answered(MonitorCapabilities capabilities)
     {
         if (_disposed) return;
         _capabilities = capabilities;

@@ -4,7 +4,7 @@ using OmniControl.Core;
 
 namespace OmniControl.App.Features.Displays;
 
-/// Displays: the monitors' hardware engine, the software adjustments, the displays' service (its cards, actions, states, presets and
+/// Displays: the monitors' hardware engine, the software adjustments, the displays' service (their models, actions, states, presets and
 /// watches) and the page. The software adjustments are made with the module, so a picture a crashed run left changed is put back even while
 /// the feature is off; the monitors are first looked at when it starts.
 public sealed class DisplaysModule : IFeatureModule
