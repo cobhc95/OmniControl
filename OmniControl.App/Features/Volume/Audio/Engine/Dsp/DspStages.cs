@@ -140,6 +140,7 @@ internal sealed class WetStage : IDspStage
         _dry = new float[maxSamples];
     }
 
+    public IDspStage Inner => _inner;
     public int LatencyFrames => _inner.LatencyFrames;
     public IDynamicsReadout? Readout => _inner.Readout;
     public SpectrumTap? Tap => _inner.Tap;

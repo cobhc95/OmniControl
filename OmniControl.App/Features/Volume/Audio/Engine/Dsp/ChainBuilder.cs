@@ -5,12 +5,13 @@ namespace OmniControl.App.Features.Volume.Audio.Engine.Dsp;
 internal static class ChainBuilder
 {
     /// <param name="plugin">Gives the loaded plug-in of a plug-in slot (any format), or the reason it could not load.</param>
-    public static DspChain Build(IEnumerable<FxSlot> slots, Func<FxSlot, (IPluginEffect? Effect, string? Error)> plugin) =>
-        BuildParts(new[] { new FxPart(null, slots.ToList()) }, plugin);
+    public static DspChain Build(IEnumerable<FxSlot> slots, Func<FxSlot, (IPluginEffect? Effect, string? Error)> plugin, DspChain? previous = null) =>
+        BuildParts(new[] { new FxPart(null, slots.ToList()) }, plugin, previous);
 
     /// <see cref="Build"/> for the master's parts (<see cref="FxFolders.PartsFor"/>): a device folder's effects are wrapped in its Mix,
-    /// their result blended with the sound that entered the folder. <paramref name="loadHere"/>: files are read now, on this thread (a measurement).
-    public static DspChain BuildParts(IEnumerable<FxPart> parts, Func<FxSlot, (IPluginEffect? Effect, string? Error)> plugin, bool loadHere = false)
+    /// their result blended with the sound that entered the folder. <paramref name="previous"/>: the chain this one replaces (an unchanged IR file is not
+    /// read again). <paramref name="loadHere"/>: files are read now, on this thread (a measurement).
+    public static DspChain BuildParts(IEnumerable<FxPart> parts, Func<FxSlot, (IPluginEffect? Effect, string? Error)> plugin, DspChain? previous = null, bool loadHere = false)
     {
         var stages = new List<IDspStage>();
         var sources = new List<FxSlot>();
@@ -25,7 +26,7 @@ internal static class ChainBuilder
                     skipped.Add($"{slot.Name} (not built yet)");
                     continue;
                 }
-                if (StageOf(slot, plugin, skipped, loadHere) is not { } stage) continue;
+                if (StageOf(slot, plugin, skipped, previous, loadHere) is not { } stage) continue;
                 stages.Add(new WetStage(stage, Core.Models.Percent.ToScalar(slot.Wet), PipeFormat.MaxBlockSamples));
                 sources.Add(slot);
             }
@@ -39,7 +40,7 @@ internal static class ChainBuilder
         return new DspChain(stages.ToArray(), sources.ToArray(), skipped);
     }
 
-    private static IDspStage? StageOf(FxSlot slot, Func<FxSlot, (IPluginEffect? Effect, string? Error)> plugin, List<string> skipped, bool loadHere)
+    private static IDspStage? StageOf(FxSlot slot, Func<FxSlot, (IPluginEffect? Effect, string? Error)> plugin, List<string> skipped, DspChain? previous, bool loadHere)
     {
         if (FxCatalog.IsPlugin(slot)) return PluginStage(slot, plugin, skipped);
         // Every equaliser, parametric or graphic, is the same stage: a graphic one's bands are ordinary peaking bands.
@@ -48,7 +49,7 @@ internal static class ChainBuilder
         return slot.Kind switch
         {
             FxCatalog.GainKind => new GainStage(slot.Values.FirstOrDefault()),
-            FxCatalog.IrKind => IrStageOf(slot, skipped, loadHere),
+            FxCatalog.IrKind => IrStageOf(slot, skipped, previous?.IrStageOf(slot), loadHere),
             FxCatalog.CompKind => new CompressorStage(Completed(slot), PipeFormat.SampleRate),
             FxCatalog.LimiterKind => new LimiterStage(Completed(slot), PipeFormat.SampleRate),
             _ => null,
@@ -56,14 +57,14 @@ internal static class ChainBuilder
     }
 
     /// The IR Loader's stage, or none (said on the row) when its file is missing: the sound then passes unchanged, which must not read as running.
-    private static IDspStage? IrStageOf(FxSlot slot, List<string> skipped, bool loadHere)
+    private static IDspStage? IrStageOf(FxSlot slot, List<string> skipped, IrStage? previous, bool loadHere)
     {
         if (slot.Path.Length > 0 && Ir.IrFileStamp.Of(slot.Path) == 0)
         {
             skipped.Add($"{slot.Name} (its file is missing)");
             return null;
         }
-        return new IrStage(slot.Path, Completed(slot), loadHere);
+        return new IrStage(slot.Path, Completed(slot), previous, loadHere);
     }
 
     /// The slot's values with every setting present (a chain saved before a setting existed takes its default).

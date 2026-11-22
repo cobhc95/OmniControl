@@ -47,6 +47,14 @@ internal sealed class DspChain
         return null;
     }
 
+    /// The IR Loader stage built from <paramref name="source"/> (its slot), inside its Wet; null when there is none.
+    public IrStage? IrStageOf(object source)
+    {
+        for (var i = 0; i < _stages.Length; i++)
+            if (ReferenceEquals(_sources[i], source)) return (_stages[i] is WetStage wet ? wet.Inner : _stages[i]) as IrStage;
+        return null;
+    }
+
     /// The spectrum tap of the stage built from <paramref name="source"/> (its slot); null when it has none or is not in this chain.
     public SpectrumTap? TapOf(object source)
     {

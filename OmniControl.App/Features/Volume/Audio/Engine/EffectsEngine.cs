@@ -246,7 +246,7 @@ public sealed partial class EffectsEngine : IDisposable
         foreach (var key in keys)
         {
             _failed.Remove(key); // the user changed this row: a failed run may try again
-            if (_runs.TryGetValue(key, out var run) && RunsChain(run.Spec.Kind)) run.SetChain(BuildChain(ChainKeyOf(run.Spec)));
+            if (_runs.TryGetValue(key, out var run) && RunsChain(run.Spec.Kind)) run.SetChain(BuildChain(ChainKeyOf(run.Spec), run.Chain));
         }
         Reconcile(); // switching effects on or off, or the first or last enabled effect, may start or stop a run
     }
@@ -312,7 +312,7 @@ public sealed partial class EffectsEngine : IDisposable
         if (_runs.GetValueOrDefault(MixerService.MasterKey) is { } bus)
         {
             bus.SetRouted(plan.BusRoutes);
-            if (_chainDevice != plan.Bus?.Real.Id && FxFolders.HasFolders(_mixer.FxChain(null))) bus.SetChain(BuildChain(null)); // the playing device changed: its folder's effects take over
+            if (_chainDevice != plan.Bus?.Real.Id && FxFolders.HasFolders(_mixer.FxChain(null))) bus.SetChain(BuildChain(null, bus.Chain)); // the playing device changed: its folder's effects take over
         }
         _chainDevice = plan.Bus?.Real.Id;
         SyncDefault();
@@ -351,7 +351,7 @@ public sealed partial class EffectsEngine : IDisposable
         if (Create(spec, facts) is not { } created) return;
         _runs[spec.Key] = created;
         created.Changed += OnRunChanged;
-        created.SetChain(RunsChain(spec.Kind) ? BuildChain(ChainKeyOf(spec)) : DspChain.Empty);
+        created.SetChain(RunsChain(spec.Kind) ? BuildChain(ChainKeyOf(spec), null) : DspChain.Empty);
         created.Start();
         SetStatus(spec.Key, created.Status);
     }
@@ -401,9 +401,10 @@ public sealed partial class EffectsEngine : IDisposable
     }
 
     /// The row's chain; empty while its effects are switched off (a run that only routes, such as the master bus, must not apply them).
+    /// <paramref name="previous"/>: the run's chain it replaces, whose unchanged IR files are not read again.
     /// <remarks>The master's chain is what runs for the device the bus plays on now (<see cref="FxFolders.ChainFor"/>).</remarks>
-    private DspChain BuildChain(string? key) => _mixer.IsFxOn(key)
-        ? key is null ? ChainBuilder.BuildParts(FxFolders.PartsFor(_mixer.FxChain(null), _bus?.Real.Id), _plugins.Get) : ChainBuilder.Build(_mixer.FxChain(key), _plugins.Get)
+    private DspChain BuildChain(string? key, DspChain? previous) => _mixer.IsFxOn(key)
+        ? key is null ? ChainBuilder.BuildParts(FxFolders.PartsFor(_mixer.FxChain(null), _bus?.Real.Id), _plugins.Get, previous) : ChainBuilder.Build(_mixer.FxChain(key), _plugins.Get, previous)
         : DspChain.Empty;
 
     /// The device the master bus plays on when its chain was last built (a folder's effects follow it).
@@ -481,7 +482,7 @@ public sealed partial class EffectsEngine : IDisposable
     private void ReloadIrFiles()
     {
         foreach (var run in _runs.Values.Where(r => RunsChain(r.Spec.Kind)))
-            if (_mixer.FxChain(ChainKeyOf(run.Spec)).Any(s => s.Kind == FxCatalog.IrKind)) run.SetChain(BuildChain(ChainKeyOf(run.Spec)));
+            if (_mixer.FxChain(ChainKeyOf(run.Spec)).Any(s => s.Kind == FxCatalog.IrKind)) run.SetChain(BuildChain(ChainKeyOf(run.Spec), run.Chain));
         _watchInput = _watchInput with { IrFiles = new Dictionary<string, long>() }; // the versions just loaded are taken afresh
         Reconcile();
     }
@@ -527,7 +528,7 @@ public sealed partial class EffectsEngine : IDisposable
         StopRun(key);
         try
         {
-            var test = new CaptureTest(_mixer, _journal, BuildChain(key));
+            var test = new CaptureTest(_mixer, _journal, BuildChain(key, null)); // never the run's chain: a test must not share its convolvers
             var (result, outcome) = await test.RunAsync(key);
             _mixer.KeepCaptureSilence(result);
             _support.NotifyTested();

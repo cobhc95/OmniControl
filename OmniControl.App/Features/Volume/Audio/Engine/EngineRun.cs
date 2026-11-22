@@ -39,6 +39,9 @@ internal abstract class EngineRun : IDisposable
     /// The status changed (UI thread).
     public event Action<EngineRun>? Changed;
 
+    /// The chain handed over last (the one a rebuild replaces).
+    public DspChain Chain => _chain;
+
     /// The chain to run from now on (edits apply live).
     public void SetChain(DspChain chain)
     {
