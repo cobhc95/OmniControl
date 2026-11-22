@@ -17,6 +17,7 @@
         <DataTemplate DataType="pages:MenuChoiceItem"><pages:MenuChoiceRow /></DataTemplate>
         <DataTemplate DataType="pages:AnchorItem"><pages:AnchorRow /></DataTemplate>
         <DataTemplate DataType="pages:TextItem"><pages:TextRow /></DataTemplate>
+        <DataTemplate DataType="pages:RuleLineItem"><pages:RuleLineRow /></DataTemplate>
         <DataTemplate DataType="pages:ChoiceChipsItem"><pages:ChoiceChipsRow /></DataTemplate>
     </Application.DataTemplates>
 

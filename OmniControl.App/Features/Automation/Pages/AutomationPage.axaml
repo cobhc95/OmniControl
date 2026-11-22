@@ -74,7 +74,7 @@
             <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:AutomationPageViewModel">
                 <StackPanel Spacing="{StaticResource Gap}">
                     <ItemsControl ItemsSource="{Binding FeatureRules}" ItemsPanel="{StaticResource RowsPanel}" />
-                    <TextBlock Classes="muted" IsVisible="{Binding NoFeatureRules}" Text="No rules from other pages yet. Pages such as Displays (warm light) make theirs here." TextWrapping="Wrap" />
+                    <pages:EmptyListRow IsVisible="{Binding NoFeatureRules}" Text="No rules from other pages yet. Pages such as Displays (warm light) make theirs here." />
                 </StackPanel>
             </DataTemplate></pages:GroupCard.ContentTemplate>
         </pages:GroupCard>

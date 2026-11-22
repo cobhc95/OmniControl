@@ -1,0 +1,15 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
+             x:Class="OmniControl.App.Shared.Ui.Pages.RuleLineRow"
+             x:DataType="pages:RuleLineItem">
+    <!-- The muted line under a feature's controls while its automation rule has more than the page shows (no card: a line, not a setting) -->
+    <WrapPanel IsVisible="{Binding Shown}" Margin="2,0">
+        <TextBlock Classes="muted" Text="{Binding Words}" VerticalAlignment="Center" TextWrapping="Wrap" />
+        <TextBlock Classes="muted" Text=" *" VerticalAlignment="Center" ToolTip.Tip="{x:Static pages:RuleLineItem.MoreTip}" />
+        <TextBlock Classes="muted" Text=" · " VerticalAlignment="Center" />
+        <Button Classes="link small" Command="{Binding EditCommand}" VerticalAlignment="Center">
+            <TextBlock Text="{x:Static pages:RuleLineItem.EditWords}" />
+        </Button>
+    </WrapPanel>
+</UserControl>

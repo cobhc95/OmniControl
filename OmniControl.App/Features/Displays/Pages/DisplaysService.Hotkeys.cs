@@ -107,7 +107,21 @@ public sealed partial class DisplaysService
         var family = new OnOffFamily(WarmActionId, WarmLightModel.Label, WarmLightId);
         var toggle = DisplayActions.Once(WarmActionId, "Toggle warm light at night", "warm light night schedule evening blue light filter", Title, software, VcpSections.Colour,
             _ => _warm.Toggle(), devices: null, icon: Icons.IconLibrary.Moon, family: family.Family, familyRole: OnOffFamily.ToggleRole);
-        return family.Siblings(toggle, _warm.SetEnabled).Prepend(toggle);
+        return family.Siblings(toggle, _warm.SetEnabled).Prepend(toggle).Append(WarmFadeAction());
+    }
+
+    /// The warm-light rule's own action, named with the temperature it warms to; it is made again when that changes (its keys stay, by id).
+    private HotkeyAction WarmFadeAction() =>
+        new(WarmLightScheduler.FadeId, WarmFadeTitle, Title, "warm light night fade evening blue light filter kelvin temperature", _ => _scheduler.Fade(),
+            group: DisplayControls.SoftwareGroup, subgroup: VcpSections.Colour) { FeatureRule = true, Icon = Icons.IconLibrary.Moon };
+
+    private string WarmFadeTitle => $"Warm light fade to {_warm.Kelvin} K";
+
+    private void FollowWarmFadeTitle()
+    {
+        if (_hotkeys.Find(WarmLightScheduler.FadeId) is not { } action || action.Title == WarmFadeTitle) return;
+        _hotkeys.Unregister(action.Id);
+        _hotkeys.Register(WarmFadeAction());
     }
 
     private const string WarmActionId = "displays.sw.warmlight";

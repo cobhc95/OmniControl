@@ -41,10 +41,16 @@ public sealed class DisplayPreset : INamedPreset
         && current.Displays.All(shown => For(shown.Key).SameAs(shown.Value));
 }
 
-/// The warm-light schedule: from <see cref="Start"/> to <see cref="End"/> (minutes since midnight) the picture warms to <see cref="Kelvin"/>.
+/// Warm light: the temperature the picture warms to (<see cref="Kelvin"/>) and the times last chosen (<see cref="Start"/> to <see cref="End"/>, minutes since
+/// midnight), used when its automation rule is made again. Whether and when it runs is that rule's (<see cref="WarmLightScheduler"/>).
 public sealed class WarmLightSettings
 {
+    /// Read once, to make the rule from a schedule saved before warm light was a rule.
     public bool Enabled { get; set; }
+
+    /// The rule was made from these settings (once; a deleted rule is not made again).
+    public bool InRule { get; set; }
+
     public int Start { get; set; } = 21 * 60;
     public int End { get; set; } = 7 * 60;
     public int Kelvin { get; set; } = 3400;

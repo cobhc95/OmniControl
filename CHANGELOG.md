@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Automation has a From other pages tab: warm light is now an ordinary automation rule ("Between 20:00 and 07:00" do "Warm light fade to 3400 K") that you can extend with conditions or actions; the Displays page keeps its switch, times and warmth, and says when the rule has more. Your warm-light schedule is moved into the rule once. A rule shows on a page or in the Presets window because it holds that page's or preset's action, so it moves when you change that. New trigger: Between two times.
+
 - Automation: a new Presets tab lists the rules made from the Presets window, with the same editor as the Rules tab, the preset kind after each name and "Open in Presets window"; the Rules tab no longer shows them. Changes in either place show in the other at once.
 
 - Network states: "Connected to <network>" (each saved Wi-Fi or wired network), "On a metered connection" and "Not connected" can trigger presets and automation rules; the state picker's "Network ▸" row opens a side list: "Connected to" (connected and rule-used networks first, each with its kind), metered, not connected, and "Find a network…" over the rest; chips read "Connected to <name>", "Metered connection", "Not connected".

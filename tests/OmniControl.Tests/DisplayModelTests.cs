@@ -1,3 +1,4 @@
+using OmniControl.App.Shared.Contracts;
 using System.Collections.Concurrent;
 using OmniControl.App.Features.Displays;
 using OmniControl.App.Features.Displays.Pages;
@@ -89,8 +90,10 @@ public class DisplayModelTests
     public void TheWarmLightCardsFollowTheModelUntilDropped()
     {
         var store = new DisplaySettingsStore(null, _ => { });
-        var scheduler = new WarmLightScheduler(new SoftwareDisplayService(_ => throw new InvalidOperationException("no display is tracked"), keepRecovery: false), store);
-        var model = new WarmLightModel(scheduler, store);
+        var rules = new FeatureRulesSlot();
+        rules.Attach(new OneRule());
+        var scheduler = new WarmLightScheduler(new SoftwareDisplayService(_ => throw new InvalidOperationException("no display is tracked"), keepRecovery: false), store, rules);
+        var model = new WarmLightModel(scheduler, store, rules);
         var view = new WarmLightItem(model, _ => { });
         var button = (ButtonItem)view.Cards[0];
         var start = (ChoiceItem)view.Cards[1];
@@ -109,5 +112,30 @@ public class DisplayModelTests
         model.SetEnabled(false);
         Assert.Equal("Turn off", button.ButtonText); // a dropped card no longer listens
         Assert.False(model.IsOn);
+    }
+
+    /// The rules as warm light sees them: one rule, kept in memory.
+    private sealed class OneRule : IFeatureRules
+    {
+        private FeatureRuleView? _rule;
+
+        public event Action? Changed;
+        public event Action<string>? Ended { add { } remove { } }
+
+        public FeatureRuleView? Find(string actionId) => _rule;
+
+        public void Ensure(string actionId, string name, FeatureTrigger trigger, bool on) => Set(_rule ?? new FeatureRuleView(on, trigger as FeatureTrigger.Between, string.Empty));
+
+        public void SetOn(string actionId, bool on) => Set(_rule! with { On = on });
+
+        public void SetTrigger(string actionId, FeatureTrigger trigger) => Set(_rule! with { Window = trigger as FeatureTrigger.Between });
+
+        public void Edit(string actionId) { }
+
+        private void Set(FeatureRuleView rule)
+        {
+            _rule = rule;
+            Changed?.Invoke();
+        }
     }
 }

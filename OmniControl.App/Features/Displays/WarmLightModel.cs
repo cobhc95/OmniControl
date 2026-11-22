@@ -1,8 +1,10 @@
+using OmniControl.App.Shared.Contracts;
+
 namespace OmniControl.App.Features.Displays;
 
 /// The warm-light schedule as its cards, action and state see it: on or off, the two times, the temperature it warms to, and what it is
-/// doing now. The schedule layers over each display's own colour temperature (<see cref="WarmLightScheduler"/>): it warms towards the
-/// target and never cools. Used on the UI thread.
+/// doing now. On or off and the times are its automation rule's (<see cref="WarmLightScheduler"/>), the temperature its own; it layers over each
+/// display's own colour temperature: it warms towards the target and never cools. Used on the UI thread.
 internal sealed class WarmLightModel
 {
     public const string TurnOn = "Turn on", TurnOff = "Turn off", Label = "Warm light at night", StartLabel = "Warm from", EndLabel = "Warm until", TargetLabel = "Warm light temperature";
@@ -12,8 +14,9 @@ internal sealed class WarmLightModel
 
     private readonly WarmLightScheduler _scheduler;
     private readonly DisplaySettingsStore _store;
+    private readonly FeatureRulesSlot _rules;
 
-    public WarmLightModel(WarmLightScheduler scheduler, DisplaySettingsStore store) => (_scheduler, _store) = (scheduler, store);
+    public WarmLightModel(WarmLightScheduler scheduler, DisplaySettingsStore store, FeatureRulesSlot rules) => (_scheduler, _store, _rules) = (scheduler, store, rules);
 
     /// The schedule or its settings changed (the scheduler's own notice).
     public event Action? Changed
@@ -25,33 +28,41 @@ internal sealed class WarmLightModel
     /// The times offered, by name (half hours).
     public static IReadOnlyList<string> TimeNames { get; } = WarmSchedule.Times().Select(WarmSchedule.Clock).ToList();
 
-    public bool IsOn => _store.WarmLight.Enabled;
+    public bool IsOn => _scheduler.Enabled;
 
     /// "Off", "Active until 07:00" or "Starts at 21:00".
     public string StateText => _scheduler.StateText;
 
-    public string StartName => Nearest(_store.WarmLight.Start);
-    public string EndName => Nearest(_store.WarmLight.End);
+    public string StartName => Nearest(_scheduler.Window.Start);
+    public string EndName => Nearest(_scheduler.Window.End);
+
+    /// What was added to the rule in Automation ("1 extra condition"; empty: nothing).
+    public string Extras => _scheduler.Rule?.Extras ?? string.Empty;
+
+    public void EditRule() => _scheduler.EditRule();
     public int Kelvin => Math.Clamp(_store.WarmLight.Kelvin, SoftwareColor.TemperatureMin, SoftwareColor.TemperatureNeutral);
 
     public void Toggle() => SetEnabled(!IsOn);
 
-    /// Turns the schedule on or off (the button, its action, its state and "Restore defaults").
+    /// Switches the rule on or off (the button, its action, its state and "Restore defaults"); a deleted rule is made again when turned on.
     public void SetEnabled(bool on)
     {
-        if (_store.WarmLight.Enabled == on) return;
-        _store.WarmLight.Enabled = on;
-        Save();
+        if (_rules.Current is not { } rules) return;
+        if (_scheduler.Rule is null) rules.Ensure(WarmLightScheduler.FadeId, WarmLightScheduler.RuleName, Window(), on);
+        else rules.SetOn(WarmLightScheduler.FadeId, on);
     }
 
     public void SetStart(string name) => SetTime(name, t => _store.WarmLight.Start = t);
 
     public void SetEnd(string name) => SetTime(name, t => _store.WarmLight.End = t);
 
+    private FeatureTrigger.Between Window() => new(_store.WarmLight.Start, _store.WarmLight.End);
+
     public OperationResult SetKelvin(int kelvin)
     {
         _store.WarmLight.Kelvin = kelvin;
-        Save();
+        _store.SaveWarmLight();
+        _scheduler.Update();
         return OperationResult.Ok();
     }
 
@@ -60,20 +71,21 @@ internal sealed class WarmLightModel
     {
         var defaults = new WarmLightSettings();
         var settings = _store.WarmLight;
-        (settings.Enabled, settings.Start, settings.End, settings.Kelvin) = (defaults.Enabled, defaults.Start, defaults.End, defaults.Kelvin);
-        Save();
+        (settings.Start, settings.End, settings.Kelvin) = (defaults.Start, defaults.End, defaults.Kelvin);
+        _store.SaveWarmLight();
+        SetEnabled(false);
+        _rules.Current?.SetTrigger(WarmLightScheduler.FadeId, Window());
+        _scheduler.Stop();
     }
 
+    /// The page's times: kept as the times last chosen and put in the rule's window.
     private void SetTime(string name, Action<int> set)
     {
+        var (start, end) = _scheduler.Window;
+        (_store.WarmLight.Start, _store.WarmLight.End) = (start, end);
         set(WarmSchedule.Times().First(t => WarmSchedule.Clock(t) == name));
-        Save();
-    }
-
-    private void Save()
-    {
         _store.SaveWarmLight();
-        _scheduler.Update();
+        _rules.Current?.SetTrigger(WarmLightScheduler.FadeId, Window());
     }
 
     /// The offered time closest to a saved one (the lists offer half hours; a hand-edited file may hold other minutes).

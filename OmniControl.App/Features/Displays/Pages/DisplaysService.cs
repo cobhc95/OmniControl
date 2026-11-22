@@ -1,3 +1,4 @@
+using OmniControl.App.Shared.Contracts;
 using System.ComponentModel;
 using OmniControl.App.Features.Displays;
 using OmniControl.App.Features.Hotkeys;
@@ -81,7 +82,7 @@ public sealed partial class DisplaysService : IDisposable
     /// <param name="hardware">The master list of hardware watches: the page registers its two (the monitors, and the list of displays).</param>
     /// <param name="title">The page's title (its actions', states' and presets' category).</param>
     public DisplaysService(IMonitorEngine engine, IActionRegistry hotkeys, Func<string, SuggestedKeysSwitch> suggestedKeys, IOsd osd, SoftwareDisplayService software, Action<string> report,
-        IPresetGroups presets, Action<string?, string?> openPresets, IStateRegistry states, IHardwareWatches hardware, string title)
+        IPresetGroups presets, Action<string?, string?> openPresets, IStateRegistry states, IHardwareWatches hardware, string title, FeatureRulesSlot rules)
     {
         (_engine, _hotkeys, _suggestedKeys, _osd, _software, _report, _openPresets, _states, Title) = (engine, hotkeys, suggestedKeys, osd, software, report, openPresets, states, title);
         _rescan = new ThrottledRun(Timing.DisplayRescanGap, RescanNow);
@@ -95,9 +96,9 @@ public sealed partial class DisplaysService : IDisposable
         // Order matters: the store comes first, the models before the books that read them. The two preset groups are registered after the
         // page's own actions: registering may read their presets at once (a preset with a saved shortcut gets its action, listed after the page's own).
         _store = DisplaySettingsStore.OnDisk();
-        _scheduler = new WarmLightScheduler(software, _store);
+        _scheduler = new WarmLightScheduler(software, _store, rules);
         _desktop = new DesktopPictureModel(software, report, OnPictureChanged);
-        _warm = new WarmLightModel(_scheduler, _store);
+        _warm = new WarmLightModel(_scheduler, _store, rules);
         _pictureBook = new PicturePresetBook(_store, CapturePicture, ApplyPicture);
         PicturePresets = new BookPresets(_pictureBook);
         _monitorBook = new MonitorPresetBook(_store, PresetTargets);
@@ -106,6 +107,7 @@ public sealed partial class DisplaysService : IDisposable
         presets.Register(new PresetGroup(HardwarePresetsId, Title, DisplayControls.HardwareGroup, MonitorPresets));
         presets.Register(new PresetGroup(SoftwarePresetsId, Title, DisplayControls.SoftwareGroup, PicturePresets));
         _scheduler.Changed += ShowRefusals;
+        _scheduler.Changed += FollowWarmFadeTitle;
         RegisterPageStates();
         _scheduler.Start();
         Guard.OffUi("Displays: reading the displays", RefreshNow);
@@ -297,6 +299,7 @@ public sealed partial class DisplaysService : IDisposable
     public void Dispose()
     {
         _scheduler.Changed -= ShowRefusals;
+        _scheduler.Changed -= FollowWarmFadeTitle;
         _watches.ScreensChanged -= OnScreensChanged;
         ForgetPageStates();
         _monitorBook.Dispose();
