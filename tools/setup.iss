@@ -530,7 +530,7 @@ begin
   else if Id = 'screenshot' then Result := 'QR-code library (Screenshot tool)';
 end;
 
-// The note under Don't install them: shown only while that choice is picked, its space always kept.
+// The note under Don't install them: shown, and given room by LayoutChoice, only while that choice is picked.
 procedure ShowLeftOut();
 var Ids: TArrayOfString;
     I: Integer;
@@ -552,6 +552,8 @@ begin
   LeftOutText.Visible := LeaveOutButton.Checked;
 end;
 
+procedure LayoutChoice(); forward;
+
 // Inno counts every file whatever is ticked (the optional ones go by Check), so the line is said here: all files less those left out.
 procedure ShowDiskSpace();
 var Bytes: Extended;
@@ -566,6 +568,7 @@ begin
   StringChangeEx(Text, '[mb]', Format('%.1f', [Bytes / 1048576]), True);
   WizardForm.ComponentsDiskSpaceLabel.Caption := Text;
   ShowLeftOut();
+  LayoutChoice();
 end;
 
 procedure ChoiceClicked(Sender: TObject);
@@ -576,6 +579,7 @@ end;
 procedure ListClicked(Sender: TObject);
 begin
   OldClickCheck(Sender);
+  SyncTypeChoice();
   ShowDiskSpace();
 end;
 
@@ -619,30 +623,37 @@ end;
 
 var ChoiceBox: TPanel;
 
-// The box and the disk-space line hold the bottom of the page by anchors and the list gives up what is left above them; run again when the
-// page shows because Inno sizes its controls after InitializeWizard.
+// The box is as tall as its text (the note only while Don't install them is picked); it and the disk-space line hold the bottom of the page
+// by anchors and the list gives up what is left above them. Run again on every change, and when the page shows because Inno sizes its
+// controls after InitializeWizard.
 procedure LayoutChoice();
 var List: TNewCheckListBox;
-    Gap: Integer;
+    Gap, Y: Integer;
 begin
   if ChoiceBox = nil then Exit;
   List := WizardForm.ComponentsList;
   Gap := ScaleY(8);
+  if not LeaveOutButton.Checked and not KeepOffButton.Checked then KeepOffButton.Checked := True;
+  ChoiceBox.Width := List.Width;
+  LeftOutText.Width := ChoiceBox.ClientWidth - LeftOutText.Left - ScaleX(8);
+  Y := ScaleY(45);
+  LeftOutText.Top := Y;
+  if LeaveOutButton.Checked then Y := Y + LeftOutText.Height + ScaleY(4);
+  KeepOffButton.Top := Y;
+  KeepOffNote.Top := Y + ScaleY(1);
+  ChoiceBox.Height := Y + ScaleY(17) + ScaleY(6);
   List.Anchors := [akLeft, akTop, akRight];
   WizardForm.ComponentsDiskSpaceLabel.Anchors := [akLeft, akRight, akBottom];
   ChoiceBox.Anchors := [akLeft, akRight, akBottom];
   ChoiceBox.Left := List.Left;
-  ChoiceBox.Width := List.Width;
   ChoiceBox.Top := WizardForm.ComponentsDiskSpaceLabel.Top - Gap - ChoiceBox.Height;
   List.Height := ChoiceBox.Top - Gap - List.Top;
   List.Anchors := [akLeft, akTop, akRight, akBottom];
-  if not LeaveOutButton.Checked and not KeepOffButton.Checked then KeepOffButton.Checked := True;
 end;
 
 procedure InitializeWizard();
 var Title: TNewStaticText;
     Kept: Cardinal;
-    NoteHeight: Integer;
 begin
   if WizardSilent() then Exit;
   ChoiceBox := TPanel.Create(WizardForm);
@@ -651,25 +662,20 @@ begin
   ChoiceBox.BorderStyle := bsSingle;
   ChoiceBox.ParentBackground := False;
   ChoiceBox.Color := clWindow;
-  NoteHeight := ScaleY(44);
-  ChoiceBox.Height := ScaleY(66) + NoteHeight;
   Title := TNewStaticText.Create(ChoiceBox);
   Title.Parent := ChoiceBox;
   Title.Caption := 'Features you didn''t tick:';
   Title.Left := ScaleX(8);
   Title.Top := ScaleY(6);
   LeaveOutButton := AddChoice(ChoiceBox, 'Don''t install them', '(their drivers, services and sensor library are left out)', ScaleY(24), LeaveOutNote);
-  KeepOffButton := AddChoice(ChoiceBox, 'Install them but keep them off', '(turn on any time in App settings)', ScaleY(42) + NoteHeight, KeepOffNote);
+  KeepOffButton := AddChoice(ChoiceBox, 'Install them but keep them off', '(turn on any time in App settings)', ScaleY(45), KeepOffNote);
   LeftOutText := TNewStaticText.Create(ChoiceBox);
   LeftOutText.Parent := ChoiceBox;
-  LeftOutText.AutoSize := False;
   LeftOutText.WordWrap := True;
   LeftOutText.Font.Color := clGrayText;
   LeftOutText.Left := ScaleX(28);
   LeftOutText.Top := ScaleY(42);
-  LeftOutText.Width := WizardForm.ComponentsList.Width - ScaleX(28) - ScaleX(12);
-  LeftOutText.Height := NoteHeight;
-  LeftOutText.Anchors := [akLeft, akTop, akRight];
+  LeftOutText.AutoSize := True;
   LeaveOutButton.Checked := RegQueryDWordValue(HKLM64, ReceiptKey, LeaveOutValue, Kept) and (Kept = 1);
   KeepOffButton.Checked := not LeaveOutButton.Checked;
   ShowLeftOut();
@@ -846,6 +852,7 @@ begin
   if (CurPageID = wpSelectComponents) and not WizardSilent() then
   begin
     PresetFeatures();
+    SyncTypeChoice();
     ShowDiskSpace();
   end;
   if (CurPageID = wpSelectTasks) and not WizardSilent() then PresetSignInTask();
