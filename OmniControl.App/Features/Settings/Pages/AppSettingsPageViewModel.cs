@@ -178,7 +178,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
         ReloadConfirmations();
         Follow(h => confirmations.Changed += h, h => confirmations.Changed -= h, ReloadConfirmations);
         ShowFeatures();
-        Follow(h => features.Changed += h, h => features.Changed -= h, ShowFeatures);
+        Follow(h => features.Settled += h, h => features.Settled -= h, ShowFeatures);
         ReadStartup();
     }
 

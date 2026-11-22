@@ -415,11 +415,12 @@ begin
 end;
 
 // "Choose features": the components are the app's feature ids, in the order of its FeatureList (retyped, also as [Components] names). The ids
-// left unticked are written beside the receipts as FeaturesOff (Core/Engine/SetupFeatures reads it), which every user may read; the app takes a
-// choice it has not taken before into its own settings once, and App settings owns it afterwards.
+// left unticked are written beside the receipts as FeaturesOff with the time as FeaturesWritten (Core/Engine/SetupFeatures reads both), which
+// every user may read; the app takes each run's choice into its own settings once, and App settings owns it afterwards.
 const
   FeatureIds = 'volume,displays,input,automation,osd,resources,traffic,otherpcs,devices,screenshot';
   FeaturesValue = 'FeaturesOff';
+  FeaturesWrittenValue = 'FeaturesWritten';
 
 // The person who started Setup chose these in App settings (settings.json's FeaturesOff, read as that person by Windows' PowerShell and
 // handed back as a bit per feature in the exit code); False when no choice is saved there or it cannot be read.
@@ -610,6 +611,7 @@ begin
       Off := Off + Ids[I];
     end;
   RegWriteStringValue(HKLM64, ReceiptKey, FeaturesValue, Off);
+  RegWriteStringValue(HKLM64, ReceiptKey, FeaturesWrittenValue, GetDateTimeString('yyyy-mm-dd hh:nn:ss', '-', ':'));
   if not WizardSilent() then RegWriteDWordValue(HKLM64, ReceiptKey, LeaveOutValue, Ord(LeavesOut()));
 end;
 
@@ -743,6 +745,8 @@ begin
   if not PacketFilterInstalled() then DropReceipt(PacketFilterReceipt);
   if not EqualizerApoInstalled() then DropReceipt(EqualizerApoReceipt);
   DropReceipt(FeaturesValue);
+  DropReceipt(FeaturesWrittenValue);
+  DropReceipt(LeaveOutValue);
 end;
 
 procedure CurPageChanged(CurPageID: Integer);

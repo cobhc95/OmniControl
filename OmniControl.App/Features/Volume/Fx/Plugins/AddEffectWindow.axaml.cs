@@ -14,7 +14,14 @@ public partial class AddEffectWindow : Window
         Opened += (_, _) => SearchBox.Focus();
         DataContextChanged += (_, _) =>
         {
-            if (DataContext is AddEffectViewModel vm) vm.Chosen += entry => Close(entry);
+            if (DataContext is not AddEffectViewModel vm) return;
+            vm.Chosen += entry => Close(entry);
+            // The selection is set right after the results change, so it scrolls into view through ListScroll.
+            vm.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(AddEffectViewModel.Selected) && vm.Selected is not null)
+                    ListScroll.ShowSoon(ResultList, () => vm.Selected is { } now ? vm.Results.IndexOf(now) : -1);
+            };
         };
     }
 

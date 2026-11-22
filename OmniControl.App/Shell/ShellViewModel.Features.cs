@@ -42,7 +42,8 @@ public sealed partial class ShellViewModel
 
     private IReadOnlyList<PageSlot> RunningPages() => _sidebar.Where(_running.ContainsKey).SelectMany(m => _running[m].Pages).ToList();
 
-    /// The choice changed: each live module starts or stops to match it (a module whose own features changed starts again).
+    /// The choice changed: each live module starts or stops to match it (a module whose own features changed starts again, one that failed is
+    /// tried again). Every step is guarded here: a switch flipped through a binding would lose an exception without a trace.
     private void ApplyFeatures()
     {
         var changed = false;
@@ -52,7 +53,7 @@ public sealed partial class ShellViewModel
             var wanted = Wanted(module);
             if (running is not null && (!wanted || !running.Features.SequenceEqual(WantedFeatures(module))))
             {
-                Stop(module);
+                StopLive(module);
                 changed = true;
             }
             if (wanted && !_running.ContainsKey(module))
@@ -61,24 +62,34 @@ public sealed partial class ShellViewModel
                 changed = true;
             }
         }
-        if (changed) PagesChanged();
+        if (changed && Guard.Run("Feature switch: the sidebar", PagesChanged) is not null)
+            Report(Guard.SeeLog("The sidebar couldn't follow the feature switch."));
+        _features.Settle();
     }
+
+    private static string NameOf(IEnumerable<string> features) => string.Join(", ", features.Select(id => FeatureList.Find(id)?.Name));
 
     private void StartLive(IFeatureModule module)
     {
-        var name = string.Join(", ", WantedFeatures(module).Select(id => FeatureList.Find(id)?.Name));
+        var features = WantedFeatures(module);
+        var name = NameOf(features);
         if (Guard.Run($"Feature on: {name}", () =>
             {
                 Begin(module);
                 MakePages(module);
                 module.PagesMade();
-            }) is null)
-        {
-            foreach (var slot in _running[module].Pages) AddRestoreAction(slot);
-            return;
-        }
+                foreach (var slot in _running[module].Pages) AddRestoreAction(slot);
+            }) is null) return;
         Report(Guard.SeeLog($"{name} couldn't start."));
-        if (_running.ContainsKey(module)) Stop(module);
+        if (_running.ContainsKey(module)) StopLive(module);
+        _features.SetFailed(features);
+    }
+
+    private void StopLive(IFeatureModule module)
+    {
+        var name = NameOf(_running[module].Features);
+        if (Guard.Run($"Feature off: {name}", () => Stop(module)) is not null)
+            Report(Guard.SeeLog($"{name} didn't stop completely; restart OmniControl to finish."));
     }
 
     /// Its pages close (the open one gives the window back to the first page), then its scope stops it.
@@ -86,6 +97,7 @@ public sealed partial class ShellViewModel
     {
         var running = _running[module];
         _running.Remove(module);
+        _features.SetRunning(running.Features, false);
         foreach (var slot in running.Pages)
         {
             if (slot == _openSlot) CloseOpenPage();
@@ -93,7 +105,6 @@ public sealed partial class ShellViewModel
             if (slot.IfMade is IDisposable page) Guard.Run($"Feature off: {slot.Title} page", page.Dispose);
         }
         running.Scope.Stop();
-        _features.SetRunning(running.Features, false);
     }
 
     private void CloseOpenPage()

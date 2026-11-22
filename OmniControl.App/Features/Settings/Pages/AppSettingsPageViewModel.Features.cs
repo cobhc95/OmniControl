@@ -20,8 +20,18 @@ public sealed partial class AppSettingsPageViewModel
 
     public IRelayCommand TurnAllOnCommand { get; }
 
-    public string FeaturesNote => "Turning a feature off stops it at once and hides its page; your settings for it are kept. Network traffic control and Equalizer APO drivers "
-        + "stay installed until you remove them from their own pages or the uninstaller.";
+    /// What switching off keeps; the drivers only of the features installed here (one left out by Setup put none here).
+    public string FeaturesNote
+    {
+        get
+        {
+            var drivers = FeatureList.All.Where(f => f.Driver is not null && _features.Installed(f.Id)).Select(f => f.Driver).ToList();
+            const string kept = "Turning a feature off hides its page and keeps your settings for it";
+            return drivers.Count == 0 ? $"{kept}."
+                : $"{kept}; {string.Join(" and ", drivers)} stay{(drivers.Count == 1 ? "s" : string.Empty)} installed until you remove "
+                  + $"{(drivers.Count == 1 ? "it on its page" : "them on their pages")} or with the uninstaller.";
+        }
+    }
 
     private IEnumerable<SearchEntry> FeatureSearchEntries() =>
         _featureCards.Select(c => Entry(c.Card, FeaturesName, $"feature features turn on off disable enable run {c.Feature.Description}"))
@@ -40,11 +50,12 @@ public sealed partial class AppSettingsPageViewModel
             card.Load(on);
             card.Dimmed = !runs;
             card.Note = card.Unavailable ? "Not installed: run Setup to add it"
-                : on == runs ?(on ? feature.Description : OffNote)
-                : !feature.Live ? "Takes effect after restart"
-                : "Couldn't start; the errors log says why";
+                : on && !runs && _features.Failed(feature.Id) ? "Couldn't start; the errors log says why"
+                : on != runs && !feature.Live ? "Takes effect after restart"
+                : on ? feature.Description : OffNote;
         }
-        FeatureGroup.Summary = $"{_featureCards.Count(c => c.Card.IsOn)} of {_featureCards.Count} on";
+        // What runs now, of what is installed: a switch waiting for a restart or a feature that failed is not counted.
+        FeatureGroup.Summary = $"{_featureCards.Count(c => _features.Runs(c.Feature.Id))} of {_featureCards.Count(c => !c.Card.Unavailable)} on";
         ReadyMade.Refresh();
         TurnAllOnCommand.NotifyCanExecuteChanged();
     }

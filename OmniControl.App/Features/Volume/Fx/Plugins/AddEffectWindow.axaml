@@ -26,7 +26,7 @@
 
         <Border Grid.Row="1" Classes="pane edged">
             <Grid>
-                <ListBox x:Name="ResultList" Classes="fxlist" ItemsSource="{Binding Results}" SelectedItem="{Binding Selected}">
+                <ListBox x:Name="ResultList" Classes="fxlist" ItemsSource="{Binding Results}" SelectedItem="{Binding Selected}" AutoScrollToSelectedItem="False">
                     <ListBox.ItemTemplate>
                         <DataTemplate DataType="p:PluginEntry">
                             <Grid ColumnSpacing="10" VerticalAlignment="Center">

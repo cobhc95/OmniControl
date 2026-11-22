@@ -5,7 +5,7 @@
              x:DataType="c:OptionListModel">
     <!-- A list of options with ticks (the Combine devices window's members). The highlighted entry is the list's selection
          (ListBox.pick) and follows the pointer, so one row is lit at a time. -->
-    <ListBox x:Name="Entries" Classes="pick compact" ItemsSource="{Binding Shown}" SelectedIndex="{Binding Highlight}"
+    <ListBox x:Name="Entries" Classes="pick compact" ItemsSource="{Binding Shown}" SelectedIndex="{Binding Highlight}" AutoScrollToSelectedItem="False"
              MaxHeight="{StaticResource OptionListMaxHeight}">
         <ListBox.ItemTemplate>
             <DataTemplate x:DataType="c:OptionEntry">

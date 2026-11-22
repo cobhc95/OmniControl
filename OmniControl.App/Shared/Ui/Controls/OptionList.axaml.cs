@@ -18,6 +18,22 @@ public partial class OptionList : UserControl
 
     private OptionListModel? Model => DataContext as OptionListModel;
 
+    private OptionListModel? _followed;
+
+    // The highlight scrolls into view through ListScroll: it is set right after the entries are replaced.
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+        if (_followed is not null) _followed.PropertyChanged -= OnModelChanged;
+        _followed = Model;
+        if (_followed is not null) _followed.PropertyChanged += OnModelChanged;
+    }
+
+    private void OnModelChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(OptionListModel.Highlight) && _followed is { Highlight: >= 0 } model) ListScroll.ShowSoon(Entries, () => model.Highlight);
+    }
+
     private void OnEntryTapped(object? sender, TappedEventArgs e)
     {
         if ((sender as Control)?.DataContext is OptionEntry entry) Model?.Choose(entry);
