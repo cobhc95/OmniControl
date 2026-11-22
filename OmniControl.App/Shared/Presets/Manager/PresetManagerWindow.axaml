@@ -73,7 +73,7 @@
                                                         <ColumnDefinition Width="Auto" SharedSizeGroup="PresetGrip" />
                                                         <ColumnDefinition Width="Auto" SharedSizeGroup="PresetName" />
                                                         <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" SharedSizeGroup="PresetActions" />
+                                                        <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
                                                     <PathIcon Classes="grip" Data="{StaticResource GripIcon}" VerticalAlignment="Center" IsVisible="{Binding CanMove}"
                                                               ToolTip.Tip="Drag to move (or Alt+Up / Alt+Down)" />

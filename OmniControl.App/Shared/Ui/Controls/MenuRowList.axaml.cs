@@ -147,7 +147,8 @@ public partial class MenuRowList : UserControl
         if (row.OpensPage) return;
         if (!row.KeepsOpen)
         {
-            Picked?.Invoke(this, EventArgs.Empty);
+            // Avalonia runs the button's command after Click; closing the pop-down now would unbind that command first.
+            Dispatcher.UIThread.Post(() => Picked?.Invoke(this, EventArgs.Empty));
             return;
         }
         if (_refresh is { } refresh) Dispatcher.UIThread.Post(() => ItemsSource = refresh()); // after the row's command has run
