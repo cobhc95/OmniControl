@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text.Json;
 
@@ -12,16 +11,24 @@ internal sealed class PcDiscovery : IDisposable
 {
     private const int BeaconMax = 512;
     private readonly Func<PcBeacon> _own;
-    private readonly Action<PcBeacon, IPAddress> _heard;
+    private readonly Action<IReadOnlyList<(PcBeacon Beacon, IPAddress From)>> _heard;
+    private readonly Func<PcNetworkView?> _networks;
+    private readonly Action _refreshNetworks;
+    private readonly Dictionary<string, (PcBeacon, IPAddress)> _waiting = new(); // heard since the last hand-over (locked), the latest per PC
     private readonly CancellationTokenSource _stop = new();
     private UdpClient? _udp;
 
     /// <param name="own">What this PC says about itself now.</param>
-    /// <param name="heard">Another PC's beacon and the address it came from (raised on a worker thread).</param>
-    public PcDiscovery(Func<PcBeacon> own, Action<PcBeacon, IPAddress> heard)
+    /// <param name="heard">The beacons heard since the last call and where each came from (on a worker thread, at most one call per
+    /// <see cref="Timing.PcBeaconHandOver"/>).</param>
+    /// <param name="networks">The networks beacons may go to and come from; null while unknown (then every network, as before).</param>
+    /// <param name="refreshNetworks">Reads the networks again (called on the announcing worker now and then).</param>
+    public PcDiscovery(Func<PcBeacon> own, Action<IReadOnlyList<(PcBeacon Beacon, IPAddress From)>> heard, Func<PcNetworkView?> networks, Action refreshNetworks)
     {
         _own = own;
         _heard = heard;
+        _networks = networks;
+        _refreshNetworks = refreshNetworks;
     }
 
     /// Opens the socket and starts announcing and listening; false (with the reason) when Windows or another program holds the port.
@@ -31,6 +38,7 @@ internal sealed class PcDiscovery : IDisposable
         {
             var udp = new UdpClient(AddressFamily.InterNetwork) { EnableBroadcast = true };
             udp.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+            udp.Client.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.PacketInformation, true); // which adapter each beacon came in on
             udp.Client.Bind(new IPEndPoint(IPAddress.Any, PcProtocol.UdpPort));
             _udp = udp;
         }
@@ -53,7 +61,15 @@ internal sealed class PcDiscovery : IDisposable
         using var timer = new PeriodicTimer(Timing.PcBeaconEvery);
         try
         {
-            do Send();
+            do
+            {
+                if (DateTime.UtcNow - _networksAt >= Timing.PcBroadcastRefresh) // a network's category can change without its addresses
+                {
+                    _networksAt = DateTime.UtcNow;
+                    _refreshNetworks();
+                }
+                Send();
+            }
             while (await timer.WaitForNextTickAsync(_stop.Token).ConfigureAwait(false));
         }
         catch (OperationCanceledException)
@@ -64,8 +80,7 @@ internal sealed class PcDiscovery : IDisposable
 
     private PcBeacon? _lastBeacon;
     private byte[] _packet = Array.Empty<byte>();
-    private IReadOnlyList<IPAddress> _targets = Array.Empty<IPAddress>();
-    private DateTime _targetsAt = DateTime.MinValue;
+    private DateTime _networksAt = DateTime.MinValue;
 
     private readonly object _sendGate = new(); // AnnounceNow (UI thread) and the timer (a worker) both send
 
@@ -80,8 +95,7 @@ internal sealed class PcDiscovery : IDisposable
         var beacon = _own();
         if (beacon != _lastBeacon) (_lastBeacon, _packet) = (beacon, JsonSerializer.SerializeToUtf8Bytes(beacon, PcProtocol.Json)); // made again only when it changed
         var packet = _packet;
-        if (DateTime.UtcNow - _targetsAt >= Timing.PcBroadcastRefresh) (_targets, _targetsAt) = (BroadcastAddresses().ToList(), DateTime.UtcNow); // the adapters are listed now and then, not at each beacon
-        foreach (var target in _targets)
+        foreach (var target in _networks()?.Broadcasts() ?? new[] { IPAddress.Broadcast })
         {
             try
             {
@@ -94,39 +108,25 @@ internal sealed class PcDiscovery : IDisposable
         }
     }
 
-    // The limited broadcast plus the directed broadcast of every connected IPv4 network, so a PC on a second adapter is heard too.
-    private static IEnumerable<IPAddress> BroadcastAddresses()
-    {
-        yield return IPAddress.Broadcast;
-        foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
-        {
-            if (nic.OperationalStatus != OperationalStatus.Up || nic.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
-            foreach (var unicast in nic.GetIPProperties().UnicastAddresses)
-            {
-                if (unicast.Address.AddressFamily != AddressFamily.InterNetwork || unicast.IPv4Mask is not { } mask) continue;
-                var address = unicast.Address.GetAddressBytes();
-                var maskBytes = mask.GetAddressBytes();
-                for (var i = 0; i < address.Length; i++) address[i] |= (byte)~maskBytes[i];
-                yield return new IPAddress(address);
-            }
-        }
-    }
-
     private async Task ListenAsync()
     {
         if (_udp is not { } udp) return;
         var second = Environment.TickCount64 / 1000;
         var heardThisSecond = 0;
+        var buffer = new byte[BeaconMax + 1];
+        EndPoint anyone = new IPEndPoint(IPAddress.Any, 0);
         try
         {
             while (!_stop.IsCancellationRequested)
             {
-                var received = await udp.ReceiveAsync(_stop.Token).ConfigureAwait(false);
+                var received = await udp.Client.ReceiveMessageFromAsync(buffer, SocketFlags.None, anyone, _stop.Token).ConfigureAwait(false);
                 var now = Environment.TickCount64 / 1000;
                 if (now != second) (second, heardThisSecond) = (now, 0);
                 if (++heardThisSecond > Timing.PcBeaconsPerSecond) continue; // a flood of beacons is dropped, not handed on
-                if (received.Buffer.Length > BeaconMax || Read(received.Buffer) is not { } beacon) continue;
-                _heard(beacon, received.RemoteEndPoint.Address);
+                if (received.RemoteEndPoint is not IPEndPoint from || (_networks() is { } networks && !networks.HearsFrom(received.PacketInformation.Interface, from.Address)))
+                    continue; // a Public network's beacon
+                if (received.ReceivedBytes > BeaconMax || Read(buffer.AsSpan(0, received.ReceivedBytes)) is not { } beacon) continue;
+                Wait(beacon, from.Address);
             }
         }
         catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException or SocketException)
@@ -135,7 +135,36 @@ internal sealed class PcDiscovery : IDisposable
         }
     }
 
-    private static PcBeacon? Read(byte[] bytes)
+    // Beacons are handed on together at most once per Timing.PcBeaconHandOver, so a busy network never floods the UI thread's queue.
+    private void Wait(PcBeacon beacon, IPAddress from)
+    {
+        lock (_waiting)
+        {
+            var first = _waiting.Count == 0;
+            _waiting[beacon.Id] = (beacon, from);
+            if (!first) return;
+        }
+        _ = Guard.RunAsync("Other PCs: handing on beacons", async () =>
+        {
+            try
+            {
+                await Task.Delay(Timing.PcBeaconHandOver, _stop.Token).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException)
+            {
+                return; // stopped: nothing more is handed on
+            }
+            List<(PcBeacon, IPAddress)> heard;
+            lock (_waiting)
+            {
+                heard = _waiting.Values.ToList();
+                _waiting.Clear();
+            }
+            _heard(heard);
+        });
+    }
+
+    private static PcBeacon? Read(ReadOnlySpan<byte> bytes)
     {
         try
         {

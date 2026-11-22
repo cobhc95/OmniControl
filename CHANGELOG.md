@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Other PCs: this PC is found and accepts connections only on networks set to Private in Windows and over Tailscale; on a Public network the page says so in one line with a link to Windows' network settings.
+
 - Plug-ins: while OmniControl runs as administrator, a plug-in also loads only when every file in its folder (and its whole VST3 bundle) can be changed only by administrators and none of them is a link.
 
 - Menus with many rows (the gadget's Font list) build only the rows in view, so opening them is lighter.

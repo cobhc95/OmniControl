@@ -26,7 +26,10 @@ public sealed partial class OtherPcsService
         if (_network is not null || _disposed) return;
         _network = CancellationTokenSource.CreateLinkedTokenSource(_stop.Token);
         StartListener();
-        _discovery = new PcDiscovery(OwnBeacon, (beacon, from) => PcWork.Post(() => Heard(beacon, from.ToString())));
+        _discovery = new PcDiscovery(OwnBeacon, heard => PcWork.Post(() =>
+        {
+            foreach (var (beacon, from) in heard) Heard(beacon, from.ToString());
+        }), () => _networks, RefreshNetworks);
         if (!_discovery.Start(out var problem))
         {
             _discovery.Dispose();
@@ -126,7 +129,7 @@ public sealed partial class OtherPcsService
         var mine = counted && TakeHandshake(from);
         try
         {
-            if (!mine) return;
+            if (!mine || !AcceptsHere(client)) return;
             client.NoDelay = true;
             var viaTailscale = TailscaleStatusReader.IsTailscaleAddress((client.Client.RemoteEndPoint as IPEndPoint)?.Address.ToString());
             var stream = new NetworkStream(client.Client, ownsSocket: true);

@@ -1,3 +1,4 @@
+using System.Net.NetworkInformation;
 using static OmniControl.Core.Engine.Trackpad.RawInputNative;
 using static OmniControl.Core.Native.PowerNative;
 using static OmniControl.Core.Native.SessionNative;
@@ -35,6 +36,9 @@ public enum HardwareSignal
     /// The taskbar changed without being made again: Windows' light or dark mode, its own settings (size, alignment, auto-hide) or the
     /// screen area it leaves free.
     TaskbarSettings = 128,
+
+    /// A network adapter's addresses changed (connected, disconnected, a new network joined).
+    Network = 256,
 }
 
 /// Raises <see cref="Raised"/> for Windows' hardware announcements that need no registration of a device kind: a device change, a display
@@ -156,6 +160,7 @@ public sealed class HardwareSignals : IDisposable
             SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
             SystemEvents.PowerModeChanged += OnPowerModeChanged;
             SystemEvents.SessionEnded += OnSessionEnded;
+            NetworkChange.NetworkAddressChanged += OnNetworkAddressChanged;
         }
         catch (Exception ex) when (ex is InvalidOperationException or ExternalException)
         {
@@ -170,7 +175,10 @@ public sealed class HardwareSignals : IDisposable
         SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
         SystemEvents.PowerModeChanged -= OnPowerModeChanged;
         SystemEvents.SessionEnded -= OnSessionEnded;
+        NetworkChange.NetworkAddressChanged -= OnNetworkAddressChanged;
     }
+
+    private void OnNetworkAddressChanged(object? sender, EventArgs e) => Guarded(() => Raise(HardwareSignal.Network, "network address changed"));
 
     private void OnSessionSwitch(object? sender, SessionSwitchEventArgs e)
     {

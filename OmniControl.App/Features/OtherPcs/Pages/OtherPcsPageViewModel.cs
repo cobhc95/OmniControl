@@ -34,6 +34,15 @@ public sealed partial class OtherPcsPageViewModel : PageViewModel, IDisposable
 
     public bool HasSelected => Selected is not null;
 
+    /// A network here is set to Public in Windows, so other PCs can't find this one on it.
+    public bool OnPublicNetwork => _service.OnPublicNetwork;
+
+    [RelayCommand]
+    private void OpenNetworkSettings()
+    {
+        if (WebPage.Open(OtherPcsService.NetworkSettingsPage, _report) is { } problem) _report(problem);
+    }
+
     private const string ThisPcWindowKey = "this-pc"; // cannot clash with a PC's id
     private readonly Dictionary<string, SingleWindow<WakeSetupWindow>> _wakeWindows = new();
 
@@ -104,6 +113,7 @@ public sealed partial class OtherPcsPageViewModel : PageViewModel, IDisposable
     // The tabs follow the service: PCs paired or unpaired, New PC tabs opened, closed or turned into a PC's tab, and the one saved order; the ones that stay are kept.
     private void OnServiceChanged()
     {
+        OnPropertyChanged(nameof(OnPublicNetwork));
         var pairs = _service.Pairs;
         var tabs = _service.SetupTabs;
         var keep = Selected; // moving a tab can drop the list's selection for a moment

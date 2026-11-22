@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:OmniControl.App.Features.OtherPcs.Pages"
+             xmlns:op="using:OmniControl.App.Features.OtherPcs"
              xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
              xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
              x:Class="OmniControl.App.Features.OtherPcs.Pages.PairPcPanel"
@@ -45,7 +46,7 @@
         </StackPanel>
 
         <StackPanel Spacing="{StaticResource Gap}" IsVisible="{Binding ShowsLan}">
-            <TextBlock Classes="hint" TextWrapping="Wrap" Text="This PC can now be found for pairing. On the other PC open a New PC tab too, then pick one of the PCs below there or here." />
+            <TextBlock Classes="hint" TextWrapping="Wrap" ToolTip.Tip="{x:Static op:OtherPcsService.FindTip}" Text="This PC can now be found for pairing. On the other PC open a New PC tab too, then pick one of the PCs below there or here." />
             <ItemsControl ItemsSource="{Binding Nearby}" IsVisible="{Binding HasNearby}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate><WrapPanel ItemSpacing="{StaticResource Gap}" LineSpacing="{StaticResource GapSmall}" /></ItemsPanelTemplate>
@@ -57,7 +58,7 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <pages:EmptyListRow IsVisible="{Binding NoNearby}" Text="No other PC is open to pairing on this network yet." />
+            <pages:EmptyListRow IsVisible="{Binding NoNearby}" Text="No other PC is open to pairing on this network yet." ToolTip.Tip="{x:Static op:OtherPcsService.FindTip}" />
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}">
                 <TextBox Classes="field" Text="{Binding PairAddress}" Watermark="Or the address of a PC on another network, such as ZeroTier" MinWidth="0" VerticalAlignment="Center">
                     <TextBox.KeyBindings>
