@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Safer: importing Volume presets from another PC leaves out each effect's plug-in file and saved plug-in state, as the mixer and effect presets already did; a plug-in effect then shows as needing to be chosen again.
 - Safer: when a paired PC imports your settings, your smart devices are handed over without account emails and without the text typed by recorded steps, the same as when devices are shared one by one.
 - Safer: Setup removes an older per-user copy only when it was started without administrator rights for your own account; otherwise it leaves that copy in place and the finished page says to remove it from Apps & features.
 - Safer: a device template's saved email and password are handed only to the kasa program; a template that runs any other program (for example one you imported) runs without them.

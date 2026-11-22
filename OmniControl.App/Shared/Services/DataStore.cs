@@ -66,14 +66,14 @@ public static class DataStores
         public static readonly ImportPlace Confirmations = new(ImportGroups.LookAndApp, "Confirmations", "answers you chose not to be asked again");
     }
 
-    // An effect's file (plug-in or impulse response) and the plug-in's saved state, as mixer.json and presets.json name them.
+    // An effect's file (plug-in or impulse response) and the plug-in's saved state, as the mixer's, the effect presets' and the volume presets' files name them.
     private static readonly string[] PluginFiles = { "Path", "State" };
 
     public static readonly DataStore App = new("settings.json", "App settings", StoreKind.Saved, NotImported: new[] { "PluginFolders", "Updates", "FeaturesOff", "FeaturesFromSetup" }, Import: Places.AppSettings);
     public static readonly DataStore Mixer = new("mixer.json", "Volume mixer and wiring", StoreKind.Saved,
         NotImported: new[] { "BusCable", "RealMasterDevice", "CaptureSilence" }, Import: Places.Volume, NotImportedInside: PluginFiles);
     public static readonly DataStore EffectPresets = new("presets.json", "Effect presets", StoreKind.Saved, Mergeable: true, Import: Places.Volume, NotImportedInside: PluginFiles);
-    public static readonly DataStore VolumePresets = new("volume-presets.json", "Volume presets", StoreKind.Saved, Mergeable: true, Import: Places.Volume);
+    public static readonly DataStore VolumePresets = new("volume-presets.json", "Volume presets", StoreKind.Saved, Mergeable: true, Import: Places.Volume, NotImportedInside: PluginFiles);
     public static readonly DataStore Plugins = new("plugins.json", "Plug-in list", StoreKind.Saved, Mergeable: true, MachineSpecific: true);
     public static readonly DataStore Automation = new("automation.json", "Rules, custom actions and scripts", StoreKind.Saved, Mergeable: true, NotImported: new[] { "Approved" }, Import: Places.Automation);
     public static readonly DataStore GestureRules = new("rules.json", "Gesture rules", StoreKind.Saved, Mergeable: true, NotImported: new[] { "Approved" }, Import: Places.Gestures);
