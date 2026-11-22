@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Fixed: taskbar gadget: clicking quickly through the label editor's icons could write one icon inside another ("{cpu-2:{device-desktop-analytics:white}white}"), grow the label with every click, slow the app to a hang and blank the taskbar. An icon now never goes inside another; with an icon of the label selected, a click swaps that icon (its colour kept), so clicking through the grids tries each in its place; quick clicks are saved once; a long label no longer widens the readings table; a label broken this way is mended when OmniControl starts.
 - New: a "None" ready-made choice (every feature off) in Setup's Choose features page and App settings > Features; ticking a feature after it makes the choice Custom.
 
 - Fixed: App settings > Features: a feature switched on that failed to start was not written to the errors log and its card could still say "Couldn't start" when nothing had failed; now every start and stop is logged when it fails, "Couldn't start" shows only for a real failure, the cards always show what runs, the header counts the features running of those installed, and the note under the cards names only the drivers that are installed. Running Setup again with the same feature choice as an earlier Setup now applies it over switches changed since.

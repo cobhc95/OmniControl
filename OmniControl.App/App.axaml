@@ -159,11 +159,13 @@
         <x:Double x:Key="FxGraphHeight">170</x:Double>
         <x:Double x:Key="FxGraphPanelSpacing">4</x:Double>
         <!-- The Resources page: a card's sparkline (c|Sparkline) height and line; the taskbar gadget's inset (g|GadgetCells); on its
-             Taskbar gadget tab the least width of a reading's label field, the preview strip's and a layout tile's preview height -->
+             Taskbar gadget tab the least and most width of a reading's label field (the most keeps a long label from widening the table's
+             shared column past the page, which never settles), the preview strip's and a layout tile's preview height -->
         <x:Double x:Key="SparklineHeight">18</x:Double>
         <x:Double x:Key="SparklineThickness">1.5</x:Double>
         <Thickness x:Key="GadgetInset">6,2,0,2</Thickness>
         <x:Double x:Key="GadgetLabelWidth">64</x:Double>
+        <x:Double x:Key="GadgetLabelMaxWidth">120</x:Double>
         <x:Double x:Key="GadgetThumbHeight">34</x:Double>
         <!-- The room under a section of the unfolded Layouts gallery -->
         <Thickness x:Key="GadgetSectionInset">0,0,0,6</Thickness>

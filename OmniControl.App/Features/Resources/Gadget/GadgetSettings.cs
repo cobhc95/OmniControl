@@ -201,9 +201,10 @@ public sealed class GadgetSettings
     [JsonIgnore] public GadgetReading? WeatherShown => Readings.FirstOrDefault(r => r.Id == WeatherId && r.Shown);
 
     /// Adds the readings a saved file does not have yet (a newer version's, or of <paramref name="readings"/>: the live list with this PC's
-    /// disks) and keeps the shown ones first, in their order.
+    /// disks), keeps the shown ones first, in their order, and mends a broken label (<see cref="Gadget.GadgetLabel.Repaired"/>).
     public void Complete(IEnumerable<Reading>? readings = null)
     {
+        foreach (var row in Readings) row.Label = Gadget.GadgetLabel.Repaired(row.Label ?? string.Empty); // a file may hold null
         Readings.AddRange((readings ?? Reading.All).Where(r => Readings.All(g => g.Id != r.Id)).Select(Default));
         if (Readings.All(g => g.Id != WeatherId)) Readings.Add(WeatherRow());
         Readings = Readings.OrderBy(r => !r.Shown).ToList();

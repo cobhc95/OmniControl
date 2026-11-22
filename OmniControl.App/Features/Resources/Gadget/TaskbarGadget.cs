@@ -60,12 +60,47 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
         IStateRegistry states, Action<string> report, IResourcesWindows windows)
     {
         (_monitor, _weather, _settings, _layouts, _runner, _states, _report, _windows) = (monitor, weather, settings, layouts, runner, states, report, windows);
-        monitor.Updated += Draw;
+        monitor.Updated += Redraw;
         monitor.ReadingsChanged += AddRows;
-        weather.Updated += Draw;
-        settings.Changed += Apply;
+        weather.Updated += Redraw;
+        settings.Changed += Follow;
         _preview.Changed += NeedReadings;
         Apply();
+    }
+
+    private void Redraw() => Guarded("Taskbar gadget: draw", Draw);
+
+    private void Follow() => Guarded("Taskbar gadget: settings", Apply);
+
+    /// The steps that failed and were logged; one failing on every read is logged once, again only after it has worked.
+    private readonly HashSet<string> _failing = new();
+
+    /// Runs a draw or placement entry point (a read, a setting, a taskbar announcement, a posted placement): a failure is logged, never thrown into the UI loop.
+    private void Guarded(string what, Action step)
+    {
+        try
+        {
+            step();
+            _failing.Remove(what);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            if (_failing.Add(what)) Guard.Log(what, ex);
+        }
+    }
+
+    private bool _placePosted;
+
+    /// Places the gadget once the window has taken its new size; draws close together (a read, a setting) place it once.
+    private void PlaceSoon()
+    {
+        if (_placePosted) return;
+        _placePosted = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _placePosted = false;
+            Guarded("Taskbar gadget: place", Place);
+        }, DispatcherPriority.Loaded);
     }
 
     /// Its state, its On / Off / Toggle actions and its hardware watch in the master lists.
@@ -84,7 +119,7 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
             () =>
             {
                 var light = TaskbarSpot.IsLight(); // the registry is read here, off the UI thread
-                Dispatcher.UIThread.Invoke(() => Refresh(light));
+                Dispatcher.UIThread.Invoke(() => Guarded("Taskbar gadget: taskbar changed", () => Refresh(light)));
             },
             LooksStale: () => IsShown && (_placed is not { } placed || (_size is var (w, h) && TaskbarSpot.Find(w, h, Look.SpaceToTray, KnownLeftEnd(placed.Taskbar)) != placed))));
     }
@@ -118,7 +153,7 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
                     _lookingLeft = false;
                     if (end is not { } found || _leftEnd == new LeftEnd(taskbar, found)) return;
                     _leftEnd = new LeftEnd(taskbar, found);
-                    Place();
+                    PlaceSoon();
                 });
             }
         });
@@ -147,12 +182,12 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
     public IReadingList Readings => _monitor;
 
     /// A disk came or went: a new disk's rows join the list (hidden) and are saved, and the gadget reads and draws what is shown now.
-    private void AddRows()
+    private void AddRows() => Guarded("Taskbar gadget: disks changed", () =>
     {
         var rows = Look.Readings.Count;
         Apply();
         if (Look.Readings.Count != rows) _settings.Save();
-    }
+    });
 
     private bool TaskbarLight => _taskbarLight ??= TaskbarSpot.IsLight();
 
@@ -194,7 +229,7 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
             var clicks = _clicks = new GadgetClicks(() => Look, Run);
             window.Pressed += clicks.Pressed;
             window.Released += clicks.Released;
-            window.EdgeChanged += () => Dispatcher.UIThread.Post(Paint, DispatcherPriority.Loaded); // after the edge's layout
+            window.EdgeChanged += () => Dispatcher.UIThread.Post(() => Guarded("Taskbar gadget: paint", Paint), DispatcherPriority.Loaded); // after the edge's layout
             // A child window is destroyed with the taskbar when Explorer restarts; TaskbarCreated then opens a new one through Place.
             window.Closed += (_, _) =>
             {
@@ -270,7 +305,7 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
         _window.HoverOutline = look.HoverOutline;
         _window.Fill(look.SolidBackground ? Background : null);
         _window.Draw(Cells(look), GadgetLayout.Of(look));
-        Dispatcher.UIThread.Post(Place, DispatcherPriority.Loaded); // after the window has taken its new size
+        PlaceSoon();
     }
 
     /// A stored gadget colour; "" is <paramref name="text"/> (the text colour, or the taskbar's own <see cref="Ink"/>).
@@ -378,10 +413,10 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
 
     public void Dispose()
     {
-        _monitor.Updated -= Draw;
+        _monitor.Updated -= Redraw;
         _monitor.ReadingsChanged -= AddRows;
-        _weather.Updated -= Draw;
-        _settings.Changed -= Apply;
+        _weather.Updated -= Redraw;
+        _settings.Changed -= Follow;
         _preview.Changed -= NeedReadings;
         _disposed = true;
         CloseWindow();

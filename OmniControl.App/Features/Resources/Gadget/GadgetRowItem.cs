@@ -51,7 +51,7 @@ public sealed partial class GadgetRowItem : ObservableObject
     private readonly Reading? _reading;
     private readonly Func<Visual, IconRequest, Task<IconPick?>> _chooseIcon;
     private readonly Func<Color> _ink;
-    private bool _loading;
+    private bool _loading, _commitPosted;
 
     /// <param name="readings">THE live list of readings (the disks' included).</param>
     /// <param name="ink">The taskbar's own text colour (the "" colour).</param>
@@ -229,9 +229,16 @@ public sealed partial class GadgetRowItem : ObservableObject
         Set(e => e.Label = value);
     }
 
-    /// Puts the icon at <see cref="Caret"/> when the label lacks it, else takes it out (an icon cell's click).
+    /// An icon cell's click: swaps the selected icon token for this icon (its colour kept, still selected, so clicking through the grids tries
+    /// each in its place); with none selected, puts the icon at <see cref="Caret"/> when the label lacks it, else takes it out.
     private void ToggleIcon(string id)
     {
+        if (SelectedIcon is { } start && !GadgetLabel.Holds(Label, id) && GadgetLabel.Replace(Label, start, id) is var (swapped, length))
+        {
+            Label = swapped;
+            SelectionMoved?.Invoke(start, length);
+            return;
+        }
         if (GadgetLabel.Holds(Label, id))
         {
             Label = GadgetLabel.Without(Label, id);
@@ -245,9 +252,7 @@ public sealed partial class GadgetRowItem : ObservableObject
 
     private void Insert(string token)
     {
-        var at = Math.Clamp(Caret, 0, Label.Length);
-        Label = Label.Insert(at, token);
-        Caret = at + token.Length;
+        (Label, Caret) = GadgetLabel.Insert(Label, Caret, token);
         SelectionMoved?.Invoke(Caret, 0);
     }
 
@@ -306,10 +311,18 @@ public sealed partial class GadgetRowItem : ObservableObject
         ShowInk();
     }
 
+    /// Changes the entry at once and commits once a burst of changes is over (clicks through the icon grids, typing, a dragged gap): a
+    /// commit redraws the gadget and the whole tab, so a queue of them would pile up behind each other.
     private void Set(Action<GadgetReading> change)
     {
         if (_loading) return;
         change(Entry);
-        _settings.Commit();
+        if (_commitPosted) return;
+        _commitPosted = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _commitPosted = false;
+            Guard.Run("Taskbar gadget: a reading's look", _settings.Commit);
+        }, DispatcherPriority.Background);
     }
 }

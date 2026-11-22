@@ -78,8 +78,8 @@
                                                         pages:MenuChoiceLink.Title="{x:Static p:SensorMenu.Title}" pages:MenuChoiceLink.Item="{Binding Sensor}" />
                                         </StackPanel>
                                         <Button Grid.Column="3" Classes="scope" Tag="scope" MinWidth="{StaticResource GadgetLabelWidth}" VerticalAlignment="Center"
-                                                ToolTip.Tip="Edit the label: words and icons, and the gap after it">
-                                            <Panel>
+                                                MaxWidth="{StaticResource GadgetLabelMaxWidth}" ToolTip.Tip="Edit the label: words and icons, and the gap after it">
+                                            <Panel ClipToBounds="True">
                                                 <g:GadgetLabelView Label="{Binding Label}" Spacing="2" />
                                                 <TextBlock Classes="muted" Text="none" IsVisible="{Binding !HasLabel}" />
                                             </Panel>

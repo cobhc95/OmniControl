@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace OmniControl.App.Features.Resources.Gadget;
 
@@ -13,7 +14,7 @@ public sealed record LabelPart(string? Text, string? Icon, string? Colour = null
 public enum LabelStyle { Text, Icons, Both, None }
 
 /// THE gadget label: words with icons written as {id} or, coloured, {id:colour} ("{cpu}{temperature:orange}:"), so a saved label stays a plain string. Pure.
-public static class GadgetLabel
+public static partial class GadgetLabel
 {
     private const int MaxIdLength = 64;
 
@@ -26,7 +27,7 @@ public static class GadgetLabel
     public static string Token(string iconId, string? colour = null) => "{" + iconId + (colour is null ? string.Empty : ":" + colour) + "}";
 
     /// A drawing colour's value by its name, or null for none (the text's colour).
-    public static Color? InkOf(string? colour) => colour is null ? null : Palette.DrawingNamed.First(d => d.Name == colour).Colour;
+    public static Color? InkOf(string? colour) => Palette.DrawingNamed.FirstOrDefault(d => d.Name == colour) is { Name: not null } d ? d.Colour : null;
 
     /// The label's words and icons in order; a brace that does not hold an icon id stays words.
     public static IReadOnlyList<LabelPart> Parts(string label) => Spans(label).Select(s => s.Part).ToList();
@@ -55,6 +56,40 @@ public static class GadgetLabel
     /// The icon token the caret sits inside (between its braces): where it starts and how long it is, or null.
     public static (int Start, int Length)? TokenAt(string label, int caret) =>
         Spans(label).Where(s => s.Part.Icon is not null && caret > s.Start && caret < s.Start + s.Length).Select(s => ((int, int)?)(s.Start, s.Length)).FirstOrDefault();
+
+    /// The label with <paramref name="token"/> put in at <paramref name="caret"/>, moved past the end of a token the caret sits inside (a token
+    /// is never written into another), and where the caret goes after it.
+    public static (string Label, int Caret) Insert(string label, int caret, string token)
+    {
+        var at = Math.Clamp(caret, 0, label.Length);
+        if (TokenAt(label, at) is { } inside) at = inside.Start + inside.Length;
+        return (label.Insert(at, token), at + token.Length);
+    }
+
+    /// The label with the icon whose token starts at <paramref name="start"/> swapped for <paramref name="iconId"/>, its colour kept, and the new
+    /// token's length; null when no token starts there.
+    public static (string Label, int Length)? Replace(string label, int start, string iconId)
+    {
+        if (Spans(label).FirstOrDefault(s => s.Part.Icon is not null && s.Start == start) is not { Part: not null } old) return null;
+        var token = Token(iconId, old.Part.Colour);
+        return (label[..start] + token + label[(start + old.Length)..], token.Length);
+    }
+
+    /// The label mended: a token written inside another ("{cpu-2:{gpu:white}white}") becomes the inner one, the newest, and a colour written
+    /// with spaces ("{gpu: white}") loses them; anything else is kept as it is.
+    public static string Repaired(string label)
+    {
+        var mended = SpacedColour().Replace(label, m => Palette.DrawingNamed.Any(d => string.Equals(d.Name, m.Groups[2].Value, StringComparison.OrdinalIgnoreCase))
+            ? Token(m.Groups[1].Value, m.Groups[2].Value.ToLowerInvariant()) : m.Value);
+        for (var was = string.Empty; was != mended;) (was, mended) = (mended, Nested().Replace(mended, "$1"));
+        return mended;
+    }
+
+    [GeneratedRegex(@"\{([A-Za-z0-9_\-:]+?) *: *([A-Za-z]+) *\}")]
+    private static partial Regex SpacedColour();
+
+    [GeneratedRegex(@"\{[A-Za-z0-9_\-: ]*(\{[A-Za-z0-9_\-: ]*\})[A-Za-z0-9_\-: ]*\}")]
+    private static partial Regex Nested();
 
     /// The label with the icon whose token starts at <paramref name="start"/> (null: every icon) in this colour (null: the text's colour).
     public static string Recolour(string label, int? start, string? colour) =>
