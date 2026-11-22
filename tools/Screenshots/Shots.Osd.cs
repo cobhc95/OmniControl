@@ -13,6 +13,7 @@ internal static partial class Shots
         var page = new OsdPageViewModel(rig.Osd, Rig.OpenPresets, _ => Task.FromResult(false),
             Array.Empty<RunningProgram>, Rig.Report);
         rig.Pages.Add(page);
+        rig.Restore(page, rig.Osd.NewRestorable(OsdPageViewModel.Info.RestoreKey!, page.Title));
         page.Customize.IsExpanded = true;
         camera.Page(page, "osd");
     }

@@ -18,6 +18,7 @@ using OmniControl.App.Features.Traffic;
 using OmniControl.App.Features.Traffic.Pages;
 using OmniControl.App.Features.Screenshot;
 using OmniControl.App.Features.Settings.About;
+using OmniControl.App.Shared.Ui.Restore;
 using OmniControl.App.Features.Settings.Pages;
 using OmniControl.App.Features.Settings.Pages.Backup;
 using OmniControl.App.Features.States;
@@ -156,7 +157,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _appSettings = new PageSlot(AppSettingsPageViewModel.Info, () => new AppSettingsPageViewModel(_about.Open, _volume.Library,
             () => _presetManager.Open(null, null), new BackupService(_dialogs.ChooseAsync, Report, _otherPcs.ImportFrom), _dialogs.Confirmations, _updates, Report,
             _volume.Mixer, _hardware, _settings, TrayFlyout, _features), () => AppSettingsPageViewModel.Words(_dialogs.Confirmations, _settings),
-            OnPageMade, Report);
+            AppSettingsRestore(), OnPageMade, Report);
         RegisterAppActions();
         _allFooter = new[] { _appSettings };
         UseSections();
@@ -246,18 +247,21 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     /// A feature page's place in the sidebar: it registers its entries now and is made at its first use.
     private PageSlot Slot(FeaturePage page)
     {
-        var slot = new PageSlot(page.Info, page.Make, page.Words, OnPageMade, Report);
-        if (page.Registers is { } register && Guard.Run($"Start-up: {page.Info.Title} page's actions", register) is not null)
+        IRestorable? restorable = null;
+        if (Guard.Run($"Start-up: {page.Info.Title} page's actions", () =>
+            {
+                page.Registers?.Invoke();
+                restorable = page.Restore?.Invoke();
+            }) is not null)
             Report(Guard.SeeLog($"The {page.Info.Title} page's actions couldn't start."));
-        return slot;
+        return new PageSlot(page.Info, page.Make, page.Words, restorable, OnPageMade, Report);
     }
 
-    /// A page was just made (at start-up, or at its first opening, search, restore or reveal): it gets its Restore defaults button, and
-    /// App settings the combined restore.
-    private void OnPageMade(PageViewModel page)
+    /// A page was just made (at its first opening, search or reveal): it gets its Restore defaults button, and App settings the combined restore.
+    private void OnPageMade(PageSlot slot)
     {
-        AttachRestore(page);
-        if (page is AppSettingsPageViewModel settings) settings.ShowRestoreAll(RestoreAll);
+        AttachRestore(slot);
+        if (slot.IfMade is AppSettingsPageViewModel settings) settings.ShowRestoreAll(RestoreAll);
     }
 
     private const string AllCategories = "All categories";

@@ -1,4 +1,7 @@
+using OmniControl.App.Features;
 using OmniControl.App.Features.AppLists;
+using OmniControl.App.Shared.Ui.Pages;
+using OmniControl.App.Shell;
 using OmniControl.App.Features.Displays;
 using OmniControl.App.Features.Input.Gestures;
 using OmniControl.App.Features.Input.Mouse;
@@ -197,6 +200,27 @@ public class RestoreDefaultsTests
     }
 
     // ---- Restore all ----
+
+    [Fact]
+    public async Task Restore_all_over_the_pages_registrations_makes_no_page()
+    {
+        var log = new List<string>();
+        var store = new FakeStore();
+        var made = 0;
+        var slots = new[] { new Counter("a", 1, log, store), new Counter("b", 0, log, store) }
+            .Select(part => new PageSlot(new PageInfo(part.Name, "", RestoreKey: part.Key), () => { made++; throw new InvalidOperationException("no page"); },
+                FeaturePage.NoResults, part, _ => { }, _ => { }))
+            .ToList();
+        var runner = new RestoreRunner("all", "All", slots.Select(s => s.Restorable!).ToList(), true, _ => Task.FromResult(true), store);
+
+        Assert.Null(runner.Blocked);
+        await runner.RunAsync();
+        Assert.Equal(RestoreWords.AtDefaults, runner.Blocked);
+        await runner.UndoAsync();
+        Assert.Equal(new[] { "a=0", "a=1" }, log);
+        Assert.Equal(0, made);
+        Assert.All(slots, s => Assert.Null(s.IfMade));
+    }
 
     [Fact]
     public async Task Undo_after_a_partial_restore_all_puts_back_exactly_the_pages_that_ran()

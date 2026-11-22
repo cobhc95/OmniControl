@@ -1,12 +1,10 @@
 using OmniControl.App.Features.Osd;
-using OmniControl.App.Shared.Ui.Restore;
 
 namespace OmniControl.App.Features.Osd.Pages;
 
 public sealed class OsdPageViewModel : PageViewModel, IDisposable
 {
     private readonly OsdService _osd;
-    private readonly IRestorable _restorable;
     private readonly Action<string?, string?> _openPresets;
     private readonly Func<OsdPlacementViewModel, Task<bool>> _askPlacement;
     private readonly Func<IReadOnlyList<RunningProgram>> _listedApps;
@@ -15,8 +13,6 @@ public sealed class OsdPageViewModel : PageViewModel, IDisposable
     public static readonly PageInfo Info = new("OSD", "M3,5 H21 A1,1 0 0 1 22,6 V18 A1,1 0 0 1 21,19 H3 A1,1 0 0 1 2,18 V6 A1,1 0 0 1 3,5 Z M4,7 V17 H20 V7 Z M6,13 H14 V15 H6 Z", NavGroups.System,
         "osd on-screen display overlay popup position place places custom screen screens monitor style color colour accent opacity duration time seconds how long exceptions volume brightness windows",
         "osd");
-
-    public override IRestorable? Restorable => _restorable;
 
     public override string KeyHelp => "Enter on Position or Show on opens its menu.";
 
@@ -127,27 +123,6 @@ public sealed class OsdPageViewModel : PageViewModel, IDisposable
         Customize = new ItemGroup("OSD/Customize", "Customize OSD", new object[] { style, accent, background, position, showOn, opacity, duration });
         _elements = BuildElements();
         _followed.Follow<Action>(h => osd.ElementsChanged += h, h => osd.ElementsChanged -= h, () => Elements = BuildElements());
-
-        // "Restore defaults": every setting goes through the cards, so the service and the page follow at once (the position through the service
-        // alone, so no preview pop-up appears).
-        _restorable = new SettingsRestore<OsdSettings>(Info.RestoreKey!, Title,
-            () => "Turns Show OSD on, shows Windows' own OSD again, and puts the style, accent, background, position, the screens it shows on, opacity, duration and the Show in OSD switches back to their defaults. Your named places and duration exceptions are kept.",
-            () => osd.Settings, () => new OsdSettings(),
-            target =>
-            {
-                show.IsOn = target.Enabled;
-                windows.IsOn = target.HideWindowsOsd;
-                osd.SetPosition(target.Position);
-                osd.SetShowOn(target.ShowOn, target.Screens);
-                style.Index = Math.Max(0, Array.IndexOf(styles, target.Style));
-                accent.Index = Math.Max(0, accentNames.IndexOf(target.Accent));
-                background.Index = Math.Max(0, backgroundHexes.IndexOf(target.Background));
-                opacity.Value = OsdSettings.ClampOpacity(target.Opacity);
-                duration.Value = Tenths(target.Duration);
-                foreach (var element in osd.Elements) osd.SetShown(element.Name, !target.Excluded.Contains(element.Name));
-                Elements = BuildElements();
-                return Task.FromResult(true);
-            });
     }
 
     // The Position menu: the seven built-in places, the user's named places, "Custom position..." and "Manage places...".

@@ -22,12 +22,13 @@ public sealed class InputModule(Func<IEnumerable<string>> rememberedPrograms) : 
     private PointerActions? _pointerActions;
     private InputActions? _actions;
     private FeatureContext? _context;
+    private MousePageViewModel? _page; // made at its first use; "Restore defaults" shows its result there
 
     public IReadOnlyList<string> Features { get; } = new[] { FeatureList.Input };
 
     public void Register(FeatureContext context)
     {
-        _context = context;
+        (_context, _page) = (context, null);
         // Gestures are asked first, so a scroll or middle click they take never reaches the button mappings: the wheel gestures have
         // their own hook handler ahead of the mouse service's, and the mouse service asks for a middle-click gesture before its mapping.
         var gestures = _gestures = new GestureService(_hook, context.Runner.RunLevel, context.Report, context.AppScopeGate);
@@ -93,10 +94,12 @@ public sealed class InputModule(Func<IEnumerable<string>> rememberedPrograms) : 
 
     public IReadOnlyList<FeaturePage> Pages => new[]
     {
-        new FeaturePage(MousePageViewModel.Info, () => new MousePageViewModel(_mouse!, _trackpad!, _pointer, _pointerActions!, _context!.Actions, _context.Report,
+        new FeaturePage(MousePageViewModel.Info, () => _page = new MousePageViewModel(_mouse!, _trackpad!, _pointer, _pointerActions!, _context!.Actions, _context.Report,
             _context.OpenPresetManager, _context.AppScopes, new GestureGroups(_gestures!, _rules!, _margins!, _context.Actions, _context.AskAsync, _context.AppScopes)), () => MousePageViewModel.Words(_mouse, _context?.Actions, _rules))
         {
             Registers = () => _actions!.Register(_context!.Actions, _context.Presets),
+            Restore = () => new MouseRestore(_mouse!, _trackpad!, _pointer, _gestures!, _rules!, () => _page?.ShowRestored())
+                .Make(MousePageViewModel.Info.RestoreKey!, MousePageViewModel.Info.Title),
         },
     };
 

@@ -4,6 +4,7 @@ using OmniControl.App.Features.Volume.Audio.Engine;
 using OmniControl.App.Features.Volume.Fx;
 using OmniControl.App.Features.Volume.Fx.Plugins;
 using OmniControl.App.Features.Volume.Pages;
+using OmniControl.App.Shared.Ui.Restore;
 
 namespace OmniControl.App.Features.Volume;
 
@@ -95,8 +96,22 @@ public sealed class VolumeModule : IFeatureModule
         {
             Registers = () => _controls!.Register(new VolumeViewCalls(ToggleView, ToggleClosed,
                 () => _ = Page().Easy.NextMasterPresetAsync(), () => _ = Page().Easy.RestoreDefaultsAsync())),
+            Restore = Restorable,
         },
     };
+
+    /// The page's "Restore defaults" when Advanced is shown: the same audio reset as the Easy page's button (<see cref="AudioDefaults"/>: effects,
+    /// combined devices, routes and methods removed, cables switched off; levels and mutes stay); Easy keeps its own button, line and action.
+    private IRestorable Restorable() => new SettingsRestore<MixerSettings>(VolumePageViewModel.Info.RestoreKey!, VolumePageViewModel.Info.Title,
+        () => AudioDefaults.Scope,
+        () => Mixer!.Settings, () => AudioDefaults.DefaultsOf(Mixer!.Settings),
+        target =>
+        {
+            AudioDefaults.Apply(new MixerDefaultsStore(Mixer!), target);
+            _page?.Easy.Refresh();
+            return Task.FromResult(true);
+        },
+        atDefaults: AudioDefaults.IsAtDefaults);
 
     // The page's view and "Show closed" are settings: while the page is not made, the action changes the setting it reads when made.
     private void ToggleView()

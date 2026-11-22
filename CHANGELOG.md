@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Restore all on App settings no longer loads every page with a Restore defaults to see whether it can run, and a page's restore action no longer loads that page in the background; Undo reads the copy taken before the restore from disk.
 - Changed: App settings > Start and close, "Free memory after closing" now defaults to 30 seconds, and has a new "Always" choice that frees the closed window's memory right away.
 
 - Taskbar gadget > What it shows: the Upload and Download rows have a network adapter chip under their name (Auto = the choice on the Readings tab, or any one adapter), one for each, like the graphics card chip of the GPU rows.

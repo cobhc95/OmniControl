@@ -33,8 +33,8 @@ internal static partial class Shots
         var features = new FeatureSwitches(settings.Slot(s => s.FeaturesOff, (s, off) => s.FeaturesOff = off), settings.Slot(s => s.FeaturesFromSetup, (s, chosen) => s.FeaturesFromSetup = chosen));
         var page = new AppSettingsPageViewModel(() => { }, plugins, () => { }, backup, new ConfirmationMemory(), updates, Rig.Report, mixer, rig.Hardware, settings, Tray(rig), features);
         rig.Pages.Add(page);
-        var parts = rig.Pages.Select(p => p.Restorable).OfType<IRestorable>().ToList();
-        page.ShowRestoreAll(new PageRestore(new RestoreRunner("all", "All", parts, true, _ => Task.FromResult(false), new FileSnapshotStore()), all: true));
+        rig.Restore(page, page.Restorable);
+        page.ShowRestoreAll(new PageRestore(new RestoreRunner("all", "All", rig.Restorables, true, _ => Task.FromResult(false), new FileSnapshotStore()), all: true));
         page.Appearance.IsExpanded = true;
         page.StartAndClose.IsExpanded = true;
         camera.Page(page, "app-settings");

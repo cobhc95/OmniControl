@@ -12,7 +12,7 @@ public sealed partial class AppSettingsPageViewModel
     /// The line and Undo link of the combined restore, under the cards; null until the shell has made it.
     [ObservableProperty] private PageRestore? _restoreAll;
 
-    public override IRestorable? Restorable => _restorable ??= new SettingsRestore<AppRestoreState>(Info.RestoreKey!, Title,
+    public IRestorable Restorable => _restorable ??= new SettingsRestore<AppRestoreState>(Info.RestoreKey!, Title,
         () => AppRestoreState.Scope(DefaultTrayWords()),
         () => AppRestoreState.Of(_settings, StartupRegistration.State == StartupState.On, TrayLook), () => AppRestoreState.Defaults(DefaultTrayLook), ApplyState,
         unavailable: () => _scanning ? "A plug-in scan is running" : null);

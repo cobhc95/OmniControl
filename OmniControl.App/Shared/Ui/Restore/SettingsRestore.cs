@@ -19,14 +19,12 @@ public sealed class SettingsRestore<T> : IRestorable where T : class
     /// <param name="same">Whether the current value counts as the defaults (default: the same JSON).</param>
     /// <param name="atDefaults">Decides from the current value alone (when working out the defaults is costly); used instead of <paramref name="same"/>.</param>
     public SettingsRestore(string key, string name, Func<string> scope, Func<T> current, Func<T> defaults, Func<T, Task<bool>> apply,
-        Func<T, T, bool>? same = null, Func<string?>? unavailable = null, Func<string?>? warning = null, bool hasOwnHotkey = false,
-        Func<T, bool>? atDefaults = null)
+        Func<T, T, bool>? same = null, Func<string?>? unavailable = null, Func<string?>? warning = null, Func<T, bool>? atDefaults = null)
     {
         (Key, Name, _scope, _current, _defaults, _apply) = (key, name, scope, current, defaults, apply);
         _same = same ?? ((a, b) => Json(a) == Json(b));
         _unavailable = unavailable ?? (() => null);
         _warning = warning ?? (() => null);
-        HasOwnHotkey = hasOwnHotkey;
         _atDefaults = atDefaults;
     }
 
@@ -35,7 +33,6 @@ public sealed class SettingsRestore<T> : IRestorable where T : class
     public string Scope => _scope();
     public string? Warning => _warning();
     public string? Unavailable => _unavailable();
-    public bool HasOwnHotkey { get; }
     public bool IsAtDefaults => _atDefaults is { } alone ? alone(_current()) : _same(_current(), _defaults());
 
     public string CaptureSnapshot() => Json(_current());

@@ -4,13 +4,14 @@ using OmniControl.App.Shared.Ui.Restore;
 
 namespace OmniControl.App.Shell;
 
-/// "Restore defaults" for every page: each page that offers one (<see cref="PageInfo.RestoreKey"/>, <see cref="PageViewModel.Restorable"/>)
-/// gets its button when it is made and its action ("Restore Displays defaults"...) at start-up, and App settings gets "Restore all", which
-/// restores every page with one question and one copy (a page not made yet is made when the combined restore first looks at it).
+/// "Restore defaults" for every page: each page that offers one (<see cref="PageInfo.RestoreKey"/>, <see cref="PageSlot.Restorable"/>, registered
+/// by its module) gets its action ("Restore Displays defaults"...) at start-up and its button when it is made, and App settings gets "Restore all",
+/// which restores every page with one question and one copy. None of them makes a page.
 public sealed partial class ShellViewModel
 {
     private readonly DispatcherTimer _restoreCheck = new() { Interval = Timing.RestoreStateCheck };
     private readonly FileSnapshotStore _snapshots = new();
+    private readonly Dictionary<PageSlot, PageRestore> _restorers = new();
     private PageRestore? _restoreAll;
     private readonly List<IRestorable> _restoreParts = new(); // what "Restore all" restores: the pages there are now, then the Actions and hotkeys window's parts
     private IReadOnlyList<IRestorable> _windowParts = Array.Empty<IRestorable>();
@@ -34,37 +35,49 @@ public sealed partial class ShellViewModel
         _restoreCheck.Tick += (_, _) => RefreshRestore();
     }
 
-    /// "Restore all", made with App settings, its only user: it looks at every page to grey its button, which makes the pages not made yet.
+    /// "Restore all", made with App settings, its only user.
     private PageRestore RestoreAll => _restoreAll ??= new PageRestore(new RestoreRunner("all", "All", _restoreParts, true, ConfirmRestore, _snapshots), all: true);
 
-    /// A page's "Restore <page> defaults" action (it makes the page when run).
+    /// App settings' own part: its cards hold what it restores, so it is read from the page, which is made whenever Restore all is shown.
+    private IRestorable AppSettingsRestore() =>
+        new PageBacked(AppSettingsPageViewModel.Info, () => (_appSettings.Page as AppSettingsPageViewModel)?.Restorable);
+
+    /// A page's button and line, made at the first use of either the page or its action and kept while the page is there.
+    private PageRestore? RestorerOf(PageSlot slot)
+    {
+        if (slot.Restorable is not { } part) return null;
+        if (!_restorers.TryGetValue(slot, out var restorer))
+            _restorers[slot] = restorer = new PageRestore(new RestoreRunner(part.Key, slot.Title, new[] { part }, false, ConfirmRestore, _snapshots));
+        return restorer;
+    }
+
+    /// A page's "Restore <page> defaults" action.
     private void AddRestoreAction(PageSlot slot)
     {
-        if (slot.Info.RestoreKey is not { } key || slot.IfMade?.Restorable?.HasOwnHotkey == true) return;
+        if (slot.Info.RestoreKey is not { } key) return;
         _hotkeys.Register(new HotkeyAction($"{key}.restore", $"Restore {slot.Title} defaults", slot.Title, "reset default restore",
-            devices => { if (slot.Page?.Restorer is { } restorer) _ = restorer.RestoreAsync(); }));
+            devices => { if (RestorerOf(slot) is { } restorer) _ = restorer.RestoreAsync(); }));
     }
 
     /// A page went with its feature: its restore action and button go too.
     private void DropRestore(PageSlot slot)
     {
         if (slot.Info.RestoreKey is { } key) _hotkeys.Unregister($"{key}.restore");
-        slot.IfMade?.Restorer?.Dispose();
+        if (_restorers.Remove(slot, out var restorer)) restorer.Dispose();
     }
 
     /// "Restore all" follows the pages there are now.
     private void RefreshRestoreParts()
     {
         _restoreParts.Clear();
-        _restoreParts.AddRange(AllSlots.Where(s => s.Info.RestoreKey is not null).Select(s => new SlotRestorable(s, s.Info.RestoreKey!)));
+        _restoreParts.AddRange(AllSlots.Select(s => s.Restorable).OfType<IRestorable>());
         _restoreParts.AddRange(_windowParts);
     }
 
-    /// A page just made gets its own Restore defaults button.
-    private void AttachRestore(PageViewModel page)
+    /// A page just made shows its Restore defaults button.
+    private void AttachRestore(PageSlot slot)
     {
-        if (page.Restorable is { } part)
-            page.AttachRestorer(new PageRestore(new RestoreRunner(part.Key, page.Title, new[] { part }, false, ConfirmRestore, _snapshots)));
+        if (slot.IfMade is { } page && RestorerOf(slot) is { } restorer) page.AttachRestorer(restorer);
     }
 
     /// The restore check runs only while the window can be seen (<see cref="SetWindowShown"/>); showing it looks at once.
@@ -84,29 +97,27 @@ public sealed partial class ShellViewModel
     private void DisposeRestore()
     {
         _restoreCheck.Stop();
-        foreach (var slot in AllSlots) slot.IfMade?.Restorer?.Dispose();
+        foreach (var restorer in _restorers.Values) restorer.Dispose();
         _actionsWindow.Restorer?.Dispose();
         _restoreAll?.Dispose();
     }
 
-    /// A page's part of "Restore all", standing in for the page's own until it is made: the page is made when the combined restore first looks at it.
-    private sealed class SlotRestorable(PageSlot slot, string key) : IRestorable
+    /// A part read from its page, standing in until the page is made (it is made when the part is first looked at).
+    private sealed class PageBacked(PageInfo info, Func<IRestorable?> part) : IRestorable
     {
-        private IRestorable? Part => slot.Page?.Restorable;
+        private IRestorable? Part => part();
 
-        public string Key => key;
+        public string Key => info.RestoreKey!;
 
-        public string Name => slot.Title;
+        public string Name => info.Title;
 
         public string Scope => Part?.Scope ?? string.Empty;
 
         public string? Warning => Part?.Warning;
 
-        public string? Unavailable => Part is { } part ? part.Unavailable : $"The {slot.Title} page couldn't start";
+        public string? Unavailable => Part is { } p ? p.Unavailable : $"The {info.Title} page couldn't start";
 
         public bool IsAtDefaults => Part?.IsAtDefaults ?? true;
-
-        public bool HasOwnHotkey => Part?.HasOwnHotkey ?? false;
 
         public string CaptureSnapshot() => Part?.CaptureSnapshot() ?? string.Empty;
 

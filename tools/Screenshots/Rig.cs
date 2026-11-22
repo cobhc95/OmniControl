@@ -4,6 +4,7 @@ using OmniControl.App.Features.Icons;
 using OmniControl.App.Features.Osd;
 using OmniControl.App.Features.States;
 using OmniControl.App.Shared.Presets;
+using OmniControl.App.Shared.Ui.Restore;
 
 namespace OmniControl.Screenshots;
 
@@ -44,6 +45,16 @@ internal sealed class Rig
 
     /// The sidebar pages made so far, in sidebar order (the pickers' sections are made from them).
     public List<PageViewModel> Pages { get; } = new();
+
+    /// The pages' Restore defaults, as their modules register them; App settings' "Restore all" covers these.
+    public List<IRestorable> Restorables { get; } = new();
+
+    /// Gives a page its Restore defaults button, as the shell does when the page is made (the question is always declined).
+    public void Restore(PageViewModel page, IRestorable part)
+    {
+        Restorables.Add(part);
+        page.AttachRestorer(new PageRestore(new RestoreRunner(part.Key, page.Title, new[] { part }, false, _ => Task.FromResult(false), new FileSnapshotStore())));
+    }
 
     public static Task<bool> Ask(DialogMessage message) => Task.FromResult(false);
 

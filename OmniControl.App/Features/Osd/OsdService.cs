@@ -1,4 +1,5 @@
 using Avalonia.Platform;
+using OmniControl.App.Shared.Ui.Restore;
 using OmniControl.Core.Engine.Media;
 
 namespace OmniControl.App.Features.Osd;
@@ -351,7 +352,40 @@ public sealed class OsdService : IOsd, IDisposable
         return true;
     }
 
-    /// The settings were read from disk again (an import): a page's cards that hold their own copy of a value show it again.
+    /// The OSD page's "Restore defaults" (<paramref name="key"/>: its restore key), used without the page.
+    public IRestorable NewRestorable(string key, string title) => new SettingsRestore<OsdSettings>(key, title,
+        () => "Turns Show OSD on, shows Windows' own OSD again, and puts the style, accent, background, position, the screens it shows on, opacity, duration and the Show in OSD switches back to their defaults. Your named places and duration exceptions are kept.",
+        () => Settings, () => new OsdSettings(),
+        target =>
+        {
+            RestoreTo(target);
+            return Task.FromResult(true);
+        });
+
+    /// Puts <paramref name="target"/>'s look, place, screens, opacity, duration and the declared elements' switches in place (named places and
+    /// duration exceptions stay), without a sample pop-up; a page that exists shows the values as after a reload.
+    private void RestoreTo(OsdSettings target)
+    {
+        (Settings.Enabled, Settings.HideWindowsOsd, Settings.Position, Settings.CustomPlace) = (target.Enabled, target.HideWindowsOsd, target.Position, null);
+        (Settings.ShowOn, Settings.Screens) = (target.ShowOn, target.Screens.ToList());
+        (Settings.Style, Settings.Accent, Settings.Background) = (target.Style, target.Accent, target.Background);
+        Settings.Opacity = OsdSettings.ClampOpacity(target.Opacity);
+        Settings.Duration = OsdDuration.Clamp(target.Duration);
+        foreach (var element in Elements)
+        {
+            Settings.Excluded.Remove(element.Name);
+            if (target.Excluded.Contains(element.Name)) Settings.Excluded.Add(element.Name);
+        }
+        Settings.Save();
+        ApplyWindowsOsd();
+        SettingsChanged?.Invoke();
+        Reloaded?.Invoke();
+        ElementsChanged?.Invoke();
+        SyncWatchers();
+        SyncWindows();
+    }
+
+    /// The settings were read from disk again (an import) or restored: a page's cards that hold their own copy of a value show it again.
     public event Action? Reloaded;
 
     public void SetStyle(OsdStyle s) { Settings.Style = s; Changed(); }

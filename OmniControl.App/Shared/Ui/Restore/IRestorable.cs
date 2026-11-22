@@ -22,9 +22,6 @@ public interface IRestorable
     /// True when the reset would change nothing (the button is greyed with "Already at the defaults").
     bool IsAtDefaults { get; }
 
-    /// True when the page registers its own action for this reset, so the shell adds none.
-    bool HasOwnHotkey => false;
-
     /// The page's current settings as text, taken before anything changes.
     string CaptureSnapshot();
 

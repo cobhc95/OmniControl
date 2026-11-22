@@ -1,3 +1,5 @@
+using OmniControl.App.Shared.Ui.Restore;
+
 namespace OmniControl.App.Shell;
 
 /// One page of the sidebar or the footer: what the shell shows of it (<see cref="Info"/>) and its view-model, made the first time something
@@ -5,19 +7,22 @@ namespace OmniControl.App.Shell;
 public sealed class PageSlot : ObservableObject
 {
     private readonly Func<PageViewModel> _make;
-    private readonly Action<PageViewModel> _made;
+    private readonly Action<PageSlot> _made;
     private readonly Action<string> _report;
     private PageViewModel? _page;
     private bool _failed;
     private bool _isOpen;
 
     /// <param name="words">The words of the page's search results, read without making it (<c>FeaturePage.Words</c>).</param>
+    /// <param name="restorable">The page's Restore defaults, owned by its module and used without making the page; null: it has none.</param>
     /// <param name="made">Wires a page just made into the shell (its Restore defaults button).</param>
     /// <param name="report">Says the one sentence when the page cannot be made.</param>
-    public PageSlot(PageInfo info, Func<PageViewModel> make, Func<IEnumerable<string>> words, Action<PageViewModel> made, Action<string> report) =>
-        (Info, _make, Words, _made, _report) = (info, make, words, made, report);
+    public PageSlot(PageInfo info, Func<PageViewModel> make, Func<IEnumerable<string>> words, IRestorable? restorable, Action<PageSlot> made, Action<string> report) =>
+        (Info, _make, Words, Restorable, _made, _report) = (info, make, words, restorable, made, report);
 
     public PageInfo Info { get; }
+
+    public IRestorable? Restorable { get; }
 
     public Func<IEnumerable<string>> Words { get; }
 
@@ -50,7 +55,7 @@ public sealed class PageSlot : ObservableObject
                 return null;
             }
             UiTiming.Write($"Page {Title}: made {clock.ElapsedMilliseconds} ms");
-            _made(_page);
+            _made(this);
             return _page;
         }
     }

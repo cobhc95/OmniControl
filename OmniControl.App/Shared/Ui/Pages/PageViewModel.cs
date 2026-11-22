@@ -37,10 +37,7 @@ public abstract class PageViewModel : ObservableObject
     /// This page's own keys beyond <see cref="CardKeys"/>, for the Keyboard shortcuts window (empty: none).
     public virtual string KeyHelp => string.Empty;
 
-    /// What "Restore defaults" does on this page (its scope, comparison, copy, reset and undo); null: the page has nothing to restore.
-    public virtual IRestorable? Restorable => null;
-
-    /// The page's "Restore defaults" button and line, given by the shell from <see cref="Restorable"/>; null while the page has none.
+    /// The page's "Restore defaults" button and line, given by the shell from its module's registration (<c>FeaturePage.Restore</c>); null while the page has none.
     public PageRestore? Restorer { get; private set; }
 
     public void AttachRestorer(PageRestore restorer) => Restorer = restorer;

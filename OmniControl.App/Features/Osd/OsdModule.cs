@@ -37,6 +37,7 @@ public sealed class OsdModule(Func<IReadOnlyList<RunningProgram>> listedApps) : 
         new FeaturePage(OsdPageViewModel.Info, () => new OsdPageViewModel(_service, _context!.OpenPresetManager, OsdPlacementWindow.AskAsync, listedApps, _context.Report), () => OsdPageViewModel.Words(_service))
         {
             Registers = RegisterPageEntries,
+            Restore = () => _service.NewRestorable(OsdPageViewModel.Info.RestoreKey!, OsdPageViewModel.Info.Title),
         },
     };
 

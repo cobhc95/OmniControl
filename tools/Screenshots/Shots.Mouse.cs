@@ -42,6 +42,7 @@ internal static partial class Shots
         var page = _mouse = new MousePageViewModel(mouse, trackpad, pointer, pointerActions, rig.Actions, Rig.Report, Rig.OpenPresets, rig.Scopes,
             new GestureGroups(gestures, rules, margins, rig.Actions, Rig.Ask, rig.Scopes));
         rig.Pages.Add(page);
+        rig.Restore(page, new MouseRestore(mouse, trackpad, pointer, gestures, rules, page.ShowRestored).Make(MousePageViewModel.Info.RestoreKey!, page.Title));
         Camera.Pump();
         page.ButtonsGroup.IsExpanded = true;
         page.TrackpadGroup.IsExpanded = false;

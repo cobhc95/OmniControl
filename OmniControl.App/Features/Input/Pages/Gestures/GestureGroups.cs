@@ -128,9 +128,6 @@ public sealed class GestureGroups : IDisposable
         });
     }
 
-    public GestureSettings CurrentGestures => _gestures.Settings;
-    public RuleSettings CurrentRules => _rules.Settings;
-
     /// The page was opened: the button mappings may have changed what a rule overrides.
     public void RefreshRules()
     {
@@ -175,11 +172,9 @@ public sealed class GestureGroups : IDisposable
     /// The "All mouse and trackpad features" group's Restore defaults: Enable gestures back on.
     public void RestoreEnabled() => Enabled.IsOn = GestureSettings.DefaultEnabled;
 
-    /// Puts the built-in gestures and the custom rules in place ("Restore defaults" and its undo) and shows them.
-    public void Replace(GestureSettings gestures, RuleSettings rules)
+    /// Shows the built-in gestures and the custom rules the services hold after "Restore defaults" or its undo.
+    public void ShowReplaced()
     {
-        _gestures.Replace(gestures);
-        _rules.ReplaceAll(rules);
         Enabled.Load(_gestures.Settings.Enabled);
         _edgeStrip.Load(_gestures.Settings.EdgeStrip);
         _margins.Refresh();

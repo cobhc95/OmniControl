@@ -19,8 +19,6 @@ internal sealed class Camera(string folder)
     public void Page(PageViewModel page, string name, double height = PageHeight, Action<Control>? prepare = null)
     {
         var body = new StackPanel { Margin = new Thickness(12, 12, 12, 24) };
-        if (page.Restorer is null && page.Restorable is { } part)
-            page.AttachRestorer(new PageRestore(new RestoreRunner(part.Key, page.Title, new[] { part }, false, _ => Task.FromResult(false), new FileSnapshotStore())));
         page.Restorer?.Refresh();
         if (!page.ShowsOwnHeader)
         {
