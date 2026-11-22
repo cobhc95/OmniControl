@@ -98,7 +98,7 @@ public static class DeviceShareFormat
 
     private static ScriptProfile? Clean(ScriptProfile profile)
     {
-        if (!StartsWithKasa(profile.On) || !StartsWithKasa(profile.Off) || (profile.State.Trim().Length > 0 && !StartsWithKasa(profile.State))) return null;
+        if (!KasaCommand.RunsKasa(profile.On) || !KasaCommand.RunsKasa(profile.Off) || (profile.State.Trim().Length > 0 && !KasaCommand.RunsKasa(profile.State))) return null;
         var clean = new ScriptProfile
         {
             Id = Clip(profile.Id, IdMax), Name = Clip(profile.Name), On = Clip(profile.On, CommandMax), Off = Clip(profile.Off, CommandMax), State = Clip(profile.State, CommandMax),
@@ -109,10 +109,6 @@ public static class DeviceShareFormat
         };
         return clean.Id.Length == 0 ? null : clean;
     }
-
-    /// A template runs the kasa program found on this PC; a template that names any other program would start it.
-    private static bool StartsWithKasa(string template) =>
-        KasaCommand.Split(template) is { Count: > 0 } words && words[0].Equals(KasaCommand.Program, StringComparison.OrdinalIgnoreCase);
 
     private static string Clip(string? text, int max = TextMax) => TextClip.Clean(text, max);
 }

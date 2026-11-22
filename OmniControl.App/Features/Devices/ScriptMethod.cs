@@ -66,19 +66,18 @@ public sealed class ScriptMethod
     /// Runs one command template for the method (its address and sign-in): <c>kasa</c> is the kasa program found, the placeholders are filled in; a known error of <paramref name="profile"/> is told by its tip.
     public async Task<ScriptRun> RunTemplateAsync(MethodRecord method, string template, ScriptProfile? profile = null, CancellationToken stop = default)
     {
-        var email = KasaCommand.EmailFor(method.Email, ScriptProfiles.LowersEmail(profile));
+        var runsKasa = KasaCommand.RunsKasa(template); // the account goes only to kasa; a template of any other program runs without it
+        var email = runsKasa ? KasaCommand.EmailFor(method.Email, ScriptProfiles.LowersEmail(profile)) : string.Empty;
         var words = KasaCommand.Fill(template, method.Address.Trim(), email);
         if (words.Count == 0) return new ScriptRun("the command is empty", string.Empty, string.Empty);
         if (words[0].Equals(KasaCommand.Program, StringComparison.OrdinalIgnoreCase) && _setup.Kasa is null) return new ScriptRun("python-kasa is not installed", string.Empty, string.Empty);
         var (file, arguments) = words[0].Equals(KasaCommand.Program, StringComparison.OrdinalIgnoreCase)
             ? (_setup.Kasa!.Value.File, _setup.Kasa.Value.Lead.Concat(words.Skip(1)).ToList())
             : (words[0], words.Skip(1).ToList());
-        var password = _credentials.Read(DeviceService.PasswordTarget(method)) ?? string.Empty;
-        var environment = new Dictionary<string, string>
-        {
-            [KasaCommand.UserVariable] = email,
-            [KasaCommand.PasswordVariable] = password,
-        };
+        var password = runsKasa ? _credentials.Read(DeviceService.PasswordTarget(method)) ?? string.Empty : string.Empty;
+        var environment = runsKasa
+            ? new Dictionary<string, string> { [KasaCommand.UserVariable] = email, [KasaCommand.PasswordVariable] = password }
+            : null;
         var printed = string.Empty;
         var problem = await ScriptRunner.RunAsync(file, arguments, hidden: true, Timing.DeviceCommandTimeout, environment, text => printed = text, stop);
         var details = Mask(method, password, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {file} {string.Join(' ', arguments)}\n{problem ?? "ended with code 0"}\n{printed}".Trim());

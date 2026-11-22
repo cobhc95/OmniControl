@@ -18,6 +18,16 @@ public sealed class DevicesTests
         Assert.Equal(ScriptProfiles.Auto, ScriptProfiles.Of("deleted", Array.Empty<ScriptProfile>()).Id);
     }
 
+    [Theory]
+    [InlineData("kasa --host {ip} on", true)]
+    [InlineData("KASA --host {ip} on", true)]
+    [InlineData("\"kasa\" on", true)]
+    [InlineData("powershell -c x", false)]
+    [InlineData("C:\\tools\\kasa.exe on", false)]
+    [InlineData("", false)]
+    public void Only_a_command_that_starts_with_kasa_is_given_the_account(string template, bool expected) =>
+        Assert.Equal(expected, KasaCommand.RunsKasa(template));
+
     [Fact]
     public void Tapo_and_Kasa_get_the_email_in_lower_case_and_the_field_is_left_alone()
     {
