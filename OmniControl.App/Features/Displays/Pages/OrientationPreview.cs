@@ -39,7 +39,7 @@ internal static class OrientationPreview
         };
         screen.Classes.Add(GalleryStrip.Clickable);
         screen.Bind(Border.BorderBrushProperty, screen.GetResourceObservable(key));
-        ToolTip.SetTip(screen, DisplayOrientationCard.Title(orientation));
+        ToolTip.SetTip(screen, DisplayOrientationModel.Title(orientation));
         return screen;
     }
 

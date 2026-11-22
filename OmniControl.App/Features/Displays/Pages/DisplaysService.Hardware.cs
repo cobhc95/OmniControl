@@ -62,7 +62,7 @@ public sealed partial class DisplaysService
     /// A monitor's lasting name for what it answered: its device path (the display's name when Windows gave none).
     private static string KeyOf(IMonitor monitor) => string.IsNullOrEmpty(monitor.Info.DevicePath) ? monitor.Info.DeviceName : monitor.Info.DevicePath;
 
-    /// Asks every monitor what it supports (worker thread; each in parallel, each answer kept on the monitor so the cards' own read is free),
+    /// Asks every monitor what it supports (worker thread; each in parallel, each answer kept on the monitor so the models' own read is free),
     /// so the watch's check after a refresh sees what the monitors really answered and not only that they were opened.
     private void ProbeMonitors() =>
         Parallel.ForEach(_engine.Monitors, monitor => Guard.Run($"Displays: read {monitor.Info.Name}", () => monitor.Probe()));
