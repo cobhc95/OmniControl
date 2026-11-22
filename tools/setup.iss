@@ -478,13 +478,10 @@ begin
     Match := True;
     for I := 0 to GetArrayLength(Ids) - 1 do
       if WizardIsComponentSelected(Ids[I]) <> (Pos(',' + Ids[I] + ',', ',' + Sets[T] + ',') > 0) then Match := False;
-    if Match then
-    begin
-      WizardForm.TypesCombo.ItemIndex := T;
-      Exit;
-    end;
+    if Match then Break;
   end;
-  WizardForm.TypesCombo.ItemIndex := WizardForm.TypesCombo.Items.Count - 1;
+  if not Match then T := WizardForm.TypesCombo.Items.Count - 1;
+  if WizardForm.TypesCombo.ItemIndex <> T then WizardForm.TypesCombo.ItemIndex := T;
 end;
 // An upgrade shows the features as they are now: the choice in App settings, else the one an earlier Setup wrote, else Inno's own (its
 // previous components, or Everything).
@@ -870,6 +867,8 @@ begin
     PresetFeatures();
     SyncTypeChoice();
     ShowDiskSpace();
+    // The relayout above leaves focus on Back (or a box control), and the first Next click is then spent taking focus with a beep.
+    WizardForm.ActiveControl := WizardForm.ComponentsList;
   end;
   if (CurPageID = wpSelectTasks) and not WizardSilent() then PresetSignInTask();
   if (CurPageID = wpFinished) and (EqualizerApoNote <> '') then
