@@ -1,8 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:OmniControl.App.Features.Resources.Pages"
+             xmlns:vm="using:OmniControl.App.Features.Traffic.Pages"
              xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
-             x:Class="OmniControl.App.Features.Resources.Pages.AppNetRow"
+             x:Class="OmniControl.App.Features.Traffic.Pages.AppNetRow"
              x:DataType="vm:AppNetItem">
     <!-- One Network traffic control row: Pin | App (icon, name, technical name muted, "not running") | Down | Up | Upload limit | Download limit | On,
          columns shared with the group's headings; dimmed while a pinned program is not running (its controls stay usable). -->

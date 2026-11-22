@@ -7,17 +7,15 @@ namespace OmniControl.App.Features.Resources;
 /// It owns the live list of readings, the graphics adapters' and physical disks' included (<see cref="RefreshHardware"/>, through the hardware watches).
 public sealed class ResourceMonitor : IReadingList, IDisposable
 {
-    public const string PageNeed = "page", GadgetNeed = "gadget", AppsNeed = "apps";
+    public const string PageNeed = "page", GadgetNeed = "gadget";
     private const string RulesNeed = "rules";
 
-    private readonly IStateRegistry? _states; // null while the Resources feature is off (Network traffic control alone): no reading states
+    private readonly IStateRegistry _states;
     private readonly Func<TimeSpan> _ruleInterval;
     private readonly Func<string?> _adapterChoice;
     private readonly Func<IReadOnlyDictionary<string, string>> _sensorChoices, _gpuChoices;
-    private readonly Func<ITrafficSession> _startTraffic;
     private readonly string _category;
     private readonly Dictionary<string, (TimeSpan Every, SampleParts Parts)> _needs = new();
-    private readonly Dictionary<string, string> _seen = new(); // program id -> its path, every program seen with traffic this session
     private readonly Dictionary<string, Queue<double>> _history = new();
     private volatile IReadOnlyList<PhysicalDisk>? _disks; // as last listed (worker); null until the first look
     private volatile IReadOnlyList<GraphicsAdapter>? _gpus; // the same for the graphics adapters
@@ -26,11 +24,8 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
     private readonly object _work = new(); // one read at a time, and none while disposing
     private readonly ResourceSampler _sampler = new();
     private readonly Timer _timer, _idleClose;
-    private ITrafficSession? _apps;
-    private volatile bool _wantApps;
     private volatile SampleParts _wanted;
     private bool _disposed, _sensorsWanted;
-    private DateTime _lastAppsTake;
     private (IReadOnlyDictionary<string, string> Sensors, IReadOnlyDictionary<string, string> Gpus) _chosen =
         (new Dictionary<string, string>(), new Dictionary<string, string>()); // each reading's sensor and adapter at the last read
     private int _listing; // sensor menus open
@@ -39,16 +34,13 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
     /// <param name="adapterChoice">The network adapter the speeds are read from (the setup's choice), asked at every read.</param>
     /// <param name="sensorChoices">The sensor each temperature reading follows, by reading id (the setup's one map, never changed in place), asked at every read.</param>
     /// <param name="gpuChoices">The graphics adapter each GPU reading follows, by reading id (the same), asked at every read.</param>
-    /// <param name="startTraffic">Starts the per-program traffic session where the network work runs (a worker; throws an <see cref="IOException"/> saying why).</param>
-    /// <param name="states">Where the readings are offered as states; null: they are not (only Network traffic control runs).</param>
-    public ResourceMonitor(IStateRegistry? states, Func<TimeSpan> ruleInterval, Func<string?> adapterChoice, Func<IReadOnlyDictionary<string, string>> sensorChoices,
-        Func<IReadOnlyDictionary<string, string>> gpuChoices, Func<ITrafficSession> startTraffic, string category)
+    /// <param name="states">Where the readings are offered as states.</param>
+    public ResourceMonitor(IStateRegistry states, Func<TimeSpan> ruleInterval, Func<string?> adapterChoice, Func<IReadOnlyDictionary<string, string>> sensorChoices,
+        Func<IReadOnlyDictionary<string, string>> gpuChoices, string category)
     {
-        (_states, _ruleInterval, _adapterChoice, _sensorChoices, _gpuChoices, _startTraffic, _category) =
-            (states, ruleInterval, adapterChoice, sensorChoices, gpuChoices, startTraffic, category);
+        (_states, _ruleInterval, _adapterChoice, _sensorChoices, _gpuChoices, _category) = (states, ruleInterval, adapterChoice, sensorChoices, gpuChoices, category);
         _timer = new Timer(_ => Tick());
-        _idleClose = new Timer(_ => Release(sensors: true));
-        if (states is null) return;
+        _idleClose = new Timer(_ => Release());
         states.Register(Reading.All.Select(StateOf));
         states.WatchedChanged += FollowRules;
         FollowRules();
@@ -99,8 +91,8 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
             _history.Remove(reading.Id);
             _today.Remove(reading.Id);
         }
-        _states?.Unregister(left.Select(r => r.StateId));
-        _states?.Register(HardwareReadings.Select(StateOf)); // a renumbered disk's states are replaced: their names say its number
+        _states.Unregister(left.Select(r => r.StateId));
+        _states.Register(HardwareReadings.Select(StateOf)); // a renumbered disk's states are replaced: their names say its number
         ReadingsChanged?.Invoke();
         FollowRules();
     }
@@ -108,16 +100,8 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
     /// The latest reading (UI thread).
     public ResourceSample Latest { get; private set; } = ResourceSample.None;
 
-    /// The programs' traffic of the latest read in bytes per second, busiest first (empty unless <see cref="AppsNeed"/> is asked).
-    public IReadOnlyList<AppTraffic> Apps { get; private set; } = Array.Empty<AppTraffic>();
-
-    /// Why the per-program traffic or the sensors cannot be read (one sentence each), or null.
-    public string? AppsProblem { get; private set; }
-
+    /// Why the sensors cannot be read (one sentence), or null.
     public string? SensorProblem => _sampler.SensorProblem;
-
-    /// Every program seen with traffic since OmniControl started (id and path), in the order first seen (UI thread).
-    public IReadOnlyDictionary<string, string> Seen => _seen;
 
     /// A read arrived (UI thread).
     public event Action? Updated;
@@ -128,7 +112,7 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
     /// The lowest and highest value of a reading read since midnight (as <see cref="Reading.Read"/> gives them), or null when none was read today. UI thread.
     public (double Low, double High)? Today(string readingId) => _day == DateTime.Today && _today.TryGetValue(readingId, out var range) ? range : null;
 
-    /// Says that <paramref name="who"/> needs these <paramref name="parts"/> every <paramref name="every"/> (null: no longer); <see cref="AppsNeed"/> reads per program. UI thread.
+    /// Says that <paramref name="who"/> needs these <paramref name="parts"/> every <paramref name="every"/> (null: no longer). UI thread.
     public void Need(string who, TimeSpan? every, SampleParts parts = SampleParts.None)
     {
         if (every is { } interval) _needs[who] = (interval, parts);
@@ -145,12 +129,6 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
 
     private void Apply()
     {
-        _wantApps = _needs.ContainsKey(AppsNeed);
-        if (!_wantApps)
-        {
-            Apps = Array.Empty<AppTraffic>(); // no speeds of a session that stopped
-            if (_apps is not null) ThreadPool.QueueUserWorkItem(_ => Release(sensors: false));
-        }
         _wanted = _needs.Values.Aggregate(_listing > 0 ? SampleParts.SensorList : SampleParts.None, (all, need) => all | need.Parts);
         var sensors = (_wanted & SampleParts.Sensors) != 0;
         if (sensors != _sensorsWanted)
@@ -162,27 +140,18 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
         _timer.Change(shortest is null ? Timeout.InfiniteTimeSpan : TimeSpan.Zero, shortest ?? Timeout.InfiniteTimeSpan);
     }
 
-    /// Gives back the per-program session when unwanted, and the sensor sources (the sensor library too) when no sensor reading was wanted for a while. Worker; waits for a read.
-    private void Release(bool sensors)
+    /// Gives back the sensor sources (the sensor library too) when no sensor reading was wanted for a while. Worker; waits for a read.
+    private void Release()
     {
         lock (_work)
         {
             if (_disposed) return;
-            Guard.Run("Resources release", () =>
-            {
-                if (!_wantApps)
-                {
-                    _apps?.Dispose();
-                    _apps = null;
-                }
-                if (sensors) _sampler.CloseSensors();
-            });
+            Guard.Run("Resources release", _sampler.CloseSensors);
         }
     }
 
     private void FollowRules()
     {
-        if (_states is null) return;
         var watched = Readings.Where(r => _states.IsWatched(r.StateId)).ToList();
         Need(RulesNeed, watched.Count > 0 ? _ruleInterval() : null, Reading.PartsOf(watched));
     }
@@ -197,8 +166,7 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
             {
                 var chosen = (_sensorChoices(), _gpuChoices());
                 var sample = _sampler.Read(_wanted, _adapterChoice(), ChoicesOf(chosen.Item1, chosen.Item2));
-                var apps = ReadApps();
-                Dispatcher.UIThread.Post(() => Arrived(sample, apps, chosen));
+                Dispatcher.UIThread.Post(() => Arrived(sample, chosen));
             });
         }
         finally { Monitor.Exit(_work); }
@@ -214,45 +182,7 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
         TemperatureGpu = gpus.GetValueOrDefault(Reading.GpuTempId),
     };
 
-    /// The programs' bytes per second since the last read, starting or stopping the per-program session as asked (worker).
-    private IReadOnlyList<AppTraffic>? ReadApps()
-    {
-        if (!_wantApps)
-        {
-            _apps?.Dispose();
-            _apps = null;
-            return null;
-        }
-        if (_apps is null)
-        {
-            try
-            {
-                _apps = _startTraffic();
-                AppsProblem = null;
-            }
-            catch (IOException ex)
-            {
-                AppsProblem = ex.Message;
-                _wantApps = false;
-                return null;
-            }
-            _lastAppsTake = DateTime.UtcNow;
-            return null;
-        }
-        if (_apps.Stopped is { } why)
-        {
-            _apps.Dispose();
-            _apps = null;
-            AppsProblem = why;
-            _wantApps = false;
-            return null;
-        }
-        var seconds = Math.Max((DateTime.UtcNow - _lastAppsTake).TotalSeconds, double.Epsilon);
-        _lastAppsTake = DateTime.UtcNow;
-        return _apps.Take().Select(a => a with { Received = (long)(a.Received / seconds), Sent = (long)(a.Sent / seconds) }).ToList();
-    }
-
-    private void Arrived(ResourceSample sample, IReadOnlyList<AppTraffic>? apps,
+    private void Arrived(ResourceSample sample,
         (IReadOnlyDictionary<string, string> Sensors, IReadOnlyDictionary<string, string> Gpus) chosen)
     {
         if (_disposed) return;
@@ -260,11 +190,6 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
         // Another sensor or adapter is another line: its reading's graph and today's range start afresh.
         foreach (var id in Changed(chosen.Sensors, _chosen.Sensors).Concat(Changed(chosen.Gpus, _chosen.Gpus)).ToList()) Forget(id);
         _chosen = chosen;
-        if (apps is not null && _wantApps)
-        {
-            Apps = apps;
-            foreach (var app in apps) _seen.TryAdd(app.Id, app.Path);
-        }
         if (_day != DateTime.Today)
         {
             _day = DateTime.Today;
@@ -280,7 +205,7 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
                 _today[reading.Id] = _today.TryGetValue(reading.Id, out var range) ? (Math.Min(range.Low, value), Math.Max(range.High, value)) : (value, value);
             read.Add(reading.StateId);
         }
-        _states?.Notify(read); // one look for every reading of this sample
+        _states.Notify(read); // one look for every reading of this sample
         Updated?.Invoke();
     }
 
@@ -295,15 +220,14 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
 
     public void Dispose()
     {
-        if (_states is not null) _states.WatchedChanged -= FollowRules;
+        _states.WatchedChanged -= FollowRules;
         _timer.Dispose();
         _idleClose.Dispose();
         lock (_work)
         {
             _disposed = true;
-            _apps?.Dispose();
             _sampler.Dispose();
         }
-        _states?.Unregister(Readings.Select(r => r.StateId));
+        _states.Unregister(Readings.Select(r => r.StateId));
     }
 }

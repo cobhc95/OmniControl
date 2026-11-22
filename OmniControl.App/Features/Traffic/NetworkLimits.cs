@@ -1,8 +1,9 @@
 using StateTarget = OmniControl.App.Features.Hotkeys.StateTarget;
 using OmniControl.App.Features.Hotkeys;
 using OmniControl.Core.Engine.Resources;
+using OmniControl.App.Features.Resources;
 
-namespace OmniControl.App.Features.Resources;
+namespace OmniControl.App.Features.Traffic;
 
 /// The programs' network rules (upload limit, download limit, block): saved, made what Windows holds on a worker (throttled; each sync reads
 /// Windows, so a crashed run's rules go at the next start), all taken out at shut-down. The work runs in the network service when it is

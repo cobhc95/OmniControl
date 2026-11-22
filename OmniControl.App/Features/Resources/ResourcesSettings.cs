@@ -99,14 +99,14 @@ public sealed class GadgetLayoutPreset : INamedPreset
     public DateTime? Saved { get; set; }
 }
 
-/// The Resources page's settings (resources.json): the live setup, the Network traffic control group's Apps scope, the packet filter switch, the presets
+/// The Resources and Network traffic control pages' settings (resources.json): the live setup, Network traffic control's Apps scope, the packet filter switch, the presets
 /// and the gadget's own layouts.
 public sealed class ResourcesSettings
 {
     public ResourcesSetup Setup { get; set; } = new();
     public AppScopeSetting? Scope { get; set; }
 
-    /// The "Packet filter" switch (<see cref="NetworkLimits.SetPacketFilter"/>): off keeps Windows Packet Filter out of all traffic. Not in
+    /// The "Packet filter" switch (<see cref="Traffic.NetworkLimits.SetPacketFilter"/>): off keeps Windows Packet Filter out of all traffic. Not in
     /// presets: it is about this PC's drivers, not a setup.
     public bool PacketFilterOn { get; set; } = true;
     public List<ResourcesPreset> Presets { get; set; } = new();
@@ -118,6 +118,22 @@ public sealed class ResourcesSettings
 
     /// Written a moment later off the UI thread: typing a label or dragging a gap saves on every change.
     public void Save() => AppDataStore.SaveSoon(Store, this);
+
+    /// An import wrote resources.json: read it again into this one instance (both its modules hold it) and tell everyone. The preset lists
+    /// keep the lists they were given: they are refilled, never replaced.
+    public bool Reload()
+    {
+        var fresh = Load();
+        Presets.Clear();
+        Presets.AddRange(fresh.Presets);
+        fresh.Presets = Presets;
+        Layouts.Clear();
+        Layouts.AddRange(fresh.Layouts);
+        fresh.Layouts = Layouts;
+        SettingsCopy.Into(this, fresh);
+        Commit();
+        return true;
+    }
 
     /// The setup changed (UI thread): the gadget, the limits, the presets and the page follow.
     public event Action? Changed;

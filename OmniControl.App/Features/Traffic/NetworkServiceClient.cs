@@ -1,7 +1,7 @@
 using System.IO.Pipes;
 using OmniControl.Core.Engine.Resources;
 
-namespace OmniControl.App.Features.Resources;
+namespace OmniControl.App.Features.Traffic;
 
 /// OmniControl's side of the network service (<see cref="NetworkServiceHost"/>): rules and download limits go as the service's fixed requests
 /// (only the differences from what it holds) and are read back with ListRules; per-program traffic is read with ReadSpeeds. The connection is

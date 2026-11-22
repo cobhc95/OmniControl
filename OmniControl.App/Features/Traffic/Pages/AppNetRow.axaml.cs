@@ -1,5 +1,5 @@
 
-namespace OmniControl.App.Features.Resources.Pages;
+namespace OmniControl.App.Features.Traffic.Pages;
 
 /// Wiring only: fills a limit chip's menu with the row's choices when it opens and closes it after a pick; a right-click (or the menu key)
 /// opens the row's menu in the shared menu style at the pointer.

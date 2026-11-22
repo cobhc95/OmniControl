@@ -1,0 +1,60 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Features.Traffic.Pages"
+             xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
+             xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+             x:Class="OmniControl.App.Features.Traffic.Pages.TrafficPage"
+             x:DataType="vm:TrafficPageViewModel">
+    <!-- One group: its Packet filter switch and Apps chip on the header, headings, a row per program and the one status line. -->
+    <StackPanel x:Name="CardsHost" Spacing="{StaticResource Gap}" Grid.IsSharedSizeScope="True">
+        <pages:GroupCard Group="{Binding Apps}">
+            <pages:GroupCard.Tools>
+                <pages:HeaderSwitch Label="{Binding PacketFilter.Label}" IsOn="{Binding PacketFilter.IsOn}" ToolTip.Tip="{Binding PacketFilter.Tip}" />
+                <c:AppScopeChip DataContext="{Binding AppsScope}" />
+            </pages:GroupCard.Tools>
+            <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:TrafficPageViewModel">
+                <Panel>
+                    <!-- Neither the network service nor OmniControl as administrator can do the work: one line and (installed copy) Install…, nothing of the programs -->
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource MenuGap}" IsVisible="{Binding Unavailable}">
+                        <TextBlock Classes="hint" Text="{Binding UnavailableLine}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Classes="pill" Content="Install…" Command="{Binding InstallServiceCommand}" IsVisible="{Binding CanInstallService}" VerticalAlignment="Center"
+                                ToolTip.Tip="{Binding InstallServiceTip}" />
+                    </Grid>
+                    <StackPanel Spacing="{StaticResource GapSmall}" IsVisible="{Binding !Unavailable}">
+                        <Grid ColumnSpacing="{StaticResource MenuGap}" Margin="{StaticResource RowHeadingInset}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="NetPin" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="NetDown" />
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="NetUp" />
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="NetUpLimit" />
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="NetDownLimit" />
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="NetOn" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="1" Classes="muted small" Text="App" />
+                            <TextBlock Grid.Column="2" Classes="muted small" Text="Down" />
+                            <TextBlock Grid.Column="3" Classes="muted small" Text="Up" />
+                            <TextBlock Grid.Column="4" Classes="muted small" Text="Upload limit" />
+                            <TextBlock Grid.Column="5" Classes="muted small" Text="Download limit" />
+                            <TextBlock Grid.Column="6" Classes="muted small" Text="On" />
+                        </Grid>
+                        <pages:EmptyListRow Text="No program has used the network since OmniControl started." IsVisible="{Binding !HasApps}" />
+                        <ListBox Classes="rows compact" ItemsSource="{Binding AppRows}" IsVisible="{Binding HasApps}" />
+                        <Border Classes="statusstrip">
+                            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{StaticResource MenuGap}">
+                                <TextBlock Classes="statusline" Classes.failed="{Binding StatusFailed}" Text="{Binding Status}" ToolTip.Tip="{Binding StatusTip}"
+                                           TextTrimming="CharacterEllipsis" />
+                                <Button Grid.Column="1" Classes="link small" Content="Install…" Command="{Binding InstallServiceCommand}"
+                                        IsVisible="{Binding OffersServiceInstall}" VerticalAlignment="Center"
+                                        ToolTip.Tip="{Binding InstallServiceTip}" />
+                                <Button Grid.Column="2" Classes="link small" Content="Install Windows Packet Filter…" Command="{Binding InstallPacketFilterCommand}"
+                                        IsVisible="{Binding OffersInstall}" VerticalAlignment="Center"
+                                        ToolTip.Tip="Tries again: checks the driver files that come with OmniControl, then adds them with Windows' own network set-up." />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Panel>
+            </DataTemplate></pages:GroupCard.ContentTemplate>
+        </pages:GroupCard>
+    </StackPanel>
+</UserControl>

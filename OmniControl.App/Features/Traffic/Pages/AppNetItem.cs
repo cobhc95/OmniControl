@@ -1,7 +1,8 @@
 using Avalonia.Media.Imaging;
 using OmniControl.Core.Engine.Screenshot;
+using OmniControl.App.Features.Resources;
 
-namespace OmniControl.App.Features.Resources.Pages;
+namespace OmniControl.App.Features.Traffic.Pages;
 
 /// One Network traffic control row: its pin, the program (icon, friendly name, the technical name muted when it differs), its traffic, its upload and
 /// download limit chips and its On switch (off blocks it), through <see cref="NetworkLimits"/>.

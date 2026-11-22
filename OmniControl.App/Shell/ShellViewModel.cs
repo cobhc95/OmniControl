@@ -14,6 +14,8 @@ using OmniControl.App.Features.Osd;
 using OmniControl.App.Features.OtherPcs;
 using OmniControl.App.Features.OtherPcs.SettingsImport;
 using OmniControl.App.Features.Resources;
+using OmniControl.App.Features.Traffic;
+using OmniControl.App.Features.Traffic.Pages;
 using OmniControl.App.Features.Screenshot;
 using OmniControl.App.Features.Settings.About;
 using OmniControl.App.Features.Settings.Pages;
@@ -128,18 +130,19 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
             Report, OpenPage, _apps.Scopes, _apps.Gate, _iconPicker, _actionGate, _power, setId => new SuggestedKeysSwitch(_hotkeys, setId), _settings, _importHooks, _shutdown,
             _features);
         var automation = new AutomationModule(_volume.RememberedPrograms, _hotkeysSwitch.Use);
-        var resources = new ResourcesModule();
+        var resources = new ResourcesModule(TrafficPageViewModel.PageTitle);
+        var traffic = new TrafficModule(resources.Settings);
 
         // Every feature, in start-up order: it decides the order of the master lists (actions, states, hardware watches) and of the
         // mouse hook's handlers (inside the Input module), so keep it. Only the features switched on start (ShellViewModel.Features.cs).
-        _modules = new IFeatureModule[] { _volume, _apps, new PowerModule(), _screenshot, _input, automation, _devices, _otherPcs, _osd, _displays, resources };
+        _modules = new IFeatureModule[] { _volume, _apps, new PowerModule(), _screenshot, _input, automation, _devices, _otherPcs, _osd, _displays, resources, traffic };
         foreach (var module in _modules.Where(Wanted)) Begin(module);
         // What an import from another PC may reload live of what the shell itself owns; each module says so for its own.
         RegisterReloads();
 
         // The sidebar, in order (a page's NavGroup decides its heading; keep the pages of a group together). Each page registers its
         // entries here, in this order; its view-model is made when it is first needed.
-        _sidebar = new IFeatureModule[] { _displays, _volume, _devices, _otherPcs, _input, automation, _osd, resources };
+        _sidebar = new IFeatureModule[] { _displays, _volume, _devices, _otherPcs, _input, automation, _osd, resources, traffic };
         foreach (var module in _sidebar.Where(_running.ContainsKey)) MakePages(module);
         foreach (var module in _modules.Where(_running.ContainsKey)) module.PagesMade();
         _allPages = RunningPages();

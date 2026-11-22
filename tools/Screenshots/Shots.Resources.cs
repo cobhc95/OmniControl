@@ -65,8 +65,7 @@ internal static partial class Shots
         var settings = ResourcesSettings.Load();
         settings.Setup.Gadget.Complete();
         settings.Setup.Gadget.Shown = false;
-        var monitor = new ResourceMonitor(rig.States, () => TimeSpan.FromSeconds(2), () => null, () => new Dictionary<string, string>(), () => new Dictionary<string, string>(),
-            () => throw new IOException("Not read in the screenshot tool."), title);
+        var monitor = new ResourceMonitor(rig.States, () => TimeSpan.FromSeconds(2), () => null, () => new Dictionary<string, string>(), () => new Dictionary<string, string>(), title);
         var weather = new WeatherService(settings, rig.Actions, rig.States, new MemoryCredentials(), title);
         var layouts = new GadgetLayouts(settings);
         var gadget = new TaskbarGadget(monitor, weather, settings, layouts, rig.Runner, rig.States, Rig.Report, new NoResourcesWindows());
