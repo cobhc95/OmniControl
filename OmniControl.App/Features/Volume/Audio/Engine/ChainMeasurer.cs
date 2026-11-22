@@ -13,11 +13,27 @@ public sealed record ChainMeasurement(double[] Db, double PeakDb, double PeakHz,
 /// order (the live chain and its plug-ins are never touched), with each plug-in's current settings in its copy.
 internal sealed record ChainMeasureJob(IReadOnlyList<FxPart> Parts, IReadOnlyList<string> NotRun, bool LevelDependent, bool ApoOwnLeftOut)
 {
-    /// Two jobs with the same text measure the same: an unchanged chain is not measured again.
-    public string Signature { get; } = string.Join('\n', Parts.SelectMany(p => (p.Folder is { } f ? new[] { f } : Array.Empty<FxSlot>()).Concat(p.Effects))
-        .Select(s => $"{s.Kind}|{s.Enabled}|{s.Wet}|{string.Join(',', s.Values)}|{s.Path}|{s.State}|"
-                     + string.Join(';', (s.Bands ?? new List<EqBand>()).Select(b => $"{b.Enabled},{b.Type},{b.Freq},{b.Gain},{b.Q}"))))
-        + $"\n{LevelDependent}{ApoOwnLeftOut}{string.Join(',', NotRun)}";
+    /// Two jobs with the same digest (SHA-256 of every setting, plug-in states included) measure the same: an unchanged chain is not
+    /// measured again, and the window keeps 64 characters instead of the plug-ins' states.
+    public string Signature { get; } = DigestOf(Parts, NotRun, LevelDependent, ApoOwnLeftOut);
+
+    private static string DigestOf(IReadOnlyList<FxPart> parts, IReadOnlyList<string> notRun, bool levelDependent, bool apoOwnLeftOut)
+    {
+        using var hash = System.Security.Cryptography.IncrementalHash.CreateHash(System.Security.Cryptography.HashAlgorithmName.SHA256);
+        void Add(string text)
+        {
+            hash.AppendData(System.Text.Encoding.UTF8.GetBytes(text));
+            hash.AppendData("\n"u8);
+        }
+        foreach (var s in parts.SelectMany(p => (p.Folder is { } f ? new[] { f } : Array.Empty<FxSlot>()).Concat(p.Effects)))
+        {
+            Add($"{s.Kind}|{s.Enabled}|{s.Wet}|{string.Join(',', s.Values)}|{s.Path}");
+            Add(s.State);
+            Add(string.Join(';', (s.Bands ?? new List<EqBand>()).Select(b => $"{b.Enabled},{b.Type},{b.Freq},{b.Gain},{b.Q}")));
+        }
+        Add($"{levelDependent}{apoOwnLeftOut}{string.Join(',', notRun)}");
+        return Convert.ToHexString(hash.GetHashAndReset());
+    }
 }
 
 /// Measures a chain by playing a short log sine sweep (<see cref="SweepSeconds"/> at <see cref="TestLevelDb"/>) through it once, in
