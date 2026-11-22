@@ -384,13 +384,13 @@ begin
 end;
 
 // The Tasks page ticks the sign-in task by that setting the first time it shows (also over a choice an earlier Setup remembered).
-var SignInTaskPreset: Boolean;
+var SignInTaskPreset, RunsAsAdministrator: Boolean;
 
 procedure PresetSignInTask();
 begin
   if SignInTaskPreset then Exit;
   SignInTaskPreset := True;
-  if OriginalUserRunsAsAdministrator() then WizardSelectTasks('signintask') else WizardSelectTasks('!signintask');
+  if RunsAsAdministrator then WizardSelectTasks('signintask') else WizardSelectTasks('!signintask');
 end;
 
 // Ticked: added (or replaced) for the user signed in here. Unticked on the Tasks page: removed. A silent Setup without the tick keeps a task
@@ -485,7 +485,8 @@ begin
 end;
 // An upgrade shows the features as they are now: the choice in App settings, else the one an earlier Setup wrote, else Inno's own (its
 // previous components, or Everything).
-var FeaturesPreset: Boolean;
+var FeaturesPreset, SavedFeaturesKnown: Boolean;
+    SavedFeaturesMask: Integer;
 
 procedure PresetFeatures();
 var Ids: TArrayOfString;
@@ -496,7 +497,8 @@ begin
   if FeaturesPreset then Exit;
   FeaturesPreset := True;
   Ids := StringSplit(FeatureIds, [','], stAll);
-  Known := OriginalUserFeaturesOff(Mask);
+  Known := SavedFeaturesKnown;
+  Mask := SavedFeaturesMask;
   if not Known and RegQueryStringValue(HKLM64, ReceiptKey, FeaturesValue, Off) then
   begin
     Known := True;
@@ -674,6 +676,10 @@ procedure InitializeWizard();
 var Kept: Cardinal;
 begin
   if WizardSilent() then Exit;
+  // Read here, before the wizard shows: Inno disables its windows while an Exec runs, so a check run when a page shows ate the first
+  // click on Next (Windows beeps at a click on a disabled window).
+  SavedFeaturesKnown := OriginalUserFeaturesOff(SavedFeaturesMask);
+  RunsAsAdministrator := OriginalUserRunsAsAdministrator();
   ChoiceBox := TPanel.Create(WizardForm);
   ChoiceBox.Parent := WizardForm.ComponentsList.Parent;
   ChoiceBox.BevelOuter := bvNone;
@@ -867,8 +873,6 @@ begin
     PresetFeatures();
     SyncTypeChoice();
     ShowDiskSpace();
-    // The relayout above leaves focus on Back (or a box control), and the first Next click is then spent taking focus with a beep.
-    WizardForm.ActiveControl := WizardForm.ComponentsList;
   end;
   if (CurPageID = wpSelectTasks) and not WizardSilent() then PresetSignInTask();
   if (CurPageID = wpFinished) and (EqualizerApoNote <> '') then
