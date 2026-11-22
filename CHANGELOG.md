@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Fixed: Undo after importing from another PC no longer forgets an area whose files could not be written back; it says so and a second Undo tries again.
 - Fixed: a restore that failed part way and could not be rolled back (a file in use) no longer throws away its record; the next start finishes or rolls it back.
 - New: App settings, Start and close, "Free memory after closing" (30 seconds, 1 minute, 2 minutes, 5 minutes, Never): how long the closed window stays ready to reopen instantly before its memory is freed; it was 5 minutes and is now 1 minute by default, and the next hide uses a new choice.
 - Fixed: the taskbar gadget could show coloured blocks after a change of position, text colour or anything else that resized it; it now redraws whenever Windows gives it a new size.

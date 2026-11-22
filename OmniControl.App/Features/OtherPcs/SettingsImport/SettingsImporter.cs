@@ -82,32 +82,35 @@ public sealed class SettingsImporter
             _applied.Add(area);
             return new AreaResult(area.Name, AreaOutcome.Checked, fact);
         }
-        foreach (var (store, text) in before) PutBack(store, text);
+        foreach (var (store, text) in before) _ = PutBack(store, text); // already failing: the store logged why
         foreach (var (store, _) in before) _hooks.Reload(store);
         return Failed(area, why);
     }
 
-    /// Puts everything back from the automatic backup: every applied area is written back and reloaded. Null when done, else why not.
+    /// Puts everything back from the automatic backup: every applied area is written back and reloaded. Null when done, else why not;
+    /// an area whose files could not all be written back stays applied, so a second Undo tries it again.
     public string? Undo()
     {
         var (contents, problem) = BackupFile.Read(BackupPath);
         if (contents is null) return problem ?? "The backup of this PC could not be read.";
         string? failed = null;
-        foreach (var area in _applied.AsEnumerable().Reverse())
+        foreach (var area in _applied.AsEnumerable().Reverse().ToList())
         {
-            foreach (var store in area.Stores) PutBack(store, contents.Files.GetValueOrDefault(store.FileName));
+            var written = area.Stores.Select(store => PutBack(store, contents.Files.GetValueOrDefault(store.FileName))).ToList();
+            if (written.Contains(false))
+            {
+                failed ??= $"{area.Name} could not be put back (a file is in use); try Undo again.";
+                continue;
+            }
+            _applied.Remove(area);
             foreach (var store in area.Stores)
-                if (!_hooks.Reload(store)) failed = $"{area.Name} could not be loaded again; restart OmniControl to finish putting it back.";
+                if (!_hooks.Reload(store)) failed ??= $"{area.Name} could not be loaded again; restart OmniControl to finish putting it back.";
         }
-        _applied.Clear();
         return failed;
     }
 
-    private static void PutBack(DataStore store, string? text)
-    {
-        if (text is null) AppDataStore.Delete(store);
-        else AppDataStore.SaveText(store, text);
-    }
+    /// False when the file could not be written or removed (the store logs why).
+    private static bool PutBack(DataStore store, string? text) => text is null ? AppDataStore.Delete(store) : AppDataStore.SaveText(store, text);
 
     private static AreaResult Failed(ImportArea area, string why) => new(area.Name, AreaOutcome.Failed, Why: why);
 }

@@ -265,7 +265,7 @@ public sealed partial class ImportFromPcViewModel : ObservableObject, IDisposabl
     private void Undo()
     {
         var problem = _importer.Undo();
-        CanUndo = false;
+        CanUndo = _importer.HasApplied;
         Status = problem ?? "Put back from the backup of this PC.";
         if (problem is not null) return;
         foreach (var row in AreaRows.Where(r => r.State == ImportRowState.Checked))

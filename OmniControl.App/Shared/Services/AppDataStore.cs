@@ -136,13 +136,13 @@ public static class AppDataStore
         }
     }
 
-    /// Removes a file (and a waiting save of it); a missing or locked file is not a problem.
-    public static void Delete(DataStore store)
+    /// Removes a file (and a waiting save of it); false when it could not be removed (logged), so a caller that must be sure can retry.
+    public static bool Delete(DataStore store)
     {
         lock (WriteGate)
         {
             TakePending(store);
-            TryDelete(PathOf(store.FileName));
+            return TryDelete(PathOf(store.FileName));
         }
     }
 
@@ -191,13 +191,18 @@ public static class AppDataStore
         }
     }
 
-    private static void TryDelete(string path)
+    private static bool TryDelete(string path)
     {
-        try { File.Delete(path); }
+        try
+        {
+            File.Delete(path);
+            return true;
+        }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             // Left behind: a store is read again, harmlessly, at the next start; a temp file is never read.
             AppendLog(Guard.LogFile, $"Couldn't delete {Path.GetFileName(path)}: {ex.Message}");
+            return false;
         }
     }
 
