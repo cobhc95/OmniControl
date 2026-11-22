@@ -33,7 +33,7 @@ public sealed class TrafficModule : IFeatureModule
         var monitor = _monitor = new TrafficMonitor(() => _limits?.StartTraffic() ?? throw new IOException("Network traffic control is off."));
         var networks = Networks = new NetworkWatch(context.Hardware);
         var states = new NetworkStates(context.States, networks, Title);
-        var limits = _limits = new NetworkLimits(_settings, context.Report, id => monitor.Seen.GetValueOrDefault(id), networks);
+        var limits = _limits = new NetworkLimits(_settings, context.Report, id => monitor.Seen.GetValueOrDefault(id), networks, context.Rules);
         _presets = new TrafficPresets(_settings);
         context.Presets.Register(new PresetGroup(TrafficPresets.GroupId, Title, Title, _presets));
         limits.RegisterActions(context.Actions, Title, () => monitor.Seen.Keys.Concat(_settings.Setup.Apps.Select(r => r.Id)).Distinct().Select(id => new HotkeyDevice(id, id)).ToList());

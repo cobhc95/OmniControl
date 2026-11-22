@@ -18,6 +18,15 @@ public interface INetworkLimits
     /// The place uses its parent's rules again.
     void UseParent(NetScope scope);
 
+    /// The place's automation rule, which puts its own rules in effect (null: none, deleted, or automation off).
+    Shared.Contracts.FeatureRuleView? RuleOf(NetScope place);
+
+    /// True while the place's own rules are used.
+    bool InEffect(NetScope place);
+
+    /// Opens Automation where the place's rule is.
+    void EditRule(NetScope place);
+
     /// One sentence while some upload limit cannot follow its adapter exactly, else null.
     string? UploadScopeLine { get; }
 

@@ -2,14 +2,16 @@ using StateTarget = OmniControl.App.Features.Hotkeys.StateTarget;
 using OmniControl.App.Features.Hotkeys;
 using OmniControl.Core.Engine.Resources;
 using OmniControl.App.Features.Resources;
+using OmniControl.App.Shared.Contracts;
 
 namespace OmniControl.App.Features.Traffic;
 
 /// The programs' network rules (upload limit, download limit, block): saved, made what Windows holds on a worker (throttled; each sync reads
 /// Windows, so a crashed run's rules go at the next start), all taken out at shut-down. The work runs in the network service when it is
 /// installed, else in OmniControl itself while it runs as administrator, else nowhere (the page says so). The "Packet filter" switch keeps
-/// Windows Packet Filter out of all traffic while off. Rules may be an adapter's or a network's own (<see cref="ScopedRules"/>); while any
-/// is, the network watch runs and Windows follows each adapter's network as it changes.
+/// Windows Packet Filter out of all traffic while off. Rules may be an adapter's or a network's own (<see cref="ScopedRules"/>), each place used
+/// only while its automation rule holds ("Phone hotspot limits": while Connected to Phone hotspot, do Use Phone hotspot's limits; one path: the
+/// action puts the place in effect, the rule's end takes it out); while any place has its own, the network watch runs and Windows follows.
 public sealed class NetworkLimits : INetworkLimits, IDisposable
 {
     /// The limits a chip offers, in KB/s (and the limit an "On" action uses when none was chosen).
@@ -31,6 +33,11 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
     private readonly Action<string> _report;
     private readonly Func<string, string?> _pathOf;
     private readonly INetworkWatch _networks;
+    private readonly FeatureRulesSlot _rules;
+    private readonly HashSet<NetScope> _inEffect = new(); // places whose rule holds now (UI thread)
+    private readonly Dictionary<string, NetScope> _uses = new(); // the "Use <place>'s limits" actions registered now, by id
+    private IActionRegistry? _registry;
+    private string _category = string.Empty;
     private IDisposable? _networksNeeded; // held while an adapter or network has rules of its own
     private volatile bool _uploadInexact;
     private readonly NetworkServiceClient _service;
@@ -51,9 +58,12 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
 
     /// <param name="pathOf">Where a program the poller saw lives (the firewall and the service name a program by its path).</param>
     /// <param name="networks">Which network each adapter is on (read only while an adapter or network has rules of its own).</param>
-    public NetworkLimits(ResourcesSettings settings, Action<string> report, Func<string, string?> pathOf, INetworkWatch networks)
+    /// <param name="rules">The automation rules that put a place's own rules in effect (empty while automation is off).</param>
+    public NetworkLimits(ResourcesSettings settings, Action<string> report, Func<string, string?> pathOf, INetworkWatch networks, FeatureRulesSlot rules)
     {
-        (_settings, _report, _pathOf, _networks) = (settings, report, pathOf, networks);
+        (_settings, _report, _pathOf, _networks, _rules) = (settings, report, pathOf, networks, rules);
+        rules.Ended += OnRuleEnded;
+        rules.Changed += OnRulesChanged;
         _wanted = Wanted();
         FollowNetworks();
         networks.Changed += OnNetworksChanged;
@@ -231,6 +241,7 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
     private void Reapply()
     {
         FollowNetworks();
+        FollowPlaces();
         if (_settings.PacketFilterOn != _filterSeen) ApplyFilter();
         var wanted = Wanted();
         if (wanted.SequenceEqual(_wanted)) return;
@@ -240,7 +251,7 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
 
     private IReadOnlyList<NetworkRule> Wanted()
     {
-        var (rules, inexact) = ScopedRules.Wanted(_settings.Setup, _networks.Now);
+        var (rules, inexact) = ScopedRules.Wanted(_settings.Setup, _networks.Now, _inEffect);
         _uploadInexact = inexact;
         return rules;
     }
@@ -324,9 +335,11 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
     /// Registers Upload limit, Download limit and Block network as On / Off / Toggle families over the listed programs.
     public void RegisterActions(IActionRegistry actions, string category, Func<IReadOnlyList<HotkeyDevice>> programs)
     {
+        (_registry, _category) = (actions, category);
         Family(actions, category, programs, "resources.upload", "Upload limit", "upload", r => r.UploadOn, (r, on) => (r.UploadOn, r.UploadKbps) = (on, r.UploadKbps > 0 ? r.UploadKbps : DefaultKbps));
         Family(actions, category, programs, "resources.download", "Download limit", "download", r => r.DownloadOn, (r, on) => (r.DownloadOn, r.DownloadKbps) = (on, r.DownloadKbps > 0 ? r.DownloadKbps : DefaultKbps));
         Family(actions, category, programs, "resources.block", "Block network", "ban", r => r.Blocked, (r, on) => r.Blocked = on);
+        FollowPlaces();
     }
 
     private void Family(IActionRegistry actions, string category, Func<IReadOnlyList<HotkeyDevice>> programs, string id, string name, string icon,
@@ -348,6 +361,78 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
         _actions.AddRange(made);
         actions.Register(made);
     }
+
+    // ---- Places: each adapter's or network's own rules are an automation rule's ----
+
+    /// The "Use <place>'s limits" action of a place's own rules.
+    public static string UseId(NetScope place) => place.IsNetwork ? $"traffic.use.{place.Adapter}.{place.Network}" : $"traffic.use.{place.Adapter}";
+
+    private static string NameOf(AppNetScope scope) => scope.Network.Length > 0 ? scope.NetworkName : scope.AdapterName;
+
+    /// One "Use <place>'s limits" action per place with rules of its own (made again on a rename), then its rule the first time (UI thread).
+    private void FollowPlaces()
+    {
+        if (_registry is not { } registry) return;
+        var places = _settings.Setup.Scoped.ToDictionary(s => UseId(ScopedRules.Of(s)));
+        foreach (var gone in _uses.Keys.Where(id => !places.ContainsKey(id)).ToList())
+        {
+            registry.Unregister(gone);
+            _uses.Remove(gone);
+        }
+        foreach (var (id, scope) in places)
+        {
+            var title = $"Use {NameOf(scope)}'s limits";
+            if (registry.Find(id) is { } made && made.Title == title) continue;
+            registry.Unregister(id);
+            var place = ScopedRules.Of(scope);
+            registry.Register(new HotkeyAction(id, title, _category, $"network internet limits block adapter wifi place own rules {NameOf(scope)}",
+                ids => Dispatcher.UIThread.Post(() => Guard.Run("Network limits: use a place's rules", () => Use(place))), group: "Networks") { FeatureRule = true, SuggestedIcons = new[] { "wifi" } });
+            _uses[id] = place;
+        }
+        MakeRules();
+    }
+
+    /// Each place's own rules become its rule the first time (while connected to it, use its limits), so nothing changes for what was set before.
+    private void MakeRules()
+    {
+        if (_rules.Current is not { } rules) return;
+        foreach (var scope in _settings.Setup.Scoped.ToList())
+        {
+            var id = UseId(ScopedRules.Of(scope));
+            if (_settings.TrafficRules.Contains(id) || !_uses.ContainsKey(id)) continue;
+            _settings.TrafficRules.Add(id);
+            _settings.Save();
+            rules.Ensure(id, $"{NameOf(scope)} limits", true,
+                new FeatureTrigger.While(scope.Network.Length > 0 ? NetworkStates.ConnectedId(scope.Network) : NetworkStates.AdapterId(scope.Adapter)));
+        }
+    }
+
+    /// The action ran (its rule began to hold, or a person ran it): the place's own rules are used from now until its rule ends.
+    private void Use(NetScope place)
+    {
+        if (_inEffect.Add(place)) Reapply();
+    }
+
+    /// A rule changed (UI thread): a place's new rule is made, and the page reads the places' rules again.
+    private void OnRulesChanged()
+    {
+        MakeRules();
+        Changed?.Invoke();
+    }
+
+    private void OnRuleEnded(string actionId)
+    {
+        if (_uses.TryGetValue(actionId, out var place) && _inEffect.Remove(place)) Reapply();
+    }
+
+    /// A place's rule as it is now, or null (none, deleted, or automation off).
+    public FeatureRuleView? RuleOf(NetScope place) => place.IsAll ? null : _rules.Current?.Find(UseId(place));
+
+    /// True while the place's own rules are used.
+    public bool InEffect(NetScope place) => _inEffect.Contains(place);
+
+    /// Opens Automation where the place's rule is.
+    public void EditRule(NetScope place) => _rules.Current?.Edit(UseId(place));
 
     /// The listed programs changed: the actions offer them.
     public void RefreshPrograms()
@@ -379,6 +464,8 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
     public void Dispose()
     {
         _settings.Changed -= Reapply;
+        _rules.Ended -= OnRuleEnded;
+        _rules.Changed -= OnRulesChanged;
         _networks.Changed -= OnNetworksChanged;
         _networksNeeded?.Dispose();
         _sync.Dispose();

@@ -28,11 +28,22 @@ public class ScopedRulesTests
     private static AppNetScope Own(string adapter, string network, params AppNetRule[] rules) =>
         new() { Adapter = adapter, AdapterName = adapter == Wifi ? "Wi-Fi" : "Ethernet", Network = network, Apps = rules.ToList() };
 
+    /// Every place's own rules in effect (each one's automation rule holds).
+    private static IReadOnlySet<NetScope> InEffect(ResourcesSetup setup) => setup.Scoped.Select(ScopedRules.Of).ToHashSet();
+
+    [Fact]
+    public void APlaceNotInEffect_UsesItsParents()
+    {
+        var setup = new ResourcesSetup { Apps = { Rule(download: 1024) }, Scoped = { Own(Wifi, Hotspot, Rule(download: 64)) } };
+        Assert.Equal(1024L * 1024, ScopedRules.Wanted(setup, Now(Hotspot), new HashSet<NetScope>()).Rules.Single().DownloadBytes);
+        Assert.Equal(64L * 1024, ScopedRules.Wanted(setup, Now(Hotspot), InEffect(setup)).Rules.Single(r => r.Adapter == Wifi).DownloadBytes);
+    }
+
     [Fact]
     public void NoPlaceOfItsOwn_OneRuleEverywhere()
     {
         var setup = new ResourcesSetup { Apps = { Rule(upload: 512, blocked: true) } };
-        var (rules, inexact) = ScopedRules.Wanted(setup, NetworkSnapshot.Empty);
+        var (rules, inexact) = ScopedRules.Wanted(setup, NetworkSnapshot.Empty, InEffect(setup));
         Assert.False(inexact);
         Assert.Equal(new[] { new NetworkRule("game", Game, 512UL * 1024 * 8, true) }, rules);
     }
@@ -41,7 +52,7 @@ public class ScopedRulesTests
     public void AdapterBlocks_OnlyThatAdapterIsBlocked()
     {
         var setup = new ResourcesSetup { Scoped = { Own(Wifi, string.Empty, Rule(blocked: true)) } };
-        var (rules, _) = ScopedRules.Wanted(setup, Now(Home));
+        var (rules, _) = ScopedRules.Wanted(setup, Now(Home), InEffect(setup));
         var block = Assert.Single(rules);
         Assert.True(block.Blocked);
         Assert.Equal((Wifi, "Wi-Fi"), (block.Adapter, block.AdapterName));
@@ -51,15 +62,15 @@ public class ScopedRulesTests
     public void NetworkOwnWins_OverItsAdapter()
     {
         var setup = new ResourcesSetup { Scoped = { Own(Wifi, string.Empty, Rule(download: 1024)), Own(Wifi, Hotspot, Rule(download: 64)) } };
-        Assert.Equal(64L * 1024, ScopedRules.Wanted(setup, Now(Hotspot)).Rules.Single(r => r.Adapter == Wifi).DownloadBytes);
-        Assert.Equal(1024L * 1024, ScopedRules.Wanted(setup, Now(Home)).Rules.Single(r => r.Adapter == Wifi).DownloadBytes);
+        Assert.Equal(64L * 1024, ScopedRules.Wanted(setup, Now(Hotspot), InEffect(setup)).Rules.Single(r => r.Adapter == Wifi).DownloadBytes);
+        Assert.Equal(1024L * 1024, ScopedRules.Wanted(setup, Now(Home), InEffect(setup)).Rules.Single(r => r.Adapter == Wifi).DownloadBytes);
     }
 
     [Fact]
     public void UploadDiffersByCategory_FollowsEachCategory()
     {
         var setup = new ResourcesSetup { Apps = { Rule(upload: 1024) }, Scoped = { Own(Wifi, string.Empty, Rule(upload: 64)) } };
-        var (rules, inexact) = ScopedRules.Wanted(setup, Now(Home));
+        var (rules, inexact) = ScopedRules.Wanted(setup, Now(Home), InEffect(setup));
         Assert.False(inexact);
         Assert.Equal(64UL * 1024 * 8, rules.Single(r => r.Profile == NetworkCategory.Private).UploadBits);
         Assert.Equal(1024UL * 1024 * 8, rules.Single(r => r.Profile == NetworkCategory.Domain).UploadBits);
@@ -69,7 +80,7 @@ public class ScopedRulesTests
     public void UploadDiffersWithinOneCategory_UsesAllAdaptersAndSaysSo()
     {
         var setup = new ResourcesSetup { Apps = { Rule(upload: 1024) }, Scoped = { Own(Wifi, string.Empty, Rule(upload: 64)) } };
-        var (rules, inexact) = ScopedRules.Wanted(setup, Now(Home, NetworkCategory.Private, NetworkCategory.Private));
+        var (rules, inexact) = ScopedRules.Wanted(setup, Now(Home, NetworkCategory.Private, NetworkCategory.Private), InEffect(setup));
         Assert.True(inexact);
         Assert.Equal(1024UL * 1024 * 8, Assert.Single(rules).UploadBits);
     }

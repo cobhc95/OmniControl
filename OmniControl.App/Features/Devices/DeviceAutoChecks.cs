@@ -45,8 +45,8 @@ public sealed class DeviceAutoChecks
         foreach (var device in _settings.Devices.Where(d => !d.ChecksInRule && AutoChecks.CanAuto(d)).ToList())
         {
             var choice = AutoChecks.Of(AutoChecks.Effective(_settings, device) ?? AutoChecks.Default);
+            device.ChecksInRule = made = true; // first: making the rule tells this again
             rules.Ensure(DeviceService.CheckActionId(device), RuleName(device), Repeats(choice), Triggers(Repeats(choice) ? choice : AutoChecks.Of(AutoChecks.Default)));
-            device.ChecksInRule = made = true;
         }
         if (made) _edited();
     }

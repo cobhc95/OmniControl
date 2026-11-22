@@ -23,6 +23,11 @@ public sealed partial class TrafficPageViewModel
     public bool CanUseParent => _limits.HasOwn(_scope);
     public IRelayCommand UseParentCommand { get; }
 
+    /// The line under it while the place's automation rule has more than the page shows.
+    public RuleLineItem PlaceRule => _placeRule ??= new RuleLineItem(() => _limits.EditRule(_scope));
+
+    private RuleLineItem? _placeRule;
+
     private NetworkSnapshot Networks => _networks.Now;
 
     private MenuChoiceItem MakeAdapterChoice() => new(AdapterTitle, AdapterWords, AdapterRows)
@@ -120,6 +125,9 @@ public sealed partial class TrafficPageViewModel
         (PlaceLine, UseParentWords) = _scope.IsAll ? (string.Empty, string.Empty)
             : _scope.IsNetwork ? ($"Changes here apply only while connected to {NetworkName(_scope.Network)} ({adapter}).", $"Use {adapter}'s settings")
             : ($"Changes here apply only on {adapter} ({Networks.On(_scope.Adapter)?.Name ?? NotConnected}).", "Use All adapters' settings");
+        var rule = _limits.HasOwn(_scope) ? _limits.RuleOf(_scope) : null;
+        if (_limits.HasOwn(_scope) && rule is not { On: true }) PlaceLine += " Its automation rule is off, so they are not used.";
+        PlaceRule.Show(rule?.Extras ?? string.Empty);
         OnPropertyChanged(nameof(PlaceLine));
         OnPropertyChanged(nameof(HasPlace));
         OnPropertyChanged(nameof(UseParentWords));

@@ -28,6 +28,7 @@
                             <TextBlock Classes="hint" Text="{Binding PlaceLine}" TextWrapping="Wrap" VerticalAlignment="Center" />
                             <Button Classes="link" Content="{Binding UseParentWords}" Command="{Binding UseParentCommand}" IsVisible="{Binding CanUseParent}" VerticalAlignment="Center"
                                     ToolTip.Tip="Removes these rules of its own; the rules it used before apply again." />
+                            <ContentControl Content="{Binding PlaceRule}" VerticalAlignment="Center" />
                         </WrapPanel>
                         <Grid ColumnSpacing="{StaticResource MenuGap}" Margin="{StaticResource RowHeadingInset}">
                             <Grid.ColumnDefinitions>

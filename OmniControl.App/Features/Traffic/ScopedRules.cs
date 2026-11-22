@@ -14,8 +14,9 @@ public sealed record NetScope(string Adapter, string Network)
     public bool IsNetwork => Network.Length > 0;
 }
 
-/// The programs' rules by place and what Windows must hold for them (pure, so tests check it). The most specific wins: a network's own rules
-/// while an adapter is on it, else the adapter's own, else All adapters'. Blocks and download limits follow each connected adapter; upload
+/// The programs' rules by place and what Windows must hold for them (pure, so tests check it). A place's own rules are used only while they are in
+/// effect (their automation rule holds: <see cref="NetworkLimits"/>), and the most specific in effect wins: a network's own rules while an adapter is
+/// on it, else the adapter's own, else All adapters'. Blocks and download limits follow each connected adapter; upload
 /// limits are Windows' throttle rules, which follow only a network's category, so adapters of one category that differ use All adapters'.
 internal static class ScopedRules
 {
@@ -27,12 +28,19 @@ internal static class ScopedRules
     public static List<AppNetRule> RulesOf(ResourcesSetup setup, NetScope scope) =>
         Own(setup, scope)?.Apps ?? (scope.IsNetwork ? RulesOf(setup, NetScope.Of(scope.Adapter)) : setup.Apps);
 
-    /// What Windows must hold, and whether some upload limit could not follow its adapter exactly.
-    public static (IReadOnlyList<NetworkRule> Rules, bool UploadInexact) Wanted(ResourcesSetup setup, NetworkSnapshot now)
+    /// The rules used at a place now: its own while in effect, else its adapter's in effect, else All adapters'.
+    private static List<AppNetRule> InForce(ResourcesSetup setup, NetScope scope, IReadOnlySet<NetScope> inEffect) =>
+        (inEffect.Contains(scope) ? Own(setup, scope)?.Apps : null) ?? (scope.IsNetwork ? InForce(setup, NetScope.Of(scope.Adapter), inEffect) : setup.Apps);
+
+    /// The place an adapter's or network's own rules are for.
+    public static NetScope Of(AppNetScope scope) => new(scope.Adapter, scope.Network);
+
+    /// What Windows must hold with these places' own rules in effect, and whether some upload limit could not follow its adapter exactly.
+    public static (IReadOnlyList<NetworkRule> Rules, bool UploadInexact) Wanted(ResourcesSetup setup, NetworkSnapshot now, IReadOnlySet<NetScope> inEffect)
     {
-        if (setup.Scoped.Count == 0) return (setup.Apps.Select(r => Rule(r.Id, r.Path, Ask.Of(r))).OfType<NetworkRule>().ToList(), false);
+        if (!setup.Scoped.Any(s => inEffect.Contains(Of(s)))) return (setup.Apps.Select(r => Rule(r.Id, r.Path, Ask.Of(r))).OfType<NetworkRule>().ToList(), false);
         var live = now.Adapters.Where(a => a.IsUp).Select(a => (Adapter: a, Network: now.On(a.Id))).Select(l =>
-            (l.Adapter, Category: l.Network?.Category ?? NetworkCategory.Public, Rules: RulesOf(setup, new NetScope(l.Adapter.Id, l.Network?.Id ?? string.Empty)))).ToList();
+            (l.Adapter, Category: l.Network?.Category ?? NetworkCategory.Public, Rules: InForce(setup, new NetScope(l.Adapter.Id, l.Network?.Id ?? string.Empty), inEffect))).ToList();
         var everyRule = setup.Apps.Concat(setup.Scoped.SelectMany(s => s.Apps)).ToList();
         var rules = new List<NetworkRule>();
         var inexact = false;

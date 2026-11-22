@@ -156,6 +156,10 @@ public sealed class ResourcesSettings
     public List<GadgetLayoutPreset> Layouts { get; set; } = new();
     public List<TrafficPreset> TrafficPresets { get; set; } = new();
 
+    /// The "Use <network>'s limits" actions whose place's own rules were made into an automation rule (once: a rule deleted in Automation stays
+    /// deleted). Not in presets: rules are kept by Automation.
+    public List<string> TrafficRules { get; set; } = new();
+
     private static readonly DataStore Store = DataStores.Resources;
 
     public static ResourcesSettings Load() => AppDataStore.Load<ResourcesSettings>(Store) ?? new();

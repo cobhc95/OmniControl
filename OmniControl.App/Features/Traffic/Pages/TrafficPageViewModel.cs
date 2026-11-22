@@ -211,6 +211,7 @@ public sealed partial class TrafficPageViewModel : PageViewModel, IDisposable
         OnPropertyChanged(nameof(CanInstallService));
         Need();
         ShowStatus();
+        ShowPlace(); // a place's rule may have changed
     });
 
     public void Dispose()

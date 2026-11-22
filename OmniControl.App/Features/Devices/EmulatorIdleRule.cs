@@ -66,8 +66,8 @@ internal sealed class EmulatorIdleRule : IDisposable
     public void MakeRule()
     {
         if (_keeper.Settings.IdleInRule || !_hasSimulation() || _rules.Current is not { } rules) return;
+        _keeper.Settings.IdleInRule = true; // first: making the rule tells this again
         rules.Ensure(CloseId, RuleName, _keeper.Settings.Keep == EmulatorKeep.UntilIdle, new FeatureTrigger.While(StateId));
-        _keeper.Settings.IdleInRule = true;
         _keeper.Edited();
     }
 
