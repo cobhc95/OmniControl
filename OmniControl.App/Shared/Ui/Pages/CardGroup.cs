@@ -210,7 +210,7 @@ public sealed class ItemGroup : CardGroup, IDisposable
         }
         var target = MasterState != true;
         _bulk = true;
-        foreach (var toggle in _toggles) toggle.IsOn = target;
+        foreach (var toggle in _toggles.Where(t => !t.Unavailable)) toggle.IsOn = target;
         _bulk = false;
         Refresh();
     }

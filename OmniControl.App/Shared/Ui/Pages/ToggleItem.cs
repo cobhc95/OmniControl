@@ -21,6 +21,9 @@ public sealed partial class ToggleItem : ObservableObject, IEditorItem, IHalfWid
     /// The label and note drawn greyed (<c>.unavailable</c>), the switch still usable: what it switches does not run now (App settings' Features).
     [ObservableProperty] private bool _dimmed;
 
+    /// The switch greyed and not usable, and left out of the group's "all on/off": there is nothing to switch (a feature Setup did not install).
+    [ObservableProperty] private bool _unavailable;
+
     /// True: the card takes half the width and may share a row with the next half-width card.
     public bool Half { get; init; }
 
@@ -51,6 +54,8 @@ public sealed partial class ToggleItem : ObservableObject, IEditorItem, IHalfWid
 
     partial void OnIsOnChanged(bool value)
     {
-        if (!_loading) _apply(value);
+        if (_loading) return;
+        if (Unavailable) Load(!value);
+        else _apply(value);
     }
 }

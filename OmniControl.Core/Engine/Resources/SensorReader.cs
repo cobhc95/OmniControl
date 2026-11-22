@@ -14,6 +14,7 @@ internal sealed class SensorReader : IDisposable
 
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private readonly WindowsSensors _windows = new();
+    private bool? _libreFile; // the library is there (Setup may leave it out), looked at once
     private LibreSensors? _libre; // made at the first reading Windows cannot give: only then is the library's assembly loaded
     private TimeSpan? _sensedAt, _drivesAt, _tempsAt; // null: read at the next sample
     private (SampleParts Wanted, SensorChoices Choices) _last;
@@ -131,6 +132,11 @@ internal sealed class SensorReader : IDisposable
         {
             _libre?.Close();
             _libreRead = LibreReading.None;
+            return;
+        }
+        if (!(_libreFile ??= OptionalFiles.Present(OptionalFiles.Sensors)))
+        {
+            _libreRead = LibreReading.None; // left out by Setup: Windows' own sensors only
             return;
         }
         var libre = _libre ??= new LibreSensors();

@@ -29,8 +29,9 @@ CloseApplications=no
 WizardSelectComponents=Choose features
 SelectComponentsDesc=Pick what OmniControl should do on this PC. You can change this later in App settings.
 SelectComponentsLabel2=Ready-made choice:
-; "Choose features": every file is installed whatever is ticked; a feature left unticked does not run. The component names are the app's feature
-; ids (retyped from OmniControl.App/Features/FeatureList, also in [Code] FeatureIds); the choice is written for the app ([Code] WriteFeatures).
+; "Choose features": a feature left unticked does not run; "Features you didn't tick" ([Code] LeavesOut) also leaves out its optional files (below),
+; so the app shows it as not installed. The component names are the app's feature ids (retyped from OmniControl.App/Features/FeatureList, also in
+; [Code] FeatureIds); the choice is written for the app ([Code] WriteFeatures).
 [Types]
 Name: everything; Description: "Everything"
 Name: sound; Description: "Sound only"
@@ -47,8 +48,52 @@ Name: traffic; Description: "Network traffic control: per-app limits (Windows Pa
 Name: otherpcs; Description: "Other PCs: pairing, wake, remote control"; Types: everything
 Name: devices; Description: "Smart devices: plugs and bulbs"; Types: everything
 Name: screenshot; Description: "Screenshot tool"; Types: everything
+; The optional files (retyped from Core/Engine/OptionalFiles, the folders from the csproj; the sensor library with what only it loads) and their
+; sizes for the disk-space line ([Code] ShowDiskSpace). The publish folder has no other subfolders.
+#define SensorFiles "LibreHardwareMonitorLib.dll,DiskInfoToolkit.dll,HidSharp.dll,RAMSPDToolkit-NDD.dll,BlackSharp.Core.dll"
+#define public Bytes 0
+#define public Handle 0
+#define public Found 0
+#define public Dir ""
+#sub AddFound
+  #expr Bytes = Bytes + FileSize(Dir + FindGetFileName(Handle))
+#endsub
+#sub SumDir
+  #expr Bytes = 0
+  #for {Handle = Found = FindFirst(Dir + "*", 0); Found; Found = FindNext(Handle)} AddFound
+  #expr FindClose(Handle)
+#endsub
+#expr Dir = PubDir + "\"
+#expr SumDir
+#define TopBytes Bytes
+#expr Dir = PubDir + "\equalizer-apo\"
+#expr SumDir
+#define VolumeBytes Bytes
+#expr Dir = PubDir + "\windows-packet-filter\"
+#expr SumDir
+#define TrafficBytes Bytes
+#define ResourcesBytes FileSize(PubDir + "\LibreHardwareMonitorLib.dll") + FileSize(PubDir + "\DiskInfoToolkit.dll") + FileSize(PubDir + "\HidSharp.dll") + FileSize(PubDir + "\RAMSPDToolkit-NDD.dll") + FileSize(PubDir + "\BlackSharp.Core.dll")
+#define ScreenshotBytes FileSize(PubDir + "\zxing.dll")
 [Files]
-Source: "{#PubDir}\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
+Source: "{#PubDir}\*"; DestDir: "{app}"; Excludes: "\equalizer-apo,\windows-packet-filter,\zxing.dll,\{#StringChange(SensorFiles, ',', ',\')}"; Flags: recursesubdirs ignoreversion
+Source: "{#PubDir}\equalizer-apo\*"; DestDir: "{app}\equalizer-apo"; Flags: ignoreversion; Check: Installs('volume')
+Source: "{#PubDir}\windows-packet-filter\*"; DestDir: "{app}\windows-packet-filter"; Flags: ignoreversion; Check: Installs('traffic')
+Source: "{#PubDir}\LibreHardwareMonitorLib.dll"; DestDir: "{app}"; Flags: ignoreversion; Check: Installs('resources')
+Source: "{#PubDir}\DiskInfoToolkit.dll"; DestDir: "{app}"; Flags: ignoreversion; Check: Installs('resources')
+Source: "{#PubDir}\HidSharp.dll"; DestDir: "{app}"; Flags: ignoreversion; Check: Installs('resources')
+Source: "{#PubDir}\RAMSPDToolkit-NDD.dll"; DestDir: "{app}"; Flags: ignoreversion; Check: Installs('resources')
+Source: "{#PubDir}\BlackSharp.Core.dll"; DestDir: "{app}"; Flags: ignoreversion; Check: Installs('resources')
+Source: "{#PubDir}\zxing.dll"; DestDir: "{app}"; Flags: ignoreversion; Check: Installs('screenshot')
+; An upgrade that now leaves a feature out takes away what an earlier Setup put there.
+[InstallDelete]
+Type: filesandordirs; Name: "{app}\equalizer-apo"; Check: not Installs('volume')
+Type: filesandordirs; Name: "{app}\windows-packet-filter"; Check: not Installs('traffic')
+Type: files; Name: "{app}\zxing.dll"; Check: not Installs('screenshot')
+Type: files; Name: "{app}\LibreHardwareMonitorLib.dll"; Check: not Installs('resources')
+Type: files; Name: "{app}\DiskInfoToolkit.dll"; Check: not Installs('resources')
+Type: files; Name: "{app}\HidSharp.dll"; Check: not Installs('resources')
+Type: files; Name: "{app}\RAMSPDToolkit-NDD.dll"; Check: not Installs('resources')
+Type: files; Name: "{app}\BlackSharp.Core.dll"; Check: not Installs('resources')
 [Icons]
 Name: "{group}\OmniControl"; Filename: "{app}\OmniControl.exe"
 Name: "{autodesktop}\OmniControl"; Filename: "{app}\OmniControl.exe"; Tasks: desktopicon
@@ -424,6 +469,123 @@ begin
   WizardSelectComponents(Pick);
 end;
 
+// "Features you didn't tick" under the list: Don't install them (the default) or Install them but keep them off. The choice is kept beside
+// FeaturesOff, so an upgrade shows it again and a silent Setup follows it; a silent Setup with none kept installs everything, as before.
+const
+  LeaveOutValue = 'LeaveOutUnticked';
+
+var LeaveOutButton, KeepOffButton: TNewRadioButton;
+    LeaveOutNote, KeepOffNote: TNewStaticText;
+    OldClickCheck, OldTypeChange: TNotifyEvent;
+
+function LeavesOut(): Boolean;
+var Kept: Cardinal;
+begin
+  if LeaveOutButton <> nil then Result := LeaveOutButton.Checked
+  else Result := RegQueryDWordValue(HKLM64, ReceiptKey, LeaveOutValue, Kept) and (Kept = 1);
+end;
+
+function Installs(Id: String): Boolean;
+begin
+  Result := WizardIsComponentSelected(Id) or not LeavesOut();
+end;
+
+// Inno counts every file whatever is ticked (the optional ones go by Check), so the line is said here: all files less those left out.
+procedure ShowDiskSpace();
+var Bytes: Extended;
+    Text: String;
+begin
+  Bytes := {#TopBytes} + {#VolumeBytes} + {#TrafficBytes};
+  if not Installs('volume') then Bytes := Bytes - {#VolumeBytes};
+  if not Installs('traffic') then Bytes := Bytes - {#TrafficBytes};
+  if not Installs('resources') then Bytes := Bytes - {#ResourcesBytes};
+  if not Installs('screenshot') then Bytes := Bytes - {#ScreenshotBytes};
+  Text := SetupMessage(msgComponentsDiskSpaceMBLabel);
+  StringChangeEx(Text, '[mb]', Format('%.1f', [Bytes / 1048576]), True);
+  WizardForm.ComponentsDiskSpaceLabel.Caption := Text;
+end;
+
+procedure ChoiceClicked(Sender: TObject);
+begin
+  ShowDiskSpace();
+end;
+
+procedure ListClicked(Sender: TObject);
+begin
+  OldClickCheck(Sender);
+  ShowDiskSpace();
+end;
+
+procedure TypeChanged(Sender: TObject);
+begin
+  OldTypeChange(Sender);
+  ShowDiskSpace();
+end;
+
+// A muted note after a radio button's words; clicking it picks the button.
+procedure NoteClicked(Sender: TObject);
+begin
+  LeaveOutButton.Checked := Sender = LeaveOutNote;
+  KeepOffButton.Checked := Sender = KeepOffNote;
+  ShowDiskSpace();
+end;
+
+function AddChoice(Box: TPanel; Text, Note: String; Top: Integer; var Muted: TNewStaticText): TNewRadioButton;
+var Words: TNewStaticText;
+begin
+  Words := TNewStaticText.Create(Box);
+  Words.Parent := Box;
+  Words.Caption := Text;
+  Result := TNewRadioButton.Create(Box);
+  Result.Parent := Box;
+  Result.Caption := Text;
+  Result.Left := ScaleX(8);
+  Result.Top := Top;
+  Result.Width := Words.Width + ScaleX(20);
+  Result.Height := ScaleY(17);
+  Result.OnClick := @ChoiceClicked;
+  Words.Free();
+  Muted := TNewStaticText.Create(Box);
+  Muted.Parent := Box;
+  Muted.Caption := Note;
+  Muted.Font.Color := clGrayText;
+  Muted.Left := Result.Left + Result.Width + ScaleX(2);
+  Muted.Top := Top + ScaleY(1);
+  Muted.OnClick := @NoteClicked;
+end;
+
+procedure InitializeWizard();
+var Box: TPanel;
+    Title: TNewStaticText;
+    Kept: Cardinal;
+begin
+  if WizardSilent() then Exit;
+  Box := TPanel.Create(WizardForm);
+  Box.Parent := WizardForm.ComponentsList.Parent;
+  Box.BevelOuter := bvNone;
+  Box.BorderStyle := bsSingle;
+  Box.ParentBackground := False;
+  Box.Color := clWindow;
+  Box.Left := WizardForm.ComponentsList.Left;
+  Box.Width := WizardForm.ComponentsList.Width;
+  Box.Height := ScaleY(66);
+  WizardForm.ComponentsList.Height := WizardForm.ComponentsList.Height - Box.Height - ScaleY(10);
+  Box.Top := WizardForm.ComponentsList.Top + WizardForm.ComponentsList.Height + ScaleY(10);
+  Title := TNewStaticText.Create(Box);
+  Title.Parent := Box;
+  Title.Caption := 'Features you didn''t tick:';
+  Title.Left := ScaleX(8);
+  Title.Top := ScaleY(6);
+  LeaveOutButton := AddChoice(Box, 'Don''t install them', '(their drivers, services and sensor library are left out)', ScaleY(24), LeaveOutNote);
+  KeepOffButton := AddChoice(Box, 'Install them but keep them off', '(turn on any time in App settings)', ScaleY(42), KeepOffNote);
+  LeaveOutButton.Checked := not RegQueryDWordValue(HKLM64, ReceiptKey, LeaveOutValue, Kept) or (Kept = 1);
+  KeepOffButton.Checked := not LeaveOutButton.Checked;
+  OldClickCheck := WizardForm.ComponentsList.OnClickCheck;
+  WizardForm.ComponentsList.OnClickCheck := @ListClicked;
+  OldTypeChange := WizardForm.TypesCombo.OnChange;
+  WizardForm.TypesCombo.OnChange := @TypeChanged;
+end;
+
 // A silent Setup changes the app's choice only when its command line names one (/COMPONENTS or /TYPE).
 function ChoiceGiven(): Boolean;
 var I: Integer;
@@ -448,6 +610,7 @@ begin
       Off := Off + Ids[I];
     end;
   RegWriteStringValue(HKLM64, ReceiptKey, FeaturesValue, Off);
+  if not WizardSilent() then RegWriteDWordValue(HKLM64, ReceiptKey, LeaveOutValue, Ord(LeavesOut()));
 end;
 
 // A driver install that fails leaves OmniControl installed and says so in one line. The receipt lets uninstall remove only this copy.
@@ -483,7 +646,7 @@ begin
   Result := HasReceipt(EqualizerApoReceipt) and EqualizerApoInstalled();
 end;
 
-// The uninstall choices for the parts with a receipt; both on unless /KEEPDRIVERS is passed, also for a silent uninstall, which shows no form.
+// The uninstall choices for the parts with a receipt; both on unless /KEEPDRIVERS is passed, also for a silent uninstall, which shows no page.
 var RemovingPacketFilter, RemovingEqualizerApo: Boolean;
 
 function KeepsDrivers(): Boolean;
@@ -494,90 +657,77 @@ begin
     if CompareText(ParamStr(I), '/KEEPDRIVERS') = 0 then Result := True;
 end;
 
-function AddLine(Form: TSetupForm; Text: String; Box: Boolean; var Top: Integer): TControl;
-var Line: TNewStaticText;
-    Check: TNewCheckBox;
+function AddBox(Page: TNewNotebookPage; Text: String; var Top: Integer): TNewCheckBox;
 begin
-  if Box then
-  begin
-    Check := TNewCheckBox.Create(Form);
-    Check.Caption := Text;
-    Check.Height := ScaleY(17);
-    Result := Check;
-  end else
-  begin
-    Line := TNewStaticText.Create(Form);
-    Line.AutoSize := True;
-    Line.WordWrap := True;
-    Line.Width := Form.ClientWidth - ScaleX(2 * 12);
-    Line.Caption := Text;
-    Result := Line;
-  end;
-  Result.Parent := Form;
-  Result.Left := ScaleX(12);
+  Result := TNewCheckBox.Create(Page);
+  Result.Parent := Page;
+  Result.Caption := Text;
+  Result.Checked := not KeepsDrivers();
+  Result.Left := 0;
   Result.Top := Top;
-  Result.Width := Form.ClientWidth - ScaleX(2 * 12);
+  Result.Width := Page.Width;
+  Result.Height := ScaleY(17);
   Top := Top + Result.Height + ScaleY(8);
 end;
 
-// Inno's uninstaller has no Tasks page, so a small form of its own asks before Inno's confirmation, one box for each part that is there and
-// has a receipt (no form when none has). False when it is cancelled.
-function ChooseWhatToRemove(): Boolean;
-var Form: TSetupForm;
+// Inno's uninstaller has no Tasks page, so its own window shows one first, before anything is removed: a box for each part that is there and
+// has a receipt (no page when none has), and Uninstall or Cancel.
+procedure InitializeUninstallProgressForm();
+var Page: TNewNotebookPage;
+    Before: TNewNotebookPage;
     PacketBox, ApoBox: TNewCheckBox;
-    Next, Cancel: TNewButton;
+    Note: TNewStaticText;
+    Go: TNewButton;
     Top: Integer;
+    Name, Description: String;
 begin
-  Result := True;
   RemovingPacketFilter := not KeepsDrivers();
   RemovingEqualizerApo := RemovingPacketFilter;
+  if UninstallSilent() or not (PacketFilterIsOurs() or EqualizerApoIsOurs()) then Exit;
+  Page := TNewNotebookPage.Create(UninstallProgressForm);
+  Page.Notebook := UninstallProgressForm.InnerNotebook;
+  Page.Parent := UninstallProgressForm.InnerNotebook;
+  Page.Align := alClient;
+  Top := 0;
   PacketBox := nil;
   ApoBox := nil;
-  if UninstallSilent() or not (PacketFilterIsOurs() or EqualizerApoIsOurs()) then Exit;
-  Form := CreateCustomForm(ScaleX(360), ScaleY(160), False, True);
-  try
-    Form.Caption := FmtMessage(SetupMessage(msgUninstallAppFullTitle), ['OmniControl']);
-    Top := ScaleY(12);
-    AddLine(Form, 'Untick anything you want to keep on this PC.', False, Top);
-    if PacketFilterIsOurs() then
-    begin
-      PacketBox := TNewCheckBox(AddLine(Form, 'Also remove Windows Packet Filter', True, Top));
-      PacketBox.Checked := RemovingPacketFilter;
-    end;
-    if EqualizerApoIsOurs() then
-    begin
-      ApoBox := TNewCheckBox(AddLine(Form, 'Also remove Equalizer APO', True, Top));
-      ApoBox.Checked := RemovingEqualizerApo;
-      AddLine(Form, 'Sound may need a restart of Windows before it is as it was.', False, Top);
-    end;
-    Form.ClientHeight := Top + ScaleY(4 + 23 + 12);
-    Next := TNewButton.Create(Form);
-    Next.Parent := Form;
-    Next.Caption := SetupMessage(msgButtonNext);
-    Next.ModalResult := mrOk;
-    Next.Default := True;
-    Cancel := TNewButton.Create(Form);
-    Cancel.Parent := Form;
-    Cancel.Caption := SetupMessage(msgButtonCancel);
-    Cancel.ModalResult := mrCancel;
-    Cancel.Cancel := True;
-    Next.Width := Form.CalculateButtonWidth([Next.Caption, Cancel.Caption]);
-    Cancel.Width := Next.Width;
-    Next.Height := ScaleY(23);
-    Cancel.Height := ScaleY(23);
-    Next.Top := Form.ClientHeight - ScaleY(23 + 12);
-    Cancel.Top := Next.Top;
-    Cancel.Left := Form.ClientWidth - ScaleX(12) - Cancel.Width;
-    Next.Left := Cancel.Left - ScaleX(6) - Next.Width;
-    Form.ActiveControl := Next;
-    Result := Form.ShowModal() = mrOk;
-    if PacketBox <> nil then RemovingPacketFilter := PacketBox.Checked;
-    if ApoBox <> nil then RemovingEqualizerApo := ApoBox.Checked;
-  finally
-    Form.Free();
+  if PacketFilterIsOurs() then PacketBox := AddBox(Page, 'Remove Windows Packet Filter', Top);
+  if EqualizerApoIsOurs() then
+  begin
+    ApoBox := AddBox(Page, 'Remove Equalizer APO', Top);
+    Note := TNewStaticText.Create(Page);
+    Note.Parent := Page;
+    Note.Caption := 'Sound may need a restart of Windows before it is as it was.';
+    Note.Left := ScaleX(17);
+    Note.Top := Top - ScaleY(6);
   end;
+  Before := UninstallProgressForm.InnerNotebook.ActivePage;
+  Name := UninstallProgressForm.PageNameLabel.Caption;
+  Description := UninstallProgressForm.PageDescriptionLabel.Caption;
+  UninstallProgressForm.InnerNotebook.ActivePage := Page;
+  UninstallProgressForm.PageNameLabel.Caption := 'What to remove';
+  UninstallProgressForm.PageDescriptionLabel.Caption := 'Untick anything you want to keep on this PC.';
+  Go := TNewButton.Create(UninstallProgressForm);
+  Go.Parent := UninstallProgressForm;
+  Go.Caption := 'Uninstall';
+  Go.Width := UninstallProgressForm.CancelButton.Width;
+  Go.Height := UninstallProgressForm.CancelButton.Height;
+  Go.Top := UninstallProgressForm.CancelButton.Top;
+  Go.Left := UninstallProgressForm.CancelButton.Left - Go.Width - ScaleX(6);
+  Go.ModalResult := mrOk;
+  Go.Default := True;
+  UninstallProgressForm.CancelButton.Enabled := True;
+  UninstallProgressForm.CancelButton.ModalResult := mrCancel;
+  UninstallProgressForm.ActiveControl := Go;
+  if UninstallProgressForm.ShowModal() = mrCancel then Abort;
+  if PacketBox <> nil then RemovingPacketFilter := PacketBox.Checked;
+  if ApoBox <> nil then RemovingEqualizerApo := ApoBox.Checked;
+  Go.Visible := False;
+  UninstallProgressForm.CancelButton.Enabled := False;
+  UninstallProgressForm.InnerNotebook.ActivePage := Before;
+  UninstallProgressForm.PageNameLabel.Caption := Name;
+  UninstallProgressForm.PageDescriptionLabel.Caption := Description;
 end;
-
 // The sign-in task and the network service go first. A part that stays keeps its receipt, so a later uninstall still offers it; a part
 // that is gone takes its receipt with it.
 procedure UninstallSteps();
@@ -597,7 +747,11 @@ end;
 
 procedure CurPageChanged(CurPageID: Integer);
 begin
-  if (CurPageID = wpSelectComponents) and not WizardSilent() then PresetFeatures();
+  if (CurPageID = wpSelectComponents) and not WizardSilent() then
+  begin
+    PresetFeatures();
+    ShowDiskSpace();
+  end;
   if (CurPageID = wpSelectTasks) and not WizardSilent() then PresetSignInTask();
   if (CurPageID = wpFinished) and (EqualizerApoNote <> '') then
     WizardForm.FinishedLabel.Caption := WizardForm.FinishedLabel.Caption + #13#10#13#10 + EqualizerApoNote;
@@ -616,8 +770,6 @@ end;
 function InitializeUninstall(): Boolean;
 var Msg: String;
 begin
-  Result := ChooseWhatToRemove();
-  if not Result then Exit;
   Msg := EndOmniControl();
   if Msg <> '' then MsgBox(Msg, mbError, MB_OK);
   Result := Msg = '';

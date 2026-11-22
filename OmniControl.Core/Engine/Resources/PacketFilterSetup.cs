@@ -14,7 +14,8 @@ namespace OmniControl.Core.Engine.Resources;
 public static class PacketFilterSetup
 {
     // Retyped in OmniControl.App.csproj (the copy into the app folder) and tools/setup.iss (install, uninstall and the record).
-    private const string Folder = "windows-packet-filter", Inf = "ndisrd_lwf.inf", ComponentId = "nt_ndisrd";
+    internal const string Folder = "windows-packet-filter", Inf = "ndisrd_lwf.inf";
+    private const string ComponentId = "nt_ndisrd";
     private const string RecordKey = @"SOFTWARE\OmniControl", RecordValue = "PacketFilterInstalled";
 
     private static readonly (string File, string Sha256)[] Files =
