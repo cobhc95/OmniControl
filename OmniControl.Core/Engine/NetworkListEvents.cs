@@ -25,7 +25,8 @@ public sealed class NetworkListEvents : IDisposable
             foreach (var id in new[] { NetworkEventsId, CostEventsId })
             {
                 var guid = id;
-                ((IConnectionPointContainer)events._manager).FindConnectionPoint(ref guid, out var point);
+                ((IConnectionPointContainer)events._manager).FindConnectionPoint(ref guid, out var found);
+                var point = found ?? throw new COMException("Windows' network list has no such announcement.");
                 point.Advise(sink, out var cookie);
                 events._advised.Add((point, cookie));
             }

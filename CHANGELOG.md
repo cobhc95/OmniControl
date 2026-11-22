@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Network states: "Connected to <network>" (each saved Wi-Fi or wired network), "On a metered connection" and "Not connected" can trigger presets and automation rules; the state picker lists them under Network traffic control, connected and rule-used networks first, each with its kind.
+
 - Screenshot: "Read QR code" now also reads Aztec, Data Matrix, PDF417 and MaxiCode codes and the common barcodes (EAN, UPC, Code 128, Code 39, ITF), says which kind each result is, reads light-on-dark codes, and retries a small picture enlarged, so Aztec codes and small QR images are found.
 
 - Mouse: a button action can now run when the button is pressed twice or three times, with a "Presses within" setting (default 300 ms, 150 to 1000 ms) for the time allowed between presses; only buttons with such an action wait before running their single press, and "When the button is held" keeps working beside them.
