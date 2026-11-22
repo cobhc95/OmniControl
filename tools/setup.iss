@@ -477,7 +477,7 @@ const
   LeaveOutValue = 'LeaveOutUnticked';
 
 var LeaveOutButton, KeepOffButton: TNewRadioButton;
-    LeaveOutNote, KeepOffNote: TNewStaticText;
+    LeaveOutNote, KeepOffNote, LeftOutText: TNewStaticText;
     OldClickCheck, OldTypeChange: TNotifyEvent;
 
 function LeavesOut(): Boolean;
@@ -490,6 +490,39 @@ end;
 function Installs(Id: String): Boolean;
 begin
   Result := WizardIsComponentSelected(Id) or not LeavesOut();
+end;
+
+// What an unticked feature leaves out of the install (the one place for this map); a feature with no separate piece says nothing.
+function LeftOutPiece(Id: String): String;
+begin
+  Result := '';
+  if Id = 'volume' then Result := 'Equalizer APO (Sound)'
+  else if Id = 'resources' then Result := 'sensor libraries (Resources)'
+  else if Id = 'traffic' then Result := 'Windows Packet Filter and network service (Network traffic control)'
+  else if Id = 'otherpcs' then Result := 'Tailscale firewall rule (Other PCs)'
+  else if Id = 'screenshot' then Result := 'QR-code library (Screenshot tool)';
+end;
+
+// The note under Don't install them: shown only while that choice is picked, its space always kept.
+procedure ShowLeftOut();
+var Ids: TArrayOfString;
+    I: Integer;
+    List, Piece: String;
+begin
+  if LeftOutText = nil then Exit;
+  Ids := StringSplit(FeatureIds, [','], stAll);
+  for I := 0 to GetArrayLength(Ids) - 1 do
+  begin
+    Piece := LeftOutPiece(Ids[I]);
+    if (Piece <> '') and not WizardIsComponentSelected(Ids[I]) then
+    begin
+      if List <> '' then List := List + ', ';
+      List := List + Piece;
+    end;
+  end;
+  if List = '' then List := 'nothing (these features have no separate pieces)';
+  LeftOutText.Caption := 'Left out: ' + List + #13#10 + 'Still installed, not running: the rest of these features is part of OmniControl itself.';
+  LeftOutText.Visible := LeaveOutButton.Checked;
 end;
 
 // Inno counts every file whatever is ticked (the optional ones go by Check), so the line is said here: all files less those left out.
@@ -505,6 +538,7 @@ begin
   Text := SetupMessage(msgComponentsDiskSpaceMBLabel);
   StringChangeEx(Text, '[mb]', Format('%.1f', [Bytes / 1048576]), True);
   WizardForm.ComponentsDiskSpaceLabel.Caption := Text;
+  ShowLeftOut();
 end;
 
 procedure ChoiceClicked(Sender: TObject);
@@ -560,6 +594,7 @@ procedure InitializeWizard();
 var Box: TPanel;
     Title: TNewStaticText;
     Kept: Cardinal;
+    NoteHeight: Integer;
 begin
   if WizardSilent() then Exit;
   Box := TPanel.Create(WizardForm);
@@ -570,8 +605,11 @@ begin
   Box.Color := clWindow;
   Box.Left := WizardForm.ComponentsList.Left;
   Box.Width := WizardForm.ComponentsList.Width;
-  Box.Height := ScaleY(66);
-  WizardForm.ComponentsList.Height := WizardForm.ComponentsList.Height - Box.Height - ScaleY(10);
+  NoteHeight := ScaleY(80);
+  Box.Height := ScaleY(66) + NoteHeight;
+  WizardForm.Height := WizardForm.Height + NoteHeight;
+  WizardForm.Top := WizardForm.Top - NoteHeight div 2;
+  WizardForm.ComponentsList.Height := WizardForm.ComponentsList.Height - ScaleY(66) - ScaleY(10);
   Box.Top := WizardForm.ComponentsList.Top + WizardForm.ComponentsList.Height + ScaleY(10);
   Title := TNewStaticText.Create(Box);
   Title.Parent := Box;
@@ -579,9 +617,19 @@ begin
   Title.Left := ScaleX(8);
   Title.Top := ScaleY(6);
   LeaveOutButton := AddChoice(Box, 'Don''t install them', '(their drivers, services and sensor library are left out)', ScaleY(24), LeaveOutNote);
-  KeepOffButton := AddChoice(Box, 'Install them but keep them off', '(turn on any time in App settings)', ScaleY(42), KeepOffNote);
+  KeepOffButton := AddChoice(Box, 'Install them but keep them off', '(turn on any time in App settings)', ScaleY(42) + NoteHeight, KeepOffNote);
+  LeftOutText := TNewStaticText.Create(Box);
+  LeftOutText.Parent := Box;
+  LeftOutText.AutoSize := False;
+  LeftOutText.WordWrap := True;
+  LeftOutText.Font.Color := clGrayText;
+  LeftOutText.Left := ScaleX(28);
+  LeftOutText.Top := ScaleY(42);
+  LeftOutText.Width := Box.Width - ScaleX(28) - ScaleX(12);
+  LeftOutText.Height := NoteHeight - ScaleY(2);
   LeaveOutButton.Checked := RegQueryDWordValue(HKLM64, ReceiptKey, LeaveOutValue, Kept) and (Kept = 1);
   KeepOffButton.Checked := not LeaveOutButton.Checked;
+  ShowLeftOut();
   OldClickCheck := WizardForm.ComponentsList.OnClickCheck;
   WizardForm.ComponentsList.OnClickCheck := @ListClicked;
   OldTypeChange := WizardForm.TypesCombo.OnChange;
