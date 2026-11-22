@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Changed: App settings > Start and close, "Free memory after closing" now defaults to 30 seconds, and has a new "Always" choice that frees the closed window's memory right away.
+
 - Taskbar gadget: a double-click registers even if the mouse moves a little between the clicks.
 
 ## 0.3.0 (22 Nov 2026)

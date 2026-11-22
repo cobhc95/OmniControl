@@ -24,10 +24,10 @@ public static partial class Timing
 
     /// Once the main window has been hidden this long (the default of "Free memory after closing", <see cref="UiReleases"/>), it (with its page views) and the Actions and hotkeys window are let go (made again at
     /// their next showing, a little slower; the tray panel never is), then <see cref="UiReleaseCompactAfter"/> later one background collection gives their memory back.
-    public static readonly TimeSpan UiReleaseAfterHidden = TimeSpan.FromMinutes(1);
+    public static readonly TimeSpan UiReleaseAfterHidden = TimeSpan.FromSeconds(30);
 
     /// The other choices of "Free memory after closing".
-    public static readonly TimeSpan UiRelease30Seconds = TimeSpan.FromSeconds(30), UiRelease2Minutes = TimeSpan.FromMinutes(2), UiRelease5Minutes = TimeSpan.FromMinutes(5);
+    public static readonly TimeSpan UiReleaseAlways = TimeSpan.FromSeconds(1), UiRelease1Minute = TimeSpan.FromMinutes(1), UiRelease2Minutes = TimeSpan.FromMinutes(2), UiRelease5Minutes = TimeSpan.FromMinutes(5);
 
     /// <inheritdoc cref="UiReleaseAfterHidden"/> The wait lets the closed windows' last frames and handles go first.
     public static readonly TimeSpan UiReleaseCompactAfter = TimeSpan.FromSeconds(2);
