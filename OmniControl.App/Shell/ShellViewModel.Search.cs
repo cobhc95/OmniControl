@@ -50,7 +50,8 @@ public sealed partial class ShellViewModel
         SelectedMainPage = target is not null && Pages.Contains(target) ? target : null;
         SelectedFooterPage = target is not null && FooterPages.Contains(target) ? target : null;
         _syncing = false;
-        if (target is not null) Show(target);
+        // Before the window first shows (a tray start) no page is made: the first showing opens the selected one.
+        if (target is not null && (_windowShown || _openSlot is not null)) Show(target);
 
         IsSearching = q.Length > 0;
         if (!IsSearching)

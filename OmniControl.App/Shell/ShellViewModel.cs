@@ -314,6 +314,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _hiddenSettle.IsEnabled = !shown;
         FollowRestoreCheck(shown);
         if (shown) _apps.Refresh();
+        if (shown && _openSlot is null && (SelectedMainPage ?? SelectedFooterPage) is { } first) Show(first);
         _wired?.OnOnScreenChanged(shown); // a page not wired yet comes on screen when it is
         foreach (var slot in _allPages) slot.IfMade?.OnWindowShownChanged(shown);
     }
