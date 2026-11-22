@@ -7,6 +7,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 - README: new screenshots of the Resources Readings tab and the Network traffic control page, drawn with made-up data (the screenshot tool can now draw both pages).
 - Faster: typing in "Search settings..." no longer switches the page behind the results on every letter, only at the typing pause.
+- New: App settings > Appearance "Use GPU drawing" (off by default): windows are drawn by the graphics card from the next start, for smoother scrolling and animations at about 40–80 MB more memory.
 
 ## 0.2.9 (22 Nov 2026)
 

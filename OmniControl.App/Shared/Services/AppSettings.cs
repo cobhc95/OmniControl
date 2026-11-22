@@ -22,6 +22,9 @@ public sealed class AppSettings
     /// Name of the background colour choice (see <see cref="SurfaceService.Names"/>); Windows' own tones by default.
     public string Background { get; set; } = SurfaceService.FollowName;
 
+    /// Windows drawn by the graphics card from the next start (read by Program before Avalonia starts); off: Skia in software, no GPU driver loaded.
+    public bool GpuDrawing { get; set; }
+
     /// Start with the window hidden in the tray.
     public bool StartMinimised { get; set; }
 
