@@ -136,6 +136,32 @@ public sealed class RestoreRecoveryTests : IDisposable
         }
     }
 
+    [Fact]
+    public void Recovery_checks_the_whole_set_before_changing_any_store()
+    {
+        var restored = Snapshot(Restored(Staged("whole", RestoreMode.Replace)));
+        for (var at = 0; ; at++)
+        {
+            var here = Staged($"checked-{at}", RestoreMode.Replace);
+            var before = Snapshot(here);
+            var fault = new Fault(at, () => new Crash());
+            try { PendingRestore.ApplyPending(here, fault.Step); }
+            catch (Crash) { }
+            Assert.True(fault.Hit, "no step left the stores half changed");
+            var stopped = Snapshot(here);
+            if (stopped.SequenceEqual(before) || stopped.SequenceEqual(restored)) continue;
+
+            // The last new file and a copy from before are damaged: neither set may be put back even in part.
+            File.AppendAllText(Directory.EnumerateFiles(Path.Combine(here, "pending-restore", "next")).Order().Last(), " ");
+            File.AppendAllText(Directory.EnumerateFiles(Path.Combine(here, "pending-restore", "before")).Order().Last(), " ");
+            var writes = 0;
+            Assert.Contains("could not be rolled back", PendingRestore.ApplyPending(here, () => writes++));
+            Assert.Equal(1, writes); // only the journal's removal
+            Assert.Equal(stopped, Snapshot(here));
+            return;
+        }
+    }
+
     /// A data folder with stores of every kind and a backup staged over it: two stores the backup also has, two it lacks, an undo copy and a
     /// safety journal (never touched), and the import's automatic backup (a wipe removes it).
     private string Staged(string name, RestoreMode mode)

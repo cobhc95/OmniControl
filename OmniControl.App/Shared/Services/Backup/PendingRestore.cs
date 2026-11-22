@@ -173,9 +173,9 @@ public static class PendingRestore
             if (commit.Any(c => !IsPlainName(c.File))) return Drop($"{what} named a file outside the data folder; it was dropped");
             try
             {
-                if (Copies(commit, NextFolder, c => c.Next) is { } next)
+                if (Verified(commit, NextFolder, c => c.Next))
                 {
-                    Put(next);
+                    PutKept(commit, NextFolder, c => c.Next);
                     return Drop($"finished {what}, which was interrupted");
                 }
                 return RollBack(commit, $"{what} was interrupted and its new files are damaged");
@@ -190,9 +190,9 @@ public static class PendingRestore
         {
             try
             {
-                if (Copies(commit, BeforeFolder, c => c.Before) is not { } before)
+                if (!Verified(commit, BeforeFolder, c => c.Before))
                     return Drop($"{why}; the copies from before it are damaged, so it could not be rolled back");
-                Put(before);
+                PutKept(commit, BeforeFolder, c => c.Before);
                 return Drop($"{why}; it was rolled back, nothing was changed");
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -201,24 +201,28 @@ public static class PendingRestore
             }
         }
 
-        /// Each change's bytes from a staging subfolder (null for a file to delete), or null when one is missing or not what was kept.
-        private List<(string File, byte[]? Bytes)>? Copies(List<Change> commit, string sub, Func<Change, string?> hashOf)
+        /// Every kept file of a staging subfolder is there and what was kept, checked by streaming its hash before any store changes.
+        private bool Verified(List<Change> commit, string sub, Func<Change, string?> hashOf)
         {
-            var copies = new List<(string, byte[]?)>();
             foreach (var change in commit)
             {
-                if (hashOf(change) is not { } hash)
-                {
-                    copies.Add((change.File, null));
-                    continue;
-                }
+                if (hashOf(change) is not { } hash) continue; // a file to delete
                 var path = Path.Combine(_staging, sub, change.File);
-                if (!File.Exists(path)) return null;
-                var bytes = File.ReadAllBytes(path);
-                if (Hash(bytes) != hash) return null;
-                copies.Add((change.File, bytes));
+                if (!File.Exists(path)) return false;
+                using var stream = File.OpenRead(path);
+                if (Convert.ToHexString(SHA256.HashData(stream)) != hash) return false;
             }
-            return copies;
+            return true;
+        }
+
+        /// Puts the verified set in place one file at a time from the disk; a file changed since it was verified stops it as a failed write.
+        private void PutKept(List<Change> commit, string sub, Func<Change, string?> hashOf) =>
+            Put(commit.Select(change => (change.File, hashOf(change) is { } hash ? Read(Path.Combine(_staging, sub, change.File), hash) : null)));
+
+        private static byte[] Read(string path, string hash)
+        {
+            var bytes = File.ReadAllBytes(path);
+            return Hash(bytes) == hash ? bytes : throw new IOException($"{Path.GetFileName(path)} changed after it was checked");
         }
 
         private void Put(IEnumerable<(string File, byte[]? Bytes)> files)
