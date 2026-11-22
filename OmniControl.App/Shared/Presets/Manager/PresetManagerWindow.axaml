@@ -7,7 +7,7 @@
         xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
         x:Class="OmniControl.App.Shared.Presets.Manager.PresetManagerWindow"
         x:DataType="vm:PresetManagerViewModel"
-        Title="Presets" Width="900" Height="600" MinWidth="720" MinHeight="400"
+        Title="{x:Static vm:PresetManagerService.Title}" Width="900" Height="600" MinWidth="720" MinHeight="400"
         WindowStartupLocation="CenterOwner">
     <!-- The one preset manager (docs/mockups/unified-preset-manager.html). Left: the app's sidebar sections with their icons (a section
          without presets dimmed, "none"). Right: the search, the section's name, one card per preset group (Border.groupPanel; the card

@@ -20,13 +20,9 @@ public sealed partial class AutomationPageViewModel
         {
             Tip = "While the conditions hold, the chosen actions are not allowed, whether a hotkey, a mouse button, a gesture or a rule starts them. Pausing all rules lifts every block.",
         },
-        PresetRulesCard = new("Preset rules", AutomationWords + " preset switch when it ends previous comes back open presets window", PresetsTab)
+        FeatureRulesCard = new("Rules made on other pages", AutomationWords + " other pages feature made on open warm light network limits device check emulator preset presets switch when it ends previous comes back presets window", FeatureTab)
         {
-            Tip = "Rules made from the Presets window: when their triggers hold, a preset is applied, and when they stop, the preset in use before comes back. Edit them here or there; it is the same rule.",
-        },
-        FeatureRulesCard = new("Rules made on other pages", AutomationWords + " other pages feature made on open warm light network limits device check emulator", FeatureTab)
-        {
-            Tip = "Rules a page made for what it does by itself, such as warm light. They are ordinary rules: add triggers, conditions or actions here, and the page shows that it has more. " + FeatureRulesKept,
+            Tip = "Rules a page made for what it does by itself, such as warm light, and rules made in the Presets window (a preset applied when its triggers hold, the one before back when they stop). They are ordinary rules: add triggers, conditions or actions here, and the page or window shows that it has more. " + FeatureRulesKept,
         },
         CustomsCard = new("Custom actions", AutomationWords + " script command program url new", CustomTab)
         {
@@ -43,7 +39,7 @@ public sealed partial class AutomationPageViewModel
         LanguagesCard = new("Script languages", AutomationWords + " script language", ScriptsTab) { Choices = Enum.GetValues<ScriptLanguage>().Select(ScriptLanguages.NameOf).ToList() };
 
     private static SearchCard RuleCard(AutomationRule rule, string line, AutomationFeatureRules? features) =>
-        new(rule.Name, $"{AutomationWords} {line}", AutomationPresets.PresetOf(rule) is not null ? PresetsTab : features?.PageOf(rule) is not null ? FeatureTab : RulesTab);
+        new(rule.Name, $"{AutomationWords} {line}", AutomationPresets.PresetOf(rule) is not null || features?.PageOf(rule) is not null ? FeatureTab : RulesTab);
 
     private static SearchCard CustomCard(CustomAction custom) =>
         new(custom.Name, $"custom action script command program url {custom.Target}", CustomTab) { Choices = CustomKinds.Names, Note = custom.Target };
@@ -56,7 +52,7 @@ public sealed partial class AutomationPageViewModel
     /// A rule's sentence is its row's own; without the page a row is made and let go for it, so the words never differ from the row's.
     private static SearchBuilder Cards(AutomationService? service, AutomationFeatureRules? features, AutomationPageViewModel? page)
     {
-        var builder = new SearchBuilder().Add(PauseCard).Add(AutomationsCard).Add(BlocksCard).Add(PresetRulesCard).Add(FeatureRulesCard).Add(CustomsCard).Add(ScriptsCard)
+        var builder = new SearchBuilder().Add(PauseCard).Add(AutomationsCard).Add(BlocksCard).Add(FeatureRulesCard).Add(CustomsCard).Add(ScriptsCard)
             .Add(TriggersCard).Add(ConditionsCard).Add(CustomKindsCard).Add(LanguagesCard);
         if (service is null) return builder;
         foreach (var rule in service.Settings.Rules)

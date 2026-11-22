@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Presets now has its own entry in the sidebar's bottom group, above Actions and hotkeys; it opens the Presets window (also an action, "Open Presets"). Automation's Presets tab is gone: rules made in the Presets window show on the From other pages tab as "Presets · <page>" with "Made in the Presets window · Open".
 - Copying a screenshot (area, window, screen, the editor's Copy) now shows the same small note as saving one, "Screenshot copied", when the capture's "show a note" setting is on.
 - The main window's search box showed garbled characters instead of the ellipsis after "Search settings"; fixed, and a test now fails if any source holds UTF-8 read as ANSI.
 - Pause all rules now stops only your own and preset rules and blocks: rules made on other pages (warm light, per-network traffic limits, smart device checks, the emulator's idle close) keep running, and a block still applies to their actions. The pause button's tip and the From other pages tab say so.

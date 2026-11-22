@@ -7,8 +7,8 @@ using OmniControl.App.Features.Input.Rules;
 
 namespace OmniControl.App.Features.Automation.Pages;
 
-/// One automation rule on the Rules tab (a preset's rule on the Presets tab, with its preset kind and a link to the Presets window; a feature's
-/// rule on the From other pages tab, with its page and a link to it): its switch, its name, the rule as a sentence of blocks ("When [at 07:30 on weekdays] [and on
+/// One automation rule on the Rules tab (a feature's or a preset's rule on the From other pages tab, with its page or "Presets · kind" and a link
+/// to the page or the Presets window): its switch, its name, the rule as a sentence of blocks ("When [at 07:30 on weekdays] [and on
 /// battery] do [Lock] [+ action]", or "While [on battery] don't allow [Shut down]"), and its facts as tags. Every block opens the shared
 /// picker over the master list of its kind; every change is saved and applied at once.
 public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDisposable
@@ -43,7 +43,7 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
     /// The sentence as plain text, for search.
     public string Line => string.Join(" ", Sentence.Select(s => s switch { SentenceWord w => w.Text, SentenceBlock b => b.Text, SentenceHotkey h => $"I press {h.Gesture}", SentenceLink l => l.Text, _ => string.Empty }));
 
-    /// Where the rule was made, after its name: the page's title on the From other pages tab, the preset kind ("Volume preset") on a preset
+    /// Where the rule was made, after its name: the page's title on a feature's rule, "Presets · Audio and Volume" on a preset
     /// rule; null on any other rule or while the preset's group is not registered.
     [ObservableProperty] private TagItem? _originTag;
 
@@ -55,7 +55,7 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
 
     /// <param name="ask">Shows a short message with a confirm button; true when confirmed.</param>
     /// <param name="presets">The preset rules' kind and the Presets window (null: none, as in search).</param>
-    /// <param name="features">Set on the From other pages tab: the page the rule was made on and its opener.</param>
+    /// <param name="features">Set on the From other pages tab: the page a feature's rule was made on and its opener.</param>
     public AutomationItem(AutomationRule rule, AutomationService service, Func<DialogMessage, Task<bool>> ask, AutomationPresets? presets, AutomationFeatureRules? features)
     {
         Rule = rule;
@@ -118,13 +118,13 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
         }
         var preset = AutomationPresets.PresetOf(Rule) is not null;
         OriginTag = preset && _presets?.KindOf(Rule) is { Length: > 0 } kind ? new TagItem(kind) : null;
-        (OriginWords, OriginLink) = preset ? ("When it ends, the previous preset comes back · ", "Open in Presets window") : (string.Empty, string.Empty);
+        (OriginWords, OriginLink) = preset ? ("Made in the Presets window · ", "Open") : (string.Empty, string.Empty);
     }
 
     [RelayCommand]
     private void OpenOrigin()
     {
-        if (_features is not null) _features.Open(Rule);
+        if (_features?.PageOf(Rule) is not null) _features.Open(Rule);
         else _presets?.Open(Rule);
     }
 

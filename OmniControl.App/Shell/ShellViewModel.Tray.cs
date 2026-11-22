@@ -3,6 +3,7 @@ using OmniControl.App.Features.Hotkeys;
 using OmniControl.App.Features.Settings.Pages;
 using OmniControl.App.Features.Hotkeys.Picker;
 using OmniControl.App.Features.Tray;
+using OmniControl.App.Shared.Presets.Manager;
 
 namespace OmniControl.App.Shell;
 
@@ -47,6 +48,8 @@ public sealed partial class ShellViewModel
             _ => ShowPage(home)) { NeverBlock = true });
         _hotkeys.Register(new HotkeyAction("app.actions.open", $"Open {ActionsWindowService.Title}", home, "actions hotkeys shortcuts keys list open window",
             _ => _actionsWindow.Open()) { NeverBlock = true });
+        _hotkeys.Register(new HotkeyAction("app.presets.open", $"Open {PresetManagerService.Title}", home, "presets manager preset groups layers open window",
+            _ => _presetManager.Open(null, null)) { NeverBlock = true });
         // No default key: hotkeys are system-wide, so a bound Ctrl+F would take it from every other program. The window has its own.
         _hotkeys.Register(new HotkeyAction(SearchActionId, "Search settings", home, "search find focus box",
             _ =>

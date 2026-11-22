@@ -68,8 +68,8 @@ public sealed class AutomationPresets : IPresetTriggers, IDisposable
                 AutomationFeatureRules.ExtrasOf(rule, rule.AllTriggers.Count()))
             : PresetRule.None;
 
-    /// The preset kind a preset rule shows ("Volume preset"): its group's page title; empty while its group is not registered.
-    public string KindOf(AutomationRule rule) => PresetOf(rule) is { } preset && _slot.Presets.GroupOf(preset) is { } group ? $"{group.Section} preset" : string.Empty;
+    /// The tag a preset rule shows ("Presets · Audio and Volume"): its group's page title; empty while its group is not registered.
+    public string KindOf(AutomationRule rule) => PresetOf(rule) is { } preset && _slot.Presets.GroupOf(preset) is { } group ? $"Presets · {group.Section}" : string.Empty;
 
     /// Opens the Presets window on the rule's preset group, or (null) where it opens by itself.
     public void Open(AutomationRule? rule)

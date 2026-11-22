@@ -77,7 +77,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     /// Pages pinned to the bottom of the sidebar (app-level, not features).
     public ObservableCollection<PageSlot> FooterPages { get; } = new();
 
-    /// The entries at the bottom of the sidebar under a divider that open a window, not a page (Actions and hotkeys).
+    /// The entries at the bottom of the sidebar under a divider that open a window, not a page (Presets, Actions and hotkeys).
     public IReadOnlyList<NavLauncher> PinnedEntries { get; }
     private readonly IReadOnlyList<PageSlot> _allFooter;
 
@@ -131,7 +131,11 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _presetManager = new PresetManagerService(_presetGroups, _presetShortcuts, _presetTriggers, Report);
         _hotkeysSwitch = new HotkeysSwitch(_hotkeys, _states, AppSettingsPageViewModel.Name, Report, _settings.Slot(s => s.HotkeysOn, (s, on) => s.HotkeysOn = on));
         _actionsWindow = new ActionsWindowService(_hotkeys, _presetGroups, _presetManager.Open, _dialogs.AskAsync, OpenPage, _iconPicker.ChooseForActionAsync, _hotkeysSwitch, Report);
-        PinnedEntries = new[] { new NavLauncher(ActionsWindowService.Title, ActionsWindowService.Icon, () => _actionsWindow.Open()) };
+        PinnedEntries = new[]
+        {
+            new NavLauncher(PresetManagerService.Title, PresetManagerService.Icon, () => _presetManager.Open(null, null)),
+            new NavLauncher(ActionsWindowService.Title, ActionsWindowService.Icon, () => _actionsWindow.Open()),
+        };
         _about = new AboutWindowService(Report);
         _power = new PowerJournal(_hardware);
         _devices = new DevicesModule(() => _otherPcs?.Paired, () => OpenPage(OtherPcsService.Category));

@@ -8,8 +8,8 @@
              x:DataType="vm:AutomationItem">
     <!-- One rule: its switch, its name and a delete cross on the first line; the sentence of blocks (Styles/Blocks.axaml) on the second;
          its facts as tags (Border.tag) on the third, with the one fix link a tag may need under them. Every block opens the shared picker; a hotkey block opens its capture pop-down (the Popup below). -->
-    <!-- A preset's rule also shows its preset kind after the name and, under the sentence, what happens when it ends with the link to the Presets window;
-         a feature's rule (From other pages) its page's title and "Made on the <page> page · Open". -->
+    <!-- A preset's rule (From other pages) also shows "Presets · kind" after the name and, under the sentence, "Made in the Presets window · Open";
+         a feature's rule its page's title and "Made on the <page> page · Open". -->
     <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="{StaticResource GapLarge}" Margin="0,2,0,4">
         <ToggleSwitch Classes="plain" IsChecked="{Binding IsOn}" VerticalAlignment="Center" />
         <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto" ColumnSpacing="{StaticResource Gap}" HorizontalAlignment="Left">
