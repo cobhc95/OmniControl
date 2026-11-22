@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:OmniControl.App.Features.OtherPcs.Pages"
+             xmlns:op="using:OmniControl.App.Features.OtherPcs"
              xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
              xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
              xmlns:svc="using:OmniControl.App.Shared.Services"
@@ -20,6 +21,11 @@
                 </StackPanel>
             </pages:PageTitleLine.Right>
         </pages:PageTitleLine>
+
+        <Grid IsVisible="{Binding OnPublicNetwork}" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}">
+            <TextBlock Classes="statusline" TextWrapping="Wrap" Text="{x:Static op:OtherPcsService.PublicLine}" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Classes="link small" Command="{Binding OpenNetworkSettingsCommand}" VerticalAlignment="Center"><TextBlock Text="Network settings" /></Button>
+        </Grid>
 
         <StackPanel IsVisible="{Binding HasTabs}" Spacing="0">
             <c:BrowserTabStrip x:Name="PcTabs" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected, Mode=TwoWay}"

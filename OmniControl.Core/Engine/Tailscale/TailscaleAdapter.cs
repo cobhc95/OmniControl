@@ -9,6 +9,10 @@ public static class TailscaleAdapter
 {
     private const string ServiceName = "Tailscale", AdapterName = "Tailscale", AdapterDescription = "Tailscale Tunnel";
 
+    /// True when <paramref name="adapter"/> is Tailscale's, by its description or its name.
+    public static bool IsTailscale(NetworkInterface adapter) =>
+        adapter.Description.Contains(AdapterDescription, StringComparison.OrdinalIgnoreCase) || string.Equals(adapter.Name, AdapterName, StringComparison.OrdinalIgnoreCase);
+
     /// True when the Tailscale adapter has <paramref name="ownAddress"/> (Tailscale's reported own IPv4) as an address. The adapter is found by its description first, then by its name. Call off the UI thread.
     public static bool HasAddress(string ownAddress)
     {
@@ -16,7 +20,7 @@ public static class TailscaleAdapter
         try
         {
             return NetworkInterface.GetAllNetworkInterfaces()
-                .Where(a => a.Description.Contains(AdapterDescription, StringComparison.OrdinalIgnoreCase) || string.Equals(a.Name, AdapterName, StringComparison.OrdinalIgnoreCase))
+                .Where(IsTailscale)
                 .SelectMany(a => a.GetIPProperties().UnicastAddresses)
                 .Any(u => u.Address.AddressFamily == AddressFamily.InterNetwork && u.Address.Equals(own));
         }

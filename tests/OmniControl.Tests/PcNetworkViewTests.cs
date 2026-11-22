@@ -1,0 +1,51 @@
+using System.Net;
+using OmniControl.App.Features.OtherPcs;
+using OmniControl.Core.Engine;
+
+namespace OmniControl.Tests;
+
+/// Other PCs find and reach this one only on Private (or domain) networks and over Tailscale.
+public class PcNetworkViewTests
+{
+    private static PcAdapter Lan(int index, string address, string broadcast, NetworkCategory? category) =>
+        new(index, new[] { IPAddress.Parse(address) }, new[] { IPAddress.Parse(broadcast) }, category, Tailscale: false);
+
+    private static readonly PcAdapter Home = Lan(1, "192.168.1.10", "192.168.1.255", NetworkCategory.Private);
+    private static readonly PcAdapter Cafe = Lan(2, "10.0.0.5", "10.0.0.255", NetworkCategory.Public);
+    private static readonly PcAdapter Tailnet = new(3, new[] { IPAddress.Parse("100.101.102.103") }, Array.Empty<IPAddress>(), NetworkCategory.Public, Tailscale: true);
+
+    [Fact]
+    public void PrivateOnly_BroadcastsEverywhere()
+    {
+        var view = new PcNetworkView(new[] { Home });
+        Assert.Equal(new[] { IPAddress.Broadcast, IPAddress.Parse("192.168.1.255") }, view.Broadcasts());
+        Assert.False(view.OnPublic);
+    }
+
+    [Fact]
+    public void PublicNetwork_NoBeaconsThere_AndNoLimitedBroadcast()
+    {
+        var view = new PcNetworkView(new[] { Home, Cafe, Tailnet });
+        Assert.Equal(new[] { IPAddress.Parse("192.168.1.255") }, view.Broadcasts());
+        Assert.True(view.OnPublic);
+        Assert.True(view.HearsFrom(1, IPAddress.Parse("192.168.1.20")));
+        Assert.False(view.HearsFrom(2, IPAddress.Parse("10.0.0.7")));
+    }
+
+    [Fact]
+    public void Connections_AcceptedOnPrivateTailscaleOrLoopbackOnly()
+    {
+        var view = new PcNetworkView(new[] { Home, Cafe, Tailnet });
+        Assert.True(view.Accepts(IPAddress.Parse("192.168.1.10"), IPAddress.Parse("192.168.1.20")));
+        Assert.False(view.Accepts(IPAddress.Parse("10.0.0.5"), IPAddress.Parse("10.0.0.7")));
+        Assert.True(view.Accepts(IPAddress.Parse("100.101.102.103"), IPAddress.Parse("100.64.0.9")));
+        Assert.True(view.Accepts(IPAddress.Loopback, IPAddress.Loopback));
+        Assert.False(view.Accepts(IPAddress.Parse("172.16.0.1"), IPAddress.Parse("172.16.0.2"))); // an adapter Windows did not list
+    }
+
+    [Fact]
+    public void UnlistedCategory_IsNotTrusted() => Assert.False(Lan(4, "10.1.1.1", "10.1.1.255", null).Allowed);
+
+    [Fact]
+    public void TailscaleOnly_IsNotCalledPublic() => Assert.False(new PcNetworkView(new[] { Tailnet }).OnPublic);
+}

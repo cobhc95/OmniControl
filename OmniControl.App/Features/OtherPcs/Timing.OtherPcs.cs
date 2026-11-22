@@ -78,6 +78,9 @@ public static partial class Timing
     /// How long the network addresses the beacons go to are kept before they are listed again.
     public static readonly TimeSpan PcBroadcastRefresh = TimeSpan.FromMinutes(1);
 
+    /// Beacons heard within this time reach the UI thread together (the latest of each PC).
+    public static readonly TimeSpan PcBeaconHandOver = TimeSpan.FromMilliseconds(250);
+
     /// How often a Tailscale-paired PC that is offline gets the Tailscale checks again, how long to wait after a fix (start, sign in) before reading Tailscale again, and how long to wait before trying to open a Tailscale link again after one failed.
     public static readonly TimeSpan PcTailscaleRecheck = TimeSpan.FromSeconds(30), PcTailscaleAfterFix = TimeSpan.FromSeconds(3), PcTailscaleSwitchBackoff = TimeSpan.FromMinutes(2);
 
