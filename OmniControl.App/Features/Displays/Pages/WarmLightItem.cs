@@ -4,7 +4,7 @@ namespace OmniControl.App.Features.Displays.Pages;
 /// doing ("Active until 07:00", "Starts at 21:00", "Off") with its on/off button, the two times and the temperature it warms to.
 internal sealed class WarmLightItem : IDisposable
 {
-    private const string TurnOn = "Turn on", TurnOff = "Turn off";
+
 
     private readonly WarmLightModel _model;
     private readonly ButtonItem _state;
@@ -16,17 +16,16 @@ internal sealed class WarmLightItem : IDisposable
     public WarmLightItem(WarmLightModel model, Action<string> report)
     {
         _model = model;
-        var names = WarmLightModel.TimeNames;
-        _state = new ButtonItem(WarmLightModel.Label, ButtonText, model.StateText, model.Toggle);
-        _start = new ChoiceItem(WarmLightModel.StartLabel, names, model.StartName, model.SetStart) { Half = true };
-        _end = new ChoiceItem(WarmLightModel.EndLabel, names, model.EndName, model.SetEnd) { Half = true };
-        _target = new SliderItem(WarmLightModel.TargetLabel, model.Kelvin, model.SetKelvin, report, SoftwareColor.TemperatureMin, SoftwareColor.TemperatureNeutral,
+        _state = new ButtonItem(DisplayCards.WarmLight, ButtonText, model.Toggle) { Description = model.StateText };
+        _start = new ChoiceItem(DisplayCards.WarmFrom, model.StartName, model.SetStart) { Half = true };
+        _end = new ChoiceItem(DisplayCards.WarmUntil, model.EndName, model.SetEnd) { Half = true };
+        _target = new SliderItem(DisplayCards.WarmTemperature, model.Kelvin, model.SetKelvin, report, SoftwareColor.TemperatureMin, SoftwareColor.TemperatureNeutral,
             " K", new WarmLightSettings().Kelvin) { Half = true };
         Cards = new IEditorItem[] { _state, _start, _end, _target };
         model.Changed += Show;
     }
 
-    private string ButtonText => _model.IsOn ? TurnOff : TurnOn;
+    private string ButtonText => _model.IsOn ? WarmLightModel.TurnOff : WarmLightModel.TurnOn;
 
     private void Show()
     {

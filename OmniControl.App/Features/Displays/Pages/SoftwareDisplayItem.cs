@@ -16,7 +16,7 @@ internal sealed class SoftwareDisplayItem : IDisposable
         foreach (var level in DisplayControls.Software)
         {
             var spec = level.Spec;
-            _sliders[level] = new SliderItem(spec.Label, model[level], v => model.Set(level, v), report, spec.Min, spec.Max, defaultValue: spec.Default) { Half = true };
+            _sliders[level] = new SliderItem(DisplayCards.Level(spec, DisplayControls.SoftwareGroup), model[level], v => model.Set(level, v), report, spec.Min, spec.Max, defaultValue: spec.Default) { Half = true };
         }
         Cards = DisplayControls.Software.Select(level => (IEditorItem)_sliders[level]).ToList();
         Group = new ItemGroup($"Displays/Software/{model.Id}", Name, Cards.Cast<object>().ToList())

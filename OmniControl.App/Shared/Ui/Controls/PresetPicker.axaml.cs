@@ -63,7 +63,7 @@ public partial class PresetPicker : UserControl
         if (_choice is not { } choice) return;
         _flyout = flyout;
         Menu.ItemsSource = PresetMenu.Rows(choice.Options, choice.Selected, name => { if (name != choice.Selected) choice.Selected = name; },
-            new MenuRowItem("Manage presets…", string.Empty, false, string.Empty, new RelayCommand(() => choice.Manage?.Invoke()), IsMuted: true));
+            new MenuRowItem(ProviderChoice.ManageText, string.Empty, false, string.Empty, new RelayCommand(() => choice.Manage?.Invoke()), IsMuted: true));
     }
 
     private void OnClosed(object? sender, EventArgs e) => _flyout = null;

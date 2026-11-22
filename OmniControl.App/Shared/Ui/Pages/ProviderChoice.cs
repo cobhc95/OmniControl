@@ -10,7 +10,7 @@ namespace OmniControl.App.Shared.Ui.Pages;
 /// <paramref name="manage"/>, which the chip menu runs through <see cref="ChoiceItem.Manage"/>.
 internal sealed class ProviderChoice : IDisposable
 {
-    public const string CustomText = "Custom", NoneText = "No presets";
+    public const string CustomText = "Custom", NoneText = "No presets", ManageText = "Manage presets\u2026";
 
     private readonly IPresetProvider _provider;
     private readonly bool _withCustom;

@@ -5,10 +5,13 @@ namespace OmniControl.App.Features.Displays;
 /// target and never cools. Used on the UI thread.
 internal sealed class WarmLightModel
 {
-    public const string Label = "Warm light at night", StartLabel = "Warm from", EndLabel = "Warm until", TargetLabel = "Warm light temperature";
+    public const string TurnOn = "Turn on", TurnOff = "Turn off", Label = "Warm light at night", StartLabel = "Warm from", EndLabel = "Warm until", TargetLabel = "Warm light temperature";
 
     /// The names of its cards, in card order.
     public static readonly IReadOnlyList<string> Labels = new[] { Label, StartLabel, EndLabel, TargetLabel };
+
+    /// The words of the on/off button of the first card.
+    public static readonly IReadOnlyList<string> StateButtons = new[] { TurnOn, TurnOff };
 
     private readonly WarmLightScheduler _scheduler;
     private readonly DisplaySettingsStore _store;

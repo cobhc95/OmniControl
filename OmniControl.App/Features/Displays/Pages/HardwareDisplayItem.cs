@@ -35,7 +35,7 @@ internal sealed class HardwareDisplayItem : IDisposable
         foreach (var level in DisplayControls.Hardware)
         {
             var spec = level.Spec;
-            var slider = new SliderItem(spec.Label, model.Level(level).Value, v => Set(level, v), report, spec.Min, spec.Max, defaultValue: spec.Default) { Half = true };
+            var slider = new SliderItem(DisplayCards.Level(spec, DisplayControls.HardwareGroup), model.Level(level).Value, v => Set(level, v), report, spec.Min, spec.Max, defaultValue: spec.Default) { Half = true };
             _sliders[level] = slider;
             cards.Add(slider);
         }
