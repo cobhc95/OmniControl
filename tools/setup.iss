@@ -636,6 +636,8 @@ begin
   if not LeaveOutButton.Checked and not KeepOffButton.Checked then KeepOffButton.Checked := True;
   ChoiceBox.Width := List.Width;
   LeftOutText.Width := ChoiceBox.ClientWidth - LeftOutText.Left - ScaleX(8);
+  // AutoSize keeps the height of the first wrap (made before the box had its width); measure again at the real width.
+  LeftOutText.AdjustHeight();
   Y := ScaleY(45);
   LeftOutText.Top := Y;
   if LeaveOutButton.Checked then Y := Y + LeftOutText.Height + ScaleY(4);
