@@ -1,4 +1,4 @@
-; Inno Setup script for OmniControl. Version, source and output folder come from tools\release.ps1 (/D defines); nothing is typed here twice.
+﻿; Inno Setup script for OmniControl. Version, source and output folder come from tools\release.ps1 (/D defines); nothing is typed here twice.
 #ifndef AppVersion
   #error Run through tools\release.ps1
 #endif
@@ -520,8 +520,8 @@ begin
       List := List + Piece;
     end;
   end;
-  if List = '' then List := 'nothing (these features have no separate pieces)';
-  LeftOutText.Caption := 'Left out: ' + List + #13#10 + 'Still installed, not running: the rest of these features is part of OmniControl itself.';
+  if List = '' then List := 'nothing';
+  LeftOutText.Caption := 'Left out: ' + List + '. Still installed, not running: the rest of these features.';
   LeftOutText.Visible := LeaveOutButton.Checked;
 end;
 
@@ -626,7 +626,7 @@ begin
   LeftOutText.Left := ScaleX(28);
   LeftOutText.Top := ScaleY(42);
   LeftOutText.Width := Box.Width - ScaleX(28) - ScaleX(12);
-  LeftOutText.Height := NoteHeight - ScaleY(2);
+  LeftOutText.Height := NoteHeight;
   LeaveOutButton.Checked := RegQueryDWordValue(HKLM64, ReceiptKey, LeaveOutValue, Kept) and (Kept = 1);
   KeepOffButton.Checked := not LeaveOutButton.Checked;
   ShowLeftOut();
