@@ -48,7 +48,7 @@ internal sealed class WarmLightModel
     public void SetEnabled(bool on)
     {
         if (_rules.Current is not { } rules) return;
-        if (_scheduler.Rule is null) rules.Ensure(WarmLightScheduler.FadeId, WarmLightScheduler.RuleName, Window(), on);
+        if (_scheduler.Rule is null) rules.Ensure(WarmLightScheduler.FadeId, WarmLightScheduler.RuleName, on, Window());
         else rules.SetOn(WarmLightScheduler.FadeId, on);
     }
 

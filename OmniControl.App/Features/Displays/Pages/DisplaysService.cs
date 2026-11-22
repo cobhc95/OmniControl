@@ -32,8 +32,7 @@ public sealed partial class DisplaysService : IDisposable
     private readonly LevelStepper _levels = new();
     private readonly ThrottledRun _rescan;
     private readonly DesktopPictureModel _desktop;
-    private readonly WarmLightModel _warm;
-    private readonly WarmLightScheduler _scheduler;
+    private readonly WarmLightService _warmLight;
     private readonly DisplaySettingsStore _store;
     private readonly PicturePresetBook _pictureBook;
     private readonly MonitorPresetBook _monitorBook;
@@ -54,7 +53,7 @@ public sealed partial class DisplaysService : IDisposable
     /// The displays' monitors (each one's own controls), the desktop's picture, the warm-light schedule and each display's software picture.
     internal IReadOnlyList<HardwareDisplayModel> HardwareDisplays => _hardware;
     internal DesktopPictureModel Desktop => _desktop;
-    internal WarmLightModel WarmLight => _warm;
+    internal WarmLightModel WarmLight => _warmLight.Model;
     internal IReadOnlyList<SoftwareDisplayModel> SoftwareDisplays => _softwareDisplays;
 
     /// The two preset groups (the page's header drop-downs read them) and what the drop-downs are called.
@@ -75,41 +74,35 @@ public sealed partial class DisplaysService : IDisposable
     /// The software picture changed (what a picture preset shows).
     internal event Action? PictureChanged;
 
-    /// <param name="suggestedKeys">Makes the "Suggested keys" switch of a set of actions (the orientation cards' rotation keys).</param>
-    /// <param name="presets">The master list of preset groups: the page registers its two.</param>
-    /// <param name="openPresets">Opens the preset manager at a section and group (the header cogwheels).</param>
-    /// <param name="states">The master list of states: each display's levels are registered there while it is attached.</param>
-    /// <param name="hardware">The master list of hardware watches: the page registers its two (the monitors, and the list of displays).</param>
+    /// <param name="context">The master lists and openers the page uses: its actions, states, two preset groups, two hardware watches (the
+    /// monitors, and the list of displays), the OSD, the rotation keys' suggested-keys switch, the preset manager, the status line and the rules.</param>
     /// <param name="title">The page's title (its actions', states' and presets' category).</param>
-    public DisplaysService(IMonitorEngine engine, IActionRegistry hotkeys, Func<string, SuggestedKeysSwitch> suggestedKeys, IOsd osd, SoftwareDisplayService software, Action<string> report,
-        IPresetGroups presets, Action<string?, string?> openPresets, IStateRegistry states, IHardwareWatches hardware, string title, FeatureRulesSlot rules)
+    public DisplaysService(IMonitorEngine engine, SoftwareDisplayService software, FeatureContext context, string title)
     {
-        (_engine, _hotkeys, _suggestedKeys, _osd, _software, _report, _openPresets, _states, Title) = (engine, hotkeys, suggestedKeys, osd, software, report, openPresets, states, title);
+        (_engine, _hotkeys, _suggestedKeys, _osd, _software, _report, _openPresets, _states, Title) =
+            (engine, context.Actions, context.SuggestedKeys, context.Osd, software, context.Report, context.OpenPresetManager, context.States, title);
+        var hardware = context.Hardware;
         _rescan = new ThrottledRun(Timing.DisplayRescanGap, RescanNow);
         _watches = hardware;
         _systemScreens = new SystemScreens(hardware);
         RegisterWatches(hardware);
         hardware.ScreensChanged += OnScreensChanged;
 
-        foreach (var spec in DisplayControls.All) osd.Declare(spec.Osd, spec.Icon);
+        foreach (var spec in DisplayControls.All) _osd.Declare(spec.Osd, spec.Icon);
 
         // Order matters: the store comes first, the models before the books that read them. The two preset groups are registered after the
         // page's own actions: registering may read their presets at once (a preset with a saved shortcut gets its action, listed after the page's own).
         _store = DisplaySettingsStore.OnDisk();
-        _scheduler = new WarmLightScheduler(software, _store, rules);
-        _desktop = new DesktopPictureModel(software, report, OnPictureChanged);
-        _warm = new WarmLightModel(_scheduler, _store, rules);
+        _desktop = new DesktopPictureModel(software, _report, OnPictureChanged);
         _pictureBook = new PicturePresetBook(_store, CapturePicture, ApplyPicture);
         PicturePresets = new BookPresets(_pictureBook);
         _monitorBook = new MonitorPresetBook(_store, PresetTargets);
         MonitorPresets = new BookPresets(_monitorBook);
         RegisterActions();
-        presets.Register(new PresetGroup(HardwarePresetsId, Title, DisplayControls.HardwareGroup, MonitorPresets));
-        presets.Register(new PresetGroup(SoftwarePresetsId, Title, DisplayControls.SoftwareGroup, PicturePresets));
-        _scheduler.Changed += ShowRefusals;
-        _scheduler.Changed += FollowWarmFadeTitle;
-        RegisterPageStates();
-        _scheduler.Start();
+        _warmLight = new WarmLightService(software, _store, context.Rules, _hotkeys, _states, title);
+        context.Presets.Register(new PresetGroup(HardwarePresetsId, Title, DisplayControls.HardwareGroup, MonitorPresets));
+        context.Presets.Register(new PresetGroup(SoftwarePresetsId, Title, DisplayControls.SoftwareGroup, PicturePresets));
+        _warmLight.Model.Changed += ShowRefusals;
         Guard.OffUi("Displays: reading the displays", RefreshNow);
     }
 
@@ -291,19 +284,17 @@ public sealed partial class DisplaysService : IDisposable
     {
         foreach (var display in _softwareDisplays) display.Reset();
         _desktop.Reset();
-        _warm.Reset();
+        _warmLight.Model.Reset();
         _software.ResetAll();
         OnPictureChanged();
     }
 
     public void Dispose()
     {
-        _scheduler.Changed -= ShowRefusals;
-        _scheduler.Changed -= FollowWarmFadeTitle;
+        _warmLight.Model.Changed -= ShowRefusals;
         _watches.ScreensChanged -= OnScreensChanged;
-        ForgetPageStates();
         _monitorBook.Dispose();
-        _scheduler.Dispose();
+        _warmLight.Dispose();
         _rescan.Dispose();
         foreach (var display in _hardware) Forget(display);
     }

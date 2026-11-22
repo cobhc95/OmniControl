@@ -53,28 +53,35 @@ public sealed class AutomationFeatureRules : IFeatureRules, IDisposable
         _rules.Settings.Rules.FirstOrDefault(r => r.Kind == AutomationKind.Do && r.Actions.Any(a => AutomationSteps.ActionIdOf(a) == actionId));
 
     public FeatureRuleView? Find(string actionId) =>
-        RuleOf(actionId) is not { } rule ? null : new FeatureRuleView(rule.On, WindowOf(rule), ExtrasOf(rule));
+        RuleOf(actionId) is not { } rule ? null : new FeatureRuleView(rule.On, rule.AllTriggers.Select(Feature).OfType<FeatureTrigger>().ToList(), ExtrasOf(rule));
 
-    private static FeatureTrigger.Between? WindowOf(AutomationRule rule) =>
-        rule.AllTriggers.Select(MouseAction.Parse).FirstOrDefault(t => t.Id == AutomationTriggers.Between) is { } window
-        && AutomationConditions.MinutesOf(window.Options) is var (from, until) ? new FeatureTrigger.Between(from, until) : null;
-
-    /// What was added in Automation beyond the feature's one trigger and one action ("1 extra condition", "2 extra triggers, 1 extra action").
-    private static string ExtrasOf(AutomationRule rule)
+    /// What was added in Automation beyond the feature's triggers (one of each kind it knows) and its one action ("1 extra condition",
+    /// "2 extra triggers, 1 extra action"); a preset row reads it too.
+    public static string ExtrasOf(AutomationRule rule)
     {
         static string Part(int n, string noun) => n == 0 ? string.Empty : $"{n} extra {noun}{(n == 1 ? string.Empty : "s")}";
-        return string.Join(", ", new[] { Part(rule.AllTriggers.Count() - 1, "trigger"), Part(rule.Conditions.Count, "condition"), Part(rule.Actions.Count - 1, "action") }
+        var known = rule.AllTriggers.Select(Feature).OfType<FeatureTrigger>().Select(t => t.GetType()).Distinct().Count();
+        return string.Join(", ", new[] { Part(rule.AllTriggers.Count() - Math.Max(known, 1), "trigger"), Part(rule.Conditions.Count, "condition"), Part(rule.Actions.Count - 1, "action") }
             .Where(p => p.Length > 0));
     }
 
-    public void Ensure(string actionId, string name, FeatureTrigger trigger, bool on)
+    public void Ensure(string actionId, string name, bool on, params FeatureTrigger[] triggers)
     {
         if (RuleOf(actionId) is not null) return;
         var rule = new AutomationRule { Kind = AutomationKind.Do, Name = name, On = on };
         rule.AddAction($"{MouseActionCatalog.Omni}:{actionId}");
-        rule.AddTrigger(Stored(trigger));
+        foreach (var trigger in triggers) rule.AddTrigger(Stored(trigger));
         _rules.AddRule(rule);
         AutomationService.Log($"rule \"{name}\" made from its page's settings ({(on ? "on" : "off")})");
+    }
+
+    public void RemoveTrigger<T>(string actionId) where T : FeatureTrigger
+    {
+        if (RuleOf(actionId) is not { } rule) return;
+        var places = rule.AllTriggers.Select((t, i) => (t, i)).Where(p => Feature(p.t) is T).Select(p => p.i).Reverse().ToList();
+        if (places.Count == 0 || places.Count == rule.AllTriggers.Count()) return;
+        foreach (var place in places) rule.RemoveTrigger(place);
+        _rules.Edited(rule);
     }
 
     public void SetOn(string actionId, bool on)
@@ -88,8 +95,7 @@ public sealed class AutomationFeatureRules : IFeatureRules, IDisposable
     {
         if (RuleOf(actionId) is not { } rule) return;
         var stored = Stored(trigger);
-        var kind = MouseAction.Parse(stored).Id;
-        var place = rule.AllTriggers.Select((t, i) => (t, i)).FirstOrDefault(p => MouseAction.Parse(p.t).Id == kind);
+        var place = rule.AllTriggers.Select((t, i) => (t, i)).FirstOrDefault(p => Feature(p.t)?.GetType() == trigger.GetType());
         if (place.t is null) rule.AddTrigger(stored);
         else if (place.t == stored) return;
         else if (place.i == 0) rule.Trigger = stored;
@@ -106,8 +112,25 @@ public sealed class AutomationFeatureRules : IFeatureRules, IDisposable
             [AutomationConditions.FromHour.Key] = $"{w.Start / 60}", [AutomationConditions.FromMinute.Key] = $"{w.Start % 60}",
             [AutomationConditions.ToHour.Key] = $"{w.End / 60}", [AutomationConditions.ToMinute.Key] = $"{w.End % 60}",
         }),
+        FeatureTrigger.While s => AutomationTriggers.WhileOn(s.StateId),
+        FeatureTrigger.Starts => AutomationTriggers.Start,
+        FeatureTrigger.Every e => MouseAction.Compose(AutomationTriggers.Timer, new[] { AutomationTriggers.Minutes, AutomationTriggers.Repeat },
+            new Dictionary<string, string> { [AutomationTriggers.Minutes.Key] = $"{e.Minutes}", [AutomationTriggers.Repeat.Key] = "1" }),
         _ => throw new ArgumentOutOfRangeException(nameof(trigger)),
     };
+
+    /// A stored trigger in a feature's words, or null when it is none a feature knows.
+    private static FeatureTrigger? Feature(string stored)
+    {
+        var trigger = MouseAction.Parse(stored);
+        return trigger.Id switch
+        {
+            AutomationTriggers.Between when AutomationConditions.MinutesOf(trigger.Options) is var (from, until) => new FeatureTrigger.Between(from, until),
+            AutomationTriggers.Start => new FeatureTrigger.Starts(),
+            AutomationTriggers.Timer when trigger.Options.Bool(AutomationTriggers.Repeat) => new FeatureTrigger.Every(trigger.Options.Int(AutomationTriggers.Minutes)),
+            _ => AutomationTriggers.WhileOnState(stored) is { } state ? new FeatureTrigger.While(state) : null,
+        };
+    }
 
     public void Dispose()
     {

@@ -3,12 +3,11 @@ using OmniControl.App.Features.States;
 namespace OmniControl.App.Features.Displays.Pages;
 
 // Each attached display's hardware levels (brightness, contrast... every level of DisplayControls.Hardware) in the master list of states,
-// registered while the display is attached and read from its model; notified whenever the display was read or a value changed. Also the
-// warm-light schedule's on/off. Each can be set from outside the page (the tray flyout) the way its card does, through the model.
+// registered while the display is attached and read from its model; notified whenever the display was read or a value changed. Each
+// can be set from outside the page (the tray flyout) the way its card does, through the model.
 public sealed partial class DisplaysService
 {
     private const string LevelWords = "What the monitor reported when it was read, and every change made here since (a change on the monitor's own buttons is seen at the next read).";
-    private const string WarmLightId = "displays.warmlight", WarmWords = "The page's Warm light at night switch.";
     private const string LaptopNote = "Laptop panel", MonitorNote = "External monitor";
 
     private static string StateId(HardwareDisplayModel display, HardwareLevel level) => $"displays.{display.Id}.{level.Spec.Key}";
@@ -62,23 +61,6 @@ public sealed partial class DisplaysService
     {
         foreach (var display in _hardware.Where(h => h.HasScreenPower)) _states.Notify(PowerId(display));
         HardwareValuesChanged?.Invoke();
-    }
-
-    /// The page's states that live as long as the page: the warm-light schedule.
-    private void RegisterPageStates()
-    {
-        _states.Register(new StateEntry(WarmLightId, WarmLightModel.Label, Title, StateKind.OnOff, () => StateValue.Of(_warm.IsOn), WarmWords,
-            Keywords: "warm light night schedule evening blue light filter", Set: value => _warm.SetEnabled(value.Number is { } on && on != 0),
-            Short: "Night light", Icon: Icons.IconLibrary.Moon, SuggestedIcons: new[] { Icons.IconLibrary.Moon, "sun-moon", "eye" }));
-        _scheduler.Changed += NotifyWarmLight;
-    }
-
-    private void NotifyWarmLight() => _states.Notify(WarmLightId);
-
-    private void ForgetPageStates()
-    {
-        _scheduler.Changed -= NotifyWarmLight;
-        _states.Unregister(WarmLightId);
     }
 
     /// A display was read or one of its values changed: its states are read again, and the page (its switches and monitor presets) looks again.

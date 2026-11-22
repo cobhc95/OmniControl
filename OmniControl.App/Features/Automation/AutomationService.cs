@@ -308,8 +308,6 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         return null;
     }
 
-    private static AutomationContext NewContext() => new(AutomationWatcher.RunningPrograms);
-
     // ---- Running ----
 
     private HotkeyAction MakeRuleAction(AutomationRule rule) =>

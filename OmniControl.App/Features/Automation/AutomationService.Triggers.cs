@@ -68,7 +68,7 @@ public sealed partial class AutomationService
         if (SessionOff) return;
         if (Settings.Rules.Any(r => IsActive(r) && IsTrigger(r, AutomationTriggers.DeviceConnect, AutomationTriggers.DeviceDisconnect))) _watcher.StartDevices();
         // With no rule to look for, the look only keeps the power states fresh: much less often.
-        if (_tick is not null) _tick.Interval = Settings.Rules.Any(IsActive) ? Timing.AutomationTick : Timing.AutomationIdleTick;
+        if (_tick is not null) _tick.Interval = Settings.Rules.Any(r => IsActive(r) || AsksPrograms(r)) ? Timing.AutomationTick : Timing.AutomationIdleTick;
         LookAtHeld();
         UpdateWake();
     }
@@ -90,13 +90,13 @@ public sealed partial class AutomationService
         _idleFired.RemoveWhere(k => k.StartsWith(rule.Id, StringComparison.Ordinal));
     }
 
-    /// One look (UI thread). With a program rule on, the running programs are listed on a worker first (a slow call on a busy PC) and the
-    /// look goes on when the list is back; a tick that comes while a list is still being read is skipped.
+    /// One look (UI thread). With a program trigger or a "program is running" condition on, the running programs are listed on a worker first
+    /// (a slow call on a busy PC) and the look goes on when the list is back; a tick that comes while a list is still being read is skipped.
     private void Look()
     {
         if (_readingPrograms) return;
         var watchPrograms = !Paused && Settings.Rules.Any(r => IsActive(r) && IsTrigger(r, AutomationTriggers.ProgramStart, AutomationTriggers.ProgramClose));
-        if (!watchPrograms)
+        if (!watchPrograms && (Paused || !Settings.Rules.Any(AsksPrograms)))
         {
             Guard.Run("Automation look", () => LookWith(watchPrograms: false, programs: null));
             return;
@@ -109,12 +109,24 @@ public sealed partial class AutomationService
             Dispatcher.UIThread.Post(() =>
             {
                 _readingPrograms = false;
-                if (_tick?.IsEnabled == true) Guard.Run("Automation look", () => LookWith(watchPrograms: true, programs));
+                if (programs is not null) _programsSeen = programs;
+                if (_tick?.IsEnabled == true) Guard.Run("Automation look", () => LookWith(watchPrograms, programs));
             });
         });
     }
 
     private bool _readingPrograms;
+
+    /// The running programs the last look read, which conditions asked on the UI thread use (never a process list there).
+    private IReadOnlySet<string> _programsSeen = new HashSet<string>();
+
+    /// True for a switched-on rule with a "program is running" condition.
+    private static bool AsksPrograms(AutomationRule rule) =>
+        rule is { On: true, IsComplete: true } && rule.Conditions.Any(c => MouseAction.Parse(c).Id == AutomationConditions.Running);
+
+    /// What the conditions are asked about now: on the UI thread with the programs the last look read, elsewhere (the gate) listed then.
+    private AutomationContext NewContext() =>
+        new(() => Dispatcher.UIThread.CheckAccess() ? _programsSeen : AutomationWatcher.RunningPrograms());
 
     /// <param name="programs">The running programs just read (null: not read, or the read failed and the last list stays).</param>
     private void LookWith(bool watchPrograms, HashSet<string>? programs)

@@ -124,11 +124,13 @@ public class DisplayModelTests
 
         public FeatureRuleView? Find(string actionId) => _rule;
 
-        public void Ensure(string actionId, string name, FeatureTrigger trigger, bool on) => Set(_rule ?? new FeatureRuleView(on, trigger as FeatureTrigger.Between, string.Empty));
+        public void Ensure(string actionId, string name, bool on, params FeatureTrigger[] triggers) => Set(_rule ?? new FeatureRuleView(on, triggers, string.Empty));
 
         public void SetOn(string actionId, bool on) => Set(_rule! with { On = on });
 
-        public void SetTrigger(string actionId, FeatureTrigger trigger) => Set(_rule! with { Window = trigger as FeatureTrigger.Between });
+        public void SetTrigger(string actionId, FeatureTrigger trigger) => Set(_rule! with { Triggers = _rule.Triggers.Where(t => t.GetType() != trigger.GetType()).Append(trigger).ToList() });
+
+        public void RemoveTrigger<T>(string actionId) where T : FeatureTrigger => Set(_rule! with { Triggers = _rule.Triggers.Where(t => t is not T).ToList() });
 
         public void Edit(string actionId) { }
 

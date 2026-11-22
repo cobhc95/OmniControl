@@ -9,7 +9,7 @@ public sealed partial class DisplaysService
     /// The page's Restore defaults (<paramref name="key"/>: its restore key).
     public IRestorable NewRestorable(string key) => new SettingsRestore<DisplayRestoreState>(key, Title,
         () => DisplayRestoreState.Scope,
-        () => new DisplayRestoreState { Picture = CapturePicture(), WarmLight = _store.WarmLight.Enabled },
+        () => new DisplayRestoreState { Picture = CapturePicture(), WarmLight = _warmLight.Model.IsOn },
         () => DisplayRestoreState.DefaultsOf(new DisplayRestoreState { Picture = CapturePicture() }),
         ApplyState);
 
@@ -17,7 +17,7 @@ public sealed partial class DisplaysService
     public bool ReloadSettings()
     {
         var done = _store.ReloadFromDisk();
-        _scheduler.Update();
+        _warmLight.Update();
         return done;
     }
 
@@ -25,7 +25,7 @@ public sealed partial class DisplaysService
     private Task<bool> ApplyState(DisplayRestoreState state)
     {
         ApplyPicture(state.Picture);
-        _warm.SetEnabled(state.WarmLight);
+        _warmLight.Model.SetEnabled(state.WarmLight);
         return Task.FromResult(true);
     }
 }

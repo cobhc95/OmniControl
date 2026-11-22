@@ -125,6 +125,17 @@ public static partial class AutomationTriggers
         };
     }
 
+    /// "When this on/off state turns on", as stored.
+    public static string WhileOn(string stateId) => $"{StateChanges}:{stateId}|{WhenKey}={Uri.EscapeDataString(StateTriggerMath.TurnsOn)}";
+
+    /// The state a "turns on" state trigger follows, or null for any other trigger.
+    public static string? WhileOnState(string stored)
+    {
+        var trigger = MouseAction.Parse(stored);
+        return trigger.Id == StateChanges && trigger.Options.Text(ActionOption.Choice(WhenKey, string.Empty, StateTriggerMath.WhensOf(StateKind.OnOff))) == StateTriggerMath.TurnsOn
+            ? trigger.Param : null;
+    }
+
     /// The states as the preset manager offers them: one section per page (a side list's row in a section of its own name).
     public static IReadOnlyList<PickChoice> StateChoices(ITriggerSources sources) =>
         Listed(sources, s => StateChoice(s, sources.Now(s.Id)) with { Category = s.Group, Heading = s.Heading }, (menu, row) => row with { Category = menu.Name }).ToList();

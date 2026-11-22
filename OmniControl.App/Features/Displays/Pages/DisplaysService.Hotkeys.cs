@@ -83,7 +83,6 @@ public sealed partial class DisplaysService
             action.HardwareWatch = action.Group == hardware ? HardwareWatchId : SoftwareWatchId; // a picked display that is missing is looked for once before the action is refused
         _scopedActions.AddRange(actions);
         actions.AddRange(DesktopActions(software));
-        actions.AddRange(WarmLightActions(software));
         _hotkeys.Register(actions);
     }
 
@@ -100,31 +99,6 @@ public sealed partial class DisplaysService
         yield return DisplayActions.Once("displays.sw.reset", "Reset all digital picture changes", "digital software reset normal",
             Title, software, VcpSections.Presets, _ => ResetAllSoftware(), devices: null);
     }
-
-    /// The warm-light schedule's Toggle, On and Off (checked against its state).
-    private IEnumerable<HotkeyAction> WarmLightActions(string software)
-    {
-        var family = new OnOffFamily(WarmActionId, WarmLightModel.Label, WarmLightId);
-        var toggle = DisplayActions.Once(WarmActionId, "Toggle warm light at night", "warm light night schedule evening blue light filter", Title, software, VcpSections.Colour,
-            _ => _warm.Toggle(), devices: null, icon: Icons.IconLibrary.Moon, family: family.Family, familyRole: OnOffFamily.ToggleRole);
-        return family.Siblings(toggle, _warm.SetEnabled).Prepend(toggle).Append(WarmFadeAction());
-    }
-
-    /// The warm-light rule's own action, named with the temperature it warms to; it is made again when that changes (its keys stay, by id).
-    private HotkeyAction WarmFadeAction() =>
-        new(WarmLightScheduler.FadeId, WarmFadeTitle, Title, "warm light night fade evening blue light filter kelvin temperature", _ => _scheduler.Fade(),
-            group: DisplayControls.SoftwareGroup, subgroup: VcpSections.Colour) { FeatureRule = true, Icon = Icons.IconLibrary.Moon };
-
-    private string WarmFadeTitle => $"Warm light fade to {_warm.Kelvin} K";
-
-    private void FollowWarmFadeTitle()
-    {
-        if (_hotkeys.Find(WarmLightScheduler.FadeId) is not { } action || action.Title == WarmFadeTitle) return;
-        _hotkeys.Unregister(action.Id);
-        _hotkeys.Register(WarmFadeAction());
-    }
-
-    private const string WarmActionId = "displays.sw.warmlight";
 
     private IReadOnlyList<HotkeyDevice> HardwareDevices() => _hardware.Select(h => new HotkeyDevice(h.Id, h.Name)).ToList();
 

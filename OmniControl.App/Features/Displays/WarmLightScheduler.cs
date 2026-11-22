@@ -57,7 +57,7 @@ public sealed class WarmLightScheduler : IDisposable
         _timer ??= new DispatcherTimer(Timing.WarmLightTick, DispatcherPriority.Background, (_, _) => Update());
         if (!Settings.InRule && _rules.Current is { } rules)
         {
-            rules.Ensure(FadeId, RuleName, new FeatureTrigger.Between(Settings.Start, Settings.End), Settings.Enabled);
+            rules.Ensure(FadeId, RuleName, Settings.Enabled, new FeatureTrigger.Between(Settings.Start, Settings.End));
             Settings.InRule = true;
             _store.SaveWarmLight();
         }
