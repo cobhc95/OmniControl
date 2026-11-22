@@ -205,7 +205,7 @@
                   slider upright, an equaliser's band); Knob: Knobs.axaml; scroll bars: one master, Styles/ScrollBars.axaml
          Lists:   Controls/OptionList (a ticked list, ListBox.pick.compact; Border.tickbox = its tick (.checked)); Border.hrule = a thin line between parts of a pop-down; FlyoutPresenter.listmenu = a narrow menu pop-down;
                   .unavailable = a greyed entry or control (master picker, Shortcuts action, a microphone row's parts). Menus, chips, ticks: Menus.axaml; Button.selector: RowControls.axaml.
-                  List row styles use "ListBox.x > ListBoxItem" (direct items only) so a list inside a pop-down opened from a row never takes the page rows' look.
+                  A list kind's rows are its ListBox theme's ItemContainerTheme (ThemeLists.axaml), so a list inside a pop-down opened from a row never takes the page rows' look.
          Blocks:  Styles/Blocks.axaml (a sentence of blocks, the rule editor: Button.block, .blockx, .blockjoin, .blockadd, TextBlock.blockword);
                   Button.blockadd.small = the same dashed "+ add" at chip size, after a row of chips (Menus.axaml)
          Volume rows: Border.rowicon (the icon tile: a picture, a library IconGlyph or the initial, each centred), Path.glyph (a stroked small glyph), WrapPanel.sentence (the line under a row's name),

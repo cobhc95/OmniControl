@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Faster and lighter: sliders, scroll bars, text boxes, switches, check boxes, drop-downs, the page lists' rows, ticked menu rows, the pane splitter and the menu pop-downs take their looks from control themes, so far fewer global styles are tried on every control (looks unchanged).
 - Faster: the Displays page (and the Mouse page's inner groups) builds eight cards first and the rest right after, so its first frame shows sooner; looks and keys are the same.
 - Faster: menu rows build their tag lists only when the row has tags (long menus such as the action picker's and the gadget's menus open sooner).
 - Faster: the Volume page's level meters repaint only when a level moves by about a pixel and read less often while every meter is silent (the compressor and limiter cards too).
