@@ -10,14 +10,16 @@
     <!-- The Resources page's Taskbar gadget tab: "Show on taskbar", then the Position and Font cards, then the Ready-made layouts, What it shows,
          Weather, Size and spacing, Numbers and units, Hover details and Clicks group cards. -->
     <StackPanel Spacing="{StaticResource Gap}" Grid.IsSharedSizeScope="True">
-        <Grid ColumnDefinitions="Auto,Auto,Auto" ColumnSpacing="{StaticResource GapLarge}">
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource GapLarge}">
             <StackPanel Orientation="Horizontal" Spacing="{StaticResource MenuGap}" VerticalAlignment="Center">
                 <TextBlock Classes="muted" Text="Show on taskbar" VerticalAlignment="Center" />
                 <ToggleSwitch Tag="grouptool" IsChecked="{Binding Shown}" OnContent="On" OffContent="Off" VerticalAlignment="Center" />
             </StackPanel>
-            <ListBox Grid.Column="1" Classes="rows compact" ItemsSource="{Binding PositionCard}" VerticalAlignment="Center" />
+            <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" ItemSpacing="{StaticResource GapLarge}" LineSpacing="{StaticResource Gap}">
+            <ListBox Classes="rows compact" ItemsSource="{Binding PositionCard}" VerticalAlignment="Center" />
             <!-- A long font name trims in the chip rather than widening the line -->
-            <ListBox Grid.Column="2" Classes="rows compact" ItemsSource="{Binding FontCard}" VerticalAlignment="Center" MaxWidth="{StaticResource ChoiceMaxWidth}" />
+            <ListBox Classes="rows compact" ItemsSource="{Binding FontCard}" VerticalAlignment="Center" MaxWidth="{StaticResource ChoiceMaxWidth}" />
+            </WrapPanel>
         </Grid>
 
         <StackPanel>
