@@ -112,6 +112,23 @@ public class VideoRecordingTests
 
     // ---- GIF palette ----
 
+    // A virus scanner or the indexer may open a new file for a moment after it is closed.
+    private static void DeleteTemp(string path)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                File.Delete(path);
+                return;
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException && attempt < 20)
+            {
+                Thread.Sleep(50);
+            }
+        }
+    }
+
     private static byte[] Pixels(int width, int height, Func<int, int, (byte R, byte G, byte B)> colour)
     {
         var pixels = new byte[width * height * 4];
@@ -171,19 +188,20 @@ public class VideoRecordingTests
                 gif.WriteFrame(split, 80, Second / 5);
                 gif.Finish(Second / 2);
             }
-            using var codec = SKCodec.Create(path);
-            Assert.Equal(2, codec.FrameCount);
-            Assert.Equal(200, codec.FrameInfo[0].Duration);
-            Assert.Equal(300, codec.FrameInfo[1].Duration);
-            var info = new SKImageInfo(20, 10, SKColorType.Bgra8888, SKAlphaType.Premul);
-            using var bitmap = new SKBitmap(info);
-            Assert.Equal(SKCodecResult.Success, codec.GetPixels(info, bitmap.GetPixels(), new SKCodecOptions(1)));
-            Assert.Equal(new SKColor(0, 0, 255), bitmap.GetPixel(2, 5));
-            Assert.Equal(new SKColor(255, 255, 255), bitmap.GetPixel(15, 5));
+            using (var codec = SKCodec.Create(path))
+            using (var bitmap = new SKBitmap(new SKImageInfo(20, 10, SKColorType.Bgra8888, SKAlphaType.Premul)))
+            {
+                Assert.Equal(2, codec.FrameCount);
+                Assert.Equal(200, codec.FrameInfo[0].Duration);
+                Assert.Equal(300, codec.FrameInfo[1].Duration);
+                Assert.Equal(SKCodecResult.Success, codec.GetPixels(bitmap.Info, bitmap.GetPixels(), new SKCodecOptions(1)));
+                Assert.Equal(new SKColor(0, 0, 255), bitmap.GetPixel(2, 5));
+                Assert.Equal(new SKColor(255, 255, 255), bitmap.GetPixel(15, 5));
+            }
         }
         finally
         {
-            File.Delete(path);
+            DeleteTemp(path);
         }
     }
 
@@ -217,7 +235,7 @@ public class VideoRecordingTests
         }
         finally
         {
-            File.Delete(path);
+            DeleteTemp(path);
         }
     }
 
