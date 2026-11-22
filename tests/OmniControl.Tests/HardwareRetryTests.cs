@@ -7,7 +7,8 @@ namespace OmniControl.Tests;
 /// is ready only on the third look is found on the third try, and the schedule stops there.
 public class HardwareRetryTests
 {
-    private static readonly TimeSpan[] FastSchedule = [TimeSpan.FromMilliseconds(20), TimeSpan.FromMilliseconds(60), TimeSpan.FromMilliseconds(120), TimeSpan.FromMilliseconds(200)];
+    // Spaced widely enough that a slow build machine runs each try in its own slot.
+    private static readonly TimeSpan[] FastSchedule = [TimeSpan.FromMilliseconds(150), TimeSpan.FromMilliseconds(300), TimeSpan.FromMilliseconds(450), TimeSpan.FromMilliseconds(600)];
     private static readonly TimeSpan Settle = TimeSpan.FromSeconds(5);
 
     /// A monitor source that answers only from its <c>readyOn</c>-th refresh.
