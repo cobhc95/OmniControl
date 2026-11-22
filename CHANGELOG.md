@@ -5,6 +5,9 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Automation's From other pages tab now also holds Network traffic control's places ("Phone hotspot limits": while connected to Phone hotspot, use its limits; an adapter's own: while that adapter is connected), each smart device's checks ("Check Desk lamp": when OmniControl starts or every 5 minutes) and the emulator's idle close ("Close the emulator": when no device action for 30 min). Each is an ordinary rule you can extend; the pages keep their controls, edit the same rule and say when it has more or is off. Existing settings are moved into rules once; defaults are unchanged. New states: "<adapter> connected" and "No device action for N min". A place's own limits now apply only while its rule holds, so with automation switched off the All adapters limits apply everywhere.
+- Presets window: a preset row whose rule has more than its chips (conditions, other actions) shows * (More in Automation).
+- Faster: rules with a "program is running" condition no longer list the running programs on the window's thread.
 - Automation has a From other pages tab: warm light is now an ordinary automation rule ("Between 20:00 and 07:00" do "Warm light fade to 3400 K") that you can extend with conditions or actions; the Displays page keeps its switch, times and warmth, and says when the rule has more. Your warm-light schedule is moved into the rule once. A rule shows on a page or in the Presets window because it holds that page's or preset's action, so it moves when you change that. New trigger: Between two times.
 
 - Automation: a new Presets tab lists the rules made from the Presets window, with the same editor as the Rules tab, the preset kind after each name and "Open in Presets window"; the Rules tab no longer shows them. Changes in either place show in the other at once.
