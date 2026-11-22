@@ -1,4 +1,5 @@
-﻿using Avalonia.Logging;
+using System.Runtime.Loader;
+using Avalonia.Logging;
 using OmniControl.App.Features.Input.Mouse;
 
 namespace OmniControl.App;
@@ -8,6 +9,9 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        // Before anything loads an optional assembly: deps.json does not list them (OptionalFiles.Resolve). --check-start is for the build's own check: it starts nothing.
+        AssemblyLoadContext.Default.Resolving += OptionalFiles.Resolve;
+        if (args.Contains("--check-start")) return OptionalFiles.LoadPresent() ? 0 : 2;
         // The normal-rights copy that opens one thing for an elevated run, the network service (started by Windows) and its install or removal run nothing else. Setup's
         // --sign-in-task only adds, checks or removes the task. A second start only asks the running copy to open its window (a start-up
         // entry's start asks nothing), before it can touch any file (a staged import, settings). A copy the sign-in task started reads only

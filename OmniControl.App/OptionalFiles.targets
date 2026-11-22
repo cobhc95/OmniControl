@@ -1,0 +1,14 @@
+<Project>
+
+  <!-- A self-contained app does not start when a file its deps.json lists is missing, and Setup may leave out the sensor library (with what
+       only it loads) and the QR reader. So the optional files are taken out of deps.json after the build and after the publish (the list
+       is the one in Core/Engine/OptionalFiles.cs); the app loads a present one itself (OptionalFiles.Resolve, called first in Program). -->
+  <Target Name="LeaveOptionalOutOfBuildDeps" AfterTargets="Build">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)..\tools\LeaveOptionalOutOfDeps.ps1&quot; -List &quot;$(MSBuildThisFileDirectory)..\OmniControl.Core\Engine\OptionalFiles.cs&quot; -Deps &quot;$(OutDir)$(AssemblyName).deps.json&quot;" />
+  </Target>
+
+  <Target Name="LeaveOptionalOutOfPublishedDeps" AfterTargets="Publish">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)..\tools\LeaveOptionalOutOfDeps.ps1&quot; -List &quot;$(MSBuildThisFileDirectory)..\OmniControl.Core\Engine\OptionalFiles.cs&quot; -Deps &quot;$(PublishDir)$(AssemblyName).deps.json&quot;" />
+  </Target>
+
+</Project>

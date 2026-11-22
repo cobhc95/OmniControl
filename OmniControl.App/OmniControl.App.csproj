@@ -62,6 +62,8 @@
     </ItemGroup>
   </Target>
 
+  <Import Project="OptionalFiles.targets" />
+
   <ItemGroup>
     <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="5" />
     <!-- At most 6 MB allocated between two young collections (a PC with a large CPU cache otherwise gets tens of MB). -->
