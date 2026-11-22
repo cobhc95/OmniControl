@@ -25,6 +25,9 @@ public static partial class Timing
     /// Refresh rate of the Volume page's level meters (25 per second).
     public static readonly TimeSpan MeterFrame = TimeSpan.FromMilliseconds(40);
 
+    /// The level meters (Volume page, compressor and limiter cards) read this often while all of them are at silence (a start of sound shows within it).
+    public static readonly TimeSpan MeterQuietFrame = TimeSpan.FromMilliseconds(120);
+
     /// Below this master volume (percent) a display feed is not level-matched (1 / volume would be a gain over 50) and says it is not fed.
     public const int DisplayFeedMinPercent = 2;
 

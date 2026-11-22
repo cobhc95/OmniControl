@@ -5,17 +5,22 @@ namespace OmniControl.App.Features.Volume.Audio;
 public sealed class MeterModel
 {
     public const double FloorDb = -60, WarmDb = -12;
-    private const double HoldMs = 1200, FallDbPerSecond = 28, ClipMs = 2500, MaxFrameMs = 250, MsPerSecond = 1000;
+    /// A move smaller than this is under a pixel of the bar: it is kept but not repainted until it adds up to one.
+    private const double HoldMs = 1200, FallDbPerSecond = 28, ClipMs = 2500, MaxFrameMs = 250, MsPerSecond = 1000, RedrawDb = 0.5;
 
     private double _lastMs;
     private double _holdLeftAt, _holdRightAt, _clipAt;
     private double _left = FloorDb, _right = FloorDb, _holdLeft = FloorDb, _holdRight = FloorDb;
+    private double _drawnLeft = FloorDb, _drawnRight = FloorDb, _drawnHoldLeft = FloorDb, _drawnHoldRight = FloorDb;
 
     public double LeftDb => _left;
     public double RightDb => _right;
     public double HoldLeftDb => _holdLeft;
     public double HoldRightDb => _holdRight;
     public bool ClipLit { get; private set; }
+
+    /// Nothing to see: both levels and holds at the floor and the clip light off.
+    public bool IsSilent => _left <= FloorDb && _right <= FloorDb && _holdLeft <= FloorDb && _holdRight <= FloorDb && !ClipLit;
 
     /// Raised when the picture changed (the control repaints).
     public event Action? Changed;
@@ -30,9 +35,11 @@ public sealed class MeterModel
     {
         var dt = _lastMs == 0 ? 0 : Math.Min(MaxFrameMs, nowMs - _lastMs) / MsPerSecond;
         _lastMs = nowMs;
-        var changed = false;
-        changed |= Move(ToDb(left), dt, nowMs, ref _holdLeftAt, ref _left, ref _holdLeft); // by ref: nothing is allocated per frame
-        changed |= Move(ToDb(right), dt, nowMs, ref _holdRightAt, ref _right, ref _holdRight);
+        Move(ToDb(left), dt, nowMs, ref _holdLeftAt, ref _left, ref _holdLeft); // by ref: nothing is allocated per frame
+        Move(ToDb(right), dt, nowMs, ref _holdRightAt, ref _right, ref _holdRight);
+        var changed = Math.Abs(_left - _drawnLeft) > RedrawDb || Math.Abs(_right - _drawnRight) > RedrawDb
+            || Math.Abs(_holdLeft - _drawnHoldLeft) > RedrawDb || Math.Abs(_holdRight - _drawnHoldRight) > RedrawDb;
+        if (changed) (_drawnLeft, _drawnRight, _drawnHoldLeft, _drawnHoldRight) = (_left, _right, _holdLeft, _holdRight);
 
         var clip = left >= 0.999f || right >= 0.999f;
         if (clip) _clipAt = nowMs;
@@ -45,21 +52,19 @@ public sealed class MeterModel
     /// Back to silence (the row went away or the page is hidden).
     public void Clear()
     {
-        _left = _right = _holdLeft = _holdRight = FloorDb;
+        _left = _right = _holdLeft = _holdRight = _drawnLeft = _drawnRight = _drawnHoldLeft = _drawnHoldRight = FloorDb;
         ClipLit = false;
         _lastMs = 0;
         Changed?.Invoke();
     }
 
-    private static bool Move(double db, double dt, double now, ref double holdAt, ref double shown, ref double hold)
+    private static void Move(double db, double dt, double now, ref double holdAt, ref double shown, ref double hold)
     {
         var newShown = db >= shown ? db : Math.Max(db, shown - FallDbPerSecond * dt);
         var newHold = hold;
         if (newShown >= hold) { newHold = newShown; holdAt = now; }
         else if (now - holdAt > HoldMs) newHold = Math.Max(newShown, hold - FallDbPerSecond * dt);
-        var changed = Math.Abs(newShown - shown) > 0.05 || Math.Abs(newHold - hold) > 0.05;
         shown = newShown;
         hold = newHold;
-        return changed;
     }
 }

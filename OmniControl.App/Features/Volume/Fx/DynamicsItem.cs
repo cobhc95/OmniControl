@@ -106,6 +106,9 @@ public sealed partial class DynamicsItem : ObservableObject, IEditorItem, IRedra
     private void Poll()
     {
         var reading = _slot.Enabled ? _read() : null;
+        // Nothing pushes a new reading, so while there is none or the sound is silent the reads slow down.
+        var frame = reading is not { } heard || (heard.LevelDb <= LevelFloorDbShown && heard.ReductionDb <= 0) ? Timing.MeterQuietFrame : Timing.MeterFrame;
+        if (_poll.Interval != frame) _poll.Interval = frame;
         var reductionText = reading is { } r ? Db(r.ReductionDb) : "-";
         var levelText = reading is { } l ? (l.LevelDb <= LevelFloorDbShown ? "-inf dB" : Db(l.LevelDb)) : "-";
         if (Same(reading, _reading) && reductionText == _reductionText && levelText == _levelText) return;

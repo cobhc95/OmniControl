@@ -53,6 +53,7 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
     private GadgetWindow? _window;
     private GadgetClicks? _clicks;
     private TaskbarPlace? _placed;
+    private readonly TaskbarSpot.Picture _picture = new();
 
     /// <param name="layouts">The layouts the right-click menu lists and applies.</param>
     /// <param name="windows">Opens the page at its Network traffic control group and at its Taskbar gadget tab (the right-click menu's links).</param>
@@ -68,7 +69,7 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
         Apply();
     }
 
-    private void Redraw() => Guarded("Taskbar gadget: draw", Draw);
+    private void Redraw() => Guarded("Taskbar gadget: draw", () => Draw(force: false));
 
     private void Follow() => Guarded("Taskbar gadget: settings", Apply);
 
@@ -254,7 +255,8 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
     private void Forget()
     {
         _clicks?.Dispose();
-        (_window, _clicks, _placed, _hidden) = (null, null, null, false);
+        _picture.Dispose();
+        (_window, _clicks, _placed, _hidden, _drawn, _paintDue) = (null, null, null, false, null, true);
     }
 
     private void Run(string actionId)
@@ -297,14 +299,41 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
         return cells;
     }
 
-    private void Draw()
+    /// What the window shows now, to tell a read that changed nothing seen (words, colours, layout, fill) from one that did.
+    private sealed record Drawn(IReadOnlyList<GadgetCell> Cells, GadgetLayout Layout, Color? Fill);
+
+    private Drawn? _drawn;
+    private bool _paintDue; // the layered picture is out of date
+    private (int, int) _paintedSize;
+    private DateTime _placedAt;
+
+    private static bool SameCells(IReadOnlyList<GadgetCell> a, IReadOnlyList<GadgetCell> b)
+    {
+        if (a.Count != b.Count) return false;
+        for (var i = 0; i < a.Count; i++)
+            if (a[i].Label != b[i].Label || a[i].Value != b[i].Value || a[i].Colour != b[i].Colour || a[i].Widest != b[i].Widest
+                || a[i].GapAfter != b[i].GapAfter || a[i].Warned != b[i].Warned) return false;
+        return true;
+    }
+
+    /// <param name="force">After a setting or a taskbar colour change: the tooltips' details may have changed too, which the words do not show.</param>
+    private void Draw(bool force = true)
     {
         Changed?.Invoke();
         if (_window is null) return;
         var look = Look;
         _window.HoverOutline = look.HoverOutline;
-        _window.Fill(FillOf(look.Background, Background));
-        _window.Draw(Cells(look), GadgetLayout.Of(look));
+        var now = new Drawn(Cells(look), GadgetLayout.Of(look), FillOf(look.Background, Background));
+        if (!force && _drawn is { } last && last.Layout == now.Layout && last.Fill == now.Fill && SameCells(last.Cells, now.Cells))
+        {
+            // The window's size cannot have changed, so it is looked at only as often as the left buttons are (a tray that grew; Windows' own announcements place it at once).
+            if (DateTime.UtcNow - _placedAt >= Timing.ResourcesGadgetLeftLook) PlaceSoon();
+            return;
+        }
+        _drawn = now;
+        _window.Fill(now.Fill);
+        _window.Draw(now.Cells, now.Layout);
+        _paintDue = true;
         PlaceSoon();
     }
 
@@ -344,7 +373,8 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
         if (_placed?.Taskbar != place.Taskbar) _owned = !TaskbarSpot.Attach(handle.Handle, place.Taskbar);
         if (_placed != place || TaskbarSpot.IsCovered(handle.Handle)) TaskbarSpot.Put(handle.Handle, place);
         _placed = place;
-        Paint(); // Place follows every Draw, so the layered window gets each new look here
+        _placedAt = DateTime.UtcNow;
+        if (_paintDue || _size != _paintedSize) Paint(); // Place follows every Draw that changed something, so the layered window gets each new look here
         // A child hides with the taskbar; an owned window (Windows refused the child) hides itself while a full-screen app is on the
         // taskbar's monitor, looked at on every read (no poll of its own).
         var hide = _owned && TaskbarSpot.FullScreenOn(place.Taskbar);
@@ -356,7 +386,9 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
     /// Gives the layered window its picture (<see cref="TaskbarSpot.Paint"/>): software rendering cannot draw a child of Windows 11's taskbar.
     private void Paint()
     {
-        if (_window is { } window && window.TryGetPlatformHandle() is { } handle) TaskbarSpot.Paint(handle.Handle, window.DrawInto);
+        if (_window is not { } window || window.TryGetPlatformHandle() is not { } handle) return;
+        (_paintDue, _paintedSize) = (false, _size);
+        _picture.Paint(handle.Handle, window.DrawInto, Palette.HitTest.A);
     }
 
     /// The right-click menu: Layout (the favourite layouts), Show (every reading, ticked), Position (right or left) and Font (the default and the fonts

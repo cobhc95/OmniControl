@@ -59,32 +59,69 @@ public static class TaskbarSpot
         return child;
     }
 
-    /// Gives <paramref name="window"/> (layered by <see cref="Attach"/>) its picture with per-pixel alpha: <paramref name="fill"/> writes its
-    /// client area's premultiplied BGRA pixels (bits, width, height; rows of width * 4 bytes, top row first). A software-drawn child paints into
-    /// the taskbar's own surface, which Windows 11's taskbar covers with its XAML content; a layered child is composed above it as itself.
-    public static void Paint(IntPtr window, Action<IntPtr, int, int> fill)
+    /// The picture of one layered window (<see cref="Attach"/>): its memory DC and DIB section are kept while the client size is unchanged and
+    /// let go on a new size and by <see cref="Dispose"/> (usable again after it). A software-drawn child paints into the taskbar's own surface,
+    /// which Windows 11's taskbar covers with its XAML content; a layered child is composed above it as itself.
+    public sealed class Picture : IDisposable
     {
-        if (!GetClientRect(window, out var client) || client.Right <= 0 || client.Bottom <= 0) return;
-        var size = new Size { Cx = client.Right, Cy = client.Bottom };
-        var header = new BitmapHeader { Size = Marshal.SizeOf<BitmapHeader>(), Width = size.Cx, Height = -size.Cy, Planes = 1, BitCount = 32 };
-        var screen = GetDC(IntPtr.Zero);
-        var memory = CreateCompatibleDC(screen);
-        var bitmap = CreateDIBSection(screen, ref header, 0, out var bits, IntPtr.Zero, 0);
-        try
+        private IntPtr _memory, _bitmap, _bits, _old;
+        private int _width, _height;
+
+        /// Gives <paramref name="window"/> its picture with per-pixel alpha: <paramref name="fill"/> writes its client area's premultiplied BGRA
+        /// pixels (bits, width, height; rows of width * 4 bytes, top row first, all of them: the buffer still holds the last picture). Windows
+        /// passes a click through a fully clear pixel, so each one is then given <paramref name="hitAlpha"/> and the whole window takes the mouse.
+        public void Paint(IntPtr window, Action<IntPtr, int, int> fill, byte hitAlpha)
         {
-            if (memory == IntPtr.Zero || bitmap == IntPtr.Zero) return;
-            fill(bits, size.Cx, size.Cy);
-            var old = SelectObject(memory, bitmap);
-            var origin = default(Point);
-            var blend = new Blend { Alpha = 255, Format = SourceAlpha };
-            UpdateLayeredWindow(window, screen, IntPtr.Zero, ref size, memory, ref origin, 0, ref blend, UseAlpha);
-            SelectObject(memory, old);
+            if (!GetClientRect(window, out var client) || client.Right <= 0 || client.Bottom <= 0 || !Fit(client.Right, client.Bottom)) return;
+            fill(_bits, _width, _height);
+            GiveHitAlpha(hitAlpha);
+            var size = new Size { Cx = _width, Cy = _height };
+            var screen = GetDC(IntPtr.Zero);
+            try
+            {
+                var origin = default(Point);
+                var blend = new Blend { Alpha = 255, Format = SourceAlpha };
+                UpdateLayeredWindow(window, screen, IntPtr.Zero, ref size, _memory, ref origin, 0, ref blend, UseAlpha);
+            }
+            finally { ReleaseDC(IntPtr.Zero, screen); }
         }
-        finally
+
+        private bool Fit(int width, int height)
         {
-            if (bitmap != IntPtr.Zero) DeleteObject(bitmap);
-            if (memory != IntPtr.Zero) DeleteDC(memory);
-            ReleaseDC(IntPtr.Zero, screen);
+            if (_bitmap != IntPtr.Zero && width == _width && height == _height) return true;
+            Dispose();
+            var header = new BitmapHeader { Size = Marshal.SizeOf<BitmapHeader>(), Width = width, Height = -height, Planes = 1, BitCount = 32 };
+            var screen = GetDC(IntPtr.Zero);
+            try
+            {
+                _memory = CreateCompatibleDC(screen);
+                _bitmap = CreateDIBSection(screen, ref header, 0, out _bits, IntPtr.Zero, 0);
+            }
+            finally { ReleaseDC(IntPtr.Zero, screen); }
+            if (_memory == IntPtr.Zero || _bitmap == IntPtr.Zero)
+            {
+                Dispose();
+                return false;
+            }
+            (_width, _height) = (width, height);
+            _old = SelectObject(_memory, _bitmap);
+            return true;
+        }
+
+        private unsafe void GiveHitAlpha(byte alpha)
+        {
+            var pixels = new Span<uint>((void*)_bits, _width * _height);
+            var catcher = (uint)alpha << 24;
+            for (var i = 0; i < pixels.Length; i++)
+                if (pixels[i] >> 24 == 0) pixels[i] = catcher;
+        }
+
+        public void Dispose()
+        {
+            if (_memory != IntPtr.Zero && _old != IntPtr.Zero) SelectObject(_memory, _old);
+            if (_bitmap != IntPtr.Zero) DeleteObject(_bitmap);
+            if (_memory != IntPtr.Zero) DeleteDC(_memory);
+            (_memory, _bitmap, _bits, _old, _width, _height) = (IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, 0, 0);
         }
     }
 
