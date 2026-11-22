@@ -1,4 +1,4 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:picker="using:OmniControl.App.Features.Hotkeys.Picker"
              xmlns:ctl="using:OmniControl.App.Shared.Ui.Controls"
@@ -130,7 +130,7 @@
                                                     <TextBlock Classes="hint small" Text="{Binding Hint}" IsVisible="{Binding HasNote}" TextWrapping="Wrap" />
                                                     <Border Classes="tag caution" IsVisible="{Binding HasTag}" HorizontalAlignment="Left"><TextBlock Text="{Binding Tag}" /></Border>
                                                 </StackPanel>
-                                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource Gap}" VerticalAlignment="Center" IsVisible="{Binding IsStepper}" pages:ValueWheel.Selector="True">
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource Gap}" VerticalAlignment="Center" IsVisible="{Binding IsNumber}" pages:ValueWheel.Selector="True">
                                                     <Button Classes="pill glyph" Tag="-1" Focusable="False" Click="OnOptionStepClick"><Path Classes="glyph" Data="{StaticResource ChevronLeftIcon}" /></Button>
                                                     <Panel MinWidth="100" VerticalAlignment="Center">
                                                         <TextBlock Text="{Binding Display}" TextAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !IsTyping}"
@@ -140,6 +140,8 @@
                                                     </Panel>
                                                     <Button Classes="pill glyph" Tag="1" Focusable="False" Click="OnOptionStepClick"><Path Classes="glyph" Data="{StaticResource ChevronRightIcon}" /></Button>
                                                 </StackPanel>
+                                                <ComboBox Classes="choice" ItemsSource="{Binding Choices}" SelectedItem="{Binding Value}" IsVisible="{Binding IsChoice}"
+                                                          IsTabStop="False" VerticalAlignment="Center" pages:ValueWheel.Selector="True" DropDownClosed="OnChoiceClosed" />
                                                 <ToggleSwitch Grid.Column="1" IsChecked="{Binding IsOn}" OnContent="On" OffContent="Off" Focusable="False"
                                                               IsVisible="{Binding IsToggle}" IsEnabled="{Binding Available}" VerticalAlignment="Center" />
                                             </Grid>

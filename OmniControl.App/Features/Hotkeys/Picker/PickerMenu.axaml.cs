@@ -80,6 +80,7 @@ public partial class PickerMenu : UserControl
     {
         if (_model is not { } model) return;
         var focused = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement();
+        if (focused is ComboBox { IsDropDownOpen: true } || focused is Visual inList && inList.FindAncestorOfType<ComboBoxItem>() is not null) return; // an open pull-down keeps its own keys
         if (e.Key == Key.F && e.KeyModifiers == KeyModifiers.Control && !HotkeyCapture.IsListening(focused))
         {
             FocusSearch(model);
@@ -155,6 +156,9 @@ public partial class PickerMenu : UserControl
 
         switch (e.Key)
         {
+            case Key.Down when e.KeyModifiers == KeyModifiers.Alt && model.SelectedOption is { IsChoice: true }:
+                OpenChoice();
+                return true;
             case Key.Up or Key.Down:
                 if (inText) SettingsFocus.Focus(NavigationMethod.Directional);
                 model.MoveOption(Shared.Services.Wrap.Direction(e.Key));
@@ -172,6 +176,7 @@ public partial class PickerMenu : UserControl
                 else if (model.OnStar) model.ToggleActiveFavourite();
                 else if (inText) SettingsFocus.Focus(NavigationMethod.Directional); // done typing (a typed number is taken when the box loses focus)
                 else if (model.SelectedOption is { IsPoint: true }) PickPoint();
+                else if (model.SelectedOption is { IsChoice: true }) OpenChoice();
                 else if (model.SelectedOption is { IsText: true } or { IsPath: true } && e.KeyModifiers != KeyModifiers.Control) EditText();
                 else if (model.SelectedOption is { IsNumber: true } number && e.KeyModifiers == KeyModifiers.Control) BeginTyping(number); // Enter itself applies
                 else UseHighlighted(model);
@@ -239,6 +244,18 @@ public partial class PickerMenu : UserControl
             box.SelectAll();
         }, DispatcherPriority.Loaded);
     }
+
+    /// Opens the selected choice's pull-down, the keys in it (Up/Down, Enter picks, Esc closes).
+    private void OpenChoice()
+    {
+        if (OptionList.ContainerFromIndex(OptionList.SelectedIndex) is not Control row) return;
+        if (row.GetVisualDescendants().OfType<ComboBox>().FirstOrDefault(b => b.IsEffectivelyVisible) is not { } box) return;
+        box.Focus(NavigationMethod.Directional);
+        box.IsDropDownOpen = true;
+    }
+
+    /// A pull-down closed: the keys go back to the settings.
+    private void OnChoiceClosed(object? sender, EventArgs e) => FocusCurrentPane();
 
     /// Puts the cursor in the selected text setting.
     private void EditText()
