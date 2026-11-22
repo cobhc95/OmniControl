@@ -2,12 +2,12 @@
 
 One Windows app for your displays, sound, smart plugs, mouse, trackpad, other PCs and screenshots, where every feature is an action you can put on a hotkey, a button, a gesture, a tray tile or a rule.
 
-<p align="center"><img src="docs/screenshots/hero.png" alt="OmniControl's main window on the Volume page" width="820"></p>
+<p align="center"><img src="docs/screenshots/hero.png" alt="OmniControl's main window on the Audio and Volume page" width="820"></p>
 
 ## What it does
 
 - **Displays**: each monitor's own controls over DDC/CI (brightness, contrast, RGB gain, input source, colour preset and more) and the laptop backlight; a software picture per display (brightness, contrast, gamma, colour temperature); saturation, grayscale and invert for the whole desktop; warm light on a schedule; rotation; monitor and picture presets.
-- **Volume**: per-app volume, pan, mute and output device, microphones, live meters; an Easy view with guided goals and an Advanced Mixer and Wiring view; volume presets.
+- **Audio and Volume**: per-app volume, pan, mute and output device, microphones, live meters; an Easy view with guided goals and an Advanced Mixer and Wiring view; volume presets.
 - **Effects**: parametric and graphic EQs, compressor, limiter, gain, an impulse-response loader and VST3/VST2 plug-ins, per app, on the master and on microphones; they run in Equalizer APO (its official installer is included), through a virtual cable or by recording the app; combined speakers and microphones.
 - **Smart devices**: Tapo and Kasa plugs and bulbs on your network through python-kasa, or (experimental) by tapping through the device's own phone app in an Android emulator; several methods per device, tried in order; automatic state checks.
 - **Other PCs**: pair PCs on your network or over Tailscale, then run each other's shared actions, see their states and sound, wake them, and see and cancel a sleep or shut-down countdown; import settings or device set-ups from a paired PC.
@@ -25,7 +25,7 @@ One Windows app for your displays, sound, smart plugs, mouse, trackpad, other PC
 <table>
 <tr>
 <td width="33%"><a href="docs/screenshots/displays.png"><img src="docs/screenshots/displays.png" alt="Displays page"></a><br><sub>Displays: each monitor over DDC/CI</sub></td>
-<td width="33%"><a href="docs/screenshots/volume.png"><img src="docs/screenshots/volume.png" alt="Volume mixer"></a><br><sub>Volume: mixer with effects per app</sub></td>
+<td width="33%"><a href="docs/screenshots/volume.png"><img src="docs/screenshots/volume.png" alt="Volume mixer"></a><br><sub>Audio and Volume: mixer with effects per app</sub></td>
 <td width="33%"><a href="docs/screenshots/smart-devices.png"><img src="docs/screenshots/smart-devices.png" alt="Smart Devices page"></a><br><sub>Smart Devices</sub></td>
 </tr>
 <tr>

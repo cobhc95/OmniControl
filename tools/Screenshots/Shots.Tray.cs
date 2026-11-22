@@ -21,7 +21,8 @@ internal static partial class Shots
     /// states come from the mixer, which reads and writes the real sound devices, so it is not made here.
     private static void SampleVolumeStates(Rig rig)
     {
-        const string title = "Volume", how = "Sample value (screenshot tool).";
+        const string how = "Sample value (screenshot tool).";
+        var title = VolumePageViewModel.Info.Title;
         var speakers = new[] { "Speakers", "Headphones" };
         rig.States.Register(new[]
         {

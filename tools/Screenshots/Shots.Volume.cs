@@ -53,7 +53,7 @@ internal static partial class Shots
 
         var title = new PageTitleLine
         {
-            Title = "Volume",
+            Title = VolumePageViewModel.Info.Title,
             Middle = Pills(("Easy", false), ("Advanced", true)),
             Right = new Button { Classes = { "pill" }, Content = "Restore defaults", Tag = "grouptool" },
         };

@@ -231,7 +231,7 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
     }
 
     private const string DefaultOutput = "Master (the default device)";
-    private const string SeveralOutputs = "Several devices (see the Volume page)";
+    private const string SeveralOutputs = "Several devices (see the Audio and Volume page)";
 
     private void ChooseOutput(string name)
     {
