@@ -13,6 +13,9 @@ public sealed record ActionOption(string Key, string Label, OptionKind Kind, str
     /// A muted line (<paramref name="note"/>) under the row's label while its value is one of <paramref name="values"/>.
     public ActionOption NotedWhen(string note, params string[] values) => this with { Hint = note, NoteValues = values };
 
+    /// A number with a muted line (<paramref name="note"/>) under its label, always.
+    public ActionOption Noted(string note) => this with { Hint = note };
+
     /// A text whose value <paramref name="problemOf"/> judges: the one sentence it returns shows as a caution tag beside the field (null = fine).
     public ActionOption CheckedBy(Func<string, string?> problemOf) => this with { Check = problemOf };
 

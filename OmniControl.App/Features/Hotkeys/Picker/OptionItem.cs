@@ -42,8 +42,8 @@ public sealed partial class OptionItem : ObservableObject
     public string PickerTitle => $"Choose: {Option.Label}";
     public string Hint => Option.Hint;
 
-    /// A muted line under a switch's label, or under any row's while its value is one its option names (<see cref="ActionOption.NotedWhen"/>).
-    public bool HasNote => Option.Hint.Length > 0 && (Option.NoteValues?.Contains(Value) ?? IsToggle);
+    /// A muted line under a switch's or number's label, or under any row's while its value is one its option names (<see cref="ActionOption.NotedWhen"/>).
+    public bool HasNote => Option.Hint.Length > 0 && (Option.NoteValues?.Contains(Value) ?? (IsToggle || IsNumber));
 
     /// A caution tag shown on the row while its option says so (<see cref="ActionOption.TaggedWhen"/>), or what is wrong with its text (<see cref="ActionOption.CheckedBy"/>).
     public string? Tag => Option.Check?.Invoke(Value) ?? Option.TagNow?.Invoke();

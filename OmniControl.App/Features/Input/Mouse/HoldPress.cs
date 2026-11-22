@@ -3,22 +3,60 @@ using OmniControl.Core.Engine.Mouse;
 
 namespace OmniControl.App.Features.Input.Mouse;
 
-/// How a button's actions split when some run "When the button is held": the held ones run once the button has been down for
-/// <see cref="HoldFor"/>; the pressed ones wait for the release and run only on a short press. When the first action is not one that
-/// runs on the press or when held (released, repeated, keys held, a mode or a layer), it and the pressed extras run as before and only
-/// the held extras wait (<see cref="DefersFirst"/> false).
-internal sealed record HoldSplit(MouseAction? HeldFirst, MouseAction[] HeldExtras, MouseAction[] ShortExtras, bool DefersFirst, TimeSpan HoldFor)
+/// What runs for one count of presses: the button's first action (null when it belongs to another count or runs at once) and the others.
+internal readonly record struct PressStep(MouseAction? First, MouseAction[] Extras)
 {
-    /// The split of a button's first action and its other actions; null when none runs when held (the button works as it always did).
+    public static readonly PressStep None = new(null, Array.Empty<MouseAction>());
+
+    public bool IsEmpty => First is null && Extras.Length == 0;
+}
+
+/// How a button's actions split when some run "When the button is held" or "pressed twice / three times": the held ones run once the
+/// button has been down for <see cref="HoldFor"/>; the others wait for the release and run for the number of presses counted (a press
+/// with no action of its own count runs the nearest lower count's). When the first action is not one that runs on the press, when held
+/// or on a count (released, repeated, keys held, a mode or a layer), it and the pressed extras run as before and only the held and
+/// counted extras wait (<see cref="DefersFirst"/> false).
+internal sealed record HoldSplit(MouseAction? HeldFirst, MouseAction[] HeldExtras, MouseAction[] ShortExtras, bool DefersFirst, TimeSpan HoldFor,
+    PressStep[] Steps, TimeSpan Within)
+{
+    private const int MaxPresses = 3;
+
+    public bool HasHeld => HeldFirst is not null || HeldExtras.Length > 0;
+
+    /// The most presses any action waits for (1 when none counts presses).
+    public int MaxCount => Math.Max(1, Array.FindLastIndex(Steps, s => !s.IsEmpty) + 1);
+
+    public bool IsCounted => MaxCount > 1;
+
+    /// What runs after <paramref name="count"/> presses: that count's actions, else the nearest lower count's.
+    public PressStep StepFor(int count)
+    {
+        for (var at = Math.Min(count, Steps.Length) - 1; at >= 0; at--)
+            if (!Steps[at].IsEmpty) return Steps[at];
+        return PressStep.None;
+    }
+
+    /// The split of a button's first action and its other actions; null when none runs when held or on a count (the button works as it always did).
     public static HoldSplit? Of(MouseAction first, MouseAction[] extras)
     {
         var firstHeld = MouseOptions.RunsWhenHeld(first.Options);
+        var firstPresses = MouseOptions.PressesOf(first.Options);
         var heldExtras = extras.Where(e => MouseOptions.RunsWhenHeld(e.Options)).ToArray();
-        if (!firstHeld && heldExtras.Length == 0) return null;
-        var holder = firstHeld ? first : heldExtras[0];
-        var defers = firstHeld || (first.Options.Text(MouseOptions.Trigger) == MouseOptions.OnPress && RunsOnce(first.Id));
-        return new HoldSplit(firstHeld ? first : null, heldExtras, extras.Except(heldExtras).ToArray(), defers,
-            TimeSpan.FromMilliseconds(holder.Options.Int(MouseOptions.HoldFor)));
+        var countedExtras = extras.Where(e => MouseOptions.PressesOf(e.Options) > 0).ToArray();
+        if (!firstHeld && firstPresses == 0 && heldExtras.Length == 0 && countedExtras.Length == 0) return null;
+
+        var defers = firstHeld || firstPresses > 0 || (first.Options.Text(MouseOptions.Trigger) == MouseOptions.OnPress && RunsOnce(first.Id));
+        var shortExtras = extras.Except(heldExtras).Except(countedExtras).ToArray();
+        var steps = Enumerable.Repeat(PressStep.None, MaxPresses).ToArray();
+        if (defers) steps[0] = new PressStep(!firstHeld && firstPresses == 0 ? first : null, shortExtras); // else they already ran with the press
+        for (var count = 2; count <= MaxPresses; count++)
+            steps[count - 1] = new PressStep(firstPresses == count ? first : null, countedExtras.Where(e => MouseOptions.PressesOf(e.Options) == count).ToArray());
+
+        var holder = firstHeld ? first : heldExtras.FirstOrDefault();
+        var counter = firstPresses > 0 ? first : countedExtras.FirstOrDefault();
+        return new HoldSplit(firstHeld ? first : null, heldExtras, shortExtras, defers,
+            holder is null ? Timeout.InfiniteTimeSpan : TimeSpan.FromMilliseconds(holder.Options.Int(MouseOptions.HoldFor)), steps,
+            counter is null ? TimeSpan.Zero : TimeSpan.FromMilliseconds(counter.Options.Int(MouseOptions.PressesWithin)));
     }
 
     // Modes, layers, "while held" actions and Disabled act on the press itself, so they are never held back for a short press.
