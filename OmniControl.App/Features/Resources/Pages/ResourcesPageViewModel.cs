@@ -38,8 +38,15 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     public ItemGroup Live { get; }
     public ChoiceItem ReadEvery { get; }
 
-    public override IEnumerable<SearchEntry> SearchEntries => new[] { Entry(ReadEvery, ReadEvery.Label, "resources readings") }
-        .Concat(_gadget.SearchItems.Select(i => Entry(i, i.Label, "resources taskbar gadget", GadgetTab)));
+    public override IEnumerable<SearchEntry> SearchEntries => new[] { Entry(ReadEvery, ReadEveryCard) }
+        .Concat(_gadget.SearchItems.Select(i => Entry(i, GadgetCard(i.Label))));
+
+    private static readonly SearchCard ReadEveryCard = new("Read every", "resources readings");
+
+    private static SearchCard GadgetCard(string label) => new(label, "resources taskbar gadget", GadgetTab);
+
+    /// The page's search words (<c>FeaturePage.Words</c>).
+    public static IEnumerable<string> Words() => GadgetSettingsModel.SearchLabels.Select(l => GadgetCard(l).Words).Prepend(ReadEveryCard.Words);
 
     /// <param name="presets">The title line's preset picker and <paramref name="gadget"/> the Taskbar gadget tab (the page disposes both).</param>
     internal ResourcesPageViewModel(IReadingList monitor, ResourcesSettings settings, ProviderChoice presets, GadgetSettingsModel gadget) : base(Info)
@@ -59,7 +66,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
             ExpandedByDefault = true, Summary = string.Empty,
             Tip = "Readings come from Windows itself (GPU and disk load as Task Manager shows them, the graphics card's and drives' own temperatures); LibreHardwareMonitor for the CPU package temperature (it needs the PawnIO driver, else the ACPI thermal zone is read) and for what Windows does not give.",
         };
-        ReadEvery = new ChoiceItem("Read every", Timing.ResourcesReadChoices.Select(Every).ToList(), Every(settings.Setup.ReadEverySeconds), picked =>
+        ReadEvery = new ChoiceItem(ReadEveryCard.Label, Timing.ResourcesReadChoices.Select(Every).ToList(), Every(settings.Setup.ReadEverySeconds), picked =>
         {
             settings.Setup.ReadEverySeconds = Timing.ResourcesReadChoices.First(s => Every(s) == picked);
             settings.Commit();

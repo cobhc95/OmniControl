@@ -27,7 +27,9 @@ public sealed partial class WeatherPlaceItem : ObservableObject, IEditorItem, ID
         Load();
     }
 
-    public string Label => "Place";
+    public const string PlaceLabel = "Place";
+
+    public string Label => PlaceLabel;
 
     public IRelayCommand UseLocationCommand { get; }
     public IRelayCommand SaveKeyCommand { get; }

@@ -31,13 +31,22 @@ public sealed partial class DisplaysPageViewModel : PageViewModel
     public override IRestorable? Restorable => _restorable ??= _service.NewRestorable(Info.RestoreKey!);
 
     /// Only the controls a monitor has are searched for; the ones it does not report are not offered.
-    public override IEnumerable<SearchEntry> SearchEntries =>
-        _service.HardwareDisplays.SelectMany(h => h.AvailableCards.Select(c => Entry(c, $"{c.Label} ({h.Name})", $"monitor display screen ddc {h.Name}", DisplayControls.HardwareGroup)))
-            .Concat(_service.WholeDesktopCards.Select(c => Entry(c, c.Label, "monitor display screen digital software", DisplayControls.SoftwareGroup)))
-            .Concat(_service.SoftwareDisplays.SelectMany(s => s.Cards.Select(c =>
-                Entry(c, $"{c.Label} ({s.Name})", $"monitor display screen digital software {s.Name}", DisplayControls.SoftwareGroup))))
-            .Append(Entry(PresetChoice, "Display presets", "display presets manage save apply picture preset cogwheel settings", DisplayControls.SoftwareGroup))
-            .Append(Entry(MonitorPresetChoice, "Monitor presets", "monitor presets manage save apply hardware ddc preset cogwheel settings", DisplayControls.HardwareGroup));
+    public override IEnumerable<SearchEntry> SearchEntries => Searchables(_service).Select(s => Entry(s.Editor, s.Card));
+
+    /// The page's search words (<c>FeaturePage.Words</c>), from the service's cards; none while the service does not run.
+    public static IEnumerable<string> Words(DisplaysService? service) =>
+        service is null ? Array.Empty<string>() : Searchables(service).Select(s => s.Card.Words);
+
+    private static IEnumerable<(IEditorItem Editor, SearchCard Card)> Searchables(DisplaysService service) =>
+        service.HardwareDisplays.SelectMany(h => h.AvailableCards.Select(c => Of(c, $"monitor display screen ddc {h.Name}", DisplayControls.HardwareGroup, $"{c.Label} ({h.Name})")))
+            .Concat(service.WholeDesktopCards.Select(c => Of(c, "monitor display screen digital software", DisplayControls.SoftwareGroup)))
+            .Concat(service.SoftwareDisplays.SelectMany(s => s.Cards.Select(c =>
+                Of(c, $"monitor display screen digital software {s.Name}", DisplayControls.SoftwareGroup, $"{c.Label} ({s.Name})"))))
+            .Append(Of(service.PresetChoice, "display presets manage save apply picture preset cogwheel settings", DisplayControls.SoftwareGroup, "Display presets"))
+            .Append(Of(service.MonitorPresetChoice, "monitor presets manage save apply hardware ddc preset cogwheel settings", DisplayControls.HardwareGroup, "Monitor presets"));
+
+    private static (IEditorItem, SearchCard) Of(IEditorItem editor, string keywords, string group, string? title = null) =>
+        (editor, new SearchCard(editor.Label, keywords, group, title));
 
     public override void OnShown() => _service.Rescan();
 

@@ -28,7 +28,7 @@ public sealed class DisplaysModule : IFeatureModule
 
     public IReadOnlyList<FeaturePage> Pages => new[]
     {
-        new FeaturePage(DisplaysPageViewModel.Info, () => new DisplaysPageViewModel(_service!))
+        new FeaturePage(DisplaysPageViewModel.Info, () => new DisplaysPageViewModel(_service!), () => DisplaysPageViewModel.Words(_service))
         {
             Registers = () => _service = new DisplaysService(_engine!, _context!.Actions, _context.SuggestedKeys, _context.Osd, _software, _context.Report,
                 _context.Presets, _context.OpenPresetManager, _context.States, _context.Hardware, DisplaysPageViewModel.Info.Title),

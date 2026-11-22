@@ -34,7 +34,7 @@ public sealed class GadgetSettingsModel : ObservableObject, IDisposable
         Display = new GadgetDisplayCards(settings, actions, () => preview.Ink, () => preview.Background, chooseAction);
         Weather = new WeatherCards(settings, weather);
         Hover = new GadgetHoverCards(settings);
-        Position = new GalleryItem("Position", GadgetSettings.PositionNames, (int)Look.Position, i => preview.SetPosition((GadgetPosition)i))
+        Position = new GalleryItem(PositionLabel, GadgetSettings.PositionNames, (int)Look.Position, i => preview.SetPosition((GadgetPosition)i))
         {
             Half = true, Tip = "Right: left of the tray icons. Left: after the Widgets button, or after the app buttons when they sit at the left.",
         };
@@ -83,6 +83,12 @@ public sealed class GadgetSettingsModel : ObservableObject, IDisposable
     public GadgetHoverCards Hover { get; }
 
     /// The settings global search offers (Position, Font and the cards of the Weather, Size and spacing, Numbers and units, Hover details and Clicks groups).
+    private const string PositionLabel = "Position";
+
+    /// The labels of <see cref="SearchItems"/>, read without making the cards (the page's word source).
+    public static IEnumerable<string> SearchLabels => new[] { PositionLabel, GadgetFontCard.Label }
+        .Concat(WeatherCards.SearchLabels).Concat(GadgetDisplayCards.SearchLabels).Concat(GadgetHoverCards.SearchLabels);
+
     public IEnumerable<IEditorItem> SearchItems => new[] { Weather.Group, Display.Layout, Display.Numbers, Hover.Group, Display.Behaviour }
         .SelectMany(g => g.Items).OfType<IEditorItem>().Prepend(Font.Item).Prepend(Position);
 

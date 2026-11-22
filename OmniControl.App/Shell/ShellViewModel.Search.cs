@@ -1,17 +1,20 @@
 namespace OmniControl.App.Shell;
 
 // The main window's "Search settings...": the sidebar keeps the pages that match, and the results list shows the matching settings
-// as live controls. A search is made ready once when it starts (SearchIndex: every page's and every setting's words, read then, so
-// what was added since the last search is in it; the settings are the pages' own cards, so a search makes every page not made yet),
-// matched off the UI thread (SearchRunner), and its results shown a screenful first (ProgressiveFill), all through ListDiff so no list
-// is ever cleared and refilled.
+// as live controls. A search is made ready once when it starts (SearchIndex: every page's and every result's words, read then, so
+// what was added since the last search is in it); the results are the pages' own cards, so a page whose words match is made at the
+// typing pause and only then. Matching runs off the UI thread (SearchRunner), and results show a screenful first (ProgressiveFill),
+// all through ListDiff so no list is ever cleared and refilled.
 public sealed partial class ShellViewModel
 {
     private SearchRunner<List<SearchEntry>>? _search;
     private ProgressiveFill<SearchEntry>? _resultFill;
     private SearchIndex<PageSlot>? _pageIndex;
+    private SearchIndex<(PageSlot Slot, string Words)>? _wordIndex;
     private SearchIndex<SearchEntry>? _entryIndex;
+    private int _indexedPages;
     private readonly DispatcherTimer _searchShow = new() { Interval = Timing.SearchDebounce };
+    private readonly DispatcherTimer _searchMake = new() { Interval = Timing.SearchDebounce };
     private PageSlot? _searchTarget;
 
     private void OnSearchShowDue(object? sender, EventArgs e) => Guard.Run("search page", ShowSearchTarget);
@@ -43,15 +46,46 @@ public sealed partial class ShellViewModel
             p => new[] { p.Title, p.Info.Keywords }.Concat(actions[p.Title].SelectMany(a => new[] { a.Title, a.Heading, a.Keywords })));
     }
 
-    private SearchIndex<SearchEntry> EntryIndex => _entryIndex ??= new SearchIndex<SearchEntry>(
-        AllSlots.Select(p => p.Page).OfType<PageViewModel>().SelectMany(p => p.SearchEntries).Concat(_actionsWindow.SearchEntries), e => e.SearchFields);
+    // Each page's result words, read without making it (FeaturePage.Words): only a page with a match is made. Joined as a result's heading
+    // is, so a query matches the words exactly when it can match the result.
+    private SearchIndex<(PageSlot Slot, string Words)> WordIndex => _wordIndex ??= new SearchIndex<(PageSlot Slot, string Words)>(
+        AllSlots.SelectMany(s => s.Words().Select(w => (s, w))), e => new[] { Heading.Join(e.Slot.Title, e.Words) });
+
+    private List<PageSlot> UnmadeMatches(string q) => WordIndex.Match(q).Select(e => e.Slot).Where(s => s.IfMade is null).Distinct().ToList();
+
+    // The made pages' results; made again once a search has made another page.
+    private SearchIndex<SearchEntry> EntryIndex()
+    {
+        var made = AllSlots.Select(p => p.IfMade).OfType<PageViewModel>().ToList();
+        if (_entryIndex is null || made.Count != _indexedPages)
+            (_entryIndex, _indexedPages) = (new SearchIndex<SearchEntry>(made.SelectMany(p => p.SearchEntries).Concat(_actionsWindow.SearchEntries), e => e.SearchFields), made.Count);
+        return _entryIndex;
+    }
+
+    private void OnSearchMakeDue(object? sender, EventArgs e) => Guard.Run("search pages", MakeSearchPages);
+
+    // At the typing pause: the pages the query matches are made, then searched.
+    private void MakeSearchPages()
+    {
+        _searchMake.Stop();
+        var q = SearchText.Trim();
+        if (q.Length == 0) return;
+        foreach (var slot in UnmadeMatches(q)) _ = slot.Page;
+        RequestResults(q);
+    }
+
+    private void RequestResults(string q)
+    {
+        var index = EntryIndex();
+        Search.Request(token => index.Match(q, token));
+    }
 
     private bool InCategory(string category) => SelectedCategory == AllCategories || category == SelectedCategory;
 
     private void ApplyFilter()
     {
         var q = SearchText.Trim();
-        if (q.Length == 0) (_pageIndex, _entryIndex) = (null, null); // the next search reads the lists again
+        if (q.Length == 0) (_pageIndex, _wordIndex, _entryIndex) = (null, null, null); // the next search reads the lists again
 
         var matching = (q.Length == 0 ? AllSlots : PageIndex.Match(q)).Where(p => InCategory(p.Title)).ToHashSet();
         ListDiff.Apply(Pages, _allPages.Where(matching.Contains).ToList(), p => p);
@@ -75,14 +109,20 @@ public sealed partial class ShellViewModel
         else if (_searchTarget is not null) _searchShow.Start();
 
         IsSearching = q.Length > 0;
+        _searchMake.Stop();
         if (!IsSearching)
         {
             Search.Cancel();
             ResultFill.Show(Array.Empty<SearchEntry>());
             return;
         }
-        var index = EntryIndex;
-        Search.Request(token => index.Match(q, token));
+        if (UnmadeMatches(q).Count == 0) RequestResults(q);
+        else
+        {
+            // A page is made only at the typing pause, so the first letters (which match nearly every page) make none.
+            Search.Cancel();
+            _searchMake.Start();
+        }
     }
 
     /// The pages under their sidebar group headings.

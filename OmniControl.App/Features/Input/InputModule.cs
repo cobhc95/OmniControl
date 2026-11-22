@@ -94,7 +94,7 @@ public sealed class InputModule(Func<IEnumerable<string>> rememberedPrograms) : 
     public IReadOnlyList<FeaturePage> Pages => new[]
     {
         new FeaturePage(MousePageViewModel.Info, () => new MousePageViewModel(_mouse!, _trackpad!, _pointer, _pointerActions!, _context!.Actions, _context.Report,
-            _context.OpenPresetManager, _context.AppScopes, new GestureGroups(_gestures!, _rules!, _margins!, _context.Actions, _context.AskAsync, _context.AppScopes)))
+            _context.OpenPresetManager, _context.AppScopes, new GestureGroups(_gestures!, _rules!, _margins!, _context.Actions, _context.AskAsync, _context.AppScopes)), () => MousePageViewModel.Words(_mouse, _context?.Actions, _rules))
         {
             Registers = () => _actions!.Register(_context!.Actions, _context.Presets),
         },

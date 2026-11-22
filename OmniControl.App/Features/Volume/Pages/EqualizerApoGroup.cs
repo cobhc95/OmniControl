@@ -27,6 +27,8 @@ public sealed class EqualizerApoGroup : IDisposable
     public ObservableCollection<object> Items { get; } = new();
 
     /// The status card (also the page's search entry).
+    public const string StatusLabel = "Status";
+
     public FactItem Status { get; }
 
     /// THE Equalizer APO step (the master's Method menu, its fix link, the FX device menu, Easy, this group's link): its Device Selector,
@@ -45,7 +47,7 @@ public sealed class EqualizerApoGroup : IDisposable
         _choose = new CardAction(EffectsRules.ApoDevicesLabel, "Opens Equalizer APO's own Device Selector (administrator), where you tick the devices it runs on", command);
         _install = new CardAction(EffectsRules.ApoInstallLabel,
             "Runs Equalizer APO's official installer (one administrator prompt); its Device Selector then opens so you tick your speakers", command);
-        Status = new FactItem("Status", () => _ = Guard.RunAsync("Equalizer APO: step", DevicesAsync)) { ActionIsLink = true };
+        Status = new FactItem(StatusLabel, () => _ = Guard.RunAsync("Equalizer APO: step", DevicesAsync)) { ActionIsLink = true };
         Items.Add(Status);
         support.Changed += Sync;
         Sync();

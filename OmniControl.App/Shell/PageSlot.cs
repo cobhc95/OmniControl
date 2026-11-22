@@ -11,12 +11,15 @@ public sealed class PageSlot : ObservableObject
     private bool _failed;
     private bool _isOpen;
 
+    /// <param name="words">The words of the page's search results, read without making it (<c>FeaturePage.Words</c>).</param>
     /// <param name="made">Wires a page just made into the shell (its Restore defaults button).</param>
     /// <param name="report">Says the one sentence when the page cannot be made.</param>
-    public PageSlot(PageInfo info, Func<PageViewModel> make, Action<PageViewModel> made, Action<string> report) =>
-        (Info, _make, _made, _report) = (info, make, made, report);
+    public PageSlot(PageInfo info, Func<PageViewModel> make, Func<IEnumerable<string>> words, Action<PageViewModel> made, Action<string> report) =>
+        (Info, _make, Words, _made, _report) = (info, make, words, made, report);
 
     public PageInfo Info { get; }
+
+    public Func<IEnumerable<string>> Words { get; }
 
     public string Title => Info.Title;
 

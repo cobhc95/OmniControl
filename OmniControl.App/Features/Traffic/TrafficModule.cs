@@ -45,7 +45,7 @@ public sealed class TrafficModule : IFeatureModule
 
     public IReadOnlyList<FeaturePage> Pages => new[]
     {
-        new FeaturePage(TrafficPageViewModel.Info, () => new TrafficPageViewModel(_monitor!, _settings, _limits!, _context!.AppScopes, _context.AppScopeGate, _context.Report)),
+        new FeaturePage(TrafficPageViewModel.Info, () => new TrafficPageViewModel(_monitor!, _settings, _limits!, _context!.AppScopes, _context.AppScopeGate, _context.Report), TrafficPageViewModel.Words),
     };
 
     public IReadOnlyList<IDataTemplate> Templates { get; } = new[]

@@ -30,7 +30,11 @@ public sealed class TrafficPageViewModel : PageViewModel, IDisposable
 
     /// The Packet filter switch on the group's header: off takes Windows Packet Filter out of all traffic (for a conflict with other software).
     public ToggleItem PacketFilter { get; }
-    private const string FilterKeywords = "packet filter windows packet filter winpkfilter ndisrd driver network adapter download limit conflict vpn tailscale off";
+    private static readonly SearchCard FilterCard = new("Packet filter",
+        "packet filter windows packet filter winpkfilter ndisrd driver network adapter download limit conflict vpn tailscale off", PageTitle);
+
+    /// The page's search words (<c>FeaturePage.Words</c>).
+    public static IEnumerable<string> Words() => new[] { FilterCard.Words };
 
     /// The one status line under the programs: the network service, then what really runs for each kind of rule (red while the service or
     /// download limits have failed).
@@ -57,7 +61,7 @@ public sealed class TrafficPageViewModel : PageViewModel, IDisposable
     public IRelayCommand InstallServiceCommand { get; }
     public string InstallServiceTip => NetworkLimits.InstallServiceTip;
 
-    public override IEnumerable<SearchEntry> SearchEntries => new[] { Entry(PacketFilter, PacketFilter.Label, FilterKeywords, Apps.Name) };
+    public override IEnumerable<SearchEntry> SearchEntries => new[] { Entry(PacketFilter, FilterCard) };
 
     internal TrafficPageViewModel(TrafficMonitor monitor, ResourcesSettings settings, INetworkLimits limits, AppScopes scopes, AppScopeGate gate,
         Action<string> report) : base(Info)
@@ -89,7 +93,7 @@ public sealed class TrafficPageViewModel : PageViewModel, IDisposable
             Need(); // per-program traffic is read only while the group is open
             if (Apps.IsExpanded) ShowApps();
         };
-        PacketFilter = new ToggleItem("Packet filter", limits.PacketFilterOn, limits.SetPacketFilter)
+        PacketFilter = new ToggleItem(FilterCard.Label, limits.PacketFilterOn, limits.SetPacketFilter)
         {
             Tip = "Download limits use Windows Packet Filter. Turn it off if another program has network trouble.",
         };

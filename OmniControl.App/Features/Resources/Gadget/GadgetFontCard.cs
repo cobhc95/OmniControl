@@ -4,6 +4,8 @@ namespace OmniControl.App.Features.Resources.Gadget;
 /// installed fonts are read off the UI thread when the menu opens and let go when it closes, so their rows exist only while it shows.
 public sealed class GadgetFontCard
 {
+    public const string Label = "Font";
+
     private readonly Func<string> _font;
     private readonly Action<string> _use;
     private IReadOnlyList<string>? _installed;
@@ -14,7 +16,7 @@ public sealed class GadgetFontCard
     public GadgetFontCard(Func<string> font, Action<string> use)
     {
         (_font, _use) = (font, use);
-        Item = new MenuChoiceItem("Font", () => GadgetSettings.FontName(_font()), MenuRows)
+        Item = new MenuChoiceItem(Label, () => GadgetSettings.FontName(_font()), MenuRows)
         {
             Half = true, Tip = "The gadget's font, for every layout; the gadget still sizes to fit the taskbar", OpenChanged = OnOpenChanged,
         };

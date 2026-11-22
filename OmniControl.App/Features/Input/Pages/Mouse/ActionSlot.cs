@@ -12,7 +12,7 @@ public sealed partial class ActionSlot : ObservableObject, IPickerCard
     /// What the card does for a slot: open a picker on it, take a pick, remove it, move it by a step.
     public sealed record Callbacks(Func<int, bool, PickerModel> Menu, Action<int, PickResult> Pick, Action<int> Remove, Action<int, int> Move);
 
-    private const string MissingName = "(an action that is no longer available)";
+    internal const string MissingName = "(an action that is no longer available)";
 
     private readonly Callbacks _card;
     private string? _missing; // the stored text of an action no list entry matches now, kept as it is

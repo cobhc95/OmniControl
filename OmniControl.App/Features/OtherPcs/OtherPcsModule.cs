@@ -39,7 +39,7 @@ public sealed class OtherPcsModule(Func<bool, string> shareDevices) : IFeatureMo
 
     public IReadOnlyList<FeaturePage> Pages => new[]
     {
-        new FeaturePage(OtherPcsPageViewModel.Info, () => _page = new OtherPcsPageViewModel(_service!, _context!.AskAsync, _context.AskTextAsync, _context.Report, ImportFrom!))
+        new FeaturePage(OtherPcsPageViewModel.Info, () => _page = new OtherPcsPageViewModel(_service!, _context!.AskAsync, _context.AskTextAsync, _context.Report, ImportFrom!), FeaturePage.NoResults)
         {
             Registers = RegisterPageActions,
         },

@@ -26,4 +26,8 @@ public sealed class SearchEntry
 
     /// What the search matches (<see cref="TextMatch"/>).
     public IEnumerable<string?> SearchFields => new[] { Title, Heading, Label, Keywords };
+
+    /// One result's words for a page's word source (<c>FeaturePage.Words</c>), read without its page: its title, group, label and
+    /// keywords (search adds the page's title).
+    public static string WordsOf(params string?[] fields) => string.Join('\n', fields.Where(f => !string.IsNullOrEmpty(f)));
 }

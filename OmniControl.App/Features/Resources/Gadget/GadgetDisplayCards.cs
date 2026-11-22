@@ -35,6 +35,11 @@ public sealed class GadgetDisplayCards : IDisposable
     private readonly IReadOnlyList<ChipItem> _quick, _unitChips;
     private readonly ButtonItem _click, _doubleClick;
 
+    private const string LinesLabel = "Lines", OddLabel = "Odd reading", SizeLabel = "Text size", OutlineLabel = "Outline on hover", BackgroundLabel = "Background", ColumnGapLabel = "Space between columns", LineGapLabel = "Space between lines", SpaceToTrayLabel = "Space to the tray", ColourLabel = "Text colour", UnitsLabel = "Speed units", CountsLabel = "Bits or bytes", ShowUnitsLabel = "Show units", RefreshLabel = "Refresh every", QuickLabel = "Quick", ClickLabel = "Click", DoubleClickLabel = "Double-click", DoubleTimeLabel = "Double-click time";
+
+    /// The labels of the cards global search offers (the page's word source reads them without making the cards).
+    public static IReadOnlyList<string> SearchLabels { get; } = new[] { LinesLabel, OddLabel, SizeLabel, OutlineLabel, BackgroundLabel, ColumnGapLabel, LineGapLabel, SpaceToTrayLabel, ColourLabel, UnitsLabel, CountsLabel, ShowUnitsLabel, RefreshLabel, QuickLabel, ClickLabel, DoubleClickLabel, DoubleTimeLabel };
+
     /// <param name="ink">The taskbar's own text colour (the "Taskbar text" swatch).</param>
     /// <param name="taskbar">The taskbar's own colour (the "Taskbar colour" swatch).</param>
     /// <param name="choose">Opens the Choose-the-action window with a title.</param>
@@ -42,41 +47,41 @@ public sealed class GadgetDisplayCards : IDisposable
     {
         (_settings, _actions, _taskbar, _choose) = (settings, actions, taskbar, choose);
         var (look, defaults) = (Look, new GadgetSettings());
-        _lines = Number("Lines", look.Lines, GadgetSettings.MinLines, GadgetSettings.MaxLines, string.Empty, defaults.Lines, (g, v) => g.Lines = v);
-        _odd = new MenuChoiceItem("Odd reading", OddText, OddRows) { Half = true, Tip = "Where a reading that does not fill the last column goes" };
-        _size = Number("Text size", (int)Math.Round(look.TextSize), GadgetSettings.MinTextSize, GadgetSettings.MaxTextSize, " pt", (int)defaults.TextSize, (g, v) => g.TextSize = v);
-        _outline = new ToggleItem("Outline on hover", look.HoverOutline, on => Change(g => g.HoverOutline = on)) { Half = true, Tip = "A dashed edge around the gadget while the pointer is over it" };
-        _background = new GalleryItem("Background", BackgroundNames, BackgroundIndex(look.Background), BackgroundDot, i => Change(g => g.Background = BackgroundAt(i)))
+        _lines = Number(LinesLabel, look.Lines, GadgetSettings.MinLines, GadgetSettings.MaxLines, string.Empty, defaults.Lines, (g, v) => g.Lines = v);
+        _odd = new MenuChoiceItem(OddLabel, OddText, OddRows) { Half = true, Tip = "Where a reading that does not fill the last column goes" };
+        _size = Number(SizeLabel, (int)Math.Round(look.TextSize), GadgetSettings.MinTextSize, GadgetSettings.MaxTextSize, " pt", (int)defaults.TextSize, (g, v) => g.TextSize = v);
+        _outline = new ToggleItem(OutlineLabel, look.HoverOutline, on => Change(g => g.HoverOutline = on)) { Half = true, Tip = "A dashed edge around the gadget while the pointer is over it" };
+        _background = new GalleryItem(BackgroundLabel, BackgroundNames, BackgroundIndex(look.Background), BackgroundDot, i => Change(g => g.Background = BackgroundAt(i)))
         {
             Half = true, Tip = "See-through, or a fill so a taskbar skin behind the gadget can't show through.",
             EditorIndex = CustomBackground, EditorText = AccentService.CustomEditorLabel,
             Editor = _ => new ColourEditor { DataContext = new ColourEditorModel(BackgroundFill, taskbar(), UseBackground) },
         };
-        _columnGap = Number("Space between columns", (int)look.ColumnGap, 0, GadgetSettings.MaxColumnGap, " px", (int)defaults.ColumnGap, (g, v) => g.ColumnGap = v);
-        _lineGap = Number("Space between lines", (int)look.LineGap, 0, GadgetSettings.MaxLineGap, " px", (int)defaults.LineGap, (g, v) => g.LineGap = v);
-        _spaceToTray = Number("Space to the tray", (int)look.SpaceToTray, GadgetSettings.MinSpaceToTray, GadgetSettings.MaxSpaceToTray, " px", (int)defaults.SpaceToTray, (g, v) => g.SpaceToTray = v,
+        _columnGap = Number(ColumnGapLabel, (int)look.ColumnGap, 0, GadgetSettings.MaxColumnGap, " px", (int)defaults.ColumnGap, (g, v) => g.ColumnGap = v);
+        _lineGap = Number(LineGapLabel, (int)look.LineGap, 0, GadgetSettings.MaxLineGap, " px", (int)defaults.LineGap, (g, v) => g.LineGap = v);
+        _spaceToTray = Number(SpaceToTrayLabel, (int)look.SpaceToTray, GadgetSettings.MinSpaceToTray, GadgetSettings.MaxSpaceToTray, " px", (int)defaults.SpaceToTray, (g, v) => g.SpaceToTray = v,
             "Below 0 tucks into Windows' space by the ^ button");
-        _colour = new GalleryItem("Text colour", GadgetSettings.ColourNames, ColourIndex(look.TextColour),
+        _colour = new GalleryItem(ColourLabel, GadgetSettings.ColourNames, ColourIndex(look.TextColour),
             i => (new SolidColorBrush(TaskbarGadget.ColourOf(GadgetSettings.Colours[i], ink())), SwatchMark.None),
             i => Change(g => g.TextColour = GadgetSettings.Colours[i]));
         Layout = Group("Resources/GadgetLayout", "Size and spacing", _lines, _odd, _size, _outline, _background, _columnGap, _lineGap, _spaceToTray, _colour);
 
-        _units = new ChoiceItem("Speed units", UnitWords, UnitWords[(int)look.Units], u => Change(g => g.Units = (SpeedUnit)Array.IndexOf(UnitWords, u))) { Half = true };
-        _counts = new ChoiceItem("Bits or bytes", CountWords, CountWords[look.Bits ? 1 : 0], b => Change(g => g.Bits = b == CountWords[1])) { Half = true };
+        _units = new ChoiceItem(UnitsLabel, UnitWords, UnitWords[(int)look.Units], u => Change(g => g.Units = (SpeedUnit)Array.IndexOf(UnitWords, u))) { Half = true };
+        _counts = new ChoiceItem(CountsLabel, CountWords, CountWords[look.Bits ? 1 : 0], b => Change(g => g.Bits = b == CountWords[1])) { Half = true };
         _temperatures = new ChoiceItem("Temperatures", TemperatureWords, TemperatureWords[(int)look.Temperatures], w => Change(g => g.Temperatures = (TemperatureSign)TemperatureWords.ToList().IndexOf(w)));
         _unitChips = UnitToggles.Select(u => new ChipItem(u.Words, new RelayCommand(() => Change(g => u.Set(g, !u.Get(g)))), null) { Key = u.Words }).ToList();
-        _refresh = Number("Refresh every", RefreshMs, (int)Timing.ResourcesGadgetReadMin.TotalMilliseconds, (int)Timing.ResourcesGadgetReadMax.TotalMilliseconds, " ms",
+        _refresh = Number(RefreshLabel, RefreshMs, (int)Timing.ResourcesGadgetReadMin.TotalMilliseconds, (int)Timing.ResourcesGadgetReadMax.TotalMilliseconds, " ms",
             (int)Timing.ResourcesGadgetReadEvery.TotalMilliseconds, (g, v) => g.ReadEverySeconds = v / 1000d);
         _quick = Timing.ResourcesGadgetQuickReads.Select(t => new ChipItem(Words(t), new RelayCommand(() => Change(g => g.ReadEverySeconds = t.TotalSeconds)), null)
             { Key = t.TotalMilliseconds.ToString(CultureInfo.InvariantCulture) }).ToList();
-        Numbers = Group("Resources/GadgetNumbers", "Numbers and units", _units, _counts, new ChoiceChipsItem("Show units", _unitChips) { Menu = _temperatures }, _refresh,
-            new ChoiceChipsItem("Quick", _quick) { Half = true, Note = $"Under {Words(Timing.ResourcesGadgetReadCostly)} uses more CPU." });
+        Numbers = Group("Resources/GadgetNumbers", "Numbers and units", _units, _counts, new ChoiceChipsItem(ShowUnitsLabel, _unitChips) { Menu = _temperatures }, _refresh,
+            new ChoiceChipsItem(QuickLabel, _quick) { Half = true, Note = $"Under {Words(Timing.ResourcesGadgetReadCostly)} uses more CPU." });
 
-        _click = new ButtonItem("Click", TitleOf(look.ClickAction), "The action a click on the gadget runs", () => _ = PickAsync("Choose the gadget's click action", (g, id) => g.ClickAction = id)) { Half = true };
-        _doubleClick = new ButtonItem("Double-click", TitleOf(look.DoubleClickAction), "The action a double-click on the gadget runs",
+        _click = new ButtonItem(ClickLabel, TitleOf(look.ClickAction), "The action a click on the gadget runs", () => _ = PickAsync("Choose the gadget's click action", (g, id) => g.ClickAction = id)) { Half = true };
+        _doubleClick = new ButtonItem(DoubleClickLabel, TitleOf(look.DoubleClickAction), "The action a double-click on the gadget runs",
             () => _ = PickAsync("Choose the gadget's double-click action", (g, id) => g.DoubleClickAction = id)) { Half = true };
         var windowsMs = SystemCommands.DoubleClick().Milliseconds;
-        _doubleTime = Number("Double-click time", DoubleMs, (int)Timing.ResourcesGadgetDoubleClickMin.TotalMilliseconds, (int)Timing.ResourcesGadgetDoubleClickMax.TotalMilliseconds,
+        _doubleTime = Number(DoubleTimeLabel, DoubleMs, (int)Timing.ResourcesGadgetDoubleClickMin.TotalMilliseconds, (int)Timing.ResourcesGadgetDoubleClickMax.TotalMilliseconds,
             " ms", windowsMs, (g, v) => g.DoubleClickMs = v == windowsMs ? 0 : v, $"Default: Windows' own ({windowsMs} ms)");
         Behaviour = Group("Resources/GadgetBehaviour", "Clicks", _click, _doubleClick, _doubleTime);
         Load();

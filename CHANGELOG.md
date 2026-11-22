@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Faster first search: "Search settings..." makes only the pages that have a match (each page's words are read without making it), at the typing pause, instead of every page at the first letter; results and their order are unchanged.
 - Faster: the Displays page (and the Mouse page's inner groups) builds eight cards first and the rest right after, so its first frame shows sooner; looks and keys are the same.
 - Faster: menu rows build their tag lists only when the row has tags (long menus such as the action picker's and the gadget's menus open sooner).
 - Faster: the Volume page's level meters repaint only when a level moves by about a pixel and read less often while every meter is silent (the compressor and limiter cards too).

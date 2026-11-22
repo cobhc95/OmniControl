@@ -14,6 +14,7 @@ public sealed partial class MousePageViewModel
     private const string TrackpadKeywords = "trackpad touchpad gestures swipe fingers pinch tap double tap layer preset apps scope";
     /// The Trackpad group's name, also its layer preset group's card (<see cref="InputActions"/>).
     public const string TrackpadGroupName = "Trackpad";
+    private const string TouchpadSettingsLabel = "Windows touchpad settings";
 
     /// The apps the Trackpad group works in: the "Apps: ..." chip on its title line, left of the layer picker.
     public AppScopeModel TrackpadScope { get; }
@@ -26,7 +27,7 @@ public sealed partial class MousePageViewModel
 
     private ItemGroup BuildTrackpadGroup(IReadOnlyList<MouseButtonItem> cards, Action<string> report)
     {
-        var windowsSettings = new ButtonItem("Windows touchpad settings", "Open",
+        var windowsSettings = new ButtonItem(TouchpadSettingsLabel, "Open",
             "Windows' own swipes, pinch and taps.",
             () => { if (WebPage.Open(WindowsTouchpad.SettingsPage) is { } problem) report(problem); }) { Half = true };
 

@@ -149,7 +149,8 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         TrayFlyout = MakeTray();
         _appSettings = new PageSlot(AppSettingsPageViewModel.Info, () => new AppSettingsPageViewModel(_about.Open, _volume.Library,
             () => _presetManager.Open(null, null), new BackupService(_dialogs.ChooseAsync, Report, _otherPcs.ImportFrom), _dialogs.Confirmations, _updates, Report,
-            _volume.Mixer, _hardware, _settings, TrayFlyout, _features), OnPageMade, Report);
+            _volume.Mixer, _hardware, _settings, TrayFlyout, _features), () => AppSettingsPageViewModel.Words(_dialogs.Confirmations, _settings),
+            OnPageMade, Report);
         RegisterAppActions();
         _allFooter = new[] { _appSettings };
         UseSections();
@@ -171,6 +172,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _releaseUi.Tick += OnReleaseDue;
         _releaseUi.Start();
         _searchShow.Tick += OnSearchShowDue;
+        _searchMake.Tick += OnSearchMakeDue;
         if (AppDataStore.TakeDamaged() is { Count: > 0 } damaged)
             Report(Guard.SeeLog($"Damaged settings were reset to their defaults; the damaged files are kept as {string.Join(", ", damaged.Select(AppDataStore.BadCopyOf))}."));
     }
@@ -221,7 +223,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     /// A feature page's place in the sidebar: it registers its entries now and is made at its first use.
     private PageSlot Slot(FeaturePage page)
     {
-        var slot = new PageSlot(page.Info, page.Make, OnPageMade, Report);
+        var slot = new PageSlot(page.Info, page.Make, page.Words, OnPageMade, Report);
         if (page.Registers is { } register && Guard.Run($"Start-up: {page.Info.Title} page's actions", register) is not null)
             Report(Guard.SeeLog($"The {page.Info.Title} page's actions couldn't start."));
         return slot;
@@ -363,6 +365,8 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _releaseUi.Tick -= OnReleaseDue;
         _searchShow.Stop();
         _searchShow.Tick -= OnSearchShowDue;
+        _searchMake.Stop();
+        _searchMake.Tick -= OnSearchMakeDue;
         void Step(ShutdownStage stage, string what, Action step) => _shutdown.Add(stage, what, step);
         Step(ShutdownStage.Search, "search", () => _search?.Dispose());
         Step(ShutdownStage.Search, "search key", () =>

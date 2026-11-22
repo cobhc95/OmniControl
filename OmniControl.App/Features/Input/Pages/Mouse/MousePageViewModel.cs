@@ -61,20 +61,7 @@ public sealed partial class MousePageViewModel : PageViewModel, IDisposable
     /// The trackpad layer picker, the same drop-down on the Trackpad group's title line; it edits the gesture cards only.
     public ChoiceItem TrackpadLayer => _trackpadLayers.Choice;
 
-    public override IEnumerable<SearchEntry> SearchEntries =>
-        new[] { Entry(MouseLayer, Title, ButtonKeywords, ButtonsGroup.Name) }
-            .Concat(ButtonsGroup.Items.Select(i => Entry(i, Title, WithActionNames(i, ButtonKeywords), ButtonsGroup.Name)))
-            .Append(Entry(TrackpadLayer, Title, TrackpadKeywords, TrackpadGroup.Name))
-            .Concat(TrackpadGroup.Items.Select(i => Entry(i, Title, WithActionNames(i, TrackpadKeywords), TrackpadGroup.Name)))
-            .Concat(Gestures.Groups.SelectMany(g => g.Items.Select(i => Entry(i, Title, $"gesture mouse wheel scroll {g.Name}", g.Name))))
-            .Concat(Gestures.Rules.Rules.Select(r => Entry(r, r.Label, $"custom rule gesture {r.Line}", Gestures.Rules.Name)))
-            .Concat(WhereSearchEntries())
-            .Concat(PointerSearchEntries());
-
     private MouseSettings Settings => _mouse.Settings;
-
-    // A card is also found by the names of its actions (search reads this each time it runs, so it is always current).
-    private static string WithActionNames(object item, string keywords) => item is MouseButtonItem card ? $"{keywords} {card.SearchWords}" : keywords;
 
     public const string MouseLayersId = LayerPresets.MouseGroupId, TrackpadLayersId = LayerPresets.TrackpadGroupId;
 
@@ -96,8 +83,8 @@ public sealed partial class MousePageViewModel : PageViewModel, IDisposable
         _pointerActions = pointerActions;
         _report = report;
 
-        _mouseLayers = new LayerPicker(mouse, InputFamily.Mouse, "Mouse layer", () => ReloadCards(InputFamily.Mouse), ManageMouseLayers);
-        _trackpadLayers = new LayerPicker(mouse, InputFamily.Trackpad, "Trackpad layer", () => ReloadCards(InputFamily.Trackpad), ManageTrackpadLayers);
+        _mouseLayers = new LayerPicker(mouse, InputFamily.Mouse, MouseLayerLabel, () => ReloadCards(InputFamily.Mouse), ManageMouseLayers);
+        _trackpadLayers = new LayerPicker(mouse, InputFamily.Trackpad, TrackpadLayerLabel, () => ReloadCards(InputFamily.Trackpad), ManageTrackpadLayers);
 
         // The action list follows the master list: an action a feature registers later appears on every card's list. Inputs without a
         // release (wheel, tilt, gestures) get the list with the "while held" actions greyed; a trackpad gesture's settings word "keep the

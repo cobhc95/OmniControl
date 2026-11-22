@@ -78,7 +78,7 @@ public sealed class ResourcesModule : IFeatureModule, IResourcesWindows
         new FeaturePage(ResourcesPageViewModel.Info, () => new ResourcesPageViewModel(_monitor!, Settings,
             new ProviderChoice("Resources presets", _presets!, () => _context!.OpenPresetManager(Title, ResourcePresets.GroupId), withCustom: true),
             new GadgetSettingsModel(Settings, _context!.Actions, _gadget!, _layouts!, () => _context.OpenPresetManager(Title, GadgetLayouts.GroupId), _weather!,
-                _context.IconPicker.ChooseAsync, ChooseActionAsync))),
+                _context.IconPicker.ChooseAsync, ChooseActionAsync)), ResourcesPageViewModel.Words),
     };
 
     /// The Choose-the-action window over the main window (the gadget's click actions).

@@ -11,13 +11,15 @@ public sealed partial class VolumePageViewModel
     private readonly MixerItem _master;
 
     /// The words under a program's name: not open, or playing now (an open, silent program says nothing).
+    private const string MasterName = "Master";
+
     private const string NotOpenWord = "not open", PlayingWord = "playing";
 
     /// The master's row. Its menus find the row when they open (it exists by then: it is made in the page's constructor).
     private MixerItem NewMaster() =>
         new(MixerService.MasterKey, true)
         {
-            Name = "Master",
+            Name = MasterName,
             VolumeChanged = _controls.SetMasterVolume,
             PanChanged = _controls.SetMasterPan,
             MuteChanged = _controls.SetMasterMute,

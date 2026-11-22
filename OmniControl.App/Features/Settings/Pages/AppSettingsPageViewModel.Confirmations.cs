@@ -4,8 +4,6 @@ namespace OmniControl.App.Features.Settings.Pages;
 /// per prompt the user ticked "Don't ask again" on, each with a Reset pill.
 public sealed partial class AppSettingsPageViewModel
 {
-    private const string ConfirmationKeywords = "confirm confirmation ask again don't dont prompt question reset";
-
     private readonly ConfirmationMemory _confirmations;
     private readonly ButtonItem _resetAllConfirmations;
     private readonly List<ButtonItem> _confirmationRows = new();
@@ -26,8 +24,4 @@ public sealed partial class AppSettingsPageViewModel
             ? "No prompt is set to stay quiet. Tick Don't ask again on a confirmation to list it here."
             : $"{_confirmationRows.Count} not asked";
     }
-
-    private IEnumerable<SearchEntry> ConfirmationSearchEntries() => _confirmationRows
-        .Select(row => Entry(row, DataName, ConfirmationKeywords))
-        .Prepend(Entry(_resetAllConfirmations, DataName, ConfirmationKeywords + " all"));
 }

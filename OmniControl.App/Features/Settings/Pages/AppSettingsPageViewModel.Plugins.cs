@@ -13,16 +13,6 @@ public sealed partial class AppSettingsPageViewModel
     private readonly Features.Volume.Fx.Plugins.PluginLibrary? _plugins;
     private bool _scanning;
 
-    private IEnumerable<SearchEntry> PluginSearchEntries() => _keepFx is null ? Array.Empty<SearchEntry>() :
-        new[]
-        {
-            Entry(_addFolder, PluginsName, "plug-in plugin vst vst2 vst3 folder directory path add other places"),
-            Entry(_scan, PluginsName, "plug-in plugin vst vst2 vst3 scan search find refresh"),
-            Entry(_keepFx, PluginsName, "equalizer apo config effects keep in place restore put back include editor"),
-        }.Concat(PluginItems.OfType<ButtonItem>().Where(IsFolderRow).Select(row => Entry(row, PluginsName, $"plug-in folder remove {row.Description}")));
-
-    private static bool IsFolderRow(ButtonItem item) => item.Label == FolderLabel;
-
     /// The switch card of "Keep OmniControl's effects in place"; it follows changes made elsewhere (an FX window, a rule).
     private ToggleItem KeepFxCard(Features.Volume.Audio.MixerService mixer)
     {
@@ -30,8 +20,6 @@ public sealed partial class AppSettingsPageViewModel
         Follow(h => mixer.KeepFxInPlaceChanged += h, h => mixer.KeepFxInPlaceChanged -= h, () => card.Load(mixer.KeepFxInPlace));
         return card;
     }
-
-    private const string FolderLabel = "Scanned folder";
 
     /// One of the user's folders: its full path, and Remove.
     private ButtonItem FolderRow(string folder)

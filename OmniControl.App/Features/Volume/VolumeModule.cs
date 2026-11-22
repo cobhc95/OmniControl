@@ -91,7 +91,7 @@ public sealed class VolumeModule : IFeatureModule
 
     public IReadOnlyList<FeaturePage> Pages => new[]
     {
-        new FeaturePage(VolumePageViewModel.Info, Page)
+        new FeaturePage(VolumePageViewModel.Info, Page, () => VolumePageViewModel.Words(Mixer, _support))
         {
             Registers = () => _controls!.Register(new VolumeViewCalls(ToggleView, ToggleClosed,
                 () => _ = Page().Easy.NextMasterPresetAsync(), () => _ = Page().Easy.RestoreDefaultsAsync())),

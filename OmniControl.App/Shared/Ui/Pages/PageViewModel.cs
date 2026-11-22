@@ -53,6 +53,8 @@ public abstract class PageViewModel : ObservableObject
     protected SearchEntry Entry(object editor, string title, string keywords, string? group = null) =>
         new() { Title = title, Category = Title, Group = group, Editor = editor, Keywords = keywords };
 
+    protected SearchEntry Entry(object editor, SearchCard card) => Entry(editor, card.Title ?? card.Label, card.Keywords, card.Group);
+
     /// Called when the page becomes visible; refresh live hardware state here.
     public virtual void OnShown() { }
 
