@@ -14,27 +14,29 @@ public sealed record Vst2Settings(byte[]? Chunk, IReadOnlyList<(string Name, flo
 
     internal byte[] ToBytes()
     {
+        if (Chunk is not null) return ChunkState(Chunk);
         using var stream = new MemoryStream();
         using var writer = new BinaryWriter(stream);
-        if (Chunk is not null)
+        writer.Write(ValuesMark);
+        writer.Write(Values.Count);
+        foreach (var (name, value) in Values)
         {
-            writer.Write(ChunkMark);
-            writer.Write(Chunk);
-        }
-        else
-        {
-            writer.Write(ValuesMark);
-            writer.Write(Values.Count);
-            foreach (var (name, value) in Values)
-            {
-                var bytes = Encoding.UTF8.GetBytes(name);
-                writer.Write(bytes.Length);
-                writer.Write(bytes);
-                writer.Write(value);
-            }
+            var bytes = Encoding.UTF8.GetBytes(name);
+            writer.Write(bytes.Length);
+            writer.Write(bytes);
+            writer.Write(value);
         }
         writer.Flush();
         return stream.ToArray();
+    }
+
+    /// The saved form of a program chunk, copied once straight from the plug-in's memory.
+    internal static byte[] ChunkState(ReadOnlySpan<byte> chunk)
+    {
+        var state = new byte[ChunkMark.Length + chunk.Length];
+        ChunkMark.CopyTo(state, 0);
+        chunk.CopyTo(state.AsSpan(ChunkMark.Length));
+        return state;
     }
 
     /// The settings in <paramref name="state"/>, or null when it is not a VST2 state OmniControl wrote (or is damaged).

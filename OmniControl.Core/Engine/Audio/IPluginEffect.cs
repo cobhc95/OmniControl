@@ -31,6 +31,10 @@ public interface IPluginEffect : IDisposable
     /// The plug-in's full settings, to store with the chain; throws <see cref="InvalidOperationException"/> when it refuses.
     byte[] SaveState();
 
+    /// True when the settings may have changed since the last call: after a change notice from a plug-in known to send them, or
+    /// always for one that has sent none (the host then reads and compares).
+    bool TakeChanged();
+
     /// Gives back settings from <see cref="SaveState"/>; throws <see cref="InvalidOperationException"/> or <see cref="ArgumentException"/> when they are rejected.
     void LoadState(byte[] state);
 

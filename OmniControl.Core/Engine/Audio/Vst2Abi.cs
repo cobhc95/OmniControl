@@ -31,6 +31,9 @@ internal static class Vst2Abi
         HostGetBlockSize = 17, HostGetCurrentProcessLevel = 23, HostGetVendorString = 32, HostGetProductString = 33, HostGetVendorVersion = 34,
         HostCanDo = 37, HostGetLanguage = 38, HostUpdateDisplay = 42;
 
+    /// Calls that say the plug-in's settings changed (audioMasterAutomate, audioMasterEndEdit; also audioMasterUpdateDisplay above).
+    public const int HostAutomate = 0, HostEndEdit = 44;
+
     /// audioMasterGetCurrentProcessLevel answers: called from the UI thread, from the audio thread.
     public const int ProcessLevelUser = 1, ProcessLevelRealtime = 2;
 

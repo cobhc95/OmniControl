@@ -101,6 +101,9 @@ internal sealed partial class Vst3Effect : IPluginEffect
 
     public void LoadState(byte[] state) => _plugin.LoadState(state);
 
+    /// NAudio.Vst3 keeps the plug-in's IComponentHandler edits to itself: always read and compared.
+    public bool TakeChanged() => true;
+
     /// The plug-in's own editor, or null when it has none. Call on the UI thread; dispose the editor before this effect.
     public IPluginEditor? CreateEditor() => _plugin.CreateView() is { } view ? new Vst3Editor(view) : null;
 

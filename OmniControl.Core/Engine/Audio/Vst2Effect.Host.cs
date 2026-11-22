@@ -18,6 +18,12 @@ internal sealed unsafe partial class Vst2Effect
     private long _pendingSize;
     private int _sizePending;
 
+    /// The plug-in has said a change of its settings at least once, and has said one since the last <see cref="TakeChanged"/> (any thread).
+    private int _sendsNotices, _changed;
+
+    /// A plug-in that never says its changes is read and compared every time.
+    public bool TakeChanged() => Volatile.Read(ref _sendsNotices) == 0 || Interlocked.Exchange(ref _changed, 0) != 0;
+
     /// Takes the size the plug-in asked for since the last call, if any (UI thread).
     internal bool TakePendingSize(out int width, out int height)
     {
@@ -32,6 +38,11 @@ internal sealed unsafe partial class Vst2Effect
     {
         try
         {
+            if (opcode is Vst2Abi.HostAutomate or Vst2Abi.HostEndEdit or Vst2Abi.HostUpdateDisplay && SelfOf(effect) is { } changed)
+            {
+                Volatile.Write(ref changed._sendsNotices, 1);
+                Volatile.Write(ref changed._changed, 1);
+            }
             switch (opcode)
             {
                 case Vst2Abi.HostVersion: return Vst2Abi.HostVersionNumber;

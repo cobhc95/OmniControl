@@ -163,7 +163,7 @@ internal sealed unsafe partial class Vst2Effect : IPluginEffect
         IntPtr data;
         var size = (long)Dispatch(Vst2Abi.EffGetChunk, Vst2Abi.ProgramChunk, 0, (IntPtr)(&data), 0);
         if (size <= 0 || size > MaxChunkBytes || data == IntPtr.Zero) throw new InvalidOperationException("The plug-in didn't hand out its settings.");
-        return new Vst2Settings(new ReadOnlySpan<byte>((void*)data, (int)size).ToArray(), Array.Empty<(string, float)>()).ToBytes();
+        return Vst2Settings.ChunkState(new ReadOnlySpan<byte>((void*)data, (int)size));
     }
 
     /// Gives back settings from <see cref="SaveState"/>: the chunk, or the values in the plug-in's order.

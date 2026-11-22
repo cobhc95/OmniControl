@@ -15,17 +15,23 @@ public sealed class PluginChainHost : IDisposable
         public string? Error;
         public int Editors;
         public int Windows; // of those, the plug-in's own editor windows (not its settings list)
+        public byte[]? Hash; // SHA-256 of the raw settings last put into the slot as Written
+        public string? Written;
     }
 
     private readonly Dictionary<FxSlot, Loaded> _loaded = new(ReferenceEqualityComparer.Instance);
     private readonly Action _save;
-    /// Runs only while a plug-in's own editor is open. The formats' change notices are not wired, so the settings are read and compared.
+    private readonly Func<FxSlot, (IPluginEffect? Effect, string? Error)> _load;
+    /// Runs only while a plug-in's own editor is open: reads a plug-in's settings only after its change notice (<see cref="IPluginEffect.TakeChanged"/>),
+    /// and encodes and saves them only when their raw bytes differ from those last kept.
     private readonly DispatcherTimer _live = new() { Interval = Timing.PluginLiveSettings };
 
     /// <param name="save">Writes the settings file after plug-in states were copied into their slots.</param>
-    public PluginChainHost(Action save)
+    /// <param name="load">Makes a slot's plug-in; <see cref="Load"/> unless a test gives a stand-in.</param>
+    public PluginChainHost(Action save, Func<FxSlot, (IPluginEffect? Effect, string? Error)>? load = null)
     {
         _save = save;
+        _load = load ?? Load;
         _live.Tick += OnLiveTick;
     }
 
@@ -47,7 +53,7 @@ public sealed class PluginChainHost : IDisposable
     {
         if (!_loaded.TryGetValue(slot, out var entry))
         {
-            var (effect, error) = Load(slot);
+            var (effect, error) = _load(slot);
             _loaded[slot] = entry = new Loaded { Effect = effect, Error = error };
         }
         return (entry.Effect, entry.Error);
@@ -79,12 +85,20 @@ public sealed class PluginChainHost : IDisposable
         if (!_loaded.TryGetValue(slot, out var entry) || entry.Effect is null) return slot.State;
         try
         {
-            return Convert.ToBase64String(entry.Effect.SaveState());
+            var raw = entry.Effect.SaveState();
+            return Unchanged(slot, entry, raw, out _) ? slot.State : Convert.ToBase64String(raw);
         }
         catch (InvalidOperationException)
         {
             return slot.State; // the plug-in refused to hand out its settings: the last saved ones
         }
+    }
+
+    /// The raw settings are those last put into the slot (and the slot still holds them): nothing to encode or save.
+    private static bool Unchanged(FxSlot slot, Loaded entry, byte[] raw, out byte[] hash)
+    {
+        hash = System.Security.Cryptography.SHA256.HashData(raw);
+        return entry.Hash is { } last && last.AsSpan().SequenceEqual(hash) && ReferenceEquals(entry.Written, slot.State);
     }
 
     /// The plug-in's editor (UI thread); null with a reason when it has none or will not load. Call <see cref="EditorClosed"/> after.
@@ -138,7 +152,7 @@ public sealed class PluginChainHost : IDisposable
     }
 
     private void OnLiveTick(object? sender, EventArgs e) =>
-        Guard.Run("Plug-ins: live settings", () => SaveStates(_loaded.Where(l => l.Value.Windows > 0).ToList()));
+        Guard.Run("Plug-ins: live settings", () => SaveStates(_loaded.Where(l => l.Value.Windows > 0 && l.Value.Effect?.TakeChanged() == true).ToList()));
 
     /// Copies every loaded plug-in's settings into its slot and saves.
     public void SaveStates() => SaveStates(_loaded);
@@ -151,8 +165,12 @@ public sealed class PluginChainHost : IDisposable
             if (entry.Effect is null) continue;
             try
             {
-                var state = Convert.ToBase64String(entry.Effect.SaveState());
+                var raw = entry.Effect.SaveState();
+                if (Unchanged(slot, entry, raw, out var hash)) continue;
+                var state = Convert.ToBase64String(raw);
                 if (state != slot.State) { slot.State = state; changed = true; }
+                entry.Hash = hash;
+                entry.Written = slot.State;
             }
             catch (InvalidOperationException)
             {
