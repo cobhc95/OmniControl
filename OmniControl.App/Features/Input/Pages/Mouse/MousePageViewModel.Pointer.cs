@@ -22,11 +22,7 @@ public sealed partial class MousePageViewModel
     private ChoiceItem _schemeCard = null!;   // made by BuildPointerGroup, from the constructor
     private ButtonItem _restoreCard = null!;
     private IReadOnlyList<CursorScheme> _schemes = Array.Empty<CursorScheme>();
-    private readonly List<(object Card, string Keywords)> _pointerSearch = new();
-    private const string PointerSizeLabel = "Pointer size and colour", ScrollInactiveLabel = "Scroll inactive windows",
-        RestoreOriginalLabel = "Restore my original values", ResetDefaultsLabel = "Reset to Windows defaults";
-    private const string PointerMoreKeywords = "pointer shape scheme file size colour color scroll inactive windows reset restore defaults";
-
+    private readonly List<IEditorItem> _pointerItems = new();
     /// The Pointer settings cards, with the pointers of the scheme as an inner group.
     public ParentGroup PointerGroup { get; private set; } = null!;
 
@@ -35,35 +31,23 @@ public sealed partial class MousePageViewModel
 
     private void BuildPointerGroup()
     {
-        foreach (var control in PointerControls.All) _pointerSearch.Add((CardFor(control), control.Keywords));
-        var cards = _pointerSearch.Select(e => e.Card).ToList();
-        cards.Add(new ButtonItem(PointerSizeLabel, WindowsPageButton,
-            "Set in Windows' Accessibility settings.",
-            () => OpenWindowsPage(PointerSettings.WindowsPointerLookPage)) { Half = true });
-        cards.Add(new ButtonItem(ScrollInactiveLabel, WindowsPageButton,
-            "Set in Windows' mouse settings.",
-            () => OpenWindowsPage(PointerSettings.WindowsMousePage)) { Half = true });
+        var cards = PointerControls.All.Select(CardFor).Cast<object>().ToList();
+        cards.Add(new ButtonItem(PointerSizeCard, WindowsPageButton, () => OpenWindowsPage(PointerSettings.WindowsPointerLookPage)) { Half = true });
+        cards.Add(new ButtonItem(ScrollInactiveCard, WindowsPageButton, () => OpenWindowsPage(PointerSettings.WindowsMousePage)) { Half = true });
 
         foreach (var role in CursorRoles.All)
-            _pointerFiles.Add((role, new FileItem(role.Name, PointerFiles, path => ChoosePointer(role, path), "Default", () => SetPointer(role, null))
+            _pointerFiles.Add((role, new FileItem(RoleCard(role), PointerFiles, path => ChoosePointer(role, path), "Default", () => SetPointer(role, null))
                 { Half = true, EmptyText = "Built-in pointer" }));
         var shapes = new ItemGroup("Mouse/Pointer/Shapes", "Pointers", _pointerFiles.Select(f => (object)f.Card).ToList());
 
-        _restoreCard = new ButtonItem(RestoreOriginalLabel, "Restore",
-            "Back to before OmniControl changed them.", _pointerActions.RestoreOriginal) { Half = true };
-        PointerFooter = new object[]
-        {
-            new ButtonItem(ResetDefaultsLabel, "Reset", "Back to how Windows starts.", _pointerActions.ResetToDefaults) { Half = true },
-            _restoreCard,
-        };
+        _restoreCard = new ButtonItem(RestoreOriginalCard, "Restore", _pointerActions.RestoreOriginal) { Half = true };
+        PointerFooter = new object[] { new ButtonItem(ResetDefaultsCard, "Reset", _pointerActions.ResetToDefaults) { Half = true }, _restoreCard };
 
-        _pointerSearch.AddRange(cards.Skip(PointerControls.All.Count).Concat(_pointerFiles.Select(f => (object)f.Card)).Concat(PointerFooter)
-            .Select(card => (card, PointerMoreKeywords)));
+        _pointerItems.AddRange(cards.Concat(_pointerFiles.Select(f => (object)f.Card)).Concat(PointerFooter).OfType<IEditorItem>());
 
         PointerGroup = new ParentGroup("Mouse/Pointer", PointerControls.GroupName, $"{cards.Count} settings", cards)
         {
-            Tip = "Windows' own mouse settings: they change at once, stay after a restart and show what Windows has now. Your values from before OmniControl's "
-                  + "first change are kept, so Restore can put them all back. Swapping the buttons asks to be kept and goes back by itself if you don't.",
+            Tip = PointerTip,
         };
         PointerGroup.Subgroups.Add(shapes);
 
@@ -78,16 +62,16 @@ public sealed partial class MousePageViewModel
         {
             case PointerKind.Number:
                 var range = control.Range;
-                var slider = new SliderItem(control.Label, range.Default, v => SetPointerValue(control, v), _report,
+                var slider = new SliderItem(PointerCard(control), range.Default, v => SetPointerValue(control, v), _report,
                     range.Min, range.Max, control.Unit, range.Default) { Half = true };
                 _pointerSliders[control.Value!.Value] = slider;
                 return slider;
             case PointerKind.Switch:
-                var toggle = new ToggleItem(control.Label, false, on => OnPointerSwitch(control, on)) { Half = true };
+                var toggle = new ToggleItem(PointerCard(control), false, on => OnPointerSwitch(control, on)) { Half = true };
                 _pointerSwitches[control.Value!.Value] = toggle;
                 return toggle;
             default:
-                _schemeCard = new ChoiceItem(control.Label, Array.Empty<string>(), string.Empty, OnSchemePicked) { Half = true };
+                _schemeCard = new ChoiceItem(PointerCard(control), string.Empty, OnSchemePicked) { Half = true };
                 return _schemeCard;
         }
     }

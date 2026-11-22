@@ -14,7 +14,6 @@ public sealed partial class MousePageViewModel
     private const string TrackpadKeywords = "trackpad touchpad gestures swipe fingers pinch tap double tap layer preset apps scope";
     /// The Trackpad group's name, also its layer preset group's card (<see cref="InputActions"/>).
     public const string TrackpadGroupName = "Trackpad";
-    private const string TouchpadSettingsLabel = "Windows touchpad settings";
 
     /// The apps the Trackpad group works in: the "Apps: ..." chip on its title line, left of the layer picker.
     public AppScopeModel TrackpadScope { get; }
@@ -27,8 +26,7 @@ public sealed partial class MousePageViewModel
 
     private ItemGroup BuildTrackpadGroup(IReadOnlyList<MouseButtonItem> cards, Action<string> report)
     {
-        var windowsSettings = new ButtonItem(TouchpadSettingsLabel, "Open",
-            "Windows' own swipes, pinch and taps.",
+        var windowsSettings = new ButtonItem(TouchpadSettingsCard, "Open",
             () => { if (WebPage.Open(WindowsTouchpad.SettingsPage, report) is { } problem) report(problem); }) { Half = true };
 
         _gestureCards = cards.Zip(TrackpadGestures.All).ToList();
@@ -40,12 +38,7 @@ public sealed partial class MousePageViewModel
         return new ItemGroup("Mouse/Trackpad", TrackpadGroupName, items)
         {
             ExpandedByDefault = true,
-            Tip = "Swipes, pinches and taps on a precision touchpad; Default lets Windows do what it normally does. "
-                  + "The layer drop-down on this line picks the trackpad's own layer, separate from the mouse's. "
-                  + "Outside its apps a gesture does nothing; Windows' own gesture stays off while the gesture has an action. "
-                  + "OmniControl can't block Windows' own gesture, so while a gesture has an action it turns Windows' one off and gives it back afterwards; "
-                  + "tick \"Also let Windows do its own gesture\" in an action's settings to keep both. "
-                  + "A double tap replaces the second tap of the pair. One-finger taps are also clicks, so give that card an action with care. Two-finger scrolling arrives as Wheel and Tilt.",
+            Tip = TrackpadTip,
         };
     }
 
