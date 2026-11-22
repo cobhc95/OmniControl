@@ -187,6 +187,9 @@ public sealed class GadgetSettings
     }
 
     public string DoubleClickAction { get; set; } = AppCatalogue.TaskManager.ActionId;
+
+    /// The gadget's own double-click time in ms; 0 follows Windows' double-click time.
+    public int DoubleClickMs { get; set; }
     public GadgetWeather Weather { get; set; } = new();
     public GadgetHover Hover { get; set; } = new();
 
@@ -211,8 +214,8 @@ public sealed class GadgetSettings
     {
         var keep = Copy();
         SettingsCopy.Into(this, from.Copy());
-        (Shown, Position, Font, RecentFonts, ClickAction, ClickDefaultMoved, DoubleClickAction, Hover, SpaceToTray) =
-            (keep.Shown, keep.Position, keep.Font, keep.RecentFonts, keep.ClickAction, keep.ClickDefaultMoved, keep.DoubleClickAction, keep.Hover, keep.SpaceToTray);
+        (Shown, Position, Font, RecentFonts, ClickAction, ClickDefaultMoved, DoubleClickAction, DoubleClickMs, Hover, SpaceToTray) =
+            (keep.Shown, keep.Position, keep.Font, keep.RecentFonts, keep.ClickAction, keep.ClickDefaultMoved, keep.DoubleClickAction, keep.DoubleClickMs, keep.Hover, keep.SpaceToTray);
         (keep.Weather.Shows, keep.Weather.Temperatures) = (Weather.Shows, Weather.Temperatures);
         Weather = keep.Weather;
         foreach (var row in keep.Readings.Where(k => Readings.All(r => r.Id != k.Id)))

@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Taskbar gadget: a double-click is now recognised by Windows' own rule (its double-click time and rectangle) even while the gadget redraws between the clicks; a small move between the presses no longer loses the click. New "Double-click time" card in Clicks (default: Windows' own).
+
 ## 0.2.8 (21 Nov 2026)
 
 - Changed: Resources > Taskbar gadget: the small "Preview" strip at the top is gone; the top line is "Show on taskbar", Position and Font (the Ready-made layouts tiles still show each look).

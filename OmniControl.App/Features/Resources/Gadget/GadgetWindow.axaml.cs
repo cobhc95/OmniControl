@@ -22,14 +22,10 @@ public partial class GadgetWindow : Window
     /// The dashed edge shows while the pointer is over the gadget.
     public bool HoverOutline { get; set; }
 
-    /// The left button went down (true: the second press of a double-click).
-    public event Action<bool>? Pressed;
-    /// The button came up after a press without a drag.
-    public event Action? Clicked;
-    public event Action? DoubleClicked;
-
-    /// Windows' double-click time.
-    public TimeSpan DoubleClickTime => PlatformSettings?.GetDoubleTapTime(PointerType.Mouse) ?? TimeSpan.Zero;
+    /// The left button went down, at this place in screen pixels.
+    public event Action<PixelPoint>? Pressed;
+    /// The left button came up (no tap-size check: a few pixels of movement still click).
+    public event Action? Released;
 
     /// The window's size in physical pixels (what the taskbar placement works in).
     public (int Width, int Height) PixelSize => ((int)Math.Ceiling(Bounds.Width * RenderScaling), (int)Math.Ceiling(Bounds.Height * RenderScaling));
@@ -62,12 +58,13 @@ public partial class GadgetWindow : Window
 
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (e.GetCurrentPoint(Root).Properties.IsLeftButtonPressed) Pressed?.Invoke(e.ClickCount > 1);
+        if (e.GetCurrentPoint(Root).Properties.IsLeftButtonPressed) Pressed?.Invoke(this.PointToScreen(e.GetPosition(this)));
     }
 
-    private void OnTapped(object? sender, TappedEventArgs e) => Clicked?.Invoke();
-
-    private void OnDoubleTapped(object? sender, TappedEventArgs e) => DoubleClicked?.Invoke();
+    private void OnPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (e.InitialPressMouseButton == MouseButton.Left) Released?.Invoke();
+    }
 
     private void OnContextRequested(object? sender, ContextRequestedEventArgs e)
     {

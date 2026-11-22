@@ -191,10 +191,9 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
         else if (_window is null && !_disposed && TaskbarSpot.Exists)
         {
             var window = _window = new GadgetWindow(MenuRows);
-            var clicks = _clicks = new GadgetClicks(() => Look, () => window.DoubleClickTime, Run);
+            var clicks = _clicks = new GadgetClicks(() => Look, Run);
             window.Pressed += clicks.Pressed;
-            window.Clicked += clicks.Released;
-            window.DoubleClicked += clicks.DoubleClicked;
+            window.Released += clicks.Released;
             window.EdgeChanged += () => Dispatcher.UIThread.Post(Paint, DispatcherPriority.Loaded); // after the edge's layout
             // A child window is destroyed with the taskbar when Explorer restarts; TaskbarCreated then opens a new one through Place.
             window.Closed += (_, _) =>
