@@ -12,28 +12,30 @@
         <Thickness x:Key="ScrollThumbInsetVertical">3,0</Thickness>
         <Thickness x:Key="ScrollThumbInsetHorizontal">0,3</Thickness>
         <CornerRadius x:Key="ScrollThumbCornerRadius">4</CornerRadius>
+        <ControlTheme x:Key="MasterScrollBar" TargetType="ScrollBar" BasedOn="{StaticResource {x:Type ScrollBar}}">
+            <Setter Property="AllowAutoHide" Value="False" />
+            <Setter Property="Background" Value="{DynamicResource BrushScrollTrack}" />
+            <Style Selector="^ /template/ Grid#Root"><Setter Property="Background" Value="Transparent" /></Style>
+            <Style Selector="^ /template/ Rectangle#TrackRect">
+                <Setter Property="Fill" Value="{DynamicResource BrushScrollTrack}" />
+                <Setter Property="Stroke" Value="Transparent" />
+            </Style>
+            <Style Selector="^ /template/ Thumb">
+                <Setter Property="Background" Value="{DynamicResource BrushScrollThumb}" />
+                <Setter Property="CornerRadius" Value="{DynamicResource ScrollThumbCornerRadius}" />
+                <Setter Property="RenderTransform" Value="none" />
+            </Style>
+            <Style Selector="^:vertical /template/ Thumb"><Setter Property="Margin" Value="{DynamicResource ScrollThumbInsetVertical}" /></Style>
+            <Style Selector="^:horizontal /template/ Thumb"><Setter Property="Margin" Value="{DynamicResource ScrollThumbInsetHorizontal}" /></Style>
+        </ControlTheme>
     </Styles.Resources>
 
     <Style Selector="ScrollViewer"><Setter Property="AllowAutoHide" Value="False" /></Style>
     <!-- A ListBox's own scroll viewer is made inside its template and does not take the style above (the bar then sat over the row ends:
          a right-aligned word was cut at the bar), so the list sets the attached value for it -->
     <Style Selector="ListBox"><Setter Property="(ScrollViewer.AllowAutoHide)" Value="False" /></Style>
-    <Style Selector="ScrollBar">
-        <Setter Property="AllowAutoHide" Value="False" />
-        <Setter Property="Background" Value="{DynamicResource BrushScrollTrack}" />
-    </Style>
-    <Style Selector="ScrollBar /template/ Grid#Root"><Setter Property="Background" Value="Transparent" /></Style>
-    <Style Selector="ScrollBar /template/ Rectangle#TrackRect">
-        <Setter Property="Fill" Value="{DynamicResource BrushScrollTrack}" />
-        <Setter Property="Stroke" Value="Transparent" />
-    </Style>
-    <Style Selector="ScrollBar /template/ Thumb">
-        <Setter Property="Background" Value="{DynamicResource BrushScrollThumb}" />
-        <Setter Property="CornerRadius" Value="{DynamicResource ScrollThumbCornerRadius}" />
-        <Setter Property="RenderTransform" Value="none" />
-    </Style>
-    <Style Selector="ScrollBar:vertical /template/ Thumb"><Setter Property="Margin" Value="{DynamicResource ScrollThumbInsetVertical}" /></Style>
-    <Style Selector="ScrollBar:horizontal /template/ Thumb"><Setter Property="Margin" Value="{DynamicResource ScrollThumbInsetHorizontal}" /></Style>
+    <Style Selector="ScrollBar"><Setter Property="Theme" Value="{StaticResource MasterScrollBar}" /></Style>
+    <!-- The thumb's own face is in its template, which a control theme cannot reach (one /template/ per selector) -->
     <Style Selector="ScrollBar /template/ Thumb /template/ Border"><Setter Property="Background" Value="{DynamicResource BrushScrollThumb}" /></Style>
     <Style Selector="ScrollBar /template/ Thumb:pointerover /template/ Border, ScrollBar /template/ Thumb:pressed /template/ Border">
         <Setter Property="Background" Value="{DynamicResource BrushAccent}" />
