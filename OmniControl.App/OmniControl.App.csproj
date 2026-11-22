@@ -5,7 +5,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <RootNamespace>OmniControl.App</RootNamespace>
     <AssemblyName>OmniControl</AssemblyName>
-    <Version>0.2.9</Version>
+    <Version>0.3.0</Version>
     <ApplicationIcon>Assets\OmniControl.ico</ApplicationIcon>
     <!-- No profile-guided tier: it re-compiles hot code (the pop-up, the hooks) a second time, with slower instrumented code in
          between, during the first minutes of use. Plain tiering stays: quick start-up, optimised after 30 calls. -->
