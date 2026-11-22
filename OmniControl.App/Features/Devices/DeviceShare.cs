@@ -28,7 +28,7 @@ public static class DeviceShareFormat
         var used = new HashSet<string>();
         foreach (var source in settings.Devices)
         {
-            var device = Redacted(source);
+            var device = Redacted(source, keepChecks: false);
             foreach (var method in device.Methods)
             {
                 if (ScriptProfiles.BuiltIn.Any(p => p.Id == method.ProfileId)) continue;
@@ -41,13 +41,18 @@ public static class DeviceShareFormat
         return JsonSerializer.Serialize(share);
     }
 
-    /// A copy of the device with everything private left out: the account's email, the typed text of recorded steps, the user's own icon picture and choices.
-    private static DeviceRecord Redacted(DeviceRecord source)
+    /// A copy of the device with everything private left out: the account's email, the typed text of recorded steps and the user's own icon
+    /// picture (a file only this PC has, whose path can name the user). The auto-check choices are this PC's own, so a share to someone else drops
+    /// them; the owner's own paired PC keeps them.
+    private static DeviceRecord Redacted(DeviceRecord source, bool keepChecks)
     {
         var device = source.Clone();
         device.IconImage = string.Empty;
-        device.AutoCheck = null;
-        device.AutoCheckOnTray = null;
+        if (!keepChecks)
+        {
+            device.AutoCheck = null;
+            device.AutoCheckOnTray = null;
+        }
         if (device.Icon.StartsWith(IconStore.UserPrefix, StringComparison.Ordinal)) device.Icon = string.Empty;
         foreach (var method in device.Methods)
         {
@@ -64,7 +69,7 @@ public static class DeviceShareFormat
         try
         {
             if (JsonSerializer.Deserialize<DeviceSettings>(devicesJson) is not { } settings) return null;
-            settings.Devices = settings.Devices.Select(Redacted).ToList();
+            settings.Devices = settings.Devices.Select(d => Redacted(d, keepChecks: true)).ToList();
             return JsonSerializer.Serialize(settings);
         }
         catch (JsonException)
