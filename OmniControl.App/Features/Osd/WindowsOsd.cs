@@ -9,6 +9,7 @@ public sealed class WindowsOsdRecord
     public int Top { get; set; }
     public int Width { get; set; }
     public int Height { get; set; }
+    public bool Minimised { get; set; }
 }
 
 /// Best-effort suppression of Windows' own volume/brightness pop-up (Windows 11). Only ONE window is ever touched: the one learned as the
@@ -17,8 +18,10 @@ public sealed class WindowsOsdRecord
 /// already on screen when hiding starts never counts), (2) opens 0 ms to <see cref="Timing.WindowsOsdMatch"/> AFTER a volume, brightness,
 /// microphone or media change made outside OmniControl (<see cref="Trigger"/>; never before it), (3) has the pop-up's size and place
 /// (<see cref="WindowsOsdWindows.HasFlyoutShape"/>: a screen-sized host or a thumbnail preview is refused) and (4) opens while the pointer is
-/// off the taskbar. Nothing is ever done to make the pop-up appear (no key presses, no change to the sound). It is hidden only by moving it
-/// off screen, never minimised, activated or re-ordered, and put back to the exact place it had; where it was is saved
+/// off the taskbar. Nothing is ever done to make the pop-up appear (no key presses, no change to the sound). It is hidden in layers: its
+/// host is moved off screen and minimised (a minimised host never presents it, so nothing flashes; checked with one IsIconic per change);
+/// if Windows un-minimises it, the event hook (<see cref="WindowsOsdGuard"/>) and the fast look catch it and it is minimised again. It is
+/// never activated or re-ordered, and put back un-minimised at the exact place it had; where it was and that it was minimised is saved
 /// (<see cref="DataStores.WindowsOsdHidden"/>) so a run that ended first is undone at the next start, only if that handle is still the same
 /// pop-up. When more than <see cref="Timing.WindowsOsdMaxWindows"/> different windows have been learned in a run, hiding stops for the run.
 /// Every decision is logged to %APPDATA%\OmniControl\osd-log.txt.
@@ -37,6 +40,7 @@ public sealed class WindowsOsd : IDisposable
     private WindowPlace? _parkedFrom;                            // where the pop-up was when it was last moved off screen
     private bool _stopped;
     private bool _missLogged;                                    // the event hook missing a show is logged once per run
+    private bool _unminimisedLogged;                             // Windows un-minimising the host is logged once per run
     private readonly WindowsOsdGuard _guard = new();             // parks the learned pop-up the instant Windows shows it
     private int _logged;
 
@@ -77,6 +81,17 @@ public sealed class WindowsOsd : IDisposable
     private void StartLooking()
     {
         if (!_hiding) return;
+        if (_flyout != IntPtr.Zero)
+        {
+            // A minimised host never presents the pop-up: no look needed.
+            if (WindowsOsdWindows.IsMinimised(_flyout)) return;
+            if (!_unminimisedLogged)
+            {
+                _unminimisedLogged = true;
+                Log($"Windows un-minimised the pop-up's host; the event hook ({_guard.Parked} caught) and the fast look take over, and it is minimised again");
+            }
+            if (WindowsOsdWindows.IsParked(_flyout)) WindowsOsdWindows.Minimise(_flyout);
+        }
         // A known pop-up costs one window check per look, so it is checked often; learning one enumerates windows, so it keeps the slower rate.
         _timer.Interval = _flyout != IntPtr.Zero ? Timing.WindowsOsdFastPoll : Timing.WindowsOsdPoll;
         if (!_timer.IsEnabled) _timer.Start();
@@ -172,9 +187,11 @@ public sealed class WindowsOsd : IDisposable
         AppDataStore.Save(DataStores.WindowsOsdHidden, new WindowsOsdRecord
         {
             Window = window.ToInt64(), ProcessId = _flyoutProcess, Left = place.Left, Top = place.Top, Width = place.Width, Height = place.Height,
+            Minimised = true,
         });
-        Log($"moving off screen {WindowsOsdWindows.Describe(window)} ({why})");
+        Log($"moving off screen and minimising {WindowsOsdWindows.Describe(window)} ({why})");
         WindowsOsdWindows.Park(window);
+        WindowsOsdWindows.Minimise(window); // queued after the move, so its restore place is off screen
     }
 
     /// Puts the pop-up back where it was if it is still off screen, and forgets it.
@@ -185,6 +202,7 @@ public sealed class WindowsOsd : IDisposable
         {
             if (_flyout != IntPtr.Zero && WindowsOsdWindows.IsParked(_flyout))
             {
+                if (WindowsOsdWindows.IsMinimised(_flyout)) WindowsOsdWindows.Unminimise(_flyout);
                 WindowsOsdWindows.MoveTo(_flyout, place);
                 Log($"put back 0x{_flyout.ToInt64():x} at {place.Left},{place.Top}");
             }
@@ -207,6 +225,7 @@ public sealed class WindowsOsd : IDisposable
             Log($"an earlier run's record of 0x{record.Window:x} no longer matches a parked pop-up; nothing touched");
             return;
         }
+        if (record.Minimised && WindowsOsdWindows.IsMinimised(window)) WindowsOsdWindows.Unminimise(window);
         WindowsOsdWindows.MoveTo(window, new WindowPlace(record.Left, record.Top, record.Width, record.Height));
         Log($"put back 0x{record.Window:x} at {record.Left},{record.Top}, left off screen by an earlier run");
     }

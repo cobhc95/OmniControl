@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Windows' own volume pop-up is now hidden without a flash.
 - Plug-in editors with many parameters build only the rows on screen.
 - Other PCs: this PC is found and accepts connections only on networks set to Private in Windows and over Tailscale; on a Public network the page says so in one line with a link to Windows' network settings.
 

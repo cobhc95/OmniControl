@@ -11,9 +11,10 @@ public readonly record struct WindowPlace(int Left, int Top, int Width, int Heig
 /// a full-screen host), so a window found here is only a candidate: <see cref="HasFlyoutShape"/> rejects anything that is not the size and
 /// place of the volume pop-up, and which one it is is decided by the caller (<c>WindowsOsd</c>). Apps' own windows (ApplicationFrameWindow,
 /// Windows.UI.Core.CoreWindow, WinUI's WinUIDesktopWin32WindowClass) can never be candidates: the class and the owning process must both match.
-/// A window is hidden only by moving it off screen (<see cref="Park"/>) and put back by moving it to where it was (<see cref="MoveTo"/>): its
-/// show state, size, z-order and the foreground are never changed, every move is asynchronous and nothing here sends Explorer a message
-/// or waits on it.
+/// A window is hidden by moving it off screen (<see cref="Park"/>) and then minimising it (<see cref="Minimise"/>: a minimised host never
+/// presents the pop-up, so nothing flashes); it is put back by un-minimising and hiding it while still off screen (<see cref="Unminimise"/>),
+/// then moving it to where it was (<see cref="MoveTo"/>). Size, z-order and the foreground are never changed, every call is asynchronous and
+/// nothing here waits on Explorer.
 public static class WindowsOsdWindows
 {
     private const string HostClass = "XamlExplorerHostIslandWindow";
@@ -27,6 +28,7 @@ public static class WindowsOsdWindows
     private const long WsChild = 0x40000000, WsExAppWindow = 0x00040000;
     private const uint MonitorDefaultToNull = 0, MonitorDefaultToNearest = 2;
     private const uint SwpNoSize = 0x0001, SwpNoZOrder = 0x0004, SwpNoActivate = 0x0010, SwpNoOwnerZOrder = 0x0200, SwpAsyncWindowPos = 0x4000;
+    private const int SwHide = 0, SwShowNoActivate = 4, SwShowMinNoActive = 7;
 
     [StructLayout(LayoutKind.Sequential)] private struct Rect { public int Left, Top, Right, Bottom; }
     [StructLayout(LayoutKind.Sequential)] private struct MonitorInfo { public int Size; public Rect Monitor, Work; public uint Flags; }
@@ -41,6 +43,7 @@ public static class WindowsOsdWindows
     [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
     [DllImport("user32.dll")] private static extern IntPtr MonitorFromRect(ref Rect rect, uint flags);
     [DllImport("user32.dll")] private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo info);
+    [DllImport("user32.dll")] private static extern bool ShowWindowAsync(IntPtr hwnd, int command);
     [DllImport("user32.dll")] private static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
 
     /// Every candidate window that exists now (class, children, styles and owning program all match).
@@ -101,6 +104,20 @@ public static class WindowsOsdWindows
 
     /// Moves the window back to <paramref name="place"/>'s corner, the same way as <see cref="Park"/>.
     public static void MoveTo(IntPtr window, WindowPlace place) => Move(window, place.Left, place.Top);
+
+    /// True when the window is minimised.
+    public static bool IsMinimised(IntPtr window) => IsIconic(window);
+
+    /// Minimises the window without activating it; never waits on Explorer.
+    public static void Minimise(IntPtr window) => ShowWindowAsync(window, SwShowMinNoActive);
+
+    /// Un-minimises the window and hides it again (its idle state), queued in that order on Explorer's thread; it comes back to where it
+    /// was parked, so nothing shows on screen.
+    public static void Unminimise(IntPtr window)
+    {
+        ShowWindowAsync(window, SwShowNoActivate);
+        ShowWindowAsync(window, SwHide);
+    }
 
     private static void Move(IntPtr window, int x, int y) =>
         SetWindowPos(window, IntPtr.Zero, x, y, 0, 0, SwpNoSize | SwpNoZOrder | SwpNoOwnerZOrder | SwpNoActivate | SwpAsyncWindowPos);
