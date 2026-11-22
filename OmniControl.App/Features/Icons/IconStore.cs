@@ -41,6 +41,11 @@ public sealed class IconStore : IDisposable
     private const long MaxFileBytes = 2 << 20;
     private const int PngSide = 64;
 
+    /// A PNG whose header states more than this on a side, or more pixels than this in all, is refused before it is decoded.
+    internal const int MaxSide = 8192, MaxPixels = 16 << 20;
+
+    private const string Unreadable = "That picture couldn't be read as an icon.";
+
     private readonly IActionCatalogue _hotkeys;
     private readonly IconSettings _settings = AppDataStore.Load<IconSettings>(DataStores.Icons) ?? new();
 
@@ -74,10 +79,15 @@ public sealed class IconStore : IDisposable
                 (icon.PathData, icon.X, icon.Y, icon.Width, icon.Height, icon.Stroked, icon.StrokeWidth) =
                     (drawing.PathData, drawing.X, drawing.Y, drawing.Width, drawing.Height, drawing.Stroked, drawing.StrokeWidth);
             }
-            else icon.Png = SmallPng(path);
-            if (Image(icon) is null) return (null, "That picture couldn't be read as an icon.");
+            else
+            {
+                var (png, problem) = SmallPng(File.ReadAllBytes(path));
+                if (png is null) return (null, problem);
+                icon.Png = png;
+            }
+            if (Image(icon) is not { } image) return (null, Unreadable);
             _settings.Mine.Add(icon);
-            Publish(icon);
+            Show(icon.Value, image);
             Save();
             return (icon.Value, null);
         }
@@ -90,7 +100,7 @@ public sealed class IconStore : IDisposable
     /// Takes icons.json from disk as it is now (an import wrote it): the user's icons and every action's chosen icon follow, and what shows icons draws them again.
     public bool ReloadFromDisk()
     {
-        foreach (var icon in _settings.Mine) Application.Current?.Resources.Remove(icon.Value);
+        foreach (var icon in _settings.Mine) Retire(icon.Value);
         SettingsCopy.Into(_settings, AppDataStore.Load<IconSettings>(DataStores.Icons) ?? new());
         foreach (var icon in _settings.Mine) Publish(icon);
         foreach (var action in _hotkeys.Actions) Apply(action);
@@ -110,7 +120,7 @@ public sealed class IconStore : IDisposable
     {
         if (Find(value) is not { } icon) return;
         _settings.Mine.Remove(icon);
-        Application.Current?.Resources.Remove(value);
+        Retire(value);
         foreach (var id in _settings.Actions.Where(p => p.Value == value).Select(p => p.Key).ToList()) _settings.Actions.Remove(id);
         foreach (var action in _hotkeys.Actions.Where(a => a.ChosenIcon == value)) action.ChosenIcon = null;
         Save();
@@ -137,7 +147,27 @@ public sealed class IconStore : IDisposable
 
     private static void Publish(UserIcon icon)
     {
-        if (Image(icon) is { } image && Application.Current is { } app) app.Resources[icon.Value] = image;
+        if (Image(icon) is { } image) Show(icon.Value, image);
+    }
+
+    // The application's resources own each shown picture: it is disposed when it is replaced or taken out (Retire).
+    private static void Show(string value, IconImage image)
+    {
+        if (Application.Current is not { } app)
+        {
+            (image.Picture as IDisposable)?.Dispose();
+            return;
+        }
+        Retire(value);
+        app.Resources[value] = image;
+    }
+
+    // Disposed after the current UI work, so what showed it has already followed Changed and drawn its replacement or default.
+    private static void Retire(string value)
+    {
+        if (Application.Current is not { } app || !app.Resources.TryGetValue(value, out var old)) return;
+        app.Resources.Remove(value);
+        if (old is IconImage { Picture: IDisposable picture }) Dispatcher.UIThread.Post(picture.Dispose, DispatcherPriority.Background);
     }
 
     /// What the icon draws: its shapes on the 24 x 24 grid of the library, or its picture; null when it cannot be read.
@@ -163,16 +193,18 @@ public sealed class IconStore : IDisposable
         }
     }
 
-    /// The PNG (or other picture) at <paramref name="path"/>, at most <see cref="PngSide"/> pixels on its long side, as base64 PNG.
-    private static string SmallPng(string path)
+    /// The PNG in <paramref name="file"/> decoded straight to at most <see cref="PngSide"/> pixels on its long side, as base64 PNG; or why not.
+    internal static (string? Png, string? Problem) SmallPng(byte[] file)
     {
-        using var source = new Bitmap(path);
-        var (w, h) = (source.PixelSize.Width, source.PixelSize.Height);
-        var scale = Math.Min(1.0, (double)PngSide / Math.Max(w, h));
-        using var small = source.CreateScaledBitmap(new PixelSize(Math.Max(1, (int)(w * scale)), Math.Max(1, (int)(h * scale))));
+        if (IconPictures.PngSize(file) is not { } size) return (null, Unreadable);
+        if (size.Width > MaxSide || size.Height > MaxSide || (long)size.Width * size.Height > MaxPixels)
+            return (null, "That picture is too large for an icon. Pick a smaller one.");
+        using var source = new MemoryStream(file, writable: false);
+        using var small = Math.Max(size.Width, size.Height) <= PngSide ? new Bitmap(source)
+            : size.Width >= size.Height ? Bitmap.DecodeToWidth(source, PngSide) : Bitmap.DecodeToHeight(source, PngSide);
         using var stream = new MemoryStream();
         small.Save(stream);
-        return Convert.ToBase64String(stream.ToArray());
+        return (Convert.ToBase64String(stream.ToArray()), null);
     }
 
     private void Save()

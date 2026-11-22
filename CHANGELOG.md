@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Icons: a PNG added to Your icons is checked for its size before it is read, a very large one is refused in one sentence, and the rest is read straight at icon size; a removed or reloaded picture's memory is given back.
 - Other PCs: messages to a paired PC wait in a bounded queue (only the newest value of a state or of the shared list is sent); a PC that stops taking them is disconnected and reconnects, and a request's wait now includes sending it.
 - Settings changed quickly (a slider, a plug-in's window) are turned into file text once per pause instead of at every change.
 
