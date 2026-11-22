@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Changed: Setup's "Features you didn't tick" now starts on "Install them but keep them off" on a fresh install; "Don't install them" is the choice to make. An upgrade still shows the choice saved before, and the disk-space line follows the choice.
+
 - Changed: Network traffic control has its own page under SYSTEM, right after Resources (Packet filter switch and Apps chip on its header as before), and its own place in the feature switch: with Resources off and Network traffic control on, only its page shows, and the Resources page no longer holds it. Its actions are listed under "Network traffic control". Search finds its Packet filter switch on the new page.
 
 - New: Resources › Live readings shows one card per graphics card while the PC has more than one ("GPU · AMD Radeon RX 9070", "GPU · AMD Radeon(TM) Graphics"), each with its usage, graph and temperature chip; one card per physical disk ("Disk 0 · <model>") with its activity, graph and, where the drive reports one, its temperature chip. Both follow hardware added or removed. Each graphics card's usage and temperature are also gadget readings and states, as each disk's are. The gadget's GPU usage and GPU temperature get a "Graphics card" chip (Auto, or a chosen card; Auto again when that card is gone).

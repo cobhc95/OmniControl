@@ -471,7 +471,7 @@ begin
   WizardSelectComponents(Pick);
 end;
 
-// "Features you didn't tick" under the list: Don't install them (the default) or Install them but keep them off. The choice is kept beside
+// "Features you didn't tick" under the list: Don't install them, or Install them but keep them off (the default when no choice is kept). The choice is kept beside
 // FeaturesOff, so an upgrade shows it again and a silent Setup follows it; a silent Setup with none kept installs everything, as before.
 const
   LeaveOutValue = 'LeaveOutUnticked';
@@ -580,7 +580,7 @@ begin
   Title.Top := ScaleY(6);
   LeaveOutButton := AddChoice(Box, 'Don''t install them', '(their drivers, services and sensor library are left out)', ScaleY(24), LeaveOutNote);
   KeepOffButton := AddChoice(Box, 'Install them but keep them off', '(turn on any time in App settings)', ScaleY(42), KeepOffNote);
-  LeaveOutButton.Checked := not RegQueryDWordValue(HKLM64, ReceiptKey, LeaveOutValue, Kept) or (Kept = 1);
+  LeaveOutButton.Checked := RegQueryDWordValue(HKLM64, ReceiptKey, LeaveOutValue, Kept) and (Kept = 1);
   KeepOffButton.Checked := not LeaveOutButton.Checked;
   OldClickCheck := WizardForm.ComponentsList.OnClickCheck;
   WizardForm.ComponentsList.OnClickCheck := @ListClicked;
