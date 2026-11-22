@@ -1,26 +1,97 @@
-﻿<Styles xmlns="https://github.com/avaloniaui"
+<Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:svc="using:OmniControl.App.Shared.Services"
         xmlns:pages="using:OmniControl.App.Shared.Ui.Pages">
     <!-- Lists, rows and cards of the pages, moved out of Theme.axaml (700-line limit); included straight after it, so the later-wins order is unchanged. -->
 
-    <!-- Sidebar navigation items -->
-    <Style Selector="ListBox.nav"><Setter Property="Background" Value="Transparent" /></Style>
-    <Style Selector="ListBox.nav > ListBoxItem">
-        <Setter Property="Padding" Value="{StaticResource NavPadding}" />
-        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-        <Setter Property="Margin" Value="0,0,0,2" />
-        <Setter Property="CornerRadius" Value="0" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="BorderBrush" Value="Transparent" />
-    </Style>
-    <!-- ListBox.nav.compact = the same list inside a page's pane (the Smart Devices list): tighter rows, no sidebar indent -->
-    <Style Selector="ListBox.nav.compact > ListBoxItem"><Setter Property="Padding" Value="{StaticResource NavCompactPadding}" /></Style>
-    <!-- A sidebar group heading (NavHeading): small, muted capitals; its container is neither clickable nor focusable, so no hover or focus look applies -->
-    <Style Selector="ListBox.nav > ListBoxItem.navheading">
-        <Setter Property="Padding" Value="{StaticResource NavHeadingPadding}" />
-        <Setter Property="Margin" Value="0" />
-    </Style>
+    <Styles.Resources>
+        <!-- The page lists as control themes: each list kind's ListBox theme gives its rows their ListBoxItem theme (ItemContainerTheme), so
+             no global "ListBox.x > ListBoxItem ... /template/ ContentPresenter" style is tried on every item and presenter of the app. The
+             styles keep the order they had as global styles (later wins). Child selectors (a selected nav item's icon, a row's pin) stay global. -->
+        <!-- Sidebar navigation items; .navheading = a sidebar group heading (NavHeading): its container is neither clickable nor focusable, so
+             no hover or focus look applies; disabled = a section with no presets in the preset manager's left pane -->
+        <ControlTheme x:Key="NavItem" TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+            <Style Selector="^:pointerover:not(:selected) /template/ ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushHover}" /></Style>
+            <Style Selector="^:selected:pointerover /template/ ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushAccentHover}" /></Style>
+            <Setter Property="Padding" Value="{StaticResource NavPadding}" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Margin" Value="0,0,0,2" />
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Style Selector="^.navheading">
+                <Setter Property="Padding" Value="{StaticResource NavHeadingPadding}" />
+                <Setter Property="Margin" Value="0" />
+            </Style>
+            <Style Selector="^:selected /template/ ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+            </Style>
+            <Style Selector="^:disabled"><Setter Property="Opacity" Value="0.45" /></Style>
+        </ControlTheme>
+        <!-- ListBox.nav.compact = the same list inside a page's pane (the Smart Devices list): tighter rows, no sidebar indent -->
+        <ControlTheme x:Key="NavCompactItem" TargetType="ListBoxItem" BasedOn="{StaticResource NavItem}">
+            <Setter Property="Padding" Value="{StaticResource NavCompactPadding}" />
+        </ControlTheme>
+        <!-- Display rows (keyboard friendly). The card that holds the keyboard, which includes the control whose list is open, is drawn above
+             its neighbours, so a pop-down draws above the cards below it; hover for the mouse, the accent border for keyboard focus.
+             ListBox.rows.compact takes the same rows: its own sizes always lost to these. -->
+        <ControlTheme x:Key="RowItem" TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+            <Style Selector="^:focus-within"><Setter Property="ZIndex" Value="1" /></Style>
+            <Style Selector="^:pointerover:not(:focus-within) /template/ ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushHover}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" />
+            </Style>
+            <Style Selector="^:focus-within:pointerover /template/ ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushAccentHover}" /></Style>
+            <Setter Property="Padding" Value="12,5" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Background" Value="{DynamicResource BrushCard}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardEdge}" />
+            <Style Selector="^:selected /template/ ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushCardSelected}" /></Style>
+            <Style Selector="^:focus-within /template/ ContentPresenter"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /><Setter Property="Background" Value="{DynamicResource BrushCardFocusFill}" /></Style>
+        </ControlTheme>
+        <!-- FX chain list (TabForge style): flat rows inside a bordered box, the selected effect filled with the accent -->
+        <ControlTheme x:Key="FxListItem" TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+            <Setter Property="Padding" Value="8,5" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="CornerRadius" Value="0" />
+            <Style Selector="^:pointerover:not(:selected) /template/ ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushHover}" /></Style>
+            <Style Selector="^:selected /template/ ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" /></Style>
+            <Style Selector="^:selected:pointerover /template/ ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushAccentHover}" /></Style>
+        </ControlTheme>
+        <!-- Action picker lists: focus stays in the search box, so the highlight is the selection (.active, the side the keys act on, is a
+             global style below: the class changes while the list is shown) -->
+        <ControlTheme x:Key="PickItem" TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Padding" Value="12,2" />
+            <Setter Property="MinHeight" Value="24" />
+            <Setter Property="CornerRadius" Value="0" />
+            <Style Selector="^:pointerover /template/ ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushHover}" /></Style>
+            <Style Selector="^:selected /template/ ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushHover}" /></Style>
+        </ControlTheme>
+        <!-- Compact rows (Controls/OptionList): flat menu rows (MenuRow* in App.axaml), the same as Button.menurow; hover and the
+             highlighted entry share one wash (the list moves the highlight to the row under the pointer), no border, so nothing moves -->
+        <ControlTheme x:Key="PickCompactItem" TargetType="ListBoxItem" BasedOn="{StaticResource PickItem}">
+            <Setter Property="Padding" Value="{StaticResource MenuRowPadding}" />
+            <Setter Property="MinHeight" Value="{StaticResource MenuRowHeight}" />
+            <Setter Property="CornerRadius" Value="{StaticResource MenuRowCornerRadius}" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Style Selector="^:pressed /template/ ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" /></Style>
+        </ControlTheme>
+        <ControlTheme x:Key="PageList" TargetType="ListBox" BasedOn="{StaticResource {x:Type ListBox}}">
+            <Style Selector="^.nav, ^.rows, ^.fxlist, ^.pick"><Setter Property="Background" Value="Transparent" /></Style>
+            <Style Selector="^.pick"><Setter Property="BorderThickness" Value="0" /><Setter Property="ItemContainerTheme" Value="{StaticResource PickItem}" /></Style>
+            <Style Selector="^.pick.compact"><Setter Property="ItemContainerTheme" Value="{StaticResource PickCompactItem}" /></Style>
+            <Style Selector="^.nav"><Setter Property="ItemContainerTheme" Value="{StaticResource NavItem}" /></Style>
+            <Style Selector="^.nav.compact"><Setter Property="ItemContainerTheme" Value="{StaticResource NavCompactItem}" /></Style>
+            <Style Selector="^.rows"><Setter Property="ItemContainerTheme" Value="{StaticResource RowItem}" /></Style>
+            <Style Selector="^.fxlist"><Setter Property="ItemContainerTheme" Value="{StaticResource FxListItem}" /></Style>
+        </ControlTheme>
+    </Styles.Resources>
+    <Style Selector="ListBox.nav, ListBox.rows, ListBox.fxlist, ListBox.pick"><Setter Property="Theme" Value="{StaticResource PageList}" /></Style>
     <!-- A nav item's icon: a fixed box (NavIconBox) so names line up, the drawing itself flush left in it, so its left edge sits on the heading's first letter -->
     <Style Selector="Panel.navicon">
         <Setter Property="Width" Value="{StaticResource NavIconBox}" />
@@ -35,18 +106,7 @@
         <Setter Property="FontSize" Value="11" />
         <Setter Property="LetterSpacing" Value="0.7" />
     </Style>
-    <Style Selector="ListBox.nav > ListBoxItem:selected /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-    </Style>
     <Style Selector="ListBox.nav > ListBoxItem:selected PathIcon"><Setter Property="Foreground" Value="{DynamicResource BrushAccent}" /></Style>
-
-    <!-- Tighter rows (shortcut cards) -->
-    <Style Selector="ListBox.rows.compact > ListBoxItem">
-        <Setter Property="Padding" Value="10,2" />
-        <Setter Property="Margin" Value="0,0,0,2" />
-        <Setter Property="CornerRadius" Value="8" />
-    </Style>
 
     <!-- A card that cannot be used right now (a monitor that does not report the control): greyed out; its tooltip says why -->
     <Style Selector="UserControl.card:disabled"><Setter Property="Opacity" Value="0.45" /></Style>
@@ -68,7 +128,6 @@
 
     <!-- The preset manager (Pages/Presets): the group card it was opened at is outlined in the accent (Border.groupPanel.target, its theme
          in Theme.axaml); a section with no presets is dimmed in its left pane; a row's drag grip is muted -->
-    <Style Selector="ListBox.nav > ListBoxItem:disabled"><Setter Property="Opacity" Value="0.45" /></Style>
     <Style Selector="PathIcon.grip"><Setter Property="Foreground" Value="{DynamicResource BrushMuted}" /><Setter Property="Width" Value="10" /><Setter Property="Height" Value="14" /></Style>
     <Style Selector="TextBlock.accenttext"><Setter Property="Foreground" Value="{DynamicResource BrushAccent}" /></Style>
 
@@ -93,32 +152,6 @@
     <Style Selector="Button.bandrow.off > Grid"><Setter Property="Opacity" Value="0.45" /></Style>
     <Style Selector="Button.bandrow.off TextBlock"><Setter Property="TextDecorations" Value="Strikethrough" /></Style>
 
-    <!-- Action picker lists: focus stays in the search box, so the highlight is the selection; the side the keys act on is stronger -->
-    <Style Selector="ListBox.pick"><Setter Property="Background" Value="Transparent" /><Setter Property="BorderThickness" Value="0" /></Style>
-    <Style Selector="ListBox.pick > ListBoxItem">
-        <Setter Property="Focusable" Value="False" />
-        <Setter Property="Padding" Value="12,2" />
-        <Setter Property="MinHeight" Value="24" />
-        <Setter Property="CornerRadius" Value="0" />
-    </Style>
-    <Style Selector="ListBox.pick > ListBoxItem:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushHover}" />
-    </Style>
-    <Style Selector="ListBox.pick > ListBoxItem:selected /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushHover}" />
-    </Style>
-    <!-- Compact rows (Controls/OptionList): flat menu rows (MenuRow* in App.axaml), the same as Button.menurow; hover and the
-         highlighted entry share one wash (the list moves the highlight to the row under the pointer), no border, so nothing moves -->
-    <Style Selector="ListBox.pick.compact > ListBoxItem">
-        <Setter Property="Padding" Value="{StaticResource MenuRowPadding}" />
-        <Setter Property="MinHeight" Value="{StaticResource MenuRowHeight}" />
-        <Setter Property="CornerRadius" Value="{StaticResource MenuRowCornerRadius}" />
-        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-        <Setter Property="VerticalContentAlignment" Value="Center" />
-    </Style>
-    <Style Selector="ListBox.pick.compact > ListBoxItem:pressed /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" />
-    </Style>
     <Style Selector="ListBox.pick.active > ListBoxItem:selected /template/ ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />

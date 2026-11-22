@@ -215,25 +215,6 @@
         <Setter Property="RenderTransform" Value="rotate(-90deg)" />
     </Style>
 
-    <!-- A pop-down must draw above the cards below it (the Position drop-down showed a switch through its list): the card that holds the keyboard,
-         which includes the control whose list is open, is drawn above its neighbours; a drop-down's list is the solid menu surface
-         (Menus.axaml). One rule here, so every page's drop-downs and menus have it. -->
-    <Style Selector="ListBox.rows > ListBoxItem:focus-within"><Setter Property="ZIndex" Value="1" /></Style>
-
-    <!-- Hover feedback for the mouse (keyboard focus uses the accent border) -->
-    <Style Selector="ListBox.nav > ListBoxItem:pointerover:not(:selected) /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushHover}" />
-    </Style>
-    <Style Selector="ListBox.nav > ListBoxItem:selected:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
-    </Style>
-    <Style Selector="ListBox.rows > ListBoxItem:pointerover:not(:focus-within) /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushHover}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" />
-    </Style>
-    <Style Selector="ListBox.rows > ListBoxItem:focus-within:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
-    </Style>
     <!-- Every window: the app background and the app icon (set once, never per window) -->
     <Style Selector="Window">
         <Setter Property="Background" Value="{DynamicResource BrushBackground}" />
