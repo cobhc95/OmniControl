@@ -45,6 +45,9 @@ public interface IPresetSwitch
     bool? Exists(string preset);
 
     void Keep(IEnumerable<string> presets);
+
+    /// The group a preset's apply action belongs to, or null when its group is not registered now.
+    PresetGroup? GroupOf(string preset);
 }
 
 /// Where the rules plug in their <see cref="IPresetTriggers"/> (made by the shell, as <c>ActionGateSlot</c> is): the preset manager reads it,

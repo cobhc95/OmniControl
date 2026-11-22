@@ -75,7 +75,7 @@ public sealed class PresetShortcuts : IPresetSwitch, IDisposable
     }
 
     // The longest group prefix wins, so a group whose id starts with another's is never mistaken for it.
-    private PresetGroup? GroupOf(string preset) => _groups.All.Where(g => preset.StartsWith(ActionId(g.Id, string.Empty), StringComparison.Ordinal))
+    public PresetGroup? GroupOf(string preset) => _groups.All.Where(g => preset.StartsWith(ActionId(g.Id, string.Empty), StringComparison.Ordinal))
         .MaxBy(g => g.Id.Length);
 
     private void Watch(PresetGroup group)

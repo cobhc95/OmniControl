@@ -18,6 +18,10 @@ public sealed partial class AutomationPageViewModel
         {
             Tip = "While the conditions hold, the chosen actions are not allowed, whether a hotkey, a mouse button, a gesture or a rule starts them. Pausing all rules lifts every block.",
         },
+        PresetRulesCard = new("Preset rules", AutomationWords + " preset switch when it ends previous comes back open presets window", PresetsTab)
+        {
+            Tip = "Rules made from the Presets window: when their triggers hold, a preset is applied, and when they stop, the preset in use before comes back. Edit them here or there; it is the same rule.",
+        },
         CustomsCard = new("Custom actions", AutomationWords + " script command program url new", CustomTab)
         {
             Tip = "Your own actions: a command, a script, a program, a file or folder, a web address. They run as you (never as administrator), and appear in Shortcuts, the mouse and gesture pickers and every rule.",
@@ -33,7 +37,7 @@ public sealed partial class AutomationPageViewModel
         LanguagesCard = new("Script languages", AutomationWords + " script language", ScriptsTab) { Choices = Enum.GetValues<ScriptLanguage>().Select(ScriptLanguages.NameOf).ToList() };
 
     private static SearchCard RuleCard(AutomationRule rule, string line) =>
-        new(rule.Name, $"{AutomationWords} {line}", RulesTab);
+        new(rule.Name, $"{AutomationWords} {line}", rule.Preset.Length > 0 ? PresetsTab : RulesTab);
 
     private static SearchCard CustomCard(CustomAction custom) =>
         new(custom.Name, $"custom action script command program url {custom.Target}", CustomTab) { Choices = CustomKinds.Names, Note = custom.Target };
@@ -46,14 +50,14 @@ public sealed partial class AutomationPageViewModel
     /// A rule's sentence is its row's own; without the page a row is made and let go for it, so the words never differ from the row's.
     private static SearchBuilder Cards(AutomationService? service, AutomationPageViewModel? page)
     {
-        var builder = new SearchBuilder().Add(PauseCard).Add(AutomationsCard).Add(BlocksCard).Add(CustomsCard).Add(ScriptsCard)
+        var builder = new SearchBuilder().Add(PauseCard).Add(AutomationsCard).Add(BlocksCard).Add(PresetRulesCard).Add(CustomsCard).Add(ScriptsCard)
             .Add(TriggersCard).Add(ConditionsCard).Add(CustomKindsCard).Add(LanguagesCard);
         if (service is null) return builder;
         foreach (var rule in service.Settings.Rules)
         {
-            var row = page?.Automations.Concat(page.Blocks).FirstOrDefault(r => r.Rule == rule);
+            var row = page?.RuleRows.FirstOrDefault(r => r.Rule == rule);
             if (row is not null) { builder.Add(RuleCard(rule, row.Line), row); continue; }
-            using var temporary = new AutomationItem(rule, service, _ => Task.FromResult(false), _ => { });
+            using var temporary = new AutomationItem(rule, service, _ => Task.FromResult(false), null);
             builder.Add(RuleCard(rule, temporary.Line));
         }
         return builder

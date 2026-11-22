@@ -8,10 +8,15 @@
              x:DataType="vm:AutomationItem">
     <!-- One rule: its switch, its name and a delete cross on the first line; the sentence of blocks (Styles/Blocks.axaml) on the second;
          its facts as tags (Border.tag) on the third, with the one fix link a tag may need under them. Every block opens the shared picker; a hotkey block opens its capture pop-down (the Popup below). -->
-    <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="{StaticResource GapLarge}" Margin="0,2,0,4">
+    <!-- A preset's rule also shows its preset kind after the name and, under the sentence, what happens when it ends with the link to the Presets window. -->
+    <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="{StaticResource GapLarge}" Margin="0,2,0,4">
         <ToggleSwitch Classes="plain" IsChecked="{Binding IsOn}" VerticalAlignment="Center" />
-        <TextBox Grid.Column="1" Classes="field" Text="{Binding Name, UpdateSourceTrigger=LostFocus}" Watermark="Name" MaxWidth="320"
-                 HorizontalAlignment="Left" MinWidth="160" />
+        <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto" ColumnSpacing="{StaticResource Gap}" HorizontalAlignment="Left">
+            <TextBox Classes="field" Text="{Binding Name, UpdateSourceTrigger=LostFocus}" Watermark="Name" MaxWidth="320" MinWidth="160" />
+            <Panel Grid.Column="1" IsVisible="{Binding PresetTag, Converter={x:Static ObjectConverters.IsNotNull}}" VerticalAlignment="Center">
+                <c:TagView DataContext="{Binding PresetTag}" />
+            </Panel>
+        </Grid>
         <Button Grid.Column="2" Classes="pill glyph closex" Click="OnDeleteClick" ToolTip.Tip="Delete">
             <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
         </Button>
@@ -74,7 +79,14 @@
             </ItemsControl.DataTemplates>
         </ItemsControl>
 
-        <StackPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2">
+        <WrapPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" IsVisible="{Binding IsPreset}" Margin="0,4,0,0">
+            <TextBlock Classes="muted" Text="When it ends, the previous preset comes back · " VerticalAlignment="Center" TextWrapping="Wrap" />
+            <Button Classes="link small" Command="{Binding OpenInPresetsCommand}" VerticalAlignment="Center">
+                <TextBlock Text="Open in Presets window" />
+            </Button>
+        </WrapPanel>
+
+        <StackPanel Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2">
             <ItemsControl ItemsSource="{Binding Tags}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>

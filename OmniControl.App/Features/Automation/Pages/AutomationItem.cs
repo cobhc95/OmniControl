@@ -7,14 +7,14 @@ using OmniControl.App.Features.Input.Rules;
 
 namespace OmniControl.App.Features.Automation.Pages;
 
-/// One automation rule on the Rules tab: its switch, its name, the rule as a sentence of blocks ("When [at 07:30 on weekdays] [and on
+/// One automation rule on the Rules tab (a preset's rule on the Presets tab, with its preset kind and a link to the Presets window): its switch, its name, the rule as a sentence of blocks ("When [at 07:30 on weekdays] [and on
 /// battery] do [Lock] [+ action]", or "While [on battery] don't allow [Shut down]"), and its facts as tags. Every block opens the shared
 /// picker over the master list of its kind; every change is saved and applied at once.
 public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDisposable
 {
     private readonly AutomationService _service;
     private readonly Func<DialogMessage, Task<bool>> _ask;
-    private readonly Action<AutomationItem> _deleted;
+    private readonly AutomationPresets? _presets;
     private HotkeyAction? _action;
     private bool _loading;
 
@@ -41,15 +41,20 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
     /// The sentence as plain text, for search.
     public string Line => string.Join(" ", Sentence.Select(s => s switch { SentenceWord w => w.Text, SentenceBlock b => b.Text, SentenceHotkey h => $"I press {h.Gesture}", SentenceLink l => l.Text, _ => string.Empty }));
 
+    /// A rule made from the Presets window (it lives on the Presets tab).
+    public bool IsPreset => Rule.Preset.Length > 0;
+
+    /// The preset kind after the name ("Volume preset"); null on any other rule or while its group is not registered.
+    [ObservableProperty] private TagItem? _presetTag;
+
     /// <param name="ask">Shows a short message with a confirm button; true when confirmed.</param>
-    /// <param name="deleted">The rule was deleted (the page drops its line).</param>
-    public AutomationItem(AutomationRule rule, AutomationService service, Func<DialogMessage, Task<bool>> ask,
-        Action<AutomationItem> deleted)
+    /// <param name="presets">The preset rules' kind and the Presets window (null: none, as in search).</param>
+    public AutomationItem(AutomationRule rule, AutomationService service, Func<DialogMessage, Task<bool>> ask, AutomationPresets? presets)
     {
         Rule = rule;
         _service = service;
         _ask = ask;
-        _deleted = deleted;
+        _presets = presets;
         _name = rule.Name;
         FollowAction();
         service.Changed += Refresh;
@@ -72,6 +77,7 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
         Rebuild();
         NeedsStartup = _service.NeedsStartup(Rule);
         Tags = BuildTags();
+        PresetTag = IsPreset && _presets?.KindOf(Rule) is { Length: > 0 } kind ? new TagItem(kind) : null;
         _loading = false;
         OnPropertyChanged(nameof(Line));
     }
@@ -94,6 +100,9 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
 
     [RelayCommand]
     private void TurnOnStartup() => _service.TurnOnStartup();
+
+    [RelayCommand]
+    private void OpenInPresets() => _presets?.Open(Rule);
 
     private void Save()
     {
@@ -374,11 +383,9 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
 
     // ---- Deleting ----
 
-    /// Asks first; the rule is removed when confirmed.
+    /// Asks first; the rule is removed when confirmed (the page follows the service's list).
     public async Task DeleteAsync()
     {
-        if (!await _ask(Confirm.Delete(IsBlock ? "block" : "automation", Rule.Name))) return;
-        _service.Remove(Rule);
-        _deleted(this);
+        if (await _ask(Confirm.Delete(IsBlock ? "block" : "automation", Rule.Name))) _service.Remove(Rule);
     }
 }

@@ -17,9 +17,12 @@ public sealed class AutomationPresets : IPresetTriggers, IDisposable
     private readonly Dictionary<string, string> _before = new();   // rule id -> the preset in use before a state switched to its preset
     private readonly List<AutomationRule> _parked = new();          // rules of deleted presets, back on an Undo (this run only)
 
-    public AutomationPresets(AutomationService rules, IActionRegistry actions, IActionRunner run, PresetTriggersSlot slot)
+    private readonly Action<string?, string?> _open;
+
+    /// <param name="open">Opens the Presets window at a page and group (both null: where it opens by itself).</param>
+    public AutomationPresets(AutomationService rules, IActionRegistry actions, IActionRunner run, PresetTriggersSlot slot, Action<string?, string?> open)
     {
-        (_rules, _actions, _run, _slot) = (rules, actions, run, slot);
+        (_rules, _actions, _run, _slot, _open) = (rules, actions, run, slot, open);
         rules.Changed += OnRulesChanged;
         rules.TriggersChanged += FollowNames;
         rules.StateSeen += PutBack;
@@ -43,6 +46,16 @@ public sealed class AutomationPresets : IPresetTriggers, IDisposable
         RuleOf(preset) is { } rule
             ? rule.AllTriggers.Select((t, i) => new PresetTrigger(AutomationTriggers.ChipOf(t, _rules.TriggerSources), i == 0 ? string.Empty : AutomationJoins.WordOf(rule.TriggerJoinBefore(i)))).ToList()
             : Array.Empty<PresetTrigger>();
+
+    /// The preset kind a preset rule shows ("Volume preset"): its group's page title; empty while its group is not registered.
+    public string KindOf(AutomationRule rule) => _slot.Presets.GroupOf(rule.Preset) is { } group ? $"{group.Section} preset" : string.Empty;
+
+    /// Opens the Presets window on the rule's preset group, or (null) where it opens by itself.
+    public void Open(AutomationRule? rule)
+    {
+        var group = rule is null ? null : _slot.Presets.GroupOf(rule.Preset);
+        _open(group?.Section, group?.Id);
+    }
 
     public IReadOnlyList<PickChoice> StateChoices() => AutomationTriggers.StateChoices(_rules.TriggerSources);
 

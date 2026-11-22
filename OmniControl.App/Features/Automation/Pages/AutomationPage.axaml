@@ -6,7 +6,7 @@
              x:DataType="vm:AutomationPageViewModel">
     <!-- The Automation page: the title line (name, Pause all rules at the right), the tabs, the one status line, then the open tab.
          Rules: "When ... do ..." automations and "While ... don't allow ..." blocks, one row each, a "+ New" pill on each group's title line and a dashed row while a group is empty.
-         Custom actions: one row each. Scripts: a list and an editor (see its comment). The rows are AutomationRuleRow and CustomActionRow (templates in App.axaml). -->
+         Presets: the rules made from the Presets window. Custom actions: one row each. Scripts: a list and an editor (see its comment). The rows are AutomationRuleRow and CustomActionRow (templates in App.axaml). -->
     <!-- Rule and custom action rows are built only near the screen; a screen more each way, so Tab always finds the next row built -->
     <UserControl.Resources>
         <ItemsPanelTemplate x:Key="RowsPanel"><VirtualizingStackPanel CacheLength="1" /></ItemsPanelTemplate>
@@ -54,6 +54,20 @@
                 </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>
         </StackPanel>
+
+        <!-- Presets: the rules made from the Presets window (the same rows as Rules), a pill on the title line that opens that window. -->
+        <pages:GroupCard Group="{Binding PresetRulesGroup}" IsVisible="{Binding ShowsPresets}">
+            <pages:GroupCard.Tools>
+                <Button Classes="pill" Tag="grouptool" Content="Open Presets window" Command="{Binding OpenPresetsCommand}" />
+            </pages:GroupCard.Tools>
+            <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:AutomationPageViewModel">
+                <StackPanel Spacing="{StaticResource Gap}">
+                    <TextBlock Classes="muted" Text="Made from the Presets window. Edit here or there; it is the same rule." TextWrapping="Wrap" />
+                    <ItemsControl ItemsSource="{Binding PresetRules}" ItemsPanel="{StaticResource RowsPanel}" />
+                    <pages:EmptyListRow IsVisible="{Binding NoPresetRules}" Text="No preset rules yet. Add a trigger to a preset in the Presets window." LinkText="Open Presets window" Command="{Binding OpenPresetsCommand}" />
+                </StackPanel>
+            </DataTemplate></pages:GroupCard.ContentTemplate>
+        </pages:GroupCard>
 
         <pages:GroupCard Group="{Binding CustomsGroup}" IsVisible="{Binding ShowsCustom}">
             <pages:GroupCard.Tools>

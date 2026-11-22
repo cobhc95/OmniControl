@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Automation: a new Presets tab lists the rules made from the Presets window, with the same editor as the Rules tab, the preset kind after each name and "Open in Presets window"; the Rules tab no longer shows them. Changes in either place show in the other at once.
+
 - Network states: "Connected to <network>" (each saved Wi-Fi or wired network), "On a metered connection" and "Not connected" can trigger presets and automation rules; the state picker lists them under Network traffic control, connected and rule-used networks first, each with its kind.
 
 - Screenshot: "Read QR code" now also reads Aztec, Data Matrix, PDF417 and MaxiCode codes and the common barcodes (EAN, UPC, Code 128, Code 39, ITF), says which kind each result is, reads light-on-dark codes, and retries a small picture enlarged, so Aztec codes and small QR images are found.
