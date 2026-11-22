@@ -207,8 +207,8 @@ public partial class MenuRowList : UserControl
         _rest?.Stop();
         if (IsOpenFrom(opener)) return;
         _nested?.Hide();
-        var list = new MenuRowList { ItemsSource = rows(), _refresh = rows };
-        var flyout = _nested = new ListMenuFlyout { Placement = PlacementMode.RightEdgeAlignedTop, Content = list };
+        var (list, flyout) = Beside(rows);
+        _nested = flyout;
         list._close = () =>
         {
             flyout.Hide();
@@ -222,6 +222,23 @@ public partial class MenuRowList : UserControl
             Picked?.Invoke(this, EventArgs.Empty);
         };
         flyout.ShowAt(opener);
+    }
+
+    private static (MenuRowList List, ListMenuFlyout Flyout) Beside(Func<IReadOnlyList<MenuRowItem>> rows)
+    {
+        var list = new MenuRowList { ItemsSource = rows(), _refresh = rows };
+        return (list, new ListMenuFlyout { Placement = PlacementMode.RightEdgeAlignedTop, Content = list });
+    }
+
+    /// Shows rows as a side menu of <paramref name="at"/> (a picker's row that opens a side list: the network states); done once it closes.
+    public static Task ShowBesideAsync(Control at, Func<IReadOnlyList<MenuRowItem>> rows)
+    {
+        var closed = new TaskCompletionSource();
+        var (list, flyout) = Beside(rows);
+        list.Picked += (_, _) => flyout.Hide();
+        flyout.Closed += (_, _) => closed.TrySetResult();
+        flyout.ShowAt(at);
+        return closed.Task;
     }
 
     /// A find row's words changed: the owner is told, then a nested menu's rows are asked again.

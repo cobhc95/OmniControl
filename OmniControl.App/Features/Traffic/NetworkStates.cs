@@ -8,7 +8,7 @@ namespace OmniControl.App.Features.Traffic;
 internal sealed class NetworkStates : IDisposable
 {
     private const string IdStart = "network.", Prefix = IdStart + "connected.", MeteredId = IdStart + "metered", OfflineId = IdStart + "none";
-    private const string ConnectedHeading = "Connected to", StatusHeading = "Connection", MoreHeading = "More networks";
+    private static readonly StateMenu Menu = new("Network", "Connected to", "Find a network…");
     private const string HowKnown = "Windows' network list, read when it announces a change";
 
     private readonly IStateRegistry _states;
@@ -44,22 +44,27 @@ internal sealed class NetworkStates : IDisposable
         }));
     }
 
-    /// Registers the states again only when what the picker shows changed (a network saved, renamed, connected, or used by a rule).
+    /// Registers the states again only when what the side list shows changed (a network saved, renamed, connected, or used by a rule): the
+    /// connected network first, then those used by rules, under "Connected to"; metered and not connected; the rest behind the find box.
     private void List()
     {
-        var networks = Now.Networks;
-        var rows = networks.Select(n => (n, Heading: n.Connected || _states.IsWatched(Prefix + n.Id) ? ConnectedHeading : MoreHeading))
-            .OrderBy(r => r.n.Connected ? 0 : 1).ToList();
-        var key = string.Join("|", rows.Select(r => $"{r.n.Id},{r.n.Name},{r.n.Medium},{r.Heading}"));
+        var rows = Now.Networks.Select(n => (n, Part: n.Connected || _states.IsWatched(Prefix + n.Id) ? StateMenuPart.Top : StateMenuPart.Rest))
+            .OrderBy(r => r.Part).ThenBy(r => r.n.Connected ? 0 : 1).ToList();
+        var key = string.Join("|", rows.Select(r => $"{r.n.Id},{r.n.Name},{r.n.Medium},{r.Part}"));
         if (key == _listed) return;
         _listed = key;
-        _states.Register(rows.Select(r => new StateEntry(Prefix + r.n.Id, $"Connected to {r.n.Name}", _group, StateKind.OnOff,
-                () => StateValue.Of(Now.Networks.Any(n => n.Id == r.n.Id && n.Connected)), HowKnown,
-                Heading: r.Heading, Keywords: "network wifi wi-fi wired ethernet connected", Short: r.n.Name, Note: KindOf(r.n.Medium)))
-            .Append(new StateEntry(MeteredId, "On a metered connection", _group, StateKind.OnOff, () => StateValue.Of(Metered), HowKnown,
-                Heading: StatusHeading, Keywords: "network metered data limit cost", Short: "Metered connection"))
-            .Append(new StateEntry(OfflineId, "Not connected", _group, StateKind.OnOff, () => StateValue.Of(Offline), HowKnown,
-                Heading: StatusHeading, Keywords: "network offline disconnected internet", Short: "Not connected")));
+        var networks = rows.Select(r => new StateEntry(Prefix + r.n.Id, $"Connected to {r.n.Name}", _group, StateKind.OnOff,
+            () => StateValue.Of(Now.Networks.Any(n => n.Id == r.n.Id && n.Connected)), HowKnown,
+            Keywords: "network wifi wi-fi wired ethernet connected", Short: r.n.Name, Note: KindOf(r.n.Medium), Menu: Menu, MenuPart: r.Part)).ToList();
+        // The side list reads "On a metered connection" (ShortName), the chip "Metered connection" (Name).
+        var status = new[]
+        {
+            new StateEntry(MeteredId, "Metered connection", _group, StateKind.OnOff, () => StateValue.Of(Metered), HowKnown,
+                Keywords: "network metered data limit cost", Short: "On a metered connection", Menu: Menu, MenuPart: StateMenuPart.Middle),
+            new StateEntry(OfflineId, "Not connected", _group, StateKind.OnOff, () => StateValue.Of(Offline), HowKnown,
+                Keywords: "network offline disconnected internet", Menu: Menu, MenuPart: StateMenuPart.Middle),
+        };
+        _states.Register(networks.Where(s => s.MenuPart == StateMenuPart.Top).Concat(status).Concat(networks.Where(s => s.MenuPart == StateMenuPart.Rest)));
     }
 
     private static string? KindOf(NetworkMedium medium) => medium switch

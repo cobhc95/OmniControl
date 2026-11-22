@@ -308,7 +308,8 @@ public partial class PickerMenu : UserControl
 
     private void OnRowCommandClick(object? sender, RoutedEventArgs e)
     {
-        if (_model is not null && (sender as Control)?.DataContext is PickerRow { Choice: { } choice }) _ = _model.RunCommandAsync(choice, this);
+        // From the row's own button, so a side list (the network states) opens beside it.
+        if (_model is not null && sender is Control { DataContext: PickerRow { Choice: { } choice } } button) _ = _model.RunCommandAsync(choice, button);
         e.Handled = true;
     }
 

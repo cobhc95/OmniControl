@@ -28,8 +28,9 @@ public sealed record StateEntry(string Id, string Name, string Group, StateKind 
     string? Heading = null, int Min = 0, int Max = 100, string Unit = "", Func<IReadOnlyList<string>>? Choices = null, string Keywords = "",
     Action<StateValue>? Set = null, string? Short = null, string? Icon = null, IReadOnlyList<string>? SuggestedIcons = null, StateRecheck? Recheck = null,
     Func<StateLiveness>? Liveness = null, bool ScreenPower = false, string? Common = null, Shared.Services.RemotePcLabel? RemotePc = null, string? Compact = null, OnOffIcons? StateIcons = null,
-    string? Note = null)
+    string? Note = null, StateMenu? Menu = null, StateMenuPart MenuPart = StateMenuPart.Top)
 {
+    // Menu: the side list a state picker shows this state in instead of its own list (one row "<Menu.Name> ▸" opens it), where the row reads ShortName with Note muted at its right; MenuPart: where in it.
     // Note: a muted fact a picker shows under the state's short name ("Laptop panel", "External monitor"); null = none.
     // Compact: the one or two words a half-width card or a state button uses ("Sound", "Mic"; the icon carries the rest, the tooltip the full name); null = the Name.
     // StateIcons: an on/off state's icon for each value (a state button shows the one of the value now: "mute" while muted, "volume" while not); null = none.
@@ -60,6 +61,13 @@ public sealed record StateRecheck(Func<bool> CanCheck, Func<Task> CheckAsync);
 /// sentence), or the value is only the last one known (<see cref="NotSure"/>, why). Cheap, read on the UI thread; the owner calls
 /// <see cref="StateRegistry.NotifyLiveness"/> when it changes. A state without one is always sure and calm.
 public sealed record StateLiveness(bool Acting, bool Reading, string? Failure, string? NotSure);
+
+/// A side list of states in the state pickers (owner-approved for the network states, MAP "Exceptions"): the picker's row, the heading over
+/// its first part and the hint of the find box over its rest.
+public sealed record StateMenu(string Name, string Heading, string Find);
+
+/// Where a state sits in its <see cref="StateMenu"/>: under the heading, after a thin line, or in the rest behind the find box (muted).
+public enum StateMenuPart { Top, Middle, Rest }
 
 /// The icons of an on/off state for each of its values (library ids).
 public sealed record OnOffIcons(string On, string Off);

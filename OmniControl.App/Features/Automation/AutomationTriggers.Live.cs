@@ -26,7 +26,7 @@ public static partial class AutomationTriggers
     /// The picker's whole list: the fixed triggers, then one per state, then one per action.
     public static IReadOnlyList<PickChoice> Choices(IReadOnlyList<string> programs, ITriggerSources sources) =>
         FixedChoices(programs)
-            .Concat(sources.States.Select(s => StateChoice(s, sources.Now(s.Id))))
+            .Concat(Listed(sources, s => StateChoice(s, sources.Now(s.Id)), (menu, row) => row with { Heading = menu.Name }))
             .Concat(sources.Actions.Select(ActionChoice))
             .ToList();
 
@@ -124,9 +124,9 @@ public static partial class AutomationTriggers
         };
     }
 
-    /// The states as the preset manager offers them: one section per page.
+    /// The states as the preset manager offers them: one section per page (a side list's row in a section of its own name).
     public static IReadOnlyList<PickChoice> StateChoices(ITriggerSources sources) =>
-        sources.States.Select(s => StateChoice(s, sources.Now(s.Id)) with { Category = s.Group, Heading = s.Heading }).ToList();
+        Listed(sources, s => StateChoice(s, sources.Now(s.Id)) with { Category = s.Group, Heading = s.Heading }, (menu, row) => row with { Category = menu.Name }).ToList();
 
     /// The actions as every action picker shows them, each stored as "when it runs".
     public static IReadOnlyList<PickChoice> ActionChoices(IEnumerable<HotkeyAction> actions) =>
