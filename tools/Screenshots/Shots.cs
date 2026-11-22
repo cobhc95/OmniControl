@@ -27,6 +27,11 @@ internal static partial class Shots
         ("action-picker", () => ActionPicker(rig, camera)),
         ("tray-panel", () => TrayPanel(rig, camera)),
         ("displays-light", () => Light(rig.Pages[0], camera, "displays-light")),
+        ("mouse-tap-hold", () => MouseTapHold(rig, camera)),
+        ("action-runs-pulldown", () => ActionRunsPulldown(rig, camera)),
+        ("gadget-adapter", () => GadgetAdapter(rig, camera)),
+        ("traffic-block", () => NetworkTrafficBlock(rig, camera)),
+        ("fx-measured", () => FxMeasured(camera)),
     };
 
     /// A page again in the light theme (the app's own theme switch: the theme variant; the surfaces and accent shades follow it).

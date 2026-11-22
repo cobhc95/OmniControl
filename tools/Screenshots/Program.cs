@@ -8,7 +8,7 @@ namespace OmniControl.Screenshots;
 /// (<see cref="Sandbox"/>), no action is ever run (<see cref="NoRunner"/>), the master list's keys are never registered, and no mouse
 /// hook, device read, resource poll, audio stream, effects engine or network link is started; what still listens or tries is said where it
 /// is made (the OSD's listeners, the Automation service's pause key, which fails while OmniControl runs). Each shot's notes say what it
-/// fakes. Usage: dotnet run -c Debug [-- output-folder] [--light] [--probe combos.txt]; default docs/screenshots. --light draws every shot
+/// fakes. Usage: dotnet run -c Debug [-- output-folder] [--light] [--probe combos.txt] [--only name,name]; default docs/screenshots. --light draws every shot
 /// in the light theme; --probe writes only the styles' results (<see cref="StyleProbe"/>); --compare a b lists the PNGs that differ.
 internal static class Program
 {
@@ -18,7 +18,9 @@ internal static class Program
         if (args is ["--compare", var before, var after]) return ShotCompare.Run(before, after);
         var light = args.Contains("--light");
         var probe = Array.IndexOf(args, "--probe") is >= 0 and var at && at + 1 < args.Length ? args[at + 1] : null;
-        var output = args.FirstOrDefault(a => !a.StartsWith("--") && a != probe) is { } given ? Path.GetFullPath(given) : RepoScreenshots();
+        var onlyAt = Array.IndexOf(args, "--only");
+        var names = onlyAt >= 0 && onlyAt + 1 < args.Length ? args[onlyAt + 1] : null;
+        var output = args.FirstOrDefault(a => !a.StartsWith("--") && a != probe && a != names) is { } given ? Path.GetFullPath(given) : RepoScreenshots();
         Directory.CreateDirectory(output);
         using var sandbox = Sandbox.Enter();
         AppBuilder.Configure<App.App>()
@@ -36,8 +38,10 @@ internal static class Program
         var camera = new Camera(output);
         var rig = new Rig();
         var failed = new List<string>();
+        var only = names?.Split(',');
         foreach (var (name, shoot) in Shots.All(rig, camera))
         {
+            if (only is not null && !only.Contains(name)) continue;
             try
             {
                 shoot();
