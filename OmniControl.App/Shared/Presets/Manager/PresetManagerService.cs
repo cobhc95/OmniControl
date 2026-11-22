@@ -16,6 +16,9 @@ public sealed class PresetManagerService
     public PresetManagerService(PresetGroups groups, PresetShortcuts shortcuts, Action<string> report) =>
         (_groups, _shortcuts, _window) = (groups, shortcuts, new SingleWindow<PresetManagerWindow>(report));
 
+    /// Every group's words and every preset's name, for global search (the manager has its own search box, which finds the same).
+    public IEnumerable<string> Words => _groups.All.SelectMany(g => g.Words.Concat(g.Provider.Entries.Select(e => e.Name)));
+
     /// The app's sidebar pages, given by the shell once it has made them (the manager's left pane).
     public void UseSections(IReadOnlyList<PresetSection> sections) => _sections = sections;
 

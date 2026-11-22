@@ -74,7 +74,10 @@ public sealed partial class PresetCardViewModel : ObservableObject, IPresetRowOw
 
     public bool CanImport => Provider.CanExchangeFiles;
 
-    /// Only the rows whose name or shortcut contains the text (<see cref="TextMatch"/>); empty = all.
+    /// The search text is in the group's own words (its page, name, apply and add words, tooltip, switch): all its presets show.
+    private bool GroupMatches => TextMatch.Any(_filter, _group.Words.ToArray());
+
+    /// Only the rows whose name or shortcut contains the text (<see cref="TextMatch"/>), or all of them when the group's own words do; empty = all.
     internal void Filter(string text, bool showSection)
     {
         _filter = text.Trim();
@@ -87,7 +90,7 @@ public sealed partial class PresetCardViewModel : ObservableObject, IPresetRowOw
     {
         var entries = Provider.Entries
             .Select(e => (Entry: e, Shortcut: _shortcuts.ShortcutOf(_group, e.Id)))
-            .Where(x => !IsFiltering || TextMatch.Any(_filter, x.Entry.Name, x.Shortcut))
+            .Where(x => !IsFiltering || GroupMatches || TextMatch.Any(_filter, x.Entry.Name, x.Shortcut))
             .ToList();
         var kept = Rows.ToDictionary(r => r.Id);
         var rows = entries.Select(x =>

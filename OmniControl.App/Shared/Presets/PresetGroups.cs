@@ -6,6 +6,18 @@ public sealed record PresetGroup(string Id, string Section, string Title, IPrese
 {
     /// Applying a preset of this group moves a mouse or trackpad layer: the Mouse picker has its own layer actions, so it does not list the preset's shortcut action.
     public bool MovesLayer { get; init; }
+
+    /// What the group says besides its presets' names: its page and name, its words (apply, add, tooltip) and its switch; the preset manager's
+    /// search and global search find the group by them.
+    public IEnumerable<string> Words
+    {
+        get
+        {
+            var words = Provider.Words;
+            var texts = new List<string?> { Section, Title, words.ApplyText, words.ActionVerb, words.AddText, words.AddTip, Provider.Switch?.Label, Provider.Switch?.Tip };
+            return texts.Where(t => !string.IsNullOrEmpty(t))!;
+        }
+    }
 }
 
 /// The master list of preset groups: each group registers once, where its presets live, and the preset

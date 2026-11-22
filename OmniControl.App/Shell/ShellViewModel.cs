@@ -155,8 +155,8 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _allPages = RunningPages();
         TrayFlyout = MakeTray();
         _appSettings = new PageSlot(AppSettingsPageViewModel.Info, () => new AppSettingsPageViewModel(_about.Open, _volume.Library,
-            () => _presetManager.Open(null, null), new BackupService(_dialogs.ChooseAsync, Report, _otherPcs.ImportFrom), _dialogs.Confirmations, _updates, Report,
-            _volume.Mixer, _hardware, _settings, TrayFlyout, _features), () => AppSettingsPageViewModel.Words(_dialogs.Confirmations, _settings),
+            _presetManager, new BackupService(_dialogs.ChooseAsync, Report, _otherPcs.ImportFrom), _dialogs.Confirmations, _updates, Report,
+            _volume.Mixer, _hardware, _settings, TrayFlyout, _features), () => AppSettingsPageViewModel.Words(_dialogs.Confirmations, _settings, _presetManager),
             AppSettingsRestore(), OnPageMade, Report);
         RegisterAppActions();
         _allFooter = new[] { _appSettings };

@@ -1,3 +1,4 @@
+using OmniControl.App.Shared.Presets.Manager;
 using OmniControl.App.Features.Tray;
 
 namespace OmniControl.App.Features.Settings.Pages;
@@ -98,11 +99,11 @@ public sealed partial class AppSettingsPageViewModel
 
     private static SearchCard FolderCard(string folder) => new(FolderLabel, $"plug-in folder remove {folder}", Title: PluginsName) { Note = folder };
 
-    protected override SearchBuilder SearchCards => Cards(_confirmations, _settings, this);
+    protected override SearchBuilder SearchCards => Cards(_confirmations, _settings, _presetManager, this);
 
     /// THE definition of the page's search: its cards, the features, the quiet prompts and the plug-in folders, each with its live editor when
     /// <paramref name="page"/> is given and has it (the Plug-ins cards are words even while Sound and effects is off: a match then only makes the page).
-    private static SearchBuilder Cards(ConfirmationMemory? confirmations, AppSettings? settings, AppSettingsPageViewModel? page)
+    private static SearchBuilder Cards(ConfirmationMemory? confirmations, AppSettings? settings, PresetManagerService? presets, AppSettingsPageViewModel? page)
     {
         var plugins = page?._keepFx is not null;
         return new SearchBuilder()
@@ -110,7 +111,7 @@ public sealed partial class AppSettingsPageViewModel
             .Add(TrayIconCard, page?._trayIcon).Add(TrayColourCard, page?._trayColour).Add(GpuCard, page?._gpuDrawing).Add(GroupsOpenCard, page?._groupsOpen)
             .Add(StartWithWindowsCard, page?._startWithWindows).Add(StartMinimisedCard, page?._startMinimised).Add(WhenClosingCard, page?._whenClosing)
             .Add(HardwareCheckCard, page?._hardwareCheck).Add(UiReleaseCard, page?._uiRelease).Add(KeepPagesCard, page?._keepPages)
-            .Add(PresetsCard, page?._presets).Add(BackupCard, page?._backup).Add(RestoreAllCard, page?._restoreAllCard).Add(NetworkServiceCard, page?._networkService)
+            .Add(presets is null ? PresetsCard : PresetsCard with { Choices = presets.Words.Distinct().ToList() }, page?._presets).Add(BackupCard, page?._backup).Add(RestoreAllCard, page?._restoreAllCard).Add(NetworkServiceCard, page?._networkService)
             .Add(ImportFromPcCard, page is not null && page.DataItems.Contains(page._importFromPc) ? page._importFromPc : null)
             .AddEach(FeatureList.All, FeatureCard, f => page?._featureCards.FirstOrDefault(c => c.Feature == f).Card)
             .Add(ReadyMadeCard, page?.ReadyMade)
@@ -123,7 +124,7 @@ public sealed partial class AppSettingsPageViewModel
     }
 
     /// The page's search words (<c>FeaturePage.Words</c>), read without making the page.
-    public static IEnumerable<string> Words(ConfirmationMemory? confirmations, AppSettings? settings) => Cards(confirmations, settings, null).Words;
+    public static IEnumerable<string> Words(ConfirmationMemory? confirmations, AppSettings? settings, PresetManagerService? presets) => Cards(confirmations, settings, presets, null).Words;
 
     private static bool IsFolderRow(ButtonItem item) => item.Label == FolderLabel;
 }
