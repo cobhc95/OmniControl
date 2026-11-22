@@ -97,6 +97,61 @@
             <Style Selector="^.tickbox.checked"><Setter Property="Background" Value="{DynamicResource BrushAccent}" /><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
             <Style Selector="^.tickbox.mixed"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
         </ControlTheme>
+        <!-- A drop-down list (ComboBox) is the same menu: surface, shadow (shifted by its room so the list sits under the box, at least as wide
+             as the box) and rows; its chosen row has the accent bar. The box's edge: resting BrushControlEdge, focus accent, hover BrushHoverEdge -->
+        <ControlTheme x:Key="ComboBoxTheme" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+            <Style Selector="^:not(:focus) /template/ Border#Background"><Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" /></Style>
+            <Style Selector="^:focus /template/ Border#Background, ^:focus:pointerover /template/ Border#Background">
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+                <Setter Property="BorderThickness" Value="2" />
+            </Style>
+            <Style Selector="^:pointerover /template/ Border#Background"><Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" /></Style>
+            <Style Selector="^ /template/ Popup#PART_Popup">
+                <Setter Property="HorizontalOffset" Value="{StaticResource MenuShadowShiftX}" />
+                <Setter Property="VerticalOffset" Value="{StaticResource MenuShadowShiftY}" />
+            </Style>
+            <Style Selector="^ /template/ Border#PopupBorder">
+                <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="{StaticResource MenuCornerRadius}" />
+                <Setter Property="Padding" Value="{StaticResource MenuPadding}" />
+                <Setter Property="Margin" Value="{StaticResource MenuShadowRoom}" />
+                <Setter Property="BoxShadow" Value="{DynamicResource MenuShadow}" />
+                <Setter Property="MinWidth" Value="{Binding Bounds.Width, RelativeSource={RelativeSource TemplatedParent}}" />
+            </Style>
+        </ControlTheme>
+        <ControlTheme x:Key="ComboBoxItemTheme" TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}">
+            <Style Selector="^">
+                <Setter Property="MinHeight" Value="{StaticResource MenuRowHeight}" />
+                <Setter Property="Padding" Value="{StaticResource MenuRowPadding}" />
+                <Setter Property="CornerRadius" Value="{StaticResource MenuRowCornerRadius}" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="Template">
+                    <ControlTemplate>
+                        <Panel>
+                            <ContentPresenter Name="PART_ContentPresenter" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                              BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                                              Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" Padding="{TemplateBinding Padding}"
+                                              Foreground="{TemplateBinding Foreground}"
+                                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                            <Border Name="PART_Bar" Classes="menubar" IsVisible="False" />
+                        </Panel>
+                    </ControlTemplate>
+                </Setter>
+            </Style>
+            <Style Selector="^:selected /template/ Border#PART_Bar"><Setter Property="IsVisible" Value="True" /></Style>
+            <Style Selector="^:selected /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushMenuChosen}" />
+                <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            </Style>
+            <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter, ^:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource BrushHover}" />
+                <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            </Style>
+            <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" /></Style>
+        </ControlTheme>
     </Styles.Resources>
     <!-- The colour editor's drawn areas (Controls/ColorSquare, HueBar): the accent focus ring on keyboard focus, never the default outline -->
     <Style Selector="c|ColorSquare:focus-visible, c|HueBar:focus-visible"><Setter Property="RingBrush" Value="{DynamicResource BrushAccent}" /></Style>
@@ -166,51 +221,8 @@
         <Setter Property="Width" Value="{StaticResource OptionMenuWidth}" />
     </Style>
 
-    <!-- A drop-down list (ComboBox) is the same menu: surface, shadow (shifted by its room so the list sits under the box, at least as wide
-         as the box) and rows; its chosen row has the accent bar -->
-    <Style Selector="ComboBox /template/ Popup#PART_Popup">
-        <Setter Property="HorizontalOffset" Value="{StaticResource MenuShadowShiftX}" />
-        <Setter Property="VerticalOffset" Value="{StaticResource MenuShadowShiftY}" />
-    </Style>
-    <Style Selector="ComboBox /template/ Border#PopupBorder">
-        <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="{StaticResource MenuCornerRadius}" />
-        <Setter Property="Padding" Value="{StaticResource MenuPadding}" />
-        <Setter Property="Margin" Value="{StaticResource MenuShadowRoom}" />
-        <Setter Property="BoxShadow" Value="{DynamicResource MenuShadow}" />
-        <Setter Property="MinWidth" Value="{Binding Bounds.Width, RelativeSource={RelativeSource TemplatedParent}}" />
-    </Style>
-    <Style Selector="ComboBoxItem">
-        <Setter Property="MinHeight" Value="{StaticResource MenuRowHeight}" />
-        <Setter Property="Padding" Value="{StaticResource MenuRowPadding}" />
-        <Setter Property="CornerRadius" Value="{StaticResource MenuRowCornerRadius}" />
-        <Setter Property="VerticalContentAlignment" Value="Center" />
-        <Setter Property="Template">
-            <ControlTemplate>
-                <Panel>
-                    <ContentPresenter Name="PART_ContentPresenter" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                                      BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
-                                      Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" Padding="{TemplateBinding Padding}"
-                                      Foreground="{TemplateBinding Foreground}"
-                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                      VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
-                    <Border Name="PART_Bar" Classes="menubar" IsVisible="False" />
-                </Panel>
-            </ControlTemplate>
-        </Setter>
-    </Style>
-    <Style Selector="ComboBoxItem:selected /template/ Border#PART_Bar"><Setter Property="IsVisible" Value="True" /></Style>
-    <Style Selector="ComboBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushMenuChosen}" />
-        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-    </Style>
-    <Style Selector="ComboBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter, ComboBoxItem:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushHover}" />
-        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-    </Style>
-    <Style Selector="ComboBoxItem:pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" /></Style>
+    <Style Selector="ComboBox"><Setter Property="Theme" Value="{StaticResource ComboBoxTheme}" /></Style>
+    <Style Selector="ComboBoxItem"><Setter Property="Theme" Value="{StaticResource ComboBoxItemTheme}" /></Style>
 
     <!-- A row of a menu-like pop-down (Button.menurow: a device to add, a step to take): flat, full width, 32 px (40 with a muted second
          line), 4 px rounded hover; the same height, inset and wash as the option list's rows (ListBox.pick.compact); an optional small glyph

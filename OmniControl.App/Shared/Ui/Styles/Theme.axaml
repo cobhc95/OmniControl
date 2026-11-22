@@ -32,9 +32,28 @@
             </Style>
             <Style Selector="^.groupPanel.target"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
         </ControlTheme>
-    </Styles.Resources>
-
-    <!-- The card list: a list of setting cards that pairs half-width cards two per row (used with "rows compact") -->
+        <!-- The edges of a field and a switch (styles in a theme instead of global ones, which every Border would try). Being inside a card
+             (an editor has focus): accent border and a darker field. The resting edge: BrushControlEdge, so it stays clear on a hovered card
+             (hover and focus override it). A switch that is off is Windows' hollow track with a clear outline and a light knob
+             (ToggleSwitch*Off, SurfaceService); on, the accent track with the on-accent knob (AccentService), so on and off differ for any
+             accent, greys and white included. -->
+        <ControlTheme x:Key="TextBoxTheme" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Style Selector="^:focus /template/ Border#PART_BorderElement, ^:focus:pointerover /template/ Border#PART_BorderElement">
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+                <Setter Property="BorderThickness" Value="2" />
+                <Setter Property="Background" Value="{DynamicResource BrushBackground}" />
+            </Style>
+            <Style Selector="^:not(:focus) /template/ Border#PART_BorderElement"><Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" /></Style>
+            <Style Selector="^:pointerover /template/ Border#PART_BorderElement"><Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" /></Style>
+        </ControlTheme>
+        <ControlTheme x:Key="ToggleSwitchTheme" TargetType="ToggleSwitch" BasedOn="{StaticResource {x:Type ToggleSwitch}}">
+            <Style Selector="^:focus /template/ Border#OuterBorder">
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+                <Setter Property="BorderThickness" Value="2" />
+            </Style>
+            <Style Selector="^:pointerover /template/ Border#OuterBorder"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
+        </ControlTheme>
+    </Styles.Resources>    <!-- The card list: a list of setting cards that pairs half-width cards two per row (used with "rows compact") -->
     <Style Selector="ListBox.cards">
         <Setter Property="ItemsPanel"><ItemsPanelTemplate><pages:HalfPanel /></ItemsPanelTemplate></Setter>
     </Style>
@@ -51,29 +70,9 @@
         <Setter Property="FocusAdorner" Value="{x:Null}" />
     </Style>
 
-    <!-- Being inside a card (an editor has focus): accent border and a darker field -->
-    <Style Selector="TextBox:focus /template/ Border#PART_BorderElement, TextBox:focus:pointerover /template/ Border#PART_BorderElement">
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-        <Setter Property="BorderThickness" Value="2" />
-        <Setter Property="Background" Value="{DynamicResource BrushBackground}" />
-    </Style>
-    <!-- The resting edge of fields and drop-downs: BrushControlEdge, so it stays clear on a hovered card (hover and focus override it). A switch
-         that is off is Windows' hollow track with a clear outline and a light knob (ToggleSwitch*Off, SurfaceService); on, the accent track
-         with the on-accent knob (AccentService), so on and off differ for any accent, greys and white included. -->
-    <Style Selector="TextBox:not(:focus) /template/ Border#PART_BorderElement, ComboBox:not(:focus) /template/ Border#Background">
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
-    </Style>
-    <Style Selector="ComboBox:focus /template/ Border#Background, ComboBox:focus:pointerover /template/ Border#Background">
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-        <Setter Property="BorderThickness" Value="2" />
-    </Style>
-    <Style Selector="ToggleSwitch:focus /template/ Border#OuterBorder">
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-        <Setter Property="BorderThickness" Value="2" />
-    </Style>
-    <Style Selector="ToggleSwitch:pointerover /template/ Border#OuterBorder">
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-    </Style>
+    <!-- Fields, drop-downs and switches: their edges in TextBoxTheme, ComboBoxTheme (Menus.axaml) and ToggleSwitchTheme above -->
+    <Style Selector="TextBox"><Setter Property="Theme" Value="{StaticResource TextBoxTheme}" /></Style>
+    <Style Selector="ToggleSwitch"><Setter Property="Theme" Value="{StaticResource ToggleSwitchTheme}" /></Style>
 
     <!-- Picture gallery cards (the OSD style, a display's orientation; colour galleries are the swatch button, Pages/GalleryRow): no box of their own, the card around them shows hover and keyboard focus; the arrow buttons are flat -->
     <Style Selector="Border.gallery"><Setter Property="Padding" Value="4,2" /></Style>
@@ -235,10 +234,6 @@
     <Style Selector="ListBox.rows > ListBoxItem:focus-within:pointerover /template/ ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
     </Style>
-    <Style Selector="ComboBox:pointerover /template/ Border#Background, TextBox:pointerover /template/ Border#PART_BorderElement">
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" />
-    </Style>
-
     <!-- Every window: the app background and the app icon (set once, never per window) -->
     <Style Selector="Window">
         <Setter Property="Background" Value="{DynamicResource BrushBackground}" />
