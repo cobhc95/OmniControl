@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Changed: the FX window's response charts show the whole chain as measured (a short test sweep played once through every switched-on effect, IR Loader and plug-ins included) a moment after each change, with Peak and Latency from the measurement and tags for a level-dependent effect, a reverb tail and Equalizer APO settings left out; the EQ and gain curve stays as a faint reference in the larger chart.
+
 ## 0.3.0 (22 Nov 2026)
 
 - Fixed: a program's download limit now holds from each new connection's first packet; before, every new connection ran unlimited for up to a second, so a browser opening many connections went well over its limit.

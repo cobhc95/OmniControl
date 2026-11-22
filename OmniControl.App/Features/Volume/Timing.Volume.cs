@@ -124,6 +124,9 @@ public static partial class Timing
     /// How often the FX window reads its row's live Latency (a plug-in may change its latency while it runs).
     public static readonly TimeSpan FxAnalysisRefresh = TimeSpan.FromMilliseconds(500);
 
+    /// The pause in changes after which an open FX window measures its chain again (a measurement is cancelled by the next change).
+    public static readonly TimeSpan FxMeasurePause = TimeSpan.FromMilliseconds(300);
+
     /// The pointer rests on the FX window's response thumbnail this long before the larger graph opens.
     public static readonly TimeSpan FxGraphHoverOpen = TimeSpan.FromMilliseconds(300);
 

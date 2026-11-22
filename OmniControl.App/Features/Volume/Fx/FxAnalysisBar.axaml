@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:fx="using:OmniControl.App.Features.Volume.Fx"
+             xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
              x:Class="OmniControl.App.Features.Volume.Fx.FxAnalysisBar"
              x:DataType="fx:FxAnalysisViewModel">
     <!-- The FX window toolbar's response thumbnail (owner-approved "Design A", at the toolbar's right end; Peak and Latency sit beside it
@@ -15,7 +16,16 @@
             <FlyoutPresenter x:Name="EnlargedPanel" Classes="graphmenu">
                 <StackPanel Spacing="{StaticResource FxGraphPanelSpacing}">
                     <fx:ResponseGraph Height="{StaticResource FxGraphHeight}" />
-                    <fx:FxAnalysisNumbers ShowsPeakFrequency="True" Margin="{StaticResource MenuTextInset}" />
+                    <!-- one wrapping line under the graph: the numbers, the measurement's facts as tags, the reference curve's words, "Measuring…" -->
+                    <WrapPanel Margin="{StaticResource MenuTextInset}" ItemSpacing="{StaticResource MenuTagGap}" LineSpacing="{StaticResource MenuTagGap}">
+                        <fx:FxAnalysisNumbers ShowsPeakFrequency="True" VerticalAlignment="Center" />
+                        <ItemsControl ItemsSource="{Binding Notes}" VerticalAlignment="Center">
+                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="{StaticResource MenuTagGap}" LineSpacing="{StaticResource MenuTagGap}" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate><DataTemplate><c:TagView /></DataTemplate></ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Classes="menutext" Margin="0" Text="{x:Static fx:FxAnalysisViewModel.ReferenceText}" IsVisible="{Binding IsMeasured}" VerticalAlignment="Center" />
+                        <TextBlock Classes="menutext" Margin="0" Text="Measuring…" IsVisible="{Binding IsMeasuring}" VerticalAlignment="Center" />
+                    </WrapPanel>
                     <TextBlock Classes="menutext" Text="{x:Static fx:FxAnalysisViewModel.NoteText}" IsVisible="{Binding HasNote}"
                                ToolTip.Tip="{Binding NoteTip}" />
                 </StackPanel>

@@ -20,13 +20,15 @@ internal sealed class IrStage : IDspStage
     private readonly float[] _inL = new float[Scratch], _inR = new float[Scratch], _outL = new float[Scratch], _outR = new float[Scratch];
 
     /// <param name="values">The slot's values in the catalog's order (<see cref="IrParams"/>).</param>
-    public IrStage(string path, IReadOnlyList<double> values)
+    /// <param name="loadHere">Read the file now on this thread (a measurement, which must not hear the pass-through), not on a worker.</param>
+    public IrStage(string path, IReadOnlyList<double> values, bool loadHere = false)
     {
         _key = new Key(path, IrFileStamp.Of(path), IrParams.IsOn(values[IrParams.AutoLevel]), IrParams.IsOn(values[IrParams.TrimSilence]));
         _gain = new Glide((float)DspMath.DbToLin(values[IrParams.Gain]));
         _mix = new Glide((float)(values[IrParams.Mix] / Core.Models.Percent.Max));
         var key = _key;
-        Guard.OffUi("Impulse response: loading", () => Volatile.Write(ref _ready, Load(key)));
+        if (loadHere) _active = Load(key);
+        else Guard.OffUi("Impulse response: loading", () => Volatile.Write(ref _ready, Load(key)));
     }
 
     /// Worker: the prepared impulse response; an empty kernel (pass-through) when there is no usable file. Every failure ends in a kernel,

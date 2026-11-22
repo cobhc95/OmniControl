@@ -12,7 +12,7 @@ namespace OmniControl.App.Features.Volume.Audio.Engine;
 /// A run whose spec is unchanged keeps running. Without effects the sound plays unprocessed, and <see cref="StatusOf"/> says why.
 /// A failed run stays stopped until the user changes that row or the routing. Dispose stops everything, puts every program's own
 /// sound back and saves the plug-ins' settings (it does not unload them).
-public sealed class EffectsEngine : IDisposable
+public sealed partial class EffectsEngine : IDisposable
 {
     private readonly MixerService _mixer;
     private readonly EffectsSupportService _support;

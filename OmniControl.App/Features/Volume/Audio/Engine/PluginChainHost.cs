@@ -40,23 +40,44 @@ public sealed class PluginChainHost : IDisposable
     {
         if (!_loaded.TryGetValue(slot, out var entry))
         {
-            entry = new Loaded();
-            try
-            {
-                var type = FxCatalog.PluginTypeOf(slot) ?? throw new InvalidOperationException("This isn't a plug-in.");
-                entry.Effect = PluginLoader.Load(type.Format, slot.Path, PipeFormat.SampleRate, Core.CoreTiming.PipeMaxBlockFrames);
-                if (slot.State.Length > 0) entry.Effect.LoadState(Convert.FromBase64String(slot.State));
-            }
-            catch (Exception ex) when (ex is InvalidOperationException or FormatException or ArgumentException)
-            {
-                // A plug-in that won't load (or whose saved settings it rejects) is left out of the chain and named in the status.
-                entry.Effect?.Dispose();
-                entry.Effect = null;
-                entry.Error = ex.Message;
-            }
-            _loaded[slot] = entry;
+            var (effect, error) = Load(slot);
+            _loaded[slot] = entry = new Loaded { Effect = effect, Error = error };
         }
         return (entry.Effect, entry.Error);
+    }
+
+    /// A new instance of the slot's plug-in with the settings saved in the slot (the caller disposes it), or the reason it can't run.
+    /// Also used on a measurement's own thread (<see cref="ChainMeasurer"/>), with a copy of the slot.
+    internal static (IPluginEffect? Effect, string? Error) Load(FxSlot slot)
+    {
+        IPluginEffect? effect = null;
+        try
+        {
+            var type = FxCatalog.PluginTypeOf(slot) ?? throw new InvalidOperationException("This isn't a plug-in.");
+            effect = PluginLoader.Load(type.Format, slot.Path, PipeFormat.SampleRate, Core.CoreTiming.PipeMaxBlockFrames);
+            if (slot.State.Length > 0) effect.LoadState(Convert.FromBase64String(slot.State));
+            return (effect, null);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or FormatException or ArgumentException)
+        {
+            // A plug-in that won't load (or whose saved settings it rejects) is left out of the chain and named in the status.
+            effect?.Dispose();
+            return (null, ex.Message);
+        }
+    }
+
+    /// The slot's plug-in settings as they are now: the loaded plug-in's own (an open editor may have changed them), else the saved ones. UI thread.
+    internal string StateOf(FxSlot slot)
+    {
+        if (!_loaded.TryGetValue(slot, out var entry) || entry.Effect is null) return slot.State;
+        try
+        {
+            return Convert.ToBase64String(entry.Effect.SaveState());
+        }
+        catch (InvalidOperationException)
+        {
+            return slot.State; // the plug-in refused to hand out its settings: the last saved ones
+        }
     }
 
     /// The plug-in's editor (UI thread); null with a reason when it has none or will not load. Call <see cref="EditorClosed"/> after.
