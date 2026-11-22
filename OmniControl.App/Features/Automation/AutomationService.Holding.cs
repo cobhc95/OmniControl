@@ -2,7 +2,7 @@ namespace OmniControl.App.Features.Automation;
 
 // Rules that last: a rule holding a feature's own rule action (HotkeyAction.FeatureRule) with a trigger that can hold (a state, a time window)
 // starts, through the one run path, when its triggers and conditions begin to hold, and is released when they stop, it is switched off,
-// deleted or rules are paused. The feature ends its effect on the release.
+// deleted or the safe start is on (pausing leaves it). The feature ends its effect on the release.
 public sealed partial class AutomationService
 {
     private readonly Dictionary<string, AutomationRule> _held = new(); // rule id -> a lasting rule that holds now
@@ -12,8 +12,17 @@ public sealed partial class AutomationService
 
     /// True for a lasting rule: it holds a feature's rule action and a trigger that can hold.
     internal bool IsWhile(AutomationRule rule) =>
-        rule.Kind == AutomationKind.Do && rule.AllTriggers.Any(AutomationTriggers.CanHold)
-        && rule.Actions.Any(a => AutomationSteps.ActionIdOf(a) is { } id && _hotkeys.Find(id) is { FeatureRule: true });
+        rule.Kind == AutomationKind.Do && rule.AllTriggers.Any(AutomationTriggers.CanHold) && IsFeatureRule(rule);
+
+    /// True for a rule holding a feature's own rule action: it keeps running while rules are paused (only the user's own and preset rules stop).
+    internal bool IsFeatureRule(AutomationRule rule) =>
+        rule.Actions.Any(a => AutomationSteps.ActionIdOf(a) is { } id && _hotkeys.Find(id) is { FeatureRule: true });
+
+    /// True when pausing or the safe start keeps this rule from running.
+    internal bool Stopped(AutomationRule rule) => AutomationPause.Stops(SessionOff, Paused, IsFeatureRule(rule));
+
+    /// True for a rule that something must watch for now: switched on and not stopped.
+    private bool Needs(AutomationRule rule) => IsActive(rule) && !Stopped(rule);
 
     /// Starts the lasting rules that began to hold and releases those that stopped (a look, a state change, an edit, a pause).
     private void LookAtHeld()
@@ -21,7 +30,7 @@ public sealed partial class AutomationService
         AutomationContext? now = null;
         foreach (var rule in Settings.Rules.ToList())
         {
-            var holds = !Paused && !SessionOff && IsActive(rule) && IsWhile(rule) && TriggersHold(rule, -1)
+            var holds = Needs(rule) && IsWhile(rule) && TriggersHold(rule, -1)
                 && AutomationJoins.Holds(rule, now ??= NewContext());
             if (holds && _held.TryAdd(rule.Id, rule)) TryStart(rule);
             else if (!holds) Release(rule.Id);

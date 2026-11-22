@@ -32,7 +32,7 @@ public sealed partial class AutomationService : IActionGate, IDisposable
     private readonly Dictionary<string, DateTime> _lastStart = new();              // rule id -> last start (UTC); UI thread only
     private readonly Dictionary<string, Queue<DateTime>> _starts = new();          // recent starts, for the burst limit
     private readonly Dictionary<string, string> _pausedWhy = new();                // rule id -> why it was paused
-    private CancellationTokenSource _stopRuns = new();                             // ends running rules (in a wait) when rules are paused
+    private CancellationTokenSource _stopRuns = new();                             // ends running rules of the user (in a wait) when rules are paused
     private readonly Dictionary<string, string> _problems = new();                 // rule id -> what went wrong the last time it ran
     private readonly Dictionary<string, string> _failedShort = new();              // rule id -> that in a few words ("Orbit 11 not reachable")
     private readonly Dictionary<string, int> _tries = new();                       // rule id -> tries its steps needed the last time (more than one)
@@ -43,7 +43,7 @@ public sealed partial class AutomationService : IActionGate, IDisposable
     /// Holding Shift while OmniControl started: every rule and block stays off until <see cref="TurnRulesOn"/> (or a restart).
     public bool SessionOff { get; private set; }
 
-    /// All rules and blocks are paused (the tray item, the action, the emergency key, the page's button).
+    /// The user's own rules, preset rules and blocks are paused; rules of other pages (<see cref="IsFeatureRule"/>) keep running (the tray item, the action, the emergency key, the page's button).
     public bool Paused { get; private set; }
 
     /// Raised on the UI thread when something a rule's line shows changed (paused, ran, failed).
@@ -103,8 +103,7 @@ public sealed partial class AutomationService : IActionGate, IDisposable
             _stopRuns = new CancellationTokenSource();
         }
         _report(Paused ? "All rules are paused." : "Rules are on again.");
-        UpdateWake();
-        LookAtHeld();
+        SyncTriggers();
         _states.Notify(PausedId);
         Changed?.Invoke();
     }
@@ -293,10 +292,10 @@ public sealed partial class AutomationService : IActionGate, IDisposable
     // ---- The gate ----
 
     /// The one question every master action passes before it runs, whatever started it: does a switched-on Block rule forbid it now?
-    /// Nothing is blocked while rules are paused or off for the session, and an action that keeps the user in control never is.
+    /// Nothing is blocked while rules are off for the session, or paused (a feature's own rule action still is), and an action that keeps the user in control never is.
     public string? BlockReason(HotkeyAction action)
     {
-        if (SessionOff || Paused || action.NeverBlock) return null;
+        if (AutomationPause.BlocksOff(SessionOff, Paused, action.FeatureRule) || action.NeverBlock) return null;
         AutomationContext? now = null;
         foreach (var block in Settings.Rules)
         {
@@ -358,7 +357,7 @@ public sealed partial class AutomationService : IActionGate, IDisposable
     /// <param name="waitForReady">Started by a wake or a log-in: steps that need the network or a device wait for them first.</param>
     private bool TryStart(AutomationRule rule, RunChain? chain = null, bool waitForReady = false)
     {
-        if (!rule.On || !rule.IsComplete || rule.Kind != AutomationKind.Do || Paused || SessionOff || _pausedWhy.ContainsKey(rule.Id)) return false;
+        if (!rule.On || !rule.IsComplete || rule.Kind != AutomationKind.Do || Stopped(rule) || _pausedWhy.ContainsKey(rule.Id)) return false;
         var context = NewContext();
         if (!AutomationJoins.Holds(rule, context)) return false;
         if (ActionOf(rule) is { } own && BlockReason(own) is { } blocked)
@@ -388,7 +387,7 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         var waits = steps.Select((_, i) => rule.WaitBefore(i)).ToArray();
         var name = rule.Name;
         var id = rule.Id;
-        var stop = _stopRuns.Token;
+        var stop = IsFeatureRule(rule) ? CancellationToken.None : _stopRuns.Token;
         var runChain = chain ?? RunChain.Start(id);
         var run = new RunReport { WaitForReady = waitForReady, Waiting = target => Dispatcher.UIThread.Post(() => SetWaiting(id, target)) };
         if (waitForReady) Log($"rule \"{name}\" started by a wake or a log-in: steps that need the network or a device wait for them first");

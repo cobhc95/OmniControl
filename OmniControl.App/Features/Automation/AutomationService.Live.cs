@@ -50,7 +50,7 @@ public sealed partial class AutomationService
     }
 
     /// Tells the master list of states which ones the active rules' triggers follow (a reading is then kept fresh for them).
-    private void ShareWatched() => _states.Watch(nameof(AutomationService), Settings.Rules.Where(IsActive).SelectMany(r => r.AllTriggers)
+    private void ShareWatched() => _states.Watch(nameof(AutomationService), Settings.Rules.Where(Needs).SelectMany(r => r.AllTriggers)
         .Select(MouseAction.Parse).Where(t => t.Id == AutomationTriggers.StateChanges).Select(t => t.Param));
 
     private void StopLive()
@@ -120,17 +120,16 @@ public sealed partial class AutomationService
 
     private void OnActionRan(HotkeyAction action, RunChain? chain)
     {
-        if (Paused || SessionOff) return;
-        foreach (var rule in Settings.Rules.Where(r => IsActive(r) && !IsWhile(r)).ToList())
+        foreach (var rule in Settings.Rules.Where(r => Needs(r) && !IsWhile(r)).ToList())
             if (FiresWith(rule, t => AutomationTriggers.FiresOn(t, action, _sources))) StartFrom(rule, chain);
     }
 
     private void OnStateChanged(StateChange change)
     {
         ShowValues();
-        if (Paused || SessionOff) return;
+        if (SessionOff) return;
         StateSeen?.Invoke();
-        foreach (var rule in Settings.Rules.Where(r => IsActive(r) && !IsWhile(r)).ToList())
+        foreach (var rule in Settings.Rules.Where(r => Needs(r) && !IsWhile(r)).ToList())
             if (FiresWith(rule, t => AutomationTriggers.FiresOn(t, change))) StartFromState(rule, change.Chain);
         LookAtHeld();
     }
