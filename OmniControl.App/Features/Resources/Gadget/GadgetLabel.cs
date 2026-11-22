@@ -18,8 +18,8 @@ public static partial class GadgetLabel
 {
     private const int MaxIdLength = 64;
 
-    /// The fixed meaning of colour in the built-in labels: upload, download, CPU, GPU, a warm and a hot temperature.
-    public const string UploadColour = "green", DownloadColour = "blue", CpuColour = "yellow", GpuColour = "purple", WarmColour = "orange", HotColour = "red";
+    /// The fixed meaning of colour in the built-in labels: upload, download, CPU, GPU, a warm and a hot temperature, and white like the taskbar's dark-mode text.
+    public const string UploadColour = "green", DownloadColour = "blue", CpuColour = "yellow", GpuColour = "purple", WarmColour = "orange", HotColour = "red", WhiteColour = "white";
 
     /// The colours the label editor offers an icon: every drawing colour but black, which the dark taskbar would hide.
     public static readonly IReadOnlyList<string> IconColours = Palette.DrawingNamed.Select(d => d.Name).Where(n => n != "black").ToArray();

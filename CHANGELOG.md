@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- New: taskbar gadget layout "Classic with GPU" (third among the ready-made layouts): upload and download, CPU usage and temperature, GPU usage and temperature (white icons), memory and weather on two lines, Classic with memory's look.
 - Fixed: taskbar gadget: clicking quickly through the label editor's icons could write one icon inside another ("{cpu-2:{device-desktop-analytics:white}white}"), grow the label with every click, slow the app to a hang and blank the taskbar. An icon now never goes inside another; with an icon of the label selected, a click swaps that icon (its colour kept), so clicking through the grids tries each in its place; quick clicks are saved once; a long label no longer widens the readings table; a label broken this way is mended when OmniControl starts.
 - New: a "None" ready-made choice (every feature off) in Setup's Choose features page and App settings > Features; ticking a feature after it makes the choice Custom.
 

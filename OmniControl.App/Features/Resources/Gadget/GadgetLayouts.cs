@@ -38,12 +38,12 @@ public sealed class GadgetLayouts : ListPresetProvider<GadgetLayoutPreset>
             g.Weather.Shows = new() { WeatherPart.Icon, WeatherPart.Temperature, WeatherPart.PlaceName };
         })),
         new("gadget.classicmemory", "Classic with memory", "Network, CPU, hottest sensor, memory and weather", Everyday, true, Made(g =>
+            ClassicWithMemory(g, "upload", "download", "cpu", "hottest", "memory", GadgetSettings.WeatherId))),
+        new("gadget.classicgpu", "Classic with GPU", "Network, CPU, GPU, memory and weather", Everyday, true, Made(g =>
         {
-            Show(g, "upload", "download", "cpu", "hottest", "memory", GadgetSettings.WeatherId);
-            Plain(g);
-            WiderColumns(g);
-            Label(g, "memory", GadgetLabel.Token("device-sd-card"));
-            g.Weather.Shows = new() { WeatherPart.Icon, WeatherPart.Temperature };
+            ClassicWithMemory(g, "upload", "download", "cpu", Reading.CpuTempId, "gpu", Reading.GpuTempId, "memory", GadgetSettings.WeatherId);
+            Label(g, "gpu", GadgetLabel.Token("device-desktop-analytics", GadgetLabel.WhiteColour));
+            Label(g, Reading.GpuTempId, GadgetLabel.Token("temperature", GadgetLabel.WhiteColour));
         })),
         new("gadget.essentials", "Essentials", "Network, CPU and heat", Everyday, true, Made(g =>
         {
@@ -202,11 +202,21 @@ public sealed class GadgetLayouts : ListPresetProvider<GadgetLayoutPreset>
     /// Gives one reading's row its own label.
     private static void Label(GadgetSettings look, string id, string label) => look.Readings.First(r => r.Id == id).Label = label;
 
-    /// Uncoloured arrows and icons for the network and CPU temperature rows (Classic and the one-line layouts).
+    /// Classic with memory's look over these rows: plain icons, wider columns, the memory card icon, the weather's sky and temperature.
+    private static void ClassicWithMemory(GadgetSettings look, params string[] ids)
+    {
+        Show(look, ids);
+        Plain(look);
+        WiderColumns(look);
+        Label(look, "memory", GadgetLabel.Token("device-sd-card"));
+        look.Weather.Shows = new() { WeatherPart.Icon, WeatherPart.Temperature };
+    }
+
     /// Half a digit's width (about 0.55 em) more than the default column gap, at the look's text size (pt to px at 96 dpi).
     private static void WiderColumns(GadgetSettings look) =>
         look.ColumnGap += Math.Round(look.TextSize * 96 / 72 * 0.55 / 2);
 
+    /// Uncoloured arrows and icons for the network and CPU temperature rows (Classic and the one-line layouts).
     private static void Plain(GadgetSettings look)
     {
         Label(look, "upload", GadgetLabel.Token("arrow-up"));
