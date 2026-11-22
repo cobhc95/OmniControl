@@ -28,7 +28,7 @@ public sealed partial class AppSettingsPageViewModel
             .Append(Entry(ReadyMade, FeaturesName, "ready-made features everything sound only monitoring only custom choice"));
 
     private IReadOnlyList<(FeatureInfo, ToggleItem)> MakeFeatureCards() =>
-        FeatureList.All.Select(f => (f, new ToggleItem(f.Name, _features.IsOn(f.Id), on => _features.Set(f.Id, on)) { Half = true })).ToList();
+        FeatureList.All.Select(f => (f, new ToggleItem(f.Name, _features.IsOn(f.Id), on => _features.Set(f.Id, on)) { Half = true, Unavailable = !_features.Installed(f.Id) })).ToList();
 
     /// The cards, the count, the chip and the pill as the switch and what runs are now (after any change, here or by Restore defaults).
     private void ShowFeatures()
@@ -39,7 +39,8 @@ public sealed partial class AppSettingsPageViewModel
             var runs = _features.Runs(feature.Id);
             card.Load(on);
             card.Dimmed = !runs;
-            card.Note = on == runs ? (on ? feature.Description : OffNote)
+            card.Note = card.Unavailable ? "Not installed: run Setup to add it"
+                : on == runs ?(on ? feature.Description : OffNote)
                 : !feature.Live ? "Takes effect after restart"
                 : "Couldn't start; the errors log says why";
         }

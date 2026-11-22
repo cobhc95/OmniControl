@@ -17,7 +17,7 @@
                         <c:IconText Classes="cardname" Icon="{Binding Icon}" Text="{Binding Label}" HorizontalAlignment="Left" />
                         <TextBlock Classes="muted" Text="{Binding Note}" IsVisible="{Binding HasNote}" TextWrapping="Wrap" />
                     </StackPanel>
-                    <ToggleSwitch Grid.Column="1" IsChecked="{Binding IsOn}" OnContent="On" OffContent="Off" />
+                    <ToggleSwitch Grid.Column="1" IsChecked="{Binding IsOn}" IsEnabled="{Binding !Unavailable}" OnContent="On" OffContent="Off" />
                 </Grid>
             </DataTemplate>
         </pages:CardLayout>
@@ -30,7 +30,7 @@
                         <c:IconText Icon="{Binding Icon}" Text="{Binding Label}" />
                         <TextBlock Classes="muted" Text="{Binding Note}" IsVisible="{Binding HasNote}" TextWrapping="Wrap" />
                     </StackPanel>
-                    <ToggleSwitch Grid.Column="1" Classes="plain" IsChecked="{Binding IsOn}" ToolTip.Tip="{Binding StateWords}" VerticalAlignment="Center" />
+                    <ToggleSwitch Grid.Column="1" Classes="plain" IsChecked="{Binding IsOn}" IsEnabled="{Binding !Unavailable}" ToolTip.Tip="{Binding StateWords}" VerticalAlignment="Center" />
                 </Grid>
             </DataTemplate>
         </pages:CardLayout>

@@ -1,9 +1,12 @@
+using OmniControl.Core.Engine;
+
 namespace OmniControl.App.Features;
 
 /// One feature the person may switch off (App settings > Features, Setup's "Choose features" page).
 /// <param name="Id">Its id, kept in settings.json and used as Setup's component name (tools/setup.iss retypes them).</param>
 /// <param name="Live">True: switching it starts or stops it at once; false: from the next start (its card says so).</param>
-public sealed record FeatureInfo(string Id, string Name, string Description, bool Live);
+/// <param name="File">The file Setup leaves out with it (<see cref="OptionalFiles"/>); while it is missing the feature is not installed. Null: always installed.</param>
+public sealed record FeatureInfo(string Id, string Name, string Description, bool Live, string? File = null);
 
 /// THE list of features that can be switched off, in the order the switches show, and the ready-made choices (the same as Setup's types).
 /// Where a feature runs and shows is the module that names its id in <see cref="IFeatureModule.Features"/> (one registration); a module that
@@ -16,19 +19,19 @@ public static class FeatureList
     public static readonly IReadOnlyList<FeatureInfo> All = new FeatureInfo[]
     {
         // Restart: the audio engine's plug-ins may hang while unloading, and Input, Automation and App settings hold the mixer.
-        new(Volume, "Sound and effects", "Volume, mixer, effects (Equalizer APO)", Live: false),
+        new(Volume, "Sound and effects", "Volume, mixer, effects (Equalizer APO)", Live: false, OptionalFiles.EqualizerApo),
         // Restart: the monitors' engine and the software displays are made first and given back only at exit.
         new(Displays, "Displays", "Brightness, colour, rotation", Live: false),
         // Restart: the one mouse hook and the pointer settings' kept button swap.
         new(Input, "Mouse and trackpad", "Button remapping, gestures", Live: false),
         new(Automation, "Hotkeys and automation", "Keys, rules, custom actions", Live: true),
         new(Osd, "On-screen display", "OSD pop-ups", Live: true),
-        new(Resources, "Resources and taskbar gadget", "CPU, GPU, network, temperatures", Live: true),
-        new(Traffic, "Network traffic control", "Per-app limits (Windows Packet Filter)", Live: true),
+        new(Resources, "Resources and taskbar gadget", "CPU, GPU, network, temperatures", Live: true, OptionalFiles.Sensors),
+        new(Traffic, "Network traffic control", "Per-app limits (Windows Packet Filter)", Live: true, OptionalFiles.PacketFilter),
         // Restart: Smart devices' import and App settings' import from a PC hold its paired PCs.
         new(OtherPcs, "Other PCs", "Pairing, wake, remote control", Live: false),
         new(Devices, "Smart devices", "Plugs and bulbs", Live: true),
-        new(Screenshot, "Screenshot tool", "Screenshots and screen recording", Live: true),
+        new(Screenshot, "Screenshot tool", "Screenshots and screen recording", Live: true, OptionalFiles.QrCodes),
     };
 
     public static FeatureInfo? Find(string id) => All.FirstOrDefault(f => f.Id == id);

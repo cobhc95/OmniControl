@@ -9,6 +9,7 @@ public sealed class FeatureSwitches
 {
     private readonly ISettingSlot<List<string>> _off;
     private readonly HashSet<string> _running = new();
+    private readonly HashSet<string> _missing = FeatureList.All.Where(f => f.File is not null && !OptionalFiles.Present(f.File)).Select(f => f.Id).ToHashSet();
 
     /// <param name="off">The features switched off (App settings' own copy).</param>
     /// <param name="fromSetup">Setup's choice as last taken, so the same choice is never taken twice.</param>
@@ -25,14 +26,17 @@ public sealed class FeatureSwitches
 
     public IReadOnlyCollection<string> Off => _off.Value;
 
-    public bool IsOn(string id) => !_off.Value.Contains(id);
+    public bool IsOn(string id) => !_off.Value.Contains(id) && Installed(id);
+
+    /// False when Setup left its file out ("Don't install them"): it never runs until Setup adds it.
+    public bool Installed(string id) => !_missing.Contains(id);
 
     /// The feature runs now (the shell's word).
     public bool Runs(string id) => _running.Contains(id);
 
     public void Set(string id, bool on)
     {
-        if (on == IsOn(id)) return;
+        if (on == IsOn(id) || !Installed(id)) return;
         SetOff(on ? _off.Value.Where(o => o != id) : _off.Value.Append(id));
     }
 

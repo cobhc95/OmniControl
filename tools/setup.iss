@@ -29,8 +29,9 @@ CloseApplications=no
 WizardSelectComponents=Choose features
 SelectComponentsDesc=Pick what OmniControl should do on this PC. You can change this later in App settings.
 SelectComponentsLabel2=Ready-made choice:
-; "Choose features": every file is installed whatever is ticked; a feature left unticked does not run. The component names are the app's feature
-; ids (retyped from OmniControl.App/Features/FeatureList, also in [Code] FeatureIds); the choice is written for the app ([Code] WriteFeatures).
+; "Choose features": a feature left unticked does not run; "Features you didn't tick" ([Code] LeavesOut) also leaves out its optional files (below),
+; so the app shows it as not installed. The component names are the app's feature ids (retyped from OmniControl.App/Features/FeatureList, also in
+; [Code] FeatureIds); the choice is written for the app ([Code] WriteFeatures).
 [Types]
 Name: everything; Description: "Everything"
 Name: sound; Description: "Sound only"
@@ -47,8 +48,52 @@ Name: traffic; Description: "Network traffic control: per-app limits (Windows Pa
 Name: otherpcs; Description: "Other PCs: pairing, wake, remote control"; Types: everything
 Name: devices; Description: "Smart devices: plugs and bulbs"; Types: everything
 Name: screenshot; Description: "Screenshot tool"; Types: everything
+; The optional files (retyped from Core/Engine/OptionalFiles, the folders from the csproj; the sensor library with what only it loads) and their
+; sizes for the disk-space line ([Code] ShowDiskSpace). The publish folder has no other subfolders.
+#define SensorFiles "LibreHardwareMonitorLib.dll,DiskInfoToolkit.dll,HidSharp.dll,RAMSPDToolkit-NDD.dll,BlackSharp.Core.dll"
+#define public Bytes 0
+#define public Handle 0
+#define public Found 0
+#define public Dir ""
+#sub AddFound
+  #expr Bytes = Bytes + FileSize(Dir + FindGetFileName(Handle))
+#endsub
+#sub SumDir
+  #expr Bytes = 0
+  #for {Handle = Found = FindFirst(Dir + "*", 0); Found; Found = FindNext(Handle)} AddFound
+  #expr FindClose(Handle)
+#endsub
+#expr Dir = PubDir + "\"
+#expr SumDir
+#define TopBytes Bytes
+#expr Dir = PubDir + "\equalizer-apo\"
+#expr SumDir
+#define VolumeBytes Bytes
+#expr Dir = PubDir + "\windows-packet-filter\"
+#expr SumDir
+#define TrafficBytes Bytes
+#define ResourcesBytes FileSize(PubDir + "\LibreHardwareMonitorLib.dll") + FileSize(PubDir + "\DiskInfoToolkit.dll") + FileSize(PubDir + "\HidSharp.dll") + FileSize(PubDir + "\RAMSPDToolkit-NDD.dll") + FileSize(PubDir + "\BlackSharp.Core.dll")
+#define ScreenshotBytes FileSize(PubDir + "\zxing.dll")
 [Files]
-Source: "{#PubDir}\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
+Source: "{#PubDir}\*"; DestDir: "{app}"; Excludes: "\equalizer-apo,\windows-packet-filter,\zxing.dll,\{#StringChange(SensorFiles, ',', ',\')}"; Flags: recursesubdirs ignoreversion
+Source: "{#PubDir}\equalizer-apo\*"; DestDir: "{app}\equalizer-apo"; Flags: ignoreversion; Check: Installs('volume')
+Source: "{#PubDir}\windows-packet-filter\*"; DestDir: "{app}\windows-packet-filter"; Flags: ignoreversion; Check: Installs('traffic')
+Source: "{#PubDir}\LibreHardwareMonitorLib.dll"; DestDir: "{app}"; Flags: ignoreversion; Check: Installs('resources')
+Source: "{#PubDir}\DiskInfoToolkit.dll"; DestDir: "{app}"; Flags: ignoreversion; Check: Installs('resources')
+Source: "{#PubDir}\HidSharp.dll"; DestDir: "{app}"; Flags: ignoreversion; Check: Installs('resources')
+Source: "{#PubDir}\RAMSPDToolkit-NDD.dll"; DestDir: "{app}"; Flags: ignoreversion; Check: Installs('resources')
+Source: "{#PubDir}\BlackSharp.Core.dll"; DestDir: "{app}"; Flags: ignoreversion; Check: Installs('resources')
+Source: "{#PubDir}\zxing.dll"; DestDir: "{app}"; Flags: ignoreversion; Check: Installs('screenshot')
+; An upgrade that now leaves a feature out takes away what an earlier Setup put there.
+[InstallDelete]
+Type: filesandordirs; Name: "{app}\equalizer-apo"; Check: not Installs('volume')
+Type: filesandordirs; Name: "{app}\windows-packet-filter"; Check: not Installs('traffic')
+Type: files; Name: "{app}\zxing.dll"; Check: not Installs('screenshot')
+Type: files; Name: "{app}\LibreHardwareMonitorLib.dll"; Check: not Installs('resources')
+Type: files; Name: "{app}\DiskInfoToolkit.dll"; Check: not Installs('resources')
+Type: files; Name: "{app}\HidSharp.dll"; Check: not Installs('resources')
+Type: files; Name: "{app}\RAMSPDToolkit-NDD.dll"; Check: not Installs('resources')
+Type: files; Name: "{app}\BlackSharp.Core.dll"; Check: not Installs('resources')
 [Icons]
 Name: "{group}\OmniControl"; Filename: "{app}\OmniControl.exe"
 Name: "{autodesktop}\OmniControl"; Filename: "{app}\OmniControl.exe"; Tasks: desktopicon
@@ -424,6 +469,123 @@ begin
   WizardSelectComponents(Pick);
 end;
 
+// "Features you didn't tick" under the list: Don't install them (the default) or Install them but keep them off. The choice is kept beside
+// FeaturesOff, so an upgrade shows it again and a silent Setup follows it; a silent Setup with none kept installs everything, as before.
+const
+  LeaveOutValue = 'LeaveOutUnticked';
+
+var LeaveOutButton, KeepOffButton: TNewRadioButton;
+    LeaveOutNote, KeepOffNote: TNewStaticText;
+    OldClickCheck, OldTypeChange: TNotifyEvent;
+
+function LeavesOut(): Boolean;
+var Kept: Cardinal;
+begin
+  if LeaveOutButton <> nil then Result := LeaveOutButton.Checked
+  else Result := RegQueryDWordValue(HKLM64, ReceiptKey, LeaveOutValue, Kept) and (Kept = 1);
+end;
+
+function Installs(Id: String): Boolean;
+begin
+  Result := WizardIsComponentSelected(Id) or not LeavesOut();
+end;
+
+// Inno counts every file whatever is ticked (the optional ones go by Check), so the line is said here: all files less those left out.
+procedure ShowDiskSpace();
+var Bytes: Extended;
+    Text: String;
+begin
+  Bytes := {#TopBytes} + {#VolumeBytes} + {#TrafficBytes};
+  if not Installs('volume') then Bytes := Bytes - {#VolumeBytes};
+  if not Installs('traffic') then Bytes := Bytes - {#TrafficBytes};
+  if not Installs('resources') then Bytes := Bytes - {#ResourcesBytes};
+  if not Installs('screenshot') then Bytes := Bytes - {#ScreenshotBytes};
+  Text := SetupMessage(msgComponentsDiskSpaceMBLabel);
+  StringChangeEx(Text, '[mb]', Format('%.1f', [Bytes / 1048576]), True);
+  WizardForm.ComponentsDiskSpaceLabel.Caption := Text;
+end;
+
+procedure ChoiceClicked(Sender: TObject);
+begin
+  ShowDiskSpace();
+end;
+
+procedure ListClicked(Sender: TObject);
+begin
+  OldClickCheck(Sender);
+  ShowDiskSpace();
+end;
+
+procedure TypeChanged(Sender: TObject);
+begin
+  OldTypeChange(Sender);
+  ShowDiskSpace();
+end;
+
+// A muted note after a radio button's words; clicking it picks the button.
+procedure NoteClicked(Sender: TObject);
+begin
+  LeaveOutButton.Checked := Sender = LeaveOutNote;
+  KeepOffButton.Checked := Sender = KeepOffNote;
+  ShowDiskSpace();
+end;
+
+function AddChoice(Box: TPanel; Text, Note: String; Top: Integer; var Muted: TNewStaticText): TNewRadioButton;
+var Words: TNewStaticText;
+begin
+  Words := TNewStaticText.Create(Box);
+  Words.Parent := Box;
+  Words.Caption := Text;
+  Result := TNewRadioButton.Create(Box);
+  Result.Parent := Box;
+  Result.Caption := Text;
+  Result.Left := ScaleX(8);
+  Result.Top := Top;
+  Result.Width := Words.Width + ScaleX(20);
+  Result.Height := ScaleY(17);
+  Result.OnClick := @ChoiceClicked;
+  Words.Free();
+  Muted := TNewStaticText.Create(Box);
+  Muted.Parent := Box;
+  Muted.Caption := Note;
+  Muted.Font.Color := clGrayText;
+  Muted.Left := Result.Left + Result.Width + ScaleX(2);
+  Muted.Top := Top + ScaleY(1);
+  Muted.OnClick := @NoteClicked;
+end;
+
+procedure InitializeWizard();
+var Box: TPanel;
+    Title: TNewStaticText;
+    Kept: Cardinal;
+begin
+  if WizardSilent() then Exit;
+  Box := TPanel.Create(WizardForm);
+  Box.Parent := WizardForm.ComponentsList.Parent;
+  Box.BevelOuter := bvNone;
+  Box.BorderStyle := bsSingle;
+  Box.ParentBackground := False;
+  Box.Color := clWindow;
+  Box.Left := WizardForm.ComponentsList.Left;
+  Box.Width := WizardForm.ComponentsList.Width;
+  Box.Height := ScaleY(66);
+  WizardForm.ComponentsList.Height := WizardForm.ComponentsList.Height - Box.Height - ScaleY(10);
+  Box.Top := WizardForm.ComponentsList.Top + WizardForm.ComponentsList.Height + ScaleY(10);
+  Title := TNewStaticText.Create(Box);
+  Title.Parent := Box;
+  Title.Caption := 'Features you didn''t tick:';
+  Title.Left := ScaleX(8);
+  Title.Top := ScaleY(6);
+  LeaveOutButton := AddChoice(Box, 'Don''t install them', '(their drivers, services and sensor library are left out)', ScaleY(24), LeaveOutNote);
+  KeepOffButton := AddChoice(Box, 'Install them but keep them off', '(turn on any time in App settings)', ScaleY(42), KeepOffNote);
+  LeaveOutButton.Checked := not RegQueryDWordValue(HKLM64, ReceiptKey, LeaveOutValue, Kept) or (Kept = 1);
+  KeepOffButton.Checked := not LeaveOutButton.Checked;
+  OldClickCheck := WizardForm.ComponentsList.OnClickCheck;
+  WizardForm.ComponentsList.OnClickCheck := @ListClicked;
+  OldTypeChange := WizardForm.TypesCombo.OnChange;
+  WizardForm.TypesCombo.OnChange := @TypeChanged;
+end;
+
 // A silent Setup changes the app's choice only when its command line names one (/COMPONENTS or /TYPE).
 function ChoiceGiven(): Boolean;
 var I: Integer;
@@ -448,6 +610,7 @@ begin
       Off := Off + Ids[I];
     end;
   RegWriteStringValue(HKLM64, ReceiptKey, FeaturesValue, Off);
+  if not WizardSilent() then RegWriteDWordValue(HKLM64, ReceiptKey, LeaveOutValue, Ord(LeavesOut()));
 end;
 
 // A driver install that fails leaves OmniControl installed and says so in one line. The receipt lets uninstall remove only this copy.
@@ -597,7 +760,11 @@ end;
 
 procedure CurPageChanged(CurPageID: Integer);
 begin
-  if (CurPageID = wpSelectComponents) and not WizardSilent() then PresetFeatures();
+  if (CurPageID = wpSelectComponents) and not WizardSilent() then
+  begin
+    PresetFeatures();
+    ShowDiskSpace();
+  end;
   if (CurPageID = wpSelectTasks) and not WizardSilent() then PresetSignInTask();
   if (CurPageID = wpFinished) and (EqualizerApoNote <> '') then
     WizardForm.FinishedLabel.Caption := WizardForm.FinishedLabel.Caption + #13#10#13#10 + EqualizerApoNote;
