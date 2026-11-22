@@ -7,6 +7,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 - Changed: App settings > Start and close, "Free memory after closing" now defaults to 30 seconds, and has a new "Always" choice that frees the closed window's memory right away.
 
+- Hiding Windows' own volume pop-up now happens before it can be seen.
 - Taskbar gadget: a double-click registers even if the mouse moves a little between the clicks.
 - Fixed: links such as "Open on GitHub" did nothing when OmniControl ran as administrator (the Portable copy); they now open through Explorer in your normal session, and a failure is logged.
 

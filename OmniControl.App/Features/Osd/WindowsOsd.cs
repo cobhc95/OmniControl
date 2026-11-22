@@ -36,6 +36,8 @@ public sealed class WindowsOsd : IDisposable
     private int _flyoutProcess;
     private WindowPlace? _parkedFrom;                            // where the pop-up was when it was last moved off screen
     private bool _stopped;
+    private bool _missLogged;                                    // the event hook missing a show is logged once per run
+    private readonly WindowsOsdGuard _guard = new();             // parks the learned pop-up the instant Windows shows it
     private int _logged;
 
     public WindowsOsd() => _timer.Tick += (_, _) => Guard.Run("Hide Windows' OSD: look", Tick);
@@ -74,7 +76,10 @@ public sealed class WindowsOsd : IDisposable
 
     private void StartLooking()
     {
-        if (_hiding && !_timer.IsEnabled) _timer.Start();
+        if (!_hiding) return;
+        // A known pop-up costs one window check per look, so it is checked often; learning one enumerates windows, so it keeps the slower rate.
+        _timer.Interval = _flyout != IntPtr.Zero ? Timing.WindowsOsdFastPoll : Timing.WindowsOsdPoll;
+        if (!_timer.IsEnabled) _timer.Start();
     }
 
     private void Tick()
@@ -132,6 +137,11 @@ public sealed class WindowsOsd : IDisposable
             if (WindowsOsdWindows.PointerOverShell()) return; // a taskbar pop-up opening under the pointer, never the volume pop-up
             if (!Learn(window)) return;
         }
+        if (known && _guard.Hooked && !_missLogged)
+        {
+            _missLogged = true;
+            Log($"the event hook missed Windows showing the pop-up ({_guard.Parked} caught by it since learned); the look caught it");
+        }
         Park(window, $"opened {gap} ms after a change");
     }
 
@@ -150,6 +160,7 @@ public sealed class WindowsOsd : IDisposable
         }
         _flyout = window;
         _flyoutProcess = WindowsOsdWindows.ProcessOf(window);
+        _guard.Watch(window, _flyoutProcess);
         Log($"learned {WindowsOsdWindows.Describe(window)} as Windows' pop-up");
         return true;
     }
@@ -169,6 +180,7 @@ public sealed class WindowsOsd : IDisposable
     /// Puts the pop-up back where it was if it is still off screen, and forgets it.
     private void Forget()
     {
+        _guard.Stop(); // before any put-back, so the hook never parks it again
         if (_parkedFrom is { } place)
         {
             if (_flyout != IntPtr.Zero && WindowsOsdWindows.IsParked(_flyout))

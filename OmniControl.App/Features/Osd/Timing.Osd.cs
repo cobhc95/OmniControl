@@ -37,6 +37,10 @@ public static partial class Timing
     /// How often Windows' own OSD window is looked for so it can be hidden (only within <see cref="WindowsOsdMatch"/> after an outside change).
     public static readonly TimeSpan WindowsOsdPoll = TimeSpan.FromMilliseconds(60);
 
+    /// The safety-net look at an already learned pop-up (one window check, no enumeration) within <see cref="WindowsOsdMatch"/> after a
+    /// change; the event hook (<see cref="WindowsOsdGuard"/>) normally parks it first.
+    public static readonly TimeSpan WindowsOsdFastPoll = TimeSpan.FromMilliseconds(16);
+
     /// An Explorer pop-up is taken for Windows' own volume pop-up (and hidden) only when it opens within this time AFTER a volume,
     /// brightness, microphone or media change made outside OmniControl (0 ms or more, never before); any other Explorer pop-up is never touched.
     public static readonly TimeSpan WindowsOsdMatch = TimeSpan.FromSeconds(1);
