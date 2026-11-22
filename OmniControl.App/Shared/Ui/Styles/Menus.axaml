@@ -178,26 +178,57 @@
             <Style Selector="^.menurow:disabled"><Setter Property="Opacity" Value="0.45" /></Style>
             <Style Selector="^.menurow:disabled /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="Transparent" /></Style>
         </ControlTheme>
+        <ControlTheme x:Key="MenuSurface" TargetType="FlyoutPresenter" BasedOn="{StaticResource {x:Type FlyoutPresenter}}">
+            <!-- The pop-down that captures a shortcut under a rule's "I press" block: a fixed width so the live keycaps do not move it -->
+            <Style Selector="^.capturemenu">
+                <Setter Property="Padding" Value="{StaticResource MenuPadding}" />
+                <Setter Property="Width" Value="{StaticResource CaptureMenuWidth}" />
+                <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+                <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
+            </Style>
+            <!-- A pop-down that holds a larger graph (the FX window's total response, opened from Button.graphthumb): a fixed width so the graph
+                 is drawn at its size, no scrolling -->
+            <Style Selector="^.graphmenu">
+                <Setter Property="Width" Value="{StaticResource FxGraphPanelWidth}" />
+                <Setter Property="Padding" Value="{StaticResource FxGraphPanelPadding}" />
+                <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+                <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
+            </Style>
+            <!-- Every menu and pop-down list has one surface (Windows 11 style): the card colour, a 1 px soft edge, 8 px corners, 4 px inside;
+                 listmenu and optionmenu (both ListMenuFlyout) add a soft shadow drawn in MenuShadowRoom, which ListMenuFlyout shifts away.
+                 Font size and text colour are set here because the pop-down inherits them from the control it hangs under in the logical tree -->
+            <Style Selector="^.listmenu, ^.optionmenu, ^.capturemenu, ^.graphmenu">
+                <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="{StaticResource MenuCornerRadius}" />
+                <Setter Property="FontSize" Value="{DynamicResource ControlContentThemeFontSize}" />
+                <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            </Style>
+            <Style Selector="^.listmenu">
+                <Setter Property="Margin" Value="{StaticResource MenuShadowRoom}" />
+                <Setter Property="Padding" Value="{StaticResource MenuPadding}" />
+                <Setter Property="MinWidth" Value="{StaticResource ListMenuMinWidth}" />
+                <Setter Property="MaxWidth" Value="{StaticResource ListMenuMaxWidth}" />
+                <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+                <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+            </Style>
+            <Style Selector="^.listmenu /template/ Border#LayoutRoot"><Setter Property="BoxShadow" Value="{DynamicResource MenuShadow}" /></Style>
+            <!-- A pop-down of choice cards (.optionmenu on a ListMenuFlyout, so after listmenu: its width wins) and its cards
+                 (Button.optioncard). The card border is always 2 px, so hover, keyboard focus and selection only change colours and never move the text. -->
+            <Style Selector="^.optionmenu">
+                <Setter Property="Padding" Value="8,6" />
+                <Setter Property="MinWidth" Value="0" />
+                <Setter Property="MaxWidth" Value="Infinity" />
+                <Setter Property="Width" Value="{StaticResource OptionMenuWidth}" />
+            </Style>
+        </ControlTheme>
     </Styles.Resources>
     <!-- The colour editor's drawn areas (Controls/ColorSquare, HueBar): the accent focus ring on keyboard focus, never the default outline -->
     <Style Selector="c|ColorSquare:focus-visible, c|HueBar:focus-visible"><Setter Property="RingBrush" Value="{DynamicResource BrushAccent}" /></Style>
     <Style Selector="c|ColorSquare, c|HueBar"><Setter Property="FocusAdorner" Value="{x:Null}" /></Style>
-    <!-- The pop-down that captures a shortcut under a rule's "I press" block: a fixed width so the live keycaps do not move it -->
-    <Style Selector="FlyoutPresenter.capturemenu">
-        <Setter Property="Padding" Value="{StaticResource MenuPadding}" />
-        <Setter Property="Width" Value="{StaticResource CaptureMenuWidth}" />
-        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
-        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
-    </Style>
-
-    <!-- A pop-down that holds a larger graph (the FX window's total response, opened from Button.graphthumb): a fixed width so the graph
-         is drawn at its size, no scrolling -->
-    <Style Selector="FlyoutPresenter.graphmenu">
-        <Setter Property="Width" Value="{StaticResource FxGraphPanelWidth}" />
-        <Setter Property="Padding" Value="{StaticResource FxGraphPanelPadding}" />
-        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
-        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
-    </Style>
+    <!-- Menus and pop-down lists (FlyoutPresenter.listmenu, .optionmenu, .capturemenu, .graphmenu): MenuSurface above -->
+    <Style Selector="FlyoutPresenter.listmenu, FlyoutPresenter.optionmenu, FlyoutPresenter.capturemenu, FlyoutPresenter.graphmenu"><Setter Property="Theme" Value="{StaticResource MenuSurface}" /></Style>
 
     <!-- A thin line across a pop-down or window, between its parts -->
     <Style Selector="Border.hrule">
@@ -218,34 +249,6 @@
     </Style>
     <Style Selector=":is(Control).unavailable"><Setter Property="Opacity" Value="0.45" /></Style>
 
-    <!-- Every menu and pop-down list has one surface (Windows 11 style): the card colour, a 1 px soft edge, 8 px corners, 4 px inside;
-         listmenu and optionmenu (both ListMenuFlyout) add a soft shadow drawn in MenuShadowRoom, which ListMenuFlyout shifts away.
-         Font size and text colour are set here because the pop-down inherits them from the control it hangs under in the logical tree -->
-    <Style Selector="FlyoutPresenter.listmenu, FlyoutPresenter.optionmenu, FlyoutPresenter.capturemenu, FlyoutPresenter.graphmenu">
-        <Setter Property="Background" Value="{DynamicResource BrushSidebar}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="{StaticResource MenuCornerRadius}" />
-        <Setter Property="FontSize" Value="{DynamicResource ControlContentThemeFontSize}" />
-        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-    </Style>
-    <Style Selector="FlyoutPresenter.listmenu">
-        <Setter Property="Margin" Value="{StaticResource MenuShadowRoom}" />
-        <Setter Property="Padding" Value="{StaticResource MenuPadding}" />
-        <Setter Property="MinWidth" Value="{StaticResource ListMenuMinWidth}" />
-        <Setter Property="MaxWidth" Value="{StaticResource ListMenuMaxWidth}" />
-        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
-        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
-    </Style>
-    <Style Selector="FlyoutPresenter.listmenu /template/ Border#LayoutRoot"><Setter Property="BoxShadow" Value="{DynamicResource MenuShadow}" /></Style>
-    <!-- A pop-down of choice cards (FlyoutPresenter.optionmenu on a ListMenuFlyout, so after listmenu: its width wins) and its cards
-         (Button.optioncard). The card border is always 2 px, so hover, keyboard focus and selection only change colours and never move the text. -->
-    <Style Selector="FlyoutPresenter.optionmenu">
-        <Setter Property="Padding" Value="8,6" />
-        <Setter Property="MinWidth" Value="0" />
-        <Setter Property="MaxWidth" Value="Infinity" />
-        <Setter Property="Width" Value="{StaticResource OptionMenuWidth}" />
-    </Style>
 
     <Style Selector="ComboBox"><Setter Property="Theme" Value="{StaticResource ComboBoxTheme}" /></Style>
     <Style Selector="ComboBoxItem"><Setter Property="Theme" Value="{StaticResource ComboBoxItemTheme}" /></Style>
