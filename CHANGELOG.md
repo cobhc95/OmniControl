@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Fixed: the taskbar gadget could show coloured blocks after a change of position, text colour or anything else that resized it; it now redraws whenever Windows gives it a new size.
 - Faster: the Displays page (and the Mouse page's inner groups) builds eight cards first and the rest right after, so its first frame shows sooner; looks and keys are the same.
 - Faster: menu rows build their tag lists only when the row has tags (long menus such as the action picker's and the gadget's menus open sooner).
 - Faster: the Volume page's level meters repaint only when a level moves by about a pixel and read less often while every meter is silent (the compressor and limiter cards too).

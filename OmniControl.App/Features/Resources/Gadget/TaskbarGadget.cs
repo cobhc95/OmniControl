@@ -230,7 +230,7 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
             var clicks = _clicks = new GadgetClicks(() => Look, Run);
             window.Pressed += clicks.Pressed;
             window.Released += clicks.Released;
-            window.EdgeChanged += () => Dispatcher.UIThread.Post(() => Guarded("Taskbar gadget: paint", Paint), DispatcherPriority.Loaded); // after the edge's layout
+            window.PictureStale += () => Dispatcher.UIThread.Post(() => Guarded("Taskbar gadget: paint", Paint), DispatcherPriority.Loaded); // after the layout
             // A child window is destroyed with the taskbar when Explorer restarts; TaskbarCreated then opens a new one through Place.
             window.Closed += (_, _) =>
             {

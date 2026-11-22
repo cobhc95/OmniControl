@@ -17,6 +17,9 @@ public partial class GadgetWindow : Window
         InitializeComponent();
         _menuRows = menuRows;
         Menu.Picked += (_, _) => (FlyoutBase.GetAttachedFlyout(Root) as Flyout)?.Hide();
+        // Windows keeps a layered window's last picture when it is resized and leaves the new area undefined (old video memory: coloured blocks),
+        // and the window often takes its new size after the picture was given at the old one.
+        Resized += (_, _) => PictureStale?.Invoke();
     }
 
     /// The dashed edge shows while the pointer is over the gadget.
@@ -39,8 +42,8 @@ public partial class GadgetWindow : Window
 
     public void Draw(IReadOnlyList<GadgetCell> cells, GadgetLayout layout) => Cells.Draw(cells, layout);
 
-    /// The hover edge came or went (the layered window shows a new picture only when given one).
-    public event Action? EdgeChanged;
+    /// The hover edge came or went, or the window took a new size (the layered window shows a new picture only when given one).
+    public event Action? PictureStale;
 
     /// Draws the window into <paramref name="bits"/>: premultiplied BGRA, <paramref name="width"/> x <paramref name="height"/> physical pixels,
     /// rows of width * 4 bytes (the layered taskbar window's picture).
@@ -77,7 +80,7 @@ public partial class GadgetWindow : Window
     {
         if (Frame.IsVisible == on) return;
         Frame.IsVisible = on;
-        EdgeChanged?.Invoke();
+        PictureStale?.Invoke();
     }
 
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
