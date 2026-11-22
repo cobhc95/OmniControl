@@ -32,10 +32,9 @@ internal static partial class Shots
         var backup = new BackupService(_ => Task.FromResult(DialogAnswer.Cancel), Rig.Report, new ImportFromPcService(new NoTransport(), new ImportHooks(), Rig.Report));
         var settings = AppSettings.Current;
         var plugins = new PluginLibrary(settings.Slot(s => s.PluginFolders, (s, folders) => s.PluginFolders = folders));
-        var features = new FeatureSwitches(settings.Slot(s => s.FeaturesOff, (s, off) => s.FeaturesOff = off), settings.Slot(s => s.FeaturesFromSetup, (s, chosen) => s.FeaturesFromSetup = chosen));
         var shortcuts = new PresetShortcuts(rig.Actions, rig.Presets, Rig.Report);
         var presets = new PresetManagerService(rig.Presets, shortcuts, new PresetTriggersSlot(shortcuts), Rig.Report);
-        var page = new AppSettingsPageViewModel(() => { }, plugins, presets, backup, new ConfirmationMemory(), updates, Rig.Report, mixer, rig.Hardware, settings, Tray(rig), features);
+        var page = new AppSettingsPageViewModel(() => { }, plugins, presets, backup, new ConfirmationMemory(), updates, Rig.Report, mixer, rig.Hardware, settings, Tray(rig), rig.Features);
         rig.Pages.Add(page);
         rig.Restore(page, page.Restorable);
         page.ShowRestoreAll(new PageRestore(new RestoreRunner("all", "All", rig.Restorables, true, _ => Task.FromResult(false), new FileSnapshotStore()), all: true));

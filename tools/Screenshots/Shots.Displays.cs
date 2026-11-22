@@ -11,8 +11,7 @@ internal static partial class Shots
     {
         Use(ViewTemplate.For<DisplaysPageViewModel, DisplaysPage>());
         var software = new SoftwareDisplayService(_ => new FakeGamma(), keepRecovery: false);
-        var service = new DisplaysService(new FakeEngine(), rig.Actions, set => new SuggestedKeysSwitch(rig.Actions, set), rig.Osd, software, Rig.Report,
-            rig.Presets, Rig.OpenPresets, rig.States, rig.Hardware, DisplaysPageViewModel.Info.Title);
+        var service = new DisplaysService(new FakeEngine(), software, rig.Context, DisplaysPageViewModel.Info.Title);
         var page = new DisplaysPageViewModel(service);
         rig.Pages.Add(page);
         rig.Restore(page, service.NewRestorable(DisplaysPageViewModel.Info.RestoreKey!));

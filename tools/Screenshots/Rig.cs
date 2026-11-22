@@ -1,7 +1,9 @@
+using OmniControl.App.Features;
 using OmniControl.App.Features.AppLists;
 using OmniControl.App.Features.Hotkeys.Actions;
 using OmniControl.App.Features.Icons;
 using OmniControl.App.Features.Osd;
+using OmniControl.App.Features.OtherPcs.SettingsImport;
 using OmniControl.App.Features.States;
 using OmniControl.App.Shared.Presets;
 using OmniControl.App.Shared.Ui.Restore;
@@ -24,7 +26,19 @@ internal sealed class Rig
         Scopes = new AppScopes(Lists, () => { });
         ScopeGate = new AppScopeGate(Lists);
         if (Osd.Settings.HideWindowsOsd) throw new InvalidOperationException("The sample OSD must never hide Windows' own pop-up.");
+        var settings = AppSettings.Current;
+        Features = new FeatureSwitches(settings.Slot(s => s.FeaturesOff, (s, off) => s.FeaturesOff = off), settings.Slot(s => s.FeaturesFromSetup, (s, chosen) => s.FeaturesFromSetup = chosen));
+        Context = new FeatureContext(Actions, Runner, States, Hardware, Osd, Presets, OpenPresets, Ask, AskText, Report, (_, _) => { }, Scopes, ScopeGate,
+            IconPicker, Gate, Power, setId => new SuggestedKeysSwitch(Actions, setId), settings, new ImportHooks(), new ShutdownSteps(), Features, Rules);
     }
+
+    public FeatureSwitches Features { get; }
+
+    /// The automation rules' slot features plug their own rules into; empty here (no automation), so a feature's rule reads as none.
+    public FeatureRulesSlot Rules { get; } = new();
+
+    /// What every feature module is given, made of the pieces above (as the shell makes it).
+    public FeatureContext Context { get; }
 
     public HardwareWatches Hardware { get; } = new();
     public HotkeyRegistry Actions { get; }

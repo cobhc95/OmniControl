@@ -43,6 +43,9 @@ internal static partial class Shots
         }
         public bool HasOwn(NetScope scope) => false;
         public void UseParent(NetScope scope) { }
+        public OmniControl.App.Shared.Contracts.FeatureRuleView? RuleOf(NetScope place) => null;
+        public bool InEffect(NetScope place) => false;
+        public void EditRule(NetScope place) { }
         public string? UploadScopeLine => null;
         public bool PacketFilterOn { get; private set; } = true;
         public void SetPacketFilter(bool on) => PacketFilterOn = on;
