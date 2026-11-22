@@ -222,19 +222,25 @@ public sealed class ScreenshotService
             _app = app;
         }
 
-        public void Copy(ScreenImage image) => Copy(image, null);
+        public void Copy(ScreenImage image)
+        {
+            if (SetClipboard(image, null) && _options.ShowNote) _owner.Note("Screenshot copied");
+        }
 
         public void Save(ScreenImage image) => _ = SaveAsync(image);
 
+        /// The saved note already says it; the copied note is only shown when nothing was saved.
         public async Task SaveAndCopyAsync(ScreenImage image)
         {
             var path = await SaveAsync(image);
-            Copy(image, _options.CopyAs == CopyKind.ImageAndPath ? path : null);
+            if (SetClipboard(image, _options.CopyAs == CopyKind.ImageAndPath ? path : null) && path is null && _options.ShowNote) _owner.Note("Screenshot copied");
         }
 
-        private void Copy(ScreenImage image, string? path)
+        private bool SetClipboard(ScreenImage image, string? path)
         {
-            if (!ImageClipboard.SetImage(image, _options.Format, _options.Quality, path)) _owner._report("The screenshot was not copied: another program is holding the clipboard.");
+            if (ImageClipboard.SetImage(image, _options.Format, _options.Quality, path)) return true;
+            _owner._report("The screenshot was not copied: another program is holding the clipboard.");
+            return false;
         }
 
         /// Asks where to save when the action says so (<see cref="SavePlaces"/>), encodes and writes the file off the UI thread, then opens the
@@ -275,8 +281,7 @@ public sealed class ScreenshotService
 
         public void SearchOnline(ScreenImage image)
         {
-            Copy(image);
-            if (!_owner._launches.TryAcquire()) return;
+            if (!SetClipboard(image, null) || !_owner._launches.TryAcquire()) return;
             if (WebPage.Open(LensUrl, _owner._report) is { } problem) _owner._report(problem);
             else _owner.Note("Image copied", "Paste it into Lens");
         }

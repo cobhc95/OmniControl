@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Copying a screenshot (area, window, screen, the editor's Copy) now shows the same small note as saving one, "Screenshot copied", when the capture's "show a note" setting is on.
+- The main window's search box showed garbled characters instead of the ellipsis after "Search settings"; fixed, and a test now fails if any source holds UTF-8 read as ANSI.
 - Pause all rules now stops only your own and preset rules and blocks: rules made on other pages (warm light, per-network traffic limits, smart device checks, the emulator's idle close) keep running, and a block still applies to their actions. The pause button's tip and the From other pages tab say so.
 - Rules made on other pages (warm light, per-network traffic limits, smart device checks, the emulator's idle close) now keep running with "Hotkeys and automation" switched off; the switch turns off only your own and preset rules, blocks and hotkeys. Those pages' controls keep working, without the "Edit in Automation" link while the Automation page is off. The paused status line now says "Your rules are paused."
 
