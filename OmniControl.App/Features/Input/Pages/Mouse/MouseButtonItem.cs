@@ -233,10 +233,12 @@ public sealed partial class MouseButtonItem : ObservableObject, IEditorItem, IHa
         var list = ListFor(index);
         var current = slot.Choice;
         // Another action on this button runs when held: this one's "Runs" says why it now waits for a short press.
-        if (Slots.Where((s, i) => i != index).Any(s => s.IsHeld))
+        var others = Slots.Where((s, i) => i != index).ToList();
+        if (others.Any(s => s.IsHeld || s.IsCounted))
         {
             var at = list.ToList().FindIndex(c => ReferenceEquals(c, current));
-            list = list.Select(c => c with { Options = MouseOptions.NotingShortPress(c.Options) }).ToList();
+            var counted = !others.Any(s => s.IsHeld);
+            list = list.Select(c => c with { Options = MouseOptions.NotingShortPress(c.Options, counted) }).ToList();
             if (at >= 0) current = list[at];
         }
         return new PickerModel(PickChoice.Group(list), current, slot.Values, startInSettings, slot.Parameter, shared: _shared);

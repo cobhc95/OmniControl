@@ -20,8 +20,14 @@ public static class MouseOptions
         Timing.MousePressesWithinMinMs, Timing.MousePressesWithinMaxMs, 50, " ms").Noted("time allowed between presses").ShownWhen(Trigger, OnTwice, OnThrice);
     public static readonly ActionOption Times = ActionOption.Number("times", "Times each time", 1, 1, 20).ShownWhen(Trigger, OnPress, OnRelease, OnHold, OnTwice, OnThrice, Repeatedly);
 
-    /// What a held action's pill adds to its name.
-    public const string HeldMark = " · held";
+    /// What a pill adds to the name of an action that runs when held or on a count of presses; empty for any other.
+    public static string PillMark(OptionValues values) => values.Text(Trigger) switch
+    {
+        OnHold => " · held",
+        OnTwice => " · twice",
+        OnThrice => " · 3 times",
+        _ => string.Empty,
+    };
 
     /// True when the action runs once its button has been held (<see cref="OnHold"/>).
     public static bool RunsWhenHeld(OptionValues values) => values.Text(Trigger) == OnHold;
@@ -29,11 +35,13 @@ public static class MouseOptions
     /// How many presses the action waits for: 2 or 3, and 0 for any other trigger.
     public static int PressesOf(OptionValues values) => values.Text(Trigger) switch { OnTwice => 2, OnThrice => 3, _ => 0 };
 
-    private const string ShortPressOnly = "Runs on a short press only, because another action on this button runs when it's held.";
+    private const string ShortPressOnly = "Runs on a short press only, because another action on this button runs when it's held.",
+        WaitsForPresses = "Waits for more presses, because another action on this button runs on a count of presses.";
 
-    /// The settings with the muted line under "Runs" (while it says pressed) for an action whose button has another action that runs when held.
-    public static IReadOnlyList<ActionOption>? NotingShortPress(IReadOnlyList<ActionOption>? options) =>
-        options?.Select(o => o.Key == Trigger.Key ? o.NotedWhen(ShortPressOnly, OnPress) : o).ToList();
+    /// The settings with the muted line under "Runs" (while it says pressed) for an action whose button has another action that runs when held
+    /// (<paramref name="counted"/> false) or on a count of presses.
+    public static IReadOnlyList<ActionOption>? NotingShortPress(IReadOnlyList<ActionOption>? options, bool counted = false) =>
+        options?.Select(o => o.Key == Trigger.Key ? o.NotedWhen(counted ? WaitsForPresses : ShortPressOnly, OnPress) : o).ToList();
     public static readonly ActionOption RepeatDelay = ActionOption.Number("delay", "Wait before repeating", 500, 100, 2000, 50, " ms").ShownWhen(Trigger, Repeatedly);
     public static readonly ActionOption RepeatEvery = ActionOption.Number("every", "Repeat every", 100, 20, 1000, 10, " ms").ShownWhen(Trigger, Repeatedly);
     // Opt-in extras for almost every action: let the input's own action through (a button's click, Windows' own gesture), and/or send a shortcut with it.

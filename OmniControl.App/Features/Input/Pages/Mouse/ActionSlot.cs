@@ -43,10 +43,13 @@ public sealed partial class ActionSlot : ObservableObject, IPickerCard
     public IReadOnlyDictionary<string, string> Values { get; private set; } = new Dictionary<string, string>();
 
     public int Number => Index + 1;
-    public string Name => _missing is null ? Choice.ShownName(Parameter) + (IsHeld ? MouseOptions.HeldMark : string.Empty) : MissingName;
+    public string Name => _missing is null ? Choice.ShownName(Parameter) + MouseOptions.PillMark(new OptionValues(Values)) : MissingName;
 
     /// True when the action runs once the button has been held (its pill says so).
     public bool IsHeld => MouseOptions.RunsWhenHeld(new OptionValues(Values));
+
+    /// True when the action runs on a count of presses (its pill says so).
+    public bool IsCounted => MouseOptions.PressesOf(new OptionValues(Values)) > 0;
     public bool HasDetail => Choice.ShowsParameter(Parameter);
     public bool HasOptions => _missing is null && Choice.HasOptions;
 
