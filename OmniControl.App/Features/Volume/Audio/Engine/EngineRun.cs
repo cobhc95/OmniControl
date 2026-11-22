@@ -11,6 +11,8 @@ internal abstract class EngineRun : IDisposable
     private DspChain _chain = DspChain.Empty;
     private readonly StableDelay _delay = new();
     private bool _stopped;
+    /// Pipes being started off the UI thread: their audio thread may already run the chain before <see cref="Pipe"/> is set.
+    private int _starting;
 
     protected EngineRun(RunSpec spec, string name, MixerService mixer, EngineJournal journal, ChainProcessor processor)
     {
@@ -44,6 +46,10 @@ internal abstract class EngineRun : IDisposable
         _chain = chain;
         if (Status.IsRunning) ShowRunning();
     }
+
+    /// No audio thread runs an older chain than the latest given (none runs, or one has started a block with it): what only older
+    /// chains held may be freed.
+    public bool ChainSettled => (Pipe is null && _starting == 0) || Processor.Settled;
 
     /// Starts the effects (UI thread).
     public abstract void Start();
@@ -137,15 +143,18 @@ internal abstract class EngineRun : IDisposable
     protected void StartPipe(IReadOnlyList<PipeSource> sources, Action started) => Guard.Fire("Effects: starting the audio pipe", async () =>
     {
         AudioPipe pipe;
+        _starting++;
         try
         {
             pipe = await Task.Run(() => AudioPipe.StartAsync(sources, Spec.Outputs, Processor));
         }
         catch (InvalidOperationException ex)
         {
+            _starting--;
             Fail(ex.Message);
             return;
         }
+        _starting--;
         if (_stopped)
         {
             pipe.Dispose(); // stopped while it was starting

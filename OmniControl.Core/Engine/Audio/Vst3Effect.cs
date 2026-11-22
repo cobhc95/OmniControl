@@ -17,6 +17,9 @@ internal sealed partial class Vst3Effect : IPluginEffect
     /// When the audio thread last ran the plug-in (Environment.TickCount64; 0 = never).
     private long _lastProcessTicks;
 
+    /// Set under <see cref="_processGate"/>: a block or flush after it does nothing.
+    private bool _disposed;
+
     private Vst3Effect(Vst3Module module, Vst3Plugin plugin, string name)
     {
         _module = module;
@@ -81,7 +84,11 @@ internal sealed partial class Vst3Effect : IPluginEffect
     /// Audio thread (see <see cref="IPluginEffect.Process"/>).
     public void Process(ReadOnlySpan<float> input, Span<float> output, int frames)
     {
-        lock (_processGate) _plugin.Process(input, output, frames);
+        lock (_processGate)
+        {
+            if (_disposed) return;
+            _plugin.Process(input, output, frames);
+        }
         Volatile.Write(ref _lastProcessTicks, Environment.TickCount64);
     }
 
@@ -97,9 +104,15 @@ internal sealed partial class Vst3Effect : IPluginEffect
     /// The plug-in's own editor, or null when it has none. Call on the UI thread; dispose the editor before this effect.
     public IPluginEditor? CreateEditor() => _plugin.CreateView() is { } view ? new Vst3Editor(view) : null;
 
+    /// Under the process gate, so a block already inside the plug-in finishes before it is freed and none starts after.
     public void Dispose()
     {
-        _plugin.Dispose();
+        lock (_processGate)
+        {
+            if (_disposed) return;
+            _disposed = true;
+            _plugin.Dispose();
+        }
         _module.Dispose();
     }
 }

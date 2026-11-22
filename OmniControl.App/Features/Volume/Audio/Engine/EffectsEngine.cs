@@ -201,6 +201,7 @@ public sealed partial class EffectsEngine : IDisposable
     private void OnTick(object? sender, EventArgs e)
     {
         foreach (var run in _runs.Values.ToList()) run.Tick();
+        ReleaseRemovedPlugins();
     }
 
     /// The first edit applies at once; edits inside the following gap are gathered and the latest applied when it ends.
@@ -218,16 +219,21 @@ public sealed partial class EffectsEngine : IDisposable
         if (_fxPending.Count == 0)
         {
             _fxGap.Stop();
+            _releaseDue = true;
             ReleaseRemovedPlugins();
         }
         else ApplyPendingFx();
     }
 
-    /// Unloads plug-ins no running chain uses any more (a removed effect), one gap after the chains changed: by then the audio thread
-    /// has moved on to the new chain, so it never meets a freed plug-in.
+    /// Chains changed and plug-ins they no longer hold wait to be unloaded.
+    private bool _releaseDue;
+
+    /// Unloads plug-ins no running chain uses any more (a removed effect), once every run's audio thread has started a block with its
+    /// latest chain (<see cref="EngineRun.ChainSettled"/>), so it never meets a freed plug-in; until then it is tried again each tick.
     private void ReleaseRemovedPlugins()
     {
-        if (_disposed) return;
+        if (_disposed || !_releaseDue || _runs.Values.Any(r => !r.ChainSettled)) return;
+        _releaseDue = false;
         var inUse = _runs.Values.Where(r => RunsChain(r.Spec.Kind) && _mixer.IsFxOn(ChainKeyOf(r.Spec)))
             .SelectMany(r => _mixer.FxChain(ChainKeyOf(r.Spec))).ToHashSet<FxSlot>(ReferenceEqualityComparer.Instance);
         _plugins.ReleaseUnused(inUse);

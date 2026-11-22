@@ -80,6 +80,8 @@ internal sealed class ChainProcessor : IAudioBlockProcessor
     private readonly UserLevel? _level;
     private readonly PeakLimiter _limiter = new(PipeFormat.SampleRate);
     private volatile bool _gateOpen;
+    /// The generation of the latest chain handed over (UI thread) and the one the audio thread last started a block with.
+    private long _published, _started;
 
     /// <param name="level">The row's volume, pan and mute applied after the chain; null when the original's own session still applies them.</param>
     public ChainProcessor(UserLevel? level, bool gateOpen)
@@ -88,8 +90,16 @@ internal sealed class ChainProcessor : IAudioBlockProcessor
         _gateOpen = gateOpen;
     }
 
-    /// UI thread: the chain to run from the next block on.
-    public void SetChain(DspChain chain) => Volatile.Write(ref _chain, chain);
+    /// UI thread: the chain to run from the next block on. The chain is written before its generation, so a block that sees the
+    /// generation runs that chain or a newer one.
+    public void SetChain(DspChain chain)
+    {
+        Volatile.Write(ref _chain, chain);
+        Volatile.Write(ref _published, _published + 1);
+    }
+
+    /// The audio thread has started a block with the latest chain, so it no longer runs any older one (nor anything only they held).
+    public bool Settled => Volatile.Read(ref _started) == Volatile.Read(ref _published);
 
     public bool GateOpen
     {
@@ -99,7 +109,9 @@ internal sealed class ChainProcessor : IAudioBlockProcessor
 
     public void Process(Span<float> samples, int channels, int sampleRate)
     {
+        var generation = Volatile.Read(ref _published);
         var chain = Volatile.Read(ref _chain);
+        Volatile.Write(ref _started, generation);
         if (!ReferenceEquals(chain, _running))
         {
             chain.TakeStateFrom(_running);

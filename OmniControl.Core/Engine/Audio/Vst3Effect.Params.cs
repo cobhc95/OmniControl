@@ -69,7 +69,8 @@ internal sealed partial class Vst3Effect
         _flushOut ??= new float[OutputChannels];
         try
         {
-            lock (_processGate) _plugin.Process(_flushIn, _flushOut, 1);
+            lock (_processGate)
+                if (!_disposed) _plugin.Process(_flushIn, _flushOut, 1);
         }
         catch (InvalidOperationException)
         {
