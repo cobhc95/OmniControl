@@ -206,10 +206,12 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     /// background collection may pause its threads briefly. False when skipped.
     private bool TryCompact(Action compact)
     {
-        if (_volume.StreamsAudio || _screenshot.Records) return false;
+        if (SoundRuns) return false;
         Guard.Run("Give memory back", compact);
         return true;
     }
+
+    private bool SoundRuns => _volume.StreamsAudio || _screenshot.Records;
 
     /// The window has stayed hidden a long while: the windows go (the page view-models stay, so the next showing opens at the same page),
     /// then one compacting collection gives their memory back.
@@ -243,8 +245,22 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     private void CompactAfterRelease(string before)
     {
         if (_windowShown) return;
-        UiTiming.Memory(TryCompact(ProcessPower.CompactAfterRelease) ? "windows let go and collected" : "windows let go (sound running, not collected)",
-            $"before the release {before}");
+        var collected = TryCompact(ProcessPower.CompactAfterRelease);
+        UiTiming.Memory(collected ? "windows let go and collected" : "windows let go (sound running, not collected)", $"before the release {before}");
+        if (collected) DispatcherTimer.RunOnce(TrimAfterRelease, Timing.UiReleaseTrimAfter);
+    }
+
+    /// The background collection has had time: Windows is asked to take back the idle pages (same sound guard as <see cref="TryCompact"/>; not
+    /// when the window came back, or the setting is "Never").
+    private void TrimAfterRelease()
+    {
+        if (_windowShown || SoundRuns || UiReleases.AfterOf(_settings.UiRelease) is null) return;
+        Guard.OffUi("Hand memory back to Windows", () =>
+        {
+            var before = ProcessPower.PrivateWorkingSet();
+            ProcessPower.TrimWorkingSet();
+            UiTiming.Write($"Working set trimmed after the release: Task Manager figure {before / 1048576.0:0.0} MB to {ProcessPower.PrivateWorkingSet() / 1048576.0:0.0} MB");
+        });
     }
 
     /// Every feature's view templates and those of what the shell itself makes (App settings, the suggested keys switch); added to the app's at start-up.

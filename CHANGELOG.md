@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Free memory after closing now also hands the freed memory back to Windows, so Task Manager shows the lower figure.
 - Renamed: Presets Manager; Actions and Hotkeys; Network Traffic Control. Fixed "Choose a action" to "Choose an action".
 - Automation's Custom actions tab is gone: custom actions are made, edited, run and removed in the Actions and hotkeys window (Custom actions section, "+ New custom action..."); saved ones are unchanged, and a rule's "+ action" still creates one through the picker.
 - Presets now has its own entry in the sidebar's bottom group, above Actions and hotkeys; it opens the Presets window (also an action, "Open Presets"). Automation's Presets tab is gone: rules made in the Presets window show on the From other pages tab as "Presets · <page>" with "Made in the Presets window · Open".

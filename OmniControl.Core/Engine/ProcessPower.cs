@@ -26,6 +26,8 @@ public static class ProcessPower
     [DllImport("kernel32.dll")] private static extern IntPtr GetCurrentProcess();
     [DllImport("kernel32.dll", EntryPoint = "K32GetProcessMemoryInfo")] private static extern bool GetProcessMemoryInfo(IntPtr process, ref MemoryCounters counters, uint size);
 
+    [DllImport("kernel32.dll", EntryPoint = "K32EmptyWorkingSet", SetLastError = true)] private static extern bool EmptyWorkingSet(IntPtr process);
+
     private const int PowerThrottling = 4;
     private const uint CurrentVersion = 1, ExecutionSpeed = 0x1, IgnoreTimerResolution = 0x4;
 
@@ -57,12 +59,18 @@ public static class ProcessPower
     public static void Compact() => GC.Collect(2, GCCollectionMode.Forced, blocking: false, compacting: false);
 
     /// After big parts were let go (the windows after a long hide): Skia's caches are emptied, one full background collection is requested
-    /// (<see cref="Compact"/>), and the large objects are marked to be compacted at the runtime's own next full blocking collection. Working
-    /// sets are never trimmed.
+    /// (<see cref="Compact"/>), and the large objects are marked to be compacted at the runtime's own next full blocking collection. The caller trims the working set afterwards (<see cref="TrimWorkingSet"/>).
     public static void CompactAfterRelease()
     {
         SKGraphics.PurgeAllCaches();
         GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
         Compact();
+    }
+
+    /// Asks Windows to take back the pages this process holds but is not using, so Task Manager's figure drops (they are paged in again if used).
+    /// Blocks while Windows works through them: call on a worker, only after a release, never on a timer of its own.
+    public static void TrimWorkingSet()
+    {
+        if (!EmptyWorkingSet(GetCurrentProcess())) throw new Win32Exception(Marshal.GetLastWin32Error());
     }
 }
