@@ -327,6 +327,7 @@ public sealed partial class AutomationService : IActionGate, IDisposable
             Editor = new ActionEditor(CustomFields.Options, () => CustomFields.Read(custom), (key, value) => EditCustom(custom, key, value)),
             Remove = () => RemoveCustom(custom),
             RemoveText = "Remove custom action",
+            AskBeforeRemove = () => Confirm.Delete("custom action", custom.Name) with { Title = $"Delete the custom action \"{custom.Name}\"?" },
         };
 
     /// The picker's "+ New custom action...": the form that makes one (its settings start at the defaults) and registers it.

@@ -109,13 +109,20 @@ public sealed class ActionsWindowService : IDisposable
     }
 
     /// The keys part every Choose-the-action window shows, read from the live master list (pick mode gets it from the window).
-    public ManageMode Keys => new(KeysOf, PaneFor, ActionOf, _registry, _favourites);
+    public ManageMode Keys => new(KeysOf, PaneFor, ActionOf, _registry, _favourites, _ask);
 
     private HotkeyAction? ActionOf(PickChoice choice) => MouseActionCatalog.OmniIdOf(choice.Spec) is { } id ? _registry.Find(id) : null;
 
     private IReadOnlyList<string>? KeysOf(PickChoice choice) => ActionOf(choice)?.Keys;
 
-    private ActionHotkeys? PaneFor(PickChoice choice) => ActionOf(choice) is { } action ? new ActionHotkeys(action, _registry, _showPage, _changeIcon) : null;
+    private ActionHotkeys? PaneFor(PickChoice choice) => ActionOf(choice) is { } action ? new ActionHotkeys(action, _registry, Show, _changeIcon) : null;
+
+    /// "Show on its page", or for a preset group's action "Show in Presets Manager" at its group.
+    private void Show(HotkeyAction action)
+    {
+        if (action.Preset is { } preset) _openPresets(preset.Section, preset.GroupId);
+        else _showPage(action.Category);
+    }
 
     private void OnBindingsSaved() => Restorer?.Refresh();
 

@@ -252,7 +252,8 @@ public static class MouseActionCatalog
     /// place an action is placed in a picker, shared by every list that offers OmniControl actions.
     public static PickChoice OmniEntry(HotkeyAction a, IReadOnlyList<ActionOption>? options = null, string? unavailable = null) =>
         new($"{Omni}:{a.Id}", a.Section, a.Title, Keywords: $"{OmniControl} {a.Keywords}", Options: options, Unavailable: unavailable, Heading: a.PickerHeading,
-            Place: a.SectionPlace, RemoveText: a.RemoveText, Renaming: a.Renaming, IsListed: a.IsListed, Icon: a.ShownIcon, Family: a.Family, FamilyRole: a.FamilyRole, Tag: a.Tag, Remote: a.RemotePc);
+            Place: a.SectionPlace, RemoveText: a.RemoveText, Renaming: a.Renaming, IsListed: a.IsListed, Icon: a.ShownIcon, Family: a.Family, FamilyRole: a.FamilyRole, Tag: a.Tag, Remote: a.RemotePc,
+            PresetsHeading: a.Preset?.Heading, RemoveAsk: a.AskBeforeRemove);
 
     /// The settings of an OmniControl action of its own (a program, how far a level moves, a power countdown): what its hotkeys and rules use as its defaults.
     public static IReadOnlyList<ActionOption> OwnOptions(HotkeyAction a)
@@ -263,6 +264,7 @@ public static class MouseActionCatalog
         if (a.Takes.HasFlag(ActionSettings.Countdown)) own.Add(MouseOptions.Countdown);
         if (a.Takes.HasFlag(ActionSettings.Force)) own.Add(MouseOptions.ForceClose);
         if (a.Takes.HasFlag(ActionSettings.Clicking)) own.AddRange(MouseOptions.RepeatClicking);
+        if (a.Takes.HasFlag(ActionSettings.SwitchBack)) own.Add(MouseOptions.SwitchBack);
         return own;
     }
 

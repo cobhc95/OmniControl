@@ -5,9 +5,9 @@ namespace OmniControl.App.Features.Hotkeys.Picker;
 
 /// The keys and defaults part of the Choose-the-action window, in both modes: the keys of an entry (null when the entry is not a master
 /// action, so it can have none), the hotkey part of the settings pane for an entry, the master action an entry stands for (whose defaults the
-/// settings pane edits), the live master list (its saves refresh the keycaps; its hold lets a pressed key reach the window) and the favourites.
+/// settings pane edits), the live master list (its saves refresh the keycaps; its hold lets a pressed key reach the window), the favourites and the question asked before an entry with <see cref="Actions.PickChoice.RemoveAsk"/> is removed.
 public sealed record ManageMode(Func<PickChoice, IReadOnlyList<string>?> KeysOf, Func<PickChoice, ActionHotkeys?> PaneFor, Func<PickChoice, HotkeyAction?> ActionOf, HotkeyRegistry Registry,
-    FavouriteActions Favourites);
+    FavouriteActions Favourites, Func<DialogMessage, Task<bool>> Ask);
 
 /// The manage mode of the picker (<see cref="ManageMode"/>): keycaps on the rows, "Only with a hotkey", search by key, the hotkey pane.
 public sealed partial class PickerModel

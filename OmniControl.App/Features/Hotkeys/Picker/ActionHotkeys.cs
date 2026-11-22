@@ -45,9 +45,12 @@ public sealed partial class ActionHotkeys : ObservableObject, IDisposable
     public IRelayCommand RunCommand { get; }
     public IRelayCommand ShowCommand { get; }
 
-    /// <param name="showPage">Opens the sidebar page with this title (the shell owns navigation).</param>
+    /// The show button's words: "Show on its page", or "Show in Presets Manager" for a preset group's action.
+    public string ShowText => Action.Preset is null ? "Show on its page" : $"Show in {Shared.Presets.Manager.PresetManagerService.Title}";
+
+    /// <param name="show">Shows where the action lives: its page, or Presets Manager at its preset group (the window's service decides).</param>
     /// <param name="changeIcon">The shared icon picker for the action ("Change icon…"), over the window holding the visual.</param>
-    public ActionHotkeys(HotkeyAction action, HotkeyRegistry registry, Action<string> showPage, Func<Avalonia.Visual, HotkeyAction, Task> changeIcon)
+    public ActionHotkeys(HotkeyAction action, HotkeyRegistry registry, Action<HotkeyAction> show, Func<Avalonia.Visual, HotkeyAction, Task> changeIcon)
     {
         Action = action;
         _registry = registry;
@@ -56,7 +59,7 @@ public sealed partial class ActionHotkeys : ObservableObject, IDisposable
         SuggestCommand = new RelayCommand(Suggest);
         // Through the registry, so the one gate (block rules) and the UI-thread hand-over apply as for any other way of running it.
         RunCommand = new RelayCommand(() => registry.Run(action.Id));
-        ShowCommand = new RelayCommand(() => showPage(action.Category));
+        ShowCommand = new RelayCommand(() => show(action));
         action.PropertyChanged += OnActionChanged;
         action.RefreshDevices(); // the devices plugged in now
         Rebuild();

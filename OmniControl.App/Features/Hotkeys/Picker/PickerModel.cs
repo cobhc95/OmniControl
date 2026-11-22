@@ -4,7 +4,7 @@ using OmniControl.App.Features.Icons;
 
 namespace OmniControl.App.Features.Hotkeys.Picker;
 
-/// State of the master picker, in three panes: sections (the app's pages and the few that are not pages, then Recent), the entries of the
+/// State of the master picker, in three panes: sections (the app's pages and the few that are not pages, then Presets, then Recent), the entries of the
 /// section (or one list of matches from every section while a search is typed), and the settings of the highlighted entry, always shown and
 /// live. Which line is highlighted and where the keyboard is live here; the view only draws them. Every list that is picked from (mouse
 /// button actions, gesture actions, a rule's triggers, conditions and steps) is shown through this one model; a footer button, "Use this ...",
@@ -38,6 +38,7 @@ public sealed partial class PickerModel : ObservableObject
     private readonly ISharedOptions? _shared;
     private IReadOnlyList<SectionRow>? _sections;
     private List<PickChoice>? _recentChoices;
+    private List<PickChoice>? _presetChoices;
     private PickChoice? _editing;
     private List<OptionItem> _allOptions = new(); // every setting of the entry, shown or not
     private bool _syncingEditor; // the settings are being shown again from what the entry stored; those are not edits
@@ -66,14 +67,25 @@ public sealed partial class PickerModel : ObservableObject
     public string? SearchTip => !HasKeys ? null : "Type a name or a key such as ctrl+o, or press the key combination (Ctrl+F)";
     public string UseText => ActiveInPanel ? AddAgainText : Target is { } target ? $"Use for {target}" : $"Use this {Noun}";
 
-    /// The sections in pane 1: Favourites when an action list has starred entries, the list's own, then Recent when it has entries used before.
+    /// The sections in pane 1: Favourites when an action list has starred entries, the list's own, Presets when it has preset actions, then Recent when it has entries used before.
     public IReadOnlyList<SectionRow> Sections => _sections ??= BuildSections();
 
     // Read on first use, when Noun has been set (Recent is for action lists only).
     private List<PickChoice> RecentChoices => _recentChoices ??= ListsActions ? Recents.Matching(_groups.SelectMany(g => g.Choices)) : new();
 
+    /// The second section after the list's own: every preset group's action (also listed under its page), for action lists only.
+    public const string PresetsName = "Presets";
+
+    private List<PickChoice> PresetChoices => _presetChoices ??= ListsActions ? _groups.SelectMany(g => g.Choices).Where(c => c.PresetsHeading is not null).ToList() : new();
+
+    /// 1 when the Presets section follows the list's own sections, else 0.
+    private int PresetsLead => PresetChoices.Count > 0 ? 1 : 0;
+
+    /// True while the Presets section is open.
+    private bool InPresets => !IsSearching && PresetsLead > 0 && SectionIndex == _groups.Count;
+
     /// True while the Recent section is open.
-    private bool InRecent => !IsSearching && SectionIndex >= _groups.Count && RecentChoices.Count > 0;
+    private bool InRecent => !IsSearching && SectionIndex >= _groups.Count + PresetsLead && RecentChoices.Count > 0;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SectionHighlight))]
@@ -218,6 +230,7 @@ public sealed partial class PickerModel : ObservableObject
             sections.Add(new SectionRow(g.Name, g.Place?.Icon));
         }
         if (FavouritesLead > 0) sections.Insert(0, new SectionRow(FavouritesName, null, IsFavourites: true));
+        if (PresetsLead > 0) sections.Add(new SectionRow(PresetsName, Shared.Presets.Manager.PresetManagerService.Icon));
         if (RecentChoices.Count > 0) sections.Add(new SectionRow(RecentName, RecentIcon));
         return sections;
     }
@@ -349,13 +362,15 @@ public sealed partial class PickerModel : ObservableObject
     public void RunFootButton()
     {
         if (ActiveChoice?.Create is not null) CreateEntry();
-        else Remove();
+        else Guard.Fire("Remove an entry", RemoveAsync);
     }
 
-    /// Takes the highlighted entry out of its list (and out of the master list, which its <see cref="PickChoice.Remove"/> does).
-    private void Remove()
+    /// Takes the highlighted entry out of its list (and out of the master list, which its <see cref="PickChoice.Remove"/> does), once its
+    /// question (<see cref="PickChoice.RemoveAsk"/>) is confirmed.
+    private async Task RemoveAsync()
     {
         if (ActiveChoice is not { Remove: { } remove } choice) return;
+        if (choice.RemoveAsk is { } ask && _manage is { } keys && !await keys.Ask(ask())) return;
         remove();
         _groups = _groups.Select(g => g with { Choices = g.Choices.Where(c => c != choice).ToList() }).ToList();
         _index = null;
@@ -573,21 +588,22 @@ public sealed partial class PickerModel : ObservableObject
         if (_groups.Count == 0) return new List<PickerRow>();
         if (IsSearching) return SearchRows(Index.Match(Query));
         if (InFavourites) return Rows(FavouriteChoices.Where(IsShown), c => c.Category, preselect: true);
+        if (InPresets) return InGroups(PresetChoices.Where(IsShown), c => c.PresetsHeading);
         if (InRecent) return Rows(RecentChoices, c => c.Category, preselect: true);
         if (SectionIndex >= _groups.Count) return new List<PickerRow>();
         var shown = _groups[SectionIndex].Choices.Where(IsShown).ToList();
-        return FavouritesFirst(shown, InGroups(shown));
+        return FavouritesFirst(shown, InGroups(shown, c => c.Heading));
     }
 
-    /// The entries of one section, those without a group heading first, then each group together under its heading row, the groups by name (one PC's group of Other PCs after another's); entries keep their registration order.
-    private List<PickerRow> InGroups(IEnumerable<PickChoice> choices)
+    /// The entries of one section, those without a group heading (<paramref name="headingOf"/>) first, then each group together under its heading row, the groups by name (one PC's group of Other PCs after another's); entries keep their registration order.
+    private List<PickerRow> InGroups(IEnumerable<PickChoice> choices, Func<PickChoice, string?> headingOf)
     {
         var rows = new List<PickerRow>();
         var all = choices.ToList();
-        foreach (var heading in all.Select(c => c.Heading).Distinct().OrderBy(h => h is null ? 0 : 1).ThenBy(h => h, StringComparer.OrdinalIgnoreCase))
+        foreach (var heading in all.Select(headingOf).Distinct().OrderBy(h => h is null ? 0 : 1).ThenBy(h => h, StringComparer.OrdinalIgnoreCase))
         {
             if (heading is not null) rows.Add(PickerRow.HeadingOf(heading));
-            rows.AddRange(Rows(all.Where(c => c.Heading == heading), _ => null, preselect: false));
+            rows.AddRange(Rows(all.Where(c => headingOf(c) == heading), _ => null, preselect: false));
         }
         return rows;
     }

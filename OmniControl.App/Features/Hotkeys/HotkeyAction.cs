@@ -23,6 +23,13 @@ public sealed record HotkeyLevel(string Id, string Name);
 /// Choose-the-action window. Every direction stays its own <see cref="HotkeyAction"/> with its own id, keys and settings; only the lists group them.
 public sealed record ActionFamily(string Id, string Title);
 
+/// The preset group an action belongs to: its page (<see cref="Section"/>), its id and its name on that page.
+public sealed record PresetPlace(string Section, string GroupId, string Group)
+{
+    /// The pickers' Presets section heading ("Audio and Volume · Volume presets").
+    public string Heading => $"{Section} · {Group}";
+}
+
 /// A bindable hotkey, and the master entry for everything OmniControl itself can do. Every feature registers its actions through
 /// <see cref="HotkeyRegistry"/>; the Actions and Hotkeys window, search, the mouse button and gesture pickers all read them from there.
 /// Pass a device source when the action targets variable devices (monitors...): the user can then
@@ -185,6 +192,13 @@ public sealed partial class HotkeyAction : HotkeyTarget, Shared.Ui.Pages.IEditor
 
     /// The words of the remove button ("Remove program", "Hide app").
     public string RemoveText { get; init; } = "Remove";
+
+    /// Set: <see cref="Remove"/> asks this question first (a custom action, deleted for good).
+    public Func<DialogMessage>? AskBeforeRemove { get; init; }
+
+    /// Set: an action of a preset group (apply one, next, previous): the pickers list it again in their Presets section, and the Actions
+    /// and Hotkeys window shows it in the Presets Manager.
+    public PresetPlace? Preset { get; init; }
 
     /// Set: the user may rename what the action is about in the pickers (a program they added).
     public Renaming? Renaming { get; init; }

@@ -62,6 +62,7 @@ public sealed partial class PickerModel
         if (_current is { } current) _current = _groups.SelectMany(g => g.Choices).FirstOrDefault(c => c.Spec == current.Spec) ?? current;
         _sections = null;
         _recentChoices = null;
+        _presetChoices = null;
         _favouriteChoices = null;
         OnPropertyChanged(nameof(Sections));
 
