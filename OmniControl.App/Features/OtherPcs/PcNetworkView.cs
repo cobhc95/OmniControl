@@ -39,6 +39,9 @@ internal sealed record PcNetworkView(IReadOnlyList<PcAdapter> Adapters)
     /// A network other than Tailscale is set to Public in Windows.
     public bool OnPublic => Adapters.Any(a => !a.Tailscale && a.Category is NetworkCategory.Public);
 
+    /// A network other than Tailscale is set to Private (or is a domain's) in Windows.
+    public bool OnPrivate => Adapters.Any(a => !a.Tailscale && a.Allowed);
+
     /// The connected IPv4 adapters now, with the categories Windows gave (read off the UI thread).
     public static PcNetworkView Read(IReadOnlyDictionary<Guid, NetworkCategory> categories)
     {

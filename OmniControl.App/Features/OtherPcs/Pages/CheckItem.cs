@@ -2,12 +2,12 @@ using OmniControl.App.Features.OtherPcs;
 
 namespace OmniControl.App.Features.OtherPcs.Pages;
 
-/// One row of the "Over the internet" checklist as the page draws it: a mark, its words, a right-side tag and the one fix.
-public sealed class TailscaleCheckItem
+/// One row of a checklist as the page draws it (Tailscale's, or "Can't reach it on this network?"): a mark, its words, a right-side tag and the one fix.
+public sealed class CheckItem
 {
-    private readonly TailscaleCheck _check;
+    private readonly CheckRow _check;
 
-    public TailscaleCheckItem(TailscaleCheck check, Action<string> runFix)
+    public CheckItem(CheckRow check, Action<string> runFix)
     {
         _check = check;
         FixCommand = new RelayCommand(() => runFix(check.Id));
@@ -28,8 +28,8 @@ public sealed class TailscaleCheckItem
 
     public string FixText => _check.Fix;
 
-    /// The firewall and restart fixes are pills (they ask Windows' administrator prompt); the others are links.
-    public bool FixIsPill => _check.Fix.Length > 0 && _check.Id is TailscaleChecks.Firewall or TailscaleChecks.Address;
+    /// The fixes that ask Windows' administrator prompt are pills; the others are links.
+    public bool FixIsPill => _check.Fix.Length > 0 && _check.PillFix;
 
     public bool FixIsLink => _check.Fix.Length > 0 && !FixIsPill;
 

@@ -29,8 +29,8 @@ public sealed class OtherPcsModule(Func<bool, string> shareDevices, Func<string,
             context.AskAsync, new SettingsShare(redactDevices));
         context.Power.Leaving += service.Wake.AnnounceLeaving; // paired PCs are told before this one sleeps or shuts down
         context.Power.Countdown += service.AnnounceCountdown; // and when a power countdown here starts, runs out or ends
-        context.Hardware.Register(new HardwareWatch(OtherPcsService.NetworksWatchId, "Networks (other PCs)", HardwareSignal.Network | HardwareSignal.Resume,
-            service.RefreshNetworks));
+        context.Hardware.Register(new HardwareWatch(OtherPcsService.NetworksWatchId, "Networks (other PCs)", HardwareSignal.NetworkList | HardwareSignal.Network | HardwareSignal.Resume,
+            service.RefreshNetworks)); // NetworkList: Public to Private changes no address
         Guard.OffUi("Other PCs: reading the networks", service.RefreshNetworks);
         ImportFrom = new ImportFromPcService(service, context.Imports, context.Report);
         context.Shutdown.Add(ShutdownStage.OtherPcs, "other PCs", () =>

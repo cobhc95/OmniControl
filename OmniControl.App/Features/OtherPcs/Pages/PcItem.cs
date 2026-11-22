@@ -22,6 +22,7 @@ public sealed partial class PcItem : ObservableObject
         _ask = ask;
         _askText = askText;
         Mirror = new PcMirror(pair.Id, service, ask, report);
+        Reach = new ReachHelp(RunReachFix);
         _address = pair.Address;
         Refresh();
     }
@@ -70,8 +71,8 @@ public sealed partial class PcItem : ObservableObject
     /// The tab's tooltip: the full name and the tag's detail.
     [ObservableProperty] private string _tabTip = string.Empty;
 
-    /// The stage's checklist (the same <see cref="TailscaleChecklist"/> as pairing over the internet, with this PC's extra rows).
-    public ObservableCollection<TailscaleCheckItem> Checks { get; } = new();
+    /// The stage's checklist (the same <see cref="Checklist"/> as pairing over the internet, with this PC's extra rows).
+    public ObservableCollection<CheckItem> Checks { get; } = new();
 
     /// The failed step of the switch to Tailscale while every row passes (the LAN link is kept); empty otherwise.
     [ObservableProperty, NotifyPropertyChangedFor(nameof(HasSwitchProblem))] private string _switchProblem = string.Empty;
@@ -83,6 +84,28 @@ public sealed partial class PcItem : ObservableObject
 
     [RelayCommand]
     private void CheckAgain() => _service.CheckPairTailscale(Id);
+
+    // ---- Can't reach it on this network? ----
+
+    /// "Can't reach it on this network? Check:" shows under the header while the PC is offline over the local network (a PC set to Tailscale has its own stage).
+    [ObservableProperty] private bool _showsReach;
+
+    public ReachHelp Reach { get; }
+
+    // Its Tailscale row chooses Tailscale for this PC, which shows the Tailscale stage; the others open the Windows page that holds the fix.
+    private void RunReachFix(string checkId)
+    {
+        if (checkId == NetworkChecks.Tailscale) SetRoute(PcRoute.Tailscale);
+        else _service.RunReachFix(checkId);
+    }
+
+    private void RefreshReach()
+    {
+        ShowsReach = !IsOnline && Route == PcRoute.Lan;
+        if (!ShowsReach) return;
+        _service.WatchFirewall();
+        Reach.Show(NetworkChecks.ForPairedPc(_service.NetworkIsPrivate, _service.FirewallAllowed));
+    }
 
     // ---- Wake ----
 
@@ -246,9 +269,10 @@ public sealed partial class PcItem : ObservableObject
         TabTip = state.Tip is { Length: > 0 } tip ? $"{Name}: {state.Text}. {tip}" : $"{Name}: {state.Text}";
         Checks.Clear();
         if (NeedsTailscale)
-            foreach (var check in _service.PairChecklist(Id)) Checks.Add(new TailscaleCheckItem(check, checkId => _service.RunPairTailscaleFix(Id, checkId)));
+            foreach (var check in _service.PairChecklist(Id)) Checks.Add(new CheckItem(check, checkId => _service.RunPairTailscaleFix(Id, checkId)));
         SwitchProblem = NeedsTailscale ? _service.PairSwitchProblem(Id) : string.Empty;
         ShowsChecklist = NeedsTailscale && (Checks.Any(c => c.IsFailed) || HasSwitchProblem);
+        RefreshReach();
         OnPropertyChanged(nameof(CheckText));
         Note = connected || IsOnline ? string.Empty
             : !_service.HasKey(Id) ? "Its pairing key is missing on this PC. Unpair it and pair again."

@@ -2,12 +2,6 @@ using OmniControl.Core.Engine.Tailscale;
 
 namespace OmniControl.App.Features.OtherPcs;
 
-/// How one check of the Tailscale checklist stands: not known yet (an earlier one failed, or no PC is picked), fine, or failing.
-public enum CheckState { Pending, Ok, Failed }
-
-/// One line of the checklist: what it asks, how it stands, a short fact for its right side (the version, this PC's address), and the one fix (words empty when there is none).
-public sealed record TailscaleCheck(string Id, string Words, CheckState State, string Tag, string TagTip, string Sentence, string Fix);
-
 /// THE checklist of "Over the internet": the order, the words, the sentence and the fix of each check, made from what was read. Pure.
 public static class TailscaleChecks
 {
@@ -21,15 +15,15 @@ public static class TailscaleChecks
     /// <param name="target">The other PC as the person gave it (for the sentence).</param>
     /// <param name="peerName">Set for a PC that is already paired: the list gets the extra row "&lt;PC&gt; on your Tailscale", before the reach row.</param>
     /// <param name="peerFound">That PC is among the tailnet's peers.</param>
-    public static IReadOnlyList<TailscaleCheck> Build(TailscaleStatus status, bool? firewallOk, bool? reachable, string target, string? peerName = null, bool peerFound = false)
+    public static IReadOnlyList<CheckRow> Build(TailscaleStatus status, bool? firewallOk, bool? reachable, string target, string? peerName = null, bool peerFound = false)
     {
-        var checks = new List<TailscaleCheck>();
+        var checks = new List<CheckRow>();
         var blocked = false; // once one fails, the ones after it cannot be known
 
         void Add(string id, string words, bool? ok, string tag, string tagTip, string sentence, string fix)
         {
             var state = blocked || ok is null ? CheckState.Pending : ok.Value ? CheckState.Ok : CheckState.Failed;
-            checks.Add(new TailscaleCheck(id, words, state, state == CheckState.Ok ? tag : string.Empty, state == CheckState.Ok ? tagTip : string.Empty, state == CheckState.Failed ? sentence : string.Empty, state == CheckState.Failed ? fix : string.Empty));
+            checks.Add(new CheckRow(id, words, state, state == CheckState.Ok ? tag : string.Empty, state == CheckState.Ok ? tagTip : string.Empty, state == CheckState.Failed ? sentence : string.Empty, state == CheckState.Failed ? fix : string.Empty, id is Firewall or Address));
             if (state != CheckState.Ok) blocked = true;
         }
 
@@ -47,5 +41,5 @@ public static class TailscaleChecks
     }
 
     /// The first check that fails: the one thing to fix first (null when none fails). True when every check passes.
-    public static bool AllOk(IEnumerable<TailscaleCheck> checks) => checks.All(c => c.State == CheckState.Ok);
+    public static bool AllOk(IEnumerable<CheckRow> checks) => checks.All(c => c.State == CheckState.Ok);
 }
