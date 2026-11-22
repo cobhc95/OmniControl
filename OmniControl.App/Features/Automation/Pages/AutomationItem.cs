@@ -7,8 +7,8 @@ using OmniControl.App.Features.Input.Rules;
 
 namespace OmniControl.App.Features.Automation.Pages;
 
-/// One automation rule on the Rules tab (a feature's or a preset's rule on the From other pages tab, with its page or "Presets · kind" and a link
-/// to the page or Presets Manager): its switch, its name, the rule as a sentence of blocks ("When [at 07:30 on weekdays] [and on
+/// One automation rule on the Custom Rules tab (a preset's rule there shows "Presets · kind" and a link to Presets Manager; a feature's rule on the
+/// From other pages tab shows its page and a link to it): its switch, its name, the rule as a sentence of blocks ("When [at 07:30 on weekdays] [and on
 /// battery] do [Lock] [+ action]", or "While [on battery] don't allow [Shut down]"), and its facts as tags. Every block opens the shared
 /// picker over the master list of its kind; every change is saved and applied at once.
 public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDisposable

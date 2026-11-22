@@ -51,7 +51,7 @@ public sealed partial class PresetRowViewModel : ObservableObject
 
     public string RuleLink => _rule is { } rule ? $"* {rule.Words} · {RuleLineItem.EditWords}" : NoRuleWords;
 
-    public string RuleTip => _rule is null ? "Make a rule that switches to this preset when something happens" : RuleLineItem.MoreTip;
+    public string RuleTip => _rule is null ? "Switch to it when something happens" : RuleLineItem.MoreTip;
 
     /// The rule's words, for the window's search.
     public string RuleWords => _rule?.Words ?? string.Empty;

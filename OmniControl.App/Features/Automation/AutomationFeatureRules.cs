@@ -9,8 +9,8 @@ namespace OmniControl.App.Features.Automation;
 /// action's page (<see cref="HotkeyAction.Category"/>) and on the "From other pages" tab; nothing is stored about it.
 public sealed class AutomationFeatureRules : IFeatureRules, IDisposable
 {
-    /// The Automation page's tab of these rules.
-    public const string Tab = "From other pages";
+    /// The Automation page's tab of these rules, and of every other rule (the user's own, a preset's).
+    public const string Tab = "From other pages", CustomTab = "Custom Rules";
 
     private readonly AutomationService _rules;
     private readonly IActionCatalogue _actions;
@@ -111,22 +111,22 @@ public sealed class AutomationFeatureRules : IFeatureRules, IDisposable
     /// A rule the Automation page brings into view and focuses (<see cref="TakeShown"/>); raised after the page was opened.
     public event Action? RuleShown;
 
-    private string? _shown;
+    private (string Id, bool Trigger)? _shown;
 
-    /// The id of the rule to show, once (the page made by the opening takes it, else the open page on <see cref="RuleShown"/>).
-    public string? TakeShown()
+    /// The rule to show (its id; whether its trigger slot takes the focus), once: the page made by the opening takes it, else the open page on <see cref="RuleShown"/>.
+    public (string Id, bool Trigger)? TakeShown()
     {
-        var id = _shown;
+        var shown = _shown;
         _shown = null;
-        return id;
+        return shown;
     }
 
-    /// Opens Automation's From other pages tab, on this rule when there is one.
-    public void Show(AutomationRule? rule)
+    /// Opens Automation on this rule's tab (a feature's rule: From other pages, any other: Custom Rules), or on From other pages without one.
+    public void Show(AutomationRule? rule, bool trigger = false)
     {
         if (!_rules.UserRules) return;
-        _shown = rule?.Id;
-        _openPage(ActionSections.Automation, Tab);
+        _shown = rule is null ? null : (rule.Id, trigger);
+        _openPage(ActionSections.Automation, rule is not null && PageOf(rule) is null ? CustomTab : Tab);
         RuleShown?.Invoke();
     }
 

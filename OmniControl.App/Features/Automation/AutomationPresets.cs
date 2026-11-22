@@ -20,7 +20,7 @@ public sealed class AutomationPresets : IPresetTriggers, IDisposable
 
     private readonly Action<string?, string?> _open;
 
-    /// <param name="features">Opens Automation's From other pages tab on a rule.</param>
+    /// <param name="features">Opens Automation on a rule.</param>
     /// <param name="open">Opens Presets Manager at a page and group (both null: where it opens by itself).</param>
     public AutomationPresets(AutomationService rules, IActionRegistry actions, IActionRunner run, PresetTriggersSlot slot, AutomationFeatureRules features,
         Action<string?, string?> open)
@@ -68,7 +68,20 @@ public sealed class AutomationPresets : IPresetTriggers, IDisposable
                 (i == 0 ? string.Empty : $" {AutomationJoins.WordOf(rule.TriggerJoinBefore(i))} ") + AutomationTriggers.ChipOf(t, _rules.TriggerSources))))
             : null;
 
-    public void Edit(string preset) => _features.Show(RuleOf(preset));
+    /// Opens Custom Rules on the preset's rule; without one, a new rule that switches to it (no trigger yet, named as its action) with its trigger slot focused.
+    public void Edit(string preset)
+    {
+        if (!_rules.UserRules) return;
+        if (RuleOf(preset) is { } rule)
+        {
+            _features.Show(rule);
+            return;
+        }
+        var made = new AutomationRule { Kind = AutomationKind.Do, Name = _actions.Find(preset)?.Title ?? preset };
+        made.AddAction($"{MouseActionCatalog.Omni}:{preset}");
+        _rules.AddRule(made);
+        _features.Show(made, trigger: true);
+    }
 
     /// The tag a preset rule shows ("Presets · Audio and Volume"): its group's page title; empty while its group is not registered.
     public string KindOf(AutomationRule rule) => PresetOf(rule) is { } preset && _slot.Presets.GroupOf(preset) is { } group ? $"Presets · {group.Section}" : string.Empty;

@@ -12,17 +12,17 @@ public sealed partial class AutomationPageViewModel
 
     private static readonly string PauseTipText = $"Stops every rule and block at once. {FeatureRulesKept} {ReservedKeys.Emergency} does the same from anywhere.";
 
-    private static readonly SearchCard AutomationsCard = new("Automations", AutomationWords + " when do trigger new", RulesTab)
+    private static readonly SearchCard AutomationsCard = new("Automations", AutomationWords + " when do trigger new preset presets switch when it ends previous comes back presets manager", RulesTab)
         {
-            Tip = "When something happens (and the conditions hold), do one or more actions. Each also becomes an action called Run: its name.",
+            Tip = $"When something happens (and the conditions hold), do one or more actions. Each also becomes an action called Run: its name. A rule that switches to a preset is made here too, or from its row in {Shared.Presets.Manager.PresetManagerService.Title}.",
         },
         BlocksCard = new("Blocks", AutomationWords + " while don't allow forbid new", RulesTab)
         {
             Tip = "While the conditions hold, the chosen actions are not allowed, whether a hotkey, a mouse button, a gesture or a rule starts them. Pausing all rules lifts every block.",
         },
-        FeatureRulesCard = new("Rules made on other pages", AutomationWords + " other pages feature made on open warm light network limits device check emulator preset presets switch when it ends previous comes back presets manager", FeatureTab)
+        FeatureRulesCard = new("Rules made on other pages", AutomationWords + " other pages feature made on open warm light network limits device check emulator", FeatureTab)
         {
-            Tip = $"Rules a page made for what it does by itself, such as warm light, and rules made in {Shared.Presets.Manager.PresetManagerService.Title} (a preset applied when its triggers hold, the one before back when they stop). They are ordinary rules: add triggers, conditions or actions here, and the page or window shows that it has more. " + FeatureRulesKept,
+            Tip = $"Rules a page made for what it does by itself, such as warm light. They are ordinary rules: add triggers, conditions or actions here, and the page shows that it has more. " + FeatureRulesKept,
         },
         ScriptsCard = new("Scripts", AutomationWords + " script new import export run", ScriptsTab)
         {
@@ -34,7 +34,7 @@ public sealed partial class AutomationPageViewModel
         LanguagesCard = new("Script languages", AutomationWords + " script language", ScriptsTab) { Choices = Enum.GetValues<ScriptLanguage>().Select(ScriptLanguages.NameOf).ToList() };
 
     private static SearchCard RuleCard(AutomationRule rule, string line, AutomationFeatureRules? features) =>
-        new(rule.Name, $"{AutomationWords} {line}", AutomationPresets.PresetOf(rule) is not null || features?.PageOf(rule) is not null ? FeatureTab : RulesTab);
+        new(rule.Name, $"{AutomationWords} {line}", features?.PageOf(rule) is not null ? FeatureTab : RulesTab);
 
     private static SearchCard ScriptCard(Script script) => new(script.Name, $"script powershell cmd batch python {script.Name}", ScriptsTab) { Note = ScriptLanguages.NameOf(script.Language) };
 

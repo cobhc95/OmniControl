@@ -13,7 +13,7 @@ public interface IPresetTriggers
     /// The preset's rule, or null when none holds its apply action.
     PresetRule? Of(string preset);
 
-    /// Opens Automation on the preset's rule, or where a rule for it is made when it has none.
+    /// Opens Automation on the preset's rule; when it has none, makes one that switches to it and opens that.
     void Edit(string preset);
 }
 

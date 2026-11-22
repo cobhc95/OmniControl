@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Automation: the Rules tab is now called Custom Rules, and the rules that switch to a preset are listed there (with "Presets · kind" and "Made in the Presets window · Open"); From other pages lists only what pages make for themselves (warm light, network limits, device checks, the emulator's idle close). In the Presets window, "* When … · Edit in Automation" opens Custom Rules on that rule, and "More options in Automation" makes a new rule that switches to the preset, with its trigger slot ready; the link's tip is shorter so it no longer covers the row's buttons.
+
 - Presets: every preset now has its own "Apply preset" action in Actions and Hotkeys, the pickers and rules, whether or not it has a shortcut; it appears when the preset is made, follows a rename and goes when the preset is deleted. Saved shortcuts and rules keep working.
 
 - Fixed: a PC with a network adapter that has IPv4 switched off (for example Hyper-V's Default Switch) couldn't be found by other PCs on the local network; that adapter is now skipped instead of stopping the whole network check.

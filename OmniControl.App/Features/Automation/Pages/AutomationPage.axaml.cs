@@ -24,14 +24,17 @@ public partial class AutomationPage : UserControl
         Reveal();
     }
 
-    /// The row asked for (its tab is open by then) is scrolled to once laid out, and its first part takes the keyboard.
+    /// The row asked for (its tab is open by then) is scrolled to once laid out, and its first part, or its trigger slot, takes the keyboard.
     private void Reveal() => Dispatcher.UIThread.Post(() => Guard.Run("Automation: show a rule", () =>
     {
-        if (_vm?.TakeReveal() is not { } item) return;
-        var list = this.GetVisualDescendants().OfType<ItemsControl>().FirstOrDefault(l => ReferenceEquals(l.ItemsSource, _vm.FeatureRules));
-        if (list is null || ListScroll.Show(list, _vm.FeatureIndexOf(item)) is not { } row) return;
+        if (_vm?.TakeReveal() is not { } reveal || _vm.ListHolding(reveal.Item) is not { } rows) return;
+        var (item, trigger) = reveal;
+        var list = this.GetVisualDescendants().OfType<ItemsControl>().FirstOrDefault(l => ReferenceEquals(l.ItemsSource, rows));
+        if (list is null || ListScroll.Show(list, rows.IndexOf(item)) is not { } row) return;
         row.BringIntoView();
-        row.GetVisualDescendants().OfType<InputElement>().FirstOrDefault(c => c.Focusable && c.IsEffectivelyVisible)?.Focus(NavigationMethod.Directional);
+        var parts = row.GetVisualDescendants().OfType<InputElement>().Where(c => c.Focusable && c.IsEffectivelyVisible).ToList();
+        (trigger ? parts.FirstOrDefault(c => c.DataContext is SentenceAdd { Slot.Kind: RuleSlotKind.Trigger }) : parts.FirstOrDefault())
+            ?.Focus(NavigationMethod.Directional);
     }), DispatcherPriority.Loaded);
 
     private void OnImportScriptClick(object? sender, RoutedEventArgs e) => Guard.Fire("Automation: import a script", async () =>

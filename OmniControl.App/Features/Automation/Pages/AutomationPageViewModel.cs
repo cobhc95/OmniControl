@@ -4,14 +4,14 @@ using OmniControl.App.Features.Hotkeys;
 
 namespace OmniControl.App.Features.Automation.Pages;
 
-/// The Automation page: the Rules tab (sentence rules: "When ... do ...", and blocks: "While ... don't allow ..."), the From other pages tab (the rules
-/// that hold a feature's own rule action, <see cref="AutomationFeatureRules"/>, and the rules that apply a preset,
-/// <see cref="AutomationPresets.PresetOf"/>, made in Presets Manager) and the Scripts tab (AutomationPageViewModel.Scripts.cs). Custom actions
+/// The Automation page: the Custom Rules tab (sentence rules: "When ... do ...", among them the ones that apply a preset,
+/// <see cref="AutomationPresets.PresetOf"/>, and blocks: "While ... don't allow ..."), the From other pages tab (the rules
+/// that hold a feature's own rule action, <see cref="AutomationFeatureRules"/>) and the Scripts tab (AutomationPageViewModel.Scripts.cs). Custom actions
 /// are made and edited in the Actions and Hotkeys window. The rules and scripts themselves are
 /// <see cref="AutomationService"/>'s; this page lists them, adds and removes them, and shows the one status line.
 public sealed partial class AutomationPageViewModel : PageViewModel, IDisposable
 {
-    private const string RulesTab = "Rules", FeatureTab = AutomationFeatureRules.Tab;
+    private const string RulesTab = AutomationFeatureRules.CustomTab, FeatureTab = AutomationFeatureRules.Tab;
 
     private readonly AutomationService _service;
     private readonly Func<DialogMessage, Task<bool>> _ask;
@@ -26,7 +26,7 @@ public sealed partial class AutomationPageViewModel : PageViewModel, IDisposable
 
     public override string KeyHelp => string.Join(Environment.NewLine,
         "Tab moves through a rule's name and blocks; Enter on a block changes it; Delete removes it. On a hotkey block, Enter then press the keys (Esc cancels).",
-        "Ctrl+Tab switches between the Rules, From other pages and Scripts tabs.",
+        $"Ctrl+Tab switches between the {RulesTab}, {FeatureTab} and Scripts tabs.",
         $"{ReservedKeys.Emergency} pauses all rules from anywhere; it cannot be changed or blocked.");
 
     public override PageTabs Tabs { get; } = new(RulesTab, FeatureTab, ScriptsTab);
@@ -93,26 +93,27 @@ public sealed partial class AutomationPageViewModel : PageViewModel, IDisposable
         OnRuleShown();
     }
 
-    /// The view brings this row into view and focuses it (taken once: <see cref="TakeReveal"/>).
+    /// The view brings this row into view and focuses it, or its trigger slot (taken once: <see cref="TakeReveal"/>).
     public event Action? RevealRequested;
 
-    private AutomationItem? _reveal;
+    private (AutomationItem Item, bool Trigger)? _reveal;
 
-    public AutomationItem? TakeReveal()
+    public (AutomationItem Item, bool Trigger)? TakeReveal()
     {
-        var item = _reveal;
+        var reveal = _reveal;
         _reveal = null;
-        return item;
+        return reveal;
     }
 
-    /// The index of a row on the From other pages tab (-1: not there).
-    public int FeatureIndexOf(AutomationItem item) => FeatureRules.IndexOf(item);
+    /// The rows of the list a row is in (null: in none).
+    public ObservableCollection<AutomationItem>? ListHolding(AutomationItem item) =>
+        new[] { Automations, Blocks, FeatureRules }.FirstOrDefault(list => list.Contains(item));
 
     // "Edit in Automation" on a page or in the Presets window: the page opened at its tab; its rule's row is brought forward.
     private void OnRuleShown()
     {
-        if (_features?.TakeShown() is not { } id || FeatureRules.FirstOrDefault(i => i.Rule.Id == id) is not { } item) return;
-        _reveal = item;
+        if (_features?.TakeShown() is not { } shown || RuleRows.FirstOrDefault(i => i.Rule.Id == shown.Id) is not { } item) return;
+        _reveal = (item, shown.Trigger);
         RevealRequested?.Invoke();
     }
 
@@ -158,10 +159,10 @@ public sealed partial class AutomationPageViewModel : PageViewModel, IDisposable
         PauseLabel = _service.Paused ? "Resume rules" : "Pause all rules";
     }
 
-    // Read from the rule's actions each time: a preset's apply action or a feature's rule action puts it on From other pages; any other Do rule is on Rules.
+    // Read from the rule's actions each time: a feature's rule action puts it on From other pages; any other Do rule (a preset's too) is on Custom Rules.
     private ObservableCollection<AutomationItem> ListOf(AutomationRule rule) =>
         rule.Kind == AutomationKind.Block ? Blocks
-        : AutomationPresets.PresetOf(rule) is not null || _features?.PageOf(rule) is not null ? FeatureRules : Automations;
+        : _features?.PageOf(rule) is not null ? FeatureRules : Automations;
 
     private void Show(AutomationRule rule) => ListOf(rule).Add(new AutomationItem(rule, _service, _ask, _presets, ListOf(rule) == FeatureRules ? _features : null));
 
