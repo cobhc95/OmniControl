@@ -1,7 +1,7 @@
 # Release helper for the version in OmniControl.App.csproj (bump <Version> and CHANGELOG.md first).
 #   release.ps1             check the tree is clean and pushed, create and push the annotated tag v<version>; the GitHub workflow then builds and publishes
 #   release.ps1 -BuildOnly  build Portable, Setup, SHA256SUMS and notes into bin\release\<version>\out (the workflow's build step; needs dotnet and Inno Setup 6)
-#   release.ps1 -Local      -BuildOnly, then publish the GitHub pre-release from this PC (needs gh); not attested
+#   release.ps1 -Local      -BuildOnly, then publish the GitHub release from this PC (needs gh); not attested
 param([switch]$BuildOnly, [switch]$Local)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
@@ -50,5 +50,5 @@ if (-not ($BuildOnly -or $Local)) { Publish-Tag; return }
 Build-Release
 if ($Local) {
     $files = @(Get-ChildItem $out -File | Where-Object { $_.Name -match 'Setup\.exe$|Portable\.zip$|SHA256SUMS\.txt$' } | ForEach-Object FullName)
-    gh release create "v$version" @files --prerelease --title "OmniControl $version" --notes-file (Join-Path $out 'notes.md')
+    gh release create "v$version" @files --latest --title "OmniControl $version" --notes-file (Join-Path $out 'notes.md')
 }

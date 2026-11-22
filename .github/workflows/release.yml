@@ -53,7 +53,7 @@ jobs:
             bin/release/${{ env.VERSION }}/out/OmniControl-${{ env.VERSION }}-Setup.exe
             bin/release/${{ env.VERSION }}/out/OmniControl-${{ env.VERSION }}-Portable.zip
 
-      - name: Publish the pre-release
+      - name: Publish the release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -63,5 +63,5 @@ jobs:
             "$out/OmniControl-$env:VERSION-Setup.exe" `
             "$out/OmniControl-$env:VERSION-Portable.zip" `
             "$out/OmniControl-$env:VERSION-SHA256SUMS.txt" `
-            --prerelease --title "OmniControl $env:VERSION" --notes-file "$out/notes.md" --verify-tag
+            --latest --title "OmniControl $env:VERSION" --notes-file "$out/notes.md" --verify-tag
           if ($LASTEXITCODE) { throw 'gh release create failed' }
