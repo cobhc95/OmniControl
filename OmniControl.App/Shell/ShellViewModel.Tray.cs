@@ -94,9 +94,5 @@ public sealed partial class ShellViewModel
     }
 
     /// Shows the main window at a page.
-    private void ShowPage(string title)
-    {
-        AppLifecycle.RequestShow($"a request to open {title} ({RunChain.Describe(_hotkeys.Chain)})");
-        OpenPage(title);
-    }
+    private void ShowPage(string title) => OpenPage(title);
 }

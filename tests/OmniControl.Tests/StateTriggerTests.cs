@@ -121,6 +121,7 @@ public class StateTriggerTests
         public DateTime? ChangedAt(string stateId) => Registry.ChangedAt(stateId);
         public IEnumerable<HotkeyAction> Actions => List;
         public HotkeyAction? Action(string id) => List.FirstOrDefault(a => a.Id == id);
+        public ActionSection? SectionOf(string section) => null;
     }
 
     private static HotkeyAction NewAction(string id, string title) => new(id, title, "Volume", string.Empty, _ => { });

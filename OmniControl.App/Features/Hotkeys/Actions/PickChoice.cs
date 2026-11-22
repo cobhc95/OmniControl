@@ -46,13 +46,26 @@ public sealed record PickChoice(string Spec, string Category, string Name, strin
     /// The stored entry ("id" or "id:parameter", without options) for this choice with that text.
     public string WithParameter(string parameter) => ParamHint is null ? Spec : Spec + parameter;
 
-    /// Gathers choices into sections: the ones with a place (a page, or Power, Launch...) first in that order, then the rest in order of first
-    /// appearance. A section takes the place and icon of its first choice that has one.
-    public static List<PickGroup> Group(IEnumerable<PickChoice> choices) =>
-        choices.GroupBy(c => c.Category)
+    /// Gathers choices into sections: the parts in order of first appearance, within a part the ones with a place (a page, or Power, Launch...)
+    /// first in that order, then the rest in order of first appearance. A section takes the place and icon of its first choice that has one.
+    public static List<PickGroup> Group(IEnumerable<PickChoice> choices)
+    {
+        var groups = choices.GroupBy(c => c.Category)
             .Select(g => new PickGroup(g.Key, g.ToList(), g.Select(c => c.Place).FirstOrDefault(p => p is not null), g.First().Part))
-            .OrderBy(g => g.Place?.Rank ?? int.MaxValue) // the sort is stable, so sections without a place keep their order
             .ToList();
+        var parts = groups.Select(g => g.Part).Distinct().ToList();
+        return groups.OrderBy(g => parts.IndexOf(g.Part)).ThenBy(g => g.Place?.Rank ?? int.MaxValue).ToList(); // a stable sort: sections without a place keep their order
+    }
+
+    /// True when the two entries are the same line apart from what changes while a list is open (the live value, its status, the search words):
+    /// a row then takes the fresh entry in place instead of being replaced.
+    public bool SameShape(PickChoice other) =>
+        Spec == other.Spec && Category == other.Category && Name == other.Name && Detail == other.Detail && Heading == other.Heading
+        && Part == other.Part && Tag == other.Tag && Unavailable == other.Unavailable && ParamHint == other.ParamHint && Icon == other.Icon
+        && Equals(Remote, other.Remote) && PresetsHeading == other.PresetsHeading && Place == other.Place
+        && (Options ?? Array.Empty<ActionOption>()).Select(OptionLook).SequenceEqual((other.Options ?? Array.Empty<ActionOption>()).Select(OptionLook));
+
+    private static string OptionLook(ActionOption o) => $"{o.Key}|{o.Label}|{o.Kind}|{o.Default}|{o.Min}|{o.Max}|{string.Join('\u0001', o.Choices ?? Array.Empty<string>())}";
 }
 
 /// One section of a picker list; <see cref="Place"/> is its icon and position when the list has them; <see cref="Part"/> the heading it sits under.

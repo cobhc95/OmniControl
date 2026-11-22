@@ -99,17 +99,9 @@ public sealed class ResourcesModule : IFeatureModule, IResourcesWindows
         ViewTemplate.For<WeatherPlaceItem, WeatherPlaceRow>(),
     };
 
-    public void OpenApps()
-    {
-        AppLifecycle.RequestShow($"the {_trafficPage} page");
-        _context!.OpenPage(_trafficPage, null);
-    }
+    public void OpenApps() => _context!.OpenPage(_trafficPage, null);
 
     public void OpenGadgetSettings() => OpenAt(ResourcesPageViewModel.GadgetTab);
 
-    private void OpenAt(string? tab)
-    {
-        AppLifecycle.RequestShow("the Resources page");
-        _context!.OpenPage(Title, tab);
-    }
+    private void OpenAt(string? tab) => _context!.OpenPage(Title, tab);
 }

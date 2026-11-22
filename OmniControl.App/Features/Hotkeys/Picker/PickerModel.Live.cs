@@ -50,6 +50,11 @@ public sealed partial class PickerModel
         _live = null;
     }
 
+    /// True when the lists have the same sections with the same entries in the same order, only their live values differing.
+    private static bool SameLayout(IReadOnlyList<PickGroup> shown, IReadOnlyList<PickGroup> read) =>
+        shown.Count == read.Count && shown.Zip(read).All(p => p.First.Name == p.Second.Name && p.First.Part == p.Second.Part && p.First.Place == p.Second.Place
+            && p.First.Choices.Count == p.Second.Choices.Count && p.First.Choices.Zip(p.Second.Choices).All(c => c.First.SameShape(c.Second)));
+
     private void ReadAgain()
     {
         if (_live is not { } live) return;
@@ -57,14 +62,32 @@ public sealed partial class PickerModel
         var keepSpec = ActiveChoice?.Spec;
         var copy = ActiveRow?.IsCopy == true;
         var groups = PickChoice.Group(live.Read());
+        var sameLayout = SameLayout(_groups, groups);
         _groups = groups.Select(g => g with { Choices = g.Choices.ToList() }).ToList();
         _index = null;
         if (_current is { } current) _current = _groups.SelectMany(g => g.Choices).FirstOrDefault(c => c.Spec == current.Spec) ?? current;
+        var shownSections = _sections;
         _sections = null;
         _recentChoices = null;
         _presetChoices = null;
         _favouriteChoices = null;
-        OnPropertyChanged(nameof(Sections));
+        if (sameLayout)
+        {
+            // Only values changed: the rows take them in place, and neither the sections, the highlight nor the scroll are touched.
+            var wanted = Build();
+            var replacing = _replacing;
+            _replacing = true;
+            ListDiff.Apply(Actions, wanted, PickerRow.KeyOf, PickerRow.Same, PickerRow.TakeKeys);
+            _replacing = replacing;
+            if (ActiveChoice is { } now && _editing is not null)
+            {
+                _editing = now;
+                ShowStatus(now);
+            }
+            return;
+        }
+        var sectionsChanged = shownSections is null || !shownSections.SequenceEqual(Sections);
+        if (sectionsChanged) OnPropertyChanged(nameof(Sections));
 
         _replacing = true;
         var section = keepSection is null ? -1 : _groups.FindIndex(g => g.Name == keepSection);
@@ -74,7 +97,7 @@ public sealed partial class PickerModel
         var at = keepSpec is null ? -1 : IndexIn(rows, keepSpec, copy);
         ShowRows(rows, () => at >= 0 ? at : FirstEntry(), sync: false);
         _replacing = false;
-        OnPropertyChanged(nameof(SectionHighlight)); // the sections list was read anew: its selection is shown again
+        if (sectionsChanged) OnPropertyChanged(nameof(SectionHighlight)); // the sections list was read anew: its selection is shown again
 
         if (at >= 0 && ActiveChoice is { } same && _editing is not null)
         {

@@ -34,6 +34,7 @@ public sealed partial class AutomationService
         public DateTime? ChangedAt(string stateId) => _states.ChangedAt(stateId);
         public IEnumerable<HotkeyAction> Actions => _hotkeys.Actions;
         public HotkeyAction? Action(string id) => _hotkeys.Find(id);
+        public ActionSection? SectionOf(string section) => _hotkeys.SectionOf(section);
     }
 
     private void StartLive()
@@ -73,10 +74,14 @@ public sealed partial class AutomationService
 
     /// The "Choose a trigger or state" list, on <paramref name="keep"/> (the stored trigger being edited; empty for none), without "I press a
     /// hotkey" unless <paramref name="withHotkey"/>. While a picker shows it, it is read again when a list or a state's value changes.
-    public PickList TriggerList(string keep, bool withHotkey) => new(AutomationTriggers.PickTitle, AutomationTriggers.SearchText, new LiveList(
-        () => AutomationTriggers.Choices(ProgramNames.Known(_remembered()), _sources, keep).Where(c => withHotkey || c.Spec != AutomationTriggers.Hotkey).ToList(),
-        h => { TriggersChanged += h; ValuesShown += h; },
-        h => { TriggersChanged -= h; ValuesShown -= h; }));
+    public PickList TriggerList(string keep, bool withHotkey)
+    {
+        var programs = new ProgramSnapshot(_remembered().ToList()); // read once for this window, never followed
+        return new(AutomationTriggers.PickTitle, AutomationTriggers.SearchText, new LiveList(
+            () => AutomationTriggers.Choices(programs.Names, _sources, keep).Where(c => withHotkey || c.Spec != AutomationTriggers.Hotkey).ToList(),
+            h => { TriggersChanged += h; ValuesShown += h; programs.Ready += h; },
+            h => { TriggersChanged -= h; ValuesShown -= h; programs.Ready -= h; }));
+    }
 
     // Raised (once per batch) when a state's value changed, only while a picker shows the values: nothing listens otherwise.
     private event Action? ValuesShown;

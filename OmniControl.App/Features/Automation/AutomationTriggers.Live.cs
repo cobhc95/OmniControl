@@ -13,6 +13,9 @@ public interface ITriggerSources
     DateTime? ChangedAt(string stateId);
     IEnumerable<HotkeyAction> Actions { get; }
     HotkeyAction? Action(string id);
+
+    /// The page's place in the sidebar (its icon and order), or null when it has none.
+    ActionSection? SectionOf(string section);
 }
 
 // The two live trigger families: the states (one entry per registered state, in a section per page) and "When an action runs" (one
@@ -151,7 +154,8 @@ public static partial class AutomationTriggers
     }
 
     private static IEnumerable<PickChoice> StateChoices(ITriggerSources sources, string keep) =>
-        Listed(sources, s => StateChoice(s, sources), MouseAction.Parse(keep) is { Id: StateChanges } kept ? kept.Param : null);
+        Listed(sources, s => StateChoice(s, sources), MouseAction.Parse(keep) is { Id: StateChanges } kept ? kept.Param : null)
+            .Select(c => c with { Place = sources.SectionOf(c.Category) }); // the sidebar's page order, as the action lists have
 
     /// A trigger in a chip's few words: "Steam running" (a state turning on), "Volume above 50 %", "Action: Lock PC".
     public static string ChipOf(string stored, ITriggerSources sources)

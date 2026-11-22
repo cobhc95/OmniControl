@@ -21,7 +21,7 @@ public sealed record SectionRow(string Name, string? Icon, bool IsFavourites = f
 /// One line of the list: an entry (its text, and while searching or in Recent the section it belongs to, and why it can't be picked when it can't) or a group heading, which has no choice and is never highlighted.
 public sealed class PickerRow : ObservableObject
 {
-    public PickChoice? Choice { get; }
+    public PickChoice? Choice { get; private set; }
     public string Text { get; }
     public string? Hint { get; }
 
@@ -134,16 +134,23 @@ public sealed class PickerRow : ObservableObject
     /// its row's drawing, never the list's rows (a row taken out and put back under a hotkey box moved the virtualizing list's layout).
     public static bool TakeKeys(PickerRow shown, PickerRow wanted)
     {
-        if (!SameEntry(shown, wanted)) return false;
+        if (!SameFacts(shown, wanted) || !(ReferenceEquals(shown.Choice, wanted.Choice) || shown.Choice is { } a && wanted.Choice is { } b && a.SameShape(b))) return false;
+        var fresh = !ReferenceEquals(shown.Choice, wanted.Choice);
+        shown.Choice = wanted.Choice;
         (shown._keys, shown._keycaps, shown.ShowsNoKey, shown.InPanel, shown.Summary) = (wanted._keys, null, wanted.ShowsNoKey, wanted.InPanel, wanted.Summary);
         foreach (var name in KeyParts) shown.OnPropertyChanged(name);
+        if (fresh) foreach (var name in LiveParts) shown.OnPropertyChanged(name); // a live value changed: the row redraws it, nothing is replaced
         return true;
     }
 
     private static readonly string[] KeyParts = { nameof(Keycaps), nameof(ShowsNoKey), nameof(InPanel), nameof(Summary), nameof(HasSummary) };
 
-    private static bool SameEntry(PickerRow shown, PickerRow wanted) =>
-        ReferenceEquals(shown.Choice, wanted.Choice) && shown.Text == wanted.Text && shown.Hint == wanted.Hint && shown.Tag == wanted.Tag
+    private static readonly string[] LiveParts = { nameof(Choice), nameof(Value), nameof(HasValue) };
+
+    private static bool SameEntry(PickerRow shown, PickerRow wanted) => ReferenceEquals(shown.Choice, wanted.Choice) && SameFacts(shown, wanted);
+
+    private static bool SameFacts(PickerRow shown, PickerRow wanted) =>
+        shown.Text == wanted.Text && shown.Hint == wanted.Hint && shown.Tag == wanted.Tag
         && shown.CanStar == wanted.CanStar && shown.IsFavourite == wanted.IsFavourite
         && (shown.Members ?? Array.Empty<PickChoice>()).SequenceEqual(wanted.Members ?? Array.Empty<PickChoice>());
 

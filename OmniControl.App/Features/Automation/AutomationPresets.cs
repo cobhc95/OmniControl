@@ -63,10 +63,10 @@ public sealed class AutomationPresets : IPresetTriggers, IDisposable
 
     /// The rule's triggers in words, joined as the rule joins them: "When Steam running or 22:00".
     public PresetRule? Of(string preset) =>
-        RuleOf(preset) is { } rule
-            ? new PresetRule("When " + string.Concat(rule.AllTriggers.Select((t, i) =>
-                (i == 0 ? string.Empty : $" {AutomationJoins.WordOf(rule.TriggerJoinBefore(i))} ") + AutomationTriggers.ChipOf(t, _rules.TriggerSources))))
-            : null;
+        RuleOf(preset) is not { } rule ? null
+        : !rule.AllTriggers.Any() ? new PresetRule("No trigger yet") // a rule made by "More options" that has not been given one
+        : new PresetRule("When " + string.Concat(rule.AllTriggers.Select((t, i) =>
+            (i == 0 ? string.Empty : $" {AutomationJoins.WordOf(rule.TriggerJoinBefore(i))} ") + AutomationTriggers.ChipOf(t, _rules.TriggerSources))));
 
     /// Opens Custom Rules on the preset's rule; without one, a new rule that switches to it (no trigger yet, named as its action) with its trigger slot focused.
     public void Edit(string preset)

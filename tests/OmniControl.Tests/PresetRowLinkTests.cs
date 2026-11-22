@@ -30,6 +30,7 @@ public class PresetRowLinkTests
         var with = Row(new PresetRule("When Steam running"), true, owner);
         Assert.Equal("* When Steam running · Edit in Automation", with.RuleLink);
         Assert.Equal("More options in Automation", Row(null, true, owner).RuleLink);
+        Assert.Equal("* No trigger yet · Edit in Automation", Row(new PresetRule("No trigger yet"), true, owner).RuleLink);
         Assert.False(Row(null, false, owner).HasRuleLink);
         with.EditRuleCommand.Execute(null);
         Assert.Same(with, owner.Edited);

@@ -34,8 +34,13 @@ public sealed partial class OptionListModel : ObservableObject
     public void SetItems(IEnumerable<OptionEntry> items)
     {
         var keep = Highlighted?.Id;
-        Shown.Clear();
-        foreach (var entry in items) Shown.Add(entry);
+        // In place by id: an entry that stays keeps its row (hover, focus, scroll); only its tick is taken over.
+        ListDiff.Apply(Shown, items.ToList(), e => e.Id, (a, b) => a.Label == b.Label && a.IsChecked == b.IsChecked, (a, b) =>
+        {
+            if (a.Label != b.Label) return false;
+            a.IsChecked = b.IsChecked;
+            return true;
+        });
         var kept = Shown.FirstOrDefault(e => e.Id == keep) ?? Shown.FirstOrDefault();
         Highlight = kept is null ? -1 : Shown.IndexOf(kept);
     }

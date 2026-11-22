@@ -312,9 +312,11 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     /// Opens the sidebar page with this title (a page hidden by the search filter stays closed).
     private void OpenPage(string title) => OpenPage(title, null);
 
-    /// THE way to open a page, at one of its tabs when <paramref name="tab"/> names one (the gadget's "Gadget settings…").
+    /// THE way to open a page, at one of its tabs when <paramref name="tab"/> names one (the gadget's "Gadget settings…"). It brings the main
+    /// window forward too (restored, out of the tray), as it is asked from other windows (Presets Manager, Actions and Hotkeys) as well.
     private void OpenPage(string title, string? tab)
     {
+        AppLifecycle.RequestShow($"a request to open {title} ({RunChain.Describe(_hotkeys.Chain)})");
         if (Pages.FirstOrDefault(p => p.Title == title) is { } page) SelectedMainPage = page;
         else if (FooterPages.FirstOrDefault(p => p.Title == title) is { } footer) SelectedFooterPage = footer;
         if (tab is not null) SlotOf(title)?.Page?.Tabs?.Select(tab);
