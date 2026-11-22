@@ -54,28 +54,6 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
     /// Sound and effects runs: the Plug-ins group shows.
     public bool HasPlugins => _plugins is not null;
 
-    public override IEnumerable<SearchEntry> SearchEntries => new[]
-    {
-        Entry(Theme, AppearanceName, "light dark color mode system"),
-        Entry(Accent, AppearanceName, "accent color colour highlight orange blue green white windows follow system custom picker hex hue saturation brightness"),
-        Entry(_accentIntensity, AppearanceName, "accent intensity strength softer stronger lighter darker shade vivid"),
-        Entry(Background, AppearanceName, "background colour color surface carbon slate blue black oled plum dark grey gray windows follow"),
-        Entry(_trayIcon, AppearanceName, "tray icon notification area logo outline sliders command key look choose"),
-        Entry(_trayColour, AppearanceName, "tray icon colour color white black follow windows taskbar accent"),
-        Entry(_gpuDrawing, AppearanceName, "gpu graphics card hardware acceleration drawing rendering smooth scrolling animations memory"),
-        Entry(_groupsOpen, AppearanceName, "groups open collapsed collapse expand remember last state sections panels page opens"),
-        Entry(_startWithWindows, StartName, "start boot login windows launch"),
-        Entry(_startMinimised, StartName, "start minimized hidden background tray"),
-        Entry(_whenClosing, StartName, "close tray exit quit notification area minimize x button ask remember"),
-        Entry(_hardwareCheck, StartName, "hardware check refresh monitors displays sound devices touchpad undetected missing remote desktop safety periodic every minutes"),
-        Entry(_presets, DataName, "presets manage layers display monitor equaliser compressor shortcut order rename"),
-        Entry(_backup, DataName, "backup restore export import save load move computer wipe reset factory delete all settings"),
-        Entry(_restoreAllCard, DataName, "reset default restore every page all settings"),
-        Entry(_networkService, DataName, "network service remove uninstall per app limits administrator admin"),
-    }.Concat(DataItems.Contains(_importFromPc) ? new[] { Entry(_importFromPc, DataName, "import settings another pc computer laptop copy paired other pcs move") } : Array.Empty<SearchEntry>())
-     .Concat(FeatureSearchEntries()).Concat(ConfirmationSearchEntries()).Concat(PluginSearchEntries()).Concat(UpdateSearchEntries())
-     .Append(Entry(_about, UpdatesName, "about credits licence license gpl open source version notice"));
-
     private const string AppearanceName = "Appearance", StartName = "Start and close", DataName = "Your data", PluginsName = "Plug-ins", UpdatesName = "Updates and about";
 
     /// <param name="openAbout">Opens the About and credits window.</param>
@@ -100,12 +78,12 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
         _features = features;
         _plugins = plugins;
         var themes = Enum.GetNames<ThemeChoice>();
-        Theme = new GalleryItem("Theme", themes, (int)_settings.Theme, i => (ThemeSwatch.Fill(i), SwatchMark.None), i => OnThemeChosen(themes[i])) { Half = true };
+        Theme = new GalleryItem(ThemeCard.Label, themes, (int)_settings.Theme, i => (ThemeSwatch.Fill(i), SwatchMark.None), i => OnThemeChosen(themes[i])) { Half = true };
 
         Accent = MakeAccentCards(report);
 
         var backgrounds = SurfaceService.Names;
-        Background = new GalleryItem("Background colour", backgrounds, SurfaceService.IndexOf(_settings.Background),
+        Background = new GalleryItem(BackgroundCard.Label, backgrounds, SurfaceService.IndexOf(_settings.Background),
             i => (new SolidColorBrush(SurfaceService.Swatch(backgrounds[i])), backgrounds[i] == SurfaceService.FollowName ? SwatchMark.Windows : SwatchMark.None),
             i =>
             {
@@ -120,18 +98,18 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
         Follow(h => SurfaceService.Changed += h, h => SurfaceService.Changed -= h, Background.Refresh);
 
         var groupLabels = GroupsOpen.All.Select(e => e.Label).ToList();
-        _groupsOpen = new ChoiceItem("Groups when a page opens", groupLabels, GroupsOpen.LabelOf(_settings.GroupsOpen), label => GroupsOpen.Set(GroupsOpen.Find(label)))
+        _groupsOpen = new ChoiceItem(GroupsOpenCard.Label, groupLabels, GroupsOpen.LabelOf(_settings.GroupsOpen), label => GroupsOpen.Set(GroupsOpen.Find(label)))
         {
             Half = true,
         };
         Follow(h => GroupsOpen.Changed += h, h => GroupsOpen.Changed -= h, ShowGroupsOpen);
         MakeTrayIconCards(trayIcon);
 
-        _startWithWindows = new ToggleItem("Start with Windows", StartupRegistration.State == StartupState.On, OnStartWithWindowsChosen) { Half = true };
-        _startMinimised = new ToggleItem("Start minimised", _settings.StartMinimised, on => { _settings.StartMinimised = on; _settings.Save(); }) { Half = true };
+        _startWithWindows = new ToggleItem(StartWithWindowsCard.Label, StartupRegistration.State == StartupState.On, OnStartWithWindowsChosen) { Half = true };
+        _startMinimised = new ToggleItem(StartMinimisedCard.Label, _settings.StartMinimised, on => { _settings.StartMinimised = on; _settings.Save(); }) { Half = true };
         // The page is made after start-up and only it changes the setting (a restore restarts), so what it reads now is what drew this run.
         _gpuDrawingAtStart = _settings.GpuDrawing;
-        _gpuDrawing = new ToggleItem("Use GPU drawing", _settings.GpuDrawing, on =>
+        _gpuDrawing = new ToggleItem(GpuCard.Label, _settings.GpuDrawing, on =>
         {
             _settings.GpuDrawing = on;
             _settings.Save();
@@ -139,39 +117,39 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
         }) { Half = true };
         ShowGpuDrawingNote();
         var labels = CloseBehaviors.All.Select(e => e.Label).ToList();
-        _whenClosing = new ChoiceItem("When closing", labels, CloseBehaviors.LabelOf(_settings.CloseBehavior), label =>
+        _whenClosing = new ChoiceItem(WhenClosingCard.Label, labels, CloseBehaviors.LabelOf(_settings.CloseBehavior), label =>
         {
             _settings.CloseBehavior = CloseBehaviors.Find(label);
             _settings.Save();
         });
 
         var checkLabels = HardwareChecks.All.Select(e => e.Label).ToList();
-        _hardwareCheck = new ChoiceItem("Check hardware every", checkLabels, HardwareChecks.LabelOf(_hardware.Check), label => _hardware.SetCheck(HardwareChecks.Find(label)));
+        _hardwareCheck = new ChoiceItem(HardwareCheckCard.Label, checkLabels, HardwareChecks.LabelOf(_hardware.Check), label => _hardware.SetCheck(HardwareChecks.Find(label)));
 
-        _about = new ButtonItem("About and credits", "Open", "Version, licence, credits", openAbout);
-        _presets = new ButtonItem("Presets", "Open", "Every preset of the program: order, names and shortcuts", openPresets);
+        _about = new ButtonItem(AboutCard.Label, "Open", "Version, licence, credits", openAbout);
+        _presets = new ButtonItem(PresetsCard.Label, "Open", "Every preset of the program: order, names and shortcuts", openPresets);
 
-        _backup = new ButtonItem("Backup and restore", "Export...", "Settings, presets, shortcuts, rules, scripts, custom actions, app lists",
+        _backup = new ButtonItem(BackupCard.Label, "Export...", "Settings, presets, shortcuts, rules, scripts, custom actions, app lists",
             () => _ = backup.ExportAsync())
         {
             Extra = new[] { new CardAction("Import...", () => _ = backup.ImportAsync()), new CardAction("Wipe all...", () => _ = backup.WipeAsync(), danger: true) },
         };
 
-        _importFromPc = new MenuChoiceItem("Import from another PC", () => "Choose a PC", () => ImportPcRows(backup))
+        _importFromPc = new MenuChoiceItem(ImportFromPcCard.Label, () => "Choose a PC", () => ImportPcRows(backup))
         {
             Tip = "Copy chosen areas of a paired PC's settings here. It has to be on and connected.",
         };
 
-        _addFolder = new FileItem("Plug-in folders", FileKind.OfFolder("Choose a folder with plug-ins"), AddFolder) { EmptyText = "Add a folder to scan" };
-        _scan = new ButtonItem("Plug-in scan", "Scan now", ScanIdleText, StartScan);
+        _addFolder = new FileItem(AddFolderCard.Label, FileKind.OfFolder("Choose a folder with plug-ins"), AddFolder) { EmptyText = "Add a folder to scan" };
+        _scan = new ButtonItem(ScanCard.Label, "Scan now", ScanIdleText, StartScan);
         _keepFx = mixer is null ? null : KeepFxCard(mixer);
-        _resetAllConfirmations = new ButtonItem("Confirmations", "Reset all", string.Empty, confirmations.ResetAll);
-        _restoreAllCard = new ButtonItem("Restore all defaults", "Restore all", "Puts every page back to its defaults after one question; you can undo it", () => _ = RestoreAll?.RestoreAsync());
-        _networkService = new ButtonItem("Network service", "Remove…", "Lets per-app network limits work without running OmniControl as administrator",
+        _resetAllConfirmations = new ButtonItem(ResetConfirmationsCard.Label, "Reset all", string.Empty, confirmations.ResetAll);
+        _restoreAllCard = new ButtonItem(RestoreAllCard.Label, "Restore all", "Puts every page back to its defaults after one question; you can undo it", () => _ = RestoreAll?.RestoreAsync());
+        _networkService = new ButtonItem(NetworkServiceCard.Label, "Remove…", "Lets per-app network limits work without running OmniControl as administrator",
             () => _ = Guard.RunAsync("Remove the network service", async () => report(await NetworkServiceMode.RemoveAsync() ?? "The network service was removed.")));
         MakeUpdateCards(updates, report);
         _featureCards = MakeFeatureCards();
-        ReadyMade = new MenuChoiceItem("Ready-made", () => $"Ready-made: {FeatureList.ReadyMadeOf(_features.Off)}", ReadyMadeRows)
+        ReadyMade = new MenuChoiceItem(ReadyMadeCard.Label, () => $"Ready-made: {FeatureList.ReadyMadeOf(_features.Off)}", ReadyMadeRows)
         {
             Tip = "The same choices as Setup's Choose features page.",
         };

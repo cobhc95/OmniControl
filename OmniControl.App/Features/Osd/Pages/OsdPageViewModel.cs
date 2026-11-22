@@ -39,10 +39,18 @@ public sealed class OsdPageViewModel : PageViewModel, IDisposable
     /// Every setting in page order.
     private IEnumerable<object> Items => Primary.Concat(Customize.Items).Concat(Elements.Items);
 
-    public override IEnumerable<SearchEntry> SearchEntries =>
-        Items.Select(i => Entry(i, Title, i == _duration ? "on-screen display overlay popup duration time seconds how long per app event exceptions" : "on-screen display overlay popup"));
+    public override IEnumerable<SearchEntry> SearchEntries => Items.OfType<IEditorItem>().Select(i => Entry(i, Card(i.Label)));
 
-    private readonly SliderItem _duration;
+    private const string ShowLabel = "Show OSD", WindowsLabel = "Hide Windows' own OSD", StyleLabel = "Style", AccentLabel = "Accent colour",
+        BackgroundLabel = "Background", PositionLabel = "Position", ShowOnLabel = "Show on", OpacityLabel = "Opacity", DurationLabel = "Duration";
+
+    /// The page's search words (<c>FeaturePage.Words</c>): its cards and the service's elements.
+    public static IEnumerable<string> Words(OsdService? osd) =>
+        new[] { ShowLabel, WindowsLabel, StyleLabel, AccentLabel, BackgroundLabel, PositionLabel, ShowOnLabel, OpacityLabel, DurationLabel }
+            .Concat(osd?.Elements.Select(e => e.Name) ?? Array.Empty<string>()).Select(label => Card(label).Words);
+
+    private static SearchCard Card(string label) => new(label, label == DurationLabel
+        ? "on-screen display overlay popup duration time seconds how long per app event exceptions" : "on-screen display overlay popup", Title: Info.Title);
 
     /// <param name="openPresets">Opens the preset manager at a section and group (the Position menu's "Manage places...").</param>
     /// <param name="askPlacement">Shows the placement window and answers whether OK was pressed.</param>
@@ -52,18 +60,18 @@ public sealed class OsdPageViewModel : PageViewModel, IDisposable
     {
         (_osd, _openPresets, _askPlacement, _listedApps) = (osd, openPresets, askPlacement, listedApps);
         _durationWindow = new SingleWindow<OsdDurationWindow>(report);
-        var show = new ToggleItem("Show OSD", osd.Settings.Enabled, osd.SetEnabled) { Half = true };
-        var windows = new ToggleItem("Hide Windows' own OSD", osd.Settings.HideWindowsOsd, osd.SetHideWindowsOsd)
+        var show = new ToggleItem(ShowLabel, osd.Settings.Enabled, osd.SetEnabled) { Half = true };
+        var windows = new ToggleItem(WindowsLabel, osd.Settings.HideWindowsOsd, osd.SetHideWindowsOsd)
         {
             Half = true,
             Tip = "Best-effort: Windows has no setting for it.",
         };
 
-        var position = new MenuChoiceItem("Position", osd.Settings.CurrentPlaceName, PositionRows) { Half = true };
-        var showOn = new MenuChoiceItem("Show on", () => OsdScreens.Describe(osd.AllScreens, osd.Settings), ShowOnRows) { Half = true };
+        var position = new MenuChoiceItem(PositionLabel, osd.Settings.CurrentPlaceName, PositionRows) { Half = true };
+        var showOn = new MenuChoiceItem(ShowOnLabel, () => OsdScreens.Describe(osd.AllScreens, osd.Settings), ShowOnRows) { Half = true };
 
         var styles = Enum.GetValues<OsdStyle>();
-        var style = new GalleryItem("Style", styles.Select(OsdSettings.Describe).ToList(), Array.IndexOf(styles, osd.Settings.Style),
+        var style = new GalleryItem(StyleLabel, styles.Select(OsdSettings.Describe).ToList(), Array.IndexOf(styles, osd.Settings.Style),
             () => OsdView.Build(osd.Settings, OsdService.BrightnessElement, OsdLevelIcon.Sun, 60), i => osd.SetStyle(styles[i]));
 
         // Accent: "Match program" first, then the same presets the whole program offers.
@@ -71,21 +79,21 @@ public sealed class OsdPageViewModel : PageViewModel, IDisposable
         accentNames.AddRange(AccentService.Names);
         accentNames.AddRange(AccentService.OsdExtras.Select(a => a.Name));
         int AccentIndex() => Math.Max(0, accentNames.IndexOf(osd.Settings.Accent));
-        var accent = new GalleryItem("Accent colour", accentNames, AccentIndex(),
+        var accent = new GalleryItem(AccentLabel, accentNames, AccentIndex(),
             i => (new SolidColorBrush(OsdSettings.ResolveAccent(accentNames[i])), AccentSwatch.Mark(accentNames[i])),
             i => osd.SetAccent(accentNames[i]));
 
         var backgrounds = OsdPalette.Backgrounds;
         var backgroundHexes = backgrounds.Select(b => b.Hex).ToList();
         int BackgroundIndex() => Math.Max(0, backgroundHexes.IndexOf(osd.Settings.Background));
-        var background = new GalleryItem("Background", backgrounds.Select(b => b.Name).ToList(), BackgroundIndex(),
+        var background = new GalleryItem(BackgroundLabel, backgrounds.Select(b => b.Name).ToList(), BackgroundIndex(),
             i => (new SolidColorBrush(Color.Parse(backgroundHexes[i])), SwatchMark.None),
             i => osd.SetBackground(backgrounds[i].Hex));
 
         // Previews that depend on other settings (the OSD sample, the match-program swatch) redraw when anything changes.
-        var opacity = new SliderItem("Opacity", osd.Settings.Opacity, v => { osd.SetOpacity(v); return OperationResult.Ok("OSD opacity"); }, _ => { }) { Half = true };
+        var opacity = new SliderItem(OpacityLabel, osd.Settings.Opacity, v => { osd.SetOpacity(v); return OperationResult.Ok("OSD opacity"); }, _ => { }) { Half = true };
         // Duration counts in tenths of a second (one decimal); "Everything else" of the OSD duration window is the same setting.
-        var duration = _duration = new SliderItem("Duration", Tenths(osd.Durations.EverythingElse), v => { osd.Durations.SetEverythingElse(v / Tenth); osd.Preview(); return OperationResult.Ok("OSD duration"); },
+        var duration = new SliderItem(DurationLabel, Tenths(osd.Durations.EverythingElse), v => { osd.Durations.SetEverythingElse(v / Tenth); osd.Preview(); return OperationResult.Ok("OSD duration"); },
             _ => { }, Tenths(OsdDuration.MinSeconds), Tenths(OsdDuration.MaxSeconds), " s", Tenths(OsdDuration.Default))
         {
             Half = true,

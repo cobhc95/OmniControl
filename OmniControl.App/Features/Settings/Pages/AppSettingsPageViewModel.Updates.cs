@@ -6,8 +6,6 @@ namespace OmniControl.App.Features.Settings.Pages;
 /// for the newest release (or the calm result), and "Check now" on the group's header. It only checks; the link opens the release page.
 public sealed partial class AppSettingsPageViewModel
 {
-    private const string UpdateKeywords = "update updates upgrade new version release github check latest download";
-
     private UpdateService _updates = null!;
     private ToggleItem _updateDaily = null!;
     private FactItem _version = null!;
@@ -19,24 +17,17 @@ public sealed partial class AppSettingsPageViewModel
     private void MakeUpdateCards(UpdateService updates, Action<string> report)
     {
         _updates = updates;
-        _updateDaily = new ToggleItem("Check once a day", updates.Daily, on => updates.Daily = on)
+        _updateDaily = new ToggleItem(UpdateDailyCard.Label, updates.Daily, on => updates.Daily = on)
         {
             Half = true,
             Tip = "Looks at GitHub's release list for a newer version. It only checks; nothing is downloaded or installed.",
         };
-        _version = new FactItem("Version") { Half = true, Value = AppInfo.Version };
-        _latest = new FactItem("Latest release", () => OpenLatest(report));
+        _version = new FactItem(VersionCard.Label) { Half = true, Value = AppInfo.Version };
+        _latest = new FactItem(LatestCard.Label, () => OpenLatest(report));
         CheckNowCommand = new RelayCommand(CheckNow, () => !_updates.Checking);
         Follow(h => updates.Changed += h, h => updates.Changed -= h, () => Dispatcher.UIThread.Post(RefreshUpdates)); // the check runs on a worker thread
         RefreshUpdates();
     }
-
-    private IEnumerable<SearchEntry> UpdateSearchEntries() => new[]
-    {
-        Entry(_updateDaily, UpdatesName, UpdateKeywords),
-        Entry(_version, UpdatesName, UpdateKeywords + " current installed"),
-        Entry(_latest, UpdatesName, UpdateKeywords + " pre-release open"),
-    };
 
     /// The sidebar's "Update available" notice was clicked: the Updates and about group opens.
     public void ShowUpdates() => UpdatesAndAbout.IsExpanded = true;

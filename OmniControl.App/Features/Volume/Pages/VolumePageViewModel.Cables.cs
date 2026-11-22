@@ -132,5 +132,7 @@ public sealed partial class VolumePageViewModel
     }
 
     private IEnumerable<SearchEntry> CableEntries() =>
-        WiringCables.Items.Select(c => Entry(c, WiringCables.Name, CablesKeywords, WiringTab));
+        WiringCables.Items.Select(c => Entry(c, CableCard(c.Name)));
+
+    private static SearchCard CableCard(string name) => new(name, CablesKeywords, WiringTab, CableGroup.GroupName);
 }

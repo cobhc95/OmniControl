@@ -7,8 +7,10 @@ public sealed partial class CableGroup : CardGroup
 {
     public const string Hint = "More cables let more programs run on cables.";
 
+    public const string GroupName = "Virtual cables";
+
     public CableGroup(CableMarkMenu mark, CardAction moreCables)
-        : base("Volume/Wiring/Cables", "Virtual cables", string.Empty)
+        : base("Volume/Wiring/Cables", GroupName, string.Empty)
     {
         Mark = mark;
         MoreCables = moreCables;

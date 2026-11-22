@@ -66,9 +66,27 @@ public sealed partial class AutomationPageViewModel : PageViewModel, IDisposable
     public string PauseTip => $"Stops every rule and block at once. {ReservedKeys.Emergency} does the same from anywhere.";
 
     public override IEnumerable<SearchEntry> SearchEntries =>
-        Automations.Concat(Blocks).Select(r => Entry(r, r.Label, $"automation rule schedule timer task {r.Line}", RulesTab))
-            .Concat(Customs.Select(c => Entry(c, c.Label, $"custom action script command program url {c.Custom.Target}", CustomTab)))
+        Automations.Concat(Blocks).Select(r => Entry(r, RuleCard(r)))
+            .Concat(Customs.Select(c => Entry(c, CustomCard(c.Custom))))
             .Concat(ScriptSearchEntries);
+
+    /// The page's search words (<c>FeaturePage.Words</c>), from the service's rules, custom actions and scripts. A rule's sentence is its
+    /// row's own (made and let go here), so its words never differ from the row's.
+    public static IEnumerable<string> Words(AutomationService? service)
+    {
+        if (service is null) return Array.Empty<string>();
+        return service.Settings.Rules.Select(rule =>
+            {
+                using var row = new AutomationItem(rule, service, _ => Task.FromResult(false), _ => { });
+                return RuleCard(row).Words;
+            })
+            .Concat(service.Settings.Customs.Select(c => CustomCard(c).Words))
+            .Concat(service.Settings.Scripts.Select(s => ScriptCard(s).Words)).ToList();
+    }
+
+    private static SearchCard RuleCard(AutomationItem row) => new(row.Label, $"automation rule schedule timer task {row.Line}", RulesTab);
+
+    private static SearchCard CustomCard(CustomAction custom) => new(custom.Name, $"custom action script command program url {custom.Target}", CustomTab);
 
     /// <param name="ask">Shows a short message with a confirm button; true when confirmed.</param>
     public AutomationPageViewModel(AutomationService service, Func<DialogMessage, Task<bool>> ask) : base(Info)

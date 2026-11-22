@@ -23,6 +23,8 @@ public sealed class GestureGroups : IDisposable
     /// "Enable gestures": every wheel and middle-click gesture and the custom rules.
     public ToggleItem Enabled { get; }
 
+    public const string EnabledLabel = "Enable gestures";
+
     public ItemGroup Areas { get; }
     public ItemGroup Middle { get; }
     public ItemGroup Keys { get; }
@@ -64,7 +66,7 @@ public sealed class GestureGroups : IDisposable
             UpdateMargins();
         });
         var settings = gestures.Settings;
-        Enabled = new ToggleItem("Enable gestures", settings.Enabled, gestures.SetEnabled)
+        Enabled = new ToggleItem(EnabledLabel, settings.Enabled, gestures.SetEnabled)
         {
             Half = true,
             Tip = "Every scroll and middle-click gesture and the custom gesture rules.",

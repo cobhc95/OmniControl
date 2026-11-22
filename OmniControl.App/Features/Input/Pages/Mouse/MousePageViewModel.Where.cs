@@ -11,6 +11,8 @@ public sealed partial class MousePageViewModel
 {
     private const string WhereKeywords = "enable gestures on off full screen fullscreen game pause never exclude apps administrator admin elevated uac all mouse trackpad features remote desktop rdp virtual machine vm keys";
     private const string WhereGroupName = "All mouse and trackpad features";
+    private const string PauseLabel = "Pause in full-screen games", NeverLabel = "Never in these apps", AdministratorLabel = "Run as administrator",
+        RemoteLabel = "Send actions to remote PCs as keys";
 
     private ToggleItem _pauseCard = null!;      // made by BuildWhereGroup, from the constructor
     private ToggleItem _administratorCard = null!;
@@ -22,7 +24,7 @@ public sealed partial class MousePageViewModel
 
     private void BuildWhereGroup(AppScopes scopes)
     {
-        _pauseCard = new ToggleItem("Pause in full-screen games", Settings.PauseInFullScreen, _mouse.SetPauseInFullScreen)
+        _pauseCard = new ToggleItem(PauseLabel, Settings.PauseInFullScreen, _mouse.SetPauseInFullScreen)
         {
             Half = true,
             Note = "Any full-screen app counts, videos too",
@@ -33,20 +35,20 @@ public sealed partial class MousePageViewModel
             Settings.NeverActIn = scope;
             _mouse.Apply();
         });
-        var never = new ScopeItem("Never in these apps", _neverScope)
+        var never = new ScopeItem(NeverLabel, _neverScope)
         {
             Half = true,
             Note = "Overrides every group's Apps choice",
             Tip = "In these apps buttons, trackpad gestures, gestures and the autoscroll block do nothing.",
         };
-        _administratorCard = new ToggleItem("Run as administrator", Settings.RunAsAdministrator, OnAdministratorPicked)
+        _administratorCard = new ToggleItem(AdministratorLabel, Settings.RunAsAdministrator, OnAdministratorPicked)
         {
             Half = true,
             Note = "Needed over admin windows",
             Tip = "Turning it on starts OmniControl again as administrator. Windows asks at each start unless Setup's \"Start OmniControl as administrator at sign-in\" was ticked.",
         };
 
-        _remoteCard = new ToggleItem("Send actions to remote PCs as keys", Settings.SendToRemoteAsKeys, _mouse.SetSendToRemoteAsKeys)
+        _remoteCard = new ToggleItem(RemoteLabel, Settings.SendToRemoteAsKeys, _mouse.SetSendToRemoteAsKeys)
         {
             Half = true,
             Note = "Remote Desktop, virtual machines",
@@ -87,6 +89,4 @@ public sealed partial class MousePageViewModel
         _neverScope.Refresh();
     }
 
-    private IEnumerable<SearchEntry> WhereSearchEntries() =>
-        WhereGroup.Items.Select(i => Entry(i, Title, WhereKeywords, WhereGroupName));
 }

@@ -13,7 +13,7 @@ public sealed partial class AppSettingsPageViewModel
     private GalleryItem MakeAccentCards(Action<string> report)
     {
         var choices = AccentChoices;
-        var accent = new GalleryItem("Accent colour", choices, AccentIndex(_settings.Accent),
+        var accent = new GalleryItem(AccentCard.Label, choices, AccentIndex(_settings.Accent),
             i => (new SolidColorBrush(AccentService.Resolve(choices[i])), AccentSwatch.Mark(choices[i])),
             i => UseAccent(choices[i]))
         {
@@ -26,7 +26,7 @@ public sealed partial class AppSettingsPageViewModel
                 DataContext = new AccentEditorModel(AccentService.Custom, AccentService.Intensity, UseCustomAccent, UseAccentIntensity, close),
             },
         };
-        _accentIntensity = new SliderItem("Accent intensity", AccentService.Intensity, v =>
+        _accentIntensity = new SliderItem(IntensityCard.Label, AccentService.Intensity, v =>
         {
             UseAccentIntensity(v);
             return OperationResult.Ok();

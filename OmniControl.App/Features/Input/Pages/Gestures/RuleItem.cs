@@ -35,7 +35,13 @@ public sealed partial class RuleItem : ObservableObject, IEditorItem
     [ObservableProperty] private IReadOnlyList<TagItem> _tags = Array.Empty<TagItem>();
 
     /// What search shows and matches: the name, or the sentence.
-    public string Label => Rule.Name.Trim() is { Length: > 0 } name ? name : Line;
+    public string Label => LabelOf(Rule, Line);
+
+    /// The line of <paramref name="rule"/> as its row shows it (also the word source of the page's search).
+    public static string LineOf(Rule rule, RuleService rules) =>
+        rule.Name.Trim() is { Length: > 0 } name ? $"{name}: {rules.SentenceOf(rule)}" : rules.SentenceOf(rule);
+
+    public static string LabelOf(Rule rule, string line) => rule.Name.Trim() is { Length: > 0 } name ? name : line;
 
     /// <param name="editorFor">Makes the editor for this rule (the page owns what happens on delete and close).</param>
     public RuleItem(Rule rule, RuleService rules, Func<RuleItem, RuleEditorViewModel> editorFor)
@@ -53,8 +59,7 @@ public sealed partial class RuleItem : ObservableObject, IEditorItem
     public void Refresh()
     {
         _loading = true;
-        var sentence = _rules.SentenceOf(Rule);
-        Line = Rule.Name.Trim() is { Length: > 0 } name ? $"{name}: {sentence}" : sentence;
+        Line = LineOf(Rule, _rules);
         Tags = RuleTags.Of(Rule, _rules);
         IsOn = Rule.On;
         _loading = false;

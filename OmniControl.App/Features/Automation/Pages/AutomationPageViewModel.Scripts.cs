@@ -33,7 +33,9 @@ public sealed partial class AutomationPageViewModel
     public static IReadOnlyList<string> ScriptPatterns => ScriptLanguages.Patterns;
 
     private IEnumerable<SearchEntry> ScriptSearchEntries =>
-        Scripts.Select(s => Entry(s, s.Label, $"script powershell cmd batch python {s.Name}", ScriptsTab));
+        Scripts.Select(s => Entry(s, ScriptCard(s.Script)));
+
+    private static SearchCard ScriptCard(Script script) => new(script.Name, $"script powershell cmd batch python {script.Name}", ScriptsTab);
 
     private void ShowScriptItems()
     {

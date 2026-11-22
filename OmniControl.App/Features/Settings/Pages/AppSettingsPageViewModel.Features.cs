@@ -33,10 +33,6 @@ public sealed partial class AppSettingsPageViewModel
         }
     }
 
-    private IEnumerable<SearchEntry> FeatureSearchEntries() =>
-        _featureCards.Select(c => Entry(c.Card, FeaturesName, $"feature features turn on off disable enable run {c.Feature.Description}"))
-            .Append(Entry(ReadyMade, FeaturesName, "ready-made features everything sound only monitoring only none custom choice"));
-
     private IReadOnlyList<(FeatureInfo, ToggleItem)> MakeFeatureCards() =>
         FeatureList.All.Select(f => (f, new ToggleItem(f.Name, _features.IsOn(f.Id), on => _features.Set(f.Id, on)) { Half = true, Unavailable = !_features.Installed(f.Id) })).ToList();
 

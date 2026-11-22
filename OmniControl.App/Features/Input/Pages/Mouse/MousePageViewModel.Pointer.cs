@@ -23,6 +23,9 @@ public sealed partial class MousePageViewModel
     private ButtonItem _restoreCard = null!;
     private IReadOnlyList<CursorScheme> _schemes = Array.Empty<CursorScheme>();
     private readonly List<(object Card, string Keywords)> _pointerSearch = new();
+    private const string PointerSizeLabel = "Pointer size and colour", ScrollInactiveLabel = "Scroll inactive windows",
+        RestoreOriginalLabel = "Restore my original values", ResetDefaultsLabel = "Reset to Windows defaults";
+    private const string PointerMoreKeywords = "pointer shape scheme file size colour color scroll inactive windows reset restore defaults";
 
     /// The Pointer settings cards, with the pointers of the scheme as an inner group.
     public ParentGroup PointerGroup { get; private set; } = null!;
@@ -34,10 +37,10 @@ public sealed partial class MousePageViewModel
     {
         foreach (var control in PointerControls.All) _pointerSearch.Add((CardFor(control), control.Keywords));
         var cards = _pointerSearch.Select(e => e.Card).ToList();
-        cards.Add(new ButtonItem("Pointer size and colour", WindowsPageButton,
+        cards.Add(new ButtonItem(PointerSizeLabel, WindowsPageButton,
             "Set in Windows' Accessibility settings.",
             () => OpenWindowsPage(PointerSettings.WindowsPointerLookPage)) { Half = true });
-        cards.Add(new ButtonItem("Scroll inactive windows", WindowsPageButton,
+        cards.Add(new ButtonItem(ScrollInactiveLabel, WindowsPageButton,
             "Set in Windows' mouse settings.",
             () => OpenWindowsPage(PointerSettings.WindowsMousePage)) { Half = true });
 
@@ -46,16 +49,16 @@ public sealed partial class MousePageViewModel
                 { Half = true, EmptyText = "Built-in pointer" }));
         var shapes = new ItemGroup("Mouse/Pointer/Shapes", "Pointers", _pointerFiles.Select(f => (object)f.Card).ToList());
 
-        _restoreCard = new ButtonItem("Restore my original values", "Restore",
+        _restoreCard = new ButtonItem(RestoreOriginalLabel, "Restore",
             "Back to before OmniControl changed them.", _pointerActions.RestoreOriginal) { Half = true };
         PointerFooter = new object[]
         {
-            new ButtonItem("Reset to Windows defaults", "Reset", "Back to how Windows starts.", _pointerActions.ResetToDefaults) { Half = true },
+            new ButtonItem(ResetDefaultsLabel, "Reset", "Back to how Windows starts.", _pointerActions.ResetToDefaults) { Half = true },
             _restoreCard,
         };
 
         _pointerSearch.AddRange(cards.Skip(PointerControls.All.Count).Concat(_pointerFiles.Select(f => (object)f.Card)).Concat(PointerFooter)
-            .Select(card => (card, "pointer shape scheme file size colour color scroll inactive windows reset restore defaults")));
+            .Select(card => (card, PointerMoreKeywords)));
 
         PointerGroup = new ParentGroup("Mouse/Pointer", PointerControls.GroupName, $"{cards.Count} settings", cards)
         {
@@ -88,10 +91,6 @@ public sealed partial class MousePageViewModel
                 return _schemeCard;
         }
     }
-
-    /// The search entries of the group: its cards, the pointers and the two cards at the bottom.
-    private IEnumerable<SearchEntry> PointerSearchEntries() =>
-        _pointerSearch.Select(e => Entry(e.Card, Title, $"{PointerActions.Keywords} {e.Keywords}", PointerControls.GroupName));
 
     /// Reads every setting and pointer from Windows and shows it, without writing anything.
     private void LoadPointerSettings()

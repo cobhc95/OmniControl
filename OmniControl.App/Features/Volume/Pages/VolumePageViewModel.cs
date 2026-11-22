@@ -84,16 +84,31 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
     public EqualizerApoGroup Apo { get; }
 
     public override IEnumerable<SearchEntry> SearchEntries =>
-        new SearchEntry[]
-        {
-            Entry(_combineCard, "Combine devices", "combine merge speakers microphones mic mics mix several devices together cable stereo mix", WiringTab),
-            Entry(Apo.Status, "Equalizer APO", "equalizer apo eq effects install remove device selector attach speakers microphone driver", WiringTab),
-            Entry(UseMicrophones, UseMicrophones.Label, VolumeControls.UseMicrophonesKeywords, MixerTab),
-        }
-        .Concat(AllRows().Select(r => Entry(r, Title, "sound audio mixer app program pan fx effects method cable capture replay recording output device microphone", MixerTab)))
-        .Concat(WiringRows().Select(w => Entry(w, (WiringInputs.Items.Contains(w) ? WiringInputs : WiringOutputs).RouteColumn,
-            "wiring route plays on records from output device speakers headphones microphone combine combined mix mics several cable", WiringTab)))
+        new[] { Entry(_combineCard, CombineCard), Entry(Apo.Status, ApoCard), Entry(UseMicrophones, MicrophonesCard) }
+        .Concat(AllRows().Select(r => Entry(r, RowCard(r.Name))))
+        .Concat(WiringRows().Select(w => Entry(w, WiringCard(w.Source.Name, WiringInputs.Items.Contains(w)))))
         .Concat(CableEntries());
+
+    private static readonly SearchCard CombineCard = new("Combine devices", "combine merge speakers microphones mic mics mix several devices together cable stereo mix", WiringTab),
+        ApoCard = new(EqualizerApoGroup.StatusLabel, "equalizer apo eq effects install remove device selector attach speakers microphone driver", WiringTab, "Equalizer APO"),
+        MicrophonesCard = new(EffectsRules.UseMicrophonesLabel, VolumeControls.UseMicrophonesKeywords, MixerTab);
+
+    private static SearchCard RowCard(string name) =>
+        new(name, "sound audio mixer app program pan fx effects method cable capture replay recording output device microphone", MixerTab, Info.Title);
+
+    private static SearchCard WiringCard(string name, bool input) => new(name,
+        "wiring route plays on records from output device speakers headphones microphone combine combined mix mics several cable", WiringTab, input ? RecordsFromWords : PlaysOnWords);
+
+    /// The page's search words (<c>FeaturePage.Words</c>): its cards, and the rows' names from the mixer (the master, the programs, the
+    /// microphones and combined devices, each also a Wiring row) and the cables the effects support found.
+    public static IEnumerable<string> Words(MixerService? mixer, EffectsSupportService? support)
+    {
+        IReadOnlyList<string> names = mixer is null ? Array.Empty<string>() : mixer.Settings.Apps.Select(a => a.Name)
+            .Concat(mixer.RecordingDevices.Select(d => d.Name)).Concat(mixer.Combined.Select(c => c.Name)).Prepend(MasterName).Distinct().ToList();
+        return new[] { CombineCard.Words, ApoCard.Words, MicrophonesCard.Words }
+            .Concat(names.SelectMany(n => new[] { RowCard(n).Words, WiringCard(n, false).Words, WiringCard(n, true).Words }))
+            .Concat((support?.Current?.Found ?? Array.Empty<FoundCable>()).Select(f => CableCard(f.Name).Words)).ToList();
+    }
 
     /// <remarks>
     /// Creation order (an earlier start-up crash came from a piece used before it was made): first the services and callbacks handed in;
@@ -125,7 +140,7 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
         WiringInputs = NewWiringInputs();
         WiringCables = NewWiringCables();
         Apo = s.Apo;
-        _combineCard = new ButtonItem("Combine devices", "Combine…", "Joins speakers or microphones into one",
+        _combineCard = new ButtonItem(CombineCard.Label, "Combine…", "Joins speakers or microphones into one",
             () => _ = CombineAsync(null, Array.Empty<string>()));
         _master = NewMaster();
         var addMenu = new AddProgramMenuViewModel(_mixer, _discovery, AddProgram);

@@ -27,9 +27,14 @@ public interface IFeatureModule
 
 /// A sidebar page a module offers: what the shell shows of it without making it, and how its view-model is made: the first time the page is
 /// opened, searched, restored or asked to reveal a state, then kept for the run.
-public sealed record FeaturePage(PageInfo Info, Func<PageViewModel> Make)
+/// <param name="Words">The words of every search result the page offers (<see cref="SearchCard.Words"/>, <see cref="SearchEntry.WordsOf"/>),
+/// read from the card definitions and the owning services, never from the page, so search makes only the pages with a match.</param>
+public sealed record FeaturePage(PageInfo Info, Func<PageViewModel> Make, Func<IEnumerable<string>> Words)
 {
     /// What the page puts in the master lists, through the module's own services, at start-up and at its place in the sidebar order (so the
     /// lists keep the order they had when every page was made at start-up).
     public Action? Registers { get; init; }
+
+    /// The word source of a page that offers no search results.
+    public static IEnumerable<string> NoResults() => Array.Empty<string>();
 }
