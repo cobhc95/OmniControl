@@ -5,12 +5,9 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
-<<<<<<< HEAD
 - Resources > Taskbar gadget: the Position and Font cards sit at the right edge, in line with the groups below, and wrap below (still right-aligned) in a narrow window.
 - Changed: the taskbar gadget's right-click menu is now only Gadget settings…, Network Traffic Control… (while it runs) and Hide gadget; Layout, Show, Position and Font stay on the Resources page's Taskbar gadget tab.
-=======
 - Pages open faster: every page builds its first screen of cards at once and the rest just after, between frames; the Mouse and Trackpad page reads Windows' pointer settings, and App settings "Start with Windows", off the UI thread (the pointer settings once instead of three times at the first opening).
->>>>>>> worktree-agent-aa9b0d1d1feeec2a8
 - Free memory after closing now also hands the freed memory back to Windows, so Task Manager shows the lower figure.
 - Actions and Hotkeys window (and every action picker): a "Presets" section above Recent lists every preset action under "<page> · <group>"; its right pane offers "Show in Presets Manager".
 - Every preset group has "Next" and "Previous" actions (one row "<group> presets: Next · Previous"), stepping through its presets in order and wrapping.
