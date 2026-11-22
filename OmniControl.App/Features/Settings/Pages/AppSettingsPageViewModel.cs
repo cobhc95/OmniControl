@@ -136,7 +136,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
             Extra = new[] { new CardAction("Import...", () => _ = backup.ImportAsync()), new CardAction("Wipe all...", () => _ = backup.WipeAsync(), danger: true) },
         };
 
-        _importFromPc = new MenuChoiceItem(ImportFromPcCard, () => "Choose a PC", () => ImportPcRows(backup));
+        _importFromPc = new MenuChoiceItem(ImportFromPcCard, () => "Choose a PC", () => ImportPcRows(backup)) { SearchesRows = false };
 
         _addFolder = new FileItem(AddFolderCard, FileKind.OfFolder("Choose a folder with plug-ins"), AddFolder);
         _scan = new ButtonItem(ScanCard, "Scan now", StartScan);

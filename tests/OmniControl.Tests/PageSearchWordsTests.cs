@@ -22,8 +22,6 @@ public class PageSearchWordsTests
     // Pages that offer no search results at all (FeaturePage.NoResults): found only by their keywords and their actions' categories.
     private static readonly Dictionary<string, string> NoResultsAllowed = new()
     {
-        ["DevicesPageViewModel"] = "its cards come from the devices; the coverage job gives it results",
-        ["OtherPcsPageViewModel"] = "its cards come from the paired PCs; the coverage job gives it results",
     };
 
     private static readonly Type[] AllPages = typeof(PageViewModel).Assembly.GetTypes()
