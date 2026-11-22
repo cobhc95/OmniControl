@@ -51,7 +51,7 @@ public sealed partial class GadgetRowItem : ObservableObject
     private readonly Reading? _reading;
     private readonly Func<Visual, IconRequest, Task<IconPick?>> _chooseIcon;
     private readonly Func<Color> _ink;
-    private bool _loading, _commitPosted;
+    private bool _loading;
 
     /// <param name="readings">THE live list of readings (the disks' included).</param>
     /// <param name="ink">The taskbar's own text colour (the "" colour).</param>
@@ -311,18 +311,11 @@ public sealed partial class GadgetRowItem : ObservableObject
         ShowInk();
     }
 
-    /// Changes the entry at once and commits once a burst of changes is over (clicks through the icon grids, typing, a dragged gap): a
-    /// commit redraws the gadget and the whole tab, so a queue of them would pile up behind each other.
+    /// Changes the entry at once and commits once a burst of changes is over (clicks through the icon grids, typing, a dragged gap).
     private void Set(Action<GadgetReading> change)
     {
         if (_loading) return;
         change(Entry);
-        if (_commitPosted) return;
-        _commitPosted = true;
-        Dispatcher.UIThread.Post(() =>
-        {
-            _commitPosted = false;
-            Guard.Run("Taskbar gadget: a reading's look", _settings.Commit);
-        }, DispatcherPriority.Background);
+        _settings.CommitSoon();
     }
 }

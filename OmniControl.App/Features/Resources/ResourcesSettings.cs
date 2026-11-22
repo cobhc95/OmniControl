@@ -114,4 +114,19 @@ public sealed class ResourcesSettings
         Save();
         Changed?.Invoke();
     }
+
+    private bool _commitPosted;
+
+    /// <see cref="Commit"/> once a burst of changes is over (clicks through the label editor's icons, typing, a dragged colour; UI thread): each
+    /// commit redraws the gadget and the whole tab, so a queue of them would pile up behind each other.
+    public void CommitSoon()
+    {
+        if (_commitPosted) return;
+        _commitPosted = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _commitPosted = false;
+            Guard.Run("Resources: save a change", Commit);
+        }, DispatcherPriority.Background);
+    }
 }
