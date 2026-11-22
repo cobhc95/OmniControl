@@ -7,8 +7,10 @@ namespace OmniControl.App.Shared.Presets;
 /// pickers list it like any other action; its key is saved in hotkeys.json by that id. The action is made when a shortcut is given,
 /// taken away when the shortcut is removed here, renamed with its preset and removed when its preset is deleted (its saved key stays, so
 /// an undone delete brings it back). At start-up every preset with a saved key gets its action again. No UI.
-public sealed class PresetShortcuts : IDisposable
+/// A preset with triggers (<see cref="IPresetSwitch.Keep"/>) keeps its action without a key, so its rule's step can run it.
+public sealed class PresetShortcuts : IPresetSwitch, IDisposable
 {
+    private HashSet<string> _kept = new();
     private const string Prefix = "preset.";
 
     private readonly IActionRegistry _actions;
@@ -54,9 +56,30 @@ public sealed class PresetShortcuts : IDisposable
     {
         var id = ActionId(group.Id, presetId);
         if (_actions.Find(id) is { } action) action.Gesture = string.Empty;
-        Drop(id);
+        if (!_kept.Contains(id)) Drop(id);
         Changed?.Invoke(group.Id);
     }
+
+    public string? InUse(string preset) =>
+        GroupOf(preset) is { } group && group.Provider.Entries.FirstOrDefault(e => e.InUse) is { } entry ? ActionId(group.Id, entry.Id) : null;
+
+    public void Apply(string preset)
+    {
+        if (GroupOf(preset) is { } group) Run(group, preset[ActionId(group.Id, string.Empty).Length..]);
+    }
+
+    public void Keep(IEnumerable<string> presets)
+    {
+        var kept = presets.ToHashSet();
+        if (kept.SetEquals(_kept)) return;
+        _kept = kept;
+        foreach (var id in _mine.Keys.Where(id => !kept.Contains(id) && _actions.Find(id) is { Gesture.Length: 0 }).ToList()) Drop(id);
+        foreach (var group in _groups.All) SyncActions(group);
+    }
+
+    // The longest group prefix wins, so a group whose id starts with another's is never mistaken for it.
+    private PresetGroup? GroupOf(string preset) => _groups.All.Where(g => preset.StartsWith(ActionId(g.Id, string.Empty), StringComparison.Ordinal))
+        .MaxBy(g => g.Id.Length);
 
     private void Watch(PresetGroup group)
     {
@@ -82,7 +105,7 @@ public sealed class PresetShortcuts : IDisposable
     private void SyncActions(PresetGroup group)
     {
         var prefix = ActionId(group.Id, string.Empty);
-        var ids = _actions.SavedWithShortcut(prefix).Concat(_mine.Keys.Where(k => k.StartsWith(prefix, StringComparison.Ordinal))).Distinct().ToList();
+        var ids = _actions.SavedWithShortcut(prefix).Concat(_mine.Keys.Concat(_kept).Where(k => k.StartsWith(prefix, StringComparison.Ordinal))).Distinct().ToList();
         var changed = false;
         foreach (var id in ids)
         {
@@ -96,7 +119,7 @@ public sealed class PresetShortcuts : IDisposable
         if (changed) Changed?.Invoke(group.Id);
     }
 
-    private static string TitleOf(PresetGroup group, PresetEntry entry) => $"{group.Provider.Words.ActionVerb} \"{entry.Name}\"";
+    internal static string TitleOf(PresetGroup group, PresetEntry entry) => $"{group.Provider.Words.ActionVerb} \"{entry.Name}\"";
 
     private HotkeyAction Make(PresetGroup group, PresetEntry entry)
     {

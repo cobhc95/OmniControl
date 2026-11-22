@@ -99,17 +99,48 @@ public static partial class AutomationTriggers
     public static bool FiresOn(string stored, StateChange change)
     {
         var trigger = MouseAction.Parse(stored);
-        if (trigger.Id != StateChanges || trigger.Param != change.Entry.Id) return false;
-        var state = change.Entry;
+        if (trigger.Id != StateChanges || trigger.Param != change.Entry.Id || ConditionOf(change.Entry, trigger.Options) is not (var when, var level, var choice)) return false;
+        return StateTriggerMath.Fires(change.Entry.Kind, change.Before, change.After, when, level, choice);
+    }
+
+    /// True while a state trigger's condition holds now (its state is on, above its value...); never for any other trigger, which is a moment.
+    public static bool HoldsNow(string stored, ITriggerSources sources)
+    {
+        var trigger = MouseAction.Parse(stored);
+        if (trigger.Id != StateChanges || sources.State(trigger.Param) is not { } state || ConditionOf(state, trigger.Options) is not (var when, var level, var choice)) return false;
+        return StateTriggerMath.Holds(state.Kind, sources.Now(state.Id), when, level, choice);
+    }
+
+    /// A state trigger's settings as <see cref="StateTriggerMath"/> takes them; null when the state offers none.
+    private static (string When, double Level, string Choice)? ConditionOf(StateEntry state, OptionValues values)
+    {
         var settings = OptionsOf(state, ChoicesOf(state));
-        if (settings.Count == 0) return false;
-        var values = trigger.Options;
+        if (settings.Count == 0) return null;
         return state.Kind switch
         {
-            StateKind.Level => StateTriggerMath.Fires(state.Kind, change.Before, change.After, values.Text(settings[0]), values.Int(settings[1])),
-            StateKind.Choice => StateTriggerMath.Fires(state.Kind, change.Before, change.After, StateTriggerMath.Becomes, choice: values.Text(settings[0])),
-            _ => StateTriggerMath.Fires(state.Kind, change.Before, change.After, values.Text(settings[0])),
+            StateKind.Level => (values.Text(settings[0]), values.Int(settings[1]), string.Empty),
+            StateKind.Choice => (StateTriggerMath.Becomes, 0, values.Text(settings[0])),
+            _ => (values.Text(settings[0]), 0, string.Empty),
         };
+    }
+
+    /// The states as the preset manager offers them: one section per page.
+    public static IReadOnlyList<PickChoice> StateChoices(ITriggerSources sources) =>
+        sources.States.Select(s => StateChoice(s, sources.Now(s.Id)) with { Category = s.Group, Heading = s.Heading }).ToList();
+
+    /// The actions as every action picker shows them, each stored as "when it runs".
+    public static IReadOnlyList<PickChoice> ActionChoices(IEnumerable<HotkeyAction> actions) =>
+        actions.Select(a => MouseActionCatalog.OmniEntry(a) with { Spec = $"{ActionRuns}:{a.Id}" }).ToList();
+
+    /// A trigger in a chip's few words: "Steam running" (a state turning on), "Volume above 50 %", "Action: Lock PC".
+    public static string ChipOf(string stored, ITriggerSources sources)
+    {
+        var trigger = MouseAction.Parse(stored);
+        if (trigger.Id == ActionRuns) return $"Action: {sources.Action(trigger.Param)?.Title ?? MissingAction}";
+        if (trigger.Id == StateChanges && sources.State(trigger.Param) is { Kind: StateKind.OnOff } state && ConditionOf(state, trigger.Options)?.When == StateTriggerMath.TurnsOn)
+            return state.Name;
+        var phrase = PhraseOf(stored, sources);
+        return phrase.StartsWith("when ", StringComparison.Ordinal) ? phrase[5..] : phrase;
     }
 
     /// True when the stored trigger is "When this action runs" for <paramref name="action"/> (an old id read as its new one).

@@ -1,9 +1,10 @@
-﻿using OmniControl.App.Features.Hotkeys.Actions;
+using OmniControl.App.Features.Hotkeys.Actions;
 using OmniControl.App.Shared.Contracts;
 using OmniControl.App.Features.Hotkeys;
 using OmniControl.App.Features.Input.Rules;
 using OmniControl.App.Shared.Scripts;
 using OmniControl.App.Features.States;
+using OmniControl.App.Shared.Presets;
 using OmniControl.Core.Engine.Mouse;
 
 namespace OmniControl.App.Features.Automation;
@@ -62,14 +63,17 @@ public sealed partial class AutomationService : IActionGate, IDisposable
     /// <param name="states">The master list of states: the "When a state changes" triggers watch it, and the power states are registered in it.</param>
     /// <param name="power">The power journal: a confirmed wake starts the "wakes from sleep" rules, and it says whether this start-up is a new log-in.</param>
     /// <param name="ask">Asks the person at this PC (approving a program step, a custom action or a script).</param>
+    /// <param name="presets">Where the preset manager reads the presets' trigger rules (this service attaches itself) and how a preset is put back.</param>
     public AutomationService(IActionRegistry hotkeys, IActionRunner run, ActionGateSlot gate, IStateRegistry states, Func<string, string, TimeSpan, CancellationToken, Task<bool>> countdown,
-        Func<IEnumerable<string>> remembered, bool startedByWindows, Action<string> report, IPowerEvents power, Func<DialogMessage, Task<bool>> ask)
+        Func<IEnumerable<string>> remembered, bool startedByWindows, Action<string> report, IPowerEvents power, Func<DialogMessage, Task<bool>> ask,
+        PresetTriggersSlot presets)
     {
         _hotkeys = hotkeys;
         _run = run;
         _gate = gate;
         _power = power;
         _states = states;
+        _presets = presets;
         _sources = new Sources(hotkeys, run, states);
         _remembered = remembered;
         _report = report;
@@ -93,6 +97,7 @@ public sealed partial class AutomationService : IActionGate, IDisposable
 
         StartLive();
         StartTriggers(startedByWindows);
+        presets.Attach(this);
     }
 
     // ---- Pausing ----
@@ -449,6 +454,7 @@ public sealed partial class AutomationService : IActionGate, IDisposable
     public void Dispose()
     {
         _gate.Detach(this);
+        _presets.Detach(this);
         StopLive();
         _stopRuns.Cancel();
         _stopRuns.Dispose();

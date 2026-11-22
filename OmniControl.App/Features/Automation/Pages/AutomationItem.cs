@@ -335,19 +335,11 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
         if (slot.IsNew) return;
         switch (slot.Kind)
         {
-            case RuleSlotKind.Trigger when slot.Index > 0: Rule.MoreTriggers.RemoveAt(slot.Index - 1); break;
-            case RuleSlotKind.Trigger: RemoveFirstTrigger(); break;
+            case RuleSlotKind.Trigger: Rule.RemoveTrigger(slot.Index); break;
             case RuleSlotKind.Condition: Rule.RemoveCondition(slot.Index); break;
             default: Rule.RemoveAction(slot.Index); break;
         }
         Save();
-    }
-
-    /// The first trigger goes: the next "or" one takes its place (it is never a hotkey, so the rule's own action is not touched).
-    private void RemoveFirstTrigger()
-    {
-        Rule.Trigger = Rule.MoreTriggers.FirstOrDefault() ?? string.Empty;
-        if (Rule.MoreTriggers.Count > 0) Rule.MoreTriggers.RemoveAt(0);
     }
 
     // ---- The hotkey block ----

@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Presets: every preset row in the Presets window now has trigger chips. "+ Add" offers Hotkey (replaces the shortcut box), State… (any state, by page) and Action… (switches when that action runs); "or" / "and" between chips flips with a click, × removes one. A state switches to the preset while it holds and puts the preset in use before back when it ends. Triggers are ordinary rules, also shown on the Automation page. Rename and Delete are now icon buttons.
+
 - Memory: .NET now keeps a small memory budget on every PC by default (no background garbage-collection thread, memory returned sooner, a smaller allocation budget between collections).
 - Search now covers every page: Automation, Displays, Mouse and Trackpad, Resources, Network traffic control, Volume, Smart Devices and Other PCs find their cards by choices, menus, tooltips and muted lines (device and program names, methods, set-up stages, readings, sensors and adapters, paired PCs and what they may do, effects and Easy goals), the preset manager and App settings find groups and presets by name, and the Actions and hotkeys window finds an action by its settings. Typo search is faster (about 5 ms over every card) and the category filter no longer hides similar results behind the first twenty.
 - Search: matches inside a card's choices, menu items, tooltip and muted line now count (App settings and OSD first), the matching part of a result is highlighted, and a misspelled word shows "No exact matches" with "Similar matches" below instead of nothing.

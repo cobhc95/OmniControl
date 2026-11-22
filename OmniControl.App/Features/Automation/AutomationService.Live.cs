@@ -91,6 +91,7 @@ public sealed partial class AutomationService
         Dispatcher.UIThread.Post(() =>
         {
             _listsChangePending = false;
+            FollowPresetNames();
             TriggersChanged?.Invoke();
             Changed?.Invoke(); // a rule's sentence names states and actions: a rename or a removal shows at once
         }, DispatcherPriority.Background);
@@ -100,25 +101,26 @@ public sealed partial class AutomationService
     {
         if (Paused || SessionOff) return;
         foreach (var rule in Settings.Rules.Where(IsActive).ToList())
-            if (rule.AllTriggers.Any(t => AutomationTriggers.FiresOn(t, action, _sources))) StartFrom(rule, chain);
+            if (FiresWith(rule, t => AutomationTriggers.FiresOn(t, action, _sources))) StartFrom(rule, chain);
     }
 
     private void OnStateChanged(StateChange change)
     {
         if (Paused || SessionOff) return;
+        PutPresetsBack();
         foreach (var rule in Settings.Rules.Where(IsActive).ToList())
-            if (rule.AllTriggers.Any(t => AutomationTriggers.FiresOn(t, change))) StartFrom(rule, change.Chain);
+            if (FiresWith(rule, t => AutomationTriggers.FiresOn(t, change))) StartFromState(rule, change.Chain);
     }
 
-    /// Starts a rule from something another rule may have caused: never from its own chain, and never past the chain limit.
-    private void StartFrom(AutomationRule rule, RunChain? chain)
+    /// Starts a rule from something another rule may have caused: never from its own chain, and never past the chain limit. False when it did not start.
+    private bool StartFrom(AutomationRule rule, RunChain? chain)
     {
         if (!RunChain.MayStart(chain, rule.Id, Timing.AutomationChainMax))
         {
             Log($"rule \"{rule.Name}\" not started: it would start itself again or make a chain of more than {Timing.AutomationChainMax} rules");
-            return;
+            return false;
         }
-        TryStart(rule, RunChain.After(chain, rule.Id));
+        return TryStart(rule, RunChain.After(chain, rule.Id));
     }
 
     private void OnActionsMoved(IReadOnlyDictionary<string, string> moved) =>

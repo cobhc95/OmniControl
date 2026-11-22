@@ -2,6 +2,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
+using OmniControl.App.Features.Hotkeys.Picker;
 using OmniControl.App.Features.Volume.Audio;
 
 namespace OmniControl.App.Shared.Presets.Manager;
@@ -35,6 +36,7 @@ public partial class PresetManagerWindow : Window
             _vm.RenameRequested -= FocusRenameBox;
             _vm.ExportFileRequested -= ExportAsync;
             _vm.ImportFileRequested -= ImportAsync;
+            _vm.TriggerPickRequested -= PickTriggerAsync;
         }
         _vm = DataContext as PresetManagerViewModel;
         if (_vm is null) return;
@@ -42,6 +44,7 @@ public partial class PresetManagerWindow : Window
         _vm.RenameRequested += FocusRenameBox;
         _vm.ExportFileRequested += ExportAsync;
         _vm.ImportFileRequested += ImportAsync;
+        _vm.TriggerPickRequested += PickTriggerAsync;
     }
 
     protected override void OnClosed(EventArgs e)
@@ -122,7 +125,22 @@ public partial class PresetManagerWindow : Window
         if (sender is Control { DataContext: PresetRowViewModel row }) row.CommitRename();
     }
 
-    private void OnMoreClick(object? sender, RoutedEventArgs e)
+    /// The key box of "+ Add" › Hotkey appeared: it takes the keyboard, listening already.
+    private void OnCaptureLoaded(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Control box && box.GetVisualDescendants().OfType<TextBox>().FirstOrDefault() is { } field) field.Focus(NavigationMethod.Directional);
+    }
+
+    private void PickTriggerAsync(PresetCardViewModel card, PresetRowViewModel row, bool state) => Guard.Fire("Presets: pick a trigger", async () =>
+    {
+        if (card.TriggerPicker(state) is not { } picker) return;
+        var chosen = await PickerWindow.ChooseAsync(this, state ? "Choose a state" : "Choose an action", picker);
+        if (chosen is not null) card.AddTrigger(row, chosen.Stored);
+        FocusRow(row);
+    });
+
+    /// A button whose pop-down hangs on the Panel around it ("+ Add", "…").
+    private void OnMenuButtonClick(object? sender, RoutedEventArgs e)
     {
         if (sender is not Control { Parent: Panel holder }) return;
         _menuHolder = holder;

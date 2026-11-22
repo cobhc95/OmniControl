@@ -11,8 +11,9 @@
         WindowStartupLocation="CenterOwner">
     <!-- The one preset manager (docs/mockups/unified-preset-manager.html). Left: the app's sidebar sections with their icons (a section
          without presets dimmed, "none"). Right: the search, the section's name, one card per preset group (Border.groupPanel; the card
-         it was opened at outlined, .target), each preset a row: drag grip, name (renamed in place) with its tags, the shared shortcut box,
-         Apply / Rename / Delete pills and, where offered, a "more" menu (Duplicate, Export). The card's foot: the dashed add button, the
+         it was opened at outlined, .target), each preset a row: drag grip, name (renamed in place) with its tags, its trigger chips (the
+         shortcut, then states and actions joined by "or" / "and", Button.chipx; the dashed "+ Add" opens Hotkey / State… / Action…; the
+         chips wrap inside the row), the Apply pill, where offered a "more" menu (Duplicate, Export), Rename and Delete icon pills. The card's foot: the dashed add button, the
          group's switch, Import. Foot of the window: "Changes apply at once.", a message or the Undo of a delete, Close. Mouse first
          (AGENTS.md rule 5): Tab reaches everything, Esc closes. -->
     <DockPanel>
@@ -70,13 +71,13 @@
                                                 <Grid ColumnSpacing="{StaticResource GapLarge}">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="Auto" SharedSizeGroup="PresetGrip" />
+                                                        <ColumnDefinition Width="Auto" SharedSizeGroup="PresetName" />
                                                         <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" SharedSizeGroup="PresetShortcut" />
                                                         <ColumnDefinition Width="Auto" SharedSizeGroup="PresetActions" />
                                                     </Grid.ColumnDefinitions>
                                                     <PathIcon Classes="grip" Data="{StaticResource GripIcon}" VerticalAlignment="Center" IsVisible="{Binding CanMove}"
                                                               ToolTip.Tip="Drag to move (or Alt+Up / Alt+Down)" />
-                                                    <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}" VerticalAlignment="Center">
+                                                    <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto" ColumnSpacing="{StaticResource Gap}" VerticalAlignment="Center">
                                                         <Panel VerticalAlignment="Center">
                                                             <TextBlock Text="{Binding Name}" IsVisible="{Binding !IsEditing}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
                                                                        ToolTip.Tip="{Binding NameTip}" DoubleTapped="OnNameDoubleTapped" />
@@ -95,12 +96,44 @@
                                                             </ItemsControl>
                                                         </StackPanel>
                                                     </Grid>
-                                                    <hk:HotkeyBox Grid.Column="2" DataContext="{Binding Shortcut}"
-                                                                  ToolTip.Tip="The shortcut that applies this preset from anywhere: double-click, then press the keys; Backspace removes it" />
+                                                    <ItemsControl Grid.Column="2" ItemsSource="{Binding Chips}" VerticalAlignment="Center">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate><WrapPanel ItemSpacing="{StaticResource ChipSpacing}" LineSpacing="{StaticResource ChipSpacing}" /></ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.DataTemplates>
+                                                            <DataTemplate DataType="vm:PresetChip">
+                                                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource ChipSpacing}">
+                                                                    <Button Classes="blockjoin" Tag="scope" Margin="0" Content="{Binding Join}" Command="{Binding Flip}" IsVisible="{Binding HasJoin}"
+                                                                            ToolTip.Tip="Click to switch between or and and" />
+                                                                    <TextBlock Classes="blockword" Margin="0" Text="{Binding Join}" IsVisible="{Binding HasFixedJoin}" />
+                                                                    <Button Classes="chipx" Tag="scope" Command="{Binding Remove}" ToolTip.Tip="{Binding Tip}">
+                                                                        <StackPanel>
+                                                                            <TextBlock Text="{Binding Text}" />
+                                                                            <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+                                                                        </StackPanel>
+                                                                    </Button>
+                                                                </StackPanel>
+                                                            </DataTemplate>
+                                                            <DataTemplate DataType="vm:PresetCaptureChip">
+                                                                <hk:HotkeyBox DataContext="{Binding Shortcut}" Loaded="OnCaptureLoaded"
+                                                                              ToolTip.Tip="Press the keys that switch to this preset; Esc keeps the old ones" />
+                                                            </DataTemplate>
+                                                            <DataTemplate DataType="vm:PresetAddChip">
+                                                                <!-- The pop-down hangs on a Panel, not on the button, so the button's styles do not reach into it -->
+                                                                <Panel>
+                                                                    <FlyoutBase.AttachedFlyout>
+                                                                        <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft">
+                                                                            <c:MenuRowList ItemsSource="{Binding Rows}" Picked="OnMenuRowPicked" />
+                                                                        </c:ListMenuFlyout>
+                                                                    </FlyoutBase.AttachedFlyout>
+                                                                    <Button Classes="blockadd small" Tag="scope" Content="+ Add" Click="OnMenuButtonClick"
+                                                                            ToolTip.Tip="Switch to this preset by a hotkey, while a state holds, or when an action runs" />
+                                                                </Panel>
+                                                            </DataTemplate>
+                                                        </ItemsControl.DataTemplates>
+                                                    </ItemsControl>
                                                     <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="{StaticResource GapSmall}" VerticalAlignment="Center">
                                                         <Button Classes="pill" Tag="scope" Content="{Binding ApplyText}" Command="{Binding ApplyCommand}" IsVisible="{Binding CanApply}" />
-                                                        <Button Classes="pill" Tag="scope" Content="Rename" Command="{Binding BeginRenameCommand}" IsVisible="{Binding CanRename}" />
-                                                        <Button Classes="pill" Tag="scope" Content="{Binding DeleteText}" Command="{Binding DeleteCommand}" IsVisible="{Binding CanDelete}" />
                                                         <!-- The "more" menu hangs on a Panel, not on the pill, so the pill's styles do not reach into it -->
                                                         <Panel IsVisible="{Binding HasMore}">
                                                             <FlyoutBase.AttachedFlyout>
@@ -108,8 +141,14 @@
                                                                     <c:MenuRowList ItemsSource="{Binding MoreRows}" Picked="OnMenuRowPicked" />
                                                                 </c:ListMenuFlyout>
                                                             </FlyoutBase.AttachedFlyout>
-                                                            <Button Classes="pill glyph" Tag="scope" Content="…" Click="OnMoreClick" ToolTip.Tip="Duplicate, export" />
+                                                            <Button Classes="pill glyph" Tag="scope" Content="…" Click="OnMenuButtonClick" ToolTip.Tip="Duplicate, export" />
                                                         </Panel>
+                                                        <Button Classes="pill icon" Tag="scope" Command="{Binding BeginRenameCommand}" IsVisible="{Binding CanRename}" ToolTip.Tip="Rename">
+                                                            <c:IconGlyph LibraryId="pencil" />
+                                                        </Button>
+                                                        <Button Classes="pill icon" Tag="scope" Command="{Binding DeleteCommand}" IsVisible="{Binding CanDelete}" ToolTip.Tip="{Binding DeleteText}">
+                                                            <c:IconGlyph LibraryId="trash" />
+                                                        </Button>
                                                     </StackPanel>
                                                 </Grid>
                                             </DataTemplate>

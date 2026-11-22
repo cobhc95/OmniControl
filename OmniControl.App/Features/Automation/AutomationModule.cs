@@ -1,5 +1,6 @@
 using Avalonia.Controls.Templates;
 using OmniControl.App.Features.Automation.Pages;
+using OmniControl.App.Shared.Presets;
 
 namespace OmniControl.App.Features.Automation;
 
@@ -7,7 +8,8 @@ namespace OmniControl.App.Features.Automation;
 /// feature, "Hotkeys and automation", also has the keyboard hotkeys registered with Windows while it runs (the master list of actions stays).
 /// <param name="rememberedPrograms">The program paths the mixer remembers, offered as programs to choose.</param>
 /// <param name="useKeys">Registers the keyboard hotkeys with Windows (true) or none (<see cref="Hotkeys.HotkeysSwitch.Use"/>).</param>
-public sealed class AutomationModule(Func<IEnumerable<string>> rememberedPrograms, Action<bool> useKeys) : IFeatureModule
+/// <param name="presetTriggers">Where the rules answer the preset manager's trigger chips.</param>
+public sealed class AutomationModule(Func<IEnumerable<string>> rememberedPrograms, Action<bool> useKeys, PresetTriggersSlot presetTriggers) : IFeatureModule
 {
     /// The rules' entry in the master list of hardware watches: the USB devices a "device connected / disconnected" rule follows.
     private const string UsbWatchId = "automation.usb";
@@ -21,7 +23,7 @@ public sealed class AutomationModule(Func<IEnumerable<string>> rememberedProgram
     {
         _context = context;
         var service = _service = new AutomationService(context.Actions, context.Runner, context.ActionGate, context.States, CountdownWindow.ConfirmAsync, rememberedPrograms,
-            StartupRegistration.IsBackgroundStart(Environment.GetCommandLineArgs().Skip(1)), context.Report, context.Power, context.AskAsync);
+            StartupRegistration.IsBackgroundStart(Environment.GetCommandLineArgs().Skip(1)), context.Report, context.Power, context.AskAsync, presetTriggers);
         context.Hardware.Register(new HardwareWatch(UsbWatchId, "USB devices (rules)", HardwareSignal.Device, service.LookAtUsb));
         context.Imports.OnReload(DataStores.Automation, service.ReloadFromDisk);
         context.Shutdown.Add(ShutdownStage.Automation, "automation", service.Dispose);
