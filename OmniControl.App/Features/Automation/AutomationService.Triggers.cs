@@ -72,7 +72,7 @@ public sealed partial class AutomationService
         UpdateWake();
     }
 
-    private static bool IsActive(AutomationRule rule) =>
+    internal static bool IsActive(AutomationRule rule) =>
         rule is { Kind: AutomationKind.Do, On: true, IsComplete: true } && Watched(rule).Any();
 
     /// The triggers the look checks: all but the hotkey, which is the rule's own action.

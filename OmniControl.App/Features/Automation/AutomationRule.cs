@@ -21,6 +21,14 @@ public sealed class AutomationRule
     /// Further triggers of a Do rule: any one of them (or <see cref="Trigger"/>) starts it ("or"). Never a hotkey.
     public List<string> MoreTriggers { get; set; } = new();
 
+    /// How trigger i joins the ones before it ("or" / "and", <see cref="AutomationJoins"/>); parallel to <see cref="AllTriggers"/> (entry 0
+    /// is unused). Missing entries mean "or". "and": the rule starts only while that trigger's state holds too.
+    public List<string> TriggerJoins { get; set; } = new();
+
+    /// The apply action of the preset this rule switches to, made in the preset manager; empty for any other rule. When a state started it
+    /// and its triggers stop holding, the preset in use before comes back.
+    public string Preset { get; set; } = string.Empty;
+
     /// The conditions (<see cref="AutomationConditions"/>), read left to right with <see cref="ConditionJoins"/>.
     public List<string> Conditions { get; set; } = new();
 
@@ -48,6 +56,8 @@ public sealed class AutomationRule
 
     public string JoinBefore(int condition) => condition > 0 && condition < ConditionJoins.Count ? ConditionJoins[condition] : AutomationJoins.And;
 
+    public string TriggerJoinBefore(int trigger) => trigger > 0 && trigger < TriggerJoins.Count ? TriggerJoins[trigger] : AutomationJoins.Or;
+
     public int WaitBefore(int action) => action > 0 && action < StepWaits.Count ? StepWaits[action] : 0;
 
     public void SetJoinBefore(int condition, string join)
@@ -74,6 +84,38 @@ public sealed class AutomationRule
         Pad(ConditionJoins, Conditions.Count, AutomationJoins.And);
         Conditions.RemoveAt(index);
         ConditionJoins.RemoveAt(index);
+    }
+
+    public void SetTriggerJoin(int trigger, string join)
+    {
+        Pad(TriggerJoins, MoreTriggers.Count + 1, AutomationJoins.Or);
+        TriggerJoins[trigger] = join;
+    }
+
+    public void AddTrigger(string stored)
+    {
+        if (Trigger.Length == 0)
+        {
+            Trigger = stored;
+            return;
+        }
+        Pad(TriggerJoins, MoreTriggers.Count + 1, AutomationJoins.Or);
+        MoreTriggers.Add(stored);
+        TriggerJoins.Add(AutomationJoins.Or);
+    }
+
+    /// Trigger i goes with its join; when the first goes, the next takes its place (never a hotkey, so the rule's own action is not touched).
+    public void RemoveTrigger(int index)
+    {
+        Pad(TriggerJoins, MoreTriggers.Count + 1, AutomationJoins.Or);
+        TriggerJoins.RemoveAt(index);
+        if (index > 0)
+        {
+            MoreTriggers.RemoveAt(index - 1);
+            return;
+        }
+        Trigger = MoreTriggers.FirstOrDefault() ?? string.Empty;
+        if (MoreTriggers.Count > 0) MoreTriggers.RemoveAt(0);
     }
 
     public void AddAction(string stored)

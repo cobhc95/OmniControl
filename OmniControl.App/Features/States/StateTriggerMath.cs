@@ -16,6 +16,20 @@ public static class StateTriggerMath
         _ => new[] { Becomes },
     };
 
+    /// True while a reading meets the trigger's condition ("turns on": it is on; "goes above 50": it is above 50); "changes" never holds.
+    public static bool Holds(StateKind kind, StateValue? now, string when, double level = 0, string choice = "") => kind switch
+    {
+        StateKind.OnOff => now?.Number is { } on && (when == TurnsOn ? on != 0 : when == TurnsOff && on == 0),
+        StateKind.Level => now?.Number is { } value && when switch
+        {
+            Above => value > level,
+            Below => value < level,
+            Becomes => Math.Round(value) == Math.Round(level),
+            _ => false,
+        },
+        _ => now?.Text is { } text && text == choice,
+    };
+
     /// <param name="when">One of <see cref="WhensOf"/> for the kind.</param>
     /// <param name="level">The value a level trigger compares with.</param>
     /// <param name="choice">The value a choice trigger waits for.</param>

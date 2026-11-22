@@ -413,7 +413,7 @@ public class PresetManagerTests
         var actions = new FakeActions();
         var groups = new PresetGroups();
         var shortcuts = new PresetShortcuts(actions, groups, _ => { });
-        var service = new PresetManagerService(groups, shortcuts, _ => { });
+        var service = new PresetManagerService(groups, shortcuts, new PresetTriggersSlot(shortcuts), _ => { });
         var displays = new DisplaySettingsStore(null, _ => { });
         groups.Register(new PresetGroup("displays.hardware", "Displays", "Hardware",
             new BookPresets(new MonitorPresetBook(displays, () => Array.Empty<IMonitorPresetTarget>()))));
@@ -425,7 +425,7 @@ public class PresetManagerTests
         var store = PresetStore();
         groups.Register(PresetCatalog.Kinds.Select(k => new PresetGroup(FxKindPresets.GroupId(k), "Volume", k.Name, new FxKindPresets(k, store, _ => null))));
         service.UseSections(Sections);
-        return (groups, shortcuts, new PresetManagerViewModel(groups, shortcuts, Sections), actions);
+        return (groups, shortcuts, new PresetManagerViewModel(groups, shortcuts, new PresetTriggersSlot(shortcuts), Sections), actions);
     }
 
     [Fact]
@@ -539,7 +539,7 @@ public class PresetManagerTests
         var actions = new FakeActions();
         var groups = new PresetGroups();
         using var shortcuts = new PresetShortcuts(actions, groups, _ => { });
-        using var vm = new PresetManagerViewModel(groups, shortcuts, Sections);
+        using var vm = new PresetManagerViewModel(groups, shortcuts, new PresetTriggersSlot(shortcuts), Sections);
         Assert.Null(vm.SelectedSection);
         Assert.All(vm.Sections, s => Assert.False(s.HasPresets));
 

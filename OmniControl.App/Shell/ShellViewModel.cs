@@ -42,6 +42,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     private readonly PresetGroups _presetGroups = new(); // made before the pages, which register their preset groups in it
     private readonly VolumeModule _volume = new(); // reads the effects journal when made, so a left-over run is undone before anything looks at programs
     private readonly PresetShortcuts _presetShortcuts;
+    private readonly PresetTriggersSlot _presetTriggers;
     private readonly PresetManagerService _presetManager;
     private readonly DialogService _dialogs = new();
     private readonly AboutWindowService _about;
@@ -124,7 +125,8 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         // preset's action in _hotkeys when its group arrives), then the one opener of the preset manager. All three come before the
         // modules, which are given the opener and register their groups; the manager's sections are given after the pages.
         _presetShortcuts = new PresetShortcuts(_hotkeys, _presetGroups, Report);
-        _presetManager = new PresetManagerService(_presetGroups, _presetShortcuts, Report);
+        _presetTriggers = new PresetTriggersSlot(_presetShortcuts);
+        _presetManager = new PresetManagerService(_presetGroups, _presetShortcuts, _presetTriggers, Report);
         _hotkeysSwitch = new HotkeysSwitch(_hotkeys, _states, AppSettingsPageViewModel.Name, Report, _settings.Slot(s => s.HotkeysOn, (s, on) => s.HotkeysOn = on));
         _actionsWindow = new ActionsWindowService(_hotkeys, _presetGroups, _presetManager.Open, _dialogs.AskAsync, OpenPage, _iconPicker.ChooseForActionAsync, _hotkeysSwitch, Report);
         PinnedEntries = new[] { new NavLauncher(ActionsWindowService.Title, ActionsWindowService.Icon, () => _actionsWindow.Open()) };
@@ -136,7 +138,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _context = new FeatureContext(_hotkeys, _hotkeys, _states, _hardware, _osd.Osd, _presetGroups, _presetManager.Open, _dialogs.AskAsync, _dialogs.AskTextAsync,
             Report, OpenPage, _apps.Scopes, _apps.Gate, _iconPicker, _actionGate, _power, setId => new SuggestedKeysSwitch(_hotkeys, setId), _settings, _importHooks, _shutdown,
             _features);
-        var automation = new AutomationModule(_volume.RememberedPrograms, _hotkeysSwitch.Use);
+        var automation = new AutomationModule(_volume.RememberedPrograms, _hotkeysSwitch.Use, _presetTriggers);
         var resources = new ResourcesModule(TrafficPageViewModel.PageTitle);
         var traffic = new TrafficModule(resources.Settings);
 

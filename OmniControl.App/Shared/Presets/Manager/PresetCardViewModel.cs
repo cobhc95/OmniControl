@@ -1,3 +1,5 @@
+using OmniControl.App.Features.Hotkeys.Actions;
+using OmniControl.App.Features.Hotkeys.Picker;
 using OmniControl.App.Shared.Presets;
 
 namespace OmniControl.App.Shared.Presets.Manager;
@@ -15,6 +17,9 @@ internal interface IPresetCardHost
     void ExportRequested(PresetCardViewModel card, PresetRowViewModel row);
 
     void ImportRequested(PresetCardViewModel card);
+
+    /// A row's "+ Add" chose State… (<paramref name="state"/>) or Action…: the window opens the picker.
+    void PickTrigger(PresetCardViewModel card, PresetRowViewModel row, bool state);
 }
 
 /// One preset group's card in the preset manager (a <see cref="PresetGroup"/> of the master list): its presets as rows in their order,
@@ -24,16 +29,18 @@ public sealed partial class PresetCardViewModel : ObservableObject, IPresetRowOw
 {
     private readonly PresetGroup _group;
     private readonly PresetShortcuts _shortcuts;
+    private readonly PresetTriggersSlot _triggers;
     private readonly IPresetCardHost _host;
     private string _filter = string.Empty;
 
-    internal PresetCardViewModel(PresetGroup group, PresetShortcuts shortcuts, IPresetCardHost host)
+    internal PresetCardViewModel(PresetGroup group, PresetShortcuts shortcuts, PresetTriggersSlot triggers, IPresetCardHost host)
     {
         // Order: the fields first, then the subscriptions, then the first fill (which reads the provider and the shortcuts).
-        (_group, _shortcuts, _host) = (group, shortcuts, host);
+        (_group, _shortcuts, _triggers, _host) = (group, shortcuts, triggers, host);
         _title = group.Title;
         group.Provider.Changed += Refresh;
         shortcuts.Changed += OnShortcutsChanged;
+        triggers.Changed += Refresh;
         Refresh();
     }
 
@@ -89,20 +96,23 @@ public sealed partial class PresetCardViewModel : ObservableObject, IPresetRowOw
     public void Refresh()
     {
         var entries = Provider.Entries
-            .Select(e => (Entry: e, Shortcut: _shortcuts.ShortcutOf(_group, e.Id)))
-            .Where(x => !IsFiltering || GroupMatches || TextMatch.Any(_filter, x.Entry.Name, x.Shortcut))
+            .Select(e => (Entry: e, Shortcut: _shortcuts.ShortcutOf(_group, e.Id), Triggers: TriggersOf(e.Id)))
+            .Where(x => !IsFiltering || GroupMatches || TextMatch.Any(_filter, x.Triggers.Select(t => t.Text).Prepend(x.Shortcut).Prepend(x.Entry.Name).ToArray()))
             .ToList();
         var kept = Rows.ToDictionary(r => r.Id);
         var rows = entries.Select(x =>
         {
             if (!kept.TryGetValue(x.Entry.Id, out var row))
-                return new PresetRowViewModel(x.Entry, x.Shortcut, Provider.Words.ApplyText, Provider.CanDuplicate, Provider.CanExchangeFiles, this);
-            row.Update(x.Entry, x.Shortcut);
+                return new PresetRowViewModel(x.Entry, x.Shortcut, x.Triggers, _triggers.Current is not null, Provider.Words.ApplyText, Provider.CanDuplicate, Provider.CanExchangeFiles, this);
+            row.Update(x.Entry, x.Shortcut, x.Triggers, _triggers.Current is not null);
             return row;
         }).ToList();
         ListDiff.Apply(Rows, rows, r => r);
         foreach (var name in new[] { nameof(IsEmpty), nameof(IsFiltering), nameof(AddTip), nameof(CanAdd), nameof(SwitchOn) }) OnPropertyChanged(name);
     }
+
+    private IReadOnlyList<PresetTrigger> TriggersOf(string presetId) =>
+        _triggers.Current?.Of(PresetShortcuts.ActionId(_group.Id, presetId)) ?? Array.Empty<PresetTrigger>();
 
     private void OnShortcutsChanged(string groupId)
     {
@@ -194,9 +204,32 @@ public sealed partial class PresetCardViewModel : ObservableObject, IPresetRowOw
         row.ShowShortcut(_shortcuts.ShortcutOf(_group, row.Id)); // a refused key: the box shows the shortcut it really has
     }
 
+    // ---------------------------------------------------------------- triggers
+
+    /// The picker of a state (live: the master list of states) or of an action for a row; null while automation is off.
+    public PickerModel? TriggerPicker(bool state)
+    {
+        if (_triggers.Current is not { } triggers) return null;
+        Func<IReadOnlyList<PickChoice>> read = state ? triggers.StateChoices : triggers.ActionChoices;
+        var model = new PickerModel(PickChoice.Group(read()), null, new Dictionary<string, string>()) { Noun = state ? "state" : PickerModel.ActionNoun };
+        model.Follow(new LiveList(read, h => _triggers.Changed += h, h => _triggers.Changed -= h));
+        return model;
+    }
+
+    /// A picked trigger (as the picker stores it) is added to the row's preset.
+    public void AddTrigger(PresetRowViewModel row, string stored) =>
+        _triggers.Current?.Add(PresetShortcuts.ActionId(_group.Id, row.Id), PresetShortcuts.TitleOf(_group, row.Entry), stored);
+
+    void IPresetRowOwner.PickTrigger(PresetRowViewModel row, bool state) => _host.PickTrigger(this, row, state);
+
+    void IPresetRowOwner.RemoveTrigger(PresetRowViewModel row, int index) => _triggers.Current?.Remove(PresetShortcuts.ActionId(_group.Id, row.Id), index);
+
+    void IPresetRowOwner.FlipJoin(PresetRowViewModel row, int index) => _triggers.Current?.FlipJoin(PresetShortcuts.ActionId(_group.Id, row.Id), index);
+
     public void Dispose()
     {
         _group.Provider.Changed -= Refresh;
         _shortcuts.Changed -= OnShortcutsChanged;
+        _triggers.Changed -= Refresh;
     }
 }

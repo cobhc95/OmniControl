@@ -12,18 +12,19 @@ public sealed partial class PresetManagerViewModel : ObservableObject, IPresetCa
 
     private readonly PresetGroups _groups;
     private readonly PresetShortcuts _shortcuts;
+    private readonly PresetTriggersSlot _triggers;
     private readonly IReadOnlyList<PresetSection> _sections;
     private readonly List<PresetCardViewModel> _allCards = new();
     private DispatcherTimer? _undoTimer;
     private Action? _undo;
 
     /// <param name="sections">The app's sidebar pages, in their order.</param>
-    public PresetManagerViewModel(PresetGroups groups, PresetShortcuts shortcuts, IReadOnlyList<PresetSection> sections)
+    public PresetManagerViewModel(PresetGroups groups, PresetShortcuts shortcuts, PresetTriggersSlot triggers, IReadOnlyList<PresetSection> sections)
     {
         // Order: the fields, then one card per group already registered, then the sections (which count the groups), then the
         // subscription for groups registered later, then the first section shown.
-        (_groups, _shortcuts, _sections) = (groups, shortcuts, sections);
-        foreach (var group in groups.All) _allCards.Add(new PresetCardViewModel(group, shortcuts, this));
+        (_groups, _shortcuts, _triggers, _sections) = (groups, shortcuts, triggers, sections);
+        foreach (var group in groups.All) _allCards.Add(new PresetCardViewModel(group, shortcuts, triggers, this));
         BuildSections();
         groups.Registered += OnRegistered;
         groups.Removed += OnRemoved;
@@ -62,6 +63,9 @@ public sealed partial class PresetManagerViewModel : ObservableObject, IPresetCa
 
     /// The window asks which files to read into a card.
     public event Action<PresetCardViewModel>? ImportFileRequested;
+
+    /// The window opens the picker of a trigger for a row (<see cref="PresetCardViewModel.TriggerPicker"/>).
+    public event Action<PresetCardViewModel, PresetRowViewModel, bool>? TriggerPickRequested;
 
     /// Shows a section and outlines one card in it: the group's own section when <paramref name="groupId"/> is known, else
     /// <paramref name="section"/>, else (or when that section has no presets) the first section that has some. The search is cleared.
@@ -112,7 +116,7 @@ public sealed partial class PresetManagerViewModel : ObservableObject, IPresetCa
 
     private void OnRegistered(PresetGroup group)
     {
-        _allCards.Add(new PresetCardViewModel(group, _shortcuts, this));
+        _allCards.Add(new PresetCardViewModel(group, _shortcuts, _triggers, this));
         BuildSections();
         ShowCards();
     }
@@ -151,6 +155,8 @@ public sealed partial class PresetManagerViewModel : ObservableObject, IPresetCa
     void IPresetCardHost.ExportRequested(PresetCardViewModel card, PresetRowViewModel row) => ExportFileRequested?.Invoke(card, row);
 
     void IPresetCardHost.ImportRequested(PresetCardViewModel card) => ImportFileRequested?.Invoke(card);
+
+    void IPresetCardHost.PickTrigger(PresetCardViewModel card, PresetRowViewModel row, bool state) => TriggerPickRequested?.Invoke(card, row, state);
 
     /// A file problem the window met (reading or writing a preset file).
     public void ReportFile(string text) => Message = text;
