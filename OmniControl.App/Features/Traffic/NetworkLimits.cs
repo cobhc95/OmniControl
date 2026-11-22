@@ -1,7 +1,6 @@
 using StateTarget = OmniControl.App.Features.Hotkeys.StateTarget;
 using OmniControl.App.Features.Hotkeys;
 using OmniControl.Core.Engine.Resources;
-using OmniControl.App.Features.Resources;
 using OmniControl.App.Shared.Contracts;
 
 namespace OmniControl.App.Features.Traffic;
@@ -29,7 +28,7 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
     /// The tooltip of every Install… of the network service.
     public const string InstallServiceTip = "Installs OmniControl's network service (Windows asks once), so per-app limits work without running OmniControl as administrator.";
 
-    private readonly ResourcesSettings _settings;
+    private readonly TrafficSettings _settings;
     private readonly Action<string> _report;
     private readonly Func<string, string?> _pathOf;
     private readonly INetworkWatch _networks;
@@ -59,7 +58,7 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
     /// <param name="pathOf">Where a program the poller saw lives (the firewall and the service name a program by its path).</param>
     /// <param name="networks">Which network each adapter is on (read only while an adapter or network has rules of its own).</param>
     /// <param name="rules">The automation rules that put a place's own rules in effect.</param>
-    public NetworkLimits(ResourcesSettings settings, Action<string> report, Func<string, string?> pathOf, INetworkWatch networks, FeatureRulesSlot rules)
+    public NetworkLimits(TrafficSettings settings, Action<string> report, Func<string, string?> pathOf, INetworkWatch networks, FeatureRulesSlot rules)
     {
         (_settings, _report, _pathOf, _networks, _rules) = (settings, report, pathOf, networks, rules);
         rules.Ended += OnRuleEnded;
@@ -169,9 +168,9 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
     /// The page came on screen: where the work runs and what the service holds are looked at again (the service may have been removed).
     public void Recheck() => _sync.Request();
 
-    public AppNetRule? Rule(NetScope scope, string appId) => ScopedRules.RulesOf(_settings.Setup, scope).FirstOrDefault(r => r.Id == appId);
+    public AppNetRule? Rule(NetScope scope, string appId) => ScopedRules.RulesOf(_settings, scope).FirstOrDefault(r => r.Id == appId);
 
-    public bool HasOwn(NetScope scope) => ScopedRules.Own(_settings.Setup, scope) is not null;
+    public bool HasOwn(NetScope scope) => ScopedRules.Own(_settings, scope) is not null;
 
     /// Changes programs' rules at a place and saves once; Windows follows. A rule that asks nothing and keeps no value is forgotten.
     public void Set(NetScope scope, IEnumerable<string> appIds, Action<AppNetRule> change)
@@ -191,28 +190,27 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
     /// The place gives up its own rules and uses its parent's again (an adapter's networks keep theirs).
     public void UseParent(NetScope scope)
     {
-        if (ScopedRules.Own(_settings.Setup, scope) is not { } own) return;
-        _settings.Setup.Scoped.Remove(own);
+        if (ScopedRules.Own(_settings, scope) is not { } own) return;
+        _settings.Scoped.Remove(own);
         _settings.Commit();
     }
 
     /// The rules an edit at a place changes: its own, made at its first edit as a copy of the rules it used until then.
     private List<AppNetRule> OwnRules(NetScope scope)
     {
-        var setup = _settings.Setup;
-        if (scope.IsAll) return setup.Apps;
-        if (ScopedRules.Own(setup, scope) is { } own) return own.Apps;
+        if (scope.IsAll) return _settings.Apps;
+        if (ScopedRules.Own(_settings, scope) is { } own) return own.Apps;
         var now = _networks.Now;
-        var known = setup.Scoped.FirstOrDefault(s => s.Adapter == scope.Adapter);
+        var known = _settings.Scoped.FirstOrDefault(s => s.Adapter == scope.Adapter);
         var made = new AppNetScope
         {
             Adapter = scope.Adapter,
             AdapterName = now.Adapters.FirstOrDefault(a => a.Id == scope.Adapter)?.Name ?? known?.AdapterName ?? scope.Adapter,
             Network = scope.Network,
             NetworkName = scope.IsNetwork ? now.Networks.FirstOrDefault(n => n.Id == scope.Network)?.Name ?? scope.Network : string.Empty,
-            Apps = ScopedRules.RulesOf(setup, scope).Select(r => r.Copy()).ToList(),
+            Apps = ScopedRules.RulesOf(_settings, scope).Select(r => r.Copy()).ToList(),
         };
-        setup.Scoped.Add(made);
+        _settings.Scoped.Add(made);
         return made.Apps;
     }
 
@@ -224,7 +222,7 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
     /// The watch runs only while an adapter or network has rules of its own (UI thread).
     private void FollowNetworks()
     {
-        var needed = _settings.Setup.Scoped.Count > 0;
+        var needed = _settings.Scoped.Count > 0;
         if (needed == (_networksNeeded is not null)) return;
         if (needed) _networksNeeded = _networks.Need();
         else
@@ -251,7 +249,7 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
 
     private IReadOnlyList<NetworkRule> Wanted()
     {
-        var (rules, inexact) = ScopedRules.Wanted(_settings.Setup, _networks.Now, _inEffect);
+        var (rules, inexact) = ScopedRules.Wanted(_settings, _networks.Now, _inEffect);
         _uploadInexact = inexact;
         return rules;
     }
@@ -373,7 +371,7 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
     private void FollowPlaces()
     {
         if (_registry is not { } registry) return;
-        var places = _settings.Setup.Scoped.ToDictionary(s => UseId(ScopedRules.Of(s)));
+        var places = _settings.Scoped.ToDictionary(s => UseId(ScopedRules.Of(s)));
         foreach (var gone in _uses.Keys.Where(id => !places.ContainsKey(id)).ToList())
         {
             registry.Unregister(gone);
@@ -396,11 +394,11 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
     private void MakeRules()
     {
         if (_rules.Current is not { } rules) return;
-        foreach (var scope in _settings.Setup.Scoped.ToList())
+        foreach (var scope in _settings.Scoped.ToList())
         {
             var id = UseId(ScopedRules.Of(scope));
-            if (_settings.TrafficRules.Contains(id) || !_uses.ContainsKey(id)) continue;
-            _settings.TrafficRules.Add(id);
+            if (_settings.Rules.Contains(id) || !_uses.ContainsKey(id)) continue;
+            _settings.Rules.Add(id);
             _settings.Save();
             rules.Ensure(id, $"{NameOf(scope)} limits", true,
                 new FeatureTrigger.While(scope.Network.Length > 0 ? NetworkStates.ConnectedId(scope.Network) : NetworkStates.AdapterId(scope.Adapter)));

@@ -1,4 +1,3 @@
-using OmniControl.App.Features.Resources;
 using OmniControl.App.Features.Traffic;
 using OmniControl.App.Features.Traffic.Pages;
 using OmniControl.Core.Engine.Resources;
@@ -19,13 +18,14 @@ internal static partial class Shots
     private static void NetworkTraffic(Rig rig, Camera camera, string name, params AppNetRule[] rules)
     {
         Use(ViewTemplate.For<TrafficPageViewModel, TrafficPage>(), ViewTemplate.For<AppNetItem, AppNetRow>(), ViewTemplate.For<AllAppsItem, AllAppsRow>());
-        var settings = ResourcesSettings.Load();
+        var settings = TrafficSettings.Load();
+        var readEvery = Timing.ResourcesReadEvery;
         var limits = new SampleLimits(rules);
         var monitor = new TrafficMonitor(() => new SampleTraffic());
         var page = new TrafficPageViewModel(monitor, settings, limits, new SampleNetworks(),
-            new ProviderChoice($"{TrafficPageViewModel.PageTitle} presets", new TrafficPresets(settings), () => { }, withCustom: true), Rig.Report);
+            new ProviderChoice($"{TrafficPageViewModel.PageTitle} presets", new TrafficPresets(settings), () => { }, withCustom: true), () => readEvery, Rig.Report);
         page.OnOnScreenChanged(true); // the reader starts its session, then reads one interval later
-        Camera.Pump((int)TimeSpan.FromSeconds(settings.Setup.ReadEverySeconds * 1.5).TotalMilliseconds);
+        Camera.Pump((int)(readEvery * 1.5).TotalMilliseconds);
         camera.Page(page, name);
         page.Dispose();
         monitor.Dispose();

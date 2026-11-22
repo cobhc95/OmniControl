@@ -1,26 +1,26 @@
 using Avalonia.Controls.Templates;
 using OmniControl.App.Features.Hotkeys;
-using OmniControl.App.Features.Resources;
 using OmniControl.App.Features.Traffic.Pages;
 using OmniControl.App.Shared.Presets;
 
 namespace OmniControl.App.Features.Traffic;
 
 /// Network Traffic Control: the programs' limits and blocks (<see cref="NetworkLimits"/>), their actions, the adapters' watch, THE network
-/// watch (<see cref="Networks"/>), the reader of the programs' traffic, its presets and the page. Its rules live in resources.json, so it is
-/// given the Resources module's one settings instance.
+/// watch (<see cref="Networks"/>), the reader of the programs' traffic, its presets and the page; its settings are traffic.json.
 public sealed class TrafficModule : IFeatureModule
 {
     private const string Title = TrafficPageViewModel.PageTitle;
 
-    private readonly ResourcesSettings _settings;
+    private readonly TrafficSettings _settings = TrafficSettings.Load();
+    private readonly Func<TimeSpan> _readEvery;
     private FeatureContext? _context;
     private NetworkLimits? _limits;
     private TrafficMonitor? _monitor;
     private TrafficPresets? _presets;
     private int _programs;
 
-    public TrafficModule(ResourcesSettings settings) => _settings = settings;
+    /// <param name="readEvery">How often the programs' traffic is read while shown (the Resources page's "Read every").</param>
+    public TrafficModule(Func<TimeSpan> readEvery) => _readEvery = readEvery;
 
     public IReadOnlyList<string> Features { get; } = new[] { FeatureList.Traffic };
 
@@ -36,7 +36,7 @@ public sealed class TrafficModule : IFeatureModule
         var limits = _limits = new NetworkLimits(_settings, context.Report, id => monitor.Seen.GetValueOrDefault(id), networks, context.Rules);
         _presets = new TrafficPresets(_settings);
         context.Presets.Register(new PresetGroup(TrafficPresets.GroupId, Title, Title, _presets));
-        limits.RegisterActions(context.Actions, Title, () => monitor.Seen.Keys.Concat(_settings.Setup.Apps.Select(r => r.Id)).Distinct().Select(id => new HotkeyDevice(id, id)).ToList());
+        limits.RegisterActions(context.Actions, Title, () => monitor.Seen.Keys.Concat(_settings.Apps.Select(r => r.Id)).Distinct().Select(id => new HotkeyDevice(id, id)).ToList());
         context.Hardware.Register(new HardwareWatch("resources.download-adapters", "Network adapters (download limits)",
             HardwareSignal.Device | HardwareSignal.Resume, limits.RefreshAdapters));
         // A program seen for the first time joins the actions' list.
@@ -46,7 +46,7 @@ public sealed class TrafficModule : IFeatureModule
             _programs = monitor.Seen.Count;
             limits.RefreshPrograms();
         };
-        context.Imports.OnReload(DataStores.Resources, _settings.Reload);
+        context.Imports.OnReload(DataStores.Traffic, _settings.Reload);
         // Each on its own at the stage that puts Windows back: download shaping ends, the rules leave Windows, then the traffic session stops.
         context.Shutdown.Add(ShutdownStage.Resources, "download limits", limits.StopDownloads);
         context.Shutdown.Add(ShutdownStage.Resources, "network limits", limits.Dispose);
@@ -57,7 +57,7 @@ public sealed class TrafficModule : IFeatureModule
     public IReadOnlyList<FeaturePage> Pages => new[]
     {
         new FeaturePage(TrafficPageViewModel.Info, () => new TrafficPageViewModel(_monitor!, _settings, _limits!, Networks!,
-            new ProviderChoice($"{Title} presets", _presets!, () => _context!.OpenPresetManager(Title, TrafficPresets.GroupId), withCustom: true), _context!.Report),
+            new ProviderChoice($"{Title} presets", _presets!, () => _context!.OpenPresetManager(Title, TrafficPresets.GroupId), withCustom: true), _readEvery, _context!.Report),
             () => TrafficPageViewModel.Words(_settings, _limits)),
     };
 

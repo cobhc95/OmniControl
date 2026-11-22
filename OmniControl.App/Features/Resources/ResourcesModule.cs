@@ -24,8 +24,7 @@ public interface IResourcesWindows
     string TrafficTitle { get; }
 }
 
-/// Resources: the poller and its states, the taskbar gadget with its weather and layouts, presets, the Open action and the page. Its settings
-/// file (resources.json) holds Network Traffic Control's rules too, so the shell gives the same <see cref="Settings"/> to that module.
+/// Resources: the poller and its states, the taskbar gadget with its weather and layouts, presets, the Open action and the page.
 public sealed class ResourcesModule : IFeatureModule, IResourcesWindows
 {
     public const string OpenActionId = "resources.open";
@@ -42,8 +41,10 @@ public sealed class ResourcesModule : IFeatureModule, IResourcesWindows
     /// <param name="trafficPage">The Network Traffic Control page's title (the gadget's menu opens it).</param>
     public ResourcesModule(string trafficPage) => _trafficPage = trafficPage;
 
-    /// resources.json, loaded once for both modules that keep their settings in it.
-    public ResourcesSettings Settings { get; } = ResourcesSettings.Load();
+    private ResourcesSettings Settings { get; } = ResourcesSettings.Load();
+
+    /// How often the page reads (its "Read every"), which Network Traffic Control's reader follows too.
+    public TimeSpan ReadEvery => TimeSpan.FromSeconds(Settings.Setup.ReadEverySeconds);
 
     public IReadOnlyList<string> Features { get; } = new[] { FeatureList.Resources };
 

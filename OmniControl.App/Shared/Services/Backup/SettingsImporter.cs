@@ -52,6 +52,7 @@ public sealed class SettingsImporter
     /// Applies one area from the files another PC sent (by file name).
     public AreaResult Apply(ImportArea area, IReadOnlyDictionary<string, string> incoming)
     {
+        incoming = StoreMoves.Upgrade(incoming); // an older PC's file keeps what moved out of it, so it is taken by its new area only
         var parts = new List<(DataStore Store, string Text)>();
         foreach (var store in area.Stores)
         {

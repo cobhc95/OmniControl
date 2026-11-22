@@ -8,18 +8,19 @@ namespace OmniControl.App.Features.Traffic.Pages;
 public sealed partial class TrafficPageViewModel : PageViewModel, IDisposable
 {
     private readonly TrafficMonitor _monitor;
-    private readonly ResourcesSettings _settings;
+    private readonly TrafficSettings _settings;
     private readonly INetworkLimits _limits;
     private readonly INetworkWatch _networks;
     private readonly ProviderChoice _presets;
     private IDisposable? _networksNeeded;
     private readonly ProcessIcons _icons = new();
     private readonly Action<string> _report;
+    private readonly Func<TimeSpan> _readEvery;
     private bool _onScreen;
     private int _seenShown = -1;
     private NetworkLimits.DownloadState? _downloadShown;
 
-    public const string PageTitle = "Network Traffic Control";
+    public const string PageTitle = PageTitles.Traffic;
 
     /// The sidebar's filled drawing of the icon library's "arrows-up-down" (traffic up and down).
     public static readonly PageInfo Info = new(PageTitle, "M7,3 L12,8 H8.5 V21 H5.5 V8 H2 Z M17,21 L12,16 H15.5 V3 H18.5 V16 H22 Z",
@@ -63,10 +64,10 @@ public sealed partial class TrafficPageViewModel : PageViewModel, IDisposable
     public IRelayCommand InstallServiceCommand { get; }
     public string InstallServiceTip => NetworkLimits.InstallServiceTip;
 
-    internal TrafficPageViewModel(TrafficMonitor monitor, ResourcesSettings settings, INetworkLimits limits, INetworkWatch networks, ProviderChoice presets,
-        Action<string> report) : base(Info)
+    internal TrafficPageViewModel(TrafficMonitor monitor, TrafficSettings settings, INetworkLimits limits, INetworkWatch networks, ProviderChoice presets,
+        Func<TimeSpan> readEvery, Action<string> report) : base(Info)
     {
-        (_monitor, _settings, _limits, _networks, _presets, _report) = (monitor, settings, limits, networks, presets, report);
+        (_monitor, _settings, _limits, _networks, _presets, _readEvery, _report) = (monitor, settings, limits, networks, presets, readEvery, report);
         AllApps = new AllAppsItem(limits, () => _scope);
         AdapterChoice = MakeAdapterChoice();
         UseParentCommand = new RelayCommand(() => limits.UseParent(_scope));
@@ -122,7 +123,7 @@ public sealed partial class TrafficPageViewModel : PageViewModel, IDisposable
 
     /// The programs' traffic is read at the Resources page's interval while this page is on screen with the group open.
     private void Need() =>
-        _monitor.Need(_onScreen && Apps.IsExpanded && !Unavailable ? TimeSpan.FromSeconds(_settings.Setup.ReadEverySeconds) : null);
+        _monitor.Need(_onScreen && Apps.IsExpanded && !Unavailable ? _readEvery() : null);
 
     private void OnUpdated()
     {
@@ -145,9 +146,9 @@ public sealed partial class TrafficPageViewModel : PageViewModel, IDisposable
     private void ListRows()
     {
         _seenShown = _monitor.Seen.Count;
-        var pins = _settings.Setup.Pinned.ToLookup(ProgramIdentity.Normalize);
-        var ids = pins.Select(p => p.Key).Concat(_monitor.Seen.Keys).Concat(_settings.Setup.Apps.Select(r => r.Id))
-            .Concat(_settings.Setup.Scoped.SelectMany(s => s.Apps.Select(r => r.Id))).Distinct().ToList();
+        var pins = _settings.Pinned.ToLookup(ProgramIdentity.Normalize);
+        var ids = pins.Select(p => p.Key).Concat(_monitor.Seen.Keys).Concat(_settings.Apps.Select(r => r.Id))
+            .Concat(_settings.Scoped.SelectMany(s => s.Apps.Select(r => r.Id))).Distinct().ToList();
         var known = AppRows.ToDictionary(r => r.Id);
         ListDiff.Apply(AppRows, ids.Select(id => known.GetValueOrDefault(id) ?? new AppNetItem(id, _limits, () => _scope, _icons, TogglePin, _report)).ToList(), r => r.Id);
         ListDiff.Apply(Rows, AppRows.Prepend<object>(AllApps).ToList(), r => r);
@@ -168,7 +169,7 @@ public sealed partial class TrafficPageViewModel : PageViewModel, IDisposable
     /// Pins a row to the top by its program's path (its identity while the path is not known), or unpins it.
     private void TogglePin(AppNetItem row)
     {
-        var pins = _settings.Setup.Pinned;
+        var pins = _settings.Pinned;
         if (pins.RemoveAll(p => ProgramIdentity.Normalize(p) == row.Id) == 0) pins.Add(row.Path.Length > 0 ? row.Path : row.Id);
         _settings.Commit();
     }

@@ -17,7 +17,7 @@ public sealed class ResourcePresets : ListPresetProvider<ResourcesPreset>
     }
 
     public override PresetWords Words { get; } = new("Apply", "Apply Resources preset", "+ Save the current setup as a preset",
-        "Keeps the read interval, the taskbar gadget and every program's network limits, blocks and pins");
+        "Keeps the read interval, the readings' choices and the taskbar gadget");
 
     protected override IReadOnlyList<PresetEntry> MakeEntries() => List.Items.Select(p => new PresetEntry(p.Id, p.Name) { InUse = p.Setup.Same(_settings.Setup) })
         .Prepend(new PresetEntry(DefaultId, DefaultName) { InUse = new ResourcesSetup().Same(_settings.Setup), BuiltIn = true, CanRename = false, CanDelete = false, CanMove = false })

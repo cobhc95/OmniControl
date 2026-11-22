@@ -37,8 +37,9 @@ public static class ImportGroups
 /// <param name="MachineSpecific">Belongs to this PC alone (its pairing list, the key its keyboard sends, paths of plug-ins): never sent to another PC.</param>
 /// <param name="NotImportedInside">Properties an import from another PC or a restore from a backup takes out of every object inside the file
 /// (an effect's plug-in or impulse response file and its saved state: a file must never make this PC load a library or feed a plug-in its data).</param>
+/// <param name="MovedFrom">What an older version kept of this store in another store's file (<see cref="Backup.StoreMoves"/>).</param>
 public sealed record DataStore(string FileName, string Area, StoreKind Kind, bool Mergeable = false, string[]? NotImported = null,
-    ImportPlace? Import = null, bool MachineSpecific = false, string[]? NotImportedInside = null)
+    ImportPlace? Import = null, bool MachineSpecific = false, string[]? NotImportedInside = null, Backup.StoreMove? MovedFrom = null)
 {
     public bool IsFamily => FileName.Contains('*');
 
@@ -58,7 +59,8 @@ public static class DataStores
         public static readonly ImportPlace Mouse = new(ImportGroups.Devices, PageTitles.Mouse, "buttons, layers");
         public static readonly ImportPlace Gestures = new(ImportGroups.Workflow, "Gestures");
         public static readonly ImportPlace Automation = new(ImportGroups.Workflow, PageTitles.Automation, "rules, custom actions, scripts, app actions");
-        public static readonly ImportPlace Resources = new(ImportGroups.Workflow, PageTitles.Resources, "taskbar gadget, Network Traffic Control");
+        public static readonly ImportPlace Resources = new(ImportGroups.Workflow, PageTitles.Resources, "readings, taskbar gadget, presets");
+        public static readonly ImportPlace Traffic = new(ImportGroups.Workflow, PageTitles.Traffic, "limits, blocks, pins, presets");
         public static readonly ImportPlace Shortcuts = new(ImportGroups.Keys, PageTitles.ActionsAndHotkeys, "shortcuts, sets, favourites");
         public static readonly ImportPlace Osd = new(ImportGroups.LookAndApp, PageTitles.Osd, "style, places");
         public static readonly ImportPlace IconsAndLists = new(ImportGroups.LookAndApp, "Icons and app lists");
@@ -99,7 +101,10 @@ public static class DataStores
     public static readonly DataStore Confirmations = new("confirmations.json", "Confirmations you chose not to be asked again", StoreKind.Saved, Import: Places.Confirmations);
     public static readonly DataStore OtherPcs = new("other-pcs.json", "Other PCs (paired PCs and what each last shared; the pairing keys are kept by Windows, never in a backup)", StoreKind.Saved, Import: Places.OtherPcs, MachineSpecific: true);
     public static readonly DataStore Icons = new("icons.json", "Your icons and chosen icons", StoreKind.Saved, Import: Places.IconsAndLists);
-    public static readonly DataStore Resources = new("resources.json", "Resources (taskbar gadget, network limits, presets)", StoreKind.Saved, Import: Places.Resources);
+    public static readonly DataStore Resources = new("resources.json", "Resources (readings, taskbar gadget, presets)", StoreKind.Saved, Import: Places.Resources);
+    public static readonly DataStore Traffic = new("traffic.json", "Network Traffic Control (limits, blocks, pins, presets)", StoreKind.Saved, Import: Places.Traffic,
+        MovedFrom: new(Resources.FileName, new[] { ("Apps", "Setup.Apps"), ("Scoped", "Setup.Scoped"), ("Pinned", "Setup.Pinned"), ("PacketFilterOn", "PacketFilterOn"),
+            ("Presets", "TrafficPresets"), ("Rules", "TrafficRules") }, new[] { "Presets.*.Setup.Apps", "Presets.*.Setup.Scoped", "Presets.*.Setup.Pinned" }));
     public static readonly DataStore MicMuteKey = new("mic-mute-key.json", "Microphone mute key (the key your keyboard sends)", StoreKind.Saved, Import: Places.MicMuteKey, MachineSpecific: true);
 
     public static readonly DataStore MixerBeforeRestore = new("mixer-before-restore.json", "Mixer before restore", StoreKind.Undo);
@@ -120,7 +125,7 @@ public static class DataStores
     public static IReadOnlyList<DataStore> All { get; } = new[]
     {
         App, Mixer, EffectPresets, VolumePresets, Plugins, Automation, GestureRules, Gestures, Hotkeys, HotkeySets, Mouse, Displays, Osd,
-        AppLists, AppActions, PowerPlans, RecentActions, FavouriteActions, Devices, Screenshots, Tray, Icons, Resources, MicMuteKey, OtherPcs, Confirmations, MixerBeforeRestore, BeforeRestore, EngineJournal, SoftwareDisplay, PointerOriginal,
+        AppLists, AppActions, PowerPlans, RecentActions, FavouriteActions, Devices, Screenshots, Tray, Icons, Resources, Traffic, MicMuteKey, OtherPcs, Confirmations, MixerBeforeRestore, BeforeRestore, EngineJournal, SoftwareDisplay, PointerOriginal,
         PointerSwapTrial, TrackpadOriginal, WindowsOsdHidden, WakeUndo, PowerJournal,
     };
 

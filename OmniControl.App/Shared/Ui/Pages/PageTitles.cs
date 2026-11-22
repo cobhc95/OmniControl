@@ -6,5 +6,5 @@ public static class PageTitles
 {
     public const string Displays = "Displays", Volume = "Audio and Volume", SmartDevices = "Smart Devices", Mouse = "Mouse and Trackpad",
         Automation = "Automation", Resources = "Resources", ActionsAndHotkeys = "Actions and Hotkeys", Osd = "OSD", AppSettings = "App settings",
-        OtherPcs = "Other PCs";
+        OtherPcs = "Other PCs", Traffic = "Network Traffic Control";
 }

@@ -1,5 +1,4 @@
 using System.Text.Json;
-using OmniControl.App.Features.Resources;
 using OmniControl.App.Shared.Presets;
 
 namespace OmniControl.App.Features.Traffic;
@@ -11,9 +10,9 @@ public sealed class TrafficPresets : ListPresetProvider<TrafficPreset>
     public const string GroupId = "traffic.presets", NormalName = "Normal";
     private const string NormalId = "traffic.normal";
 
-    private readonly ResourcesSettings _settings;
+    private readonly TrafficSettings _settings;
 
-    public TrafficPresets(ResourcesSettings settings) : base(new PresetList<TrafficPreset>(settings.TrafficPresets, settings.Save), builtIns: 1)
+    public TrafficPresets(TrafficSettings settings) : base(new PresetList<TrafficPreset>(settings.Presets, settings.Save), builtIns: 1)
     {
         _settings = settings;
         settings.Changed += NotifyChanged; // the live rules may now be (or no longer be) a preset
@@ -34,8 +33,8 @@ public sealed class TrafficPresets : ListPresetProvider<TrafficPreset>
     {
         var preset = id == NormalId ? new TrafficPreset() : List.Items.FirstOrDefault(p => p.Id == id);
         if (preset is null) return "That preset is gone.";
-        _settings.Setup.Apps = preset.Apps.Select(r => r.Copy()).ToList();
-        _settings.Setup.Scoped = preset.Scoped.Select(s => s.Copy()).ToList();
+        _settings.Apps = preset.Apps.Select(r => r.Copy()).ToList();
+        _settings.Scoped = preset.Scoped.Select(s => s.Copy()).ToList();
         _settings.Commit();
         return null;
     }
@@ -49,7 +48,7 @@ public sealed class TrafficPresets : ListPresetProvider<TrafficPreset>
         return PresetChange.Made(preset.Id);
     }
 
-    private TrafficPreset Live() => new() { Apps = _settings.Setup.Apps.Select(r => r.Copy()).ToList(), Scoped = _settings.Setup.Scoped.Select(s => s.Copy()).ToList() };
+    private TrafficPreset Live() => new() { Apps = _settings.Apps.Select(r => r.Copy()).ToList(), Scoped = _settings.Scoped.Select(s => s.Copy()).ToList() };
 
     private static string Text(TrafficPreset preset) => JsonSerializer.Serialize((preset.Apps, preset.Scoped), Json);
 

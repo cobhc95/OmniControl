@@ -1,6 +1,6 @@
+using OmniControl.App.Features.Resources;
 using Avalonia.Media.Imaging;
 using OmniControl.Core.Engine.Screenshot;
-using OmniControl.App.Features.Resources;
 
 namespace OmniControl.App.Features.Traffic.Pages;
 

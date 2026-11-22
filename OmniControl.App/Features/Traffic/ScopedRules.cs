@@ -1,4 +1,3 @@
-using OmniControl.App.Features.Resources;
 using OmniControl.Core.Engine.Resources;
 
 namespace OmniControl.App.Features.Traffic;
@@ -21,22 +20,22 @@ public sealed record NetScope(string Adapter, string Network)
 internal static class ScopedRules
 {
     /// The rules a place has of its own, or null when it uses its parent's.
-    public static AppNetScope? Own(ResourcesSetup setup, NetScope scope) =>
+    public static AppNetScope? Own(TrafficSettings setup, NetScope scope) =>
         scope.IsAll ? null : setup.Scoped.FirstOrDefault(s => s.Adapter == scope.Adapter && s.Network == scope.Network);
 
     /// The rules in force at a place: its own, else its adapter's, else All adapters'.
-    public static List<AppNetRule> RulesOf(ResourcesSetup setup, NetScope scope) =>
+    public static List<AppNetRule> RulesOf(TrafficSettings setup, NetScope scope) =>
         Own(setup, scope)?.Apps ?? (scope.IsNetwork ? RulesOf(setup, NetScope.Of(scope.Adapter)) : setup.Apps);
 
     /// The rules used at a place now: its own while in effect, else its adapter's in effect, else All adapters'.
-    private static List<AppNetRule> InForce(ResourcesSetup setup, NetScope scope, IReadOnlySet<NetScope> inEffect) =>
+    private static List<AppNetRule> InForce(TrafficSettings setup, NetScope scope, IReadOnlySet<NetScope> inEffect) =>
         (inEffect.Contains(scope) ? Own(setup, scope)?.Apps : null) ?? (scope.IsNetwork ? InForce(setup, NetScope.Of(scope.Adapter), inEffect) : setup.Apps);
 
     /// The place an adapter's or network's own rules are for.
     public static NetScope Of(AppNetScope scope) => new(scope.Adapter, scope.Network);
 
     /// What Windows must hold with these places' own rules in effect, and whether some upload limit could not follow its adapter exactly.
-    public static (IReadOnlyList<NetworkRule> Rules, bool UploadInexact) Wanted(ResourcesSetup setup, NetworkSnapshot now, IReadOnlySet<NetScope> inEffect)
+    public static (IReadOnlyList<NetworkRule> Rules, bool UploadInexact) Wanted(TrafficSettings setup, NetworkSnapshot now, IReadOnlySet<NetScope> inEffect)
     {
         if (!setup.Scoped.Any(s => inEffect.Contains(Of(s)))) return (setup.Apps.Select(r => Rule(r.Id, r.Path, Ask.Of(r))).OfType<NetworkRule>().ToList(), false);
         var live = now.Adapters.Where(a => a.IsUp).Select(a => (Adapter: a, Network: now.On(a.Id))).Select(l =>

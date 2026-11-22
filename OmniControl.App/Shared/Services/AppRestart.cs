@@ -38,6 +38,7 @@ public static class AppRestart
     {
         WaitForPrevious(args);
         if (PendingRestore.ApplyPending(AppDataStore.Folder) is { } done) AppDataStore.AppendLog(LogName, done);
+        StoreMoves.RunAtStart();
     }
 
     /// True when this run was started by a restart of the run before it (which may still be closing).

@@ -145,7 +145,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
             _features, new FeatureRulesSlot());
         var automation = new AutomationModule(_volume.RememberedPrograms, _hotkeysSwitch.Use, _presetTriggers);
         var resources = new ResourcesModule(TrafficPageViewModel.PageTitle);
-        var traffic = new TrafficModule(resources.Settings);
+        var traffic = new TrafficModule(() => resources.ReadEvery);
 
         // Every feature, in start-up order: it decides the order of the master lists (actions, states, hardware watches) and of the
         // mouse hook's handlers (inside the Input module), so keep it. Only the features switched on start (ShellViewModel.Features.cs).

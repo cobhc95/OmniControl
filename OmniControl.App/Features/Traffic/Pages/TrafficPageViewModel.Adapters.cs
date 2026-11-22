@@ -1,4 +1,3 @@
-using OmniControl.App.Features.Resources;
 using OmniControl.Core.Engine.Resources;
 
 namespace OmniControl.App.Features.Traffic.Pages;
@@ -60,7 +59,7 @@ public sealed partial class TrafficPageViewModel
     /// Every adapter Windows has now, then those gone that keep rules of their own (by name).
     private IEnumerable<(string Id, string Name, AdapterKind Kind)> AdapterList() =>
         Networks.Adapters.Select(a => (a.Id, a.Name, a.Kind))
-            .Concat(_settings.Setup.Scoped.Where(s => Networks.Adapters.All(a => a.Id != s.Adapter)).GroupBy(s => s.Adapter)
+            .Concat(_settings.Scoped.Where(s => Networks.Adapters.All(a => a.Id != s.Adapter)).GroupBy(s => s.Adapter)
                 .Select(g => (g.Key, g.First().AdapterName, AdapterKind.Other)));
 
     /// The saved networks an adapter may join (Wi-Fi: every saved Wi-Fi network; wired: wired ones, only when there are several), the one it is
@@ -69,7 +68,7 @@ public sealed partial class TrafficPageViewModel
     {
         var medium = kind switch { AdapterKind.Wifi => NetworkMedium.Wireless, AdapterKind.Ethernet => NetworkMedium.Wired, _ => (NetworkMedium?)null };
         var list = Networks.Networks.Where(n => (medium is not null && n.Medium == medium) || n.Adapters.Contains(adapter)).Select(n => (n.Id, n.Name))
-            .Concat(_settings.Setup.Scoped.Where(s => s.Adapter == adapter && s.Network.Length > 0).Select(s => (Id: s.Network, Name: s.NetworkName)))
+            .Concat(_settings.Scoped.Where(s => s.Adapter == adapter && s.Network.Length > 0).Select(s => (Id: s.Network, Name: s.NetworkName)))
             .DistinctBy(n => n.Id).ToList();
         return kind == AdapterKind.Wifi || list.Count > 1 ? list : new List<(string, string)>();
     }
@@ -135,10 +134,10 @@ public sealed partial class TrafficPageViewModel
     }
 
     private string AdapterName(string id) => Networks.Adapters.FirstOrDefault(a => a.Id == id)?.Name
-        ?? _settings.Setup.Scoped.FirstOrDefault(s => s.Adapter == id)?.AdapterName ?? id;
+        ?? _settings.Scoped.FirstOrDefault(s => s.Adapter == id)?.AdapterName ?? id;
 
     private string NetworkName(string id) => Networks.Networks.FirstOrDefault(n => n.Id == id)?.Name
-        ?? _settings.Setup.Scoped.FirstOrDefault(s => s.Network == id)?.NetworkName ?? id;
+        ?? _settings.Scoped.FirstOrDefault(s => s.Network == id)?.NetworkName ?? id;
 
     /// The adapters or their networks changed (a worker): the pull-down and the line follow.
     private void OnNetworksChanged() => Dispatcher.UIThread.Post(() => Guard.Run($"{PageTitle}: follow the networks", ShowPlace));

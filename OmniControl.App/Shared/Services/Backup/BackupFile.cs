@@ -93,18 +93,18 @@ public static class BackupFile
             if (manifest is null) return (null, BadFile);
             if (manifest.Format > Format) return (null, "That backup was made by a newer OmniControl; update OmniControl to use it.");
 
-            var files = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            var areas = new List<BackupArea>();
+            var read = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var entry in zip.Entries)
             {
                 if (DataStores.BackedUpByName(entry.FullName) is not { } store) continue; // the manifest, or a store this version does not know
-                if (files.ContainsKey(store.FileName)) return (null, BadFile); // one store twice: OmniControl never writes that
+                if (read.ContainsKey(store.FileName)) return (null, BadFile); // one store twice: OmniControl never writes that
                 using var reader = new StreamReader(new MemoryStream(Unpack(entry, ref budget)));
                 var text = reader.ReadToEnd();
-                if (!TryParse(text, out var node)) return (null, BadFile);
-                files[store.FileName] = text;
-                areas.Add(new BackupArea(store, CountOf(store, node)));
+                if (!TryParse(text, out _)) return (null, BadFile);
+                read[store.FileName] = text;
             }
+            var files = StoreMoves.Upgrade(read); // a backup from before a store moved fills the store's own area
+            var areas = files.Select(f => DataStores.BackedUpByName(f.Key)!).Select(s => new BackupArea(s, CountOfText(s, files[s.FileName]))).ToList();
             if (areas.Count == 0) return (null, "That backup holds no settings.");
             return (new BackupContents { AppVersion = manifest.AppVersion ?? string.Empty, Created = manifest.Created, Areas = areas, Files = files }, null);
         }

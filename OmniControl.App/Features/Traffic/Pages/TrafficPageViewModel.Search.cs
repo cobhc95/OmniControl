@@ -1,4 +1,3 @@
-using OmniControl.App.Features.Resources;
 
 namespace OmniControl.App.Features.Traffic.Pages;
 
@@ -51,16 +50,16 @@ public sealed partial class TrafficPageViewModel
 
     /// THE definition of the page's search: the Packet filter switch, the limit menus and status, and a result per program (the page's rows
     /// while it is made; otherwise the programs holding a rule or a pin).
-    private static SearchBuilder Cards(ResourcesSettings? settings, INetworkLimits? limits, TrafficPageViewModel? page)
+    private static SearchBuilder Cards(TrafficSettings? settings, INetworkLimits? limits, TrafficPageViewModel? page)
     {
         var builder = new SearchBuilder().Add(FilterCard, page?.PacketFilter).Add(GroupCard).Add(AdapterCard, page?.AdapterChoice).Add(PresetsCard, page?.PresetChoice)
             .Add(AllAppsCard).Add(LimitsCard).Add(InstallCard).Add(ColumnsCard);
         if (limits is not null) builder.Add(StatusCard(limits));
         if (page is not null) return builder.AddEach(page.AppRows, r => AppCard(r.Name, r.Id), r => r);
-        var ids = (settings?.Setup.Apps.Select(r => r.Id) ?? Enumerable.Empty<string>()).Concat((settings?.Setup.Pinned ?? new List<string>()).Select(ProgramIdentity.Normalize)).Distinct();
+        var ids = (settings?.Apps.Select(r => r.Id) ?? Enumerable.Empty<string>()).Concat((settings?.Pinned ?? new List<string>()).Select(ProgramIdentity.Normalize)).Distinct();
         return builder.AddEach(ids, id => AppCard(id, id));
     }
 
     /// The page's search words (<c>FeaturePage.Words</c>), read without making the page.
-    public static IEnumerable<string> Words(ResourcesSettings? settings, INetworkLimits? limits) => Cards(settings, limits, null).Words;
+    public static IEnumerable<string> Words(TrafficSettings? settings, INetworkLimits? limits) => Cards(settings, limits, null).Words;
 }
