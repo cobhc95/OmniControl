@@ -7,7 +7,8 @@ namespace OmniControl.App.Features.OtherPcs;
 
 /// Other PCs: the paired PCs' link (it listens only once a PC is paired or "Pair a PC" is opened), the import of settings from one, and the page.
 /// <param name="shareDevices">The smart device set-ups this PC hands to a paired PC that asks.</param>
-public sealed class OtherPcsModule(Func<bool, string> shareDevices) : IFeatureModule
+/// <param name="redactDevices">Takes the smart devices file out of everything private for a general settings export.</param>
+public sealed class OtherPcsModule(Func<bool, string> shareDevices, Func<string, string?> redactDevices) : IFeatureModule
 {
     private OtherPcsService? _service;
     private FeatureContext? _context;
@@ -25,7 +26,7 @@ public sealed class OtherPcsModule(Func<bool, string> shareDevices) : IFeatureMo
     {
         _context = context;
         var service = _service = new OtherPcsService(context.Actions, context.Runner, context.States, new WindowsCredentialStore(), context.Report, shareDevices,
-            context.AskAsync, new SettingsShare());
+            context.AskAsync, new SettingsShare(redactDevices));
         context.Power.Leaving += service.Wake.AnnounceLeaving; // paired PCs are told before this one sleeps or shuts down
         context.Power.Countdown += service.AnnounceCountdown; // and when a power countdown here starts, runs out or ends
         ImportFrom = new ImportFromPcService(service, context.Imports, context.Report);

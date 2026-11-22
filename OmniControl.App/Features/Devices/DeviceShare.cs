@@ -28,15 +28,9 @@ public static class DeviceShareFormat
         var used = new HashSet<string>();
         foreach (var source in settings.Devices)
         {
-            var device = source.Clone();
-            device.IconImage = string.Empty;
-            device.AutoCheck = null;
-            device.AutoCheckOnTray = null;
-            if (device.Icon.StartsWith(IconStore.UserPrefix, StringComparison.Ordinal)) device.Icon = string.Empty;
+            var device = Redacted(source);
             foreach (var method in device.Methods)
             {
-                method.Email = string.Empty;
-                foreach (var step in method.Steps.Where(s => s.Kind == SimStepKind.TypeText)) step.Text = string.Empty;
                 if (ScriptProfiles.BuiltIn.Any(p => p.Id == method.ProfileId)) continue;
                 if (includeScripts && settings.Profiles.Any(p => p.Id == method.ProfileId)) used.Add(method.ProfileId);
                 else method.ProfileId = ScriptProfiles.Auto;
@@ -45,6 +39,38 @@ public static class DeviceShareFormat
         }
         share.Profiles = settings.Profiles.Where(p => used.Contains(p.Id)).ToList();
         return JsonSerializer.Serialize(share);
+    }
+
+    /// A copy of the device with everything private left out: the account's email, the typed text of recorded steps, the user's own icon picture and choices.
+    private static DeviceRecord Redacted(DeviceRecord source)
+    {
+        var device = source.Clone();
+        device.IconImage = string.Empty;
+        device.AutoCheck = null;
+        device.AutoCheckOnTray = null;
+        if (device.Icon.StartsWith(IconStore.UserPrefix, StringComparison.Ordinal)) device.Icon = string.Empty;
+        foreach (var method in device.Methods)
+        {
+            method.Email = string.Empty;
+            foreach (var step in method.Steps.Where(s => s.Kind == SimStepKind.TypeText)) step.Text = string.Empty;
+        }
+        return device;
+    }
+
+    /// The text of devices.json as another PC may read it in a general settings export: the same devices as <see cref="Write"/> hands out
+    /// (one rule), everything else of the file as it is. Null when the text is not a devices file (it is then not sent).
+    public static string? RedactFile(string devicesJson)
+    {
+        try
+        {
+            if (JsonSerializer.Deserialize<DeviceSettings>(devicesJson) is not { } settings) return null;
+            settings.Devices = settings.Devices.Select(Redacted).ToList();
+            return JsonSerializer.Serialize(settings);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     /// The share in <paramref name="json"/>, cleaned; null when it is not one.
