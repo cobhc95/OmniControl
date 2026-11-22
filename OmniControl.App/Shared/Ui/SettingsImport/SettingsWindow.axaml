@@ -1,12 +1,12 @@
 <Window Classes="dialog" xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:si="using:OmniControl.App.Features.OtherPcs.SettingsImport"
+        xmlns:si="using:OmniControl.App.Shared.Ui.SettingsImport"
         xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
-        x:Class="OmniControl.App.Features.OtherPcs.SettingsImport.ImportFromPcWindow"
-        x:DataType="si:ImportFromPcViewModel"
+        x:Class="OmniControl.App.Shared.Ui.SettingsImport.SettingsWindow"
+        x:DataType="si:SettingsWindowViewModel"
         Title="{Binding Title}" Width="580" MinWidth="440" SizeToContent="Height"
         CanResize="False" WindowStartupLocation="CenterOwner">
-    <!-- Import settings from another PC (docs/mockups/import-settings-from-pc.html). Step 1 (choose): the bold "Everything" tick (a dash when some
+    <!-- Export settings, Import settings from a file or another PC. Step 1 (choose): the bold "Everything" tick (a dash when some
          are ticked, "N of M areas" at its right), a thin line, then the areas the PC has grouped like the sidebar (muted capital headings), two columns,
          each a tick box, its name and a muted note and count. Step 2 (progress) and 3 (result) share the list: "Backup of this PC" then one row per area
          with its mark (tick, spinner, open circle, red cross), its words (checked / importing / saved, restart to finish / not applied, kept yours) and an
@@ -19,7 +19,7 @@
                 <Ellipse Classes="markring" />
                 <Path Classes="markarc" Classes.spinning="{Binding IsLoading}" />
             </Panel>
-            <TextBlock Classes="hint" Text="Asking what it has…" VerticalAlignment="Center" />
+            <TextBlock Classes="hint" Text="Reading what it has…" VerticalAlignment="Center" />
         </StackPanel>
         <TextBlock Grid.Row="1" Classes="cautiontext" Text="{Binding Problem}" IsVisible="{Binding HasProblem}" TextWrapping="Wrap" />
 
@@ -65,7 +65,7 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <TextBlock Classes="hint" TextWrapping="Wrap" Margin="8,8,0,0"
+            <TextBlock Classes="hint" TextWrapping="Wrap" Margin="8,8,0,0" IsVisible="{Binding ShowsImportNote}"
                        Text="Chosen areas replace this PC's. A backup is made first. Devices that aren't on this PC are kept and marked &quot;not found&quot;." />
         </StackPanel>
 
@@ -102,12 +102,12 @@
 
         <Border Grid.Row="4" Classes="footer">
             <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="{StaticResource GapLarge}">
-                <Button Classes="pill" Content="Copy details" Click="OnCopyClick" IsVisible="{Binding IsDone}" />
+                <Button Classes="pill" Content="Copy details" Click="OnCopyClick" IsVisible="{Binding CanCopy}" />
                 <Button Grid.Column="1" Classes="pill" Content="Undo import" Command="{Binding UndoCommand}" IsVisible="{Binding CanUndo}"
                         ToolTip.Tip="Puts this PC's settings back from the backup made before the import." />
                 <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="{StaticResource GapLarge}">
                     <Button Classes="pill" Content="Cancel" Click="OnCloseClick" IsVisible="{Binding IsAsking}" />
-                    <Button Classes="primary" Content="{Binding ImportText}" Command="{Binding ImportCommand}" IsVisible="{Binding IsChoosing}" />
+                    <Button Classes="primary" Content="{Binding ActionText}" Command="{Binding RunCommand}" IsVisible="{Binding IsChoosing}" />
                     <Button Classes="pill" Content="Stop" Command="{Binding StopCommand}" IsVisible="{Binding IsRunning}" />
                     <Button Classes="primary close" Content="Close" Click="OnCloseClick" IsVisible="{Binding IsDone}" />
                 </StackPanel>

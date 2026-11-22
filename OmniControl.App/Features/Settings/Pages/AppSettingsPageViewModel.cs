@@ -134,7 +134,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
         _about = new ButtonItem(AboutCard, "Open", openAbout);
         _presets = new ButtonItem(PresetsCard, "Open", () => presets.Open(null, null));
 
-        _backup = new ButtonItem(BackupCard, "Export...", () => _ = backup.ExportAsync())
+        _backup = new ButtonItem(BackupCard, "Export...", backup.Export)
         {
             Extra = new[] { new CardAction("Import...", () => _ = backup.ImportAsync()), new CardAction("Wipe all...", () => _ = backup.WipeAsync(), danger: true) },
         };

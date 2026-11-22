@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Backup and restore: Export… and Import… now open the same window as "Import settings from a PC": tick the areas (named like their pages) to put in the file or to take from it; an import lists only what the file holds, is applied at once without a restart, makes a backup first and can be undone. Every saved area is included: Plug-in list, Other PCs (pairings, nicknames and allowances, never keys) and Microphone mute key now have their own areas; favourites and recent actions moved to Actions and Hotkeys.
+
 - Presets: every preset now has its own "Apply preset" action in Actions and Hotkeys, the pickers and rules, whether or not it has a shortcut; it appears when the preset is made, follows a rename and goes when the preset is deleted. Saved shortcuts and rules keep working.
 
 - Fixed: a PC with a network adapter that has IPv4 switched off (for example Hyper-V's Default Switch) couldn't be found by other PCs on the local network; that adapter is now skipped instead of stopping the whole network check.

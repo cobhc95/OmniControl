@@ -16,7 +16,7 @@ public enum StoreKind
     Record,
 }
 
-/// Where a store sits in "Import settings from another PC": the <see cref="ImportGroups"/> heading, the area's name (stores with the same name are one tick box) and a muted note.
+/// Where a store sits in the settings window (export, import from a file or another PC): the <see cref="ImportGroups"/> heading, the area's name (stores with the same name are one tick box) and a muted note.
 public sealed record ImportPlace(string Group, string Area, string? Note = null);
 
 /// The headings of the import window's areas, in order (the sidebar's own groups).
@@ -33,7 +33,7 @@ public static class ImportGroups
 /// <param name="Area">What the backup window calls it.</param>
 /// <param name="Mergeable">An import may merge it (add what is missing, keep what is here) instead of replacing it.</param>
 /// <param name="NotImported">Top-level properties an import never takes from a file (the approvals of commands: a file must not pre-approve them).</param>
-/// <param name="Import">Where the store sits in the import from another PC; null: that import does not offer it.</param>
+/// <param name="Import">Where the store sits in the settings window (export, import); every saved store has one (a test checks it).</param>
 /// <param name="MachineSpecific">Belongs to this PC alone (its pairing list, the key its keyboard sends, paths of plug-ins): never sent to another PC.</param>
 /// <param name="NotImportedInside">Properties an import from another PC or a restore from a backup takes out of every object inside the file
 /// (an effect's plug-in or impulse response file and its saved state: a file must never make this PC load a library or feed a plug-in its data).</param>
@@ -53,17 +53,20 @@ public static class DataStores
     private static class Places
     {
         public static readonly ImportPlace Displays = new(ImportGroups.Devices, "Displays", "presets");
-        public static readonly ImportPlace Volume = new(ImportGroups.Devices, "Volume and effects", "EQ, FX chains");
-        public static readonly ImportPlace SmartDevices = new(ImportGroups.Devices, "Smart devices", "no passwords");
-        public static readonly ImportPlace Mouse = new(ImportGroups.Devices, "Mouse and trackpad", "buttons, layers");
+        public static readonly ImportPlace Volume = new(ImportGroups.Devices, "Audio and Volume", "mixer, EQ, FX chains, presets");
+        public static readonly ImportPlace SmartDevices = new(ImportGroups.Devices, "Smart Devices", "no passwords");
+        public static readonly ImportPlace Mouse = new(ImportGroups.Devices, "Mouse and Trackpad", "buttons, layers");
         public static readonly ImportPlace Gestures = new(ImportGroups.Workflow, "Gestures");
-        public static readonly ImportPlace Automation = new(ImportGroups.Workflow, "Automation", "rules, scripts");
-        public static readonly ImportPlace Resources = new(ImportGroups.Workflow, "Resources", "taskbar gadget, network limits");
-        public static readonly ImportPlace Shortcuts = new(ImportGroups.Keys, "Keyboard shortcuts");
+        public static readonly ImportPlace Automation = new(ImportGroups.Workflow, "Automation", "rules, custom actions, scripts, app actions");
+        public static readonly ImportPlace Resources = new(ImportGroups.Workflow, "Resources", "taskbar gadget, Network Traffic Control");
+        public static readonly ImportPlace Shortcuts = new(ImportGroups.Keys, "Actions and Hotkeys", "shortcuts, sets, favourites");
         public static readonly ImportPlace Osd = new(ImportGroups.LookAndApp, "OSD", "style, places");
         public static readonly ImportPlace IconsAndLists = new(ImportGroups.LookAndApp, "Icons and app lists");
-        public static readonly ImportPlace AppSettings = new(ImportGroups.LookAndApp, "App settings", "theme, start-up");
+        public static readonly ImportPlace AppSettings = new(ImportGroups.LookAndApp, "App settings", "theme, start-up, Presets Manager, tray");
         public static readonly ImportPlace Confirmations = new(ImportGroups.LookAndApp, "Confirmations", "answers you chose not to be asked again");
+        public static readonly ImportPlace Plugins = new(ImportGroups.Devices, "Plug-in list", "this PC only");
+        public static readonly ImportPlace OtherPcs = new(ImportGroups.Devices, "Other PCs", "pairings, nicknames, allowances; never keys");
+        public static readonly ImportPlace MicMuteKey = new(ImportGroups.Keys, "Microphone mute key", "this PC only");
     }
 
     // An effect's file (plug-in or impulse response) and the plug-in's saved state, as the mixer's, the effect presets' and the volume presets' files name them.
@@ -74,7 +77,7 @@ public static class DataStores
         NotImported: new[] { "BusCable", "RealMasterDevice", "CaptureSilence" }, Import: Places.Volume, NotImportedInside: PluginFiles);
     public static readonly DataStore EffectPresets = new("presets.json", "Effect presets", StoreKind.Saved, Mergeable: true, Import: Places.Volume, NotImportedInside: PluginFiles);
     public static readonly DataStore VolumePresets = new("volume-presets.json", "Volume presets", StoreKind.Saved, Mergeable: true, Import: Places.Volume, NotImportedInside: PluginFiles);
-    public static readonly DataStore Plugins = new("plugins.json", "Plug-in list", StoreKind.Saved, Mergeable: true, MachineSpecific: true);
+    public static readonly DataStore Plugins = new("plugins.json", "Plug-in list", StoreKind.Saved, Mergeable: true, Import: Places.Plugins, MachineSpecific: true);
     public static readonly DataStore Automation = new("automation.json", "Rules, custom actions and scripts", StoreKind.Saved, Mergeable: true, NotImported: new[] { "Approved" }, Import: Places.Automation);
     public static readonly DataStore GestureRules = new("rules.json", "Gesture rules", StoreKind.Saved, Mergeable: true, NotImported: new[] { "Approved" }, Import: Places.Gestures);
     public static readonly DataStore Gestures = new("gestures.json", "Gestures", StoreKind.Saved, Import: Places.Gestures);
@@ -86,18 +89,18 @@ public static class DataStores
     public static readonly DataStore AppLists = new("app-lists.json", "App lists", StoreKind.Saved, Mergeable: true, Import: Places.IconsAndLists);
     public static readonly DataStore AppActions = new("app-actions.json", "App actions", StoreKind.Saved, Mergeable: true, Import: Places.Automation);
     public static readonly DataStore PowerPlans = new("power-plans.json", "Power plan actions", StoreKind.Saved, Mergeable: true, Import: Places.Automation);
-    public static readonly DataStore RecentActions = new("recent-actions.json", "Recent actions", StoreKind.Saved, Mergeable: true, Import: Places.AppSettings);
-    public static readonly DataStore FavouriteActions = new("favourite-actions.json", "Favourite actions", StoreKind.Saved, Mergeable: true, Import: Places.AppSettings);
+    public static readonly DataStore RecentActions = new("recent-actions.json", "Recent actions", StoreKind.Saved, Mergeable: true, Import: Places.Shortcuts);
+    public static readonly DataStore FavouriteActions = new("favourite-actions.json", "Favourite actions", StoreKind.Saved, Mergeable: true, Import: Places.Shortcuts);
     public static readonly DataStore Devices = new("devices.json", "Smart devices (never their passwords)", StoreKind.Saved, Mergeable: true, Import: Places.SmartDevices);
     public static readonly DataStore Screenshots = new("screenshots.json", "Screenshot settings", StoreKind.Saved,
         NotImported: new[] { "TurnOffWindowsKeys", "WindowsKeysBackup", "WindowsKeysChangedUtc", "RecordingRoute" },
         Import: Places.AppSettings);
     public static readonly DataStore Tray = new("tray.json", "Tray flyout", StoreKind.Saved, Import: Places.AppSettings);
     public static readonly DataStore Confirmations = new("confirmations.json", "Confirmations you chose not to be asked again", StoreKind.Saved, Import: Places.Confirmations);
-    public static readonly DataStore OtherPcs = new("other-pcs.json", "Other PCs (paired PCs and what each last shared; the pairing keys are kept by Windows, never in a backup)", StoreKind.Saved, MachineSpecific: true);
+    public static readonly DataStore OtherPcs = new("other-pcs.json", "Other PCs (paired PCs and what each last shared; the pairing keys are kept by Windows, never in a backup)", StoreKind.Saved, Import: Places.OtherPcs, MachineSpecific: true);
     public static readonly DataStore Icons = new("icons.json", "Your icons and chosen icons", StoreKind.Saved, Import: Places.IconsAndLists);
     public static readonly DataStore Resources = new("resources.json", "Resources (taskbar gadget, network limits, presets)", StoreKind.Saved, Import: Places.Resources);
-    public static readonly DataStore MicMuteKey = new("mic-mute-key.json", "Microphone mute key (the key your keyboard sends)", StoreKind.Saved, MachineSpecific: true);
+    public static readonly DataStore MicMuteKey = new("mic-mute-key.json", "Microphone mute key (the key your keyboard sends)", StoreKind.Saved, Import: Places.MicMuteKey, MachineSpecific: true);
 
     public static readonly DataStore MixerBeforeRestore = new("mixer-before-restore.json", "Mixer before restore", StoreKind.Undo);
     public static readonly DataStore BeforeRestore = new("*-before-restore.json", "Settings before restore", StoreKind.Undo);

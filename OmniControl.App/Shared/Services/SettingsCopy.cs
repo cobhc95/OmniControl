@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 namespace OmniControl.App.Shared.Services;
 
 /// The one way a service takes a freshly read settings object into the one it already holds (a reload from disk, see
-/// <see cref="Features.OtherPcs.SettingsImport.ImportHooks"/>): every saved property of <paramref name="target"/> is set from <paramref name="source"/>. The target object
+/// <see cref="Backup.ImportHooks"/>): every saved property of <paramref name="target"/> is set from <paramref name="source"/>. The target object
 /// stays, so whatever holds it sees the change; a nested settings object is copied the same way (it stays too); a list or dictionary is
 /// replaced by the new one. Pure: it reads and writes properties only.
 public static class SettingsCopy

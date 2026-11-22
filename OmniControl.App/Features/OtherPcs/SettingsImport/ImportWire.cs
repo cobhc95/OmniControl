@@ -1,7 +1,6 @@
-namespace OmniControl.App.Features.OtherPcs.SettingsImport;
+using OmniControl.App.Shared.Services.Backup;
 
-/// What a PC says it has for one area: the area's name and, for lists, how many entries (null for plain settings).
-public sealed record AreaOffer(string Area, int? Count);
+namespace OmniControl.App.Features.OtherPcs.SettingsImport;
 
 /// What a request to another PC came back with: the text, or one plain sentence saying why not.
 public sealed record ImportReply(string? Payload, string? Why);

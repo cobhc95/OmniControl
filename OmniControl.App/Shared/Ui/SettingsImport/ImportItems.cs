@@ -1,6 +1,8 @@
-namespace OmniControl.App.Features.OtherPcs.SettingsImport;
+using OmniControl.App.Shared.Services.Backup;
 
-/// One tick box of the choose step: an area the other PC has, its muted note and live count.
+namespace OmniControl.App.Shared.Ui.SettingsImport;
+
+/// One tick box of the choose step: an area the source has, its muted note and count.
 public sealed partial class ImportAreaItem : ObservableObject
 {
     private readonly Action _changed;
@@ -16,7 +18,7 @@ public sealed partial class ImportAreaItem : ObservableObject
 
     public string Name => Area.Name;
 
-    /// The note and the count the other PC has now, muted at the row's right.
+    /// The note and the count the source has, muted at the row's right.
     public string Detail { get; }
 
     [ObservableProperty] private bool _isChecked = true;
