@@ -50,7 +50,7 @@ internal sealed record PcNetworkView(IReadOnlyList<PcAdapter> Adapters)
         {
             if (nic.OperationalStatus != OperationalStatus.Up || nic.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
             var props = nic.GetIPProperties();
-            if (props.GetIPv4Properties() is not { } v4) continue;
+            if (V4Of(props) is not { } v4) continue;
             var addresses = new List<IPAddress>();
             var broadcasts = new List<IPAddress>();
             foreach (var unicast in props.UnicastAddresses)
@@ -68,5 +68,12 @@ internal sealed record PcNetworkView(IReadOnlyList<PcAdapter> Adapters)
             adapters.Add(new PcAdapter(v4.Index, addresses, broadcasts, category, tailscale));
         }
         return new PcNetworkView(adapters);
+    }
+
+    // An adapter with IPv4 switched off (Hyper-V switches, some VPNs) throws WSAEPROTONOSUPPORT here; it is skipped, not the whole list.
+    private static IPv4InterfaceProperties? V4Of(IPInterfaceProperties props)
+    {
+        try { return props.GetIPv4Properties(); }
+        catch (NetworkInformationException) { return null; }
     }
 }

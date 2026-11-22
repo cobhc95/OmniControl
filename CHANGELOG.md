@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Fixed: a PC with a network adapter that has IPv4 switched off (for example Hyper-V's Default Switch) couldn't be found by other PCs on the local network; that adapter is now skipped instead of stopping the whole network check.
+
 - Audio and Volume: microphone levels are read on a worker with the mixer's scan, not on the UI thread; Tab and Shift+Tab reach cards that are still being built.
 - Other PCs: "Can't reach it on this network? Check:" under a paired PC that is offline, and "Not showing? Check:" under an empty list of PCs open to pairing. It shows whether this PC's network is Public or Private (with "Make it Private"), whether Windows Firewall lets OmniControl in (with "Allow on Private networks"), and what to check on the other PC, and updates by itself when the network changes.
 - Fixed: switching a network from Public to Private in Windows is now noticed at once by Other PCs (it waited for an address change or a restart). Setup also lets OmniControl through Windows Firewall on Private and Domain networks, never Public.
