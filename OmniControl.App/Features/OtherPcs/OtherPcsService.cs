@@ -17,7 +17,7 @@ namespace OmniControl.App.Features.OtherPcs;
 public sealed partial class OtherPcsService : IPairedPcs, IPcBook, IDisposable
 {
     /// The page's title, the category of the actions and the group of the states of other PCs.
-    public const string Category = "Other PCs";
+    public const string Category = PageTitles.OtherPcs;
 
     private static readonly DataStore Store = DataStores.OtherPcs;
 

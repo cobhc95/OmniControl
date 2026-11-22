@@ -12,7 +12,7 @@ namespace OmniControl.App.Features.Hotkeys.Picker;
 /// and Restore defaults. Everything it lists is read live from <see cref="HotkeyRegistry"/>.
 public sealed class ActionsWindowService : IDisposable
 {
-    public const string Title = "Actions and Hotkeys";
+    public const string Title = PageTitles.ActionsAndHotkeys;
 
     /// The sidebar entry's icon (the list with a magnifier of the former All actions page).
     public const string Icon = "M3,5 H14 V7 H3 Z M3,10 H10 V12 H3 Z M3,15 H8 V17 H3 Z M16,9 A4.5,4.5 0 1 1 16,18 A4.5,4.5 0 1 1 16,9 Z M16,11 A2.5,2.5 0 1 0 16,16 A2.5,2.5 0 1 0 16,11 Z M19,17.5 L21.5,20 L20,21.5 L17.5,19 Z";

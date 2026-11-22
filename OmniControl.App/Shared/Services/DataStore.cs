@@ -52,20 +52,20 @@ public static class DataStores
 {
     private static class Places
     {
-        public static readonly ImportPlace Displays = new(ImportGroups.Devices, "Displays", "presets");
-        public static readonly ImportPlace Volume = new(ImportGroups.Devices, "Audio and Volume", "mixer, EQ, FX chains, presets");
-        public static readonly ImportPlace SmartDevices = new(ImportGroups.Devices, "Smart Devices", "no passwords");
-        public static readonly ImportPlace Mouse = new(ImportGroups.Devices, "Mouse and Trackpad", "buttons, layers");
+        public static readonly ImportPlace Displays = new(ImportGroups.Devices, PageTitles.Displays, "presets");
+        public static readonly ImportPlace Volume = new(ImportGroups.Devices, PageTitles.Volume, "mixer, EQ, FX chains, presets");
+        public static readonly ImportPlace SmartDevices = new(ImportGroups.Devices, PageTitles.SmartDevices, "no passwords");
+        public static readonly ImportPlace Mouse = new(ImportGroups.Devices, PageTitles.Mouse, "buttons, layers");
         public static readonly ImportPlace Gestures = new(ImportGroups.Workflow, "Gestures");
-        public static readonly ImportPlace Automation = new(ImportGroups.Workflow, "Automation", "rules, custom actions, scripts, app actions");
-        public static readonly ImportPlace Resources = new(ImportGroups.Workflow, "Resources", "taskbar gadget, Network Traffic Control");
-        public static readonly ImportPlace Shortcuts = new(ImportGroups.Keys, "Actions and Hotkeys", "shortcuts, sets, favourites");
-        public static readonly ImportPlace Osd = new(ImportGroups.LookAndApp, "OSD", "style, places");
+        public static readonly ImportPlace Automation = new(ImportGroups.Workflow, PageTitles.Automation, "rules, custom actions, scripts, app actions");
+        public static readonly ImportPlace Resources = new(ImportGroups.Workflow, PageTitles.Resources, "taskbar gadget, Network Traffic Control");
+        public static readonly ImportPlace Shortcuts = new(ImportGroups.Keys, PageTitles.ActionsAndHotkeys, "shortcuts, sets, favourites");
+        public static readonly ImportPlace Osd = new(ImportGroups.LookAndApp, PageTitles.Osd, "style, places");
         public static readonly ImportPlace IconsAndLists = new(ImportGroups.LookAndApp, "Icons and app lists");
-        public static readonly ImportPlace AppSettings = new(ImportGroups.LookAndApp, "App settings", "theme, start-up, Presets Manager, tray");
+        public static readonly ImportPlace AppSettings = new(ImportGroups.LookAndApp, PageTitles.AppSettings, "theme, start-up, tray, screenshots");
         public static readonly ImportPlace Confirmations = new(ImportGroups.LookAndApp, "Confirmations", "answers you chose not to be asked again");
         public static readonly ImportPlace Plugins = new(ImportGroups.Devices, "Plug-in list", "this PC only");
-        public static readonly ImportPlace OtherPcs = new(ImportGroups.Devices, "Other PCs", "pairings, nicknames, allowances; never keys");
+        public static readonly ImportPlace OtherPcs = new(ImportGroups.Devices, PageTitles.OtherPcs, "pairings, nicknames, allowances; never keys");
         public static readonly ImportPlace MicMuteKey = new(ImportGroups.Keys, "Microphone mute key", "this PC only");
     }
 

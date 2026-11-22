@@ -15,7 +15,7 @@ public enum DevicePower { On, Off, Toggle }
 /// <see cref="LaunchLimiter"/>, and a device that is still being told something is not told again.
 public sealed partial class DeviceService : IDisposable
 {
-    public const string Category = "Smart Devices";
+    public const string Category = PageTitles.SmartDevices;
     public const string LogFile = LogFiles.Devices;
 
     private readonly IActionRegistry _hotkeys;

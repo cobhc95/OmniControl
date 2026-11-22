@@ -1,4 +1,4 @@
-﻿namespace OmniControl.App.Features.Hotkeys;
+namespace OmniControl.App.Features.Hotkeys;
 
 /// One section of the Choose-the-action window: its name, the icon of its pane-1 entry (null: none) and its place in the list (1 = first).
 public sealed record ActionSection(string Name, string? Icon, int Rank);
@@ -14,7 +14,7 @@ public static class ActionSections
     public const string ScreenshotIcon = "M3,7 H7.5 L9.5,4.5 H14.5 L16.5,7 H21 V19 H3 Z M12,8.5 A4.5,4.5 0 1 0 12,17.5 A4.5,4.5 0 1 0 12,8.5 Z M12,10.5 A2.5,2.5 0 1 1 12,15.5 A2.5,2.5 0 1 1 12,10.5 Z";
 
     /// The titles of the pages that also name a section the built-in actions are listed under (defined here once; the pages' own title is this).
-    public const string Mouse = "Mouse and Trackpad", Automation = "Automation";
+    public const string Mouse = PageTitles.Mouse, Automation = PageTitles.Automation;
     private const int FirstExtraRank = 1000; // after any number of pages
 
     public static IReadOnlyList<ActionSection> Extras { get; } = new ActionSection[]

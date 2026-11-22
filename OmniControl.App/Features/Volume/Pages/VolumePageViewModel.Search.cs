@@ -8,7 +8,7 @@ namespace OmniControl.App.Features.Volume.Pages;
 // live row when the page is made.
 public sealed partial class VolumePageViewModel
 {
-    private const string PageName = "Audio and Volume", VolumeWords = "sound audio mixer";
+    private const string PageName = PageTitles.Volume, VolumeWords = "sound audio mixer";
 
     private const string OutputsTip = "Plays on and Method open their menus; FX opens and closes the row's FX window. Programs with settings are remembered after they close; × forgets one.";
     private const string CablesTip = "Virtual cables found on this PC. OmniControl uses only the ones you switch on, so a cable another program uses is left alone.";
