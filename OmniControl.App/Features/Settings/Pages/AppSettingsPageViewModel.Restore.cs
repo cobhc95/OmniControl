@@ -37,6 +37,7 @@ public sealed partial class AppSettingsPageViewModel
         GroupsOpen.Set(target.GroupsOpen);
         _hardwareCheck.Selected = HardwareChecks.LabelOf(target.HardwareCheck);
         _uiRelease.Selected = UiReleases.LabelOf(target.UiRelease);
+        _keepPages.IsOn = target.KeepRecentPages;
         _updateDaily.IsOn = target.UpdateCheckDaily;
         SetFolders(target.PluginFolders);
         _features.SetOff(target.FeaturesOff);

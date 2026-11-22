@@ -15,7 +15,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
     private readonly ChoiceItem _hardwareCheck, _uiRelease;
     private readonly HardwareWatches _hardware;
     private readonly ToggleItem _startMinimised;
-    private readonly ToggleItem _gpuDrawing;
+    private readonly ToggleItem _gpuDrawing, _keepPages;
     private readonly bool _gpuDrawingAtStart;
     private readonly ButtonItem _about;
     private readonly ButtonItem _restoreAllCard;
@@ -132,6 +132,11 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
             _settings.UiRelease = UiReleases.Find(label);
             _settings.Save();
         }) { Tip = "How long the closed window stays ready to reopen instantly before OmniControl frees its memory." };
+        _keepPages = new ToggleItem(KeepPagesCard.Label, _settings.KeepRecentPages, on => { _settings.KeepRecentPages = on; _settings.Save(); })
+        {
+            Half = true,
+            Note = "Pages you go back to open instantly; uses more memory.",
+        };
 
         _about = new ButtonItem(AboutCard.Label, "Open", "Version, licence, credits", openAbout);
         _presets = new ButtonItem(PresetsCard.Label, "Open", "Every preset of the program: order, names and shortcuts", openPresets);
@@ -164,7 +169,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
 
         // Each group is made from its fixed cards (its closed header lists their names), then the cards that come and go are added.
         Appearance = Fill(AppearanceItems, "AppSettings/Appearance", AppearanceName, Theme, Background, Accent, _accentIntensity, _groupsOpen, _gpuDrawing, _trayIcon, _trayColour);
-        StartAndClose = Fill(StartItems, "AppSettings/Start", StartName, _startWithWindows, _startMinimised, _whenClosing, _hardwareCheck, _uiRelease);
+        StartAndClose = Fill(StartItems, "AppSettings/Start", StartName, _startWithWindows, _startMinimised, _whenClosing, _hardwareCheck, _uiRelease, _keepPages);
         foreach (var (_, card) in _featureCards) FeatureItems.Add(card);
         FeatureGroup = new ItemGroup("AppSettings/Features", FeaturesName, FeatureItems) { NoMasterSwitch = true };
         YourData = Fill(DataItems, "AppSettings/Data", DataName, new object?[] { _presets, _backup, backup.CanImportFromPc ? _importFromPc : null, _networkService,
@@ -234,6 +239,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
         _whenClosing.Load(_whenClosing.Options, CloseBehaviors.LabelOf(_settings.CloseBehavior));
         _hardwareCheck.Load(_hardwareCheck.Options, HardwareChecks.LabelOf(_hardware.Check));
         _uiRelease.Load(_uiRelease.Options, UiReleases.LabelOf(_settings.UiRelease));
+        _keepPages.Load(_settings.KeepRecentPages);
     }
 
     // Feature cards' restart words, so a restart-only switch reads the same everywhere.

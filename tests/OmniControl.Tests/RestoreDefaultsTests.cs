@@ -382,6 +382,7 @@ public class RestoreDefaultsTests
         Assert.Equal(AccentService.WindowsName, defaults.Accent);
         Assert.False(defaults.StartWithWindows);
         Assert.False(defaults.StartMinimised);
+        Assert.False(defaults.KeepRecentPages);
         Assert.Equal(CloseBehavior.Ask, defaults.CloseBehavior);
         Assert.Empty(defaults.PluginFolders);
         Assert.Contains("Ask each time", AppRestoreState.Scope());

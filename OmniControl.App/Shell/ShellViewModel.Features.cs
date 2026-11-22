@@ -102,6 +102,7 @@ public sealed partial class ShellViewModel
         {
             if (slot == _openSlot) CloseOpenPage();
             DropRestore(slot);
+            if (slot.IfMade is { } gone) _pageViews.Forget(gone);
             if (slot.IfMade is IDisposable page) Guard.Run($"Feature off: {slot.Title} page", page.Dispose);
         }
         running.Scope.Stop();

@@ -89,6 +89,11 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     /// The page whose view the page area holds: none while the search results show, so their view and a page's are never both built.
     public PageViewModel? ShownPage => IsSearching ? null : CurrentPage;
 
+    /// The pages whose views the page area keeps built (<see cref="PageViewKeeper"/>).
+    [ObservableProperty] private IReadOnlyList<PageViewModel>? _keptPages;
+
+    private readonly PageViewKeeper _pageViews;
+
     private readonly DispatcherTimer _hiddenSettle = new() { Interval = Timing.HiddenSettle };
     private readonly DispatcherTimer _releaseUi = new();
 
@@ -105,6 +110,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
 
     public ShellViewModel()
     {
+        _pageViews = new PageViewKeeper(() => _settings.KeepRecentPages, () => UiReleases.AfterOf(_settings.UiRelease), kept => KeptPages = kept);
         _features = new FeatureSwitches(_settings.Slot(s => s.FeaturesOff, (s, off) => s.FeaturesOff = off),
             _settings.Slot(s => s.FeaturesFromSetup, (s, chosen) => s.FeaturesFromSetup = chosen));
         _input = new InputModule(_volume.RememberedPrograms); // its pointer settings put back a button swap a crashed run left on trial
@@ -306,6 +312,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _openSlot = slot;
         slot.IsOpen = true;
         CurrentPage = slot.Page; // made here at its first opening
+        if (CurrentPage is { } opened) _pageViews.Opened(opened);
         UiTiming.Shown($"Page {slot.Title}", clock);
         if (CurrentPage is { } page) DrawFirst.ThenWire(() => Wire(page, clock));
     }
@@ -372,6 +379,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _hiddenSettle.Tick -= OnHiddenSettled;
         _releaseUi.Stop();
         _releaseUi.Tick -= OnReleaseDue;
+        _pageViews.Dispose();
         _searchShow.Stop();
         _searchShow.Tick -= OnSearchShowDue;
         _searchMake.Stop();
