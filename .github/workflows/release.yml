@@ -43,6 +43,12 @@ jobs:
             if ($LASTEXITCODE) { throw 'Inno Setup install failed' }
           }
 
+      - name: Run the tests
+        shell: pwsh
+        run: |
+          dotnet test tests/OmniControl.Tests -c Release --nologo
+          if ($LASTEXITCODE) { throw 'tests failed' }
+
       - name: Build Portable, Setup, checksums and notes
         shell: pwsh
         run: ./tools/release.ps1 -BuildOnly
