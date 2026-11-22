@@ -19,6 +19,8 @@ internal static class AvaloniaThread
         ui.Start();
     }
 
+    public static void Run(Action job) => Run(() => { job(); return true; });
+
     public static T Run<T>(Func<T> job)
     {
         T? result = default;

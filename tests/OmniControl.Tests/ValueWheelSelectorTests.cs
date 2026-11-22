@@ -21,20 +21,20 @@ public class ValueWheelSelectorTests
     }
 
     [Fact]
-    public void Over_the_selector_or_its_value_changes_the_value()
+    public void Over_the_selector_or_its_value_changes_the_value() => AvaloniaThread.Run(() =>
     {
         var (_, _, selector, value, _) = Row();
         Assert.True(ValueWheel.IsOverSelector(selector));
         Assert.True(ValueWheel.IsOverSelector(value));
-    }
+    });
 
     [Fact]
-    public void Over_the_label_or_empty_space_is_left_to_the_page()
+    public void Over_the_label_or_empty_space_is_left_to_the_page() => AvaloniaThread.Run(() =>
     {
         var (row, label, _, _, empty) = Row();
         Assert.False(ValueWheel.IsOverSelector(label));
         Assert.False(ValueWheel.IsOverSelector(empty));
         Assert.False(ValueWheel.IsOverSelector(row));
         Assert.False(ValueWheel.IsOverSelector(null));
-    }
+    });
 }
