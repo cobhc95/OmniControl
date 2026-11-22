@@ -21,7 +21,7 @@ public sealed partial class DisplaysService
         return done;
     }
 
-    /// Shows and applies the pictures through the same path a preset takes, and sets warm light through its own card.
+    /// Shows and applies the pictures through the same path a preset takes, and sets warm light through its model.
     private Task<bool> ApplyState(DisplayRestoreState state)
     {
         ApplyPicture(state.Picture);

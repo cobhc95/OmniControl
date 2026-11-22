@@ -7,6 +7,9 @@ internal sealed class WarmLightModel
 {
     public const string Label = "Warm light at night", StartLabel = "Warm from", EndLabel = "Warm until", TargetLabel = "Warm light temperature";
 
+    /// The names of its cards, in card order.
+    public static readonly IReadOnlyList<string> Labels = new[] { Label, StartLabel, EndLabel, TargetLabel };
+
     private readonly WarmLightScheduler _scheduler;
     private readonly DisplaySettingsStore _store;
 

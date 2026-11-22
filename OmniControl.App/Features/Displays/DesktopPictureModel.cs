@@ -8,6 +8,9 @@ internal sealed class DesktopPictureModel
 {
     public const string GrayscaleLabel = "Grayscale (all displays)", InvertLabel = "Invert colours (all displays)";
 
+    /// The names of its cards, in card order.
+    public static readonly IReadOnlyList<string> Labels = new[] { DisplayControls.SoftwareSaturation.Label, GrayscaleLabel, InvertLabel };
+
     private readonly SoftwareDisplayService _service;
     private readonly Action<string> _report;
     private readonly Action _applied;

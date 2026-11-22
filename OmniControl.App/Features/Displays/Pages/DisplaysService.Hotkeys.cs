@@ -6,7 +6,7 @@ namespace OmniControl.App.Features.Displays.Pages;
 
 /// The page's entries in the master list of actions: ONE action per control (not per display), each with the "all displays / pick
 /// displays" chooser of the Shortcuts page. A control is applied to every chosen display that has it; the others are skipped silently.
-/// The same functions are what the page's cards use, through the displays' own items. The displays that come and go are only listed by
+/// The same functions are what the page's cards use, through the displays' models. The displays that come and go are only listed by
 /// the chooser (<see cref="RefreshActionDevices"/>); nothing is registered or removed when a display appears or goes. The list of
 /// controls is <see cref="DisplayControls"/>: adding one there adds its card and actions here.
 public sealed partial class DisplaysService
@@ -62,9 +62,9 @@ public sealed partial class DisplaysService
         foreach (var (orientation, suggested) in RotationKeys)
         {
             var captured = orientation;
-            actions.Add(DisplayActions.Once($"displays.rotate.{captured.ToString().ToLowerInvariant()}", $"Rotate to {DisplayOrientationCard.Title(captured)}",
+            actions.Add(DisplayActions.Once($"displays.rotate.{captured.ToString().ToLowerInvariant()}", $"Rotate to {DisplayOrientationModel.Title(captured)}",
                 "rotate rotation orientation landscape portrait flipped turn screen", Title, hardware, OrientationSection,
-                ids => EachHardware(ids, h => h.Rotate(captured)), HardwareDevices, suggested, shortName: DisplayOrientationCard.ShortTitle(captured), icon: DisplayOrientationCard.Icon(captured), suggestedKeySet: RotationKeySet));
+                ids => EachHardware(ids, h => h.Rotate(captured)), HardwareDevices, suggested, shortName: DisplayOrientationModel.ShortTitle(captured), icon: DisplayOrientationModel.Icon(captured), suggestedKeySet: RotationKeySet));
         }
 
         actions.Add(DisplayActions.Once("displays.hw.preset.next", "Next monitor preset", "hardware ddc preset saved profile monitors settings", Title, hardware, VcpSections.Presets,
@@ -82,14 +82,39 @@ public sealed partial class DisplaysService
         foreach (var action in actions.Where(a => a.HasDevices))
             action.HardwareWatch = action.Group == hardware ? HardwareWatchId : SoftwareWatchId; // a picked display that is missing is looked for once before the action is refused
         _scopedActions.AddRange(actions);
-        actions.AddRange(_global.Actions);
-        actions.AddRange(_warm.Actions);
+        actions.AddRange(DesktopActions(software));
+        actions.AddRange(WarmLightActions(software));
         _hotkeys.Register(actions);
     }
 
+    /// The whole desktop's colour effect: saturation up and down, grayscale, invert, and the reset of every digital picture change.
+    private IEnumerable<HotkeyAction> DesktopActions(string software)
+    {
+        var spec = DisplayControls.SoftwareSaturation;
+        foreach (var action in DisplayActions.Level(spec, DisplayControls.SoftwareKey(spec), Title, software, (_, delta) => _osd.Show(spec.Osd, _desktop.Step(delta)), devices: null))
+            yield return action;
+        yield return DisplayActions.Once("displays.sw.grayscale", "Toggle grayscale", "digital software grayscale black white saturation", Title, software, VcpSections.Colour,
+            _ => _desktop.SetGrayscale(!_desktop.Grayscale), devices: null);
+        yield return DisplayActions.Once("displays.sw.invert", "Toggle invert colours", "digital software invert negative colours inverse", Title, software, VcpSections.Colour,
+            _ => _desktop.SetInvert(!_desktop.Invert), devices: null);
+        yield return DisplayActions.Once("displays.sw.reset", "Reset all digital picture changes", "digital software reset normal",
+            Title, software, VcpSections.Presets, _ => ResetAllSoftware(), devices: null);
+    }
+
+    /// The warm-light schedule's Toggle, On and Off (checked against its state).
+    private IEnumerable<HotkeyAction> WarmLightActions(string software)
+    {
+        var family = new OnOffFamily(WarmActionId, WarmLightModel.Label, WarmLightId);
+        var toggle = DisplayActions.Once(WarmActionId, "Toggle warm light at night", "warm light night schedule evening blue light filter", Title, software, VcpSections.Colour,
+            _ => _warm.Toggle(), devices: null, icon: Icons.IconLibrary.Moon, family: family.Family, familyRole: OnOffFamily.ToggleRole);
+        return family.Siblings(toggle, _warm.SetEnabled).Prepend(toggle);
+    }
+
+    private const string WarmActionId = "displays.sw.warmlight";
+
     private IReadOnlyList<HotkeyDevice> HardwareDevices() => _hardware.Select(h => new HotkeyDevice(h.Id, h.Name)).ToList();
 
-    private IReadOnlyList<HotkeyDevice> SoftwareDevices() => _softwareItems.Select(s => new HotkeyDevice(s.Id, s.Name)).ToList();
+    private IReadOnlyList<HotkeyDevice> SoftwareDevices() => _softwareDisplays.Select(s => new HotkeyDevice(s.Id, s.Name)).ToList();
 
     /// The scope choosers list the displays that are attached now.
     private void RefreshActionDevices()
@@ -98,13 +123,13 @@ public sealed partial class DisplaysService
     }
 
     /// Runs <paramref name="act"/> on the chosen hardware displays (all when <paramref name="ids"/> is null).
-    private void EachHardware(IReadOnlyList<string>? ids, Action<HardwareDisplayItem> act)
+    private void EachHardware(IReadOnlyList<string>? ids, Action<HardwareDisplayModel> act)
     {
         foreach (var display in _hardware.Where(h => ids is null || ids.Contains(h.Id)).ToList()) act(display);
     }
 
     /// Steps the level on the chosen hardware displays that have it; the pop-up shows the first display that reports one. The displays
-    /// are chosen here on the UI thread (their cards are read), the monitors are written on a worker thread.
+    /// are chosen here on the UI thread (their models are read), the monitors are written on a worker thread.
     private void StepHardware(HardwareLevel level, IReadOnlyList<string>? ids, int delta)
     {
         var targets = _hardware.Where(h => (ids is null || ids.Contains(h.Id)) && h.Supports(level)).ToList();
@@ -125,7 +150,7 @@ public sealed partial class DisplaysService
     private void StepSoftware(LevelSpec spec, IReadOnlyList<string>? ids, int delta)
     {
         int? first = null;
-        foreach (var display in _softwareItems.Where(s => ids is null || ids.Contains(s.Id)).ToList())
+        foreach (var display in _softwareDisplays.Where(s => ids is null || ids.Contains(s.Id)).ToList())
         {
             var now = display.Step(spec, delta);
             first ??= now;
