@@ -110,7 +110,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
 
     public ShellViewModel()
     {
-        _pageViews = new PageViewKeeper(() => _settings.FreeLeftPages, () => UiReleases.AfterOf(_settings.UiRelease), kept => KeptPages = kept);
+        _pageViews = new PageViewKeeper(() => _settings.KeepRecentPages, () => UiReleases.AfterOf(_settings.UiRelease), kept => KeptPages = kept);
         _features = new FeatureSwitches(_settings.Slot(s => s.FeaturesOff, (s, off) => s.FeaturesOff = off),
             _settings.Slot(s => s.FeaturesFromSetup, (s, chosen) => s.FeaturesFromSetup = chosen));
         _input = new InputModule(_volume.RememberedPrograms); // its pointer settings put back a button swap a crashed run left on trial

@@ -23,7 +23,7 @@ public sealed partial class AppSettingsPageViewModel
         WhenClosingCard = new("When closing", "close tray exit quit notification area minimize x button ask remember", Title: StartName),
         HardwareCheckCard = new("Check hardware every", "hardware check refresh monitors displays sound devices touchpad undetected missing remote desktop safety periodic every minutes", Title: StartName),
         UiReleaseCard = new("Free memory after closing", "free memory ram release closing closed window hidden tray reopen instantly keep ready seconds minutes never let go", Title: StartName),
-        FreePagesCard = new("Free pages you leave", "free pages leave left memory ram release rebuild built visited go back slow older pc", Title: StartName),
+        KeepPagesCard = new("Keep recent pages ready", "keep recent pages ready open instantly fast smooth switch visited go back memory ram built last two", Title: StartName),
         PresetsCard = new("Presets", "presets manage layers display monitor equaliser compressor shortcut order rename", Title: DataName),
         BackupCard = new("Backup and restore", "backup restore export import save load move computer wipe reset factory delete all settings", Title: DataName),
         RestoreAllCard = new("Restore all defaults", "reset default restore every page all settings", Title: DataName),
@@ -50,7 +50,7 @@ public sealed partial class AppSettingsPageViewModel
         Entry(Theme, ThemeCard), Entry(Accent, AccentCard), Entry(_accentIntensity, IntensityCard), Entry(Background, BackgroundCard),
         Entry(_trayIcon, TrayIconCard), Entry(_trayColour, TrayColourCard), Entry(_gpuDrawing, GpuCard), Entry(_groupsOpen, GroupsOpenCard),
         Entry(_startWithWindows, StartWithWindowsCard), Entry(_startMinimised, StartMinimisedCard), Entry(_whenClosing, WhenClosingCard),
-        Entry(_hardwareCheck, HardwareCheckCard), Entry(_uiRelease, UiReleaseCard), Entry(_freePages, FreePagesCard), Entry(_presets, PresetsCard), Entry(_backup, BackupCard), Entry(_restoreAllCard, RestoreAllCard),
+        Entry(_hardwareCheck, HardwareCheckCard), Entry(_uiRelease, UiReleaseCard), Entry(_keepPages, KeepPagesCard), Entry(_presets, PresetsCard), Entry(_backup, BackupCard), Entry(_restoreAllCard, RestoreAllCard),
         Entry(_networkService, NetworkServiceCard),
     }.Concat(DataItems.Contains(_importFromPc) ? new[] { Entry(_importFromPc, ImportFromPcCard) } : Array.Empty<SearchEntry>())
      .Concat(_featureCards.Select(c => Entry(c.Card, FeatureCard(c.Feature)))).Append(Entry(ReadyMade, ReadyMadeCard))
@@ -65,7 +65,7 @@ public sealed partial class AppSettingsPageViewModel
         new[]
         {
             ThemeCard, AccentCard, IntensityCard, BackgroundCard, TrayIconCard, TrayColourCard, GpuCard, GroupsOpenCard, StartWithWindowsCard,
-            StartMinimisedCard, WhenClosingCard, HardwareCheckCard, UiReleaseCard, FreePagesCard, PresetsCard, BackupCard, RestoreAllCard, NetworkServiceCard, ImportFromPcCard,
+            StartMinimisedCard, WhenClosingCard, HardwareCheckCard, UiReleaseCard, KeepPagesCard, PresetsCard, BackupCard, RestoreAllCard, NetworkServiceCard, ImportFromPcCard,
             ReadyMadeCard, ResetConfirmationsCard, AddFolderCard, ScanCard, KeepFxSearchCard, UpdateDailyCard, VersionCard, LatestCard, AboutCard,
         }
         .Concat(FeatureList.All.Select(FeatureCard))

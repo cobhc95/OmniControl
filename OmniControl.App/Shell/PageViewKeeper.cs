@@ -1,6 +1,6 @@
 namespace OmniControl.App.Shell;
 
-/// Decides which pages' views the main window keeps built. Off ("Free pages you leave"): every visited page. On: the open page and the
+/// Decides which pages' views the main window keeps built. Off ("Keep recent pages ready"): the open page only. On: the open page and the
 /// last <see cref="Recent"/> visited, and any other page until it has been left as long as "Free memory after closing" says (Never: none
 /// is let go). Only the views go; what the user set lives in the pages' view-models.
 internal sealed class PageViewKeeper : IDisposable
@@ -45,13 +45,14 @@ internal sealed class PageViewKeeper : IDisposable
         if (_visits.RemoveAll(v => v.Page == page) > 0) Refresh();
     }
 
-    private void OnDue(object? sender, EventArgs e) => Guard.Run("Free pages you left", Refresh);
+    private void OnDue(object? sender, EventArgs e) => Guard.Run("Free recent pages", Refresh);
 
     private void Refresh()
     {
         _due.Stop();
         var wait = double.MaxValue;
-        if (_on() && _after() is { } after)
+        var on = _on();
+        if (on && _after() is { } after)
         {
             var now = Environment.TickCount64;
             for (var i = _visits.Count - 1; i > Recent; i--)
@@ -61,7 +62,7 @@ internal sealed class PageViewKeeper : IDisposable
                 else wait = Math.Min(wait, remaining);
             }
         }
-        var kept = _visits.Select(v => v.Page).ToList();
+        var kept = _visits.Take(on ? int.MaxValue : 1).Select(v => v.Page).ToList();
         if (!_published.SequenceEqual(kept))
         {
             _published = kept;

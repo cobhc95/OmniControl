@@ -6,7 +6,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 ## Unreleased
 
 - Lighter: a device's own picture and your own PNG icons are decoded at the size they are drawn (twice that for sharpness on high-DPI screens) instead of full size, and the gadget's Font menu lets go of its font rows when it closes (looks unchanged).
-- New: App settings, Start and close, "Free pages you leave" (off by default): the main window keeps every page you visited built; switched on it keeps the open page and the last two visited and lets any other go once you have left it as long as "Free memory after closing" says (Never: none), which saves memory but rebuilds pages you go back to.
+- New: App settings, Start and close, "Keep recent pages ready" (off by default, which frees a page's view the moment you leave it): switched on, the open page and the last two visited stay built so going back is instant, and any other page goes once you have left it as long as "Free memory after closing" says (Never: kept); it uses more memory.
 - New: App settings, Start and close, "Free memory after closing" (30 seconds, 1 minute, 2 minutes, 5 minutes, Never): how long the closed window stays ready to reopen instantly before its memory is freed; it was 5 minutes and is now 1 minute by default, and the next hide uses a new choice.
 - Fixed: the taskbar gadget could show coloured blocks after a change of position, text colour or anything else that resized it; it now redraws whenever Windows gives it a new size.
 - Faster first search: "Search settings..." makes only the pages that have a match (each page's words are read without making it), at the typing pause, instead of every page at the first letter; results and their order are unchanged.
