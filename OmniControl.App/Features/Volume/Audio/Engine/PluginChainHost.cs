@@ -17,13 +17,14 @@ public sealed class PluginChainHost : IDisposable
         public int Windows; // of those, the plug-in's own editor windows (not its settings list)
         public byte[]? Hash; // SHA-256 of the raw settings last put into the slot as Written
         public string? Written;
+        public long ReadAt; // Environment.TickCount64 of the last live read
     }
 
     private readonly Dictionary<FxSlot, Loaded> _loaded = new(ReferenceEqualityComparer.Instance);
     private readonly Action _save;
     private readonly Func<FxSlot, (IPluginEffect? Effect, string? Error)> _load;
-    /// Runs only while a plug-in's own editor is open: reads a plug-in's settings only after its change notice (<see cref="IPluginEffect.TakeChanged"/>),
-    /// and encodes and saves them only when their raw bytes differ from those last kept.
+    /// Runs only while a plug-in's own editor is open: reads a plug-in's settings after its change notice (<see cref="IPluginEffect.TakeChanged"/>)
+    /// or at the slower fallback, and encodes and saves them only when their raw bytes differ from those last kept.
     private readonly DispatcherTimer _live = new() { Interval = Timing.PluginLiveSettings };
 
     /// <param name="save">Writes the settings file after plug-in states were copied into their slots.</param>
@@ -151,8 +152,22 @@ public sealed class PluginChainHost : IDisposable
         SaveStates();
     }
 
-    private void OnLiveTick(object? sender, EventArgs e) =>
-        Guard.Run("Plug-ins: live settings", () => SaveStates(_loaded.Where(l => l.Value.Windows > 0 && l.Value.Effect?.TakeChanged() == true).ToList()));
+    private void OnLiveTick(object? sender, EventArgs e) => Guard.Run("Plug-ins: live settings", () => LiveCheck(Environment.TickCount64));
+
+    /// Reads the open editors' plug-ins that sent a change notice, and each one at least every <see cref="Timing.PluginSettingsFallback"/>.
+    internal void LiveCheck(long nowMs)
+    {
+        var due = new List<KeyValuePair<FxSlot, Loaded>>();
+        foreach (var l in _loaded)
+        {
+            if (l.Value.Windows == 0 || l.Value.Effect is not { } effect) continue;
+            var noticed = effect.TakeChanged(); // always taken, so a notice is never left over for a later tick
+            if (!noticed && nowMs - l.Value.ReadAt < (long)Timing.PluginSettingsFallback.TotalMilliseconds) continue;
+            l.Value.ReadAt = nowMs;
+            due.Add(l);
+        }
+        if (due.Count > 0) SaveStates(due);
+    }
 
     /// Copies every loaded plug-in's settings into its slot and saves.
     public void SaveStates() => SaveStates(_loaded);

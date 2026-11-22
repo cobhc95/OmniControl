@@ -15,6 +15,16 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 - Effects: while a plug-in's window is open, its settings are read only after it says they changed (VST2 plug-ins that say so) and are encoded and saved only when they really changed.
 
+- Effects: a VST2 plug-in that changes without saying so (a preset loaded in its own window) is still followed live, checked every 2 seconds while its window is open.
+
+- Logs: a flood of log lines can no longer take unbounded memory (the oldest routine lines are dropped and counted, errors kept); a line repeated back to back is written once with a count; logs roll over by their real size on disk.
+
+- Restore: finishing or rolling back an interrupted restore checks the whole set from disk without holding every file in memory, then puts the files back one at a time.
+
+- Other PCs: an imported area is written under a journal, so a crash or power cut in the middle of it is finished or undone at the next start instead of leaving the area half imported.
+
+- Effects: watching Equalizer APO's config folder reads config.txt a line at a time and compares the chain file by size first, instead of loading whole files at every look.
+
 - Effects: the FX window's chart measures one chain at a time; quick edits no longer load several copies of the same plug-ins or impulse responses at once, and a stopped measurement stops before its next plug-in or file is loaded.
 - Effects: an impulse response file is read only up to the 10 seconds and two channels the IR Loader keeps, instead of whole.
 - Effects: changing an IR Loader's Gain, Mix or another effect no longer reads and prepares its impulse response file again; a changed file is read once, and only the latest of quick file changes is prepared.

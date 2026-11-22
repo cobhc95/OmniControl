@@ -16,6 +16,9 @@ public enum RestoreMode
 
     /// Every saved store and undo copy is deleted: factory settings.
     Wipe,
+
+    /// One area imported from another PC, written while OmniControl runs (<see cref="PendingRestore.ApplyNow"/>); only ever a journal.
+    Import,
 }
 
 /// An import or a wipe is only staged while OmniControl runs (its pages hold the settings and save them as they close), and carried out
@@ -26,10 +29,10 @@ public enum RestoreMode
 /// All or nothing: the whole replacement is worked out and checked first, written beside the stores with a copy of every file it changes,
 /// then the plan becomes the journal of those changes (one atomic move) and only then are the stores changed. A start that finds the journal
 /// (a crash or power cut mid-restore) finishes it from the checked copies, or rolls it back when they are damaged; a write that fails while
-/// it runs rolls it back at once.
+/// it runs rolls it back at once. An area imported from another PC is written at once under the same journal, in a folder of its own.
 public static class PendingRestore
 {
-    private const string PendingFolder = "pending-restore";
+    private const string PendingFolder = "pending-restore", ImportFolder = "pending-import";
     private const string PlanName = "plan.json";
     private const string NextFolder = "next", BeforeFolder = "before";
 
@@ -55,17 +58,33 @@ public static class PendingRestore
     public static string? ApplyPending(string folder) => ApplyPending(folder, null);
 
     /// <paramref name="beforeStep"/> runs before each file the restore writes or deletes (tests fail or interrupt it there).
-    internal static string? ApplyPending(string folder, Action? beforeStep) => new Run(folder, beforeStep ?? (() => { })).Go();
-
-    private sealed class Run(string folder, Action beforeStep)
+    internal static string? ApplyPending(string folder, Action? beforeStep)
     {
-        private readonly string _staging = Path.Combine(folder, PendingFolder);
+        var lines = new[] { ImportFolder, PendingFolder }.Select(sub => new Run(folder, beforeStep ?? (() => { }), sub).Go()).OfType<string>().ToList();
+        return lines.Count == 0 ? null : string.Join("; ", lines);
+    }
+
+    /// Writes one imported area's files now (null bytes: deleted) under a journal, then asks <paramref name="check"/> (read back, reloaded);
+    /// a failed write or check puts every file back, and a crash or power cut before the end is finished or rolled back at the next start
+    /// (<see cref="ApplyPending"/>). Null when it stands, else the line for the log.
+    public static string? ApplyNow(string folder, IReadOnlyList<(string File, byte[]? Bytes)> files, Func<bool> check) => ApplyNow(folder, files, check, null);
+
+    internal static string? ApplyNow(string folder, IReadOnlyList<(string File, byte[]? Bytes)> files, Func<bool> check, Action? beforeStep) =>
+        new Run(folder, beforeStep ?? (() => { }), ImportFolder).Live(files, check);
+
+    private sealed class Run(string folder, Action beforeStep, string pending)
+    {
+        private readonly string _staging = Path.Combine(folder, pending);
 
         private string PlanPath => Path.Combine(_staging, PlanName);
 
         public string? Go()
         {
-            if (!File.Exists(PlanPath)) return null;
+            if (!File.Exists(PlanPath))
+            {
+                Remove(_staging); // without a plan nothing was changed: left by a stop while staging or preparing
+                return null;
+            }
             Plan? plan;
             try
             {
@@ -81,7 +100,39 @@ public static class PendingRestore
             }
             if (plan is null) return Drop("a staged restore had no plan; nothing was changed");
             var what = $"the staged {plan.Mode.ToString().ToLowerInvariant()}";
-            return plan.Commit is { } commit ? Recover(what, commit) : Carry(plan.Mode, what);
+            if (plan.Commit is { } commit) return Recover(what, commit);
+            return plan.Mode == RestoreMode.Import ? Drop($"{what} had no journal; nothing was changed") : Carry(plan.Mode, what);
+        }
+
+        public string? Live(IReadOnlyList<(string File, byte[]? Bytes)> files, Func<bool> check)
+        {
+            if (Go() is { } earlier) AppDataStore.AppendLog(Guard.LogFile, $"Import: {earlier}"); // a journal a failed removal left: ended first
+            const string what = "the import";
+            List<Change> commit;
+            try
+            {
+                Directory.CreateDirectory(_staging);
+                commit = KeepCopies(files.ToDictionary(f => f.File, f => f.Bytes, StringComparer.OrdinalIgnoreCase));
+                beforeStep();
+                WritePlan(_staging, new Plan(RestoreMode.Import, commit));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Remove(_staging); // no plan was written, so nothing is ever carried out from it
+                return $"{what} could not be prepared ({ex.Message}); nothing was changed";
+            }
+            try
+            {
+                Put(files);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                return RollBack(commit, $"{what} failed ({ex.Message})");
+            }
+            if (!check()) return RollBack(commit, $"{what} did not read back or load");
+            // The area stands; a journal whose removal failed only puts the same files again at the next import or start.
+            if (Drop(what) is var done && done != what) AppDataStore.AppendLog(Guard.LogFile, $"Import: {done}");
+            return null;
         }
 
         private string Carry(RestoreMode mode, string what)
@@ -173,9 +224,9 @@ public static class PendingRestore
             if (commit.Any(c => !IsPlainName(c.File))) return Drop($"{what} named a file outside the data folder; it was dropped");
             try
             {
-                if (Copies(commit, NextFolder, c => c.Next) is { } next)
+                if (Verified(commit, NextFolder, c => c.Next))
                 {
-                    Put(next);
+                    PutKept(commit, NextFolder, c => c.Next);
                     return Drop($"finished {what}, which was interrupted");
                 }
                 return RollBack(commit, $"{what} was interrupted and its new files are damaged");
@@ -190,9 +241,9 @@ public static class PendingRestore
         {
             try
             {
-                if (Copies(commit, BeforeFolder, c => c.Before) is not { } before)
+                if (!Verified(commit, BeforeFolder, c => c.Before))
                     return Drop($"{why}; the copies from before it are damaged, so it could not be rolled back");
-                Put(before);
+                PutKept(commit, BeforeFolder, c => c.Before);
                 return Drop($"{why}; it was rolled back, nothing was changed");
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -201,24 +252,28 @@ public static class PendingRestore
             }
         }
 
-        /// Each change's bytes from a staging subfolder (null for a file to delete), or null when one is missing or not what was kept.
-        private List<(string File, byte[]? Bytes)>? Copies(List<Change> commit, string sub, Func<Change, string?> hashOf)
+        /// Every kept file of a staging subfolder is there and what was kept, checked by streaming its hash before any store changes.
+        private bool Verified(List<Change> commit, string sub, Func<Change, string?> hashOf)
         {
-            var copies = new List<(string, byte[]?)>();
             foreach (var change in commit)
             {
-                if (hashOf(change) is not { } hash)
-                {
-                    copies.Add((change.File, null));
-                    continue;
-                }
+                if (hashOf(change) is not { } hash) continue; // a file to delete
                 var path = Path.Combine(_staging, sub, change.File);
-                if (!File.Exists(path)) return null;
-                var bytes = File.ReadAllBytes(path);
-                if (Hash(bytes) != hash) return null;
-                copies.Add((change.File, bytes));
+                if (!File.Exists(path)) return false;
+                using var stream = File.OpenRead(path);
+                if (Convert.ToHexString(SHA256.HashData(stream)) != hash) return false;
             }
-            return copies;
+            return true;
+        }
+
+        /// Puts the verified set in place one file at a time from the disk; a file changed since it was verified stops it as a failed write.
+        private void PutKept(List<Change> commit, string sub, Func<Change, string?> hashOf) =>
+            Put(commit.Select(change => (change.File, hashOf(change) is { } hash ? Read(Path.Combine(_staging, sub, change.File), hash) : null)));
+
+        private static byte[] Read(string path, string hash)
+        {
+            var bytes = File.ReadAllBytes(path);
+            return Hash(bytes) == hash ? bytes : throw new IOException($"{Path.GetFileName(path)} changed after it was checked");
         }
 
         private void Put(IEnumerable<(string File, byte[]? Bytes)> files)

@@ -31,7 +31,7 @@ public static class ApoConfigFiles
             if (LinkIn(folder) is { } refused) return refused;
             var chain = Path.Combine(folder, ApoIds.ChainFileName);
             var bytes = Encoding.UTF8.GetBytes(chainText);
-            if (!File.Exists(chain) || !File.ReadAllBytes(chain).AsSpan().SequenceEqual(bytes)) WriteShut(chain, bytes);
+            if (!SameBytes(chain, bytes)) WriteShut(chain, bytes);
             PlaceInclude(folder);
             return null;
         }
@@ -48,14 +48,9 @@ public static class ApoConfigFiles
     {
         try
         {
-            var config = Path.Combine(folder, ApoIds.ConfigFileName);
-            var text = File.Exists(config) ? Bytes.GetString(File.ReadAllBytes(config)) : string.Empty;
-            var lines = SplitLines(text[BomOf(text).Length..]).ToList();
-            var own = lines.Any(line => !IsOurs(line) && IsCommand(line));
+            var (placed, ours, own) = Scan(Path.Combine(folder, ApoIds.ConfigFileName));
             var chain = Path.Combine(folder, ApoIds.ChainFileName);
-            var inPlace = wanted is null
-                ? !lines.Any(IsOurs) && !File.Exists(chain)
-                : Placed(text) == text && File.Exists(chain) && File.ReadAllBytes(chain).AsSpan().SequenceEqual(Encoding.UTF8.GetBytes(wanted));
+            var inPlace = wanted is null ? !ours && !File.Exists(chain) : placed && SameBytes(chain, Encoding.UTF8.GetBytes(wanted));
             return new ApoFolderFacts(inPlace, own);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -119,6 +114,55 @@ public static class ApoConfigFiles
         var users = Without(text);
         if (users.Length > 0 && !File.Exists(backup)) WriteShut(backup, Bytes.GetBytes(users));
         WriteShut(config, Bytes.GetBytes(placed));
+    }
+
+    /// Reads config.txt a line at a time (the watch looks often): whether it is already <see cref="Placed"/>, holds any of OmniControl's
+    /// lines, and holds a command of the user's. A missing file is none of these.
+    private static (bool Placed, bool Ours, bool Own) Scan(string config)
+    {
+        if (!File.Exists(config)) return (false, false, false);
+        var (placed, ours, own, index) = (true, false, false, 0);
+        foreach (var raw in LinesOf(config))
+        {
+            var line = index == 0 && raw.StartsWith(Bom, StringComparison.Ordinal) ? raw[Bom.Length..] : raw;
+            var isOurs = IsOurs(line);
+            ours |= isOurs;
+            own |= !isOurs && IsCommand(line);
+            placed &= index switch { 0 => line == ApoIds.IncludeMarker + NewLine, 1 => line == ApoIds.IncludeLine + NewLine, _ => !isOurs };
+            index++;
+        }
+        return (placed && index >= 2, ours, own);
+    }
+
+    /// The file's lines as <see cref="SplitLines"/> gives them (each byte one char, line breaks kept), read through a small buffer.
+    private static IEnumerable<string> LinesOf(string path)
+    {
+        using var reader = new StreamReader(path, Bytes, detectEncodingFromByteOrderMarks: false);
+        var line = new StringBuilder();
+        for (var c = reader.Read(); c >= 0; c = reader.Read())
+        {
+            line.Append((char)c);
+            if (c != '\n') continue;
+            yield return line.ToString();
+            line.Clear();
+        }
+        if (line.Length > 0) yield return line.ToString();
+    }
+
+    /// The file exists and holds exactly <paramref name="bytes"/>: the length first, then compared a buffer at a time.
+    private static bool SameBytes(string path, byte[] bytes)
+    {
+        if (!File.Exists(path)) return false;
+        using var file = File.OpenRead(path);
+        if (file.Length != bytes.Length) return false;
+        Span<byte> buffer = stackalloc byte[4096];
+        for (var offset = 0; offset < bytes.Length;)
+        {
+            var read = file.Read(buffer[..Math.Min(buffer.Length, bytes.Length - offset)]);
+            if (read == 0 || !buffer[..read].SequenceEqual(bytes.AsSpan(offset, read))) return false;
+            offset += read;
+        }
+        return true;
     }
 
     /// <paramref name="text"/> with OmniControl's two lines at the top and nowhere else.
