@@ -6,7 +6,7 @@ namespace OmniControl.App.Features.Hotkeys.Picker;
 
 /// The one picker window: a card's action, or a rule's trigger, condition or step, with its settings. Wiring only: it hosts
 /// <see cref="PickerMenu"/> and closes with the chosen <see cref="PickResult"/>, or null when cancelled (Esc, or the close button).
-/// Opened by <see cref="Manage"/> it is the Actions and hotkeys window instead: no "Use this ...", and a top bar. In both modes it shows the
+/// Opened by <see cref="Manage"/> it is the Actions and Hotkeys window instead: no "Use this ...", and a top bar. In both modes it shows the
 /// keys of the entries (<see cref="ManageMode"/>, read from the live master list, so the callers that pick never hand it over) and holds the
 /// other keys from Windows while a key may be pressed into it (<see cref="HotkeyRegistry.Hold"/>).
 public partial class PickerWindow : Window
@@ -39,7 +39,7 @@ public partial class PickerWindow : Window
         Closed += (_, _) => Leave();
     }
 
-    /// The Actions and hotkeys window (non-modal, kept while hidden; <see cref="ActionsWindowService"/> shows it and gives it a model in
+    /// The Actions and Hotkeys window (non-modal, kept while hidden; <see cref="ActionsWindowService"/> shows it and gives it a model in
     /// manage mode before each showing through <see cref="Use"/>).
     internal static PickerWindow Manage(string title, ActionsWindowService bar)
     {

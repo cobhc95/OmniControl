@@ -2,7 +2,7 @@ using OmniControl.App.Features.Hotkeys;
 
 namespace OmniControl.App.Features.Hotkeys.Picker;
 
-/// One key of the highlighted action in the Actions and hotkeys window, edited in its own shared <c>HotkeyBox</c>; a new slot ("+ add key")
+/// One key of the highlighted action in the Actions and Hotkeys window, edited in its own shared <c>HotkeyBox</c>; a new slot ("+ add key")
 /// starts empty and listening. A captured key goes to the owner (<see cref="ActionHotkeys"/>), which gives it to the action, refuses it
 /// with one sentence, or shows whose key it is (<see cref="Conflict"/>) with "Move here".
 public sealed partial class HotkeyKeySlot : HotkeyTarget

@@ -2,7 +2,7 @@ using OmniControl.App.Features.Hotkeys.Picker;
 
 namespace OmniControl.Tests;
 
-/// The Actions and hotkeys window's "Suggest" on a scoped action (the display rotation actions).
+/// The Actions and Hotkeys window's "Suggest" on a scoped action (the display rotation actions).
 public class SuggestKeyTests
 {
     private static HotkeyAction Rotate(string id, string key) =>

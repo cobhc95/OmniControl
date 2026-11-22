@@ -4,7 +4,7 @@ using OmniControl.App.Shared.Presets;
 
 namespace OmniControl.App.Features.Traffic;
 
-/// Network traffic control's presets as a preset group: the built-in "Normal" (no limit or block anywhere) then the user's, each the rules on
+/// Network Traffic Control's presets as a preset group: the built-in "Normal" (no limit or block anywhere) then the user's, each the rules on
 /// every adapter and every adapter's and network's own; applying puts each back.
 public sealed class TrafficPresets : ListPresetProvider<TrafficPreset>
 {
@@ -19,7 +19,7 @@ public sealed class TrafficPresets : ListPresetProvider<TrafficPreset>
         settings.Changed += NotifyChanged; // the live rules may now be (or no longer be) a preset
     }
 
-    public override PresetWords Words { get; } = new("Apply", "Apply Network traffic control preset", "+ Save the current rules as a preset",
+    public override PresetWords Words { get; } = new("Apply", $"Apply {Pages.TrafficPageViewModel.PageTitle} preset", "+ Save the current rules as a preset",
         "Keeps every program's limits and blocks on All adapters and each adapter's and network's own");
 
     protected override IReadOnlyList<PresetEntry> MakeEntries()

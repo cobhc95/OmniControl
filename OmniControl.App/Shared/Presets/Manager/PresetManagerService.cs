@@ -7,7 +7,7 @@ namespace OmniControl.App.Shared.Presets.Manager;
 /// brought to the front and goes to the new place.
 public sealed class PresetManagerService
 {
-    public const string Title = "Presets";
+    public const string Title = "Presets Manager";
 
     /// The sidebar entry's icon (a stack of layers).
     public const string Icon = "M12,2.5 L21.5,7.5 L12,12.5 L2.5,7.5 Z M4.5,11 L2.5,12 L12,17 L21.5,12 L19.5,11 L12,15 Z M4.5,15.5 L2.5,16.5 L12,21.5 L21.5,16.5 L19.5,15.5 L12,19.5 Z";
@@ -41,7 +41,7 @@ public sealed class PresetManagerService
         _window.Show(
             () => new PresetManagerWindow { DataContext = new PresetManagerViewModel(_groups, _shortcuts, _triggers, _sections) },
             window => (window.DataContext as PresetManagerViewModel)?.Dispose(),
-            "Couldn't open the preset manager");
+            $"Couldn't open {Title}");
         if (_window.Current is { DataContext: PresetManagerViewModel vm }) vm.Navigate(section, groupId); // again once the window listens, so it scrolls to the card
     }
 

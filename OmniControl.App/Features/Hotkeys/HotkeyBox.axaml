@@ -3,7 +3,7 @@
              xmlns:hk="using:OmniControl.App.Features.Hotkeys"
              x:Class="OmniControl.App.Features.Hotkeys.HotkeyBox"
              x:DataType="hk:HotkeyTarget">
-    <!-- The one hotkey capture box (the Actions and hotkeys window's keys, the preset manager's shortcut column): a double-click (or Enter)
+    <!-- The one hotkey capture box (the Actions and Hotkeys window's keys, the preset manager's shortcut column): a double-click (or Enter)
          listens for the keys, previewing the ones held; the shortcut is taken when its main key is released; Esc, leaving the box or a click
          elsewhere stops listening and keeps the old key. The listening look (the pulse) is TextBox.listening in Theme.axaml. Its width is
          HotkeyBoxWidth (App.axaml). -->

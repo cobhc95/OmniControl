@@ -1,0 +1,37 @@
+<!doctype html><html><head><meta charset="utf-8">
+<!--
+APPROVED by the owner (22 Nov 2026). Network states in the master state list.
+Match every part exactly; deviate only where master styles truly cannot, and name it in the report.
+
+1. New states, registered once by their owner in the master state list (so Presets "+ Add > State…", Automation
+   rules and blocks all get them, nothing hand-listed):
+   - "Connected to <network>" (pick a saved Wi-Fi name or wired network)
+   - "On a metered connection"
+   - "Not connected"
+2. Source: the SAME single Core network watch the traffic job uses (saved profiles, current network, metered flag),
+   driven by Windows' Network List Manager events through the existing hardware-signal path (HardwareSignals /
+   HardwareWatches; never a second listener), no polling; runs only while a rule, trigger or the traffic page needs it.
+3. Picker ("+ Add" > "State…" in the Presets window, same in Automation): states grouped by feature; "Network ▸" opens
+   a side list: "Connected to" heading | connected network first | networks already used in rules/triggers |
+   "On a metered connection" | "Not connected" | divider | "Find a network…" filter box with muted "<n> more" |
+   the rest muted, scrolling (virtualised at 40+). Network rows show the kind muted (Wi-Fi / wired).
+4. Chip text: "Connected to Phone hotspot", "Metered connection", "Not connected"; joined by or/and as in
+   docs/mockups/presets-triggers.html. When the state ends the previous preset comes back.
+-->
+<style>
+body{margin:0;background:#111;font-family:'Segoe UI',sans-serif;color:#e8e8e8;font-size:12px}
+.w{background:#1b1b1b;border-radius:12px;padding:10px;margin:12px;width:820px}
+.menus{display:flex;gap:4px;align-items:flex-start}
+.menu{background:#2a2a2a;border:1px solid #444;border-radius:8px;padding:4px;width:200px}
+.menu div{padding:4px 8px;display:flex;justify-content:space-between}
+.hi{background:#383838;border-radius:4px}.m{color:#999;font-size:11px}
+.h{color:#999;font-size:11px;padding:4px 8px 2px!important}.sep{border-top:1px solid #444;margin:3px 0;padding:0!important}
+.f{border:1px solid #555;border-radius:5px;margin:2px 4px;color:#888}
+.c{border:1px solid #666;background:#2a2a2a;border-radius:5px;padding:3px 7px}
+</style></head><body><div class="w"><div class="menus">
+<div class="menu"><div>Hotkey</div><div class="hi">State… ▸</div><div>Action…</div></div>
+<div class="menu"><div class="h">States</div><div>Apps ▸</div><div>Power ▸</div><div class="hi">Network ▸</div><div>Smart devices ▸</div><div>Time ▸</div></div>
+<div class="menu"><div class="h">Connected to</div><div>Home-5G <span class="m">Wi-Fi</span></div><div class="hi">Phone hotspot <span class="m">Wi-Fi</span></div><div>Office LAN <span class="m">wired</span></div><div class="sep"></div><div>On a metered connection</div><div>Not connected</div><div class="sep"></div><div class="f">Find a network… <span class="m">27 more</span></div></div>
+</div>
+<p><span class="c">Connected to Phone hotspot ×</span> <span style="color:#f0883e">or</span> <span class="c">Metered connection ×</span></p>
+</div></body></html>

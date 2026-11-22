@@ -56,7 +56,7 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
     private readonly TaskbarSpot.Picture _picture = new();
 
     /// <param name="layouts">The layouts the right-click menu lists and applies.</param>
-    /// <param name="windows">Opens the page at its Network traffic control group and at its Taskbar gadget tab (the right-click menu's links).</param>
+    /// <param name="windows">Opens the page at its Network Traffic Control group and at its Taskbar gadget tab (the right-click menu's links).</param>
     public TaskbarGadget(ResourceMonitor monitor, WeatherService weather, ResourcesSettings settings, GadgetLayouts layouts, IActionRunner runner,
         IStateRegistry states, Action<string> report, IResourcesWindows windows)
     {
@@ -392,7 +392,7 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
     }
 
     /// The right-click menu: Layout (the favourite layouts), Show (every reading, ticked), Position (right or left) and Font (the default and the fonts
-    /// picked before) as sub-menus, the gadget's settings, Network traffic control (while it runs) and Hide.
+    /// picked before) as sub-menus, the gadget's settings, Network Traffic Control (while it runs) and Hide.
     private IReadOnlyList<MenuRowItem> MenuRows() => new[]
     {
         MenuRowItem.Sub("Layout", "layout-dashboard", LayoutRows, _layouts.CurrentName),
@@ -400,7 +400,7 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
         MenuRowItem.Sub("Position", "arrows-left-right", PositionRows, GadgetSettings.PositionNames[(int)Look.Position]),
         MenuRowItem.Sub("Font", "cursor-text", FontRows, GadgetSettings.FontName(Look.Font)),
         Link("Gadget settings…", "settings", _windows.OpenGadgetSettings, ruleAbove: true),
-        _windows.HasTraffic ? Link("Network traffic control…", "network", _windows.OpenApps) : null,
+        _windows.HasTraffic ? Link(_windows.TrafficTitle + "…", "network", _windows.OpenApps) : null,
         new MenuRowItem("Hide gadget", string.Empty, false, string.Empty, new RelayCommand(() => SetShown(false)), RuleAbove: true, IsMuted: true, Icon: "eye-off"),
     }.OfType<MenuRowItem>().ToList();
 

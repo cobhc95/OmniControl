@@ -2,7 +2,7 @@ namespace OmniControl.App.Features.Screenshot;
 
 /// Where a screenshot or a recording is saved: straight to the action's "Save folder" with its file name pattern, or, while the action's
 /// "Ask where to save" is on, wherever the shared save dialog (<see cref="SaveFileWindow"/>) says. "Always save here" is written to the
-/// action's own settings (<see cref="SaveKinds.AlwaysSaveHere"/>), so the dialog and the Actions and hotkeys window show the same values.
+/// action's own settings (<see cref="SaveKinds.AlwaysSaveHere"/>), so the dialog and the Actions and Hotkeys window show the same values.
 /// Discard asks first. UI thread.
 internal sealed class SavePlaces
 {

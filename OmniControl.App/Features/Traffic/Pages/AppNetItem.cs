@@ -4,7 +4,7 @@ using OmniControl.App.Features.Resources;
 
 namespace OmniControl.App.Features.Traffic.Pages;
 
-/// One Network traffic control row: its pin, the program (icon, friendly name, the technical name muted when it differs), its traffic, its upload and
+/// One Network Traffic Control row: its pin, the program (icon, friendly name, the technical name muted when it differs), its traffic, its upload and
 /// download limit chips and its On switch (off blocks it), through <see cref="NetworkLimits"/>, at the place the page shows (<see cref="NetScope"/>).
 public sealed partial class AppNetItem : ObservableObject, IEditorItem
 {
@@ -104,7 +104,7 @@ public sealed partial class AppNetItem : ObservableObject, IEditorItem
         if (Path.Length > 0 || path.Length == 0) return;
         Path = path;
         OnPropertyChanged(nameof(NameTip));
-        _ = Guard.RunAsync("Network traffic control program name", async () =>
+        _ = Guard.RunAsync($"{TrafficPageViewModel.PageTitle} program name", async () =>
         {
             Name = await Task.Run(() => ProgramFile.NameOf(path));
             Picture = await _icons.GetAsync(path);

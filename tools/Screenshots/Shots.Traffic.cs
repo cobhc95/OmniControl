@@ -7,7 +7,7 @@ namespace OmniControl.Screenshots;
 
 internal static partial class Shots
 {
-    /// The Network traffic control page over <see cref="SampleLimits"/> and a <see cref="SampleTraffic"/> session: the real page, rows and
+    /// The Network Traffic Control page over <see cref="SampleLimits"/> and a <see cref="SampleTraffic"/> session: the real page, rows and
     /// reader, no firewall rule, driver, service or event trace; the programs are made up and have no file, so no icon or name is read.
     private static void NetworkTraffic(Rig rig, Camera camera) => NetworkTraffic(rig, camera, "network-traffic-control",
         NetRule("Game launcher", download: 5120), NetRule("System update service", download: 1024));
@@ -23,7 +23,7 @@ internal static partial class Shots
         var limits = new SampleLimits(rules);
         var monitor = new TrafficMonitor(() => new SampleTraffic());
         var page = new TrafficPageViewModel(monitor, settings, limits, new SampleNetworks(),
-            new ProviderChoice("Network traffic control presets", new TrafficPresets(settings), () => { }, withCustom: true), Rig.Report);
+            new ProviderChoice($"{TrafficPageViewModel.PageTitle} presets", new TrafficPresets(settings), () => { }, withCustom: true), Rig.Report);
         page.OnOnScreenChanged(true); // the reader starts its session, then reads one interval later
         Camera.Pump((int)TimeSpan.FromSeconds(settings.Setup.ReadEverySeconds * 1.5).TotalMilliseconds);
         camera.Page(page, name);

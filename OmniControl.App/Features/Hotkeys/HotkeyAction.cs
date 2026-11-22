@@ -19,12 +19,12 @@ public sealed record CountdownWords(string Doing, string Going);
 /// (gestures.json), so it never changes; <see cref="Name"/> is what the gesture picker calls it.
 public sealed record HotkeyLevel(string Id, string Name);
 
-/// Actions that are the directions of one thing ("Pointer speed": Up, Down) and are listed as ONE row in the Actions and hotkeys window and the
+/// Actions that are the directions of one thing ("Pointer speed": Up, Down) and are listed as ONE row in the Actions and Hotkeys window and the
 /// Choose-the-action window. Every direction stays its own <see cref="HotkeyAction"/> with its own id, keys and settings; only the lists group them.
 public sealed record ActionFamily(string Id, string Title);
 
 /// A bindable hotkey, and the master entry for everything OmniControl itself can do. Every feature registers its actions through
-/// <see cref="HotkeyRegistry"/>; the Actions and hotkeys window, search, the mouse button and gesture pickers all read them from there.
+/// <see cref="HotkeyRegistry"/>; the Actions and Hotkeys window, search, the mouse button and gesture pickers all read them from there.
 /// Pass a device source when the action targets variable devices (monitors...): the user can then
 /// choose all devices or a hand-picked subset.
 public sealed partial class HotkeyAction : HotkeyTarget, Shared.Ui.Pages.IEditorItem
@@ -77,7 +77,7 @@ public sealed partial class HotkeyAction : HotkeyTarget, Shared.Ui.Pages.IEditor
 
     public string Keywords { get; }
 
-    /// A key combination the feature suggests for this action ("Ctrl+Alt+Up"), or null. It is never bound by itself: the Actions and hotkeys window's
+    /// A key combination the feature suggests for this action ("Ctrl+Alt+Up"), or null. It is never bound by itself: the Actions and Hotkeys window's
     /// "Suggest" binds it on request.
     public string? SuggestedKey { get; init; }
 
@@ -201,17 +201,17 @@ public sealed partial class HotkeyAction : HotkeyTarget, Shared.Ui.Pages.IEditor
     /// For a <see cref="Command"/>: false hides the button for now ("Show hidden apps" while nothing is hidden).
     public Func<bool>? IsListed { get; init; }
 
-    /// A small fact shown as a tag beside the entry's name in the Actions and hotkeys window ("active"); null: none. Set again by the owner when the fact changes.
+    /// A small fact shown as a tag beside the entry's name in the Actions and Hotkeys window ("active"); null: none. Set again by the owner when the fact changes.
     public string? Tag { get; init; }
 
     /// A feature's own rule action ("Warm light fade to 3400 K"): a rule holding it belongs to the feature (its page, <see cref="Category"/>,
     /// and Automation's "From other pages" tab) and lasts while its triggers hold.
     public bool FeatureRule { get; init; }
 
-    /// Set: the editor (a heading and a panel row) the Actions and hotkeys window shows in this action's settings, besides its defaults (the power plan editor).
+    /// Set: the editor (a heading and a panel row) the Actions and Hotkeys window shows in this action's settings, besides its defaults (the power plan editor).
     public IReadOnlyList<ActionOption>? ManageSettings { get; init; }
 
-    /// The names of the action's settings and their choices, so the Actions and hotkeys window's search finds an action by what its picker offers.
+    /// The names of the action's settings and their choices, so the Actions and Hotkeys window's search finds an action by what its picker offers.
     public string OptionWords => string.Join(" ", (ManageSettings ?? Editor?.Options ?? Array.Empty<ActionOption>()).SelectMany(o => (o.Choices ?? Array.Empty<string>()).Prepend(o.Label)));
 
     /// Called each time a picker listing this entry opens (the apps are looked for again).
@@ -254,7 +254,7 @@ public sealed partial class HotkeyAction : HotkeyTarget, Shared.Ui.Pages.IEditor
     }
 
     /// Why the action does nothing right now (a device it needs is missing), set and cleared live by the feature that owns it;
-    /// null = it works. The Actions and hotkeys window shows it on the action; the key can still be bound.
+    /// null = it works. The Actions and Hotkeys window shows it on the action; the key can still be bound.
     [ObservableProperty, NotifyPropertyChangedFor(nameof(IsUnavailable))] private string? _unavailableReason;
 
     public bool IsUnavailable => UnavailableReason is not null;

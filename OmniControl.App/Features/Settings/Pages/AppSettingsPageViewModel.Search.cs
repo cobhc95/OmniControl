@@ -56,7 +56,7 @@ public sealed partial class AppSettingsPageViewModel
         {
             Note = "Pages you go back to open instantly; uses more memory.",
         },
-        PresetsCard = new("Presets", "presets manage layers display monitor equaliser compressor shortcut order rename", Title: DataName)
+        PresetsCard = new(OmniControl.App.Shared.Presets.Manager.PresetManagerService.Title,"presets manage layers display monitor equaliser compressor shortcut order rename", Title: DataName)
         {
             Note = "Every preset of the program: order, names and shortcuts",
         },

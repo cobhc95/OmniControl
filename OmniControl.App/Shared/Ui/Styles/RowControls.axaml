@@ -236,7 +236,7 @@
         <Setter Property="Stroke" Value="{DynamicResource BrushMuted}" />
     </Style>
     <Style Selector="Button.reveal:focus-visible > Path.glyph, Button.reveal:pressed > Path.glyph"><Setter Property="Stroke" Value="{DynamicResource BrushAccent}" /></Style>
-    <!-- Button.pin: a row's pin (Network traffic control) holding a Path.glyph of Icon.pinned. Not pinned = a faint muted outline that brightens
+    <!-- Button.pin: a row's pin (Network Traffic Control) holding a Path.glyph of Icon.pinned. Not pinned = a faint muted outline that brightens
          while its row is hovered; .on = the pin filled in the accent. Hover wash BrushHoverStrong (differs from the row's hover), focus =
          accent wash; nothing moves. Sizes Pin* in App.axaml. -->
     <Style Selector="Button.pin > Path.glyph">

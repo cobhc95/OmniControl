@@ -69,7 +69,7 @@
                     <Border Classes="hrule" />
                     <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource GapSmall}">
                         <Button Classes="pill accentline" Content="{Binding SaveText}" Command="{Binding Save}" VerticalAlignment="Center" />
-                        <Button Grid.Column="1" Classes="menurow muted" Command="{Binding Manage}" HorizontalAlignment="Right" ToolTip.Tip="Open the preset manager at the gadget's layouts">
+                        <Button Grid.Column="1" Classes="menurow muted" Command="{Binding Manage}" HorizontalAlignment="Right" ToolTip.Tip="Open Presets Manager at the gadget's layouts">
                             <TextBlock Text="Manage layouts…" TextTrimming="CharacterEllipsis" />
                         </Button>
                         <Button Grid.Column="2" Classes="menurow muted" Command="{Binding ShowFewerCommand}">

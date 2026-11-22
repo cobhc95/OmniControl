@@ -6,7 +6,7 @@ using OmniControl.App.Shared.Presets;
 
 namespace OmniControl.App.Features.Traffic;
 
-/// Network traffic control: the programs' limits and blocks (<see cref="NetworkLimits"/>), their actions, the adapters' watch, THE network
+/// Network Traffic Control: the programs' limits and blocks (<see cref="NetworkLimits"/>), their actions, the adapters' watch, THE network
 /// watch (<see cref="Networks"/>), the reader of the programs' traffic, its presets and the page. Its rules live in resources.json, so it is
 /// given the Resources module's one settings instance.
 public sealed class TrafficModule : IFeatureModule
@@ -30,7 +30,7 @@ public sealed class TrafficModule : IFeatureModule
     public void Register(FeatureContext context)
     {
         (_context, _programs) = (context, 0);
-        var monitor = _monitor = new TrafficMonitor(() => _limits?.StartTraffic() ?? throw new IOException("Network traffic control is off."));
+        var monitor = _monitor = new TrafficMonitor(() => _limits?.StartTraffic() ?? throw new IOException($"{Title} is off."));
         var networks = Networks = new NetworkWatch(context.Hardware);
         var states = new NetworkStates(context.States, networks, Title);
         var limits = _limits = new NetworkLimits(_settings, context.Report, id => monitor.Seen.GetValueOrDefault(id), networks, context.Rules);
@@ -57,7 +57,7 @@ public sealed class TrafficModule : IFeatureModule
     public IReadOnlyList<FeaturePage> Pages => new[]
     {
         new FeaturePage(TrafficPageViewModel.Info, () => new TrafficPageViewModel(_monitor!, _settings, _limits!, Networks!,
-            new ProviderChoice("Network traffic control presets", _presets!, () => _context!.OpenPresetManager(Title, TrafficPresets.GroupId), withCustom: true), _context!.Report),
+            new ProviderChoice($"{Title} presets", _presets!, () => _context!.OpenPresetManager(Title, TrafficPresets.GroupId), withCustom: true), _context!.Report),
             () => TrafficPageViewModel.Words(_settings, _limits)),
     };
 

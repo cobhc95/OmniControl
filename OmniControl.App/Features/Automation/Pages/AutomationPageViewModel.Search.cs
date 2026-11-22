@@ -20,9 +20,9 @@ public sealed partial class AutomationPageViewModel
         {
             Tip = "While the conditions hold, the chosen actions are not allowed, whether a hotkey, a mouse button, a gesture or a rule starts them. Pausing all rules lifts every block.",
         },
-        FeatureRulesCard = new("Rules made on other pages", AutomationWords + " other pages feature made on open warm light network limits device check emulator preset presets switch when it ends previous comes back presets window", FeatureTab)
+        FeatureRulesCard = new("Rules made on other pages", AutomationWords + " other pages feature made on open warm light network limits device check emulator preset presets switch when it ends previous comes back presets manager", FeatureTab)
         {
-            Tip = "Rules a page made for what it does by itself, such as warm light, and rules made in the Presets window (a preset applied when its triggers hold, the one before back when they stop). They are ordinary rules: add triggers, conditions or actions here, and the page or window shows that it has more. " + FeatureRulesKept,
+            Tip = $"Rules a page made for what it does by itself, such as warm light, and rules made in {Shared.Presets.Manager.PresetManagerService.Title} (a preset applied when its triggers hold, the one before back when they stop). They are ordinary rules: add triggers, conditions or actions here, and the page or window shows that it has more. " + FeatureRulesKept,
         },
         ScriptsCard = new("Scripts", AutomationWords + " script new import export run", ScriptsTab)
         {

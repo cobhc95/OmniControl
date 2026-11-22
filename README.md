@@ -12,10 +12,10 @@ One Windows app for your displays, sound, smart plugs, mouse, trackpad, other PC
 - **Smart devices**: Tapo and Kasa plugs and bulbs on your network through python-kasa, or (experimental) by tapping through the device's own phone app in an Android emulator; several methods per device, tried in order; automatic state checks.
 - **Other PCs**: pair PCs on your network or over Tailscale, then run each other's shared actions, see their states and sound, wake them, and see and cancel a sleep or shut-down countdown; import settings or device set-ups from a paired PC.
 - **Mouse and trackpad**: actions per button, wheel and tilt in 10 layers, limited to chosen apps; precision-touchpad gestures (three- and four-finger swipes, pinch, taps) with Windows' own gesture given back when unused; wheel and middle-click gestures over screen edges, the taskbar or title bars; custom gesture rules; pointer settings; actions sent as keys to a remote desktop.
-- **Actions and hotkeys**: one window lists every action of every feature; system-wide hotkeys, shortcut sets, favourites and "Run now"; the same actions on buttons, gestures, tray tiles and rules.
+- **Actions and Hotkeys**: one window lists every action of every feature; system-wide hotkeys, shortcut sets, favourites and "Run now"; the same actions on buttons, gestures, tray tiles and rules.
 - **Automation**: "When ... and ... do ..." rules (time, timer, idle, wake, battery, programs, USB devices, a hotkey, any state change, any action) and blocks that forbid actions while a condition holds; custom actions (command, script file, program, file, web address, keys); saved PowerShell, CMD and Python scripts; power actions with a cancellable countdown; keep awake.
 - **OSD**: its own pop-up for volume, brightness and more, in five styles, on the screens and place you choose; it can hide Windows' own (best effort).
-- **Resources**: live CPU, GPU, memory, disk, network and temperature readings; a taskbar gadget with ready-made layouts and the weather; network traffic control (per-app download and upload limits and blocks).
+- **Resources**: live CPU, GPU, memory, disk, network and temperature readings; a taskbar gadget with ready-made layouts and the weather; Network Traffic Control (per-app download and upload limits and blocks).
 - **Screenshots**: a Lightshot-style area editor (pen, line, arrow, box, marker, text, blur) with copy, save and print; read a QR code; search the picture online; record an area to MP4 or GIF.
 - **Tray panel**: brightness and volume sliders and tiles for smart devices, effects, night light, microphone mute, rotation or any action; optionally on Win+A.
 - **App**: themes, accent and background colours, a preset manager, backup and restore, update check.
@@ -31,7 +31,7 @@ One Windows app for your displays, sound, smart plugs, mouse, trackpad, other PC
 <tr>
 <td><a href="docs/screenshots/mouse.png"><img src="docs/screenshots/mouse.png" alt="Mouse and Trackpad page"></a><br><sub>Mouse and Trackpad</sub></td>
 <td><a href="docs/screenshots/automation.png"><img src="docs/screenshots/automation.png" alt="Automation page"></a><br><sub>Automation: rules and blocks</sub></td>
-<td><a href="docs/screenshots/actions-hotkeys.png"><img src="docs/screenshots/actions-hotkeys.png" alt="Actions and hotkeys window"></a><br><sub>Actions and hotkeys</sub></td>
+<td><a href="docs/screenshots/actions-hotkeys.png"><img src="docs/screenshots/actions-hotkeys.png" alt="Actions and Hotkeys window"></a><br><sub>Actions and Hotkeys</sub></td>
 </tr>
 <tr>
 <td><a href="docs/screenshots/action-picker.png"><img src="docs/screenshots/action-picker.png" alt="Choose an action window"></a><br><sub>Choosing an action for a button</sub></td>
@@ -50,7 +50,7 @@ One Windows app for your displays, sound, smart plugs, mouse, trackpad, other PC
 </tr>
 <tr>
 <td><a href="docs/screenshots/resources-readings.png"><img src="docs/screenshots/resources-readings.png" alt="Resources page, Readings tab"></a><br><sub>Resources: live readings</sub></td>
-<td><a href="docs/screenshots/network-traffic-control.png"><img src="docs/screenshots/network-traffic-control.png" alt="Network traffic control page"></a><br><sub>Network traffic control: speed and limit per app</sub></td>
+<td><a href="docs/screenshots/network-traffic-control.png"><img src="docs/screenshots/network-traffic-control.png" alt="Network Traffic Control page"></a><br><sub>Network Traffic Control: speed and limit per app</sub></td>
 <td><a href="docs/screenshots/traffic-block.png"><img src="docs/screenshots/traffic-block.png" alt="Block entry in a limit menu"></a><br><sub>Block upload or download per app</sub></td>
 </tr>
 <tr>

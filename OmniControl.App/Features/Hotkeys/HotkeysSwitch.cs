@@ -19,7 +19,7 @@ public sealed partial class HotkeysSwitch : ObservableObject, IDisposable
 
     [ObservableProperty] private bool _isOn;
 
-    /// The "Hotkeys and automation" feature runs: the switch, its state and its action exist (the Actions and hotkeys window shows the switch).
+    /// The "Hotkeys and automation" feature runs: the switch, its state and its action exist (the Actions and Hotkeys window shows the switch).
     [ObservableProperty] private bool _isAvailable;
 
     /// <param name="on">The setting that keeps the switch (on by default).</param>

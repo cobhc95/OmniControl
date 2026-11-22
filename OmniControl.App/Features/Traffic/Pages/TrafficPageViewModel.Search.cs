@@ -2,7 +2,7 @@ using OmniControl.App.Features.Resources;
 
 namespace OmniControl.App.Features.Traffic.Pages;
 
-// What the Network traffic control page offers to global search, defined once (see SearchBuilder): the Packet filter switch, the Adapter
+// What the Network Traffic Control page offers to global search, defined once (see SearchBuilder): the Packet filter switch, the Adapter
 // choice, the presets, the All apps row, the limit and block menus, the status line and install links, and one result per program row, each
 // with its live row when the page is made.
 public sealed partial class TrafficPageViewModel
@@ -33,7 +33,7 @@ public sealed partial class TrafficPageViewModel
             Note = AllAppsItem.Detail,
             Choices = AppNetItem.LimitWords.Append(AllAppsItem.MixedWord).ToList(),
         },
-        PresetsCard = new("Network traffic control presets", TrafficWords + " preset presets", PageTitle)
+        PresetsCard = new($"{PageTitle} presets", TrafficWords + " preset presets", PageTitle)
         {
             Choices = new[] { TrafficPresets.NormalName, ProviderChoice.CustomText },
             Menu = new[] { ProviderChoice.ManageText },

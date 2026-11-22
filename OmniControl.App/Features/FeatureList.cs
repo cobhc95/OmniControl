@@ -28,7 +28,7 @@ public static class FeatureList
         new(Automation, "Hotkeys and automation", "Keys, rules, custom actions", Live: true),
         new(Osd, "On-screen display", "OSD pop-ups", Live: true),
         new(Resources, "Resources and taskbar gadget", "CPU, GPU, network, temperatures", Live: true, OptionalFiles.Sensors),
-        new(Traffic, "Network traffic control", "Per-app limits (Windows Packet Filter)", Live: true, OptionalFiles.PacketFilter, "Windows Packet Filter"),
+        new(Traffic, OmniControl.App.Features.Traffic.Pages.TrafficPageViewModel.PageTitle, "Per-app limits (Windows Packet Filter)", Live: true, OptionalFiles.PacketFilter, "Windows Packet Filter"),
         // Restart: Smart devices' import and App settings' import from a PC hold its paired PCs.
         new(OtherPcs, "Other PCs", "Pairing, wake, remote control", Live: false),
         new(Devices, "Smart devices", "Plugs and bulbs", Live: true),

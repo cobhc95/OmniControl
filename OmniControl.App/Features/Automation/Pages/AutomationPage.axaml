@@ -6,7 +6,7 @@
              x:DataType="vm:AutomationPageViewModel">
     <!-- The Automation page: the title line (name, Pause all rules at the right), the tabs, the one status line, then the open tab.
          Rules: "When ... do ..." automations and "While ... don't allow ..." blocks, one row each, a "+ New" pill on each group's title line and a dashed row while a group is empty.
-         From other pages: rules made on pages and in the Presets window. Scripts: a list and an editor (see its comment). The rows are AutomationRuleRow (template in App.axaml). -->
+         From other pages: rules made on pages and in Presets Manager. Scripts: a list and an editor (see its comment). The rows are AutomationRuleRow (template in App.axaml). -->
     <!-- Rule rows are built only near the screen; a screen more each way, so Tab always finds the next row built -->
     <UserControl.Resources>
         <ItemsPanelTemplate x:Key="RowsPanel"><VirtualizingStackPanel CacheLength="1" /></ItemsPanelTemplate>
@@ -55,12 +55,12 @@
             </pages:GroupCard>
         </StackPanel>
 
-        <!-- From other pages: the rules pages made for what they do by themselves and the rules made in the Presets window (the same rows), each with its origin and a link to it. -->
+        <!-- From other pages: the rules pages made for what they do by themselves and the rules made in Presets Manager (the same rows), each with its origin and a link to it. -->
         <pages:GroupCard Group="{Binding FeatureRulesGroup}" IsVisible="{Binding ShowsFeatures}">
             <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:AutomationPageViewModel">
                 <StackPanel Spacing="{StaticResource Gap}">
                     <ItemsControl ItemsSource="{Binding FeatureRules}" ItemsPanel="{StaticResource RowsPanel}" />
-                    <pages:EmptyListRow IsVisible="{Binding NoFeatureRules}" Text="No rules from other pages yet. Pages such as Displays (warm light) and the Presets window (a preset's triggers) make theirs here." />
+                    <pages:EmptyListRow IsVisible="{Binding NoFeatureRules}" Text="No rules from other pages yet. Pages such as Displays (warm light) and Presets Manager (a preset's triggers) make theirs here." />
                 </StackPanel>
             </DataTemplate></pages:GroupCard.ContentTemplate>
         </pages:GroupCard>

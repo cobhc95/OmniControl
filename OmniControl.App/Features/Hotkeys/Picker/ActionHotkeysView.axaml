@@ -5,7 +5,7 @@
              x:Class="OmniControl.App.Features.Hotkeys.Picker.ActionHotkeysView"
              x:DataType="picker:ActionHotkeys"
              IsVisible="{Binding Converter={x:Static ObjectConverters.IsNotNull}}">
-    <!-- The top of the settings pane in the Actions and hotkeys window (docs/mockups/actions-and-hotkeys.html): "Hotkey" and one shared
+    <!-- The top of the settings pane in the Actions and Hotkeys window (docs/mockups/actions-and-hotkeys.html): "Hotkey" and one shared
          HotkeyBox per key, each with its remove cross and, when the key pressed is another action's, the caution tag "Also on: ..." with
          "Move here"; then "+ add key", "Suggest" and the action's devices; the one sentence of a refused key; then Run now, Show on its page and Change icon…. -->
     <StackPanel Spacing="{StaticResource Gap}" Margin="14,0,14,8">

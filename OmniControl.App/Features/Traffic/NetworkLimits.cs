@@ -18,7 +18,7 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
     public static readonly IReadOnlyList<int> Choices = new[] { 64, 128, 256, 512, 1024, 2048, 5120, 10240 };
     public const int DefaultKbps = 1024;
 
-    /// The one line the Network traffic control group shows instead of its programs while no one can do the work.
+    /// The one line the Network Traffic Control group shows instead of its programs while no one can do the work.
     public string UnavailableLine => _canHost ? "Per-app limits and speeds need the network service, which is not installed"
         : "Per-app limits and speeds need OmniControl as administrator; the network service needs the installed version";
 

@@ -80,7 +80,7 @@
                                         <Border Classes="tag good" IsVisible="{Binding HasTag}" VerticalAlignment="Center"><TextBlock Text="{Binding Tag}" /></Border>
                                         <!-- A family's directions and their keys in a few words (one line for Up and Down, Next and Previous...) -->
                                         <TextBlock Text="{Binding Summary}" Classes="muted small" VerticalAlignment="Center" IsVisible="{Binding HasSummary}" />
-                                        <!-- The entry's keys as keycaps, or a muted "no key" (the Actions and hotkeys window) -->
+                                        <!-- The entry's keys as keycaps, or a muted "no key" (the Actions and Hotkeys window) -->
                                         <StackPanel Orientation="Horizontal" Spacing="{StaticResource Gap}" VerticalAlignment="Center">
                                             <ItemsControl ItemsSource="{Binding Keycaps}">
                                                 <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="{StaticResource Gap}" LineSpacing="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
@@ -123,7 +123,7 @@
                     </Grid>
                     <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel>
-                            <!-- The Actions and hotkeys window: the action's keys first, then Run now and Show on its page, then its settings -->
+                            <!-- The Actions and Hotkeys window: the action's keys first, then Run now and Show on its page, then its settings -->
                             <!-- One block for the entry, or one per direction when it is a family (docs/mockups/grouped-actions.html) -->
                             <ItemsControl x:Name="HotkeyPart" ItemsSource="{Binding HotkeyBlocks}">
                                 <ItemsControl.ItemTemplate>

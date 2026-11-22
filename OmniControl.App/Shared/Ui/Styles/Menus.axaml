@@ -152,7 +152,7 @@
             </Style>
             <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushHoverStrong}" /></Style>
         </ControlTheme>
-        <!-- ToggleButton.menurow: a ticked row (the Actions and hotkeys window's device menu, the Shortcuts device scope, until it is a
+        <!-- ToggleButton.menurow: a ticked row (the Actions and Hotkeys window's device menu, the Shortcuts device scope, until it is a
              MenuRowList): the menu row's sizes, the hover wash, its tick (not a filled background) when checked -->
         <ControlTheme x:Key="ToggleMenuRow" TargetType="ToggleButton" BasedOn="{StaticResource {x:Type ToggleButton}}">
             <Style Selector="^.menurow">

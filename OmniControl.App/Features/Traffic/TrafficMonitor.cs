@@ -2,7 +2,7 @@ using OmniControl.Core.Engine.Resources;
 
 namespace OmniControl.App.Features.Traffic;
 
-/// THE reader of the programs' network traffic: one worker timer while the Network traffic control page's list is on screen, the
+/// THE reader of the programs' network traffic: one worker timer while the Network Traffic Control page's list is on screen, the
 /// per-program session where the network work runs started for it and given back when nobody looks.
 public sealed class TrafficMonitor : IDisposable
 {

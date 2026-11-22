@@ -8,7 +8,7 @@ using OmniControl.App.Features.Input.Rules;
 namespace OmniControl.App.Features.Automation.Pages;
 
 /// One automation rule on the Rules tab (a feature's or a preset's rule on the From other pages tab, with its page or "Presets · kind" and a link
-/// to the page or the Presets window): its switch, its name, the rule as a sentence of blocks ("When [at 07:30 on weekdays] [and on
+/// to the page or Presets Manager): its switch, its name, the rule as a sentence of blocks ("When [at 07:30 on weekdays] [and on
 /// battery] do [Lock] [+ action]", or "While [on battery] don't allow [Shut down]"), and its facts as tags. Every block opens the shared
 /// picker over the master list of its kind; every change is saved and applied at once.
 public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDisposable
@@ -54,7 +54,7 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
     public bool HasOrigin => OriginWords.Length > 0;
 
     /// <param name="ask">Shows a short message with a confirm button; true when confirmed.</param>
-    /// <param name="presets">The preset rules' kind and the Presets window (null: none, as in search).</param>
+    /// <param name="presets">The preset rules' kind and Presets Manager (null: none, as in search).</param>
     /// <param name="features">Set on the From other pages tab: the page a feature's rule was made on and its opener.</param>
     public AutomationItem(AutomationRule rule, AutomationService service, Func<DialogMessage, Task<bool>> ask, AutomationPresets? presets, AutomationFeatureRules? features)
     {
@@ -118,7 +118,7 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
         }
         var preset = AutomationPresets.PresetOf(Rule) is not null;
         OriginTag = preset && _presets?.KindOf(Rule) is { Length: > 0 } kind ? new TagItem(kind) : null;
-        (OriginWords, OriginLink) = preset ? ("Made in the Presets window · ", "Open") : (string.Empty, string.Empty);
+        (OriginWords, OriginLink) = preset ? ($"Made in {Shared.Presets.Manager.PresetManagerService.Title} · ", "Open") : (string.Empty, string.Empty);
     }
 
     [RelayCommand]
@@ -314,7 +314,7 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
         var (choices, noun) = slot.Kind == RuleSlotKind.Condition
             ? (_service.ConditionChoices(Rule, slot.IsNew ? null : stored), "condition")
             : (_service.StepChoices(Rule), PickerModel.ActionNoun);
-        return ($"Choose {(slot.IsNew ? "a" : "the")} {noun}", PickerModel.On(choices, stored, noun));
+        return (PickerModel.ChooseTitle(slot.IsNew, noun), PickerModel.On(choices, stored, noun));
     }
 
 

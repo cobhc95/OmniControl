@@ -5,14 +5,14 @@ using OmniControl.App.Shared.Presets;
 
 namespace OmniControl.App.Features.Hotkeys.Picker;
 
-/// The Actions and hotkeys window: the Choose-the-action window in its manage mode over every master
+/// The Actions and Hotkeys window: the Choose-the-action window in its manage mode over every master
 /// action, opened from the sidebar's bottom entry and from search results; one non-modal window, brought to the front when asked for again,
 /// hidden rather than closed (<see cref="SingleWindow{T}"/> keep), so it opens again at once with a fresh model, until it is let go after a long hide.
 /// It owns what the window's top bar shows: the shortcut sets (a preset group of the master list, with the shared preset picker), Clear all
 /// and Restore defaults. Everything it lists is read live from <see cref="HotkeyRegistry"/>.
 public sealed class ActionsWindowService : IDisposable
 {
-    public const string Title = "Actions and hotkeys";
+    public const string Title = "Actions and Hotkeys";
 
     /// The sidebar entry's icon (the list with a magnifier of the former All actions page).
     public const string Icon = "M3,5 H14 V7 H3 Z M3,10 H10 V12 H3 Z M3,15 H8 V17 H3 Z M16,9 A4.5,4.5 0 1 1 16,18 A4.5,4.5 0 1 1 16,9 Z M16,11 A2.5,2.5 0 1 0 16,16 A2.5,2.5 0 1 0 16,11 Z M19,17.5 L21.5,20 L20,21.5 L17.5,19 Z";

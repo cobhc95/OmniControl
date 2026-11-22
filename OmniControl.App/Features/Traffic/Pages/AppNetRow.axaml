@@ -4,7 +4,7 @@
              xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
              x:Class="OmniControl.App.Features.Traffic.Pages.AppNetRow"
              x:DataType="vm:AppNetItem">
-    <!-- One Network traffic control row: Pin | App (icon, name, technical name muted, "not running") | Down | Up | Upload limit | Download limit | On,
+    <!-- One Network Traffic Control row: Pin | App (icon, name, technical name muted, "not running") | Down | Up | Upload limit | Download limit | On,
          columns shared with the group's headings; dimmed while a pinned program is not running (its controls stay usable). -->
     <Grid ColumnSpacing="{StaticResource MenuGap}" Classes.unavailable="{Binding NotRunning}" ContextRequested="OnRowContext">
         <Grid.ColumnDefinitions>

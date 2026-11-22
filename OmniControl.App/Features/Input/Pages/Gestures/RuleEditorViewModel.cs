@@ -154,7 +154,7 @@ public sealed partial class RuleEditorViewModel : ObservableObject
             RuleSlotKind.Condition => (_rules.ConditionChoices(Rule, slot.IsNew ? null : stored), "condition"),
             _ => (_rules.StepChoices(), PickerModel.ActionNoun),
         };
-        return ($"Choose {(slot.IsNew ? "a" : "the")} {noun}", PickerModel.On(choices, stored, noun));
+        return (PickerModel.ChooseTitle(slot.IsNew, noun), PickerModel.On(choices, stored, noun));
     }
 
 

@@ -2,7 +2,7 @@ using OmniControl.App.Features.Resources;
 
 namespace OmniControl.App.Features.Traffic.Pages;
 
-/// The Network traffic control page: one group with the Packet filter switch, the Adapter choice and the presets on its header, the All apps
+/// The Network Traffic Control page: one group with the Packet filter switch, the Adapter choice and the presets on its header, the All apps
 /// row and a row per program (speeds, limits, block) at the chosen place, and the one status line; it reads the programs' traffic only while
 /// on screen with the group open, and the networks only while on screen.
 public sealed partial class TrafficPageViewModel : PageViewModel, IDisposable
@@ -19,7 +19,7 @@ public sealed partial class TrafficPageViewModel : PageViewModel, IDisposable
     private int _seenShown = -1;
     private NetworkLimits.DownloadState? _downloadShown;
 
-    public const string PageTitle = "Network traffic control";
+    public const string PageTitle = "Network Traffic Control";
 
     /// The sidebar's filled drawing of the icon library's "arrows-up-down" (traffic up and down).
     public static readonly PageInfo Info = new(PageTitle, "M7,3 L12,8 H8.5 V21 H5.5 V8 H2 Z M17,21 L12,16 H15.5 V3 H18.5 V16 H22 Z",
@@ -33,7 +33,7 @@ public sealed partial class TrafficPageViewModel : PageViewModel, IDisposable
     public AllAppsItem AllApps { get; }
     public bool HasApps => AppRows.Count > 0;
 
-    /// The preset picker on the header (Network traffic control presets).
+    /// The preset picker on the header (Network Traffic Control presets).
     public ChoiceItem PresetChoice => _presets.Choice;
 
     /// The Packet filter switch on the group's header: off takes Windows Packet Filter out of all traffic (for a conflict with other software).

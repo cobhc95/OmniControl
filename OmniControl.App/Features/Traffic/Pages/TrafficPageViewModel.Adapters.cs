@@ -141,5 +141,5 @@ public sealed partial class TrafficPageViewModel
         ?? _settings.Setup.Scoped.FirstOrDefault(s => s.Network == id)?.NetworkName ?? id;
 
     /// The adapters or their networks changed (a worker): the pull-down and the line follow.
-    private void OnNetworksChanged() => Dispatcher.UIThread.Post(() => Guard.Run("Network traffic control: follow the networks", ShowPlace));
+    private void OnNetworksChanged() => Dispatcher.UIThread.Post(() => Guard.Run($"{PageTitle}: follow the networks", ShowPlace));
 }

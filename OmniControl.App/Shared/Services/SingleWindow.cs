@@ -3,7 +3,7 @@ using System.Diagnostics;
 namespace OmniControl.App.Shared.Services;
 
 /// The lifecycle of a window that exists at most once (About, the app lists manager, the preset manager): shown through
-/// <see cref="OwnedWindow"/>, brought to the front when asked for again, forgotten when it closes. A kept window (Actions and hotkeys) is
+/// <see cref="OwnedWindow"/>, brought to the front when asked for again, forgotten when it closes. A kept window (Actions and Hotkeys) is
 /// only hidden when closed, so opening it again is instant; it lets go of its content while hidden, so it runs nothing, and of the window
 /// itself when <see cref="Release"/>d.
 public sealed class SingleWindow<T> where T : Window

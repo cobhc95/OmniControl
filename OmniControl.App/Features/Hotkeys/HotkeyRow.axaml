@@ -4,7 +4,7 @@
              xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
              x:Class="OmniControl.App.Features.Hotkeys.HotkeyRow"
              x:DataType="hk:HotkeyAction">
-    <!-- The devices an action works on (Button.selector, a ticked list menu), beside its keys in the Actions and hotkeys window -->
+    <!-- The devices an action works on (Button.selector, a ticked list menu), beside its keys in the Actions and Hotkeys window -->
     <Grid ColumnDefinitions="190">
         <Button Tag="scope" Classes="selector" IsVisible="{Binding HasDevices}" ToolTip.Tip="The devices this action works on">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapSmall}">

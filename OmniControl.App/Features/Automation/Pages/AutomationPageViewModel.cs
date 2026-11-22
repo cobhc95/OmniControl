@@ -6,8 +6,8 @@ namespace OmniControl.App.Features.Automation.Pages;
 
 /// The Automation page: the Rules tab (sentence rules: "When ... do ...", and blocks: "While ... don't allow ..."), the From other pages tab (the rules
 /// that hold a feature's own rule action, <see cref="AutomationFeatureRules"/>, and the rules that apply a preset,
-/// <see cref="AutomationPresets.PresetOf"/>, made in the Presets window) and the Scripts tab (AutomationPageViewModel.Scripts.cs). Custom actions
-/// are made and edited in the Actions and hotkeys window. The rules and scripts themselves are
+/// <see cref="AutomationPresets.PresetOf"/>, made in Presets Manager) and the Scripts tab (AutomationPageViewModel.Scripts.cs). Custom actions
+/// are made and edited in the Actions and Hotkeys window. The rules and scripts themselves are
 /// <see cref="AutomationService"/>'s; this page lists them, adds and removes them, and shows the one status line.
 public sealed partial class AutomationPageViewModel : PageViewModel, IDisposable
 {
@@ -71,7 +71,7 @@ public sealed partial class AutomationPageViewModel : PageViewModel, IDisposable
     public string PauseTip => PauseTipText;
 
     /// <param name="ask">Shows a short message with a confirm button; true when confirmed.</param>
-    /// <param name="presets">The preset rules' kind and the Presets window (null: none).</param>
+    /// <param name="presets">The preset rules' kind and Presets Manager (null: none).</param>
     /// <param name="features">Which page each feature's rule was made on (null: none).</param>
     public AutomationPageViewModel(AutomationService service, Func<DialogMessage, Task<bool>> ask, AutomationPresets? presets, AutomationFeatureRules? features) : base(Info)
     {
@@ -139,7 +139,7 @@ public sealed partial class AutomationPageViewModel : PageViewModel, IDisposable
 
     private void Show(AutomationRule rule) => ListOf(rule).Add(new AutomationItem(rule, _service, _ask, _presets, ListOf(rule) == FeatureRules ? _features : null));
 
-    /// The service's rules changed (here, in the Presets window, on a feature's page): rows of rules gone, or no longer of that tab, are dropped,
+    /// The service's rules changed (here, in Presets Manager, on a feature's page): rows of rules gone, or no longer of that tab, are dropped,
     /// and a rule gets a row on the tab it belongs to.
     private void FollowRules()
     {

@@ -228,7 +228,7 @@ public static class MouseActionCatalog
         return list.OrderBy(c => c.Category == Screen.Section && c.Heading == Screen.Heading ? 1 : 0).ToList();
     }
 
-    /// The entries of the Actions and hotkeys window: every master action (and the buttons of its lists) with the settings its hotkeys and
+    /// The entries of the Actions and Hotkeys window: every master action (and the buttons of its lists) with the settings its hotkeys and
     /// rules use (<see cref="OwnOptions"/>: the action's defaults, not the "times / repeat" ones of an input), what a key keeps of its
     /// own (a custom action's editor, remove, rename) and why it does nothing now.
     public static List<PickChoice> ManageChoices(IEnumerable<HotkeyAction> omniActions) =>

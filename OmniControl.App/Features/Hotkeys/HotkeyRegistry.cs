@@ -3,7 +3,7 @@ using OmniControl.App.Shared.Contracts;
 namespace OmniControl.App.Features.Hotkeys;
 
 /// The master list of everything OmniControl itself can do. A feature calls <see cref="Register"/> once per action; it then shows up
-/// in the Actions and hotkeys window (and in search), in the mouse button and middle-click pickers, and (for a level action) in the wheel gesture
+/// in the Actions and Hotkeys window (and in search), in the mouse button and middle-click pickers, and (for a level action) in the wheel gesture
 /// picker, and is saved and registered as a hotkey automatically. Consumers read <see cref="Actions"/> and follow its changes.
 public sealed partial class HotkeyRegistry : IActionRegistry, IActionRunner, IDisposable
 {

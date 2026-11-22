@@ -4,7 +4,7 @@ using OmniControl.App.Features.Hotkeys;
 namespace OmniControl.App.Features.Hotkeys.Picker;
 
 /// Families in the list: the directions of one thing (<see cref="ActionFamily"/>: Pointer speed up and down)
-/// are ONE line of the Actions and hotkeys window and of every pick list. Each direction is still its own entry with its own id, so the line only
+/// are ONE line of the Actions and Hotkeys window and of every pick list. Each direction is still its own entry with its own id, so the line only
 /// remembers which direction is shown in the settings pane: the Actions window shows one key block per direction, a pick shows a "Direction"
 /// setting at the top that chooses which one is used. A search finds each direction by its own name and shows the family's line with that one chosen.
 public sealed partial class PickerModel

@@ -13,7 +13,7 @@ namespace OmniControl.App.Features;
 /// <param name="Settings">The app's settings, of which a module hands each feature only its own fields (<see cref="AppSettings.Slot"/>).</param>
 /// <param name="Imports">Where a module says how an import reloads its stores live (<see cref="ImportHooks.OnReload"/>).</param>
 /// <param name="Shutdown">Where a module adds its shut-down steps, each at its place in the one order (run alone when its feature is switched off).</param>
-/// <param name="Features">Which features are on (a module with parts of its own, such as Network traffic control inside Resources, reads them when it starts).</param>
+/// <param name="Features">Which features are on (a module with parts of its own, such as Network Traffic Control inside Resources, reads them when it starts).</param>
 /// <param name="OpenPage">Opens the page with this title, at the tab with this name (<see cref="PageViewModel.Tabs"/>; null: the tab it is on).</param>
 public sealed record FeatureContext(
     IActionRegistry Actions,

@@ -1,7 +1,7 @@
 namespace OmniControl.App.Features.Hotkeys;
 
 /// What one hotkey box edits: one key combination and the box's listening state (the keys held while it listens, a refused press).
-/// <see cref="HotkeyAction"/> is one (its first key); a further key of an action in the Actions and hotkeys window is a
+/// <see cref="HotkeyAction"/> is one (its first key); a further key of an action in the Actions and Hotkeys window is a
 /// <see cref="HotkeyKeySlot"/>. <see cref="HotkeyCapture"/> and the shared <c>HotkeyBox</c> work on this, never on what owns the key.
 public abstract partial class HotkeyTarget : ObservableObject
 {

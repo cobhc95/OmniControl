@@ -2,7 +2,7 @@ using OmniControl.App.Features.Resources;
 
 namespace OmniControl.App.Features.Traffic;
 
-/// What the Network traffic control page and its rows use of the programs' network rules: made real by <see cref="NetworkLimits"/>, which
+/// What the Network Traffic Control page and its rows use of the programs' network rules: made real by <see cref="NetworkLimits"/>, which
 /// makes Windows hold them; a stand-in given to the page leaves Windows alone.
 public interface INetworkLimits
 {

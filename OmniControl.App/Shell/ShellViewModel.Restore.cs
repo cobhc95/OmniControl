@@ -13,7 +13,7 @@ public sealed partial class ShellViewModel
     private readonly FileSnapshotStore _snapshots = new();
     private readonly Dictionary<PageSlot, PageRestore> _restorers = new();
     private PageRestore? _restoreAll;
-    private readonly List<IRestorable> _restoreParts = new(); // what "Restore all" restores: the pages there are now, then the Actions and hotkeys window's parts
+    private readonly List<IRestorable> _restoreParts = new(); // what "Restore all" restores: the pages there are now, then the Actions and Hotkeys window's parts
     private IReadOnlyList<IRestorable> _windowParts = Array.Empty<IRestorable>();
 
     private Task<bool> ConfirmRestore(RestoreQuestion q) => _dialogs.AskAsync(new DialogMessage(q.Title, q.Text, q.Button));
@@ -21,7 +21,7 @@ public sealed partial class ShellViewModel
     private void WireRestore()
     {
         foreach (var slot in AllSlots) AddRestoreAction(slot);
-        // The Actions and hotkeys window is not a page; its "Restore defaults" is wired the same way.
+        // The Actions and Hotkeys window is not a page; its "Restore defaults" is wired the same way.
         var keys = _actionsWindow.Restorable;
         // It also puts back Windows' own screenshot keys, which that window's screenshot settings can turn off.
         var windowsKeys = _screenshot.KeysRestore(keys.Name);

@@ -8,7 +8,7 @@
         MinWidth="{StaticResource PickerWindowMinWidth}" MinHeight="400"
         WindowStartupLocation="CenterOwner">
     <DockPanel>
-        <!-- The Actions and hotkeys window only (docs/mockups/actions-and-hotkeys.html): one thin top bar with its name, the shortcut set
+        <!-- The Actions and Hotkeys window only (docs/mockups/actions-and-hotkeys.html): one thin top bar with its name, the shortcut set
              (the shared preset picker), Clear all and Restore defaults -->
         <Border x:Name="ManageBar" DockPanel.Dock="Top" Classes="barstrip" BorderThickness="0,0,0,1" Padding="12,6" IsVisible="False"
                 x:DataType="picker:ActionsWindowService">

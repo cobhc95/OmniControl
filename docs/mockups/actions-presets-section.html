@@ -1,0 +1,19 @@
+﻿<!doctype html><html><head><meta charset="utf-8">
+<!--
+APPROVED by the owner (22 Nov 2026). Actions and Hotkeys window (and the action picker): a "Presets" section.
+1. Left list: NEW "Presets" entry (stack icon, same as the sidebar's Presets Manager icon) placed above "Recent".
+2. Middle: every preset apply action from the master action list (ids preset.*), grouped by muted headings
+   "<page title> · <preset group name>" (e.g. "Audio and Volume · Volume presets"), rows "Switch to "<name>"" or the
+   group's own apply word ("Apply "Bass boost""), with their keys / "no key" like other rows. "Next preset" rows only
+   where that group already registers such an action. Derived live from the master list (subgroup "Presets"),
+   never a copy; the same actions still appear under their page too.
+3. Right pane: as any action (hotkey box, + add key, Run now, Change icon…), with "Show in Presets Manager"
+   instead of "Show on its page" (opens the Presets Manager on that group).
+Plus (owner): removing a custom action in this window asks for confirmation first (shared confirm dialog, one
+calm sentence naming it: "Delete the custom action "<name>"?"), as the old Automation tab did.
+-->
+</head><body style="background:#111;color:#ddd;font-family:Segoe UI">
+<p>Left: … Screenshot | Custom actions | <b>Presets</b> | Recent</p>
+<p>Audio and Volume · Volume presets: Switch to "Gaming" [Ctrl+Alt+2] · Switch to "Preset 1" no key</p>
+<p>Right: Switch to "Gaming" / Presets · Audio and Volume · Volume presets / [Run now] [Show in Presets Manager] [Change icon…]</p>
+</body></html>

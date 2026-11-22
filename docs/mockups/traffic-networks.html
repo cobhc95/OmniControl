@@ -1,0 +1,82 @@
+<!doctype html><html><head><meta charset="utf-8">
+<!--
+APPROVED by the owner (22 Nov 2026). Network traffic control: header line, per-network settings, "All apps" row.
+Match every part exactly; deviate only where master styles truly cannot, and name it in the report.
+
+1. Header line, left to right: title | "Packet filter" switch (unchanged) | NEW "Adapter: <name>" pill pull-down |
+   PresetPicker (right-most, the shared PresetPicker on the group header, as other groups).
+   The "Apps: all" pill (AppScope) is REMOVED.
+2. Adapter pull-down = the shared pop-down list, ONE choice (radio-like):
+   - "All adapters" + muted "base settings" (default), divider, then one row per network adapter (named "adapter" everywhere, the same word the gadget's adapter choice uses), live from Windows
+     (connected or not): adapter name + muted "<network name or 'not connected'> · own settings" or "· uses All".
+   - Scrolls when long (~190 px max; shared virtualised menu at 40+ rows). Esc closes; pill keyboard reachable.
+   - Pill text "Adapter: all" or "Adapter: Wi-Fi" (trimmed with … when long).
+2b. NETWORKS (approved addition): an adapter that has saved networks (Wi-Fi; wired with several) shows "▸" and opens a
+   SIDE LIST (hover, click or Right; Esc/Left closes) - the main list stays adapters only. Side list, top to bottom:
+   "Every <adapter> network" (= the adapter's own settings) | divider | heading "Connected": the current network |
+   heading "Own settings": networks that have their own settings | divider | filter box "Find a network…" with muted
+   "<n> more" | the remaining saved networks, muted, scrolling (~92 px; virtualised at 40+). Adapters with no
+   network list (VPN, single wired network) have no side list. Networks come from ONE Core network watch (saved
+   profiles, connected network, metered flag) announced by Windows events (Network List Manager), no polling; the
+   same watch feeds the network states job (docs/mockups/network-states.html).
+   Choosing a network: pill "Adapter: Wi-Fi · Phone hotspot"; title "· Phone hotspot only"; muted line "Changes here
+   apply only while connected to Phone hotspot (Wi-Fi)." + link "Use Wi-Fi's settings". Most specific wins:
+   network's own settings, else its adapter's, else All adapters'. Switches by itself when the PC joins/leaves.
+3. When a single adapter is chosen:
+   - Title reads "Network traffic control · <Adapter> only" (the suffix in accent).
+   - One muted line under the header: "Changes here apply only on <Adapter> (<network name>)." followed by an accent
+     link "Use All adapters' settings" (removes that adapter's own settings; shown only when it has its own).
+   - The table (All apps row and every app row) shows and edits THAT adapter's settings.
+4. Settings model: "All adapters" = base settings (per-app limits, blocks, On). An adapter with no own settings uses
+   the base. The first edit while an adapter is chosen gives it its own copy (copied from the base), then edits apply
+   to it only. Enforcement: download limits and blocks apply per adapter; upload limits use Windows' throttle rules
+   which scope only by network type (Private/Public/Domain): where exact scoping is impossible the status line says so
+   in one sentence. Persisted in the traffic feature's settings; vanished adapters keep their settings, "not connected".
+5. Presets: a traffic preset stores the base plus every adapter's own settings; applying restores each. If traffic
+   has no preset provider yet, add one via the existing preset pattern (so it shows in the Presets window too).
+6. NEW first row "All apps" + muted "entire PC", same columns. OWNER REQUIREMENT: exactly as drawn, the row has a
+   slightly lighter fill and a slightly stronger edge than app rows (here #262626 / #555 vs #1e1e1e / #333), visibly
+   different in both themes; from theme resources (an existing brush one step up, or one new shared brush pair for
+   both themes with its MAP line), never a literal; hover stays the master hover.
+   Down/Up = whole-PC totals. Upload/Download limit pull-downs: picking a value sets it (or Block) on every app row
+   (each app gets it; not a shared cap); if rows differ it reads "Mixed" (dashed edge, accent text).
+   On switch: toggles every app row; if rows differ it shows a HALF state (part-filled, dash knob); clicking a half
+   switch turns all on. App rows stay independently editable; the All row stores nothing (derived live).
+-->
+<style>
+body{margin:0;background:#111;font-family:'Segoe UI',sans-serif;color:#e8e8e8;font-size:12px}
+.w{background:#1b1b1b;border-radius:12px;padding:10px;margin:12px;width:820px}
+.cap{color:#aaa;margin:12px 12px 0}
+.hdr{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.p{border:1px solid #888;border-radius:14px;padding:2px 9px}
+.r{display:grid;grid-template-columns:180px 1fr 60px 60px 90px 90px 46px;align-items:center;gap:6px;background:#1e1e1e;border:1px solid #333;border-radius:8px;padding:5px 8px;margin-top:4px}
+.all{background:#262626;border-color:#555}
+.d{border:1px solid #888;border-radius:12px;padding:1px 7px;font-size:11px}
+.mx{border-style:dashed;color:#f0b080}
+.sw{width:38px;height:18px;border-radius:9px;background:#f0883e}
+.off{background:transparent;border:1px solid #888}
+.mid{background:linear-gradient(90deg,#f0883e 50%,transparent 50%);border:1px solid #f0883e}
+.m{color:#999}.ac{color:#f0883e}
+.menu{background:#2a2a2a;border:1px solid #444;border-radius:8px;padding:4px;width:280px;margin:6px 0 0 auto;max-height:190px;overflow-y:auto}
+.menu div{padding:5px 8px}.sep{border-top:1px solid #444;margin:3px 0;padding:0!important}
+</style></head><body>
+<p class="cap">Default: All adapters, all on</p>
+<div class="w"><div class="hdr"><b style="flex:1">Network traffic control</b><span class="m">Packet filter</span><span class="sw" style="display:inline-block"></span><span class="p">Adapter: all ▾</span><span class="p">Preset: Normal ▾</span></div>
+<div class="r all"><b>All apps <span class="m">entire PC</span></b><span></span><span>2.4 KB/s</span><span>3.1 KB/s</span><span class="d">No limit ▾</span><span class="d">No limit ▾</span><span class="sw"></span></div>
+<div class="r"><span>Microsoft Edge</span><span></span><span>0 KB/s</span><span>0 KB/s</span><span class="d">No limit ▾</span><span class="d">No limit ▾</span><span class="sw"></span></div></div>
+<p class="cap">Adapter pull-down open (one choice)</p>
+<div class="w"><div class="menu"><div class="ac">● All adapters <span class="m">base settings</span></div><div class="sep"></div>
+<div>○ Wi-Fi <span class="m">Home-5G · own settings</span></div><div>○ Ethernet <span class="m">Office LAN · uses All</span></div><div>○ Tailscale <span class="m">VPN · uses All</span></div><div>○ Ethernet 2 <span class="m">not connected · uses All</span></div></div></div>
+<p class="cap">Wi-Fi chosen</p>
+<div class="w"><div class="hdr"><b style="flex:1">Network traffic control <span class="ac">· Wi-Fi only</span></b><span class="m">Packet filter</span><span class="sw" style="display:inline-block"></span><span class="p">Adapter: Wi-Fi ▾</span><span class="p">Preset: Normal ▾</span></div>
+<div class="m" style="margin:2px 0 4px">Changes here apply only on Wi-Fi (Home-5G). <span class="ac" style="text-decoration:underline">Use All adapters' settings</span></div>
+<div class="r all"><b>All apps <span class="m">entire PC</span></b><span></span><span>2.4 KB/s</span><span>3.1 KB/s</span><span class="d">No limit ▾</span><span class="d">2 MB/s ▾</span><span class="sw"></span></div>
+<div class="r"><span>Steam</span><span></span><span>0 KB/s</span><span>0 KB/s</span><span class="d">No limit ▾</span><span class="d">2 MB/s ▾</span><span class="sw"></span></div></div>
+<p class="cap">All off</p>
+<div class="w"><div class="r all"><b>All apps <span class="m">entire PC</span></b><span></span><span>2.4 KB/s</span><span>3.1 KB/s</span><span class="d">No limit ▾</span><span class="d">No limit ▾</span><span class="sw off"></span></div>
+<div class="r"><span>Microsoft Edge</span><span></span><span>0 KB/s</span><span>0 KB/s</span><span class="d">No limit ▾</span><span class="d">No limit ▾</span><span class="sw off"></span></div></div>
+<p class="cap">Mixed</p>
+<div class="w"><div class="r all"><b>All apps <span class="m">entire PC</span></b><span></span><span>2.4 KB/s</span><span>3.1 KB/s</span><span class="d">1 MB/s ▾</span><span class="d mx">Mixed ▾</span><span class="sw mid"></span></div>
+<div class="r"><span>Microsoft Edge</span><span></span><span>0 KB/s</span><span>0 KB/s</span><span class="d">1 MB/s ▾</span><span class="d">5 MB/s ▾</span><span class="sw"></span></div>
+<div class="r"><span>Steam</span><span></span><span>0 KB/s</span><span>0 KB/s</span><span class="d">1 MB/s ▾</span><span class="d">Block ▾</span><span class="sw off"></span></div></div>
+</body></html>

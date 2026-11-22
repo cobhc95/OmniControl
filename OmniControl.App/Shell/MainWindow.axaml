@@ -50,7 +50,7 @@
                     <TextBlock Text="{Binding VersionText}" Classes="muted" />
                 </StackPanel>
 
-                <!-- Entries pinned to the bottom under a thin divider that open a window, not a page (Presets, Actions and hotkeys); the same item look
+                <!-- Entries pinned to the bottom under a thin divider that open a window, not a page (Presets, Actions and Hotkeys); the same item look
                      as the list above; a click or Enter opens the window (MainWindow.axaml.cs) -->
                 <StackPanel DockPanel.Dock="Bottom">
                     <!-- Only while a newer version exists (the update check): a click opens App settings at the Updates group -->

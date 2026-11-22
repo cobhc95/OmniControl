@@ -1,6 +1,6 @@
 namespace OmniControl.App.Shared.Services;
 
-// The intervals of network traffic control; a part of Timing in Shared/Services, so every call stays Timing.X.
+// The intervals of Network Traffic Control; a part of Timing in Shared/Services, so every call stays Timing.X.
 public static partial class Timing
 {
     /// The least time between two changes of Windows' network rules: a burst of chip clicks or actions is applied once.

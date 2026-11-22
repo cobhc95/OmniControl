@@ -19,7 +19,7 @@ public sealed class AutomationPresets : IPresetTriggers, IDisposable
 
     private readonly Action<string?, string?> _open;
 
-    /// <param name="open">Opens the Presets window at a page and group (both null: where it opens by itself).</param>
+    /// <param name="open">Opens Presets Manager at a page and group (both null: where it opens by itself).</param>
     public AutomationPresets(AutomationService rules, IActionRegistry actions, IActionRunner run, PresetTriggersSlot slot, Action<string?, string?> open)
     {
         (_rules, _actions, _run, _slot, _open) = (rules, actions, run, slot, open);
@@ -71,7 +71,7 @@ public sealed class AutomationPresets : IPresetTriggers, IDisposable
     /// The tag a preset rule shows ("Presets · Audio and Volume"): its group's page title; empty while its group is not registered.
     public string KindOf(AutomationRule rule) => PresetOf(rule) is { } preset && _slot.Presets.GroupOf(preset) is { } group ? $"Presets · {group.Section}" : string.Empty;
 
-    /// Opens the Presets window on the rule's preset group, or (null) where it opens by itself.
+    /// Opens Presets Manager on the rule's preset group, or (null) where it opens by itself.
     public void Open(AutomationRule? rule)
     {
         var group = rule is null || PresetOf(rule) is not { } preset ? null : _slot.Presets.GroupOf(preset);

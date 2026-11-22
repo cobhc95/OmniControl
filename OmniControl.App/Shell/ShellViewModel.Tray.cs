@@ -8,7 +8,7 @@ using OmniControl.App.Shared.Presets.Manager;
 namespace OmniControl.App.Shell;
 
 // The tray's share of the shell: the flyout's model over the master lists the shell owns, the master actions the tray menu opens windows
-// with (filed under App settings, like the Actions and hotkeys window's restore), and the one way the tray runs an action.
+// with (filed under App settings, like the Actions and Hotkeys window's restore), and the one way the tray runs an action.
 public sealed partial class ShellViewModel
 {
     /// What the tray flyout and menu show.
@@ -81,7 +81,7 @@ public sealed partial class ShellViewModel
         if (e.PropertyName == nameof(ActionKeyTip.Keys)) OnPropertyChanged(nameof(SearchShortcut));
     }
 
-    /// "Show in OmniControl" of a tray slider or tile: an action opens the Actions and hotkeys window at it; a state alone opens the main
+    /// "Show in OmniControl" of a tray slider or tile: an action opens the Actions and Hotkeys window at it; a state alone opens the main
     /// window at the page that owns it, which brings the state's owner forward (<see cref="PageViewModel.Reveal"/>: a smart device is selected).
     private void ShowInApp(TrayTarget target)
     {

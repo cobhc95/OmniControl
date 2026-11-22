@@ -25,7 +25,7 @@ public sealed partial class TrayFlyoutModel : ObservableObject, IDisposable
 
     /// <param name="icons">The shared icon picker ("Change icon…"); its changes (a user icon renamed or removed) redraw the panel.</param>
     /// <param name="openApp">Shows the main window (the foot's "Open OmniControl").</param>
-    /// <param name="showInApp">"Show in OmniControl": the main window at the page that owns the item, or the Actions and hotkeys window at its action.</param>
+    /// <param name="showInApp">"Show in OmniControl": the main window at the page that owns the item, or the Actions and Hotkeys window at its action.</param>
     /// <param name="watchWhileShown">Asks what the panel shows to stay fresh while it is shown (the mixer's close watch; null: nothing to watch); the handle is given back when it hides.</param>
     public TrayFlyoutModel(IActionCatalogue hotkeys, Func<string, bool> run, IStateCatalogue states, IconPicker icons, Action openApp, Action<TrayTarget> showInApp,
         Func<IDisposable?> watchWhileShown)

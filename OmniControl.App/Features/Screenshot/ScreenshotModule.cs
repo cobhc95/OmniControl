@@ -27,7 +27,7 @@ public sealed class ScreenshotModule : IFeatureModule
     /// A screen recording (with its sound) runs now.
     public bool Records => _service?.IsRecording == true;
 
-    /// The Actions and hotkeys window's "Restore defaults" also puts Windows' own screenshot keys back (<paramref name="name"/>: that window's);
+    /// The Actions and Hotkeys window's "Restore defaults" also puts Windows' own screenshot keys back (<paramref name="name"/>: that window's);
     /// while the Screenshot tool is off there is nothing of it to restore.
     public IRestorable KeysRestore(string name) => new SettingsRestore<WindowsKeysState>("screenshot-keys", name,
         () => "Puts Windows' own screenshot keys (Print Screen, Win+Shift+S) back as they were.",

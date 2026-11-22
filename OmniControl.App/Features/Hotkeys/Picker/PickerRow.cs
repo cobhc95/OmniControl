@@ -75,7 +75,7 @@ public sealed class PickerRow : ObservableObject
     public bool IsCommand => Choice?.Command is not null;
     public bool IsEntry => Choice is { Command: null };
 
-    /// The entry's keys as keycaps, one row of parts per key (the Actions and hotkeys window); empty when it has none. Made when the
+    /// The entry's keys as keycaps, one row of parts per key (the Actions and Hotkeys window); empty when it has none. Made when the
     /// row is first drawn, so a long list only makes the keycaps of the rows on screen.
     public IReadOnlyList<IReadOnlyList<KeycapPart>> Keycaps => _keycaps ??= _keys.Select(k => Hotkeys.Keycaps.From(k, string.Empty)).ToList();
 

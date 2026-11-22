@@ -11,18 +11,21 @@ namespace OmniControl.App.Features.Resources;
 /// The windows the taskbar gadget's menu opens.
 public interface IResourcesWindows
 {
-    /// Opens the Network traffic control page.
+    /// Opens the Network Traffic Control page.
     void OpenApps();
 
     /// Opens the page at its Taskbar gadget tab.
     void OpenGadgetSettings();
 
-    /// Network traffic control runs (the gadget's menu offers it).
+    /// Network Traffic Control runs (the gadget's menu offers it).
     bool HasTraffic { get; }
+
+    /// The Network Traffic Control page's title, for the menu's link.
+    string TrafficTitle { get; }
 }
 
 /// Resources: the poller and its states, the taskbar gadget with its weather and layouts, presets, the Open action and the page. Its settings
-/// file (resources.json) holds Network traffic control's rules too, so the shell gives the same <see cref="Settings"/> to that module.
+/// file (resources.json) holds Network Traffic Control's rules too, so the shell gives the same <see cref="Settings"/> to that module.
 public sealed class ResourcesModule : IFeatureModule, IResourcesWindows
 {
     public const string OpenActionId = "resources.open";
@@ -36,7 +39,7 @@ public sealed class ResourcesModule : IFeatureModule, IResourcesWindows
     private GadgetLayouts? _layouts;
     private ResourcePresets? _presets;
 
-    /// <param name="trafficPage">The Network traffic control page's title (the gadget's menu opens it).</param>
+    /// <param name="trafficPage">The Network Traffic Control page's title (the gadget's menu opens it).</param>
     public ResourcesModule(string trafficPage) => _trafficPage = trafficPage;
 
     /// resources.json, loaded once for both modules that keep their settings in it.
@@ -45,6 +48,8 @@ public sealed class ResourcesModule : IFeatureModule, IResourcesWindows
     public IReadOnlyList<string> Features { get; } = new[] { FeatureList.Resources };
 
     public bool HasTraffic => _context?.Features.IsOn(FeatureList.Traffic) == true;
+
+    public string TrafficTitle => _trafficPage;
 
     public void Register(FeatureContext context)
     {
@@ -95,7 +100,7 @@ public sealed class ResourcesModule : IFeatureModule, IResourcesWindows
 
     public void OpenApps()
     {
-        AppLifecycle.RequestShow("the Network traffic control page");
+        AppLifecycle.RequestShow($"the {_trafficPage} page");
         _context!.OpenPage(_trafficPage, null);
     }
 

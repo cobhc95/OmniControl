@@ -92,7 +92,7 @@
         </ControlTheme>
     </Styles.Resources>
     <Style Selector="ListBox.nav, ListBox.rows, ListBox.fxlist, ListBox.pick"><Setter Property="Theme" Value="{StaticResource PageList}" /></Style>
-    <!-- ListBox.rows.lead: its first row stands for the whole list (Network traffic control's "All apps"): a step lighter fill and a stronger
+    <!-- ListBox.rows.lead: its first row stands for the whole list (Network Traffic Control's "All apps"): a step lighter fill and a stronger
          edge (BrushCardLead, BrushCardLeadEdge from SurfaceService); hover and focus stay the rows' own -->
     <Style Selector="ListBox.rows.lead > ListBoxItem:nth-child(1)">
         <Setter Property="Background" Value="{DynamicResource BrushCardLead}" />

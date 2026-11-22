@@ -29,7 +29,7 @@
         <x:Double x:Key="SearchEditorMinWidth">300</x:Double>
         <!-- The search results' editor column: a fixed share of the row, never sized from its content (an Auto column shared by every result looped layout forever) -->
         <GridLength x:Key="SearchEditorShare">1.6*</GridLength>
-        <!-- The hotkey capture box (Hotkeys/HotkeyBox): the Actions and hotkeys window's keys and the preset manager's shortcut column -->
+        <!-- The hotkey capture box (Hotkeys/HotkeyBox): the Actions and Hotkeys window's keys and the preset manager's shortcut column -->
         <x:Double x:Key="HotkeyBoxWidth">150</x:Double>
         <!-- The master path field (Controls/PathField) where it sits in a pop-down's settings page: text box and Browse -->
         <x:Double x:Key="OptionMenuWidth">400</x:Double>
@@ -39,7 +39,7 @@
         <x:Double x:Key="ColorSquareHeight">120</x:Double>
         <x:Double x:Key="HueBarHeight">24</x:Double>
         <x:Double x:Key="ColorSwatchSize">22</x:Double>
-        <!-- The Choose-the-action / Actions and hotkeys window: its size, and the least width of each pane (the window's minimum is their sum plus the dividers) -->
+        <!-- The Choose-the-action / Actions and Hotkeys window: its size, and the least width of each pane (the window's minimum is their sum plus the dividers) -->
         <x:Double x:Key="PickerWindowWidth">1000</x:Double>
         <x:Double x:Key="PickerWindowHeight">680</x:Double>
         <x:Double x:Key="PickerWindowMinWidth">760</x:Double>

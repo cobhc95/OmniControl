@@ -10,7 +10,7 @@ internal static partial class Shots
 {
     private static ActionsWindowService? _actionsWindow;
 
-    /// The Actions and hotkeys window over the master list every page registered into, its sections the pages in sidebar order. Its keys
+    /// The Actions and Hotkeys window over the master list every page registered into, its sections the pages in sidebar order. Its keys
     /// are shown, never registered (the master list's hotkey thread was ended at once, <see cref="Rig"/>).
     private static void ActionsWindow(Rig rig, Camera camera)
     {

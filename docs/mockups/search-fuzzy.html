@@ -1,0 +1,33 @@
+<!-- Approved by the owner: Search results come in two tiers. Exact matches (as today, plus matches inside menus/choices/tooltips/keywords) listed first. If there are NO exact matches, show one muted line 'No exact matches for "<query>".' then a small heading 'Similar matches' and the closest results, best first (typo-tolerant: edit distance / prefix similarity). The matching part of each result's text is highlighted (accent tint from AccentService). Same result rows as today. -->
+<!doctype html><html><head><meta charset="utf-8"><style>
+html,body{margin:0;background:#111;font-family:'Segoe UI',sans-serif;color:#e8e8e8}
+.cap{color:#aaa;font-size:12px;margin:12px 12px 4px}
+.p{background:#1b1b1b;border:1px solid #333;border-radius:10px;margin:0 12px 12px;padding:14px;width:820px}
+.search{border:2px solid #f0883e;border-radius:8px;padding:8px 12px;font-size:15px;margin-bottom:12px}
+h1{font-size:26px;font-weight:600;margin:4px 0 10px}
+h2{font-size:14px;color:#aaa;font-weight:500;margin:14px 0 6px}
+.r{display:flex;justify-content:space-between;align-items:center;background:#232323;border:1px solid #333;border-radius:8px;padding:10px 14px;margin-bottom:6px}
+.t b{display:block;font-weight:600}.t span{color:#999;font-size:13px}
+.ctl{border:1px solid #666;border-radius:6px;padding:4px 12px;min-width:170px}
+.sw{display:inline-block;width:40px;height:20px;border-radius:10px;background:#f0883e}
+.hit{background:rgba(240,136,62,.25);border-radius:3px}
+.new{outline:2px dashed #d97706;outline-offset:4px}
+.muted{color:#999;font-size:13px}
+</style></head><body>
+<div class="cap">Typing "minimii" (misspelled). No exact match, so the page says so and shows the closest matches, best first.</div>
+<div class="p"><div class="search">🔍 minimii</div>
+<h1>Search results</h1>
+<div class="muted new" style="margin-bottom:8px">No exact matches for "minimii".</div>
+<h2 class="new">Similar matches</h2>
+<div class="r"><div class="t"><b>Start and close</b><span>App settings</span></div><span>Start <span class="hit">minimi</span>sed &nbsp;<span class="sw"></span></span></div>
+<div class="r"><div class="t"><b>Start and close</b><span>App settings · When closing</span></div><span class="ctl"><span class="hit">Minimi</span>se to tray ▾</span></div>
+<div class="r"><div class="t"><b>Show or hide OmniControl</b><span>Actions and hotkeys · "Minimise to tray"</span></div><span class="ctl">Open</span></div>
+</div>
+<div class="cap">Typing "minim" (correct). Exact matches first; similar matches appear only when there are no exact ones.</div>
+<div class="p"><div class="search">🔍 minim</div>
+<h1>Search results</h1>
+<div class="r"><div class="t"><b>Start and close</b><span>App settings</span></div><span>Start <span class="hit">minim</span>ised &nbsp;<span class="sw"></span></span></div>
+<div class="r"><div class="t"><b>Start and close</b><span>App settings · When closing</span></div><span class="ctl"><span class="hit">Minim</span>ise to tray ▾</span></div>
+<div class="r new"><div class="t"><b>Volume</b><span>Mixer · a menu choice</span></div><span class="ctl">… <span class="hit">minim</span>… ▾</span></div>
+<div class="muted">Matches inside menus and their choices now count too (dashed: newly found).</div></div>
+</body></html>

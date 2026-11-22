@@ -1,0 +1,55 @@
+<!doctype html><html><head><meta charset="utf-8">
+<!--
+APPROVED by the owner (22 Nov 2026). Automation tab "From other pages": features that act by themselves become REAL rules.
+Match every part exactly; deviate only where master styles truly cannot, and name it in the report.
+
+1. Automation tabs: Rules | Presets | From other pages (NEW, third) | Custom actions | Scripts.
+   Group "Rules made on other pages". Each row = the SAME rule row/editor as Rules and Presets tabs (switch,
+   editable name, ✕, When … do … chips, + and / + action, needs-tags): full capabilities (extra conditions,
+   or/and, extra actions). After the name a tag with the owning page's title; muted line
+   "Made on the <Page> page · Open" (accent link opens that page at the card).
+2. Which tab: a source field on the rule (owner feature id), same mechanism as preset rules (Preset field); no side list.
+3. The four features, each owner writes/reads ONE rule through the automation service (intent methods, loose coupling):
+   a. Warm light (Displays): When "Between <Start> and <End>" do "Warm light fade to <K> K" (NEW action, the
+      existing gradual ramp; the fade's timer runs only while the rule is active).
+   b. Network traffic per network: one rule per adapter/network with own settings: When "Connected to <network>"
+      (or the adapter's connection) do "Use <network>'s limits" (NEW action); leaving reverts to the next most
+      specific settings. Uses INetworkWatch and the network states; no second switching path.
+   c. Smart device checks: per device: When "OmniControl starts" or "Every <N> minutes" (NEW trigger "Every N
+      minutes", event/timer only while a rule uses it) do "Check <device>'s state".
+   d. Emulator idle close: When "No device action for <N> min" (trigger/state from the emulator owner) do
+      "Close the emulator".
+4. Feature pages keep their simple controls (e.g. Warm light Schedule, Warmth; device Auto check; emulator idle
+   minutes; traffic per-network settings); they edit the same rule. If the user added anything extra the page shows
+   one muted line "Runs as an automation rule (<n> extra conditions/actions) · Edit in Automation" (accent link).
+5. Page switch on/off = rule on/off. Deleting the rule switches the feature off (page reflects it). Existing user
+   settings migrate once into rules at first start (atomic, logged), nothing lost; defaults unchanged
+   (device checks still "start and every 5 min" by default).
+6. All runs go through the registry's one run path and gate. Search via builder. CHANGELOG, MAP.
+-->
+<style>
+body{margin:0;background:#111;font-family:'Segoe UI',sans-serif;color:#e8e8e8;font-size:13px}
+.w{background:#202020;border-radius:12px;padding:12px;margin:12px;width:860px}
+.tabs{display:flex;gap:18px;border-bottom:1px solid #333;margin-bottom:10px}.tabs span{padding:6px 2px;color:#bbb}
+.tabs .on{color:#4aa3ff;border-bottom:2px solid #4aa3ff}
+.g{border:1px solid #333;border-radius:10px;padding:10px}
+.rule{display:grid;grid-template-columns:46px 1fr 20px;gap:8px;padding:8px 0;border-top:1px solid #2c2c2c}
+.sw{width:38px;height:18px;border-radius:9px;background:#4aa3ff;margin-top:6px}
+.name{border:1px solid #555;border-radius:4px;padding:3px 8px;display:inline-block}
+.line{margin-top:5px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;color:#aaa}
+.c{border:1px solid #666;background:#2a2a2a;border-radius:5px;padding:2px 7px;color:#e8e8e8}
+.add{border:1px dashed #777;border-radius:5px;padding:2px 7px;color:#aaa}
+.tag{border:1px solid #888;border-radius:9px;padding:0 7px;font-size:11px}
+.lk{color:#4aa3ff;text-decoration:underline}.m{color:#999;font-size:12px}
+.card{display:flex;justify-content:space-between;background:#1e1e1e;border:1px solid #333;border-radius:8px;padding:7px 10px;margin-top:5px}
+</style></head><body>
+<div class="w"><div class="tabs"><span>Rules</span><span>Presets</span><span class="on">From other pages</span><span>Custom actions</span><span>Scripts</span></div>
+<div class="g"><b>Rules made on other pages</b>
+<div class="rule"><span class="sw"></span><div><span class="name">Warm light</span> <span class="tag">Displays</span><div class="line">When <span class="c">Between 20:00 and 07:00</span> and <span class="c">Steam is not running</span> <span class="add">+ and</span> do <span class="c">Warm light fade to 3400 K</span> <span class="add">+ action</span></div><div class="line m">Made on the Displays page · <span class="lk">Open</span></div></div><span>✕</span></div>
+<div class="rule"><span class="sw"></span><div><span class="name">Phone hotspot limits</span> <span class="tag">Network traffic control</span><div class="line">When <span class="c">Connected to Phone hotspot</span> <span class="add">+ and</span> do <span class="c">Use Phone hotspot's limits</span> <span class="add">+ action</span></div><div class="line m">Made on the Network traffic control page · <span class="lk">Open</span></div></div><span>✕</span></div>
+<div class="rule"><span class="sw"></span><div><span class="name">Check Desk lamp</span> <span class="tag">Smart Devices</span><div class="line">When <span class="c">OmniControl starts</span> or <span class="c">Every 5 minutes</span> do <span class="c">Check Desk lamp's state</span> <span class="add">+ action</span></div><div class="line m">Made on the Smart Devices page · <span class="lk">Open</span></div></div><span>✕</span></div>
+<div class="rule"><span class="sw"></span><div><span class="name">Close the emulator</span> <span class="tag">Smart Devices</span><div class="line">When <span class="c">No device action for 10 min</span> do <span class="c">Close the emulator</span> <span class="add">+ action</span></div><div class="line m">Made on the Smart Devices page · <span class="lk">Open</span></div></div><span>✕</span></div>
+</div></div>
+<div class="w"><b>Warm light</b><div class="card"><span>Schedule</span><span class="c">20:00 – 07:00</span></div><div class="card"><span>Warmth</span><span class="c">3400 K</span></div>
+<div class="m" style="margin-top:6px">Runs as an automation rule (1 extra condition) · <span class="lk">Edit in Automation</span></div></div>
+</body></html>

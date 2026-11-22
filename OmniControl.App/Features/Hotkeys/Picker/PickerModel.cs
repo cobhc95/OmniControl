@@ -48,6 +48,9 @@ public sealed partial class PickerModel : ObservableObject
     /// The <see cref="Noun"/> of a list of actions: only such a list has Recent and the "Only with a hotkey" filter.
     public const string ActionNoun = "action";
 
+    /// The window title of a pick: "Choose a condition" for a new block, "Choose the action" for one that is there.
+    public static string ChooseTitle(bool isNew, string noun) => $"Choose {(!isNew ? "the" : "aeiou".Contains(noun[0]) ? "an" : "a")} {noun}";
+
     /// True when the list is of actions (not triggers, conditions...): the "Only with a hotkey" filter and Recent belong to it only.
     public bool ListsActions => Noun == ActionNoun;
 
@@ -180,7 +183,7 @@ public sealed partial class PickerModel : ObservableObject
     /// <param name="current">The entry the card or slot has now (highlighted when the window opens); null for an empty slot.</param>
     /// <param name="currentValues">The values of its settings.</param>
     /// <param name="currentParameter">The text the current entry takes (its shortcut, program or folder).</param>
-    /// <param name="manage">Set for the Actions and hotkeys window opened to manage actions and their keys (no "Use this ..."); null to pick one.</param>
+    /// <param name="manage">Set for the Actions and Hotkeys window opened to manage actions and their keys (no "Use this ..."); null to pick one.</param>
     /// <param name="offerApplyToAll">Add the switch that copies the settings to every other gesture using the same action (on by default).</param>
     /// <param name="startInSettings">Open with the keyboard in the settings of <paramref name="current"/> (from the card's cogwheel).</param>
     public PickerModel(IReadOnlyList<PickGroup> groups, PickChoice? current,

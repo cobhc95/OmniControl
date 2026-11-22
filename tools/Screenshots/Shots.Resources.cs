@@ -150,5 +150,6 @@ internal static partial class Shots
         public void OpenApps() { }
         public void OpenGadgetSettings() { }
         public bool HasTraffic => true;
+        public string TrafficTitle => OmniControl.App.Features.Traffic.Pages.TrafficPageViewModel.PageTitle;
     }
 }

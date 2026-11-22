@@ -4,7 +4,7 @@ namespace OmniControl.App.Shared.Services;
 /// feature's in its own <c>Timing.&lt;Feature&gt;.cs</c> part in that feature's folder (one class, so every call stays <c>Timing.X</c>).
 public static partial class Timing
 {
-    /// A program icon cache (<c>ProcessIcons</c>: the Mixer's, Network traffic control's) keeps the icons of at most this many programs (the ones asked for last).
+    /// A program icon cache (<c>ProcessIcons</c>: the Mixer's, Network Traffic Control's) keeps the icons of at most this many programs (the ones asked for last).
     public const int ProcessIconCacheMax = 64;
 
     /// A window's undo history (<c>UndoHistory</c>) keeps at most this many steps; the oldest go first.
@@ -22,7 +22,7 @@ public static partial class Timing
     /// Once the main window has been hidden (or not yet shown) this long, the memory its use left behind is given back to Windows (its page views stay).
     public static readonly TimeSpan HiddenSettle = TimeSpan.FromSeconds(30);
 
-    /// Once the main window has been hidden this long (the default of "Free memory after closing", <see cref="UiReleases"/>), it (with its page views) and the Actions and hotkeys window are let go (made again at
+    /// Once the main window has been hidden this long (the default of "Free memory after closing", <see cref="UiReleases"/>), it (with its page views) and the Actions and Hotkeys window are let go (made again at
     /// their next showing, a little slower; the tray panel never is), then <see cref="UiReleaseCompactAfter"/> later one background collection gives their memory back.
     public static readonly TimeSpan UiReleaseAfterHidden = TimeSpan.FromSeconds(30);
 

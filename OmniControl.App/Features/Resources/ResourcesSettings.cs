@@ -104,11 +104,11 @@ public sealed class ResourcesSetup
 
     public GadgetSettings Gadget { get; set; } = GadgetLayouts.NewLook();
 
-    /// Network traffic control's rules on every adapter (All adapters), and the adapters' and networks' own (<see cref="AppNetScope"/>).
+    /// Network Traffic Control's rules on every adapter (All adapters), and the adapters' and networks' own (<see cref="AppNetScope"/>).
     public List<AppNetRule> Apps { get; set; } = new();
     public List<AppNetScope> Scoped { get; set; } = new();
 
-    /// The programs pinned to the top of Network traffic control, by path (or identity when the path was not known), in pin order.
+    /// The programs pinned to the top of Network Traffic Control, by path (or identity when the path was not known), in pin order.
     public List<string> Pinned { get; set; } = new();
 
     public ResourcesSetup Copy() => JsonSerializer.Deserialize<ResourcesSetup>(JsonSerializer.Serialize(this))!;
@@ -123,7 +123,7 @@ public sealed class ResourcesPreset : INamedPreset
     public ResourcesSetup Setup { get; set; } = new();
 }
 
-/// A Network traffic control preset: the rules on every adapter and every adapter's and network's own.
+/// A Network Traffic Control preset: the rules on every adapter and every adapter's and network's own.
 public sealed class TrafficPreset : INamedPreset
 {
     public string Name { get; set; } = string.Empty;
@@ -143,8 +143,8 @@ public sealed class GadgetLayoutPreset : INamedPreset
     public DateTime? Saved { get; set; }
 }
 
-/// The Resources and Network traffic control pages' settings (resources.json): the live setup, the packet filter switch, the presets (Resources'
-/// and Network traffic control's) and the gadget's own layouts.
+/// The Resources and Network Traffic Control pages' settings (resources.json): the live setup, the packet filter switch, the presets (Resources'
+/// and Network Traffic Control's) and the gadget's own layouts.
 public sealed class ResourcesSettings
 {
     public ResourcesSetup Setup { get; set; } = new();

@@ -3,7 +3,7 @@ using OmniControl.App.Features.Hotkeys;
 
 namespace OmniControl.App.Features.Hotkeys.Picker;
 
-/// The top of the settings pane in the Actions and hotkeys window for one master action: its keys, one shared hotkey box each
+/// The top of the settings pane in the Actions and Hotkeys window for one master action: its keys, one shared hotkey box each
 /// (<see cref="HotkeyKeySlot"/>), "+ add key", "Suggest", its devices when it has some, then "Run now" and "Show on its page". Keys stay
 /// unique in the set in use: a key another action has is shown with "Also on: ..." and "Move here", never given to both; a reserved key is
 /// refused with one sentence (<see cref="Refusal"/>). Every change goes through the action, so the master list saves and rebinds it.

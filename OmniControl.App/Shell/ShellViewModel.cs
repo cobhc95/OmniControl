@@ -77,7 +77,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     /// Pages pinned to the bottom of the sidebar (app-level, not features).
     public ObservableCollection<PageSlot> FooterPages { get; } = new();
 
-    /// The entries at the bottom of the sidebar under a divider that open a window, not a page (Presets, Actions and hotkeys).
+    /// The entries at the bottom of the sidebar under a divider that open a window, not a page (Presets, Actions and Hotkeys).
     public IReadOnlyList<NavLauncher> PinnedEntries { get; }
     private readonly IReadOnlyList<PageSlot> _allFooter;
 

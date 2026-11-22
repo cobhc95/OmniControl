@@ -5,7 +5,7 @@ using OmniControl.Core.Engine.Resources;
 
 namespace OmniControl.Tests;
 
-/// Network traffic control's rules by place (<see cref="ScopedRules"/>): what Windows must hold for All adapters', an adapter's and a
+/// Network Traffic Control's rules by place (<see cref="ScopedRules"/>): what Windows must hold for All adapters', an adapter's and a
 /// network's own rules. Nothing touches Windows.
 public class ScopedRulesTests
 {

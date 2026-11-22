@@ -45,7 +45,7 @@ Name: input; Description: "Mouse and trackpad: button remapping, gestures"; Type
 Name: automation; Description: "Hotkeys and automation: keys, rules, custom actions"; Types: everything
 Name: osd; Description: "On-screen display (OSD)"; Types: everything
 Name: resources; Description: "Resources and taskbar gadget: CPU, GPU, network, temperatures"; Types: everything monitoring
-Name: traffic; Description: "Network traffic control: per-app limits (Windows Packet Filter)"; Types: everything
+Name: traffic; Description: "Network Traffic Control: per-app limits (Windows Packet Filter)"; Types: everything
 Name: otherpcs; Description: "Other PCs: pairing, wake, remote control"; Types: everything
 Name: devices; Description: "Smart devices: plugs and bulbs"; Types: everything
 Name: screenshot; Description: "Screenshot tool"; Types: everything
@@ -101,9 +101,9 @@ Name: "{autodesktop}\OmniControl"; Filename: "{app}\OmniControl.exe"; Tasks: des
 [Tasks]
 Name: desktopicon; Description: "Create a desktop shortcut"; Flags: unchecked
 ; Installs the bundled driver after the files ([Code] InstallSteps); uninstall removes it only if OmniControl's receipt says it installed it.
-; Only with Network traffic control, as is the network service.
+; Only with Network Traffic Control, as is the network service.
 Name: packetfilter; Description: "Install Windows Packet Filter (for per-app download limits)"; Components: traffic
-; Added after the files (the app's --network-service install); left unticked (or without Network traffic control), a service from before is
+; Added after the files (the app's --network-service install); left unticked (or without Network Traffic Control), a service from before is
 ; removed; uninstall removes it.
 Name: networkservice; Description: "Network service (per-app limits without admin)"; Components: traffic
 ; The only way the sign-in task is added (the app's --sign-in-task on, for the user signed in here); ticked on the Tasks page when that
@@ -542,7 +542,7 @@ begin
   Result := '';
   if Id = 'volume' then Result := 'Equalizer APO (Sound)'
   else if Id = 'resources' then Result := 'sensor libraries (Resources)'
-  else if Id = 'traffic' then Result := 'Windows Packet Filter and network service (Network traffic control)'
+  else if Id = 'traffic' then Result := 'Windows Packet Filter and network service (Network Traffic Control)'
   else if Id = 'otherpcs' then Result := 'Tailscale firewall rule (Other PCs)'
   else if Id = 'screenshot' then Result := 'QR-code library (Screenshot tool)';
 end;
