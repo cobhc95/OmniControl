@@ -58,6 +58,7 @@ public sealed partial class MixerService : IDisposable
 
     private void OnCloseWatchChanged()
     {
+        _levelsWanted = _closeWatch.Held;
         _timer.Interval = _closeWatch.Held ? Timing.MixerRefresh : Timing.MixerRefreshIdle;
         if (_closeWatch.Held) Scan(); // a view just came on screen: fresh values at once, not after the long interval
     }
@@ -101,6 +102,11 @@ public sealed partial class MixerService : IDisposable
             (Devices, RecordingDevices) = (read.Devices, read.RecordingDevices);
             _devicesKnown = true;
             RememberNames();
+        }
+        if (read.InputLevels is not null && read.Ticket > _levelsTicket)
+        {
+            _levelsTicket = read.Ticket;
+            _inputLevels = read.InputLevels;
         }
         var devicesChanged = !Devices.SequenceEqual(devicesBefore) || !RecordingDevices.SequenceEqual(recordingBefore);
         if (read.Ticket < _appliedTicket) // an older read that finished after a newer one: only its devices can be newer

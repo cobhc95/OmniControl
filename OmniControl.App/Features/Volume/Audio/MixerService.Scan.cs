@@ -12,8 +12,9 @@ public sealed partial class MixerService
 {
     private readonly object _scanGate = new();
     private bool _scanRunning, _scanAgain, _wantDevices, _wantAnnounce, _disposed;
-    private volatile bool _devicesKnown;
-    private long _ticket, _appliedTicket, _devicesTicket;
+    private volatile bool _devicesKnown, _levelsWanted;
+    private long _ticket, _appliedTicket, _devicesTicket, _levelsTicket;
+    private IReadOnlyDictionary<string, (int Level, bool Muted)> _inputLevels = new Dictionary<string, (int, bool)>();
 
     /// The sessions the UI's session objects were made from (<see cref="Regroup"/>), sorted.
     private IReadOnlyList<SessionKey> _heldSessions = Array.Empty<SessionKey>();
@@ -23,7 +24,8 @@ public sealed partial class MixerService
     /// <param name="Ticket">The read's place in order: an older read that ends after a newer one is dropped.</param>
     /// <param name="Announce">Raise <see cref="Updated"/> even when nothing differs.</param>
     private sealed record ScanRead(long Ticket, IReadOnlyList<AudioDevice>? Devices, IReadOnlyList<AudioDevice>? RecordingDevices,
-        IReadOnlyList<SessionKey> Sessions, IReadOnlyDictionary<int, string?> Paths, bool Announce);
+        IReadOnlyList<SessionKey> Sessions, IReadOnlyDictionary<int, string?> Paths, bool Announce,
+        IReadOnlyDictionary<string, (int Level, bool Muted)>? InputLevels);
 
     /// One session as scans compare them: while none changes, the UI keeps the session objects it has.
     private readonly record struct SessionKey(int ProcessId, string DeviceId, int State)
@@ -102,10 +104,27 @@ public sealed partial class MixerService
         var ticket = Interlocked.Increment(ref _ticket);
         var playback = devices ? CoreAudio.Devices() : null;
         var recording = devices ? CoreAudio.InputDevices() : null;
+        var levels = _levelsWanted ? ReadInputLevels(recording ?? RecordingDevices) : null;
         var sessions = SessionKey.Sorted(CoreAudio.SessionFacts().Where(s => s.ProcessId != Environment.ProcessId).Select(SessionKey.Of));
         var paths = sessions.Select(s => s.ProcessId).Distinct().ToDictionary(pid => pid, pid => _knownPaths.GetOrAdd(pid, CoreAudio.ProcessPath));
         foreach (var gone in _knownPaths.Keys.Where(pid => !paths.ContainsKey(pid)).ToList()) _knownPaths.TryRemove(gone, out _); // a process with no session any more
-        return new ScanRead(ticket, playback, recording, sessions, paths, announce);
+        return new ScanRead(ticket, playback, recording, sessions, paths, announce, levels);
+    }
+
+    /// A worker: each microphone's level and mute from Windows (values it does not announce for a non-default microphone).
+    private static Dictionary<string, (int Level, bool Muted)> ReadInputLevels(IReadOnlyList<AudioDevice> microphones)
+    {
+        var levels = new Dictionary<string, (int, bool)>();
+        foreach (var d in microphones.Where(d => !VirtualCables.IsCable(d.Name)))
+            if (CoreAudio.GetDeviceVolume(d.Id, out var level, out var muted)) levels[d.Id] = (level, muted);
+        return levels;
+    }
+
+    /// The microphone's level and mute as the last scan that read them found (read while a view watches closely); false before the first.
+    public bool InputLevel(string deviceId, out int level, out bool muted)
+    {
+        (level, muted) = _inputLevels.TryGetValue(deviceId, out var l) ? l : default;
+        return _inputLevels.ContainsKey(deviceId);
     }
 
     // Each program's path is read once while it has a session (a process id is not reused while its process lives); workers only.

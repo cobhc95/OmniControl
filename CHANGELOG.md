@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Audio and Volume: microphone levels are read on a worker with the mixer's scan, not on the UI thread; Tab and Shift+Tab reach cards that are still being built.
 - Resources > Taskbar gadget: the Position and Font cards sit at the right edge, in line with the groups below, and wrap below (still right-aligned) in a narrow window.
 - Changed: the taskbar gadget's right-click menu is now only Gadget settings…, Network Traffic Control… (while it runs) and Hide gadget; Layout, Show, Position and Font stay on the Resources page's Taskbar gadget tab.
 - Pages open faster: every page builds its first screen of cards at once and the rest just after, between frames; the Mouse and Trackpad page reads Windows' pointer settings, and App settings "Start with Windows", off the UI thread (the pointer settings once instead of three times at the first opening).

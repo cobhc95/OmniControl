@@ -1,4 +1,5 @@
 ﻿using System.Collections.Specialized;
+using Avalonia.Input;
 using Avalonia.VisualTree;
 
 namespace OmniControl.App.Shared.Ui.Pages;
@@ -6,7 +7,7 @@ namespace OmniControl.App.Shared.Ui.Pages;
 /// THE way a card list (<c>ListBox.cards</c>, which cannot virtualize because <see cref="HalfPanel"/> pairs its cards) gets its cards:
 /// given as <see cref="ItemsProperty"/> instead of ItemsSource, the first <see cref="FirstCards"/> are built with the page's first frame
 /// and the rest follow in small batches below input (<see cref="ProgressiveFill{T}"/>), so a page with many cards shows at once. A source
-/// that changes (an ObservableCollection) is followed while the list is on screen. Keyboard walking and revealing a card finish the
+/// that changes (an ObservableCollection) is followed while the list is on screen. Up/Down, Tab and revealing a card finish the
 /// list first (<see cref="FinishWithin"/>), so a card not yet built is still reached.
 public static class CardFill
 {
@@ -24,17 +25,25 @@ public static class CardFill
 
     public static void SetItems(ItemsControl list, IReadOnlyList<object>? items) => list.SetValue(ItemsProperty, items);
 
-    static CardFill() => ItemsProperty.Changed.AddClassHandler<ItemsControl>((list, e) =>
+    static CardFill()
     {
-        list.GetValue(FillProperty)?.Dispose();
-        if (e.NewValue is not IReadOnlyList<object> items)
+        ItemsProperty.Changed.AddClassHandler<ItemsControl>((list, e) =>
         {
-            list.SetValue(FillProperty, null);
-            list.ItemsSource = null;
-            return;
-        }
-        list.SetValue(FillProperty, new Fill(list, items));
-    });
+            list.GetValue(FillProperty)?.Dispose();
+            if (e.NewValue is not IReadOnlyList<object> items)
+            {
+                list.SetValue(FillProperty, null);
+                list.ItemsSource = null;
+                return;
+            }
+            list.SetValue(FillProperty, new Fill(list, items));
+        });
+        // Tab and Shift+Tab walk focus in layout order, so the cards still waiting are built first, as for Up/Down.
+        InputElement.KeyDownEvent.AddClassHandler<TopLevel>((top, e) =>
+        {
+            if (e.Key == Key.Tab && e.KeyModifiers is KeyModifiers.None or KeyModifiers.Shift) FinishWithin(top);
+        }, RoutingStrategies.Tunnel);
+    }
 
     /// Builds at once every card still waiting in the card lists under <paramref name="host"/> (or <paramref name="host"/> itself) and
     /// lays them out; false when none was waiting.

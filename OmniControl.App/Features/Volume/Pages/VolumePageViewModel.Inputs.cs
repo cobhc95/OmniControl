@@ -22,7 +22,7 @@ public sealed partial class VolumePageViewModel
             if (!_inputs.TryGetValue(d.Id, out var item)) _inputs[d.Id] = item = NewInput(d);
             item.Name = d.Name;
             item.StateWord = d.IsDefault ? DefaultWord : string.Empty;
-            if (!_controls.InputJustChanged && CoreAudio.GetDeviceVolume(d.Id, out var v, out var muted))
+            if (!_controls.InputJustChanged && _mixer.InputLevel(d.Id, out var v, out var muted))
                 item.Sync(v, muted, _mixer.IsFxOn(item.Key), FxSlot.EffectCount(_mixer.FxChain(item.Key)));
             SyncListen(item);
             SyncRow(item);
