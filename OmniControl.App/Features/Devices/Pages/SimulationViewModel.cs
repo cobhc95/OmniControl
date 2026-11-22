@@ -183,7 +183,7 @@ public sealed partial class SimulationViewModel : ObservableObject, IDisposable
         EmulatorOptions = options;
         ReadKeepMenu();
         ReadEmulatorActions();
-        IdleRuleLine.Show(Idle.Rule?.Extras ?? string.Empty);
+        IdleRuleLine.Show(Idle.Rule);
         for (var i = 0; i < Rows.Count; i++)
         {
             Rows[i].RunFailure = _runtime.FailedMethodId == _record.Id && _runtime.FailedStep == i ? _runtime.FailedReason : string.Empty;

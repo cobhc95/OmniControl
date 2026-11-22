@@ -58,7 +58,7 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
 
     /// <param name="pathOf">Where a program the poller saw lives (the firewall and the service name a program by its path).</param>
     /// <param name="networks">Which network each adapter is on (read only while an adapter or network has rules of its own).</param>
-    /// <param name="rules">The automation rules that put a place's own rules in effect (empty while automation is off).</param>
+    /// <param name="rules">The automation rules that put a place's own rules in effect.</param>
     public NetworkLimits(ResourcesSettings settings, Action<string> report, Func<string, string?> pathOf, INetworkWatch networks, FeatureRulesSlot rules)
     {
         (_settings, _report, _pathOf, _networks, _rules) = (settings, report, pathOf, networks, rules);
@@ -425,7 +425,7 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
         if (_uses.TryGetValue(actionId, out var place) && _inEffect.Remove(place)) Reapply();
     }
 
-    /// A place's rule as it is now, or null (none, deleted, or automation off).
+    /// A place's rule as it is now, or null (none, deleted).
     public FeatureRuleView? RuleOf(NetScope place) => place.IsAll ? null : _rules.Current?.Find(UseId(place));
 
     /// True while the place's own rules are used.

@@ -28,7 +28,7 @@ public sealed partial class DeviceItem
 
     private RuleLineItem? _ruleLine;
 
-    private void ShowRule() => RuleLine.Show(AutoCheckEditable ? _service.AutoChecking.RuleOf(Record)?.Extras ?? string.Empty : string.Empty);
+    private void ShowRule() => RuleLine.Show(AutoCheckEditable ? _service.AutoChecking.RuleOf(Record) : null);
 
     public string AutoCheckTip => AutoCheckEditable
         ? "How often the device's real state is read (a switch by hand is not seen otherwise)."

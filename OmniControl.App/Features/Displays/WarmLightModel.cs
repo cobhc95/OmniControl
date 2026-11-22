@@ -36,8 +36,8 @@ internal sealed class WarmLightModel
     public string StartName => Nearest(_scheduler.Window.Start);
     public string EndName => Nearest(_scheduler.Window.End);
 
-    /// What was added to the rule in Automation ("1 extra condition"; empty: nothing).
-    public string Extras => _scheduler.Rule?.Extras ?? string.Empty;
+    /// The warm light rule as it is now, or null.
+    public FeatureRuleView? Rule => _scheduler.Rule;
 
     public void EditRule() => _scheduler.EditRule();
     public int Kelvin => Math.Clamp(_store.WarmLight.Kelvin, SoftwareColor.TemperatureMin, SoftwareColor.TemperatureNeutral);

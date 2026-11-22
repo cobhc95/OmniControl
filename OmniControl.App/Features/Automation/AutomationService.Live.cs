@@ -113,6 +113,8 @@ public sealed partial class AutomationService
         Dispatcher.UIThread.Post(() =>
         {
             _listsChangePending = false;
+            // Which rules belong to a page follows its rule action's arrival; that decides what runs only while the user's rules are stopped.
+            if (Paused || !UserRules) SyncTriggers();
             TriggersChanged?.Invoke();
             Changed?.Invoke(); // a rule's sentence names states and actions: a rename or a removal shows at once
         }, DispatcherPriority.Background);

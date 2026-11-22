@@ -46,6 +46,10 @@ public sealed partial class AutomationService : IActionGate, IDisposable
     /// The user's own rules, preset rules and blocks are paused; rules of other pages (<see cref="IsFeatureRule"/>) keep running (the tray item, the action, the emergency key, the page's button).
     public bool Paused { get; private set; }
 
+    /// The "Hotkeys and automation" feature is on: the user's own and preset rules may run and the emergency key is registered. Off, only
+    /// rules of other pages run.
+    public bool UserRules { get; }
+
     /// Raised on the UI thread when something a rule's line shows changed (paused, ran, failed).
     public event Action? Changed;
 
@@ -59,9 +63,11 @@ public sealed partial class AutomationService : IActionGate, IDisposable
     /// <param name="states">The master list of states: the state triggers watch it, and the power states are registered in it.</param>
     /// <param name="power">The power journal: a confirmed wake starts the "wakes from sleep" rules, and it says whether this start-up is a new log-in.</param>
     /// <param name="ask">Asks the person at this PC (approving a program step, a custom action or a script).</param>
+    /// <param name="userRules">See <see cref="UserRules"/>.</param>
     public AutomationService(IActionRegistry hotkeys, IActionRunner run, IStateRegistry states, Func<string, string, TimeSpan, CancellationToken, Task<bool>> countdown,
-        Func<IEnumerable<string>> remembered, Action<string> report, IPowerEvents power, Func<DialogMessage, Task<bool>> ask)
+        Func<IEnumerable<string>> remembered, Action<string> report, IPowerEvents power, Func<DialogMessage, Task<bool>> ask, bool userRules)
     {
+        UserRules = userRules;
         _hotkeys = hotkeys;
         _run = run;
         _power = power;
@@ -83,8 +89,11 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         hotkeys.Register(Settings.Scripts.Select(MakeScriptAction));
         hotkeys.RegisterPickerCommand(MakeNewCustomAction());
 
-        _emergency.Failed += gesture => _report($"Couldn't register {gesture}, the key that pauses all rules: another program uses it.");
-        _emergency.Apply(new[] { (ReservedKeys.Emergency, (Action)(() => Dispatcher.UIThread.Post(TogglePause))) });
+        if (userRules)
+        {
+            _emergency.Failed += gesture => _report($"Couldn't register {gesture}, the key that pauses all rules: another program uses it.");
+            _emergency.Apply(new[] { (ReservedKeys.Emergency, (Action)(() => Dispatcher.UIThread.Post(TogglePause))) });
+        }
 
         StartLive();
         // Started by its start-up entry: the "At log in" trigger fires.
@@ -102,13 +111,16 @@ public sealed partial class AutomationService : IActionGate, IDisposable
             _stopRuns.Cancel();
             _stopRuns = new CancellationTokenSource();
         }
-        _report(Paused ? "All rules are paused." : "Rules are on again.");
+        _report(Paused ? PausedWords : "Rules are on again.");
         SyncTriggers();
         _states.Notify(PausedId);
         Changed?.Invoke();
     }
 
     private const string PausedId = "automation.paused";
+
+    /// The one sentence for paused rules (the status line and the report say the same); blocks still reach a page's own rule actions.
+    public const string PausedWords = "Your rules are paused.";
 
     /// "All rules paused" in the master list of states (the tray menu ticks its Pause item from it); setting it pauses or resumes.
     private StateEntry PausedState() =>

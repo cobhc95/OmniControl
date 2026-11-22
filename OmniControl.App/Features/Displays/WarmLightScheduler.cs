@@ -23,7 +23,7 @@ public sealed class WarmLightScheduler : IDisposable
     private bool _fading;
     private DateTime _since;
 
-    /// <param name="rules">The automation rules warm light runs through (empty while automation is off).</param>
+    /// <param name="rules">The automation rules warm light runs through.</param>
     /// <param name="now">The clock; a test gives its own.</param>
     public WarmLightScheduler(SoftwareDisplayService service, DisplaySettingsStore store, FeatureRulesSlot rules, Func<DateTime>? now = null)
     {
@@ -36,7 +36,7 @@ public sealed class WarmLightScheduler : IDisposable
     /// The state changed (a tick moved the warming, the rule or the settings did); raised on the UI thread.
     public event Action? Changed;
 
-    /// The rule as it is now, or null (deleted, or automation off).
+    /// The rule as it is now, or null (deleted).
     public FeatureRuleView? Rule => _rules.Current?.Find(FadeId);
 
     public bool Enabled => Rule?.On == true;

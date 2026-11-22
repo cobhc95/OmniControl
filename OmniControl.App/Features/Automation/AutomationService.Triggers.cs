@@ -39,8 +39,8 @@ public sealed partial class AutomationService
         _lastLook = DateTime.Now;
         _power.Woke += OnWoke;
         _tick = new DispatcherTimer(Timing.AutomationTick, DispatcherPriority.Background, (_, _) => Look());
-        SyncTriggers();
         _tick.Start();
+        SyncTriggers();
     }
 
     /// The hardware watch "USB devices (rules)": Windows announced a device change and the burst has settled (worker thread).
@@ -67,8 +67,13 @@ public sealed partial class AutomationService
     {
         if (SessionOff) return;
         if (Settings.Rules.Any(r => Needs(r) && IsTrigger(r, AutomationTriggers.DeviceConnect, AutomationTriggers.DeviceDisconnect))) _watcher.StartDevices();
-        // With no rule to look for, the look only keeps the power states fresh: much less often.
-        if (_tick is not null) _tick.Interval = Settings.Rules.Any(r => Needs(r) || (AsksPrograms(r) && !Stopped(r))) ? Timing.AutomationTick : Timing.AutomationIdleTick;
+        // With no rule to look for, the look only keeps the power states fresh: much less often, and not at all while only rules of other pages may run.
+        var busy = Settings.Rules.Any(r => Needs(r) || (AsksPrograms(r) && !Stopped(r)));
+        if (_tick is not null)
+        {
+            _tick.Interval = busy ? Timing.AutomationTick : Timing.AutomationIdleTick;
+            _tick.IsEnabled = busy || UserRules;
+        }
         LookAtHeld();
         UpdateWake();
     }

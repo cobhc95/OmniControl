@@ -21,7 +21,7 @@ public sealed partial class ShellViewModel
     }
 
     /// The module holds a feature that is on (its pages show with only that feature's parts).
-    private bool Wanted(IFeatureModule module) => module.Features.Count == 0 || module.Features.Any(_features.IsOn);
+    private bool Wanted(IFeatureModule module) => module.RunsWhenOff || module.Features.Count == 0 || module.Features.Any(_features.IsOn);
 
     private static bool Live(IFeatureModule module) => module.Features.All(id => FeatureList.Find(id)?.Live == true);
 

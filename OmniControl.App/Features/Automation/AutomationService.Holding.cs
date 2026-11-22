@@ -18,8 +18,8 @@ public sealed partial class AutomationService
     internal bool IsFeatureRule(AutomationRule rule) =>
         rule.Actions.Any(a => AutomationSteps.ActionIdOf(a) is { } id && _hotkeys.Find(id) is { FeatureRule: true });
 
-    /// True when pausing or the safe start keeps this rule from running.
-    internal bool Stopped(AutomationRule rule) => AutomationPause.Stops(SessionOff, Paused, IsFeatureRule(rule));
+    /// True when pausing, the feature switch or the safe start keeps this rule from running.
+    internal bool Stopped(AutomationRule rule) => AutomationPause.Stops(SessionOff, Paused, UserRules, IsFeatureRule(rule));
 
     /// True for a rule that something must watch for now: switched on and not stopped.
     private bool Needs(AutomationRule rule) => IsActive(rule) && !Stopped(rule);

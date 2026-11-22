@@ -12,6 +12,10 @@ public interface IFeatureModule
     /// starts) and is started again when one of them changes. None: it always runs.
     IReadOnlyList<string> Features => Array.Empty<string>();
 
+    /// True: it runs while all its <see cref="Features"/> are off too, with only its always-on parts (it reads which are on as it starts), and
+    /// is still started again when one of them changes.
+    bool RunsWhenOff => false;
+
     /// Makes the feature's services and registers what it adds through the context. Called again when the feature is switched on after being
     /// off (a live feature, <see cref="FeatureInfo.Live"/>), so it makes everything anew each time.
     void Register(FeatureContext context);

@@ -37,7 +37,7 @@ internal sealed class EmulatorIdleRule : IDisposable
 
     private void OnIdleChanged() => Dispatcher.UIThread.Post(() => _states.Notify(StateId));
 
-    /// The rule as it is now, or null (deleted, or automation off).
+    /// The rule as it is now, or null (deleted).
     public FeatureRuleView? Rule => _rules.Current?.Find(CloseId);
 
     /// The Keep running choice: Close after each action is the keeper's own; otherwise Until idle while the rule is on, else Always.

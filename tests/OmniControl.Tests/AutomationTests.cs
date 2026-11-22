@@ -138,13 +138,27 @@ public class AutomationTests
     }
 
     [Theory]
-    [InlineData(false, false, false, false)] // running
-    [InlineData(false, true, false, true)]   // paused: the user's own and preset rules stop
-    [InlineData(false, true, true, false)]   // paused: a rule of another page keeps running
-    [InlineData(true, false, true, true)]    // safe start stops all
-    [InlineData(true, true, true, true)]
-    public void Pausing_stops_only_the_users_rules(bool safeStart, bool paused, bool featureRule, bool stops) =>
-        Assert.Equal(stops, AutomationPause.Stops(safeStart, paused, featureRule));
+    [InlineData(false, false, true, false, false)] // running
+    [InlineData(false, true, true, false, true)]   // paused: the user's own and preset rules stop
+    [InlineData(false, true, true, true, false)]   // paused: a rule of another page keeps running
+    [InlineData(true, false, true, true, true)]    // safe start stops all
+    [InlineData(true, true, true, true, true)]
+    [InlineData(false, false, false, false, true)] // "Hotkeys and automation" off: the user's own and preset rules stop
+    [InlineData(false, false, false, true, false)] // off: a rule of another page keeps running
+    [InlineData(true, false, false, true, true)]   // off and safe start: nothing runs
+    public void Pausing_and_the_switch_stop_only_the_users_rules(bool safeStart, bool paused, bool userRulesOn, bool featureRule, bool stops) =>
+        Assert.Equal(stops, AutomationPause.Stops(safeStart, paused, userRulesOn, featureRule));
+
+    [Fact]
+    public void A_pages_rule_line_offers_Automation_only_while_its_page_is_there()
+    {
+        var line = new OmniControl.App.Shared.Ui.Pages.RuleLineItem(() => { });
+        line.Show(new OmniControl.App.Shared.Contracts.FeatureRuleView(true, Array.Empty<OmniControl.App.Shared.Contracts.FeatureTrigger>(), "1 extra condition", Editable: false));
+        Assert.True(line.Shown);
+        Assert.False(line.CanEdit);
+        line.Show(new OmniControl.App.Shared.Contracts.FeatureRuleView(true, Array.Empty<OmniControl.App.Shared.Contracts.FeatureTrigger>(), "1 extra condition"));
+        Assert.True(line.CanEdit);
+    }
 
     [Theory]
     [InlineData(false, false, false, false)] // blocks apply

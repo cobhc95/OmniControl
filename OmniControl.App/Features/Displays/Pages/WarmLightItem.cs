@@ -22,7 +22,7 @@ internal sealed class WarmLightItem : IDisposable
         _target = new SliderItem(DisplayCards.WarmTemperature, model.Kelvin, model.SetKelvin, report, SoftwareColor.TemperatureMin, SoftwareColor.TemperatureNeutral,
             " K", new WarmLightSettings().Kelvin) { Half = true };
         _rule = new RuleLineItem(model.EditRule);
-        _rule.Show(model.Extras);
+        _rule.Show(model.Rule);
         Cards = new IEditorItem[] { _state, _start, _end, _target, _rule };
         model.Changed += Show;
     }
@@ -36,7 +36,7 @@ internal sealed class WarmLightItem : IDisposable
         if (_start.Selected != _model.StartName) _start.Load(WarmLightModel.TimeNames, _model.StartName);
         if (_end.Selected != _model.EndName) _end.Load(WarmLightModel.TimeNames, _model.EndName);
         CardMirror.Show(_target, _model.Kelvin, null);
-        _rule.Show(_model.Extras);
+        _rule.Show(_model.Rule);
     }
 
     public void Dispose() => _model.Changed -= Show;

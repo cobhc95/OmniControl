@@ -17,8 +17,9 @@ public abstract record FeatureTrigger
 }
 
 /// A feature's rule as its page shows it: on or off, the triggers the feature knows (in the rule's order), and what was added to it in
-/// Automation ("1 extra condition"; empty: nothing).
-public sealed record FeatureRuleView(bool On, IReadOnlyList<FeatureTrigger> Triggers, string Extras)
+/// Automation ("1 extra condition"; empty: nothing), and whether Automation's page is there to edit it in (false while "Hotkeys and automation"
+/// is switched off: the rule still runs).
+public sealed record FeatureRuleView(bool On, IReadOnlyList<FeatureTrigger> Triggers, string Extras, bool Editable = true)
 {
     /// The rule's time window, or null.
     public FeatureTrigger.Between? Window => Triggers.OfType<FeatureTrigger.Between>().FirstOrDefault();
@@ -57,8 +58,8 @@ public interface IFeatureRules
     void Edit(string actionId);
 }
 
-/// Where the rules plug in their <see cref="IFeatureRules"/> (made by the shell, as the action gate's slot is): features read it, empty while
-/// automation is switched off.
+/// Where the rules plug in their <see cref="IFeatureRules"/> (made by the shell, as the action gate's slot is): features read it; the rules run
+/// whether "Hotkeys and automation" is on or off, so it is empty only while they restart or OmniControl shuts down.
 public sealed class FeatureRulesSlot
 {
     public IFeatureRules? Current { get; private set; }

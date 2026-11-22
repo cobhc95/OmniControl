@@ -28,7 +28,7 @@ internal static partial class Shots
         settings.Save();
 
         var service = new AutomationService(rig.Actions, rig.Runner, rig.States, (_, _, _, _) => Task.FromResult(false),
-            Array.Empty<string>, Rig.Report, rig.Power, Rig.Ask);
+            Array.Empty<string>, Rig.Report, rig.Power, Rig.Ask, userRules: true);
         var page = new AutomationPageViewModel(service, Rig.Ask, null, null);
         rig.Pages.Add(page);
         camera.Page(page, "automation");

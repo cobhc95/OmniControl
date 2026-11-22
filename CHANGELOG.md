@@ -6,6 +6,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 ## Unreleased
 
 - Pause all rules now stops only your own and preset rules and blocks: rules made on other pages (warm light, per-network traffic limits, smart device checks, the emulator's idle close) keep running, and a block still applies to their actions. The pause button's tip and the From other pages tab say so.
+- Rules made on other pages (warm light, per-network traffic limits, smart device checks, the emulator's idle close) now keep running with "Hotkeys and automation" switched off; the switch turns off only your own and preset rules, blocks and hotkeys. Those pages' controls keep working, without the "Edit in Automation" link while the Automation page is off. The paused status line now says "Your rules are paused."
 
 - The Volume page is now called "Audio and Volume" (sidebar, search, its actions' and states' section, its preset kind "Audio and Volume preset").
 - "Choose a trigger or state": a rule's trigger and the Presets window's "State…" open the same window. Under Triggers the usual sections; under States one section per page (Displays, Audio and Volume, Smart Devices...) replacing "When a state changes", each state with its value now as a tag and "Now Off · changed 12 min ago" over its options. Search finds triggers, states (by name, device or value) and keys. A preset can now also start from any trigger (time, program, power...). A network picked from the side list is used at once, and a rule's network trigger shows picked when you edit it.

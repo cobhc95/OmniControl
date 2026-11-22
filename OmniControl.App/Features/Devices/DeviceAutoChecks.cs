@@ -18,7 +18,7 @@ public sealed class DeviceAutoChecks
 
     /// <param name="edited">Saves the device list after a choice changed.</param>
     /// <param name="check">One automatic read of a device (it skips what is not ready or is in its set-up).</param>
-    /// <param name="rules">The automation rules the timed checks run as (empty while automation is off).</param>
+    /// <param name="rules">The automation rules the timed checks run as.</param>
     internal DeviceAutoChecks(DeviceSettings settings, DeviceSetup setup, Action edited, Func<DeviceRecord, Task> check, FeatureRulesSlot rules)
     {
         (_settings, _setup, _edited, _check, _rules) = (settings, setup, edited, check, rules);
@@ -57,7 +57,7 @@ public sealed class DeviceAutoChecks
         (choice.AtStart ? new FeatureTrigger[] { new FeatureTrigger.Starts() } : Array.Empty<FeatureTrigger>())
         .Concat(choice.Every is { } every ? new FeatureTrigger[] { new FeatureTrigger.Every((int)every.TotalMinutes) } : Array.Empty<FeatureTrigger>()).ToArray();
 
-    /// The device's rule as it is now, or null (deleted, or automation off).
+    /// The device's rule as it is now, or null (deleted).
     public FeatureRuleView? RuleOf(DeviceRecord device) => _rules.Current?.Find(DeviceService.CheckActionId(device));
 
     /// The choice a device follows now: its rule's, when the rule is on (null when the rule's triggers match no choice); otherwise "when the

@@ -18,7 +18,7 @@ public interface INetworkLimits
     /// The place uses its parent's rules again.
     void UseParent(NetScope scope);
 
-    /// The place's automation rule, which puts its own rules in effect (null: none, deleted, or automation off).
+    /// The place's automation rule, which puts its own rules in effect (null: none, deleted).
     Shared.Contracts.FeatureRuleView? RuleOf(NetScope place);
 
     /// True while the place's own rules are used.

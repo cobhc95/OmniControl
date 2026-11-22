@@ -157,7 +157,7 @@ public sealed partial class AutomationPageViewModel : PageViewModel, IDisposable
     {
         StatusLine = _service.SessionOff
             ? AutomationService.SafeStartWords
-            : _service.Paused ? "Your rules are paused. Nothing is blocked either." : string.Empty;
+            : _service.Paused ? AutomationService.PausedWords : string.Empty;
         OnPropertyChanged(nameof(CanPause));
         OnPropertyChanged(nameof(IsSafeStart));
         PauseLabel = _service.Paused ? "Resume rules" : "Pause all rules";

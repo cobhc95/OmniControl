@@ -56,7 +56,7 @@ public sealed class AutomationFeatureRules : IFeatureRules, IDisposable
     {
         if (RuleOf(actionId) is not { } rule) return null;
         var known = rule.AllTriggers.Select(Feature).OfType<FeatureTrigger>().ToList();
-        return new FeatureRuleView(rule.On, known, ExtrasOf(rule, Math.Max(known.Select(t => t.GetType()).Distinct().Count(), 1)));
+        return new FeatureRuleView(rule.On, known, ExtrasOf(rule, Math.Max(known.Select(t => t.GetType()).Distinct().Count(), 1)), _rules.UserRules);
     }
 
     /// What was added in Automation beyond the triggers its origin shows (a feature: one of each kind it knows; a preset row: all) and its one
@@ -106,7 +106,10 @@ public sealed class AutomationFeatureRules : IFeatureRules, IDisposable
         _rules.Edited(rule);
     }
 
-    public void Edit(string actionId) => _openPage(ActionSections.Automation, Tab);
+    public void Edit(string actionId)
+    {
+        if (_rules.UserRules) _openPage(ActionSections.Automation, Tab);
+    }
 
     private static string Stored(FeatureTrigger trigger) => trigger switch
     {

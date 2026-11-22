@@ -7,8 +7,8 @@
     <WrapPanel IsVisible="{Binding Shown}" Margin="2,0">
         <TextBlock Classes="muted" Text="{Binding Words}" VerticalAlignment="Center" TextWrapping="Wrap" />
         <TextBlock Classes="muted" Text=" *" VerticalAlignment="Center" ToolTip.Tip="{x:Static pages:RuleLineItem.MoreTip}" />
-        <TextBlock Classes="muted" Text=" · " VerticalAlignment="Center" />
-        <Button Classes="link small" Command="{Binding EditCommand}" VerticalAlignment="Center">
+        <TextBlock Classes="muted" Text=" · " VerticalAlignment="Center" IsVisible="{Binding CanEdit}" />
+        <Button Classes="link small" Command="{Binding EditCommand}" VerticalAlignment="Center" IsVisible="{Binding CanEdit}">
             <TextBlock Text="{x:Static pages:RuleLineItem.EditWords}" />
         </Button>
     </WrapPanel>

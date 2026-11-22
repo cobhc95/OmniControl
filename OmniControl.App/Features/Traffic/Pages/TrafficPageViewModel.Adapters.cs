@@ -127,7 +127,7 @@ public sealed partial class TrafficPageViewModel
             : ($"Changes here apply only on {adapter} ({Networks.On(_scope.Adapter)?.Name ?? NotConnected}).", "Use All adapters' settings");
         var rule = _limits.HasOwn(_scope) ? _limits.RuleOf(_scope) : null;
         if (_limits.HasOwn(_scope) && rule is not { On: true }) PlaceLine += " Its automation rule is off, so they are not used.";
-        PlaceRule.Show(rule?.Extras ?? string.Empty);
+        PlaceRule.Show(rule);
         OnPropertyChanged(nameof(PlaceLine));
         OnPropertyChanged(nameof(HasPlace));
         OnPropertyChanged(nameof(UseParentWords));
