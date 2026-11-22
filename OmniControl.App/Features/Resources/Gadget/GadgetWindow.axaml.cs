@@ -22,6 +22,9 @@ public partial class GadgetWindow : Window
     /// The dashed edge shows while the pointer is over the gadget.
     public bool HoverOutline { get; set; }
 
+    /// The colour that fills the whole gadget (opaque), or null to leave it clear.
+    public void Fill(Color? colour) => Root.Background = colour is { } c ? new SolidColorBrush(c) : null;
+
     /// The left button went down, at this place in screen pixels.
     public event Action<PixelPoint>? Pressed;
     /// The left button came up (no tap-size check: a few pixels of movement still click).

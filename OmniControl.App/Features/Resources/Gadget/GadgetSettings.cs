@@ -155,6 +155,7 @@ public sealed class GadgetSettings
     }
 
     public bool HoverOutline { get; set; }
+    public bool SolidBackground { get; set; }
     public SpeedUnit Units { get; set; } = SpeedUnit.Auto;
     public bool Bits { get; set; }
 

@@ -29,7 +29,7 @@ public sealed class GadgetDisplayCards : IDisposable
     private readonly SliderItem _lines, _size, _columnGap, _lineGap, _spaceToTray, _refresh, _doubleTime;
     private readonly MenuChoiceItem _odd;
     private readonly GalleryItem _colour;
-    private readonly ToggleItem _outline;
+    private readonly ToggleItem _outline, _solid;
     private readonly ChoiceItem _units, _counts, _temperatures;
     private readonly IReadOnlyList<ChipItem> _quick, _unitChips;
     private readonly ButtonItem _click, _doubleClick;
@@ -44,6 +44,7 @@ public sealed class GadgetDisplayCards : IDisposable
         _odd = new MenuChoiceItem("Odd reading", OddText, OddRows) { Half = true, Tip = "Where a reading that does not fill the last column goes" };
         _size = Number("Text size", (int)Math.Round(look.TextSize), GadgetSettings.MinTextSize, GadgetSettings.MaxTextSize, " pt", (int)defaults.TextSize, (g, v) => g.TextSize = v);
         _outline = new ToggleItem("Outline on hover", look.HoverOutline, on => Change(g => g.HoverOutline = on)) { Half = true, Tip = "A dashed edge around the gadget while the pointer is over it" };
+        _solid = new ToggleItem("Solid background", look.SolidBackground, on => Change(g => g.SolidBackground = on)) { Half = true, Tip = "Fills the gadget so a taskbar skin behind it can't show through." };
         _columnGap = Number("Space between columns", (int)look.ColumnGap, 0, GadgetSettings.MaxColumnGap, " px", (int)defaults.ColumnGap, (g, v) => g.ColumnGap = v);
         _lineGap = Number("Space between lines", (int)look.LineGap, 0, GadgetSettings.MaxLineGap, " px", (int)defaults.LineGap, (g, v) => g.LineGap = v);
         _spaceToTray = Number("Space to the tray", (int)look.SpaceToTray, GadgetSettings.MinSpaceToTray, GadgetSettings.MaxSpaceToTray, " px", (int)defaults.SpaceToTray, (g, v) => g.SpaceToTray = v,
@@ -51,7 +52,7 @@ public sealed class GadgetDisplayCards : IDisposable
         _colour = new GalleryItem("Text colour", GadgetSettings.ColourNames, ColourIndex(look.TextColour),
             i => (new SolidColorBrush(TaskbarGadget.ColourOf(GadgetSettings.Colours[i], ink())), SwatchMark.None),
             i => Change(g => g.TextColour = GadgetSettings.Colours[i]));
-        Layout = Group("Resources/GadgetLayout", "Size and spacing", _lines, _odd, _size, _outline, _columnGap, _lineGap, _spaceToTray, _colour);
+        Layout = Group("Resources/GadgetLayout", "Size and spacing", _lines, _odd, _size, _outline, _solid, _columnGap, _lineGap, _spaceToTray, _colour);
 
         _units = new ChoiceItem("Speed units", UnitWords, UnitWords[(int)look.Units], u => Change(g => g.Units = (SpeedUnit)Array.IndexOf(UnitWords, u))) { Half = true };
         _counts = new ChoiceItem("Bits or bytes", CountWords, CountWords[look.Bits ? 1 : 0], b => Change(g => g.Bits = b == CountWords[1])) { Half = true };
@@ -125,6 +126,7 @@ public sealed class GadgetDisplayCards : IDisposable
         _odd.Refresh();
         _size.Load((int)Math.Round(look.TextSize));
         _outline.Load(look.HoverOutline);
+        _solid.Load(look.SolidBackground);
         _columnGap.Load((int)look.ColumnGap);
         _lineGap.Load((int)look.LineGap);
         _spaceToTray.Load((int)look.SpaceToTray);

@@ -268,6 +268,7 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
         if (_window is null) return;
         var look = Look;
         _window.HoverOutline = look.HoverOutline;
+        _window.Fill(look.SolidBackground ? Background : null);
         _window.Draw(Cells(look), GadgetLayout.Of(look));
         Dispatcher.UIThread.Post(Place, DispatcherPriority.Loaded); // after the window has taken its new size
     }

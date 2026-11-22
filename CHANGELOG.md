@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- New: taskbar gadget "Solid background" switch (Size and spacing, off by default): fills the gadget with the taskbar's colour so a taskbar skin behind it can't show through.
 - Fixed: taskbar gadget on a coloured or restyled taskbar (StartAllBack, ExplorerPatcher): coloured readings no longer show a dark halo (grey text smoothing instead of ClearType), and on Left it sits after a classic or StartAllBack Start orb instead of over it, also when the taskbar auto-hides.
 - Fixed: with Network traffic control on and Resources and taskbar gadget off, the Resources page now shows with only its Network traffic control group (no readings, gadget tab, presets or reading states); before, no page appeared and traffic control did not run.
 - New: choose which features run. Setup has a "Choose features" page (Everything, Sound only, Monitoring only or Custom, one box per feature, all ticked by default; an upgrade shows your current choice), and App settings has a Features group with a switch per feature, a "Ready-made" choice and Turn all on. Every file stays installed; a feature that is off starts nothing and has no page, actions, states or search entries. Hotkeys and automation, On-screen display, Resources and taskbar gadget, Network traffic control, Smart devices and the Screenshot tool switch at once; Sound and effects, Displays, Mouse and trackpad and Other PCs from the next start (their switch says so). Restore defaults turns every feature on.
