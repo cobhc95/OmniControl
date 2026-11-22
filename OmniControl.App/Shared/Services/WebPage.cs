@@ -20,6 +20,7 @@ public static class WebPage
         }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
         {
+            Guard.Log("Opening a web page", ex);
             return $"Couldn't open {url}: {ex.Message}";
         }
     }
