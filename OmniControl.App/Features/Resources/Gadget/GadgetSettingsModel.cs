@@ -1,6 +1,7 @@
 using OmniControl.App.Features.Hotkeys;
 using OmniControl.App.Features.Hotkeys.Picker;
 using OmniControl.App.Features.Icons;
+using OmniControl.App.Features.Resources.Pages;
 using OmniControl.App.Features.Resources.Weather;
 
 namespace OmniControl.App.Features.Resources.Gadget;
@@ -34,12 +35,9 @@ public sealed class GadgetSettingsModel : ObservableObject, IDisposable
         Display = new GadgetDisplayCards(settings, actions, () => preview.Ink, () => preview.Background, chooseAction);
         Weather = new WeatherCards(settings, weather);
         Hover = new GadgetHoverCards(settings);
-        Position = new GalleryItem(PositionLabel, GadgetSettings.PositionNames, (int)Look.Position, i => preview.SetPosition((GadgetPosition)i))
-        {
-            Half = true, Tip = "Right: left of the tray icons. Left: after the Widgets button, or after the app buttons when they sit at the left.",
-        };
+        Position = new GalleryItem(PositionSearch, (int)Look.Position, i => preview.SetPosition((GadgetPosition)i)) { Half = true };
         Font = new GadgetFontCard(() => Look.Font, preview.SetFont);
-        LabelChoice = new ChoiceItem("Labels", LabelWords.Select(l => l.Words).ToList(), MixedLabels,
+        LabelChoice = new ChoiceItem(LabelsCard, MixedLabels,
             words => SetLabels(LabelWords.FirstOrDefault(l => l.Words == words).Style));
         Rows = new ObservableCollection<GadgetRowItem>(Listed.Select(Row));
         settings.Changed += OnChanged;
@@ -82,15 +80,21 @@ public sealed class GadgetSettingsModel : ObservableObject, IDisposable
     public WeatherCards Weather { get; }
     public GadgetHoverCards Hover { get; }
 
-    /// The settings global search offers (Position, Font and the cards of the Weather, Size and spacing, Numbers and units, Hover details and Clicks groups).
-    private const string PositionLabel = "Position";
+    /// <summary>A card of the Taskbar gadget tab: its words are the tab's, then its own.</summary>
+    internal static SearchCard Card(string label, string keywords = "") => new(label, $"resources taskbar gadget {keywords}", ResourcesPageViewModel.GadgetTab);
 
-    /// The labels of <see cref="SearchItems"/>, read without making the cards (the page's word source).
-    public static IEnumerable<string> SearchLabels => new[] { PositionLabel, GadgetFontCard.Label }
-        .Concat(WeatherCards.SearchLabels).Concat(GadgetDisplayCards.SearchLabels).Concat(GadgetHoverCards.SearchLabels);
+    private static readonly SearchCard PositionSearch = Card("Position", "left right tray") with { Choices = GadgetSettings.PositionNames, Tip = "Right: left of the tray icons. Left: after the Widgets button, or after the app buttons when they sit at the left." },
+        LabelsCard = Card("Labels", "text icons both") with { Choices = LabelWords.Select(l => l.Words).Append(MixedLabels).ToList() },
+        ShowCard = Card("Show on taskbar", "gadget on off switch") with { Note = "The gadget at the taskbar's edge, with the readings you choose" },
+        LayoutsCard = Card("Gadget layouts", "ready-made preset tiles arrange") with { Menu = new[] { ProviderChoice.ManageText } };
 
+    /// The cards global search offers (Position, Font, Labels and the cards of the Weather, Size and spacing, Numbers and units, Hover details and Clicks groups), read without making the items.
+    public static IReadOnlyList<SearchCard> Cards { get; } = new[] { ShowCard, PositionSearch, GadgetFontCard.FontCard, LabelsCard, LayoutsCard }
+        .Concat(WeatherCards.Cards).Concat(GadgetDisplayCards.Cards).Concat(GadgetHoverCards.Cards).ToList();
+
+    /// The items the cards are shown by, to give the page's results their live controls (found by label).
     public IEnumerable<IEditorItem> SearchItems => new[] { Weather.Group, Display.Layout, Display.Numbers, Hover.Group, Display.Behaviour }
-        .SelectMany(g => g.Items).OfType<IEditorItem>().Prepend(Font.Item).Prepend(Position);
+        .SelectMany(g => g.Items).OfType<IEditorItem>().Prepend(Font.Item).Prepend(Position).Prepend(LabelChoice).Prepend(LayoutChoice);
 
     /// The gadget's background (the taskbar's colour when see-through) behind the label editor's line and the layout tiles (kept, so a read draws on the same brush).
     private SolidColorBrush? _background;

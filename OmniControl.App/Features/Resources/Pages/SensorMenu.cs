@@ -7,7 +7,7 @@ namespace OmniControl.App.Features.Resources.Pages;
 /// (<see cref="ResourcesSetup.SensorOf"/>) drives its value everywhere: cards, gadget, tooltips, state and rules.
 public sealed class SensorMenu
 {
-    public const string Title = "Temperature sensor";
+    public const string Title = "Temperature sensor", Auto = "Auto", HottestAuto = "Hottest (auto)";
 
     private readonly IReadingList _readings;
     private readonly ResourcesSettings _settings;

@@ -7,7 +7,7 @@ namespace OmniControl.App.Features.Resources.Pages;
 /// the common choice, then each adapter), <see cref="ResourcesSetup.SpeedAdapterOf"/>; an adapter that is gone reads as Auto.
 public sealed class NetworkAdapterMenu
 {
-    public const string Title = "Network adapter (Download and Upload)", ReadingTitle = "Network adapter";
+    public const string Title = "Network adapter (Download and Upload)", ReadingTitle = "Network adapter", AutoBusiest = "Auto (busiest)", AllCombined = "All adapters combined";
 
     private readonly IReadingList _monitor;
     private readonly ResourcesSettings _settings;
@@ -18,7 +18,7 @@ public sealed class NetworkAdapterMenu
     public NetworkAdapterMenu(IReadingList monitor, ResourcesSettings settings, Reading? reading = null)
     {
         (_monitor, _settings, _reading) = (monitor, settings, reading);
-        Item = new MenuChoiceItem(reading is null ? "Network adapter" : ReadingTitle, Words, Rows)
+        Item = new MenuChoiceItem(ReadingTitle, Words, Rows)
         {
             OpenChanged = open => { if (!open) _showOffline = false; _monitor.ListAdapters(open); },
             Tip = reading is null ? null : $"{reading.Name}: the network adapter it is read from; Auto is the choice on the Readings tab",
@@ -52,8 +52,8 @@ public sealed class NetworkAdapterMenu
             ? new List<MenuRowItem> { Row("Auto", auto, null) }
             : new List<MenuRowItem>
             {
-                Row(busiest is null ? "Auto (busiest)" : $"Auto (busiest) · now {busiest}", auto, null),
-                Row("All adapters combined", Choice == AdapterSpeed.All, AdapterSpeed.All),
+                Row(busiest is null ? AutoBusiest : $"{AutoBusiest} · now {busiest}", auto, null),
+                Row(AllCombined, Choice == AdapterSpeed.All, AdapterSpeed.All),
             };
         var connected = sample.Adapters.Where(a => a.IsUp).OrderBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
         AddGroup(rows, "CONNECTED", connected.Where(a => a.IsPhysical));

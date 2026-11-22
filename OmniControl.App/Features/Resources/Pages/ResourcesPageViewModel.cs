@@ -8,7 +8,7 @@ namespace OmniControl.App.Features.Resources.Pages;
 
 /// The Resources page: preset picker and two tabs, Readings (Live readings) and Taskbar gadget (<see cref="GadgetSettingsModel"/>);
 /// it asks the poller for readings only while on screen.
-public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
+public sealed partial class ResourcesPageViewModel : PageViewModel, IDisposable
 {
     private readonly IReadingList _monitor;
     private readonly ResourcesSettings _settings;
@@ -38,16 +38,6 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     public ItemGroup Live { get; }
     public ChoiceItem ReadEvery { get; }
 
-    public override IEnumerable<SearchEntry> SearchEntries => new[] { Entry(ReadEvery, ReadEveryCard) }
-        .Concat(_gadget.SearchItems.Select(i => Entry(i, GadgetCard(i.Label))));
-
-    private static readonly SearchCard ReadEveryCard = new("Read every", "resources readings");
-
-    private static SearchCard GadgetCard(string label) => new(label, "resources taskbar gadget", GadgetTab);
-
-    /// The page's search words (<c>FeaturePage.Words</c>).
-    public static IEnumerable<string> Words() => GadgetSettingsModel.SearchLabels.Select(l => GadgetCard(l).Words).Prepend(ReadEveryCard.Words);
-
     /// <param name="presets">The title line's preset picker and <paramref name="gadget"/> the Taskbar gadget tab (the page disposes both).</param>
     internal ResourcesPageViewModel(IReadingList monitor, ResourcesSettings settings, ProviderChoice presets, GadgetSettingsModel gadget) : base(Info)
     {
@@ -56,14 +46,14 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
 
         _adapter = new NetworkAdapterMenu(monitor, settings);
 
-        _hottest = new SensorMenu(monitor, settings, Reading.Find(Reading.HottestId)!, "Hottest (auto)", null);
+        _hottest = new SensorMenu(monitor, settings, Reading.Find(Reading.HottestId)!, SensorMenu.HottestAuto, null);
         ListCards();
         Live = new ItemGroup("Resources/Live", "Live readings", _liveItems)
         {
             ExpandedByDefault = true, Summary = string.Empty,
-            Tip = "Readings come from Windows itself (GPU and disk load as Task Manager shows them, the graphics card's and drives' own temperatures); LibreHardwareMonitor for the CPU package temperature (it needs the PawnIO driver, else the ACPI thermal zone is read) and for what Windows does not give.",
+            Tip = LiveTip,
         };
-        ReadEvery = new ChoiceItem(ReadEveryCard.Label, Timing.ResourcesReadChoices.Select(Every).ToList(), Every(settings.Setup.ReadEverySeconds), picked =>
+        ReadEvery = new ChoiceItem(ReadEveryCard, Every(settings.Setup.ReadEverySeconds), picked =>
         {
             settings.Setup.ReadEverySeconds = Timing.ResourcesReadChoices.First(s => Every(s) == picked);
             settings.Commit();
@@ -95,7 +85,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
             return new(new ReadingCard(r.Card!.Value.Label, r.Icon, Reading.TemperatureGraphMax, Reading.TemperatureGraphMin)
                 { Sensor = _hottest.Item, FootGraph = true, WarnAt = Reading.WarmCelsius }, r, null, null);
         var t = r.TemperatureId is { } id ? _monitor.Find(id) : null;
-        var temperature = t is null ? null : new SensorMenu(_monitor, _settings, t, "Auto", _ => t.Words(t.Read(_monitor.Latest)), SensorMenu.TipFor(t));
+        var temperature = t is null ? null : new SensorMenu(_monitor, _settings, t, SensorMenu.Auto, _ => t.Words(t.Read(_monitor.Latest)), SensorMenu.TipFor(t));
         return new(new ReadingCard(r.Card!.Value.Label, r.Icon, r.GraphMax) { Adapter = r.Kind == ReadingKind.Speed ? _adapter.Item : null, Sensor = temperature?.Item },
             r, t, temperature);
     }

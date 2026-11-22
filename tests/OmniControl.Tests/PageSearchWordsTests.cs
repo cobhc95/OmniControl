@@ -17,7 +17,6 @@ public class PageSearchWordsTests
     // Pages that still list their results by hand (an override of SearchEntries). The coverage job moves each onto the builder and deletes its line.
     private static readonly Dictionary<string, string> NotOnTheBuilderYet = new()
     {
-        ["ResourcesPageViewModel"] = "readings and the gadget tab are listed by hand",
         ["TrafficPageViewModel"] = "only the packet filter card is listed",
         ["VolumePageViewModel"] = "cables and mixer rows are listed by hand",
     };
