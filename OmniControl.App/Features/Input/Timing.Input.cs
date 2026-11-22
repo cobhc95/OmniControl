@@ -81,6 +81,11 @@ public static partial class Timing
 
     public const int MouseHoldMinMs = 150, MouseHoldMaxMs = 2000;
 
+    /// A mouse button action "When the button is pressed twice / three times": the longest pause between two presses that still counts as one series.
+    public static readonly TimeSpan MousePressesWithin = TimeSpan.FromMilliseconds(300);
+
+    public const int MousePressesWithinMinMs = 150, MousePressesWithinMaxMs = 1000;
+
     /// A rule's command is stopped (with everything it started) after this long, unless the step's own timeout says otherwise.
     public static readonly TimeSpan RuleCommandTimeout = TimeSpan.FromSeconds(30);
 

@@ -8,20 +8,26 @@ public static class MouseOptions
 {
     // Common to actions that happen once per press: when they run, how many times, and how fast they repeat while held.
     public const string OnPress = "When the button is pressed", OnRelease = "When the button is released", OnHold = "When the button is held",
+        OnTwice = "When the button is pressed twice", OnThrice = "When the button is pressed three times",
         Repeatedly = "Repeatedly while the button is held", KeysHeld = "Keys held down while the button is held";
-    public static readonly ActionOption Trigger = ActionOption.Choice("trigger", "Runs", new[] { OnPress, OnRelease, OnHold, Repeatedly });
-    public static readonly ActionOption TriggerWithHold = ActionOption.Choice("trigger", "Runs", new[] { OnPress, OnRelease, OnHold, Repeatedly, KeysHeld });
-    // A second or later action runs with the press, or alone once the button has been held (the first decides the rest).
-    private static readonly ActionOption LaterTrigger = ActionOption.Choice("trigger", "Runs", new[] { OnPress, OnHold });
+    public static readonly ActionOption Trigger = ActionOption.Choice("trigger", "Runs", new[] { OnPress, OnRelease, OnHold, OnTwice, OnThrice, Repeatedly });
+    public static readonly ActionOption TriggerWithHold = ActionOption.Choice("trigger", "Runs", new[] { OnPress, OnRelease, OnHold, OnTwice, OnThrice, Repeatedly, KeysHeld });
+    // A second or later action runs with the press, or alone once the button has been held or pressed again (the first decides the rest).
+    private static readonly ActionOption LaterTrigger = ActionOption.Choice("trigger", "Runs", new[] { OnPress, OnHold, OnTwice, OnThrice });
     public static readonly ActionOption HoldFor = ActionOption.Number("holdfor", "Hold for", (int)Timing.MouseHold.TotalMilliseconds,
         Timing.MouseHoldMinMs, Timing.MouseHoldMaxMs, 50, " ms").ShownWhen(Trigger, OnHold);
-    public static readonly ActionOption Times = ActionOption.Number("times", "Times each time", 1, 1, 20).ShownWhen(Trigger, OnPress, OnRelease, OnHold, Repeatedly);
+    public static readonly ActionOption PressesWithin = ActionOption.Number("within", "Presses within", (int)Timing.MousePressesWithin.TotalMilliseconds,
+        Timing.MousePressesWithinMinMs, Timing.MousePressesWithinMaxMs, 50, " ms").Noted("time allowed between presses").ShownWhen(Trigger, OnTwice, OnThrice);
+    public static readonly ActionOption Times = ActionOption.Number("times", "Times each time", 1, 1, 20).ShownWhen(Trigger, OnPress, OnRelease, OnHold, OnTwice, OnThrice, Repeatedly);
 
     /// What a held action's pill adds to its name.
     public const string HeldMark = " · held";
 
     /// True when the action runs once its button has been held (<see cref="OnHold"/>).
     public static bool RunsWhenHeld(OptionValues values) => values.Text(Trigger) == OnHold;
+
+    /// How many presses the action waits for: 2 or 3, and 0 for any other trigger.
+    public static int PressesOf(OptionValues values) => values.Text(Trigger) switch { OnTwice => 2, OnThrice => 3, _ => 0 };
 
     private const string ShortPressOnly = "Runs on a short press only, because another action on this button runs when it's held.";
 
@@ -51,7 +57,7 @@ public static class MouseOptions
     /// The "also keep the original" setting as it reads for this kind of input.
     public static ActionOption OriginalFor(bool trackpadGesture) => trackpadGesture ? KeepWindowsGesture : KeepOriginal;
 
-    public static readonly IReadOnlyList<ActionOption> Common = new[] { Trigger, HoldFor, Times, RepeatDelay, RepeatEvery };
+    public static readonly IReadOnlyList<ActionOption> Common = new[] { Trigger, HoldFor, PressesWithin, Times, RepeatDelay, RepeatEvery };
 
     // What only the first of an input's actions decides: repeating and whether the input itself is let through. The second and later
     // actions run once, in order, each time the input fires, or once it has been held (<see cref="LaterTrigger"/>).

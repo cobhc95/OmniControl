@@ -127,7 +127,7 @@ public static class MouseActionCatalog
     private static readonly IReadOnlyList<PickChoice> Parameterised = new PickChoice[]
     {
         new(Keys + ":", ActionSections.Keys, "Send keys", "Ctrl+Shift+S, or Ctrl+K, Ctrl+C", "send a shortcut remap key combination keystroke sequence simulated",
-            new[] { MouseOptions.TriggerWithHold, MouseOptions.Times, MouseOptions.RepeatDelay, MouseOptions.RepeatEvery }, "Keys to send", Heading: Edit.Heading,
+            new[] { MouseOptions.TriggerWithHold, MouseOptions.PressesWithin, MouseOptions.Times, MouseOptions.RepeatDelay, MouseOptions.RepeatEvery }, "Keys to send", Heading: Edit.Heading,
             ParamCheck: MouseOptions.KeysProblem, NamedByParam: true),
         new(Run + ":", Programs.Section, "Open a program, file or link", @"C:\Path\App.exe", "run application launch file url website address",
             new[] { MouseOptions.Arguments, MouseOptions.StartIn, MouseOptions.WindowStyle, MouseOptions.Administrator }, "Program, file or link", ParamBrowse: PathKind.File, Heading: Programs.Heading),

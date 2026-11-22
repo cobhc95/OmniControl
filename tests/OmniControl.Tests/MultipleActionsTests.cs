@@ -115,7 +115,7 @@ public class MultipleActionsTests
 
         var shortcut = later.Single(c => c.Spec == MouseActionCatalog.Keys + ":");
         var keys = shortcut.Options!.Select(o => o.Key).ToList();
-        Assert.Equal(new[] { MouseOptions.OnPress, MouseOptions.OnHold }, shortcut.Options!.Single(o => o.Key == MouseOptions.Trigger.Key).Choices);
+        Assert.Equal(new[] { MouseOptions.OnPress, MouseOptions.OnHold, MouseOptions.OnTwice, MouseOptions.OnThrice }, shortcut.Options!.Single(o => o.Key == MouseOptions.Trigger.Key).Choices);
         Assert.DoesNotContain(MouseOptions.RepeatEvery.Key, keys);
         Assert.DoesNotContain(MouseOptions.KeepOriginal.Key, keys);
         Assert.True(shortcut.Options!.Single(o => o.Key == MouseOptions.Times.Key).IsShown(_ => MouseOptions.OnPress)); // "times" shows for a later action's own trigger

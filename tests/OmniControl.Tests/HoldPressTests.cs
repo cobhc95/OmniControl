@@ -73,52 +73,8 @@ public class HoldPressTests
     public void LaterAction_RunsPressedOrHeld()
     {
         var later = MouseOptions.OneShot(MouseOptions.Common)!;
-        Assert.Equal(new[] { MouseOptions.OnPress, MouseOptions.OnHold }, later.Single(o => o.Key == MouseOptions.Trigger.Key).Choices);
+        Assert.Equal(new[] { MouseOptions.OnPress, MouseOptions.OnHold, MouseOptions.OnTwice, MouseOptions.OnThrice }, later.Single(o => o.Key == MouseOptions.Trigger.Key).Choices);
         Assert.Contains(later, o => o.Key == MouseOptions.HoldFor.Key);
         Assert.DoesNotContain(later, o => o.Key == MouseOptions.RepeatDelay.Key);
-    }
-
-    /// A clock whose time moves only when told; its timers fire as it passes their time.
-    private sealed class FakeClock : TimeProvider
-    {
-        private readonly List<FakeTimer> _timers = new();
-        private DateTimeOffset _now = DateTimeOffset.UnixEpoch;
-
-        public override DateTimeOffset GetUtcNow() => _now;
-
-        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
-        {
-            var timer = new FakeTimer(this, () => callback(state));
-            timer.Change(dueTime, period);
-            _timers.Add(timer);
-            return timer;
-        }
-
-        public void Advance(TimeSpan by)
-        {
-            _now += by;
-            foreach (var timer in _timers.ToList()) timer.FireIfDue(_now);
-        }
-
-        private sealed class FakeTimer(FakeClock clock, Action fire) : ITimer
-        {
-            private DateTimeOffset? _due;
-
-            public bool Change(TimeSpan dueTime, TimeSpan period)
-            {
-                _due = dueTime == Timeout.InfiniteTimeSpan ? null : clock._now + dueTime;
-                return true;
-            }
-
-            public void FireIfDue(DateTimeOffset now)
-            {
-                if (_due is not { } due || due > now) return;
-                _due = null;
-                fire();
-            }
-
-            public void Dispose() => _due = null;
-            public ValueTask DisposeAsync() { Dispose(); return ValueTask.CompletedTask; }
-        }
     }
 }

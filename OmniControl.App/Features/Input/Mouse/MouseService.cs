@@ -52,6 +52,7 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
     private readonly LayerState _layers = new();                        // the mouse's and the trackpad's layer in force
     private readonly HashSet<MouseButton> _sequenceRunning = new();     // inputs whose second and later actions are still running
     private readonly HoldWatch _holds = new(TimeProvider.System);       // buttons with an action that runs when held, until held long enough or let go
+    private readonly PressCounter _presses = new(TimeProvider.System);  // short presses of buttons with an action that runs on a count, until the pause for another press ends
     private volatile Snapshot _snapshot;
 
     public MouseSettings Settings { get; } = MouseSettings.Load();
@@ -274,7 +275,7 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
         if (gesture is null && isPressable && HoldSplit.Of(action, extras) is { } split)
         {
             if (split.DefersFirst) return StartHoldOrShort(action, split, ev);
-            _holds.Start(ev.Button, split.HoldFor, () => { }, () => RunInOrder(ev, null, split.HeldExtras));
+            StartWatch(split, ev, sendsClick: false);
             extras = split.ShortExtras;
         }
         // "Also send the button's normal click": the original input goes through and is not swallowed on release either.
@@ -328,20 +329,37 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
         return false;
     }
 
-    /// A button with an action that runs when held: the press is kept back; let go before the hold time, the pressed actions run (and the
-    /// button's own click is sent when the first action asks for it); held that long, the held actions run instead.
+    /// A button with an action that runs when held or on a count of presses: the press is kept back; let go before the hold time, the
+    /// pressed actions run (after the pause for another press, when some action counts them), and the button's own click is sent once per
+    /// press when the first action asks for it; held that long, the held actions run instead.
     private bool StartHoldOrShort(MouseAction first, HoldSplit split, MouseEvent ev)
     {
         lock (_gate) _swallowed.Add(ev.Button);
-        var sendsClick = first.Options.Bool(MouseOptions.KeepOriginal);
+        StartWatch(split, ev, first.Options.Bool(MouseOptions.KeepOriginal));
+        return true;
+    }
+
+    private void StartWatch(HoldSplit split, MouseEvent ev, bool sendsClick)
+    {
+        if (split.IsCounted) _presses.Down(ev.Button);
         _holds.Start(ev.Button, split.HoldFor,
             onShort: () =>
             {
-                if (sendsClick) Guard.OffUi("Mouse: sending the button's own click", () => InputSender.Click(ev.Button));
-                RunNow(split.HeldFirst is null ? first : null, ev, split.ShortExtras);
+                if (split.IsCounted) _presses.Up(ev.Button, split.MaxCount, split.Within, count => RunPresses(split, ev, count, sendsClick));
+                else RunPresses(split, ev, 1, sendsClick);
             },
-            onHeld: () => RunNow(split.HeldFirst, ev, split.HeldExtras));
-        return true;
+            onHeld: () =>
+            {
+                _presses.Flush(ev.Button);
+                RunNow(split.HeldFirst, ev, split.HeldExtras);
+            });
+    }
+
+    private void RunPresses(HoldSplit split, MouseEvent ev, int count, bool sendsClick)
+    {
+        if (sendsClick) Guard.OffUi("Mouse: sending the button's own click", () => { for (var i = 0; i < count; i++) InputSender.Click(ev.Button); });
+        var step = split.StepFor(count);
+        RunNow(step.First, ev, step.Extras);
     }
 
     /// Runs <paramref name="first"/> (with its extra shortcut) and then <paramref name="extras"/>, in order, off the hook thread.
@@ -475,6 +493,7 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
     {
         List<MouseButton> held;
         _holds.CancelAll();
+        _presses.CancelAll();
         lock (_gate) held = _undoOnRelease.Keys.Concat(_swallowed).Distinct().ToList();
         foreach (var button in held) ReleaseSwallowed(button);
         foreach (var family in _layers.ReleaseAll()) NotifyLayer(family);
@@ -490,6 +509,7 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
         _pressWatch.Changed -= OnPressWatchChanged;
         _modes.BeginClose();
         _holds.Dispose();
+        _presses.Dispose();
         List<Action> pending;
         lock (_gate) pending = _undoOnRelease.Values.ToList();
         foreach (var undo in pending) undo(); // let go of whatever a held button was doing
