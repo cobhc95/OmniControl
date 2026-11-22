@@ -170,6 +170,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _hiddenSettle.Start(); // the window is not shown yet (it may start in the tray)
         _releaseUi.Tick += OnReleaseDue;
         _releaseUi.Start();
+        _searchShow.Tick += OnSearchShowDue;
         if (AppDataStore.TakeDamaged() is { Count: > 0 } damaged)
             Report(Guard.SeeLog($"Damaged settings were reset to their defaults; the damaged files are kept as {string.Join(", ", damaged.Select(AppDataStore.BadCopyOf))}."));
     }
@@ -285,6 +286,8 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     // Draw first, wire later (DrawFirst): the page is drawn at once from what it holds, then it reads the machine and comes on screen.
     private void Show(PageSlot slot)
     {
+        _searchShow.Stop(); // a page chosen while a search's page waits wins
+        _searchTarget = null;
         if (slot == _openSlot) return;
         var clock = System.Diagnostics.Stopwatch.StartNew();
         if (_windowShown) _wired?.OnOnScreenChanged(false);
@@ -358,6 +361,8 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _hiddenSettle.Tick -= OnHiddenSettled;
         _releaseUi.Stop();
         _releaseUi.Tick -= OnReleaseDue;
+        _searchShow.Stop();
+        _searchShow.Tick -= OnSearchShowDue;
         void Step(ShutdownStage stage, string what, Action step) => _shutdown.Add(stage, what, step);
         Step(ShutdownStage.Search, "search", () => _search?.Dispose());
         Step(ShutdownStage.Search, "search key", () =>

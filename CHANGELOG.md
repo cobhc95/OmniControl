@@ -6,6 +6,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 ## Unreleased
 
 - README: new screenshots of the Resources Readings tab and the Network traffic control page, drawn with made-up data (the screenshot tool can now draw both pages).
+- Faster: typing in "Search settings..." no longer switches the page behind the results on every letter, only at the typing pause.
 
 ## 0.2.9 (22 Nov 2026)
 

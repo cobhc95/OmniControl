@@ -11,6 +11,17 @@ public sealed partial class ShellViewModel
     private ProgressiveFill<SearchEntry>? _resultFill;
     private SearchIndex<PageSlot>? _pageIndex;
     private SearchIndex<SearchEntry>? _entryIndex;
+    private readonly DispatcherTimer _searchShow = new() { Interval = Timing.SearchDebounce };
+    private PageSlot? _searchTarget;
+
+    private void OnSearchShowDue(object? sender, EventArgs e) => Guard.Run("search page", ShowSearchTarget);
+
+    private void ShowSearchTarget()
+    {
+        _searchShow.Stop();
+        if (_searchTarget is { } target) Show(target);
+        _searchTarget = null;
+    }
 
     /// Editable settings matching the search text.
     public ObservableCollection<SearchEntry> SearchResults { get; } = new();
@@ -23,8 +34,14 @@ public sealed partial class ShellViewModel
 
     // A page also matches through the actions it registered (their category is the page's title), so a new action makes its page
     // findable by its own words without anyone adding them to the page's keywords.
-    private SearchIndex<PageSlot> PageIndex => _pageIndex ??= new SearchIndex<PageSlot>(AllSlots,
-        p => new[] { p.Title, p.Info.Keywords }.Concat(_hotkeys.Actions.Where(a => a.Category == p.Title).SelectMany(a => new[] { a.Title, a.Heading, a.Keywords })));
+    private SearchIndex<PageSlot> PageIndex => _pageIndex ??= MakePageIndex();
+
+    private SearchIndex<PageSlot> MakePageIndex()
+    {
+        var actions = _hotkeys.Actions.ToLookup(a => a.Category);
+        return new SearchIndex<PageSlot>(AllSlots,
+            p => new[] { p.Title, p.Info.Keywords }.Concat(actions[p.Title].SelectMany(a => new[] { a.Title, a.Heading, a.Keywords })));
+    }
 
     private SearchIndex<SearchEntry> EntryIndex => _entryIndex ??= new SearchIndex<SearchEntry>(
         AllSlots.Select(p => p.Page).OfType<PageViewModel>().SelectMany(p => p.SearchEntries).Concat(_actionsWindow.SearchEntries), e => e.SearchFields);
@@ -51,7 +68,11 @@ public sealed partial class ShellViewModel
         SelectedFooterPage = target is not null && FooterPages.Contains(target) ? target : null;
         _syncing = false;
         // Before the window first shows (a tray start) no page is made: the first showing opens the selected one.
-        if (target is not null && (_windowShown || _openSlot is not null)) Show(target);
+        _searchShow.Stop();
+        _searchTarget = target is not null && (_windowShown || _openSlot is not null) ? target : null;
+        // While typing the results cover the page, so the page behind them is switched only at the typing pause.
+        if (q.Length == 0) ShowSearchTarget();
+        else if (_searchTarget is not null) _searchShow.Start();
 
         IsSearching = q.Length > 0;
         if (!IsSearching)
