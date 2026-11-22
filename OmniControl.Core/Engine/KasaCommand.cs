@@ -16,6 +16,10 @@ public static class KasaCommand
     /// A template's first word that means "the kasa program that was found" (kasa.exe, or python -m kasa).
     public const string Program = "kasa";
 
+    /// True when the template's program is kasa; anything else would start another program, which never gets the account.
+    public static bool RunsKasa(string template) =>
+        Split(template) is { Count: > 0 } words && words[0].Equals(Program, StringComparison.OrdinalIgnoreCase);
+
     /// A template ("kasa --host {ip} on") as its words: quotes group words, {ip} and {email} are filled in, and {password} is never put in:
     /// the word and the option before it ("--password") are left out, because the password travels in <see cref="PasswordVariable"/>.
     public static IReadOnlyList<string> Fill(string template, string ip, string email)

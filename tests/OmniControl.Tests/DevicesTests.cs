@@ -18,6 +18,37 @@ public sealed class DevicesTests
         Assert.Equal(ScriptProfiles.Auto, ScriptProfiles.Of("deleted", Array.Empty<ScriptProfile>()).Id);
     }
 
+    [Theory]
+    [InlineData("kasa --host {ip} on", true)]
+    [InlineData("KASA --host {ip} on", true)]
+    [InlineData("\"kasa\" on", true)]
+    [InlineData("powershell -c x", false)]
+    [InlineData("C:\\tools\\kasa.exe on", false)]
+    [InlineData("", false)]
+    public void Only_a_command_that_starts_with_kasa_is_given_the_account(string template, bool expected) =>
+        Assert.Equal(expected, KasaCommand.RunsKasa(template));
+
+    private static DeviceSettings SettingsWithSecrets()
+    {
+        var method = new MethodRecord { Email = "me@example.com", Steps = { new SimStep { Kind = SimStepKind.TypeText, Text = "hunter2" } } };
+        return new DeviceSettings { Devices = { new DeviceRecord { Name = "Lamp", Methods = { method } } } };
+    }
+
+    [Fact]
+    public void Both_ways_of_sharing_devices_leave_out_the_email_and_the_typed_text()
+    {
+        var general = DeviceShareFormat.RedactFile(JsonSerializer.Serialize(SettingsWithSecrets()));
+        var share = JsonSerializer.Serialize(DeviceShareFormat.Read(DeviceShareFormat.Write(SettingsWithSecrets(), false)));
+        foreach (var text in new[] { general, share })
+        {
+            Assert.NotNull(text);
+            Assert.DoesNotContain("me@example.com", text);
+            Assert.DoesNotContain("hunter2", text);
+            Assert.Contains("Lamp", text);
+        }
+        Assert.Null(DeviceShareFormat.RedactFile("not json"));
+    }
+
     [Fact]
     public void Tapo_and_Kasa_get_the_email_in_lower_case_and_the_field_is_left_alone()
     {

@@ -125,7 +125,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _apps = new AppsModule(_dialogs.AskAsync, Report);
         _power = new PowerJournal(_hardware);
         _devices = new DevicesModule(() => _otherPcs.Paired, () => OpenPage(OtherPcsService.Category));
-        _otherPcs = new OtherPcsModule(_devices.ShareSetups);
+        _otherPcs = new OtherPcsModule(_devices.ShareSetups, DeviceShareFormat.RedactFile);
         _context = new FeatureContext(_hotkeys, _hotkeys, _states, _hardware, _osd.Osd, _presetGroups, _presetManager.Open, _dialogs.AskAsync, _dialogs.AskTextAsync,
             Report, OpenPage, _apps.Scopes, _apps.Gate, _iconPicker, _actionGate, _power, setId => new SuggestedKeysSwitch(_hotkeys, setId), _settings, _importHooks, _shutdown,
             _features);

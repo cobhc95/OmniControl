@@ -6,7 +6,9 @@ namespace OmniControl.App.Features.OtherPcs.SettingsImport;
 /// <see cref="ImportAreas"/> are ever read, so a machine-specific store never leaves; a store's <see cref="DataStore.NotImported"/> properties
 /// (the approvals of commands) are removed first, and passwords and pairing keys are not in any store at all (they live in the Windows
 /// Credential Manager). It reads the saved files, as an export does.
-public sealed class SettingsShare
+/// <param name="redactDevices">Takes the text of the smart devices file out of everything private (one rule with the device set-ups
+/// handed out); null when it cannot be read, and the file is then left out.</param>
+public sealed class SettingsShare(Func<string, string?> redactDevices)
 {
     /// The areas with something saved, with their counts.
     public IReadOnlyList<AreaOffer> Offer()
@@ -30,7 +32,9 @@ public sealed class SettingsShare
         foreach (var store in area.Stores)
         {
             if (AppDataStore.LoadText(store) is not { } text || !BackupFile.TryParse(text, out var node)) continue;
-            files[store.FileName] = JsonMerge.KeepOwn(node, null, store.NotImported ?? Array.Empty<string>())?.ToJsonString() ?? text;
+            var packed = JsonMerge.KeepOwn(node, null, store.NotImported ?? Array.Empty<string>())?.ToJsonString() ?? text;
+            if (store != DataStores.Devices) files[store.FileName] = packed;
+            else if (redactDevices(packed) is { } redacted) files[store.FileName] = redacted;
         }
         return files;
     }
