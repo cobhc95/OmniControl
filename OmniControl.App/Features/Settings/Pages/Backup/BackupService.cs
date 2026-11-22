@@ -1,10 +1,11 @@
 using OmniControl.App.Shared.Services.Backup;
+using OmniControl.App.Shared.Ui.SettingsImport;
 
 namespace OmniControl.App.Features.Settings.Pages.Backup;
 
-/// The Backup and restore card's three actions: Export... (one .omnibackup file of every saved store), Import... (shows what the file
-/// holds, then Replace everything or Merge) and Wipe all... (asks twice). An import or wipe is staged and carried out as OmniControl
-/// restarts (<see cref="PendingRestore"/>, <see cref="AppRestart"/>). Each failure is one plain sentence in the status line.
+/// The Backup and restore card's three actions: Export... and Import... open the shared settings window (choose areas, then a file is
+/// written, or the file's areas are imported live with Undo) and Wipe all... (asks twice), which is staged and carried out as OmniControl
+/// restarts (<see cref="PendingRestore"/>, <see cref="AppRestart"/>). Each failure is one plain sentence.
 public sealed class BackupService
 {
     private static readonly string[] Patterns = { "*." + BackupFile.Extension };
@@ -13,53 +14,88 @@ public sealed class BackupService
     private readonly Func<DialogMessage, Task<DialogAnswer>> _choose;
     private readonly Action<string> _report;
     private readonly Features.OtherPcs.SettingsImport.ImportFromPcService? _importFromPc;
+    private readonly ImportHooks _hooks;
+    private readonly SingleWindow<SettingsWindow> _window;
 
     /// <param name="choose">Shows a message with up to two answers (the shared <see cref="DialogService"/>).</param>
     /// <param name="report">Shows one plain sentence in the status line.</param>
     /// <param name="importFromPc">Opens "Import settings from a PC" (the Import from another PC card); null while Other PCs is off.</param>
-    public BackupService(Func<DialogMessage, Task<DialogAnswer>> choose, Action<string> report, Features.OtherPcs.SettingsImport.ImportFromPcService? importFromPc)
+    /// <param name="hooks">How each store's owner reloads it live after an import.</param>
+    public BackupService(Func<DialogMessage, Task<DialogAnswer>> choose, Action<string> report, Features.OtherPcs.SettingsImport.ImportFromPcService? importFromPc, ImportHooks hooks)
     {
+        _hooks = hooks;
+        _window = new SingleWindow<SettingsWindow>(report);
         _choose = choose;
         _report = report;
         _importFromPc = importFromPc;
     }
 
-    public async Task ExportAsync()
-    {
-        var name = $"{AppInfo.Name} {DateTime.Now:yyyy-MM-dd}";
-        if (await PathPicker.PickSaveAsync(null, "Export a backup", name, BackupFile.Extension, TypeName, Patterns) is not { } path) return;
-        try
-        {
-            var count = await Task.Run(() =>
-            {
-                AppDataStore.FlushSaves(); // the backup reads the files: waiting saves first
-                return BackupFile.Write(AppDataStore.Folder, path, AppInfo.Version);
-            });
-            _report($"Backed up {count} {(count == 1 ? "area" : "areas")} to {Path.GetFileName(path)}.");
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
-        {
-            _report($"The backup could not be written: {ex.Message}");
-        }
-    }
+    /// Opens "Export settings": the areas saved here; the ticked ones go into one .omnibackup file chosen after.
+    public void Export() => _window.Show(
+        () => new SettingsWindow { DataContext = new SettingsWindowViewModel(new HereSource(), ExportAsync) },
+        closed => (closed.DataContext as IDisposable)?.Dispose(), "Couldn't open the export window");
 
+    /// Opens "Import settings from <file>" for a backup file the person picks: only the areas it holds are listed, the ticked ones are
+    /// imported live under the import journal, with a backup first and Undo (<see cref="SettingsImporter"/>).
     public async Task ImportAsync()
     {
         if (await PathPicker.PickAsync(null, PathKind.File, "Import a backup", typeName: TypeName, patterns: Patterns) is not { } path) return;
-        var (contents, problem) = await Task.Run(() => BackupFile.Read(path));
-        if (contents is null)
-        {
-            _report(problem ?? "That file is not an OmniControl backup.");
-            return;
-        }
-        var answer = await _choose(new DialogMessage("Import this backup?",
-            $"Made by OmniControl {contents.AppVersion} on {contents.Created:d}. Merge adds what you don't have and keeps your own settings; " +
-            "Replace everything puts the backup back as it was. OmniControl restarts to apply it.",
-            Confirm: "Replace everything", Details: Describe(contents), ShowDetails: true, Other: "Merge"));
-        if (answer == DialogAnswer.Cancel) return;
-        Stage(() => PendingRestore.Stage(AppDataStore.Folder, contents, answer == DialogAnswer.Other ? RestoreMode.Merge : RestoreMode.Replace));
+        _window.Show(() => new SettingsWindow { DataContext = new SettingsWindowViewModel(new FileSource(path), _hooks) },
+            closed => (closed.DataContext as IDisposable)?.Dispose(), "Couldn't open the import window");
     }
 
+    private static async Task<string?> ExportAsync(IReadOnlyList<ImportArea> areas)
+    {
+        var name = $"{AppInfo.Name} {DateTime.Now:yyyy-MM-dd}";
+        if (await PathPicker.PickSaveAsync(null, "Export a backup", name, BackupFile.Extension, TypeName, Patterns) is not { } path) return null;
+        try
+        {
+            await Task.Run(() =>
+            {
+                AppDataStore.FlushSaves(); // the backup reads the files: waiting saves first
+                BackupFile.Write(AppDataStore.Folder, path, AppInfo.Version, areas.SelectMany(a => a.Stores));
+            });
+            return $"Exported {areas.Count} {(areas.Count == 1 ? "area" : "areas")} to {Path.GetFileName(path)}.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            return $"The backup could not be written: {ex.Message}";
+        }
+    }
+
+    /// What is saved on this PC, as the export lists it.
+    private sealed class HereSource : ISettingsSource
+    {
+        public string Name => AppInfo.Name;
+
+        public IReadOnlyList<ImportArea> Areas => ImportAreas.All;
+
+        public Task<(IReadOnlyList<AreaOffer>? Offers, string? Why)> OffersAsync() => Task.Run(() =>
+        {
+            AppDataStore.FlushSaves();
+            return ((IReadOnlyList<AreaOffer>?)ImportAreas.Offers(ImportAreas.All, AppDataStore.LoadText), (string?)null);
+        });
+    }
+
+    /// A backup file as the import's source: read and checked once, off the UI thread.
+    private sealed class FileSource(string path) : IImportSource
+    {
+        private BackupContents? _contents;
+
+        public string Name { get; } = Path.GetFileName(path);
+
+        public IReadOnlyList<ImportArea> Areas => ImportAreas.All;
+
+        public async Task<(IReadOnlyList<AreaOffer>? Offers, string? Why)> OffersAsync()
+        {
+            var (contents, problem) = await Task.Run(() => BackupFile.Read(path));
+            if ((_contents = contents) is null) return (null, problem ?? "That file is not an OmniControl backup.");
+            return (ImportAreas.Offers(ImportAreas.All, s => contents.Files.GetValueOrDefault(s.FileName)), null);
+        }
+
+        public Task<(IReadOnlyDictionary<string, string>? Files, string? Why)> AreaAsync(string area) =>
+            Task.FromResult<(IReadOnlyDictionary<string, string>?, string?)>(_contents is null ? (null, "The file could not be read.") : (_contents.Files, null));
+    }
     /// The paired PCs that are connected now: the only ones a settings import can read from.
     public IReadOnlyList<(string Id, string Name)> OnlinePcs() => _importFromPc?.OnlinePcs() ?? Array.Empty<(string, string)>();
 
@@ -92,9 +128,4 @@ public sealed class BackupService
         }
         AppLifecycle.RequestRestart();
     }
-
-    /// One line per area: its name, how many entries, and whether an import merges it or replaces it.
-    private static string Describe(BackupContents contents) => string.Join(Environment.NewLine, contents.Areas.Select(a =>
-        $"{a.Store.Area}{(a.Count is { } n ? $": {n} {(n == 1 ? "entry" : "entries")}" : string.Empty)}" +
-        (a.Store.Mergeable ? string.Empty : " (Merge replaces this area)")));
 }

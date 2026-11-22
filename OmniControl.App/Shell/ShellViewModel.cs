@@ -13,7 +13,7 @@ using OmniControl.App.Features.Icons;
 using OmniControl.App.Features.Input;
 using OmniControl.App.Features.Osd;
 using OmniControl.App.Features.OtherPcs;
-using OmniControl.App.Features.OtherPcs.SettingsImport;
+using OmniControl.App.Shared.Services.Backup;
 using OmniControl.App.Features.Resources;
 using OmniControl.App.Features.Traffic;
 using OmniControl.App.Features.Traffic.Pages;
@@ -162,7 +162,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _allPages = RunningPages();
         TrayFlyout = MakeTray();
         _appSettings = new PageSlot(AppSettingsPageViewModel.Info, () => new AppSettingsPageViewModel(_about.Open, _volume.Library,
-            _presetManager, new BackupService(_dialogs.ChooseAsync, Report, _otherPcs.ImportFrom), _dialogs.Confirmations, _updates, Report,
+            _presetManager, new BackupService(_dialogs.ChooseAsync, Report, _otherPcs.ImportFrom, _importHooks), _dialogs.Confirmations, _updates, Report,
             _volume.Mixer, _hardware, _settings, TrayFlyout, _features), () => AppSettingsPageViewModel.Words(_dialogs.Confirmations, _settings, _presetManager),
             AppSettingsRestore(), OnPageMade, Report);
         RegisterAppActions();

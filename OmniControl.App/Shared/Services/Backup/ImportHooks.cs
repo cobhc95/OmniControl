@@ -1,4 +1,4 @@
-namespace OmniControl.App.Features.OtherPcs.SettingsImport;
+namespace OmniControl.App.Shared.Services.Backup;
 
 /// What the owners of stores tell an import, each registered by the owner and never listed here: how a store is reloaded live
 /// (<see cref="OnReload"/>; an area is applied live only when every one of its stores can) and a fact worth showing after an area

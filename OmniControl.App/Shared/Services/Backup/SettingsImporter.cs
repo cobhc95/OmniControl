@@ -1,7 +1,6 @@
 using System.Text;
-using OmniControl.App.Shared.Services.Backup;
 
-namespace OmniControl.App.Features.OtherPcs.SettingsImport;
+namespace OmniControl.App.Shared.Services.Backup;
 
 /// How one area ended.
 public enum AreaOutcome
@@ -16,7 +15,7 @@ public enum AreaOutcome
 /// The end of one area: how it ended, a fact worth showing ("2 need passwords") and, when it failed, the one plain sentence why.
 public sealed record AreaResult(string Area, AreaOutcome Outcome, string? Fact = null, string? Why = null);
 
-/// Carries out an import of chosen areas from another PC, one area at a time, each on its own: an automatic backup first (the existing
+/// Carries out an import of chosen areas from another PC or a backup file, one area at a time, each on its own: an automatic backup first (the existing
 /// <see cref="BackupFile"/>), then per area the files that arrived are checked (a store of the area only, valid json, the properties a file
 /// may not set kept as they are here), saved together under the restore's journal (<see cref="PendingRestore.ApplyNow"/>, so a crash mid-area
 /// is finished or rolled back at the next start), read back and then reloaded by the owner of each

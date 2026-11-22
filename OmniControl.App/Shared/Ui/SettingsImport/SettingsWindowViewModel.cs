@@ -1,9 +1,8 @@
-using System.Text.Json;
-using OmniControl.App.Features.OtherPcs;
+using OmniControl.App.Shared.Services.Backup;
 
-namespace OmniControl.App.Features.OtherPcs.SettingsImport;
+namespace OmniControl.App.Shared.Ui.SettingsImport;
 
-/// Which step the import window is on.
+/// Which step the settings window is on.
 public enum ImportPhase
 {
     Loading,
@@ -12,46 +11,51 @@ public enum ImportPhase
     Done,
 }
 
-/// "Import settings from a PC": asks the PC what it has, lets the person tick areas (grouped like the
-/// sidebar), then runs the import area by area with its progress and shows the result: what was checked and what failed and
-/// was kept as it was. The work is <see cref="SettingsImporter"/>'s and the transfer <see cref="ISettingsTransport"/>'s; this holds the steps
-/// and what the window shows. Applying stays on the UI thread (owners reload live there); only the network wait and the backup are awaited.
-public sealed partial class ImportFromPcViewModel : ObservableObject, IDisposable
+/// The one settings window: "Export settings", "Import settings from a file" and "Import settings from a PC". It asks the source what it has,
+/// lets the person tick areas (grouped like the sidebar), then exports them, or imports them area by area with its progress and shows the
+/// result: what was checked and what failed and was kept as it was. The import's work is <see cref="SettingsImporter"/>'s; this holds the
+/// steps and what the window shows. Applying stays on the UI thread (owners reload live there); only reading the source and the backup are awaited.
+public sealed partial class SettingsWindowViewModel : ObservableObject, IDisposable
 {
     /// A long result shows this many checked areas, then "+ N more checked".
     private const int ShownChecked = 4;
 
     private const string BackupLabel = "Backup of this PC";
 
-    private readonly string _pcId;
-    private readonly ISettingsTransport _transport;
-    private readonly SettingsImporter _importer;
+    private readonly ISettingsSource _source;
+    private readonly SettingsImporter? _importer;
+    private readonly Func<IReadOnlyList<ImportArea>, Task<string?>>? _export;
     private readonly CancellationTokenSource _stop = new();
     private readonly List<ImportProgressRow> _rows = new();
     private bool _disposed;
 
-    public ImportFromPcViewModel(string pcId, ISettingsTransport transport, ImportHooks hooks)
+    /// Imports from <paramref name="source"/>, reloading each store through its owner's <paramref name="hooks"/>.
+    public SettingsWindowViewModel(IImportSource source, ImportHooks hooks) : this(source) => _importer = new SettingsImporter(hooks);
+
+    /// Exports the areas of <paramref name="source"/> (what is saved here) through <paramref name="export"/>, which gives the result sentence (null: cancelled).
+    public SettingsWindowViewModel(ISettingsSource source, Func<IReadOnlyList<ImportArea>, Task<string?>> export) : this(source) => _export = export;
+
+    private SettingsWindowViewModel(ISettingsSource source)
     {
-        _pcId = pcId;
-        _transport = transport;
-        _importer = new SettingsImporter(hooks);
-        PcName = transport.NameOf(pcId);
-        _ = LoadAsync();
+        _source = source;
+        _ = Guard.RunAsync("Settings window: reading the areas", LoadAsync);
     }
 
-    public string PcName { get; }
+    public bool IsExport => _export is not null;
+
+    public bool IsImport => !IsExport;
 
     public ObservableCollection<ImportGroupItem> Groups { get; } = new();
 
     public ObservableCollection<ImportProgressRow> Progress { get; } = new();
 
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsLoading), nameof(IsChoosing), nameof(IsRunning), nameof(IsDone), nameof(IsAsking), nameof(ShowsProgress), nameof(Title))]
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsLoading), nameof(IsChoosing), nameof(IsRunning), nameof(IsDone), nameof(IsAsking), nameof(ShowsProgress), nameof(Title), nameof(CanCopy))]
     private ImportPhase _phase = ImportPhase.Loading;
 
-    /// Why the PC's areas could not be read (it went away, it did not answer), one plain sentence; empty: none.
+    /// Why the source's areas could not be read (it went away, it did not answer, a bad file), one plain sentence; empty: none.
     [ObservableProperty, NotifyPropertyChangedFor(nameof(HasProblem), nameof(IsLoading))] private string _problem = string.Empty;
 
-    /// One plain line under the list (undone, could not undo).
+    /// One plain line under the list (exported, undone, could not undo).
     [ObservableProperty, NotifyPropertyChangedFor(nameof(HasStatus))] private string _status = string.Empty;
 
     [ObservableProperty, NotifyPropertyChangedFor(nameof(Title))] private int _importedCount;
@@ -64,21 +68,28 @@ public sealed partial class ImportFromPcViewModel : ObservableObject, IDisposabl
 
     public bool IsDone => Phase == ImportPhase.Done;
 
-    /// The step before the import runs: the foot offers Cancel (and Import once the areas are known).
+    /// The step before the work runs: the foot offers Cancel (and the action once the areas are known).
     public bool IsAsking => Phase is ImportPhase.Loading or ImportPhase.Choosing;
 
-    /// The progress and result list shows while the import runs and after.
-    public bool ShowsProgress => Phase is ImportPhase.Running or ImportPhase.Done;
+    /// The progress and result list shows while an import runs and after.
+    public bool ShowsProgress => IsImport && Phase is ImportPhase.Running or ImportPhase.Done;
+
+    /// "Copy details" once an import has a result to copy.
+    public bool CanCopy => IsImport && IsDone;
+
+    /// The note under the list says what an import does.
+    public bool ShowsImportNote => IsImport && IsChoosing;
 
     public bool HasProblem => Problem.Length > 0;
 
     public bool HasStatus => Status.Length > 0;
 
-    public string Title => Phase switch
+    public string Title => (IsExport, Phase) switch
     {
-        ImportPhase.Running => $"Importing from {PcName}…",
-        ImportPhase.Done => $"Imported {ImportedCount} of {AreaRows.Count} {(AreaRows.Count == 1 ? "area" : "areas")}",
-        _ => $"Import settings from {PcName}",
+        (true, _) => "Export settings",
+        (_, ImportPhase.Running) => $"Importing from {_source.Name}…",
+        (_, ImportPhase.Done) => $"Imported {ImportedCount} of {AreaRows.Count} {Areas(AreaRows.Count)}",
+        _ => $"Import settings from {_source.Name}",
     };
 
     private List<ImportProgressRow> AreaRows => _rows.Where(r => r.Label != BackupLabel).ToList();
@@ -97,37 +108,27 @@ public sealed partial class ImportFromPcViewModel : ObservableObject, IDisposabl
 
     public string EverythingCount => $"{Chosen} of {Total} areas";
 
-    public string ImportText => $"Import {Chosen} {(Chosen == 1 ? "area" : "areas")}";
+    public string ActionText => IsExport ? $"Export {Chosen} {Areas(Chosen)}…" : $"Import {Chosen} {Areas(Chosen)}";
 
-    public bool CanImport => IsChoosing && Chosen > 0;
+    public bool CanRun => IsChoosing && Chosen > 0;
 
     /// The import can still be put back (an area was applied and nothing has been undone).
     [ObservableProperty] private bool _canUndo;
 
+    private static string Areas(int n) => n == 1 ? "area" : "areas";
+
     private async Task LoadAsync()
     {
-        var reply = await _transport.OffersAsync(_pcId);
+        var (offers, why) = await _source.OffersAsync();
         if (_disposed) return;
-        List<AreaOffer>? offers = null;
-        if (reply.Payload is not null)
-        {
-            try
-            {
-                offers = JsonSerializer.Deserialize<List<AreaOffer>>(reply.Payload, PcProtocol.Json);
-            }
-            catch (JsonException)
-            {
-                // A reply this PC cannot read is reported like any other failure to ask.
-            }
-        }
         if (offers is null)
         {
-            Problem = reply.Why ?? $"{PcName} sent something OmniControl could not read.";
+            Problem = why ?? $"{_source.Name} sent something OmniControl could not read.";
             return;
         }
         foreach (var group in ImportGroups.All)
         {
-            var areas = ImportAreas.All.Where(a => a.Group == group)
+            var areas = _source.Areas.Where(a => a.Group == group)
                 .Select(a => (Area: a, Offer: offers.FirstOrDefault(o => o.Area == a.Name)))
                 .Where(x => x.Offer is not null)
                 .Select(x => new ImportAreaItem(x.Area, x.Offer!.Count, OnSelectionChanged)).ToList();
@@ -135,10 +136,16 @@ public sealed partial class ImportFromPcViewModel : ObservableObject, IDisposabl
         }
         if (Groups.Count == 0)
         {
-            Problem = $"{PcName} has no settings saved yet.";
+            Problem = IsExport ? "Nothing is saved yet." : $"{_source.Name} has no settings saved.";
             return;
         }
         Phase = ImportPhase.Choosing;
+        OnSelectionChanged();
+    }
+
+    partial void OnPhaseChanged(ImportPhase value)
+    {
+        OnPropertyChanged(nameof(ShowsImportNote));
         OnSelectionChanged();
     }
 
@@ -147,9 +154,9 @@ public sealed partial class ImportFromPcViewModel : ObservableObject, IDisposabl
         OnPropertyChanged(nameof(AllChecked));
         OnPropertyChanged(nameof(IsPartial));
         OnPropertyChanged(nameof(EverythingCount));
-        OnPropertyChanged(nameof(ImportText));
-        OnPropertyChanged(nameof(CanImport));
-        ImportCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(ActionText));
+        OnPropertyChanged(nameof(CanRun));
+        RunCommand.NotifyCanExecuteChanged();
     }
 
     [RelayCommand]
@@ -159,10 +166,22 @@ public sealed partial class ImportFromPcViewModel : ObservableObject, IDisposabl
         foreach (var item in Items) item.IsChecked = on;
     }
 
-    [RelayCommand(CanExecute = nameof(CanImport))]
-    private async Task ImportAsync()
+    [RelayCommand(CanExecute = nameof(CanRun))]
+    private async Task RunAsync()
     {
         var chosen = Items.Where(i => i.IsChecked).Select(i => i.Area).ToList();
+        if (_export is not null)
+        {
+            if (await _export(chosen) is not { } done) return; // the save dialog was cancelled: still choosing
+            Status = done;
+            Phase = ImportPhase.Done;
+            return;
+        }
+        await ImportAsync(chosen);
+    }
+
+    private async Task ImportAsync(List<ImportArea> chosen)
+    {
         _rows.Clear();
         Progress.Clear();
         var backup = new ImportProgressRow(BackupLabel, ImportRowState.Running, "saving");
@@ -171,7 +190,7 @@ public sealed partial class ImportFromPcViewModel : ObservableObject, IDisposabl
         foreach (var row in _rows) Progress.Add(row);
         Phase = ImportPhase.Running;
 
-        var problem = await Task.Run(_importer.MakeBackup);
+        var problem = await Task.Run(_importer!.MakeBackup);
         if (problem is not null)
         {
             backup.State = ImportRowState.Failed;
@@ -194,27 +213,10 @@ public sealed partial class ImportFromPcViewModel : ObservableObject, IDisposabl
             }
             row.State = ImportRowState.Running;
             row.Text = "importing";
-            Show(row, await ImportAreaAsync(area));
+            var (files, why) = await ((IImportSource)_source).AreaAsync(area.Name);
+            Show(row, files is null ? new AreaResult(area.Name, AreaOutcome.Failed, Why: why ?? "It did not send this area.") : _importer.Apply(area, files));
         }
         Finish();
-    }
-
-    private async Task<AreaResult> ImportAreaAsync(ImportArea area)
-    {
-        var reply = await _transport.AreaAsync(_pcId, area.Name);
-        if (reply.Payload is null) return new AreaResult(area.Name, AreaOutcome.Failed, Why: reply.Why ?? "It did not send this area.");
-        Dictionary<string, string>? files = null;
-        try
-        {
-            files = JsonSerializer.Deserialize<Dictionary<string, string>>(reply.Payload, PcProtocol.Json);
-        }
-        catch (JsonException)
-        {
-            // Reported as the failure of this area just below.
-        }
-        return files is null
-            ? new AreaResult(area.Name, AreaOutcome.Failed, Why: "What arrived could not be read.")
-            : _importer.Apply(area, files);
     }
 
     private static void Show(ImportProgressRow row, AreaResult result)
@@ -242,7 +244,7 @@ public sealed partial class ImportFromPcViewModel : ObservableObject, IDisposabl
     private void Finish()
     {
         ImportedCount = AreaRows.Count(r => r.State == ImportRowState.Checked);
-        CanUndo = _importer.HasApplied;
+        CanUndo = _importer!.HasApplied;
         Phase = ImportPhase.Done;
         Collapse();
     }
@@ -264,7 +266,7 @@ public sealed partial class ImportFromPcViewModel : ObservableObject, IDisposabl
     [RelayCommand]
     private void Undo()
     {
-        var problem = _importer.Undo();
+        var problem = _importer!.Undo();
         CanUndo = _importer.HasApplied;
         Status = problem ?? "Put back from the backup of this PC.";
         if (problem is not null) return;

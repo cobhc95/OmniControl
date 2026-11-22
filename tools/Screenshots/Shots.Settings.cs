@@ -1,5 +1,6 @@
-﻿using OmniControl.App.Features;
+using OmniControl.App.Features;
 using OmniControl.App.Features.OtherPcs.SettingsImport;
+using OmniControl.App.Shared.Services.Backup;
 using OmniControl.App.Features.Settings.Pages;
 using OmniControl.App.Features.Settings.Pages.Backup;
 using OmniControl.App.Features.Tray;
@@ -29,7 +30,7 @@ internal static partial class Shots
         var mixer = new MixerService(rig.Hardware, Rig.Report);
         mixer.Dispose();
         var updates = new UpdateService(new UpdateSettings(), () => { }, AppInfo.Version, _ => Task.FromResult("[]"), () => DateTime.Now);
-        var backup = new BackupService(_ => Task.FromResult(DialogAnswer.Cancel), Rig.Report, new ImportFromPcService(new NoTransport(), new ImportHooks(), Rig.Report));
+        var backup = new BackupService(_ => Task.FromResult(DialogAnswer.Cancel), Rig.Report, new ImportFromPcService(new NoTransport(), new ImportHooks(), Rig.Report), new ImportHooks());
         var settings = AppSettings.Current;
         var plugins = new PluginLibrary(settings.Slot(s => s.PluginFolders, (s, folders) => s.PluginFolders = folders));
         var shortcuts = new PresetShortcuts(rig.Actions, rig.Presets, Rig.Report);

@@ -10,7 +10,7 @@ public sealed class OsdPageViewModel : PageViewModel, IDisposable
     private readonly Func<IReadOnlyList<RunningProgram>> _listedApps;
     private readonly SingleWindow<OsdDurationWindow> _durationWindow;
 
-    public static readonly PageInfo Info = new("OSD", "M3,5 H21 A1,1 0 0 1 22,6 V18 A1,1 0 0 1 21,19 H3 A1,1 0 0 1 2,18 V6 A1,1 0 0 1 3,5 Z M4,7 V17 H20 V7 Z M6,13 H14 V15 H6 Z", NavGroups.System,
+    public static readonly PageInfo Info = new(PageTitles.Osd, "M3,5 H21 A1,1 0 0 1 22,6 V18 A1,1 0 0 1 21,19 H3 A1,1 0 0 1 2,18 V6 A1,1 0 0 1 3,5 Z M4,7 V17 H20 V7 Z M6,13 H14 V15 H6 Z", NavGroups.System,
         "osd on-screen display overlay popup position place places custom screen screens monitor style color colour accent opacity duration time seconds how long exceptions volume brightness windows",
         "osd");
 

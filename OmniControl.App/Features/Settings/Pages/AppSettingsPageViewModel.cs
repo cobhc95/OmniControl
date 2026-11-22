@@ -30,7 +30,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
     /// One plain sentence under the list when Windows has the start-up entry switched off or refused a change; empty otherwise.
     [ObservableProperty] private string _startupNote = string.Empty;
 
-    public const string Name = "App settings";
+    public const string Name = PageTitles.AppSettings;
 
     public static readonly PageInfo Info = new(Name,
         "M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8 Z M10,2 H14 L14.6,4.6 L16.6,5.6 L19,4.3 L21.7,7 L20.4,9.4 L21.4,11.4 L24,12 V16 L21.4,16.6 L20.4,18.6 L21.7,21 L19,23.7 L16.6,22.4 L14.6,23.4 L14,26 H10 L9.4,23.4 L7.4,22.4 L5,23.7 L2.3,21 L3.6,18.6 L2.6,16.6 L0,16 V12 L2.6,11.4 L3.6,9.4 L2.3,7 L5,4.3 L7.4,5.6 L9.4,4.6 Z",
@@ -134,7 +134,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
         _about = new ButtonItem(AboutCard, "Open", openAbout);
         _presets = new ButtonItem(PresetsCard, "Open", () => presets.Open(null, null));
 
-        _backup = new ButtonItem(BackupCard, "Export...", () => _ = backup.ExportAsync())
+        _backup = new ButtonItem(BackupCard, "Export...", backup.Export)
         {
             Extra = new[] { new CardAction("Import...", () => _ = backup.ImportAsync()), new CardAction("Wipe all...", () => _ = backup.WipeAsync(), danger: true) },
         };

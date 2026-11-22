@@ -11,23 +11,12 @@ namespace OmniControl.App.Features.OtherPcs.SettingsImport;
 public sealed class SettingsShare(Func<string, string?> redactDevices)
 {
     /// The areas with something saved, with their counts.
-    public IReadOnlyList<AreaOffer> Offer()
-    {
-        var offers = new List<AreaOffer>();
-        foreach (var area in ImportAreas.All)
-        {
-            var saved = area.Stores.Select(s => (Store: s, Text: AppDataStore.LoadText(s))).Where(t => t.Text is not null).ToList();
-            if (saved.Count == 0) continue;
-            var counts = saved.Select(t => BackupFile.CountOfText(t.Store, t.Text!)).Where(n => n is not null).Select(n => n!.Value).ToList();
-            offers.Add(new AreaOffer(area.Name, counts.Count > 0 ? counts.Sum() : null));
-        }
-        return offers;
-    }
+    public IReadOnlyList<AreaOffer> Offer() => ImportAreas.Offers(ImportAreas.Shared, AppDataStore.LoadText);
 
     /// The saved files of the area by file name, or null for a name that is not an area. A damaged file is left out.
     public Dictionary<string, string>? Pack(string areaName)
     {
-        if (ImportAreas.Find(areaName) is not { } area) return null;
+        if (ImportAreas.Find(ImportAreas.Shared, areaName) is not { } area) return null;
         var files = new Dictionary<string, string>();
         foreach (var store in area.Stores)
         {

@@ -37,15 +37,16 @@ public static class BackupFile
 
     private sealed record ManifestArea(string File, string Area, int? Count);
 
-    /// Writes the backup of <paramref name="folder"/> to <paramref name="path"/>; gives the number of areas written.
-    public static int Write(string folder, string path, string appVersion)
+    /// Writes the backup of <paramref name="folder"/> to <paramref name="path"/>: every backed-up store, or only <paramref name="stores"/>
+    /// (a file of some parts reads like any other, also in older versions); gives the number of stores written.
+    public static int Write(string folder, string path, string appVersion, IEnumerable<DataStore>? stores = null)
     {
         // Written beside the target first, so a failed export never leaves half a backup under the chosen name.
         var partial = path + ".partial";
         File.Delete(partial);
         try
         {
-            var count = WriteZip(folder, partial, appVersion);
+            var count = WriteZip(folder, partial, appVersion, stores ?? DataStores.BackedUp);
             if (count > 0 && Read(partial).Contents is null) throw new InvalidDataException("it would be too large or damaged for OmniControl to read back, so the previous backup was kept"); // same rules as an import
             File.Move(partial, path, overwrite: true);
             return count;
@@ -61,11 +62,11 @@ public static class BackupFile
         }
     }
 
-    private static int WriteZip(string folder, string path, string appVersion)
+    private static int WriteZip(string folder, string path, string appVersion, IEnumerable<DataStore> stores)
     {
         var areas = new List<ManifestArea>();
         using var zip = ZipFile.Open(path, ZipArchiveMode.Create);
-        foreach (var store in DataStores.BackedUp)
+        foreach (var store in stores)
         {
             var file = Path.Combine(folder, store.FileName);
             if (!File.Exists(file)) continue;

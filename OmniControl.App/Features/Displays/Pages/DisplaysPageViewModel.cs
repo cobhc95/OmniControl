@@ -15,7 +15,7 @@ public sealed partial class DisplaysPageViewModel : PageViewModel, IDisposable
     private readonly WarmLightItem _warm;
     private readonly ProviderChoice _pictures, _monitors;
 
-    public static readonly PageInfo Info = new("Displays",
+    public static readonly PageInfo Info = new(PageTitles.Displays,
         "M4,4 H20 A2,2 0 0 1 22,6 V16 A2,2 0 0 1 20,18 H14 V20 H17 V22 H7 V20 H10 V18 H4 A2,2 0 0 1 2,16 V6 A2,2 0 0 1 4,4 Z M4,6 V16 H20 V6 Z", NavGroups.Devices,
         "monitor display screen brightness contrast ddc laptop panel gamma digital saturation temperature warm cool input source colour color", "displays");
 

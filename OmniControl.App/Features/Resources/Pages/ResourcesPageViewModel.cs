@@ -20,7 +20,7 @@ public sealed partial class ResourcesPageViewModel : PageViewModel, IDisposable
     private readonly GadgetSettingsModel _gadget;
     private bool _onScreen;
 
-    public const string PageTitle = "Resources", ReadingsTab = "Readings", GadgetTab = "Taskbar gadget";
+    public const string PageTitle = PageTitles.Resources, ReadingsTab = "Readings", GadgetTab = "Taskbar gadget";
 
     public static readonly PageInfo Info = new(PageTitle, "M4,20 H20 V22 H4 Z M5,12 H8 V19 H5 Z M10.5,6 H13.5 V19 H10.5 Z M16,9 H19 V19 H16 Z", NavGroups.System,
         "resources cpu gpu graphics memory ram disk drive temperature network adapter upload download speed taskbar gadget");
