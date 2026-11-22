@@ -50,6 +50,7 @@ public sealed partial class FxSlotViewModel
             SavePref(p => p.Parameters = value);
             OnPropertyChanged();
             OnPropertyChanged(nameof(ShownItems));
+            OnPropertyChanged(nameof(ShowsLongList));
             OnScaleTargetChanged();
         }
     }
@@ -68,6 +69,7 @@ public sealed partial class FxSlotViewModel
             if (value is not null) value.PropertyChanged += OnPluginParametersChanged;
             OnPropertyChanged();
             OnPropertyChanged(nameof(ShownItems));
+            OnPropertyChanged(nameof(ShowsLongList));
         }
     }
 
@@ -78,6 +80,9 @@ public sealed partial class FxSlotViewModel
 
     /// The cards OmniControl draws for this effect now: its editor cards, or its settings as a plain list.
     public IReadOnlyList<object>? ShownItems => !ShowsParameters ? EditorItems : IsPlugin ? PluginParameters?.Groups : EqParameters;
+
+    /// The shown cards are a plug-in's long settings list (<see cref="PluginParameterList.IsLong"/>): they scroll in their own box.
+    public bool ShowsLongList => ShowsParameters && IsPlugin && PluginParameters?.IsLong == true;
 
     /// An equaliser's settings list: one card per band (the Parametric's on, type, frequency, gain, bandwidth; a graphic one's gain),
     /// then the overall gain; follows the bands.

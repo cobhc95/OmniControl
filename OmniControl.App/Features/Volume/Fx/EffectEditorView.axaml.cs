@@ -20,7 +20,7 @@ public partial class EffectEditorView : UserControl
     {
         if (!IsEffectivelyVisible || Cards.ItemCount == 0) return false;
         if (Cards.SelectedIndex < 0) Cards.SelectedIndex = 0;
-        (Cards.ContainerFromIndex(Cards.SelectedIndex) as Control ?? Cards).Focus();
+        (ListScroll.Show(Cards, Cards.SelectedIndex) ?? Cards).Focus(); // a long list builds the card first when it is out of view
         return true;
     }
 }

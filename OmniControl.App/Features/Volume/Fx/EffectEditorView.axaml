@@ -5,15 +5,26 @@
              x:DataType="vm:FxSlotViewModel" Grid.IsSharedSizeScope="True">
     <!-- An effect's editor as OmniControl draws it (in the FX window and in its own window): the cards (the equaliser, sliders) or
          the plain settings list, scaled as a whole by the effect's Scale; one scroll bar beside it (the master style), never scaled -->
-    <Grid RowDefinitions="Auto,*" RowSpacing="{StaticResource Gap}">
+    <UserControl.Styles>
+        <!-- Not virtualised: the scroll viewer around it scrolls, so the list takes its whole height -->
+        <Style Selector="ListBox#Cards">
+            <Setter Property="ItemsPanel"><ItemsPanelTemplate><StackPanel /></ItemsPanelTemplate></Setter>
+        </Style>
+        <!-- A plug-in's long settings list (PluginParameterList.LongFrom): the outer viewer gives the list the editor's height and the
+             list scrolls itself (its bar scales with it), so its virtualizing panel builds only the cards in view; the search stays put -->
+        <Style Selector="Grid.long > ScrollViewer">
+            <Setter Property="VerticalScrollBarVisibility" Value="Disabled" />
+        </Style>
+        <Style Selector="Grid.long ListBox#Cards">
+            <Setter Property="ItemsPanel"><ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate></Setter>
+        </Style>
+    </UserControl.Styles>
+    <Grid RowDefinitions="Auto,*" RowSpacing="{StaticResource Gap}" Classes.long="{Binding ShowsLongList}">
         <TextBox Classes="field search" Text="{Binding PluginParameters.Search}" Watermark="Find a setting"
                  IsVisible="{Binding PluginParameters.HasSearch, FallbackValue=False}" />
         <ScrollViewer Grid.Row="1">
             <LayoutTransformControl LayoutTransform="{Binding ScaleFactor, Converter={x:Static vm:EffectEditorView.ToScale}}">
-                <ListBox x:Name="Cards" Classes="rows compact" ItemsSource="{Binding ShownItems}">
-                    <!-- Not virtualised: the scroll viewer around it scrolls, so the list takes its whole height -->
-                    <ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
-                </ListBox>
+                <ListBox x:Name="Cards" Classes="rows compact" ItemsSource="{Binding ShownItems}" />
             </LayoutTransformControl>
         </ScrollViewer>
     </Grid>

@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Plug-in editors with many parameters build only the rows on screen.
 - Menus with many rows (the gadget's Font list) build only the rows in view, so opening them is lighter.
 
 - Icons: a PNG added to Your icons is checked for its size before it is read, a very large one is refused in one sentence, and the rest is read straight at icon size; a removed or reloaded picture's memory is given back.

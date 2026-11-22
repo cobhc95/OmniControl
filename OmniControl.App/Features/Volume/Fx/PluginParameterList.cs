@@ -24,7 +24,13 @@ public sealed partial class PluginParameterList : ObservableObject
     /// Words to find settings by (name or group).
     [ObservableProperty] private string _search = string.Empty;
 
+    /// This many settings or more make a long list: one card per setting (the first of a group carries its name), in a scrolling
+    /// list that builds only the cards in view (<see cref="EffectEditorView"/>).
+    public const int LongFrom = 40;
+
     public bool HasSearch => _all.Count > SearchFrom;
+
+    public bool IsLong => _all.Count >= LongFrom;
 
     partial void OnSearchChanged(string value)
     {
@@ -42,8 +48,10 @@ public sealed partial class PluginParameterList : ObservableObject
         foreach (var p in _all) p.Refresh();
     }
 
-    private static IReadOnlyList<PluginParamGroup> GroupsOf(IReadOnlyList<PluginParamItem> items) =>
-        items.GroupBy(p => p.Group).Select(g => new PluginParamGroup(g.Key, g.ToList())).ToList();
+    private IReadOnlyList<PluginParamGroup> GroupsOf(IReadOnlyList<PluginParamItem> items) =>
+        items.GroupBy(p => p.Group).SelectMany(g => IsLong
+            ? g.Select((p, i) => new PluginParamGroup(i == 0 ? g.Key : string.Empty, new[] { p }))
+            : new[] { new PluginParamGroup(g.Key, g.ToList()) }).ToList();
 }
 
 /// One card of the settings list: the plug-in's group (unit) name, empty for settings of the plug-in as a whole, and its settings.
