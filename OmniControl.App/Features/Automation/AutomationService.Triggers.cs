@@ -69,6 +69,7 @@ public sealed partial class AutomationService
         if (Settings.Rules.Any(r => IsActive(r) && IsTrigger(r, AutomationTriggers.DeviceConnect, AutomationTriggers.DeviceDisconnect))) _watcher.StartDevices();
         // With no rule to look for, the look only keeps the power states fresh: much less often.
         if (_tick is not null) _tick.Interval = Settings.Rules.Any(IsActive) ? Timing.AutomationTick : Timing.AutomationIdleTick;
+        LookAtHeld();
         UpdateWake();
     }
 
@@ -132,9 +133,10 @@ public sealed partial class AutomationService
         var idle = PowerState.IdleFor();
         if (idle < Timing.AutomationTick) _idleFired.Clear(); // input since the last look: idle rules are ready again
 
-        foreach (var rule in Settings.Rules.Where(IsActive).ToList())
+        foreach (var rule in Settings.Rules.Where(r => IsActive(r) && !IsWhile(r)).ToList())
             if (IsDue(rule, events, from, now, idle))
                 TryStart(rule, waitForReady: afterWake && IsTrigger(rule, AutomationTriggers.Resume, AutomationTriggers.Login, AutomationTriggers.Start));
+        LookAtHeld();
         UpdateWake();
     }
 
@@ -158,6 +160,8 @@ public sealed partial class AutomationService
         {
             case AutomationTriggers.Time:
                 return AutomationTriggers.TimeIsDue(stored, from, now, Timing.AutomationCatchUp);
+            case AutomationTriggers.Between:
+                return AutomationTriggers.WindowBegins(stored, from, now);
             case AutomationTriggers.Timer:
                 if (!_timers.TryGetValue(key, out var counting))
                 {

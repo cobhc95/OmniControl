@@ -69,6 +69,16 @@
             </DataTemplate></pages:GroupCard.ContentTemplate>
         </pages:GroupCard>
 
+        <!-- From other pages: the rules pages made for what they do by themselves (the same rows), each with its page and a link to it. -->
+        <pages:GroupCard Group="{Binding FeatureRulesGroup}" IsVisible="{Binding ShowsFeatures}">
+            <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:AutomationPageViewModel">
+                <StackPanel Spacing="{StaticResource Gap}">
+                    <ItemsControl ItemsSource="{Binding FeatureRules}" ItemsPanel="{StaticResource RowsPanel}" />
+                    <TextBlock Classes="muted" IsVisible="{Binding NoFeatureRules}" Text="No rules from other pages yet. Pages such as Displays (warm light) make theirs here." TextWrapping="Wrap" />
+                </StackPanel>
+            </DataTemplate></pages:GroupCard.ContentTemplate>
+        </pages:GroupCard>
+
         <pages:GroupCard Group="{Binding CustomsGroup}" IsVisible="{Binding ShowsCustom}">
             <pages:GroupCard.Tools>
                 <Button Classes="pill" Tag="grouptool" Content="+ New custom action" Command="{Binding AddCustomCommand}" />

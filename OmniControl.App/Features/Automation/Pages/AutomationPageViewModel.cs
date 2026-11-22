@@ -5,16 +5,18 @@ using OmniControl.App.Features.Hotkeys;
 namespace OmniControl.App.Features.Automation.Pages;
 
 /// The Automation page: the Rules tab (sentence rules: "When ... do ...", and blocks: "While ... don't allow ..."), the Presets tab (the rules
-/// made from the Presets window, by their <see cref="AutomationRule.Preset"/>), the Custom actions tab (scripts, programs, files and addresses
+/// that apply a preset, <see cref="AutomationPresets.PresetOf"/>), the From other pages tab (the rules that hold a feature's own rule action,
+/// <see cref="AutomationFeatureRules"/>; a rule holding both shows on both), the Custom actions tab (scripts, programs, files and addresses
 /// that become actions of their own) and the Scripts tab (AutomationPageViewModel.Scripts.cs). The rules and actions themselves are
 /// <see cref="AutomationService"/>'s; this page lists them, adds and removes them, and shows the one status line.
 public sealed partial class AutomationPageViewModel : PageViewModel, IDisposable
 {
-    private const string RulesTab = "Rules", PresetsTab = "Presets", CustomTab = "Custom actions";
+    private const string RulesTab = "Rules", PresetsTab = "Presets", FeatureTab = AutomationFeatureRules.Tab, CustomTab = "Custom actions";
 
     private readonly AutomationService _service;
     private readonly Func<DialogMessage, Task<bool>> _ask;
     private readonly AutomationPresets? _presets;
+    private readonly AutomationFeatureRules? _features;
 
     public static readonly PageInfo Info = new(ActionSections.Automation,
         "M12,2 A10,10 0 1 1 12,22 A10,10 0 1 1 12,2 Z M12,4 A8,8 0 1 0 12,20 A8,8 0 1 0 12,4 Z M11,7 H13 V11.6 L16.2,13.4 L15.2,15.1 L11,12.7 Z", NavGroups.System,
@@ -24,10 +26,10 @@ public sealed partial class AutomationPageViewModel : PageViewModel, IDisposable
 
     public override string KeyHelp => string.Join(Environment.NewLine,
         "Tab moves through a rule's name and blocks; Enter on a block changes it; Delete removes it. On a hotkey block, Enter then press the keys (Esc cancels).",
-        "Ctrl+Tab switches between the Rules, Presets, Custom actions and Scripts tabs.",
+        "Ctrl+Tab switches between the Rules, Presets, From other pages, Custom actions and Scripts tabs.",
         $"{ReservedKeys.Emergency} pauses all rules from anywhere; it cannot be changed or blocked.");
 
-    public override PageTabs Tabs { get; } = new(RulesTab, PresetsTab, CustomTab, ScriptsTab);
+    public override PageTabs Tabs { get; } = new(RulesTab, PresetsTab, FeatureTab, CustomTab, ScriptsTab);
 
     // The folding groups of the page (each open unless the user closed it; the tooltip says what the group is).
     public CardGroup AutomationsGroup { get; } = new("Automation/Automations", "Automations", string.Empty)
@@ -48,6 +50,12 @@ public sealed partial class AutomationPageViewModel : PageViewModel, IDisposable
         Tip = PresetRulesCard.Tip,
     };
 
+    public CardGroup FeatureRulesGroup { get; } = new("Automation/From other pages", "Rules made on other pages", string.Empty)
+    {
+        ExpandedByDefault = true,
+        Tip = FeatureRulesCard.Tip,
+    };
+
     public CardGroup CustomsGroup { get; } = new("Automation/Custom actions", "Custom actions", string.Empty)
     {
         ExpandedByDefault = true,
@@ -55,16 +63,19 @@ public sealed partial class AutomationPageViewModel : PageViewModel, IDisposable
     };
     public bool ShowsRules => Tabs.Current == RulesTab;
     public bool ShowsPresets => Tabs.Current == PresetsTab;
+    public bool ShowsFeatures => Tabs.Current == FeatureTab;
     public bool ShowsCustom => Tabs.Current == CustomTab;
 
     public ObservableCollection<AutomationItem> Automations { get; } = new();
     public ObservableCollection<AutomationItem> Blocks { get; } = new();
     public ObservableCollection<AutomationItem> PresetRules { get; } = new();
+    public ObservableCollection<AutomationItem> FeatureRules { get; } = new();
     public ObservableCollection<CustomActionItem> Customs { get; } = new();
 
     public bool NoAutomations => Automations.Count == 0;
     public bool NoBlocks => Blocks.Count == 0;
     public bool NoPresetRules => PresetRules.Count == 0;
+    public bool NoFeatureRules => FeatureRules.Count == 0;
     public bool NoCustoms => Customs.Count == 0;
 
     /// The one status line: why no rule works right now, or empty.
@@ -78,11 +89,13 @@ public sealed partial class AutomationPageViewModel : PageViewModel, IDisposable
 
     /// <param name="ask">Shows a short message with a confirm button; true when confirmed.</param>
     /// <param name="presets">The preset rules' kind and the Presets window (null: none).</param>
-    public AutomationPageViewModel(AutomationService service, Func<DialogMessage, Task<bool>> ask, AutomationPresets? presets) : base(Info)
+    /// <param name="features">Which page each feature's rule was made on (null: none).</param>
+    public AutomationPageViewModel(AutomationService service, Func<DialogMessage, Task<bool>> ask, AutomationPresets? presets, AutomationFeatureRules? features) : base(Info)
     {
         _service = service;
         _ask = ask;
         _presets = presets;
+        _features = features;
         foreach (var rule in service.Settings.Rules) Show(rule);
         foreach (var custom in service.Settings.Customs) Customs.Add(new CustomActionItem(custom, service, ask));
         service.CustomAdded += OnCustomAdded;
@@ -91,6 +104,7 @@ public sealed partial class AutomationPageViewModel : PageViewModel, IDisposable
         Automations.CollectionChanged += (_, _) => OnPropertyChanged(nameof(NoAutomations));
         Blocks.CollectionChanged += (_, _) => OnPropertyChanged(nameof(NoBlocks));
         PresetRules.CollectionChanged += (_, _) => OnPropertyChanged(nameof(NoPresetRules));
+        FeatureRules.CollectionChanged += (_, _) => OnPropertyChanged(nameof(NoFeatureRules));
         Customs.CollectionChanged += (_, _) => OnPropertyChanged(nameof(NoCustoms));
         Tabs.PropertyChanged += OnTabChanged;
         service.Changed += RefreshStatus;
@@ -99,7 +113,7 @@ public sealed partial class AutomationPageViewModel : PageViewModel, IDisposable
         RefreshStatus();
     }
 
-    private IEnumerable<AutomationItem> RuleRows => Automations.Concat(Blocks).Concat(PresetRules);
+    private IEnumerable<AutomationItem> RuleRows => Automations.Concat(Blocks).Concat(PresetRules).Concat(FeatureRules);
 
     /// Every rule, custom action and script was replaced (an import): the lists are made again from the service's.
     private void ShowAll()
@@ -109,6 +123,7 @@ public sealed partial class AutomationPageViewModel : PageViewModel, IDisposable
         Automations.Clear();
         Blocks.Clear();
         PresetRules.Clear();
+        FeatureRules.Clear();
         Customs.Clear();
         foreach (var rule in _service.Settings.Rules) Show(rule);
         foreach (var custom in _service.Settings.Customs) Customs.Add(new CustomActionItem(custom, _service, _ask));
@@ -133,6 +148,7 @@ public sealed partial class AutomationPageViewModel : PageViewModel, IDisposable
         if (e.PropertyName != nameof(PageTabs.Current)) return;
         OnPropertyChanged(nameof(ShowsRules));
         OnPropertyChanged(nameof(ShowsPresets));
+        OnPropertyChanged(nameof(ShowsFeatures));
         OnPropertyChanged(nameof(ShowsCustom));
         OnPropertyChanged(nameof(ShowsScripts));
     }
@@ -147,23 +163,40 @@ public sealed partial class AutomationPageViewModel : PageViewModel, IDisposable
         PauseLabel = _service.Paused ? "Resume rules" : "Pause all rules";
     }
 
-    // A preset rule is a Do rule with its source set; blocks and other Do rules stay on the Rules tab.
-    private ObservableCollection<AutomationItem> ListOf(AutomationRule rule) =>
-        rule.Kind == AutomationKind.Block ? Blocks : rule.Preset.Length > 0 ? PresetRules : Automations;
+    // Read from the rule's actions each time: a preset's apply action puts it on Presets, a feature's rule action on From other pages (both
+    // when it holds both); any other Do rule is on Rules.
+    private IReadOnlyList<ObservableCollection<AutomationItem>> ListsOf(AutomationRule rule)
+    {
+        if (rule.Kind == AutomationKind.Block) return new[] { Blocks };
+        var lists = new List<ObservableCollection<AutomationItem>>();
+        if (AutomationPresets.PresetOf(rule) is not null) lists.Add(PresetRules);
+        if (_features?.PageOf(rule) is not null) lists.Add(FeatureRules);
+        if (lists.Count == 0) lists.Add(Automations);
+        return lists;
+    }
 
-    private void Show(AutomationRule rule) => ListOf(rule).Add(new AutomationItem(rule, _service, _ask, _presets));
+    private void Show(AutomationRule rule)
+    {
+        foreach (var list in ListsOf(rule)) Show(rule, list);
+    }
 
-    /// The service's rules changed (here, in the Presets window, an Undo there): rows of rules gone are dropped, new rules get a row.
+    private void Show(AutomationRule rule, ObservableCollection<AutomationItem> list) =>
+        list.Add(new AutomationItem(rule, _service, _ask, _presets, list == FeatureRules ? _features : null));
+
+    /// The service's rules changed (here, in the Presets window, on a feature's page): rows of rules gone, or no longer of that tab, are dropped,
+    /// and a rule gets a row on each tab it belongs to.
     private void FollowRules()
     {
         var rules = _service.Settings.Rules;
-        foreach (var list in new[] { Automations, Blocks, PresetRules })
-            foreach (var item in list.Where(i => !rules.Contains(i.Rule)).ToList())
+        foreach (var list in new[] { Automations, Blocks, PresetRules, FeatureRules })
+            foreach (var item in list.Where(i => !rules.Contains(i.Rule) || !ListsOf(i.Rule).Contains(list)).ToList())
             {
                 item.Dispose();
                 list.Remove(item);
             }
-        foreach (var rule in rules.Where(r => RuleRows.All(i => i.Rule != r)).ToList()) Show(rule);
+        foreach (var rule in rules.ToList())
+            foreach (var list in ListsOf(rule).Where(l => l.All(i => i.Rule != rule)))
+                Show(rule, list);
     }
 
     // A custom action made or removed anywhere (this tab, or the Choose-the-action window) shows here at once.

@@ -1,3 +1,4 @@
+using OmniControl.App.Shared.Contracts;
 using OmniControl.App.Features.AppLists;
 using OmniControl.App.Features.Hotkeys;
 using OmniControl.App.Features.Icons;
@@ -35,4 +36,5 @@ public sealed record FeatureContext(
     AppSettings Settings,
     ImportHooks Imports,
     ShutdownSteps Shutdown,
-    FeatureSwitches Features);
+    FeatureSwitches Features,
+    FeatureRulesSlot Rules);

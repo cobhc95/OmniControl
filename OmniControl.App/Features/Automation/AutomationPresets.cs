@@ -28,19 +28,38 @@ public sealed class AutomationPresets : IPresetTriggers, IDisposable
         rules.StateSeen += PutBack;
         rules.StartingFromState += Remember;
         slot.Presets.Changed += OnPresetsChanged;
+        TakeOldPresetField();
         slot.Attach(this);
     }
+
+    /// Rules saved with the preset in their own field: the preset's action is what makes them preset rules now, so the field is emptied once.
+    private void TakeOldPresetField()
+    {
+        var old = _rules.Settings.Rules.Where(r => r.Preset.Length > 0).ToList();
+        foreach (var rule in old)
+        {
+            if (PresetOf(rule) is null) rule.AddAction($"{MouseActionCatalog.Omni}:{rule.Preset}");
+            rule.Preset = string.Empty;
+        }
+        if (old.Count == 0) return;
+        _rules.Settings.Save();
+        AutomationService.Log($"{old.Count} preset rule(s) now known by their preset's action");
+    }
+
+    /// The preset a rule applies (its first preset apply action), or null: what makes it a preset rule.
+    public static string? PresetOf(AutomationRule rule) => rule.Kind != AutomationKind.Do ? null
+        : rule.Actions.Select(AutomationSteps.ActionIdOf).FirstOrDefault(id => id is not null && PresetShortcuts.IsApplyId(id));
 
     public event Action? Changed;
 
     private void OnRulesChanged() => Changed?.Invoke();
 
     /// Kept in the master list: every preset with triggers, a parked one (so an Undo finds it) and one waiting to be put back.
-    public IEnumerable<string> Presets => PresetRules.Concat(_parked).Select(r => r.Preset).Concat(_before.Values).Distinct().ToList();
+    public IEnumerable<string> Presets => PresetRules.Concat(_parked).Select(r => PresetOf(r)!).Concat(_before.Values).Distinct().ToList();
 
-    private IEnumerable<AutomationRule> PresetRules => _rules.Settings.Rules.Where(r => r.Kind == AutomationKind.Do && r.Preset.Length > 0);
+    private IEnumerable<AutomationRule> PresetRules => _rules.Settings.Rules.Where(r => PresetOf(r) is not null);
 
-    private AutomationRule? RuleOf(string preset) => PresetRules.FirstOrDefault(r => r.Preset == preset);
+    private AutomationRule? RuleOf(string preset) => PresetRules.FirstOrDefault(r => PresetOf(r) == preset);
 
     public IReadOnlyList<PresetTrigger> Of(string preset) =>
         RuleOf(preset) is { } rule
@@ -48,12 +67,12 @@ public sealed class AutomationPresets : IPresetTriggers, IDisposable
             : Array.Empty<PresetTrigger>();
 
     /// The preset kind a preset rule shows ("Volume preset"): its group's page title; empty while its group is not registered.
-    public string KindOf(AutomationRule rule) => _slot.Presets.GroupOf(rule.Preset) is { } group ? $"{group.Section} preset" : string.Empty;
+    public string KindOf(AutomationRule rule) => PresetOf(rule) is { } preset && _slot.Presets.GroupOf(preset) is { } group ? $"{group.Section} preset" : string.Empty;
 
     /// Opens the Presets window on the rule's preset group, or (null) where it opens by itself.
     public void Open(AutomationRule? rule)
     {
-        var group = rule is null ? null : _slot.Presets.GroupOf(rule.Preset);
+        var group = rule is null || PresetOf(rule) is not { } preset ? null : _slot.Presets.GroupOf(preset);
         _open(group?.Section, group?.Id);
     }
 
@@ -65,7 +84,7 @@ public sealed class AutomationPresets : IPresetTriggers, IDisposable
     {
         if (RuleOf(preset) is not { } rule)
         {
-            rule = new AutomationRule { Kind = AutomationKind.Do, Name = title, Preset = preset, On = true };
+            rule = new AutomationRule { Kind = AutomationKind.Do, Name = title, On = true };
             rule.AddAction($"{MouseActionCatalog.Omni}:{preset}");
             rule.AddTrigger(stored);
             _rules.AddRule(rule);
@@ -94,7 +113,7 @@ public sealed class AutomationPresets : IPresetTriggers, IDisposable
 
     private void Remember(AutomationRule rule)
     {
-        if (rule.Preset.Length == 0 || _slot.Presets.InUse(rule.Preset) is not { } before || before == rule.Preset) return;
+        if (PresetOf(rule) is not { } preset || _slot.Presets.InUse(preset) is not { } before || before == preset) return;
         _before[rule.Id] = before;
         Changed?.Invoke(); // its apply action is kept, so the put back can run it
     }
@@ -107,7 +126,7 @@ public sealed class AutomationPresets : IPresetTriggers, IDisposable
             var rule = PresetRules.FirstOrDefault(r => r.Id == ruleId);
             if (rule is not null && AutomationService.IsActive(rule) && _rules.TriggersHold(rule, -1)) continue;
             _before.Remove(ruleId);
-            if (rule is not null && _slot.Presets.InUse(rule.Preset) == rule.Preset && _run.Run(before))
+            if (rule is not null && PresetOf(rule) is { } preset && _slot.Presets.InUse(preset) == preset && _run.Run(before))
                 AutomationService.Log($"rule \"{rule.Name}\": its states ended, so the preset in use before was put back");
             Changed?.Invoke();
         }
@@ -116,23 +135,23 @@ public sealed class AutomationPresets : IPresetTriggers, IDisposable
     /// A preset was deleted (its rule is parked) or came back with an Undo (its rule returns).
     private void OnPresetsChanged(string groupId)
     {
-        foreach (var rule in PresetRules.Where(r => _slot.Presets.Exists(r.Preset) == false).ToList())
+        foreach (var rule in PresetRules.Where(r => _slot.Presets.Exists(PresetOf(r)!) == false).ToList())
         {
             _parked.Add(rule);
             _rules.Remove(rule);
         }
-        foreach (var rule in _parked.Where(r => _slot.Presets.Exists(r.Preset) == true).ToList())
+        foreach (var rule in _parked.Where(r => _slot.Presets.Exists(PresetOf(r)!) == true).ToList())
         {
             _parked.Remove(rule);
             _rules.AddRule(rule);
         }
     }
 
-    /// A preset rule is named as its preset's apply action: a renamed preset renames its rule.
+    /// A preset rule that only applies its preset is named as its apply action: a renamed preset renames it.
     private void FollowNames()
     {
-        foreach (var rule in PresetRules.ToList())
-            if (_actions.Find(rule.Preset)?.Title is { } title && title != rule.Name)
+        foreach (var rule in PresetRules.Where(r => r.Actions.Count == 1).ToList())
+            if (_actions.Find(PresetOf(rule)!)?.Title is { } title && title != rule.Name)
             {
                 rule.Name = title;
                 _rules.Renamed(rule);

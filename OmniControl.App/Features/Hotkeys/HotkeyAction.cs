@@ -204,6 +204,10 @@ public sealed partial class HotkeyAction : HotkeyTarget, Shared.Ui.Pages.IEditor
     /// A small fact shown as a tag beside the entry's name in the Actions and hotkeys window ("active"); null: none. Set again by the owner when the fact changes.
     public string? Tag { get; init; }
 
+    /// A feature's own rule action ("Warm light fade to 3400 K"): a rule holding it belongs to the feature (its page, <see cref="Category"/>,
+    /// and Automation's "From other pages" tab) and lasts while its triggers hold.
+    public bool FeatureRule { get; init; }
+
     /// Set: the editor (a heading and a panel row) the Actions and hotkeys window shows in this action's settings, besides its defaults (the power plan editor).
     public IReadOnlyList<ActionOption>? ManageSettings { get; init; }
 

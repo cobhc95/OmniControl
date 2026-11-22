@@ -25,8 +25,7 @@ public sealed class AutomationRule
     /// is unused). Missing entries mean "or". "and": the rule starts only while that trigger's state holds too.
     public List<string> TriggerJoins { get; set; } = new();
 
-    /// The apply action of the preset this rule switches to, made in the preset manager; empty for any other rule. When a state started it
-    /// and its triggers stop holding, the preset in use before comes back.
+    /// Read only from files saved before a preset rule was known by its preset's apply action (<see cref="AutomationPresets.PresetOf"/>); emptied at start.
     public string Preset { get; set; } = string.Empty;
 
     /// The conditions (<see cref="AutomationConditions"/>), read left to right with <see cref="ConditionJoins"/>.

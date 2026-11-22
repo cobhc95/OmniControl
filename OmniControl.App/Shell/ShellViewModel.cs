@@ -1,3 +1,4 @@
+using OmniControl.App.Shared.Contracts;
 using Avalonia.Controls.Templates;
 using OmniControl.App.Features;
 using OmniControl.App.Features.AppLists;
@@ -137,7 +138,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _otherPcs = new OtherPcsModule(_devices.ShareSetups, DeviceShareFormat.RedactFile);
         _context = new FeatureContext(_hotkeys, _hotkeys, _states, _hardware, _osd.Osd, _presetGroups, _presetManager.Open, _dialogs.AskAsync, _dialogs.AskTextAsync,
             Report, OpenPage, _apps.Scopes, _apps.Gate, _iconPicker, _actionGate, _power, setId => new SuggestedKeysSwitch(_hotkeys, setId), _settings, _importHooks, _shutdown,
-            _features);
+            _features, new FeatureRulesSlot());
         var automation = new AutomationModule(_volume.RememberedPrograms, _hotkeysSwitch.Use, _presetTriggers);
         var resources = new ResourcesModule(TrafficPageViewModel.PageTitle);
         var traffic = new TrafficModule(resources.Settings);

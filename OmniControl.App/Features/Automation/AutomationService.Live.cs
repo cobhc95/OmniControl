@@ -99,7 +99,7 @@ public sealed partial class AutomationService
     private void OnActionRan(HotkeyAction action, RunChain? chain)
     {
         if (Paused || SessionOff) return;
-        foreach (var rule in Settings.Rules.Where(IsActive).ToList())
+        foreach (var rule in Settings.Rules.Where(r => IsActive(r) && !IsWhile(r)).ToList())
             if (FiresWith(rule, t => AutomationTriggers.FiresOn(t, action, _sources))) StartFrom(rule, chain);
     }
 
@@ -107,8 +107,9 @@ public sealed partial class AutomationService
     {
         if (Paused || SessionOff) return;
         StateSeen?.Invoke();
-        foreach (var rule in Settings.Rules.Where(IsActive).ToList())
+        foreach (var rule in Settings.Rules.Where(r => IsActive(r) && !IsWhile(r)).ToList())
             if (FiresWith(rule, t => AutomationTriggers.FiresOn(t, change))) StartFromState(rule, change.Chain);
+        LookAtHeld();
     }
 
     /// Starts a rule from something another rule may have caused: never from its own chain, and never past the chain limit. False when it did not start.

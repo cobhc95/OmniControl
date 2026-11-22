@@ -33,6 +33,9 @@ public sealed class PresetShortcuts : IPresetSwitch, IDisposable
 
     public static string ActionId(string groupId, string presetId) => $"{Prefix}{groupId}.{presetId}";
 
+    /// True for the id of a preset's apply action (whatever its group).
+    public static bool IsApplyId(string id) => id.StartsWith(Prefix, StringComparison.Ordinal);
+
     /// The shortcut that applies the preset ("Ctrl+Alt+1"), empty when it has none.
     public string ShortcutOf(PresetGroup group, string presetId) => _actions.Find(ActionId(group.Id, presetId))?.Gesture ?? string.Empty;
 

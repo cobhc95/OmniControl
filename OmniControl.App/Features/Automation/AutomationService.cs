@@ -104,6 +104,7 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         }
         _report(Paused ? "All rules are paused." : "Rules are on again.");
         UpdateWake();
+        LookAtHeld();
         _states.Notify(PausedId);
         Changed?.Invoke();
     }

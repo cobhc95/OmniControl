@@ -17,6 +17,7 @@ public sealed class AutomationModule(Func<IEnumerable<string>> rememberedProgram
     private AutomationService? _service;
     private FeatureContext? _context;
     private AutomationPresets? _presets;
+    private AutomationFeatureRules? _features;
 
     public IReadOnlyList<string> Features { get; } = new[] { FeatureList.Automation };
 
@@ -28,12 +29,14 @@ public sealed class AutomationModule(Func<IEnumerable<string>> rememberedProgram
         // The one gate every action passes (its block rules) and the preset manager's trigger chips plug in here, and leave first at shut-down.
         context.ActionGate.Attach(service);
         var presets = _presets = new AutomationPresets(service, context.Actions, context.Runner, presetTriggers, context.OpenPresetManager);
+        var features = _features = new AutomationFeatureRules(service, context.Actions, context.Rules, context.OpenPage);
         context.Hardware.Register(new HardwareWatch(UsbWatchId, "USB devices (rules)", HardwareSignal.Device, service.LookAtUsb));
         context.Imports.OnReload(DataStores.Automation, service.ReloadFromDisk);
         context.Shutdown.Add(ShutdownStage.Automation, "automation", () =>
         {
             context.ActionGate.Detach(service);
             presets.Dispose();
+            features.Dispose();
             service.Dispose();
         });
         useKeys(true);
@@ -42,7 +45,8 @@ public sealed class AutomationModule(Func<IEnumerable<string>> rememberedProgram
 
     public IReadOnlyList<FeaturePage> Pages => new[]
     {
-        new FeaturePage(AutomationPageViewModel.Info, () => new AutomationPageViewModel(_service!, _context!.AskAsync, _presets), () => AutomationPageViewModel.Words(_service)),
+        new FeaturePage(AutomationPageViewModel.Info, () => new AutomationPageViewModel(_service!, _context!.AskAsync, _presets, _features),
+            () => AutomationPageViewModel.Words(_service, _features)),
     };
 
     public IReadOnlyList<IDataTemplate> Templates { get; } = new[]

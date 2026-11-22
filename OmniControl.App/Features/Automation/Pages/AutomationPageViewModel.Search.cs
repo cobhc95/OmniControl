@@ -22,6 +22,10 @@ public sealed partial class AutomationPageViewModel
         {
             Tip = "Rules made from the Presets window: when their triggers hold, a preset is applied, and when they stop, the preset in use before comes back. Edit them here or there; it is the same rule.",
         },
+        FeatureRulesCard = new("Rules made on other pages", AutomationWords + " other pages feature made on open warm light network limits device check emulator", FeatureTab)
+        {
+            Tip = "Rules a page made for what it does by itself, such as warm light. They are ordinary rules: add triggers, conditions or actions here, and the page shows that it has more.",
+        },
         CustomsCard = new("Custom actions", AutomationWords + " script command program url new", CustomTab)
         {
             Tip = "Your own actions: a command, a script, a program, a file or folder, a web address. They run as you (never as administrator), and appear in Shortcuts, the mouse and gesture pickers and every rule.",
@@ -36,29 +40,29 @@ public sealed partial class AutomationPageViewModel
         CustomKindsCard = new("Custom action types", AutomationWords + " custom action kind type", CustomTab) { Choices = CustomKinds.Names },
         LanguagesCard = new("Script languages", AutomationWords + " script language", ScriptsTab) { Choices = Enum.GetValues<ScriptLanguage>().Select(ScriptLanguages.NameOf).ToList() };
 
-    private static SearchCard RuleCard(AutomationRule rule, string line) =>
-        new(rule.Name, $"{AutomationWords} {line}", rule.Preset.Length > 0 ? PresetsTab : RulesTab);
+    private static SearchCard RuleCard(AutomationRule rule, string line, AutomationFeatureRules? features) =>
+        new(rule.Name, $"{AutomationWords} {line}", AutomationPresets.PresetOf(rule) is not null ? PresetsTab : features?.PageOf(rule) is not null ? FeatureTab : RulesTab);
 
     private static SearchCard CustomCard(CustomAction custom) =>
         new(custom.Name, $"custom action script command program url {custom.Target}", CustomTab) { Choices = CustomKinds.Names, Note = custom.Target };
 
     private static SearchCard ScriptCard(Script script) => new(script.Name, $"script powershell cmd batch python {script.Name}", ScriptsTab) { Note = ScriptLanguages.NameOf(script.Language) };
 
-    protected override SearchBuilder SearchCards => Cards(_service, this);
+    protected override SearchBuilder SearchCards => Cards(_service, _features, this);
 
     /// THE definition of the page's search: its parts, the pickers' names, and the service's rules, custom actions and scripts with their rows.
     /// A rule's sentence is its row's own; without the page a row is made and let go for it, so the words never differ from the row's.
-    private static SearchBuilder Cards(AutomationService? service, AutomationPageViewModel? page)
+    private static SearchBuilder Cards(AutomationService? service, AutomationFeatureRules? features, AutomationPageViewModel? page)
     {
-        var builder = new SearchBuilder().Add(PauseCard).Add(AutomationsCard).Add(BlocksCard).Add(PresetRulesCard).Add(CustomsCard).Add(ScriptsCard)
+        var builder = new SearchBuilder().Add(PauseCard).Add(AutomationsCard).Add(BlocksCard).Add(PresetRulesCard).Add(FeatureRulesCard).Add(CustomsCard).Add(ScriptsCard)
             .Add(TriggersCard).Add(ConditionsCard).Add(CustomKindsCard).Add(LanguagesCard);
         if (service is null) return builder;
         foreach (var rule in service.Settings.Rules)
         {
             var row = page?.RuleRows.FirstOrDefault(r => r.Rule == rule);
-            if (row is not null) { builder.Add(RuleCard(rule, row.Line), row); continue; }
-            using var temporary = new AutomationItem(rule, service, _ => Task.FromResult(false), null);
-            builder.Add(RuleCard(rule, temporary.Line));
+            if (row is not null) { builder.Add(RuleCard(rule, row.Line, features), row); continue; }
+            using var temporary = new AutomationItem(rule, service, _ => Task.FromResult(false), null, null);
+            builder.Add(RuleCard(rule, temporary.Line, features));
         }
         return builder
             .AddEach(service.Settings.Customs, CustomCard, c => page?.Customs.FirstOrDefault(r => r.Custom == c))
@@ -66,5 +70,5 @@ public sealed partial class AutomationPageViewModel
     }
 
     /// The page's search words (<c>FeaturePage.Words</c>), read without making the page.
-    public static IEnumerable<string> Words(AutomationService? service) => Cards(service, null).Words;
+    public static IEnumerable<string> Words(AutomationService? service, AutomationFeatureRules? features) => Cards(service, features, null).Words;
 }

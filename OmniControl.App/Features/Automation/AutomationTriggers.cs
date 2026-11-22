@@ -12,7 +12,7 @@ namespace OmniControl.App.Features.Automation;
 public static partial class AutomationTriggers
 {
     private const string Startup = "Start up", Clock = "Time and idle", Power = "Power", Programs = "Programs", Devices = "Devices", Keys = "Keyboard";
-    public const string Login = "login", Start = "start", Time = "time", Timer = "timer", Idle = "idle", Resume = "resume",
+    public const string Login = "login", Start = "start", Time = "time", Between = AutomationConditions.Between, Timer = "timer", Idle = "idle", Resume = "resume",
         OnBattery = "battery", PluggedIn = "plugged", ProgramStart = "program.start", ProgramClose = "program.close",
         DeviceConnect = "device.connect", DeviceDisconnect = "device.disconnect", Hotkey = "hotkey";
 
@@ -39,8 +39,11 @@ public static partial class AutomationTriggers
         new(Time, Clock, "At a time of day", "schedule scheduler task clock alarm days weekly daily wake",
             t => $"at {t.Options.Int(Hour):00}:{t.Options.Int(Minute):00} {AutomationDays.PhraseOf(t.Options)}",
             new[] { Hour, Minute }.Concat(AutomationDays.Options).Append(Wake).ToList()),
+        new(Between, Clock, "Between two times", "night hours clock schedule window while",
+            t => AutomationConditions.WindowOf(t.Options),
+            AutomationConditions.WindowOptions),
         new(Timer, Clock, "After a timer", "schedule scheduler task countdown delay every minutes",
-            t => t.Options.Bool(Repeat) ? $"every {t.Options.Int(Minutes)} min" : $"{t.Options.Int(Minutes)} min after it starts", new[] { Minutes, Repeat }),
+            t => t.Options.Bool(Repeat) ? $"every {t.Options.Int(Minutes)} minutes" : $"{t.Options.Int(Minutes)} min after it starts", new[] { Minutes, Repeat }),
         new(Idle, Clock, "When I have been idle", "away inactive no input screen saver", t => $"when idle for {t.Options.Int(IdleMinutes)} min", new[] { IdleMinutes }),
         new(Resume, Power, "When the PC wakes from sleep", "resume wake hibernate", _ => "when the PC wakes from sleep"),
         new(OnBattery, Power, "When it starts running on battery", "unplugged laptop", _ => "when it starts running on battery"),
@@ -109,6 +112,20 @@ public static partial class AutomationTriggers
         }
         return false;
     }
+
+    /// True when a "between two times" trigger's window began in (<paramref name="from"/>, <paramref name="to"/>].
+    public static bool WindowBegins(string stored, DateTime from, DateTime to)
+    {
+        var trigger = MouseAction.Parse(stored);
+        if (trigger.Id != Between) return false;
+        var start = AutomationConditions.MinutesOf(trigger.Options).From;
+        for (var date = from.Date; date <= to.Date; date = date.AddDays(1))
+            if (date.AddMinutes(start) is var at && at > from && at <= to) return true;
+        return false;
+    }
+
+    /// True for a trigger that can hold over a while (a state, a time window), not only happen at a moment.
+    public static bool CanHold(string stored) => MouseAction.Parse(stored).Id is StateChanges or Between;
 
     /// True when the time-of-day trigger asks to wake the PC.
     public static bool WakesPc(string stored) => MouseAction.Parse(stored) is { Id: Time } trigger && trigger.Options.Bool(Wake);

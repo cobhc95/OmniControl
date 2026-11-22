@@ -103,10 +103,11 @@ public static partial class AutomationTriggers
         return StateTriggerMath.Fires(change.Entry.Kind, change.Before, change.After, when, level, choice);
     }
 
-    /// True while a state trigger's condition holds now (its state is on, above its value...); never for any other trigger, which is a moment.
+    /// True while a state trigger's condition holds now (its state is on, above its value...) or the clock is in a window; never for any other trigger, which is a moment.
     public static bool HoldsNow(string stored, ITriggerSources sources)
     {
         var trigger = MouseAction.Parse(stored);
+        if (trigger.Id == Between) return AutomationConditions.InWindow(trigger.Options, DateTime.Now);
         if (trigger.Id != StateChanges || sources.State(trigger.Param) is not { } state || ConditionOf(state, trigger.Options) is not (var when, var level, var choice)) return false;
         return StateTriggerMath.Holds(state.Kind, sources.Now(state.Id), when, level, choice);
     }
