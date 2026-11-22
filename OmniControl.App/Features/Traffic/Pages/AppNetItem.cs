@@ -9,12 +9,12 @@ namespace OmniControl.App.Features.Traffic.Pages;
 public sealed partial class AppNetItem : ObservableObject
 {
     private const string NoLimit = "None";
-    private readonly NetworkLimits _limits;
+    private readonly INetworkLimits _limits;
     private readonly ProcessIcons _icons;
     private readonly Action<string> _report;
 
     /// <param name="togglePin">Pins or unpins the row (the page keeps the pins).</param>
-    internal AppNetItem(string id, NetworkLimits limits, ProcessIcons icons, Action<AppNetItem> togglePin, Action<string> report)
+    internal AppNetItem(string id, INetworkLimits limits, ProcessIcons icons, Action<AppNetItem> togglePin, Action<string> report)
     {
         (Id, _limits, _icons, _report) = (id, limits, icons, report);
         _name = id;

@@ -10,7 +10,7 @@ namespace OmniControl.App.Features.Resources.Pages;
 /// it asks the poller for readings only while on screen.
 public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
 {
-    private readonly ResourceMonitor _monitor;
+    private readonly IReadingList _monitor;
     private readonly ResourcesSettings _settings;
     private readonly ProviderChoice _presets;
     private readonly Dictionary<string, LiveCard> _cards = new(); // by the id of the reading each shows; made once, kept while its reading is there
@@ -42,7 +42,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
         .Concat(_gadget.SearchItems.Select(i => Entry(i, i.Label, "resources taskbar gadget", GadgetTab)));
 
     /// <param name="presets">The title line's preset picker and <paramref name="gadget"/> the Taskbar gadget tab (the page disposes both).</param>
-    internal ResourcesPageViewModel(ResourceMonitor monitor, ResourcesSettings settings, ProviderChoice presets, GadgetSettingsModel gadget) : base(Info)
+    internal ResourcesPageViewModel(IReadingList monitor, ResourcesSettings settings, ProviderChoice presets, GadgetSettingsModel gadget) : base(Info)
     {
         (_monitor, _settings, _presets, _gadget) = (monitor, settings, presets, gadget);
         Tabs.PropertyChanged += OnTabChanged;

@@ -24,6 +24,18 @@ public interface IReadingList
 
     /// A sensor menu opened (true) or closed: the reads list every temperature sensor while one is open.
     void ListSensors(bool open);
+
+    /// A read arrived (UI thread).
+    event Action? Updated;
+
+    /// The recent values of a reading in its unit, oldest first (NaN where it was not known).
+    IReadOnlyList<double> History(string readingId);
+
+    /// Why the sensors cannot be read (one sentence), or null.
+    string? SensorProblem { get; }
+
+    /// Says that <paramref name="who"/> needs these <paramref name="parts"/> every <paramref name="every"/> (null: no longer). UI thread.
+    void Need(string who, TimeSpan? every, SampleParts parts = SampleParts.None);
 }
 
 /// THE master list of readings: each is a state, a card value, a gadget row and a menu line, and carries its gadget defaults, its read part, its page card,

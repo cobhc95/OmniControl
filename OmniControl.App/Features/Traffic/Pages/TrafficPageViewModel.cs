@@ -9,7 +9,7 @@ public sealed class TrafficPageViewModel : PageViewModel, IDisposable
 {
     private readonly TrafficMonitor _monitor;
     private readonly ResourcesSettings _settings;
-    private readonly NetworkLimits _limits;
+    private readonly INetworkLimits _limits;
     private readonly AppScopeGate _gate;
     private readonly ProcessIcons _icons = new();
     private readonly Action<string> _report;
@@ -59,7 +59,7 @@ public sealed class TrafficPageViewModel : PageViewModel, IDisposable
 
     public override IEnumerable<SearchEntry> SearchEntries => new[] { Entry(PacketFilter, PacketFilter.Label, FilterKeywords, Apps.Name) };
 
-    internal TrafficPageViewModel(TrafficMonitor monitor, ResourcesSettings settings, NetworkLimits limits, AppScopes scopes, AppScopeGate gate,
+    internal TrafficPageViewModel(TrafficMonitor monitor, ResourcesSettings settings, INetworkLimits limits, AppScopes scopes, AppScopeGate gate,
         Action<string> report) : base(Info)
     {
         (_monitor, _settings, _limits, _gate, _report) = (monitor, settings, limits, gate, report);

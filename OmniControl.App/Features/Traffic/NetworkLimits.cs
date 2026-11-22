@@ -9,7 +9,7 @@ namespace OmniControl.App.Features.Traffic;
 /// Windows, so a crashed run's rules go at the next start), all taken out at shut-down. The work runs in the network service when it is
 /// installed, else in OmniControl itself while it runs as administrator, else nowhere (the page says so). The "Packet filter" switch keeps
 /// Windows Packet Filter out of all traffic while off.
-public sealed class NetworkLimits : IDisposable
+public sealed class NetworkLimits : INetworkLimits, IDisposable
 {
     /// The limits a chip offers, in KB/s (and the limit an "On" action uses when none was chosen).
     public static readonly IReadOnlyList<int> Choices = new[] { 64, 128, 256, 512, 1024, 2048, 5120, 10240 };

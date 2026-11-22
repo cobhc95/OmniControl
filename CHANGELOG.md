@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- README: new screenshots of the Resources Readings tab and the Network traffic control page, drawn with made-up data (the screenshot tool can now draw both pages).
+
 ## 0.2.9 (22 Nov 2026)
 
 - New: Setup's "Features you didn't tick" shows, while "Don't install them" is picked, what that leaves out (Equalizer APO, sensor libraries, Windows Packet Filter and network service, Tailscale firewall rule, QR-code library) from the features currently unticked, and that the rest stays installed but not running.

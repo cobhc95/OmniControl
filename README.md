@@ -49,8 +49,8 @@ One Windows app for your displays, sound, smart plugs, mouse, trackpad, other PC
 <td><a href="docs/screenshots/screenshot-tool.png"><img src="docs/screenshots/screenshot-tool.png" alt="Screenshot tool"></a><br><sub>Screenshot tool (illustration)</sub></td>
 </tr>
 <tr>
-<td><a href="docs/screenshots/network-traffic-control.png"><img src="docs/screenshots/network-traffic-control.png" alt="Resources page: live readings and Network traffic control"></a><br><sub>Resources: live readings and network traffic control</sub></td>
-<td></td>
+<td><a href="docs/screenshots/resources-readings.png"><img src="docs/screenshots/resources-readings.png" alt="Resources page, Readings tab"></a><br><sub>Resources: live readings</sub></td>
+<td><a href="docs/screenshots/network-traffic-control.png"><img src="docs/screenshots/network-traffic-control.png" alt="Network traffic control page"></a><br><sub>Network traffic control: speed and limit per app</sub></td>
 <td></td>
 </tr>
 </table>

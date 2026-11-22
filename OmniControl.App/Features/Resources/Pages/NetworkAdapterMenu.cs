@@ -7,12 +7,12 @@ public sealed class NetworkAdapterMenu
 {
     public const string Title = "Network adapter (Download and Upload)";
 
-    private readonly ResourceMonitor _monitor;
+    private readonly IReadingList _monitor;
     private readonly ResourcesSettings _settings;
     private bool _showOffline;
 
     /// <param name="listing">The menu opened (true) or closed: the sampler lists the adapters only while it is open.</param>
-    public NetworkAdapterMenu(ResourceMonitor monitor, ResourcesSettings settings, Action<bool> listing)
+    public NetworkAdapterMenu(IReadingList monitor, ResourcesSettings settings, Action<bool> listing)
     {
         (_monitor, _settings) = (monitor, settings);
         Item = new MenuChoiceItem("Network adapter", Words, Rows) { OpenChanged = open => { if (!open) _showOffline = false; listing(open); } };

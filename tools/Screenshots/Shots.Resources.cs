@@ -13,17 +13,14 @@ internal static partial class Shots
     private static (SamplePreview, GadgetLayouts, ResourcesSettings, WeatherService)? _gadget;
 
     /// The Resources page's Taskbar gadget tab (GadgetTabView over its real model), under the page's title line and tabs as ResourcesPage.axaml
-    /// sets them out. The page's own view-model is not made: its network limits sync Windows' firewall rules and the network service at once.
+    /// sets them out (the page's own view-model is made for the Readings shot, which has the sample readings it needs).
     /// The gadget's readings are samples: the reader is never asked to read (no counters, no sensor library), the gadget is never put on the
     /// taskbar (it is made hidden and ended at once, before the look is switched on), and the weather has no place, so it never goes online.
     private static void ResourcesGadgetTab(Rig rig, Camera camera)
     {
         Use(ViewTemplate.For<GadgetSettingsModel, GadgetTabView>(), ViewTemplate.For<WeatherPlaceItem, WeatherPlaceRow>());
-        var (preview, layouts, settings, weather) = Gadget(rig);
-        var model = new GadgetSettingsModel(settings, rig.Actions, preview, layouts, () => { }, weather,
-            (_, _) => Task.FromResult<IconPick?>(null), (_, _) => Task.FromResult<PickResult?>(null));
+        var (model, presets, _) = ResourcesParts(rig);
         model.SetOnScreen(true); // as the page does while this tab shows (the preview only draws then)
-        var presets = new ProviderChoice("Resources presets", new ResourcePresets(settings), () => { }, withCustom: true);
         var tabs = new PageTabs(ResourcesPageViewModel.ReadingsTab, ResourcesPageViewModel.GadgetTab);
         tabs.Select(ResourcesPageViewModel.GadgetTab);
         var page = new StackPanel
@@ -36,6 +33,15 @@ internal static partial class Shots
             },
         };
         camera.Sized(new ScrollViewer { Content = page }, "resources-gadget-tab", Camera.PageWidth, Camera.PageHeight, crop: true);
+    }
+
+    /// What the Resources page is made of: the Taskbar gadget tab's model, the title line's preset picker and the settings they share.
+    private static (GadgetSettingsModel Model, ProviderChoice Presets, ResourcesSettings Settings) ResourcesParts(Rig rig)
+    {
+        var (preview, layouts, settings, weather) = Gadget(rig);
+        var model = new GadgetSettingsModel(settings, rig.Actions, preview, layouts, () => { }, weather,
+            (_, _) => Task.FromResult<IconPick?>(null), (_, _) => Task.FromResult<PickResult?>(null));
+        return (model, new ProviderChoice("Resources presets", new ResourcePresets(settings), () => { }, withCustom: true), settings);
     }
 
     /// A few ready-made gadget layouts as the taskbar shows them, drawn by the gadget's own cell drawing on the taskbar's colour.
