@@ -3,10 +3,12 @@ using OmniControl.App.Features.Volume.Audio.Engine;
 namespace OmniControl.App.Features.Volume.Fx;
 
 /// The window's measurement of its whole chain (<see cref="ChainMeasurer"/>): after a <see cref="Timing.FxMeasurePause"/> pause in
-/// changes, only while the window is open; a new change cancels a running one, and an unchanged chain is not measured again.
+/// changes, only while the window is open; a new change cancels a running one (the next starts once it let go of its plug-ins), and
+/// an unchanged chain is not measured again.
 public sealed partial class FxWindowViewModel
 {
     private readonly DispatcherTimer _measurePause = new() { Interval = Timing.FxMeasurePause };
+    private readonly ChainMeasurer _measurer = new();
     private CancellationTokenSource? _measuring;
     private string? _measuredSignature;
 
@@ -40,7 +42,7 @@ public sealed partial class FxWindowViewModel
         using var cancel = new CancellationTokenSource();
         _measuring = cancel;
         Analysis.SetMeasuring(true);
-        var measured = await ChainMeasurer.RunAsync(job, FxAnalysisViewModel.Freqs, cancel.Token);
+        var measured = await _measurer.RunAsync(job, FxAnalysisViewModel.Freqs, cancel.Token);
         if (ReferenceEquals(_measuring, cancel)) _measuring = null;
         if (cancel.IsCancellationRequested) return; // a newer change measures again
         _measuredSignature = measured is null ? null : job.Signature;

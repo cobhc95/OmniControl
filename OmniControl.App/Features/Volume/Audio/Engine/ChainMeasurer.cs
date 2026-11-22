@@ -24,9 +24,16 @@ internal sealed record ChainMeasureJob(IReadOnlyList<FxPart> Parts, IReadOnlyLis
 /// order, then silence until it rings out: the response is the output's spectrum over the sweep's, smoothed to a twelfth of an octave;
 /// the delay is where the output lines up best with the sweep; the tail is how long the output stays above <see cref="TailFloorDb"/>
 /// below its peak after the sweep. Runs on its own below-normal, STA thread (plug-ins are made there and released after), never on
-/// the audio path.
-internal static class ChainMeasurer
+/// the audio path. One instance per owner (an FX window) runs at most one measurement at a time and keeps only the latest request
+/// waiting: a plug-in call that hangs can't be stopped, so a second set of plug-ins is never loaded beside it.
+internal sealed class ChainMeasurer
 {
+    private sealed record Request(ChainMeasureJob Job, IReadOnlyList<double> Freqs, CancellationToken Cancel, TaskCompletionSource<ChainMeasurement?> Done);
+
+    private readonly object _gate = new();
+    private Request? _waiting;
+    private bool _running;
+
     public const double TestLevelDb = -18;
     private const double SweepSeconds = 0.5, SweepFromHz = 10, SweepToHz = 22000, FadeSeconds = 0.005;
     private const int FftSize = 1 << 16;
@@ -38,23 +45,44 @@ internal static class ChainMeasurer
 
     private const int Rate = PipeFormat.SampleRate, Block = Core.CoreTiming.PipeMaxBlockFrames;
 
-    /// Measures <paramref name="job"/> on its own thread; null when cancelled or when it failed (logged).
-    public static Task<ChainMeasurement?> RunAsync(ChainMeasureJob job, IReadOnlyList<double> freqs, CancellationToken cancel)
+    /// Measures <paramref name="job"/> once the measurement before it has released its plug-ins; null when cancelled, replaced by a
+    /// newer request before it started, or failed (logged).
+    public Task<ChainMeasurement?> RunAsync(ChainMeasureJob job, IReadOnlyList<double> freqs, CancellationToken cancel)
     {
-        var done = new TaskCompletionSource<ChainMeasurement?>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var thread = new Thread(() =>
+        var request = new Request(job, freqs, cancel, new TaskCompletionSource<ChainMeasurement?>(TaskCreationOptions.RunContinuationsAsynchronously));
+        lock (_gate)
         {
+            _waiting?.Done.TrySetResult(null);
+            _waiting = request;
+            if (_running) return request.Done.Task;
+            _running = true;
+        }
+        var thread = new Thread(Work) { IsBackground = true, Priority = ThreadPriority.BelowNormal, Name = "FX chain measurement" };
+        thread.SetApartmentState(ApartmentState.STA); // VST3 plug-ins are COM objects
+        thread.Start();
+        return request.Done.Task;
+    }
+
+    /// Takes the waiting request until none is left; each one's plug-ins are released before the next is taken.
+    private void Work()
+    {
+        while (true)
+        {
+            Request request;
+            lock (_gate)
+            {
+                if (_waiting is null) { _running = false; return; }
+                request = _waiting;
+                _waiting = null;
+            }
             ChainMeasurement? result = null;
             Guard.Run("Effects: measuring a chain", () =>
             {
-                try { result = Run(job, freqs, cancel); }
+                try { result = Run(request.Job, request.Freqs, request.Cancel); }
                 catch (OperationCanceledException) { result = null; }
             });
-            done.SetResult(result);
-        }) { IsBackground = true, Priority = ThreadPriority.BelowNormal, Name = "FX chain measurement" };
-        thread.SetApartmentState(ApartmentState.STA); // VST3 plug-ins are COM objects
-        thread.Start();
-        return done.Task;
+            request.Done.TrySetResult(result);
+        }
     }
 
     private static ChainMeasurement Run(ChainMeasureJob job, IReadOnlyList<double> freqs, CancellationToken cancel)
@@ -62,7 +90,7 @@ internal static class ChainMeasurer
         var plugins = new Dictionary<FxSlot, (IPluginEffect? Effect, string? Error)>(ReferenceEqualityComparer.Instance);
         try
         {
-            var chain = ChainBuilder.BuildParts(job.Parts, slot => plugins.TryGetValue(slot, out var p) ? p : plugins[slot] = PluginChainHost.Load(slot), loadHere: true);
+            var chain = ChainBuilder.BuildParts(job.Parts, slot => plugins.TryGetValue(slot, out var p) ? p : plugins[slot] = PluginChainHost.Load(slot), loadHere: true, cancel: cancel);
             var (db, latency, tail) = Measure(chain, freqs, cancel);
             var peak = 0;
             for (var i = 1; i < db.Length; i++) if (db[i] > db[peak]) peak = i;

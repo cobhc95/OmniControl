@@ -10,8 +10,10 @@ internal static class ChainBuilder
 
     /// <see cref="Build"/> for the master's parts (<see cref="FxFolders.PartsFor"/>): a device folder's effects are wrapped in its Mix,
     /// their result blended with the sound that entered the folder. <paramref name="previous"/>: the chain this one replaces (an unchanged IR file is not
-    /// read again). <paramref name="loadHere"/>: files are read now, on this thread (a measurement).
-    public static DspChain BuildParts(IEnumerable<FxPart> parts, Func<FxSlot, (IPluginEffect? Effect, string? Error)> plugin, DspChain? previous = null, bool loadHere = false)
+    /// read again). <paramref name="loadHere"/>: files are read now, on this thread (a measurement), and <paramref name="cancel"/> is
+    /// checked before each effect's plug-in or file is loaded.
+    public static DspChain BuildParts(IEnumerable<FxPart> parts, Func<FxSlot, (IPluginEffect? Effect, string? Error)> plugin, DspChain? previous = null,
+        bool loadHere = false, CancellationToken cancel = default)
     {
         var stages = new List<IDspStage>();
         var sources = new List<FxSlot>();
@@ -26,6 +28,7 @@ internal static class ChainBuilder
                     skipped.Add($"{slot.Name} (not built yet)");
                     continue;
                 }
+                cancel.ThrowIfCancellationRequested();
                 if (StageOf(slot, plugin, skipped, previous, loadHere) is not { } stage) continue;
                 stages.Add(new WetStage(stage, Core.Models.Percent.ToScalar(slot.Wet), PipeFormat.MaxBlockSamples));
                 sources.Add(slot);
