@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+## 0.3.0 (22 Nov 2026)
+
 - Fixed: a program's download limit now holds from each new connection's first packet; before, every new connection ran unlimited for up to a second, so a browser opening many connections went well over its limit.
 - Changed: a program's limit chips say "No limit" when no limit is on, and the Network traffic control status line says when a VPN tunnel (WireGuard, Tailscale) is up, since download limits don't reach traffic through it.
 - Fixed: a backup that would be too large for OmniControl to read back is refused with one sentence and the previous backup is kept (also the automatic one before an import).
