@@ -1,4 +1,4 @@
-﻿; Inno Setup script for OmniControl. Version, source and output folder come from tools\release.ps1 (/D defines); nothing is typed here twice.
+; Inno Setup script for OmniControl. Version, source and output folder come from tools\release.ps1 (/D defines); nothing is typed here twice.
 #ifndef AppVersion
   #error Run through tools\release.ps1
 #endif
@@ -439,6 +439,33 @@ begin
   Mask := Code - 4096;
 end;
 
+// Inno's own tick-by-tick sync does not run for WizardSelectComponents, so the Ready-made choice is set here to the type whose features are
+// exactly the ticked ones (the sets retyped from [Types]), else Custom (the last one).
+procedure SyncTypeChoice();
+var Ids: TArrayOfString;
+    Sets: array of String;
+    I, T: Integer;
+    Match: Boolean;
+begin
+  Ids := StringSplit(FeatureIds, [','], stAll);
+  SetArrayLength(Sets, 4);
+  Sets[0] := FeatureIds;
+  Sets[1] := 'volume';
+  Sets[2] := 'resources';
+  Sets[3] := '';
+  for T := 0 to 3 do
+  begin
+    Match := True;
+    for I := 0 to GetArrayLength(Ids) - 1 do
+      if WizardIsComponentSelected(Ids[I]) <> (Pos(',' + Ids[I] + ',', ',' + Sets[T] + ',') > 0) then Match := False;
+    if Match then
+    begin
+      WizardForm.TypesCombo.ItemIndex := T;
+      Exit;
+    end;
+  end;
+  WizardForm.TypesCombo.ItemIndex := WizardForm.TypesCombo.Items.Count - 1;
+end;
 // An upgrade shows the features as they are now: the choice in App settings, else the one an earlier Setup wrote, else Inno's own (its
 // previous components, or Everything).
 var FeaturesPreset: Boolean;
@@ -590,52 +617,70 @@ begin
   Muted.OnClick := @NoteClicked;
 end;
 
+var ChoiceBox: TPanel;
+
+// The box and the disk-space line hold the bottom of the page by anchors and the list gives up what is left above them; run again when the
+// page shows because Inno sizes its controls after InitializeWizard.
+procedure LayoutChoice();
+var List: TNewCheckListBox;
+    Gap: Integer;
+begin
+  if ChoiceBox = nil then Exit;
+  List := WizardForm.ComponentsList;
+  Gap := ScaleY(8);
+  List.Anchors := [akLeft, akTop, akRight];
+  WizardForm.ComponentsDiskSpaceLabel.Anchors := [akLeft, akRight, akBottom];
+  ChoiceBox.Anchors := [akLeft, akRight, akBottom];
+  ChoiceBox.Left := List.Left;
+  ChoiceBox.Width := List.Width;
+  ChoiceBox.Top := WizardForm.ComponentsDiskSpaceLabel.Top - Gap - ChoiceBox.Height;
+  List.Height := ChoiceBox.Top - Gap - List.Top;
+  List.Anchors := [akLeft, akTop, akRight, akBottom];
+  if not LeaveOutButton.Checked and not KeepOffButton.Checked then KeepOffButton.Checked := True;
+end;
+
 procedure InitializeWizard();
-var Box: TPanel;
-    Title: TNewStaticText;
+var Title: TNewStaticText;
     Kept: Cardinal;
     NoteHeight: Integer;
 begin
   if WizardSilent() then Exit;
-  Box := TPanel.Create(WizardForm);
-  Box.Parent := WizardForm.ComponentsList.Parent;
-  Box.BevelOuter := bvNone;
-  Box.BorderStyle := bsSingle;
-  Box.ParentBackground := False;
-  Box.Color := clWindow;
-  Box.Left := WizardForm.ComponentsList.Left;
-  Box.Width := WizardForm.ComponentsList.Width;
-  NoteHeight := ScaleY(80);
-  Box.Height := ScaleY(66) + NoteHeight;
-  WizardForm.Height := WizardForm.Height + NoteHeight;
-  WizardForm.Top := WizardForm.Top - NoteHeight div 2;
-  WizardForm.ComponentsList.Height := WizardForm.ComponentsList.Height - ScaleY(66) - ScaleY(10);
-  Box.Top := WizardForm.ComponentsList.Top + WizardForm.ComponentsList.Height + ScaleY(10);
-  Title := TNewStaticText.Create(Box);
-  Title.Parent := Box;
+  ChoiceBox := TPanel.Create(WizardForm);
+  ChoiceBox.Parent := WizardForm.ComponentsList.Parent;
+  ChoiceBox.BevelOuter := bvNone;
+  ChoiceBox.BorderStyle := bsSingle;
+  ChoiceBox.ParentBackground := False;
+  ChoiceBox.Color := clWindow;
+  NoteHeight := ScaleY(44);
+  ChoiceBox.Height := ScaleY(66) + NoteHeight;
+  WizardForm.Height := WizardForm.Height + ChoiceBox.Height + ScaleY(8);
+  WizardForm.Top := WizardForm.Top - (ChoiceBox.Height + ScaleY(8)) div 2;
+  Title := TNewStaticText.Create(ChoiceBox);
+  Title.Parent := ChoiceBox;
   Title.Caption := 'Features you didn''t tick:';
   Title.Left := ScaleX(8);
   Title.Top := ScaleY(6);
-  LeaveOutButton := AddChoice(Box, 'Don''t install them', '(their drivers, services and sensor library are left out)', ScaleY(24), LeaveOutNote);
-  KeepOffButton := AddChoice(Box, 'Install them but keep them off', '(turn on any time in App settings)', ScaleY(42) + NoteHeight, KeepOffNote);
-  LeftOutText := TNewStaticText.Create(Box);
-  LeftOutText.Parent := Box;
+  LeaveOutButton := AddChoice(ChoiceBox, 'Don''t install them', '(their drivers, services and sensor library are left out)', ScaleY(24), LeaveOutNote);
+  KeepOffButton := AddChoice(ChoiceBox, 'Install them but keep them off', '(turn on any time in App settings)', ScaleY(42) + NoteHeight, KeepOffNote);
+  LeftOutText := TNewStaticText.Create(ChoiceBox);
+  LeftOutText.Parent := ChoiceBox;
   LeftOutText.AutoSize := False;
   LeftOutText.WordWrap := True;
   LeftOutText.Font.Color := clGrayText;
   LeftOutText.Left := ScaleX(28);
   LeftOutText.Top := ScaleY(42);
-  LeftOutText.Width := Box.Width - ScaleX(28) - ScaleX(12);
+  LeftOutText.Width := WizardForm.ComponentsList.Width - ScaleX(28) - ScaleX(12);
   LeftOutText.Height := NoteHeight;
+  LeftOutText.Anchors := [akLeft, akTop, akRight];
   LeaveOutButton.Checked := RegQueryDWordValue(HKLM64, ReceiptKey, LeaveOutValue, Kept) and (Kept = 1);
   KeepOffButton.Checked := not LeaveOutButton.Checked;
   ShowLeftOut();
+  LayoutChoice();
   OldClickCheck := WizardForm.ComponentsList.OnClickCheck;
   WizardForm.ComponentsList.OnClickCheck := @ListClicked;
   OldTypeChange := WizardForm.TypesCombo.OnChange;
   WizardForm.TypesCombo.OnChange := @TypeChanged;
 end;
-
 // A silent Setup changes the app's choice only when its command line names one (/COMPONENTS or /TYPE).
 function ChoiceGiven(): Boolean;
 var I: Integer;
