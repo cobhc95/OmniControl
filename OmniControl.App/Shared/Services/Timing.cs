@@ -48,6 +48,12 @@ public static partial class Timing
     /// A diagnostics log that would grow past this many bytes is rolled over (kept as "name.old.txt", replacing the one before; <c>LogWriter</c>).
     public const long LogMaxBytes = 1_000_000;
 
+    /// Log lines waiting for the writer may hold this much memory; past it the oldest lines of the routine logs (all but errors and hangs) are dropped.
+    public const long LogQueueMaxBytes = 2_000_000;
+
+    /// The log writer takes at most this many lines and writes at most this many characters to a file at a time.
+    public const int LogBatchLines = 512, LogChunkChars = 64 * 1024;
+
     /// A setting change is written to its file this long after the last change of a burst (a slider drag saves once; <c>SaveSoon</c>).
     public static readonly TimeSpan SaveSoonDelay = TimeSpan.FromMilliseconds(500);
 

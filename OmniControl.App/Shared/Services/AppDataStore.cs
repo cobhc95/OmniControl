@@ -264,8 +264,8 @@ public static class AppDataStore
 
     /// Appends a line to a diagnostics file, stamped now and written by the background log writer (<see cref="LogWriter"/>); never throws or waits.
     public static void AppendLog(string fileName, string line) =>
-        LogWriter.Append(PathOf(fileName), $"{DateTime.Now:HH:mm:ss.fff} {line}{Environment.NewLine}");
+        LogWriter.Default.Append(PathOf(fileName), $"{DateTime.Now:HH:mm:ss.fff} {line}{Environment.NewLine}");
 
     /// Writes the queued log lines now (at exit, or before the process ends on an unhandled exception).
-    public static void FlushLogs() => LogWriter.Flush();
+    public static void FlushLogs() => LogWriter.Default.Flush();
 }
