@@ -81,9 +81,9 @@ public sealed class DeviceSetup
         }
     }
 
-    /// Opens the page where Python can be downloaded; null when it opened, otherwise the problem.
-    public string? OpenPythonPage() => WebPage.Open(PythonDownloadPage);
+    /// Opens the page where Python can be downloaded; null when it is being opened, otherwise the problem (a later failure goes to <paramref name="report"/>).
+    public string? OpenPythonPage(Action<string> report) => WebPage.Open(PythonDownloadPage, report);
 
-    /// Opens the router's page; null when it opened, otherwise the problem.
-    public string? OpenRouterPage() => RouterPage is { } page ? WebPage.Open(page, allowHttp: true) : "Couldn't find your router's address.";
+    /// Opens the router's page; null when it is being opened, otherwise the problem (a later failure goes to <paramref name="report"/>).
+    public string? OpenRouterPage(Action<string> report) => RouterPage is { } page ? WebPage.Open(page, report, allowHttp: true) : "Couldn't find your router's address.";
 }

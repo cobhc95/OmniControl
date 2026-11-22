@@ -142,5 +142,5 @@ public sealed partial class VolumePageViewModel
     /// More cables: VB-Audio's page (each combined device, processed microphone or program needs its own cable).
     private CardAction MoreCablesAction() =>
         new("More cables", "Opens VB-Audio's page: each combined device or processed row needs its own cable",
-            new RelayCommand(() => _report(EngineInstaller.OpenCablePage().Text)));
+            new RelayCommand(() => _report(EngineInstaller.OpenCablePage(_report).Text)));
 }

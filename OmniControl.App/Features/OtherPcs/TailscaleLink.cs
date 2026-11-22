@@ -90,10 +90,10 @@ public sealed class TailscaleLink
         switch (checkId)
         {
             case TailscaleChecks.Installed:
-                if (WebPage.Open(DownloadUrl) is { } problem) _report(problem);
+                if (WebPage.Open(DownloadUrl, _report) is { } problem) _report(problem);
                 return;
             case TailscaleChecks.Peer:
-                if (WebPage.Open(AddDeviceUrl) is { } peerProblem) _report(peerProblem);
+                if (WebPage.Open(AddDeviceUrl, _report) is { } peerProblem) _report(peerProblem);
                 return;
             case TailscaleChecks.Running:
                 Start("Other PCs: starting Tailscale", () => TailscaleCli.Start(_status.Answered), "Tailscale could not be started. Open it from the Start menu.", recheck);

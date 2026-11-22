@@ -39,11 +39,21 @@ public static class ShellDesktop
         [PreserveSig] int GetItemObject(int item, ref Guid interfaceId, [MarshalAs(UnmanagedType.IUnknown)] out object? found);
     }
 
-    /// True when Explorer opened <paramref name="address"/> (https:, http: or ms-settings: only); false when it is another kind of target or
-    /// Explorer could not be reached, so the caller can fall back. Call it from an STA or MTA thread; it holds nothing afterwards.
+    /// True when Explorer opened <paramref name="address"/> (https:, http: or ms-settings: only); false when it is another kind of target,
+    /// Explorer could not be reached or did not answer within <see cref="CoreTiming.ShellOpenWait"/>, so the caller can fall back. The shell's
+    /// COM objects need an apartment of their own, so the work runs on a short-lived STA thread; the caller waits (never call it on the UI thread).
     public static bool TryOpenAddress(string address)
     {
         if (!Uri.TryCreate(address, UriKind.Absolute, out var uri) || uri.Scheme is not ("https" or "http" or "ms-settings")) return false;
+        var opened = false;
+        var worker = new Thread(() => opened = OpenInShell(uri)) { IsBackground = true, Name = "Open address" };
+        worker.SetApartmentState(ApartmentState.STA);
+        worker.Start();
+        return worker.Join(CoreTiming.ShellOpenWait) && opened;
+    }
+
+    private static bool OpenInShell(Uri uri)
+    {
         var held = new List<object>();
         try
         {

@@ -29,7 +29,7 @@ public sealed partial class MousePageViewModel
     {
         var windowsSettings = new ButtonItem(TouchpadSettingsLabel, "Open",
             "Windows' own swipes, pinch and taps.",
-            () => { if (WebPage.Open(WindowsTouchpad.SettingsPage) is { } problem) report(problem); }) { Half = true };
+            () => { if (WebPage.Open(WindowsTouchpad.SettingsPage, report) is { } problem) report(problem); }) { Half = true };
 
         _gestureCards = cards.Zip(TrackpadGestures.All).ToList();
         _followed.Follow<Action>(h => _trackpad.Changed += h, h => _trackpad.Changed -= h, ShowTrackpadState);

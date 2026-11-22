@@ -212,6 +212,9 @@ public static class CoreTiming
     /// How long stopping the per-program traffic session waits for its reader thread.
     public static readonly TimeSpan NetworkByAppStopWait = TimeSpan.FromSeconds(2);
 
+    /// How long an address waits for Explorer to open it before the hand-over copy is used instead.
+    public static readonly TimeSpan ShellOpenWait = TimeSpan.FromSeconds(3);
+
     /// How often removing the network service looks whether it has stopped yet; the start-up and stop time the service tells Windows to allow.
     public const int NetworkServicePollMs = 200, NetworkServiceWaitHintMs = 15_000;
 

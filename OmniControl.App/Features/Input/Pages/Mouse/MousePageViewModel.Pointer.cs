@@ -185,6 +185,6 @@ public sealed partial class MousePageViewModel
 
     private void OpenWindowsPage(string page)
     {
-        if (WebPage.Open(page) is { } problem) _report(problem);
+        if (WebPage.Open(page, _report) is { } problem) _report(problem);
     }
 }

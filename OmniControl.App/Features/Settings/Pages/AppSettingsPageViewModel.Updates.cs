@@ -36,7 +36,7 @@ public sealed partial class AppSettingsPageViewModel
 
     private void OpenLatest(Action<string> report)
     {
-        if (_updates.Available is { } release && WebPage.Open(UpdateFeed.Trusted(release.Url)) is { } error) report(error);
+        if (_updates.Available is { } release && WebPage.Open(UpdateFeed.Trusted(release.Url), report) is { } error) report(error);
     }
 
     /// Shows what the service knows: the time of the last check, and the one line about the newest release.

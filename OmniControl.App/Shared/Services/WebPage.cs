@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Diagnostics;
 
 namespace OmniControl.App.Shared.Services;
 
@@ -8,20 +7,25 @@ namespace OmniControl.App.Shared.Services;
 /// file or another program's protocol.
 public static class WebPage
 {
-    /// Returns an error to show, or null when the page was opened.
-    public static string? Open(string url, bool allowHttp = false)
+    /// Returns an error to show when the address is not a page that may be opened, otherwise null. The opening itself runs off the calling
+    /// (UI) thread; if Windows then refuses, the log gets the details and <paramref name="report"/> (thread-safe) one sentence.
+    public static string? Open(string url, Action<string> report, bool allowHttp = false)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || !(uri.Scheme is "https" or "ms-settings" || (allowHttp && uri.Scheme == "http")))
             return $"Couldn't open {url}: it is not a web or Settings page.";
-        try
+        var address = uri.OriginalString;
+        Guard.OffUi("Opening a web page", () =>
         {
-            NormalRights.Open(uri.OriginalString);
-            return null;
-        }
-        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
-        {
-            Guard.Log("Opening a web page", ex);
-            return $"Couldn't open {url}: {ex.Message}";
-        }
+            try
+            {
+                NormalRights.Open(address);
+            }
+            catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
+            {
+                Guard.Log("Opening a web page", ex);
+                report($"Couldn't open {url}: {ex.Message}");
+            }
+        });
+        return null;
     }
 }

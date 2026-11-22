@@ -100,15 +100,15 @@ public sealed class EngineInstaller : IDisposable
         ApoStatus.Read(speakers, speakers is null ? Array.Empty<string>() : new[] { speakers }, Array.Empty<string>());
 
     /// VB-CABLE: its download page (VB-CABLE is installed with VB-Audio's own installer).
-    public Task<SetupResult> InstallCableAsync() => Task.Run(() =>
-        PageResult(CablePage, "Opened VB-CABLE's download page (VB-CABLE is donationware by VB-Audio, www.vb-cable.com)."));
+    public Task<SetupResult> InstallCableAsync(Action<string> report) => Task.Run(() =>
+        PageResult(CablePage, "Opened VB-CABLE's download page (VB-CABLE is donationware by VB-Audio, www.vb-cable.com).", report));
 
     /// VB-Audio's page for more cables (VB-CABLE A+B and C+D are sold there).
-    public static SetupResult OpenCablePage() => PageResult(CablePage, "Opened VB-Audio's cable page (more cables: VB-CABLE A+B, C+D).");
+    public static SetupResult OpenCablePage(Action<string> report) => PageResult(CablePage, "Opened VB-Audio's cable page (more cables: VB-CABLE A+B, C+D).", report);
 
     /// The setup is only a page: opens it and says so.
-    private static SetupResult PageResult(string url, string opened) =>
-        WebPage.Open(url) is { } error ? Fail("Couldn't open the download page.", error) : new SetupResult(opened);
+    private static SetupResult PageResult(string url, string opened, Action<string> report) =>
+        WebPage.Open(url, report) is { } error ? Fail("Couldn't open the download page.", error) : new SetupResult(opened);
 
     /// A program that did not end normally, in one plain sentence; <paramref name="instead"/> is the way round a block.
     private static SetupResult Outcome(HelperResult result, string what, string instead) => result.Failure switch
