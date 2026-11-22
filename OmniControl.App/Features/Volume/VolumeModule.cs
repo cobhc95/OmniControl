@@ -88,7 +88,7 @@ public sealed class VolumeModule : IFeatureModule
 
     /// The page, made now when it was not yet: the shell's first use and an action only the page can do get the same one.
     private VolumePageViewModel Page() => _page ??= new VolumePageViewModel(new VolumePageServices(Mixer!, _controls!, _apo!, _support!, _effects!, _installer!,
-        _context!.Report, _fxWindows!.Open, _fxWindows.Toggle, _context.AskAsync, CombineWindow.AskAsync, _context.OpenPresetManager, _pageSettings!));
+        _context!.Report, _fxWindows!.Open, _fxWindows!.Toggle, _context.AskAsync, CombineWindow.AskAsync, _context.OpenPresetManager, _pageSettings!));
 
     public IReadOnlyList<FeaturePage> Pages => new[]
     {

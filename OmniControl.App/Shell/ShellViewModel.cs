@@ -116,6 +116,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _features = new FeatureSwitches(_settings.Slot(s => s.FeaturesOff, (s, off) => s.FeaturesOff = off),
             _settings.Slot(s => s.FeaturesFromSetup, (s, chosen) => s.FeaturesFromSetup = chosen));
         _input = new InputModule(_volume.RememberedPrograms); // its pointer settings put back a button swap a crashed run left on trial
+        _apps = new AppsModule(_dialogs.AskAsync, Report);
         _osd = new OsdModule(() => _apps.ListedPrograms());
         _hotkeys = new HotkeyRegistry(_hardware, Report, new OmniActionSettings(), () => _states, _actionGate);
         _states = new StateRegistry(chainNow: () => _hotkeys.Chain);
@@ -131,9 +132,8 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _actionsWindow = new ActionsWindowService(_hotkeys, _presetGroups, _presetManager.Open, _dialogs.AskAsync, OpenPage, _iconPicker.ChooseForActionAsync, _hotkeysSwitch, Report);
         PinnedEntries = new[] { new NavLauncher(ActionsWindowService.Title, ActionsWindowService.Icon, () => _actionsWindow.Open()) };
         _about = new AboutWindowService(Report);
-        _apps = new AppsModule(_dialogs.AskAsync, Report);
         _power = new PowerJournal(_hardware);
-        _devices = new DevicesModule(() => _otherPcs.Paired, () => OpenPage(OtherPcsService.Category));
+        _devices = new DevicesModule(() => _otherPcs?.Paired, () => OpenPage(OtherPcsService.Category));
         _otherPcs = new OtherPcsModule(_devices.ShareSetups, DeviceShareFormat.RedactFile);
         _context = new FeatureContext(_hotkeys, _hotkeys, _states, _hardware, _osd.Osd, _presetGroups, _presetManager.Open, _dialogs.AskAsync, _dialogs.AskTextAsync,
             Report, OpenPage, _apps.Scopes, _apps.Gate, _iconPicker, _actionGate, _power, setId => new SuggestedKeysSwitch(_hotkeys, setId), _settings, _importHooks, _shutdown,

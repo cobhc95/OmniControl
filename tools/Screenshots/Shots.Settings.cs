@@ -1,10 +1,12 @@
-using OmniControl.App.Features;
+﻿using OmniControl.App.Features;
 using OmniControl.App.Features.OtherPcs.SettingsImport;
 using OmniControl.App.Features.Settings.Pages;
 using OmniControl.App.Features.Settings.Pages.Backup;
 using OmniControl.App.Features.Tray;
 using OmniControl.App.Features.Volume.Audio;
 using OmniControl.App.Features.Volume.Fx.Plugins;
+using OmniControl.App.Shared.Presets;
+using OmniControl.App.Shared.Presets.Manager;
 using OmniControl.App.Shared.Services.Updates;
 using OmniControl.App.Shared.Ui.Restore;
 
@@ -31,7 +33,9 @@ internal static partial class Shots
         var settings = AppSettings.Current;
         var plugins = new PluginLibrary(settings.Slot(s => s.PluginFolders, (s, folders) => s.PluginFolders = folders));
         var features = new FeatureSwitches(settings.Slot(s => s.FeaturesOff, (s, off) => s.FeaturesOff = off), settings.Slot(s => s.FeaturesFromSetup, (s, chosen) => s.FeaturesFromSetup = chosen));
-        var page = new AppSettingsPageViewModel(() => { }, plugins, () => { }, backup, new ConfirmationMemory(), updates, Rig.Report, mixer, rig.Hardware, settings, Tray(rig), features);
+        var shortcuts = new PresetShortcuts(rig.Actions, rig.Presets, Rig.Report);
+        var presets = new PresetManagerService(rig.Presets, shortcuts, new PresetTriggersSlot(shortcuts), Rig.Report);
+        var page = new AppSettingsPageViewModel(() => { }, plugins, presets, backup, new ConfirmationMemory(), updates, Rig.Report, mixer, rig.Hardware, settings, Tray(rig), features);
         rig.Pages.Add(page);
         rig.Restore(page, page.Restorable);
         page.ShowRestoreAll(new PageRestore(new RestoreRunner("all", "All", rig.Restorables, true, _ => Task.FromResult(false), new FileSnapshotStore()), all: true));

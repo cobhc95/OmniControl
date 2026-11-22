@@ -1,4 +1,4 @@
-using OmniControl.App.Features.Automation;
+﻿using OmniControl.App.Features.Automation;
 using OmniControl.App.Features.Automation.Pages;
 
 namespace OmniControl.Screenshots;
@@ -27,8 +27,8 @@ internal static partial class Shots
             "omni:automation.power.restart", "omni:automation.power.shutdown"));
         settings.Save();
 
-        var service = new AutomationService(rig.Actions, rig.Runner, rig.Gate, rig.States, (_, _, _, _) => Task.FromResult(false),
-            Array.Empty<string>, startedByWindows: false, Rig.Report, rig.Power, Rig.Ask);
+        var service = new AutomationService(rig.Actions, rig.Runner, rig.States, (_, _, _, _) => Task.FromResult(false),
+            Array.Empty<string>, Rig.Report, rig.Power, Rig.Ask);
         var page = new AutomationPageViewModel(service, Rig.Ask);
         rig.Pages.Add(page);
         camera.Page(page, "automation");

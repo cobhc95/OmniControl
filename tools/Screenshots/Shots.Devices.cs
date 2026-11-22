@@ -1,4 +1,4 @@
-using OmniControl.App.Features.Devices;
+﻿using OmniControl.App.Features.Devices;
 using OmniControl.App.Features.Devices.Pages;
 using OmniControl.App.Features.OtherPcs;
 using OmniControl.Core.Interfaces;
@@ -20,7 +20,7 @@ internal static partial class Shots
         settings.Devices.Add(Plug("Speakers", "plug", "192.0.2.23", ScriptProfiles.Kasa));
         var service = new DeviceService(rig.Actions, rig.States, rig.Hardware, new MemoryCredentials(), Rig.Report, _ => { }, settings);
         service.Simulation.Dispose(); // its timers would look for adb and ask it for devices
-        var page = new DevicesPageViewModel(service, Rig.Ask, Rig.Report, (_, _) => Task.FromResult<App.Features.Icons.IconPick?>(null), new NoPcs(), () => { });
+        var page = new DevicesPageViewModel(service, Rig.Ask, Rig.Report, (_, _) => Task.FromResult<App.Features.Icons.IconPick?>(null), new NoPcs(), () => { }, () => { });
         rig.Pages.Add(page);
         camera.Page(page, "smart-devices");
     }
