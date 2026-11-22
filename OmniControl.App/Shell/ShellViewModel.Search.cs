@@ -1,3 +1,5 @@
+using OmniControl.App.Shared.Ui.Restore;
+
 namespace OmniControl.App.Shell;
 
 // The main window's "Search settings...": the sidebar keeps the pages that match, and the results list shows the matching settings
@@ -60,7 +62,7 @@ public sealed partial class ShellViewModel
     // Each page's result words, read without making it (FeaturePage.Words): only a page with a match is made. Joined as a result's heading
     // is, so a query matches the words exactly when it can match the result.
     private SearchIndex<(PageSlot Slot, string Words)> WordIndex => _wordIndex ??= new SearchIndex<(PageSlot Slot, string Words)>(
-        AllSlots.SelectMany(s => s.Words().Select(w => (s, w))), e => new[] { Heading.Join(e.Slot.Title, e.Words) });
+        AllSlots.SelectMany(s => s.Words().Concat(s.Restorable is null ? Array.Empty<string>() : new[] { $"{RestoreWords.ButtonText} {RestoreWords.Tip}" }).Select(w => (s, w))), e => new[] { Heading.Join(e.Slot.Title, e.Words) });
 
     // A query with a typo matches no words exactly, so the pages with near words are made instead: their cards are the similar results.
     private List<PageSlot> UnmadeMatches(string q)

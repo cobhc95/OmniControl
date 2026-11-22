@@ -31,6 +31,10 @@ public sealed partial class AppSettingsPageViewModel
             Choices = TrayIconChoices.Colours.Select(c => c.Name).ToList(),
             Tip = "Follow Windows draws an icon white on a dark taskbar and black on a light one; the logo keeps its own tile and dial colours.",
         },
+        TrayPanelCard = new("Tray panel", "tray panel flyout tiles sliders edit add tile slider drag order lock layout click open", Title: AppearanceName)
+        {
+            Menu = TrayFlyoutModel.MenuWords,
+        },
         GpuCard = new("Use GPU drawing", "gpu graphics card hardware acceleration drawing rendering smooth scrolling animations memory", Title: AppearanceName)
         {
             Note = "Smoother scrolling and animations; uses about 40–80 MB more memory.",
@@ -108,7 +112,7 @@ public sealed partial class AppSettingsPageViewModel
         var plugins = page?._keepFx is not null;
         return new SearchBuilder()
             .Add(ThemeCard, page?.Theme).Add(AccentCard, page?.Accent).Add(IntensityCard, page?._accentIntensity).Add(BackgroundCard, page?.Background)
-            .Add(TrayIconCard, page?._trayIcon).Add(TrayColourCard, page?._trayColour).Add(GpuCard, page?._gpuDrawing).Add(GroupsOpenCard, page?._groupsOpen)
+            .Add(TrayIconCard, page?._trayIcon).Add(TrayColourCard, page?._trayColour).Add(TrayPanelCard).Add(GpuCard, page?._gpuDrawing).Add(GroupsOpenCard, page?._groupsOpen)
             .Add(StartWithWindowsCard, page?._startWithWindows).Add(StartMinimisedCard, page?._startMinimised).Add(WhenClosingCard, page?._whenClosing)
             .Add(HardwareCheckCard, page?._hardwareCheck).Add(UiReleaseCard, page?._uiRelease).Add(KeepPagesCard, page?._keepPages)
             .Add(presets is null ? PresetsCard : PresetsCard with { Choices = presets.Words.Distinct().ToList() }, page?._presets).Add(BackupCard, page?._backup).Add(RestoreAllCard, page?._restoreAllCard).Add(NetworkServiceCard, page?._networkService)

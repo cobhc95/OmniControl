@@ -1,3 +1,4 @@
+using OmniControl.App.Features.AppLists;
 using OmniControl.App.Features.Hotkeys;
 using OmniControl.App.Features.Hotkeys.Actions;
 using OmniControl.App.Features.Input.Mouse;
@@ -71,6 +72,7 @@ public sealed partial class MousePageViewModel
         TrackpadGroupCard = new(TrackpadGroupName, TrackpadKeywords, TrackpadGroupName, ActionSections.Mouse) { Tip = TrackpadTip },
         PointerGroupCard = new(PointerControls.GroupName, $"{PointerActions.Keywords} {PointerMoreKeywords}", PointerControls.GroupName, ActionSections.Mouse) { Tip = PointerTip },
         WhereGroupCard = new(WhereGroupName, WhereKeywords, WhereGroupName, ActionSections.Mouse) { Tip = WhereRestoreTip },
+        ScopeCard = new("Apps scope", $"{ButtonKeywords} apps scope chip", ButtonsGroupName, ActionSections.Mouse) { Menu = AppScopeModel.MenuWords },
         AreasGroupCard = new(GestureCatalog.AreaGroup, GestureKeywordsOf(GestureCatalog.AreaGroup), GestureCatalog.AreaGroup, ActionSections.Mouse) { Tip = GestureGroups.AreasTip },
         MiddleGroupCard = new(GestureCatalog.MiddleGroup, GestureKeywordsOf(GestureCatalog.MiddleGroup), GestureCatalog.MiddleGroup, ActionSections.Mouse) { Tip = GestureGroups.MiddleTip },
         KeysGroupCard = new(GestureCatalog.KeyGroup, GestureKeywordsOf(GestureCatalog.KeyGroup), GestureCatalog.KeyGroup, ActionSections.Mouse) { Tip = GestureGroups.KeysTip };
@@ -99,7 +101,7 @@ public sealed partial class MousePageViewModel
         object? Button(MouseButton button) => page?._buttonItems.FirstOrDefault(i => i.Button == button);
         object? Gesture(string group, string label) => Live(page?.Gestures.Groups.FirstOrDefault(g => g.Name == group)?.Items, label);
         var builder = new SearchBuilder().Add(ButtonsGroupCard).Add(TrackpadGroupCard).Add(PointerGroupCard).Add(WhereGroupCard)
-            .Add(AreasGroupCard).Add(MiddleGroupCard).Add(KeysGroupCard)
+            .Add(ScopeCard).Add(AreasGroupCard).Add(MiddleGroupCard).Add(KeysGroupCard)
             .Add(LayerCard(mouse, InputFamily.Mouse, MouseLayerLabel, ButtonKeywords, ButtonsGroupName), page?.MouseLayer)
             .AddEach(Buttons, b => new SearchCard(b.Label, $"{ButtonKeywords} {Actions(b.Button)}", ButtonsGroupName, ActionSections.Mouse), b => Button(b.Button))
             .Add(LayerCard(mouse, InputFamily.Trackpad, TrackpadLayerLabel, TrackpadKeywords, TrackpadGroupName), page?.TrackpadLayer)

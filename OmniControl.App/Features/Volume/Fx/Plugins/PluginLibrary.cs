@@ -24,7 +24,11 @@ public sealed class PluginLibrary
     private Stored Data => _stored ??= AppDataStore.Load<Stored>(Store) ?? new();
 
     private IReadOnlyList<PluginEntry> BuiltIns { get; } =
-        FxCatalog.All.OrderByDescending(k => k.SortsFirst).Select(k => new PluginEntry(k.Name, k.Kind, PluginEntry.BuiltIn, "OmniControl", k.Description, k.Keywords, k.Icon)).ToList();
+        FxCatalog.All.OrderByDescending(k => k.SortsFirst).Select(k => new PluginEntry(k.Name, k.Kind, PluginEntry.BuiltIn, "OmniControl", k.Description, KeywordsOf(k), k.Icon)).ToList();
+
+    // The Add effect window's search finds a built-in effect by its settings' names and its factory presets too.
+    private static string KeywordsOf(FxKind kind) =>
+        string.Join(" ", new[] { kind.Keywords }.Concat(kind.Params.Select(p => p.Name)).Concat((kind.Presets ?? Array.Empty<FxPreset>()).Select(p => p.Name)).Where(w => w.Length > 0));
 
     /// Built-ins first, then plug-ins by name. Files that no longer exist are left out.
     public IReadOnlyList<PluginEntry> All() => BuiltIns

@@ -1,3 +1,4 @@
+using OmniControl.App.Features.AppLists;
 using OmniControl.App.Features.Resources;
 
 namespace OmniControl.App.Features.Traffic.Pages;
@@ -21,6 +22,7 @@ public sealed partial class TrafficPageViewModel
             Menu = AppNetItem.LimitWords,
             Tip = $"{NetworkLimits.UploadBlockTip} {NetworkLimits.DownloadBlockTip}",
         },
+        ScopeCard = new("Apps scope", TrafficWords + " apps scope chip", PageTitle) { Menu = AppScopeModel.MenuWords },
         InstallCard = new("Install network service", TrafficWords + " install windows packet filter driver service administrator", PageTitle) { Tip = NetworkLimits.InstallServiceTip },
         ColumnsCard = new("Program columns", TrafficWords + " app down up upload limit download limit on pin unpin open file location copy program path switch", PageTitle);
 
@@ -36,7 +38,7 @@ public sealed partial class TrafficPageViewModel
     /// while it is made; otherwise the programs holding a rule or a pin).
     private static SearchBuilder Cards(ResourcesSettings? settings, INetworkLimits? limits, TrafficPageViewModel? page)
     {
-        var builder = new SearchBuilder().Add(FilterCard, page?.PacketFilter).Add(GroupCard).Add(LimitsCard).Add(InstallCard).Add(ColumnsCard);
+        var builder = new SearchBuilder().Add(FilterCard, page?.PacketFilter).Add(GroupCard).Add(LimitsCard).Add(ScopeCard).Add(InstallCard).Add(ColumnsCard);
         if (limits is not null) builder.Add(StatusCard(limits));
         if (page is not null) return builder.AddEach(page.AppRows, r => AppCard(r.Name, r.Id), r => r);
         var ids = (settings?.Setup.Apps.Select(r => r.Id) ?? Enumerable.Empty<string>()).Concat((settings?.Setup.Pinned ?? new List<string>()).Select(ProgramIdentity.Normalize)).Distinct();
