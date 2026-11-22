@@ -653,8 +653,6 @@ begin
   ChoiceBox.Color := clWindow;
   NoteHeight := ScaleY(44);
   ChoiceBox.Height := ScaleY(66) + NoteHeight;
-  WizardForm.Height := WizardForm.Height + ChoiceBox.Height + ScaleY(8);
-  WizardForm.Top := WizardForm.Top - (ChoiceBox.Height + ScaleY(8)) div 2;
   Title := TNewStaticText.Create(ChoiceBox);
   Title.Parent := ChoiceBox;
   Title.Caption := 'Features you didn''t tick:';
