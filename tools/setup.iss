@@ -306,6 +306,20 @@ const
 // chose, and only the uninstaller in that folder is run, and only with the token of the person who started Setup, never elevated: that
 // folder and the per-user Uninstall entry are the person's own, so anything running as them could have replaced it. The sign-in task (when
 // ticked), the network service and the start-up entry are pointed at this install after the files (InstallSteps).
+// When Setup itself was started elevated, the "original user" token is elevated too, so nothing of the old copy is run or removed: it stays
+// and the finished page says to remove it from Apps & features.
+var LegacyCopyKept: Boolean;
+
+// Exit codes of the check, read by the original user's own token: 10 not elevated, 11 elevated, anything else unknown (treated as elevated).
+function OriginalUserIsUnelevated(): Boolean;
+var Code: Integer;
+begin
+  Result := ExecAsOriginalUser(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+    '-NoProfile -NonInteractive -Command "try { if (([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent())'
+    + '.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { exit 11 } } catch { exit 12 }; exit 10"', '', SW_HIDE, ewWaitUntilTerminated, Code)
+    and (Code = 10);
+end;
+
 procedure RemovePerUserCopy();
 var Uninstaller, Folder: String;
     Code, Tries: Integer;
@@ -313,6 +327,12 @@ var Uninstaller, Folder: String;
     HadRecord: Boolean;
 begin
   if not RegKeyExists(HKCU, PerUserUninstallKey) then Exit;
+  if not OriginalUserIsUnelevated() then
+  begin
+    LegacyCopyKept := True;
+    Log('The older per-user copy was kept: the original user token is elevated or could not be checked.');
+    Exit;
+  end;
   Folder := ExpandConstant(PerUserFolder);
   Uninstaller := Folder + '\unins000.exe';
   HadRecord := RegQueryDWordValue(HKCU, PacketFilterRecordKey, PacketFilterRecordValue, Mine);
@@ -854,6 +874,9 @@ begin
   if (CurPageID = wpSelectTasks) and not WizardSilent() then PresetSignInTask();
   if (CurPageID = wpFinished) and (EqualizerApoNote <> '') then
     WizardForm.FinishedLabel.Caption := WizardForm.FinishedLabel.Caption + #13#10#13#10 + EqualizerApoNote;
+  if (CurPageID = wpFinished) and LegacyCopyKept then
+    WizardForm.FinishedLabel.Caption := WizardForm.FinishedLabel.Caption + #13#10#13#10
+      + 'An older copy of OmniControl was left in place. Remove it from Apps & features when you like.';
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
