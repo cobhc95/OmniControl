@@ -57,9 +57,6 @@ public sealed class AutomationPresets : IPresetTriggers, IDisposable
 
     private void OnRulesChanged() => Changed?.Invoke();
 
-    /// Kept in the master list: every preset with triggers, a parked one (so an Undo finds it) and one waiting to be put back.
-    public IEnumerable<string> Presets => PresetRules.Concat(_parked).Select(r => PresetOf(r)!).Concat(_before.Values).Distinct().ToList();
-
     private IEnumerable<AutomationRule> PresetRules => _rules.Settings.Rules.Where(r => PresetOf(r) is not null);
 
     private AutomationRule? RuleOf(string preset) => PresetRules.FirstOrDefault(r => PresetOf(r) == preset);

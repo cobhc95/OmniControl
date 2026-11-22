@@ -60,7 +60,6 @@ public sealed class FeatureScope
         public HotkeyAction? OwnerOf(string gesture, string exceptId) => inner.OwnerOf(gesture, exceptId);
         public event Action? BindingsSaved { add => inner.BindingsSaved += value; remove => inner.BindingsSaved -= value; }
         public event Action<IReadOnlyDictionary<string, string>>? Moved { add => inner.Moved += value; remove => inner.Moved -= value; }
-        public IReadOnlyList<string> SavedWithShortcut(string prefix) => inner.SavedWithShortcut(prefix);
         public string? ProblemWith(string gesture, string id) => inner.ProblemWith(gesture, id);
         public void Move(IReadOnlyDictionary<string, string> moved) => inner.Move(moved);
 

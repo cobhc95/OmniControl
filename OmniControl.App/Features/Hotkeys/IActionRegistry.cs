@@ -15,9 +15,6 @@ public interface IActionRegistry : IActionCatalogue
     /// Takes the action (or a picker button) out of the master list; its saved shortcut stays in hotkeys.json (a deleted preset that is put back gets it again).
     void Unregister(string id);
 
-    /// The ids starting with <paramref name="prefix"/> that hotkeys.json keeps a shortcut for (registered or not).
-    IReadOnlyList<string> SavedWithShortcut(string prefix);
-
     /// Why <paramref name="gesture"/> cannot be the shortcut of the action <paramref name="id"/> (unreadable, no Ctrl, Alt or Win, or another action has it); null when it can.
     string? ProblemWith(string gesture, string id);
 

@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Presets: every preset now has its own "Apply preset" action in Actions and Hotkeys, the pickers and rules, whether or not it has a shortcut; it appears when the preset is made, follows a rename and goes when the preset is deleted. Saved shortcuts and rules keep working.
+
 - Fixed: a PC with a network adapter that has IPv4 switched off (for example Hyper-V's Default Switch) couldn't be found by other PCs on the local network; that adapter is now skipped instead of stopping the whole network check.
 
 - Other PCs: discovery no longer stops silently. A Hyper-V or WSL adapter set to Public no longer marks a Private network as Public; beacons go out even when an adapter gives no mask; the beacons' socket keeps listening after Windows' "port unreachable" and the ports are taken again by themselves after another program held them or the socket died. "Can't reach it on this network?" and "Not showing?" now also say when this PC has no network, Windows gives no network type, Windows Firewall blocks OmniControl (TCP and UDP both checked) or couldn't be checked, another program holds OmniControl's ports, a PC nearby runs a different OmniControl version, or this PC lost a pairing key; the pairing list shows the firewall row too.
