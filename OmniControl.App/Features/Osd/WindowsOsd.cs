@@ -68,12 +68,54 @@ public sealed class WindowsOsd : IDisposable
             PutBackEarlierRun();
             _openedAt.Clear();
             _onScreen = WindowsOsdWindows.Find().Where(WindowsOsdWindows.IsOnScreen).ToHashSet();
+            LookAhead();
         }
+    }
+
+    /// Explorer restarted (any thread): its pop-up host is new, so it is looked for again.
+    public void ExplorerRestarted() => Dispatcher.UIThread.Post(() => Guard.Run("Hide Windows' OSD: Explorer restarted", () =>
+    {
+        if (_flyout != IntPtr.Zero && !WindowsOsdWindows.IsSameCandidate(_flyout, _flyoutProcess)) Forget();
+        LookAhead();
+    }));
+
+    // Explorer makes the pop-up's host lazily, so without this the first key press would show it once before it could be learned.
+    // One enumeration off the UI thread; if exactly one hidden host has the pop-up's shape it is taken, else the guard catches its creation.
+    private void LookAhead()
+    {
+        if (!_hiding || _stopped || _flyout != IntPtr.Zero) return;
+        Task.Run(() => Guard.Run("Hide Windows' OSD: look ahead", () =>
+        {
+            var shell = WindowsOsdWindows.ShellProcess();
+            if (shell == 0) return; // Explorer not started yet: its TaskbarCreated brings this back
+            var hosts = WindowsOsdWindows.Find()
+                .Where(w => WindowsOsdWindows.ProcessOf(w) == shell && !WindowsOsdWindows.IsOnScreen(w) && WindowsOsdWindows.HasFlyoutShape(w)).ToList();
+            var place = hosts.Count == 1 ? WindowsOsdWindows.PlaceOf(hosts[0]) : null;
+            Dispatcher.UIThread.Post(() => Guard.Run("Hide Windows' OSD: look ahead", () =>
+            {
+                if (place is { } p) Adopt(hosts[0], p, "at start");
+                else if (_hiding && !_stopped && _flyout == IntPtr.Zero)
+                    _guard.LookOut(shell, (window, at) => Dispatcher.UIThread.Post(() => Guard.Run("Hide Windows' OSD: created", () => Adopt(window, at, "on creation"))));
+            }));
+        }));
+    }
+
+    /// Takes a host found ahead of any key press for the pop-up (the look-out has already parked one found on creation).
+    private void Adopt(IntPtr window, WindowPlace place, string how)
+    {
+        if (!_hiding || _stopped || _flyout != IntPtr.Zero)
+        {
+            if (how != "at start" && _flyout != window) PutBack(window, place); // parked by the look-out after hiding stopped
+            return;
+        }
+        Log($"found the pop-up's host {how}");
+        if (Learn(window)) Park(window, $"found {how}", place);
     }
 
     /// A change Windows may show its pop-up for happened just now (volume, brightness, microphone or media, made outside OmniControl). Any thread.
     public void Trigger()
     {
+        if (!Volatile.Read(ref _hiding)) return;
         Interlocked.Exchange(ref _lastChange, Environment.TickCount64);
         Dispatcher.UIThread.Post(StartLooking);
     }
@@ -180,9 +222,9 @@ public sealed class WindowsOsd : IDisposable
         return true;
     }
 
-    private void Park(IntPtr window, string why)
+    private void Park(IntPtr window, string why, WindowPlace? from = null)
     {
-        if (WindowsOsdWindows.PlaceOf(window) is not { } place) return;
+        if ((from ?? WindowsOsdWindows.PlaceOf(window)) is not { } place) return;
         _parkedFrom = place;
         AppDataStore.Save(DataStores.WindowsOsdHidden, new WindowsOsdRecord
         {
@@ -200,17 +242,21 @@ public sealed class WindowsOsd : IDisposable
         _guard.Stop(); // before any put-back, so the hook never parks it again
         if (_parkedFrom is { } place)
         {
-            if (_flyout != IntPtr.Zero && WindowsOsdWindows.IsParked(_flyout))
-            {
-                if (WindowsOsdWindows.IsMinimised(_flyout)) WindowsOsdWindows.Unminimise(_flyout);
-                WindowsOsdWindows.MoveTo(_flyout, place);
-                Log($"put back 0x{_flyout.ToInt64():x} at {place.Left},{place.Top}");
-            }
+            if (_flyout != IntPtr.Zero) PutBack(_flyout, place);
             AppDataStore.Delete(DataStores.WindowsOsdHidden);
         }
         _flyout = IntPtr.Zero;
         _flyoutProcess = 0;
         _parkedFrom = null;
+    }
+
+    /// Un-minimises the window and moves it back to <paramref name="place"/> if it is still off screen.
+    private void PutBack(IntPtr window, WindowPlace place)
+    {
+        if (!WindowsOsdWindows.IsParked(window)) return;
+        if (WindowsOsdWindows.IsMinimised(window)) WindowsOsdWindows.Unminimise(window);
+        WindowsOsdWindows.MoveTo(window, place);
+        Log($"put back 0x{window.ToInt64():x} at {place.Left},{place.Top}");
     }
 
     /// The pop-up an earlier run moved off screen (and could not put back, as it ended first) is put back, only when that handle is still

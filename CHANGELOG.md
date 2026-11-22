@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Windows' own volume pop-up is hidden from the first key press after OmniControl starts.
 - Fixed: Setup's Choose features page no longer ignores the first click on Next (with an error sound).
 
 - Mouse buttons: an action can run "When the button is held" (with "Hold for", 400 ms by default); that button's pressed actions then run on a short press only, and the held action's pill says "· held".
