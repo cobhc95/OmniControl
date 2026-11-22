@@ -43,6 +43,9 @@ public sealed class AppSettings
     /// How long the closed main window stays ready before the shell lets it go (<see cref="UiReleases"/>).
     public UiRelease UiRelease { get; set; } = UiRelease.After1Minute;
 
+    /// On: the main window keeps the open page and the last two visited built, and lets any other page go once it has been left as long as <see cref="UiRelease"/> says (<c>PageViewKeeper</c>); off: every visited page stays built.
+    public bool FreeLeftPages { get; set; }
+
     /// On: Win+A opens the quick panel instead of Windows' quick settings (<see cref="Features.Tray.WinAKey"/>). Off by default.
     public bool WinAForPanel { get; set; }
 
