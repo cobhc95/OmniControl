@@ -21,6 +21,9 @@ public sealed record ResourceSample(double? Cpu, double? Gpu, double? MemoryUsed
     /// Each physical disk's activity and temperature (only when <see cref="SampleParts.Disk"/> was wanted).
     public IReadOnlyList<DiskSample> Disks { get; init; } = Array.Empty<DiskSample>();
 
+    /// Each graphics adapter's load and temperature (only when <see cref="SampleParts.EachGpu"/> was wanted).
+    public IReadOnlyList<GpuSample> Gpus { get; init; } = Array.Empty<GpuSample>();
+
     /// Every adapter (not loopback or tunnel) with its speed now, for the network adapter menu.
     public IReadOnlyList<AdapterSpeed> Adapters { get; init; } = Array.Empty<AdapterSpeed>();
 
@@ -39,6 +42,13 @@ public sealed record DiskSample(int Number, double? Activity, double? Temperatur
     public TemperatureSensor? Sensor { get; init; }
 }
 
+/// One graphics adapter (<see cref="GraphicsAdapter.Id"/>): its load in percent and its temperature in °C (null when not read or not reported).
+public sealed record GpuSample(string Id, double? Load, double? Temperature)
+{
+    /// The sensor the temperature came from (the chosen one, or the adapter's own); null when none was read.
+    public TemperatureSensor? Sensor { get; init; }
+}
+
 /// Where a temperature sensor sits, in the order a menu lists them.
 public enum SensorGroup { Cpu, Gpu, Storage, Board }
 
@@ -48,6 +58,9 @@ public sealed record TemperatureSensor(string Id, string Name, string Hardware, 
 {
     /// The physical disk a drive's sensor belongs to (Windows' disk number); null for any other sensor.
     public int? DiskNumber { get; init; }
+
+    /// The graphics adapter a Windows GPU sensor belongs to (<see cref="GraphicsAdapter.Luid"/>); null for any other sensor.
+    public string? GpuLuid { get; init; }
 
     /// The name without the "CPU " or "GPU " that the group heading already says.
     public string Short => Group is SensorGroup.Cpu or SensorGroup.Gpu && Name.Length > 4 && Name[3] == ' ' && Name[..3] is "CPU" or "GPU" ? Name[4..] : Name;
@@ -59,13 +72,24 @@ public sealed record SensorChoices(string? Hottest, string? Cpu, string? Gpu, IR
 {
     public static readonly SensorChoices Auto = new(null, null, null, new Dictionary<int, string>());
 
+    /// Each graphics adapter's chosen sensor, by <see cref="GraphicsAdapter.Id"/>.
+    public IReadOnlyDictionary<string, string> Gpus { get; init; } = new Dictionary<string, string>();
+
+    /// The graphics adapter the GPU usage and the GPU temperature (with no sensor chosen) are read from (<see cref="GraphicsAdapter.Id"/>);
+    /// null or gone = Auto (the busiest, the ranking).
+    public string? UsageGpu { get; init; }
+    public string? TemperatureGpu { get; init; }
+
     /// Every chosen sensor.
-    public IEnumerable<string> Ids => new[] { Hottest, Cpu, Gpu }.OfType<string>().Concat(Disks.Values);
+    public IEnumerable<string> Ids => new[] { Hottest, Cpu, Gpu }.OfType<string>().Concat(Disks.Values).Concat(Gpus.Values);
 
-    public bool Equals(SensorChoices? other) => other is not null && (Hottest, Cpu, Gpu) == (other.Hottest, other.Cpu, other.Gpu)
-        && Disks.Count == other.Disks.Count && Disks.All(d => other.Disks.TryGetValue(d.Key, out var id) && id == d.Value);
+    public bool Equals(SensorChoices? other) => other is not null && (Hottest, Cpu, Gpu, UsageGpu, TemperatureGpu) == (other.Hottest, other.Cpu, other.Gpu, other.UsageGpu, other.TemperatureGpu)
+        && Same(Disks, other.Disks) && Same(Gpus, other.Gpus);
 
-    public override int GetHashCode() => HashCode.Combine(Hottest, Cpu, Gpu, Disks.Count);
+    private static bool Same<TKey>(IReadOnlyDictionary<TKey, string> a, IReadOnlyDictionary<TKey, string> b) =>
+        a.Count == b.Count && a.All(d => b.TryGetValue(d.Key, out var id) && id == d.Value);
+
+    public override int GetHashCode() => HashCode.Combine(Hottest, Cpu, Gpu, UsageGpu, TemperatureGpu, Disks.Count, Gpus.Count);
 }
 
 /// The parts of a read a caller wants, beyond CPU load and memory (two cheap calls, always read): the network speeds, the adapter list (only
@@ -74,7 +98,9 @@ public sealed record SensorChoices(string? Hottest, string? Cpu, string? Gpu, IR
 public enum SampleParts
 {
     None = 0, Network = 1, Adapters = 2, Gpu = 4, Disk = 8, CpuTemp = 16, GpuTemp = 32, Hottest = 64, SensorList = 128, DiskTemp = 256,
-    Sensors = Gpu | Disk | CpuTemp | GpuTemp | Hottest | DiskTemp,
+    /// Each graphics adapter apart (with <see cref="Gpu"/> its load, with <see cref="GpuTemp"/> its temperature).
+    EachGpu = 512,
+    Sensors = Gpu | Disk | CpuTemp | GpuTemp | Hottest | DiskTemp | EachGpu,
     All = Network | Sensors,
 }
 
@@ -193,8 +219,8 @@ public sealed class ResourceSampler : IDisposable
             .Select(n => new Nic(n.Id, n.Name, n.NetworkInterfaceType, n.Description)).ToList();
     }
 
-    /// A disk was added or removed: the next read that has the drives open lists them again (any thread).
-    public void RescanStorage() => _sensors.RescanStorage();
+    /// A disk or graphics adapter was added or removed: the next read that has them open lists them again (any thread).
+    public void Rescan() => _sensors.Rescan();
 
     /// Gives back the sensor sources' memory and handles (the sensor library's too); the next <see cref="Read"/> that needs one opens it again
     /// (a library that failed to start is not retried).

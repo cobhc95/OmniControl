@@ -4,7 +4,13 @@ namespace OmniControl.Core.Native;
 internal static unsafe class D3dkmtNative
 {
     /// KMTQUERYADAPTERINFOTYPE values used here.
-    public const int AdapterRegistryInfo = 8, AdapterPerfData = 62;
+    public const int AdapterAddress = 6, AdapterRegistryInfo = 8, AdapterType = 15, AdapterPerfData = 62;
+
+    /// D3DKMT_ADAPTERADDRESS: bus, device and function numbers (UINTs).
+    public const int AddressSize = 12;
+
+    /// D3DKMT_ADAPTERTYPE's bits used here: renders, and is a software device (Microsoft Basic Render Driver).
+    public const uint RenderSupported = 1, SoftwareDevice = 4;
 
     /// D3DKMT_ADAPTERREGISTRYINFO: four WCHAR[MAX_PATH] strings, the adapter's name first.
     public const int RegistryInfoSize = 4 * 260 * 2;

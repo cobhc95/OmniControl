@@ -16,9 +16,10 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     private readonly NetworkLimits? _limits; // null while Network traffic control is off: no Network traffic control group
     private readonly AppScopeGate _gate;
     private readonly ProviderChoice? _presets; // null with _gadget while the Resources feature is off (Network traffic control alone)
-    private readonly IReadOnlyList<(ReadingCard Card, Reading Reading)> _cards;
+    private readonly Dictionary<string, LiveCard> _cards = new(); // by the id of the reading each shows; made once, kept while its reading is there
+    private readonly ObservableCollection<object> _liveItems = new();
     private readonly NetworkAdapterMenu _adapter;
-    private readonly SensorMenu _hottest, _cpuTemp, _gpuTemp;
+    private readonly SensorMenu _hottest;
     private readonly GadgetSettingsModel? _gadget;
     private readonly ProcessIcons _icons = new();
     private readonly Action<string> _report;
@@ -112,17 +113,9 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
             _listAdapters = open;
             Need();
         });
-        SensorMenu TemperatureOf(string id)
-        {
-            var reading = Reading.Find(id)!;
-            return new SensorMenu(monitor, settings, reading, "Auto", _ => reading.Words(reading.Read(monitor.Latest)), SensorMenu.TipFor(reading));
-        }
         _hottest = new SensorMenu(monitor, settings, Reading.Find(Reading.HottestId)!, "Hottest (auto)", null);
-        (_cpuTemp, _gpuTemp) = (TemperatureOf(Reading.CpuTempId), TemperatureOf(Reading.GpuTempId));
-        _cards = Reading.All.Where(r => r.Card is not null).OrderBy(r => r.Card!.Value.Order)
-            .Select(r => (Card(r), r))
-            .ToList();
-        Live = new ItemGroup("Resources/Live", "Live readings", _cards.Select(c => (object)c.Card).ToList())
+        ListCards();
+        Live = new ItemGroup("Resources/Live", "Live readings", _liveItems)
         {
             ExpandedByDefault = true, Summary = string.Empty,
             Tip = "Readings come from Windows itself (GPU and disk load as Task Manager shows them, the graphics card's and drives' own temperatures); LibreHardwareMonitor for the CPU package temperature (it needs the PawnIO driver, else the ACPI thermal zone is read) and for what Windows does not give.",
@@ -158,25 +151,53 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
 
         settings.Changed += OnSettingsChanged;
         monitor.Updated += OnUpdated;
+        monitor.ReadingsChanged += OnReadingsChanged;
         ShowApps();
     }
 
-    /// The CPU and GPU cards carry their temperature as its sensor chip.
-    private ReadingCard Card(Reading r) => r.Id == Reading.HottestId
-        ? new ReadingCard(r.Card!.Value.Label, r.Icon, Reading.TemperatureGraphMax, Reading.TemperatureGraphMin) { Sensor = _hottest.Item, FootGraph = true, WarnAt = Reading.WarmCelsius }
-        : new ReadingCard(r.Card!.Value.Label, r.Icon, r.GraphMax)
-        {
-            Adapter = r.Kind == ReadingKind.Speed ? _adapter.Item : null,
-            Sensor = r.Id switch { "cpu" => _cpuTemp.Item, "gpu" => _gpuTemp.Item, _ => null },
-        };
+    /// A Live readings card, the reading it shows, and the temperature reading its sensor chip is for and that chip's menu.
+    private sealed record LiveCard(ReadingCard Card, Reading Reading, Reading? TemperatureReading, SensorMenu? Temperature);
 
-    private IEnumerable<SensorMenu> SensorMenus => new[] { _hottest, _cpuTemp, _gpuTemp };
+    /// The cards in reading order (each graphics adapter's in the GPU card's place while there are several, the disks' last); a card whose
+    /// reading stays keeps its graph.
+    private void ListCards()
+    {
+        var readings = _monitor.Readings.Where(r => r.Card is not null).OrderBy(r => r.Card!.Value.Order).ToList();
+        var eachGpu = readings.Any(r => r.Part.HasFlag(SampleParts.EachGpu));
+        var shown = readings.Where(r => !(eachGpu && r.Id == Reading.GpuId)).ToList();
+        foreach (var gone in _cards.Keys.Where(id => shown.All(r => r.Id != id)).ToList()) _cards.Remove(gone);
+        ListDiff.Apply(_liveItems, shown.Select(r => (object)(_cards.TryGetValue(r.Id, out var known) ? known : _cards[r.Id] = Card(r)).Card).ToList(), c => c);
+    }
+
+    /// The CPU, GPU and disk cards carry their temperature as its sensor chip (<see cref="Reading.TemperatureId"/>).
+    private LiveCard Card(Reading r)
+    {
+        if (r.Id == Reading.HottestId)
+            return new(new ReadingCard(r.Card!.Value.Label, r.Icon, Reading.TemperatureGraphMax, Reading.TemperatureGraphMin)
+                { Sensor = _hottest.Item, FootGraph = true, WarnAt = Reading.WarmCelsius }, r, null, null);
+        var t = r.TemperatureId is { } id ? _monitor.Find(id) : null;
+        var temperature = t is null ? null : new SensorMenu(_monitor, _settings, t, "Auto", _ => t.Words(t.Read(_monitor.Latest)), SensorMenu.TipFor(t));
+        return new(new ReadingCard(r.Card!.Value.Label, r.Icon, r.GraphMax) { Adapter = r.Kind == ReadingKind.Speed ? _adapter.Item : null, Sensor = temperature?.Item },
+            r, t, temperature);
+    }
+
+    private IEnumerable<SensorMenu> SensorMenus => _cards.Values.Select(c => c.Temperature).OfType<SensorMenu>().Prepend(_hottest);
+
+    private void OnReadingsChanged()
+    {
+        ListCards();
+        OnUpdated();
+    }
 
     private static string Every(double seconds) => $"Read every {seconds.ToString("0.#", CultureInfo.CurrentCulture)} s";
 
-    /// A card's value, sparkline and fact (memory used of total, the hottest sensor's title and hardware).
-    private void Show(ReadingCard card, Reading reading, ResourceSample s)
+    /// A card's value, sparkline and fact (memory used of total, the hottest sensor's title and hardware); a disk's sensor chip only while
+    /// its drive reports a temperature or a sensor is chosen for it.
+    private void Show(LiveCard live, ResourceSample s)
     {
+        var (card, reading) = (live.Card, live.Reading);
+        if (reading.Part == SampleParts.Disk && live.TemperatureReading is { } temperature)
+            card.SensorShown = live.Temperature!.Chosen is not null || temperature.Read(s) is not null;
         card.Value = reading.Id == "memory" && s.MemoryUsedGb is { } used && s.MemoryTotalGb is { } total ? $"{used:0.0} / {total:0} GB" : reading.Words(reading.Read(s));
         card.History = _monitor.History(reading.Id);
         card.Tag = reading.Id == "memory" && s.MemoryPercent is { } p ? new TagItem(reading.Words(p)) : null;
@@ -237,7 +258,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     private void OnUpdated()
     {
         if (!_onScreen || !ShowsReadings) return;
-        if (ShowsLive) foreach (var (card, reading) in _cards) Show(card, reading, _monitor.Latest);
+        if (ShowsLive) foreach (var card in _cards.Values) Show(card, _monitor.Latest);
         _adapter.Refresh();
         foreach (var menu in SensorMenus) menu.Refresh();
         if (ShowsTraffic && Apps.IsExpanded) ShowTraffic();
@@ -337,6 +358,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
         if (_limits is not null) _limits.Changed -= OnLimitsChanged;
         _settings.Changed -= OnSettingsChanged;
         _monitor.Updated -= OnUpdated;
+        _monitor.ReadingsChanged -= OnReadingsChanged;
         Tabs.PropertyChanged -= OnTabChanged;
         _monitor.Need(ResourceMonitor.PageNeed, null);
         _monitor.Need(ResourceMonitor.AppsNeed, null);

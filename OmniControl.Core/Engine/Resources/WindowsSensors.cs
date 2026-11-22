@@ -26,23 +26,28 @@ internal sealed unsafe class WindowsSensors : IDisposable
     private bool _gpuTried, _disksTried, _zonesTried;
     private IReadOnlyList<PhysicalDisk>? _diskList;
 
-    /// The graphics card's load in percent as Task Manager gives it (its busiest engine, every program added up), or null when Windows has
-    /// no graphics engine counters (no WDDM driver).
-    public double? GpuLoad()
+    /// Each graphics adapter's load in percent as Task Manager gives it (its busiest engine, every program added up), by its LUID
+    /// (<see cref="GraphicsAdapter.Luid"/>); null when Windows has no graphics engine counters (no WDDM driver).
+    public IReadOnlyDictionary<string, double>? GpuLoads()
     {
         if (Counter(ref _gpu, ref _gpuTried, @"\GPU Engine(*)\Utilization Percentage") is not { } counter) return null;
-        // An instance is one program on one engine: "pid_1234_luid_0x..._0x..._phys_0_eng_3_engtype_3D"; an engine is the part from "luid".
+        // An instance is one program on one engine: "pid_1234_luid_0x00000000_0x0000D1F2_phys_0_eng_3_engtype_3D"; an engine is the part from "luid".
         var engines = new Dictionary<string, double>();
         foreach (var (instance, value) in counter.Read())
         {
-            var at = instance.IndexOf("luid", StringComparison.Ordinal);
-            if (at < 0) continue;
+            var at = instance.IndexOf("luid_0x", StringComparison.Ordinal);
+            if (at < 0 || instance.Length < at + LuidTextLength) continue;
             var engine = instance[at..];
             engines[engine] = engines.GetValueOrDefault(engine) + value;
         }
-        return engines.Count == 0 ? 0 : Math.Clamp(engines.Values.Max(), 0, 100);
+        return engines.GroupBy(e => LuidOf(e.Key)).ToDictionary(g => g.Key, g => Math.Clamp(g.Max(e => e.Value), 0, 100));
     }
 
+    /// "luid_0x" + 8 hex + "_0x" + 8 hex.
+    private const int LuidTextLength = 7 + 8 + 3 + 8;
+
+    /// The LUID of a "luid_0x00000000_0x0000D1F2…" engine as <see cref="GraphicsAdapter.Luid"/> writes it.
+    private static string LuidOf(string engine) => (engine.Substring(7, 8) + engine.Substring(18, 8)).ToLowerInvariant();
     /// Each physical disk's active time in percent (100 minus its idle time), by Windows' disk number; null when Windows has no disk counters.
     public IReadOnlyDictionary<int, double>? DiskActivity()
     {
@@ -92,48 +97,15 @@ internal sealed unsafe class WindowsSensors : IDisposable
     private bool _precise;
 
     /// Each graphics adapter's own temperature (WDDM 2.5 drivers that report one; others are left out), named as Windows names the adapter.
-    private static List<TemperatureSensor> GpuTemperatures()
+    private static List<TemperatureSensor> GpuTemperatures() => GraphicsAdapters.Each<TemperatureSensor>((handle, luid) =>
     {
-        var sensors = new List<TemperatureSensor>();
-        var list = new EnumAdapters2();
-        if (D3DKMTEnumAdapters2(ref list) != 0 || list.Count == 0) return sensors;
-        var adapters = new AdapterInfo[list.Count];
-        fixed (AdapterInfo* first = adapters)
-        {
-            list.Adapters = first;
-            if (D3DKMTEnumAdapters2(ref list) != 0) return sensors;
-        }
         var perf = stackalloc byte[PerfDataSize];
-        var registry = new char[RegistryInfoSize / 2];
-        foreach (var adapter in adapters.AsSpan(0, (int)list.Count))
-        {
-            var handle = adapter.Adapter;
-            try
-            {
-                new Span<byte>(perf, PerfDataSize).Clear(); // PhysicalAdapterIndex 0: the adapter itself
-                if (!Query(handle, AdapterPerfData, perf, PerfDataSize)) continue;
-                var celsius = *(uint*)(perf + TemperatureAt) / 10.0;
-                if (celsius is <= 0 or >= HottestMax) continue;
-                string name;
-                fixed (char* text = registry)
-                    name = Query(handle, AdapterRegistryInfo, text, RegistryInfoSize) ? new string(text).Trim() : string.Empty;
-                if (name.Length == 0) name = "Graphics card";
-                sensors.Add(new TemperatureSensor($"{GpuIds}{adapter.LuidHigh:x8}{adapter.LuidLow:x8}", "GPU Temperature", name, SensorGroup.Gpu, celsius));
-            }
-            finally
-            {
-                D3DKMTCloseAdapter(ref handle);
-            }
-        }
-        return sensors;
-    }
-
-    private static bool Query(uint adapter, int type, void* data, int size)
-    {
-        var query = new QueryAdapterInfo { Adapter = adapter, Type = type, Data = data, DataSize = (uint)size };
-        return D3DKMTQueryAdapterInfo(ref query) == 0;
-    }
-
+        new Span<byte>(perf, PerfDataSize).Clear(); // PhysicalAdapterIndex 0: the adapter itself
+        if (!GraphicsAdapters.Query(handle, AdapterPerfData, perf, PerfDataSize)) return null;
+        var celsius = *(uint*)(perf + TemperatureAt) / 10.0;
+        if (celsius is <= 0 or >= HottestMax) return null;
+        return new TemperatureSensor(GpuIds + luid, "GPU Temperature", GraphicsAdapters.NameOf(handle), SensorGroup.Gpu, celsius) { GpuLuid = luid };
+    });
     /// Each physical disk's own temperature (the hottest of what it reports), named by its model; a drive Windows' driver gives none for is left out.
     private List<TemperatureSensor> DriveTemperatures()
     {

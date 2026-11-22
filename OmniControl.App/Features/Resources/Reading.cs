@@ -5,11 +5,14 @@ namespace OmniControl.App.Features.Resources;
 
 public enum ReadingKind { Percent, Speed, Temperature }
 
-/// THE live list of readings: the built-in ones (<see cref="Reading.All"/>) and each physical disk's (<see cref="Reading.OfDisk"/>), and their latest
-/// values, owned by the poller (UI thread).
+/// THE live list of readings: the built-in ones (<see cref="Reading.All"/>), each graphics adapter's while there are several (<see cref="Reading.OfGpu"/>)
+/// and each physical disk's (<see cref="Reading.OfDisk"/>), and their latest values, owned by the poller (UI thread).
 public interface IReadingList
 {
     IReadOnlyList<Reading> Readings { get; }
+
+    /// The graphics adapters as last listed (the GPU choice's menu).
+    IReadOnlyList<GraphicsAdapter> Gpus { get; }
 
     Reading? Find(string id);
 
@@ -33,7 +36,7 @@ public sealed record Reading(string Id, string Name, string Chip, string Icon, R
     public const double WarmCelsius = 70;
 
     /// The ids of the built-in temperature readings, and the fixed range of the Hottest sensor's small graph, in Celsius.
-    public const string HottestId = "hottest", CpuTempId = "cputemp", GpuTempId = "gputemp";
+    public const string HottestId = "hottest", CpuTempId = "cputemp", GpuId = "gpu", GpuTempId = "gputemp";
     public const double TemperatureGraphMin = 25, TemperatureGraphMax = 100;
 
     private const double Kilo = 1024;
@@ -43,6 +46,9 @@ public sealed record Reading(string Id, string Name, string Chip, string Icon, R
 
     /// The icons suggested first for its label, best first (the label editor puts the group holding the first one at the top).
     public IReadOnlyList<string> SuggestedIcons { get; init; } = Array.Empty<string>();
+
+    /// The temperature reading a load's card carries as its sensor chip (the CPU's, the GPU's, each graphics adapter's and each disk's); null: none.
+    public string? TemperatureId { get; init; }
 
     /// The temperature sensor the value came from, for every temperature reading (its sensor can be chosen, <see cref="ResourcesSetup.SensorOf"/>); null: not a temperature.
     public Func<ResourceSample, TemperatureSensor?>? Sensor { get; init; }
@@ -59,9 +65,9 @@ public sealed record Reading(string Id, string Name, string Chip, string Icon, R
         new("download", "Download", "↓ Download", "download", ReadingKind.Speed, SampleParts.Network, s => s.Download, "↓:", Gadget.GadgetLabel.Token("download", Gadget.GadgetLabel.DownloadColour), GadgetDefault: true,
             Card: ("Download", 4), Source: s => s.Adapter) { SuggestedIcons = new[] { "download", "arrow-down", "cloud-download" } },
         new("cpu", "CPU usage", "CPU", "cpu", ReadingKind.Percent, SampleParts.None, s => s.Cpu, "C:", "{cpu}", GadgetDefault: true, WarnDefault: 90, Card: ("CPU", 0))
-            { SuggestedIcons = new[] { "cpu", "cpu-2" } },
-        new("gpu", "GPU usage", "GPU", "device-desktop-analytics", ReadingKind.Percent, SampleParts.Gpu, s => s.Gpu, "G:", Gpu, GadgetDefault: true,
-            Card: ("GPU", 1)) { SuggestedIcons = new[] { "device-desktop-analytics", "cpu-2" } },
+            { SuggestedIcons = new[] { "cpu", "cpu-2" }, TemperatureId = CpuTempId },
+        new(GpuId, "GPU usage", "GPU", "device-desktop-analytics", ReadingKind.Percent, SampleParts.Gpu, s => s.Gpu, "G:", Gpu, GadgetDefault: true,
+            Card: ("GPU", 1)) { SuggestedIcons = new[] { "device-desktop-analytics", "cpu-2" }, TemperatureId = GpuTempId },
         new("memory", "Memory", "Memory", "memory-stick", ReadingKind.Percent, SampleParts.None, s => s.MemoryPercent, "M:", "{memory-stick}", Card: ("Memory", 2))
             { SuggestedIcons = new[] { "memory-stick", "brain", "database" } },
         new(CpuTempId, "CPU temperature", "CPU °C", "temperature", ReadingKind.Temperature, SampleParts.CpuTemp, s => s.CpuTemp, "T:", "{cpu}" + Gadget.GadgetLabel.Token("temperature", Gadget.GadgetLabel.WarmColour),
@@ -85,7 +91,7 @@ public sealed record Reading(string Id, string Name, string Chip, string Icon, R
         DiskSample? Of(ResourceSample s) => s.Disks.FirstOrDefault(d => d.Number == disk.Number);
         var name = $"Disk {disk.Number}";
         yield return new($"disk.{disk.Id}", $"{name} activity ({disk.Model})", name, "disc", ReadingKind.Percent, SampleParts.Disk, s => Of(s)?.Activity,
-            $"D{disk.Number}:", "{disc}") { SuggestedIcons = new[] { "disc", "database" } };
+            $"D{disk.Number}:", "{disc}", Card: ($"{name} · {disk.Model}", DiskCardOrder)) { SuggestedIcons = new[] { "disc", "database" }, TemperatureId = TemperatureIdOf(disk) };
         yield return new(TemperatureIdOf(disk), $"{name} temperature ({disk.Model})", name + " °C", "temperature", ReadingKind.Temperature, SampleParts.DiskTemp,
             s => Of(s)?.Temperature, $"T{disk.Number}:", "{disc}" + Gadget.GadgetLabel.Token("temperature", Gadget.GadgetLabel.WarmColour), WarnDefault: WarmCelsius,
             Source: s => Of(s)?.Sensor?.Name) { SuggestedIcons = Thermometers.Append("disc").ToArray(), Sensor = s => Of(s)?.Sensor };
@@ -93,6 +99,29 @@ public sealed record Reading(string Id, string Name, string Chip, string Icon, R
 
     /// The id of a physical disk's temperature reading (it follows the disk, not its number).
     public static string TemperatureIdOf(PhysicalDisk disk) => $"disktemp.{disk.Id}";
+
+    /// A graphics adapter's own readings (only while the PC has more than one, after the built-in ones in the live list): its load and its
+    /// temperature. <paramref name="number"/> counts from 1 in Windows' order; the ids follow the adapter.
+    public static IEnumerable<Reading> OfGpu(GraphicsAdapter gpu, int number)
+    {
+        GpuSample? Of(ResourceSample s) => s.Gpus.FirstOrDefault(g => g.Id == gpu.Id);
+        yield return new(UsageIdOf(gpu), $"{gpu.Name} usage", $"GPU {number}", "device-desktop-analytics", ReadingKind.Percent, SampleParts.Gpu | SampleParts.EachGpu,
+            s => Of(s)?.Load, $"G{number}:", Gpu, Card: ($"GPU · {gpu.Name}", Find(GpuId)!.Card!.Value.Order))
+            { SuggestedIcons = new[] { "device-desktop-analytics", "cpu-2" }, TemperatureId = TemperatureIdOf(gpu) };
+        yield return new(TemperatureIdOf(gpu), $"{gpu.Name} temperature", $"GPU {number} °C", "temperature", ReadingKind.Temperature, SampleParts.GpuTemp | SampleParts.EachGpu,
+            s => Of(s)?.Temperature, $"T{number}:", Gpu + Gadget.GadgetLabel.Token("temperature", Gadget.GadgetLabel.HotColour), WarnDefault: 85,
+            Source: s => Of(s)?.Sensor?.Name) { SuggestedIcons = Thermometers.Append("device-desktop-analytics").ToArray(), Sensor = s => Of(s)?.Sensor };
+    }
+
+    /// The disks' cards come after every built-in card.
+    private const int DiskCardOrder = 6;
+
+    public static string UsageIdOf(GraphicsAdapter gpu) => $"gpu.{gpu.Id}";
+
+    public static string TemperatureIdOf(GraphicsAdapter gpu) => $"gputemp.{gpu.Id}";
+
+    /// The GPU readings whose adapter can be chosen (<see cref="ResourcesSetup.GpuOf"/>) while the PC has more than one.
+    public static bool HasGpuChoice(string readingId) => readingId is GpuId or GpuTempId;
 
     /// The parts of a read these readings need together.
     public static SampleParts PartsOf(IEnumerable<Reading> readings) => readings.Aggregate(SampleParts.None, (all, r) => all | r.Part);

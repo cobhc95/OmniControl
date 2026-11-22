@@ -18,11 +18,13 @@ internal sealed class SensorReader : IDisposable
     private LibreSensors? _libre; // made at the first reading Windows cannot give: only then is the library's assembly loaded
     private TimeSpan? _sensedAt, _drivesAt, _tempsAt; // null: read at the next sample
     private (SampleParts Wanted, SensorChoices Choices) _last;
-    private double? _gpuLoad;
+    private IReadOnlyDictionary<string, double>? _gpuLoads; // by adapter LUID; null: no GPU counters, or not wanted
+    private IReadOnlyList<GraphicsAdapter>? _gpuList; // listed at the first read that needs the adapters apart
     private IReadOnlyDictionary<int, double>? _activity;
     private List<TemperatureSensor> _windowsTemps = new(), _driveTemps = new();
     private LibreReading _libreRead = LibreReading.None;
     private bool _libreDrivesNoHelp; // the library had no temperature either for a drive Windows gives none for: not opened for that again until a disk change
+    private bool _libreGpusNoHelp; // the library had no temperature either for an adapter Windows gives none for: not opened for that again until a hardware change
     private bool _libreCpuNoHelp; // the library read no CPU sensor (no PawnIO driver): the thermal zone is the CPU temperature until the sources close
     private readonly Dictionary<string, SensorGroup> _chosen = new(); // each chosen sensor of the library and the group it was last found in
     private volatile bool _rescan;
@@ -39,7 +41,7 @@ internal sealed class SensorReader : IDisposable
             _rescan = false;
             _windows.RescanDisks();
             _libre?.RescanStorage();
-            (_libreDrivesNoHelp, _drivesAt) = (false, null);
+            (_libreDrivesNoHelp, _libreGpusNoHelp, _gpuList, _drivesAt) = (false, false, null, null);
         }
         if ((wanted & SensorBits, choices) != _last)
         {
@@ -69,13 +71,20 @@ internal sealed class SensorReader : IDisposable
         foreach (var id in _chosen.Keys.Except(choices.Ids).ToList()) _chosen.Remove(id);
         var hot = Any(SampleParts.Hottest) ? Find(SampleParts.Hottest, choices.Hottest) ?? all.MaxBy(s => s.Value) : null;
         var cpu = Any(SampleParts.CpuTemp) ? Find(SampleParts.CpuTemp, choices.Cpu) ?? TemperaturePick.Cpu(all.Where(IsCpuCandidate)) : null;
+        TemperatureSensor? GpuTemp(GraphicsAdapter adapter) =>
+            (choices.Gpus.TryGetValue(adapter.Id, out var id) ? Find(SampleParts.GpuTemp, id) : null) ?? OwnTemperature(adapter);
+        GpuSample GpuNow(GraphicsAdapter adapter) => Any(SampleParts.GpuTemp) && GpuTemp(adapter) is { } t
+            ? new GpuSample(adapter.Id, Any(SampleParts.Gpu) ? LoadOf(adapter) : null, t.Value) { Sensor = t }
+            : new GpuSample(adapter.Id, Any(SampleParts.Gpu) ? LoadOf(adapter) : null, null);
+        var usageGpu = Any(SampleParts.Gpu) ? GpuOf(choices.UsageGpu) : null;
         var gpu = Any(SampleParts.GpuTemp)
-            ? Find(SampleParts.GpuTemp, choices.Gpu) ?? TemperaturePick.Gpu(_windowsTemps.Where(t => t.Group == SensorGroup.Gpu))
-                ?? TemperaturePick.Gpu(_libreRead.Temperatures.Where(t => t.Group == SensorGroup.Gpu))
+            ? Find(SampleParts.GpuTemp, choices.Gpu) ?? (GpuOf(choices.TemperatureGpu) is { } chosenGpu ? OwnTemperature(chosenGpu)
+                : TemperaturePick.Gpu(_windowsTemps.Where(t => t.Group == SensorGroup.Gpu)) ?? TemperaturePick.Gpu(_libreRead.Temperatures.Where(t => t.Group == SensorGroup.Gpu)))
             : null;
         return sample with
         {
-            Gpu = Any(SampleParts.Gpu) ? _gpuLoad ?? _libreRead.Gpu : null,
+            Gpu = Any(SampleParts.Gpu) ? usageGpu is not null ? LoadOf(usageGpu) : _gpuLoads is { } loads ? loads.Values.DefaultIfEmpty(0).Max() : _libreRead.Gpu : null,
+            Gpus = Any(SampleParts.EachGpu) ? GpuList().Select(GpuNow).ToList() : Array.Empty<GpuSample>(),
             Disk = Any(SampleParts.Disk) ? _activity is { } activity ? (activity.Count > 0 ? activity.Values.Max() : null) : _libreRead.Disk : null,
             Disks = Any(SampleParts.Disk | SampleParts.DiskTemp)
                 ? Disks(Any(SampleParts.Disk), Any(SampleParts.DiskTemp), choices.Disks, id => Find(SampleParts.DiskTemp, id))
@@ -90,6 +99,33 @@ internal sealed class SensorReader : IDisposable
             TemperatureSensors = Any(SampleParts.SensorList) ? all.OrderBy(t => t.Group).ToList() : Array.Empty<TemperatureSensor>(),
         };
     }
+
+    private IReadOnlyList<GraphicsAdapter> GpuList() => _gpuList ??= GraphicsAdapters.List();
+
+    /// The chosen adapter while it is there; null on Auto or when it is gone.
+    private GraphicsAdapter? GpuOf(string? id) => id is null ? null : GpuList().FirstOrDefault(a => a.Id == id);
+
+    private double? LoadOf(GraphicsAdapter adapter) => _gpuLoads is { } loads ? loads.GetValueOrDefault(adapter.Luid) : null;
+
+    /// The adapter's own temperature: Windows' (the driver's), else the best of the library's sensors on hardware of its name.
+    private TemperatureSensor? OwnTemperature(GraphicsAdapter adapter) => _windowsTemps.FirstOrDefault(t => t.GpuLuid == adapter.Luid)
+        ?? TemperaturePick.Gpu(_libreRead.Temperatures.Where(t => t.Group == SensorGroup.Gpu && SameHardware(t.Hardware, adapter.Name)));
+
+    /// The library and Windows may name one card slightly apart ("AMD Radeon(TM) Graphics", "AMD Radeon Graphics").
+    private static bool SameHardware(string a, string b) => Plain(a) == Plain(b);
+
+    private static string Plain(string name) => new(name.Replace("(TM)", string.Empty, StringComparison.OrdinalIgnoreCase)
+        .Replace("(R)", string.Empty, StringComparison.OrdinalIgnoreCase).Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
+
+    /// The adapters whose temperature is wanted now: all while each is read apart, else the GPU temperature's chosen adapter.
+    private IEnumerable<GraphicsAdapter> GpusWanted(SampleParts wanted, SensorChoices choices) =>
+        (wanted & SampleParts.GpuTemp) == 0 ? Enumerable.Empty<GraphicsAdapter>()
+        : (wanted & SampleParts.EachGpu) != 0 ? GpuList()
+        : GpuOf(choices.TemperatureGpu) is { } one ? new[] { one } : Enumerable.Empty<GraphicsAdapter>();
+
+    /// The wanted adapters Windows gives no temperature for.
+    private IEnumerable<GraphicsAdapter> GpusMissing(SampleParts wanted, SensorChoices choices) =>
+        GpusWanted(wanted, choices).Where(a => _windowsTemps.All(t => t.GpuLuid != a.Luid));
 
     /// The CPU's own sensors (the library's) and the ACPI thermal zones, its fallback.
     private static bool IsCpuCandidate(TemperatureSensor s) => s.Group == SensorGroup.Cpu || s.Id.StartsWith(WindowsSensors.ZoneIds, StringComparison.Ordinal);
@@ -111,6 +147,8 @@ internal sealed class SensorReader : IDisposable
         if ((wanted & SampleParts.GpuTemp) != 0 && choices.Gpu is { } gpu) yield return gpu;
         if ((wanted & SampleParts.DiskTemp) != 0)
             foreach (var disk in choices.Disks.Values) yield return disk;
+        if ((wanted & (SampleParts.GpuTemp | SampleParts.EachGpu)) == (SampleParts.GpuTemp | SampleParts.EachGpu))
+            foreach (var sensor in choices.Gpus.Values) yield return sensor;
     }
 
     private void Sense(SampleParts wanted, SensorChoices choices, bool tempsDue, bool drivesDue)
@@ -119,7 +157,7 @@ internal sealed class SensorReader : IDisposable
         var hottest = Any(SampleParts.Hottest | SampleParts.SensorList);
         var chosen = Chosen(wanted, choices).ToList();
         bool Chose(string ids) => chosen.Any(id => id.StartsWith(ids, StringComparison.Ordinal));
-        _gpuLoad = Any(SampleParts.Gpu) ? _windows.GpuLoad() : null;
+        _gpuLoads = Any(SampleParts.Gpu) ? _windows.GpuLoads() : null;
         _activity = Any(SampleParts.Disk) ? _windows.DiskActivity() : null;
         if (tempsDue)
             _windowsTemps = _windows.Temperatures(zones: Any(SampleParts.CpuTemp) || hottest || Chose(WindowsSensors.ZoneIds),
@@ -145,11 +183,15 @@ internal sealed class SensorReader : IDisposable
             _libreRead = LibreReading.None;
             return;
         }
-        _libreRead = libre.Read(readStorage: drivesDue || fresh, readTemps: tempsDue || fresh, gpuLoad: Any(SampleParts.Gpu) && _gpuLoad is null);
+        _libreRead = libre.Read(readStorage: drivesDue || fresh, readTemps: tempsDue || fresh, gpuLoad: Any(SampleParts.Gpu) && _gpuLoads is null);
         if (groups.Cpu && (tempsDue || fresh) && !_libreRead.Temperatures.Any(t => t.Group == SensorGroup.Cpu)) _libreCpuNoHelp = true;
         var missing = _windows.DisksWithoutTemperature;
         if (groups.Storage && (drivesDue || fresh) && missing.Count > 0 && !_libreRead.Disks.Any(d => missing.Contains(d.Number) && d.Temperature is not null))
             _libreDrivesNoHelp = true;
+        var gpusMissing = GpusMissing(wanted, choices).ToList();
+        if (groups.Gpu && (tempsDue || fresh) && gpusMissing.Count > 0
+            && !_libreRead.Temperatures.Any(t => t.Group == SensorGroup.Gpu && gpusMissing.Any(a => SameHardware(t.Hardware, a.Name))))
+            _libreGpusNoHelp = true;
     }
 
     /// The library's groups a read needs, from what Windows gave in this read.
@@ -163,7 +205,8 @@ internal sealed class SensorReader : IDisposable
         var drivesMissing = !_libreDrivesNoHelp && _windows.DisksWithoutTemperature.Count > 0;
         var groups = new LibreGroups(
             Cpu: Any(SampleParts.CpuTemp) && Auto(choices.Cpu) && !_libreCpuNoHelp,
-            Gpu: (Any(SampleParts.Gpu) && _gpuLoad is null) || (Any(SampleParts.GpuTemp) && Auto(choices.Gpu) && !gpuTemps),
+            Gpu: (Any(SampleParts.Gpu) && _gpuLoads is null) || (Any(SampleParts.GpuTemp) && Auto(choices.Gpu) && !gpuTemps)
+                || (Any(SampleParts.GpuTemp) && !_libreGpusNoHelp && GpusMissing(wanted, choices).Any()),
             Storage: (Any(SampleParts.Disk) && _activity is null) || (Any(SampleParts.DiskTemp) && drivesMissing),
             Board: false);
         if (Any(SampleParts.SensorList)) groups |= new LibreGroups(true, !gpuTemps, drivesMissing, true);
@@ -189,15 +232,15 @@ internal sealed class SensorReader : IDisposable
         }).ToList();
     }
 
-    /// A disk was added or removed (any thread): the next reads list the drives again.
-    public void RescanStorage() => _rescan = true;
+    /// A disk or graphics adapter was added or removed (any thread): the next reads list them again.
+    public void Rescan() => _rescan = true;
 
     /// Gives back what the sources hold (the library's memory and driver handles, the counters); the next read that needs one opens it again.
     public void Close()
     {
         _windows.Dispose();
         _libre?.Close();
-        (_windowsTemps, _driveTemps, _libreRead, _gpuLoad, _activity, _libreCpuNoHelp) = (new(), new(), LibreReading.None, null, null, false);
+        (_windowsTemps, _driveTemps, _libreRead, _gpuLoads, _activity, _libreCpuNoHelp, _libreGpusNoHelp, _gpuList) = (new(), new(), LibreReading.None, null, null, false, false, null);
         (_sensedAt, _drivesAt, _tempsAt) = (null, null, null);
     }
 

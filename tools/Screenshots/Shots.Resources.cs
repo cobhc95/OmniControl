@@ -1,4 +1,4 @@
-﻿using Avalonia.Layout;
+using Avalonia.Layout;
 using OmniControl.App.Features.Hotkeys.Picker;
 using OmniControl.App.Features.Icons;
 using OmniControl.App.Features.Resources;
@@ -65,7 +65,7 @@ internal static partial class Shots
         var settings = ResourcesSettings.Load();
         settings.Setup.Gadget.Complete();
         settings.Setup.Gadget.Shown = false;
-        var monitor = new ResourceMonitor(rig.States, () => TimeSpan.FromSeconds(2), () => null, () => new Dictionary<string, string>(),
+        var monitor = new ResourceMonitor(rig.States, () => TimeSpan.FromSeconds(2), () => null, () => new Dictionary<string, string>(), () => new Dictionary<string, string>(),
             () => throw new IOException("Not read in the screenshot tool."), title);
         var weather = new WeatherService(settings, rig.Actions, rig.States, new MemoryCredentials(), title);
         var layouts = new GadgetLayouts(settings);

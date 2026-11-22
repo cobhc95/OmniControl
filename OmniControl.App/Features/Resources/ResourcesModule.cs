@@ -50,7 +50,7 @@ public sealed class ResourcesModule : IFeatureModule, IResourcesWindows
         _settings.Setup.Gadget.Complete();
         var readings = context.Features.IsOn(FeatureList.Resources);
         var monitor = _monitor = new ResourceMonitor(readings ? context.States : null, () => TimeSpan.FromSeconds(_settings.Setup.ReadEverySeconds), () => _settings.Setup.Adapter,
-            () => _settings.Setup.Sensors, () => _limits?.StartTraffic() ?? throw new IOException("Network traffic control is off."), Title);
+            () => _settings.Setup.Sensors, () => _settings.Setup.Gpus, () => _limits?.StartTraffic() ?? throw new IOException("Network traffic control is off."), Title);
         _limits = context.Features.IsOn(FeatureList.Traffic) ? StartLimits(context, monitor) : null;
         (_weather, _layouts, _gadget, _presets) = (null, null, null, null);
         if (readings) StartReadings(context, monitor);
@@ -80,11 +80,11 @@ public sealed class ResourcesModule : IFeatureModule, IResourcesWindows
         context.Shutdown.Add(ShutdownStage.Resources, "gadget weather", _weather.Dispose);
     }
 
-    /// The Resources feature itself: the disks' watch, the taskbar gadget with its weather and layouts, and the presets.
+    /// The Resources feature itself: the graphics adapters' and disks' watch, the taskbar gadget with its weather and layouts, and the presets.
     private void StartReadings(FeatureContext context, ResourceMonitor monitor)
     {
-        context.Hardware.Register(new HardwareWatch("resources.disks", "Physical disks (gadget readings)", HardwareSignal.Device | HardwareSignal.Resume,
-            monitor.RefreshDisks, LooksStale: () => !monitor.DisksKnown, Describe: monitor.DisksText));
+        context.Hardware.Register(new HardwareWatch("resources.disks", "Graphics adapters and physical disks (readings)", HardwareSignal.Device | HardwareSignal.Resume,
+            monitor.RefreshHardware, LooksStale: () => !monitor.HardwareKnown, Describe: monitor.HardwareText));
         var weather = _weather = new WeatherService(_settings, context.Actions, context.States, new WindowsCredentialStore(), Title);
         var layouts = _layouts = new GadgetLayouts(_settings);
         _gadget = new TaskbarGadget(monitor, weather, _settings, layouts, context.Runner, context.States, context.Report, this);

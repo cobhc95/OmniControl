@@ -55,6 +55,21 @@ public sealed class ResourcesSetup
         Sensors = next;
     }
 
+    /// The graphics adapter the GPU usage and GPU temperature readings follow (<see cref="Reading.HasGpuChoice"/>), by reading id: a
+    /// <c>GraphicsAdapter.Id</c>; not listed = Auto, an adapter that is gone reads as Auto. Replaced whole on each change, as <see cref="Sensors"/>.
+    public SortedDictionary<string, string> Gpus { get; set; } = new();
+
+    /// The adapter a GPU reading follows; null = Auto.
+    public string? GpuOf(string readingId) => Gpus.GetValueOrDefault(readingId);
+
+    public void SetGpu(string readingId, string? id)
+    {
+        var next = new SortedDictionary<string, string>(Gpus);
+        if (id is null) next.Remove(readingId);
+        else next[readingId] = id;
+        Gpus = next;
+    }
+
     public GadgetSettings Gadget { get; set; } = GadgetLayouts.NewLook();
     public List<AppNetRule> Apps { get; set; } = new();
 

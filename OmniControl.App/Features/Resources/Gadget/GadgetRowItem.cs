@@ -68,6 +68,7 @@ public sealed partial class GadgetRowItem : ObservableObject
         (IconColours, AllIconColours) = (Dots(() => SelectedIcon), Dots(() => null));
         var kind = _reading?.Kind == ReadingKind.Temperature ? "Apply to all temperatures" : "Apply to all of this kind";
         Sensor = _reading?.Sensor is null ? null : new SensorMenu(readings, settings, _reading, "Auto", m => m.Summary, SensorMenu.TipFor(_reading)).Item;
+        _gpu = _reading is not null && Reading.HasGpuChoice(_reading.Id) ? new GpuMenu(readings, settings, _reading) : null;
         QuickChips = _reading is null
             ? new[] { Quick("No label", LabelStyle.None) }
             : new[] { Quick("Text only", LabelStyle.Text), Quick("Icon only", LabelStyle.Icons), Quick("Icon + text", LabelStyle.Both), Quick("No label", LabelStyle.None),
@@ -88,6 +89,11 @@ public sealed partial class GadgetRowItem : ObservableObject
     /// The temperature sensor chip under the name (THE reading's one choice, <see cref="SensorMenu"/>); null: not a temperature.
     public MenuChoiceItem? Sensor { get; }
     public bool HasSensor => Sensor is not null;
+
+    /// The graphics card chip under the name (GPU usage and temperature, <see cref="GpuMenu"/>), shown while the PC has more than one.
+    public MenuChoiceItem? Gpu => _gpu?.Item;
+    public bool HasGpu => _gpu is not null && _readings.Gpus.Count > 1;
+    private readonly GpuMenu? _gpu;
     public int WarnMax => _reading?.Max ?? 0;
     public bool HasWarn => _reading is not null;
     public IReadOnlyList<SwatchItem> Colours { get; }
@@ -214,6 +220,8 @@ public sealed partial class GadgetRowItem : ObservableObject
         ShowWarnColour();
         ShowTextColour();
         Opacity = Entry.Shown ? 1 : HiddenOpacity;
+        _gpu?.Refresh();
+        OnPropertyChanged(nameof(HasGpu));
         _loading = false;
         ShowLabelState();
     }

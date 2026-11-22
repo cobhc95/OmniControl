@@ -71,11 +71,13 @@
                                         </Grid.ColumnDefinitions>
                                         <PathIcon Classes="grip" Data="{StaticResource GripIcon}" VerticalAlignment="Center" ToolTip.Tip="Drag to change the order" />
                                         <CheckBox Grid.Column="1" Tag="scope" IsChecked="{Binding Shown}" VerticalAlignment="Center" ToolTip.Tip="Show on the taskbar" />
-                                        <!-- A temperature's sensor chip under its name (THE sensor chip and menu of the Readings tab) -->
+                                        <!-- Under its name: a temperature's sensor chip (THE sensor chip and menu of the Readings tab), the GPU readings' graphics card chip -->
                                         <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
                                             <c:ChipMenu ChipTag="scope" ChipAlignment="Left" Text="{Binding Sensor.Text}" ChipToolTip="{Binding Sensor.Tip}" IsVisible="{Binding HasSensor}"
                                                         pages:MenuChoiceLink.Title="{x:Static p:SensorMenu.Title}" pages:MenuChoiceLink.Item="{Binding Sensor}" />
+                                            <c:ChipMenu ChipTag="scope" ChipAlignment="Left" Text="{Binding Gpu.Text}" ChipToolTip="{Binding Gpu.Tip}" IsVisible="{Binding HasGpu}"
+                                                        pages:MenuChoiceLink.Title="{x:Static p:GpuMenu.Title}" pages:MenuChoiceLink.Item="{Binding Gpu}" />
                                         </StackPanel>
                                         <Button Grid.Column="3" Classes="scope" Tag="scope" MinWidth="{StaticResource GadgetLabelWidth}" VerticalAlignment="Center"
                                                 MaxWidth="{StaticResource GadgetLabelMaxWidth}" ToolTip.Tip="Edit the label: words and icons, and the gap after it">

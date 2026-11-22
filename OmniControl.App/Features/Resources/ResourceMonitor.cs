@@ -4,7 +4,7 @@ using OmniControl.Core.Engine.Resources;
 namespace OmniControl.App.Features.Resources;
 
 /// THE poller of the readings: one worker timer at the shortest interval needed, reading only the parts asked for, and stopped when nobody needs it.
-/// It owns the live list of readings, the physical disks' included (<see cref="RefreshDisks"/>, through the hardware watches).
+/// It owns the live list of readings, the graphics adapters' and physical disks' included (<see cref="RefreshHardware"/>, through the hardware watches).
 public sealed class ResourceMonitor : IReadingList, IDisposable
 {
     public const string PageNeed = "page", GadgetNeed = "gadget", AppsNeed = "apps";
@@ -13,13 +13,14 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
     private readonly IStateRegistry? _states; // null while the Resources feature is off (Network traffic control alone): no reading states
     private readonly Func<TimeSpan> _ruleInterval;
     private readonly Func<string?> _adapterChoice;
-    private readonly Func<IReadOnlyDictionary<string, string>> _sensorChoices;
+    private readonly Func<IReadOnlyDictionary<string, string>> _sensorChoices, _gpuChoices;
     private readonly Func<ITrafficSession> _startTraffic;
     private readonly string _category;
     private readonly Dictionary<string, (TimeSpan Every, SampleParts Parts)> _needs = new();
     private readonly Dictionary<string, string> _seen = new(); // program id -> its path, every program seen with traffic this session
     private readonly Dictionary<string, Queue<double>> _history = new();
     private volatile IReadOnlyList<PhysicalDisk>? _disks; // as last listed (worker); null until the first look
+    private volatile IReadOnlyList<GraphicsAdapter>? _gpus; // the same for the graphics adapters
     private readonly Dictionary<string, (double Low, double High)> _today = new(); // each reading's lowest and highest read since midnight (memory only)
     private DateTime _day = DateTime.Today;
     private readonly object _work = new(); // one read at a time, and none while disposing
@@ -30,18 +31,21 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
     private volatile SampleParts _wanted;
     private bool _disposed, _sensorsWanted;
     private DateTime _lastAppsTake;
-    private IReadOnlyDictionary<string, string> _chosen = new Dictionary<string, string>(); // each temperature reading's sensor at the last read
+    private (IReadOnlyDictionary<string, string> Sensors, IReadOnlyDictionary<string, string> Gpus) _chosen =
+        (new Dictionary<string, string>(), new Dictionary<string, string>()); // each reading's sensor and adapter at the last read
     private int _listing; // sensor menus open
 
     /// <param name="ruleInterval">How often to read while only a rule follows a reading (the page's interval).</param>
     /// <param name="adapterChoice">The network adapter the speeds are read from (the setup's choice), asked at every read.</param>
     /// <param name="sensorChoices">The sensor each temperature reading follows, by reading id (the setup's one map, never changed in place), asked at every read.</param>
+    /// <param name="gpuChoices">The graphics adapter each GPU reading follows, by reading id (the same), asked at every read.</param>
     /// <param name="startTraffic">Starts the per-program traffic session where the network work runs (a worker; throws an <see cref="IOException"/> saying why).</param>
     /// <param name="states">Where the readings are offered as states; null: they are not (only Network traffic control runs).</param>
     public ResourceMonitor(IStateRegistry? states, Func<TimeSpan> ruleInterval, Func<string?> adapterChoice, Func<IReadOnlyDictionary<string, string>> sensorChoices,
-        Func<ITrafficSession> startTraffic, string category)
+        Func<IReadOnlyDictionary<string, string>> gpuChoices, Func<ITrafficSession> startTraffic, string category)
     {
-        (_states, _ruleInterval, _adapterChoice, _sensorChoices, _startTraffic, _category) = (states, ruleInterval, adapterChoice, sensorChoices, startTraffic, category);
+        (_states, _ruleInterval, _adapterChoice, _sensorChoices, _gpuChoices, _startTraffic, _category) =
+            (states, ruleInterval, adapterChoice, sensorChoices, gpuChoices, startTraffic, category);
         _timer = new Timer(_ => Tick());
         _idleClose = new Timer(_ => Release(sensors: true));
         if (states is null) return;
@@ -59,30 +63,36 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
 
     public event Action? ReadingsChanged;
 
-    private IReadOnlyList<Reading> DiskReadings => Readings.Skip(Reading.All.Count).ToList();
+    private IReadOnlyList<Reading> HardwareReadings => Readings.Skip(Reading.All.Count).ToList();
 
-    /// True once the physical disks were listed (the hardware watch's stale check: the first look at start-up).
-    public bool DisksKnown => _disks is not null;
+    public IReadOnlyList<GraphicsAdapter> Gpus { get; private set; } = Array.Empty<GraphicsAdapter>();
 
-    /// The disks as last listed, for the hardware log.
-    public string DisksText() => string.Join(", ", _disks?.Select(d => $"Disk {d.Number} {d.Model}") ?? Array.Empty<string>());
+    /// True once the physical disks and graphics adapters were listed (the hardware watch's stale check: the first look at start-up).
+    public bool HardwareKnown => _disks is not null && _gpus is not null;
 
-    /// Lists the physical disks again (the hardware watch's refresh: start-up, a device added or removed, a wake); a changed list makes the
-    /// sensor sources list their drives again and the disks' readings and states follow. Worker.
-    public void RefreshDisks()
+    /// The disks and graphics adapters as last listed, for the hardware log.
+    public string HardwareText() => string.Join(", ", (_gpus?.Select(g => g.Name) ?? Array.Empty<string>())
+        .Concat(_disks?.Select(d => $"Disk {d.Number} {d.Model}") ?? Array.Empty<string>()));
+
+    /// Lists the physical disks and graphics adapters again (the hardware watch's refresh: start-up, a device added or removed, a wake); a
+    /// changed list makes the sensor sources list them again and their readings and states follow. Worker.
+    public void RefreshHardware()
     {
-        var disks = PhysicalDisks.List();
-        if (_disks is { } before && before.SequenceEqual(disks)) return;
-        _disks = disks;
-        _sampler.RescanStorage();
-        Dispatcher.UIThread.Post(() => TakeDisks(disks));
+        var (disks, gpus) = (PhysicalDisks.List(), GraphicsAdapters.List());
+        if (_disks is { } before && before.SequenceEqual(disks) && _gpus is { } gpusBefore && gpusBefore.SequenceEqual(gpus)) return;
+        (_disks, _gpus) = (disks, gpus);
+        _sampler.Rescan();
+        Dispatcher.UIThread.Post(() => TakeHardware(disks, gpus));
     }
 
-    private void TakeDisks(IReadOnlyList<PhysicalDisk> disks)
+    private void TakeHardware(IReadOnlyList<PhysicalDisk> disks, IReadOnlyList<GraphicsAdapter> gpus)
     {
         if (_disposed) return;
-        var before = DiskReadings;
-        Readings = Reading.All.Concat(disks.SelectMany(Reading.OfDisk)).ToList();
+        var before = HardwareReadings;
+        Gpus = gpus;
+        // One graphics adapter is the built-in GPU readings themselves.
+        var eachGpu = gpus.Count > 1 ? gpus.SelectMany((g, i) => Reading.OfGpu(g, i + 1)) : Enumerable.Empty<Reading>();
+        Readings = Reading.All.Concat(eachGpu).Concat(disks.SelectMany(Reading.OfDisk)).ToList();
         var left = before.Where(r => Find(r.Id) is null).ToList();
         foreach (var reading in left)
         {
@@ -90,7 +100,7 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
             _today.Remove(reading.Id);
         }
         _states?.Unregister(left.Select(r => r.StateId));
-        _states?.Register(DiskReadings.Select(StateOf)); // a renumbered disk's states are replaced: their names say its number
+        _states?.Register(HardwareReadings.Select(StateOf)); // a renumbered disk's states are replaced: their names say its number
         ReadingsChanged?.Invoke();
         FollowRules();
     }
@@ -185,8 +195,8 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
             if (_disposed) return;
             Guard.Run("Resources read", () =>
             {
-                var chosen = _sensorChoices();
-                var sample = _sampler.Read(_wanted, _adapterChoice(), ChoicesOf(chosen));
+                var chosen = (_sensorChoices(), _gpuChoices());
+                var sample = _sampler.Read(_wanted, _adapterChoice(), ChoicesOf(chosen.Item1, chosen.Item2));
                 var apps = ReadApps();
                 Dispatcher.UIThread.Post(() => Arrived(sample, apps, chosen));
             });
@@ -194,10 +204,15 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
         finally { Monitor.Exit(_work); }
     }
 
-    /// The readings' choices as the sampler takes them: each disk's by its number now (worker).
-    private SensorChoices ChoicesOf(IReadOnlyDictionary<string, string> chosen) => new(chosen.GetValueOrDefault(Reading.HottestId),
+    /// The readings' choices as the sampler takes them: each disk's by its number now, each adapter's by its id (worker).
+    private SensorChoices ChoicesOf(IReadOnlyDictionary<string, string> chosen, IReadOnlyDictionary<string, string> gpus) => new(chosen.GetValueOrDefault(Reading.HottestId),
         chosen.GetValueOrDefault(Reading.CpuTempId), chosen.GetValueOrDefault(Reading.GpuTempId),
-        (_disks ?? Array.Empty<PhysicalDisk>()).Where(d => chosen.ContainsKey(Reading.TemperatureIdOf(d))).ToDictionary(d => d.Number, d => chosen[Reading.TemperatureIdOf(d)]));
+        (_disks ?? Array.Empty<PhysicalDisk>()).Where(d => chosen.ContainsKey(Reading.TemperatureIdOf(d))).ToDictionary(d => d.Number, d => chosen[Reading.TemperatureIdOf(d)]))
+    {
+        Gpus = (_gpus ?? Array.Empty<GraphicsAdapter>()).Where(g => chosen.ContainsKey(Reading.TemperatureIdOf(g))).ToDictionary(g => g.Id, g => chosen[Reading.TemperatureIdOf(g)]),
+        UsageGpu = gpus.GetValueOrDefault(Reading.GpuId),
+        TemperatureGpu = gpus.GetValueOrDefault(Reading.GpuTempId),
+    };
 
     /// The programs' bytes per second since the last read, starting or stopping the per-program session as asked (worker).
     private IReadOnlyList<AppTraffic>? ReadApps()
@@ -237,12 +252,13 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
         return _apps.Take().Select(a => a with { Received = (long)(a.Received / seconds), Sent = (long)(a.Sent / seconds) }).ToList();
     }
 
-    private void Arrived(ResourceSample sample, IReadOnlyList<AppTraffic>? apps, IReadOnlyDictionary<string, string> chosen)
+    private void Arrived(ResourceSample sample, IReadOnlyList<AppTraffic>? apps,
+        (IReadOnlyDictionary<string, string> Sensors, IReadOnlyDictionary<string, string> Gpus) chosen)
     {
         if (_disposed) return;
         Latest = sample;
-        // Another sensor is another line: its reading's graph and today's range start afresh.
-        foreach (var id in chosen.Keys.Union(_chosen.Keys).Where(id => chosen.GetValueOrDefault(id) != _chosen.GetValueOrDefault(id)).ToList()) Forget(id);
+        // Another sensor or adapter is another line: its reading's graph and today's range start afresh.
+        foreach (var id in Changed(chosen.Sensors, _chosen.Sensors).Concat(Changed(chosen.Gpus, _chosen.Gpus)).ToList()) Forget(id);
         _chosen = chosen;
         if (apps is not null && _wantApps)
         {
@@ -267,6 +283,9 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
         _states?.Notify(read); // one look for every reading of this sample
         Updated?.Invoke();
     }
+
+    private static IEnumerable<string> Changed(IReadOnlyDictionary<string, string> now, IReadOnlyDictionary<string, string> before) =>
+        now.Keys.Union(before.Keys).Where(id => now.GetValueOrDefault(id) != before.GetValueOrDefault(id));
 
     private void Forget(string readingId)
     {

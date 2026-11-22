@@ -1,6 +1,7 @@
 namespace OmniControl.App.Features.Resources.Pages;
 
 /// A Live readings card (half width): icon and name, the value, then a sparkline of recent values (or a muted note, the hottest sensor's hardware) and one fact tag or chip.
+/// The name wraps to two lines (a graphics adapter's or disk's model) before it trims.
 public sealed partial class ReadingCard : ObservableObject, IEditorItem, IHalfWidth
 {
     public ReadingCard(string label, string icon, double maximum = 0, double minimum = 0) => (_label, Icon, Maximum, Minimum) = (label, icon, maximum, minimum);
@@ -13,10 +14,13 @@ public sealed partial class ReadingCard : ObservableObject, IEditorItem, IHalfWi
 
     public bool HasAdapter => Adapter is not null;
 
-    /// The temperature sensor chip shown where the fact tag would be (the Hottest sensor card; the CPU and GPU cards' temperature).
+    /// The temperature sensor chip shown where the fact tag would be (the Hottest sensor card; the CPU, GPU and disk cards' temperature).
     public MenuChoiceItem? Sensor { get; init; }
 
-    public bool HasSensor => Sensor is not null;
+    public bool HasSensor => Sensor is not null && SensorShown;
+
+    /// False hides the chip (a disk whose drive reports no temperature).
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasSensor))] private bool _sensorShown = true;
 
     /// True: the sparkline runs along the card's foot with its fixed range (the Hottest sensor card).
     public bool FootGraph { get; init; }
