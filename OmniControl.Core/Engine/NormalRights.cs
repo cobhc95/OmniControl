@@ -61,6 +61,7 @@ public static class NormalRights
     {
         if (Elevated)
         {
+            if (ShellDesktop.TryOpenAddress(target)) return; // an address goes through Explorer; the copy below is the way for files and the fallback
             using var _ = Start(Environment.ProcessPath ?? throw new InvalidOperationException("OmniControl's own path is unknown."),
                 new[] { OpenArgument, target, arguments, directory, style.ToString() }, hidden: true, readOutput: false);
             return;

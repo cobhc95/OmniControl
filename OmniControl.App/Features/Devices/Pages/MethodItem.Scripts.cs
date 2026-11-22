@@ -300,12 +300,12 @@ public sealed partial class MethodItem
     [RelayCommand]
     private void OpenRouter()
     {
-        if (_service.Setup.OpenRouterPage() is { } problem) _report(problem);
+        if (_service.Setup.OpenRouterPage(_report) is { } problem) _report(problem);
     }
 
     [RelayCommand]
     private void OpenPythonPage()
     {
-        if (_service.Setup.OpenPythonPage() is { } problem) _report(problem);
+        if (_service.Setup.OpenPythonPage(_report) is { } problem) _report(problem);
     }
 }

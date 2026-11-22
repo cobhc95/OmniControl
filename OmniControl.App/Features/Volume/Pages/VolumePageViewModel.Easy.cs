@@ -40,7 +40,7 @@ public sealed partial class VolumePageViewModel
     {
         var environment = new EasyEnvironment(_mixer, _support, _engine, FreeCableFor, microphones => microphones ? BusHeldCable() : BusCableName());
         var steps = new EasySetupSteps(Apo.DevicesAsync, () => ChooseDevicesCommand.ExecuteAsync(null),
-            () => RunSetupAsync(null, _installer.InstallCableAsync()), () => _report(EngineInstaller.OpenCablePage().Text));
+            () => RunSetupAsync(null, _installer.InstallCableAsync(_report)), () => _report(EngineInstaller.OpenCablePage(_report).Text));
         return new EasyFlowServices(environment.Read, new EasyActions(new MixerEasyStore(_mixer), steps),
             question => _ask(new DialogMessage(question.Title, question.Text, question.Button)));
     }

@@ -180,9 +180,9 @@ public sealed class SimulationSetup : IDisposable
         return null;
     }
 
-    /// Opens the emulator's official download page in the browser; null when it opened, otherwise the problem.
-    public string? OpenDownloadPage(EmulatorInfo emulator) => WebPage.Open(emulator.DownloadPage);
+    /// Opens the emulator's official download page in the browser; null when it is being opened, otherwise the problem (a later failure goes to <paramref name="report"/>).
+    public string? OpenDownloadPage(EmulatorInfo emulator, Action<string> report) => WebPage.Open(emulator.DownloadPage, report);
 
     /// Opens the page where the Android SDK platform-tools (adb) are downloaded.
-    public string? OpenAdbPage() => WebPage.Open(Emulators.PlatformToolsPage);
+    public string? OpenAdbPage(Action<string> report) => WebPage.Open(Emulators.PlatformToolsPage, report);
 }

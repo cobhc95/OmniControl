@@ -137,10 +137,10 @@ public sealed partial class VolumePageViewModel
     /// Install VB-CABLE: its own installer when it was placed next to OmniControl, else its download page.
     private CardAction CableSetupAction() =>
         new("Install VB-CABLE…","Runs VB-CABLE's installer, or opens its download page",
-            new AsyncRelayCommand(() => RunSetupAsync(null, _installer.InstallCableAsync())), Main: true);
+            new AsyncRelayCommand(() => RunSetupAsync(null, _installer.InstallCableAsync(_report))), Main: true);
 
     /// More cables: VB-Audio's page (each combined device, processed microphone or program needs its own cable).
     private CardAction MoreCablesAction() =>
         new("More cables", "Opens VB-Audio's page: each combined device or processed row needs its own cable",
-            new RelayCommand(() => _report(EngineInstaller.OpenCablePage().Text)));
+            new RelayCommand(() => _report(EngineInstaller.OpenCablePage(_report).Text)));
 }

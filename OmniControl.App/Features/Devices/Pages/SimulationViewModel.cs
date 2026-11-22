@@ -233,7 +233,7 @@ public sealed partial class SimulationViewModel : ObservableObject, IDisposable
 
     private void GetEmulator(EmulatorInfo emulator)
     {
-        if (_service.Simulation.OpenDownloadPage(emulator) is { } problem) _report(problem);
+        if (_service.Simulation.OpenDownloadPage(emulator, _report) is { } problem) _report(problem);
     }
 
     [RelayCommand]

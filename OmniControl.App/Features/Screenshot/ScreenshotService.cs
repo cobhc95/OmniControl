@@ -277,7 +277,7 @@ public sealed class ScreenshotService
         {
             Copy(image);
             if (!_owner._launches.TryAcquire()) return;
-            if (WebPage.Open(LensUrl) is { } problem) _owner._report(problem);
+            if (WebPage.Open(LensUrl, _owner._report) is { } problem) _owner._report(problem);
             else _owner.Note("Image copied", "Paste it into Lens");
         }
 
@@ -293,7 +293,7 @@ public sealed class ScreenshotService
         public void OpenLink(string url)
         {
             if (!IsWebLink(url) || !_owner._launches.TryAcquire()) return;
-            if (WebPage.Open(url.Trim(), allowHttp: true) is { } problem) _owner._report(problem);
+            if (WebPage.Open(url.Trim(), _owner._report, allowHttp: true) is { } problem) _owner._report(problem);
         }
     }
 }

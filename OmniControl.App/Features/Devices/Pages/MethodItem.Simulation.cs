@@ -67,6 +67,6 @@ public sealed partial class MethodItem
     [RelayCommand]
     private void GetAdb()
     {
-        if (_service.Simulation.OpenAdbPage() is { } problem) _report(problem);
+        if (_service.Simulation.OpenAdbPage(_report) is { } problem) _report(problem);
     }
 }

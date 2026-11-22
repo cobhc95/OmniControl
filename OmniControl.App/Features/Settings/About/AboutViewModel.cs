@@ -19,7 +19,7 @@ public sealed class AboutViewModel
 
     private void OpenSite(string url)
     {
-        if (WebPage.Open(url) is { } error) _report(error);
+        if (WebPage.Open(url, _report) is { } error) _report(error);
     }
 }
 
