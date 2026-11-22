@@ -1,3 +1,4 @@
+using Avalonia.VisualTree;
 using OmniControl.App.Features.Hotkeys.Actions;
 using OmniControl.App.Features.Hotkeys.Picker;
 using OmniControl.App.Features.Input.Pages.Mouse;
@@ -37,6 +38,23 @@ internal static partial class Shots
         var hotkeys = new HotkeysSwitch(rig.Actions, rig.States, AppSettingsPageViewModel.Name, Rig.Report, AppSettings.Current.Slot(s => s.HotkeysOn, (s, on) => s.HotkeysOn = on));
         hotkeys.Use(true);
         return hotkeys;
+    }
+
+    /// The settings of the Forward card's held action (its cogwheel), with the Runs pull-down open; the pull-down's popup is drawn inside
+    /// the window's own layer, so the frame has it.
+    private static void ActionRunsPulldown(Rig rig, Camera camera)
+    {
+        ActionsService(rig);
+        var card = ForwardCard(MousePage(rig));
+        var model = card.Slots[1].MenuFor(true);
+        model.Target = card.Label;
+        var window = new PickerWindow { Title = $"Choose an action for {card.Label}" };
+        window.Use(model);
+        camera.Window(window, "action-runs-pulldown", prepare: () =>
+        {
+            var runs = window.GetVisualDescendants().OfType<ComboBox>().First(b => b.IsEffectivelyVisible);
+            runs.IsDropDownOpen = true;
+        });
     }
 
     /// The Choose-the-action window as a mouse button's card opens it (pick mode: "Use this action").

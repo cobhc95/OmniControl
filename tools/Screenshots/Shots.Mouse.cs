@@ -17,6 +17,27 @@ internal static partial class Shots
     /// gesture gets an action, so Windows' own touchpad gestures are never turned off; the pointer settings are only read.
     private static void Mouse(Rig rig, Camera camera)
     {
+        var page = MousePage(rig);
+        page.ButtonsGroup.IsExpanded = true;
+        page.TrackpadGroup.IsExpanded = false;
+        camera.Page(page, "mouse");
+    }
+
+    /// The Forward button's card alone: a tap action and a held one (its chip says "· held").
+    private static void MouseTapHold(Rig rig, Camera camera)
+    {
+        var page = MousePage(rig);
+        var list = new ListBox { Classes = { "rows", "compact", "cards" }, ItemsSource = new[] { ForwardCard(page) }, Width = 430 };
+        camera.Fit(new Border { Padding = new Thickness(12), Child = list }, "mouse-tap-hold");
+    }
+
+    private static MouseButtonItem ForwardCard(MousePageViewModel page) =>
+        page.ButtonsGroup.Items.OfType<MouseButtonItem>().First(b => b.Label.Contains("Forward", StringComparison.Ordinal));
+
+    /// The Mouse and Trackpad page's view-model, made once (its master-list entries are registered by making it).
+    private static MousePageViewModel MousePage(Rig rig)
+    {
+        if (_mouse is { } made) return made;
         Use(ViewTemplate.For<MousePageViewModel, MousePage>(),
             ViewTemplate.For<MouseButtonItem, MouseButtonRow>(),
             ViewTemplate.For<GestureItem, GestureRow>(),
@@ -25,7 +46,8 @@ internal static partial class Shots
         var settings = new MouseSettings { RunAsAdministrator = false };
         settings.Bindings["1.Middle"] = "media.playpause";
         settings.Bindings["1.Back"] = "desktop.taskview";
-        settings.Bindings["1.Forward"] = "edit.copy";
+        settings.Bindings["1.Forward"] = "media.playpause";
+        settings.ExtraActions["1.Forward"] = new List<string> { "media.next|trigger=When%20the%20button%20is%20held" };
         settings.Bindings["1.TiltLeft"] = "browser.back";
         settings.Bindings["1.TiltRight"] = "browser.forward";
         settings.Save();
@@ -44,8 +66,6 @@ internal static partial class Shots
         rig.Pages.Add(page);
         rig.Restore(page, new MouseRestore(mouse, trackpad, pointer, gestures, rules, page.ShowRestored).Make(MousePageViewModel.Info.RestoreKey!, page.Title));
         Camera.Pump();
-        page.ButtonsGroup.IsExpanded = true;
-        page.TrackpadGroup.IsExpanded = false;
-        camera.Page(page, "mouse");
+        return page;
     }
 }

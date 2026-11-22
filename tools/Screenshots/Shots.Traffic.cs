@@ -9,16 +9,23 @@ internal static partial class Shots
 {
     /// The Network traffic control page over <see cref="SampleLimits"/> and a <see cref="SampleTraffic"/> session: the real page, rows and
     /// reader, no firewall rule, driver, service or event trace; the programs are made up and have no file, so no icon or name is read.
-    private static void NetworkTraffic(Rig rig, Camera camera)
+    private static void NetworkTraffic(Rig rig, Camera camera) => NetworkTraffic(rig, camera, "network-traffic-control",
+        NetRule("Game launcher", download: 5120), NetRule("System update service", download: 1024));
+
+    /// The same page where the Game launcher's upload is blocked (its Upload limit chip says Block).
+    private static void NetworkTrafficBlock(Rig rig, Camera camera) => NetworkTraffic(rig, camera, "traffic-block",
+        new AppNetRule { Id = "Game launcher", DownloadOn = true, DownloadKbps = 5120, UploadBlocked = true }, NetRule("System update service", download: 1024));
+
+    private static void NetworkTraffic(Rig rig, Camera camera, string name, params AppNetRule[] rules)
     {
         Use(ViewTemplate.For<TrafficPageViewModel, TrafficPage>(), ViewTemplate.For<AppNetItem, AppNetRow>());
         var settings = ResourcesSettings.Load();
-        var limits = new SampleLimits(NetRule("Game launcher", download: 5120), NetRule("System update service", download: 1024));
+        var limits = new SampleLimits(rules);
         var monitor = new TrafficMonitor(() => new SampleTraffic());
         var page = new TrafficPageViewModel(monitor, settings, limits, rig.Scopes, rig.ScopeGate, Rig.Report);
         page.OnOnScreenChanged(true); // the reader starts its session, then reads one interval later
         Camera.Pump((int)TimeSpan.FromSeconds(settings.Setup.ReadEverySeconds * 1.5).TotalMilliseconds);
-        camera.Page(page, "network-traffic-control");
+        camera.Page(page, name);
         page.Dispose();
         monitor.Dispose();
     }

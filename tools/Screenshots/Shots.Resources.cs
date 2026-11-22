@@ -1,4 +1,6 @@
 using Avalonia.Layout;
+using Avalonia.VisualTree;
+using OmniControl.Core.Engine.Resources;
 using OmniControl.App.Features.Hotkeys.Picker;
 using OmniControl.App.Features.Icons;
 using OmniControl.App.Features.Resources;
@@ -33,6 +35,24 @@ internal static partial class Shots
             },
         };
         camera.Sized(new ScrollViewer { Content = page }, "resources-gadget-tab", Camera.PageWidth, Camera.PageHeight, crop: true);
+    }
+
+    /// The tab's "What it shows" rows over readings that know two made-up adapters: Upload is set to Ethernet, Download follows Auto.
+    private static void GadgetAdapter(Rig rig, Camera camera)
+    {
+        Use(ViewTemplate.For<GadgetSettingsModel, GadgetTabView>(), ViewTemplate.For<WeatherPlaceItem, WeatherPlaceRow>());
+        var (preview, layouts, settings, weather) = Gadget(rig);
+        settings.Setup.SetSpeedAdapter(Reading.UploadId, AdapterReadings.EthernetId);
+        var model = new GadgetSettingsModel(settings, rig.Actions, preview.With(new AdapterReadings(preview.Readings)), layouts, () => { }, weather,
+            (_, _) => Task.FromResult<IconPick?>(null), (_, _) => Task.FromResult<PickResult?>(null));
+        model.SetOnScreen(true);
+        var host = new StackPanel { Margin = new Thickness(12), [Grid.IsSharedSizeScopeProperty] = true, Children = { Camera.Build(model) } };
+        var scroll = new ScrollViewer { Content = host };
+        camera.Sized(scroll, "gadget-adapter", Camera.PageWidth, 335, prepare: () =>
+        {
+            var group = host.GetVisualDescendants().OfType<GroupCard>().First(c => ReferenceEquals(c.Group, model.ReadingsGroup));
+            scroll.Offset = new Vector(0, group.TranslatePoint(default, host)!.Value.Y);
+        });
     }
 
     /// What the Resources page is made of: the Taskbar gadget tab's model, the title line's preset picker and the settings they share.
@@ -95,6 +115,34 @@ internal static partial class Shots
         public IDisposable Hold() => new Nothing();
         public event Action? Changed { add { } remove { } }
         public IReadingList Readings => readings;
+        public SamplePreview With(IReadingList other) => new(gadget, other, settings);
+    }
+
+    /// The real readings with two made-up network adapters in the latest sample (the real monitor never reads, so it knows none).
+    private sealed class AdapterReadings(IReadingList inner) : IReadingList
+    {
+        public const string EthernetId = "{sample-ethernet}";
+
+        private static readonly ResourceSample Sample = ResourceSample.None with
+        {
+            Adapters = new[]
+            {
+                new AdapterSpeed(EthernetId, "Ethernet", AdapterKind.Ethernet, true, 2.1 * 1024 * 1024, 310 * 1024),
+                new AdapterSpeed("{sample-wifi}", "Wi-Fi", AdapterKind.Wifi, true, 40 * 1024, 6 * 1024),
+            },
+        };
+
+        public IReadOnlyList<Reading> Readings => inner.Readings;
+        public IReadOnlyList<GraphicsAdapter> Gpus => inner.Gpus;
+        public Reading? Find(string id) => inner.Find(id);
+        public event Action? ReadingsChanged { add => inner.ReadingsChanged += value; remove => inner.ReadingsChanged -= value; }
+        public ResourceSample Latest => Sample;
+        public void ListSensors(bool open) { }
+        public void ListAdapters(bool open) { }
+        public event Action? Updated { add { } remove { } }
+        public IReadOnlyList<double> History(string readingId) => inner.History(readingId);
+        public string? SensorProblem => null;
+        public void Need(string who, TimeSpan? every, SampleParts parts = SampleParts.None) { }
     }
 
     private sealed class NoResourcesWindows : IResourcesWindows
