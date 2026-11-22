@@ -145,7 +145,11 @@ public sealed class IconStore : IDisposable
     {
         try
         {
-            if (icon.Png is { } png) return IconImage.Of(new Bitmap(new MemoryStream(Convert.FromBase64String(png))));
+            if (icon.Png is { } png)
+            {
+                using var stream = new MemoryStream(Convert.FromBase64String(png));
+                return IconImage.Of(IconPictures.Decode(stream, "IconCellGlyph", fill: false)); // the icon picker's cells are the largest it is drawn
+            }
             if (icon.PathData is not { } data || icon.Width <= 0 || icon.Height <= 0) return null;
             var shape = Geometry.Parse(data);
             var scale = 24 / Math.Max(icon.Width, icon.Height);

@@ -55,8 +55,12 @@ public sealed partial class DeviceItem
             _shownImage = path;
             if (path.Length > 0)
             {
-                try { IconBitmap = new Bitmap(path); }
-                catch (Exception ex) when (ex is IOException or ArgumentException or NotSupportedException)
+                try
+                {
+                    using var file = File.OpenRead(path);
+                    IconBitmap = IconPictures.Decode(file, "DeviceIconSize", fill: true);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
                 {
                     _report("The device's picture couldn't be read, so its drawn icon shows."); // a broken or odd file: the glyph stands in
                 }

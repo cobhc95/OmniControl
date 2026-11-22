@@ -37,6 +37,7 @@ public sealed class GadgetFontCard
         if (!open)
         {
             _installed = null;
+            Item.Refresh(); // the pop-down's bound list drops its font rows too
             return;
         }
         Guard.OffUi("Taskbar gadget: installed fonts", () =>
