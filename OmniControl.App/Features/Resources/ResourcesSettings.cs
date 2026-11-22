@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using OmniControl.App.Features.AppLists;
 using OmniControl.App.Features.Resources.Gadget;
 using OmniControl.App.Shared.Presets;
 
@@ -22,6 +21,21 @@ public sealed class AppNetRule
 
     /// True when the rule asks nothing of Windows (it may be forgotten once Windows was told).
     [JsonIgnore] public bool IsPlain => !UploadOn && !DownloadOn && !Blocked && !UploadBlocked && !DownloadBlocked;
+
+    public AppNetRule Copy() => (AppNetRule)MemberwiseClone();
+}
+
+/// One adapter's own network rules (<see cref="Network"/> empty), or one network's on that adapter: the most specific wins (the network's,
+/// else its adapter's, else <see cref="ResourcesSetup.Apps"/>). The names are kept so an adapter or network that is gone still shows.
+public sealed class AppNetScope
+{
+    public string Adapter { get; set; } = string.Empty;
+    public string AdapterName { get; set; } = string.Empty;
+    public string Network { get; set; } = string.Empty;
+    public string NetworkName { get; set; } = string.Empty;
+    public List<AppNetRule> Apps { get; set; } = new();
+
+    public AppNetScope Copy() => new() { Adapter = Adapter, AdapterName = AdapterName, Network = Network, NetworkName = NetworkName, Apps = Apps.Select(r => r.Copy()).ToList() };
 }
 
 /// What a Resources preset holds: how often the page reads, the network adapter read, the taskbar gadget, the programs' network rules and pins.
@@ -89,7 +103,10 @@ public sealed class ResourcesSetup
     }
 
     public GadgetSettings Gadget { get; set; } = GadgetLayouts.NewLook();
+
+    /// Network traffic control's rules on every adapter (All adapters), and the adapters' and networks' own (<see cref="AppNetScope"/>).
     public List<AppNetRule> Apps { get; set; } = new();
+    public List<AppNetScope> Scoped { get; set; } = new();
 
     /// The programs pinned to the top of Network traffic control, by path (or identity when the path was not known), in pin order.
     public List<string> Pinned { get; set; } = new();
@@ -106,6 +123,15 @@ public sealed class ResourcesPreset : INamedPreset
     public ResourcesSetup Setup { get; set; } = new();
 }
 
+/// A Network traffic control preset: the rules on every adapter and every adapter's and network's own.
+public sealed class TrafficPreset : INamedPreset
+{
+    public string Name { get; set; } = string.Empty;
+    public string Id { get; set; } = string.Empty;
+    public List<AppNetRule> Apps { get; set; } = new();
+    public List<AppNetScope> Scoped { get; set; } = new();
+}
+
 /// The user's own gadget layout (<see cref="Gadget.GadgetLayouts"/>): the gadget's look only.
 public sealed class GadgetLayoutPreset : INamedPreset
 {
@@ -117,18 +143,18 @@ public sealed class GadgetLayoutPreset : INamedPreset
     public DateTime? Saved { get; set; }
 }
 
-/// The Resources and Network traffic control pages' settings (resources.json): the live setup, Network traffic control's Apps scope, the packet filter switch, the presets
-/// and the gadget's own layouts.
+/// The Resources and Network traffic control pages' settings (resources.json): the live setup, the packet filter switch, the presets (Resources'
+/// and Network traffic control's) and the gadget's own layouts.
 public sealed class ResourcesSettings
 {
     public ResourcesSetup Setup { get; set; } = new();
-    public AppScopeSetting? Scope { get; set; }
 
     /// The "Packet filter" switch (<see cref="Traffic.NetworkLimits.SetPacketFilter"/>): off keeps Windows Packet Filter out of all traffic. Not in
     /// presets: it is about this PC's drivers, not a setup.
     public bool PacketFilterOn { get; set; } = true;
     public List<ResourcesPreset> Presets { get; set; } = new();
     public List<GadgetLayoutPreset> Layouts { get; set; } = new();
+    public List<TrafficPreset> TrafficPresets { get; set; } = new();
 
     private static readonly DataStore Store = DataStores.Resources;
 
@@ -148,6 +174,9 @@ public sealed class ResourcesSettings
         Layouts.Clear();
         Layouts.AddRange(fresh.Layouts);
         fresh.Layouts = Layouts;
+        TrafficPresets.Clear();
+        TrafficPresets.AddRange(fresh.TrafficPresets);
+        fresh.TrafficPresets = TrafficPresets;
         SettingsCopy.Into(this, fresh);
         Commit();
         return true;

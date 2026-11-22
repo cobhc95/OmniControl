@@ -15,6 +15,15 @@ public class CardGroup : ObservableObject
     public string Key { get; }
     public string Name { get; }
 
+    private string _nameNote = string.Empty;
+
+    /// Words after the name in the accent ("· Wi-Fi only": the group shows one place's settings); empty: none.
+    public string NameNote
+    {
+        get => _nameNote;
+        set => SetProperty(ref _nameNote, value);
+    }
+
     /// Facts about the whole group that are not on its cards (what it talks to, its limits), shown as the header's tooltip; null: none.
     public string? Tip { get; init; }
 

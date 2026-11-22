@@ -27,7 +27,7 @@ public sealed partial class OtherPcsService
         PcNetworkView? now;
         try
         {
-            now = PcNetworkView.Read(NetworkCategories.Read());
+            now = PcNetworkView.Read(NetworkList.Read().Categories);
         }
         catch (Exception ex) when (ex is COMException or InvalidCastException or NetworkInformationException)
         {

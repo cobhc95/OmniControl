@@ -137,6 +137,7 @@ public sealed class HardwareWatches : IHardwareWatches, IDisposable
             _slots.Add(slot);
         }
         old?.Dispose();
+        FollowNetworkList();
     }
 
     /// Takes a watch out (its feature was switched off).
@@ -149,6 +150,15 @@ public sealed class HardwareWatches : IHardwareWatches, IDisposable
             if (old is not null) _slots.Remove(old);
         }
         old?.Dispose();
+        FollowNetworkList();
+    }
+
+    /// Windows' Network List Manager is heard only while a watch lists its signal (it is not one of the always-on listeners).
+    private void FollowNetworkList()
+    {
+        bool wanted;
+        lock (_gate) wanted = _slots.Any(s => (s.Watch.Signals & HardwareSignal.NetworkList) != 0);
+        _signals?.ListenToNetworks(wanted);
     }
 
     /// Starts listening to Windows and gives every watch that can tell when it looks wrong its retry schedule once, each try only when it
@@ -162,6 +172,7 @@ public sealed class HardwareWatches : IHardwareWatches, IDisposable
         _signals.Failed += text => AppDataStore.AppendLog(Guard.LogFile, $"Hardware signals: {text}");
         _log("Listening for hardware announcements.");
         _signals.Start(); // when Windows refuses the window the reason is in the log; on-demand and periodic refreshes still work
+        FollowNetworkList();
         List<Slot> slots;
         lock (_gate) slots = _slots.ToList();
         foreach (var slot in slots) slot.Retry?.Start(StartTrigger, checkFirst: true);

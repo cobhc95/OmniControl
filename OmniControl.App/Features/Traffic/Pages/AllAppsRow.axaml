@@ -1,0 +1,62 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OmniControl.App.Features.Traffic.Pages"
+             xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
+             x:Class="OmniControl.App.Features.Traffic.Pages.AllAppsRow"
+             x:DataType="vm:AllAppsItem">
+    <!-- The "All apps" row (first in ListBox.rows.lead, so its own fill and edge): the same columns as a program's row; "All apps" and muted
+         "entire PC", the whole PC's traffic, limit chips for every row ("Mixed": accent words and the dashed edge Rectangle.mixeddash) and the
+         master three-state switch (half: the accent outline and Border.masterdash). -->
+    <Grid ColumnSpacing="{StaticResource MenuGap}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" SharedSizeGroup="NetPin" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="NetDown" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="NetUp" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="NetUpLimit" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="NetDownLimit" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="NetOn" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Grid.Column="1" TextTrimming="CharacterEllipsis" VerticalAlignment="Center">
+            <Run Text="{x:Static vm:AllAppsItem.Name}" FontWeight="SemiBold" />
+            <Run Text="{x:Static vm:AllAppsItem.Detail}" Foreground="{DynamicResource BrushMuted}" FontSize="{StaticResource MenuSmallFontSize}" />
+        </TextBlock>
+        <TextBlock Grid.Column="2" Text="{Binding Down}" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="3" Text="{Binding Up}" VerticalAlignment="Center" />
+        <Panel Grid.Column="4" HorizontalAlignment="Left" VerticalAlignment="Center">
+            <Button x:Name="UploadChip" Classes="selector" Classes.running="{Binding UploadSet}" Classes.mixed="{Binding UploadMixed}" Tag="scope"
+                    ToolTip.Tip="Sets this upload limit on every app">
+                <Button.Flyout>
+                    <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft" Opened="OnUploadOpened">
+                        <c:MenuRowList x:Name="UploadMenu" Title="Upload limit (every app)" />
+                    </c:ListMenuFlyout>
+                </Button.Flyout>
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapSmall}">
+                    <TextBlock Text="{Binding Upload}" TextTrimming="CharacterEllipsis" />
+                    <PathIcon Grid.Column="1" Data="{StaticResource ChevronDownIcon}" />
+                </Grid>
+            </Button>
+            <Rectangle Classes="mixeddash" IsVisible="{Binding UploadMixed}" />
+        </Panel>
+        <Panel Grid.Column="5" HorizontalAlignment="Left" VerticalAlignment="Center">
+            <Button x:Name="DownloadChip" Classes="selector" Classes.running="{Binding DownloadSet}" Classes.mixed="{Binding DownloadMixed}" Tag="scope"
+                    IsEnabled="{Binding DownloadUsable}" ToolTip.Tip="{Binding DownloadTip}" ToolTip.ShowOnDisabled="True">
+                <Button.Flyout>
+                    <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft" Opened="OnDownloadOpened">
+                        <c:MenuRowList x:Name="DownloadMenu" Title="Download limit (every app)" />
+                    </c:ListMenuFlyout>
+                </Button.Flyout>
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapSmall}">
+                    <TextBlock Text="{Binding Download}" TextTrimming="CharacterEllipsis" />
+                    <PathIcon Grid.Column="1" Data="{StaticResource ChevronDownIcon}" />
+                </Grid>
+            </Button>
+            <Rectangle Classes="mixeddash" IsVisible="{Binding DownloadMixed}" />
+        </Panel>
+        <Panel Grid.Column="6" VerticalAlignment="Center">
+            <ToggleSwitch x:Name="OnSwitch" Classes="plain master" IsThreeState="True" Tag="scope" IsChecked="{Binding IsOn, Mode=OneWay}" Click="OnToggle"
+                          ToolTip.Tip="Turns every app on or off. Half: some apps are off; a click turns them all on." />
+            <Border Classes="masterdash" IsVisible="{Binding IsOn, Converter={x:Static ObjectConverters.IsNull}}" IsHitTestVisible="False" />
+        </Panel>
+    </Grid>
+</UserControl>

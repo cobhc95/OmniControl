@@ -49,7 +49,7 @@ public sealed class NetworkWork : INetworkWork
         lock (_gate)
         {
             Shape(wanted.Where(r => r.DownloadBlocked || r.DownloadBytes > 0)
-                .Select(r => new DownloadLimit(r.AppId, r.DownloadBlocked ? DownloadLimit.Block : r.DownloadBytes!.Value)).ToList());
+                .Select(r => new DownloadLimit(r.AppId, r.DownloadBlocked ? DownloadLimit.Block : r.DownloadBytes!.Value, r.Adapter)).ToList());
             return _rules.Sync(wanted.Where(r => r.NeedsRules).ToList());
         }
     }

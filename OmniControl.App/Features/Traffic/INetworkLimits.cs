@@ -6,11 +6,20 @@ namespace OmniControl.App.Features.Traffic;
 /// makes Windows hold them; a stand-in given to the page leaves Windows alone.
 public interface INetworkLimits
 {
-    /// The rule of a program, or null when it has none.
-    AppNetRule? Rule(string appId);
+    /// The rule of a program in force at a place, or null when it has none.
+    AppNetRule? Rule(NetScope scope, string appId);
 
-    /// Changes one program's rule and saves.
-    void Set(string appId, Action<AppNetRule> change);
+    /// Changes programs' rules at a place and saves once (a place's first edit gives it its own rules, copied from those it used).
+    void Set(NetScope scope, IEnumerable<string> appIds, Action<AppNetRule> change);
+
+    /// True when the place has rules of its own.
+    bool HasOwn(NetScope scope);
+
+    /// The place uses its parent's rules again.
+    void UseParent(NetScope scope);
+
+    /// One sentence while some upload limit cannot follow its adapter exactly, else null.
+    string? UploadScopeLine { get; }
 
     /// The "Packet filter" switch, and changing it.
     bool PacketFilterOn { get; }

@@ -1,16 +1,18 @@
-using OmniControl.App.Features.AppLists;
 using OmniControl.App.Features.Resources;
 
 namespace OmniControl.App.Features.Traffic.Pages;
 
-/// The Network traffic control page: one group with the Packet filter switch and the Apps chip on its header, a row per program (speeds,
-/// limits, block) and the one status line; it reads the programs' traffic only while on screen with the group open.
+/// The Network traffic control page: one group with the Packet filter switch, the Adapter choice and the presets on its header, the All apps
+/// row and a row per program (speeds, limits, block) at the chosen place, and the one status line; it reads the programs' traffic only while
+/// on screen with the group open, and the networks only while on screen.
 public sealed partial class TrafficPageViewModel : PageViewModel, IDisposable
 {
     private readonly TrafficMonitor _monitor;
     private readonly ResourcesSettings _settings;
     private readonly INetworkLimits _limits;
-    private readonly AppScopeGate _gate;
+    private readonly INetworkWatch _networks;
+    private readonly ProviderChoice _presets;
+    private IDisposable? _networksNeeded;
     private readonly ProcessIcons _icons = new();
     private readonly Action<string> _report;
     private bool _onScreen;
@@ -24,15 +26,21 @@ public sealed partial class TrafficPageViewModel : PageViewModel, IDisposable
         NavGroups.System, "network traffic internet upload download speed limit throttle block firewall packet filter app program bandwidth");
 
     public CardGroup Apps { get; }
-    public AppScopeModel AppsScope { get; }
     public ObservableCollection<AppNetItem> AppRows { get; } = new();
+
+    /// The All apps row, then <see cref="AppRows"/> (the list's items).
+    public ObservableCollection<object> Rows { get; } = new();
+    public AllAppsItem AllApps { get; }
     public bool HasApps => AppRows.Count > 0;
+
+    /// The preset picker on the header (Network traffic control presets).
+    public ChoiceItem PresetChoice => _presets.Choice;
 
     /// The Packet filter switch on the group's header: off takes Windows Packet Filter out of all traffic (for a conflict with other software).
     public ToggleItem PacketFilter { get; }
     /// The one status line under the programs: the network service, then what really runs for each kind of rule (red while the service or
     /// download limits have failed).
-    public string Status => $"{_limits.Service.Line} · {_limits.Download.Line} · Upload limits use Windows' throttle rules · Blocks use Windows Firewall"
+    public string Status => $"{_limits.Service.Line} · {_limits.Download.Line} · {_limits.UploadScopeLine ?? "Upload limits use Windows' throttle rules"} · Blocks use Windows Firewall"
         + (_monitor.Problem is { } problem ? $" · {problem}" : string.Empty);
 
     public string StatusTip => $"{_limits.Service.Tip} {_limits.Download.Tip}".Trim();
@@ -55,10 +63,14 @@ public sealed partial class TrafficPageViewModel : PageViewModel, IDisposable
     public IRelayCommand InstallServiceCommand { get; }
     public string InstallServiceTip => NetworkLimits.InstallServiceTip;
 
-    internal TrafficPageViewModel(TrafficMonitor monitor, ResourcesSettings settings, INetworkLimits limits, AppScopes scopes, AppScopeGate gate,
+    internal TrafficPageViewModel(TrafficMonitor monitor, ResourcesSettings settings, INetworkLimits limits, INetworkWatch networks, ProviderChoice presets,
         Action<string> report) : base(Info)
     {
-        (_monitor, _settings, _limits, _gate, _report) = (monitor, settings, limits, gate, report);
+        (_monitor, _settings, _limits, _networks, _presets, _report) = (monitor, settings, limits, networks, presets, report);
+        AllApps = new AllAppsItem(limits, () => _scope);
+        AdapterChoice = MakeAdapterChoice();
+        UseParentCommand = new RelayCommand(() => limits.UseParent(_scope));
+        networks.Changed += OnNetworksChanged;
         InstallPacketFilterCommand = new RelayCommand(() =>
         {
             limits.InstallPacketFilter();
@@ -73,12 +85,6 @@ public sealed partial class TrafficPageViewModel : PageViewModel, IDisposable
             Restore = () => limits.SetPacketFilter(true),
             RestoreTip = RestoreTipText,
         };
-        AppsScope = scopes.Group(PageTitle, () => settings.Scope, scope =>
-        {
-            settings.Scope = scope;
-            settings.Save();
-            ShowApps();
-        });
         Apps.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName != nameof(CardGroup.IsExpanded)) return;
@@ -96,12 +102,19 @@ public sealed partial class TrafficPageViewModel : PageViewModel, IDisposable
     {
         Need();
         ShowApps();
+        ShowPlace();
     }
 
     public override void OnOnScreenChanged(bool onScreen)
     {
         _onScreen = onScreen;
         Need();
+        if (onScreen) _networksNeeded ??= _networks.Need(); // the adapters and their networks, for the Adapter choice
+        else
+        {
+            _networksNeeded?.Dispose();
+            _networksNeeded = null;
+        }
         if (!onScreen) return;
         OnUpdated();
         _limits.Recheck();
@@ -118,8 +131,8 @@ public sealed partial class TrafficPageViewModel : PageViewModel, IDisposable
         ShowStatus();
     }
 
-    /// One row per program pinned, seen this session or holding a rule, inside the Apps scope: the pinned first in pin order, then the rest
-    /// in the order first seen, each showing its rule as saved.
+    /// One row per program pinned, seen this session or holding a rule anywhere: the pinned first in pin order, then the rest in the order
+    /// first seen, each showing its rule as saved at the chosen place.
     private void ShowApps()
     {
         ListRows();
@@ -133,10 +146,11 @@ public sealed partial class TrafficPageViewModel : PageViewModel, IDisposable
     {
         _seenShown = _monitor.Seen.Count;
         var pins = _settings.Setup.Pinned.ToLookup(ProgramIdentity.Normalize);
-        var ids = pins.Select(p => p.Key).Concat(_monitor.Seen.Keys).Concat(_settings.Setup.Apps.Select(r => r.Id)).Distinct()
-            .Where(id => _gate.Allows(_settings.Scope, id)).ToList();
+        var ids = pins.Select(p => p.Key).Concat(_monitor.Seen.Keys).Concat(_settings.Setup.Apps.Select(r => r.Id))
+            .Concat(_settings.Setup.Scoped.SelectMany(s => s.Apps.Select(r => r.Id))).Distinct().ToList();
         var known = AppRows.ToDictionary(r => r.Id);
-        ListDiff.Apply(AppRows, ids.Select(id => known.GetValueOrDefault(id) ?? new AppNetItem(id, _limits, _icons, TogglePin, _report)).ToList(), r => r.Id);
+        ListDiff.Apply(AppRows, ids.Select(id => known.GetValueOrDefault(id) ?? new AppNetItem(id, _limits, () => _scope, _icons, TogglePin, _report)).ToList(), r => r.Id);
+        ListDiff.Apply(Rows, AppRows.Prepend<object>(AllApps).ToList(), r => r);
         foreach (var row in AppRows)
         {
             row.IsPinned = pins.Contains(row.Id);
@@ -148,7 +162,7 @@ public sealed partial class TrafficPageViewModel : PageViewModel, IDisposable
     /// Where a program lives: as the reader saw it, else as its rule or its pin keeps it; empty when not known.
     private string PathOf(string id, IEnumerable<string> pinned) =>
         _monitor.Seen.GetValueOrDefault(id) is { Length: > 0 } seen ? seen
-        : _limits.Rule(id)?.Path is { Length: > 0 } ruled ? ruled
+        : _limits.Rule(_scope, id)?.Path is { Length: > 0 } ruled ? ruled
         : pinned.FirstOrDefault(Path.IsPathFullyQualified) ?? string.Empty;
 
     /// Pins a row to the top by its program's path (its identity while the path is not known), or unpins it.
@@ -175,6 +189,7 @@ public sealed partial class TrafficPageViewModel : PageViewModel, IDisposable
             var now = traffic.GetValueOrDefault(row.Id);
             (row.Down, row.Up) = row.NotRunning ? (Reading.Unknown, Reading.Unknown) : (Reading.SpeedWords(now?.Received ?? 0), Reading.SpeedWords(now?.Sent ?? 0));
         }
+        AllApps.Follow(AppRows, _monitor.Apps.Sum(a => (double)a.Received), _monitor.Apps.Sum(a => (double)a.Sent), _monitor.Apps.Count > 0);
     }
 
     private void ShowStatus()
@@ -201,6 +216,9 @@ public sealed partial class TrafficPageViewModel : PageViewModel, IDisposable
     public void Dispose()
     {
         _limits.Changed -= OnLimitsChanged;
+        _networks.Changed -= OnNetworksChanged;
+        _networksNeeded?.Dispose();
+        _presets.Dispose();
         _settings.Changed -= OnSettingsChanged;
         _monitor.Updated -= OnUpdated;
         _monitor.Need(null);

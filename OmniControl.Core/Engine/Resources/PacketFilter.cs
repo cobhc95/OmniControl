@@ -22,7 +22,7 @@ internal sealed unsafe class PacketFilter : IDisposable
     private const int TableHeader = 8, FilterSize = 184;
     private const uint OnSend = 1, OnReceive = 2, Pass = 1, Redirected = 3, NetworkLayer = 2, TransportLayer = 4, Ipv4 = 1, Ipv6 = 2, ProtocolField = 4, TcpUdp = 1, DestPort = 2;
     // TCP_AdapterList under pack(1): count, 32 names of 256 bytes, 32 handles, 32 mediums (NDIS_MEDIUM), addresses, MTUs.
-    private const int AdapterListSize = 8836, AdapterHandlesAt = 4 + 32 * 256, AdapterMediumsAt = AdapterHandlesAt + 32 * 8, MaxAdapters = 32;
+    private const int AdapterListSize = 8836, AdapterNameSize = 256, AdapterHandlesAt = 4 + 32 * AdapterNameSize, AdapterMediumsAt = AdapterHandlesAt + 32 * 8, MaxAdapters = 32;
     private const uint MediumIp = 19; // NdisMediumIP: WinTun tunnels (Tailscale, WireGuard), whose frames carry no Ethernet header
     // INTERMEDIATE_BUFFER under pack(1): the adapter / list link (16), device flags, length at 20, flags, 802.1q, filter id, 4 reserved, the frame.
     private const int HeaderSize = 52, LengthAt = 20, MaxFrame = 1514;
@@ -36,6 +36,7 @@ internal sealed unsafe class PacketFilter : IDisposable
     private readonly SafeFileHandle _device;
     private readonly ManualResetEvent _arrived = new(false);
     private readonly List<IntPtr> _adapters = new();
+    private readonly Dictionary<IntPtr, string> _ids = new(); // each adapter handle's id ("{GUID}"), from the driver's name for it
     private readonly byte* _records = (byte*)NativeMemory.Alloc(Batch * RecordSize);
     private readonly byte* _request = (byte*)NativeMemory.Alloc(16 + Batch * 8);
     private readonly byte* _send = (byte*)NativeMemory.Alloc(RecordSize);
@@ -98,10 +99,14 @@ internal sealed unsafe class PacketFilter : IDisposable
             var count = Math.Min(*(int*)list, MaxAdapters);
             for (var i = 0; i < count; i++)
                 if (((IntPtr*)(list + AdapterHandlesAt))[i] is var adapter && adapter != IntPtr.Zero && ((uint*)(list + AdapterMediumsAt))[i] != MediumIp)
+                {
                     now.Add(adapter);
+                    _ids[adapter] = IdOf(new string((sbyte*)(list + 4 + i * AdapterNameSize)));
+                }
         }
         finally { NativeMemory.Free(list); }
         _adapters.RemoveAll(adapter => !now.Contains(adapter));
+        foreach (var gone in _ids.Keys.Where(a => !now.Contains(a)).ToList()) _ids.Remove(gone);
         var eventHandle = _arrived.SafeWaitHandle.DangerousGetHandle();
         foreach (var adapter in now.Except(_adapters).ToList())
         {
@@ -177,6 +182,12 @@ internal sealed unsafe class PacketFilter : IDisposable
         const int size = 16 + Batch * 8;
         return Control(ReadMany, _request, size, _request, size) ? (int)Math.Min(*(uint*)(_request + 12), Batch) : 0;
     }
+
+    /// The id ("{GUID}") of the adapter a record came on, or null when the driver did not name it.
+    public string? AdapterOf(byte* record) => _ids.GetValueOrDefault(*(IntPtr*)record);
+
+    /// The driver names an adapter "\DEVICE\{GUID}": its id is the last part, in capitals as <c>NetworkInterface.Id</c>.
+    private static string IdOf(string name) => name[(name.LastIndexOf('\\') + 1)..].ToUpperInvariant();
 
     /// Sends a record on to Windows' network stack; false (last error set) when the driver refused it.
     public bool Send(byte* record, int length)

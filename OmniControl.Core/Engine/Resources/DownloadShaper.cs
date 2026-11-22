@@ -3,9 +3,9 @@ using System.Net.NetworkInformation;
 
 namespace OmniControl.Core.Engine.Resources;
 
-/// One program's download limit: its identity (<see cref="ProgramIdentity.Normalize"/>) and the most bytes per second it may receive.
-/// <see cref="Block"/> as the rate drops everything that arrives for the program.
-public sealed record DownloadLimit(string AppId, long BytesPerSecond)
+/// One program's download limit: its identity (<see cref="ProgramIdentity.Normalize"/>) and the most bytes per second it may receive,
+/// on one adapter (its id, "{GUID}") or on every adapter (null). <see cref="Block"/> as the rate drops everything that arrives for the program.
+public sealed record DownloadLimit(string AppId, long BytesPerSecond, string? Adapter = null)
 {
     public const long Block = 0;
 
@@ -22,7 +22,7 @@ public sealed record ShapingTimes(TimeSpan Burst, TimeSpan Queue, TimeSpan Ports
 /// every received TCP and UDP packet, so a new connection is limited from its first packet: a port not in the tables makes the worker read
 /// them again at once (at most every <see cref="ShapingTimes.Miss"/>; a port still unknown passes). The worker sends each packet straight on
 /// unless its program has a limit; then one token bucket per
-/// program, whatever adapter the packet came on, lets packets through at the limit, holds them in the program's queue meanwhile and drops
+/// program and adapter (or one for every adapter) lets packets through at the limit, holds them in the program's queue meanwhile and drops
 /// one only when the queue is full (TCP then slows down by itself). Fail-open: on any failure the held packets go on, the driver is let go
 /// (Windows then delivers every packet itself) and <c>stopped</c> is told why.
 public sealed unsafe class DownloadShaper : IDisposable
@@ -41,7 +41,8 @@ public sealed unsafe class DownloadShaper : IDisposable
     private int _stopping, _disposed;
     private readonly Thread _loop;
     // The rest belongs to the loop thread only.
-    private readonly Dictionary<string, Bucket> _buckets = new();
+    private readonly Dictionary<(string App, string? Adapter), Bucket> _buckets = new();
+    private readonly HashSet<string> _limited = new();
     private readonly Dictionary<int, int> _owners = new();
     private readonly ProcessPrograms _programs = new();
     private PacketFilter? _port; // open only while a limited program owns ports
@@ -146,7 +147,7 @@ public sealed unsafe class DownloadShaper : IDisposable
     /// A packet arrived: straight on, held for its program's limit, or dropped when that program's queue is full.
     private void Pass(byte* record, int length, int ipAt, int ipLength)
     {
-        if (ipAt < 0 || BucketOf(record + ipAt, ipLength) is not { } bucket)
+        if (ipAt < 0 || BucketOf(record, record + ipAt, ipLength) is not { } bucket)
         {
             Send(record, length);
             return;
@@ -166,8 +167,9 @@ public sealed unsafe class DownloadShaper : IDisposable
         bucket.Queued += length;
     }
 
-    /// The limited program a packet is for (by its IP version, protocol and destination port), or null.
-    private Bucket? BucketOf(byte* p, int length)
+    /// The limit of the program a packet is for (by its IP version, protocol and destination port) on the adapter it came on, else on
+    /// every adapter, or null.
+    private Bucket? BucketOf(byte* record, byte* p, int length)
     {
         if (_buckets.Count == 0 || length < MinPacket) return null;
         var (header, protocol) = (p[0] >> 4) switch
@@ -186,7 +188,9 @@ public sealed unsafe class DownloadShaper : IDisposable
             ReadOwners();
             if (!_owners.TryGetValue(key, out pid)) return null;
         }
-        return _buckets.TryGetValue(_programs.Of(pid).Id, out var bucket) ? bucket : null;
+        var app = _programs.Of(pid).Id;
+        if (!_limited.Contains(app)) return null;
+        return _buckets.TryGetValue((app, _port!.AdapterOf(record)), out var bucket) || _buckets.TryGetValue((app, null), out bucket) ? bucket : null;
     }
 
     /// Sends every held packet whose time has come; returns the milliseconds until the next one is due, or <see cref="Timeout.Infinite"/>.
@@ -235,7 +239,7 @@ public sealed unsafe class DownloadShaper : IDisposable
     private void FollowOwners()
     {
         _ownersFollowed = _ownersRead;
-        if (!_owners.Values.Any(pid => _buckets.ContainsKey(_programs.Of(pid).Id)))
+        if (!_owners.Values.Any(pid => _limited.Contains(_programs.Of(pid).Id)))
         {
             if (_port is not null) Close();
             return;
@@ -253,15 +257,17 @@ public sealed unsafe class DownloadShaper : IDisposable
         if (ReferenceEquals(limits, _applied)) return;
         _applied = limits;
         _ownersRead = 0; // another program may be limited now: its ports go to the driver at once
-        foreach (var gone in _buckets.Keys.Where(id => limits.All(l => l.AppId != id)).ToList())
+        foreach (var gone in _buckets.Keys.Where(key => limits.All(l => (l.AppId, l.Adapter) != key)).ToList())
         {
             Flush(_buckets[gone], strict: true);
             _buckets.Remove(gone);
         }
+        _limited.Clear();
         foreach (var limit in limits)
         {
-            var fresh = !_buckets.TryGetValue(limit.AppId, out var bucket);
-            if (fresh) _buckets[limit.AppId] = bucket = new Bucket { Stamp = Stopwatch.GetTimestamp() };
+            _limited.Add(limit.AppId);
+            var fresh = !_buckets.TryGetValue((limit.AppId, limit.Adapter), out var bucket);
+            if (fresh) _buckets[(limit.AppId, limit.Adapter)] = bucket = new Bucket { Stamp = Stopwatch.GetTimestamp() };
             bucket!.Blocks = limit.Blocks;
             bucket.Rate = Math.Max(1, limit.BytesPerSecond);
             bucket.Burst = (long)(bucket.Rate * _times.Burst.TotalSeconds);

@@ -15,7 +15,7 @@ public sealed class NetworkServiceHost
     private readonly NetworkWork _work;
     private readonly TimeSpan _idle, _speedsIdle;
     private readonly CancellationTokenSource _stop = new();
-    private readonly Dictionary<string, NetRule> _rules = new(StringComparer.OrdinalIgnoreCase); // by path, what the client asked for
+    private readonly Dictionary<string, NetRule> _rules = new(StringComparer.OrdinalIgnoreCase); // by program and place (NetRule.Key), what the client asked for
     private readonly object _gate = new(); // the rules and the traffic session
     private readonly object _statusGate = new();
     private readonly Timer _speedsIdleTimer;
@@ -157,13 +157,13 @@ public sealed class NetworkServiceHost
 
     private NetReply Change(NetRequest request)
     {
-        var path = request.Path!;
+        var place = new NetRule(request.Path!, Adapter: request.Adapter, AdapterName: request.AdapterName, Profile: request.Profile);
         var clears = request.Op is NetOp.ClearUpload or NetOp.ClearDownload or NetOp.Unblock or NetOp.UnblockUpload or NetOp.UnblockDownload;
-        if (!_rules.TryGetValue(path, out var held))
+        if (!_rules.TryGetValue(place.Key, out var held))
         {
             if (clears) return Reply(); // nothing held for it: nothing to take out
-            if (_rules.Count >= NetworkPipe.MaxRules) return Reply($"the service holds at most {NetworkPipe.MaxRules} programs");
-            held = new NetRule(path);
+            if (_rules.Count >= NetworkPipe.MaxRules) return Reply($"the service holds at most {NetworkPipe.MaxRules} rules");
+            held = place;
         }
         var changed = request.Op switch
         {
@@ -178,8 +178,8 @@ public sealed class NetworkServiceHost
             NetOp.UnblockDownload => held with { DownloadBlocked = false },
             _ => held with { Blocked = false },
         };
-        if (changed.IsEmpty) _rules.Remove(path);
-        else _rules[path] = changed;
+        if (changed.IsEmpty) _rules.Remove(place.Key);
+        else _rules[place.Key] = changed;
         return Reply() with { Problems = Apply() };
     }
 
