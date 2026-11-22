@@ -232,7 +232,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     private void OnPageMade(PageViewModel page)
     {
         AttachRestore(page);
-        if (page is AppSettingsPageViewModel settings && _restoreAll is { } all) settings.ShowRestoreAll(all);
+        if (page is AppSettingsPageViewModel settings) settings.ShowRestoreAll(RestoreAll);
     }
 
     private const string AllCategories = "All categories";
