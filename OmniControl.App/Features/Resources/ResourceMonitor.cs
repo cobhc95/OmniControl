@@ -13,7 +13,7 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
     private readonly IStateRegistry _states;
     private readonly Func<TimeSpan> _ruleInterval;
     private readonly Func<string?> _adapterChoice;
-    private readonly Func<IReadOnlyDictionary<string, string>> _sensorChoices, _gpuChoices;
+    private readonly Func<IReadOnlyDictionary<string, string>> _sensorChoices, _gpuChoices, _speedChoices;
     private readonly string _category;
     private readonly Dictionary<string, (TimeSpan Every, SampleParts Parts)> _needs = new();
     private readonly Dictionary<string, Queue<double>> _history = new();
@@ -26,19 +26,21 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
     private readonly Timer _timer, _idleClose;
     private volatile SampleParts _wanted;
     private bool _disposed, _sensorsWanted;
-    private (IReadOnlyDictionary<string, string> Sensors, IReadOnlyDictionary<string, string> Gpus) _chosen =
-        (new Dictionary<string, string>(), new Dictionary<string, string>()); // each reading's sensor and adapter at the last read
-    private int _listing; // sensor menus open
+    private (IReadOnlyDictionary<string, string> Sensors, IReadOnlyDictionary<string, string> Gpus, IReadOnlyDictionary<string, string> Speeds) _chosen =
+        (new Dictionary<string, string>(), new Dictionary<string, string>(), new Dictionary<string, string>()); // each reading's sensor and adapter at the last read
+    private int _listing, _listingAdapters; // sensor menus open, network adapter menus open
 
     /// <param name="ruleInterval">How often to read while only a rule follows a reading (the page's interval).</param>
     /// <param name="adapterChoice">The network adapter the speeds are read from (the setup's choice), asked at every read.</param>
     /// <param name="sensorChoices">The sensor each temperature reading follows, by reading id (the setup's one map, never changed in place), asked at every read.</param>
     /// <param name="gpuChoices">The graphics adapter each GPU reading follows, by reading id (the same), asked at every read.</param>
+    /// <param name="speedChoices">The network adapter each of Download and Upload follows on its own, by reading id (the same), asked at every read.</param>
     /// <param name="states">Where the readings are offered as states.</param>
     public ResourceMonitor(IStateRegistry states, Func<TimeSpan> ruleInterval, Func<string?> adapterChoice, Func<IReadOnlyDictionary<string, string>> sensorChoices,
-        Func<IReadOnlyDictionary<string, string>> gpuChoices, string category)
+        Func<IReadOnlyDictionary<string, string>> gpuChoices, Func<IReadOnlyDictionary<string, string>> speedChoices, string category)
     {
-        (_states, _ruleInterval, _adapterChoice, _sensorChoices, _gpuChoices, _category) = (states, ruleInterval, adapterChoice, sensorChoices, gpuChoices, category);
+        (_states, _ruleInterval, _adapterChoice, _sensorChoices, _gpuChoices, _speedChoices, _category) =
+            (states, ruleInterval, adapterChoice, sensorChoices, gpuChoices, speedChoices, category);
         _timer = new Timer(_ => Tick());
         _idleClose = new Timer(_ => Release());
         states.Register(Reading.All.Select(StateOf));
@@ -127,9 +129,17 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
         Apply();
     }
 
+    /// A network adapter menu opened (true) or closed: while one is open every read lists the adapters (the network is read for it). UI thread.
+    public void ListAdapters(bool open)
+    {
+        _listingAdapters = Math.Max(0, _listingAdapters + (open ? 1 : -1));
+        Apply();
+    }
+
     private void Apply()
     {
         _wanted = _needs.Values.Aggregate(_listing > 0 ? SampleParts.SensorList : SampleParts.None, (all, need) => all | need.Parts);
+        if (_listingAdapters > 0) _wanted |= SampleParts.Network | SampleParts.Adapters;
         var sensors = (_wanted & SampleParts.Sensors) != 0;
         if (sensors != _sensorsWanted)
         {
@@ -164,8 +174,9 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
             if (_disposed) return;
             Guard.Run("Resources read", () =>
             {
-                var chosen = (_sensorChoices(), _gpuChoices());
-                var sample = _sampler.Read(_wanted, _adapterChoice(), ChoicesOf(chosen.Item1, chosen.Item2));
+                var chosen = (_sensorChoices(), _gpuChoices(), _speedChoices());
+                var sample = _sampler.Read(_wanted, _adapterChoice(), ChoicesOf(chosen.Item1, chosen.Item2),
+                    new SpeedAdapters(chosen.Item3.GetValueOrDefault(Reading.DownloadId), chosen.Item3.GetValueOrDefault(Reading.UploadId)));
                 Dispatcher.UIThread.Post(() => Arrived(sample, chosen));
             });
         }
@@ -183,12 +194,12 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
     };
 
     private void Arrived(ResourceSample sample,
-        (IReadOnlyDictionary<string, string> Sensors, IReadOnlyDictionary<string, string> Gpus) chosen)
+        (IReadOnlyDictionary<string, string> Sensors, IReadOnlyDictionary<string, string> Gpus, IReadOnlyDictionary<string, string> Speeds) chosen)
     {
         if (_disposed) return;
         Latest = sample;
         // Another sensor or adapter is another line: its reading's graph and today's range start afresh.
-        foreach (var id in Changed(chosen.Sensors, _chosen.Sensors).Concat(Changed(chosen.Gpus, _chosen.Gpus)).ToList()) Forget(id);
+        foreach (var id in Changed(chosen.Sensors, _chosen.Sensors).Concat(Changed(chosen.Gpus, _chosen.Gpus)).Concat(Changed(chosen.Speeds, _chosen.Speeds)).ToList()) Forget(id);
         _chosen = chosen;
         if (_day != DateTime.Today)
         {

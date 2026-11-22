@@ -69,6 +69,7 @@ public sealed partial class GadgetRowItem : ObservableObject
         var kind = _reading?.Kind == ReadingKind.Temperature ? "Apply to all temperatures" : "Apply to all of this kind";
         Sensor = _reading?.Sensor is null ? null : new SensorMenu(readings, settings, _reading, "Auto", m => m.Summary, SensorMenu.TipFor(_reading)).Item;
         _gpu = _reading is not null && Reading.HasGpuChoice(_reading.Id) ? new GpuMenu(readings, settings, _reading) : null;
+        _adapter = _reading is not null && Reading.HasAdapterChoice(_reading.Id) ? new NetworkAdapterMenu(readings, settings, _reading) : null;
         QuickChips = _reading is null
             ? new[] { Quick("No label", LabelStyle.None) }
             : new[] { Quick("Text only", LabelStyle.Text), Quick("Icon only", LabelStyle.Icons), Quick("Icon + text", LabelStyle.Both), Quick("No label", LabelStyle.None),
@@ -94,6 +95,11 @@ public sealed partial class GadgetRowItem : ObservableObject
     public MenuChoiceItem? Gpu => _gpu?.Item;
     public bool HasGpu => _gpu is not null && _readings.Gpus.Count > 1;
     private readonly GpuMenu? _gpu;
+
+    /// The network adapter chip under the name (Upload and Download, <see cref="NetworkAdapterMenu"/>); null: not a speed.
+    public MenuChoiceItem? Adapter => _adapter?.Item;
+    public bool HasAdapter => _adapter is not null;
+    private readonly NetworkAdapterMenu? _adapter;
     public int WarnMax => _reading?.Max ?? 0;
     public bool HasWarn => _reading is not null;
     public IReadOnlyList<SwatchItem> Colours { get; }
@@ -221,6 +227,7 @@ public sealed partial class GadgetRowItem : ObservableObject
         ShowTextColour();
         Opacity = Entry.Shown ? 1 : HiddenOpacity;
         _gpu?.Refresh();
+        _adapter?.Refresh();
         OnPropertyChanged(nameof(HasGpu));
         _loading = false;
         ShowLabelState();

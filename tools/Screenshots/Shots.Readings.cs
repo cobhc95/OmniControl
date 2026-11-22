@@ -48,6 +48,7 @@ internal static partial class Shots
         public Reading? Find(string id) => Readings.FirstOrDefault(r => r.Id == id);
         public IReadOnlyList<double> History(string readingId) => Array.Empty<double>();
         public void ListSensors(bool open) { }
+        public void ListAdapters(bool open) { }
         public void Need(string who, TimeSpan? every, SampleParts parts = SampleParts.None) { }
         public event Action? ReadingsChanged { add { } remove { } }
         public event Action? Updated { add { } remove { } }

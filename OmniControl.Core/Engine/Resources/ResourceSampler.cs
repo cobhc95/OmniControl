@@ -27,6 +27,10 @@ public sealed record ResourceSample(double? Cpu, double? Gpu, double? MemoryUsed
     /// Every adapter (not loopback or tunnel) with its speed now, for the network adapter menu.
     public IReadOnlyList<AdapterSpeed> Adapters { get; init; } = Array.Empty<AdapterSpeed>();
 
+    /// The adapter the Download and Upload values were read from when each reading has its own choice in force (<see cref="SpeedAdapters"/>); null: the common choice's (<see cref="Adapter"/>).
+    public string? DownloadFrom { get; init; }
+    public string? UploadFrom { get; init; }
+
     /// True when <see cref="Adapter"/> is the busiest adapter (Auto, or a chosen adapter that is gone); false when the chosen adapter, or every adapter together, was read.
     public bool AdapterIsAuto { get; init; } = true;
 
@@ -92,6 +96,13 @@ public sealed record SensorChoices(string? Hottest, string? Cpu, string? Gpu, IR
     public override int GetHashCode() => HashCode.Combine(Hottest, Cpu, Gpu, UsageGpu, TemperatureGpu, Disks.Count, Gpus.Count);
 }
 
+/// The network adapter the Download and Upload readings each follow on their own (an <see cref="AdapterSpeed.Id"/>); null, or an adapter that is gone
+/// or not connected = the common choice of <see cref="ResourceSampler.Read"/>.
+public sealed record SpeedAdapters(string? Download, string? Upload)
+{
+    public static readonly SpeedAdapters Auto = new(null, null);
+}
+
 /// The parts of a read a caller wants, beyond CPU load and memory (two cheap calls, always read): the network speeds, the adapter list (only
 /// for the adapter menu), and each sensor reading (disk activity and the disks' temperatures apart), whose sources open only for these.
 [Flags]
@@ -123,25 +134,35 @@ public sealed class ResourceSampler : IDisposable
     /// <param name="adapter">Which adapter the network speeds are read from: null = the busiest one (Auto), <see cref="AdapterSpeed.All"/> = all
     /// added together, else an adapter's id; a chosen adapter that is gone or not connected reads as Auto.</param>
     /// <param name="sensors">The temperature sensor each temperature reading follows (null: all on Auto).</param>
-    public ResourceSample Read(SampleParts wanted, string? adapter, SensorChoices? sensors = null)
+    /// <param name="speeds">The adapter Download and Upload each follow on their own (null: both follow <paramref name="adapter"/>).</param>
+    public ResourceSample Read(SampleParts wanted, string? adapter, SensorChoices? sensors = null, SpeedAdapters? speeds = null)
     {
-        var net = (wanted & SampleParts.Network) != 0 ? Network(adapter, (wanted & SampleParts.Adapters) != 0) : NoNetwork();
+        var net = (wanted & SampleParts.Network) != 0 ? Network(adapter, speeds ?? SpeedAdapters.Auto, (wanted & SampleParts.Adapters) != 0) : NoNetwork();
         var (used, total) = Memory();
-        var sample = new ResourceSample(Cpu(), null, used, total, net.Download, net.Upload, net.Adapter, null, null, null, null, null)
+        var sample = new ResourceSample(Cpu(), null, used, total, net.OwnDown?.Speed ?? net.Download, net.OwnUp?.Speed ?? net.Upload, net.Adapter, null, null, null, null, null)
         {
             Adapters = net.Adapters,
             AdapterIsAuto = net.Auto,
+            DownloadFrom = net.OwnDown?.Name,
+            UploadFrom = net.OwnUp?.Name,
             Parts = wanted,
         };
         return (wanted & SampleParts.Sensors) != 0 ? _sensors.Add(sample, wanted, sensors ?? SensorChoices.Auto) : sample;
     }
 
     /// The network is not wanted: its counters are forgotten, so the first read after it is wanted again starts afresh (never a rate over the gap).
-    private (double? Download, double? Upload, string? Adapter, bool Auto, IReadOnlyList<AdapterSpeed> Adapters) NoNetwork()
+    private NetRead NoNetwork()
     {
         _adapters.Clear();
         _lastNetAt = 0;
-        return (null, null, null, true, Array.Empty<AdapterSpeed>());
+        return new(null, null, null, true, Array.Empty<AdapterSpeed>());
+    }
+
+    /// One look at the network: the common choice's speeds and adapter, whether that is Auto, the adapter list (when asked) and the own choices' speeds in bytes per second.
+    private sealed record NetRead(double? Download, double? Upload, string? Adapter, bool Auto, IReadOnlyList<AdapterSpeed> Adapters)
+    {
+        public (string Name, double Speed)? OwnDown { get; init; }
+        public (string Name, double Speed)? OwnUp { get; init; }
     }
 
     private double? Cpu()
@@ -163,7 +184,7 @@ public sealed class ResourceSampler : IDisposable
 
     /// Bytes per second down and up of the <paramref name="wanted"/> adapter (the busiest one, one adapter, or all together), the name of the
     /// adapter read, whether that is the busiest one (Auto), and, when <paramref name="list"/>, every adapter's speed for the menu.
-    private (double? Download, double? Upload, string? Adapter, bool Auto, IReadOnlyList<AdapterSpeed> Adapters) Network(string? wanted, bool list)
+    private NetRead Network(string? wanted, SpeedAdapters own, bool list)
     {
         var now = _clock.Elapsed.TotalSeconds;
         var seconds = now - _lastNetAt;
@@ -173,6 +194,7 @@ public sealed class ResourceSampler : IDisposable
         var adapters = list ? new List<AdapterSpeed>() : null;
         long down = 0, up = 0, busiest = -1;
         (string Name, double Down, double Up)? busiestAdapter = null, chosen = null;
+        (string Name, double Speed)? ownDown = null, ownUp = null;
         var rows = AdapterTable.Read(); // the one look per read: flags, state and counters of every interface
         foreach (var nic in Adapters(rows))
         {
@@ -194,12 +216,14 @@ public sealed class ResourceSampler : IDisposable
             (down, up) = (down + d, up + u);
             if (d + u > busiest) (busiest, busiestAdapter) = (d + u, (nic.Name, d * scale, u * scale));
             if (nic.Id == wanted) chosen = (nic.Name, d * scale, u * scale);
+            if (nic.Id == own.Download) ownDown = (nic.Name, d * scale);
+            if (nic.Id == own.Upload) ownUp = (nic.Name, u * scale);
         }
         IReadOnlyList<AdapterSpeed> shown = adapters ?? (IReadOnlyList<AdapterSpeed>)Array.Empty<AdapterSpeed>();
-        if (first || seconds <= 0) return (null, null, null, true, shown);
-        if (wanted == AdapterSpeed.All) return (down * scale, up * scale, null, false, shown);
-        if (chosen is { } c) return (c.Down, c.Up, c.Name, false, shown);
-        return (busiestAdapter?.Down ?? 0, busiestAdapter?.Up ?? 0, busiestAdapter?.Name, true, shown);
+        if (first || seconds <= 0) return new(null, null, null, true, shown);
+        if (wanted == AdapterSpeed.All) return new(down * scale, up * scale, null, false, shown) { OwnDown = ownDown, OwnUp = ownUp };
+        if (chosen is { } c) return new(c.Down, c.Up, c.Name, false, shown) { OwnDown = ownDown, OwnUp = ownUp };
+        return new(busiestAdapter?.Down ?? 0, busiestAdapter?.Up ?? 0, busiestAdapter?.Name, true, shown) { OwnDown = ownDown, OwnUp = ownUp };
     }
 
     private sealed record Nic(string Id, string Name, NetworkInterfaceType Type, string Description);

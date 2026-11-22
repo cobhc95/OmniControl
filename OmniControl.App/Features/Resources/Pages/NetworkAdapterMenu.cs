@@ -2,20 +2,27 @@ using OmniControl.Core.Engine.Resources;
 
 namespace OmniControl.App.Features.Resources.Pages;
 
-/// The network adapter chip of the Download and Upload cards and its menu (Auto, all together, each adapter); one choice drives cards, states and gadget.
+/// THE network adapter chip and its menu (the adapters by connection, VPN and not connected). Without a reading it is the Download and Upload cards' chip (Auto,
+/// all together, each adapter); one choice drives cards, states and gadget. With a speed reading it is that reading's own chip on the Taskbar gadget tab (Auto =
+/// the common choice, then each adapter), <see cref="ResourcesSetup.SpeedAdapterOf"/>; an adapter that is gone reads as Auto.
 public sealed class NetworkAdapterMenu
 {
-    public const string Title = "Network adapter (Download and Upload)";
+    public const string Title = "Network adapter (Download and Upload)", ReadingTitle = "Network adapter";
 
     private readonly IReadingList _monitor;
     private readonly ResourcesSettings _settings;
+    private readonly Reading? _reading;
     private bool _showOffline;
 
-    /// <param name="listing">The menu opened (true) or closed: the sampler lists the adapters only while it is open.</param>
-    public NetworkAdapterMenu(IReadingList monitor, ResourcesSettings settings, Action<bool> listing)
+    /// <param name="reading">The speed reading this chip is for; null: the common choice of the Download and Upload cards.</param>
+    public NetworkAdapterMenu(IReadingList monitor, ResourcesSettings settings, Reading? reading = null)
     {
-        (_monitor, _settings) = (monitor, settings);
-        Item = new MenuChoiceItem("Network adapter", Words, Rows) { OpenChanged = open => { if (!open) _showOffline = false; listing(open); } };
+        (_monitor, _settings, _reading) = (monitor, settings, reading);
+        Item = new MenuChoiceItem(reading is null ? "Network adapter" : ReadingTitle, Words, Rows)
+        {
+            OpenChanged = open => { if (!open) _showOffline = false; _monitor.ListAdapters(open); },
+            Tip = reading is null ? null : $"{reading.Name}: the network adapter it is read from; Auto is the choice on the Readings tab",
+        };
     }
 
     /// The card item both cards show (its chip text and rows follow <see cref="Refresh"/>).
@@ -23,11 +30,13 @@ public sealed class NetworkAdapterMenu
 
     public void Refresh() => Item.Refresh();
 
-    private string? Choice => _settings.Setup.Adapter;
+    private string? Choice => _reading is null ? _settings.Setup.Adapter : _settings.Setup.SpeedAdapterOf(_reading.Id);
 
     private string Words()
     {
         var sample = _monitor.Latest;
+        if (_reading is not null)
+            return Choice is null ? "Auto" : sample.Adapters.FirstOrDefault(a => a.Id == Choice)?.Name ?? _reading.OwnAdapter(sample) ?? "Auto";
         if (Choice == AdapterSpeed.All) return "All adapters";
         if (!sample.AdapterIsAuto) return sample.Adapter ?? "Auto";
         return sample.Adapter is { } name ? $"Auto · {name}" : "Auto";
@@ -39,11 +48,13 @@ public sealed class NetworkAdapterMenu
         var busiest = sample.Adapters.Where(a => a.IsUp).MaxBy(a => a.Download + a.Upload)?.Name;
         // A stored adapter that is gone reads as Auto, as the sampler does.
         var auto = Choice is null || (Choice != AdapterSpeed.All && sample.Adapters.Count > 0 && sample.Adapters.All(a => a.Id != Choice));
-        var rows = new List<MenuRowItem>
-        {
-            Row(busiest is null ? "Auto (busiest)" : $"Auto (busiest) · now {busiest}", auto, null),
-            Row("All adapters combined", Choice == AdapterSpeed.All, AdapterSpeed.All),
-        };
+        var rows = _reading is not null
+            ? new List<MenuRowItem> { Row("Auto", auto, null) }
+            : new List<MenuRowItem>
+            {
+                Row(busiest is null ? "Auto (busiest)" : $"Auto (busiest) · now {busiest}", auto, null),
+                Row("All adapters combined", Choice == AdapterSpeed.All, AdapterSpeed.All),
+            };
         var connected = sample.Adapters.Where(a => a.IsUp).OrderBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
         AddGroup(rows, "CONNECTED", connected.Where(a => a.IsPhysical));
         AddGroup(rows, "VPN AND VIRTUAL", connected.Where(a => !a.IsPhysical));
@@ -80,8 +91,9 @@ public sealed class NetworkAdapterMenu
         new(text, string.Empty, on, string.Empty, new RelayCommand(() => Choose(choice)), Dim: dim, Icon: icon, Trailing: trailing);
     private void Choose(string? choice)
     {
-        if (_settings.Setup.Adapter == choice) return;
-        _settings.Setup.Adapter = choice;
+        if (Choice == choice) return;
+        if (_reading is null) _settings.Setup.Adapter = choice;
+        else _settings.Setup.SetSpeedAdapter(_reading.Id, choice);
         _settings.Commit();
     }
 

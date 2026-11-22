@@ -160,6 +160,7 @@ public sealed class GadgetSettingsModel : ObservableObject, IDisposable
         {
             (row.Line, row.LineLayout, row.LineBackground) = (cells, line, _background);
             row.Sensor?.Refresh();
+            row.Adapter?.Refresh();
         }
         Gallery.Draw(layout => _preview.Cells(layout, sampleUnknown: true), _background, look.Font);
     }

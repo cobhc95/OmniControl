@@ -18,12 +18,12 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     private readonly NetworkAdapterMenu _adapter;
     private readonly SensorMenu _hottest;
     private readonly GadgetSettingsModel _gadget;
-    private bool _onScreen, _listAdapters;
+    private bool _onScreen;
 
     public const string PageTitle = "Resources", ReadingsTab = "Readings", GadgetTab = "Taskbar gadget";
 
     public static readonly PageInfo Info = new(PageTitle, "M4,20 H20 V22 H4 Z M5,12 H8 V19 H5 Z M10.5,6 H13.5 V19 H10.5 Z M16,9 H19 V19 H16 Z", NavGroups.System,
-        "resources cpu gpu graphics memory ram disk drive temperature network upload download speed taskbar gadget");
+        "resources cpu gpu graphics memory ram disk drive temperature network adapter upload download speed taskbar gadget");
 
     public override bool ShowsOwnHeader => true; // the preset picker sits on the title line
 
@@ -54,11 +54,8 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
         (_monitor, _settings, _presets, _gadget) = (monitor, settings, presets, gadget);
         Tabs.PropertyChanged += OnTabChanged;
 
-        _adapter = new NetworkAdapterMenu(monitor, settings, open =>
-        {
-            _listAdapters = open;
-            Need();
-        });
+        _adapter = new NetworkAdapterMenu(monitor, settings);
+
         _hottest = new SensorMenu(monitor, settings, Reading.Find(Reading.HottestId)!, "Hottest (auto)", null);
         ListCards();
         Live = new ItemGroup("Resources/Live", "Live readings", _liveItems)
@@ -170,7 +167,7 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     private void Need()
     {
         var every = _onScreen && ShowsReadings ? TimeSpan.FromSeconds(_settings.Setup.ReadEverySeconds) : (TimeSpan?)null;
-        _monitor.Need(ResourceMonitor.PageNeed, every, SampleParts.All | (_listAdapters ? SampleParts.Adapters : 0));
+        _monitor.Need(ResourceMonitor.PageNeed, every, SampleParts.All);
         _gadget.SetOnScreen(_onScreen && !ShowsReadings);
     }
 

@@ -52,7 +52,7 @@ public sealed class ResourcesModule : IFeatureModule, IResourcesWindows
         Settings.Setup.Gadget.MoveOldClickDefault();
         Settings.Setup.Gadget.Complete();
         var monitor = _monitor = new ResourceMonitor(context.States, () => TimeSpan.FromSeconds(Settings.Setup.ReadEverySeconds), () => Settings.Setup.Adapter,
-            () => Settings.Setup.Sensors, () => Settings.Setup.Gpus, Title);
+            () => Settings.Setup.Sensors, () => Settings.Setup.Gpus, () => Settings.Setup.SpeedAdapters, Title);
         context.Hardware.Register(new HardwareWatch("resources.disks", "Graphics adapters and physical disks (readings)", HardwareSignal.Device | HardwareSignal.Resume,
             monitor.RefreshHardware, LooksStale: () => !monitor.HardwareKnown, Describe: monitor.HardwareText));
         var weather = _weather = new WeatherService(Settings, context.Actions, context.States, new WindowsCredentialStore(), Title);

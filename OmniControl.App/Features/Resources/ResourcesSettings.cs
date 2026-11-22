@@ -73,6 +73,21 @@ public sealed class ResourcesSetup
         Gpus = next;
     }
 
+    /// The network adapter the Download and Upload readings follow (<see cref="Reading.HasAdapterChoice"/>), by reading id: an
+    /// <c>AdapterSpeed.Id</c>; not listed = Auto (the common <see cref="Adapter"/> choice), an adapter that is gone reads as Auto. Replaced whole on each change.
+    public SortedDictionary<string, string> SpeedAdapters { get; set; } = new();
+
+    /// The adapter a speed reading follows; null = Auto.
+    public string? SpeedAdapterOf(string readingId) => SpeedAdapters.GetValueOrDefault(readingId);
+
+    public void SetSpeedAdapter(string readingId, string? id)
+    {
+        var next = new SortedDictionary<string, string>(SpeedAdapters);
+        if (id is null) next.Remove(readingId);
+        else next[readingId] = id;
+        SpeedAdapters = next;
+    }
+
     public GadgetSettings Gadget { get; set; } = GadgetLayouts.NewLook();
     public List<AppNetRule> Apps { get; set; } = new();
 

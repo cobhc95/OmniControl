@@ -25,6 +25,9 @@ public interface IReadingList
     /// A sensor menu opened (true) or closed: the reads list every temperature sensor while one is open.
     void ListSensors(bool open);
 
+    /// A network adapter menu opened (true) or closed: the reads list the adapters (and read the network) while one is open.
+    void ListAdapters(bool open);
+
     /// A read arrived (UI thread).
     event Action? Updated;
 
@@ -48,7 +51,7 @@ public sealed record Reading(string Id, string Name, string Chip, string Icon, R
     public const double WarmCelsius = 70;
 
     /// The ids of the built-in temperature readings, and the fixed range of the Hottest sensor's small graph, in Celsius.
-    public const string HottestId = "hottest", CpuTempId = "cputemp", GpuId = "gpu", GpuTempId = "gputemp";
+    public const string HottestId = "hottest", CpuTempId = "cputemp", GpuId = "gpu", GpuTempId = "gputemp", UploadId = "upload", DownloadId = "download";
     public const double TemperatureGraphMin = 25, TemperatureGraphMax = 100;
 
     private const double Kilo = 1024;
@@ -72,10 +75,10 @@ public sealed record Reading(string Id, string Name, string Chip, string Icon, R
 
     public static readonly IReadOnlyList<Reading> All = new Reading[]
     {
-        new("upload", "Upload", "↑ Upload", "upload", ReadingKind.Speed, SampleParts.Network, s => s.Upload, "↑:", Gadget.GadgetLabel.Token("upload", Gadget.GadgetLabel.UploadColour), GadgetDefault: true, Card: ("Upload", 5),
-            Source: s => s.Adapter) { SuggestedIcons = new[] { "upload", "arrow-up", "cloud-upload" } },
-        new("download", "Download", "↓ Download", "download", ReadingKind.Speed, SampleParts.Network, s => s.Download, "↓:", Gadget.GadgetLabel.Token("download", Gadget.GadgetLabel.DownloadColour), GadgetDefault: true,
-            Card: ("Download", 4), Source: s => s.Adapter) { SuggestedIcons = new[] { "download", "arrow-down", "cloud-download" } },
+        new(UploadId, "Upload", "↑ Upload", "upload", ReadingKind.Speed, SampleParts.Network, s => s.Upload, "↑:", Gadget.GadgetLabel.Token("upload", Gadget.GadgetLabel.UploadColour), GadgetDefault: true, Card: ("Upload", 5),
+            Source: s => s.UploadFrom ?? s.Adapter) { SuggestedIcons = new[] { "upload", "arrow-up", "cloud-upload" } },
+        new(DownloadId, "Download", "↓ Download", "download", ReadingKind.Speed, SampleParts.Network, s => s.Download, "↓:", Gadget.GadgetLabel.Token("download", Gadget.GadgetLabel.DownloadColour), GadgetDefault: true,
+            Card: ("Download", 4), Source: s => s.DownloadFrom ?? s.Adapter) { SuggestedIcons = new[] { "download", "arrow-down", "cloud-download" } },
         new("cpu", "CPU usage", "CPU", "cpu", ReadingKind.Percent, SampleParts.None, s => s.Cpu, "C:", "{cpu}", GadgetDefault: true, WarnDefault: 90, Card: ("CPU", 0))
             { SuggestedIcons = new[] { "cpu", "cpu-2" }, TemperatureId = CpuTempId },
         new(GpuId, "GPU usage", "GPU", "device-desktop-analytics", ReadingKind.Percent, SampleParts.Gpu, s => s.Gpu, "G:", Gpu, GadgetDefault: true,
@@ -134,6 +137,12 @@ public sealed record Reading(string Id, string Name, string Chip, string Icon, R
 
     /// The GPU readings whose adapter can be chosen (<see cref="ResourcesSetup.GpuOf"/>) while the PC has more than one.
     public static bool HasGpuChoice(string readingId) => readingId is GpuId or GpuTempId;
+
+    /// The speed readings whose network adapter can be chosen on their own (<see cref="ResourcesSetup.SpeedAdapterOf"/>).
+    public static bool HasAdapterChoice(string readingId) => readingId is UploadId or DownloadId;
+
+    /// The network adapter a speed reading's own choice was read from in <paramref name="sample"/>; null: none chosen (or gone), the common choice's was.
+    public string? OwnAdapter(ResourceSample sample) => Id == UploadId ? sample.UploadFrom : sample.DownloadFrom;
 
     /// The parts of a read these readings need together.
     public static SampleParts PartsOf(IEnumerable<Reading> readings) => readings.Aggregate(SampleParts.None, (all, r) => all | r.Part);
