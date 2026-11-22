@@ -63,6 +63,5 @@ public sealed class AutomationModule(Func<IEnumerable<string>> rememberedProgram
     {
         ViewTemplate.For<AutomationPageViewModel, AutomationPage>(),
         ViewTemplate.For<AutomationItem, AutomationRuleRow>(),
-        ViewTemplate.For<CustomActionItem, CustomActionRow>(),
     };
 }

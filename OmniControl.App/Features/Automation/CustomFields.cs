@@ -4,7 +4,7 @@ using OmniControl.App.Features.Hotkeys.Actions;
 namespace OmniControl.App.Features.Automation;
 
 /// The one description of a custom action's settings (name, type, target, arguments): what the Choose-the-action window shows, and how a value
-/// is read from and applied to a <see cref="CustomAction"/>. The Custom actions tab edits the same fields through <see cref="Apply"/>, so there is one rule for each.
+/// is read from and applied to a <see cref="CustomAction"/>. The window writes them through <see cref="Apply"/>, so there is one rule for each.
 public static class CustomFields
 {
     public const string Name = "name", Kind = "kind", Arguments = "arguments";

@@ -207,9 +207,6 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         Edited(rule);
     }
 
-    /// A custom action was made, edited (in the picker or on its tab) or removed, so the other place that shows it follows.
-    public event Action<CustomAction>? CustomAdded, CustomChanged, CustomRemoved;
-
     /// Makes a custom action with the given settings (the others at their defaults) and registers it.
     public CustomAction AddCustom(IReadOnlyDictionary<string, string>? values = null)
     {
@@ -218,7 +215,6 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         Settings.Customs.Add(custom);
         _hotkeys.Register(MakeCustomAction(custom));
         Settings.Save();
-        CustomAdded?.Invoke(custom);
         return custom;
     }
 
@@ -229,7 +225,6 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         Settings.Customs.Remove(custom);
         _hotkeys.Unregister(custom.ActionId);
         Settings.Save();
-        CustomRemoved?.Invoke(custom);
     }
 
     /// Stores one setting of a custom action at once; a new name makes its action again (keeping its shortcut). Returns the action's new title when it was renamed, else null.
@@ -243,7 +238,6 @@ public sealed partial class AutomationService : IActionGate, IDisposable
             _hotkeys.Register(MakeCustomAction(custom));
         }
         Settings.Save();
-        CustomChanged?.Invoke(custom);
         return renamed ? custom.Name : null;
     }
 

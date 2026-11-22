@@ -6,8 +6,8 @@
              x:DataType="vm:AutomationPageViewModel">
     <!-- The Automation page: the title line (name, Pause all rules at the right), the tabs, the one status line, then the open tab.
          Rules: "When ... do ..." automations and "While ... don't allow ..." blocks, one row each, a "+ New" pill on each group's title line and a dashed row while a group is empty.
-         From other pages: rules made on pages and in the Presets window. Custom actions: one row each. Scripts: a list and an editor (see its comment). The rows are AutomationRuleRow and CustomActionRow (templates in App.axaml). -->
-    <!-- Rule and custom action rows are built only near the screen; a screen more each way, so Tab always finds the next row built -->
+         From other pages: rules made on pages and in the Presets window. Scripts: a list and an editor (see its comment). The rows are AutomationRuleRow (template in App.axaml). -->
+    <!-- Rule rows are built only near the screen; a screen more each way, so Tab always finds the next row built -->
     <UserControl.Resources>
         <ItemsPanelTemplate x:Key="RowsPanel"><VirtualizingStackPanel CacheLength="1" /></ItemsPanelTemplate>
     </UserControl.Resources>
@@ -61,18 +61,6 @@
                 <StackPanel Spacing="{StaticResource Gap}">
                     <ItemsControl ItemsSource="{Binding FeatureRules}" ItemsPanel="{StaticResource RowsPanel}" />
                     <pages:EmptyListRow IsVisible="{Binding NoFeatureRules}" Text="No rules from other pages yet. Pages such as Displays (warm light) and the Presets window (a preset's triggers) make theirs here." />
-                </StackPanel>
-            </DataTemplate></pages:GroupCard.ContentTemplate>
-        </pages:GroupCard>
-
-        <pages:GroupCard Group="{Binding CustomsGroup}" IsVisible="{Binding ShowsCustom}">
-            <pages:GroupCard.Tools>
-                <Button Classes="pill" Tag="grouptool" Content="+ New custom action" Command="{Binding AddCustomCommand}" />
-            </pages:GroupCard.Tools>
-            <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:AutomationPageViewModel">
-                <StackPanel Spacing="{StaticResource Gap}">
-                    <ItemsControl ItemsSource="{Binding Customs}" ItemsPanel="{StaticResource RowsPanel}" />
-                    <pages:EmptyListRow IsVisible="{Binding NoCustoms}" Text="No custom actions yet. A custom action runs your own command, script or program." LinkText="New custom action" Command="{Binding AddCustomCommand}" />
                 </StackPanel>
             </DataTemplate></pages:GroupCard.ContentTemplate>
         </pages:GroupCard>
