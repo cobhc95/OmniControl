@@ -4,20 +4,25 @@
          (the FX window's effect list and editor, docs/mockups/eq-typing-handles.html part 5). It is PaneSplitterWidth wide, shows the
          resize cursor, and a faint accent line down its middle on hover and while dragged. Put it in its own Auto column between the
          panes; the panes' MinWidth (not the splitter) keep either side from clipping. -->
-    <Style Selector="GridSplitter.pane">
-        <Setter Property="Width" Value="{StaticResource PaneSplitterWidth}" />
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Focusable" Value="False" />
-        <Setter Property="Cursor" Value="SizeWestEast" />
-        <Setter Property="Template">
-            <ControlTemplate>
-                <Panel Background="{TemplateBinding Background}">
-                    <Rectangle x:Name="Line" Width="2" HorizontalAlignment="Center" Fill="Transparent" />
-                </Panel>
-            </ControlTemplate>
-        </Setter>
-    </Style>
-    <Style Selector="GridSplitter.pane:pointerover /template/ Rectangle#Line, GridSplitter.pane:pressed /template/ Rectangle#Line">
-        <Setter Property="Fill" Value="{DynamicResource BrushAccentEdge}" />
-    </Style>
+    <Styles.Resources>
+        <ControlTheme x:Key="PaneSplitter" TargetType="GridSplitter" BasedOn="{StaticResource {x:Type GridSplitter}}">
+            <Style Selector="^.pane">
+                <Setter Property="Width" Value="{StaticResource PaneSplitterWidth}" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="Cursor" Value="SizeWestEast" />
+                <Setter Property="Template">
+                    <ControlTemplate>
+                        <Panel Background="{TemplateBinding Background}">
+                            <Rectangle x:Name="Line" Width="2" HorizontalAlignment="Center" Fill="Transparent" />
+                        </Panel>
+                    </ControlTemplate>
+                </Setter>
+            </Style>
+            <Style Selector="^.pane:pointerover /template/ Rectangle#Line, ^.pane:pressed /template/ Rectangle#Line">
+                <Setter Property="Fill" Value="{DynamicResource BrushAccentEdge}" />
+            </Style>
+        </ControlTheme>
+    </Styles.Resources>
+    <Style Selector="GridSplitter.pane"><Setter Property="Theme" Value="{StaticResource PaneSplitter}" /></Style>
 </Styles>

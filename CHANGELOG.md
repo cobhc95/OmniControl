@@ -7,6 +7,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 - Fixed: the taskbar gadget could show coloured blocks after a change of position, text colour or anything else that resized it; it now redraws whenever Windows gives it a new size.
 - Faster first search: "Search settings..." makes only the pages that have a match (each page's words are read without making it), at the typing pause, instead of every page at the first letter; results and their order are unchanged.
+- Faster and lighter: sliders, scroll bars, text boxes, switches, check boxes, drop-downs, the page lists' rows, ticked menu rows, the pane splitter and the menu pop-downs take their looks from control themes, so far fewer global styles are tried on every control (looks unchanged).
 - Faster: the Displays page (and the Mouse page's inner groups) builds eight cards first and the rest right after, so its first frame shows sooner; looks and keys are the same.
 - Faster: menu rows build their tag lists only when the row has tags (long menus such as the action picker's and the gadget's menus open sooner).
 - Faster: the Volume page's level meters repaint only when a level moves by about a pixel and read less often while every meter is silent (the compressor and limiter cards too).

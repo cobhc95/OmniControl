@@ -32,9 +32,62 @@
             </Style>
             <Style Selector="^.groupPanel.target"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
         </ControlTheme>
-    </Styles.Resources>
-
-    <!-- The card list: a list of setting cards that pairs half-width cards two per row (used with "rows compact") -->
+        <!-- The edges of a field and a switch (styles in a theme instead of global ones, which every Border would try). Being inside a card
+             (an editor has focus): accent border and a darker field. The resting edge: BrushControlEdge, so it stays clear on a hovered card
+             (hover and focus override it). A switch that is off is Windows' hollow track with a clear outline and a light knob
+             (ToggleSwitch*Off, SurfaceService); on, the accent track with the on-accent knob (AccentService), so on and off differ for any
+             accent, greys and white included. -->
+        <ControlTheme x:Key="TextBoxTheme" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Style Selector="^:focus /template/ Border#PART_BorderElement, ^:focus:pointerover /template/ Border#PART_BorderElement">
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+                <Setter Property="BorderThickness" Value="2" />
+                <Setter Property="Background" Value="{DynamicResource BrushBackground}" />
+            </Style>
+            <Style Selector="^:not(:focus) /template/ Border#PART_BorderElement"><Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" /></Style>
+            <Style Selector="^:pointerover /template/ Border#PART_BorderElement"><Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" /></Style>
+            <!-- Hotkey box while it waits for keys: accent border and a slow flash -->
+            <Style Selector="^.listening /template/ Border#PART_BorderElement, ^.listening:pointerover /template/ Border#PART_BorderElement">
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+                <Setter Property="BorderThickness" Value="2" />
+                <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
+                <Style.Animations>
+                    <Animation Duration="0:0:0.8" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="SineEaseInOut">
+                        <KeyFrame Cue="0%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+                        <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.35" /></KeyFrame>
+                    </Animation>
+                </Style.Animations>
+            </Style>
+        </ControlTheme>
+        <!-- Hover for the individual elements inside cards (sliders, switches, check boxes; a button's is the master hover of ButtonThemes.axaml).
+             Rule 5 in AGENTS.md: every clickable element needs its own hover; add new element types here. -->
+        <ControlTheme x:Key="CheckBoxTheme" TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+            <Style Selector="^:pointerover /template/ Border#NormalRectangle">
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+                <Setter Property="Background" Value="{DynamicResource BrushHover}" />
+            </Style>
+        </ControlTheme>
+        <ControlTheme x:Key="ToggleSwitchTheme" TargetType="ToggleSwitch" BasedOn="{StaticResource {x:Type ToggleSwitch}}">
+            <Style Selector="^:focus /template/ Border#OuterBorder">
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+                <Setter Property="BorderThickness" Value="2" />
+            </Style>
+            <Style Selector="^:pointerover /template/ Border#OuterBorder"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
+            <!-- .plain = a switch with no On/Off words (a row's own switch, a table's allow switch) -->
+            <Style Selector="^.plain">
+                <Setter Property="OnContent" Value="" />
+                <Setter Property="OffContent" Value="" />
+                <Setter Property="MinWidth" Value="0" />
+            </Style>
+            <!-- .master = a group header's master switch (Pages/GroupMasterSwitch). All on / all off look like any switch; the mixed state
+                 (IsChecked null) is an accent outline with no knob and Border.masterdash (Bars.axaml), the accent dash drawn in its middle. -->
+            <Style Selector="^.master:indeterminate /template/ Border#OuterBorder">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+                <Setter Property="BorderThickness" Value="2" />
+            </Style>
+            <Style Selector="^.master:indeterminate /template/ Grid#PART_SwitchKnob"><Setter Property="Opacity" Value="0" /></Style>
+        </ControlTheme>
+    </Styles.Resources>    <!-- The card list: a list of setting cards that pairs half-width cards two per row (used with "rows compact") -->
     <Style Selector="ListBox.cards">
         <Setter Property="ItemsPanel"><ItemsPanelTemplate><pages:HalfPanel /></ItemsPanelTemplate></Setter>
     </Style>
@@ -51,29 +104,10 @@
         <Setter Property="FocusAdorner" Value="{x:Null}" />
     </Style>
 
-    <!-- Being inside a card (an editor has focus): accent border and a darker field -->
-    <Style Selector="TextBox:focus /template/ Border#PART_BorderElement, TextBox:focus:pointerover /template/ Border#PART_BorderElement">
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-        <Setter Property="BorderThickness" Value="2" />
-        <Setter Property="Background" Value="{DynamicResource BrushBackground}" />
-    </Style>
-    <!-- The resting edge of fields and drop-downs: BrushControlEdge, so it stays clear on a hovered card (hover and focus override it). A switch
-         that is off is Windows' hollow track with a clear outline and a light knob (ToggleSwitch*Off, SurfaceService); on, the accent track
-         with the on-accent knob (AccentService), so on and off differ for any accent, greys and white included. -->
-    <Style Selector="TextBox:not(:focus) /template/ Border#PART_BorderElement, ComboBox:not(:focus) /template/ Border#Background">
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushControlEdge}" />
-    </Style>
-    <Style Selector="ComboBox:focus /template/ Border#Background, ComboBox:focus:pointerover /template/ Border#Background">
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-        <Setter Property="BorderThickness" Value="2" />
-    </Style>
-    <Style Selector="ToggleSwitch:focus /template/ Border#OuterBorder">
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-        <Setter Property="BorderThickness" Value="2" />
-    </Style>
-    <Style Selector="ToggleSwitch:pointerover /template/ Border#OuterBorder">
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-    </Style>
+    <!-- Fields, drop-downs, switches and check boxes: their edges and hover in the themes above (ComboBoxTheme in Menus.axaml) -->
+    <Style Selector="TextBox"><Setter Property="Theme" Value="{StaticResource TextBoxTheme}" /></Style>
+    <Style Selector="ToggleSwitch"><Setter Property="Theme" Value="{StaticResource ToggleSwitchTheme}" /></Style>
+    <Style Selector="CheckBox"><Setter Property="Theme" Value="{StaticResource CheckBoxTheme}" /></Style>
 
     <!-- Picture gallery cards (the OSD style, a display's orientation; colour galleries are the swatch button, Pages/GalleryRow): no box of their own, the card around them shows hover and keyboard focus; the arrow buttons are flat -->
     <Style Selector="Border.gallery"><Setter Property="Padding" Value="4,2" /></Style>
@@ -171,7 +205,7 @@
                   slider upright, an equaliser's band); Knob: Knobs.axaml; scroll bars: one master, Styles/ScrollBars.axaml
          Lists:   Controls/OptionList (a ticked list, ListBox.pick.compact; Border.tickbox = its tick (.checked)); Border.hrule = a thin line between parts of a pop-down; FlyoutPresenter.listmenu = a narrow menu pop-down;
                   .unavailable = a greyed entry or control (master picker, Shortcuts action, a microphone row's parts). Menus, chips, ticks: Menus.axaml; Button.selector: RowControls.axaml.
-                  List row styles use "ListBox.x > ListBoxItem" (direct items only) so a list inside a pop-down opened from a row never takes the page rows' look.
+                  A list kind's rows are its ListBox theme's ItemContainerTheme (ThemeLists.axaml), so a list inside a pop-down opened from a row never takes the page rows' look.
          Blocks:  Styles/Blocks.axaml (a sentence of blocks, the rule editor: Button.block, .blockx, .blockjoin, .blockadd, TextBlock.blockword);
                   Button.blockadd.small = the same dashed "+ add" at chip size, after a row of chips (Menus.axaml)
          Volume rows: Border.rowicon (the icon tile: a picture, a library IconGlyph or the initial, each centred), Path.glyph (a stroked small glyph), WrapPanel.sentence (the line under a row's name),
@@ -214,29 +248,6 @@
     </Style>
     <Style Selector="PathIcon.chev.collapsed">
         <Setter Property="RenderTransform" Value="rotate(-90deg)" />
-    </Style>
-
-    <!-- A pop-down must draw above the cards below it (the Position drop-down showed a switch through its list): the card that holds the keyboard,
-         which includes the control whose list is open, is drawn above its neighbours; a drop-down's list is the solid menu surface
-         (Menus.axaml). One rule here, so every page's drop-downs and menus have it. -->
-    <Style Selector="ListBox.rows > ListBoxItem:focus-within"><Setter Property="ZIndex" Value="1" /></Style>
-
-    <!-- Hover feedback for the mouse (keyboard focus uses the accent border) -->
-    <Style Selector="ListBox.nav > ListBoxItem:pointerover:not(:selected) /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushHover}" />
-    </Style>
-    <Style Selector="ListBox.nav > ListBoxItem:selected:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
-    </Style>
-    <Style Selector="ListBox.rows > ListBoxItem:pointerover:not(:focus-within) /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushHover}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" />
-    </Style>
-    <Style Selector="ListBox.rows > ListBoxItem:focus-within:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource BrushAccentHover}" />
-    </Style>
-    <Style Selector="ComboBox:pointerover /template/ Border#Background, TextBox:pointerover /template/ Border#PART_BorderElement">
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" />
     </Style>
 
     <!-- Every window: the app background and the app icon (set once, never per window) -->

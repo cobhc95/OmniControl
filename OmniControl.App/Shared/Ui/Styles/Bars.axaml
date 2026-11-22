@@ -43,29 +43,13 @@
         <Setter Property="Padding" Value="{StaticResource ToolRowPadding}" />
         <Setter Property="TextElement.FontSize" Value="{StaticResource ToolFontSize}" />
     </Style>
-    <!-- Fluent's switch is drawn 32 px high around its 20 px knob; the inset lets it take the toolbar's control height with the knob centred.
-         ToggleSwitch.tool = the same small switch outside a toolbar (a group header's "Show closed") -->
+    <!-- Fluent's switch is drawn 32 px high around its 20 px knob; the inset lets it take the toolbar's control height with the knob centred
+         ToggleSwitch.tool = the same small switch outside a toolbar (a group header's "Show closed"); .plain and .master: ToggleSwitchTheme in Theme.axaml -->
     <Style Selector="Border.toolrow ToggleSwitch, ToggleSwitch.tool">
         <Setter Property="MinWidth" Value="0" />
         <Setter Property="FontSize" Value="{StaticResource ToolFontSize}" />
         <Setter Property="Margin" Value="{StaticResource ToolSwitchInset}" />
         <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
-    <!-- ToggleSwitch.plain = a switch with no On/Off words (a row's own switch, a table's allow switch) -->
-    <Style Selector="ToggleSwitch.plain">
-        <Setter Property="OnContent" Value="" />
-        <Setter Property="OffContent" Value="" />
-        <Setter Property="MinWidth" Value="0" />
-    </Style>
-    <!-- ToggleSwitch.master = a group header's master switch (Pages/GroupMasterSwitch). All on / all off look like any switch; the mixed state
-         (IsChecked null) is an accent outline with no knob and Border.masterdash, the accent dash drawn in its middle. -->
-    <Style Selector="ToggleSwitch.master:indeterminate /template/ Border#OuterBorder">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
-        <Setter Property="BorderThickness" Value="2" />
-    </Style>
-    <Style Selector="ToggleSwitch.master:indeterminate /template/ Grid#PART_SwitchKnob">
-        <Setter Property="Opacity" Value="0" />
     </Style>
     <Style Selector="Border.masterdash">
         <Setter Property="Width" Value="10" />
