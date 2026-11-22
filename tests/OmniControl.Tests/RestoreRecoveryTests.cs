@@ -162,6 +162,58 @@ public sealed class RestoreRecoveryTests : IDisposable
         }
     }
 
+    private static readonly (string, byte[]?)[] ImportedArea =
+    [
+        (DataStores.App.FileName, System.Text.Encoding.UTF8.GetBytes("""{"Accent":"Red"}""")),
+        (DataStores.Hotkeys.FileName, System.Text.Encoding.UTF8.GetBytes("""{"Keys":[]}""")),
+        (DataStores.Osd.FileName, null),
+    ];
+
+    [Fact]
+    public void An_import_stopped_at_any_step_is_whole_after_the_next_start()
+    {
+        var whole = Directory.CreateDirectory(Path.Combine(_root, "import-whole")).FullName;
+        Live(whole);
+        Assert.Null(PendingRestore.ApplyNow(whole, ImportedArea, () => true));
+        var imported = Snapshot(whole);
+        var mixed = false;
+        for (var at = 0; ; at++)
+        {
+            var here = Directory.CreateDirectory(Path.Combine(_root, $"import-{at}")).FullName;
+            Live(here);
+            var before = Snapshot(here);
+            var fault = new Fault(at, () => new Crash());
+            try { PendingRestore.ApplyNow(here, ImportedArea, () => true, fault.Step); }
+            catch (Crash) { }
+            if (!fault.Hit) break;
+            var stopped = Snapshot(here);
+            mixed |= !stopped.SequenceEqual(before) && !stopped.SequenceEqual(imported);
+
+            PendingRestore.ApplyPending(here); // the next start
+            var after = Snapshot(here);
+            Assert.True(after.SequenceEqual(before) || after.SequenceEqual(imported), $"mixed after a stop at step {at}");
+            Assert.False(Directory.Exists(Path.Combine(here, "pending-import")));
+        }
+        Assert.True(mixed);
+    }
+
+    [Fact]
+    public void An_import_that_fails_its_check_is_put_back()
+    {
+        var here = Directory.CreateDirectory(Path.Combine(_root, "import-check")).FullName;
+        Live(here);
+        var before = Snapshot(here);
+        Assert.NotNull(PendingRestore.ApplyNow(here, ImportedArea, () => false));
+        Assert.Equal(before, Snapshot(here));
+        Assert.Null(PendingRestore.ApplyPending(here));
+    }
+
+    private static void Live(string here)
+    {
+        Put(here, DataStores.App.FileName, """{"Accent":"Blue"}""");
+        Put(here, DataStores.Osd.FileName, """{"Size":3}""");
+    }
+
     /// A data folder with stores of every kind and a backup staged over it: two stores the backup also has, two it lacks, an undo copy and a
     /// safety journal (never touched), and the import's automatic backup (a wipe removes it).
     private string Staged(string name, RestoreMode mode)

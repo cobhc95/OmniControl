@@ -1,3 +1,4 @@
+using System.Text;
 using OmniControl.App.Shared.Services.Backup;
 
 namespace OmniControl.App.Features.OtherPcs.SettingsImport;
@@ -17,7 +18,8 @@ public sealed record AreaResult(string Area, AreaOutcome Outcome, string? Fact =
 
 /// Carries out an import of chosen areas from another PC, one area at a time, each on its own: an automatic backup first (the existing
 /// <see cref="BackupFile"/>), then per area the files that arrived are checked (a store of the area only, valid json, the properties a file
-/// may not set kept as they are here), saved atomically through <see cref="AppDataStore"/>, read back and then reloaded by the owner of each
+/// may not set kept as they are here), saved together under the restore's journal (<see cref="PendingRestore.ApplyNow"/>, so a crash mid-area
+/// is finished or rolled back at the next start), read back and then reloaded by the owner of each
 /// store (<see cref="ImportHooks"/>), which replaces what it holds in memory (so what it saves at exit is the imported value, never the old
 /// one) and applies it. An area whose stores cannot all be reloaded is not applied at all. A failed area is put back alone and reloaded again.
 /// <see cref="Undo"/> restores the backup the same way.
@@ -68,23 +70,22 @@ public sealed class SettingsImporter
 
     private AreaResult ApplyLive(ImportArea area, List<(DataStore Store, string Text)> parts, string? fact)
     {
-        var before = parts.Select(p => (p.Store, Text: AppDataStore.LoadText(p.Store))).ToList();
+        AppDataStore.FlushSaves(); // the journal keeps the files as they are now, waiting saves included
         string? why = null;
-        foreach (var (store, text) in parts)
+        var failed = PendingRestore.ApplyNow(AppDataStore.Folder, parts.Select(p => (p.Store.FileName, (byte[]?)Encoding.UTF8.GetBytes(p.Text))).ToList(), () =>
         {
-            if (!AppDataStore.SaveText(store, text)) why = "The file could not be saved.";
-            else if (AppDataStore.LoadText(store) != text) why = "What was saved did not read back the same.";
-            if (why is not null) break;
-        }
-        if (why is null && parts.Any(p => !_hooks.Reload(p.Store))) why = "OmniControl could not load it.";
-        if (why is null)
+            if (parts.Any(p => AppDataStore.LoadText(p.Store) != p.Text)) why = "What was saved did not read back the same.";
+            else if (parts.Any(p => !_hooks.Reload(p.Store))) why = "OmniControl could not load it.";
+            return why is null;
+        });
+        if (failed is null)
         {
             _applied.Add(area);
             return new AreaResult(area.Name, AreaOutcome.Checked, fact);
         }
-        foreach (var (store, text) in before) _ = PutBack(store, text); // already failing: the store logged why
-        foreach (var (store, _) in before) _hooks.Reload(store);
-        return Failed(area, why);
+        AppDataStore.AppendLog(Guard.LogFile, $"Import of {area.Name}: {failed}");
+        foreach (var (store, _) in parts) _hooks.Reload(store); // the files are put back: their owners take them again
+        return Failed(area, why ?? "The file could not be saved.");
     }
 
     /// Puts everything back from the automatic backup: every applied area is written back and reloaded. Null when done, else why not;
