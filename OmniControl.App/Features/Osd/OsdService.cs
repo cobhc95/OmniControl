@@ -234,6 +234,9 @@ public sealed class OsdService : IOsd, IDisposable
     /// The hardware watch "USB devices (OSD)": Windows announced a device change and the burst has settled (worker thread).
     public void LookAtUsb() => _usb.Look();
 
+    /// Explorer restarted (TaskbarCreated): Windows' pop-up host is new.
+    public void ExplorerRestarted() => _windowsOsd.ExplorerRestarted();
+
     /// The volume pop-up for changes made outside OmniControl watches the device <paramref name="device"/> names (null = Windows' default
     /// playback device); <see cref="RetargetVolume"/> looks again when the answer changes.
     public void WatchVolumeOf(Func<string?> device)

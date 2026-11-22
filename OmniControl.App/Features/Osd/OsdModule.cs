@@ -11,7 +11,7 @@ namespace OmniControl.App.Features.Osd;
 public sealed class OsdModule(Func<IReadOnlyList<RunningProgram>> listedApps) : IFeatureModule, IDisposable
 {
     /// The OSD's entry in the master list of hardware watches: the USB devices its "USB devices" pop-up follows.
-    private const string UsbWatchId = "osd.usb";
+    private const string UsbWatchId = "osd.usb", ExplorerWatchId = "osd.explorer";
 
     private readonly OsdService _service = new();
     private FeatureContext? _context;
@@ -28,6 +28,7 @@ public sealed class OsdModule(Func<IReadOnlyList<RunningProgram>> listedApps) : 
         _context = context;
         _service.UseFeature(true);
         context.Hardware.Register(new HardwareWatch(UsbWatchId, "USB devices (OSD)", HardwareSignal.Device, _service.LookAtUsb));
+        context.Hardware.Register(new HardwareWatch(ExplorerWatchId, "Explorer restart (Windows' OSD)", HardwareSignal.Taskbar, _service.ExplorerRestarted));
         context.Imports.OnReload(DataStores.Osd, _service.ReloadFromDisk);
         context.Shutdown.AddWhenOff(ShutdownStage.Osd, "OSD off", () => _service.UseFeature(false));
     }

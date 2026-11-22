@@ -35,6 +35,7 @@ public static class WindowsOsdWindows
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr FindWindowEx(IntPtr parent, IntPtr after, string? cls, string? title);
     [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr hwnd);
+    [DllImport("user32.dll")] private static extern IntPtr GetShellWindow();
     [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr hwnd);
     [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hwnd);
     [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hwnd, out Rect rect);
@@ -60,6 +61,13 @@ public static class WindowsOsdWindows
     /// <paramref name="processId"/>: a window handle Windows has given to another window since is never touched.
     public static bool IsSameCandidate(IntPtr window, int processId) =>
         IsWindow(window) && ProcessOf(window) == processId && WindowQuery.ClassOf(window) == HostClass && GetWindowTextLength(window) == 0 && HasCandidateShape(window);
+
+    /// True when the window is a candidate with the pop-up's size and place, and the pointer is not over the taskbar (a thumbnail preview).
+    public static bool LooksLikeFlyout(IntPtr window) =>
+        WindowQuery.ClassOf(window) == HostClass && GetWindowTextLength(window) == 0 && HasCandidateShape(window) && HasFlyoutShape(window) && !PointerOverShell();
+
+    /// The process of Windows' shell (Explorer, which hosts the pop-up), or 0 before Explorer has started.
+    public static int ShellProcess() => ProcessOf(GetShellWindow());
 
     /// The id of the process that owns the window, or 0.
     public static int ProcessOf(IntPtr window) => GetWindowThreadProcessId(window, out var pid) != 0 ? (int)pid : 0;
