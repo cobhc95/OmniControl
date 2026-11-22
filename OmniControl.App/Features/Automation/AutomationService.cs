@@ -72,10 +72,12 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         _run = run;
         _power = power;
         _states = states;
-        _sources = new Sources(hotkeys, run, states);
+        _programs = new ProgramStates(states, Settings, Log);
+        _sources = new Sources(hotkeys, run, states, _programs);
         _remembered = remembered;
         _report = report;
         SessionOff = KeyboardState.Held().HasFlag(Modifiers.Shift);
+        MoveProgramTriggers();
         var actions = new MouseActionRunner(run.Run, _report, Log);
         Approvals = new CommandApprovals(() => Settings.Approved, Settings.Save, ask);
         _runner = new RuleRunner(actions, Approvals.IsApproved, Log, id => hotkeys.Find(id)?.Reach);
@@ -174,6 +176,7 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         foreach (var custom in Settings.Customs) _hotkeys.Unregister(custom.ActionId);
         foreach (var script in Settings.Scripts) _hotkeys.Unregister(script.ActionId);
         SettingsCopy.Into(Settings, AutomationSettings.Load());
+        MoveProgramTriggers();
         _hotkeys.Register(Settings.Rules.Where(r => r.Kind == AutomationKind.Do).Select(MakeRuleAction));
         _hotkeys.Register(Settings.Customs.Select(MakeCustomAction));
         _hotkeys.Register(Settings.Scripts.Select(MakeScriptAction));
@@ -181,6 +184,15 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         Reloaded?.Invoke();
         Changed?.Invoke();
         return true;
+    }
+
+    /// Rules from before programs were states follow the program's state now (once: nothing is left to move afterwards).
+    private void MoveProgramTriggers()
+    {
+        var moved = ProgramTriggerMigration.Run(Settings.Rules);
+        if (moved == 0) return;
+        Settings.Save();
+        Log($"{moved} program trigger(s) of rules now follow the program's state (starts: turns on, closes: turns off)");
     }
 
     /// Call after any change to a rule's blocks or switch: saves, starts its timers again and clears a pause.

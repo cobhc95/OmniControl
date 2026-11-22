@@ -122,6 +122,7 @@ public class StateTriggerTests
         public IEnumerable<HotkeyAction> Actions => List;
         public HotkeyAction? Action(string id) => List.FirstOrDefault(a => a.Id == id);
         public ActionSection? SectionOf(string section) => null;
+        public ProgramFacts? ProgramOf(string stateId) => null;
     }
 
     private static HotkeyAction NewAction(string id, string title) => new(id, title, "Volume", string.Empty, _ => { });
@@ -130,10 +131,10 @@ public class StateTriggerTests
     public void Trigger_list_is_read_live_from_both_master_lists()
     {
         var sources = new FakeSources();
-        Assert.DoesNotContain(AutomationTriggers.Choices(Array.Empty<string>(), sources), c => c.Spec == "state:lamp");
+        Assert.DoesNotContain(AutomationTriggers.Choices(sources), c => c.Spec == "state:lamp");
         sources.Registry.Register(OnOff("lamp", new Box()));
         sources.List.Add(NewAction("volume.up", "Volume up"));
-        var choices = AutomationTriggers.Choices(Array.Empty<string>(), sources);
+        var choices = AutomationTriggers.Choices(sources);
         Assert.Contains(choices, c => c.Spec == "state:lamp" && c.Name == "Lamp");
         Assert.Contains(choices, c => c.Spec == "action.runs:volume.up" && c.Name == "Volume up");
         Assert.Contains(choices, c => c.Spec == AutomationTriggers.Hotkey); // the fixed table is still there

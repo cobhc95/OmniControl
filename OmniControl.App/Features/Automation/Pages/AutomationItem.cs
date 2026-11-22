@@ -338,8 +338,9 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
         if (slot.Kind == RuleSlotKind.Trigger && AutomationTriggers.IsHotkey(stored)) ListenForHotkey();
     }
 
-    private void Set(RuleSlot slot, string stored)
+    private void Set(RuleSlot slot, string picked)
     {
+        var stored = slot.Kind == RuleSlotKind.Trigger ? AutomationTriggers.Tidy(picked) : picked;
         switch (slot.Kind)
         {
             case RuleSlotKind.Trigger when slot.IsNew: Rule.MoreTriggers.Add(stored); break;

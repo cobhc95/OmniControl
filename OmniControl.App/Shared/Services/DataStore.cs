@@ -80,7 +80,7 @@ public static class DataStores
     public static readonly DataStore EffectPresets = new("presets.json", "Effect presets", StoreKind.Saved, Mergeable: true, Import: Places.Volume, NotImportedInside: PluginFiles);
     public static readonly DataStore VolumePresets = new("volume-presets.json", "Volume presets", StoreKind.Saved, Mergeable: true, Import: Places.Volume, NotImportedInside: PluginFiles);
     public static readonly DataStore Plugins = new("plugins.json", "Plug-in list", StoreKind.Saved, Mergeable: true, Import: Places.Plugins, MachineSpecific: true);
-    public static readonly DataStore Automation = new("automation.json", "Rules, custom actions and scripts", StoreKind.Saved, Mergeable: true, NotImported: new[] { "Approved" }, Import: Places.Automation);
+    public static readonly DataStore Automation = new("automation.json", "Rules, custom actions and scripts", StoreKind.Saved, Mergeable: true, NotImported: new[] { "Approved", "AddedPrograms" }, Import: Places.Automation);
     public static readonly DataStore GestureRules = new("rules.json", "Gesture rules", StoreKind.Saved, Mergeable: true, NotImported: new[] { "Approved" }, Import: Places.Gestures);
     public static readonly DataStore Gestures = new("gestures.json", "Gestures", StoreKind.Saved, Import: Places.Gestures);
     public static readonly DataStore Hotkeys = new("hotkeys.json", "Shortcuts", StoreKind.Saved, Mergeable: true, Import: Places.Shortcuts);

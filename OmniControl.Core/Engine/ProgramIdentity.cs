@@ -4,7 +4,7 @@ using OmniControl.Core.Engine.Mouse;
 namespace OmniControl.Core.Engine;
 
 /// A program with a window now: its identity (<see cref="ProgramIdentity.Normalize"/>) and the name a person knows it by.
-public sealed record RunningProgram(string Id, string Name);
+public sealed record RunningProgram(string Id, string Name, string? Path = null);
 
 /// How a program is identified everywhere (rules, automation, app lists): its executable's name in lower case, without folder or ".exe"
 /// ("chrome"). <see cref="NameOf"/> answers for a process id and <see cref="Foreground"/> for the program the user is working in; both are
@@ -48,7 +48,7 @@ public sealed class ProgramIdentity
                     if (id.Length == 0 || found.Values.Any(p => p.Id == id)) continue;
                     var path = process.MainModule?.FileName;
                     var name = path is null ? Capitalised(id) : ProgramFile.NameOf(path);
-                    found[$"{name}|{id}"] = new RunningProgram(id, name);
+                    found[$"{name}|{id}"] = new RunningProgram(id, name, path);
                 }
                 catch (Exception ex) when (ex is InvalidOperationException or Win32Exception)
                 {

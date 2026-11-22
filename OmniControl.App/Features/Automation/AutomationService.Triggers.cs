@@ -4,7 +4,7 @@ using OmniControl.App.Shared.Scripts;
 namespace OmniControl.App.Features.Automation;
 
 // Starting Do rules from their triggers: one look every Timing.AutomationTick at the clock, the idle time, the power source, the
-// running programs and the USB devices (AutomationWatcher), plus the start-up events, the confirmed wakes of the power journal
+// running programs (read for the program states, ProgramStates) and the USB devices (AutomationWatcher), plus the start-up events, the confirmed wakes of the power journal
 // (IPowerEvents, once per wake) and a wake timer for rules that ask for one.
 public sealed partial class AutomationService
 {
@@ -65,6 +65,7 @@ public sealed partial class AutomationService
     /// The set of rules changed: watch devices once a rule wants them, and set the wake timer.
     private void SyncTriggers()
     {
+        SyncPrograms();
         if (SessionOff) return;
         if (Settings.Rules.Any(r => Needs(r) && IsTrigger(r, AutomationTriggers.DeviceConnect, AutomationTriggers.DeviceDisconnect))) _watcher.StartDevices();
         // With no rule to look for, the look only keeps the power states fresh: much less often, and not at all while only rules of other pages may run.
@@ -100,10 +101,9 @@ public sealed partial class AutomationService
     private void Look()
     {
         if (_readingPrograms) return;
-        var watchPrograms = Settings.Rules.Any(r => Needs(r) && IsTrigger(r, AutomationTriggers.ProgramStart, AutomationTriggers.ProgramClose));
-        if (!watchPrograms && !Settings.Rules.Any(r => AsksPrograms(r) && !Stopped(r)))
+        if (!_programs.Watching && !Settings.Rules.Any(r => AsksPrograms(r) && !Stopped(r)))
         {
-            Guard.Run("Automation look", () => LookWith(watchPrograms: false, programs: null));
+            Guard.Run("Automation look", LookWith);
             return;
         }
         _readingPrograms = true;
@@ -114,8 +114,12 @@ public sealed partial class AutomationService
             Dispatcher.UIThread.Post(() =>
             {
                 _readingPrograms = false;
-                if (programs is not null) _programsSeen = programs;
-                if (_tick?.IsEnabled == true) Guard.Run("Automation look", () => LookWith(watchPrograms, programs));
+                if (programs is not null)
+                {
+                    _programsSeen = programs;
+                    _programs.Saw(programs);
+                }
+                if (_tick?.IsEnabled == true) Guard.Run("Automation look", LookWith);
             });
         });
     }
@@ -133,8 +137,7 @@ public sealed partial class AutomationService
     private AutomationContext NewContext() =>
         new(() => Dispatcher.UIThread.CheckAccess() ? _programsSeen : AutomationWatcher.RunningPrograms());
 
-    /// <param name="programs">The running programs just read (null: not read, or the read failed and the last list stays).</param>
-    private void LookWith(bool watchPrograms, HashSet<string>? programs)
+    private void LookWith()
     {
         var now = DateTime.Now;
         var from = _lastLook;
@@ -146,7 +149,7 @@ public sealed partial class AutomationService
         if (!Settings.Rules.Any(Needs)) return;
 
         var afterWake = events.Any(e => e.Kind is AutomationTriggers.Resume or AutomationTriggers.Login or AutomationTriggers.Start);
-        events.AddRange(_watcher.Poll(watchPrograms, programs));
+        events.AddRange(_watcher.Poll());
         var idle = PowerState.IdleFor();
         if (idle < Timing.AutomationTick) _idleFired.Clear(); // input since the last look: idle rules are ready again
 
@@ -192,9 +195,6 @@ public sealed partial class AutomationService
                 if (idle < TimeSpan.FromMinutes(trigger.Options.Int(AutomationTriggers.IdleMinutes)) || _idleFired.Contains(key)) return false;
                 _idleFired.Add(key);
                 return true;
-            case AutomationTriggers.ProgramStart or AutomationTriggers.ProgramClose:
-                var program = ProgramNames.Normalize(trigger.Param);
-                return events.Any(e => e.Kind == trigger.Id && (program.Length == 0 || e.Name == program));
             case AutomationTriggers.DeviceConnect or AutomationTriggers.DeviceDisconnect:
                 var part = trigger.Param.Trim();
                 return events.Any(e => e.Kind == trigger.Id && (part.Length == 0 || e.Name.Contains(part, StringComparison.OrdinalIgnoreCase)));

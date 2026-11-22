@@ -5,18 +5,15 @@ using OmniControl.App.Shared.Scripts;
 
 namespace OmniControl.App.Features.Automation;
 
-/// Something that happened between two looks: a trigger id (<see cref="AutomationTriggers"/>) and, for a program or device, its name.
+/// Something that happened between two looks: a trigger id (<see cref="AutomationTriggers"/>) and, for a device, its name.
 public sealed record AutomationEvent(string Kind, string Name = "");
 
-/// Notices what the event triggers wait for: the power source changing, programs starting and closing, USB devices coming and going.
-/// <see cref="Poll"/> is called on each tick and returns what changed since the last call; the first call only takes a baseline, so
-/// nothing that was already true at start-up counts as an event. Programs are only looked at while <c>watchPrograms</c> is true.
+/// Notices what the event triggers wait for: the power source changing and USB devices coming and going (<see cref="Poll"/>, on each tick).
 public sealed class AutomationWatcher : IDisposable
 {
     private readonly UsbDeviceWatcher _usb = new();
     private readonly ConcurrentQueue<AutomationEvent> _devices = new();
     private bool? _onBattery;
-    private HashSet<string>? _programs;
     private bool _started;
 
     public AutomationWatcher() => _usb.Changed += OnUsbChanged;
@@ -35,30 +32,15 @@ public sealed class AutomationWatcher : IDisposable
     /// The hardware watch's refresh after Windows announced a device change (worker thread): the USB list is compared, if watched.
     public void LookAtUsb() => _usb.Look();
 
-    /// <param name="now">The running programs (<see cref="RunningPrograms"/>, read by the caller off the UI thread); null while
-    /// <paramref name="watchPrograms"/> is on means the read failed and the last list stays.</param>
-    public IReadOnlyList<AutomationEvent> Poll(bool watchPrograms, HashSet<string>? now)
+    /// What changed since the last call: the power source, USB devices. The first call only takes a baseline, so nothing that was already
+    /// true at start-up counts as an event.
+    public IReadOnlyList<AutomationEvent> Poll()
     {
         var events = new List<AutomationEvent>();
         var battery = PowerState.IsOnBattery();
         if (_onBattery is not null && battery is not null && battery != _onBattery)
             events.Add(new AutomationEvent(battery == true ? AutomationTriggers.OnBattery : AutomationTriggers.PluggedIn));
         _onBattery = battery ?? _onBattery;
-
-        if (!watchPrograms)
-        {
-            _programs = null; // looked at again from scratch when a program rule is switched on
-        }
-        else if (now is not null)
-        {
-            if (_programs is not null)
-            {
-                events.AddRange(now.Except(_programs).Select(p => new AutomationEvent(AutomationTriggers.ProgramStart, p)));
-                events.AddRange(_programs.Except(now).Select(p => new AutomationEvent(AutomationTriggers.ProgramClose, p)));
-            }
-            _programs = now;
-        }
-
         while (_devices.TryDequeue(out var device)) events.Add(device);
         return events;
     }

@@ -28,9 +28,9 @@ public static class IconResources
         return Resource(value) as IconImage;
     }
 
-    /// The entry's own icon, or else the page's one (<paramref name="pagePath"/>, path data); null when neither exists.
+    /// The entry's own icon, or else the section's one (<paramref name="pagePath"/>: path data, or a library id); null when neither exists.
     public static IconImage? Of(string? value, string? pagePath) =>
-        Find(value) ?? (string.IsNullOrEmpty(pagePath) ? null : IconImage.Filled(Geometry.Parse(pagePath)));
+        Find(value) ?? (string.IsNullOrEmpty(pagePath) ? null : IconLibrary.Find(pagePath) is not null ? Find(pagePath) : IconImage.Filled(Geometry.Parse(pagePath)));
 
     private static object? Resource(string key) => Application.Current?.TryFindResource(key, out var found) == true ? found : null;
 }

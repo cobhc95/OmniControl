@@ -28,7 +28,7 @@ public static partial class AutomationTriggers
     {
         IReadOnlyList<StateEntry> States() => sources.States.Where(s => s.Menu == menu).ToList();
         var words = string.Join(' ', States().Select(s => $"{s.Name} {s.ShortName} {s.Note} {s.Keywords}"));
-        return new PickChoice(MenuSpec + menu.Name, group, $"{menu.Name} ▸", Keywords: $"state {words}", Part: StatesPart, Heading: menu.Name, PicksAtOnce: true, Command: async from =>
+        return new PickChoice(MenuSpec + menu.Name, group, $"{menu.Name} ▸", Keywords: $"state {words}", Part: PagesPart, Heading: menu.Name, PicksAtOnce: true, Command: async from =>
         {
             if (from is not Control at) return Array.Empty<PickChoice>();
             StateEntry? picked = null;

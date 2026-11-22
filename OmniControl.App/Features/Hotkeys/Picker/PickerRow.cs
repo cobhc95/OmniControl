@@ -10,11 +10,12 @@ public sealed record PickResult(PickChoice Choice, IReadOnlyDictionary<string, s
     public string Stored => MouseAction.Compose(Choice.WithParameter(Parameter?.Trim() ?? string.Empty), Choice.Options, Values);
 }
 
-/// One entry of the sections pane: its name and its icon (a page's own; null where the list has none); <paramref name="IsFavourites"/> draws the star;
-/// <paramref name="IsHeading"/>: a muted part heading over the sections after it ("Triggers", "States"), never selected.
+/// One entry of the sections pane: its name and its icon (a page's path data or a library id; null where the list has none); <paramref name="IsFavourites"/> draws the star;
+/// <paramref name="IsHeading"/>: a muted part heading over the sections after it ("PC and time", "Your pages"), never selected.
 public sealed record SectionRow(string Name, string? Icon, bool IsFavourites = false, bool IsHeading = false)
 {
     public bool HasIcon => Icon is not null;
+    public IconImage? Image => Icon is null ? null : IconResources.Of(null, Icon);
     public bool IsSection => !IsHeading;
 }
 

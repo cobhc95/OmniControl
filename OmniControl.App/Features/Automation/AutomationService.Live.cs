@@ -16,6 +16,7 @@ public sealed partial class AutomationService
 {
     private readonly IStateRegistry _states;
     private readonly ITriggerSources _sources;
+    private readonly ProgramStates _programs;
 
     /// The lists the trigger picker reads changed (an action or a state came, went or was renamed): an open picker reads them again.
     public event Action? TriggersChanged;
@@ -25,8 +26,9 @@ public sealed partial class AutomationService
         private readonly IActionCatalogue _hotkeys;
         private readonly IActionRunner _run;
         private readonly IStateRegistry _states;
+        private readonly ProgramStates _programs;
 
-        public Sources(IActionCatalogue hotkeys, IActionRunner run, IStateRegistry states) => (_hotkeys, _run, _states) = (hotkeys, run, states);
+        public Sources(IActionCatalogue hotkeys, IActionRunner run, IStateRegistry states, ProgramStates programs) => (_hotkeys, _run, _states, _programs) = (hotkeys, run, states, programs);
 
         public IReadOnlyList<StateEntry> States => _states.States;
         public StateEntry? State(string id) => _states.Find(id);
@@ -35,6 +37,7 @@ public sealed partial class AutomationService
         public IEnumerable<HotkeyAction> Actions => _hotkeys.Actions;
         public HotkeyAction? Action(string id) => _hotkeys.Find(id);
         public ActionSection? SectionOf(string section) => _hotkeys.SectionOf(section);
+        public ProgramFacts? ProgramOf(string stateId) => _programs.FactsOf(stateId);
     }
 
     private void StartLive()
@@ -48,6 +51,15 @@ public sealed partial class AutomationService
         _states.Moved += OnStatesMoved;
         Changed += ShareWatched;
         ShareWatched();
+        SyncPrograms();
+    }
+
+    /// The master list of states holds the programs the rules name; an active rule's programs are looked at (the rules' look reads them only then).
+    private void SyncPrograms()
+    {
+        IEnumerable<string> ProgramsOf(IEnumerable<AutomationRule> rules) =>
+            rules.SelectMany(r => r.AllTriggers).Select(AutomationTriggers.ProgramStateOf).OfType<string>().Distinct().ToList();
+        _programs.Follow(ProgramsOf(Settings.Rules).ToList(), ProgramsOf(Settings.Rules.Where(Needs)).ToList());
     }
 
     /// Tells the master list of states which ones the active rules' triggers follow (a reading is then kept fresh for them).
@@ -65,6 +77,7 @@ public sealed partial class AutomationService
         Changed -= ShareWatched;
         _states.Watch(nameof(AutomationService), Array.Empty<string>());
         _states.Unregister(PowerStates.Ids.Append(PausedId));
+        _programs.Release();
     }
 
     private void NotifyPowerStates()
@@ -76,11 +89,12 @@ public sealed partial class AutomationService
     /// hotkey" unless <paramref name="withHotkey"/>. While a picker shows it, it is read again when a list or a state's value changes.
     public PickList TriggerList(string keep, bool withHotkey)
     {
-        var programs = new ProgramSnapshot(_remembered().ToList()); // read once for this window, never followed
+        var programs = new ProgramSnapshot(_remembered().ToList(), AutomationWatcher.RunningPrograms); // read once for this window, never followed
+        void Offer() => _programs.Offer(programs.Found, programs.Running);
         return new(AutomationTriggers.PickTitle, AutomationTriggers.SearchText, new LiveList(
-            () => AutomationTriggers.Choices(programs.Names, _sources, keep).Where(c => withHotkey || c.Spec != AutomationTriggers.Hotkey).ToList(),
-            h => { TriggersChanged += h; ValuesShown += h; programs.Ready += h; },
-            h => { TriggersChanged -= h; ValuesShown -= h; programs.Ready -= h; }));
+            () => AutomationTriggers.Choices(_sources, keep, _programs.AddAsync).Where(c => withHotkey || c.Spec != AutomationTriggers.Hotkey).ToList(),
+            h => { TriggersChanged += h; ValuesShown += h; programs.Ready += Offer; _programs.PickerOpened(); },
+            h => { TriggersChanged -= h; ValuesShown -= h; programs.Ready -= Offer; _programs.PickerClosed(); }));
     }
 
     // Raised (once per batch) when a state's value changed, only while a picker shows the values: nothing listens otherwise.

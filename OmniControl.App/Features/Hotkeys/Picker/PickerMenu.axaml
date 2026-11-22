@@ -22,7 +22,7 @@
                 </StackPanel>
                 <ListBox x:Name="SectionList" Classes="nav" Focusable="False" AutoScrollToSelectedItem="False" Margin="0,8,4,8" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                          ItemsSource="{Binding Sections}" SelectedIndex="{Binding SectionHighlight}">
-                    <!-- A part heading ("Triggers", "States") is its own muted row: no hover, no highlight, no click -->
+                    <!-- A part heading ("PC and time", "Your pages") is its own muted row: no hover, no highlight, no click -->
                     <ListBox.Styles>
                         <Style Selector="ListBox.nav > ListBoxItem" x:DataType="picker:SectionRow">
                             <Setter Property="IsHitTestVisible" Value="{Binding IsSection}" />
@@ -34,7 +34,7 @@
                             <Panel>
                             <TextBlock Classes="hint small" Text="{Binding Name}" IsVisible="{Binding IsHeading}" Margin="0,4,0,0" />
                             <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding IsSection}">
-                                <PathIcon Data="{Binding Icon}" Width="16" Height="16" VerticalAlignment="Center" IsVisible="{Binding HasIcon}" />
+                                <ctl:IconGlyph Source="{Binding Image}" Width="16" Height="16" VerticalAlignment="Center" IsVisible="{Binding HasIcon}" />
                                 <PathIcon Data="{StaticResource Icon.star}" Width="16" Height="16" VerticalAlignment="Center" IsVisible="{Binding IsFavourites}" />
                                 <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
                             </StackPanel>
