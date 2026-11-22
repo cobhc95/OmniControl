@@ -12,7 +12,10 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
     private readonly DeviceService _service;
     private readonly Func<DialogMessage, Task<bool>> _ask;
     private readonly Action<string> _report;
+    private readonly Action _openPage;
     private readonly Func<Avalonia.Visual, Icons.IconRequest, Task<Icons.IconPick?>> _chooseIcon;
+
+    private const string CopyText = "Copy", CutText = "Cut", PasteText = "Paste", DuplicateText = "Duplicate", MergeText = "Merge into\u2026", DeleteText = "Delete";
 
     /// The devices copied (or cut) with the list's menu or Ctrl+C / Ctrl+X; a cut is only moved by Paste.
     private readonly List<DeviceRecord> _clipboard = new();
@@ -43,12 +46,14 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
     /// <param name="chooseIcon">The shared icon picker (a device's "Change icon…").</param>
     /// <param name="otherPcs">The paired PCs the import group asks; null while Other PCs is off (no import group).</param>
     /// <param name="openOtherPcs">Opens the Other PCs page (the import group's way to pair one).</param>
+    /// <param name="openPage">Opens this page (a search result's Open pill, after it chose the device).</param>
     public DevicesPageViewModel(DeviceService service, Func<DialogMessage, Task<bool>> ask, Action<string> report,
-        Func<Avalonia.Visual, Icons.IconRequest, Task<Icons.IconPick?>> chooseIcon, IPairedPcs? otherPcs, Action openOtherPcs) : base(Info)
+        Func<Avalonia.Visual, Icons.IconRequest, Task<Icons.IconPick?>> chooseIcon, IPairedPcs? otherPcs, Action openOtherPcs, Action openPage) : base(Info)
     {
         _service = service;
         _ask = ask;
         _report = report;
+        _openPage = openPage;
         _chooseIcon = chooseIcon;
         foreach (var record in service.Records) Items.Add(Make(record));
         Selected = Items.FirstOrDefault();
@@ -129,14 +134,14 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
     /// The right-click menu for <paramref name="rows"/>; <paramref name="openMerge"/> shows the list of devices to merge them into.
     public IReadOnlyList<MenuRowItem> RowMenu(IReadOnlyList<DeviceItem> rows, Action openMerge) => new[]
     {
-        MenuRow("Copy", () => Copy(rows)),
-        MenuRow("Cut", () => Cut(rows)),
-        new MenuRowItem("Paste", string.Empty, false, "Pastes below. A cut device moves; a copied one is copied, without its password.",
+        MenuRow(CopyText, () => Copy(rows)),
+        MenuRow(CutText, () => Cut(rows)),
+        new MenuRowItem(PasteText, string.Empty, false, "Pastes below. A cut device moves; a copied one is copied, without its password.",
             new RelayCommand(() => PasteBelow(rows), () => _clipboard.Count > 0)),
-        MenuRow("Duplicate", () => Duplicate(rows)),
-        new MenuRowItem("Merge into…", string.Empty, false, "Joins these devices' methods to another device (set-ups kept) and removes them.",
+        MenuRow(DuplicateText, () => Duplicate(rows)),
+        new MenuRowItem(MergeText, string.Empty, false, "Joins these devices' methods to another device (set-ups kept) and removes them.",
             new RelayCommand(openMerge, () => Items.Except(rows).Any()), RuleAbove: true),
-        new MenuRowItem("Delete", string.Empty, false, string.Empty, new RelayCommand(() => _ = DeleteRowsAsync(rows)), RuleAbove: true),
+        new MenuRowItem(DeleteText, string.Empty, false, string.Empty, new RelayCommand(() => _ = DeleteRowsAsync(rows)), RuleAbove: true),
     };
 
     /// The "Merge into…" list: every device not among <paramref name="rows"/>.

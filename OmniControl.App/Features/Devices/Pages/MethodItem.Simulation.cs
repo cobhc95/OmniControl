@@ -13,13 +13,13 @@ public sealed partial class MethodItem
         var setup = _service.Simulation;
         return new[]
         {
-            new SetupStageItem(1, "Emulator and connection",
+            new SetupStageItem(1, DeviceStages.Emulator,
                 () => setup.EmulatorOf(Record) is { } e && setup.IsInstalled(e) && setup.AdbPath is not null && setup.IsConnected(setup.AddressOf(Record)), ConnectionSummary, open),
-            new SetupStageItem(2, "App ready", () => Record.SimAppReady, () => Record.SimAppReady ? AppName() : "not marked yet", open),
-            new SetupStageItem(3, "Steps", () => Record.Steps.Count > 0 && Record.Steps.All(s => SimSteps.Missing(s) is null) && SimRunner.SwitchIndex(Record.Steps) >= 0, StepsSummary, open),
-            new SetupStageItem(SimulationTeachStage, "Teach on and off", () => Record.Taught.IsTaught,
+            new SetupStageItem(2, DeviceStages.AppReady, () => Record.SimAppReady, () => Record.SimAppReady ? AppName() : "not marked yet", open),
+            new SetupStageItem(3, DeviceStages.Steps, () => Record.Steps.Count > 0 && Record.Steps.All(s => SimSteps.Missing(s) is null) && SimRunner.SwitchIndex(Record.Steps) >= 0, StepsSummary, open),
+            new SetupStageItem(SimulationTeachStage, DeviceStages.Teach, () => Record.Taught.IsTaught,
                 () => Record.Taught.IsTaught ? $"told apart by {Record.Taught.Summary}" : "not taught yet", open),
-            new SetupStageItem(5, "Test", () => OnPassed && OffPassed && TogglePassed,
+            new SetupStageItem(5, DeviceStages.Test, () => OnPassed && OffPassed && TogglePassed,
                 () => OnPassed && OffPassed && TogglePassed ? "On, Off and Toggle each worked" : "On, Off, Toggle each checked against the taught state", open),
         };
     }

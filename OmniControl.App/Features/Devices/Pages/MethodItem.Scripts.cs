@@ -225,9 +225,9 @@ public sealed partial class MethodItem
     {
         var stages = new List<SetupStageItem>
         {
-            new(1, "Python", () => _service.Setup.PythonPath is not null, () => _service.Setup.PythonPath is not null ? "found" : "not found", open, "python"),
-            new(2, "python-kasa", () => _service.Setup.KasaInstalled, () => _service.Setup.KasaInstalled ? "installed" : _service.Setup.Installing ? "installing…" : "not installed", open, "kasa"),
-            new(3, "Fixed address", () => IPAddress.TryParse(Record.Address.Trim(), out _) && Record.Reserved,
+            new(1, DeviceStages.Python, () => _service.Setup.PythonPath is not null, () => _service.Setup.PythonPath is not null ? "found" : "not found", open, "python"),
+            new(2, DeviceStages.Kasa, () => _service.Setup.KasaInstalled, () => _service.Setup.KasaInstalled ? "installed" : _service.Setup.Installing ? "installing…" : "not installed", open, "kasa"),
+            new(3, DeviceStages.Address, () => IPAddress.TryParse(Record.Address.Trim(), out _) && Record.Reserved,
                 () => Record.Address.Trim().Length == 0 ? "no address yet" : $"{Record.Address.Trim()}{(Record.Reserved ? " · reserved" : " · not reserved yet")}", open, "address"),
         };
         foreach (var stage in Profile.Stages)
@@ -237,9 +237,9 @@ public sealed partial class MethodItem
                 TemplateKey + id, stage.Text, stage.Confirm, () => ConfirmTemplateStage(id)));
         }
         if (Profile.NeedsSignIn)
-            stages.Add(new SetupStageItem(stages.Count + 1, "Sign-in", () => Record.Email.Trim().Length > 0 && HasPassword,
+            stages.Add(new SetupStageItem(stages.Count + 1, DeviceStages.SignIn, () => Record.Email.Trim().Length > 0 && HasPassword,
                 () => Record.Email.Trim().Length == 0 ? "no account yet" : HasPassword ? $"{Record.Email.Trim()} · password saved" : $"{Record.Email.Trim()} · no password yet", open, "signin"));
-        stages.Add(new SetupStageItem(stages.Count + 1, "Test", () => ScriptPassed, () => ScriptPassed ? "it switched" : "turns it off, then on again", open, "test"));
+        stages.Add(new SetupStageItem(stages.Count + 1, DeviceStages.Test, () => ScriptPassed, () => ScriptPassed ? "it switched" : "turns it off, then on again", open, "test"));
         return stages;
     }
 
