@@ -109,7 +109,7 @@ public partial class PickerMenu : UserControl
             return;
         }
         SettingsFocus.Focus(NavigationMethod.Directional);
-        if (model.ActiveChoice is { Command: not null } command) _ = model.RunCommandAsync(command, this);
+        if (model.ActiveChoice is { Command: not null } command) RunCommand(model, command, this);
         else if (model.Use() is { } pick) Picked?.Invoke(pick);
         else FocusCurrentPane();
     }
@@ -309,9 +309,15 @@ public partial class PickerMenu : UserControl
     private void OnRowCommandClick(object? sender, RoutedEventArgs e)
     {
         // From the row's own button, so a side list (the network states) opens beside it.
-        if (_model is not null && sender is Control { DataContext: PickerRow { Choice: { } choice } } button) _ = _model.RunCommandAsync(choice, button);
+        if (_model is { } model && sender is Control { DataContext: PickerRow { Choice: { } choice } } button) RunCommand(model, choice, button);
         e.Handled = true;
     }
+
+    /// Runs a list's button; a side list's pick is used at once.
+    private void RunCommand(PickerModel model, Actions.PickChoice command, Visual from) => Guard.Fire("Picker: run a list button", async () =>
+    {
+        if (await model.RunCommandAsync(command, from) is { } pick) Picked?.Invoke(pick);
+    });
 
     /// A click anywhere but in the number box being typed in takes the typed number, like Enter would.
     private void OnAnyPress(object? sender, PointerPressedEventArgs e)

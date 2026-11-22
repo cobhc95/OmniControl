@@ -1,6 +1,6 @@
 namespace OmniControl.App.Features.States;
 
-/// When a "When a state changes" trigger fires (pure, no UI): only on a real change from a known value, so start-up and a first reading
+/// When a state trigger fires (pure, no UI): only on a real change from a known value, so start-up and a first reading
 /// never fire it. On/off: turns on, turns off, changes. Level: goes above or below a value (crossing it), or becomes it (rounded to whole
 /// numbers). Choice: becomes the chosen value.
 public static class StateTriggerMath

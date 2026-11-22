@@ -22,6 +22,9 @@ public interface IStateCatalogue
 
     /// The value last read (null: not known, or no such state).
     StateValue? Now(string id);
+
+    /// When the value last really changed this run (null: not since it was registered).
+    DateTime? ChangedAt(string id);
 }
 
 /// What a feature that owns states needs: it registers its own (and reads the list, so this includes <see cref="IStateCatalogue"/>) and says when a value may have changed.

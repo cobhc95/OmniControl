@@ -6,7 +6,7 @@ namespace OmniControl.App.Features.States;
 /// a monitor's brightness, the mouse layer...). Each owner registers its own states once (<see cref="Register"/>: again with the same id to
 /// rename one, <see cref="Unregister"/> when it goes) and calls <see cref="Notify"/> whenever a value may have changed; the registry reads
 /// the value, compares it with the last one and raises <see cref="ValueChanged"/> only for a real change. It knows nothing about the
-/// owners. Consumers read <see cref="States"/> and follow <see cref="ListChanged"/>; the automation rules' "When a state changes" trigger
+/// owners. Consumers read <see cref="States"/> and follow <see cref="ListChanged"/>; the automation rules' state trigger
 /// is one. Everything runs on the UI thread; <see cref="Notify"/> may be called from any thread.
 public sealed class StateRegistry : IStateRegistry, IStateReader
 {
@@ -54,6 +54,10 @@ public sealed class StateRegistry : IStateRegistry, IStateReader
     /// The value last read (null: not known, or no such state).
     public StateValue? Now(string id) => _last.GetValueOrDefault(id);
 
+    private readonly Dictionary<string, DateTime> _changedAt = new();
+
+    public DateTime? ChangedAt(string id) => _changedAt.TryGetValue(id, out var at) ? at : null;
+
     /// The owner's current value of the state (null: not known, or no such state): what an On or Off action checks before it runs.
     public StateValue? Read(string id) => Find(id) is { } entry ? Safe(entry) : null;
 
@@ -97,7 +101,7 @@ public sealed class StateRegistry : IStateRegistry, IStateReader
 
     public void Unregister(IEnumerable<string> ids)
     {
-        var removed = ids.Count(id => _states.RemoveAll(s => s.Id == id) > 0 | _last.Remove(id));
+        var removed = ids.Count(id => _states.RemoveAll(s => s.Id == id) > 0 | _last.Remove(id) | _changedAt.Remove(id));
         if (removed > 0) ListChanged?.Invoke();
     }
 
@@ -139,6 +143,7 @@ public sealed class StateRegistry : IStateRegistry, IStateReader
         var after = Safe(entry);
         _last[id] = after;
         if (after is null ? before is null : after.SameValue(before)) return;
+        _changedAt[id] = DateTime.Now;
         ValueChanged?.Invoke(new StateChange(entry, before, after, chain));
     }
 

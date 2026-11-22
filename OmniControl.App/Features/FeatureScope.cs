@@ -108,6 +108,7 @@ public sealed class FeatureScope
         public event Action? WatchedChanged { add => inner.WatchedChanged += value; remove => inner.WatchedChanged -= value; }
         public StateEntry? Find(string id) => inner.Find(id);
         public StateValue? Now(string id) => inner.Now(id);
+        public DateTime? ChangedAt(string id) => inner.ChangedAt(id);
         public void Move(IReadOnlyDictionary<string, string> moved) => inner.Move(moved);
         public void Notify(string id) => inner.Notify(id);
         public void Notify(IReadOnlyList<string> ids) => inner.Notify(ids);

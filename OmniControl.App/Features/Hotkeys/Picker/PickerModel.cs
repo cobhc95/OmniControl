@@ -54,7 +54,10 @@ public sealed partial class PickerModel : ObservableObject
     /// The "Only with a hotkey" filter is shown: an action list in a window that shows the keys.
     public bool ShowsKeyFilter => HasKeys && ListsActions;
 
-    public string SearchHint => !HasKeys ? $"Search {Noun}s" : $"Search {Noun}s and keys";
+    public string SearchHint => SearchText ?? (!HasKeys ? $"Search {Noun}s" : $"Search {Noun}s and keys");
+
+    /// The search box's own words when the list is of more than one kind (triggers and states); null: from <see cref="Noun"/>.
+    public string? SearchText { get; init; }
 
     /// The search box's tooltip (how to find an action by its key); none until the window gives the keys.
     public string? SearchTip => !HasKeys ? null : "Type a name or a key such as ctrl+o, or press the key combination (Ctrl+F)";
@@ -77,10 +80,32 @@ public sealed partial class PickerModel : ObservableObject
     /// (after Favourites, which <see cref="SectionIndex"/> does not count). Choosing one leaves the search and opens it.
     public int SectionHighlight
     {
+        get => PositionOf(SectionSlot);
+        set => SectionSlot = SlotOf(value);
+    }
+
+    /// The line of pane 1 (part headings included) of a section counted without them; -1 for -1.
+    private int PositionOf(int slot)
+    {
+        if (slot < 0) return -1;
+        for (var i = 0; i < Sections.Count; i++)
+            if (!Sections[i].IsHeading && slot-- == 0) return i;
+        return -1;
+    }
+
+    /// The section counted without part headings at a line of pane 1; -1 on a heading.
+    private int SlotOf(int position) =>
+        position < 0 || position >= Sections.Count || Sections[position].IsHeading ? -1 : Sections.Take(position).Count(s => !s.IsHeading);
+
+    private int SectionCount => Sections.Count(s => !s.IsHeading);
+
+    /// <see cref="SectionHighlight"/> counted over the sections only.
+    private int SectionSlot
+    {
         get => IsSearching ? -1 : InFavourites ? 0 : SectionIndex + FavouritesLead;
         set
         {
-            if (value < 0) return; // the list reports "nothing selected" while it is reloading
+            if (value < 0) return; // the list reports "nothing selected" while it is reloading, or a part heading was clicked
             var favourites = value < FavouritesLead;
             var index = favourites ? SectionIndex : value - FavouritesLead;
             if (favourites == InFavourites && index == SectionIndex)
@@ -109,6 +134,13 @@ public sealed partial class PickerModel : ObservableObject
 
     // The settings pane.
     [ObservableProperty] private string _settingsTitle = string.Empty;
+
+    /// The muted line under the title (a state's value now and when it changed), its tooltip how it is known; empty when none.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasStatus))]
+    private string _status = string.Empty;
+    [ObservableProperty] private string? _statusTip;
+    public bool HasStatus => Status.Length > 0;
 
     /// One muted line when there is nothing to set: why the entry can't be used here, or that it has no settings.
     [ObservableProperty] private string _note = string.Empty;
@@ -158,7 +190,7 @@ public sealed partial class PickerModel : ObservableObject
         _shared = shared;
         _manage = manage;
         _picking = manage is null;
-        _groups = groups.Select(g => new PickGroup(g.Name, g.Choices.ToList(), g.Place)).ToList();
+        _groups = groups.Select(g => g with { Choices = g.Choices.ToList() }).ToList();
         _search = new SearchRunner<List<PickChoice>>(ShowMatches, "picker");
         foreach (var opened in groups.SelectMany(g => g.Choices).Select(c => c.Opened).OfType<Action>().Distinct()) opened();
         _current = current;
@@ -174,7 +206,14 @@ public sealed partial class PickerModel : ObservableObject
 
     private List<SectionRow> BuildSections()
     {
-        var sections = _groups.Select(g => new SectionRow(g.Name, g.Place?.Icon)).ToList();
+        var sections = new List<SectionRow>();
+        string? part = null;
+        foreach (var g in _groups)
+        {
+            if (g.Part is not null && g.Part != part) sections.Add(new SectionRow(g.Part, null, IsHeading: true));
+            part = g.Part;
+            sections.Add(new SectionRow(g.Name, g.Place?.Icon));
+        }
         if (FavouritesLead > 0) sections.Insert(0, new SectionRow(FavouritesName, null, IsFavourites: true));
         if (RecentChoices.Count > 0) sections.Add(new SectionRow(RecentName, RecentIcon));
         return sections;
@@ -263,7 +302,7 @@ public sealed partial class PickerModel : ObservableObject
     /// Moves to the next or previous section (wrapping round); a search covers every section, so there it does nothing.
     public void MoveSection(int direction)
     {
-        if (!IsSearching && Sections.Count > 0) SectionHighlight = Wrap.Index(SectionHighlight + direction, Sections.Count);
+        if (!IsSearching && SectionCount > 0) SectionSlot = Wrap.Index(SectionSlot + direction, SectionCount);
     }
 
     /// The result of "Use this ...": the highlighted entry with the values on the settings pane (settings that are hidden stay at their defaults).
@@ -287,18 +326,20 @@ public sealed partial class PickerModel : ObservableObject
     private string? ValueOf(string key) => _allOptions.FirstOrDefault(i => i.Option.Key == key)?.Value;
 
     /// Runs a list's button (add a program, show hidden ones) and puts what it made into that list, before the list's buttons.
-    public async Task RunCommandAsync(PickChoice command, Avalonia.Visual from)
+    /// Returns the pick to use at once for a <see cref="PickChoice.PicksAtOnce"/> button that made one; null otherwise.
+    public async Task<PickResult?> RunCommandAsync(PickChoice command, Avalonia.Visual from)
     {
-        if (command.Command is null) return;
+        if (command.Command is null) return null;
         var made = await command.Command(from);
         var at = _groups.FindIndex(g => g.Choices.Contains(command));
-        if (at < 0) return;
+        if (at < 0) return null;
         var list = _groups[at].Choices.ToList();
         var first = list.FindIndex(c => c.Command is not null);
         list.InsertRange(first < 0 ? list.Count : first, made.Where(m => !list.Contains(m)));
         _groups[at] = _groups[at] with { Choices = list };
         _index = null;
         Refresh(made.FirstOrDefault());
+        return command.PicksAtOnce && _picking && made.Count > 0 ? Use() : null;
     }
 
     /// The button after the settings: a form makes its entry, any other entry is taken out.
@@ -357,6 +398,7 @@ public sealed partial class PickerModel : ObservableObject
         OnPropertyChanged(nameof(CanUse));
         NotifyPanelChanged();
         NotifyStarChanged();
+        ShowStatus(ActiveChoice);
         if (ActiveChoice is not { } choice)
         {
             SettingsTitle = string.Empty;
@@ -392,6 +434,12 @@ public sealed partial class PickerModel : ObservableObject
         OptionIndex = OptionItems.Count > 0 ? NextOption(-1, 1) : -1;
         Note = OptionItems.Count == 0 && !HasFootButton && !HasHotkeys ? "Nothing to set here." : string.Empty;
         RaiseSettingsChanged();
+    }
+
+    private void ShowStatus(PickChoice? choice)
+    {
+        Status = choice?.Status ?? string.Empty;
+        StatusTip = choice?.StatusTip;
     }
 
     private void RaiseSettingsChanged()

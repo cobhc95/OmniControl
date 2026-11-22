@@ -78,7 +78,8 @@ public sealed class AutomationPresets : IPresetTriggers, IDisposable
         _open(group?.Section, group?.Id);
     }
 
-    public IReadOnlyList<PickChoice> StateChoices() => AutomationTriggers.StateChoices(_rules.TriggerSources);
+    /// A preset has its own Hotkey chip, so "I press a hotkey" is not offered here.
+    public Hotkeys.Picker.PickList TriggerList() => _rules.TriggerList(string.Empty, withHotkey: false);
 
     public IReadOnlyList<PickChoice> ActionChoices() => AutomationTriggers.ActionChoices(_actions.PickerActions);
 

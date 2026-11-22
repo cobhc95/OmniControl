@@ -2,12 +2,13 @@ using System.Collections.Specialized;
 using OmniControl.App.Features.Hotkeys.Actions;
 using OmniControl.App.Shared.Contracts;
 using OmniControl.App.Features.Hotkeys;
+using OmniControl.App.Features.Hotkeys.Picker;
 using OmniControl.App.Shared.Scripts;
 using OmniControl.App.Features.States;
 
 namespace OmniControl.App.Features.Automation;
 
-// The live triggers: "When a state changes" follows the master list of states, "When an action
+// The live triggers: the state triggers follow the master list of states, "When an action
 // runs" follows the one run path of HotkeyRegistry. Both lists are read live, so anything registered anywhere is a trigger at once, and a
 // rename, a removal or a merge reaches the rules here. Loops: a rule never starts from a chain it is already in, and a chain is cut at
 // Timing.AutomationChainMax (the minimum gap and the burst pause still apply on top).
@@ -30,6 +31,7 @@ public sealed partial class AutomationService
         public IReadOnlyList<StateEntry> States => _states.States;
         public StateEntry? State(string id) => _states.Find(id);
         public StateValue? Now(string stateId) => _states.Now(stateId);
+        public DateTime? ChangedAt(string stateId) => _states.ChangedAt(stateId);
         public IEnumerable<HotkeyAction> Actions => _hotkeys.Actions;
         public HotkeyAction? Action(string id) => _hotkeys.Find(id);
     }
@@ -69,7 +71,27 @@ public sealed partial class AutomationService
         foreach (var id in PowerStates.Ids) _states.Notify(id);
     }
 
-    public IReadOnlyList<PickChoice> TriggerChoices() => AutomationTriggers.Choices(ProgramNames.Known(_remembered()), _sources);
+    /// The "Choose a trigger or state" list, on <paramref name="keep"/> (the stored trigger being edited; empty for none), without "I press a
+    /// hotkey" unless <paramref name="withHotkey"/>. While a picker shows it, it is read again when a list or a state's value changes.
+    public PickList TriggerList(string keep, bool withHotkey) => new(AutomationTriggers.PickTitle, AutomationTriggers.SearchText, new LiveList(
+        () => AutomationTriggers.Choices(ProgramNames.Known(_remembered()), _sources, keep).Where(c => withHotkey || c.Spec != AutomationTriggers.Hotkey).ToList(),
+        h => { TriggersChanged += h; ValuesShown += h; },
+        h => { TriggersChanged -= h; ValuesShown -= h; }));
+
+    // Raised (once per batch) when a state's value changed, only while a picker shows the values: nothing listens otherwise.
+    private event Action? ValuesShown;
+    private bool _valuesPending;
+
+    private void ShowValues()
+    {
+        if (ValuesShown is null || _valuesPending) return;
+        _valuesPending = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _valuesPending = false;
+            ValuesShown?.Invoke();
+        }, DispatcherPriority.Background);
+    }
 
     /// How a stored trigger reads in the rule's sentence, with the names the states and actions have now.
     public string TriggerPhrase(string stored) => AutomationTriggers.PhraseOf(stored, _sources);
@@ -105,6 +127,7 @@ public sealed partial class AutomationService
 
     private void OnStateChanged(StateChange change)
     {
+        ShowValues();
         if (Paused || SessionOff) return;
         StateSeen?.Invoke();
         foreach (var rule in Settings.Rules.Where(r => IsActive(r) && !IsWhile(r)).ToList())

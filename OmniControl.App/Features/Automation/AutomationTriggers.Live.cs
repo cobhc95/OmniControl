@@ -10,52 +10,66 @@ public interface ITriggerSources
     IReadOnlyList<StateEntry> States { get; }
     StateEntry? State(string id);
     StateValue? Now(string stateId);
+    DateTime? ChangedAt(string stateId);
     IEnumerable<HotkeyAction> Actions { get; }
     HotkeyAction? Action(string id);
 }
 
-// The two live trigger families: "When a state changes" (one entry per registered state) and
-// "When an action runs" (one entry per master action). Nothing here is listed by hand: both are read from their master lists each time.
+// The two live trigger families: the states (one entry per registered state, in a section per page) and "When an action runs" (one
+// entry per master action). Nothing here is listed by hand: both are read from their master lists each time.
 public static partial class AutomationTriggers
 {
     public const string StateChanges = "state", ActionRuns = "action.runs";
-    private const string StatesSection = "When a state changes", ActionsSection = "When an action runs";
-    private const string WhenKey = "when", LevelKey = "v", ChoiceKey = "is", NowKey = "now";
+    private const string ActionsSection = "When an action runs";
+    private const string TriggersPart = "Triggers", StatesPart = "States";
+    private const string WhenKey = "when", LevelKey = "v", ChoiceKey = "is";
     private const string MissingState = "a state that is no longer available", MissingAction = "an action that is no longer available";
 
-    /// The picker's whole list: the fixed triggers, then one per state, then one per action.
-    public static IReadOnlyList<PickChoice> Choices(IReadOnlyList<string> programs, ITriggerSources sources) =>
-        FixedChoices(programs)
-            .Concat(Listed(sources, s => StateChoice(s, sources.Now(s.Id)), (menu, row) => row with { Heading = menu.Name }))
-            .Concat(sources.Actions.Select(ActionChoice))
+    /// The title and search words of the one window that picks a trigger or a state (a rule's trigger, a preset's "State…").
+    public const string PickTitle = "Choose a trigger or state", SearchText = "Search triggers, states and keys…";
+
+    /// The picker's whole list, under "Triggers" the fixed ones and one per action, under "States" one section per page (its Title) with
+    /// one entry per state. <paramref name="keep"/> is the stored trigger being edited: a state of a side list it names is listed on its own, so it shows picked.
+    public static IReadOnlyList<PickChoice> Choices(IReadOnlyList<string> programs, ITriggerSources sources, string keep = "") =>
+        FixedChoices(programs).Concat(sources.Actions.Select(ActionChoice)).Select(c => c with { Part = TriggersPart })
+            .Concat(StateChoices(sources, keep))
             .ToList();
 
     /// The settings of a state's trigger, by its kind. ONE place: the picker shows them and the check reads them.
     private static IReadOnlyList<ActionOption> OptionsOf(StateEntry state, IReadOnlyList<string> choices) => state.Kind switch
     {
-        StateKind.OnOff => new[] { ActionOption.Choice(WhenKey, "When it", StateTriggerMath.WhensOf(StateKind.OnOff)) },
+        StateKind.OnOff => new[] { ActionOption.Choice(WhenKey, WhenLabel, StateTriggerMath.WhensOf(StateKind.OnOff)) },
         StateKind.Level => new[]
         {
-            ActionOption.Choice(WhenKey, "When it", StateTriggerMath.WhensOf(StateKind.Level)),
+            ActionOption.Choice(WhenKey, WhenLabel, StateTriggerMath.WhensOf(StateKind.Level)),
             ActionOption.Number(LevelKey, "Value", (state.Min + state.Max) / 2, state.Min, state.Max, 1, state.Unit.Length > 0 ? " " + state.Unit : string.Empty),
         },
         // A choice list can change order (devices come and go), so the picked value is always stored: the default is a placeholder.
         _ => choices.Count == 0 ? Array.Empty<ActionOption>() : new[] { ActionOption.Choice(ChoiceKey, "Becomes", choices.Prepend(ChooseValue).ToList()) },
     };
 
-    private const string ChooseValue = "(choose a value)";
+    private const string ChooseValue = "(choose a value)", WhenLabel = "Run when it";
 
     private static IReadOnlyList<string> ChoicesOf(StateEntry state) => state.Choices?.Invoke() ?? Array.Empty<string>();
 
-    private static PickChoice StateChoice(StateEntry state, StateValue? now)
+    /// A state as the picker lists it: in its page's section (its Title) under its own heading, its device muted after the name, its value
+    /// now as a tag, and "Now Off · changed 12 min ago" under the settings title (how it is known in its tooltip).
+    private static PickChoice StateChoice(StateEntry state, ITriggerSources sources)
     {
         var choices = ChoicesOf(state);
-        var known = now?.At is { } at ? $"read {at:HH:mm} · " : string.Empty;
-        var options = new[] { ActionOption.Heading(NowKey, $"Now: {state.Words(now)}", known + state.HowKnown) }.Concat(OptionsOf(state, choices)).ToList();
-        return new PickChoice($"{StateChanges}:{state.Id}", StatesSection, state.Name, Keywords: $"state value {state.Group} {state.Keywords}",
-            Options: options, AskFirst: true, Heading: state.Heading ?? state.Group, Tag: state.Note,
+        var now = sources.Now(state.Id);
+        var value = Capital(state.Words(now));
+        var changed = sources.ChangedAt(state.Id) is { } at ? $" · changed {Ago(DateTime.Now - at)}" : string.Empty;
+        var read = now?.At is { } readAt ? $"Read {readAt:HH:mm}. " : string.Empty;
+        return new PickChoice($"{StateChanges}:{state.Id}", state.Group, state.Name, Keywords: $"state value {value} {state.Note} {state.Keywords}",
+            Options: OptionsOf(state, choices), AskFirst: true, Heading: state.Heading, Part: StatesPart, Detail: state.Note, Value: value,
+            Status: $"Now {value}{changed}", StatusTip: read + state.HowKnown,
             Unavailable: state.Kind == StateKind.Choice && choices.Count == 0 ? "There is nothing to choose from yet." : null, Remote: state.RemotePc);
     }
+
+    private static string Capital(string words) => words.Length == 0 ? words : char.ToUpper(words[0]) + words[1..];
+
+    private static string Ago(TimeSpan span) => span.TotalMinutes < 1 ? "just now" : span.TotalHours < 1 ? $"{(int)span.TotalMinutes} min ago" : $"{(int)span.TotalHours} h ago";
 
     private static PickChoice ActionChoice(HotkeyAction action) =>
         new($"{ActionRuns}:{action.Id}", ActionsSection, action.Title, Keywords: $"action runs ran {action.Keywords}", Heading: action.PickerHeading, Remote: action.RemotePc);
@@ -136,9 +150,8 @@ public static partial class AutomationTriggers
             ? trigger.Param : null;
     }
 
-    /// The states as the preset manager offers them: one section per page (a side list's row in a section of its own name).
-    public static IReadOnlyList<PickChoice> StateChoices(ITriggerSources sources) =>
-        Listed(sources, s => StateChoice(s, sources.Now(s.Id)) with { Category = s.Group, Heading = s.Heading }, (menu, row) => row with { Category = menu.Name }).ToList();
+    private static IEnumerable<PickChoice> StateChoices(ITriggerSources sources, string keep) =>
+        Listed(sources, s => StateChoice(s, sources), MouseAction.Parse(keep) is { Id: StateChanges } kept ? kept.Param : null);
 
     /// The actions as every action picker shows them, each stored as "when it runs".
     public static IReadOnlyList<PickChoice> ActionChoices(IEnumerable<HotkeyAction> actions) =>

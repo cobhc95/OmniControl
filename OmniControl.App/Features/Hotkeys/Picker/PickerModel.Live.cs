@@ -6,12 +6,35 @@ namespace OmniControl.App.Features.Hotkeys.Picker;
 /// a handler on the event that says the master lists behind it changed (raised on the UI thread).
 public sealed record LiveList(Func<IReadOnlyList<PickChoice>> Read, Action<Action> Watch, Action<Action> Unwatch);
 
+/// A live list with its window title and search words, for a picker every opener shows the same way (the "Choose a trigger or state" window).
+public sealed record PickList(string Title, string SearchText, LiveList Live);
+
 // Following a live list: while the window is open the entries are read again whenever their master lists change (a new device, a
 // renamed script, a removed action), keeping the open section and the highlighted entry when they are still there.
 public sealed partial class PickerModel
 {
     private LiveList? _live;
     private bool _replacing;
+
+    /// A picker of <paramref name="list"/> that follows it, on <paramref name="stored"/> (the entry the slot has now; empty for none).
+    public static PickerModel Following(PickList list, string stored, string noun)
+    {
+        var model = On(list.Live.Read(), stored, noun, list.SearchText);
+        model.Follow(list.Live);
+        return model;
+    }
+
+    /// A picker of <paramref name="choices"/> on <paramref name="stored"/> (a slot's entry with its settings; empty for none).
+    public static PickerModel On(IReadOnlyList<PickChoice> choices, string stored, string noun, string? searchText = null)
+    {
+        var (action, values) = MouseAction.Split(stored);
+        var current = stored.Length == 0 ? null : choices.FirstOrDefault(c => c.Matches(action));
+        return new PickerModel(PickChoice.Group(choices), current, values, currentParameter: current?.ParameterOf(action) ?? string.Empty)
+        {
+            Noun = noun,
+            SearchText = searchText,
+        };
+    }
 
     /// Reads the list again whenever <paramref name="list"/> says it changed, until the window closes.
     public void Follow(LiveList list)
@@ -34,7 +57,7 @@ public sealed partial class PickerModel
         var keepSpec = ActiveChoice?.Spec;
         var copy = ActiveRow?.IsCopy == true;
         var groups = PickChoice.Group(live.Read());
-        _groups = groups.Select(g => new PickGroup(g.Name, g.Choices.ToList(), g.Place)).ToList();
+        _groups = groups.Select(g => g with { Choices = g.Choices.ToList() }).ToList();
         _index = null;
         if (_current is { } current) _current = _groups.SelectMany(g => g.Choices).FirstOrDefault(c => c.Spec == current.Spec) ?? current;
         _sections = null;
@@ -56,6 +79,7 @@ public sealed partial class PickerModel
         {
             _editing = same; // the same entry, read anew: its settings and values on the pane stay as they are
             SettingsTitle = TitleOf(same);
+            ShowStatus(same);
         }
         else SyncSettings();
     }

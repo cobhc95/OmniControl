@@ -154,13 +154,7 @@ public sealed partial class RuleEditorViewModel : ObservableObject
             RuleSlotKind.Condition => (_rules.ConditionChoices(Rule, slot.IsNew ? null : stored), "condition"),
             _ => (_rules.StepChoices(), PickerModel.ActionNoun),
         };
-        var (action, values) = MouseAction.Split(stored);
-        var current = stored.Length == 0 ? null : choices.FirstOrDefault(c => c.Matches(action));
-        var model = new PickerModel(PickChoice.Group(choices), current, values, currentParameter: current?.ParameterOf(action) ?? string.Empty)
-        {
-            Noun = noun,
-        };
-        return ($"Choose {(slot.IsNew ? "a" : "the")} {noun}", model);
+        return ($"Choose {(slot.IsNew ? "a" : "the")} {noun}", PickerModel.On(choices, stored, noun));
     }
 
 

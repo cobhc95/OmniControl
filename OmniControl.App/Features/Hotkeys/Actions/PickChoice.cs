@@ -22,8 +22,12 @@ public sealed record PickChoice(string Spec, string Category, string Name, strin
     string? Heading = null, ActionSection? Place = null, string RemoveText = "Remove", Renaming? Renaming = null, Func<bool>? IsListed = null,
     ActionEditor? Editor = null, Func<IReadOnlyDictionary<string, string>, PickChoice>? Create = null, string? Icon = null,
     ActionFamily? Family = null, string? FamilyRole = null, string? Tag = null, Shared.Services.RemotePcLabel? Remote = null,
-    Func<string, string?>? ParamCheck = null, bool NamedByParam = false)
+    Func<string, string?>? ParamCheck = null, bool NamedByParam = false, string? Part = null, string? Detail = null, string? Value = null,
+    string? Status = null, string? StatusTip = null, bool PicksAtOnce = false)
 {
+    // Part: the muted heading over a run of sections in pane 1 ("Triggers", "States"); Detail: a muted fact after the name (the device);
+    // Value: the live value as a neutral tag at the row's right; Status (tooltip StatusTip): the muted line under the settings title;
+    // PicksAtOnce: a Command whose answer is used at once, without "Use this ..." (a side list's pick).
     public bool HasOptions => Options is { Count: > 0 };
 
     /// The name a card shows for this entry with that text: the text itself for an entry <see cref="NamedByParam"/> (the keys it sends), else <see cref="Name"/>.
@@ -45,10 +49,10 @@ public sealed record PickChoice(string Spec, string Category, string Name, strin
     /// appearance. A section takes the place and icon of its first choice that has one.
     public static List<PickGroup> Group(IEnumerable<PickChoice> choices) =>
         choices.GroupBy(c => c.Category)
-            .Select(g => new PickGroup(g.Key, g.ToList(), g.Select(c => c.Place).FirstOrDefault(p => p is not null)))
+            .Select(g => new PickGroup(g.Key, g.ToList(), g.Select(c => c.Place).FirstOrDefault(p => p is not null), g.First().Part))
             .OrderBy(g => g.Place?.Rank ?? int.MaxValue) // the sort is stable, so sections without a place keep their order
             .ToList();
 }
 
-/// One section of a picker list; <see cref="Place"/> is its icon and position when the list has them.
-public sealed record PickGroup(string Name, IReadOnlyList<PickChoice> Choices, ActionSection? Place = null);
+/// One section of a picker list; <see cref="Place"/> is its icon and position when the list has them; <see cref="Part"/> the heading it sits under.
+public sealed record PickGroup(string Name, IReadOnlyList<PickChoice> Choices, ActionSection? Place = null, string? Part = null);

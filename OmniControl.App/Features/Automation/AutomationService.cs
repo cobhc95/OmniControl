@@ -56,7 +56,7 @@ public sealed partial class AutomationService : IActionGate, IDisposable
     /// <param name="countdown">Shows the cancellable countdown before sleep, shut down and the like (see <see cref="PowerGuard"/>).</param>
     /// <param name="remembered">Programs the Volume page remembers (paths), offered with the running ones.</param>
     /// <param name="report">Shows one plain sentence in the status line.</param>
-    /// <param name="states">The master list of states: the "When a state changes" triggers watch it, and the power states are registered in it.</param>
+    /// <param name="states">The master list of states: the state triggers watch it, and the power states are registered in it.</param>
     /// <param name="power">The power journal: a confirmed wake starts the "wakes from sleep" rules, and it says whether this start-up is a new log-in.</param>
     /// <param name="ask">Asks the person at this PC (approving a program step, a custom action or a script).</param>
     public AutomationService(IActionRegistry hotkeys, IActionRunner run, IStateRegistry states, Func<string, string, TimeSpan, CancellationToken, Task<bool>> countdown,

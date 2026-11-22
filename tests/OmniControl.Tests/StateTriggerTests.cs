@@ -6,7 +6,7 @@ using OmniControl.App.Features.States;
 
 namespace OmniControl.Tests;
 
-/// The master list of states, the "When a state changes" / "When an action runs" triggers and the loop limits (no UI, no Windows).
+/// The master list of states, the state / "When an action runs" triggers and the loop limits (no UI, no Windows).
 public class StateTriggerTests
 {
     private static StateRegistry NewRegistry(RunChain? chain = null) => new(work => work(), () => chain);
@@ -118,6 +118,7 @@ public class StateTriggerTests
         public IReadOnlyList<StateEntry> States => Registry.States;
         public StateEntry? State(string id) => Registry.Find(id);
         public StateValue? Now(string stateId) => Registry.Now(stateId);
+        public DateTime? ChangedAt(string stateId) => Registry.ChangedAt(stateId);
         public IEnumerable<HotkeyAction> Actions => List;
         public HotkeyAction? Action(string id) => List.FirstOrDefault(a => a.Id == id);
     }

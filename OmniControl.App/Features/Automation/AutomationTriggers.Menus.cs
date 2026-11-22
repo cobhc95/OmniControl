@@ -6,24 +6,29 @@ namespace OmniControl.App.Features.Automation;
 
 // States with a side list (StateEntry.Menu, the network states) are one picker row "<menu> ▸" that opens it beside the row (the shared
 // menu rows, as the traffic page's network list): its heading and first part, a thin line, its middle part, then a find box over the muted rest.
+// A state picked there is used at once.
 public static partial class AutomationTriggers
 {
     private const string MenuSpec = StateChanges + ".menu:";
 
-    /// The states as a picker lists them: each one, except a side list's, which is one row where its first state would be.
-    private static IEnumerable<PickChoice> Listed(ITriggerSources sources, Func<StateEntry, PickChoice> choiceOf, Func<StateMenu, PickChoice, PickChoice> place)
+    /// The states as a picker lists them: each one, except a side list's, which is one row where its first state would be (and
+    /// <paramref name="keepId"/>, the one being edited, on its own row before it).
+    private static IEnumerable<PickChoice> Listed(ITriggerSources sources, Func<StateEntry, PickChoice> choiceOf, string? keepId)
     {
         var menus = new HashSet<StateMenu>();
         foreach (var state in sources.States)
-            if (state.Menu is not { } menu) yield return choiceOf(state);
-            else if (menus.Add(menu)) yield return place(menu, MenuChoice(menu, sources, choiceOf));
+        {
+            if (state.Menu is { } menu && state.Id == keepId) yield return choiceOf(state) with { Heading = menu.Name };
+            if (state.Menu is null) yield return choiceOf(state);
+            else if (menus.Add(state.Menu)) yield return MenuChoice(state.Menu, state.Group, sources, choiceOf);
+        }
     }
 
-    private static PickChoice MenuChoice(StateMenu menu, ITriggerSources sources, Func<StateEntry, PickChoice> choiceOf)
+    private static PickChoice MenuChoice(StateMenu menu, string group, ITriggerSources sources, Func<StateEntry, PickChoice> choiceOf)
     {
         IReadOnlyList<StateEntry> States() => sources.States.Where(s => s.Menu == menu).ToList();
         var words = string.Join(' ', States().Select(s => $"{s.Name} {s.ShortName} {s.Note} {s.Keywords}"));
-        return new PickChoice(MenuSpec + menu.Name, StatesSection, $"{menu.Name} ▸", Keywords: $"state {words}", Command: async from =>
+        return new PickChoice(MenuSpec + menu.Name, group, $"{menu.Name} ▸", Keywords: $"state {words}", Part: StatesPart, Heading: menu.Name, PicksAtOnce: true, Command: async from =>
         {
             if (from is not Control at) return Array.Empty<PickChoice>();
             StateEntry? picked = null;

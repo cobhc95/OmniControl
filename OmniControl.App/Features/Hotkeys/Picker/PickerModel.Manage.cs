@@ -98,7 +98,7 @@ public sealed partial class PickerModel
         Query = string.Empty;
         var family = _groups[section].Choices.FirstOrDefault(c => c.Spec == spec) is { } entry ? FamilyKeyOf(entry) : null;
         if (family is not null) _memberPicked[family] = spec; // a direction of a family opens its line with that direction shown
-        SectionHighlight = section + FavouritesLead;
+        SectionSlot = section + FavouritesLead;
         var at = IndexIn(Actions, spec);
         if (at >= 0) ActionIndex = at;
         if (family is not null) SyncSettings();

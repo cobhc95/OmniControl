@@ -10,10 +10,12 @@ public sealed record PickResult(PickChoice Choice, IReadOnlyDictionary<string, s
     public string Stored => MouseAction.Compose(Choice.WithParameter(Parameter?.Trim() ?? string.Empty), Choice.Options, Values);
 }
 
-/// One entry of the sections pane: its name and its icon (a page's own; null where the list has none); <paramref name="IsFavourites"/> draws the star.
-public sealed record SectionRow(string Name, string? Icon, bool IsFavourites = false)
+/// One entry of the sections pane: its name and its icon (a page's own; null where the list has none); <paramref name="IsFavourites"/> draws the star;
+/// <paramref name="IsHeading"/>: a muted part heading over the sections after it ("Triggers", "States"), never selected.
+public sealed record SectionRow(string Name, string? Icon, bool IsFavourites = false, bool IsHeading = false)
 {
     public bool HasIcon => Icon is not null;
+    public bool IsSection => !IsHeading;
 }
 
 /// One line of the list: an entry (its text, and while searching or in Recent the section it belongs to, and why it can't be picked when it can't) or a group heading, which has no choice and is never highlighted.
@@ -26,6 +28,12 @@ public sealed class PickerRow : ObservableObject
     /// The entry's small fact tag ("active"), or null.
     public string? Tag => Choice?.Tag;
     public bool HasTag => Tag is not null;
+
+    /// A muted fact after the name (the device) and the live value as a neutral tag at the right; null when none.
+    public string? Detail => Choice?.Detail;
+    public bool HasDetail => Detail is not null;
+    public string? Value => Choice?.Value;
+    public bool HasValue => Value is not null;
 
     /// The other PC the entry runs on (drawn as "Other PCs · name"), or null; its section then replaces the hint.
     public Shared.Services.RemotePcLabel? Remote => Choice?.Remote;

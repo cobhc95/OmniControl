@@ -206,14 +206,19 @@ public sealed partial class PresetCardViewModel : ObservableObject, IPresetRowOw
 
     // ---------------------------------------------------------------- triggers
 
-    /// The picker of a state (live: the master list of states) or of an action for a row; null while automation is off.
-    public PickerModel? TriggerPicker(bool state)
+    /// The picker, with its window title, of a trigger or state (the "Choose a trigger or state" window) or of an action for a row (both
+    /// live); null while automation is off.
+    public (string Title, PickerModel Model)? TriggerPicker(bool state)
     {
         if (_triggers.Current is not { } triggers) return null;
-        Func<IReadOnlyList<PickChoice>> read = state ? triggers.StateChoices : triggers.ActionChoices;
-        var model = new PickerModel(PickChoice.Group(read()), null, new Dictionary<string, string>()) { Noun = state ? "state" : PickerModel.ActionNoun };
-        model.Follow(new LiveList(read, h => _triggers.Changed += h, h => _triggers.Changed -= h));
-        return model;
+        if (state)
+        {
+            var list = triggers.TriggerList();
+            return (list.Title, PickerModel.Following(list, string.Empty, "trigger"));
+        }
+        var model = PickerModel.On(triggers.ActionChoices(), string.Empty, PickerModel.ActionNoun);
+        model.Follow(new LiveList(triggers.ActionChoices, h => _triggers.Changed += h, h => _triggers.Changed -= h));
+        return ("Choose an action", model);
     }
 
     /// A picked trigger (as the picker stores it) is added to the row's preset.

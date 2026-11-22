@@ -304,27 +304,18 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
     public (string Title, PickerModel Model) PickerFor(RuleSlot slot)
     {
         var stored = StoredAt(slot);
-        var (choices, noun) = slot.Kind switch
-        {
-            RuleSlotKind.Trigger => (TriggerChoicesFor(slot), "trigger"),
-            RuleSlotKind.Condition => (_service.ConditionChoices(Rule, slot.IsNew ? null : stored), "condition"),
-            _ => (_service.StepChoices(Rule), PickerModel.ActionNoun),
-        };
-        var (action, values) = MouseAction.Split(stored);
-        var current = stored.Length == 0 ? null : choices.FirstOrDefault(c => c.Matches(action));
-        var model = new PickerModel(PickChoice.Group(choices), current, values, currentParameter: current?.ParameterOf(action) ?? string.Empty)
-        {
-            Noun = noun,
-        };
-        // The trigger list is read from the live master lists of states and actions: it follows them while the window is open.
+        // The trigger list follows the live master lists of states and actions while the window is open. Only the first trigger can be the
+        // rule's hotkey (that is the rule's own action), so the "or" ones are offered without it.
         if (slot.Kind == RuleSlotKind.Trigger)
-            model.Follow(new LiveList(() => TriggerChoicesFor(slot), h => _service.TriggersChanged += h, h => _service.TriggersChanged -= h));
-        return ($"Choose {(slot.IsNew ? "a" : "the")} {noun}", model);
+        {
+            var list = _service.TriggerList(stored, withHotkey: slot.Index == 0);
+            return (list.Title, PickerModel.Following(list, stored, "trigger"));
+        }
+        var (choices, noun) = slot.Kind == RuleSlotKind.Condition
+            ? (_service.ConditionChoices(Rule, slot.IsNew ? null : stored), "condition")
+            : (_service.StepChoices(Rule), PickerModel.ActionNoun);
+        return ($"Choose {(slot.IsNew ? "a" : "the")} {noun}", PickerModel.On(choices, stored, noun));
     }
-
-    /// Only the first trigger can be the rule's hotkey (that is the rule's own action), so the "or" ones are offered without it.
-    private IReadOnlyList<PickChoice> TriggerChoicesFor(RuleSlot slot) =>
-        slot.Index == 0 ? _service.TriggerChoices() : _service.TriggerChoices().Where(c => c.Spec != AutomationTriggers.Hotkey).ToList();
 
 
     /// A setting of the block's current entry changed in the picker: applied at once, except a program step, which waits for "Use this action" and the confirm window.

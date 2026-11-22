@@ -23,8 +23,8 @@ public interface IPresetTriggers
 
     PresetRule Of(string preset);
 
-    /// The master list of states (live), sectioned by the page each belongs to.
-    IReadOnlyList<PickChoice> StateChoices();
+    /// The "Choose a trigger or state" list (live): the triggers, then the states sectioned by the page each belongs to.
+    Features.Hotkeys.Picker.PickList TriggerList();
 
     /// The master list of actions (live): the preset switches when the picked one runs.
     IReadOnlyList<PickChoice> ActionChoices();

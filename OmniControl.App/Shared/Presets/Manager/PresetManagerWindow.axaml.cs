@@ -133,8 +133,8 @@ public partial class PresetManagerWindow : Window
 
     private void PickTriggerAsync(PresetCardViewModel card, PresetRowViewModel row, bool state) => Guard.Fire("Presets: pick a trigger", async () =>
     {
-        if (card.TriggerPicker(state) is not { } picker) return;
-        var chosen = await PickerWindow.ChooseAsync(this, state ? "Choose a state" : "Choose an action", picker);
+        if (card.TriggerPicker(state) is not { } pick) return;
+        var chosen = await PickerWindow.ChooseAsync(this, pick.Title, pick.Model);
         if (chosen is not null) card.AddTrigger(row, chosen.Stored);
         FocusRow(row);
     });
