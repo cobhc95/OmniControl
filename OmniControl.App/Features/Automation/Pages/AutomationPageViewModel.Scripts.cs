@@ -14,7 +14,7 @@ public sealed partial class AutomationPageViewModel
     public CardGroup ScriptsGroup { get; } = new("Automation/Scripts", "Scripts", string.Empty)
     {
         ExpandedByDefault = true,
-        Tip = "Scripts kept inside OmniControl. Each becomes an action, Run script: its name, for Shortcuts, the mouse, gestures and rules. They run as you (never as administrator), hidden, and are stopped after a minute.",
+        Tip = ScriptsCard.Tip,
     };
 
     public ObservableCollection<ScriptItem> Scripts { get; } = new();
@@ -31,11 +31,6 @@ public sealed partial class AutomationPageViewModel
 
     /// The file types the Import and Export pickers show.
     public static IReadOnlyList<string> ScriptPatterns => ScriptLanguages.Patterns;
-
-    private IEnumerable<SearchEntry> ScriptSearchEntries =>
-        Scripts.Select(s => Entry(s, ScriptCard(s.Script)));
-
-    private static SearchCard ScriptCard(Script script) => new(script.Name, $"script powershell cmd batch python {script.Name}", ScriptsTab);
 
     private void ShowScriptItems()
     {

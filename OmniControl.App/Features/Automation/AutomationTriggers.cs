@@ -72,6 +72,9 @@ public static partial class AutomationTriggers
         }
     }
 
+    /// The names of the fixed triggers, for search.
+    public static IReadOnlyList<string> FixedNames { get; } = Table.Select(t => t.Name).ToList();
+
     /// How a fixed trigger reads in the sentence; null when the stored text is not one.
     private static string? FixedPhraseOf(MouseAction trigger) => Table.FirstOrDefault(t => t.Id == trigger.Id)?.Phrase(trigger);
 
