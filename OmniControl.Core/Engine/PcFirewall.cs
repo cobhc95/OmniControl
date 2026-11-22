@@ -2,7 +2,10 @@ using Microsoft.CSharp.RuntimeBinder;
 
 namespace OmniControl.Core.Engine;
 
-/// Windows Firewall as other PCs meet it: reading whether they get through to a program's TCP port on the networks this PC is on now (off on all of
+/// What Windows Firewall does with a program's ports on the networks this PC is on now.
+public enum FirewallVerdict { Allowed, NoRule, Blocked }
+
+/// Windows Firewall as other PCs meet it: reading whether they get through to a program's TCP and UDP ports on the networks this PC is on now (off on all of
 /// them, or an enabled inbound allow rule for the program or the port, and no inbound block rule for either; a block wins, as in Windows), and
 /// the one rule that opens the program on Private and Domain networks, never Public. Slow COM calls: run on a worker, never on the UI thread.
 /// Every call throws <see cref="COMException"/>, <see cref="InvalidCastException"/> or <see cref="UnauthorizedAccessException"/> when Windows' firewall can't be read or changed.
@@ -11,24 +14,26 @@ public static class PcFirewall
     /// Not in OmniControl's block group, so the blocks' sync never takes it out; Setup adds and removes the same rule by this name.
     public const string RuleName = "OmniControl on private networks";
 
-    private const int Inbound = 1, Allow = 1, Tcp = 6, AnyProtocol = 256;
+    private const int Inbound = 1, Allow = 1, Tcp = 6, Udp = 17, AnyProtocol = 256;
     private const int Domain = 1, Private = 2, Public = 4;
 
-    /// True when other PCs get through to <paramref name="port"/> of <paramref name="program"/>.
-    public static bool IsAllowed(string program, int port) => WithRules((policy, rules) =>
+    /// Whether other PCs get through to <paramref name="tcpPort"/> and <paramref name="udpPort"/> of <paramref name="program"/>: allowed only when both are.
+    public static FirewallVerdict Check(string program, int tcpPort, int udpPort) => WithRules((policy, rules) =>
     {
         var current = (int)policy.CurrentProfileTypes;
-        if (!AnyProfileOn(policy, current)) return true;
-        var allowed = false;
+        if (!AnyProfileOn(policy, current)) return FirewallVerdict.Allowed;
+        bool tcp = false, udp = false;
         foreach (var rule in rules)
             try
             {
-                var verdict = Verdict(rule, current, program, port);
-                if (verdict is false) return false;
-                allowed |= verdict is true;
+                var onTcp = Verdict(rule, current, program, Tcp, tcpPort);
+                var onUdp = Verdict(rule, current, program, Udp, udpPort);
+                if (onTcp is false || onUdp is false) return FirewallVerdict.Blocked;
+                tcp |= onTcp is true;
+                udp |= onUdp is true;
             }
             finally { Release((object)rule); }
-        return allowed;
+        return tcp && udp ? FirewallVerdict.Allowed : FirewallVerdict.NoRule;
     });
 
     /// Makes the one inbound allow rule for <paramref name="program"/> (any port, TCP and UDP) on Private and Domain networks, replacing an earlier
@@ -90,11 +95,12 @@ public static class PcFirewall
         return false;
     }
 
-    /// True: an allow rule that covers the program's port here; false: a block rule that does; null: the rule has nothing to say about it.
-    private static bool? Verdict(dynamic rule, int current, string program, int port)
+    /// True: an allow rule that covers the program's port of that protocol here; false: a block rule that does; null: the rule has nothing to say about it.
+    private static bool? Verdict(dynamic rule, int current, string program, int protocol, int port)
     {
         if (!(bool)rule.Enabled || (int)rule.Direction != Inbound || ((int)rule.Profiles & current) == 0) return null;
-        if ((int)rule.Protocol is not (Tcp or AnyProtocol) || !PortListed((string?)rule.LocalPorts, port)) return null;
+        var ruleProtocol = (int)rule.Protocol;
+        if ((ruleProtocol != protocol && ruleProtocol != AnyProtocol) || !PortListed((string?)rule.LocalPorts, port)) return null;
         var application = (string?)rule.ApplicationName;
         var covers = string.IsNullOrEmpty(application) || string.Equals(Environment.ExpandEnvironmentVariables(application), program, StringComparison.OrdinalIgnoreCase);
         return covers ? (int)rule.Action == Allow : null;

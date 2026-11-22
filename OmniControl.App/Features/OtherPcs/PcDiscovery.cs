@@ -14,6 +14,7 @@ internal sealed class PcDiscovery : IDisposable
     private readonly Action<IReadOnlyList<(PcBeacon Beacon, IPAddress From)>> _heard;
     private readonly Func<PcNetworkView?> _networks;
     private readonly Action _refreshNetworks;
+    private readonly Action<string> _otherVersion;
     private readonly Dictionary<string, (PcBeacon, IPAddress)> _waiting = new(); // heard since the last hand-over (locked), the latest per PC
     private readonly CancellationTokenSource _stop = new();
     private UdpClient? _udp;
@@ -23,8 +24,10 @@ internal sealed class PcDiscovery : IDisposable
     /// <see cref="Timing.PcBeaconHandOver"/>).</param>
     /// <param name="networks">The networks beacons may go to and come from; null while unknown (then every network, as before).</param>
     /// <param name="refreshNetworks">Reads the networks again (called on the announcing worker now and then).</param>
-    public PcDiscovery(Func<PcBeacon> own, Action<IReadOnlyList<(PcBeacon Beacon, IPAddress From)>> heard, Func<PcNetworkView?> networks, Action refreshNetworks)
+    /// <param name="otherVersion">The name of a PC heard announcing another protocol version (on the listening worker).</param>
+    public PcDiscovery(Func<PcBeacon> own, Action<IReadOnlyList<(PcBeacon Beacon, IPAddress From)>> heard, Func<PcNetworkView?> networks, Action refreshNetworks, Action<string> otherVersion)
     {
+        _otherVersion = otherVersion;
         _own = own;
         _heard = heard;
         _networks = networks;
@@ -52,6 +55,11 @@ internal sealed class PcDiscovery : IDisposable
         _ = Guard.RunAsync("Other PCs: announcing", AnnounceAsync);
         return true;
     }
+
+    /// The socket still hears beacons (false once it died with its network: the owner starts a new one).
+    public bool Listening => !_deaf;
+
+    private volatile bool _deaf;
 
     /// Announces now (a pairing was opened or closed).
     public void AnnounceNow() => Send();
@@ -119,19 +127,27 @@ internal sealed class PcDiscovery : IDisposable
         {
             while (!_stop.IsCancellationRequested)
             {
-                var received = await udp.Client.ReceiveMessageFromAsync(buffer, SocketFlags.None, anyone, _stop.Token).ConfigureAwait(false);
+                SocketReceiveMessageFromResult received;
+                try
+                {
+                    received = await udp.Client.ReceiveMessageFromAsync(buffer, SocketFlags.None, anyone, _stop.Token).ConfigureAwait(false);
+                }
+                catch (SocketException ex) when (ex.SocketErrorCode == SocketError.ConnectionReset)
+                {
+                    continue; // Windows ends a UDP receive this way when an earlier send met "port unreachable"; listening goes on
+                }
                 var now = Environment.TickCount64 / 1000;
                 if (now != second) (second, heardThisSecond) = (now, 0);
                 if (++heardThisSecond > Timing.PcBeaconsPerSecond) continue; // a flood of beacons is dropped, not handed on
                 if (received.RemoteEndPoint is not IPEndPoint from || (_networks() is { } networks && !networks.HearsFrom(received.PacketInformation.Interface, from.Address)))
                     continue; // a Public network's beacon
-                if (received.ReceivedBytes > BeaconMax || Read(buffer.AsSpan(0, received.ReceivedBytes)) is not { } beacon) continue;
+                if (received.ReceivedBytes > BeaconMax || Read(buffer.AsSpan(0, received.ReceivedBytes), _otherVersion) is not { } beacon) continue;
                 Wait(beacon, from.Address);
             }
         }
         catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException or SocketException)
         {
-            // Stopped, or the socket went away with its network: nothing more to hear.
+            _deaf = !_stop.IsCancellationRequested; // the socket went away with its network: the owner opens a new one
         }
     }
 
@@ -164,11 +180,17 @@ internal sealed class PcDiscovery : IDisposable
         });
     }
 
-    private static PcBeacon? Read(ReadOnlySpan<byte> bytes)
+    /// A valid beacon of this version; one of another version only names its PC to <paramref name="otherVersion"/>.
+    internal static PcBeacon? Read(ReadOnlySpan<byte> bytes, Action<string> otherVersion)
     {
         try
         {
             var beacon = JsonSerializer.Deserialize<PcBeacon>(bytes, PcProtocol.Json);
+            if (beacon is { M: { } tag } && tag != PcProtocol.BeaconTag && tag.StartsWith(PcProtocol.BeaconPrefix, StringComparison.Ordinal) && PcIds.IsValid(beacon.Id))
+            {
+                otherVersion(PcIds.CleanName(beacon.Name));
+                return null;
+            }
             return beacon is not null && beacon.M == PcProtocol.BeaconTag && PcIds.IsValid(beacon.Id) && beacon.Port is > 0 and < 65536 ? beacon with { Name = PcIds.CleanName(beacon.Name) } : null;
         }
         catch (JsonException)

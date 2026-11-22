@@ -159,7 +159,8 @@ public sealed partial class SetupTabItem : ObservableObject, IDisposable
         OnPropertyChanged(nameof(NoNearby));
         Checks.Clear();
         foreach (var check in _tailscale.Checklist) Checks.Add(new CheckItem(check, id => _tailscale.RunFix(id, () => _tailscale.Check(TailscaleTarget))));
-        Reach.Show(NetworkChecks.ForPairing(_service.NetworkIsPrivate));
+        if (ShowsReach) _service.WatchReach();
+        Reach.Show(NetworkChecks.ForPairing(_service.Reach(), Guard.LogPath));
         RaiseState();
     }
 

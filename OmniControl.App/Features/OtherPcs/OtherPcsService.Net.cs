@@ -25,21 +25,43 @@ public sealed partial class OtherPcsService
     {
         if (_network is not null || _disposed) return;
         _network = CancellationTokenSource.CreateLinkedTokenSource(_stop.Token);
+        _portsReported = false;
         StartListener();
-        _discovery = new PcDiscovery(OwnBeacon, heard => PcWork.Post(() =>
-        {
-            foreach (var (beacon, from) in heard) Heard(beacon, from.ToString());
-        }), () => _networks, RefreshNetworks);
-        if (!_discovery.Start(out var problem))
-        {
-            _discovery.Dispose();
-            _discovery = null;
-            Guard.Log("Other PCs: discovery", new IOException(problem));
-            _report("Other PCs can't look for PCs on the network now (the port is in use). A PC can still be paired or connected by its address.");
-        }
+        StartDiscovery();
         var running = _network.Token;
         _ = Guard.RunAsync("Other PCs: link checks", () => CheckLinksAsync(running));
         Wake.RefreshOwnWake();
+    }
+
+    private bool _portsReported; // the port problem is said once per start, though it is tried again with every link check
+
+    /// The listener and the beacons' socket both hold their ports (true while the network is stopped: nothing to tell).
+    private bool PortsHeld => _network is null || (_listener is not null && _discovery is { Listening: true });
+
+    // Another program may hold the port, or the socket may die with its adapter: tried again with every link check until it works.
+    private void StartDiscovery()
+    {
+        _discovery?.Dispose();
+        _discovery = new PcDiscovery(OwnBeacon, heard => PcWork.Post(() =>
+        {
+            foreach (var (beacon, from) in heard) Heard(beacon, from.ToString());
+        }), () => _networks, RefreshNetworks, HeardOtherVersion);
+        if (_discovery.Start(out var problem)) return;
+        _discovery.Dispose();
+        _discovery = null;
+        if (_portsReported) return;
+        _portsReported = true;
+        Guard.Log("Other PCs: discovery", new IOException(problem));
+        _report("Other PCs can't look for PCs on the network now (the port is in use). A PC can still be paired or connected by its address.");
+    }
+
+    private void RestartPortsIfLost()
+    {
+        if (_network is null) return;
+        var held = PortsHeld;
+        if (_listener is null) StartListener();
+        if (_discovery is not { Listening: true }) StartDiscovery();
+        if (PortsHeld != held) RaiseChanged();
     }
 
     private void StopNetwork()
@@ -95,6 +117,8 @@ public sealed partial class OtherPcsService
         }
         catch (SocketException ex)
         {
+            if (_portsReported) return;
+            _portsReported = true;
             Guard.Log("Other PCs: listening", ex);
             _report("Other PCs can't accept connections now (the port is in use). This PC can still connect to the others.");
             return;
@@ -115,7 +139,11 @@ public sealed partial class OtherPcsService
         }
         catch (Exception ex) when (PcWire.IsNetworkError(ex))
         {
-            // Stopped, or the listener was closed: nothing more to accept.
+            // Stopped, or Windows closed the listener: then the next link check opens it again.
+            if (!running.IsCancellationRequested) PcWork.Post(() =>
+            {
+                if (_listener == listener) _listener = null;
+            });
         }
     }
 
@@ -217,6 +245,7 @@ public sealed partial class OtherPcsService
     private void CheckLinks()
     {
         if (_disposed) return;
+        RestartPortsIfLost();
         foreach (var link in _links.Values.ToList())
         {
             if (DateTime.UtcNow - link.LastReceived > Timing.PcLinkSilence) link.Close();

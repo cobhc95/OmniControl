@@ -15,26 +15,49 @@ public sealed partial class OtherPcsService
     public const string PublicLine = "This network is set to Public in Windows, so other PCs can't find this one here. Set it to Private in Windows' network settings, or use Tailscale.";
     public const string NetworkSettingsPage = "ms-settings:network-status";
 
-    private const int FirewallNotRead = 0, FirewallAllows = 1, FirewallBlocks = 2;
-
     private volatile PcNetworkView? _networks; // null until read, or while Windows' list can't be read (then every network, as before)
-    private volatile int _firewall; // what Windows Firewall does with OmniControl's port, read only once a checklist shows it
+    private volatile bool _networksFailed;
+    private volatile FirewallReach _firewall; // what Windows Firewall does with OmniControl's ports, read only once a checklist shows it
+    private volatile OtherVersion? _otherVersion; // the last PC heard on another protocol version
     private int _firewallWanted;
     private bool _networksFailedLogged, _firewallFailedLogged;
+    private readonly HashSet<string> _skippedAdapters = new(); // logged once each (worker thread, under its own lock)
+
+    private sealed record OtherVersion(string Name, DateTime At);
 
     /// A network other than Tailscale is set to Public in Windows, so other PCs can't find this one on it.
     public bool OnPublicNetwork => _networks?.OnPublic == true;
 
-    /// This PC's network: false when Public, true when Private (or a domain's), null when Windows' list was not read or lists neither.
-    public bool? NetworkIsPrivate => _networks is not { } networks ? null : networks.OnPublic ? false : networks.OnPrivate ? true : null;
+    /// This PC's network as other PCs meet it.
+    private NetworkReach Network => _networks switch
+    {
+        null => _networksFailed ? NetworkReach.Failed : NetworkReach.NotRead,
+        { Connected: false } => NetworkReach.None,
+        { OnPublic: true } => NetworkReach.Public,
+        { OnPrivate: true } => NetworkReach.Private,
+        _ => NetworkReach.Unknown,
+    };
 
-    /// OmniControl is allowed through Windows Firewall here; null until read, or when Windows' firewall can't be read.
-    public bool? FirewallAllowed => _firewall switch { FirewallAllows => true, FirewallBlocks => false, _ => null };
+    /// What "Can't reach it on this network?" says about this PC now (for a paired PC, also whether its key was read).
+    public ReachFacts Reach(string? pcId = null) => new(Network, _firewall, PortsHeld, OtherVersionName, pcId is not null && !_secrets.ContainsKey(pcId));
 
-    /// A checklist shows the firewall row: Windows' firewall is read now (off the UI thread) and again after every network change, never before.
-    public void WatchFirewall()
+    // A PC on another version is told about while its beacons keep coming.
+    private string OtherVersionName => _otherVersion is { } heard && DateTime.UtcNow - heard.At < Timing.PcBeaconEvery * 3 ? heard.Name : string.Empty;
+
+    // Discovery heard a PC on another protocol version (worker thread).
+    private void HeardOtherVersion(string name)
+    {
+        var was = OtherVersionName;
+        _otherVersion = new OtherVersion(name, DateTime.UtcNow);
+        if (was != name) PcWork.Post(RaiseChanged);
+    }
+
+    /// A checklist shows: Windows' firewall is read now (off the UI thread) and again after every network change, never before; the networks
+    /// are read too if nothing has yet (discovery, which reads them, may not be running).
+    public void WatchReach()
     {
         if (Interlocked.Exchange(ref _firewallWanted, 1) == 0) Guard.OffUi("Other PCs: firewall", ReadFirewall);
+        if (_networks is null && !_networksFailed) Guard.OffUi("Other PCs: reading the networks", RefreshNetworks);
     }
 
     private void ReadFirewall()
@@ -42,13 +65,18 @@ public sealed partial class OtherPcsService
         var was = _firewall;
         try
         {
-            _firewall = PcFirewall.IsAllowed(Environment.ProcessPath ?? string.Empty, PcProtocol.TcpPort) ? FirewallAllows : FirewallBlocks;
+            _firewall = PcFirewall.Check(Environment.ProcessPath ?? string.Empty, PcProtocol.TcpPort, PcProtocol.UdpPort) switch
+            {
+                FirewallVerdict.Allowed => FirewallReach.Allowed,
+                FirewallVerdict.Blocked => FirewallReach.Blocked,
+                _ => FirewallReach.NoRule,
+            };
         }
         catch (Exception ex) when (ex is COMException or InvalidCastException or UnauthorizedAccessException)
         {
             if (!_firewallFailedLogged) Guard.Log("Other PCs: firewall", ex);
             _firewallFailedLogged = true;
-            _firewall = FirewallNotRead;
+            _firewall = FirewallReach.Failed;
         }
         if (_firewall != was) PcWork.Post(RaiseChanged);
     }
@@ -74,7 +102,7 @@ public sealed partial class OtherPcsService
             return;
         }
         ReadFirewall();
-        if (_firewall == FirewallBlocks) _report("Windows Firewall still blocks OmniControl: remove its block rule in Windows Security.");
+        if (_firewall == FirewallReach.Blocked) _report("Windows Firewall still blocks OmniControl: remove its block rule in Windows Security.");
     }
 
     /// Reads the networks and their categories again (worker thread: COM and the adapters' list).
@@ -83,7 +111,7 @@ public sealed partial class OtherPcsService
         PcNetworkView? now;
         try
         {
-            now = PcNetworkView.Read(NetworkList.Read().Categories);
+            now = PcNetworkView.Read(NetworkList.Read().Categories, SkippedAdapter);
         }
         catch (Exception ex) when (ex is COMException or InvalidCastException or NetworkInformationException)
         {
@@ -91,11 +119,19 @@ public sealed partial class OtherPcsService
             _networksFailedLogged = true;
             now = null;
         }
-        var was = NetworkIsPrivate;
+        var was = Network;
+        _networksFailed = now is null;
         _networks = now;
-        var changed = NetworkIsPrivate != was;
+        var changed = Network != was;
         if (_firewallWanted == 1) ReadFirewall(); // an adapter or its network may have changed what the firewall lets in
         if (changed) PcWork.Post(RaiseChanged);
+    }
+
+    private void SkippedAdapter(string name, Exception ex)
+    {
+        lock (_skippedAdapters)
+            if (!_skippedAdapters.Add(name)) return;
+        Guard.Log($"Other PCs: adapter {name} skipped", ex);
     }
 
     // A connection that came in on a Public network is dropped unanswered, unless it came over Tailscale.

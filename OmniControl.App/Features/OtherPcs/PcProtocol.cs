@@ -15,7 +15,10 @@ internal static class PcProtocol
     public const int Version = 3;
 
     /// The version is in the tag: PCs on another version neither see nor are seen.
-    public static readonly string BeaconTag = $"omnicontrol-pc/{Version}";
+    public static readonly string BeaconTag = $"{BeaconPrefix}{Version}";
+
+    /// The start of every version's beacon tag, so a PC on another version is told about instead of unseen.
+    public const string BeaconPrefix = "omnicontrol-pc/";
 
     /// First byte of a connection: a pairing (only answered while pairing is open), a session of an already paired PC, or a probe (the same proof
     /// as a session, then one sealed ping answered with a pong, and the connection ends). Session and probe bytes change with the version, so a

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.NetworkInformation;
 using OmniControl.App.Features.OtherPcs;
 using OmniControl.Core.Engine;
 
@@ -48,4 +49,53 @@ public class PcNetworkViewTests
 
     [Fact]
     public void TailscaleOnly_IsNotCalledPublic() => Assert.False(new PcNetworkView(new[] { Tailnet }).OnPublic);
+
+    [Fact]
+    public void HyperVSwitchCalledPublic_DoesNotHideThePrivateNetworkWithTheGateway()
+    {
+        var view = new PcNetworkView(new[] { Home with { Gateway = true }, Cafe });
+        Assert.False(view.OnPublic);
+        Assert.True(view.OnPrivate);
+    }
+
+    [Fact]
+    public void AdapterWithoutMask_StillGetsTheLimitedBroadcast() =>
+        Assert.Equal(new[] { IPAddress.Broadcast }, new PcNetworkView(new[] { Home with { Broadcasts = Array.Empty<IPAddress>() } }).Broadcasts());
+
+    [Fact]
+    public void AdaptersThatThrow_AreSkippedAndNamed_NotTheWholeView()
+    {
+        var skipped = new List<string>();
+        var view = PcNetworkView.From(new NetworkInterface[] { new BrokenNic("No IPv4", new BrokenProps()), new BrokenNic("Gone", null) },
+            new Dictionary<Guid, NetworkCategory>(), (name, _) => skipped.Add(name));
+        Assert.Empty(view.Adapters);
+        Assert.False(view.Connected);
+        Assert.Equal(new[] { "No IPv4", "Gone" }, skipped);
+    }
+
+    // An up adapter whose properties throw as Windows does: WSAEPROTONOSUPPORT for IPv4 switched off, or the whole read when it went away.
+    private sealed class BrokenNic(string name, IPInterfaceProperties? props) : NetworkInterface
+    {
+        public override string Id => Guid.Empty.ToString();
+        public override string Description => name;
+        public override OperationalStatus OperationalStatus => OperationalStatus.Up;
+        public override NetworkInterfaceType NetworkInterfaceType => NetworkInterfaceType.Ethernet;
+        public override IPInterfaceProperties GetIPProperties() => props ?? throw new NetworkInformationException(1168);
+    }
+
+    private sealed class BrokenProps : IPInterfaceProperties
+    {
+        public override IPv4InterfaceProperties GetIPv4Properties() => throw new NetworkInformationException(10043);
+        public override IPv6InterfaceProperties GetIPv6Properties() => throw new NetworkInformationException(10043);
+        public override IPAddressInformationCollection AnycastAddresses => throw new NotSupportedException();
+        public override IPAddressCollection DhcpServerAddresses => throw new NotSupportedException();
+        public override IPAddressCollection DnsAddresses => throw new NotSupportedException();
+        public override string DnsSuffix => string.Empty;
+        public override GatewayIPAddressInformationCollection GatewayAddresses => throw new NotSupportedException();
+        public override bool IsDnsEnabled => false;
+        public override bool IsDynamicDnsEnabled => false;
+        public override MulticastIPAddressInformationCollection MulticastAddresses => throw new NotSupportedException();
+        public override UnicastIPAddressInformationCollection UnicastAddresses => throw new NotSupportedException();
+        public override IPAddressCollection WinsServersAddresses => throw new NotSupportedException();
+    }
 }

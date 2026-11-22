@@ -103,8 +103,8 @@ public sealed partial class PcItem : ObservableObject
     {
         ShowsReach = !IsOnline && Route == PcRoute.Lan;
         if (!ShowsReach) return;
-        _service.WatchFirewall();
-        Reach.Show(NetworkChecks.ForPairedPc(_service.NetworkIsPrivate, _service.FirewallAllowed));
+        _service.WatchReach();
+        Reach.Show(NetworkChecks.ForPairedPc(_service.Reach(Id), Guard.LogPath));
     }
 
     // ---- Wake ----
