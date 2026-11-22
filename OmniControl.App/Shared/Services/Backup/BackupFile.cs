@@ -43,9 +43,22 @@ public static class BackupFile
         // Written beside the target first, so a failed export never leaves half a backup under the chosen name.
         var partial = path + ".partial";
         File.Delete(partial);
-        var count = WriteZip(folder, partial, appVersion);
-        File.Move(partial, path, overwrite: true);
-        return count;
+        try
+        {
+            var count = WriteZip(folder, partial, appVersion);
+            if (count > 0 && Read(partial).Contents is null) throw new InvalidDataException("it would be too large or damaged for OmniControl to read back, so the previous backup was kept"); // same rules as an import
+            File.Move(partial, path, overwrite: true);
+            return count;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            try { File.Delete(partial); }
+            catch (Exception cleanup) when (cleanup is IOException or UnauthorizedAccessException)
+            {
+                AppDataStore.AppendLog(Guard.LogFile, $"Backup: the unfinished file stays for now ({cleanup.Message})"); // the next export deletes it
+            }
+            throw;
+        }
     }
 
     private static int WriteZip(string folder, string path, string appVersion)

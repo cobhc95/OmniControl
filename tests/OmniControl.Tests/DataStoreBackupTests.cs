@@ -47,6 +47,21 @@ public sealed class DataStoreBackupTests : IDisposable
     }
 
     [Fact]
+    public void A_backup_too_large_to_read_back_is_refused_and_the_previous_one_is_kept()
+    {
+        Put(_here, DataStores.App, """{"Accent":"Blue"}""");
+        var file = Path.Combine(_work, "b." + BackupFile.Extension);
+        BackupFile.Write(_here, file, "1");
+        var previous = File.ReadAllBytes(file);
+
+        Put(_here, DataStores.App, "{\"Big\":\"" + new string('a', (int)BackupFile.MaxBytes + 1) + "\"}");
+
+        Assert.Throws<InvalidDataException>(() => BackupFile.Write(_here, file, "2"));
+        Assert.Equal(previous, File.ReadAllBytes(file));
+        Assert.False(File.Exists(file + ".partial"));
+    }
+
+    [Fact]
     public void Replace_puts_the_backup_back_keeps_own_approvals_and_resets_what_it_lacks()
     {
         Put(_work, DataStores.Automation, """{"Scripts":[{"Id":"b","Name":"Theirs"}],"Approved":["evil"]}""");
