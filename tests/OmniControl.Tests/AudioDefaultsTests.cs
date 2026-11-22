@@ -257,7 +257,7 @@ public class AudioDefaultsTests
     public void Restore_AtDefaults_MakesNoChange()
     {
         var snapshot = new FakeSnapshot();
-        var mixer = new FakeMixer(new MixerSettings(), snapshot);
+        var mixer = new FakeMixer(new MixerSettings { AllowedCables = new() }, snapshot); // as loaded: no cable switched on
         AudioDefaults.Restore(mixer, snapshot);
         Assert.Empty(mixer.Calls);
     }

@@ -19,11 +19,13 @@ public class CombinedMicrophoneTests(ITestOutputHelper output)
         return (s, mic);
     }
 
+    /// With the master in Equalizer APO no bus owns Windows' default, so the speakers are the default (a default cable is the user's and never taken).
     private RoutePlan Plan(MixerSettings s, IReadOnlySet<string> playing, IReadOnlySet<string>? sounding = null,
         IReadOnlySet<string>? failed = null, IReadOnlyList<AudioDevice>? recording = null)
     {
+        var playback = s.MasterMethod == EffectsRules.MasterApo.Id ? OwnerPc.PlaybackSpeakerDefault : OwnerPc.Playback;
         var plan = RoutePlanner.Make(new PlanInput(OwnerPc.Support, true, s, playing, sounding ?? None, None,
-            OwnerPc.Playback, recording ?? OwnerPc.Recording, failed ?? None));
+            playback, recording ?? OwnerPc.Recording, failed ?? None));
         output.WriteLine(PlanPrinter.Print(plan));
         output.WriteLine("--");
         return plan;
@@ -59,7 +61,7 @@ public class CombinedMicrophoneTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void CombinedMicrophone_WithTheMasterInApo_RunsIntoCableInputWithBothMics_ProgramsUnchanged()
+    public void CombinedMicrophone_WithTheMasterInApo_RunsIntoCableInputWithBothMics_ProgramsAreRecorded()
     {
         var (s, mic) = WithCombinedMic(masterApo: true);
         var plan = Plan(s, Set(OwnerPc.Browser, OwnerPc.Player));
@@ -72,12 +74,12 @@ public class CombinedMicrophoneTests(ITestOutputHelper output)
         Assert.All(plan.Runs.Values.Where(r => r.Key != mic.Key), r => Assert.Null(r.Cable)); // nothing else uses a cable
         Assert.Contains(OwnerPc.Cable16, plan.CablesInUse); // the pair's other input is held: it would reach CABLE Output
 
-        var without = OwnerPc.Settings();
-        without.MasterMethod = EffectsRules.MasterApo.Id;
-        var before = Plan(without, Set(OwnerPc.Browser, OwnerPc.Player));
+        // The only pair is the microphone's, so the Automatic programs are recorded instead and play on the speakers.
         foreach (var key in new[] { OwnerPc.Browser, OwnerPc.Player })
-            Assert.True(plan.Runs[key].SameAs(before.Runs[key]));
-        Assert.Equal(before.ToApo, plan.ToApo);
+        {
+            Assert.Equal(RunKind.Capture, plan.Runs[key].Kind);
+            Assert.Equal(new[] { OwnerPc.Speaker }, plan.Runs[key].Outputs);
+        }
     }
 
     [Fact]
