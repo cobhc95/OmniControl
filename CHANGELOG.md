@@ -6,6 +6,11 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 ## Unreleased
 
 - Free memory after closing now also hands the freed memory back to Windows, so Task Manager shows the lower figure.
+- Actions and Hotkeys window (and every action picker): a "Presets" section above Recent lists every preset action under "<page> · <group>"; its right pane offers "Show in Presets Manager".
+- Every preset group has "Next" and "Previous" actions (one row "<group> presets: Next · Previous"), stepping through its presets in order and wrapping.
+- A preset's "Switch to" action has a setting "Run again to switch back" (off by default): run again while that preset is in use, it goes back to the one before.
+- Removing a custom action in the Actions and Hotkeys window asks first.
+
 - Renamed: Presets Manager; Actions and Hotkeys; Network Traffic Control. Fixed "Choose a action" to "Choose an action".
 - Automation's Custom actions tab is gone: custom actions are made, edited, run and removed in the Actions and hotkeys window (Custom actions section, "+ New custom action..."); saved ones are unchanged, and a rule's "+ action" still creates one through the picker.
 - Presets now has its own entry in the sidebar's bottom group, above Actions and hotkeys; it opens the Presets window (also an action, "Open Presets"). Automation's Presets tab is gone: rules made in the Presets window show on the From other pages tab as "Presets · <page>" with "Made in the Presets window · Open".

@@ -23,11 +23,12 @@ public sealed record PickChoice(string Spec, string Category, string Name, strin
     ActionEditor? Editor = null, Func<IReadOnlyDictionary<string, string>, PickChoice>? Create = null, string? Icon = null,
     ActionFamily? Family = null, string? FamilyRole = null, string? Tag = null, Shared.Services.RemotePcLabel? Remote = null,
     Func<string, string?>? ParamCheck = null, bool NamedByParam = false, string? Part = null, string? Detail = null, string? Value = null,
-    string? Status = null, string? StatusTip = null, bool PicksAtOnce = false)
+    string? Status = null, string? StatusTip = null, bool PicksAtOnce = false, string? PresetsHeading = null, Func<DialogMessage>? RemoveAsk = null)
 {
     // Part: the muted heading over a run of sections in pane 1 ("Triggers", "States"); Detail: a muted fact after the name (the device);
     // Value: the live value as a neutral tag at the row's right; Status (tooltip StatusTip): the muted line under the settings title;
-    // PicksAtOnce: a Command whose answer is used at once, without "Use this ..." (a side list's pick).
+    // PicksAtOnce: a Command whose answer is used at once, without "Use this ..." (a side list's pick); PresetsHeading: a preset group's
+    // action, listed again in the Presets section under this heading; RemoveAsk: the question Remove asks first.
     public bool HasOptions => Options is { Count: > 0 };
 
     /// The name a card shows for this entry with that text: the text itself for an entry <see cref="NamedByParam"/> (the keys it sends), else <see cref="Name"/>.

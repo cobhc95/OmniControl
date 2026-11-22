@@ -1,3 +1,4 @@
+using OmniControl.App.Features.Hotkeys.Actions;
 using OmniControl.App.Features.Hotkeys;
 
 namespace OmniControl.App.Shared.Presets;
@@ -8,16 +9,19 @@ namespace OmniControl.App.Shared.Presets;
 /// taken away when the shortcut is removed here, renamed with its preset and removed when its preset is deleted (its saved key stays, so
 /// an undone delete brings it back). At start-up every preset with a saved key gets its action again. No UI.
 /// A preset with triggers (<see cref="IPresetSwitch.Keep"/>) keeps its action without a key, so its rule's step (and a put back) can run it.
+/// An apply action's "Run again to switch back" (off by default) goes back to the preset in use before it; every group also has its
+/// "Next" and "Previous" actions (id <c>presets.&lt;group&gt;.next</c>), stepping through its presets in order (<see cref="PresetStepping"/>).
 public sealed class PresetShortcuts : IPresetSwitch, IDisposable
 {
     private HashSet<string> _kept = new();
-    private const string Prefix = "preset.";
+    private const string Prefix = "preset.", StepPrefix = "presets.", NextRole = "Next", PreviousRole = "Previous";
 
     private readonly IActionRegistry _actions;
     private readonly PresetGroups _groups;
     private readonly Action<string> _report;
     private readonly Dictionary<string, PresetGroup> _mine = new(); // the actions made here, by action id
     private readonly List<(IPresetProvider Provider, Action Sync)> _watched = new();
+    private readonly Dictionary<string, string> _before = new(); // by group id: the preset in use before the last one applied here
 
     /// A preset's shortcut or its action changed (its group's id), here or on the Shortcuts page.
     public event Action<string>? Changed;
@@ -86,6 +90,7 @@ public sealed class PresetShortcuts : IPresetSwitch, IDisposable
         void Sync() => SyncActions(group);
         group.Provider.Changed += Sync;
         _watched.Add((group.Provider, Sync));
+        RegisterSteps(group);
         Sync();
     }
 
@@ -98,6 +103,7 @@ public sealed class PresetShortcuts : IPresetSwitch, IDisposable
             _watched.Remove((provider, sync));
         }
         foreach (var id in _mine.Where(m => m.Value == group).Select(m => m.Key).ToList()) Drop(id);
+        UnregisterSteps(group);
     }
 
     /// Brings the group's actions in line with its presets: an action for every preset with a saved key, the title following a rename, and
@@ -125,7 +131,13 @@ public sealed class PresetShortcuts : IPresetSwitch, IDisposable
     {
         var presetId = entry.Id;
         var action = new HotkeyAction(ActionId(group.Id, presetId), TitleOf(group, entry), group.Section,
-            $"preset apply switch {group.Title} {entry.Name}", _ => Run(group, presetId), group: group.Title, subgroup: PresetGroups.Subgroup) { CoveredByMousePicker = group.MovesLayer };
+            $"preset apply switch {group.Title} {entry.Name}", _ => Run(group, presetId, switchBack: false), group: group.Title, subgroup: PresetGroups.Subgroup)
+        {
+            CoveredByMousePicker = group.MovesLayer,
+            Preset = PlaceOf(group),
+            Accepts = ActionSettings.SwitchBack,
+            RunConfigured = settings => Run(group, presetId, settings.Options?.Bool(MouseOptions.SwitchBack) == true),
+        };
         _actions.Register(action);
         _mine[action.Id] = group;
         action.Changed += OnActionChanged;
@@ -145,9 +157,47 @@ public sealed class PresetShortcuts : IPresetSwitch, IDisposable
         if (_mine.TryGetValue(action.Id, out var group)) Changed?.Invoke(group.Id);
     }
 
-    private void Run(PresetGroup group, string presetId)
+    private static PresetPlace PlaceOf(PresetGroup group) => new(group.Section, group.Id, group.Title);
+
+    private static string? InUseOf(PresetGroup group) => group.Provider.Entries.FirstOrDefault(e => e.InUse)?.Id;
+
+    private void Run(PresetGroup group, string presetId, bool switchBack)
     {
-        if (group.Provider.Apply(presetId) is { } problem) _report(problem);
+        var inUse = InUseOf(group);
+        var before = _before.GetValueOrDefault(group.Id) is { } id && group.Provider.Find(id) is not null ? id : null;
+        Apply(group, PresetStepping.Target(presetId, inUse, before, switchBack), inUse);
+    }
+
+    private void Step(PresetGroup group, int direction)
+    {
+        var inUse = InUseOf(group);
+        if (PresetStepping.Step(group.Provider.Entries.Select(e => e.Id).ToList(), inUse, direction) is { } next) Apply(group, next, inUse);
+    }
+
+    /// Applies <paramref name="preset"/> and remembers the one in use before it (what "Run again to switch back" goes back to).
+    private void Apply(PresetGroup group, string preset, string? inUse)
+    {
+        if (group.Provider.Apply(preset) is { } problem) _report(problem);
+        else if (inUse is not null && inUse != preset) _before[group.Id] = inUse;
+    }
+
+    private static string StepId(PresetGroup group, string role) => $"{StepPrefix}{group.Id}.{role.ToLowerInvariant()}";
+
+    /// The group's "Next" and "Previous" actions, one family ("Volume presets: Next · Previous"), stepping through its presets in order.
+    private void RegisterSteps(PresetGroup group)
+    {
+        var family = new ActionFamily($"{StepPrefix}{group.Id}", $"{group.Title} presets");
+        HotkeyAction Of(string role, int direction) => new(StepId(group, role), $"{family.Title}: {role}", group.Section,
+            $"preset {role} cycle step switch {group.Title}", _ => Step(group, direction), group: group.Title, subgroup: PresetGroups.Subgroup)
+            { Family = family, FamilyRole = role, CoveredByMousePicker = group.MovesLayer, Preset = PlaceOf(group) };
+        _actions.Register(new[] { Of(NextRole, +1), Of(PreviousRole, -1) });
+    }
+
+    private void UnregisterSteps(PresetGroup group)
+    {
+        _actions.Unregister(StepId(group, NextRole));
+        _actions.Unregister(StepId(group, PreviousRole));
+        _before.Remove(group.Id);
     }
 
     public void Dispose()

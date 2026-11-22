@@ -23,6 +23,9 @@ public class PresetManagerTests
     private sealed class FakeActions : IActionRegistry
     {
         public ObservableCollection<HotkeyAction> Actions { get; } = new();
+
+        /// The presets' apply actions only (each group also has its Next and Previous).
+        public List<HotkeyAction> Applies => Actions.Where(a => PresetShortcuts.IsApplyId(a.Id)).ToList();
         public Dictionary<string, string> Saved { get; } = new();
         public IEnumerable<HotkeyAction> PickerActions => Actions;
         public event Action? BindingsSaved { add { } remove { } }
@@ -329,7 +332,7 @@ public class PresetManagerTests
         var entry = group.Provider.Find("2")!;
         Assert.Null(shortcuts.Set(group, entry, "Ctrl+Alt+F9"));
 
-        var action = Assert.Single(actions.Actions);
+        var action = Assert.Single(actions.Applies);
         Assert.Equal(PresetShortcuts.ActionId("mouse.trackpad", "2"), action.Id);
         Assert.Equal("Switch to layer \"Trackpad 2\"", action.Title);
         Assert.Equal("Mouse and Trackpad - Trackpad - Presets", action.Heading);
@@ -339,8 +342,30 @@ public class PresetManagerTests
         Assert.Equal(2, mouse.LayerOf(InputFamily.Trackpad));
 
         shortcuts.Remove(group, "2");
-        Assert.Empty(actions.Actions);
+        Assert.Empty(actions.Applies);
         Assert.Equal(string.Empty, shortcuts.ShortcutOf(group, "2"));
+        shortcuts.Dispose();
+        groups.Dispose();
+    }
+
+    [Fact]
+    public void EveryGroup_HasNextAndPrevious_AsOneFamily_StepsThroughItsPresets_AndGoesWithTheGroup()
+    {
+        var (groups, actions, shortcuts, mouse, group) = Shortcuts();
+        var next = actions.Actions.Single(a => a.Id == "presets.mouse.trackpad.next");
+        var previous = actions.Actions.Single(a => a.Id == "presets.mouse.trackpad.previous");
+        Assert.Equal(next.Family, previous.Family);
+        Assert.Equal("Trackpad presets", next.Family!.Title);
+        Assert.Equal("Mouse and Trackpad · Trackpad", next.Preset!.Heading);
+
+        var start = mouse.LayerOf(InputFamily.Trackpad);
+        next.Run();
+        Assert.NotEqual(start, mouse.LayerOf(InputFamily.Trackpad));
+        previous.Run();
+        Assert.Equal(start, mouse.LayerOf(InputFamily.Trackpad));
+
+        groups.Unregister(group.Id);
+        Assert.DoesNotContain(actions.Actions, a => a.Id == next.Id || a.Id == previous.Id);
         shortcuts.Dispose();
         groups.Dispose();
     }
@@ -353,7 +378,7 @@ public class PresetManagerTests
         var entry = group.Provider.Find("1")!;
         Assert.Contains("Next mouse layer", shortcuts.Set(group, entry, "Ctrl+Alt+L"));
         Assert.NotNull(shortcuts.Set(group, entry, "K"));
-        Assert.Single(actions.Actions); // nothing was made
+        Assert.Empty(actions.Applies); // nothing was made
         shortcuts.Dispose();
         groups.Dispose();
     }
@@ -372,13 +397,13 @@ public class PresetManagerTests
         var id = presets.Add().Id!;
         shortcuts.Set(group, presets.Find(id)!, "Ctrl+Alt+F8");
         presets.Rename(id, "Desk");
-        Assert.Equal("Apply preset \"Desk\"", Assert.Single(actions.Actions).Title);
-        Assert.Equal("Ctrl+Alt+F8", actions.Actions[0].Gesture);
+        Assert.Equal("Apply preset \"Desk\"", Assert.Single(actions.Applies).Title);
+        Assert.Equal("Ctrl+Alt+F8", actions.Applies[0].Gesture);
 
         var undo = presets.Delete(id);
-        Assert.Empty(actions.Actions);
+        Assert.Empty(actions.Applies);
         undo!();
-        Assert.Equal("Ctrl+Alt+F8", Assert.Single(actions.Actions).Gesture);
+        Assert.Equal("Ctrl+Alt+F8", Assert.Single(actions.Applies).Gesture);
         groups.Dispose();
     }
 
@@ -390,10 +415,10 @@ public class PresetManagerTests
         actions.Saved[PresetShortcuts.ActionId("mouse.buttons", "99")] = "Ctrl+Alt+F6"; // no such layer: left alone
         var groups = new PresetGroups();
         using var shortcuts = new PresetShortcuts(actions, groups, _ => { });
-        Assert.Empty(actions.Actions);
+        Assert.Empty(actions.Applies);
 
         groups.Register(new PresetGroup("mouse.buttons", "Mouse and Trackpad", "Mouse Buttons", new LayerPresets(new FakeLayers(), InputFamily.Mouse)));
-        var action = Assert.Single(actions.Actions);
+        var action = Assert.Single(actions.Applies);
         Assert.Equal("Ctrl+Alt+F7", action.Gesture);
         groups.Dispose();
     }

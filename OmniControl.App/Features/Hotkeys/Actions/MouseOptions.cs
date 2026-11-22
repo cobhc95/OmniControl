@@ -113,6 +113,10 @@ public static class MouseOptions
         Timing.PowerCountdownMinSeconds, Timing.PowerCountdownMaxSeconds, 5, " s");
     public static readonly ActionOption ForceClose = ActionOption.Toggle("force", "Close programs that don't respond (unsaved work is lost)");
 
+    // A preset's apply action.
+    public static readonly ActionOption SwitchBack = ActionOption.Toggle("switchback", "Run again to switch back",
+        note: "Run it again while this preset is in use to go back to the one before. Handy on a hotkey; leave off for timed rules.");
+
     /// What an input chose for an OmniControl action: its program, how far it moves a level, its power countdown (each used only by the actions that take it).
     public static RunSettings RunOf(OptionValues values) =>
         new(LaunchOf(values), values.Int(Step), values.Int(Countdown), values.Bool(ForceClose), values);

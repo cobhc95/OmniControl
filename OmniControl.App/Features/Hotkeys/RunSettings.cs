@@ -20,6 +20,9 @@ public enum ActionSettings
 
     /// The repeated-clicking settings (button, speed, when to stop...).
     Clicking = 16,
+
+    /// Whether a preset's apply action, run again while its preset is in use, goes back to the preset in use before it.
+    SwitchBack = 32,
 }
 
 /// What an input chose for the action it runs; an action uses only the settings it <see cref="HotkeyAction.Takes"/> and ignores the rest.
