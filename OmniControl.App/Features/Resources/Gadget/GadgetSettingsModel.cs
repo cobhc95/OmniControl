@@ -135,7 +135,7 @@ public sealed class GadgetSettingsModel : ObservableObject, IDisposable
         _settings.Commit();
     }
 
-    // A change here, from the gadget's right-click menu, a layout, a preset, an import or a disk that came or went: the switch, rows and cards show it again.
+    // A change here, from a layout, a preset, an import or a disk that came or went: the switch, rows and cards show it again.
     private void OnChanged()
     {
         OnPropertyChanged(nameof(Shown));

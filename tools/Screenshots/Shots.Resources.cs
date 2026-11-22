@@ -94,7 +94,7 @@ internal static partial class Shots
         var monitor = new ResourceMonitor(rig.States, () => TimeSpan.FromSeconds(2), () => null, () => new Dictionary<string, string>(), () => new Dictionary<string, string>(), () => new Dictionary<string, string>(), title);
         var weather = new WeatherService(settings, rig.Actions, rig.States, new MemoryCredentials(), title);
         var layouts = new GadgetLayouts(settings);
-        var gadget = new TaskbarGadget(monitor, weather, settings, layouts, rig.Runner, rig.States, Rig.Report, new NoResourcesWindows());
+        var gadget = new TaskbarGadget(monitor, weather, settings, rig.Runner, rig.States, Rig.Report, new NoResourcesWindows());
         gadget.Dispose(); // it stops following the settings: switching the look on below never opens it on the taskbar
         settings.Setup.Gadget.Shown = true;
         var preview = new SamplePreview(gadget, monitor, settings);

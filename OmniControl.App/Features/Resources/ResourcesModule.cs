@@ -62,7 +62,7 @@ public sealed class ResourcesModule : IFeatureModule, IResourcesWindows
             monitor.RefreshHardware, LooksStale: () => !monitor.HardwareKnown, Describe: monitor.HardwareText));
         var weather = _weather = new WeatherService(Settings, context.Actions, context.States, new WindowsCredentialStore(), Title);
         var layouts = _layouts = new GadgetLayouts(Settings);
-        var gadget = _gadget = new TaskbarGadget(monitor, weather, Settings, layouts, context.Runner, context.States, context.Report, this);
+        var gadget = _gadget = new TaskbarGadget(monitor, weather, Settings, context.Runner, context.States, context.Report, this);
         gadget.Register(context.Actions, context.Hardware, Title);
         _presets = new ResourcePresets(Settings);
         context.Presets.Register(new PresetGroup(ResourcePresets.GroupId, Title, Title, _presets));

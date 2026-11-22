@@ -16,7 +16,7 @@ public interface IGadgetPreview
     /// The taskbar's right or left end (one setting for every layout).
     void SetPosition(GadgetPosition position);
 
-    /// The font of every layout ("" = the default), remembered among the fonts picked before.
+    /// The font of every layout ("" = the default).
     void SetFont(string font);
 
     /// <param name="sampleUnknown">A reading or weather value that is unknown or 0 shows a sample (<see cref="Reading.SampleOr"/>,
@@ -48,19 +48,17 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
     private readonly IStateRegistry _states;
     private readonly Action<string> _report;
     private readonly IResourcesWindows _windows;
-    private readonly GadgetLayouts _layouts;
     private readonly HoldCount _preview = new();
     private GadgetWindow? _window;
     private GadgetClicks? _clicks;
     private TaskbarPlace? _placed;
     private readonly TaskbarSpot.Picture _picture = new();
 
-    /// <param name="layouts">The layouts the right-click menu lists and applies.</param>
     /// <param name="windows">Opens the page at its Network Traffic Control group and at its Taskbar gadget tab (the right-click menu's links).</param>
-    public TaskbarGadget(ResourceMonitor monitor, WeatherService weather, ResourcesSettings settings, GadgetLayouts layouts, IActionRunner runner,
+    public TaskbarGadget(ResourceMonitor monitor, WeatherService weather, ResourcesSettings settings, IActionRunner runner,
         IStateRegistry states, Action<string> report, IResourcesWindows windows)
     {
-        (_monitor, _weather, _settings, _layouts, _runner, _states, _report, _windows) = (monitor, weather, settings, layouts, runner, states, report, windows);
+        (_monitor, _weather, _settings, _runner, _states, _report, _windows) = (monitor, weather, settings, runner, states, report, windows);
         monitor.Updated += Redraw;
         monitor.ReadingsChanged += AddRows;
         weather.Updated += Redraw;
@@ -212,7 +210,7 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
     public void SetFont(string font)
     {
         if (font == Look.Font) return;
-        Look.UseFont(font);
+        Look.Font = font;
         _settings.Commit();
     }
 
@@ -391,62 +389,16 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
         _picture.Paint(handle.Handle, window.DrawInto, Palette.HitTest.A);
     }
 
-    /// The right-click menu: Layout (the favourite layouts), Show (every reading, ticked), Position (right or left) and Font (the default and the fonts
-    /// picked before) as sub-menus, the gadget's settings, Network Traffic Control (while it runs) and Hide.
+    /// The right-click menu: the gadget's settings, Network Traffic Control (while it runs) and Hide.
     private IReadOnlyList<MenuRowItem> MenuRows() => new[]
     {
-        MenuRowItem.Sub("Layout", "layout-dashboard", LayoutRows, _layouts.CurrentName),
-        MenuRowItem.Sub("Show", "eye", ShowRows),
-        MenuRowItem.Sub("Position", "arrows-left-right", PositionRows, GadgetSettings.PositionNames[(int)Look.Position]),
-        MenuRowItem.Sub("Font", "cursor-text", FontRows, GadgetSettings.FontName(Look.Font)),
-        Link("Gadget settings…", "settings", _windows.OpenGadgetSettings, ruleAbove: true),
+        Link("Gadget settings…", "settings", _windows.OpenGadgetSettings),
         _windows.HasTraffic ? Link(_windows.TrafficTitle + "…", "network", _windows.OpenApps) : null,
         new MenuRowItem("Hide gadget", string.Empty, false, string.Empty, new RelayCommand(() => SetShown(false)), RuleAbove: true, IsMuted: true, Icon: "eye-off"),
     }.OfType<MenuRowItem>().ToList();
 
-    private static MenuRowItem Link(string text, string icon, Action open, bool ruleAbove = false) =>
-        new(text, string.Empty, false, string.Empty, new RelayCommand(open), RuleAbove: ruleAbove, Icon: icon);
-
-    /// The favourite layouts (the one in use ticked), then the way to all of them.
-    private IReadOnlyList<MenuRowItem> LayoutRows()
-    {
-        var rows = _layouts.FavouriteEntries().Select(e => new MenuRowItem(e.Name, string.Empty, e.InUse, string.Empty, new RelayCommand(() =>
-        {
-            if (_layouts.Apply(e.Id) is { } problem) _report(problem);
-        }))).ToList();
-        rows.Add(new MenuRowItem("More layouts…", string.Empty, false, string.Empty, new RelayCommand(_windows.OpenGadgetSettings), RuleAbove: true, IsMuted: true));
-        return rows;
-    }
-
-    /// Right and Left, the one in force chosen.
-    private IReadOnlyList<MenuRowItem> PositionRows() => Enum.GetValues<GadgetPosition>().Select(p => new MenuRowItem(GadgetSettings.PositionNames[(int)p], string.Empty,
-        p == Look.Position, string.Empty, new RelayCommand(() => SetPosition(p)))).ToList();
-
-    /// The default font and the fonts picked before, each in its own typeface, the one in force chosen; then the way to every installed font.
-    private IReadOnlyList<MenuRowItem> FontRows()
-    {
-        var rows = GadgetFontCard.Rows(Look.RecentFonts.Prepend(string.Empty), Look.Font, SetFont).ToList();
-        rows.Add(new MenuRowItem("More fonts…", string.Empty, false, string.Empty, new RelayCommand(_windows.OpenGadgetSettings), RuleAbove: true, IsMuted: true));
-        return rows;
-    }
-
-    /// Every reading and the weather, ticked while shown; a click toggles it and keeps the menu open.
-    private IReadOnlyList<MenuRowItem> ShowRows()
-    {
-        var rows = new List<MenuRowItem>();
-        foreach (var reading in _monitor.Readings)
-        {
-            var shown = Look.Readings.FirstOrDefault(r => r.Id == reading.Id);
-            rows.Add(new MenuRowItem(reading.Name, string.Empty, shown?.Shown == true, string.Empty, new RelayCommand(() =>
-            {
-                if (shown is null) return;
-                shown.Shown = !shown.Shown;
-                _settings.Commit();
-            }), KeepsOpen: true));
-        }
-        rows.Add(new MenuRowItem("Weather", string.Empty, _weather.IsShown, string.Empty, new RelayCommand(() => _weather.SetShown(!_weather.IsShown)), KeepsOpen: true));
-        return rows;
-    }
+    private static MenuRowItem Link(string text, string icon, Action open) =>
+        new(text, string.Empty, false, string.Empty, new RelayCommand(open), Icon: icon);
 
     public void Dispose()
     {
