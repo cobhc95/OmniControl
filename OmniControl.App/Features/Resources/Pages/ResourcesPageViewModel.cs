@@ -15,11 +15,11 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     private readonly ResourcesSettings _settings;
     private readonly NetworkLimits? _limits; // null while Network traffic control is off: no Network traffic control group
     private readonly AppScopeGate _gate;
-    private readonly ProviderChoice _presets;
+    private readonly ProviderChoice? _presets; // null with _gadget while the Resources feature is off (Network traffic control alone)
     private readonly IReadOnlyList<(ReadingCard Card, Reading Reading)> _cards;
     private readonly NetworkAdapterMenu _adapter;
     private readonly SensorMenu _hottest, _cpuTemp, _gpuTemp;
-    private readonly GadgetSettingsModel _gadget;
+    private readonly GadgetSettingsModel? _gadget;
     private readonly ProcessIcons _icons = new();
     private readonly Action<string> _report;
     private bool _onScreen, _listAdapters;
@@ -33,8 +33,14 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
 
     public override bool ShowsOwnHeader => true; // the preset picker sits on the title line
 
-    public ChoiceItem PresetChoice => _presets.Choice;
-    public override PageTabs Tabs { get; } = new(ReadingsTab, GadgetTab);
+    /// The Resources feature's parts of the page: the title line's preset picker and the Taskbar gadget tab (the page disposes both).
+    internal sealed record ReadingParts(ProviderChoice Presets, GadgetSettingsModel Gadget);
+
+    public ChoiceItem? PresetChoice => _presets?.Choice;
+    public override PageTabs Tabs { get; }
+
+    /// The Resources feature runs: Live readings, the preset picker and the Taskbar gadget tab show.
+    public bool ShowsLive => _gadget is not null;
     public bool ShowsReadings => Tabs.Current == ReadingsTab;
 
     /// The Taskbar gadget tab's content once opened (null before, so its view is built only when first wanted), then kept and hidden with the tab.
@@ -81,17 +87,17 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     public string InstallServiceTip => NetworkLimits.InstallServiceTip;
 
     public override IEnumerable<SearchEntry> SearchEntries =>
-        new[] { Entry(ReadEvery, ReadEvery.Label, "resources readings") }
+        (ShowsLive ? new[] { Entry(ReadEvery, ReadEvery.Label, "resources readings") } : Array.Empty<SearchEntry>())
             .Concat(ShowsTraffic ? new[] { Entry(PacketFilter, PacketFilter.Label, FilterKeywords, Apps.Name) } : Array.Empty<SearchEntry>())
-            .Concat(_gadget.SearchItems.Select(i => Entry(i, i.Label, "resources taskbar gadget", GadgetTab)));
+            .Concat((_gadget?.SearchItems ?? Enumerable.Empty<IEditorItem>()).Select(i => Entry(i, i.Label, "resources taskbar gadget", GadgetTab)));
 
-    /// <param name="presets">The title line's preset picker (the page disposes it).</param>
-    /// <param name="gadget">The Taskbar gadget tab (the page disposes it).</param>
     /// <param name="limits">Network traffic control; null while it is off.</param>
-    internal ResourcesPageViewModel(ResourceMonitor monitor, ResourcesSettings settings, NetworkLimits? limits, ProviderChoice presets,
-        AppScopes scopes, AppScopeGate gate, GadgetSettingsModel gadget, Action<string> report) : base(Info)
+    /// <param name="readings">The Resources feature's parts; null while it is off.</param>
+    internal ResourcesPageViewModel(ResourceMonitor monitor, ResourcesSettings settings, NetworkLimits? limits, ReadingParts? readings,
+        AppScopes scopes, AppScopeGate gate, Action<string> report) : base(Info)
     {
-        (_monitor, _settings, _limits, _gate, _presets, _gadget, _report) = (monitor, settings, limits, gate, presets, gadget, report);
+        (_monitor, _settings, _limits, _gate, _presets, _gadget, _report) = (monitor, settings, limits, gate, readings?.Presets, readings?.Gadget, report);
+        Tabs = readings is null ? new(ReadingsTab) : new(ReadingsTab, GadgetTab);
         Tabs.PropertyChanged += OnTabChanged;
         InstallPacketFilterCommand = new RelayCommand(() =>
         {
@@ -223,15 +229,15 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
     private void Need()
     {
         var every = _onScreen && ShowsReadings ? TimeSpan.FromSeconds(_settings.Setup.ReadEverySeconds) : (TimeSpan?)null;
-        _monitor.Need(ResourceMonitor.PageNeed, every, SampleParts.All | (_listAdapters ? SampleParts.Adapters : 0));
+        _monitor.Need(ResourceMonitor.PageNeed, ShowsLive ? every : null, SampleParts.All | (_listAdapters ? SampleParts.Adapters : 0));
         _monitor.Need(ResourceMonitor.AppsNeed, ShowsTraffic && Apps.IsExpanded && !Unavailable ? every : null);
-        _gadget.SetOnScreen(_onScreen && !ShowsReadings);
+        _gadget?.SetOnScreen(_onScreen && !ShowsReadings);
     }
 
     private void OnUpdated()
     {
         if (!_onScreen || !ShowsReadings) return;
-        foreach (var (card, reading) in _cards) Show(card, reading, _monitor.Latest);
+        if (ShowsLive) foreach (var (card, reading) in _cards) Show(card, reading, _monitor.Latest);
         _adapter.Refresh();
         foreach (var menu in SensorMenus) menu.Refresh();
         if (ShowsTraffic && Apps.IsExpanded) ShowTraffic();
@@ -334,8 +340,8 @@ public sealed class ResourcesPageViewModel : PageViewModel, IDisposable
         Tabs.PropertyChanged -= OnTabChanged;
         _monitor.Need(ResourceMonitor.PageNeed, null);
         _monitor.Need(ResourceMonitor.AppsNeed, null);
-        _presets.Dispose();
+        _presets?.Dispose();
         Live.Dispose();
-        _gadget.Dispose();
+        _gadget?.Dispose();
     }
 }

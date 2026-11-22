@@ -27,9 +27,6 @@ public sealed class FeatureSwitches
 
     public bool IsOn(string id) => !_off.Value.Contains(id);
 
-    /// On, and so is the feature it runs inside.
-    public bool Wanted(string id) => IsOn(id) && (FeatureList.Find(id)?.Needs is not { } needs || IsOn(needs));
-
     /// The feature runs now (the shell's word).
     public bool Runs(string id) => _running.Contains(id);
 

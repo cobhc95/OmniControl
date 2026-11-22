@@ -48,18 +48,12 @@ public sealed class ResourcesModule : IFeatureModule, IResourcesWindows
         (_context, _page, _programs) = (context, null, 0);
         _settings.Setup.Gadget.MoveOldClickDefault();
         _settings.Setup.Gadget.Complete();
-        var monitor = _monitor = new ResourceMonitor(context.States, () => TimeSpan.FromSeconds(_settings.Setup.ReadEverySeconds), () => _settings.Setup.Adapter,
+        var readings = context.Features.IsOn(FeatureList.Resources);
+        var monitor = _monitor = new ResourceMonitor(readings ? context.States : null, () => TimeSpan.FromSeconds(_settings.Setup.ReadEverySeconds), () => _settings.Setup.Adapter,
             () => _settings.Setup.Sensors, () => _limits?.StartTraffic() ?? throw new IOException("Network traffic control is off."), Title);
-        context.Hardware.Register(new HardwareWatch("resources.disks", "Physical disks (gadget readings)", HardwareSignal.Device | HardwareSignal.Resume,
-            monitor.RefreshDisks, LooksStale: () => !monitor.DisksKnown, Describe: monitor.DisksText));
-        _limits = context.Features.Wanted(FeatureList.Traffic) ? StartLimits(context, monitor) : null;
-        var weather = _weather = new WeatherService(_settings, context.Actions, context.States, new WindowsCredentialStore(), Title);
-        var layouts = _layouts = new GadgetLayouts(_settings);
-        var gadget = _gadget = new TaskbarGadget(monitor, weather, _settings, layouts, context.Runner, context.States, context.Report, this);
-        gadget.Register(context.Actions, context.Hardware, Title);
-        _presets = new ResourcePresets(_settings);
-        context.Presets.Register(new PresetGroup(ResourcePresets.GroupId, Title, Title, _presets));
-        context.Presets.Register(new PresetGroup(GadgetLayouts.GroupId, Title, "Gadget layouts", _layouts));
+        _limits = context.Features.IsOn(FeatureList.Traffic) ? StartLimits(context, monitor) : null;
+        (_weather, _layouts, _gadget, _presets) = (null, null, null, null);
+        if (readings) StartReadings(context, monitor);
         context.Actions.Register(new HotkeyAction(OpenActionId, "Open Resources", Title, "resources cpu gpu memory network temperature open page", _ => OpenPage())
         {
             SuggestedIcons = new[] { "device-desktop-analytics" },
@@ -79,10 +73,25 @@ public sealed class ResourcesModule : IFeatureModule, IResourcesWindows
             return true;
         });
         // Each on its own at the stage that puts Windows back: download shaping ends and the rules leave Windows first (StartLimits), then the
-        // traffic session stops, then the gadget closes.
+        // traffic session stops, then the gadget closes (StartReadings).
         context.Shutdown.Add(ShutdownStage.Resources, "resources poller", monitor.Dispose);
-        context.Shutdown.Add(ShutdownStage.Resources, "taskbar gadget", gadget.Dispose);
-        context.Shutdown.Add(ShutdownStage.Resources, "gadget weather", weather.Dispose);
+        if (_gadget is null || _weather is null) return;
+        context.Shutdown.Add(ShutdownStage.Resources, "taskbar gadget", _gadget.Dispose);
+        context.Shutdown.Add(ShutdownStage.Resources, "gadget weather", _weather.Dispose);
+    }
+
+    /// The Resources feature itself: the disks' watch, the taskbar gadget with its weather and layouts, and the presets.
+    private void StartReadings(FeatureContext context, ResourceMonitor monitor)
+    {
+        context.Hardware.Register(new HardwareWatch("resources.disks", "Physical disks (gadget readings)", HardwareSignal.Device | HardwareSignal.Resume,
+            monitor.RefreshDisks, LooksStale: () => !monitor.DisksKnown, Describe: monitor.DisksText));
+        var weather = _weather = new WeatherService(_settings, context.Actions, context.States, new WindowsCredentialStore(), Title);
+        var layouts = _layouts = new GadgetLayouts(_settings);
+        _gadget = new TaskbarGadget(monitor, weather, _settings, layouts, context.Runner, context.States, context.Report, this);
+        _gadget.Register(context.Actions, context.Hardware, Title);
+        _presets = new ResourcePresets(_settings);
+        context.Presets.Register(new PresetGroup(ResourcePresets.GroupId, Title, Title, _presets));
+        context.Presets.Register(new PresetGroup(GadgetLayouts.GroupId, Title, "Gadget layouts", layouts));
     }
 
     /// Network traffic control: the limits and blocks, their actions and the adapters' watch; a program the poller sees for the first time joins the actions' list.
@@ -105,12 +114,15 @@ public sealed class ResourcesModule : IFeatureModule, IResourcesWindows
 
     public IReadOnlyList<FeaturePage> Pages => new[]
     {
-        new FeaturePage(ResourcesPageViewModel.Info, () => _page = new ResourcesPageViewModel(_monitor!, _settings, _limits,
-            new ProviderChoice("Resources presets", _presets!, () => _context!.OpenPresetManager(Title, ResourcePresets.GroupId), withCustom: true),
-            _context!.AppScopes, _context.AppScopeGate,
-            new GadgetSettingsModel(_settings, _context.Actions, _gadget!, _layouts!, () => _context.OpenPresetManager(Title, GadgetLayouts.GroupId), _weather!,
-                _context.IconPicker.ChooseAsync, ChooseActionAsync), _context.Report)),
+        new FeaturePage(ResourcesPageViewModel.Info, () => _page = new ResourcesPageViewModel(_monitor!, _settings, _limits, Readings(), _context!.AppScopes,
+            _context.AppScopeGate, _context.Report)),
     };
+
+    /// The page's Resources parts (preset picker, Taskbar gadget tab); null while only Network traffic control runs.
+    private ResourcesPageViewModel.ReadingParts? Readings() => _gadget is null ? null : new(
+        new ProviderChoice("Resources presets", _presets!, () => _context!.OpenPresetManager(Title, ResourcePresets.GroupId), withCustom: true),
+        new GadgetSettingsModel(_settings, _context!.Actions, _gadget, _layouts!, () => _context.OpenPresetManager(Title, GadgetLayouts.GroupId), _weather!,
+            _context.IconPicker.ChooseAsync, ChooseActionAsync));
 
     /// The Choose-the-action window over the main window (the gadget's click actions).
     private static Task<PickResult?> ChooseActionAsync(PickerModel picker, string title) =>

@@ -12,6 +12,9 @@ public sealed partial class PageTabs : ObservableObject
 
     public IReadOnlyList<PageTab> Items { get; }
 
+    /// More than one tab: the strip shows (a page left with one, its other parts' features off, shows none).
+    public bool HasChoice => Items.Count > 1;
+
     [ObservableProperty, NotifyPropertyChangedFor(nameof(Current))] private int _selected;
 
     /// The name of the open tab.

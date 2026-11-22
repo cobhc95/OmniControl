@@ -20,12 +20,13 @@ public sealed partial class ShellViewModel
         public IReadOnlyList<PageSlot> Pages { get; set; } = Array.Empty<PageSlot>();
     }
 
-    private bool Wanted(IFeatureModule module) => module.Features.Count == 0 || _features.Wanted(module.Features[0]);
+    /// The module holds a feature that is on (its pages show with only that feature's parts).
+    private bool Wanted(IFeatureModule module) => module.Features.Count == 0 || module.Features.Any(_features.IsOn);
 
-    private static bool Live(IFeatureModule module) => module.Features.Count == 0 || FeatureList.Find(module.Features[0])?.Live == true;
+    private static bool Live(IFeatureModule module) => module.Features.All(id => FeatureList.Find(id)?.Live == true);
 
     /// The features the module would run with now.
-    private IReadOnlyList<string> WantedFeatures(IFeatureModule module) => module.Features.Where(_features.Wanted).ToList();
+    private IReadOnlyList<string> WantedFeatures(IFeatureModule module) => module.Features.Where(_features.IsOn).ToList();
 
     /// Registers the module through a scope of its own.
     private void Begin(IFeatureModule module)
@@ -65,7 +66,7 @@ public sealed partial class ShellViewModel
 
     private void StartLive(IFeatureModule module)
     {
-        var name = FeatureList.Find(module.Features[0])?.Name;
+        var name = string.Join(", ", WantedFeatures(module).Select(id => FeatureList.Find(id)?.Name));
         if (Guard.Run($"Feature on: {name}", () =>
             {
                 Begin(module);

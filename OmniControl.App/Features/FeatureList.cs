@@ -3,11 +3,11 @@ namespace OmniControl.App.Features;
 /// One feature the person may switch off (App settings > Features, Setup's "Choose features" page).
 /// <param name="Id">Its id, kept in settings.json and used as Setup's component name (tools/setup.iss retypes them).</param>
 /// <param name="Live">True: switching it starts or stops it at once; false: from the next start (its card says so).</param>
-/// <param name="Needs">The feature it runs inside (its controls live on that feature's page); null: none.</param>
-public sealed record FeatureInfo(string Id, string Name, string Description, bool Live, string? Needs = null);
+public sealed record FeatureInfo(string Id, string Name, string Description, bool Live);
 
 /// THE list of features that can be switched off, in the order the switches show, and the ready-made choices (the same as Setup's types).
-/// A module runs for the ids it names in <see cref="IFeatureModule.Features"/>; a module that names none always runs.
+/// Where a feature runs and shows is the module that names its id in <see cref="IFeatureModule.Features"/> (one registration); a module that
+/// names none always runs.
 public static class FeatureList
 {
     public const string Volume = "volume", Displays = "displays", Input = "input", Automation = "automation", Osd = "osd", Resources = "resources",
@@ -24,7 +24,7 @@ public static class FeatureList
         new(Automation, "Hotkeys and automation", "Keys, rules, custom actions", Live: true),
         new(Osd, "On-screen display", "OSD pop-ups", Live: true),
         new(Resources, "Resources and taskbar gadget", "CPU, GPU, network, temperatures", Live: true),
-        new(Traffic, "Network traffic control", "Per-app limits (Windows Packet Filter)", Live: true, Needs: Resources),
+        new(Traffic, "Network traffic control", "Per-app limits (Windows Packet Filter)", Live: true),
         // Restart: Smart devices' import and App settings' import from a PC hold its paired PCs.
         new(OtherPcs, "Other PCs", "Pairing, wake, remote control", Live: false),
         new(Devices, "Smart devices", "Plugs and bulbs", Live: true),

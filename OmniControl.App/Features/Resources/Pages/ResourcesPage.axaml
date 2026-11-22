@@ -10,7 +10,7 @@
     <StackPanel Spacing="{StaticResource Gap}">
         <pages:PageTitleLine Title="{Binding Title}">
             <pages:PageTitleLine.Right>
-                <c:PresetPicker DataContext="{Binding PresetChoice}" />
+                <Panel IsVisible="{Binding ShowsLive}"><c:PresetPicker DataContext="{Binding PresetChoice}" /></Panel>
             </pages:PageTitleLine.Right>
         </pages:PageTitleLine>
 
@@ -18,7 +18,7 @@
             <pages:PageTabsView DataContext="{Binding Tabs}" />
 
             <StackPanel IsVisible="{Binding ShowsReadings}">
-                <pages:GroupCard Group="{Binding Live}">
+                <pages:GroupCard Group="{Binding Live}" IsVisible="{Binding ShowsLive}">
                     <pages:GroupCard.Tools>
                         <c:ChoiceChip DataContext="{Binding ReadEvery}" />
                     </pages:GroupCard.Tools>

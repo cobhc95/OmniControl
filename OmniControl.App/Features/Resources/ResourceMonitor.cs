@@ -10,7 +10,7 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
     public const string PageNeed = "page", GadgetNeed = "gadget", AppsNeed = "apps";
     private const string RulesNeed = "rules";
 
-    private readonly IStateRegistry _states;
+    private readonly IStateRegistry? _states; // null while the Resources feature is off (Network traffic control alone): no reading states
     private readonly Func<TimeSpan> _ruleInterval;
     private readonly Func<string?> _adapterChoice;
     private readonly Func<IReadOnlyDictionary<string, string>> _sensorChoices;
@@ -37,12 +37,14 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
     /// <param name="adapterChoice">The network adapter the speeds are read from (the setup's choice), asked at every read.</param>
     /// <param name="sensorChoices">The sensor each temperature reading follows, by reading id (the setup's one map, never changed in place), asked at every read.</param>
     /// <param name="startTraffic">Starts the per-program traffic session where the network work runs (a worker; throws an <see cref="IOException"/> saying why).</param>
-    public ResourceMonitor(IStateRegistry states, Func<TimeSpan> ruleInterval, Func<string?> adapterChoice, Func<IReadOnlyDictionary<string, string>> sensorChoices,
+    /// <param name="states">Where the readings are offered as states; null: they are not (only Network traffic control runs).</param>
+    public ResourceMonitor(IStateRegistry? states, Func<TimeSpan> ruleInterval, Func<string?> adapterChoice, Func<IReadOnlyDictionary<string, string>> sensorChoices,
         Func<ITrafficSession> startTraffic, string category)
     {
         (_states, _ruleInterval, _adapterChoice, _sensorChoices, _startTraffic, _category) = (states, ruleInterval, adapterChoice, sensorChoices, startTraffic, category);
         _timer = new Timer(_ => Tick());
         _idleClose = new Timer(_ => Release(sensors: true));
+        if (states is null) return;
         states.Register(Reading.All.Select(StateOf));
         states.WatchedChanged += FollowRules;
         FollowRules();
@@ -87,8 +89,8 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
             _history.Remove(reading.Id);
             _today.Remove(reading.Id);
         }
-        _states.Unregister(left.Select(r => r.StateId));
-        _states.Register(DiskReadings.Select(StateOf)); // a renumbered disk's states are replaced: their names say its number
+        _states?.Unregister(left.Select(r => r.StateId));
+        _states?.Register(DiskReadings.Select(StateOf)); // a renumbered disk's states are replaced: their names say its number
         ReadingsChanged?.Invoke();
         FollowRules();
     }
@@ -170,6 +172,7 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
 
     private void FollowRules()
     {
+        if (_states is null) return;
         var watched = Readings.Where(r => _states.IsWatched(r.StateId)).ToList();
         Need(RulesNeed, watched.Count > 0 ? _ruleInterval() : null, Reading.PartsOf(watched));
     }
@@ -261,7 +264,7 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
                 _today[reading.Id] = _today.TryGetValue(reading.Id, out var range) ? (Math.Min(range.Low, value), Math.Max(range.High, value)) : (value, value);
             read.Add(reading.StateId);
         }
-        _states.Notify(read); // one look for every reading of this sample
+        _states?.Notify(read); // one look for every reading of this sample
         Updated?.Invoke();
     }
 
@@ -273,7 +276,7 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
 
     public void Dispose()
     {
-        _states.WatchedChanged -= FollowRules;
+        if (_states is not null) _states.WatchedChanged -= FollowRules;
         _timer.Dispose();
         _idleClose.Dispose();
         lock (_work)
@@ -282,6 +285,6 @@ public sealed class ResourceMonitor : IReadingList, IDisposable
             _apps?.Dispose();
             _sampler.Dispose();
         }
-        _states.Unregister(Readings.Select(r => r.StateId));
+        _states?.Unregister(Readings.Select(r => r.StateId));
     }
 }

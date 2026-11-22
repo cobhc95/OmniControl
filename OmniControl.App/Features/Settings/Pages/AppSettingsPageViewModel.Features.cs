@@ -41,7 +41,6 @@ public sealed partial class AppSettingsPageViewModel
             card.Dimmed = !runs;
             card.Note = on == runs ? (on ? feature.Description : OffNote)
                 : !feature.Live ? "Takes effect after restart"
-                : feature.Needs is { } needs && !_features.IsOn(needs) ? $"Runs with {FeatureList.Find(needs)!.Name}"
                 : "Couldn't start; the errors log says why";
         }
         FeatureGroup.Summary = $"{_featureCards.Count(c => c.Card.IsOn)} of {_featureCards.Count} on";

@@ -5,7 +5,7 @@
              x:DataType="pages:PageTabs">
     <!-- A page's tab strip (Button.tab, the master in Theme.axaml) on a thin line. Only the open tab takes focus, so the strip is one
          Up/Down stop (Tag grouptool); Left/Right move between the tabs. -->
-    <StackPanel>
+    <StackPanel IsVisible="{Binding HasChoice}">
         <ItemsControl ItemsSource="{Binding Items}">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="{StaticResource TabGap}" /></ItemsPanelTemplate>
