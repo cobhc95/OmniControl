@@ -13,7 +13,7 @@
                 <c:MenuRowList x:Name="Menu" />
             </c:ListMenuFlyout>
         </FlyoutBase.AttachedFlyout>
-        <g:GadgetCells x:Name="Cells" />
+        <g:GadgetCells x:Name="Cells" Margin="0" Edge="{StaticResource GadgetInset}" />
         <Rectangle x:Name="Frame" Classes="osdframe" IsVisible="False" />
     </Panel>
 </Window>
