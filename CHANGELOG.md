@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Search now covers every page: Automation, Displays, Mouse and Trackpad, Resources, Network traffic control, Volume, Smart Devices and Other PCs find their cards by choices, menus, tooltips and muted lines (device and program names, methods, set-up stages, readings, sensors and adapters, paired PCs and what they may do, effects and Easy goals), the preset manager and App settings find groups and presets by name, and the Actions and hotkeys window finds an action by its settings. Typo search is faster (about 5 ms over every card) and the category filter no longer hides similar results behind the first twenty.
 - Search: matches inside a card's choices, menu items, tooltip and muted line now count (App settings and OSD first), the matching part of a result is highlighted, and a misspelled word shows "No exact matches" with "Similar matches" below instead of nothing.
 
 ## 0.3.1 (22 Nov 2026)
