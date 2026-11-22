@@ -158,12 +158,6 @@ public sealed class GadgetLayouts : ListPresetProvider<GadgetLayoutPreset>
         ? new LayoutAbout(b.Description, b.Category, b.Favourite)
         : new LayoutAbout(List.Items.FirstOrDefault(p => p.Id == id)?.Saved is { } saved ? "Saved " + saved.ToString("d", CultureInfo.CurrentCulture) : "Your own layout", null, false);
 
-    /// The favourite layouts (the folded gallery's tiles), each with whether it is the live look.
-    public IReadOnlyList<PresetEntry> FavouriteEntries() => Entries.Where(e => About(e.Id).Favourite).ToList();
-
-    /// The name of the layout the live look is, or "Custom" when it is none.
-    public string CurrentName => Entries.FirstOrDefault(e => e.InUse)?.Name ?? "Custom";
-
     /// The look a layout holds (the layout tiles draw it); null when it is gone.
     public GadgetSettings? LookOf(string id) => BuiltIn.FirstOrDefault(b => b.Id == id)?.Look ?? List.Items.FirstOrDefault(p => p.Id == id)?.Look;
 

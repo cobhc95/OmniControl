@@ -98,7 +98,7 @@ public sealed class GadgetSettings
 {
     public const int MinLines = 1, MaxLines = 3,MinTextSize = 6, MaxTextSize = 16, MaxColumnGap = 40, MaxLineGap = 12, MaxGapAfter = 40, MinSpaceToTray = -16, MaxSpaceToTray = 40;
 
-    /// The positions' words, in <see cref="GadgetPosition"/> order (the tab's Position card and the gadget's menu).
+    /// The positions' words, in <see cref="GadgetPosition"/> order (the tab's Position card).
     public static readonly IReadOnlyList<string> PositionNames = Enum.GetNames<GadgetPosition>();
 
     /// The weather's row among the readings (it is not a reading of the PC, so it is not in <see cref="Reading.All"/>).
@@ -119,9 +119,6 @@ public sealed class GadgetSettings
     /// The font menus' name of <see cref="Font"/> "" (the app's own font).
     public const string DefaultFontName = "Default (Segoe UI)";
 
-    /// How many fonts the gadget's right-click Font menu remembers.
-    public const int MaxRecentFonts = 5;
-
     public bool Shown { get; set; }
     public int Lines { get; set; } = 2;
     public OddReading Odd { get; set; } = OddReading.Centre;
@@ -138,21 +135,8 @@ public sealed class GadgetSettings
     /// The font family's name, "" = <see cref="DefaultFontName"/>; one for every layout, like the position.
     public string Font { get; set; } = string.Empty;
 
-    /// The fonts picked before, latest first (at most <see cref="MaxRecentFonts"/>; the right-click Font menu).
-    public List<string> RecentFonts { get; set; } = new();
-
     /// The menus' name of <paramref name="font"/>.
     public static string FontName(string font) => font.Length > 0 ? font : DefaultFontName;
-
-    /// Uses <paramref name="font"/> and remembers it first among <see cref="RecentFonts"/>.
-    public void UseFont(string font)
-    {
-        Font = font;
-        if (font.Length == 0) return;
-        RecentFonts.RemoveAll(f => string.Equals(f, font, StringComparison.OrdinalIgnoreCase));
-        RecentFonts.Insert(0, font);
-        if (RecentFonts.Count > MaxRecentFonts) RecentFonts.RemoveRange(MaxRecentFonts, RecentFonts.Count - MaxRecentFonts);
-    }
 
     public bool HoverOutline { get; set; }
 
@@ -235,8 +219,8 @@ public sealed class GadgetSettings
     {
         var keep = Copy();
         SettingsCopy.Into(this, from.Copy());
-        (Shown, Position, Font, RecentFonts, ClickAction, ClickDefaultMoved, DoubleClickAction, DoubleClickMs, Hover, SpaceToTray, Background) =
-            (keep.Shown, keep.Position, keep.Font, keep.RecentFonts, keep.ClickAction, keep.ClickDefaultMoved, keep.DoubleClickAction, keep.DoubleClickMs, keep.Hover, keep.SpaceToTray, keep.Background);
+        (Shown, Position, Font, ClickAction, ClickDefaultMoved, DoubleClickAction, DoubleClickMs, Hover, SpaceToTray, Background) =
+            (keep.Shown, keep.Position, keep.Font, keep.ClickAction, keep.ClickDefaultMoved, keep.DoubleClickAction, keep.DoubleClickMs, keep.Hover, keep.SpaceToTray, keep.Background);
         (keep.Weather.Shows, keep.Weather.Temperatures) = (Weather.Shows, Weather.Temperatures);
         Weather = keep.Weather;
         foreach (var row in keep.Readings.Where(k => Readings.All(r => r.Id != k.Id)))
