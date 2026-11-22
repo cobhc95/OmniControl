@@ -10,6 +10,9 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 - Faster: the Volume page's level meters repaint only when a level moves by about a pixel and read less often while every meter is silent (the compressor and limiter cards too).
 - Faster: the taskbar gadget no longer redraws, repaints or re-places itself on a reading that changed nothing it shows, and keeps its bitmap and picture buffer while its size is unchanged (less CPU at fast reading intervals).
 - README: new screenshots of the Resources Readings tab and the Network traffic control page, drawn with made-up data (the screenshot tool can now draw both pages).
+- Faster: typing in "Search settings..." no longer switches the page behind the results on every letter, only at the typing pause.
+- Faster start: the Volume, Mouse and Trackpad, OSD and App settings pages are no longer made at start-up (about 140 ms); they are made when opened, App settings' "Restore all" making the others when App settings is first opened.
+- New: App settings > Appearance "Use GPU drawing" (off by default): windows are drawn by the graphics card from the next start, for smoother scrolling and animations at about 40–80 MB more memory.
 
 ## 0.2.9 (22 Nov 2026)
 

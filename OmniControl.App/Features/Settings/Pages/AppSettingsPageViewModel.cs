@@ -15,6 +15,8 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
     private readonly ChoiceItem _hardwareCheck;
     private readonly HardwareWatches _hardware;
     private readonly ToggleItem _startMinimised;
+    private readonly ToggleItem _gpuDrawing;
+    private readonly bool _gpuDrawingAtStart;
     private readonly ButtonItem _about;
     private readonly ButtonItem _restoreAllCard;
     private readonly ButtonItem _presets;
@@ -60,6 +62,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
         Entry(Background, AppearanceName, "background colour color surface carbon slate blue black oled plum dark grey gray windows follow"),
         Entry(_trayIcon, AppearanceName, "tray icon notification area logo outline sliders command key look choose"),
         Entry(_trayColour, AppearanceName, "tray icon colour color white black follow windows taskbar accent"),
+        Entry(_gpuDrawing, AppearanceName, "gpu graphics card hardware acceleration drawing rendering smooth scrolling animations memory"),
         Entry(_groupsOpen, AppearanceName, "groups open collapsed collapse expand remember last state sections panels page opens"),
         Entry(_startWithWindows, StartName, "start boot login windows launch"),
         Entry(_startMinimised, StartName, "start minimized hidden background tray"),
@@ -126,6 +129,15 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
 
         _startWithWindows = new ToggleItem("Start with Windows", StartupRegistration.State == StartupState.On, OnStartWithWindowsChosen) { Half = true };
         _startMinimised = new ToggleItem("Start minimised", _settings.StartMinimised, on => { _settings.StartMinimised = on; _settings.Save(); }) { Half = true };
+        // The page is made after start-up and only it changes the setting (a restore restarts), so what it reads now is what drew this run.
+        _gpuDrawingAtStart = _settings.GpuDrawing;
+        _gpuDrawing = new ToggleItem("Use GPU drawing", _settings.GpuDrawing, on =>
+        {
+            _settings.GpuDrawing = on;
+            _settings.Save();
+            ShowGpuDrawingNote();
+        }) { Half = true };
+        ShowGpuDrawingNote();
         var labels = CloseBehaviors.All.Select(e => e.Label).ToList();
         _whenClosing = new ChoiceItem("When closing", labels, CloseBehaviors.LabelOf(_settings.CloseBehavior), label =>
         {
@@ -166,7 +178,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
         TurnAllOnCommand = new RelayCommand(() => _features.SetOff(Array.Empty<string>()), () => _features.Off.Count > 0);
 
         // Each group is made from its fixed cards (its closed header lists their names), then the cards that come and go are added.
-        Appearance = Fill(AppearanceItems, "AppSettings/Appearance", AppearanceName, Theme, Background, Accent, _accentIntensity, _groupsOpen, _trayIcon, _trayColour);
+        Appearance = Fill(AppearanceItems, "AppSettings/Appearance", AppearanceName, Theme, Background, Accent, _accentIntensity, _groupsOpen, _gpuDrawing, _trayIcon, _trayColour);
         StartAndClose = Fill(StartItems, "AppSettings/Start", StartName, _startWithWindows, _startMinimised, _whenClosing, _hardwareCheck);
         foreach (var (_, card) in _featureCards) FeatureItems.Add(card);
         FeatureGroup = new ItemGroup("AppSettings/Features", FeaturesName, FeatureItems) { NoMasterSwitch = true };
@@ -232,9 +244,16 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
         Accent.Load(AccentIndex(AccentService.Name));
         ShowGroupsOpen();
         _startMinimised.Load(_settings.StartMinimised);
+        _gpuDrawing.Load(_settings.GpuDrawing);
+        ShowGpuDrawingNote();
         _whenClosing.Load(_whenClosing.Options, CloseBehaviors.LabelOf(_settings.CloseBehavior));
         _hardwareCheck.Load(_hardwareCheck.Options, HardwareChecks.LabelOf(_hardware.Check));
     }
+
+    // Feature cards' restart words, so a restart-only switch reads the same everywhere.
+    private void ShowGpuDrawingNote() => _gpuDrawing.Note = _settings.GpuDrawing != _gpuDrawingAtStart
+        ? "Takes effect after restart"
+        : "Smoother scrolling and animations; uses about 40–80 MB more memory.";
 
     /// The choice was changed elsewhere (the sidebar chip, Restore defaults): the card shows it without applying it again.
     private void ShowGroupsOpen() => _groupsOpen.Load(_groupsOpen.Options, GroupsOpen.LabelOf(_settings.GroupsOpen));

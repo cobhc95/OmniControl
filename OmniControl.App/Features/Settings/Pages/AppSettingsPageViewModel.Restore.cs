@@ -32,6 +32,7 @@ public sealed partial class AppSettingsPageViewModel
         Background.Index = SurfaceService.IndexOf(target.Background);
         SetTrayLook((target.TrayIcon, target.TrayIconColour));
         _startMinimised.IsOn = target.StartMinimised;
+        _gpuDrawing.IsOn = target.GpuDrawing;
         _whenClosing.Selected = CloseBehaviors.LabelOf(target.CloseBehavior);
         GroupsOpen.Set(target.GroupsOpen);
         _hardwareCheck.Selected = HardwareChecks.LabelOf(target.HardwareCheck);

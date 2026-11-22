@@ -31,9 +31,11 @@ public sealed partial class ShellViewModel
             devices => { _ = keysRestorer.RestoreAsync(); }));
         _windowParts = new IRestorable[] { keys, windowsKeys };
         RefreshRestoreParts();
-        _restoreAll = new PageRestore(new RestoreRunner("all", "All", _restoreParts, true, ConfirmRestore, _snapshots), all: true);
         _restoreCheck.Tick += (_, _) => RefreshRestore();
     }
+
+    /// "Restore all", made with App settings, its only user: it looks at every page to grey its button, which makes the pages not made yet.
+    private PageRestore RestoreAll => _restoreAll ??= new PageRestore(new RestoreRunner("all", "All", _restoreParts, true, ConfirmRestore, _snapshots), all: true);
 
     /// A page's "Restore <page> defaults" action (it makes the page when run).
     private void AddRestoreAction(PageSlot slot)

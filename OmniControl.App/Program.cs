@@ -38,13 +38,19 @@ internal static class Program
     /// For the designer.
     public static AppBuilder BuildAvaloniaApp() => BuildAvaloniaApp(null);
 
-    /// Windows only, drawn by Skia in software: ANGLE, Direct3D and the GPU driver are never loaded (about 50 to 100 MB of private memory and
-    /// as much GPU memory for windows this small; transparent windows use Windows' blur-behind with an empty region). Text uses the system
-    /// font (Segoe UI), so no font is bundled. Avalonia's own trace log keeps errors only.
+    /// Windows only, drawn by Skia in software unless App settings' "Use GPU drawing" is on: then Avalonia's own default order, ANGLE (Direct3D)
+    /// with software as fallback. Software never loads ANGLE, Direct3D or the GPU driver (about 50 to 100 MB of private memory and as much GPU
+    /// memory for windows this small; transparent windows use Windows' blur-behind with an empty region). Text uses the system font (Segoe UI),
+    /// so no font is bundled. Avalonia's own trace log keeps errors only.
     private static AppBuilder BuildAvaloniaApp(SingleInstance? instance) =>
         AppBuilder.Configure(() => new App(instance))
             .UseWin32()
             .UseSkia()
-            .With(new Win32PlatformOptions { RenderingMode = new[] { Win32RenderingMode.Software } })
+            .With(new Win32PlatformOptions
+            {
+                RenderingMode = instance is not null && AppSettings.Current.GpuDrawing
+                    ? new[] { Win32RenderingMode.AngleEgl, Win32RenderingMode.Software }
+                    : new[] { Win32RenderingMode.Software },
+            })
             .LogToTrace(LogEventLevel.Error);
 }
