@@ -23,6 +23,13 @@ public sealed partial class ButtonItem : ObservableObject, IEditorItem, IHalfWid
     /// More buttons after the first, in order (full-width card only).
     public IReadOnlyList<CardAction> Extra { get; init; } = Array.Empty<CardAction>();
 
+    /// A button card made from its search card: the label is the card's, and its muted line is the description until the owner changes it.
+    public ButtonItem(SearchCard card, string buttonText, Action run) : this(card.Label, buttonText, card.Note ?? string.Empty, run)
+    {
+    }
+
+    public IEnumerable<string> SearchTexts => Extra.Select(a => a.Text).Append(ButtonText).Append(Description).Where(t => !string.IsNullOrEmpty(t));
+
     public ButtonItem(string label, string buttonText, string description, Action run)
     {
         Label = label;

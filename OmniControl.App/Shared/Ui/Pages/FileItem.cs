@@ -52,6 +52,14 @@ public sealed partial class FileItem : ObservableObject, IEditorItem, IHalfWidth
         ResetCommand = new RelayCommand(() => reset?.Invoke());
     }
 
+    /// A file card made from its search card: the label is the card's, and its muted line is the text shown while no file is chosen.
+    public FileItem(SearchCard card, FileKind kind, Action<string> choose, string? resetText = null, Action? reset = null) : this(card.Label, kind, choose, resetText, reset)
+    {
+        if (card.Note is not null) EmptyText = card.Note;
+    }
+
+    public IEnumerable<string> SearchTexts => new[] { EmptyText, ResetText }.Where(t => !string.IsNullOrEmpty(t))!;
+
     /// The picker returned a file.
     public void Choose(string path) => _choose(path);
 

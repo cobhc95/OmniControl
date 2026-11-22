@@ -11,6 +11,11 @@ public sealed class ScopeItem : IEditorItem, IHalfWidth
         Scope = scope;
     }
 
+    /// A scope card made from its search card: label, tooltip and muted line are the card's.
+    public ScopeItem(SearchCard card, AppScopeModel scope) : this(card.Label, scope) => (Tip, Note) = (card.Tip, card.Note);
+
+    public IEnumerable<string> SearchTexts => new[] { Tip, Note }.Where(t => !string.IsNullOrEmpty(t))!;
+
     public string Label { get; }
 
     /// The scope the chip shows and edits.

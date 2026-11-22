@@ -7,6 +7,11 @@ public sealed class ChoiceChipsItem : IEditorItem, IHalfWidth
 {
     public ChoiceChipsItem(string label, IReadOnlyList<ChipItem> chips) => (Label, Chips) = (label, chips);
 
+    /// A chips card made from its search card: the label and muted line are the card's.
+    public ChoiceChipsItem(SearchCard card, IReadOnlyList<ChipItem> chips) : this(card.Label, chips) => Note = card.Note;
+
+    public IEnumerable<string> SearchTexts => Chips.Select(c => c.Name).Append(Note).Where(t => !string.IsNullOrEmpty(t))!;
+
     public string Label { get; }
 
     public IReadOnlyList<ChipItem> Chips { get; }
@@ -23,3 +28,4 @@ public sealed class ChoiceChipsItem : IEditorItem, IHalfWidth
 
     public bool Half { get; init; }
 }
+

@@ -6,4 +6,7 @@ public interface IEditorItem
 {
     /// The name shown on the card and matched by search.
     string Label { get; }
+
+    /// What else the card shows as it is now (its options, menu rows, tooltip, muted line), also matched by search; none by default.
+    IEnumerable<string> SearchTexts => Array.Empty<string>();
 }

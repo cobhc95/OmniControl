@@ -51,4 +51,9 @@ public sealed partial class FactItem : ObservableObject, IEditorItem, IHalfWidth
         Label = label;
         Command = new RelayCommand(() => run?.Invoke());
     }
+
+    /// A fact card made from its search card: the label is the card's, and its muted line the note until the owner changes it.
+    public FactItem(SearchCard card, Action? run = null) : this(card.Label, run) => _note = card.Note ?? string.Empty;
+
+    public IEnumerable<string> SearchTexts => new[] { Value, Note, ActionText }.Where(t => !string.IsNullOrEmpty(t));
 }

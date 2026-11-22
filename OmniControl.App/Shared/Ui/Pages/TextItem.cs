@@ -14,5 +14,10 @@ public sealed partial class TextItem : ObservableObject, IEditorItem
 
     public TextItem(string label, string text, Action<string> apply) => (Label, _text, _apply) = (label, text, apply);
 
+    /// A text card made from its search card: the label is the card's, and its muted line the grey hint of the empty box.
+    public TextItem(SearchCard card, string text, Action<string> apply) : this(card.Label, text, apply) => Hint = card.Note;
+
+    public IEnumerable<string> SearchTexts => Hint is { Length: > 0 } hint ? new[] { hint } : Array.Empty<string>();
+
     partial void OnTextChanged(string value) => _apply(value);
 }

@@ -94,6 +94,13 @@ public sealed partial class SliderItem : ObservableObject, IEditorItem, IHalfWid
         _ready = true;
     }
 
+    /// A slider made from its search card: label and muted line are the card's.
+    public SliderItem(SearchCard card, int initial, Func<int, OperationResult> apply, Action<string> report,
+        int minimum = 0, int maximum = 100, string unit = "", int? defaultValue = null)
+        : this(card.Label, initial, apply, report, minimum, maximum, unit, defaultValue) => Note = card.Note;
+
+    public IEnumerable<string> SearchTexts => new[] { Note, CogTip }.Where(t => !string.IsNullOrEmpty(t))!;
+
     /// Moves the slider to a value read from elsewhere without writing it back.
     public void Load(int value)
     {

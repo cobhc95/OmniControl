@@ -44,6 +44,11 @@ public sealed partial class ChoiceItem : ObservableObject, IEditorItem, IHalfWid
         Availability.PropertyChanged += (_, _) => OnPropertyChanged(nameof(Hint));
     }
 
+    /// A choice made from its search card: label and tooltip are the card's, and its options are the card's choices.
+    public ChoiceItem(SearchCard card, string selected, Action<string> apply) : this(card.Label, card.Choices, selected, apply) => Tip = card.Tip;
+
+    public IEnumerable<string> SearchTexts => Options.Append(Tip).Where(t => !string.IsNullOrEmpty(t))!;
+
     /// Shows a list and choice read from elsewhere without applying it.
     public void Load(IReadOnlyList<string> options, string selected)
     {

@@ -7,7 +7,7 @@ namespace OmniControl.App.Shell;
 // all through ListDiff so no list is ever cleared and refilled.
 public sealed partial class ShellViewModel
 {
-    private SearchRunner<List<SearchEntry>>? _search;
+    private SearchRunner<SearchOutcome>? _search;
     private ProgressiveFill<SearchEntry>? _resultFill;
     private SearchIndex<PageSlot>? _pageIndex;
     private SearchIndex<(PageSlot Slot, string Words)>? _wordIndex;
@@ -26,12 +26,23 @@ public sealed partial class ShellViewModel
         _searchTarget = null;
     }
 
+    /// One search's answer: the exact matches, or, when there are none, the typo-tolerant ones (<see cref="FuzzyMatch"/>).
+    private sealed record SearchOutcome(List<SearchEntry> Entries, bool Similar);
+
     /// Editable settings matching the search text.
     public ObservableCollection<SearchEntry> SearchResults { get; } = new();
 
+    /// The query the shown results answer, which the results' texts highlight (what is typed now may be newer: results wait for the typing pause).
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(NoExactText))] private string _resultQuery = string.Empty;
+
+    /// True while the results shown are the similar ones: the "No exact matches" line and the "Similar matches" heading show above them.
+    [ObservableProperty] private bool _showsSimilar;
+
+    public string NoExactText => $"No exact matches for \"{ResultQuery}\".";
+
     [ObservableProperty, NotifyPropertyChangedFor(nameof(ShownPage))] private bool _isSearching;
 
-    private SearchRunner<List<SearchEntry>> Search => _search ??= new SearchRunner<List<SearchEntry>>(ShowResults, "settings");
+    private SearchRunner<SearchOutcome> Search => _search ??= new SearchRunner<SearchOutcome>(ShowResults, "settings");
 
     private ProgressiveFill<SearchEntry> ResultFill => _resultFill ??= new ProgressiveFill<SearchEntry>(SearchResults, e => e);
 
@@ -51,7 +62,13 @@ public sealed partial class ShellViewModel
     private SearchIndex<(PageSlot Slot, string Words)> WordIndex => _wordIndex ??= new SearchIndex<(PageSlot Slot, string Words)>(
         AllSlots.SelectMany(s => s.Words().Select(w => (s, w))), e => new[] { Heading.Join(e.Slot.Title, e.Words) });
 
-    private List<PageSlot> UnmadeMatches(string q) => WordIndex.Match(q).Select(e => e.Slot).Where(s => s.IfMade is null).Distinct().ToList();
+    // A query with a typo matches no words exactly, so the pages with near words are made instead: their cards are the similar results.
+    private List<PageSlot> UnmadeMatches(string q)
+    {
+        var hits = WordIndex.Match(q);
+        if (hits.Count == 0) hits = WordIndex.Similar(q);
+        return hits.Select(e => e.Slot).Where(s => s.IfMade is null).Distinct().ToList();
+    }
 
     // The made pages' results; made again once a search has made another page.
     private SearchIndex<SearchEntry> EntryIndex()
@@ -77,7 +94,11 @@ public sealed partial class ShellViewModel
     private void RequestResults(string q)
     {
         var index = EntryIndex();
-        Search.Request(token => index.Match(q, token));
+        Search.Request(token =>
+        {
+            var exact = index.Match(q, token);
+            return exact.Count > 0 ? new SearchOutcome(exact, false) : new SearchOutcome(index.Similar(q, token), true);
+        });
     }
 
     private bool InCategory(string category) => SelectedCategory == AllCategories || category == SelectedCategory;
@@ -113,6 +134,7 @@ public sealed partial class ShellViewModel
         if (!IsSearching)
         {
             Search.Cancel();
+            ShowsSimilar = false;
             ResultFill.Show(Array.Empty<SearchEntry>());
             return;
         }
@@ -140,5 +162,11 @@ public sealed partial class ShellViewModel
     }
 
     // Live results: the actual controls, so they can be edited right in the list.
-    private void ShowResults(List<SearchEntry> matches) => ResultFill.Show(matches.Where(e => InCategory(e.Category)).ToList());
+    private void ShowResults(SearchOutcome outcome)
+    {
+        var shown = outcome.Entries.Where(e => InCategory(e.Category)).ToList();
+        ResultQuery = SearchText.Trim();
+        ShowsSimilar = outcome.Similar && shown.Count > 0;
+        ResultFill.Show(shown);
+    }
 }

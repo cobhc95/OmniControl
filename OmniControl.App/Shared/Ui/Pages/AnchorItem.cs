@@ -12,6 +12,11 @@ public sealed partial class AnchorItem : ObservableObject, IEditorItem
 
     public AnchorItem(string label, int index, Action<int> apply) => (Label, _index, _apply) = (label, index, apply);
 
+    /// An anchor card made from its search card: the label is the card's.
+    public AnchorItem(SearchCard card, int index, Action<int> apply) : this(card.Label, index, apply)
+    {
+    }
+
     /// Shows a square chosen elsewhere (a repin) without applying it.
     public void Load(int index)
     {

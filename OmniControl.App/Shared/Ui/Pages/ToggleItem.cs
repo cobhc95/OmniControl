@@ -42,6 +42,15 @@ public sealed partial class ToggleItem : ObservableObject, IEditorItem, IHalfWid
         _apply = apply;
     }
 
+    /// A switch made from its search card: label, tooltip and muted line are the card's.
+    public ToggleItem(SearchCard card, bool isOn, Action<bool> apply) : this(card.Label, isOn, apply)
+    {
+        Tip = card.Tip;
+        _note = card.Note;
+    }
+
+    public IEnumerable<string> SearchTexts => new[] { Tip, Note }.Where(t => !string.IsNullOrEmpty(t))!;
+
     private bool _loading;
 
     /// Shows a state read from elsewhere (what Windows has now) without applying it.

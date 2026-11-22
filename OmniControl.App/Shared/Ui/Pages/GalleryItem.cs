@@ -94,6 +94,15 @@ public sealed partial class GalleryItem : ObservableObject, IEditorItem, IHalfWi
     {
     }
 
+    /// Galleries made from their search card: label and tooltip are the card's, and the options are the card's choices.
+    public GalleryItem(SearchCard card, int index, Func<Control> preview, Action<int> apply) : this(card.Label, card.Choices, index, preview, apply) => Tip = card.Tip;
+
+    public GalleryItem(SearchCard card, int index, Action<int> apply) : this(card.Label, card.Choices, index, apply) => Tip = card.Tip;
+
+    public GalleryItem(SearchCard card, int index, Func<int, (IBrush? Fill, SwatchMark Mark)> dot, Action<int> apply) : this(card.Label, card.Choices, index, dot, apply) => Tip = card.Tip;
+
+    public IEnumerable<string> SearchTexts => Options.Append(Tip).Append(EditorText).Where(t => !string.IsNullOrEmpty(t))!;
+
     private SwatchItem Dot(int i)
     {
         var (fill, mark) = _dot!(i);
