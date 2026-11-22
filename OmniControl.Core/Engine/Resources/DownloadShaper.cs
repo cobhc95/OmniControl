@@ -31,6 +31,8 @@ public sealed unsafe class DownloadShaper : IDisposable
     private readonly PacketHandler _pass;
     private readonly ManualResetEvent _stop = new(false);
     private readonly AutoResetEvent _wake = new(false);
+    private readonly object _wakeLock = new();
+    private int _stopping, _disposed;
     private readonly Thread _loop;
     // The rest belongs to the loop thread only.
     private readonly Dictionary<string, Bucket> _buckets = new();
@@ -74,21 +76,30 @@ public sealed unsafe class DownloadShaper : IDisposable
     {
         if (limits.SequenceEqual(_limits)) return;
         _limits = limits;
-        _wake.Set();
+        Nudge();
+    }
+
+    // A late call (rules removed or adapters changing while shaping stops) must not touch the freed event.
+    private void Nudge()
+    {
+        lock (_wakeLock)
+            if (Volatile.Read(ref _disposed) == 0) _wake.Set();
     }
 
     /// Windows' adapters may have changed (any thread): the packet thread lets an open driver pick up a new one (a VPN connecting).
     public void RefreshAdapters()
     {
         Interlocked.Exchange(ref _adaptersChanged, 1);
-        _wake.Set();
+        Nudge();
     }
 
     /// Stops shaping: held packets go on and the driver is let go.
     public void Dispose()
     {
+        if (Interlocked.Exchange(ref _stopping, 1) == 1) return;
         _stop.Set();
         if (Thread.CurrentThread == _loop || !_loop.Join(_times.StopWait)) return;
+        lock (_wakeLock) Interlocked.Exchange(ref _disposed, 1);
         _stop.Dispose();
         _wake.Dispose();
     }
