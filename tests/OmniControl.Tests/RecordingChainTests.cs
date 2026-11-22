@@ -6,6 +6,8 @@ namespace OmniControl.Tests;
 /// test faults make a way fail, hang (when opening, on the first frame, when finishing) or encode nothing, and the next way must take over,
 /// the result must say what to remember, and the log must say why. Also the 4K writer, the frame-rate cap, the forced adapter and the
 /// encoder facts. Nothing on the PC is changed; the files are deleted and every hung test thread is let go.
+/// They need a real graphics card: GitHub's build machine has only Windows' basic display driver, so the release workflow leaves them out.
+[Trait("Needs", "GraphicsCard")]
 public class RecordingChainTests
 {
     private static readonly RecordingWaits Short = new(OpenMs: 4000, FirstFrameMs: 3000, StuckMs: 2500, FinishMs: 3000);

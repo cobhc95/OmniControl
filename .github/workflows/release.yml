@@ -46,7 +46,8 @@ jobs:
       - name: Run the tests
         shell: pwsh
         run: |
-          dotnet test tests/OmniControl.Tests -c Release --nologo
+          # The recording tests need a real graphics card, which the build machine doesn't have; they run on the owner's PC before an upload.
+          dotnet test tests/OmniControl.Tests -c Release --nologo --filter "Needs!=GraphicsCard"
           if ($LASTEXITCODE) { throw 'tests failed' }
 
       - name: Build Portable, Setup, checksums and notes
