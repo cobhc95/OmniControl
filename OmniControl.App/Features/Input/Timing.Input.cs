@@ -76,6 +76,11 @@ public static partial class Timing
     /// "Press and hold" triggers: how long the button must be held, unless the trigger's own setting says otherwise.
     public static readonly TimeSpan RuleHold = TimeSpan.FromMilliseconds(600);
 
+    /// A mouse button action "When the button is held": how long the button must be down, unless the action's own setting says otherwise.
+    public static readonly TimeSpan MouseHold = TimeSpan.FromMilliseconds(400);
+
+    public const int MouseHoldMinMs = 150, MouseHoldMaxMs = 2000;
+
     /// A rule's command is stopped (with everything it started) after this long, unless the step's own timeout says otherwise.
     public static readonly TimeSpan RuleCommandTimeout = TimeSpan.FromSeconds(30);
 

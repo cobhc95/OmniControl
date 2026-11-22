@@ -1,4 +1,4 @@
-﻿using OmniControl.App.Features.Hotkeys;
+using OmniControl.App.Features.Hotkeys;
 using OmniControl.Core.Engine.Mouse;
 
 namespace OmniControl.App.Features.Hotkeys.Actions;
@@ -7,11 +7,27 @@ namespace OmniControl.App.Features.Hotkeys.Actions;
 public static class MouseOptions
 {
     // Common to actions that happen once per press: when they run, how many times, and how fast they repeat while held.
-    public const string OnPress = "When the button is pressed", OnRelease = "When the button is released",
+    public const string OnPress = "When the button is pressed", OnRelease = "When the button is released", OnHold = "When the button is held",
         Repeatedly = "Repeatedly while the button is held", KeysHeld = "Keys held down while the button is held";
-    public static readonly ActionOption Trigger = ActionOption.Choice("trigger", "Runs", new[] { OnPress, OnRelease, Repeatedly });
-    public static readonly ActionOption TriggerWithHold = ActionOption.Choice("trigger", "Runs", new[] { OnPress, OnRelease, Repeatedly, KeysHeld });
-    public static readonly ActionOption Times = ActionOption.Number("times", "Times each time", 1, 1, 20).ShownWhen(Trigger, OnPress, OnRelease, Repeatedly);
+    public static readonly ActionOption Trigger = ActionOption.Choice("trigger", "Runs", new[] { OnPress, OnRelease, OnHold, Repeatedly });
+    public static readonly ActionOption TriggerWithHold = ActionOption.Choice("trigger", "Runs", new[] { OnPress, OnRelease, OnHold, Repeatedly, KeysHeld });
+    // A second or later action runs with the press, or alone once the button has been held (the first decides the rest).
+    private static readonly ActionOption LaterTrigger = ActionOption.Choice("trigger", "Runs", new[] { OnPress, OnHold });
+    public static readonly ActionOption HoldFor = ActionOption.Number("holdfor", "Hold for", (int)Timing.MouseHold.TotalMilliseconds,
+        Timing.MouseHoldMinMs, Timing.MouseHoldMaxMs, 50, " ms").ShownWhen(Trigger, OnHold);
+    public static readonly ActionOption Times = ActionOption.Number("times", "Times each time", 1, 1, 20).ShownWhen(Trigger, OnPress, OnRelease, OnHold, Repeatedly);
+
+    /// What a held action's pill adds to its name.
+    public const string HeldMark = " · held";
+
+    /// True when the action runs once its button has been held (<see cref="OnHold"/>).
+    public static bool RunsWhenHeld(OptionValues values) => values.Text(Trigger) == OnHold;
+
+    private const string ShortPressOnly = "Runs on a short press only, because another action on this button runs when it's held.";
+
+    /// The settings with the muted line under "Runs" (while it says pressed) for an action whose button has another action that runs when held.
+    public static IReadOnlyList<ActionOption>? NotingShortPress(IReadOnlyList<ActionOption>? options) =>
+        options?.Select(o => o.Key == Trigger.Key ? o.NotedWhen(ShortPressOnly, OnPress) : o).ToList();
     public static readonly ActionOption RepeatDelay = ActionOption.Number("delay", "Wait before repeating", 500, 100, 2000, 50, " ms").ShownWhen(Trigger, Repeatedly);
     public static readonly ActionOption RepeatEvery = ActionOption.Number("every", "Repeat every", 100, 20, 1000, 10, " ms").ShownWhen(Trigger, Repeatedly);
     // Opt-in extras for almost every action: let the input's own action through (a button's click, Windows' own gesture), and/or send a shortcut with it.
@@ -35,17 +51,17 @@ public static class MouseOptions
     /// The "also keep the original" setting as it reads for this kind of input.
     public static ActionOption OriginalFor(bool trackpadGesture) => trackpadGesture ? KeepWindowsGesture : KeepOriginal;
 
-    public static readonly IReadOnlyList<ActionOption> Common = new[] { Trigger, Times, RepeatDelay, RepeatEvery };
+    public static readonly IReadOnlyList<ActionOption> Common = new[] { Trigger, HoldFor, Times, RepeatDelay, RepeatEvery };
 
-    // What only the first of an input's actions decides: when it runs (pressed, released, repeated, keys held) and whether the input
-    // itself is let through. The second and later actions run once, in order, each time the input fires.
-    private static readonly HashSet<string> FirstActionOnly = new() { Trigger.Key, RepeatDelay.Key, RepeatEvery.Key, KeepOriginal.Key };
+    // What only the first of an input's actions decides: repeating and whether the input itself is let through. The second and later
+    // actions run once, in order, each time the input fires, or once it has been held (<see cref="LaterTrigger"/>).
+    private static readonly HashSet<string> FirstActionOnly = new() { RepeatDelay.Key, RepeatEvery.Key, KeepOriginal.Key };
 
-    /// The settings an action keeps as an input's second or later action: its own, without <see cref="FirstActionOnly"/>; "times" is
-    /// then always shown (it no longer depends on the trigger). Null when nothing is left.
+    /// The settings an action keeps as an input's second or later action: its own, without <see cref="FirstActionOnly"/>, its "Runs"
+    /// narrowed to pressed or held. Null when nothing is left.
     public static IReadOnlyList<ActionOption>? OneShot(IReadOnlyList<ActionOption>? options) =>
         options?.Where(o => !FirstActionOnly.Contains(o.Key))
-            .Select(o => o.ShowKey is { } key && FirstActionOnly.Contains(key) ? o with { ShowKey = null, ShowValues = null } : o)
+            .Select(o => o.Key == Trigger.Key ? LaterTrigger : o.ShowKey is { } key && FirstActionOnly.Contains(key) ? o with { ShowKey = null, ShowValues = null } : o)
             .ToList() is { Count: > 0 } left ? left : null;
 
     // Window actions.

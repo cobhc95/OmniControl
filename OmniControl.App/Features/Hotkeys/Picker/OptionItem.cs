@@ -1,4 +1,4 @@
-﻿using OmniControl.App.Features.Hotkeys;
+using OmniControl.App.Features.Hotkeys;
 
 namespace OmniControl.App.Features.Hotkeys.Picker;
 
@@ -8,14 +8,16 @@ public sealed partial class OptionItem : ObservableObject
     public ActionOption Option { get; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(Display), nameof(IsOn), nameof(Tag), nameof(HasTag))]
+    [NotifyPropertyChangedFor(nameof(Display), nameof(IsOn), nameof(Tag), nameof(HasTag), nameof(HasNote))]
     private string _value;
 
     public string Label => Option.Label;
 
-    /// Numbers and choices are stepped with Left/Right or the two small buttons.
+    /// Numbers and choices are stepped with Left/Right (and the wheel); a number shows the two small buttons, a choice the shared pull-down.
     public bool IsStepper => Option.Kind is OptionKind.Number or OptionKind.Choice;
     public bool IsNumber => Option.Kind == OptionKind.Number;
+    public bool IsChoice => Option.Kind == OptionKind.Choice;
+    public IReadOnlyList<string>? Choices => Option.Choices;
     public bool IsToggle => Option.Kind == OptionKind.Toggle;
 
     /// A number, choice or switch sits on the label line; a text or path gets the pane width on a line of its own below the label.
@@ -40,8 +42,8 @@ public sealed partial class OptionItem : ObservableObject
     public string PickerTitle => $"Choose: {Option.Label}";
     public string Hint => Option.Hint;
 
-    /// A muted line under a switch's label.
-    public bool HasNote => IsToggle && Option.Hint.Length > 0;
+    /// A muted line under a switch's label, or under any row's while its value is one its option names (<see cref="ActionOption.NotedWhen"/>).
+    public bool HasNote => Option.Hint.Length > 0 && (Option.NoteValues?.Contains(Value) ?? IsToggle);
 
     /// A caution tag shown on the row while its option says so (<see cref="ActionOption.TaggedWhen"/>), or what is wrong with its text (<see cref="ActionOption.CheckedBy"/>).
     public string? Tag => Option.Check?.Invoke(Value) ?? Option.TagNow?.Invoke();

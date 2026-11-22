@@ -115,10 +115,10 @@ public class MultipleActionsTests
 
         var shortcut = later.Single(c => c.Spec == MouseActionCatalog.Keys + ":");
         var keys = shortcut.Options!.Select(o => o.Key).ToList();
-        Assert.DoesNotContain(MouseOptions.Trigger.Key, keys);
+        Assert.Equal(new[] { MouseOptions.OnPress, MouseOptions.OnHold }, shortcut.Options!.Single(o => o.Key == MouseOptions.Trigger.Key).Choices);
         Assert.DoesNotContain(MouseOptions.RepeatEvery.Key, keys);
         Assert.DoesNotContain(MouseOptions.KeepOriginal.Key, keys);
-        Assert.True(shortcut.Options!.Single(o => o.Key == MouseOptions.Times.Key).IsShown(_ => null)); // "times" no longer waits for a trigger
+        Assert.True(shortcut.Options!.Single(o => o.Key == MouseOptions.Times.Key).IsShown(_ => MouseOptions.OnPress)); // "times" shows for a later action's own trigger
 
         Assert.True(MouseActionCatalog.CanRunLater("volume.mute"));
         Assert.False(MouseActionCatalog.CanRunLater(MouseActionCatalog.WindowMove));

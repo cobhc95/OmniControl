@@ -8,8 +8,11 @@ public sealed record ActionOption(string Key, string Label, OptionKind Kind, str
     int Min = 0, int Max = 0, int Step = 1, string Unit = "", IReadOnlyList<string>? Choices = null, string Hint = "",
     string? ShowKey = null, IReadOnlyList<string>? ShowValues = null, PathKind? Browse = null,
     bool Shared = false, string? NeedsKey = null, string NeedsReason = "", Func<ISettingsPanel>? MakePanel = null, Func<string?>? TagNow = null,
-    Func<string, string?>? Check = null)
+    Func<string, string?>? Check = null, IReadOnlyList<string>? NoteValues = null)
 {
+    /// A muted line (<paramref name="note"/>) under the row's label while its value is one of <paramref name="values"/>.
+    public ActionOption NotedWhen(string note, params string[] values) => this with { Hint = note, NoteValues = values };
+
     /// A text whose value <paramref name="problemOf"/> judges: the one sentence it returns shows as a caution tag beside the field (null = fine).
     public ActionOption CheckedBy(Func<string, string?> problemOf) => this with { Check = problemOf };
 

@@ -1,4 +1,4 @@
-﻿using OmniControl.App.Features.Hotkeys.Actions;
+using OmniControl.App.Features.Hotkeys.Actions;
 using OmniControl.App.Features.AppLists;
 using OmniControl.App.Features.Hotkeys;
 using OmniControl.App.Shared.Scripts;
@@ -51,6 +51,7 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
     private readonly MouseHook _hook;
     private readonly LayerState _layers = new();                        // the mouse's and the trackpad's layer in force
     private readonly HashSet<MouseButton> _sequenceRunning = new();     // inputs whose second and later actions are still running
+    private readonly HoldWatch _holds = new(TimeProvider.System);       // buttons with an action that runs when held, until held long enough or let go
     private volatile Snapshot _snapshot;
 
     public MouseSettings Settings { get; } = MouseSettings.Load();
@@ -240,9 +241,14 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
     /// Runs on the hook thread for every button, wheel and tilt input. Returns true to swallow it.
     private bool Handle(MouseEvent ev)
     {
-        if (!ev.IsDown) return ReleaseSwallowed(ev.Button);
+        if (!ev.IsDown)
+        {
+            _holds.Release(ev.Button);
+            return ReleaseSwallowed(ev.Button);
+        }
         // A press whose release never arrived (Windows can drop hook calls) first ends what that press started, so held keys,
         // repeats and "hold for layer" can never stay on for good.
+        _holds.Cancel(ev.Button);
         ReleaseSwallowed(ev.Button);
         ButtonPressed?.Invoke(ev.Button);
 
@@ -265,6 +271,12 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
             _log(gesture is null ? $"{ev.Button} on layer {layer}: {action.Id}{(extras.Length > 0 ? $" and {extras.Length} more" : string.Empty)}" : $"{ev.Button} gesture: {action.Id}");
 
         var isPressable = ev.Button.HasRelease();
+        if (gesture is null && isPressable && HoldSplit.Of(action, extras) is { } split)
+        {
+            if (split.DefersFirst) return StartHoldOrShort(action, split, ev);
+            _holds.Start(ev.Button, split.HoldFor, () => { }, () => RunInOrder(ev, null, split.HeldExtras));
+            extras = split.ShortExtras;
+        }
         // "Also send the button's normal click": the original input goes through and is not swallowed on release either.
         // (A trackpad gesture is only copied from raw input and never swallowed; there the same setting keeps Windows' own gesture turned on, see TrackpadService.)
         var keepOriginal = action.Options.Bool(MouseOptions.KeepOriginal);
@@ -314,6 +326,29 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
 
         RunWithTrigger(action, ev, isPressable, extras);
         return false;
+    }
+
+    /// A button with an action that runs when held: the press is kept back; let go before the hold time, the pressed actions run (and the
+    /// button's own click is sent when the first action asks for it); held that long, the held actions run instead.
+    private bool StartHoldOrShort(MouseAction first, HoldSplit split, MouseEvent ev)
+    {
+        lock (_gate) _swallowed.Add(ev.Button);
+        var sendsClick = first.Options.Bool(MouseOptions.KeepOriginal);
+        _holds.Start(ev.Button, split.HoldFor,
+            onShort: () =>
+            {
+                if (sendsClick) Guard.OffUi("Mouse: sending the button's own click", () => InputSender.Click(ev.Button));
+                RunNow(split.HeldFirst is null ? first : null, ev, split.ShortExtras);
+            },
+            onHeld: () => RunNow(split.HeldFirst, ev, split.HeldExtras));
+        return true;
+    }
+
+    /// Runs <paramref name="first"/> (with its extra shortcut) and then <paramref name="extras"/>, in order, off the hook thread.
+    private void RunNow(MouseAction? first, MouseEvent ev, MouseAction[] extras)
+    {
+        if (first is not null && first.Options.Text(MouseOptions.AlsoSend).Length > 0) Guard.OffUi("Mouse: sending the extra shortcut", () => _runner.SendAlongside(first));
+        RunInOrder(ev, first, extras);
     }
 
     /// "Block apps' middle-click autoscroll": a middle press nothing is mapped to is swallowed (press and release) unless it is over a link, tab,
@@ -439,6 +474,7 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
     private void ReleaseAllHeld() => Guard.Run("Mouse: let go after the hook was put back", () =>
     {
         List<MouseButton> held;
+        _holds.CancelAll();
         lock (_gate) held = _undoOnRelease.Keys.Concat(_swallowed).Distinct().ToList();
         foreach (var button in held) ReleaseSwallowed(button);
         foreach (var family in _layers.ReleaseAll()) NotifyLayer(family);
@@ -453,6 +489,7 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
         _autoscroll.Dispose();
         _pressWatch.Changed -= OnPressWatchChanged;
         _modes.BeginClose();
+        _holds.Dispose();
         List<Action> pending;
         lock (_gate) pending = _undoOnRelease.Values.ToList();
         foreach (var undo in pending) undo(); // let go of whatever a held button was doing

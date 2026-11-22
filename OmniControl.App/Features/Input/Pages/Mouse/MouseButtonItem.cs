@@ -1,4 +1,4 @@
-﻿using OmniControl.App.Features.Hotkeys.Actions;
+using OmniControl.App.Features.Hotkeys.Actions;
 using OmniControl.App.Features.AppLists;
 using OmniControl.App.Features.Hotkeys;
 using OmniControl.App.Features.Hotkeys.Picker;
@@ -222,7 +222,7 @@ public sealed partial class MouseButtonItem : ObservableObject, IEditorItem, IHa
     public PickerModel MenuFor(bool startInSettings) =>
         First is null
             ? new PickerModel(PickChoice.Group(_first), _first[0], new Dictionary<string, string>(), startInSettings, shared: _shared)
-            : new PickerModel(PickChoice.Group(_first), First.Choice, First.Values, startInSettings, First.Parameter, shared: _shared);
+            : SlotMenu(0, startInSettings);
 
     public void Pick(PickResult pick) => PickSlot(0, pick);
 
@@ -230,7 +230,16 @@ public sealed partial class MouseButtonItem : ObservableObject, IEditorItem, IHa
     private PickerModel SlotMenu(int index, bool startInSettings)
     {
         var slot = Slots[index];
-        return new PickerModel(PickChoice.Group(ListFor(index)), slot.Choice, slot.Values, startInSettings, slot.Parameter, shared: _shared);
+        var list = ListFor(index);
+        var current = slot.Choice;
+        // Another action on this button runs when held: this one's "Runs" says why it now waits for a short press.
+        if (Slots.Where((s, i) => i != index).Any(s => s.IsHeld))
+        {
+            var at = list.ToList().FindIndex(c => ReferenceEquals(c, current));
+            list = list.Select(c => c with { Options = MouseOptions.NotingShortPress(c.Options) }).ToList();
+            if (at >= 0) current = list[at];
+        }
+        return new PickerModel(PickChoice.Group(list), current, slot.Values, startInSettings, slot.Parameter, shared: _shared);
     }
 
     /// The add chip's picker: the one-shot list (or the full list while the input has no action), asking for an action's text first.
