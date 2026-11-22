@@ -26,7 +26,7 @@ public class TrayTests
         Assert.Equal(matches, IdPattern.Matches(pattern, id));
 
     [Fact]
-    public void Default_sliders_show_one_brightness_per_display_and_the_volume_with_its_speaker_choice()
+    public void Default_sliders_show_one_brightness_for_every_display_and_the_volume_with_its_speaker_choice()
     {
         var states = new[]
         {
@@ -39,8 +39,9 @@ public class TrayTests
 
         var sliders = TrayTargets.Sliders(TrayDefaults.Sliders, states);
 
-        Assert.Equal(new[] { "displays.laptop.brightness", @"displays.\\.\DISPLAY2.brightness", "volume.master.level" }, sliders.Select(s => s.State!.Id));
-        Assert.Equal("volume.default.speaker", sliders[2].Choice?.Id);
+        Assert.Equal(new[] { "displays.laptop.brightness", "volume.master.level" }, sliders.Select(s => s.State!.Id));
+        Assert.Equal(new[] { "displays.laptop.brightness", @"displays.\\.\DISPLAY2.brightness" }, sliders[0].Group!.Select(s => s.Id));
+        Assert.Equal("volume.default.speaker", sliders[1].Choice?.Id);
         Assert.Null(sliders[0].Choice);
     }
 

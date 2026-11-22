@@ -164,7 +164,7 @@ public class RoutePlannerTests(ITestOutputHelper output)
     public void OldSettings_LoadAsAutomatic()
     {
         Assert.All(OwnerPc.Settings().Apps, a => Assert.Same(EffectsRules.RouteAutomatic, EffectsRules.RouteOf(a.FxRoute)));
-        Assert.Same(EffectsRules.RouteAutomatic, EffectsRules.RouteOf("something-unknown"));
+        Assert.Same(EffectsRules.MethodOff, EffectsRules.RouteOf("something-unknown")); // an unknown id routes nothing
     }
 
     [Fact]
