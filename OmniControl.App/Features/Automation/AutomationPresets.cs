@@ -4,25 +4,28 @@ using OmniControl.App.Shared.Presets;
 
 namespace OmniControl.App.Features.Automation;
 
-/// The preset manager's trigger chips (<see cref="IPresetTriggers"/>): each preset with triggers is one ordinary Do rule of
-/// <see cref="AutomationService"/> ("Apply preset "Gaming""), its step the preset's apply action, its triggers the chips with their joins, so it
-/// runs through the one run path and shows on the Automation page. A preset a state switched to is put back to the one before, through the
-/// run path, when its triggers stop holding. A deleted preset's rule is parked (off the list) until an Undo brings the preset back.
+/// The preset rules (<see cref="IPresetTriggers"/>): a Do rule of <see cref="AutomationService"/> whose step is a preset's apply action, made
+/// and changed in Automation, runs through the one run path; the Presets window tells of it and opens it. A preset a state switched to is put
+/// back to the one before, through the run path, when its triggers stop holding. A deleted preset's rule is parked (off the list) until an
+/// Undo brings the preset back.
 public sealed class AutomationPresets : IPresetTriggers, IDisposable
 {
     private readonly AutomationService _rules;
     private readonly IActionRegistry _actions;
     private readonly IActionRunner _run;
     private readonly PresetTriggersSlot _slot;
+    private readonly AutomationFeatureRules _features;
     private readonly Dictionary<string, string> _before = new();   // rule id -> the preset in use before a state switched to its preset
     private readonly List<AutomationRule> _parked = new();          // rules of deleted presets, back on an Undo (this run only)
 
     private readonly Action<string?, string?> _open;
 
+    /// <param name="features">Opens Automation's From other pages tab on a rule.</param>
     /// <param name="open">Opens the Presets window at a page and group (both null: where it opens by itself).</param>
-    public AutomationPresets(AutomationService rules, IActionRegistry actions, IActionRunner run, PresetTriggersSlot slot, Action<string?, string?> open)
+    public AutomationPresets(AutomationService rules, IActionRegistry actions, IActionRunner run, PresetTriggersSlot slot, AutomationFeatureRules features,
+        Action<string?, string?> open)
     {
-        (_rules, _actions, _run, _slot, _open) = (rules, actions, run, slot, open);
+        (_rules, _actions, _run, _slot, _features, _open) = (rules, actions, run, slot, features, open);
         rules.Changed += OnRulesChanged;
         rules.TriggersChanged += FollowNames;
         rules.StateSeen += PutBack;
@@ -61,12 +64,14 @@ public sealed class AutomationPresets : IPresetTriggers, IDisposable
 
     private AutomationRule? RuleOf(string preset) => PresetRules.FirstOrDefault(r => PresetOf(r) == preset);
 
-    /// The row's chips (every trigger) and what the rule has more: conditions and other actions.
-    public PresetRule Of(string preset) =>
+    /// The rule's triggers in words, joined as the rule joins them: "When Steam running or 22:00".
+    public PresetRule? Of(string preset) =>
         RuleOf(preset) is { } rule
-            ? new PresetRule(rule.AllTriggers.Select((t, i) => new PresetTrigger(AutomationTriggers.ChipOf(t, _rules.TriggerSources), i == 0 ? string.Empty : AutomationJoins.WordOf(rule.TriggerJoinBefore(i)))).ToList(),
-                AutomationFeatureRules.ExtrasOf(rule, rule.AllTriggers.Count()))
-            : PresetRule.None;
+            ? new PresetRule("When " + string.Concat(rule.AllTriggers.Select((t, i) =>
+                (i == 0 ? string.Empty : $" {AutomationJoins.WordOf(rule.TriggerJoinBefore(i))} ") + AutomationTriggers.ChipOf(t, _rules.TriggerSources))))
+            : null;
+
+    public void Edit(string preset) => _features.Show(RuleOf(preset));
 
     /// The tag a preset rule shows ("Presets · Audio and Volume"): its group's page title; empty while its group is not registered.
     public string KindOf(AutomationRule rule) => PresetOf(rule) is { } preset && _slot.Presets.GroupOf(preset) is { } group ? $"Presets · {group.Section}" : string.Empty;
@@ -76,42 +81,6 @@ public sealed class AutomationPresets : IPresetTriggers, IDisposable
     {
         var group = rule is null || PresetOf(rule) is not { } preset ? null : _slot.Presets.GroupOf(preset);
         _open(group?.Section, group?.Id);
-    }
-
-    /// A preset has its own Hotkey chip, so "I press a hotkey" is not offered here.
-    public Hotkeys.Picker.PickList TriggerList() => _rules.TriggerList(string.Empty, withHotkey: false);
-
-    public IReadOnlyList<PickChoice> ActionChoices() => AutomationTriggers.ActionChoices(_actions.PickerActions);
-
-    public void Add(string preset, string title, string stored)
-    {
-        if (RuleOf(preset) is not { } rule)
-        {
-            rule = new AutomationRule { Kind = AutomationKind.Do, Name = title, On = true };
-            rule.AddAction($"{MouseActionCatalog.Omni}:{preset}");
-            rule.AddTrigger(stored);
-            _rules.AddRule(rule);
-            return;
-        }
-        if (rule.AllTriggers.Contains(stored)) return;
-        rule.AddTrigger(stored);
-        rule.On = true;
-        _rules.Edited(rule);
-    }
-
-    public void Remove(string preset, int index)
-    {
-        if (RuleOf(preset) is not { } rule || index >= rule.AllTriggers.Count()) return;
-        rule.RemoveTrigger(index);
-        if (rule.AllTriggers.Any()) _rules.Edited(rule);
-        else _rules.Remove(rule);
-    }
-
-    public void FlipJoin(string preset, int index)
-    {
-        if (RuleOf(preset) is not { } rule || index < 1) return;
-        rule.SetTriggerJoin(index, rule.TriggerJoinBefore(index) == AutomationJoins.And ? AutomationJoins.Or : AutomationJoins.And);
-        _rules.Edited(rule);
     }
 
     private void Remember(AutomationRule rule)

@@ -1,5 +1,3 @@
-using OmniControl.App.Features.Hotkeys.Actions;
-using OmniControl.App.Features.Hotkeys.Picker;
 using OmniControl.App.Shared.Presets;
 
 namespace OmniControl.App.Shared.Presets.Manager;
@@ -17,9 +15,6 @@ internal interface IPresetCardHost
     void ExportRequested(PresetCardViewModel card, PresetRowViewModel row);
 
     void ImportRequested(PresetCardViewModel card);
-
-    /// A row's "+ Add" chose State… (<paramref name="state"/>) or Action…: the window opens the picker.
-    void PickTrigger(PresetCardViewModel card, PresetRowViewModel row, bool state);
 }
 
 /// One preset group's card in the preset manager (a <see cref="PresetGroup"/> of the master list): its presets as rows in their order,
@@ -97,7 +92,7 @@ public sealed partial class PresetCardViewModel : ObservableObject, IPresetRowOw
     {
         var entries = Provider.Entries
             .Select(e => (Entry: e, Shortcut: _shortcuts.ShortcutOf(_group, e.Id), Triggers: TriggersOf(e.Id)))
-            .Where(x => !IsFiltering || GroupMatches || TextMatch.Any(_filter, x.Triggers.Triggers.Select(t => t.Text).Prepend(x.Shortcut).Prepend(x.Entry.Name).ToArray()))
+            .Where(x => !IsFiltering || GroupMatches || TextMatch.Any(_filter, new[] { x.Entry.Name, x.Shortcut, x.Triggers?.Words ?? string.Empty }))
             .ToList();
         var kept = Rows.ToDictionary(r => r.Id);
         var rows = entries.Select(x =>
@@ -111,8 +106,7 @@ public sealed partial class PresetCardViewModel : ObservableObject, IPresetRowOw
         foreach (var name in new[] { nameof(IsEmpty), nameof(IsFiltering), nameof(AddTip), nameof(CanAdd), nameof(SwitchOn) }) OnPropertyChanged(name);
     }
 
-    private PresetRule TriggersOf(string presetId) =>
-        _triggers.Current?.Of(PresetShortcuts.ActionId(_group.Id, presetId)) ?? PresetRule.None;
+    private PresetRule? TriggersOf(string presetId) => _triggers.Current?.Of(PresetShortcuts.ActionId(_group.Id, presetId));
 
     private void OnShortcutsChanged(string groupId)
     {
@@ -204,32 +198,7 @@ public sealed partial class PresetCardViewModel : ObservableObject, IPresetRowOw
         row.ShowShortcut(_shortcuts.ShortcutOf(_group, row.Id)); // a refused key: the box shows the shortcut it really has
     }
 
-    // ---------------------------------------------------------------- triggers
-
-    /// The picker, with its window title, of a trigger or state (the "Choose a trigger or state" window) or of an action for a row (both
-    /// live); null while automation is off.
-    public (string Title, PickerModel Model)? TriggerPicker(bool state)
-    {
-        if (_triggers.Current is not { } triggers) return null;
-        if (state)
-        {
-            var list = triggers.TriggerList();
-            return (list.Title, PickerModel.Following(list, string.Empty, "trigger"));
-        }
-        var model = PickerModel.On(triggers.ActionChoices(), string.Empty, PickerModel.ActionNoun);
-        model.Follow(new LiveList(triggers.ActionChoices, h => _triggers.Changed += h, h => _triggers.Changed -= h));
-        return ("Choose an action", model);
-    }
-
-    /// A picked trigger (as the picker stores it) is added to the row's preset.
-    public void AddTrigger(PresetRowViewModel row, string stored) =>
-        _triggers.Current?.Add(PresetShortcuts.ActionId(_group.Id, row.Id), PresetShortcuts.TitleOf(_group, row.Entry), stored);
-
-    void IPresetRowOwner.PickTrigger(PresetRowViewModel row, bool state) => _host.PickTrigger(this, row, state);
-
-    void IPresetRowOwner.RemoveTrigger(PresetRowViewModel row, int index) => _triggers.Current?.Remove(PresetShortcuts.ActionId(_group.Id, row.Id), index);
-
-    void IPresetRowOwner.FlipJoin(PresetRowViewModel row, int index) => _triggers.Current?.FlipJoin(PresetShortcuts.ActionId(_group.Id, row.Id), index);
+    void IPresetRowOwner.EditRule(PresetRowViewModel row) => _triggers.Current?.Edit(PresetShortcuts.ActionId(_group.Id, row.Id));
 
     public void Dispose()
     {

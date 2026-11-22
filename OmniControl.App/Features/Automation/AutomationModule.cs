@@ -38,7 +38,7 @@ public sealed class AutomationModule(Func<IEnumerable<string>> rememberedProgram
         {
             // The one gate every action passes (its block rules) and the preset manager's trigger chips plug in here, and leave first at shut-down.
             context.ActionGate.Attach(service);
-            presets = _presets = new AutomationPresets(service, context.Actions, context.Runner, presetTriggers, context.OpenPresetManager);
+            presets = _presets = new AutomationPresets(service, context.Actions, context.Runner, presetTriggers, features, context.OpenPresetManager);
         }
         context.Shutdown.Add(ShutdownStage.Automation, "automation", () =>
         {

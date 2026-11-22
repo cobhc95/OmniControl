@@ -88,7 +88,32 @@ public sealed partial class AutomationPageViewModel : PageViewModel, IDisposable
         service.Changed += RefreshStatus;
         service.Changed += FollowRules;
         service.Reloaded += ShowAll;
+        if (features is not null) features.RuleShown += OnRuleShown;
         RefreshStatus();
+        OnRuleShown();
+    }
+
+    /// The view brings this row into view and focuses it (taken once: <see cref="TakeReveal"/>).
+    public event Action? RevealRequested;
+
+    private AutomationItem? _reveal;
+
+    public AutomationItem? TakeReveal()
+    {
+        var item = _reveal;
+        _reveal = null;
+        return item;
+    }
+
+    /// The index of a row on the From other pages tab (-1: not there).
+    public int FeatureIndexOf(AutomationItem item) => FeatureRules.IndexOf(item);
+
+    // "Edit in Automation" on a page or in the Presets window: the page opened at its tab; its rule's row is brought forward.
+    private void OnRuleShown()
+    {
+        if (_features?.TakeShown() is not { } id || FeatureRules.FirstOrDefault(i => i.Rule.Id == id) is not { } item) return;
+        _reveal = item;
+        RevealRequested?.Invoke();
     }
 
     private IEnumerable<AutomationItem> RuleRows => Automations.Concat(Blocks).Concat(FeatureRules);
@@ -110,6 +135,7 @@ public sealed partial class AutomationPageViewModel : PageViewModel, IDisposable
         _service.Changed -= RefreshStatus;
         _service.Changed -= FollowRules;
         _service.Reloaded -= ShowAll;
+        if (_features is not null) _features.RuleShown -= OnRuleShown;
         ForgetScripts();
         foreach (var item in RuleRows) item.Dispose();
     }

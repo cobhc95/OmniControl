@@ -106,9 +106,28 @@ public sealed class AutomationFeatureRules : IFeatureRules, IDisposable
         _rules.Edited(rule);
     }
 
-    public void Edit(string actionId)
+    public void Edit(string actionId) => Show(RuleOf(actionId));
+
+    /// A rule the Automation page brings into view and focuses (<see cref="TakeShown"/>); raised after the page was opened.
+    public event Action? RuleShown;
+
+    private string? _shown;
+
+    /// The id of the rule to show, once (the page made by the opening takes it, else the open page on <see cref="RuleShown"/>).
+    public string? TakeShown()
     {
-        if (_rules.UserRules) _openPage(ActionSections.Automation, Tab);
+        var id = _shown;
+        _shown = null;
+        return id;
+    }
+
+    /// Opens Automation's From other pages tab, on this rule when there is one.
+    public void Show(AutomationRule? rule)
+    {
+        if (!_rules.UserRules) return;
+        _shown = rule?.Id;
+        _openPage(ActionSections.Automation, Tab);
+        RuleShown?.Invoke();
     }
 
     private static string Stored(FeatureTrigger trigger) => trigger switch

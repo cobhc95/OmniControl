@@ -1,41 +1,23 @@
-using OmniControl.App.Features.Hotkeys.Actions;
-
 namespace OmniControl.App.Shared.Presets;
 
-/// One trigger chip of a preset row: its words and the join before it ("or" / "and"; empty for the first).
-public sealed record PresetTrigger(string Text, string Join);
+/// The automation rule that switches to a preset, as its row tells of it: its triggers in words ("When Steam is running or at 22:00"); null: none.
+public sealed record PresetRule(string Words);
 
-/// A preset's rule as its row shows it: the trigger chips, and what it has more in Automation ("1 extra condition"; empty: nothing).
-public sealed record PresetRule(IReadOnlyList<PresetTrigger> Triggers, string Extras)
-{
-    public static readonly PresetRule None = new(Array.Empty<PresetTrigger>(), string.Empty);
-}
-
-/// The triggers that switch to a preset (a state, an action), kept as automation rules by the feature that owns rules. Every preset is
-/// named by the id of its apply action (<see cref="PresetShortcuts.ActionId"/>).
+/// The automation rules that switch to a preset (a rule holding the preset's apply action, made and changed only in Automation), read from
+/// the feature that owns rules. Every preset is named by the id of its apply action (<see cref="PresetShortcuts.ActionId"/>).
 public interface IPresetTriggers
 {
-    /// A rule, a state or an action changed: the chips and the pickers read again.
+    /// A rule, a state or an action changed: the rows read again.
     event Action? Changed;
 
-    /// The apply actions of the presets that have triggers (each must stay in the master list while it has some).
+    /// The apply actions of the presets that have rules (each must stay in the master list while it has some).
     IEnumerable<string> Presets { get; }
 
-    PresetRule Of(string preset);
+    /// The preset's rule, or null when none holds its apply action.
+    PresetRule? Of(string preset);
 
-    /// The "Choose a trigger or state" list (live): the triggers, then the states sectioned by the page each belongs to.
-    Features.Hotkeys.Picker.PickList TriggerList();
-
-    /// The master list of actions (live): the preset switches when the picked one runs.
-    IReadOnlyList<PickChoice> ActionChoices();
-
-    /// Adds a picked trigger (as a picker stores it); <paramref name="title"/> names the rule.
-    void Add(string preset, string title, string stored);
-
-    void Remove(string preset, int index);
-
-    /// Flips the join before trigger <paramref name="index"/> between "or" and "and".
-    void FlipJoin(string preset, int index);
+    /// Opens Automation on the preset's rule, or where a rule for it is made when it has none.
+    void Edit(string preset);
 }
 
 /// What the rules ask of the presets: the preset in use in the same group (put back, through its apply action, when a state ends), whether a
