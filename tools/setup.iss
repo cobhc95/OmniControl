@@ -646,7 +646,7 @@ begin
   Result := HasReceipt(EqualizerApoReceipt) and EqualizerApoInstalled();
 end;
 
-// The uninstall choices for the parts with a receipt; both on unless /KEEPDRIVERS is passed, also for a silent uninstall, which shows no form.
+// The uninstall choices for the parts with a receipt; both on unless /KEEPDRIVERS is passed, also for a silent uninstall, which shows no page.
 var RemovingPacketFilter, RemovingEqualizerApo: Boolean;
 
 function KeepsDrivers(): Boolean;
@@ -657,90 +657,77 @@ begin
     if CompareText(ParamStr(I), '/KEEPDRIVERS') = 0 then Result := True;
 end;
 
-function AddLine(Form: TSetupForm; Text: String; Box: Boolean; var Top: Integer): TControl;
-var Line: TNewStaticText;
-    Check: TNewCheckBox;
+function AddBox(Page: TNewNotebookPage; Text: String; var Top: Integer): TNewCheckBox;
 begin
-  if Box then
-  begin
-    Check := TNewCheckBox.Create(Form);
-    Check.Caption := Text;
-    Check.Height := ScaleY(17);
-    Result := Check;
-  end else
-  begin
-    Line := TNewStaticText.Create(Form);
-    Line.AutoSize := True;
-    Line.WordWrap := True;
-    Line.Width := Form.ClientWidth - ScaleX(2 * 12);
-    Line.Caption := Text;
-    Result := Line;
-  end;
-  Result.Parent := Form;
-  Result.Left := ScaleX(12);
+  Result := TNewCheckBox.Create(Page);
+  Result.Parent := Page;
+  Result.Caption := Text;
+  Result.Checked := not KeepsDrivers();
+  Result.Left := 0;
   Result.Top := Top;
-  Result.Width := Form.ClientWidth - ScaleX(2 * 12);
+  Result.Width := Page.Width;
+  Result.Height := ScaleY(17);
   Top := Top + Result.Height + ScaleY(8);
 end;
 
-// Inno's uninstaller has no Tasks page, so a small form of its own asks before Inno's confirmation, one box for each part that is there and
-// has a receipt (no form when none has). False when it is cancelled.
-function ChooseWhatToRemove(): Boolean;
-var Form: TSetupForm;
+// Inno's uninstaller has no Tasks page, so its own window shows one first, before anything is removed: a box for each part that is there and
+// has a receipt (no page when none has), and Uninstall or Cancel.
+procedure InitializeUninstallProgressForm();
+var Page: TNewNotebookPage;
+    Before: TNewNotebookPage;
     PacketBox, ApoBox: TNewCheckBox;
-    Next, Cancel: TNewButton;
+    Note: TNewStaticText;
+    Go: TNewButton;
     Top: Integer;
+    Name, Description: String;
 begin
-  Result := True;
   RemovingPacketFilter := not KeepsDrivers();
   RemovingEqualizerApo := RemovingPacketFilter;
+  if UninstallSilent() or not (PacketFilterIsOurs() or EqualizerApoIsOurs()) then Exit;
+  Page := TNewNotebookPage.Create(UninstallProgressForm);
+  Page.Notebook := UninstallProgressForm.InnerNotebook;
+  Page.Parent := UninstallProgressForm.InnerNotebook;
+  Page.Align := alClient;
+  Top := 0;
   PacketBox := nil;
   ApoBox := nil;
-  if UninstallSilent() or not (PacketFilterIsOurs() or EqualizerApoIsOurs()) then Exit;
-  Form := CreateCustomForm(ScaleX(360), ScaleY(160), False, True);
-  try
-    Form.Caption := FmtMessage(SetupMessage(msgUninstallAppFullTitle), ['OmniControl']);
-    Top := ScaleY(12);
-    AddLine(Form, 'Untick anything you want to keep on this PC.', False, Top);
-    if PacketFilterIsOurs() then
-    begin
-      PacketBox := TNewCheckBox(AddLine(Form, 'Also remove Windows Packet Filter', True, Top));
-      PacketBox.Checked := RemovingPacketFilter;
-    end;
-    if EqualizerApoIsOurs() then
-    begin
-      ApoBox := TNewCheckBox(AddLine(Form, 'Also remove Equalizer APO', True, Top));
-      ApoBox.Checked := RemovingEqualizerApo;
-      AddLine(Form, 'Sound may need a restart of Windows before it is as it was.', False, Top);
-    end;
-    Form.ClientHeight := Top + ScaleY(4 + 23 + 12);
-    Next := TNewButton.Create(Form);
-    Next.Parent := Form;
-    Next.Caption := SetupMessage(msgButtonNext);
-    Next.ModalResult := mrOk;
-    Next.Default := True;
-    Cancel := TNewButton.Create(Form);
-    Cancel.Parent := Form;
-    Cancel.Caption := SetupMessage(msgButtonCancel);
-    Cancel.ModalResult := mrCancel;
-    Cancel.Cancel := True;
-    Next.Width := Form.CalculateButtonWidth([Next.Caption, Cancel.Caption]);
-    Cancel.Width := Next.Width;
-    Next.Height := ScaleY(23);
-    Cancel.Height := ScaleY(23);
-    Next.Top := Form.ClientHeight - ScaleY(23 + 12);
-    Cancel.Top := Next.Top;
-    Cancel.Left := Form.ClientWidth - ScaleX(12) - Cancel.Width;
-    Next.Left := Cancel.Left - ScaleX(6) - Next.Width;
-    Form.ActiveControl := Next;
-    Result := Form.ShowModal() = mrOk;
-    if PacketBox <> nil then RemovingPacketFilter := PacketBox.Checked;
-    if ApoBox <> nil then RemovingEqualizerApo := ApoBox.Checked;
-  finally
-    Form.Free();
+  if PacketFilterIsOurs() then PacketBox := AddBox(Page, 'Remove Windows Packet Filter', Top);
+  if EqualizerApoIsOurs() then
+  begin
+    ApoBox := AddBox(Page, 'Remove Equalizer APO', Top);
+    Note := TNewStaticText.Create(Page);
+    Note.Parent := Page;
+    Note.Caption := 'Sound may need a restart of Windows before it is as it was.';
+    Note.Left := ScaleX(17);
+    Note.Top := Top - ScaleY(6);
   end;
+  Before := UninstallProgressForm.InnerNotebook.ActivePage;
+  Name := UninstallProgressForm.PageNameLabel.Caption;
+  Description := UninstallProgressForm.PageDescriptionLabel.Caption;
+  UninstallProgressForm.InnerNotebook.ActivePage := Page;
+  UninstallProgressForm.PageNameLabel.Caption := 'What to remove';
+  UninstallProgressForm.PageDescriptionLabel.Caption := 'Untick anything you want to keep on this PC.';
+  Go := TNewButton.Create(UninstallProgressForm);
+  Go.Parent := UninstallProgressForm;
+  Go.Caption := 'Uninstall';
+  Go.Width := UninstallProgressForm.CancelButton.Width;
+  Go.Height := UninstallProgressForm.CancelButton.Height;
+  Go.Top := UninstallProgressForm.CancelButton.Top;
+  Go.Left := UninstallProgressForm.CancelButton.Left - Go.Width - ScaleX(6);
+  Go.ModalResult := mrOk;
+  Go.Default := True;
+  UninstallProgressForm.CancelButton.Enabled := True;
+  UninstallProgressForm.CancelButton.ModalResult := mrCancel;
+  UninstallProgressForm.ActiveControl := Go;
+  if UninstallProgressForm.ShowModal() = mrCancel then Abort;
+  if PacketBox <> nil then RemovingPacketFilter := PacketBox.Checked;
+  if ApoBox <> nil then RemovingEqualizerApo := ApoBox.Checked;
+  Go.Visible := False;
+  UninstallProgressForm.CancelButton.Enabled := False;
+  UninstallProgressForm.InnerNotebook.ActivePage := Before;
+  UninstallProgressForm.PageNameLabel.Caption := Name;
+  UninstallProgressForm.PageDescriptionLabel.Caption := Description;
 end;
-
 // The sign-in task and the network service go first. A part that stays keeps its receipt, so a later uninstall still offers it; a part
 // that is gone takes its receipt with it.
 procedure UninstallSteps();
@@ -783,8 +770,6 @@ end;
 function InitializeUninstall(): Boolean;
 var Msg: String;
 begin
-  Result := ChooseWhatToRemove();
-  if not Result then Exit;
   Msg := EndOmniControl();
   if Msg <> '' then MsgBox(Msg, mbError, MB_OK);
   Result := Msg = '';
