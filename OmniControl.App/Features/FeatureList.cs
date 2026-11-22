@@ -43,6 +43,7 @@ public static class FeatureList
         ("Everything", All.Select(f => f.Id).ToList()),
         ("Sound only", new[] { Volume }),
         ("Monitoring only", new[] { Resources }),
+        ("None", Array.Empty<string>()),
     };
 
     public const string Custom = "Custom";

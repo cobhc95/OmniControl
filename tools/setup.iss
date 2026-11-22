@@ -36,6 +36,7 @@ SelectComponentsLabel2=Ready-made choice:
 Name: everything; Description: "Everything"
 Name: sound; Description: "Sound only"
 Name: monitoring; Description: "Monitoring only"
+Name: none; Description: "None"
 Name: custom; Description: "Custom"; Flags: iscustom
 [Components]
 Name: volume; Description: "Sound and effects: volume, mixer, effects (Equalizer APO)"; Types: everything sound

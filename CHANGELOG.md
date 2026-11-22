@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- New: a "None" ready-made choice (every feature off) in Setup's Choose features page and App settings > Features; ticking a feature after it makes the choice Custom.
+
 - Fixed: App settings > Features: a feature switched on that failed to start was not written to the errors log and its card could still say "Couldn't start" when nothing had failed; now every start and stop is logged when it fails, "Couldn't start" shows only for a real failure, the cards always show what runs, the header counts the features running of those installed, and the note under the cards names only the drivers that are installed. Running Setup again with the same feature choice as an earlier Setup now applies it over switches changed since.
 - Fixed: the Combine devices list and the Add effect window's results scroll to the highlighted row only after the list has laid out its changed rows (the same "Invalid Arrange rectangle" guard as Actions and hotkeys).
 

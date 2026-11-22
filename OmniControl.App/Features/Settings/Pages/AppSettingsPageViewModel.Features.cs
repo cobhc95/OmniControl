@@ -35,7 +35,7 @@ public sealed partial class AppSettingsPageViewModel
 
     private IEnumerable<SearchEntry> FeatureSearchEntries() =>
         _featureCards.Select(c => Entry(c.Card, FeaturesName, $"feature features turn on off disable enable run {c.Feature.Description}"))
-            .Append(Entry(ReadyMade, FeaturesName, "ready-made features everything sound only monitoring only custom choice"));
+            .Append(Entry(ReadyMade, FeaturesName, "ready-made features everything sound only monitoring only none custom choice"));
 
     private IReadOnlyList<(FeatureInfo, ToggleItem)> MakeFeatureCards() =>
         FeatureList.All.Select(f => (f, new ToggleItem(f.Name, _features.IsOn(f.Id), on => _features.Set(f.Id, on)) { Half = true, Unavailable = !_features.Installed(f.Id) })).ToList();
@@ -65,7 +65,7 @@ public sealed partial class AppSettingsPageViewModel
     {
         var now = FeatureList.ReadyMadeOf(_features.Off);
         return FeatureList.ReadyMade.Select(r => new MenuRowItem(r.Name, string.Empty, r.Name == now, string.Empty, new RelayCommand(() => _features.SetOff(FeatureList.OffIn(r.On))),
-                Detail: r.On.Count == FeatureList.All.Count ? "Every feature" : string.Join(", ", r.On.Select(id => FeatureList.Find(id)!.Name))))
+                Detail: r.On.Count == FeatureList.All.Count ? "Every feature" : r.On.Count == 0 ? "Every feature off" : string.Join(", ", r.On.Select(id => FeatureList.Find(id)!.Name))))
             .Append(new MenuRowItem(FeatureList.Custom, string.Empty, now == FeatureList.Custom, string.Empty, new RelayCommand(() => { }), Detail: "The features you switch on below"))
             .ToList();
     }
