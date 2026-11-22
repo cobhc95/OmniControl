@@ -37,7 +37,7 @@ internal static partial class Shots
         public bool CanInstallService => false;
         public string UnavailableLine => string.Empty;
         public NetworkLimits.ServiceState Service => NetworkLimits.ServiceState.Running;
-        public NetworkLimits.DownloadState Download => NetworkLimits.DownloadState.Running;
+        public NetworkLimits.DownloadState Download => NetworkLimits.DownloadState.Running(false);
         public void InstallPacketFilter() { }
         public Task InstallServiceAsync() => Task.CompletedTask;
         public void Recheck() { }
