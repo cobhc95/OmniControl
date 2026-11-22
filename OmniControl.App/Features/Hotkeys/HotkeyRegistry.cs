@@ -138,9 +138,6 @@ public sealed partial class HotkeyRegistry : IActionRegistry, IActionRunner, IDi
 
     public HotkeyAction? Find(string id) => Actions.FirstOrDefault(a => a.Id == id);
 
-    public IReadOnlyList<string> SavedWithShortcut(string prefix) =>
-        _stored.Where(p => p.Key.StartsWith(prefix, StringComparison.Ordinal) && p.Value.Keys.Any()).Select(p => p.Key).ToList();
-
     public string? ProblemWith(string gesture, string id) => ConflictOf(gesture, id, Actions);
 
     /// The one rule for a shortcut given on purpose to one action (the preset manager's shortcut box): it must be readable and hold Ctrl, Alt

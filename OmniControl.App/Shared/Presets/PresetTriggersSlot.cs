@@ -10,9 +10,6 @@ public interface IPresetTriggers
     /// A rule, a state or an action changed: the rows read again.
     event Action? Changed;
 
-    /// The apply actions of the presets that have rules (each must stay in the master list while it has some).
-    IEnumerable<string> Presets { get; }
-
     /// The preset's rule, or null when none holds its apply action.
     PresetRule? Of(string preset);
 
@@ -21,7 +18,7 @@ public interface IPresetTriggers
 }
 
 /// What the rules ask of the presets: the preset in use in the same group (put back, through its apply action, when a state ends), whether a
-/// preset still exists, and which presets need their apply action kept in the master list.
+/// preset still exists.
 public interface IPresetSwitch
 {
     /// A group's presets changed (its id): one may have been deleted or brought back by an Undo.
@@ -31,8 +28,6 @@ public interface IPresetSwitch
 
     /// False when its group is registered and has no such preset (deleted); null when its group is not registered now.
     bool? Exists(string preset);
-
-    void Keep(IEnumerable<string> presets);
 
     /// The group a preset's apply action belongs to, or null when its group is not registered now.
     PresetGroup? GroupOf(string preset);
@@ -64,9 +59,5 @@ public sealed class PresetTriggersSlot(IPresetSwitch presets)
         OnChanged();
     }
 
-    private void OnChanged()
-    {
-        presets.Keep(Current?.Presets ?? Array.Empty<string>());
-        Changed?.Invoke();
-    }
+    private void OnChanged() => Changed?.Invoke();
 }

@@ -3,17 +3,14 @@ using OmniControl.App.Features.Hotkeys;
 
 namespace OmniControl.App.Shared.Presets;
 
-/// Shortcuts that apply one preset. A preset with a shortcut has an OmniControl action in the master list ("Apply preset "Evening"", id
-/// <c>preset.&lt;group&gt;.&lt;preset id&gt;</c>, under its page, its group and "Presets"), so the Shortcuts page, search and the mouse
-/// pickers list it like any other action; its key is saved in hotkeys.json by that id. The action is made when a shortcut is given,
-/// taken away when the shortcut is removed here, renamed with its preset and removed when its preset is deleted (its saved key stays, so
-/// an undone delete brings it back). At start-up every preset with a saved key gets its action again. No UI.
-/// A preset with triggers (<see cref="IPresetSwitch.Keep"/>) keeps its action without a key, so its rule's step (and a put back) can run it.
+/// Every preset of every registered group has an OmniControl action in the master list ("Apply preset "Evening"", id
+/// <c>preset.&lt;group&gt;.&lt;preset id&gt;</c>, under its page, its group and "Presets"), so the Shortcuts page, search, the pickers and
+/// rules list it like any other action; its key, when it has one, is saved in hotkeys.json by that id. The action is made with the preset
+/// (or its group), renamed with it and removed when the preset is deleted (its saved key stays, so an undone delete brings it back). No UI.
 /// An apply action's "Run again to switch back" (off by default) goes back to the preset in use before it; every group also has its
 /// "Next" and "Previous" actions (id <c>presets.&lt;group&gt;.next</c>), stepping through its presets in order (<see cref="PresetStepping"/>).
 public sealed class PresetShortcuts : IPresetSwitch, IDisposable
 {
-    private HashSet<string> _kept = new();
     private const string Prefix = "preset.", StepPrefix = "presets.", NextRole = "Next", PreviousRole = "Previous";
 
     private readonly IActionRegistry _actions;
@@ -58,12 +55,10 @@ public sealed class PresetShortcuts : IPresetSwitch, IDisposable
         return null;
     }
 
-    /// Takes the preset's shortcut and its action away.
+    /// Takes the preset's shortcut away (its action stays).
     public void Remove(PresetGroup group, string presetId)
     {
-        var id = ActionId(group.Id, presetId);
-        if (_actions.Find(id) is { } action) action.Gesture = string.Empty;
-        if (!_kept.Contains(id)) Drop(id);
+        if (_actions.Find(ActionId(group.Id, presetId)) is { } action) action.Gesture = string.Empty;
         Changed?.Invoke(group.Id);
     }
 
@@ -71,15 +66,6 @@ public sealed class PresetShortcuts : IPresetSwitch, IDisposable
         GroupOf(preset) is { } group && group.Provider.Entries.FirstOrDefault(e => e.InUse) is { } entry ? ActionId(group.Id, entry.Id) : null;
 
     public bool? Exists(string preset) => GroupOf(preset) is { } group ? group.Provider.Find(preset[ActionId(group.Id, string.Empty).Length..]) is not null : null;
-
-    public void Keep(IEnumerable<string> presets)
-    {
-        var kept = presets.ToHashSet();
-        if (kept.SetEquals(_kept)) return;
-        _kept = kept;
-        foreach (var id in _mine.Keys.Where(id => !kept.Contains(id) && _actions.Find(id) is { Gesture.Length: 0 }).ToList()) Drop(id);
-        foreach (var group in _groups.All) SyncActions(group);
-    }
 
     // The longest group prefix wins, so a group whose id starts with another's is never mistaken for it.
     public PresetGroup? GroupOf(string preset) => _groups.All.Where(g => preset.StartsWith(ActionId(g.Id, string.Empty), StringComparison.Ordinal))
@@ -106,20 +92,23 @@ public sealed class PresetShortcuts : IPresetSwitch, IDisposable
         UnregisterSteps(group);
     }
 
-    /// Brings the group's actions in line with its presets: an action for every preset with a saved key, the title following a rename, and
-    /// no action for a preset that is gone.
+    /// Brings the group's actions in line with its presets: an action for every preset, the title following a rename, and no action for a
+    /// preset that is gone.
     private void SyncActions(PresetGroup group)
     {
-        var prefix = ActionId(group.Id, string.Empty);
-        var ids = _actions.SavedWithShortcut(prefix).Concat(_mine.Keys.Concat(_kept).Where(k => k.StartsWith(prefix, StringComparison.Ordinal))).Distinct().ToList();
+        var entries = group.Provider.Entries.ToDictionary(e => ActionId(group.Id, e.Id));
         var changed = false;
-        foreach (var id in ids)
+        foreach (var id in _mine.Where(m => m.Value == group && !entries.ContainsKey(m.Key)).Select(m => m.Key).ToList())
         {
-            var entry = group.Provider.Find(id[prefix.Length..]);
+            Drop(id);
+            changed = true;
+        }
+        foreach (var (id, entry) in entries)
+        {
             var made = _mine.ContainsKey(id) ? _actions.Find(id) : null;
-            if (entry is not null && made?.Title == TitleOf(group, entry)) continue;
+            if (made?.Title == TitleOf(group, entry)) continue;
             if (made is not null) Drop(id);
-            if (entry is not null) Make(group, entry); // hotkeys.json gives it its saved key
+            Make(group, entry); // hotkeys.json gives it its saved key
             changed = true;
         }
         if (changed) Changed?.Invoke(group.Id);

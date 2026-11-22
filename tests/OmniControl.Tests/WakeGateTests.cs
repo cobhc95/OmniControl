@@ -34,7 +34,6 @@ public class WakeGateTests
         public void Register(IEnumerable<HotkeyAction> actions) { foreach (var a in actions) Actions.Add(a); }
         public void RegisterPickerCommand(HotkeyAction command) { }
         public void Unregister(string id) { foreach (var gone in Actions.Where(a => a.Id == id).ToList()) Actions.Remove(gone); }
-        public IReadOnlyList<string> SavedWithShortcut(string prefix) => Array.Empty<string>();
         public string? ProblemWith(string gesture, string id) => null;
         public void Move(IReadOnlyDictionary<string, string> moved) { }
         public HotkeyAction? Find(string id) => Actions.FirstOrDefault(a => a.Id == id);

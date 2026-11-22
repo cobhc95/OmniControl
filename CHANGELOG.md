@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Presets: every preset now has its own "Apply preset" action in Actions and Hotkeys, the pickers and rules, whether or not it has a shortcut; it appears when the preset is made, follows a rename and goes when the preset is deleted. Saved shortcuts and rules keep working.
+
 - Fixed: a PC with a network adapter that has IPv4 switched off (for example Hyper-V's Default Switch) couldn't be found by other PCs on the local network; that adapter is now skipped instead of stopping the whole network check.
 
 - Audio and Volume: microphone levels are read on a worker with the mixer's scan, not on the UI thread; Tab and Shift+Tab reach cards that are still being built.

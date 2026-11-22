@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using OmniControl.App.Features.Hotkeys.Actions;
 using OmniControl.App.Features.Displays;
 using OmniControl.App.Features.Volume.Fx;
@@ -57,9 +57,6 @@ public class PresetManagerTests
         public ActionSection? SectionOf(string section) => null;
 
         public HotkeyAction? OwnerOf(string gesture, string exceptId) => HotkeyRegistry.OwnerOf(gesture, exceptId, Actions);
-
-        public IReadOnlyList<string> SavedWithShortcut(string prefix) =>
-            Saved.Where(p => p.Key.StartsWith(prefix, StringComparison.Ordinal) && p.Value.Length > 0).Select(p => p.Key).ToList();
 
         public string? ProblemWith(string gesture, string id) => HotkeyRegistry.ConflictOf(gesture, id, Actions);
     }
@@ -332,8 +329,7 @@ public class PresetManagerTests
         var entry = group.Provider.Find("2")!;
         Assert.Null(shortcuts.Set(group, entry, "Ctrl+Alt+F9"));
 
-        var action = Assert.Single(actions.Applies);
-        Assert.Equal(PresetShortcuts.ActionId("mouse.trackpad", "2"), action.Id);
+        var action = actions.Applies.Single(a => a.Id == PresetShortcuts.ActionId("mouse.trackpad", "2"));
         Assert.Equal("Switch to layer \"Trackpad 2\"", action.Title);
         Assert.Equal("Mouse and Trackpad - Trackpad - Presets", action.Heading);
         Assert.Equal("Ctrl+Alt+F9", shortcuts.ShortcutOf(group, "2"));
@@ -342,7 +338,7 @@ public class PresetManagerTests
         Assert.Equal(2, mouse.LayerOf(InputFamily.Trackpad));
 
         shortcuts.Remove(group, "2");
-        Assert.Empty(actions.Applies);
+        Assert.Contains(action, actions.Applies); // the action stays, only its key goes
         Assert.Equal(string.Empty, shortcuts.ShortcutOf(group, "2"));
         shortcuts.Dispose();
         groups.Dispose();
@@ -378,7 +374,7 @@ public class PresetManagerTests
         var entry = group.Provider.Find("1")!;
         Assert.Contains("Next mouse layer", shortcuts.Set(group, entry, "Ctrl+Alt+L"));
         Assert.NotNull(shortcuts.Set(group, entry, "K"));
-        Assert.Empty(actions.Applies); // nothing was made
+        Assert.All(actions.Applies, a => Assert.Equal(string.Empty, a.Gesture)); // no key was given
         shortcuts.Dispose();
         groups.Dispose();
     }
@@ -397,13 +393,14 @@ public class PresetManagerTests
         var id = presets.Add().Id!;
         shortcuts.Set(group, presets.Find(id)!, "Ctrl+Alt+F8");
         presets.Rename(id, "Desk");
-        Assert.Equal("Apply preset \"Desk\"", Assert.Single(actions.Applies).Title);
-        Assert.Equal("Ctrl+Alt+F8", actions.Applies[0].Gesture);
+        var actionId = PresetShortcuts.ActionId(group.Id, id);
+        Assert.Equal("Apply preset \"Desk\"", actions.Find(actionId)!.Title);
+        Assert.Equal("Ctrl+Alt+F8", actions.Find(actionId)!.Gesture);
 
         var undo = presets.Delete(id);
-        Assert.Empty(actions.Applies);
+        Assert.Null(actions.Find(actionId));
         undo!();
-        Assert.Equal("Ctrl+Alt+F8", Assert.Single(actions.Applies).Gesture);
+        Assert.Equal("Ctrl+Alt+F8", actions.Find(actionId)!.Gesture);
         groups.Dispose();
     }
 
@@ -418,8 +415,29 @@ public class PresetManagerTests
         Assert.Empty(actions.Applies);
 
         groups.Register(new PresetGroup("mouse.buttons", "Mouse and Trackpad", "Mouse Buttons", new LayerPresets(new FakeLayers(), InputFamily.Mouse)));
-        var action = Assert.Single(actions.Applies);
-        Assert.Equal("Ctrl+Alt+F7", action.Gesture);
+        Assert.Equal("Ctrl+Alt+F7", actions.Find(PresetShortcuts.ActionId("mouse.buttons", "1"))!.Gesture);
+        Assert.Null(actions.Find(PresetShortcuts.ActionId("mouse.buttons", "99")));
+        groups.Dispose();
+    }
+
+    [Fact]
+    public void EveryPreset_HasAnApplyAction_WithoutAShortcut_AndLosesItWhenDeleted()
+    {
+        var actions = new FakeActions();
+        var groups = new PresetGroups();
+        using var shortcuts = new PresetShortcuts(actions, groups, _ => { });
+        var presets = new FxKindPresets(EqKind, PresetStore(), _ => new FakeTarget { Content = Tuned() });
+        var group = new PresetGroup(FxKindPresets.GroupId(EqKind), "Volume", EqKind.Name, presets);
+        groups.Register(group);
+
+        var id = presets.Add().Id!;
+        var action = actions.Find(PresetShortcuts.ActionId(group.Id, id));
+        Assert.NotNull(action);
+        Assert.Equal(string.Empty, action!.Gesture);
+        Assert.All(presets.Entries, e => Assert.NotNull(actions.Find(PresetShortcuts.ActionId(group.Id, e.Id))));
+
+        presets.Delete(id);
+        Assert.Null(actions.Find(action.Id));
         groups.Dispose();
     }
 
@@ -575,3 +593,4 @@ public class PresetManagerTests
         groups.Dispose();
     }
 }
+
