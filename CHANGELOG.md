@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+## 0.2.9 (22 Nov 2026)
+
 - New: Setup's "Features you didn't tick" shows, while "Don't install them" is picked, what that leaves out (Equalizer APO, sensor libraries, Windows Packet Filter and network service, Tailscale firewall rule, QR-code library) from the features currently unticked, and that the rest stays installed but not running.
 
 - Fixed: with Setup's "Don't install them", the app no longer refuses to start when the sensor library (and what only it loads), DiskInfoToolkit or the QR reader was left out: those files are taken out of OmniControl.deps.json at build and publish, and the app loads a present one itself.

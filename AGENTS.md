@@ -81,11 +81,10 @@ A change that breaks one of these is a defect, the same as a crash. Before finis
 
 - **Orchestrator** = the agent talking to the owner. On every new request it reviews the running and queued jobs: overlap or contradiction (change a brief or message the agent), same files or subject (same agent if its context is small, else queue directly after, never parallel), jobs to combine into one brief, an agent's context too large (start a fresh agent); re-order to avoid rework (shared piece first). It states the outcome to the owner in one or two lines and keeps the queue in the task list.
 - **Parallel only when safe:** jobs run together only if they share no files (shared docs get small Edit-tool edits only) and none needs another's uncommitted work; otherwise they queue. A parallel agent works in its own git worktree, only compiles there, and never builds into, stops, deletes or launches the real app. When all report, the orchestrator merges, builds once and relaunches.
-- **Model by complexity, speed first** (a model the owner names wins; when unsure take the stronger):
+- **Model by complexity, lean** (a model the owner names wins). Ceiling: never above Sonnet medium or Opus low.
   - Haiku, low: lookups, renames, wording, a default value, doc-only edits, a one-file change with an obvious place.
   - Sonnet, low or medium: normal fixes and small features inside one page or service following an existing pattern.
-  - Opus, medium: features across several files or layers, UI to a mock-up, anything touching shared master pieces.
-  - Opus, high: root-cause hunts across systems, engine/protocol/audio/Win32 work, concurrency, a fix that already failed once.
+  - Opus, low: features across several files or layers, UI to a mock-up, shared master pieces, root-cause hunts, engine/audio/Win32 work, a fix that already failed once.
 - **Briefs** start with "Read AGENTS.md first and obey it", are complete (files, the pattern to copy, what done looks like, the mock-up path) and end asking for what was done, skipped and unverified.
 - **Test once, at the end:** agents run no tests and launch nothing; their only check, when they changed code, is a compile with `-o` into a scratch folder under `%TEMP%` (deleted afterwards). Tests run only when the owner asks, or once at the end of the queue when a job truly cannot be judged from code.
 - **Autonomy:** the queue of approved jobs lives in the task list; when a job reports, the next starts at once. A turn ends only when the queue is empty, a real decision or an outward-facing approval (a push) is needed, or the owner stops it; requests made mid-work join the queue in order and are acknowledged.
