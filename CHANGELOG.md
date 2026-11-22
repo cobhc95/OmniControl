@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Network Traffic Control keeps its settings apart from Resources: its rules, pins and presets have their own file and their own area in Export and Import, Resources presets hold only readings and gadget settings, and your current rules move over once at start (older backups restore them into the new area).
 - Automation: the Rules tab is now called Custom Rules, and the rules that switch to a preset are listed there (with "Presets · kind" and "Made in the Presets window · Open"); From other pages lists only what pages make for themselves (warm light, network limits, device checks, the emulator's idle close). In the Presets window, "* When … · Edit in Automation" opens Custom Rules on that rule, and "More options in Automation" makes a new rule that switches to the preset, with its trigger slot ready; the link's tip is shorter so it no longer covers the row's buttons.
 - Backup and restore: Export… and Import… now open the same window as "Import settings from a PC": tick the areas (named like their pages) to put in the file or to take from it; an import lists only what the file holds, is applied at once without a restart, makes a backup first and can be undone. Every saved area is included: Plug-in list, Other PCs (pairings, nicknames and allowances, never keys) and Microphone mute key now have their own areas; favourites and recent actions moved to Actions and Hotkeys.
 
