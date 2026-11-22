@@ -6,7 +6,7 @@ using OmniControl.Core.Engine.Screenshot;
 namespace OmniControl.App.Features.Screenshot;
 
 /// One QR code found in the selection: its text, and whether it is a web address the pop-down may open.
-public sealed record QrItem(string Text, bool IsLink, IRelayCommand Copy, IRelayCommand Open);
+public sealed record QrItem(string Shown, bool IsLink, IRelayCommand Copy, IRelayCommand Open);
 
 /// The area overlay of one monitor: its frozen picture, the selection (in the picture's pixels), the drawing tool and colour, the drawings
 /// with undo and redo, and what the bars do. Pointer and key input arrive here from the view, already in picture pixels; this decides what
@@ -361,22 +361,22 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
     {
         if (Selection is not { IsEmpty: false } sel) return;
         QrCodes.Clear();
-        QrNote = "Looking for QR codes…";
-        IReadOnlyList<string> found;
+        QrNote = "Looking for codes…";
+        IReadOnlyList<ScannedCode> found;
         try
         {
             found = await _output.ReadQrAsync(ImageBitmaps.Crop(Picture, sel));
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
         {
-            found = Array.Empty<string>(); // a picture the reader cannot use holds no code it can read
+            found = Array.Empty<ScannedCode>(); // a picture the reader cannot use holds no code it can read
         }
-        foreach (var text in found)
+        foreach (var (kind, text) in found)
         {
             var link = ScreenshotService.IsWebLink(text);
-            QrCodes.Add(new QrItem(text, link, new RelayCommand(() => _output.CopyText(text)), new RelayCommand(() => _output.OpenLink(text))));
+            QrCodes.Add(new QrItem($"{kind}: {text}", link, new RelayCommand(() => _output.CopyText(text)), new RelayCommand(() => _output.OpenLink(text))));
         }
-        QrNote = found.Count == 0 ? "No QR code found." : string.Empty;
+        QrNote = found.Count == 0 ? "No code found." : string.Empty;
     }
 
     /// Exports the selection with its drawings, closes the overlay, then hands the picture on (so a print dialog is not under the overlay).

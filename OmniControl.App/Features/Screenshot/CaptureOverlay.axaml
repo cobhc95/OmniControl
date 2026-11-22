@@ -87,7 +87,7 @@
                     <Button Classes="toolicon" Command="{Binding SearchCommand}" ToolTip.Tip="Search image online: copies the picture and opens Google Lens in your browser, where you paste it">
                         <Path Classes="glyph" Data="{StaticResource ShotSearchIcon}" />
                     </Button>
-                    <Button Classes="toolicon" Command="{Binding ReadQrCommand}" ToolTip.Tip="Read QR code (on this PC, nothing is sent)">
+                    <Button Classes="toolicon" Command="{Binding ReadQrCommand}" ToolTip.Tip="Read QR code or barcode (on this PC, nothing is sent)">
                         <Path Classes="glyph" Data="{StaticResource ShotQrIcon}" />
                         <Button.Flyout>
                             <c:ListMenuFlyout Placement="TopEdgeAlignedLeft">
@@ -97,7 +97,7 @@
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="shot:QrItem">
                                                 <StackPanel Classes="qrcode">
-                                                    <TextBlock Classes="menutext" Text="{Binding Text}" TextWrapping="Wrap" />
+                                                    <TextBlock Classes="menutext" Text="{Binding Shown}" TextWrapping="Wrap" />
                                                     <StackPanel Orientation="Horizontal">
                                                         <Button Classes="pill cardaction" Content="Copy" Command="{Binding Copy}" />
                                                         <Button Classes="pill cardaction" Content="Open in browser" Command="{Binding Open}" IsVisible="{Binding IsLink}" />

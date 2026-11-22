@@ -33,7 +33,7 @@ public class MarkRenderTests
         public void Print(ScreenImage image) { }
         public void Record(ScreenRect area, ScreenRect monitor, double scale) { }
         public void SearchOnline(ScreenImage image) { }
-        public Task<IReadOnlyList<string>> ReadQrAsync(ScreenImage image) => Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+        public Task<IReadOnlyList<ScannedCode>> ReadQrAsync(ScreenImage image) => Task.FromResult<IReadOnlyList<ScannedCode>>(Array.Empty<ScannedCode>());
         public void CopyText(string text) { }
         public void OpenLink(string url) { }
     }

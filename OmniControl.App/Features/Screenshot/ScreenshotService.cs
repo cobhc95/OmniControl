@@ -17,7 +17,7 @@ public interface IShotOutput
     /// Records a video of this area of the screen (physical pixels on the desktop) on that monitor at its scale; the overlay has already closed.
     void Record(ScreenRect area, ScreenRect monitor, double scale);
     void SearchOnline(ScreenImage image);
-    Task<IReadOnlyList<string>> ReadQrAsync(ScreenImage image);
+    Task<IReadOnlyList<ScannedCode>> ReadQrAsync(ScreenImage image);
     void CopyText(string text);
 
     /// Opens a web address in the browser; anything but http and https is refused.
@@ -283,7 +283,7 @@ public sealed class ScreenshotService
 
         public void Record(ScreenRect area, ScreenRect monitor, double scale) => _owner.StartRecording(area, monitor, scale, _options, _app);
 
-        public Task<IReadOnlyList<string>> ReadQrAsync(ScreenImage image) => Task.Run(() => QrReader.Read(image));
+        public Task<IReadOnlyList<ScannedCode>> ReadQrAsync(ScreenImage image) => Task.Run(() => QrReader.Read(image));
 
         public void CopyText(string text)
         {
