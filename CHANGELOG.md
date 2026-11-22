@@ -5,13 +5,14 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+## 0.3.0 (22 Nov 2026)
+
 - Added: Network traffic control's Upload limit and Download limit menus end with Block, which blocks only that direction for the program: Upload block is an outbound Windows Firewall rule (the program then cannot start new downloads either); Download block drops everything that arrives for the program through Windows Packet Filter (needs the driver and the Packet filter switch on). The row's On switch still blocks everything. The network service's protocol is now version 2 (install the service again after updating if it says it is from another version).
 - Changed: the FX window's response charts show the whole chain as measured (a short test sweep played once through every switched-on effect, IR Loader and plug-ins included) a moment after each change, with Peak and Latency from the measurement and tags for a level-dependent effect, a reverb tail and Equalizer APO settings left out; the EQ and gain curve stays as a faint reference in the larger chart.
 - Fixed: a removed effect could stay audible in Equalizer APO; its config is now written once per change, without the removed effect.
 - Fixed: a removed plug-in is unloaded a moment after it leaves every running chain, instead of staying loaded until all effects stop.
 - Changed: while a plug-in's window is open, its settings reach Equalizer APO and the FX window's chart live (within about a third of a second), not only when the window closes.
 
-## 0.3.0 (22 Nov 2026)
 
 - Fixed: a program's download limit now holds from each new connection's first packet; before, every new connection ran unlimited for up to a second, so a browser opening many connections went well over its limit.
 - Changed: a program's limit chips say "No limit" when no limit is on, and the Network traffic control status line says when a VPN tunnel (WireGuard, Tailscale) is up, since download limits don't reach traffic through it.
