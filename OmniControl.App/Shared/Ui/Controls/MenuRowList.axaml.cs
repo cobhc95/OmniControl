@@ -10,8 +10,12 @@ namespace OmniControl.App.Shared.Ui.Controls;
 /// several can be ticked), a <see cref="Trailing"/> fact in the warm colour (<see cref="TrailingWarm"/>), an accent row (the one that opens something bigger) or a muted row (a way out to a manager), or a header row (a muted section title) with a thin line above it.
 /// A row that cannot be used now (<see cref="IsEnabled"/> false) is greyed and keeps its tooltip, which says why. A row that shows another page of
 /// the same menu in place (<see cref="OpensPage"/>; its command turns the page and it does not close the menu) has the chevron a sub-menu row has.
-public sealed record MenuRowItem(string Text, string Link, bool IsOn, string Tip, ICommand Command, IReadOnlyList<TagItem>? Tags = null, string Detail = "", bool Dim = false, bool IsHeader = false, bool RuleAbove = false, bool TagsOnOwnLine = false, bool IsSwitch = false, bool KeepsOpen = false, bool IsAccent = false, bool IsMuted = false, string? Icon = null, bool IsDanger = false, string Trailing = "", Func<IReadOnlyList<MenuRowItem>>? Submenu = null, bool TrailingWarm = false, bool IsEnabled = true, bool OpensPage = false, string? Font = null)
+/// A find row (<see cref="Find"/>) is a search box whose hint is <see cref="Text"/>, with <see cref="Trailing"/> muted at its right; each
+/// change of its words is told to <see cref="Find"/>, then a nested menu asks its rows again (the rows under it follow).
+public sealed record MenuRowItem(string Text, string Link, bool IsOn, string Tip, ICommand Command, IReadOnlyList<TagItem>? Tags = null, string Detail = "", bool Dim = false, bool IsHeader = false, bool RuleAbove = false, bool TagsOnOwnLine = false, bool IsSwitch = false, bool KeepsOpen = false, bool IsAccent = false, bool IsMuted = false, string? Icon = null, bool IsDanger = false, string Trailing = "", Func<IReadOnlyList<MenuRowItem>>? Submenu = null, bool TrailingWarm = false, bool IsEnabled = true, bool OpensPage = false, string? Font = null, Action<string>? Find = null)
 {
+    public bool IsFind => Find is not null;
+
     /// The name drawn in <see cref="Font"/> (a font menu's rows), else in the menu's own font.
     public object NameFont => Font is { } font ? new FontFamily(font) : AvaloniaProperty.UnsetValue;
 
@@ -30,7 +34,7 @@ public sealed record MenuRowItem(string Text, string Link, bool IsOn, string Tip
 
     private static readonly ICommand NoCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(() => { });
 
-    public bool IsRow => !IsHeader;
+    public bool IsRow => !IsHeader && !IsFind;
     public IReadOnlyList<TagItem> InlineTags => TagsOnOwnLine ? Array.Empty<TagItem>() : Tags ?? Array.Empty<TagItem>();
     public IReadOnlyList<TagItem> OwnLineTags => TagsOnOwnLine ? Tags ?? Array.Empty<TagItem>() : Array.Empty<TagItem>();
     public bool HasInlineTags => InlineTags.Count > 0;
@@ -124,6 +128,7 @@ public partial class MenuRowList : UserControl
 
     /// Asks the rows again after a row that keeps the menu open was clicked (set on a nested menu, whose ticks must follow).
     private Func<IReadOnlyList<MenuRowItem>>? _refresh;
+    private Action? _close; // a nested menu: closes it and puts the keyboard back on its row
     private Flyout? _nested;
     private Control? _nestedOpener;
 
@@ -162,6 +167,12 @@ public partial class MenuRowList : UserControl
 
     private void OnRowKey(object? sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Left && e.KeyModifiers == KeyModifiers.None && _close is { } close)
+        {
+            close();
+            e.Handled = true;
+            return;
+        }
         if (e.Key is Key.Up or Key.Down && e.KeyModifiers == KeyModifiers.None && sender is Control row && Rows.Classes.Contains("big"))
         {
             WalkRows(row, e.Key == Key.Down ? 1 : -1);
@@ -198,6 +209,11 @@ public partial class MenuRowList : UserControl
         _nested?.Hide();
         var list = new MenuRowList { ItemsSource = rows(), _refresh = rows };
         var flyout = _nested = new ListMenuFlyout { Placement = PlacementMode.RightEdgeAlignedTop, Content = list };
+        list._close = () =>
+        {
+            flyout.Hide();
+            opener.Focus(NavigationMethod.Directional);
+        };
         _nestedOpener = opener;
         list.PointerEntered += (_, _) => _rest?.Stop(); // the pointer reached the open sub-menu: keep it
         list.Picked += (_, _) =>
@@ -206,6 +222,14 @@ public partial class MenuRowList : UserControl
             Picked?.Invoke(this, EventArgs.Empty);
         };
         flyout.ShowAt(opener);
+    }
+
+    /// A find row's words changed: the owner is told, then a nested menu's rows are asked again.
+    private void OnFindChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (sender is not TextBox { DataContext: MenuRowSlot { Row.Find: { } find } } box) return;
+        find(box.Text ?? string.Empty);
+        if (_refresh is { } refresh) ItemsSource = refresh();
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)

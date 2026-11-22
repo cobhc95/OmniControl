@@ -18,11 +18,12 @@ internal static partial class Shots
 
     private static void NetworkTraffic(Rig rig, Camera camera, string name, params AppNetRule[] rules)
     {
-        Use(ViewTemplate.For<TrafficPageViewModel, TrafficPage>(), ViewTemplate.For<AppNetItem, AppNetRow>());
+        Use(ViewTemplate.For<TrafficPageViewModel, TrafficPage>(), ViewTemplate.For<AppNetItem, AppNetRow>(), ViewTemplate.For<AllAppsItem, AllAppsRow>());
         var settings = ResourcesSettings.Load();
         var limits = new SampleLimits(rules);
         var monitor = new TrafficMonitor(() => new SampleTraffic());
-        var page = new TrafficPageViewModel(monitor, settings, limits, rig.Scopes, rig.ScopeGate, Rig.Report);
+        var page = new TrafficPageViewModel(monitor, settings, limits, new SampleNetworks(),
+            new ProviderChoice("Network traffic control presets", new TrafficPresets(settings), () => { }, withCustom: true), Rig.Report);
         page.OnOnScreenChanged(true); // the reader starts its session, then reads one interval later
         Camera.Pump((int)TimeSpan.FromSeconds(settings.Setup.ReadEverySeconds * 1.5).TotalMilliseconds);
         camera.Page(page, name);
@@ -35,8 +36,14 @@ internal static partial class Shots
     /// The programs' rules held in memory: nothing reaches Windows.
     private sealed class SampleLimits(params AppNetRule[] rules) : INetworkLimits
     {
-        public AppNetRule? Rule(string appId) => rules.FirstOrDefault(r => r.Id == appId);
-        public void Set(string appId, Action<AppNetRule> change) => change(Rule(appId) ?? new AppNetRule { Id = appId });
+        public AppNetRule? Rule(NetScope scope, string appId) => rules.FirstOrDefault(r => r.Id == appId);
+        public void Set(NetScope scope, IEnumerable<string> appIds, Action<AppNetRule> change)
+        {
+            foreach (var id in appIds) change(Rule(scope, id) ?? new AppNetRule { Id = id });
+        }
+        public bool HasOwn(NetScope scope) => false;
+        public void UseParent(NetScope scope) { }
+        public string? UploadScopeLine => null;
         public bool PacketFilterOn { get; private set; } = true;
         public void SetPacketFilter(bool on) => PacketFilterOn = on;
         public event Action? Changed { add { } remove { } }
@@ -48,6 +55,14 @@ internal static partial class Shots
         public void InstallPacketFilter() { }
         public Task InstallServiceAsync() => Task.CompletedTask;
         public void Recheck() { }
+    }
+
+    /// No adapter or network: the Adapter choice offers All adapters only.
+    private sealed class SampleNetworks : INetworkWatch
+    {
+        public NetworkSnapshot Now => NetworkSnapshot.Empty;
+        public event Action? Changed { add { } remove { } }
+        public IDisposable Need() => new HoldCount().Take();
     }
 
     /// Four made-up programs with steady speeds (bytes per second); each take is the bytes of the time since the last, as the reader divides them.

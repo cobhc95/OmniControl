@@ -1,10 +1,10 @@
-using OmniControl.App.Features.AppLists;
 using OmniControl.App.Features.Resources;
 
 namespace OmniControl.App.Features.Traffic.Pages;
 
-// What the Network traffic control page offers to global search, defined once (see SearchBuilder): the Packet filter switch, the limit and
-// block menus, the status line and install links, and one result per program row, each with its live row when the page is made.
+// What the Network traffic control page offers to global search, defined once (see SearchBuilder): the Packet filter switch, the Adapter
+// choice, the presets, the All apps row, the limit and block menus, the status line and install links, and one result per program row, each
+// with its live row when the page is made.
 public sealed partial class TrafficPageViewModel
 {
     private const string TrafficWords = "network traffic internet upload download speed limit throttle block firewall bandwidth app program";
@@ -22,7 +22,22 @@ public sealed partial class TrafficPageViewModel
             Menu = AppNetItem.LimitWords,
             Tip = $"{NetworkLimits.UploadBlockTip} {NetworkLimits.DownloadBlockTip}",
         },
-        ScopeCard = new("Apps scope", TrafficWords + " apps scope chip", PageTitle) { Menu = AppScopeModel.MenuWords },
+        AdapterCard = new(AdapterTitle, TrafficWords + " adapter adapters wifi wi-fi ethernet vpn network networks saved per adapter per network", PageTitle)
+        {
+            Menu = new[] { AllAdapters, BaseWords, OwnWords, UsesAllWords, NotConnected, "Every network", "Connected", "Own settings", FindNetwork,
+                "Use All adapters' settings", "Changes here apply only on one adapter or network" },
+            Tip = "Whose rules the table shows and edits: All adapters', or one adapter's or network's own (the most specific wins)",
+        },
+        AllAppsCard = new(AllAppsItem.Name, TrafficWords + " entire pc every app all programs mixed whole", PageTitle)
+        {
+            Note = AllAppsItem.Detail,
+            Choices = AppNetItem.LimitWords.Append(AllAppsItem.MixedWord).ToList(),
+        },
+        PresetsCard = new("Network traffic control presets", TrafficWords + " preset presets", PageTitle)
+        {
+            Choices = new[] { TrafficPresets.NormalName, ProviderChoice.CustomText },
+            Menu = new[] { ProviderChoice.ManageText },
+        },
         InstallCard = new("Install network service", TrafficWords + " install windows packet filter driver service administrator", PageTitle) { Tip = NetworkLimits.InstallServiceTip },
         ColumnsCard = new("Program columns", TrafficWords + " app down up upload limit download limit on pin unpin open file location copy program path switch", PageTitle);
 
@@ -38,7 +53,8 @@ public sealed partial class TrafficPageViewModel
     /// while it is made; otherwise the programs holding a rule or a pin).
     private static SearchBuilder Cards(ResourcesSettings? settings, INetworkLimits? limits, TrafficPageViewModel? page)
     {
-        var builder = new SearchBuilder().Add(FilterCard, page?.PacketFilter).Add(GroupCard).Add(LimitsCard).Add(ScopeCard).Add(InstallCard).Add(ColumnsCard);
+        var builder = new SearchBuilder().Add(FilterCard, page?.PacketFilter).Add(GroupCard).Add(AdapterCard, page?.AdapterChoice).Add(PresetsCard, page?.PresetChoice)
+            .Add(AllAppsCard).Add(LimitsCard).Add(InstallCard).Add(ColumnsCard);
         if (limits is not null) builder.Add(StatusCard(limits));
         if (page is not null) return builder.AddEach(page.AppRows, r => AppCard(r.Name, r.Id), r => r);
         var ids = (settings?.Setup.Apps.Select(r => r.Id) ?? Enumerable.Empty<string>()).Concat((settings?.Setup.Pinned ?? new List<string>()).Select(ProgramIdentity.Normalize)).Distinct();

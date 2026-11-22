@@ -15,6 +15,9 @@ public interface IHardwareWatches
     /// Adds a watch; the same id twice replaces the first.
     void Register(HardwareWatch watch);
 
+    /// Takes a watch out (nobody needs it now).
+    void Unregister(string id);
+
     /// A Windows announcement arrived (any thread): every watch that lists it is refreshed once its burst has settled.
     void Signal(HardwareSignal signal, string? source = null);
 

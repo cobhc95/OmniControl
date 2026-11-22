@@ -55,6 +55,11 @@
                 <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentEdge}" />
             </Style>
+            <!-- .mixed = the chip of several rows that differ ("Mixed"): accent words, its edge the dashed Rectangle.mixeddash laid over it -->
+            <Style Selector="^.selector.mixed /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
+                <Setter Property="BorderBrush" Value="Transparent" />
+            </Style>
             <!-- .risk = a method set but not running (Equalizer APO on the speakers, but Windows doesn't load it there): red words and edge -->
             <Style Selector="^.selector.method.risk /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="Foreground" Value="{DynamicResource BrushDanger}" />
@@ -168,6 +173,15 @@
             <Style Selector="^.anchorframe.focused"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
         </ControlTheme>
     </Styles.Resources>
+    <!-- The dashed accent edge of a Button.selector.mixed chip (a border cannot be dashed), laid over the chip in the same cell -->
+    <Style Selector="Rectangle.mixeddash">
+        <Setter Property="Stroke" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="StrokeThickness" Value="1" />
+        <Setter Property="StrokeDashArray" Value="3,2" />
+        <Setter Property="RadiusX" Value="{StaticResource ChipDashRadius}" />
+        <Setter Property="RadiusY" Value="{StaticResource ChipDashRadius}" />
+        <Setter Property="IsHitTestVisible" Value="False" />
+    </Style>
     <Style Selector="Button.selector"><Setter Property="Theme" Value="{StaticResource SelectorButton}" /></Style>
     <Style Selector="Button.reveal"><Setter Property="Theme" Value="{StaticResource RevealButton}" /></Style>
     <Style Selector="Button.pin"><Setter Property="Theme" Value="{StaticResource PinButton}" /></Style>

@@ -7,8 +7,16 @@ namespace OmniControl.Core.Engine.Resources;
 /// and a download limit in bytes per second (null: none; <see cref="DownloadShaper"/>'s, the rest is <see cref="NetworkRules"/>').
 /// <paramref name="Blocked"/> blocks both ways; <paramref name="UploadBlocked"/> only outbound (a firewall rule); <paramref name="DownloadBlocked"/>
 /// drops what arrives for the program (<see cref="DownloadShaper"/>, a firewall cannot: it lets replies to the program's own requests in).
-public sealed record NetworkRule(string AppId, string Path, ulong? UploadBits, bool Blocked, long? DownloadBytes = null, bool UploadBlocked = false, bool DownloadBlocked = false)
+/// <paramref name="Adapter"/> (its id, and <paramref name="AdapterName"/> for the firewall) limits the blocks and the download limit to one
+/// adapter; <paramref name="Profile"/> limits the upload cap to networks of one category (Windows' throttle rules can scope no finer).
+public sealed record NetworkRule(string AppId, string Path, ulong? UploadBits, bool Blocked, long? DownloadBytes = null, bool UploadBlocked = false, bool DownloadBlocked = false,
+    string? Adapter = null, string? AdapterName = null, NetworkCategory? Profile = null)
 {
+    /// The QoS policy's NetworkProfile: 0 every network, 1 domain, 2 private, 3 public.
+    public int QosProfile => Profile switch { NetworkCategory.Domain => 1, NetworkCategory.Private => 2, NetworkCategory.Public => 3, _ => 0 };
+
+    public static NetworkCategory? ProfileOf(int qos) => qos switch { 1 => NetworkCategory.Domain, 2 => NetworkCategory.Private, 3 => NetworkCategory.Public, _ => null };
+
     /// True when the rule needs a firewall rule or an upload policy (what <see cref="NetworkRules"/> holds).
     public bool NeedsRules => UploadBits is not null || Blocked || UploadBlocked;
 
@@ -21,7 +29,7 @@ public sealed record NetworkRule(string AppId, string Path, ulong? UploadBits, b
 
 /// One of OmniControl's rules as Windows holds it (or should): a throttle policy when <see cref="Bits"/> is set, else one direction of a
 /// firewall block. <see cref="Program"/> is the policy's program name or the firewall rule's path.
-internal sealed record HeldRule(string Name, string Program, ulong? Bits = null, bool Inbound = false);
+internal sealed record HeldRule(string Name, string Program, ulong? Bits = null, bool Inbound = false, int Profile = 0, string? Interface = null);
 
 /// What must change so Windows holds exactly the wanted rules: every rule of a name in <see cref="Remove"/> goes, <see cref="Add"/> goes in.
 internal sealed record RulePlan(IReadOnlyList<HeldRule> Remove, IReadOnlyList<HeldRule> Add)
@@ -74,14 +82,17 @@ public sealed class NetworkRules
 
     private static IEnumerable<HeldRule> Wanted(NetworkRule rule)
     {
-        if (rule.UploadBits is { } bits) yield return new HeldRule($"{Prefix}limit {rule.AppId}", Path.GetFileName(rule.Path.Length > 0 ? rule.Path : rule.AppId + ".exe"), bits);
-        if (rule.Blocked) yield return new HeldRule($"{Prefix}block {rule.AppId} (in)", rule.Path, Inbound: true);
-        if (rule.Blocked || rule.UploadBlocked) yield return new HeldRule($"{Prefix}block {rule.AppId} (out)", rule.Path);
+        var where = rule.AdapterName is { } adapter ? $" on {adapter}" : string.Empty;
+        if (rule.UploadBits is { } bits)
+            yield return new HeldRule($"{Prefix}limit {rule.AppId}{(rule.Profile is { } p ? $" ({p})" : string.Empty)}", Path.GetFileName(rule.Path.Length > 0 ? rule.Path : rule.AppId + ".exe"), bits, Profile: rule.QosProfile);
+        if (rule.Blocked) yield return new HeldRule($"{Prefix}block {rule.AppId} (in){where}", rule.Path, Inbound: true, Interface: rule.AdapterName);
+        if (rule.Blocked || rule.UploadBlocked) yield return new HeldRule($"{Prefix}block {rule.AppId} (out){where}", rule.Path, Interface: rule.AdapterName);
     }
 
     private static bool Named(HeldRule rule, string name) => string.Equals(rule.Name, name, StringComparison.OrdinalIgnoreCase);
 
-    private static bool Same(HeldRule want, HeldRule held) => Named(held, want.Name) && want.Inbound == held.Inbound
+    private static bool Same(HeldRule want, HeldRule held) => Named(held, want.Name) && want.Inbound == held.Inbound && want.Profile == held.Profile
+        && string.Equals(want.Interface, held.Interface, StringComparison.OrdinalIgnoreCase)
         && string.Equals(Environment.ExpandEnvironmentVariables(want.Program), Environment.ExpandEnvironmentVariables(held.Program), StringComparison.OrdinalIgnoreCase)
         && (want.Bits, held.Bits) switch { (null, null) => true, ({ } a, { } b) => (a > b ? a - b : b - a) < RateSlack, _ => false };
 
@@ -94,14 +105,15 @@ public sealed class NetworkRules
     {
         var held = new List<HeldRule>();
         Try(problems, "read the upload limits", () => EachQos((policy, name) =>
-            held.Add(new HeldRule(name, policy["AppPathNameMatchCondition"] as string ?? string.Empty, Convert.ToUInt64(policy["ThrottleRateAction"] ?? 0UL)))));
+            held.Add(new HeldRule(name, policy["AppPathNameMatchCondition"] as string ?? string.Empty, Convert.ToUInt64(policy["ThrottleRateAction"] ?? 0UL),
+                Profile: Convert.ToInt32(policy["NetworkProfile"] ?? 0)))));
         Try(problems, "read the blocks", () => Firewall(rules =>
         {
             foreach (var rule in (dynamic)rules)
                 try
                 {
                     if ((string?)rule.Grouping == FirewallGroup && (string?)rule.Name is { } name)
-                        held.Add(new HeldRule(name, (string?)rule.ApplicationName ?? string.Empty, Inbound: (int)rule.Direction == FirewallIn));
+                        held.Add(new HeldRule(name, (string?)rule.ApplicationName ?? string.Empty, Inbound: (int)rule.Direction == FirewallIn, Interface: InterfaceOf((object?)rule.Interfaces)));
                 }
                 finally { Release((object)rule); }
         }));
@@ -119,7 +131,7 @@ public sealed class NetworkRules
 
     private static void Add(HeldRule rule)
     {
-        if (rule.Bits is { } bits) AddQos(rule.Name, rule.Program, bits);
+        if (rule.Bits is { } bits) AddQos(rule.Name, rule.Program, bits, rule.Profile);
         else AddBlock(rule);
     }
 
@@ -151,7 +163,7 @@ public sealed class NetworkRules
 
     private static ManagementNamedValueCollection ActiveStore() => new() { { "PolicyStore", "ActiveStore" } };
 
-    private static void AddQos(string name, string program, ulong bits)
+    private static void AddQos(string name, string program, ulong bits, int profile)
     {
         using var policies = new ManagementClass(new ManagementScope(QosScope), new ManagementPath(QosClass), new ObjectGetOptions(ActiveStore()));
         using var policy = policies.CreateInstance();
@@ -160,6 +172,7 @@ public sealed class NetworkRules
         policy["ThrottleRateAction"] = bits;
         policy["DSCPAction"] = NoMarking;
         policy["PriorityValue8021Action"] = NoMarking;
+        if (profile != 0) policy["NetworkProfile"] = (uint)profile;
         policy.Put(new PutOptions(ActiveStore()) { Type = PutType.CreateOnly });
     }
 
@@ -175,6 +188,9 @@ public sealed class NetworkRules
     }
 
     // ---- Firewall blocks ----
+
+    /// The one adapter a firewall rule names (its Interfaces, a list of adapter names), or null for every adapter.
+    private static string? InterfaceOf(object? interfaces) => interfaces is object[] { Length: > 0 } names ? names[0] as string : null;
 
     private static dynamic Com(string progId) => Activator.CreateInstance(Type.GetTypeFromProgID(progId, throwOnError: true)!)!;
 
@@ -215,6 +231,7 @@ public sealed class NetworkRules
                 block.Action = FirewallBlock;
                 block.Direction = rule.Inbound ? FirewallIn : FirewallOut;
                 block.Profiles = AllProfiles;
+                if (rule.Interface is { } adapter) block.Interfaces = new object[] { adapter };
                 block.Enabled = true;
                 ((dynamic)rules).Add(block);
             }

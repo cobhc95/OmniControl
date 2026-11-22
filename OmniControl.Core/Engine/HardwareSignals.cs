@@ -39,6 +39,10 @@ public enum HardwareSignal
 
     /// A network adapter's addresses changed (connected, disconnected, a new network joined).
     Network = 256,
+
+    /// Windows' Network List Manager: a network saved, forgotten, connected, disconnected or changed (name, category, metered). Heard only
+    /// while a watch lists it (<see cref="HardwareSignals.ListenToNetworks"/>).
+    NetworkList = 512,
 }
 
 /// Raises <see cref="Raised"/> for Windows' hardware announcements that need no registration of a device kind: a device change, a display
@@ -102,8 +106,36 @@ public sealed class HardwareSignals : IDisposable
         return started;
     }
 
+    private readonly object _networksGate = new();
+    private NetworkListEvents? _networks;
+    private bool _networksWanted;
+
+    /// Starts or stops hearing Windows' Network List Manager (<see cref="HardwareSignal.NetworkList"/>); any thread, done on an MTA worker.
+    public void ListenToNetworks(bool on)
+    {
+        lock (_networksGate) _networksWanted = on;
+        Task.Run(FollowNetworks);
+    }
+
+    private void FollowNetworks()
+    {
+        lock (_networksGate)
+        {
+            if (_networksWanted == (_networks is not null)) return;
+            if (!_networksWanted)
+            {
+                _networks!.Dispose();
+                _networks = null;
+                return;
+            }
+            try { _networks = NetworkListEvents.Start(what => Raise(HardwareSignal.NetworkList, $"Network List Manager {what}"), text => Failed?.Invoke(text)); }
+            catch (Exception ex) when (ex is COMException or InvalidCastException) { Failed?.Invoke($"Windows refused the network list notice ({ex.Message}); networks are then read again when an adapter's addresses change."); }
+        }
+    }
+
     public void Dispose()
     {
+        ListenToNetworks(false);
         _clockCheck?.Dispose();
         _clockCheck = null;
         StopSystemEvents();

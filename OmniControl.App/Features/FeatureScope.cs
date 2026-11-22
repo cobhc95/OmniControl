@@ -172,6 +172,12 @@ public sealed class FeatureScope
             inner.Register(watch);
         }
 
+        public void Unregister(string id)
+        {
+            _ids.Remove(id);
+            inner.Unregister(id);
+        }
+
         public void Forget()
         {
             foreach (var id in _ids) unwatch(id);

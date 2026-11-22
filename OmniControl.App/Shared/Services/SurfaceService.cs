@@ -111,6 +111,9 @@ public static class SurfaceService
         Put("BrushCard", s.Item);
         Put("BrushCardEdge", s.ItemEdge);
         Put("BrushCardSelected", s.ItemSelected);
+        // The lead row of a list (a whole-list row above its items): a step lighter fill and a stronger edge than the cards, in both themes
+        Put("BrushCardLead", variant == ThemeVariant.Dark ? ColorMath.Mix(s.Item, lift, LeadLift) : ColorMath.Mix(s.Card, s.Raised, LeadLightFill));
+        Put("BrushCardLeadEdge", ColorMath.Mix(s.ItemEdge, lift, LeadEdge));
         // A group inside a group: dark steps half way from the group to its cards, so the cards inside still read; light keeps its raised panel
         Put("BrushSubgroup", variant == ThemeVariant.Dark ? ColorMath.Mix(s.Card, s.Item, 0.5) : s.Raised);
         if (variant == ThemeVariant.Dark) Put("BrushCardFocusFill", s.ItemSelected);
@@ -178,4 +181,7 @@ public static class SurfaceService
     }
 
     private const double ItemDarken = 0.14, SelectedDarken = 0.36, ItemEdgeBlend = 0.25;
+
+    /// The lead row: its dark fill a little towards white, its light fill most of the way to the raised tone, its edge towards the text colour.
+    private const double LeadLift = 0.04, LeadLightFill = 0.6, LeadEdge = 0.14;
 }

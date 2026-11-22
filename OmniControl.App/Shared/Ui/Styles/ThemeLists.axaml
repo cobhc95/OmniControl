@@ -92,6 +92,12 @@
         </ControlTheme>
     </Styles.Resources>
     <Style Selector="ListBox.nav, ListBox.rows, ListBox.fxlist, ListBox.pick"><Setter Property="Theme" Value="{StaticResource PageList}" /></Style>
+    <!-- ListBox.rows.lead: its first row stands for the whole list (Network traffic control's "All apps"): a step lighter fill and a stronger
+         edge (BrushCardLead, BrushCardLeadEdge from SurfaceService); hover and focus stay the rows' own -->
+    <Style Selector="ListBox.rows.lead > ListBoxItem:nth-child(1)">
+        <Setter Property="Background" Value="{DynamicResource BrushCardLead}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushCardLeadEdge}" />
+    </Style>
     <!-- A nav item's icon: a fixed box (NavIconBox) so names line up, the drawing itself flush left in it, so its left edge sits on the heading's first letter -->
     <Style Selector="Panel.navicon">
         <Setter Property="Width" Value="{StaticResource NavIconBox}" />

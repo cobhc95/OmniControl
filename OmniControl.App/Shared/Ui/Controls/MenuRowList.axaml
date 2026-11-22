@@ -32,6 +32,11 @@
                     <StackPanel>
                         <Border Classes="hrule" Margin="{StaticResource MenuRuleMargin}" IsVisible="{Binding Row.RuleAbove}" />
                         <TextBlock Classes="menutext" Text="{Binding Row.Text}" IsVisible="{Binding Row.IsHeader}" />
+                        <!-- A find row: a search box over the rows under it, its count muted at its right -->
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource MenuGap}" Margin="{StaticResource MenuRowInset}" IsVisible="{Binding Row.IsFind}">
+                            <TextBox Classes="field search" Watermark="{Binding Row.Text}" TextChanged="OnFindChanged" />
+                            <TextBlock Grid.Column="1" Classes="menutext" Margin="0" Text="{Binding Row.Trailing}" VerticalAlignment="Center" />
+                        </Grid>
                         <Button Classes="menurow" Classes.chosen="{Binding Row.ShowsBar}" Classes.accent="{Binding Row.IsAccent}" Classes.muted="{Binding Row.IsMuted}" Classes.danger="{Binding Row.IsDanger}" Command="{Binding Row.Command}" IsEnabled="{Binding Row.IsEnabled}" Click="OnRowClick" PointerEntered="OnRowEnter" PointerExited="OnRowExit" KeyDown="OnRowKey" ToolTip.Tip="{Binding Row.Tip}" ToolTip.ShowOnDisabled="True" IsVisible="{Binding Row.IsRow}" Opacity="{Binding Row.RowOpacity}">
                             <DockPanel Margin="{StaticResource MenuRowInset}">
                                 <Panel Classes="glyphslot" DockPanel.Dock="Left" Width="{StaticResource MenuGlyphSize}" Margin="{StaticResource MenuGlyphMargin}" VerticalAlignment="Top" Height="{StaticResource MenuRowLine}">

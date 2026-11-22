@@ -5,7 +5,7 @@ using OmniControl.App.Features.Resources;
 namespace OmniControl.App.Features.Traffic.Pages;
 
 /// One Network traffic control row: its pin, the program (icon, friendly name, the technical name muted when it differs), its traffic, its upload and
-/// download limit chips and its On switch (off blocks it), through <see cref="NetworkLimits"/>.
+/// download limit chips and its On switch (off blocks it), through <see cref="NetworkLimits"/>, at the place the page shows (<see cref="NetScope"/>).
 public sealed partial class AppNetItem : ObservableObject, IEditorItem
 {
     internal const string NoLimit = "No limit", BlockWord = "Block";
@@ -14,13 +14,15 @@ public sealed partial class AppNetItem : ObservableObject, IEditorItem
     internal static IReadOnlyList<string> LimitWords { get; } = NetworkLimits.Choices.Select(Words).Prepend(NoLimit).Append(BlockWord).ToList();
     private bool _uploadBlocked, _downloadBlocked;
     private readonly INetworkLimits _limits;
+    private readonly Func<NetScope> _scope;
     private readonly ProcessIcons _icons;
     private readonly Action<string> _report;
 
+    /// <param name="scope">The place whose rules the page shows.</param>
     /// <param name="togglePin">Pins or unpins the row (the page keeps the pins).</param>
-    internal AppNetItem(string id, INetworkLimits limits, ProcessIcons icons, Action<AppNetItem> togglePin, Action<string> report)
+    internal AppNetItem(string id, INetworkLimits limits, Func<NetScope> scope, ProcessIcons icons, Action<AppNetItem> togglePin, Action<string> report)
     {
-        (Id, _limits, _icons, _report) = (id, limits, icons, report);
+        (Id, _limits, _scope, _icons, _report) = (id, limits, scope, icons, report);
         _name = id;
         TogglePinCommand = new RelayCommand(() => togglePin(this));
         Load();
@@ -73,16 +75,22 @@ public sealed partial class AppNetItem : ObservableObject, IEditorItem
 
     partial void OnNameChanged(string value) => OnPropertyChanged(nameof(Technical));
 
+    /// Each direction's value as last shown (<see cref="LimitMenu.Now"/>), read by the All apps row.
+    public int UploadValue { get; private set; }
+    public int DownloadValue { get; private set; }
+
+    /// The program's rule at the place shown, or null.
+    public AppNetRule? Rule => _limits.Rule(_scope(), Id);
+
     /// Shows the program's rule as saved now.
     public void Load()
     {
-        var rule = _limits.Rule(Id);
+        var rule = Rule;
         _loading = true;
-        (UploadSet, Upload) = rule is { UploadBlocked: true } ? (true, BlockWord)
-            : rule is { UploadOn: true, UploadKbps: > 0 } ? (true, Words(rule.UploadKbps)) : (false, NoLimit);
-        (DownloadSet, Download) = rule is { DownloadBlocked: true } ? (true, BlockWord)
-            : rule is { DownloadOn: true, DownloadKbps: > 0 } ? (true, Words(rule.DownloadKbps)) : (false, NoLimit);
-        (_uploadBlocked, _downloadBlocked) = (rule?.UploadBlocked == true, rule?.DownloadBlocked == true);
+        (UploadValue, DownloadValue) = (LimitMenu.Upload.Now(rule), LimitMenu.Download.Now(rule));
+        (UploadSet, Upload) = (UploadValue != LimitMenu.None, LimitMenu.Words(UploadValue));
+        (DownloadSet, Download) = (DownloadValue != LimitMenu.None, LimitMenu.Words(DownloadValue));
+        (_uploadBlocked, _downloadBlocked) = (UploadValue == LimitMenu.Blocked, DownloadValue == LimitMenu.Blocked);
         IsOn = rule?.Blocked != true;
         _loading = false;
         OnPropertyChanged(nameof(UploadTip));
@@ -105,14 +113,14 @@ public sealed partial class AppNetItem : ObservableObject, IEditorItem
 
     partial void OnIsOnChanged(bool value)
     {
-        if (!_loading) _limits.Set(Id, r => r.Blocked = !value);
+        if (!_loading) Change(r => r.Blocked = !value);
     }
 
-    public IReadOnlyList<MenuRowItem> UploadRows() => Rows(r => r.UploadBlocked, (r, on) => r.UploadBlocked = on, NetworkLimits.UploadBlockTip,
-        r => r.UploadOn ? r.UploadKbps : 0, (r, kbps) => (r.UploadOn, r.UploadKbps) = (kbps > 0, kbps > 0 ? kbps : r.UploadKbps));
+    private void Change(Action<AppNetRule> change) => _limits.Set(_scope(), new[] { Id }, change);
 
-    public IReadOnlyList<MenuRowItem> DownloadRows() => Rows(r => r.DownloadBlocked, (r, on) => r.DownloadBlocked = on, NetworkLimits.DownloadBlockTip,
-        r => r.DownloadOn ? r.DownloadKbps : 0, (r, kbps) => (r.DownloadOn, r.DownloadKbps) = (kbps > 0, kbps > 0 ? kbps : r.DownloadKbps));
+    public IReadOnlyList<MenuRowItem> UploadRows() => LimitMenu.Upload.Rows(LimitMenu.Upload.Now(Rule), Change);
+
+    public IReadOnlyList<MenuRowItem> DownloadRows() => LimitMenu.Download.Rows(LimitMenu.Download.Now(Rule), Change);
 
     /// The row's right-click menu: pin or unpin, then, when the program's file is known, its folder and its path.
     public IReadOnlyList<MenuRowItem> MenuRows()
@@ -131,18 +139,6 @@ public sealed partial class AppNetItem : ObservableObject, IEditorItem
     {
         if (await Task.Run(step) is { } problem) _report(problem);
     });
-
-    /// "No limit", every offered limit, then Block (this direction alone), the one in force ticked; a limit or No limit lifts the block.
-    private IReadOnlyList<MenuRowItem> Rows(Func<AppNetRule, bool> blocked, Action<AppNetRule, bool> block, string blockTip, Func<AppNetRule, int> now, Action<AppNetRule, int> set)
-    {
-        var rule = _limits.Rule(Id);
-        var isBlocked = rule is not null && blocked(rule);
-        var current = rule is not null && !isBlocked ? now(rule) : 0;
-        var rows = NetworkLimits.Choices.Prepend(0).Select(kbps => new MenuRowItem(kbps == 0 ? NoLimit : Words(kbps), string.Empty, !isBlocked && kbps == current, string.Empty,
-            new RelayCommand(() => _limits.Set(Id, r => { block(r, false); set(r, kbps); })))).ToList();
-        rows.Add(new MenuRowItem(BlockWord, string.Empty, isBlocked, blockTip, new RelayCommand(() => _limits.Set(Id, r => block(r, true))), RuleAbove: true, IsDanger: true));
-        return rows;
-    }
 
     internal static string Words(int kbps) => Reading.SpeedWords(kbps * 1024d);
 }

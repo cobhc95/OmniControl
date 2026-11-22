@@ -13,7 +13,7 @@ internal sealed class NetworkServiceClient : INetworkWork
     private readonly Action _changed, _lost;
     private readonly object _gate = new();
     private NamedPipeClientStream? _pipe;
-    private Dictionary<string, NetRule> _held = new(StringComparer.OrdinalIgnoreCase); // by path, as the service last said
+    private Dictionary<string, NetRule> _held = new(StringComparer.OrdinalIgnoreCase); // by program and place (NetRule.Key), as the service last said
     private Traffic? _traffic;
     private volatile bool _connected;
     private volatile string? _problem;
@@ -34,7 +34,7 @@ internal sealed class NetworkServiceClient : INetworkWork
         var problems = new List<string>();
         var want = new Dictionary<string, NetRule>(StringComparer.OrdinalIgnoreCase);
         foreach (var rule in wanted)
-            if (rule.Path.Length > 0) want[rule.Path] = NetRule.From(rule);
+            if (rule.Path.Length > 0 && NetRule.From(rule) is var asked) want[asked.Key] = asked;
             else problems.Add($"Couldn't set the rule of “{rule.AppId}”: Windows did not say where the program is.");
         lock (_gate)
         {
@@ -57,8 +57,8 @@ internal sealed class NetworkServiceClient : INetworkWork
     /// Asks for each difference, then reads back what the service holds; false when the connection broke on the way.
     private bool Send(Dictionary<string, NetRule> want, List<string> problems)
     {
-        foreach (var path in want.Keys.Union(_held.Keys, StringComparer.OrdinalIgnoreCase).ToList())
-            foreach (var request in NetworkPipe.Changes(path, _held.GetValueOrDefault(path), want.GetValueOrDefault(path)))
+        foreach (var key in want.Keys.Union(_held.Keys, StringComparer.OrdinalIgnoreCase).ToList())
+            foreach (var request in NetworkPipe.Changes((want.GetValueOrDefault(key) ?? _held[key]).Path, _held.GetValueOrDefault(key), want.GetValueOrDefault(key)))
                 if (Ask(request, problems) is null) return false;
         if (!ReadRules(problems)) return false;
         if (want.Count != _held.Count || want.Any(w => !_held.TryGetValue(w.Key, out var held) || !held.SameLimits(w.Value)))
@@ -69,7 +69,7 @@ internal sealed class NetworkServiceClient : INetworkWork
     private bool ReadRules(List<string> problems)
     {
         if (Ask(Request(NetOp.ListRules), problems) is not { Rules: { } rules }) return false;
-        _held = rules.ToDictionary(r => r.Path, StringComparer.OrdinalIgnoreCase);
+        _held = rules.ToDictionary(r => r.Key, StringComparer.OrdinalIgnoreCase);
         return true;
     }
 

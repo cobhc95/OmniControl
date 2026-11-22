@@ -8,7 +8,8 @@ namespace OmniControl.App.Features.Traffic;
 /// The programs' network rules (upload limit, download limit, block): saved, made what Windows holds on a worker (throttled; each sync reads
 /// Windows, so a crashed run's rules go at the next start), all taken out at shut-down. The work runs in the network service when it is
 /// installed, else in OmniControl itself while it runs as administrator, else nowhere (the page says so). The "Packet filter" switch keeps
-/// Windows Packet Filter out of all traffic while off.
+/// Windows Packet Filter out of all traffic while off. Rules may be an adapter's or a network's own (<see cref="ScopedRules"/>); while any
+/// is, the network watch runs and Windows follows each adapter's network as it changes.
 public sealed class NetworkLimits : INetworkLimits, IDisposable
 {
     /// The limits a chip offers, in KB/s (and the limit an "On" action uses when none was chosen).
@@ -29,6 +30,9 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
     private readonly ResourcesSettings _settings;
     private readonly Action<string> _report;
     private readonly Func<string, string?> _pathOf;
+    private readonly INetworkWatch _networks;
+    private IDisposable? _networksNeeded; // held while an adapter or network has rules of its own
+    private volatile bool _uploadInexact;
     private readonly NetworkServiceClient _service;
     private readonly ThrottledRun _sync;
     private readonly List<HotkeyAction> _actions = new();
@@ -46,10 +50,13 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
     private bool _filterSeen; // the packet filter switch as last applied (an import may change it)
 
     /// <param name="pathOf">Where a program the poller saw lives (the firewall and the service name a program by its path).</param>
-    public NetworkLimits(ResourcesSettings settings, Action<string> report, Func<string, string?> pathOf)
+    /// <param name="networks">Which network each adapter is on (read only while an adapter or network has rules of its own).</param>
+    public NetworkLimits(ResourcesSettings settings, Action<string> report, Func<string, string?> pathOf, INetworkWatch networks)
     {
-        (_settings, _report, _pathOf) = (settings, report, pathOf);
+        (_settings, _report, _pathOf, _networks) = (settings, report, pathOf, networks);
         _wanted = Wanted();
+        FollowNetworks();
+        networks.Changed += OnNetworksChanged;
         _filterSeen = settings.PacketFilterOn;
         _service = new NetworkServiceClient(Failed, () => Changed?.Invoke(), () => _sync!.Request());
         _sync = new ThrottledRun(Timing.ResourcesRulesGap, Sync);
@@ -152,23 +159,78 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
     /// The page came on screen: where the work runs and what the service holds are looked at again (the service may have been removed).
     public void Recheck() => _sync.Request();
 
-    public AppNetRule? Rule(string appId) => _settings.Setup.Apps.FirstOrDefault(r => r.Id == appId);
+    public AppNetRule? Rule(NetScope scope, string appId) => ScopedRules.RulesOf(_settings.Setup, scope).FirstOrDefault(r => r.Id == appId);
 
-    /// Changes one program's rule and saves; Windows follows. A rule that asks nothing and keeps no value is forgotten.
-    public void Set(string appId, Action<AppNetRule> change)
+    public bool HasOwn(NetScope scope) => ScopedRules.Own(_settings.Setup, scope) is not null;
+
+    /// Changes programs' rules at a place and saves once; Windows follows. A rule that asks nothing and keeps no value is forgotten.
+    public void Set(NetScope scope, IEnumerable<string> appIds, Action<AppNetRule> change)
     {
-        var apps = _settings.Setup.Apps;
-        var rule = Rule(appId);
-        if (rule is null) apps.Add(rule = new AppNetRule { Id = appId });
-        change(rule);
-        if (rule.Path.Length == 0) rule.Path = _pathOf(appId) ?? string.Empty;
-        if (rule.IsPlain && rule.UploadKbps == 0 && rule.DownloadKbps == 0) apps.Remove(rule);
+        var apps = OwnRules(scope);
+        foreach (var appId in appIds.ToList())
+        {
+            var rule = apps.FirstOrDefault(r => r.Id == appId);
+            if (rule is null) apps.Add(rule = new AppNetRule { Id = appId });
+            change(rule);
+            if (rule.Path.Length == 0) rule.Path = _pathOf(appId) ?? string.Empty;
+            if (rule.IsPlain && rule.UploadKbps == 0 && rule.DownloadKbps == 0) apps.Remove(rule);
+        }
         _settings.Commit();
     }
+
+    /// The place gives up its own rules and uses its parent's again (an adapter's networks keep theirs).
+    public void UseParent(NetScope scope)
+    {
+        if (ScopedRules.Own(_settings.Setup, scope) is not { } own) return;
+        _settings.Setup.Scoped.Remove(own);
+        _settings.Commit();
+    }
+
+    /// The rules an edit at a place changes: its own, made at its first edit as a copy of the rules it used until then.
+    private List<AppNetRule> OwnRules(NetScope scope)
+    {
+        var setup = _settings.Setup;
+        if (scope.IsAll) return setup.Apps;
+        if (ScopedRules.Own(setup, scope) is { } own) return own.Apps;
+        var now = _networks.Now;
+        var known = setup.Scoped.FirstOrDefault(s => s.Adapter == scope.Adapter);
+        var made = new AppNetScope
+        {
+            Adapter = scope.Adapter,
+            AdapterName = now.Adapters.FirstOrDefault(a => a.Id == scope.Adapter)?.Name ?? known?.AdapterName ?? scope.Adapter,
+            Network = scope.Network,
+            NetworkName = scope.IsNetwork ? now.Networks.FirstOrDefault(n => n.Id == scope.Network)?.Name ?? scope.Network : string.Empty,
+            Apps = ScopedRules.RulesOf(setup, scope).Select(r => r.Copy()).ToList(),
+        };
+        setup.Scoped.Add(made);
+        return made.Apps;
+    }
+
+    /// One sentence while some upload limit cannot follow its adapter exactly (the status line), else null.
+    public string? UploadScopeLine => _uploadInexact
+        ? "Upload limits can follow only a network's type (Private, Public, Domain), so adapters of one type that differ use All adapters' upload limit"
+        : null;
+
+    /// The watch runs only while an adapter or network has rules of its own (UI thread).
+    private void FollowNetworks()
+    {
+        var needed = _settings.Setup.Scoped.Count > 0;
+        if (needed == (_networksNeeded is not null)) return;
+        if (needed) _networksNeeded = _networks.Need();
+        else
+        {
+            _networksNeeded!.Dispose();
+            _networksNeeded = null;
+        }
+    }
+
+    /// An adapter joined or left a network (a worker): Windows follows the rules in force there.
+    private void OnNetworksChanged() => Dispatcher.UIThread.Post(() => Guard.Run("Network limits: follow the networks", Reapply));
 
     /// The setup changed: Windows follows only when the rules themselves did.
     private void Reapply()
     {
+        FollowNetworks();
         if (_settings.PacketFilterOn != _filterSeen) ApplyFilter();
         var wanted = Wanted();
         if (wanted.SequenceEqual(_wanted)) return;
@@ -176,10 +238,12 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
         _sync.Request();
     }
 
-    private IReadOnlyList<NetworkRule> Wanted() => _settings.Setup.Apps
-        .Where(r => (r.UploadOn && r.UploadKbps > 0) || r.Blocked || r.UploadBlocked || r.DownloadBlocked || (r.DownloadOn && r.DownloadKbps > 0))
-        .Select(r => new NetworkRule(r.Id, r.Path, r.UploadOn && r.UploadKbps > 0 && !r.UploadBlocked ? (ulong)r.UploadKbps * 1024 * 8 : null, r.Blocked,
-            r.DownloadOn && r.DownloadKbps > 0 && !r.DownloadBlocked ? r.DownloadKbps * 1024L : null, r.UploadBlocked, r.DownloadBlocked)).ToList();
+    private IReadOnlyList<NetworkRule> Wanted()
+    {
+        var (rules, inexact) = ScopedRules.Wanted(_settings.Setup, _networks.Now);
+        _uploadInexact = inexact;
+        return rules;
+    }
 
     private void Sync()
     {
@@ -276,8 +340,7 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
                 _report(UnavailableLine + ".");
                 return;
             }
-            foreach (var app in ids ?? programs().Select(p => p.Id).ToList())
-                Set(app, rule => set(rule, on ?? !isOn(rule)));
+            Set(NetScope.All, ids ?? programs().Select(p => p.Id).ToList(), rule => set(rule, on ?? !isOn(rule)));
         }
         HotkeyAction Make(string suffix, string role, bool? on) => new($"{id}.{suffix}", $"{name}: {role}", category, $"network internet app program limit throttle block {name}",
             ids => Run(ids, on), "programs", programs) { Family = family, FamilyRole = role, SuggestedIcons = new[] { icon } };
@@ -316,6 +379,8 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
     public void Dispose()
     {
         _settings.Changed -= Reapply;
+        _networks.Changed -= OnNetworksChanged;
+        _networksNeeded?.Dispose();
         _sync.Dispose();
         lock (_gate)
         {
