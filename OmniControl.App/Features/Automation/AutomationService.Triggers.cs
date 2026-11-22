@@ -66,9 +66,9 @@ public sealed partial class AutomationService
     private void SyncTriggers()
     {
         if (SessionOff) return;
-        if (Settings.Rules.Any(r => IsActive(r) && IsTrigger(r, AutomationTriggers.DeviceConnect, AutomationTriggers.DeviceDisconnect))) _watcher.StartDevices();
+        if (Settings.Rules.Any(r => Needs(r) && IsTrigger(r, AutomationTriggers.DeviceConnect, AutomationTriggers.DeviceDisconnect))) _watcher.StartDevices();
         // With no rule to look for, the look only keeps the power states fresh: much less often.
-        if (_tick is not null) _tick.Interval = Settings.Rules.Any(r => IsActive(r) || AsksPrograms(r)) ? Timing.AutomationTick : Timing.AutomationIdleTick;
+        if (_tick is not null) _tick.Interval = Settings.Rules.Any(r => Needs(r) || (AsksPrograms(r) && !Stopped(r))) ? Timing.AutomationTick : Timing.AutomationIdleTick;
         LookAtHeld();
         UpdateWake();
     }
@@ -95,8 +95,8 @@ public sealed partial class AutomationService
     private void Look()
     {
         if (_readingPrograms) return;
-        var watchPrograms = !Paused && Settings.Rules.Any(r => IsActive(r) && IsTrigger(r, AutomationTriggers.ProgramStart, AutomationTriggers.ProgramClose));
-        if (!watchPrograms && (Paused || !Settings.Rules.Any(AsksPrograms)))
+        var watchPrograms = Settings.Rules.Any(r => Needs(r) && IsTrigger(r, AutomationTriggers.ProgramStart, AutomationTriggers.ProgramClose));
+        if (!watchPrograms && !Settings.Rules.Any(r => AsksPrograms(r) && !Stopped(r)))
         {
             Guard.Run("Automation look", () => LookWith(watchPrograms: false, programs: null));
             return;
@@ -138,14 +138,14 @@ public sealed partial class AutomationService
         // Taken even while paused: a wake or a start-up is not kept to run hours later when rules are on again.
         var events = new List<AutomationEvent>(_pending);
         _pending.Clear();
-        if (Paused) return;
+        if (!Settings.Rules.Any(Needs)) return;
 
         var afterWake = events.Any(e => e.Kind is AutomationTriggers.Resume or AutomationTriggers.Login or AutomationTriggers.Start);
         events.AddRange(_watcher.Poll(watchPrograms, programs));
         var idle = PowerState.IdleFor();
         if (idle < Timing.AutomationTick) _idleFired.Clear(); // input since the last look: idle rules are ready again
 
-        foreach (var rule in Settings.Rules.Where(r => IsActive(r) && !IsWhile(r)).ToList())
+        foreach (var rule in Settings.Rules.Where(r => Needs(r) && !IsWhile(r)).ToList())
             if (IsDue(rule, events, from, now, idle))
                 TryStart(rule, waitForReady: afterWake && IsTrigger(rule, AutomationTriggers.Resume, AutomationTriggers.Login, AutomationTriggers.Start));
         LookAtHeld();
@@ -200,7 +200,7 @@ public sealed partial class AutomationService
 
     /// "Next: Mon 07:30" for a time-of-day rule that is on, or null.
     public string? NextRunOf(AutomationRule rule) =>
-        IsActive(rule) && !Paused && !SessionOff && NextOf(rule, DateTime.Now) is { } next
+        Needs(rule) && NextOf(rule, DateTime.Now) is { } next
             ? $"Next: {next:ddd HH:mm}"
             : null;
 
@@ -211,9 +211,7 @@ public sealed partial class AutomationService
     private void UpdateWake()
     {
         var now = DateTime.Now;
-        var next = Paused || SessionOff
-            ? null
-            : Settings.Rules.Where(IsActive).SelectMany(r => Watched(r).Where(AutomationTriggers.WakesPc))
+        var next = Settings.Rules.Where(Needs).SelectMany(r => Watched(r).Where(AutomationTriggers.WakesPc))
                 .Select(t => AutomationTriggers.NextTime(t, now)).Where(t => t is not null).Min();
         if (next is null)
         {

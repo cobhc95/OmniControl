@@ -8,7 +8,9 @@ public sealed partial class AutomationPageViewModel
 {
     private const string AutomationWords = "automation rule schedule timer task";
 
-    private static readonly string PauseTipText = $"Stops every rule and block at once. {ReservedKeys.Emergency} does the same from anywhere.";
+    private const string FeatureRulesKept = "Rules made on other pages keep running while rules are paused.";
+
+    private static readonly string PauseTipText = $"Stops every rule and block at once. {FeatureRulesKept} {ReservedKeys.Emergency} does the same from anywhere.";
 
     private static readonly SearchCard AutomationsCard = new("Automations", AutomationWords + " when do trigger new", RulesTab)
         {
@@ -24,7 +26,7 @@ public sealed partial class AutomationPageViewModel
         },
         FeatureRulesCard = new("Rules made on other pages", AutomationWords + " other pages feature made on open warm light network limits device check emulator", FeatureTab)
         {
-            Tip = "Rules a page made for what it does by itself, such as warm light. They are ordinary rules: add triggers, conditions or actions here, and the page shows that it has more.",
+            Tip = "Rules a page made for what it does by itself, such as warm light. They are ordinary rules: add triggers, conditions or actions here, and the page shows that it has more. " + FeatureRulesKept,
         },
         CustomsCard = new("Custom actions", AutomationWords + " script command program url new", CustomTab)
         {

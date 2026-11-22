@@ -136,4 +136,21 @@ public class AutomationTests
         Assert.Equal(new[] { "start", "login" }, rule.AllTriggers);
         Assert.Equal(new[] { "login" }, new AutomationRule { MoreTriggers = { "login" } }.AllTriggers);
     }
+
+    [Theory]
+    [InlineData(false, false, false, false)] // running
+    [InlineData(false, true, false, true)]   // paused: the user's own and preset rules stop
+    [InlineData(false, true, true, false)]   // paused: a rule of another page keeps running
+    [InlineData(true, false, true, true)]    // safe start stops all
+    [InlineData(true, true, true, true)]
+    public void Pausing_stops_only_the_users_rules(bool safeStart, bool paused, bool featureRule, bool stops) =>
+        Assert.Equal(stops, AutomationPause.Stops(safeStart, paused, featureRule));
+
+    [Theory]
+    [InlineData(false, false, false, false)] // blocks apply
+    [InlineData(false, true, false, true)]   // paused: the user's blocks are off for ordinary actions
+    [InlineData(false, true, true, false)]   // paused: a block still stops a feature's rule action
+    [InlineData(true, false, true, true)]    // safe start: no blocks at all
+    public void Blocks_still_reach_a_features_action_while_paused(bool safeStart, bool paused, bool featureAction, bool off) =>
+        Assert.Equal(off, AutomationPause.BlocksOff(safeStart, paused, featureAction));
 }
