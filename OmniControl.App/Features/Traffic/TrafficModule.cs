@@ -32,6 +32,7 @@ public sealed class TrafficModule : IFeatureModule
         (_context, _programs) = (context, 0);
         var monitor = _monitor = new TrafficMonitor(() => _limits?.StartTraffic() ?? throw new IOException("Network traffic control is off."));
         var networks = Networks = new NetworkWatch(context.Hardware);
+        var states = new NetworkStates(context.States, networks, Title);
         var limits = _limits = new NetworkLimits(_settings, context.Report, id => monitor.Seen.GetValueOrDefault(id), networks);
         _presets = new TrafficPresets(_settings);
         context.Presets.Register(new PresetGroup(TrafficPresets.GroupId, Title, Title, _presets));
@@ -50,6 +51,7 @@ public sealed class TrafficModule : IFeatureModule
         context.Shutdown.Add(ShutdownStage.Resources, "download limits", limits.StopDownloads);
         context.Shutdown.Add(ShutdownStage.Resources, "network limits", limits.Dispose);
         context.Shutdown.Add(ShutdownStage.Resources, "network traffic reader", monitor.Dispose);
+        context.Shutdown.Add(ShutdownStage.Resources, "network states", states.Dispose);
     }
 
     public IReadOnlyList<FeaturePage> Pages => new[]

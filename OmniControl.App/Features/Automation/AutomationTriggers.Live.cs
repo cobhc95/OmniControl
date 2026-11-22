@@ -53,7 +53,7 @@ public static partial class AutomationTriggers
         var known = now?.At is { } at ? $"read {at:HH:mm} · " : string.Empty;
         var options = new[] { ActionOption.Heading(NowKey, $"Now: {state.Words(now)}", known + state.HowKnown) }.Concat(OptionsOf(state, choices)).ToList();
         return new PickChoice($"{StateChanges}:{state.Id}", StatesSection, state.Name, Keywords: $"state value {state.Group} {state.Keywords}",
-            Options: options, AskFirst: true, Heading: state.Heading ?? state.Group,
+            Options: options, AskFirst: true, Heading: state.Heading ?? state.Group, Tag: state.Note,
             Unavailable: state.Kind == StateKind.Choice && choices.Count == 0 ? "There is nothing to choose from yet." : null, Remote: state.RemotePc);
     }
 
