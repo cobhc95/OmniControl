@@ -1,4 +1,4 @@
-﻿namespace OmniControl.App.Features.Hotkeys;
+namespace OmniControl.App.Features.Hotkeys;
 
 public enum OptionKind { Number, Choice, Toggle, Text, Heading, Point, Panel }
 
@@ -8,8 +8,14 @@ public sealed record ActionOption(string Key, string Label, OptionKind Kind, str
     int Min = 0, int Max = 0, int Step = 1, string Unit = "", IReadOnlyList<string>? Choices = null, string Hint = "",
     string? ShowKey = null, IReadOnlyList<string>? ShowValues = null, PathKind? Browse = null,
     bool Shared = false, string? NeedsKey = null, string NeedsReason = "", Func<ISettingsPanel>? MakePanel = null, Func<string?>? TagNow = null,
-    Func<string, string?>? Check = null, IReadOnlyList<string>? NoteValues = null)
+    Func<string, string?>? Check = null, IReadOnlyList<string>? NoteValues = null, IReadOnlyDictionary<string, string>? Words = null)
 {
+    /// The choice <paramref name="value"/> as the row shows it: its word from <see cref="Worded"/>, else the value itself (the stored text).
+    public string WordFor(string value) => Words is not null && Words.TryGetValue(value, out var word) ? word : value;
+
+    /// A choice whose stored values are shown as other words (the stored text never changes).
+    public ActionOption Worded(IReadOnlyDictionary<string, string>? words) => this with { Words = words };
+
     /// A muted line (<paramref name="note"/>) under the row's label while its value is one of <paramref name="values"/>.
     public ActionOption NotedWhen(string note, params string[] values) => this with { Hint = note, NoteValues = values };
 

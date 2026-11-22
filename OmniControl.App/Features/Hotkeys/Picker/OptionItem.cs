@@ -2,13 +2,19 @@ using OmniControl.App.Features.Hotkeys;
 
 namespace OmniControl.App.Features.Hotkeys.Picker;
 
+/// One entry of a choice's pull-down: the stored value and the word it shows.
+public sealed record ChoiceWord(string Value, string Word)
+{
+    public override string ToString() => Word;
+}
+
 /// One setting row on an entry's settings page: a number, a choice, a switch or a text.
 public sealed partial class OptionItem : ObservableObject
 {
     public ActionOption Option { get; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(Display), nameof(IsOn), nameof(Tag), nameof(HasTag), nameof(HasNote))]
+    [NotifyPropertyChangedFor(nameof(Display), nameof(IsOn), nameof(Tag), nameof(HasTag), nameof(HasNote), nameof(Chosen))]
     private string _value;
 
     public string Label => Option.Label;
@@ -18,6 +24,18 @@ public sealed partial class OptionItem : ObservableObject
     public bool IsNumber => Option.Kind == OptionKind.Number;
     public bool IsChoice => Option.Kind == OptionKind.Choice;
     public IReadOnlyList<string>? Choices => Option.Choices;
+
+    /// The choices with the words they show (<see cref="ActionOption.Worded"/>); the pull-down lists these and <see cref="Chosen"/> is the one picked.
+    public IReadOnlyList<ChoiceWord> ChoiceWords { get; }
+
+    public ChoiceWord? Chosen
+    {
+        get => ChoiceWords.FirstOrDefault(w => w.Value == Value);
+        set
+        {
+            if (value is not null) Value = value.Value;
+        }
+    }
     public bool IsToggle => Option.Kind == OptionKind.Toggle;
 
     /// A number, choice or switch sits on the label line; a text or path gets the pane width on a line of its own below the label.
@@ -64,7 +82,7 @@ public sealed partial class OptionItem : ObservableObject
     [ObservableProperty] private string _typed = string.Empty;
 
     /// The value as shown beside the label ("24 px", "Google").
-    public string Display => Option.Kind == OptionKind.Number ? $"{Value}{Option.Unit}" : Value;
+    public string Display => Option.Kind == OptionKind.Number ? $"{Value}{Option.Unit}" : Option.WordFor(Value);
 
     public bool IsOn
     {
@@ -76,6 +94,7 @@ public sealed partial class OptionItem : ObservableObject
     {
         Option = option;
         _value = value;
+        ChoiceWords = (option.Choices ?? Array.Empty<string>()).Select(c => new ChoiceWord(c, option.WordFor(c))).ToList();
         PanelModel = option.MakePanel?.Invoke();
     }
 

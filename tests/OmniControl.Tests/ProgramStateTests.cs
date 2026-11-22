@@ -189,6 +189,31 @@ public class ProgramStateTests
     }
 
     [Fact]
+    public void A_program_state_says_starts_and_closes_while_other_states_keep_turns_on_and_off()
+    {
+        var sources = new Sources();
+        sources.Programs = new ProgramStates(sources.Registry, new AutomationSettings(), _ => { });
+        sources.Programs.Follow(new[] { "program.zoom" }, Array.Empty<string>());
+        sources.Registry.Register(new StateEntry("lamp", "Lamp", "Smart Devices", StateKind.OnOff, () => StateValue.Of(true), "test"));
+
+        Assert.Equal("when Zoom starts", AutomationTriggers.PhraseOf("state:program.zoom", sources));
+        Assert.Equal("when Zoom closes", AutomationTriggers.PhraseOf("state:program.zoom|when=turns%20off", sources));
+        Assert.Equal("when Zoom starts or closes", AutomationTriggers.PhraseOf("state:program.zoom|when=changes", sources));
+        Assert.Equal("when Lamp turns on", AutomationTriggers.PhraseOf("state:lamp", sources));
+        Assert.Equal("Zoom is running", AutomationTriggers.ChipOf("state:program.zoom", sources));
+
+        var when = AutomationTriggers.Choices(sources).Single(c => c.Spec == "state:program.zoom").Options!.Single();
+        Assert.Equal(new[] { "turns on", "turns off", "changes" }, when.Choices); // what is stored never changes
+        var item = new OptionItem(when, "turns off");
+        Assert.Equal(new[] { "starts", "closes", "starts or closes" }, item.ChoiceWords.Select(w => w.Word));
+        Assert.Equal("closes", item.Display);
+        item.Chosen = item.ChoiceWords[0];
+        Assert.Equal("turns on", item.Value);
+        var lamp = AutomationTriggers.Choices(sources).Single(c => c.Spec == "state:lamp").Options!.Single();
+        Assert.Equal(new[] { "turns on", "turns off", "changes" }, new OptionItem(lamp, "turns on").ChoiceWords.Select(w => w.Word));
+    }
+
+    [Fact]
     public void Without_an_add_command_the_programs_have_no_pinned_row()
     {
         var choices = AutomationTriggers.Choices(new Sources());

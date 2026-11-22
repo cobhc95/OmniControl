@@ -28,8 +28,10 @@ public sealed record StateEntry(string Id, string Name, string Group, StateKind 
     string? Heading = null, int Min = 0, int Max = 100, string Unit = "", Func<IReadOnlyList<string>>? Choices = null, string Keywords = "",
     Action<StateValue>? Set = null, string? Short = null, string? Icon = null, IReadOnlyList<string>? SuggestedIcons = null, StateRecheck? Recheck = null,
     Func<StateLiveness>? Liveness = null, bool ScreenPower = false, string? Common = null, Shared.Services.RemotePcLabel? RemotePc = null, string? Compact = null, OnOffIcons? StateIcons = null,
-    string? Note = null, StateMenu? Menu = null, StateMenuPart MenuPart = StateMenuPart.Top)
+    string? Note = null, StateMenu? Menu = null, StateMenuPart MenuPart = StateMenuPart.Top, StateWords? Wording = null)
 {
+    // Wording: the words an on/off state's trigger settings and rule sentence use in place of turns on / turns off / changes (a program: starts / closes); null = those.
+
     // Menu: the side list a state picker shows this state in instead of its own list (one row "<Menu.Name> ▸" opens it), where the row reads ShortName with Note muted at its right; MenuPart: where in it.
     // Note: a muted fact a picker shows under the state's short name ("Laptop panel", "External monitor"); null = none.
     // Compact: the one or two words a half-width card or a state button uses ("Sound", "Mic"; the icon carries the rest, the tooltip the full name); null = the Name.
@@ -48,6 +50,16 @@ public sealed record StateEntry(string Id, string Name, string Group, StateKind 
         { Text: { } text } => text,
         { Number: { } number } => $"{number:0.##}{(Unit.Length > 0 ? " " + Unit : string.Empty)}",
         _ => "not known",
+    };
+}
+
+/// The words an on/off state's trigger uses for its three settings, and the subject its rule sentence starts with ("when Zoom starts").
+public sealed record StateWords(string Subject, string On, string Off, string Changes)
+{
+    /// The stored settings (<see cref="StateTriggerMath"/>) and the words shown for them.
+    public IReadOnlyDictionary<string, string> ByValue => new Dictionary<string, string>
+    {
+        [StateTriggerMath.TurnsOn] = On, [StateTriggerMath.TurnsOff] = Off, [StateTriggerMath.Changes] = Changes,
     };
 }
 

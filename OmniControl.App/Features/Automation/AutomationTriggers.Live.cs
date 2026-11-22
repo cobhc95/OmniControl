@@ -46,7 +46,7 @@ public static partial class AutomationTriggers
     /// The settings of a state's trigger, by its kind. ONE place: the picker shows them and the check reads them.
     private static IReadOnlyList<ActionOption> OptionsOf(StateEntry state, IReadOnlyList<string> choices) => state.Kind switch
     {
-        StateKind.OnOff => new[] { ActionOption.Choice(WhenKey, WhenLabel, StateTriggerMath.WhensOf(StateKind.OnOff)) },
+        StateKind.OnOff => new[] { ActionOption.Choice(WhenKey, WhenLabel, StateTriggerMath.WhensOf(StateKind.OnOff)).Worded(state.Wording?.ByValue) },
         StateKind.Level => new[]
         {
             ActionOption.Choice(WhenKey, WhenLabel, StateTriggerMath.WhensOf(StateKind.Level)),
@@ -99,7 +99,7 @@ public static partial class AutomationTriggers
                 });
         foreach (var program in programs) yield return program;
         yield return new PickChoice($"{StateChanges}:{ProgramStates.Prefix}", Programs, PickByName, "notepad", "type name program app exe",
-            Options: new[] { ActionOption.Choice(WhenKey, WhenLabel, StateTriggerMath.WhensOf(StateKind.OnOff)) }, ParamLabel: ProgramLabel, AskFirst: true, Part: PcPart, Place: PcPlace(Programs));
+            Options: new[] { ActionOption.Choice(WhenKey, WhenLabel, StateTriggerMath.WhensOf(StateKind.OnOff)).Worded(ProgramStates.Wording(string.Empty).ByValue) }, ParamLabel: ProgramLabel, AskFirst: true, Part: PcPart, Place: PcPlace(Programs));
     }
 
     private static string Capital(string words) => words.Length == 0 ? words : char.ToUpper(words[0]) + words[1..];
@@ -121,7 +121,7 @@ public static partial class AutomationTriggers
                 var settings = OptionsOf(state, ChoicesOf(state));
                 return state.Kind switch
                 {
-                    StateKind.OnOff => $"when {state.Name} {options.Text(settings[0])}",
+                    StateKind.OnOff => $"when {state.Wording?.Subject ?? state.Name} {settings[0].WordFor(options.Text(settings[0]))}",
                     StateKind.Level => $"when {state.Name} {options.Text(settings[0])} {options.Int(settings[1])}{(state.Unit.Length > 0 ? " " + state.Unit : string.Empty)}",
                     _ => $"when {state.Name} becomes {(settings.Count > 0 ? options.Text(settings[0]) : "(nothing)")}",
                 };

@@ -156,7 +156,7 @@
                                                     </Panel>
                                                     <Button Classes="pill glyph" Tag="1" Focusable="False" Click="OnOptionStepClick"><Path Classes="glyph" Data="{StaticResource ChevronRightIcon}" /></Button>
                                                 </StackPanel>
-                                                <ComboBox Classes="choice" ItemsSource="{Binding Choices}" SelectedItem="{Binding Value}" IsVisible="{Binding IsChoice}"
+                                                <ComboBox Classes="choice" ItemsSource="{Binding ChoiceWords}" SelectedItem="{Binding Chosen}" IsVisible="{Binding IsChoice}"
                                                           IsTabStop="False" VerticalAlignment="Center" pages:ValueWheel.Selector="True" DropDownClosed="OnChoiceClosed" />
                                                 <ToggleSwitch Grid.Column="1" IsChecked="{Binding IsOn}" OnContent="On" OffContent="Off" Focusable="False"
                                                               IsVisible="{Binding IsToggle}" IsEnabled="{Binding Available}" VerticalAlignment="Center" />

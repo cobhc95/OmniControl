@@ -37,6 +37,9 @@ public sealed class ProgramStates
 
     public ProgramStates(IStateRegistry states, AutomationSettings settings, Action<string> log) => (_states, _settings, _log) = (states, settings, log);
 
+    /// How a program's state is worded: its trigger starts or closes, its sentence names the program ("when Zoom starts").
+    public static StateWords Wording(string name) => new(name, "starts", "closes", "starts or closes");
+
     /// The state id of a program given by name or path ("Chrome.exe" and "chrome" are the same program).
     public static string IdOf(string program) => Prefix + ProgramNames.Normalize(program);
 
@@ -162,5 +165,5 @@ public sealed class ProgramStates
 
     private StateEntry Entry(Known known) =>
         new(known.Id, $"{known.Name} is running", Section, StateKind.OnOff, () => _running is { } running ? StateValue.Of(running.Contains(known.Id[Prefix.Length..]), _ranAt) : null,
-            HowKnown, Keywords: $"program app process running open start close quit exit {known.Id[Prefix.Length..]} {known.Path}", Note: known.Source);
+            HowKnown, Keywords: $"program app process running open start close quit exit {known.Id[Prefix.Length..]} {known.Path}", Note: known.Source, Wording: Wording(known.Name));
 }
