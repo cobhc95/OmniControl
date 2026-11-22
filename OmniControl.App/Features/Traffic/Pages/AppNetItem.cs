@@ -8,7 +8,7 @@ namespace OmniControl.App.Features.Traffic.Pages;
 /// download limit chips and its On switch (off blocks it), through <see cref="NetworkLimits"/>.
 public sealed partial class AppNetItem : ObservableObject
 {
-    private const string NoLimit = "None";
+    private const string NoLimit = "No limit";
     private readonly INetworkLimits _limits;
     private readonly ProcessIcons _icons;
     private readonly Action<string> _report;
@@ -114,7 +114,7 @@ public sealed partial class AppNetItem : ObservableObject
         if (await Task.Run(step) is { } problem) _report(problem);
     });
 
-    /// "None" then every offered limit, the one in force ticked.
+    /// "No limit" then every offered limit, the one in force ticked.
     private IReadOnlyList<MenuRowItem> Rows(Func<AppNetRule, int> now, Action<AppNetRule, int> set)
     {
         var current = _limits.Rule(Id) is { } rule ? now(rule) : 0;

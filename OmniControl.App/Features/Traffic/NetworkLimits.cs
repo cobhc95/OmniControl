@@ -189,7 +189,7 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
             if (filterOn && downloads && !installed && !_installTried) InstallPacketFilter();
             // Before the limits reach the shaper, so a failure to open the driver is never written over.
             if (!filterOn) (_download, _toldFailure) = (DownloadState.Off, null);
-            else if (downloads && installed) _download = DownloadState.Running;
+            else if (downloads && installed) _download = DownloadState.Running(DownloadShaper.TunnelUp);
             else (_download, _toldFailure) = (!installed && _installFailure is { } failure ? DownloadState.InstallFailed(failure) : DownloadState.Idle(installed), null);
             _ruled |= wanted.Count > 0;
             Tell(work.Sync(installed && filterOn ? wanted : wanted.Select(r => r with { DownloadBytes = null }).ToList()));
@@ -294,6 +294,7 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
     {
         KeepFilterOut();
         lock (_gate) (_local ?? (INetworkWork)_service).RefreshAdapters();
+        if (_download == DownloadState.Running(false) || _download == DownloadState.Running(true)) _download = DownloadState.Running(DownloadShaper.TunnelUp); // a VPN came or went
     }
 
     /// Shut-down, on its own and first: download shaping ends (held packets go on, the driver closes) and nothing starts it again.
@@ -356,8 +357,12 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
         public static DownloadState InstallFailed(string failure) => new(failure.TrimEnd('.'),
             "Download limits are kept but not applied until the driver is installed.", Failed: true, OffersInstall: true);
 
-        public static readonly DownloadState Running = new($"Download limits running ({Driver})",
-            $"{Driver} holds each limited program's incoming packets back to its limit; other traffic passes unchanged.");
+        /// <paramref name="tunnelUp"/>: a WinTun VPN tunnel is up, and what arrives through it is not limited.
+        public static DownloadState Running(bool tunnelUp) => tunnelUp
+            ? new("Download limits don't apply to traffic through VPN tunnels",
+                $"{Driver} cannot read WireGuard or Tailscale tunnels, so a program's traffic through one passes without its limit; other traffic is limited.")
+            : new($"Download limits running ({Driver})",
+                $"{Driver} holds each limited program's incoming packets back to its limit; other traffic passes unchanged.");
 
         public static DownloadState Idle(bool installed) => installed
             ? new($"Download limits use {Driver}", $"Download limits run through {Driver}, which is opened only while a limited program has network connections.")

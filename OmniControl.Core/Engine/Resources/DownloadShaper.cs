@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Net.NetworkInformation;
 
 namespace OmniControl.Core.Engine.Resources;
 
@@ -53,6 +54,13 @@ public sealed unsafe class DownloadShaper : IDisposable
 
     /// True when Windows Packet Filter's driver is installed (nothing is opened).
     public static bool Installed => PacketFilter.Installed;
+
+    /// True when a VPN tunnel without Ethernet frames is up (WinTun: WireGuard, Tailscale), whose traffic the filter leaves alone, so a
+    /// limit does not reach it. Such tunnels are IF_TYPE_PROP_VIRTUAL (53), a type .NET's enum does not name. Slow: workers only.
+    public static bool TunnelUp => NetworkInterface.GetAllNetworkInterfaces()
+        .Any(n => (int)n.NetworkInterfaceType == PropVirtual && n.OperationalStatus == OperationalStatus.Up);
+
+    private const int PropVirtual = 53;
 
     /// Starts shaping (the driver opens once a limited program owns ports). <paramref name="stopped"/> is called on the packet thread with one
     /// plain sentence if shaping ends by itself (the driver could not open or failed).
