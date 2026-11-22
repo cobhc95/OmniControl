@@ -21,7 +21,7 @@ public sealed partial class VolumePageViewModel
     {
         ExpandedByDefault = true,
         SummaryBesideName = true,
-        Tip = "Virtual cables found on this PC. OmniControl uses only the ones you switch on, so a cable another program uses is left alone.",
+        Tip = CablesTip,
     };
 
     /// Brings the list in line with what the PC has, the user's switches and the engine's plan.
@@ -131,8 +131,4 @@ public sealed partial class VolumePageViewModel
         _report($"{name} marked as a virtual cable");
     }
 
-    private IEnumerable<SearchEntry> CableEntries() =>
-        WiringCables.Items.Select(c => Entry(c, CableCard(c.Name)));
-
-    private static SearchCard CableCard(string name) => new(name, CablesKeywords, WiringTab, CableGroup.GroupName);
 }

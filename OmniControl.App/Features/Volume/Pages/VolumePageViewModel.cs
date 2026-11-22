@@ -33,7 +33,7 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
     private readonly OmniControl.Core.Engine.CaptureMeterStreams _captures = new(Guard.Log);
     private readonly DispatcherTimer _meterTimer = new() { Interval = Timing.MeterFrame };
 
-    public static readonly PageInfo Info = new("Volume", "M3,9 H7 L12,4 V20 L7,15 H3 Z M15,8.5 A5,5 0 0 1 15,15.5 L16.2,17 A7,7 0 0 0 16.2,7 Z", NavGroups.Devices,
+    public static readonly PageInfo Info = new(PageName, "M3,9 H7 L12,4 V20 L7,15 H3 Z M15,8.5 A5,5 0 0 1 15,15.5 L16.2,17 A7,7 0 0 0 16.2,7 Z", NavGroups.Devices,
         "volume sound audio mixer wiring master apps programs pan balance mute fx effects chain equaliser eq compressor plays on output device microphone combine method cable preset presets", "volume");
 
     public override string KeyHelp => string.Join(Environment.NewLine,
@@ -58,7 +58,7 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
         SummaryBesideName = true,
         RouteColumn = PlaysOnWords,
         ShowsPan = true,
-        Tip = "Plays on and Method open their menus; FX opens and closes the row's FX window. Programs with settings are remembered after they close; × forgets one.",
+        Tip = OutputsTip,
     };
 
     /// Microphones: recording devices and combined microphones. Open unless the user closed it (key kept from "Inputs").
@@ -82,33 +82,6 @@ public sealed partial class VolumePageViewModel : PageViewModel, IDisposable
 
     /// The Wiring tab's Equalizer APO group (set in the constructor).
     public EqualizerApoGroup Apo { get; }
-
-    public override IEnumerable<SearchEntry> SearchEntries =>
-        new[] { Entry(_combineCard, CombineCard), Entry(Apo.Status, ApoCard), Entry(UseMicrophones, MicrophonesCard) }
-        .Concat(AllRows().Select(r => Entry(r, RowCard(r.Name))))
-        .Concat(WiringRows().Select(w => Entry(w, WiringCard(w.Source.Name, WiringInputs.Items.Contains(w)))))
-        .Concat(CableEntries());
-
-    private static readonly SearchCard CombineCard = new("Combine devices", "combine merge speakers microphones mic mics mix several devices together cable stereo mix", WiringTab),
-        ApoCard = new(EqualizerApoGroup.StatusLabel, "equalizer apo eq effects install remove device selector attach speakers microphone driver", WiringTab, "Equalizer APO"),
-        MicrophonesCard = new(EffectsRules.UseMicrophonesLabel, VolumeControls.UseMicrophonesKeywords, MixerTab);
-
-    private static SearchCard RowCard(string name) =>
-        new(name, "sound audio mixer app program pan fx effects method cable capture replay recording output device microphone", MixerTab, Info.Title);
-
-    private static SearchCard WiringCard(string name, bool input) => new(name,
-        "wiring route plays on records from output device speakers headphones microphone combine combined mix mics several cable", WiringTab, input ? RecordsFromWords : PlaysOnWords);
-
-    /// The page's search words (<c>FeaturePage.Words</c>): its cards, and the rows' names from the mixer (the master, the programs, the
-    /// microphones and combined devices, each also a Wiring row) and the cables the effects support found.
-    public static IEnumerable<string> Words(MixerService? mixer, EffectsSupportService? support)
-    {
-        IReadOnlyList<string> names = mixer is null ? Array.Empty<string>() : mixer.Settings.Apps.Select(a => a.Name)
-            .Concat(mixer.RecordingDevices.Select(d => d.Name)).Concat(mixer.Combined.Select(c => c.Name)).Prepend(MasterName).Distinct().ToList();
-        return new[] { CombineCard.Words, ApoCard.Words, MicrophonesCard.Words }
-            .Concat(names.SelectMany(n => new[] { RowCard(n).Words, WiringCard(n, false).Words, WiringCard(n, true).Words }))
-            .Concat((support?.Current?.Found ?? Array.Empty<FoundCable>()).Select(f => CableCard(f.Name).Words)).ToList();
-    }
 
     /// <remarks>
     /// Creation order (an earlier start-up crash came from a piece used before it was made): first the services and callbacks handed in;

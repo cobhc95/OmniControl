@@ -17,7 +17,6 @@ public class PageSearchWordsTests
     // Pages that still list their results by hand (an override of SearchEntries). The coverage job moves each onto the builder and deletes its line.
     private static readonly Dictionary<string, string> NotOnTheBuilderYet = new()
     {
-        ["VolumePageViewModel"] = "cables and mixer rows are listed by hand",
     };
 
     // Pages that offer no search results at all (FeaturePage.NoResults): found only by their keywords and their actions' categories.
