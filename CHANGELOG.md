@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+## 0.3.1 (22 Nov 2026)
+
 - Windows' own volume pop-up is hidden from the first key press after OmniControl starts.
 - Fixed: Setup's Choose features page no longer ignores the first click on Next (with an error sound).
 
