@@ -6,8 +6,8 @@ namespace OmniControl.App.Shared.Services;
 /// The one place that reads and writes OmniControl's json files under %APPDATA%\OmniControl, each by its entry in <see cref="DataStores"/>.
 /// A missing or damaged file gives defaults (a damaged one is kept as <c>name.bad.json</c> and said once) and a failed save is logged:
 /// settings are never worth stopping the app for.
-/// A store changed often (a slider) saves with <see cref="SaveSoon{T}"/>: the text is taken at once and written by a worker
-/// <see cref="Timing.SaveSoonDelay"/> after the last change of a burst; a read of that store, a direct save or delete of it, and
+/// A store changed often (a slider) saves with <see cref="SaveSoon{T}"/>: the text is made once, <see cref="Timing.SaveSoonDelay"/>
+/// after the last change of a burst (on the saving thread), and written by a worker; a read of that store, a direct save or delete of it, and
 /// <see cref="FlushSaves"/> (exit, backup, import) write or drop the waiting text first, so nothing reads an older file or overwrites a newer one.
 public static class AppDataStore
 {
@@ -17,8 +17,15 @@ public static class AppDataStore
     // The saves waiting (file name -> store and text), and the one gate every file write of a store passes, so writes keep their order.
     // Process-wide on purpose, like the files themselves (an allowed exception to "no static state", MAP.md).
     private static readonly object PendingGate = new(), WriteGate = new();
-    private static readonly Dictionary<string, (DataStore Store, string Text)> Pending = new();
-    private static readonly Timer PendingDue = new(_ => Guard.Run("Saving settings", FlushSaves));
+    private static readonly Dictionary<string, Waiting> Pending = new();
+    private static readonly Timer PendingDue = new(_ => Guard.Run("Saving settings", OnDue));
+
+    /// A waiting save: its text, or (saved from a thread with a synchronization context, the UI thread) how to make it there once due.
+    private sealed record Waiting(DataStore Store, string? Text, Func<string>? Make, SynchronizationContext? Owner)
+    {
+        /// The text now, made on this thread when not made yet: only the exit, a backup or an import needs it before its owner made it.
+        public string TextNow() => Text ?? Make!();
+    }
 
     public static string PathOf(string fileName) => Path.Combine(Folder, fileName);
 
@@ -84,12 +91,59 @@ public static class AppDataStore
 
     public static void Save<T>(DataStore store, T value) => SaveText(store, JsonSerializer.Serialize(value));
 
-    /// Saves <paramref name="value"/> as it is now, written to the file a moment later off the calling thread (see the class). Any thread.
+    /// Saves <paramref name="value"/>, written to the file a moment later off the calling thread (see the class). Any thread. On a thread
+    /// with a synchronization context (the UI thread, which owns the settings) the text is made once per burst, back on that thread when
+    /// due; elsewhere it is taken at once.
     public static void SaveSoon<T>(DataStore store, T value)
     {
-        var text = JsonSerializer.Serialize(value);
-        lock (PendingGate) Pending[store.FileName] = (store, text);
+        var owner = SynchronizationContext.Current;
+        var waiting = owner is null
+            ? new Waiting(store, JsonSerializer.Serialize(value), null, null)
+            : new Waiting(store, null, () => JsonSerializer.Serialize(value), owner);
+        lock (PendingGate) Pending[store.FileName] = waiting;
         PendingDue.Change(Timing.SaveSoonDelay, Timeout.InfiniteTimeSpan);
+    }
+
+    /// Due: each owner makes its waiting texts on its own thread, then a worker writes them; texts already made are written now.
+    private static void OnDue()
+    {
+        List<SynchronizationContext> owners;
+        lock (PendingGate) owners = Pending.Values.Where(w => w.Text is null).Select(w => w.Owner!).Distinct().ToList();
+        foreach (var owner in owners)
+            owner.Post(_ => Guard.Run("Saving settings", () =>
+            {
+                MakeTexts(owner);
+                ThreadPool.QueueUserWorkItem(_ => Guard.Run("Saving settings", WriteMade));
+            }), null);
+        WriteMade();
+    }
+
+    /// Makes the texts of <paramref name="owner"/>'s waiting saves (on its thread); a save replaced meanwhile keeps its newer request.
+    private static void MakeTexts(SynchronizationContext owner)
+    {
+        List<Waiting> due;
+        lock (PendingGate) due = Pending.Values.Where(w => w.Text is null && w.Owner == owner).ToList();
+        foreach (var waiting in due)
+        {
+            var made = waiting with { Text = waiting.Make!(), Make = null };
+            lock (PendingGate)
+                if (Pending.TryGetValue(waiting.Store.FileName, out var now) && ReferenceEquals(now, waiting)) Pending[waiting.Store.FileName] = made;
+        }
+    }
+
+    /// Writes the waiting saves whose text is made.
+    private static void WriteMade()
+    {
+        lock (WriteGate)
+        {
+            List<Waiting> due;
+            lock (PendingGate)
+            {
+                due = Pending.Values.Where(w => w.Text is not null).ToList();
+                foreach (var waiting in due) Pending.Remove(waiting.Store.FileName);
+            }
+            foreach (var waiting in due) Write(waiting.Store, waiting.Text!);
+        }
     }
 
     /// Writes every waiting save now, on this thread (exit, before a backup or an import reads the folder).
@@ -97,13 +151,13 @@ public static class AppDataStore
     {
         lock (WriteGate)
         {
-            List<(DataStore Store, string Text)> due;
+            List<Waiting> due;
             lock (PendingGate)
             {
                 due = Pending.Values.ToList();
                 Pending.Clear();
             }
-            foreach (var (store, text) in due) Write(store, text);
+            foreach (var waiting in due) Write(waiting.Store, waiting.TextNow());
         }
     }
 
@@ -149,7 +203,9 @@ public static class AppDataStore
     /// Takes the waiting save of <paramref name="store"/> out of the queue (call inside the write gate).
     private static string? TakePending(DataStore store)
     {
-        lock (PendingGate) return Pending.Remove(store.FileName, out var waiting) ? waiting.Text : null;
+        Waiting? waiting;
+        lock (PendingGate) Pending.Remove(store.FileName, out waiting);
+        return waiting?.TextNow();
     }
 
     /// Writes the file atomically (call inside the write gate).

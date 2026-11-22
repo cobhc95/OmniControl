@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Settings changed quickly (a slider, a plug-in's window) are turned into file text once per pause instead of at every change.
+
 - Effects: an open FX window remembers its last measured chain as a short digest instead of a copy of every plug-in's settings.
 
 - Effects: while a plug-in's window is open, its settings are read only after it says they changed (VST2 plug-ins that say so) and are encoded and saved only when they really changed.
