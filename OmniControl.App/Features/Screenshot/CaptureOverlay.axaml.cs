@@ -36,6 +36,7 @@ public partial class CaptureOverlay : Window
         Root.Children.Insert(0, _picture = new CaptureCanvas(model)); // under the pop-ups; made here because it needs the view-model
         model.Redraw += _placeBars.Request;
         model.TextRequested += OpenTextBox;
+        model.TextCommitRequested += CommitText;
         Opened += OnOpened;
         Closed += OnClosed;
         SizeLabel.SizeChanged += OnBarSizeChanged;
@@ -57,6 +58,7 @@ public partial class CaptureOverlay : Window
     {
         _model.Redraw -= _placeBars.Request;
         _model.TextRequested -= OpenTextBox;
+        _model.TextCommitRequested -= CommitText;
         Opened -= OnOpened;
         Closed -= OnClosed;
         SizeLabel.SizeChanged -= OnBarSizeChanged;

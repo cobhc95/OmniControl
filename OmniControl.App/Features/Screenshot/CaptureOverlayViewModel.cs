@@ -54,6 +54,8 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
 
     [ObservableProperty] private IBrush _currentBrush;
 
+    partial void OnToolChanged(DrawTool value) => TextCommitRequested?.Invoke();
+
     /// What the QR pop-down says instead of a list (still reading, nothing found).
     [ObservableProperty] private string _qrNote = string.Empty;
 
@@ -102,6 +104,10 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
     /// The text tool was pressed at this point (picture pixels): the view opens a box there.
     public event Action<Point>? TextRequested;
 
+    /// Something other than the text box was used (another tool, a press on the picture, undo, copy, save, print, search, record): the view keeps
+    /// the words typed so far as a drawing and removes the box. The box is a pop-up window, so it never loses focus to those by itself.
+    public event Action? TextCommitRequested;
+
     /// This overlay began a new selection; the other monitors' overlays drop theirs.
     public event Action<CaptureOverlayViewModel>? SelectionStarted;
 
@@ -136,6 +142,7 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
 
     public void Press(Point p, double reach)
     {
+        TextCommitRequested?.Invoke();
         var grip = GripAt(p, reach);
         if (Tool == DrawTool.Text && grip != Grip.None)
         {
@@ -305,6 +312,7 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
     [RelayCommand(CanExecute = nameof(CanUndo))]
     private void Undo()
     {
+        TextCommitRequested?.Invoke();
         if (!_history.CanUndo) return;
         _history.Undo();
         Changed();
@@ -374,6 +382,7 @@ public sealed partial class CaptureOverlayViewModel : ObservableObject, IDisposa
     /// Exports the selection with its drawings, closes the overlay, then hands the picture on (so a print dialog is not under the overlay).
     private void Finish(Action<ScreenImage> use)
     {
+        TextCommitRequested?.Invoke();
         if (Selection is not { IsEmpty: false } sel) return;
         var image = ImageBitmaps.Render(Picture, sel, Marks);
         _close();
