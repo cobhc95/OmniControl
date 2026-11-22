@@ -130,7 +130,7 @@
             <pages:GroupCard Group="{Binding Weather.Group}">
                 <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="g:GadgetSettingsModel">
                     <StackPanel Spacing="{StaticResource GapSmall}">
-                        <ListBox Classes="rows compact cards" ItemsSource="{Binding Weather.Group.Items}" />
+                        <ListBox Classes="rows compact cards" pages:CardFill.Items="{Binding Weather.Group.Items}" />
                         <Border Classes="statusstrip">
                             <TextBlock Classes="statusline" Classes.failed="{Binding Weather.Failed}" Text="{Binding Weather.Status}" TextTrimming="CharacterEllipsis" />
                         </Border>
@@ -139,25 +139,25 @@
             </pages:GroupCard>
             <pages:GroupCard Group="{Binding Display.Layout}">
                 <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="g:GadgetSettingsModel">
-                    <ListBox Classes="rows compact cards" ItemsSource="{Binding Display.Layout.Items}" />
+                    <ListBox Classes="rows compact cards" pages:CardFill.Items="{Binding Display.Layout.Items}" />
                 </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>
             <pages:GroupCard Group="{Binding Display.Numbers}">
                 <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="g:GadgetSettingsModel">
-                    <ListBox Classes="rows compact cards" ItemsSource="{Binding Display.Numbers.Items}" />
+                    <ListBox Classes="rows compact cards" pages:CardFill.Items="{Binding Display.Numbers.Items}" />
                 </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>
             <pages:GroupCard Group="{Binding Hover.Group}">
                 <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="g:GadgetSettingsModel">
                     <StackPanel Spacing="{StaticResource GapSmall}">
-                        <ListBox Classes="rows compact cards" ItemsSource="{Binding Hover.Group.Items}" />
+                        <ListBox Classes="rows compact cards" pages:CardFill.Items="{Binding Hover.Group.Items}" />
                         <TextBlock Classes="hint" Text="{Binding Hover.Note}" TextWrapping="Wrap" />
                     </StackPanel>
                 </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>
             <pages:GroupCard Group="{Binding Display.Behaviour}">
                 <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="g:GadgetSettingsModel">
-                    <ListBox Classes="rows compact cards" ItemsSource="{Binding Display.Behaviour.Items}" />
+                    <ListBox Classes="rows compact cards" pages:CardFill.Items="{Binding Display.Behaviour.Items}" />
                 </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>
         </StackPanel>

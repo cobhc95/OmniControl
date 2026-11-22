@@ -22,7 +22,7 @@
                         <c:ChoiceChip DataContext="{Binding ReadEvery}" />
                     </pages:GroupCard.Tools>
                     <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:ResourcesPageViewModel">
-                        <ListBox Classes="rows compact cards" ItemsSource="{Binding Live.Items}" />
+                        <ListBox Classes="rows compact cards" pages:CardFill.Items="{Binding Live.Items}" />
                     </DataTemplate></pages:GroupCard.ContentTemplate>
                 </pages:GroupCard>
             </StackPanel>

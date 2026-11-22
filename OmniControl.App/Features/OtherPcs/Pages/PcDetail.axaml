@@ -95,7 +95,7 @@
                             <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:MirrorGroup">
                                 <StackPanel Spacing="{StaticResource GapSmall}">
                                     <TextBlock Classes="hint" Text="Not available" IsVisible="{Binding IsEmpty}" />
-                                    <ListBox Classes="rows compact cards" ItemsSource="{Binding Group.Items}" IsVisible="{Binding !IsEmpty}" />
+                                    <ListBox Classes="rows compact cards" pages:CardFill.Items="{Binding Group.Items}" IsVisible="{Binding !IsEmpty}" />
                                     <c:ChoiceChips ItemsSource="{Binding Actions}" IsVisible="{Binding HasActions}" />
                                 </StackPanel>
                             </DataTemplate></pages:GroupCard.ContentTemplate>

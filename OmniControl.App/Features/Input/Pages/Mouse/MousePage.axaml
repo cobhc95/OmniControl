@@ -14,7 +14,7 @@
                     <c:PresetPicker DataContext="{Binding MouseLayer}" />
                 </pages:GroupCard.Tools>
                 <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:MousePageViewModel">
-                    <ListBox Classes="rows compact cards" ItemsSource="{Binding ButtonsGroup.Items}"></ListBox>
+                    <ListBox Classes="rows compact cards" pages:CardFill.Items="{Binding ButtonsGroup.Items}"></ListBox>
                 </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>
 
@@ -24,7 +24,7 @@
                     <c:PresetPicker DataContext="{Binding TrackpadLayer}" />
                 </pages:GroupCard.Tools>
                 <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:MousePageViewModel">
-                    <ListBox Classes="rows compact cards" ItemsSource="{Binding TrackpadGroup.Items}"></ListBox>
+                    <ListBox Classes="rows compact cards" pages:CardFill.Items="{Binding TrackpadGroup.Items}"></ListBox>
                 </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>
 
@@ -34,7 +34,7 @@
                     <c:AppScopeChip DataContext="{Binding Gestures.AreasScope}" />
                 </pages:GroupCard.Tools>
                 <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:MousePageViewModel">
-                    <ListBox Classes="rows compact cards" ItemsSource="{Binding Gestures.Areas.Items}"></ListBox>
+                    <ListBox Classes="rows compact cards" pages:CardFill.Items="{Binding Gestures.Areas.Items}"></ListBox>
                 </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>
 
@@ -43,7 +43,7 @@
                     <c:AppScopeChip DataContext="{Binding Gestures.MiddleScope}" />
                 </pages:GroupCard.Tools>
                 <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:MousePageViewModel">
-                    <ListBox Classes="rows compact cards" ItemsSource="{Binding Gestures.Middle.Items}"></ListBox>
+                    <ListBox Classes="rows compact cards" pages:CardFill.Items="{Binding Gestures.Middle.Items}"></ListBox>
                 </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>
 
@@ -52,7 +52,7 @@
                     <c:AppScopeChip DataContext="{Binding Gestures.KeysScope}" />
                 </pages:GroupCard.Tools>
                 <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:MousePageViewModel">
-                    <ListBox Classes="rows compact cards" ItemsSource="{Binding Gestures.Keys.Items}"></ListBox>
+                    <ListBox Classes="rows compact cards" pages:CardFill.Items="{Binding Gestures.Keys.Items}"></ListBox>
                 </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>
 
@@ -73,7 +73,7 @@
                     <pages:GroupRestorePill DataContext="{Binding WhereGroup}" />
                 </pages:GroupCard.Tools>
                 <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:MousePageViewModel">
-                    <ListBox Classes="rows compact cards" ItemsSource="{Binding WhereGroup.Items}"></ListBox>
+                    <ListBox Classes="rows compact cards" pages:CardFill.Items="{Binding WhereGroup.Items}"></ListBox>
                 </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>
 
@@ -81,13 +81,13 @@
             <pages:GroupCard Group="{Binding PointerGroup}">
                 <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:MousePageViewModel">
                     <StackPanel Spacing="{StaticResource GapSmall}">
-                        <ListBox Classes="rows compact cards" ItemsSource="{Binding PointerGroup.Items}"></ListBox>
+                        <ListBox Classes="rows compact cards" pages:CardFill.Items="{Binding PointerGroup.Items}"></ListBox>
                         <ItemsControl ItemsSource="{Binding PointerGroup.Subgroups}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="pages:ItemGroup"><pages:SubgroupPanel /></DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <ListBox Classes="rows compact cards" ItemsSource="{Binding PointerFooter}"></ListBox>
+                        <ListBox Classes="rows compact cards" pages:CardFill.Items="{Binding PointerFooter}"></ListBox>
                     </StackPanel>
                 </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>

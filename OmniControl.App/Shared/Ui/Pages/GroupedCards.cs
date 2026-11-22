@@ -48,6 +48,7 @@ public static class GroupedCards
         if (e.Key is Key.Up or Key.Down && e.KeyModifiers == KeyModifiers.None && !RowEditing.IsEditing(focused)
             && src is not ComboBoxItem && src.FindAncestorOfType<ComboBoxItem>() is null)
         {
+            CardFill.FinishWithin(host); // a card still waiting for its batch is a stop too
             Control? current = IsHeaderStop(src) ? src : src as ListBoxItem ?? src.FindAncestorOfType<ListBoxItem>();
             if (current is ListBoxItem card && Unbuilt(card, Services.Wrap.Direction(e.Key)) is { } inList)
             {
@@ -84,6 +85,7 @@ public static class GroupedCards
     /// visible card shows it (its page or group is hidden).
     public static bool Reveal(Control host, object item)
     {
+        CardFill.FinishWithin(host);
         var stops = Stops(host);
         if (stops.OfType<ListBoxItem>().FirstOrDefault(i => ReferenceEquals(i.DataContext, item)) is not { } card) return false;
         MoveTo(card, stops);

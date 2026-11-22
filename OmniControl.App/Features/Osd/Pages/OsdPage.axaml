@@ -6,17 +6,17 @@
              x:DataType="vm:OsdPageViewModel">
     <StackPanel Spacing="{StaticResource Gap}">
         <StackPanel x:Name="CardsHost" Grid.IsSharedSizeScope="True">
-            <ListBox Classes="rows compact cards" ItemsSource="{Binding Primary}"></ListBox>
+            <ListBox Classes="rows compact cards" pages:CardFill.Items="{Binding Primary}"></ListBox>
 
             <pages:GroupCard Group="{Binding Customize}">
                 <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:OsdPageViewModel">
-                    <ListBox Classes="rows compact cards" ItemsSource="{Binding Customize.Items}"></ListBox>
+                    <ListBox Classes="rows compact cards" pages:CardFill.Items="{Binding Customize.Items}"></ListBox>
                 </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>
 
             <pages:GroupCard Group="{Binding Elements}">
                 <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:OsdPageViewModel">
-                    <ListBox Classes="rows compact cards" ItemsSource="{Binding Elements.Items}"></ListBox>
+                    <ListBox Classes="rows compact cards" pages:CardFill.Items="{Binding Elements.Items}"></ListBox>
                 </DataTemplate></pages:GroupCard.ContentTemplate>
             </pages:GroupCard>
 
