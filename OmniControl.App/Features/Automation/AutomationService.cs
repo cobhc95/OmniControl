@@ -4,7 +4,6 @@ using OmniControl.App.Features.Hotkeys;
 using OmniControl.App.Features.Input.Rules;
 using OmniControl.App.Shared.Scripts;
 using OmniControl.App.Features.States;
-using OmniControl.App.Shared.Presets;
 using OmniControl.Core.Engine.Mouse;
 
 namespace OmniControl.App.Features.Automation;
@@ -25,7 +24,6 @@ public sealed partial class AutomationService : IActionGate, IDisposable
 
     private readonly IActionRegistry _hotkeys;
     private readonly IActionRunner _run;
-    private readonly ActionGateSlot _gate;
     private readonly Action<string> _report;
     private readonly Func<IEnumerable<string>> _remembered;
     private readonly RuleRunner _runner;
@@ -55,25 +53,19 @@ public sealed partial class AutomationService : IActionGate, IDisposable
 
     /// <param name="hotkeys">The master list of actions: each Do rule, custom action and script registers its own action there.</param>
     /// <param name="run">Runs the actions a rule's steps name (the one run path, with the rule's chain).</param>
-    /// <param name="gate">Where this service attaches itself as the one gate every action passes (its block rules).</param>
     /// <param name="countdown">Shows the cancellable countdown before sleep, shut down and the like (see <see cref="PowerGuard"/>).</param>
     /// <param name="remembered">Programs the Volume page remembers (paths), offered with the running ones.</param>
-    /// <param name="startedByWindows">OmniControl was started by its start-up entry: the "At log in" trigger fires.</param>
     /// <param name="report">Shows one plain sentence in the status line.</param>
     /// <param name="states">The master list of states: the "When a state changes" triggers watch it, and the power states are registered in it.</param>
     /// <param name="power">The power journal: a confirmed wake starts the "wakes from sleep" rules, and it says whether this start-up is a new log-in.</param>
     /// <param name="ask">Asks the person at this PC (approving a program step, a custom action or a script).</param>
-    /// <param name="presets">Where the preset manager reads the presets' trigger rules (this service attaches itself) and how a preset is put back.</param>
-    public AutomationService(IActionRegistry hotkeys, IActionRunner run, ActionGateSlot gate, IStateRegistry states, Func<string, string, TimeSpan, CancellationToken, Task<bool>> countdown,
-        Func<IEnumerable<string>> remembered, bool startedByWindows, Action<string> report, IPowerEvents power, Func<DialogMessage, Task<bool>> ask,
-        PresetTriggersSlot presets)
+    public AutomationService(IActionRegistry hotkeys, IActionRunner run, IStateRegistry states, Func<string, string, TimeSpan, CancellationToken, Task<bool>> countdown,
+        Func<IEnumerable<string>> remembered, Action<string> report, IPowerEvents power, Func<DialogMessage, Task<bool>> ask)
     {
         _hotkeys = hotkeys;
         _run = run;
-        _gate = gate;
         _power = power;
         _states = states;
-        _presets = presets;
         _sources = new Sources(hotkeys, run, states);
         _remembered = remembered;
         _report = report;
@@ -90,14 +82,13 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         hotkeys.Register(Settings.Customs.Select(MakeCustomAction));
         hotkeys.Register(Settings.Scripts.Select(MakeScriptAction));
         hotkeys.RegisterPickerCommand(MakeNewCustomAction());
-        gate.Attach(this);
 
         _emergency.Failed += gesture => _report($"Couldn't register {gesture}, the key that pauses all rules: another program uses it.");
         _emergency.Apply(new[] { (ReservedKeys.Emergency, (Action)(() => Dispatcher.UIThread.Post(TogglePause))) });
 
         StartLive();
-        StartTriggers(startedByWindows);
-        presets.Attach(this);
+        // Started by its start-up entry: the "At log in" trigger fires.
+        StartTriggers(StartupRegistration.IsBackgroundStart(Environment.GetCommandLineArgs().Skip(1)));
     }
 
     // ---- Pausing ----
@@ -449,12 +440,10 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         ForgetTimers(rule);
     }
 
-    private static void Log(string line) => AppDataStore.AppendLog(LogFile, line);
+    internal static void Log(string line) => AppDataStore.AppendLog(LogFile, line);
 
     public void Dispose()
     {
-        _gate.Detach(this);
-        _presets.Detach(this);
         StopLive();
         _stopRuns.Cancel();
         _stopRuns.Dispose();

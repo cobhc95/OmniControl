@@ -7,7 +7,7 @@ namespace OmniControl.App.Shared.Presets;
 /// pickers list it like any other action; its key is saved in hotkeys.json by that id. The action is made when a shortcut is given,
 /// taken away when the shortcut is removed here, renamed with its preset and removed when its preset is deleted (its saved key stays, so
 /// an undone delete brings it back). At start-up every preset with a saved key gets its action again. No UI.
-/// A preset with triggers (<see cref="IPresetSwitch.Keep"/>) keeps its action without a key, so its rule's step can run it.
+/// A preset with triggers (<see cref="IPresetSwitch.Keep"/>) keeps its action without a key, so its rule's step (and a put back) can run it.
 public sealed class PresetShortcuts : IPresetSwitch, IDisposable
 {
     private HashSet<string> _kept = new();
@@ -63,10 +63,7 @@ public sealed class PresetShortcuts : IPresetSwitch, IDisposable
     public string? InUse(string preset) =>
         GroupOf(preset) is { } group && group.Provider.Entries.FirstOrDefault(e => e.InUse) is { } entry ? ActionId(group.Id, entry.Id) : null;
 
-    public void Apply(string preset)
-    {
-        if (GroupOf(preset) is { } group) Run(group, preset[ActionId(group.Id, string.Empty).Length..]);
-    }
+    public bool? Exists(string preset) => GroupOf(preset) is { } group ? group.Provider.Find(preset[ActionId(group.Id, string.Empty).Length..]) is not null : null;
 
     public void Keep(IEnumerable<string> presets)
     {

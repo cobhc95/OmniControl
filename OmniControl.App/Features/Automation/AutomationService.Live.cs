@@ -91,7 +91,6 @@ public sealed partial class AutomationService
         Dispatcher.UIThread.Post(() =>
         {
             _listsChangePending = false;
-            FollowPresetNames();
             TriggersChanged?.Invoke();
             Changed?.Invoke(); // a rule's sentence names states and actions: a rename or a removal shows at once
         }, DispatcherPriority.Background);
@@ -107,7 +106,7 @@ public sealed partial class AutomationService
     private void OnStateChanged(StateChange change)
     {
         if (Paused || SessionOff) return;
-        PutPresetsBack();
+        StateSeen?.Invoke();
         foreach (var rule in Settings.Rules.Where(IsActive).ToList())
             if (FiresWith(rule, t => AutomationTriggers.FiresOn(t, change))) StartFromState(rule, change.Chain);
     }

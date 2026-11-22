@@ -32,13 +32,17 @@ public interface IPresetTriggers
     void FlipJoin(string preset, int index);
 }
 
-/// What the rules ask of the presets: the preset in use in the same group (to put it back when a state ends), applying it, and which
-/// presets need their apply action kept.
+/// What the rules ask of the presets: the preset in use in the same group (put back, through its apply action, when a state ends), whether a
+/// preset still exists, and which presets need their apply action kept in the master list.
 public interface IPresetSwitch
 {
+    /// A group's presets changed (its id): one may have been deleted or brought back by an Undo.
+    event Action<string>? Changed;
+
     string? InUse(string preset);
 
-    void Apply(string preset);
+    /// False when its group is registered and has no such preset (deleted); null when its group is not registered now.
+    bool? Exists(string preset);
 
     void Keep(IEnumerable<string> presets);
 }

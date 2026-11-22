@@ -22,11 +22,19 @@ public sealed class AutomationModule(Func<IEnumerable<string>> rememberedProgram
     public void Register(FeatureContext context)
     {
         _context = context;
-        var service = _service = new AutomationService(context.Actions, context.Runner, context.ActionGate, context.States, CountdownWindow.ConfirmAsync, rememberedPrograms,
-            StartupRegistration.IsBackgroundStart(Environment.GetCommandLineArgs().Skip(1)), context.Report, context.Power, context.AskAsync, presetTriggers);
+        var service = _service = new AutomationService(context.Actions, context.Runner, context.States, CountdownWindow.ConfirmAsync, rememberedPrograms,
+            context.Report, context.Power, context.AskAsync);
+        // The one gate every action passes (its block rules) and the preset manager's trigger chips plug in here, and leave first at shut-down.
+        context.ActionGate.Attach(service);
+        var presets = new AutomationPresets(service, context.Actions, context.Runner, presetTriggers);
         context.Hardware.Register(new HardwareWatch(UsbWatchId, "USB devices (rules)", HardwareSignal.Device, service.LookAtUsb));
         context.Imports.OnReload(DataStores.Automation, service.ReloadFromDisk);
-        context.Shutdown.Add(ShutdownStage.Automation, "automation", service.Dispose);
+        context.Shutdown.Add(ShutdownStage.Automation, "automation", () =>
+        {
+            context.ActionGate.Detach(service);
+            presets.Dispose();
+            service.Dispose();
+        });
         useKeys(true);
         context.Shutdown.AddWhenOff(ShutdownStage.HotkeysSwitch, "keyboard hotkeys", () => useKeys(false));
     }
