@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Effects: an impulse response file is read only up to the 10 seconds and two channels the IR Loader keeps, instead of whole.
 - Effects: changing an IR Loader's Gain, Mix or another effect no longer reads and prepares its impulse response file again; a changed file is read once, and only the latest of quick file changes is prepared.
 - Restore all on App settings no longer loads every page with a Restore defaults to see whether it can run, and a page's restore action no longer loads that page in the background; Undo reads the copy taken before the restore from disk.
 - Changed: App settings > Start and close, "Free memory after closing" now defaults to 30 seconds, and has a new "Always" choice that frees the closed window's memory right away.
