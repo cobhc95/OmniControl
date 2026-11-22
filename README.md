@@ -51,6 +51,16 @@ One Windows app for your displays, sound, smart plugs, mouse, trackpad, other PC
 <tr>
 <td><a href="docs/screenshots/resources-readings.png"><img src="docs/screenshots/resources-readings.png" alt="Resources page, Readings tab"></a><br><sub>Resources: live readings</sub></td>
 <td><a href="docs/screenshots/network-traffic-control.png"><img src="docs/screenshots/network-traffic-control.png" alt="Network traffic control page"></a><br><sub>Network traffic control: speed and limit per app</sub></td>
+<td><a href="docs/screenshots/traffic-block.png"><img src="docs/screenshots/traffic-block.png" alt="Block entry in a limit menu"></a><br><sub>Block upload or download per app</sub></td>
+</tr>
+<tr>
+<td><a href="docs/screenshots/mouse-tap-hold.png"><img src="docs/screenshots/mouse-tap-hold.png" alt="One mouse button with a tap and a held action"></a><br><sub>Tap or hold a mouse button for different actions</sub></td>
+<td><a href="docs/screenshots/action-runs-pulldown.png"><img src="docs/screenshots/action-runs-pulldown.png" alt="Runs pull-down in an action's settings"></a><br><sub>When an action runs: pressed, released, held…</sub></td>
+<td><a href="docs/screenshots/fx-measured.png"><img src="docs/screenshots/fx-measured.png" alt="FX chart measuring the whole chain"></a><br><sub>Effects chart measures the whole chain</sub></td>
+</tr>
+<tr>
+<td><a href="docs/screenshots/gadget-adapter.png"><img src="docs/screenshots/gadget-adapter.png" alt="Gadget upload and download with adapter choice"></a><br><sub>Taskbar gadget: choose the network adapter</sub></td>
+<td></td>
 <td></td>
 </tr>
 </table>
