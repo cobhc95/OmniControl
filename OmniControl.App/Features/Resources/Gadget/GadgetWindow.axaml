@@ -3,8 +3,9 @@
         xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
         xmlns:g="using:OmniControl.App.Features.Resources.Gadget"
         x:Class="OmniControl.App.Features.Resources.Gadget.GadgetWindow"
-        Classes="taskbargadget" Title="OmniControl gadget" ShowActivated="False">
-    <!-- The taskbar gadget: its cells, the dashed edge on hover when "Outline on hover" is on, and the right-click menu (mouse first). -->
+        Classes="taskbargadget" Title="OmniControl gadget" ShowActivated="False" RenderOptions.TextRenderingMode="Antialias">
+    <!-- The taskbar gadget: its cells, the dashed edge on hover when "Outline on hover" is on, and the right-click menu (mouse first). Grey text smoothing: ClearType's colour fringes
+         turn into a dark halo once drawn without a background over a coloured or skinned taskbar. -->
     <Panel x:Name="Root" Classes="gadgethit" PointerEntered="OnPointerEntered" PointerExited="OnPointerExited" PointerPressed="OnPointerPressed" PointerReleased="OnPointerReleased"
            ContextRequested="OnContextRequested">
         <FlyoutBase.AttachedFlyout>

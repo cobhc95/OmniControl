@@ -58,7 +58,9 @@ public static class TaskbarButtons
         if (!GetWindowRect(taskbar, out var bar)) return null;
         var across = bar.Bottom - bar.Top > bar.Right - bar.Left;
         var (start, length) = across ? (bar.Top, bar.Bottom - bar.Top) : (bar.Left, bar.Right - bar.Left);
-        if (Spans(taskbar) is not { } spans) return null;
+        var spans = Spans(taskbar) ?? new List<Span>();
+        spans.AddRange(WindowSpans(taskbar, bar));
+        if (spans.Count == 0) return null; // nothing readable (Explorer redrawing, an auto-hidden taskbar's XAML off screen): keep the last end
         var touch = TouchGapDips * GetDpiForWindow(taskbar) / BaseDpi;
         var end = (double)start;
         foreach (var (from, to) in spans.Select(s => across ? (s.Top, s.Bottom) : (s.Left, s.Right)).Where(s => s.Item2 - s.Item1 < length / 3.0).OrderBy(s => s.Item1))
@@ -116,6 +118,28 @@ public static class TaskbarButtons
         }
     }
 
+    /// The visible windows over the taskbar but OmniControl's own: its child windows (the classic Start button of ExplorerPatcher or
+    /// StartAllBack) and Explorer's top-level windows that overlap it (StartAllBack's orb is one, taller than the taskbar, unseen by UI Automation).
+    private static List<Span> WindowSpans(IntPtr taskbar, Rect bar)
+    {
+        var own = (uint)Environment.ProcessId;
+        GetWindowThreadProcessId(taskbar, out var explorer);
+        var thick = 2 * Math.Min(bar.Right - bar.Left, bar.Bottom - bar.Top); // an orb, never a folder window dragged over the taskbar
+        var spans = new List<Span>();
+        void Add(IntPtr window, bool child)
+        {
+            if (window == taskbar || !IsWindowVisible(window) || !GetWindowRect(window, out var r) || r.Right <= r.Left || r.Bottom <= r.Top) return;
+            GetWindowThreadProcessId(window, out var pid);
+            if (pid == own || (!child && (pid != explorer || r.Right <= bar.Left || r.Left >= bar.Right || r.Bottom <= bar.Top || r.Top >= bar.Bottom || r.Right - r.Left > thick || r.Bottom - r.Top > thick))) return;
+            spans.Add(new Span(r.Left, r.Top, r.Right, r.Bottom));
+        }
+        EnumChildWindows(taskbar, (w, _) => { Add(w, true); return true; }, IntPtr.Zero);
+        EnumWindows((w, _) => { Add(w, false); return true; }, IntPtr.Zero);
+        return spans;
+    }
+
+    private delegate bool WindowVisit(IntPtr window, IntPtr data);
+
     private static object? Cached(IUIAutomationElement element, int propertyId) =>
         element.GetCachedPropertyValue(propertyId, out var value) == 0 ? value : null;
 
@@ -132,4 +156,8 @@ public static class TaskbarButtons
 
     [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr window, out Rect rect);
     [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr window);
+    [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr window);
+    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
+    [DllImport("user32.dll")] private static extern bool EnumChildWindows(IntPtr parent, WindowVisit visit, IntPtr data);
+    [DllImport("user32.dll")] private static extern bool EnumWindows(WindowVisit visit, IntPtr data);
 }
