@@ -197,7 +197,7 @@ public static class PendingRestore
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                return Drop($"{why}; it could not be rolled back fully ({ex.Message})");
+                return $"{why}; it could not be rolled back fully, so the next start retries ({ex.Message})"; // journal and copies stay
             }
         }
 

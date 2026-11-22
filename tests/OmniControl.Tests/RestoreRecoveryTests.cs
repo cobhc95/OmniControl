@@ -82,6 +82,39 @@ public sealed class RestoreRecoveryTests : IDisposable
     }
 
     [Fact]
+    public void A_restore_whose_write_and_rollback_both_fail_keeps_its_journal_until_the_next_start_recovers()
+    {
+        var restored = Snapshot(Restored(Staged("whole", RestoreMode.Replace)));
+        var kept = false;
+        for (var at = 0; ; at++)
+        {
+            var here = Staged($"stuck-{at}", RestoreMode.Replace);
+            var before = Snapshot(here);
+            var steps = 0;
+            var hit = false;
+            PendingRestore.ApplyPending(here, () =>
+            {
+                if (steps++ < at) return;
+                hit = true;
+                throw new IOException("file is locked"); // every step from here on, so the rollback fails too
+            });
+            if (!hit) break;
+
+            var stopped = Snapshot(here);
+            if (!stopped.SequenceEqual(before) && !stopped.SequenceEqual(restored))
+            {
+                Assert.True(Directory.Exists(Path.Combine(here, "pending-restore")), $"journal lost after a failure at step {at}");
+                kept = true;
+            }
+            PendingRestore.ApplyPending(here); // the obstruction is gone: the next start
+            var after = Snapshot(here);
+            Assert.True(after.SequenceEqual(before) || after.SequenceEqual(restored), $"mixed after recovery from step {at}");
+            Assert.False(Directory.Exists(Path.Combine(here, "pending-restore")));
+        }
+        Assert.True(kept);
+    }
+
+    [Fact]
     public void An_interrupted_restore_whose_new_files_are_damaged_is_rolled_back()
     {
         var restored = Snapshot(Restored(Staged("whole", RestoreMode.Replace)));
