@@ -638,7 +638,7 @@ begin
   LeftOutText.Width := ChoiceBox.ClientWidth - LeftOutText.Left - ScaleX(8);
   // AutoSize keeps the height of the first wrap (made before the box had its width); measure again at the real width.
   LeftOutText.AdjustHeight();
-  Y := ScaleY(45);
+  Y := ScaleY(27);
   LeftOutText.Top := Y;
   if LeaveOutButton.Checked then Y := Y + LeftOutText.Height + ScaleY(4);
   KeepOffButton.Top := Y;
@@ -654,8 +654,7 @@ begin
 end;
 
 procedure InitializeWizard();
-var Title: TNewStaticText;
-    Kept: Cardinal;
+var Kept: Cardinal;
 begin
   if WizardSilent() then Exit;
   ChoiceBox := TPanel.Create(WizardForm);
@@ -664,19 +663,14 @@ begin
   ChoiceBox.BorderStyle := bsSingle;
   ChoiceBox.ParentBackground := False;
   ChoiceBox.Color := clWindow;
-  Title := TNewStaticText.Create(ChoiceBox);
-  Title.Parent := ChoiceBox;
-  Title.Caption := 'Features you didn''t tick:';
-  Title.Left := ScaleX(8);
-  Title.Top := ScaleY(6);
-  LeaveOutButton := AddChoice(ChoiceBox, 'Don''t install them', '(their drivers, services and sensor library are left out)', ScaleY(24), LeaveOutNote);
-  KeepOffButton := AddChoice(ChoiceBox, 'Install them but keep them off', '(turn on any time in App settings)', ScaleY(45), KeepOffNote);
+  LeaveOutButton := AddChoice(ChoiceBox, 'Don''t install them', '(their drivers, services and sensor library are left out)', ScaleY(6), LeaveOutNote);
+  KeepOffButton := AddChoice(ChoiceBox, 'Install them but keep them off', '(turn on any time in App settings)', ScaleY(27), KeepOffNote);
   LeftOutText := TNewStaticText.Create(ChoiceBox);
   LeftOutText.Parent := ChoiceBox;
   LeftOutText.WordWrap := True;
   LeftOutText.Font.Color := clGrayText;
   LeftOutText.Left := ScaleX(28);
-  LeftOutText.Top := ScaleY(42);
+  LeftOutText.Top := ScaleY(24);
   LeftOutText.AutoSize := True;
   LeaveOutButton.Checked := RegQueryDWordValue(HKLM64, ReceiptKey, LeaveOutValue, Kept) and (Kept = 1);
   KeepOffButton.Checked := not LeaveOutButton.Checked;
