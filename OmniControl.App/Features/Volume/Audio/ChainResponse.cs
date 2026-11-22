@@ -54,11 +54,17 @@ public static class ChainResponse
     /// Why an enabled effect is not part of the drawn total; null when it is (an equaliser or Gain that the engine runs).
     private static string? NotDrawnReason(FxSlot slot, FxEngines engine, bool apoBlends)
     {
+        if (FxCatalog.IsPlugin(slot) && NotRunReason(slot, engine, apoBlends) is null) return "plug-in: its response is not known";
+        if (FxCatalog.EqLayoutOf(slot) is null && slot.Kind != FxCatalog.GainKind && FxCatalog.EnginesOf(slot).HasFlag(engine)) return "its response is not drawn";
+        return NotRunReason(slot, engine, apoBlends);
+    }
+
+    /// Why the engine that runs the row does not run this effect (it passes the sound unchanged there); null when it runs it.
+    public static string? NotRunReason(FxSlot slot, FxEngines engine, bool apoBlends)
+    {
         var engines = FxCatalog.EnginesOf(slot);
         if (engines == FxEngines.None) return "saved only, it does not process sound yet";
         if (!engines.HasFlag(engine)) return engine == FxEngines.Apo ? "not run by Equalizer APO" : "runs only in Equalizer APO";
-        if (FxCatalog.IsPlugin(slot)) return "plug-in: its response is not known";
-        if (FxCatalog.EqLayoutOf(slot) is null && slot.Kind != FxCatalog.GainKind) return "its response is not drawn";
         if (engine == FxEngines.Apo && !FxCatalog.ApoRuns(slot, apoBlends)) return $"not run: {EffectsRules.ApoNoBlendReason}";
         return null;
     }

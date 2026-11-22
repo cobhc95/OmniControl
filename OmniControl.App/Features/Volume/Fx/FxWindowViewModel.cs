@@ -32,12 +32,15 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
         RefreshOutput();
         Analysis = new FxAnalysisViewModel(() => engine.LoadOf(key));
         ShowChain();
-        chain.Edited += ShowChain;
+        _fxOn = FxOn;
+        _measurePause.Tick += OnMeasurePause;
+        MeasureSoon();
+        chain.Edited += OnChainEdited;
         mixer.Updated += OnMixerUpdated;
         engine.StatusChanged += OnEngineStatus;
         engine.ApoPlacementChanged += OnApoPlacementChanged;
         mixer.KeepFxInPlaceChanged += OnKeepFxInPlaceChanged;
-        support.Changed += OnSupportChanged;
+        support.Changed += OnSupportEvent;
         feeds.Changed += OnDisplayFeedChanged;
         chain.PropertyChanged += OnChainChanged;
         // While the window is open the mixer keeps its row fresh (its meters need no fine timer resolution).
@@ -165,6 +168,7 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(EngineText));
         OnApoPlacementChanged();
         Analysis.RefreshLoad();
+        MeasureSoon();
     }
 
     private void OnApoPlacementChanged()
@@ -176,14 +180,30 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
     private void OnKeepFxInPlaceChanged() => OnPropertyChanged(nameof(KeepFxInPlace));
 
     /// The chain as the engine that runs this row plays it, with the row's on/off.
+    private void OnChainEdited()
+    {
+        ShowChain();
+        MeasureSoon();
+    }
+
     private void ShowChain() => Analysis.Show(Chain.Effects, _engine.MethodFor(_key).Engine, _engine.ApoBlends, FxOn);
 
     private void OnMixerUpdated()
     {
         OnPropertyChanged(nameof(FxOn));
         OnPropertyChanged(nameof(CanForget));
+        if (_fxOn != FxOn) { _fxOn = FxOn; MeasureSoon(); }
         RefreshOutput();
         OnSupportChanged();
+    }
+
+    /// The row's effects on or off when last looked at (the mixer's updates come often; only this change is measured again).
+    private bool _fxOn;
+
+    private void OnSupportEvent()
+    {
+        OnSupportChanged();
+        MeasureSoon();
     }
 
     private void OnSupportChanged()
@@ -227,8 +247,9 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
         _engine.StatusChanged -= OnEngineStatus;
         _engine.ApoPlacementChanged -= OnApoPlacementChanged;
         _mixer.KeepFxInPlaceChanged -= OnKeepFxInPlaceChanged;
-        _support.Changed -= OnSupportChanged;
-        Chain.Edited -= ShowChain;
+        _support.Changed -= OnSupportEvent;
+        Chain.Edited -= OnChainEdited;
+        StopMeasuring();
         Analysis.Dispose();
         Chain.Dispose();
         _closeWatch.Dispose();
