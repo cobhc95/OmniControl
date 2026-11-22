@@ -103,7 +103,7 @@
                 <!-- Equalizer APO: whether it is installed and the one link about it (its own Device Selector, or its installer) -->
                 <pages:GroupCard Group="{Binding Apo.Group}">
                     <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:VolumePageViewModel">
-                        <ListBox Classes="rows compact cards" ItemsSource="{Binding Apo.Items}" />
+                        <ListBox Classes="rows compact cards" pages:CardFill.Items="{Binding Apo.Items}" />
                     </DataTemplate></pages:GroupCard.ContentTemplate>
                 </pages:GroupCard>
             </StackPanel>
