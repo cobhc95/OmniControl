@@ -278,7 +278,7 @@ public class MasterMethodTests(ITestOutputHelper output)
     {
         var apo = OwnerPc.ApoOnSpeaker(onCableA: true);
         var store = new FakeStore();
-        var chains = new ApoChains(_ => { }, () => { }, store);
+        var chains = new ApoChains(_ => { }, () => { }, write => write(), store);
         var s = Settings(EffectsRules.MasterApo);
         s.Apps.First(a => a.Key == OwnerPc.Player).FxRoute = EffectsRules.RouteApoCable.Id;
         var plan = Plan(s, Set(OwnerPc.Player), twoPairs: true, apo: apo);
@@ -299,10 +299,39 @@ public class MasterMethodTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void ApoWriter_RequestsInOneTick_AreOneWriteOfTheLatestChain()
+    {
+        var apo = OwnerPc.ApoOnSpeaker();
+        var store = new CountingStore();
+        var deferred = new List<Action>();
+        var chains = new ApoChains(_ => { }, () => { }, deferred.Add, store);
+        var s = Settings(EffectsRules.MasterApo);
+        s.MasterFx.Add(new FxSlot { Kind = FxCatalog.GainKind, Name = "Removed gain", Enabled = true, Values = new() { 3 } });
+        var plan = Plan(s, None, apo: apo);
+        Send(chains, plan, s, apo);  // the editor closing: the chain as it was
+        s.MasterFx.Clear();
+        Send(chains, plan, s, apo);  // the chain without the removed effect, in the same tick
+        Assert.Empty(store.Writes);
+        Assert.Single(deferred);
+        deferred[0]();
+        var write = Assert.Single(store.Writes);
+        Assert.DoesNotContain("Removed gain", write);
+    }
+
+    private sealed class CountingStore : IApoConfigStore
+    {
+        public List<string> Writes { get; } = new();
+        public string? Apply(string folder, string text) { Writes.Add(text); return null; }
+        public string? Remove(string folder) => null;
+        public ApoFolderFacts? Read(string folder, string? wanted) => new(true, false);
+        public string? Touch(string folder) => null;
+    }
+
+    [Fact]
     public void ApoWriter_EqualizerApoNotOnTheSpeakers_WritesNothing_AndSaysNotApplied()
     {
         var store = new FakeStore();
-        var chains = new ApoChains(_ => { }, () => { }, store);
+        var chains = new ApoChains(_ => { }, () => { }, write => write(), store);
         var s = Settings(EffectsRules.MasterApo);
         var apo = ApoState.None with { };
         var plan = Plan(s, None, apo: apo);

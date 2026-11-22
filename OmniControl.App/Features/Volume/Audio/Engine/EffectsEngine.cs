@@ -73,7 +73,8 @@ public sealed partial class EffectsEngine : IDisposable
         _journal = journal;
         _plugins = plugins;
         _report = report;
-        _apo = new ApoChains(report, () => Dispatcher.UIThread.Post(() => Guard.Run("Effects: IR level measured", Reconcile)));
+        _apo = new ApoChains(report, () => Dispatcher.UIThread.Post(() => Guard.Run("Effects: Equalizer APO chains again", Reconcile)),
+            write => Dispatcher.UIThread.Post(() => Guard.Run("Effects: writing Equalizer APO's chains", write), DispatcherPriority.Background));
         _keeper = new ApoKeeper(_apo, () => mixer.KeepFxInPlace, report, OnApoPlacementChanged);
         _watch = new ApoWatch(ApoConfigFolders.Instance, () => _watchInput,
             found => Dispatcher.UIThread.Post(() => Guard.Run("Effects: Equalizer APO config check", () => OnApoFound(found))));

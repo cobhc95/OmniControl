@@ -72,11 +72,12 @@ public sealed partial class FxChainViewModel
         targets = targets.Where(Slots.Contains).ToList(); // the list may have changed while the question was open
         if (targets.Count == 0) return;
         var at = Slots.IndexOf(targets[0]);
+        // Out of the chain before the editors close: closing one saves its plug-in's settings, and Equalizer APO's text is written from the chain then.
+        foreach (var s in targets) _chain.Remove(s.Slot);
         _editors.Leaving(targets.Select(t => t.Slot));
         foreach (var s in targets)
         {
             Untrack(s);
-            _chain.Remove(s.Slot);
             Slots.Remove(s);
         }
         _picked.Clear();

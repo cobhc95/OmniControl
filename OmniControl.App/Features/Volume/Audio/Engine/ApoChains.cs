@@ -1,4 +1,4 @@
-﻿using OmniControl.Core.Engine.Apo;
+using OmniControl.Core.Engine.Apo;
 
 namespace OmniControl.App.Features.Volume.Audio.Engine;
 
@@ -66,6 +66,10 @@ internal sealed class ApoChains
     private readonly Action<string> _report;
     private readonly IApoConfigStore _store;
     private readonly IrLevels _levels;
+    private readonly Action _again;
+    private readonly Action<Action> _defer;
+    /// A write is asked for and not done yet (<see cref="Write"/> gathers every request of one UI tick into one).
+    private bool _writeDue;
 
     /// What should be in place (updated on every change, whether or not the write worked).
     private ApoTarget _target = ApoTarget.None;
@@ -81,12 +85,15 @@ internal sealed class ApoChains
     public event Action<IReadOnlyCollection<string>>? Wrote;
 
     /// <param name="report">The footer line: a failed clean-up of a folder no row writes to is said there once (nothing else shows it).</param>
-    /// <param name="levelMeasured">An IR file's Auto level became known (worker thread): the owner applies the chains again.</param>
+    /// <param name="again">The owner applies the chains again (posted; any thread): an IR file's Auto level became known, or a deferred write changed a row's status.</param>
+    /// <param name="defer">Runs the gathered write after the current UI work (the owner posts it; a test runs it when it likes).</param>
     /// <param name="store">Where the text goes (the real folders unless a test gives a fake).</param>
-    public ApoChains(Action<string> report, Action levelMeasured, IApoConfigStore? store = null)
+    public ApoChains(Action<string> report, Action again, Action<Action> defer, IApoConfigStore? store = null)
     {
         _report = report;
-        _levels = new IrLevels(levelMeasured);
+        _again = again;
+        _defer = defer;
+        _levels = new IrLevels(again);
         _store = store ?? ApoConfigFolders.Instance;
     }
 
@@ -197,7 +204,7 @@ internal sealed class ApoChains
     {
         _target = new ApoTarget(new Dictionary<string, string>(), apo.ConfigFolders.ToList());
         _displaced.Clear();
-        Write();
+        Flush();
     }
 
     /// Puts OmniControl's whole part back where it should be (the keeper found it taken out, or the user asked with "Put back"): every
@@ -226,9 +233,25 @@ internal sealed class ApoChains
             if (_store.Touch(folder) is { } error) Say(error);
     }
 
-    /// Writes <see cref="_target"/>: removes OmniControl's part from every folder to clean, then writes each wanted file (except displaced ones).
+    /// Asks for <see cref="_target"/> to be written once the current UI work is done: every request until then is one write of the latest
+    /// target, so Equalizer APO never meets two quick reloads (it may miss the second).
     private void Write()
     {
+        if (_writeDue) return;
+        _writeDue = true;
+        _defer(() =>
+        {
+            if (!_writeDue) return; // written already (exit)
+            var before = _errors.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            Flush();
+            if (!before.SetEquals(_errors.Keys)) _again(); // the rows' statuses name the failed folders
+        });
+    }
+
+    /// Writes <see cref="_target"/> now: removes OmniControl's part from every folder to clean, then writes each wanted file (except displaced ones).
+    private void Flush()
+    {
+        _writeDue = false;
         var errors = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var folder in _target.Clean)
             if (_store.Remove(folder) is { } error) errors[folder] = error;
