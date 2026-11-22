@@ -43,7 +43,7 @@ public sealed partial class DeviceService
                     ids => _ = RunAsync(device, power, method), group: ActionGroup)
                     { Icon = icon, Family = new ActionFamily($"devices.method.{method.Id}", $"{name} via {device.NameOf(method)}"), FamilyRole = power.ToString(), StateId = StateId(device),
                       Reach = ReachOf(device, power) })))
-            .Append(new HotkeyAction(CheckActionId(device), $"Check {name}'s state", Category, $"{keywords} check read state auto", _ => CheckByRule(device), group: ActionGroup)
+            .Append(new HotkeyAction(CheckActionId(device), $"Check {name}'s state", Category, $"{keywords} check read state auto", ids => CheckByRule(device), group: ActionGroup)
                 { Icon = icon, FeatureRule = true })
             .ToList();
         _registered[device.Id] = actions.Select(a => a.Id).ToList();

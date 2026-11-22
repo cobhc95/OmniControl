@@ -26,6 +26,7 @@
                     ToolTip.ShowOnDisabled="True" />
             <Button Classes="pill" Content="Close now" Command="{Binding CloseNowCommand}" IsEnabled="{Binding CanClose}" VerticalAlignment="Center"
                     ToolTip.Tip="Shuts the emulator down cleanly so it starts quickly next time." ToolTip.ShowOnDisabled="True" />
+            <ContentControl Content="{Binding IdleRuleLine}" VerticalAlignment="Center" />
         </WrapPanel>
 
         <TextBlock Grid.Row="1" Classes="muted" Text="ADB address" VerticalAlignment="Center" />

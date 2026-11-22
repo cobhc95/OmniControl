@@ -2,7 +2,7 @@ namespace OmniControl.App.Features.Devices;
 
 /// Keeps the simulation method's emulator up for as long as the user chose (<see cref="EmulatorKeep"/>): an action wakes it when it is not
 /// running (its window hidden when it can be, quick boot after one good cold boot, one cold boot as the fallback), waits until Android has started, and
-/// afterwards the idle timer or "close after each action" shuts it down cleanly so its snapshot is saved. Starting, adb and memory
+/// afterwards "close after each action" shuts it down cleanly so its snapshot is saved, or the idle timer says it has been idle (its rule closes it). Starting, adb and memory
 /// are Core's (<see cref="Emulators"/>, <see cref="AdbClient"/>); this decides when.
 public sealed class EmulatorKeeper : IDisposable
 {
@@ -12,8 +12,6 @@ public sealed class EmulatorKeeper : IDisposable
     private readonly Action _changed;
     private readonly SemaphoreSlim _one = new(1, 1);
     private readonly Timer _idle;
-    private EmulatorInfo? _lastEmulator;
-    private string _lastAddress = string.Empty;
 
     public EmulatorKeeper(EmulatorKeepSettings settings, Func<string?> adbPath, Action save, Action<string> log, Action changed)
     {
@@ -22,12 +20,32 @@ public sealed class EmulatorKeeper : IDisposable
         _save = save;
         _log = log;
         _changed = changed;
-        _idle = new Timer(_ => _ = CloseIdleAsync());
+        _idle = new Timer(_ => SetIdle(true));
     }
 
     public EmulatorKeepSettings Settings { get; }
 
-    /// How long the emulator may sit idle before it is closed ("until idle"); saved and followed at once.
+    /// True from the idle timer's end until the emulator is used, started or closed again (any thread).
+    public bool IsIdle { get; private set; }
+
+    /// <see cref="IsIdle"/> changed (any thread).
+    public event Action? IdleChanged;
+
+    private void SetIdle(bool idle)
+    {
+        if (IsIdle == idle) return;
+        IsIdle = idle;
+        IdleChanged?.Invoke();
+    }
+
+    /// Ends the idle timer and the idle state (the emulator is being used, started or closed).
+    private void StopIdle()
+    {
+        _idle.Change(Timeout.Infinite, Timeout.Infinite);
+        SetIdle(false);
+    }
+
+    /// How long the emulator may sit idle before it counts as idle; saved and followed at once.
     public void SetIdleMinutes(int minutes)
     {
         Settings.IdleMinutes = minutes;
@@ -63,19 +81,15 @@ public sealed class EmulatorKeeper : IDisposable
     /// and a hidden one restarts with it; otherwise a stopped one starts hidden where it can be. <paramref name="progress"/> hears what is happening. Null when it is up, otherwise one plain sentence.
     public async Task<string?> EnsureRunningAsync(EmulatorInfo emulator, string address, Action<string>? progress = null, bool show = false)
     {
-        _idle.Change(Timeout.Infinite, Timeout.Infinite);
+        StopIdle();
         return await Exclusively(() => EnsureAsync(emulator, address, show, progress));
     }
 
-    /// Starts the emulator hidden where it can be (a click on the Simulation row's chip) and, with "until idle", lets the idle timer close it again; "close after each action" is about actions, so it stays up. Null when it is up, otherwise one plain sentence.
+    /// Starts the emulator hidden where it can be (a click on the Simulation row's chip) and starts the idle timer; "close after each action" is about actions, so it stays up. Null when it is up, otherwise one plain sentence.
     public async Task<string?> StartAsync(EmulatorInfo emulator, string address, Action<string>? progress = null)
     {
         var problem = await EnsureRunningAsync(emulator, address, progress);
-        if (problem is null)
-        {
-            (_lastEmulator, _lastAddress) = (emulator, address);
-            if (Settings.Keep == EmulatorKeep.UntilIdle) ArmIdle();
-        }
+        if (problem is null && Settings.Keep != EmulatorKeep.AfterEachAction) ArmIdle();
         return problem;
     }
 
@@ -100,20 +114,23 @@ public sealed class EmulatorKeeper : IDisposable
     /// An action ended: closes the emulator, or starts the idle timer, as the user chose.
     public void ActionDone(EmulatorInfo emulator, string address)
     {
-        (_lastEmulator, _lastAddress) = (emulator, address);
         switch (Settings.Keep)
         {
             case EmulatorKeep.AfterEachAction: _ = CloseNowAsync(emulator, address); break;
-            case EmulatorKeep.UntilIdle: ArmIdle(); break;
+            default: ArmIdle(); break;
         }
     }
 
-    private void ArmIdle() => _idle.Change(TimeSpan.FromMinutes(Math.Max(1, Settings.IdleMinutes)), Timeout.InfiniteTimeSpan);
+    private void ArmIdle()
+    {
+        SetIdle(false);
+        _idle.Change(TimeSpan.FromMinutes(Math.Max(1, Settings.IdleMinutes)), Timeout.InfiniteTimeSpan);
+    }
 
     /// Shuts the emulator down cleanly; null when it is closed, otherwise one plain sentence.
     public async Task<string?> CloseNowAsync(EmulatorInfo emulator, string address)
     {
-        _idle.Change(Timeout.Infinite, Timeout.Infinite);
+        StopIdle();
         return await Exclusively(() => ShutDownAsync(emulator, address));
     }
 
@@ -121,7 +138,7 @@ public sealed class EmulatorKeeper : IDisposable
     public async Task<string?> ShowAsync(EmulatorInfo emulator, string address, Action<string> progress)
     {
         if (_adb() is not { } adb) return Emulators.Open(emulator); // nothing to wait for or close without adb
-        _idle.Change(Timeout.Infinite, Timeout.Infinite);
+        StopIdle();
         return await Exclusively(async () =>
         {
             if (!await IsUpAsync(adb, address)) return await EnsureAsync(emulator, address, show: true, progress);
@@ -158,11 +175,6 @@ public sealed class EmulatorKeeper : IDisposable
     {
         var until = DateTime.UtcNow + Timing.EmulatorWindowWait;
         while (DateTime.UtcNow < until && !Emulators.SetWindowVisible(emulator, false)) await Task.Delay(Timing.EmulatorWindowPoll);
-    }
-
-    private async Task CloseIdleAsync()
-    {
-        if (_lastEmulator is { } emulator && await CloseNowAsync(emulator, _lastAddress) is { } problem) _log($"Closing the idle emulator: {problem}");
     }
 
     private async Task<bool> IsUpAsync(string adb, string address)

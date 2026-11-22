@@ -53,6 +53,9 @@ public sealed partial class DeviceService : IDisposable
     /// When devices read their state on their own.
     public DeviceAutoChecks AutoChecking { get; }
 
+    /// The emulator's Keep running choice and its idle rule.
+    internal EmulatorIdleRule EmulatorIdle { get; }
+
     /// The list changed (a device was added, removed, merged or moved).
     public event Action? ListChanged;
 
@@ -84,6 +87,7 @@ public sealed partial class DeviceService : IDisposable
         if (TakeUp()) Settings.Save();
         AutoChecking.MakeRules();
         RegisterEmulatorState();
+        EmulatorIdle = new EmulatorIdleRule(Simulation.Keeper, hotkeys, states, rules, () => SimulationMethods.Any(), () => SetEmulatorAsync(false), Category);
         SimulationMethod.WakeAtStart(Settings);
     }
 
@@ -174,6 +178,7 @@ public sealed partial class DeviceService : IDisposable
         _saveSoon.Stop();
         Settings.Save();
         Simulation.FollowNeed(); // a simulation method may have come or gone
+        EmulatorIdle?.MakeRule();
     }
 
     public bool HasPassword(MethodRecord method) => _credentials.Read(PasswordTarget(method)) is { Length: > 0 };
@@ -258,6 +263,7 @@ public sealed partial class DeviceService : IDisposable
             Settings.Save();
         }
         AutoChecking.Stop();
+        EmulatorIdle.Dispose();
         Simulation.Dispose();
     }
 

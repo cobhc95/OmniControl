@@ -86,9 +86,16 @@ public sealed partial class SimulationViewModel : ObservableObject, IDisposable
     public string KeepText => "Keep running: " + KeepChoice;
 
     /// The same choice as a phrase for the Ready view's line ("keep running until idle 30 min").
-    public string KeepWords => Keeper.Settings.Keep == EmulatorKeep.AfterEachAction ? "closes after each action" : $"keep running {KeepChoice}";
+    public string KeepWords => Idle.Keep == EmulatorKeep.AfterEachAction ? "closes after each action" : $"keep running {KeepChoice}";
 
-    private string KeepChoice => Keeper.Settings.Keep switch
+    private EmulatorIdleRule Idle => _service.EmulatorIdle;
+
+    /// The line under the emulator's chips while its idle rule has more than the Keep running chip shows.
+    public RuleLineItem IdleRuleLine => _idleRuleLine ??= new RuleLineItem(() => Idle.EditRule());
+
+    private RuleLineItem? _idleRuleLine;
+
+    private string KeepChoice => Idle.Keep switch
     {
         EmulatorKeep.Always => "always",
         EmulatorKeep.UntilIdle => $"until idle {IdleMinutes} min",
@@ -148,7 +155,7 @@ public sealed partial class SimulationViewModel : ObservableObject, IDisposable
         get => Keeper.Settings.IdleMinutes;
         set
         {
-            Keeper.SetIdleMinutes((int)value);
+            Idle.SetMinutes((int)value);
             OnPropertyChanged();
         }
     }
@@ -176,6 +183,7 @@ public sealed partial class SimulationViewModel : ObservableObject, IDisposable
         EmulatorOptions = options;
         ReadKeepMenu();
         ReadEmulatorActions();
+        IdleRuleLine.Show(Idle.Rule?.Extras ?? string.Empty);
         for (var i = 0; i < Rows.Count; i++)
         {
             Rows[i].RunFailure = _runtime.FailedMethodId == _record.Id && _runtime.FailedStep == i ? _runtime.FailedReason : string.Empty;
@@ -202,7 +210,7 @@ public sealed partial class SimulationViewModel : ObservableObject, IDisposable
     {
         var settings = Keeper.Settings;
         MenuRowItem Choice(EmulatorKeep keep, string text, string detail) =>
-            new(text, string.Empty, settings.Keep == keep, string.Empty, new RelayCommand(() => { settings.Keep = keep; Keeper.Edited(); }), null, detail);
+            new(text, string.Empty, Idle.Keep == keep, string.Empty, new RelayCommand(() => Idle.SetKeep(keep)), null, detail);
         KeepOptions = new[]
         {
             Choice(EmulatorKeep.Always, "Always", "fastest, uses memory all the time"),
