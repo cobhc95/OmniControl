@@ -1,5 +1,6 @@
 using System.Windows.Input;
 using Avalonia.Input;
+using Avalonia.VisualTree;
 
 namespace OmniControl.App.Shared.Ui.Controls;
 
@@ -96,6 +97,27 @@ public partial class MenuRowList : UserControl
         }
         while (_slots.Count > rows.Count) _slots.RemoveAt(_slots.Count - 1);
         Classes.Set("noglyphs", !rows.Any(r => r.UsesGlyph));
+        var wasBig = Rows.Classes.Contains("big");
+        Rows.Classes.Set("big", rows.Count >= VirtualAfter);
+        if (!wasBig && rows.Count >= VirtualAfter) ListScroll.ShowSoon(Rows, () => _slots.ToList().FindIndex(s => s.Row.IsOn)); // the one in force in view when the list grows long
+    }
+
+    /// A list of this many rows or more is virtualized (its own scroll viewer, only the rows in view built); shorter ones are plain.
+    public const int VirtualAfter = 40;
+
+    // A virtualized list has no neighbour built beyond the view, so Up/Down walk the rows themselves (wrapping, skipping headers and greyed rows).
+    private void WalkRows(Control from, int step)
+    {
+        if (from.DataContext is not MenuRowSlot slot) return;
+        var at = _slots.IndexOf(slot);
+        for (var n = 1; n < _slots.Count; n++)
+        {
+            var i = ((at + step * n) % _slots.Count + _slots.Count) % _slots.Count;
+            if (_slots[i].Row is not { IsRow: true, IsEnabled: true }) continue;
+            var target = ListScroll.Show(Rows, i)?.GetVisualDescendants().OfType<Button>().FirstOrDefault();
+            if (target is not null) Dispatcher.UIThread.Post(() => target.Focus(NavigationMethod.Directional), DispatcherPriority.Loaded);
+            return;
+        }
     }
 
     public event EventHandler? Picked;
@@ -140,6 +162,12 @@ public partial class MenuRowList : UserControl
 
     private void OnRowKey(object? sender, KeyEventArgs e)
     {
+        if (e.Key is Key.Up or Key.Down && e.KeyModifiers == KeyModifiers.None && sender is Control row && Rows.Classes.Contains("big"))
+        {
+            WalkRows(row, e.Key == Key.Down ? 1 : -1);
+            e.Handled = true;
+            return;
+        }
         if (e.Key != Key.Right || sender is not Control { DataContext: MenuRowSlot { Row.Submenu: { } rows } } opener) return;
         OpenNested(opener, rows);
         e.Handled = true;

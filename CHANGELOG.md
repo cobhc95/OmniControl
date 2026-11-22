@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Menus with many rows (the gadget's Font list) build only the rows in view, so opening them is lighter.
+
 - Settings changed quickly (a slider, a plug-in's window) are turned into file text once per pause instead of at every change.
 
 - Effects: an open FX window remembers its last measured chain as a short digest instead of a copy of every plug-in's settings.

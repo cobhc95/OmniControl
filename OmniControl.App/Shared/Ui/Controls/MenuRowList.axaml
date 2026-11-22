@@ -9,6 +9,21 @@
          muted line under it. A header row is a muted section title with an optional thin line above. The glyph column is shown only when a
          row has an icon or a tick (MenuRowList.noglyphs). Each place keeps its row control when the rows are asked again (MenuRowSlot), so
          live values never take the hover or the keyboard away. Mouse first (AGENTS.md rule 5). -->
+    <UserControl.Styles>
+        <!-- A long list (MenuRowList.VirtualAfter rows, e.g. every installed font): its own scroll viewer of a finite height and a virtualizing panel, so only the rows in view are built; the rows are the same -->
+        <Style Selector="ItemsControl.big">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <ScrollViewer MaxHeight="{StaticResource MenuBigListHeight}" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                        <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
+                    </ScrollViewer>
+                </ControlTemplate>
+            </Setter>
+            <Setter Property="ItemsPanel">
+                <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+            </Setter>
+        </Style>
+    </UserControl.Styles>
     <StackPanel>
         <TextBlock Classes="menutext" Text="{Binding Title, RelativeSource={RelativeSource AncestorType=c:MenuRowList}}" IsVisible="{Binding Title, RelativeSource={RelativeSource AncestorType=c:MenuRowList}, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
         <ItemsControl x:Name="Rows">

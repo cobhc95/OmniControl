@@ -268,6 +268,7 @@
         <x:Double x:Key="IconCellSize">34</x:Double>
         <x:Double x:Key="IconCellGlyph">20</x:Double>
         <x:Double x:Key="MenuRowLine">18</x:Double>
+        <x:Double x:Key="MenuBigListHeight">320</x:Double>
         <x:Double x:Key="MenuTagGap">4</x:Double>
         <Thickness x:Key="MenuTagLineMargin">0,3,0,0</Thickness>
         <Thickness x:Key="MenuTextInset">12,4,12,2</Thickness>
