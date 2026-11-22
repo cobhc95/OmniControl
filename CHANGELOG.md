@@ -5,68 +5,52 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
-- "Choose a trigger or state": live values now update in place, so the sections list no longer flickers under the pointer and the lists keep their scroll and selection; the list has one left pane with an icon on every section and two headings, "PC and time" (Start up and power, Time and idle, Programs, USB devices, Keyboard, When an action runs) and "Your pages" (the pages that have states, in sidebar order).
-- Programs are now states, "<Name> is running": the Programs section lists the programs you added (＋ Add a program… keeps an .exe you browse for), the ones your rules use, the running ones and the installed ones, each with where it came from and On or Off, and "Pick by name…" last. The list is read once when the window opens, off the UI thread. Rules that started or closed from a program ("Another program starts / closes") are moved once to that program's state, and behave as before; a program's setting says starts, closes or starts or closes, and the rule reads "when Zoom starts"; a program is looked at only while an active rule uses it.
-- Presets Manager: a preset whose rule has no trigger yet says "No trigger yet" instead of an empty "When"; "Edit in Automation", "Show on its page" and every other page opened from another window bring the main window forward (restored, out of the tray).
-- Network Traffic Control keeps its settings apart from Resources: its rules, pins and presets have their own file and their own area in Export and Import, Resources presets hold only readings and gadget settings, and your current rules move over once at start (older backups restore them into the new area).
-- Automation: the Rules tab is now called Custom Rules, and the rules that switch to a preset are listed there (with "Presets · kind" and "Made in the Presets window · Open"); From other pages lists only what pages make for themselves (warm light, network limits, device checks, the emulator's idle close). In the Presets window, "* When … · Edit in Automation" opens Custom Rules on that rule, and "More options in Automation" makes a new rule that switches to the preset, with its trigger slot ready; the link's tip is shorter so it no longer covers the row's buttons.
-- Backup and restore: Export… and Import… now open the same window as "Import settings from a PC": tick the areas (named like their pages) to put in the file or to take from it; an import lists only what the file holds, is applied at once without a restart, makes a backup first and can be undone. Every saved area is included: Plug-in list, Other PCs (pairings, nicknames and allowances, never keys) and Microphone mute key now have their own areas; favourites and recent actions moved to Actions and Hotkeys.
+## 0.3.2 (22 Nov 2026)
 
-- Presets: every preset now has its own "Apply preset" action in Actions and Hotkeys, the pickers and rules, whether or not it has a shortcut; it appears when the preset is made, follows a rename and goes when the preset is deleted. Saved shortcuts and rules keep working.
+### ✨ New
 
-- Fixed: a PC with a network adapter that has IPv4 switched off (for example Hyper-V's Default Switch) couldn't be found by other PCs on the local network; that adapter is now skipped instead of stopping the whole network check.
+- **Search finds everything.** Every page, choice, menu item, tooltip and the Presets Manager are searchable. Exact matches come first; a misspelling shows "No exact matches" with "Similar matches" (typo-tolerant), and the matching text is highlighted. A test keeps new pages from being missed.
+- **Presets Manager** has its own sidebar entry (above Actions and Hotkeys). Each preset row has its hotkey box, "Switch to", rename and delete icons, and a link: "* <triggers> · Edit in Automation" or "More options in Automation", which starts a ready rule that switches to that preset.
+- **Every preset is an action**, with or without a hotkey: use it in rules, mouse buttons, gestures and tray tiles. Actions and Hotkeys has a **Presets** section, each preset group gets **Next · Previous**, and "Switch to" has **Run again to switch back** (off by default).
+- **Automation:**
+  - **Custom Rules** (renamed from Rules) holds your rules, including preset rules.
+  - **From other pages** lists what pages run by themselves as real, editable rules: warm light, per-network traffic limits, smart device checks and the emulator's idle close. Your existing settings move into them once.
+  - Pause all rules and switching automation off stop only your own and preset rules; those page rules keep running.
+- **Choose a trigger or state** is one list with icons, grouped under "PC and time" and "Your pages", with live values. **Programs are states** ("Steam is running": starts, closes, or starts or closes), with "＋ Add a program…" to browse for an .exe and a tag saying where each program came from. Your existing program rules are converted and behave the same.
+- **Network states:** "Connected to <network>", "On a metered connection" and "Not connected" for rules and presets.
+- **Network Traffic Control:**
+  - an **Adapter** pull-down, with saved networks under each adapter, gives an adapter or a network its own limits and blocks (the most specific wins);
+  - an **All apps** row sets every app at once;
+  - its own presets;
+  - its own settings file, apart from Resources.
+- **Mouse:** actions can run when a button is **pressed twice or three times** ("Presses within", 300 ms by default); their pills say "· twice" / "· 3 times".
+- **Backup and restore:** Export, Import from a file and Import from another PC share one window. You tick the areas, named like their pages, and every saved area is included.
+- **Other PCs:** a **"Can't reach it on this network?" checklist** appears when a PC can't be reached or none shows for pairing. It checks Private/Public (with "Make it Private"), Windows Firewall (with "Allow on Private networks"), ports in use, other versions and pairing keys.
+- **Screenshot:**
+  - "Read QR code" also reads Aztec, Data Matrix, PDF417 and common barcodes, including light-on-dark and small codes.
+  - Copying a screenshot shows "Screenshot copied".
 
-- Other PCs: discovery no longer stops silently. A Hyper-V or WSL adapter set to Public no longer marks a Private network as Public; beacons go out even when an adapter gives no mask; the beacons' socket keeps listening after Windows' "port unreachable" and the ports are taken again by themselves after another program held them or the socket died. "Can't reach it on this network?" and "Not showing?" now also say when this PC has no network, Windows gives no network type, Windows Firewall blocks OmniControl (TCP and UDP both checked) or couldn't be checked, another program holds OmniControl's ports, a PC nearby runs a different OmniControl version, or this PC lost a pairing key; the pairing list shows the firewall row too.
+### 🛠 Fixed
 
-- Audio and Volume: microphone levels are read on a worker with the mixer's scan, not on the UI thread; Tab and Shift+Tab reach cards that are still being built.
-- Other PCs: "Can't reach it on this network? Check:" under a paired PC that is offline, and "Not showing? Check:" under an empty list of PCs open to pairing. It shows whether this PC's network is Public or Private (with "Make it Private"), whether Windows Firewall lets OmniControl in (with "Allow on Private networks"), and what to check on the other PC, and updates by itself when the network changes.
-- Fixed: switching a network from Public to Private in Windows is now noticed at once by Other PCs (it waited for an address change or a restart). Setup also lets OmniControl through Windows Firewall on Private and Domain networks, never Public.
-- Resources > Taskbar gadget: the Position and Font cards sit at the right edge, in line with the groups below, and wrap below (still right-aligned) in a narrow window.
-- Changed: the taskbar gadget's right-click menu is now only Gadget settings…, Network Traffic Control… (while it runs) and Hide gadget; Layout, Show, Position and Font stay on the Resources page's Taskbar gadget tab.
-- Pages open faster: every page builds its first screen of cards at once and the rest just after, between frames; the Mouse and Trackpad page reads Windows' pointer settings, and App settings "Start with Windows", off the UI thread (the pointer settings once instead of three times at the first opening).
-- Free memory after closing now also hands the freed memory back to Windows, so Task Manager shows the lower figure.
-- Actions and Hotkeys window (and every action picker): a "Presets" section above Recent lists every preset action under "<page> · <group>"; its right pane offers "Show in Presets Manager".
-- Every preset group has "Next" and "Previous" actions (one row "<group> presets: Next · Previous"), stepping through its presets in order and wrapping.
-- A preset's "Switch to" action has a setting "Run again to switch back" (off by default): run again while that preset is in use, it goes back to the one before.
-- Removing a custom action in the Actions and Hotkeys window asks first.
+- **Other PCs** couldn't be found on the local network when the PC had an adapter with IPv4 off (for example Hyper-V's Default Switch), and switching a network to Private wasn't noticed until a restart. Setup now allows OmniControl on Private and Domain networks, never Public.
+- **"Open Task Manager"** (gadget double-click, hotkeys) opens again when OmniControl runs as administrator, and the gadget no longer says its click action is unavailable right after start-up.
+- **Pop-down menus** whose choices sometimes did nothing, and preset rows that lost their buttons.
+- **Lists in the trigger picker** no longer flicker or scroll away by themselves.
+- **The screenshot editor's empty text box** goes away when you change tool or click elsewhere.
+- **Setup's "Choose features" page** no longer ignores the first click on Next.
+- **Links to another page** bring the main window to the front.
+- **The search box** shows "Search settings…" again.
 
-- Renamed: Presets Manager; Actions and Hotkeys; Network Traffic Control. Fixed "Choose a action" to "Choose an action".
-- Automation's Custom actions tab is gone: custom actions are made, edited, run and removed in the Actions and hotkeys window (Custom actions section, "+ New custom action..."); saved ones are unchanged, and a rule's "+ action" still creates one through the picker.
-- Presets now has its own entry in the sidebar's bottom group, above Actions and hotkeys; it opens the Presets window (also an action, "Open Presets"). Automation's Presets tab is gone: rules made in the Presets window show on the From other pages tab as "Presets · <page>" with "Made in the Presets window · Open".
-- Copying a screenshot (area, window, screen, the editor's Copy) now shows the same small note as saving one, "Screenshot copied", when the capture's "show a note" setting is on.
-- The main window's search box showed garbled characters instead of the ellipsis after "Search settings"; fixed, and a test now fails if any source holds UTF-8 read as ANSI.
-- Pause all rules now stops only your own and preset rules and blocks: rules made on other pages (warm light, per-network traffic limits, smart device checks, the emulator's idle close) keep running, and a block still applies to their actions. The pause button's tip and the From other pages tab say so.
-- Rules made on other pages (warm light, per-network traffic limits, smart device checks, the emulator's idle close) now keep running with "Hotkeys and automation" switched off; the switch turns off only your own and preset rules, blocks and hotkeys. Those pages' controls keep working, without the "Edit in Automation" link while the Automation page is off. The paused status line now says "Your rules are paused."
+### ⚡ Lighter and faster
 
-- The Volume page is now called "Audio and Volume" (sidebar, search, its actions' and states' section, its preset kind "Audio and Volume preset").
-- "Choose a trigger or state": a rule's trigger and the Presets window's "State…" open the same window. Under Triggers the usual sections; under States one section per page (Displays, Audio and Volume, Smart Devices...) replacing "When a state changes", each state with its value now as a tag and "Now Off · changed 12 min ago" over its options. Search finds triggers, states (by name, device or value) and keys. A preset can now also start from any trigger (time, program, power...). A network picked from the side list is used at once, and a rule's network trigger shows picked when you edit it.
-- Automation's From other pages tab now also holds Network traffic control's places ("Phone hotspot limits": while connected to Phone hotspot, use its limits; an adapter's own: while that adapter is connected), each smart device's checks ("Check Desk lamp": when OmniControl starts or every 5 minutes) and the emulator's idle close ("Close the emulator": when no device action for 30 min). Each is an ordinary rule you can extend; the pages keep their controls, edit the same rule and say when it has more or is off. Existing settings are moved into rules once; defaults are unchanged. New states: "<adapter> connected" and "No device action for N min". A place's own limits now apply only while its rule holds, so with automation switched off the All adapters limits apply everywhere.
-- Presets window: a preset row whose rule has more than its chips (conditions, other actions) shows * (More in Automation).
-- Faster: rules with a "program is running" condition no longer list the running programs on the window's thread.
-- Automation has a From other pages tab: warm light is now an ordinary automation rule ("Between 20:00 and 07:00" do "Warm light fade to 3400 K") that you can extend with conditions or actions; the Displays page keeps its switch, times and warmth, and says when the rule has more. Your warm-light schedule is moved into the rule once. A rule shows on a page or in the Presets window because it holds that page's or preset's action, so it moves when you change that. New trigger: Between two times.
+- **Pages show their first cards at once** and build the rest between frames. Pointer settings, "Start with Windows" and microphone levels are read off the UI thread.
+- **"Free memory after closing"** also hands the freed memory back to Windows, and .NET keeps a smaller memory budget.
 
-- Automation: a new Presets tab lists the rules made from the Presets window, with the same editor as the Rules tab, the preset kind after each name and "Open in Presets window"; the Rules tab no longer shows them. Changes in either place show in the other at once.
+### ✏️ Renamed and tidied
 
-- Network states: "Connected to <network>" (each saved Wi-Fi or wired network), "On a metered connection" and "Not connected" can trigger presets and automation rules; the state picker's "Network ▸" row opens a side list: "Connected to" (connected and rule-used networks first, each with its kind), metered, not connected, and "Find a network…" over the rest; chips read "Connected to <name>", "Metered connection", "Not connected".
-
-- Screenshot: "Read QR code" now also reads Aztec, Data Matrix, PDF417 and MaxiCode codes and the common barcodes (EAN, UPC, Code 128, Code 39, ITF), says which kind each result is, reads light-on-dark codes, and retries a small picture enlarged, so Aztec codes and small QR images are found.
-
-- Mouse: a button action can now run when the button is pressed twice or three times, with a "Presses within" setting (default 300 ms, 150 to 1000 ms) for the time allowed between presses; only buttons with such an action wait before running their single press, and "When the button is held" keeps working beside them.
-- Mouse: the pill of an action that runs on two or three presses says "· twice" or "· 3 times" (like "· held"), and a pressed action on a button with such an action says in its "Runs" setting that it waits for more presses.
-- Presets: every preset row in the Presets window now has trigger chips. "+ Add" offers Hotkey (replaces the shortcut box), State… (any state, by page) and Action… (switches when that action runs); "or" / "and" between chips flips with a click, × removes one. A state switches to the preset while it holds and puts the preset in use before back when it ends. Triggers are ordinary rules, also shown on the Automation page. Rename and Delete are now icon buttons.
-
-- Network traffic control: an "Adapter" pull-down on the header (All adapters, each adapter, and beside Wi-Fi its saved networks with a find box) gives an adapter or a network its own limits and blocks; the most specific wins, the first edit copies the rules it used, and "Use … settings" goes back. Blocks and download limits follow each adapter; upload limits can follow only a network's type, and the status line says so when that is not exact. A new "All apps" row on top shows the whole PC's traffic and sets a limit, a block or On for every app ("Mixed" and a half switch when they differ). The table has its own presets (Normal and yours, also in the Presets window). The "Apps: all" pill is gone.
-- Memory: .NET now keeps a small memory budget on every PC by default (no background garbage-collection thread, memory returned sooner, a smaller allocation budget between collections).
-- Search now covers every page: Automation, Displays, Mouse and Trackpad, Resources, Network traffic control, Volume, Smart Devices and Other PCs find their cards by choices, menus, tooltips and muted lines (device and program names, methods, set-up stages, readings, sensors and adapters, paired PCs and what they may do, effects and Easy goals), the preset manager and App settings find groups and presets by name, and the Actions and hotkeys window finds an action by its settings. Typo search is faster (about 5 ms over every card) and the category filter no longer hides similar results behind the first twenty.
-- Search: matches inside a card's choices, menu items, tooltip and muted line now count (App settings and OSD first), the matching part of a result is highlighted, and a misspelled word shows "No exact matches" with "Similar matches" below instead of nothing.
-- Presets window: a preset row is simpler again: the shortcut box ("Double-click to set") is always there, "+ Add" and the trigger chips are gone, and a muted link reads "* When … · Edit in Automation" (opens Automation's From other pages tab on that rule) or "More options in Automation". State and action triggers are made in Automation; saved ones are kept. A page's "Edit in Automation" now also scrolls to and focuses its rule.
-- Fixed: choices in pop-down menus (the Presets window's "+ Add" and "…", Automation's rule menus, Add program, app lists) sometimes did nothing; the menu closed before the choice ran.
-- Fixed: Presets window rows could lose their Switch to, Rename and Delete buttons.
-- Fixed: "Open Task Manager" (the gadget's double-click, hotkeys) opens Task Manager again while OmniControl runs as administrator; before, its UAC prompt only flashed on the taskbar. A declined prompt or a failed launch is now reported.
-- Fixed: right after start-up, the gadget's click and double-click no longer say their action is not available while the installed apps are still being looked for; Windows' own apps are ready at once.
-- Fixed: Setup's "Choose features" page (and its Tasks page) no longer beeps and ignores the first click on Next; Setup now reads your saved choices before its window opens instead of while those pages show.
-- Fixed: in the screenshot area editor, the Text tool's box stayed on screen when you clicked and typed nothing, even after switching tools. It now goes away when you switch tool, click the picture, undo, copy, save, print or press Esc; typed words become a drawing at once, and an empty box is dropped.
-
+- **New names:** Audio and Volume, Presets Manager, Actions and Hotkeys, Network Traffic Control, and "Choose an action".
+- **Custom actions** are made and edited only in Actions and Hotkeys, and deleting one asks first.
+- **The taskbar gadget's right-click menu** is just Gadget settings…, Network Traffic Control… and Hide gadget. On the gadget tab, Position and Font sit at the right.
 ## 0.3.1 (22 Nov 2026)
 
 - Windows' own volume pop-up is hidden from the first key press after OmniControl starts.
