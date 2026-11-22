@@ -121,6 +121,9 @@ public static partial class Timing
     /// about 30 a second, TabForge's rate).
     public static readonly TimeSpan PluginEditorIdle = TimeSpan.FromMilliseconds(33);
 
+    /// While a plug-in's own editor is open, its settings are read this often and, when changed, saved and sent to Equalizer APO.
+    public static readonly TimeSpan PluginLiveSettings = TimeSpan.FromMilliseconds(300);
+
     /// How often the FX window reads its row's live Latency (a plug-in may change its latency while it runs).
     public static readonly TimeSpan FxAnalysisRefresh = TimeSpan.FromMilliseconds(500);
 

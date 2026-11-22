@@ -4,7 +4,8 @@ namespace OmniControl.App.Features.Volume.Audio.Engine;
 
 /// The loaded plug-ins (VST3 and VST2), one per chain slot, loaded on first use on the UI thread (plug-in editors must live on the
 /// thread that made the plug-in). A plug-in's settings are saved into its slot (<see cref="FxSlot.State"/>) when its editor or
-/// settings list closes, when the engine stops and on exit. A plug-in is unloaded only when no running chain, no editor and no settings
+/// settings list closes, every <see cref="Timing.PluginLiveSettings"/> while its own editor is open (so Equalizer APO and the FX
+/// window's chart follow edits live), when the engine stops and on exit. A plug-in is unloaded only when no running chain, no editor and no settings
 /// list use it, so the audio thread never meets a freed plug-in.
 public sealed class PluginChainHost : IDisposable
 {
@@ -18,9 +19,15 @@ public sealed class PluginChainHost : IDisposable
 
     private readonly Dictionary<FxSlot, Loaded> _loaded = new(ReferenceEqualityComparer.Instance);
     private readonly Action _save;
+    /// Runs only while a plug-in's own editor is open. The formats' change notices are not wired, so the settings are read and compared.
+    private readonly DispatcherTimer _live = new() { Interval = Timing.PluginLiveSettings };
 
     /// <param name="save">Writes the settings file after plug-in states were copied into their slots.</param>
-    public PluginChainHost(Action save) => _save = save;
+    public PluginChainHost(Action save)
+    {
+        _save = save;
+        _live.Tick += OnLiveTick;
+    }
 
     /// A plug-in's saved settings changed (its editor or settings list closed, or states were saved): an engine that runs plug-ins from
     /// the saved settings (Equalizer APO) takes them again. UI thread.
@@ -100,6 +107,7 @@ public sealed class PluginChainHost : IDisposable
         if (editor is null) { error = "This plug-in has no editor window."; return null; }
         _loaded[slot].Editors++;
         _loaded[slot].Windows++;
+        _live.Start();
         EditorWindowChanged?.Invoke(slot);
         return editor;
     }
@@ -124,15 +132,21 @@ public sealed class PluginChainHost : IDisposable
             entry.Editors = Math.Max(0, entry.Editors - 1);
             if (wasEditor) entry.Windows = Math.Max(0, entry.Windows - 1);
         }
+        if (!_loaded.Values.Any(e => e.Windows > 0)) _live.Stop();
         if (wasEditor) EditorWindowChanged?.Invoke(slot); // before anything is unloaded: a feed stops using the plug-in first
         SaveStates();
     }
 
+    private void OnLiveTick(object? sender, EventArgs e) =>
+        Guard.Run("Plug-ins: live settings", () => SaveStates(_loaded.Where(l => l.Value.Windows > 0).ToList()));
+
     /// Copies every loaded plug-in's settings into its slot and saves.
-    public void SaveStates()
+    public void SaveStates() => SaveStates(_loaded);
+
+    private void SaveStates(IEnumerable<KeyValuePair<FxSlot, Loaded>> loaded)
     {
         var changed = false;
-        foreach (var (slot, entry) in _loaded)
+        foreach (var (slot, entry) in loaded)
         {
             if (entry.Effect is null) continue;
             try
@@ -163,6 +177,8 @@ public sealed class PluginChainHost : IDisposable
 
     public void Dispose()
     {
+        _live.Stop();
+        _live.Tick -= OnLiveTick;
         SaveStates();
         foreach (var entry in _loaded.Values) entry.Effect?.Dispose();
         _loaded.Clear();

@@ -39,6 +39,7 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
         mixer.Updated += OnMixerUpdated;
         engine.StatusChanged += OnEngineStatus;
         engine.ApoPlacementChanged += OnApoPlacementChanged;
+        engine.PluginStatesSaved += MeasureSoon;
         mixer.KeepFxInPlaceChanged += OnKeepFxInPlaceChanged;
         support.Changed += OnSupportEvent;
         feeds.Changed += OnDisplayFeedChanged;
@@ -246,6 +247,7 @@ public sealed partial class FxWindowViewModel : ObservableObject, IDisposable
         Chain.PropertyChanged -= OnChainChanged;
         _engine.StatusChanged -= OnEngineStatus;
         _engine.ApoPlacementChanged -= OnApoPlacementChanged;
+        _engine.PluginStatesSaved -= MeasureSoon;
         _mixer.KeepFxInPlaceChanged -= OnKeepFxInPlaceChanged;
         _support.Changed -= OnSupportEvent;
         Chain.Edited -= OnChainEdited;

@@ -63,6 +63,15 @@ public sealed partial class EffectsEngine : IDisposable
     /// raised on every such plan until it runs there; the listener decides whether to offer it. UI thread.
     public event Action? ApoWanted;
 
+    /// A plug-in's saved settings changed (its editor was edited or closed): an FX window measures its chain again. UI thread.
+    public event Action? PluginStatesSaved;
+
+    private void OnPluginStatesSaved()
+    {
+        Reconcile();
+        PluginStatesSaved?.Invoke();
+    }
+
     /// The user changed the master's effects or the routing since the start (the first use of a master effect).
     private bool _masterTouched;
 
@@ -89,7 +98,7 @@ public sealed partial class EffectsEngine : IDisposable
         mixer.MicrophonesChanged += OnMicrophonesChanged;
         support.Changed += OnSupportChanged;
         // Equalizer APO runs a VST2 from its saved settings: a newly saved state is written into its line (files change only when the text does).
-        plugins.StatesSaved += Reconcile;
+        plugins.StatesSaved += OnPluginStatesSaved;
         Reconcile();
     }
 
@@ -542,7 +551,7 @@ public sealed partial class EffectsEngine : IDisposable
         _mixer.KeepFxInPlaceChanged -= OnKeepFxInPlaceChanged;
         _mixer.MicrophonesChanged -= OnMicrophonesChanged;
         _support.Changed -= OnSupportChanged;
-        _plugins.StatesSaved -= Reconcile;
+        _plugins.StatesSaved -= OnPluginStatesSaved;
         foreach (var key in _runs.Keys.ToList()) StopRun(key);
         _busDefault.Release(); // after every program is routed back: Windows' default goes back to the real speakers
         _busDefault.Dispose();

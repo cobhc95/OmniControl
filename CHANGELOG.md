@@ -8,6 +8,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 - Changed: the FX window's response charts show the whole chain as measured (a short test sweep played once through every switched-on effect, IR Loader and plug-ins included) a moment after each change, with Peak and Latency from the measurement and tags for a level-dependent effect, a reverb tail and Equalizer APO settings left out; the EQ and gain curve stays as a faint reference in the larger chart.
 - Fixed: a removed effect could stay audible in Equalizer APO; its config is now written once per change, without the removed effect.
 - Fixed: a removed plug-in is unloaded a moment after it leaves every running chain, instead of staying loaded until all effects stop.
+- Changed: while a plug-in's window is open, its settings reach Equalizer APO and the FX window's chart live (within about a third of a second), not only when the window closes.
 
 ## 0.3.0 (22 Nov 2026)
 
