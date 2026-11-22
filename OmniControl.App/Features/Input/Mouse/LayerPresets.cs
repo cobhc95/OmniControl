@@ -13,6 +13,9 @@ public sealed class LayerPresets : PresetProvider, IDisposable
     /// The preset manager's ids of the two layer groups (also part of their shortcut actions' ids: never rename).
     public const string MouseGroupId = "mouse.buttons", TrackpadGroupId = "mouse.trackpad";
 
+    /// The layers' "Only named or used layers" switch, said once for the manager and for search.
+    public const string OnlyUsedLabel = "Only named or used layers", OnlyUsedTip = "The layer drop-down and this list leave out layers with no name and no mappings";
+
     private const string AllListed = "Every layer is listed already.";
     private const string KeepNumbers = "Layers keep their numbers: \"Hold for layer N\" and the custom rules refer to them.";
 
@@ -23,7 +26,7 @@ public sealed class LayerPresets : PresetProvider, IDisposable
     {
         (_mouse, _family) = (mouse, family);
         Words = new PresetWords("Switch to", "Switch to layer", "+ Add a layer", "Names the next unused layer so it is listed");
-        Switch = new PresetSwitch("Only named or used layers", "The layer drop-down and this list leave out layers with no name and no mappings",
+        Switch = new PresetSwitch(OnlyUsedLabel, OnlyUsedTip,
             () => Layers.OnlyUsed, on => _mouse.SetOnlyUsedLayers(_family, on));
         mouse.LayerChanged += OnLayerChanged;
         mouse.LayersChanged += OnLayersChanged;

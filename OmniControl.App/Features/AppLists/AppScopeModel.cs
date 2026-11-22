@@ -10,7 +10,11 @@ namespace OmniControl.App.Features.AppLists;
 /// its words are the list's name or "None", and its menu offers None and the lists. Lives as long as the page that made it.
 public sealed partial class AppScopeModel : ObservableObject, IAppScopeUser
 {
+    private const string SameAsGroup = "Same as the group", AllAppsRow = "All apps", OnlyInRow = "Only in\u2026", AllExceptRow = "All except\u2026", ManageLists = "Manage app lists\u2026", NeverIn = "Never in", WorksIn = "Works in";
     private const string Prefix = "Apps: ", AllWords = "all", OnlyWord = "only", ExceptWords = "all except", NoneWord = "None", OutsideWords = "apps outside";
+
+    /// What an apps scope says, for search: the chip's words and the rows of its menu.
+    public static IReadOnlyList<string> MenuWords { get; } = new[] { Prefix + AllWords, Prefix + OnlyWord, Prefix + ExceptWords, NoneWord, SameAsGroup, AllAppsRow, OnlyInRow, AllExceptRow, ManageLists, WorksIn, NeverIn };
 
     private readonly AppListStore _store;
     private readonly Func<AppScopeSetting?> _read;
@@ -84,18 +88,18 @@ public sealed partial class AppScopeModel : ObservableObject, IAppScopeUser
         var rows = new List<MenuRowItem>();
         if (_excludes)
         {
-            MenuTitle = "Never in";
+            MenuTitle = NeverIn;
             rows.Add(Row(NoneWord, string.Empty, stored is not { IsLimited: true }, () => Choose(null)));
             AddListRows(rows, ScopeMode.Except, stored);
         }
         else
         {
-            MenuTitle = "Works in";
-            if (_group is not null) rows.Add(Row("Same as the group", Describe(_group.Effective), stored is null, () => Choose(null)));
+            MenuTitle = WorksIn;
+            if (_group is not null) rows.Add(Row(SameAsGroup, Describe(_group.Effective), stored is null, () => Choose(null)));
             var isAll = _group is null ? stored is not { IsLimited: true } : stored is { IsLimited: false };
-            rows.Add(Row("All apps", string.Empty, isAll, () => Choose(AllChoice())));
-            rows.Add(PageRow("Only in…", ScopeMode.Only, stored));
-            rows.Add(PageRow("All except…", ScopeMode.Except, stored));
+            rows.Add(Row(AllAppsRow, string.Empty, isAll, () => Choose(AllChoice())));
+            rows.Add(PageRow(OnlyInRow, ScopeMode.Only, stored));
+            rows.Add(PageRow(AllExceptRow, ScopeMode.Except, stored));
         }
         Show(rows);
     }
@@ -127,7 +131,7 @@ public sealed partial class AppScopeModel : ObservableObject, IAppScopeUser
 
     private void Show(List<MenuRowItem> rows)
     {
-        rows.Add(new MenuRowItem("Manage app lists…", string.Empty, false, string.Empty, new RelayCommand(OpenManager), RuleAbove: true, IsMuted: true));
+        rows.Add(new MenuRowItem(ManageLists, string.Empty, false, string.Empty, new RelayCommand(OpenManager), RuleAbove: true, IsMuted: true));
         Rows = rows;
     }
 

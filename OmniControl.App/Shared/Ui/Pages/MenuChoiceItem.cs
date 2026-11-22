@@ -17,6 +17,9 @@ public sealed partial class MenuChoiceItem : ObservableObject, IEditorItem, IHal
     /// A fact about the choice the label does not say, shown as the chip's tooltip; null: none.
     public string? Tip { get; init; }
 
+    /// False: search leaves the menu's rows out (they ask a service that may be slow or off the UI thread, such as the paired PCs online now); the chip's words and tooltip are still searched.
+    public bool SearchesRows { get; init; } = true;
+
     /// Told when the menu opens (true) and closes, for rows that are worth reading only while someone looks at them; null: none.
     public Action<bool>? OpenChanged { get; init; }
 
@@ -34,8 +37,9 @@ public sealed partial class MenuChoiceItem : ObservableObject, IEditorItem, IHal
     /// A menu card made from its search card: label and tooltip are the card's.
     public MenuChoiceItem(SearchCard card, Func<string> words, Func<IReadOnlyList<MenuRowItem>> rows) : this(card.Label, words, rows) => Tip = card.Tip;
 
-    /// The chip's words, the tooltip and the menu's rows as they are now (texts, details and tooltips).
-    public IEnumerable<string> SearchTexts => Rows.SelectMany(r => new[] { r.Text, r.Detail, r.Tip }).Append(Tip).Append(Text).Where(t => !string.IsNullOrEmpty(t))!;
+    /// The chip's words, the tooltip and (unless <see cref="SearchesRows"/> is off) the menu's rows as they are now (texts, details and tooltips).
+    public IEnumerable<string> SearchTexts =>
+        (SearchesRows ? Rows.SelectMany(r => new[] { r.Text, r.Detail, r.Tip }) : Enumerable.Empty<string?>()).Append(Tip).Append(Text).Where(t => !string.IsNullOrEmpty(t))!;
 
     /// The menu's rows as they are now.
     public IReadOnlyList<MenuRowItem> Rows => _rows();

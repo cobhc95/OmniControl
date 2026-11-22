@@ -16,6 +16,7 @@ public sealed partial class OtherPcsPageViewModel : PageViewModel, IDisposable
     private readonly Func<DialogMessage, Task<string?>> _askText;
     private readonly Action<string> _report;
     private readonly ImportFromPcService _importFrom;
+    private readonly Action _openPage;
 
     public static readonly PageInfo Info = new(OtherPcsService.Category,
         "M3,4 H17 V14 H3 Z M5,6 V12 H15 V6 Z M7,16 H13 V18 H7 Z M19,8 H22 V20 H19 Z M20,9.5 V10.5 H21 V9.5 Z", NavGroups.Devices,
@@ -51,7 +52,7 @@ public sealed partial class OtherPcsPageViewModel : PageViewModel, IDisposable
     private bool _ready;
     private bool _onScreen;
 
-    public OtherPcsPageViewModel(OtherPcsService service, Func<DialogMessage, Task<bool>> ask, Func<DialogMessage, Task<string?>> askText, Action<string> report, ImportFromPcService importFrom)
+    public OtherPcsPageViewModel(OtherPcsService service, Func<DialogMessage, Task<bool>> ask, Func<DialogMessage, Task<string?>> askText, Action<string> report, ImportFromPcService importFrom, Action openPage)
         : base(Info)
     {
         _service = service;
@@ -61,6 +62,7 @@ public sealed partial class OtherPcsPageViewModel : PageViewModel, IDisposable
         _askText = askText;
         _report = report;
         _importFrom = importFrom;
+        _openPage = openPage;
         foreach (var id in service.TabOrder)
         {
             if (service.Find(id) is { } pair) Items.Add(Make(pair));

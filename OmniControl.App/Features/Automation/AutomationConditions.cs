@@ -37,6 +37,9 @@ public static class AutomationConditions
         return list;
     }
 
+    /// The names of the fixed conditions, for search.
+    public static IReadOnlyList<string> FixedNames => Choices(new AutomationRule(), Array.Empty<string>(), null).Select(c => c.Name).ToList();
+
     /// How a stored condition reads in the sentence ("on battery", "between 22:00 and 07:00", "chrome is running").
     public static string PhraseOf(string stored)
     {

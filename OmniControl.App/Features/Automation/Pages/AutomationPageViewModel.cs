@@ -31,19 +31,19 @@ public sealed partial class AutomationPageViewModel : PageViewModel, IDisposable
     public CardGroup AutomationsGroup { get; } = new("Automation/Automations", "Automations", string.Empty)
     {
         ExpandedByDefault = true,
-        Tip = "When something happens (and the conditions hold), do one or more actions. Each also becomes an action called Run: its name.",
+        Tip = AutomationsCard.Tip,
     };
 
     public CardGroup BlocksGroup { get; } = new("Automation/Blocks", "Blocks", string.Empty)
     {
         ExpandedByDefault = true,
-        Tip = "While the conditions hold, the chosen actions are not allowed, whether a hotkey, a mouse button, a gesture or a rule starts them. Pausing all rules lifts every block.",
+        Tip = BlocksCard.Tip,
     };
 
     public CardGroup CustomsGroup { get; } = new("Automation/Custom actions", "Custom actions", string.Empty)
     {
         ExpandedByDefault = true,
-        Tip = "Your own actions: a command, a script, a program, a file or folder, a web address. They run as you (never as administrator), and appear in Shortcuts, the mouse and gesture pickers and every rule.",
+        Tip = CustomsCard.Tip,
     };
     public bool ShowsRules => Tabs.Current == RulesTab;
     public bool ShowsCustom => Tabs.Current == CustomTab;
@@ -63,30 +63,7 @@ public sealed partial class AutomationPageViewModel : PageViewModel, IDisposable
     public bool HasStatus => StatusLine.Length > 0;
     public bool CanPause => !_service.SessionOff;
     public bool IsSafeStart => _service.SessionOff;
-    public string PauseTip => $"Stops every rule and block at once. {ReservedKeys.Emergency} does the same from anywhere.";
-
-    public override IEnumerable<SearchEntry> SearchEntries =>
-        Automations.Concat(Blocks).Select(r => Entry(r, RuleCard(r)))
-            .Concat(Customs.Select(c => Entry(c, CustomCard(c.Custom))))
-            .Concat(ScriptSearchEntries);
-
-    /// The page's search words (<c>FeaturePage.Words</c>), from the service's rules, custom actions and scripts. A rule's sentence is its
-    /// row's own (made and let go here), so its words never differ from the row's.
-    public static IEnumerable<string> Words(AutomationService? service)
-    {
-        if (service is null) return Array.Empty<string>();
-        return service.Settings.Rules.Select(rule =>
-            {
-                using var row = new AutomationItem(rule, service, _ => Task.FromResult(false), _ => { });
-                return RuleCard(row).Words;
-            })
-            .Concat(service.Settings.Customs.Select(c => CustomCard(c).Words))
-            .Concat(service.Settings.Scripts.Select(s => ScriptCard(s).Words)).ToList();
-    }
-
-    private static SearchCard RuleCard(AutomationItem row) => new(row.Label, $"automation rule schedule timer task {row.Line}", RulesTab);
-
-    private static SearchCard CustomCard(CustomAction custom) => new(custom.Name, $"custom action script command program url {custom.Target}", CustomTab);
+    public string PauseTip => PauseTipText;
 
     /// <param name="ask">Shows a short message with a confirm button; true when confirmed.</param>
     public AutomationPageViewModel(AutomationService service, Func<DialogMessage, Task<bool>> ask) : base(Info)

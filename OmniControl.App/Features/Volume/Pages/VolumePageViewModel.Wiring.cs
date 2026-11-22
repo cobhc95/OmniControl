@@ -12,6 +12,7 @@ public sealed partial class VolumePageViewModel
     private const string FollowMasterChoice = "Master (default device)";
     private const string CableTag = "Cable", BusCableTag = "Master bus", HeldCableTag = "In use";
     private const string AddTitle = "Add a device", ChooseTitle = "Choose a device";
+    private const string CombineSpeakersText = "+ Combine speakers", CombineMicrophonesText = "+ Combine microphones";
     private const string AddSecondChoice = "+ Add a second device", AddSecondTip = "Opens Wiring, where this row can play on several devices";
     private const string CombineWithTitle = "Combine with", CombineWithLabel = "Combine with...", CombineWithTip = "Mixes this microphone with others into one";
     private const string AddMicTitle = "Add a microphone", AddMicTip = "Add a microphone to the mix";
@@ -34,10 +35,10 @@ public sealed partial class VolumePageViewModel
     {
         ExpandedByDefault = true,
         RouteColumn = PlaysOnWords,
-        Tip = "A chip's × removes a device, + add adds one. A dimmed choice says why in its tooltip.",
+        Tip = WiringTip,
         SummaryBesideName = true, // the header's right end holds "+ Combine speakers"
         ToolGate = CombineSpeakersGate,
-        Tool = new CardAction("+ Combine speakers", "Plays the same sound on several speakers", CombineSpeakersCommand, Main: true),
+        Tool = new CardAction(CombineSpeakersText, "Plays the same sound on several speakers", CombineSpeakersCommand, Main: true),
     };
 
     private VolumeGroup NewWiringInputs() => new("Volume/Wiring/Microphones", "Microphones")
@@ -46,7 +47,7 @@ public sealed partial class VolumePageViewModel
         RouteColumn = RecordsFromWords,
         SummaryBesideName = true, // the header's right end holds "+ Combine microphones"
         ToolGate = CombineMicrophonesGate,
-        Tool = new CardAction("+ Combine microphones", "Mixes several microphones into one that apps record from", CombineMicrophonesCommand, Main: true),
+        Tool = new CardAction(CombineMicrophonesText, "Mixes several microphones into one that apps record from", CombineMicrophonesCommand, Main: true),
     };
 
     /// Brings the Wiring tab in line with the Mixer's rows and the routing model.

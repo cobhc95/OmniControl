@@ -38,6 +38,16 @@ public static class VcpNames
         _ => $"Value 0x{value:X2}",
     };
 
+    /// The names a choice feature can show, for search (empty for a feature whose values are not named here).
+    public static IReadOnlyList<string> NamesOf(byte code) => code switch
+    {
+        VcpCode.InputSource => Inputs.Values.ToList(),
+        VcpCode.ColorPreset => Presets.Values.ToList(),
+        0xDC => Modes.Values.ToList(),
+        0x8D => Mutes.Values.ToList(),
+        _ => Array.Empty<string>(),
+    };
+
     public static string Input(uint value) => Inputs.TryGetValue(value, out var name) ? name : $"Input 0x{value:X2}";
 
     public static string Preset(uint value) => Presets.TryGetValue(value, out var name) ? name : $"Preset 0x{value:X2}";

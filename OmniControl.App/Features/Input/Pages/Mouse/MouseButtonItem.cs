@@ -119,7 +119,7 @@ public sealed partial class MouseButtonItem : ObservableObject, IEditorItem, IHa
     public string ScopeTagText => Scope.Text;
 
     /// Every action's name, so search finds the card by any of them.
-    public string SearchWords => string.Join(" ", Slots.Select(s => s.Name));
+    public IEnumerable<string> SearchTexts => Slots.Select(s => s.Name);
 
     /// <param name="firstChoices">The first action's list as it is now (it grows as features register OmniControl actions).</param>
     /// <param name="laterChoices">The list for the second and later actions (one-shot only).</param>

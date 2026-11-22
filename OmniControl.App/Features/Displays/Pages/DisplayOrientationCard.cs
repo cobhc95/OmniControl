@@ -14,9 +14,8 @@ internal sealed class DisplayOrientationCard : IDisposable
     public DisplayOrientationCard(DisplayOrientationModel model, SuggestedKeysSwitch suggestedKeys)
     {
         (_model, _suggestedKeys) = (model, suggestedKeys);
-        Card = new GalleryItem(DisplayOrientationModel.Label, DisplayOrientationModel.Names, model.State.Value, () => OrientationPreview.Build(Card!.Index), model.Set)
+        Card = new GalleryItem(DisplayCards.Orientation, model.State.Value, () => OrientationPreview.Build(Card!.Index), model.Set)
         {
-            Tip = "Turns the screen through Windows. Its width and height swap between landscape and portrait.",
             Extra = suggestedKeys,
         };
         model.Changed += Show;

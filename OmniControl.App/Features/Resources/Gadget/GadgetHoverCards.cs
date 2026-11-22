@@ -12,26 +12,31 @@ public sealed class GadgetHoverCards : IDisposable
     private readonly MenuChoiceItem _scope, _rain;
     private readonly IReadOnlyList<ChipItem> _readingChips, _weatherChips;
 
-    private const string ReadingsLabel = "Readings", ScopeLabel = "Hover shows", ReadingShowsLabel = "Readings show", WeatherLabel = "Weather", RainLabel = "Rain chance", WeatherShowsLabel = "Weather shows";
+    private static readonly SearchCard ReadingsCard = GadgetSettingsModel.Card("Readings", "hover tooltip details") with { Note = "Shown when you hover the readings part" },
+        ScopeCard = GadgetSettingsModel.Card("Hover shows", "hover tooltip details") with { Menu = ScopeWords.Select(s => s.Words).ToList() },
+        ReadingShowsCard = GadgetSettingsModel.Card("Readings show", "hover tooltip details") with { Choices = Enum.GetValues<ReadingDetail>().Select(ReadingTips.DetailName).ToList() },
+        WeatherCard = GadgetSettingsModel.Card("Weather", "hover tooltip details forecast") with { Note = "Shown when you hover the weather part" },
+        RainCard = GadgetSettingsModel.Card("Rain chance", "hover tooltip details forecast") with { Menu = Enum.GetValues<RainWindow>().Select(WeatherWords.RainWindowName).ToList() },
+        WeatherShowsCard = GadgetSettingsModel.Card("Weather shows", "hover tooltip details forecast") with { Choices = Enum.GetValues<WeatherDetail>().Select(WeatherWords.DetailName).ToList() };
 
-    /// The labels of the cards global search offers (the page's word source reads them without making the cards).
-    public static IReadOnlyList<string> SearchLabels { get; } = new[] { ReadingsLabel, ScopeLabel, ReadingShowsLabel, WeatherLabel, RainLabel, WeatherShowsLabel };
+    /// The cards global search offers (the page's word source reads them without making the items).
+    public static IReadOnlyList<SearchCard> Cards { get; } = new[] { ReadingsCard, ScopeCard, ReadingShowsCard, WeatherCard, RainCard, WeatherShowsCard };
 
     public GadgetHoverCards(ResourcesSettings settings)
     {
         _settings = settings;
-        _readings = new ToggleItem(ReadingsLabel, Hover.Readings, on => Change(h => h.Readings = on)) { Half = true, Note = "Shown when you hover the readings part" };
-        _scope = new MenuChoiceItem(ScopeLabel, () => ScopeWords.First(s => s.All == Hover.AllReadings).Words,
+        _readings = new ToggleItem(ReadingsCard, Hover.Readings, on => Change(h => h.Readings = on)) { Half = true };
+        _scope = new MenuChoiceItem(ScopeCard, () => ScopeWords.First(s => s.All == Hover.AllReadings).Words,
             () => ScopeWords.Select(s => Row(s.Words, Hover.AllReadings == s.All, h => h.AllReadings = s.All)).ToList()) { Half = true };
         _readingChips = Chips<ReadingDetail>(ReadingTips.DetailName, h => h.ReadingShows);
-        _weather = new ToggleItem(WeatherLabel, Hover.Weather, on => Change(h => h.Weather = on)) { Half = true, Note = "Shown when you hover the weather part" };
-        _rain = new MenuChoiceItem(RainLabel, () => WeatherWords.RainWindowName(Hover.Rain),
+        _weather = new ToggleItem(WeatherCard, Hover.Weather, on => Change(h => h.Weather = on)) { Half = true };
+        _rain = new MenuChoiceItem(RainCard, () => WeatherWords.RainWindowName(Hover.Rain),
             () => Enum.GetValues<RainWindow>().Select(w => Row(WeatherWords.RainWindowName(w), Hover.Rain == w, h => h.Rain = w)).ToList()) { Half = true };
         _weatherChips = Chips<WeatherDetail>(WeatherWords.DetailName, h => h.WeatherShows);
         Group = new ItemGroup("Resources/GadgetHover", "Hover details", new object[]
         {
-            _readings, _scope, new ChoiceChipsItem(ReadingShowsLabel, _readingChips),
-            _weather, _rain, new ChoiceChipsItem(WeatherShowsLabel, _weatherChips),
+            _readings, _scope, new ChoiceChipsItem(ReadingShowsCard, _readingChips),
+            _weather, _rain, new ChoiceChipsItem(WeatherShowsCard, _weatherChips),
         }) { ExpandedByDefault = true, Summary = string.Empty };
         Load();
     }

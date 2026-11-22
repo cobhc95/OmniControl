@@ -13,6 +13,12 @@ namespace OmniControl.App.Features.Input.Pages.Gestures;
 public sealed class GestureGroups : IDisposable
 {
     private const string Where = ActionSections.Mouse;
+    public const string AreasTip = "Wheel up and down over the area do the action's two directions; a gesture that is on takes the scroll there. "
+        + "Show margins draws every area on screen while this page is open. " + AdminNote,
+        MiddleTip = "A middle click over the area runs the action instead of the area's own middle click and the button's mapping.",
+        KeysTip = "Keys held count exactly: Ctrl + Alt does not trigger Ctrl + Alt + Shift.",
+        EnabledTip = "Every scroll and middle-click gesture and the custom gesture rules.";
+
     private const string AdminNote = "Programs running as administrator are not affected unless OmniControl runs as administrator too.";
 
     public const string KeyHelp =
@@ -69,7 +75,7 @@ public sealed class GestureGroups : IDisposable
         Enabled = new ToggleItem(EnabledLabel, settings.Enabled, gestures.SetEnabled)
         {
             Half = true,
-            Tip = "Every scroll and middle-click gesture and the custom gesture rules.",
+            Tip = EnabledTip,
         };
 
         // The action lists follow the master list: a level or action a feature registers later appears in every gesture's list.
@@ -105,16 +111,15 @@ public sealed class GestureGroups : IDisposable
         areaCards.Add(_edgeStrip);
         Areas = new ItemGroup("Gestures/Areas", GestureCatalog.AreaGroup, areaCards)
         {
-            Tip = "Wheel up and down over the area do the action's two directions; a gesture that is on takes the scroll there. "
-                  + "Show margins draws every area on screen while this page is open. " + AdminNote,
+            Tip = AreasTip,
         };
         Middle = new ItemGroup("Gestures/Middle", GestureCatalog.MiddleGroup, CardsFor(GestureCatalog.MiddleGroup, MiddleScope, () => clicks))
         {
-            Tip = "A middle click over the area runs the action instead of the area's own middle click and the button's mapping.",
+            Tip = MiddleTip,
         };
         Keys = new ItemGroup("Gestures/Keys", GestureCatalog.KeyGroup, CardsFor(GestureCatalog.KeyGroup, KeysScope, () => steps))
         {
-            Tip = "Keys held count exactly: Ctrl + Alt does not trigger Ctrl + Alt + Shift.",
+            Tip = KeysTip,
         };
         Groups = new[] { Areas, Middle, Keys };
 

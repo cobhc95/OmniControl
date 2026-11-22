@@ -1,3 +1,4 @@
+using OmniControl.App.Shared.Presets.Manager;
 using OmniControl.App.Features.Settings.Pages.Backup;
 using OmniControl.App.Features.Tray;
 using OmniControl.App.Shared.Services.Updates;
@@ -20,6 +21,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
     private readonly ButtonItem _about;
     private readonly ButtonItem _restoreAllCard;
     private readonly ButtonItem _presets;
+    private readonly PresetManagerService _presetManager;
     private readonly ButtonItem _backup;
     private readonly MenuChoiceItem _importFromPc;
     private readonly ButtonItem _networkService;
@@ -59,7 +61,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
     /// <param name="openAbout">Opens the About and credits window.</param>
     /// <param name="plugins">The plug-ins found on this PC: Scan now scans the folders (the user's own included) and says what it found; null while
     /// Sound and effects is off (no Plug-ins group).</param>
-    /// <param name="openPresets">Opens the preset manager at its first section with presets.</param>
+    /// <param name="presets">The preset manager: the Presets card opens it at its first section with presets, and search finds the presets and groups it holds.</param>
     /// <param name="confirmations">The prompts the user chose not to be asked about again (the Confirmations cards of Your data).</param>
     /// <param name="backup">Export, import and wipe of every saved store (the Backup and restore card).</param>
     /// <param name="updates">The update check (the Updates and about group).</param>
@@ -68,11 +70,12 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
     /// <param name="hardware">The master list of hardware watches: the "Check hardware every" card sets how often its periodic safety check runs.</param>
     /// <param name="settings">The app's settings in use, which this page edits.</param>
     /// <param name="features">THE feature switch (the Features group).</param>
-    public AppSettingsPageViewModel(Action openAbout, Features.Volume.Fx.Plugins.PluginLibrary? plugins, Action openPresets, BackupService backup,
+    public AppSettingsPageViewModel(Action openAbout, Features.Volume.Fx.Plugins.PluginLibrary? plugins, PresetManagerService presets, BackupService backup,
         ConfirmationMemory confirmations, UpdateService updates, Action<string> report, Features.Volume.Audio.MixerService? mixer, HardwareWatches hardware,
         AppSettings settings, ITrayIconLook trayIcon, FeatureSwitches features) : base(Info)
     {
         _settings = settings;
+        _presetManager = presets;
         _confirmations = confirmations;
         _hardware = hardware;
         _features = features;
@@ -129,14 +132,14 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
         _keepPages = new ToggleItem(KeepPagesCard, _settings.KeepRecentPages, on => { _settings.KeepRecentPages = on; _settings.Save(); }) { Half = true };
 
         _about = new ButtonItem(AboutCard, "Open", openAbout);
-        _presets = new ButtonItem(PresetsCard, "Open", openPresets);
+        _presets = new ButtonItem(PresetsCard, "Open", () => presets.Open(null, null));
 
         _backup = new ButtonItem(BackupCard, "Export...", () => _ = backup.ExportAsync())
         {
             Extra = new[] { new CardAction("Import...", () => _ = backup.ImportAsync()), new CardAction("Wipe all...", () => _ = backup.WipeAsync(), danger: true) },
         };
 
-        _importFromPc = new MenuChoiceItem(ImportFromPcCard, () => "Choose a PC", () => ImportPcRows(backup));
+        _importFromPc = new MenuChoiceItem(ImportFromPcCard, () => "Choose a PC", () => ImportPcRows(backup)) { SearchesRows = false };
 
         _addFolder = new FileItem(AddFolderCard, FileKind.OfFolder("Choose a folder with plug-ins"), AddFolder);
         _scan = new ButtonItem(ScanCard, "Scan now", StartScan);

@@ -11,9 +11,6 @@ public sealed partial class MousePageViewModel
 {
     private const string WhereKeywords = "enable gestures on off full screen fullscreen game pause never exclude apps administrator admin elevated uac all mouse trackpad features remote desktop rdp virtual machine vm keys";
     private const string WhereGroupName = "All mouse and trackpad features";
-    private const string PauseLabel = "Pause in full-screen games", NeverLabel = "Never in these apps", AdministratorLabel = "Run as administrator",
-        RemoteLabel = "Send actions to remote PCs as keys";
-
     private ToggleItem _pauseCard = null!;      // made by BuildWhereGroup, from the constructor
     private ToggleItem _administratorCard = null!;
     private ToggleItem _remoteCard = null!;
@@ -24,42 +21,15 @@ public sealed partial class MousePageViewModel
 
     private void BuildWhereGroup(AppScopes scopes)
     {
-        _pauseCard = new ToggleItem(PauseLabel, Settings.PauseInFullScreen, _mouse.SetPauseInFullScreen)
-        {
-            Half = true,
-            Note = "Any full-screen app counts, videos too",
-            Tip = "While a full-screen app is in front, every mouse button, wheel step and gesture goes to it untouched.",
-        };
+        _pauseCard = new ToggleItem(FullScreenCard, Settings.PauseInFullScreen, _mouse.SetPauseInFullScreen) { Half = true };
         _neverScope = scopes.Exclusions($"{Title} › {WhereGroupName}", () => Settings.NeverActIn, scope =>
         {
             Settings.NeverActIn = scope;
             _mouse.Apply();
         });
-        var never = new ScopeItem(NeverLabel, _neverScope)
-        {
-            Half = true,
-            Note = "Overrides every group's Apps choice",
-            Tip = "In these apps buttons, trackpad gestures, gestures and the autoscroll block do nothing.",
-        };
-        _administratorCard = new ToggleItem(AdministratorLabel, Settings.RunAsAdministrator, OnAdministratorPicked)
-        {
-            Half = true,
-            Note = "Needed over admin windows",
-            Tip = "Turning it on starts OmniControl again as administrator. Windows asks at each start unless Setup's \"Start OmniControl as administrator at sign-in\" was ticked.",
-        };
-
-        _remoteCard = new ToggleItem(RemoteLabel, Settings.SendToRemoteAsKeys, _mouse.SetSendToRemoteAsKeys)
-        {
-            Half = true,
-            Note = "Remote Desktop, virtual machines",
-            Tip = "While a remote desktop or virtual machine window is in front, a button's or trackpad gesture's action that has a standard shortcut "
-                + "(volume, play or pause, next track, close window) is sent as that shortcut, so the other PC acts; every shortcut is typed like a "
-                + "keyboard does. Where a Remote Desktop keeps shortcuts on this PC (its \"Apply Windows key combinations\" is \"On this computer\", or "
-                + "\"Only when using the full screen\" while it is not full screen), they go as its own replacements ("
-                + string.Join(", ", RemoteInputApps.All.SelectMany(a => a.LocalSwaps ?? Array.Empty<RemoteInputApps.KeySwap>()).Distinct().Select(s => $"{s.Keys} as {s.SentAs}"))
-                + "); Windows-key shortcuts (Task view, Show desktop, snap, virtual desktops) have none and then act on this PC. Works in: "
-                + string.Join(", ", RemoteInputApps.All.Select(a => a.Name)) + ".",
-        };
+        var never = new ScopeItem(NeverCard, _neverScope) { Half = true };
+        _administratorCard = new ToggleItem(AdministratorCard, Settings.RunAsAdministrator, OnAdministratorPicked) { Half = true };
+        _remoteCard = new ToggleItem(RemoteCard, Settings.SendToRemoteAsKeys, _mouse.SetSendToRemoteAsKeys) { Half = true };
 
         WhereGroup = new ItemGroup("Mouse/Where", WhereGroupName, new object[] { Gestures.Enabled, _pauseCard, never, _administratorCard, _remoteCard })
         {
@@ -68,7 +38,7 @@ public sealed partial class MousePageViewModel
                 _mouse.RestoreWhereDefaults();
                 Gestures.RestoreEnabled();
             },
-            RestoreTip = "Turns gestures on and puts pause in full-screen games, the apps to never act in, run as administrator and sending actions to remote PCs as keys back to their defaults.",
+            RestoreTip = WhereRestoreTip,
         };
 
         _followed.Follow<Action>(h => _mouse.Applied += h, h => _mouse.Applied -= h, ShowWhereSettings);

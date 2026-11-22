@@ -13,6 +13,9 @@ public sealed partial class TrayFlyoutModel
     private const string RemoveWords = "Remove from panel", ChangeActionWords = "Change action…", ChangeIconWords = "Change icon…",
         LockWords = "Lock layout", ShowWords = "Show in OmniControl";
 
+    /// The rows of a slider's or tile's right-click menu, for search.
+    public static IReadOnlyList<string> MenuWords { get; } = new[] { RemoveWords, ChangeActionWords, ChangeIconWords, LockWords, ShowWords };
+
     [ObservableProperty] private bool _isEditing;
 
     [RelayCommand]

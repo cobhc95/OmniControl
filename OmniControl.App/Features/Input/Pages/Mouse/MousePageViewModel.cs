@@ -41,6 +41,7 @@ public sealed partial class MousePageViewModel : PageViewModel, IDisposable
     };
 
     private readonly MouseService _mouse;
+    private readonly IActionRegistry _hotkeys;
     private const string ButtonKeywords = "mouse buttons remap layer preset apps scope";
     /// The Mouse Buttons group's name, also its layer preset group's card (<see cref="InputActions"/>).
     public const string ButtonsGroupName = "Mouse Buttons";
@@ -76,6 +77,7 @@ public sealed partial class MousePageViewModel : PageViewModel, IDisposable
         Action<string> report, Action<string?, string?> openPresets, AppScopes scopes, GestureGroups gestureGroups) : base(Info)
     {
         Gestures = gestureGroups;
+        _hotkeys = hotkeys;
         _openPresets = openPresets;
         _mouse = mouse;
         _trackpad = trackpad;
@@ -133,9 +135,7 @@ public sealed partial class MousePageViewModel : PageViewModel, IDisposable
         // The key stays "Mouse/Buttons" so a group the user opened before the rename stays open.
         ButtonsGroup = new ItemGroup("Mouse/Buttons", ButtonsGroupName, buttonCards.Cast<object>().ToList())
         {
-            Tip = "A button left at Default works as Windows normally does. The layer drop-down shows the mouse layer in force and changes it (the trackpad "
-                  + "has its own); a button set to \"Hold for layer N\" uses layer N while held. Over OmniControl's own window the left and right buttons are never remapped. Windows does "
-                  + "not pass mouse input to programs running as administrator unless OmniControl runs as administrator too.",
+            Tip = ButtonsTip,
         };
         TrackpadGroup = BuildTrackpadGroup(gestureCards, report);
         BuildWhereGroup(scopes);

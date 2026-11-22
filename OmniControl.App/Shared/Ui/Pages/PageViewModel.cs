@@ -48,15 +48,6 @@ public abstract class PageViewModel : ObservableObject
     /// Individual settings this page offers to global search (live, editable): its <see cref="SearchCards"/> that have an editor.
     public virtual IEnumerable<SearchEntry> SearchEntries => SearchCards?.Entries(Title) ?? Enumerable.Empty<SearchEntry>();
 
-    /// A search result for <paramref name="editor"/> on this page, for a page not yet on the builder: its category is the page's title (what the
-    /// category filter offers), followed by the card's group when the setting belongs to a part of the page ("Hardware", a monitor...).
-    protected SearchEntry Entry(object editor, string title, string keywords, string? group = null) =>
-        new() { Title = title, Category = Title, Group = group, Editor = editor, Keywords = keywords, Details = SearchTextsOf(editor) };
-
-    protected SearchEntry Entry(object editor, SearchCard card) => SearchEntry.Of(Title, card, editor);
-
-    private static IReadOnlyList<string> SearchTextsOf(object editor) => (editor as IEditorItem)?.SearchTexts.ToList() ?? new List<string>();
-
     /// Called when the page becomes visible; refresh live hardware state here.
     public virtual void OnShown() { }
 
