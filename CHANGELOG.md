@@ -1,6 +1,6 @@
 # Changelog
 
-Versions go 0.1.0, 0.1.1 ... 0.1.9, then 0.2.0. Each release is a GitHub pre-release with a Setup and a Portable download.
+Versions go 0.1.0, 0.1.1 ... 0.1.9, then 0.2.0. Each release is a full GitHub release with a Setup, a Portable download and checksums.
 New entries go under "Unreleased" as work lands; a release moves them under its version.
 
 ## Unreleased
