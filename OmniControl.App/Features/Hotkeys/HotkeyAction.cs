@@ -207,6 +207,9 @@ public sealed partial class HotkeyAction : HotkeyTarget, Shared.Ui.Pages.IEditor
     /// Set: the editor (a heading and a panel row) the Actions and hotkeys window shows in this action's settings, besides its defaults (the power plan editor).
     public IReadOnlyList<ActionOption>? ManageSettings { get; init; }
 
+    /// The names of the action's settings and their choices, so the Actions and hotkeys window's search finds an action by what its picker offers.
+    public string OptionWords => string.Join(" ", (ManageSettings ?? Editor?.Options ?? Array.Empty<ActionOption>()).SelectMany(o => (o.Choices ?? Array.Empty<string>()).Prepend(o.Label)));
+
     /// Called each time a picker listing this entry opens (the apps are looked for again).
     public Action? PickerOpened { get; init; }
 

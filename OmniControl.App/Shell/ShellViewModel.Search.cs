@@ -54,7 +54,7 @@ public sealed partial class ShellViewModel
     {
         var actions = _hotkeys.Actions.ToLookup(a => a.Category);
         return new SearchIndex<PageSlot>(AllSlots,
-            p => new[] { p.Title, p.Info.Keywords }.Concat(actions[p.Title].SelectMany(a => new[] { a.Title, a.Heading, a.Keywords })));
+            p => new[] { p.Title, p.Info.Keywords }.Concat(actions[p.Title].SelectMany(a => new[] { a.Title, a.Heading, a.Keywords, a.OptionWords })));
     }
 
     // Each page's result words, read without making it (FeaturePage.Words): only a page with a match is made. Joined as a result's heading

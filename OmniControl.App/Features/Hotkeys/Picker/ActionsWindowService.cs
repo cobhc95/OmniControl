@@ -84,7 +84,7 @@ public sealed class ActionsWindowService : IDisposable
         Category = a.Category,
         Group = a.PickerHeading,
         RemotePc = a.RemotePc,
-        Keywords = $"{a.Keywords} keyboard shortcut keybinding {string.Join(' ', a.Keys)}",
+        Keywords = $"{a.Keywords} keyboard shortcut keybinding {string.Join(' ', a.Keys)} {a.OptionWords}",
         Editor = new ButtonItem(a.Title, "Open", Title, () => Open(a.Id)),
     });
 
