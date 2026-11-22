@@ -56,17 +56,30 @@ public static class NormalRights
 
     /// Opens a program, file, folder or address the way the shell does (a document in its app, a shortcut's target, a web page in the
     /// browser). Throws <see cref="Win32Exception"/> or <see cref="InvalidOperationException"/> when Windows refused at once; while
-    /// OmniControl is administrator, a failure after the hand-over is not seen here.
-    public static void Open(string target, string arguments = "", string directory = "", ProcessWindowStyle style = ProcessWindowStyle.Normal)
+    /// OmniControl is administrator, the task ends false when the normal-rights copy could not open it.
+    public static Task<bool> Open(string target, string arguments = "", string directory = "", ProcessWindowStyle style = ProcessWindowStyle.Normal)
     {
         if (Elevated)
         {
-            if (ShellDesktop.TryOpenAddress(target)) return; // an address goes through Explorer; the copy below is the way for files and the fallback
-            using var _ = Start(Environment.ProcessPath ?? throw new InvalidOperationException("OmniControl's own path is unknown."),
+            if (ShellDesktop.TryOpenAddress(target)) return Task.FromResult(true); // an address goes through Explorer; the copy below is the way for files and the fallback
+            var copy = Start(Environment.ProcessPath ?? throw new InvalidOperationException("OmniControl's own path is unknown."),
                 new[] { OpenArgument, target, arguments, directory, style.ToString() }, hidden: true, readOutput: false);
-            return;
+            return copy.Process.WaitForExitAsync().ContinueWith(_ =>
+            {
+                using (copy) return copy.Process.ExitCode == 0;
+            }, TaskScheduler.Default);
         }
         using var opened = Process.Start(ShellStart(target, arguments, directory, style));
+        return Task.FromResult(true);
+    }
+
+    /// Starts a Windows tool whose manifest asks for administrator (Task Manager) through the shell, from this process. It runs elevated
+    /// either way, so lowering gains nothing: handed to the hidden normal-rights copy, Windows' UAC prompt came from a background process
+    /// and showed only as a flashing taskbar button (a busy cursor, then nothing). Throws <see cref="Win32Exception"/> (1223 when the user
+    /// said no to UAC) or <see cref="InvalidOperationException"/>.
+    public static void OpenAdministratorTool(string program)
+    {
+        using var opened = Process.Start(ShellStart(program, string.Empty, string.Empty, ProcessWindowStyle.Normal));
     }
 
     /// The copy <see cref="Open"/> started: opens the one thing and ends (0 opened, 1 not); null when the arguments ask something else.

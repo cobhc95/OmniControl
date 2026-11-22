@@ -23,10 +23,13 @@ public sealed record AppLocator
 
     /// A command or protocol that is part of Windows ("calc.exe", "ms-settings:"); found when it exists.
     public string? Direct { get; init; }
+
+    /// A Windows tool that asks for administrator itself (Task Manager): <see cref="NormalRights.OpenAdministratorTool"/> starts it.
+    public bool AsksForAdministrator { get; init; }
 }
 
 /// What starting an app means: the program (or shell address), its arguments and the folder to start in. <see cref="IsFile"/> is false for a Store app or a protocol.
-public sealed record AppTarget(string Path, string Arguments, string StartIn, bool IsFile);
+public sealed record AppTarget(string Path, string Arguments, string StartIn, bool IsFile, bool AsksForAdministrator = false);
 
 /// Finds installed apps by their <see cref="AppLocator"/>: App Paths registry, known install folders, Start menu shortcuts, Store packages,
 /// then Windows' own commands. Read only and slow (it may read the whole Start menu): call it off the UI thread.
@@ -58,7 +61,7 @@ public static class AppLookup
             return Program(shortcut.Path);
         if (locator.StorePackage is { } package && StoreAddress(package, locator.StoreAppId, storeNames) is { } address)
             return new AppTarget(address, string.Empty, string.Empty, IsFile: false);
-        return locator.Direct is { } direct ? DirectTarget(direct) : null;
+        return locator.Direct is { } direct && DirectTarget(direct) is { } target ? target with { AsksForAdministrator = locator.AsksForAdministrator } : null;
     }
 
     private static AppTarget Program(string path, string arguments = "") =>

@@ -212,7 +212,10 @@ public sealed class MouseActionRunner
         {
             // Only the step's own "Run as administrator" elevates; everything else gets the user's normal rights, also while OmniControl is administrator.
             if (administrator) Process.Start(new ProcessStartInfo(path) { UseShellExecute = true, Arguments = arguments, WorkingDirectory = startIn, WindowStyle = style, Verb = "runas" })?.Dispose();
-            else NormalRights.Open(path, arguments, startIn, style);
+            else NormalRights.Open(path, arguments, startIn, style).ContinueWith(opened =>
+            {
+                if (opened.IsCompletedSuccessfully && !opened.Result) _report($"Couldn't start \"{path}\": Windows refused to start it with normal rights.");
+            }, TaskScheduler.Default);
         }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
         {

@@ -8,6 +8,7 @@ namespace OmniControl.App.Features.AppLists.Apps;
 /// rate limited (<see cref="LaunchLimiter"/>). The program an input (a button, gesture or rule) chose for itself beats the one found.
 public sealed class AppLauncher
 {
+    private const int UacDeclined = 1223; // ERROR_CANCELLED
     private readonly LaunchLimiter _limiter = new();
     private readonly Action<string> _report;
     private IReadOnlyDictionary<string, AppTarget> _found = new Dictionary<string, AppTarget>();
@@ -44,11 +45,28 @@ public sealed class AppLauncher
         if (_scanning || (!force && DateTime.UtcNow - _scanned < Timing.AppScanGap)) return;
         _scanning = true;
         var locators = apps.ToDictionary(a => a.Id, a => a.Locator);
-        Task.Run(() => AppLookup.Find(locators)).ContinueWith(task => Dispatcher.UIThread.Post(() =>
+        // Apps found without the Start menu or the Store (Windows' own, such as Task Manager) are taken first, so their actions exist
+        // within moments of start-up instead of after the slow Start menu read (until then an input running one was told it is missing).
+        var quick = locators.Where(l => l.Value.StartMenuNames.Count == 0 && l.Value.StorePackage is null).ToDictionary(l => l.Key, l => l.Value);
+        Task.Run(() =>
+        {
+            var first = AppLookup.Find(quick);
+            Dispatcher.UIThread.Post(() =>
+            {
+                _found = _found.Where(f => !first.ContainsKey(f.Key)).Concat(first).ToDictionary(f => f.Key, f => f.Value);
+                Scanned?.Invoke();
+            });
+            return AppLookup.Find(locators);
+        }).ContinueWith(task => Dispatcher.UIThread.Post(() =>
         {
             _scanning = false;
             _scanned = DateTime.UtcNow;
             if (task.IsCompletedSuccessfully) _found = task.Result;
+            else if (task.Exception is { } failed)
+            {
+                Guard.Log("Apps: looking for installed apps", failed);
+                _report(Guard.SeeLog("Couldn't look for the installed apps."));
+            }
             Scanned?.Invoke();
         }));
     }
@@ -72,11 +90,20 @@ public sealed class AppLauncher
         }
         try
         {
-            NormalRights.Open(path, arguments, startIn);
+            if (target.AsksForAdministrator && !chosenProgram) NormalRights.OpenAdministratorTool(path);
+            else NormalRights.Open(path, arguments, startIn).ContinueWith(opened =>
+            {
+                if (opened.IsCompletedSuccessfully && !opened.Result) _report($"Couldn't open {app.Title}: Windows refused to start it with normal rights.");
+            }, TaskScheduler.Default);
+        }
+        catch (Win32Exception ex) when (ex.NativeErrorCode == UacDeclined)
+        {
+            _report($"{app.Title} wasn't opened: Windows' administrator prompt was declined.");
         }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
         {
-            _report($"Couldn't open {app.Title}: {ex.Message}");
+            Guard.Log($"Apps: opening {app.Title}", ex);
+            _report(Guard.SeeLog($"Couldn't open {app.Title}."));
         }
     }
 }

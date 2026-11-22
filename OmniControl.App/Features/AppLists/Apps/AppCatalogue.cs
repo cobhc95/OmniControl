@@ -28,7 +28,8 @@ public static class AppCatalogue
     private const string Pf = "%ProgramFiles%", Pf86 = "%ProgramFiles(x86)%", Local = "%LOCALAPPDATA%", Roaming = "%APPDATA%";
 
     /// Windows' Task Manager (also the taskbar gadget's double-click by default).
-    public static readonly AppEntry TaskManager = Windows("taskmanager", "Task Manager", "processes performance", "taskmgr.exe");
+    public static readonly AppEntry TaskManager = new("taskmanager", "Task Manager", "processes performance",
+        new AppLocator { Direct = "taskmgr.exe", AsksForAdministrator = true });
 
     public static readonly IReadOnlyList<AppEntry> All = new[]
     {
