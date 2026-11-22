@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- New: Resources › Live readings shows one card per graphics card while the PC has more than one ("GPU · AMD Radeon RX 9070", "GPU · AMD Radeon(TM) Graphics"), each with its usage, graph and temperature chip; one card per physical disk ("Disk 0 · <model>") with its activity, graph and, where the drive reports one, its temperature chip. Both follow hardware added or removed. Each graphics card's usage and temperature are also gadget readings and states, as each disk's are. The gadget's GPU usage and GPU temperature get a "Graphics card" chip (Auto, or a chosen card; Auto again when that card is gone).
+
 - Fixed: taskbar gadget: a reading's hover details showed only over its text and icon; the whole gadget is now hover zones with no dead space (each cell takes its gaps and the edge, split half and half; the last cell of a column takes the rest of it), so the details show anywhere over the gadget.
 - Faster start: no page is made until the main window first shows (a tray start no longer builds and wires the Displays page); the brightness and colour service still starts with the app.
 - New: taskbar gadget layout "Classic with GPU" (third among the ready-made layouts): upload and download, CPU usage and temperature, GPU usage and temperature (white icons), memory and weather on two lines, Classic with memory's look.
