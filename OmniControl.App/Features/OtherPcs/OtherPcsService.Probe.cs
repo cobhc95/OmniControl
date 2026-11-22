@@ -97,7 +97,7 @@ public sealed partial class OtherPcsService
             if (link is null) return new ProbeResult(false, 0, "Authentication failed: that PC did not prove it holds the pairing key. Unpair it on both PCs and pair again.");
             var nonce = Convert.ToBase64String(PcCrypto.Random(16));
             var answered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            _ = Guard.RunAsync("Other PCs: probe link", () => link.RunAsync((message, _) =>
+            _ = Guard.RunAsync("Other PCs: probe link", () => link.RunAsync((message, _, _) =>
             {
                 if (message.T == PcMsgType.Pong && message.Text == nonce) answered.TrySetResult(true);
                 return Task.CompletedTask;
@@ -128,7 +128,7 @@ public sealed partial class OtherPcsService
         using var link = await PcSession.AcceptAsync(stream, PcProtocol.WantsProbe, OwnId, id => _secrets.GetValueOrDefault(id), _stop.Token).ConfigureAwait(false);
         if (link is null) return;
         // Each pong is sent before the next message is read, so a flood of pings is answered at the pace it is read.
-        var answering = Guard.RunAsync("Other PCs: probe answer", () => link.RunAsync((message, _) =>
+        var answering = Guard.RunAsync("Other PCs: probe answer", () => link.RunAsync((message, _, _) =>
             message.T == PcMsgType.Ping && message.Text is { Length: > 0 and <= 64 } nonce ? link.SendAsync(new PcMsg { T = PcMsgType.Pong, Text = nonce }) : Task.CompletedTask));
         await Task.WhenAny(answering, Task.Delay(Timing.PcProbeTimeout, _stop.Token)).ConfigureAwait(false);
     }

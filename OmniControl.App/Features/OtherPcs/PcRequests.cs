@@ -9,7 +9,8 @@ internal sealed class PcRequests
     /// A new request number (also for a request whose answer is only reported).
     public int Next() => ++_next;
 
-    /// Sends <paramref name="ask"/> and waits at most <paramref name="wait"/> for its answer; null when it could not be sent or none came.
+    /// Sends <paramref name="ask"/> and waits for its answer; <paramref name="wait"/> covers the queueing, the write and the answer. Null when it
+    /// could not be sent or none came in time.
     public async Task<PcMsg?> AskAsync(PcLink link, PcMsg ask, TimeSpan wait, CancellationToken stop = default)
     {
         var rid = Next();
@@ -18,8 +19,10 @@ internal sealed class PcRequests
         _pending[rid] = (link.PeerId, answer);
         try
         {
-            if (!await link.SendAsync(ask)) return null;
-            return await Task.WhenAny(answer.Task, Task.Delay(wait, stop)) == answer.Task ? answer.Task.Result : null;
+            var deadline = Task.Delay(wait, stop);
+            var sent = link.SendAsync(ask);
+            if (await Task.WhenAny(sent, deadline) != sent || !sent.Result) return null;
+            return await Task.WhenAny(answer.Task, deadline) == answer.Task ? answer.Task.Result : null;
         }
         finally
         {

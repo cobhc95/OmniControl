@@ -9,7 +9,7 @@ internal sealed class PcLink : IDisposable
     private readonly Stream _stream;
     private readonly PcCipher _send;
     private readonly PcCipher _receive;
-    private readonly SemaphoreSlim _sendLock = new(1, 1);
+    private readonly PcOutbox _outbox;
     private readonly CancellationTokenSource _stop = new();
     private int _closed;
 
@@ -20,6 +20,7 @@ internal sealed class PcLink : IDisposable
         _stream = stream;
         _send = new PcCipher(sendKey);
         _receive = new PcCipher(receiveKey);
+        _outbox = new PcOutbox(Timing.PcOutboxMax, Timing.PcOutboxBytes, WriteAsync, Close);
     }
 
     public string PeerId { get; }
@@ -36,8 +37,9 @@ internal sealed class PcLink : IDisposable
     /// The link ended (the other PC left, a message did not open, or <see cref="Close"/>); raised once.
     public event Action? Closed;
 
-    /// Reads until the link ends; <paramref name="deliver"/> takes each message (the next is read once it returned, so a waiting deliver slows the other PC).
-    public async Task RunAsync(Func<PcMsg, CancellationToken, Task> deliver)
+    /// Reads until the link ends; <paramref name="deliver"/> takes each message and its size in bytes (the next is read once it returned, so a
+    /// waiting deliver slows the other PC).
+    public async Task RunAsync(Func<PcMsg, int, CancellationToken, Task> deliver)
     {
         try
         {
@@ -46,7 +48,7 @@ internal sealed class PcLink : IDisposable
                 if (await PcWire.ReadFrameAsync(_stream, PcProtocol.MaxFrame, _stop.Token).ConfigureAwait(false) is not { } sealedBytes) break;
                 if (_receive.Open(sealedBytes) is not { } plain || PcMsg.From(plain) is not { } message) break; // a message that does not open ends the link
                 LastReceived = DateTime.UtcNow;
-                await deliver(message, _stop.Token).ConfigureAwait(false);
+                await deliver(message, sealedBytes.Length, _stop.Token).ConfigureAwait(false);
             }
         }
         catch (Exception ex) when (PcWire.IsNetworkError(ex))
@@ -59,33 +61,20 @@ internal sealed class PcLink : IDisposable
         }
     }
 
-    /// Sends a message; false when the link is closed or the write failed (which closes it).
-    public async Task<bool> SendAsync(PcMsg message)
+    /// Queues a message in the link's bounded outbox; true once it was written, false when the link is closed or stalled (which closes it).
+    public Task<bool> SendAsync(PcMsg message) => _outbox.Put(message);
+
+    // The one writer: sealing here keeps the cipher's sequence in write order.
+    private async Task WriteAsync(byte[] plain)
     {
-        if (_closed != 0) return false;
-        try
-        {
-            await _sendLock.WaitAsync(_stop.Token).ConfigureAwait(false);
-            try
-            {
-                await PcWire.WriteFrameAsync(_stream, _send.Seal(message.ToBytes()), _stop.Token).ConfigureAwait(false);
-            }
-            finally
-            {
-                _sendLock.Release();
-            }
-            return true;
-        }
-        catch (Exception ex) when (PcWire.IsNetworkError(ex))
-        {
-            Close();
-            return false;
-        }
+        using var deadline = PcWire.Step(_stop.Token, Timing.PcWriteDeadline);
+        await PcWire.WriteFrameAsync(_stream, _send.Seal(plain), deadline.Token).ConfigureAwait(false);
     }
 
     public void Close()
     {
         if (Interlocked.Exchange(ref _closed, 1) != 0) return;
+        _outbox.Close();
         _stop.Cancel();
         _stream.Dispose();
         Closed?.Invoke();
@@ -96,7 +85,6 @@ internal sealed class PcLink : IDisposable
         Close();
         _send.Dispose();
         _receive.Dispose();
-        _sendLock.Dispose();
         _stop.Dispose();
     }
 }
