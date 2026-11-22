@@ -187,7 +187,11 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
     /// Windows may have changed the start-up entry (Task Manager), and the close dialog may have remembered a choice.
     public override void OnShown()
     {
-        ReadStartup();
+        Guard.OffUi("App settings: read Start with Windows", () =>
+        {
+            var state = StartupRegistration.State; // the registry, off the UI thread
+            Dispatcher.UIThread.Post(() => Guard.Run("App settings: show Start with Windows", () => ShowStartup(state)));
+        });
         _whenClosing.Load(_whenClosing.Options, CloseBehaviors.LabelOf(_settings.CloseBehavior));
         RefreshUpdates();
     }
@@ -201,9 +205,10 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
     }
 
     /// Shows what Windows really has: on, off, or an entry the user switched off in Task Manager.
-    private void ReadStartup()
+    private void ReadStartup() => ShowStartup(StartupRegistration.State);
+
+    private void ShowStartup(StartupState state)
     {
-        var state = StartupRegistration.State;
         _readingStartup = true;
         _startWithWindows.IsOn = state == StartupState.On;
         _readingStartup = false;

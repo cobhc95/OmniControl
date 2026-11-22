@@ -162,11 +162,8 @@ public sealed partial class MousePageViewModel : PageViewModel, IDisposable
     }
 
     /// The page was opened: Windows' touchpad and pointer settings may have been changed meanwhile.
-    public override void OnShown()
-    {
-        _trackpad.Refresh();
-        LoadPointerSettings();
-    }
+    // The pointer settings are read when the page comes on screen (OnOnScreenChanged), which follows at once.
+    public override void OnShown() => _trackpad.Refresh();
 
     /// The window came back on screen with this page open: show Windows' pointer settings as they are now. While the page is on screen
     /// every press and gesture is wanted, so its card can flash.

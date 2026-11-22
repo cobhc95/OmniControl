@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Pages open faster: every page builds its first screen of cards at once and the rest just after, between frames; the Mouse and Trackpad page reads Windows' pointer settings, and App settings "Start with Windows", off the UI thread (the pointer settings once instead of three times at the first opening).
 - Free memory after closing now also hands the freed memory back to Windows, so Task Manager shows the lower figure.
 - Actions and Hotkeys window (and every action picker): a "Presets" section above Recent lists every preset action under "<page> · <group>"; its right pane offers "Show in Presets Manager".
 - Every preset group has "Next" and "Previous" actions (one row "<group> presets: Next · Previous"), stepping through its presets in order and wrapping.

@@ -76,13 +76,40 @@ public sealed partial class MousePageViewModel
         }
     }
 
-    /// Reads every setting and pointer from Windows and shows it, without writing anything.
+    /// Reads every setting and pointer from Windows (SystemParametersInfo and the registry) on a worker and shows them once read, without
+    /// writing anything; the newest read wins.
     private void LoadPointerSettings()
     {
-        foreach (var control in PointerControls.All.Where(c => c.Value is not null))
+        var read = ++_pointerReads;
+        Guard.OffUi("Mouse: read the pointer settings", () =>
         {
-            var value = control.Value!.Value;
-            var now = _pointer.Read(value);
+            var now = ReadPointerSettings();
+            Dispatcher.UIThread.Post(() => Guard.Run("Mouse: show the pointer settings", () =>
+            {
+                if (read == _pointerReads) ShowPointerSettings(now);
+            }));
+        });
+    }
+
+    private int _pointerReads;
+
+    private sealed record PointerRead(Dictionary<PointerValue, int?> Values, CursorRead Files);
+
+    private sealed record CursorRead(IReadOnlyList<CursorScheme> Schemes, CursorScheme? Current, Dictionary<CursorRole, string> Files);
+
+    private PointerRead ReadPointerSettings() =>
+        new(PointerControls.All.Where(c => c.Value is not null).ToDictionary(c => c.Value!.Value, c => _pointer.Read(c.Value!.Value)), ReadPointers());
+
+    private CursorRead ReadPointers()
+    {
+        var schemes = _pointer.Schemes();
+        return new(schemes, _pointer.CurrentScheme(schemes), _pointerFiles.ToDictionary(f => f.Role, f => _pointer.PointerFile(f.Role)));
+    }
+
+    private void ShowPointerSettings(PointerRead read)
+    {
+        foreach (var (value, now) in read.Values)
+        {
             if (_pointerSliders.TryGetValue(value, out var slider))
             {
                 if (now is { } n) { slider.Load(n); slider.Availability.MakeAvailable(); }
@@ -91,19 +118,20 @@ public sealed partial class MousePageViewModel
             else if (now is { } on) _pointerSwitches[value].Load(on == 1);
         }
         UpdatePointerNeeds();
-        LoadPointers();
+        ShowPointers(read.Files);
         UpdateRestoreCard();
     }
 
     /// The scheme in force (or "Custom") and each pointer's file.
-    private void LoadPointers()
+    private void LoadPointers() => ShowPointers(ReadPointers());
+
+    private void ShowPointers(CursorRead read)
     {
-        _schemes = _pointer.Schemes();
-        var current = _pointer.CurrentScheme(_schemes);
+        _schemes = read.Schemes;
         var options = _schemes.Select(s => s.Label).ToList();
-        if (current is null) options.Insert(0, CustomScheme);
-        _schemeCard.Load(options, current?.Label ?? CustomScheme);
-        foreach (var (role, card) in _pointerFiles) card.Load(_pointer.PointerFile(role));
+        if (read.Current is null) options.Insert(0, CustomScheme);
+        _schemeCard.Load(options, read.Current?.Label ?? CustomScheme);
+        foreach (var (role, card) in _pointerFiles) card.Load(read.Files[role]);
     }
 
     private void LoadSwap()
