@@ -15,7 +15,14 @@ public class RestoreDefaultsTests
     private sealed class FakeStore : ISnapshotStore
     {
         public readonly Dictionary<string, Dictionary<string, string>> Files = new();
-        public void Save(string key, IReadOnlyDictionary<string, string> copies) => Files[key] = new(copies);
+        public bool Broken;
+
+        public void Save(string key, IReadOnlyDictionary<string, string> copies)
+        {
+            if (Broken) throw new IOException("disk full");
+            Files[key] = new(copies);
+        }
+
         public Dictionary<string, string>? Load(string key) => Files.GetValueOrDefault(key);
     }
 
@@ -159,7 +166,49 @@ public class RestoreDefaultsTests
         Assert.Equal(RestoreWords.NoCopy, (await One(new Counter("zzz", 1, log), new FakeStore()).UndoAsync()).Line);
     }
 
+    [Fact]
+    public async Task Undo_reads_the_copy_from_its_file_not_from_memory()
+    {
+        var log = new List<string>();
+        var store = new FakeStore();
+        var part = new Counter("a", 5, log, store);
+        var runner = One(part, store);
+        await runner.RunAsync();
+
+        store.Files["a"]["a"] = "7"; // only the file can say 7
+        Assert.Equal(RestoreWords.Undone, (await runner.UndoAsync()).Line);
+        Assert.Equal(7, part.Value);
+    }
+
+    [Fact]
+    public async Task A_failed_save_of_the_copy_still_leaves_undo()
+    {
+        var log = new List<string>();
+        var store = new FakeStore { Broken = true };
+        var part = new Counter("a", 5, log, store);
+        var runner = One(part, store);
+
+        var done = await runner.RunAsync();
+        Assert.True(done.CanUndo);
+        Assert.Equal(0, part.Value);
+        Assert.Empty(store.Files);
+        Assert.Equal(RestoreWords.Undone, (await runner.UndoAsync()).Line);
+        Assert.Equal(5, part.Value);
+    }
+
     // ---- Restore all ----
+
+    [Fact]
+    public async Task Undo_after_a_partial_restore_all_puts_back_exactly_the_pages_that_ran()
+    {
+        var (runner, parts, _, _, log) = All(1, 0, 3);
+        await runner.RunAsync();
+        parts[1].Value = 9; // changed after the restore; it was not part of it
+        log.Clear();
+        await runner.UndoAsync();
+        Assert.Equal(new[] { "c=3", "a=1" }, log);
+        Assert.Equal(9, parts[1].Value);
+    }
 
     private static (RestoreRunner Runner, Counter[] Parts, FakeStore Store, List<RestoreQuestion> Asked, List<string> Log) All(int a, int b, int c)
     {

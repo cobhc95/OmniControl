@@ -8,7 +8,7 @@ public sealed record RestoreResult(bool Ran, string Line, bool CanUndo);
 
 /// "Restore defaults" for one page or for every page (pure logic, no window): says why it cannot run, asks once, takes a copy of every
 /// page's settings BEFORE changing any, restores each page in order (one that fails is named and the others still go on), and undoes
-/// with the copy. The copy is kept in memory and in the file of <see cref="ISnapshotStore"/>.
+/// with the copy. The copy lives in the file of <see cref="ISnapshotStore"/>; only when that save failed is it held in memory, so undo still works.
 public sealed class RestoreRunner
 {
     private readonly string _key, _name;
@@ -16,8 +16,8 @@ public sealed class RestoreRunner
     private readonly bool _all;
     private readonly Func<RestoreQuestion, Task<bool>> _confirm;
     private readonly ISnapshotStore _store;
-    private Dictionary<string, string>? _copies;
-    private List<IRestorable> _ran = new();
+    private Dictionary<string, string>? _unsaved; // the copy, held only while its file could not be written
+    private List<IRestorable> _ran = new(); // what the last run restored, which its undo puts back
 
     /// <param name="all">True for the combined restore of every page (one question listing them all).</param>
     public RestoreRunner(string key, string name, IReadOnlyList<IRestorable> parts, bool all, Func<RestoreQuestion, Task<bool>> confirm, ISnapshotStore store)
@@ -44,8 +44,8 @@ public sealed class RestoreRunner
         var todo = _parts.Where(p => ReasonOf(p) is null).ToList();
         if (!await _confirm(_all ? RestoreWords.AskAll(todo) : RestoreWords.Ask(todo[0]))) return new(false, string.Empty, false);
 
-        _copies = todo.ToDictionary(p => p.Key, p => p.CaptureSnapshot()); // every copy is taken before the first change
-        _store.Save(_key, _copies);
+        var copies = todo.ToDictionary(p => p.Key, p => p.CaptureSnapshot()); // every copy is taken before the first change
+        _unsaved = Save(copies) ? null : copies;
         _ran = todo;
         var failed = new List<string>();
         foreach (var part in todo)
@@ -57,15 +57,29 @@ public sealed class RestoreRunner
     /// Puts every restored page's earlier settings back, last first.
     public async Task<RestoreResult> UndoAsync()
     {
-        var copies = _copies ?? _store.Load(_key);
+        var copies = _unsaved ?? _store.Load(_key);
         if (copies is null) return new(false, RestoreWords.NoCopy, false);
-        var parts = _copies is null ? _parts.Where(p => copies.ContainsKey(p.Key)).ToList() : _ran;
+        var parts = _ran.Count > 0 ? _ran : _parts.Where(p => copies.ContainsKey(p.Key)).ToList();
         var failed = new List<string>();
         foreach (var part in Enumerable.Reverse(parts))
             if (copies.TryGetValue(part.Key, out var copy) && !await Attempt(() => part.UndoAsync(copy))) failed.Add(part.Name);
-        _copies = null;
+        (_unsaved, _ran) = (null, new());
         AppDataStore.FlushSaves();
         return new(true, failed.Count == 0 ? RestoreWords.Undone : RestoreWords.UndoFailed(failed), false);
+    }
+
+    private bool Save(Dictionary<string, string> copies)
+    {
+        try
+        {
+            _store.Save(_key, copies);
+            return true;
+        }
+        catch (Exception ex) when (IsExpected(ex))
+        {
+            Guard.Log($"Restore {_name} defaults: the copy", ex);
+            return false;
+        }
     }
 
     private static async Task<bool> Attempt(Func<Task<bool>> step)
