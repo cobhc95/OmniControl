@@ -2,9 +2,8 @@
 param([Parameter(Mandatory)][string]$List, [Parameter(Mandatory)][string]$Deps)
 $ErrorActionPreference = 'Stop'
 if (-not (Test-Path $Deps)) { return }
-$statement = [regex]::Match([IO.File]::ReadAllText($List), 'public const string Sensors\b[^;]*;').Value
-$names = @([regex]::Matches($statement, '"([^"]+)"') | ForEach-Object { $_.Groups[1].Value -split ',' } | ForEach-Object { [IO.Path]::GetFileNameWithoutExtension($_) })
-if (-not $names) { throw "No optional files found in $List" }
+. (Join-Path $PSScriptRoot 'OptionalFileNames.ps1')
+$names = @(Get-OptionalFileNames $List | ForEach-Object { [IO.Path]::GetFileNameWithoutExtension($_) })
 
 $json = [IO.File]::ReadAllText($Deps) | ConvertFrom-Json
 $targets = @($json.targets.PSObject.Properties | ForEach-Object { $_.Value })

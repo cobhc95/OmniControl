@@ -25,11 +25,31 @@ function Publish-Tag {
     "Tag v$version pushed; the Release workflow builds and publishes it."
 }
 
+. (Join-Path $PSScriptRoot 'OptionalFileNames.ps1')
+
+# The published app must start whole and with Setup's optional files left out (--check-start starts nothing else).
+function Test-Start([string]$folder) {
+    $run = Start-Process -FilePath (Join-Path $folder 'OmniControl.exe') -ArgumentList '--check-start' -Wait -PassThru
+    if ($run.ExitCode) { throw "The published app did not start from $folder (exit code $($run.ExitCode))." }
+}
+
+function Test-PublishedStart([string]$pub) {
+    Test-Start $pub
+    $trimmed = Join-Path (Split-Path $pub) 'publish-trimmed'
+    Copy-Item $pub $trimmed -Recurse
+    try {
+        Get-OptionalFileNames (Join-Path $root 'OmniControl.Core\Engine\OptionalFiles.cs') | ForEach-Object { Remove-Item (Join-Path $trimmed $_) -Force -ErrorAction SilentlyContinue }
+        Test-Start $trimmed
+    }
+    finally { Remove-Item $trimmed -Recurse -Force }
+}
+
 function Build-Release {
     $pub = Join-Path $root "bin\release\$version\publish"
     Remove-Item -Recurse -Force (Split-Path $pub) -ErrorAction SilentlyContinue
     dotnet publish $proj -c Release -r win-x64 --self-contained true -o $pub --nologo -v q
     if ($LASTEXITCODE) { throw 'publish failed' }
+    Test-PublishedStart $pub
     New-Item -ItemType Directory -Force $out | Out-Null
     Compress-Archive -Path "$pub\*" -DestinationPath (Join-Path $out "OmniControl-$version-Portable.zip") -Force
     $iscc = @("$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe", "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
