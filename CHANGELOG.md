@@ -9,6 +9,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 - Fixed: App settings > Features: a feature switched on that failed to start was not written to the errors log and its card could still say "Couldn't start" when nothing had failed; now every start and stop is logged when it fails, "Couldn't start" shows only for a real failure, the cards always show what runs, the header counts the features running of those installed, and the note under the cards names only the drivers that are installed. Running Setup again with the same feature choice as an earlier Setup now applies it over switches changed since.
 - Fixed: the Combine devices list and the Add effect window's results scroll to the highlighted row only after the list has laid out its changed rows (the same "Invalid Arrange rectangle" guard as Actions and hotkeys).
+- Fixed: taskbar gadget: clicks, double-clicks and the hover outline now work on its whole area, also between letters, icons and columns (they passed through everywhere but the drawn strokes).
 
 - New: taskbar gadget "Solid background" switch (Size and spacing, off by default): fills the gadget with the taskbar's colour so a taskbar skin behind it can't show through.
 - Fixed: taskbar gadget on a coloured or restyled taskbar (StartAllBack, ExplorerPatcher): coloured readings no longer show a dark halo (grey text smoothing instead of ClearType), and on Left it sits after a classic or StartAllBack Start orb instead of over it, also when the taskbar auto-hides.
