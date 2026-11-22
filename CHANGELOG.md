@@ -26,6 +26,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 - Lighter memory: at most 6 MB is allocated between two of the runtime's quick collections (PCs with a large processor cache used to allow tens of MB).
 - Fixed: since 0.2.8 the small outlined buttons (Restore defaults, Add, Remove…), field-like pickers and confirm buttons, state buttons, and the cards of the Method menu and the gadget's Ready-made layouts showed Windows' plain button fill instead of their own fill and edge; they look as designed again.
 - Lighter memory: every button, and tags, panes, group cards, tick boxes, set-up stages and status lines, carry their looks in themes of their own, so a button checks about 40 styles instead of about 160; nothing else looks different.
+- Taskbar gadget: a double-click is now recognised by Windows' own rule (its double-click time and rectangle) even while the gadget redraws between the clicks; a small move between the presses no longer loses the click. New "Double-click time" card in Clicks (default: Windows' own).
 
 ## 0.2.8 (21 Nov 2026)
 

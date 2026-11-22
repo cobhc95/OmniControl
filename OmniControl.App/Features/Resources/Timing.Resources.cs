@@ -19,6 +19,9 @@ public static partial class Timing
         ResourcesGadgetReadCostly = TimeSpan.FromMilliseconds(500);
     public static readonly IReadOnlyList<TimeSpan> ResourcesGadgetQuickReads = new[] { 250, 500, 1000, 2000 }.Select(ms => TimeSpan.FromMilliseconds(ms)).ToList();
 
+    /// The gadget's "Double-click time": the shortest and longest that can be set (its default is Windows' own).
+    public static readonly TimeSpan ResourcesGadgetDoubleClickMin = TimeSpan.FromMilliseconds(150), ResourcesGadgetDoubleClickMax = TimeSpan.FromMilliseconds(900);
+
     /// On Left, the least time between two looks at where the taskbar's left buttons end (UI Automation into Explorer, at the gadget's reads):
     /// a program button that came or went is followed within this.
     public static readonly TimeSpan ResourcesGadgetLeftLook = TimeSpan.FromSeconds(5);

@@ -2,6 +2,7 @@ using System.Globalization;
 using OmniControl.App.Features.Hotkeys;
 using OmniControl.App.Features.Hotkeys.Actions;
 using OmniControl.App.Features.Hotkeys.Picker;
+using OmniControl.Core.Engine.Mouse;
 
 namespace OmniControl.App.Features.Resources.Gadget;
 
@@ -25,7 +26,7 @@ public sealed class GadgetDisplayCards : IDisposable
     private readonly ResourcesSettings _settings;
     private readonly IActionCatalogue _actions;
     private readonly Func<PickerModel, string, Task<PickResult?>> _choose;
-    private readonly SliderItem _lines, _size, _columnGap, _lineGap, _spaceToTray, _refresh;
+    private readonly SliderItem _lines, _size, _columnGap, _lineGap, _spaceToTray, _refresh, _doubleTime;
     private readonly MenuChoiceItem _odd;
     private readonly GalleryItem _colour;
     private readonly ToggleItem _outline;
@@ -66,13 +67,18 @@ public sealed class GadgetDisplayCards : IDisposable
         _click = new ButtonItem("Click", TitleOf(look.ClickAction), "The action a click on the gadget runs", () => _ = PickAsync("Choose the gadget's click action", (g, id) => g.ClickAction = id)) { Half = true };
         _doubleClick = new ButtonItem("Double-click", TitleOf(look.DoubleClickAction), "The action a double-click on the gadget runs",
             () => _ = PickAsync("Choose the gadget's double-click action", (g, id) => g.DoubleClickAction = id)) { Half = true };
-        Behaviour = Group("Resources/GadgetBehaviour", "Clicks", _click, _doubleClick);
+        var windowsMs = SystemCommands.DoubleClick().Milliseconds;
+        _doubleTime = Number("Double-click time", DoubleMs, (int)Timing.ResourcesGadgetDoubleClickMin.TotalMilliseconds, (int)Timing.ResourcesGadgetDoubleClickMax.TotalMilliseconds,
+            " ms", windowsMs, (g, v) => g.DoubleClickMs = v == windowsMs ? 0 : v, $"Default: Windows' own ({windowsMs} ms)");
+        Behaviour = Group("Resources/GadgetBehaviour", "Clicks", _click, _doubleClick, _doubleTime);
         Load();
     }
 
     private GadgetSettings Look => _settings.Setup.Gadget;
 
     private int RefreshMs => (int)Math.Round(Look.ReadEverySeconds * 1000);
+
+    private int DoubleMs => (int)GadgetClicks.DoubleTime(Look).TotalMilliseconds;
 
     public ItemGroup Layout { get; }
     public ItemGroup Numbers { get; }
@@ -131,6 +137,7 @@ public sealed class GadgetDisplayCards : IDisposable
         foreach (var chip in _quick) chip.IsSelected = chip.Key == RefreshMs.ToString(CultureInfo.InvariantCulture);
         _click.ButtonText = TitleOf(look.ClickAction);
         _doubleClick.ButtonText = TitleOf(look.DoubleClickAction);
+        _doubleTime.Load(DoubleMs);
     }
 
     public void Dispose()
