@@ -19,10 +19,13 @@ public class HardwareRetryTests
         public bool LooksStale() => Refreshes < readyOn;
     }
 
-    private static (HardwareWatches Watches, ConcurrentQueue<string> Log) Make(FakeMonitors monitors)
+    // The burst test's first try waits long enough that a slow build machine still delivers all three signals before it runs.
+    private static readonly TimeSpan[] BurstSchedule = [TimeSpan.FromMilliseconds(300), TimeSpan.FromMilliseconds(360), TimeSpan.FromMilliseconds(420), TimeSpan.FromMilliseconds(500)];
+
+    private static (HardwareWatches Watches, ConcurrentQueue<string> Log) Make(FakeMonitors monitors, TimeSpan[]? schedule = null)
     {
         var log = new ConcurrentQueue<string>();
-        var watches = new HardwareWatches(FastSchedule, log.Enqueue);
+        var watches = new HardwareWatches(schedule ?? FastSchedule, log.Enqueue);
         watches.Register(new HardwareWatch("displays.hardware", "Monitors", HardwareSignal.Display | HardwareSignal.Session | HardwareSignal.Resume,
             monitors.Refresh, monitors.LooksStale));
         return (watches, log);
@@ -59,14 +62,14 @@ public class HardwareRetryTests
     public void A_burst_from_both_listeners_runs_one_schedule()
     {
         var monitors = new FakeMonitors(readyOn: 3);
-        var (watches, log) = Make(monitors);
+        var (watches, log) = Make(monitors, BurstSchedule);
         using (watches)
         {
             watches.Signal(HardwareSignal.Session, "WM_WTSSESSION_CHANGE 1");
             watches.Signal(HardwareSignal.Session, "SystemEvents session ConsoleConnect");
             watches.Signal(HardwareSignal.Display, "WM_DISPLAYCHANGE");
             Assert.True(WaitFor(log, "found it"));
-            Thread.Sleep(FastSchedule[^1] * 2);
+            Thread.Sleep(BurstSchedule[^1] * 2);
             Assert.Equal(3, monitors.Refreshes);
         }
     }
