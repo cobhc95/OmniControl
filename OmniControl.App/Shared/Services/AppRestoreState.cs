@@ -2,7 +2,7 @@ namespace OmniControl.App.Shared.Services;
 
 /// The App settings that "Restore defaults" puts back (pure): theme, accent and its intensity (the custom colour is kept), background colour, GPU drawing, the tray icon's look (kept by the tray, so its values and defaults
 /// are given by the page), start with Windows (what Windows has, not a stored value), start minimised, what closing does, the daily update check,
-/// how often the hardware is checked, how groups start, the features switched off and the user's plug-in folders. Everything else in <see cref="AppSettings"/> (the Volume view,
+/// how often the hardware is checked, how long the closed window stays ready before its memory is freed, how groups start, the features switched off and the user's plug-in folders. Everything else in <see cref="AppSettings"/> (the Volume view,
 /// the first-run choice, effect-editor layouts, which groups are remembered open) is left alone.
 public sealed class AppRestoreState
 {
@@ -20,6 +20,7 @@ public sealed class AppRestoreState
     public bool UpdateCheckDaily { get; set; }
     public GroupsOpenChoice GroupsOpen { get; set; }
     public HardwareCheck HardwareCheck { get; set; }
+    public UiRelease UiRelease { get; set; }
     public List<string> FeaturesOff { get; set; } = new();
 
     public static AppRestoreState Of(AppSettings settings, bool startWithWindows, (string? Icon, string? Colour) tray = default) => new()
@@ -38,6 +39,7 @@ public sealed class AppRestoreState
         UpdateCheckDaily = settings.Updates.Daily,
         GroupsOpen = settings.GroupsOpen,
         HardwareCheck = settings.HardwareCheck,
+        UiRelease = settings.UiRelease,
         FeaturesOff = settings.FeaturesOff.ToList(),
     };
 
@@ -53,7 +55,7 @@ public sealed class AppRestoreState
     public static string Scope(string trayWords)
     {
         var d = Defaults();
-        return $"Theme {d.Theme}, accent {d.Accent} at intensity {AccentService.IntensityWords(d.AccentIntensity)}, background {d.Background}, {trayWords}Use GPU drawing off,Start with Windows off, Start minimised off, Check once a day on, When closing \"{CloseBehaviors.LabelOf(d.CloseBehavior)}\", Groups \"{Services.GroupsOpen.LabelOf(d.GroupsOpen)}\", Check hardware every \"{HardwareChecks.LabelOf(d.HardwareCheck)}\", "
+        return $"Theme {d.Theme}, accent {d.Accent} at intensity {AccentService.IntensityWords(d.AccentIntensity)}, background {d.Background}, {trayWords}Use GPU drawing off,Start with Windows off, Start minimised off, Check once a day on, When closing \"{CloseBehaviors.LabelOf(d.CloseBehavior)}\", Groups \"{Services.GroupsOpen.LabelOf(d.GroupsOpen)}\", Check hardware every \"{HardwareChecks.LabelOf(d.HardwareCheck)}\", Free memory after closing \"{UiReleases.LabelOf(d.UiRelease)}\", "
             + "every feature on, and your plug-in folders removed (what the scan found is kept).";
     }
 }

@@ -2,7 +2,7 @@ using OmniControl.App.Shared.Ui.Restore;
 
 namespace OmniControl.App.Features.Settings.Pages;
 
-/// "Restore defaults" on App settings (the theme, accent, background colour, tray icon look, start-up, close, daily update check, how groups start, every feature on and plug-in folder choices, <see cref="AppRestoreState"/>) and the
+/// "Restore defaults" on App settings (the theme, accent, background colour, tray icon look, start-up, close, how long the closed window stays ready, daily update check, how groups start, every feature on and plug-in folder choices, <see cref="AppRestoreState"/>) and the
 /// "Restore all defaults" card, which holds the shell's combined restore of every page. Each value goes through its card, so the theme,
 /// accent and Windows' start-up entry follow at once.
 public sealed partial class AppSettingsPageViewModel
@@ -36,6 +36,7 @@ public sealed partial class AppSettingsPageViewModel
         _whenClosing.Selected = CloseBehaviors.LabelOf(target.CloseBehavior);
         GroupsOpen.Set(target.GroupsOpen);
         _hardwareCheck.Selected = HardwareChecks.LabelOf(target.HardwareCheck);
+        _uiRelease.Selected = UiReleases.LabelOf(target.UiRelease);
         _updateDaily.IsOn = target.UpdateCheckDaily;
         SetFolders(target.PluginFolders);
         _features.SetOff(target.FeaturesOff);

@@ -90,9 +90,9 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     public PageViewModel? ShownPage => IsSearching ? null : CurrentPage;
 
     private readonly DispatcherTimer _hiddenSettle = new() { Interval = Timing.HiddenSettle };
-    private readonly DispatcherTimer _releaseUi = new() { Interval = Timing.UiReleaseAfterHidden };
+    private readonly DispatcherTimer _releaseUi = new();
 
-    /// The main window has stayed hidden <see cref="Timing.UiReleaseAfterHidden"/>: whoever owns the main window lets it go (never the tray
+    /// The main window has stayed hidden as long as App settings' "Free memory after closing" says (<see cref="UiReleases"/>): whoever owns the main window lets it go (never the tray
     /// panel) and gives null, or gives why it stays (a window it owns is open), and is asked again after another wait.
     public event Func<string?>? ReleaseWindows;
     [ObservableProperty] private PageSlot? _selectedMainPage;
@@ -170,7 +170,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _hiddenSettle.Tick += OnHiddenSettled;
         _hiddenSettle.Start(); // the window is not shown yet (it may start in the tray)
         _releaseUi.Tick += OnReleaseDue;
-        _releaseUi.Start();
+        ArmRelease();
         _searchShow.Tick += OnSearchShowDue;
         _searchMake.Tick += OnSearchMakeDue;
         if (AppDataStore.TakeDamaged() is { Count: > 0 } damaged)
@@ -201,10 +201,18 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         if (kept is not null)
         {
             UiTiming.Write($"Main window kept after its long hide: {kept}; asked again after the same wait");
-            _releaseUi.Start();
+            ArmRelease();
             return;
         }
         DispatcherTimer.RunOnce(() => CompactAfterRelease(before), Timing.UiReleaseCompactAfter);
+    }
+
+    /// Starts the wait before the windows go, as long as the setting says now (a hide already counting keeps its wait); "Never" starts none.
+    private void ArmRelease()
+    {
+        if (UiReleases.AfterOf(_settings.UiRelease) is not { } after) return;
+        _releaseUi.Interval = after;
+        _releaseUi.Start();
     }
 
     // A background collection, never a blocking one (ProcessPower.CompactAfterRelease); still skipped while OmniControl itself plays or records sound.
@@ -316,7 +324,8 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     /// while it is <paramref name="hidden"/> (a minimised window keeps its taskbar button, so it is never let go), counted from the hide.
     public void SetWindowShown(bool shown, bool hidden)
     {
-        _releaseUi.IsEnabled = hidden;
+        if (!hidden) _releaseUi.Stop();
+        else if (!_releaseUi.IsEnabled) ArmRelease();
         if (shown == _windowShown) return;
         _windowShown = shown;
         _hiddenSettle.IsEnabled = !shown;

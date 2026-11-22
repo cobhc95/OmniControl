@@ -12,7 +12,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
     private readonly ToggleItem _startWithWindows;
     private readonly ChoiceItem _whenClosing;
     private readonly ChoiceItem _groupsOpen;
-    private readonly ChoiceItem _hardwareCheck;
+    private readonly ChoiceItem _hardwareCheck, _uiRelease;
     private readonly HardwareWatches _hardware;
     private readonly ToggleItem _startMinimised;
     private readonly ToggleItem _gpuDrawing;
@@ -126,6 +126,13 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
         var checkLabels = HardwareChecks.All.Select(e => e.Label).ToList();
         _hardwareCheck = new ChoiceItem(HardwareCheckCard.Label, checkLabels, HardwareChecks.LabelOf(_hardware.Check), label => _hardware.SetCheck(HardwareChecks.Find(label)));
 
+        var releaseLabels = UiReleases.All.Select(e => e.Label).ToList();
+        _uiRelease = new ChoiceItem(UiReleaseCard.Label, releaseLabels, UiReleases.LabelOf(_settings.UiRelease), label =>
+        {
+            _settings.UiRelease = UiReleases.Find(label);
+            _settings.Save();
+        }) { Tip = "How long the closed window stays ready to reopen instantly before OmniControl frees its memory." };
+
         _about = new ButtonItem(AboutCard.Label, "Open", "Version, licence, credits", openAbout);
         _presets = new ButtonItem(PresetsCard.Label, "Open", "Every preset of the program: order, names and shortcuts", openPresets);
 
@@ -157,7 +164,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
 
         // Each group is made from its fixed cards (its closed header lists their names), then the cards that come and go are added.
         Appearance = Fill(AppearanceItems, "AppSettings/Appearance", AppearanceName, Theme, Background, Accent, _accentIntensity, _groupsOpen, _gpuDrawing, _trayIcon, _trayColour);
-        StartAndClose = Fill(StartItems, "AppSettings/Start", StartName, _startWithWindows, _startMinimised, _whenClosing, _hardwareCheck);
+        StartAndClose = Fill(StartItems, "AppSettings/Start", StartName, _startWithWindows, _startMinimised, _whenClosing, _hardwareCheck, _uiRelease);
         foreach (var (_, card) in _featureCards) FeatureItems.Add(card);
         FeatureGroup = new ItemGroup("AppSettings/Features", FeaturesName, FeatureItems) { NoMasterSwitch = true };
         YourData = Fill(DataItems, "AppSettings/Data", DataName, new object?[] { _presets, _backup, backup.CanImportFromPc ? _importFromPc : null, _networkService,
@@ -226,6 +233,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
         ShowGpuDrawingNote();
         _whenClosing.Load(_whenClosing.Options, CloseBehaviors.LabelOf(_settings.CloseBehavior));
         _hardwareCheck.Load(_hardwareCheck.Options, HardwareChecks.LabelOf(_hardware.Check));
+        _uiRelease.Load(_uiRelease.Options, UiReleases.LabelOf(_settings.UiRelease));
     }
 
     // Feature cards' restart words, so a restart-only switch reads the same everywhere.

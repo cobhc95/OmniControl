@@ -5,7 +5,7 @@
              x:Class="OmniControl.App.Shared.Ui.Pages.ChoiceRow"
              x:DataType="pages:ChoiceItem"
              Classes="card" IsEnabled="{Binding Availability.IsAvailable}"
-             ToolTip.Tip="{Binding Availability.Reason}" ToolTip.ShowOnDisabled="True">
+             ToolTip.Tip="{Binding Hint}" ToolTip.ShowOnDisabled="True">
     <Panel>
         <pages:CardLayout IsVisible="{Binding !Half}">
             <DataTemplate x:DataType="pages:ChoiceItem">

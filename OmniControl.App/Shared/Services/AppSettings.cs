@@ -40,6 +40,9 @@ public sealed class AppSettings
     /// How often the periodic safety check looks at the hardware (<see cref="HardwareWatches"/>); Off by default: Windows' own announcements already refresh it.
     public HardwareCheck HardwareCheck { get; set; } = HardwareCheck.EveryMinute;
 
+    /// How long the closed main window stays ready before the shell lets it go (<see cref="UiReleases"/>).
+    public UiRelease UiRelease { get; set; } = UiRelease.After1Minute;
+
     /// On: Win+A opens the quick panel instead of Windows' quick settings (<see cref="Features.Tray.WinAKey"/>). Off by default.
     public bool WinAForPanel { get; set; }
 

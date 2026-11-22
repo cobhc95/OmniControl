@@ -27,6 +27,12 @@ public sealed partial class ChoiceItem : ObservableObject, IEditorItem, IHalfWid
     /// True: a chip menu draws a thin line under the first option, which stands apart from the rest ("All displays" before each display).
     public bool FirstApart { get; init; }
 
+    /// A fact about the setting the label does not say, shown as the card's tooltip; null: none.
+    public string? Tip { get; init; }
+
+    /// The card's tooltip: why it is unavailable, else <see cref="Tip"/>.
+    public string? Hint => Availability.Reason ?? Tip;
+
     private bool _loading;
 
     public ChoiceItem(string label, IReadOnlyList<string> options, string selected, Action<string> apply)
@@ -35,6 +41,7 @@ public sealed partial class ChoiceItem : ObservableObject, IEditorItem, IHalfWid
         Options = options;
         _selected = selected;
         _apply = apply;
+        Availability.PropertyChanged += (_, _) => OnPropertyChanged(nameof(Hint));
     }
 
     /// Shows a list and choice read from elsewhere without applying it.
