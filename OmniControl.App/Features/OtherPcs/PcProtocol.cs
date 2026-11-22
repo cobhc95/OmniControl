@@ -123,6 +123,15 @@ internal sealed class PcMsg
 
     public byte[] ToBytes() => JsonSerializer.SerializeToUtf8Bytes(this, PcProtocol.Json);
 
+    /// Messages with the same key carry the latest value of one thing (the catalog, one state), so a newer one replaces a waiting one; null:
+    /// every one counts and keeps its order.
+    public string? LatestKey() => T switch
+    {
+        PcMsgType.Catalog => PcMsgType.Catalog,
+        PcMsgType.State when Id is { } id => $"{PcMsgType.State}:{id}",
+        _ => null,
+    };
+
     /// The message in these bytes, or null when they are not one (an unreadable message ends the link).
     public static PcMsg? From(ReadOnlySpan<byte> bytes)
     {

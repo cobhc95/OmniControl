@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using Avalonia.Media.Imaging;
 
 namespace OmniControl.App.Features.Icons;
@@ -19,5 +20,14 @@ internal static class IconPictures
         byWidth.Dispose();
         stream.Position = 0;
         return Bitmap.DecodeToHeight(stream, side);
+    }
+
+    /// The size a PNG's header states, read before decoding so an absurd picture is refused without being decoded; null when the bytes are no PNG.
+    public static (int Width, int Height)? PngSize(ReadOnlySpan<byte> file)
+    {
+        ReadOnlySpan<byte> signature = [137, 80, 78, 71, 13, 10, 26, 10];
+        if (file.Length < 24 || !file[..8].SequenceEqual(signature) || !file[12..16].SequenceEqual("IHDR"u8)) return null;
+        var (width, height) = (BinaryPrimitives.ReadUInt32BigEndian(file[16..]), BinaryPrimitives.ReadUInt32BigEndian(file[20..]));
+        return width is 0 or > int.MaxValue || height is 0 or > int.MaxValue ? null : ((int)width, (int)height);
     }
 }

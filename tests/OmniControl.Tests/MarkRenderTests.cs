@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Media;
@@ -16,34 +15,7 @@ public class MarkRenderTests
 {
     private const int Size = 200, Grey = 128;
 
-    private static readonly BlockingCollection<Action> Work = new();
-
-    static MarkRenderTests()
-    {
-        var ui = new Thread(() =>
-        {
-            AppBuilder.Configure<Application>().UseWin32().UseSkia().SetupWithoutStarting();
-            foreach (var job in Work.GetConsumingEnumerable()) job();
-        }) { IsBackground = true };
-        ui.SetApartmentState(ApartmentState.STA);
-        ui.Start();
-    }
-
-    private static T OnUi<T>(Func<T> job)
-    {
-        T? result = default;
-        Exception? error = null;
-        using var done = new ManualResetEventSlim();
-        Work.Add(() =>
-        {
-            try { result = job(); }
-            catch (Exception e) { error = e; }
-            done.Set();
-        });
-        done.Wait();
-        if (error is not null) throw new InvalidOperationException("The drawing failed.", error);
-        return result!;
-    }
+    private static T OnUi<T>(Func<T> job) => AvaloniaThread.Run(job);
 
     private static ScreenImage Picture(bool stripes = false)
     {

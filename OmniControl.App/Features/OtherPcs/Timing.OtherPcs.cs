@@ -16,6 +16,15 @@ public static partial class Timing
     /// while they do, its link stops reading (TCP slows that PC).
     public const int PcInboxMax = 64;
 
+    /// At most this many bytes of one paired PC's messages wait for the UI thread (one message of up to <see cref="PcProtocol.MaxFrame"/> always fits).
+    public const int PcInboxBytes = 4 << 20;
+
+    /// At most this many messages and bytes wait to be sent to one paired PC (catalogs and state values coalesce); more means that PC stopped
+    /// taking them, so the link is closed and reconnects. Each write must finish within <see cref="PcWriteDeadline"/>, or the same happens.
+    public const int PcOutboxMax = 256, PcOutboxBytes = 4 << 20;
+
+    public static readonly TimeSpan PcWriteDeadline = TimeSpan.FromSeconds(20);
+
     /// Each step of a connection's start (a pairing's messages, a session's proof) must arrive within this time, or the connection is dropped.
     public static readonly TimeSpan PcHandshakeStep = TimeSpan.FromSeconds(8);
 

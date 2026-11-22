@@ -248,7 +248,7 @@ public class PcPairingTests
         Assert.NotNull(dialled);
         Assert.NotNull(accepted);
         var heard = new TaskCompletionSource<PcMsg>(TaskCreationOptions.RunContinuationsAsynchronously);
-        _ = accepted!.RunAsync((message, _) =>
+        _ = accepted!.RunAsync((message, _, _) =>
         {
             heard.TrySetResult(message);
             return Task.CompletedTask;

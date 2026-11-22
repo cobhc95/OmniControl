@@ -324,7 +324,7 @@ public sealed partial class OtherPcsService
         }
         _catalogKey.Remove(pair.Id);
         link.Closed += () => PcWork.Post(() => OnLinkClosed(link));
-        var inbox = new PcInbox(Timing.PcInboxMax, message => Guard.Run("Other PCs: a message", () => OnMessage(link, message)), PcWork.Post);
+        var inbox = new PcInbox(Timing.PcInboxMax, Timing.PcInboxBytes, message => Guard.Run("Other PCs: a message", () => OnMessage(link, message)), PcWork.Post);
         _ = Guard.RunAsync("Other PCs: link", () => link.RunAsync(inbox.PutAsync));
         SendCatalog(link, force: true);
         Wake.LinkUp(link, pair);
