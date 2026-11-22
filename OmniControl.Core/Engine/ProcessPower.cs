@@ -51,14 +51,14 @@ public static class ProcessPower
         return GetProcessMemoryInfo(GetCurrentProcess(), ref counters, counters.Size) && counters.PrivateWorkingSet > 0 ? (long)counters.PrivateWorkingSet : null;
     }
 
-    /// Gives the memory the process no longer uses back to Windows: one full background collection (the runtime's ConserveMemory setting
-    /// decides about compacting). For quiet moments (start-up has settled, the window was hidden a while). Never blocking: a blocking
-    /// collection stops every thread, the mouse hook's and the audio thread's too, so the pointer and the sound would stall.
+    /// Gives the memory the process no longer uses back to Windows: requests one full background collection (the runtime's ConserveMemory
+    /// setting decides about compacting). For quiet moments only; the caller skips it while sound runs through the process. Not a forced
+    /// blocking one, which stops every thread for its whole length; the runtime may still do part of a background collection blocking.
     public static void Compact() => GC.Collect(2, GCCollectionMode.Forced, blocking: false, compacting: false);
 
-    /// After big parts were let go (the windows after a long hide): Skia's caches are emptied, one full background collection runs, and
-    /// the large objects are marked to be compacted at the runtime's own next full blocking collection. Never a forced blocking compaction:
-    /// it stops every thread, so a hotkey, the mouse hook or the sound would pause. Working sets are never trimmed.
+    /// After big parts were let go (the windows after a long hide): Skia's caches are emptied, one full background collection is requested
+    /// (<see cref="Compact"/>), and the large objects are marked to be compacted at the runtime's own next full blocking collection. Working
+    /// sets are never trimmed.
     public static void CompactAfterRelease()
     {
         SKGraphics.PurgeAllCaches();

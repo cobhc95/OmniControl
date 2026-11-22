@@ -188,8 +188,19 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     private void OnHiddenSettled(object? sender, EventArgs e)
     {
         _hiddenSettle.Stop();
-        UiTiming.Memory("hidden settle");
-        Guard.Run("Give memory back", ProcessPower.Compact);
+        UiTiming.Memory(TryCompact(ProcessPower.Compact) ? "hidden settle" : "hidden settle (sound running, not collected)");
+    }
+
+    /// Start-up has settled: what it needed only is given back (<see cref="TryCompact"/>).
+    public void CompactAfterStart() => TryCompact(ProcessPower.Compact);
+
+    /// Every explicit collection goes through here: skipped while OmniControl itself plays or records sound, since even a requested
+    /// background collection may pause its threads briefly. False when skipped.
+    private bool TryCompact(Action compact)
+    {
+        if (_volume.StreamsAudio || _screenshot.Records) return false;
+        Guard.Run("Give memory back", compact);
+        return true;
     }
 
     /// The window has stayed hidden a long while: the windows go (the page view-models stay, so the next showing opens at the same page),
@@ -221,13 +232,11 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         _releaseUi.Start();
     }
 
-    // A background collection, never a blocking one (ProcessPower.CompactAfterRelease); still skipped while OmniControl itself plays or records sound.
     private void CompactAfterRelease(string before)
     {
         if (_windowShown) return;
-        var busy = _volume.StreamsAudio || _screenshot.Records;
-        if (!busy) Guard.Run("Give memory back", ProcessPower.CompactAfterRelease);
-        UiTiming.Memory(busy ? "windows let go (sound running, not collected)" : "windows let go and collected", $"before the release {before}");
+        UiTiming.Memory(TryCompact(ProcessPower.CompactAfterRelease) ? "windows let go and collected" : "windows let go (sound running, not collected)",
+            $"before the release {before}");
     }
 
     /// Every feature's view templates and those of what the shell itself makes (App settings, the suggested keys switch); added to the app's at start-up.

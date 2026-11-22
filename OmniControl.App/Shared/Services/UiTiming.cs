@@ -9,7 +9,7 @@ namespace OmniControl.App.Shared.Services;
 public static class UiTiming
 {
     /// Logs the process's memory <paramref name="when"/>, read on a worker (the process figures come from Windows' process list): the
-    /// managed heap after the last collection (size, fragmented, committed), the live managed bytes, private bytes, working set and the
+    /// managed heap after the last collection (size, fragmented, committed), the live managed bytes (an estimate), private bytes, working set and the
     /// figure Task Manager shows (private working set), then the visuals in the open windows (counted here, on the UI thread) and
     /// <paramref name="note"/>. Call on the UI thread.
     public static void Memory(string when, string? note = null)
@@ -21,7 +21,7 @@ public static class UiTiming
             using var self = Process.GetCurrentProcess();
             var taskManager = ProcessPower.PrivateWorkingSet() is { } bytes ? Mb(bytes) : "unknown";
             Write($"Memory {when}: heap {Mb(gc.HeapSizeBytes)}, fragmented {Mb(gc.FragmentedBytes)}, committed {Mb(gc.TotalCommittedBytes)}, "
-                + $"live {Mb(GC.GetTotalMemory(false))}, private {Mb(self.PrivateMemorySize64)}, working set {Mb(self.WorkingSet64)}, "
+                + $"live (estimate) {Mb(GC.GetTotalMemory(false))}, private {Mb(self.PrivateMemorySize64)}, working set {Mb(self.WorkingSet64)}, "
                 + $"Task Manager {taskManager} (MB); {visuals}"
                 + (note is null ? string.Empty : $"; {note}"));
         });
