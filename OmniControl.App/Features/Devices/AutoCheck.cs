@@ -81,7 +81,4 @@ public static class AutoChecks
             }
         }
     }
-
-    /// The periodic check is due: never read yet by the timer, or the interval has passed.
-    public static bool Due(DateTime? lastChecked, DateTime now, TimeSpan every) => lastChecked is not { } last || now - last >= every;
 }

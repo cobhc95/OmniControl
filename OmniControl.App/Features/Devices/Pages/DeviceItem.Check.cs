@@ -9,9 +9,26 @@ public sealed partial class DeviceItem
     private AutoCheck? AutoCheckValue => _service.AutoChecking.Of(Record);
 
     /// A device with no Scripts method is checked by hand only, so its chip is disabled.
-    public bool AutoCheckEditable => AutoCheckValue is not null;
+    public bool AutoCheckEditable => AutoChecks.CanAuto(Record);
 
-    public string AutoCheckLabel => AutoCheckValue is { } value ? $"Auto-check: {ShortName(value)}" : $"Auto-check: {AutoChecks.ManualOnly}";
+    /// The choice, or the rule's own times when they match none (edited in Automation).
+    public string AutoCheckLabel => $"Auto-check: {(!AutoCheckEditable ? AutoChecks.ManualOnly : AutoCheckValue is { } value ? ShortName(value) : _service.AutoChecking.RuleWords(Record))}";
+
+    /// The line under the chips while the device's check rule has more than the chip shows.
+    public RuleLineItem RuleLine
+    {
+        get
+        {
+            if (_ruleLine is not null) return _ruleLine;
+            _ruleLine = new RuleLineItem(() => _service.AutoChecking.EditRule(Record));
+            ShowRule();
+            return _ruleLine;
+        }
+    }
+
+    private RuleLineItem? _ruleLine;
+
+    private void ShowRule() => RuleLine.Show(AutoCheckEditable ? _service.AutoChecking.RuleOf(Record)?.Extras ?? string.Empty : string.Empty);
 
     public string AutoCheckTip => AutoCheckEditable
         ? "How often the device's real state is read (a switch by hand is not seen otherwise)."
@@ -42,6 +59,7 @@ public sealed partial class DeviceItem
         OnPropertyChanged(nameof(AutoCheckLabel));
         OnPropertyChanged(nameof(AutoCheckTip));
         OnPropertyChanged(nameof(AutoCheckEditable));
+        ShowRule();
     }
 
     [RelayCommand(CanExecute = nameof(CanCheck))]

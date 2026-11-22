@@ -18,6 +18,16 @@ public sealed partial class DeviceService
 
     private static string Word(DevicePower power) => power.ToString().ToLowerInvariant();
 
+    /// The device's check rule's own action ("Check Desk lamp's state").
+    public static string CheckActionId(DeviceRecord device) => $"devices.{device.Id}.check";
+
+    /// The check rule's action ran (any thread): one automatic read on the UI thread, once Python has been looked for.
+    private void CheckByRule(DeviceRecord device) => Dispatcher.UIThread.Post(() => _ = Guard.RunAsync("Smart devices: check by its rule", async () =>
+    {
+        await AutoChecking.ProbedAsync();
+        await CheckAutoAsync(device);
+    }));
+
     /// (Re)registers the device's actions: one per power that follows the order, and one per power for each method.
     private void RegisterActions(DeviceRecord device)
     {
@@ -33,6 +43,8 @@ public sealed partial class DeviceService
                     ids => _ = RunAsync(device, power, method), group: ActionGroup)
                     { Icon = icon, Family = new ActionFamily($"devices.method.{method.Id}", $"{name} via {device.NameOf(method)}"), FamilyRole = power.ToString(), StateId = StateId(device),
                       Reach = ReachOf(device, power) })))
+            .Append(new HotkeyAction(CheckActionId(device), $"Check {name}'s state", Category, $"{keywords} check read state auto", _ => CheckByRule(device), group: ActionGroup)
+                { Icon = icon, FeatureRule = true })
             .ToList();
         _registered[device.Id] = actions.Select(a => a.Id).ToList();
         _hotkeys.Register(actions);

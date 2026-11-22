@@ -48,6 +48,7 @@ public static class DeviceShareFormat
     {
         var device = source.Clone();
         device.IconImage = string.Empty;
+        device.ChecksInRule = false; // rules are each PC's own: the PC that takes it makes the device's check rule
         if (!keepChecks)
         {
             device.AutoCheck = null;

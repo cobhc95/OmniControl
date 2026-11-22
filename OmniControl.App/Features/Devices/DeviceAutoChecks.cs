@@ -1,75 +1,106 @@
+using OmniControl.App.Shared.Contracts;
+
 namespace OmniControl.App.Features.Devices;
 
-/// Reading devices' states on their own, from the service, so the tray tiles show real states without the page: at start-up, every so often,
-/// when the page or tray panel opens and after a hardware change, as each device's auto-check choice says (<see cref="AutoChecks"/>). One
-/// reading run at a time; the reading itself is the service's (Scripts only, never waking an emulator). UI thread.
+/// Reading devices' states on their own, so the tray tiles show real states without the page. At start-up and every so often is each device's
+/// automation rule ("Check Desk lamp": when OmniControl starts or every 5 minutes, do Check Desk lamp's state), made from its auto-check choice
+/// once and edited by it since; when the page or tray panel opens and after a hardware change stay here. One reading run at a time; the reading
+/// itself is the service's (Scripts only, never waking an emulator). UI thread.
 public sealed class DeviceAutoChecks
 {
     private readonly DeviceSettings _settings;
     private readonly DeviceSetup _setup;
     private readonly Action _edited;
     private readonly Func<DeviceRecord, Task> _check;
-    private readonly Dictionary<string, DateTime> _lastAuto = new();
-    private DispatcherTimer? _timer;
-    private bool _running, _started;
+    private readonly FeatureRulesSlot _rules;
+    private Task? _probed;
+    private bool _running;
 
     /// <param name="edited">Saves the device list after a choice changed.</param>
     /// <param name="check">One automatic read of a device (it skips what is not ready or is in its set-up).</param>
-    internal DeviceAutoChecks(DeviceSettings settings, DeviceSetup setup, Action edited, Func<DeviceRecord, Task> check)
+    /// <param name="rules">The automation rules the timed checks run as (empty while automation is off).</param>
+    internal DeviceAutoChecks(DeviceSettings settings, DeviceSetup setup, Action edited, Func<DeviceRecord, Task> check, FeatureRulesSlot rules)
     {
-        _settings = settings;
-        _setup = setup;
-        _edited = edited;
-        _check = check;
+        (_settings, _setup, _edited, _check, _rules) = (settings, setup, edited, check, rules);
+        rules.Changed += OnRulesChanged;
     }
 
-    /// The device's auto-check changed (a pick or the switch): the page's chips read it again.
+    /// The device's auto-check changed (a pick, the switch or its rule): the page's chips read it again.
     public event Action? Changed;
 
-    /// Starts the start-up check (a few seconds after the window is up) and, while a device has a periodic auto-check, the timer that keeps them; once.
-    public void Start()
+    /// The rule's name and its own action ("Check Desk lamp's state").
+    public static string RuleName(DeviceRecord device) => $"Check {DeviceService.DisplayName(device)}";
+
+    private void OnRulesChanged()
     {
-        if (_started) return;
-        _started = true;
-        FollowNeed();
-        DispatcherTimer.RunOnce(() => _ = RunAsync(atStart: true), Timing.DeviceStartCheckDelay);
+        MakeRules();
+        Changed?.Invoke();
     }
 
-    /// The devices or their choices changed (UI thread): the periodic timer runs only while a device has an auto-check that repeats.
-    public void FollowNeed()
+    /// Each device's checks become its rule the first time (from its choice, so nothing is lost); a new device's too.
+    public void MakeRules()
     {
-        var periodic = _started && _settings.Devices.Any(d => Of(d) is { } choice && AutoChecks.Of(choice).Every is not null);
-        if (periodic == _timer is not null) return;
-        if (periodic)
+        if (_rules.Current is not { } rules) return;
+        var made = false;
+        foreach (var device in _settings.Devices.Where(d => !d.ChecksInRule && AutoChecks.CanAuto(d)).ToList())
         {
-            _timer = new DispatcherTimer { Interval = Timing.DeviceAutoCheckTick };
-            _timer.Tick += OnTick;
-            _timer.Start();
+            var choice = AutoChecks.Of(AutoChecks.Effective(_settings, device) ?? AutoChecks.Default);
+            rules.Ensure(DeviceService.CheckActionId(device), RuleName(device), Repeats(choice), Triggers(Repeats(choice) ? choice : AutoChecks.Of(AutoChecks.Default)));
+            device.ChecksInRule = made = true;
         }
-        else
-        {
-            _timer!.Stop();
-            _timer.Tick -= OnTick;
-            _timer = null;
-        }
+        if (made) _edited();
     }
 
-    /// Smart devices was switched off: the timer stops and the start-up check, if still waiting, does nothing.
-    public void Stop()
+    private static bool Repeats(AutoChecks.Choice choice) => choice.AtStart || choice.Every is not null;
+
+    private static FeatureTrigger[] Triggers(AutoChecks.Choice choice) =>
+        (choice.AtStart ? new FeatureTrigger[] { new FeatureTrigger.Starts() } : Array.Empty<FeatureTrigger>())
+        .Concat(choice.Every is { } every ? new FeatureTrigger[] { new FeatureTrigger.Every((int)every.TotalMinutes) } : Array.Empty<FeatureTrigger>()).ToArray();
+
+    /// The device's rule as it is now, or null (deleted, or automation off).
+    public FeatureRuleView? RuleOf(DeviceRecord device) => _rules.Current?.Find(DeviceService.CheckActionId(device));
+
+    /// The choice a device follows now: its rule's, when the rule is on (null when the rule's triggers match no choice); otherwise "when the
+    /// page opens" if that was picked, else off. Null too for a device that is read by hand only (simulation only).
+    public AutoCheck? Of(DeviceRecord device)
     {
-        _started = false;
-        FollowNeed();
+        if (AutoChecks.Effective(_settings, device) is not { } picked) return null;
+        if (RuleOf(device) is not { On: true } rule) return picked == AutoCheck.WhenOpens ? AutoCheck.WhenOpens : AutoCheck.Off;
+        return AutoChecks.All.FirstOrDefault(c => Repeats(c) && c.AtStart == rule.AtStart && (int?)c.Every?.TotalMinutes == rule.Every)?.Value;
     }
 
-    private void OnTick(object? sender, EventArgs e) => _ = RunAsync(atStart: false);
+    /// The rule's own times in a few words when they match no choice ("every 10 min").
+    public string RuleWords(DeviceRecord device) => RuleOf(device) is not { } rule ? AutoChecks.ManualOnly
+        : rule.Every is { } every ? $"{(rule.AtStart ? "start, " : string.Empty)}every {every} min" : rule.AtStart ? "start only" : "by its rule";
 
-    /// The choice a device follows now (null = manual only).
-    public AutoCheck? Of(DeviceRecord device) => AutoChecks.Effective(_settings, device);
+    /// Opens Automation where the device's rule is.
+    public void EditRule(DeviceRecord device) => _rules.Current?.Edit(DeviceService.CheckActionId(device));
 
     public void Pick(DeviceRecord device, AutoCheck value)
     {
         AutoChecks.Pick(_settings, device, value);
+        foreach (var each in _settings.AutoCheckSame ? _settings.Devices.ToList() : new List<DeviceRecord> { device }) Apply(each, value);
         Edited();
+    }
+
+    /// Puts a choice in the device's rule: its start and repeat triggers, on or off ("when the page opens" and Off switch it off).
+    private void Apply(DeviceRecord device, AutoCheck value)
+    {
+        if (_rules.Current is not { } rules || !AutoChecks.CanAuto(device)) return;
+        var choice = AutoChecks.Of(value);
+        var id = DeviceService.CheckActionId(device);
+        if (rules.Find(id) is null)
+        {
+            if (Repeats(choice)) rules.Ensure(id, RuleName(device), true, Triggers(choice));
+            return;
+        }
+        if (Repeats(choice))
+        {
+            foreach (var trigger in Triggers(choice)) rules.SetTrigger(id, trigger);
+            if (!choice.AtStart) rules.RemoveTrigger<FeatureTrigger.Starts>(id);
+            if (choice.Every is null) rules.RemoveTrigger<FeatureTrigger.Every>(id);
+        }
+        rules.SetOn(id, Repeats(choice));
     }
 
     public bool OnTrayOf(DeviceRecord device) => AutoChecks.OnTray(_settings, device);
@@ -83,15 +114,19 @@ public sealed class DeviceAutoChecks
     public void SetSame(DeviceRecord device, bool same)
     {
         AutoChecks.SetSame(_settings, device, same);
-        Edited();
+        if (same && Of(device) is { } value) Pick(device, value);
+        else Edited();
     }
 
     private void Edited()
     {
         _edited();
-        FollowNeed();
         Changed?.Invoke();
     }
+
+    /// Python and python-kasa are looked for once before the first automatic read, and only when a device uses Scripts (else when the
+    /// Devices page first opens).
+    public Task ProbedAsync() => _probed ??= _settings.Devices.Any(AutoChecks.CanAuto) ? _setup.RefreshAsync() : Task.CompletedTask;
 
     /// The page opened: devices set to "When the page or tray panel opens" read their state (Scripts only).
     public async Task CheckWhenShownAsync()
@@ -107,35 +142,13 @@ public sealed class DeviceAutoChecks
         _running = true;
         try
         {
+            await ProbedAsync();
             foreach (var device in _settings.Devices.ToList())
-            {
-                if (Of(device) is null) continue;
-                _lastAuto[device.Id] = DateTime.UtcNow;
-                await _check(device);
-            }
+                if (AutoChecks.CanAuto(device)) await _check(device);
         }
         finally { _running = false; }
     }
 
-    private async Task RunAsync(bool atStart)
-    {
-        if (_running || !_started) return;
-        _running = true;
-        try
-        {
-            // Python and python-kasa are looked for at start only when a device uses Scripts (else when the Devices page first opens).
-            if (atStart && _settings.Devices.Any(d => d.Methods.Any(m => !m.IsSimulation))) await _setup.RefreshAsync();
-            var now = DateTime.UtcNow;
-            foreach (var device in _settings.Devices.ToList())
-            {
-                if (Of(device) is not { } value) continue;
-                var choice = AutoChecks.Of(value);
-                var due = atStart ? choice.AtStart : choice.Every is { } every && AutoChecks.Due(_lastAuto.TryGetValue(device.Id, out var last) ? last : null, now, every);
-                if (!due) continue;
-                _lastAuto[device.Id] = now;
-                await _check(device);
-            }
-        }
-        finally { _running = false; }
-    }
+    /// Smart devices was switched off: the rules are no longer followed here.
+    public void Stop() => _rules.Changed -= OnRulesChanged;
 }

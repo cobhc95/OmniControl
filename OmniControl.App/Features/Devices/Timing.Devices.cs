@@ -60,9 +60,6 @@ public static partial class Timing
     /// How often a device with "Every 5 min" / "Every 15 min" reads its real state.
     public static readonly TimeSpan DeviceAutoCheck5 = TimeSpan.FromMinutes(5), DeviceAutoCheck15 = TimeSpan.FromMinutes(15);
 
-    /// How often the service looks at which devices' periodic check is due, and how long after start-up the first check waits (the window is up by then).
-    public static readonly TimeSpan DeviceAutoCheckTick = TimeSpan.FromMinutes(1), DeviceStartCheckDelay = TimeSpan.FromSeconds(4);
-
     /// A device's state read longer ago than this is only the last one known: its tray tile is faded with a clock.
     public static readonly TimeSpan DeviceStateStale = TimeSpan.FromMinutes(30);
 }

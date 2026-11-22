@@ -49,6 +49,7 @@
                 </c:ChipMenu.Menu>
             </c:ChipMenu>
         </WrapPanel>
+        <ContentControl Content="{Binding RuleLine}" IsVisible="{Binding ShowsReadyTags}" />
 
         <StackPanel Spacing="{StaticResource GapLarge}" IsVisible="{Binding !InSetup}">
             <vm:MethodList />

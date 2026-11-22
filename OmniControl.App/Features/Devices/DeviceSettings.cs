@@ -24,6 +24,9 @@ public sealed class DeviceRecord
     /// This device's own "Also when the tray panel opens", used only while "Same for every device" is off; null = the shared one.
     public bool? AutoCheckOnTray { get; set; }
 
+    /// Its checks were made into its automation rule (once: a rule deleted in Automation stays deleted).
+    public bool ChecksInRule { get; set; }
+
     /// The ways to reach it, in the order On, Off, Toggle and Check try them (the first that works is used). Never empty once loaded.
     public List<MethodRecord> Methods { get; set; } = new();
 
@@ -94,6 +97,9 @@ public sealed class EmulatorKeepSettings
 
     /// Minutes without an action before <see cref="EmulatorKeep.UntilIdle"/> closes the emulator.
     public int IdleMinutes { get; set; } = Timing.EmulatorIdleMinutes;
+
+    /// "Until idle" was made into the emulator's automation rule (once: a rule deleted in Automation stays deleted).
+    public bool IdleInRule { get; set; }
 
     /// Wake the emulator when OmniControl starts (OmniControl itself then starts with Windows).
     public bool StartWithWindows { get; set; }

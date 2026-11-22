@@ -1,4 +1,5 @@
 using System.Net;
+using OmniControl.App.Shared.Contracts;
 using OmniControl.App.Features.Hotkeys;
 using OmniControl.App.Features.States;
 using OmniControl.Core.Interfaces;
@@ -58,7 +59,9 @@ public sealed partial class DeviceService : IDisposable
     /// <param name="states">The master list of states: each device's power is registered there.</param>
     /// <param name="note">Where a device's state change or failure is announced (the master OSD).</param>
     /// <param name="hardware">The master list of hardware watches: the service registers the devices' state reading there (after sleep or Remote Desktop the network may be back).</param>
-    public DeviceService(IActionRegistry hotkeys, IStateRegistry states, IHardwareWatches hardware, ICredentialStore credentials, Action<string> report, Action<Osd.OsdMessage> note, DeviceSettings? settings = null)
+    /// <param name="rules">The automation rules each device's timed checks and the emulator's idle close run as.</param>
+    public DeviceService(IActionRegistry hotkeys, IStateRegistry states, IHardwareWatches hardware, ICredentialStore credentials, Action<string> report, Action<Osd.OsdMessage> note,
+        FeatureRulesSlot rules, DeviceSettings? settings = null)
     {
         hardware.Register(new HardwareWatch(HardwareWatchId, "Smart devices", HardwareSignal.Session | HardwareSignal.Resume,
             () => Dispatcher.UIThread.Post(() => _ = Guard.RunAsync("Smart devices: check after a hardware change", AutoChecking.CheckAllNowAsync))));
@@ -72,13 +75,14 @@ public sealed partial class DeviceService : IDisposable
         Simulation = new SimulationSetup(Log, Settings.Emulator, Edited, () => SimulationMethods.Any());
         Scripts = new ScriptMethod(Settings, Setup, credentials, Edited);
         SimulationMethod = new SimulationMethod(Simulation, RuntimeOf, Edited);
-        AutoChecking = new DeviceAutoChecks(Settings, Setup, Edited, CheckAutoAsync);
+        AutoChecking = new DeviceAutoChecks(Settings, Setup, Edited, CheckAutoAsync, rules);
         _saveSoon.Tick += (_, _) =>
         {
             _saveSoon.Stop();
             Settings.Save();
         };
         if (TakeUp()) Settings.Save();
+        AutoChecking.MakeRules();
         RegisterEmulatorState();
         SimulationMethod.WakeAtStart(Settings);
     }
@@ -111,6 +115,7 @@ public sealed partial class DeviceService : IDisposable
         }
         SettingsCopy.Into(Settings, DeviceSettings.Load());
         if (TakeUp()) Settings.Save();
+        AutoChecking.MakeRules();
         ListChanged?.Invoke();
         return true;
     }
@@ -134,6 +139,7 @@ public sealed partial class DeviceService : IDisposable
         Settings.Devices.Add(device);
         RegisterActions(device);
         Settings.Save();
+        AutoChecking.MakeRules();
         ListChanged?.Invoke();
         return device;
     }
@@ -167,8 +173,7 @@ public sealed partial class DeviceService : IDisposable
     {
         _saveSoon.Stop();
         Settings.Save();
-        Simulation.FollowNeed(); // a simulation method or an auto-check may have come or gone
-        AutoChecking?.FollowNeed();
+        Simulation.FollowNeed(); // a simulation method may have come or gone
     }
 
     public bool HasPassword(MethodRecord method) => _credentials.Read(PasswordTarget(method)) is { Length: > 0 };

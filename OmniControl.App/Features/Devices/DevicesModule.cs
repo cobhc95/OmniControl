@@ -19,8 +19,8 @@ public sealed class DevicesModule(Func<IPairedPcs?> pairedPcs, Action openOtherP
     {
         _context = context;
         context.Osd.DeclareText(OsdService.SmartDevicesElement);
-        var service = _service = new DeviceService(context.Actions, context.States, context.Hardware, new WindowsCredentialStore(), context.Report, context.Osd.ShowDeviceNote);
-        Guard.Run("Start-up: device auto-checks", service.AutoChecking.Start);
+        var service = _service = new DeviceService(context.Actions, context.States, context.Hardware, new WindowsCredentialStore(), context.Report, context.Osd.ShowDeviceNote,
+            context.Rules);
         context.Imports.OnReload(DataStores.Devices, service.ReloadFromDisk);
         context.Imports.OnFact(DataStores.Devices.Import!.Area, service.PasswordsNeededIn);
         context.Shutdown.AddWhenOff(ShutdownStage.Pages, "smart devices", () =>

@@ -80,14 +80,4 @@ public class AutoCheckTests
         sim.Methods.Add(new MethodRecord { Kind = DeviceMethods.Scripts });
         Assert.NotNull(AutoChecks.Effective(settings, sim));
     }
-
-    [Fact]
-    public void A_periodic_check_is_due_when_never_read_or_the_interval_passed()
-    {
-        var now = DateTime.UtcNow;
-        var every = TimeSpan.FromMinutes(5);
-        Assert.True(AutoChecks.Due(null, now, every));
-        Assert.False(AutoChecks.Due(now.AddMinutes(-2), now, every));
-        Assert.True(AutoChecks.Due(now.AddMinutes(-5), now, every));
-    }
 }
