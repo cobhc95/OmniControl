@@ -19,6 +19,10 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
     public string UnavailableLine => _canHost ? "Per-app limits and speeds need the network service, which is not installed"
         : "Per-app limits and speeds need OmniControl as administrator; the network service needs the installed version";
 
+    /// The tooltips of the Block rows of the Upload limit and Download limit menus.
+    public const string UploadBlockTip = "Blocks this program's upload; it then can't start new downloads either.";
+    public const string DownloadBlockTip = "Drops everything that arrives for this program (through Windows Packet Filter). Upload is not blocked.";
+
     /// The tooltip of every Install… of the network service.
     public const string InstallServiceTip = "Installs OmniControl's network service (Windows asks once), so per-app limits work without running OmniControl as administrator.";
 
@@ -173,9 +177,9 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
     }
 
     private IReadOnlyList<NetworkRule> Wanted() => _settings.Setup.Apps
-        .Where(r => (r.UploadOn && r.UploadKbps > 0) || r.Blocked || (r.DownloadOn && r.DownloadKbps > 0))
-        .Select(r => new NetworkRule(r.Id, r.Path, r.UploadOn && r.UploadKbps > 0 ? (ulong)r.UploadKbps * 1024 * 8 : null, r.Blocked,
-            r.DownloadOn && r.DownloadKbps > 0 ? r.DownloadKbps * 1024L : null)).ToList();
+        .Where(r => (r.UploadOn && r.UploadKbps > 0) || r.Blocked || r.UploadBlocked || r.DownloadBlocked || (r.DownloadOn && r.DownloadKbps > 0))
+        .Select(r => new NetworkRule(r.Id, r.Path, r.UploadOn && r.UploadKbps > 0 && !r.UploadBlocked ? (ulong)r.UploadKbps * 1024 * 8 : null, r.Blocked,
+            r.DownloadOn && r.DownloadKbps > 0 && !r.DownloadBlocked ? r.DownloadKbps * 1024L : null, r.UploadBlocked, r.DownloadBlocked)).ToList();
 
     private void Sync()
     {
@@ -184,7 +188,7 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
             if (Runner() is not { } work) return; // nobody may change Windows' rules, and the group says so
             var wanted = _wanted;
             var filterOn = _settings.PacketFilterOn;
-            var downloads = !_stopped && wanted.Any(r => r.DownloadBytes is not null);
+            var downloads = !_stopped && wanted.Any(r => r.Shapes);
             var installed = DownloadShaper.Installed;
             if (filterOn && downloads && !installed && !_installTried) InstallPacketFilter();
             // Before the limits reach the shaper, so a failure to open the driver is never written over.
@@ -192,7 +196,7 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
             else if (downloads && installed) _download = DownloadState.Running(DownloadShaper.TunnelUp);
             else (_download, _toldFailure) = (!installed && _installFailure is { } failure ? DownloadState.InstallFailed(failure) : DownloadState.Idle(installed), null);
             _ruled |= wanted.Count > 0;
-            Tell(work.Sync(installed && filterOn ? wanted : wanted.Select(r => r with { DownloadBytes = null }).ToList()));
+            Tell(work.Sync(installed && filterOn ? wanted : wanted.Select(r => r.WithoutShaping()).ToList()));
         }
     }
 
@@ -370,7 +374,7 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
 
         /// The "Packet filter" switch is off: limits are kept, not applied; the chips are greyed.
         public static readonly DownloadState Off = new("Packet filter is off",
-            $"{Driver} is switched off and out of all traffic, so download limits are kept but not applied. Upload limits and blocks still work.", Usable: false);
+            $"{Driver} is switched off and out of all traffic, so download limits and download blocks are kept but not applied. Upload limits and blocks still work.", Usable: false);
 
         public static DownloadState Failure(string reason) => new($"Download limits failed: {reason}",
             $"Download limits are not applied ({reason}); traffic passes without a limit.", Failed: true);

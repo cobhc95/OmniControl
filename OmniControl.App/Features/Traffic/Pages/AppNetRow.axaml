@@ -38,7 +38,7 @@
         <TextBlock Grid.Column="2" Text="{Binding Down}" VerticalAlignment="Center" />
         <TextBlock Grid.Column="3" Text="{Binding Up}" VerticalAlignment="Center" />
         <Button Grid.Column="4" x:Name="UploadChip" Classes="selector" Classes.running="{Binding UploadSet}" Tag="scope" HorizontalAlignment="Left"
-                ToolTip.Tip="Upload limit (a Windows throttle rule)">
+                ToolTip.Tip="{Binding UploadTip}">
             <Button.Flyout>
                 <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft" Opened="OnUploadOpened">
                     <c:MenuRowList x:Name="UploadMenu" Title="Upload limit" />

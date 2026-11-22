@@ -8,7 +8,8 @@ namespace OmniControl.App.Features.Traffic.Pages;
 /// download limit chips and its On switch (off blocks it), through <see cref="NetworkLimits"/>.
 public sealed partial class AppNetItem : ObservableObject
 {
-    private const string NoLimit = "No limit";
+    private const string NoLimit = "No limit", BlockWord = "Block";
+    private bool _uploadBlocked, _downloadBlocked;
     private readonly INetworkLimits _limits;
     private readonly ProcessIcons _icons;
     private readonly Action<string> _report;
@@ -51,8 +52,11 @@ public sealed partial class AppNetItem : ObservableObject
 
     public IRelayCommand TogglePinCommand { get; }
 
-    /// What download limits really do now (the chip's tooltip).
-    public string DownloadTip => _limits.Download.Tip;
+    /// The upload chip's tooltip: what its block does while it reads Block, else what a limit is.
+    public string UploadTip => _uploadBlocked ? NetworkLimits.UploadBlockTip : "Upload limit (a Windows throttle rule)";
+
+    /// What download limits really do now (the chip's tooltip), while the chip reads Block what a block does, until the driver cannot run it.
+    public string DownloadTip => _downloadBlocked && _limits.Download.Usable ? NetworkLimits.DownloadBlockTip : _limits.Download.Tip;
 
     /// False while OmniControl is still looking for the driver or the packet filter is switched off (the chip is greyed out; a saved limit is kept).
     public bool DownloadUsable => _limits.Download.Usable;
@@ -66,10 +70,14 @@ public sealed partial class AppNetItem : ObservableObject
     {
         var rule = _limits.Rule(Id);
         _loading = true;
-        (UploadSet, Upload) = rule is { UploadOn: true, UploadKbps: > 0 } ? (true, Words(rule.UploadKbps)) : (false, NoLimit);
-        (DownloadSet, Download) = rule is { DownloadOn: true, DownloadKbps: > 0 } ? (true, Words(rule.DownloadKbps)) : (false, NoLimit);
+        (UploadSet, Upload) = rule is { UploadBlocked: true } ? (true, BlockWord)
+            : rule is { UploadOn: true, UploadKbps: > 0 } ? (true, Words(rule.UploadKbps)) : (false, NoLimit);
+        (DownloadSet, Download) = rule is { DownloadBlocked: true } ? (true, BlockWord)
+            : rule is { DownloadOn: true, DownloadKbps: > 0 } ? (true, Words(rule.DownloadKbps)) : (false, NoLimit);
+        (_uploadBlocked, _downloadBlocked) = (rule?.UploadBlocked == true, rule?.DownloadBlocked == true);
         IsOn = rule?.Blocked != true;
         _loading = false;
+        OnPropertyChanged(nameof(UploadTip));
         OnPropertyChanged(nameof(DownloadTip));
         OnPropertyChanged(nameof(DownloadUsable));
     }
@@ -92,9 +100,11 @@ public sealed partial class AppNetItem : ObservableObject
         if (!_loading) _limits.Set(Id, r => r.Blocked = !value);
     }
 
-    public IReadOnlyList<MenuRowItem> UploadRows() => Rows(r => r.UploadOn ? r.UploadKbps : 0, (r, kbps) => (r.UploadOn, r.UploadKbps) = (kbps > 0, kbps > 0 ? kbps : r.UploadKbps));
+    public IReadOnlyList<MenuRowItem> UploadRows() => Rows(r => r.UploadBlocked, (r, on) => r.UploadBlocked = on, NetworkLimits.UploadBlockTip,
+        r => r.UploadOn ? r.UploadKbps : 0, (r, kbps) => (r.UploadOn, r.UploadKbps) = (kbps > 0, kbps > 0 ? kbps : r.UploadKbps));
 
-    public IReadOnlyList<MenuRowItem> DownloadRows() => Rows(r => r.DownloadOn ? r.DownloadKbps : 0, (r, kbps) => (r.DownloadOn, r.DownloadKbps) = (kbps > 0, kbps > 0 ? kbps : r.DownloadKbps));
+    public IReadOnlyList<MenuRowItem> DownloadRows() => Rows(r => r.DownloadBlocked, (r, on) => r.DownloadBlocked = on, NetworkLimits.DownloadBlockTip,
+        r => r.DownloadOn ? r.DownloadKbps : 0, (r, kbps) => (r.DownloadOn, r.DownloadKbps) = (kbps > 0, kbps > 0 ? kbps : r.DownloadKbps));
 
     /// The row's right-click menu: pin or unpin, then, when the program's file is known, its folder and its path.
     public IReadOnlyList<MenuRowItem> MenuRows()
@@ -114,12 +124,16 @@ public sealed partial class AppNetItem : ObservableObject
         if (await Task.Run(step) is { } problem) _report(problem);
     });
 
-    /// "No limit" then every offered limit, the one in force ticked.
-    private IReadOnlyList<MenuRowItem> Rows(Func<AppNetRule, int> now, Action<AppNetRule, int> set)
+    /// "No limit", every offered limit, then Block (this direction alone), the one in force ticked; a limit or No limit lifts the block.
+    private IReadOnlyList<MenuRowItem> Rows(Func<AppNetRule, bool> blocked, Action<AppNetRule, bool> block, string blockTip, Func<AppNetRule, int> now, Action<AppNetRule, int> set)
     {
-        var current = _limits.Rule(Id) is { } rule ? now(rule) : 0;
-        return NetworkLimits.Choices.Prepend(0).Select(kbps => new MenuRowItem(kbps == 0 ? NoLimit : Words(kbps), string.Empty, kbps == current, string.Empty,
-            new RelayCommand(() => _limits.Set(Id, r => set(r, kbps))))).ToList();
+        var rule = _limits.Rule(Id);
+        var isBlocked = rule is not null && blocked(rule);
+        var current = rule is not null && !isBlocked ? now(rule) : 0;
+        var rows = NetworkLimits.Choices.Prepend(0).Select(kbps => new MenuRowItem(kbps == 0 ? NoLimit : Words(kbps), string.Empty, !isBlocked && kbps == current, string.Empty,
+            new RelayCommand(() => _limits.Set(Id, r => { block(r, false); set(r, kbps); })))).ToList();
+        rows.Add(new MenuRowItem(BlockWord, string.Empty, isBlocked, blockTip, new RelayCommand(() => _limits.Set(Id, r => block(r, true))), RuleAbove: true, IsDanger: true));
+        return rows;
     }
 
     private static string Words(int kbps) => Reading.SpeedWords(kbps * 1024d);

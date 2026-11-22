@@ -6,7 +6,8 @@ using OmniControl.App.Shared.Presets;
 
 namespace OmniControl.App.Features.Resources;
 
-/// One program's network rule: an upload and a download limit in KB/s (kept while switched off, so the chip can turn them on again) and the block.
+/// One program's network rule: an upload and a download limit in KB/s (kept while switched off, so the chip can turn them on again), the block of both
+/// ways, and the block of upload or download alone (a block replaces that direction's limit while it is on; files from before have none).
 public sealed class AppNetRule
 {
     public string Id { get; set; } = string.Empty;
@@ -16,9 +17,11 @@ public sealed class AppNetRule
     public int DownloadKbps { get; set; }
     public bool DownloadOn { get; set; }
     public bool Blocked { get; set; }
+    public bool UploadBlocked { get; set; }
+    public bool DownloadBlocked { get; set; }
 
     /// True when the rule asks nothing of Windows (it may be forgotten once Windows was told).
-    [JsonIgnore] public bool IsPlain => !UploadOn && !DownloadOn && !Blocked;
+    [JsonIgnore] public bool IsPlain => !UploadOn && !DownloadOn && !Blocked && !UploadBlocked && !DownloadBlocked;
 }
 
 /// What a Resources preset holds: how often the page reads, the network adapter read, the taskbar gadget, the programs' network rules and pins.

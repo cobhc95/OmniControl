@@ -6,25 +6,25 @@ namespace OmniControl.Core.Engine.Resources;
 
 /// The network service's fixed requests; nothing else is ever done for a client. RefreshAdapters: Windows' adapters may have changed (the
 /// app's hardware watch says so), so running download limits pick up a new one.
-public enum NetOp { Status, ReadSpeeds, SetUpload, ClearUpload, SetDownload, ClearDownload, Block, Unblock, ListRules, RefreshAdapters }
+public enum NetOp { Status, ReadSpeeds, SetUpload, ClearUpload, SetDownload, ClearDownload, Block, Unblock, BlockUpload, UnblockUpload, BlockDownload, UnblockDownload, ListRules, RefreshAdapters }
 
 /// One request: the protocol version, what is asked, the program's path (path requests only) and the limit in KB/s (Set requests only).
 public sealed record NetRequest(int V, NetOp Op, string? Path = null, int Kbps = 0);
 
-/// What the service holds for one program, limits in KB/s (0: none).
-public sealed record NetRule(string Path, int UploadKbps = 0, int DownloadKbps = 0, bool Blocked = false)
+/// What the service holds for one program, limits in KB/s (0: none); <see cref="Blocked"/> both ways, or one way only.
+public sealed record NetRule(string Path, int UploadKbps = 0, int DownloadKbps = 0, bool Blocked = false, bool UploadBlocked = false, bool DownloadBlocked = false)
 {
-    [JsonIgnore] public bool IsEmpty => UploadKbps == 0 && DownloadKbps == 0 && !Blocked;
+    [JsonIgnore] public bool IsEmpty => UploadKbps == 0 && DownloadKbps == 0 && !Blocked && !UploadBlocked && !DownloadBlocked;
 
-    public bool SameLimits(NetRule other) => UploadKbps == other.UploadKbps && DownloadKbps == other.DownloadKbps && Blocked == other.Blocked;
+    public bool SameLimits(NetRule other) => this with { Path = string.Empty } == other with { Path = string.Empty };
 
     /// A wanted rule as the service is asked for it (the rates were made from whole KB/s).
     public static NetRule From(NetworkRule rule) =>
-        new(rule.Path, (int)((rule.UploadBits ?? 0) / BitsPerKb), (int)((rule.DownloadBytes ?? 0) / BytesPerKb), rule.Blocked);
+        new(rule.Path, (int)((rule.UploadBits ?? 0) / BitsPerKb), (int)((rule.DownloadBytes ?? 0) / BytesPerKb), rule.Blocked, rule.UploadBlocked, rule.DownloadBlocked);
 
     /// The rule the service gives its work; the program's identity is its file name, as everywhere.
     public NetworkRule ToRule() => new(ProgramIdentity.Normalize(Path), Path, UploadKbps > 0 ? (ulong)UploadKbps * BitsPerKb : null, Blocked,
-        DownloadKbps > 0 ? (long)DownloadKbps * BytesPerKb : null);
+        DownloadKbps > 0 ? (long)DownloadKbps * BytesPerKb : null, UploadBlocked, DownloadBlocked);
 
     private const int BytesPerKb = 1024, BitsPerKb = BytesPerKb * 8;
 }
@@ -38,7 +38,7 @@ public sealed record NetReply(int V, string? Error = null, IReadOnlyList<string>
 /// Every request is checked before anything runs (<see cref="Parse"/>): version, a known request, no unknown field, the path and the limit.
 public static class NetworkPipe
 {
-    public const int Version = 1;
+    public const int Version = 2;
     public const string Name = "OmniControl.NetworkService";
 
     /// The largest message each way, the longest path, the highest limit (1 GB/s), how many programs the service holds and how many
@@ -102,7 +102,7 @@ public static class NetworkPipe
         {
             NetOp.Status or NetOp.ReadSpeeds or NetOp.ListRules or NetOp.RefreshAdapters => (false, false, false),
             NetOp.SetUpload or NetOp.SetDownload => (true, true, true),
-            NetOp.Block => (true, false, true),
+            NetOp.Block or NetOp.BlockUpload or NetOp.BlockDownload => (true, false, true),
             _ => (true, false, false), // a clear acts only on a path the service holds
         };
         if (rate ? request.Kbps is < 1 or > MaxKbps : request.Kbps != 0) return (null, $"the limit must be {(rate ? $"1 to {MaxKbps} KB/s" : "0")}");
@@ -135,5 +135,7 @@ public static class NetworkPipe
         if (from.UploadKbps != to.UploadKbps) yield return to.UploadKbps > 0 ? new(Version, NetOp.SetUpload, path, to.UploadKbps) : new(Version, NetOp.ClearUpload, path);
         if (from.DownloadKbps != to.DownloadKbps) yield return to.DownloadKbps > 0 ? new(Version, NetOp.SetDownload, path, to.DownloadKbps) : new(Version, NetOp.ClearDownload, path);
         if (from.Blocked != to.Blocked) yield return new(Version, to.Blocked ? NetOp.Block : NetOp.Unblock, path);
+        if (from.UploadBlocked != to.UploadBlocked) yield return new(Version, to.UploadBlocked ? NetOp.BlockUpload : NetOp.UnblockUpload, path);
+        if (from.DownloadBlocked != to.DownloadBlocked) yield return new(Version, to.DownloadBlocked ? NetOp.BlockDownload : NetOp.UnblockDownload, path);
     }
 }

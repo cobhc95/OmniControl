@@ -5,7 +5,19 @@ namespace OmniControl.Core.Engine.Resources;
 
 /// What OmniControl asks Windows to do with one program's traffic: an upload cap in bits per second (null: none), whether it is blocked,
 /// and a download limit in bytes per second (null: none; <see cref="DownloadShaper"/>'s, the rest is <see cref="NetworkRules"/>').
-public sealed record NetworkRule(string AppId, string Path, ulong? UploadBits, bool Blocked, long? DownloadBytes = null);
+/// <paramref name="Blocked"/> blocks both ways; <paramref name="UploadBlocked"/> only outbound (a firewall rule); <paramref name="DownloadBlocked"/>
+/// drops what arrives for the program (<see cref="DownloadShaper"/>, a firewall cannot: it lets replies to the program's own requests in).
+public sealed record NetworkRule(string AppId, string Path, ulong? UploadBits, bool Blocked, long? DownloadBytes = null, bool UploadBlocked = false, bool DownloadBlocked = false)
+{
+    /// True when the rule needs a firewall rule or an upload policy (what <see cref="NetworkRules"/> holds).
+    public bool NeedsRules => UploadBits is not null || Blocked || UploadBlocked;
+
+    /// True when the rule needs Windows Packet Filter (a download limit or block).
+    public bool Shapes => DownloadBytes is not null || DownloadBlocked;
+
+    /// The rule without what Windows Packet Filter would do (it is off or missing).
+    public NetworkRule WithoutShaping() => this with { DownloadBytes = null, DownloadBlocked = false };
+}
 
 /// One of OmniControl's rules as Windows holds it (or should): a throttle policy when <see cref="Bits"/> is set, else one direction of a
 /// firewall block. <see cref="Program"/> is the policy's program name or the firewall rule's path.
@@ -63,9 +75,8 @@ public sealed class NetworkRules
     private static IEnumerable<HeldRule> Wanted(NetworkRule rule)
     {
         if (rule.UploadBits is { } bits) yield return new HeldRule($"{Prefix}limit {rule.AppId}", Path.GetFileName(rule.Path.Length > 0 ? rule.Path : rule.AppId + ".exe"), bits);
-        if (!rule.Blocked) yield break;
-        yield return new HeldRule($"{Prefix}block {rule.AppId} (in)", rule.Path, Inbound: true);
-        yield return new HeldRule($"{Prefix}block {rule.AppId} (out)", rule.Path);
+        if (rule.Blocked) yield return new HeldRule($"{Prefix}block {rule.AppId} (in)", rule.Path, Inbound: true);
+        if (rule.Blocked || rule.UploadBlocked) yield return new HeldRule($"{Prefix}block {rule.AppId} (out)", rule.Path);
     }
 
     private static bool Named(HeldRule rule, string name) => string.Equals(rule.Name, name, StringComparison.OrdinalIgnoreCase);

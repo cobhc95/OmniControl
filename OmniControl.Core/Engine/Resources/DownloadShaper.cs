@@ -4,7 +4,13 @@ using System.Net.NetworkInformation;
 namespace OmniControl.Core.Engine.Resources;
 
 /// One program's download limit: its identity (<see cref="ProgramIdentity.Normalize"/>) and the most bytes per second it may receive.
-public sealed record DownloadLimit(string AppId, long BytesPerSecond);
+/// <see cref="Block"/> as the rate drops everything that arrives for the program.
+public sealed record DownloadLimit(string AppId, long BytesPerSecond)
+{
+    public const long Block = 0;
+
+    public bool Blocks => BytesPerSecond == Block;
+}
 
 /// How the shaper paces: the burst a limit lets through at once, the most a program's packets may be held back (more is dropped), how old
 /// the port-to-process tables may be while a limited program owns ports (<see cref="Ports"/>) and while none does (<see cref="PortsIdle"/>),
@@ -145,6 +151,7 @@ public sealed unsafe class DownloadShaper : IDisposable
             Send(record, length);
             return;
         }
+        if (bucket.Blocks) return; // never sent on: the packet is dropped
         bucket.Refill(Stopwatch.GetTimestamp());
         if (bucket.Packets.Count == 0 && bucket.Tokens > 0)
         {
@@ -255,7 +262,8 @@ public sealed unsafe class DownloadShaper : IDisposable
         {
             var fresh = !_buckets.TryGetValue(limit.AppId, out var bucket);
             if (fresh) _buckets[limit.AppId] = bucket = new Bucket { Stamp = Stopwatch.GetTimestamp() };
-            bucket!.Rate = Math.Max(1, limit.BytesPerSecond);
+            bucket!.Blocks = limit.Blocks;
+            bucket.Rate = Math.Max(1, limit.BytesPerSecond);
             bucket.Burst = (long)(bucket.Rate * _times.Burst.TotalSeconds);
             bucket.QueueLimit = Math.Max((long)(bucket.Rate * _times.Queue.TotalSeconds), PacketFilter.RecordSize); // a whole large packet always fits
             if (fresh) bucket.Tokens = bucket.Burst;
@@ -297,6 +305,7 @@ public sealed unsafe class DownloadShaper : IDisposable
     {
         public long Rate, Burst, QueueLimit, Queued, Stamp;
         public double Tokens;
+        public bool Blocks;
         public readonly Queue<(byte[] Data, int Length, int Cost)> Packets = new();
 
         public void Refill(long now)

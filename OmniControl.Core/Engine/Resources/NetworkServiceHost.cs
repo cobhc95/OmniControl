@@ -158,7 +158,7 @@ public sealed class NetworkServiceHost
     private NetReply Change(NetRequest request)
     {
         var path = request.Path!;
-        var clears = request.Op is NetOp.ClearUpload or NetOp.ClearDownload or NetOp.Unblock;
+        var clears = request.Op is NetOp.ClearUpload or NetOp.ClearDownload or NetOp.Unblock or NetOp.UnblockUpload or NetOp.UnblockDownload;
         if (!_rules.TryGetValue(path, out var held))
         {
             if (clears) return Reply(); // nothing held for it: nothing to take out
@@ -172,6 +172,10 @@ public sealed class NetworkServiceHost
             NetOp.SetDownload => held with { DownloadKbps = request.Kbps },
             NetOp.ClearDownload => held with { DownloadKbps = 0 },
             NetOp.Block => held with { Blocked = true },
+            NetOp.BlockUpload => held with { UploadBlocked = true },
+            NetOp.UnblockUpload => held with { UploadBlocked = false },
+            NetOp.BlockDownload => held with { DownloadBlocked = true },
+            NetOp.UnblockDownload => held with { DownloadBlocked = false },
             _ => held with { Blocked = false },
         };
         if (changed.IsEmpty) _rules.Remove(path);

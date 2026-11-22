@@ -10,7 +10,7 @@ public class NetworkRulesPlanTests
 
     private static HeldRule Limit(ulong bits, string name = "OmniControl limit msedge") => new(name, "msedge.exe", bits);
     private static HeldRule Block(bool inbound) => new($"OmniControl block msedge ({(inbound ? "in" : "out")})", Edge, Inbound: inbound);
-    private static NetworkRule Rule(ulong? upload = null, bool blocked = false) => new("msedge", Edge, upload, blocked);
+    private static NetworkRule Rule(ulong? upload = null, bool blocked = false, bool uploadBlocked = false) => new("msedge", Edge, upload, blocked, UploadBlocked: uploadBlocked);
 
     [Fact]
     public void NothingHeld_LimitWanted_IsAdded()
@@ -88,4 +88,29 @@ public class NetworkRulesPlanTests
         Assert.Equal(new[] { moved }, plan.Remove);
         Assert.Equal(new[] { Block(false) }, plan.Add);
     }
+
+    [Fact]
+    public void UploadBlock_IsTheOutboundRuleAlone()
+    {
+        var plan = NetworkRules.Plan(new[] { Rule(uploadBlocked: true) }, Array.Empty<HeldRule>());
+        Assert.Equal(new[] { Block(false) }, plan.Add);
+    }
+
+    [Fact]
+    public void UploadBlockCleared_OutboundRuleGoes_FullBlockKeepsIt()
+    {
+        Assert.Equal(new[] { Block(false) }, NetworkRules.Plan(Array.Empty<NetworkRule>(), new[] { Block(false) }).Remove);
+        Assert.True(NetworkRules.Plan(new[] { Rule(blocked: true, uploadBlocked: true) }, new[] { Block(true), Block(false) }).None);
+    }
+
+    [Fact]
+    public void UploadBlockOnToFullBlock_AddsOnlyTheInboundRule()
+    {
+        var plan = NetworkRules.Plan(new[] { Rule(blocked: true) }, new[] { Block(false) });
+        Assert.Empty(plan.Remove);
+        Assert.Equal(new[] { Block(true) }, plan.Add);
+    }
+
+    [Fact]
+    public void DownloadBlock_NeedsNoFirewallRule() => Assert.False(new NetworkRule("msedge", Edge, null, false, DownloadBlocked: true).NeedsRules);
 }

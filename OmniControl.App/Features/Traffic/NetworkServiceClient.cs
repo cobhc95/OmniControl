@@ -76,7 +76,7 @@ internal sealed class NetworkServiceClient : INetworkWork
     public void RefreshAdapters()
     {
         lock (_gate)
-            if (_pipe is not null && _held.Values.Any(r => r.DownloadKbps > 0)) Ask(Request(NetOp.RefreshAdapters), new List<string>());
+            if (_pipe is not null && _held.Values.Any(r => r.DownloadKbps > 0 || r.DownloadBlocked)) Ask(Request(NetOp.RefreshAdapters), new List<string>());
     }
 
     /// Nothing to send: the service ends its download limits with the rest when the connection closes (<see cref="RemoveAll"/>).

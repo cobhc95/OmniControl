@@ -18,25 +18,25 @@ public class NetworkPipeTests
     [Fact]
     public void SetUpload_ToAProgram_IsTakenWithItsPathMadeWhole()
     {
-        var (request, refused) = Parse($$"""{"V":1,"Op":"SetUpload","Path":{{Quote(@"C:\Apps\Tools\..\game.exe")}},"Kbps":512}""");
+        var (request, refused) = Parse($$"""{"V":2,"Op":"SetUpload","Path":{{Quote(@"C:\Apps\Tools\..\game.exe")}},"Kbps":512}""");
         Assert.Null(refused);
-        Assert.Equal(new NetRequest(1, NetOp.SetUpload, @"C:\Apps\game.exe", 512), request);
+        Assert.Equal(new NetRequest(NetworkPipe.Version, NetOp.SetUpload, @"C:\Apps\game.exe", 512), request);
     }
 
     [Fact]
-    public void Status_WithoutPath_IsTaken() => Assert.Equal(NetOp.Status, Parse("""{"V":1,"Op":"Status"}""").Request?.Op);
+    public void Status_WithoutPath_IsTaken() => Assert.Equal(NetOp.Status, Parse("""{"V":2,"Op":"Status"}""").Request?.Op);
 
     [Theory]
-    [InlineData("""{"V":2,"Op":"Status"}""")] // another protocol version
+    [InlineData("""{"V":3,"Op":"Status"}""")] // another protocol version
     [InlineData("""{"Op":"Status"}""")] // no version
-    [InlineData("""{"V":1,"Op":"RunCommand"}""")] // not a request of the list
-    [InlineData("""{"V":1,"Op":0}""")] // requests are named, never numbered
-    [InlineData("""{"V":1,"Op":"Status","Command":"cmd.exe"}""")] // an unknown field
-    [InlineData("""{"V":1,"Op":"Status","Path":"C:\\a.exe"}""")] // a path where none is taken
-    [InlineData("""{"V":1,"Op":"Block","Path":"C:\\a.exe","Kbps":5}""")] // a limit where none is taken
-    [InlineData("""{"V":1,"Op":"SetUpload","Path":"C:\\a.exe","Kbps":0}""")] // no limit
-    [InlineData("""{"V":1,"Op":"SetDownload","Path":"C:\\a.exe","Kbps":1048577}""")] // above the highest limit
-    [InlineData("""{"V":1,"Op":"SetUpload","Kbps":64}""")] // no path
+    [InlineData("""{"V":2,"Op":"RunCommand"}""")] // not a request of the list
+    [InlineData("""{"V":2,"Op":0}""")] // requests are named, never numbered
+    [InlineData("""{"V":2,"Op":"Status","Command":"cmd.exe"}""")] // an unknown field
+    [InlineData("""{"V":2,"Op":"Status","Path":"C:\\a.exe"}""")] // a path where none is taken
+    [InlineData("""{"V":2,"Op":"Block","Path":"C:\\a.exe","Kbps":5}""")] // a limit where none is taken
+    [InlineData("""{"V":2,"Op":"SetUpload","Path":"C:\\a.exe","Kbps":0}""")] // no limit
+    [InlineData("""{"V":2,"Op":"SetDownload","Path":"C:\\a.exe","Kbps":1048577}""")] // above the highest limit
+    [InlineData("""{"V":2,"Op":"SetUpload","Kbps":64}""")] // no path
     [InlineData("""[1,2]""")]
     [InlineData("""not json""")]
     public void BadRequests_AreRefused(string json)
@@ -60,20 +60,20 @@ public class NetworkPipeTests
     [InlineData(@"c:\windows\..\Windows\explorer.exe")] // Windows' own program, written around
     public void BadPaths_AreRefused(string path)
     {
-        var (request, refused) = Parse($$"""{"V":1,"Op":"Block","Path":{{Quote(path)}}}""");
+        var (request, refused) = Parse($$"""{"V":2,"Op":"Block","Path":{{Quote(path)}}}""");
         Assert.Null(request);
         Assert.NotNull(refused);
     }
 
     [Fact]
     public void TooLongPath_IsRefused() =>
-        Assert.Null(Parse($$"""{"V":1,"Op":"Block","Path":{{Quote(@"C:\" + new string('a', NetworkPipe.MaxPath) + ".exe")}}}""").Request);
+        Assert.Null(Parse($$"""{"V":2,"Op":"Block","Path":{{Quote(@"C:\" + new string('a', NetworkPipe.MaxPath) + ".exe")}}}""").Request);
 
     [Fact]
     public void SetForAMissingProgram_IsRefused_ButClearIsTaken()
     {
-        Assert.Null(Parse($$"""{"V":1,"Op":"SetDownload","Path":{{Quote(Edge)}},"Kbps":64}""", exists: false).Request);
-        Assert.Equal(NetOp.ClearDownload, Parse($$"""{"V":1,"Op":"ClearDownload","Path":{{Quote(Edge)}}}""", exists: false).Request?.Op);
+        Assert.Null(Parse($$"""{"V":2,"Op":"SetDownload","Path":{{Quote(Edge)}},"Kbps":64}""", exists: false).Request);
+        Assert.Equal(NetOp.ClearDownload, Parse($$"""{"V":2,"Op":"ClearDownload","Path":{{Quote(Edge)}}}""", exists: false).Request?.Op);
     }
 
     [Fact]
@@ -127,6 +127,31 @@ public class NetworkPipeTests
             new NetRequest(NetworkPipe.Version, NetOp.ClearUpload, Edge),
             new NetRequest(NetworkPipe.Version, NetOp.Unblock, Edge),
         }, NetworkPipe.Changes(Edge, held, null));
+    }
+
+    [Fact]
+    public void Changes_AskForEachDirectionsBlockApart()
+    {
+        var held = new NetRule(Edge, UploadBlocked: true);
+        var wanted = new NetRule(Edge, DownloadBlocked: true);
+        Assert.Equal(new[]
+        {
+            new NetRequest(NetworkPipe.Version, NetOp.UnblockUpload, Edge),
+            new NetRequest(NetworkPipe.Version, NetOp.BlockDownload, Edge),
+        }, NetworkPipe.Changes(Edge, held, wanted));
+        Assert.False(held.IsEmpty);
+        Assert.False(held.SameLimits(wanted));
+        Assert.True(held.SameLimits(held with { Path = "D:\\other.exe" }));
+    }
+
+    [Fact]
+    public void DirectionBlocks_ReachTheRuleTheWorkGets()
+    {
+        var rule = new NetRule(Edge, UploadBlocked: true, DownloadBlocked: true).ToRule();
+        Assert.True(rule.UploadBlocked);
+        Assert.True(rule.DownloadBlocked);
+        Assert.False(rule.Blocked);
+        Assert.Equal(new NetRule(Edge, DownloadBlocked: true), NetRule.From(rule with { UploadBlocked = false }));
     }
 
     [Fact]
