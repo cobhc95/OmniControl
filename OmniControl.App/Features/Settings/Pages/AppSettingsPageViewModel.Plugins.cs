@@ -16,7 +16,7 @@ public sealed partial class AppSettingsPageViewModel
     /// The switch card of "Keep OmniControl's effects in place"; it follows changes made elsewhere (an FX window, a rule).
     private ToggleItem KeepFxCard(Features.Volume.Audio.MixerService mixer)
     {
-        var card = new ToggleItem(Features.Volume.Audio.EffectsRules.KeepInPlace, mixer.KeepFxInPlace, mixer.SetKeepFxInPlace) { Tip = Features.Volume.Audio.EffectsRules.KeepInPlaceTip };
+        var card = new ToggleItem(KeepFxSearchCard, mixer.KeepFxInPlace, mixer.SetKeepFxInPlace);
         Follow(h => mixer.KeepFxInPlaceChanged += h, h => mixer.KeepFxInPlaceChanged -= h, () => card.Load(mixer.KeepFxInPlace));
         return card;
     }
@@ -25,7 +25,7 @@ public sealed partial class AppSettingsPageViewModel
     private ButtonItem FolderRow(string folder)
     {
         ButtonItem row = null!;
-        row = new ButtonItem(FolderLabel, "Remove", folder, () => RemoveFolder(row, folder));
+        row = new ButtonItem(FolderCard(folder), "Remove", () => RemoveFolder(row, folder));
         return row;
     }
 

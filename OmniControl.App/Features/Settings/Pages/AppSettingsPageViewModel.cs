@@ -77,13 +77,12 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
         _hardware = hardware;
         _features = features;
         _plugins = plugins;
-        var themes = Enum.GetNames<ThemeChoice>();
-        Theme = new GalleryItem(ThemeCard.Label, themes, (int)_settings.Theme, i => (ThemeSwatch.Fill(i), SwatchMark.None), i => OnThemeChosen(themes[i])) { Half = true };
+        Theme = new GalleryItem(ThemeCard, (int)_settings.Theme, i => (ThemeSwatch.Fill(i), SwatchMark.None), i => OnThemeChosen(ThemeCard.Choices[i])) { Half = true };
 
         Accent = MakeAccentCards(report);
 
-        var backgrounds = SurfaceService.Names;
-        Background = new GalleryItem(BackgroundCard.Label, backgrounds, SurfaceService.IndexOf(_settings.Background),
+        var backgrounds = BackgroundCard.Choices;
+        Background = new GalleryItem(BackgroundCard, SurfaceService.IndexOf(_settings.Background),
             i => (new SolidColorBrush(SurfaceService.Swatch(backgrounds[i])), backgrounds[i] == SurfaceService.FollowName ? SwatchMark.Windows : SwatchMark.None),
             i =>
             {
@@ -92,79 +91,63 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
                 _settings.Save();
             })
         {
-            Tip = "The colour of pages, cards, windows, pop-downs and the tray panel. Follow Windows uses Windows' own tones.",
             Half = true,
         };
         Follow(h => SurfaceService.Changed += h, h => SurfaceService.Changed -= h, Background.Refresh);
 
-        var groupLabels = GroupsOpen.All.Select(e => e.Label).ToList();
-        _groupsOpen = new ChoiceItem(GroupsOpenCard.Label, groupLabels, GroupsOpen.LabelOf(_settings.GroupsOpen), label => GroupsOpen.Set(GroupsOpen.Find(label)))
+        _groupsOpen = new ChoiceItem(GroupsOpenCard, GroupsOpen.LabelOf(_settings.GroupsOpen), label => GroupsOpen.Set(GroupsOpen.Find(label)))
         {
             Half = true,
         };
         Follow(h => GroupsOpen.Changed += h, h => GroupsOpen.Changed -= h, ShowGroupsOpen);
         MakeTrayIconCards(trayIcon);
 
-        _startWithWindows = new ToggleItem(StartWithWindowsCard.Label, StartupRegistration.State == StartupState.On, OnStartWithWindowsChosen) { Half = true };
-        _startMinimised = new ToggleItem(StartMinimisedCard.Label, _settings.StartMinimised, on => { _settings.StartMinimised = on; _settings.Save(); }) { Half = true };
+        _startWithWindows = new ToggleItem(StartWithWindowsCard, StartupRegistration.State == StartupState.On, OnStartWithWindowsChosen) { Half = true };
+        _startMinimised = new ToggleItem(StartMinimisedCard, _settings.StartMinimised, on => { _settings.StartMinimised = on; _settings.Save(); }) { Half = true };
         // The page is made after start-up and only it changes the setting (a restore restarts), so what it reads now is what drew this run.
         _gpuDrawingAtStart = _settings.GpuDrawing;
-        _gpuDrawing = new ToggleItem(GpuCard.Label, _settings.GpuDrawing, on =>
+        _gpuDrawing = new ToggleItem(GpuCard, _settings.GpuDrawing, on =>
         {
             _settings.GpuDrawing = on;
             _settings.Save();
             ShowGpuDrawingNote();
         }) { Half = true };
         ShowGpuDrawingNote();
-        var labels = CloseBehaviors.All.Select(e => e.Label).ToList();
-        _whenClosing = new ChoiceItem(WhenClosingCard.Label, labels, CloseBehaviors.LabelOf(_settings.CloseBehavior), label =>
+        _whenClosing = new ChoiceItem(WhenClosingCard, CloseBehaviors.LabelOf(_settings.CloseBehavior), label =>
         {
             _settings.CloseBehavior = CloseBehaviors.Find(label);
             _settings.Save();
         });
 
-        var checkLabels = HardwareChecks.All.Select(e => e.Label).ToList();
-        _hardwareCheck = new ChoiceItem(HardwareCheckCard.Label, checkLabels, HardwareChecks.LabelOf(_hardware.Check), label => _hardware.SetCheck(HardwareChecks.Find(label)));
+        _hardwareCheck = new ChoiceItem(HardwareCheckCard, HardwareChecks.LabelOf(_hardware.Check), label => _hardware.SetCheck(HardwareChecks.Find(label)));
 
-        var releaseLabels = UiReleases.All.Select(e => e.Label).ToList();
-        _uiRelease = new ChoiceItem(UiReleaseCard.Label, releaseLabels, UiReleases.LabelOf(_settings.UiRelease), label =>
+        _uiRelease = new ChoiceItem(UiReleaseCard, UiReleases.LabelOf(_settings.UiRelease), label =>
         {
             _settings.UiRelease = UiReleases.Find(label);
             _settings.Save();
-        }) { Tip = "How long the closed window stays ready to reopen instantly before OmniControl frees its memory." };
-        _keepPages = new ToggleItem(KeepPagesCard.Label, _settings.KeepRecentPages, on => { _settings.KeepRecentPages = on; _settings.Save(); })
-        {
-            Half = true,
-            Note = "Pages you go back to open instantly; uses more memory.",
-        };
+        });
+        _keepPages = new ToggleItem(KeepPagesCard, _settings.KeepRecentPages, on => { _settings.KeepRecentPages = on; _settings.Save(); }) { Half = true };
 
-        _about = new ButtonItem(AboutCard.Label, "Open", "Version, licence, credits", openAbout);
-        _presets = new ButtonItem(PresetsCard.Label, "Open", "Every preset of the program: order, names and shortcuts", openPresets);
+        _about = new ButtonItem(AboutCard, "Open", openAbout);
+        _presets = new ButtonItem(PresetsCard, "Open", openPresets);
 
-        _backup = new ButtonItem(BackupCard.Label, "Export...", "Settings, presets, shortcuts, rules, scripts, custom actions, app lists",
-            () => _ = backup.ExportAsync())
+        _backup = new ButtonItem(BackupCard, "Export...", () => _ = backup.ExportAsync())
         {
             Extra = new[] { new CardAction("Import...", () => _ = backup.ImportAsync()), new CardAction("Wipe all...", () => _ = backup.WipeAsync(), danger: true) },
         };
 
-        _importFromPc = new MenuChoiceItem(ImportFromPcCard.Label, () => "Choose a PC", () => ImportPcRows(backup))
-        {
-            Tip = "Copy chosen areas of a paired PC's settings here. It has to be on and connected.",
-        };
+        _importFromPc = new MenuChoiceItem(ImportFromPcCard, () => "Choose a PC", () => ImportPcRows(backup));
 
-        _addFolder = new FileItem(AddFolderCard.Label, FileKind.OfFolder("Choose a folder with plug-ins"), AddFolder) { EmptyText = "Add a folder to scan" };
-        _scan = new ButtonItem(ScanCard.Label, "Scan now", ScanIdleText, StartScan);
+        _addFolder = new FileItem(AddFolderCard, FileKind.OfFolder("Choose a folder with plug-ins"), AddFolder);
+        _scan = new ButtonItem(ScanCard, "Scan now", StartScan);
         _keepFx = mixer is null ? null : KeepFxCard(mixer);
-        _resetAllConfirmations = new ButtonItem(ResetConfirmationsCard.Label, "Reset all", string.Empty, confirmations.ResetAll);
-        _restoreAllCard = new ButtonItem(RestoreAllCard.Label, "Restore all", "Puts every page back to its defaults after one question; you can undo it", () => _ = RestoreAll?.RestoreAsync());
-        _networkService = new ButtonItem(NetworkServiceCard.Label, "Remove…", "Lets per-app network limits work without running OmniControl as administrator",
+        _resetAllConfirmations = new ButtonItem(ResetConfirmationsCard, "Reset all", confirmations.ResetAll);
+        _restoreAllCard = new ButtonItem(RestoreAllCard, "Restore all", () => _ = RestoreAll?.RestoreAsync());
+        _networkService = new ButtonItem(NetworkServiceCard, "Remove…",
             () => _ = Guard.RunAsync("Remove the network service", async () => report(await NetworkServiceMode.RemoveAsync() ?? "The network service was removed.")));
         MakeUpdateCards(updates, report);
         _featureCards = MakeFeatureCards();
-        ReadyMade = new MenuChoiceItem(ReadyMadeCard.Label, () => $"Ready-made: {FeatureList.ReadyMadeOf(_features.Off)}", ReadyMadeRows)
-        {
-            Tip = "The same choices as Setup's Choose features page.",
-        };
+        ReadyMade = new MenuChoiceItem(ReadyMadeCard, () => $"Ready-made: {FeatureList.ReadyMadeOf(_features.Off)}", ReadyMadeRows);
         TurnAllOnCommand = new RelayCommand(() => _features.SetOff(Array.Empty<string>()), () => _features.Off.Count > 0);
 
         // Each group is made from its fixed cards (its closed header lists their names), then the cards that come and go are added.
@@ -245,7 +228,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
     // Feature cards' restart words, so a restart-only switch reads the same everywhere.
     private void ShowGpuDrawingNote() => _gpuDrawing.Note = _settings.GpuDrawing != _gpuDrawingAtStart
         ? "Takes effect after restart"
-        : "Smoother scrolling and animations; uses about 40–80 MB more memory.";
+        : GpuCard.Note;
 
     /// The choice was changed elsewhere (the sidebar chip, Restore defaults): the card shows it without applying it again.
     private void ShowGroupsOpen() => _groupsOpen.Load(_groupsOpen.Options, GroupsOpen.LabelOf(_settings.GroupsOpen));

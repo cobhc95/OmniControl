@@ -37,6 +37,9 @@ public static class TrayIconChoices
         (null, "Follow Windows"), (Accent, "Accent"), ("white", "White"), ("black", "Black"), ("green", "Green"), ("blue", "Blue"), ("purple", "Purple"), ("red", "Red"),
     };
 
+    /// The rows of the icon menu that are always there (the choices' names, then "Choose any icon…"), for search.
+    public static readonly IReadOnlyList<string> MenuWords = Icons.Select(c => c.Name).Append(ChooseWords).ToList();
+
     /// The chip's words for an icon: its choice's name, else the library icon's name.
     public static string NameOf(string? icon) =>
         Icons.FirstOrDefault(c => c.Icon == icon).Name ?? IconLibrary.Find(icon)?.Name ?? "Own icon";

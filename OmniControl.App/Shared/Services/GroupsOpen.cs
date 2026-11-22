@@ -19,6 +19,8 @@ public static class GroupsOpen
 
     public static GroupsOpenChoice Current => AppSettings.Current.GroupsOpen;
 
+    public static IReadOnlyList<string> Labels { get; } = All.Select(e => e.Label).ToList();
+
     public static string LabelOf(GroupsOpenChoice value) => All.First(e => e.Value == value).Label;
 
     public static GroupsOpenChoice Find(string label) => All.FirstOrDefault(e => e.Label == label).Value;

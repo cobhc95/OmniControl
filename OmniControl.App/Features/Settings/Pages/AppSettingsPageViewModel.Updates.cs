@@ -17,13 +17,12 @@ public sealed partial class AppSettingsPageViewModel
     private void MakeUpdateCards(UpdateService updates, Action<string> report)
     {
         _updates = updates;
-        _updateDaily = new ToggleItem(UpdateDailyCard.Label, updates.Daily, on => updates.Daily = on)
+        _updateDaily = new ToggleItem(UpdateDailyCard, updates.Daily, on => updates.Daily = on)
         {
             Half = true,
-            Tip = "Looks at GitHub's release list for a newer version. It only checks; nothing is downloaded or installed.",
         };
-        _version = new FactItem(VersionCard.Label) { Half = true, Value = AppInfo.Version };
-        _latest = new FactItem(LatestCard.Label, () => OpenLatest(report));
+        _version = new FactItem(VersionCard) { Half = true, Value = AppInfo.Version };
+        _latest = new FactItem(LatestCard, () => OpenLatest(report));
         CheckNowCommand = new RelayCommand(CheckNow, () => !_updates.Checking);
         Follow(h => updates.Changed += h, h => updates.Changed -= h, () => Dispatcher.UIThread.Post(RefreshUpdates)); // the check runs on a worker thread
         RefreshUpdates();

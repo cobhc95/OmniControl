@@ -35,18 +35,42 @@ public sealed class OsdPageViewModel : PageViewModel, IDisposable
     /// Every setting in page order.
     private IEnumerable<object> Items => Primary.Concat(Customize.Items).Concat(Elements.Items);
 
-    public override IEnumerable<SearchEntry> SearchEntries => Items.OfType<IEditorItem>().Select(i => Entry(i, Card(i.Label)));
+    // The menus' fixed rows, said once for the menus and for search.
+    private const string YourPlacesText = "Your places", CustomPositionText = "Custom position…", ManagePlacesText = "Manage places…",
+        AllScreensText = "All screens", MouseScreenText = "Screen with the mouse", ScreensText = "Screens";
 
-    private const string ShowLabel = "Show OSD", WindowsLabel = "Hide Windows' own OSD", StyleLabel = "Style", AccentLabel = "Accent colour",
-        BackgroundLabel = "Background", PositionLabel = "Position", ShowOnLabel = "Show on", OpacityLabel = "Opacity", DurationLabel = "Duration";
+    private const string OsdWords = "on-screen display overlay popup", DurationWords = OsdWords + " duration time seconds how long per app event exceptions";
+
+    private static readonly IReadOnlyList<string> AccentNames = AccentService.Names.Prepend(OsdSettings.MatchProgram).Concat(AccentService.OsdExtras.Select(a => a.Name)).ToList();
+
+    private static readonly SearchCard ShowCard = new("Show OSD", OsdWords, Title: Info.Title),
+        WindowsCard = new("Hide Windows' own OSD", OsdWords + " windows own native hide", Title: Info.Title) { Tip = "Best-effort: Windows has no setting for it." },
+        StyleCard = new("Style", OsdWords + " look", Title: Info.Title) { Choices = Enum.GetValues<OsdStyle>().Select(OsdSettings.Describe).ToList() },
+        AccentCard = new("Accent colour", OsdWords, Title: Info.Title) { Choices = AccentNames },
+        BackgroundCard = new("Background", OsdWords, Title: Info.Title) { Choices = OsdPalette.Backgrounds.Select(b => b.Name).ToList() },
+        PositionCard = new("Position", OsdWords + " place places custom manage", Title: Info.Title)
+        {
+            Menu = Enum.GetValues<OsdPosition>().Select(OsdSettings.Describe).Append(YourPlacesText).Append(CustomPositionText).Append(ManagePlacesText).ToList(),
+        },
+        ShowOnCard = new("Show on", OsdWords + " screen screens monitor", Title: Info.Title) { Menu = new[] { AllScreensText, MouseScreenText, ScreensText } },
+        OpacityCard = new("Opacity", OsdWords, Title: Info.Title),
+        DurationCard = new("Duration", DurationWords, Title: Info.Title);
+
+    private static readonly SearchCard[] FixedCards = { ShowCard, WindowsCard, StyleCard, AccentCard, BackgroundCard, PositionCard, ShowOnCard, OpacityCard, DurationCard };
+
+    private static SearchCard ElementCard(string name) => new(name, OsdWords + " element show", Title: Info.Title);
+
+    private IEditorItem? EditorOf(SearchCard card) => Items.OfType<IEditorItem>().FirstOrDefault(i => i.Label == card.Label);
+
+    protected override SearchBuilder SearchCards => Cards(_osd, this);
+
+    /// THE definition of the page's search: its cards and the service's elements, each with its live editor when <paramref name="page"/> is given.
+    private static SearchBuilder Cards(OsdService? osd, OsdPageViewModel? page) => new SearchBuilder()
+        .AddEach(FixedCards, c => c, c => page?.EditorOf(c))
+        .AddEach(osd?.Elements ?? Array.Empty<OsdElement>(), e => ElementCard(e.Name), e => page?.EditorOf(ElementCard(e.Name)));
 
     /// The page's search words (<c>FeaturePage.Words</c>): its cards and the service's elements.
-    public static IEnumerable<string> Words(OsdService? osd) =>
-        new[] { ShowLabel, WindowsLabel, StyleLabel, AccentLabel, BackgroundLabel, PositionLabel, ShowOnLabel, OpacityLabel, DurationLabel }
-            .Concat(osd?.Elements.Select(e => e.Name) ?? Array.Empty<string>()).Select(label => Card(label).Words);
-
-    private static SearchCard Card(string label) => new(label, label == DurationLabel
-        ? "on-screen display overlay popup duration time seconds how long per app event exceptions" : "on-screen display overlay popup", Title: Info.Title);
+    public static IEnumerable<string> Words(OsdService? osd) => Cards(osd, null).Words;
 
     /// <param name="openPresets">Opens the preset manager at a section and group (the Position menu's "Manage places...").</param>
     /// <param name="askPlacement">Shows the placement window and answers whether OK was pressed.</param>
@@ -56,40 +80,34 @@ public sealed class OsdPageViewModel : PageViewModel, IDisposable
     {
         (_osd, _openPresets, _askPlacement, _listedApps) = (osd, openPresets, askPlacement, listedApps);
         _durationWindow = new SingleWindow<OsdDurationWindow>(report);
-        var show = new ToggleItem(ShowLabel, osd.Settings.Enabled, osd.SetEnabled) { Half = true };
-        var windows = new ToggleItem(WindowsLabel, osd.Settings.HideWindowsOsd, osd.SetHideWindowsOsd)
-        {
-            Half = true,
-            Tip = "Best-effort: Windows has no setting for it.",
-        };
+        var show = new ToggleItem(ShowCard, osd.Settings.Enabled, osd.SetEnabled) { Half = true };
+        var windows = new ToggleItem(WindowsCard, osd.Settings.HideWindowsOsd, osd.SetHideWindowsOsd) { Half = true };
 
-        var position = new MenuChoiceItem(PositionLabel, osd.Settings.CurrentPlaceName, PositionRows) { Half = true };
-        var showOn = new MenuChoiceItem(ShowOnLabel, () => OsdScreens.Describe(osd.AllScreens, osd.Settings), ShowOnRows) { Half = true };
+        var position = new MenuChoiceItem(PositionCard, osd.Settings.CurrentPlaceName, PositionRows) { Half = true };
+        var showOn = new MenuChoiceItem(ShowOnCard, () => OsdScreens.Describe(osd.AllScreens, osd.Settings), ShowOnRows) { Half = true };
 
         var styles = Enum.GetValues<OsdStyle>();
-        var style = new GalleryItem(StyleLabel, styles.Select(OsdSettings.Describe).ToList(), Array.IndexOf(styles, osd.Settings.Style),
+        var style = new GalleryItem(StyleCard, Array.IndexOf(styles, osd.Settings.Style),
             () => OsdView.Build(osd.Settings, OsdService.BrightnessElement, OsdLevelIcon.Sun, 60), i => osd.SetStyle(styles[i]));
 
         // Accent: "Match program" first, then the same presets the whole program offers.
-        var accentNames = new List<string> { OsdSettings.MatchProgram };
-        accentNames.AddRange(AccentService.Names);
-        accentNames.AddRange(AccentService.OsdExtras.Select(a => a.Name));
-        int AccentIndex() => Math.Max(0, accentNames.IndexOf(osd.Settings.Accent));
-        var accent = new GalleryItem(AccentLabel, accentNames, AccentIndex(),
+        var accentNames = AccentCard.Choices;
+        int AccentIndex() => Math.Max(0, accentNames.ToList().IndexOf(osd.Settings.Accent));
+        var accent = new GalleryItem(AccentCard, AccentIndex(),
             i => (new SolidColorBrush(OsdSettings.ResolveAccent(accentNames[i])), AccentSwatch.Mark(accentNames[i])),
             i => osd.SetAccent(accentNames[i]));
 
         var backgrounds = OsdPalette.Backgrounds;
         var backgroundHexes = backgrounds.Select(b => b.Hex).ToList();
         int BackgroundIndex() => Math.Max(0, backgroundHexes.IndexOf(osd.Settings.Background));
-        var background = new GalleryItem(BackgroundLabel, backgrounds.Select(b => b.Name).ToList(), BackgroundIndex(),
+        var background = new GalleryItem(BackgroundCard, BackgroundIndex(),
             i => (new SolidColorBrush(Color.Parse(backgroundHexes[i])), SwatchMark.None),
             i => osd.SetBackground(backgrounds[i].Hex));
 
         // Previews that depend on other settings (the OSD sample, the match-program swatch) redraw when anything changes.
-        var opacity = new SliderItem(OpacityLabel, osd.Settings.Opacity, v => { osd.SetOpacity(v); return OperationResult.Ok("OSD opacity"); }, _ => { }) { Half = true };
+        var opacity = new SliderItem(OpacityCard, osd.Settings.Opacity, v => { osd.SetOpacity(v); return OperationResult.Ok("OSD opacity"); }, _ => { }) { Half = true };
         // Duration counts in tenths of a second (one decimal); "Everything else" of the OSD duration window is the same setting.
-        var duration = new SliderItem(DurationLabel, Tenths(osd.Durations.EverythingElse), v => { osd.Durations.SetEverythingElse(v / Tenth); osd.Preview(); return OperationResult.Ok("OSD duration"); },
+        var duration = new SliderItem(DurationCard, Tenths(osd.Durations.EverythingElse), v => { osd.Durations.SetEverythingElse(v / Tenth); osd.Preview(); return OperationResult.Ok("OSD duration"); },
             _ => { }, Tenths(OsdDuration.MinSeconds), Tenths(OsdDuration.MaxSeconds), " s", Tenths(OsdDuration.Default))
         {
             Half = true,
@@ -134,11 +152,11 @@ public sealed class OsdPageViewModel : PageViewModel, IDisposable
         for (var i = 0; i < _osd.Places.All.Count; i++)
         {
             var place = _osd.Places.All[i];
-            if (i == 0) rows.Add(MenuRowItem.Header("Your places", ruleAbove: true));
+            if (i == 0) rows.Add(MenuRowItem.Header(YourPlacesText, ruleAbove: true));
             rows.Add(new MenuRowItem(place.Name, string.Empty, settings.CustomPlace == place.Id, string.Empty, new RelayCommand(() => { _osd.UsePlace(place.Id); _osd.Preview(); })));
         }
-        rows.Add(new MenuRowItem("Custom position…", string.Empty, false, string.Empty, new AsyncRelayCommand(CustomPositionAsync), RuleAbove: true, IsAccent: true));
-        rows.Add(new MenuRowItem("Manage places…", string.Empty, false, string.Empty, new RelayCommand(() => _openPresets(Title, OsdPlacePresets.GroupId)), IsMuted: true));
+        rows.Add(new MenuRowItem(CustomPositionText, string.Empty, false, string.Empty, new AsyncRelayCommand(CustomPositionAsync), RuleAbove: true, IsAccent: true));
+        rows.Add(new MenuRowItem(ManagePlacesText, string.Empty, false, string.Empty, new RelayCommand(() => _openPresets(Title, OsdPlacePresets.GroupId)), IsMuted: true));
         return rows;
     }
 
@@ -148,11 +166,11 @@ public sealed class OsdPageViewModel : PageViewModel, IDisposable
         var settings = _osd.Settings;
         var rows = new List<MenuRowItem>
         {
-            new("All screens", string.Empty, settings.ShowOn == OsdShowOn.AllScreens, string.Empty, new RelayCommand(() => ShowOn(OsdShowOn.AllScreens))),
-            new("Screen with the mouse", string.Empty, settings.ShowOn == OsdShowOn.MouseScreen, string.Empty, new RelayCommand(() => ShowOn(OsdShowOn.MouseScreen))),
+            new(AllScreensText, string.Empty, settings.ShowOn == OsdShowOn.AllScreens, string.Empty, new RelayCommand(() => ShowOn(OsdShowOn.AllScreens))),
+            new(MouseScreenText, string.Empty, settings.ShowOn == OsdShowOn.MouseScreen, string.Empty, new RelayCommand(() => ShowOn(OsdShowOn.MouseScreen))),
         };
         var screens = _osd.AllScreens;
-        if (screens.Count > 1) rows.Add(MenuRowItem.Header("Screens", ruleAbove: true));
+        if (screens.Count > 1) rows.Add(MenuRowItem.Header(ScreensText, ruleAbove: true));
         foreach (var screen in screens.Where(_ => screens.Count > 1))
         {
             var key = OsdScreens.KeyOf(screen);
@@ -187,7 +205,7 @@ public sealed class OsdPageViewModel : PageViewModel, IDisposable
         closed => (closed.DataContext as IDisposable)?.Dispose(), "Couldn't open the OSD duration window");
 
     private ItemGroup BuildElements() => new("OSD/Elements", "Show in OSD",
-        _osd.Elements.Select(e => (object)new ToggleItem(e.Name, _osd.IsShown(e.Name), on => _osd.SetShown(e.Name, on)) { Half = true }).ToList());
+        _osd.Elements.Select(e => (object)new ToggleItem(ElementCard(e.Name), _osd.IsShown(e.Name), on => _osd.SetShown(e.Name, on)) { Half = true }).ToList());
 
     private readonly Subscriptions _followed = new(); // the OSD service's events this page follows, given back at Dispose
 

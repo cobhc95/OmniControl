@@ -16,7 +16,7 @@ public sealed partial class AppSettingsPageViewModel
         var at = DataItems.IndexOf(_resetAllConfirmations) + 1;
         foreach (var (key, name) in _confirmations.Items)
         {
-            var row = new ButtonItem(name, "Reset", "Asks again before this", () => _confirmations.Reset(key));
+            var row = new ButtonItem(ConfirmationCard(name), "Reset", () => _confirmations.Reset(key));
             _confirmationRows.Add(row);
             DataItems.Insert(at++, row);
         }

@@ -14,6 +14,8 @@ public static class HardwareChecks
         (HardwareCheck.Every15Minutes, "15 minutes", Timing.HardwareCheck15Minutes),
     };
 
+    public static IReadOnlyList<string> Labels { get; } = All.Select(e => e.Label).ToList();
+
     public static string LabelOf(HardwareCheck value) => All.First(e => e.Value == value).Label;
 
     public static HardwareCheck Find(string label) => All.FirstOrDefault(e => e.Label == label).Value;

@@ -16,6 +16,8 @@ public static class UiReleases
         (UiRelease.Never, "Never", null),
     };
 
+    public static IReadOnlyList<string> Labels { get; } = All.Select(e => e.Label).ToList();
+
     public static string LabelOf(UiRelease value) => All.First(e => e.Value == value).Label;
 
     public static UiRelease Find(string label) => All.FirstOrDefault(e => e.Label == label).Value;

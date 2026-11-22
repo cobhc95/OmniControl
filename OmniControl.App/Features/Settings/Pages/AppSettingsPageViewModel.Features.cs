@@ -34,7 +34,7 @@ public sealed partial class AppSettingsPageViewModel
     }
 
     private IReadOnlyList<(FeatureInfo, ToggleItem)> MakeFeatureCards() =>
-        FeatureList.All.Select(f => (f, new ToggleItem(f.Name, _features.IsOn(f.Id), on => _features.Set(f.Id, on)) { Half = true, Unavailable = !_features.Installed(f.Id) })).ToList();
+        FeatureList.All.Select(f => (f, new ToggleItem(FeatureCard(f), _features.IsOn(f.Id), on => _features.Set(f.Id, on)) { Half = true, Unavailable = !_features.Installed(f.Id) })).ToList();
 
     /// The cards, the count, the chip and the pill as the switch and what runs are now (after any change, here or by Restore defaults).
     private void ShowFeatures()

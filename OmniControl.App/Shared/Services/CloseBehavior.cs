@@ -13,6 +13,8 @@ public static class CloseBehaviors
         (CloseBehavior.Exit, "Quit"),
     };
 
+    public static IReadOnlyList<string> Labels { get; } = All.Select(e => e.Label).ToList();
+
     public static string LabelOf(CloseBehavior value) => All.First(e => e.Value == value).Label;
 
     public static CloseBehavior Find(string label) => All.FirstOrDefault(e => e.Label == label).Value;
