@@ -3,6 +3,11 @@ namespace OmniControl.Core;
 /// Waits and limits inside Core, in one place (the app's own intervals are in App/Services/Timing.cs; Core cannot reference App).
 public static class CoreTiming
 {
+    /// Download limits: burst, longest hold (then TCP slows), port table age while a limited program owns ports and while none does, least
+    /// gap between two reads for an unknown port, stop wait. Here (not in the app's Timing) so tools/TrafficHarness shapes exactly as the app.
+    public static readonly Engine.Resources.ShapingTimes Shaping = new(TimeSpan.FromMilliseconds(50), TimeSpan.FromMilliseconds(500),
+        TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(50), TimeSpan.FromSeconds(2));
+
     /// Least gap between two DDC/CI writes to one monitor; many EDIDs dislike bursts closer than 30 ms.
     public const int DdcMinSetIntervalMs = 40;
 

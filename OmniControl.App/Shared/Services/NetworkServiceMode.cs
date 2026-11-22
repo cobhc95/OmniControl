@@ -21,7 +21,7 @@ public static class NetworkServiceMode
         var (verb, value) = (args.ElementAtOrDefault(at + 1), args.ElementAtOrDefault(at + 2) ?? string.Empty);
         return verb switch
         {
-            Run => NetworkServiceHost.Run(value, Timing.ResourcesShaping, Timing.NetworkServiceIdle, Timing.NetworkServiceSpeedsIdle),
+            Run => NetworkServiceHost.Run(value, Core.CoreTiming.Shaping, Timing.NetworkServiceIdle, Timing.NetworkServiceSpeedsIdle),
             Install => Done("install", InstallFor(value)),
             Remove => Done("remove", NetworkServiceSetup.Remove(Timing.NetworkServiceStopWait)),
             _ => 1,

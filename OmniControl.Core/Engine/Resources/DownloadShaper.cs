@@ -7,12 +7,14 @@ public sealed record DownloadLimit(string AppId, long BytesPerSecond);
 
 /// How the shaper paces: the burst a limit lets through at once, the most a program's packets may be held back (more is dropped), how old
 /// the port-to-process tables may be while a limited program owns ports (<see cref="Ports"/>) and while none does (<see cref="PortsIdle"/>),
-/// and how long stopping waits for the packet loop.
-public sealed record ShapingTimes(TimeSpan Burst, TimeSpan Queue, TimeSpan Ports, TimeSpan PortsIdle, TimeSpan StopWait);
+/// the least gap between two reads for a packet to a port not in them (<see cref="Miss"/>), and how long stopping waits for the packet loop.
+public sealed record ShapingTimes(TimeSpan Burst, TimeSpan Queue, TimeSpan Ports, TimeSpan PortsIdle, TimeSpan Miss, TimeSpan StopWait);
 
 /// Download limits per program through Windows Packet Filter (<see cref="PacketFilter"/>). One worker reads which process owns each local
-/// port (<see cref="PortOwners"/>); the driver is opened only while a limited program owns ports, and its filter table hands over only the
-/// packets to those ports. The worker sends each handed-over packet straight on unless its program has a limit; then one token bucket per
+/// port (<see cref="PortOwners"/>); the driver is opened only while a limited program owns ports, and meanwhile its filter table hands over
+/// every received TCP and UDP packet, so a new connection is limited from its first packet: a port not in the tables makes the worker read
+/// them again at once (at most every <see cref="ShapingTimes.Miss"/>; a port still unknown passes). The worker sends each packet straight on
+/// unless its program has a limit; then one token bucket per
 /// program, whatever adapter the packet came on, lets packets through at the limit, holds them in the program's queue meanwhile and drops
 /// one only when the queue is full (TCP then slows down by itself). Fail-open: on any failure the held packets go on, the driver is let go
 /// (Windows then delivers every packet itself) and <c>stopped</c> is told why.
@@ -35,7 +37,6 @@ public sealed unsafe class DownloadShaper : IDisposable
     private readonly ProcessPrograms _programs = new();
     private PacketFilter? _port; // open only while a limited program owns ports
     private WaitHandle[] _waits;
-    private HashSet<int> _redirected = new(), _wanted = new(); // the limited programs' ports the driver hands over, and the next list
     private long _ownersRead, _ownersFollowed = -1;
     private int _sendFailures, _adaptersChanged;
     private IReadOnlyList<DownloadLimit>? _applied;
@@ -114,7 +115,6 @@ public sealed unsafe class DownloadShaper : IDisposable
         foreach (var bucket in _buckets.Values) Flush(bucket, strict: false);
         _port?.Dispose();
         _port = null;
-        _redirected.Clear();
         _waits = new WaitHandle[] { _stop, _wake };
     }
 
@@ -151,9 +151,16 @@ public sealed unsafe class DownloadShaper : IDisposable
             _ => (0, 0),
         };
         if ((protocol != PortOwners.Tcp && protocol != PortOwners.Udp) || length < header + 4) return null;
-        if (Stopwatch.GetElapsedTime(_ownersRead) > _times.Ports) ReadOwners(); // the driver follows in Watch, never inside a Take
-        return _owners.TryGetValue(PortOwners.Key(protocol, p[header + 2] << 8 | p[header + 3]), out var pid)
-            && _buckets.TryGetValue(_programs.Of(pid).Id, out var bucket) ? bucket : null;
+        // The driver opens or closes in Watch, never inside a Take; a read here only allocates in Windows' tables and for a new process.
+        if (Stopwatch.GetElapsedTime(_ownersRead) > _times.Ports) ReadOwners();
+        var key = PortOwners.Key(protocol, p[header + 2] << 8 | p[header + 3]);
+        if (!_owners.TryGetValue(key, out var pid))
+        {
+            if (Stopwatch.GetElapsedTime(_ownersRead) < _times.Miss) return null;
+            ReadOwners();
+            if (!_owners.TryGetValue(key, out pid)) return null;
+        }
+        return _buckets.TryGetValue(_programs.Of(pid).Id, out var bucket) ? bucket : null;
     }
 
     /// Sends every held packet whose time has come; returns the milliseconds until the next one is due, or <see cref="Timeout.Infinite"/>.
@@ -173,9 +180,9 @@ public sealed unsafe class DownloadShaper : IDisposable
         return next;
     }
 
-    /// Keeps the driver on the limited programs' ports while a limit is set: read again every <see cref="ShapingTimes.Ports"/> while one of
-    /// them owns ports (a new connection's port joins then; until then its packets pass unlimited inside the driver), every
-    /// <see cref="ShapingTimes.PortsIdle"/> while none does. Returns the milliseconds until the next read, or <see cref="Timeout.Infinite"/>.
+    /// Keeps the port tables fresh while a limit is set: read again every <see cref="ShapingTimes.Ports"/> while a limited program owns ports
+    /// (a port another program took over), every <see cref="ShapingTimes.PortsIdle"/> while none does (a limited program that starts is
+    /// limited from then on). Returns the milliseconds until the next read, or <see cref="Timeout.Infinite"/>.
     private int Watch()
     {
         if (_buckets.Count == 0)
@@ -197,27 +204,19 @@ public sealed unsafe class DownloadShaper : IDisposable
         _ownersRead = Stopwatch.GetTimestamp();
     }
 
-    /// Opens the driver when a limited program owns a port and closes it when none does, and gives it the limited programs' ports when they
-    /// changed. Opening throws a <see cref="Win32Exception"/> when the driver cannot be used.
+    /// Opens the driver when a limited program owns a port and closes it when none does. Opening throws a <see cref="Win32Exception"/> when
+    /// the driver cannot be used.
     private void FollowOwners()
     {
         _ownersFollowed = _ownersRead;
-        _wanted.Clear();
-        foreach (var (key, pid) in _owners)
-            if (_buckets.ContainsKey(_programs.Of(pid).Id)) _wanted.Add(key);
-        if (_wanted.Count == 0)
+        if (!_owners.Values.Any(pid => _buckets.ContainsKey(_programs.Of(pid).Id)))
         {
             if (_port is not null) Close();
             return;
         }
-        if (_port is null)
-        {
-            _port = PacketFilter.Open();
-            _waits = new[] { _stop, _wake, _port.Arrived };
-        }
-        if (_wanted.SetEquals(_redirected)) return;
-        _port.Redirect(_wanted);
-        (_redirected, _wanted) = (_wanted, _redirected);
+        if (_port is not null) return;
+        _port = PacketFilter.Open();
+        _waits = new[] { _stop, _wake, _port.Arrived };
     }
 
     private static int Soonest(int a, int b) => a == Timeout.Infinite ? b : b == Timeout.Infinite ? a : Math.Min(a, b);

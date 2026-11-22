@@ -207,7 +207,7 @@ public sealed class NetworkLimits : INetworkLimits, IDisposable
             (_serviceInstalled, _canHost) = (installed, canHost);
             Changed?.Invoke();
         }
-        INetworkWork? work = installed ? _service : AdministratorMode.IsElevated ? _local ??= new NetworkWork(Timing.ResourcesShaping, Failed) : null;
+        INetworkWork? work = installed ? _service : AdministratorMode.IsElevated ? _local ??= new NetworkWork(Core.CoreTiming.Shaping, Failed) : null;
         if (work != _service) _service.RemoveAll();
         if (work != _local && _local is not null)
         {

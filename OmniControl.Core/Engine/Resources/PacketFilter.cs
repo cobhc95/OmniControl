@@ -5,8 +5,9 @@ namespace OmniControl.Core.Engine.Resources;
 
 /// Windows Packet Filter (WinpkFilter, the NDIS lightweight filter ndisrd.sys installed system-wide, <see cref="PacketFilterSetup"/>)
 /// as the shaper's packet port, through its device \\.\NDISRD and the IOCTLs and packed structs of ndisapi's Common.h. While open, every
-/// Ethernet-style adapter (not WinTun, <see cref="Refresh"/>) tunnels received frames (MSTCP_FLAG_RECV_TUNNEL), but the driver's static filter table hands OmniControl only those to the limited
-/// programs' ports and passes the rest itself (<see cref="Redirect"/>); the shaper sends each handed-over frame on to Windows' stack. Closing
+/// Ethernet-style adapter (not WinTun, <see cref="Refresh"/>) tunnels received frames (MSTCP_FLAG_RECV_TUNNEL), but the driver's static filter
+/// table hands OmniControl only received TCP and UDP packets and passes the rest itself (<see cref="Redirect"/>); the shaper sends each
+/// handed-over frame on to Windows' stack. Closing
 /// sets every adapter back to mode 0, clears the table, sends on what is still queued and closes the handle (the driver also lets go of an
 /// adapter's mode when the handle closes, so a crash does not leave traffic held). A record is the INTERMEDIATE_BUFFER: its header, then the frame.
 /// Used by the shaper's thread only; Dispose never throws.
@@ -69,7 +70,7 @@ internal sealed unsafe class PacketFilter : IDisposable
         var port = new PacketFilter(device);
         try
         {
-            port.Redirect(Array.Empty<int>()); // the table first, so tunnelling never hands over every frame, not even for a moment
+            port.Redirect(); // the table first, so tunnelling never hands over other frames, not even for a moment
             port.Refresh();
         }
         catch (Win32Exception ex)
@@ -109,18 +110,12 @@ internal sealed unsafe class PacketFilter : IDisposable
         }
     }
 
-    /// Loads the driver's static filter table: received TCP or UDP packets to these ports (consecutive ones as one range, IPv4 and IPv6) are
-    /// redirected to OmniControl; the last filter passes everything else inside the driver, so other traffic never reaches user mode.
-    public void Redirect(IReadOnlyCollection<int> ports)
+    /// Loads the driver's static filter table: every received TCP or UDP packet (IPv4 and IPv6) is redirected to OmniControl, since a new
+    /// connection's port is only known once Windows lists it; the last filter passes everything else inside the driver.
+    private void Redirect()
     {
-        var ranges = new List<(int Protocol, int First, int Last)>();
-        foreach (var key in ports.Order())
-        {
-            var (protocol, port) = (key >> 16, key & 0xFFFF);
-            if (ranges.Count > 0 && ranges[^1] is var last && last.Protocol == protocol && last.Last == port - 1) ranges[^1] = last with { Last = port };
-            else ranges.Add((protocol, port, port));
-        }
-        var count = ranges.Count * 2 + 1;
+        var ranges = new[] { (PortOwners.Tcp, 0, ushort.MaxValue), (PortOwners.Udp, 0, ushort.MaxValue) };
+        var count = ranges.Length * 2 + 1;
         var size = TableHeader + count * FilterSize;
         var table = (byte*)NativeMemory.AllocZeroed((nuint)size);
         try

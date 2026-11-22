@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Fixed: a program's download limit now holds from each new connection's first packet; before, every new connection ran unlimited for up to a second, so a browser opening many connections went well over its limit.
 - Fixed: a backup that would be too large for OmniControl to read back is refused with one sentence and the previous backup is kept (also the automatic one before an import).
 - Fixed: Undo after importing from another PC no longer forgets an area whose files could not be written back; it says so and a second Undo tries again.
 - Fixed: a restore that failed part way and could not be rolled back (a file in use) no longer throws away its record; the next start finishes or rolls it back.
