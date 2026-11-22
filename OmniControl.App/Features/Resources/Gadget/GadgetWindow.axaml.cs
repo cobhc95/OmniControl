@@ -32,8 +32,8 @@ public partial class GadgetWindow : Window
         else if (Root.Background is not ISolidColorBrush { } now || now.Color != c) Root.Background = new SolidColorBrush(c); // drawn on every read: a new brush only for a new colour
     }
 
-    /// The left button went down, at this place in screen pixels.
-    public event Action<PixelPoint>? Pressed;
+    /// The left button went down.
+    public event Action? Pressed;
     /// The left button came up (no tap-size check: a few pixels of movement still click).
     public event Action? Released;
 
@@ -85,7 +85,7 @@ public partial class GadgetWindow : Window
 
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (e.GetCurrentPoint(Root).Properties.IsLeftButtonPressed) Pressed?.Invoke(this.PointToScreen(e.GetPosition(this)));
+        if (e.GetCurrentPoint(Root).Properties.IsLeftButtonPressed) Pressed?.Invoke();
     }
 
     private void OnPointerReleased(object? sender, PointerReleasedEventArgs e)

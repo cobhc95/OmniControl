@@ -5,6 +5,8 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Taskbar gadget: a double-click registers even if the mouse moves a little between the clicks.
+
 ## 0.3.0 (22 Nov 2026)
 
 - Added: Network traffic control's Upload limit and Download limit menus end with Block, which blocks only that direction for the program: Upload block is an outbound Windows Firewall rule (the program then cannot start new downloads either); Download block drops everything that arrives for the program through Windows Packet Filter (needs the driver and the Packet filter switch on). The row's On switch still blocks everything. The network service's protocol is now version 2 (install the service again after updating if it says it is from another version).
