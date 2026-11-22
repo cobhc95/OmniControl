@@ -206,8 +206,22 @@ public sealed partial class EffectsEngine : IDisposable
 
     private void OnFxGapEnded(object? sender, EventArgs e)
     {
-        if (_fxPending.Count == 0) _fxGap.Stop();
+        if (_fxPending.Count == 0)
+        {
+            _fxGap.Stop();
+            ReleaseRemovedPlugins();
+        }
         else ApplyPendingFx();
+    }
+
+    /// Unloads plug-ins no running chain uses any more (a removed effect), one gap after the chains changed: by then the audio thread
+    /// has moved on to the new chain, so it never meets a freed plug-in.
+    private void ReleaseRemovedPlugins()
+    {
+        if (_disposed) return;
+        var inUse = _runs.Values.Where(r => RunsChain(r.Spec.Kind) && _mixer.IsFxOn(ChainKeyOf(r.Spec)))
+            .SelectMany(r => _mixer.FxChain(ChainKeyOf(r.Spec))).ToHashSet<FxSlot>(ReferenceEqualityComparer.Instance);
+        _plugins.ReleaseUnused(inUse);
     }
 
     private void ApplyPendingFx()
