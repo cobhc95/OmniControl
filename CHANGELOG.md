@@ -5,6 +5,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+- Faster: the Volume page's level meters repaint only when a level moves by about a pixel and read less often while every meter is silent (the compressor and limiter cards too).
 - Faster: the taskbar gadget no longer redraws, repaints or re-places itself on a reading that changed nothing it shows, and keeps its bitmap and picture buffer while its size is unchanged (less CPU at fast reading intervals).
 - README: new screenshots of the Resources Readings tab and the Network traffic control page, drawn with made-up data (the screenshot tool can now draw both pages).
 

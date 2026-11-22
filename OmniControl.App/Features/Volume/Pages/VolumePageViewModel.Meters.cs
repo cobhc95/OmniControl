@@ -48,13 +48,16 @@ public sealed partial class VolumePageViewModel
     {
         if (!ShowsMixer || IsEasy) return;
         var now = _clock.Elapsed.TotalMilliseconds;
+        var quiet = true;
         if (Outputs.IsExpanded)
         {
             if (_mixer.Peaks(null, out var ml, out var mr)) _master.Meter.Feed(ml, mr, now);
+            quiet &= _master.Meter.IsSilent;
             foreach (var row in _items.Values.Where(i => i.IsOpen))
             {
                 _mixer.Peaks(row.Key, out var l, out var r);
                 row.Meter.Feed(l, r, now);
+                quiet &= row.Meter.IsSilent;
             }
         }
         // A recording device's meter only moves while something captures from it, so the open input rows keep a quiet capture
@@ -67,7 +70,11 @@ public sealed partial class VolumePageViewModel
             {
                 _mixer.InputPeaks(row.Id, out var l, out var r);
                 row.Meter.Feed(l, r, now); // a muted mic still shows what it hears
+                quiet &= row.Meter.IsSilent;
             }
         }
+        // No event says when sound starts (the levels are read, not pushed), so while every meter is at silence the reads slow down.
+        var frame = quiet ? Timing.MeterQuietFrame : Timing.MeterFrame;
+        if (_meterTimer.Interval != frame) _meterTimer.Interval = frame;
     }
 }
