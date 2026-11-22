@@ -52,16 +52,19 @@ public sealed class AutomationFeatureRules : IFeatureRules, IDisposable
     private AutomationRule? RuleOf(string actionId) =>
         _rules.Settings.Rules.FirstOrDefault(r => r.Kind == AutomationKind.Do && r.Actions.Any(a => AutomationSteps.ActionIdOf(a) == actionId));
 
-    public FeatureRuleView? Find(string actionId) =>
-        RuleOf(actionId) is not { } rule ? null : new FeatureRuleView(rule.On, rule.AllTriggers.Select(Feature).OfType<FeatureTrigger>().ToList(), ExtrasOf(rule));
+    public FeatureRuleView? Find(string actionId)
+    {
+        if (RuleOf(actionId) is not { } rule) return null;
+        var known = rule.AllTriggers.Select(Feature).OfType<FeatureTrigger>().ToList();
+        return new FeatureRuleView(rule.On, known, ExtrasOf(rule, Math.Max(known.Select(t => t.GetType()).Distinct().Count(), 1)));
+    }
 
-    /// What was added in Automation beyond the feature's triggers (one of each kind it knows) and its one action ("1 extra condition",
-    /// "2 extra triggers, 1 extra action"); a preset row reads it too.
-    public static string ExtrasOf(AutomationRule rule)
+    /// What was added in Automation beyond the triggers its origin shows (a feature: one of each kind it knows; a preset row: all) and its one
+    /// action ("1 extra condition", "2 extra triggers, 1 extra action").
+    public static string ExtrasOf(AutomationRule rule, int shownTriggers)
     {
         static string Part(int n, string noun) => n == 0 ? string.Empty : $"{n} extra {noun}{(n == 1 ? string.Empty : "s")}";
-        var known = rule.AllTriggers.Select(Feature).OfType<FeatureTrigger>().Select(t => t.GetType()).Distinct().Count();
-        return string.Join(", ", new[] { Part(rule.AllTriggers.Count() - Math.Max(known, 1), "trigger"), Part(rule.Conditions.Count, "condition"), Part(rule.Actions.Count - 1, "action") }
+        return string.Join(", ", new[] { Part(rule.AllTriggers.Count() - shownTriggers, "trigger"), Part(rule.Conditions.Count, "condition"), Part(rule.Actions.Count - 1, "action") }
             .Where(p => p.Length > 0));
     }
 

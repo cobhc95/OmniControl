@@ -27,12 +27,12 @@ public sealed partial class PresetRowViewModel : ObservableObject
     private readonly IPresetRowOwner _owner;
     private readonly bool _canDuplicate, _canExport;
 
-    internal PresetRowViewModel(PresetEntry entry, string shortcut, IReadOnlyList<PresetTrigger> triggers, bool hasRules, string applyText, bool canDuplicate,
+    internal PresetRowViewModel(PresetEntry entry, string shortcut, PresetRule rule, bool hasRules, string applyText, bool canDuplicate,
         bool canExport, IPresetRowOwner owner)
     {
         _owner = owner;
         _entry = entry;
-        (_triggers, _hasRules) = (triggers, hasRules);
+        (_rule, _hasRules) = (rule, hasRules);
         ApplyText = applyText;
         (_canDuplicate, _canExport) = (canDuplicate, canExport);
         Shortcut = new HotkeyAction(entry.Id, entry.Name, string.Empty, string.Empty, _ => { });
@@ -44,7 +44,9 @@ public sealed partial class PresetRowViewModel : ObservableObject
         };
     }
 
-    private IReadOnlyList<PresetTrigger> _triggers;
+    private PresetRule _rule;
+
+    private IReadOnlyList<PresetTrigger> _triggers => _rule.Triggers;
     private bool _hasRules;
 
     /// The words a user can read on a row, for search (the manager's card in App settings' search).
@@ -69,6 +71,7 @@ public sealed partial class PresetRowViewModel : ObservableObject
                 chips.Add(new PresetChip(_triggers[i].Text, join, i == 0 ? null : new RelayCommand(() => _owner.FlipJoin(this, at)),
                     new RelayCommand(() => _owner.RemoveTrigger(this, at)), _triggers[i].Text));
             }
+            if (_rule.Extras.Length > 0) chips.Add(PresetMoreMark.Shown);
             chips.Add(new PresetAddChip(AddRows));
             return chips;
         }
@@ -127,10 +130,10 @@ public sealed partial class PresetRowViewModel : ObservableObject
     [ObservableProperty] private string _editText = string.Empty;
 
     /// Shows the preset as it is now (after any change of its group).
-    internal void Update(PresetEntry entry, string shortcut, IReadOnlyList<PresetTrigger> triggers, bool hasRules)
+    internal void Update(PresetEntry entry, string shortcut, PresetRule rule, bool hasRules)
     {
         _entry = entry;
-        (_triggers, _hasRules) = (triggers, hasRules);
+        (_rule, _hasRules) = (rule, hasRules);
         OnPropertyChanged(string.Empty);
         ShowShortcut(shortcut);
     }
@@ -186,6 +189,12 @@ public sealed record PresetChip(string Text, string Join, ICommand? Flip, IComma
 
 /// The shortcut box in the chip row while it listens for keys.
 public sealed record PresetCaptureChip(HotkeyAction Shortcut);
+
+/// The asterisk after the chips while the preset's rule has more than they show (conditions, more actions; its tooltip: More in Automation).
+public sealed record PresetMoreMark
+{
+    public static readonly PresetMoreMark Shown = new();
+}
 
 /// The dashed "+ Add" at the end of the chip row and its pop-down.
 public sealed record PresetAddChip(IReadOnlyList<MenuRowItem> Rows);

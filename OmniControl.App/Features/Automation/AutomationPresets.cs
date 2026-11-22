@@ -61,10 +61,12 @@ public sealed class AutomationPresets : IPresetTriggers, IDisposable
 
     private AutomationRule? RuleOf(string preset) => PresetRules.FirstOrDefault(r => PresetOf(r) == preset);
 
-    public IReadOnlyList<PresetTrigger> Of(string preset) =>
+    /// The row's chips (every trigger) and what the rule has more: conditions and other actions.
+    public PresetRule Of(string preset) =>
         RuleOf(preset) is { } rule
-            ? rule.AllTriggers.Select((t, i) => new PresetTrigger(AutomationTriggers.ChipOf(t, _rules.TriggerSources), i == 0 ? string.Empty : AutomationJoins.WordOf(rule.TriggerJoinBefore(i)))).ToList()
-            : Array.Empty<PresetTrigger>();
+            ? new PresetRule(rule.AllTriggers.Select((t, i) => new PresetTrigger(AutomationTriggers.ChipOf(t, _rules.TriggerSources), i == 0 ? string.Empty : AutomationJoins.WordOf(rule.TriggerJoinBefore(i)))).ToList(),
+                AutomationFeatureRules.ExtrasOf(rule, rule.AllTriggers.Count()))
+            : PresetRule.None;
 
     /// The preset kind a preset rule shows ("Volume preset"): its group's page title; empty while its group is not registered.
     public string KindOf(AutomationRule rule) => PresetOf(rule) is { } preset && _slot.Presets.GroupOf(preset) is { } group ? $"{group.Section} preset" : string.Empty;

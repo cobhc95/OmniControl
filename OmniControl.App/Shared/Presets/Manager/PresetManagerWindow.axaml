@@ -118,6 +118,9 @@
                                                                 <hk:HotkeyBox DataContext="{Binding Shortcut}" Loaded="OnCaptureLoaded"
                                                                               ToolTip.Tip="Press the keys that switch to this preset; Esc keeps the old ones" />
                                                             </DataTemplate>
+                                                            <DataTemplate DataType="vm:PresetMoreMark">
+                                                                <TextBlock Classes="muted" Text="*" VerticalAlignment="Center" ToolTip.Tip="{x:Static pages:RuleLineItem.MoreTip}" />
+                                                            </DataTemplate>
                                                             <DataTemplate DataType="vm:PresetAddChip">
                                                                 <!-- The pop-down hangs on a Panel, not on the button, so the button's styles do not reach into it -->
                                                                 <Panel>

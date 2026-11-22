@@ -5,6 +5,12 @@ namespace OmniControl.App.Shared.Presets;
 /// One trigger chip of a preset row: its words and the join before it ("or" / "and"; empty for the first).
 public sealed record PresetTrigger(string Text, string Join);
 
+/// A preset's rule as its row shows it: the trigger chips, and what it has more in Automation ("1 extra condition"; empty: nothing).
+public sealed record PresetRule(IReadOnlyList<PresetTrigger> Triggers, string Extras)
+{
+    public static readonly PresetRule None = new(Array.Empty<PresetTrigger>(), string.Empty);
+}
+
 /// The triggers that switch to a preset (a state, an action), kept as automation rules by the feature that owns rules. Every preset is
 /// named by the id of its apply action (<see cref="PresetShortcuts.ActionId"/>).
 public interface IPresetTriggers
@@ -15,7 +21,7 @@ public interface IPresetTriggers
     /// The apply actions of the presets that have triggers (each must stay in the master list while it has some).
     IEnumerable<string> Presets { get; }
 
-    IReadOnlyList<PresetTrigger> Of(string preset);
+    PresetRule Of(string preset);
 
     /// The master list of states (live), sectioned by the page each belongs to.
     IReadOnlyList<PickChoice> StateChoices();

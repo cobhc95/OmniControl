@@ -97,7 +97,7 @@ public sealed partial class PresetCardViewModel : ObservableObject, IPresetRowOw
     {
         var entries = Provider.Entries
             .Select(e => (Entry: e, Shortcut: _shortcuts.ShortcutOf(_group, e.Id), Triggers: TriggersOf(e.Id)))
-            .Where(x => !IsFiltering || GroupMatches || TextMatch.Any(_filter, x.Triggers.Select(t => t.Text).Prepend(x.Shortcut).Prepend(x.Entry.Name).ToArray()))
+            .Where(x => !IsFiltering || GroupMatches || TextMatch.Any(_filter, x.Triggers.Triggers.Select(t => t.Text).Prepend(x.Shortcut).Prepend(x.Entry.Name).ToArray()))
             .ToList();
         var kept = Rows.ToDictionary(r => r.Id);
         var rows = entries.Select(x =>
@@ -111,8 +111,8 @@ public sealed partial class PresetCardViewModel : ObservableObject, IPresetRowOw
         foreach (var name in new[] { nameof(IsEmpty), nameof(IsFiltering), nameof(AddTip), nameof(CanAdd), nameof(SwitchOn) }) OnPropertyChanged(name);
     }
 
-    private IReadOnlyList<PresetTrigger> TriggersOf(string presetId) =>
-        _triggers.Current?.Of(PresetShortcuts.ActionId(_group.Id, presetId)) ?? Array.Empty<PresetTrigger>();
+    private PresetRule TriggersOf(string presetId) =>
+        _triggers.Current?.Of(PresetShortcuts.ActionId(_group.Id, presetId)) ?? PresetRule.None;
 
     private void OnShortcutsChanged(string groupId)
     {
