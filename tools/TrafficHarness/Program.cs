@@ -55,8 +55,17 @@ internal static class Program
             };
             if (h3)
             {
-                free["Download HTTP/3"] = Rate(await Download(quic, DownTotal, UnlimitedCap, stop.Token));
-                free["Upload HTTP/3"] = Rate(await Upload(quic, UpTotal, UnlimitedCap, stop.Token));
+                // The server may refuse QUIC from this network; then only the HTTP/3 cases are skipped.
+                try
+                {
+                    free["Download HTTP/3"] = Rate(await Download(quic, DownTotal, UnlimitedCap, stop.Token));
+                    free["Upload HTTP/3"] = Rate(await Upload(quic, UpTotal, UnlimitedCap, stop.Token));
+                }
+                catch (HttpRequestException ex)
+                {
+                    Console.WriteLine($"HTTP/3 unavailable here ({ex.Message}): its cases are skipped.");
+                    free.Remove("Download HTTP/3");
+                }
             }
 
             Console.WriteLine("Setting the limits on this program...");
