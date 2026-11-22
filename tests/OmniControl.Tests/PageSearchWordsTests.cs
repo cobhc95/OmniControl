@@ -14,12 +14,7 @@ namespace OmniControl.Tests;
 /// page's own files are read from the source.
 public class PageSearchWordsTests
 {
-    // Pages that still list their results by hand (an override of SearchEntries). The coverage job moves each onto the builder and deletes its line.
-    private static readonly Dictionary<string, string> NotOnTheBuilderYet = new()
-    {
-    };
-
-    // Pages that offer no search results at all (FeaturePage.NoResults): found only by their keywords and their actions' categories.
+    // Pages that offer no search results at all (FeaturePage.NoResults), each with its reason: found only by their keywords and their actions' categories. Every page has results now.
     private static readonly Dictionary<string, string> NoResultsAllowed = new()
     {
     };
@@ -92,11 +87,10 @@ public class PageSearchWordsTests
             var builder = Overrides(page, "SearchCards");
             var byHand = Overrides(page, nameof(PageViewModel.SearchEntries));
             Assert.False(builder && byHand, $"{page.Name} overrides both SearchCards and SearchEntries; use the builder only");
-            if (NotOnTheBuilderYet.ContainsKey(page.Name)) Assert.True(byHand && !builder, $"{page.Name} is on the builder now: delete its line of NotOnTheBuilderYet");
-            else if (NoResultsAllowed.ContainsKey(page.Name)) Assert.False(builder || byHand, $"{page.Name} has results now: delete its line of NoResultsAllowed");
+            if (NoResultsAllowed.ContainsKey(page.Name)) Assert.False(builder || byHand, $"{page.Name} has results now: delete its line of NoResultsAllowed");
             else Assert.True(builder, $"{page.Name} must define its search through SearchCards (the SearchBuilder); a page without results goes in NoResultsAllowed with its reason");
         }
-        foreach (var name in NotOnTheBuilderYet.Keys.Concat(NoResultsAllowed.Keys)) Assert.Contains(AllPages, p => p.Name == name);
+        foreach (var name in NoResultsAllowed.Keys) Assert.Contains(AllPages, p => p.Name == name);
     }
 
     [Fact]
@@ -122,7 +116,7 @@ public class PageSearchWordsTests
     {
         var types = CardTypes.Where(HasCardConstructor).Select(t => t.Name).ToList();
         Assert.NotEmpty(types);
-        foreach (var page in PagesWithResults.Where(p => !NotOnTheBuilderYet.ContainsKey(p.Name)))
+        foreach (var page in PagesWithResults)
         {
             var source = PageSource(page);
             Assert.NotEmpty(source);

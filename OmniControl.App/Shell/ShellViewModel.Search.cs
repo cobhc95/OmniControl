@@ -15,6 +15,8 @@ public sealed partial class ShellViewModel
     private SearchIndex<(PageSlot Slot, string Words)>? _wordIndex;
     private SearchIndex<SearchEntry>? _entryIndex;
     private int _indexedPages;
+    private (string Query, string Category) _wordHitsFor;
+    private List<PageSlot> _wordHits = new();
     private readonly DispatcherTimer _searchShow = new() { Interval = Timing.SearchDebounce };
     private readonly DispatcherTimer _searchMake = new() { Interval = Timing.SearchDebounce };
     private PageSlot? _searchTarget;
@@ -65,11 +67,18 @@ public sealed partial class ShellViewModel
         AllSlots.SelectMany(s => s.Words().Concat(s.Restorable is null ? Array.Empty<string>() : new[] { $"{RestoreWords.ButtonText} {RestoreWords.Tip}" }).Select(w => (s, w))), e => new[] { Heading.Join(e.Slot.Title, e.Words) });
 
     // A query with a typo matches no words exactly, so the pages with near words are made instead: their cards are the similar results.
+    // The word lists of the pages in the category are searched once per query, however often the filter asks (a key press asks twice).
     private List<PageSlot> UnmadeMatches(string q)
     {
-        var hits = WordIndex.Match(q);
-        if (hits.Count == 0) hits = WordIndex.Similar(q);
-        return hits.Select(e => e.Slot).Where(s => s.IfMade is null).Distinct().ToList();
+        var key = (q, SelectedCategory);
+        if (_wordHitsFor != key)
+        {
+            bool Shown((PageSlot Slot, string Words) e) => InCategory(e.Slot.Title);
+            var hits = WordIndex.Match(q, accept: Shown);
+            if (hits.Count == 0) hits = WordIndex.Similar(q, accept: Shown);
+            (_wordHitsFor, _wordHits) = (key, hits.Select(e => e.Slot).Distinct().ToList());
+        }
+        return _wordHits.Where(s => s.IfMade is null).ToList();
     }
 
     // The made pages' results; made again once a search has made another page.
@@ -96,10 +105,12 @@ public sealed partial class ShellViewModel
     private void RequestResults(string q)
     {
         var index = EntryIndex();
+        var category = SelectedCategory; // read here: the search runs off the UI thread, and the cap of similar results comes after the filter
+        bool Shown(SearchEntry e) => category == AllCategories || e.Category == category;
         Search.Request(token =>
         {
-            var exact = index.Match(q, token);
-            return exact.Count > 0 ? new SearchOutcome(exact, false) : new SearchOutcome(index.Similar(q, token), true);
+            var exact = index.Match(q, token, Shown);
+            return exact.Count > 0 ? new SearchOutcome(exact, false) : new SearchOutcome(index.Similar(q, token, Shown), true);
         });
     }
 
@@ -108,7 +119,7 @@ public sealed partial class ShellViewModel
     private void ApplyFilter()
     {
         var q = SearchText.Trim();
-        if (q.Length == 0) (_pageIndex, _wordIndex, _entryIndex) = (null, null, null); // the next search reads the lists again
+        if (q.Length == 0) (_pageIndex, _wordIndex, _entryIndex, _wordHitsFor, _wordHits) = (null, null, null, default, new()); // the next search reads the lists again
 
         var matching = (q.Length == 0 ? AllSlots : PageIndex.Match(q)).Where(p => InCategory(p.Title)).ToHashSet();
         ListDiff.Apply(Pages, _allPages.Where(matching.Contains).ToList(), p => p);
@@ -166,7 +177,7 @@ public sealed partial class ShellViewModel
     // Live results: the actual controls, so they can be edited right in the list.
     private void ShowResults(SearchOutcome outcome)
     {
-        var shown = outcome.Entries.Where(e => InCategory(e.Category)).ToList();
+        var shown = outcome.Entries;
         ResultQuery = SearchText.Trim();
         ShowsSimilar = outcome.Similar && shown.Count > 0;
         ResultFill.Show(shown);

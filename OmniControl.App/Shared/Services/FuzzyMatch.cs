@@ -37,11 +37,12 @@ public static class FuzzyMatch
     }
 
     /// The edits between two words (optimal string alignment: insert, delete, replace, swap two neighbours).
-    public static int Distance(string a, string b)
+    public static int Distance(string a, string b) => Distance(a.AsSpan(), b.AsSpan());
+
+    // The rows live on the stack: only words within a few edits of each other are compared, so they are short.
+    private static int Distance(ReadOnlySpan<char> a, ReadOnlySpan<char> b)
     {
-        var prev2 = new int[b.Length + 1];
-        var prev = new int[b.Length + 1];
-        var row = new int[b.Length + 1];
+        Span<int> prev2 = stackalloc int[b.Length + 1], prev = stackalloc int[b.Length + 1], row = stackalloc int[b.Length + 1];
         for (var j = 0; j <= b.Length; j++) prev[j] = j;
         for (var i = 1; i <= a.Length; i++)
         {
@@ -52,7 +53,10 @@ public static class FuzzyMatch
                 row[j] = Math.Min(Math.Min(prev[j] + 1, row[j - 1] + 1), prev[j - 1] + cost);
                 if (i > 1 && j > 1 && a[i - 1] == b[j - 2] && a[i - 2] == b[j - 1]) row[j] = Math.Min(row[j], prev2[j - 2] + 1);
             }
-            (prev2, prev, row) = (prev, row, prev2);
+            var spare = prev2;
+            prev2 = prev;
+            prev = row;
+            row = spare;
         }
         return prev[b.Length];
     }
@@ -63,8 +67,8 @@ public static class FuzzyMatch
         if (word.Contains(query, StringComparison.Ordinal)) return 0;
         var allowed = Allowed(query.Length);
         if (allowed == 0 || query.Length - word.Length > allowed) return -1;
-        var best = Distance(query, word);
-        if (word.Length > query.Length) best = Math.Min(best, Distance(query, word[..query.Length]));
+        var best = word.Length - query.Length <= allowed ? Distance(query.AsSpan(), word.AsSpan()) : int.MaxValue; // a longer word is at least its extra letters away
+        if (word.Length > query.Length) best = Math.Min(best, Distance(query.AsSpan(), word.AsSpan(0, query.Length)));
         return best <= allowed ? best : -1;
     }
 
