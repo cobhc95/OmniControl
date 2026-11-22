@@ -112,20 +112,30 @@ public static class NetworkServiceSetup
     {
         var path = Path.GetFullPath(exe);
         var folder = Path.GetDirectoryName(path);
-        if (folder is null || !AdminOnly(Directory.Exists(path) ? new DirectoryInfo(path) : new FileInfo(path), own: true)) return path;
+        FileSystemInfo self = Directory.Exists(path) ? new DirectoryInfo(path) : new FileInfo(path);
+        if (folder is null || !AdminOnly(self, own: true) || IsLink(self)) return path;
         var own = true;
         for (var dir = new DirectoryInfo(folder); dir is not null; dir = dir.Parent, own = false)
-            if (!AdminOnly(dir, own)) return dir.FullName;
-        if (!wholeFolder) return null;
+            if (!AdminOnly(dir, own) || (own && IsLink(dir))) return dir.FullName;
+        return wholeFolder ? UnsafeUnder(folder) : null;
+    }
+
+    /// The first file or folder under <paramref name="folder"/> that someone else may change, or a link (its own list says nothing of
+    /// where it points), null when none.
+    public static string? UnsafeUnder(string folder)
+    {
         try
         {
-            return new DirectoryInfo(folder).EnumerateFileSystemInfos("*", SearchOption.AllDirectories).FirstOrDefault(item => !AdminOnly(item, own: true))?.FullName;
+            return new DirectoryInfo(folder).EnumerateFileSystemInfos("*", SearchOption.AllDirectories)
+                .FirstOrDefault(item => IsLink(item) || !AdminOnly(item, own: true))?.FullName;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             return folder; // not all readable: not shown to be safe
         }
     }
+
+    private static bool IsLink(FileSystemInfo item) => (item.Attributes & FileAttributes.ReparsePoint) != 0;
 
     /// <paramref name="own"/>: the exe, its folder or what is under it, where what its files and subfolders inherit counts too; above it only
     /// the folder itself.
@@ -143,6 +153,12 @@ public static class NetworkServiceSetup
         {
             return false; // unreadable: not shown to be safe
         }
+        return AdminOnly(sd, own);
+    }
+
+    /// The decision on an access list alone (pure, so it can be checked with made-up lists).
+    internal static bool AdminOnly(RawSecurityDescriptor sd, bool own)
+    {
         if (sd.Owner is not { } owner || !Trusted(owner) || sd.DiscretionaryAcl is not { } acl) return false; // no list at all lets everyone in
         var changes = own ? ChangesContent : ChangesChildren;
         foreach (var ace in acl)

@@ -19,6 +19,7 @@ public static class PluginLoader
 
     internal const string NotLocal = "Plug-ins load only from a folder on this PC's own drives, not from a network share or device path.";
     internal const string UserFolder = "While OmniControl runs as administrator it loads plug-ins only from folders only administrators can change, such as Program Files.";
+    internal const string UserFiles = "This plug-in's folder can be changed without administrator rights, so OmniControl won't load it while running as administrator.";
 
     private static readonly bool Elevated = Elevation.IsElevated();
 
@@ -68,11 +69,21 @@ public static class PluginLoader
         try
         {
             if (new DriveInfo(path[..1]).DriveType == DriveType.Network) return NotLocal; // a mapped share
-            return Elevated && !Resources.NetworkServiceSetup.CanServeFrom(Vst3File.BinaryOf(path)) ? UserFolder : null;
+            return Elevated ? ElevatedProblem(path) : null;
         }
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException or IOException or UnauthorizedAccessException)
         {
             return NotLocal;
         }
+    }
+
+    // Windows looks for the plug-in's own DLLs in its folder, so every file and folder there (and a bundle's whole tree) must be as safe
+    // as the plug-in itself; a link is refused, since its own list says nothing of where it points.
+    private static string? ElevatedProblem(string path)
+    {
+        var binary = Vst3File.BinaryOf(path);
+        if (!Resources.NetworkServiceSetup.CanServeFrom(binary)) return UserFolder;
+        if (Resources.NetworkServiceSetup.UnsafeUnder(Path.GetDirectoryName(binary)!) is not null) return UserFiles;
+        return Directory.Exists(path) && Resources.NetworkServiceSetup.UnsafeUnder(path) is not null ? UserFiles : null;
     }
 }
