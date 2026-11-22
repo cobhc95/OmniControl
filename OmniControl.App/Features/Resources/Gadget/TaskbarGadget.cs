@@ -303,13 +303,18 @@ public sealed class TaskbarGadget : IGadgetPreview, IDisposable
         if (_window is null) return;
         var look = Look;
         _window.HoverOutline = look.HoverOutline;
-        _window.Fill(look.SolidBackground ? Background : null);
+        _window.Fill(FillOf(look.Background, Background));
         _window.Draw(Cells(look), GadgetLayout.Of(look));
         PlaceSoon();
     }
 
     /// A stored gadget colour; "" is <paramref name="text"/> (the text colour, or the taskbar's own <see cref="Ink"/>).
     public static Color ColourOf(string stored, Color text) => stored.Length > 0 ? Color.Parse(stored) : text;
+
+    /// The colour a stored <see cref="GadgetSettings.Background"/> fills the gadget with: none (see-through, or a colour that does not read),
+    /// <paramref name="taskbar"/> for the taskbar's own, else the colour.
+    public static Color? FillOf(string stored, Color taskbar) =>
+        stored == GadgetSettings.TaskbarBackground ? taskbar : stored.Length > 0 && Color.TryParse(stored, out var colour) ? colour : null;
 
     /// Puts the gadget into the taskbar left of the tray, or after its left buttons (again after Explorer restarts or the scale changes); moves
     /// nothing while nothing changed. Runs after every read too, so a tray area that grew or shrank is followed at the next read. UI thread.

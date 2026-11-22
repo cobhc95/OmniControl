@@ -31,7 +31,7 @@ public sealed class GadgetSettingsModel : ObservableObject, IDisposable
         {
             if (_hold is not null) Redraw();
         });
-        Display = new GadgetDisplayCards(settings, actions, () => preview.Ink, chooseAction);
+        Display = new GadgetDisplayCards(settings, actions, () => preview.Ink, () => preview.Background, chooseAction);
         Weather = new WeatherCards(settings, weather);
         Hover = new GadgetHoverCards(settings);
         Position = new GalleryItem("Position", GadgetSettings.PositionNames, (int)Look.Position, i => preview.SetPosition((GadgetPosition)i))
@@ -86,7 +86,7 @@ public sealed class GadgetSettingsModel : ObservableObject, IDisposable
     public IEnumerable<IEditorItem> SearchItems => new[] { Weather.Group, Display.Layout, Display.Numbers, Hover.Group, Display.Behaviour }
         .SelectMany(g => g.Items).OfType<IEditorItem>().Prepend(Font.Item).Prepend(Position);
 
-    /// The taskbar's colour behind the label editor's line and the layout tiles (kept, so a read draws on the same brush).
+    /// The gadget's background (the taskbar's colour when see-through) behind the label editor's line and the layout tiles (kept, so a read draws on the same brush).
     private SolidColorBrush? _background;
 
     /// The tab came on or left the screen: the readings are held (every part, for the layout tiles) and the tiles and lines follow them only while it shows.
@@ -147,7 +147,8 @@ public sealed class GadgetSettingsModel : ObservableObject, IDisposable
     {
         var look = Look;
         var cells = _preview.Cells(look, sampleUnknown: true);
-        if (_background?.Color != _preview.Background) _background = new SolidColorBrush(_preview.Background);
+        var fill = TaskbarGadget.FillOf(look.Background, _preview.Background) ?? _preview.Background; // see-through shows the taskbar behind it
+        if (_background?.Color != fill) _background = new SolidColorBrush(fill);
         var line = GadgetLayout.Of(look) with { Lines = 1 };
         foreach (var row in Rows)
         {

@@ -23,8 +23,12 @@ public partial class GadgetWindow : Window
     /// The dashed edge shows while the pointer is over the gadget.
     public bool HoverOutline { get; set; }
 
-    /// The colour that fills the whole gadget (opaque), or null to leave it clear.
-    public void Fill(Color? colour) => Root.Background = colour is { } c ? new SolidColorBrush(c) : null;
+    /// The colour that fills the whole gadget (opaque), or null to leave it clear (the style's all but invisible fill, which takes the mouse).
+    public void Fill(Color? colour)
+    {
+        if (colour is not { } c) Root.ClearValue(Panel.BackgroundProperty);
+        else if (Root.Background is not ISolidColorBrush { } now || now.Color != c) Root.Background = new SolidColorBrush(c); // drawn on every read: a new brush only for a new colour
+    }
 
     /// The left button went down, at this place in screen pixels.
     public event Action<PixelPoint>? Pressed;

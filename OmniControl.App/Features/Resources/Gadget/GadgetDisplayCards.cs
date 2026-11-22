@@ -28,23 +28,30 @@ public sealed class GadgetDisplayCards : IDisposable
     private readonly Func<PickerModel, string, Task<PickResult?>> _choose;
     private readonly SliderItem _lines, _size, _columnGap, _lineGap, _spaceToTray, _refresh, _doubleTime;
     private readonly MenuChoiceItem _odd;
-    private readonly GalleryItem _colour;
-    private readonly ToggleItem _outline, _solid;
+    private readonly GalleryItem _colour, _background;
+    private readonly ToggleItem _outline;
+    private readonly Func<Color> _taskbar;
     private readonly ChoiceItem _units, _counts, _temperatures;
     private readonly IReadOnlyList<ChipItem> _quick, _unitChips;
     private readonly ButtonItem _click, _doubleClick;
 
     /// <param name="ink">The taskbar's own text colour (the "Taskbar text" swatch).</param>
+    /// <param name="taskbar">The taskbar's own colour (the "Taskbar colour" swatch).</param>
     /// <param name="choose">Opens the Choose-the-action window with a title.</param>
-    public GadgetDisplayCards(ResourcesSettings settings, IActionCatalogue actions, Func<Color> ink, Func<PickerModel, string, Task<PickResult?>> choose)
+    public GadgetDisplayCards(ResourcesSettings settings, IActionCatalogue actions, Func<Color> ink, Func<Color> taskbar, Func<PickerModel, string, Task<PickResult?>> choose)
     {
-        (_settings, _actions, _choose) = (settings, actions, choose);
+        (_settings, _actions, _taskbar, _choose) = (settings, actions, taskbar, choose);
         var (look, defaults) = (Look, new GadgetSettings());
         _lines = Number("Lines", look.Lines, GadgetSettings.MinLines, GadgetSettings.MaxLines, string.Empty, defaults.Lines, (g, v) => g.Lines = v);
         _odd = new MenuChoiceItem("Odd reading", OddText, OddRows) { Half = true, Tip = "Where a reading that does not fill the last column goes" };
         _size = Number("Text size", (int)Math.Round(look.TextSize), GadgetSettings.MinTextSize, GadgetSettings.MaxTextSize, " pt", (int)defaults.TextSize, (g, v) => g.TextSize = v);
         _outline = new ToggleItem("Outline on hover", look.HoverOutline, on => Change(g => g.HoverOutline = on)) { Half = true, Tip = "A dashed edge around the gadget while the pointer is over it" };
-        _solid = new ToggleItem("Solid background", look.SolidBackground, on => Change(g => g.SolidBackground = on)) { Half = true, Tip = "Fills the gadget so a taskbar skin behind it can't show through." };
+        _background = new GalleryItem("Background", BackgroundNames, BackgroundIndex(look.Background), BackgroundDot, i => Change(g => g.Background = BackgroundAt(i)))
+        {
+            Half = true, Tip = "See-through, or a fill so a taskbar skin behind the gadget can't show through.",
+            EditorIndex = CustomBackground, EditorText = AccentService.CustomEditorLabel,
+            Editor = _ => new ColourEditor { DataContext = new ColourEditorModel(BackgroundFill, taskbar(), UseBackground) },
+        };
         _columnGap = Number("Space between columns", (int)look.ColumnGap, 0, GadgetSettings.MaxColumnGap, " px", (int)defaults.ColumnGap, (g, v) => g.ColumnGap = v);
         _lineGap = Number("Space between lines", (int)look.LineGap, 0, GadgetSettings.MaxLineGap, " px", (int)defaults.LineGap, (g, v) => g.LineGap = v);
         _spaceToTray = Number("Space to the tray", (int)look.SpaceToTray, GadgetSettings.MinSpaceToTray, GadgetSettings.MaxSpaceToTray, " px", (int)defaults.SpaceToTray, (g, v) => g.SpaceToTray = v,
@@ -52,7 +59,7 @@ public sealed class GadgetDisplayCards : IDisposable
         _colour = new GalleryItem("Text colour", GadgetSettings.ColourNames, ColourIndex(look.TextColour),
             i => (new SolidColorBrush(TaskbarGadget.ColourOf(GadgetSettings.Colours[i], ink())), SwatchMark.None),
             i => Change(g => g.TextColour = GadgetSettings.Colours[i]));
-        Layout = Group("Resources/GadgetLayout", "Size and spacing", _lines, _odd, _size, _outline, _solid, _columnGap, _lineGap, _spaceToTray, _colour);
+        Layout = Group("Resources/GadgetLayout", "Size and spacing", _lines, _odd, _size, _outline, _background, _columnGap, _lineGap, _spaceToTray, _colour);
 
         _units = new ChoiceItem("Speed units", UnitWords, UnitWords[(int)look.Units], u => Change(g => g.Units = (SpeedUnit)Array.IndexOf(UnitWords, u))) { Half = true };
         _counts = new ChoiceItem("Bits or bytes", CountWords, CountWords[look.Bits ? 1 : 0], b => Change(g => g.Bits = b == CountWords[1])) { Half = true };
@@ -102,6 +109,39 @@ public sealed class GadgetDisplayCards : IDisposable
     private IReadOnlyList<MenuRowItem> OddRows() => OddWords.Select(o => new MenuRowItem(o.Words, string.Empty, Look.Odd == o.Odd, string.Empty,
         new RelayCommand(() => Change(g => g.Odd = o.Odd)))).ToList();
 
+    private static IReadOnlyList<string> BackgroundNames => GadgetSettings.BackgroundNames;
+
+    /// The user's own background colour: the last choice, after the named ones.
+    private static int CustomBackground => GadgetSettings.Backgrounds.Count;
+
+    private static int BackgroundIndex(string stored)
+    {
+        var at = GadgetSettings.Backgrounds.ToList().FindIndex(b => string.Equals(b, stored, StringComparison.OrdinalIgnoreCase));
+        return at >= 0 ? at : CustomBackground;
+    }
+
+    /// What the gadget is filled with now; see-through counts as the taskbar's colour (where a colour of the user's own starts).
+    private Color BackgroundFill => TaskbarGadget.FillOf(Look.Background, _taskbar()) ?? _taskbar();
+
+    /// The value stored for choice <paramref name="i"/>; the user's own keeps its colour, or starts from the fill shown now.
+    private string BackgroundAt(int i) => i < CustomBackground ? GadgetSettings.Backgrounds[i]
+        : BackgroundIndex(Look.Background) == CustomBackground ? Look.Background : BackgroundFill.ToString();
+
+    private (IBrush? Fill, SwatchMark Mark) BackgroundDot(int i) => i switch
+    {
+        0 => (Brushes.Transparent, SwatchMark.None),
+        1 => (new SolidColorBrush(_taskbar()), SwatchMark.Windows),
+        _ when i == CustomBackground => (new SolidColorBrush(BackgroundFill), SwatchMark.Custom),
+        _ => (new SolidColorBrush(Color.Parse(GadgetSettings.Backgrounds[i])), SwatchMark.None),
+    };
+
+    /// The colour editor's colour, many times a second while a handle is dragged: kept at once, committed once the drag rests.
+    private void UseBackground(Color colour)
+    {
+        Look.Background = colour.ToString();
+        _settings.CommitSoon();
+    }
+
     private static int ColourIndex(string stored) => Math.Max(0, GadgetSettings.Colours.ToList().FindIndex(c => string.Equals(c, stored, StringComparison.OrdinalIgnoreCase)));
 
     private string TitleOf(string actionId) => _actions.Find(actionId)?.Title ?? "Not available";
@@ -126,7 +166,8 @@ public sealed class GadgetDisplayCards : IDisposable
         _odd.Refresh();
         _size.Load((int)Math.Round(look.TextSize));
         _outline.Load(look.HoverOutline);
-        _solid.Load(look.SolidBackground);
+        _background.Load(BackgroundIndex(look.Background));
+        _background.Refresh(); // the taskbar's colour and a custom colour's dot follow what is stored now
         _columnGap.Load((int)look.ColumnGap);
         _lineGap.Load((int)look.LineGap);
         _spaceToTray.Load((int)look.SpaceToTray);

@@ -155,7 +155,26 @@ public sealed class GadgetSettings
     }
 
     public bool HoverOutline { get; set; }
-    public bool SolidBackground { get; set; }
+
+    /// What fills the gadget: "" see-through, <see cref="TaskbarBackground"/> the taskbar's own colour, else a colour.
+    public string Background { get; set; } = string.Empty;
+
+    /// <see cref="Background"/>'s value for the taskbar's own colour (light or dark with Windows' mode).
+    public const string TaskbarBackground = "taskbar";
+
+    /// <see cref="Background"/>'s values of its named choices: see-through, the taskbar's colour, then the drawing colours (a colour of the user's own follows them).
+    public static readonly IReadOnlyList<string> Backgrounds = Colours.Skip(1).Prepend(TaskbarBackground).Prepend(string.Empty).ToList();
+
+    /// The words of <see cref="Backgrounds"/>, then the user's own colour's.
+    public static readonly IReadOnlyList<string> BackgroundNames = Palette.DrawingTitles.Prepend("Taskbar colour").Prepend("See-through").Append(AccentService.CustomName).ToList();
+
+    /// The old "Solid background" switch, read from older files only: on is the taskbar's colour.
+    [JsonPropertyName("SolidBackground"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? OldSolidBackground
+    {
+        get => null;
+        set { if (value is true && Background.Length == 0) Background = TaskbarBackground; }
+    }
     public SpeedUnit Units { get; set; } = SpeedUnit.Auto;
     public bool Bits { get; set; }
 
@@ -211,13 +230,13 @@ public sealed class GadgetSettings
     }
 
     /// The look of <paramref name="from"/> (a layout) put into these settings, keeping shown or not, the position, the font, the click actions, the hover
-    /// details, the space to the tray, the weather's place and, hidden, the rows the layout lacks (this PC's disks).
+    /// details, the space to the tray, the background, the weather's place and, hidden, the rows the layout lacks (this PC's disks).
     public void TakeLook(GadgetSettings from)
     {
         var keep = Copy();
         SettingsCopy.Into(this, from.Copy());
-        (Shown, Position, Font, RecentFonts, ClickAction, ClickDefaultMoved, DoubleClickAction, DoubleClickMs, Hover, SpaceToTray) =
-            (keep.Shown, keep.Position, keep.Font, keep.RecentFonts, keep.ClickAction, keep.ClickDefaultMoved, keep.DoubleClickAction, keep.DoubleClickMs, keep.Hover, keep.SpaceToTray);
+        (Shown, Position, Font, RecentFonts, ClickAction, ClickDefaultMoved, DoubleClickAction, DoubleClickMs, Hover, SpaceToTray, Background) =
+            (keep.Shown, keep.Position, keep.Font, keep.RecentFonts, keep.ClickAction, keep.ClickDefaultMoved, keep.DoubleClickAction, keep.DoubleClickMs, keep.Hover, keep.SpaceToTray, keep.Background);
         (keep.Weather.Shows, keep.Weather.Temperatures) = (Weather.Shows, Weather.Temperatures);
         Weather = keep.Weather;
         foreach (var row in keep.Readings.Where(k => Readings.All(r => r.Id != k.Id)))
