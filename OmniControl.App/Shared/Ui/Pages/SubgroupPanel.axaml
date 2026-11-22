@@ -14,7 +14,7 @@
             </Grid>
             <!-- Its cards are built when it opens and let go when it closes (Pages/CardLayout) -->
             <pages:CardLayout IsVisible="{Binding IsExpanded}">
-                <DataTemplate x:DataType="pages:ItemGroup"><ListBox Classes="rows compact cards" ItemsSource="{Binding Items}"></ListBox></DataTemplate>
+                <DataTemplate x:DataType="pages:ItemGroup"><ListBox Classes="rows compact cards" pages:CardFill.Items="{Binding Items}"></ListBox></DataTemplate>
             </pages:CardLayout>
         </StackPanel>
     </Border>

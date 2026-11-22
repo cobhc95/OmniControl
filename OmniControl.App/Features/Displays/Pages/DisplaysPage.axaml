@@ -31,7 +31,7 @@
                 </pages:GroupCard.Tools>
                 <pages:GroupCard.ContentTemplate><DataTemplate x:DataType="vm:DisplaysPageViewModel">
                     <StackPanel Spacing="{StaticResource GapSmall}">
-                        <ListBox Classes="rows compact cards" ItemsSource="{Binding Software.Items}"></ListBox>
+                        <ListBox Classes="rows compact cards" pages:CardFill.Items="{Binding Software.Items}"></ListBox>
                         <ItemsControl ItemsSource="{Binding Software.Subgroups}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="pages:ItemGroup"><pages:SubgroupPanel /></DataTemplate>
