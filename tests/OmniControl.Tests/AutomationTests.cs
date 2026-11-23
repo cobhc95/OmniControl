@@ -93,7 +93,24 @@ public class AutomationTests
         Assert.False(new AutomationRule { Kind = AutomationKind.Do, Actions = { "omni:a" } }.IsComplete);
         Assert.True(new AutomationRule { Kind = AutomationKind.Do, Trigger = "start", Actions = { "omni:a" } }.IsComplete);
         Assert.False(new AutomationRule { Kind = AutomationKind.Block, Actions = { "omni:a" } }.IsComplete);
-        Assert.True(new AutomationRule { Kind = AutomationKind.Block, Conditions = { "battery" }, Actions = { "omni:a" } }.IsComplete);
+        Assert.True(new AutomationRule { Kind = AutomationKind.Block, Trigger = "between|fh=22;th=7", Actions = { "omni:a" } }.IsComplete);
+        Assert.True(new AutomationRule { Kind = AutomationKind.Block, Conditions = { "days" }, Actions = { "omni:a" } }.IsComplete);
+    }
+
+    [Fact]
+    public void Stored_conditions_with_a_trigger_equivalent_migrate_once_with_their_joins()
+    {
+        var rule = new AutomationRule { Kind = AutomationKind.Block, Actions = { "omni:a" } };
+        rule.AddCondition("battery");
+        rule.AddCondition("running:chrome");
+        rule.SetJoinBefore(1, AutomationJoins.AndNot);
+        rule.AddCondition("days|d5=0;d6=0");
+        Assert.Equal(2, AutomationConditions.Migrate(new[] { rule }));
+        Assert.Equal("state:power.battery", rule.Trigger);
+        Assert.Equal(new[] { "state:program.chrome" }, rule.MoreTriggers);
+        Assert.Equal(AutomationJoins.AndNot, rule.TriggerJoinBefore(1));
+        Assert.Equal(new[] { "days|d5=0;d6=0" }, rule.Conditions);
+        Assert.Equal(0, AutomationConditions.Migrate(new[] { rule }));
     }
 
     [Fact]

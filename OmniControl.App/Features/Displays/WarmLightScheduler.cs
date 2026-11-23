@@ -40,6 +40,7 @@ public sealed class WarmLightScheduler : IDisposable
     public FeatureRuleView? Rule => _rules.Current?.Find(FadeId);
 
     public bool Enabled => Rule?.On == true;
+    public bool IsWarming { get; private set; }
 
     /// The rule's window; while it has none, the times last chosen on the page.
     public (int Start, int End) Window => Rule?.Window is { } w ? (w.Start, w.End) : (Settings.Start, Settings.End);
@@ -90,6 +91,7 @@ public sealed class WarmLightScheduler : IDisposable
             : Rule?.Window is { } w ? WarmSchedule.Factor(Minute(), w.Start, w.End)
             : Math.Clamp((_now() - _since).TotalMinutes / WarmSchedule.RampMinutes, 0, 1);
         _service.SetWarmth(factor, Settings.Kelvin);
+        IsWarming = factor > 0;
         if (_fading) _timer?.Start();
         else _timer?.Stop();
         Changed?.Invoke();

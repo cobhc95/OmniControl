@@ -100,17 +100,21 @@ public sealed class TrayService : IDisposable
             _open();
             return;
         }
-        // The press on the icon took the focus from an open flyout, which hid itself: this click only closed it.
+        // The press already dismissed the panel; its release is not another opening.
         if (_window is { } window && Grace.Within(window.HiddenAt, TimeSpan.FromMilliseconds(_flyout.ReopenGraceMs))) return;
+        if (_window is { IsOpen: true } open)
+        {
+            open.Dismiss();
+            return;
+        }
         if (at is { } point) _click = new PixelPoint(point.X, point.Y);
         ShowFlyout(timer);
     }
 
-    // Windows may send no click for the second press of a double click that takes the focus from the open panel (only the press reaches the
-    // taskbar), so that press, seen as the panel hiding itself, is the double click; a release that still comes falls in the reopen grace.
-    private void OnPanelDeactivated(object? sender, EventArgs e)
+    // Explorer may report only the second press; a release that still comes falls in the reopen grace.
+    private void OnOutsideLeftPress(int x, int y)
     {
-        if (_window is { IsOpen: false } && _clicks.IsSecond(SystemCommands.GetCursorPos())) Dispatcher.UIThread.Post(_open);
+        if (_clicks.IsSecond((x, y))) Dispatcher.UIThread.Post(_open);
     }
 
     /// The flyout is made once, hidden, so a click only shows it again.
@@ -119,12 +123,15 @@ public sealed class TrayService : IDisposable
         if (_window is null)
         {
             _window = new TrayFlyoutWindow { DataContext = _flyout };
-            _window.Deactivated += OnPanelDeactivated;
+            _window.OutsideLeftPress += OnOutsideLeftPress;
         }
         return _window;
     }
 
-    private void Prebuild() => Window().Warm();
+    private void Prebuild()
+    {
+        if (!_disposed && _window is null) Window().Warm();
+    }
 
     private void ShowFlyout(Stopwatch timer)
     {
@@ -235,7 +242,7 @@ public sealed class TrayService : IDisposable
         _flyout.ToggleRequested -= OnToggleRequested;
         if (_window is { } window)
         {
-            window.Deactivated -= OnPanelDeactivated;
+            window.OutsideLeftPress -= OnOutsideLeftPress;
             window.CloseForGood();
         }
         _icon.Clicked -= OnClicked;

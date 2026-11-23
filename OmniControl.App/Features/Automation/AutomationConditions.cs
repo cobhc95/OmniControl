@@ -1,15 +1,14 @@
-using OmniControl.App.Features.Hotkeys.Actions;
 using OmniControl.App.Features.Hotkeys;
+using OmniControl.App.Features.Hotkeys.Actions;
+using OmniControl.App.Features.States;
 using OmniControl.App.Shared.Scripts;
 
 namespace OmniControl.App.Features.Automation;
 
-/// The master list of conditions, for "and" in a Do rule and "While" in a Block rule: on battery, plugged in, between two times,
-/// on some days, a program running. Stored as "battery", "plugged", "between|fh=22;th=7", "days|d5=0;d6=0", "running:chrome".
-/// One registration per condition: the picker, the sentence and the check all read it.
+/// Time-window helpers for "Between two times" triggers, plus migration and legacy evaluation for rules saved with the old conditions list.
+/// There is no separate condition list anymore: "+ and" and Block rules' "While" pick from <see cref="AutomationTriggers"/>.
 public static class AutomationConditions
 {
-    private const string Power = "Power", When = "Time", Programs = "Programs";
     public const string Battery = "battery", Plugged = "plugged", Between = "between", Days = "days", Running = "running";
 
     public static readonly ActionOption FromHour = ActionOption.Number("fh", "From hour", 22, 0, 23);
@@ -17,31 +16,43 @@ public static class AutomationConditions
     public static readonly ActionOption ToHour = ActionOption.Number("th", "Until hour", 7, 0, 23);
     public static readonly ActionOption ToMinute = ActionOption.Number("tm", "Until minute", 0, 0, 59);
 
-    /// The settings of a time window, as the condition and the trigger "Between two times" both take them.
+    /// The settings of a time window, as the trigger "Between two times" takes them.
     public static readonly IReadOnlyList<ActionOption> WindowOptions = new[] { FromHour, FromMinute, ToHour, ToMinute };
 
-    /// The picker's list; a condition already in the rule (other than the one being changed) is greyed.
-    public static IReadOnlyList<PickChoice> Choices(AutomationRule rule, IReadOnlyList<string> programs, string? editing)
+    /// Converts stored conditions with a direct trigger/state equivalent into triggers on load (idempotent, saved once).
+    /// "days" has no standalone trigger and stays in <see cref="AutomationRule.Conditions"/> for <see cref="AutomationJoins"/>.
+    public static int Migrate(IEnumerable<AutomationRule> rules)
     {
-        var used = rule.Conditions.Where(c => c != editing).Select(c => MouseAction.Parse(c).Id).ToHashSet();
-        string? Taken(string id) => used.Contains(id) ? "Already in this rule." : null;
-        var list = new List<PickChoice>
+        var moved = 0;
+        foreach (var rule in rules)
         {
-            new(Battery, Power, "On battery", Keywords: "unplugged laptop", Unavailable: Taken(Battery)),
-            new(Plugged, Power, "Plugged in", Keywords: "charging mains ac laptop", Unavailable: Taken(Plugged)),
-            new(Between, When, "Between two times", Keywords: "night hours clock schedule", Options: WindowOptions,
-                AskFirst: true, Unavailable: Taken(Between)),
-            new(Days, When, "On certain days", Keywords: "weekdays weekend monday sunday schedule", Options: AutomationDays.Options, AskFirst: true,
-                Unavailable: Taken(Days)),
-        };
-        list.AddRange(programs.Select(p => new PickChoice($"{Running}:{p}", Programs, $"{p} is running", Keywords: "app program open")));
-        list.Add(new PickChoice($"{Running}:", Programs, "Another program is running", "notepad", "app program open type name",
-            ParamLabel: "Program name, as Task Manager shows it"));
-        return list;
+            var first = true;
+            for (var i = 0; i < rule.Conditions.Count;)
+            {
+                if (ToTrigger(rule.Conditions[i]) is not { } trigger) { first = false; i++; continue; }
+                var join = first ? AutomationJoins.And : (i < rule.ConditionJoins.Count ? rule.ConditionJoins[i] : AutomationJoins.And);
+                rule.AddTrigger(trigger, join);
+                rule.RemoveCondition(i);
+                first = false;
+                moved++;
+            }
+        }
+        return moved;
     }
 
-    /// The names of the fixed conditions, for search.
-    public static IReadOnlyList<string> FixedNames => Choices(new AutomationRule(), Array.Empty<string>(), null).Select(c => c.Name).ToList();
+    private static string? ToTrigger(string stored)
+    {
+        var condition = MouseAction.Parse(stored);
+        return condition.Id switch
+        {
+            Battery => AutomationTriggers.StateTrigger(PowerStates.OnBattery, StateTriggerMath.TurnsOn),
+            Plugged => AutomationTriggers.StateTrigger(PowerStates.OnBattery, StateTriggerMath.TurnsOff),
+            Between => stored,
+            Running when ProgramStates.IdOf(condition.Param) is var id && id != ProgramStates.Prefix =>
+                AutomationTriggers.StateTrigger(id, StateTriggerMath.TurnsOn),
+            _ => null,
+        };
+    }
 
     /// How a stored condition reads in the sentence ("on battery", "between 22:00 and 07:00", "chrome is running").
     public static string PhraseOf(string stored)

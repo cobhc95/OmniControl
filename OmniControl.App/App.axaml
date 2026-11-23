@@ -371,20 +371,17 @@
         <CornerRadius x:Key="TrayFootButtonRadius">4</CornerRadius>
         <x:Double x:Key="TrayGlyphSize">16</x:Double>
         <Thickness x:Key="TrayTileCross">0,-5,-5,0</Thickness>
-        <!-- The remove badge (Button.removebadge, Styles/Tray.axaml, docs/mockups/remove-badge.html): round chip, its drawn cross, the clickable square around it -->
-        <x:Double x:Key="RemoveBadgeSize">16</x:Double>
-        <x:Double x:Key="RemoveBadgeCross">9</x:Double>
-        <x:Double x:Key="RemoveBadgeHit">20</x:Double>
-        <CornerRadius x:Key="RemoveBadgeRadius">8</CornerRadius>
+        <!-- THE X remove button (Button.xbtn, Styles/ButtonThemes.axaml): a 16px badge in a 20px hit, its thin drawn cross -->
+        <x:Double x:Key="XButtonSize">16</x:Double>
+        <x:Double x:Key="XButtonHit">20</x:Double>
+        <x:Double x:Key="XButtonCross">7</x:Double>
+        <CornerRadius x:Key="XButtonRadius">5</CornerRadius>
         <x:Double x:Key="PillIconWidth">32</x:Double>
         <x:Double x:Key="PillGlyphSize">17</x:Double>
         <x:Double x:Key="DialogButtonHeight">28</x:Double>
-        <!-- The round X pill (Button.pill.closex, Styles/ThemeButtons.axaml, docs/mockups/device-close-x.html) -->
-        <x:Double x:Key="CloseXSize">18</x:Double>
         <!-- Tooltip timing for the whole app, ms (owner, 18 Nov): the wait before the first tooltip, and before the next while one shows -->
         <x:Int32 x:Key="TooltipShowDelay">1000</x:Int32>
         <x:Int32 x:Key="TooltipBetweenDelay">250</x:Int32>
-        <x:Double x:Key="CloseXCross">9</x:Double>
         <x:Double x:Key="TrayFadedOpacity">0.55</x:Double>
         <x:Double x:Key="StatePowerSize">20</x:Double>
         <x:Double x:Key="StatePowerGlyph">12</x:Double>

@@ -99,7 +99,11 @@ public sealed partial class MouseService
 
     private string LabelOf(InputFamily family, int layer) => Settings.LayersOf(family).Labels().GetValueOrDefault(layer) ?? layer.ToString();
 
-    private void NotifyLayer(InputFamily family, int layer) => _states.Notify(StateId(family));
+    private void NotifyLayer(InputFamily family, int layer)
+    {
+        _states.Notify(StateId(family));
+        NotifyLayerActiveStates(family);
+    }
 
     private void NotifyLayers()
     {

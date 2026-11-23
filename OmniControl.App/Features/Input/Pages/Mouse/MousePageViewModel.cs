@@ -126,7 +126,9 @@ public sealed partial class MousePageViewModel : PageViewModel, IDisposable
             {
                 Settings.SetCardScope(button, scope);
                 _mouse.Apply();
-            }), _mouse);
+            }), _mouse,
+            () => _mouse.RuleOf(PickerOf(button.FamilyOf()).Layer, button),
+            () => _mouse.EditRule(PickerOf(button.FamilyOf()).Layer, button));
 
         var buttonCards = Buttons.Select(b => CardFor(b.Button, b.Label, ButtonsScope, ButtonsGroupName)).ToList();
         var gestureCards = TrackpadGestures.All.Select(g => CardFor(g.Button, g.Name, TrackpadScope, TrackpadGroupName)).ToList();
@@ -157,6 +159,7 @@ public sealed partial class MousePageViewModel : PageViewModel, IDisposable
         });
         ShowMouseLayer();
         _followed.Follow<Action>(h => mouse.Applied += h, h => mouse.Applied -= h, Gestures.RefreshRules); // a changed mapping can start or end a custom rule's conflict
+        _followed.Follow<Action>(h => mouse.RulesChanged += h, h => mouse.RulesChanged -= h, () => { foreach (var item in _buttonItems) item.Reload(); });
         _followed.Follow<Action<MouseButton>>(h => mouse.ButtonPressed += h, h => mouse.ButtonPressed -= h,
             button => Dispatcher.UIThread.Post(() => _buttonItems.FirstOrDefault(i => i.Button == button)?.Flash()));
     }

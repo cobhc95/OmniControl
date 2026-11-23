@@ -35,14 +35,14 @@ public sealed partial class DisplaysService
         const string words = "turn off on all screens monitors black sleep standby power wake";
         yield return DisplayActions.Once(AllScreensId, "Toggle displays", words, Title, hardware, VcpSections.PowerMode,
             _ => { if (_systemScreens.IsOff || _hardware.Any(h => h.HasScreenPower && h.ScreenOn == false)) WakeScreens(); else TurnOffDisplays(); },
-            devices: null, shortName: "Screens", suggestedIcons: ScreenIcons, family: AllScreensFamily.Family, familyRole: OnOffFamily.ToggleRole);
+            devices: null, shortName: "Screens", suggestedIcons: ScreenIcons, family: AllScreensFamily.Family, familyRole: OnOffFamily.ToggleRole, highlightState: ScreensOnStateId);
         yield return DisplayActions.Once(OnOffFamily.SiblingId(AllScreensId, true), "Turn on displays", words, Title, hardware, VcpSections.PowerMode,
             _ => WakeScreens(), devices: null, shortName: "Screens on", suggestedIcons: ScreenIcons, family: AllScreensFamily.Family, familyRole: StateTarget.OnRole,
-            manageSettings: new[] { ActionOption.Heading("displayson.note", "Wakes the screens that take DDC power commands", "Screens Windows put to sleep wake on any mouse movement or key press.") });
+            manageSettings: new[] { ActionOption.Heading("displayson.note", "Wakes the screens that take DDC power commands", "Screens Windows put to sleep wake on any mouse movement or key press.") }, highlightState: ScreensOnStateId);
         yield return DisplayActions.Once(DisplaysOffId, "Turn off displays", words, Title, hardware, VcpSections.PowerMode,
             _ => TurnOffDisplays(), devices: null, shortName: "Screens off", suggestedIcons: ScreenIcons, screensOff: true, common: CommonGroups.Screens,
             family: AllScreensFamily.Family, familyRole: StateTarget.OffRole,
-            manageSettings: new[] { ActionOption.Heading("displaysoff.note", "Turns every screen off at once", "Any mouse movement or key press wakes them again; that is how Windows works.") });
+            manageSettings: new[] { ActionOption.Heading("displaysoff.note", "Turns every screen off at once", "Any mouse movement or key press wakes them again; that is how Windows works.") }, highlightState: ScreensOnStateId);
     }
 
     private void WakeScreens()

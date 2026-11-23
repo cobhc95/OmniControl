@@ -3,7 +3,7 @@ using OmniControl.App.Features.Hotkeys;
 namespace OmniControl.App.Shared.Ui.Pages;
 
 /// Which part of a rule a block stands for.
-public enum RuleSlotKind { Trigger, Condition, Step }
+public enum RuleSlotKind { Trigger, Condition, Step, OtherwiseStep }
 
 /// A place in a rule: the trigger, one condition or one step by index; <see cref="Index"/> -1 = a new one at the end.
 public sealed record RuleSlot(RuleSlotKind Kind, int Index)
@@ -14,8 +14,8 @@ public sealed record RuleSlot(RuleSlotKind Kind, int Index)
 // The parts of the editor's sentence ("If [right click] [over the taskbar] [and] [Ctrl held] [+ condition], then [...] [+ then]"),
 // each drawn by its own template in RuleEditorWindow with the master block styles (Styles/Blocks.axaml).
 
-/// A plain word of the sentence ("If", "then").
-public sealed record SentenceWord(string Text);
+/// A plain word of the sentence ("If", "then"); Accent draws it bold in the accent ("Otherwise").
+public sealed record SentenceWord(string Text, bool Accent = false);
 
 /// A chosen part: clicking it changes it, its cross (or Delete) removes it.
 public sealed record SentenceBlock(string Text, RuleSlot Slot);

@@ -31,16 +31,20 @@ public sealed class TrayElement
     /// still shows that section's icon); null: its own action's or state's icon.
     public string? Icon { get; set; }
 
+    public string? Name { get; set; }
+
     public static TrayElement OfAction(string id, string? state = null) => new() { Action = id, State = state };
 
     public static TrayElement OfState(string id, string? choice = null) => new() { State = id, Choice = choice };
 
-    public TrayElement Copy() => new() { Action = Action, State = State, Choice = Choice, Together = Together, AllState = AllState, Pick = Pick, Icon = Icon };
+    public TrayElement Copy() => new() { Action = Action, State = State, Choice = Choice, Together = Together, AllState = AllState, Pick = Pick, Icon = Icon, Name = Name };
 }
 
 /// The tray flyout's sliders and tiles, stored in tray.json. Null lists: the defaults (<see cref="TrayDefaults"/>), read from the master lists each time.
 public sealed class TraySettings
 {
+    private readonly IReadOnlyList<TrayElement> _defaultSliders = TrayDefaults.Sliders, _defaultTiles = TrayDefaults.Tiles;
+
     public List<TrayElement>? Sliders { get; set; }
     public List<TrayElement>? Tiles { get; set; }
 
@@ -79,8 +83,8 @@ public sealed class TraySettings
     public void Save() => AppDataStore.SaveSoon(Store, this);
 
     /// The sliders shown: the saved ones, or the defaults.
-    public IReadOnlyList<TrayElement> SlidersInUse => Sliders ?? TrayDefaults.Sliders;
+    public IReadOnlyList<TrayElement> SlidersInUse => Sliders ?? _defaultSliders;
 
     /// The tiles shown: the saved ones, or the defaults.
-    public IReadOnlyList<TrayElement> TilesInUse => Tiles ?? TrayDefaults.Tiles;
+    public IReadOnlyList<TrayElement> TilesInUse => Tiles ?? _defaultTiles;
 }

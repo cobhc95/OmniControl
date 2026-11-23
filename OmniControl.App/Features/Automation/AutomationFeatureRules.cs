@@ -22,26 +22,35 @@ public sealed class AutomationFeatureRules : IFeatureRules, IDisposable
     {
         (_rules, _actions, _slot, _openPage) = (rules, actions, slot, openPage);
         rules.Changed += OnChanged;
+        rules.Held += OnHeld;
         rules.Released += OnReleased;
         slot.Attach(this);
     }
 
     public event Action? Changed;
+    public event Action<string>? Started;
     public event Action<string>? Ended;
 
     private void OnChanged() => Changed?.Invoke();
 
+    private void OnHeld(AutomationRule rule)
+    {
+        if (rule.Feature.Length > 0) Started?.Invoke(rule.Feature);
+    }
+
     private void OnReleased(AutomationRule rule)
     {
-        foreach (var action in OwnersOf(rule)) Ended?.Invoke(action.Id);
+        if (rule.Feature.Length > 0) Ended?.Invoke(rule.Feature);
+        else foreach (var action in OwnersOf(rule)) Ended?.Invoke(action.Id);
     }
 
     /// The feature rule actions a rule holds: each names a page the rule shows on.
     public IReadOnlyList<HotkeyAction> OwnersOf(AutomationRule rule) => rule.Kind != AutomationKind.Do ? Array.Empty<HotkeyAction>()
         : rule.Actions.Select(AutomationSteps.ActionIdOf).OfType<string>().Select(_actions.Find).OfType<HotkeyAction>().Where(a => a.FeatureRule).ToList();
 
-    /// The page a feature's rule was made on (the first owner's), or null for any other rule.
-    public string? PageOf(AutomationRule rule) => OwnersOf(rule).FirstOrDefault()?.Category;
+    /// The page a feature's rule was made on (its own page or the first owner's), or null for any other rule.
+    public string? PageOf(AutomationRule rule) =>
+        rule.FeaturePage.Length > 0 ? rule.FeaturePage : OwnersOf(rule).FirstOrDefault()?.Category;
 
     /// Opens the page the rule was made on.
     public void Open(AutomationRule rule)
@@ -50,13 +59,15 @@ public sealed class AutomationFeatureRules : IFeatureRules, IDisposable
     }
 
     private AutomationRule? RuleOf(string actionId) =>
-        _rules.Settings.Rules.FirstOrDefault(r => r.Kind == AutomationKind.Do && r.Actions.Any(a => AutomationSteps.ActionIdOf(a) == actionId));
+        _rules.Settings.Rules.FirstOrDefault(r => r.Kind == AutomationKind.Do
+            && (r.Feature == actionId || r.Actions.Any(a => AutomationSteps.ActionIdOf(a) == actionId)));
 
     public FeatureRuleView? Find(string actionId)
     {
         if (RuleOf(actionId) is not { } rule) return null;
         var known = rule.AllTriggers.Select(Feature).OfType<FeatureTrigger>().ToList();
-        return new FeatureRuleView(rule.On, known, ExtrasOf(rule, Math.Max(known.Select(t => t.GetType()).Distinct().Count(), 1)), _rules.UserRules);
+        return new FeatureRuleView(rule.On, known, ExtrasOf(rule, Math.Max(known.Select(t => t.GetType()).Distinct().Count(), 1)),
+            _rules.UserRules, rule.Actions, _rules.IsHeld(rule));
     }
 
     /// What was added in Automation beyond the triggers its origin shows (a feature: one of each kind it knows; a preset row: all) and its one
@@ -64,7 +75,8 @@ public sealed class AutomationFeatureRules : IFeatureRules, IDisposable
     public static string ExtrasOf(AutomationRule rule, int shownTriggers)
     {
         static string Part(int n, string noun) => n == 0 ? string.Empty : $"{n} extra {noun}{(n == 1 ? string.Empty : "s")}";
-        return string.Join(", ", new[] { Part(rule.AllTriggers.Count() - shownTriggers, "trigger"), Part(rule.Conditions.Count, "condition"), Part(rule.Actions.Count - 1, "action") }
+        var extraActions = rule.Feature.Length > 0 ? 0 : rule.Actions.Count - 1;
+        return string.Join(", ", new[] { Part(rule.AllTriggers.Count() - shownTriggers, "trigger"), Part(rule.Conditions.Count, "condition"), Part(extraActions, "action") }
             .Where(p => p.Length > 0));
     }
 
@@ -76,6 +88,31 @@ public sealed class AutomationFeatureRules : IFeatureRules, IDisposable
         foreach (var trigger in triggers) rule.AddTrigger(Stored(trigger));
         _rules.AddRule(rule);
         AutomationService.Log($"rule \"{name}\" made from its page's settings ({(on ? "on" : "off")})");
+    }
+
+    public void EnsureActions(string featureId, string name, bool on, string page, IReadOnlyList<string> actions, params FeatureTrigger[] triggers)
+    {
+        if (RuleOf(featureId) is { } existing)
+        {
+            if (existing.Feature == featureId && existing.FeaturePage == page && existing.Actions.SequenceEqual(actions)) return;
+            existing.Feature = featureId;
+            existing.FeaturePage = page;
+            existing.SetActions(actions);
+            _rules.Edited(existing);
+            return;
+        }
+        var rule = new AutomationRule { Kind = AutomationKind.Do, Name = name, On = on, Feature = featureId, FeaturePage = page };
+        foreach (var action in actions) rule.AddAction(action);
+        foreach (var trigger in triggers) rule.AddTrigger(Stored(trigger), AutomationJoins.And);
+        _rules.AddRule(rule);
+        AutomationService.Log($"rule \"{name}\" made from its page's settings ({(on ? "on" : "off")})");
+    }
+
+    public void Remove(string actionId)
+    {
+        if (RuleOf(actionId) is not { } rule) return;
+        _rules.Remove(rule);
+        AutomationService.Log($"rule \"{rule.Name}\" removed (its page's setting was cleared)");
     }
 
     public void RemoveTrigger<T>(string actionId) where T : FeatureTrigger
@@ -99,7 +136,7 @@ public sealed class AutomationFeatureRules : IFeatureRules, IDisposable
         if (RuleOf(actionId) is not { } rule) return;
         var stored = Stored(trigger);
         var place = rule.AllTriggers.Select((t, i) => (t, i)).FirstOrDefault(p => Feature(p.t)?.GetType() == trigger.GetType());
-        if (place.t is null) rule.AddTrigger(stored);
+        if (place.t is null) rule.AddTrigger(stored, trigger is FeatureTrigger.Press ? AutomationJoins.And : AutomationJoins.Or);
         else if (place.t == stored) return;
         else if (place.i == 0) rule.Trigger = stored;
         else rule.MoreTriggers[place.i - 1] = stored;
@@ -138,6 +175,7 @@ public sealed class AutomationFeatureRules : IFeatureRules, IDisposable
             [AutomationConditions.ToHour.Key] = $"{w.End / 60}", [AutomationConditions.ToMinute.Key] = $"{w.End % 60}",
         }),
         FeatureTrigger.While s => AutomationTriggers.WhileOn(s.StateId),
+        FeatureTrigger.Press p => AutomationTriggers.WhileOn(p.StateId),
         FeatureTrigger.Starts => AutomationTriggers.Start,
         FeatureTrigger.Every e => MouseAction.Compose(AutomationTriggers.Timer, new[] { AutomationTriggers.Minutes, AutomationTriggers.Repeat },
             new Dictionary<string, string> { [AutomationTriggers.Minutes.Key] = $"{e.Minutes}", [AutomationTriggers.Repeat.Key] = "1" }),
@@ -145,7 +183,7 @@ public sealed class AutomationFeatureRules : IFeatureRules, IDisposable
     };
 
     /// A stored trigger in a feature's words, or null when it is none a feature knows.
-    private static FeatureTrigger? Feature(string stored)
+    private FeatureTrigger? Feature(string stored)
     {
         var trigger = MouseAction.Parse(stored);
         return trigger.Id switch
@@ -153,7 +191,9 @@ public sealed class AutomationFeatureRules : IFeatureRules, IDisposable
             AutomationTriggers.Between when AutomationConditions.MinutesOf(trigger.Options) is var (from, until) => new FeatureTrigger.Between(from, until),
             AutomationTriggers.Start => new FeatureTrigger.Starts(),
             AutomationTriggers.Timer when trigger.Options.Bool(AutomationTriggers.Repeat) => new FeatureTrigger.Every(trigger.Options.Int(AutomationTriggers.Minutes)),
-            _ => AutomationTriggers.WhileOnState(stored) is { } state ? new FeatureTrigger.While(state) : null,
+            _ => AutomationTriggers.WhileOnState(stored) is { } state
+                ? (_rules.TriggerSources.State(state)?.OneShot == true ? new FeatureTrigger.Press(state) : new FeatureTrigger.While(state))
+                : null,
         };
     }
 
@@ -161,6 +201,7 @@ public sealed class AutomationFeatureRules : IFeatureRules, IDisposable
     {
         _slot.Detach(this);
         _rules.Changed -= OnChanged;
+        _rules.Held -= OnHeld;
         _rules.Released -= OnReleased;
     }
 }

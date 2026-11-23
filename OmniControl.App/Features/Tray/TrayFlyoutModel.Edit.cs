@@ -11,10 +11,10 @@ namespace OmniControl.App.Features.Tray;
 public sealed partial class TrayFlyoutModel
 {
     private const string RemoveWords = "Remove from panel", ChangeActionWords = "Change action…", ChangeIconWords = "Change icon…",
-        LockWords = "Lock layout", ShowWords = "Show in OmniControl";
+        RenameWords = "Rename tile…", RenameHint = "Leave empty to use the original name.", LockWords = "Lock layout", ShowWords = "Show in OmniControl";
 
     /// The rows of a slider's or tile's right-click menu, for search.
-    public static IReadOnlyList<string> MenuWords { get; } = new[] { RemoveWords, ChangeActionWords, ChangeIconWords, LockWords, ShowWords };
+    public static IReadOnlyList<string> MenuWords { get; } = new[] { RemoveWords, ChangeActionWords, ChangeIconWords, RenameWords, RenameHint, LockWords, ShowWords };
 
     [ObservableProperty] private bool _isEditing;
 
@@ -24,8 +24,8 @@ public sealed partial class TrayFlyoutModel
     /// "Lock layout": nothing can be dragged while it is on (panel-wide, saved).
     public bool IsLocked => _settings.LockLayout;
 
-    private List<TrayElement> SliderList => _settings.Sliders ??= TrayDefaults.Sliders.ToList();
-    private List<TrayElement> TileList => _settings.Tiles ??= TrayDefaults.Tiles.ToList();
+    private List<TrayElement> SliderList => _settings.Sliders ??= _settings.SlidersInUse.ToList();
+    private List<TrayElement> TileList => _settings.Tiles ??= _settings.TilesInUse.ToList();
 
     /// A cross, or the menu's Remove: the slider or tile goes out of the panel.
     public void Remove(ITrayPanelItem item) => EditList(item.IsSlider, (list, shown) => TrayOrder.Remove(list, shown, IndexOf(item)));
@@ -82,16 +82,28 @@ public sealed partial class TrayFlyoutModel
     public Task<IconPick?> ChooseIconAsync(Avalonia.Visual from, ITrayPanelItem item) => _icons.ChooseAsync(from, IconRequestFor(item));
 
     /// The icon picker's answer: the item shows that icon (null: its own again).
-    public void SetIcon(ITrayPanelItem item, IconPick pick) => EditList(item.IsSlider, (list, shown) => TrayOrder.WithIcon(list, shown, IndexOf(item), pick.Value));
+    public void SetIcon(ITrayPanelItem item, IconPick pick) => EditItem(item, element => element.Icon = pick.Value);
+
+    internal DialogMessage RenameQuestion(TrayTileItem item) => new(RenameWords, RenameHint, "OK", Input: item.Name);
+
+    internal void Rename(TrayTileItem item, string name)
+    {
+        if (name == item.Name) return;
+        EditItem(item, element => element.Name = name.Length == 0 ? null : name);
+    }
+
+    private void EditItem(ITrayPanelItem item, Action<TrayElement> change) =>
+        EditList(item.IsSlider, (list, shown) => TrayOrder.Update(list, shown, IndexOf(item), change));
 
     /// The right-click menu of a slider or tile; the window shows the pickers (they need it as their owner).
-    public IReadOnlyList<MenuRowItem> ItemMenu(ITrayPanelItem item, Action<ITrayPanelItem> changeAction, Action<ITrayPanelItem> changeIcon)
+    public IReadOnlyList<MenuRowItem> ItemMenu(ITrayPanelItem item, Action<ITrayPanelItem> changeAction, Action<ITrayPanelItem> changeIcon, Action<TrayTileItem> rename)
     {
         var rows = new List<MenuRowItem>();
         if (item is TrayTileItem { Failure: { } failure }) rows.Add(MenuRowItem.Header(failure)); // why the tile's mark is red
         rows.Add(Row(RemoveWords, false, () => Remove(item)));
         rows.Add(Row(ChangeActionWords, false, () => changeAction(item)));
         rows.Add(Row(ChangeIconWords, false, () => changeIcon(item)));
+        if (item is TrayTileItem tile) rows.Add(Row(RenameWords, false, () => rename(tile)));
         rows.Add(Row(LockWords, IsLocked, ToggleLock));
         rows.Add(Row(ShowWords, false, () => _showInApp(item.Target)));
         return rows;
@@ -107,8 +119,18 @@ public sealed partial class TrayFlyoutModel
     }
 
     /// The item's place among the shown sliders or tiles (what <see cref="TrayOrder"/> counts in).
-    private int IndexOf(ITrayPanelItem item) =>
-        item.IsSlider ? Sliders.IndexOf((TraySliderItem)item) : Tiles.IndexOf((TrayTileItem)item);
+    private int IndexOf(ITrayPanelItem item)
+    {
+        IEnumerable<ITrayPanelItem> rows = item.IsSlider ? Sliders : Tiles;
+        var index = 0;
+        foreach (var row in rows)
+        {
+            var (from, current) = (item.Target, row.Target);
+            if (ReferenceEquals(from.Element, current.Element) && from.Action?.Id == current.Action?.Id && from.State?.Id == current.State?.Id) return index;
+            index++;
+        }
+        return -1;
+    }
 
     /// An edit of the slider or tile list, given the stored list and what it shows now.
     private void EditList(bool slider, Func<IReadOnlyList<TrayElement>, IReadOnlyList<TrayTarget>, List<TrayElement>> change) => Edit(() =>

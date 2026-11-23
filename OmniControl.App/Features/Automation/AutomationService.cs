@@ -77,7 +77,7 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         _remembered = remembered;
         _report = report;
         SessionOff = KeyboardState.Held().HasFlag(Modifiers.Shift);
-        MoveProgramTriggers();
+        MigrateRules();
         var actions = new MouseActionRunner(run.Run, _report, Log);
         Approvals = new CommandApprovals(() => Settings.Approved, Settings.Save, ask);
         _runner = new RuleRunner(actions, Approvals.IsApproved, Log, id => hotkeys.Find(id)?.Reach);
@@ -176,7 +176,7 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         foreach (var custom in Settings.Customs) _hotkeys.Unregister(custom.ActionId);
         foreach (var script in Settings.Scripts) _hotkeys.Unregister(script.ActionId);
         SettingsCopy.Into(Settings, AutomationSettings.Load());
-        MoveProgramTriggers();
+        MigrateRules();
         _hotkeys.Register(Settings.Rules.Where(r => r.Kind == AutomationKind.Do).Select(MakeRuleAction));
         _hotkeys.Register(Settings.Customs.Select(MakeCustomAction));
         _hotkeys.Register(Settings.Scripts.Select(MakeScriptAction));
@@ -186,13 +186,15 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         return true;
     }
 
-    /// Rules from before programs were states follow the program's state now (once: nothing is left to move afterwards).
-    private void MoveProgramTriggers()
+    /// Rules from before programs were states or conditions were triggers are moved once at load.
+    private void MigrateRules()
     {
-        var moved = ProgramTriggerMigration.Run(Settings.Rules);
-        if (moved == 0) return;
+        var movedPrograms = ProgramTriggerMigration.Run(Settings.Rules);
+        var movedConditions = AutomationConditions.Migrate(Settings.Rules);
+        if (movedPrograms + movedConditions == 0) return;
         Settings.Save();
-        Log($"{moved} program trigger(s) of rules now follow the program's state (starts: turns on, closes: turns off)");
+        if (movedPrograms > 0) Log($"{movedPrograms} PC trigger(s) of rules now follow their state");
+        if (movedConditions > 0) Log($"{movedConditions} rule condition(s) now use triggers/states");
     }
 
     /// Call after any change to a rule's blocks or switch: saves, starts its timers again and clears a pause.
@@ -257,11 +259,10 @@ public sealed partial class AutomationService : IActionGate, IDisposable
 
     public HotkeyAction? ActionOf(AutomationRule rule) => _hotkeys.Find(rule.ActionId);
 
-    public IReadOnlyList<PickChoice> ConditionChoices(AutomationRule rule, string? editing) =>
-        AutomationConditions.Choices(rule, ProgramNames.Known(_remembered()), editing);
-
     public IReadOnlyList<PickChoice> StepChoices(AutomationRule rule) =>
-        rule.Kind == AutomationKind.Block ? AutomationSteps.BlockChoices(_hotkeys.Actions) : AutomationSteps.DoChoices(_hotkeys.PickerActions);
+        rule.Kind == AutomationKind.Block ? AutomationSteps.BlockChoices(_hotkeys.Actions)
+        : rule.Feature.Length > 0 ? MouseActionCatalog.Choices(_hotkeys.PickerActions).Where(c => c.Spec != MouseActionCatalog.Default).ToList()
+        : AutomationSteps.DoChoices(_hotkeys.PickerActions);
 
     /// What went wrong the last time the rule ran (since OmniControl started), or null.
     public string? ProblemOf(AutomationRule rule) => _problems.GetValueOrDefault(rule.Id);
@@ -319,8 +320,9 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         {
             if (block is not { Kind: AutomationKind.Block, On: true } || !block.IsComplete) continue;
             if (!block.Actions.Any(a => AutomationSteps.ActionIdOf(a) == action.Id)) continue;
-            now ??= NewContext();
-            if (AutomationJoins.Holds(block, now)) return $"{action.Title} is not allowed right now: \"{block.Name}\" blocks it.";
+            var holds = (block.Trigger.Length == 0 || TriggersHold(block, -1))
+                && (block.Conditions.Count == 0 || AutomationJoins.Holds(block, now ??= NewContext()));
+            if (holds) return $"{action.Title} is not allowed right now: \"{block.Name}\" blocks it.";
         }
         return null;
     }
@@ -367,6 +369,11 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         var chain = _run.Chain; // set when another rule's run (through an "action runs" trigger) runs this rule's own action
         if (!RunChain.MayStart(chain, rule.Id, Timing.AutomationChainMax)) Log($"rule \"{rule.Name}\" not started by its own action: it is already in this chain of rules");
         else if (!rule.On) _report($"\"{rule.Name}\" is switched off.");
+        else if (HasOtherwise(rule) && !IsWhile(rule) && rule.Conditions.Count > 0 && !AutomationJoins.Holds(rule, NewContext()))
+        {
+            if (!TryStart(rule, RunChain.After(chain, rule.Id, byPerson: chain is null), otherwise: true))
+                _report($"\"{rule.Name}\" did not start: rules are paused, its conditions don't hold, or it just ran.");
+        }
         // No chain: a person ran the rule's own action (its hotkey, a mouse button, Run now), so its steps are that person's request.
         else if (!TryStart(rule, RunChain.After(chain, rule.Id, byPerson: chain is null))) _report($"\"{rule.Name}\" did not start: rules are paused, its conditions don't hold, or it just ran.");
     }
@@ -374,11 +381,11 @@ public sealed partial class AutomationService : IActionGate, IDisposable
     /// Starts the rule's steps on a worker unless a safety stops it. False when it did not start. <paramref name="chain"/> is the chain of
     /// rules this run belongs to (this rule last); every action its steps run carries it, so triggers it causes know where they came from.
     /// <param name="waitForReady">Started by a wake or a log-in: steps that need the network or a device wait for them first.</param>
-    private bool TryStart(AutomationRule rule, RunChain? chain = null, bool waitForReady = false)
+    private bool TryStart(AutomationRule rule, RunChain? chain = null, bool waitForReady = false, bool otherwise = false)
     {
         if (!rule.On || !rule.IsComplete || rule.Kind != AutomationKind.Do || Stopped(rule) || _pausedWhy.ContainsKey(rule.Id)) return false;
-        var context = NewContext();
-        if (!AutomationJoins.Holds(rule, context)) return false;
+        if (otherwise && (rule.OtherwiseActions.Count == 0 || !HasOnlyIf(rule))) return false;
+        if (!otherwise && rule.Conditions.Count > 0 && !AutomationJoins.Holds(rule, NewContext())) return false;
         if (ActionOf(rule) is { } own && BlockReason(own) is { } blocked)
         {
             _report(blocked);
@@ -402,8 +409,8 @@ public sealed partial class AutomationService : IActionGate, IDisposable
         rule.LastRan = DateTime.Now;
         Settings.Save();
 
-        var steps = rule.Actions.ToArray();
-        var waits = steps.Select((_, i) => rule.WaitBefore(i)).ToArray();
+        var steps = (otherwise ? rule.OtherwiseActions : rule.Actions).ToArray();
+        var waits = steps.Select((_, i) => otherwise ? rule.OtherwiseWaitBefore(i) : rule.WaitBefore(i)).ToArray();
         var name = rule.Name;
         var id = rule.Id;
         var stop = IsFeatureRule(rule) ? CancellationToken.None : _stopRuns.Token;

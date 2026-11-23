@@ -17,34 +17,56 @@ public sealed class UsbDeviceWatcher
     private Dictionary<string, string>? _known; // null while stopped (or until the first list is read)
 
     public event Action<bool, string>? Changed;
+    public event Action<IReadOnlyDictionary<string, string>>? Seen;
 
-    /// Takes the device list as it is now (on a worker: WMI is slow to answer the first time); looks compare with it from then on.
-    public void Start() => Task.Run(() =>
+    private void Read(Dictionary<string, string> baseline)
     {
-        if (ReadDevices() is { } now) lock (_gate) _known ??= now;
-    });
+        if (ReadDevices() is not { } now) return;
+        lock (_gate)
+        {
+            if (!ReferenceEquals(_known, baseline)) return;
+            var first = _starting;
+            _starting = false;
+            _known = now;
+            Seen?.Invoke(now);
+            if (first) return;
+            Raise(true, now, baseline);
+            Raise(false, baseline, now);
+        }
+    }
+
+    private bool _starting;
+
+    /// Takes the baseline on a worker because the first WMI read can be slow.
+    public void Start()
+    {
+        lock (_gate)
+        {
+            if (_known is not null) return;
+            _known = new(StringComparer.OrdinalIgnoreCase);
+            _starting = true;
+        }
+        _ = Task.Run(Look);
+    }
 
     /// Stops comparing until the next <see cref="Start"/>.
     public void Stop()
     {
-        lock (_gate) _known = null;
+        lock (_gate) { _known = null; _starting = false; }
     }
 
     /// Reads the device list and raises <see cref="Changed"/> for what came or went since the last look (worker thread; nothing while stopped).
     public void Look()
     {
-        lock (_gate) if (_known is null) return;
-        if (ReadDevices() is not { } now) return;
-        List<string> added, removed;
-        lock (_gate)
-        {
-            if (_known is not { } known) return;
-            added = now.Where(d => !known.ContainsKey(d.Key)).Select(d => d.Value).ToList();
-            removed = known.Where(d => !now.ContainsKey(d.Key)).Select(d => d.Value).ToList();
-            _known = now;
-        }
-        if (added.Count > 0) Changed?.Invoke(true, BestName(added));
-        if (removed.Count > 0) Changed?.Invoke(false, BestName(removed));
+        Dictionary<string, string>? baseline;
+        lock (_gate) baseline = _known;
+        if (baseline is not null) Read(baseline);
+    }
+
+    private void Raise(bool connected, Dictionary<string, string> earlier, Dictionary<string, string> other)
+    {
+        var changed = earlier.Where(d => !other.ContainsKey(d.Key)).Select(d => d.Value).ToList();
+        if (changed.Count > 0) Changed?.Invoke(connected, BestName(changed));
     }
 
     private static string BestName(List<string> names) =>
@@ -53,7 +75,7 @@ public sealed class UsbDeviceWatcher
     /// The USB devices now, or null when WMI did not answer (a busy WMI must not look like every device leaving).
     private static Dictionary<string, string>? ReadDevices()
     {
-        var devices = new Dictionary<string, string>();
+        var devices = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         try
         {
             using var search = new ManagementObjectSearcher(DeviceListQuery);

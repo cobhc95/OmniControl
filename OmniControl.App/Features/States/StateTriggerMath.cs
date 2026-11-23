@@ -7,6 +7,7 @@ public static class StateTriggerMath
 {
     public const string TurnsOn = "turns on", TurnsOff = "turns off", Changes = "changes";
     public const string Above = "goes above", Below = "goes below", Becomes = "becomes";
+    public const string AtLeast = "reaches at least";
 
     /// The choices of the "When it" setting for each kind, in the order the picker offers them.
     public static IReadOnlyList<string> WhensOf(StateKind kind) => kind switch
@@ -23,6 +24,7 @@ public static class StateTriggerMath
         StateKind.Level => now?.Number is { } value && when switch
         {
             Above => value > level,
+            AtLeast => value >= level,
             Below => value < level,
             Becomes => Math.Round(value) == Math.Round(level),
             _ => false,
@@ -52,6 +54,7 @@ public static class StateTriggerMath
                 return when switch
                 {
                     Above => from <= level && to > level,
+                    AtLeast => from < level && to >= level,
                     Below => from >= level && to < level,
                     Becomes => Math.Round(from) != Math.Round(level) && Math.Round(to) == Math.Round(level),
                     _ => false,

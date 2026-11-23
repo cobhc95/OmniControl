@@ -30,6 +30,23 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
     /// The sentence: <see cref="SentenceWord"/>, <see cref="SentenceBlock"/>, <see cref="SentenceAdd"/>.
     public ObservableCollection<object> Sentence { get; } = new();
 
+    /// A Do rule's "Otherwise do …" line, under the first; empty on a Block rule.
+    public ObservableCollection<object> OtherwiseSentence { get; } = new();
+
+    /// The four parts of a Do rule in reading order ("When", "Only if", "Do", "Otherwise").
+    public ObservableCollection<object> WhenSentence { get; } = new();
+    public ObservableCollection<object> OnlyIfSentence { get; } = new();
+    public ObservableCollection<object> DoSentence { get; } = new();
+
+    /// The four-part layout shows for a Do rule; a Block rule keeps its single sentence.
+    public bool IsDo => !IsBlock;
+
+    /// The "Otherwise" part shows only with an "Only if" list: only then can the top line fail. Its steps stay saved when the list is emptied.
+    public bool HasOtherwiseLine => !IsBlock && HasOnlyIf(Rule);
+
+    /// An "Only if" entry exists (the service's reading, shared with the Otherwise run gate).
+    internal static bool HasOnlyIf(AutomationRule rule) => AutomationService.HasOnlyIf(rule);
+
     [ObservableProperty] private IReadOnlyList<TagItem> _tags = Array.Empty<TagItem>();
 
     /// "At log in" cannot fire because Start with Windows is off: the row offers the one link that turns it on.
@@ -41,7 +58,7 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
     public string Label => Rule.Name;
 
     /// The sentence as plain text, for search.
-    public string Line => string.Join(" ", Sentence.Select(s => s switch { SentenceWord w => w.Text, SentenceBlock b => b.Text, SentenceHotkey h => $"I press {h.Gesture}", SentenceLink l => l.Text, _ => string.Empty }));
+    public string Line => string.Join(" ", Sentence.Concat(WhenSentence).Concat(OnlyIfSentence).Concat(DoSentence).Concat(OtherwiseSentence).Select(s => s switch { SentenceWord w => w.Text, SentenceBlock b => b.Text, SentenceHotkey h => $"I press {h.Gesture}", SentenceLink l => l.Text, _ => string.Empty }));
 
     /// Where the rule was made, after its name: the page's title on a feature's rule, "Presets · Audio and Volume" on a preset
     /// rule; null on any other rule or while the preset's group is not registered.
@@ -88,6 +105,7 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
         ShowOrigin();
         _loading = false;
         OnPropertyChanged(nameof(Line));
+        OnPropertyChanged(nameof(HasOtherwiseLine));
     }
 
     partial void OnIsOnChanged(bool value)
@@ -161,37 +179,97 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
     private void Rebuild()
     {
         Sentence.Clear();
+        WhenSentence.Clear();
+        OnlyIfSentence.Clear();
+        DoSentence.Clear();
+        OtherwiseSentence.Clear();
         var choices = _service.StepChoices(Rule);
         if (IsBlock)
         {
             Sentence.Add(new SentenceWord("While"));
-            AddConditions();
+            AddTriggers("+ condition", "+ and", -2);
+            AddLegacyConditions();
             Sentence.Add(new SentenceWord("don't allow"));
-            AddActions(choices, "+ action");
+            AddActions(Sentence, choices, Rule.Actions, i => Rule.WaitBefore(i), null, RuleSlotKind.Step, "+ action");
             return;
         }
-        Sentence.Add(new SentenceWord("When"));
-        AddTriggers();
-        AddConditions();
-        Sentence.Add(new SentenceWord("do"));
-        AddActions(choices, Rule.Actions.Count == 0 ? "+ action" : "+ then");
+        AddWhenAndOnlyIf();
+        AddActions(DoSentence, choices, Rule.Actions, i => Rule.WaitBefore(i), i => ActionJoin(i), RuleSlotKind.Step, Rule.Actions.Count == 0 ? "+ action" : "+ then");
+        OtherwiseSentence.Add(new SentenceWord("do"));
+        AddActions(OtherwiseSentence, choices, Rule.OtherwiseActions, i => Rule.OtherwiseWaitBefore(i), i => OtherwiseActionJoin(i), RuleSlotKind.OtherwiseStep,
+            Rule.OtherwiseActions.Count == 0 ? "+ action" : "+ then");
     }
 
-    private void AddTriggers()
+    /// The "When" and "Only if" parts: the first trigger and "or"-joined ones start the rule; "and"/"and not"-joined triggers and the legacy
+    /// conditions can fail when it fires, so they form the "Only if" list, headed by the ALL/ANY pill when their joins can be told as one word.
+    private void AddWhenAndOnlyIf()
+    {
+        var uniform = false;
+        if (Rule.Trigger.Length == 0)
+        {
+            if (Rule.Conditions.Count == 0) WhenSentence.Add(new SentenceAdd("+ trigger", new RuleSlot(RuleSlotKind.Trigger, 0)));
+        }
+        else
+        {
+            var onlyIfJoins = Rule.AllTriggers.Skip(1).Select((_, i) => Rule.TriggerJoinBefore(i + 1)).Where(j => j is AutomationJoins.And or AutomationJoins.AndNot)
+                .Concat(Enumerable.Range(1, Math.Max(0, Rule.Conditions.Count - 1)).Select(Rule.JoinBefore)).ToList();
+            uniform = onlyIfJoins.Count > 0 && (onlyIfJoins.All(j => j == AutomationJoins.And) || onlyIfJoins.All(j => j == AutomationJoins.Or));
+            if (uniform) OnlyIfSentence.Add(AllAnyLink(onlyIfJoins.All(j => j == AutomationJoins.And)));
+            var place = 0;
+            foreach (var trigger in Rule.AllTriggers)
+            {
+                var slot = new RuleSlot(RuleSlotKind.Trigger, place);
+                var block = AutomationTriggers.IsHotkey(trigger) ? HotkeyBlock(slot) : (object)new SentenceBlock(_service.TriggerPhrase(trigger), slot);
+                if (place == 0 || Rule.TriggerJoinBefore(place) == AutomationJoins.Or) WhenSentence.Add(block);
+                else
+                {
+                    if (!uniform) OnlyIfSentence.Add(TriggerJoin(place));
+                    OnlyIfSentence.Add(block);
+                }
+                place++;
+            }
+            WhenSentence.Add(new SentenceAdd("+ or", new RuleSlot(RuleSlotKind.Trigger, -1)));
+        }
+        for (var i = 0; i < Rule.Conditions.Count; i++)
+        {
+            if (i > 0 && !uniform) OnlyIfSentence.Add(ConditionJoin(i));
+            OnlyIfSentence.Add(new SentenceBlock(AutomationConditions.PhraseOf(Rule.Conditions[i]), new RuleSlot(RuleSlotKind.Condition, i)));
+        }
+        OnlyIfSentence.Add(new SentenceAdd("+ condition", new RuleSlot(RuleSlotKind.Trigger, -2)));
+    }
+
+    private SentenceLink AllAnyLink(bool all)
+    {
+        void SetAll(string join)
+        {
+            for (var i = 1; i <= Rule.MoreTriggers.Count; i++)
+                if (Rule.TriggerJoinBefore(i) is AutomationJoins.And or AutomationJoins.AndNot) Rule.SetTriggerJoin(i, join);
+            for (var i = 1; i < Rule.Conditions.Count; i++) Rule.SetJoinBefore(i, join);
+            Save();
+        }
+        var options = new[]
+        {
+            new SentenceLinkOption("ALL of these", all, () => SetAll(AutomationJoins.And)),
+            new SentenceLinkOption("ANY of these", !all, () => SetAll(AutomationJoins.Or)),
+        };
+        return new SentenceLink(all ? "ALL of these" : "ANY of these", options);
+    }
+
+    private void AddTriggers(string emptyText, string addText, int addSlot)
     {
         if (Rule.Trigger.Length == 0)
         {
-            Sentence.Add(new SentenceAdd("+ trigger", new RuleSlot(RuleSlotKind.Trigger, 0)));
+            if (Rule.Conditions.Count == 0) Sentence.Add(new SentenceAdd(emptyText, new RuleSlot(RuleSlotKind.Trigger, 0)));
             return;
         }
         var place = 0;
         foreach (var trigger in Rule.AllTriggers)
         {
-            if (place > 0) Sentence.Add(new SentenceWord("or"));
+            if (place > 0) Sentence.Add(TriggerJoin(place));
             var slot = new RuleSlot(RuleSlotKind.Trigger, place++);
             Sentence.Add(AutomationTriggers.IsHotkey(trigger) ? HotkeyBlock(slot) : new SentenceBlock(_service.TriggerPhrase(trigger), slot));
         }
-        Sentence.Add(new SentenceAdd("+ or", new RuleSlot(RuleSlotKind.Trigger, -1)));
+        Sentence.Add(new SentenceAdd(addText, new RuleSlot(RuleSlotKind.Trigger, addSlot)));
     }
 
     private SentenceHotkey HotkeyBlock(RuleSlot slot)
@@ -201,62 +279,72 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
         return new SentenceHotkey(slot, gesture, Keycaps.From(capturing ? string.Empty : gesture, capturing ? HotkeyCapture.Ellipsis : "set keys"), capturing);
     }
 
-    private void AddConditions()
+    private void AddLegacyConditions()
     {
         for (var i = 0; i < Rule.Conditions.Count; i++)
         {
-            if (i > 0) Sentence.Add(ConditionJoin(i));
+            if (i > 0 || Rule.Trigger.Length > 0) Sentence.Add(ConditionJoin(i));
             Sentence.Add(new SentenceBlock(AutomationConditions.PhraseOf(Rule.Conditions[i]), new RuleSlot(RuleSlotKind.Condition, i)));
         }
-        Sentence.Add(new SentenceAdd(Rule.Conditions.Count == 0 && IsBlock ? "+ condition" : "+ and", new RuleSlot(RuleSlotKind.Condition, -1)));
+        if (Rule.Conditions.Count > 0 && Rule.Trigger.Length == 0)
+            Sentence.Add(new SentenceAdd("+ and", new RuleSlot(RuleSlotKind.Trigger, -2)));
     }
 
-    private void AddActions(IReadOnlyList<PickChoice> choices, string addText)
+    private void AddActions(ObservableCollection<object> into, IReadOnlyList<PickChoice> choices, IReadOnlyList<string> steps, Func<int, int> waitBefore, Func<int, SentenceLink>? join,
+        RuleSlotKind kind, string addText)
     {
-        for (var i = 0; i < Rule.Actions.Count; i++)
+        for (var i = 0; i < steps.Count; i++)
         {
-            if (i > 0) Sentence.Add(IsBlock ? new SentenceWord("and") : ActionJoin(i));
-            if (i > 0 && !IsBlock && Rule.WaitBefore(i) > 0) Sentence.Add(new SentenceWord(", then do"));
-            Sentence.Add(new SentenceBlock(AutomationSteps.PhraseOf(Rule, Rule.Actions[i], choices), new RuleSlot(RuleSlotKind.Step, i)));
+            if (i > 0) into.Add(IsBlock ? new SentenceWord("and") : join!(i));
+            if (i > 0 && !IsBlock && waitBefore(i) > 0) into.Add(new SentenceWord(", then do"));
+            into.Add(new SentenceBlock(AutomationSteps.PhraseOf(Rule, steps[i], choices), new RuleSlot(kind, i)));
         }
-        Sentence.Add(new SentenceAdd(addText, new RuleSlot(RuleSlotKind.Step, -1)));
+        into.Add(new SentenceAdd(addText, new RuleSlot(kind, -1)));
     }
 
-    private SentenceLink ConditionJoin(int condition)
+    private SentenceLink TriggerJoin(int trigger) => JoinLink(Rule.TriggerJoinBefore(trigger), join =>
     {
-        var now = Rule.JoinBefore(condition);
-        var options = AutomationJoins.All.Select(join => new SentenceLinkOption(AutomationJoins.WordOf(join), join == now, () =>
-        {
-            Rule.SetJoinBefore(condition, join);
-            Save();
-        })).ToList();
-        return new SentenceLink(AutomationJoins.WordOf(now), options);
-    }
+        Rule.SetTriggerJoin(trigger, join);
+        Save();
+    });
 
-    private SentenceLink ActionJoin(int action)
+    private SentenceLink ConditionJoin(int condition) => JoinLink(Rule.JoinBefore(condition), join =>
     {
-        var seconds = Rule.WaitBefore(action);
+        Rule.SetJoinBefore(condition, join);
+        Save();
+    });
+
+    private static SentenceLink JoinLink(string now, Action<string> choose) =>
+        new(AutomationJoins.WordOf(now), AutomationJoins.All.Select(join => new SentenceLinkOption(AutomationJoins.WordOf(join), join == now, () => choose(join))).ToList());
+
+    private SentenceLink ActionJoin(int action) => ActionJoin(action, otherwise: false);
+
+    private SentenceLink OtherwiseActionJoin(int action) => ActionJoin(action, otherwise: true);
+
+    private SentenceLink ActionJoin(int action, bool otherwise)
+    {
+        var seconds = otherwise ? Rule.OtherwiseWaitBefore(action) : Rule.WaitBefore(action);
         SentenceLink? link = null;
         var amount = seconds == 0 ? null : new SentenceLinkAmount("Wait for", 1, Timing.AutomationMaxWaitSeconds,
             Timing.AutomationDefaultWaitSeconds, seconds, " s", n =>
             {
-                Rule.SetWaitBefore(action, n);
+                if (otherwise) Rule.SetOtherwiseWaitBefore(action, n); else Rule.SetWaitBefore(action, n);
                 _service.Tweaked();
                 if (link is not null) link.Text = WaitWords(n);
             });
         var options = new[]
         {
-            new SentenceLinkOption("then", seconds == 0, () => SetWait(action, 0)),
-            new SentenceLinkOption("then wait", seconds > 0, () => SetWait(action, seconds > 0 ? seconds : Timing.AutomationDefaultWaitSeconds)),
+            new SentenceLinkOption("then", seconds == 0, () => SetWait(action, 0, otherwise)),
+            new SentenceLinkOption("then wait", seconds > 0, () => SetWait(action, seconds > 0 ? seconds : Timing.AutomationDefaultWaitSeconds, otherwise)),
         };
         return link = new SentenceLink(seconds == 0 ? "then" : WaitWords(seconds), options, amount);
     }
 
     private static string WaitWords(int seconds) => $"then wait {seconds} s";
 
-    private void SetWait(int action, int seconds)
+    private void SetWait(int action, int seconds, bool otherwise = false)
     {
-        Rule.SetWaitBefore(action, seconds);
+        if (otherwise) Rule.SetOtherwiseWaitBefore(action, seconds); else Rule.SetWaitBefore(action, seconds);
         Save();
     }
 
@@ -272,10 +360,10 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
             tags.Add(new TagItem($"Waiting for {waiting}", Tip: $"Started after the PC woke or you logged in: it waits for the network and {waiting} to answer, then runs its steps."));
         if (_service.PausedWhyOf(Rule) is { } paused) tags.Add(new TagItem("Paused", TagTone.Caution, paused));
         if (!IsBlock && Rule.Trigger.Length == 0) tags.Add(new TagItem("Needs a trigger", Tip: "Choose what starts it (the first block)."));
-        if (IsBlock && Rule.Conditions.Count == 0) tags.Add(new TagItem("Needs a condition", Tip: "Choose when it blocks (the first block)."));
+        if (IsBlock && Rule.Trigger.Length == 0 && Rule.Conditions.Count == 0) tags.Add(new TagItem("Needs a condition", Tip: "Choose when it blocks (the first block)."));
         if (!IsBlock && Rule.AllTriggers.Any(AutomationTriggers.IsHotkey) && _action is { Gesture.Length: 0 })
             tags.Add(new TagItem("Needs a hotkey", Tip: "Click \"set keys\" and press the keys that start it."));
-        if (Rule.Actions.Count == 0) tags.Add(new TagItem("Needs an action", Tip: IsBlock ? "Choose what it blocks." : "Choose what it does."));
+        if (Rule.Actions.Count == 0 && Rule.OtherwiseActions.Count == 0) tags.Add(new TagItem("Needs an action", Tip: IsBlock ? "Choose what it blocks." : "Choose what it does."));
         var (missingTrigger, missingAction) = _service.MissingOf(Rule);
         if (missingTrigger) tags.Add(new TagItem("Trigger missing", TagTone.Caution, "A state or action it starts from is gone (a device was removed?), so it never starts from that. Choose another."));
         if (missingAction) tags.Add(new TagItem("Action missing", TagTone.Caution, IsBlock ? "An action it blocks is gone." : "An action it does is gone, so that step is skipped. Choose another."));
@@ -297,6 +385,7 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
     {
         RuleSlotKind.Trigger => slot.Index == 0 ? Rule.Trigger : Rule.MoreTriggers[slot.Index - 1],
         RuleSlotKind.Condition => Rule.Conditions[slot.Index],
+        RuleSlotKind.OtherwiseStep => Rule.OtherwiseActions[slot.Index],
         _ => Rule.Actions[slot.Index],
     };
 
@@ -304,17 +393,16 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
     public (string Title, PickerModel Model) PickerFor(RuleSlot slot)
     {
         var stored = StoredAt(slot);
-        // The trigger list follows the live master lists of states and actions while the window is open. Only the first trigger can be the
-        // rule's hotkey (that is the rule's own action), so the "or" ones are offered without it.
-        if (slot.Kind == RuleSlotKind.Trigger)
+        // The trigger list follows the live master lists of states and actions while the window is open. Only the first trigger of a
+        // Do rule can be the rule's hotkey (that is the rule's own action), so "+ or", "+ and" and Block rules are offered without it.
+        if (slot.Kind is RuleSlotKind.Trigger or RuleSlotKind.Condition)
         {
-            var list = _service.TriggerList(stored, withHotkey: slot.Index == 0);
-            return (list.Title, PickerModel.Following(list, stored, "trigger"));
+            var current = slot.Kind == RuleSlotKind.Trigger ? stored : string.Empty;
+            var list = _service.TriggerList(current, withHotkey: !IsBlock && slot.Index == 0);
+            return (list.Title, PickerModel.Following(list, current, "trigger"));
         }
-        var (choices, noun) = slot.Kind == RuleSlotKind.Condition
-            ? (_service.ConditionChoices(Rule, slot.IsNew ? null : stored), "condition")
-            : (_service.StepChoices(Rule), PickerModel.ActionNoun);
-        return (PickerModel.ChooseTitle(slot.IsNew, noun), PickerModel.On(choices, stored, noun));
+        var choices = _service.StepChoices(Rule);
+        return (PickerModel.ChooseTitle(slot.IsNew, PickerModel.ActionNoun), PickerModel.On(choices, stored, PickerModel.ActionNoun));
     }
 
 
@@ -322,7 +410,7 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
     public void TakeLive(RuleSlot slot, PickResult pick)
     {
         var stored = pick.Stored;
-        if (slot.Kind == RuleSlotKind.Step && !IsBlock && AutomationSteps.NeedsApproval(stored)) return;
+        if ((slot.Kind is RuleSlotKind.Step or RuleSlotKind.OtherwiseStep) && !IsBlock && AutomationSteps.NeedsApproval(stored)) return;
         Set(slot, stored);
     }
 
@@ -331,7 +419,7 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
     {
         if (pick.Choice.ParamHint is not null && (pick.Parameter ?? string.Empty).Trim().Length == 0 && !AutomationTriggers.AllowsEmptyText(pick.Choice.Spec)) return;
         var stored = pick.Stored;
-        if (slot.Kind == RuleSlotKind.Step && !IsBlock && AutomationSteps.NeedsApproval(stored)
+        if ((slot.Kind is RuleSlotKind.Step or RuleSlotKind.OtherwiseStep) && !IsBlock && AutomationSteps.NeedsApproval(stored)
             && !await _service.Approvals.AskAsync(stored, new DialogMessage("Allow this program?", "The rule opens this each time it runs. Changing it later asks again.",
                 "Allow", RuleSteps.Describe(stored), ShowDetails: true))) return;
         Set(slot, stored);
@@ -340,16 +428,21 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
 
     private void Set(RuleSlot slot, string picked)
     {
-        var stored = slot.Kind == RuleSlotKind.Trigger ? AutomationTriggers.Tidy(picked) : picked;
+        var stored = slot.Kind is RuleSlotKind.Trigger or RuleSlotKind.Condition ? AutomationTriggers.Tidy(picked) : picked;
         switch (slot.Kind)
         {
-            case RuleSlotKind.Trigger when slot.IsNew: Rule.MoreTriggers.Add(stored); break;
+            case RuleSlotKind.Trigger when slot.IsNew: Rule.AddTrigger(stored, slot.Index == -2 ? AutomationJoins.And : AutomationJoins.Or); break;
             case RuleSlotKind.Trigger when slot.Index == 0: Rule.Trigger = stored; break;
             case RuleSlotKind.Trigger: Rule.MoreTriggers[slot.Index - 1] = stored; break;
-            case RuleSlotKind.Condition when slot.IsNew: Rule.AddCondition(stored); break;
-            case RuleSlotKind.Condition: Rule.Conditions[slot.Index] = stored; break;
+            case RuleSlotKind.Condition:
+                Rule.RemoveCondition(slot.Index);
+                Rule.AddTrigger(stored, AutomationJoins.And);
+                break;
             case RuleSlotKind.Step when slot.IsNew: Rule.AddAction(stored); break;
-            default: Rule.Actions[slot.Index] = stored; break;
+            case RuleSlotKind.Step: Rule.Actions[slot.Index] = stored; break;
+            case RuleSlotKind.OtherwiseStep when slot.IsNew: Rule.AddOtherwiseAction(stored); break;
+            case RuleSlotKind.OtherwiseStep: Rule.OtherwiseActions[slot.Index] = stored; break;
+            default: throw new ArgumentOutOfRangeException(nameof(slot), "Unknown rule slot");
         }
         Save();
     }
@@ -362,7 +455,9 @@ public sealed partial class AutomationItem : ObservableObject, IEditorItem, IDis
         {
             case RuleSlotKind.Trigger: Rule.RemoveTrigger(slot.Index); break;
             case RuleSlotKind.Condition: Rule.RemoveCondition(slot.Index); break;
-            default: Rule.RemoveAction(slot.Index); break;
+            case RuleSlotKind.OtherwiseStep: Rule.RemoveOtherwiseAction(slot.Index); break;
+            case RuleSlotKind.Step: Rule.RemoveAction(slot.Index); break;
+            default: throw new ArgumentOutOfRangeException(nameof(slot), "Unknown rule slot");
         }
         Save();
     }

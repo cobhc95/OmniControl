@@ -30,7 +30,7 @@ One Windows app for your displays, sound, smart plugs, mouse, trackpad, other PC
 </tr>
 <tr>
 <td><a href="docs/screenshots/mouse.png"><img src="docs/screenshots/mouse.png" alt="Mouse and Trackpad page"></a><br><sub>Mouse and Trackpad</sub></td>
-<td><a href="docs/screenshots/automation.png"><img src="docs/screenshots/automation.png" alt="Automation page"></a><br><sub>Automation: rules and blocks</sub></td>
+<td><a href="docs/screenshots/automation.png"><img src="docs/screenshots/automation.png" alt="Automation page"></a><br><sub>Automation: When / Only if / Do / Otherwise rules</sub></td>
 <td><a href="docs/screenshots/actions-hotkeys.png"><img src="docs/screenshots/actions-hotkeys.png" alt="Actions and Hotkeys window"></a><br><sub>Actions and Hotkeys</sub></td>
 </tr>
 <tr>

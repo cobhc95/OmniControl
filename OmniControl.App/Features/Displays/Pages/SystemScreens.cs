@@ -10,6 +10,7 @@ internal sealed class SystemScreens
     public SystemScreens(IHardwareWatches watches) => _watches = watches;
 
     public bool IsOff => _watches.Screens == ScreenLight.Off;
+    public bool? On => _watches.Screens == ScreenLight.Unknown ? null : !IsOff;
 
     /// Switches every screen on (the same as the input that wakes them); runs off the UI thread.
     public void WakeUp() => Task.Run(() => Guard.Run("Turning the displays on", () => PowerCommands.TurnOnDisplays()));

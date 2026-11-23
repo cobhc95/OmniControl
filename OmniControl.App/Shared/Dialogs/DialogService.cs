@@ -12,10 +12,12 @@ public sealed class DialogService
     public async Task<bool> AskAsync(DialogMessage message) => await ChooseAsync(message) == DialogAnswer.Confirm;
 
     /// Asks for one line of text (<paramref name="message"/> with its <see cref="DialogMessage.Input"/> set); the trimmed text, or null when the user cancelled.
-    public async Task<string?> AskTextAsync(DialogMessage message)
+    public Task<string?> AskTextAsync(DialogMessage message) => AskTextAsync(message, null);
+
+    public static async Task<string?> AskTextAsync(DialogMessage message, Window? owner)
     {
         var window = new MessageWindow(message);
-        return await window.AskAsync() == DialogAnswer.Confirm ? window.Typed : null;
+        return await window.AskAsync(owner) == DialogAnswer.Confirm ? window.Typed : null;
     }
 
     /// Shows <paramref name="message"/> with its two answers; which one the user chose, or Cancel.

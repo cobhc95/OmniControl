@@ -35,7 +35,7 @@
                                               Decimals="{x:Static osd:OsdDuration.Decimals}" VerticalAlignment="Center">
                                 <TextBlock Classes="muted" Text="{Binding SecondsText}" MinWidth="{StaticResource SliderValueMinWidth}" TextAlignment="Right" />
                             </pages:NumberText>
-                            <Button Grid.Column="3" Tag="scope" Classes="removebadge" Command="{Binding RemoveCommand}" ToolTip.Tip="Remove this exception" VerticalAlignment="Center">
+                            <Button Grid.Column="3" Tag="scope" Classes="xbtn" Command="{Binding RemoveCommand}" ToolTip.Tip="Remove this exception" VerticalAlignment="Center">
                                 <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
                             </Button>
                         </Grid>

@@ -49,8 +49,8 @@ public static partial class AutomationTriggers
         StateKind.OnOff => new[] { ActionOption.Choice(WhenKey, WhenLabel, StateTriggerMath.WhensOf(StateKind.OnOff)).Worded(state.Wording?.ByValue) },
         StateKind.Level => new[]
         {
-            ActionOption.Choice(WhenKey, WhenLabel, StateTriggerMath.WhensOf(StateKind.Level)),
-            ActionOption.Number(LevelKey, "Value", (state.Min + state.Max) / 2, state.Min, state.Max, 1, state.Unit.Length > 0 ? " " + state.Unit : string.Empty),
+            ActionOption.Choice(WhenKey, WhenLabel, state.Id == IdleStateId ? new[] { StateTriggerMath.AtLeast, StateTriggerMath.Below } : StateTriggerMath.WhensOf(StateKind.Level)),
+            state.Id == IdleStateId ? IdleMinutes with { Key = LevelKey } : ActionOption.Number(LevelKey, "Value", (state.Min + state.Max) / 2, state.Min, state.Max, 1, state.Unit.Length > 0 ? " " + state.Unit : string.Empty),
         },
         // A choice list can change order (devices come and go), so the picked value is always stored: the default is a placeholder.
         _ => choices.Count == 0 ? Array.Empty<ActionOption>() : new[] { ActionOption.Choice(ChoiceKey, "Becomes", choices.Prepend(ChooseValue).ToList()) },
@@ -83,6 +83,8 @@ public static partial class AutomationTriggers
     private static (string Category, string Part, ActionSection? Place) HomeOf(StateEntry state) => state.Group switch
     {
         ActionSections.Power => (StartupPower, PcPart, PcPlace(StartupPower)),
+        Clock => (Clock, PcPart, PcPlace(Clock)),
+        Usb => (Usb, PcPart, PcPlace(Usb)),
         Programs => (Programs, PcPart, PcPlace(Programs)),
         _ => (state.Group, PagesPart, null),
     };
@@ -152,12 +154,16 @@ public static partial class AutomationTriggers
         return StateTriggerMath.Fires(change.Entry.Kind, change.Before, change.After, when, level, choice);
     }
 
-    /// True while a state trigger's condition holds now (its state is on, above its value...) or the clock is in a window; never for any other trigger, which is a moment.
+    /// True for a one-shot state trigger (fires on occurrence, never holds over time).
+    public static bool IsOneShot(string stored, ITriggerSources sources) =>
+        MouseAction.Parse(stored) is { Id: StateChanges } trigger && sources.State(trigger.Param)?.OneShot == true;
+
+    /// True while a state trigger's condition holds now (its state is on, above its value...) or the clock is in a window; never for a one-shot state or other moment trigger.
     public static bool HoldsNow(string stored, ITriggerSources sources)
     {
         var trigger = MouseAction.Parse(stored);
         if (trigger.Id == Between) return AutomationConditions.InWindow(trigger.Options, DateTime.Now);
-        if (trigger.Id != StateChanges || sources.State(trigger.Param) is not { } state || ConditionOf(state, trigger.Options) is not (var when, var level, var choice)) return false;
+        if (trigger.Id != StateChanges || sources.State(trigger.Param) is not { OneShot: false } state || ConditionOf(state, trigger.Options) is not (var when, var level, var choice)) return false;
         return StateTriggerMath.Holds(state.Kind, sources.Now(state.Id), when, level, choice);
     }
 
@@ -199,6 +205,20 @@ public static partial class AutomationTriggers
     /// The stored state trigger for <paramref name="stateId"/> and one of <see cref="StateTriggerMath.WhensOf"/> (a turn on is stored without its setting, as the picker does).
     public static string StateTrigger(string stateId, string when) =>
         when == StateTriggerMath.TurnsOn ? $"{StateChanges}:{stateId}" : $"{StateChanges}:{stateId}|{WhenKey}={Uri.EscapeDataString(when)}";
+
+    internal const string IdleStateId = "pc.idle.minutes";
+
+    internal static string FromLegacyPcTrigger(string stored)
+    {
+        var trigger = MouseAction.Parse(stored);
+        return trigger.Id switch
+        {
+            OnBattery => StateTrigger(PowerStates.OnBattery, StateTriggerMath.TurnsOn),
+            PluggedIn => StateTrigger(PowerStates.OnBattery, StateTriggerMath.TurnsOff),
+            Idle => $"{StateTrigger(IdleStateId, StateTriggerMath.AtLeast)};{LevelKey}={trigger.Options.Int(IdleMinutes)}",
+            _ => stored,
+        };
+    }
 
     /// A trigger as it is kept once picked: a program typed by name is stored by its identity, as the program states are ("Notepad.exe" is "notepad").
     public static string Tidy(string stored)

@@ -3,7 +3,7 @@ using OmniControl.App.Features.States;
 
 namespace OmniControl.App.Features.Automation;
 
-/// Rules saved before programs were states followed "program.start:name" and "program.close:name" triggers. Each becomes the program's state
+/// Rules saved before PC facts were states used fixed triggers. A program trigger becomes the program's state
 /// with the matching setting ("program.start:chrome" is "state:program.chrome" turning on, "program.close:chrome" turning off), which fires
 /// at the same moments: the look that read the running programs now tells the state, and a program already running when a rule is switched
 /// on still counts as a baseline, never as starting. Run at every load of the rules (start-up, an import), idempotent, saved once.
@@ -11,7 +11,7 @@ public static class ProgramTriggerMigration
 {
     private const string LegacyStart = "program.start", LegacyClose = "program.close";
 
-    /// Rewrites the program triggers of <paramref name="rules"/>; the number of triggers changed. A trigger with no program name (none can be
+    /// Rewrites the old PC triggers of <paramref name="rules"/>; the number of triggers changed. A trigger with no program name (none can be
     /// made any more) stays as it was.
     public static int Run(IEnumerable<AutomationRule> rules)
     {
@@ -39,7 +39,7 @@ public static class ProgramTriggerMigration
     public static string Converted(string stored)
     {
         var trigger = MouseAction.Parse(stored);
-        if (trigger.Id is not (LegacyStart or LegacyClose)) return stored;
+        if (trigger.Id is not (LegacyStart or LegacyClose)) return AutomationTriggers.FromLegacyPcTrigger(stored);
         var id = ProgramStates.IdOf(trigger.Param);
         if (id == ProgramStates.Prefix) return stored;
         var when = trigger.Id == LegacyStart ? StateTriggerMath.TurnsOn : StateTriggerMath.TurnsOff;

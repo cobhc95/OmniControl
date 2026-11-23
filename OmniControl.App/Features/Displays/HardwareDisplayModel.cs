@@ -75,7 +75,6 @@ internal sealed partial class HardwareDisplayModel
     /// Asks the display what it supports, off the UI thread.
     public void Start()
     {
-        Orientation.Start();
         Guard.OffUi("Displays: reading a monitor's features", () =>
         {
             var capabilities = _access.Probe();

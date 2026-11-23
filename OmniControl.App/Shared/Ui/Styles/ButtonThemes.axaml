@@ -48,12 +48,6 @@
             <Style Selector="^.pill.cog"><Setter Property="Padding" Value="7,0" /><Setter Property="MinWidth" Value="24" /></Style>
             <!-- A one-character pill (the - and + arrows of a number setting) -->
             <Style Selector="^.pill.glyph"><Setter Property="Padding" Value="9,0" /></Style>
-            <!-- The round X pill (remove / delete beside a row or name box): an 18 px circle holding a 9 px drawn cross; after .glyph so it wins -->
-            <Style Selector="^.pill.closex">
-                <Setter Property="Padding" Value="0" />
-                <Setter Property="Width" Value="{StaticResource CloseXSize}" />
-                <Setter Property="Height" Value="{StaticResource CloseXSize}" />
-            </Style>
             <Style Selector="^.pill.cog.active /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
@@ -113,6 +107,38 @@
             <!-- Accent words keep their contrast on hover and press: the subtle wash (a .custom pill keeps its accent wash) -->
             <Style Selector="^.pill.accentline:not(.custom):pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushHoverSubtle}" /></Style>
             <Style Selector="^.pill.accentline:not(.custom):pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BrushPressedSubtle}" /></Style>
+        </ControlTheme>
+
+        <!-- Button.xbtn: THE X remove button (rows, tray tiles, search boxes): a 16 px badge centred in a 20 px hit (2 px transparent rim),
+             in control fill/edge with a thin drawn cross; hover and keyboard focus turn the cross and edge to the accent (focus 2 px), so nothing moves -->
+        <ControlTheme x:Key="XButton" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
+            <Style Selector="^.xbtn">
+                <Setter Property="Width" Value="{StaticResource XButtonHit}" />
+                <Setter Property="Height" Value="{StaticResource XButtonHit}" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Foreground" Value="{DynamicResource BrushMuted}" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="Template">
+                    <ControlTemplate>
+                        <Panel Background="Transparent">
+                            <Border Name="PART_Badge" Width="{StaticResource XButtonSize}" Height="{StaticResource XButtonSize}"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                                    CornerRadius="{StaticResource XButtonRadius}" BorderThickness="1"
+                                    Background="{DynamicResource BrushControlFill}" BorderBrush="{DynamicResource BrushControlEdge}" />
+                            <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Panel>
+                    </ControlTemplate>
+                </Setter>
+            </Style>
+            <Style Selector="^.xbtn:disabled"><Setter Property="Opacity" Value="0.45" /></Style>
+            <Style Selector="^.xbtn:pointerover, ^.xbtn:focus-visible"><Setter Property="Foreground" Value="{DynamicResource BrushAccent}" /></Style>
+            <Style Selector="^.xbtn:pointerover /template/ Border#PART_Badge"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
+            <Style Selector="^.xbtn:focus-visible /template/ Border#PART_Badge">
+                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+                <Setter Property="BorderThickness" Value="2" />
+            </Style>
         </ControlTheme>
 
         <!-- Button.statetoggle (Pages/StateButtonItem): an on/off state shown as its icon and words on a card's extras line, filling its share
@@ -378,4 +404,5 @@
     <Style Selector="Button.primary"><Setter Property="Theme" Value="{StaticResource PrimaryButton}" /></Style>
     <Style Selector="Button.link"><Setter Property="Theme" Value="{StaticResource LinkButton}" /></Style>
     <Style Selector="Button.tab"><Setter Property="Theme" Value="{StaticResource TabButton}" /></Style>
+    <Style Selector="Button.xbtn"><Setter Property="Theme" Value="{StaticResource XButton}" /></Style>
 </Styles>

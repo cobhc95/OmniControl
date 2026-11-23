@@ -42,13 +42,16 @@ public sealed partial class AutomationService
 
     private void StartLive()
     {
-        _states.Register(PowerStates.Make().Append(PausedState()));
+        _states.Register(PowerStates.Make().Append(PausedState()).Append(new StateEntry(AutomationTriggers.IdleStateId, "PC idle time", AutomationTriggers.Clock, StateKind.Level,
+            () => _idleMinutes is { } minutes ? StateValue.Of(minutes) : null, "Windows' time since the last keyboard or mouse input.",
+            Max: AutomationTriggers.IdleMinutes.Max, Unit: "min", Keywords: "idle inactive away last input screen saver")));
         _run.Ran += OnActionRan;
         _states.ValueChanged += OnStateChanged;
         _hotkeys.Actions.CollectionChanged += OnActionsListChanged;
         _states.ListChanged += OnListsChanged;
         _hotkeys.Moved += OnActionsMoved;
         _states.Moved += OnStatesMoved;
+        _watcher.DevicesSeen += OnUsbSeen;
         Changed += ShareWatched;
         ShareWatched();
         SyncPrograms();
@@ -59,12 +62,16 @@ public sealed partial class AutomationService
     {
         IEnumerable<string> ProgramsOf(IEnumerable<AutomationRule> rules) =>
             rules.SelectMany(r => r.AllTriggers).Select(AutomationTriggers.ProgramStateOf).OfType<string>().Distinct().ToList();
-        _programs.Follow(ProgramsOf(Settings.Rules).ToList(), ProgramsOf(Settings.Rules.Where(Needs)).ToList());
+        _programs.Follow(ProgramsOf(Settings.Rules).ToList(), ProgramsOf(Settings.Rules.Where(Watches)).ToList());
     }
 
     /// Tells the master list of states which ones the active rules' triggers follow (a reading is then kept fresh for them).
-    private void ShareWatched() => _states.Watch(nameof(AutomationService), Settings.Rules.Where(Needs).SelectMany(r => r.AllTriggers)
-        .Select(MouseAction.Parse).Where(t => t.Id == AutomationTriggers.StateChanges).Select(t => t.Param));
+    private void ShareWatched()
+    {
+        _states.Watch(nameof(AutomationService), Settings.Rules.Where(Watches).SelectMany(r => r.AllTriggers)
+            .Select(MouseAction.Parse).Where(t => t.Id == AutomationTriggers.StateChanges).Select(t => t.Param));
+        SyncUsb();
+    }
 
     private void StopLive()
     {
@@ -74,9 +81,12 @@ public sealed partial class AutomationService
         _states.ListChanged -= OnListsChanged;
         _hotkeys.Moved -= OnActionsMoved;
         _states.Moved -= OnStatesMoved;
+        _watcher.DevicesSeen -= OnUsbSeen;
+        _lookingAtUsb = false;
         Changed -= ShareWatched;
         _states.Watch(nameof(AutomationService), Array.Empty<string>());
-        _states.Unregister(PowerStates.Ids.Append(PausedId));
+        _states.Unregister(PowerStates.Ids.Append(PausedId).Append(AutomationTriggers.IdleStateId));
+        _states.Unregister(_states.States.Where(s => s.Id.StartsWith(UsbPrefix, StringComparison.Ordinal)).Select(s => s.Id));
         _programs.Release();
     }
 
@@ -93,8 +103,8 @@ public sealed partial class AutomationService
         void Offer() => _programs.Offer(programs.Found, programs.Running);
         return new(AutomationTriggers.PickTitle, AutomationTriggers.SearchText, new LiveList(
             () => AutomationTriggers.Choices(_sources, keep, _programs.AddAsync).Where(c => withHotkey || c.Spec != AutomationTriggers.Hotkey).ToList(),
-            h => { TriggersChanged += h; ValuesShown += h; programs.Ready += Offer; _programs.PickerOpened(); },
-            h => { TriggersChanged -= h; ValuesShown -= h; programs.Ready -= Offer; _programs.PickerClosed(); }));
+            h => { TriggersChanged += h; ValuesShown += h; programs.Ready += Offer; _programs.PickerOpened(); _usbPickers++; SyncUsb(); },
+            h => { TriggersChanged -= h; ValuesShown -= h; programs.Ready -= Offer; _programs.PickerClosed(); _usbPickers--; SyncUsb(); }));
     }
 
     // Raised (once per batch) when a state's value changed, only while a picker shows the values: nothing listens otherwise.
@@ -118,7 +128,7 @@ public sealed partial class AutomationService
     /// What a rule names that is not registered now: its trigger, and an action it does or blocks (a removed device, a deleted script).
     public (bool Trigger, bool Action) MissingOf(AutomationRule rule) =>
         (rule.AllTriggers.Any(t => AutomationTriggers.IsMissing(t, _sources)),
-         rule.Actions.Any(a => AutomationSteps.ActionIdOf(a) is { } id && _hotkeys.Find(id) is null));
+         rule.Actions.Concat(rule.OtherwiseActions).Any(a => AutomationSteps.ActionIdOf(a) is { } id && _hotkeys.Find(id) is null));
 
     private void OnActionsListChanged(object? sender, NotifyCollectionChangedEventArgs e) => OnListsChanged();
 
@@ -141,8 +151,16 @@ public sealed partial class AutomationService
 
     private void OnActionRan(HotkeyAction action, RunChain? chain)
     {
-        foreach (var rule in Settings.Rules.Where(r => Needs(r) && !IsWhile(r)).ToList())
-            if (FiresWith(rule, t => AutomationTriggers.FiresOn(t, action, _sources))) StartFrom(rule, chain);
+        foreach (var rule in Settings.Rules.Where(r => Needs(r) && (!IsWhile(r) || r.Feature.Length > 0)).ToList())
+        {
+            var fires = (string t) => AutomationTriggers.FiresOn(t, action, _sources);
+            if (!IsWhile(rule) && HasOtherwise(rule) && FiresAny(rule, fires))
+            {
+                if (TopHoldsWhenFired(rule, fires, NewContext())) StartFrom(rule, chain);
+                else StartOtherwiseFrom(rule, chain);
+            }
+            else if (FiresWith(rule, fires)) StartFrom(rule, chain);
+        }
     }
 
     private void OnStateChanged(StateChange change)
@@ -151,7 +169,30 @@ public sealed partial class AutomationService
         if (SessionOff) return;
         StateSeen?.Invoke();
         foreach (var rule in Settings.Rules.Where(r => Needs(r) && !IsWhile(r)).ToList())
-            if (FiresWith(rule, t => AutomationTriggers.FiresOn(t, change))) StartFromState(rule, change.Chain);
+        {
+            var fires = (string t) => AutomationTriggers.FiresOn(t, change);
+            if (HasOtherwise(rule) && FiresAny(rule, fires))
+            {
+                if (TopHoldsWhenFired(rule, fires, NewContext())) StartFromState(rule, change.Chain);
+                else StartOtherwiseFrom(rule, change.Chain);
+            }
+            else if (FiresWith(rule, fires)) StartFromState(rule, change.Chain);
+        }
+        if (change.Entry.OneShot)
+        {
+            var recorded = false;
+            foreach (var rule in Settings.Rules.Where(r => Needs(r) && r.Feature.Length > 0).ToList())
+                if (FiresWith(rule, t => AutomationTriggers.FiresOn(t, change)))
+                {
+                    rule.LastRan = DateTime.Now;
+                    recorded = true;
+                }
+            if (recorded)
+            {
+                Settings.Save();
+                Changed?.Invoke();
+            }
+        }
         LookAtHeld();
     }
 
@@ -166,10 +207,21 @@ public sealed partial class AutomationService
         return TryStart(rule, RunChain.After(chain, rule.Id));
     }
 
+    /// Starts a rule's Otherwise steps: its trigger fired but its top line did not hold. Same chain limit as a normal start.
+    private bool StartOtherwiseFrom(AutomationRule rule, RunChain? chain)
+    {
+        if (!RunChain.MayStart(chain, rule.Id, Timing.AutomationChainMax))
+        {
+            Log($"rule \"{rule.Name}\" not started: it would start itself again or make a chain of more than {Timing.AutomationChainMax} rules");
+            return false;
+        }
+        return TryStart(rule, RunChain.After(chain, rule.Id), otherwise: true);
+    }
+
     private void OnActionsMoved(IReadOnlyDictionary<string, string> moved) =>
         Follow(rule =>
         {
-            var changed = MovedActions.RewriteAll(rule.Actions, moved);
+            var changed = MovedActions.RewriteAll(rule.Actions, moved) | MovedActions.RewriteAll(rule.OtherwiseActions, moved);
             return RewriteTriggers(rule, AutomationTriggers.ActionRuns, moved) | changed;
         });
 

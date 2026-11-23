@@ -2,36 +2,11 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
         xmlns:g="using:OmniControl.App.Features.Resources.Gadget">
-    <!-- MASTER designs the tray flyout (Tray/TrayFlyoutWindow) shares with other windows: its tile, corner mark and remove badge, the gadget's
+    <!-- MASTER designs the tray flyout (Tray/TrayFlyoutWindow) shares with other windows: its tile and corner mark, the gadget's
          cells. The panel's own pieces are in Features/Tray/TrayFlyoutStyles.axaml, styled only in its window. Sizes: Tray* in App.axaml. Included last.
-         The Button looks here (removebadge, tile, statepower) are control themes (the rules: Styles/ButtonThemes.axaml); their notes and child
+         The Button looks here (tile, statepower) are control themes (the rules: Styles/ButtonThemes.axaml); their notes and child
          selectors are below. -->
     <Styles.Resources>
-        <ControlTheme x:Key="RemoveBadgeButton" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
-            <Style Selector="^.removebadge">
-                <Setter Property="Width" Value="{StaticResource RemoveBadgeHit}" />
-                <Setter Property="Height" Value="{StaticResource RemoveBadgeHit}" />
-                <Setter Property="Padding" Value="0" />
-                <Setter Property="Foreground" Value="{DynamicResource BrushMuted}" />
-                <Setter Property="Background" Value="Transparent" />
-                <Setter Property="VerticalAlignment" Value="Center" />
-                <Setter Property="Template">
-                    <ControlTemplate>
-                        <Panel Background="Transparent">
-                            <Border Name="PART_Badge" Width="{StaticResource RemoveBadgeSize}" Height="{StaticResource RemoveBadgeSize}"
-                                    CornerRadius="{StaticResource RemoveBadgeRadius}" BorderThickness="1"
-                                    Background="{DynamicResource BrushControlFill}" BorderBrush="{DynamicResource BrushControlEdge}" />
-                            <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
-                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Panel>
-                    </ControlTemplate>
-                </Setter>
-            </Style>
-            <Style Selector="^.removebadge:pointerover, ^.removebadge:focus-visible"><Setter Property="Foreground" Value="{DynamicResource BrushDanger}" /></Style>
-            <Style Selector="^.removebadge:pointerover /template/ Border#PART_Badge"><Setter Property="BorderBrush" Value="{DynamicResource BrushHoverEdge}" /></Style>
-            <Style Selector="^.removebadge:focus-visible /template/ Border#PART_Badge"><Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" /></Style>
-        </ControlTheme>
-
         <ControlTheme x:Key="TileButton" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
             <Style Selector="^.tile">
                 <Setter Property="HorizontalAlignment" Value="Stretch" />
@@ -102,7 +77,6 @@
             </Style>
         </ControlTheme>
     </Styles.Resources>
-    <Style Selector="Button.removebadge"><Setter Property="Theme" Value="{StaticResource RemoveBadgeButton}" /></Style>
     <Style Selector="Button.tile"><Setter Property="Theme" Value="{StaticResource TileButton}" /></Style>
     <Style Selector="Button.statepower"><Setter Property="Theme" Value="{StaticResource StatePowerButton}" /></Style>
 
@@ -118,14 +92,6 @@
         <Setter Property="SizeToContent" Value="WidthAndHeight" />
     </Style>
 
-    <!-- The remove badge: THE small remove cross of a tile or a row. A round raised chip with a thin edge
-         (RemoveBadgeSize) inside a clickable square (RemoveBadgeHit); the drawn cross (RemoveBadgeCross) is muted and turns red on hover. -->
-    <Style Selector="Button.removebadge > Path.glyph">
-        <Setter Property="Width" Value="{StaticResource RemoveBadgeCross}" />
-        <Setter Property="Height" Value="{StaticResource RemoveBadgeCross}" />
-        <Setter Property="StrokeThickness" Value="1.5" />
-        <Setter Property="Stroke" Value="{Binding $parent[Button].Foreground}" />
-    </Style>
     <!-- A tile: a Windows-style button (TrayTileHeight high, as wide as its cell of the tile grid: TrayTileColumns, even TrayTileGap gaps)
          holding its glyph, with its name UNDER it (StackPanel.traytile > TextBlock.wordtext). The 1 px edge is always there, so lighting, hover and
          focus change colours only. .on = its state is on (filled accent, the glyph in BrushOnAccent) -->

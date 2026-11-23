@@ -1,11 +1,13 @@
 using Avalonia.Input;
 using Avalonia.VisualTree;
+using Avalonia.Controls.ApplicationLifetimes;
+using OmniControl.Core.Engine.Mouse;
 using OmniControl.App.Features.Hotkeys.Picker;
 
 namespace OmniControl.App.Features.Tray;
 
 /// Layout and wiring only: the tray flyout's window. It opens beside the tray at the click (<see cref="TrayPlacement"/>, on the screen and
-/// at the DPI of the click, placed again whenever its size or scaling changes), hides when it loses the focus (a click anywhere else) or on
+/// at the DPI of the click, placed again whenever its size or scaling changes), hides on an outside press or on
 /// Esc, and is hidden rather than closed until the app ends. Tab and Shift+Tab go round its controls.
 /// The pickers it opens are its own windows, so it stays open while one is up. Sliders and tiles are dragged to another place by the shared <see cref="PanelDragReorder"/>
 /// (Esc ends a drag before it hides the panel). Mouse first for the crosses, the drag and the right-click menu.
@@ -14,6 +16,8 @@ public partial class TrayFlyoutWindow : Window
     private PixelPoint _click;
     private bool _picking;
     private bool _closing;
+    private bool _listening;
+    private int _showing;
     private Flyout? _openMenu;
     private readonly PanelDragReorder _sliderDrag, _tileDrag;
 
@@ -21,7 +25,13 @@ public partial class TrayFlyoutWindow : Window
     {
         InitializeComponent();
         KeyboardNavigation.SetTabNavigation(this, KeyboardNavigationMode.Cycle);
-        Deactivated += OnDeactivated;
+        Deactivated += (_, _) =>
+        {
+            if (!IsVisible || _picking) return;
+            var showing = _showing;
+            var switching = KeyboardState.SwitchingWindows();
+            Dispatcher.UIThread.Post(() => { if (showing == _showing) CheckFocus(switching); }, DispatcherPriority.Background);
+        };
         SizeChanged += (_, _) => Place();
         ScalingChanged += (_, _) => Place();
         AddHandler(KeyDownEvent, OnPanelKeyDown, RoutingStrategies.Tunnel);
@@ -35,24 +45,33 @@ public partial class TrayFlyoutWindow : Window
 
     private TrayFlyoutModel? Model => DataContext as TrayFlyoutModel;
 
-    /// When it last hid itself (the tray icon's next click within the reopen grace (<see cref="TraySettings.ReopenGraceMs"/>) only closed it).
+    internal event Action<int, int>? OutsideLeftPress;
+
+    /// When an outside press last dismissed the panel (its release must not reopen it).
     public DateTime HiddenAt { get; private set; } = DateTime.MinValue;
 
     /// Shows the flyout beside the tray icon clicked at <paramref name="click"/> (screen pixels) and gives it the keyboard; <paramref name="fromKeyboard"/>: opened by its hotkey, the first item is highlighted.
     public void ShowAt(PixelPoint click, bool fromKeyboard = false)
     {
         _click = click;
+        var showing = ++_showing;
         Model?.Showing();
         if (!IsVisible)
         {
             Measure(Size.Infinity);
             Place(DesiredSize);
             Show();
+            Win32Properties.AddWndProcHookCallback(this, OnWindowMessage);
+            _listening = Guard.Run("Tray panel outside press", () => OutsidePress.Listen(TryGetPlatformHandle()!.Handle, true)) is null;
         }
         Place();
         Activate();
-        if (fromKeyboard) Dispatcher.UIThread.Post(() => Model?.FocusFirst(), DispatcherPriority.Background);
-        else Dispatcher.UIThread.Post(() => KeyboardNavigationHandler.GetNext(this, NavigationDirection.Next)?.Focus(NavigationMethod.Tab));
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (showing != _showing || !IsVisible || !IsActive || _picking || _openMenu is { IsOpen: true }) return;
+            if (fromKeyboard) Model?.FocusFirst();
+            else KeyboardNavigationHandler.GetNext(this, NavigationDirection.Next)?.Focus(NavigationMethod.Tab);
+        }, fromKeyboard ? DispatcherPriority.Background : DispatcherPriority.Normal);
     }
 
     /// Whether the panel is on screen now.
@@ -121,12 +140,13 @@ public partial class TrayFlyoutWindow : Window
     }
 
     /// Hides it as a click elsewhere does.
-    public void Dismiss() => HideNow();
+    public void Dismiss() { if (!_picking) HideNow(); }
 
     /// Ends it for good (the app is exiting).
     public void CloseForGood()
     {
         _closing = true;
+        if (IsVisible) HideNow();
         Close();
     }
 
@@ -143,15 +163,32 @@ public partial class TrayFlyoutWindow : Window
     private void HideNow()
     {
         if (!IsVisible) return;
+        Win32Properties.RemoveWndProcHookCallback(this, OnWindowMessage);
+        if (_listening) Guard.Run("Tray panel outside press", () => OutsidePress.Listen(0, false));
+        _listening = false;
         _openMenu?.Hide();
         Hide();
-        HiddenAt = DateTime.UtcNow;
         Model?.Hidden();
     }
 
-    private void OnDeactivated(object? sender, EventArgs e)
+    private nint OnWindowMessage(nint window, uint message, nint wParam, nint lParam, ref bool handled)
     {
-        if (!_picking) HideNow();
+        if (!_picking && OutsidePress.FromMessage(window, message, lParam) is { } press
+            && !new Rect(Bounds.Size).Contains(this.PointToClient(new PixelPoint(press.X, press.Y))))
+        {
+            HiddenAt = DateTime.UtcNow;
+            HideNow();
+            if (press.Left) OutsideLeftPress?.Invoke(press.X, press.Y);
+        }
+        return 0;
+    }
+
+    private void CheckFocus(bool switching)
+    {
+        if (!IsVisible || IsActive || _picking || OwnedWindows.Any(w => w.IsVisible)) return;
+        // Opening another OmniControl window is deliberate; Explorer, tooltips and the secure desktop can take focus without a click.
+        if (switching || !_listening || (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.Windows.Any(w => w.IsActive))) HideNow();
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
@@ -183,7 +220,7 @@ public partial class TrayFlyoutWindow : Window
     {
         if (sender is not Flyout { Content: MenuRowList rows } menu || Model is not { } model) return;
         if (menu.Target?.DataContext is not ITrayPanelItem item) return;
-        OpenMenu(menu, rows, model.ItemMenu(item, ChangeAction, ChangeIcon));
+        OpenMenu(menu, rows, model.ItemMenu(item, ChangeAction, ChangeIcon, RenameTile));
     }
 
     // The menu closes first (its row was clicked), then the picker opens over the panel.
@@ -198,6 +235,12 @@ public partial class TrayFlyoutWindow : Window
     {
         if (Model is not { } model) return;
         if (await model.ChooseIconAsync(this, item) is { } pick) model.SetIcon(item, pick);
+    });
+
+    private void RenameTile(TrayTileItem item) => Defer(async () =>
+    {
+        if (Model is { } model && await DialogService.AskTextAsync(model.RenameQuestion(item), this) is { } name)
+            model.Rename(item, name);
     });
 
     private void OnRemoveClick(object? sender, RoutedEventArgs e)
@@ -236,6 +279,7 @@ public partial class TrayFlyoutWindow : Window
     /// picking at once, before the posted work runs, because the closing menu or the click itself can already take the focus from it.
     private void Defer(Func<Task> pick)
     {
+        if (_picking || !IsVisible) return;
         _picking = true;
         Dispatcher.UIThread.Post(async () =>
         {
@@ -246,7 +290,7 @@ public partial class TrayFlyoutWindow : Window
             finally
             {
                 _picking = false;
-                Activate();
+                if (IsVisible && !_closing) Activate();
             }
         });
     }

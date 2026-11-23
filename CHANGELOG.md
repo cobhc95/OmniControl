@@ -5,6 +5,23 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+## 0.3.4 (23 Nov 2026)
+
+### ✨ New
+
+- **Automation:** Custom Rules now read as four parts — When / Only if / Do / Otherwise. The Only-if list joins with one "ALL of these" / "ANY of these" choice (a rule with mixed "and"/"or"/"and not" joins keeps its individual join words), and an "Otherwise do …" part with its own steps appears only while the Only-if list is non-empty: its steps run only when a trigger fires and the top line does not hold; when it holds, only the normal steps run.
+- **Mouse and Trackpad / Automation:** Mapped mouse buttons and trackpad gestures now appear in Automation > From other pages as full rules (`When [layer is active] and [input is pressed] do [mapped actions]`), backed by a one-shot button-press state so they record `Ran` on press without double-running, stay live in sync with the Mouse page in both directions, and support `+ then`, `+ and`, `+ or` and `-`. Unmapped ("Default") inputs have no rule, and unmapping an input removes its rule.
+- **Quick panel and Automation:** Rename any tile from its menu; clearing the name restores the original. Rotation tiles reflect the displays' reported orientation. Rotation, screen and picture settings, active warm light, USB presence, battery status and PC idle time are available as triggers and conditions.
+
+### 🛠 Fixed
+
+- **Design:** The X remove buttons are one shared `Button.xbtn` (16px badge in a 20px hit, 5px corners, accent hover, 2px accent focus) everywhere: Automation and mouse rows, Volume and wiring rows, tray tiles, search boxes and the rest. The cross drew large and white because the generic glyph style overrode it.
+
+### ✏️ Renamed and tidied
+
+- **Dialogs:** Message and confirmation windows now use one uniform button style and size (`DialogButtonHeight` × `DialogCloseWidth`) across all foot buttons, with only destructive confirms outlined in red.
+- **Automation:** Removed the separate "Choose a condition" window; `+ and` in Do rules and `+ condition` / `+ and` in Block rules now open the shared "Choose a trigger or state" list (`TriggerList`), and existing stored conditions with a trigger/state equivalent migrate on load.
+
 ## 0.3.3 (23 Nov 2026)
 
 ### ✨ New
@@ -403,4 +420,3 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 - Changed: the screen rotation suggested keys swap Left and Right: Ctrl+Alt+Right = Portrait, Ctrl+Alt+Left = Portrait (flipped). The Window title bar scroll gesture stays off by default.
 - Fixed: searching could show "Something went wrong" and freeze the window (an endless layout loop in the results list); the results' editor column now takes a fixed share of the row instead of sizing itself from every result.
-

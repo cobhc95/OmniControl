@@ -9,19 +9,26 @@ public sealed partial class DisplaysService
 {
     private const string LevelWords = "What the monitor reported when it was read, and every change made here since (a change on the monitor's own buttons is seen at the next read).";
     private const string LaptopNote = "Laptop panel", MonitorNote = "External monitor";
+    private const string ScreensOnStateId = AllScreensId + ".on";
 
     private static string StateId(HardwareDisplayModel display, HardwareLevel level) => $"displays.{display.Id}.{level.Spec.Key}";
+
+    private static string ChoiceId(HardwareDisplayModel display, HardwareChoice choice) => $"displays.{display.Id}.{choice.Feature.Key}";
 
     private void RegisterStates(HardwareDisplayModel display) =>
         _states.Register(DisplayControls.Hardware.Select(level => new StateEntry(StateId(display, level), $"{level.Spec.Label} ({display.Name})", Title,
             StateKind.Level, () => display.LevelOf(level) is { } value ? StateValue.Of(value) : null, LevelWords,
             Heading: Shared.Services.Heading.Join(Title, display.Name), Min: level.Spec.Min, Max: level.Spec.Max, Unit: "%", Keywords: $"monitor display screen {level.Spec.Keywords}",
             Set: value => { if (value.Number is { } number) display.Set(level, (int)Math.Round(number)); }, Short: display.Name, SuggestedIcons: new[] { "sun", "sun-low", "brightness" }, Common: level.Code == VcpCode.Brightness ? CommonGroups.Screens : null,
-            Note: display.IsLaptopPanel ? LaptopNote : MonitorNote)));
+            Note: display.IsLaptopPanel ? LaptopNote : MonitorNote)).Concat(DisplayControls.HardwareChoices.Select(choice =>
+            new StateEntry(ChoiceId(display, choice), $"{choice.Feature.Label} ({display.Name})", Title, StateKind.Choice,
+                () => display.Choice(choice) is { IsAvailable: true } current ? StateValue.Of(current.Selected) : null, LevelWords,
+                Heading: display.Name, Choices: () => display.Choice(choice).Names, Keywords: choice.Feature.Keywords,
+                Note: display.IsLaptopPanel ? LaptopNote : MonitorNote))));
 
     private void ForgetStates(HardwareDisplayModel display)
     {
-        _states.Unregister(DisplayControls.Hardware.Select(level => StateId(display, level)));
+        _states.Unregister(DisplayControls.Hardware.Select(level => StateId(display, level)).Concat(DisplayControls.HardwareChoices.Select(choice => ChoiceId(display, choice))));
         if (_powerStates.Remove(display.Id)) _states.Unregister(PowerId(display));
     }
 
@@ -59,15 +66,20 @@ public sealed partial class DisplaysService
 
     private void NotifyScreenPower()
     {
+        _states.Notify(ScreensOnStateId);
         foreach (var display in _hardware.Where(h => h.HasScreenPower)) _states.Notify(PowerId(display));
         HardwareValuesChanged?.Invoke();
     }
+
+    private void RegisterSystemScreenStates() => _states.Register(new StateEntry(ScreensOnStateId, "Screens on", Title, StateKind.OnOff,
+        () => _systemScreens.On is { } now ? StateValue.Of(now) : null, "What Windows reports for the console's displays together.",
+        Heading: VcpSections.PowerMode, SuggestedIcons: ScreenIcons, Keywords: "all screens display power sleep wake"));
 
     /// A display was read or one of its values changed: its states are read again, and the page (its switches and monitor presets) looks again.
     private void OnDisplayValues()
     {
         foreach (var display in _hardware)
-        foreach (var level in DisplayControls.Hardware) _states.Notify(StateId(display, level));
+            _states.Notify(DisplayControls.Hardware.Select(level => StateId(display, level)).Concat(DisplayControls.HardwareChoices.Select(choice => ChoiceId(display, choice))).ToList());
         NotifyScreenPower();
     }
 }

@@ -321,4 +321,10 @@
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="Margin" Value="0,0,6,6" />
     </Style>
+    <!-- The "Otherwise" word of an automation rule's sentence: the accent, bold, one size up -->
+    <Style Selector="TextBlock.blockword.accent">
+        <Setter Property="Foreground" Value="{DynamicResource BrushAccent}" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="FontSize" Value="{DynamicResource SummaryFontSize}" />
+    </Style>
 </Styles>

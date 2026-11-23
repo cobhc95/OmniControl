@@ -41,10 +41,6 @@
         <Setter Property="StrokeThickness" Value="1.6" />
         <Setter Property="Stroke" Value="{Binding $parent[ContentPresenter].Foreground}" />
     </Style>
-    <Style Selector="Button.pill.closex > Path.glyph">
-        <Setter Property="Width" Value="{StaticResource CloseXCross}" />
-        <Setter Property="Height" Value="{StaticResource CloseXCross}" />
-    </Style>
     <Style Selector="Button.statetoggle > Grid > c|IconGlyph">
         <Setter Property="Width" Value="{StaticResource CardIconSize}" />
         <Setter Property="Height" Value="{StaticResource CardIconSize}" />
@@ -140,6 +136,13 @@
         <Setter Property="StrokeLineCap" Value="Round" />
         <Setter Property="StrokeJoin" Value="Round" />
     </Style>
+    <!-- After the generic Path.glyph, which would otherwise win: the drawn cross of Button.xbtn, thin, in the button's own colour -->
+    <Style Selector="Button.xbtn > Path.glyph">
+        <Setter Property="Width" Value="{StaticResource XButtonCross}" />
+        <Setter Property="Height" Value="{StaticResource XButtonCross}" />
+        <Setter Property="StrokeThickness" Value="1.5" />
+        <Setter Property="Stroke" Value="{Binding $parent[Button].Foreground}" />
+    </Style>
     <Style Selector="WrapPanel.sentence > TextBlock"><Setter Property="FontSize" Value="11" /><Setter Property="VerticalAlignment" Value="Center" /><Setter Property="Foreground" Value="{DynamicResource BrushMuted}" /></Style>
     <Style Selector="WrapPanel.sentence > Button.link"><Setter Property="FontSize" Value="11" /></Style>
     <!-- A line of controls that wraps when narrow, with the same gap after each -->
@@ -148,7 +151,7 @@
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
     <!-- Search results never show a row's remove button (×) -->
-    <Style Selector="ListBox.results vol|VolumeRowView Button.glyph, ListBox.results vol|WiringRowView Button.glyph">
+    <Style Selector="ListBox.results vol|VolumeRowView Button.xbtn, ListBox.results vol|WiringRowView Button.xbtn">
         <Setter Property="IsVisible" Value="False" />
     </Style>
 

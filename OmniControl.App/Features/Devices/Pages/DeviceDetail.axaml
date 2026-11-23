@@ -17,7 +17,7 @@
         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource GapLarge}">
             <vm:DeviceIconView Pickable="True" VerticalAlignment="Center" />
             <TextBox Grid.Column="1" Classes="field" Text="{Binding Name}" Watermark="Name" MinWidth="0" VerticalAlignment="Center" />
-            <Button Grid.Column="2" Classes="pill glyph closex" Command="{Binding RemoveCommand}" ToolTip.Tip="{Binding RemoveTip}" VerticalAlignment="Center">
+            <Button Grid.Column="2" Classes="xbtn" Command="{Binding RemoveCommand}" ToolTip.Tip="{Binding RemoveTip}" VerticalAlignment="Center">
                 <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
             </Button>
         </Grid>

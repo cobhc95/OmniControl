@@ -84,7 +84,7 @@
             </WrapPanel>
         </StackPanel>
 
-        <Button Grid.Column="3" Tag="scope" Classes="pill glyph closex" Command="{Binding Source.RemoveCommand}" IsVisible="{Binding Source.CanForget}"
+        <Button Grid.Column="3" Tag="scope" Classes="xbtn" Command="{Binding Source.RemoveCommand}" IsVisible="{Binding Source.CanForget}"
                 ToolTip.Tip="Remove (forgets its settings)" VerticalAlignment="Center">
             <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
         </Button>

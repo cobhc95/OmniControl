@@ -20,7 +20,7 @@ public sealed partial class DisplaysService
         // The monitors' refresh is the Refresh button's own work (ReloadNow), so a signal does exactly what pressing Refresh does.
         hardware.Register(new HardwareWatch(HardwareWatchId, "Monitors", DisplaySignals, ReloadNow,
             LooksStale: () => MonitorsLookWrong(strict: false), LooksUnsettled: () => MonitorsLookWrong(strict: true), Describe: DescribeMonitors));
-        hardware.Register(new HardwareWatch(SoftwareWatchId, "Displays", DisplaySignals, RescanNow, Describe: DescribeDisplays));
+        hardware.Register(new HardwareWatch(SoftwareWatchId, "Displays", DisplaySignals, RefreshDisplays, Describe: DescribeDisplays));
     }
 
     /// The monitors' check (timer thread; cheap: Windows' display list, and each monitor's answer, which is kept once read). Stale: the

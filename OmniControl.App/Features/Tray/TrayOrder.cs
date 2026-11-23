@@ -1,7 +1,7 @@
 namespace OmniControl.App.Features.Tray;
 
 /// The stored list's side of an edit made on one shown slider or tile (pure, tested): a drag to another place, a remove, a new action or
-/// icon. An element with a <c>*</c> shows one item per match, so before one of its items is edited alone the element is spelt out: one
+/// icon or name. An element with a <c>*</c> shows one item per match, so before one of its items is edited alone the element is spelt out: one
 /// element per shown match, in place, followed by the pattern itself, which then shows only matches that appear later (the shown items
 /// of a list never repeat an id it names on its own, <see cref="TrayTargets"/>). Elements not shown now (an id not registered) keep their place.
 public static class TrayOrder
@@ -31,23 +31,29 @@ public static class TrayOrder
         return elements;
     }
 
-    /// The item at <paramref name="index"/> becomes <paramref name="with"/> in its place, keeping the icon the user gave it.
+    /// The item at <paramref name="index"/> becomes <paramref name="with"/> in its place, keeping its custom icon and name.
     public static List<TrayElement> Replace(IReadOnlyList<TrayElement> list, IReadOnlyList<TrayTarget> shown, int index, TrayElement with)
     {
         var (elements, items) = Expanded(list, shown);
         if (index < 0 || index >= items.Count) return elements;
         var replacement = with.Copy();
         replacement.Icon = items[index].Icon;
+        replacement.Name = items[index].Name;
         if (replacement.Choice is null && replacement.State == items[index].State) replacement.Choice = items[index].Choice;
         elements[elements.IndexOf(items[index])] = replacement;
         return elements;
     }
 
-    /// The item at <paramref name="index"/> gets <paramref name="icon"/> (null: its own default) without changing the others of a pattern.
-    public static List<TrayElement> WithIcon(IReadOnlyList<TrayElement> list, IReadOnlyList<TrayTarget> shown, int index, string? icon)
+    /// Edits the item at <paramref name="index"/> without changing the others of a pattern.
+    public static List<TrayElement> Update(IReadOnlyList<TrayElement> list, IReadOnlyList<TrayTarget> shown, int index, Action<TrayElement> change)
     {
         var (elements, items) = Expanded(list, shown);
-        if (index >= 0 && index < items.Count) items[index].Icon = icon;
+        if (index >= 0 && index < items.Count)
+        {
+            var replacement = items[index].Copy();
+            change(replacement);
+            elements[elements.IndexOf(items[index])] = replacement;
+        }
         return elements;
     }
 
@@ -83,5 +89,6 @@ public static class TrayOrder
         Choice = target.Element.Choice,
         AllState = target.Element.AllState,
         Icon = target.Element.Icon,
+        Name = target.Element.Name,
     };
 }

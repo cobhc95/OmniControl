@@ -1,6 +1,7 @@
 using OmniControl.App.Features.Hotkeys.Actions;
 using OmniControl.App.Features.AppLists;
 using OmniControl.App.Features.Hotkeys;
+using OmniControl.App.Shared.Contracts;
 using OmniControl.App.Shared.Scripts;
 using OmniControl.Core.Engine.Mouse;
 
@@ -12,16 +13,22 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
 {
     /// The settings as the hook reads them: the first action per key, the others in order, and the apps scope of each limited button.
     private sealed record Snapshot(Dictionary<string, MouseAction> Actions, Dictionary<string, MouseAction[]> Extras, Dictionary<MouseButton, AppScopeSetting> Scopes, bool BlockAutoscroll,
-        bool PauseInFullScreen, AppScopeSetting? NeverActIn, bool SendToRemoteAsKeys)
+        bool PauseInFullScreen, AppScopeSetting? NeverActIn, bool SendToRemoteAsKeys, HashSet<string>? InEffect)
     {
         public MouseAction[] ExtrasOf(string key) => Extras.TryGetValue(key, out var extras) ? extras : NoExtras;
+
+        public bool IsRuleInEffect(string key) => InEffect is null || InEffect.Contains(key);
 
         /// A mouse input has an action on some layer, or the autoscroll block is on: Windows' real mouse input is needed.
         public bool NeedsHook { get; } = BlockAutoscroll || Maps(Actions, Extras, InputFamily.Mouse);
 
         /// The autoscroll block can swallow a middle press: it is on and the middle button is not mapped on every layer.
         public bool WatchesAutoscroll { get; } = BlockAutoscroll && !Enumerable.Range(1, MouseSettings.Layers)
-            .All(layer => Actions.TryGetValue(MouseSettings.KeyOf(layer, MouseButton.Middle), out var action) && action.Id != MouseActionCatalog.Default);
+            .All(layer =>
+            {
+                var key = MouseSettings.KeyOf(layer, MouseButton.Middle);
+                return Actions.TryGetValue(key, out var action) && action.Id != MouseActionCatalog.Default && (InEffect is null || InEffect.Contains(key));
+            });
 
         /// A trackpad gesture has an action on some layer: the touchpad watcher is needed.
         public bool NeedsTrackpad { get; } = Maps(Actions, Extras, InputFamily.Trackpad);
@@ -86,13 +93,14 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
     /// <param name="keyEquivalentOf">The master action's <see cref="HotkeyAction.KeyEquivalent"/> by id, or null.</param>
     /// <param name="ask">Asks the person at this PC (UI thread): whether a button or gesture may start what it names.</param>
     public MouseService(MouseHook hook, Func<string, RunSettings?, bool> runOmniAction, Func<string, RunSettings, Action?> holdOmniAction, Action<string> report, Func<MouseEvent, MouseAction?> gestureAt, AppScopeGate scopes,
-        States.IStateRegistry states, Func<string, string?> keyEquivalentOf, Func<DialogMessage, Task<bool>> ask)
+        States.IStateRegistry states, FeatureRulesSlot rules, Func<string, string?> keyEquivalentOf, Func<DialogMessage, Task<bool>> ask)
     {
         _scopes = scopes;
         _holdOmniAction = holdOmniAction;
         _report = report;
         _log = hook.Diagnose;
         _gestureAt = gestureAt;
+        _rules = rules;
         Approvals = new CommandApprovals(() => Settings.Approved!, Settings.Save, ask);
         AllowMappingsOnce();
         _snapshot = TakeSnapshot();
@@ -107,6 +115,7 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
         hook.PointerMoved += _autoscroll.Moved;
         _states = states;
         RegisterStates();
+        InitRules();
         if (_taskFollows = Settings.RunAsAdministrator) AdministratorMode.FollowSetting(true, report); // an elevated start removes a task that isn't OmniControl's own
     }
 
@@ -212,12 +221,30 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
         NotifyLayer(family);
     }
 
-    private Snapshot TakeSnapshot() =>
-        new(Settings.Bindings.ToDictionary(b => b.Key, b => MouseAction.Parse(b.Value)),
-            Settings.ExtraActions.ToDictionary(e => e.Key, e => e.Value.Take(MouseSettings.MaxActions - 1).Select(MouseAction.Parse).ToArray()),
-            Enum.GetValues<MouseButton>().Where(b => Settings.ScopeOf(b) is not null)
-                .ToDictionary(b => b, b => Settings.ScopeOf(b)!),
-            Settings.BlockAutoscroll, Settings.PauseInFullScreen, Settings.NeverActIn is { IsLimited: true } never ? never : null, Settings.SendToRemoteAsKeys);
+    private Snapshot TakeSnapshot()
+    {
+        var scopes = Enum.GetValues<MouseButton>().Where(b => Settings.ScopeOf(b) is not null).ToDictionary(b => b, b => Settings.ScopeOf(b)!);
+        var never = Settings.NeverActIn is { IsLimited: true } n ? n : null;
+        if (_rules.Current is not { } rules)
+            return new(Settings.Bindings.ToDictionary(b => b.Key, b => MouseAction.Parse(b.Value)),
+                Settings.ExtraActions.ToDictionary(e => e.Key, e => e.Value.Take(MouseSettings.MaxActions - 1).Select(MouseAction.Parse).ToArray()),
+                scopes, Settings.BlockAutoscroll, Settings.PauseInFullScreen, never, Settings.SendToRemoteAsKeys, null);
+
+        var actions = new Dictionary<string, MouseAction>();
+        var extras = new Dictionary<string, MouseAction[]>();
+        var inEffect = new HashSet<string>();
+        foreach (var key in Settings.Bindings.Keys)
+        {
+            if (MouseSettings.ParseKey(key) is not var (layer, button)) continue;
+            var view = rules.Find(RuleActionId(layer, button));
+            var specs = view?.Actions is { Count: > 0 } a ? a : Settings.ActionsOf(layer, button);
+            if (specs.Count == 0) continue;
+            actions[key] = MouseAction.Parse(specs[0]);
+            if (specs.Count > 1) extras[key] = specs.Skip(1).Take(MouseSettings.MaxActions - 1).Select(MouseAction.Parse).ToArray();
+            if (view is { InEffect: true, Actions.Count: > 0 }) inEffect.Add(key);
+        }
+        return new(actions, extras, scopes, Settings.BlockAutoscroll, Settings.PauseInFullScreen, never, Settings.SendToRemoteAsKeys, inEffect);
+    }
 
     private void ApplyWatchers()
     {
@@ -261,11 +288,12 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
         var layer = _layers.Current(ev.Button.FamilyOf());
         var key = MouseSettings.KeyOf(layer, ev.Button);
         var action = gesture;
-        if (action is null && (!snapshot.Actions.TryGetValue(key, out action) || action.Id == MouseActionCatalog.Default))
+        if (action is null && (!snapshot.Actions.TryGetValue(key, out action) || action.Id == MouseActionCatalog.Default || !snapshot.IsRuleInEffect(key)))
             return BlocksAutoscroll(ev, snapshot) || PassThrough(ev, layer, NotMapped);
         // Outside the apps its mapping works in, the input behaves as if it had none.
         if (gesture is null && snapshot.Scopes.TryGetValue(ev.Button, out var scope) && !_scopes.Allows(scope))
             return PassThrough(ev, layer, OutsideApps);
+        if (gesture is null) NotifyPressState(ev.Button);
         // Every action of one firing comes from the layer in force when it fired; a layer action among them changes the layer for the next firing.
         var extras = gesture is null ? snapshot.ExtrasOf(key) : NoExtras;
         if (!IsPlainClick(ev.Button))
@@ -515,6 +543,7 @@ public sealed partial class MouseService : ILayerControl, ISharedOptions, IDispo
         foreach (var undo in pending) undo(); // let go of whatever a held button was doing
         _modes.Dispose();
         Clicking.Dispose();
+        ForgetRules();
         ForgetStates();
     }
 }

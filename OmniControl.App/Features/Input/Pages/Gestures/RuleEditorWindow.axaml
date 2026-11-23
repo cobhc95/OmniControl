@@ -19,7 +19,7 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.DataTemplates>
                     <DataTemplate DataType="pages:SentenceWord">
-                        <TextBlock Classes="blockword" Text="{Binding Text}" />
+                        <TextBlock Classes="blockword" Classes.accent="{Binding Accent}" Text="{Binding Text}" />
                     </DataTemplate>
                     <DataTemplate DataType="pages:SentenceBlock">
                         <Button Classes="block" Click="OnBlockClick" ToolTip.Tip="Change it (Enter); Delete removes it">

@@ -23,6 +23,7 @@ public sealed partial class MouseButtonItem : ObservableObject, IEditorItem, IHa
     private readonly Action<IReadOnlyList<string>> _write;
     private readonly ActionSlot.Callbacks _callbacks;
     private readonly ISharedOptions? _shared;
+    private readonly Func<Shared.Contracts.FeatureRuleView?>? _ruleOf;
 
     public MouseButton Button { get; }
 
@@ -118,6 +119,9 @@ public sealed partial class MouseButtonItem : ObservableObject, IEditorItem, IHa
 
     public string ScopeTagText => Scope.Text;
 
+    /// The muted line under the card while this input's automation rule has extra triggers, conditions or actions added in Automation.
+    public RuleLineItem RuleLine { get; }
+
     /// Every action's name, so search finds the card by any of them.
     public IEnumerable<string> SearchTexts => Slots.Select(s => s.Name);
 
@@ -127,9 +131,12 @@ public sealed partial class MouseButtonItem : ObservableObject, IEditorItem, IHa
     /// <param name="write">Stores the actions in order.</param>
     /// <param name="scope">The card's apps scope.</param>
     public MouseButtonItem(MouseButton button, string label, Func<IReadOnlyList<PickChoice>> firstChoices, Func<IReadOnlyList<PickChoice>> laterChoices,
-        Func<IReadOnlyList<string>> read, Action<IReadOnlyList<string>> write, AppScopeModel scope, ISharedOptions? shared = null)
+        Func<IReadOnlyList<string>> read, Action<IReadOnlyList<string>> write, AppScopeModel scope, ISharedOptions? shared = null,
+        Func<Shared.Contracts.FeatureRuleView?>? ruleOf = null, Action? editRule = null)
     {
         _shared = shared;
+        _ruleOf = ruleOf;
+        RuleLine = new RuleLineItem(editRule ?? (() => { }));
         Scope = scope;
         scope.PropertyChanged += (_, _) =>
         {
@@ -167,7 +174,10 @@ public sealed partial class MouseButtonItem : ObservableObject, IEditorItem, IHa
             Slots[i].Show(list.FirstOrDefault(c => c.Matches(action)), list[0], stored[i]);
         }
         Renumber();
+        RefreshRuleLine();
     }
+
+    public void RefreshRuleLine() => RuleLine.Show(_ruleOf?.Invoke());
 
     private IReadOnlyList<PickChoice> ListFor(int index) => index == 0 ? _first : _later;
 

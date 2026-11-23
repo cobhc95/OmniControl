@@ -24,5 +24,7 @@ public static class KeyboardState
     /// True while Esc is held. Only read, never hooked or swallowed, so other apps keep their Esc.
     public static bool EscapeHeld() => IsDown(VkEscape);
 
+    public static bool SwitchingWindows() => IsDown(VkMenu) && IsDown(0x09); // Alt+Tab
+
     private static bool IsDown(int vk) => GetAsyncKeyState(vk) < 0; // the high bit means "down"
 }

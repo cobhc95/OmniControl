@@ -20,7 +20,7 @@
                 <Button x:Name="OtherButton" Classes="usebtn scope" Tag="scope" Click="OnOtherClick" />
                 <Button x:Name="NoButton" Classes="usebtn scope" Tag="scope" IsVisible="False" Click="OnCloseClick" />
                 <Button x:Name="ConfirmButton" Classes="usebtn scope" Tag="scope" Click="OnConfirmClick" />
-                <Button x:Name="CloseButton" Classes="primary" Content="Close" Click="OnCloseClick" />
+                <Button x:Name="CloseButton" Classes="usebtn scope" Tag="scope" Content="Close" Click="OnCloseClick" />
             </StackPanel>
         </Grid>
     </StackPanel>

@@ -8,13 +8,16 @@ namespace OmniControl.App.Features.Automation;
 /// Something that happened between two looks: a trigger id (<see cref="AutomationTriggers"/>) and, for a device, its name.
 public sealed record AutomationEvent(string Kind, string Name = "");
 
-/// Notices what the event triggers wait for: the power source changing and USB devices coming and going (<see cref="Poll"/>, on each tick).
+/// Notices USB devices coming and going (<see cref="Poll"/>, on each tick).
 public sealed class AutomationWatcher : IDisposable
 {
     private readonly UsbDeviceWatcher _usb = new();
     private readonly ConcurrentQueue<AutomationEvent> _devices = new();
-    private bool? _onBattery;
-    private bool _started;
+    public event Action<IReadOnlyDictionary<string, string>> DevicesSeen
+    {
+        add => _usb.Seen += value;
+        remove => _usb.Seen -= value;
+    }
 
     public AutomationWatcher() => _usb.Changed += OnUsbChanged;
 
@@ -22,25 +25,23 @@ public sealed class AutomationWatcher : IDisposable
         _devices.Enqueue(new AutomationEvent(connected ? AutomationTriggers.DeviceConnect : AutomationTriggers.DeviceDisconnect, name));
 
     /// Starts watching USB devices (done once a rule wants them, so nothing is watched for no reason).
-    public void StartDevices()
+    public void FollowDevices(bool needed)
     {
-        if (_started) return;
-        _started = true;
-        _usb.Start();
+        if (needed) _usb.Start();
+        else
+        {
+            _usb.Stop();
+            _devices.Clear();
+        }
     }
 
     /// The hardware watch's refresh after Windows announced a device change (worker thread): the USB list is compared, if watched.
     public void LookAtUsb() => _usb.Look();
 
-    /// What changed since the last call: the power source, USB devices. The first call only takes a baseline, so nothing that was already
-    /// true at start-up counts as an event.
+    /// USB devices that came or went since the last call.
     public IReadOnlyList<AutomationEvent> Poll()
     {
         var events = new List<AutomationEvent>();
-        var battery = PowerState.IsOnBattery();
-        if (_onBattery is not null && battery is not null && battery != _onBattery)
-            events.Add(new AutomationEvent(battery == true ? AutomationTriggers.OnBattery : AutomationTriggers.PluggedIn));
-        _onBattery = battery ?? _onBattery;
         while (_devices.TryDequeue(out var device)) events.Add(device);
         return events;
     }

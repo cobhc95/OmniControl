@@ -20,7 +20,7 @@ public sealed partial class AutomationPageViewModel
         {
             Tip = "While the conditions hold, the chosen actions are not allowed, whether a hotkey, a mouse button, a gesture or a rule starts them. Pausing all rules lifts every block.",
         },
-        FeatureRulesCard = new("Rules made on other pages", AutomationWords + " other pages feature made on open warm light network limits device check emulator", FeatureTab)
+        FeatureRulesCard = new("Rules made on other pages", AutomationWords + " other pages feature made on open warm light network limits device check emulator mouse button trackpad", FeatureTab)
         {
             Tip = $"Rules a page made for what it does by itself, such as warm light. They are ordinary rules: add triggers, conditions or actions here, and the page shows that it has more. " + FeatureRulesKept,
         },
@@ -29,8 +29,7 @@ public sealed partial class AutomationPageViewModel
             Tip = "Scripts kept inside OmniControl. Each becomes an action, Run script: its name, for Shortcuts, the mouse, gestures and rules. They run as you (never as administrator), hidden, and are stopped after a minute.",
         },
         PauseCard = new("Pause all rules", AutomationWords + " resume stop emergency safe start turn rules on", Title: ActionSections.Automation) { Tip = PauseTipText },
-        TriggersCard = new("What starts a rule", AutomationWords + " trigger when", RulesTab) { Choices = AutomationTriggers.FixedNames },
-        ConditionsCard = new("Conditions", AutomationWords + " and or and not while", RulesTab) { Choices = AutomationConditions.FixedNames },
+        TriggersCard = new("What starts a rule", AutomationWords + " trigger when and or and not while condition", RulesTab) { Choices = AutomationTriggers.FixedNames },
         LanguagesCard = new("Script languages", AutomationWords + " script language", ScriptsTab) { Choices = Enum.GetValues<ScriptLanguage>().Select(ScriptLanguages.NameOf).ToList() };
 
     private static SearchCard RuleCard(AutomationRule rule, string line, AutomationFeatureRules? features) =>
@@ -45,7 +44,8 @@ public sealed partial class AutomationPageViewModel
     private static SearchBuilder Cards(AutomationService? service, AutomationFeatureRules? features, AutomationPageViewModel? page)
     {
         var builder = new SearchBuilder().Add(PauseCard).Add(AutomationsCard).Add(BlocksCard).Add(FeatureRulesCard).Add(ScriptsCard)
-            .Add(TriggersCard).Add(ConditionsCard).Add(LanguagesCard);
+            .Add(service is null ? TriggersCard : TriggersCard with { Choices = AutomationTriggers.FixedNames.Concat(service.TriggerSources.States.Select(s => s.Name)).ToList() })
+            .Add(LanguagesCard);
         if (service is null) return builder;
         foreach (var rule in service.Settings.Rules)
         {

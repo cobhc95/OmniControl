@@ -1,4 +1,3 @@
-using OmniControl.App.Features.States;
 using OmniControl.Core.Interfaces;
 using OmniControl.App.Features.Hotkeys;
 
@@ -11,7 +10,7 @@ namespace OmniControl.App.Features.Displays.Pages;
 /// controls is <see cref="DisplayControls"/>: adding one there adds its card and actions here.
 public sealed partial class DisplaysService
 {
-    private const string OrientationSection = "Orientation";
+    private const string RotationWords = "rotate rotation orientation landscape portrait flipped turn screen";
 
     /// The id of the orientation hotkeys' suggested-keys set (<see cref="HotkeyAction.SuggestedKeySet"/>): the Orientation card's switch turns them on and off together.
     private const string RotationKeySet = "displays.rotate";
@@ -62,9 +61,13 @@ public sealed partial class DisplaysService
         foreach (var (orientation, suggested) in RotationKeys)
         {
             var captured = orientation;
-            actions.Add(DisplayActions.Once($"displays.rotate.{captured.ToString().ToLowerInvariant()}", $"Rotate to {DisplayOrientationModel.Title(captured)}",
-                "rotate rotation orientation landscape portrait flipped turn screen", Title, hardware, OrientationSection,
-                ids => EachHardware(ids, h => h.Rotate(captured)), HardwareDevices, suggested, shortName: DisplayOrientationModel.ShortTitle(captured), icon: DisplayOrientationModel.Icon(captured), suggestedKeySet: RotationKeySet));
+            var id = $"{RotationKeySet}.{captured.ToString().ToLowerInvariant()}";
+            var action = DisplayActions.Once(id, $"Rotate to {DisplayOrientationModel.Title(captured)}",
+                RotationWords, Title, hardware, DisplayOrientationModel.Label,
+                ids => EachHardware(ids, h => h.Rotate(captured)), HardwareDevices, suggested, shortName: DisplayOrientationModel.ShortTitle(captured),
+                icon: DisplayOrientationModel.Icon(captured), suggestedKeySet: RotationKeySet, highlightState: id);
+            RegisterRotationState(action, captured);
+            actions.Add(action);
         }
 
         actions.Add(DisplayActions.Once("displays.hw.preset.next", "Next monitor preset", "hardware ddc preset saved profile monitors settings", Title, hardware, VcpSections.Presets,
@@ -92,10 +95,10 @@ public sealed partial class DisplaysService
         var spec = DisplayControls.SoftwareSaturation;
         foreach (var action in DisplayActions.Level(spec, DisplayControls.SoftwareKey(spec), Title, software, (_, delta) => _osd.Show(spec.Osd, _desktop.Step(delta)), devices: null))
             yield return action;
-        yield return DisplayActions.Once("displays.sw.grayscale", "Toggle grayscale", "digital software grayscale black white saturation", Title, software, VcpSections.Colour,
-            _ => _desktop.SetGrayscale(!_desktop.Grayscale), devices: null);
-        yield return DisplayActions.Once("displays.sw.invert", "Toggle invert colours", "digital software invert negative colours inverse", Title, software, VcpSections.Colour,
-            _ => _desktop.SetInvert(!_desktop.Invert), devices: null);
+        yield return DisplayActions.Once(GrayscaleId, "Toggle grayscale", "digital software grayscale black white saturation", Title, software, VcpSections.Colour,
+            _ => _desktop.SetGrayscale(!_desktop.Grayscale), devices: null, highlightState: GrayscaleId);
+        yield return DisplayActions.Once(InvertId, "Toggle invert colours", "digital software invert negative colours inverse", Title, software, VcpSections.Colour,
+            _ => _desktop.SetInvert(!_desktop.Invert), devices: null, highlightState: InvertId);
         yield return DisplayActions.Once("displays.sw.reset", "Reset all digital picture changes", "digital software reset normal",
             Title, software, VcpSections.Presets, _ => ResetAllSoftware(), devices: null);
     }

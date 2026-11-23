@@ -214,7 +214,7 @@ public sealed partial class TrayTileItem : ObservableObject, ITrayPanelItem
 
     public void Read(Func<string, StateValue?> now)
     {
-        IsOn = _target.State is { } state && now(state.Id)?.Number is { } number && number != 0;
+        IsOn = _target.State is { } state && _target.IsOn(now(state.Id));
         var live = _target.State?.Liveness?.Invoke();
         Failure = live?.Failure;
         _notSure = live?.NotSure;

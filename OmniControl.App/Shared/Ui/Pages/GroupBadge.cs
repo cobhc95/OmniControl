@@ -29,6 +29,7 @@ public static class BatteryBadge
         var low = reading?.Number == OnBattery && percent <= Timing.BatteryLowPercent;
         var icon = reading?.Number switch { Charging => "battery-charging", OnBattery or null => percent >= FullStep ? "battery-4" : "battery", _ => "plug-connected" };
         var tone = low ? BadgeTone.Caution : reading?.Number == Charging ? BadgeTone.Good : BadgeTone.Normal;
-        return new GroupBadge(icon, level.Words(charge), reading?.Text, tone);
+        var tip = reading?.Subject is { } detail ? $"{reading.Text} · {detail}" : reading?.Text;
+        return new GroupBadge(icon, level.Words(charge), tip, tone);
     }
 }

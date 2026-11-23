@@ -20,7 +20,8 @@ public sealed partial class DisplaysService : IDisposable
     private const string BuiltIn = "Built-in display";
 
     /// What a worker thread found out about the displays, to be shown on the UI thread.
-    private sealed record Snapshot(IReadOnlyList<DisplayInfo> Displays, IReadOnlyList<IMonitor> Monitors, bool HasLaptop);
+    private sealed record Snapshot(IReadOnlyList<DisplayInfo> Displays, IReadOnlyList<IMonitor> Monitors, bool HasLaptop,
+        IReadOnlyDictionary<string, DisplayOrientation?> Orientations);
 
     private readonly IMonitorEngine _engine;
     private readonly IActionRegistry _hotkeys;
@@ -99,6 +100,8 @@ public sealed partial class DisplaysService : IDisposable
         _monitorBook = new MonitorPresetBook(_store, PresetTargets);
         MonitorPresets = new BookPresets(_monitorBook);
         RegisterActions();
+        RegisterDesktopStates();
+        RegisterSystemScreenStates();
         _warmLight = new WarmLightService(software, _store, context.Rules, _hotkeys, _states, title);
         context.Presets.Register(new PresetGroup(HardwarePresetsId, Title, DisplayControls.HardwareGroup, MonitorPresets));
         context.Presets.Register(new PresetGroup(SoftwarePresetsId, Title, DisplayControls.SoftwareGroup, PicturePresets));
@@ -109,7 +112,11 @@ public sealed partial class DisplaysService : IDisposable
     /// The status line (the cards report what failed through it).
     internal Action<string> Report => _report;
 
-    private void OnPictureChanged() => PictureChanged?.Invoke();
+    private void OnPictureChanged()
+    {
+        NotifyDigital();
+        PictureChanged?.Invoke();
+    }
 
     /// Makes the switch of the orientation hotkeys' suggested keys for an Orientation card (the card owns it).
     internal SuggestedKeysSwitch NewRotationKeysSwitch() => _suggestedKeys(RotationKeySet);
@@ -185,6 +192,16 @@ public sealed partial class DisplaysService : IDisposable
         }
     }
 
+    private void RefreshDisplays()
+    {
+        if (_engine.Rescan()) RefreshNow();
+        else
+        {
+            var orientations = ReadOrientations(_engine.Displays);
+            Dispatcher.UIThread.Post(() => ShowOrientations(orientations));
+        }
+    }
+
     /// Shows the engine's current displays (worker thread), whatever Windows says. The laptop panel is asked through WMI, which can fail
     /// in any way while a session changes (a COM or access error, not only a WMI one): that failure is logged and the monitors are shown
     /// without the panel, never left unshown.
@@ -196,18 +213,33 @@ public sealed partial class DisplaysService : IDisposable
             var laptop = _engine.Laptop;
             hasLaptop = laptop.IsAvailable && laptop.GetBrightness(out _, out var max).Success && max > 0;
         });
-        var snapshot = new Snapshot(_engine.Displays, _engine.Monitors, hasLaptop);
+        var displays = _engine.Displays;
+        var snapshot = new Snapshot(displays, _engine.Monitors, hasLaptop, ReadOrientations(displays));
         Dispatcher.UIThread.Post(() => Show(snapshot));
     }
+
+    private IReadOnlyDictionary<string, DisplayOrientation?> ReadOrientations(IReadOnlyList<DisplayInfo> displays) =>
+        displays.Select(d => d.DeviceName).Distinct().ToDictionary(name => name, _engine.Rotation.Read);
 
     // ---------------------------------------------------------------- showing the displays
 
     private void Show(Snapshot snapshot)
     {
         ShowHardware(snapshot);
+        ShowOrientations(snapshot.Orientations);
         ShowSoftware(snapshot.Displays);
         RefreshActionDevices();
         HardwareValuesChanged?.Invoke(); // with screens that have a power switch the summary reads "N of M on"
+    }
+
+    private void ShowOrientations(IReadOnlyDictionary<string, DisplayOrientation?> orientations)
+    {
+        foreach (var display in _hardware)
+        {
+            var name = display.Orientation.DeviceName;
+            display.Orientation.Show(name is null ? null : orientations.GetValueOrDefault(name));
+        }
+        NotifyOrientation();
     }
 
     /// A monitor that is also the laptop's panel is shown once, as the laptop panel (its brightness is Windows').
@@ -237,6 +269,7 @@ public sealed partial class DisplaysService : IDisposable
     {
         _hardware.Add(display);
         display.Changed += OnDisplayValues;
+        display.Orientation.Changed += NotifyOrientation;
         RegisterStates(display);
         DisplayRead();
         display.Start();
@@ -245,6 +278,7 @@ public sealed partial class DisplaysService : IDisposable
     private void Forget(HardwareDisplayModel display)
     {
         display.Changed -= OnDisplayValues;
+        display.Orientation.Changed -= NotifyOrientation;
         display.Dispose();
         ForgetStates(display);
     }
@@ -263,12 +297,21 @@ public sealed partial class DisplaysService : IDisposable
         foreach (var gone in _softwareDisplays.Where(s => displays.All(d => d.DeviceName != s.Id)).ToList())
         {
             gone.Forget();
+            ForgetDigital(gone);
             _softwareDisplays.Remove(gone);
         }
 
         var fresh = new List<SoftwareDisplayModel>();
         foreach (var display in displays)
-            fresh.Add(_softwareDisplays.FirstOrDefault(s => s.Id == display.DeviceName) ?? new SoftwareDisplayModel(display, _software, OnPictureChanged));
+        {
+            var model = _softwareDisplays.FirstOrDefault(s => s.Id == display.DeviceName);
+            if (model is null)
+            {
+                model = new SoftwareDisplayModel(display, _software, OnPictureChanged);
+                RegisterDigital(model);
+            }
+            fresh.Add(model);
+        }
 
         if (!fresh.SequenceEqual(_softwareDisplays))
         {
@@ -296,6 +339,14 @@ public sealed partial class DisplaysService : IDisposable
         _monitorBook.Dispose();
         _warmLight.Dispose();
         _rescan.Dispose();
+        _desktop.Changed -= NotifyDesktop;
+        _states.Unregister(new[] { SaturationId, GrayscaleId, InvertId, ScreensOnStateId });
+        foreach (var display in _softwareDisplays) ForgetDigital(display);
         foreach (var display in _hardware) Forget(display);
+        foreach (var action in RotationActions())
+        {
+            action.Changed -= OnRotationScopeChanged;
+            _states.Unregister(action.Id);
+        }
     }
 }

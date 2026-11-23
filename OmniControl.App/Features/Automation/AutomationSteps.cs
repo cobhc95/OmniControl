@@ -29,7 +29,7 @@ public static class AutomationSteps
     public static string PhraseOf(AutomationRule rule, string stored, IReadOnlyList<PickChoice> choices) =>
         rule.Kind == AutomationKind.Block
             ? choices.FirstOrDefault(c => c.Spec == stored)?.Name ?? "(an action that is no longer available)"
-            : RuleSteps.PhraseOf(stored, choices);
+            : RuleSteps.PhraseOf(stored, choices) + (rule.Feature.Length > 0 ? MouseOptions.PillMark(MouseAction.Parse(stored).Options) : string.Empty);
 
     /// True for a step that opens a program: it needs the user's approval before it is saved or run.
     public static bool NeedsApproval(string stored) => RuleSteps.NeedsApproval(stored);

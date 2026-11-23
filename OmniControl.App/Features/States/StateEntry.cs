@@ -28,8 +28,9 @@ public sealed record StateEntry(string Id, string Name, string Group, StateKind 
     string? Heading = null, int Min = 0, int Max = 100, string Unit = "", Func<IReadOnlyList<string>>? Choices = null, string Keywords = "",
     Action<StateValue>? Set = null, string? Short = null, string? Icon = null, IReadOnlyList<string>? SuggestedIcons = null, StateRecheck? Recheck = null,
     Func<StateLiveness>? Liveness = null, bool ScreenPower = false, string? Common = null, Shared.Services.RemotePcLabel? RemotePc = null, string? Compact = null, OnOffIcons? StateIcons = null,
-    string? Note = null, StateMenu? Menu = null, StateMenuPart MenuPart = StateMenuPart.Top, StateWords? Wording = null)
+    string? Note = null, StateMenu? Menu = null, StateMenuPart MenuPart = StateMenuPart.Top, StateWords? Wording = null, bool OneShot = false)
 {
+    // OneShot: true for a momentary event state (a mouse button press) that fires once per occurrence and never holds over time.
     // Wording: the words an on/off state's trigger settings and rule sentence use in place of turns on / turns off / changes (a program: starts / closes); null = those.
 
     // Menu: the side list a state picker shows this state in instead of its own list (one row "<Menu.Name> ▸" opens it), where the row reads ShortName with Note muted at its right; MenuPart: where in it.

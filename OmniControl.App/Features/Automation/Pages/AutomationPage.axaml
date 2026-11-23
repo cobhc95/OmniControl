@@ -91,7 +91,7 @@
                                 <Button Grid.Column="2" Classes="pill" Content="Run" Command="{Binding RunScriptCommand}" ToolTip.Tip="Run it once now, as you (never as administrator)" />
                                 <Button Grid.Column="3" Classes="pill" Content="Import..." Click="OnImportScriptClick" ToolTip.Tip="Load a .ps1, .bat, .cmd or .py file's text into a new script" />
                                 <Button Grid.Column="4" Classes="pill" Content="Export..." Click="OnExportScriptClick" ToolTip.Tip="Save this script to a file" />
-                                <Button Grid.Column="5" Classes="pill glyph closex" Command="{Binding DeleteScriptCommand}" ToolTip.Tip="Delete">
+                                <Button Grid.Column="5" Classes="xbtn" Command="{Binding DeleteScriptCommand}" ToolTip.Tip="Delete">
                                     <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
                                 </Button>
                             </Grid>

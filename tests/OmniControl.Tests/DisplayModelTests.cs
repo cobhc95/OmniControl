@@ -120,11 +120,15 @@ public class DisplayModelTests
         private FeatureRuleView? _rule;
 
         public event Action? Changed;
+        public event Action<string>? Started { add { } remove { } }
         public event Action<string>? Ended { add { } remove { } }
 
         public FeatureRuleView? Find(string actionId) => _rule;
 
         public void Ensure(string actionId, string name, bool on, params FeatureTrigger[] triggers) => Set(_rule ?? new FeatureRuleView(on, triggers, string.Empty));
+
+        public void EnsureActions(string featureId, string name, bool on, string page, IReadOnlyList<string> actions, params FeatureTrigger[] triggers) =>
+            Set(_rule ?? new FeatureRuleView(on, triggers, string.Empty, Actions: actions));
 
         public void SetOn(string actionId, bool on) => Set(_rule! with { On = on });
 

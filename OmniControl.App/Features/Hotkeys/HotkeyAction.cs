@@ -147,6 +147,9 @@ public sealed partial class HotkeyAction : HotkeyTarget, Shared.Ui.Pages.IEditor
     /// when the thing is already there (<see cref="StateTarget"/>). Set on the master entry by the state's owner; null: the action just runs.
     public string? StateId { get; init; }
 
+    /// The on/off state that lights a quick-panel tile running this action, when it differs from its set-to-state target.
+    public string? HighlightStateId { get; init; }
+
     /// For an action that works on something over the network (a smart device): how a rule waits for it and learns how a run went. Null: none.
     public ActionReach? Reach { get; init; }
 
@@ -336,7 +339,9 @@ public sealed partial class HotkeyAction : HotkeyTarget, Shared.Ui.Pages.IEditor
         && _selectedIds.Except(source().Select(d => d.Id)).Any();
 
     /// Runs the action on every device, or only on the picked ones.
-    public void Run() => _run(UseSelected ? _selectedIds.ToList() : null);
+    public void Run() => _run(SelectedDeviceIds());
+
+    internal IReadOnlyList<string>? SelectedDeviceIds() => UseSelected ? _selectedIds.ToList() : null;
 
     /// Runs the action with the settings the input that fired it chose (others just run).
     public void RunWith(RunSettings settings)
@@ -350,7 +355,7 @@ public sealed partial class HotkeyAction : HotkeyTarget, Shared.Ui.Pages.IEditor
     public void RunBy(int percent)
     {
         if (_stepBy is null) Run();
-        else _stepBy(UseSelected ? _selectedIds.ToList() : null, percent);
+        else _stepBy(SelectedDeviceIds(), percent);
     }
 
     /// Re-reads the available devices, keeping the user's picks.

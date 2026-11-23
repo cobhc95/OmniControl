@@ -71,6 +71,10 @@ public sealed class MouseSettings
     /// file from a version without it, whose mappings it then allows as they are).
     public HashSet<string>? Approved { get; set; }
 
+    /// Mapping keys ("1.Middle", "2.ThreeFingerUp") whose automation rule has been made once from these settings, so a rule deleted in
+    /// Automation stays deleted until the input is mapped again on the Mouse page.
+    public HashSet<string> RulesInAutomation { get; set; } = new();
+
     /// Puts the "Where mouse features work" group's settings back to their defaults.
     public void RestoreWhereDefaults()
     {
@@ -96,6 +100,7 @@ public sealed class MouseSettings
     {
         ExtraActions ??= new(); // a hand-edited file may say null
         CardScopes ??= new();
+        RulesInAutomation ??= new();
         if (TrackpadLayerNames is null)
         {
             TrackpadLayerNames = new();
@@ -141,6 +146,7 @@ public sealed class MouseSettings
         NeverActIn = other.NeverActIn;
         RunAsAdministrator = other.RunAsAdministrator;
         SendToRemoteAsKeys = other.SendToRemoteAsKeys;
+        RulesInAutomation = new(other.RulesInAutomation);
     }
 
     /// The apps scope in force for a mouse button or trackpad gesture: its own, else its group's; null when it works in every app.

@@ -82,7 +82,7 @@ public sealed partial class TrayFlyoutModel : ObservableObject, IDisposable
     private void RunAction(string id) => _run(id);
 
     /// Whether a menu item's state is on now (its tick).
-    public bool IsOn(TrayTarget target) => target.State is { } state && _states.Now(state.Id)?.Number is { } number && number != 0;
+    public bool IsOn(TrayTarget target) => target.State is { } state && target.IsOn(_states.Now(state.Id));
 
     [RelayCommand]
     private void OpenApp() => _openApp();

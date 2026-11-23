@@ -1,5 +1,6 @@
 using OmniControl.App.Features.Hotkeys;
 using OmniControl.App.Features.States;
+using StateTarget = OmniControl.App.Features.Hotkeys.StateTarget;
 
 namespace OmniControl.App.Features.Tray;
 
@@ -7,13 +8,16 @@ namespace OmniControl.App.Features.Tray;
 public sealed record TrayTarget(TrayElement Element, HotkeyAction? Action, StateEntry? State, StateEntry? Choice = null, IReadOnlyList<StateEntry>? Group = null, StateEntry? AllLevel = null)
 {
     /// The words it shows: the action's name (a state that only ticks or lights it never renames it), else a state alone's short name.
-    public string Name => Action?.ShortName ?? State?.ShortName ?? string.Empty;
+    public string Name => Element.Name ?? Action?.ShortName ?? State?.ShortName ?? string.Empty;
 
     /// The section whose icon it shows unless the element names another: the state's page, else the action's section.
     public string Section => Element.Icon ?? State?.Group ?? Action?.Section ?? string.Empty;
 
     /// The icon the entry brings itself (its action's, else its state's), unless the element names one to show instead; null: the section's icon.
     public string? OwnIcon => Element.Icon is null ? Action?.ShownIcon ?? State?.ShownIcon : null;
+
+    public bool IsOn(StateValue? value) => value?.Number is { } number && (number != 0) ==
+        (State?.Id == (Action?.HighlightStateId ?? Action?.StateId) ? StateTarget.Wanted(Action?.FamilyRole) ?? true : true);
 }
 
 /// Turns stored elements into what is shown, read from the live master lists each time (pure: the lists are passed in, so a test gives its
@@ -47,7 +51,8 @@ public static class TrayTargets
         var list = elements.ToList();
         var (namedActions, namedStates) = (Named(list.Where(e => e.Action is not null), e => e.Action), Named(list.Where(e => e.Action is null), e => e.State));
         return list.SelectMany(e => e.Action is { } id
-            ? ActionsOf(id, actions, findAction, namedActions).Select(a => new TrayTarget(e, a, e.State is { } s ? StatesOf(s, states, StateKind.OnOff, NoNames).FirstOrDefault() : null))
+            ? ActionsOf(id, actions, findAction, namedActions).Select(a => new TrayTarget(e, a, (e.State ?? a.HighlightStateId ?? a.StateId) is { } s
+                ? StatesOf(s, states, StateKind.OnOff, NoNames).FirstOrDefault() : null))
             : e.State is { } state
                 ? StatesOf(state, states, StateKind.OnOff, namedStates).Select(s => new TrayTarget(e, null, s))
                 : Enumerable.Empty<TrayTarget>()).ToList();

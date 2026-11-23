@@ -13,7 +13,7 @@ public sealed partial class AutomationService
     private readonly IPowerEvents _power;
     private readonly List<AutomationEvent> _pending = new();       // "At log in", "When OmniControl starts" and wakes, taken by the next look
     private readonly Dictionary<string, DateTime> _timers = new(); // "After a timer" rules: when each started counting (MaxValue: done)
-    private readonly HashSet<string> _idleFired = new();           // "idle" rules that already ran in this idle spell
+    private double? _idleMinutes;
     private DispatcherTimer? _tick;
 
     /// The one sentence for the safe-start state (the status line and the report say the same).
@@ -67,9 +67,9 @@ public sealed partial class AutomationService
     {
         SyncPrograms();
         if (SessionOff) return;
-        if (Settings.Rules.Any(r => Needs(r) && IsTrigger(r, AutomationTriggers.DeviceConnect, AutomationTriggers.DeviceDisconnect))) _watcher.StartDevices();
+        ShareWatched();
         // With no rule to look for, the look only keeps the power states fresh: much less often, and not at all while only rules of other pages may run.
-        var busy = Settings.Rules.Any(r => Needs(r) || (AsksPrograms(r) && !Stopped(r)));
+        var busy = Settings.Rules.Any(r => Watches(r) || (AsksPrograms(r) && !Stopped(r)));
         if (_tick is not null)
         {
             _tick.Interval = busy ? Timing.AutomationTick : Timing.AutomationIdleTick;
@@ -87,13 +87,12 @@ public sealed partial class AutomationService
 
     private static bool IsTrigger(AutomationRule rule, params string[] ids) => Watched(rule).Any(t => ids.Contains(MouseAction.Parse(t).Id));
 
-    /// Timers and idle spells are counted per trigger: the first trigger by the rule's id, the others with their place added.
+    /// Timers are counted per trigger: the first trigger by the rule's id, the others with their place added.
     private static string KeyOf(AutomationRule rule, int place) => place == 0 ? rule.Id : $"{rule.Id}#{place}";
 
     private void ForgetTimers(AutomationRule rule)
     {
         foreach (var key in _timers.Keys.Where(k => k.StartsWith(rule.Id, StringComparison.Ordinal)).ToList()) _timers.Remove(key);
-        _idleFired.RemoveWhere(k => k.StartsWith(rule.Id, StringComparison.Ordinal));
     }
 
     /// One look (UI thread). With a program trigger or a "program is running" condition on, the running programs are listed on a worker first
@@ -143,6 +142,11 @@ public sealed partial class AutomationService
         var from = _lastLook;
         _lastLook = now;
         NotifyPowerStates();
+        if (_states.IsWatched(AutomationTriggers.IdleStateId) || ValuesShown is not null)
+        {
+            _idleMinutes = Math.Floor(PowerState.IdleFor().TotalMinutes);
+            _states.Notify(AutomationTriggers.IdleStateId);
+        }
         // Taken even while paused: a wake or a start-up is not kept to run hours later when rules are on again.
         var events = new List<AutomationEvent>(_pending);
         _pending.Clear();
@@ -150,30 +154,41 @@ public sealed partial class AutomationService
 
         var afterWake = events.Any(e => e.Kind is AutomationTriggers.Resume or AutomationTriggers.Login or AutomationTriggers.Start);
         events.AddRange(_watcher.Poll());
-        var idle = PowerState.IdleFor();
-        if (idle < Timing.AutomationTick) _idleFired.Clear(); // input since the last look: idle rules are ready again
-
-        foreach (var rule in Settings.Rules.Where(r => Needs(r) && !IsWhile(r)).ToList())
-            if (IsDue(rule, events, from, now, idle))
-                TryStart(rule, waitForReady: afterWake && IsTrigger(rule, AutomationTriggers.Resume, AutomationTriggers.Login, AutomationTriggers.Start));
+        foreach (var rule in Settings.Rules.Where(r => Needs(r) && (!IsWhile(r) || r.Feature.Length > 0)).ToList())
+        {
+            var waitForReady = afterWake && IsTrigger(rule, AutomationTriggers.Resume, AutomationTriggers.Login, AutomationTriggers.Start);
+            if (!HasOtherwise(rule) || IsWhile(rule))
+            {
+                if (IsDue(rule, events, from, now)) TryStart(rule, waitForReady: waitForReady);
+                continue;
+            }
+            var due = DuePlaces(rule, events, from, now).ToList();
+            if (due.Count == 0) continue;
+            var context = NewContext();
+            if (due.Any(i => TriggersHold(rule, i) && (rule.Conditions.Count == 0 || AutomationJoins.Holds(rule, context)))) TryStart(rule, waitForReady: waitForReady);
+            else TryStart(rule, waitForReady: waitForReady, otherwise: true);
+        }
         LookAtHeld();
         UpdateWake();
     }
 
-    /// Any one trigger being due starts the rule ("or"); every trigger is asked, so each keeps its own timer.
-    private bool IsDue(AutomationRule rule, IReadOnlyList<AutomationEvent> events, DateTime from, DateTime now, TimeSpan idle)
+    /// Every trigger is asked so each keeps its own timer; the rule is due when a trigger is due and the joined triggers hold with it.
+    private bool IsDue(AutomationRule rule, IReadOnlyList<AutomationEvent> events, DateTime from, DateTime now) =>
+        DuePlaces(rule, events, from, now).Any(i => TriggersHold(rule, i));
+
+    /// The places of the rule's triggers that are due now; every trigger is asked, so each keeps its own timer.
+    private IEnumerable<int> DuePlaces(AutomationRule rule, IReadOnlyList<AutomationEvent> events, DateTime from, DateTime now)
     {
-        var due = false;
         var place = 0;
         foreach (var stored in rule.AllTriggers)
         {
-            var key = KeyOf(rule, place++);
-            if (!AutomationTriggers.IsHotkey(stored) && IsDue(key, stored, events, from, now, idle)) due = true;
+            var index = place++;
+            var key = KeyOf(rule, index);
+            if (!AutomationTriggers.IsHotkey(stored) && IsDue(key, stored, events, from, now)) yield return index;
         }
-        return due;
     }
 
-    private bool IsDue(string key, string stored, IReadOnlyList<AutomationEvent> events, DateTime from, DateTime now, TimeSpan idle)
+    private bool IsDue(string key, string stored, IReadOnlyList<AutomationEvent> events, DateTime from, DateTime now)
     {
         var trigger = MouseAction.Parse(stored);
         switch (trigger.Id)
@@ -190,10 +205,6 @@ public sealed partial class AutomationService
                 }
                 if (counting == DateTime.MaxValue || now - counting < TimeSpan.FromMinutes(trigger.Options.Int(AutomationTriggers.Minutes))) return false;
                 _timers[key] = trigger.Options.Bool(AutomationTriggers.Repeat) ? now : DateTime.MaxValue;
-                return true;
-            case AutomationTriggers.Idle:
-                if (idle < TimeSpan.FromMinutes(trigger.Options.Int(AutomationTriggers.IdleMinutes)) || _idleFired.Contains(key)) return false;
-                _idleFired.Add(key);
                 return true;
             case AutomationTriggers.DeviceConnect or AutomationTriggers.DeviceDisconnect:
                 var part = trigger.Param.Trim();

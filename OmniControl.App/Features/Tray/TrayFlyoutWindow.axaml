@@ -47,12 +47,12 @@
                                             <c:IconGlyph Classes="markfailed" LibraryId="alert" IsVisible="{Binding IsFailed}" />
                                         </Panel>
                                         <!-- Overlaps the button's top-right corner (TrayTileCross) and stays within the band's inset, so nothing clips -->
-                                        <Button Classes="removebadge" Click="OnRemoveClick" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                        <Button Classes="xbtn" Click="OnRemoveClick" HorizontalAlignment="Right" VerticalAlignment="Top"
                                                 Margin="{StaticResource TrayTileCross}" IsVisible="{Binding $parent[Window].DataContext.IsEditing}">
                                             <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
                                         </Button>
                                     </Panel>
-                                    <c:WordText Text="{Binding Name}" Classes.faded="{Binding IsNotSure}" />
+                                    <c:WordText Text="{Binding Name}" ToolTip.Tip="{Binding Name}" Classes.faded="{Binding IsNotSure}" />
                                 </StackPanel>
                             </DataTemplate>
                         </ItemsControl.DataTemplates>
@@ -92,7 +92,7 @@
                                     <Slider Grid.Column="2" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Value}"
                                             IsEnabled="{Binding CanSet}" />
                                     <TextBlock Grid.Column="3" Classes="trayvalue slidervalue" Text="{Binding ValueText}" />
-                                    <Button Grid.Column="4" Classes="removebadge" Click="OnRemoveClick"
+                                    <Button Grid.Column="4" Classes="xbtn" Click="OnRemoveClick"
                                             IsVisible="{Binding $parent[Window].DataContext.IsEditing}">
                                         <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
                                     </Button>

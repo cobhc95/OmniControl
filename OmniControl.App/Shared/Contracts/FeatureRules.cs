@@ -9,6 +9,9 @@ public abstract record FeatureTrigger
     /// While a state of the master list is on (it starts as it turns on and ends as it turns off).
     public sealed record While(string StateId) : FeatureTrigger;
 
+    /// When a momentary state of the master list fires (e.g. a mouse button press: one-shot, never holds).
+    public sealed record Press(string StateId) : FeatureTrigger;
+
     /// When OmniControl starts.
     public sealed record Starts : FeatureTrigger;
 
@@ -19,7 +22,8 @@ public abstract record FeatureTrigger
 /// A feature's rule as its page shows it: on or off, the triggers the feature knows (in the rule's order), and what was added to it in
 /// Automation ("1 extra condition"; empty: nothing), and whether Automation's page is there to edit it in (false while "Hotkeys and automation"
 /// is switched off: the rule still runs).
-public sealed record FeatureRuleView(bool On, IReadOnlyList<FeatureTrigger> Triggers, string Extras, bool Editable = true)
+public sealed record FeatureRuleView(bool On, IReadOnlyList<FeatureTrigger> Triggers, string Extras, bool Editable = true,
+    IReadOnlyList<string>? Actions = null, bool InEffect = false)
 {
     /// The rule's time window, or null.
     public FeatureTrigger.Between? Window => Triggers.OfType<FeatureTrigger.Between>().FirstOrDefault();
@@ -37,6 +41,9 @@ public interface IFeatureRules
     /// A rule changed (UI thread).
     event Action? Changed;
 
+    /// A rule owned by a feature started holding (its triggers and conditions began to hold).
+    event Action<string>? Started;
+
     /// A rule holding this action (its id) stopped holding: its triggers or conditions ended, it was switched off, deleted or paused.
     event Action<string>? Ended;
 
@@ -45,6 +52,13 @@ public interface IFeatureRules
 
     /// Makes a rule with this action and these triggers unless one holds the action already.
     void Ensure(string actionId, string name, bool on, params FeatureTrigger[] triggers);
+
+    /// Makes a rule owned by <paramref name="featureId"/> on <paramref name="page"/> with <paramref name="actions"/> and
+    /// <paramref name="triggers"/>, or updates its actions when the rule already exists.
+    void EnsureActions(string featureId, string name, bool on, string page, IReadOnlyList<string> actions, params FeatureTrigger[] triggers);
+
+    /// Removes the rule holding this action, if one exists.
+    void Remove(string actionId);
 
     void SetOn(string actionId, bool on);
 
@@ -65,12 +79,14 @@ public sealed class FeatureRulesSlot
     public IFeatureRules? Current { get; private set; }
 
     public event Action? Changed;
+    public event Action<string>? Started;
     public event Action<string>? Ended;
 
     public void Attach(IFeatureRules rules)
     {
         Current = rules;
         rules.Changed += OnChanged;
+        rules.Started += OnStarted;
         rules.Ended += OnEnded;
         OnChanged();
     }
@@ -79,12 +95,15 @@ public sealed class FeatureRulesSlot
     {
         if (!ReferenceEquals(Current, rules)) return;
         rules.Changed -= OnChanged;
+        rules.Started -= OnStarted;
         rules.Ended -= OnEnded;
         Current = null;
         OnChanged();
     }
 
     private void OnChanged() => Changed?.Invoke();
+
+    private void OnStarted(string actionId) => Started?.Invoke(actionId);
 
     private void OnEnded(string actionId) => Ended?.Invoke(actionId);
 }

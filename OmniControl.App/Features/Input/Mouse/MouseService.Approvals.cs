@@ -31,6 +31,7 @@ public sealed partial class MouseService
     public void SetActions(int layer, MouseButton button, IReadOnlyList<string> specs)
     {
         foreach (var spec in specs) Allow(spec);
+        Settings.RulesInAutomation.Remove(MouseSettings.KeyOf(layer, button));
         Settings.SetActions(layer, button, specs);
         Apply();
     }

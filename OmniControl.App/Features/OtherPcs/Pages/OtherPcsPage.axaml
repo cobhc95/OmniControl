@@ -51,7 +51,7 @@
                                     <Grid Classes="tabcontent" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource Gap}" ToolTip.Tip="{Binding TabTip}">
                                         <c:IconGlyph LibraryId="plus" VerticalAlignment="Center" />
                                         <TextBlock Grid.Column="1" Classes="tabname" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                                        <Button Grid.Column="2" Classes="removebadge" Focusable="False" Command="{Binding CloseCommand}" ToolTip.Tip="Close this tab" VerticalAlignment="Center">
+                                        <Button Grid.Column="2" Classes="xbtn" Focusable="False" Command="{Binding CloseCommand}" ToolTip.Tip="Close this tab" VerticalAlignment="Center">
                                             <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
                                         </Button>
                                     </Grid>

@@ -9,6 +9,7 @@ namespace OmniControl.App.Features.Displays.Pages;
 internal sealed class WarmLightService : IDisposable
 {
     private const string ActionId = "displays.sw.warmlight", StateId = "displays.warmlight", StateWords = "The page's Warm light at night switch.";
+    private const string WarmingId = StateId + ".active";
 
     private readonly IActionRegistry _hotkeys;
     private readonly IStateRegistry _states;
@@ -24,6 +25,8 @@ internal sealed class WarmLightService : IDisposable
         states.Register(new StateEntry(StateId, WarmLightModel.Label, title, StateKind.OnOff, () => StateValue.Of(Model.IsOn), StateWords,
             Keywords: "warm light night schedule evening blue light filter", Set: value => Model.SetEnabled(value.Number is { } on && on != 0),
             Short: "Night light", Icon: Icons.IconLibrary.Moon, SuggestedIcons: new[] { Icons.IconLibrary.Moon, "sun-moon", "eye" }));
+        states.Register(new StateEntry(WarmingId, "Warm light active", title, StateKind.OnOff, () => StateValue.Of(_scheduler.IsWarming),
+            "The warm light schedule is requesting a warm tint now; the display driver may refuse it.", Keywords: "warm light night schedule evening blue light filter", Icon: Icons.IconLibrary.Moon));
         _scheduler.Changed += OnChanged;
         _scheduler.Start();
     }
@@ -35,7 +38,7 @@ internal sealed class WarmLightService : IDisposable
 
     private void OnChanged()
     {
-        _states.Notify(StateId);
+        _states.Notify(new[] { StateId, WarmingId });
         FollowFadeTitle();
     }
 
@@ -65,7 +68,7 @@ internal sealed class WarmLightService : IDisposable
     public void Dispose()
     {
         _scheduler.Changed -= OnChanged;
-        _states.Unregister(StateId);
+        _states.Unregister(new[] { StateId, WarmingId });
         _scheduler.Dispose();
     }
 }

@@ -73,10 +73,6 @@ public partial class MessageWindow : Window
             foot.Children.Remove(CloseButton);
             foot.Children.Insert(0, CloseButton);
         }
-        CloseButton.Classes.Set("primary", false);
-        CloseButton.Classes.Add("usebtn");
-        CloseButton.Classes.Add("scope");
-        CloseButton.Tag = "scope";
         var cancel = new TextBlock { Inlines = new() { new Run("Cancel") } };
         var esc = new Run("  Esc");
         if (this.TryFindResource("BrushMuted", ActualThemeVariant, out var muted) && muted is IBrush brush) esc.Foreground = brush;

@@ -14,7 +14,8 @@ public static partial class AutomationTriggers
     /// The two parts of the picker's first pane: what belongs to the PC and the clock, and the states of the user's pages.
     public const string PcPart = "PC and time", PagesPart = "Your pages";
 
-    private const string StartupPower = "Start up and power", Clock = "Time and idle", Programs = ProgramStates.Section, Usb = "USB devices", Keys = "Keyboard";
+    private const string StartupPower = "Start up and power", Programs = ProgramStates.Section, Keys = "Keyboard";
+    internal const string Clock = "Time and idle", Usb = "USB devices";
     public const string Login = "login", Start = "start", Time = "time", Between = AutomationConditions.Between, Timer = "timer", Idle = "idle", Resume = "resume",
         OnBattery = "battery", PluggedIn = "plugged",
         DeviceConnect = "device.connect", DeviceDisconnect = "device.disconnect", Hotkey = "hotkey";
@@ -46,8 +47,6 @@ public static partial class AutomationTriggers
         new(Login, StartupPower, "At log in", "startup sign in boot windows start with windows", _ => "at log in"),
         new(Start, StartupPower, "When OmniControl starts", "launch open app start", _ => "when OmniControl starts"),
         new(Resume, StartupPower, "When the PC wakes from sleep", "resume wake hibernate", _ => "when the PC wakes from sleep"),
-        new(OnBattery, StartupPower, "When it starts running on battery", "unplugged laptop", _ => "when it starts running on battery"),
-        new(PluggedIn, StartupPower, "When it is plugged in", "charging mains ac laptop", _ => "when it is plugged in"),
         new(Time, Clock, "At a time of day", "schedule scheduler task clock alarm days weekly daily wake",
             t => $"at {t.Options.Int(Hour):00}:{t.Options.Int(Minute):00} {AutomationDays.PhraseOf(t.Options)}",
             new[] { Hour, Minute }.Concat(AutomationDays.Options).Append(Wake).ToList()),
@@ -56,7 +55,6 @@ public static partial class AutomationTriggers
             AutomationConditions.WindowOptions),
         new(Timer, Clock, "After a timer", "schedule scheduler task countdown delay every minutes",
             t => t.Options.Bool(Repeat) ? $"every {t.Options.Int(Minutes)} minutes" : $"{t.Options.Int(Minutes)} min after it starts", new[] { Minutes, Repeat }),
-        new(Idle, Clock, "When I have been idle", "away inactive no input screen saver", t => $"when idle for {t.Options.Int(IdleMinutes)} min", new[] { IdleMinutes }),
         new(DeviceConnect, Usb, "A USB device connects", "plug usb headset keyboard drive", t => $"when {DeviceName(t.Param)} connects",
             ParamHint: "(any device)", ParamLabel: DeviceLabel),
         new(DeviceDisconnect, Usb, "A USB device disconnects", "unplug usb headset keyboard drive", t => $"when {DeviceName(t.Param)} disconnects",
@@ -120,7 +118,12 @@ public static partial class AutomationTriggers
     }
 
     /// True for a trigger that can hold over a while (a state, a time window), not only happen at a moment.
-    public static bool CanHold(string stored) => MouseAction.Parse(stored).Id is StateChanges or Between;
+    public static bool CanHold(string stored, ITriggerSources sources) => MouseAction.Parse(stored) switch
+    {
+        { Id: Between } => true,
+        { Id: StateChanges, Param: var id } => sources.State(id)?.OneShot != true,
+        _ => false,
+    };
 
     /// True when the time-of-day trigger asks to wake the PC.
     public static bool WakesPc(string stored) => MouseAction.Parse(stored) is { Id: Time } trigger && trigger.Options.Bool(Wake);

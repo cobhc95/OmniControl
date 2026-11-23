@@ -21,7 +21,7 @@ internal static class TrayPicks
     public static (string Title, PickerModel Model) ForTile(IReadOnlyList<StateEntry> states, IEnumerable<HotkeyAction> actions, Func<string, ActionSection?> sectionOf, IPanelMembership panel) =>
         ("Choose an action or an on/off for a tile", Model(
             actions.Select(a => MouseActionCatalog.OmniEntry(a, unavailable: a.UnavailableReason))
-                .Concat(states.Where(s => s.Kind == StateKind.OnOff).Select(s => StateChoice(s, sectionOf, needsSet: false))), TileNoun, panel));
+                .Concat(states.Where(s => s.Kind == StateKind.OnOff && !s.OneShot).Select(s => StateChoice(s, sectionOf, needsSet: false))), TileNoun, panel));
 
     /// The element a pick stands for; null for an entry that is neither a master action nor a state.
     public static TrayElement? ElementOf(PickResult pick) => ElementOf(pick.Choice.Spec);

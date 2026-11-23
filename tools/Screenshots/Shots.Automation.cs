@@ -1,5 +1,6 @@
 using OmniControl.App.Features.Automation;
 using OmniControl.App.Features.Automation.Pages;
+using OmniControl.App.Features.States;
 
 namespace OmniControl.Screenshots;
 
@@ -15,11 +16,13 @@ internal static partial class Shots
 
         var settings = new AutomationSettings();
         settings.Scripts.Add(new Script { Name = "Back up notes", Language = ScriptLanguage.PowerShell, Body = "Copy-Item $env:USERPROFILE\\Notes D:\\Backup -Recurse" });
-        settings.Rules.Add(Rule("Lock when I walk away", AutomationKind.Do, "idle|min=10", new[] { "plugged" }, "omni:automation.power.lock"));
-        settings.Rules.Add(Rule("Battery saver", AutomationKind.Do, "battery", Array.Empty<string>(), "omni:automation.power.efficiency"));
+        settings.Rules.Add(Rule("Lock when I walk away", AutomationKind.Do, "idle|min=10",
+            new[] { AutomationTriggers.StateTrigger(PowerStates.OnBattery, StateTriggerMath.TurnsOff) }, "omni:automation.power.lock"));
+        settings.Rules.Add(Rule("Battery saver", AutomationKind.Do, AutomationTriggers.StateTrigger(PowerStates.OnBattery, StateTriggerMath.TurnsOn),
+            Array.Empty<string>(), "omni:automation.power.efficiency"));
         settings.Rules.Add(Rule("Night backup", AutomationKind.Do, "time|h=23;m=30;d5=0;d6=0", Array.Empty<string>(),
             "omni:" + settings.Scripts[0].ActionId));
-        settings.Rules.Add(Rule("Quiet hours", AutomationKind.Block, string.Empty, new[] { "between|fh=22;th=7" },
+        settings.Rules.Add(Rule("Quiet hours", AutomationKind.Block, "between|fh=22;th=7", Array.Empty<string>(),
             "omni:automation.power.restart", "omni:automation.power.shutdown"));
         settings.Save();
 
@@ -30,10 +33,10 @@ internal static partial class Shots
         camera.Page(page, "automation");
     }
 
-    private static AutomationRule Rule(string name, AutomationKind kind, string trigger, string[] conditions, params string[] actions)
+    private static AutomationRule Rule(string name, AutomationKind kind, string trigger, string[] andTriggers, params string[] actions)
     {
         var rule = new AutomationRule { Name = name, Kind = kind, On = true, Trigger = trigger };
-        foreach (var c in conditions) rule.AddCondition(c);
+        foreach (var t in andTriggers) rule.AddTrigger(t, AutomationJoins.And);
         foreach (var a in actions) rule.AddAction(a);
         return rule;
     }

@@ -27,7 +27,7 @@
         </Border>
         <TextBlock Grid.Column="4" Classes="muted small" Text="{Binding Use}" ToolTip.Tip="{Binding UseTip}" HorizontalAlignment="Right"
                    VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Right" />
-        <Button Grid.Column="5" Tag="scope" Classes="removebadge" Command="{Binding RemoveCommand}" IsVisible="{Binding CanRemove}"
+        <Button Grid.Column="5" Tag="scope" Classes="xbtn" Command="{Binding RemoveCommand}" IsVisible="{Binding CanRemove}"
                 ToolTip.Tip="Forget this marked cable" VerticalAlignment="Center">
             <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
         </Button>

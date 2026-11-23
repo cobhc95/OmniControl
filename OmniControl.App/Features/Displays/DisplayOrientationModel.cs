@@ -11,6 +11,7 @@ internal sealed class DisplayOrientationModel
     private const string LogFile = LogFiles.Display;
     private const string CardReason = "chosen on the Orientation card";
     private const string Unknown = "Windows would not say how this display is turned";
+    private const string Reading = "Reading the display...";
 
     /// The card's name (also what search finds it by).
     public const string Label = "Orientation";
@@ -37,7 +38,10 @@ internal sealed class DisplayOrientationModel
     private bool _disposed;
 
     /// The orientation as an index of <see cref="Names"/>, and why it cannot be chosen now (null: it can).
-    public LevelState State { get; } = new(0, 0, "Reading the display...");
+    public LevelState State { get; } = new(0, 0, Reading);
+
+    public DisplayOrientation? Current => State.IsAvailable ? (DisplayOrientation)State.Value : null;
+    public string? DeviceName => _display?.DeviceName;
 
     /// The orientation or its availability changed (UI thread).
     public event Action? Changed;
@@ -47,37 +51,23 @@ internal sealed class DisplayOrientationModel
     public DisplayOrientationModel(DisplayInfo? display, Func<DisplayInfo, string?> resolve, string displayName, IDisplayRotation rotation, Action<string> report) =>
         (_display, _resolve, _displayName, _rotation, _report) = (display, resolve, displayName, rotation, report);
 
-    /// Asks Windows how the display is turned now, off the UI thread.
-    public void Start() => Guard.OffUi("Displays: reading the orientation", () =>
-    {
-        var now = CurrentName() is { } name ? _rotation.Read(name) : null;
-        Dispatcher.UIThread.Post(() => Show(now));
-    });
-
     public void Dispose() => _disposed = true;
 
     /// Turns the display (a hotkey); nothing while it cannot be chosen or is turned so already.
     public void Choose(DisplayOrientation orientation)
     {
-        if (State.IsAvailable && State.Value != (int)orientation) Set((int)orientation, "a hotkey or action asked for it");
+        if (State.IsAvailable && State.Value != (int)orientation) Apply((int)orientation, "a hotkey or action asked for it");
     }
 
     /// Turns the display (the card).
-    public void Set(int index) => Set(index, CardReason);
-
-    private void Set(int index, string reason)
-    {
-        State.Value = index;
-        Changed?.Invoke();
-        Apply(index, reason);
-    }
+    public void Set(int index) => Apply(index, CardReason);
 
     /// The display's name in Windows now, asked fresh each time; null when it is not attached.
     private string? CurrentName() => _display is null ? null : _resolve(_display);
 
-    private void Show(DisplayOrientation? now)
+    public void Show(DisplayOrientation? now)
     {
-        if (_disposed) return;
+        if (_disposed || (Current == now && State.Reason != Reading)) return;
         if (now is { } value) (State.Value, State.Reason) = ((int)value, null);
         else State.Reason = Unknown;
         Changed?.Invoke();
@@ -92,24 +82,24 @@ internal sealed class DisplayOrientationModel
             if (deviceName is null)
             {
                 AppDataStore.AppendLog(LogFile, $"Turning {_displayName} to {Names[index]} skipped ({reason}): Windows no longer lists this display, so nothing was turned.");
-                Dispatcher.UIThread.Post(() => { if (!_disposed) _report($"{_displayName} is not attached, so it was not turned."); });
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (_disposed) return;
+                    Show(null);
+                    _report($"{_displayName} is not attached, so it was not turned.");
+                });
                 return;
             }
             var result = _rotation.Set(deviceName, (DisplayOrientation)index);
-            if (result.Success)
-            {
-                AppDataStore.AppendLog(LogFile, $"Turned {_displayName} ({deviceName}) to {Names[index]} and saved it to Windows' display settings: {reason}.");
-                return;
-            }
-            AppDataStore.AppendLog(LogFile, $"Turning {_displayName} ({deviceName}) to {Names[index]} failed ({reason}): {result.Message}");
+            AppDataStore.AppendLog(LogFile, result.Success
+                ? $"Turned {_displayName} ({deviceName}) to {Names[index]} and saved it to Windows' display settings: {reason}."
+                : $"Turning {_displayName} ({deviceName}) to {Names[index]} failed ({reason}): {result.Message}");
             var now = _rotation.Read(deviceName);
             Dispatcher.UIThread.Post(() =>
             {
                 if (_disposed) return;
-                _report(Guard.SeeLog($"Windows would not turn {_displayName} to {Names[index].ToLowerInvariant()}.", LogFile));
-                if (now is not { } actual) return;
-                State.Value = (int)actual;
-                Changed?.Invoke();
+                if (!result.Success) _report(Guard.SeeLog($"Windows could not apply or save {Names[index].ToLowerInvariant()} on {_displayName}.", LogFile));
+                Show(now);
             });
         });
     }

@@ -22,63 +22,304 @@
             <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
         </Button>
 
-        <ItemsControl x:Name="SentenceHost" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" ItemsSource="{Binding Sentence}" Margin="0,4,0,0">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.DataTemplates>
-                <DataTemplate DataType="pages:SentenceWord">
-                    <TextBlock Classes="blockword" Text="{Binding Text}" />
-                </DataTemplate>
-                <DataTemplate DataType="pages:SentenceBlock">
-                    <Button Classes="block" Click="OnBlockClick" ToolTip.Tip="Change it (Enter); Delete removes it">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="{Binding Text}" />
-                            <Button Classes="blockx" Click="OnRemoveClick" ToolTip.Tip="Remove">
-                                <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
-                            </Button>
-                        </StackPanel>
-                    </Button>
-                </DataTemplate>
-                <DataTemplate DataType="pages:SentenceHotkey">
-                    <Button Classes="block" Classes.capturing="{Binding Capturing}" Click="OnHotkeyClick" Loaded="OnHotkeyBlockLoaded"
-                            ToolTip.Tip="Set the keys; Delete removes it">
-                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource Gap}">
-                            <TextBlock Text="I press" />
-                            <hk:KeycapRow Parts="{Binding Keys}" VerticalAlignment="Center" />
-                            <Button Classes="blockx" Click="OnRemoveClick" ToolTip.Tip="Remove">
-                                <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
-                            </Button>
-                        </StackPanel>
-                    </Button>
-                </DataTemplate>
-                <DataTemplate DataType="pages:SentenceLink">
-                    <Button Classes="blockjoin" Content="{Binding Text}" ToolTip.Tip="Change how this joins the part before it">
-                        <Button.Flyout>
-                            <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft">
-                                <StackPanel x:DataType="pages:SentenceLink">
-                                    <c:MenuRowList ItemsSource="{Binding Rows}" Picked="OnLinkPicked" />
-                                    <Border Classes="hrule" Margin="{StaticResource MenuRuleMargin}" IsVisible="{Binding HasAmount}" />
-                                    <Grid IsVisible="{Binding HasAmount}" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource GapLarge}"
-                                          Margin="{StaticResource MenuTextInset}">
-                                        <TextBlock Text="{Binding Amount.Label}" Classes="menutext" Margin="0" VerticalAlignment="Center" />
-                                        <Slider Grid.Column="1" MinWidth="140" Minimum="{Binding Amount.Minimum}" Maximum="{Binding Amount.Maximum}"
-                                                Value="{Binding Amount.Value}" pages:SliderReset.Value="{Binding Amount.Standard}" />
-                                        <pages:NumberText Grid.Column="2" Classes="plain" Value="{Binding Amount.Value}" Minimum="{Binding Amount.Minimum}"
-                                                          Maximum="{Binding Amount.Maximum}" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding Amount.Text}" Classes="slidervalue" MinWidth="40" />
-                                        </pages:NumberText>
-                                    </Grid>
+        <!-- A Block rule's single sentence; a Do rule's four parts (When / Only if / Do / Otherwise) with right-aligned labels in a shared column. -->
+        <Panel x:Name="SentenceHost" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,4,0,0">
+            <ItemsControl ItemsSource="{Binding Sentence}" IsVisible="{Binding IsBlock}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.DataTemplates>
+                    <DataTemplate DataType="pages:SentenceWord">
+                        <TextBlock Classes="blockword" Classes.accent="{Binding Accent}" Text="{Binding Text}" />
+                    </DataTemplate>
+                    <DataTemplate DataType="pages:SentenceBlock">
+                        <Button Classes="block" Click="OnBlockClick" ToolTip.Tip="Change it (Enter); Delete removes it">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding Text}" />
+                                <Button Classes="blockx" Click="OnRemoveClick" ToolTip.Tip="Remove">
+                                    <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+                                </Button>
+                            </StackPanel>
+                        </Button>
+                    </DataTemplate>
+                    <DataTemplate DataType="pages:SentenceHotkey">
+                        <Button Classes="block" Classes.capturing="{Binding Capturing}" Click="OnHotkeyClick" Loaded="OnHotkeyBlockLoaded"
+                                ToolTip.Tip="Set the keys; Delete removes it">
+                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Gap}">
+                                <TextBlock Text="I press" />
+                                <hk:KeycapRow Parts="{Binding Keys}" VerticalAlignment="Center" />
+                                <Button Classes="blockx" Click="OnRemoveClick" ToolTip.Tip="Remove">
+                                    <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+                                </Button>
+                            </StackPanel>
+                        </Button>
+                    </DataTemplate>
+                    <DataTemplate DataType="pages:SentenceLink">
+                        <Button Classes="blockjoin" Content="{Binding Text}" ToolTip.Tip="Change how this joins the part before it">
+                            <Button.Flyout>
+                                <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft">
+                                    <StackPanel x:DataType="pages:SentenceLink">
+                                        <c:MenuRowList ItemsSource="{Binding Rows}" Picked="OnLinkPicked" />
+                                        <Border Classes="hrule" Margin="{StaticResource MenuRuleMargin}" IsVisible="{Binding HasAmount}" />
+                                        <Grid IsVisible="{Binding HasAmount}" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource GapLarge}"
+                                              Margin="{StaticResource MenuTextInset}">
+                                            <TextBlock Text="{Binding Amount.Label}" Classes="menutext" Margin="0" VerticalAlignment="Center" />
+                                            <Slider Grid.Column="1" MinWidth="140" Minimum="{Binding Amount.Minimum}" Maximum="{Binding Amount.Maximum}"
+                                                    Value="{Binding Amount.Value}" pages:SliderReset.Value="{Binding Amount.Standard}" />
+                                            <pages:NumberText Grid.Column="2" Classes="plain" Value="{Binding Amount.Value}" Minimum="{Binding Amount.Minimum}"
+                                                              Maximum="{Binding Amount.Maximum}" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Amount.Text}" Classes="slidervalue" MinWidth="40" />
+                                            </pages:NumberText>
+                                        </Grid>
+                                    </StackPanel>
+                                </c:ListMenuFlyout>
+                            </Button.Flyout>
+                        </Button>
+                    </DataTemplate>
+                    <DataTemplate DataType="pages:SentenceAdd">
+                        <Button Classes="blockadd" Content="{Binding Text}" Click="OnAddClick" />
+                    </DataTemplate>
+                </ItemsControl.DataTemplates>
+            </ItemsControl>
+            <Grid IsVisible="{Binding IsDo}" Grid.IsSharedSizeScope="True" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="{StaticResource Gap}" ColumnSpacing="{StaticResource GapLarge}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" MinWidth="{StaticResource CardLabelColumnMinWidth}" SharedSizeGroup="RuleLabel" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Classes="blockword" Text="When" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,6,6,0" />
+                <ItemsControl Grid.Column="1" ItemsSource="{Binding WhenSentence}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.DataTemplates>
+                        <DataTemplate DataType="pages:SentenceWord">
+                            <TextBlock Classes="blockword" Classes.accent="{Binding Accent}" Text="{Binding Text}" />
+                        </DataTemplate>
+                        <DataTemplate DataType="pages:SentenceBlock">
+                            <Button Classes="block" Click="OnBlockClick" ToolTip.Tip="Change it (Enter); Delete removes it">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding Text}" />
+                                    <Button Classes="blockx" Click="OnRemoveClick" ToolTip.Tip="Remove">
+                                        <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+                                    </Button>
                                 </StackPanel>
-                            </c:ListMenuFlyout>
-                        </Button.Flyout>
-                    </Button>
-                </DataTemplate>
-                <DataTemplate DataType="pages:SentenceAdd">
-                    <Button Classes="blockadd" Content="{Binding Text}" Click="OnAddClick" />
-                </DataTemplate>
-            </ItemsControl.DataTemplates>
-        </ItemsControl>
+                            </Button>
+                        </DataTemplate>
+                        <DataTemplate DataType="pages:SentenceHotkey">
+                            <Button Classes="block" Classes.capturing="{Binding Capturing}" Click="OnHotkeyClick" Loaded="OnHotkeyBlockLoaded"
+                                    ToolTip.Tip="Set the keys; Delete removes it">
+                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource Gap}">
+                                    <TextBlock Text="I press" />
+                                    <hk:KeycapRow Parts="{Binding Keys}" VerticalAlignment="Center" />
+                                    <Button Classes="blockx" Click="OnRemoveClick" ToolTip.Tip="Remove">
+                                        <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+                                    </Button>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                        <DataTemplate DataType="pages:SentenceLink">
+                            <Button Classes="blockjoin" Content="{Binding Text}" ToolTip.Tip="Change how this joins the part before it">
+                                <Button.Flyout>
+                                    <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft">
+                                        <StackPanel x:DataType="pages:SentenceLink">
+                                            <c:MenuRowList ItemsSource="{Binding Rows}" Picked="OnLinkPicked" />
+                                            <Border Classes="hrule" Margin="{StaticResource MenuRuleMargin}" IsVisible="{Binding HasAmount}" />
+                                            <Grid IsVisible="{Binding HasAmount}" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource GapLarge}"
+                                                  Margin="{StaticResource MenuTextInset}">
+                                                <TextBlock Text="{Binding Amount.Label}" Classes="menutext" Margin="0" VerticalAlignment="Center" />
+                                                <Slider Grid.Column="1" MinWidth="140" Minimum="{Binding Amount.Minimum}" Maximum="{Binding Amount.Maximum}"
+                                                        Value="{Binding Amount.Value}" pages:SliderReset.Value="{Binding Amount.Standard}" />
+                                                <pages:NumberText Grid.Column="2" Classes="plain" Value="{Binding Amount.Value}" Minimum="{Binding Amount.Minimum}"
+                                                                  Maximum="{Binding Amount.Maximum}" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Amount.Text}" Classes="slidervalue" MinWidth="40" />
+                                                </pages:NumberText>
+                                            </Grid>
+                                        </StackPanel>
+                                    </c:ListMenuFlyout>
+                                </Button.Flyout>
+                            </Button>
+                        </DataTemplate>
+                        <DataTemplate DataType="pages:SentenceAdd">
+                            <Button Classes="blockadd" Content="{Binding Text}" Click="OnAddClick" />
+                        </DataTemplate>
+                    </ItemsControl.DataTemplates>
+                </ItemsControl>
+                <TextBlock Grid.Row="1" Classes="blockword" Text="Only if" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,6,6,0" />
+                <ItemsControl Grid.Row="1" Grid.Column="1" ItemsSource="{Binding OnlyIfSentence}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.DataTemplates>
+                        <DataTemplate DataType="pages:SentenceWord">
+                            <TextBlock Classes="blockword" Classes.accent="{Binding Accent}" Text="{Binding Text}" />
+                        </DataTemplate>
+                        <DataTemplate DataType="pages:SentenceBlock">
+                            <Button Classes="block" Click="OnBlockClick" ToolTip.Tip="Change it (Enter); Delete removes it">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding Text}" />
+                                    <Button Classes="blockx" Click="OnRemoveClick" ToolTip.Tip="Remove">
+                                        <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+                                    </Button>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                        <DataTemplate DataType="pages:SentenceHotkey">
+                            <Button Classes="block" Classes.capturing="{Binding Capturing}" Click="OnHotkeyClick" Loaded="OnHotkeyBlockLoaded"
+                                    ToolTip.Tip="Set the keys; Delete removes it">
+                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource Gap}">
+                                    <TextBlock Text="I press" />
+                                    <hk:KeycapRow Parts="{Binding Keys}" VerticalAlignment="Center" />
+                                    <Button Classes="blockx" Click="OnRemoveClick" ToolTip.Tip="Remove">
+                                        <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+                                    </Button>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                        <DataTemplate DataType="pages:SentenceLink">
+                            <Button Classes="blockjoin" Content="{Binding Text}" ToolTip.Tip="Change how these join">
+                                <Button.Flyout>
+                                    <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft">
+                                        <StackPanel x:DataType="pages:SentenceLink">
+                                            <c:MenuRowList ItemsSource="{Binding Rows}" Picked="OnLinkPicked" />
+                                            <Border Classes="hrule" Margin="{StaticResource MenuRuleMargin}" IsVisible="{Binding HasAmount}" />
+                                            <Grid IsVisible="{Binding HasAmount}" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource GapLarge}"
+                                                  Margin="{StaticResource MenuTextInset}">
+                                                <TextBlock Text="{Binding Amount.Label}" Classes="menutext" Margin="0" VerticalAlignment="Center" />
+                                                <Slider Grid.Column="1" MinWidth="140" Minimum="{Binding Amount.Minimum}" Maximum="{Binding Amount.Maximum}"
+                                                        Value="{Binding Amount.Value}" pages:SliderReset.Value="{Binding Amount.Standard}" />
+                                                <pages:NumberText Grid.Column="2" Classes="plain" Value="{Binding Amount.Value}" Minimum="{Binding Amount.Minimum}"
+                                                                  Maximum="{Binding Amount.Maximum}" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Amount.Text}" Classes="slidervalue" MinWidth="40" />
+                                                </pages:NumberText>
+                                            </Grid>
+                                        </StackPanel>
+                                    </c:ListMenuFlyout>
+                                </Button.Flyout>
+                            </Button>
+                        </DataTemplate>
+                        <DataTemplate DataType="pages:SentenceAdd">
+                            <Button Classes="blockadd" Content="{Binding Text}" Click="OnAddClick" />
+                        </DataTemplate>
+                    </ItemsControl.DataTemplates>
+                </ItemsControl>
+                <TextBlock Grid.Row="2" Classes="blockword" Text="Do" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,6,6,0" />
+                <ItemsControl Grid.Row="2" Grid.Column="1" ItemsSource="{Binding DoSentence}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.DataTemplates>
+                        <DataTemplate DataType="pages:SentenceWord">
+                            <TextBlock Classes="blockword" Classes.accent="{Binding Accent}" Text="{Binding Text}" />
+                        </DataTemplate>
+                        <DataTemplate DataType="pages:SentenceBlock">
+                            <Button Classes="block" Click="OnBlockClick" ToolTip.Tip="Change it (Enter); Delete removes it">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding Text}" />
+                                    <Button Classes="blockx" Click="OnRemoveClick" ToolTip.Tip="Remove">
+                                        <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+                                    </Button>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                        <DataTemplate DataType="pages:SentenceHotkey">
+                            <Button Classes="block" Classes.capturing="{Binding Capturing}" Click="OnHotkeyClick" Loaded="OnHotkeyBlockLoaded"
+                                    ToolTip.Tip="Set the keys; Delete removes it">
+                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource Gap}">
+                                    <TextBlock Text="I press" />
+                                    <hk:KeycapRow Parts="{Binding Keys}" VerticalAlignment="Center" />
+                                    <Button Classes="blockx" Click="OnRemoveClick" ToolTip.Tip="Remove">
+                                        <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+                                    </Button>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                        <DataTemplate DataType="pages:SentenceLink">
+                            <Button Classes="blockjoin" Content="{Binding Text}" ToolTip.Tip="Change how this joins the part before it">
+                                <Button.Flyout>
+                                    <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft">
+                                        <StackPanel x:DataType="pages:SentenceLink">
+                                            <c:MenuRowList ItemsSource="{Binding Rows}" Picked="OnLinkPicked" />
+                                            <Border Classes="hrule" Margin="{StaticResource MenuRuleMargin}" IsVisible="{Binding HasAmount}" />
+                                            <Grid IsVisible="{Binding HasAmount}" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource GapLarge}"
+                                                  Margin="{StaticResource MenuTextInset}">
+                                                <TextBlock Text="{Binding Amount.Label}" Classes="menutext" Margin="0" VerticalAlignment="Center" />
+                                                <Slider Grid.Column="1" MinWidth="140" Minimum="{Binding Amount.Minimum}" Maximum="{Binding Amount.Maximum}"
+                                                        Value="{Binding Amount.Value}" pages:SliderReset.Value="{Binding Amount.Standard}" />
+                                                <pages:NumberText Grid.Column="2" Classes="plain" Value="{Binding Amount.Value}" Minimum="{Binding Amount.Minimum}"
+                                                                  Maximum="{Binding Amount.Maximum}" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Amount.Text}" Classes="slidervalue" MinWidth="40" />
+                                                </pages:NumberText>
+                                            </Grid>
+                                        </StackPanel>
+                                    </c:ListMenuFlyout>
+                                </Button.Flyout>
+                            </Button>
+                        </DataTemplate>
+                        <DataTemplate DataType="pages:SentenceAdd">
+                            <Button Classes="blockadd" Content="{Binding Text}" Click="OnAddClick" />
+                        </DataTemplate>
+                    </ItemsControl.DataTemplates>
+                </ItemsControl>
+                <TextBlock Grid.Row="3" Classes="blockword accent" Text="Otherwise" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,6,6,0" IsVisible="{Binding HasOtherwiseLine}" />
+                <ItemsControl Grid.Row="3" Grid.Column="1" ItemsSource="{Binding OtherwiseSentence}" IsVisible="{Binding HasOtherwiseLine}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.DataTemplates>
+                        <DataTemplate DataType="pages:SentenceWord">
+                            <TextBlock Classes="blockword" Classes.accent="{Binding Accent}" Text="{Binding Text}" />
+                        </DataTemplate>
+                        <DataTemplate DataType="pages:SentenceBlock">
+                            <Button Classes="block" Click="OnBlockClick" ToolTip.Tip="Change it (Enter); Delete removes it">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding Text}" />
+                                    <Button Classes="blockx" Click="OnRemoveClick" ToolTip.Tip="Remove">
+                                        <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+                                    </Button>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                        <DataTemplate DataType="pages:SentenceHotkey">
+                            <Button Classes="block" Classes.capturing="{Binding Capturing}" Click="OnHotkeyClick" Loaded="OnHotkeyBlockLoaded"
+                                    ToolTip.Tip="Set the keys; Delete removes it">
+                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource Gap}">
+                                    <TextBlock Text="I press" />
+                                    <hk:KeycapRow Parts="{Binding Keys}" VerticalAlignment="Center" />
+                                    <Button Classes="blockx" Click="OnRemoveClick" ToolTip.Tip="Remove">
+                                        <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
+                                    </Button>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                        <DataTemplate DataType="pages:SentenceLink">
+                            <Button Classes="blockjoin" Content="{Binding Text}" ToolTip.Tip="Change how this joins the part before it">
+                                <Button.Flyout>
+                                    <c:ListMenuFlyout Placement="BottomEdgeAlignedLeft">
+                                        <StackPanel x:DataType="pages:SentenceLink">
+                                            <c:MenuRowList ItemsSource="{Binding Rows}" Picked="OnLinkPicked" />
+                                            <Border Classes="hrule" Margin="{StaticResource MenuRuleMargin}" IsVisible="{Binding HasAmount}" />
+                                            <Grid IsVisible="{Binding HasAmount}" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource GapLarge}"
+                                                  Margin="{StaticResource MenuTextInset}">
+                                                <TextBlock Text="{Binding Amount.Label}" Classes="menutext" Margin="0" VerticalAlignment="Center" />
+                                                <Slider Grid.Column="1" MinWidth="140" Minimum="{Binding Amount.Minimum}" Maximum="{Binding Amount.Maximum}"
+                                                        Value="{Binding Amount.Value}" pages:SliderReset.Value="{Binding Amount.Standard}" />
+                                                <pages:NumberText Grid.Column="2" Classes="plain" Value="{Binding Amount.Value}" Minimum="{Binding Amount.Minimum}"
+                                                                  Maximum="{Binding Amount.Maximum}" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Amount.Text}" Classes="slidervalue" MinWidth="40" />
+                                                </pages:NumberText>
+                                            </Grid>
+                                        </StackPanel>
+                                    </c:ListMenuFlyout>
+                                </Button.Flyout>
+                            </Button>
+                        </DataTemplate>
+                        <DataTemplate DataType="pages:SentenceAdd">
+                            <Button Classes="blockadd" Content="{Binding Text}" Click="OnAddClick" />
+                        </DataTemplate>
+                    </ItemsControl.DataTemplates>
+                </ItemsControl>
+            </Grid>
+        </Panel>
 
         <WrapPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" IsVisible="{Binding HasOrigin}" Margin="0,4,0,0">
             <TextBlock Classes="muted" Text="{Binding OriginWords}" VerticalAlignment="Center" TextWrapping="Wrap" />
