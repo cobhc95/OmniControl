@@ -138,6 +138,8 @@ public class DisplayModelTests
 
         public void Edit(string actionId) { }
 
+        public void Remove(string actionId) => Set(new FeatureRuleView(false, Array.Empty<FeatureTrigger>(), string.Empty));
+
         private void Set(FeatureRuleView rule)
         {
             _rule = rule;
