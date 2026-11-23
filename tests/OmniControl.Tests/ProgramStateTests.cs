@@ -32,9 +32,9 @@ public class ProgramStateTests
     public void The_move_rewrites_every_trigger_of_every_rule_once_and_leaves_the_rest()
     {
         var rules = new[] { Rule("program.start:chrome", "idle|min=5", "program.close:steam"), Rule("login"), Rule("program.start:") };
-        Assert.Equal(2, ProgramTriggerMigration.Run(rules));
+        Assert.Equal(3, ProgramTriggerMigration.Run(rules));
         Assert.Equal("state:program.chrome", rules[0].Trigger);
-        Assert.Equal(new[] { "idle|min=5", "state:program.steam|when=turns%20off" }, rules[0].MoreTriggers);
+        Assert.Equal(new[] { "state:pc.idle.minutes|when=reaches%20at%20least;v=5", "state:program.steam|when=turns%20off" }, rules[0].MoreTriggers);
         Assert.Equal("login", rules[1].Trigger);
         Assert.Equal("program.start:", rules[2].Trigger); // no program named: none can be made any more, nothing to follow
         Assert.Equal(0, ProgramTriggerMigration.Run(rules)); // nothing is left to move
