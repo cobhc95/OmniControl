@@ -54,6 +54,20 @@ public sealed class TraySettings
     /// The tray icon's colour (<see cref="TrayIconChoices.Colours"/>); null: Follow Windows (the default).
     public string? IconColour { get; set; } = DefaultIconColour;
 
+    /// The panel's timings, set on App settings; their defaults and the limits they are clamped to (a file may hold anything) are here.
+    public const int ReopenGraceMin = 100, ReopenGraceMax = 1000, RecheckStaggerMin = 100, RecheckStaggerMax = 2000, RecheckGapMin = 1, RecheckGapMax = 60;
+    public static readonly int ReopenGraceDefault = (int)Timing.TrayReopenGrace.TotalMilliseconds, RecheckStaggerDefault = (int)Timing.TrayRecheckStagger.TotalMilliseconds,
+        RecheckGapDefault = (int)Timing.TrayRecheckMinGap.TotalSeconds;
+
+    /// How long (ms) after the panel hid itself a click on the tray icon only closes it.
+    public int ReopenGraceMs { get; set; } = ReopenGraceDefault;
+
+    /// The pause (ms) between one tile's state read and the next when the panel opens.
+    public int RecheckStaggerMs { get; set; } = RecheckStaggerDefault;
+
+    /// The least time (s) before a tile's state is read again.
+    public int RecheckGapSeconds { get; set; } = RecheckGapDefault;
+
     /// The tray icon's look by default: the logo outline, white on a dark taskbar and black on a light one.
     public const string DefaultIcon = Icons.IconLibrary.Logo;
     public const string? DefaultIconColour = null;

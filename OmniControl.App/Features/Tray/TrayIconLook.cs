@@ -2,7 +2,7 @@ using OmniControl.App.Features.Icons;
 
 namespace OmniControl.App.Features.Tray;
 
-/// The tray icon's look as the tray menu and the App settings cards read and set it (kept in tray.json).
+/// The tray icon's look and the panel's timings as the tray menu and the App settings cards read and set them (kept in tray.json).
 public interface ITrayIconLook
 {
     /// An icon value; null: the OmniControl logo.
@@ -19,6 +19,19 @@ public interface ITrayIconLook
     Task ChooseTrayIconAsync(Visual from);
 
     event Action? TrayIconChanged;
+
+    /// The panel's timings as App settings read and set them (see <see cref="TraySettings"/> for defaults and limits).
+    int ReopenGraceMs { get; }
+
+    int RecheckStaggerMs { get; }
+
+    int RecheckGapSeconds { get; }
+
+    void SetReopenGraceMs(int ms);
+
+    void SetRecheckStaggerMs(int ms);
+
+    void SetRecheckGapSeconds(int seconds);
 }
 
 /// The tray icon's choices, defined once for the tray menu and the App settings cards. Pure.

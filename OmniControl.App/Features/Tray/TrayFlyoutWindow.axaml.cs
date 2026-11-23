@@ -35,7 +35,7 @@ public partial class TrayFlyoutWindow : Window
 
     private TrayFlyoutModel? Model => DataContext as TrayFlyoutModel;
 
-    /// When it last hid itself (the tray icon's next click within <see cref="Shared.Services.Timing.TrayReopenGrace"/> only closed it).
+    /// When it last hid itself (the tray icon's next click within the reopen grace (<see cref="TraySettings.ReopenGraceMs"/>) only closed it).
     public DateTime HiddenAt { get; private set; } = DateTime.MinValue;
 
     /// Shows the flyout beside the tray icon clicked at <paramref name="click"/> (screen pixels) and gives it the keyboard; <paramref name="fromKeyboard"/>: opened by its hotkey, the first item is highlighted.
@@ -187,17 +187,17 @@ public partial class TrayFlyoutWindow : Window
     }
 
     // The menu closes first (its row was clicked), then the picker opens over the panel.
-    private void ChangeAction(ITrayPanelItem item) => Dispatcher.UIThread.Post(async () =>
+    private void ChangeAction(ITrayPanelItem item) => Defer(async () =>
     {
         if (Model is not { } model) return;
         var (title, picker) = model.ChangePicker(item);
-        if (await PickAsync(title, picker) is { } pick) model.Replace(item, pick);
+        if (await PickerWindow.ChooseAsync(this, title, picker) is { } pick) model.Replace(item, pick);
     });
 
-    private void ChangeIcon(ITrayPanelItem item) => Dispatcher.UIThread.Post(async () =>
+    private void ChangeIcon(ITrayPanelItem item) => Defer(async () =>
     {
         if (Model is not { } model) return;
-        if (await WhilePicking(() => model.ChooseIconAsync(this, item)) is { } pick) model.SetIcon(item, pick);
+        if (await model.ChooseIconAsync(this, item) is { } pick) model.SetIcon(item, pick);
     });
 
     private void OnRemoveClick(object? sender, RoutedEventArgs e)
@@ -218,35 +218,36 @@ public partial class TrayFlyoutWindow : Window
     // ---- pickers ----
 
     // Posted like the menu's pickers, so the click has finished before the picker window takes the keyboard.
-    private void OnAddSliderClick(object? sender, RoutedEventArgs e) => Dispatcher.UIThread.Post(async () =>
+    private void OnAddSliderClick(object? sender, RoutedEventArgs e) => Defer(async () =>
     {
         if (Model is not { } model) return;
         var (title, picker) = model.SliderPicker();
-        if (await PickAsync(title, picker) is { } pick) model.AddSlider(pick);
+        if (await PickerWindow.ChooseAsync(this, title, picker) is { } pick) model.AddSlider(pick);
     });
 
-    private void OnAddTileClick(object? sender, RoutedEventArgs e) => Dispatcher.UIThread.Post(async () =>
+    private void OnAddTileClick(object? sender, RoutedEventArgs e) => Defer(async () =>
     {
         if (Model is not { } model) return;
         var (title, picker) = model.TilePicker();
-        if (await PickAsync(title, picker) is { } pick) model.AddTile(pick);
+        if (await PickerWindow.ChooseAsync(this, title, picker) is { } pick) model.AddTile(pick);
     });
 
-    /// The Choose-the-action window over the flyout, which stays open meanwhile and has the keyboard again after it.
-    private Task<PickResult?> PickAsync(string title, PickerModel picker) => WhilePicking(() => PickerWindow.ChooseAsync(this, title, picker));
-
-    /// A picker window over the flyout (it stays open meanwhile and has the keyboard again after it).
-    private async Task<T?> WhilePicking<T>(Func<Task<T?>> pick) where T : class
+    /// Runs a picker window over the flyout, which stays open meanwhile and has the keyboard again after it. The flyout is marked as
+    /// picking at once, before the posted work runs, because the closing menu or the click itself can already take the focus from it.
+    private void Defer(Func<Task> pick)
     {
         _picking = true;
-        try
+        Dispatcher.UIThread.Post(async () =>
         {
-            return await pick();
-        }
-        finally
-        {
-            _picking = false;
-            Activate();
-        }
+            try
+            {
+                await Guard.RunAsync("Tray panel picker", pick);
+            }
+            finally
+            {
+                _picking = false;
+                Activate();
+            }
+        });
     }
 }

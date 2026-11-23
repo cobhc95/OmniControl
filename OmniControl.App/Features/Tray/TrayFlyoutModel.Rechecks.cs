@@ -8,7 +8,7 @@ public static class RecheckThrottle
 
 // Live states in the panel: when it opens, and after it has drawn, each tile whose state can be read
 // again cheaply (a smart device with a Scripts method that reads when the tray opens: StateEntry.Recheck) is read in the background, ONE AT A
-// TIME with Timing.TrayRecheckStagger between, and never more often than Timing.TrayRecheckMinGap. What the read is doing (the grey dot, a
+// TIME with RecheckStaggerMs between, and never more often than RecheckGapSeconds. What the read is doing (the grey dot, a
 // failure) comes from the state's own liveness like every other mark; the answer lights or dims the tile as any change does. A state that
 // cannot be read that way (a device run by simulation only) shows its last known value, faded; simulation is never woken here.
 public sealed partial class TrayFlyoutModel
@@ -40,11 +40,11 @@ public sealed partial class TrayFlyoutModel
             if (stop.IsCancellationRequested || !_shown) return;
             if (tile.Recheck is not { } recheck || tile.Target.State is not { } state || !recheck.CanCheck()) continue;
             var now = DateTime.UtcNow;
-            if (!RecheckThrottle.Due(_lastAsked.TryGetValue(state.Id, out var last) ? last : null, now, Timing.TrayRecheckMinGap)) continue;
+            if (!RecheckThrottle.Due(_lastAsked.TryGetValue(state.Id, out var last) ? last : null, now, TimeSpan.FromSeconds(RecheckGapSeconds))) continue;
             _lastAsked[state.Id] = now;
             try
             {
-                if (!first) await Task.Delay(Timing.TrayRecheckStagger, stop);
+                if (!first) await Task.Delay(RecheckStaggerMs, stop);
                 first = false;
                 await recheck.CheckAsync();
             }

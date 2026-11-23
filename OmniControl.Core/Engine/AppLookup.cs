@@ -50,7 +50,10 @@ public static class AppLookup
         return found;
     }
 
-    private static AppTarget? FindOne(AppLocator locator, List<string> storeNames, Lazy<IReadOnlyList<FoundProgram>> startMenu)
+    private static AppTarget? FindOne(AppLocator locator, List<string> storeNames, Lazy<IReadOnlyList<FoundProgram>> startMenu) =>
+        Locate(locator, storeNames, startMenu) is { } target ? target with { AsksForAdministrator = locator.AsksForAdministrator } : null;
+
+    private static AppTarget? Locate(AppLocator locator, List<string> storeNames, Lazy<IReadOnlyList<FoundProgram>> startMenu)
     {
         foreach (var name in locator.AppPaths)
             if (InstalledPrograms.AppPathOf(name) is { } path) return Program(path);
@@ -61,7 +64,7 @@ public static class AppLookup
             return Program(shortcut.Path);
         if (locator.StorePackage is { } package && StoreAddress(package, locator.StoreAppId, storeNames) is { } address)
             return new AppTarget(address, string.Empty, string.Empty, IsFile: false);
-        return locator.Direct is { } direct && DirectTarget(direct) is { } target ? target with { AsksForAdministrator = locator.AsksForAdministrator } : null;
+        return locator.Direct is { } direct ? DirectTarget(direct) : null;
     }
 
     private static AppTarget Program(string path, string arguments = "") =>

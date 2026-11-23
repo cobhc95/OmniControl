@@ -101,13 +101,13 @@ public sealed class TrayService : IDisposable
             return;
         }
         // The press on the icon took the focus from an open flyout, which hid itself: this click only closed it.
-        if (_window is { } window && Grace.Within(window.HiddenAt, Timing.TrayReopenGrace)) return;
+        if (_window is { } window && Grace.Within(window.HiddenAt, TimeSpan.FromMilliseconds(_flyout.ReopenGraceMs))) return;
         if (at is { } point) _click = new PixelPoint(point.X, point.Y);
         ShowFlyout(timer);
     }
 
     // Windows may send no click for the second press of a double click that takes the focus from the open panel (only the press reaches the
-    // taskbar), so that press, seen as the panel hiding itself, is the double click; a release that still comes falls in TrayReopenGrace.
+    // taskbar), so that press, seen as the panel hiding itself, is the double click; a release that still comes falls in the reopen grace.
     private void OnPanelDeactivated(object? sender, EventArgs e)
     {
         if (_window is { IsOpen: false } && _clicks.IsSecond(SystemCommands.GetCursorPos())) Dispatcher.UIThread.Post(_open);
@@ -141,7 +141,7 @@ public sealed class TrayService : IDisposable
             return;
         }
         // A click on the gadget took the focus from the open panel, which hid itself: that click only closes it, as on the icon.
-        if (Grace.Within(Window().HiddenAt, Timing.TrayReopenGrace)) return;
+        if (Grace.Within(Window().HiddenAt, TimeSpan.FromMilliseconds(_flyout.ReopenGraceMs))) return;
         var at = TrayArea.Centre() ?? SystemCommands.GetCursorPos();
         if (at is { } point) _click = new PixelPoint(point.X, point.Y);
         Window().ShowAt(_click, fromKeyboard: true);

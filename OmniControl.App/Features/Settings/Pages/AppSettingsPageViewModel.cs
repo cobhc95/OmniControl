@@ -154,7 +154,7 @@ public sealed partial class AppSettingsPageViewModel : PageViewModel, IDisposabl
         TurnAllOnCommand = new RelayCommand(() => _features.SetOff(Array.Empty<string>()), () => _features.Off.Count > 0);
 
         // Each group is made from its fixed cards (its closed header lists their names), then the cards that come and go are added.
-        Appearance = Fill(AppearanceItems, "AppSettings/Appearance", AppearanceName, Theme, Background, Accent, _accentIntensity, _groupsOpen, _gpuDrawing, _trayIcon, _trayColour);
+        Appearance = Fill(AppearanceItems, "AppSettings/Appearance", AppearanceName, Theme, Background, Accent, _accentIntensity, _groupsOpen, _gpuDrawing, _trayIcon, _trayColour, _trayGrace, _trayStagger, _trayGap);
         StartAndClose = Fill(StartItems, "AppSettings/Start", StartName, _startWithWindows, _startMinimised, _whenClosing, _hardwareCheck, _uiRelease, _keepPages);
         foreach (var (_, card) in _featureCards) FeatureItems.Add(card);
         FeatureGroup = new ItemGroup("AppSettings/Features", FeaturesName, FeatureItems) { NoMasterSwitch = true };

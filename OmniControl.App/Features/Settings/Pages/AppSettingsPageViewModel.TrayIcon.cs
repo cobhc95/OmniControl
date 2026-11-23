@@ -7,6 +7,7 @@ public sealed partial class AppSettingsPageViewModel
 {
     private MenuChoiceItem _trayIcon = null!;
     private GalleryItem _trayColour = null!;
+    private SliderItem _trayGrace = null!, _trayStagger = null!, _trayGap = null!;
     private ITrayIconLook _trayLook = null!;
 
     /// The tray icon's look now, and by default, for Restore defaults.
@@ -44,7 +45,18 @@ public sealed partial class AppSettingsPageViewModel
             _trayColour.Load(ColourIndex());
         });
         Follow(h => AccentService.Changed += h, h => AccentService.Changed -= h, _trayColour.Refresh);
+        _trayGrace = TimingCard(TrayGraceCard, look.ReopenGraceMs, TraySettings.ReopenGraceMin, TraySettings.ReopenGraceMax, " ms", TraySettings.ReopenGraceDefault, look.SetReopenGraceMs);
+        _trayStagger = TimingCard(TrayStaggerCard, look.RecheckStaggerMs, TraySettings.RecheckStaggerMin, TraySettings.RecheckStaggerMax, " ms", TraySettings.RecheckStaggerDefault,
+            look.SetRecheckStaggerMs);
+        _trayGap = TimingCard(TrayGapCard, look.RecheckGapSeconds, TraySettings.RecheckGapMin, TraySettings.RecheckGapMax, " s", TraySettings.RecheckGapDefault, look.SetRecheckGapSeconds);
     }
+
+    private static SliderItem TimingCard(SearchCard card, int value, int min, int max, string unit, int standard, Action<int> set) =>
+        new(card, value, v =>
+        {
+            set(v);
+            return OperationResult.Ok();
+        }, _ => { }, min, max, unit, standard) { Half = true };
 
     // The menu closes first (its row was clicked), then THE icon picker opens over the main window.
     private static void ChooseTrayIcon(ITrayIconLook look) => Dispatcher.UIThread.Post(() => _ = Guard.RunAsync("Tray icon picker", async () =>

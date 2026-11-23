@@ -31,6 +31,18 @@ public sealed partial class AppSettingsPageViewModel
             Choices = TrayIconChoices.Colours.Select(c => c.Name).ToList(),
             Tip = "Follow Windows draws an icon white on a dark taskbar and black on a light one; the logo keeps its own tile and dial colours.",
         },
+        TrayGraceCard = new("Panel reopen delay", "tray panel flyout reopen delay grace click icon close open toggle milliseconds ms latency", Title: AppearanceName)
+        {
+            Note = "A click on the tray icon this soon after the panel closed only closes it, so the icon opens and closes the panel.",
+        },
+        TrayStaggerCard = new("Tile refresh spacing", "tray panel flyout tiles refresh read state spacing pause between milliseconds ms latency smart devices", Title: AppearanceName)
+        {
+            Note = "Opening the panel reads its smart devices' states one at a time, this far apart.",
+        },
+        TrayGapCard = new("Tile refresh at most every", "tray panel flyout tiles refresh read state least time seconds smart devices", Title: AppearanceName)
+        {
+            Note = "A tile's state is not read again sooner than this after the last read.",
+        },
         TrayPanelCard = new("Tray panel", "tray panel flyout tiles sliders edit add tile slider drag order lock layout click open", Title: AppearanceName)
         {
             Menu = TrayFlyoutModel.MenuWords,
@@ -112,7 +124,7 @@ public sealed partial class AppSettingsPageViewModel
         var plugins = page?._keepFx is not null;
         return new SearchBuilder()
             .Add(ThemeCard, page?.Theme).Add(AccentCard, page?.Accent).Add(IntensityCard, page?._accentIntensity).Add(BackgroundCard, page?.Background)
-            .Add(TrayIconCard, page?._trayIcon).Add(TrayColourCard, page?._trayColour).Add(TrayPanelCard).Add(GpuCard, page?._gpuDrawing).Add(GroupsOpenCard, page?._groupsOpen)
+            .Add(TrayIconCard, page?._trayIcon).Add(TrayColourCard, page?._trayColour).Add(TrayGraceCard, page?._trayGrace).Add(TrayStaggerCard, page?._trayStagger).Add(TrayGapCard, page?._trayGap).Add(TrayPanelCard).Add(GpuCard, page?._gpuDrawing).Add(GroupsOpenCard, page?._groupsOpen)
             .Add(StartWithWindowsCard, page?._startWithWindows).Add(StartMinimisedCard, page?._startMinimised).Add(WhenClosingCard, page?._whenClosing)
             .Add(HardwareCheckCard, page?._hardwareCheck).Add(UiReleaseCard, page?._uiRelease).Add(KeepPagesCard, page?._keepPages)
             .Add(presets is null ? PresetsCard : PresetsCard with { Choices = presets.Words.Distinct().ToList() }, page?._presets).Add(BackupCard, page?._backup).Add(RestoreAllCard, page?._restoreAllCard).Add(NetworkServiceCard, page?._networkService)

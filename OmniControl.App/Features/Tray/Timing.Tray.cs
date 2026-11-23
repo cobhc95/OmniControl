@@ -1,6 +1,6 @@
 namespace OmniControl.App.Shared.Services;
 
-// The intervals and limits of the tray flyout; a part of Timing in Shared/Services, so every call stays Timing.X.
+// The defaults of the tray flyout's intervals and limits; the user's own values are in TraySettings (App settings), a part of Timing in Shared/Services.
 public static partial class Timing
 {
     /// A click on the tray icon this soon after the flyout hid itself (it hides as the press on the icon takes the focus away) only closed it:

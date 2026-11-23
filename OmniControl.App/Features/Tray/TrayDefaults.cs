@@ -12,7 +12,7 @@ public static class TrayDefaults
         new TrayElement { State = "volume.master.level", Choice = "volume.default.speaker", AllState = "volume.speakers.all.level" },
     };
 
-    /// Effects on/off, every smart device, night light, area screenshot, microphone mute, rotate.
+    /// Effects on/off, every smart device, night light, area screenshot, microphone mute, screens off.
     public static IReadOnlyList<TrayElement> Tiles => new[]
     {
         TrayElement.OfState("volume.master.fx"),
@@ -20,7 +20,6 @@ public static class TrayDefaults
         TrayElement.OfState("displays.warmlight"),
         TrayElement.OfAction("screenshot.area"),
         TrayElement.OfState("volume.mic.muted"),
-        TrayElement.OfAction("displays.rotate.portrait"),
         TrayElement.OfAction("displays.screens.off"),
     };
 

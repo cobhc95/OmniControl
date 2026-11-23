@@ -5,6 +5,21 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 
 ## Unreleased
 
+## 0.3.3 (23 Nov 2026)
+
+### ✨ New
+
+- **Tray panel timings** in App settings > Appearance: **Panel reopen delay** (ms), **Tile refresh spacing** (ms) and **Tile refresh at most every** (s). The defaults are the old fixed values (400 ms, 400 ms, 10 s), and double-clicking a slider restores them.
+
+### 🛠 Fixed
+
+- "Open Task Manager" said Windows refused to start it with normal rights when Task Manager was found through the Start menu or App Paths instead of Windows' folder; it now always opens through the shell's administrator prompt.
+- The tray panel could hide itself when a tile's menu closed or an action picker opened (Tile, Slider, Change action, Change icon), so the action could not be chosen; it now stays open while a picker is up.
+
+### ✏️ Renamed and tidied
+
+- The built-in tray panel no longer starts with a "rotate to portrait" tile (add it from the panel's Edit if you want it).
+
 ## 0.3.2 (22 Nov 2026)
 
 ### ✨ New
