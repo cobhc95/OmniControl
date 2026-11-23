@@ -16,6 +16,7 @@ New entries go under "Unreleased" as work lands; a release moves them under its 
 ### 🛠 Fixed
 
 - **Design:** The X remove buttons are one shared `Button.xbtn` (16px badge in a 20px hit, 5px corners, accent hover, 2px accent focus) everywhere: Automation and mouse rows, Volume and wiring rows, tray tiles, search boxes and the rest. The cross drew large and white because the generic glyph style overrode it.
+- **Tray panel:** Another fix attempt for the panel that kept hiding or escaping while you used it; it now only hides on a click outside or Esc, and stays open while its menus and pickers are up.
 
 ### ✏️ Renamed and tidied
 
