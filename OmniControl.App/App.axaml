@@ -374,8 +374,8 @@
         <!-- THE X remove button (Button.xbtn, Styles/ButtonThemes.axaml): a 16px badge in a 20px hit, its thin drawn cross -->
         <x:Double x:Key="XButtonSize">16</x:Double>
         <x:Double x:Key="XButtonHit">20</x:Double>
-        <x:Double x:Key="XButtonCross">7</x:Double>
-        <CornerRadius x:Key="XButtonRadius">5</CornerRadius>
+        <x:Double x:Key="XButtonCross">8</x:Double>
+        <CornerRadius x:Key="XButtonRadius">4</CornerRadius>
         <x:Double x:Key="PillIconWidth">32</x:Double>
         <x:Double x:Key="PillGlyphSize">17</x:Double>
         <x:Double x:Key="DialogButtonHeight">28</x:Double>

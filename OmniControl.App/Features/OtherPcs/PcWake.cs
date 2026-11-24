@@ -101,6 +101,24 @@ public sealed class PcWake : IDisposable
         return reply;
     }
 
+    internal async Task<WakeReply> SetOwnWakeAsync(string mac, IReadOnlyDictionary<WakeFix, bool> settings)
+    {
+        await Task.WhenAny(_fixRun);
+        var before = await ReadOwnWakeAsync();
+        if (!before.Known) return new WakeReply(false, "Windows could not read the network card.");
+        if (!string.Equals(before.Mac, mac, StringComparison.OrdinalIgnoreCase))
+            return new WakeReply(false, "The network card changed. Review its wake settings and try again.");
+        var run = Task.Run(() => WakeFixer.Set(settings, before.Mac));
+        _fixRun = run;
+        var reply = ReplyOf(await run, "change");
+        var after = await ReadOwnWakeAsync();
+        _book.RaiseChanged();
+        return reply.Ok && (!after.Known || !string.Equals(after.Mac, mac, StringComparison.OrdinalIgnoreCase)
+            || settings.Any(setting => after.SettingStatus(setting.Key) != setting.Value))
+            ? new WakeReply(false, "Windows could not verify every wake setting.")
+            : reply;
+    }
+
     /// How the PC went away, from its notice: the words and when (null: no notice came).
     public (string Away, DateTime At)? AwayOf(string id) => _book.Find(id) is { Away: { } away, AwayAt: { } at } ? (away, at) : null;
 

@@ -31,6 +31,9 @@
                                 <TextBlock Classes="cautiontext" Text="{Binding Result}" IsVisible="{Binding HasResult}" TextWrapping="Wrap" />
                             </StackPanel>
                             <TextBlock Grid.Column="2" Classes="hint small" Text="{Binding Detail}" IsVisible="{Binding HasDetail}" TextWrapping="Wrap" MaxWidth="170" VerticalAlignment="Center" />
+                            <ToggleSwitch Grid.Column="2" Classes="plain" IsChecked="{Binding SwitchValue, Mode=OneWay}"
+                                          IsVisible="{Binding HasKnownSwitch}" IsEnabled="{Binding CanSwitch}"
+                                          Command="{Binding Command}" AutomationProperties.Name="{Binding Label}" />
                             <Grid Grid.Column="3" VerticalAlignment="Center" MinWidth="64">
                                 <Button Classes="pill" Classes.accentline="{Binding ButtonAccent}" Content="{Binding ButtonText}" Command="{Binding Command}" IsVisible="{Binding ButtonVisible}" HorizontalAlignment="Right" />
                             </Grid>
@@ -45,7 +48,7 @@
                 <Path Classes="markarc" Classes.spinning="{Binding Busy}" />
             </Panel>
             <TextBlock Grid.Column="1" Classes="statusline" Text="{Binding Status}" TextWrapping="Wrap" VerticalAlignment="Center" />
-            <Button Grid.Column="2" Classes="pill" Content="Stop" Command="{Binding StopCommand}" IsVisible="{Binding Busy}" ToolTip.Tip="Stops and puts back anything half-done." />
+            <Button Grid.Column="2" Classes="pill" Content="Stop" Command="{Binding StopCommand}" IsVisible="{Binding CanStop}" ToolTip.Tip="Stops and puts back anything half-done." />
         </Grid>
         <Border Grid.Row="4" Classes="footer">
             <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="{StaticResource GapLarge}">

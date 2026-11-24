@@ -6,24 +6,28 @@ namespace OmniControl.App.Features.OtherPcs.Pages;
 /// One row of the wake set-up window as it is drawn: a mark, its words, a muted detail, a muted note, the one pill it may have and the honest result of the last try.
 public sealed class WakeRowItem
 {
-    public WakeRowItem(WakeRowSpec spec, string result, bool online, string offlineTip, RelayCommand command)
+    public WakeRowItem(WakeRowSpec spec, string result, bool online, string offlineTip, RelayCommand command,
+        bool hasSwitch = false, bool? switchValue = null, bool busy = false)
     {
         Spec = spec;
         Result = result;
         Command = command;
         Tip = online ? string.Empty : offlineTip;
         var offersFix = spec.Fix is not null && spec.Kind is WakeRowKind.Needed or WakeRowKind.Optional;
-        ButtonVisible = online && (offersFix || spec.Kind == WakeRowKind.Test);
+        ButtonVisible = online && !hasSwitch && (offersFix || spec.Kind == WakeRowKind.Test);
         ButtonText = spec.Kind == WakeRowKind.Test ? "Start test" : "Fix";
+        HasSwitch = hasSwitch;
+        SwitchValue = switchValue;
+        CanSwitch = online && !busy && switchValue.HasValue;
     }
 
     public WakeRowSpec Spec { get; }
 
     public string Label => Spec.Label;
 
-    public string Detail => Spec.Detail;
+    public string Detail => HasSwitch ? SwitchValue.HasValue ? string.Empty : "Unknown" : Spec.Detail;
 
-    public bool HasDetail => Spec.Detail.Length > 0;
+    public bool HasDetail => Detail.Length > 0;
 
     public string Note => Spec.Note;
 
@@ -33,9 +37,17 @@ public sealed class WakeRowItem
 
     public bool HasResult => Result.Length > 0;
 
-    public bool IsDone => Spec.Kind == WakeRowKind.Done;
+    public bool IsDone => HasSwitch ? SwitchValue == true : Spec.Kind == WakeRowKind.Done;
 
-    public bool IsNeeded => Spec.Kind == WakeRowKind.Needed;
+    public bool IsNeeded => HasSwitch ? SwitchValue == false : Spec.Kind == WakeRowKind.Needed;
+
+    public bool HasKnownSwitch => HasSwitch && SwitchValue.HasValue;
+
+    private bool HasSwitch { get; }
+
+    public bool? SwitchValue { get; }
+
+    public bool CanSwitch { get; }
 
     public bool IsOptional => Spec.Kind == WakeRowKind.Optional;
 
@@ -86,6 +98,12 @@ public sealed partial class WakeSetupViewModel : ObservableObject, IDisposable
 
     public bool IsOffline => !IsOnline;
 
+    public bool CanStop => Busy && !_settingSwitch;
+
+    private bool _settingSwitch;
+
+    partial void OnBusyChanged(bool value) => OnPropertyChanged(nameof(CanStop));
+
     /// Why nothing can be changed now: it says how the PC went away (one sentence, also the rows' tooltip).
     public string OfflineNote => _target.OfflineNote;
 
@@ -109,9 +127,35 @@ public sealed partial class WakeSetupViewModel : ObservableObject, IDisposable
         Rows.Clear();
         foreach (var spec in WakeSetupRows.Of(_target.Facts, Name, _target.CanTest))
         {
-            var row = spec;
-            var command = new RelayCommand(() => Run(row));
-            Rows.Add(new WakeRowItem(spec, _results.GetValueOrDefault(spec.Id, string.Empty), IsOnline, OfflineNote, command));
+            var facts = _target.Facts;
+            var hasSwitch = _target.IsOwn && spec.Fix is WakeFix.MagicPacket or WakeFix.Arm or WakeFix.MagicOnly;
+            var value = hasSwitch && facts is { Known: true } ? facts.SettingStatus(spec.Fix!.Value) : null;
+            var command = hasSwitch
+                ? new RelayCommand(() =>
+                {
+                    if (value is { } on && facts is not null && spec.Fix is { } fix)
+                        _ = Guard.RunAsync("Other PCs: wake setting", () => SetSwitchAsync(facts.Mac, fix, !on));
+                })
+                : new RelayCommand(() => Run(spec));
+            Rows.Add(new WakeRowItem(spec, _results.GetValueOrDefault(spec.Id, string.Empty), IsOnline, OfflineNote, command, hasSwitch, value, Busy));
+        }
+    }
+
+    private async Task SetSwitchAsync(string mac, WakeFix fix, bool value)
+    {
+        if (_target is not OwnWakeTarget own || Busy || !IsOnline) return;
+        _settingSwitch = true;
+        Begin("Changing wake setting…");
+        var status = "The change could not finish.";
+        try
+        {
+            var reply = await own.SetAsync(mac, new Dictionary<WakeFix, bool> { [fix] = value });
+            status = reply.Ok ? string.Empty : reply.Why;
+        }
+        finally
+        {
+            _settingSwitch = false;
+            End(status);
         }
     }
 
@@ -211,6 +255,7 @@ public sealed partial class WakeSetupViewModel : ObservableObject, IDisposable
         _stop = new CancellationTokenSource();
         _results.Clear();
         Status = words;
+        if (_target.IsOwn) Refresh();
         return true;
     }
 

@@ -19,6 +19,9 @@ public static class WakeFixer
 
     public static HelperResult Apply(IReadOnlyCollection<WakeFix> fixes, string mac) => Run(fixes, mac, Command);
 
+    public static HelperResult Set(IReadOnlyDictionary<WakeFix, bool> settings, string mac) =>
+        Run(settings.Keys.ToArray(), mac, fix => settings[fix] ? Command(fix) : Undo(fix));
+
     /// Puts the given settings back to what they were before OmniControl turned them on (one elevated step).
     public static HelperResult Revert(IReadOnlyCollection<WakeFix> fixes, string mac) => Run(fixes, mac, Undo);
 
@@ -57,7 +60,7 @@ public static class WakeFixer
             + "if ((Get-NetAdapterPowerManagement -Name $card.Name -ErrorAction SilentlyContinue).WakeOnMagicPacket -ne 'Enabled') { SetKeyword $magicNames $magicDescription '1' };",
         WakeFix.MagicOnly =>
             "try { Set-NetAdapterPowerManagement -Name $card.Name -WakeOnPattern Disabled -ErrorAction Stop } catch { }; "
-            + "if ((Get-NetAdapterPowerManagement -Name $card.Name -ErrorAction SilentlyContinue).WakeOnPattern -eq 'Enabled') { SetKeyword $patternNames $patternDescription '0' };",
+            + "if ((Get-NetAdapterPowerManagement -Name $card.Name -ErrorAction SilentlyContinue).WakeOnPattern -ne 'Disabled') { SetKeyword $patternNames $patternDescription '0' };",
         WakeFix.Arm =>
             "try { [void][Wake.Power]::DevicePowerSetDeviceState($name, 1, [System.IntPtr]::Zero) } catch { }; "
             + "if (-not (IsArmed)) { powercfg /deviceenablewake \"$name\" | Out-Null }; "
@@ -71,7 +74,7 @@ public static class WakeFixer
     {
         WakeFix.MagicPacket =>
             "try { Set-NetAdapterPowerManagement -Name $card.Name -WakeOnMagicPacket Disabled -ErrorAction Stop } catch { }; "
-            + "if ((Get-NetAdapterPowerManagement -Name $card.Name -ErrorAction SilentlyContinue).WakeOnMagicPacket -eq 'Enabled') { SetKeyword $magicNames $magicDescription '0' };",
+            + "if ((Get-NetAdapterPowerManagement -Name $card.Name -ErrorAction SilentlyContinue).WakeOnMagicPacket -ne 'Disabled') { SetKeyword $magicNames $magicDescription '0' };",
         WakeFix.MagicOnly =>
             "try { Set-NetAdapterPowerManagement -Name $card.Name -WakeOnPattern Enabled -ErrorAction Stop } catch { }; "
             + "if ((Get-NetAdapterPowerManagement -Name $card.Name -ErrorAction SilentlyContinue).WakeOnPattern -ne 'Enabled') { SetKeyword $patternNames $patternDescription '1' };",

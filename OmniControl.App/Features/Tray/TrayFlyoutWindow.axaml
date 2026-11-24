@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:c="using:OmniControl.App.Shared.Ui.Controls"
         xmlns:t="using:OmniControl.App.Features.Tray"
+        xmlns:pages="using:OmniControl.App.Shared.Ui.Pages"
         x:Class="OmniControl.App.Features.Tray.TrayFlyoutWindow"
         x:DataType="t:TrayFlyoutModel"
         Title="OmniControl">
@@ -90,7 +91,7 @@
                                         </c:ChipMenu.Menu>
                                     </c:ChipMenu>
                                     <Slider Grid.Column="2" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Value}"
-                                            IsEnabled="{Binding CanSet}" />
+                                            pages:SliderReset.Value="{Binding ResetValue}" IsEnabled="{Binding CanSet}" />
                                     <TextBlock Grid.Column="3" Classes="trayvalue slidervalue" Text="{Binding ValueText}" />
                                     <Button Grid.Column="4" Classes="xbtn" Click="OnRemoveClick"
                                             IsVisible="{Binding $parent[Window].DataContext.IsEditing}">

@@ -25,6 +25,23 @@ public sealed class WakeFacts
     /// Windows lets the card wake the PC ("Allow this device to wake the computer").
     public bool Armed { get; set; }
 
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool? MagicPacketStatus { get; set; }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool? ArmedStatus { get; set; }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool? MagicOnlyStatus { get; set; }
+
+    public bool? SettingStatus(WakeFix fix) => fix switch
+    {
+        WakeFix.MagicPacket => MagicPacketStatus,
+        WakeFix.Arm => ArmedStatus,
+        WakeFix.MagicOnly => MagicOnlyStatus,
+        _ => null,
+    };
+
     /// Only a magic packet may wake it (other traffic may not).
     public bool MagicOnly { get; set; }
 
@@ -41,7 +58,8 @@ public sealed class WakeFacts
     public bool Ready => Known && CardCanWake && MagicPacketOn && Armed;
 
     /// The facts as one text: equal facts give equal text (used to see whether they changed).
-    public string Key => string.Join('|', Known, Adapter, Mac, Subnet, CardCanWake, MagicPacketOn, Armed, MagicOnly, FastStartupOn, ModernStandby, CanUndo);
+    public string Key => string.Join('|', Known, Adapter, Mac, Subnet, CardCanWake, MagicPacketOn, Armed, MagicOnly, FastStartupOn, ModernStandby, CanUndo,
+        MagicPacketStatus, ArmedStatus, MagicOnlyStatus);
 }
 
 /// A card setting <see cref="WakeFixer"/> can change (each is one row of the set-up window).

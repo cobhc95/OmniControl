@@ -60,6 +60,8 @@ public static class WakeReader
         }
         facts.MagicPacketOn = magic == 2;
         facts.MagicOnly = pattern != 2;
+        facts.MagicPacketStatus = magic == 0 ? null : facts.MagicPacketOn;
+        facts.MagicOnlyStatus = pattern == 0 ? null : facts.MagicOnly;
 
         // Windows' device power list leaves out some cards that powercfg shows, so a name found by either says yes, and "no" needs a list that answered.
         var canWake = false;
@@ -93,6 +95,7 @@ public static class WakeReader
 
         facts.CardCanWake = canWake;
         facts.Armed = armed;
+        facts.ArmedStatus = armedAnswered ? armed : null;
         if (!canWake && !armedAnswered && settingsSource == "none" && !row.Found) facts.Known = false; // no source could say: shown as "not known", never as a guess
         Say($"Wake: can wake = {canWake} (from {canWakeSource}); armed = {armed} (from {armedSource}); magic packet = {facts.MagicPacketOn}, magic only = {facts.MagicOnly} (from {settingsSource})");
         return facts;

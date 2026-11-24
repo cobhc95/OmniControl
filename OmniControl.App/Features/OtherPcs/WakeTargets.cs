@@ -121,5 +121,7 @@ public sealed class OwnWakeTarget : IWakeTarget
 
     public Task<WakeReply> UndoAsync() => _wake.UndoOwnWakeAsync();
 
+    internal Task<WakeReply> SetAsync(string mac, IReadOnlyDictionary<WakeFix, bool> settings) => _wake.SetOwnWakeAsync(mac, settings);
+
     public Task<string> TestAsync() => Task.FromResult("This PC cannot wake itself.");
 }

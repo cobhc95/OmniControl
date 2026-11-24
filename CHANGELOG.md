@@ -3,7 +3,17 @@
 Versions go 0.1.0, 0.1.1 ... 0.1.9, then 0.2.0. Each release is a full GitHub release with a Setup, a Portable download and checksums.
 New entries go under "Unreleased" as work lands; a release moves them under its version.
 
-## Unreleased
+## 0.3.5 (24 Nov 2026)
+
+### ✨ New
+
+- **Other PCs:** This PC’s wake setup can turn network-card wake, magic-packet wake and magic-packet-only wake on or off.
+
+### 🛠 Fixed
+
+- **Design:** The X remove button is 16px badge in a 20px hit, 8px cross, 4px corners everywhere: Automation and mouse rows, Volume and wiring rows, tray tiles, search boxes and the rest.
+- **Sliders:** Double-click now resets sliders whose default is 0 (Colour temperature, Digital gamma, Digital black level) and the tray panel sliders too.
+- **Sliders:** Every slider now shows the 2×12 default mark at its reset value (controls/SliderBar from Pages/SliderReset), so the reset is visible without trying it.
 
 ## 0.3.4 (23 Nov 2026)
 

@@ -18,7 +18,7 @@
                 <c:TagView DataContext="{Binding OriginTag}" />
             </Panel>
         </Grid>
-        <Button Grid.Column="2" Classes="pill glyph closex" Click="OnDeleteClick" ToolTip.Tip="Delete">
+        <Button Grid.Column="2" Classes="xbtn" Click="OnDeleteClick" HorizontalAlignment="Right" VerticalAlignment="Center" ToolTip.Tip="Delete">
             <Path Classes="glyph" Data="{StaticResource CrossIcon}" />
         </Button>
 

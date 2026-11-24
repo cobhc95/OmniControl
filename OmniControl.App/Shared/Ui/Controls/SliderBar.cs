@@ -1,4 +1,7 @@
+using Avalonia.Controls;
 using Avalonia.Layout;
+using Avalonia.VisualTree;
+using OmniControl.App.Shared.Ui.Pages;
 
 namespace OmniControl.App.Shared.Ui.Controls;
 
@@ -45,6 +48,9 @@ public sealed class SliderBar : Control
     /// A range through zero is drawn from zero (the centre mark), every other range from its minimum.
     private bool FromCentre => Minimum < 0 && Maximum > 0;
 
+    /// The slider's reset value, read from its own double-click reset, so the mark follows it without per-slider typesetting.
+    private double? Reset() => this.FindAncestorOfType<Slider>() is { } host ? SliderReset.GetValue(host) : null;
+
     public override void Render(DrawingContext context)
     {
         var vertical = Orientation == Orientation.Vertical;
@@ -63,14 +69,19 @@ public sealed class SliderBar : Control
         if (span <= 0) return;
         double At(double value) => KnobSize / 2 + (Math.Clamp(value, Minimum, Maximum) - Minimum) / span * Math.Max(0, length - KnobSize);
         var knob = At(Value);
+        var reset = Reset();
+        void DefaultMark() { if (MarkBrush is { } mark && reset is { } at) context.DrawRectangle(mark, null, Place(At(at) - MarkWidth / 2, MarkWidth, (across - MarkHeight) / 2, MarkHeight)); }
 
         if (!FromCentre)
         {
             if (Fill is { } fill) context.DrawRectangle(fill, null, new RoundedRect(Place(0, knob, top, TrackHeight), radius));
+            DefaultMark();
             return;
         }
         var zero = At(0);
         if (MarkBrush is { } mark) context.DrawRectangle(mark, null, Place(zero - MarkWidth / 2, MarkWidth, (across - MarkHeight) / 2, MarkHeight));
         if (Fill is { } centred) context.DrawRectangle(centred, null, Place(Math.Min(zero, knob), Math.Abs(knob - zero), top, TrackHeight));
+        // The centre mark and the reset mark meet when the reset is 0; drawing both stays one line.
+        DefaultMark();
     }
 }

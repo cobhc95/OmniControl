@@ -1,6 +1,7 @@
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.VisualTree;
+using OmniControl.App.Shared.Ui.Controls;
 
 namespace OmniControl.App.Shared.Ui.Pages;
 
@@ -18,6 +19,7 @@ public static class SliderReset
         // Handled events too: the slider's thumb (and the knob) mark the press they received as handled.
         control.RemoveHandler(Avalonia.Input.Gestures.DoubleTappedEvent, OnDoubleTapped);
         if (e.NewValue is double) control.AddHandler(Avalonia.Input.Gestures.DoubleTappedEvent, OnDoubleTapped, handledEventsToo: true);
+        foreach (var bar in control.GetVisualDescendants().OfType<SliderBar>()) bar.InvalidateVisual();
     });
 
     private static void OnDoubleTapped(object? sender, TappedEventArgs e)

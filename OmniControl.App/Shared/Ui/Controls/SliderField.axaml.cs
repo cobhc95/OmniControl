@@ -1,4 +1,5 @@
 using Avalonia.Data;
+using OmniControl.App.Shared.Ui.Pages;
 
 namespace OmniControl.App.Shared.Ui.Controls;
 
@@ -20,6 +21,8 @@ public partial class SliderField : UserControl
     public SliderField()
     {
         InitializeComponent();
+        // Attach the reset even when the reset is 0 (the default): binding 0 would never raise a change, so the double-click handler would never attach.
+        SliderReset.SetValue(Bar, ResetValue);
         // The slider and the typed number tell Value only when the user changes them; setting them from <see cref="Value"/>
         // never writes back, so a limit that arrives after the value cannot clamp the stored value.
         Bar.ValueChanged += (_, e) => { if (!_applying) Value = e.NewValue; };

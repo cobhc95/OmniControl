@@ -55,6 +55,7 @@ public sealed partial class TraySliderItem : ObservableObject, ITrayPanelItem
     public IconImage? Icon { get; }
     public int Minimum => _state.Min;
     public int Maximum => _state.Max;
+    public int ResetValue => Minimum < 0 ? 0 : Maximum;
 
     /// False for a level that can only be read (the slider is greyed).
     public bool CanSet => Selected().All(s => s.Set is not null);
